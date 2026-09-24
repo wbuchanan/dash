@@ -571,7 +571,7 @@ duplicated name rather than anything specific to schemes. Renaming to
 way to name a file, so the names are kept and the limitation is now stated in
 `dash.sthlp` rather than left implicit.
 
-### B4. `dash.pkg` cannot be updated by `adoupdate`, and states the wrong version — S3, READ, CLOSED by WP-05 (WP-27 verifies it at release)
+### B4. `dash.pkg` cannot be updated by `adoupdate`, and states the wrong version — S3, READ, CLOSED by WP-05; release verification CLOSED by WP-27
 
 The manifest carries its version only as prose (`dash.pkg:25`,
 `d Version: 1.0.0 25mar2026`). There is no `v` line and no
@@ -598,6 +598,14 @@ correct and minimal.
 ---
 
 ## C. `dash serve` — every documented option aborts the command
+
+
+**Verified at release by WP-27** (24sep2026): `make gate` net installs
+dash from a copy of exactly what `dash.pkg` ships; against that source
+`adoupdate dash` reports nothing to update, and against a copy one day newer
+it reports dash (`r(pkglist)`), so an installed dash sees a release.
+`dash.pkg` carries `d Distribution-Date: 20260924` and every shipped file's
+version line reads 2.0 24sep2026 (test/test_pkg_metadata.py).
 
 ### C1. The option string is forwarded with its leading comma — S1, CLOSED by WP-03 and WP-23 (fixed by 81ebbc5, broken again by 7ddbc08, fixed again by WP-23)
 
@@ -895,7 +903,7 @@ still fail so its fix is noticed.
 
 ## E. The option surface
 
-### E1. 39 options are accepted, reported, and inert — S2, READ; nodraw CLOSED by WP-13
+### E1. 39 options are accepted, reported, and inert — S2, READ; nodraw CLOSED by WP-13; the other 38 deferred by WP-27 (documented as unsupported, and named when given)
 
 Two `_dash_pending` blocks: graph-level at `dash.ado:364-384` (20 entries)
 and plot-level at `:593-632` (39, a strict superset).
@@ -937,6 +945,17 @@ launch decision is `_dash_browser_wanted`, a program a script can call
 without launching anything; `test_nodraw_honoured.cscript` certifies both
 halves, and `test_unsupported_report_is_true.py` pins that nodraw is never
 on a pending list and that the launch decision still reads it.
+
+**The other 38 deferred by WP-27** (24sep2026), explicitly, as AC-27.3
+allows.  Each is a twoway option dash does not implement; dash.sthlp's
+"Unsupported Stata twoway options" lists every one, and dash names it in its
+"ignoring unsupported option(s)" note whenever it is given
+(`test_unsupported_report_is_true.py` holds the list, the help and the note
+together).  Nothing is drawn wrong and nothing is dropped in silence, so
+what is left is the scope of twoway dash covers, not a defect of what it
+does: implementing any of them is new work, not release closeout.  `sort`
+is the one whose note misstates the page -- dash already draws what a bare
+sort asks for -- and is an open S3 entry in BUGS.md.
 
 ### E2. Options dropped with *no* report — S2, CLOSED by WP-13
 
@@ -2030,7 +2049,7 @@ code**. A failed Mata compile therefore surfaces much later as
 `_dash_split_segs() not found`, r(3499) — a message that names an internal
 function and gives the user nothing to act on.
 
-### J6. Smaller gaps — S3, READ; all but rollback CLOSED by WP-06
+### J6. Smaller gaps — S3, READ; all but rollback CLOSED by WP-06; rollback deferred by WP-27 (a failed install is reported, not undone)
 
 **RESOLVED (WP-06)** for: the missing `syntax` line (added; measured, a bare
 `syntax` gives r(101), not r(198)); the uncaptured `Version(...)` (now
@@ -2040,7 +2059,7 @@ printed, as the package loop already did); no check that `dash_render.py` and
 the schemes are reachable (added as `_dash_setup_check_files`, which asks the
 RENDERER rather than `findfile`, because `findfile s2color.scheme` succeeds
 on the very install where the renderer could read none); and the two sections
-both numbered 3 (now 1-6). Rollback is NOT addressed and remains open.
+both numbered 3 (now 1-6). Rollback is NOT addressed.  **Deferred by WP-27** (24sep2026): a failed install is reported as a failure, never as success (J1, closed by WP-06), and every install is guarded and idempotent, so a rerun of dash_setup completes what a failed one left; undoing a partial pip install is outside what a Stata command should do to a user's Python.
 
 Re-measured 23sep2026 at `4ede074`: `dash_setup.ado` and its help still
 contain no rollback or uninstall path, so the heading marks this gap closed
@@ -2465,7 +2484,7 @@ test/test_tracking_documents.py holds the three to it.  `.ultraplan/`,
 `REMAINING.md` and `phases/` are the user's own records, with uncommitted
 changes in the user's checkout, and are left to them.
 
-### M2. Branch state — S3, MEASURED
+### M2. Branch state — S3, MEASURED, CLOSED by WP-27 (the merge is the maintainer's to run; their planning files stay uncommitted by their choice)
 
 62 commits ahead of `main`, with 53 uncommitted working-tree entries
 (a `.ultraplan` reorganisation, an archive directory, and a modified
@@ -2481,6 +2500,15 @@ discards, and this measurement did not touch them.  The status of that
 checkout at the start of the 23sep2026 session still listed the
 `.ultraplan` reorganisation, the archive directory and a modified
 `REMAINING.md`, `CLAUDE.md` and `test/conftest.py`.
+
+**Closed by WP-27** (24sep2026): every commit of the roadmap's work is on
+the working branch, with the merge command reported to the maintainer
+rather than run (CLAUDE.md rule 6).  The uncommitted entries were the
+maintainer's own planning files -- the `.ultraplan` reorganisation and its
+archive, `phases/`, `REMAINING.md` and `CLAUDE.md`; asked whether to commit
+or discard them, the maintainer chose to leave them uncommitted, so they
+are outside the package's history by decision, and nothing of the
+package's own work is left uncommitted.
 
 ### M3. Development artefacts in the package root — S3, READ, CLOSED by WP-26
 

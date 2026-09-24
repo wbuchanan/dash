@@ -151,11 +151,6 @@ clear all
 // ----------------------------------------------------------------
 // Dependency guards
 // ----------------------------------------------------------------
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 
 // Do NOT probe with `capture python: pass'.  Measured: that returns a
 // nonzero rc inside the runner even though the very same session renders
@@ -919,8 +914,7 @@ else display as text "O2-09 PASS: saving() on a named graph is named once and wr
 // O2-10 -- the immediate route still honours saving() and is not told
 // otherwise: the guard against reporting saving() from a static list.
 // ================================================================
-capture which jsonio
-if _rc == 0 & `"`c(python_exec)'"' != "" {
+if `"`c(python_exec)'"' != "" {
     local o2_imm "`c(tmpdir)'o2_imm_saving.html"
     capture erase "`o2_imm'"
     tempfile immlg
@@ -951,7 +945,7 @@ if _rc == 0 & `"`c(python_exec)'"' != "" {
     }
     else display as text "O2-10 PASS: the immediate render honours saving() with no note"
 }
-else display as text "O2-10 SKIP: the immediate render needs jsonio and Python"
+else display as text "O2-10 SKIP: the immediate render needs Python"
 
 // ================================================================
 // AC-13.1 -- a weight expression is accepted and reported, by type.

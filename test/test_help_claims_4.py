@@ -696,19 +696,18 @@ class TestAPercentileOfADateIsADate:
                for s in _DATE_STATS if got.get(_kname(s)) != want[s]]
         assert not bad, "\n  ".join(bad)
 
-    def test_the_served_app_shows_statas_day_number(self, tmp_path, truth):
-        """The documented server-mode limitation: the served app has no date
-        handling, so every date statistic is Stata's underlying number
-        (BUGS.md, "The generated server app has no date handling at all").
-        When the app gains date handling this fails, and the help's
-        limitations block must lose the entry."""
+    def test_the_served_app_shows_the_dates_stata_computes(self, tmp_path,
+                                                           truth):
+        """The served app writes each date statistic as the saved page
+        does.  It showed Stata's day number until WP-27 (BUGS.md, "The
+        generated server app has no date handling at all"), which the
+        help listed as a server-mode limitation."""
         ns = _served_app(tmp_path, _date_spec(_DATE_STATS), _date_df(truth))
         got = _served_cards(_served_session(ns))
-        want = {e["stat"]: e["value"] for e in truth["dates"]["values"]}
-        bad = ["%s: card %r, Stata's number %r" % (s, got.get(_kname(s)),
-                                                   want[s])
-               for s in _DATE_STATS
-               if not _agrees(got.get(_kname(s), ""), want[s])]
+        want = {e["stat"]: _as_page_date(e["value"])
+                for e in truth["dates"]["values"]}
+        bad = ["%s: card %r, Stata %s" % (s, got.get(_kname(s)), want[s])
+               for s in _DATE_STATS if got.get(_kname(s)) != want[s]]
         assert not bad, "\n  ".join(bad)
 
 
@@ -1685,30 +1684,28 @@ class TestTheModesDifferHere:
         assert saved == {0.15}
         assert served == {0.1}
 
-    def test_a_date_is_a_number_when_served(self, tmp_path, truth):
-        """BUGS.md's open entry: the served app has no date handling.  The
-        saved page draws a date axis, date tooltips and a date slider; the
-        served app a number axis, the number, and a slider over Stata's day
-        numbers.  (The date KPI card is TestAPercentileOfADateIsADate.)"""
-        from bokeh.models import DatetimeAxis, HoverTool, LinearAxis
+    def test_a_date_is_a_date_in_both_modes(self, tmp_path, truth):
+        """The comparison table's Dates row, Yes in both columns since
+        WP-27: a date axis, date tooltips and a date slider saved and
+        served.  (The date KPI card is TestAPercentileOfADateIsADate.)"""
+        from bokeh.models import DateRangeSlider, DatetimeAxis, HoverTool
         spec = _date_spec(["max"], [{"varname": "date", "type": "range"}])
         r = _saved(tmp_path, spec, _date_df(truth))
         [fig] = list(r.figures.values())
-        assert isinstance(fig.xaxis[0], DatetimeAxis)
-        tips = [t.tooltips for t in fig.tools if isinstance(t, HoverTool)]
-        assert ("date", "@{date}{%F}") in tips[0]
-        assert type(r.filter_widgets[0]).__name__ == "DateRangeSlider"
         ns = _served_app(tmp_path, spec, _date_df(truth))
         doc = _served_session(ns)
         [sfig] = list(doc.select({"type": type(r_fig())}))
-        assert isinstance(sfig.xaxis[0], LinearAxis) and not isinstance(
-            sfig.xaxis[0], DatetimeAxis)
-        stips = [t.tooltips for t in sfig.tools if isinstance(t, HoverTool)]
-        assert ("date", "@{date}") in stips[0]
-        w = _served_widget(doc, "date")
+        [w] = [x for x in doc.select({"type": DateRangeSlider})
+               if getattr(x, "_dash_var", None) == "date"]
         first = truth["dates"]["first"]
-        assert type(w).__name__ == "RangeSlider"
-        assert (w.start, w.end) == (first, first + truth["dates"]["n"] - 1)
+        ms0 = (first - 3653) * 86400000.0
+        ms1 = ms0 + (truth["dates"]["n"] - 1) * 86400000.0
+        for f, widget in ((fig, r.filter_widgets[0]), (sfig, w)):
+            assert isinstance(f.xaxis[0], DatetimeAxis)
+            tips = [t.tooltips for t in f.tools if isinstance(t, HoverTool)]
+            assert ("date", "@{date}{%F}") in tips[0]
+            assert type(widget).__name__ == "DateRangeSlider"
+            assert (widget.start, widget.end) == (ms0, ms1)
 
     def test_the_saved_slider_recomputes_at_every_step(self, tmp_path,
                                                        truth):

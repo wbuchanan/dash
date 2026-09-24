@@ -14,11 +14,6 @@ cscript "dash serve E2E" adodir ".."
 // ----------------------------------------------------------------
 // Setup — check dependencies
 // ----------------------------------------------------------------
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 
 // Do NOT probe with `capture python: pass'.  Measured: that returns a
 // nonzero rc inside the runner even though the very same session renders
@@ -60,7 +55,7 @@ do "cert_helpers.do"
 // ================================================================
 // P4-73 — cscript header and dependency checks passed
 // ================================================================
-display "P4-73 PASS: Python, jsonio, and bokeh all available"
+display "P4-73 PASS: Python and bokeh both available"
 
 // ================================================================
 // P4-74 — dash serve with empty registry → rc == 198

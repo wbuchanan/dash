@@ -24,11 +24,6 @@ cscript "dash resource limits reach the user" adodir ".."
 // ----------------------------------------------------------------
 // Setup
 // ----------------------------------------------------------------
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222
@@ -184,7 +179,7 @@ display "RL-06 PASS: by() over the limit draws 3 of 5 groups, and is named with 
 tempfile out7
 capture erase "`out7'.html"
 _rl_on "`rllog'"
-capture noisily dash scatter mpg weight, by(rep78) saving("`out7'.html")
+capture noisily dash scatter mpg weight, by(rep78) saving("`out7'.html") replace
 local rc = _rc
 _rl_off
 assert `rc' == 0
@@ -303,7 +298,7 @@ global dash_max_cells 10
 tempfile out13
 capture erase "`out13'.html"
 _rl_on "`rllog'"
-capture noisily dash function y = x^2, range(0 1) saving("`out13'.html")
+capture noisily dash function y = x^2, range(0 1) saving("`out13'.html") replace
 local rc = _rc
 _rl_off
 assert `rc' == 0
@@ -316,7 +311,7 @@ display "RL-13 PASS: a function graph is not refused for data it never reads"
 // A graph that does read variables is still held to the limit -- with the
 // refusal RL-13 reads for, in the words it reads.
 _rl_on "`rllog'"
-capture noisily dash scatter mpg weight, saving("`out13'.html")
+capture noisily dash scatter mpg weight, saving("`out13'.html") replace
 local rc = _rc
 _rl_off
 assert `rc' == 134

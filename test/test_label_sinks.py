@@ -609,14 +609,13 @@ SINKS = (
     Sink("slider_title_from_label", "fsl", ("Slider",), "title", "slider"),
     Sink("slider_title_from_variable_label", "vlrep", ("Slider",), "title",
          "slider"),
-    # A %td variable: the saved page builds a DateRangeSlider/DateSlider,
-    # the served app a numeric RangeSlider/Slider (it does not read %td for
-    # its filters).  Every one is an AbstractSlider with the same title
-    # rendering.
+    # A %td variable: both modes build a DateRangeSlider/DateSlider (the
+    # served app read no %td for its filters before WP-27 and built numeric
+    # ones).  Every one is an AbstractSlider with the same title rendering.
     Sink("date_range_title_from_variable_label", "vld",
-         ("DateRangeSlider", "RangeSlider"), "title", "slider"),
+         ("DateRangeSlider",), "title", "slider"),
     Sink("date_slider_title_from_variable_label", "vld2",
-         ("DateSlider", "Slider"), "title", "slider"),
+         ("DateSlider",), "title", "slider"),
     # HTML.
     Sink("kpi_title", "ktitle", ("Div",), "text", "html"),
     Sink("kpi_subtitle", "ksub", ("Div",), "text", "html"),
@@ -689,14 +688,13 @@ class TestInventory:
     @pytest.mark.parametrize("pid", ["all"])
     def test_both_modes_reach_the_same_sinks(self, built, pid):
         """The served app copies the same helpers by source, so the same
-        user text lands in the same places.  Two differences are expected:
-        the saved page alone rebuilds KPI cards in the browser (CustomJS),
-        and it alone builds date sliders for a %td filter, where the
-        served app builds numeric ones with the same title rendering."""
+        user text lands in the same places.  One difference is expected:
+        the saved page alone rebuilds KPI cards in the browser (CustomJS).
+        Both build date sliders for a %td filter (the served app built
+        numeric ones before WP-27)."""
         std = {(c.kind, c.prop) for c in built("standalone", pid).carriers}
         srv = {(c.kind, c.prop) for c in built("served", pid).carriers}
-        saved_only = {("CustomJS", "args"), ("DateRangeSlider", "title"),
-                      ("DateSlider", "title")}
+        saved_only = {("CustomJS", "args")}
         assert std - saved_only == srv, (
             f"only saved: {sorted(std - srv)}; only served: {sorted(srv - std)}")
 

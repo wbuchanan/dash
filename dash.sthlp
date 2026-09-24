@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 2.0  27mar2026}{...}
+{* *! version 2.0  24sep2026}{...}
 {viewerjumpto "Syntax"            "dash##syntax"}{...}
 {viewerjumpto "Description"       "dash##description"}{...}
 {viewerjumpto "Plot types"        "dash##plottypes"}{...}
@@ -33,7 +33,6 @@
 {vieweralsosee "histogram"           "help twoway_histogram"}{...}
 {vieweralsosee "kdensity"            "help twoway_kdensity"}{...}
 {vieweralsosee "dash_setup"          "help dash_setup"}{...}
-{vieweralsosee "jsonio"              "help jsonio"}{...}
 
 {title:Title}
 
@@ -48,7 +47,8 @@
 
 {p 8 17 2}
 {cmd:dash} {it:plot_specs} {ifin} [{cmd:,} {it:graph_options}
-{cmdab:sav:ing}{cmd:(}{it:filepath}{cmd:)}]
+{cmdab:sav:ing}{cmd:(}{it:filepath} [{cmd:, replace}]{cmd:)}
+{cmd:replace}]
 
 {pstd}{ul:Named graph (accumulate for multi-graph dashboard)}{p_end}
 
@@ -147,11 +147,21 @@ A qualifier is evaluated against the data in memory when the graph or KPI
 is registered, as {cmd:twoway} evaluates it when it draws: an invalid one
 stops the command with {cmd:twoway}'s own message and return code, and
 nothing is registered.  A variable it abbreviates is written out in full
-then.  The dashboard applies the qualifier to the rows it draws, and one
-difference from Stata remains there: a missing value compared with {cmd:>}
-or {cmd:>=} is false, where Stata puts a missing value above every number
--- {cmd:if rep78 > 3} keeps the 29 cars rated above 3, where Stata also
-keeps the 5 with no rating.
+then.  When the dashboard is built -- {cmd:dash build}, {cmd:dash serve} or
+the one-line form -- Stata evaluates each qualifier again, once, against
+the data then in memory and in their order, and the dashboard draws exactly
+the rows Stata selects: a plot's own {it:if} and {it:in}, the graph's, and
+the two together as {cmd:twoway} combines them, and a KPI's.  Everything
+Stata allows in a qualifier works as in Stata -- a missing value above
+every number ({cmd:if rep78 > 3} keeps the 5 cars with no rating),
+subscripts such as {cmd:mpg[_n-1]}, functions such as {cmd:inlist()} and
+{cmd:strpos()}, dates, and {cmd:in -10/l}.  A qualifier the data no longer
+answer -- a variable dropped since the graph was registered -- stops the
+build with Stata's own message.  Each distinct qualifier travels to the
+dashboard as a column of 0s and 1s named {cmd:__dashq}{it:#}, which no
+tooltip, filter or download shows; names beginning with {cmd:__dashq} are
+reserved, and data holding such a variable are refused with
+{cmd:r(110)}.
 
 {pstd}
 This help file documents only the features that differ from or extend
@@ -306,6 +316,18 @@ named in a note and drawn around -- because it is what would be drawn.
     It does NOT interact with Stata's graph memory.  A named graph is
     written by {cmd:dash build}; {cmd:saving()} on a named graph is
     accepted, named in the note, and writes nothing.
+
+{phang2}    {ul:saving() keeps a file that is already there.}  As
+    {cmd:dash build} does, the one-line form refuses a file
+    {cmd:saving()} names that exists, "file '...' already exists. Use
+    replace option to overwrite.", {cmd:r(198)} ({cmd:twoway} says
+    {cmd:r(602)}).  Write {cmd:replace} after the comma, as for
+    {cmd:dash build}, or {cmd:saving(}{it:filepath}{cmd:, replace)}, as for
+    {cmd:twoway}, to write over it.  A directory in the file's place is
+    never written: with {cmd:replace} it is refused with {cmd:r(608)}, as
+    {cmd:twoway} refuses it, on the one-line form and {cmd:dash build}
+    alike.  {cmd:replace} with no {cmd:saving()}, or on a named graph,
+    has nothing to replace and is named in the note.
 
 {phang2}    {ul:Graphs and KPI cards share one namespace.}  A name holds one
     item, whichever kind it is, so {cmd:dash kpi} cannot quietly take a name
@@ -817,7 +839,26 @@ in the dashboard grid.
     the browser window narrows: below 992 pixels an item of 4 columns or
     fewer takes half the row, and below 768 every item takes the whole row.
     {cmd:dash serve} and {cmd:dash build, server} draw the same rows and
-    spans on a grid that narrows with the window but does not reflow.
+    spans on a grid that narrows with the window, keeping its spans, and
+    below 768 pixels of window stacks every item into one column.
+
+{pstd}
+{ul:At phone width.}  No dashboard scrolls sideways.  Every grid -- a
+{cmd:layout(}{it:rows} {it:cols}{cmd:)}, placement or automatic grid, each
+tab's grid, and each {cmd:by()} graph's grid of panels, linked or not --
+gives its columns equal shares of its width, and a grid of {it:n} columns
+narrower than {it:n} x 240 pixels stacks its cells into one column, each
+the full width of the grid, row by row in reading order.  So on a phone
+every figure and card takes the whole width, as under {cmd:layout(bs)}; a
+1 x 4 grid at 768 pixels is one column of four; and two facet panels in a
+cell 351 pixels wide sit one above the other.  The test is the grid's own
+width, not the window's, so a facet grid in a narrow cell or tab stacks
+while the grid around it keeps its columns.  The filter bar wraps onto
+further lines, and below 768 pixels {cmd:filterposition(left)}'s sidebar
+moves above the dashboard.  A KPI card narrows below its usual 160 pixels
+when its cell is narrower.  The served app does the same in a browser
+window of the same width; on a phone, see
+{help dash##server_mode:Server mode}.
 
 {pstd}
 A {cmd:layout()} that is not one of these forms as a whole, that names an
@@ -872,9 +913,10 @@ graph highlights them where it draws them as markers: in its
 lines (the line of {cmd:connected} too), areas, bars, spikes, droplines,
 fits and their bands, smoothers, densities, histograms, and the range and
 paired-coordinate plots -- are drawn from data of their own and do not show
-a selection, except that a saved dashboard shows it on {cmd:rbar},
-{cmd:rspike} and the markers of {cmd:rconnected}, where a served one does
-not.
+a selection, except that a saved dashboard shows it on {cmd:rspike} and
+the markers of {cmd:rconnected}, where a served one does not.  An
+{cmd:rbar} shows it in neither: its bars are drawn from its own rows, their
+width from those rows' spacing.
 
 {pstd}
 {cmd:link(}{it:name1} {it:name2} [{it:name3} ...]{cmd:)} -- link the
@@ -1101,9 +1143,9 @@ filter can leave a card none -- {cmd:count}, {cmd:dcount} and {cmd:sum} are
 0 and every other statistic is missing, shown as {cmd:.}, as
 {cmd:summarize} has them; {cmd:sd}, {cmd:var}, {cmd:cv} and {cmd:skewness}
 of one observation are missing too.  Of a date variable, {cmd:mean},
-{cmd:min}, {cmd:max}, {cmd:median} and every percentile are dates, and the
-saved page shows them as dates; the served app does not (see
-{help dash##server_mode:Server Mode}).
+{cmd:min}, {cmd:max}, {cmd:median} and every percentile are dates, and
+both the saved page and the served app (see
+{help dash##server_mode:Server Mode}) show them as dates.
 
 {pstd}
 {ul:Options:}
@@ -1172,18 +1214,23 @@ it.  The saved page and the served app differ as follows:
 {col 5}Kernel density on filter{col 38}on the same grid{col 59}grid recomputed
 {col 5}Fit-line recompute on filter{col 38}No{col 59}Yes
 {col 5}A slider recomputes{col 38}at every step{col 59}when released
-{col 5}Dates{col 38}Yes{col 59}No (see below)
+{col 5}Dates{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as PNG{col 38}Yes{col 59}Yes
 {col 5}{cmd:scheme()}, {cmd:theme()}{col 38}Yes{col 59}Yes
 {col 5}{cmd:layout()}, {cmd:tabs()} and{col 38}Yes{col 59}Yes
 {col 7}{cmd:filterposition()}
-{col 5}Bootstrap {cmd:layout(bs)}{col 38}reflows{col 59}no reflow
+{col 5}Bootstrap {cmd:layout(bs)}{col 38}reflows{col 59}stacks below 768
 {col 5}Health endpoint{col 38}n/a{col 59}{cmd:/health}
 {col 5}Deployment{col 38}email, open file{col 59}{cmd:python app.py}
 {col 5}{hline 72}
 
 {pstd}
-{ul:What a filter move redraws.}  The saved page recounts a histogram's
+{ul:What a filter move redraws.}  The saved page draws every layer that
+plots observations -- scatter, line, area, bar, spike, dropline, the range
+and paired-coordinate plots, and their marker labels -- from the rows that
+pass the filter, each from its own rows among them, a line still along x
+and a bar's or cap's width taken from the spacing of the rows kept.  It
+recounts a histogram's
 bars, and re-estimates a density on its grid, from the rows that pass the
 filter -- for a {cmd:by()} panel, or a graph or plot with its own {cmd:if}
 or {cmd:in}, from its own rows among them -- and keeps the bin edges and the
@@ -1197,8 +1244,11 @@ shows.
 
 {pstd}
 {ul:What "reflow" means.}  A saved {cmd:layout(bs)} grid rearranges itself as
-the browser window narrows; the served one keeps the rows and spans it was
-given at every width.  See {help dash##layout:Layout}.
+the browser window narrows: half rows below 992 pixels, whole rows below
+768.  The served one keeps the rows and spans it was given down to a
+768-pixel window, narrowing, and below that stacks every item into one
+column.  Every other grid stacks the same way in both modes when it is too
+narrow for its columns.  See {help dash##layout:Layout}.
 
 {pstd}
 {ul:Blocking behavior.}  {cmd:dash serve} blocks Stata until the server
@@ -1334,15 +1384,13 @@ that rate, and the server -- one process, one event loop -- runs one
 recomputation at a time for every session together.
 
 {pstd}
-{ul:What the served app does not do.}  The saved page has three things the
-served app lacks; the first is the table's {it:Dates} row, in full:
+{ul:What the served app does not do.}  The saved page has two things the
+served app lacks:
 
-{phang2}o Dates.  It has no date handling: a date variable is drawn on a
-    number axis, its tooltips and a date statistic's KPI card show Stata's
-    underlying number, and a filter on it is a slider over that
-    number.{p_end}
 {phang2}o A viewport for phones.  The page is Bokeh's own, which declares
-    none, so a phone shows it at desktop width.{p_end}
+    none, so a phone lays it out at desktop width and shows it zoomed
+    out; its grids stack only in a browser window that is itself
+    narrow.{p_end}
 {phang2}o The saved page's dimming.  A brush dims the unselected points of
     linked graphs to Bokeh's 10% opacity rather than to 15%.{p_end}
 
@@ -1359,7 +1407,7 @@ manage.
 
 {pstd}
 The quantities below decide how much {cmd:dash} builds -- the values it
-embeds, the graphs in the registry and the plots in a graph, the panels of
+embeds and the bytes of text among them, the graphs in the registry and the plots in a graph, the panels of
 a {cmd:by()} graph, and the tabs, filters and dropdown values a dashboard
 draws -- and each has a limit, so that none of them can grow without bound.
 Each limit has a default, a ceiling that nothing moves, and a global macro
@@ -1372,6 +1420,12 @@ that moves it for the rest of the session:
     variables a dashboard uses; default 5,000,000, at most 20,000,000.  Over
     it the dashboard is refused with {cmd:r(134)} before anything is
     exported.{p_end}
+{synopt:{cmd:$dash_max_bytes}}bytes of text embedded: the length in bytes
+    of every string value, {cmd:strL} values included, of the string
+    variables a dashboard uses, as Stata stores them; default 50,000,000,
+    at most 500,000,000.  Over it the dashboard is refused with
+    {cmd:r(134)} before anything is exported.  Numbers are counted by
+    {cmd:$dash_max_cells} alone.{p_end}
 {synopt:{cmd:$dash_max_graphs}}graphs and KPI cards in the registry; default
     100, at most 1,000.  A new name past it is refused with
     {cmd:r(134)}.  It also bounds the cells of a {cmd:layout()} grid, which
@@ -1407,15 +1461,19 @@ drop these globals, because they are settings rather than registry;
 
 {pstd}
 {ul:Why the data limit counts every observation.}  {cmd:dash} exports every
-observation of the variables a dashboard uses and applies {cmd:if} and
-{cmd:in} itself, because different plots can carry different qualifiers.  A
-qualifier therefore does not reduce what is exported or held in memory, so
-reduce the data first -- {cmd:keep}, {cmd:drop}, {cmd:sample} or
+observation of the variables a dashboard uses, because different plots can
+carry different qualifiers, and each distinct qualifier as one more column,
+counted like a variable.  A qualifier therefore does not reduce what is
+exported or held in memory, so reduce the data first -- {cmd:keep}, {cmd:drop}, {cmd:sample} or
 {cmd:collapse}, inside {cmd:preserve} and {cmd:restore}.  Above 1,000,000
 values {cmd:dash} notes the size the file will be, at about 24 bytes a value,
 which is what a saved page takes; a served app's file carries the values as
 text and takes up to about twice that.  Measured, 4,000,000 values made a
-95 MB page and took about 2 GB of memory to render.
+95 MB page and took about 2 GB of memory to render.  A string value adds its
+own length to that, and a {cmd:strL} is exported whole, so text is held to
+{cmd:$dash_max_bytes} as well: 60 observations of a 1,000,000-byte
+{cmd:strL} are only 60 values but 60,000,000 bytes, and are refused at the
+default.
 
 {pstd}
 {ul:A served dashboard} has rate limits of its own; see
@@ -1681,10 +1739,12 @@ options -- see below.
 {synopt:{opt kernel(name)}}{cmd:lpoly}, {cmd:lpolyci} and {cmd:kdensity}:
     {cmd:epanechnikov} (the default), {cmd:epan2}, {cmd:biweight},
     {cmd:cosine}, {cmd:gaussian}, {cmd:parzen}, {cmd:rectangle} or
-    {cmd:triangle}, in upper or lower case.  Any other word is refused,
-    r(198) -- {cmd:twoway}'s abbreviations too, such as {cmd:kernel(gau)}
-    or {cmd:kernel(epan)}, which {cmd:twoway} accepts (and it refuses
-    upper case): write the name in full.  {cmd:twoway}'s older spelling,
+    {cmd:triangle}, in upper or lower case, each down to {cmd:twoway}'s
+    own abbreviation: {cmd:ep} (so {cmd:epan} is {cmd:epanechnikov};
+    {cmd:epan2} is taken only in full), {cmd:bi}, {cmd:cos}, {cmd:gau},
+    {cmd:par}, {cmd:rec} and {cmd:tri}.  Any other word is refused,
+    r(198), as {cmd:twoway} refuses it ({cmd:twoway} refuses upper case
+    too).  {cmd:twoway}'s older spelling,
     the kernel as an option of its own ({cmd:gaussian}), is named in the
     note and the default kernel drawn{p_end}
 {synopt:{opt n(#)}}the number of points a layer is drawn at.
@@ -1698,8 +1758,11 @@ options -- see below.
     plot's sample, or over {cmd:range()}.  {cmd:lfit}, {cmd:qfit},
     {cmd:lfitci} and {cmd:qfitci}: 100 by default, over the observed range
     of x or over {cmd:range()} ({cmd:twoway}'s {cmd:lfit} draws the same
-    straight line at 3).  {cmd:function}: 300 by default, over
-    {cmd:range()}.  On these types {cmd:dash} takes 2 to 10000;
+    straight line at 3).  An x that does not vary is a range of one value:
+    {cmd:regress} omits x, so every point is at that x and the mean of
+    {it:yvar}, as {cmd:twoway lfit} draws it, and the band of
+    {cmd:lfitci} and {cmd:qfitci} is the mean's.  {cmd:function}: 300 by
+    default, over {cmd:range()}.  On these types {cmd:dash} takes 2 to 10000;
     {cmd:twoway} takes any whole number from 1 up, with no upper bound
     ({cmd:lpoly} reads 1 as 50).  {cmd:mspline}: the number of points
     drawn between each pair of adjacent knots, default 10, 1 to 300, as in
@@ -1942,7 +2005,11 @@ The meaning is Stata's: an {cmd:aweight} is normalised to sum to
 {it:N}; an {cmd:fweight} replicates observations, so {it:N} is the sum of
 the weights; a {cmd:pweight} gives the {cmd:aweight} estimates with a
 robust standard error for the band.  A weight's values are treated as
-{cmd:twoway} treats them, checked over the plot's own sample: a
+{cmd:twoway} treats them, checked over the plot's own sample -- with a
+qualifier written after the plot groups part of it, as in
+{cmd:(lfit mpg weight [fw=w]) if foreign == 1}, except on
+{cmd:kdensity}, which {cmd:twoway} checks over its own {cmd:if} and
+{cmd:in} alone: a
 non-integer {cmd:fweight} is r(401) on {cmd:lfit}, {cmd:lfitci},
 {cmd:lpoly}, {cmd:lpolyci}, {cmd:histogram} and {cmd:kdensity}, a
 negative {cmd:fweight} r(402) on the last four, and a negative
@@ -2086,6 +2153,10 @@ the plot specification).
 {pstd}
 A legend's sub-options are read as sub-options: a word inside a quoted
 label, such as {cmd:label(1 "Turned off")}, is text, never {cmd:off}.
+A label's text is read as {cmd:twoway} reads a title's: each string is a
+line, so {cmd:label(1 "top" "bottom")} is two; a string in compound
+quotes keeps the quotes it holds, nested compound quotes included; and
+text with no double quote is one line.
 {cmd:twoway} has no {cmd:legend(top)}, {cmd:legend(bottom)},
 {cmd:legend(left)} or {cmd:legend(right)} and refuses each
 ({cmd:option top not allowed}, r(198)); so does {cmd:dash}, naming the
@@ -2109,6 +2180,16 @@ Any of those may be followed by a comma and the sub-options
 {cmd:angle(}{it:#}{cmd:)}, and {cmd:grid} or {cmd:nogrid}.  The axis range
 itself is set with {cmd:xscale(range(}{it:a b}{cmd:))} /
 {cmd:yscale(range(}{it:a b}{cmd:))}.
+
+{pstd}
+On a date axis a number is a date in the variable's own units, as
+{cmd:twoway} reads it: days for {cmd:%td}, milliseconds for {cmd:%tc},
+weeks, months, quarters or half-years for {cmd:%tw}, {cmd:%tm}, {cmd:%tq}
+and {cmd:%th}, and years for {cmd:%ty}.  So on a {cmd:%td} axis
+{cmd:xline(14979)} is drawn at 04jan2001, and {cmd:xlabel()},
+{cmd:xtick()} and {cmd:xscale(range())} read their numbers the same way,
+in both render modes.  A number that is no date Stata shows (outside
+01jan0100 to 31dec9999) is named in a note and not drawn.
 
 {pstd}
 {ul:Ticks without labels.}  {cmd:xtick()} and {cmd:ytick()} add ticks
@@ -2172,13 +2253,29 @@ in a warning.  {cmd:yscale2()} and {cmd:xscale2()} take {cmd:log},
 {phang2}{cmd:. dash (line close date) (line volume date, yaxis(2)), ytitle2(Volume (thousands))}{p_end}
 
 {pstd}
-{ul:Tooltips.}  {cmd:hover(}{it:varlist}{cmd:)} adds the variables' values
-to the tooltip of the layers that draw one mark per observation --
-{cmd:scatter}, {cmd:connected}, {cmd:dot}, {cmd:dropline}, {cmd:bar},
-{cmd:spike}, {cmd:rbar}, {cmd:rspike}, {cmd:rcap} and {cmd:rconnected} --
-in the saved dashboard and the served app alike.  The other layers'
-tooltips, where they have one, show only what the layer draws: x and y, or
-a histogram's bin and count.
+{ul:Tooltips.}  Each layer's tooltip names the variables that layer
+plots -- its x and y, a range's two ends, a paired-coordinate layer's
+x1, y1, x2 and y2 -- so in {cmd:(scatter mpg weight) (scatter price weight)}
+a point of the second layer shows {cmd:weight} and {cmd:price}, not
+{cmd:mpg}.  {cmd:hover(}{it:varlist}{cmd:)} adds the variables' values
+to the tooltip of every layer whose marks are observations --
+{cmd:scatter}, {cmd:connected}, {cmd:line}, {cmd:tsline}, {cmd:area},
+{cmd:dot}, {cmd:dropline}, {cmd:bar}, {cmd:spike}, every range type
+({cmd:rarea}, {cmd:rbar}, {cmd:rspike}, {cmd:rcap}, {cmd:rcapsym},
+{cmd:rline}, {cmd:tsrline}, {cmd:rconnected}, {cmd:rscatter}) and every
+paired-coordinate type drawn from variables ({cmd:pcspike},
+{cmd:pcarrow}, {cmd:pcbarrow}, {cmd:pcscatter}, {cmd:pccapsym}) -- in the
+saved dashboard and the served app alike.  Each point shows the values of
+its own observation; both points of an {cmd:rscatter} or a
+{cmd:pcscatter} show the same one.  A computed layer's points are not
+observations -- {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci},
+{cmd:fpfit}, {cmd:fpfitci}, {cmd:lowess}, {cmd:lpoly}, {cmd:lpolyci},
+{cmd:mband}, {cmd:mspline}, {cmd:kdensity}, {cmd:histogram} and
+{cmd:function} -- and an immediate layer's ({cmd:scatteri}, {cmd:pci},
+{cmd:pcarrowi}) are typed in the command, so {cmd:hover()} cannot reach
+them: their tooltips, where they have one, show only what the layer draws,
+x and y or a histogram's bin and count, and {cmd:dash} names each such
+layer in a note, once.
 
 
 {marker colorvar}
@@ -2250,7 +2347,9 @@ A {cmd:colorvar()} key is not the legend: it stays.
 A {cmd:dash} dashboard is responsive: figures stretch to the width they are
 given rather than being drawn at a fixed pixel size.  {cmd:xsize()},
 {cmd:ysize()} and {cmd:aspectratio()} therefore set a figure's PROPORTIONS,
-and the figure fills the width available at that shape.
+and the figure fills the width available at that shape.  At phone width a
+grid too narrow for its columns stacks them, so each figure takes the whole
+width (see {help dash##layout:Layout}).
 
 {pstd}
 The precedence, highest first:
@@ -2771,8 +2870,8 @@ rejected: {cmd:titl(x)} abbreviates {cmd:title()} and works, while
 
 {pstd}
 Run {helpb dash_setup} once before using {cmd:dash}.  It checks everything
-below and installs what it can -- the Python packages and {cmd:jsonio}; a
-Python you install and link yourself:
+below and installs what it can -- the Python packages; a Python you install
+and link yourself:
 
 {phang2}{ul:Python 3.8+} -- linked to Stata; see {helpb python}.
 
@@ -2786,12 +2885,19 @@ Python you install and link yourself:
     statsmodels is neither required nor read, and {helpb dash_setup} no
     longer installs them.
 
-{phang2}{ul:jsonio} -- the Stata package {cmd:dash} writes the data out
-    with; without it {cmd:dash} stops, r(198).  See {helpb jsonio}.
+{phang2}{ul:jsonio} -- is no longer needed.  {cmd:dash} writes the data
+    out itself, through Stata's Python, so every string value -- quotes,
+    backticks, dollar signs, control characters, any UTF-8, a strL -- reaches
+    the dashboard exactly as Stata holds it.  Text that is not UTF-8, which a
+    web page cannot carry, is shown as Stata's ustrfix function shows it, each invalid
+    byte as the replacement character, with a note naming the variable or
+    label; {cmd:unicode translate} converts such text first.  A binary strL
+    is refused, r(198), naming the variable.  {helpb dash_setup} neither
+    checks nor installs it.
 
 
 {marker author}
 {title:Also see}
 
 {psee}
-{helpb dash_setup}, {helpb twoway}, {helpb jsonio}, {helpb python}
+{helpb dash_setup}, {helpb twoway}, {helpb python}

@@ -6,12 +6,14 @@
 *!     is checked against the minimum)
 *!   - Python packages: bokeh, numpy, pandas (all required; no plot type
 *!                      needs scipy or statsmodels, see section 3)
-*!   - Stata package: jsonio (auto-installed from SSC if missing)
+*!   - dash's own files: dash_render.py and the shipped schemes
+*!   (No Stata package: dash writes its data from Python and has not used
+*!   jsonio since 24sep2026, so it neither checks nor installs it.)
 *!
 *! Usage: dash_setup
 *!
 *! Author:  (see dash.sthlp)
-*! Version: 2.0  27mar2026
+*! Version: 2.0  24sep2026
 
 program define dash_setup
     version 16.0
@@ -239,38 +241,9 @@ program define dash_setup
     }
 
     // ----------------------------------------------------------------
-    // 4. Check and install jsonio
+    // 4. Check dash's own files
     // ----------------------------------------------------------------
-    capture which jsonio
-    if _rc != 0 {
-        display as text "  jsonio ............. {res}missing{txt} — installing from SSC..."
-        capture ssc install jsonio, replace
-        if _rc != 0 {
-            display as error "  Failed to install jsonio from SSC."
-            display as error "  Ensure you have an internet connection and try:"
-            display as error "    ssc install jsonio"
-            local n_fail = `n_fail' + 1
-            local fail_items `"`fail_items' jsonio (could not install)"'
-            _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-                items(`"`fail_items'`warn_items'"')
-            exit 198
-        }
-        capture which jsonio
-        if _rc != 0 {
-            display as error "  jsonio installed but not found on adopath. Restart Stata."
-            local n_fail = `n_fail' + 1
-            local fail_items `"`fail_items' jsonio (not on the ado-path)"'
-            _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-                items(`"`fail_items'`warn_items'"')
-            exit 198
-        }
-    }
-    display as text "  jsonio ............. {res}OK{txt}"
-
-    // ----------------------------------------------------------------
-    // 5. Check dash's own files
-    // ----------------------------------------------------------------
-    // Setup checked Python, five packages and jsonio, and never asked
+    // Setup checked Python, its packages and (then) jsonio, and never asked
     // whether dash itself was reachable -- which is how an install whose
     // fourteen schemes all fell back to built-in defaults was reported as
     // "All dependencies are satisfied".
@@ -281,7 +254,7 @@ program define dash_setup
     }
 
     // ----------------------------------------------------------------
-    // 6. Summary
+    // 5. Summary
     // ----------------------------------------------------------------
     _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
         items(`"`fail_items'`warn_items'"')
@@ -578,8 +551,8 @@ end
 // ================================================================
 // _dash_setup_check_files  — is dash itself installed and reachable?
 // ================================================================
-// dash_setup checked Python, five Python packages and jsonio, and never
-// asked whether dash's OWN files were reachable.  That is why a `net
+// dash_setup checked Python, its Python packages and (then) jsonio, and
+// never asked whether dash's OWN files were reachable.  That is why a `net
 // install' whose fourteen schemes all fell back to built-in defaults was
 // reported as "All dependencies are satisfied" (see the BUGS.md entry).
 //

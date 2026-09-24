@@ -40,11 +40,6 @@ cscript "dash serve honours the browser settings" adodir ".."
 // ----------------------------------------------------------------
 // Setup
 // ----------------------------------------------------------------
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222

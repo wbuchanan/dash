@@ -716,3 +716,179 @@ class TestTextboxAdversarial:
             tmp_path, {"title": '"x", size(' + "a( " * 40000})
         assert time.monotonic() - t0 < 60
         assert saved["title"] == served["title"] == "x"
+
+
+# ============================================================
+# legend(label(# text)) is read as Stata reads a text (24sep2026)
+# ============================================================
+#
+# BUGS.md "The renderer does not draw a legend label given in compound
+# quotes".  _dash_apply_legend took a label only as ``# "text"`` -- one
+# plain-quoted string (its pattern, ``\s*(\d+)\s+"([^"]*)"\s*``) -- and
+# kept the default key for anything else, in both modes: label(1
+# `"'90s lc"') drew the variable's label, where twoway's exported SVG draws
+# '90s lc.  Each expected value below is a 24sep2026 run of ``twoway
+# (scatter mpg weight) (line mpg weight), legend(label(1 <text>))`` in
+# StataNow 19.5 (console binary), exported to .svg and its key text read;
+# the nested form was measured on title(), which twoway reads with the same
+# textbox code.  A legend key is a DOM text node with ``white-space: pre``
+# (bokeh's legend CSS, .bk-label), so a newline is a line break there and
+# the text is never parsed as HTML.
+
+def _legend_both_modes(tmp_path, legend):
+    """``(saved, served, page)``: ``(keys, visible)`` of the one legend each
+    mode draws for a scatter and a line under ``legend(<legend>)``, and the
+    saved page."""
+    from bokeh.document import Document
+    from bokeh.models import Legend
+    line = dict(_PLOT, type="line")
+    spec = make_spec([dict(_PLOT), line])
+    spec["graphs"][0]["graph_options"]["legend"] = legend
+    sp, dp, ap = (str(tmp_path / n) for n in ("spec.json", "data.json",
+                                              "app.py"))
+    with open(sp, "w", encoding="utf-8") as fh:
+        json.dump(spec, fh)
+    with open(dp, "w", encoding="utf-8") as fh:
+        json.dump(make_data_json(_DF), fh)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        renderer = dr.DashRenderer(sp, dp)
+        page = renderer.render()
+        dr.ServerAppBuilder(sp, dp).build(ap)
+    with open(ap, encoding="utf-8") as fh:
+        src = fh.read()
+    assert _CURDOC_ATTACH in src, "the generated app's curdoc attach moved"
+    ns = {"__name__": "dash_legend_app"}
+    doc = Document()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(_CURDOC_ATTACH, "pass"),
+                     "dash_legend_app.py", "exec"), ns)
+        ns["make_document"](doc)
+
+    def keys(legends):
+        return [([_legend_text(i.label) for i in lg.items], lg.visible)
+                for lg in legends]
+
+    saved = keys([m for f in renderer.figures.values()
+                  for m in f.select({"type": Legend})])
+    served = keys(list(doc.select({"type": Legend})))
+    assert len(saved) == 1 and len(served) == 1, (saved, served)
+    return saved[0], served[0], page
+
+
+def _legend_text(label):
+    if isinstance(label, dict):
+        return label.get("value")
+    return getattr(label, "value", label)
+
+
+def _page_legend_labels(page):
+    """The LegendItem labels of the saved page's one embedded document,
+    read back as the browser reads it."""
+    from bokeh.document import Document
+    from bokeh.models import LegendItem
+    blocks = re.findall(r'<script type="application/json" id="[^"]+">'
+                        r'\s*(.*?)\s*</script>', page, re.S)
+    docs = [d for b in blocks
+            for d in json.loads(_htmllib.unescape(b)).values()]
+    assert len(docs) == 1, f"{len(docs)} embedded documents, not 1"
+    return [_legend_text(i.label)
+            for i in Document.from_json(docs[0]).select({"type": LegendItem})]
+
+
+class TestALegendLabelIsReadAsStataReadsIt:
+    """label(# text) is read with _textbox_lines, the reader every other
+    text option uses, in both modes and on the saved page."""
+
+    @pytest.mark.parametrize("text,want", [
+        (_cq("'90s lc"), "'90s lc"),
+        (_cq('a "b" c'), 'a "b" c'),
+        ('"top" "bottom"', "top\nbottom"),
+        ("Foreign cars here", " Foreign cars here"),
+        ('a "b" c', "a\nb\nc"),
+        ('"a" "" "b"', "a"),
+        (_cq("a " + _cq("b") + " c"), "a " + _cq("b") + " c"),
+        ('"plain"', "plain"),
+    ], ids=["compound-apostrophe", "compound-holding-quotes",
+            "two-strings-two-lines", "bare-words",
+            "bare-words-around-a-string", "an-empty-string-ends-the-lines",
+            "nested-compound", "plain"])
+    def test_the_key_is_twoways_in_both_modes(self, tmp_path, text, want):
+        saved, served, page = _legend_both_modes(
+            tmp_path, "label(1 %s)" % text)
+        assert saved[0][0] == want, saved
+        assert served[0][0] == want, served
+        assert want in _page_legend_labels(page)
+        # The second key keeps its default text.
+        assert saved[0][1] == served[0][1] != want
+
+    def test_a_key_number_out_of_range_changes_nothing(self, tmp_path):
+        (tmp_path / "c").mkdir()
+        (tmp_path / "x").mkdir()
+        control, _, _ = _legend_both_modes(tmp_path / "c", "")
+        saved, served, _ = _legend_both_modes(tmp_path / "x",
+                                              "label(9 %s)" % _cq("z"))
+        assert saved[0] == served[0] == control[0]
+
+
+class TestALegendLabelAdversarial:
+    """CLAUDE.md rule 18 for the label now read: markup is text, a label's
+    words are never sub-options, and a long label is read in bounded time."""
+
+    _XSS = [
+        "<script>alert(1)</script>",
+        "<img src=x onerror=alert(1)>",
+        '</script><script>alert("x")</script>',
+        "<svg onload=alert(1)>",
+        "\" onmouseover=\"alert(1)",
+    ]
+
+    @pytest.mark.parametrize("payload", _XSS, ids=[
+        "script", "img-onerror", "close-script", "svg-onload",
+        "attribute-break"])
+    def test_markup_is_the_keys_text_and_never_raw_on_the_page(
+            self, tmp_path, payload):
+        saved, served, page = _legend_both_modes(
+            tmp_path, "label(1 %s)" % _cq(payload))
+        # A DOM text node: the raw text is what displays it inertly.
+        assert saved[0][0] == served[0][0] == payload
+        assert payload in _page_legend_labels(page)
+        # Bokeh escapes the document it embeds: the markup never appears
+        # raw in the saved file, so it cannot close the script block.
+        assert payload not in page
+        # The text of a tag may appear escaped (&lt;img ...); the tag never.
+        assert "<script>alert" not in page
+        assert "<img src=x" not in page
+        assert "<svg onload" not in page
+
+    def test_python_and_stata_in_a_label_run_nowhere(self, tmp_path):
+        sentinel = tmp_path / "executed"
+        payload = ("__import__('os').system(\"touch %s\") `x' $HOME "
+                   "{stata dash clear} %%s {0}" % sentinel)
+        saved, served, _ = _legend_both_modes(
+            tmp_path, "label(1 %s)" % _cq(payload))
+        assert saved[0][0] == served[0][0] == payload
+        assert not sentinel.exists()
+
+    def test_a_labels_words_are_never_sub_options(self, tmp_path):
+        """Bypass: a label that looks like its own end and more
+        sub-options after it."""
+        text = 'x") off pos(9) label(2 "pwn'
+        saved, served, _ = _legend_both_modes(
+            tmp_path, "label(1 %s)" % _cq(text))
+        for keys, visible in (saved, served):
+            assert keys[0] == text
+            assert keys[1] != "pwn"
+            assert visible is True
+
+    def test_a_long_label_is_read_in_bounded_time(self, tmp_path):
+        dq = '"'
+        nested = (_BT + dq) * 20000 + "x" + (dq + _AP) * 20000
+        quotes = ('a "b" ' + _AP) * 20000
+        t0 = time.monotonic()
+        saved, served, _ = _legend_both_modes(
+            tmp_path, "label(1 %s) label(2 %s)" % (nested, _cq(quotes)))
+        assert time.monotonic() - t0 < 60
+        assert saved[0][0] == served[0][0] == nested[2:-2]
+        assert saved[0][1] == served[0][1] == quotes

@@ -91,8 +91,9 @@
 *!   HC2-37  what export delimited writes, which the help compares the CSV
 *!           with: line feeds, .5, 1.00000000000e-07, .a, display-format
 *!           dates, labels, RFC 4180 quoting, no byte-order mark
-*!   HC2-38  jsonio hands dash every missing value, extended ones included,
-*!           as null -- so the CSV's field for .a is empty
+*!   HC2-38  dash's writer (_dash_write_data; jsonio until 24sep2026)
+*!           writes every missing value, extended ones included, as null --
+*!           so the CSV's field for .a is empty
 *!   HC2-39  the columns dash exports: every variable the dashboard uses,
 *!           a KPI card's included, in the order the dashboard names them
 *!   HC2-40  import delimited reads through a byte-order mark and CR LF
@@ -101,18 +102,13 @@
 *!           valuelabel (dash's own axes are test_help_claims_2.py's)
 *!
 *! Usage:  cd test, then do test_help_claims_2.cscript (the dash directory
-*!         and jsonio on the ado-path).
+*!         on the ado-path).
 
 cscript "dash help claims: option values, subcommands, dashboard options, exporting" adodir ".."
 
 clear all
 set more off
 
-capture which jsonio
-if _rc {
-    display as text "SKIP: jsonio is not installed."
-    exit 222
-}
 if `"`c(python_exec)'"' == "" {
     display as text "SKIP: no Python is linked to this Stata."
     exit 222
@@ -973,7 +969,9 @@ else display as text "HC2-37k SKIP: the help's line-feed claim is Stata for Mac'
 mata: st_local("_bom", strofreal(_hc2_rawhas(st_local("ed"), char(239) + char(187) + char(191))))
 _hc2_ok "HC2-37l" `=`_bom' == 0' "export delimited writes no byte-order mark"
 
-// HC2-38 -- jsonio writes every missing value as null.
+// HC2-38 -- dash's writer writes every missing value as null.  This ran
+// `jsonio out' itself until 24sep2026, after dash stopped using jsonio: it
+// certified a package dash does not call.
 preserve
 clear
 input double x double y
@@ -982,12 +980,12 @@ input double x double y
 .z 3
 end
 local jj "`hc2f'_38.json"
-quietly jsonio out x y, what(all) filenm("`jj'") metaprint(varnames varlabels vallabs labelnames)
+quietly _dash_write_data "`jj'" x y
 restore
-cert_file_has "`jj'", needle(`""x" : "null""')
+cert_file_has "`jj'", needle(`""x":"null""')
 local n_null = r(found)
 cert_file_has "`jj'", needle(".a")
-_hc2_ok "HC2-38" `=`n_null' == 1 & r(found) == 0' "jsonio hands an extended missing value on as null, never as .a"
+_hc2_ok "HC2-38" `=`n_null' == 1 & r(found) == 0' "dash writes an extended missing value as null, never as .a"
 
 // HC2-39 -- the columns: every variable the dashboard uses, a KPI card's
 // included, in the order the dashboard names them.
@@ -996,7 +994,9 @@ quietly dash clear
 quietly dash scatter weight mpg, name(e1)
 quietly dash kpi mean(price), name(e2) title("P")
 _hc2_run `"_dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'") filter(foreign, type(dropdown)) csv"'
-cert_file_has "`hc2dj'", needle(`""variableNames" : [ "weight", "mpg", "price", "foreign" ]"')
+// In dash's writer's layout, which has no blanks (jsonio's, until
+// 24sep2026, had them around each colon, bracket and comma).
+cert_file_has "`hc2dj'", needle(`""variableNames":["weight","mpg","price","foreign"]"')
 _hc2_ok "HC2-39" `=r(found) == 1' "the data dash exports is weight mpg price foreign: the graph's, the card's, the filter's -- not the dataset's order (price mpg weight foreign)"
 quietly dash clear
 

@@ -99,7 +99,7 @@
 *!           MEASURED FALSE: the Description's `{it:if}/{in}' printed
 *!           "if/{in}", {in} being no SMCL directive.
 *!
-*! Usage:  from test/, with the dash directory and jsonio on the ado-path:
+*! Usage:  from test/, with the dash directory on the ado-path:
 *!         do "test_help_claims_1.cscript"
 
 cscript "dash help claims: Title to Differences from twoway" adodir ".."
@@ -115,11 +115,6 @@ qui do "../dash.ado"
 // cscript drops every global; cert_helpers.do set it again, and so does this.
 global dash_nobrowser 1
 
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 if `"`c(python_exec)'"' == "" {
     display as error "SKIP: Python not available."
     exit 222

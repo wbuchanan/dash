@@ -85,11 +85,6 @@ clear all
 // ----------------------------------------------------------------
 // Dependency guards
 // ----------------------------------------------------------------
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 
 // Do NOT probe with `capture python: pass'.  Measured: that returns a
 // nonzero rc inside the runner even though the very same session renders

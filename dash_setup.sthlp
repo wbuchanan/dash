@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 2.0  27mar2026}{...}
+{* *! version 2.0  24sep2026}{...}
 {viewerjumpto "Syntax"      "dash_setup##syntax"}{...}
 {viewerjumpto "Description" "dash_setup##description"}{...}
 {viewerjumpto "Dependencies" "dash_setup##dependencies"}{...}
@@ -27,8 +27,8 @@ It takes no arguments and no options; either is r(101).
 
 {pstd}
 {cmd:dash_setup} checks that the software {helpb dash} needs is installed and
-reachable from Stata, and installs the parts it can: the Python packages and
-{cmd:jsonio}.  Run it once before you first use {cmd:dash}.  Running it
+reachable from Stata, and installs the parts it can: the Python packages.
+Run it once before you first use {cmd:dash}.  Running it
 again is safe: it installs only what is missing, and a package that is
 present but older than {cmd:dash} needs is reported, not upgraded.
 
@@ -52,10 +52,7 @@ present but older than {cmd:dash} needs is reported, not upgraded.
     minimum is reported, with the command that upgrades it, and counted as
     unmet.
 
-{phang2}4.  {cmd:jsonio}.  If it is missing it is installed from SSC; if
-    that fails, or it is still not found, the run stops, r(198).
-
-{phang2}5.  {cmd:dash}'s own files: {cmd:dash_render.py} must be found, and
+{phang2}4.  {cmd:dash}'s own files: {cmd:dash_render.py} must be found, and
     the renderer must be able to read a shipped scheme.
 
 {pstd}
@@ -102,10 +99,11 @@ manually:
 {phang2}{cmd:python: subprocess.run([sys.executable, "-m", "pip", "install",}
 {cmd:"bokeh", "numpy", "pandas"])}
 
-{pstd}{ul:Stata package}
+{pstd}{ul:Stata packages}
 
-{phang2}{cmd:jsonio} -- installed automatically from SSC if missing.
-See {helpb jsonio} for details on this package.
+{phang2}None.  {cmd:dash} writes its data through Stata's Python and no
+longer uses {cmd:jsonio}, so {cmd:dash_setup} neither checks nor installs
+it.
 
 {pstd}{ul:Bokeh Server / Tornado}
 
@@ -139,11 +137,6 @@ packages using your organization's package mirror or a pre-downloaded wheel:
 {phang2}{cmd:python: subprocess.run([sys.executable, "-m", "pip", "install",}
 {cmd:"--index-url", "https://your.mirror/simple", "bokeh"])}
 
-{pstd}{ul:jsonio not found after installation}
-
-{phang2}If {cmd:jsonio} was just installed but Stata cannot find it,
-restart Stata and run {cmd:dash_setup} again.
-
 {pstd}{ul:Package version below minimum}
 
 {phang2}Upgrade a specific package:
@@ -157,4 +150,4 @@ restart Stata and run {cmd:dash_setup} again.
 {title:Also see}
 
 {psee}
-{helpb dash}, {helpb jsonio}, {helpb python}
+{helpb dash}, {helpb python}

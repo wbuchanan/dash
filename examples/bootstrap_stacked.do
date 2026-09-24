@@ -38,7 +38,7 @@ dash (scatter mpg weight if rep78==1, mc(navy)         ms(circle))   ///
      (scatter mpg weight if rep78==2, mc(maroon)       ms(square))   ///
      (scatter mpg weight if rep78==3, mc(forest_green) ms(triangle)) ///
      (scatter mpg weight if rep78==4, mc(orange)       ms(diamond))  ///
-     (scatter mpg weight if rep78==5, mc(purple)       ms(inverted_triangle)), ///
+     (scatter mpg weight if rep78==5, mc(purple)       ms(V)), ///
      name(s2) title("MPG vs Weight by Repair Record") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 

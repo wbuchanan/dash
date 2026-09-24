@@ -668,12 +668,16 @@ class TestEdgeCasesEmptyData:
         assert len(renderers[0].data_source.data["x_fit"]) == 0
 
     def test_lfitci_constant_xvar_returns_two_renderers(self, fig, gm):
-        """Regression: map_lfitci with zero-variance x returns empty renderers."""
+        """map_lfitci with zero-variance x fits the constant, as regress
+        does with x omitted: every point at (3000, mean of y).  It used to
+        draw nothing (BUGS.md, the constant-x lfit entry)."""
         const_cds = ColumnDataSource({"mpg": [20.0, 22.0, 24.0, 26.0],
                                       "weight": [3000.0, 3000.0, 3000.0, 3000.0]})
         renderers = gm.map_lfitci(fig, const_cds, "mpg", "weight", {})
         assert len(renderers) == 2
-        assert len(renderers[0].data_source.data["x_fit"]) == 0
+        data = renderers[0].data_source.data
+        assert set(np.asarray(data["x_fit"], float)) == {3000.0}
+        assert np.allclose(np.asarray(data["y_fit"], float), 23.0)
 
     def test_kdensity_constant_data_returns_renderer(self, fig, gm):
         """Regression: map_kdensity with constant data returns empty renderer."""
@@ -1059,11 +1063,15 @@ class TestMlabelOnNonScatter:
         from bokeh.models import LabelSet
         gm = GlyphMapper()
         src = self._cds_with_label(std_df)
-        gm.map_bar(fig, src, "y", "x", {"mlabel": "lbl"})
+        r = gm.map_bar(fig, src, "y", "x", {"mlabel": "lbl"})
         ls = [r for r in fig.center if isinstance(r, LabelSet)]
         # One, at each bar's top: ">= 1" passed the labels drawn twice.
         assert len(ls) == 1, "mlabel on bar should add one LabelSet"
-        _assert_labels_each_point(ls[0], src, "lbl")
+        # From the source the bars are drawn from -- the layer's own rows
+        # (WP-27: from the caller's, a bar with its own if/in labelled
+        # every row of its graph) -- which holds every row here.
+        _assert_labels_each_point(ls[0], r.data_source, "lbl")
+        assert list(r.data_source.data["lbl"]) == list(src.data["lbl"])
 
     def test_no_mlabel_on_spike(self, fig, std_df):
         from bokeh.models import LabelSet

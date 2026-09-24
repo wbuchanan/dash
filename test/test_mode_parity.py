@@ -64,7 +64,8 @@ from unittest import mock
 import pandas as pd
 import pytest
 from bokeh.document import Document
-from bokeh.models import (Band, BoxAnnotation, Div, GridPlot, HoverTool,
+from bokeh.models import (Arrow, Band, BoxAnnotation, ColumnDataSource, Div,
+                          GridPlot, HoverTool,
                           Label, LabelSet, Legend, RangeSlider, Select,
                           Slider, Span, TabPanel, Tabs, ToolProxy, Widget)
 
@@ -127,7 +128,8 @@ ALLOWED = {
         "starts the next) -- and compared with the served GridBox's "
         "children: content, row, column and spans.  What the markup does "
         "below 992px, where it reflows, has no served counterpart and is "
-        "not compared; dash.sthlp says the served grid does not reflow.  "
+        "not compared; dash.sthlp says the served grid keeps its spans "
+        "down to a 768px window and then stacks (TR-27.2).  "
         "Nor is the rest of the page, which is why a layout(bs) entry sets "
         "no filter(), tabs(), title() or subtitle(): the saved page puts "
         "its filters above the title (or, filterposition(left), beside "
@@ -478,6 +480,56 @@ def _annotations(fig):
                         "fill": r.fill_color, "alpha": r.fill_alpha})
         elif isinstance(r, Band):
             out.append({"kind": "Band"})
+        elif isinstance(r, Arrow):
+            out.append({"kind": "Arrow", **_arrow_heads(r)})
+    return sorted(out, key=lambda d: json.dumps(d, sort_keys=True,
+                                                default=str))
+
+
+def _arrow_heads(a):
+    """What one Arrow annotation draws: its heads, its style, and the
+    (x_start, y_start, x_end, y_end) of every arrow it draws, read from
+    its source where a coordinate is a field.
+
+    Arrow annotations were not profiled, so pcarrow's heads could stay
+    where they were drawn after a filter move while the shafts followed
+    it, and every move comparison passed (BUGS.md, 24sep2026).  The rows
+    are sorted: one annotation per row and one annotation over a source
+    of rows draw the same arrows."""
+    data = dict(a.source.data) if a.source is not None else {}
+    specs = [_spec_of(getattr(a, k)) for k in ("x_start", "y_start",
+                                              "x_end", "y_end")]
+    n = max([len(data[s[1]]) for s in specs
+             if s[0] == "field" and s[1] in data] or [1])
+
+    def at(s, i):
+        v = data[s[1]][i] if s[0] == "field" and s[1] in data else s[1]
+        try:
+            v = float(dr._dash_float_values(pd.Series([v]))[0])
+        except (TypeError, ValueError):
+            return str(v)
+        return _num(v)
+
+    rows = []
+    for i in range(n):
+        row = tuple(at(s, i) for s in specs)
+        # BokehJS draws no arrow with a missing coordinate.
+        if all(isinstance(v, float) and not math.isnan(v) for v in row):
+            rows.append(row)
+    return {"start": type(a.start).__name__ if a.start else None,
+            "end": type(a.end).__name__ if a.end else None,
+            "color": a.line_color, "width": a.line_width,
+            "arrows": sorted(rows)}
+
+
+def _arrows_of(annotations):
+    """Every arrow the Arrow annotations of one figure profile draw, as
+    one sorted list, with each annotation's style."""
+    out = []
+    for x in annotations:
+        if x["kind"] == "Arrow":
+            out.extend((x["start"], x["end"], x["color"], x["width"], a)
+                       for a in x["arrows"])
     return sorted(out, key=lambda d: json.dumps(d, sort_keys=True,
                                                 default=str))
 
@@ -1329,25 +1381,55 @@ CORPUS = [
 ]
 
 
-#: Dates: a KNOWN server gap (BUGS.md, "The generated server app has no date
-#: handling at all").  These entries run every comparison the corpus does;
-#: the ones the gap breaks are asserted to STILL FAIL, so closing the gap
-#: fails here until the entry is moved into CORPUS -- a hand-made strict
-#: xfail, kept explicit because an ``xfail`` mark on the whole entry would
-#: hide which comparisons the gap does and does not affect.
+#: Dates.  The served app had no date handling at all (BUGS.md, "The
+#: generated server app has no date handling at all"): measured 23sep2026 a
+#: line over a %td ``when`` drew a DatetimeAxis with ``@{when}{%F}`` saved
+#: and a LinearAxis over 15340, 15341, ... with ``@{when}`` served, and a
+#: date-valued KPI read the day number.  These entries were a hand-made
+#: strict xfail until WP-27 loaded the served frame through the saved
+#: loader's column reader; every comparison now runs, as for CORPUS.
+_W = {"formats": {"when": "%td"}}
 DATE_CORPUS = [
     _case("a date on the x axis",
-          [plot_for("line", yvar="mpg", xvar="when")],
-          {"formats": {"when": "%td"}}),
-    _case("a date-valued KPI", [_sc()], {"formats": {"when": "%td"}},
+          [plot_for("line", yvar="mpg", xvar="when")], _W),
+    _case("a date-valued KPI", [_sc()], _W,
           kpis=[_kpi(stat="max", var="when")]),
+    _case("a date KPI: min, median and count", [_sc()], _W,
+          kpis=[_kpi(stat="min", var="when"),
+                _kpi(name="k2", stat="median", var="when"),
+                _kpi(name="k3", stat="count", var="when")]),
+    _case("a date on the y axis",
+          [plot_for("line", yvar="when", xvar="mpg")], _W),
+    _case("a scatter and an lfit over a date",
+          [plot_for("scatter", yvar="mpg", xvar="when"),
+           plot_for("lfit", yvar="mpg", xvar="when")], _W),
+    _case("a monthly date on the x axis",
+          [plot_for("connected", yvar="mpg", xvar="when")],
+          {"formats": {"when": "%tm"}}),
+    _case("a clock on the x axis",
+          [plot_for("scatter", yvar="mpg", xvar="when")],
+          {"formats": {"when": "%tc"}}),
+    _case("hover() of a date", [_sc()], _W, go={"hover": "when"}),
+    _case("mlabel() of a date",
+          [plot_for("scatter", {"mlabel": "when"}, yvar="mpg",
+                    xvar="when")], _W),
+    _case("by() over a date axis",
+          [plot_for("line", yvar="mpg", xvar="when")], _W,
+          go={"by": "foreign"}),
+    _case("a date range filter",
+          [plot_for("line", yvar="mpg", xvar="when")],
+          dict(_W, filter="when, type(range)")),
+    _case("a date slider filter",
+          [plot_for("line", yvar="mpg", xvar="when")],
+          dict(_W, filter="when, type(slider)")),
+    _case("a date dropdown filter",
+          [plot_for("line", yvar="mpg", xvar="when")],
+          dict(_W, filter="when, type(dropdown)")),
+    _case("xline, xlabel and xscale(range()) on a date axis",
+          [plot_for("line", yvar="mpg", xvar="when")], _W,
+          go={"xline": "15342", "xlabel": "15340 15345 \"mid\" 15349",
+              "xscale": "range(15339 15350)"}),
 ]
-
-#: Which comparison each date entry is known to fail.
-_DATE_GAP = {
-    "a date on the x axis": {"glyphs", "axes", "tools"},
-    "a date-valued KPI": {"tree", "kpi"},
-}
 
 #: The entries a report is the point of, with the report each must make.
 #: test_same_warnings compared the two modes' lists alone, so an entry
@@ -1530,39 +1612,8 @@ def test_every_must_warn_entry_is_in_the_corpus():
 
 
 @pytest.mark.parametrize("name,spec", DATE_CORPUS)
-class TestDatesAreAKnownServerGap(_Agree):
-    """See ``DATE_CORPUS``: the gap's comparisons must still fail."""
-
-    def _gap(self, name, what, run):
-        if what not in _DATE_GAP.get(name, ()):
-            run()
-            return
-        with pytest.raises(AssertionError):
-            run()
-        pytest.xfail(f"{name}: {what} -- BUGS.md, the generated server app "
-                     f"has no date handling; still open, as recorded")
-
-    def test_same_document_tree(self, name, spec):
-        self._gap(name, "tree",
-                  lambda: _Agree.test_same_document_tree(self, name, spec))
-
-    def test_same_glyphs(self, name, spec):
-        self._gap(name, "glyphs",
-                  lambda: _Agree.test_same_glyphs(self, name, spec))
-
-    def test_same_axes(self, name, spec):
-        self._gap(name, "axes", lambda: _Agree.test_same_axes(self, name, spec))
-
-    def test_same_tools(self, name, spec):
-        self._gap(name, "tools",
-                  lambda: _Agree.test_same_tools(self, name, spec))
-
-    def test_same_kpi_cards(self, name, spec):
-        self._gap(name, "kpi",
-                  lambda: _Agree.test_same_kpi_cards(self, name, spec))
-
-    def test_every_gap_entry_is_still_needed(self, name, spec):
-        assert name in _DATE_GAP, f"{name} has no recorded gap"
+class TestTheTwoModesAgreeOnDates(_Agree):
+    """See ``DATE_CORPUS``: once a known server gap, now held equal."""
 
 
 # ---------------------------------------------------------------------------
@@ -1678,7 +1729,8 @@ _MOVES = [
 ]
 
 _MOVED_LAYERS = ["scatter", "line", "lfit", "lfitci", "histogram", "kdensity",
-                 "lpoly", "rarea", "pcspike", "function", "connected"]
+                 "lpoly", "rarea", "pcspike", "function", "connected",
+                 "pcarrow", "pcbarrow"]
 
 #: The plot types twoway draws mlabel() on (test_marker_label_parity.py's
 #: measured partition; not imported, since that file imports this one).
@@ -1779,19 +1831,44 @@ _OWN_QUALIFIER_MOVES = [
     _own("a dot plot with its own in, dropdown", _MOVES[0],
          [plot_for("dot", in_expr="3/8")], {0: {0: [4, 6, 8]}}),
     # Labelled, with its own in: list obs weight rep if foreign == 1 in
-    # 3/8 gives 4, 6, 8 with rep 5, 3, 4.  Not compared whole with the
-    # saved page: its LabelSet has no view, so it labels every row of the
-    # graph's source -- ten labels beside six markers before any move --
-    # a saved-page defect of its own; its markers are held to Stata below.
+    # 3/8 gives 4, 6, 8 with rep 5, 3, 4.  Compared whole with the saved
+    # page since WP-27: its labels are drawn from the layer's own rows,
+    # where they labelled every row of the graph's source -- ten labels
+    # beside six markers before any move.
     _own("a labelled scatter with its own in, dropdown", _MOVES[0],
          [plot_for("scatter", {"mlabel": "rep"}, in_expr="3/8")],
-         {0: {0: [4, 6, 8]}}, labels=["5", "3", "4"], parity=False),
+         {0: {0: [4, 6, 8]}}, labels=["5", "3", "4"]),
+    # The connected layers, in since WP-27: the saved page applied the
+    # layer's view by position to a copy sorted by x, so `in 3/8' drew
+    # the wrong observations (BUGS.md, 24sep2026).  count if foreign == 1
+    # in 3/8: 3 (4, 6, 8); count if mpg > 18 & price >= 4500 & price <=
+    # 11385: 4 (4, 5, 8, 10) -- the counts measured for the scatter
+    # entries above, the same rows.
+    _own("a line with its own in, dropdown", _MOVES[0],
+         [plot_for("line", in_expr="3/8")], {0: {0: [4, 6, 8]}}),
+    _own("a tsline with its own if, range", _MOVES[1],
+         [plot_for("tsline", if_expr="mpg > 18")], {0: {0: [4, 5, 8, 10]}}),
+    _own("a connected plot with its own in, dropdown", _MOVES[0],
+         [plot_for("connected", in_expr="3/8")],
+         {0: {0: [4, 6, 8], 1: [4, 6, 8]}}),
+    _own("a labelled connected plot with its own if, range", _MOVES[1],
+         [plot_for("connected", {"mlabel": "rep"}, if_expr="mpg > 18")],
+         {0: {0: [4, 5, 8, 10], 1: [4, 5, 8, 10]}},
+         labels=["5", "4", "4", "4"]),
+    # rconnected's four glyphs: each end's line and its markers.
+    _own("an rconnected with its own in, dropdown", _MOVES[0],
+         [plot_for("rconnected", in_expr="3/8")],
+         {0: {0: [4, 6, 8], 1: [4, 6, 8], 2: [4, 6, 8], 3: [4, 6, 8]}}),
 ]
 
 
 MOVE_CORPUS = [
     *[_move_case(f"{t}, {m[0]}", m, [plot_for(t)])
       for t in _MOVED_LAYERS for m in _MOVES],
+    # An arrow's heads follow its shafts, with the layer's own in (BUGS.md,
+    # 24sep2026: the heads were one fixed annotation per row).
+    *[_move_case(f"{t} with its own in, {_MOVES[0][0]}", _MOVES[0],
+                 [plot_for(t, in_expr="3/8")]) for t in ("pcarrow", "pcbarrow")],
     _move_case("line with marker labels, dropdown", _MOVES[0],
                [plot_for("line", {"mlabel": "rep"})]),
     # twoway draws no marker label on a line (test_marker_label_parity.py),
@@ -1888,7 +1965,21 @@ class TestAFilterMoveAgrees:
         if _labels_a_layer(spec):
             assert drawn, f"{name}: no marker labels drawn after the move"
 
-    def test_same_kpi_cards_after_the_move(self, name, spec, action, oracle):
+    def test_same_arrowheads_after_the_move(self, name, spec, action,
+                                            oracle):
+        """An arrowhead is drawn where the saved renderer draws it from the
+        kept rows, on the shaft it heads.  Each head was one Arrow
+        annotation fixed to its row, so after a move the shaft went and
+        the head stayed (BUGS.md, 24sep2026)."""
+        srv, _ = _served_after_move(spec, action)
+        std, _ = _saved_with_qualifier(spec, oracle)
+        assert len(std) == len(srv), f"{name}: figure counts differ"
+        for i, (a, b) in enumerate(zip(std, srv)):
+            ha, hb = _arrows_of(a["annotations"]), _arrows_of(b["annotations"])
+            assert ha == hb, (f"{name}: figure {i} arrowheads after the move"
+                              f"\n  saved  {ha}\n  served {hb}")
+            _assert_heads_on_shafts(name, b)
+
         _, srv = _served_after_move(spec, action)
         _, std = _saved_with_qualifier(spec, oracle)
         # One card per KPI, each a card: [] == [] passed for a KPI both
@@ -1905,6 +1996,26 @@ class TestAFilterMoveAgrees:
         after, _ = _served_after_move(spec, action)
         assert _diff(before["figures"], after) or "function" in name, (
             f"{name}: the move left every figure unchanged")
+
+
+def _assert_heads_on_shafts(name, fig):
+    """Every arrow a figure's Arrow annotations draw heads a Segment it
+    draws, and every Segment of a pcarrow/pcbarrow layer has its head."""
+    heads = sorted(a for x in fig["annotations"] if x["kind"] == "Arrow"
+                   for a in x["arrows"])
+    if not heads:
+        return
+    shafts = []
+    for g in fig["glyphs"]:
+        if g["type"] != "Segment":
+            continue
+        cols = [g["coords"].get(k) for k in ("x0", "y0", "x1", "y1")]
+        if not all(c and c[0] not in ("value", "other") for c in cols):
+            continue
+        shafts.extend(tuple(v) for v in zip(*[c[1] for c in cols]))
+    assert heads == sorted(shafts), (f"{name}: the heads are not on the "
+                                     f"shafts\n  heads  {heads}\n  shafts "
+                                     f"{sorted(shafts)}")
 
 
 #: _DF's observation number (1-based) by weight, which no two share.
@@ -2441,3 +2552,449 @@ class TestTheYLabelAngleEntry:
         for side, axes in self._axes("scatter").items():
             assert [a["orientation"] for a in axes["y"]] == [
                 "horizontal"], (side, axes["y"])
+
+
+
+# ---------------------------------------------------------------------------
+# hover(): honoured on every layer whose rows are observations, and reported
+# on every layer whose rows are not
+# ---------------------------------------------------------------------------
+
+#: Layers whose points twoway computes from the observations -- a fitted or
+#: smoothed curve, a density, a histogram's bins, a function's grid.  A
+#: point of one is not an observation, so no variable of the dataset has a
+#: value there to show.
+_HOVER_COMPUTED = frozenset({
+    "fpfit", "fpfitci", "function", "histogram", "kdensity", "lfit",
+    "lfitci", "lowess", "lpoly", "lpolyci", "mband", "mspline", "qfit",
+    "qfitci",
+})
+
+#: Layers drawn from values typed in the command: no observation at all.
+_HOVER_LITERAL = frozenset({"scatteri", "pci", "pcarrowi"})
+
+_ALL_PLOT_TYPES = sorted(dr._dash_plot_type_names())
+
+#: Every other layer draws one mark (or one pair of marks) per observation,
+#: and hover() reaches its tooltip.
+_HOVER_HONOURED = frozenset(_ALL_PLOT_TYPES) - _HOVER_COMPUTED - _HOVER_LITERAL
+
+
+def _figures_in(mode, spec):
+    """(figures, warnings) of *spec* in *mode*."""
+    from bokeh.plotting import figure as _fig
+    if mode == "saved":
+        r, caught = _standalone(spec)
+        return list(r.figures.values()), caught
+    doc, caught = _served(spec)
+    return [f for root in doc.roots for f in root.select({"type": _fig})], \
+        caught
+
+
+def _hover_notes(caught):
+    return [w for w in caught if "hover()" in w]
+
+
+def _tools_showing(fig, var):
+    return [t for t in fig.tools if isinstance(t, HoverTool)
+            and isinstance(t.tooltips, list)
+            and any(f"@{{{var}}}" in field for _, field in t.tooltips)]
+
+
+def _assert_rows_align(fig, var="rep"):
+    """Every renderer the tooltip reads *var* for carries it, and each row's
+    value is the value of the observation that row draws -- identified by
+    its weight, which no two observations of _DF share."""
+    tools = _tools_showing(fig, var)
+    assert tools, "no tooltip shows %r: %s" % (
+        var, [t.tooltips for t in fig.tools if isinstance(t, HoverTool)])
+    checked = 0
+    for t in tools:
+        for r in t.renderers:
+            data = r.data_source.data
+            assert var in data, (type(r.glyph).__name__, sorted(data))
+            assert "weight" in data, (type(r.glyph).__name__, sorted(data))
+            for w, v in zip(data["weight"], data[var]):
+                if w is None or (isinstance(w, float) and math.isnan(w)):
+                    continue
+                want = _DF.loc[_DF["weight"] == float(w), var]
+                assert len(want) == 1, w
+                assert float(v) == float(want.iloc[0]), (
+                    type(r.glyph).__name__, w, v, want.iloc[0])
+                checked += 1
+    assert checked, "no row was checked"
+
+
+def _glyph_fields(r):
+    """The variables of _DF a renderer's glyph draws: a column it draws
+    that is the variable, or a copy of one (a spike's y1 holds price)."""
+    out = set()
+    g, data = r.glyph, r.data_source.data
+    for name in g.properties_with_values(include_defaults=True):
+        f = _spec_of(getattr(g, name, None))
+        if f[0] != "field" or f[1] not in data:
+            continue
+        if f[1] in _DF.columns:
+            out.add(f[1])
+            continue
+        col = [_num(float(v)) for v in data[f[1]]]
+        for var in _DF.columns:
+            if var in data and col == [_num(float(v)) for v in data[var]]:
+                out.add(var)
+    return out
+
+
+class TestTheLayerVariables:
+    """``_dash_hover_layer_vars``: what one layer's tooltip names."""
+
+    @pytest.mark.parametrize("plot,want", [
+        ({"type": "scatter", "yvar": "price", "xvar": "weight"},
+         ["weight", "price"]),
+        ({"type": "rcap", "yvar1": "mpg", "yvar2": "price",
+          "xvar": "weight"}, ["weight", "mpg", "price"]),
+        ({"type": "pcarrow", "y1var": "mpg", "x1var": "weight",
+          "y2var": "price", "x2var": "foreign"},
+         ["weight", "mpg", "foreign", "price"]),
+        ({"type": "scatter", "yvar": "mpg", "xvar": "mpg"}, ["mpg"]),
+        ({"type": "scatteri", "values": [[1, 2]]}, []),
+        ({"type": "scatter", "yvar": ["x"], "xvar": None}, []),
+        (None, []),
+    ])
+    def test_its_own_variables(self, plot, want):
+        assert dr._dash_hover_layer_vars(plot) == want
+
+    def test_a_hostile_name_is_left_out_of_every_layers_tooltip(self):
+        """Injection: a name that could close a tooltip placeholder is
+        refused in a second layer as in the first."""
+        from bokeh.plotting import figure
+        bad = "p}<img src=x onerror=alert(1)>"
+        fig = figure()
+        src = ColumnDataSource({"weight": [1.0], "mpg": [2.0], bad: [3.0]})
+        r1 = fig.scatter(x="weight", y="mpg", source=src)
+        r2 = fig.scatter(x="weight", y=bad, source=src)
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            dr._dash_build_hover(
+                fig, "weight", "mpg", "", [],
+                layers=[({"type": "scatter", "xvar": "weight",
+                          "yvar": "mpg"}, [r1]),
+                        ({"type": "scatter", "xvar": "weight",
+                          "yvar": bad}, [r2])])
+        for t in fig.tools:
+            if isinstance(t, HoverTool):
+                assert all(bad not in f for _, f in t.tooltips), t.tooltips
+
+    def test_many_layers_of_one_variable_share_one_tool(self):
+        """Resource exhaustion: two hundred layers plotting the same
+        variables are one HoverTool, not two hundred."""
+        from bokeh.plotting import figure
+        fig = figure()
+        src = ColumnDataSource({"weight": [1.0], "mpg": [2.0]})
+        plot = {"type": "scatter", "xvar": "weight", "yvar": "mpg"}
+        layers = [(plot, [fig.scatter(x="weight", y="mpg", source=src)])
+                  for _ in range(200)]
+        dr._dash_build_hover(fig, "weight", "mpg", "", [], layers=layers)
+        tools = [t for t in fig.tools if isinstance(t, HoverTool)]
+        assert len(tools) == 1 and len(tools[0].renderers) == 200
+
+
+def _assert_each_layer_names_its_own(fig, mode, extra=()):
+    """The tooltip of every renderer drawing mpg names weight and mpg and
+    not price; of every one drawing price, weight and price and not mpg;
+    each with *extra*."""
+    tools = [t for t in fig.tools if isinstance(t, HoverTool)]
+    seen = {"mpg": 0, "price": 0}
+    for r in fig.renderers:
+        drawn = _glyph_fields(r) & {"mpg", "price"}
+        if len(drawn) != 1:
+            continue
+        [own] = drawn
+        other = ({"mpg", "price"} - {own}).pop()
+        mine = [t for t in tools if r in list(t.renderers or [])]
+        assert len(mine) == 1, (mode, type(r.glyph).__name__, own,
+                                [t.tooltips for t in mine])
+        fields = " ".join(f for _, f in mine[0].tooltips)
+        for v in ["weight", own, *extra]:
+            assert f"@{{{v}}}" in fields, (mode, own, mine[0].tooltips)
+        assert f"@{{{other}}}" not in fields, (mode, own, mine[0].tooltips)
+        seen[own] += 1
+    assert seen["mpg"] and seen["price"], (mode, seen)
+
+
+class TestHoverReachesEveryLayerOrIsReported:
+    """BUGS.md "hover() is dropped by the mappers that rebuild their source
+    from the plotted variables alone".  Measured 24sep2026 with hover(rep),
+    a variable no layer plots: 30 of the 40 plot types left it out of the
+    tooltip in both modes and said nothing -- the entry's own count of 26
+    was taken with hover(foreign), which the pc family draws as a
+    coordinate.  Every type now either shows it, row by row, or says why
+    it cannot: a computed layer's points are not observations."""
+
+    def test_the_forty_types_are_partitioned(self):
+        assert len(_ALL_PLOT_TYPES) == 40, _ALL_PLOT_TYPES
+        assert _HOVER_COMPUTED | _HOVER_LITERAL <= set(_ALL_PLOT_TYPES)
+        assert len(_HOVER_HONOURED) == 23, sorted(_HOVER_HONOURED)
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    @pytest.mark.parametrize("ptype", _ALL_PLOT_TYPES)
+    def test_honoured_or_reported(self, mode, ptype):
+        spec = _spec([plot_for(ptype)], None, {"hover": "rep"})
+        figs, caught = _figures_in(mode, spec)
+        notes = _hover_notes(caught)
+        if ptype in _HOVER_HONOURED:
+            _assert_rows_align(figs[0])
+            assert not notes, notes
+        else:
+            assert not _tools_showing(figs[0], "rep")
+            why = ("typed in the command" if ptype in _HOVER_LITERAL
+                   else "computed from the observations")
+            assert notes == [
+                f"dash: hover() does not reach plot 1 ({ptype}) of graph "
+                f"'g1': its points are {why}, not observations, so its "
+                f"tooltip shows only what it draws."], notes
+
+    @pytest.mark.parametrize("ptype", sorted(_HOVER_HONOURED))
+    def test_the_tooltip_follows_a_served_filter_move(self, ptype):
+        """A served layer is redrawn after a move; the rows it keeps still
+        carry their own values."""
+        spec = _spec([plot_for(ptype)], {"filter": "foreign"},
+                     {"hover": "rep"})
+        doc, _ = _served(spec)
+        sel = [w for w in _widgets_of(doc) if isinstance(w, Select)]
+        assert sel, "no dropdown"
+        raw = [v for v, lab in sel[0].options if lab == "Foreign"]
+        _fire(sel[0], raw[0])
+        from bokeh.plotting import figure as _fig
+        fig = [f for root in doc.roots for f in root.select({"type": _fig})][0]
+        _assert_rows_align(fig)
+        for t in _tools_showing(fig, "rep"):
+            for r in t.renderers:
+                ws = [w for w in r.data_source.data["weight"]
+                      if w is not None and not (isinstance(w, float)
+                                                and math.isnan(w))]
+                assert ws and all(
+                    _DF.loc[_DF["weight"] == float(w), "foreign"].iloc[0]
+                    == 1.0 for w in ws), (ptype, ws)
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_a_mixed_graph_shows_it_on_the_points_and_names_the_fit(self,
+                                                                    mode):
+        spec = _spec([plot_for("scatter"), plot_for("lfit")], None,
+                     {"hover": "rep"})
+        figs, caught = _figures_in(mode, spec)
+        _assert_rows_align(figs[0])
+        assert _hover_notes(caught) == [
+            "dash: hover() does not reach plot 2 (lfit) of graph 'g1': its "
+            "points are computed from the observations, not observations, "
+            "so its tooltip shows only what it draws."]
+
+    @pytest.mark.parametrize("second", ["scatter", "bar", "spike", "line",
+                                        "area", "dot"])
+    def test_a_second_layer_of_other_variables_has_the_same_tooltip(
+            self, second):
+        """The saved page draws every layer from one source holding every
+        variable; a served layer source held its own.  A second layer of
+        price on weight beside a scatter of mpg was in the tooltip saved
+        and out of it served (measured 24sep2026 on scatter and bar), and
+        carrying hover()'s columns through line and area widened that."""
+        spec = _spec([_sc(), plot_for(second, yvar="price", xvar="weight")],
+                     None, {"hover": "rep"})
+        got = {}
+        for mode in ("saved", "served"):
+            figs, _ = _figures_in(mode, spec)
+            got[mode] = sorted(
+                (json.dumps(list(t.tooltips)),
+                 sorted(type(r.glyph).__name__ for r in t.renderers))
+                for t in figs[0].tools if isinstance(t, HoverTool))
+            _assert_rows_align(figs[0])
+            _assert_each_layer_names_its_own(figs[0], mode)
+        assert got["saved"] == got["served"], got
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    @pytest.mark.parametrize("hover", ["", "rep"])
+    def test_each_layers_tooltip_names_its_own_variables(self, mode, hover):
+        """``scatter mpg weight || scatter price weight``: the second
+        layer's tooltip names weight and price, and the first's weight and
+        mpg -- each plus hover()'s variables.  The saved renderer built one
+        tooltip from the FIRST layer's variables and pointed it at both, so
+        a point of price showed its mpg (BUGS.md, 24sep2026)."""
+        spec = _spec([_sc(), plot_for("scatter", yvar="price",
+                                      xvar="weight")],
+                     None, {"hover": hover} if hover else None)
+        figs, _ = _figures_in(mode, spec)
+        _assert_each_layer_names_its_own(figs[0], mode,
+                                         extra=[hover] if hover else [])
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_by_panels_report_it_once(self, mode):
+        spec = _spec([plot_for("lfit")], None,
+                     {"hover": "rep", "by": "foreign"})
+        figs, caught = _figures_in(mode, spec)
+        assert len(figs) >= 2
+        assert len(_hover_notes(caught)) == 1, _hover_notes(caught)
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_no_hover_no_note(self, mode):
+        _figs, caught = _figures_in(mode, _spec([plot_for("lfit")]))
+        assert not _hover_notes(caught)
+
+    # ---- adversarial ----------------------------------------------------
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_a_huge_hover_list_is_one_note(self, mode):
+        """Resource exhaustion: thousands of names are one note per layer,
+        and none of them is echoed."""
+        names = " ".join(["rep"] + [f"v{i}" for i in range(5000)])
+        spec = _spec([plot_for("line"), plot_for("lfit")], None,
+                     {"hover": names})
+        figs, caught = _figures_in(mode, spec)
+        notes = _hover_notes(caught)
+        assert len(notes) == 1 and "v4999" not in notes[0], notes
+        _assert_rows_align(figs[0])
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_a_hostile_graph_name_is_quoted_not_obeyed(self, mode):
+        """Injection: the graph's name reaches the note through repr(), one
+        line, whatever it holds."""
+        evil = "g1\n<script>alert(1)</script>'"
+        spec = _spec(graphs=[(evil, [plot_for("kdensity")],
+                              {"hover": "rep"})])
+        _figs, caught = _figures_in(mode, spec)
+        notes = _hover_notes(caught)
+        assert len(notes) == 1 and "\n" not in notes[0], notes
+        assert repr(evil) in notes[0], notes
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_a_markup_column_never_becomes_a_field(self, mode):
+        """Injection: a hover() name that is not a plain name stays out of
+        every tooltip on a carried source, as on a scatter's."""
+        bad = "rep}<img src=x onerror=alert(1)>"
+        df = _DF.assign(**{bad: _DF["rep"]})
+        spec = _spec([plot_for("area")], None, {"hover": bad})
+        tag = next(_SEQ)
+        sp = os.path.join(_TMP, f"spec_mk_{tag}.json")
+        dp = os.path.join(_TMP, f"data_mk_{tag}.json")
+        with open(sp, "w") as fh:
+            json.dump(spec, fh)
+        with open(dp, "w") as fh:
+            json.dump(make_data_json(df, _VALUE_LABELS, _LABEL_NAMES), fh)
+        with mock.patch.object(sys.modules[__name__], "_write",
+                               lambda _s: (tag, sp, dp)):
+            figs, _caught = _figures_in(mode, spec)
+        for t in figs[0].tools:
+            if isinstance(t, HoverTool) and isinstance(t.tooltips, list):
+                assert all("<img" not in f and "<img" not in lab
+                           for lab, f in t.tooltips), t.tooltips
+
+
+# ---------------------------------------------------------------------------
+# A linked by() graph's line and connected layers on a saved build
+# ---------------------------------------------------------------------------
+
+def _view_rows(r):
+    """The row positions a renderer draws: its source's rows, through its
+    view's filters when it has any."""
+    n = max((len(v) for v in r.data_source.data.values()), default=0)
+    keep = list(range(n))
+    view = getattr(r, "view", None)
+    for f in (getattr(view, "filters", None) or []) if view else []:
+        booleans = getattr(f, "booleans", None)
+        indices = getattr(f, "indices", None)
+        if booleans is not None:
+            keep = [i for i in keep if i < len(booleans) and booleans[i]]
+        elif indices is not None:
+            s = set(indices)
+            keep = [i for i in keep if i in s]
+    flt = getattr(view, "filter", None) if view else None
+    for f in ([flt] if flt is not None else []):
+        booleans = getattr(f, "booleans", None)
+        indices = getattr(f, "indices", None)
+        if booleans is not None:
+            keep = [i for i in keep if i < len(booleans) and booleans[i]]
+        elif indices is not None:
+            s = set(indices)
+            keep = [i for i in keep if i in s]
+    return keep
+
+
+class TestALinkedByGraphsLinesOnASavedBuild:
+    """BUGS.md "A linked by() graph with a line or connected layer logs
+    Bokeh's E-1024 error on every saved build" (measured 24sep2026 with
+    Bokeh 3.9.0): each panel's Line got a CDSView with a BooleanFilter,
+    which Bokeh refuses on a connected glyph.  The pin: no E-1024, and
+    each panel's line holds its own panel's observations, in x order."""
+
+    _SPEC = staticmethod(lambda: _spec(
+        build_options={"link": "g1 g2"},
+        graphs=[("g1", [plot_for("line"), plot_for("connected")],
+                 {"by": "foreign"}),
+                ("g2", [_sc()])]))
+
+    def test_no_e1024(self):
+        """A handler on Bokeh's own validation logger: pytest's caplog did
+        not see these records here (checked 24sep2026), and a guard that
+        cannot see the error passes with it."""
+        import logging
+        seen = []
+
+        class _Keep(logging.Handler):
+            def emit(self, record):
+                seen.append(record.getMessage())
+
+        lg = logging.getLogger("bokeh.core.validation.check")
+        h = _Keep(level=logging.WARNING)
+        lg.addHandler(h)
+        try:
+            _standalone_page(self._SPEC())
+        finally:
+            lg.removeHandler(h)
+        bad = [m for m in seen if "E-1024" in m
+               or "CDSVIEW_FILTERS_WITH_CONNECTED" in m]
+        assert not bad, bad
+
+    def test_the_guard_sees_e1024(self):
+        """The control: the same handler does see an E-1024 Bokeh logs."""
+        import logging
+        from bokeh.embed import file_html
+        from bokeh.models import BooleanFilter, CDSView, ColumnDataSource
+        from bokeh.plotting import figure as _fig
+        from bokeh.resources import INLINE
+        f = _fig()
+        f.line("x", "y", source=ColumnDataSource({"x": [1, 2], "y": [1, 2]}),
+               view=CDSView(filter=BooleanFilter([True, False])))
+        seen = []
+
+        class _Keep(logging.Handler):
+            def emit(self, record):
+                seen.append(record.getMessage())
+
+        lg = logging.getLogger("bokeh.core.validation.check")
+        h = _Keep(level=logging.WARNING)
+        lg.addHandler(h)
+        try:
+            file_html(f, INLINE)
+        finally:
+            lg.removeHandler(h)
+        assert any("E-1024" in m for m in seen), seen
+
+    def test_each_panels_line_holds_its_own_rows(self):
+        r, _caught = _standalone(self._SPEC())
+        from bokeh.plotting import figure as _fig
+        root = getattr(r, "_last_layout_root", None)
+        figs = list(root.select({"type": _fig})) if root is not None else []
+        panels = []
+        for f in figs:
+            lines = [x for x in f.renderers if type(x.glyph).__name__ == "Line"]
+            if not lines:
+                continue
+            groups = set()
+            for ln in lines:
+                data = ln.data_source.data
+                xs = [float(data["weight"][i]) for i in _view_rows(ln)]
+                assert xs == sorted(xs), ("not drawn along x", xs)
+                groups |= {float(_DF.loc[_DF["weight"] == x, "foreign"]
+                                 .iloc[0]) for x in xs}
+                assert len(xs) == 5, xs
+            assert len(groups) == 1, groups
+            panels.append(groups.pop())
+        assert sorted(panels) == [0.0, 1.0], panels

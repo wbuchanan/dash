@@ -15,11 +15,6 @@ cscript "dash adversarial security" adodir ".."
 // ----------------------------------------------------------------
 // Setup — check dependencies
 // ----------------------------------------------------------------
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 
 // Do NOT probe with `capture python: pass'.  Measured: that returns a
 // nonzero rc inside the runner even though the very same session renders
@@ -833,9 +828,9 @@ end
 qui sysuse auto, clear
 global dash_nobrowser 1
 capture dash clear
-local p19_keys "cells graphs plots filter_options by_groups tabs filters"
-local p19_defs "5000000 100 100 1000 100 50 20"
-local p19_ceil "20000000 1000 1000 100000 1000 500 200"
+local p19_keys "cells bytes graphs plots filter_options by_groups tabs filters"
+local p19_defs "5000000 50000000 100 100 1000 100 50 20"
+local p19_ceil "20000000 500000000 1000 1000 100000 1000 500 200"
 foreach k of local p19_keys {
     capture macro drop dash_max_`k'
 }
@@ -905,7 +900,7 @@ display "P19-04 PASS: 3 registered at dash_max_graphs 2 → rc=134 saying more t
 _dash_limit, name(graphs)
 assert r(value) == 100 & r(default) == 100 & r(ceiling) == 1000
 assert "`r(global)'" == "dash_max_graphs"
-forvalues i = 1/7 {
+forvalues i = 1/8 {
     local k : word `i' of `p19_keys'
     _dash_limit, name(`k')
     assert r(value)   == `: word `i' of `p19_defs''
@@ -1122,20 +1117,20 @@ foreach k of local p19_keys {
 display "P19-17 PASS: 1, the ceiling and leading zeros accepted, empty is the default, same under version 16"
 
 // P19-18 — every hostile value, for every key, straight to _dash_limit
-forvalues i = 1/7 {
+forvalues i = 1/8 {
     local k : word `i' of `p19_keys'
     _adv_p19_refuses `k' `: word `i' of `p19_ceil'' "_dash_limit, name(`k')" ""
     _dash_limit, name(`k')
     assert r(value) == `: word `i' of `p19_defs''
 }
-display "P19-18 PASS: 14 hostile values x 7 globals → rc=198 naming the global, echo safe; dropped → default"
+display "P19-18 PASS: 14 hostile values x 8 globals → rc=198 naming the global, echo safe; dropped → default"
 
 // P19-19 — the immediate route refuses each of them and writes nothing
 qui sysuse auto, clear
 tempfile p19r
 local p19rf "`p19r'.html"
 capture erase "`p19rf'"
-forvalues i = 1/7 {
+forvalues i = 1/8 {
     local k : word `i' of `p19_keys'
     _adv_p19_refuses `k' `: word `i' of `p19_ceil'' `"dash scatter mpg weight, saving("`p19rf'")"' "`p19rf'"
 }
@@ -1148,7 +1143,7 @@ display "P19-19 PASS: the immediate route refuses every hostile value of every g
 capture erase "`p19rf'"
 dash clear
 dash scatter mpg weight, name(b1)
-forvalues i = 1/7 {
+forvalues i = 1/8 {
     local k : word `i' of `p19_keys'
     _adv_p19_refuses `k' `: word `i' of `p19_ceil'' `"dash build, saving("`p19rf'") replace nobrowser"' "`p19rf'"
 }
@@ -1257,12 +1252,118 @@ assert r(found) == 1
 assert "${dash_graph_registry}" == ""
 display "P19-26 PASS: a refused KPI name is echoed as text, not SMCL"
 
+// P19-27..30 -- the bytes of text exported ($dash_max_bytes).  The cells
+// limit counts values, not bytes, and a strL is exported in full since
+// dash writes its own data file (24sep2026): 60 observations of a
+// 1,000,000-byte strL passed the cells limit (60 values) and made a page
+// of 60 MB.  make in auto is 871 bytes of text (measured: the sum of
+// strlen(make)), str18, so its bound, 18 x 74 = 1,332, is over 870 and the
+// values themselves are counted.
+qui sysuse auto, clear
+quietly datasignature
+local sig0 "`r(datasignature)'"
+foreach k of local p19_keys {
+    capture macro drop dash_max_`k'
+}
+dash clear
+tempfile p19t
+local p19tf "`p19t'.html"
+capture erase "`p19tf'"
+global dash_max_bytes 870
+_adv_p19_run `"dash scatter mpg weight, mlabel(make) saving("`p19tf'")"'
+assert r(rc) == 134
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("dash: this dashboard would embed 871 bytes of text (in 1 string variable), more than the 870 dash embeds.")
+assert r(found) == 1
+cert_file_has "`lg'", needle("Reduce the data in memory first (keep, drop, sample or collapse, inside preserve/restore), or set global dash_max_bytes to a higher value (at most 500,000,000).")
+assert r(found) == 1
+mata: st_local("p1927n", strofreal(rows(cat(st_local("lg")))))
+assert `p1927n' == 2
+capture confirm file "`p19tf'"
+assert _rc != 0
+quietly datasignature
+assert "`r(datasignature)'" == "`sig0'"
+display "P19-27 PASS: 871 bytes of text at dash_max_bytes 870 → rc=134 in the cells limit's words, no file, data unchanged"
+
+// P19-28 -- at 871 the same command draws, and so does a dashboard with no
+// string variable at dash_max_bytes 1: numbers are the cells limit's.
+global dash_max_bytes 871
+capture noisily dash scatter mpg weight, mlabel(make) saving("`p19tf'")
+assert _rc == 0
+confirm file "`p19tf'"
+capture erase "`p19tf'"
+global dash_max_bytes 1
+capture noisily dash scatter mpg weight, saving("`p19tf'")
+assert _rc == 0
+confirm file "`p19tf'"
+capture erase "`p19tf'"
+display "P19-28 PASS: at dash_max_bytes 871 it draws; with no string variable, dash_max_bytes 1 refuses nothing"
+
+// P19-29 -- dash build and the served spec are held to it the same way
+global dash_max_bytes 870
+dash scatter mpg weight, mlabel(make) name(t1)
+_adv_p19_run `"dash build, saving("`p19tf'") replace nobrowser"'
+assert r(rc) == 134
+cert_file_has "`r(log)'", needle("dash: this dashboard would embed 871 bytes of text (in 1 string variable), more than the 870 dash embeds.")
+assert r(found) == 1
+capture confirm file "`p19tf'"
+assert _rc != 0
+local opts : all globals "dash_opts_*"
+assert "`opts'" == ""
+tempfile p19ts p19td
+_adv_p19_run `"_dash_serve_spec, specpath("`p19ts'") datapath("`p19td'")"'
+assert r(rc) == 134
+capture confirm file "`p19td'"
+assert _rc != 0
+global dash_max_bytes 871
+capture noisily dash build, saving("`p19tf'") replace nobrowser
+assert _rc == 0
+confirm file "`p19tf'"
+capture erase "`p19tf'"
+dash clear
+quietly datasignature
+assert "`r(datasignature)'" == "`sig0'"
+display "P19-29 PASS: dash build and the served spec refuse 871 bytes at 870 (no file, no dash_opts_*), build at 871"
+
+// P19-30 -- the default, with no global set: 60 observations of a
+// 1,000,000-byte strL, 60 values, are 60,000,000 bytes and refused before
+// the file is written; 50 of them, exactly 50,000,000, are within it.
+foreach k of local p19_keys {
+    capture macro drop dash_max_`k'
+}
+clear
+quietly set obs 60
+generate double y = _n
+generate double x = _n
+generate strL s = "a" * 1000000
+capture erase "`p19tf'"
+_adv_p19_run `"dash scatter y x, mlabel(s) saving("`p19tf'")"'
+assert r(rc) == 134
+cert_file_has "`r(log)'", needle("dash: this dashboard would embed 60,000,000 bytes of text (in 1 string variable), more than the 50,000,000 dash embeds.")
+assert r(found) == 1
+capture confirm file "`p19tf'"
+assert _rc != 0
+quietly keep in 1/50
+_adv_p19_run "_dash_byte_cap y x s"
+assert r(rc) == 0
+quietly set obs 51
+quietly replace s = "a" in 51
+_adv_p19_run "_dash_byte_cap y x s s"
+assert r(rc) == 134
+cert_file_has "`r(log)'", needle("dash: this dashboard would embed 50,000,001 bytes of text (in 1 string variable)")
+assert r(found) == 1
+// A name that is not a variable is not counted, and not an error here.
+_adv_p19_run "_dash_byte_cap nosuchvar y"
+assert r(rc) == 0
+qui sysuse auto, clear
+display "P19-30 PASS: the default refuses 60,000,000 bytes of strL text and admits exactly 50,000,000; a variable named twice counts once"
+
 foreach k of local p19_keys {
     capture macro drop dash_max_`k'
 }
 capture dash clear
 capture erase "`c(tmpdir)'dash_adv_p19.log"
-foreach f in p19pf p19cf p19bf p19jf p19rf p19gf p19ef {
+foreach f in p19pf p19cf p19bf p19jf p19rf p19gf p19ef p19tf {
     capture erase "``f''"
 }
 
@@ -1564,7 +1665,9 @@ display "P20-19 PASS: a 400-digit timeout() is refused; nine digits are accepted
 // qualifier check and pandas' evaluator each recurse once per operator, and
 // the RecursionError escaped both guards: measured, r(7102) and a traceback
 // on the immediate route, and on dash build for the same KPI qualifier.  It
-// is now reported as a qualifier that could not be applied.
+// was then reported as a qualifier that could not be applied; since WP-27
+// Stata evaluates it, as it evaluates every qualifier dash writes, and the
+// renderer never parses it: applied, no skip, no traceback.
 capture dash clear
 local p2020 = 600 * "!"
 local p2020f "`c(tmpdir)'p2020.html"
@@ -1574,7 +1677,7 @@ local p20lg "`r(log)'"
 assert r(rc) == 0
 confirm file "`p2020f'"
 cert_file_has "`p20lg'", needle("if_expr filter skipped")
-assert r(found) == 1
+assert r(found) == 0
 cert_file_has "`p20lg'", needle("RecursionError")
 assert r(found) == 0
 capture erase "`p2020f'"
@@ -1587,7 +1690,7 @@ cert_file_has "`r(log)'", needle("RecursionError")
 assert r(found) == 0
 capture erase "`p2020f'"
 capture dash clear
-display "P20-20 PASS: a 600-operator if qualifier is reported and skipped, not a traceback"
+display "P20-20 PASS: a 600-operator if qualifier is evaluated in Stata, not a traceback"
 
 // P20-21 — name() of 5,000 characters, graph and KPI: refused, and the
 // echo is cut at 40 characters, so the refusal is bounded too.
@@ -2568,6 +2671,7 @@ display "  P19-17..21: Hostile dash_max_* values → rc=198 on every route, echo
 display "  P19-22: Message helpers — separators past 10^12, singular variable"
 display "  P19-23: Default cell cap at scale — 5,200,000 values refused, 5,000,000 admitted"
 display "  P19-24..26: A refused filter, graph or KPI name → echoed as text, never as SMCL"
+display "  P19-27..30: Byte cap (dash_max_bytes) → rc=134 before export on every route; strL text counted"
 display "  P20-01..13: Every other echo of user text (option values, plot type, link, exclude, theme, fmt, port, timeout, saving) → shown as text, never as SMCL"
 display "  P20-14, 19: port()/timeout() → digits only (no trailing newline), timeout() at most nine digits"
 display "  P20-15..18: Overlong UTF-8, saving() spellings, a layout() backslash, a quote breakout → refused or escaped"

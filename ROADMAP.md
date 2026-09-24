@@ -4128,7 +4128,7 @@ definitions, so this cannot re-accumulate.
 
 # Milestone 5 — Shippable
 
-## WP-27 · Release closeout
+## WP-27 · Release closeout — DONE
 
 **Gaps closed:** M2, B4 (verification) · **Severity:** S3 · **Effort:** S · **Depends on:** all
 
@@ -4176,6 +4176,67 @@ This package *is* the test plan: AC-27.1 … AC-27.5 are the release gate, run
 against an installed package rather than the working tree. Record the run —
 commands, output and the resolved state of every `GAPS.md` finding — in
 `BUGS.md` and the CHANGELOG so the gate is auditable after the fact.
+
+### Done, measured (24sep2026)
+
+- **BR-27.2 / AC-27.4.** At the start, 36 BUGS.md entries were open, and
+  graded on GAPS.md's scale 20 were S1 or S2.  The maintainer chose to fix
+  them all here, and to have Stata evaluate qualifiers rather than mend the
+  renderer's translation of them.  All 20 are fixed, test first, and the
+  work found eight more, fixed as well: the jsonio export that stopped on
+  a quote-holding string (dash now writes its data from Stata's own Python
+  and needs no jsonio), a byte cap for the strL values that export then
+  carries, pcarrow heads, linked selection on a scatter with a missing
+  value, with and without jitter(), a served re-jitter, each layer's own
+  tooltip, and the phone-width overflow TR-27.2 found.  Every open entry
+  now carries "Graded S<n> (WP-27): <why>", and
+  test/test_tracking_documents.py::TestNoOpenEntryBlocksARelease fails on
+  an open S1 or S2: 19 remain open, all S3.
+- **AC-27.1.** `make check`: pytest under Stata's Python and under the
+  development interpreter, both strict, 16,693 passed, 11 xfailed and the
+  same 5 failed in each -- three stale expectations (a layer that now
+  draws its own rows with no view, the help's entry count after the
+  $dash_max_bytes row, the single-y page's hash after the reflow's
+  column track, each diffed before its test was changed) -- which pass
+  under both after the fix; no skip.  The certification suite: 64 of 64
+  scripts passed.
+- **TR-27.1 / AC-27.2, BR-27.1.** `make gate` (scripts/run_release_gate.sh,
+  scripts/release_gate.do, judged by scripts/release_verdict.py, whose
+  verdict test/test_release_verdict.py holds to failing on each way a
+  release can be wrong) net installs exactly what dash.pkg ships into a
+  scratch PLUS, narrows the ado-path to BASE;SITE;PLUS, confirms dash.ado,
+  dash_setup.ado, dash_parse.mata, the renderer and the locator's renderer
+  are the installed copies, and runs every example and one page per
+  shipped scheme from it.  Its first runs found two defects of its own
+  script (a `/*' in a comment swallowed the file; a wrapped log line cut
+  its paths) and three examples asking for a symbol Stata does not have,
+  `ms(inverted_triangle)' -- twoway notes "named style inverted_triangle
+  not found in class symbol" and draws the default, as dash did; they now
+  ask for `V'.  Final run: 12 of 12 examples and 20 of 20 scheme pages rc 0
+  with no fallback, ignored-option note or Python or Bokeh diagnostic.
+- **TR-27.2.** Measured in headless Chrome through an iframe of exact
+  width: at 375 px geometry_responsive (545 px wide) and full_dashboard
+  (440) overflowed; now every page fits at 375, 768 and 1440 px, and
+  test/test_responsive_layout.py measures 11 saved and 6 served layout
+  families the same way.
+- **AC-27.3.** Of GAPS.md's findings 70 are closed and 4 are no gap; two
+  are closed in part and the rest deferred with the reason recorded -- E1's
+  38 twoway options dash documents as unsupported and names when given,
+  and J6's rollback of a failed pip install.
+- **TR-27.3.** Every surface of test/test_adversarial_matrix.py has its
+  three categories; WP-27's new surfaces are registered, and a new one,
+  `qualifier_columns', is required.
+- **TR-27.4.** Every closed entry names a test that exists
+  (TestEveryClosedEntryNamesATestThatExists).
+- **TR-27.5.** dash.pkg carries `v 3' -- the manifest format usersite.sthlp
+  specifies, not the `v 2' this plan named (PKG-04) -- and Distribution-Date
+  20260924, the version lines 2.0 24sep2026.  The gate's adoupdate reported
+  nothing to update against the installed source and reported dash against
+  a copy one day newer.
+- **TR-27.6 / AC-27.5.** The maintainer chose to leave their planning
+  files -- the .ultraplan reorganisation and its archive, phases/,
+  REMAINING.md and CLAUDE.md -- uncommitted, so the working tree is clean
+  of this package's work but not of theirs.  The merge is reported, not run.
 
 ---
 

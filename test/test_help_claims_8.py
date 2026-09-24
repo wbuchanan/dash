@@ -1498,19 +1498,25 @@ class TestTheDependenciesAreOneList:
                 top.add(node.module.split(".")[0])
         assert {"bokeh", "numpy", "pandas"} <= top
 
-    def test_jsonio_is_what_dash_exports_the_data_with(self):
-        """Text only: dash.ado exports with jsonio and refuses without it.
-        The refusal itself runs in test_help_claims_8.cscript -- HC8-17 on
-        the immediate route and HC8-17b on dash build's (WP-24; the build
-        route's check removed fails HC8-17b)."""
+    def test_dash_exports_the_data_itself_not_with_jsonio(self):
+        """Text only: dash.ado exported with jsonio, and refused without
+        it, until 24sep2026; jsonio's ado expanded the JSON it wrote as
+        macro text, so a value holding a compound quote stopped every
+        export (test_string_values.cscript).  Both routes now write through
+        _dash_write_data, captured so the date formats are restored when
+        the export fails (test_program_coverage.cscript PC-11), and the
+        help says jsonio is no longer needed.  That dash draws without
+        jsonio runs in test_help_claims_8.cscript -- HC8-17 on the
+        immediate route and HC8-17b on dash build's."""
         ado = _read(_ADO)
-        assert ado.count("capture which jsonio") >= 2
-        # Both exports, captured so the date formats are restored when
-        # jsonio fails (test_program_coverage.cscript PC-11).
-        assert len(re.findall(r"^\s*capture noisily quietly jsonio out\b",
+        assert "which jsonio" not in ado
+        assert not re.search(r"^\s*capture noisily quietly jsonio out\b",
+                             ado, re.M)
+        assert len(re.findall(r"^\s*capture noisily _dash_write_data\b",
                               ado, re.M)) == 2
-        assert ("dash: jsonio is required but not found. Run dash_setup "
-                "first.") in ado
+        assert "dash: jsonio is required but not found." not in ado
+        deps = _flat(_help_between("{marker dependencies}", "{marker author}"))
+        assert "is no longer needed" in deps
 
     def test_the_help_does_not_say_setup_installs_python(self):
         deps = _flat(_help_between("{marker dependencies}", "{marker author}"))
@@ -1567,8 +1573,8 @@ class TestDashSetupHelpMatchesTheAdo:
         measured 24sep2026 on a scratch copy).  Each of those fails:
         the --user retry and the minimum reaching pip,
         test_program_coverage.cscript PC-19 and test_setup_honesty.cscript
-        HON-22; jsonio from `ssc install jsonio, replace', PC-23; dash's own
-        files, PC-15 and HON-25; packaging first, HON-27.
+        HON-22; no SSC install at all (jsonio is not used), PC-23; dash's
+        own files, PC-15 and HON-25; packaging first, HON-27.
         """
         help_ = _flat(_read(_SETUP_HELP))
         for words in ("{cmd:packaging}", "{cmd:dash_render.py}",
@@ -1600,28 +1606,40 @@ class TestDashSetupHelpMatchesTheAdo:
                 "not upgraded for you -- and the run ends with r(198).") in help_
 
     def test_it_installs_only_what_is_missing(self):
-        """Every pip and SSC install in dash_setup.ado sits in the branch a
-        failed import (or `which jsonio') opens: the nearest `capture'
-        before it is that import, and the next line is `if _rc != 0 {'."""
+        """Every pip install in dash_setup.ado sits in the branch a failed
+        import opens: the nearest `capture' before it is that import, and
+        the next line is `if _rc != 0 {'.  There is no SSC install: jsonio,
+        the one Stata package setup installed, is no longer used."""
         lines = _read(_SETUP_ADO).splitlines()
         installs = [i for i, ln in enumerate(lines)
                     if '"pip", "install"' in ln
-                    or ln.strip().startswith("capture ssc install")]
-        assert len(installs) == 4, installs
+                    or "ssc install" in ln.split("//", 1)[0]]
+        assert len(installs) == 3, installs
         for i in installs:
             j = i - 1
             while not lines[j].lstrip().startswith("capture "):
                 j -= 1
             cap = lines[j].strip()
-            assert (cap.startswith("capture python: import ")
-                    or cap == "capture which jsonio"), (i + 1, cap)
+            assert cap.startswith("capture python: import "), (i + 1, cap)
             assert lines[j + 1].strip() == "if _rc != 0 {", (i + 1, cap)
 
-    def test_the_jsonio_restart_advice_is_the_ados(self):
-        assert ("jsonio installed but not found on adopath. Restart Stata."
-                in _read(_SETUP_ADO))
-        assert "restart Stata and run {cmd:dash_setup} again" in _flat(
-            _read(_SETUP_HELP))
+    def test_neither_help_says_jsonio_is_installed_or_links_it(self):
+        """dash_setup installed jsonio from SSC, and both help files said so
+        and linked {helpb jsonio}, after dash stopped using it (24sep2026).
+        What the ado does is run in test_program_coverage.cscript PC-23:
+        jsonio off the ado-path, no SSC call and no word of jsonio."""
+        setup_help = _flat(_read(_SETUP_HELP))
+        dash_help = _flat(_read(os.path.join(_ROOT, "dash.sthlp")))
+        for text in (setup_help, dash_help):
+            assert "helpb jsonio" not in text
+            assert '"help jsonio"' not in text
+        assert "installed automatically from SSC" not in setup_help
+        assert "jsonio not found after installation" not in setup_help
+        assert "neither checks nor installs it" in setup_help
+        assert "still installs jsonio" not in dash_help
+        assert "Python packages and {cmd:jsonio}" not in dash_help
+        with open(os.path.join(_ROOT, "dash.pkg"), encoding="utf-8") as fh:
+            assert "packages and jsonio" not in fh.read()
 
     def test_tornado_comes_with_bokeh(self):
         import importlib.metadata as im

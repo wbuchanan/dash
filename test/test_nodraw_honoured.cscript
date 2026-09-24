@@ -33,11 +33,6 @@ clear all
 set more off
 
 // The immediate renders need the render pipeline.
-capture which jsonio
-if _rc {
-    display as text "SKIP: jsonio is not installed."
-    exit 222
-}
 if `"`c(python_exec)'"' == "" {
     display as text "SKIP: no Python is linked to this Stata."
     exit 222
@@ -85,7 +80,7 @@ display as text "ND-01 PASS: nodraw emits no note and the file is written"
 // The note ND-01 must not print is printed here, in the words ND-01
 // searches for: without this, that absence could be of words dash no
 // longer uses (nothing in this file found them before 24sep2026).
-_nd_note_for `"dash scatter mpg weight, play(x) nodraw saving("`out1'")"' "`logfile'"
+_nd_note_for `"dash scatter mpg weight, play(x) nodraw saving("`out1'") replace"' "`logfile'"
 assert r(rc) == 0
 cert_log_has "`logfile'", needle("ignoring unsupported")
 assert r(found) == 1
@@ -98,14 +93,14 @@ display as text "ND-02 PASS: play() is named, nodraw is not"
 // ----------------------------------------------------------------
 // ND-03
 // ----------------------------------------------------------------
-_nd_note_for `"dash (scatter mpg weight, nodraw), saving("`out1'")"' "`logfile'"
+_nd_note_for `"dash (scatter mpg weight, nodraw), saving("`out1'") replace"' "`logfile'"
 assert r(rc) == 0
 cert_log_has "`logfile'", needle("nodraw()")
 assert r(found) == 0
 // And paren mode does report a plot group's options: play() in the group
 // is named, nodraw beside it is not.  Without this a paren mode that
 // reported nothing at all passed.
-_nd_note_for `"dash (scatter mpg weight, play(x) nodraw), saving("`out1'")"' "`logfile'"
+_nd_note_for `"dash (scatter mpg weight, play(x) nodraw), saving("`out1'") replace"' "`logfile'"
 assert r(rc) == 0
 cert_log_has "`logfile'", needle("ignoring unsupported")
 assert r(found) == 1

@@ -26,8 +26,8 @@ dash scatter mpg weight, ///
     title("Fuel Efficiency vs. Weight") ///
     xtitle("Weight (lbs.)")             ///
     ytitle("Mileage (mpg)")             ///
-    saving("scatter.html")
+    saving("scatter.html") replace
 
-// The file scatter.html is opened in your default browser automatically.
-// To save without opening the browser, change saving() to a full path
-// and omit the browse option.
+// With saving(), the page is written to scatter.html and not opened; without
+// it, the page is opened in your browser.  replace lets the example be run
+// again: without it, an existing scatter.html is refused, r(198).

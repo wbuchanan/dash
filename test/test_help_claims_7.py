@@ -775,9 +775,14 @@ class TestMarkerIsMsymbol:
 
 
 #: The plot types whose tooltip carries a variable hover() names: the ones
-#: whose layer source keeps the dataset's rows.
-_HOVER_TYPES = {"scatter", "connected", "dot", "dropline", "bar", "spike",
-                "rbar", "rspike", "rcap", "rconnected"}
+#: whose marks are observations, as dash.sthlp lists them.  Every other
+#: type is computed or immediate, and a note names it (test_mode_parity.py
+#: TestHoverReachesEveryLayerOrIsReported).
+_HOVER_TYPES = {"scatter", "connected", "line", "tsline", "area", "dot",
+                "dropline", "bar", "spike", "rarea", "rbar", "rspike",
+                "rcap", "rcapsym", "rline", "tsrline", "rconnected",
+                "rscatter", "pcspike", "pcarrow", "pcbarrow", "pcscatter",
+                "pccapsym"}
 
 
 def _hover_rows(fig):

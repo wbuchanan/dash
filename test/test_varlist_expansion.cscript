@@ -38,11 +38,6 @@ clear all
 // ----------------------------------------------------------------
 // Dependency guards
 // ----------------------------------------------------------------
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 
 // Do NOT probe with `capture python: pass'.  Measured: that returns a
 // nonzero rc inside the runner even though the very same session renders
@@ -193,11 +188,11 @@ local five_l  "`f_five_l'.html"
 // Render the scatter family
 // ================================================================
 dash clear
-dash scatter mpg weight, saving("`ctl_s'")
+dash scatter mpg weight, saving("`ctl_s'") replace
 dash clear
-dash (scatter mpg weight) (scatter price weight), saving("`two_s'")
+dash (scatter mpg weight) (scatter price weight), saving("`two_s'") replace
 dash clear
-capture noisily dash scatter mpg price weight, saving("`three_s'")
+capture noisily dash scatter mpg price weight, saving("`three_s'") replace
 local rc_three = _rc
 
 // ================================================================
@@ -273,12 +268,12 @@ else display as text "V2-02 PASS: 3-variable scatter yields two plot specs"
 // Render the line family
 // ================================================================
 dash clear
-dash line mpg weight, saving("`ctl_l'")
+dash line mpg weight, saving("`ctl_l'") replace
 dash clear
 dash (line mpg weight) (line price weight) (line length weight) ///
-     (line displacement weight), saving("`four_l'")
+     (line displacement weight), saving("`four_l'") replace
 dash clear
-capture noisily dash line mpg price length displacement weight, saving("`five_l'")
+capture noisily dash line mpg price length displacement weight, saving("`five_l'") replace
 local rc_five = _rc
 
 // ================================================================
@@ -381,9 +376,9 @@ tempfile f_rg_a f_rg_b
 local rg_a "`f_rg_a'.html"
 local rg_b "`f_rg_b'.html"
 dash clear
-dash scatter mpg weight, saving("`rg_a'")
+dash scatter mpg weight, saving("`rg_a'") replace
 dash clear
-dash scatter mpg weight, saving("`rg_b'")
+dash scatter mpg weight, saving("`rg_b'") replace
 
 local rg_same = 0
 mata: st_local("rg_same", strofreal(_dvx_norm_same("`rg_a'", "`rg_b'")))
@@ -448,13 +443,13 @@ local si_out "`f_si'.html"
 local fn_out "`f_fn'.html"
 
 dash clear
-capture noisily dash scatteri 20 3000 30 4000, saving("`si_out'")
+capture noisily dash scatteri 20 3000 30 4000, saving("`si_out'") replace
 local rc_si = _rc
 capture confirm file "`si_out'"
 local si_exists = (_rc == 0)
 
 dash clear
-capture noisily dash function x^2, saving("`fn_out'")
+capture noisily dash function x^2, saving("`fn_out'") replace
 local rc_fn = _rc
 capture confirm file "`fn_out'"
 local fn_exists = (_rc == 0)
@@ -532,13 +527,13 @@ local p_gph   "`f_gph'.gph"
 local p_repl  "`f_repl'.html"
 
 dash clear
-capture noisily dash scatter mpg weight, saving("`p_noext'")
+capture noisily dash scatter mpg weight, saving("`p_noext'") replace
 local rc_noext = _rc
 capture confirm file "`p_noext'.html"
 local ok_noext = (_rc == 0)
 
 dash clear
-capture noisily dash scatter mpg weight, saving("`p_gph'")
+capture noisily dash scatter mpg weight, saving("`p_gph'") replace
 local rc_gph = _rc
 
 dash clear
@@ -553,7 +548,7 @@ local parendir "`c(tmpdir)'/dash_v2 (x86)"
 capture mkdir "`parendir'"
 local p_paren "`parendir'/out.html"
 dash clear
-capture noisily dash scatter mpg weight, saving("`p_paren'")
+capture noisily dash scatter mpg weight, saving("`p_paren'") replace
 local rc_paren = _rc
 capture confirm file "`p_paren'"
 local ok_paren = (_rc == 0)
@@ -700,7 +695,7 @@ if _rc {
 else display as text "V2-12a PASS: tsline picks up the tsset time variable"
 
 dash clear
-capture noisily dash tsline mpg, saving("`ts_out'")
+capture noisily dash tsline mpg, saving("`ts_out'") replace
 local rc_ts_render = _rc
 capture {
     assert `rc_ts_render' == 0
@@ -717,7 +712,7 @@ else display as text "V2-12b PASS: tsline renders on a tsset dataset"
 // traceback.  r(7102) is the Python-exception return code.
 qui sysuse auto, clear
 dash clear
-capture noisily dash tsline mpg, saving("`ts_out'")
+capture noisily dash tsline mpg, saving("`ts_out'") replace
 local rc_nots = _rc
 display as text "V2-12 un-tsset rc=`rc_nots'"
 

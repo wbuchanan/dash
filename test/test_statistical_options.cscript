@@ -206,11 +206,6 @@ cscript "dash statistical options" adodir ".."
 clear all
 set more off
 
-capture which jsonio
-if _rc {
-    display as text "SKIP: jsonio is not installed."
-    exit 222
-}
 
 do "cert_helpers.do"
 qui do "../dash_parse.mata"

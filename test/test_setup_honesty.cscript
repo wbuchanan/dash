@@ -389,15 +389,12 @@ display "HON-18 PASS: the success banner is written in exactly one place"
 // written down, nothing is installed, and every call "fails", so a missing
 // package stays missing.  A missing package is made by putting None in
 // sys.modules, which Python's import refuses, and the module is put back
-// before anything is asserted.  jsonio must be found, or dash_setup would
-// reach for SSC; _hon_run_setup refuses to start without it.  The logs are
+// before anything is asserted.  The logs are
 // read line by line, so they are written at full width, and the session's
 // width is put back at the end.
 local _hon_ls = c(linesize)
 set linesize 255
 local _hon_live 1
-capture which jsonio
-if _rc local _hon_live 0
 // An import can only be asked by importing, and the first python call of a
 // session can fail under the runner whatever it asks: warm up, ask, and ask
 // once more before concluding a module is missing.
@@ -424,11 +421,6 @@ end
 capture program drop _hon_run_setup
 program define _hon_run_setup, rclass
     args block
-    capture which jsonio
-    if _rc {
-        display as error "_hon_run_setup: jsonio is not on the ado-path; dash_setup would install it"
-        exit 459
-    }
     local lg "`c(tmpdir)'dash_hon_setup.log"
     capture erase "`lg'"
     python: import subprocess as _hon_sp; _hon_real_run = _hon_sp.run; _hon_calls = []
@@ -457,11 +449,11 @@ program define _hon_has
     c_local `out' `_hh'
 end
 
-// Without all five, dash_setup would try to install what is missing, and
+// Without all four, dash_setup would try to install what is missing, and
 // the cases below would measure the recorder rather than the command.
 // (A program cannot be defined inside braces, hence the early exit.)
 if !`_hon_live' {
-    display "HON-19..28 SKIP: jsonio, packaging, bokeh, numpy and pandas must all be present to run dash_setup without installing"
+    display "HON-19..28 SKIP: packaging, bokeh, numpy and pandas must all be present to run dash_setup without installing"
     foreach p in _hon_summary _hon_gate _hon_files _hon_run_setup _hon_reload _hon_has {
         capture program drop `p'
     }
@@ -602,7 +594,7 @@ assert `h24okr' == 1
 display "HON-24 PASS: a renderer that can read no scheme is one failure, named"
 
 // ---- HON-25: and dash_setup acts on it ----
-// The copy goes FIRST on the full path, so jsonio is still found.
+// The copy goes FIRST on the full path, so it is the renderer found.
 mata: st_global("S_ADO", char(96) + char(34) + st_local("h24dir") + char(34) + char(39) + ";" + st_local("_hon_sado"))
 capture noisily _hon_run_setup
 local h25run = _rc
@@ -642,9 +634,6 @@ display "HON-25 PASS: dash_setup fails when its own renderer can read no scheme"
 // alone, passed with an uncaptured version import put before the guard,
 // which is BUG-50 itself.  HON-26 blocks packaging.version as well, as a
 // machine without packaging has neither.
-//
-// jsonio must be found, or setup would reach for SSC; the helper refuses
-// to start without it, as _hon_run_setup does.
 python: import os as _hon_os, sys as _hon_sys
 python: _hon_sys.path.insert(0, _hon_os.getcwd())
 python: import setup_sandbox
@@ -657,11 +646,6 @@ python: import setup_sandbox
 // Python is put back, and shown put back, on every path.
 capture program drop _hon_sb_setup
 program define _hon_sb_setup, rclass
-    capture which jsonio
-    if _rc {
-        display as error "_hon_sb_setup: jsonio is not on the ado-path; dash_setup would install it"
-        exit 459
-    }
     local lg "`c(tmpdir)'dash_hon_sb.log"
     capture erase "`lg'"
     python: import setup_sandbox; setup_sandbox.stata_install("HON_SB_SPEC")

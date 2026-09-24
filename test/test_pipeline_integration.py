@@ -792,27 +792,82 @@ class TestEdgeCaseData:
         assert data["x"][0] == 2500.0
         assert data["y"][0] == pytest.approx(24.5, abs=1e-9)
 
-    @pytest.mark.xfail(strict=True, reason=(
-        "open defect, measured 24sep2026: _fit_grid widens a zero-width x "
-        "range to [x, x+1] and np.polyfit's minimum-norm solution gives the "
-        "segment a slope, so dash draws a sloped line from (2500, 24.5) to "
-        "(2501, 24.505) where twoway lfit draws every point at (2500, 24.5); "
-        "numpy's 'Polyfit may be poorly conditioned' reaches the user too"))
-    def test_ec04_constant_x_lfit_draws_what_twoway_draws(self):
-        """EC-04, against Stata: `twoway lfit mpg weight' on a constant
-        weight -- serset points all (2500, 24.5), and no note."""
+    def _const_x_fit(self, ptype, options=None, values=None, varnames=None):
+        """``(line data, band data or None, every warning's text)``."""
         import warnings
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             dr = self._render_spec(
-                plots=[{"type": "lfit", "yvar": "mpg", "xvar": "weight",
-                        "options": {}}],
-                values=self._CONST_X, varnames=["mpg", "weight"])
-        data = dr.figures["g1"].renderers[0].data_source.data
-        assert set(np.round(np.asarray(data["x"], float), 9)) == {2500.0}
-        assert np.allclose(np.asarray(data["y"], float), 24.5)
-        assert not [str(c.message) for c in caught
-                    if "poorly conditioned" in str(c.message)]
+                plots=[{"type": ptype, "yvar": "mpg", "xvar": "weight",
+                        "options": dict(options or {})}],
+                values=values or self._CONST_X,
+                varnames=varnames or ["mpg", "weight"])
+        line = band = None
+        for r in dr.figures["g1"].renderers:
+            if type(r.glyph).__name__ == "Line":
+                line = r.data_source.data
+            elif type(r.glyph).__name__ == "VArea":
+                band = r.data_source.data
+        return line, band, [str(c.message) for c in caught]
+
+    @staticmethod
+    def _xy(data):
+        xk = "x" if "x" in data else "x_fit"
+        yk = "y" if "y" in data else "y_fit"
+        return (np.asarray(data[xk], float), np.asarray(data[yk], float))
+
+    @pytest.mark.parametrize("ptype", ["lfit", "qfit", "lfitci", "qfitci"])
+    def test_ec04_constant_x_lfit_draws_what_twoway_draws(self, ptype):
+        """EC-04, against Stata: `twoway lfit mpg weight' on a constant
+        weight -- serset points all (2500, 24.5), and no note (measured
+        24sep2026, BUGS.md).  dash widened the zero-width grid to
+        [2500, 2501] and drew a sloped segment through np.polyfit's
+        minimum-norm answer, and numpy's "Polyfit may be poorly
+        conditioned" reached the user.  regress omits a constant x, so the
+        fit is the mean of y; qfit, lfitci and qfitci are the same
+        regression with x (and x^2) omitted."""
+        line, _band, caught = self._const_x_fit(ptype)
+        xs, ys = self._xy(line)
+        assert len(xs) == 100
+        assert set(np.round(xs, 9)) == {2500.0}
+        assert np.allclose(ys, 24.5)
+        assert not [c for c in caught if "poorly conditioned" in c], caught
+        assert not [c for c in caught if c.startswith("dash")], caught
+
+    @pytest.mark.parametrize("ptype", ["lfitci", "qfitci"])
+    def test_ec04_constant_x_band_is_the_mean_s_interval(self, ptype):
+        """The band of the constant-only regression: mean +/- t(n-1) *
+        sd(y)/sqrt(n) -- `regress mpg weight' with weight omitted, then
+        `predict, stdp' (y = 20..29: sd 3.0276504, se .95742711, t(.975,
+        9) 2.2621572).  Derived from regress, not measured on twoway."""
+        _line, band, _caught = self._const_x_fit(ptype)
+        lo = np.asarray(band["y_lower"], float)
+        hi = np.asarray(band["y_upper"], float)
+        half = 2.2621572 * 3.0276504 / np.sqrt(10.0)
+        assert np.allclose(lo, 24.5 - half, atol=1e-6), lo[:3]
+        assert np.allclose(hi, 24.5 + half, atol=1e-6), hi[:3]
+
+    def test_ec04_constant_x_weighted_lfit_is_the_weighted_mean(self):
+        """An fweight: regress's constant is the weighted mean of y."""
+        values = [{"mpg": float(20 + i), "weight": 2500.0,
+                   "f": float(1 + (i % 3))} for i in range(10)]
+        line, _band, caught = self._const_x_fit(
+            "lfit", {"weight": "fweight", "wexp": "f"}, values,
+            ["mpg", "weight", "f"])
+        f = np.array([1 + (i % 3) for i in range(10)], float)
+        want = float(np.dot(f, np.arange(20, 30)) / f.sum())
+        _xs, ys = self._xy(line)
+        assert np.allclose(ys, want), (ys[:3], want)
+        assert not [c for c in caught if "poorly conditioned" in c], caught
+
+    def test_ec04_constant_x_lfit_over_a_range_is_flat(self):
+        """range() draws the fitted line over the range the user gives,
+        and with x omitted the fit is the mean: a flat line at 24.5."""
+        line, _band, _caught = self._const_x_fit(
+            "lfit", {"range": "1000 6000"})
+        xs, ys = self._xy(line)
+        assert xs[0] == 1000.0 and xs[-1] == 6000.0
+        assert np.allclose(ys, 24.5)
 
     def test_ec04_constant_x_lowess_draws_nothing_and_says_so(self):
         """EC-04: constant-x lowess draws nothing, as twoway lowess does

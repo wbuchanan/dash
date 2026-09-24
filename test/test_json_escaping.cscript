@@ -53,7 +53,7 @@
 *! cases whose literals hold Python code, SMCL, markup, JSON punctuation and
 *! 20,000 characters, each of which must be data in both render modes.
 *!
-*! Tests: JSE-01 through JSE-70.  JSE-38 reads every C0 escape back;
+*! Tests: JSE-01 through JSE-72.  JSE-38 reads every C0 escape back;
 *! JSE-39..41 write a ~/ saving() path on each of the three routes.  The
 *! rest are 24sep2026's.  JSE-42..49 run text holding a quote and an
 *! apostrophe ("'90s cars", "' or 1 or '") through the plot commands as
@@ -69,7 +69,9 @@
 *! hold the plot commands to expanding a macro in the user's text once,
 *! where the user typed it, and never again; JSE-70 holds the dash entry
 *! to the same when it hands dash kpi, dash build and dash serve their
-*! text.
+*! text.  JSE-71 holds a by() whose text holds a dollar sign, a backslash,
+*! a backtick or a nested compound quote to twoway's two panels, and JSE-72
+*! a nested compound title and legend label to twoway's reading.
 *!
 *! Usage:  do test/test_json_escaping.cscript
 *! Version: 1.2  24sep2026
@@ -80,11 +82,6 @@ cscript "every spec string is valid JSON on the way out" adodir ".."
 // set it again before this script builds a dashboard (test_cscript_hygiene.py).
 global dash_nobrowser 1
 
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222
@@ -354,13 +351,18 @@ quietly count if make != "AMC Concord" & foreign == 1
 local jse_n15 = r(N)
 assert `jse_n15' == 22
 
-// JSE-15 -- what dash build and dash serve export: foreign goes with the data.
+// JSE-15 -- what dash build and dash serve export: the qualifier's answer,
+// the column __dashq1 Stata filled, read whole (WP-27).  foreign, which
+// only the qualifier names, is no longer exported for a renderer to
+// translate the qualifier with.
 tempfile jse_s15 jse_d15
 _dash_prepare_spec, specpath("`jse_s15'") datapath("`jse_d15'")
 local jse_x15 `"`r(vars)'"'
 display as text "  exported: [`jse_x15']"
-assert `: list posof "foreign" in jse_x15' > 0
-display "JSE-15 PASS: the build exports a variable only a string-literal qualifier names"
+assert `: list posof "foreign" in jse_x15' == 0
+cert_file_has "`jse_d15'", needle("__dashq1")
+assert r(found) == 1
+display "JSE-15 PASS: the build exports the answer of a string-literal qualifier"
 
 // JSE-16 -- both render modes, on that export, draw the 22 rows the
 // qualifier selects, and neither reports the qualifier skipped.  The saved
@@ -453,26 +455,50 @@ macro drop JSE_*
 // wraps: the warning begins with the path to dash_render.py, so where it
 // wraps depends on where the checkout lives, and a search of the file's
 // bytes does not see "filter skipped" broken across two lines.  And the
-// same build and search must find those words where the renderer does skip
-// a qualifier -- the control below -- or their absence proves nothing:
-// if mpg > mpg[1] selects 26 rows in Stata, and a subscript is a construct
-// the renderer's whitelist refuses, so dash build reports it skipped, rc 0
-// (measured 24sep2026).
+// same search must find those words where the renderer does skip a
+// qualifier -- the control below -- or their absence proves nothing.  Since
+// WP-27 no spec dash build writes can be skipped: dash.ado evaluates every
+// qualifier in Stata and ships its answer as a column.  The control is
+// therefore a spec written by hand, as dash.ado no longer writes one -- the
+// qualifier as text, if mpg > mpg[1], and no column -- handed to the same
+// renderer through _dash_do_render: a subscript is a construct the
+// renderer's translation refuses, so it reports it skipped, rc 0.
 capture program drop _jse17_build
 program define _jse17_build, rclass
-    args page logfile
+    args page logfile spec data
     local ls = c(linesize)
     set linesize 255
     capture log close _jse17
     capture erase "`logfile'"
     quietly log using "`logfile'", name(_jse17) text replace
-    capture noisily dash build, saving("`page'") replace nobrowser
+    if "`spec'" == "" {
+        capture noisily dash build, saving("`page'") replace nobrowser
+    }
+    else {
+        _dash_find_render
+        capture noisily _dash_do_render, spec("`spec'") data("`data'") ///
+            output("`page'") renderpy(`"`r(fn)'"')
+    }
     local rc = _rc
     quietly log close _jse17
     set linesize `ls'
     cert_log_has "`logfile'", needle("filter skipped")
     return scalar skipped = r(found)
     return scalar rc      = `rc'
+end
+// A spec written by hand: the first "if_expr":"" of the file dash wrote --
+// the plot's -- given the text of args 2.  Read and written by value.
+capture program drop _jse_handspec
+program define _jse_handspec
+    args specpath qualifier
+    mata: _jse_hs_t = ""
+    mata: assert(_cert_read(st_local("specpath"), _jse_hs_t))
+    mata: _jse_hs_t = subinstr(_jse_hs_t, char(34) + "if_expr" + char(34) + ":" + char(34) + char(34), ///
+        char(34) + "if_expr" + char(34) + ":" + char(34) + st_local("qualifier") + char(34), 1)
+    mata: unlink(st_local("specpath"))
+    mata: _jse_hs_fh = fopen(st_local("specpath"), "w")
+    mata: fwrite(_jse_hs_fh, _jse_hs_t)
+    mata: fclose(_jse_hs_fh)
 end
 tempfile jse_h17
 local jse_log "`c(tmpdir)'dash_jse17.log"
@@ -483,8 +509,11 @@ assert `jse_rc17' == 0
 confirm file "`jse_h17'.html"
 assert `jse_sk17' == 0
 capture dash clear
-quietly dash scatter mpg weight if mpg > mpg[1], name(jse17c)
-_jse17_build "`jse_h17'.html" "`jse_log'"
+quietly dash scatter mpg weight, name(jse17c)
+tempfile jse_s17c jse_d17c
+_dash_prepare_spec, specpath("`jse_s17c'") datapath("`jse_d17c'")
+_jse_handspec "`jse_s17c'" "mpg > mpg[1]"
+_jse17_build "`jse_h17'.html" "`jse_log'" "`jse_s17c'" "`jse_d17c'"
 local jse_rc17c = r(rc)
 local jse_sk17c = r(skipped)
 display as text "  skip reported -- this qualifier: `jse_sk17'  the control: `jse_sk17c'"
@@ -804,14 +833,18 @@ assert `: list posof "make" in j2_v22' > 0 & `: list posof "foreign" in j2_v22' 
 display "JSE-22 PASS: a compound-quoted literal is stored whole"
 capture dash clear
 
-// JSE-23 -- dash build, end to end, on the command as typed: foreign is
-// exported, both modes draw Stata's 22 rows, nothing is reported skipped.
+// JSE-23 -- dash build, end to end, on the command as typed: the
+// qualifier's answer is exported as its column (and foreign, which only
+// the qualifier names, is not: WP-27), both modes draw Stata's 22 rows,
+// nothing is reported skipped.
 dash scatter mpg weight if make != "AMC Concord" & foreign == 1, name(jse23)
 tempfile j2_s23 j2_d23 j2_a23
 _dash_prepare_spec, specpath("`j2_s23'") datapath("`j2_d23'")
 local j2_x23 `"`r(vars)'"'
 display as text "  exported: [`j2_x23']"
-assert `: list posof "foreign" in j2_x23' > 0
+assert `: list posof "foreign" in j2_x23' == 0
+cert_file_has "`j2_d23'", needle("__dashq1")
+assert r(found) == 1
 global J2_SPEC "`j2_s23'"
 global J2_DATA "`j2_d23'"
 global J2_APP  "`j2_a23'"
@@ -826,10 +859,16 @@ cert_log_has "`r(log)'", needle("filter skipped")
 local j2_sk23 = r(found)
 assert `j2_sk23' == 0
 // The control, through the same run and the same search (JSE-17 says why):
-// a qualifier the renderer does skip is reported in those words.
+// a qualifier the renderer does skip is reported in those words -- in a
+// spec written by hand, as no build writes one since WP-27.
 capture dash clear
-quietly dash scatter mpg weight if mpg > mpg[1], name(jse23c)
-_j2_run `"dash build, saving("`j2_s23'.html") replace nobrowser"'
+quietly dash scatter mpg weight, name(jse23c)
+tempfile j2_s23c j2_d23c
+_dash_prepare_spec, specpath("`j2_s23c'") datapath("`j2_d23c'")
+_jse_handspec "`j2_s23c'" "mpg > mpg[1]"
+_dash_find_render
+global J2_RPY `"`r(fn)'"'
+_j2_run `"_dash_do_render, spec("`j2_s23c'") data("`j2_d23c'") output("`j2_s23'.html") renderpy("$J2_RPY")"'
 assert r(rc) == 0
 cert_log_has "`r(log)'", needle("filter skipped")
 local j2_sk23c = r(found)
@@ -851,7 +890,8 @@ display "JSE-24 PASS: the immediate route draws Stata's rows"
 capture dash clear
 
 // JSE-25 -- a KPI's qualifier with a blank inside its literal: dash build's
-// export step runs, rep78 is exported, and both modes show Stata's value.
+// export step runs, its answer is exported as a column (rep78, which only
+// the qualifier names, is not: WP-27), and both modes show Stata's value.
 dash scatter mpg weight, name(jse25g)
 dash kpi mean(price) if make != "AMC Concord" & rep78 == 3, title("P") fmt(%9.2f) name(jse25)
 tempfile j2_s25 j2_d25 j2_a25
@@ -860,7 +900,7 @@ local j2_rc25 = _rc
 local j2_x25 `"`r(vars)'"'
 display as text "  rc: `j2_rc25'  exported: [`j2_x25']"
 assert `j2_rc25' == 0
-assert `: list posof "rep78" in j2_x25' > 0
+assert `: list posof "rep78" in j2_x25' == 0
 global J2_SPEC "`j2_s25'"
 global J2_DATA "`j2_d25'"
 global J2_APP  "`j2_a25'"
@@ -878,7 +918,7 @@ dash kpi mean(price) if make != "AMC" & rep78 == 3, title("P") fmt(%9.2f) name(j
 tempfile j2_s26 j2_d26 j2_a26
 _dash_prepare_spec, specpath("`j2_s26'") datapath("`j2_d26'")
 local j2_x26 `"`r(vars)'"'
-assert `: list posof "rep78" in j2_x26' > 0
+assert `: list posof "rep78" in j2_x26' == 0
 global J2_SPEC "`j2_s26'"
 global J2_DATA "`j2_d26'"
 global J2_APP  "`j2_a26'"
@@ -965,7 +1005,8 @@ assert "`j2_ok1'`j2_ok2'`j2_ok3'`j2_ok4'" == "1111"
 display "JSE-29 PASS: compound-quoted title, note, legend label and by() title are stored whole"
 capture dash clear
 
-// JSE-30 -- ~ is Stata's not: if ~foreign names foreign, and it is exported.
+// JSE-30 -- ~ is Stata's not: if ~foreign names foreign, which Stata now
+// evaluates, so it is no longer exported for a renderer (WP-27).
 dash scatter mpg weight if ~foreign, name(jse30)
 local j2_v30 ""
 mata: _dash_extract_qual_vars(st_global("dash_json_jse30"), "j2_v30")
@@ -974,12 +1015,13 @@ _dash_prepare_spec, specpath("`j2_s30'") datapath("`j2_d30'")
 local j2_x30 `"`r(vars)'"'
 display as text "  read: [`j2_v30']  exported: [`j2_x30']"
 assert `: list posof "foreign" in j2_v30' > 0
-assert `: list posof "foreign" in j2_x30' > 0
-display "JSE-30 PASS: if ~foreign exports foreign"
+assert `: list posof "foreign" in j2_x30' == 0
+display "JSE-30 PASS: if ~foreign names foreign, and Stata answers it"
 capture dash clear
 
 // JSE-31 -- a Unicode variable name, e-acute + "tranger", is read,
-// exported, and both modes draw Stata's rows.  Made with uchar(233), so
+// evaluated in Stata (not exported: WP-27), and both modes draw Stata's
+// rows.  Made with uchar(233), so
 // this file stays ASCII.
 local j2_u = uchar(233) + "tranger"
 rename foreign `j2_u'
@@ -998,10 +1040,10 @@ python: _j2_modes()
 rename `j2_u' foreign
 display as text "  read: [`j2_v31']  exported: [`j2_x31']  rows: [$J2_SAVED_ROWS] [$J2_SERVED_ROWS] of `j2_n31'"
 assert `: list posof "`j2_u'" in j2_v31' > 0
-assert `: list posof "`j2_u'" in j2_x31' > 0
+assert `: list posof "`j2_u'" in j2_x31' == 0
 assert "$J2_SAVED_ROWS" == "`j2_n31'" & "$J2_SERVED_ROWS" == "`j2_n31'"
 assert "$J2_SKIPPED" == "0"
-display "JSE-31 PASS: a Unicode variable name in a qualifier is exported and applied"
+display "JSE-31 PASS: a Unicode variable name in a qualifier is read and applied, in Stata"
 capture dash clear
 
 // ----------------------------------------------------------------
@@ -1795,17 +1837,14 @@ capture dash clear
 // axis and side titles, xtitle() .. ytitle2() and t1title() .. r2title()
 // ----------------------------------------------------------------
 // Each text is its own, so each count names one option in one form.  A
-// compound-quoted legend label is stored and not asserted drawn: the
-// renderer does not apply one (measured 24sep2026: it draws the variable's
-// label, where twoway's exported SVG draws '90s lc) -- a defect of the
-// renderer's legend reader, outside this chain, reported with this work.
-// by()'s title() is stored and not drawn -- dash draws by()'s cols(),
-// missing and total and names the rest -- so its case holds the facets
-// drawn, Stata's 52 and 22 rows.  The compound form is stored and built
-// after the page: the renderer's by() reader takes its backtick for an
-// injection pattern and draws no facets, one panel of 74, without a word
-// (measured 24sep2026, _dash_parse_by), where twoway draws the two -- a
-// defect of the renderer, outside this chain, reported with this work.
+// compound-quoted legend label is drawn as twoway's exported SVG draws it,
+// '90s lc (the renderer read only a plain-quoted label until 24sep2026 and
+// drew the variable's label).  by()'s title() is stored and not drawn --
+// dash draws by()'s cols(), missing and total and names the rest -- so its
+// case holds the facets drawn, Stata's 52 and 22 rows, in both forms: the
+// renderer's by() reader held the whole by() text to its injection pattern
+// and drew the compound form's graph as one panel of 74, without a word
+// (measured 24sep2026, _dash_parse_by), where twoway draws the two.
 // twoway, measured the same day: the plain
 // subtitle, caption, legend label and text() r(100) in comma mode and a
 // legend label or text() r(109) after a paren command's comma; by(foreign,
@@ -1889,7 +1928,7 @@ foreach jg_v in sp sc np nc cp cc {
     _jg_drawn Label
     local jg_dr "`jg_dr'`r(n)'"
 }
-foreach jg_v in lp lq {
+foreach jg_v in lp lq lc {
     mata: st_global("JG_WANT", char(39) + "90s " + st_local("jg_v"))
     _jg_drawn LegendItem
     local jg_dr "`jg_dr'`r(n)'"
@@ -1903,15 +1942,18 @@ _jg_stored jg46e "graph_options by"
 local jg_ok "`jg_ok'`r(ok)'"
 _jg_build "`jg_p46'.html"
 local jg_rb2 = r(rc)
+local jg_rows2 "`r(rows)'"
 capture erase "`jg_p46'.html"
-display as text "  rc: `jg_r1' `jg_r2' `jg_r3' `jg_r4' `jg_r5' `jg_r6' `jg_r7' `jg_r8'  stored: `jg_ok'  build: `jg_rb' `jg_rb2'  drawn (sp sc np nc cp cc lp lq): `jg_dr'"
+display as text "  rc: `jg_r1' `jg_r2' `jg_r3' `jg_r4' `jg_r5' `jg_r6' `jg_r7' `jg_r8'  stored: `jg_ok'  build: `jg_rb' `jg_rb2'  drawn (sp sc np nc cp cc lp lq lc): `jg_dr'"
 display as text "  rows: [`jg_rows'] of Stata's `jg_nf' `jg_nd' and six of 74  named in the note: `jg_m1' `jg_m2'"
+display as text "  rows with by()'s compound title: [`jg_rows2']"
 assert `jg_r1' == 0 & `jg_r2' == 0 & `jg_r3' == 0 & `jg_r4' == 0
 assert `jg_r5' == 0 & `jg_r6' == 0 & `jg_r7' == 0 & `jg_r8' == 0
 assert "`jg_ok'" == "111111111111111"
 assert `jg_rb' == 0 & `jg_rb2' == 0
-assert "`jg_dr'" == "11111111"
+assert "`jg_dr'" == "111111111"
 assert "`jg_rows'" == "`jg_nf' `jg_nd' 74 74 74 74 74 74"
+assert "`jg_rows2'" == "`jg_nf' `jg_nf' `jg_nd' `jg_nd' 74 74 74 74 74 74"
 assert `jg_m1' == 1 & `jg_m2' == 1
 // The axis and side titles are declared as title() is, string asis, so the
 // quotes the user typed reach the spec.  Declared string, Stata stripped
@@ -3006,8 +3048,10 @@ _dash_prepare_spec, specpath("`j5_s58'") datapath("`j5_d58'")
 local j5_x58 `"`r(vars)'"'
 display as text "  exported: [`j5_x58']"
 local j5_pr : list posof "rep78" in j5_x58
-local j5_pm : list posof "make" in j5_x58
-local j5_ok "`j5_ok'`=(`j5_pr' == 0 & `j5_pm' > 0)'"
+// And Stata evaluates it as written (WP-27): make != "$J5_Q" is a literal
+// comparison, and the export above ran; expanded, the qualifier would be
+// a type mismatch and _dash_prepare_spec would have stopped.
+local j5_ok "`j5_ok'`=(`j5_pr' == 0)'"
 // A tab's title -- tabs(Title: names), unquoted, as tabs() is read asis --
 // and a scheme() naming a .scheme file of the working directory whose name
 // holds a $: each reaches the page or the spec as written.  The file is made in a directory of its own, the working
@@ -3892,6 +3936,106 @@ capture erase "`j7_stub'/spec.json"
 display "JSE-70 PASS: the dash entry hands kpi, build and serve their text as written, and nothing runs"
 capture dash clear
 macro drop J7_*
+
+
+// ----------------------------------------------------------------
+// JSE-71 -- a by() whose text holds a dollar sign, a backslash, a backtick
+// or a nested compound quote draws twoway's two panels.  The renderer held
+// the whole by() text to its injection pattern, so each of these drew one
+// panel of 74 without a word (measured 24sep2026 at 2df1900; BUGS.md "A
+// by() whose text holds a backtick, a dollar sign or a backslash draws no
+// panels, without a word").  twoway draws the two panels for the first
+// three (measured the same day, graph export .svg: Domestic and Foreign);
+// it refuses the typed-escaped backtick, r(132), which dash stores as
+// typed.  The served app is test_server_facets.py's
+// TestAByTextHoldingMacroCharactersFacets.
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+capture dash clear
+quietly count if foreign == 0
+local j71_nd = r(N)
+quietly count if foreign == 1
+local j71_nf = r(N)
+capture twoway scatter mpg weight, by(foreign, title("Cost in \$US")) nodraw
+local j71_t1 = _rc
+capture twoway scatter mpg weight, by(foreign, note("a\b c")) nodraw
+local j71_t2 = _rc
+capture twoway scatter mpg weight, by(foreign, title(`"a `"b"' c"')) nodraw
+local j71_t3 = _rc
+capture noisily dash scatter mpg weight, by(foreign, title("Cost in \$US")) name(j71a)
+local j71_r1 = _rc
+capture noisily dash scatter mpg weight, by(foreign, note("a\b c")) name(j71b)
+local j71_r2 = _rc
+capture noisily dash scatter mpg weight, by(foreign, title(`"a `"b"' c"')) name(j71c)
+local j71_r3 = _rc
+capture noisily dash scatter mpg weight, by(foreign, subtitle("tick \`x")) name(j71d)
+local j71_r4 = _rc
+local j71_ok ""
+mata: st_global("JG_WANT", "foreign, title(" + _jg_pq("Cost in " + char(36) + "US") + ")")
+_jg_stored j71a "graph_options by"
+local j71_ok "`j71_ok'`r(ok)'"
+mata: st_global("JG_WANT", "foreign, note(" + _jg_pq("a" + char(92) + "b c") + ")")
+_jg_stored j71b "graph_options by"
+local j71_ok "`j71_ok'`r(ok)'"
+mata: st_global("JG_WANT", "foreign, title(" + _jg_cq("a " + _jg_cq("b") + " c") + ")")
+_jg_stored j71c "graph_options by"
+local j71_ok "`j71_ok'`r(ok)'"
+mata: st_global("JG_WANT", "foreign, subtitle(" + _jg_pq("tick " + char(96) + "x") + ")")
+_jg_stored j71d "graph_options by"
+local j71_ok "`j71_ok'`r(ok)'"
+tempfile j71_p
+_jg_build "`j71_p'.html"
+local j71_rb = r(rc)
+local j71_rows "`r(rows)'"
+capture erase "`j71_p'.html"
+display as text "  twoway rc: `j71_t1' `j71_t2' `j71_t3'  dash rc: `j71_r1' `j71_r2' `j71_r3' `j71_r4'  stored: `j71_ok'  build: `j71_rb'"
+display as text "  rows: [`j71_rows'] -- two panels each, Stata's `j71_nf' and `j71_nd'"
+assert `j71_t1' == 0 & `j71_t2' == 0 & `j71_t3' == 0
+assert `j71_r1' == 0 & `j71_r2' == 0 & `j71_r3' == 0 & `j71_r4' == 0
+assert "`j71_ok'" == "1111"
+assert `j71_rb' == 0
+assert "`j71_rows'" == "`j71_nf' `j71_nf' `j71_nf' `j71_nf' `j71_nd' `j71_nd' `j71_nd' `j71_nd'"
+display "JSE-71 PASS: a by() whose text holds a dollar sign, a backslash, a backtick or a nested compound quote draws the two panels"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-72 -- a nested compound quote is accepted, as twoway accepts it, and
+// drawn as twoway draws it: title(`"a `"b"' c"') is the one line a `"b"' c
+// (twoway's SVG export, measured 24sep2026), and a legend label in the same
+// form is that key's text.  dash refused both, "unterminated quotation in
+// the plot specification", r(198): its quote scanner closed a compound
+// quote at the first "' (BUGS.md "A compound quote nested inside another
+// is refused, where twoway accepts it").  The legend label reader is
+// test_textbox_multiline.py's TestALegendLabelIsReadAsStataReadsIt.
+// ----------------------------------------------------------------
+capture twoway (scatter mpg weight) (line mpg weight), title(`"a `"b"' c"') legend(label(1 `"k `"1"' x"') label(2 `"'90s l2"')) nodraw
+local j72_tw = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight), title(`"a `"b"' c"') legend(label(1 `"k `"1"' x"') label(2 `"'90s l2"')) name(j72a)
+local j72_rc = _rc
+mata: st_global("JG_WANT", _jg_cq("a " + _jg_cq("b") + " c"))
+_jg_stored j72a "graph_options title"
+local j72_ok "`r(ok)'"
+tempfile j72_p
+_jg_build "`j72_p'.html"
+local j72_rb = r(rc)
+local j72_dr ""
+mata: st_global("JG_WANT", "a " + _jg_cq("b") + " c")
+_jg_drawn Title
+local j72_dr "`j72_dr'`r(n)'"
+mata: st_global("JG_WANT", "k " + _jg_cq("1") + " x")
+_jg_drawn LegendItem
+local j72_dr "`j72_dr'`r(n)'"
+mata: st_global("JG_WANT", char(39) + "90s l2")
+_jg_drawn LegendItem
+local j72_dr "`j72_dr'`r(n)'"
+capture erase "`j72_p'.html"
+display as text "  twoway rc `j72_tw'  dash rc `j72_rc'  stored `j72_ok'  build `j72_rb'  drawn (title, key 1, key 2): `j72_dr'"
+assert `j72_tw' == 0 & `j72_rc' == 0
+assert "`j72_ok'" == "1"
+assert `j72_rb' == 0
+assert "`j72_dr'" == "111"
+display "JSE-72 PASS: a nested compound title and legend label are accepted and drawn as twoway draws them"
+capture dash clear
 
 display ""
 display "All JSON escaping tests PASSED."

@@ -3,7 +3,7 @@
 *!
 *! Usage:  do test/test_render_log_clean.cscript
 *!
-*! Requires: dash_setup completed (jsonio, Python).
+*! Requires: dash_setup completed (Python).
 *! Version: 1.1.0  22sep2026
 *!
 *! WHY THIS EXISTS
@@ -46,11 +46,6 @@
 
 cscript "render log clean" adodir ".."
 
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 
 // See test_cscript_hygiene.py: do NOT probe Python by running it.
 if "`c(python_exec)'" == "" {

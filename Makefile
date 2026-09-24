@@ -13,13 +13,15 @@ PYTHON      ?= python3
 STATA       ?= /usr/local/bin/stata-mp
 PYTEST_ARGS ?= -q -p no:cacheprovider
 
-.PHONY: help check test test-dev cert hooks
+.PHONY: help check test test-dev cert gate release hooks
 
 help:
 	@echo "make check     make test, make test-dev and make cert, in that order"
 	@echo "make test      pytest under Stata's Python, strict"
 	@echo "make test-dev  pytest under the development interpreter ($(PYTHON)), strict"
 	@echo "make cert      the certification suite, through the console binary"
+	@echo "make gate      net install, then every example and scheme from the install"
+	@echo "make release   make check, then make gate"
 	@echo "make hooks     have 'git push' run 'make check' first"
 
 check: test test-dev cert
@@ -39,6 +41,11 @@ test-dev:
 
 cert:
 	@STATA='$(STATA)' PYTHON='$(PYTHON)' sh scripts/run_cert_suite.sh
+
+gate:
+	@STATA='$(STATA)' PYTHON='$(PYTHON)' sh scripts/run_release_gate.sh
+
+release: check gate
 
 hooks:
 	git config core.hooksPath scripts/git-hooks

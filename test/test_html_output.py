@@ -863,6 +863,23 @@ class TestXssInHtmlOutput:
                "HTML must include a CSP meta tag"
 
 
+def _heads_on_page(html: str) -> int:
+    """The arrowheads the page draws: its one Arrow annotation's source
+    rows, the source being the one a Segment renderer draws from."""
+    byid = _doc_models(html)
+    arrows = [m for m in byid.values() if m["name"] == "Arrow"]
+    assert len(arrows) == 1, f"{len(arrows)} Arrow annotations"
+    attrs = arrows[0].get("attributes", {})
+    assert attrs.get("x_start", {}).get("field") == "x1", attrs.get("x_start")
+    src = byid[attrs["source"]["id"]]
+    seg_srcs = {r["attributes"]["data_source"]["id"] for r in byid.values()
+                if r["name"] == "GlyphRenderer"
+                and byid.get(r["attributes"]["glyph"]["id"], {}).get("name")
+                == "Segment"}
+    assert src["id"] in seg_srcs, "the heads are not on the shaft's source"
+    return len(_column(src["attributes"]["data"]["entries"][0][1]))
+
+
 # ================================================================
 # pcarrow — Arrow glyph
 # ================================================================
@@ -889,10 +906,12 @@ class TestPcarrowHtmlOutput:
         html = _render_to_html(spec, data_json)
         # pcarrow uses segment shaft + Arrow annotation; check glyph or non-empty
         assert len(html) > 500, "pcarrow should produce non-trivial HTML"
-        # Both, measured 24sep2026: the shaft is a Segment glyph and the
-        # head an Arrow annotation, one for each of the 10 arrows.
+        # Both: the shaft is a Segment glyph and the heads ONE Arrow
+        # annotation over the shaft's source, a head for each of its 10
+        # rows (one fixed annotation per row did not follow a filter move,
+        # BUGS.md 24sep2026).
         assert "Segment" in _drawn_glyphs(html)
-        heads = len(_page_models(html).get("Arrow", []))
+        heads = _heads_on_page(html)
         assert heads == 10, f"{heads} arrowheads for 10 arrows"
 
 
@@ -922,7 +941,7 @@ class TestPcbarrowHtmlOutput:
         html = _render_to_html(spec, data_json)
         assert len(html) > 500, "pcbarrow should produce non-trivial HTML"
         assert "Segment" in _drawn_glyphs(html)
-        heads = len(_page_models(html).get("Arrow", []))
+        heads = _heads_on_page(html)
         assert heads == 10, f"{heads} two-headed arrows for 10 arrows"
 
 

@@ -563,7 +563,7 @@ tempfile c6a c6b
 local c6a "`c6a'.html"
 local c6b "`c6b'.html"
 dash clear
-capture noisily dash pccapsym mpg weight m2 w2, msymbol(D) lcolor(navy) mlabel(make) saving("`c6a'")
+capture noisily dash pccapsym mpg weight m2 w2, msymbol(D) lcolor(navy) mlabel(make) saving("`c6a'") replace
 assert _rc == 0
 confirm file "`c6a'"
 foreach nd in Segment Scatter LabelSet {
@@ -579,14 +579,14 @@ tempfile c6d
 local c6d "`c6d'.html"
 quietly generate double c6date = mdy(1, _n, 2020) if _n != 3
 format c6date %td
-capture noisily dash pccapsym mpg weight m2 w2, mlabel(c6date) saving("`c6d'")
+capture noisily dash pccapsym mpg weight m2 w2, mlabel(c6date) saving("`c6d'") replace
 assert _rc == 0
 confirm file "`c6d'"
 cert_file_has "`c6d'", needle(`""name":"LabelSet""')
 assert r(found) == 1
 drop c6date
 capture erase "`c6d'"
-capture noisily dash pcarrowi 41 2200 41 2060 (3) "VW Diesel" 31 3460 28 3280 (9) "Plymouth Arrow", saving("`c6b'")
+capture noisily dash pcarrowi 41 2200 41 2060 (3) "VW Diesel" 31 3460 28 3280 (9) "Plymouth Arrow", saving("`c6b'") replace
 assert _rc == 0
 confirm file "`c6b'"
 foreach nd in Segment Arrow OpenHead LabelSet {

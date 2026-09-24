@@ -566,10 +566,11 @@ class TestItemsFillTheGridInRegistryOrder:
 class TestAnExplicitGridDrawsTheCellsItsItemsReach:
     """layout(2 3): items fill it row by row; a cell no item reaches is
     empty, and a row or column after the last item is not drawn.  gridplot()
-    leaves an empty cell out of the GridPlot, and with its rows and cols
-    unset BokehJS sizes the CSS grid to the cells that are there
-    (CSSGridBoxView._update_layout: nrows, ncols = the largest row and
-    column + 1) -- so two items take one row of two columns."""
+    leaves an empty cell out of the GridPlot, and with its rows unset and
+    its cols one track size for every column (_dash_reflow's
+    minmax(0, 1fr), TR-27.2) BokehJS sizes the CSS grid to the cells that
+    are there (CSSGridBoxView._update_layout: nrows, ncols = the largest
+    row and column + 1) -- so two items take one row of two columns."""
 
     @pytest.mark.parametrize("n,cells", [
         (2, {(0, 0), (0, 1)}),
@@ -582,7 +583,7 @@ class TestAnExplicitGridDrawsTheCellsItsItemsReach:
         for root in (r._last_layout_root, doc.roots[0]):
             [grid] = list(root.select({"type": GridPlot}))
             assert {(rr, cc) for _m, rr, cc in grid.children} == cells
-            assert grid.rows is None and grid.cols is None
+            assert grid.rows is None and grid.cols == dr._DASH_BS_TRACK
         # What the grid limit is for: dash lays out every one of the six
         # cells, empty or not, before gridplot() leaves the empty ones out.
         assert r._compute_grid(n, "2 3") == (2, 3)
@@ -721,14 +722,18 @@ class TestASelectionReachesTheLayersThatDrawTheGroupsRows:
         "line", "area", "bar", "spike", "dropline", "lfit", "qfitci",
         "lowess", "fpfit", "mspline", "mband", "histogram", "kdensity",
         "tsline", "rarea", "rcap", "rline", "rcapsym", "rscatter", "tsrline",
-        "pcspike", "pcscatter", "pccapsym"])
+        "pcspike", "pcscatter", "pccapsym",
+        # rbar since WP-27: drawn from a copy of its own rows, so the saved
+        # page's filter callback keeps a move's rows of it and recomputes
+        # the bars' width from them, as the served app draws it.
+        "rbar"])
     def test_any_other_layer_draws_from_its_own(self, ptype):
         saved, served = _linked(ptype)
         assert saved and served
         assert not any(saved) and not any(served), (saved, served)
 
-    @pytest.mark.parametrize("ptype", ["rbar", "rspike", "rconnected"])
-    def test_three_range_layers_draw_it_only_on_the_saved_page(self, ptype):
+    @pytest.mark.parametrize("ptype", ["rspike", "rconnected"])
+    def test_two_range_layers_draw_it_only_on_the_saved_page(self, ptype):
         saved, served = _linked(ptype)
         assert any(saved), saved
         assert served and not any(served), served

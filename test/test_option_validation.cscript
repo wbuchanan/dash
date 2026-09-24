@@ -94,6 +94,8 @@
 *!   OV-63  kdensity kernel(gaussian) rc 0
 *!   OV-64  kdensity kernel(Epan2)    rc 0, registry carries "kernel":"epan2"
 *!   OV-65  kdensity kernel(bogus)    rc 198 naming kernel()
+*!   OV-158..162 kernel(gau) and kernel(EPAN) registered in full;
+*!          gaussianx, gau;rm and a 253-letter word refused (WP-27)
 *!   OV-66  kdensity n(50)            rc 0
 *!   OV-67  kdensity n(1)             rc 198 naming n()
 *!   OV-68  kdensity n(abc)           rc 198 naming n()
@@ -264,11 +266,6 @@ cscript "dash option validation" adodir ".."
 clear all
 set more off
 
-capture which jsonio
-if _rc {
-    display as text "SKIP: jsonio is not installed."
-    exit 222
-}
 if `"`c(python_exec)'"' == "" {
     display as text "SKIP: no Python is linked to this Stata."
     exit 222
@@ -830,6 +827,21 @@ _ov_case OV-156 `"dash line mpg weight, mlabel(make) mlabangle(400) name(ov156)"
 // ----------------------------------------------------------------
 _ov_case OV-157 `"dash scatter mpg weight, notarealoption(3) name(ov157)"' 0 ""
 _ov_said OV-157m "unsupported option"
+
+// ----------------------------------------------------------------
+// OV-158 .. OV-162 (WP-27): kernel() takes twoway's abbreviations, written
+// out in full, and nothing else.  Adversarial: a word that only begins
+// like a name, shell and macro characters, and a long word are refused by
+// the enum rule, r(198), naming kernel(); nothing after the name is read
+// as a kernel.  test_help_claims_6.cscript HC6-57 holds every prefix to
+// twoway's return code.
+// ----------------------------------------------------------------
+_ov_case OV-158 `"dash lpoly mpg weight, kernel(gau) name(ov158)"' 0 "" `""kernel":"gaussian""'
+_ov_case OV-159 `"dash kdensity mpg, kernel(EPAN) name(ov159)"' 0 "" `""kernel":"epanechnikov""'
+_ov_case OV-160 `"dash kdensity mpg, kernel(gaussianx) name(ov160)"' 198 kernel
+_ov_case OV-161 `"dash kdensity mpg, kernel(gau;rm) name(ov161)"' 198 kernel
+local ov162 = "gau" + 50 * "ssian"
+_ov_case OV-162 `"dash kdensity mpg, kernel(`ov162') name(ov162)"' 198 kernel
 
 // ----------------------------------------------------------------
 // CV-nn: the corpus arbiter.  Every line of the conformance corpus must

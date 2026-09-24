@@ -66,6 +66,7 @@ import json
 import math
 import os
 import re
+import secrets
 import warnings
 from typing import Any
 
@@ -181,6 +182,13 @@ _DASH_BS_COLUMNS = 12
 # the CSS grid spelling of that; a bare `1fr' is minmax(auto, 1fr), which
 # lets a wide child widen its own column and narrow the rest.
 _DASH_BS_TRACK = "minmax(0, 1fr)"
+# A grid column narrower than this stacks its grid into one column
+# (_dash_reflow): a figure's natural minimum is about 220 px, and a panel
+# under this reads poorly.  In pixels.
+_DASH_MIN_COLUMN_PX = 240
+# The window width below which the served layout(bs) grid stacks, the
+# saved layout(bs) page's own md breakpoint (the db-col-md-* classes).
+_DASH_BS_STACK_BELOW_PX = 768
 # The saved page's gutter: `.db-row>[class*="db-col"]' pads each cell 8px a
 # side, 16px between two cells, and `.db-section' puts 16px under a row.
 _DASH_BS_GUTTER_PX = 16
@@ -542,6 +550,210 @@ def _dash_float_values(col, coerce: bool = False) -> "np.ndarray":
     return arr.astype(float, copy=False)
 
 
+def _dash_load_columns(df, formats, string_vars):
+    """Read every column of a freshly loaded frame, in place, as both render
+    modes hold it: a string variable as its text, a variable with a Stata
+    date format as datetime64[ms] (``_stata_dates_to_datetime``), every
+    other one as numbers.
+
+    The saved loader did this and the generated server app coerced every
+    column with ``pd.to_numeric``, so a served figure drew Stata's day
+    numbers on a numeric axis where the saved one drew dates (BUGS.md, "The
+    generated server app has no date handling at all").  One reader, called
+    by both.
+
+    Args:
+        df:          The frame, one column per variable; changed in place.
+        formats:     ``{varname: Stata display format}`` from the spec's
+                     ``build_options``; anything else is read as none.
+        string_vars: The names of the string variables.
+
+    Returns:
+        ``(date_vars, numeric_formats)``: ``{varname: date kind}`` and
+        ``{varname: format}`` for the numeric formats dash reproduces.
+    """
+    formats = formats if isinstance(formats, dict) else {}
+    formats = {str(k): str(v) for k, v in formats.items()}
+    string_vars = set(string_vars or ())
+    date_vars, numeric_formats = {}, {}
+    for col in list(df.columns):
+        if col in string_vars:
+            continue
+        fmt = formats.get(str(col))
+        kind = _stata_date_kind(fmt)
+        if kind is None:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+            if _stata_numeric_pattern(fmt) is not None:
+                numeric_formats[col] = fmt
+            continue
+        raw = df[col]
+        numeric = pd.to_numeric(raw, errors="coerce")
+        if numeric.notna().any() or raw.isna().all():
+            converted = _stata_dates_to_datetime(numeric, kind)
+        else:
+            # Legacy transport: jsonio renders a %t* variable THROUGH its
+            # display format and emits a string ("02jan2001"), so a spec
+            # from an older dash.ado carries text here.  Coercing it to
+            # NaN drops every row of the dataset, which is how
+            # `dash line close date` came to produce an empty dashboard.
+            converted = pd.to_datetime(raw.astype(str).str.strip(),
+                                       errors="coerce")
+            # The unit every date column is held in (24sep2026), so
+            # no consumer meets a second one: pandas parses to
+            # nanoseconds under 2.3 and to whatever it infers under 3.
+            converted = pd.Series(converted).astype("datetime64[ms]")
+            if converted.isna().all() and raw.notna().any():
+                warnings.warn(
+                    f"dash: variable '{col}' has display format "
+                    f"{fmt!r} but arrived as text this renderer could not "
+                    f"read as a date; it is shown as missing. Re-run with "
+                    f"a current dash.ado.",
+                    UserWarning,
+                )
+        df[col] = pd.Series(converted).to_numpy()
+        date_vars[col] = kind
+    return date_vars, numeric_formats
+
+
+def _dash_column_values(col):
+    """One column as a ColumnDataSource holds it: a date column as its
+    datetime64 array, any other as a list.
+
+    ``tolist()`` made a date column Timestamps with a NaT for each missing
+    value, and Bokeh writes a NaT in a list as a bare NaN, which JSON
+    refuses; an array goes out as binary, NaT as NaN, which BokehJS reads
+    as a missing value (the saved renderer's ``_make_source`` rule).
+    """
+    if pd.api.types.is_datetime64_any_dtype(col):
+        return pd.Series(col).to_numpy()
+    return col.tolist() if hasattr(col, "tolist") else list(col)
+
+
+def _dash_figure_date_kind(plots, key, fallback, date_vars):
+    """The date kind of a figure's x (``key="xvar"``) or y axis, or None.
+
+    Every layer must agree: a date series and a numeric one cannot share a
+    date axis, and picking the first plot's answer would misplace the
+    other.  The saved renderer's rule, in both modes.
+    """
+    if not date_vars:
+        return None
+    kinds = set()
+    for plot in plots or []:
+        name = plot.get(key, "") or (
+            plot.get("var", "") if key == "yvar" else "") or fallback
+        if not name:
+            continue
+        kinds.add(date_vars.get(name))
+    if not kinds or len(kinds) > 1 or None in kinds:
+        return None
+    return kinds.pop()
+
+
+def _dash_mark_date_axes(fig, x_kind, y_kind):
+    """Remember on *fig* the Stata date kind of each of its axes, so the
+    axis options -- xline(), xscale(range()), xlabel(), xtick() -- read a
+    number given for a date axis in the variable's unit."""
+    fig._dash_date_kinds = (x_kind or None, y_kind or None)
+
+
+def _dash_axis_date_kind(fig, axis):
+    """The date kind *fig*'s ``"x"`` or ``"y"`` axis was drawn with."""
+    kinds = getattr(fig, "_dash_date_kinds", None) or (None, None)
+    return kinds[0] if axis == "x" else kinds[1]
+
+
+def _dash_axis_positions(values, kind):
+    """Numbers given for an axis, as positions on it.
+
+    On a date axis (*kind* set) a number is a value of the variable, in its
+    unit -- days for %td, milliseconds for %tc, periods for %tw, %tm, %tq
+    and %th, years for %ty -- as twoway reads ``xline(14979)``, which it
+    draws at 04jan2001.  The axis is epoch milliseconds, so each is
+    converted through ``_stata_dates_to_datetime``, all at once.  One that
+    is no date Stata shows (``display %td 2936550`` prints the number) is
+    None; on a numeric axis every number is itself and anything else None.
+
+    Returns:
+        A list of floats and Nones, one per value.
+    """
+    vals = []
+    for v in values:
+        try:
+            f = float(v)
+        except (TypeError, ValueError, OverflowError):
+            f = math.nan
+        vals.append(f)
+    if not kind:
+        return [None if math.isnan(f) else f for f in vals]
+    if not vals:
+        return []
+    with warnings.catch_warnings():
+        # The loader's count of values outside the range is about data;
+        # the axis option's own note names these.
+        warnings.simplefilter("ignore")
+        ms = _dash_float_values(_stata_dates_to_datetime(
+            pd.Series(vals, dtype="float64"), kind))
+    return [None if math.isnan(m) else float(m) for m in ms]
+
+
+def _dash_note_not_dates(option, texts, kind):
+    """Name the numbers an axis option gave a date axis that are no date."""
+    if not texts:
+        return
+    shown = ", ".join(_dash_display(str(t), 40) for t in texts[:5])
+    more = "" if len(texts) <= 5 else f" and {len(texts) - 5:,} more"
+    warnings.warn(
+        f"dash: {option}(): {shown}{more} is not a date a %{kind} axis can "
+        f"show (Stata's range is 01jan0100 to 31dec9999); not drawn.",
+        UserWarning, stacklevel=3)
+
+
+def _dash_widget_number(v):
+    """A filter widget's value as a number: a date or datetime as epoch
+    milliseconds, the unit a date column is compared in; NaN when it
+    cannot be read.  A client sets a widget's value, so nothing here
+    raises."""
+    import datetime as _dt
+    try:
+        if isinstance(v, (pd.Timestamp, np.datetime64, _dt.datetime,
+                          _dt.date)):
+            ts = pd.Timestamp(v)
+            if pd.isna(ts):
+                return math.nan
+            return float(ts.to_datetime64().astype("datetime64[ms]")
+                         .astype(np.int64))
+        if isinstance(v, bool):
+            return math.nan
+        return float(v)
+    except (TypeError, ValueError, OverflowError):
+        return math.nan
+
+
+def _dash_kpi_column(col, stat, varname):
+    """A KPI column as a statistic is taken of it, in both render modes: a
+    datetime column as epoch milliseconds -- the representation Bokeh
+    itself uses -- so min, max, mean and the percentiles all work, and a
+    card formats the answer back into a date.  ``sum`` of dates is named.
+    """
+    if not pd.api.types.is_datetime64_any_dtype(col):
+        return col
+    if str(stat).lower().strip() == "sum":
+        # 01jan1970, the epoch the milliseconds count from (the page's
+        # callback sums the same numbers); this said 01jan1960.
+        warnings.warn(
+            f"dash: sum({varname}) adds up dates, which has no meaning. "
+            f"The result is shown as a number of milliseconds since "
+            f"01jan1970.",
+            UserWarning,
+        )
+    # As floats, which hold every millisecond of Stata's range exactly
+    # (under 2**53): an int64 sum wrapped silently past 9.2e18, about
+    # 36,000 dates in 9999 (24sep2026).
+    return (col.dropna().astype("datetime64[ms]").astype("int64")
+            .astype("float64"))
+
+
 def _parse_stata_numeric_fmt(fmt: "str | None") -> "tuple | None":
     """Split a Stata numeric format into ``(width, decimals, kind, comma)``.
 
@@ -736,6 +948,15 @@ def _report_dataset_shape(rows, cols, mode, stacklevel=3):
 #                   all: Chrome holds no string past ~512 MB, about 21 million
 #                   cells at 24 bytes.  Refused, not clamped: which rows to
 #                   drop is not dash's decision.
+#   bytes           the bytes of text in the string values exported.  The
+#                   cells limit counts values, and a strL is exported in
+#                   full since dash writes its own data file (24sep2026):
+#                   60 observations of a 1,000,000-byte strL were 60 values
+#                   and a 60 MB page.  The default, 50 MB, is about what the
+#                   default cells limit makes of numbers (5,000,000 values
+#                   at ~24 bytes is ~120 MB of page with its keys); the
+#                   ceiling, 500 MB, is Chrome's ~512 MB string.  Refused,
+#                   not clamped, as cells are.
 #   filter_options  a dropdown on 200,000 distinct values: 200,001 options,
 #                   38.8 MB of page, a 14.8 MB served app, 954 MB RSS.  A
 #                   list past a thousand entries cannot be read, so a numeric
@@ -752,6 +973,7 @@ def _report_dataset_shape(rows, cols, mode, stacklevel=3):
 # build_options["limits"]; test_resource_limits.py checks the two agree.
 _DASH_LIMITS = {
     "cells":          (5_000_000, 20_000_000, "dash_max_cells"),
+    "bytes":          (50_000_000, 500_000_000, "dash_max_bytes"),
     "graphs":         (100, 1_000, "dash_max_graphs"),
     "plots":          (100, 1_000, "dash_max_plots"),
     "filter_options": (1_000, 100_000, "dash_max_filter_options"),
@@ -830,6 +1052,255 @@ def _dash_refuse_oversized(rows, cols, limits, mode):
         f"dash embeds. Reduce the data in memory first (keep, drop, sample "
         f"or collapse, inside preserve/restore), or "
         f"{_dash_limit_hint('cells', 'a higher value')}.")
+
+
+def _dash_text_bytes(df, string_vars):
+    """The bytes of text, as UTF-8, in *df*'s string columns: the columns
+    named in *string_vars* that the frame holds.  pandas' own string
+    methods, column by column; no Python loop over rows."""
+    total = 0
+    if df is None or not len(df):
+        return 0
+    for col in sorted(set(string_vars or ()) & set(map(str, df.columns))):
+        lens = df[col].astype(str).str.encode("utf-8").str.len()
+        total += int(lens.sum())
+    return total
+
+
+def _dash_refuse_overbytes(df, string_vars, limits, mode, file_bytes=None):
+    """Raise :class:`DashLimitError` when the text in *df*'s string columns
+    is more bytes than the bytes limit.
+
+    The same refusal dash.ado makes before it writes the data file; this
+    one is for a data file that reached the renderer another way.  The
+    values' text is part of the data file, so a file of *file_bytes* no
+    larger than the limit cannot hold more, and is not counted: ordinary
+    data costs nothing.
+    """
+    limit = int(limits["bytes"])
+    if file_bytes is not None and int(file_bytes) <= limit:
+        return
+    nbytes = _dash_text_bytes(df, string_vars)
+    if nbytes <= limit:
+        return
+    nstr = len(set(string_vars or ()) & set(map(str, df.columns)))
+    word = "variable" if nstr == 1 else "variables"
+    raise DashLimitError(
+        f"dash: this {mode} would embed {nbytes:,} bytes of text (in "
+        f"{nstr:,} string {word}), more than the {limit:,} dash embeds. "
+        f"Reduce the data in memory first (keep, drop, sample or collapse, "
+        f"inside preserve/restore), or "
+        f"{_dash_limit_hint('bytes', 'a higher value')}.")
+
+
+#: The key jsonio gave the value label of a missing value: ``.`` is
+#: 2147483621 and ``.a`` .. ``.z`` the 26 after it.  The writer keeps it, so
+#: a data file reads as it always has.
+_DASH_MISSING_LABEL_KEY = 2147483621
+
+def _dash_is_stata_name(name):
+    """True for a Stata variable or label-set name -- letters (Unicode
+    ones too, as Stata 14 allows), digits and underscores, not led by a
+    digit, 32 characters at most -- and nothing else: what the writer lets
+    into the Stata commands it runs.  No quote, backtick, dollar sign,
+    blank or brace passes."""
+    return (isinstance(name, str) and 0 < len(name) <= 32
+            and name.isidentifier())
+
+
+def _dash_label_key(value):
+    """The key a value label is written under: the integer as text, and an
+    extended missing value (``".a"``, as sfi names it) as jsonio's code."""
+    if isinstance(value, str):
+        if not value.startswith("."):
+            return None
+        tail = value[1:]
+        if tail == "":
+            return str(_DASH_MISSING_LABEL_KEY)
+        if len(tail) == 1 and "a" <= tail <= "z":
+            return str(_DASH_MISSING_LABEL_KEY + ord(tail) - ord("a") + 1)
+        return None
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(f) or f != int(f):
+        return None
+    return str(int(f))
+
+
+def _dash_write_stata_data(path, varnames, sfi=None):
+    """Write the data file both renderers read, from the data in memory.
+
+    Called by dash.ado's ``_dash_write_data`` through Stata's own Python,
+    in place of ``jsonio out``.  jsonio's ado returns the JSON it wrote in a
+    macro and expands it inside compound quotes, so a value, a value label
+    or a variable label holding an unclosed compound quote or a lone
+    backtick stopped every export with r(132), and one holding the closing
+    pair or a lone apostrophe with r(109) -- whatever the qualifier; and it
+    wrote every strL as the text ``"null"``, flagged as a number (measured
+    24sep2026, test_string_values.cscript).  Here each value is read by
+    value through the Stata Function Interface and written by ``json``: no
+    value passes through a macro, and every string Stata holds as text --
+    quotes, backticks, dollar signs, backslashes, control bytes, any UTF-8
+    -- arrives as Stata holds it.
+
+    The layout is jsonio's, key for key: ``values`` (one object per
+    observation, a missing number the text ``"null"``, every other number
+    a double), ``variableIsString`` (a strL too), ``variableNames``,
+    ``variableLabels``, ``valueLabelNames``, ``valueLabels`` (keyed by
+    variable, each label keyed by its value as text, an extended missing
+    value by jsonio's code, :func:`_dash_label_key`), ``numberOfRecords``,
+    ``numberOfVariables``, ``firstRecordId``, ``lastRecordId`` and
+    ``variableIndices``.  A number is its stored value whatever its display
+    format; the formats travel in the spec.
+
+    Text that is not UTF-8, which no page can carry -- in a value, a
+    variable label or a value label -- is read through Stata's own
+    ``ustrfix()``, each invalid sequence U+FFFD as jsonio wrote it, and a
+    note names where (test_adversarial.cscript P20-28 draws such data).  A
+    binary strL, which is not text, is refused (jsonio wrote "null").  The
+    names in the Stata commands those reads run are checked to be Stata
+    names first (:func:`_dash_is_stata_name`).
+
+    Args:
+        path:     The file to write, replaced.
+        varnames: The variables, blank-separated, as Stata stores them; a
+                  name given twice is written once.
+        sfi:      The Stata Function Interface module; ``None`` imports
+                  Stata's own (a test hands in a stand-in).
+
+    Returns:
+        ``""`` when the file was written, else the refusal, one line that
+        names the variable, for dash.ado to show; no file is written then.
+        A note about text that is not UTF-8 is shown, not returned.
+    """
+    if sfi is None:
+        import sfi  # noqa: F811 -- Stata's own module, present in Stata only
+    data, vlab, tk = sfi.Data, sfi.ValueLabel, sfi.SFIToolkit
+    names = list(dict.fromkeys(str(varnames).split()))
+    nobs = int(data.getObsTotal())
+    # Names reach a Stata command below (the ustrfix() reads), so each must
+    # be a Stata name and nothing else; dash.ado hands in unab's names.
+    for v in names:
+        if not _dash_is_stata_name(v):
+            return f"dash: {v!r} is not a variable name the export can read."
+
+    def _note(what):
+        # What is named is a Stata name, never the text itself.
+        tk.displayln(f"{{txt}}dash: {what} holds text that is not valid "
+                     f"UTF-8; each invalid byte is shown as the replacement "
+                     f"character, as ustrfix() shows it.  Translate the data "
+                     f"first to show it as written: help unicode translate.")
+
+    def _column(v, **kw):
+        # One variable comes back as a flat list, one value per observation.
+        got = data.get(var=v, **kw) if nobs else []
+        return got if isinstance(got, list) else [got]
+
+    is_str, cols = {}, {}
+    for v in names:
+        is_str[v] = bool(data.isVarTypeString(v))
+        if not is_str[v]:
+            # Every missing value, . and .a to .z, as None: jsonio's "null".
+            cols[v] = ["null" if x is None else float(x)
+                       for x in _column(v, missingval=None)]
+            continue
+        try:
+            vals = _column(v)
+        except (UnicodeDecodeError, SystemError):
+            # Read through Stata's own ustrfix(), into a variable made for
+            # the read and dropped at once: each invalid sequence becomes
+            # U+FFFD, as jsonio wrote it, and the page is drawn.
+            tmp = "__dashfix" + secrets.token_hex(6)
+            tk.stata(f"quietly generate strL {tmp} = ustrfix({v})")
+            try:
+                vals = _column(tmp)
+            finally:
+                tk.stata(f"capture drop {tmp}")
+            _note(f"string variable {v}")
+        if data.isVarTypeStrL(v):
+            for i in range(nobs):
+                if sfi.StrLConnector(v, i).isBinary():
+                    return (f"dash: strL variable {v} holds binary data in "
+                            f"observation {i + 1}, which is not text a "
+                            f"dashboard can show.  Drop it or replace that "
+                            f"value first.")
+        cols[v] = [str(x) for x in vals]
+
+    var_labels, label_names, value_labels = {}, {}, {}
+    for v in names:
+        try:
+            var_labels[v] = str(data.getVarLabel(v))
+        except (UnicodeDecodeError, SystemError):
+            g = "_dashfix" + secrets.token_hex(6)
+            tk.stata(f'quietly mata: st_global("{g}", '
+                     f'ustrfix(st_varlabel("{v}")))')
+            try:
+                var_labels[v] = str(sfi.Macro.getGlobal(g))
+            finally:
+                tk.stata(f"capture macro drop {g}")
+            _note(f"the variable label of {v}")
+        lab = "" if is_str[v] else str(vlab.getVarValueLabel(v) or "")
+        if not lab or not _dash_is_stata_name(lab):
+            continue
+        label_names[v] = lab
+        try:
+            pairs = vlab.getValueLabels(lab)
+        except (UnicodeDecodeError, SystemError):
+            # A copy of the set, each text through ustrfix(), read and
+            # dropped.
+            h = secrets.token_hex(6)
+            tmp, mv, mt = "_dashfix" + h, "_dashfixv" + h, "_dashfixt" + h
+            tk.stata(f'quietly mata: {mv} = .; {mt} = ""; '
+                     f'st_vlload("{lab}", {mv}, {mt}); '
+                     f'st_vlmodify("{tmp}", {mv}, ustrfix({mt}))')
+            try:
+                pairs = vlab.getValueLabels(tmp)
+            finally:
+                tk.stata(f"capture mata: mata drop {mv} {mt}")
+                tk.stata(f"capture label drop {tmp}")
+            _note(f"value label {lab}, on {v},")
+        out = {}
+        for key, text in (pairs or {}).items():
+            k = _dash_label_key(key)
+            if k is not None:
+                out[k] = str(text)
+        value_labels[v] = out
+
+    ordered = [cols[v] for v in names]
+    doc = {
+        "values": ([dict(zip(names, row)) for row in zip(*ordered)]
+                   if names else []),
+        "firstRecordId": 1,
+        "lastRecordId": nobs,
+        "variableIndices": [int(data.getVarIndex(v)) + 1 for v in names],
+        "variableIsString": is_str,
+        "variableNames": names,
+        "variableLabels": var_labels,
+        "valueLabelNames": label_names,
+        "valueLabels": value_labels,
+        "numberOfRecords": nobs,
+        "numberOfVariables": len(names),
+    }
+    # allow_nan=False: Stata holds no NaN or infinity, and a number that is
+    # not JSON must never reach the file.  ensure_ascii=False: UTF-8 as is.
+    # dumps, then one write: json.dump streams the same text in small
+    # chunks and took three times as long over 100,000 observations.
+    text = json.dumps(doc, ensure_ascii=False, allow_nan=False,
+                      separators=(",", ":"))
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(text)
+    return ""
+
+
+#: The functions dash.ado calls by name on this module, loaded as
+#: ``_dash_render_export`` (its program _dash_write_data), rather than
+#: through ``main()``.  Named here so the call graph of the dead-code audit
+#: (scripts/fncov/fncov_reach.py), whose roots are this module's own code,
+#: counts them as run; test_string_value_export.py holds this tuple and
+#: dash.ado's calls to the same names.
+_DASH_ADO_ENTRY_POINTS = (_dash_write_stata_data,)
 
 
 #: The blanks a layout() may carry: the six ASCII ones.  str.strip(),
@@ -4300,6 +4771,76 @@ class GlyphMapper:
         new_data["_y_jit"] = y_jit.tolist()
         return ColumnDataSource(new_data), "_x_jit", "_y_jit"
 
+    def _linked_jitter_columns(self, source, xvar, yvar, options, view):
+        """Put a jittered scatter's points on the link group's source.
+
+        A jittered scatter drew from a copy holding its jittered points,
+        and under link() that copy is outside the shared source whose
+        selection IS the link: a selection made in another linked graph
+        never showed on it, nor one made on it in the others (BUGS.md,
+        measured 24sep2026 under node, saved and served alike).  Here the
+        points are added to the shared source as two columns of this
+        layer's own -- ``_x_jit``/``_y_jit``, or ``_x_jit_2``/``_y_jit_2``
+        and so on past any name the source already holds, a variable's
+        included -- NaN on every row the layer does not draw, and the layer
+        draws them through the view it was handed.  The values are the
+        ones jitter() always drew: ``_build_jitter_source`` over the rows
+        the view keeps that have both values, in their order, with the
+        same seed.  The filter scripts carry the columns by row identity
+        (saved) or row label (served), as every column of that source.
+
+        Args:
+            source:  The source the layer would draw from.
+            xvar:    Its x variable.
+            yvar:    Its y variable.
+            options: The layer's options.
+            view:    The CDSView it draws through, or None.
+
+        Returns:
+            ``(source, x column, y column)`` to draw, or None when *source*
+            is not a link group's source (the copy is drawn, as before).
+        """
+        if not getattr(source, "_dash_link_source", False):
+            return None
+        data = source.data
+        if xvar not in data or yvar not in data:
+            return None
+        n = len(data[xvar])
+        if len(data[yvar]) != n:
+            return None
+        present = ~(pd.isna(pd.Series(list(data[xvar])))
+                    | pd.isna(pd.Series(list(data[yvar])))).to_numpy()
+        keep = present.copy()
+        sel = self._view_mask(view, n)
+        if sel is not None:
+            keep &= np.asarray(sel, dtype=bool)
+        sub = {}
+        for col in dict.fromkeys([xvar, yvar]):
+            v = data[col]
+            sub[col] = (np.asarray(v)[keep]
+                        if getattr(v, "dtype", None) is not None
+                        else [x for x, k in zip(list(v), keep) if k])
+        jit, jx, jy = self._build_jitter_source(ColumnDataSource(sub), xvar,
+                                                yvar, options)
+        if jx == xvar and jy == yvar:
+            # jitter(0), or a value the reader refused: nothing to jitter,
+            # so the layer's own columns are drawn.
+            return source, xvar, yvar
+        k = 1
+        while True:
+            sfx = "" if k == 1 else f"_{k}"
+            xname, yname = f"_x_jit{sfx}", f"_y_jit{sfx}"
+            if xname not in data and yname not in data:
+                break
+            k += 1
+        xs = np.full(n, np.nan)
+        ys = np.full(n, np.nan)
+        xs[keep] = np.asarray(jit.data[jx], dtype=float)
+        ys[keep] = np.asarray(jit.data[jy], dtype=float)
+        source.add(xs, xname)
+        source.add(ys, yname)
+        return source, xname, yname
+
     @staticmethod
     def _carry_cols(source, data, selector=None):
         """Copy the caller's other columns into a derived source's data.
@@ -5394,10 +5935,10 @@ class GlyphMapper:
         """A date variable's marker labels, "." for a missing one.
 
         The saved renderer holds a date variable as datetimes, converted at
-        load; the served app holds Stata's numbers under them (BUGS.md, "The
-        generated server app has no date handling at all"), and labelled a
-        %td variable 14612 where the saved page wrote 03 Jan 2000.  A
-        column of numbers is converted here by the saved renderer's own rule,
+        load, and so does the served app since WP-27 (it held Stata's
+        numbers, and labelled a %td variable 14612 where the saved page
+        wrote 03 Jan 2000).  A column of numbers -- a caller that hands
+        one -- is converted here by the saved renderer's own rule,
         :func:`_stata_dates_to_datetime`, once, so both modes write the same
         dates.
         """
@@ -5672,7 +6213,28 @@ class GlyphMapper:
             except ValueError:
                 pass
 
-        if view is not None:
+        _jittered = bool(str(options.get("jitter", "") or "").strip())
+        _linked_jit = (self._linked_jitter_columns(source, xvar, yvar,
+                                                   options, view)
+                       if _jittered else None)
+        if _linked_jit is not None:
+            # The link group's source, drawn through the view, with this
+            # layer's jittered points as columns of its own on it: the
+            # selection that IS the link reaches them (BUGS.md, 24sep2026).
+            plot_source, eff_x, eff_y = _linked_jit
+        elif view is not None and _jittered:
+            # A jittered copy is a source of its own, which the view's
+            # flags -- sized to the caller's source -- would mask by
+            # position once a filter move shortened it.  The layer's rows
+            # are taken first and the copy drawn without a view, as the
+            # served app draws it from the layer's own rows.
+            _sel = self._view_mask(view, len(source.data[xvar]))
+            if _sel is not None:
+                source = self._subset_source(source, _sel)
+                view = None
+        if _linked_jit is not None:
+            clean_source = source
+        elif view is not None:
             # Shared source (by+link): skip NaN-drop, use source directly
             clean_source = source
         else:
@@ -5690,9 +6252,10 @@ class GlyphMapper:
                 clean_source = source
 
         # Apply jitter if requested
-        plot_source, eff_x, eff_y = self._build_jitter_source(
-            clean_source, xvar, yvar, options
-        )
+        if _linked_jit is None:
+            plot_source, eff_x, eff_y = self._build_jitter_source(
+                clean_source, xvar, yvar, options
+            )
 
         _default_color = self.scheme.default_color(color_idx, "scatter")
         _scatter_kwargs: dict = dict(
@@ -5716,9 +6279,33 @@ class GlyphMapper:
         # colorvar: map a variable's values to fill/line color via a color mapper
         self._apply_colorvar(fig, r, plot_source, options)
         # mlabel uses original column names (not jittered) for readable labels
-        self._apply_mlabel_opts(fig, plot_source, options, xvar, yvar)
+        # A LabelSet takes no view, so under one -- a layer's own if/in, a
+        # linked by() panel -- the labels are drawn from a copy of the rows
+        # the view selects: they labelled every row of the graph, ten
+        # labels beside six markers for `in 3/8' (BUGS.md, 24sep2026).
+        _label_source = plot_source
+        if view is not None and _dash_mlabel_names(options)[0]:
+            _sel = self._view_mask(view, len(plot_source.data[xvar]))
+            if _sel is not None:
+                _label_source = self._subset_source(plot_source, _sel)
+        self._apply_mlabel_opts(fig, _label_source, options, xvar, yvar)
         fig.add_tools(self._hover_tool(yvar, xvar, renderers=[r]))
         return r
+
+    @staticmethod
+    def _subset_source(source: ColumnDataSource, sel) -> ColumnDataSource:
+        """A copy of *source* holding the rows boolean *sel* keeps, every
+        column with it (the row identity included), in their order.  A
+        date column stays an array: a list of datetimes holding NaT is
+        written by Bokeh as a bare NaN, which JSON refuses."""
+        sel = np.asarray(sel, dtype=bool)
+        data = {}
+        for k, v in dict(source.data).items():
+            if getattr(v, "dtype", None) is not None:
+                data[k] = np.asarray(v)[sel]
+            else:
+                data[k] = [x for x, keep in zip(list(v), sel) if keep]
+        return ColumnDataSource(data)
 
     def map_line(
         self,
@@ -5755,8 +6342,27 @@ class GlyphMapper:
         # column rides along: twoway draws no mlabel() on a line (below).
         _cols = {xvar: source.data[xvar], yvar: source.data[yvar]}
         df = pd.DataFrame(_cols)
-        df = df.dropna(subset=[xvar, yvar]).sort_values(xvar)
-        sorted_source = ColumnDataSource(df)
+        # The layer's view -- a by() panel, a linked graph's or a layer's
+        # own qualifier -- is applied HERE, to the rows in the caller's
+        # order, and not attached to the renderer: its flags are positions
+        # in *source*, and attached to the sorted copy they picked other
+        # rows (a linked by() panel's line drew both groups), and Bokeh
+        # refuses any filter on a Line, E-1024, logged on every saved
+        # build (measured 24sep2026).  map_area masks the same way.
+        _line_sel = self._view_mask(view, len(df))
+        if _line_sel is not None:
+            df = df[_line_sel]
+            view = None
+        # The sort is stable, so the rows a saved-page filter move keeps
+        # (by their row id, carried below) are in the order a sort of them
+        # alone gives (_collect_derived_sources).
+        df = df.dropna(subset=[xvar, yvar]).sort_values(xvar, kind="stable")
+        # Each point is an observation, so the caller's other columns --
+        # the variables hover() names -- ride along in the same order
+        # (df's index is the row's position in *source*).
+        _line_data = dict(ColumnDataSource(df).data)
+        self._carry_cols(source, _line_data, df.index.to_numpy())
+        sorted_source = ColumnDataSource(_line_data)
 
         _line_kwargs: dict = dict(
             x=xvar,
@@ -5817,14 +6423,17 @@ class GlyphMapper:
         Returns:
             List of two GlyphRenderers [line_renderer, scatter_renderer].
         """
-        # Pass options without mlabel to sub-calls; apply mlabel once below
+        # The markers carry the labels, once: map_scatter labels the rows it
+        # draws -- under a layer's own if/in, only those.  They were drawn
+        # here from the caller's whole source, so a connected plot with its
+        # own qualifier labelled every row of its graph.
         opts_no_label = {k: v for k, v in options.items() if k != "mlabel"}
         renderers = [
             self.map_line(fig, source, yvar, xvar, opts_no_label, view=view,
                           color_idx=color_idx, connected=True),
-            self.map_scatter(fig, source, yvar, xvar, opts_no_label, view=view, color_idx=color_idx),
+            self.map_scatter(fig, source, yvar, xvar, options, view=view,
+                             color_idx=color_idx),
         ]
-        self._apply_mlabel_opts(fig, source, options, xvar, yvar)
         return renderers
 
     def map_area(
@@ -5853,6 +6462,9 @@ class GlyphMapper:
         # panel or a linked graph's qualifier.  map_area builds its own
         # ColumnDataSource below, so a view attached to the renderer would
         # have nothing left to filter.
+        # The row positions as well, so the caller's other columns -- the
+        # variables hover() names -- can ride along with each point.
+        _area_idx = self._masked_index(source, view, xvar, yvar)
         x_arr, y_arr = self._masked(source, view, xvar, yvar)
 
         # Bokeh's varea joins its points in the order it is given them, and
@@ -5867,6 +6479,12 @@ class GlyphMapper:
             _order = np.argsort(x_arr, kind="stable")
             x_arr = x_arr[_order]
             y_arr = y_arr[_order]
+            _area_idx = _area_idx[_order]
+        # The row identity, for the border line's copy: the saved page's
+        # filter callback keeps a move's rows of each copy by it.
+        _area_ids = None
+        if _ROW_ID_COLUMN in source.data:
+            _area_ids = np.asarray(source.data[_ROW_ID_COLUMN])[_area_idx]
 
         # base() option sets the lower boundary; default 0
         base_val = 0.0
@@ -5879,7 +6497,8 @@ class GlyphMapper:
         _y1_col = f"{yvar}_base"
 
         # _y1_col = baseline, yvar = upper boundary
-        area_source = ColumnDataSource({xvar: x_arr, _y1_col: y1_base, yvar: y_arr})
+        area_source = ColumnDataSource(self._carry_cols(
+            source, {xvar: x_arr, _y1_col: y1_base, yvar: y_arr}, _area_idx))
         r = fig.varea(x=xvar, y1=_y1_col, y2=yvar, source=area_source,
                       fill_color=self.scheme.default_color(color_idx, "area"),
                       # `intensity area' was parsed and never read, so an
@@ -5904,7 +6523,10 @@ class GlyphMapper:
         if any(k in options for k in _LINE_KEYS):
             # Default border color = same as fill color
             border_color = r.glyph.fill_color or "#aec7e8"
-            border_source = ColumnDataSource({xvar: x_arr, yvar: y_arr})
+            _border_data = {xvar: x_arr, yvar: y_arr}
+            if _area_ids is not None and _ROW_ID_COLUMN not in _border_data:
+                _border_data[_ROW_ID_COLUMN] = _area_ids
+            border_source = ColumnDataSource(_border_data)
             line_r = fig.line(x=xvar, y=yvar, source=border_source,
                                line_color=border_color, line_width=self.scheme.default_line_width)
             self._apply_line_opts(line_r, options)
@@ -5981,9 +6603,11 @@ class GlyphMapper:
             _bx = (_dash_float_values(df[xvar])
                    if df[xvar].dtype.kind == "M" else df[xvar])
             x_vals = sorted(set(float(v) for v in _bx))
+            _bar_numeric = True
         except (ValueError, TypeError):
             # String xvar: use uniform spacing (bar width = 0.8)
             x_vals = list(range(len(df[xvar].unique())))
+            _bar_numeric = False
         if len(x_vals) >= 2:
             gaps = [x_vals[i+1] - x_vals[i] for i in range(len(x_vals)-1)]
             bar_width = 0.8 * min(gaps)
@@ -6003,6 +6627,7 @@ class GlyphMapper:
                                          lo=_MIN_BAR_WIDTH)
                 if _bw is not None:
                     bar_width = _bw
+                    _bar_numeric = False
                 break
 
         # base() option sets the bar bottom; default 0
@@ -6033,6 +6658,11 @@ class GlyphMapper:
             _vbar_kwargs["line_alpha"] = _bar_line_alpha
         # No view here: clean_source already holds only the selected rows.
         r = fig.vbar(**_vbar_kwargs)
+        if _bar_numeric:
+            # The width is the rows' spacing, so a move that changes the
+            # rows changes it, as the served app redraws it.
+            self._tag_spacing(clean_source, xvar, 0.8, 0.8, distinct=True,
+                              glyphs=[r.glyph])
         if "color" in options:
             try:
                 c = self.tr.translate_mcolor(options["color"])
@@ -6059,8 +6689,29 @@ class GlyphMapper:
         # VBar supports line_width/line_dash/line_color natively; lcolor/lwidth/lpattern
         # are applied after bfcolor/blcolor so blcolor retains priority for line color.
         self._apply_line_opts(r, options)
-        self._apply_mlabel_opts(fig, source, options, xvar, yvar)
+        # The labels of the bars drawn -- the layer's own rows -- from the
+        # source the bars are drawn from.
+        self._apply_mlabel_opts(fig, clean_source, options, xvar, yvar)
         return r
+
+    @staticmethod
+    def _tag_spacing(source, xcol, factor, fallback, distinct=True,
+                     cols=(), glyphs=()):
+        """Mark *source* as drawn at a width taken from its x spacing.
+
+        A bar's width and a cap's half-width are *factor* times the
+        smallest gap between the x values of the rows drawn (distinct ones
+        when *distinct*), *fallback* with fewer than two.  The saved page's
+        filter callback recomputes it from the rows a move keeps, writing
+        ``x - w`` and ``x + w`` into each ``(column, sign)`` of *cols* and
+        ``w`` into each glyph's width, as the served app's redraw does.
+        """
+        source._dash_spacing = {
+            "x": str(xcol), "factor": float(factor),
+            "fallback": float(fallback), "distinct": bool(distinct),
+            "cols": [[str(c), int(sg)] for c, sg in cols],
+        }
+        source._dash_spacing_glyphs = list(glyphs)
 
     def map_spike(
         self,
@@ -6409,7 +7060,15 @@ class GlyphMapper:
         # weight w -- aweight, fweight or pweight, whose point estimates all
         # coincide (measured: b = -.0062661022 on auto [w=rep78] for every
         # type) -- is passed as sqrt(w).
-        coeffs = np.polyfit(x, y, 1, w=None if w is None else np.sqrt(w))
+        if float(np.ptp(x)) == 0.0:
+            # No spread in x: regress omits it and the fit is the constant,
+            # the (weighted) mean of y -- every point of twoway's line is at
+            # (x, mean), measured 24sep2026.  np.polyfit's answer here is a
+            # minimum-norm line with a slope, and numpy warned "Polyfit may
+            # be poorly conditioned" into the user's log.
+            coeffs = np.array([0.0, float(np.average(y, weights=w))])
+        else:
+            coeffs = np.polyfit(x, y, 1, w=None if w is None else np.sqrt(w))
         # _fit_grid is Stata's rule -- n() points, 100 by default, over the
         # OBSERVED range.  This used to be 200 points over a range padded
         # 10% at each end, so lfit and lfitci drew the same fit at different
@@ -6512,13 +7171,16 @@ class GlyphMapper:
                                              xvar, yvar)
         n = len(x)
 
-        # Need at least 3 points: df = n-2 must be >= 1, and we need
-        # x to vary (non-zero variance) to avoid division by zero in se_fit.
+        # Need at least 3 points.  An x with no spread is drawn: regress
+        # omits it and fits the constant (_dash_wls drops the zero column),
+        # so the line is the mean of y and the band the mean's interval --
+        # as twoway lfit draws the mean (measured 24sep2026).  This drew
+        # nothing, and said the layer drew nothing.
         empty_ci_src = ColumnDataSource({
             "x_fit": [], "y_fit": [], "y_lower": [], "y_upper": []
         })
         _lfitci_color = self.scheme.default_color(color_idx, "line")
-        if n < 3 or np.std(x) == 0.0:
+        if n < 3:
             band_r = fig.varea(
                 x="x_fit", y1="y_lower", y2="y_upper",
                 source=empty_ci_src, fill_alpha=_CI_BAND_ALPHA, fill_color=_lfitci_color
@@ -7968,7 +8630,9 @@ class GlyphMapper:
             v: _dash_float_values(source.data[v])[_ord]
             for v in (xvar, y1var, y2var)
         }
-        source = ColumnDataSource(_cols)
+        # The caller's other columns -- the variables hover() names --
+        # ride along in the same order: each point is an observation.
+        source = ColumnDataSource(self._carry_cols(source, _cols, _ord))
         view = None
 
         _varea_kwargs: dict = dict(x=xvar, y1=y1var, y2=y2var, source=source,
@@ -8031,6 +8695,12 @@ class GlyphMapper:
         if _rb_sel is not None:
             _rb_x = _rb_x[_rb_sel]
         x_vals = sorted(set(float(v) for v in _rb_x if not math.isnan(v)))
+        # Drawn from a copy of the layer's own rows, with no view, so the
+        # saved page's filter callback keeps a move's rows of it and
+        # recomputes the width from them (_tag_spacing).
+        source = (self._subset_source(source, _rb_sel) if _rb_sel is not None
+                  else ColumnDataSource(dict(source.data)))
+        view = None
         bar_width = 0.8 * min(
             (x_vals[i+1] - x_vals[i] for i in range(len(x_vals)-1)),
             default=0.8,
@@ -8043,6 +8713,8 @@ class GlyphMapper:
         if view is not None:
             _rbar_kwargs["view"] = view
         r = fig.vbar(**_rbar_kwargs)
+        self._tag_spacing(source, xvar, 0.8, 0.64, distinct=True,
+                          glyphs=[r.glyph])
         # color() fills the bar and draws its outline, as map_bar reads it:
         # twoway's rbar with color(red) is filled #FF3333 and stroked
         # #FF0000 (SVG, 23sep2026).  Only _apply_line_opts read color()
@@ -8158,10 +8830,15 @@ class GlyphMapper:
         # then changed how WIDE the bars were as well as which appeared.
         # Measured: 0.8 where plotting the same subset alone gives 8.0.
         # Estimate cap half-width from x spacing
-        _cap_x = x_arr
-        _cap_sel = self._view_mask(view, len(_cap_x))
+        # The layer's own rows are taken first and the copy drawn with no
+        # view, so the saved page's filter callback keeps a move's rows of
+        # it and recomputes the caps from them (_tag_spacing).
+        _cap_sel = self._view_mask(view, len(x_arr))
         if _cap_sel is not None:
-            _cap_x = _cap_x[_cap_sel]
+            x_arr, y1_arr, y2_arr = (x_arr[_cap_sel], y1_arr[_cap_sel],
+                                     y2_arr[_cap_sel])
+        view = None
+        _cap_x = x_arr
         x_sorted = np.sort(_cap_x[~np.isnan(_cap_x)])
         if len(x_sorted) >= 2:
             cap_hw = 0.2 * np.min(np.diff(x_sorted))
@@ -8171,12 +8848,13 @@ class GlyphMapper:
         _x0_col = f"{xvar}_x0_cap"
         _x1_col = f"{xvar}_x1_cap"
         # The caller's other columns ride along -- any variable hover()
-        # names.  The source keeps every row here (see above), so they are
-        # carried whole.
+        # names, and the row identity -- for the rows drawn.
         cap_source = ColumnDataSource(self._carry_cols(source, {
             xvar: x_arr, y1var: y1_arr, y2var: y2_arr,
             _x0_col: x_arr - cap_hw, _x1_col: x_arr + cap_hw,
-        }))
+        }, _cap_sel))
+        self._tag_spacing(cap_source, xvar, 0.2, 0.2, distinct=False,
+                          cols=((_x0_col, -1), (_x1_col, 1)))
 
         _rcap_color = self.scheme.default_color(color_idx, "rcap")
         _spine_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var,
@@ -8238,7 +8916,9 @@ class GlyphMapper:
             v: _dash_float_values(source.data[v])[_ord]
             for v in (xvar, y1var, y2var)
         }
-        source = ColumnDataSource(_cols)
+        # The caller's other columns -- the variables hover() names --
+        # ride along in the same order: each point is an observation.
+        source = ColumnDataSource(self._carry_cols(source, _cols, _ord))
         view = None
 
         # Both boundaries in the layer's own colour: one plot, one pstyle.
@@ -8366,6 +9046,14 @@ class GlyphMapper:
         x_arr = np.array(_dash_float_values(source.data[xvar]))
         y_arr = np.array(_dash_float_values(source.data[yvar]))
         mask = ~(np.isnan(x_arr) | np.isnan(y_arr))
+        # The layer's own rows, before the copy is built: the view's flags
+        # are sized to the caller's source, and on this shorter copy they
+        # picked rows by position -- and went stale once the saved page's
+        # filter callback shortened it.  The copy is drawn with no view.
+        _dl_sel = self._view_mask(view, len(x_arr))
+        if _dl_sel is not None:
+            mask &= _dl_sel
+        view = None
         x_arr, y_arr = x_arr[mask], y_arr[mask]
         # base(#): the value the drops run to, 0 by default
         # (twoway_dropline.sthlp; measured 23sep2026 from the SVG of `twoway
@@ -8481,20 +9169,32 @@ class GlyphMapper:
         # but the spacing was taken from the whole column, and a qualifier
         # then changed how WIDE the bars were as well as which appeared.
         # Measured: 0.8 where plotting the same subset alone gives 8.0.
-        _cap_x = x_arr
-        _cap_sel = self._view_mask(view, len(_cap_x))
+        # The layer's own rows are taken first and the copy drawn with no
+        # view, so the saved page's filter callback keeps a move's rows of
+        # it and recomputes the caps from them (_tag_spacing).
+        _cap_sel = self._view_mask(view, len(x_arr))
+        _label_source = source
         if _cap_sel is not None:
-            _cap_x = _cap_x[_cap_sel]
+            x_arr, y1_arr, y2_arr = (x_arr[_cap_sel], y1_arr[_cap_sel],
+                                     y2_arr[_cap_sel])
+            if _dash_mlabel_names(options)[0]:
+                _label_source = self._subset_source(source, _cap_sel)
+        view = None
+        _cap_x = x_arr
         x_sorted = np.sort(_cap_x[~np.isnan(_cap_x)])
         if len(x_sorted) >= 2:
             cap_hw = 0.2 * float(np.min(np.diff(x_sorted)))
         else:
             cap_hw = 0.2
 
-        cap_source = ColumnDataSource({
+        # The layer's rows, and with them the caller's other columns -- the
+        # row identity and the variables hover() names.
+        cap_source = ColumnDataSource(self._carry_cols(source, {
             "x": x_arr, "y1": y1_arr, "y2": y2_arr,
             "x0_cap": x_arr - cap_hw, "x1_cap": x_arr + cap_hw,
-        })
+        }, _cap_sel))
+        self._tag_spacing(cap_source, "x", 0.2, 0.2, distinct=False,
+                          cols=(("x0_cap", -1), ("x1_cap", 1)))
 
         # Two defaults: the spine and caps are an rcap and take `color
         # p#'; the symbols are markers and take `color p#mark'.
@@ -8536,9 +9236,10 @@ class GlyphMapper:
         # twoway_rcapsym.sthlp; measured, twenty labels for ten
         # observations, and an end that is missing unlabelled on its own).
         # dash labelled the top end only.  One LabelSet per end, both over
-        # the caller's source, as the top one always was.
-        self._apply_mlabel_opts(fig, source, options, xvar, y1var)
-        self._apply_mlabel_opts(fig, source, options, xvar, y2var)
+        # the caller's source, as the top one always was -- restricted to
+        # the layer's own rows, which it labelled every row of.
+        self._apply_mlabel_opts(fig, _label_source, options, xvar, y1var)
+        self._apply_mlabel_opts(fig, _label_source, options, xvar, y2var)
         return [spine, bot_cap, top_cap, bot_dot, top_dot]
 
     def map_scatteri(
@@ -8687,7 +9388,11 @@ class GlyphMapper:
         if _pc_sel is not None:
             clean = clean[_pc_sel]
         clean = clean.dropna()
-        source_clean = ColumnDataSource(clean)
+        # The caller's other columns -- hover()'s variables -- ride along;
+        # clean's index is each row's position in *source*.
+        _pcs_data = dict(ColumnDataSource(clean).data)
+        self._carry_cols(source, _pcs_data, clean.index.to_numpy())
+        source_clean = ColumnDataSource(_pcs_data)
         _pcseg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                                     source=source_clean,
                                     line_color=self.scheme.default_color(color_idx, "pcspike"),
@@ -8807,6 +9512,10 @@ class GlyphMapper:
             clean["__mlabel_values__"] = (
                 _lv if getattr(_lv, "dtype", None) is not None
                 and _lv.dtype.kind == "M" else list(_lv))
+        # The row identity rides along, for the saved page's filter callback.
+        _pc_has_ids = _ROW_ID_COLUMN in source.data
+        if _pc_has_ids:
+            clean["__dash_pc_row__"] = list(source.data[_ROW_ID_COLUMN])
         _pc_sel = self._view_mask(view, len(clean))
         if _pc_sel is not None:
             clean = clean[_pc_sel]
@@ -8816,6 +9525,9 @@ class GlyphMapper:
         x_all = np.concatenate([clean[x1var].values, clean[x2var].values])
         y_all = np.concatenate([clean[y1var].values, clean[y2var].values])
         _pc_cols = {"x": x_all.tolist(), "y": y_all.tolist()}
+        if _pc_has_ids:
+            _pc_ids = list(clean["__dash_pc_row__"])
+            _pc_cols[_ROW_ID_COLUMN] = _pc_ids + _pc_ids
         # The label goes at the FIRST point only -- twoway: "By default, the
         # labels are placed at ... the point defined by y1var and x1var"
         # (twoway_pcarrow.sthlp); measured on pcscatter, ten labels for ten
@@ -8838,6 +9550,11 @@ class GlyphMapper:
             else:
                 _labs = list(clean["__mlabel_values__"])
                 _pc_cols["__mlabel_values__"] = _labs + _labs
+        # Both markers of an observation carry its other columns -- the
+        # variables hover() names; clean's index is the row in *source*.
+        _pc_rows = clean.index.to_numpy()
+        self._carry_cols(source, _pc_cols,
+                         np.concatenate([_pc_rows, _pc_rows]))
         pc_source = ColumnDataSource(_pc_cols)
 
         _pcsc_kwargs: dict = dict(source=pc_source,
@@ -8878,10 +9595,46 @@ class GlyphMapper:
             _lv = source.data[_lab]
             clean[_lab] = (_lv if getattr(_lv, "dtype", None) is not None
                            and _lv.dtype.kind == "M" else list(_lv))
+        # The row identity rides along, for the saved page's filter callback.
+        if _ROW_ID_COLUMN in source.data and _ROW_ID_COLUMN not in clean:
+            clean[_ROW_ID_COLUMN] = list(source.data[_ROW_ID_COLUMN])
         _pc_sel = self._view_mask(view, len(clean))
         if _pc_sel is not None:
             clean = clean[_pc_sel]
         return clean.dropna(subset=coords)
+
+    @staticmethod
+    def _add_arrow_heads(fig, pc_source, y1var, x1var, y2var, x2var, color,
+                         line_width, end, start=None):
+        """Add ONE Arrow annotation drawing a head on every row of
+        *pc_source*, the source the layer's shaft draws from.
+
+        Its coordinates are fields of that source, so the heads are always
+        the rows the shaft draws: a filter move or a layer's own if()/in()
+        that rewrites the source moves both.  Nothing is added for a source
+        with no rows.
+
+        Args:
+            fig:        Bokeh Figure.
+            pc_source:  The shaft's ColumnDataSource.
+            y1var, x1var, y2var, x2var: Its coordinate columns.
+            color:      Line colour of the arrow.
+            line_width: Line width of the arrow (the shaft's).
+            end, start: Arrow heads (``start`` None draws no tail head).
+
+        Returns:
+            The Arrow annotation, or None when nothing was added.
+        """
+        n = len(next(iter(pc_source.data.values()), []))
+        if not n:
+            return None
+        head = Arrow(end=end, start=start,
+                     x_start={"field": x1var}, y_start={"field": y1var},
+                     x_end={"field": x2var}, y_end={"field": y2var},
+                     source=pc_source, line_color=color,
+                     line_width=line_width)
+        fig.add_layout(head)
+        return head
 
     def map_pcarrow(
         self,
@@ -8919,7 +9672,10 @@ class GlyphMapper:
         # source selected the wrong observations.
         clean = self._pc_clean_with_label(source, y1var, x1var, y2var, x2var,
                                           options, view)
-        pc_source = ColumnDataSource(clean)
+        # hover()'s variables ride along; clean's index is the source row.
+        pc_source = ColumnDataSource(self._carry_cols(
+            source, dict(ColumnDataSource(clean).data),
+            clean.index.to_numpy()))
 
         color = self.scheme.default_color(color_idx, "pcarrow")
         try:
@@ -8940,32 +9696,20 @@ class GlyphMapper:
         # Resolve line_width for Arrow annotations (same value as segment after opts applied)
         arrow_lw = seg.glyph.line_width
 
-        # One Arrow head annotation per row, added to the figure at once.
-        # One add_layout() per row appends to a Bokeh list property, which
-        # copies the list every time: measured by the WP-22 review, 1,000
-        # arrows took 1.45 s and 8,000 took 46 s -- quadratic, and pcarrowi's
-        # list is as long as a command line allows.  The models, their order
-        # and every property are what add_layout() made.
-        _heads = [
-            Arrow(
-                end=OpenHead(size=10, line_color=color),
-                x_start=float(xs),
-                y_start=float(ys),
-                x_end=float(xe),
-                y_end=float(ye),
-                line_color=color,
-                line_width=arrow_lw,
-            )
-            # Through _dash_float_values: a date coordinate is a Timestamp
-            # here, which float() refused, and the whole figure was lost
-            # (measured 24sep2026); in milliseconds it lands on its axis.
-            for ys, xs, ye, xe in zip(_dash_float_values(clean[y1var]).tolist(),
-                                      _dash_float_values(clean[x1var]).tolist(),
-                                      _dash_float_values(clean[y2var]).tolist(),
-                                      _dash_float_values(clean[x2var]).tolist())
-        ]
-        if _heads:
-            fig.center = list(fig.center) + _heads
+        # ONE Arrow annotation over pc_source, the copy the shaft draws:
+        # its heads are the rows that copy holds, so they follow exactly the
+        # rows the shaft follows -- the saved page's filter script rewrites
+        # the copy (it is a derived source, carrying __dash_row__), and the
+        # served redraw copies fresh rows onto it.  One annotation per row
+        # held literal coordinates no script reached, so after a move the
+        # shaft went and the head stayed (BUGS.md, 24sep2026).  It is also
+        # one model however many rows: one add_layout() per row was
+        # quadratic (WP-22: 8,000 arrows took 46 s).  A date column is a
+        # datetime64 array in pc_source, which BokehJS reads as epoch
+        # milliseconds, the axis's unit.
+        self._add_arrow_heads(fig, pc_source, y1var, x1var, y2var, x2var,
+                              color, arrow_lw,
+                              end=OpenHead(size=10, line_color=color))
 
         # Labels at the tail, (x1, y1), where twoway puts them without
         # headlabel (twoway_pcarrow.sthlp; measured, ten labels, all at the
@@ -9009,7 +9753,10 @@ class GlyphMapper:
         # source selected the wrong observations.
         clean = self._pc_clean_with_label(source, y1var, x1var, y2var, x2var,
                                           options, view)
-        pc_source = ColumnDataSource(clean)
+        # hover()'s variables ride along; clean's index is the source row.
+        pc_source = ColumnDataSource(self._carry_cols(
+            source, dict(ColumnDataSource(clean).data),
+            clean.index.to_numpy()))
 
         color = self.scheme.default_color(color_idx, "pcbarrow")
         try:
@@ -9030,23 +9777,11 @@ class GlyphMapper:
         # Resolve line_width for Arrow annotations (same value as segment after opts applied)
         arrow_lw = seg.glyph.line_width
 
-        # Add bidirectional Arrow annotations for each row, a date
-        # coordinate in milliseconds, as map_pcarrow's (24sep2026).
-        for ys, xs, ye, xe in zip(_dash_float_values(clean[y1var]).tolist(),
-                                  _dash_float_values(clean[x1var]).tolist(),
-                                  _dash_float_values(clean[y2var]).tolist(),
-                                  _dash_float_values(clean[x2var]).tolist()):
-            arrow = Arrow(
-                end=NormalHead(size=10, line_color=color),
-                start=NormalHead(size=10, line_color=color),
-                x_start=float(xs),
-                y_start=float(ys),
-                x_end=float(xe),
-                y_end=float(ye),
-                line_color=color,
-                line_width=arrow_lw,
-            )
-            fig.add_layout(arrow)
+        # One Arrow annotation over the shaft's copy, as map_pcarrow's.
+        self._add_arrow_heads(fig, pc_source, y1var, x1var, y2var, x2var,
+                              color, arrow_lw,
+                              end=NormalHead(size=10, line_color=color),
+                              start=NormalHead(size=10, line_color=color))
 
         # Labels at the first point, (x1, y1), as twoway labels pcbarrow
         # without headlabel (measured, ten labels, all at the first point).
@@ -9109,6 +9844,9 @@ class GlyphMapper:
             _lv = source.data[_lab]
             clean[_lab] = (_lv if getattr(_lv, "dtype", None) is not None
                            and _lv.dtype.kind == "M" else list(_lv))
+        # The row identity rides along, for the saved page's filter callback.
+        if _ROW_ID_COLUMN in source.data and _ROW_ID_COLUMN not in clean:
+            clean[_ROW_ID_COLUMN] = list(source.data[_ROW_ID_COLUMN])
         # Masked by the layer's own view BEFORE the rows are dropped: the
         # view's filter is sized to the caller's source, and Bokeh applies
         # it by position (see map_pcspike).
@@ -9121,8 +9859,12 @@ class GlyphMapper:
         # Timestamps and NaT, and Bokeh writes NaT as a bare NaN, which no
         # JSON reader takes -- the saved page failed to write (the WP-22
         # review).  An array keeps its dtype and Bokeh encodes it as data.
-        seg_src = ColumnDataSource({c: clean[c].to_numpy()
-                                    for c in clean.columns})
+        # hover()'s variables ride along on the segment and on both of its
+        # markers; clean's index is each row's position in *source*.
+        _pcc_rows = clean.index.to_numpy()
+        seg_src = ColumnDataSource(self._carry_cols(
+            source, {c: clean[c].to_numpy() for c in clean.columns},
+            _pcc_rows))
         seg = fig.segment(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                           source=seg_src,
                           line_color=self.scheme.default_color(color_idx,
@@ -9133,12 +9875,12 @@ class GlyphMapper:
         # One marker at each end, from the same rows: the starts, then the
         # ends.  A marker takes `color p#mark', as pcscatter's does.
         mark_color = self.scheme.default_color(color_idx, "pcscatter")
-        dot_src = ColumnDataSource({
+        dot_src = ColumnDataSource(self._carry_cols(source, {
             "x": np.concatenate([clean[x1var].to_numpy(),
                                  clean[x2var].to_numpy()]),
             "y": np.concatenate([clean[y1var].to_numpy(),
                                  clean[y2var].to_numpy()]),
-        })
+        }, np.concatenate([_pcc_rows, _pcc_rows])))
         dots = fig.scatter(x="x", y="y", source=dot_src,
                            marker=self.scheme.default_symbol(color_idx),
                            size=self.scheme.default_marker_size(color_idx),
@@ -9427,6 +10169,10 @@ class GlyphMapper:
         _lab = _dash_mlabel_names(options)[0]
         lab_vals = (list(source.data[_lab])
                     if _lab and _lab in source.data else None)
+        # Each observation's identity, stacked as its two points are, so
+        # the saved page's filter callback keeps a move's rows of them.
+        _rs_ids = (np.asarray(source.data[_ROW_ID_COLUMN])
+                   if _ROW_ID_COLUMN in source.data else None)
 
         # Masked by the layer's own view BEFORE stacking.  The source built
         # below holds TWO entries per observation, so the caller's row mask
@@ -9436,10 +10182,17 @@ class GlyphMapper:
         # the y2 point of an observation whose y1 alone is missing.  The
         # per-entry test below keeps that point, as it always has.
         _rs_sel = self._view_mask(view, len(x_arr))
+        # Each point's row in *source*, stacked as the points are, so the
+        # caller's other columns (hover()'s variables) ride along with it.
+        _rs_rows = np.arange(len(x_arr))
+        if _rs_sel is not None:
+            _rs_rows = _rs_rows[_rs_sel]
         if _rs_sel is not None:
             x_arr = x_arr[_rs_sel]
             y1_arr = y1_arr[_rs_sel]
             y2_arr = y2_arr[_rs_sel]
+            if _rs_ids is not None:
+                _rs_ids = _rs_ids[_rs_sel]
             if lab_vals is not None:
                 lab_vals = [v for v, keep in zip(lab_vals, _rs_sel) if keep]
 
@@ -9452,6 +10205,9 @@ class GlyphMapper:
             "x": x_all[mask].tolist(),
             "y": y_all[mask].tolist(),
         }
+        if _rs_ids is not None:
+            _rs_cols[_ROW_ID_COLUMN] = np.concatenate(
+                [_rs_ids, _rs_ids])[mask].tolist()
         # Both ends are labelled, as twoway labels them ("the same marker
         # label would be used to label both points", twoway_rscatter.sthlp;
         # measured, twenty labels for ten observations, a missing end
@@ -9469,6 +10225,8 @@ class GlyphMapper:
                 # refuses, and the page failed (measured 24sep2026).
                 _rs_cols["__mlabel_values__"] = np.array(
                     _rs_cols["__mlabel_values__"], dtype="datetime64[ms]")
+        self._carry_cols(source, _rs_cols,
+                         np.concatenate([_rs_rows, _rs_rows])[mask])
         rs_source = ColumnDataSource(_rs_cols)
         _rs_kwargs: dict = dict(source=rs_source,
                                  size=self.scheme.default_marker_size(color_idx),
@@ -10150,8 +10908,10 @@ def _fit_grid(x: "np.ndarray", options: dict,
     if rng is not None:
         lo, hi = rng
         return np.linspace(lo, hi, n_pts)
-    if not (hi > lo):
-        hi = lo + 1.0
+    # An x with no spread is a grid of one value, n() times: twoway lfit
+    # of mpg on a constant weight puts every point at (2500, 24.5)
+    # (measured 24sep2026).  This widened it to [x, x+1], and the fit was
+    # drawn as a sloped segment along a range no observation reaches.
     return np.linspace(lo, hi, n_pts)
 
 
@@ -11095,6 +11855,16 @@ def _unmask_string_literals(expr: str, literals: "list[tuple]") -> str:
 def _stata_if_to_pandas(expr: str) -> str:
     """Rewrite Stata's qualifier idioms into plain comparison expressions.
 
+    Only for a HAND-WRITTEN spec that carries a qualifier as text in
+    ``if_expr`` and names no qualifier column.  A spec dash.ado writes never
+    reaches this function: dash.ado evaluates every qualifier in Stata and
+    ships the answer as a ``__dashq<k>`` column the spec names in
+    ``qual_col``, with ``if_expr`` and ``in_expr`` empty
+    (``_dash_take_qual_columns``, ``_dash_qualified_frame``).  This
+    translation is not Stata's in every case -- a missing value in a
+    comparison, subscripts, functions, dates (BUGS.md) -- and is kept only
+    for the specs the Python tests and hand-written callers build.
+
     ``if !missing(rep78)``, ``if inlist(rep78,1,2)`` and ``if rep78 < .`` are
     the three most common qualifier forms in real Stata code, and all three
     failed validation, warned, and rendered the graph UNFILTERED.
@@ -11410,7 +12180,10 @@ def _validate_if_expr(expr: str, columns: "Iterable[str]") -> bool:
     variable references — are rejected.
 
     This is the first gate applied before ``df.query()`` to prevent code
-    execution via the ``engine="python"`` evaluator.
+    execution via the ``engine="python"`` evaluator.  It guards the
+    translation path of a hand-written spec alone; a spec dash.ado writes
+    selects its rows with a qualifier column and never reaches it (see
+    ``_stata_if_to_pandas``).
 
     Args:
         expr:    The if_expr string from the graph specification.
@@ -11492,8 +12265,10 @@ def _dash_kpi_card_html(title, value, subtitle, color, bgcolor, name,
     _bg_decl = f"background:{_bg}; " if _bg else ""
     return (
         f'<div class="db-kpi-card" style="{_bg_decl}border-radius:8px; '
-        f'padding:20px; text-align:center; min-width:160px; '
-        f'min-height:110px;">'
+        f'padding:20px; text-align:center; min-height:110px; '
+        # min(): a card narrows below 160px in a narrower cell (TR-27.2).
+        # Last, so the JS twin's template holds no ");" before its end.
+        f'min-width:min(160px,100%)">'
         f'<div style="font-size:13px; color:{text_color}; '
         f'margin-bottom:6px;">{_t}</div>'
         f'<div id="kpi_val_{_n}" style="font-size:36px; font-weight:bold; '
@@ -11846,14 +12621,25 @@ def _dash_frame_filter_mask(df, widgets):
             if w.value != _w_sentinel:
                 mask &= _dash_dropdown_mask(df[wvar], w.value)
         elif kind == "range":
-            lo, hi = w.value
+            try:
+                lo, hi = w.value
+            except (TypeError, ValueError):
+                lo = hi = math.nan
+            # Numbers, a date as epoch milliseconds: a client sets the
+            # value, and a date column is compared in its own unit.
+            lo, hi = _dash_widget_number(lo), _dash_widget_number(hi)
             if _at_full_extent(w, lo, hi):
                 continue
-            mask &= (df[wvar] >= lo) & (df[wvar] <= hi)
+            col = _dash_float_values(df[wvar], coerce=True)
+            with np.errstate(invalid="ignore"):
+                mask &= (col >= lo) & (col <= hi)
         elif kind == "slider":
-            if _at_full_extent(w, w.value):
+            v = _dash_widget_number(w.value)
+            if _at_full_extent(w, v):
                 continue
-            mask &= (df[wvar] >= w.value)
+            col = _dash_float_values(df[wvar], coerce=True)
+            with np.errstate(invalid="ignore"):
+                mask &= (col >= v)
     return mask
 
 
@@ -12038,7 +12824,7 @@ const active = dash_filter_mask(orig, filter_specs, all_widgets);
 // fallback path (a source render() registered under no graph's name).
 const new_data = {};
 const cols = Object.keys(orig);
-for (const col of cols) { new_data[col] = []; }
+for (const col of cols) { dash_own_col(new_data, col); }
 for (let i = 0; i < n_rows; i++) {
     if (active[i]) {
         for (const col of cols) { new_data[col].push(orig[col][i]); }
@@ -12054,6 +12840,16 @@ for (let i = 0; i < n_rows; i++) {
 // applies correctly to every source regardless of column differences.
 const _srcs = all_graph_sources;
 const _srcs_orig = all_graph_sources_orig;
+// A column as an OWN property, whatever its name.  A variable is a
+// Stata name, and `__proto__' is one: `o[col] = []' set the object's
+// prototype instead of adding the column, and the column was lost --
+// a line on such a variable lost its x at the first move (WP-27).  Declared
+// here, and hoisted, so a test running this loop alone has it.
+function dash_own_col(o, col) {
+    Object.defineProperty(o, col, {value: [], writable: true,
+                                   enumerable: true, configurable: true});
+}
+
 const ROW_ID = "__dash_row__";
 
 // The set of row identities that survived every active filter, taken from
@@ -12080,7 +12876,7 @@ for (let _si = 0; _si < _srcs.length; _si++) {
     const _ids_i  = _orig_i[ROW_ID];
     const _nd_i   = {};
     const _kept_i = [];
-    for (const col of _cols_i) { _nd_i[col] = []; }
+    for (const col of _cols_i) { dash_own_col(_nd_i, col); }
     for (let i = 0; i < _n_i; i++) {
         // Fall back to the old positional test only when a source predates
         // the row identity, so an older spec still filters as it used to.
@@ -12110,6 +12906,66 @@ for (const vf of (view_filters || [])) {
     const member = new Set(vf.member_ids || []);
     vf.filter.booleans = kept.map(id => member.has(id));
     vf.filter.change.emit();
+}
+
+// A layer that draws from a copy its mapper built -- a line sorted by x, an
+// area, a bar, a spike, a range or paired-coordinate layer, a scatter
+// without its missing values, a layer's own marker labels -- holds its rows
+// in the order it draws them, each with its row identity.  The move keeps
+// the rows of that copy that survived every filter, in that order, so a
+// line stays sorted and an area stays a polygon along x.  These copies were
+// in no list this script wrote, so each of those layers stayed as it was
+// drawn while the scatter beside it followed the move (BUGS.md, measured
+// 24sep2026 under node).  `typeof' because an older caller passes no such
+// argument.
+const _dsrcs = (typeof derived_sources !== "undefined" && derived_sources)
+    ? derived_sources : [];
+const _dsrcs_orig = (typeof derived_sources_orig !== "undefined" &&
+                     derived_sources_orig) ? derived_sources_orig : [];
+// A bar's width, a cap's half-width: `factor' times the smallest gap
+// between the kept rows' x values, `fallback' with fewer than two -- the
+// arithmetic GlyphMapper._tag_spacing records and the served redraw does.
+const _dspacing = (typeof derived_spacing_json !== "undefined")
+    ? JSON.parse(derived_spacing_json) : [];
+const _dspacing_glyphs = (typeof derived_spacing_glyphs !== "undefined" &&
+                          derived_spacing_glyphs) ? derived_spacing_glyphs : [];
+function dash_spacing(xs, sp) {
+    const present = (v) => v !== null && v !== undefined && !Number.isNaN(v);
+    let vals = xs.filter(present).map(Number);
+    if (sp.distinct) vals = Array.from(new Set(vals));
+    vals.sort((a, b) => a - b);
+    if (vals.length < 2) return sp.fallback;
+    let gap = Infinity;
+    for (let i = 0; i + 1 < vals.length; i++)
+        gap = Math.min(gap, vals[i + 1] - vals[i]);
+    return sp.factor * gap;
+}
+if (_primary_ids) {
+    for (let _di = 0; _di < _dsrcs.length && _di < _dsrcs_orig.length; _di++) {
+        const _od = _dsrcs_orig[_di].data;
+        const _did = _od[ROW_ID];
+        if (!_did) continue;
+        const _dc = Object.keys(_od);
+        const _nd = {};
+        for (const col of _dc) { dash_own_col(_nd, col); }
+        for (let i = 0; i < _did.length; i++) {
+            if (!_active_ids.has(_did[i])) continue;
+            for (const col of _dc) { _nd[col].push(_od[col][i]); }
+        }
+        const _sp = _dspacing[_di];
+        if (_sp && _sp.x in _nd) {
+            const _xs = _nd[_sp.x];
+            const _w = dash_spacing(_xs, _sp);
+            for (const [_col, _sign] of (_sp.cols || [])) {
+                _nd[_col] = _xs.map((v) => (v === null || v === undefined ||
+                    Number.isNaN(v)) ? null : v + _sign * _w);
+            }
+            for (const _g of (_dspacing_glyphs[_di] || [])) { _g.width = _w; }
+        }
+        _dsrcs[_di].data = _nd;
+        _dsrcs[_di].selected.indices = [];
+        _dsrcs[_di].change.emit();
+    }
 }
 // Also update the primary `source', when it is no graph's source at all.
 // render() puts every graph's source in all_graph_sources, written above, or,
@@ -12416,7 +13272,7 @@ function dash_apply_kpis(data_obj, kpi_config, kpi_divs, ROW_ID) {
             '<div class="db-kpi-card" style="' +
             (k.bgcolor ? 'background:' + k.bgcolor + '; ' : '') +
             'border-radius:8px; padding:20px; ' +
-            'text-align:center; min-width:160px; min-height:110px;">' +
+            'text-align:center; min-height:110px; min-width:min(160px,100%)">' +
             '<div style="font-size:13px; color:' + k.text_color + '; margin-bottom:6px;">' + k.title + '</div>' +
             '<div id="kpi_val_' + k.name_html + '" style="font-size:36px; font-weight:bold; color:' + k.color + ';">' + fmt + '</div>' +
             '<div style="font-size:11px; color:' + k.text_color + '; margin-top:4px;">' + k.subtitle + '</div>' +
@@ -12851,6 +13707,12 @@ class FilterBuilder:
                 # The graph sources this filter's exclude() protects, which
                 # the fallback to `source' must not write.
                 "excluded_sources":  [],    # populated by DashRenderer.render()
+                # The copies mappers build (a sorted line, an area, a
+                # scatter without its missing rows) and their snapshots.
+                "derived_sources":   [],    # populated by DashRenderer.render()
+                "derived_sources_orig": [], # populated by DashRenderer.render()
+                "derived_spacing_json": "[]",  # populated by DashRenderer.render()
+                "derived_spacing_glyphs": [],  # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -12903,6 +13765,12 @@ class FilterBuilder:
                 "all_graph_sources": [],              # populated by DashRenderer.render()
                 "all_graph_sources_orig": [],   # populated by DashRenderer.render()
                 "excluded_sources":  [],        # populated by DashRenderer.render()
+                # The copies mappers build (a sorted line, an area, a
+                # scatter without its missing rows) and their snapshots.
+                "derived_sources":   [],    # populated by DashRenderer.render()
+                "derived_sources_orig": [], # populated by DashRenderer.render()
+                "derived_spacing_json": "[]",  # populated by DashRenderer.render()
+                "derived_spacing_glyphs": [],  # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -12956,6 +13824,12 @@ class FilterBuilder:
                 "all_graph_sources": [],              # populated by DashRenderer.render()
                 "all_graph_sources_orig": [],   # populated by DashRenderer.render()
                 "excluded_sources":  [],        # populated by DashRenderer.render()
+                # The copies mappers build (a sorted line, an area, a
+                # scatter without its missing rows) and their snapshots.
+                "derived_sources":   [],    # populated by DashRenderer.render()
+                "derived_sources_orig": [], # populated by DashRenderer.render()
+                "derived_spacing_json": "[]",  # populated by DashRenderer.render()
+                "derived_spacing_glyphs": [],  # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -13148,8 +14022,12 @@ _DASH_PC_TYPES = frozenset({"pcspike", "pcarrow", "pcbarrow", "pcscatter",
 _DASH_LITERAL_TYPES = frozenset({"scatteri", "pci", "pcarrowi", "function"})
 
 
-#: Injection patterns a by() string may not carry.  One copy: the saved
-#: renderer and the generated app each used to hold their own.
+#: Injection patterns a by() VARIABLE LIST may not carry.  One copy: the
+#: saved renderer and the generated app each used to hold their own.  It was
+#: held to the whole by() string, so a title() inside by() -- user text,
+#: where a compound quote's backtick, a dollar sign or a backslash is
+#: ordinary -- emptied the variable list and both modes drew one panel
+#: without a word (BUGS.md, measured 24sep2026; twoway draws the panels).
 _DASH_UNSAFE_BY = re.compile(
     r'[;`$\\]|import\s|__|\beval\b|\bexec\b|\bopen\b'
     r'|\bgetattr\b|\bsetattr\b|\bhasattr\b|\bdelattr\b'
@@ -13249,15 +14127,30 @@ def _dash_parse_by(by_raw, warn=True):
     graph's by() twice -- once to group the frame and once, in the layout,
     for its cols(#) -- and reported the same sub-options twice per render.
     The grouping parse reports; the layout parse does not.
+
+    Only the variable list -- the text before the first comma, which no
+    variable name contains -- is held to ``_DASH_UNSAFE_BY`` and must be
+    Stata names.  The sub-options are the user's text: a title() there may
+    hold anything, and is named below as not implemented, as typed.  A
+    variable list that is refused is said to be refused (never echoed:
+    it is what failed the check), and the graph is drawn without panels.
     """
     by_raw = (by_raw or "").strip()
-    if not by_raw or _DASH_UNSAFE_BY.search(by_raw):
+    if not by_raw:
         return "", 0, False, False, []
-    if "," in by_raw:
-        varlist_part, subopts = by_raw.split(",", 1)
-    else:
-        varlist_part, subopts = by_raw, ""
+    varlist_part, _, subopts = by_raw.partition(",")
     varlist = varlist_part.strip()
+    names = varlist.split()
+    if (not names or _DASH_UNSAFE_BY.search(varlist)
+            or not all(_DASH_VARNAME_RE.match(v) for v in names)):
+        if warn:
+            warnings.warn(
+                "dash: by() variable list is not a list of variable names;"
+                " the graph is drawn without panels.",
+                UserWarning, stacklevel=2,
+            )
+        return "", 0, False, False, []
+    varlist = " ".join(names)
     by_cols, by_total, by_missing = 0, False, False
     unsupported = []
     for tok in _dash_by_tokens(subopts.strip()):
@@ -13359,8 +14252,8 @@ def _dash_stata_date_text(value, kind):
     a date reaches a caller in.
 
     The saved renderer converts a date variable to datetimes when it loads
-    the data; the served app keeps Stata's numbers (BUGS.md, "The generated
-    server app has no date handling at all").  A number is converted by the
+    the data, as the served app does since WP-27 (it kept Stata's numbers
+    before).  A number is converted by the
     saved renderer's own rule, :func:`_stata_dates_to_datetime`, so a by()
     panel of a date variable is titled alike in both modes; the served app
     titled it with the number as Python writes a float, 14610.0.  The
@@ -13657,17 +14550,25 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     #    node in BokehJS (legend.js: `div({class: label}, `${label}`)'), so
     #    escaping it here only showed the entities (`R&amp;D').  The security
     #    of the whole legend rests on that text rendering, pinned in
-    #    test_label_sinks.py.
+    #    test_label_sinks.py.  The text after the key number is read as
+    #    Stata reads a text, with _textbox_lines: a compound string keeps
+    #    the quotes it holds, each string is a line (the key's CSS is
+    #    white-space: pre, so a newline breaks it), and bare words are one
+    #    line.  The pattern here took only one plain-quoted string, so
+    #    label(1 `"'90s lc"') kept the default key where twoway draws
+    #    '90s lc (measured 24sep2026; test_textbox_multiline.py
+    #    TestALegendLabelIsReadAsStataReadsIt).
     if legend is not None:
         for _name, _arg in _calls:
             if _name != "label":
                 continue
-            lm = re.fullmatch(r'\s*(\d+)\s+"([^"]*)"\s*', _arg)
+            lm = _DASH_LEGEND_LABEL_RE.fullmatch(_arg)
             if not lm:
                 continue
             idx = int(lm.group(1)) - 1
             if 0 <= idx < len(legend.items):
-                legend.items[idx].label = {"value": lm.group(2)}
+                legend.items[idx].label = {
+                    "value": "\n".join(_textbox_lines(lm.group(2)))}
 
     # 6. cols()/rows() on every legend.  Stata treats the two as
     #    alternatives, so the one the user did not give goes back to
@@ -14062,7 +14963,7 @@ _DASH_TICK_EVERY_JS = ("return every.get_ticks(cb_data.start, cb_data.end, "
 
 
 def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
-                            key="", grid_color=None):
+                            key="", grid_color=None, date_kind=None):
     """xtick()/ytick(): ticks WITHOUT labels, beside whatever labels the axis
     already has, as twoway draws them.
 
@@ -14091,6 +14992,10 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
             if _dash_subopt_name(_tok) in ("format", "labsize", "angle"):
                 bad.append(_tok)
     _dash_report_suboptions(option, bad, seen, key)
+    if date_kind:
+        # On a date axis the positions are dates in the variable's unit
+        # (*date_kind*), as for xlabel().
+        spec = _dash_date_axis_spec(spec, date_kind, option)
     mode = spec["mode"]
     args = {}
     if mode == "explicit" and spec["ticks"]:
@@ -14129,6 +15034,40 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
             g.minor_grid_line_color = grid_color or "#e5e5e5"
 
 
+def _dash_date_axis_spec(spec, kind, option):
+    """A parsed xlabel()/xtick() spec with its positions read as dates.
+
+    On a date axis a number is a value of the variable in its unit
+    (*kind*), as twoway reads ``xlabel(14977 14979)`` -- 02jan2001 and
+    04jan2001 -- where dash ticked 1970-01-01 at 14.977 seconds.  The
+    positions and the keys of any text labels become epoch milliseconds,
+    the axis's own unit; a position that is no date is named and dropped.
+    """
+    ticks = list(spec.get("ticks") or [])
+    labels = dict(spec.get("labels") or {})
+    if not ticks and not labels:
+        return spec
+    pos = _dash_axis_positions(ticks, kind)
+    _dash_note_not_dates(option, [_fmt_num(t) for t, p in zip(ticks, pos)
+                                  if p is None], kind)
+    lab_keys = list(labels)
+    lab_pos = _dash_axis_positions(lab_keys, kind)
+    out = dict(spec)
+    out["ticks"] = [p for p in pos if p is not None]
+    out["labels"] = {str(float(p)): labels[k]
+                     for k, p in zip(lab_keys, lab_pos) if p is not None}
+    return out
+
+
+def _fmt_num(v):
+    """A number as a note echoes it: 14979, not 14979.0."""
+    try:
+        f = float(v)
+    except (TypeError, ValueError, OverflowError):
+        return str(v)
+    return f"{f:.15g}"
+
+
 def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
                              numeric_formats, seen=None, key="",
                              grid_color=None):
@@ -14144,18 +15083,21 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
         axis_obj = _dash_primary_axes(axes, rattr)
         grid_obj = _dash_primary_axes(grids, rattr)
         col = frame[var] if var and var in cols else None
+        kind = _dash_axis_date_kind(fig, ax_key[0])
         raw = graph_opts.get(ax_key, "")
         if raw:
             spec = _dash_parse_axis_spec(raw)
             _dash_report_suboptions(ax_key, spec.get("unsupported", []),
                                     seen, key)
+            if kind:
+                spec = _dash_date_axis_spec(spec, kind, ax_key)
             _dash_apply_axis_spec(axis_obj, grid_obj, spec,
                                   col, (numeric_formats or {}).get(var, ""),
                                   grid_color)
         traw = graph_opts.get(tick_key, "")
         if traw:
             _dash_apply_tick_option(axis_obj, grid_obj, traw, tick_key, col,
-                                    seen, key, grid_color)
+                                    seen, key, grid_color, date_kind=kind)
 
 
 def _dash_add_secondary_axes(fig, plots, graph_opts, frame):
@@ -14411,7 +15353,19 @@ def _dash_option_value(v):
     JavaScript, where ``String(0.0)`` is ``"0"``; the served app used
     ``str(v)`` and carried ``'0.0'``, so the two documents held different
     option values for the same category.
+
+    A date is its epoch milliseconds, the value the saved page's snapshot
+    carries (``_dash_json_value``) and its script compares as
+    ``String(v)``: the option was ``str(Timestamp)``, "2001-12-31
+    00:00:00", which no row's milliseconds equal, so a date dropdown kept
+    no rows (BUGS.md, 24sep2026).  The served mask applies this function
+    to the column and the value alike, so its rows are unchanged.
     """
+    if isinstance(v, (pd.Timestamp, np.datetime64)) or (
+            hasattr(v, "year") and hasattr(v, "month")):
+        ms = _dash_json_value(v)
+        if isinstance(ms, float) and math.isfinite(ms):
+            return str(int(ms))
     s = str(v)
     try:
         f = float(s)
@@ -14572,7 +15526,15 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
                             stacklevel=3)
             raw_values = raw_values[:limit]
 
+        # A date's option value is its milliseconds (_dash_option_value);
+        # it is still shown as the date it was shown as.
+        date_text = ({_dash_option_value(d): str(d)
+                      for d in series.dropna().unique()}
+                     if is_date else {})
+
         def _label(rv):
+            if rv in date_text:
+                return date_text[rv]
             if rv in vlabels:
                 return vlabels[rv]
             try:
@@ -14795,6 +15757,61 @@ def _dash_name_save(model, name=None):
     return model
 
 
+def _dash_reflow(grid, stack=True):
+    """*grid*, made to fit the width it is given (TR-27.2); returns *grid*.
+
+    A ``gridplot()`` grid sized its columns ``auto``, so no column could be
+    narrower than its figure's natural minimum (about 220 px): measured in
+    Chrome at a 375 px viewport, layout(3 2) kept two 220 px columns and
+    the page was 440 px wide, and a by(foreign) facet under layout(bs) kept
+    two 266 px panels side by side, 545 px wide -- figures offscreen,
+    although layout(bs) promises that below 768 every item takes the whole
+    row.  A 1 x 4 grid overflowed a 768 px window the same way.
+
+    Now every column is an equal share of the grid (``_DASH_BS_TRACK``,
+    minmax(0, 1fr)), so a grid can never be wider than its container, and
+    a grid of *n* columns whose width is under n x ``_DASH_MIN_COLUMN_PX``
+    stacks its cells into one column, each the grid's full width, in
+    reading order.  The test is on the grid's own width (a CSS container
+    query), not the window's, so a facet grid inside a narrow cell or tab
+    stacks too.  The served ``layout(bs)`` GridBox, whose spans already
+    shrink, stacks below ``_DASH_BS_STACK_BELOW_PX`` of window, the saved
+    layout(bs) page's own breakpoint.  A Row wraps its children onto
+    further lines (the filter bar was 411 px at 375); with *stack* (the
+    filterposition(left) row) it also stacks them below that breakpoint,
+    each at its own height -- a Bokeh row child's flex basis is 0, and
+    stacked without ``flex: 0 0 auto`` the grid collapsed to 0 px tall.
+    Nothing here reads user input: the CSS is built from integers.
+    """
+    from bokeh.models import GridBox, InlineStyleSheet, Row
+    below = int(_DASH_BS_STACK_BELOW_PX) - 0.02
+    if isinstance(grid, GridBox):
+        css = ("@media (max-width: %.2fpx) { :host { display: flex "
+               "!important; flex-direction: column !important; } }" % below)
+    elif isinstance(grid, Row):
+        css = ":host { flex-wrap: wrap !important; }"
+        if stack:
+            css += (" @media (max-width: %.2fpx) { :host { flex-direction: "
+                    "column !important; height: auto !important; } "
+                    ":host > * { flex: 0 0 auto; } }" % below)
+    else:
+        ncols = 1
+        for child in (getattr(grid, "children", None) or ()):
+            try:
+                ncols = max(ncols, int(child[2]) + 1)
+            except (TypeError, ValueError, IndexError):
+                continue
+        grid.cols = _DASH_BS_TRACK
+        if ncols < 2:
+            return grid
+        css = (":host { container-type: inline-size; } "
+               "@container (max-width: %.2fpx) { :host > .bk-GridBox { "
+               "display: flex; flex-direction: column; } }"
+               % (ncols * int(_DASH_MIN_COLUMN_PX) - 0.02))
+    grid.stylesheets = list(grid.stylesheets) + [InlineStyleSheet(css=css)]
+    return grid
+
+
 # ---- The document: order, cells, tabs, header ----------------------------------
 
 def _dash_layout_order(registry, graphs, kpis):
@@ -15004,7 +16021,7 @@ def _dash_refresh_linked(source, frame, views, snapshot=None, pos_of=None):
         if col == "index":
             new_data[col] = labels
         elif col in frame.columns:
-            new_data[col] = frame[col].tolist()
+            new_data[col] = _dash_column_values(frame[col])
         else:
             if rows is None:
                 at_snap = pos_of or {}
@@ -15121,7 +16138,7 @@ def _dash_refresh_unlinked(source, frame, snapshot):
         if col == 'index':
             new_data[col] = labels
         elif col in rows.columns:
-            new_data[col] = rows[col].tolist()
+            new_data[col] = _dash_column_values(rows[col])
         else:
             orig = snapshot.get(col, [])
             n = len(orig)
@@ -15130,6 +16147,47 @@ def _dash_refresh_unlinked(source, frame, snapshot):
             at = pos if pos is not None else labels
             new_data[col] = [orig[i] if 0 <= i < n else None for i in at]
     source.data = new_data
+    return new_data
+
+
+def _dash_keep_jitter(new_data, snapshot):
+    """Keep each kept row's jittered point where the first draw put it.
+
+    A served filter move redraws a jittered scatter through its mapper from
+    the kept rows, and ``_apply_jitter`` then drew fresh noise over fewer
+    rows -- a narrower range, a shorter draw -- so every kept point moved.
+    The saved page keeps a move's rows of the jittered copy by row id and
+    moves none (``_FILTER_JS``).  Stata jitters once, when it draws; a
+    filter is dash's own, and a point should not wander when it is kept.
+    Each ``_x_jit``/``_y_jit`` column of *new_data* takes the value the
+    snapshot held for the same row label; a row the snapshot never held
+    keeps its fresh value.
+
+    Args:
+        new_data: The redrawn source's ``{column: values}``; changed in
+                  place.  Its ``index`` column holds the rows' labels.
+        snapshot: ``{column: values}`` the live source held before any move.
+
+    Returns:
+        *new_data*.
+    """
+    snapshot = snapshot or {}
+    ids, labels = snapshot.get("index"), new_data.get("index")
+    if ids is None or labels is None:
+        return new_data
+    pos = {}
+    for i, lab in enumerate(ids):
+        pos.setdefault(lab, i)
+    for col in list(new_data):
+        if not (col.startswith("_x_jit") or col.startswith("_y_jit")):
+            continue
+        orig = snapshot.get(col)
+        if orig is None:
+            continue
+        fresh = list(new_data[col])
+        new_data[col] = [
+            orig[pos[lab]] if lab in pos and pos[lab] < len(orig) else v
+            for lab, v in zip(labels, fresh)]
     return new_data
 
 
@@ -15154,6 +16212,27 @@ def _dash_facet_cols(gopts, n_panels):
     return max(1, min(n, n_panels))
 
 
+def _dash_graph_options_of(graphs, name):
+    """The graph_options of the graph the layout places under *name*.
+
+    The key is ``_dash_layout_order``'s: the graph's name(), else its
+    top-level name, else '' -- the one-line form's graph, which has no
+    name.  Every grid used to match graph_options' own "name" alone, so
+    the one-line graph's options were never found and its by(, cols(#))
+    was ignored: `dash scatter mpg weight, by(foreign, cols(1))
+    saving(f)' drew its panels side by side (WP-27).  The first graph with
+    the key wins, as it did.  Malformed entries are skipped.
+    """
+    for g in graphs or ():
+        if not isinstance(g, dict):
+            continue
+        go = g.get("graph_options")
+        go = go if isinstance(go, dict) else {}
+        if str(go.get("name") or g.get("name") or "") == str(name):
+            return go
+    return {}
+
+
 def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
     """The ONE renderable a registered name owns, or None.
 
@@ -15173,7 +16252,7 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
         rows = [figs[i:i + cn] for i in range(0, len(figs), cn)]
         while len(rows[-1]) < cn:
             rows[-1].append(None)
-        return _dash_name_save(gridplot(rows, sizing_mode="stretch_width"))
+        return _dash_name_save(_dash_reflow(gridplot(rows, sizing_mode="stretch_width")))
     if name in figures:
         return figures[name]
     return kpi_divs.get(name)
@@ -15236,7 +16315,7 @@ def _dash_tab_panels(tabs_spec, cell_of):
         while len(rows[-1]) < cn:
             rows[-1].append(None)
         panels.append(TabPanel(
-            child=_dash_name_save(gridplot(rows, sizing_mode="stretch_width")),
+            child=_dash_name_save(_dash_reflow(gridplot(rows, sizing_mode="stretch_width"))),
             title=title))
     if not panels:
         return None, placed
@@ -15467,8 +16546,10 @@ def _dash_bs_grid(rows, cell_of):
     renderable a registered name owns, or None -- ``_dash_layout_cell``, the
     resolver the other grids and the tab panels use.  Each renderable sits
     where ``_dash_bs_grid_cells`` puts it, which is where the saved page's
-    markup puts it at its large breakpoint; unlike that markup, this grid
-    does not reflow as the window narrows (dash.sthlp says so).
+    markup puts it at its large breakpoint.  Unlike that markup it keeps
+    those spans, narrowing, down to a 768 px window, and below that stacks
+    every item into one column, as the saved page does (_dash_reflow;
+    dash.sthlp says so).
 
     A name with no renderable takes no columns, as the saved page leaves it
     out of its row.  A name the spec places twice keeps its first cell and
@@ -15508,9 +16589,10 @@ def _dash_bs_grid(rows, cell_of):
     line_of = {r: i for i, r in enumerate(sorted({p[1] for p in placed}))}
     children = [(m, line_of[r], c, r_span, c_span)
                 for m, r, c, r_span, c_span in placed]
-    return GridBox(children=children,
-                   cols=[_DASH_BS_TRACK] * _DASH_BS_COLUMNS,
-                   spacing=_DASH_BS_GUTTER_PX, sizing_mode="stretch_width")
+    return _dash_reflow(GridBox(children=children,
+                                cols=[_DASH_BS_TRACK] * _DASH_BS_COLUMNS,
+                                spacing=_DASH_BS_GUTTER_PX,
+                                sizing_mode="stretch_width"))
 
 
 def _dash_header_fragments(title_text, subtitle_text):
@@ -15694,6 +16776,12 @@ _DASH_LEGEND_SUBOPTS = frozenset({
     "on", "off", "position", "pos", "ring", "order", "label", "cols", "rows",
     "size"})
 
+#: legend(label(# text)): the key's number, then its text, read by
+#: _textbox_lines.  The number is bounded so no label can make int() read
+#: thousands of digits; the text is everything after the blank that follows
+#: it, so bare words keep the blank twoway keeps (" Foreign cars").
+_DASH_LEGEND_LABEL_RE = re.compile(r"\s*(\d{1,6})(\s.*)", re.S)
+
 
 def _dash_legend_unsupported(legend_opt):
     """The legend() tokens dash has no reading for, as the user wrote them."""
@@ -15865,10 +16953,26 @@ def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar):
     """
     from bokeh.models import Range1d
     cols = getattr(frame, "columns", [])
-    for spec, attr, var in ((xspec, "x_range", xvar), (yspec, "y_range", yvar)):
+    for spec, attr, var, axis in ((xspec, "x_range", xvar, "x"),
+                                  (yspec, "y_range", yvar, "y")):
         lo, hi = spec.get("lo"), spec.get("hi")
         if lo is None and hi is None:
             continue
+        kind = _dash_axis_date_kind(fig, axis)
+        if kind:
+            # A bound given for a date axis is a date in the variable's
+            # unit: xscale(range(14977 14980)) bounded a %td axis in 1970.
+            # One that is no date keeps the data's own bound.
+            given = [b for b in (lo, hi) if b is not None]
+            conv = _dash_axis_positions(given, kind)
+            _dash_note_not_dates(
+                axis + "scale(range)",
+                [_fmt_num(b) for b, c in zip(given, conv) if c is None], kind)
+            conv_it = iter(conv)
+            lo = next(conv_it) if lo is not None else None
+            hi = next(conv_it) if hi is not None else None
+            if lo is None and hi is None:
+                continue
         cur = getattr(fig, attr)
         cur_lo, cur_hi = getattr(cur, "start", None), getattr(cur, "end", None)
         if lo is None or hi is None:
@@ -15942,6 +17046,16 @@ def _dash_reference_lines(fig, graph_opts, seen=None, key=""):
                 except (ValueError, TypeError):
                     _dash_style_note(f"{opt}({sub})", style[sub], what,
                                      "the default")
+        kind = _dash_axis_date_kind(fig, "x" if opt == "xline" else "y")
+        if kind:
+            # A number given for a date axis is a date in the variable's
+            # unit, as twoway reads it: xline(14979) on a %td axis is
+            # 04jan2001, where it was drawn at 1970-01-01 00:00:14.979.
+            pos = _dash_axis_positions(values, kind)
+            _dash_note_not_dates(
+                opt, [_fmt_num(v) for v, p in zip(values, pos) if p is None],
+                kind)
+            values = [p for p in pos if p is not None]
         for v in values:
             fig.add_layout(Span(location=v, dimension=dim, **kw))
 
@@ -16211,7 +17325,8 @@ def _dash_range_source(g_df, y1var, y2var, xvar, label_var, extra_cols=()):
     return ColumnDataSource(g_df[cols]), True
 
 
-def _dash_pc_source(g_df, y1var, x1var, y2var, x2var, label_var=""):
+def _dash_pc_source(g_df, y1var, x1var, y2var, x2var, label_var="",
+                    extra_cols=()):
     """Build the ColumnDataSource for one paired-coordinate layer.
 
     All four variables are required; a pc plot with any of them missing draws
@@ -16223,6 +17338,9 @@ def _dash_pc_source(g_df, y1var, x1var, y2var, x2var, label_var=""):
     its first coordinate).  It is carried when the data has it, so a served
     label is drawn where the saved page draws it, and it never decides
     which rows survive: a missing label is not a missing observation.
+    ``extra_cols`` -- the variables ``hover()`` names -- ride along the
+    same way, as ``_dash_range_source`` carries them, so the tooltip can
+    read them.
 
     Returns ``(source, ok)``.
     """
@@ -16232,8 +17350,9 @@ def _dash_pc_source(g_df, y1var, x1var, y2var, x2var, label_var=""):
     if not all(v in g_df.columns for v in names):
         return None, False
     cols = list(dict.fromkeys(names))
-    keep = cols + ([label_var] if label_var and label_var in g_df.columns
-                   and label_var not in cols else [])
+    keep = list(dict.fromkeys(
+        cols + [c for c in [label_var] + list(extra_cols)
+                if c and c in g_df.columns]))
     return ColumnDataSource(g_df[keep].dropna(subset=cols)), True
 
 
@@ -16518,9 +17637,37 @@ def _dash_hover_row(col, label, date_kind="", numeric_fmt=""):
     return (label, spec), None
 
 
+def _dash_hover_layer_vars(plot):
+    """The variables one layer plots, in the order its tooltip names them.
+
+    An ordinary layer: its x, then its y (or a range's lower end), then a
+    range's upper end.  A paired-coordinate layer: its two points, x1 y1
+    x2 y2.  A layer that plots no variable -- an immediate list, a function
+    -- names none.
+
+    Args:
+        plot: One plot spec.
+
+    Returns:
+        A list of variable names, possibly empty.
+    """
+    plot = plot or {}
+    ptype = str(plot.get("type", "") or "").lower()
+    if ptype in _DASH_PC_TYPES:
+        keys = ("x1var", "y1var", "x2var", "y2var")
+    else:
+        keys = ("xvar", "yvar", "yvar1", "yvar2")
+    out = []
+    for k in keys:
+        v = plot.get(k, "")
+        if isinstance(v, str) and v and v not in out:
+            out.append(v)
+    return out
+
+
 def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
                       var_labels=None, date_vars=None, numeric_formats=None,
-                      univar=""):
+                      univar="", layers=None):
     """Give *fig* its one comprehensive HoverTool, in either render mode.
 
     GAPS.md D2: ``HoverTool`` was imported into the generated app and never
@@ -16557,6 +17704,17 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
                           names.  Deliberately NOT folded into *y1var*: a
                           kdensity's y column is a density, and calling it
                           ``mpg`` would be wrong rather than merely vague.
+        layers:           ``[(plot_spec, [renderer, ...]), ...]``, the
+                          figure's layers in draw order.  Given, each
+                          layer's renderers get a tooltip naming the
+                          variables THAT layer plots
+                          (``_dash_hover_layer_vars``) plus *hover_extra*;
+                          layers naming the same variables share one tool.
+                          Without it every renderer got the tooltip of
+                          *xvar*/*y1var*/*y2var* -- the first layer's -- so
+                          in ``scatter mpg weight || scatter price weight``
+                          a point of price showed its mpg (BUGS.md,
+                          24sep2026).  Renderers in no layer keep that.
     """
     var_labels = var_labels or {}
     date_vars = date_vars or {}
@@ -16581,45 +17739,76 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
     for _r in _rends:
         _present |= _cols_of(_r)
 
-    _wanted, _seen = [], set()
-    for _c in [xvar, y1var, y2var] + list(hover_extra or []):
-        if not _c or _c in _seen or _c not in _present:
-            continue
-        # The column name is written into a tooltip FIELD as `@{name}',
-        # which BokehJS parses as HTML (replace_placeholders_html, then
-        # DOMParser).  A name that is not a plain identifier can carry a
-        # `}' that closes the placeholder early -- `@{x}<img ...>' -- or a
-        # `{safe}' that turns escaping off, leaving markup in the tooltip.
-        # Stata cannot produce such a name; a hand-written data file can, so
-        # it is refused by name rather than trusted into a field.
-        if not _DASH_VARNAME_RE.match(_c):
-            _dash_warn_once(
-                ("hover", "unsafe-field", _c),
-                f"dash: variable {_dash_display(_c)!r} is not a plain name; "
-                f"leaving it out of the tooltip, because a tooltip field "
-                f"cannot carry it safely.",
-                stacklevel=3)
+    def _fields_for(names):
+        """(tooltip rows, formatters, every name considered) for the
+        variables *names*, then hover()'s, that some renderer carries."""
+        _wanted, _seen = [], set()
+        for _c in list(names) + list(hover_extra or []):
+            if not _c or _c in _seen or _c not in _present:
+                continue
+            # The column name is written into a tooltip FIELD as `@{name}',
+            # which BokehJS parses as HTML (replace_placeholders_html, then
+            # DOMParser).  A name that is not a plain identifier can carry
+            # a `}' that closes the placeholder early -- `@{x}<img ...>' --
+            # or a `{safe}' that turns escaping off, leaving markup in the
+            # tooltip.  Stata cannot produce such a name; a hand-written
+            # data file can, so it is refused by name rather than trusted
+            # into a field.
+            if not _DASH_VARNAME_RE.match(_c):
+                _dash_warn_once(
+                    ("hover", "unsafe-field", _c),
+                    f"dash: variable {_dash_display(_c)!r} is not a plain "
+                    f"name; leaving it out of the tooltip, because a "
+                    f"tooltip field cannot carry it safely.",
+                    stacklevel=4)
+                _seen.add(_c)
+                continue
+            _wanted.append(_c)
             _seen.add(_c)
-            continue
-        _wanted.append(_c)
-        _seen.add(_c)
+        _flds, _fmts = [], {}
+        for _c in _wanted:
+            _row, _fmt_key = _dash_hover_row(
+                _c, var_labels.get(_c, _c), date_vars.get(_c, ""),
+                numeric_formats.get(_c, ""))
+            _flds.append(_row)
+            if _fmt_key:
+                _fmts[_fmt_key] = "datetime"
+        return _flds, _fmts, _seen
 
-    _fields, _formatters = [], {}
-    for _c in _wanted:
-        _row, _fmt_key = _dash_hover_row(
-            _c, var_labels.get(_c, _c), date_vars.get(_c, ""),
-            numeric_formats.get(_c, ""))
-        _fields.append(_row)
-        if _fmt_key:
-            _formatters[_fmt_key] = "datetime"
+    # Each layer's renderers with the variables that layer plots; the
+    # renderers in no layer with the figure's (the first layer's).
+    _groups = []
+    _placed = set()
+    for _lplot, _lrends in (layers or []):
+        _mine = [r for r in (_lrends or []) if any(r is x for x in _rends)
+                 and id(r) not in _placed]
+        if _mine:
+            _groups.append((_dash_hover_layer_vars(_lplot), _mine))
+            _placed.update(id(r) for r in _mine)
+    _left = [r for r in _rends if id(r) not in _placed]
+    if _left:
+        _groups.append(([xvar, y1var, y2var], _left))
 
+    # One tool per distinct tooltip, in the order the layers draw: layers
+    # plotting the same variables share it, as they always did.
+    _tools = []
     _full, _rest = [], []
-    for _r in _rends:
-        (_full if _fields and _seen <= _cols_of(_r) else _rest).append(_r)
-
-    if _fields and _full:
-        fig.add_tools(HoverTool(tooltips=_fields, formatters=_formatters,
-                                renderers=_full))
+    for _names, _grends in _groups:
+        _flds, _fmts, _seen = _fields_for(_names)
+        _g_full = [r for r in _grends if _flds and _seen <= _cols_of(r)]
+        _rest.extend(r for r in _grends if not any(r is x for x in _g_full))
+        if not _g_full:
+            continue
+        _full.extend(_g_full)
+        for _t in _tools:
+            if _t[0] == _flds and _t[1] == _fmts:
+                _t[2].extend(_g_full)
+                break
+        else:
+            _tools.append((_flds, _fmts, list(_g_full)))
+    for _flds, _fmts, _trends in _tools:
+        fig.add_tools(HoverTool(tooltips=_flds, formatters=_fmts,
+                                renderers=_trends))
 
     # No renderer carries these columns -- a histogram-only figure, a lone
     # fit line, a density curve -- so fall back to a tooltip built from the
@@ -16887,21 +18076,151 @@ def _dash_if_type_problem(expr, frame):
     return None
 
 
-def _dash_qualified_frame(frame, if_expr, in_expr, where="", copy=True):
+# ---------------------------------------------------------------------------
+# Qualifiers evaluated in Stata (the spec/data contract dash.ado writes)
+#
+# dash.ado evaluates every qualifier it writes -- a plot's, a graph's, a
+# KPI's, if and in together -- in Stata, once per distinct qualifier,
+# against the data in the order it exports them, and ships the answer as a
+# 0/1 byte column named __dashq<k> (k = 1, 2, ...).  The graph, plot or KPI
+# object names that column in "qual_col" and carries "if_expr":"" and
+# "in_expr":"".  The renderer selects the rows whose column holds 1 and
+# translates nothing: the translation read a missing value, a subscript, a
+# function, a date and more otherwise than Stata (BUGS.md;
+# test_qualifier_in_stata.cscript, test_qualifier_columns.py).
+#
+# The columns are taken out of the frame the moment the data are loaded, in
+# both modes (_dash_take_qual_columns), and kept as boolean masks indexed
+# like the dataset, so no source, tooltip, filter, CSV download or page ever
+# holds one.  A frame either renderer hands on is a slice of the dataset
+# and keeps its index, so a mask selects its rows by identity whatever
+# narrowed the frame first: a by() panel, a graph's qualifier, a filter move.
+# ---------------------------------------------------------------------------
+
+#: The prefix dash.ado reserves for its qualifier columns; it refuses data
+#: that already hold a variable named with it (rc 110).
+_DASH_QUAL_PREFIX = "__dashq"
+#: A qualifier column's whole name, as dash.ado writes it.
+_DASH_QUAL_NAME_RE = re.compile(r"__dashq[1-9][0-9]{0,4}\Z")
+
+
+def _dash_qual_cols_named(spec):
+    """Every qualifier column *spec* names, each once, in the order met.
+
+    Read from each graph, each of its plots and each KPI -- the objects
+    dash.ado writes a "qual_col" on.  A name that is not ``__dashq<k>`` is
+    refused: the column is looked up in the data, and only a name dash.ado
+    could have written may select rows.
+
+    Raises:
+        ValueError: A "qual_col" that is not a string, or not a name dash
+            writes.
+    """
+    objs = []
+    for g in (spec or {}).get("graphs", []) or []:
+        if not isinstance(g, dict):
+            continue
+        objs.append(g)
+        objs.extend(p for p in (g.get("plots") or []) if isinstance(p, dict))
+    objs.extend(k for k in ((spec or {}).get("kpis") or [])
+                if isinstance(k, dict))
+    out = []
+    for o in objs:
+        name = o.get("qual_col", "")
+        if name in ("", None):
+            continue
+        if not isinstance(name, str) or not _DASH_QUAL_NAME_RE.match(name):
+            raise ValueError(
+                "dash: the spec names %r as a qualifier column; dash writes "
+                "only %s<k>." % (str(name)[:40], _DASH_QUAL_PREFIX))
+        if name not in out:
+            out.append(name)
+    return out
+
+
+def _dash_take_qual_columns(df, spec):
+    """Take dash.ado's qualifier columns out of *df*, as masks.
+
+    Returns ``(frame, masks)``: *df* without any column named with the
+    reserved prefix, and ``{name: boolean Series indexed like df}`` for each
+    column the spec names.  Each is validated before it is used: its name
+    is one dash writes, it is in the data, and every value is 0 or 1.  A
+    column with the prefix that the spec does not name is refused as well --
+    dash.ado refuses data that hold one -- so a user's variable can never be
+    read as a qualifier nor a qualifier shown as a variable.
+
+    Raises:
+        ValueError: A name, a missing column or a value dash would not
+            write; the render stops, rather than draw rows no one chose.
+    """
+    names = _dash_qual_cols_named(spec)
+    cols = [str(c) for c in df.columns]
+    reserved = [c for c in cols if c.startswith(_DASH_QUAL_PREFIX)]
+    for c in reserved:
+        if c not in names:
+            raise ValueError(
+                "dash: the data hold a column named %r; names beginning "
+                "with %s are reserved for the qualifier columns dash "
+                "exports." % (c[:40], _DASH_QUAL_PREFIX))
+    masks = {}
+    for name in names:
+        if name not in cols:
+            raise ValueError(
+                "dash: the spec names the qualifier column %s, which is not "
+                "in the data." % name)
+        col = pd.to_numeric(df[name], errors="coerce")
+        vals = col.to_numpy(dtype=float, na_value=np.nan)
+        if bool(np.isnan(vals).any()) or bool(
+                ((vals != 0.0) & (vals != 1.0)).any()):
+            raise ValueError(
+                "dash: the qualifier column %s holds a value other than 0 "
+                "and 1." % name)
+        masks[name] = pd.Series(vals == 1.0, index=df.index)
+    if reserved:
+        df = df.drop(columns=reserved)
+    return df, masks
+
+
+def _dash_qual_mask(obj, masks):
+    """The mask of the qualifier column *obj* names, or None for none.
+
+    Raises:
+        ValueError: *obj* names a column *masks* does not hold.
+    """
+    name = obj.get("qual_col", "") if isinstance(obj, dict) else ""
+    if not name:
+        return None
+    m = (masks or {}).get(name)
+    if m is None:
+        raise ValueError("dash: the qualifier column %s is not in the data."
+                         % str(name)[:40])
+    return m
+
+
+def _dash_qualified_frame(frame, if_expr, in_expr, where="", copy=True,
+                          qual=None):
     """Return the rows of *frame* that an ``if``/``in`` qualifier selects.
 
-    The one place either renderer turns a Stata qualifier into rows.  There
-    used to be five: ``_apply_graph_filter`` here, and four hand-written
-    copies inside the generated server app (graph, facet, filter callback,
-    and none at all for a plot or a KPI, which is how a per-plot ``if`` came
-    to be discarded when served).
+    The one place either renderer turns a qualifier into rows.  There used
+    to be five: ``_apply_graph_filter`` here, and four hand-written copies
+    inside the generated server app (graph, facet, filter callback, and
+    none at all for a plot or a KPI, which is how a per-plot ``if`` came to
+    be discarded when served).
 
-    ``if_expr`` is translated out of Stata's grammar and then validated
-    against ``_validate_if_expr``'s AST whitelist before it reaches
-    ``DataFrame.query``.  An expression that fails the whitelist, or that
-    ``query`` cannot run, warns and leaves the frame unfiltered: a qualifier
-    that cannot be applied must never silently draw the wrong rows, and must
-    never lose the layer either.
+    *qual* is the path of every spec dash.ado writes: the mask of the
+    qualifier's column, which Stata filled (``_dash_take_qual_columns``).
+    The rows whose mask is true are kept, by index, and ``if_expr`` and
+    ``in_expr`` are not read at all -- nothing is translated.
+
+    Without *qual* -- a hand-written spec that carries a qualifier as text,
+    which dash.ado never writes -- ``if_expr`` is translated out of Stata's
+    grammar and then validated against ``_validate_if_expr``'s AST
+    whitelist before it reaches ``DataFrame.query``.  An expression that
+    fails the whitelist, or that ``query`` cannot run, warns and leaves the
+    frame unfiltered: a qualifier that cannot be applied must never
+    silently draw the wrong rows, and must never lose the layer either.
+    That translation is not Stata's in every case (BUGS.md), which is why
+    dash.ado no longer relies on it.
 
     Args:
         frame:    The DataFrame to restrict.
@@ -16910,10 +18229,17 @@ def _dash_qualified_frame(frame, if_expr, in_expr, where="", copy=True):
         where:    Short phrase naming the caller, for the warning text.
         copy:     Copy even when no qualifier applies.  The saved renderer
                   has always copied; a per-layer caller does not need to.
+        qual:     The qualifier column's mask, a boolean Series indexed like
+                  the dataset *frame* is a slice of; or None.
 
     Returns:
         A (possibly smaller) DataFrame.
     """
+    if qual is not None:
+        keep = qual.reindex(frame.index, fill_value=False).to_numpy(
+            dtype=bool)
+        out = frame[keep]
+        return out.copy() if copy else out
     _if = (if_expr or "").strip()
     _in = (in_expr or "").strip()
     if not _if and not _in:
@@ -16981,7 +18307,7 @@ def _dash_qualified_frame(frame, if_expr, in_expr, where="", copy=True):
     return out.copy() if (copy and out is frame) else out
 
 
-def _dash_layer_frame(dataset, frame, if_expr, in_expr, where=""):
+def _dash_layer_frame(dataset, frame, if_expr, in_expr, where="", qual=None):
     """The rows of *frame* that a qualifier selects, ``in`` counted over
     *dataset*.
 
@@ -17006,10 +18332,16 @@ def _dash_layer_frame(dataset, frame, if_expr, in_expr, where=""):
         if_expr:  Stata ``if`` expression, or "".
         in_expr:  Stata ``in`` range as ``"N/M"``, or "".
         where:    Short phrase naming the caller, for the warning text.
+        qual:     The qualifier column's mask (``_dash_qualified_frame``):
+                  Stata counted the ``in`` over the exported data when it
+                  filled the column, so the mask is all there is to apply.
 
     Returns:
         A (possibly smaller) DataFrame, a slice of *frame*.
     """
+    if qual is not None:
+        return _dash_qualified_frame(frame, "", "", where, copy=False,
+                                     qual=qual)
     out = _dash_qualified_frame(frame, if_expr, "", where, copy=False)
     if (in_expr or "").strip():
         rows = _dash_qualified_frame(dataset, "", in_expr, where, copy=False)
@@ -17099,6 +18431,55 @@ def _dash_note_empty_layer(gname, index, ptype, rows, renderers):
         _dash_report_empty_layer(gname, index, ptype)
     elif rows:
         _dash_report_empty_layer(gname, index, ptype, rows)
+
+
+def _dash_note_hover_unreached(gname, plots, hover_extra):
+    """Name each layer of a graph that ``hover()`` cannot reach.
+
+    ``hover(varlist)`` shows the variables' values for the observation
+    under the cursor, and every layer that draws one mark (or one pair of
+    marks) per observation carries them (``GlyphMapper._carry_cols``).  A
+    computed layer's points are not observations -- a fitted or smoothed
+    curve, a density, a histogram's bins, a function's grid -- and an
+    immediate layer's are typed in the command, so no variable has a value
+    at one.  Such a layer used to leave hover() out without a word (BUGS.md
+    "hover() is dropped by the mappers ...", measured 24sep2026 on 30 of
+    the 40 types); this says so, once per layer per render, in both modes.
+
+    The type tables are literals rather than module constants because the
+    served app copies this function by source.  Only a type named in them
+    is echoed, and the graph's name goes through ``repr()``, so a note is
+    one line whatever the spec holds; none of hover()'s names is echoed.
+
+    Args:
+        gname:       The graph's name, "" for none.
+        plots:       The graph's plot dicts, in order.
+        hover_extra: The names hover() gives, as a list.
+    """
+    if not hover_extra:
+        return
+    computed = frozenset({
+        "fpfit", "fpfitci", "function", "histogram", "kdensity", "lfit",
+        "lfitci", "lowess", "lpoly", "lpolyci", "mband", "mspline", "qfit",
+        "qfitci",
+    })
+    literal = frozenset({"scatteri", "pci", "pcarrowi"})
+    for i, plot in enumerate(plots or []):
+        pt = str((plot or {}).get("type", "") if isinstance(plot, dict)
+                 else "").lower()
+        if pt in literal:
+            why = "typed in the command"
+        elif pt in computed:
+            why = "computed from the observations"
+        else:
+            continue
+        where = (f"plot {i + 1} ({pt}) of graph {str(gname)!r}" if gname
+                 else f"plot {i + 1} ({pt})")
+        _dash_warn_once(
+            ("hover-unreached", str(gname), i, pt),
+            f"dash: hover() does not reach {where}: its points are {why}, "
+            f"not observations, so its tooltip shows only what it draws.",
+            stacklevel=3)
 
 
 def _dash_glyph_dispatch(mapper):
@@ -17374,6 +18755,8 @@ class DashRenderer:
 
         with open(data_json_path, encoding="utf-8") as f:
             self.data_json: dict = json.loads(f.read())
+        # Its size bounds the text it holds (_dash_refuse_overbytes).
+        self._data_file_bytes: int = os.path.getsize(data_json_path)
 
         # The resource limits (WP-19): the defaults, moved by any global the
         # user set, and the spec held to the graph and plot limits before
@@ -17419,6 +18802,11 @@ class DashRenderer:
         # config_dict keys: type, varname, bin_edges (histogram) or x_grid (kdensity)
         self.agg_source_registry: dict = {}
 
+        # The copies of rows the mappers draw from, which the filter
+        # callback keeps the moved rows of: graph_name -> [cds, ...]
+        # (_collect_derived_sources).
+        self.derived_source_registry: dict = {}
+
         # Tracks KPI update mode ("filter" | "brush" | "both") by KPI name.
         self._kpi_update_modes: dict[str, str] = {}
 
@@ -17434,6 +18822,9 @@ class DashRenderer:
         # the renderer another way.
         _dash_refuse_oversized(self.df.shape[0], self.df.shape[1],
                                self.limits, "dashboard")
+        _dash_refuse_overbytes(self.df, self.string_vars, self.limits,
+                               "dashboard",
+                               getattr(self, "_data_file_bytes", None))
         # Stata's data in memory, for lowess adjust and lpoly's grid.
         self.mapper.dataset = self.df
 
@@ -17493,46 +18884,22 @@ class DashRenderer:
             formats = {}
         self.formats: dict[str, str] = {str(k): str(v)
                                         for k, v in formats.items()}
-        self.date_vars: dict[str, str] = {}
-        self.numeric_formats: dict[str, str] = {}
+        # One column reader for both render modes (_dash_load_columns): the
+        # generated server app calls it too.
+        self.date_vars, self.numeric_formats = _dash_load_columns(
+            self.df, self.formats, self.string_vars)
 
-        for col in self.df.columns:
-            if col in self.string_vars:
-                continue
-            kind = _stata_date_kind(self.formats.get(col))
-            if kind is None:
-                self.df[col] = pd.to_numeric(self.df[col], errors="coerce")
-                pattern = _stata_numeric_pattern(self.formats.get(col))
-                if pattern is not None:
-                    self.numeric_formats[col] = self.formats[col]
-                continue
-
-            raw = self.df[col]
-            numeric = pd.to_numeric(raw, errors="coerce")
-            if numeric.notna().any() or raw.isna().all():
-                converted = _stata_dates_to_datetime(numeric, kind)
-            else:
-                # Legacy transport: jsonio renders a %t* variable THROUGH its
-                # display format and emits a string ("02jan2001"), so a spec
-                # from an older dash.ado carries text here.  Coercing it to
-                # NaN drops every row of the dataset, which is how
-                # `dash line close date` came to produce an empty dashboard.
-                converted = pd.to_datetime(raw.astype(str).str.strip(),
-                                            errors="coerce")
-                # The unit every date column is held in (24sep2026), so
-                # no consumer meets a second one: pandas parses to
-                # nanoseconds under 2.3 and to whatever it infers under 3.
-                converted = pd.Series(converted).astype("datetime64[ms]")
-                if converted.isna().all() and raw.notna().any():
-                    warnings.warn(
-                        f"dash: variable '{col}' has display format "
-                        f"{self.formats.get(col)!r} but arrived as text this "
-                        f"renderer could not read as a date; it is shown as "
-                        f"missing. Re-run with a current dash.ado.",
-                        UserWarning,
-                    )
-            self.df[col] = pd.Series(converted).to_numpy()
-            self.date_vars[col] = kind
+        # The qualifier columns dash.ado exported, validated and taken out
+        # of the frame as masks: no source, tooltip, filter or download ever
+        # holds one (_dash_take_qual_columns).
+        self.df, self.qual_masks = _dash_take_qual_columns(
+            self.df, self.master_spec)
+        for _qc in list(self.qual_masks):
+            self.variable_labels.pop(_qc, None)
+            self.value_label_names.pop(_qc, None)
+            self.string_vars.discard(_qc)
+            self.formats.pop(_qc, None)
+            self.numeric_formats.pop(_qc, None)
 
     # ------------------------------------------------------------------
     # The resource limits.  A `_df' property stood here too, an alias of
@@ -17574,22 +18941,7 @@ class DashRenderer:
         Returns:
             A numeric Series.
         """
-        if not pd.api.types.is_datetime64_any_dtype(col):
-            return col
-        if str(stat).lower().strip() == "sum":
-            # 01jan1970, the epoch the milliseconds count from (the page's
-            # callback sums the same numbers); this said 01jan1960.
-            warnings.warn(
-                f"dash: sum({varname}) adds up dates, which has no meaning. "
-                f"The result is shown as a number of milliseconds since "
-                f"01jan1970.",
-                UserWarning,
-            )
-        # As floats, which hold every millisecond of Stata's range exactly
-        # (under 2**53): an int64 sum wrapped silently past 9.2e18, about
-        # 36,000 dates in 9999 (24sep2026).
-        return (col.dropna().astype("datetime64[ms]").astype("int64")
-                .astype("float64"))
+        return _dash_kpi_column(col, stat, varname)
 
     @staticmethod
     def _kpi_statistic(col: "pd.Series", stat: str) -> float:
@@ -17779,6 +19131,104 @@ class DashRenderer:
         data_dict[_ROW_ID_COLUMN] = self._row_ids_for(frame)
         return ColumnDataSource(data=data_dict)
 
+    def _collect_derived_sources(self) -> dict:
+        """The sources a figure draws rows from that are no graph's source.
+
+        A mapper that must reorder, drop or reshape its rows draws from a
+        copy it builds: a line sorted by x, an area, a bar or a spike, a
+        range or paired-coordinate layer, a scatter without its missing
+        values, a layer's own marker labels.  Each copy carries every row's
+        identity (``__dash_row__``), and the saved page's filter callback
+        keeps the rows of it that a move keeps; the brush script is wired to
+        the ones that hold what a brushed card reads.  A source without
+        row identities -- a histogram's bins, a fitted curve -- is not a
+        copy of rows and is not listed: the callback recomputes the first
+        (``agg_source_registry``) and the page does not redraw the second.
+
+        Returns:
+            ``{figure key: [ColumnDataSource, ...]}``, in drawing order,
+            each source once.
+        """
+        graph_ids = {id(s) for s in self.sources.values()}
+        out: dict = {}
+        for gname, fig in self.figures.items():
+            agg_ids = {id(a) for a, _cfg in
+                       self.agg_source_registry.get(gname, [])}
+            found: list = []
+            models = list(getattr(fig, "renderers", []))
+            for side in ("center", "above", "below", "left", "right"):
+                models.extend(getattr(fig, side, []) or [])
+            for m in models:
+                src = (getattr(m, "data_source", None)
+                       if hasattr(m, "data_source")
+                       else getattr(m, "source", None))
+                if not isinstance(src, ColumnDataSource):
+                    continue
+                if id(src) in graph_ids or id(src) in agg_ids:
+                    continue
+                if _ROW_ID_COLUMN not in src.data:
+                    continue
+                if any(src is f for f in found):
+                    continue
+                found.append(src)
+            if found:
+                out[gname] = found
+        return out
+
+    def _linked_scatter_view(self, source, yvar, xvar, options, view):
+        """The view a linked scatter with a missing plotted value draws
+        through, or *view* unchanged.
+
+        map_scatter drops a row with a missing x or y by drawing from a
+        copy of its source; for a graph in link() that copy is outside the
+        shared source whose selection IS the link, so a selection made in
+        another linked graph never showed on the scatter, nor one made on
+        it in the others (BUGS.md, measured 24sep2026 under node).  Here
+        such a scatter draws from the shared source through a BooleanFilter
+        of the rows with both values -- intersected with the view it
+        already has (a layer's own if/in, a by() panel) -- which is
+        registered, so the saved page's filter callback rebuilds it after a
+        move as it rebuilds every view over that source.  A jittered
+        scatter draws through the same view, its points columns of its own
+        on the shared source (GlyphMapper._linked_jitter_columns).
+
+        Args:
+            source:  The source the layer would draw from.
+            yvar:    Its y variable.
+            xvar:    Its x variable.
+            options: The layer's options.
+            view:    The view it already has, or None.
+
+        Returns:
+            A CDSView, or *view*.
+        """
+        linked = getattr(self, "_dash_linked_source", None)
+        if linked is None or source is not linked:
+            return view
+        data = source.data
+        if (xvar not in data or yvar not in data
+                or _ROW_ID_COLUMN not in data):
+            return view
+        n = len(data[_ROW_ID_COLUMN])
+        present = ~(pd.isna(pd.Series(list(data[xvar])))
+                    | pd.isna(pd.Series(list(data[yvar])))).to_numpy()
+        if len(present) != n or present.all():
+            return view
+        prev = getattr(view, "filter", None) if view is not None else None
+        if prev is not None:
+            prev_bools = getattr(prev, "booleans", None)
+            if prev_bools is None or len(prev_bools) != n:
+                # A view this cannot read (none is built today): left as
+                # it was, the copy map_scatter draws.
+                return view
+            present = present & np.asarray(list(prev_bools), dtype=bool)
+        mask = [bool(b) for b in present]
+        ids = list(data[_ROW_ID_COLUMN])
+        flt = BooleanFilter(booleans=mask)
+        self._register_view_filter(
+            source, flt, [int(i) for i, keep in zip(ids, mask) if keep])
+        return CDSView(filter=flt)
+
     def _register_view_filter(self, source, bool_filter, member_ids) -> None:
         """Remember a CDSView's BooleanFilter and the rows it selects.
 
@@ -17834,7 +19284,8 @@ class DashRenderer:
             One integer per qualifying row, or None if unqualified.
         """
         if not (str(kpi_def.get("if_expr", "") or "").strip()
-                or str(kpi_def.get("in_expr", "") or "").strip()):
+                or str(kpi_def.get("in_expr", "") or "").strip()
+                or kpi_def.get("qual_col")):
             return None
         try:
             return self._row_ids_for(self._apply_graph_filter(kpi_def))
@@ -17876,15 +19327,23 @@ class DashRenderer:
         are allowed.  Any expression that fails to parse or contains disallowed
         constructs raises a ``ValueError`` and leaves the DataFrame unfiltered.
 
+        A spec dash.ado writes names a qualifier column instead
+        (``"qual_col"``), which Stata filled; its rows are selected with it
+        and no text is translated (``_dash_qualified_frame``).
+
         Args:
             graph_spec: A single graph specification dict containing optional
-                        ``"if_expr"`` and ``"in_expr"`` keys.
+                        ``"if_expr"`` and ``"in_expr"`` keys, or
+                        ``"qual_col"``.
 
         Returns:
             A (possibly smaller) DataFrame.
         """
-        return _dash_qualified_frame(self.df, graph_spec.get("if_expr", ""),
-                                     graph_spec.get("in_expr", ""))
+        return _dash_qualified_frame(
+            self.df, graph_spec.get("if_expr", ""),
+            graph_spec.get("in_expr", ""),
+            qual=_dash_qual_mask(graph_spec,
+                                 getattr(self, "qual_masks", None)))
 
     @staticmethod
     def _parse_filter_raw(raw: str) -> "list[dict]":
@@ -18068,20 +19527,8 @@ class DashRenderer:
         Returns:
             The date kind, or ``None``.
         """
-        if not getattr(self, "date_vars", None):
-            return None
-        kinds = set()
-        for plot in plots or []:
-            name = plot.get(key, "") or (
-                plot.get("var", "") if key == "yvar" else "") or fallback
-            if not name:
-                continue
-            kinds.add(self.date_vars.get(name))
-        if not kinds:
-            return None
-        if len(kinds) > 1 or None in kinds:
-            return None
-        return kinds.pop()
+        return _dash_figure_date_kind(plots, key, fallback,
+                                      getattr(self, "date_vars", None))
 
     def _apply_nonselection_dimming(self, fig) -> None:
         """Dim a linked figure's non-selected points to dash's own alpha.
@@ -18234,6 +19681,9 @@ class DashRenderer:
             fig_kwargs["y_axis_type"] = "log"
 
         fig = bokeh_figure(**fig_kwargs)
+        # The axes' date kinds, for the axis options below: a number given
+        # for a date axis is a Stata date in the variable's unit.
+        _dash_mark_date_axes(fig, _x_date, _y_date)
 
         # Tick formatting matched to the date kind: years for %ty, dates for
         # %td/%tw/%tm/%tq/%th, date and time for %tc/%tC.  An explicit
@@ -18361,6 +19811,11 @@ class DashRenderer:
             _p_in = (plot.get("in_expr") or "").strip()
             _g_if = (graph_spec.get("if_expr") or "").strip()
             _g_in = (graph_spec.get("in_expr") or "").strip()
+            # A spec dash.ado writes names the column Stata filled instead:
+            # identical qualifiers share one, so the names compare as the
+            # texts did.
+            _p_qc = str(plot.get("qual_col") or "")
+            _g_qc = str(graph_spec.get("qual_col") or "")
             source_for_plot = source
             _plot_view = facet_view
             # twoway draws every point of `scatteri 1 2 3 4 if foreign == 2'
@@ -18370,13 +19825,15 @@ class DashRenderer:
             # Its layers take no view, and a dashboard with no data made
             # this say the qualifier "could not be applied".
             if ptype.lower() not in _DASH_LITERAL_TYPES and (
-                    (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in)):
+                    (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in)
+                    or (_p_qc and _p_qc != _g_qc)):
                 try:
                     # _apply_graph_filter filters self.df, so restrict to the
                     # rows this source actually carries afterwards -- a faceted
                     # or already-qualified source is a subset of self.df.
                     _pdf = self._apply_graph_filter(
-                        {"if_expr": _p_if, "in_expr": _p_in}
+                        {"if_expr": _p_if, "in_expr": _p_in,
+                         "qual_col": _p_qc}
                     )
                     # A CDSView over the source the graph already draws from,
                     # NOT a ColumnDataSource of its own.  A layer on a private
@@ -18466,6 +19923,9 @@ class DashRenderer:
                                          color_idx=pi)
             else:
                 pyvar = plot.get("yvar", yvar)
+                if ptype.lower() == "scatter":
+                    _plot_view = self._linked_scatter_view(
+                        source_for_plot, pyvar, pxvar, popts, _plot_view)
                 self._add_glyph(fig, source_for_plot, ptype, pyvar, pxvar, popts,
                                 view=_plot_view, color_idx=pi)
 
@@ -18548,7 +20008,14 @@ class DashRenderer:
             date_vars=getattr(self, "date_vars", {}),
             numeric_formats=getattr(self, "numeric_formats", {}),
             univar=_p0.get("var", ""),
+            # Each layer's tooltip names its own variables.
+            layers=locals().get("_plot_renderers", []),
         )
+        # A layer hover() cannot reach says so -- the rule the generated
+        # app runs, once per layer however many by() panels draw it.
+        _dash_note_hover_unreached(
+            graph_opts.get("name", "") or graph_spec.get("name", ""),
+            plots, _hover_extra_str.split() if _hover_extra_str else [])
 
         return fig
 
@@ -18765,9 +20232,8 @@ class DashRenderer:
         _graphs = self.master_spec.get("graphs", [])
 
         def _gopts_of(name):
-            return next((g.get("graph_options", {}) for g in _graphs
-                         if g.get("graph_options", {}).get("name") == name),
-                        {})
+            # By the layout's key (_dash_graph_options_of).
+            return _dash_graph_options_of(_graphs, name)
 
         _added: set[str] = set()
         # Figure keys, not registered names -- this is the set the
@@ -19028,9 +20494,8 @@ class DashRenderer:
         _graphs = self.master_spec.get("graphs", [])
 
         def _gopts_of(name):
-            return next((g.get("graph_options", {}) for g in _graphs
-                         if g.get("graph_options", {}).get("name") == name),
-                        {})
+            # By the layout's key (_dash_graph_options_of).
+            return _dash_graph_options_of(_graphs, name)
 
         def _cell_of(name):
             return _dash_layout_cell(name, self.figures, self._facet_map,
@@ -19298,6 +20763,8 @@ class DashRenderer:
         # helpers, so the shipped path produced an unlinked dashboard and
         # returned rc 0.  The served app reads it by the same rule.
         link_names[:] = _dash_link_names(link_names, all_graph_names)
+        # None until a link group builds its source, below.
+        self._dash_linked_source = None
 
         # ---- 2. Build ColumnDataSources ----
         # A brushed source must carry the column a brush KPI computes from:
@@ -19352,6 +20819,13 @@ class DashRenderer:
                         if vname and vname not in linked_vars and vname in self.df.columns:
                             linked_vars.append(vname)
             linked_source = self._make_source(linked_vars)
+            # The link group's one source, so a layer that would draw from a
+            # copy of it can draw from it through a view instead
+            # (_linked_scatter_view).
+            self._dash_linked_source = linked_source
+            # ... and a jittered scatter puts its points on it
+            # (GlyphMapper._linked_jitter_columns).
+            linked_source._dash_link_source = True
             # Per-graph qualifier views for linked graphs.  The shared source
             # supports brush selection across all linked graphs and cannot be
             # filtered per-graph.  CDSView with BooleanFilter applies each
@@ -19662,9 +21136,20 @@ class DashRenderer:
             + _helpers + _pctl + _BRUSH_JS
         )
 
+        # And every copy of rows a glyph draws from that holds what a card
+        # reads -- its variable and the row identity.  A scatter with a
+        # missing value draws from such a copy, and a brush on it reached
+        # no script at all (BUGS.md, measured 24sep2026 on auto).
+        _need = {c.get("varname") for c in cfg if c.get("varname")}
+        _need.add(_ROW_ID_COLUMN)
+        _brushable = list(self.sources.values())
+        for _der_list in getattr(self, "derived_source_registry",
+                                 {}).values():
+            _brushable.extend(s for s in _der_list
+                              if _need <= set(s.data))
         n = 0
         seen: set = set()
-        for src in self.sources.values():
+        for src in _brushable:
             if id(src) in seen:
                 continue
             seen.add(id(src))
@@ -19947,6 +21432,34 @@ class DashRenderer:
             _cb.args["agg_sources"]      = _agg_srcs
             _cb.args["agg_configs_json"] = json.dumps(_agg_cfgs)
 
+            # The copies of rows a mapper built, each with its own snapshot
+            # (shared by every callback), unless exclude() names the graph.
+            _der_srcs: list = []
+            for _gname, _der_list in getattr(
+                    self, "derived_source_registry", {}).items():
+                if _dash_excluded(_gname, _fc_excludes, _owner_of):
+                    continue
+                for _dsrc in _der_list:
+                    if any(_dsrc is _s for _s in _der_srcs):
+                        continue
+                    _der_srcs.append(_dsrc)
+            for _dsrc in _der_srcs:
+                if id(_dsrc) not in _snapshot_of:
+                    _snapshot_of[id(_dsrc)] = ColumnDataSource({
+                        _col: [DashRenderer._to_serialisable(v) for v in _arr]
+                        for _col, _arr in _dsrc.data.items()
+                    })
+            _cb.args["derived_sources"] = _der_srcs
+            _cb.args["derived_sources_orig"] = [
+                _snapshot_of[id(_dsrc)] for _dsrc in _der_srcs]
+            # A bar's width and a cap's half-width are the kept rows'
+            # spacing (GlyphMapper._tag_spacing); null where there is none.
+            _cb.args["derived_spacing_json"] = json.dumps([
+                getattr(_dsrc, "_dash_spacing", None) for _dsrc in _der_srcs])
+            _cb.args["derived_spacing_glyphs"] = [
+                list(getattr(_dsrc, "_dash_spacing_glyphs", []) or [])
+                for _dsrc in _der_srcs]
+
         # The CSV download (WP-21), when the build asked for it: the
         # snapshot the filter callbacks read, masked the way they mask it,
         # so the file holds the rows the dashboard shows.  A dashboard with
@@ -20068,9 +21581,9 @@ class DashRenderer:
                 rows_n = math.ceil(n_items / cols_n)
 
         def _gopts_of(name):
-            return next((g.get("graph_options", {}) for g in graphs
-                         if g.get("graph_options", {}).get("name") == name),
-                        {})
+            # By the layout's key, so the one-line graph's '' finds its own
+            # (_dash_graph_options_of).
+            return _dash_graph_options_of(graphs, name)
 
         # One cell per registered name, through the resolver the tab
         # panels and the generated app use as well.
@@ -20117,7 +21630,7 @@ class DashRenderer:
                 cells[r * cols_n : (r + 1) * cols_n] for r in range(rows_n)
             ]
         # The grid's one save button writes the whole grid to dashboard.png.
-        grid = _dash_name_save(gridplot(grid_rows, sizing_mode="stretch_width"))
+        grid = _dash_name_save(_dash_reflow(gridplot(grid_rows, sizing_mode="stretch_width")))
 
         # The tabs widget sits above the remaining grid.  An empty grid --
         # every element tabbed -- would otherwise contribute a stray blank
@@ -20138,11 +21651,12 @@ class DashRenderer:
             if filter_position == "left":
                 _sidebar = column(*filter_row_widgets, sizing_mode="fixed",
                                   width=_SIDEBAR_WIDTH_PX)
-                layout_root = row(_sidebar, _content,
-                                  sizing_mode="stretch_width")
+                layout_root = _dash_reflow(row(_sidebar, _content,
+                                               sizing_mode="stretch_width"))
             else:
-                filter_bar = row(*filter_row_widgets,
-                                 sizing_mode="stretch_width")
+                filter_bar = _dash_reflow(row(*filter_row_widgets,
+                                              sizing_mode="stretch_width"),
+                                          stack=False)
                 layout_root = column(filter_bar, _content,
                                      sizing_mode="stretch_width")
         else:
@@ -20259,6 +21773,9 @@ class DashRenderer:
                 _agg_list.append((_r._dash_agg_source, _cfg))
             if _agg_list:
                 self.agg_source_registry[_gname] = _agg_list
+
+        # ---- 3c. The copies of rows the mappers built ----
+        self.derived_source_registry = self._collect_derived_sources()
 
         # ---- 4. Build KPI Divs ----
         self._build_kpi_html(kpis)
@@ -20468,7 +21985,8 @@ class ServerAppBuilder:
                       # anglestyles, for mlabangle() (WP-22).
                       "_DASH_ANGLESTYLES",
                       # The sub-option tables and the filter parser's own.
-                      "_DASH_LEGEND_SUBOPTS", "_DASH_TEXTBOX_HONOURED",
+                      "_DASH_LEGEND_SUBOPTS", "_DASH_LEGEND_LABEL_RE",
+                      "_DASH_TEXTBOX_HONOURED",
                       "_DASH_TEXTBOX_DEFAULTS", "_DASH_SCALE_SUBOPTS",
                       # The second axes' coordinate names and the
                       # yscale2()/xscale2() sub-options honoured (WP-23).
@@ -20494,6 +22012,9 @@ class ServerAppBuilder:
                       "_MAX_SCHEME_INCLUDE_DEPTH",
                       # _validate_if_expr's tree-depth bound (WP-20).
                       "_IF_EXPR_MAX_DEPTH",
+                      # The qualifier columns dash.ado exports: their
+                      # reserved prefix and whole name.
+                      "_DASH_QUAL_PREFIX", "_DASH_QUAL_NAME_RE",
                       # _dash_parse_axis_spec's tick bound (WP-20).
                       "_MAX_AXIS_TICKS",
                       # The blanks _dash_grid_dims and _dash_placement_map
@@ -20521,7 +22042,9 @@ class ServerAppBuilder:
                       # layout(bs): the automatic rows' KPI count, and the
                       # served grid's columns, track and gutter (WP-21).
                       "_MAX_KPIS_PER_ROW", "_DASH_BS_COLUMNS",
-                      "_DASH_BS_TRACK", "_DASH_BS_GUTTER_PX"):
+                      "_DASH_BS_TRACK", "_DASH_BS_GUTTER_PX",
+                      # Every grid's stacking widths (_dash_reflow).
+                      "_DASH_MIN_COLUMN_PX", "_DASH_BS_STACK_BELOW_PX"):
             _val = getattr(_mod, _name, None)
             if _val is None:
                 continue
@@ -20571,6 +22094,17 @@ class ServerAppBuilder:
                          # milliseconds (24sep2026): GlyphMapper's masks
                          # and the axis helpers call it.
                          "_dash_float_values",
+                         # One column reader for both modes' loaders, and
+                         # the date axes it makes possible (WP-27): the
+                         # axis kind, its tick formatter, a number given
+                         # for a date axis, a KPI of a date, a column as a
+                         # source holds it, and a widget's value.
+                         "_dash_load_columns", "_dash_column_values",
+                         "_dash_figure_date_kind", "_dash_mark_date_axes",
+                         "_dash_axis_date_kind", "_dash_axis_positions",
+                         "_dash_note_not_dates", "_dash_date_axis_spec",
+                         "_fmt_num", "_datetime_formatter_for",
+                         "_dash_kpi_column", "_dash_widget_number",
                          "_with_color_alias", "_jitter_seed", "_floats_only",
                          "_parse_stata_numeric_fmt", "_format_stata_numeric",
                          # _dash_build_hover's own callees. A copied
@@ -20606,9 +22140,16 @@ class ServerAppBuilder:
                          # A layer's `in' counts the dataset's observations,
                          # not the rows the graph's qualifier left.
                          "_dash_layer_frame",
+                         # The qualifier columns Stata filled: validated,
+                         # taken out of the frame, and read as masks.
+                         "_dash_qual_cols_named", "_dash_take_qual_columns",
+                         "_dash_qual_mask",
                          # The figure's one HoverTool.  HoverTool was
                          # imported into this app and never instantiated.
-                         "_dash_hover_row", "_dash_build_hover",
+                         "_dash_hover_row", "_dash_hover_layer_vars",
+                         "_dash_build_hover",
+                         # ... and the note for a layer it cannot reach.
+                         "_dash_note_hover_unreached",
                          # Stata's legend keying rules.
                          "_dash_legend_key", "_dash_legend_entries",
                          # layout(name:row,col), one parser for one spec,
@@ -20684,6 +22225,7 @@ class ServerAppBuilder:
                          "_dash_layout_order", "_dash_auto_grid_cols",
                          "_dash_kpi_keys",
                          "_dash_facet_cols", "_dash_layout_cell",
+                         "_dash_graph_options_of",
                          # link() and exclude(), read by the saved
                          # renderer's rules.
                          "_dash_link_names", "_dash_excluded",
@@ -20691,7 +22233,7 @@ class ServerAppBuilder:
                          "_dash_view_positions", "_dash_linked_views",
                          "_dash_refresh_linked", "_dash_own_redrawn_views",
                          # An unlinked layer's own rows after a move.
-                         "_dash_refresh_unlinked",
+                         "_dash_refresh_unlinked", "_dash_keep_jitter",
                          "_dash_parse_tabs", "_dash_tab_panels",
                          "_dash_header_fragments", "_dash_header_models",
                          # layout(bs): the saved page's reader of the rows
@@ -20705,6 +22247,8 @@ class ServerAppBuilder:
                          # cell and tab helpers above call it, and so does
                          # the grid make_document builds (WP-21).
                          "_dash_save_filename", "_dash_name_save",
+                         # Every grid's fit to its width (TR-27.2).
+                         "_dash_reflow",
                          # The columns a layer's options name.
                          "_dash_mlabel_names", "_dash_option_columns",
                          "_dash_attach_labels",
@@ -21027,6 +22571,28 @@ class ServerAppBuilder:
                 _dash_refuse_oversized(_shape[0], _shape[1], self.limits,
                                        "server app")
                 _report_dataset_shape(_shape[0], _shape[1], "server app")
+        # The bytes of text: a string of N characters is at most 4N bytes
+        # of UTF-8, so a shorter one cannot be over the limit and is not
+        # measured; one that could be is measured, and counted only when
+        # its bytes are over the limit (_dash_refuse_overbytes).
+        _blim = int(self.limits["bytes"])
+        if len(self._raw_data_str) * 4 > _blim:
+            _fbytes = len(self._raw_data_str.encode("utf-8"))
+            if _fbytes > _blim:
+                _d = self._data()
+                _d = _d.get("StataJSON", _d)
+                _isstr = dict(_d.get("variableTypeIsString", {}) or {})
+                _isstr.update(_d.get("variableIsString", {}) or {})
+                _dash_refuse_overbytes(
+                    self._frame(), {k for k, v in _isstr.items() if v},
+                    self.limits, "server app", _fbytes)
+
+        # The qualifier columns the spec names are validated now, where the
+        # user who built the app reads the refusal, and not first when a
+        # session opens (the app validates them again as it loads).
+        if _dash_qual_cols_named(self.spec) or (
+                _DASH_QUAL_PREFIX in self._raw_data_str):
+            self._frame()
 
         try:
             # by() over the group limit: the app draws the first groups when
@@ -21056,6 +22622,9 @@ class ServerAppBuilder:
             loader.data_json = self._data()
             loader._load_data()
             self._frame_cache = loader.df
+            # The qualifier columns' masks, taken out of the frame as the
+            # app takes them (_dash_take_qual_columns).
+            self._qual_masks_cache = loader.qual_masks
         return self._frame_cache
 
     def _data(self) -> dict:
@@ -21104,7 +22673,9 @@ class ServerAppBuilder:
                 g_df = _dash_qualified_frame(
                     df, (go.get("if_expr") or g.get("if_expr") or ""),
                     (go.get("in_expr") or g.get("in_expr") or ""),
-                    "graph %r" % gname, copy=False)
+                    "graph %r" % gname, copy=False,
+                    qual=_dash_qual_mask(
+                        g, getattr(self, "_qual_masks_cache", None)))
             work = g_df if bmissing else g_df.dropna(subset=by_vars)
             if not work.empty:
                 _dash_by_groups(work, by_vars, bmissing,
@@ -21741,15 +23312,33 @@ class ServerAppBuilder:
             "        df = pd.DataFrame(rows, columns=var_names)",
             "    else:",
             "        df = pd.DataFrame()",
-            "    # Convert to numeric where possible",
-            "    for col in df.columns:",
-            "        if not type_is_str.get(col, False):",
-            "            df[col] = pd.to_numeric(df[col], errors='coerce')",
+            "    # Every column read by the saved loader's own reader: text",
+            "    # for a string variable, datetime64[ms] for one with a Stata",
+            "    # date format, numbers otherwise.  This coerced every column",
+            "    # to a number, so a served figure drew Stata's day",
+            "    # numbers on a numeric axis where the saved one drew dates.",
+            "    _bo = spec.get('build_options', {}) if isinstance(spec, dict) else {}",
+            "    _formats = _bo.get('formats', {}) if isinstance(_bo, dict) else {}",
+            "    date_vars, _ = _dash_load_columns(",
+            "        df, _formats if isinstance(_formats, dict) else {},",
+            "        {k for k, v in (type_is_str or {}).items() if v})",
+            "    # The qualifier columns dash.ado exported: validated and taken",
+            "    # out of the frame as masks, as the saved renderer takes them,",
+            "    # so no source, tooltip, filter or download holds one.",
+            "    df, qual_masks = _dash_take_qual_columns(df, spec)",
+            "    for _qc in qual_masks:",
+            "        for _qm in (var_labels, val_label_names, type_is_str):",
+            "            if isinstance(_qm, dict):",
+            "                _qm.pop(_qc, None)",
+            "        if isinstance(date_vars, dict):",
+            "            date_vars.pop(_qc, None)",
             "    meta = {",
             "        'var_labels': var_labels,",
             "        'val_label_names': val_label_names,",
             "        'val_labels': val_labels,",
             "        'type_is_str': type_is_str,",
+            "        'date_vars': date_vars,",
+            "        'qual_masks': qual_masks,",
             "    }",
             "    return spec, df, meta",
             "",
@@ -21776,12 +23365,14 @@ class ServerAppBuilder:
             "    try:",
             "        series = (df[varname].dropna() if varname in df.columns",
             "                  else pd.Series([], dtype=float))",
+            "        # A date as epoch milliseconds, the saved card's rule.",
+            "        series = _dash_kpi_column(series, stat, varname)",
             "        return float(_kpi_statistic(series, stat))",
             "    except Exception:",
             "        return float('nan')",
             "",
             "",
-            "def _format_kpi(value, fmt_str, varname='', stat=''):",
+            "def _format_kpi(value, fmt_str, varname='', stat='', date_vars=None):",
             '    """Format a KPI value, through the saved renderer\'s own formatter.',
             "",
             "    This used to be three lines that matched %[w].[d][fge],",
@@ -21794,7 +23385,8 @@ class ServerAppBuilder:
             "    return _dash_format_kpi_value(",
             "        value, _dash_effective_kpi_fmt(",
             "            {'fmt': fmt_str}, varname, _NUM_FORMATS),",
-            "        varname, stat)",
+            "        varname, stat, date_vars=date_vars,",
+            "        date_formatter=_format_date_value_standalone)",
             "",
             "",
         ]
@@ -21838,6 +23430,10 @@ class ServerAppBuilder:
             "        return",
             "",
             "    spec, df, meta = _load_spec_and_data()",
+            "    # The masks of the qualifier columns dash.ado exported: every",
+            "    # qualifier of a spec it wrote selects its rows with one, and",
+            "    # none is translated (_dash_qualified_frame's qual).",
+            "    _qual_masks = meta['qual_masks']",
             "    graphs = spec.get('graphs', [])",
             "    kpi_defs = spec.get('kpis', [])",
             "    bo = spec.get('build_options', {})",
@@ -21855,17 +23451,10 @@ class ServerAppBuilder:
             "    _num_formats = _NUM_FORMATS",
             "    val_label_names = meta['val_label_names']",
             "    val_labels = meta['val_labels']",
-            "    # The date variables, by the saved renderer's rule: a Stata",
-            "    # date format in build_options['formats'].  The frame keeps",
-            "    # their numbers (the app has no date axes -- BUGS.md); the",
-            "    # marker labels and by() panel titles convert them, so they",
-            "    # read as the saved page's do.  A served %td variable was",
-            "    # labelled 14612 where the saved page wrote 03 Jan 2000.",
-            "    _date_vars = {}",
-            "    for _dcol, _dfmt in (bo.get('formats', {}) or {}).items():",
-            "        _dkind = _stata_date_kind(str(_dfmt))",
-            "        if _dkind:",
-            "            _date_vars[str(_dcol)] = _dkind",
+            "    # The date variables, as the loader read them: the frame holds",
+            "    # them as datetime64[ms], exactly as the saved renderer's does,",
+            "    # so axes, tooltips, cards, widgets and moves read dates.",
+            "    _date_vars = dict(meta.get('date_vars', {}) or {})",
             "    # The dataset's Stata metadata reaches the mapper, as it does",
             "    # when the saved renderer builds one: a served colour key used",
             "    # to read '0'/'1' where the saved one reads the value labels.",
@@ -21911,10 +23500,13 @@ class ServerAppBuilder:
             "    # selection on this source cannot be mapped back to rows, and",
             "    # a linked graph's brush would compute over the wrong ones.",
             "    linked_vars = list(all_vars)",
-            "    _shared_data = {v: df[v].tolist() if v in df.columns else []",
+            "    _shared_data = {v: _dash_column_values(df[v]) if v in df.columns else []",
             "                    for v in linked_vars}",
             "    _shared_data['index'] = list(df.index)",
             "    shared_source = ColumnDataSource(_shared_data)",
+            "    # A jittered scatter puts its points on it, as on the saved",
+            "    # page (GlyphMapper._linked_jitter_columns).",
+            "    shared_source._dash_link_source = True",
             "    # Positions in shared_source, by row label, for the CDSView a",
             "    # qualified linked graph needs.",
             "    _shared_pos = {_lbl: _i for _i, _lbl in enumerate(df.index)}",
@@ -21933,7 +23525,7 @@ class ServerAppBuilder:
             "                    if v and v in df.columns and v not in gvars:",
             "                        gvars.append(v)",
             "            graph_sources[gname] = [ColumnDataSource(",
-            "                {v: df[v].tolist() for v in gvars}",
+            "                {v: _dash_column_values(df[v]) for v in gvars}",
             "            ) if gvars else ColumnDataSource({})]",
             "",
             "    # ---- Aggregated plot ColumnDataSources ----",
@@ -21992,7 +23584,7 @@ class ServerAppBuilder:
             "            _ly_src, _ok = _dash_pc_source(",
             "                g_df, plot.get('y1var', ''), plot.get('x1var', ''),",
             "                plot.get('y2var', ''), plot.get('x2var', ''),",
-            "                _dash_mlabel_names(opts)[0])",
+            "                _dash_mlabel_names(opts)[0], extra_cols=_hv)",
             "            if _ok:",
             "                _dash_add_pc_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype,",
@@ -22034,12 +23626,20 @@ class ServerAppBuilder:
             "        return _ly_src, _srcs",
             "",
             "    def _hover_cols_of(gname):",
-            "        # The columns hover() asks for, carried into every layer",
-            "        # source so the tooltip can read them.",
+            "        # The columns the tooltip reads -- the first layer's",
+            "        # variables, which _dash_build_hover names, and the ones",
+            "        # hover() asks for -- carried into every layer source.  The",
+            "        # saved page draws every layer from one source holding every",
+            "        # variable, so a layer of price on weight beside a scatter",
+            "        # of mpg carried mpg there and not here, and the two modes",
+            "        # gave the layer different tooltips.",
             "        for _gx in graphs:",
             "            if _gx.get('graph_options', {}).get('name', '') == gname.split('__by__')[0]:",
             "                _raw = (_gx.get('graph_options', {}).get('hover', '') or '').strip()",
-            "                return [_c for _c in _raw.split() if _c in df.columns]",
+            "                _p0 = (_gx.get('plots') or [{}])[0] or {}",
+            "                _tip = [_p0.get(_k, '') for _k in ('xvar', 'yvar', 'yvar1', 'yvar2')]",
+            "                return [_c for _c in dict.fromkeys(_tip + _raw.split())",
+            "                        if _c and _c in df.columns]",
             "        return []",
             "",
             "    def _dash_redraw_for(g, plot, pi, gname):",
@@ -22056,6 +23656,11 @@ class ServerAppBuilder:
             "        _g_in = (_go.get('in_expr') or g.get('in_expr') or '').strip()",
             "        _p_if = (plot.get('if_expr') or '').strip()",
             "        _p_in = (plot.get('in_expr') or '').strip()",
+            "        # The columns Stata filled, in a spec dash.ado wrote.",
+            "        _g_qc = str(g.get('qual_col') or '')",
+            "        _p_qc = str(plot.get('qual_col') or '')",
+            "        _g_q = _dash_qual_mask(g, _qual_masks)",
+            "        _p_q = _dash_qual_mask(plot, _qual_masks)",
             "        # The literal family draws from its own values, which no",
             "        # qualifier reaches, as in twoway and the live figure.",
             "        _p_lit = (str(plot.get('type', '') or '').lower()",
@@ -22066,11 +23671,13 @@ class ServerAppBuilder:
             "            # An `in' counts the dataset's observations, never the",
             "            # rows a filter or the graph's qualifier left in frame.",
             "            _fr = _dash_layer_frame(df, frame, _g_if, _g_in,",
-            "                                    'graph %r' % gname)",
+            "                                    'graph %r' % gname, qual=_g_q)",
             "            if not _p_lit and (",
-            "                    (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in)):",
+            "                    (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in)",
+            "                    or (_p_qc and _p_qc != _g_qc)):",
             "                _fr = _dash_layer_frame(df, _fr, _p_if, _p_in,",
-            "                                        'graph %r plot %d' % (gname, pi + 1))",
+            "                                        'graph %r plot %d' % (gname, pi + 1),",
+            "                                        qual=_p_q)",
             "            _tfig = bokeh_figure()",
             "            _ly, _srcs = _dash_draw_layer(_tfig, _fr, plot, pi, gname,",
             "                                          set(), None, None)",
@@ -22139,9 +23746,35 @@ class ServerAppBuilder:
             "            _fig_kw['min_height'] = _MIN_FIGURE_HEIGHT",
             "        _xsc = _dash_scale_spec(go.get('xscale', ''), 'xscale', _reported_subopts, gname)",
             "        _ysc = _dash_scale_spec(go.get('yscale', ''), 'yscale', _reported_subopts, gname)",
-            "        if _xsc['log']: _fig_kw['x_axis_type'] = 'log'",
-            "        if _ysc['log']: _fig_kw['y_axis_type'] = 'log'",
+            "        # A date axis, by the saved renderer's rule and in its words:",
+            "        # every layer's x (or y) a date variable of one kind.  The",
+            "        # served figure used to draw every date on a numeric axis.",
+            "        _x_date = _dash_figure_date_kind(plots, 'xvar', xv, _date_vars)",
+            "        _y_date = _dash_figure_date_kind(plots, 'yvar', yv, _date_vars)",
+            "        _xs_log, _ys_log = _xsc['log'], _ysc['log']",
+            "        if _x_date and _xs_log:",
+            "            warnings.warn(",
+            "                f\"dash: xscale(log) is meaningless for the date variable \"",
+            "                f\"'{xv}'; drawing a date axis instead.\",",
+            "                UserWarning,",
+            "            )",
+            "            _xs_log = False",
+            "        if _y_date and _ys_log:",
+            "            warnings.warn(",
+            "                f\"dash: yscale(log) is meaningless for the date variable \"",
+            "                f\"'{yv}'; drawing a date axis instead.\",",
+            "                UserWarning,",
+            "            )",
+            "            _ys_log = False",
+            "        if _x_date: _fig_kw['x_axis_type'] = 'datetime'",
+            "        elif _xs_log: _fig_kw['x_axis_type'] = 'log'",
+            "        if _y_date: _fig_kw['y_axis_type'] = 'datetime'",
+            "        elif _ys_log: _fig_kw['y_axis_type'] = 'log'",
             "        fig = bokeh_figure(**_fig_kw)",
+            "        _dash_mark_date_axes(fig, _x_date, _y_date)",
+            "        for _axis, _kind in ((fig.xaxis, _x_date), (fig.yaxis, _y_date)):",
+            "            if _kind:",
+            "                _axis.formatter = _datetime_formatter_for(_kind)",
             "        # Scheme first, so an explicit graph option still wins --",
             "        # through the SchemeParser method the saved figure uses,",
             "        # not a hand-copied rendering of it.",
@@ -22267,11 +23900,16 @@ class ServerAppBuilder:
             "            # reach (measured 24sep2026), and the saved renderer",
             "            # skips its qualifier: with no data this said the",
             "            # layer's `if' was skipped.",
+            "            # A spec dash.ado wrote names the column Stata filled.",
+            "            _p_qc = str(plot.get('qual_col') or '')",
+            "            _g_qc = str(g.get('qual_col') or '')",
             '            if ptype not in _DASH_LITERAL_TYPES and (',
-            '                    (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in)):',
+            '                    (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in)',
+            '                    or (_p_qc and _p_qc != _g_qc)):',
             '                g_df = _dash_layer_frame(',
             "                    df, _g_df_graph, _p_if, _p_in,",
-            "                    'graph %r plot %d' % (gname, pi + 1))",
+            "                    'graph %r plot %d' % (gname, pi + 1),",
+            "                    qual=_dash_qual_mask(plot, _qual_masks))",
             '            else:',
             '                g_df = _g_df_graph',
             '',
@@ -22390,9 +24028,19 @@ class ServerAppBuilder:
             "            _p0.get('yvar2', ''),",
             '            _hv.split() if _hv else [],',
             '            var_labels=var_labels,',
+            '            date_vars=_date_vars,',
             '            numeric_formats=_num_formats,',
             "            univar=_p0.get('var', ''),",
+            "            # Each layer's tooltip names its own variables, as",
+            "            # the saved renderer's does.",
+            "            layers=_plot_rends,",
             '        )',
+            "        # A layer hover() cannot reach says so, in the saved",
+            "        # renderer's words, once per layer across the panels.",
+            "        # Named for the graph, not for the panel's key.",
+            "        _dash_note_hover_unreached(",
+            "            go.get('name', '') or g.get('name', '') or gname, plots,",
+            "            _hv.split() if _hv else [])",
             '',
             "        if _fac_label is not None:",
             "            # The panel title is the figure's OWN title text -- the",
@@ -22415,7 +24063,8 @@ class ServerAppBuilder:
             "        gname = go.get('name', '')",
             "        _g_if = (go.get('if_expr') or g.get('if_expr') or '').strip()",
             "        _g_in = (go.get('in_expr') or g.get('in_expr') or '').strip()",
-            "        g_df = _dash_qualified_frame(df, _g_if, _g_in, 'graph %r' % gname)",
+            "        g_df = _dash_qualified_frame(df, _g_if, _g_in, 'graph %r' % gname,",
+            "                                     qual=_dash_qual_mask(g, _qual_masks))",
             "        _owner_rows[gname] = g_df.index",
             "        # One parser for both render modes.  It rejects an",
             "        # injection pattern by returning no variables.  The",
@@ -22468,7 +24117,7 @@ class ServerAppBuilder:
             "                graph_sources[_fname] = [shared_source]",
             "            else:",
             "                graph_sources[_fname] = [ColumnDataSource(",
-            "                    {_v: _gdf[_v].tolist() for _v in _gvars})]",
+            "                    {_v: _dash_column_values(_gdf[_v]) for _v in _gvars})]",
             "            _owner_rows[_fname] = _gdf.index",
             "            figures[_fname] = _dash_figure_for(",
             "                g, _fname, _gdf, _fac_label=_label)",
@@ -22486,8 +24135,10 @@ class ServerAppBuilder:
             "        _gnq = _goq.get('name', '')",
             "        _qi = (_goq.get('if_expr') or _gq.get('if_expr') or '').strip()",
             "        _qn = (_goq.get('in_expr') or _gq.get('in_expr') or '').strip()",
-            "        if _qi or _qn:",
-            "            _graph_qualifiers[_gnq] = {'if_expr': _qi, 'in_expr': _qn}",
+            "        _qc = str(_gq.get('qual_col') or '')",
+            "        if _qi or _qn or _qc:",
+            "            _graph_qualifiers[_gnq] = {'if_expr': _qi, 'in_expr': _qn,",
+            "                                       'qual_col': _qc}",
             "",
             "",
             "    # ---- Build KPI Divs ----",
@@ -22515,12 +24166,14 @@ class ServerAppBuilder:
             "        # a wrong answer presented as a right one.",
             "        _k_df = _dash_qualified_frame(",
             "            df, kpi.get('if_expr', ''), kpi.get('in_expr', ''),",
-            "            'kpi %r' % kname, copy=False)",
+            "            'kpi %r' % kname, copy=False,",
+            "            qual=_dash_qual_mask(kpi, _qual_masks))",
             "        if ((kpi.get('if_expr') or '').strip()",
-            "                or (kpi.get('in_expr') or '').strip()):",
+            "                or (kpi.get('in_expr') or '').strip()",
+            "                or kpi.get('qual_col')):",
             "            _kpi_qual_rows[kname] = _k_df.index",
             "        val = _compute_kpi(_k_df, kstat, kvar)",
-            "        disp = _format_kpi(val, kfmt, kvar, kstat)",
+            "        disp = _format_kpi(val, kfmt, kvar, kstat, _date_vars)",
             "        div_html = _dash_kpi_card(ktitle, disp, ksub, kcolor, kbg, kname)",
             "        # disable_math: the card is escaped HTML, not maths; a",
             "        # Div otherwise hands its text to MathJax, whose html",
@@ -22581,6 +24234,7 @@ class ServerAppBuilder:
             "        # runs: option values, titles, steps and bounds are one rule.",
             "        widget, _sent = _dash_filter_widget(",
             "            ftype, fvar, df[fvar], _ftitle, vlabels,",
+            "            date_kind=_date_vars.get(fvar, ''),",
             "            max_options=_dash_lim['filter_options'])",
             "        if widget is None:",
             "            if ftype not in _DASH_FILTER_TYPES:",
@@ -22691,9 +24345,13 @@ class ServerAppBuilder:
             "                _qual_cb = _gquals.get(_orig_gn_cb, {})",
             "                _in_cb = _qual_cb.get('in_expr', '').strip()",
             "                _if_cb = _qual_cb.get('if_expr', '').strip()",
-            "                if _in_cb or _if_cb:",
+            "                # The column Stata filled, in a spec dash.ado wrote: the",
+            "                # move keeps only rows it selects, intersected by index.",
+            "                _q_cb = _dash_qual_mask(_qual_cb, _qual_masks)",
+            "                if _in_cb or _if_cb or _q_cb is not None:",
             "                    _gdf = _dash_layer_frame(_df_ref, _gdf, _if_cb, _in_cb,",
-            "                                             'graph %r' % _orig_gn_cb)",
+            "                                             'graph %r' % _orig_gn_cb,",
+            "                                             qual=_q_cb)",
             "                # What a selection cleared below counts: the rows this",
             "                # graph or panel showed before any move that the move",
             "                # keeps -- a by() Total panel's never hold a missing",
@@ -22796,7 +24454,10 @@ class ServerAppBuilder:
             "                    # set first, so it never names a row past the end.",
             "                    for _vf in _redrawn_views.get(id(_live), ()):",
             "                        _vf.indices = None",
-            "                    _live.data = dict(_new.data)",
+            "                    # A jittered point stays where it was drawn",
+            "                    # (_dash_keep_jitter), as on the saved page.",
+            "                    _live.data = _dash_keep_jitter(",
+            "                        dict(_new.data), _orig_src_data.get(id(_live), {}))",
             "                    # Its rows are new too: a selection on them (a",
             "                    # jittered scatter's) is cleared, as in step 2.",
             "                    _live.selected.indices = []",
@@ -22824,7 +24485,7 @@ class ServerAppBuilder:
             "                val = _compute_kpi(_k_fdf, kpi.get('stat', 'mean'), kpi.get('var', ''))",
             "                disp = _format_kpi(val, kpi.get('fmt', ''),",
             "                                   kpi.get('var', ''),",
-            "                                   kpi.get('stat', 'mean'))",
+            "                                   kpi.get('stat', 'mean'), _date_vars)",
             "                ktitle = kpi.get('title', '') or ''",
             "                ksub = kpi.get('subtitle', '') or ''",
             "                kcolor = kpi.get('color', '') or ''",
@@ -22906,7 +24567,7 @@ class ServerAppBuilder:
             "                val = _compute_kpi(_k_sel, kpi.get('stat', 'mean'), kpi.get('var', ''))",
             "                disp = _format_kpi(val, kpi.get('fmt', ''),",
             "                                   kpi.get('var', ''),",
-            "                                   kpi.get('stat', 'mean'))",
+            "                                   kpi.get('stat', 'mean'), _date_vars)",
             "                ktitle = kpi.get('title', '') or ''",
             "                ksub = kpi.get('subtitle', '') or ''",
             "                kcolor = kpi.get('color', '') or ''",
@@ -23001,10 +24662,7 @@ class ServerAppBuilder:
             "    all_names = _dash_layout_order(registry, graphs, kpi_defs)",
             '',
             '    def _gopts_of(name):',
-            '        for _gx in graphs:',
-            "            if _gx.get('graph_options', {}).get('name') == name:",
-            "                return _gx.get('graph_options', {})",
-            '        return {}',
+            '        return _dash_graph_options_of(graphs, name)',
             '',
             '    def _dash_cell(name):',
             '        """The renderable for one registered name, or None -- the',
@@ -23039,8 +24697,9 @@ class ServerAppBuilder:
             '    # come from the saved page\'s own reader, over the names tabs()',
             '    # left, and each item takes its span of a GridBox\'s 12 columns',
             '    # where the saved page\'s markup puts it at its large breakpoint.',
-            '    # Unlike that page it does not reflow as the window narrows',
-            '    # (dash.sthlp says so).  Each item keeps its own toolbar, and its',
+            '    # Unlike that page it keeps those spans down to a 768 px window,',
+            '    # then stacks every item into one column (_dash_reflow;',
+            '    # dash.sthlp says so).  Each item keeps its own toolbar, and its',
             '    # save button writes the item under its own name, as on the',
             '    # saved page (_dash_name_save).',
             '    if _dash_is_bs_layout(layout_opt):',
@@ -23100,7 +24759,7 @@ class ServerAppBuilder:
             '',
             "        # The grid's one save button writes the whole grid to",
             "        # dashboard.png, through the helper the saved grid uses.",
-            "        grid = _dash_name_save(gridplot(grid_rows, sizing_mode='stretch_width'))",
+            "        grid = _dash_name_save(_dash_reflow(gridplot(grid_rows, sizing_mode='stretch_width')))",
             '',
             '    # A tab strip sits above whatever grid is left.  An empty grid -- every',
             '    # element tabbed -- would otherwise contribute a blank row.',
@@ -23117,9 +24776,9 @@ class ServerAppBuilder:
             '            # standalone renderer builds it.',
             "            sidebar = column(*filter_widgets, sizing_mode='fixed',",
             '                             width=_SIDEBAR_WIDTH_PX)',
-            "            layout = row(sidebar, content, sizing_mode='stretch_width')",
+            "            layout = _dash_reflow(row(sidebar, content, sizing_mode='stretch_width'))",
             '        else:',
-            "            filter_bar = row(filter_widgets, sizing_mode='stretch_width')",
+            "            filter_bar = _dash_reflow(row(filter_widgets, sizing_mode='stretch_width'), stack=False)",
             "            layout = column(filter_bar, content, sizing_mode='stretch_width')",
             '    else:',
             '        layout = content',

@@ -31,11 +31,6 @@
 
 cscript "dash examples run clean" adodir ".."
 
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 
 // See test_cscript_hygiene.py: do NOT probe Python by running it.
 if "`c(python_exec)'" == "" {
@@ -74,11 +69,12 @@ foreach f of local files {
     clear all
     global dash_nobrowser 1
     capture noisily do "`exdir'/`f'"
-    if _rc == 0 {
+    local ex_rc = _rc
+    if `ex_rc' == 0 {
         local n_ok = `n_ok' + 1
     }
     else {
-        display as error "EX-FAIL `f' (rc=`_rc')"
+        display as error "EX-FAIL `f' (rc=`ex_rc')"
         local n_bad = `n_bad' + 1
         local failed "`failed' `f'"
     }

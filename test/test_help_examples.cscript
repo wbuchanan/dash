@@ -4,7 +4,7 @@
 *! Usage:  via run_all_cscripts.do (the dash directory must be on the
 *!         ado-path), or `do test_help_examples.cscript' from test/.
 *!
-*! Requires: dash_setup completed (jsonio), Python and bokeh.
+*! Requires: dash_setup completed: Python and bokeh.
 *! Version: 1.0.0  23sep2026
 *!
 *! WHY THIS EXISTS
@@ -94,11 +94,6 @@
 
 cscript "dash help examples" adodir ".."
 
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 
 // See test_cscript_hygiene.py: do NOT probe Python by running it.
 if "`c(python_exec)'" == "" {

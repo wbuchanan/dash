@@ -3,7 +3,7 @@
 *!
 *! Usage:  do test/test_export.cscript
 *!
-*! Requires: dash_setup completed (jsonio, Python, bokeh).
+*! Requires: dash_setup completed (Python, bokeh).
 *! Version: 1.0.0  23sep2026
 *!
 *! WHY THIS EXISTS
@@ -26,11 +26,6 @@ cscript "dash export: the csv option" adodir ".."
 // cscript drops every global, the runner's $dash_nobrowser with it.
 global dash_nobrowser 1
 
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222

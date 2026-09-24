@@ -60,6 +60,10 @@ COVERAGE = {
         # e2e: saving() into a directory that does not exist is twoway's
         # r(603), naming it, on every route, before rendering.
         "_dash_saving_dir": ("test_json_escaping.cscript:JSE-52",),
+        # e2e: the user's file is read back after each refusal and replace,
+        # and a directory in its place, on both routes.
+        "_dash_saving_clobber": ("test_path_validation.cscript:PV-22",
+                                 "test_path_validation.cscript:PV-26"),
         "_dash_validate_path": ("test_path_validation.cscript:PV-01",
                                 "test_path_validation.cscript:PV-02",
                                 "test_path_validation.cscript:PV-04"),
@@ -112,6 +116,12 @@ COVERAGE = {
                                 "test_option_validation.cscript:OV-126"),
         # e2e: every default and ceiling read back through _dash_limit.
         "_dash_limit_table": ("test_adversarial.cscript:P19-05",),
+        # direct: the bytes of text exported, refused over $dash_max_bytes
+        # on both routes before the file is written, strL text counted, a
+        # variable named twice counted once.
+        "_dash_byte_cap": ("test_adversarial.cscript:P19-27",
+                           "test_adversarial.cscript:P19-29",
+                           "test_adversarial.cscript:P19-30"),
         "_dash_count_fmt": ("test_adversarial.cscript:P19-22",),
         "_dash_limit": ("test_adversarial.cscript:P19-05",
                         "test_adversarial.cscript:P19-17",
@@ -140,14 +150,22 @@ COVERAGE = {
                                "test_program_coverage.cscript:PC-04"),
         "_dash_empty_data": ("test_parser.cscript:P1A-75",
                              "test_parser.cscript:P1A-72"),
-        "_dash_date_fmts_swap": ("test_program_coverage.cscript:PC-05",
-                                 "test_program_coverage.cscript:PC-06",
-                                 "test_program_coverage.cscript:PC-07",
-                                 "test_program_coverage.cscript:PC-09"),
-        "_dash_date_fmts_restore": ("test_program_coverage.cscript:PC-05",
-                                    "test_program_coverage.cscript:PC-06",
-                                    "test_program_coverage.cscript:PC-07",
-                                    "test_program_coverage.cscript:PC-11"),
+        # direct: every string value, label and number reaches both
+        # renderers byte for byte; text that is not UTF-8 is read through
+        # ustrfix() and noted; a binary strL is refused, naming the
+        # variable; jsonio is never loaded.
+        "_dash_write_data": ("test_string_values.cscript:SV-01",
+                             "test_string_values.cscript:SV-04",
+                             "test_string_values.cscript:SV-06",
+                             "test_string_values.cscript:SV-07",
+                             "test_string_values.cscript:SV-09"),
+        # direct: each distinct qualifier's column holds Stata's answer, a
+        # reserved name is refused, a qualifier the data no longer answer
+        # is refused with Stata's error, nothing is left in the data.
+        "_dash_qual_gen": ("test_qualifier_in_stata.cscript:QS-05",
+                           "test_qualifier_in_stata.cscript:QS-06",
+                           "test_qualifier_in_stata.cscript:QS-08",
+                           "test_qualifier_in_stata.cscript:QS-01"),
         # e2e: the note names each unsupported option once, by name.
         "_dash_report_ignored": ("test_twoway_option_parity.cscript:TP-06",
                                  "test_twoway_option_parity.cscript:TP-07"),
@@ -263,6 +281,10 @@ COVERAGE = {
                                   "test_parser.cscript:P1A-57"),
         "_dash_undrawn_plottype": ("test_parser.cscript:P1A-58",
                                    "test_parser.cscript:P1A-59"),
+        # e2e: every prefix of every kernel name, its rc held to twoway's
+        # and the full name it registers asserted.
+        "_dash_kernel_full": ("test_help_claims_6.cscript:HC6-57",
+                              "test_help_claims_6.cscript:HC6-09"),
         # e2e: _dash_imm_next's asserted tokens, quotes and compound quotes
         # among them, are made by these three; direct for _dash_imm_next.
         "_dash_imm_dq_end": ("test_parser.cscript:P1A-67",),
@@ -325,6 +347,21 @@ COVERAGE = {
         "_dash_qual_name_spans": ("test_qualifier_literals.cscript:QL-21",
                                   "test_qualifier_literals.cscript:QL-22"),
         "_dash_qual_expand": ("test_qualifier_literals.cscript:QL-22",),
+        # e2e: every qualifier dash writes is evaluated in Stata -- the
+        # spec names its column and carries no text, a hand-set registry
+        # is refused, the columns count against the data limit -- and both
+        # modes draw Stata's rows.
+        "_dash_qual_reset": ("test_qualifier_in_stata.cscript:QS-05",
+                             "test_qualifier_in_stata.cscript:QS-01"),
+        "_dash_qual_refusal": ("test_qualifier_in_stata.cscript:QS-09",),
+        "_dash_qual_take": ("test_qualifier_in_stata.cscript:QS-05",
+                            "test_qualifier_in_stata.cscript:QS-03"),
+        "_dash_qual_skipws": ("test_qualifier_in_stata.cscript:QS-09",),
+        "_dash_qual_rewrite": ("test_qualifier_in_stata.cscript:QS-05",
+                               "test_qualifier_in_stata.cscript:QS-09",
+                               "test_qualifier_in_stata.cscript:QS-14"),
+        "_dash_qual_export": ("test_qualifier_in_stata.cscript:QS-05",
+                              "test_qualifier_in_stata.cscript:QS-10"),
         "_dash_text_args": ("test_json_escaping.cscript:JSE-42",
                             "test_json_escaping.cscript:JSE-46",
                             "test_json_escaping.cscript:JSE-47"),

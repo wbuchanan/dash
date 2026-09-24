@@ -381,6 +381,9 @@ NOT_IN_FILE = {
               "file is the same with or without it, so it is pinned by "
               "reading the ado (test_nodraw_is_still_read_by_the_launch_"
               "decision) and certified by test_nodraw_honoured.cscript",
+    "replace": "lets saving() write over a file that exists (WP-27); the "
+               "page is the same with or without it, so it is certified by "
+               "test_path_validation.cscript PV-22..27",
 }
 
 #: option -> (options A, options B, plot type, extra graph options).  Two
@@ -556,12 +559,12 @@ class TestEveryDeclaredOptionIsClassified:
         """Guards the guard: the syntax-block scanner still finds dash.ado's
         declarations, so the classification below cannot pass on
         nothing."""
-        # Exact, measured 24sep2026: the plot syntax block declares 155
-        # options and the graph block 64.  The `>= 130'/`>= 60' floors let a
+        # Exact, measured 24sep2026: the plot syntax block declares 156
+        # options and the graph block 65 (replace, WP-27).  The `>= 130'/`>= 60' floors let a
         # syntax block shrink by twenty options -- silently un-classifying
         # them -- and still pass.
-        assert len(_declared_plot()) == 155, len(_declared_plot())
-        assert len(_declared_graph()) == 64, len(_declared_graph())
+        assert len(_declared_plot()) == 156, len(_declared_plot())
+        assert len(_declared_graph()) == 65, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):
         """Pending, alias, route, or live -- a declared option with no

@@ -17,8 +17,9 @@ the automatic grid, without a word --
 Now every item takes its span of a Bokeh GridBox's 12 columns, at the row
 and column where the saved page's markup puts it at its large breakpoint:
 each bs row a new line, a cell that would carry the row past 12 columns on
-the next one (flex-wrap).  The served grid does not reflow at narrower
-widths; dash.sthlp says so.
+the next one (flex-wrap).  The served grid keeps those spans at narrower
+widths down to a 768 px window, and below it stacks every item into one
+column (TR-27.2); dash.sthlp says so.
 
 Found on the way, and fixed in the one reader both modes now run: under
 ``layout(bs)`` with no specification, the saved page put a KPI card that

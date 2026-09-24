@@ -372,23 +372,20 @@ def select_scripts(runner_src, scripts):
     return "\n".join(out + lines[end_all:])
 
 
-def runner_do(work, tree, runner_src, jsonio_dir=None):
+def runner_do(work, tree, runner_src):
     """The committed runner rewritten to run *tree*'s scripts with the
-    recorder on the ado-path, marking each script and flushing after it."""
+    recorder on the ado-path, marking each script and flushing after it.
+
+    The runner puts one directory on the ado-path, dash's own.  (It also
+    put jsonio's there until dash stopped using jsonio, 24sep2026.)"""
     lib = os.path.join(work, "lib")
     src = runner_src
     dash_line = re.compile(r'^adopath \+\+ "([^"]*)"\s*$', re.M)
     dirs = dash_line.findall(src)
-    if len(dirs) < 2:
-        raise ValueError("runner: expected the jsonio and dash adopath lines")
-    for d in dirs:
-        if os.path.isfile(os.path.join(d, "jsonio.ado")) or "StataJSON" in d:
-            if jsonio_dir:
-                src = src.replace('adopath ++ "%s"' % d,
-                                  'adopath ++ "%s/"' % jsonio_dir.rstrip("/"))
-        else:
-            src = src.replace('adopath ++ "%s"' % d,
-                              'adopath ++ "%s/"' % tree.rstrip("/"))
+    if len(dirs) != 1:
+        raise ValueError("runner: expected one adopath line, dash's")
+    src = src.replace('adopath ++ "%s"' % dirs[0],
+                      'adopath ++ "%s/"' % tree.rstrip("/"))
     src, n = re.subn(r'^local dashdir "[^"]*"\s*$',
                      'local dashdir "%s"' % tree.rstrip("/"), src, flags=re.M)
     if n != 1:
@@ -408,7 +405,7 @@ def runner_do(work, tree, runner_src, jsonio_dir=None):
     return src, n
 
 
-def prepare(work, repo=REPO, jsonio_dir=None, scripts=None):
+def prepare(work, repo=REPO, scripts=None):
     """Copy *repo* to WORK/tree, instrument it, and write the recorder's
     build file and the runner (every script, or only *scripts*)."""
     work = os.path.abspath(work)
@@ -454,7 +451,7 @@ def prepare(work, repo=REPO, jsonio_dir=None, scripts=None):
         src = fh.read()
     if scripts:
         src = select_scripts(src, scripts)
-    runner, nscripts = runner_do(work, tree, src, jsonio_dir)
+    runner, nscripts = runner_do(work, tree, src)
     with open(os.path.join(work, "run_measure.do"), "w") as fh:
         fh.write(runner)
     open(os.path.join(work, "hits.log"), "w").close()
@@ -571,8 +568,6 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("action", choices=("units", "prepare", "run", "report"))
     ap.add_argument("--work", help="scratch directory outside the repository")
-    ap.add_argument("--jsonio-dir", help="directory holding jsonio.ado "
-                    "(default: the one test/run_all_cscripts.do names)")
     ap.add_argument("--json", help="also write the report as JSON here")
     ap.add_argument("--scripts", help="comma-separated certification "
                     "scripts to run instead of every one the runner names "
@@ -586,8 +581,7 @@ def main(argv=None):
         ap.error("--work is required")
     if a.action in ("prepare", "run"):
         scripts = [s.strip() for s in (a.scripts or "").split(",") if s.strip()]
-        tree, n = prepare(a.work, jsonio_dir=a.jsonio_dir,
-                          scripts=scripts or None)
+        tree, n = prepare(a.work, scripts=scripts or None)
         print("prepared %s (%d scripts)" % (tree, n))
     if a.action == "run":
         work = os.path.abspath(a.work)

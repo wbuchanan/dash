@@ -374,7 +374,7 @@ assert r(rc) == 198
 display "ENV-06 PASS: no Python gives r(198), not a raw Python error"
 
 assert r(said) == 1
-display "ENV-07 PASS: the message names dash_setup, as the jsonio one does"
+display "ENV-07 PASS: the message names dash_setup"
 
 // ================================================================
 // ENV-17..19 -- with no Python, every route stops before Python runs
@@ -390,64 +390,59 @@ display "ENV-07 PASS: the message names dash_setup, as the jsonio one does"
 // route can start a real server or write a real dashboard even if a guard
 // regresses.  The results are asserted after the real probe is back (below),
 // so a failure here cannot leave "no Python" stubbed in for the next script.
-local e17_done 0
-capture which jsonio
-if _rc == 0 {
-    local e17_done 1
-    tempfile env17b
-    local env17dir "`env17b'_r"
-    mata: mkdir(st_local("env17dir"))
-    tempname env17fh
-    file open `env17fh' using "`env17dir'/dash_render.py", write text replace
-    file write `env17fh' "import os" _n
-    file write `env17fh' `"open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "ran.txt"), "w").write("ran")"' _n
-    file close `env17fh'
-    mata: st_local("_env_sado", st_global("S_ADO"))
-    local lg17 "`c(tmpdir)'dash_env17.log"
-    capture erase "`lg17'"
-    tempname lf17
-    tempfile e17out
-    // Stata hands a tempfile's name out again once the do-file that held it
-    // has ended, and the scripts before this one in the runner leave pages
-    // behind under such names plus .html: under the runner a page left by
-    // test_registry_collision.cscript was read as this build's, and ENV-18
-    // failed (measured 24sep2026; alone, the script passed).  So the pages
-    // an earlier script would leave are planted here, and cleared, as every
-    // check of a file's absence must clear its path first.
-    foreach sfx in ".html" "_i.html" {
-        tempname sf17
-        file open `sf17' using "`e17out'`sfx'", write text replace
-        file write `sf17' "a page an earlier script left" _n
-        file close `sf17'
-        capture erase "`e17out'`sfx'"
-    }
-    capture erase "`env17dir'/ran.txt"
-    quietly log using "`lg17'", replace text name(`lf17')
-    mata: st_global("S_ADO", char(96) + char(34) + st_local("env17dir") + char(34) + char(39) + ";" + st_local("_env_sado"))
-    capture dash clear
-    capture noisily dash scatter mpg weight, name(e17)
-    capture noisily dash serve, port(5098) timeout(1) nobrowser
-    local e17s = _rc
-    capture noisily dash build, saving("`e17out'.html") replace nobrowser
-    local e17b = _rc
-    capture noisily dash scatter mpg weight, saving("`e17out'_i.html") replace
-    local e17i = _rc
-    mata: st_global("S_ADO", st_local("_env_sado"))
-    quietly log close `lf17'
-    capture dash clear
-    capture confirm file "`env17dir'/ran.txt"
-    local e17ran = (_rc == 0)
-    capture confirm file "`e17out'.html"
-    local e17wb = (_rc == 0)
-    capture confirm file "`e17out'_i.html"
-    local e17wi = (_rc == 0)
-    capture erase "`env17dir'/ran.txt"
-    capture erase "`env17dir'/dash_render.py"
-    capture rmdir "`env17dir'"
-    mata: st_local("e17ann", strofreal(_env_log_has(st_local("lg17"), "starting Bokeh Server")))
-    mata: st_local("e17said", strofreal(_env_log_has(st_local("lg17"), "Python is required but is not available")))
-    capture erase "`lg17'"
+tempfile env17b
+local env17dir "`env17b'_r"
+mata: mkdir(st_local("env17dir"))
+tempname env17fh
+file open `env17fh' using "`env17dir'/dash_render.py", write text replace
+file write `env17fh' "import os" _n
+file write `env17fh' `"open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "ran.txt"), "w").write("ran")"' _n
+file close `env17fh'
+mata: st_local("_env_sado", st_global("S_ADO"))
+local lg17 "`c(tmpdir)'dash_env17.log"
+capture erase "`lg17'"
+tempname lf17
+tempfile e17out
+// Stata hands a tempfile's name out again once the do-file that held it
+// has ended, and the scripts before this one in the runner leave pages
+// behind under such names plus .html: under the runner a page left by
+// test_registry_collision.cscript was read as this build's, and ENV-18
+// failed (measured 24sep2026; alone, the script passed).  So the pages
+// an earlier script would leave are planted here, and cleared, as every
+// check of a file's absence must clear its path first.
+foreach sfx in ".html" "_i.html" {
+    tempname sf17
+    file open `sf17' using "`e17out'`sfx'", write text replace
+    file write `sf17' "a page an earlier script left" _n
+    file close `sf17'
+    capture erase "`e17out'`sfx'"
 }
+capture erase "`env17dir'/ran.txt"
+quietly log using "`lg17'", replace text name(`lf17')
+mata: st_global("S_ADO", char(96) + char(34) + st_local("env17dir") + char(34) + char(39) + ";" + st_local("_env_sado"))
+capture dash clear
+capture noisily dash scatter mpg weight, name(e17)
+capture noisily dash serve, port(5098) timeout(1) nobrowser
+local e17s = _rc
+capture noisily dash build, saving("`e17out'.html") replace nobrowser
+local e17b = _rc
+capture noisily dash scatter mpg weight, saving("`e17out'_i.html") replace
+local e17i = _rc
+mata: st_global("S_ADO", st_local("_env_sado"))
+quietly log close `lf17'
+capture dash clear
+capture confirm file "`env17dir'/ran.txt"
+local e17ran = (_rc == 0)
+capture confirm file "`e17out'.html"
+local e17wb = (_rc == 0)
+capture confirm file "`e17out'_i.html"
+local e17wi = (_rc == 0)
+capture erase "`env17dir'/ran.txt"
+capture erase "`env17dir'/dash_render.py"
+capture rmdir "`env17dir'"
+mata: st_local("e17ann", strofreal(_env_log_has(st_local("lg17"), "starting Bokeh Server")))
+mata: st_local("e17said", strofreal(_env_log_has(st_local("lg17"), "Python is required but is not available")))
+capture erase "`lg17'"
 
 // Put the real probe back.  Re-`do'ing dash.ado over the programs already
 // in memory is r(110), so the body is restated here; ENV-01..05 above
@@ -460,22 +455,17 @@ program define _dash_python_ok, rclass
     return scalar ok = cond(`"`probe'"' == "", 0, 1)
 end
 
-if `e17_done' {
-    assert `e17s' == 198
-    assert `e17ann' == 0
-    display "ENV-17 PASS: dash serve stops at r(198) before it announces a server"
-    assert `e17b' == 198
-    assert `e17wb' == 0
-    display "ENV-18 PASS: dash build stops at r(198) and writes nothing"
-    assert `e17i' == 198
-    assert `e17wi' == 0
-    assert `e17ran' == 0
-    assert `e17said' == 1
-    display "ENV-19 PASS: the one-line form stops too; no route ran the renderer"
-}
-else {
-    display "ENV-17..19 SKIP: jsonio not installed"
-}
+assert `e17s' == 198
+assert `e17ann' == 0
+display "ENV-17 PASS: dash serve stops at r(198) before it announces a server"
+assert `e17b' == 198
+assert `e17wb' == 0
+display "ENV-18 PASS: dash build stops at r(198) and writes nothing"
+assert `e17i' == 198
+assert `e17wi' == 0
+assert `e17ran' == 0
+assert `e17said' == 1
+display "ENV-19 PASS: the one-line form stops too; no route ran the renderer"
 
 
 // ================================================================
@@ -506,23 +496,23 @@ mata: st_local("_env_py", strofreal(_env_code_has("../dash.ado", ///
     "_dash_require_python")))
 assert `_env_py' >= 3
 
-// The count is today's exactly (the definition and two calls, measured
+// The count was exact once (the definition and two calls, measured
 // 24sep2026), and still it cannot see WHERE the calls stand: the guard
 // moved below the python: lines it protects, or a third program running
 // python: with no guard, leaves it at 3.  So dash.ado is read program by
 // program.  The programs holding a python: line -- captured or not -- are
-// _dash_do_render and _dash_serve, and in each the guard comes before the
-// first of them.  A new python: site fails the first assert until it is
-// named here, guarded.
+// _dash_do_render, _dash_write_data (24sep2026) and _dash_serve, and in
+// each the guard comes before the first of them.  A new python: site fails
+// the first assert until it is named here, guarded.
 mata: st_local("_env_pyprogs", _env_progs_with("../dash.ado", "python"))
 display "ENV-12: programs running python: `_env_pyprogs'"
-assert "`_env_pyprogs'" == "_dash_do_render _dash_serve"
+assert "`_env_pyprogs'" == "_dash_do_render _dash_write_data _dash_serve"
 foreach _env_p of local _env_pyprogs {
     mata: st_local("_env_g", strofreal(_env_first_in("../dash.ado", "`_env_p'", "_dash_require_python")))
     mata: st_local("_env_y", strofreal(_env_first_in("../dash.ado", "`_env_p'", "python")))
     assert `_env_g' > 0 & `_env_g' < `_env_y'
 }
-display "ENV-12 PASS: the Python guard is defined and called at both python: sites"
+display "ENV-12 PASS: the Python guard is defined and called at all three python: sites"
 
 mata: st_local("_env_mt", strofreal(_env_code_has("../dash.ado", ///
     "_dash_require_mata")))

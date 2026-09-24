@@ -623,9 +623,10 @@ class TestTheSavedPageHoldsThePlaceholder:
 # 4. The served app: what it converts, over the same variable
 # ===========================================================================
 #
-# The served frame keeps Stata's numbers (BUGS.md, "The generated server app
-# has no date handling at all"): its marker labels, by() titles and download
-# convert them, through the same function, and are what it can show.
+# The served frame is loaded by the saved loader's own column reader
+# (_dash_load_columns, WP-27), so it holds the same datetime64[ms] dates; its
+# figures, cards and widgets are held to the saved page's in
+# test_served_dates.py.
 
 class TestTheServedAppWritesThePlaceholder:
 
@@ -738,8 +739,19 @@ def _x_extents(fig):
                             float(ms.max())))
     for a in fig.center:
         if isinstance(a, Arrow):
-            out.append(("Arrow", "x", float(min(a.x_start, a.x_end)),
-                        float(max(a.x_start, a.x_end))))
+            # ONE annotation over the shaft's source (BUGS.md, 24sep2026):
+            # its x ends are columns, read as the page reads them.
+            ends = []
+            for spec in (a.x_start, a.x_end):
+                f = getattr(spec, "field", None)
+                col = (list(a.source.data[f]) if f else [spec])
+                vals = (pd.to_datetime(pd.Series(col)) if len(col)
+                        and hasattr(col[0], "year") else pd.Series(col))
+                ms = dr._dash_float_values(vals)
+                ends.extend(ms[~np.isnan(ms)].tolist())
+            if ends:
+                out.append(("Arrow", "x", float(min(ends)),
+                            float(max(ends))))
     return out
 
 

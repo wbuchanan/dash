@@ -410,7 +410,7 @@ def test_pkg_manifest_lists_every_runtime_file():
 #: (TR-26.9, 24sep2026) moved them to scripts/.
 _ROOT_ALSO = frozenset({
     "dash.pkg", "stata.toc", ".gitignore", "Makefile", "pyproject.toml",
-    "AGENTS.md", "BUGS.md", "CLAUDE.md", "GAPS.md", "REMAINING.md",
+    "AGENTS.md", "BUGS.md", "CHANGELOG.md", "CLAUDE.md", "GAPS.md", "REMAINING.md",
     "ROADMAP.md",
 })
 

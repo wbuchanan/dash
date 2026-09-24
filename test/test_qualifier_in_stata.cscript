@@ -1,0 +1,740 @@
+*! test_qualifier_in_stata.cscript  v1.0
+*! Certification script: every qualifier dash.ado writes is evaluated in
+*! Stata, once, and both renderers draw exactly the rows Stata selects.
+*!
+*! WHY THIS EXISTS
+*!
+*! dash.ado shipped each qualifier as text and both renderers translated it
+*! into a pandas query, behind a whitelist.  Measured 24sep2026 on sysuse
+*! auto (BUGS.md, four entries):
+*!
+*!   * a subscript or a function call was refused by the whitelist, skipped
+*!     with a warning and every row drawn: `if mpg > mpg[1]' drew 74 rows
+*!     where Stata's count is 26, `if abs(mpg) > 20' 74 where it is 36;
+*!   * a missing value compared as pandas compares NaN, false, where Stata
+*!     sorts it above every number: `if rep78 > 3' drew 29 of Stata's 34,
+*!     `if -rep78 > 0' none of its 5, `. > rep78' was skipped (Stata 69);
+*!   * missing(s) was never true for an empty string; `if 1' and `if 2 == 2'
+*!     were skipped; a unary + was refused; 2,000 nots were too deep; a %td
+*!     qualifier was skipped on a saved page ("year must be in 1..9999");
+*!   * a number of 9999 or less compared with a date column was read as a
+*!     year: `if d > 5000' compared against 01jan5000.
+*!
+*! dash.ado now evaluates each distinct qualifier -- a plot's, a graph's, a
+*! KPI's, if and in together -- in Stata against the data it exports, and
+*! ships the answer as a 0/1 byte column named __dashq<k>; the spec names
+*! that column ("qual_col") and carries no qualifier text, and the renderer
+*! selects the rows whose column holds 1.  No translation is left on the
+*! path dash.ado writes.
+*!
+*! Every case checks, against Stata's own `count' and `levelsof':
+*!   * the rows each scatter draws through its view (rowid is the x);
+*!   * the rows its source carries;
+*!   * that nothing says a qualifier was skipped;
+*! on the immediate route (dash <plot> ..., saving()) and the named route
+*! (name() then the export dash build and dash serve run), in both render
+*! modes.
+*!
+*! Tests: QS-01 .. QS-15
+*!
+*! Usage:  do test/test_qualifier_in_stata.cscript  (from test/)
+*! Version: 1.0  24sep2026
+
+cscript "every qualifier dash writes is evaluated in Stata" adodir ".."
+
+// `cscript' drops every global macro; set it again before any build.
+global dash_nobrowser 1
+
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+do "../dash_parse.mata"
+do "../dash.ado"
+do "cert_helpers.do"
+
+_dash_find_render
+global QS_RENDER `"`r(fn)'"'
+
+// ----------------------------------------------------------------
+// The data: auto, with rowid as the x, a string holding empty values and
+// a %td date.
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+gen long rowid = _n
+gen str18 s = cond(mod(_n, 5) == 0, "", make)
+gen d = mdy(1, 1, 2001) + _n
+format d %td
+
+// Helpers: the saved page read back from its file, and the named route's
+// two modes run on the exported spec and data.  Results come back as
+// globals.  No backslash, backtick or dollar sign is written in the block.
+python:
+import base64 as _qs_b64
+import html as _qs_html
+import importlib.util as _qs_il
+import json as _qs_json
+import re as _qs_re
+import sys as _qs_sys
+import warnings as _qs_w
+from sfi import Macro as _qs_M
+
+def _qs_dr():
+    name = "_qs_dash_render"
+    if name not in _qs_sys.modules:
+        spec = _qs_il.spec_from_file_location(name, _qs_M.getGlobal("QS_RENDER"))
+        mod = _qs_il.module_from_spec(spec)
+        _qs_sys.modules[name] = mod
+        spec.loader.exec_module(mod)
+    return _qs_sys.modules[name]
+
+def _qs_view_rows(n, kind, values):
+    if kind == "BooleanFilter":
+        return [i for i, b in enumerate(list(values)[:n]) if b]
+    if kind == "IndexFilter":
+        return [int(i) for i in values if 0 <= int(i) < n]
+    return list(range(n))
+
+def _qs_join(v):
+    return " ".join(str(int(x)) for x in sorted(v))
+
+def _qs_models(roots):
+    from bokeh.models import GlyphRenderer, Plot
+    panels, carried, drawn, layers = 0, 0, [], []
+    for root in roots:
+        for fig in root.select({"type": Plot}):
+            hit = False
+            for r in fig.renderers:
+                if isinstance(r, GlyphRenderer) and type(r.glyph).__name__ == "Scatter":
+                    hit = True
+                    xs = [float(v) for v in r.data_source.data["rowid"]]
+                    f = getattr(r.view, "filter", None)
+                    kind = type(f).__name__ if f is not None else ""
+                    vals = []
+                    if kind == "BooleanFilter":
+                        vals = f.booleans
+                    elif kind == "IndexFilter":
+                        vals = f.indices
+                    mine = [xs[i] for i in _qs_view_rows(len(xs), kind, vals)]
+                    carried += len(xs)
+                    drawn += mine
+                    layers.append(_qs_join(mine))
+            panels += 1 if hit else 0
+    return panels, carried, _qs_join(drawn), layers
+
+def _qs_kpi(roots):
+    from bokeh.models import Div
+    for root in roots:
+        for d in root.select({"type": Div}):
+            m = _qs_re.search('id="kpi_val_[^"]*"[^>]*>([^<]*)<', d.text or "")
+            if m:
+                return m.group(1).strip()
+    return "none"
+
+def _qs_modes():
+    dr = _qs_dr()
+    sp, dp, ap = (_qs_M.getGlobal(k) for k in ("QS_SPEC", "QS_DATA", "QS_APP"))
+    msgs = []
+    with _qs_w.catch_warnings(record=True) as caught:
+        _qs_w.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        page = r.render()
+        built = dr.ServerAppBuilder(sp, dp).build(ap)
+    msgs += [str(x.message) for x in caught]
+    with open(ap, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':" + chr(10) + "    make_document(curdoc())"
+    assert attach in src, "the generated app's curdoc attach moved"
+    ns = {"__name__": "_qs_app"}
+    with _qs_w.catch_warnings():
+        _qs_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "_qs_app.py", "exec"), ns)
+    from bokeh.document import Document
+    with _qs_w.catch_warnings(record=True) as caught:
+        _qs_w.simplefilter("always")
+        doc = Document()
+        made = ns["make_document"](doc)
+    msgs += [str(x.message) for x in caught]
+    for tag, roots in (("SAVED", [r._last_layout_root]), ("SERVED", doc.roots)):
+        p, c, d, layers = _qs_models(roots)
+        _qs_M.setGlobal("QS_" + tag + "_PANELS", str(p))
+        _qs_M.setGlobal("QS_" + tag + "_CARRIED", str(c))
+        _qs_M.setGlobal("QS_" + tag + "_DRAWN", d)
+        _qs_M.setGlobal("QS_" + tag + "_NLAYERS", str(len(layers)))
+        for k, rows in enumerate(layers):
+            _qs_M.setGlobal("QS_" + tag + "_LAYER" + str(k + 1), rows)
+        _qs_M.setGlobal("QS_" + tag + "_KPI", _qs_kpi(roots))
+    _qs_M.setGlobal("QS_SKIPPED", str(sum(1 for m in msgs if "skipped" in m)))
+
+def _qs_arr(v):
+    if isinstance(v, list):
+        return v
+    if isinstance(v, dict) and v.get("type") == "ndarray":
+        a = v.get("array")
+        if isinstance(a, list):
+            return a
+        if isinstance(a, dict) and a.get("type") == "bytes":
+            import numpy as np
+            return list(np.frombuffer(_qs_b64.b64decode(a["data"]),
+                                      dtype=v.get("dtype", "float64")))
+    return []
+
+def _qs_page():
+    with open(_qs_M.getGlobal("QS_PAGE"), encoding="utf-8") as fh:
+        page = fh.read()
+    m = _qs_re.search('<script type="application/json"[^>]*>(.*?)</script>', page, _qs_re.S)
+    docs = _qs_json.loads(_qs_html.unescape(m.group(1)))
+    objs, stack = {}, [docs]
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                objs[v["id"]] = v
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    def ref(v):
+        return objs.get(v["id"], v) if isinstance(v, dict) and "id" in v else v
+    panels, carried, drawn, layers = 0, 0, [], []
+    for o in objs.values():
+        if o["name"] not in ("Figure", "Plot"):
+            continue
+        hit = False
+        for rr in o.get("attributes", {}).get("renderers", []):
+            g = ref(rr)
+            a = g.get("attributes", {})
+            if g.get("name") != "GlyphRenderer" or ref(a.get("glyph", {})).get("name") != "Scatter":
+                continue
+            hit = True
+            data = dict((k, v) for k, v in ref(a.get("data_source", {})).get("attributes", {}).get("data", {}).get("entries", []))
+            xs = [float(x) for x in _qs_arr(data.get("rowid"))]
+            view = ref(a.get("view", {}))
+            f = ref(view.get("attributes", {}).get("filter", {})) if isinstance(view, dict) else {}
+            kind = f.get("name", "") if isinstance(f, dict) else ""
+            fa = f.get("attributes", {}) if isinstance(f, dict) else {}
+            vals = _qs_arr(fa.get("booleans" if kind == "BooleanFilter" else "indices", []))
+            mine = [xs[i] for i in _qs_view_rows(len(xs), kind, vals)]
+            carried += len(xs)
+            drawn += mine
+            layers.append((o["id"], _qs_join(mine)))
+        panels += 1 if hit else 0
+    _qs_M.setGlobal("QS_PAGE_PANELS", str(panels))
+    _qs_M.setGlobal("QS_PAGE_CARRIED", str(carried))
+    _qs_M.setGlobal("QS_PAGE_DRAWN", _qs_join(drawn))
+    _qs_M.setGlobal("QS_PAGE_NLAYERS", str(len(layers)))
+    for k, (fid, rows) in enumerate(layers):
+        _qs_M.setGlobal("QS_PAGE_LAYER" + str(k + 1), rows)
+    _qs_M.setGlobal("QS_PAGE_HASQ", "1" if "__dashq" in page else "0")
+
+def _qs_spec_facts():
+    with open(_qs_M.getGlobal("QS_SPEC"), encoding="utf-8") as fh:
+        spec = _qs_json.load(fh)
+    with open(_qs_M.getGlobal("QS_DATA"), encoding="utf-8") as fh:
+        data = _qs_json.load(fh)
+    data = data.get("StataJSON", data)
+    vals = data.get("values", [])
+    cols = sorted(vals[0].keys()) if vals else []
+    texts, quals = [], []
+    for g in spec.get("graphs", []):
+        for o in [g] + list(g.get("plots", [])):
+            texts += [o.get("if_expr", ""), o.get("in_expr", "")]
+            quals.append(o.get("qual_col", ""))
+    for k in spec.get("kpis", []):
+        texts += [k.get("if_expr", ""), k.get("in_expr", "")]
+        quals.append(k.get("qual_col", ""))
+    _qs_M.setGlobal("QS_COLS", " ".join(cols))
+    _qs_M.setGlobal("QS_TEXTS", str(sum(1 for t in texts if t)))
+    _qs_M.setGlobal("QS_QUALS", " ".join(sorted(set(q for q in quals if q))))
+end
+
+// One command with its output captured to a log: r(rc), r(log).
+capture program drop _qs_run
+program define _qs_run, rclass
+    version 16.0
+    args cmdtext
+    local logfile "`c(tmpdir)'dash_qs_run.log"
+    local ls = c(linesize)
+    set linesize 255
+    capture log close _qslog
+    capture erase "`logfile'"
+    quietly log using "`logfile'", name(_qslog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    quietly log close _qslog
+    set linesize `ls'
+    return scalar rc  = `rc'
+    return local  log "`logfile'"
+end
+
+// ----------------------------------------------------------------
+// QS-01 -- each qualifier, as typed, through both routes and both modes.
+// The rows are Stata's `levelsof rowid <qualifier>', measured here.
+// ----------------------------------------------------------------
+local bangs = "!" * 2000
+local q1  `"if rep78 > 3"'
+local q2  `"if !(rep78 > 3)"'
+local q3  `"if -rep78 > 0"'
+local q4  `"if . > rep78"'
+local q5  `"if . == rep78"'
+local q6  `"if rep78 > ."'
+local q7  `"if missing(s)"'
+local q8  `"if 1"'
+local q9  `"if 2 == 2"'
+local q10 `"if mpg > +25"'
+local q11 `"if mpg > mpg[1]"'
+local q12 `"if mpg > mpg[_n-1]"'
+local q13 `"if abs(mpg - 20) > 5"'
+local q14 `"if inlist(rep78, 3, 4)"'
+local q15 `"if strpos(make, "Ch") > 0"'
+local q16 `"if inrange(rep78, 4, .)"'
+local q17 `"if d > td(15jan2001)"'
+local q18 `"if d > 100"'
+local q19 `"if d > 14990"'
+local q20 `"if `bangs'(rep78 == 5)"'
+local q21 `"in -10/l"'
+local q22 `"if rep78 > 3 in 10/40"'
+local q23 `"in f/20"'
+local q24 `"if 0"'
+local nq 24
+forvalues j = 1/`nq' {
+    quietly count `q`j''
+    local n = r(N)
+    local want ""
+    if `n' > 0 {
+        quietly levelsof rowid `q`j'', local(want)
+    }
+    local want : list retokenize want
+    local shown = substr(`"`q`j''"', 1, 60)
+
+    // The immediate route.
+    tempfile p
+    global QS_PAGE "`p'.html"
+    _qs_run `"dash scatter mpg rowid `q`j'', saving("`p'.html")"'
+    local rc = r(rc)
+    cert_log_has "`r(log)'", needle("skipped")
+    local sk = r(found)
+    assert `rc' == 0
+    python: _qs_page()
+    display as text "  QS-01 [`j'] " `"`shown'"' "  Stata: `n' rows"
+    display as text "    immediate: carried $QS_PAGE_CARRIED, drew `: word count $QS_PAGE_DRAWN', skipped `sk'"
+    assert "$QS_PAGE_DRAWN" == "`want'"
+    assert "$QS_PAGE_CARRIED" == "`n'"
+    assert `sk' == 0
+    capture erase "`p'.html"
+
+    // The named route: exported as dash build and dash serve export it,
+    // drawn by both renderers.
+    capture dash clear
+    dash scatter mpg rowid `q`j'', name(qs`j')
+    tempfile s d a
+    _dash_prepare_spec, specpath("`s'") datapath("`d'")
+    global QS_SPEC "`s'"
+    global QS_DATA "`d'"
+    global QS_APP  "`a'"
+    python: _qs_modes()
+    display as text "    saved:  carried $QS_SAVED_CARRIED, served: carried $QS_SERVED_CARRIED, skipped $QS_SKIPPED"
+    assert "$QS_SAVED_DRAWN" == "`want'" & "$QS_SERVED_DRAWN" == "`want'"
+    assert "$QS_SAVED_CARRIED" == "`n'" & "$QS_SERVED_CARRIED" == "`n'"
+    assert "$QS_SKIPPED" == "0"
+    capture dash clear
+}
+display "QS-01 PASS: `nq' qualifiers draw Stata's rows on both routes, in both modes"
+
+// ----------------------------------------------------------------
+// QS-02 -- a plot's own qualifier and the graph's, combined as twoway
+// combines them: each plot draws the rows both select (twoway's sersets,
+// measured 24sep2026: 2, 0 and 1 observations for these three plots).
+// ----------------------------------------------------------------
+local cmd2 `"dash (scatter mpg rowid in 1/10) (scatter mpg rowid if foreign) (scatter mpg rowid in 30/40 if mpg > 20) in 5/50 if rep78 > 3"'
+local w1 ""
+local w2 ""
+local w3 ""
+quietly count if rep78 > 3 in 5/10
+if r(N) quietly levelsof rowid if rep78 > 3 in 5/10, local(w1)
+quietly count if foreign & rep78 > 3 & inrange(_n, 5, 50)
+if r(N) quietly levelsof rowid if foreign & rep78 > 3 & inrange(_n, 5, 50), local(w2)
+quietly count if mpg > 20 & rep78 > 3 in 30/40
+if r(N) quietly levelsof rowid if mpg > 20 & rep78 > 3 in 30/40, local(w3)
+forvalues k = 1/3 {
+    local w`k' : list retokenize w`k'
+}
+twoway (scatter mpg rowid in 1/10) (scatter mpg rowid if foreign) (scatter mpg rowid in 30/40 if mpg > 20) in 5/50 if rep78 > 3, nodraw
+tempfile p
+global QS_PAGE "`p'.html"
+_qs_run `"`cmd2', saving("`p'.html")"'
+assert r(rc) == 0
+python: _qs_page()
+display as text "  QS-02 immediate: [$QS_PAGE_LAYER1] [$QS_PAGE_LAYER2] [$QS_PAGE_LAYER3]  Stata: [`w1'] [`w2'] [`w3']"
+assert "$QS_PAGE_NLAYERS" == "3"
+assert "$QS_PAGE_LAYER1" == "`w1'" & "$QS_PAGE_LAYER2" == "`w2'" & "$QS_PAGE_LAYER3" == "`w3'"
+capture erase "`p'.html"
+capture dash clear
+`cmd2', name(qs02)
+tempfile s d a
+_dash_prepare_spec, specpath("`s'") datapath("`d'")
+global QS_SPEC "`s'"
+global QS_DATA "`d'"
+global QS_APP  "`a'"
+python: _qs_modes()
+display as text "  QS-02 saved: [$QS_SAVED_LAYER1] [$QS_SAVED_LAYER2] [$QS_SAVED_LAYER3]"
+display as text "  QS-02 served: [$QS_SERVED_LAYER1] [$QS_SERVED_LAYER2] [$QS_SERVED_LAYER3]"
+foreach m in SAVED SERVED {
+    assert "${QS_`m'_NLAYERS}" == "3"
+    assert "${QS_`m'_LAYER1}" == "`w1'" & "${QS_`m'_LAYER2}" == "`w2'" & "${QS_`m'_LAYER3}" == "`w3'"
+}
+assert "$QS_SKIPPED" == "0"
+capture dash clear
+display "QS-02 PASS: a plot's qualifier and the graph's select the rows twoway draws"
+
+// ----------------------------------------------------------------
+// QS-03 -- a KPI's qualifier: both cards show Stata's sum over its rows.
+// ----------------------------------------------------------------
+local k1 `"if rep78 > 3"'
+local k2 `"if mpg > mpg[1]"'
+local k3 `"in 10/20"'
+local k4 `"if d > 100"'
+forvalues j = 1/4 {
+    quietly summarize rowid `k`j'', meanonly
+    local ks = strtrim(string(r(sum), "%12.0f"))
+    capture dash clear
+    dash scatter mpg rowid, name(qsg`j')
+    dash kpi sum(rowid) `k`j'', title("S") fmt(%12.0f) name(qsk`j')
+    tempfile s d a
+    _dash_prepare_spec, specpath("`s'") datapath("`d'")
+    global QS_SPEC "`s'"
+    global QS_DATA "`d'"
+    global QS_APP  "`a'"
+    python: _qs_modes()
+    display as text "  QS-03 [" `"`k`j''"' "] KPI saved $QS_SAVED_KPI, served $QS_SERVED_KPI, Stata `ks'"
+    assert "$QS_SAVED_KPI" == "`ks'" & "$QS_SERVED_KPI" == "`ks'"
+}
+capture dash clear
+display "QS-03 PASS: a KPI's qualifier gives Stata's value in both modes"
+
+// ----------------------------------------------------------------
+// QS-04 -- by(): the graph's qualifier, then the panels.
+// ----------------------------------------------------------------
+quietly levelsof rowid if rep78 > 3, local(want4)
+local want4 : list retokenize want4
+tempfile p
+global QS_PAGE "`p'.html"
+_qs_run `"dash scatter mpg rowid if rep78 > 3, by(foreign) saving("`p'.html")"'
+assert r(rc) == 0
+python: _qs_page()
+display as text "  QS-04 immediate: $QS_PAGE_PANELS panels, carried $QS_PAGE_CARRIED"
+assert "$QS_PAGE_PANELS" == "2" & "$QS_PAGE_DRAWN" == "`want4'"
+capture erase "`p'.html"
+capture dash clear
+dash scatter mpg rowid if rep78 > 3, by(foreign) name(qs04)
+tempfile s d a
+_dash_prepare_spec, specpath("`s'") datapath("`d'")
+global QS_SPEC "`s'"
+global QS_DATA "`d'"
+global QS_APP  "`a'"
+python: _qs_modes()
+assert "$QS_SAVED_PANELS" == "2" & "$QS_SERVED_PANELS" == "2"
+assert "$QS_SAVED_DRAWN" == "`want4'" & "$QS_SERVED_DRAWN" == "`want4'"
+capture dash clear
+display "QS-04 PASS: by() panels the rows the qualifier selects, in both modes"
+
+// ----------------------------------------------------------------
+// QS-05 -- what is exported: one 0/1 column per distinct qualifier, named
+// in the spec, and no qualifier text for the renderer to translate; a
+// variable the qualifier alone names is not exported.
+// ----------------------------------------------------------------
+capture dash clear
+dash scatter mpg rowid if price > 5000, name(qs05a)
+dash (scatter mpg rowid if price > 5000) (scatter mpg rowid if price > 5000 in 1/30), name(qs05b)
+dash scatter mpg rowid, name(qs05c)
+dash kpi sum(rowid) if price > 5000, title("S") name(qs05k)
+tempfile s d a
+_dash_prepare_spec, specpath("`s'") datapath("`d'")
+global QS_SPEC "`s'"
+global QS_DATA "`d'"
+python: _qs_spec_facts()
+display as text "  QS-05 columns [$QS_COLS]  qualifier columns [$QS_QUALS]  texts left $QS_TEXTS"
+assert "$QS_QUALS" == "__dashq1 __dashq2"
+assert "$QS_TEXTS" == "0"
+local cols "$QS_COLS"
+assert `: list posof "__dashq1" in cols' > 0 & `: list posof "__dashq2" in cols' > 0
+assert `: list posof "price" in cols' == 0
+// The column holds Stata's answer.
+python:
+with open(_qs_M.getGlobal("QS_DATA"), encoding="utf-8") as fh:
+    _qs_d = _qs_json.load(fh)
+_qs_d = _qs_d.get("StataJSON", _qs_d)
+_qs_M.setGlobal("QS_Q1", " ".join(str(int(r["__dashq1"])) for r in _qs_d["values"]))
+_qs_M.setGlobal("QS_Q2", " ".join(str(int(r["__dashq2"])) for r in _qs_d["values"]))
+end
+local truth1 ""
+local truth2 ""
+forvalues i = 1/`=_N' {
+    local truth1 `truth1' `=(price[`i'] > 5000)'
+    local truth2 `truth2' `=(price[`i'] > 5000 & `i' <= 30)'
+}
+assert "$QS_Q1" == "`truth1'"
+assert "$QS_Q2" == "`truth2'"
+// And the data in memory are as they were: no column left behind.
+capture unab left : __dashq*
+assert _rc == 111
+capture dash clear
+display "QS-05 PASS: each distinct qualifier is one 0/1 column holding Stata's answer; no text is shipped"
+
+// ----------------------------------------------------------------
+// QS-06 -- the prefix is reserved: data already holding a __dashq variable
+// are refused, on both routes, with the data left as they were.
+// ----------------------------------------------------------------
+gen byte __dashq1 = 1
+tempfile p
+_qs_run `"dash scatter mpg rowid if rep78 > 3, saving("`p'.html")"'
+local rc6a = r(rc)
+cert_log_has "`r(log)'", needle("reserved")
+local m6a = r(found)
+capture dash clear
+dash scatter mpg rowid if rep78 > 3, name(qs06)
+_qs_run `"dash build, saving("`p'.html") replace nobrowser"'
+local rc6b = r(rc)
+cert_log_has "`r(log)'", needle("reserved")
+local m6b = r(found)
+display as text "  QS-06 one-line rc `rc6a' (message `m6a'), build rc `rc6b' (message `m6b')"
+assert `rc6a' == 110 & `rc6b' == 110 & `m6a' == 1 & `m6b' == 1
+confirm variable __dashq1
+assert __dashq1 == 1
+drop __dashq1
+rename mpg __dashqz
+capture dash clear
+_qs_run `"dash scatter __dashqz rowid, saving("`p'.html")"'
+assert r(rc) == 110
+rename __dashqz mpg
+capture erase "`p'.html"
+capture dash clear
+display "QS-06 PASS: a variable named with the reserved prefix is refused, not overwritten"
+
+// ----------------------------------------------------------------
+// QS-07 -- a build leaves the data as it found them: no variable added,
+// the sort order kept, and c(changed) as it was.
+// ----------------------------------------------------------------
+sort price
+local sb0 : sortedby
+local k0 = c(k)
+quietly save "`c(tmpdir)'qs07.dta", replace
+local ch0 = c(changed)
+tempfile p
+_qs_run `"dash scatter mpg rowid if rep78 > 3 in 3/60, saving("`p'.html")"'
+assert r(rc) == 0
+local sb1 : sortedby
+assert "`sb1'" == "`sb0'" & c(k) == `k0' & c(changed) == `ch0'
+// The in range counts the observations in their order in memory, as
+// twoway counts them.
+quietly levelsof rowid if rep78 > 3 in 3/60, local(want7)
+local want7 : list retokenize want7
+global QS_PAGE "`p'.html"
+python: _qs_page()
+assert "$QS_PAGE_DRAWN" == "`want7'"
+capture erase "`p'.html"
+capture erase "`c(tmpdir)'qs07.dta"
+sort rowid
+display "QS-07 PASS: the build adds nothing to the data, keeps their order, and marks nothing changed"
+
+// ----------------------------------------------------------------
+// QS-08 -- a qualifier Stata cannot evaluate against the data at build
+// time is refused with Stata's own error, and nothing is left behind.
+// ----------------------------------------------------------------
+capture dash clear
+gen tmpv = 1
+dash scatter mpg rowid if tmpv == 1, name(qs08)
+drop tmpv
+tempfile p
+_qs_run `"dash build, saving("`p'.html") replace nobrowser"'
+local rc8 = r(rc)
+display as text "  QS-08 build rc `rc8'"
+assert `rc8' == 111
+capture unab left : __dashq*
+assert _rc == 111
+capture dash clear
+display "QS-08 PASS: a qualifier the data no longer answer is refused at build, as twoway refuses it"
+
+// ----------------------------------------------------------------
+// QS-09 -- adversarial (CLAUDE.md rule 18): a registry set by hand cannot
+// carry a command out of the qualifier, name its own column, or smuggle an
+// in range; each is refused before anything is evaluated or exported.
+// ----------------------------------------------------------------
+capture dash clear
+dash scatter mpg rowid if rep78 > 3, name(qs09)
+local orig : copy global dash_json_qs09
+local bad1 = char(34) + "if_expr" + char(34) + ":" + char(34) + "1) in 1/5 if (1" + char(34)
+local bad2 = char(34) + "qual_col" + char(34) + ":" + char(34) + "mpg" + char(34) + "," + char(34) + "if_expr" + char(34) + ":" + char(34) + "rep78 > 3" + char(34)
+local bad3 = char(34) + "in_expr" + char(34) + ":" + char(34) + "1/5 if 1" + char(34)
+local bad4 = char(34) + "if_expr" + char(34) + ":" + char(34) + "rep78 > 3" + char(34) + ", " + char(34) + "x" + char(34) + ":1"
+local nbad = 0
+forvalues b = 1/4 {
+    local from = char(34) + "if_expr" + char(34) + ":" + char(34) + "rep78 > 3" + char(34)
+    if `b' == 3 local from = char(34) + "in_expr" + char(34) + ":" + char(34) + char(34)
+    mata: st_global("dash_json_qs09", subinstr(st_local("orig"), st_local("from"), st_local("bad`b'"), 1))
+    mata: assert(st_global("dash_json_qs09") != st_local("orig"))
+    tempfile s d
+    capture noisily _dash_prepare_spec, specpath("`s'") datapath("`d'")
+    local rcb = _rc
+    display as text "  QS-09 [`b'] rc `rcb'"
+    assert `rcb' == 198
+    capture unab left : __dashq*
+    assert _rc == 111
+    local ++nbad
+}
+assert `nbad' == 4
+mata: st_global("dash_json_qs09", st_local("orig"))
+capture dash clear
+display "QS-09 PASS: a hand-set qualifier cannot leave its parentheses, name its own column or carry a command in its range"
+
+// ----------------------------------------------------------------
+// QS-10 -- resource exhaustion (rule 18): a qualifier column counts
+// against the embedded-data limit, so many distinct qualifiers cannot
+// embed more than the limit allows.
+// ----------------------------------------------------------------
+capture dash clear
+forvalues j = 1/5 {
+    dash scatter mpg rowid if price > `j'000, name(qs10_`j')
+}
+// mpg, rowid and five qualifier columns: 74 x 7 = 518 values.
+global dash_max_cells 500
+tempfile p
+_qs_run `"dash build, saving("`p'.html") replace nobrowser"'
+local rc10 = r(rc)
+cert_log_has "`r(log)'", needle("518 values")
+local m10 = r(found)
+global dash_max_cells 600
+_qs_run `"dash build, saving("`p'.html") replace nobrowser"'
+local rc10b = r(rc)
+global dash_max_cells ""
+display as text "  QS-10 under 500 cells: rc `rc10' (518 named `m10'); under 600: rc `rc10b'"
+assert `rc10' == 134 & `m10' == 1 & `rc10b' == 0
+capture erase "`p'.html"
+capture dash clear
+display "QS-10 PASS: qualifier columns count against the embedded-data limit"
+
+// ----------------------------------------------------------------
+// QS-11 -- the one-line form of a date qualifier on a saved page, the
+// case the saved renderer skipped ("year must be in 1..9999"), with the
+// date drawn on the x.
+// ----------------------------------------------------------------
+quietly count if d > td(15jan2001) & d <= td(20feb2001)
+local n11 = r(N)
+tempfile p
+global QS_PAGE "`p'.html"
+_qs_run `"dash scatter mpg rowid if d > td(15jan2001) & d <= td(20feb2001), saving("`p'.html")"'
+assert r(rc) == 0
+cert_log_has "`r(log)'", needle("skipped")
+assert r(found) == 0
+python: _qs_page()
+display as text "  QS-11 drew `: word count $QS_PAGE_DRAWN' of Stata's `n11'"
+assert `: word count $QS_PAGE_DRAWN' == `n11'
+capture erase "`p'.html"
+display "QS-11 PASS: a %td qualifier selects Stata's rows on a saved page"
+
+// ----------------------------------------------------------------
+// QS-12 -- no qualifier column reaches the page: not in a source, a
+// tooltip, a filter's choices or the CSV download's columns.
+// ----------------------------------------------------------------
+capture dash clear
+dash scatter mpg rowid if rep78 > 3, name(qs12a) hover(mpg rowid)
+dash kpi mean(mpg) if foreign, title("M") name(qs12k)
+tempfile p
+global QS_PAGE "`p'.html"
+_qs_run `"dash build, saving("`p'.html") replace nobrowser csv filter(foreign, type(dropdown)) filter(price, type(range))"'
+assert r(rc) == 0
+python: _qs_page()
+display as text "  QS-12 the page names a qualifier column: $QS_PAGE_HASQ"
+assert "$QS_PAGE_HASQ" == "0"
+capture erase "`p'.html"
+capture dash clear
+display "QS-12 PASS: the qualifier columns never reach the saved page"
+
+// ----------------------------------------------------------------
+// QS-13 -- linear: a qualifier on 100,000 observations costs the build
+// about what one more exported column costs, not a pass per row.
+// ----------------------------------------------------------------
+preserve
+clear
+set obs 100000
+set seed 27
+gen double x = runiform()
+gen double y = runiform()
+gen double z = runiform()
+tempfile p
+timer clear 1
+timer clear 2
+timer on 1
+_qs_run `"dash scatter y x, saving("`p'.html")"'
+timer off 1
+assert r(rc) == 0
+timer on 2
+_qs_run `"dash scatter y x if x > y[_n-1] & !missing(z), saving("`p'.html") replace"'
+timer off 2
+assert r(rc) == 0
+quietly timer list
+local t1 = r(t1)
+local t2 = r(t2)
+display as text "  QS-13 100,000 rows: no qualifier `t1' s, qualified `t2' s"
+assert `t2' < 2 * `t1' + 5
+capture erase "`p'.html"
+restore
+display "QS-13 PASS: evaluating a qualifier in Stata stays linear"
+
+// ----------------------------------------------------------------
+// QS-14 -- dash serve's export is the same export: the named route above
+// runs _dash_prepare_spec, which both dash build and dash serve call; the
+// served app built from it draws Stata's rows (QS-01..04).  Here: the
+// spec dash serve would ship names its qualifier column and no text.
+// ----------------------------------------------------------------
+capture dash clear
+dash scatter mpg rowid if mpg > mpg[1], name(qs14)
+tempfile s d
+_dash_prepare_spec, cmdname("dash serve") specpath("`s'") datapath("`d'")
+global QS_SPEC "`s'"
+global QS_DATA "`d'"
+python: _qs_spec_facts()
+assert "$QS_QUALS" == "__dashq1" & "$QS_TEXTS" == "0"
+capture dash clear
+display "QS-14 PASS: dash serve ships the qualifier as a column"
+
+// ----------------------------------------------------------------
+// QS-15 -- after an estimation.  jsonio named the first variable made
+// after `regress' "(e)", Stata's e(sample), and not __dashq1: measured
+// 24sep2026 by test_e2e_single.cscript P1C-19, the renderer refused the
+// spec ("the qualifier column __dashq1 ... is not in the data"), r(7102).
+// The estimates are held while the columns are made and exported, and
+// are the user's again afterwards.
+// ----------------------------------------------------------------
+capture dash clear
+quietly regress mpg weight if foreign == 1
+local b15 = _b[weight]
+quietly levelsof rowid if foreign == 1, local(want15)
+local want15 : list retokenize want15
+tempfile p
+global QS_PAGE "`p'.html"
+_qs_run `"dash scatter mpg rowid if foreign == 1, saving("`p'.html")"'
+assert r(rc) == 0
+python: _qs_page()
+assert "$QS_PAGE_DRAWN" == "`want15'"
+dash scatter mpg rowid if foreign == 1, name(qs15)
+tempfile s d a
+_dash_prepare_spec, specpath("`s'") datapath("`d'")
+global QS_SPEC "`s'"
+global QS_DATA "`d'"
+global QS_APP  "`a'"
+python: _qs_modes()
+assert "$QS_SAVED_DRAWN" == "`want15'" & "$QS_SERVED_DRAWN" == "`want15'"
+display as text "  QS-15 after the builds: e(cmd) [`e(cmd)'], _b[weight] " _b[weight] " (was `b15')"
+assert "`e(cmd)'" == "regress"
+assert reldif(_b[weight], `b15') < 1e-12
+quietly count if e(sample)
+assert r(N) == 22
+capture erase "`p'.html"
+capture dash clear
+display "QS-15 PASS: a qualifier after an estimation is exported under its name, and the estimates are kept"
+
+capture dash clear
+macro drop QS_*
+display ""
+display "All qualifier-in-Stata tests PASSED."

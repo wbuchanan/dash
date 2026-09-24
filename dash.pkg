@@ -14,15 +14,15 @@ d internet connection.  -dash serve- runs the dashboard on a Bokeh
 d Server instead, and -dash build- with the server option writes such
 d an app for you to launch.
 d
-d Requires: Python 3.8+, bokeh>=3.0, numpy>=1.23, pandas>=2.0,
-d           jsonio (SSC).  Nothing else: scipy and statsmodels are
-d           not used.
+d Requires: Python 3.8+, bokeh>=3.0, numpy>=1.23, pandas>=2.0.
+d           Nothing else: jsonio is no longer needed, and scipy and
+d           statsmodels are not used.
 d
 d Run -dash_setup- once after installation: it checks the
-d dependencies and installs the missing Python packages and jsonio.
+d dependencies and installs the missing Python packages.
 d
-d Version: 2.0  27mar2026
-d Distribution-Date: 20260327
+d Version: 2.0  24sep2026
+d Distribution-Date: 20260924
 d
 f dash.ado
 f dash.sthlp

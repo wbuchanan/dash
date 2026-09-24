@@ -4,7 +4,7 @@
 *! Usage:  do test/test_bug_regressions.cscript   (run from test/, as the
 *!         runner does)
 *!
-*! Requires: dash_setup completed (jsonio, Python and bokeh).
+*! Requires: dash_setup completed (Python and bokeh).
 *! Version: 1.0.0  24sep2026
 *!
 *! WHY THIS EXISTS
@@ -68,11 +68,6 @@
 
 cscript "dash bug regressions" adodir ".."
 
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 
 // See test_cscript_hygiene.py: do NOT probe Python by running it.
 if "`c(python_exec)'" == "" {

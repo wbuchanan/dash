@@ -33,7 +33,8 @@
 *!                abbreviation); 02 bins() bounds.
 *!   bwidth():    03 kdensity bwidth(0); 04 lowess bwidth(1) is 0.8;
 *!                05 lowess bwidth(1.5) and bwidth(0); 06-07 kdensity width().
-*!   degree():    08.   kernel(): 09 abbreviations and case; 10 old syntax.
+*!   degree():    08.   kernel(): 09 abbreviations and case; 10 old syntax;
+*!                57 every prefix of every name (WP-27).
 *!   n():         11-12 lpoly; 13 kdensity; 14 the fits; 15 mspline;
 *!                16 lpoly's grid under if, by() and a 30-row dataset;
 *!                17 fpfitci and mband ignore n(); 18 function.
@@ -43,25 +44,21 @@
 *!   fpfitci/fpfit std: 26-29.   fpfit's smoothing options: 30-31.
 *!   histogram:   32-34.   lowess: 35-36.
 *!   Weights:     40-50, 53 (twoway sizes scatter markers by the weight),
-*!                54 (a pweight: the aweight fit, a robust band).
+*!                54 (a pweight: the aweight fit, a robust band), 56 (the
+*!                qualifier after the plot groups is part of the sample a
+*!                weight is checked over, except on kdensity; WP-27).
 *!   Misc:        51 _lpoly_work is compiled; 52 stdf stdr; 55 the options
 *!                dash names in the note (area() boundary atobs ...).
 *!
 *! Not in run_all_cscripts.do yet (WP-23 hands the wiring to the
 *! coordinator).  Usage:  cd test, then do "test_help_claims_6.cscript"
-*! (the dash directory and jsonio on the ado-path).
+*! (the dash directory on the ado-path).
 
 cscript "dash help claims 6: statistical options and weights" adodir ".."
 
 clear all
 set more off
 set graphics off
-
-capture which jsonio
-if _rc {
-    display as error "FAIL: jsonio is not installed; nothing was certified."
-    exit 9
-}
 
 do "cert_helpers.do"
 qui do "../dash_parse.mata"
@@ -391,13 +388,57 @@ _hc6_tw "kdensity mpg, kernel(epan)"
 local tb = r(rc)
 _hc6_tw "lpoly mpg weight, bwidth(400) kernel(GAUSSIAN)"
 local tc = r(rc)
+// WP-27: dash takes twoway's abbreviations and registers the full name;
+// it refused kernel(gau), r(198).  HC6-57 walks every prefix.
 _hc6_dash "dash lpoly mpg weight, kernel(gau) name(hc6)"
 local da = r(rc)
+mata: st_local("ja", strofreal(_hc6_json_has(char(34) + "kernel" + char(34) + ":" + char(34) + "gaussian" + char(34))))
+_hc6_dash "dash kdensity mpg, kernel(epan) name(hc6)"
+local db = r(rc)
+mata: st_local("jb", strofreal(_hc6_json_has(char(34) + "kernel" + char(34) + ":" + char(34) + "epanechnikov" + char(34))))
 _hc6_dash "dash lpoly mpg weight, kernel(GAUSSIAN) name(hc6)"
 local dc = r(rc)
 mata: st_local("j", strofreal(_hc6_json_has(char(34) + "kernel" + char(34) + ":" + char(34) + "gaussian" + char(34))))
-local bad = (`ta' != 0 | `tb' != 0 | `tc' != 198 | `da' != 198 | `dc' != 0 | `j' != 1)
-_hc6_tally HC6-09 `bad' "kernel(): twoway takes gau and epan and refuses GAUSSIAN; dash refuses gau, reads GAUSSIAN as gaussian"
+local bad = (`ta' != 0 | `tb' != 0 | `tc' != 198 | `da' != 0 | `ja' != 1 | `db' != 0 | `jb' != 1 | `dc' != 0 | `j' != 1)
+_hc6_tally HC6-09 `bad' "kernel(): twoway takes gau and epan and refuses GAUSSIAN; dash takes gau and epan as gaussian and epanechnikov, and reads GAUSSIAN as gaussian"
+
+// HC6-57 (WP-27): every prefix of every kernel name, on lpoly, lpolyci and
+// kdensity: dash takes what twoway takes, refuses what it refuses with
+// twoway's r(198), and registers the full name.  Measured 24sep2026: ep,
+// epa and epan are epanechnikov; epan2 only in full; bi, cos, gau, par,
+// rec and tri are the shortest of the others; e, co, ga, pa, re, tr are
+// refused.
+local bad = 0
+foreach t in lpoly lpolyci kdensity {
+    local vars = cond("`t'" == "kdensity", "mpg", "mpg weight")
+    local bwo  = cond("`t'" == "kdensity", "", "bwidth(400)")
+    foreach k in epanechnikov epan2 biweight cosine gaussian parzen rectangle triangle {
+        forvalues i = 1/`=strlen("`k'")' {
+            local a = substr("`k'", 1, `i')
+            _hc6_tw "`t' `vars', `bwo' kernel(`a')"
+            local trc = r(rc)
+            _hc6_dash "dash `t' `vars', kernel(`a') name(hc6)"
+            local drc = r(rc)
+            if `trc' != `drc' {
+                display as error "HC6-57 FAIL: `t' kernel(`a'): twoway rc `trc', dash rc `drc'"
+                local bad = 1
+            }
+            if `drc' == 0 {
+                // Which full name twoway's abbreviation stands for: the
+                // name itself, except that ep, epa and epan are
+                // epanechnikov's.
+                local full "`k'"
+                if "`k'" == "epan2" & `i' < 5 local full "epanechnikov"
+                mata: st_local("jk", strofreal(_hc6_json_has(char(34) + "kernel" + char(34) + ":" + char(34) + st_local("full") + char(34))))
+                if `jk' != 1 {
+                    display as error "HC6-57 FAIL: `t' kernel(`a') did not register `full'"
+                    local bad = 1
+                }
+            }
+        }
+    }
+}
+_hc6_tally HC6-57 `bad' "kernel(): every prefix twoway takes on lpoly, lpolyci and kdensity dash takes, as the full name, and every one it refuses dash refuses, r(198)"
 
 _hc6_tw "lpoly mpg weight, bwidth(400) gaussian"
 local t = r(rc)
@@ -1106,6 +1147,57 @@ foreach w in pw iw {
     if r(rc) != 101 local bad = 1
 }
 _hc6_tally HC6-50 `bad' "lpolyci takes aweight and fweight and refuses pweight and iweight, r(101), in both"
+
+// HC6-56 (WP-27): a weight's values are checked over the plot's sample,
+// and a qualifier written after the plot groups is part of that sample.
+// Measured 24sep2026: `(lfit mpg weight [fw=halfint]) if foreign==1',
+// halfint 1 on the foreign cars and 0.5 elsewhere, is rc 0 in twoway and
+// was r(401) in dash, which checked every row; inside the parentheses it
+// was rc 0 in both.  Each case asks twoway first and holds dash to its
+// code.
+local bad = 0
+// No preserve here: _hc6_tw preserves around each twoway run.  auto is
+// sorted by foreign, so 53/74 are the foreign cars.
+quietly gen double hc6_hi = cond(foreign == 1, 1, 0.5)
+quietly gen double hc6_ng = cond(foreign == 1, 1, -1)
+quietly count if foreign == 1 & _n >= 53
+assert r(N) == 22
+foreach c in "(lfit mpg weight [fw=hc6_hi]) if foreign==1" ///
+             "(lfit mpg weight [fw=hc6_hi] if mpg > 0) if foreign==1" ///
+             "(lfit mpg weight [fw=hc6_hi]) (scatter mpg weight) if foreign==1" ///
+             "(lfit mpg weight [fw=hc6_hi]) in 53/74" ///
+             "(lfit mpg weight [fw=hc6_hi] in 40/74) in 53/74" ///
+             "(lfit mpg weight [fw=hc6_hi]) if foreign==0" ///
+             "(lfit mpg weight [fw=hc6_hi]) in 50/74" ///
+             "(lpoly mpg weight [aw=hc6_ng]) if foreign==1" ///
+             "(lpolyci mpg weight [fw=hc6_hi]) in 53/74" ///
+             "(lpoly mpg weight [fw=hc6_ng]) if foreign==0" ///
+             "(kdensity mpg [aw=hc6_ng]) if foreign==1" ///
+             "(kdensity mpg [aw=hc6_ng] if foreign==1)" ///
+             "(kdensity mpg [fw=hc6_hi]) in 53/74" ///
+             "(kdensity mpg [aw=hc6_ng]) if foreign==0" ///
+             "(histogram mpg [fw=hc6_hi]) if foreign==1" ///
+             "(histogram mpg [fw=hc6_ng]) if foreign==1" ///
+             "(histogram mpg, start(15)) if mpg > 20," ///
+             "(histogram mpg, start(15)) if mpg > 5," {
+    // A command whose plot holds a comma ends in one, so that _hc6_tw puts
+    // its nodraw after the graph's comma and not inside the plot's.
+    _hc6_tw "`c'"
+    local trc = r(rc)
+    local sep = cond(substr("`c'", -1, 1) == ",", "", ",")
+    _hc6_dash "dash `c'`sep' name(hc6)"
+    local drc = r(rc)
+    if `trc' != `drc' {
+        display as error "HC6-56 FAIL: `c': twoway rc `trc', dash rc `drc'"
+        local bad = 1
+    }
+}
+// The case the entry measured is one twoway accepts: a check that
+// passes for both refusing it would pass the loop above.
+_hc6_dash "dash (lfit mpg weight [fw=hc6_hi]) if foreign==1, name(hc6)"
+if r(rc) != 0 local bad = 1
+drop hc6_hi hc6_ng
+_hc6_tally HC6-56 `bad' "a weight's values and histogram's start() are checked over the plot's sample with the qualifier after the plot groups in it, as twoway checks them"
 
 // ================================================================
 // HC6-51, 52

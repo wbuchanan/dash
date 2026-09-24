@@ -18,11 +18,6 @@
 
 cscript "an unimplemented by() sub-option is named" adodir ".."
 
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222
@@ -81,7 +76,7 @@ program define _bys_render, rclass
     capture log close _byslog
     log using "`logfile'", name(_byslog) text replace
     dash clear
-    capture noisily dash scatter mpg weight, by(`byspec') saving("`out'.html")
+    capture noisily dash scatter mpg weight, by(`byspec') saving("`out'.html") replace
     local rc = _rc
     log close _byslog
     if `rc' != 0 {
@@ -159,7 +154,7 @@ display "BYS-04 PASS: cols(2) is not reported alongside holes(1)"
 // A warning, not an error: the user asked for facets and gets them.
 tempfile out5
 dash clear
-dash scatter mpg weight, by(foreign, rows(2)) saving("`out5'.html")
+dash scatter mpg weight, by(foreign, rows(2)) saving("`out5'.html") replace
 confirm file "`out5'.html"
 display "BYS-05 PASS: the faceted dashboard is written despite the warning"
 

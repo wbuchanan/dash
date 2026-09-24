@@ -601,11 +601,12 @@ class TestTheParsersFoundSomething:
     def test_the_entry_parser_cuts_the_help_into_entries(self):
         entries = _help_entries()
         defs = [t for k, _, t in entries if k == "definition"]
-        # 317 definition entries.  The six rows of the second-axis table
+        # 319 definition entries (WP-27 added the saving() paragraph and
+        # the $dash_max_bytes row).  The six rows of the second-axis table
         # written as {p2col:} rows, which the cutter starts no entry at,
         # left 311 -- above "150", with those rows read as prose.
-        assert len(defs) == 317, (
-            f"{len(defs)} definition entries cut out of dash.sthlp, 317 "
+        assert len(defs) == 319, (
+            f"{len(defs)} definition entries cut out of dash.sthlp, 319 "
             f"measured 24sep2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -915,9 +916,11 @@ class TestInternalLinksResolve:
         assert not dupes, f"duplicate {{marker}} names: {sorted(dupes)}"
 
     def test_the_reference_scan_found_something(self):
-        # 60 links to 27 markers (measured 24sep2026).  A link whose marker
+        # 62 links to 27 markers (measured 24sep2026, after TR-27.2's two
+        # links from "At phone width" and Figure proportions; 60 before).
+        # A link whose marker
         # is written with a capital -- {help dash##Scheme:...}, to no
         # marker at all -- is no link the scan reads: 59, above the "10"
         # this was, and the dead link passed the check above.
         refs = re.findall(r"dash##[a-z_0-9]+", _help_text())
-        assert len(refs) == 60 and len(set(refs)) == 27
+        assert len(refs) == 62 and len(set(refs)) == 27

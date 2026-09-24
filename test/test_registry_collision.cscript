@@ -67,11 +67,6 @@ global dash_nobrowser 1
 // ----------------------------------------------------------------
 // Setup
 // ----------------------------------------------------------------
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222
@@ -711,7 +706,7 @@ foreach g of local _r24own {
 _reg_spec r24
 assert r(rc) == 0
 local sp "`r(spec)'"
-cert_file_has "`sp'", needle(`"{"name":"a","stat":"mean","var":"mpg","value":"21.2972972972973","display":"21.2972972972973","fmt":"","title":"A","subtitle":"","color":"","bgcolor":"","update":"filter","if_expr":"","in_expr":""}"')
+cert_file_has "`sp'", needle(`"{"name":"a","stat":"mean","var":"mpg","value":"21.2972972972973","display":"21.2972972972973","fmt":"","title":"A","subtitle":"","color":"","bgcolor":"","update":"filter","if_expr":"","in_expr":"","qual_col":""}"')
 assert r(found) == 1
 foreach f in stat disp sta dsp var val fmt sub col bg upd if in {
     cert_file_has "`sp'", needle(`"{"name":"a_`f'","stat":"mean","var":"price""')

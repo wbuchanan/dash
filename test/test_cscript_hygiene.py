@@ -272,7 +272,7 @@ class TestTheGuardReadersReadEverySpelling:
                      'Stata."'):
             assert _SKIPS_FOR_PYTHON.search(text), text
         assert not _SKIPS_FOR_PYTHON.search(
-            'display as error "SKIP: jsonio not installed."')
+            'display as error "SKIP: bokeh not installed."')
 
 
 class TestTheChecksReachEveryScript:
@@ -280,12 +280,15 @@ class TestTheChecksReachEveryScript:
     much each reader finds, measured 24sep2026."""
 
     def test_the_glob_finds_every_script(self):
-        # 63 certification scripts, each also named by run_all_cscripts.do
+        # 64 certification scripts, each also named by run_all_cscripts.do
         # (59, and WP-24's test_bug_regressions, test_program_coverage,
-        # test_qualifier_literals and test_mata_library_guard).  An empty
+        # test_qualifier_literals and test_mata_library_guard; WP-27's
+        # test_qualifier_in_stata and test_string_values), less
+        # test_jsonio.cscript, which certified jsonio itself and went with
+        # it (24sep2026).  An empty
         # glob would leave every per-script test above with no parameters,
         # and pytest reports that as a skip, not a failure.
-        assert len(_CSCRIPTS) == 63, (
+        assert len(_CSCRIPTS) == 64, (
             f"{len(_CSCRIPTS)} .cscript files found in {_HERE}"
         )
 
@@ -299,8 +302,9 @@ class TestTheChecksReachEveryScript:
                   "test_suboption_reporting.cscript"}
         assert linked <= names, sorted(linked - names)
         # 42, and three of WP-24's new scripts: test_mata_library_guard
-        # runs no Python.
-        assert len(names) == 45, f"{len(names)}: {sorted(names)}"
+        # runs no Python.  And WP-27's test_qualifier_in_stata and
+        # test_string_values.
+        assert len(names) == 47, f"{len(names)}: {sorted(names)}"
 
     def test_the_import_probes_are_found(self):
         with_probes = [_name(p) for p in _CSCRIPTS
@@ -365,7 +369,7 @@ class TestTheAvailabilityGuardIsReliable:
         hit = _ANY_CAPTURED_PY.search(code)
         assert not hit, f"{_RUNNER}: {hit.group(0) if hit else ''}"
 
-    # Only the scripts that can skip for want of Python (45, pinned by
+    # Only the scripts that can skip for want of Python (46, pinned by
     # TestTheChecksReachEveryScript): the others were 18 skips of this test.
     # Either wording: seven scripts say "SKIP: no Python is linked to this
     # Stata." and were skipped here while this read only "SKIP: Python not
@@ -803,3 +807,56 @@ class TestNoScriptBuildsWithTheBrowserAllowed:
             f"dash_nobrowser 1' after the cscript line, or load "
             f"cert_helpers.do there"
         )
+
+
+# ---------------------------------------------------------------------------
+# jsonio is not a dependency
+# ---------------------------------------------------------------------------
+# dash exported its data with jsonio until 24sep2026; it now writes the file
+# itself from Stata's Python (dash.ado _dash_write_data).  dash_setup still
+# installed jsonio from SSC and failed the run without it, and 49
+# certification scripts still began `capture which jsonio ... exit 222': a
+# skip on a package dash does not use, so a machine without it certified
+# nothing and reported every script as skipped.
+
+#: A `which jsonio' whose result can end the script within four lines.
+_JSONIO_GUARD = re.compile(
+    r"^[ \t]*(?:cap(?:t(?:u(?:r(?:e)?)?)?)?\s+)?which\s+jsonio\b[^\n]*"
+    r"(?:\n[^\n]*){0,4}?\n[^\n]*\bexit\s+\d+", re.M)
+
+
+def _code_only(src):
+    """Stata source with // comments, *! and * comment lines dropped."""
+    out = []
+    for ln in src.splitlines():
+        if ln.lstrip().startswith("*"):
+            continue
+        out.append(ln.split("//", 1)[0])
+    return "\n".join(out)
+
+
+class TestJsonioIsNotADependency:
+
+    def test_the_guard_reader_finds_the_old_guard(self):
+        old = ('capture which jsonio\nif _rc != 0 {\n'
+               '    display as error "SKIP: jsonio not installed."\n'
+               '    exit 222\n}\n')
+        assert _JSONIO_GUARD.search(old)
+        # HC8-17's check that jsonio is OFF the path is not a guard.
+        ok = ('capture program drop jsonio\ncapture which jsonio\n'
+              'local on = (_rc == 0)\n')
+        assert not _JSONIO_GUARD.search(ok)
+
+    def test_no_cscript_skips_or_stops_for_want_of_jsonio(self):
+        bad = [_name(p) for p in _CSCRIPTS
+               if _JSONIO_GUARD.search(_code_only(_read(p)))
+               or re.search(r"SKIP[^\"\n]*jsonio not installed", _read(p))]
+        assert not bad, (
+            f"{bad}: skip or stop when jsonio is missing, a package dash "
+            f"does not use")
+
+    def test_dash_setup_neither_installs_nor_requires_jsonio(self):
+        with open(_ADOS[1], encoding="utf-8") as fh:
+            code = _code_only(fh.read())
+        assert "jsonio" not in code, (
+            "dash_setup.ado still checks or installs jsonio")

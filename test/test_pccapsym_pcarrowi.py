@@ -229,10 +229,10 @@ class TestMapPcarrowi:
         # not the drawing order; center is.
         heads_i = [a for a in fig_i.center if isinstance(a, Arrow)]
         heads_v = [a for a in fig_v.center if isinstance(a, Arrow)]
-        assert len(heads_i) == len(heads_v) == 2
+        assert len(heads_i) == len(heads_v) == 1
         assert all(isinstance(a.end, OpenHead) for a in heads_i)
-        assert ([(a.x_start, a.y_start, a.x_end, a.y_end) for a in heads_i]
-                == [(a.x_start, a.y_start, a.x_end, a.y_end) for a in heads_v])
+        assert _head_rows(heads_i) == _head_rows(heads_v)
+        assert len(_head_rows(heads_i)) == 2
 
     def test_it_honours_the_options_pcarrow_honours(self):
         gm, fig, (seg,), _ = self._draw([[0, 0, 1, 1]],
@@ -284,7 +284,8 @@ class TestMapPcarrowi:
     def test_a_missing_coordinate_draws_neither_arrow_nor_label(self):
         _, fig, (seg,), _ = self._draw([[0, 0, None, 1, "A", 3],
                                         [1, 1, 2, 2]])
-        assert len(fig.select({"type": Arrow})) == 1
+        assert _head_rows(fig.select({"type": Arrow})) == [(1.0, 1.0, 2.0,
+                                                            2.0)]
         assert _col(seg, "x0") == [1.0]
         assert not _labelsets(fig)
 
@@ -341,7 +342,8 @@ class TestMapPcarrowi:
                 warnings.simplefilter("ignore")
                 dr.GlyphMapper().map_pcarrowi(
                     fig, [[i, i, i + 1, i + 1] for i in range(n)], {})
-            assert len([a for a in fig.center if isinstance(a, Arrow)]) == n
+            heads = [a for a in fig.center if isinstance(a, Arrow)]
+            assert len(heads) == 1 and len(_head_rows(heads)) == n
             return len(seen)
 
         one, many = changes_for(1), changes_for(500)
@@ -461,8 +463,28 @@ def _labels(figs):
 
 
 def _heads(figs):
-    return sorted((a.x_start, a.y_start, a.x_end, a.y_end)
-                  for f in figs for a in f.select({"type": Arrow}))
+    return sorted(_head_rows([a for f in figs
+                              for a in f.select({"type": Arrow})]))
+
+
+def _head_rows(arrows):
+    """(x_start, y_start, x_end, y_end) of every head the Arrow annotations
+    draw, in drawing order: a row of the source a field names, or the
+    annotation's literal numbers.  pcarrow draws ONE annotation over the
+    shaft's source, so its heads follow the rows the shaft follows."""
+    out = []
+    for a in arrows:
+        specs = [getattr(a, k) for k in ("x_start", "y_start", "x_end",
+                                        "y_end")]
+        names = [getattr(v, "field", None) or (v.get("field")
+                 if isinstance(v, dict) else None) for v in specs]
+        if all(names):
+            cols = [list(a.source.data[n]) for n in names]
+            out.extend(tuple(float(c[i]) for c in cols)
+                       for i in range(len(cols[0])))
+        else:
+            out.append(tuple(float(v) for v in specs))
+    return out
 
 
 class TestBothModesDrawTheSame:

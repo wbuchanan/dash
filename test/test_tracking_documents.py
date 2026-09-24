@@ -473,6 +473,48 @@ class TestEveryOpenEntrySaysWhyItIsOpen:
             "and why:\n" + "\n".join(bad))
 
 
+class TestNoOpenEntryBlocksARelease:
+    """WP-27's BR-27.2: no S1 or S2 defect is open at release.
+
+    Every open entry carries its grade on GAPS.md's scale in its Resolution,
+    once, as "Graded S<n> (WP-27): <why>" -- S1 silently wrong output or a
+    documented feature broken outright, S2 a documented or accepted
+    capability that fails visibly, S3 fidelity, hygiene, coverage or
+    documentation drift -- and none is S1 or S2.  An entry opened later is
+    graded when it is written, and one graded S1 or S2 stops the release.
+    """
+
+    _GRADE = re.compile(r"\bGraded (S[1-3]) \(WP-\d{2}\): \S")
+
+    def test_every_open_entry_is_graded_once(self, bugs):
+        entries, _p = bugs
+        bad = ["line %d: %s" % (e["line"], e["title"][:90])
+               for e in entries if not e["closed"]
+               and len(self._GRADE.findall(e["fields"].get("Resolution", "")))
+               != 1]
+        assert not bad, ("open BUGS.md entries without exactly one "
+                         "'Graded S<n> (WP-NN): <why>':\n" + "\n".join(bad))
+
+    def test_no_open_entry_is_s1_or_s2(self, bugs):
+        entries, _p = bugs
+        bad = ["line %d: %s %s" % (e["line"], g, e["title"][:90])
+               for e in entries if not e["closed"]
+               for g in self._GRADE.findall(e["fields"].get("Resolution", ""))
+               if g in ("S1", "S2")]
+        assert not bad, ("open S1/S2 BUGS.md entries block the release:\n"
+                         + "\n".join(bad))
+
+    def test_the_grade_reader(self):
+        entries, _p = _parse_bugs(
+            "- [ ] Title: a\n  - File Names and Line Numbers: f\n"
+            "  - Description: d\n  - Suggested fix: s\n"
+            "  - Resolution: Not fixed because x. Graded S1 (WP-27): wrong "
+            "output.\n")
+        res = entries[0]["fields"]["Resolution"]
+        assert self._GRADE.findall(res) == ["S1"]
+        assert self._GRADE.findall("Graded S3: no package") == []
+
+
 # ===========================================================================
 # GAPS.md and ROADMAP.md
 # ===========================================================================

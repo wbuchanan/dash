@@ -153,10 +153,11 @@ class TestMapPcarrow:
         """P4-11: map_pcarrow adds Arrow layout annotations to the figure."""
         from bokeh.models import Arrow
         gm.map_pcarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {})
-        # Arrow annotations go into fig.center (not fig.renderers)
+        # Arrow annotations go into fig.center (not fig.renderers): ONE,
+        # drawing a head on each row of the shaft's source (10 in pc_cds).
         arrow_layouts = fig.select({"type": Arrow})
-        # One Arrow per data row (10 rows in pc_cds)
-        assert len(arrow_layouts) == len(pc_cds.data["x1"])
+        assert len(arrow_layouts) == 1
+        assert _heads_drawn(fig) == len(pc_cds.data["x1"])
 
     def test_pcarrow_uses_open_head(self, fig, pc_cds, gm):
         """P4-12: Arrow annotations use OpenHead arrowheads."""
@@ -178,9 +179,8 @@ class TestMapPcarrow:
         cds = ColumnDataSource(df)
         tfig = figure()
         result = gm.map_pcarrow(tfig, cds, "y1", "x1", "y2", "x2", {})
-        # Only 2 clean rows → 2 Arrow annotations
-        arrow_layouts = tfig.select({"type": Arrow})
-        assert len(arrow_layouts) == 2
+        # Only 2 clean rows → 2 heads
+        assert _heads_drawn(tfig) == 2
 
     def test_pcarrow_lcolor_option(self, fig, pc_cds, gm):
         """P4-14: lcolor option is applied to the Arrow annotation line color."""
@@ -188,6 +188,19 @@ class TestMapPcarrow:
         from bokeh.models import Arrow
         arrow_layouts = fig.select({"type": Arrow})
         assert arrow_layouts[0].line_color == "#ff00ff"
+
+
+def _heads_drawn(fig):
+    """The heads a figure's Arrow annotations draw: one per row of the
+    source each reads its coordinates from (the shaft's copy), or one for
+    an annotation of literal coordinates."""
+    from bokeh.models import Arrow
+    n = 0
+    for a in fig.select({"type": Arrow}):
+        f = getattr(a.x_start, "field", None) or (
+            a.x_start.get("field") if isinstance(a.x_start, dict) else None)
+        n += len(a.source.data[f]) if f else 1
+    return n
 
 
 # ================================================================
@@ -209,8 +222,8 @@ class TestMapPcbarrow:
         """P4-17: map_pcbarrow adds Arrow layout annotations."""
         from bokeh.models import Arrow
         gm.map_pcbarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {})
-        arrow_layouts = fig.select({"type": Arrow})
-        assert len(arrow_layouts) == len(pc_cds.data["x1"])
+        assert len(fig.select({"type": Arrow})) == 1
+        assert _heads_drawn(fig) == len(pc_cds.data["x1"])
 
     def test_pcbarrow_uses_normal_head_on_both_ends(self, fig, pc_cds, gm):
         """P4-18: pcbarrow uses NormalHead on both start and end of each Arrow."""
@@ -237,8 +250,8 @@ class TestMapPcbarrow:
         cds = ColumnDataSource(df)
         tfig = figure()
         gm.map_pcbarrow(tfig, cds, "y1", "x1", "y2", "x2", {})
-        arrow_layouts = tfig.select({"type": Arrow})
-        assert len(arrow_layouts) == 2
+        assert len(tfig.select({"type": Arrow})) == 1
+        assert _heads_drawn(tfig) == 2
 
     def test_pcbarrow_differs_from_pcarrow_head_type(self, fig, pc_cds, gm):
         """P4-20: pcbarrow head type (NormalHead) is different from pcarrow (OpenHead)."""

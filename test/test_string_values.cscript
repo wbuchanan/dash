@@ -1,0 +1,544 @@
+*! test_string_values.cscript  v1.0
+*! Certification script: every string value Stata can hold as text reaches
+*! both renderers exactly as Stata holds it.
+*!
+*! WHY THIS EXISTS
+*!
+*! dash exported its data with jsonio, whose ado returns the JSON it wrote
+*! in a macro and then expands that macro inside compound quotes.  Measured
+*! 24sep2026 on five observations of auto, one string variable s shown by
+*! mlabel(s), `_dash_prepare_spec' (the export dash build and dash serve
+*! run):
+*!
+*!   * a value holding an unclosed compound double quote (the backtick and
+*!     double quote pair) or a lone backtick stopped the export with r(132)
+*!     "too few quotes", inside jsonio's own ado;
+*!   * a value holding the closing pair (double quote then apostrophe), or a
+*!     lone apostrophe, stopped it with r(109) "type mismatch";
+*!   * so did any value label or variable label holding them;
+*!   * a strL variable was exported as the text "null" in every
+*!     observation, flagged as a number, so the renderer read it as missing.
+*!
+*! dash now writes the data file itself, from Python through the Stata
+*! Function Interface (_dash_write_data, dash_render.py's
+*! _dash_write_stata_data): each value is read by value and never passes
+*! through a macro.
+*!
+*! Every case compares, byte for byte in Stata, each value as Stata holds
+*! it with the value each renderer loaded -- the saved renderer's frame and
+*! the generated server app's _load_spec_and_data() -- the loaded values
+*! stored back into Stata by sfi.  Text that is not UTF-8, which no web page
+*! can carry, arrives as Stata's ustrfix() gives it, with a note naming
+*! where; a binary strL is refused, r(198), naming the variable.
+*!
+*! Tests: SV-01 .. SV-09
+*!
+*! Usage:  do test/test_string_values.cscript  (from test/)
+*! Version: 1.0  24sep2026
+
+cscript "every string value reaches both renderers exactly" adodir ".."
+
+// `cscript' drops every global macro; set it again before any build.
+global dash_nobrowser 1
+
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+do "../dash_parse.mata"
+do "../dash.ado"
+do "cert_helpers.do"
+
+_dash_find_render
+global SV_RENDER `"`r(fn)'"'
+
+// ----------------------------------------------------------------
+// The helpers.  The loaded columns come back into Stata as new variables
+// <v>_saved and <v>_served (strL for a string, double otherwise, a date as
+// its Stata day number), so every comparison is Stata's own, by bytes.
+// No backslash, backtick or dollar sign is written in the block.
+// ----------------------------------------------------------------
+python:
+import importlib.util as _sv_il
+import json as _sv_json
+import sys as _sv_sys
+import warnings as _sv_w
+from sfi import Data as _sv_D, Macro as _sv_M, ValueLabel as _sv_VL, Missing as _sv_Miss
+
+def _sv_dr():
+    name = "_sv_dash_render"
+    if name not in _sv_sys.modules:
+        spec = _sv_il.spec_from_file_location(name, _sv_M.getGlobal("SV_RENDER"))
+        mod = _sv_il.module_from_spec(spec)
+        _sv_sys.modules[name] = mod
+        spec.loader.exec_module(mod)
+    return _sv_sys.modules[name]
+
+def _sv_bad(msg):
+    old = _sv_M.getGlobal("SV_BAD")
+    _sv_M.setGlobal("SV_BAD", (old + "; " if old else "") + msg)
+
+def _sv_cell(v, is_str):
+    import pandas as pd
+    if is_str:
+        return v
+    if isinstance(v, pd.Timestamp):
+        return float((v - pd.Timestamp("1960-01-01")).days)
+    if v is None or v != v:
+        return _sv_Miss.getValue()
+    return float(v)
+
+def _sv_store(df, suffix, names, strs):
+    n = _sv_D.getObsTotal()
+    for v in names:
+        new = v + "_" + suffix
+        if v in strs:
+            _sv_D.addVarStrL(new)
+        else:
+            _sv_D.addVarDouble(new)
+        col = list(df[v]) if v in df.columns else []
+        if len(col) != n:
+            _sv_bad("column " + v + " holds " + str(len(col)) + " rows in " + suffix)
+            continue
+        for i in range(n):
+            _sv_D.storeAt(_sv_D.getVarIndex(new), i, _sv_cell(col[i], v in strs))
+
+def _sv_labels_of(names):
+    vl, lab = {}, {}
+    for v in names:
+        vl[v] = _sv_D.getVarLabel(v)
+        ln = _sv_VL.getVarValueLabel(v)
+        if ln:
+            lab[v] = dict((str(k), t) for k, t in _sv_VL.getValueLabels(ln).items() if not str(k).startswith("."))
+    return vl, lab
+
+def _sv_modes():
+    dr = _sv_dr()
+    sp, dp, ap = (_sv_M.getGlobal(k) for k in ("SV_SPEC", "SV_DATA", "SV_APP"))
+    names = _sv_M.getGlobal("SV_VARS").split()
+    strs = set(v for v in names if _sv_D.isVarTypeString(v))
+    _sv_M.setGlobal("SV_BAD", "")
+    with _sv_w.catch_warnings():
+        _sv_w.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        page = r.render()
+        dr.ServerAppBuilder(sp, dp).build(ap)
+    with open(ap, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':" + chr(10) + "    make_document(curdoc())"
+    assert attach in src, "the generated app's curdoc attach moved"
+    ns = {"__name__": "_sv_app"}
+    with _sv_w.catch_warnings():
+        _sv_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "_sv_app.py", "exec"), ns)
+        _spec, sdf, meta = ns["_load_spec_and_data"]()
+    _sv_store(r.df, "saved", names, strs)
+    _sv_store(sdf, "served", names, strs)
+    # Typing: a string variable is text in both modes, every other a number.
+    got_saved = set(v for v in names if v in r.string_vars)
+    got_served = set(v for v, s in (meta.get("type_is_str") or {}).items() if s and v in names)
+    if got_saved != strs or got_served != strs:
+        _sv_bad("string flags: Stata " + str(sorted(strs)) + " saved " + str(sorted(got_saved)) + " served " + str(sorted(got_served)))
+    # Labels, as Stata holds them.
+    vl, lab = _sv_labels_of(names)
+    for mode, vlab, vals, vnames in (
+            ("saved", r.variable_labels, r.value_labels, r.value_label_names),
+            ("served", meta["var_labels"], meta["val_labels"], meta["val_label_names"])):
+        for v in names:
+            if vlab.get(v, "") != vl[v]:
+                _sv_bad(mode + " variable label of " + v)
+            if v in lab:
+                if vnames.get(v) != _sv_VL.getVarValueLabel(v):
+                    _sv_bad(mode + " label name of " + v)
+                have = dict((k, t) for k, t in (vals.get(v) or {}).items() if int(k) < 2147483621)
+                if have != lab[v]:
+                    _sv_bad(mode + " value labels of " + v + ": " + ascii(have) + " where Stata holds " + ascii(lab[v]))
+    # The page: no value leaves its JSON as markup.
+    _sv_M.setGlobal("SV_PAGE_SCRIPT", "1" if "<script>alert(1)" in page else "0")
+
+def _sv_data_facts():
+    with open(_sv_M.getGlobal("SV_DATA"), encoding="utf-8") as fh:
+        d = _sv_json.load(fh)
+    d = d.get("StataJSON", d)
+    _sv_M.setGlobal("SV_NAMES", " ".join(d.get("variableNames", [])))
+    _sv_M.setGlobal("SV_NREC", str(d.get("numberOfRecords", -1)))
+end
+
+// One command with its output captured to a log: r(rc), r(log).
+capture program drop _sv_run
+program define _sv_run, rclass
+    version 16.0
+    args cmdtext
+    local logfile "`c(tmpdir)'dash_sv_run.log"
+    local ls = c(linesize)
+    set linesize 255
+    capture log close _svlog
+    capture erase "`logfile'"
+    quietly log using "`logfile'", name(_svlog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    quietly log close _svlog
+    set linesize `ls'
+    return scalar rc  = `rc'
+    return local  log "`logfile'"
+end
+
+// The export as dash build and dash serve run it, then both renderers'
+// loaded columns back into Stata beside the originals.
+capture program drop _sv_both
+program define _sv_both
+    version 16.0
+    args vars
+    tempfile s d a
+    _dash_prepare_spec, specpath("`s'") datapath("`d'")
+    global SV_SPEC "`s'"
+    global SV_DATA "`d'"
+    global SV_APP  "`a'"
+    global SV_VARS "`vars'"
+    // A python: line in a program runs in that program's own namespace;
+    // the helpers were defined at the top level, in __main__.
+    python: import __main__; __main__._sv_modes()
+    // Read by value: the message can quote a value.
+    mata: st_local("bad", strofreal(st_global("SV_BAD") != ""))
+    if `bad' {
+        mata: printf("{err}  mismatch: %s\n", st_global("SV_BAD"))
+        exit 9
+    }
+end
+
+// ----------------------------------------------------------------
+// The values: one per observation, each built from char() so nothing here
+// passes through a macro.  Kept as locals only as their names.
+// ----------------------------------------------------------------
+capture program drop _sv_values
+program define _sv_values
+    version 16.0
+    args type
+    clear
+    quietly set obs 24
+    gen long rowid = _n
+    gen double y = _n
+    quietly gen `type' s = ""
+    mata: _sv_v = J(24, 1, "")
+    mata: _sv_v[1]  = char(96) + char(34) + "hi"
+    mata: _sv_v[2]  = char(34) + char(39) + "hi"
+    mata: _sv_v[3]  = "a" + char(96) + "b"
+    mata: _sv_v[4]  = char(39) + "tick"
+    mata: _sv_v[5]  = "cost " + char(36) + "HOME " + char(36) + "{x} x"
+    mata: _sv_v[6]  = "a" + char(92) + "b" + char(92)
+    mata: _sv_v[7]  = "say " + char(34) + "hi" + char(34)
+    mata: _sv_v[8]  = "l1" + char(13) + char(10) + "l2" + char(10)
+    mata: _sv_v[9]  = "b" + char(1) + char(7) + char(27) + char(31) + char(127) + "e"
+    mata: _sv_v[10] = "caf" + uchar(233) + " " + uchar(26085) + uchar(26412) + " " + uchar(128512)
+    mata: _sv_v[11] = char(96) + "c1" + char(39)
+    mata: _sv_v[12] = char(96) + "=1+1" + char(39)
+    mata: _sv_v[13] = "</script><script>alert(1)</script>"
+    mata: _sv_v[14] = char(9) + "tab"
+    mata: _sv_v[15] = char(96) + char(34) + "hi" + char(34) + char(39)
+    mata: _sv_v[16] = char(34) + "}," + char(34) + "x" + char(34) + ":1,{" + char(92) + "u0000" + uchar(8232) + uchar(8233)
+    mata: _sv_v[17] = "null"
+    mata: _sv_v[18] = ""
+    mata: _sv_v[19] = "  x  "
+    mata: _sv_v[20] = "<!--" + char(38) + "amp;" + char(38) + "#60;"
+    mata: _sv_v[21] = "NaN"
+    mata: _sv_v[22] = "1e5"
+    mata: _sv_v[23] = uchar(65279) + "bom" + uchar(8238) + "rlo"
+    mata: _sv_v[24] = char(96) + char(96) + char(39) + char(39) + char(34) + char(34)
+    mata: st_sstore(., "s", _sv_v)
+    mata: mata drop _sv_v
+end
+
+// ----------------------------------------------------------------
+// SV-01 -- a str# variable: every value, both routes, both modes.  First
+// each value alone -- jsonio failed only where the data's quotes did not
+// balance, so the values together can hide it -- then all of them at once.
+// ----------------------------------------------------------------
+forvalues j = 1/24 {
+    _sv_values str80
+    quietly replace s = "" if _n != `j'
+    capture dash clear
+    tempfile p
+    // A tempfile's name is handed out again once the do-file that held
+    // it ends, and earlier scripts in the runner leave pages under such
+    // names plus .html (test_help_examples.cscript's one-line examples):
+    // under the runner SV-01 was refused "already exists" (measured
+    // 24sep2026; alone it passed).  Each page path is cleared first.
+    capture erase "`p'.html"
+    _sv_run `"dash scatter y rowid, mlabel(s) saving("`p'.html")"'
+    local rc = r(rc)
+    display as text "  SV-01 value `j': immediate rc `rc'"
+    assert `rc' == 0
+    capture erase "`p'.html"
+    dash scatter y rowid if rowid != `j' + 1, mlabel(s) name(sv01_`j')
+    _sv_both "s"
+    assert s == s_saved
+    assert s == s_served
+    assert "$SV_PAGE_SCRIPT" == "0"
+    capture dash clear
+}
+_sv_values str80
+capture dash clear
+tempfile p
+capture erase "`p'.html"
+_sv_run `"dash scatter y rowid, mlabel(s) saving("`p'.html")"'
+display as text "  SV-01 immediate: rc " r(rc)
+assert r(rc) == 0
+cert_file_has "`p'.html", needle("<script>alert(1)")
+assert r(found) == 0
+capture erase "`p'.html"
+dash scatter y rowid if rowid > 0, mlabel(s) name(sv01)
+_sv_both "s"
+assert s == s_saved
+assert s == s_served
+assert "$SV_PAGE_SCRIPT" == "0"
+tempfile p
+capture erase "`p'.html"
+_sv_run `"dash build, saving("`p'.html")"'
+assert r(rc) == 0
+capture erase "`p'.html"
+capture dash clear
+display "SV-01 PASS: 24 str# values, quotes, macro characters, controls and UTF-8, round-trip exactly in both modes"
+
+// ----------------------------------------------------------------
+// SV-02 -- the same values as a strL, which jsonio exported as "null".
+// ----------------------------------------------------------------
+_sv_values strL
+capture dash clear
+tempfile p
+capture erase "`p'.html"
+_sv_run `"dash scatter y rowid, mlabel(s) saving("`p'.html")"'
+assert r(rc) == 0
+capture erase "`p'.html"
+dash scatter y rowid, mlabel(s) name(sv02)
+_sv_both "s"
+assert s == s_saved
+assert s == s_served
+capture dash clear
+display "SV-02 PASS: a strL holds the same 24 values and round-trips exactly"
+
+// ----------------------------------------------------------------
+// SV-03 -- a 1 MB strL value, and a str2045 at Stata's limit.
+// ----------------------------------------------------------------
+clear
+quietly set obs 3
+gen long rowid = _n
+gen double y = _n
+gen strL big = ""
+mata: st_sstore(1, "big", "<" + "x" * 1048576 + char(96) + char(34) + ">")
+mata: st_sstore(2, "big", (char(96) + char(34)) * 50000)
+gen str2045 wide = ""
+mata: st_sstore(., "wide", J(3, 1, "a" * 2044 + char(39)))
+capture dash clear
+dash scatter y rowid, mlabel(big) name(sv03a)
+dash scatter y rowid, mlabel(wide) name(sv03b)
+_sv_both "big wide"
+assert big == big_saved & big == big_served
+assert wide == wide_saved & wide == wide_served
+assert strlen(big[1]) == 1048580
+capture dash clear
+display "SV-03 PASS: a 1 MB strL value and a 2,045-byte str# round-trip exactly"
+
+// ----------------------------------------------------------------
+// SV-04 -- labels holding the same characters: a variable label and a
+// value label, and numbers of every storage type with extended missing
+// values, a date and its format.
+// ----------------------------------------------------------------
+clear
+quietly set obs 6
+gen long rowid = _n
+gen byte b = _n
+quietly replace b = .a in 2
+quietly replace b = .z in 3
+quietly replace b = . in 4
+gen int i = 1000 * _n - 32000
+gen long l = 100000 * _n
+gen float f = _n / 10
+gen double d = _n / 3
+quietly replace d = 1e300 in 6
+gen dt = mdy(1, 1, 2020) + _n
+format dt %td
+gen str10 s = "v" + string(_n)
+mata: st_varlabel("s", char(96) + char(34) + "label" + char(34) + char(39) + " " + char(36) + "x")
+mata: st_vlmodify("bl", (1 \ 5), (char(96) + char(34) + "one" \ char(34) + char(39) + "five" + char(96)))
+mata: st_vlmodify("bl", .a, "missing " + char(96) + "a")
+label values b bl
+capture dash clear
+dash scatter b i l f d rowid if rowid > 1, mlabel(s) name(sv04)
+dash line d dt, name(sv04b)
+tempfile p
+capture erase "`p'.html"
+_sv_run `"dash build, saving("`p'.html")"'
+display as text "  SV-04 dash build: rc " r(rc)
+assert r(rc) == 0
+capture erase "`p'.html"
+_sv_both "b i l f d dt s"
+foreach v in b i l f d dt s {
+    assert `v' == `v'_saved if !missing(`v')
+    assert `v' == `v'_served if !missing(`v')
+}
+// Every missing value, extended ones included, is missing in both modes.
+assert missing(b_saved) == missing(b) & missing(b_served) == missing(b)
+assert "`: format dt'" == "%td"
+capture confirm variable __dashq1
+assert _rc == 111
+capture dash clear
+display "SV-04 PASS: labels holding quotes, every storage type, missing values and a date round-trip"
+
+// ----------------------------------------------------------------
+// SV-05 -- what is exported: the variables in order, once each, and the
+// qualifier columns; nothing else.
+// ----------------------------------------------------------------
+clear
+quietly set obs 4
+gen long rowid = _n
+gen double y = _n
+gen str3 s = "a"
+capture dash clear
+dash scatter y rowid if rowid > 2, mlabel(s) name(sv05)
+tempfile s d
+_dash_prepare_spec, specpath("`s'") datapath("`d'")
+global SV_DATA "`d'"
+python: _sv_data_facts()
+display as text "  SV-05 names [$SV_NAMES] records $SV_NREC"
+assert "$SV_NREC" == "4"
+local names "$SV_NAMES"
+assert `: list sizeof names' == 4
+assert `: list posof "__dashq1" in names' > 0
+foreach v in rowid y s {
+    assert `: list posof "`v'" in names' > 0
+}
+capture dash clear
+display "SV-05 PASS: the data file names each variable once, with the qualifier column"
+
+// ----------------------------------------------------------------
+// SV-06 -- text that is not UTF-8 -- in a value, a variable label and a
+// value label -- reaches both renderers as Stata's ustrfix() gives it, each
+// invalid byte U+FFFD (jsonio wrote the same, and the page was drawn:
+// test_adversarial.cscript P20-28), with a note naming where; the data and
+// formats are left as they were.
+// ----------------------------------------------------------------
+clear
+quietly set obs 3
+gen long rowid = _n
+gen double y = _n
+gen dt = mdy(1, 1, 2020) + _n
+format dt %td
+gen str5 s = "ok"
+quietly replace s = char(200) + "x" in 3
+assert strlen(s[3]) == 2
+gen byte g = mod(_n, 2)
+mata: st_vlmodify("gbad", (0 \ 1), ("ok" \ "For" + char(255)))
+label values g gbad
+mata: st_varlabel("y", "Mile" + char(233) + "age")
+quietly datasignature
+local sig6 "`r(datasignature)'"
+capture dash clear
+tempfile p
+capture erase "`p'.html"
+_sv_run `"dash scatter y dt if rowid > 1, mlabel(s) saving("`p'.html")"'
+local rc = r(rc)
+cert_log_has "`r(log)'", needle("dash: string variable s holds text that is not valid UTF-8; each invalid byte is shown as the replacement character")
+display as text "  SV-06 immediate: rc `rc', noted " r(found)
+assert `rc' == 0 & r(found) == 1
+confirm file "`p'.html"
+capture erase "`p'.html"
+assert "`: format dt'" == "%td"
+capture confirm variable __dashq1
+assert _rc == 111
+dash scatter y dt if rowid > 1, mlabel(s) name(sv06)
+dash scatter g rowid, name(sv06b)
+_sv_run `"dash build, saving("`p'.html")"'
+local rc = r(rc)
+// cert_log_has replaces r(): the log's name is kept first.
+local lg "`r(log)'"
+cert_log_has "`lg'", needle("dash: the variable label of y holds text that is not valid UTF-8")
+local n1 = r(found)
+cert_log_has "`lg'", needle("dash: value label gbad, on g, holds text that is not valid UTF-8")
+assert `rc' == 0 & `n1' == 1 & r(found) == 1
+capture erase "`p'.html"
+// Both modes hold exactly what ustrfix() gives, byte for byte.
+gen strL s_fixed = ustrfix(s)
+_sv_both "s"
+assert s_fixed == s_saved & s_fixed == s_served
+drop s_saved s_served
+// Nothing the reads made is left behind: the data are as they were.
+drop s_fixed
+quietly datasignature
+assert "`r(datasignature)'" == "`sig6'"
+quietly label dir
+local labs "`r(names)'"
+assert strpos("`labs'", "_dashfix") == 0
+quietly ds
+assert strpos("`r(varlist)'", "__dashfix") == 0
+assert "`: format dt'" == "%td"
+capture dash clear
+display "SV-06 PASS: text that is not UTF-8 is shown as ustrfix() shows it, noted, and nothing is left behind"
+
+// ----------------------------------------------------------------
+// SV-07 -- a binary strL, which is not text, is refused.
+// ----------------------------------------------------------------
+clear
+quietly set obs 2
+gen long rowid = _n
+gen double y = _n
+gen strL L = "text"
+mata: st_sstore(2, "L", "a" + char(0) + "b")
+capture dash clear
+tempfile p
+capture erase "`p'.html"
+_sv_run `"dash scatter y rowid, mlabel(L) saving("`p'.html")"'
+local rc = r(rc)
+cert_log_has "`r(log)'", needle("dash: strL variable L holds binary data in observation 2")
+assert `rc' == 198 & r(found) == 1
+capture dash clear
+display "SV-07 PASS: a binary strL is refused, r(198), naming the variable and observation"
+
+// ----------------------------------------------------------------
+// SV-08 -- the prefix the writer's own names use is not the user's
+// concern: a variable named like a Python identifier dash uses, or like a
+// JSON key of the file, is exported as any other.
+// ----------------------------------------------------------------
+clear
+quietly set obs 3
+gen long rowid = _n
+gen double values = _n * 2
+gen str8 variableNames = "n" + string(_n)
+capture dash clear
+dash scatter values rowid, mlabel(variableNames) name(sv08)
+_sv_both "values variableNames"
+assert values == values_saved & values == values_served
+assert variableNames == variableNames_saved & variableNames == variableNames_served
+capture dash clear
+display "SV-08 PASS: variables named as the file's own keys are exported as any other"
+
+// ----------------------------------------------------------------
+// SV-09 -- jsonio is not needed: with it off the ado-path, and out of
+// memory, a dashboard of such values builds, and jsonio is never loaded.
+// ----------------------------------------------------------------
+_sv_values str80
+local oldpath `"`c(adopath)'"'
+adopath - PLUS
+adopath - PERSONAL
+capture program drop jsonio
+capture which jsonio
+display as text "  SV-09: jsonio on the ado-path: " cond(_rc, "no", "yes (another directory)")
+capture dash clear
+tempfile p
+capture erase "`p'.html"
+_sv_run `"dash scatter y rowid, mlabel(s) saving("`p'.html")"'
+local rc = r(rc)
+capture program list jsonio
+local loaded = (_rc == 0)
+global S_ADO `"`oldpath'"'
+display as text "  SV-09: rc `rc', jsonio loaded `loaded'"
+assert `rc' == 0
+assert `loaded' == 0
+capture erase "`p'.html"
+capture dash clear
+display "SV-09 PASS: the export does not need jsonio"
+
+capture dash clear
+macro drop SV_*
+display ""
+display "All string-value export tests PASSED."

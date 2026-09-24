@@ -744,7 +744,7 @@ class TestTooltipsBesideADataLayer:
     scatter still answers through the scatter's tooltip alone (test_glyphs
     BF-11c), in both modes."""
 
-    @pytest.mark.parametrize("fit", ["lowess", "lfitci", "pcspike"])
+    @pytest.mark.parametrize("fit", ["lowess", "lfitci"])
     def test_one_tooltip_bound_to_the_scatter(self, fit):
         spec = tp._spec([plot_for("scatter"), plot_for(fit)])
         r, _w = tp._standalone(spec)
@@ -754,6 +754,25 @@ class TestTooltipsBesideADataLayer:
             tools = [t for t in fig.tools if isinstance(t, HoverTool)]
             assert len(tools) == 1
             assert "mpg" in _fields(tools[0])
+
+    def test_a_second_data_layer_names_its_own_variables(self):
+        """A pcspike beside a scatter is a layer of observations with its
+        own variables (mpg weight price foreign): it has a tooltip of its
+        own naming them, where it was bound to the scatter's weight and
+        mpg (BUGS.md, 24sep2026)."""
+        spec = tp._spec([plot_for("scatter"), plot_for("pcspike")])
+        r, _w = tp._standalone(spec)
+        doc, _w2 = tp._served(spec)
+        for figs in (_saved_figures(r), _served_figures(doc)):
+            (fig,) = figs
+            tools = [t for t in fig.tools if isinstance(t, HoverTool)]
+            assert len(tools) == 2
+            by_glyph = {type(t.renderers[0].glyph).__name__: _fields(t)
+                        for t in tools}
+            assert "mpg" in by_glyph["Scatter"]
+            assert "price" not in by_glyph["Scatter"]
+            for v in ("weight", "mpg", "foreign", "price"):
+                assert v in by_glyph["Segment"], by_glyph
 
 
 # ===========================================================================

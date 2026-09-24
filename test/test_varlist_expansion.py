@@ -321,8 +321,13 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               normalised text is 20a7cb46's with "version":"3.9.0" read
 #               as "version":"VERSION", and is identical under both
 #               interpreters.  Intended.
+#   3e545d0f  WP-27's phone-width reflow (`_dash_reflow') gives every
+#               gridplot() grid equal shrinkable columns.  Diffed before
+#               re-baselining, against HEAD's renderer: the one difference
+#               is the GridPlot's "cols":null, now "cols":"minmax(0, 1fr)";
+#               the Bokeh document is otherwise identical.  Intended.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "6f400f8402af3204bf8de50cd5a046fd1039d36938adcc8ddd4de8738dbf38f5"
+    "3e545d0f473217ecd4fa71f55f48b0b22edc57ae24ba384d19ab87d4636e251f"
 )
 
 

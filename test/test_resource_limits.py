@@ -550,8 +550,8 @@ class TestTheLimitsTable:
 
     def test_every_limit_has_a_default_within_its_ceiling(self):
         assert set(dr._DASH_LIMITS) == {
-            "cells", "graphs", "plots", "filter_options", "by_groups",
-            "tabs", "filters"}
+            "cells", "bytes", "graphs", "plots", "filter_options",
+            "by_groups", "tabs", "filters"}
         for key, (default, ceiling, glob) in dr._DASH_LIMITS.items():
             assert 1 <= default <= ceiling, key
             assert glob == "dash_max_" + key, key
@@ -658,6 +658,103 @@ class TestAnOversizedDatasetIsRefused:
         _, html, _ = _standalone(tmp_path, spec, df)
         est = n * 2 * dr._HTML_BYTES_PER_CELL
         assert 0.5 < len(html) / est < 2.0, (len(html), est)
+
+
+class TestTheBytesOfTextAreLimited:
+    """$dash_max_bytes: the cells limit counts values, not bytes, and a strL
+    reaches the page in full since dash writes its own data file
+    (24sep2026), so 60 observations of a 1,000,000-byte strL -- 60 values --
+    made a 60 MB page.  dash.ado refuses such data before it writes the file
+    (test_adversarial.cscript P19-27..30); the renderer holds the same limit
+    for a data file that reached it another way, and counts only when the
+    file is larger than the limit, so ordinary data costs nothing."""
+
+    def test_the_default_and_the_ceiling(self):
+        assert dr._DASH_LIMITS["bytes"] == (50_000_000, 500_000_000,
+                                            "dash_max_bytes")
+        assert dr._dash_limits({})["bytes"] == 50_000_000
+        assert dr._dash_limits({"limits": {"bytes": 871}})["bytes"] == 871
+
+    @pytest.mark.parametrize("bad", [0, -1, 500_000_001, 1.5, True, "1e3",
+                                     "12345678901", "\u00b2", "\u0663"])
+    def test_a_hostile_value_is_named_and_the_default_used(self, bad):
+        dr._dash_reset_notes()
+        got, msgs = _warns(lambda: dr._dash_limits({"limits": {"bytes": bad}}))
+        assert got["bytes"] == 50_000_000
+        assert _named(msgs, "dash_max_bytes", "500,000,000"), msgs
+
+    def test_the_count_is_utf8_bytes_of_the_string_columns_only(self):
+        df = pd.DataFrame({"s": ["ab", "\u00e9", ""], "t": ["x", "y", "z"],
+                           "n": [1.0, 2.0, 3.0]})
+        assert dr._dash_text_bytes(df, {"s"}) == 4
+        assert dr._dash_text_bytes(df, {"s", "t"}) == 7
+        assert dr._dash_text_bytes(df, {"gone"}) == 0
+        assert dr._dash_text_bytes(pd.DataFrame(), {"s"}) == 0
+
+    def test_at_the_limit_nothing_is_raised(self):
+        df = pd.DataFrame({"s": ["abc", "de"]})
+        got, msgs = _warns(lambda: dr._dash_refuse_overbytes(
+            df, {"s"}, {"bytes": 5}, "dashboard", file_bytes=10**9))
+        assert got is None and msgs == []
+
+    def test_over_the_limit_the_message_is_the_cells_limits(self):
+        df = pd.DataFrame({"s": ["abc", "def"], "t": ["", "x"]})
+        with pytest.raises(dr.DashLimitError) as exc:
+            dr._dash_refuse_overbytes(df, {"s", "t"}, {"bytes": 5},
+                                      "dashboard", file_bytes=10**9)
+        msg = str(exc.value)
+        assert msg.startswith(
+            "dash: this dashboard would embed 7 bytes of text (in 2 string "
+            "variables), more than the 5 dash embeds. Reduce the data in "
+            "memory first (keep, drop, sample or collapse, inside "
+            "preserve/restore), or set global dash_max_bytes to a higher "
+            "value (at most 500,000,000)."), msg
+
+    def test_a_file_within_the_limit_is_not_counted(self, monkeypatch):
+        """The text of a data file is part of the file, so a file no larger
+        than the limit cannot hold more text than it: nothing is counted."""
+        def boom(*a, **k):
+            raise AssertionError("counted a file within the limit")
+        monkeypatch.setattr(dr, "_dash_text_bytes", boom)
+        df = pd.DataFrame({"s": ["abcdef"]})
+        assert dr._dash_refuse_overbytes(df, {"s"}, {"bytes": 5},
+                                         "dashboard", file_bytes=5) is None
+
+    def test_the_saved_renderer_refuses_before_drawing(self, tmp_path):
+        spec = _spec([_graph("g1")], limits={"bytes": 40})
+        _, sp, dp = _write(tmp_path, spec, _frame(12))   # s: 12 x 4 bytes
+        with pytest.raises(dr.DashLimitError,
+                           match="48 bytes of text .in 1 string variable."):
+            dr.DashRenderer(sp, dp)
+
+    def test_the_saved_renderer_draws_at_the_limit(self, tmp_path):
+        spec = _spec([_graph("g1")], limits={"bytes": 48})
+        r, html, _ = _standalone(tmp_path, spec, _frame(12))
+        assert "g1" in r.figures and len(html) > 1000
+
+    def test_the_server_app_is_refused_at_build(self, tmp_path):
+        spec = _spec([_graph("g1")], limits={"bytes": 40})
+        _, sp, dp = _write(tmp_path, spec, _frame(12))
+        with pytest.raises(dr.DashLimitError, match="server app would embed "
+                                                    "48 bytes of text"):
+            dr.ServerAppBuilder(sp, dp).build(str(tmp_path / "a.py"))
+        assert not (tmp_path / "a.py").exists()
+
+    def test_the_server_app_builds_at_the_limit(self, tmp_path):
+        spec = _spec([_graph("g1")], limits={"bytes": 48})
+        doc, built, _, _ = _served(tmp_path, spec, _frame(12))
+        assert not _named(built, "bytes of text")
+
+    def test_a_large_strl_value_is_refused_at_the_default(self, tmp_path):
+        """Exhaustion: two values of 30,000,000 bytes are two cells, far
+        inside the cells limit, and 60,000,000 bytes of text."""
+        df = pd.DataFrame({"y": [1.0, 2.0], "x": [1.0, 2.0],
+                           "s": ["a" * 30_000_000, "b" * 30_000_000]})
+        spec = _spec([_graph("g1")])
+        _, sp, dp = _write(tmp_path, spec, df)
+        with pytest.raises(dr.DashLimitError,
+                           match="60,000,000 bytes of text"):
+            dr.DashRenderer(sp, dp)
 
 
 class TestTheGraphAndPlotLimits:
@@ -1355,6 +1452,25 @@ class TestTheTwoLanguagesAgree:
         rows = dict((k, (int(d), int(c))) for k, d, c in
                     re.findall(r"(\w+)=(\d+),(\d+)", body))
         assert rows == {k: (v[0], v[1]) for k, v in dr._DASH_LIMITS.items()}
+
+    def test_the_help_documents_every_limit_with_its_numbers(self):
+        """Each limit's global is in the help's Resource limits table with
+        its default and ceiling, the bytes limit included."""
+        import re
+        with open(os.path.join(_HERE, "..", "dash.sthlp"),
+                  encoding="utf-8") as fh:
+            hlp = fh.read()
+        sec = hlp[hlp.index("{marker limits}"):hlp.index("{marker examples}")]
+        rows = re.split(r"\{synopt:", sec)[1:]
+        for key, (default, ceiling, glob) in dr._DASH_LIMITS.items():
+            row = [r for r in rows if r.startswith("{cmd:$%s}}" % glob)]
+            assert len(row) == 1, glob
+            flat = " ".join(row[0].split())
+            assert f"default {default:,}" in flat, (glob, flat)
+            assert f"at most {ceiling:,}" in flat, (glob, flat)
+        assert "r(134)" in " ".join(
+            [r for r in rows if r.startswith("{cmd:$dash_max_bytes}}")][0]
+            .split())
 
     def test_dash_ado_names_the_same_globals(self):
         with open(os.path.join(_HERE, "..", "dash.ado"), encoding="utf-8") as fh:

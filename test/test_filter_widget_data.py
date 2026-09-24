@@ -30,9 +30,9 @@ kept a float column; a linked group's source is the whole data.  Each test
 below also fails before the fix: its loop reaches a shape the saved page got
 wrong.
 
-The two modes are held to one answer except for a date variable: the served
-app has no date handling at all (BUGS.md, open since WP-10), so there each
-mode is held to its own answer for the unqualified dashboard.
+The two modes are held to one answer, a date variable's included: the
+served app had no date handling at all until WP-27 (BUGS.md), and each mode
+was held to its own answer for a date variable until then.
 """
 import itertools
 import json
@@ -230,10 +230,13 @@ class TestOneWidgetWhateverTheGraphsSelect:
 
     @pytest.mark.parametrize("ftype", ["range", "slider", "dropdown"])
     def test_a_date_variable(self, tmp_path, ftype):
-        """Each mode against its own answer for the unqualified dashboard:
-        the served app has no date handling (BUGS.md)."""
+        """Both modes against the saved page's answer for the unqualified
+        dashboard.  Each was held to its own until WP-27 gave the served
+        app date handling (BUGS.md, "The generated server app has no date
+        handling at all")."""
         want = _both(tmp_path, "unqualified", "dm", ftype)
         [saved] = want["saved"]
+        assert want["served"] == want["saved"], want
         assert saved["type"] == _SAVED_DATE_TYPE[ftype]
         if ftype != "dropdown":
             assert (saved["start"], saved["end"]) == (_DM_FIRST_MS,

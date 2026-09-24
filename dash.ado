@@ -26,7 +26,7 @@
 *!     immediate values' records are written by dash_parse.mata.
 *!
 *! Author:  (see dash.sthlp)
-*! Version: 2.0  27mar2026
+*! Version: 2.0  24sep2026
 
 // ================================================================
 // Load Mata library (dash_parse.mata)
@@ -194,8 +194,9 @@ end
 // ================================================================
 // _dash_do_render and _dash_serve go straight to `python:'.  Without this a
 // user with no linked Python got a raw Stata Python error naming neither
-// dash nor the remedy -- while the jsonio check a few lines away has always
-// given them a sentence they can act on.  This is modelled on that message.
+// dash nor the remedy -- while the jsonio check that stood a few lines away
+// gave them a sentence they could act on.  This was modelled on that
+// message.
 // ================================================================
 program define _dash_require_python
     version 16.0
@@ -234,9 +235,10 @@ program define _dash_require_mata
         _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
         _dash_kpi_pctile _json_escape _dash_path_badchar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal ///
-        _dash_option_names _dash_qual_expand ///
+        _dash_option_names _dash_qual_expand _dash_qual_reset ///
+        _dash_qual_rewrite _dash_qual_take _dash_qual_export ///
         _dash_immediate _dash_say _dash_spec_types_in _dash_split_segs ///
-        _dash_text_args _dash_undrawn_plottype
+        _dash_text_args _dash_undrawn_plottype _dash_kernel_full
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
     // alone and took the library for whole when it was there, so a library
@@ -578,6 +580,43 @@ end
 
 
 // ================================================================
+// _dash_saving_clobber  -- saving() names a file that is there already
+// ================================================================
+// Without replace an existing file is refused, "<cmd>: file '...' already
+// exists. Use replace option to overwrite.", r(198): dash build's message
+// and code.  The one-line form had no such check and wrote its page over
+// whatever saving() named, rc 0, and took no replace (measured 24sep2026 by
+// WP-24; twoway refuses, r(602)).  A directory in the file's place is never
+// written: without replace it is a file that exists, as twoway and dash
+// build say, and with replace it is refused as twoway refuses it,
+// "is read-only; cannot be modified or erased", r(608) -- dash build handed
+// it to Python and died there, r(7102) IsADirectoryError.  A symbolic link
+// is the file it points to.  The path is read in Mata, by value, and shown
+// as written.  Called after _dash_validate_path and _dash_saving_dir.
+//
+// Usage:  _dash_saving_clobber `"<path>"' "<replace or empty>" "<cmd name>"
+// ================================================================
+program define _dash_saving_clobber
+    version 16.0
+    args fpath replace cmdname
+
+    mata: st_local("_sc_dir", strofreal(direxists(st_local("fpath"))))
+    mata: st_local("_sc_file", strofreal(fileexists(st_local("fpath"))))
+    if "`replace'" == "" {
+        if `_sc_dir' | `_sc_file' {
+            mata: _dash_say("err", "`cmdname': file '", st_local("fpath"), "' already exists. Use replace option to overwrite.")
+            exit 198
+        }
+        exit
+    }
+    if `_sc_dir' {
+        mata: _dash_say("err", "`cmdname': file ", st_local("fpath"), " is a directory; it cannot be modified or erased")
+        exit 608
+    }
+end
+
+
+// ================================================================
 // _dash_json_str  -- JSON string escaping, the text read by value in Mata
 // Usage:  _dash_json_str `"`raw'"' _escaped
 // After: local _escaped contains the JSON-safe string (no surrounding quotes)
@@ -673,7 +712,7 @@ program define _dash_parse_graph_opts, sclass
         B2title(string asis)      L1title(string asis)      L2title(string asis) ///
         R1title(string asis)      R2title(string asis)      TITLE2(string) ///
         SUBTITLE2(string)         NODRAW                    PLAY(string) ///
-        XOVERHANGs                YOVERHANGs ///
+        XOVERHANGs                YOVERHANGs                REPLACE ///
         PBGC(string)              XLA2(string asis)         XSC2(string asis) ///
         XTI2(string asis)         YLA2(string asis)         YSC2(string asis) ///
         YTI2(string asis) ///
@@ -810,6 +849,7 @@ program define _dash_parse_graph_opts, sclass
     sreturn local subtitle2    : copy local subtitle2
     sreturn local nodraw       : copy local nodraw
     sreturn local play         : copy local play
+    sreturn local replace      : copy local replace
     sreturn local _pending  : copy local _dash_pending
     sreturn local _unknown  : copy local _dash_unknown
 end
@@ -896,8 +936,8 @@ program define _dash_parse_plot_opts, sclass
         B1title(string asis)      B2title(string asis)      L1title(string asis) ///
         L2title(string asis)      R1title(string asis)      R2title(string asis) ///
         TITLE2(string)            SUBTITLE2(string)         NODRAW ///
-        PLAY(string) ///
-        BW(string)                MLG(string)               CV(string) ///
+        PLAY(string)              REPLACE ///
+        BW(string)               MLG(string)               CV(string) ///
         COLV(string)              PBGC(string)              XLA2(string asis) ///
         XSC2(string asis)         XTI2(string asis)         YLA2(string asis) ///
         YSC2(string asis)         YTI2(string asis) ///
@@ -914,6 +954,15 @@ program define _dash_parse_plot_opts, sclass
     // on histogram as everywhere else (measured: the default eight bars,
     // under a bottom title "5"), and so does dash.
     if `: length local bins' & !`: length local bin' local bin : copy local bins
+
+    // kernel(gau) is twoway's kernel(gaussian): each name is taken down to
+    // twoway's minimum abbreviation (_dash_kernel_full, measured on lpoly,
+    // lpolyci and kdensity), and written out in full before the enum rule
+    // judges it and the renderer reads it.  It was refused, r(198).  Read
+    // by value, in Mata.
+    if `: length local kernel' {
+        mata: st_local("kernel", _dash_kernel_full(st_local("kernel")))
+    }
 
     // level() is no longer checked here: its rule (level=num,0,100,x) lives
     // in _dash_option_rules and runs in _dash_validate_opts, once per segment.
@@ -1175,6 +1224,7 @@ program define _dash_parse_plot_opts, sclass
     sreturn local g_subtitle2    : copy local subtitle2
     sreturn local g_nodraw       : copy local nodraw
     sreturn local g_play         : copy local play
+    sreturn local g_replace      : copy local replace
     sreturn local _pending  : copy local _dash_pending
     sreturn local _unknown  : copy local _dash_unknown
 end
@@ -2356,8 +2406,9 @@ end
 // This is the one table of limits.  Each row is key=default,ceiling.  A
 // session raises or lowers a limit with global dash_max_<key>: a whole
 // number written in digits only, at most nine of them, from 1 to the
-// ceiling.  dash.ado enforces three itself -- cells (values embedded:
-// observations x variables exported), graphs (graphs and KPI cards in the
+// ceiling.  dash.ado enforces four itself -- cells (values embedded:
+// observations x variables exported), bytes (the bytes of text in the
+// string values exported), graphs (graphs and KPI cards in the
 // registry) and plots (plot entries in one graph, one per y variable) --
 // and hands every limit the session has set to the renderer as
 // build_options.limits, under these keys, for the four it enforces:
@@ -2367,6 +2418,7 @@ program define _dash_limit_table
     version 16.0
     local rows ///
         cells=5000000,20000000 ///
+        bytes=50000000,500000000 ///
         graphs=100,1000 ///
         plots=100,1000 ///
         filter_options=1000,100000 ///
@@ -2573,15 +2625,16 @@ program define _dash_plot_cap_refuse
 end
 
 // ----------------------------------------------------------------
-// _dash_cell_cap <nvars> [<nobs>]  -- the embedded-data limit, before jsonio
+// _dash_cell_cap <nvars> [<nobs>]  -- the embedded-data limit, before the
+//                                     export
 //
-// jsonio exports every observation of every variable it is given; the
+// The export (_dash_write_data) writes every observation of every
+// variable it is given; the
 // renderer applies if/in itself, so if/in reduce nothing here and are not
 // offered as a remedy.  <nobs> is the observations exported, _N unless the
 // caller exports fewer (the one-row placeholder a graph of literal values
-// sends).  Both callers run this before the date-format swap that
-// brackets jsonio, so a refusal leaves the data in memory and every
-// display format exactly as they were.
+// sends).  Both callers run this before the file is written, so a
+// refusal leaves the data in memory exactly as it was.
 // ----------------------------------------------------------------
 program define _dash_cell_cap
     version 16.0
@@ -2601,6 +2654,86 @@ program define _dash_cell_cap
     local _vars_w = cond(`nvars' == 1, "variable", "variables")
     display as error "dash: this dashboard would embed `_cells_s' values (`_obs_s' `_obs_w' x `_vars_s' `_vars_w'), more than the `_lim_s' dash embeds."
     display as error "      Reduce the data in memory first (keep, drop, sample or collapse, inside preserve/restore), or set global dash_max_cells to a higher value (at most `_ceil_s')."
+    exit 134
+end
+
+// ----------------------------------------------------------------
+// _dash_byte_cap <varlist>  -- the bytes of text exported, before the
+//                              export
+//
+// The cells limit counts values, not bytes, and the export writes a strL
+// in full (_dash_write_data, 24sep2026): 60 observations of a
+// 1,000,000-byte strL were 60 values and a 60 MB page.  This holds the
+// bytes of text in the string values of <varlist> -- every observation, as
+// Stata stores them, before JSON escaping -- to $dash_max_bytes.  Numbers
+// are the cells limit's.  A name that is not a variable is skipped (the
+// export reports it), and a variable named twice is counted once, as the
+// export writes it once.
+//
+// Nothing is counted when it cannot matter: a str# variable holds at most
+// its width in bytes, so when every string variable is a str# and width x
+// _N summed is within the limit the data are not read.  Otherwise the
+// lengths are summed in Mata, a million observations at a time, so no
+// variable is made and no more than that is held at once; the sum stops
+// once it is over the limit.  Both callers run this before the file is
+// written, so a refusal leaves the data in memory as it was.
+// ----------------------------------------------------------------
+program define _dash_byte_cap
+    version 16.0
+    _dash_limit, name(bytes)
+    local lim  = r(value)
+    local ceil = r(ceiling)
+    if _N == 0 exit
+    local names ""
+    foreach v of local 0 {
+        capture unab u : `v', max(1)
+        if _rc == 0 local names `names' `u'
+    }
+    local names : list uniq names
+    local strs ""
+    tempname bound tot
+    scalar `bound' = 0
+    foreach v of local names {
+        capture confirm string variable `v'
+        if _rc continue
+        local strs `strs' `v'
+        local t : type `v'
+        if "`t'" == "strL" scalar `bound' = .
+        else scalar `bound' = `bound' + real(substr("`t'", 4, .)) * _N
+    }
+    if "`strs'" == "" exit
+    if `bound' <= `lim' exit
+    scalar `tot' = 0
+    local n = _N
+    foreach v of local strs {
+        forvalues a = 1(1000000)`n' {
+            local b = min(`a' + 999999, `n')
+            mata: st_numscalar(st_local("tot"), st_numscalar(st_local("tot")) + ///
+                sum(strlen(st_sdata((`a', `b'), st_local("v")))))
+            if `tot' > `lim' continue, break
+        }
+        if `tot' > `lim' continue, break
+    }
+    if `tot' <= `lim' exit
+
+    // Over: the whole count, for the message.  Only a refusal pays for
+    // the variables the running total did not reach.
+    scalar `tot' = 0
+    foreach v of local strs {
+        forvalues a = 1(1000000)`n' {
+            local b = min(`a' + 999999, `n')
+            mata: st_numscalar(st_local("tot"), st_numscalar(st_local("tot")) + ///
+                sum(strlen(st_sdata((`a', `b'), st_local("v")))))
+        }
+    }
+    local nstr : word count `strs'
+    _dash_count_fmt _bytes_s `tot'
+    _dash_count_fmt _nstr_s  `nstr'
+    _dash_count_fmt _lim_s   `lim'
+    _dash_count_fmt _ceil_s  `ceil'
+    local _str_w = cond(`nstr' == 1, "variable", "variables")
+    display as error "dash: this dashboard would embed `_bytes_s' bytes of text (in `_nstr_s' string `_str_w'), more than the `_lim_s' dash embeds."
+    display as error "      Reduce the data in memory first (keep, drop, sample or collapse, inside preserve/restore), or set global dash_max_bytes to a higher value (at most `_ceil_s')."
     exit 134
 end
 // END resource limits (WP-19)
@@ -3106,6 +3239,55 @@ program define _dash_process_segment, rclass
     // test_qualifier_literals.cscript QL-22).  Literals are left as typed.
     mata: st_local("if_expr", _dash_qual_expand(st_local("if_expr")))
 
+    // ---- The plot's sample, for the checks made here ----
+    // A weight's values and histogram's start() are checked over the rows
+    // the plot draws: its own if and in, and the graph's, written after
+    // the plot groups (_dash_plot hands it over in $dash__gq_if and
+    // $dash__gq_in, read by value).  The graph's was left out, so
+    // `(lfit mpg weight [fw=halfint]) if foreign==1' was refused, r(401),
+    // for rows twoway never reads (WP-27; test_help_claims_6.cscript
+    // HC6-56).  Two ranges cannot share one `in': the graph's is then
+    // marked in a temporary variable and read as a condition.
+    mata: st_local("_gq_if_s", st_global("dash__gq_if"))
+    mata: st_local("_gq_in_s", st_global("dash__gq_in"))
+    local _ps_if ""
+    if `: length local if_expr' {
+        local _ps_if `"(`macval(if_expr)')"'
+    }
+    if `: length local _gq_if_s' {
+        if `: length local _ps_if' {
+            local _ps_if `"`macval(_ps_if)' & (`macval(_gq_if_s)')"'
+        }
+        else {
+            local _ps_if `"(`macval(_gq_if_s)')"'
+        }
+    }
+    local _ps_in ""
+    if `: length local in_expr' & `: length local _gq_in_s' {
+        tempvar _ps_mark
+        quietly gen byte `_ps_mark' = 1 in `macval(_gq_in_s)'
+        if `: length local _ps_if' {
+            local _ps_if `"`macval(_ps_if)' & !missing(`_ps_mark')"'
+        }
+        else {
+            local _ps_if `"!missing(`_ps_mark')"'
+        }
+        local _ps_in : copy local in_expr
+    }
+    else if `: length local in_expr' {
+        local _ps_in : copy local in_expr
+    }
+    else if `: length local _gq_in_s' {
+        local _ps_in : copy local _gq_in_s
+    }
+    local _psq ""
+    if `: length local _ps_if' {
+        local _psq `"if `macval(_ps_if)'"'
+    }
+    if `: length local _ps_in' {
+        local _psq `"`macval(_psq)' in `macval(_ps_in)'"'
+    }
+
     // ---- parse options (clear stale sreturn values first) ----
     // The varpart parsers sreturn the weight TYPE in s(_weight) and the
     // weight EXPRESSION, without its leading `=', in s(_wexp).  Both are
@@ -3155,7 +3337,7 @@ program define _dash_process_segment, rclass
         }
     }
     if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' {
-        // The data reach the renderer through jsonio, one column per
+        // The data reach the renderer as exported, one column per
         // variable, so a weight must be ONE existing variable.  twoway
         // evaluates `[aw=price+1]' itself; dash cannot, and says so
         // rather than weighting by something else.  unab expands an
@@ -3192,12 +3374,22 @@ program define _dash_process_segment, rclass
         // runs over the plot's own if/in sample -- a bad weight on a row
         // whose y is missing still refuses, one outside the if does not --
         // and a missing weight drops its observation without an error.
-        local _wq ""
-        if `: length local if_expr' {
-            local _wq `"if (`macval(if_expr)')"'
-        }
-        if `: length local in_expr' {
-            local _wq `"`macval(_wq)' in `macval(in_expr)'"'
+        // The graph's qualifier is part of that sample (_psq, above) --
+        // except on kdensity, which twoway checks over its own qualifier
+        // alone: `(kdensity mpg [aw=w]) if foreign==1', w negative on the
+        // domestic cars only, is r(402) in twoway, and [fw=] non-integer
+        // there r(401), where the same weights inside the parentheses, or
+        // on lfit, lfitci, lpoly, lpolyci or histogram with the graph's
+        // qualifier, are rc 0 (measured 24sep2026; HC6-56).
+        local _wq : copy local _psq
+        if "`ptype'" == "kdensity" {
+            local _wq ""
+            if `: length local if_expr' {
+                local _wq `"if (`macval(if_expr)')"'
+            }
+            if `: length local in_expr' {
+                local _wq `"`macval(_wq)' in `macval(in_expr)'"'
+            }
         }
         local _w_neg ""
         if "`_seg_weight'" == "fweight" local _w_neg "lpoly lpolyci histogram kdensity"
@@ -3247,13 +3439,8 @@ program define _dash_process_segment, rclass
         // drew it, the observations below start() silently left out of
         // every bar (the WP-18 review, 23sep2026).
         if "`ptype'" == "histogram" & `"`s(start)'"' != "" {
-            local _hq ""
-            if `: length local if_expr' {
-                local _hq `"if (`macval(if_expr)')"'
-            }
-            if `: length local in_expr' {
-                local _hq `"`macval(_hq)' in `macval(in_expr)'"'
-            }
+            // The plot's sample, the graph's qualifier in it (_psq).
+            local _hq : copy local _psq
             quietly summarize `yvar' `macval(_hq)', meanonly
             if r(N) > 0 {
                 if r(min) < `s(start)' & reldif(r(min), `s(start)') > 1e-5 {
@@ -3288,7 +3475,7 @@ program define _dash_process_segment, rclass
             xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
             scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
             t2title b1title b2title l1title l2title r1title r2title title2 ///
-            subtitle2 nodraw play {
+            subtitle2 nodraw play replace {
         mata: st_local("gval", st_global("s(g_" + st_local("gkey") + ")"))
         if `: length local gval' {
             c_local g_`gkey' : copy local gval
@@ -3390,7 +3577,8 @@ end
 // StataAllToJSON has no format field either; it holds
 // Variables.getDisplayFmt() internally and never serializes it.  So dash
 // carries the formats itself, in its own master JSON.  jsonio is not
-// modified.
+// modified.  The writer that replaced it (_dash_write_data) writes stored
+// values only, so the formats still travel here.
 // ================================================================
 program define _dash_formats_json
     version 16.0
@@ -3466,70 +3654,145 @@ end
 
 
 // ================================================================
-// _dash_date_fmts_swap / _dash_date_fmts_restore
-//
-// jsonio renders a %t* variable THROUGH its display format and emits a
-// JSON string ("02jan2001"), while still reporting variableIsString=false
-// for it.  The renderer then coerced that to a missing value and dropped
-// every row, so `dash line close date` produced a dashboard containing no
-// data at all.  Giving the variable a plain numeric format for the
-// duration of the jsonio call transports the underlying value intact; the
-// original format is restored immediately afterwards and travels
-// separately in the "formats" map.
+// _dash_write_data <path> <varlist>  -- the data file both renderers read
 // ================================================================
+// Written from Python through the Stata Function Interface, by
+// dash_render.py's _dash_write_stata_data, in jsonio's layout.  dash
+// exported with jsonio, whose ado returns the JSON it wrote in a macro and
+// expands it inside compound quotes: a string value, value label or
+// variable label holding an unclosed compound quote or a lone backtick
+// stopped every export with r(132) "too few quotes", and one holding the
+// closing pair or a lone apostrophe with r(109) -- whatever the qualifier,
+// so any dashboard over such data failed; and every strL arrived as "null"
+// (measured 24sep2026; test_string_values.cscript).  sfi reads each value
+// by value, so nothing the user typed passes through a macro here: the
+// path and the names reach Python through Macro.getLocal(), never as code.
 //
-// Each saved format is its bytes as decimal codes joined by dots (%td is
-// 37.116.100), written and read back in Mata -- never as macro text.  A
-// display format is user text: %td!" ended the plain quotes the saved list
-// is passed to the restore in, so the restore read the wrong format and
-// left the variable %12.0g; %td!` and %tdDD!$DD were cut or expanded on
-// the way the same (measured 24sep2026; test_program_coverage.cscript
-// PC-07, PC-09).  Digits and dots survive any quoting.  A variable named
-// twice is swapped once: the second swap saved the %12.0g the first had
-// set as the "original", and the restore ended on it (PC-06).
-program define _dash_date_fmts_swap
+// Text that is not UTF-8 is read through Stata's ustrfix() -- each invalid
+// sequence U+FFFD, as jsonio wrote it -- with a note naming the variable or
+// label.  A binary strL, which is not text, is refused, r(198), naming the
+// variable; the file is not written then.  The renderer's module is loaded
+// once and kept, keyed by its path, size and time, so a second export in a
+// session costs nothing to load.
+program define _dash_write_data
     version 16.0
-    args datevars
-
-    // Each variable as Stata stores it, once: st_varformat() takes no
-    // abbreviation (PC-31).  The restore resolves the list the same way,
-    // so the saved formats line up with it.
-    local names ""
-    foreach v of local datevars {
-        capture unab u : `v', max(1)
-        if _rc == 0 local names `names' `u'
+    gettoken _dw_path _dw_vars : 0
+    // As Stata stores them, once each -- what jsonio's varlist gave.
+    unab _dw_vars : `_dw_vars'
+    local _dw_vars : list uniq _dw_vars
+    _dash_require_python
+    // The dash_render.py installed beside dash.ado first: the one the
+    // package ships.  A renderer found earlier on the ado-path -- a
+    // stand-in a test puts there to watch what it is handed -- replaces
+    // the render, never the export (test_json_escaping.cscript runs
+    // such a stand-in).  Then the ado-path, as the render looks.
+    local _dw_py ""
+    capture findfile dash.ado
+    if _rc == 0 {
+        mata: st_local("_dw_py", substr(st_global("r(fn)"), 1, ///
+            strlen(st_global("r(fn)")) - strlen("dash.ado")) + "dash_render.py")
+        capture confirm file `"`_dw_py'"'
+        if _rc local _dw_py ""
     }
-    local datevars : list uniq names
-    local saved ""
-    foreach v of local datevars {
-        mata: st_local("_fe", invtokens(strofreal(ascii(st_varformat(st_local("v")))), "."))
-        local saved "`saved' `_fe'"
-        format `v' %12.0g
+    if `"`_dw_py'"' == "" {
+        _dash_find_render
+        local _dw_py `"`r(fn)'"'
     }
-    c_local _dash_saved_fmts "`saved'"
+    local _dw_err ""
+    // One statement per line: a python: block inside a program fails to
+    // load from the ado-path (see _dash_do_render).
+    python: import sys, os, importlib.util
+    python: from sfi import Macro as _dash_M
+    python: _dash_rp = _dash_M.getLocal("_dw_py")
+    python: _dash_st = os.stat(_dash_rp)
+    python: _dash_key = (os.path.realpath(_dash_rp), _dash_st.st_size, _dash_st.st_mtime_ns)
+    python: _dash_xm = sys.modules.get("_dash_render_export")
+    // A single-line python: takes no compound statement, so the load is
+    // written as expressions.  Every value is assigned: a bare expression
+    // echoes its value into the log.  The module is kept only once it has
+    // loaded.
+    python: _dash_ok = _dash_xm is not None and getattr(_dash_xm, "_dash_export_key", None) == _dash_key
+    python: _dash_xs = None if _dash_ok else importlib.util.spec_from_file_location("_dash_render_export", _dash_rp)
+    python: _dash_xm = _dash_xm if _dash_ok else importlib.util.module_from_spec(_dash_xs)
+    python: _dash_xr = _dash_ok or _dash_xs.loader.exec_module(_dash_xm)
+    python: _dash_xm._dash_export_key = _dash_key
+    python: sys.modules["_dash_render_export"] = _dash_xm
+    python: _dash_M.setLocal("_dw_err", _dash_xm._dash_write_stata_data(_dash_M.getLocal("_dw_path"), _dash_M.getLocal("_dw_vars")))
+    if `: length local _dw_err' {
+        mata: _dash_say("err", st_local("_dw_err"), "", "")
+        exit 198
+    }
 end
 
-program define _dash_date_fmts_restore
-    version 16.0
-    args datevars saved
 
-    // Resolved as the swap resolved it.  With an abbreviation the restore,
-    // which runs under capture, set nothing, and the variable was left
-    // %12.0g after the render (PC-31).
-    local names ""
-    foreach v of local datevars {
-        capture unab u : `v', max(1)
-        if _rc == 0 local names `names' `u'
+// ================================================================
+// _dash_qual_gen <cmdname>  -- evaluate each distinct qualifier in Stata
+//
+// The table _dash_qual_rewrite and _dash_qual_take filled (dash_parse.mata)
+// holds every distinct (if, in) pair the dashboard's plots, graphs and KPIs
+// carry.  Each is evaluated here, once, against the data in memory in their
+// order, into the byte variable __dashq<k>: 1 where Stata selects the row,
+// 0 elsewhere -- `if' true where its expression is not zero, a missing
+// value included, as Stata reads every qualifier.  The caller exports these
+// with its variables and drops them at once, whether or not the export
+// succeeded; the names come back in the caller's local _dash_qual_vars.
+//
+// Evaluating the qualifiers here is what makes the rows drawn Stata's: the
+// renderers used to translate each into a pandas query, which read a
+// missing value, a subscript, a function or a date otherwise than Stata
+// (test_qualifier_in_stata.cscript).  A dashboard with no qualifier makes
+// no variable.
+//
+// The prefix is reserved: data already holding a variable named __dashq...
+// are refused, rc 110, rather than overwritten or exported beside a column
+// of the same name.  The if is read by value -- macval() -- inside the
+// parentheses _dash_qual_refusal proved it cannot leave, and the in is a
+// range that check proved is one; a qualifier Stata cannot evaluate against
+// the data now in memory (a variable dropped since the graph was
+// registered) is refused with Stata's own error, as twoway refuses it, and
+// nothing is left behind.
+// ================================================================
+program define _dash_qual_gen
+    version 16.0
+    args cmdname
+
+    capture unab _dq_clash : __dashq*
+    if _rc == 0 {
+        local _dq_first : word 1 of `_dq_clash'
+        display as error "`cmdname': variable `_dq_first' is named with the prefix __dashq, which is reserved for the qualifier columns dash exports."
+        display as error "      Rename it first, for example: rename `_dq_first' newname"
+        exit 110
     }
-    local datevars : list uniq names
-    local i = 0
-    foreach v of local datevars {
-        local ++i
-        local fe : word `i' of `saved'
-        if "`fe'" != "" {
-            capture mata: st_varformat(st_local("v"), char(strtoreal(tokens(subinstr(st_local("fe"), ".", " ")))))
+
+    local _dq_n = 0
+    mata: _dash_qual_export()
+    local made ""
+    forvalues k = 1/`_dq_n' {
+        local v "__dashq`k'"
+        local _qx : copy local _dq_if_`k'
+        local _qn : copy local _dq_in_`k'
+        local _qr ""
+        if `: length local _qn' {
+            local _qr "in `_qn'"
+        }
+        quietly generate byte `v' = 0
+        local made `made' `v'
+        if `: length local _qx' {
+            capture noisily quietly replace `v' = 1 if (`macval(_qx)') `_qr'
+        }
+        else {
+            capture noisily quietly replace `v' = 1 `_qr'
+        }
+        local rc = _rc
+        if `rc' {
+            drop `made'
+            mata: _dash_say("err", "`cmdname': Stata cannot evaluate the qualifier ", ///
+                strtrim((st_local("_qx") != "" ? "if " + st_local("_qx") : "") + " " + st_local("_qr")), ///
+                " against the data in memory.")
+            exit `rc'
         }
     }
+    c_local _dash_qual_vars "`made'"
 end
 
 // ================================================================
@@ -3629,6 +3892,15 @@ program define _dash_plot
     if `: length local _graph_qual_raw' {
         _dash_graph_qualifier `macval(_graph_qual_raw)'
     }
+    // The checks _dash_process_segment makes over a plot's sample -- a
+    // weight's values, histogram's start() -- read the graph's qualifier
+    // as part of that sample, as twoway does: `(lfit mpg weight
+    // [fw=halfint]) if foreign==1' was checked on every row and refused,
+    // r(401), where twoway draws it (WP-27; test_help_claims_6.cscript
+    // HC6-56).  Handed over in two globals, set by value for every command
+    // -- empty when there is no qualifier -- and dropped after the loop.
+    mata: st_global("dash__gq_if", st_local("_gq_if"))
+    mata: st_global("dash__gq_in", st_local("_gq_in"))
 
     // ---- Initialise graph-level option accumulators ----
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
@@ -3637,7 +3909,7 @@ program define _dash_plot
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
           scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
-          subtitle2 nodraw play {
+          subtitle2 nodraw play replace {
         local g_`gk' ""
     }
 
@@ -3655,7 +3927,7 @@ program define _dash_plot
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
-              subtitle2 nodraw play {
+              subtitle2 nodraw play replace {
             mata: st_local("_gv", st_global("s(" + st_local("gk") + ")"))
             if `: length local _gv' {
                 local g_`gk' : copy local _gv
@@ -3731,6 +4003,8 @@ program define _dash_plot
         local plots_json `"`plots_json'`_json_k'"'
     }
 
+    macro drop dash__gq_if dash__gq_in
+
     // ---- An after-comma option outranks a segment's ----
     // Restored after the segment loop rather than guarded inside it: the
     // loop reaches the accumulators through c_local from another program,
@@ -3743,7 +4017,7 @@ program define _dash_plot
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
-              subtitle2 nodraw play {
+              subtitle2 nodraw play replace {
         if `: length local _gafter_`gk'' local g_`gk' : copy local _gafter_`gk'
     }
 
@@ -3781,6 +4055,23 @@ program define _dash_plot
     // honours it and the note must not say otherwise there.
     if `: length local g_name' & `: length local g_saving' {
         mata: st_local("_dash_ignored_acc", st_local("_dash_ignored_acc") + " saving")
+    }
+    // replace after the comma, as dash build takes it, lets the one-line
+    // form write over the file saving() names (_dash_saving_clobber).  It is
+    // folded into saving() as twoway's own saving(name, replace), which
+    // _dash_render_immediate reads, and never written to the spec.  With no
+    // saving(), or on a named graph, which writes nothing, it has nothing
+    // to replace and is named in the note.  The text is joined in Mata, by
+    // value.
+    if `: length local g_replace' {
+        if `: length local g_saving' & !`: length local g_name' {
+            mata: st_local("g_saving", st_local("g_saving") + ///
+                (ustrregexm(st_local("g_saving"), ",[ \t]*replace[ \t]*$") ? "" : ", replace"))
+        }
+        else {
+            mata: st_local("_dash_ignored_acc", st_local("_dash_ignored_acc") + " replace")
+        }
+        local g_replace ""
     }
     if `: length local _dash_ignored_acc' {
         _dash_report_ignored `"`macval(_dash_ignored_acc)'"'
@@ -3820,7 +4111,7 @@ program define _dash_plot
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
           scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
-          subtitle2 nodraw play {
+          subtitle2 nodraw play replace {
         local gv : copy local g_`gk'
         if `: length local gv' {
             _dash_json_str `"`macval(gv)'"' _gjv
@@ -4338,6 +4629,7 @@ program define _dash_render_immediate
         // where $D pointed (measured 24sep2026; test_json_escaping.cscript
         // JSE-68).
         tempname P
+        local replace ""
         mata: st_strscalar(st_local("P"), strtrim(st_local("saving_path")))
         if regexm(scalar(`P'), "^(.+)[ \t]*,[ \t]*replace[ \t]*$") {
             scalar `P' = strtrim(regexs(1))
@@ -4359,6 +4651,15 @@ program define _dash_render_immediate
         if `_gph' {
             mata: _dash_say("txt", "dash: saving() writes HTML, not a Stata .gph; using ", st_local("saving_path"), "")
         }
+        // A file that is there already is kept unless replace was given --
+        // saving(name, replace), twoway's form, or replace after the comma,
+        // dash build's, which _dash_plot folds into saving() -- and a
+        // directory in its place is never written (_dash_saving_clobber).
+        // This route wrote over the user's file with rc 0 (measured
+        // 24sep2026 by WP-24; test_path_validation.cscript PV-22..27).  The
+        // directory is checked first: one that does not exist holds no file.
+        _dash_saving_dir `"`saving_path'"'
+        _dash_saving_clobber `"`saving_path'"' "`replace'" "dash"
     }
     else {
         tempfile saving_path_tmp
@@ -4370,11 +4671,27 @@ program define _dash_render_immediate
         local saving_path = "`saving_path'.html"
     }
 
+    // ---- The qualifiers, evaluated in Stata ----
+    // Each if/in pair of the graph and its plots becomes the column that
+    // holds Stata's answer (_dash_qual_rewrite, _dash_qual_gen); the spec
+    // carries the column's name and no qualifier text.  The graph as
+    // registered is kept for a graph that needs no data, below.
+    local _json_orig : copy local json_spec
+    local _dq_err ""
+    mata: _dash_qual_reset()
+    mata: st_local("json_spec", _dash_qual_rewrite(st_local("_json_orig"), "_dq_err", 1))
+    if `: length local _dq_err' {
+        mata: _dash_say("err", "dash: the graph's qualifier cannot be evaluated: ", st_local("_dq_err"), ".")
+        exit 198
+    }
+
     // ---- Determine variables needed ----
     local needed_vars ""
     mata: _dash_extract_vars(`"`json_spec'"', "needed_vars")
 
-    // ...including the ones named only in by() or in an if-qualifier.
+    // ...including the ones named only in by().  A qualifier's variables
+    // are not exported: its answer is (_dash_qual_gen), and the rewritten
+    // spec holds no qualifier text for _dash_extract_qual_vars to read.
     // _dash_extract_vars reads plot-variable keys only, so the one-line form
     //     dash scatter mpg weight, by(foreign) saving(out.html)
     // serialised no `foreign' column at all: the renderer had nothing to
@@ -4384,9 +4701,6 @@ program define _dash_render_immediate
     // serialisation paths, one of them incomplete.
     local _qualvars ""
     mata: _dash_extract_qual_vars(`"`json_spec'"', "_qualvars")
-    // The names outside the qualifier's string literals
-    // (_dash_extract_qual_vars), each already written out in full when the
-    // graph was registered (_dash_qual_expand).
     foreach _qv of local _qualvars {
         capture confirm variable `_qv'
         if _rc == 0 {
@@ -4423,77 +4737,82 @@ program define _dash_render_immediate
             display as error "dash: no variables identified in plot specification."
             exit(198)
         }
+        // No data are exported, so no qualifier column: the literal family
+        // draws its own values, which twoway's if and in do not reach.
+        mata: _dash_qual_reset()
+        mata: st_local("json_spec", _dash_qual_rewrite(st_local("_json_orig"), "_dq_err", 0))
     }
 
-    // ---- Serialize data via jsonio ----
+    // ---- Write the data file (_dash_write_data) ----
     tempfile data_json_path spec_json_path
 
     // Always export ALL rows for the needed variables.  Do NOT pre-filter with
     // if/in qualifiers here: multiple plots in the same graph can have different
     // qualifiers, and applying only the first plot's qualifier would silently
-    // discard rows needed by other plots.  Both renderers apply the qualifiers
-    // themselves, through _dash_qualified_frame: the graph-level "if_expr" /
-    // "in_expr" promoted to the graph JSON by _dash_plot, and then each plot's
-    // own, to that layer alone.
+    // discard rows needed by other plots.  Each distinct qualifier -- the
+    // graph's, promoted to the graph JSON by _dash_plot, and each plot's own --
+    // is exported instead as the 0/1 column that holds Stata's answer
+    // (_dash_qual_gen), and both renderers select a layer's rows with it.
 
-    // Check jsonio -- needed only when there is a variable to export.
-    if !`_varfree' {
-        capture which jsonio
-        if _rc != 0 {
-            display as error "dash: jsonio is required but not found. Run dash_setup first."
-            exit(198)
-        }
-    }
+    // The data file is written from Python through sfi (_dash_write_data):
+    // jsonio, which wrote it until 24sep2026, is no longer needed.
 
     // ---- Resource limits (WP-19), before anything is exported ----
     // Every dash_max_* global the session has set is validated here -- a
     // bad one is refused before the export, not after it -- and travels to
-    // the renderer as build_options.limits.  Then the size of what jsonio
-    // is about to embed, every observation of every variable in
-    // needed_vars, is held to the cells limit.  Both come before the
-    // date-format swap, so a refusal leaves the user's data and formats
-    // exactly as they were.
+    // the renderer as build_options.limits.  Then the size of what is
+    // about to be embedded, every observation of every variable in
+    // needed_vars, is held to the cells limit, and the text in its string
+    // variables to the bytes limit.  All come before the file is written,
+    // so a refusal leaves the user's data exactly as it was.
     _dash_limits_json
     local _dash_lim_json `"`r(json)'"'
     local _dash_nvars : word count `needed_vars'
-    _dash_cell_cap `_dash_nvars'
+    // Each qualifier column is embedded with the data, and counted.
+    mata: _dash_qual_export()
+    _dash_cell_cap `=`_dash_nvars' + `_dq_n''
+    _dash_byte_cap `needed_vars'
 
-    // Collect display formats, and transport date variables as
-    // numbers so jsonio does not render them to text.
+    // Collect display formats.  Each travels in the spec's formats map;
+    // the data file carries every number as stored, whatever its format.
     _dash_formats_json "`needed_vars'" _dash_fmt_json _dash_date_vars
     local _dash_jrc = 0
     if `_varfree' {
         _dash_empty_data "`data_json_path'"
     }
     else {
-        local _dash_saved_fmts ""
-        if `"`_dash_date_vars'"' != "" {
-            _dash_date_fmts_swap "`_dash_date_vars'"
+        // The qualifier columns, made first: a qualifier Stata refuses
+        // stops here, before any format is touched.  Dropped the moment
+        // the file is written, or fails to be.  Estimates in memory are
+        // held meanwhile, and restored when this program ends: with an
+        // e(sample) present, jsonio named the first variable made after
+        // it "(e)" rather than __dashq1, and the renderer refused the
+        // spec (measured 24sep2026; test_qualifier_in_stata.cscript QS-15).
+        local _dash_qual_vars ""
+        if `_dq_n' > 0 {
+            tempname _dash_eh
+            _estimates hold `_dash_eh', restore nullok
         }
-        // Captured, so the restore below runs when jsonio fails too: it was
-        // not, and a jsonio that failed ended this program with every date
-        // variable left %12.0g (measured 24sep2026;
-        // test_program_coverage.cscript PC-11).  jsonio's own message is
-        // still shown and its code still returned.
-        capture noisily quietly jsonio out `needed_vars', ///
-            what(all) filenm("`data_json_path'") ///
-            metaprint(varnames varlabels vallabs labelnames)
+        _dash_qual_gen "dash"
+        // Captured, so the qualifier columns are dropped when the export
+        // fails too.  The writer reads each stored value whatever its
+        // display format, so no format is touched (until 24sep2026 jsonio
+        // needed each date variable %12.0g for the call, and a failed
+        // export left it so: test_program_coverage.cscript PC-11).  Its
+        // message is still shown and its code returned; no value is
+        // expanded on the way (test_string_values.cscript).
+        capture noisily _dash_write_data "`data_json_path'" `needed_vars' `_dash_qual_vars'
         local _dash_jrc = _rc
-
-        // Restore the user's formats immediately, whether or not
-        // jsonio succeeded: the data in memory is theirs.
-        if `"`_dash_date_vars'"' != "" {
-            _dash_date_fmts_restore "`_dash_date_vars'" "`_dash_saved_fmts'"
+        if "`_dash_qual_vars'" != "" {
+            capture drop `_dash_qual_vars'
         }
     }
     if `_dash_jrc' exit `_dash_jrc'
 
-    // jsonio returns non-zero _rc as part of normal operation (internal Stata
-    // commands like restore set _rc).  Check for actual failure by verifying
-    // the output file was created, not by checking _rc.
+    // The file itself is the witness that the export ran.
     capture confirm file "`data_json_path'"
     if _rc != 0 {
-        display as error "dash: jsonio failed to serialize data. " ///
+        display as error "dash: the data could not be written. " ///
             "Check that all variables exist and the data is loaded."
         exit(198)
     }
@@ -4930,7 +5249,7 @@ end
 // ================================================================
 // _dash_prepare_spec  — everything `dash build' and `dash serve' do
 // before they hand the spec to Python: validate the build options,
-// work out which variables have to be serialized, run jsonio, and
+// work out which variables have to be serialized, write them, and
 // assemble the master JSON.
 //
 // WHY THIS PROGRAM EXISTS
@@ -5213,7 +5532,10 @@ program define _dash_prepare_spec, rclass
     // An empty theme means "the user did not ask", which is the truth.
 
     // ---- determine all variables needed ----
+    // And each distinct qualifier, which is evaluated in Stata and exported
+    // as a column (_dash_qual_rewrite, _dash_qual_take, _dash_qual_gen).
     local all_vars ""
+    mata: _dash_qual_reset()
     local ntok_reg : word count `registry'
     forvalues k = 1/`ntok_reg' {
         local gname : word `k' of `registry'
@@ -5243,29 +5565,21 @@ program define _dash_prepare_spec, rclass
             }
             local kpi_var = "${dash_kpi_`gname'__var}"
             if !`: list kpi_var in all_vars' local all_vars "`all_vars' `kpi_var'"
-            // A KPI qualifier may name variables that appear nowhere else
-            // (dash kpi mean(mpg) if foreign==1 needs foreign serialised, or
-            // the renderer cannot reproduce the conditional value).
-            // Read whole, by copy.  It was  local _kifx = "${...}", an
-            // expression in plain quotes, which ended at the qualifier's
-            // first double quote: if make != "AMC" & rep78 == 3 came
-            // through as  make != , so rep78 was not exported and both
-            // modes showed the unconditional mean, and a literal with a
-            // blank in it -- "AMC Concord" -- stopped dash build with
-            // r(198) "invalid 'Concord'" (measured 23sep2026 at ad13a0f).
-            local _kifx : copy global dash_kpi_`gname'__if
-            local _kifl : length local _kifx
-            if `_kifl' > 0 {
-                // macval(): a string literal holding $m is text (JSE-58).
-                _dash_json_str `"`macval(_kifx)'"' _kifx_esc
-                local kqvars ""
-                mata: _dash_extract_qual_vars(`"{"if_expr":"`_kifx_esc'"}"', "kqvars")
-                foreach v of local kqvars {
-                    capture confirm variable `v'
-                    if _rc == 0 {
-                        if !`: list v in all_vars' local all_vars "`all_vars' `v'"
-                    }
-                }
+            // The KPI's own if and in: the column that will hold Stata's
+            // answer (_dash_qual_gen), read by value from the registry.
+            // Its variables are not exported -- the answer is.  They used
+            // to be, so the renderer could translate the qualifier, and a
+            // qualifier it read otherwise than Stata showed a card Stata
+            // would not (test_qualifier_in_stata.cscript QS-03).
+            local _dq_err ""
+            mata: st_local("_kqc_`k'", _dash_qual_take( ///
+                st_global("dash_kpi_" + st_local("gname") + "__if"), ///
+                st_global("dash_kpi_" + st_local("gname") + "__in"), "_dq_err", 1))
+            if `: length local _dq_err' {
+                mata: _dash_say("err", "`cmdname': registry entry '", ///
+                    st_local("gname"), "' holds a qualifier dash cannot evaluate: " + ///
+                    st_local("_dq_err") + ". Run dash clear and register it again.")
+                exit 198
             }
             continue
         }
@@ -5289,16 +5603,30 @@ program define _dash_prepare_spec, rclass
             exit(198)
         }
         if `_chk' > 0 {
+            // The graph as the spec will carry it: each if/in pair replaced
+            // by the column that holds Stata's answer, and no qualifier
+            // text left for a renderer to translate.  Read by value.
+            local _dq_err ""
+            mata: st_local("_qg_`k'", _dash_qual_rewrite( ///
+                st_global("dash_json_" + st_local("gname")), "_dq_err", 1))
+            if `: length local _dq_err' {
+                mata: _dash_say("err", "`cmdname': registry entry '", ///
+                    st_local("gname"), "' holds a qualifier dash cannot evaluate: " + ///
+                    st_local("_dq_err") + ". Run dash clear and register it again.")
+                exit 198
+            }
             local gvars ""
             mata: _dash_extract_vars(`"${dash_json_`gname'}"', "gvars")
             foreach v of local gvars {
                 if !`: list v in all_vars' local all_vars "`all_vars' `v'"
             }
-            // Also extract variables referenced only in qualifiers (if_expr)
-            // and faceting (by) — these may not appear in any plot-variable key
-            // but must be serialised so the renderer can apply them correctly.
+            // Also extract variables referenced only in faceting (by) -- these
+            // may not appear in any plot-variable key but must be serialised
+            // so the renderer can facet on them.  Read from the rewritten
+            // graph, which holds no qualifier text: a qualifier's variables
+            // are not exported, its answer is.
             local qvars ""
-            mata: _dash_extract_qual_vars(`"${dash_json_`gname'}"', "qvars")
+            mata: _dash_extract_qual_vars(st_local("_qg_`k'"), "qvars")
             foreach v of local qvars {
                 capture confirm variable `v'
                 if _rc == 0 {
@@ -5311,7 +5639,7 @@ program define _dash_prepare_spec, rclass
     // ---- also include filter variables in the serialization ----
     // Filter variables (e.g. foreign from filter(foreign, type(dropdown)))
     // may not appear in any graph or KPI spec.  Without explicit inclusion,
-    // jsonio would never serialize them, so the Python filter widgets would
+    // the export would never write them, so the Python filter widgets would
     // be silently skipped.  _fvars holds each group's variable, read and
     // proven a name by _dash_filter_refusal above -- a top-level ";"
     // separates two groups as "||" does (BUG-45).  A filter must name a
@@ -5322,7 +5650,7 @@ program define _dash_prepare_spec, rclass
     //
     // An abbreviation is the variable it abbreviates, as a varname is
     // anywhere in Stata, and the renderer is handed the full name: it looks
-    // the name up in the data jsonio writes, which carries the full one, so
+    // the name up in the data the export writes, which carries the full one, so
     // filter(fore) built with rc 0 and no widget -- "the variable is not in
     // the data" (measured at 4ede074).
     local _ffull ""
@@ -5369,59 +5697,65 @@ program define _dash_prepare_spec, rclass
                 exit(198)
             }
         }
-    }
-
-    // ---- serialize data via jsonio ----
-    // jsonio is needed only when there is a variable to export.
-    if !`_novars' {
-        capture which jsonio
-        if _rc != 0 {
-            display as error "dash: jsonio is required but not found. Run dash_setup first."
-            exit(198)
+        // No data are exported, so no qualifier column: the literal family
+        // draws its own values, which twoway's if and in do not reach.
+        mata: _dash_qual_reset()
+        forvalues k = 1/`ntok_reg' {
+            local gname : word `k' of `registry'
+            if "${dash_kpi_`gname'}" == "1" continue
+            mata: st_local("_qg_`k'", _dash_qual_rewrite( ///
+                st_global("dash_json_" + st_local("gname")), "_dq_err", 0))
         }
     }
+
+    // ---- write the data file (_dash_write_data) ----
+    // From Python through sfi, as on the immediate route; jsonio is no
+    // longer needed.
 
     // ---- resource limits (WP-19), before anything is exported ----
     // As on the immediate route: every dash_max_* global the session has
     // set is validated and carried to the renderer as build_options.limits,
-    // and what jsonio is about to embed -- every observation of every
-    // variable in all_vars -- is held to the cells limit.  Both come before
-    // the date-format swap, so a refusal leaves the data and formats as
-    // they were, and before `dash build' records its dash_opts_* globals.
+    // and what is about to be embedded -- every observation of every
+    // variable in all_vars -- is held to the cells limit, and the text in
+    // its string variables to the bytes limit.  All come before the file
+    // is written, so a refusal leaves the data as it was, and before `dash
+    // build' records its dash_opts_* globals.
     _dash_limits_json
     local _dash_lim_json `"`r(json)'"'
     local _dash_nvars : word count `all_vars'
-    _dash_cell_cap `_dash_nvars'
+    // Each qualifier column is embedded with the data, and counted.
+    mata: _dash_qual_export()
+    _dash_cell_cap `=`_dash_nvars' + `_dq_n''
+    _dash_byte_cap `all_vars'
 
-    // Collect display formats, and transport date variables as
-    // numbers so jsonio does not render them to text.
+    // Collect display formats, as on the immediate route.
     _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars
     local _dash_jrc = 0
     if `_novars' {
         _dash_empty_data "`datapath'"
     }
     else {
-        local _dash_saved_fmts ""
-        if `"`_dash_date_vars'"' != "" {
-            _dash_date_fmts_swap "`_dash_date_vars'"
+        // The qualifier columns, as on the immediate route: made first,
+        // exported with the data, dropped the moment the file is written, the
+        // estimates in memory held meanwhile (QS-15).
+        local _dash_qual_vars ""
+        if `_dq_n' > 0 {
+            tempname _dash_eh
+            _estimates hold `_dash_eh', restore nullok
         }
-        // Captured for the same reason as on the immediate route (PC-11).
-        capture noisily quietly jsonio out `all_vars', ///
-            what(all) filenm("`datapath'") ///
-            metaprint(varnames varlabels vallabs labelnames)
+        _dash_qual_gen "`cmdname'"
+        // Captured for the same reason as on the immediate route.
+        capture noisily _dash_write_data "`datapath'" `all_vars' `_dash_qual_vars'
         local _dash_jrc = _rc
-
-        // Restore the user's formats immediately, whether or not
-        // jsonio succeeded: the data in memory is theirs.
-        if `"`_dash_date_vars'"' != "" {
-            _dash_date_fmts_restore "`_dash_date_vars'" "`_dash_saved_fmts'"
+        if "`_dash_qual_vars'" != "" {
+            capture drop `_dash_qual_vars'
         }
     }
     if `_dash_jrc' exit `_dash_jrc'
 
     capture confirm file "`datapath'"
     if _rc != 0 {
-        display as error "`cmdname': jsonio failed to serialize data."
+        display as error "`cmdname': the data could not be written."
         exit(198)
     }
 
@@ -5449,7 +5783,9 @@ program define _dash_prepare_spec, rclass
         }
 
         if `n_graphs' > 0 local graphs_json `"`graphs_json', "'
-        local graphs_json `"`graphs_json'${dash_json_`gname'}"'
+        // The graph with its qualifiers replaced by their columns
+        // (_dash_qual_rewrite, above), joined by value.
+        mata: st_local("graphs_json", st_local("graphs_json") + st_local("_qg_`k'"))
         local n_graphs = `n_graphs' + 1
     }
 
@@ -5483,11 +5819,12 @@ program define _dash_prepare_spec, rclass
         mata: st_local("_kcol_esc",   _json_escape(st_global("dash_kpi_" + st_local("gname") + "__col")))
         mata: st_local("_kbg_esc",    _json_escape(st_global("dash_kpi_" + st_local("gname") + "__bg")))
         mata: st_local("kupdate",     _json_escape(st_global("dash_kpi_" + st_local("gname") + "__upd")))
-        mata: st_local("_kif_esc",    _json_escape(st_global("dash_kpi_" + st_local("gname") + "__if")))
-        mata: st_local("_kin_esc",    _json_escape(st_global("dash_kpi_" + st_local("gname") + "__in")))
+        // The KPI's if and in travel as the column that holds Stata's
+        // answer (_dash_qual_take, above), and as no text.
+        local _kqc : copy local _kqc_`k'
 
         if `n_kpis' > 0 local kpis_json `"`kpis_json', "'
-        local kpis_json `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'","if_expr":"`_kif_esc'","in_expr":"`_kin_esc'"}"'
+        local kpis_json `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'","if_expr":"","in_expr":"","qual_col":"`_kqc'"}"'
         local n_kpis = `n_kpis' + 1
     }
 
@@ -5653,14 +5990,10 @@ program define _dash_build
     // not a file that "already exists" (JSE-52).
     _dash_saving_dir `"`saving'"'
 
-    if "`replace'" == "" {
-        capture confirm new file "`saving'"
-        if _rc != 0 {
-            // The path is shown as written (P20-08), here and below.
-            mata: _dash_say("err", "dash build: file '", st_local("saving"), "' already exists. Use replace option to overwrite.")
-            exit(198)
-        }
-    }
+    // An existing file without replace, r(198), and a directory in the
+    // file's place with it, r(608): _dash_saving_clobber, shared with the
+    // one-line form.  The path is shown as written (P20-08).
+    _dash_saving_clobber `"`saving'"' "`replace'" "dash build"
 
     // ---- validate, collect, serialize and assemble ----
     //

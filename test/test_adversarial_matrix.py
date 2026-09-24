@@ -96,6 +96,22 @@ _LOGIC = "test/test_qualifier_logic.py::TestAdversarialLogicalOperators::"
 
 SURFACES = {
     # `dash <plot> varlist, ...' -- the plot-type token and the varlist.
+    # WP-27: the 0/1 qualifier columns dash.ado exports (`__dashq<k>'), and
+    # the spec key "qual_col" that names them.
+    "qualifier_columns": {
+        "bypass": [
+            "test_qualifier_in_stata.cscript:QS-06",
+            "test/test_qualifier_columns.py::TestTakingTheColumnsOut::test_a_users_variable_is_never_read_as_one",
+        ],
+        "injection": [
+            "test/test_qualifier_columns.py::TestTheColumnsNeverReachTheUser::test_not_in_the_csv_download",
+            "test/test_qualifier_columns.py::TestTheColumnsNeverReachTheUser::test_not_in_a_tooltip",
+        ],
+        "exhaustion": [
+            "test/test_qualifier_columns.py::TestAdversarialQualifierColumns::test_many_columns_are_read_in_linear_time",
+            "test_qualifier_in_stata.cscript:QS-10",
+        ],
+    },
     "plot_varlist_and_type": {
         "bypass": [
             "test_adversarial.cscript:P20-01",
@@ -103,17 +119,21 @@ SURFACES = {
             "test_parser_integrity.cscript:P1B-14",
             "test_parser.cscript:P1A-69",
             "test_parser.cscript:P1A-74",
+            # WP-27: compound quotes nest; a nested quote hides no option and invents none.
+            "test_parser_integrity.cscript:P1B-43",
         ],
         "injection": [
             "test_adversarial.cscript:P2-79",
             "test_adversarial.cscript:P20-29",
             "test/test_security_surface.py::TestUserTextIsEchoedAsText::test_no_display_line_expands_user_text",
+            "test_parser_integrity.cscript:P1B-46",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P2-83",
             "test_adversarial.cscript:P19-07",
             "test_adversarial.cscript:P19-08",
             "test_parser.cscript:P1A-75",
+            "test_parser_integrity.cscript:P1B-47",
         ],
     },
     # `pcarrowi #y1 #x1 #y2 #x2 [(#clockpos)] ["label"] ...' -- a paired-
@@ -182,6 +202,8 @@ SURFACES = {
             # Stata's logical operators read by the renderer (T3r,
             # 24sep2026): a look-alike ! or ~ is not an operator.
             _LOGIC + "test_a_lookalike_operator_is_not_read_as_one",
+            # WP-27: a qualifier is evaluated in Stata; a hand-set registry's qualifier cannot leave its parentheses or name its own column.
+            "test_qualifier_in_stata.cscript:QS-09",
         ],
         "injection": [
             "test/test_axis_options.py::TestIfQualifierWhitelistIsNotWeakened::test_hostile_expressions_are_rejected",
@@ -199,6 +221,8 @@ SURFACES = {
             "test_json_escaping.cscript:JSE-66",
             # A payload under ! or ~ still meets the whitelist (T3r).
             _LOGIC + "test_a_payload_behind_a_not_does_not_run",
+            # WP-27: the column Stata filled, never the text, reaches the page.
+            "test_qualifier_in_stata.cscript:QS-12",
         ],
         "exhaustion": [
             _M + "TestIfQualifierExhaustion::test_a_run_of_negations_is_skipped_not_raised",
@@ -215,6 +239,8 @@ SURFACES = {
             _LOGIC + "test_a_long_operand_under_many_operators_costs_linear_memory",
             _LOGIC + "test_a_long_name_is_read_in_linear_time",
             _LOGIC + "test_redundant_parentheses_cost_nothing",
+            # WP-27: evaluating a qualifier in Stata stays linear (1e5 rows).
+            "test_qualifier_in_stata.cscript:QS-13",
         ],
     },
     # jitter(), level(), bin(), n(), bwidth(), bands(), xsize() ...
@@ -310,6 +336,8 @@ SURFACES = {
             # A title that closes its quote and writes name() and saving(),
             # and values holding the quote, meeting dash's own checks.
             "test_json_escaping.cscript:JSE-47",
+            # WP-27: legend(label()) read with the text reader.
+            "test/test_textbox_multiline.py::TestALegendLabelIsReadAsStataReadsIt::test_a_key_number_out_of_range_changes_nothing",
         ],
         "injection": [
             "test_adversarial.cscript:P2-78",
@@ -328,6 +356,8 @@ SURFACES = {
             "test_json_escaping.cscript:JSE-65",
             "test_json_escaping.cscript:JSE-67",
             "test_json_escaping.cscript:JSE-69",
+            "test/test_textbox_multiline.py::TestALegendLabelAdversarial::test_markup_is_the_keys_text_and_never_raw_on_the_page",
+            "test_json_escaping.cscript:JSE-72",
         ],
         "exhaustion": [
             _M + "TestGraphTextBounds::test_a_long_title_is_drawn_once_in_bounded_time",
@@ -335,6 +365,7 @@ SURFACES = {
             _TBX + "test_long_runs_of_quotes_and_apostrophes_are_read_in_bounded_time",
             # A title of 5,000 strings each an apostrophe.
             "test_json_escaping.cscript:JSE-49",
+            "test/test_textbox_multiline.py::TestALegendLabelAdversarial::test_a_long_label_is_read_in_bounded_time",
         ],
     },
     # xlabel() / ylabel(): numlists, a(b)c, #N, value "label" pairs, format().
@@ -343,6 +374,8 @@ SURFACES = {
             _M + "TestAxisLabelInjection::test_pre_escaped_markup_is_carried_as_written_not_decoded",
             _M + "TestAxisLabelBounds::test_a_non_finite_endpoint_does_not_raise",
             "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_tick_positions_are_numbers_only",
+            # WP-27: a number on a date axis is a Stata date; one past Stata's range is named and not drawn.
+            "test/test_served_dates.py::TestANumberOnADateAxisIsAStataDate::test_a_numeric_axis_keeps_its_numbers",
         ],
         "injection": [
             _M + "TestAxisLabelInjection::test_a_tick_label_cannot_break_out_of_the_formatter_code",
@@ -356,6 +389,7 @@ SURFACES = {
             _M + "TestNumericFormatBounds::test_an_axis_format_with_a_billion_decimals_is_bounded",
             "test/test_help_claims_8.py::TestTheTickMarkCodeCarriesNoUserText::test_a_huge_request_is_bounded",
             "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_a_huge_increment_on_a_second_axis_or_a_tick_is_bounded",
+            "test/test_served_dates.py::TestANumberOnADateAxisIsAStataDate::test_a_thousand_positions_convert_at_once",
         ],
     },
     # by(varlist, suboptions).
@@ -366,11 +400,15 @@ SURFACES = {
             "test_json_escaping.cscript:JSE-29",
             "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_a_title_label_keyed_by_another_spelling_is_not_matched",
             "test/test_help_claims_5.py::TestTheSubOptionSplitterReadsStataQuotes::test_the_tokens",
+            # WP-27: only the variable list is held to the unsafe pattern.
+            "test/test_server_facets.py::TestAByTextAdversarial::test_a_sub_option_cannot_smuggle_a_variable_list",
         ],
         "injection": [
             "test/test_phase5.py::TestByFacetingSecurity::test_by_import_injection_blocked",
             "test/test_phase5.py::TestByFacetingSecurity::test_by_xss_in_facet_label_is_canvas_text",
             "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_markup_in_a_title_label_is_carried_as_text",
+            "test/test_server_facets.py::TestAByTextAdversarial::test_markup_and_code_in_a_title_run_nowhere",
+            "test_json_escaping.cscript:JSE-71",
         ],
         "exhaustion": [
             "test/test_resource_limits.py::TestByOnAHighCardinalityVariable::test_the_first_groups_in_sort_order_are_kept",
@@ -379,6 +417,7 @@ SURFACES = {
             "test/test_resource_limits.py::TestByColsCannotOutgrowThePanels::test_the_served_app_hands_gridplot_the_panels_alone",
             "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_a_huge_label_set_titles_at_once",
             "test/test_help_claims_5.py::TestTheSubOptionSplitterReadsStataQuotes::test_a_megabyte_of_quotes_is_split_at_once",
+            "test/test_server_facets.py::TestAByTextAdversarial::test_a_long_text_is_read_in_bounded_time",
         ],
     },
     # name(name[, replace]) on a graph or a KPI.
@@ -440,6 +479,9 @@ SURFACES = {
             "test_path_validation.cscript:PV-14",
             "test_path_validation.cscript:PV-15",
             "test_adversarial.cscript:P20-16",
+            # WP-27: the one-line form refuses an existing file without replace.
+            "test_path_validation.cscript:PV-22",
+            "test_path_validation.cscript:PV-26",
         ],
         "injection": [
             "test_path_validation.cscript:PV-04",
@@ -447,6 +489,8 @@ SURFACES = {
             "test_adversarial.cscript:P20-07",
             "test_adversarial.cscript:P20-08",
             "test_adversarial.cscript:P20-29",
+            # WP-27: quote, dollar and backtick in the one-line form's path.
+            "test_path_validation.cscript:PV-27",
         ],
         "exhaustion": [
             _M + "TestRendererOutputPath::test_a_megabyte_path_is_judged_in_linear_time",
@@ -625,6 +669,11 @@ SURFACES = {
             "test_adversarial.cscript:P19-11",
             "test_adversarial.cscript:P19-23",
             "test_resource_limits.cscript:RL-01",
+            # $dash_max_bytes (24sep2026): the text a strL carries, which
+            # the cells limit does not count, refused on every route.
+            "test_adversarial.cscript:P19-27",
+            "test_adversarial.cscript:P19-29",
+            "test/test_resource_limits.py::TestTheBytesOfTextAreLimited::test_a_hostile_value_is_named_and_the_default_used",
         ],
     },
     # dash_setup: its options, and what the environment reports back
@@ -671,8 +720,17 @@ SURFACES = {
             "test_program_coverage.cscript:PC-09",
             "test_program_coverage.cscript:PC-10",
             "test/test_date_range.py::TestHostileDateValues::test_a_hostile_date_in_the_data_file_is_one_missing_point",
+            # WP-27: one column reader for both modes.
+            "test/test_served_dates.py::TestOneColumnReader::test_a_hostile_format_is_no_date",
+            "test/test_saved_filter_layers.py::TestALinkedScatterWithAMissingValue::test_a_hostile_variable_name_is_only_a_column",
         ],
         "exhaustion": [
+            # 60 observations of a 1,000,000-byte strL: 60 values, 60 MB of
+            # text, refused before the file is written, and by the renderer
+            # for a data file that reached it another way.
+            "test_adversarial.cscript:P19-30",
+            "test/test_resource_limits.py::TestTheBytesOfTextAreLimited::test_a_large_strl_value_is_refused_at_the_default",
+            "test/test_resource_limits.py::TestTheBytesOfTextAreLimited::test_the_server_app_is_refused_at_build",
             "test_adversarial.cscript:P19-11",
             "test_resource_limits.cscript:RL-03",
             "test/test_resource_limits.py::TestADropdownOnAContinuousVariable::test_the_widget_lists_at_most_the_limit",
@@ -680,6 +738,8 @@ SURFACES = {
             "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_a_number_stata_would_write_long_is_bounded",
             "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_a_date_no_calendar_holds_is_a_dot_not_a_crash",
             "test/test_date_range.py::TestHostileDateValues::test_two_million_values_convert_in_bounded_time_and_memory",
+            "test/test_served_dates.py::TestOneColumnReader::test_a_million_dates_load_in_bounded_time",
+            "test/test_saved_filter_layers.py::TestTheArrowHeadHelper::test_ten_thousand_arrows_are_one_model",
         ],
     },
     # The spec JSON and data JSON dash_render.py reads -- written by
@@ -770,6 +830,8 @@ SURFACES = {
             # if()/in(), and no selection outlives the rows it named.
             "test/test_served_filter_move.py::TestAdversarialFilterMoves::test_no_widget_value_widens_a_layers_own_rows",
             "test/test_served_filter_move.py::TestAdversarialFilterMoves::test_a_selection_cannot_outlive_the_rows_it_named",
+            # WP-27: a served date filter never raises on a client's value.
+            "test/test_served_dates.py::TestHostileDateFilterValues::test_an_unreadable_bound_restricts_to_nothing_drawn",
         ],
         "injection": [
             _M + "TestWidgetValuesFromTheClient::test_a_value_is_never_evaluated_or_reflected",
@@ -850,7 +912,7 @@ _REQUIRED_SURFACES = frozenset({
     "resource_limit_globals", "dash_setup_inputs", "data_content",
     "renderer_spec_and_data_json", "served_health_endpoint",
     "served_session_creation", "served_widget_model_changes",
-    "served_app_cli_flags", "csv_download",
+    "served_app_cli_flags", "csv_download", "qualifier_columns",
 })
 
 _PYTEST_ID = re.compile(r"^test/test_\w+\.py::(?:\w+::)?test_\w+$")

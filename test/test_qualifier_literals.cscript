@@ -45,13 +45,14 @@
 *! its literal would select instead, so a wrong reading cannot draw the
 *! right number of rows by accident.
 *!
-*! Tests: QL-01 through QL-22 (QL-15, added in WP-24's second round, is
+*! Tests: QL-01 through QL-23 (QL-15, added in WP-24's second round, is
 *! QL-14's twin for an `in' qualifier; QL-16..QL-19, 24sep2026, Stata's
 *! logical operators: !, ~, a number standing for true, a blank inside
 *! != and <=, and a chain of comparisons; QL-20..QL-22, 24sep2026, what
 *! dash.ado does with a qualifier: refuses an invalid one at the command,
 *! as twoway does, exports only the variables it names outside its string
-*! literals, and writes out each variable it abbreviates)
+*! literals, and writes out each variable it abbreviates; QL-23, 24sep2026,
+*! a compound literal nested in another)
 *!
 *! Usage:  do test/test_qualifier_literals.cscript
 *! Version: 1.2  24sep2026
@@ -62,11 +63,6 @@ cscript "a qualifier's string literals select the rows Stata selects" adodir "..
 // set it again before this script builds a dashboard (test_cscript_hygiene.py).
 global dash_nobrowser 1
 
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222
@@ -282,12 +278,9 @@ end
 // is C, : and a backslash, "n\n" is three characters, and a compound
 // literal is the only kind that holds a double quote.
 //
-// Not here: a compound literal NESTED in another, make == `"say `"hi"' now"',
-// which twoway accepts and dash's splitter refuses before any of this runs
-// ("unterminated quotation in the plot specification", r(198); measured
-// 24sep2026, and the same for title(`"a `"b"' c"')).  That is the parser's
-// defect, not this path's; the renderer's handling of such a literal is
-// test_server.py TestIfExprQuoteHandling[nested_compound].
+// A compound literal NESTED in another, make == `"say `"hi"' now"', is
+// QL-23's, with its own decoys; the renderer's handling of such a literal
+// alone is test_server.py TestIfExprQuoteHandling[nested_compound].
 // ----------------------------------------------------------------
 local q1  `"make == "C:\" | foreign == 1"'
 local q2  `"make == `"x"y"' | foreign == 1"'
@@ -314,7 +307,7 @@ forvalues j = 1/`nq' {
     // The immediate route: dash <plot> if ..., saving().
     tempfile p`j'
     global QL_PAGE "`p`j''.html"
-    _ql_run `"dash scatter mpg rowid if `q`j'', saving("`p`j''.html")"'
+    _ql_run `"dash scatter mpg rowid if `q`j'', saving("`p`j''.html") replace"'
     local rc = r(rc)
     cert_file_has "`r(log)'", needle("skipped")
     local sk = r(found)
@@ -355,7 +348,7 @@ quietly levelsof rowid if `q8', local(want11)
 local want11 : list retokenize want11
 tempfile p11
 global QL_PAGE "`p11'.html"
-_ql_run `"dash scatter mpg rowid if `q8', by(foreign) saving("`p11'.html")"'
+_ql_run `"dash scatter mpg rowid if `q8', by(foreign) saving("`p11'.html") replace"'
 assert r(rc) == 0
 python: _ql_page()
 display as text "  QL-10 immediate: $QL_PAGE_PANELS panel(s), drew [$QL_PAGE_DRAWN]"
@@ -428,7 +421,7 @@ capture erase "`ql_sent'"
 local q13 `"make == "x\" | @os.system("touch `ql_sent'") | "y""'
 tempfile p13
 capture erase "`p13'.html"
-_ql_run `"dash scatter mpg rowid if `q13', saving("`p13'.html")"'
+_ql_run `"dash scatter mpg rowid if `q13', saving("`p13'.html") replace"'
 local rc13 = r(rc)
 display as text "  QL-13 rc `rc13'"
 assert `rc13' != 0
@@ -455,7 +448,7 @@ quietly levelsof rowid if `q14b', local(w14b)
 local w14b : list retokenize w14b
 tempfile p14
 global QL_PAGE "`p14'.html"
-_ql_run `"dash (scatter mpg rowid if `q8') (scatter mpg rowid if `q14b'), saving("`p14'.html")"'
+_ql_run `"dash (scatter mpg rowid if `q8') (scatter mpg rowid if `q14b'), saving("`p14'.html") replace"'
 assert r(rc) == 0
 python: _ql_page()
 display as text "  QL-14 layers: $QL_PAGE_NLAYERS; layer 2 drew [$QL_PAGE_LAYER2]"
@@ -491,7 +484,7 @@ global QL_PAGE "`p15'.html"
 // earlier script may have left a page under it: cleared, so a command that
 // wrote nothing cannot be read through a stale page.
 capture erase "`p15'.html"
-_ql_run `"dash (scatter mpg rowid in 3/20) (scatter mpg rowid in 41/60) (scatter mpg rowid in -15/L), saving("`p15'.html")"'
+_ql_run `"dash (scatter mpg rowid in 3/20) (scatter mpg rowid in 41/60) (scatter mpg rowid in -15/L), saving("`p15'.html") replace"'
 assert r(rc) == 0
 confirm file "`p15'.html"
 python: _ql_page()
@@ -546,7 +539,7 @@ forvalues j = 1/`nl' {
     tempfile p
     global QL_PAGE "`p'.html"
     capture erase "`p'.html"
-    _ql_run `"dash scatter mpg rowid if `l`j'', saving("`p'.html")"'
+    _ql_run `"dash scatter mpg rowid if `l`j'', saving("`p'.html") replace"'
     local rc = r(rc)
     local lg `"`r(log)'"'
     cert_log_has "`lg'", needle("filter skipped")
@@ -610,7 +603,7 @@ foreach j of numlist 1 5 {
     tempfile p
     global QL_PAGE "`p'.html"
     capture erase "`p'.html"
-    _ql_run `"dash scatter mpg rowid if `l`j'', by(foreign) saving("`p'.html")"'
+    _ql_run `"dash scatter mpg rowid if `l`j'', by(foreign) saving("`p'.html") replace"'
     assert r(rc) == 0
     python: _ql_page()
     display as text "  QL-18 [" `"`l`j''"' "] immediate: $QL_PAGE_PANELS panel(s), drew [$QL_PAGE_DRAWN]"
@@ -650,9 +643,23 @@ cert_log_has "`lg19'", needle("filter skipped")
 assert r(found) == 0
 confirm file "`h19'.html"
 capture erase "`h19'.html"
+// Since WP-27 no spec dash build writes is skipped -- Stata evaluates
+// every qualifier and ships its answer as a column -- so the control is a
+// spec written by hand, the qualifier as text and no column, rendered by
+// the same renderer: its translation refuses the subscript.
 capture dash clear
-dash scatter mpg rowid if mpg > mpg[1], name(qlvctl)
-_ql_run `"dash build, saving("`h19'.html") replace nobrowser"'
+dash scatter mpg rowid, name(qlvctl)
+tempfile s19c d19c
+_dash_prepare_spec, specpath("`s19c'") datapath("`d19c'")
+mata: _ql19_t = ""
+mata: assert(_cert_read(st_local("s19c"), _ql19_t))
+mata: _ql19_t = subinstr(_ql19_t, char(34) + "if_expr" + char(34) + ":" + char(34) + char(34), ///
+    char(34) + "if_expr" + char(34) + ":" + char(34) + "mpg > mpg[1]" + char(34), 1)
+mata: unlink(st_local("s19c"))
+mata: _ql19_fh = fopen(st_local("s19c"), "w")
+mata: fwrite(_ql19_fh, _ql19_t)
+mata: fclose(_ql19_fh)
+_ql_run `"_dash_do_render, spec("`s19c'") data("`d19c'") output("`h19'.html") renderpy("$QL_RENDER")"'
 local rc19c = r(rc)
 local lg19c `"`r(log)'"'
 assert `rc19c' == 0
@@ -712,7 +719,7 @@ forvalues j = 1/`nb' {
     tempfile p20
     capture erase "`p20'.html"
     local tw4 `"twoway scatter mpg rowid `b`j'', nodraw"'
-    local da4 `"dash scatter mpg rowid `b`j'', saving("`p20'.html")"'
+    local da4 `"dash scatter mpg rowid `b`j'', saving("`p20'.html") replace"'
     local tw5 `"twoway function y = x `b`j'', range(0 1) nodraw"'
     local da5 `"dash function y = x `b`j'', range(0 1) name(ql20f)"'
     local tw6 `"summarize price `b`j''"'
@@ -809,13 +816,13 @@ forvalues j = 1/6 {
     local hd = $QL_HAS
     python: _ql_exported("headroom")
     local hh = $QL_HAS
-    mata: _dash_say("txt", "", "  QL-21 [" + st_local("e`j'") + "]: displacement exported `hd', headroom `hh'", "")
-    if `j' < 6 {
-        assert `hd' == 0 & `hh' == 0
-    }
-    else {
-        assert `hd' == 1
-    }
+    python: _ql_exported("__dashq1")
+    local hq = $QL_HAS
+    mata: _dash_say("txt", "", "  QL-21 [" + st_local("e`j'") + "]: displacement exported `hd', headroom `hh', the qualifier's column `hq'", "")
+    // Since WP-27 no qualifier's variable is exported, not even one named
+    // outside a literal (the control, e6): Stata evaluates the qualifier
+    // and its answer, the column __dashq1, is exported instead.
+    assert `hd' == 0 & `hh' == 0 & `hq' == 1
 }
 // The embedded-data limit counts what is exported: three variables here,
 // on the build and on the one-line route alike.
@@ -827,7 +834,7 @@ capture erase "`h21'.html"
 _ql_run `"dash build, saving("`h21'.html") replace nobrowser"'
 local rc21a = r(rc)
 capture erase "`h21'.html"
-_ql_run `"dash scatter mpg rowid if make != "d", saving("`h21'.html")"'
+_ql_run `"dash scatter mpg rowid if make != "d", saving("`h21'.html") replace"'
 local rc21b = r(rc)
 capture erase "`h21'.html"
 global dash_max_cells ""
@@ -857,7 +864,7 @@ forvalues j = 1/2 {
     tempfile p
     global QL_PAGE "`p'.html"
     capture erase "`p'.html"
-    _ql_run `"dash scatter mpg rowid if `a`j'', saving("`p'.html")"'
+    _ql_run `"dash scatter mpg rowid if `a`j'', saving("`p'.html") replace"'
     local rc = r(rc)
     cert_log_has "`r(log)'", needle("filter skipped")
     local sk = r(found)
@@ -910,6 +917,69 @@ display as text "  QL-22 KPI if pri > 5000: saved $QL_SAVED_KPI, served $QL_SERV
 assert "$QL_SAVED_KPI" == "`ks'" & "$QL_SERVED_KPI" == "`ks'"
 capture dash clear
 display "QL-22 PASS: an abbreviated variable in a qualifier is written out at registration and both modes draw Stata's rows"
+
+// ----------------------------------------------------------------
+// QL-23 -- a compound literal NESTED in another, make == `"say `"hi"' now"'.
+// dash's splitter refused it, "unterminated quotation in the plot
+// specification", r(198), where twoway draws it (measured 24sep2026 with
+// the console binary; BUGS.md "A compound quote nested inside another is
+// refused, where twoway accepts it").  The make and its decoys -- what a
+// reader that closed the literal at its first "' would compare against --
+// are written into rows 13-15 for this case alone.  No decoy holds an
+// unclosed `": a data value holding one stops the export in jsonio's own
+// ado, r(132) "too few quotes", whatever the qualifier (measured
+// 24sep2026; reported with this case).
+// ----------------------------------------------------------------
+preserve
+mata: st_sstore(13, "make", "say " + char(96) + char(34) + "hi" + char(34) + char(39) + " now")
+mata: st_sstore(14, "make", "say ")                                   //   decoy
+mata: st_sstore(15, "make", "hi")                                     //   decoy
+local q23 `"make == `"say `"hi"' now"' | foreign == 1"'
+quietly count if `q23'
+local n23 = r(N)
+quietly levelsof rowid if `q23', local(want23)
+local want23 : list retokenize want23
+capture twoway scatter mpg rowid if `q23', nodraw
+local tw23 = _rc
+assert `n23' == 23 & `tw23' == 0
+tempfile p23
+global QL_PAGE "`p23'.html"
+// Typed at the top level, with its own log: handed to _ql_run as an
+// argument, the nested literal stops -args- itself, r(132) "too few
+// quotes", before dash is reached.
+local lg23 "`c(tmpdir)'dash_ql23.log"
+capture log close _qllog
+capture erase "`lg23'"
+local ls23 = c(linesize)
+set linesize 255
+quietly log using "`lg23'", name(_qllog) text replace
+capture noisily dash scatter mpg rowid if `q23', saving("`p23'.html")
+local rc23 = _rc
+quietly log close _qllog
+set linesize `ls23'
+cert_log_has "`lg23'", needle("skipped")
+local sk23 = r(found)
+capture erase "`lg23'"
+display as text "  QL-23 [" `"`q23'"' "]  Stata: `n23' rows, twoway rc `tw23', dash rc `rc23'"
+assert `rc23' == 0 & `sk23' == 0
+python: _ql_page()
+display as text "    immediate: carried $QL_PAGE_CARRIED, drew [$QL_PAGE_DRAWN]"
+assert "$QL_PAGE_DRAWN" == "`want23'" & "$QL_PAGE_CARRIED" == "`n23'"
+capture erase "`p23'.html"
+capture dash clear
+dash scatter mpg rowid if `q23', name(ql23)
+tempfile s d a
+_dash_prepare_spec, specpath("`s'") datapath("`d'")
+global QL_SPEC "`s'"
+global QL_DATA "`d'"
+global QL_APP  "`a'"
+python: _ql_modes()
+display as text "    saved: drew [$QL_SAVED_DRAWN]  served: drew [$QL_SERVED_DRAWN], skipped $QL_SKIPPED"
+assert "$QL_SAVED_DRAWN" == "`want23'" & "$QL_SERVED_DRAWN" == "`want23'"
+assert "$QL_SKIPPED" == "0"
+capture dash clear
+restore
+display "QL-23 PASS: a nested compound literal is accepted and both routes, both modes, draw Stata's rows"
 
 capture dash clear
 macro drop QL_*

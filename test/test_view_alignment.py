@@ -270,12 +270,15 @@ class TestTheDoubledLayersStayPaired:
 class TestTheAlignedLayersStayAligned:
     """These three were reported as affected and are not.
 
-    They keep every row -- missing values included -- in the source they
-    build, so a mask sized to the caller's source lines up with it and Bokeh
-    draws nothing for a segment whose coordinate is NaN.  Attaching the view
-    is correct here.  The guard is that they keep that property: if one ever
-    starts dropping rows while still attaching the view, it acquires the
-    defect the other seven had, and this fails.
+    They kept every row -- missing values included -- in the source they
+    built, so a mask sized to the caller's source lined up with it.  Since
+    WP-27 they take the other correct design: the layer's rows are taken
+    first and the copy is drawn with no view, so the saved page's filter
+    script can keep a move's rows of it by row id (BUGS.md, "A filter on a
+    saved page leaves line, tsline, area, bar, spike and dropline layers
+    ...").  The guard holds either way: a renderer that attaches a view
+    must hold one row per flag, and one that attaches none must hold the
+    selected rows and no others.
     """
 
     def test_the_source_is_the_same_length_as_the_mask(self, name, varnames):
@@ -297,15 +300,20 @@ class TestTheAlignedLayersStayAligned:
                 continue
             bl = getattr(getattr(getattr(rend, "view", None), "filter", None),
                          "booleans", None)
-            if bl is None:
-                continue
             checked += 1
+            if bl is None:
+                # No view: the source must hold the selected rows alone.
+                assert len(src.data[key]) == int(_QUALIFIER.sum()), (
+                    "%s attaches no view to a %d-row source where the "
+                    "qualifier selects %d rows"
+                    % (name, len(src.data[key]), int(_QUALIFIER.sum())))
+                continue
             assert len(list(bl)) == len(src.data[key]), (
                 "%s attaches a %d-entry mask to a %d-row source; it must "
                 "either keep every row or mask its input and detach the view"
                 % (name, len(list(bl)), len(src.data[key]))
             )
-        assert checked, "%s attached no view to assert about" % name
+        assert checked, "%s drew no renderer to assert about" % name
 
 
 # Rows spaced 10 apart in the selected group, 1 apart in the excluded one, so

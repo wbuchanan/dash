@@ -18,9 +18,6 @@
 clear all
 set more off
 
-// Add jsonio to the ado path (local installation)
-adopath ++ "/Users/billy/Desktop/Programs/Java/StataJSON/"
-
 // Add dash ado files to the path
 adopath ++ "/Users/billy/Desktop/Programs/StataPrograms/d/dash/"
 
@@ -113,33 +110,6 @@ else if `rc' == 0 {
 }
 else {
     display as error "[ FAIL] test_parser.cscript  (rc=`rc')"
-    local n_fail = `n_fail' + 1
-}
-
-// ----------------------------------------------------------------
-// 3. test_jsonio.cscript
-// ----------------------------------------------------------------
-display as text "[ RUN ] test_jsonio.cscript"
-cd "`testdir'"
-capture noisily {
-    do "test_jsonio.cscript"
-}
-local rc = _rc
-// A script that dies mid-scan leaves its `file open' handle open; clear all
-// does not close file handles, and the next script's file open then fails for
-// a reason that has nothing to do with what it is testing.
-capture file close _all
-cd "`dashdir'"
-if `rc' == 222 {
-    display as text "[ SKIP] test_jsonio.cscript  (dependency unavailable)"
-    local n_skip = `n_skip' + 1
-}
-else if `rc' == 0 {
-    display as text "[ PASS] test_jsonio.cscript"
-    local n_pass = `n_pass' + 1
-}
-else {
-    display as error "[ FAIL] test_jsonio.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
 
@@ -1600,7 +1570,6 @@ local rc = _rc
 capture file close _all
 capture log close _all
 capture program drop ssc
-capture program drop jsonio
 capture program drop _pc_fail
 capture program drop _pc_setup
 capture program drop _pc_said
@@ -1669,6 +1638,56 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 64. test_qualifier_in_stata.cscript (WP-27: every qualifier dash writes is evaluated in Stata, and both modes draw Stata's rows)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_qualifier_in_stata.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_qualifier_in_stata.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_qualifier_in_stata.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_qualifier_in_stata.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_qualifier_in_stata.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 65. test_string_values.cscript (WP-27: every string value, label and number reaches both renderers byte for byte; the export no longer uses jsonio)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_string_values.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_string_values.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_string_values.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_string_values.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_string_values.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'
@@ -1683,7 +1702,7 @@ if `n_fail' > 0 {
 }
 else if `n_pass' == 0 {
     // Every script skipped: nothing was asserted.  Reporting success here
-    // would be a false pass -- a machine without jsonio or Python would
+    // would be a false pass -- a machine without Python would
     // previously print ALL TESTS PASSED having verified nothing.
     display as error "NO TESTS RAN -- all `n_skip' script(s) skipped."
     display as error "Install the missing dependencies (run dash_setup) and re-run."

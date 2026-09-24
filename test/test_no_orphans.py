@@ -582,3 +582,23 @@ class TestNoPlotTypePrefixReachesTwoRows:
                        "scatter": ["scatter", "scatteri"]}
         assert _names_reaching_two([("scatter", "sc"),
                                     ("scatteri", "scatteri")]) == {}
+
+
+# ---------------------------------------------------------------------------
+# The jsonio shims are gone
+# ---------------------------------------------------------------------------
+
+class TestTheJsonioShimsAreGone:
+    """_dash_date_fmts_swap and _dash_date_fmts_restore gave each date
+    variable %12.0g for the length of the `jsonio out' call, because jsonio
+    wrote a %t* value through its display format.  dash writes its own data
+    file from Python since 24sep2026, reading each stored value whatever
+    its format, so the pair changed nothing that was written and was kept
+    only by the calls around the export.  They are deleted; that dates still
+    reach both renderers as dates is test_date_range.py's, test_dates.py's,
+    test_served_dates.py's and test_program_coverage.cscript PC-08..11's."""
+
+    def test_neither_is_defined_or_called(self):
+        ado = _read("dash.ado")
+        for name in ("_dash_date_fmts_swap", "_dash_date_fmts_restore"):
+            assert name not in ado, name

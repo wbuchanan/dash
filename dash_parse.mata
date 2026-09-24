@@ -72,6 +72,11 @@
 *!       name, lower case, when it is a twoway plot type dash refuses by
 *!       name -- contour, contourline, heatmap, rpcap, rpspike -- else "".
 *!
+*!   _dash_kernel_full(word)
+*!       The full kernel name, lower case, for a word twoway's kernel()
+*!       takes (gau is gaussian, ep and epan epanechnikov); any other
+*!       word as given, for the kernel rule to refuse.
+*!
 *!   _dash_immediate(vals, w)
 *!       Read the immediate values of scatteri (w = 2) or of pci and
 *!       pcarrowi (w = 4) as twoway reads them, into the caller's locals
@@ -97,6 +102,22 @@
 *!
 *!   _dash_qual_expand(s)
 *!       The if-expression s with each variable it abbreviates written out.
+*!
+*!   _dash_qual_reset()
+*!       Empty the table of distinct qualifiers one export evaluates.
+*!
+*!   _dash_qual_rewrite(json, errmacro, name_them)
+*!       A graph's JSON with each if_expr/in_expr pair replaced by the
+*!       __dashq<k> column that holds it; "" and the reason in errmacro
+*!       when a pair cannot be evaluated.
+*!
+*!   _dash_qual_take(ifx, inx, errmacro, name_them)
+*!       The __dashq<k> column that holds a KPI's if and in, "" for none;
+*!       the reason in errmacro when they cannot be evaluated.
+*!
+*!   _dash_qual_export()
+*!       The distinct qualifiers, into the caller's locals _dq_n, _dq_if_k
+*!       and _dq_in_k.
 *!
 *!   _dash_extract_filters(filter_out, cmd_out)
 *!       Every filter() in the caller's `0': the groups, joined with
@@ -135,7 +156,7 @@
 *!       1 when the graph spec s names a plot type and every type it names
 *!       is a word of allowed: a graph that needs no data.
 *!
-*! Version: 2.0  27mar2026
+*! Version: 2.0  24sep2026
 
 // ============================================================
 // Compile into memory
@@ -964,6 +985,38 @@ string scalar _dash_undrawn_plottype(string scalar name) {
 
 
 // ============================================================
+// 2b'. KERNEL NAMES   (kernel() of lpoly, lpolyci and kdensity)
+// ============================================================
+//
+// twoway takes each kernel name down to its minimum abbreviation --
+// EPanechnikov, BIweight, COSine, GAUssian, PARzen, RECtangle, TRIangle,
+// and epan2 only in full -- on lpoly, lpolyci and kdensity alike (measured
+// 24sep2026, every prefix of every name: ep, epa and epan are
+// epanechnikov; e, co, ga, pa, re and tr are refused, r(198)).  dash's
+// rule table (kernel=enum) takes the full names only, so kernel(gau) was
+// refused where twoway draws it.  Returns the full name, lower case, for
+// a word twoway takes, and the word as given otherwise, for the enum rule
+// to refuse with its message.  Read by value; the word is the user's text.
+string scalar _dash_kernel_full(string scalar word) {
+    string scalar s
+    string rowvector full
+    real rowvector minlen
+    real scalar i
+
+    s = strlower(strtrim(word))
+    if (s == "epan2") return(s)
+    full   = ("epanechnikov", "biweight", "cosine", "gaussian", "parzen",
+              "rectangle", "triangle")
+    minlen = (2, 2, 3, 3, 3, 3, 3)
+    for (i = 1; i <= cols(full); i++) {
+        if (strlen(s) >= minlen[i] & strlen(s) <= strlen(full[i]) &
+            substr(full[i], 1, strlen(s)) == s) return(full[i])
+    }
+    return(word)
+}
+
+
+// ============================================================
 // 2c. IMMEDIATE VALUES   (scatteri, pci, pcarrowi)
 // ============================================================
 //
@@ -1512,12 +1565,14 @@ void _dash_immediate(string scalar vals, real scalar w)
 //
 // Handles Stata's two quoting forms:
 //     "..."      plain double quotes
-//     `"..."'    compound quotes, which may themselves contain '"'
+//     `"..."'    compound quotes, which may themselves contain '"' and
+//                nest: `"a `"b"' c"' is one string
 //
 // Returns the index just past whatever it consumed, or 0 when the
 // character at `i' is not quote-related and the caller should handle it
-// itself.  `in_dq' and `in_cq' are updated in place -- Mata passes
-// arguments by reference, verified by probe.
+// itself.  `in_dq' (0/1) and `in_cq' (the compound-quote depth, 0 when
+// outside one; callers test it only for being non-zero) are updated in
+// place -- Mata passes arguments by reference, verified by probe.
 //
 real scalar _dash_quote_step(string scalar s,
                              real scalar len,
@@ -1529,11 +1584,23 @@ real scalar _dash_quote_step(string scalar s,
 
     c_code = ascii(substr(s, i, 1))
 
-    // Inside a compound quote: it ends on the two-character sequence "'
-    // and a bare '"' within it is ordinary text.
+    // Inside a compound quote: compound quotes nest, so `in_cq' is the
+    // depth -- each `" opens a level and each "' closes one, and the
+    // string ends when the depth is back to 0.  A bare '"' within it is
+    // ordinary text.  This was an on/off flag, so the first "' ended the
+    // outer quote of `"a `"b"' c"' and its own closing "' then opened a
+    // plain quote that never closed: title(`"a `"b"' c"') and a nested
+    // literal in a qualifier were refused as unterminated, where twoway
+    // accepts both (measured 24sep2026, test_parser_integrity.cscript
+    // P1B-39..47).  The depth is a count, not a stack, so any nesting
+    // costs O(1) per character.
     if (in_cq) {
+        if (c_code == 96 & i + 1 <= len & ascii(substr(s, i+1, 1)) == 34) {
+            in_cq++
+            return(i + 2)
+        }
         if (c_code == 34 & i + 1 <= len & ascii(substr(s, i+1, 1)) == 39) {
-            in_cq = 0
+            in_cq--
             return(i + 2)
         }
         return(i + 1)
@@ -2458,6 +2525,299 @@ string scalar _dash_qual_expand(string scalar s)
     }
     part[++m] = substr(s, from, .)
     return(invtokens(part[|1 \ m|], ""))
+}
+
+
+// ============================================================
+// 6b. QUALIFIERS, EVALUATED IN STATA
+//
+// Every qualifier dash.ado writes -- a plot's, a graph's, a KPI's; its if
+// and its in together -- is evaluated in Stata, once, against the data as
+// they are exported, and travels as a 0/1 byte column named __dashq<k>.
+// The spec names that column ("qual_col") and carries no qualifier text,
+// so neither renderer translates a qualifier dash.ado wrote.  They used to
+// translate each into a pandas query, which read a missing value, a
+// subscript, a function, a date and a dozen smaller things otherwise than
+// Stata (BUGS.md; test_qualifier_in_stata.cscript).
+//
+// The table of distinct qualifiers lives in two Mata externals for the
+// length of one export: _dash_qual_reset() empties it, _dash_qual_take()
+// and _dash_qual_rewrite() fill it, _dash_qual_export() hands it to the
+// ado program that evaluates it (_dash_qual_gen).  Identical (if, in)
+// pairs share one column.
+// ============================================================
+
+void _dash_qual_reset()
+{
+    external transmorphic scalar _dash_qual_tab
+    external string matrix       _dash_qual_list
+
+    _dash_qual_tab  = asarray_create("string", 2)
+    _dash_qual_list = J(0, 2, "")
+}
+
+
+// _dash_qual_refusal(ifx, inx) -- "" when the pair is one dash evaluates,
+// else why not.
+//
+// dash.ado stores a qualifier only after -syntax- has read it, so these
+// are the checks a registry set by hand needs: _dash_qual_gen puts the if
+// inside parentheses and the in after the keyword on a command line, and
+// neither may reach past its place.  The in is Stata's range -- # or #/#,
+// each [-]digits, f or l -- and nothing else; the if keeps every bracket
+// it opens inside the parentheses around it, holds no control byte, and
+// no backtick or dollar sign outside its string literals, where Stata
+// would already have expanded one when the graph was registered.
+string scalar _dash_qual_refusal(string scalar ifx, string scalar inx)
+{
+    real rowvector b
+    real scalar    n, i, c, depth, lit
+
+    if (strtrim(inx) != "") {
+        if (!regexm(inx, "^[ ]*(-?[0-9]+|[fFlL])[ ]*(/[ ]*(-?[0-9]+|[fFlL])[ ]*)?$")) {
+            return("its in range is not one Stata reads")
+        }
+    }
+    b     = ascii(ifx)
+    n     = cols(b)
+    depth = 0
+    i     = 1
+    while (i <= n) {
+        c = b[i]
+        if (c == 96 & i < n) {
+            if (b[i + 1] == 34) {
+                lit = 1
+                i   = i + 2
+                while (i <= n) {
+                    if (lit == 0) break
+                    if (b[i] == 96 & i < n) {
+                        if (b[i + 1] == 34) {
+                            lit++
+                            i = i + 2
+                            continue
+                        }
+                    }
+                    if (b[i] == 34 & i < n) {
+                        if (b[i + 1] == 39) {
+                            lit--
+                            i = i + 2
+                            continue
+                        }
+                    }
+                    if (b[i] < 32) return("it holds a control character")
+                    i++
+                }
+                if (lit != 0) return("a string literal in it is not closed")
+                continue
+            }
+        }
+        if (c == 34) {
+            i++
+            while (i <= n) {
+                if (b[i] == 34) break
+                if (b[i] < 32) return("it holds a control character")
+                i++
+            }
+            if (i > n) return("a string literal in it is not closed")
+            i++
+            continue
+        }
+        if (c < 32 & c != 9) return("it holds a control character")
+        if (c == 96 | c == 36) return("it holds a macro character outside a string literal")
+        if (c == 40 | c == 91) depth++
+        if (c == 41 | c == 93) {
+            depth--
+            if (depth < 0) return("it closes a parenthesis it did not open")
+        }
+        i++
+    }
+    if (depth != 0) return("it leaves a parenthesis open")
+    return("")
+}
+
+
+// _dash_qual_take(ifx, inx, errmacro, name_them) -- the column that holds
+// the pair, "" for none.  A pair _dash_qual_refusal refuses puts its reason
+// in the caller's local errmacro and takes no column.  With name_them 0
+// the pair is checked and no column is made: a dashboard with no data.
+string scalar _dash_qual_take(string scalar ifx, string scalar inx,
+                              string scalar errmacro, real scalar name_them)
+{
+    external transmorphic scalar _dash_qual_tab
+    external string matrix       _dash_qual_list
+    string rowvector key
+    string scalar    why
+    real scalar      k
+
+    if (strtrim(ifx) == "" & strtrim(inx) == "") return("")
+    why = _dash_qual_refusal(ifx, inx)
+    if (why != "") {
+        st_local(errmacro, why)
+        return("")
+    }
+    if (!name_them) return("")
+    key = (ifx, inx)
+    if (asarray_contains(_dash_qual_tab, key)) {
+        return("__dashq" + strofreal(asarray(_dash_qual_tab, key)))
+    }
+    if (rows(_dash_qual_list) >= 99999) {
+        st_local(errmacro, "the dashboard holds more distinct qualifiers than dash evaluates (99,999)")
+        return("")
+    }
+    _dash_qual_list = _dash_qual_list \ key
+    k = rows(_dash_qual_list)
+    asarray(_dash_qual_tab, key, k)
+    return("__dashq" + strofreal(k))
+}
+
+
+// The first byte at or after k that is not a JSON blank; cols(b) + 1 when
+// there is none.
+real scalar _dash_qual_skipws(real rowvector b, real scalar k)
+{
+    while (k <= cols(b)) {
+        if (b[k] != 32 & b[k] != 9 & b[k] != 10 & b[k] != 13) break
+        k++
+    }
+    return(k)
+}
+
+
+// _dash_qual_rewrite(json, errmacro, name_them) -- a registered graph's
+// JSON with each qualifier replaced by the column that holds it.
+//
+// Every "if_expr":"<a>","in_expr":"<b>" pair -- each plot's and the
+// graph's, as _dash_plot writes them -- becomes
+// "if_expr":"","in_expr":"","qual_col":"__dashq<k>" (qual_col "" for no
+// qualifier).  Keys are found by walking the JSON's strings, so text inside
+// a value never matches.  A key dash.ado would not have written there -- an
+// "in_expr" alone, a "qual_col" of the registry's own, an "if_expr" without
+// its "in_expr" -- or a pair _dash_qual_refusal refuses puts the reason in
+// the caller's local errmacro and returns "".  Linear in the JSON: its
+// pieces are joined once, at the end.
+string scalar _dash_qual_rewrite(string scalar json, string scalar errmacro,
+                                 real scalar name_them)
+{
+    real rowvector   b
+    real scalar      n, i, e, k, from, m, cap
+    string scalar    tok, v1, v2, nm, q
+    string rowvector part
+
+    q = char(34)
+    st_local(errmacro, "")
+    b    = ascii(json)
+    n    = cols(b)
+    cap  = 16
+    part = J(1, cap, "")
+    m    = 0
+    from = 1
+    i    = 1
+    while (i <= n) {
+        if (b[i] != 34) {
+            i++
+            continue
+        }
+        e = i + 1
+        while (e <= n) {
+            if (b[e] == 34) break
+            e = e + (b[e] == 92 ? 2 : 1)
+        }
+        if (e > n) break
+        tok = (e - i > 1 ? substr(json, i + 1, e - i - 1) : "")
+        k   = _dash_qual_skipws(b, e + 1)
+        if (k > n) break
+        if (b[k] != 58 | !anyof(("if_expr", "in_expr", "qual_col"), tok)) {
+            i = e + 1
+            continue
+        }
+        if (tok != "if_expr") {
+            st_local(errmacro, "it holds " + q + tok + q + " where dash writes " +
+                q + "if_expr" + q + " and " + q + "in_expr" + q + " together")
+            return("")
+        }
+        // "if_expr" : "<a>" , "in_expr" : "<b>"
+        k = _dash_qual_skipws(b, k + 1)
+        if (k > n) {
+            st_local(errmacro, "its if_expr has no value")
+            return("")
+        }
+        if (b[k] != 34) {
+            st_local(errmacro, "its if_expr is not a string")
+            return("")
+        }
+        v1 = _dash_qual_json_text(b, k)
+        if (k > n + 1) {
+            st_local(errmacro, "its if_expr is not closed")
+            return("")
+        }
+        k = _dash_qual_skipws(b, k)
+        if (k > n) {
+            st_local(errmacro, "its if_expr has no in_expr beside it")
+            return("")
+        }
+        if (b[k] != 44) {
+            st_local(errmacro, "its if_expr has no in_expr beside it")
+            return("")
+        }
+        k = _dash_qual_skipws(b, k + 1)
+        if (substr(json, k, 9) != q + "in_expr" + q) {
+            st_local(errmacro, "its if_expr has no in_expr beside it")
+            return("")
+        }
+        k = _dash_qual_skipws(b, k + 9)
+        if (k > n) {
+            st_local(errmacro, "its in_expr has no value")
+            return("")
+        }
+        if (b[k] != 58) {
+            st_local(errmacro, "its in_expr has no value")
+            return("")
+        }
+        k = _dash_qual_skipws(b, k + 1)
+        if (k > n) {
+            st_local(errmacro, "its in_expr has no value")
+            return("")
+        }
+        if (b[k] != 34) {
+            st_local(errmacro, "its in_expr is not a string")
+            return("")
+        }
+        v2 = _dash_qual_json_text(b, k)
+        if (k > n + 1) {
+            st_local(errmacro, "its in_expr is not closed")
+            return("")
+        }
+        nm = _dash_qual_take(v1, v2, errmacro, name_them)
+        if (st_local(errmacro) != "") return("")
+        if (m + 2 > cap) {
+            part = part, J(1, cap, "")
+            cap  = 2 * cap
+        }
+        part[++m] = substr(json, from, i - from)
+        part[++m] = q + "if_expr" + q + ":" + q + q + "," + q + "in_expr" + q +
+                    ":" + q + q + "," + q + "qual_col" + q + ":" + q + nm + q
+        from = k
+        i    = k
+    }
+    if (m + 1 > cap) part = part, J(1, 1, "")
+    part[++m] = substr(json, from, .)
+    return(invtokens(part[|1 \ m|], ""))
+}
+
+
+// _dash_qual_export() -- the distinct qualifiers, into the caller's locals:
+// _dq_n, and for each k the if and the in of column __dashq<k> in _dq_if_k
+// and _dq_in_k, by value.
+void _dash_qual_export()
+{
+    external string matrix _dash_qual_list
+    real scalar k
+
+    st_local("_dq_n", strofreal(rows(_dash_qual_list)))
+    for (k = 1; k <= rows(_dash_qual_list); k++) {
+        st_local("_dq_if_" + strofreal(k), _dash_qual_list[k, 1])
+        st_local("_dq_in_" + strofreal(k), _dash_qual_list[k, 2])
+    }
 }
 
 

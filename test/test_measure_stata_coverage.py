@@ -173,7 +173,6 @@ class TestTheInstrumentation:
 
 _RUNNER = "\n".join([
     "clear all",
-    'adopath ++ "/somewhere/StataJSON/"',
     'adopath ++ "/somewhere/dash/"',
     'local dashdir "/somewhere/dash"',
     'local testdir "`dashdir\'/test"',
@@ -210,7 +209,7 @@ class TestTheGeneratedRunner:
         src, n = m.runner_do("/w", "/w/tree", _RUNNER)
         assert n == 2
         assert 'adopath ++ "/w/tree/"' in src
-        assert 'adopath ++ "/somewhere/StataJSON/"' in src
+        assert "StataJSON" not in src
         assert 'local dashdir "/w/tree"' in src
         assert 'adopath ++ "/w/lib/"\nmata: mata mlib index' in src
         assert src.count('mata: _pc_mark("test_a.cscript")') == 1
@@ -220,6 +219,11 @@ class TestTheGeneratedRunner:
     def test_a_malformed_runner_is_refused(self, m):
         with pytest.raises(ValueError):
             m.runner_do("/w", "/w/tree", "clear all\n")
+        # A second directory on the path (jsonio's, before 24sep2026) is
+        # not the runner this reads.
+        with pytest.raises(ValueError, match="one adopath line"):
+            m.runner_do("/w", "/w/tree", _RUNNER.replace(
+                "clear all", 'clear all\nadopath ++ "/somewhere/StataJSON/"'))
         broken = _RUNNER.replace("local rc = _rc\ncapture program drop",
                                  "capture program drop")
         with pytest.raises(ValueError, match="rc captures"):

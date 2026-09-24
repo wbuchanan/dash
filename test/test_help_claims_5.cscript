@@ -44,7 +44,7 @@
 *!   HC5-14  dash serve's spec is refused at the cell limit before anything
 *!           is exported.
 *!   HC5-15  a layout() grid larger than dash_max_graphs is refused, r(198).
-*!   HC5-16  jsonio writes ., .a and .b alike, so dash cannot tell them
+*!   HC5-16  dash writes ., .a and .b alike, so it cannot tell them
 *!           apart; twoway draws .a as its value label or its name.
 *!   HC5-17  global dash_max_by_groups 250 is a limit of 250.
 *!   HC5-18  twoway's mlabformat(): %9.1fc draws 4099 as 4,099.0, and a
@@ -71,11 +71,6 @@ qui do "../dash.ado"
 // cscript drops every global; cert_helpers.do set it again, and so does this.
 global dash_nobrowser 1
 
-capture which jsonio
-if _rc != 0 {
-    display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 222
-}
 if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222
@@ -632,7 +627,9 @@ label values em hc5eml
 dash scatter mpg weight, mlabel(em) name(hc16)
 tempfile hc16s hc16d
 _dash_serve_spec, specpath("`hc16s'") datapath("`hc16d'")
-_hc5_count "`hc16d'" `""em" : "null""'
+// dash's writer puts no blank around the colon; jsonio, which wrote this
+// file until 24sep2026, put one on each side.
+_hc5_count "`hc16d'" `""em":"null""'
 assert r(n) == 3
 _hc5_svg "twoway scatter mpg weight, mlabel(em) legend(off)" "`svg'"
 _hc5_count "`svg'" ">REFUSED<"
@@ -644,7 +641,7 @@ _hc5_svg "twoway scatter mpg weight, mlabel(em) legend(off)" "`svg'"
 _hc5_count "`svg'" ">.a<"
 assert r(n) == 1
 capture dash clear
-display "HC5-16 PASS: jsonio writes ., .a and .b as the same null; twoway draws .a as REFUSED or .a and .b as .b"
+display "HC5-16 PASS: dash writes ., .a and .b as the same null; twoway draws .a as REFUSED or .a and .b as .b"
 
 // ================================================================
 // HC5-17 -- the help's example global

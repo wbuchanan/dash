@@ -19,9 +19,11 @@ both of which this sandbox closes before the command runs:
   stub; and a directory of recording ``pip``/``python`` stubs is put first
   on ``PATH``, so a process started some other way -- a Stata ``shell``, a
   future change -- still reaches no real installer.
-* jsonio: ``ssc install``.  The certification script defines its own
-  ``ssc`` program for the duration (a program in memory is found before an
-  ado-file), which records the call and installs nothing.
+* SSC: dash_setup ran ``ssc install jsonio`` until dash stopped using
+  jsonio (24sep2026) and runs no ``ssc`` now.  The certification script
+  still defines its own ``ssc`` program for the duration (a program in
+  memory is found before an ado-file), which records any call and installs
+  nothing.
 
 ``install()`` refuses to report success until ``self_test()`` has shown a
 process start being recorded and not run.  ``restore()`` undoes everything,

@@ -229,7 +229,11 @@ def _labelsets(fig):
 
 
 def _field(spec):
-    return spec if isinstance(spec, str) else spec.get("field")
+    if isinstance(spec, str):
+        return spec
+    if isinstance(spec, dict):
+        return spec.get("field")
+    return getattr(spec, "field", None)
 
 
 def _drawn(value):
@@ -699,6 +703,54 @@ class TestThePanelArrangement:
             ns["gridplot"] = sspy
             _session(ns)
         assert want in srows, (build, by, srows)
+
+
+class TestTheOneLineFormHonoursCols:
+    """WP-27: ``dash scatter mpg weight, by(foreign, cols(1)) saving(f)``
+    put its panels at (0,0) and (0,1), as plain by(foreign) does, where the
+    same graph registered and built puts them at (0,0) and (1,0) (measured
+    24sep2026 by WP-24).  The one-line graph has no name, and the grid read
+    a graph's options by name, so it found none and fell back to
+    ceil(sqrt(n)) columns.  The options are now read by the key the layout
+    places the graph under -- its name, or '' for the one-line graph."""
+
+    @staticmethod
+    def _immediate(by):
+        """The spec ``_dash_render_immediate`` writes: one graph, no name,
+        no registry, layout "1 1"."""
+        return {"graphs": [{"plots": [_scatter()],
+                            "graph_options": {"by": by, "saving": "f.html"},
+                            "if_expr": "", "in_expr": ""}],
+                "build_options": {"layout": "1 1", "theme": "",
+                                  "session_scheme": "", "level": "95",
+                                  "formats": {}}}
+
+    @pytest.mark.parametrize("by,want", [
+        ("foreign, cols(1)", [(0, 0), (1, 0)]),
+        ("foreign, cols(2)", [(0, 0), (0, 1)]),
+        ("foreign", [(0, 0), (0, 1)]),
+    ])
+    def test_the_saved_page(self, by, want):
+        _, sp, dp = _write(self._immediate(by), _payload(_auto()))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            r = dr.DashRenderer(sp, dp)
+            r.render()
+        assert [(row, col) for row, col, _ in _saved_panels(r)] == want
+
+    def test_the_options_are_found_by_the_layout_key(self):
+        named = {"name": "g1", "graph_options": {"name": "g1", "by": "a"}}
+        unnamed = {"graph_options": {"by": "b"}}
+        top = {"name": "g3", "graph_options": {"by": "c"}}
+        gs = [named, unnamed, top]
+        assert dr._dash_graph_options_of(gs, "g1") == {"name": "g1",
+                                                       "by": "a"}
+        assert dr._dash_graph_options_of(gs, "") == {"by": "b"}
+        assert dr._dash_graph_options_of(gs, "g3") == {"by": "c"}
+        assert dr._dash_graph_options_of(gs, "nope") == {}
+        # Malformed entries are skipped, never raised on.
+        assert dr._dash_graph_options_of(
+            [None, {"graph_options": None}, "x"], "") == {}
 
 
 class TestTheSubOptionsDashDoesNotImplement:

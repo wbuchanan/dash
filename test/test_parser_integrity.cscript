@@ -22,7 +22,7 @@
 *!   A8  Neither mode checked its state at end of scan, so an unclosed '(' or
 *!       an unterminated '"' yielded one segment and no message.
 *!
-*! Tests: P1B-01 through P1B-38
+*! Tests: P1B-01 through P1B-47
 *!
 *! P1B-31 to P1B-38 were added by ROADMAP WP-24, which reverted each part of
 *! 9c7dbf7 in a scratch copy of the tree and ran this script against it
@@ -36,6 +36,13 @@
 *! and AC-01.4 as ROADMAP writes them, through dash itself: the cases above
 *! call the scanners, and P1B-13 and P1B-16 ask only for a non-zero return
 *! code where the criteria ask for r(198) and a message.
+*!
+*! P1B-39 to P1B-47 (24sep2026) hold every scanner that shares
+*! _dash_quote_step to Stata's nesting of compound quotes -- `"a `"b"' c"'
+*! is one string -- and dash to twoway's acceptance of a nested title and
+*! qualifier literal; P1B-46 and P1B-47 are CLAUDE.md rule 18's injection
+*! and exhaustion cases for it (a nested string holding || and filter(,
+*! an unbalanced one, and 10,000 levels).
 *!
 *! Usage:  do test/test_parser_integrity.cscript
 *! Version: 1.1  24sep2026
@@ -671,6 +678,168 @@ assert "${dash_graph_registry}" == "pq1"
 mata: st_local("p38q", strofreal(strpos(st_global("dash_json_pq1"), "inlist(make, ") > 0 & strpos(st_global("dash_json_pq1"), "AMC Pacer") > 0))
 assert `p38q' == 1
 display "P1B-38 PASS: a quoted '(' inside the qualifier's function call leaves the option comma where it is"
+
+
+// ================================================================
+// P1B-39..47 -- a compound quote nests
+// ================================================================
+// Stata's compound quotes nest: each `" opens a level and each "' closes
+// one, so `"a `"b"' c"' is one string.  _dash_quote_step tracked a compound
+// quote with an on/off flag, so the first "' ended the outer quote, the
+// rest of the string was read as syntax, and its closing "' opened a plain
+// quote that never closed.  Measured 24sep2026 with the console binary:
+// dash scatter mpg weight if make == `"say `"hi"' now"' and dash scatter
+// mpg weight, title(`"a `"b"' c"') each stopped with "dash: unterminated
+// quotation in the plot specification.", r(198); twoway draws both, rc 0,
+// and its SVG export draws the title a `"b"' c.  Every scanner that shares
+// the helper is held to the nested reading here, one case each.
+
+// _p1b_cq(s): s in compound quotes, made from char() so no expected value
+// is typed inside the quotes it is about.
+capture mata: mata drop _p1b_cq()
+mata:
+string scalar _p1b_cq(string scalar s)
+{
+    return(char(96) + char(34) + s + char(34) + char(39))
+}
+end
+
+// P1B-39 -- the flat splitter: a || inside a nested string is text.
+mata:
+{
+    _dash_split_segs(`"scatter mpg weight, title(`"a `"b"' c || d"') || line mpg weight"')
+}
+end
+assert "`_n_segs'" == "2"
+assert `"`_seg_2'"' == "line mpg weight"
+display "P1B-39 PASS: a || inside a nested compound quote is not a separator"
+
+// P1B-40 -- the paren splitter: a ')' inside a nested string closes nothing.
+mata:
+{
+    _dash_split_segs(`"(scatter mpg weight, title(`"a `"b"' ) c"')) (line mpg weight)"')
+}
+end
+assert "`_n_segs'" == "2"
+assert `"`_seg_2'"' == "line mpg weight"
+display "P1B-40 PASS: a ')' inside a nested compound quote does not close its group"
+
+// P1B-41 -- _first_comma_pos: a comma inside a nested literal is not the
+// option comma.
+local p41 `"mpg weight if make == `"say `"hi"' , now"', title(x)"'
+mata: st_local("p41c", strofreal(_first_comma_pos(st_local("p41"))))
+mata: st_local("p41w", strofreal(strpos(st_local("p41"), char(39) + ", title")))
+assert `p41c' == `p41w' + 1
+display "P1B-41 PASS: a comma inside a nested compound quote is not the option comma"
+
+// P1B-42 -- _dash_extract_filters: filter( inside a nested string is text.
+local 0 `", title(`"a `"b"' filter(foreign) c"') filter(price, type(range))"'
+mata: _dash_extract_filters("_fp42", "_cmd42")
+assert `"`_fp42'"' == "price, type(range)"
+assert strpos(`"`_cmd42'"', "filter(foreign)") > 0
+display "P1B-42 PASS: a filter( inside a nested compound quote is not harvested"
+
+// P1B-43 -- _dash_option_names: an option-like word inside a nested
+// string is not an option, and the options after it are all named.
+local raw43 `"title(`"a `"b"' ) xlabel(1) c"') ylabel(2)"'
+mata: _dash_option_names("raw43", "_on43")
+assert `"`_on43'"' == "title ylabel"
+display "P1B-43 PASS: a nested compound quote hides no option and invents none"
+
+// P1B-44 -- _dash_filter_split: a || and a ; inside a nested label are text.
+mata: st_local("p44", strofreal(cols(_dash_filter_split(`"foreign, label(`"a `"b"' || c ; d"') || price"', 1))))
+assert `p44' == 2
+display "P1B-44 PASS: a filter group's nested compound quote holds its separators"
+
+// P1B-45 -- through dash, as the entry measured them: the nested literal
+// and the nested title are accepted, as twoway accepts them, and stored
+// as typed.
+dash clear
+capture twoway scatter mpg weight if make == `"say `"hi"' now"', nodraw
+local tw45a = _rc
+capture twoway scatter mpg weight, title(`"a `"b"' c"') nodraw
+local tw45b = _rc
+_p1b_run `"dash scatter mpg weight if make == `"say `"hi"' now"', name(pn1)"'
+local rc45a = r(rc)
+_p1b_run `"dash scatter mpg weight, title(`"a `"b"' c"') name(pn2)"'
+local rc45b = r(rc)
+mata: st_local("p45q", strofreal(strpos(st_global("dash_json_pn1"), _json_escape("make == " + _p1b_cq("say " + _p1b_cq("hi") + " now"))) > 0))
+mata: st_local("p45t", strofreal(strpos(st_global("dash_json_pn2"), _json_escape(_p1b_cq("a " + _p1b_cq("b") + " c"))) > 0))
+display as text "  twoway rc `tw45a' `tw45b'  dash rc `rc45a' `rc45b'  stored `p45q' `p45t'  registry [${dash_graph_registry}]"
+assert `tw45a' == 0 & `tw45b' == 0
+assert `rc45a' == 0 & `rc45b' == 0
+assert "${dash_graph_registry}" == "pn1 pn2"
+assert `p45q' == 1 & `p45t' == 1
+display "P1B-45 PASS: a nested compound literal and a nested compound title are accepted and stored as typed"
+
+// P1B-46 -- CLAUDE.md rule 18, injection: a nested string that holds ||,
+// a plot command and filter( smuggles in neither a plot nor a filter; and
+// one left unbalanced is refused, as twoway refuses it (r(132) there).
+dash clear
+capture twoway scatter mpg weight, title(`"x || line mpg weight `"y"' filter(z)"') nodraw
+local tw46a = _rc
+_p1b_run `"dash scatter mpg weight, title(`"x || line mpg weight `"y"' filter(foreign) name(evil)"') name(pn3)"'
+local rc46a = r(rc)
+mata: st_local("p46n", strofreal(strpos(st_global("dash_json_pn3"), char(34) + "type" + char(34) + ":" + char(34) + "line" + char(34)) == 0))
+mata: st_local("p46t", strofreal(strpos(st_global("dash_json_pn3"), "filter(foreign) name(evil)") > 0))
+local 0 `", title(`"x || `"y"' filter(foreign)"') filter(price)"'
+mata: _dash_extract_filters("_fp46", "_cmd46")
+assert `tw46a' == 0 & `rc46a' == 0
+assert "${dash_graph_registry}" == "pn3"
+assert `p46n' == 1 & `p46t' == 1
+assert `"`_fp46'"' == "price"
+capture twoway scatter mpg weight, title(`"a `"b c"') nodraw
+local tw46b = _rc
+// Typed at the top level, not handed to _p1b_run: an unbalanced string
+// cannot be quoted as an argument.
+dash clear
+mata: st_local("p46u", "title(" + char(96) + char(34) + "a " + char(96) + char(34) + "b c" + char(34) + char(39) + ")")
+tempfile lg46
+local lg46b "`lg46'.log"
+capture log close _p1blog
+quietly log using "`lg46b'", text name(_p1blog) replace
+capture noisily dash scatter mpg weight, `macval(p46u)' name(pn4)
+local rc46b = _rc
+quietly log close _p1blog
+mata: st_local("p46m", strofreal(_p1b_log_has(st_local("lg46b"), "unterminated quotation")))
+display as text "  unbalanced: twoway rc `tw46b', dash rc `rc46b', named `p46m', registry [${dash_graph_registry}]"
+assert `tw46b' != 0
+assert `rc46b' == 198 & `p46m' == 1
+assert "${dash_graph_registry}" == ""
+display "P1B-46 PASS: a nested string smuggles in no plot and no filter, and an unbalanced one is refused"
+
+// P1B-47 -- CLAUDE.md rule 18, exhaustion: 10,000 nested levels, balanced
+// and one short, through every scanner and through dash, in bounded time
+// and without a crash.  The balanced title is stored as typed; the
+// unbalanced one is refused r(198).
+mata: st_local("p47d", "title(" + (char(96) + char(34)) * 10000 + "x" + (char(34) + char(39)) * 10000 + ")")
+mata: st_local("p47u", "title(" + (char(96) + char(34)) * 10000 + "x" + (char(34) + char(39)) * 9999 + ")")
+timer clear 47
+timer on 47
+mata: _dash_split_segs("scatter mpg weight, " + st_local("p47d") + " || line mpg weight")
+assert "`_n_segs'" == "2"
+mata: st_local("p47c", strofreal(_first_comma_pos("mpg weight, " + st_local("p47d"))))
+assert `p47c' == 11
+local 0 `", `macval(p47d)' filter(price)"'
+mata: _dash_extract_filters("_fp47", "_cmd47")
+assert `"`_fp47'"' == "price"
+mata: _dash_option_names("p47d", "_on47")
+assert `"`_on47'"' == "title"
+dash clear
+capture noisily dash scatter mpg weight, `macval(p47d)' name(pn5)
+local rc47a = _rc
+mata: st_local("p47s", strofreal(strpos(st_global("dash_json_pn5"), _json_escape(substr(st_local("p47d"), 7, strlen(st_local("p47d")) - 7))) > 0))
+capture noisily dash scatter mpg weight, `macval(p47u)' name(pn6)
+local rc47b = _rc
+timer off 47
+quietly timer list 47
+local p47t = r(t47)
+display as text "  10,000 levels: balanced rc `rc47a' stored `p47s', unbalanced rc `rc47b', registry [${dash_graph_registry}], `p47t's"
+assert `rc47a' == 0 & `p47s' == 1
+assert `rc47b' == 198
+assert "${dash_graph_registry}" == "pn5"
+assert `p47t' < 60
+display "P1B-47 PASS: 10,000 nested levels are read in bounded time, stored when balanced and refused when not"
 
 dash clear
 capture program drop _p1b_run

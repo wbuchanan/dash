@@ -41,7 +41,7 @@ dash (scatter mpg weight if rep78==1, mc("242 194 44")  ms(circle)            ms
      (scatter mpg weight if rep78==2, mc("134 88 145")  ms(square)            msi(medsmall)) ///
      (scatter mpg weight if rep78==3, mc("241 132 34")  ms(triangle)          msi(medsmall)) ///
      (scatter mpg weight if rep78==4, mc("162 203 239") ms(diamond)           msi(medsmall)) ///
-     (scatter mpg weight if rep78==5, mc("188 9 53")    ms(inverted_triangle) msi(medsmall)), ///
+     (scatter mpg weight if rep78==5, mc("188 9 53")    ms(V) msi(medsmall)), ///
      name(s1)                                ///
      title("MPG vs Weight by Repair Record") ///
      subtitle("kelly22ex color encoding")    ///
@@ -53,7 +53,7 @@ dash (scatter price weight if rep78==1, mc("242 194 44")  ms(circle)            
      (scatter price weight if rep78==2, mc("134 88 145")  ms(square)            msi(medsmall)) ///
      (scatter price weight if rep78==3, mc("241 132 34")  ms(triangle)          msi(medsmall)) ///
      (scatter price weight if rep78==4, mc("162 203 239") ms(diamond)           msi(medsmall)) ///
-     (scatter price weight if rep78==5, mc("188 9 53")    ms(inverted_triangle) msi(medsmall)), ///
+     (scatter price weight if rep78==5, mc("188 9 53")    ms(V) msi(medsmall)), ///
      name(s2)                            ///
      title("Price vs Weight by Repair Record") ///
      xtitle("Weight (lbs.)")             ///
@@ -64,7 +64,7 @@ dash (scatter mpg length if rep78==1, mc("242 194 44")  ms(circle)            ms
      (scatter mpg length if rep78==2, mc("134 88 145")  ms(square)            msi(medsmall)) ///
      (scatter mpg length if rep78==3, mc("241 132 34")  ms(triangle)          msi(medsmall)) ///
      (scatter mpg length if rep78==4, mc("162 203 239") ms(diamond)           msi(medsmall)) ///
-     (scatter mpg length if rep78==5, mc("188 9 53")    ms(inverted_triangle) msi(medsmall)) ///
+     (scatter mpg length if rep78==5, mc("188 9 53")    ms(V) msi(medsmall)) ///
      (lfit    mpg length,              lc(black)        lw(thick)),            ///
      name(s3)                                    ///
      title("MPG vs Length by Repair Record")     ///
@@ -127,7 +127,7 @@ dash build,                                         ///
 //     purple  square            = Rep 2
 //     orange  triangle          = Rep 3 (average)
 //     lt.blue diamond           = Rep 4
-//     red     inverted_triangle = Rep 5 (excellent)
+//     red     V = Rep 5 (excellent)
 //
 //   Linked brushing:
 //     Select in s1 to highlight matching points in s2 and s3.

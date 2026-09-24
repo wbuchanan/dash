@@ -1673,41 +1673,40 @@ class TestFilterReachesTheRenderedSource:
             "even a scatter's filter does not reach the rendered source"
         )
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=_TheLineFilterIsInert,
-        reason="S13: map_line builds a derived sorted ColumnDataSource, but "
-               "render() passes self.sources to the filter callback, so "
-               "dragging a filter on a line chart changes nothing on screen. "
-               "Reproduced in a browser on a real sp500 dashboard.",
-    )
-    def test_line_filter_updates_the_rendered_source(self):
-        """The mark had no raises=, so ANY exception was the expected
-        failure: measured 24sep2026, this stayed XFAIL -- green -- with
-        render() raising on a line plot, and with no filter callback built
-        at all (an IndexError on the first line).  Now only the defect's own
-        check raises what the mark names, and a precondition that does not
-        hold fails the test outright.  Measured the same day: the line draws
-        from a source of three columns (index, x, y) that neither the
-        callback's all_graph_sources nor its agg_sources holds.
-        """
-        dr = self._build("line")
+    @pytest.mark.parametrize("ptype", ["line", "tsline", "connected", "area",
+                                       "bar", "spike", "dropline"])
+    def test_line_filter_updates_the_rendered_source(self, ptype):
+        """Measured 24sep2026: the line drew from a source of three columns
+        (index, x, y) that neither the callback's all_graph_sources nor its
+        agg_sources held, so a filter move left it as it was (a strict xfail
+        until WP-27).  Every layer that draws from a copy its mapper builds
+        -- a line sorted by x, an area, a bar, a spike, a dropline -- now
+        carries its row identity and is written by the script as one of its
+        derived_sources; test_saved_filter_layers.py runs the script."""
+        dr = self._build(ptype)
         assert len(dr.filter_callbacks) == 1, len(dr.filter_callbacks)
         cb = dr.filter_callbacks[0]
         assert cb.code == _FILTER_JS
-        # What the script writes: every listed graph source, and every
-        # aggregate source it recomputes.
+        # What the script writes: every listed graph source, every
+        # aggregate source it recomputes, and every copy a mapper built.
         targets = {id(s) for s in cb.args["all_graph_sources"]}
         targets |= {id(s) for s in cb.args["agg_sources"]}
+        targets |= {id(s) for s in cb.args["derived_sources"]}
         [fig] = dr.figures.values()
-        lines = [r for r in fig.renderers
-                 if type(getattr(r, "glyph", None)).__name__ == "Line"]
-        assert len(lines) == 1, "the graph draws %d lines" % len(lines)
+        if ptype in ("line", "tsline", "connected"):
+            lines = [r for r in fig.renderers
+                     if type(getattr(r, "glyph", None)).__name__ == "Line"]
+            assert len(lines) == 1, "the graph draws %d lines" % len(lines)
         rendered = self._sources_behind_glyphs(fig)
-        if not targets & rendered:
+        assert rendered, "the graph draws nothing"
+        # Every source a glyph draws from, not merely one of them: a
+        # connected plot's markers drew from the graph's source and its
+        # line from a copy nothing wrote.
+        if not rendered <= targets:
             raise _TheLineFilterIsInert(
-                "the filter callback updates no source that any glyph "
-                "renders from -- the filter is inert on screen")
+                "the filter callback leaves %d of the %d sources the glyphs "
+                "render from as they were" % (len(rendered - targets),
+                                              len(rendered)))
 
 
 class TestTheFilterReadsTheWholeDataset:

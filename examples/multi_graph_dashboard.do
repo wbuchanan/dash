@@ -47,7 +47,7 @@ dash (scatter mpg weight if rep78==1, mc(navy)         ms(circle)            msi
      (scatter mpg weight if rep78==2, mc(maroon)       ms(square)            msi(small)) ///
      (scatter mpg weight if rep78==3, mc(forest_green) ms(triangle)          msi(small)) ///
      (scatter mpg weight if rep78==4, mc(orange)       ms(diamond)           msi(small)) ///
-     (scatter mpg weight if rep78==5, mc(purple)       ms(inverted_triangle) msi(small)), ///
+     (scatter mpg weight if rep78==5, mc(purple)       ms(V) msi(small)), ///
      name(s3) title("MPG vs Weight by Repair Record") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
@@ -92,7 +92,7 @@ dash build,                             ///
 //       maroon square  = Rep 2
 //       green triangle = Rep 3
 //       orange diamond = Rep 4
-//       purple inverted_triangle = Rep 5
+//       purple V = Rep 5
 //   - Hover over any data point to see the variable values.
 //   - Pan and zoom with the toolbar icons.
 // ----------------------------------------------------------------

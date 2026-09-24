@@ -6,7 +6,7 @@ exit status, so `make cert' reads the log instead.  The runner,
 test/run_all_cscripts.do, prints one line per script -- `[ PASS] name',
 `[ FAIL] name  (rc=N)' or `[ SKIP] name  (dependency unavailable)' -- and a
 summary line.  A skip is not a pass (the certification-suite rule): a
-script skips when Stata has lost its Python or jsonio, and a run of skips
+script skips when Stata has lost its Python or bokeh, and a run of skips
 has verified nothing.
 
 Usage:  python3 scripts/cert_verdict.py <run_all_cscripts.log> <run_all_cscripts.do>

@@ -32,6 +32,7 @@ import itertools
 import json
 import os
 import sys
+import time
 import warnings
 
 import pandas as pd
@@ -545,6 +546,134 @@ class TestAnUnimplementedBySuboptionIsNamed:
         spec = by_spec("scatter", by='__import__("os")')
         assert len(profiles_srv(tmp_path, spec)) == \
                len(profiles_std(tmp_path, spec)) == 1
+
+
+def _by_note(msgs):
+    return [m for m in msgs if "by() variable list" in m]
+
+
+def _built_warnings(tmp_path, spec):
+    """The warnings ServerAppBuilder gives while it builds the app -- where
+    `dash build, server' shows them in the Stata log."""
+    tag, sp, dp = _write(tmp_path, spec, _DF)
+    with warnings.catch_warnings(record=True) as built:
+        warnings.simplefilter("always")
+        dr.ServerAppBuilder(sp, dp).build(str(tmp_path / f"bw_{tag}.py"))
+    return [str(w.message) for w in built]
+
+
+class TestAByTextHoldingMacroCharactersFacets:
+    """BUGS.md "A by() whose text holds a backtick, a dollar sign or a
+    backslash draws no panels, without a word".  _dash_parse_by held the
+    WHOLE by() string to the injection pattern _DASH_UNSAFE_BY, so a
+    title() or note() inside by() holding a backtick -- which every
+    compound quote does -- a dollar sign, a backslash or a semicolon
+    returned an empty variable list, and both modes drew one panel of every
+    row and said nothing.  Measured 24sep2026 with the console binary:
+    twoway scatter mpg weight, by(foreign, title(`"'90s bc"')), and the
+    same with title("Cost in \\$US") and title("a\\b c"), each draw the two
+    panels Domestic and Foreign.  Only the variable list is held to the
+    pattern now; the sub-options are text, and a by() title is named as not
+    implemented, as typed."""
+
+    _BT, _AP = "`", "'"
+
+    @pytest.mark.parametrize("by_raw", [
+        "foreign, title(`\"'90s bc\"')",
+        'foreign, title("Cost in $US")',
+        'foreign, title("a\\b c")',
+        "foreign, note(\"tick `x\")",
+        "foreign, title(`\"a `\"b\"' c\"')",
+        'foreign, title("x; y") subtitle("__import__ eval exec open")',
+    ], ids=["compound-quote", "dollar", "backslash", "backtick",
+            "nested-compound", "semicolon-and-python-words"])
+    def test_both_modes_draw_the_two_panels(self, tmp_path, by_raw):
+        spec = by_spec("scatter", by=by_raw)
+        figs, msgs = standalone(tmp_path, spec)
+        srv = profiles_srv(tmp_path, spec)
+        assert len(figs) == len(srv) == 2, (len(figs), len(srv))
+        assert sorted(p["title"] for p in srv) == \
+               sorted(f.title.text for f in figs.values()) == \
+               ["Domestic", "Foreign"]
+        assert not _by_note(msgs), msgs
+        # The sub-option dash does not draw is named, as the user typed it.
+        sub = by_raw.split(",", 1)[1].strip()
+        named = [m for m in msgs if "by() sub-option" in m]
+        assert len(named) == 1 and sub in named[0], msgs
+
+    def test_the_parse_keeps_the_implemented_sub_options(self):
+        got = dr._dash_parse_by(
+            "foreign rep, title(`\"$x `y' \\z\"') cols(1) total missing",
+            warn=False)
+        assert got[:4] == ("foreign rep", 1, True, True)
+
+    @pytest.mark.parametrize("by_raw", [
+        '__import__("os")',
+        "foreign; import os",
+        "for$eign",
+        "foreign`x'",
+        "foreign\\x",
+        "eval(foreign)",
+        'foreign "x"',
+        "foreign-rep, title(x)",
+    ])
+    def test_a_variable_list_that_is_not_names_is_refused_with_a_note(
+            self, tmp_path, by_raw):
+        """What is refused is said, in both modes -- saved at render, served
+        when the app is built -- and draws one panel, never a wrong one."""
+        spec = by_spec("scatter", by=by_raw)
+        figs, msgs = standalone(tmp_path, spec)
+        assert len(figs) == 1
+        assert len(_by_note(msgs)) == 1, msgs
+        assert len(profiles_srv(tmp_path, spec)) == 1
+        assert len(_by_note(_built_warnings(tmp_path, spec))) == 1
+        # The note does not echo the refused text.
+        assert by_raw not in _by_note(msgs)[0]
+
+
+class TestAByTextAdversarial:
+    """CLAUDE.md rule 18 for the by() text now let through: markup and code
+    in a sub-option are text that runs nowhere, a variable list cannot ride
+    in behind one, and a long text is read in bounded time."""
+
+    def test_markup_and_code_in_a_title_run_nowhere(self, tmp_path):
+        sentinel = tmp_path / "executed"
+        payload = ("</script><script>alert(1)</script> <img src=x "
+                   "onerror=alert(1)> __import__('os').system('touch %s'); "
+                   "`=2+2' $HOME \\n" % sentinel)
+        spec = by_spec("scatter", by='foreign, title(`"%s"\')' % payload)
+        _, sp, dp = _write(tmp_path, spec, _DF)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            r = dr.DashRenderer(sp, dp)
+            page = r.render()
+        assert len(r.figures) == 2
+        assert len(profiles_srv(tmp_path, spec)) == 2
+        assert "<script>alert" not in page and "<img src=x" not in page
+        assert not sentinel.exists()
+
+    def test_a_sub_option_cannot_smuggle_a_variable_list(self):
+        """Bypass: the variable list ends at the first comma, and a comma or
+        a variable name inside a sub-option's string is text."""
+        got = dr._dash_parse_by(
+            'foreign, title("x", rep) note(`"a, "b", rep"\')', warn=False)
+        assert got[0] == "foreign"
+
+    def test_a_long_text_is_read_in_bounded_time(self, tmp_path):
+        text = "`$\\; '( \"x\" " * 20000
+        assert "\"'" not in text and "`\"" not in text
+        by_raw = "foreign, title(`\"" + text + "\"') cols(1)"
+        t0 = time.monotonic()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            got = dr._dash_parse_by(by_raw)
+        assert time.monotonic() - t0 < 5
+        assert got[:2] == ("foreign", 1)
+        spec = by_spec("scatter", by=by_raw)
+        t0 = time.monotonic()
+        figs, _ = standalone(tmp_path, spec)
+        assert len(figs) == 2
+        assert time.monotonic() - t0 < 60
 
 
 # ===========================================================================

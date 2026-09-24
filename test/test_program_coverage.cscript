@@ -8,7 +8,7 @@
 *!         runner, which puts dash's directory on the ado-path)
 *!
 *! Requires: Python configured (c(python_exec)), bokeh, numpy, pandas and
-*!           packaging importable there, and jsonio.
+*!           packaging importable there.
 *! Version: 1.0.0  24sep2026
 *!
 *! HOW THE GAPS WERE MEASURED
@@ -31,14 +31,19 @@
 *!
 *!   PC-01..04  _dash_formats_json: the formats map and the date variables,
 *!              ordinary, edge and hostile display formats
-*!   PC-05..07  _dash_date_fmts_swap / _dash_date_fmts_restore
-*!   PC-08..11  the routes that use them: dash <plot>, saving() and
-*!              dash build, with ordinary and hostile formats, and with a
-*!              jsonio that fails
+*!   PC-08..11  the routes that carry a date format: dash <plot>, saving()
+*!              and dash build, with ordinary and hostile formats, and with
+*!              an export that fails.  PC-05..07 tested
+*!              _dash_date_fmts_swap / _dash_date_fmts_restore, which
+*!              bracketed jsonio's export; dash writes its own data file
+*!              now, reading each stored value whatever its format, and the
+*!              two went with jsonio (24sep2026)
 *!   PC-12..13  _dash_filter_setvars, which the whole suite called once
 *!   PC-14      the sandbox dash_setup runs in (test/setup_sandbox.py)
 *!   PC-15..26  dash_setup end to end, through every branch this machine
-*!              can reach, installing nothing
+*!              can reach, installing nothing; PC-23 holds that it neither
+*!              checks nor installs jsonio (PC-24, its restart advice, went
+*!              with the jsonio step)
 *!   PC-28      _json_escape, read back by JSON as the original.  PC-27
 *!              and PC-29 tested _html_escape, _dash_html_esc and
 *!              _dash_kv_json, and went with them (WP-26)
@@ -57,7 +62,7 @@
 *! 24sep2026 at 68327a8: `dash scatter y d, saving()' and `dash build',
 *! with d %td!" or %tdDD!$DD, returned rc 0 and left d %12.0g, and with d
 *! %td!` both were refused r(132) -- what PC-09 and PC-10 check.  PC-03,
-*! PC-06, PC-07, PC-11 and PC-30 each fail with its fix reverted (BUGS.md).
+*! PC-11 and PC-30 each fail with its fix reverted (BUGS.md).
 *!
 *! Hostile strings are assembled in Mata, where a string is a value, and
 *! compared there or in Python: nothing here expands one as macro text.
@@ -247,84 +252,7 @@ display "PC-04 PASS: a Unicode variable name keys its format as written"
 
 
 // ================================================================
-// PC-05 -- swap and restore: numbers for the export, formats back after
-// ================================================================
-clear
-quietly set obs 3
-generate double y = _n / 3
-format y %9.2f
-generate double d = mdy(1, _n, 2020)
-format d %tdDD/NN/CCYY
-generate double t = clock("2020-01-0" + string(_n) + " 10:30", "YMDhm")
-format t %tcHH:MM
-quietly datasignature
-local sig0 "`r(datasignature)'"
-_dash_date_fmts_swap "d t"
-local fd : format d
-local ft : format t
-local fy : format y
-assert "`fd'" == "%12.0g"
-assert "`ft'" == "%12.0g"
-assert "`fy'" == "%9.2f"
-quietly datasignature
-assert "`r(datasignature)'" == "`sig0'"
-_dash_date_fmts_restore "d t" "`_dash_saved_fmts'"
-local fd : format d
-local ft : format t
-assert "`fd'" == "%tdDD/NN/CCYY"
-assert "`ft'" == "%tcHH:MM"
-display "PC-05 PASS: the swap gives each date %12.0g and nothing else, the values stay, and the restore gives the formats back"
-
-
-// ================================================================
-// PC-06 -- edge input: nothing to swap, a variable named twice, a
-//          saved list shorter than the variables
-// ================================================================
-_dash_date_fmts_swap ""
-assert `"`_dash_saved_fmts'"' == ""
-_dash_date_fmts_restore "" ""
-local fd : format d
-assert "`fd'" == "%tdDD/NN/CCYY"
-// Named twice: the second swap would otherwise save %12.0g as the
-// "original", and the restore would end on it.
-_dash_date_fmts_swap "d d"
-_dash_date_fmts_restore "d d" "`_dash_saved_fmts'"
-local fd : format d
-assert "`fd'" == "%tdDD/NN/CCYY"
-// A restore with nothing saved for a variable leaves it as it is.
-format t %12.0g
-_dash_date_fmts_restore "d t" ""
-local fd : format d
-local ft : format t
-assert "`fd'" == "%tdDD/NN/CCYY"
-assert "`ft'" == "%12.0g"
-display "PC-06 PASS: an empty list is a no-op, a variable named twice keeps its format, and nothing saved means nothing changed"
-
-
-// ================================================================
-// PC-07 -- hostile formats survive the swap and the restore exactly
-// ================================================================
-clear
-quietly set obs 3
-generate double d = mdy(1, _n, 2020)
-forvalues i = 1/`nhost' {
-    mata: st_varformat("d", _pc_hostile[`i'])
-    capture noisily _dash_date_fmts_swap "d"
-    local rc1 = _rc
-    local fd : format d
-    capture noisily _dash_date_fmts_restore "d" "`_dash_saved_fmts'"
-    local rc2 = _rc
-    mata: st_local("same", strofreal(st_varformat("d") == _pc_hostile[`i']))
-    if `rc1' != 0 | `rc2' != 0 | "`fd'" != "%12.0g" | "`same'" != "1" {
-        mata: st_global("PC_WHY", "format " + _pc_hostile[`i'] + ": swap rc " + st_local("rc1") + ", restore rc " + st_local("rc2") + ", now " + st_varformat("d"))
-        _pc_fail PC-07
-    }
-}
-display "PC-07 PASS: `nhost' hostile formats each come back exactly after the swap"
-
-
-// ================================================================
-// PC-08 -- the immediate route carries a date format and restores it
+// PC-08 -- the immediate route carries a date format and leaves it
 // ================================================================
 clear
 quietly set obs 5
@@ -413,47 +341,45 @@ display "PC-10 PASS: `nhost' hostile date formats each draw a date axis through 
 
 
 // ================================================================
-// PC-11 -- a jsonio that fails leaves the formats as they were
-// A program in memory is found before an ado-file, so this stand-in is
-// what dash's `jsonio out' reaches; `which jsonio' still finds the real
-// one on the ado-path.
+// PC-11 -- an export that fails leaves the formats as they were
+// It failed inside jsonio until 24sep2026, and this test planted a jsonio
+// that failed.  The data are now written by _dash_write_data, which refuses
+// a binary strL, r(198) (test_string_values.cscript SV-07): the real
+// failure.  No format is touched on the way now; this holds that none is
+// left changed either.
 // ================================================================
-capture program drop jsonio
-program define jsonio
-    display as error "pc11: this jsonio fails on purpose"
-    exit 459
-end
-// Captured as a whole, so the stand-in is dropped whatever happens: left
-// in memory it would fail every later export of the session.
+generate strL pcbin = "text"
+mata: st_sstore(2, "pcbin", "a" + char(0) + "b")
+// Captured as a whole, so pcbin is dropped whatever happens.
 local rc1 = -1
 local rc2 = -1
 capture noisily {
     format d %tdDD/NN/CCYY
     capture erase "`pg'"
-    capture noisily dash scatter y d, saving("`pg'")
+    capture noisily dash scatter y d, mlabel(pcbin) saving("`pg'")
     local rc1 = _rc
     local fd1 : format d
     format d %tdDD/NN/CCYY
     dash clear
-    quietly dash scatter y d, name(pc11)
+    quietly dash scatter y d, mlabel(pcbin) name(pc11)
     capture noisily dash build, saving("`pg'") replace
     local rc2 = _rc
     local fd2 : format d
 }
 local pc11rc = _rc
-capture program drop jsonio
+capture drop pcbin
 dash clear
 capture erase "`pg'"
 assert `pc11rc' == 0
-// The failure is still the failure -- jsonio's own code -- and the format
-// is the user's again.
-assert `rc1' == 459
-assert `rc2' == 459
+// The failure is still the failure -- the writer's own code -- and the
+// format is the user's again.
+assert `rc1' == 198
+assert `rc2' == 198
 assert "`fd1'" == "%tdDD/NN/CCYY"
 assert "`fd2'" == "%tdDD/NN/CCYY"
 quietly datasignature
 assert "`r(datasignature)'" == "`sig0'"
-display "PC-11 PASS: when jsonio fails, both routes fail with its code and give the date format back"
+display "PC-11 PASS: when the export fails, both routes fail with its code and give the date format back"
 
 
 // ================================================================
@@ -537,26 +463,26 @@ display "PC-13 PASS: filter(fore) and filter(rep, type(range) label(A || B; C)) 
 // ================================================================
 // dash_setup end to end
 // ================================================================
-// dash_setup installs through two doors: pip, run by subprocess.run inside
-// python:, and `ssc install jsonio'.  test/setup_sandbox.py closes the
-// first before each run (every process start is recorded and none is
-// made; sys.executable and PATH lead to recording stubs) and this ssc
-// stands in for the second.  A program in memory is found before an
-// ado-file, so dash_setup's `capture ssc install jsonio, replace' reaches
-// it.  Its return code is $PC_SSC_RC.
+// dash_setup installs through pip, run by subprocess.run inside python:.
+// test/setup_sandbox.py closes that door before each run (every process
+// start is recorded and none is made; sys.executable and PATH lead to
+// recording stubs).  Until 24sep2026 it also ran `ssc install jsonio,
+// replace'; this ssc still stands in for SSC, so any SSC call dash_setup
+// made again would be recorded, not made.  A program in memory is found
+// before an ado-file.  Its return code is $PC_SSC_RC.
 capture program drop ssc
 program define ssc
     mata: st_global("PC_SSC_CALLS", st_global("PC_SSC_CALLS") + "[" + strtrim(st_local("0")) + "]")
     exit ${PC_SSC_RC}
 end
 
-// The directory jsonio.ado is found in, and a stand-in renderer whose
-// scheme parser can read no scheme (PC-26).  Each is written into an
-// ado-path in compound quotes, as adopath writes a directory, so a path
-// with a space in it stays one entry.
-quietly findfile jsonio.ado
-local pc_jsonio_fn "`r(fn)'"
-local pc_jsonio_dir = substr("`pc_jsonio_fn'", 1, strlen("`pc_jsonio_fn'") - strlen("jsonio.ado"))
+// dash's own directory (PC-23), and a stand-in renderer whose scheme
+// parser can read no scheme (PC-26).  Each is written into an ado-path in
+// compound quotes, as adopath writes a directory, so a path with a space
+// in it stays one entry.
+quietly cd ..
+local pc_dashdir "`c(pwd)'"
+quietly cd "`pc_dashdir'/test"
 local pc_stubr "`c(tmpdir)'pc_stub_render"
 capture mkdir "`pc_stubr'"
 mata:
@@ -573,8 +499,9 @@ fput(_fh, "        return _Fallback()")
 fclose(_fh)
 _q = char(96) + char(34)
 _qq = char(34) + char(39)
-st_local("pc_ado_nodash", "BASE;" + _q + st_local("pc_jsonio_dir") + _qq)
-st_local("pc_ado_stubr", "BASE;" + _q + st_local("pc_jsonio_dir") + _qq + ";" + _q + st_local("pc_stubr") + "/" + _qq)
+st_local("pc_ado_nodash", "BASE")
+st_local("pc_ado_dash", "BASE;" + _q + st_local("pc_dashdir") + "/" + _qq)
+st_local("pc_ado_stubr", "BASE;" + _q + st_local("pc_stubr") + "/" + _qq)
 end
 
 // One run of dash_setup inside the sandbox.
@@ -679,11 +606,13 @@ assert `match' == 1
 assert `"$PC_SSC_CALLS"' == ""
 foreach p in "Python ............. OK (version" "bokeh ............. OK (version" ///
     "numpy ............. OK (version" "pandas ............. OK (version" ///
-    "jsonio ............. OK" "dash_render.py ..... OK" "schemes ............ OK" ///
+    "dash_render.py ..... OK" "schemes ............ OK" ///
     "dash_setup complete. All dependencies are satisfied." {
     _pc_said "`p'"
     assert r(found) == 1
 }
+_pc_said "jsonio"
+assert r(found) == 0
 display "PC-15 PASS: with every dependency present dash_setup reports each OK, exits 0 and installs nothing"
 
 
@@ -697,7 +626,7 @@ local match = r(match)
 assert `rc' == 198
 assert `match' == 1
 foreach p in "version 3.7.9 is below the minimum 3.8." ///
-    "bokeh ............. OK (version" "jsonio ............. OK" ///
+    "bokeh ............. OK (version" "dash_render.py ..... OK" ///
     "dash_setup did not complete: 1 unmet requirement(s)." ///
     "Unmet:  Python 3.7.9 (needs 3.8)" {
     _pc_said "`p'"
@@ -828,39 +757,36 @@ display "PC-22 PASS: a version that is not made of version characters is reporte
 
 
 // ================================================================
-// PC-23 -- jsonio missing and SSC failing
+// PC-23 -- jsonio off the ado-path: dash_setup neither asks SSC for it
+//          nor names it
 // ================================================================
+// dash writes its data from Python (_dash_write_data) and has not used
+// jsonio since 24sep2026, but dash_setup still asked SSC for it when it
+// was missing and failed the run, r(198), if SSC could not supply it.
+// Here the ado-path is Stata's BASE and dash's own directory only, and the
+// stand-in SSC fails every call: the run must complete, call SSC never,
+// and say nothing of jsonio.
+mata: st_global("PC_SB_ADO", st_local("pc_ado_dash"))
+capture findfile jsonio.ado, path(`"$PC_SB_ADO"')
+local pc23off = (_rc != 0)
 global PC_SB_SPEC "{}"
 global PC_SB_EXPECT "[]"
-global PC_SB_ADO "BASE"
 global PC_SSC_RC 631
 _pc_setup
 local rc = r(rc)
-assert `rc' == 198
-assert r(match) == 1
-assert `"$PC_SSC_CALLS"' == "[install jsonio, replace]"
-foreach p in "jsonio ............. missing" "Failed to install jsonio from SSC." ///
-    "Unmet:  jsonio (could not install)" {
-    _pc_said "`p'"
-    assert r(found) == 1
-}
-display "PC-23 PASS: a missing jsonio is asked of SSC once, and SSC failing fails the run naming it"
-
-
-// ================================================================
-// PC-24 -- jsonio "installed" but still not on the ado-path
-// ================================================================
-global PC_SSC_RC 0
-_pc_setup
-local rc = r(rc)
-assert `rc' == 198
-assert `"$PC_SSC_CALLS"' == "[install jsonio, replace]"
-foreach p in "jsonio installed but not found on adopath. Restart Stata." ///
-    "Unmet:  jsonio (not on the ado-path)" {
-    _pc_said "`p'"
-    assert r(found) == 1
-}
-display "PC-24 PASS: an SSC install that leaves jsonio unfindable fails the run and says to restart Stata"
+local match = r(match)
+_pc_said "jsonio"
+local pc23said = r(found)
+_pc_said "dash_setup complete. All dependencies are satisfied."
+local pc23ok = r(found)
+display as text "  PC-23: jsonio off the path `pc23off', rc `rc', SSC calls [$PC_SSC_CALLS], jsonio named `pc23said'"
+assert `pc23off' == 1
+assert `match' == 1
+assert `"$PC_SSC_CALLS"' == ""
+assert `pc23said' == 0
+assert `rc' == 0
+assert `pc23ok' == 1
+display "PC-23 PASS: with jsonio off the ado-path dash_setup completes, asks SSC for nothing and never names jsonio"
 
 
 // ================================================================
@@ -871,7 +797,7 @@ _pc_setup
 local rc = r(rc)
 assert `rc' == 198
 assert `"$PC_SSC_CALLS"' == ""
-foreach p in "jsonio ............. OK" "dash_render.py ..... not found" ///
+foreach p in "dash_render.py ..... not found" ///
     "Unmet:  dash's own files" {
     _pc_said "`p'"
     assert r(found) == 1
@@ -1020,13 +946,6 @@ generate double tdate = mdy(1, 1, 2000) + _n
 format tdate %tdDD/NN/CCYY
 _dash_formats_json "tda" pc31_j pc31_dv
 assert strtrim("`pc31_dv'") == "tdate"
-// The swap and the restore take the abbreviation as well.
-_dash_date_fmts_swap "tda"
-local fsw : format tdate
-assert "`fsw'" == "%12.0g"
-_dash_date_fmts_restore "tda" "`_dash_saved_fmts'"
-local frs : format tdate
-assert "`frs'" == "%tdDD/NN/CCYY"
 // Both routes, with each qualifier, draw, and leave the date's format.
 local pc31n = 0
 foreach q in `"dis > 100"' `"make != "d""' `"tda > 0"' {
