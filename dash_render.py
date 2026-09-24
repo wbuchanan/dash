@@ -8441,7 +8441,7 @@ class GlyphMapper:
         options: "dict[str, str]",
         color_idx: int = 0,
     ) -> list:
-        """Draw ``twoway pci``'s immediate segments.
+        """Draw ``twoway pci``'s immediate segments: pcspike's own glyphs.
 
         dash.ado writes one record per segment, as it writes pcarrowi's
         arrows (dash_parse.mata section 2c): ``[y1, x1, y2, x2]``, or
@@ -8449,10 +8449,20 @@ class GlyphMapper:
         is given -- ``pci 20 3000 30 4000`` is ``[[20,3000,30,4000]]``.  It
         wrote ``[[20,3000],[30,4000]]``, two points this method paired up
         again, which is how a label or a clock position sheared the list.
-        A segment with a missing coordinate is not drawn.  No label is drawn:
-        twoway pci is an immediate pcspike, whose serset carries the labels
-        and whose SVG export shows none (measured 23sep2026) -- dash.ado says
-        so when a label is given.
+
+        twoway pci is an immediate pcspike, and is drawn as one.  Measured
+        24sep2026 from its SVG export under s2color, stcolor, s1mono,
+        s2mono, s2gmanual and economist: a pci is stroked in pcspike's
+        colour -- the plain p# cycle, so s2mono's second plot is #A0A0A0
+        where a line's is #000000 -- at pcspike's width, and keyed in the
+        legend as pcspike is.  This method drew in line's colour, at line's
+        width, and with no legend key.  The segments are drawn by
+        :meth:`map_pcspike`, from a source built out of the records, as
+        pcarrowi's arrows are by :meth:`map_pcarrow`, so every option
+        pcspike honours is honoured the same way.  A segment with a missing
+        coordinate is not drawn.  No label is drawn: twoway pci's serset
+        carries the labels and its SVG export shows none (measured
+        23sep2026) -- dash.ado says so when a label is given.
 
         Args:
             fig:       Bokeh Figure object.
@@ -8461,29 +8471,16 @@ class GlyphMapper:
             color_idx: Zero-based plot index, for the scheme's colour cycle.
 
         Returns:
-            List with the single Segment GlyphRenderer.
+            What :meth:`map_pcspike` returns: the Segment renderer.
         """
         (y1, x1, y2, x2), _labels, _clocks = self._immediate_records(
             values, "pci", 4)
-        rows = [i for i in range(len(y1))
-                if all(math.isfinite(v) for v in (y1[i], x1[i], y2[i], x2[i]))]
-        src = ColumnDataSource({"x0": [x1[i] for i in rows],
-                                "y0": [y1[i] for i in rows],
-                                "x1": [x2[i] for i in rows],
-                                "y1": [y2[i] for i in rows]})
-        color = self.scheme.default_color(color_idx, "line")
-        try:
-            if "lcolor" in options:
-                color = self.tr.translate_mcolor(options["lcolor"])
-            elif "color" in options:
-                color = self.tr.translate_mcolor(options["color"])
-        except ValueError:
-            pass
-        r = fig.segment(x0="x0", y0="y0", x1="x1", y1="y1", source=src,
-                        line_color=color,
-                        line_width=self.scheme.default_line_width)
-        self._apply_line_opts(r, options)
-        return [r]
+        # The columns are named as the Segment's own fields, x0..y1, so a
+        # source read by name reads what it read when this method drew the
+        # segments itself.
+        src = ColumnDataSource({"y0": y1, "x0": x1, "y1": y2, "x1": x2})
+        return self.map_pcspike(fig, src, "y0", "x0", "y1", "x1", options,
+                                color_idx=color_idx)
 
     def map_pcscatter(
         self,
@@ -9540,15 +9537,36 @@ class GlyphMapper:
             # __builtins__ blocked: prevents access to Python built-ins from
             # the evaluated code.  The AST whitelist ensures no harmful nodes
             # reached compile(); this is defence-in-depth.
-            y_arr = eval(code, {"__builtins__": {}}, ns)  # noqa: S307 (intentional safe eval)
-            y_arr = np.asarray(y_arr, dtype=float)
+            #
+            # With numpy's floating-point warnings off.  Outside a
+            # function's domain -- the square root of a negative number, the
+            # log of 0 -- numpy warns, and a warning raised inside this
+            # eval() looked __import__ up in the empty builtins: the
+            # KeyError failed the whole layer, so `function y = sqrt(x),
+            # range(-1 1)' drew nothing where twoway draws the curve from 0
+            # to 1, and was reported empty (measured 24sep2026;
+            # test_immediate_dashboards.py).
+            with np.errstate(all="ignore"):
+                y_arr = eval(code, {"__builtins__": {}}, ns)  # noqa: S307 (intentional safe eval)
+                y_arr = np.asarray(y_arr, dtype=float)
             # Broadcast scalar results (e.g. "pi", "e", "3.14") to match x_arr length
             if y_arr.ndim == 0:
                 y_arr = np.full(len(x_arr), float(y_arr))
+        except (ZeroDivisionError, OverflowError):
+            # Python's own float arithmetic raises where Stata's gives a
+            # missing value: `function y = 1/0' and `y = 10^400' are
+            # missing everywhere, and twoway draws them as nothing, in
+            # silence.
+            y_arr = np.full(len(x_arr), np.nan)
         except Exception:
             return [fig.line(x="x_fn", y="y_fn", source=empty_source,
                              line_color=self.scheme.default_color(color_idx, "line"),
                              line_width=self.scheme.default_line_width)]
+
+        # A value Stata cannot hold is missing there, and twoway draws it
+        # as a gap: numpy's inf and nan -- x/0, exp(1000*x), log(0) -- are
+        # drawn as the same gaps, never as numbers.
+        y_arr = np.where(np.isfinite(y_arr), y_arr, np.nan)
 
         fn_source = ColumnDataSource({"x_fn": x_arr, "y_fn": y_arr})
         r = fig.line(x="x_fn", y="y_fn", source=fn_source,
@@ -12968,7 +12986,8 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     _dash_report_suboptions("legend", _dash_legend_unsupported(legend_opt),
                             seen, key)
     if not fig.legend:
-        # The mapper made none (pci, scatteri, lowess): twoway draws none.
+        # The mapper made none (scatteri, lowess): twoway draws none.  pci
+        # makes one now, as pcspike does (map_pci_literal).
         return
 
     # A discrete colorvar() builds its colour key as a Legend too.  It is
@@ -16216,19 +16235,57 @@ def _dash_layer_drew_anything(renderers):
     return False
 
 
-def _dash_report_empty_layer(gname, index, ptype, rows):
+def _dash_report_empty_layer(gname, index, ptype, rows=None):
     """Warn that layer *index* of graph *gname* drew nothing from *rows* rows.
 
     One text, so the two modes cannot word it differently and a test cannot
-    pass against one of them.  Reported only when the graph's own data is
-    non-empty: an ``if`` qualifier that selects no rows is the user's doing,
-    not a broken layer.
+    pass against one of them.  A graph with no name -- the one-line form's
+    -- is named by the layer's place alone: the saved page called it '?'
+    and the served app '' (measured 24sep2026).  *rows* None is a layer
+    that does not draw from the observations, a function, and the count is
+    left out.
     """
+    where = f"graph {gname!r} plot {index}" if gname else f"plot {index}"
+    tail = f" from {rows:,} observations" if rows is not None else ""
     warnings.warn(
-        f"dash: graph {gname!r} plot {index} ({ptype}) drew nothing from "
-        f"{rows:,} observations.",
+        f"dash: {where} ({ptype}) drew nothing{tail}.",
         UserWarning, stacklevel=2,
     )
+
+
+def _dash_note_empty_layer(gname, index, ptype, rows, renderers):
+    """Report layer *index* if it drew nothing -- the one rule both modes
+    apply, after each layer is drawn.
+
+    * scatteri, pci and pcarrowi draw from their own values, not from the
+      observations: one drawn empty has every point missing, which twoway
+      draws as nothing, in silence (measured 24sep2026).  Never reported --
+      they were, "drew nothing from 1 observations", counting the
+      placeholder row the one-line form exported.
+    * function draws from its own grid too, and a value missing everywhere
+      is drawn as missing (``map_function``): drawn empty, its expression
+      was refused or could not be evaluated, which is reported whatever
+      the data, with no count of observations it never read.
+    * Any other layer is reported when the graph's own data has rows: an
+      ``if`` qualifier that selects none is the user's doing, not a broken
+      layer.
+
+    Args:
+        gname:     The graph's name, "" for none.
+        index:     The layer's place in the graph, from 1.
+        ptype:     The layer's plot type.
+        rows:      The rows the graph's data has.
+        renderers: The renderers the layer added.
+    """
+    pt = str(ptype or "").lower()
+    if pt in _DASH_LITERAL_TYPES and pt != "function":
+        return
+    if _dash_layer_drew_anything(renderers):
+        return
+    if pt == "function":
+        _dash_report_empty_layer(gname, index, ptype)
+    elif rows:
+        _dash_report_empty_layer(gname, index, ptype, rows)
 
 
 def _dash_glyph_dispatch(mapper):
@@ -17558,7 +17615,14 @@ class DashRenderer:
             _g_in = (graph_spec.get("in_expr") or "").strip()
             source_for_plot = source
             _plot_view = facet_view
-            if (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in):
+            # twoway draws every point of `scatteri 1 2 3 4 if foreign == 2'
+            # and every point of a function whatever its if or in (measured
+            # 24sep2026 from the serset each draws): the literal family
+            # draws from its own values, which a qualifier does not reach.
+            # Its layers take no view, and a dashboard with no data made
+            # this say the qualifier "could not be applied".
+            if ptype.lower() not in _DASH_LITERAL_TYPES and (
+                    (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in)):
                 try:
                     # _apply_graph_filter filters self.df, so restrict to the
                     # rows this source actually carries afterwards -- a faceted
@@ -17668,16 +17732,17 @@ class DashRenderer:
             # Reported only when the graph's own data is non-empty: an `if'
             # qualifier that selects no rows is the user's doing, not a
             # broken layer, and the optional-package smoothers (lowess,
-            # mspline) already name the package they are missing.
+            # mspline) already name the package they are missing.  Which
+            # layers are reported, and how a graph with no name is named,
+            # is _dash_note_empty_layer's, the rule the served app runs.
             try:
                 _rows_here = len(source_for_plot.data.get(
                     next(iter(source_for_plot.data), ""), []))
             except (AttributeError, TypeError, StopIteration):
                 _rows_here = 0
-            if _rows_here and not self._layer_drew_anything(_layer_renderers):
-                _dash_report_empty_layer(
-                    graph_opts.get("name", "") or graph_spec.get("name", "?"),
-                    pi + 1, ptype, _rows_here)
+            _dash_note_empty_layer(
+                graph_opts.get("name", "") or graph_spec.get("name", ""),
+                pi + 1, ptype, _rows_here, _layer_renderers)
 
             # A yaxis(2)/xaxis(2) layer draws on the secondary range, its
             # marker labels and arrowheads with it.
@@ -19794,6 +19859,7 @@ class ServerAppBuilder:
                          # modes, in the same words.
                          "_dash_layer_drew_anything",
                          "_dash_report_empty_layer",
+                         "_dash_note_empty_layer",
                          # One qualifier reader and ONE whitelist.  The
                          # generated app used to carry its own `_safe_g',
                          # written out as string literals, and applied it at
@@ -21286,6 +21352,10 @@ class ServerAppBuilder:
             "        _g_in = (_go.get('in_expr') or g.get('in_expr') or '').strip()",
             "        _p_if = (plot.get('if_expr') or '').strip()",
             "        _p_in = (plot.get('in_expr') or '').strip()",
+            "        # The literal family draws from its own values, which no",
+            "        # qualifier reaches, as in twoway and the live figure.",
+            "        _p_lit = (str(plot.get('type', '') or '').lower()",
+            "                  in _DASH_LITERAL_TYPES)",
             "        def _redraw(frame):",
             "            # The graph's qualifier, then the layer's own where it",
             "            # differs -- the same two steps the live figure took.",
@@ -21293,7 +21363,8 @@ class ServerAppBuilder:
             "            # rows a filter or the graph's qualifier left in frame.",
             "            _fr = _dash_layer_frame(df, frame, _g_if, _g_in,",
             "                                    'graph %r' % gname)",
-            "            if (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in):",
+            "            if not _p_lit and (",
+            "                    (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in)):",
             "                _fr = _dash_layer_frame(df, _fr, _p_if, _p_in,",
             "                                        'graph %r plot %d' % (gname, pi + 1))",
             "            _tfig = bokeh_figure()",
@@ -21488,8 +21559,14 @@ class ServerAppBuilder:
             "            # as twoway counts them and the saved renderer masks",
             "            # them by row identity: `(scatter y x in 1/30) (line",
             "            # y x) in 11/50' draws observations 11-30, not the",
-            "            # first thirty of the graph's rows.",
-            '            if (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in):',
+            "            # first thirty of the graph's rows.  The literal",
+            "            # family -- scatteri, pci, pcarrowi, function -- draws",
+            "            # from its own values, which twoway's if and in do not",
+            "            # reach (measured 24sep2026), and the saved renderer",
+            "            # skips its qualifier: with no data this said the",
+            "            # layer's `if' was skipped.",
+            '            if ptype not in _DASH_LITERAL_TYPES and (',
+            '                    (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in)):',
             '                g_df = _dash_layer_frame(',
             "                    df, _g_df_graph, _p_if, _p_in,",
             "                    'graph %r plot %d' % (gname, pi + 1))",
@@ -21547,11 +21624,9 @@ class ServerAppBuilder:
             # which is why every divergence GAPS.md D2 lists was silent:
             # `pci' produced a titled, axed, empty plot region and rc 0.
             # The saved dashboard has warned since WP-02; this is the same
-            # helper, so the two modes word it identically.
-            "            if len(g_df) and not _dash_layer_drew_anything(",
-            "                    list(fig.renderers[_r_before:])):",
-            "                _dash_report_empty_layer(gname, pi + 1, ptype,",
-            "                                         len(g_df))",
+            # helper, so the two modes decide and word it identically.
+            "            _dash_note_empty_layer(gname, pi + 1, ptype, len(g_df),",
+            "                                   list(fig.renderers[_r_before:]))",
             "",
 
             "        # The second axes, fitted to what their layers drew and",

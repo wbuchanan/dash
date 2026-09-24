@@ -27,6 +27,7 @@
    word. Its sibling `_stata_expr_to_python` tracks quote state precisely and
    its docstring says why; this one did not.
 """
+import math
 import os
 import re
 import socket
@@ -447,15 +448,23 @@ class TestTheFunctionExpressionWhitelist:
     ])
     def test_ordinary_expressions_still_draw(self, expr):
         """The control: a numeric expression must survive the tighter guard.
-        ``9^9^9^9`` is the one that draws EMPTY -- it overflows to inf -- so
-        the guard is not a blanket ban on powers."""
+        ``9^9^9^9`` is the one that draws nothing -- it overflows, as a
+        float and never as an exact integer -- so the guard is not a blanket
+        ban on powers.  It is missing in Stata, which twoway draws as
+        nothing, in silence; so it is drawn at each x with every y missing.
+        It was drawn as an empty layer and reported as one until the
+        overflow was read as Stata's missing value
+        (test_immediate_dashboards.py)."""
         from bokeh.plotting import figure
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.GlyphMapper().map_function(figure(), expr, (0.0, 1.0), 5, {})
-        n = len(r[0].data_source.data["x_fn"])
-        assert n == (0 if expr == "9^9^9^9" else 5), (
-            f"{expr!r} drew {n} points"
+        data = r[0].data_source.data
+        n = len(data["x_fn"])
+        assert n == 5, f"{expr!r} drew {n} points"
+        missing = [not math.isfinite(float(v)) for v in data["y_fn"]]
+        assert all(missing) if expr == "9^9^9^9" else not any(missing), (
+            f"{expr!r} drew {list(data['y_fn'])}"
         )
 
 

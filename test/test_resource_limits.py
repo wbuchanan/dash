@@ -237,7 +237,10 @@ class TestTheServedAppHasTheSameBounds:
         another way, so the guarantee is asserted by BEHAVIOUR rather than by
         the spelling of one implementation of it. Every form below returned
         in well under a second and drew nothing; the sibling test above
-        covers the served app end to end.
+        covers the served app end to end.  Each overflows, and is missing
+        in Stata: it is drawn at each x with every y missing, which draws
+        nothing, as twoway draws nothing for it (it was an empty layer
+        until the overflow was read as Stata's missing value).
         """
         from bokeh.plotting import figure as _figure
         import time as _time
@@ -256,8 +259,10 @@ class TestTheServedAppHasTheSameBounds:
                 "%r took %.1fs; an integer power bomb reached the evaluator"
                 % (expr, elapsed)
             )
-            assert len(data.get("x_fn", [])) == 0, (
-                "%r produced points; it should have been refused" % expr
+            ys = [float(v) for v in data.get("y_fn", [])]
+            assert all(v != v for v in ys), (
+                "%r drew a value; it overflows, and is missing in Stata"
+                % expr
             )
         # And an ordinary power still works, so the guard is not a blanket ban.
         with _w.catch_warnings():

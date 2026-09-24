@@ -1,7 +1,7 @@
 *! test_parser.cscript  v2.0
 *! Certification script for the dash command parsing (syntax-based, v2.0 architecture).
 *!
-*! Tests: P1A-31 through P1A-45  (rewritten for syntax-based parsing)
+*! Tests: P1A-31 through P1A-75  (rewritten for syntax-based parsing)
 *!
 *! In v2.0 parsing is done via Stata's -syntax- command rather than a
 *! hand-rolled Mata parser.  These tests exercise:
@@ -996,6 +996,383 @@ assert "`_pci_left'" == "0" & `_pci_n' == 1
 mata: _dash_immediate("1 2 " + 100 * "7" + "x", 2)
 assert "`_pci_left'" == 80 * "7" + "..."
 display "P1A-67 PASS: the Mata helpers read immediate values token by token as twoway does"
+
+// ================================================================
+// P1A-68..75 -- a plot type glued to its comma, a plot given nothing to
+// draw, and a dashboard of immediate graphs alone
+//
+// Measured 24sep2026 with the console binary at a17c552, sysuse auto.
+//
+// twoway reads a plot type up to a blank or a comma: `twoway scatteri 1
+// 2,name(x)' draws, and `twoway scatteri, name(x)' is refused for what it
+// lacks.  dash took the first blank-delimited word for the type, so `dash
+// scatteri, name(x)', `dash (pci, name(x))', `dash scatter, name(x)' and
+// every other type with its comma glued on said "unrecognised plot type
+// 'scatteri,'", r(198).
+//
+// A plot given nothing to draw -- the comma glued, spaced or absent, in
+// parentheses, after ||, or with only an if, an in or a weight -- twoway
+// refuses: a type that takes variables with "varlist required", r(100);
+// scatteri, pci and pcarrowi with "'0' invalid observation number",
+// r(198); function with "expression required", r(100), and `function y ='
+// with "nothing found where expression expected", r(111).  dash registered
+// `dash scatter , name(x)', a graph with no variables, with rc 0 -- and
+// line, connected, area, bar, spike, dropline, dot, the fits, the
+// smoothers and tsline the same way; it refused the bare `dash scatter'
+// with "no variables identified in plot specification", r(198), and
+// scatteri, pci, pcarrowi and function with "something required", r(100).
+//
+// twoway draws scatteri, pci, pcarrowi and function alone, with data in
+// memory or none.  After `dash scatteri 1 2, name(a1)', `dash build' said
+// "dash build: no variables identified across registered graphs.",
+// r(198), in both modes; with no data in memory the one-line `dash
+// scatteri 1 2 3 4, saving(f)' said "no variables identified in plot
+// specification", r(198).  An immediate plot whose every point is missing
+// drew nothing, as twoway does, and said "graph '?' plot 1 (scatteri) drew
+// nothing from 1 observations", where twoway is silent.
+// ================================================================
+global dash_nobrowser 1
+
+// ================================================================
+// P1A-68 -- a plot type ends at a comma, as twoway reads it
+// ================================================================
+sysuse auto, clear
+dash clear
+_dash_process_segment "scatteri 1 2,mcolor(red)" _pt68 _js68
+assert "`_pt68'" == "scatteri"
+assert strpos(`"`_js68'"', `""values":[[1,2]]"') > 0
+_dash_process_segment "scatter mpg weight,mcolor(red)" _pt68 _js68
+assert "`_pt68'" == "scatter"
+assert strpos(`"`_js68'"', `""yvar":"mpg","xvar":"weight""') > 0
+// Each type with its comma glued on is read as that type, and refused for
+// what it lacks (P1A-69..71) -- not as a type dash does not know.
+foreach seg in "scatteri,name(p1a68)" "scatteri, name(p1a68)" ///
+    "pci, name(p1a68)" "pcarrowi,mcolor(red)" "function, range(0 1)" ///
+    "scatter, name(p1a68)" "histogram,name(p1a68)" "rcap, name(p1a68)" ///
+    "pcspike, name(p1a68)" "(scatteri, name(p1a68))" ///
+    "scatteri 1 2 || pci, name(p1a68)" "SC, name(p1a68)" "fn, name(p1a68)" {
+    _p1a_logrun `"dash `seg'"'
+    local rc68 = r(rc)
+    cert_file_has "`r(log)'", needle("unrecognised plot type")
+    if r(found) | !inlist(`rc68', 100, 198) {
+        display as error `"P1A-68: dash `seg' gave rc `rc68'"'
+        exit 9
+    }
+}
+assert "${dash_graph_registry}" == ""
+// A comma glued to a list that has what it needs was read, and still is.
+_p1a_logrun "dash scatteri 1 2,name(p1a68)"
+assert r(rc) == 0
+_p1a_logrun "dash scatter mpg weight,name(p1a68b)"
+assert r(rc) == 0
+_p1a_logrun "dash (pci 0 0 1 1,name(p1a68c))"
+assert r(rc) == 0
+assert "${dash_graph_registry}" == "p1a68 p1a68b p1a68c"
+dash clear
+display "P1A-68 PASS: a plot type ends at a comma, as twoway reads it: no type is unrecognised for the comma glued to it"
+
+// ================================================================
+// P1A-69 -- a type that takes variables, given none, is refused as twoway
+// refuses it -- "varlist required", r(100) -- and nothing is registered
+// ================================================================
+sysuse auto, clear
+dash clear
+local t69 "scatter line connected area bar spike dropline dot lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci mspline mband tsline histogram kdensity rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline pcspike pcarrow pcbarrow pcscatter pccapsym"
+foreach t of local t69 {
+    foreach form in "`t' , name(p1a69)" "`t', name(p1a69)" "`t'" ///
+        "`t' if foreign, name(p1a69)" "`t' in 1/5, name(p1a69)" ///
+        "(`t', name(p1a69))" "scatter mpg weight || `t', name(p1a69)" {
+        capture dash `form'
+        if _rc != 100 {
+            display as error `"P1A-69: dash `form' gave rc "' _rc
+            exit 9
+        }
+    }
+}
+assert "${dash_graph_registry}" == ""
+// In twoway's words.
+foreach form in "scatter , name(p1a69)" "tsline, name(p1a69)" "line" ///
+    "(connected, name(p1a69))" "scatter mpg weight || lfit, name(p1a69)" ///
+    "dot [aw=price], name(p1a69)" {
+    _p1a_logrun `"dash `form'"'
+    local rc69 = r(rc)
+    cert_file_has "`r(log)'", needle("varlist required")
+    if `rc69' != 100 | !r(found) {
+        display as error `"P1A-69: dash `form' gave rc `rc69', not varlist required"'
+        exit 9
+    }
+}
+capture _dash_process_segment "scatter , mcolor(red)" _pt69 _js69
+assert _rc == 100
+assert "${dash_graph_registry}" == ""
+display "P1A-69 PASS: every type that takes variables, given none -- the comma spaced, glued or absent, in parentheses, after ||, or with only an if, an in or a weight -- is refused r(100), varlist required, as twoway refuses it, and nothing is registered"
+
+// ================================================================
+// P1A-70 -- scatteri, pci and pcarrowi given no values are refused r(198),
+// as twoway refuses them, in dash's words for a list with no whole point,
+// segment or arrow (P1A-61), and nothing is registered
+// ================================================================
+sysuse auto, clear
+dash clear
+foreach t in scatteri pci pcarrowi {
+    if "`t'" == "scatteri"  local u70 "point, two numbers #y #x"
+    else if "`t'" == "pci"  local u70 "segment, four numbers #y1 #x1 #y2 #x2"
+    else                    local u70 "arrow, four numbers #y1 #x1 #y2 #x2"
+    foreach form in "`t' , name(p1a70)" "`t', name(p1a70)" "`t'" ///
+        "`t' if foreign, name(p1a70)" "`t' in 1/2, name(p1a70)" ///
+        "(`t', name(p1a70))" "scatteri 1 2 || `t', name(p1a70)" {
+        _p1a_logrun `"dash `form'"'
+        local rc70 = r(rc)
+        local lg70 "`r(log)'"
+        cert_file_has "`lg70'", needle("dash: `t' needs at least one `u70'.")
+        local ok70 = r(found)
+        cert_file_has "`lg70'", needle("something required")
+        if `rc70' != 198 | !`ok70' | r(found) {
+            display as error `"P1A-70: dash `form' gave rc `rc70'"'
+            exit 9
+        }
+    }
+}
+assert "${dash_graph_registry}" == ""
+display "P1A-70 PASS: scatteri, pci and pcarrowi given no values are refused r(198), as twoway refuses them, and nothing is registered"
+
+// ================================================================
+// P1A-71 -- function given no expression: "expression required", r(100),
+// and `function y =' "nothing found where expression expected", r(111),
+// as twoway says; nothing is registered
+// ================================================================
+sysuse auto, clear
+dash clear
+foreach form in "function , name(p1a71)" "function, name(p1a71)" "function" ///
+    "function if foreign, name(p1a71)" "function in 1/5, name(p1a71)" ///
+    "(function, name(p1a71))" "scatteri 1 2 || function, name(p1a71)" ///
+    "function [aw=price], name(p1a71)" "fn, range(0 1)" {
+    _p1a_logrun `"dash `form'"'
+    local rc71 = r(rc)
+    cert_file_has "`r(log)'", needle("expression required")
+    if `rc71' != 100 | !r(found) {
+        display as error `"P1A-71: dash `form' gave rc `rc71', not expression required"'
+        exit 9
+    }
+}
+foreach form in "function y =, name(p1a71)" "function y=, range(0 1)" ///
+    "(function y = , name(p1a71))" {
+    _p1a_logrun `"dash `form'"'
+    local rc71 = r(rc)
+    cert_file_has "`r(log)'", needle("nothing found where expression expected")
+    if `rc71' != 111 | !r(found) {
+        display as error `"P1A-71: dash `form' gave rc `rc71'"'
+        exit 9
+    }
+}
+assert "${dash_graph_registry}" == ""
+// An expression is kept as it was written (V2-06).
+_dash_process_segment "function y = x^2, range(0 2)" _pt71 _js71
+assert strpos(`"`_js71'"', `""expr":"x^2""') > 0
+display "P1A-71 PASS: function given no expression is refused as twoway refuses it, r(100) expression required, or r(111) after y =, and nothing is registered"
+
+// ================================================================
+// P1A-72 -- a dashboard of immediate graphs alone is built, in both modes,
+// with the data in memory and with none, and exports no variable
+// ================================================================
+sysuse auto, clear
+dash clear
+dash scatteri 1 2 3 4, name(p1a72a)
+dash pci 0 0 1 1, name(p1a72b)
+dash pcarrowi 0 0 1 1 (3) "A", name(p1a72c)
+dash function y = x^2, range(0 2) name(p1a72d)
+tempfile s72 d72 h72
+_dash_prepare_spec, specpath("`s72'") datapath("`d72'")
+assert `"`r(vars)'"' == ""
+// What is written is jsonio's layout holding no variable and no
+// observation, which both renderers read (test_immediate_dashboards.py).
+tempname fh72
+file open `fh72' using "`d72'", read text
+file read `fh72' line72
+file close `fh72'
+assert `"`macval(line72)'"' == `"{"values":[],"variableIsString":{},"variableNames":[],"variableLabels":{},"valueLabelNames":{},"valueLabels":{},"numberOfRecords":0,"numberOfVariables":0}"'
+foreach mode in "" "server" {
+    local ext72 = cond("`mode'" == "", "html", "py")
+    _p1a_logrun `"dash build, saving("`h72'a.`ext72'") `mode' replace"'
+    assert r(rc) == 0
+    confirm file "`h72'a.`ext72'"
+}
+// With no data in memory: twoway draws them without any, and so does dash.
+clear
+foreach mode in "" "server" {
+    local ext72 = cond("`mode'" == "", "html", "py")
+    _p1a_logrun `"dash build, saving("`h72'b.`ext72'") `mode' replace"'
+    assert r(rc) == 0
+    confirm file "`h72'b.`ext72'"
+}
+_dash_prepare_spec, specpath("`s72'") datapath("`d72'")
+assert `"`r(vars)'"' == ""
+dash clear
+_p1a_logrun `"dash scatteri 1 2 3 4, saving("`h72'c.html")"'
+assert r(rc) == 0
+confirm file "`h72'c.html"
+_p1a_logrun `"dash function y = x^2, range(0 2) saving("`h72'd.html")"'
+assert r(rc) == 0
+confirm file "`h72'd.html"
+_p1a_logrun `"dash (pci 0 0 1 1) (pcarrowi 1 1 0 0), saving("`h72'e.html")"'
+assert r(rc) == 0
+confirm file "`h72'e.html"
+_p1a_logrun "dash scatteri 1 2 3 4, name(p1a72e)"
+assert r(rc) == 0
+assert "${dash_graph_registry}" == "p1a72e"
+// A graph of immediate values beside one of data exports the data, as
+// before.
+sysuse auto, clear
+dash clear
+dash scatteri 1 2, name(p1a72f)
+dash scatter mpg weight, name(p1a72g)
+_dash_prepare_spec, specpath("`s72'") datapath("`d72'")
+assert `"`r(vars)'"' == "mpg weight"
+dash clear
+display "P1A-72 PASS: a dashboard of scatteri, pci, pcarrowi and function graphs alone is built saved and served, with data in memory and with none, and exports no variable"
+
+// ================================================================
+// P1A-73 -- an immediate plot whose every point is missing draws nothing
+// and says nothing, as twoway; a data layer that draws nothing is still
+// named, and a graph with no name is not called '?'
+// ================================================================
+sysuse auto, clear
+dash clear
+tempfile h73
+local i73 0
+foreach c in "scatteri . . . .," "pci . 0 1 .," "pcarrowi . . . .," ///
+    "function y = 1/0," "function y = sqrt(x), range(-2 -1)" {
+    local ++i73
+    _p1a_logrun `"dash `c' saving("`h73'`i73'.html")"'
+    local rc73 = r(rc)
+    cert_file_has "`r(log)'", needle("drew nothing")
+    if `rc73' != 0 | r(found) {
+        display as error `"P1A-73: dash `c' gave rc `rc73' or said it drew nothing"'
+        exit 9
+    }
+}
+// ... registered beside a scatter and built, too.
+dash scatteri . ., name(p1a73a)
+dash scatter mpg weight, name(p1a73b)
+_p1a_logrun `"dash build, saving("`h73'g.html") replace"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("drew nothing")
+assert r(found) == 0
+dash clear
+// A data layer that draws nothing is still named: by its graph when the
+// graph has a name, by its place alone when it has none.
+generate m73 = .
+_p1a_logrun `"dash scatter m73 weight, saving("`h73'h.html")"'
+assert r(rc) == 0
+local lg73 "`r(log)'"
+cert_file_has "`lg73'", needle("dash: plot 1 (scatter) drew nothing from 74 observations.")
+assert r(found) == 1
+cert_file_has "`lg73'", needle("'?'")
+assert r(found) == 0
+dash scatter m73 weight, name(p1a73c)
+_p1a_logrun `"dash build, saving("`h73'i.html") replace"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("dash: graph 'p1a73c' plot 1 (scatter) drew nothing from 74 observations.")
+assert r(found) == 1
+drop m73
+dash clear
+display "P1A-73 PASS: an immediate plot or a function missing everywhere draws nothing and says nothing, as twoway; a data layer that draws nothing is named by its graph, or by its place when the graph has no name"
+
+// ================================================================
+// P1A-74 -- a graph that names no variable and is not immediate is still
+// refused, on both routes: dash no longer registers one, but the registry
+// is ordinary globals
+// ================================================================
+sysuse auto, clear
+dash clear
+tempfile h74
+local j74a `"{"name":"p1a74","plots":[{"type":"scatter","yvar":"","xvar":"","options":{}}],"graph_options":{"name":"p1a74"},"if_expr":"","in_expr":""}"'
+local j74b `"{"name":"p1a74","plots":[{"type":"scatteri","values":[[1,2]],"options":{}},{"type":"line","yvar":"","xvar":"","options":{}}],"graph_options":{"name":"p1a74"},"if_expr":"","in_expr":""}"'
+foreach j in j74a j74b {
+    global dash_graph_registry "p1a74"
+    global dash_json_p1a74 `"``j''"'
+    _p1a_logrun `"dash build, saving("`h74'.html") replace"'
+    local rc74 = r(rc)
+    cert_file_has "`r(log)'", needle("dash build: no variables identified across registered graphs.")
+    if `rc74' != 198 | !r(found) {
+        display as error "P1A-74: dash build of `j' gave rc `rc74'"
+        exit 9
+    }
+    _p1a_logrun `"_dash_render_immediate `"``j''"' """'
+    local rc74 = r(rc)
+    cert_file_has "`r(log)'", needle("dash: no variables identified in plot specification.")
+    if `rc74' != 198 | !r(found) {
+        display as error "P1A-74: the one-line render of `j' gave rc `rc74'"
+        exit 9
+    }
+}
+dash clear
+display "P1A-74 PASS: a graph that names no variable and is not all immediate is refused by dash build and by the one-line render, r(198)"
+
+// ================================================================
+// P1A-75 -- the helpers behind P1A-68..74, one by one
+// ================================================================
+// _dash_spec_types_in(json, allowed): 1 when the spec names a plot type
+// and every type it names is a word of allowed.
+local lit75 "scatteri pci pcarrowi function"
+local j75a `"{"plots":[{"type":"scatteri","values":[[1,2]]},{"type":"function","expr":"x"}]}"'
+local j75b `"{"plots":[{"type":"scatteri","values":[[1,2]]},{"type":"scatter","yvar":"mpg","xvar":"weight"}]}"'
+local j75c `"{"plots":[]}"'
+// A key written inside a string is text: its quotes are escaped.
+local j75d `"{"plots":[{"type":"pcarrowi","values":[[0,0,1,1]]}],"graph_options":{"title":"a \"type\":\"scatter\" b"}}"'
+local j75e `"{"plots":[{"type":"scatteri"}]}"'
+mata: st_local("r75", strofreal(_dash_spec_types_in(st_local("j75a"), st_local("lit75"))))
+assert `r75' == 1
+mata: st_local("r75", strofreal(_dash_spec_types_in(st_local("j75b"), st_local("lit75"))))
+assert `r75' == 0
+mata: st_local("r75", strofreal(_dash_spec_types_in(st_local("j75c"), st_local("lit75"))))
+assert `r75' == 0
+mata: st_local("r75", strofreal(_dash_spec_types_in(st_local("j75d"), st_local("lit75"))))
+assert `r75' == 1
+// A type is matched whole: pcarrowi is not pci, and scatteri not scatter.
+mata: st_local("r75", strofreal(_dash_spec_types_in(st_local("j75d"), "pci")))
+assert `r75' == 0
+mata: st_local("r75", strofreal(_dash_spec_types_in(st_local("j75e"), "scatter")))
+assert `r75' == 0
+// Nothing allowed allows nothing, and a word given twice counts once.
+mata: st_local("r75", strofreal(_dash_spec_types_in(st_local("j75a"), "")))
+assert `r75' == 0
+mata: st_local("r75", strofreal(_dash_spec_types_in(st_local("j75a"), "scatteri scatteri function function")))
+assert `r75' == 1
+// In linear time: twenty thousand plots and a title of 100,000 characters.
+mata: st_local("big75", "{" + char(34) + "plots" + char(34) + ":[" + 20000 * ("{" + char(34) + "type" + char(34) + ":" + char(34) + "scatteri" + char(34) + "},") + "{}]," + char(34) + "t" + char(34) + ":" + char(34) + 100000 * "a" + char(34) + "}")
+timer clear 75
+timer on 75
+mata: st_local("r75", strofreal(_dash_spec_types_in(st_local("big75"), st_local("lit75"))))
+timer off 75
+quietly timer list 75
+assert r(t75) < 5
+assert `r75' == 1
+local big75 ""
+// _dash_empty_data path: the data file of a dashboard that exports no
+// variable, one line, replacing what was there.
+tempfile e75
+_dash_empty_data "`e75'"
+_dash_empty_data "`e75'"
+tempname fh75
+file open `fh75' using "`e75'", read text
+file read `fh75' line75
+assert `"`macval(line75)'"' == `"{"values":[],"variableIsString":{},"variableNames":[],"variableLabels":{},"valueLabelNames":{},"valueLabels":{},"numberOfRecords":0,"numberOfVariables":0}"'
+file read `fh75' line75
+assert r(eof) == 1
+file close `fh75'
+// _dash_parse_varpart_any takes nothing, or an if or in alone, and leaves
+// what is missing to its caller (P1A-70, P1A-71).
+sysuse auto, clear
+_dash_parse_varpart_any
+assert `"`s(vals)'"' == "" & `"`s(if_clause)'"' == "" & `"`s(in_clause)'"' == ""
+_dash_parse_varpart_any if foreign
+assert `"`s(vals)'"' == ""
+assert strpos(`"`s(if_clause)'"', "foreign") > 0
+_dash_parse_varpart_any 1 2 in 1/2
+assert `"`s(vals)'"' == "1 2"
+assert strpos(`"`s(in_clause)'"', "1/2") > 0
+display "P1A-75 PASS: _dash_spec_types_in matches whole types in linear time, _dash_empty_data writes jsonio's layout with no variable, and _dash_parse_varpart_any takes an empty list"
 
 capture erase "`c(tmpdir)'dash_p1a_run.log"
 

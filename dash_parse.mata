@@ -60,6 +60,10 @@
 *!       1 when the option text s holds a name() option (spelled name or
 *!       nam) at the top level: a second name(), which dash.ado refuses.
 *!
+*!   _dash_spec_types_in(s, allowed)
+*!       1 when the graph spec s names a plot type and every type it names
+*!       is a word of allowed: a graph that needs no data.
+*!
 *!   _dash_comma_pos(input, out_macro)
 *!       Position (1-based) of the first top-level comma, or "0".
 *!
@@ -2778,6 +2782,39 @@ real scalar _dash_has_name_opt(string scalar s)
     if (unbalanced) names = tokens(_dash_option_names_scan(s, 0, unbalanced))
     if (cols(names) == 0) return(0)
     return(anyof(names, "name") | anyof(names, "nam"))
+}
+
+// _dash_spec_types_in(s, allowed) -- 1 when the graph spec s names a plot
+// type and every type it names is a word of allowed.
+//
+// dash.ado asks it of a graph that names no variable: a graph whose plots
+// are all scatteri, pci, pcarrowi or function draws from its own values
+// and needs no data, as twoway draws them with none in memory; any other
+// such graph was not registered by this dash (P1A-69) and is refused.  A
+// type is read as the spec writes it, "type":"<name>", and matched whole,
+// its closing quote included, so pcarrowi is not pci.  A key written
+// inside a string -- a title holding "type":"scatter" -- is text: its
+// quotes are escaped there, so it is never counted.  Linear in the length
+// of s: each count is one subinstr() over it, and a word given twice in
+// allowed is counted once.
+real scalar _dash_spec_types_in(string scalar s, string scalar allowed)
+{
+    string rowvector ok
+    string scalar    key, k
+    real scalar      n, m, i
+
+    key = char(34) + "type" + char(34) + ":" + char(34)
+    n   = (strlen(s) - strlen(subinstr(s, key, "", .))) / strlen(key)
+    if (n == 0) return(0)
+    ok = tokens(allowed)
+    if (cols(ok) == 0) return(0)
+    ok = uniqrows(ok')'
+    m  = 0
+    for (i = 1; i <= cols(ok); i++) {
+        k = key + ok[i] + char(34)
+        m = m + (strlen(s) - strlen(subinstr(s, k, "", .))) / strlen(k)
+    }
+    return(m == n)
 }
 
 end

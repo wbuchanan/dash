@@ -211,7 +211,8 @@ program define _dash_require_mata
         _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
         _dash_kpi_pctile ///
         _dash_layout_cells _dash_layout_refusal _dash_option_names ///
-        _dash_immediate _dash_say _dash_split_segs _dash_undrawn_plottype
+        _dash_immediate _dash_say _dash_spec_types_in _dash_split_segs ///
+        _dash_undrawn_plottype
 
     // The common case, and the cheap one.
     quietly capture mata: mata describe _dash_check_utf8()
@@ -1170,15 +1171,20 @@ program define _dash_parse_varpart_any, sclass
     // weight; twoway reads it as a label (rc 0, measured).  iweight is
     // left undeclared, so syntax gives twoway's own refusal for it,
     // before it reads the expression.
-    capture syntax anything(name=vals equalok) [if] [in]
+    //
+    // The values are optional here: none at all -- `dash scatteri, name(x)',
+    // or an if, an in or a weight alone -- is its caller's to refuse, in
+    // twoway's words for each type (P1A-70, P1A-71).  syntax answered it
+    // with "something required", r(100), which twoway never says.
+    capture syntax [anything(name=vals equalok)] [if] [in]
     if _rc == 101 {
-        syntax anything(name=vals equalok) [if] [in] [aweight fweight pweight]
+        syntax [anything(name=vals equalok)] [if] [in] [aweight fweight pweight]
         if `"`weight'"' != "" sreturn local _weight `"`weight'"'
         if `"`exp'"' != "" sreturn local _wexp = strtrim(regexr(`"`exp'"', "^[ ]*=[ ]*", ""))
     }
     else if _rc {
         // Anything else is reported by syntax itself, as it always was.
-        syntax anything(name=vals equalok) [if] [in]
+        syntax [anything(name=vals equalok)] [if] [in]
     }
     sreturn local vals       `"`vals'"'
     sreturn local if_clause  `"`if'"'
@@ -2515,7 +2521,15 @@ program define _dash_process_segment, rclass
     // the mata: line, a double quote in it ended the string.  A token that
     // is no plot type is echoed through _dash_say, as written -- `dash
     // {bf:X} mpg weight' printed a bold X (P20-01).
-    gettoken plottype rest : seg_text
+    //
+    // The type ends at a blank or a comma, as twoway reads it: `twoway
+    // scatteri, name(x)' is refused for the values it lacks.  It was read
+    // up to a blank alone, so the comma became part of it and `dash
+    // scatteri, name(x)', `dash (pci, name(x))' and every other type with
+    // its comma glued on said "unrecognised plot type 'scatteri,'", r(198)
+    // (measured 24sep2026; test_parser.cscript P1A-68).  The comma is left
+    // in `rest', where it ends the varlist.
+    gettoken plottype rest : seg_text, parse(" ,")
     mata: _dash_expand_plottype(strlower(st_local("plottype")), "_pt_exp")
     local ptype "`_pt_exp'"
 
@@ -2680,6 +2694,21 @@ program define _dash_process_segment, rclass
             // Remove optional "y=" prefix
             local vals = regexr(strtrim(`"`s(vals)'"'), "^[a-zA-Z][a-zA-Z0-9_]*[ ]*=[ ]*", "")
             local expr `"`vals'"'
+            // No expression is refused in twoway's words: "expression
+            // required", r(100), and after a `y =', "nothing found where
+            // expression expected", r(111) -- with the comma glued, spaced
+            // or absent, in parentheses, after ||, or with only an if, an
+            // in or a weight (measured 24sep2026; P1A-71).  dash said
+            // "something required", r(100), for the first, and registered
+            // `function y =' with rc 0, drawn as an empty layer.
+            if `"`expr'"' == "" {
+                if `"`s(vals)'"' == "" {
+                    display as error "expression required"
+                    exit 100
+                }
+                display as error "nothing found where expression expected"
+                exit 111
+            }
         }
         else {
             local vals `"`s(vals)'"'
@@ -2764,75 +2793,82 @@ program define _dash_process_segment, rclass
         // dash used to keep word 1 and the last word and silently discard
         // everything between, so that command drew ONE series and half the
         // user's data vanished with no error and no warning.
-        if `"`varpart'"' != "" {
-            _dash_parse_varpart_std `varpart'
-            local vl = "`s(varlist)'"
-            local nv : word count `vl'
-            local yvar = word("`vl'", 1)
-            if `: list ptype in _pt_ts' {
-                // twoway tsline y1 [y2 ...]: EVERY variable is a series,
-                // each drawn against the time variable tsset set; there is
-                // no x to give.  Measured 23sep2026 from twoway's saved
-                // .gph: `tsline mpg turn' on tsset data is two lines, mpg
-                // and turn, each against t -- and dash drew mpg against
-                // turn, reading the last variable as the x.  Without tsset
-                // twoway refuses every form, r(111) ("time variable not
-                // set"), and so does dash (test_help_claims_1.cscript
-                // HC1-09).  tsrline, a range type, is read above.
-                local xvar `"`_dta[_TStvar]'"'
-                if `"`xvar'"' == "" {
-                    display as error "dash: `ptype' needs a time variable: " ///
-                        "tsset your data first, as twoway `ptype' does."
-                    exit(111)
-                }
-                // WP-19: one plot object per series, held to the plot limit
-                // before any is built, as the y variables below are.
-                if `nv' > 1 {
-                    _dash_limit, name(plots)
-                    if `nv' > r(value) {
-                        if `nsegs' > 1 _dash_plot_cap_refuse `r(value)' `r(ceiling)'
-                        else           _dash_plot_cap_refuse `r(value)' `r(ceiling)' `nv'
-                    }
-                }
-                local yvarlist "`vl'"
+        //
+        // No variable at all is twoway's refusal, "varlist required",
+        // r(100), which -syntax- gives in its own words.  The parse was
+        // skipped when there was nothing to parse, so `dash scatter ,
+        // name(g1)' registered a graph with no variables, rc 0 -- and line,
+        // connected, area, bar, spike, dropline, dot, the fits, the
+        // smoothers and tsline likewise -- and the bare `dash scatter' was
+        // refused as "no variables identified in plot specification",
+        // r(198) (measured 24sep2026; test_parser.cscript P1A-69).
+        _dash_parse_varpart_std `varpart'
+        local vl = "`s(varlist)'"
+        local nv : word count `vl'
+        local yvar = word("`vl'", 1)
+        if `: list ptype in _pt_ts' {
+            // twoway tsline y1 [y2 ...]: EVERY variable is a series,
+            // each drawn against the time variable tsset set; there is
+            // no x to give.  Measured 23sep2026 from twoway's saved
+            // .gph: `tsline mpg turn' on tsset data is two lines, mpg
+            // and turn, each against t -- and dash drew mpg against
+            // turn, reading the last variable as the x.  Without tsset
+            // twoway refuses every form, r(111) ("time variable not
+            // set"), and so does dash (test_help_claims_1.cscript
+            // HC1-09).  tsrline, a range type, is read above.
+            local xvar `"`_dta[_TStvar]'"'
+            if `"`xvar'"' == "" {
+                display as error "dash: `ptype' needs a time variable: " ///
+                    "tsset your data first, as twoway `ptype' does."
+                exit(111)
             }
-            else if `nv' >= 2 {
-                local xvar = word("`vl'", `nv')
-                local nyv = `nv' - 1
-                // WP-19: one plot object is built per y variable below, so
-                // a segment whose y variables alone pass the plot limit is
-                // refused here, before any of them is built.  In a graph
-                // of several segments only "more than the limit" is known.
-                if `nyv' > 1 {
-                    _dash_limit, name(plots)
-                    if `nyv' > r(value) {
-                        if `nsegs' > 1 _dash_plot_cap_refuse `r(value)' `r(ceiling)'
-                        else           _dash_plot_cap_refuse `r(value)' `r(ceiling)' `nyv'
-                    }
+            // WP-19: one plot object per series, held to the plot limit
+            // before any is built, as the y variables below are.
+            if `nv' > 1 {
+                _dash_limit, name(plots)
+                if `nv' > r(value) {
+                    if `nsegs' > 1 _dash_plot_cap_refuse `r(value)' `r(ceiling)'
+                    else           _dash_plot_cap_refuse `r(value)' `r(ceiling)' `nv'
                 }
-                local yvarlist ""
-                forvalues vi = 1/`nyv' {
-                    local _thisy = word("`vl'", `vi')
-                    local yvarlist `"`yvarlist' `_thisy'"'
-                }
-                local yvarlist = strtrim(`"`yvarlist'"')
             }
-            else {
-                // Every other type on this path takes a y AND an x (tsline,
-                // which takes its x from tsset, is read above).  Measured
-                // 22sep2026 with the console binary: `twoway bar price',
-                // `twoway scatter mpg', and spike, area, line, dropline,
-                // connected, dot, the fit and the smoother types all say
-                // "too few variables specified" r(102).  dash registered
-                // such a segment with rc 0 and the build then died in
-                // Python on the empty x column, r(7102).  Refused here,
-                // before any JSON is written.
-                display as error "dash: `ptype' requires a y and an x variable (got: `vl')"
-                exit(102)
-            }
-            local if_cl `"`s(if_clause)'"'
-            local in_cl `"`s(in_clause)'"'
+            local yvarlist "`vl'"
         }
+        else if `nv' >= 2 {
+            local xvar = word("`vl'", `nv')
+            local nyv = `nv' - 1
+            // WP-19: one plot object is built per y variable below, so
+            // a segment whose y variables alone pass the plot limit is
+            // refused here, before any of them is built.  In a graph
+            // of several segments only "more than the limit" is known.
+            if `nyv' > 1 {
+                _dash_limit, name(plots)
+                if `nyv' > r(value) {
+                    if `nsegs' > 1 _dash_plot_cap_refuse `r(value)' `r(ceiling)'
+                    else           _dash_plot_cap_refuse `r(value)' `r(ceiling)' `nyv'
+                }
+            }
+            local yvarlist ""
+            forvalues vi = 1/`nyv' {
+                local _thisy = word("`vl'", `vi')
+                local yvarlist `"`yvarlist' `_thisy'"'
+            }
+            local yvarlist = strtrim(`"`yvarlist'"')
+        }
+        else {
+            // Every other type on this path takes a y AND an x (tsline,
+            // which takes its x from tsset, is read above).  Measured
+            // 22sep2026 with the console binary: `twoway bar price',
+            // `twoway scatter mpg', and spike, area, line, dropline,
+            // connected, dot, the fit and the smoother types all say
+            // "too few variables specified" r(102).  dash registered
+            // such a segment with rc 0 and the build then died in
+            // Python on the empty x column, r(7102).  Refused here,
+            // before any JSON is written.
+            display as error "dash: `ptype' requires a y and an x variable (got: `vl')"
+            exit(102)
+        }
+        local if_cl `"`s(if_clause)'"'
+        local in_cl `"`s(in_clause)'"'
     }
 
     // Strip the "if"/"in" keyword prefix that syntax leaves in the macros.
@@ -3151,6 +3187,30 @@ program define _dash_formats_json
 
     c_local `out_macro'      `"{`parts'}"'
     c_local `datevars_macro' `"`datevars'"'
+end
+
+
+// ================================================================
+// _dash_empty_data  — the data file of a dashboard that exports no
+// variable
+// ================================================================
+// A dashboard whose graphs are all scatteri, pci, pcarrowi and function
+// draws from its own values, as twoway draws them with no data in memory.
+// jsonio needs a varlist, so dash.ado writes the file itself: jsonio's
+// layout holding no variable and no observation, which both renderers read
+// as an empty dataset (test_immediate_dashboards.py pins the same text).
+// `dash build' refused such a dashboard, "no variables identified across
+// registered graphs", r(198); the one-line form exported one observation
+// of the first variable in memory, which no layer read, and with no data
+// in memory was refused too (test_parser.cscript P1A-72).
+program define _dash_empty_data
+    version 16.0
+    args path
+    tempname fh
+    // quietly: `write replace' notes a file that is not there yet.
+    quietly file open `fh' using `"`path'"', write text replace
+    file write `fh' `"{"values":[],"variableIsString":{},"variableNames":[],"variableLabels":{},"valueLabelNames":{},"valueLabels":{},"numberOfRecords":0,"numberOfVariables":0}"' _n
+    file close `fh'
 end
 
 
@@ -3896,27 +3956,26 @@ program define _dash_render_immediate
     // by hand and did not know pcarrowi (WP-22).  pcscatter was on it, from
     // when it was parsed as literals; it takes four variables and has no
     // need.
+    //
+    // A graph that names no variable is drawn when EVERY plot in it is of
+    // that family (_dash_spec_types_in), and its data file holds no
+    // variable (_dash_empty_data).  One literal plot used to be enough, so
+    // a spec holding a scatteri beside a line with no variables was drawn
+    // and the render died in Python, r(7102) -- a spec dash no longer
+    // writes (P1A-69), but this program reads whatever spec it is handed
+    // (P1A-74).  And the file held ONE observation of the first variable
+    // in memory, a placeholder no layer read, so with no data in memory
+    // `dash scatteri 1 2 3 4, saving(f)' was refused here, where twoway
+    // draws it (measured 24sep2026; P1A-72).
     _dash_plottype_families
     local _varfree = 0
-    foreach _vf of local _pt_literal {
-        if strpos(`"`json_spec'"', `""type":"`_vf'""') > 0 local _varfree = 1
-    }
-    local _dash_placeholder = 0
-    if "`needed_vars'" == "" & `_varfree' {
-        // Nothing to serialise, but jsonio still needs a non-empty varlist, so
-        // send ONE observation of one variable, which the renderer will not
-        // read.  It used to send every observation of it: a function graph
-        // over ten million observations exported ten million values for
-        // nothing, and under the cell limit (WP-19) was refused for them.
-        capture unab _allv : _all
-        if _rc == 0 {
-            local needed_vars : word 1 of `_allv'
-            local _dash_placeholder = 1
-        }
-    }
     if "`needed_vars'" == "" {
-        display as error "dash: no variables identified in plot specification."
-        exit(198)
+        mata: st_local("_varfree", strofreal(_dash_spec_types_in( ///
+            st_local("json_spec"), st_local("_pt_literal"))))
+        if !`_varfree' {
+            display as error "dash: no variables identified in plot specification."
+            exit(198)
+        }
     }
 
     // ---- Serialize data via jsonio ----
@@ -3930,11 +3989,13 @@ program define _dash_render_immediate
     // "in_expr" promoted to the graph JSON by _dash_plot, and then each plot's
     // own, to that layer alone.
 
-    // Check jsonio
-    capture which jsonio
-    if _rc != 0 {
-        display as error "dash: jsonio is required but not found. Run dash_setup first."
-        exit(198)
+    // Check jsonio -- needed only when there is a variable to export.
+    if !`_varfree' {
+        capture which jsonio
+        if _rc != 0 {
+            display as error "dash: jsonio is required but not found. Run dash_setup first."
+            exit(198)
+        }
     }
 
     // ---- Resource limits (WP-19), before anything is exported ----
@@ -3948,25 +4009,28 @@ program define _dash_render_immediate
     _dash_limits_json
     local _dash_lim_json `"`r(json)'"'
     local _dash_nvars : word count `needed_vars'
-    local _dash_in ""
-    if `_dash_placeholder' & _N > 0 local _dash_in "in 1"
-    _dash_cell_cap `_dash_nvars' `=cond(`_dash_placeholder', min(_N, 1), _N)'
+    _dash_cell_cap `_dash_nvars'
 
     // Collect display formats, and transport date variables as
     // numbers so jsonio does not render them to text.
     _dash_formats_json "`needed_vars'" _dash_fmt_json _dash_date_vars
-    local _dash_saved_fmts ""
-    if `"`_dash_date_vars'"' != "" {
-        _dash_date_fmts_swap "`_dash_date_vars'"
+    if `_varfree' {
+        _dash_empty_data "`data_json_path'"
     }
-    quietly jsonio out `needed_vars' `_dash_in', ///
-        what(all) filenm("`data_json_path'") ///
-        metaprint(varnames varlabels vallabs labelnames)
+    else {
+        local _dash_saved_fmts ""
+        if `"`_dash_date_vars'"' != "" {
+            _dash_date_fmts_swap "`_dash_date_vars'"
+        }
+        quietly jsonio out `needed_vars', ///
+            what(all) filenm("`data_json_path'") ///
+            metaprint(varnames varlabels vallabs labelnames)
 
-    // Restore the user's formats immediately, whether or not
-    // jsonio succeeded: the data in memory is theirs.
-    if `"`_dash_date_vars'"' != "" {
-        _dash_date_fmts_restore "`_dash_date_vars'" "`_dash_saved_fmts'"
+        // Restore the user's formats immediately, whether or not
+        // jsonio succeeded: the data in memory is theirs.
+        if `"`_dash_date_vars'"' != "" {
+            _dash_date_fmts_restore "`_dash_date_vars'" "`_dash_saved_fmts'"
+        }
     }
 
     // jsonio returns non-zero _rc as part of normal operation (internal Stata
@@ -4754,16 +4818,40 @@ program define _dash_prepare_spec, rclass
 
     local all_vars = strtrim("`all_vars'")
 
-    if "`all_vars'" == "" {
-        display as error "`cmdname': no variables identified across registered graphs."
-        exit(198)
+    // No variable to export: every graph must draw from its own values --
+    // scatteri, pci, pcarrowi and function alone, which twoway draws with
+    // no data in memory -- and the data file then holds no variable
+    // (_dash_empty_data).  Such a dashboard was refused here whatever it
+    // held: after `dash scatteri 1 2, name(a1)', `dash build' said "no
+    // variables identified across registered graphs", r(198), saved and
+    // served (measured 24sep2026; test_parser.cscript P1A-72).  A graph of
+    // any other type that names no variable -- one dash no longer
+    // registers (P1A-69), but the registry is ordinary globals -- is still
+    // refused (P1A-74).  A KPI always names its variable.
+    local _novars = ("`all_vars'" == "")
+    if `_novars' {
+        _dash_plottype_families
+        forvalues k = 1/`ntok_reg' {
+            local gname : word `k' of `registry'
+            if "${dash_kpi_`gname'}" == "1" continue
+            mata: st_local("_gvf", strofreal(_dash_spec_types_in( ///
+                st_global("dash_json_" + st_local("gname")), ///
+                st_local("_pt_literal"))))
+            if !`_gvf' {
+                display as error "`cmdname': no variables identified across registered graphs."
+                exit(198)
+            }
+        }
     }
 
     // ---- serialize data via jsonio ----
-    capture which jsonio
-    if _rc != 0 {
-        display as error "dash: jsonio is required but not found. Run dash_setup first."
-        exit(198)
+    // jsonio is needed only when there is a variable to export.
+    if !`_novars' {
+        capture which jsonio
+        if _rc != 0 {
+            display as error "dash: jsonio is required but not found. Run dash_setup first."
+            exit(198)
+        }
     }
 
     // ---- resource limits (WP-19), before anything is exported ----
@@ -4781,18 +4869,23 @@ program define _dash_prepare_spec, rclass
     // Collect display formats, and transport date variables as
     // numbers so jsonio does not render them to text.
     _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars
-    local _dash_saved_fmts ""
-    if `"`_dash_date_vars'"' != "" {
-        _dash_date_fmts_swap "`_dash_date_vars'"
+    if `_novars' {
+        _dash_empty_data "`datapath'"
     }
-    quietly jsonio out `all_vars', ///
-        what(all) filenm("`datapath'") ///
-        metaprint(varnames varlabels vallabs labelnames)
+    else {
+        local _dash_saved_fmts ""
+        if `"`_dash_date_vars'"' != "" {
+            _dash_date_fmts_swap "`_dash_date_vars'"
+        }
+        quietly jsonio out `all_vars', ///
+            what(all) filenm("`datapath'") ///
+            metaprint(varnames varlabels vallabs labelnames)
 
-    // Restore the user's formats immediately, whether or not
-    // jsonio succeeded: the data in memory is theirs.
-    if `"`_dash_date_vars'"' != "" {
-        _dash_date_fmts_restore "`_dash_date_vars'" "`_dash_saved_fmts'"
+        // Restore the user's formats immediately, whether or not
+        // jsonio succeeded: the data in memory is theirs.
+        if `"`_dash_date_vars'"' != "" {
+            _dash_date_fmts_restore "`_dash_date_vars'" "`_dash_saved_fmts'"
+        }
     }
 
     capture confirm file "`datapath'"

@@ -92,6 +92,8 @@ SURFACES = {
             "test_adversarial.cscript:P20-01",
             "test_parser_integrity.cscript:P1B-13",
             "test_parser_integrity.cscript:P1B-14",
+            "test_parser.cscript:P1A-69",
+            "test_parser.cscript:P1A-74",
         ],
         "injection": [
             "test_adversarial.cscript:P2-79",
@@ -102,6 +104,7 @@ SURFACES = {
             "test_adversarial.cscript:P2-83",
             "test_adversarial.cscript:P19-07",
             "test_adversarial.cscript:P19-08",
+            "test_parser.cscript:P1A-75",
         ],
     },
     # `pcarrowi #y1 #x1 #y2 #x2 [(#clockpos)] ["label"] ...' -- a paired-
@@ -132,6 +135,7 @@ SURFACES = {
     "immediate_scatteri_pci_values": {
         "bypass": [
             "test_adversarial.cscript:P20-34",
+            "test_parser.cscript:P1A-70",
             "test/test_immediate_values.py::TestScatteriDrawsItsRecords::test_a_malformed_record_is_named",
             "test/test_immediate_values.py::TestPciDrawsItsRecords::test_a_malformed_record_is_named",
             "test/test_immediate_values.py::TestPciDrawsItsRecords::test_the_old_two_point_shape_is_named_not_redrawn",
@@ -606,6 +610,7 @@ SURFACES = {
     "function_plot_expression": {
         "bypass": [
             _M + "TestFunctionExpressionEncodings::test_the_layer_draws_nothing",
+            "test/test_immediate_dashboards.py::TestARejectedExpressionIsStillReported::test_with_data_or_none",
         ],
         "injection": [
             "test/test_server_function_security.py::TestAKeywordArgumentCannotExecute::test_the_standalone_renderer_does_not_either",

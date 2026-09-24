@@ -235,7 +235,35 @@ its point for {cmd:scatteri} and at its arrow's tail for {cmd:pcarrowi},
 placed by its clock position, else by {cmd:mlabposition()}, else at 3
 o'clock; a clock position that is not a whole number, such as 3.5, is drawn
 at 12 o'clock, where {cmd:twoway} draws it, with a note.  {cmd:pci} draws
-no labels, as {cmd:twoway pci} draws none, and says so.
+no labels, as {cmd:twoway pci} draws none, and says so; otherwise it is
+drawn as the immediate {cmd:pcspike} that {cmd:twoway pci} is: in
+{cmd:pcspike}'s colour and width, with a legend key as {cmd:pcspike} has.
+A list with no values at all -- the type alone, or with only an {cmd:if},
+an {cmd:in} or a weight -- is refused with {cmd:r(198)}, as {cmd:twoway}
+refuses it.  {cmd:if} and {cmd:in} do not reach the values, which are all
+drawn, as in {cmd:twoway}; and a list whose every value is missing draws
+nothing and says nothing, as {cmd:twoway} does.
+
+{pstd}
+{ul:Functions.}  {cmd:function} draws {it:y} = {it:f}({it:x}) over
+{cmd:range()}.  A value that is missing in Stata -- outside the function's
+domain, such as the square root of a negative number, or too large to
+hold, such as {cmd:1/0} -- is drawn as a gap, as {cmd:twoway} draws it:
+{cmd:sqrt(x)} over {cmd:range(-1 1)} is drawn from 0 to 1, and an
+expression missing everywhere draws nothing, in silence.  An expression
+{cmd:dash} does not evaluate draws nothing, and a note names its layer.
+With no expression, {cmd:function} is refused as {cmd:twoway}
+refuses it: {cmd:expression required}, {cmd:r(100)}, or after {it:y}
+{cmd:=}, {cmd:nothing found where expression expected}, {cmd:r(111)}.
+
+{pstd}
+{ul:Graphs that need no data.}  A graph whose plots are all
+{cmd:scatteri}, {cmd:pci}, {cmd:pcarrowi} or {cmd:function} draws from its
+own values, and needs no data in memory, as in {cmd:twoway}: it is drawn
+without any, and {cmd:dash build} builds a dashboard of such graphs, saved
+or served, exporting no variable.  Every other plot type takes variables,
+and is refused without them, as {cmd:twoway} refuses it:
+{cmd:varlist required}, {cmd:r(100)}.
 
 {pstd}
 {ul:Not drawn.}  Five {cmd:twoway} plot types are not drawn by {cmd:dash}:
