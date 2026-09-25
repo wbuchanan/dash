@@ -469,6 +469,7 @@ FUNCTIONS = {
  '_dash_refresh_unlinked': 'test/test_served_filter_move.py::TestTheUnlinkedRefresh::test_it_writes_the_rows_of_its_own_that_the_move_keeps',
  '_dash_refuse_oversized': 'test/test_resource_limits.py::TestAnOversizedDatasetIsRefused::test_over_the_limit_the_message_says_what_and_how',
  '_dash_refuse_overbytes': 'test/test_resource_limits.py::TestTheBytesOfTextAreLimited::test_over_the_limit_the_message_is_the_cells_limits',
+ '_dash_refuse_string_plot_vars': 'test/test_string_plot_variables.py::TestAStringPlotVariableIsRefused::test_in_both_modes',
  '_dash_text_bytes': 'test/test_resource_limits.py::TestTheBytesOfTextAreLimited::test_the_count_is_utf8_bytes_of_the_string_columns_only',
  '_dash_report_empty_layer': 'test/test_immediate_dashboards.py::TestTheReportHelpers::test_a_name_is_shown_as_text',
  '_dash_report_suboptions': 'test/test_axis_options.py::TestAxisScale::test_unsupported_scale_suboptions_are_reported',

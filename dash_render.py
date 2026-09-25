@@ -1069,6 +1069,19 @@ class DashLimitError(ValueError):
     """A dashboard over a limit dash refuses rather than clamps."""
 
 
+class DashSpecError(ValueError):
+    """A spec dash refuses to draw because a plot names a string variable.
+
+    twoway refuses a string x or y with r(109) -- its own varlist parsers
+    declare ``numeric`` (twoway_yxview_parse.class; histogram.ado and
+    kdensity.ado declare ``varname(numeric)``) -- and dash.ado's four
+    varlist parsers do the same before a spec is even built (GAPS2 G2).
+    This is the renderer's twin, for a spec that reached a renderer another
+    way: a hand-written spec, or one dash.ado wrote before this check
+    existed.
+    """
+
+
 def _dash_limits(build_options):
     """``{key: effective limit}`` for every key of :data:`_DASH_LIMITS`.
 
@@ -1134,6 +1147,42 @@ def _dash_refuse_oversized(rows, cols, limits, mode):
         f"dash embeds. Reduce the data in memory first (keep, drop, sample "
         f"or collapse, inside preserve/restore), or "
         f"{_dash_limit_hint('cells', 'a higher value')}.")
+
+
+def _dash_refuse_string_plot_vars(spec, string_vars, mode):
+    """Raise :class:`DashSpecError` when a plot names a string variable.
+
+    twoway refuses this with r(109) before it draws anything (GAPS2 G2);
+    dash.ado's four varlist parsers now refuse it the same way, so this is
+    for a spec that reached a renderer another way.  Only the plot-variable
+    keys of :data:`DashRenderer._VAR_KEYS` are checked: ``colorvar()``,
+    ``mlabel()``, ``hover()`` and ``by()`` take a string variable and are
+    never refused here.
+
+    Args:
+        spec:        The parsed master spec (``{"graphs": [...], ...}``).
+        string_vars: The names dash knows to be Stata string variables.
+        mode:        ``"dashboard"`` or ``"server app"``, for the message.
+    """
+    if not string_vars:
+        return
+    for g in (spec or {}).get("graphs", []) or []:
+        if not isinstance(g, dict):
+            continue
+        for p in g.get("plots", []) or []:
+            if not isinstance(p, dict):
+                continue
+            ptype = p.get("type", "")
+            for key in DashRenderer._VAR_KEYS:
+                v = p.get(key)
+                if v and v in string_vars:
+                    raise DashSpecError(
+                        f"dash: this {mode} names the string variable "
+                        f"{_dash_display(v)!r} as a plot variable of a "
+                        f"{_dash_display(ptype)} layer; twoway takes "
+                        f"numeric variables there (r(109)). colorvar(), "
+                        f"mlabel(), hover() and by() take a string "
+                        f"variable.")
 
 
 def _dash_text_bytes(df, string_vars):
@@ -21227,6 +21276,11 @@ class DashRenderer:
         _dash_refuse_overbytes(self.df, self.string_vars, self.limits,
                                "dashboard",
                                getattr(self, "_data_file_bytes", None))
+        # A string plot variable is refused here too (GAPS2 G2): dash.ado
+        # refuses it before export, and this is for a spec that reached
+        # the renderer another way.
+        _dash_refuse_string_plot_vars(self.master_spec, self.string_vars,
+                                      "dashboard")
         # Stata's data in memory, for lowess adjust and lpoly's grid.
         self.mapper.dataset = self.df
 
@@ -25118,6 +25172,19 @@ class ServerAppBuilder:
                 _dash_refuse_oversized(_shape[0], _shape[1], self.limits,
                                        "server app")
                 _report_dataset_shape(_shape[0], _shape[1], "server app")
+        # A string plot variable is refused here too (GAPS2 G2), before
+        # anything is embedded.  Unlike the size report above this is a
+        # correctness gate, not an optimisation, so it runs whatever the
+        # dataset's size: the metadata this reads (variableTypeIsString /
+        # variableIsString) is a small dict, never the row values, and
+        # _data() is cached so a build that also needs the size report or
+        # the qualifier columns parses the JSON only once.
+        _sd = self._data()
+        _sd = _sd.get("StataJSON", _sd)
+        _sisstr = dict(_sd.get("variableTypeIsString", {}) or {})
+        _sisstr.update(_sd.get("variableIsString", {}) or {})
+        _dash_refuse_string_plot_vars(
+            self.spec, {k for k, v in _sisstr.items() if v}, "server app")
         # The bytes of text: a string of N characters is at most 4N bytes
         # of UTF-8, so a shorter one cannot be over the limit and is not
         # measured; one that could be is measured, and counted only when

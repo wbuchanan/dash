@@ -230,8 +230,12 @@ type four, {it:y1 x1 y2 x2}; a fit or smooth takes one {it:y} and one
 {it:x}.  Any other count is refused as {cmd:twoway} refuses it, in its
 words and with its return code -- {cmd:rscatter mpg weight} is "rscatter
 requires 3 variables: mpg weight", r(102) -- before anything is
-registered.  So is a statistical plot whose sample {cmd:twoway} cannot
-draw: {cmd:lpoly} with no observations in its sample ("no observations",
+registered.  A string variable in a plot's varlist is refused the same
+way, with {cmd:twoway}'s own {cmd:r(109)} and words, before anything is
+registered or drawn -- every plot type above that takes variables, at
+every position.  {cmd:colorvar()}, {cmd:mlabel()}, {cmd:hover()} and
+{cmd:by()} are not plot variables and still take a string.  So is a
+statistical plot whose sample {cmd:twoway} cannot draw: {cmd:lpoly} with no observations in its sample ("no observations",
 r(2000)) or one, {cmd:lfit}, {cmd:lfitci} and {cmd:kdensity} with one
 ("insufficient observations", r(2001)), {cmd:fpfit} and {cmd:fpfitci}
 with none its {cmd:if} and {cmd:in} select, {cmd:mspline} and {cmd:mband}

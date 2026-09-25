@@ -358,7 +358,12 @@ and now matches Stata.
   so a variable named `__mlabel__y`, `_x_jit` or `top` now draws with its
   own values where it used to be read as label text or overwritten.
   (WP-28, G1)
-<!-- WP-28 G2 -->
+- A string variable named as a plot variable (`dash scatter make mpg`,
+  say) is refused with r(109), the same code and words `twoway` gives for
+  the same command, on every route and in both renderers -- previously it
+  was drawn as meaningless glyphs with no note, or crashed the render for
+  a fit or a histogram. `colorvar()`, `mlabel()`, `hover()` and `by()`
+  still take a string variable. (WP-28, G2)
 
 ### Removed
 
