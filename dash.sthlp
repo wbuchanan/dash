@@ -2810,7 +2810,12 @@ the working directory.  A scheme another package installed into
 {cmd:PLUS} is not read from there, deliberately: the letter directories
 are shared, so
 {cmd:dash} reads only its own translations and the working directory.
-Copy the file into the working directory instead.  A name carrying a
+Copy the file into the working directory instead.  The file is read the
+way Stata reads it: each line is {cmd:styletype element style}, with the
+style the third word, quoted when it holds blanks, as in
+{cmd:color background "255 0 0"} or {cmd:color p1 "26 71 111 %20"}.  A
+line that cannot be read that way is named once, with its line number,
+and skipped.  A name carrying a
 directory separator or {cmd:..} is refused.
 
 {pstd}

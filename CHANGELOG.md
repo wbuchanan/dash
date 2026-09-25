@@ -148,7 +148,16 @@ and now matches Stata.
 <!-- WP-28 B6 -->
 <!-- WP-28 B7 -->
 <!-- WP-28 C2 -->
-<!-- WP-28 D1 -->
+- A `.scheme` file in the working directory that wrote its colours the
+  way Stata's own schemes do -- `color background "255 0 0"` or
+  `color p1 "26 71 111 %20"` -- lost every such directive without a
+  warning, and `scheme(myquoted)` drew the scheme's own `color background`
+  and `color p` defaults in their place (measured on a copy of
+  `schemes/s1rcolor.scheme`: background `#d9e8f0`, p1 `#000000`, p2
+  `#000000`, 0 warnings). The value is now read as Stata reads it, so such
+  a scheme draws its declared colours and opacities (background `#ff0000`,
+  p1 `#1a476f` at 0.2, p2 `#00ff00` at 0.5), and a line dash cannot read is
+  named once with its line number. (WP-28, D1)
 <!-- WP-28 E1 -->
 <!-- WP-28 E2 -->
 <!-- WP-28 E3 -->

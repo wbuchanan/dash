@@ -3393,6 +3393,14 @@ class SchemeParser:
 
     All color values are translated to CSS hex strings via
     ``OptionTranslator.translate_mcolor()``.
+
+    A directive line is tokenised as Stata's own ``scheme.class`` reads it
+    (:189-226, ``_scheme_tokens``): the first two tokens are the key, the
+    third -- with surrounding quotes removed -- is the value, and any
+    token after it is ignored; a two-token line sets a class default.  A
+    quoted or compound-quoted string counts as one token even when it
+    holds blanks, as in ``color background "255 0 0"`` or
+    ``color p1 "26 71 111 %20"``.
     """
 
     _SCHEMES_DIR: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schemes")
@@ -3938,11 +3946,95 @@ class SchemeParser:
         _memo[real] = props
         return props
 
+    @staticmethod
+    def _scheme_tokens(line: str) -> "list[str]":
+        """Tokenise one scheme-file line the way Stata's own
+        ``scheme.class`` (:189-226) does: tabs become blanks, then
+        ``tokenize``.  A run of non-blank characters is one token; a
+        double-quoted string (``"..."``) or a compound-quoted string
+        (`` `"..."' ``) is one token with its quotes removed and its inner
+        whitespace runs collapsed to a single blank; either quote form left
+        unclosed reads to the end of the line, as ``_textbox_string_end``
+        does for a textbox string.  Measured 24sep2026:
+        ``symbolsize p small *medium`` tokenises as four tokens and the
+        value ``_parse_lines`` stores is ``small`` (an earlier reading of
+        the same grammar is ``scripts/extract_scheme_truth.py``'s
+        ``SchemeResolver._load``, :207-262).
+
+        dash's comment rule compares the first CHARACTER of the line
+        (``*foo`` is a comment here), where Stata's own reader compares the
+        first TOKEN; that has been dash's behaviour since this parser was
+        written and no shipped or measured scheme depends on the
+        difference, so this function does not narrow it.
+
+        Bounded by the line's own length: one left-to-right scan with an
+        index, never a backtracking regex over scheme-file text.
+        """
+        line = line.replace("\t", " ")
+        tokens: "list[str]" = []
+        i, n = 0, len(line)
+        while i < n:
+            while i < n and line[i] == " ":
+                i += 1
+            if i >= n:
+                break
+            if line[i] == "`" and i + 1 < n and line[i + 1] == '"':
+                end = line.find('"\'', i + 2)
+                inner = line[i + 2:] if end == -1 else line[i + 2:end]
+                i = n if end == -1 else end + 2
+                tokens.append(" ".join(inner.split()))
+            elif line[i] == '"':
+                end = line.find('"', i + 1)
+                inner = line[i + 1:] if end == -1 else line[i + 1:end]
+                i = n if end == -1 else end + 1
+                tokens.append(" ".join(inner.split()))
+            else:
+                j = i
+                while j < n and line[j] != " ":
+                    j += 1
+                tokens.append(line[i:j])
+                i = j
+        return tokens
+
+    def _warn_unreadable_scheme_line(self, path: str, lineno: int,
+                                     text: str,
+                                     _notes: "dict[str, Any]") -> None:
+        """One bounded warning for a line ``_scheme_tokens`` cannot read as
+        a ``styletype element style`` directive: named once, with its file
+        and line number, under the same ``_MAX_INCLUDE_NOTES`` bound
+        ``_include`` uses for its own notes.  Nothing is stored for such a
+        line.  The file's basename and the echoed line are both bounded
+        and printable (``_safe_name``, F-10): a hostile line or file name
+        cannot put control characters or a megabyte into the log.
+        """
+        seen = _notes.get("\0badlines", 0)
+        _notes["\0badlines"] = seen + 1
+        if seen < self._MAX_INCLUDE_NOTES:
+            warnings.warn(
+                f"dash scheme: line {lineno} of "
+                f"'{self._safe_name(os.path.basename(path))}' is not a "
+                f"`styletype element style' directive and was skipped: "
+                f"{self._safe_name(text)}",
+                UserWarning, stacklevel=3)
+        elif seen == self._MAX_INCLUDE_NOTES:
+            warnings.warn(
+                f"dash scheme: more lines in "
+                f"'{self._safe_name(os.path.basename(path))}' could not "
+                "be read; no more are noted.", UserWarning, stacklevel=3)
+
     def _parse_lines(self, path: str, _visited: set[str], _depth: int,
                      _memo: "dict[str, dict[str, str]]",
                      _notes: "dict[str, Any]") -> dict[str, str]:
         """The body of ``_parse_file``: read *path* and apply its lines in
-        order, splicing each #include in at its line."""
+        order, splicing each #include in at its line.
+
+        A directive's value is its THIRD token with its quotes removed, as
+        Stata's own ``scheme.class`` reads it (:189-226); a two-token line
+        sets a class default and any token after the third is ignored, as
+        Stata ignores it.  ``sequence`` and ``label`` lines are skipped, as
+        Stata skips them.  A line ``_scheme_tokens`` cannot read as such a
+        directive is named once, bounded, and nothing is stored for it.
+        """
         props: dict[str, str] = {}
         try:
             with open(path, encoding="utf-8", errors="replace") as fh:
@@ -3950,50 +4042,54 @@ class SchemeParser:
         except OSError as exc:
             raise ValueError(f"dash: cannot read scheme file '{path}': {exc}") from exc
 
-        for raw_line in lines:
-            line = raw_line.strip()
-            if not line or line.startswith("*"):
+        for lineno, raw_line in enumerate(lines, 1):
+            line = raw_line.replace("\t", " ").strip()
+            if not line or line.startswith("*") or line.startswith("//"):
                 continue
 
             # #include directive -- the included scheme's keys land here, so
             # later lines win over it and it wins over earlier ones.
             if line.startswith("#include"):
                 parts = line.split(None, 1)
-                if len(parts) == 2:
-                    parent_name = parts[1].strip()
-                    if _depth + 1 >= _MAX_SCHEME_INCLUDE_DEPTH:
+                if len(parts) != 2:
+                    self._warn_unreadable_scheme_line(path, lineno, line,
+                                                      _notes)
+                    continue
+                parent_name = parts[1].strip()
+                if _depth + 1 >= _MAX_SCHEME_INCLUDE_DEPTH:
+                    warnings.warn(
+                        f"dash scheme: '#include "
+                        f"{self._safe_name(parent_name)}' in "
+                        f"'{os.path.basename(path)}' is nested more than "
+                        f"{_MAX_SCHEME_INCLUDE_DEPTH} files deep; it and "
+                        f"the files it includes are not read.",
+                        UserWarning, stacklevel=2)
+                    continue
+                done = _notes.get("\0includes", 0)
+                _notes["\0includes"] = done + 1
+                if done >= _MAX_SCHEME_INCLUDES:
+                    if done == _MAX_SCHEME_INCLUDES:
                         warnings.warn(
-                            f"dash scheme: '#include "
-                            f"{self._safe_name(parent_name)}' in "
-                            f"'{os.path.basename(path)}' is nested more than "
-                            f"{_MAX_SCHEME_INCLUDE_DEPTH} files deep; it and "
-                            f"the files it includes are not read.",
-                            UserWarning, stacklevel=2)
-                        continue
-                    done = _notes.get("\0includes", 0)
-                    _notes["\0includes"] = done + 1
-                    if done >= _MAX_SCHEME_INCLUDES:
-                        if done == _MAX_SCHEME_INCLUDES:
-                            warnings.warn(
-                                f"dash scheme: more than "
-                                f"{_MAX_SCHEME_INCLUDES} #include lines; "
-                                f"from '#include {self._safe_name(parent_name)}' in "
-                                f"'{os.path.basename(path)}' on, they are "
-                                "not read.", UserWarning, stacklevel=2)
-                        continue
-                    props.update(self._include(
-                        parent_name, path, _visited, _depth, _memo, _notes))
+                            f"dash scheme: more than "
+                            f"{_MAX_SCHEME_INCLUDES} #include lines; "
+                            f"from '#include {self._safe_name(parent_name)}' in "
+                            f"'{os.path.basename(path)}' on, they are "
+                            "not read.", UserWarning, stacklevel=2)
+                    continue
+                props.update(self._include(
+                    parent_name, path, _visited, _depth, _memo, _notes))
                 continue
 
-            tokens = line.split()
+            tokens = self._scheme_tokens(line)
+            if tokens[0] in ("sequence", "label"):
+                continue
             if len(tokens) < 2:
-                continue  # malformed line — skip
-
-            category = tokens[0]
-            value = tokens[-1]
-            subcats = tokens[1:-1]
-            key = (category + " " + " ".join(subcats)).strip() if subcats else category
-            props[key] = value
+                self._warn_unreadable_scheme_line(path, lineno, line, _notes)
+                continue
+            if len(tokens) == 2:
+                props[tokens[0]] = tokens[1]
+            else:
+                props[tokens[0] + " " + tokens[1]] = tokens[2]
 
         return props
 

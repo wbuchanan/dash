@@ -1526,7 +1526,16 @@ class TestSchemeIncludes:
         # The values reached the running app, as the text written ...
         props = ns["_DASH_SCHEME"]._props
         assert props["color background"] == payload
-        assert props["color heading"] == heading
+        # WP-28 GAPS2 D1: SchemeParser._scheme_tokens now reads a directive's
+        # value as Stata's own scheme.class does -- a leading `"' opens a
+        # quoted token, and one left unclosed (as `heading' is here) reads
+        # to the end of the line with the opening quote stripped.  The old
+        # reader never interpreted quotes at all, so it kept the leading
+        # `"' as ordinary text; that was the bug this gap closes, not a
+        # security property, so the value is still data either way (the
+        # assertions above and below, that nothing executes and nothing
+        # reaches the document unescaped, are unchanged and still hold).
+        assert props["color heading"] == heading[1:]
         # ... and no model of the served document holds either, where a
         # colour from the same file does reach it (the reader can see it).
         assert _holding(doc, "#abcdef") == [("figure",

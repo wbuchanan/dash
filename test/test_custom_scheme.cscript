@@ -64,6 +64,12 @@
 *!          prints it once.  Measured before the fix (S3 batch): twice on
 *!          the immediate route and the registered graph, where the
 *!          build's scheme and the graph's were parsed separately
+*!   CQ-01  scheme(myquoted) (s1rcolor with `color background "255 0 0"')
+*!          rc 0, no UserWarning, q1.html carries #ff0000 (WP-28 GAPS2 D1)
+*!   CQ-02  the same with `color background "255 0 0 %50"' (myquoted50)
+*!          into q2.html: #ff0000 present, no warning
+*!   CQ-03  scheme(myp1) (s1rcolor plus an appended `color p1 "31 119
+*!          180"' line) into q3.html: #1f77b4 present, no warning
 *!
 *! Every render is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.  The session
@@ -102,6 +108,7 @@ local cs_dir     "`c(tmpdir)'dash_cs_wd"
 capture mkdir "`cs_dir'"
 
 capture mata: mata drop _cs_write_theme()
+capture mata: mata drop _cs_write_quoted()
 capture mata: mata drop _cs_scan()
 mata:
 // Copy `src' to `dst' with the `color background' directive replaced by
@@ -126,6 +133,38 @@ real scalar _cs_write_theme(string scalar src, string scalar dst)
     _unlink(dst)
     fh = fopen(dst, "w")
     for (i = 1; i <= rows(L); i++) fput(fh, L[i])
+    fclose(fh)
+    return(n)
+}
+
+// WP-28 GAPS2 D1: copy `src' to `dst'; when `bgline' is not empty, replace
+// the `color background' directive with it verbatim (quotes and all, as
+// in `color background      "255 0 0"'); when `extra' is not empty,
+// append it as one more line.  Returns the number of `color background'
+// lines replaced (0 when `bgline' is empty, as for myp1.scheme).
+real scalar _cs_write_quoted(string scalar src, string scalar dst,
+    string scalar bgline, string scalar extra)
+{
+    string colvector L
+    string scalar    c
+    real scalar      i, fh, n
+    L = cat(src)
+    n = 0
+    if (bgline != "") {
+        for (i = 1; i <= rows(L); i++) {
+            if (strpos(L[i], "color background") == 1) {
+                c = substr(L[i], 17, 1)
+                if (c == " " | c == char(9)) {
+                    L[i] = bgline
+                    n = n + 1
+                }
+            }
+        }
+    }
+    _unlink(dst)
+    fh = fopen(dst, "w")
+    for (i = 1; i <= rows(L); i++) fput(fh, L[i])
+    if (extra != "") fput(fh, extra)
     fclose(fh)
     return(n)
 }
@@ -541,12 +580,59 @@ _cs_log CS-15 "`lg'" "`n15b'" 1
 _cs_done CS-15 "each unresolvable #include is noted once per build, on every route, as twoway notes it once"
 
 // ----------------------------------------------------------------
+// CQ-01..CQ-03 (WP-28 GAPS2 D1): a working-directory scheme written with
+// Stata's own quoted RGB and %opacity is read, not dropped without a
+// warning.  myquoted.scheme and myquoted50.scheme are s1rcolor with the
+// `color background' line replaced by a quoted triplet, with and without
+// %opacity; myp1.scheme is s1rcolor plus an appended `color p1' line.
+// Measured before the fix: SchemeParser._parse_lines took the last
+// whitespace-split token as the value, so `color background "255 0 0"'
+// landed under the malformed key `color background "255 0', mytheme's
+// own #123456 fixture is untouched by this, and the quoted-scheme pages
+// carried s1rcolor's own background (#000000) and its `color p1' default
+// instead of #ff0000 / #1f77b4.
+// ----------------------------------------------------------------
+mata: _cs_write_quoted(st_local("cs_src"), "myquoted.scheme", ///
+    "color background      " + char(34) + "255 0 0" + char(34), "")
+mata: _cs_write_quoted(st_local("cs_src"), "myquoted50.scheme", ///
+    "color background      " + char(34) + "255 0 0 %50" + char(34), "")
+mata: _cs_write_quoted(st_local("cs_src"), "myp1.scheme", "", ///
+    "color p1 " + char(34) + "31 119 180" + char(34))
+
+capture erase "q1.html"
+_cs_run "" `"dash scatter mpg weight, scheme(myquoted) saving(q1.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect CQ-01 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_log CQ-01 "`lg'" "UserWarning" 0
+_cs_page CQ-01 "q1.html" "#ff0000" 1
+_cs_done CQ-01 "scheme(myquoted), a quoted color background directive: rc 0, no warning, #ff0000 drawn"
+
+capture erase "q2.html"
+_cs_run "" `"dash scatter mpg weight, scheme(myquoted50) saving(q2.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect CQ-02 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_log CQ-02 "`lg'" "UserWarning" 0
+_cs_page CQ-02 "q2.html" "#ff0000" 1
+_cs_done CQ-02 "scheme(myquoted50), a quoted color background directive with %opacity: rc 0, no warning, #ff0000 drawn"
+
+capture erase "q3.html"
+_cs_run "" `"dash scatter mpg weight, scheme(myp1) saving(q3.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect CQ-03 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_log CQ-03 "`lg'" "UserWarning" 0
+_cs_page CQ-03 "q3.html" "#1f77b4" 1
+_cs_done CQ-03 "scheme(myp1), an appended quoted color p1 directive: rc 0, no warning, #1f77b4 drawn"
+
+// ----------------------------------------------------------------
 // Restore the session, leave the working directory as it was found
 // ----------------------------------------------------------------
 capture set scheme `cs_scheme0'
 capture dash clear
 cd "`cs_home'"
-foreach f in a.html b.html c.html c15.py cs15inc.scheme mytheme.scheme scheme-zzdashtest.scheme {
+foreach f in a.html b.html c.html c15.py cs15inc.scheme mytheme.scheme scheme-zzdashtest.scheme q1.html q2.html q3.html myquoted.scheme myquoted50.scheme myp1.scheme {
     capture erase "`cs_dir'/`f'"
 }
 capture rmdir "`cs_dir'"
