@@ -509,7 +509,8 @@ The regeneration rewrites the whole file: verify it record by record, never as "
 only" (rule R5): `python3 -c "import json,subprocess; old=json.loads(subprocess.run(['git','show','HEAD:test/fixtures/stat_truth.json'],capture_output=True,text=True).stdout); new=json.load(open('test/fixtures/stat_truth.json')); old.pop('_meta'); new.pop('_meta'); new.pop('histogram_edge'); assert old==new, [k for k in old if old[k]!=new.get(k)]"` must print nothing (every pre-existing record is unchanged; the old `_meta` keys are present in the new `_meta` beside the four provenance keys). A changed value in another section means Stata or its data changed and must be reported, not committed silently.
 
 **The certification scripts** (05-05) run through the two-line driver of `sections/BRIEF.md`
-"Running one cscript" (`<repo>` = `/Users/billy/Desktop/Programs/StataPrograms/d/dash`):
+"Running one cscript" (`<repo>` is the root of the tree under test: this section's worktree
+`<path>/wp28-s05`, or the main checkout when the merger reruns the script):
 
 ```
 printf 'cd "%s/test"\ndo "%s/test/%s"\n' "<repo>" "<repo>" "test_e2e_filters.cscript" > /tmp/dash-s05/run_test_e2e_filters.do

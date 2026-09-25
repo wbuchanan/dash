@@ -1,8 +1,8 @@
 # UltraPlan: WP-28 — close 22 GAPS2 gaps · Master Technical Plan
 
 > Generated: 2026-09-25
-> Phase: 3/6 - PLAN (Step 3b: Technical Plan)
-> Sections: 19 | Tasks: 159 | Parallel batches: 4
+> Phase: 6/6 - OUTPUT (complete: reviewed in Phase 4, fixed, validated in Phase 5; see `VALIDATE.md` and `SUMMARY.md`)
+> Sections: 19 | Tasks: 205 | Parallel batches: 4
 > For plain-English requirements see `PRD.md`; for decisions `DISCOVERY.md`; for measurements `RESEARCH.md` and `research/`.
 
 ---
@@ -232,4 +232,51 @@ Section 19, after every other section has merged and the full suites are green.
 
 ## Review notes
 
-<!-- Populated in Phase 4 (REVIEW). -->
+Phase 4 (2026-09-25). Three parallel reviewers read every plan file against the repository at `91d97be`:
+
+| Report | Scope | Findings |
+|---|---|---|
+| `review/consistency.md` | naming, contracts, dependencies, shared files | 36 (7 critical, 13 major, 16 minor) |
+| `review/feasibility.md` | task schema, order, scope, verification, risk, UX, simplification, checkpoints | 51 (6 critical, 12 major, 32 minor, 1 compliant) |
+| `review/requirements-security.md` | GAPS2 plan-step coverage, decision compliance, security, edge cases | 24 (1 critical, 6 major, 17 minor) |
+
+**111 findings** in all. `review/DECISIONS.md` D1-D10 resolved the contested points; refinement questions Q24-Q31 (DISCOVERY.md) added D11-D14. The fixer pass then rewrote every section file to them.
+
+### What was fixed
+
+- **Commits versus tasks (D1).** Every test-only commit removed; one commit per gap, one per shared component; failing output recorded at 91d97be and quoted as the CHANGELOG old value (Q24).
+- **CHANGELOG markers (D2)** placed per list; every closing task replaces its own marker(s) with lines ending `(WP-28, <ID>)`.
+- **BUGS.md Resolution form (D3)** made one form everywhere: `- Resolution: Fixed <ddmonyyyy> (WP-28, <ID>). … Pinned by …`, appended at the end of the file.
+- **Batches and dependencies (D4)** recut: S04/S05 after S03; S14 after S07; S15 after S13; S11/S12 into batch 3; merge orders fixed inside each batch; the shared-function contracts (hover, axis spec, `_apply_colorvar`, the KPI marker, the node-runner names, the copy-list anchors) written identically into every section that touches them.
+- **Merge rules R1-R6 (D5)**, **the Stata slot wrapper (D6)**, **the XML schema (D7)**: CDATA everywhere it is needed (and the five files the mechanical pass had corrupted repaired), 3-8-word names, ≤ 3 files, the twenty oversized tasks split, ids renumbered.
+- **Checkpoints (D8)**: S14's checkpoint removed; a Chrome approval added to S10; a residual-approval checkpoint added to S19; S18's kept last.
+- **Risk (D9)**: S09 and S14 red; distribution 4 green, 9 yellow, 6 red.
+- **Specific corrections (D10)** and the security and edge-case minors, each as a TDD stub in its section.
+- **One certification script (D11)**, **fixture provenance stamps (D12)**, **third-party schemes out (D13)**, **AGENTS.md invariants (D14)**.
+
+### Corrections found by the cross-check before the fixer pass (2026-09-25, resumed session)
+
+- **D2 had been misread** in the resumed session's first brief: the markers belong in the release's existing top-level lists (`### Results that change` under a new bold group `**WP-28 (GAPS2 audit, 25sep2026)**`, `### Changed behaviour…`, `### Requirements`) plus a new `### Fixed in WP-28` heading for F1, G3, G5 and E14's served items; every WP-28 line ends `(WP-28, <ID>)`.
+- **A single certification script cannot be handed to the slot wrapper**: the runner changes into `test/` first, so each section runs its script through a two-line driver do-file in its scratch directory.
+- **The `%tm` probe's ticks** are 492(3)501 (sp500 is 2001), texts `2001m1 2001m4 2001m7 2001m10`.
+- **A third hygiene pin exists** (`with_probes == 13`, :315); S02 states whether the new script changes it.
+- **Commits happen on the worktree branch** (`s3-bugs` cannot be checked out in a second worktree); the merger lands each commit on `s3-bugs` in the batch's merge order.
+- **`_MUST_WARN` entries** are edited by the section whose gap silences them (S12, S14, S18), every key kept; index.md R6 rewritten.
+- **Step 0 gains 0a and 0b**: the slot wrapper is committed before any worktree is created, and a `make cert` baseline is timed for D11's comparison.
+
+### Orchestrator rulings made in the fixer pass (not covered by a DECISIONS item)
+
+- D6's `flock` wording is superseded by `sections/index.md` step 0's `mkdir` slot wrapper (noted under D6).
+- Under D11, G2's generated cases (DISCOVERY Q16) live as a generated block inside `test/test_adversarial.cscript`; `scripts/gen_string_varlists_cscript.py` rewrites only that block.
+- S06's optional d3colors SVG comparison task is deleted rather than moved: D13 excludes third-party scheme files.
+- The hygiene pins after WP-28 are 66 (`_CSCRIPTS`) and 48 (`names`), set by S02 alone.
+- Refinement Q25 is applied as "regenerate the demo pages, do not commit them": no `.html` is tracked (`.gitignore`, `git ls-files`), and a root `.html` would fail `test_packaging.py`'s allowlist.
+- Every section keeps its "Review amendments" block, with its closing sentence changed to say the text below conforms.
+
+### Mechanical validation
+
+A read-only validator (task XML, ids, names, files, `<done>`, headings, the amendments block, naming drift, Stata-run rules, the truth-script blocks, checkpoint positions, cross-references, manifest agreement) ran before and after the pass: **207 errors and 43 warnings before; 0 errors and 14 warnings after**, the warnings being line ranges that look like task ids (`mpg 12-41`, `scale.class:19-27`). Tasks went from 160 to **205** (49 names shortened, 18 `(new)` annotations removed, 7 hidden fourth files split out, the 20 oversized tasks split, S14's checkpoint removed, the S10 Chrome checkpoint and the S19 residual checkpoint added, S06's optional d3colors task deleted). The full table is `VALIDATE.md` §9.
+
+### Sections modified
+
+All nineteen section files, `sections/BRIEF.md`, `sections/index.md`, this file, `PRD.md` §7, and one note in `review/DECISIONS.md`.

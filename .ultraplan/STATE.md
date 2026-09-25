@@ -1,4 +1,4 @@
-# UltraPlan State: dash — close 23 GAPS2 gaps
+# UltraPlan State: dash — close 22 GAPS2 gaps
 
 > Auto-managed by UltraPlan. Do not edit manually.
 > This file enables session resume and tracks all activity.
@@ -7,10 +7,10 @@
 
 ## Current Position
 
-- **Phase:** 4 of 6
-- **Phase name:** 4-REVIEW
-- **Status:** in_progress
-- **Last activity:** 2026-09-25 - Phase 4 REVIEW in progress: 3 review reports written (111 findings), review/DECISIONS.md written, refinement batches A and B answered (Q24-Q31; DECISIONS D11-D14); the fixer pass was INTERRUPTED by the API session limit (resets 8:10am America/New_York)
+- **Phase:** 6 of 6
+- **Phase name:** 6-OUTPUT
+- **Status:** complete
+- **Last activity:** 2026-09-25 - Plan finalized: fixer pass applied to all 19 sections (205 tasks), VALIDATE.md and SUMMARY.md written
 
 <!-- Phase names: 1-UNDERSTAND, 2-RESEARCH, 3-PLAN, 4-REVIEW, 5-VALIDATE, 6-OUTPUT -->
 <!-- Status values: not_started, in_progress, complete -->
@@ -30,7 +30,7 @@ C4, E3, E14, G2, G3, G5, G6, G16.
 ## Progress
 
 ```
-[=====     ] Phase 4/6: REVIEW - in_progress
+[==========] Phase 6/6: OUTPUT - COMPLETE
 ```
 
 | Phase | Name | Status | Started | Completed |
@@ -38,9 +38,9 @@ C4, E3, E14, G2, G3, G5, G6, G16.
 | 1 | UNDERSTAND | complete | 2026-09-25 | 2026-09-25 |
 | 2 | RESEARCH | complete | 2026-09-25 | 2026-09-25 |
 | 3 | PLAN | complete | 2026-09-25 | 2026-09-25 |
-| 4 | REVIEW | in_progress | 2026-09-25 | |
-| 5 | VALIDATE | not_started | | |
-| 6 | OUTPUT | not_started | | |
+| 4 | REVIEW | complete | 2026-09-25 | 2026-09-25 |
+| 5 | VALIDATE | complete | 2026-09-25 | 2026-09-25 |
+| 6 | OUTPUT | complete | 2026-09-25 | 2026-09-25 |
 
 ---
 
@@ -53,6 +53,19 @@ C4, E3, E14, G2, G3, G5, G6, G16.
 | 3 | 2026-09-25 | Phase 2 | RESEARCH complete: 5 subagents (3 codebase, 1 web, 1 Stata docs), 12 topics, 4 conflicts resolved, approved |
 | 4 | 2026-09-25 | Phase 3 | PLAN complete: PRD 10/10 approved; 19 sections, 159 tasks, 4 batches written by 10 parallel agents |
 | 5 | 2026-09-25 | Phase 4 (partial) | 3 reviewers: 111 findings (14 critical, 31 major, 65 minor); DECISIONS.md D1-D10; refinement Q24-Q27 answered; 4 of 5 fixer agents killed by the session limit before editing; sections 15-18 fixer status unknown |
+| 6 | 2026-09-25 | Phase 4 (resumed) | Refinement Q28-Q31 → D11-D14; five parallel fixer agents (groups A-E) applied all 111 findings as adjusted by D1-D14 to the 19 sections, BRIEF, index, PLAN, PRD §7; the five files the mechanical CDATA pass had corrupted repaired; tasks split and renumbered to 205; mechanical validator clean (0 errors, 14 line-range warnings; 207 errors before); review notes written |
+| 7 | 2026-09-25 | Phase 5 | VALIDATE complete: 93 GAPS2 plan steps of the 22 gaps traced (82 covered, 2 amended, 9 excluded by decision, 0 partial, 0 missing); 49 of 49 symptoms have a failing-first test; Q1-Q31 compliance with no contradiction; 46 tasks beyond the gap set approved; 9 exclusions recorded |
+| 8 | 2026-09-25 | Phase 6 | OUTPUT complete: SUMMARY.md written; all files finalized |
+
+---
+
+## Key measured facts (carry these forward)
+
+- Baseline `91d97be` on `s3-bugs`: 65 certification scripts, hygiene pins 65/47; after WP-28 one new script (`test/test_gaps2_truth.cscript`), pins 66/48, set by S02 alone.
+- Stata's Python is `/opt/anaconda3/bin/python3` (3.13.9, bokeh 3.8.0, pandas 2.3.3, numpy 2.3.5); the development interpreter is 3.14.5 / bokeh 3.9.0; the declared floor becomes Python 3.13, Bokeh 3.8, pandas 2.3, numpy 2.3 (K2).
+- No `.html` page is tracked (`.gitignore` `*.html`): the closeout regenerates the demo pages and does not commit them (Q25 corrected).
+- Concurrent Stata sessions can drop `python_exec` from `stata19.rc`; every run goes through `scripts/stata_slot.sh` (three `mkdir` slots).
+- `_FIELD` in `test/test_tracking_documents.py:101` reads `- Resolution:`; the WP-28 form is `- Resolution: Fixed <ddmonyyyy> (WP-28, <ID>). …`.
 
 ---
 
@@ -64,6 +77,6 @@ C4, E3, E14, G2, G3, G5, G6, G16.
 
 ## Resume Instructions
 
-**Resume from:** Phase 4, step 4d (apply fixes)
-**Resume action:** (1) DONE in the main session: index.md and PLAN.md revised for D4-D9 (batches, dependencies, risk, merge rules, stata_slot.sh step 0); BRIEF.md revised for D1, D5, D6, D7; every section file carries a binding "Review amendments" block after its header with the corrected batch/dependencies/risk/commit rule and its specific D10/Q24-Q27 items, and its XML fields are CDATA-wrapped. (2) STILL TO DO — the detailed fixer pass per `review/DECISIONS.md` over the five file groups: A = BRIEF.md, index.md, PLAN.md, PRD.md §7, section-01, section-19; B = sections 02-06; C = sections 07-10; D = sections 11-14; E = sections 15-18 — one agent per group, or sequentially in the main session; each group also applies the Q24-Q27 refinement answers recorded at the end of DISCOVERY.md (Q24 → every section's task 1 and closing task; Q25 → S19 regen task; Q26 → S12 and S17; Q27 → S09). (3) Refinement batch B is answered (Q28-Q31 → DECISIONS D11-D14); the fixer pass applies them. (4) Re-count tasks (`grep -c '<task type=' sections/section-*.md`), update index.md and PLAN.md counts and risk distribution (4 green, 9 yellow, 6 red), verify batches per DECISIONS D4. (5) Write the "Review notes" section into PLAN.md (self-review counts, auto-fixed items, refinement Q&A, sections modified). (6) Proceed to Phase 5 VALIDATE (`review/requirements-security.md` already holds the 22-gap plan-step coverage table to seed the traceability matrix).
-**Resume context:** Focused-discovery mode (GAPS2.md is the discovery record; ask only open decisions)
+**Resume from:** none — the plan is complete.
+**Resume action:** To execute, follow `SUMMARY.md` "How to execute" (index.md step 0 first). To change the plan, run `/ultraplan update`.
+**Resume context:** Focused-discovery mode (GAPS2.md is the discovery record)

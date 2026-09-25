@@ -337,8 +337,9 @@ reading) already pins sttrans's `"26 71 111 %20"` as `#1a476f` at opacity 0.2. N
 added, so no `git add -f` and no `_meta` stamp is needed.
 
 The one Stata run of the section (06-03) is `test/test_custom_scheme.cscript` alone, through
-the two-line driver of `sections/BRIEF.md` "Running one cscript" (`<repo>` =
-`/Users/billy/Desktop/Programs/StataPrograms/d/dash`):
+the two-line driver of `sections/BRIEF.md` "Running one cscript" (`<repo>` is the root of
+the tree under test: this section's worktree `<path>/wp28-s06`, or the main checkout when the
+merger reruns the script):
 
 ```
 printf 'cd "%s/test"\ndo "%s/test/%s"\n' "<repo>" "<repo>" "test_custom_scheme.cscript" > /tmp/dash-s06/run_test_custom_scheme.do
