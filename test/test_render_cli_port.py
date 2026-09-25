@@ -21,6 +21,7 @@ import sys
 import tempfile
 
 import pandas as pd
+import pytest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.join(_HERE, "..")
@@ -148,29 +149,35 @@ class TestPortReachesTheGeneratedApp:
         dr.main(spec, data, str(out), mode="server", port=8500)
         assert _bound_port(out.read_text(), monkeypatch) == 8500
 
-    def test_an_out_of_range_port_is_clamped_not_embedded_raw(
+    def test_an_out_of_range_port_is_refused_not_embedded(
             self, tmp_path, monkeypatch):
-        """A port below 1024 or above 65535 cannot be bound: whatever main()
-        is handed, the app binds the nearest port it can."""
+        """GAPS2 F1: a port below 1024 or above 65535 used to be clamped
+        to the nearest bindable one -- so `python app.py --port 80' served
+        on 1024, silently -- instead of being refused.  Whatever main() is
+        handed, it now raises and writes nothing."""
+        import argparse
         spec, data = _write_inputs(tmp_path)
-        for given, bound in ((99999, 65535), (80, 1024)):
+        for given in (99999, 80):
             out = tmp_path / ("app5_%d.py" % given)
-            dr.main(spec, data, str(out), mode="server", port=given)
-            assert _bound_port(out.read_text(), monkeypatch) == bound, given
+            with pytest.raises(argparse.ArgumentTypeError):
+                dr.main(spec, data, str(out), mode="server", port=given)
+            assert not out.exists(), given
 
-    def test_an_out_of_range_port_in_build_options_is_clamped_too(
+    def test_an_out_of_range_port_in_build_options_is_refused_too(
             self, tmp_path, monkeypatch):
         """build_options['port'] takes the other road into the app: the
-        builder reads it with int() alone, not through main()'s clamp, so
-        only the app's own launcher stands between it and the socket
-        (WP-24).  Whatever the spec says, the app binds a port it can."""
+        builder used to read it with int() alone, not through main()'s
+        clamp (WP-24), and pass it straight through unbound-checked.  It
+        now raises the same way (GAPS2 F1)."""
+        import argparse
         data = tmp_path / "data6.json"
         data.write_text(json.dumps(make_data_json(_DF)))
-        for given, bound in (("99999", 65535), ("80", 1024)):
+        for given in ("99999", "80"):
             spec = tmp_path / ("spec6_%s.json" % given)
             s = json.loads(json.dumps(_SPEC))
             s["build_options"]["port"] = given
             spec.write_text(json.dumps(s))
             out = tmp_path / ("app6_%s.py" % given)
-            dr.main(str(spec), str(data), str(out), mode="server")
-            assert _bound_port(out.read_text(), monkeypatch) == bound, given
+            with pytest.raises(argparse.ArgumentTypeError):
+                dr.main(str(spec), str(data), str(out), mode="server")
+            assert not out.exists(), given

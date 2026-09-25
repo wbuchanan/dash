@@ -391,20 +391,13 @@ under Results that change, the behaviour changes and the floor sit in
 their own lists.
 
 <!-- WP-28 E14 served -->
-<!-- WP-28 F1 -->
-<!-- WP-28 G3 -->
-<!-- WP-28 G5 -->
-
-### Fixed in WP-28
-
-- A Unicode variable name (`größe`) now works in `filter()`, `dash kpi`,
-  `by()`, `hover()` and `colorvar()`, in both the saved page and the
-  served app: `filter()` and `dash kpi` used to refuse it with r(198),
-  and the renderers drew no panels, tooltip field, widget or colours for
-  it, in silence. (WP-28, G5)
-
-### Fixed in WP-28
-
+- `dash serve` returns r(198) and says why when no server started -- the
+  port is in use, or the app stopped before it answered `/health` -- where
+  it returned 0 after the app had died on process stderr; the server's
+  address is printed once `/health` answers and the app's own output
+  reaches the Results window, bounded; `--port` outside 1024-65535 is
+  refused by `dash_render.py`, `main()`, a `build_options` port and the
+  generated app instead of being moved (80 served on 1024). (WP-28, F1)
 - The saved page's `$dash_max_cells` limit counts what the page will
   actually embed, not every exported variable times every observation: a
   graph made only of computed layers (`histogram`, `kdensity`, a fit or a
@@ -418,6 +411,11 @@ their own lists.
   reports embedded bytes the same way. The served app's count is
   unchanged, and its refusal now says a served app embeds every
   observation of every variable it uses. (WP-28, G3)
+- A Unicode variable name (`größe`) now works in `filter()`, `dash kpi`,
+  `by()`, `hover()` and `colorvar()`, in both the saved page and the
+  served app: `filter()` and `dash kpi` used to refuse it with r(198),
+  and the renderers drew no panels, tooltip field, widget or colours for
+  it, in silence. (WP-28, G5)
 
 ### Fixed after WP-27 (the S3 batch, 24sep2026)
 

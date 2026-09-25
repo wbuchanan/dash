@@ -7583,9 +7583,26 @@ program define _dash_serve
     if "`no_browser_flag'" != "" {
         python: sys.argv.append("--no-browser")
     }
+    // GAPS2 F1: dash serve used to report success (rc 0) whatever the
+    // launched app actually did -- a port already held by another program
+    // failed only on the child's own process stderr, unseen here, after
+    // about 1.7 seconds.  _dash_srv_rep is a dict shared by reference with
+    // the executed module (a `python:' line inside an ado program takes
+    // one statement per line and no compound statement, so a try/except
+    // cannot be written here, and an exception escaping run_path is
+    // r(7102) plus a traceback -- the opposite of a clean message).
+    // dash_render.py's __main__ writes _dash_launch_app's failure text
+    // into this dict instead of raising, when the dict is present.
+    python: _dash_srv_rep = {}
     // Assign the result.  A single-line `python:' echoes the value of the
     // expression, and run_path returns the module globals dict, so this
     // line used to dump dash_render.py's whole namespace into the Stata log
     // on every render -- roughly 10 KB of noise per command.
-    python: _dash_serve_ns = runpy.run_path("`_py_render'", run_name="__main__")
+    python: _dash_serve_ns = runpy.run_path("`_py_render'", init_globals={"_dash_launch_report": _dash_srv_rep}, run_name="__main__")
+    python: from sfi import Macro as _dash_srv_M
+    python: _dash_srv_M.setLocal("_srv_err", str(_dash_srv_rep.get("error", ""))[:4096])
+    if `: length local _srv_err' {
+        mata: _dash_say("err", "dash serve: ", st_local("_srv_err"), "")
+        exit 198
+    }
 end

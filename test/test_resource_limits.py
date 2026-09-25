@@ -1278,42 +1278,39 @@ class TestTheBoundsThatAlreadyWorkedAreKept:
                      "_WEBGL_THRESHOLD", "_DASH_LIMITS"):
             assert getattr(mod, name) == getattr(dr, name), name
 
-    @pytest.mark.parametrize("given,bound", [(99999, 65535), (80, 1024)])
-    def test_the_port_is_clamped_in_every_place_it_is_read(
-            self, tmp_path, monkeypatch, given, bound):
-        """main(), dash_render.py's --launch launcher, and the generated
-        app's own --port each clamp an out-of-range port to 1024..65535.
-
-        This counted "max(1024, min(" at least three times in the module's
-        text, which any three such expressions satisfy, wherever they are.
-        Each site is now driven on its own (WP-24): main()'s port becomes
-        the app's --port default; the app run as `python app.py --port N'
-        hands its server the clamped port (bokeh's Server replaced by a
-        recorder, nothing listens); and the --launch launcher starts the
-        app with the clamped --port (Popen replaced by a recorder)."""
+    @pytest.mark.parametrize("given", [80, 70000])
+    def test_the_port_is_refused_in_every_place_it_is_read(
+            self, tmp_path, monkeypatch, given, capsys):
+        """GAPS2 F1: main(), the generated app's own --port, and
+        dash_render.py's --launch launcher each used to clamp an
+        out-of-range port to 1024..65535 instead of refusing it -- so
+        `python app.py --port 80' served on 1024, silently, with no
+        message anywhere.  Each site now refuses and names the range;
+        main() and the launcher write and start nothing."""
+        import argparse
         import runpy
         import subprocess as _sp
         import bokeh.server.server as bss
         spec = _spec([_graph("g1")])
         _, sp, dp = _write(tmp_path, spec, _frame())
 
-        # main(): the port it is handed is what the app offers by default.
+        # main(): raises, writes nothing.
         app = str(tmp_path / "app_main.py")
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            dr.main(sp, dp, app, mode="server", port=given)
-        with open(app, encoding="utf-8") as fh:
-            src = fh.read()
-        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
-        ns = {"__name__": "_rl_port_app"}
+            with pytest.raises(argparse.ArgumentTypeError):
+                dr.main(sp, dp, app, mode="server", port=given)
+        assert not os.path.exists(app), "main() wrote a file before raising"
+
+        # A validly-built app, to drive its own --port refusal below.
+        app2 = str(tmp_path / "app_ok.py")
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            exec(compile(src.replace(attach, "pass"), "_rl_port_app.py",
-                         "exec"), ns)
-        assert ns["_dash_arg_parser"]().parse_args([]).port == bound, (
-            "main() embedded an unbindable port")
+            dr.main(sp, dp, app2, mode="server", port=5006)
+        with open(app2, encoding="utf-8") as fh:
+            src = fh.read()
 
-        # The app's own --port: what the launcher hands the server.
+        # The app's own --port: refuses before a Server is ever built.
         seen = {}
 
         class _Loop:
@@ -1347,11 +1344,16 @@ class TestTheBoundsThatAlreadyWorkedAreKept:
         monkeypatch.setattr(sys, "argv", ["app.py", "--port", str(given)])
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            exec(compile(src, "app.py", "exec"), {"__name__": "__main__"})
-        assert seen.get("port") == bound, (
-            f"the app served --port {given} on {seen.get('port')}")
+            with pytest.raises(SystemExit) as ei:
+                exec(compile(src, "app.py", "exec"),
+                     {"__name__": "__main__"})
+        assert ei.value.code == 2
+        assert "port" not in seen, (
+            "a Server was built with an unbound port: %r" % seen)
+        err = capsys.readouterr().err
+        assert "1024" in err and "65535" in err, err
 
-        # dash_render.py --launch: the port it starts the app with.
+        # dash_render.py --launch: refuses before starting the app.
         started = {}
 
         class _Proc:
@@ -1368,12 +1370,14 @@ class TestTheBoundsThatAlreadyWorkedAreKept:
             "--launch", "--no-browser", "--port", str(given)])
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            runpy.run_path(os.path.join(_HERE, "..", "dash_render.py"),
-                           run_name="__main__")
-        cmd = started.get("cmd") or []
-        assert "--port" in cmd, cmd
-        assert cmd[cmd.index("--port") + 1] == str(bound), (
-            f"--launch started the app with {cmd}")
+            with pytest.raises(SystemExit) as ei2:
+                runpy.run_path(os.path.join(_HERE, "..", "dash_render.py"),
+                               run_name="__main__")
+        assert ei2.value.code == 2
+        assert started.get("cmd") is None, (
+            "the launcher started the app with %r" % started)
+        err2 = capsys.readouterr().err
+        assert "1024" in err2 and "65535" in err2, err2
 
 
 class TestTheHelpersOneByOne:

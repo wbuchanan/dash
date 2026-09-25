@@ -53,10 +53,12 @@ which under s1rcolor drew the title black on black
 (``TestAnUnknownStyleInsideAStructuredOption``; _dash_figure_title and
 _dash_style_axis_titles in dash_render.py, shared by both modes).
 """
+import io
 import json
 import os
 import re
 import runpy
+import socket
 import subprocess
 import sys
 import warnings
@@ -754,14 +756,31 @@ class TestTheSavedPageIsSelfContained:
 
 
 class _FakeProc:
+    """Stands in for subprocess.Popen (GAPS2 F1): the real launcher now
+    pipes the child's stdout/stderr and reads its exit status
+    (_dash_launch_app, TR-09.2), so the fake takes **kw and offers text
+    streams, a returncode and poll()/terminate()/communicate() too."""
     waited = False
 
-    def __init__(self, cmd):
+    def __init__(self, cmd, **kw):
         type(self).cmd = list(cmd)
+        type(self).kw = kw
+        self.returncode = 0
+        self.stdout = io.StringIO()
+        self.stderr = io.StringIO()
+
+    def poll(self):
+        return self.returncode
 
     def wait(self):
         type(self).waited = True
-        return 0
+        return self.returncode
+
+    def terminate(self):
+        pass
+
+    def communicate(self):
+        return ("", "")
 
 
 class TestTheLauncherBehindDashServe:
@@ -786,9 +805,15 @@ class TestTheLauncherBehindDashServe:
         _FakeProc.waited = False
         _FakeProc.cmd = None
         monkeypatch.setattr(subprocess, "Popen", _FakeProc)
+        # A free port, not a fixed 5123: the launcher now pre-binds the
+        # port before starting the (faked) child, so a fixed number would
+        # fail on a machine where something else holds it (GAPS2 F1).
+        with socket.socket() as _s:
+            _s.bind(("127.0.0.1", 0))
+            _port = _s.getsockname()[1]
         monkeypatch.setattr(sys, "argv", [
             "dash_render.py", "--spec", sp, "--data", dp, "--output", out,
-            "--mode", "server", "--launch", "--port", "5123"] + extra)
+            "--mode", "server", "--launch", "--port", str(_port)] + extra)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             runpy.run_path(os.path.join(_ROOT, "dash_render.py"),

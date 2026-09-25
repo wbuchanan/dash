@@ -857,7 +857,7 @@ SURFACES = {
         ],
         "exhaustion": [
             _M + "TestServedCliFlags::test_a_five_thousand_digit_limit_is_refused_quickly",
-            "test/test_render_cli_port.py::TestPortReachesTheGeneratedApp::test_an_out_of_range_port_is_clamped_not_embedded_raw",
+            "test/test_render_cli_port.py::TestPortReachesTheGeneratedApp::test_an_out_of_range_port_is_refused_not_embedded",
         ],
     },
     # dash_render.py's own command line (--spec --data --output --mode
@@ -875,7 +875,7 @@ SURFACES = {
         ],
         "exhaustion": [
             _M + "TestRendererOutputPath::test_a_megabyte_path_is_judged_in_linear_time",
-            "test/test_render_cli_port.py::TestPortReachesTheGeneratedApp::test_an_out_of_range_port_is_clamped_not_embedded_raw",
+            "test/test_render_cli_port.py::TestPortReachesTheGeneratedApp::test_an_out_of_range_port_is_refused_not_embedded",
         ],
     },
     # The CSV download (WP-21, `dash build, csv'): what a viewer's click

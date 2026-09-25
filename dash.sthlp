@@ -744,7 +744,8 @@ computed layers, and its histogram bins, as they were built; see
 {synoptline}
 {synopt:{cmd:port(}{it:#}{cmd:)}}TCP port for the Bokeh Server; must be
     an integer in the range 1024 to 65535, written in digits only (no sign,
-    decimal point or exponent); default 5006{p_end}
+    decimal point or exponent); default 5006; a port another program holds
+    is refused with r(198) and named{p_end}
 {synopt:{cmd:nobrowser}}do not open a browser window automatically.  The
     rule is {cmd:dash build}'s: a registered graph's {cmd:nodraw} has the
     same effect, and so does setting the global {cmd:$dash_nobrowser}, which
@@ -1376,6 +1377,12 @@ Ctrl+C in the Stata console stops it at once.  Either way the command
 returns and Stata erases its temporary copy of the application.
 
 {pstd}
+{cmd:dash serve} prints the server's address once it answers
+{cmd:/health}.  If no server starts -- the port is in use, or the app
+stops before it answers -- {cmd:dash serve} says why and returns r(198)
+instead of blocking.
+
+{pstd}
 {ul:Running the generated .py file independently.}
 {cmd:dash build, saving(app.py) server} writes a self-contained server app
 that embeds, base64-encoded, every observation of the variables the
@@ -1391,6 +1398,10 @@ the rate limits {cmd:--sessions-per-client} {it:N},
 {cmd:--new-clients-per-minute} {it:N} and {cmd:--sessions-per-minute}
 {it:N} described below.  No browser window opens unless {cmd:--show} is
 given, so the app is usable from a script or a batch job.
+
+{pstd}
+{cmd:--port} outside 1024 to 65535 is refused (exit status 2), not moved
+to the nearest port.
 
 {pstd}
 {cmd:bokeh serve app.py} also serves the dashboard, but as {cmd:bokeh serve}'s

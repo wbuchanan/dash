@@ -36,7 +36,9 @@
 *! of this session, BUG-47; SRV-20, added in WP-24's second round, is the
 *! serve-side twin of test_render_locate.cscript LOC-17 -- the renderer
 *! path dash serve runs is handed to Python as data, BUG-SEC-1.  SRV-20
-*! runs before SRV-19, which does not restore the real locator.)
+*! runs before SRV-19, which does not restore the real locator.)  SPU-01
+*! to SPU-03 (WP-28 F1), also before SRV-19, drive a real launch against
+*! a held port and the box _dash_serve reads from the launch report.
 *!
 *! Usage:  do test/test_serve_launch.cscript
 *! Version: 1.2  24sep2026
@@ -492,6 +494,119 @@ capture rmdir `"`s20dir'"'
 macro drop SRV20_*
 dash clear
 display "SRV-20 PASS: dash serve hands the renderer path to Python as data; a quote-and-code path runs nothing"
+
+// ================================================================
+// SPU-01..SPU-03 -- dash serve reports a real launch failure (WP-28 F1)
+// ================================================================
+// GAPS2 F1, measured 25sep2026: a socket held on 127.0.0.1 -- the address
+// the app binds, dash_render.py ~27320 -- made `dash serve, port(N)'
+// return rc 0 after about 1.7 s: the child's own "Address already in
+// use" never left process stderr.  SPU-01 drives a REAL launch against a
+// held port (this section's fix, TR-09.2/09.4).  SPU-02 and SPU-03 drive
+// the box _dash_serve now reads (TR-09.4) through a stub renderer, so
+// they add no wall time.  Run BEFORE SRV-19, which replaces
+// _dash_find_render for good: SPU-01 needs the real one.  A socket held
+// on 0.0.0.0 would leave 127.0.0.1 free beside it on macOS and pass
+// SPU-01 for the wrong reason (F1.5) -- the holder below is on 127.0.0.1
+// and listening, the measured case.
+// Paths below are built by hand from c(tmpdir) and c(pid), never from
+// `tempfile'/`tempname': those draw on the SAME session counter SRV-19
+// reads a few cases later (its own `tempfile s19base' must land on a
+// slot with no letter suffix), and inserting extra tempfile/tempname
+// calls here shifted that counter enough to make SRV-19's own check
+// fail below (measured while writing this block) -- a self-contained
+// case must not perturb a later one's assumptions about the session's
+// naming sequence.
+global dash_nobrowser 1
+python:
+import socket as _spu_sock
+from sfi import Macro as _spu_M
+_spu_s = _spu_sock.socket(_spu_sock.AF_INET, _spu_sock.SOCK_STREAM)
+_spu_s.bind(("127.0.0.1", 0))
+_spu_s.listen(1)
+_spu_M.setGlobal("spu_port", str(_spu_s.getsockname()[1]))
+end
+dash clear
+qui sysuse auto, clear
+dash scatter mpg weight, name(spu01)
+local spu01lg "`c(tmpdir)'dash_spu_`c(pid)'_01.log"
+capture erase "`spu01lg'"
+quietly log using "`spu01lg'", replace text name(_spu01lf)
+timer clear 92
+timer on 92
+capture noisily dash serve, port($spu_port) timeout(1) nobrowser
+local spu01rc = _rc
+timer off 92
+quietly timer list 92
+local spu01elapsed = r(t92)
+quietly log close _spu01lf
+python: _spu_s.close()
+cert_log_has "`spu01lg'", needle("no server started on port") lower
+local spu01m1 = r(found)
+cert_log_has "`spu01lg'", needle("the port is in use") lower
+local spu01m2 = r(found)
+cert_log_has "`spu01lg'", needle("traceback") lower
+local spu01tb = r(found)
+cert_log_has "`spu01lg'", needle("server running at") lower
+local spu01ran = r(found)
+capture erase "`spu01lg'"
+display as text "  SPU-01 rc `spu01rc', elapsed `spu01elapsed's, message `spu01m1'/`spu01m2', traceback `spu01tb', ran `spu01ran'"
+assert `spu01rc' == 198
+assert `spu01m1' == 1
+assert `spu01m2' == 1
+assert `spu01tb' == 0
+assert `spu01ran' == 0
+assert `spu01elapsed' < 40
+dash clear
+macro drop spu_port
+display "SPU-01 PASS: dash serve against a held port on 127.0.0.1 returns r(198), names the port, under 40s"
+
+// SPU-02/SPU-03 -- the box _dash_serve reads from the renderer (TR-09.4):
+// a stub dash_render.py first on the ado-path (SRV-17's method) writes
+// into globals().get("_dash_launch_report") when the dict is present.
+local spustub "`c(tmpdir)'dash_spu_stub_`c(pid)'"
+capture mkdir "`spustub'"
+file open _spufh using "`spustub'/dash_render.py", write text replace
+file write _spufh `"_spu_g = globals().get("_dash_launch_report")"' _n
+file write _spufh `"if _spu_g is not None:"' _n
+file write _spufh `"    _spu_g["error"] = ("no server started on port 5006: the app exited with status 3" + chr(10) + "stub: boom")"' _n
+file close _spufh
+adopath ++ "`spustub'"
+dash clear
+dash scatter mpg weight, name(spu02)
+local spu02lg "`c(tmpdir)'dash_spu_`c(pid)'_02.log"
+capture erase "`spu02lg'"
+quietly log using "`spu02lg'", replace text name(_spu02lf)
+capture noisily dash serve, port(5006) timeout(1) nobrowser
+local spu02rc = _rc
+quietly log close _spu02lf
+cert_log_has "`spu02lg'", needle("the app exited with status 3") lower
+local spu02m1 = r(found)
+cert_log_has "`spu02lg'", needle("stub: boom") lower
+local spu02m2 = r(found)
+capture erase "`spu02lg'"
+display as text "  SPU-02 rc `spu02rc', message `spu02m1'/`spu02m2'"
+assert `spu02rc' == 198
+assert `spu02m1' == 1
+assert `spu02m2' == 1
+display "SPU-02 PASS: dash serve turns the launch report's error into r(198) naming the app's status and stderr"
+
+// SPU-03 -- the control: the same stub told to write nothing leaves the
+// box empty, so _dash_serve proceeds and returns rc 0.
+file open _spufh3 using "`spustub'/dash_render.py", write text replace
+file write _spufh3 "pass" _n
+file close _spufh3
+dash clear
+dash scatter mpg weight, name(spu03)
+capture noisily dash serve, port(5006) timeout(1) nobrowser
+local spu03rc = _rc
+display as text "  SPU-03 rc `spu03rc'"
+assert `spu03rc' == 0
+adopath - "`spustub'"
+capture erase "`spustub'/dash_render.py"
+capture rmdir "`spustub'"
+dash clear
+display "SPU-03 PASS: without a launch report error, dash serve returns rc 0 (the control)"
 
 // ================================================================
 // SRV-19 -- dash serve writes its app to a tempfile of this session

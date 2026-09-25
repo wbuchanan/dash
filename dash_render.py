@@ -25093,7 +25093,12 @@ class ServerAppBuilder:
                          # G5 (WP-28): every renderer name check (by(),
                          # filter(), exclude(), hover(), _drawn_field,
                          # colorvar) now calls this Unicode-aware check.
-                         "_dash_is_stata_name"):
+                         "_dash_is_stata_name",
+                         # --port validator: the app's own _dash_arg_parser
+                         # and __main__ share this with the launcher and
+                         # main() (GAPS2 F1), so the range is refused the
+                         # same way everywhere a port is read.
+                         "_dash_port_value"):
             if _fn_name in _emitted_names:
                 continue
             _fn = getattr(_mod, _fn_name, None)
@@ -25355,13 +25360,13 @@ class ServerAppBuilder:
         # and the app each reset at their start too).
         _dash_reset_notes()
 
-        # Override port from build_options if present
+        # Override port from build_options if present.  Refused, not
+        # clamped or silently ignored (GAPS2 F1): an out-of-range or
+        # non-numeric build_options["port"] used to pass untouched here and
+        # reach only the app's own launcher, several steps downstream.
         bo = self.spec.get("build_options", {})
         if bo.get("port"):
-            try:
-                port = int(bo["port"])
-            except (ValueError, TypeError):
-                pass
+            port = _dash_port_value(bo["port"])
 
         # ServerAppBuilder holds the data as a JSON string, not a frame.
         # Parsing a large one costs about a second, so it is only parsed when
@@ -26034,7 +26039,7 @@ class ServerAppBuilder:
             "def _dash_arg_parser():",
             "    '''The launcher's command line, every flag old and new.'''",
             "    p = _argparse.ArgumentParser(description='Serve this dash dashboard.')",
-            "    p.add_argument('--port', type=int, default=_port,",
+            "    p.add_argument('--port', type=_dash_port_value, default=_port,",
             "                   help='TCP port to listen on.')",
             "    p.add_argument('--address', default=None,",
             "                   help='Interface to bind (default: loopback).')",
@@ -27785,13 +27790,22 @@ class ServerAppBuilder:
             "    # a route, so an app served that way has a working dashboard",
             "    # and no health endpoint.  Project rule 17 asks for one, so",
             "    # this is the launcher dash points users at.",
-            "    _a = _dash_arg_parser().parse_args()",
+            "    _p = _dash_arg_parser()",
+            "    _a = _p.parse_args()",
             "    if _a.trust_xff:",
             "        _TRUST_FORWARDED_FOR = True",
             "    # Before the server starts, so no session is ever admitted",
             "    # under limits other than the ones asked for.",
             "    _dash_apply_limits(_a)",
-            "    _port = max(1024, min(int(_a.port), 65535))",
+            "    # argparse applies type= to a value given on the command",
+            "    # line, never to a non-string default -- so an embedded",
+            "    # build_options['port'] out of range (read with int() alone",
+            "    # by ServerAppBuilder.build, GAPS2 F1) reached this default",
+            "    # untouched.  This is the second check for exactly that case.",
+            "    try:",
+            "        _port = _dash_port_value(_a.port)",
+            "    except _argparse.ArgumentTypeError as _e:",
+            "        _p.error(str(_e))",
             "    # BOKEH_ALLOW_WS_ORIGIN, when set, REPLACES the websocket",
             "    # origins this launcher admits: Bokeh's handler reads it at",
             "    # every handshake and uses it instead of the list passed to",
@@ -27975,6 +27989,28 @@ def _validate_output_path(output_path: str, mode: str,
     return output_path
 
 
+def _dash_port_value(value):
+    """argparse ``type=`` / validator for ``--port``: an integer from 1024
+    to 65535, written in ASCII digits only.
+
+    Not ``int()`` alone -- which also accepts non-ASCII digits ("٥٠٠٦")
+    and Python's ``_`` digit grouping ("5_006") -- and not ``str.isdigit()``,
+    which is true of non-ASCII digits too.  Used as the CLI's ``type=``, in
+    ``main()``, for a ``build_options`` port, and copied into the generated
+    app for its own ``--port`` (GAPS2 F1; a port outside this range used to
+    be clamped to it instead of refused, so ``--port 80`` served on 1024).
+    """
+    s = str(value).strip()
+    _digits = s != "" and all(c in "0123456789" for c in s)
+    n = int(s) if _digits else None
+    if n is None or not 1024 <= n <= 65535:
+        import argparse as _ap
+        raise _ap.ArgumentTypeError(
+            "--port must be an integer from 1024 to 65535 (got: %r)"
+            % (s[:40],))
+    return n
+
+
 def main(
     master_spec_path: str,
     data_json_path: str,
@@ -28023,12 +28059,179 @@ def main(
         # server' followed by `python app.py' -- the documented non-blocking
         # route -- served on 5006 regardless.
         builder = ServerAppBuilder(master_spec_path, data_json_path)
-        builder.build(output_path, port=max(1024, min(int(port), 65535)))
+        builder.build(output_path, port=_dash_port_value(port))
     else:
         renderer = DashRenderer(master_spec_path, data_json_path)
         html_content = renderer.render()
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(html_content)
+
+
+def _dash_launch_app(app_path, port, timeout, no_browser, *,
+                      ready_seconds=30.0, prebind=True):
+    """Run the generated Bokeh Server app as a subprocess and block until
+    it answers ``/health`` or fails, forwarding its own output as it runs.
+
+    GAPS2 F1: the old inline launch started the app with
+    ``Popen(cmd).wait()`` and never read ``returncode``, so a port already
+    held by another program returned rc 0 after about 1.7 seconds -- the
+    child's own ``OSError: [Errno 48] Address already in use`` reached only
+    its own process stderr, which nothing here read.  This raises
+    ``RuntimeError`` with one line naming the port and the reason on any
+    failure; the caller decides whether that reaches Stata (through the
+    box TR-09.3/09.4 wires up) or the command line (``SystemExit(1)``).
+
+    Two daemon threads drain the child's stdout and stderr as it runs --
+    Bokeh logs every session to stderr, and a ``Popen`` with
+    ``stdout=PIPE, stderr=PIPE`` and no reader hangs once a pipe fills.
+    Only the main thread ever prints: a thread that prints under Stata's
+    embedded Python is not guaranteed to reach the Results window.
+    """
+    import collections
+    import queue
+    import signal
+    import socket
+    import subprocess
+    import sys
+    import threading
+    import time
+    import urllib.request
+
+    port = _dash_port_value(port)
+
+    if prebind:
+        # The measured case (F1.5): a holder on 127.0.0.1 refuses a second
+        # bind there, but a holder on 0.0.0.0 leaves 127.0.0.1 free beside
+        # it on macOS -- so this checks the address the app itself binds
+        # (_dash_server_app's default).  SO_REUSEADDR so a listener whose
+        # last connections are in TIME_WAIT is not mistaken for "in use".
+        _s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            _s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            _s.bind(("127.0.0.1", port))
+        except OSError:
+            _s.close()
+            raise RuntimeError(
+                "no server started on port %d: the port is in use" % port)
+        _s.close()
+
+    _cmd = [sys.executable, app_path, "--port", str(port)]
+    if not no_browser:
+        _cmd.append("--show")
+    if timeout > 0:
+        _cmd += ["--timeout", str(timeout)]
+
+    try:
+        proc = subprocess.Popen(_cmd, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, text=True,
+                                errors="replace")
+    except FileNotFoundError:
+        raise RuntimeError(
+            "no server started on port %d: could not launch the dashboard "
+            "app (is Python available on this PATH?)" % port)
+
+    # One structure per pipe: stdout lines go to the queue the main thread
+    # prints from (under the bound below); stderr lines go to the deque
+    # the failure message quotes (its last 20 lines).  Nothing is tagged
+    # into the other's structure.
+    _out_q = queue.Queue()
+    _err_dq = collections.deque(maxlen=20)
+
+    def _pump(stream, push):
+        try:
+            for line in iter(stream.readline, ""):
+                push(line)
+        except (ValueError, OSError):
+            pass
+
+    _t_out = threading.Thread(target=_pump, args=(proc.stdout, _out_q.put),
+                              daemon=True)
+    _t_err = threading.Thread(target=_pump,
+                              args=(proc.stderr, _err_dq.append),
+                              daemon=True)
+    _t_out.start()
+    _t_err.start()
+
+    def _clean(text):
+        return "".join(c for c in text if c.isprintable() or c == "\n")
+
+    _forwarded = 0
+
+    def _drain_stdout():
+        nonlocal _forwarded
+        while True:
+            try:
+                line = _out_q.get_nowait()
+            except queue.Empty:
+                break
+            if _forwarded >= 200:
+                continue  # still drained, never printed (F-14)
+            _line = _clean(line).rstrip("\n")[:500]
+            print(_line, flush=True)
+            _forwarded += 1
+            if _forwarded == 200:
+                print("dash: (further app output not shown)", flush=True)
+
+    _ready = False
+    _no_answer_shown = False
+    _stopped_by_launcher = False
+    _t0 = time.monotonic()
+    _next_health = _t0
+
+    try:
+        while proc.poll() is None:
+            _drain_stdout()
+            _now = time.monotonic()
+            if not _ready and _now >= _next_health:
+                _next_health = _now + 0.25
+                try:
+                    urllib.request.urlopen(
+                        "http://127.0.0.1:%d/health" % port, timeout=1.0)
+                    _ready = True
+                    print(
+                        "dash: the server answers at http://localhost:%d/ "
+                        "(health check http://localhost:%d/health); press "
+                        "Ctrl+C to stop." % (port, port), flush=True)
+                except Exception:
+                    if not _no_answer_shown and \
+                            _now - _t0 > ready_seconds:
+                        print(
+                            "dash: no answer from http://127.0.0.1:%d/"
+                            "health after %d s; still waiting for the app "
+                            "(Ctrl+C stops it)."
+                            % (port, int(ready_seconds)), flush=True)
+                        _no_answer_shown = True
+            time.sleep(0.25)
+    except KeyboardInterrupt:
+        proc.terminate()
+        _stopped_by_launcher = True
+
+    proc.wait()
+    _t_out.join(1)
+    _t_err.join(1)
+    _drain_stdout()
+
+    if _stopped_by_launcher or proc.returncode in (
+            0, -signal.SIGINT, -signal.SIGTERM):
+        return
+
+    _tail = _clean("".join(_err_dq))
+    if any(s in _tail for s in
+          ("Address already in use", "EADDRINUSE", "already in use")):
+        _reason = "no server started on port %d: the port is in use" % port
+    else:
+        _reason = ("no server started on port %d: the app exited with "
+                   "status %s" % (port, proc.returncode))
+    # Cut FROM THE FRONT of the stderr tail, not the whole message: the
+    # deque already keeps only the last 20 lines, and trimming the whole
+    # message from the front (as a plain [:4096] slice would) can drop
+    # those most-recent lines first, keeping only the reason and the
+    # oldest surviving lines -- backwards from what "tail" means.
+    _budget = 4096 - len(_reason) - 1
+    if _tail and len(_tail) > _budget > 0:
+        _tail = _tail[-_budget:]
+    _msg = _reason + ("\n" + _tail if _tail else "")
+    raise RuntimeError(_msg[:4096])
 
 
 if __name__ == "__main__":
@@ -28047,9 +28250,10 @@ if __name__ == "__main__":
     # Server-launch options (used with --mode server)
     parser.add_argument(
         "--port",
-        type=int,
+        type=_dash_port_value,
         default=5006,
-        help="TCP port for the Bokeh Server (default: 5006). Only used with --mode server.",
+        help="TCP port for the Bokeh Server, 1024-65535 (default: 5006). "
+             "Only used with --mode server.",
     )
     parser.add_argument(
         "--timeout",
@@ -28094,13 +28298,8 @@ if __name__ == "__main__":
     # Stata left the server orphaned.  Writing a file must not start a
     # server as a side effect, so launching is opt-in.
     if args.mode == "server" and args.launch:
-        import subprocess as _sp
         import sys as _sys
-        import time as _time
-        import threading as _threading
-        import webbrowser as _wb
 
-        _port = max(1024, min(args.port, 65535))
         # Run the generated app AS A SCRIPT, not through `bokeh serve'.
         #
         # `bokeh serve' owns its Tornado application and gives an app script
@@ -28112,27 +28311,21 @@ if __name__ == "__main__":
         # the server that is actually listening: the port argument used to be
         # passed to `bokeh serve' but never to the builder, so every app
         # embedded 5006 whatever was asked for.
-        _cmd = [
-            _sys.executable, args.output,
-            "--port", str(_port),
-        ]
-        if not args.no_browser:
-            _cmd.append("--show")
-        if args.timeout > 0:
-            _cmd += ["--timeout", str(args.timeout)]
+        #
+        # GAPS2 F1: _dash_launch_app reads the app's exit status and stderr
+        # instead of returning rc 0 whatever happened.  _dash_launch_report
+        # is a dict handed through runpy.run_path's init_globals by a
+        # caller that wants the failure text back rather than a raised
+        # exception under Stata's embedded Python (r(7102) plus a
+        # traceback) -- dash.ado's _dash_serve does (TR-09.4); a bare
+        # command line does not, so it prints and exits 1 instead.
+        _report = globals().get("_dash_launch_report")
         try:
-            _proc = _sp.Popen(_cmd)
-        except FileNotFoundError:
-            import sys as _sys2
-            print(
-                "dash_render: error — could not launch the dashboard app. "
-                "Ensure Bokeh is installed and accessible in the current Python environment.",
-                file=_sys2.stderr,
-            )
-            raise SystemExit(1)
-
-        try:
-            _proc.wait()
-        except KeyboardInterrupt:
-            _proc.terminate()
-            _proc.wait()
+            _dash_launch_app(args.output, args.port, args.timeout,
+                             args.no_browser)
+        except RuntimeError as _exc:
+            if _report is None:
+                print("dash_render: error -- " + str(_exc),
+                     file=_sys.stderr, flush=True)
+                raise SystemExit(1)
+            _report["error"] = str(_exc)
