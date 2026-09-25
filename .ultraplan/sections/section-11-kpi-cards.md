@@ -82,7 +82,7 @@ once with the statistic in hand and pinned by Stata's strings for `count(when)`.
 - Depends on: section 04 (`_dash_fmt_text`, `_dash_stata_value_of`, `_DASH_FMT_JS`,
   `dash_html_escape`, `self.formats`/`_FORMATS`, `storage_types` and the served
   `_storage_types` bound in `make_document`, the `kpi` block of `format_truth.json`, and
-  the guard in `_dash_effective_kpi_fmt` this section removes); section 17 (`kpi_config`
+  the guard in `_dash_effective_kpi_fmt` this section removes); section 17 (its task 17-13: `kpi_config`
   entries carry `"use"`, the per-group loop that calls
   `dash_apply_kpis(_grp_data, _grp.config, _grp.divs, ROW_ID)` once per exclusion group,
   and the comment line `// dash_apply_kpis(new_data, ...) runs once per exclusion group
@@ -629,7 +629,8 @@ if inlist("`only'", "", "S11") {
   below` (the first and only `dash_apply_kpis(new_data,`) and its loop untouched, and
   update the tests' `let fmt;` marker to `let text;`.
 - **Commit bodies** use S01 TR-01.9's line forms verbatim: `Regression:
-  test/<file>.py::<Class>::<test> -- failed at <pre-fix tree> with <text>`, `Flipped: <node>
+  test/<file>.py::<Class>::<test> -- failed at 91d97be with <text>` (the run was made on the
+  post-batch-2 tree; the symptom is 91d97be's), `Flipped: <node>
   -- <old expectation> was wrong because <why>` (one per flip), `BUGS.md: "<title>"
   (closed)`; no `Fixture:` line (this section regenerates none).
 - **Shared registries (rules R1-R6).** R1: the KF cases are a block of

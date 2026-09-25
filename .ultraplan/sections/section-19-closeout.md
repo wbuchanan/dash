@@ -304,7 +304,8 @@ the appended section names tests and scripts, never a link to a retired document
   `<scratch>/wp28-map.tsv` with one row per gap: id, hash, BUGS.md title (from the entry whose
   Resolution field reads `  - Resolution: Fixed <ddmonyyyy> (WP-28, <ID>). …`, D3; found with
   `grep -n '^  - Resolution: Fixed .*(WP-28, <ID>)' BUGS.md`, then the nearest `- [x] Title:`
-  line above it). Require exactly one fix commit and one entry per id, no title holding `"`,
+  line above it). Require exactly one fix commit and one entry per id (a subject naming several
+  ids, `(GAPS2 E3, G6)`, is the one commit of each id it names), no title holding `"`,
   and no `<!-- WP-28 ` marker surviving. Collect every `Residual, deferred (WP-28): <text>`
   clause of those 22 entries into `<scratch>/wp28-residuals.txt` (id, title, clause text);
   the plan expects G1, G3, X2, E14, D1, B5 and K2 (Evidence), but the file is what BUGS.md
@@ -604,7 +605,9 @@ date`) and the targeted tests the task names; the full suite runs in 19-09 as `m
     only the main checkout and `git status --porcelain` shows only the maintainer's planning
     paths (AC-19.8's filter). Run `python3 -m pytest test/test_tracking_documents.py test/test_packaging.py -q`.
     Build `<scratch>/wp28-map.tsv` (TR-19.1): for each of the 22 ids, the hash from
-    `git log --format='%h %s' 91d97be..HEAD | grep -F "(GAPS2 <ID>)"` and the title of the
+    `git log --format='%h %s' 91d97be..HEAD | grep -E "\(GAPS2 ([A-Z][0-9]+, )*<ID>(, [A-Z][0-9]+)*\)"`
+    (a subject may name several ids: section 12 closes E3 and G6 in one commit whose subject
+    ends `(GAPS2 E3, G6)`, and that one commit is the fix commit of both) and the title of the
     BUGS.md entry whose Resolution field reads `  - Resolution: Fixed <ddmonyyyy> (WP-28, <ID>). …`
     (D3; `grep -n '^  - Resolution: Fixed .*(WP-28, <ID>)' BUGS.md`, then the nearest
     `- [x] Title:` line above it). Build `<scratch>/wp28-residuals.txt` from every

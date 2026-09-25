@@ -1,15 +1,19 @@
 # Section 10: Saved/served presentation parity (E14)
 
-> Part of: WP-28 · Gaps: E14 · Risk: yellow · Batch: 1 · Depends on: none · Blocks: 19 
+> Part of: WP-28 · Gaps: E14 · Risk: yellow · Batch: 1 · Depends on: none · Blocks: 19 · Tasks: 10, 1 commit
 
 
 ## Review amendments (Phase 4, 2026-09-25) — binding; they override any conflicting text below
 
 > Batch **1** · Depends on **none** · Blocks **19** · Risk **yellow** · Commits: one commit (E14) → CHANGELOG `Results that change` (bar move) and `Fixed in WP-28` (other four items): two markers
 
-- D8: add a `type="checkpoint"` task at the end of the section (the bs filter-bar move is the one deliberate picture change).
+- D8: the section ends with the `type="checkpoint"` task 10-10 (the bs filter-bar move is the one deliberate picture change), after the closing task 10-09.
 - Add `_md_span` and `_cell_height_class` to the served copy list; every grid child must carry `db-bs-cell`.
-- D7: split 10-01.
+- D7: the test-writing task was split (10-01 the served-bs-layout tests; 10-02 the parity harness and its corpus); 10-06, 10-07 and 10-08 were renamed.
+- D1/F-01: one commit (E14), made by 10-09 with the subject ending `(GAPS2 E14)`; 10-01 to 10-03 do not commit.
+- D2 (`sections/index.md` rule R3, section-01 TR-01.7): 10-09 replaces both markers — `<!-- WP-28 E14 -->` in the `**WP-28 (GAPS2 audit, 25sep2026)**` group at the end of the release's `### Results that change` (the saved bs filter bar's move: old placement → new) and `<!-- WP-28 E14 served -->` under `### Fixed in WP-28` (the viewport tag, the 0.15 dimming, the rspike/rconnected selection, the 992 px reflow with the KPI minimum heights); both lines end `(WP-28, E14)`.
+- D11 (`sections/BRIEF.md` "Certification scripts"): E14 has no certification script and no cscript case; it is pinned by pytest and Chrome only.
+- `sections/index.md` rules R2 and R6: constants beside `_DASH_CSP_SERVED` (24381) and at 24425-24428; functions after `"_dash_refresh_linked"` (24641) and `"_dash_bs_grid"` (24652); only this section edits `test_mode_parity.py`'s `ALLOWED`.
 
 Applies to every section:
 - D1 (binding): tasks are work steps; commits are per gap (S01-S04: one each). The failing regression tests are written first and run against the unmodified tree; their output at 91d97be is recorded in the fix commit's message (Q24) and they are committed together with the fix, never alone (CLAUDE.md rule 4).
@@ -19,7 +23,7 @@ Applies to every section:
 - D5 (binding): shared files follow merge rules R1-R6 in `index.md` (cscript registration and hygiene pins, copy lists and maps, help/CHANGELOG/BUGS.md, graph-key lists, fixtures, parity corpus).
 - D7: XML fields holding `&`, `<` or `>` are CDATA-wrapped (done mechanically); task names over 8 words are shortened and `done` fields put in the past tense during the detailed fixer pass.
 
-Detailed edits from `../review/consistency.md`, `../review/requirements-security.md` and `../review/feasibility.md` (as adjusted by `../review/DECISIONS.md`) are applied to this file in the fixer pass; until then this block governs.
+Detailed edits from `../review/consistency.md`, `../review/requirements-security.md` and `../review/feasibility.md` (as adjusted by `../review/DECISIONS.md`) were applied to this file in the fixer pass (2026-09-25); the text below conforms to this block.
 
 ## Overview
 
@@ -56,11 +60,16 @@ three instruments: the parity corpus (`test/test_mode_parity.py`), the served bs
 tests (`test/test_served_bs_layout.py`) and the headless-Chrome layout runner
 (`test/test_responsive_layout.py`, skipped without Chrome and red under `DASH_STRICT=1`).
 
-**Test order (CLAUDE.md rule 7): task 10-01 writes every model-level regression test, runs
-it against the unmodified tree and records the failure; task 10-02 writes the Chrome tests
-the same way.** Tasks 10-03 to 10-07 turn them green one item at a time, flipping the tests
-that pin today's behaviour in the same commit as each fix; 10-08 writes the help, the
-CHANGELOG and the closed BUGS.md entry.
+**Test order (CLAUDE.md rule 7) and commit rule (D1).** Task 10-01 writes the model-level
+regression tests of `test_served_bs_layout.py`, runs them against the unmodified tree and
+saves the failure text to the scratch directory; 10-02 extends the parity harness and its
+corpus the same way and 10-03 writes the Chrome tests; none of the three commits (a red tree
+is never committed, rule 4). Tasks 10-04 to 10-08 turn them green one item at a time,
+flipping the tests that pin today's behaviour in the same task as each fix; 10-09 writes the
+help, replaces the two CHANGELOG markers, appends the closed BUGS.md entry and makes the
+section's ONE commit (E14), subject ending `(GAPS2 E14)`, body opening with the saved
+failure text (S01 TR-01.9); 10-10 is the checkpoint that shows the maintainer the one
+deliberate picture change.
 
 ## Risk: [yellow] — five small edits, but item 4 relies on a Bokeh mechanism the library does not document, and item 5 changes a picture every saved bs page has shown
 
@@ -93,6 +102,16 @@ CHANGELOG and the closed BUGS.md entry.
 - Parallel batch: 1. Can run with every other batch-1 section; its `dash_render.py` regions
   (2169-2195, 2307-2314, 18606-18659, 19439-19466, 21855-21874, 22712-22731, the copy lists
   at 24381/24425-24428/24466-24687, 26012-26024, 26479) are edited by no other section.
+  **Batch-1 merge order (`sections/index.md` step 1): S01, S03, S02, S06, S07, S08, S09, S10**
+  -- S03 lands before this section (both edit `test/test_help_claims_3.py`: S03 at 321-348,
+  this section at 735-739), and this section is last, so its copy-list insertions are
+  applied by hand beside the named anchors (rule R2). **Shared edits to reconcile at the
+  merge (rules R2, R3, R6):** the two served copy lists (constants beside `"_DASH_CSP_SERVED"`
+  24381 and at 24425-24428; functions after `"_dash_refresh_linked"` 24641 and `"_dash_bs_grid"`
+  24652), `test/function_test_map.py` (keys in alphabetical place), `test/test_mode_parity.py`
+  (`CORPUS` appended; `ALLOWED` edited by this section alone; `_MUST_WARN` untouched),
+  `test/test_help_claims_3.py`, `test/test_help_claims_4.py`, `BUGS.md` (appended at the
+  end), `CHANGELOG.md` (the two E14 markers only), `dash.sthlp` (five ranges).
 
 ## Evidence
 
@@ -362,7 +381,7 @@ a `Row` as `("Row", [("Widget", profile), ...])`, a header Div as `("Div", ("tex
 | `test/test_help_claims_5.py::TestAFacetedGraphInALinkGroup` docstring (`:840-850`, "rbar, rspike and rconnected's markers share it on the saved page only") | prose | "rspike and the markers of rconnected share it in both modes; rbar draws its own rows in both" |
 | `test/test_mode_parity.py` `ALLOWED["layout(bs) is standalone markup"]` (`:119-138`) and `_Agree.test_same_document_tree` (`:1489-1508`) | bs entries carry nothing outside the grid | the key describes the page-ordered reading; the guard is removed |
 | `test/test_responsive_layout.py::TestServedDocumentsFitInChrome` docstring (`:255-260`, "it declares no viewport; dash.sthlp says so") and the module docstring | prose | the served page is rendered through the served template and declares the viewport |
-| `test/test_mode_parity.py` corpus entries `hover() on a linked graph` (`:1135`), `marker labels on a linked graph` (`:1138`), `colorvar() on a linked graph` (`:1147`), `two graphs, link()` (`:1261`), `link(_all)` (`:1263`), `a linked faceted graph` (`:1265`) | pass today only because the profile does not record dimming | once `_glyph_profile` records `dim`, these fail at `91d97be` (0.15 vs 0.1) and pass after 10-04 -- no edit to the entries |
+| `test/test_mode_parity.py` corpus entries `hover() on a linked graph` (`:1135`), `marker labels on a linked graph` (`:1138`), `colorvar() on a linked graph` (`:1147`), `two graphs, link()` (`:1261`), `link(_all)` (`:1263`), `a linked faceted graph` (`:1265`) | pass today only because the profile does not record dimming | once `_glyph_profile` records `dim`, these fail at `91d97be` (0.15 vs 0.1) and pass after 10-05 -- no edit to the entries |
 
 Not pinned, so untouched: `test/test_help_claims_5.py::TestAFacetedGraphInALinkGroup::test_a_layer_with_a_source_of_its_own_does_not`
 (bar, lfit, rcap, rscatter -- all still draw their own; `map_rcap` and `map_rscatter` build
@@ -446,16 +465,17 @@ None. E14 is presentation; no Stata truth is involved.
   `:2309-2312` stays); `_dash_served_template`'s preamble becomes
   `_dash_csp_meta(_DASH_CSP_SERVED) + "\n    " + _DASH_VIEWPORT_META + "\n"` (CSP first, so
   `test_csp.py`'s `_assert_first` holds). Add `"_DASH_VIEWPORT_META"` to the constants copy
-  list beside `"_DASH_CSP_SERVED"` (`:24381`).
+  list beside `"_DASH_CSP_SERVED"` (`:24381`; rule R2).
 - **TR-10.2** Add a module-level `_dash_dim_nonselection(fig, alpha=_NONSELECTION_ALPHA) -> None`
   immediately before `class DashRenderer` (it is the body of `:21869-21876`, `alpha` in place
   of the constant). Delete the method `DashRenderer._apply_nonselection_dimming`
   (`:21855-21876`) and call `_dash_dim_nonselection(fig)` at `:23309` and `:23332`. Add
   `"_dash_dim_nonselection"` to the functions copy list beside `"_dash_refresh_linked"`
-  (`:24641`). In the served template, insert before `"        return fig"` (`:26479`):
+  (`:24641`; rule R2). In the served template, insert before `"        return fig"` (`:26479`):
   `"        if gname in linked_names:"` / `"            _dash_dim_nonselection(fig, _NONSELECTION_ALPHA)"`.
   `test/function_test_map.py`: remove `'DashRenderer._apply_nonselection_dimming'` (`:44`),
-  add `'_dash_dim_nonselection': 'test/test_linking.py::TestLinkedBrushing::test_linked_renderers_have_nonselection_alpha'`.
+  add `'_dash_dim_nonselection': 'test/test_linking.py::TestLinkedBrushing::test_linked_renderers_have_nonselection_alpha'`
+  in alphabetical place.
 - **TR-10.3** Extend `_dash_range_source` (`:19439-19466`) in place -- no new function, so no
   copy-list or map change -- to
   `_dash_range_source(g_df, y1var, y2var, xvar, label_var, extra_cols=(), *, df=None, gname="", linked_names=(), shared_source=None, shared_pos=None)`
@@ -473,7 +493,7 @@ None. E14 is presentation; no Stata truth is involved.
   `_DASH_BS_LG_FROM_PX = 992` (the saved page's lg breakpoint, `:2363`),
   `_DASH_KPI_CELL_MIN_PX = (("sm", 130), ("md", 150), ("lg", 170))` and
   `_DASH_KPI_CELL_MIN_NARROW_PX = 120` (`:2381-2386`). Add all three to the constants copy
-  list at `:24425-24428`.
+  list at `:24425-24428` (rule R2).
 - **TR-10.5** Add `_dash_bs_cell_classes(span, is_kpi, first) -> list[str]` next to
   `_dash_bs_grid_cells`: `["db-bs-cell", f"db-col-md-{_md_span(span)}", f"db-col-lg-{span}"]`
   plus `f"db-cell-h-{_cell_height_class(span)}"` when `is_kpi`, plus `"db-bs-first"` when
@@ -497,8 +517,9 @@ None. E14 is presentation; no Stata truth is involved.
   `:27177-27180` to pass `kpi_names=_kpi_names`. Rewrite the docstrings at `:18615-18618`,
   `:17844-17846` and the comment at `:27170-27172`.
 - **TR-10.8** Add `"_dash_bs_cell_classes", "_dash_bs_grid_css", "_md_span", "_cell_height_class"`
-  to the functions copy list beside `"_dash_bs_grid"` (`:24652`). `test/function_test_map.py`
-  gains `'_dash_bs_cell_classes'` and `'_dash_bs_grid_css'` naming the tests of TR-10.13.
+  to the functions copy list beside `"_dash_bs_grid"` (`:24652`; rule R2). `test/function_test_map.py`
+  gains `'_dash_bs_cell_classes'` and `'_dash_bs_grid_css'` naming the tests of TR-10.13, in
+  alphabetical place.
 - **TR-10.9** The stylesheet's exact rule set is the one measured (Evidence, item 4);
   do not add `!important` to the grid rules and do not put the rules on the children.
 - **TR-10.10** `_render_bootstrap_html` `:22726-22731`: `header_html + filter_bar_html +
@@ -525,7 +546,8 @@ None. E14 is presentation; no Stata truth is involved.
   `db-cell-h-*` only) in page order and `pair["srv"]["cells"]` = the same from each GridBox
   child's `css_classes` and `c_span`, in children order. (e) `test_same_document_tree` loses
   the `outside` guard; its docstring and `ALLOWED["layout(bs) is standalone markup"]` say
-  the page is read in page order and compared flat. (f) Corpus entries of TR-10.14.
+  the page is read in page order and compared flat (this section alone edits `ALLOWED`;
+  `_MUST_WARN` is not touched, rule R6). (f) Corpus entries of TR-10.14.
 - **TR-10.12** `test/responsive_probe.py`: `PROBE_JS` adds `cells`: for each `.db-kpi-card`,
   `[cellWidth, cellHeight, cellClass]` of the nearest ancestor -- crossing a shadow root via
   `getRootNode().host` -- whose class list has one starting with `db-cell-h-`, or
@@ -543,8 +565,17 @@ None. E14 is presentation; no Stata truth is involved.
   type(range)", "tabs": "A: g2"}, graphs=[("g1", [_sc()]), ("g2", [plot_for("line")])],
   kpis=[_kpi("k1")])`.
 - **TR-10.15** Docs: dash.sthlp `:1010-1020`, `:955-959`, `:1321`, `:1345-1351`,
-  `:1484-1496` rewritten as task 10-08 spells them; CHANGELOG "Results that change" gains a
-  group; BUGS.md gains the closed entry.
+  `:1484-1496` rewritten as task 10-09 spells them. CHANGELOG (D2; `sections/index.md` rule
+  R3, section-01 TR-01.7): the bar-move line replaces, in place, the marker `<!-- WP-28 E14 -->`
+  that S01 put in the `**WP-28 (GAPS2 audit, 25sep2026)**` group at the end of the release's
+  `### Results that change` (before `### Security`), naming the command, the old placement
+  and the new; the served line replaces, in place, the marker `<!-- WP-28 E14 served -->`
+  under the heading `### Fixed in WP-28` that S01 creates directly above `### Fixed after
+  WP-27 (the S3 batch, 24sep2026)`; both lines end `(WP-28, E14)` and nothing else is added
+  anywhere in CHANGELOG.md. BUGS.md (D3): one closed entry appended at the END of the file,
+  the field written `- Resolution: Fixed <ddmonyyyy> (WP-28, E14). <what changed, in which
+  functions, in both renderers>. Pinned by test/<file>.py::<Class>::<test>, …. Residual,
+  deferred (WP-28): <the filterposition(left) placement>.`; the title holds no `"`.
 
 ## Boundaries
 
@@ -561,24 +592,29 @@ None. E14 is presentation; no Stata truth is involved.
   `spacing` or `sizing_mode`: `test_served_bs_layout.py::TestBsGrid` and the parity spans
   depend on them.
 - Do not rename the ALLOWED key `"layout(bs) is standalone markup"`: it is consulted by
-  name and the guard on the list checks that.
+  name and the guard on the list checks that; do not edit `_MUST_WARN` (rule R6).
+- Do not write a certification script or a cscript case (D11: E14 is pytest and Chrome only)
+  and do not touch `test/run_all_cscripts.do` or the hygiene pins.
 - Do not edit GAPS2.md's Tracked line or ROADMAP.md (section 19 and section 01).
 - No user text reaches a class, a stylesheet or a meta tag (rule 1); nothing new is
   `exec`ed; the served CSP is unchanged.
 
 ## Stata truth
 
-None. No extract script, no probe, no fixture key. The one Stata-side claim this section
-touches (that twoway draws no marker labels on rspike) is already measured and unchanged.
+None. No extract script, no probe, no fixture key, and no certification script or cscript
+case (D11, `sections/BRIEF.md` "Certification scripts": E14 has no twoway drawing or Stata
+value to compare; it is pinned by pytest and Chrome). No Stata run happens in this section.
+The one Stata-side claim this section touches (that twoway draws no marker labels on rspike)
+is already measured and unchanged.
 
 ## TDD test stubs
 
-The first two groups fail at `91d97be`; task 10-01 writes group A, task 10-02 group B.
-Both modes wherever a page exists.
+The first two groups fail at `91d97be`; task 10-01 writes group A's `test_served_bs_layout.py`
+part, 10-02 its `test_mode_parity.py` part, 10-03 group B. Both modes wherever a page exists.
 
-**A. Model level (no browser) -- task 10-01**
+**A. Model level (no browser) -- tasks 10-01 and 10-02**
 
-`test/test_served_bs_layout.py`:
+`test/test_served_bs_layout.py` (task 10-01):
 
 - Test: the served template renders `_DASH_VIEWPORT_META` once, after the CSP meta, before
   `</head>`, and `_CSP_META` holds the same text --
@@ -654,11 +690,11 @@ Both modes wherever a page exists.
   the header Div above a `Row` -- `::TestTheSavedBsPagePutsItsFilterBarBelowTheHeader::test_filterposition_left_is_recorded_not_changed`
   (passes before and after; it pins the recorded state so a later change is deliberate).
 
-`test/test_mode_parity.py`:
+`test/test_mode_parity.py` (task 10-02):
 
 - Test: `_glyph_profile` carries `dim` and `on_link_source` -- covered by the corpus:
   `TestTheTwoModesAgree::test_same_figures` for the six linked entries fails at `91d97be`
-  with `dim (0.15, 0.15)` vs `(0.1, 0.1)` (record the diff text in 10-01's commit message).
+  with `dim (0.15, 0.15)` vs `(0.1, 0.1)` (record the diff text in `<scratch>/10-01-failure.txt`).
 - Test: `TestRangeLayersInALinkGroup::test_rspike_and_rconnected_draw_the_groups_source_in_both_modes`:
   for the entry "rspike and rconnected in a link group", in both modes g1's Segment and
   Scatter renderers report `on_link_source` True and the Line renderers False. Pre-fix:
@@ -668,7 +704,7 @@ Both modes wherever a page exists.
   Pre-fix: served classes empty.
 - Test: `TestTheTwoModesAgree::test_same_document_tree` for "layout(bs) with a title,
   filters and tabs" -- with the guard removed and the page-ordered reader in place, fails at
-  `91d97be` at `/[0]`: standalone `("Row", …)`, server `("Div", …)`; passes after 10-07.
+  `91d97be` at `/[0]`: standalone `("Row", …)`, server `("Div", …)`; passes after 10-08.
 - Test: `TestThePagesHeads::test_both_pages_declare_one_viewport`: the saved page (from
   `_standalone_page`) and the served page (`file_html(doc, INLINE, template=dr._dash_served_template())`)
   each contain `dr._DASH_VIEWPORT_META` exactly once, after a CSP meta. Pre-fix:
@@ -676,7 +712,7 @@ Both modes wherever a page exists.
 - Test: `TestTheAllowedList` (the existing guard that every key is consulted) still passes:
   the key text changes, not the key.
 
-**B. Chrome (skipped without Chrome; red under `DASH_STRICT=1`) -- task 10-02**
+**B. Chrome (skipped without Chrome; red under `DASH_STRICT=1`) -- task 10-03**
 
 `test/test_responsive_layout.py`:
 
@@ -720,7 +756,7 @@ revert:
 | the saved bar below the header | pytest, `test_served_bs_layout.py::TestTheSavedBsPagePutsItsFilterBarBelowTheHeader`, `test_mode_parity.py` page-ordered tree + corpus entry | none | yes |
 | nothing of the user in classes/CSS | pytest, `TestTheBsGridStylesheet::test_nothing_of_the_user_reaches_the_classes_or_css`, `test_responsive_layout.py::TestReflowAdversarial` (unchanged) | none | served |
 | every function has a test | pytest, `test_function_test_map.py` | none | n/a |
-| help, CHANGELOG, BUGS.md | pytest, `test_tracking_documents.py`, `test_help_claims_3.py::test_the_linking_section`; the cert suite's help-claims scripts unchanged | none | n/a |
+| help, CHANGELOG, BUGS.md | pytest, `test_tracking_documents.py`, `test_help_claims_3.py::test_the_linking_section`; the cert suite's help-claims scripts unchanged (no cscript of this section, D11) | none | n/a |
 | release gate | `scripts/run_release_gate.sh` (section 19) renders every example, six of them `layout(bs)` | none | both |
 
 Acceptance criteria:
@@ -742,242 +778,135 @@ Acceptance criteria:
 - **AC-10.5** A saved bs page reads title, subtitle, filter bar, tabs, grid in that order;
   the parity entry "layout(bs) with a title, filters and tabs" compares equal flat;
   `filterposition(left)` is unchanged and pinned.
-- **AC-10.6** The full pytest suite is green with no new skips (Chrome present on the
-  maintainer's machine; `DASH_STRICT=1` red otherwise), `test_function_test_map.py` green,
-  BUGS.md carries the closed E14 entry naming the tests, dash.sthlp and CHANGELOG updated.
+- **AC-10.6** The full pytest suite is green in the worktree before the E14 commit with no
+  new skips (Chrome present on the maintainer's machine; `DASH_STRICT=1` red otherwise),
+  `test_function_test_map.py` green, BUGS.md carries the closed E14 entry in the D3 form
+  naming the tests, dash.sthlp and both CHANGELOG markers updated.
 
 ## Tasks
 
+Commit boundary: **one commit (E14)** holding 10-01 to 10-09 (the three test tasks, the five fixes with their flips, the help, the two CHANGELOG lines and the closed entry), made by 10-09 with the subject ending `(GAPS2 E14)` and a body opening with the saved failure text (`<scratch>/10-01-failure.txt`, to which 10-02 and 10-03 append) and carrying the `Regression:` / `Flipped:` / `BUGS.md:` lines of S01 TR-01.9; the full pytest suite runs green once in the worktree before it (CLAUDE.md rules 4 and 11; every other task runs only the changed files). No task commits a red tree; 10-10 is a checkpoint after the commit. No Stata run happens in this section (D11: no cscript). The section executes in its own worktree on the branch `wp28-s10`; 10-09 commits there after the worktree's own full run, and the merger lands it on `s3-bugs` with the task's message after `git merge --no-edit main` and the batch's full run (`sections/index.md` step 1). Line numbers are those of `91d97be`; every site is also named by its symbol, and the symbol is authoritative. No AI references anywhere.
+
 <task type="auto" id="10-01">
-  <name>Write the failing model-level tests</name>
-  <files>test/test_served_bs_layout.py, test/test_mode_parity.py</files>
-  <action>
-    Write only tests; do not touch dash_render.py. In
-    `/Users/billy/Desktop/Programs/StataPrograms/d/dash/test/test_served_bs_layout.py` add
-    the five classes of stub group A with exactly the names listed (reuse `_spec`, `_saved`,
-    `_served`, `_served_grid`, `_saved_rows`, `_name`; import `_file_context` from
-    `test_csp` and `_unthrottled` from `test_adversarial_matrix`; `_spec` needs a `link=`
-    build option and `filter`/`title`/`subtitle`/`tabs`/`filter_position` pass through
-    `**bo` already). For the range tests build g1 as
-    `{"plots": [plot_for("rspike"), plot_for("rconnected")], ...}` with `plot_for` from
-    `test_server_layer_defects`, and read renderers by `type(rr.glyph).__name__` in
-    ("Segment", "Scatter", "Line"). In `test/test_mode_parity.py`: add `dim` and
-    `on_link_source` to `_glyph_profile` (TR-10.11a); write `_bs_markup_page` and
-    `_unwrap_columns` (TR-10.11b-c) and use them in `_render_pair` for bs pages, adding
-    `pair["std"]["cells"]`/`pair["srv"]["cells"]` (TR-10.11d); remove the `outside` guard
-    from `test_same_document_tree` and rewrite its docstring and the ALLOWED key's text so
-    it describes the page-ordered flat reading and says the `filterposition(left)` bs page
-    is not in the corpus (the recorded difference); add the two corpus entries of TR-10.14
-    and the classes `TestRangeLayersInALinkGroup`, `TestTheBsCellsCarryOneSetOfClasses`,
-    `TestThePagesHeads`. Run both files and paste the failure summary into the commit
-    message: the six linked entries must fail on `dim`, the new bs entry at `/[0]` with
-    `("Row", ...)` against `("Div", ...)`, the viewport and helper tests with
-    `AttributeError`/`TypeError`.
-  </action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_served_bs_layout.py test/test_mode_parity.py -q 2>&1 | tail -40` collects cleanly; every new test fails; `-k "same_figures and linked"` shows `dim` in the diff text; `-k "same_document_tree and title"` shows standalone `Row` against server `Div` at `/[0]`; every pre-existing test in both files still passes except those two groups.]]></verify>
-  <done>Group A exists, collects, and fails for the reasons the stubs name; dash_render.py is unmodified; the parity harness reads a bs page in page order and records dimming and link-source identity.</done>
+  <name>Write the failing served-bs-layout tests</name>
+  <files>test/test_served_bs_layout.py</files>
+  <action><![CDATA[
+    Write only tests; do not touch dash_render.py. In `test/test_served_bs_layout.py` add the five classes of stub group A listed under that file with exactly the names given (reuse `_spec`, `_saved`, `_served`, `_served_grid`, `_saved_rows`, `_name`; import `_file_context` from `test_csp` and `_unthrottled` from `test_adversarial_matrix`; `_spec` needs a `link=` build option and `filter`/`title`/`subtitle`/`tabs`/`filter_position` pass through `**bo` already). For the range tests build g1 as `{"plots": [plot_for("rspike"), plot_for("rconnected")], ...}` with `plot_for` from `test_server_layer_defects`, and read renderers by `type(rr.glyph).__name__` in ("Segment", "Scatter", "Line"). Run `python3 -m pytest test/test_served_bs_layout.py -q` against the unmodified tree: every new test fails (the viewport and helper tests with `AttributeError`/`TypeError`, the served-document tests on 0.1, a private source and empty classes, the bar test on the bar preceding the title) and every pre-existing test still passes. Do not commit: save the failure output to `<scratch>/10-01-failure.txt`; it opens the E14 commit's body (S01 TR-01.9, Q24).
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_served_bs_layout.py -q 2>&1 | tail -30` collects cleanly, reports every new test failing for the stubs' reasons and every pre-existing test passing; `<scratch>/10-01-failure.txt` exists; `git status --short dash_render.py` prints nothing.]]></verify>
+  <done>Group A's served-bs-layout tests existed, collected and failed against the unmodified tree for the reasons the stubs name, with dash_render.py unmodified and nothing committed.</done>
 </task>
 
 <task type="auto" id="10-02">
-  <name>Write the failing Chrome layout tests</name>
-  <files>test/responsive_probe.py, test/test_responsive_layout.py</files>
-  <action>
-    In `test/responsive_probe.py` extend `PROBE_JS`'s result with `cells` (TR-10.12):
-    inside the existing `.db-kpi-card` branch climb `el.parentElement`, and at a shadow root
-    `el.getRootNode().host`, until an element whose `classList` has a class starting with
-    `db-cell-h-`; push `[round(cell.width), round(cell.height), thatClass]` or `[-1,-1,""]`;
-    dedupe as `kk` is deduped; update the module docstring's field list. In
-    `test/test_responsive_layout.py`: `_served_page` renders with
-    `file_html(doc, INLINE, "served", template=dr._dash_served_template())`; add
-    `"bs_cards"` to `FAMILIES` and `SERVED`; rewrite the module docstring's sentence and
-    `TestServedDocumentsFitInChrome`'s docstring (the served page now declares the
-    viewport, rendered through the served template); add
-    `TestTheServedPageCarriesTheSavedPagesHead`, `TestTheServedBsGridReflowsAsTheSavedOne`
-    (one `rp.measure_many` per mode per family, then the assertions of stub group B) and
-    `TestTheProbe::test_cells_are_reported`. Every Chrome test calls `_chrome()` first so it
-    skips without Chrome and is red under `DASH_STRICT=1` (conftest). Record the pre-fix
-    measurement (four served cards across at 768, cells 110 tall) in the commit message.
-  </action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_responsive_layout.py -q 2>&1 | tail -20`: `test_viewport_and_policy` fails with `AttributeError`; `test_cards_and_canvases_agree[bs_cards]` fails at 768 naming the served card widths; `test_cells_are_reported` passes; every pre-existing test passes (Chrome is at `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`).]]></verify>
-  <done>The Chrome runner renders the served page through the served template, reports KPI cells, and its new bs parity test fails at 91d97be for the measured reason.</done>
+  <name>Extend the parity harness and its corpus</name>
+  <files>test/test_mode_parity.py</files>
+  <action><![CDATA[
+    In `test/test_mode_parity.py`: add `dim` and `on_link_source` to `_glyph_profile` (TR-10.11a); write `_bs_markup_page` and `_unwrap_columns` (TR-10.11b-c) and use them in `_render_pair` for bs pages, adding `pair["std"]["cells"]`/`pair["srv"]["cells"]` (TR-10.11d); remove the `outside` guard from `test_same_document_tree` and rewrite its docstring and the ALLOWED key's text so it describes the page-ordered flat reading and says the `filterposition(left)` bs page is not in the corpus (the recorded difference) -- `ALLOWED` is this section's alone and `_MUST_WARN` is not touched (rule R6); add the two corpus entries of TR-10.14 and the classes `TestRangeLayersInALinkGroup`, `TestTheBsCellsCarryOneSetOfClasses`, `TestThePagesHeads`. Run the file against the unmodified tree and append the failure output to `<scratch>/10-01-failure.txt`: the six linked entries must fail on `dim`, the new bs entry at `/[0]` with `("Row", ...)` against `("Div", ...)`, the viewport and range tests with `AttributeError`/`on_link_source` False. Do not commit.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_mode_parity.py -q 2>&1 | tail -30` collects cleanly; `-k "same_figures and linked"` shows `dim` in the diff text; `-k "same_document_tree and title"` shows standalone `Row` against server `Div` at `/[0]`; `-k TestTheAllowedList` passes; every pre-existing test in the file still passes except the linked entries and the new bs entry.]]></verify>
+  <done>The parity harness read a bs page in page order, recorded dimming and link-source identity, carried the two new corpus entries and three new classes, and failed against the unmodified tree for the reasons the stubs name.</done>
 </task>
 
 <task type="auto" id="10-03">
-  <name>Give the served page the viewport meta</name>
-  <files>dash_render.py, test/test_help_claims_4.py, test/test_csp.py</files>
-  <action>
-    TR-10.1: add `_DASH_VIEWPORT_META` above `_CSP_META` (`dash_render.py:2307`), use it in
-    `_CSP_META` and in `_dash_served_template`'s preamble after the CSP meta (keep the
-    `{{ super() }}` and the four-space indent; keep the docstring's "no literal tag names"
-    sentence true -- the constant, not the function, holds the tag), and add
-    `"_DASH_VIEWPORT_META"` to the constants copy list beside `"_DASH_CSP_SERVED"`
-    (`:24381`). Flip `test/test_help_claims_4.py`'s `test_the_page_has_no_mobile_viewport`
-    (`:1643`) to `test_the_page_has_a_mobile_viewport`: the launched page holds
-    `dr._DASH_VIEWPORT_META` once, after `Content-Security-Policy`, and the control assertion
-    on `_CSP_META` stays; rewrite its docstring. Flip
-    `test/test_csp.py::TestTheServedTemplate::test_it_is_bokehs_page_plus_the_meta`
-    (`:457-466`) to strip the CSP meta and then `_DASH_VIEWPORT_META` (each once, with the
-    surrounding whitespace as the current regex does) before comparing with Bokeh's page,
-    and rename it `test_it_is_bokehs_page_plus_the_two_metas`.
-  </action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_csp.py test/test_help_claims_4.py -k "viewport or template or policy" -q 2>&1 | tail -5` passes; `python3 -m pytest test/test_served_bs_layout.py test/test_mode_parity.py test/test_responsive_layout.py -k "Viewport or PagesHeads or CarriesTheSavedPagesHead" -q 2>&1 | tail -3` passes.]]></verify>
-  <done>Both pages declare one viewport meta after their CSP meta, from one constant the app also carries, and the tests that pinned its absence assert its presence.</done>
+  <name>Write the failing Chrome layout tests</name>
+  <files>test/responsive_probe.py, test/test_responsive_layout.py</files>
+  <action><![CDATA[
+    In `test/responsive_probe.py` extend `PROBE_JS`'s result with `cells` (TR-10.12): inside the existing `.db-kpi-card` branch climb `el.parentElement`, and at a shadow root `el.getRootNode().host`, until an element whose `classList` has a class starting with `db-cell-h-`; push `[round(cell.width), round(cell.height), thatClass]` or `[-1,-1,""]`; dedupe as `kk` is deduped; update the module docstring's field list. In `test/test_responsive_layout.py`: `_served_page` renders with `file_html(doc, INLINE, "served", template=dr._dash_served_template())`; add `"bs_cards"` to `FAMILIES` and `SERVED`; rewrite the module docstring's sentence and `TestServedDocumentsFitInChrome`'s docstring (the served page now declares the viewport, rendered through the served template); add `TestTheServedPageCarriesTheSavedPagesHead`, `TestTheServedBsGridReflowsAsTheSavedOne` (one `rp.measure_many` per mode per family, then the assertions of stub group B) and `TestTheProbe::test_cells_are_reported`. Every Chrome test calls `_chrome()` first so it skips without Chrome and is red under `DASH_STRICT=1` (conftest). Run the file against the unmodified tree and append the failure output, including the pre-fix measurement (four served cards across at 768, cells 110 tall), to `<scratch>/10-01-failure.txt`. Do not commit.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_responsive_layout.py -q 2>&1 | tail -20`: `test_viewport_and_policy` fails with `AttributeError`; `test_cards_and_canvases_agree[bs_cards]` fails at 768 naming the served card widths; `test_cells_are_reported` passes; every pre-existing test passes (Chrome is at `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`).]]></verify>
+  <done>The Chrome runner rendered the served page through the served template, reported KPI cells, and its new bs parity test failed at 91d97be for the measured reason, with nothing committed.</done>
 </task>
 
 <task type="auto" id="10-04">
-  <name>Dim linked served figures at dash's alpha</name>
-  <files>dash_render.py, test/function_test_map.py, test/test_help_claims_4.py</files>
-  <action>
-    TR-10.2: add `_dash_dim_nonselection(fig, alpha=_NONSELECTION_ALPHA)` immediately before
-    `class DashRenderer` with the body of `:21869-21876` and a docstring that carries the
-    method's reason (`:21856-21862`) and says it is copied into the app; delete the method
-    `_apply_nonselection_dimming`; call the function at `:23309` and `:23332`; add
-    `"_dash_dim_nonselection"` to the functions copy list beside `"_dash_refresh_linked"`
-    (`:24641`); in the template insert the gated call before `"        return fig"`
-    (`:26479`), citing that `linked_names` holds panel names too (`:26566-26570`). In
-    `test/function_test_map.py` replace the `DashRenderer._apply_nonselection_dimming` entry
-    with `'_dash_dim_nonselection': 'test/test_linking.py::TestLinkedBrushing::test_linked_renderers_have_nonselection_alpha'`.
-    Flip `test/test_help_claims_4.py::TestTheModesDifferHere::test_a_brush_dims_unselected_points_less_when_served`
-    to `test_a_brush_dims_unselected_points_alike_when_served` asserting
-    `saved == served == {0.15}`, and rewrite the class docstring ("What the help's
-    server-mode section says of the two pages, each measured").
-  </action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_served_bs_layout.py test/test_mode_parity.py test/test_help_claims_4.py test/test_help_claims_5.py test/test_linking.py test/test_function_test_map.py -k "Dims or dims or linked or same_figures or function" -q 2>&1 | tail -5` passes, the six linked parity entries included; `grep -c "_apply_nonselection_dimming" dash_render.py test/function_test_map.py` prints 0 for both.]]></verify>
-  <done>One module-level dimming function serves both renderers and is copied into the app; a linked served figure dims at 0.15 and an unlinked one at Bokeh's 0.1.</done>
+  <name>Give the served page the viewport meta</name>
+  <files>dash_render.py, test/test_help_claims_4.py, test/test_csp.py</files>
+  <action><![CDATA[
+    Apply TR-10.1: add `_DASH_VIEWPORT_META` above `_CSP_META` (`dash_render.py:2307`), use it in `_CSP_META` and in `_dash_served_template`'s preamble after the CSP meta (keep the `{{ super() }}` and the four-space indent; keep the docstring's "no literal tag names" sentence true -- the constant, not the function, holds the tag), and add `"_DASH_VIEWPORT_META"` to the constants copy list beside `"_DASH_CSP_SERVED"` (`:24381`). Flip `test/test_help_claims_4.py`'s `test_the_page_has_no_mobile_viewport` (`:1643`) to `test_the_page_has_a_mobile_viewport`: the launched page holds `dr._DASH_VIEWPORT_META` once, after `Content-Security-Policy`, and the control assertion on `_CSP_META` stays; rewrite its docstring. Flip `test/test_csp.py::TestTheServedTemplate::test_it_is_bokehs_page_plus_the_meta` (`:457-466`) to strip the CSP meta and then `_DASH_VIEWPORT_META` (each once, with the surrounding whitespace as the current regex does) before comparing with Bokeh's page, and rename it `test_it_is_bokehs_page_plus_the_two_metas`. Record both as `Flipped:` lines for the E14 commit body.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_csp.py test/test_help_claims_4.py -k "viewport or template or policy" -q 2>&1 | tail -5` passes; `python3 -m pytest test/test_served_bs_layout.py test/test_mode_parity.py test/test_responsive_layout.py -k "Viewport or PagesHeads or CarriesTheSavedPagesHead" -q 2>&1 | tail -3` passes.]]></verify>
+  <done>Both pages declared one viewport meta after their CSP meta, from one constant the app also carried, and the tests that pinned its absence asserted its presence.</done>
 </task>
 
 <task type="auto" id="10-05">
-  <name>Draw served rspike and rconnected from the group's source</name>
-  <files>dash_render.py, test/test_help_claims_3.py, test/test_help_claims_5.py</files>
-  <action>
-    TR-10.3: extend `_dash_range_source` (`dash_render.py:19439-19466`) with the keyword-only
-    linked arguments and the `(source, view, ok)` return, keeping the private
-    `ColumnDataSource(g_df[cols])` path and the no-`dropna` rule; rewrite its docstring to say
-    it is `_dash_layer_source`'s rule for the range types and why a private source never
-    saw a selection. Update the served range branch (`:26018-26024`) to pass `df=df,
-    gname=gname, linked_names=_ln, shared_source=_shared, shared_pos=_shared_pos` and to
-    call `_dash_add_glyph(..., y2var=y2var, view=_ly_view, color_idx=_sidx)`. Add a comment
-    there that the redraw closure (`:26090`) still passes an empty linked set on purpose.
-    Flip `test/test_help_claims_3.py::TestASelectionReachesTheLayersThatDrawTheGroupsRows::test_two_range_layers_draw_it_only_on_the_saved_page`
-    to `test_two_range_layers_draw_it_in_both_modes` (`any(saved) and any(served)`; for
-    rconnected `sorted(saved) == sorted(served)`). Rewrite the docstring of
-    `test/test_help_claims_5.py::TestAFacetedGraphInALinkGroup` (`:840-850`): rspike and the
-    markers of rconnected share the group's source in both modes; rbar draws its own rows.
-  </action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_served_bs_layout.py test/test_mode_parity.py test/test_help_claims_3.py test/test_help_claims_5.py test/test_served_linked_views.py test/test_served_filter_move.py test/test_server_layer_defects.py -k "Range or range or rspike or rconnected or LinkGroup or move" -q 2>&1 | tail -5` passes; `python3 -m pytest test/test_scheme_review_fixes.py -q -k MarkColour 2>&1 | tail -2` passes (the map's test for `_dash_range_source`).]]></verify>
-  <done>A served rspike or rconnected in a link group draws the shared source, through an IndexFilter view when qualified, follows a selection and a filter move as the saved page does, and every other range type still draws its own rows.</done>
+  <name>Dim linked served figures at dash's alpha</name>
+  <files>dash_render.py, test/function_test_map.py, test/test_help_claims_4.py</files>
+  <action><![CDATA[
+    Apply TR-10.2: add `_dash_dim_nonselection(fig, alpha=_NONSELECTION_ALPHA)` immediately before `class DashRenderer` with the body of `:21869-21876` and a docstring that carries the method's reason (`:21856-21862`) and says it is copied into the app; delete the method `_apply_nonselection_dimming`; call the function at `:23309` and `:23332`; add `"_dash_dim_nonselection"` to the functions copy list beside `"_dash_refresh_linked"` (`:24641`); in the template insert the gated call before `"        return fig"` (`:26479`), citing that `linked_names` holds panel names too (`:26566-26570`). In `test/function_test_map.py` replace the `DashRenderer._apply_nonselection_dimming` entry with `'_dash_dim_nonselection': 'test/test_linking.py::TestLinkedBrushing::test_linked_renderers_have_nonselection_alpha'` in alphabetical place. Flip `test/test_help_claims_4.py::TestTheModesDifferHere::test_a_brush_dims_unselected_points_less_when_served` to `test_a_brush_dims_unselected_points_alike_when_served` asserting `saved == served == {0.15}`, and rewrite the class docstring ("What the help's server-mode section says of the two pages, each measured"). Record the flip.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_served_bs_layout.py test/test_mode_parity.py test/test_help_claims_4.py test/test_help_claims_5.py test/test_linking.py test/test_function_test_map.py -k "Dims or dims or linked or same_figures or function" -q 2>&1 | tail -5` passes, the six linked parity entries included; `grep -c "_apply_nonselection_dimming" dash_render.py test/function_test_map.py` prints 0 for both.]]></verify>
+  <done>One module-level dimming function served both renderers and was copied into the app; a linked served figure dimmed at 0.15 and an unlinked one at Bokeh's 0.1.</done>
 </task>
 
 <task type="auto" id="10-06">
-  <name>Give the served bs grid the saved page's md rows and cell heights</name>
-  <files>dash_render.py, test/function_test_map.py</files>
-  <action>
-    TR-10.4 to TR-10.9: add the three constants beside `_DASH_BS_STACK_BELOW_PX` (`:191`)
-    with comments citing the saved CSS lines; add `_dash_bs_cell_classes` and
-    `_dash_bs_grid_css` next to `_dash_bs_grid_cells`, the latter's docstring recording the
-    Bokeh mechanism in three sentences (BokehJS writes a child's place as a `:host` rule in
-    the child's shadow root through `parent_style`; the child's host element sits in the
-    grid's shadow root where `css_classes` land; a normal rule from the outer context wins,
-    so no `!important`) and the measurement date; give `_dash_bs_grid` its `kpi_names=()`
-    parameter, class every placed child and append the sheet after `_dash_reflow`; update
-    the served call site (`:27177-27180`) to pass `kpi_names=_kpi_names`; add the four names
-    of TR-10.8 to the functions copy list and the three constants to the constants list;
-    rewrite the docstrings at `:18615-18618`, `:17844-17846` and the comment at
-    `:27170-27172`. In `test/function_test_map.py` add
-    `'_dash_bs_cell_classes': 'test/test_served_bs_layout.py::TestTheBsGridStylesheet::test_the_class_helper'`
-    and `'_dash_bs_grid_css': 'test/test_served_bs_layout.py::TestTheBsGridStylesheet::test_the_css_helper'`.
-  </action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_served_bs_layout.py test/test_mode_parity.py test/test_function_test_map.py -k "Stylesheet or Cells or bs or function" -q 2>&1 | tail -5` passes; `python3 -m pytest test/test_responsive_layout.py -q 2>&1 | tail -3` passes including `test_cards_and_canvases_agree[bs_cards]` and `[bs_facet]` at 375, 768 and 1440.]]></verify>
-  <done>The served layout(bs) GridBox carries one stylesheet built from the saved page's numbers and its children the saved cells' classes; measured in Chrome, both pages put span-3 cards two per line at 768 px with 130 px cells, four per line at 1440, and one per line with 120 px cells at 375.</done>
+  <name>Draw served range layers from the group source</name>
+  <files>dash_render.py, test/test_help_claims_3.py, test/test_help_claims_5.py</files>
+  <action><![CDATA[
+    Apply TR-10.3: extend `_dash_range_source` (`dash_render.py:19439-19466`) with the keyword-only linked arguments and the `(source, view, ok)` return, keeping the private `ColumnDataSource(g_df[cols])` path and the no-`dropna` rule; rewrite its docstring to say it is `_dash_layer_source`'s rule for the range types and why a private source never saw a selection. Update the served range branch (`:26018-26024`) to pass `df=df, gname=gname, linked_names=_ln, shared_source=_shared, shared_pos=_shared_pos` and to call `_dash_add_glyph(..., y2var=y2var, view=_ly_view, color_idx=_sidx)`. Add a comment there that the redraw closure (`:26090`) still passes an empty linked set on purpose. Flip `test/test_help_claims_3.py::TestASelectionReachesTheLayersThatDrawTheGroupsRows::test_two_range_layers_draw_it_only_on_the_saved_page` to `test_two_range_layers_draw_it_in_both_modes` (`any(saved) and any(served)`; for rconnected `sorted(saved) == sorted(served)`); S03's edit of this file (321-348) is disjoint. Rewrite the docstring of `test/test_help_claims_5.py::TestAFacetedGraphInALinkGroup` (`:840-850`): rspike and the markers of rconnected share the group's source in both modes; rbar draws its own rows. Record the flip.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_served_bs_layout.py test/test_mode_parity.py test/test_help_claims_3.py test/test_help_claims_5.py test/test_served_linked_views.py test/test_served_filter_move.py test/test_server_layer_defects.py -k "Range or range or rspike or rconnected or LinkGroup or move" -q 2>&1 | tail -5` passes; `python3 -m pytest test/test_scheme_review_fixes.py -q -k MarkColour 2>&1 | tail -2` passes (the map's test for `_dash_range_source`).]]></verify>
+  <done>A served rspike or rconnected in a link group drew the shared source, through an IndexFilter view when qualified, followed a selection and a filter move as the saved page does, and every other range type still drew its own rows.</done>
 </task>
 
 <task type="auto" id="10-07">
-  <name>Move the saved bs filter bar below the header</name>
-  <files>dash_render.py</files>
-  <action>
-    TR-10.10: in `_render_bootstrap_html` (`dash_render.py:22712-22731`) assemble
-    `page_body_html` as header, filter bar, tabs section, grid; rewrite the comment at
-    `:22714`. Leave the `filterposition(left)` branch (`:22699-22711`) exactly as it is and
-    add a two-line comment above it naming the recorded difference (the served app draws
-    the header above sidebar and content, `:27246-27253`; dash.sthlp records it). Nothing
-    else changes: the widgets, their ids and the grid markup are as before, so the JS filter
-    callback and `test_scheme_review_fixes.py::TestBootstrapPageWithWidgets` are untouched.
-  </action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_served_bs_layout.py test/test_mode_parity.py test/test_scheme_review_fixes.py test/test_layout.py test/test_geometry.py -k "FilterBar or same_document_tree or Bootstrap or bs" -q 2>&1 | tail -5` passes, `test_same_document_tree["layout(bs) with a title, filters and tabs"]` included.]]></verify>
-  <done>A saved layout(bs) page draws its title, then its filter bar, then its tabs and grid, as the served app and every other layout do; filterposition(left) is unchanged and pinned as recorded.</done>
+  <name>Give the served bs grid the saved layout</name>
+  <files>dash_render.py, test/function_test_map.py</files>
+  <action><![CDATA[
+    Apply TR-10.4 to TR-10.9: add the three constants beside `_DASH_BS_STACK_BELOW_PX` (`:191`) with comments citing the saved CSS lines; add `_dash_bs_cell_classes` and `_dash_bs_grid_css` next to `_dash_bs_grid_cells`, the latter's docstring recording the Bokeh mechanism in three sentences (BokehJS writes a child's place as a `:host` rule in the child's shadow root through `parent_style`; the child's host element sits in the grid's shadow root where `css_classes` land; a normal rule from the outer context wins, so no `!important`) and the measurement date; give `_dash_bs_grid` its `kpi_names=()` parameter, class every placed child and append the sheet after `_dash_reflow`; update the served call site (`:27177-27180`) to pass `kpi_names=_kpi_names`; add the four names of TR-10.8 to the functions copy list beside `"_dash_bs_grid"` (`:24652`) and the three constants to the constants list at `:24425-24428`; rewrite the docstrings at `:18615-18618`, `:17844-17846` and the comment at `:27170-27172`. In `test/function_test_map.py` add `'_dash_bs_cell_classes': 'test/test_served_bs_layout.py::TestTheBsGridStylesheet::test_the_class_helper'` and `'_dash_bs_grid_css': 'test/test_served_bs_layout.py::TestTheBsGridStylesheet::test_the_css_helper'` in alphabetical place. Record the Chrome measurements of both modes at 375, 768 and 1440 for the E14 commit body.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_served_bs_layout.py test/test_mode_parity.py test/test_function_test_map.py -k "Stylesheet or Cells or bs or function" -q 2>&1 | tail -5` passes; `python3 -m pytest test/test_responsive_layout.py -q 2>&1 | tail -3` passes including `test_cards_and_canvases_agree[bs_cards]` and `[bs_facet]` at 375, 768 and 1440.]]></verify>
+  <done>The served layout(bs) GridBox carried one stylesheet built from the saved page's numbers and its children the saved cells' classes; measured in Chrome, both pages put span-3 cards two per line at 768 px with 130 px cells, four per line at 1440, and one per line with 120 px cells at 375.</done>
 </task>
 
 <task type="auto" id="10-08">
+  <name>Move the saved bs filter bar down</name>
+  <files>dash_render.py</files>
+  <action><![CDATA[
+    Apply TR-10.10: in `_render_bootstrap_html` (`dash_render.py:22712-22731`) assemble `page_body_html` as header, filter bar, tabs section, grid; rewrite the comment at `:22714`. Leave the `filterposition(left)` branch (`:22699-22711`) exactly as it is and add a two-line comment above it naming the recorded difference (the served app draws the header above sidebar and content, `:27246-27253`; dash.sthlp records it). Nothing else changes: the widgets, their ids and the grid markup are as before, so the JS filter callback and `test_scheme_review_fixes.py::TestBootstrapPageWithWidgets` are untouched.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_served_bs_layout.py test/test_mode_parity.py test/test_scheme_review_fixes.py test/test_layout.py test/test_geometry.py -k "FilterBar or same_document_tree or Bootstrap or bs" -q 2>&1 | tail -5` passes, `test_same_document_tree["layout(bs) with a title, filters and tabs"]` included.]]></verify>
+  <done>A saved layout(bs) page drew its title, then its filter bar, then its tabs and grid, as the served app and every other layout do; filterposition(left) was unchanged and pinned as recorded.</done>
+</task>
+
+<task type="auto" id="10-09">
   <name>Document E14 and close its BUGS.md entry</name>
   <files>dash.sthlp, CHANGELOG.md, BUGS.md</files>
-  <action>
-    dash.sthlp: (1) `:1010-1020` -- linked graphs highlight a selection "in its {cmd:scatter},
-    {cmd:connected} and {cmd:dot} layers, and on {cmd:rspike} and the markers of
-    {cmd:rconnected}, which draw the group's rows in both modes"; the other layers list
-    loses "and the range and paired-coordinate plots" in favour of "the other range and
-    paired-coordinate plots", the "except that a saved dashboard…" clause goes, and the
-    {cmd:rbar} sentence stays ("shows it in neither mode"). (2) `:957-959` -- "The served app
-    does the same, on a phone as in a narrow window: both pages declare a viewport." (3)
-    `:1321` -- `{col 5}Bootstrap {cmd:layout(bs)}{col 38}reflows{col 59}reflows`. (4)
-    `:1345-1351` -- "A {cmd:layout(bs)} grid rearranges itself as the browser window narrows,
-    in both modes: a cell of four columns or fewer takes half the row below 992 pixels,
-    every cell takes the whole row below 768, and a KPI card's cell keeps a minimum height
-    keyed to its span (130 pixels under six columns, 150 from six, 170 at twelve; 120 below
-    768).  Every other grid stacks the same way in both modes when it is too narrow for its
-    columns." (5) `:1484-1496` -- replace the block with "{ul:What still differs.}  The two
-    pages are laid out alike: both declare a viewport for phones, both dim the unselected
-    points of linked graphs to 15% when a brush is drawn, and a {cmd:layout(bs)} grid takes
-    the same half rows and KPI cell heights in both.  One difference remains, recorded and
-    not changed: under {cmd:layout(bs)} with {cmd:filterposition(left)}, the saved page draws
-    the title and subtitle inside the content column beside the filter sidebar, where the
-    served app draws them above the sidebar and the content together." CHANGELOG.md, under
-    "### Results that change", a new group `**The two pages (WP-28, E14)**` with two bullets:
-    the saved `layout(bs)` page's filter bar now sits below the title and subtitle, where
-    the served app and every other layout put it (a picture change, no numbers); and the
-    served app now declares the viewport, dims unselected linked points to 15% (was Bokeh's
-    10%), shows a selection on rspike and rconnected's markers, and takes the saved
-    `layout(bs)` half rows and KPI cell heights between 768 and 991 px -- `filterposition(left)`
-    under `layout(bs)` still places the title differently, recorded in the help. BUGS.md:
-    append the closed entry `- [x] Title: The saved page and the served app present the
-    dashboard differently (GAPS2 E14)` with File Names and Line Numbers naming
-    `_dash_served_template`, `_dash_dim_nonselection` (was `_apply_nonselection_dimming`),
-    `_dash_range_source`, `_dash_bs_grid`, `_dash_bs_grid_css`, `_render_bootstrap_html`;
-    Description quoting GAPS2 E14's five items; Suggested fix GAPS2's plan; Resolution
-    "Fixed 2026 (WP-28)…" naming the mechanism for item 4 (one stylesheet on the GridBox,
-    the saved classes on its children, measured in Chrome) and every test:
-    `test/test_served_bs_layout.py::TestTheServedPageDeclaresTheSavedPagesViewport`,
-    `::TestALinkedFigureDimsAlike`, `::TestALinkedRangeLayerDrawsTheGroupsSource`,
-    `::TestTheBsGridStylesheet`, `::TestTheSavedBsPagePutsItsFilterBarBelowTheHeader`,
-    `test/test_mode_parity.py::TestRangeLayersInALinkGroup`, `::TestTheBsCellsCarryOneSetOfClasses`,
-    `::TestThePagesHeads`, `test/test_responsive_layout.py::TestTheServedBsGridReflowsAsTheSavedOne`,
-    and the flipped `test/test_help_claims_4.py::TestTheModesDifferHere::test_a_brush_dims_unselected_points_alike_when_served`
-    and `test/test_help_claims_3.py::TestASelectionReachesTheLayersThatDrawTheGroupsRows::test_two_range_layers_draw_it_in_both_modes`;
-    state the `filterposition(left)` residual. No AI references anywhere. Then pull local
-    main, run the full suite once (`python3 -m pytest test/ -q`) and the changed cscripts
-    (none), fix anything red, commit on `s3-bugs`, and report the merge command without
-    running it.
-  </action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_tracking_documents.py test/test_help_claims_3.py test/test_help_claims_4.py -q 2>&1 | tail -3` passes; `python3 -m pytest test/ -q 2>&1 | tail -3` reports no failures and no new skips; `grep -n "rspike" dash.sthlp | head -3` shows the both-modes wording and `grep -c "does not do" dash.sthlp` prints 0; `git log -1 --format=%B | grep -ci "claude\|anthropic"` prints 0.]]></verify>
-  <done>dash.sthlp, CHANGELOG.md and BUGS.md record E14 closed with its tests and its one recorded residual, and the full suite is green on the committed tree.</done>
+  <action><![CDATA[
+    dash.sthlp: (1) `:1010-1020` -- linked graphs highlight a selection "in its {cmd:scatter}, {cmd:connected} and {cmd:dot} layers, and on {cmd:rspike} and the markers of {cmd:rconnected}, which draw the group's rows in both modes"; the other layers list loses "and the range and paired-coordinate plots" in favour of "the other range and paired-coordinate plots", the "except that a saved dashboard…" clause goes, and the {cmd:rbar} sentence stays ("shows it in neither mode"). (2) `:957-959` -- "The served app does the same, on a phone as in a narrow window: both pages declare a viewport." (3) `:1321` -- `{col 5}Bootstrap {cmd:layout(bs)}{col 38}reflows{col 59}reflows`. (4) `:1345-1351` -- "A {cmd:layout(bs)} grid rearranges itself as the browser window narrows, in both modes: a cell of four columns or fewer takes half the row below 992 pixels, every cell takes the whole row below 768, and a KPI card's cell keeps a minimum height keyed to its span (130 pixels under six columns, 150 from six, 170 at twelve; 120 below 768).  Every other grid stacks the same way in both modes when it is too narrow for its columns." (5) `:1484-1496` -- replace the block with "{ul:What still differs.}  The two pages are laid out alike: both declare a viewport for phones, both dim the unselected points of linked graphs to 15% when a brush is drawn, and a {cmd:layout(bs)} grid takes the same half rows and KPI cell heights in both.  One difference remains, recorded and not changed: under {cmd:layout(bs)} with {cmd:filterposition(left)}, the saved page draws the title and subtitle inside the content column beside the filter sidebar, where the served app draws them above the sidebar and the content together." CHANGELOG.md (D2; `sections/index.md` rule R3, section-01 TR-01.7): replace, in place, the marker `<!-- WP-28 E14 -->` in the `**WP-28 (GAPS2 audit, 25sep2026)**` group at the end of the release's `### Results that change` with "- `dash build, layout(bs)` (the saved page): the filter bar now sits below the title and subtitle, where the served app and every other layout put it -- it sat above the title (a picture change, no numbers). (WP-28, E14)"; replace, in place, the marker `<!-- WP-28 E14 served -->` under the heading `### Fixed in WP-28` (which S01 created directly above `### Fixed after WP-27 (the S3 batch, 24sep2026)`) with "- The served app declares the saved page's viewport meta, dims unselected linked points to 15% (was Bokeh's 10%), shows a selection on rspike and rconnected's markers, and takes the saved `layout(bs)` half rows and KPI cell heights between 768 and 991 px; `filterposition(left)` under `layout(bs)` still places the title differently, recorded in the help. (WP-28, E14)"; add nothing else anywhere in CHANGELOG.md. BUGS.md: append at the END of the file the closed entry `- [x] Title: The saved page and the served app present the dashboard differently` with File Names and Line Numbers naming `_dash_served_template`, `_dash_dim_nonselection` (was `_apply_nonselection_dimming`), `_dash_range_source`, `_dash_bs_grid`, `_dash_bs_grid_css`, `_render_bootstrap_html`; Description quoting GAPS2 E14's five items; Suggested fix GAPS2's plan; and `- Resolution: Fixed <ddmonyyyy> (WP-28, E14). The served template carries _DASH_VIEWPORT_META; _dash_dim_nonselection, module-level and copied into the app, dims linked figures at 0.15 in both renderers; _dash_range_source hands a served rspike or rconnected in a link group the shared source through an IndexFilter view; _dash_bs_grid classes its children with the saved cells' classes and carries one stylesheet built by _dash_bs_grid_css (one InlineStyleSheet on the GridBox, the saved class names on its children, measured in Chrome: cards two per line at 768 px with 130 px cells); _render_bootstrap_html puts the saved bs filter bar below the header. Pinned by test/test_served_bs_layout.py::TestTheServedPageDeclaresTheSavedPagesViewport::test_one_viewport_after_the_policy, test/test_served_bs_layout.py::TestALinkedFigureDimsAlike::test_the_served_document, test/test_served_bs_layout.py::TestALinkedRangeLayerDrawsTheGroupsSource::test_the_served_document, test/test_served_bs_layout.py::TestTheBsGridStylesheet::test_the_grid_classes_its_children_and_carries_the_sheet, test/test_served_bs_layout.py::TestTheSavedBsPagePutsItsFilterBarBelowTheHeader::test_top, test/test_mode_parity.py::TestRangeLayersInALinkGroup::test_rspike_and_rconnected_draw_the_groups_source_in_both_modes, test/test_mode_parity.py::TestTheBsCellsCarryOneSetOfClasses::test_each_bs_entry, test/test_mode_parity.py::TestThePagesHeads::test_both_pages_declare_one_viewport, test/test_responsive_layout.py::TestTheServedBsGridReflowsAsTheSavedOne::test_cards_and_canvases_agree, test/test_help_claims_4.py::TestTheModesDifferHere::test_a_brush_dims_unselected_points_alike_when_served, test/test_help_claims_3.py::TestASelectionReachesTheLayersThatDrawTheGroupsRows::test_two_range_layers_draw_it_in_both_modes. Residual, deferred (WP-28): under layout(bs) with filterposition(left) the saved page draws the header inside the content column beside the sidebar where the served app draws it above sidebar and content (research amendment; dash.sthlp records it).` The title holds no `"`. Then run `python3 -m pytest test/test_tracking_documents.py test/test_help_claims_3.py test/test_help_claims_4.py -q`, then the full pytest suite once in the worktree (`python3 -m pytest test/ -q`, the section's one full run; CLAUDE.md rule 4; the changed cscripts are none); grep the three documents and the message for `claude\|anthropic`; commit every file 10-01 to 10-09 touched (test/test_served_bs_layout.py, test/test_mode_parity.py, test/responsive_probe.py, test/test_responsive_layout.py, dash_render.py, test/test_help_claims_4.py, test/test_csp.py, test/function_test_map.py, test/test_help_claims_3.py, test/test_help_claims_5.py, dash.sthlp, CHANGELOG.md, BUGS.md) on the worktree branch `wp28-s10` as ONE commit, subject ending `(GAPS2 E14)`, body opening with `<scratch>/10-01-failure.txt` and carrying the `Regression:` / `Flipped:` / `BUGS.md: "<title>" (closed)` lines and the Chrome measurements of 10-07; the merger lands it on `s3-bugs` with this message after `git merge --no-edit main` and the batch's full run (`sections/index.md` step 1); report that landing command without running it.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_tracking_documents.py test/test_help_claims_3.py test/test_help_claims_4.py -q 2>&1 | tail -3` passes; `python3 -m pytest test/ -q 2>&1 | tail -3` reports no failures and no new skips; `grep -n "rspike" dash.sthlp | head -3` shows the both-modes wording and `grep -c "does not do" dash.sthlp` prints 0; `grep -c '<!-- WP-28 E14' CHANGELOG.md` prints 0 and `grep -c '(WP-28, E14)' CHANGELOG.md` prints 2 while `grep -c '(WP-28, E14)' BUGS.md` prints 1; `git log -1 --format=%s | grep -c '(GAPS2 E14)'` prints 1 and `git log -1 --format=%B | grep -ci "claude\|anthropic"` prints 0; `git status --short` prints nothing.]]></verify>
+  <done>dash.sthlp, CHANGELOG.md and BUGS.md recorded E14 closed with its tests and its one recorded residual, both E14 markers were replaced, and one green commit on the worktree branch `wp28-s10` carried the gap for the merger.</done>
+</task>
+
+<task type="checkpoint" id="10-10">
+  <name>Approve the bs page changes in Chrome</name>
+  <files>none</files>
+  <action><![CDATA[
+    Render `examples`' six `layout(bs)` dashboards saved and served, open one of each in Chrome at 375, 768 and 1440 px, and show the maintainer: the filter bar below the title on the saved page, the served cards two per line at 768 with 130 px cells, and the `filterposition(left)` page unchanged. Present the E14 commit's hash on `wp28-s10` and the Chrome measurements recorded in its body (10-07). Nothing is committed here.
+  ]]></action>
+  <verify><![CDATA[The maintainer approves the bar move and the served reflow, or names a page to revisit before S19.]]></verify>
+  <done>The one deliberate picture change of WP-28 was seen and approved by the maintainer.</done>
 </task>
 
 ## Section completion criteria
 
 - Every stub of groups A and B exists under its listed name, failed at `91d97be` for the
-  reason recorded in 10-01's and 10-02's commit messages, and passes at the section's head.
+  reason recorded in `<scratch>/10-01-failure.txt`, and passes at the section's head.
 - Every test in the flip table is flipped, none deleted; `test_function_test_map.py` is
   green with `_dash_dim_nonselection`, `_dash_bs_cell_classes` and `_dash_bs_grid_css`
   mapped and `DashRenderer._apply_nonselection_dimming` gone.
 - The generated app's source defines `_DASH_VIEWPORT_META`, `_DASH_BS_LG_FROM_PX`,
   `_DASH_KPI_CELL_MIN_PX`, `_DASH_KPI_CELL_MIN_NARROW_PX`, `_dash_dim_nonselection`,
   `_dash_bs_cell_classes`, `_dash_bs_grid_css`, `_md_span`, `_cell_height_class`.
-- AC-10.1 to AC-10.6 hold; the Chrome measurements of AC-10.4 are recorded in 10-06's
-  commit message.
-- BUGS.md has the closed E14 entry; dash.sthlp no longer lists the viewport or the dimming
-  as served limitations; CHANGELOG lists the bar move and the served changes under
-  "Results that change"; the `filterposition(left)` difference is in all three.
-- `python3 -m pytest test/ -q` green under both interpreters when section 19 runs it; the
-  working tree holds nothing of this section uncommitted.
+- AC-10.1 to AC-10.6 hold; the Chrome measurements of AC-10.4 are recorded in the E14
+  commit's body.
+- BUGS.md has the closed E14 entry in the D3 form; dash.sthlp no longer lists the viewport
+  or the dimming as served limitations; the `<!-- WP-28 E14 -->` marker in the `### Results
+  that change` WP-28 group and the `<!-- WP-28 E14 served -->` marker under `### Fixed in
+  WP-28` are replaced by lines ending `(WP-28, E14)`; the `filterposition(left)` difference
+  is in all three documents.
+- One commit on the worktree branch `wp28-s10`, subject ending `(GAPS2 E14)`, the full
+  suite green in the worktree before it, landed on `s3-bugs` by the merger (`sections/index.md`
+  step 1); no test-only commit exists (D1); the checkpoint 10-10 was shown.
 
 ## Notes
 
@@ -988,6 +917,19 @@ Acceptance criteria:
   `test_served_bs_layout.py::_served`, not at build. `TestTheBsGridStylesheet::test_the_helpers_it_calls_are_in_the_app`
   and `TestTheServedPageDeclaresTheSavedPagesViewport::test_the_app_carries_the_constant`
   parse the app's source for them.
+- **Shared registries (rules R1-R6).** R1: no cscript, no runner block, no hygiene pin (D11).
+  R2: the constants copy list gains `"_DASH_VIEWPORT_META"` beside `"_DASH_CSP_SERVED"`
+  (24381) and the three bs constants at 24425-24428; the functions list gains
+  `"_dash_dim_nonselection"` after `"_dash_refresh_linked"` (24641) and the four bs helpers
+  after `"_dash_bs_grid"` (24652); `test/function_test_map.py` changes in alphabetical
+  place; the merger resolves append conflicts by hand. R3: the BUGS.md entry is appended at
+  the end in merge order; only the two E14 markers are replaced; dash.sthlp's five ranges
+  belong to this section alone. R6: `CORPUS` gains two cases; `ALLOWED` is edited by this
+  section alone; `_MUST_WARN` is never edited here.
+- **Commit bodies** use S01 TR-01.9's line forms verbatim: `Regression: test/<file>.py::<Class>::<test> -- failed at 91d97be with <text>`,
+  `Flipped: <node> -- <old expectation> was wrong because <why>` (one per flipped test),
+  `BUGS.md: "<title>" (closed)`; no `Fixture:` line (none here); the Chrome measurements of
+  10-07 follow.
 - **`db-bs-cell` on every child.** The measured first run classed only the cards and Chrome
   kept the figures at their explicit rows and pushed cards 3-4 below the wide figure. Under
   the md query every child must have `grid-row: auto`, or explicit and automatic placement
@@ -1011,16 +953,20 @@ Acceptance criteria:
 - **Renderer order.** The saved renderer dims in `_build_sources_and_figures` after each
   figure is built (`:23309`, `:23332`); the served app at the end of `_dash_figure_for`.
   Both run after every glyph is added, so both reach every renderer.
-- **Two full-suite launches per session.** `.claude/hooks/guard-full-suite.sh` refuses a
-  third `python3 -m pytest test/ -q` in one session unless prefixed `FULL_SUITE_RERUN=1`;
-  run only the changed files between tasks and the full suite once before each commit.
+- **One full-suite launch.** `.claude/hooks/guard-full-suite.sh` refuses a third
+  `python3 -m pytest test/ -q` in one session unless prefixed `FULL_SUITE_RERUN=1`; this
+  section needs one (10-09); run only the changed files between tasks.
 - **Chrome.** `test/responsive_probe.py` finds `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
   (153.0.8010.54 measured); without it the Chrome tests skip and a `DASH_STRICT=1` run is
   red -- a skip is not a pass.
-- **Commits.** One commit per task on `s3-bugs`; the E14 BUGS.md entry lands closed in
-  10-08's commit (DISCOVERY Q4 amended). No AI references in messages, entries or help.
+- **Worktree and branch.** This section runs in its own worktree on `wp28-s10`;
+  `git merge --no-edit main` and the batch's full run are the merger's steps
+  (`sections/index.md` step 1); the one commit here is made on `wp28-s10` after the
+  worktree's own full run, and the merger lands it on `s3-bugs` with the task's message.
   Section 19 adds the GAPS2 Tracked line and the WP-28 traceability row; ROADMAP.md:3352's
   WP-21 "recorded for later" note is left as history.
+- **No Stata run.** E14 has no cscript and no fixture (D11); nothing here goes through
+  `scripts/stata_slot.sh`.
 - **Recorded, not fixed (PRD §7, DISCOVERY amendments):** under `layout(bs)` with
   `filterposition(left)` the saved page draws the header inside the content column
   (`dash_render.py:22699-22711`) and the served app above sidebar and content
