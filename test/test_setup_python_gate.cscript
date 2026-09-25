@@ -133,6 +133,50 @@ _chk "v16: non-numeric is unknown" "`r(ok)'" "-1"
 
 capture program drop _gate16
 
+// ---- the floor is 3.13, not 3.8 (WP-28 K2) ----
+// dash_setup.ado's _dash_pymin now returns "3.13": bokeh 3.8 needs Python
+// 3.10, and 3.13 is the interpreter Stata is linked to on the machine
+// both test suites run under (test/conftest.py's `stata' baseline).
+// These cases pin the new floor's SHAPE, the way the block above pins
+// the old one -- comparator inputs, not the declared minimum, which
+// "dash_setup names a minimum" and "dash_setup.sthlp states the same
+// minimum" already read from _dash_pymin/dash_setup.sthlp directly.
+_dash_pyver_ok "3.13.9" "3.13"
+_chk "3.13.9 >= 3.13" "`r(ok)'" "1"
+_dash_pyver_ok "3.13"   "3.13"
+_chk "3.13 >= 3.13"   "`r(ok)'" "1"
+_dash_pyver_ok "3.12.11" "3.13"
+_chk "3.12.11 < 3.13" "`r(ok)'" "0"
+_dash_pyver_ok "3.10.10" "3.13"
+_chk "3.10.10 < 3.13" "`r(ok)'" "0"
+
+capture program drop _gate16
+program define _gate16, rclass
+    version 16.0
+    args got want
+    _dash_pyver_ok "`got'" "`want'"
+    return scalar ok = r(ok)
+end
+_gate16 "3.13.9" "3.13"
+_chk "v16: 3.13.9 >= 3.13" "`r(ok)'" "1"
+_gate16 "3.12.11" "3.13"
+_chk "v16: 3.12.11 < 3.13" "`r(ok)'" "0"
+capture program drop _gate16
+
+// ---- the upgrade line names the linked interpreter (Q27) ----
+// _dash_pip_command builds the `To upgrade:' line dash_setup prints when
+// a package is below its minimum: the interpreter Stata is linked to,
+// never a bare `python'.  Both sides are built in the same session, so
+// this holds whether or not Python is linked here.
+_dash_pip_command "bokeh" "3.8"
+local _pipcmd `"`r(cmd)'"'
+local _want_cmd `"`c(python_exec)' -m pip install 'bokeh>=3.8'"'
+_chk "the pip command is c(python_exec) + pip install" `"`_pipcmd'"' `"`_want_cmd'"'
+if `"`c(python_exec)'"' != "" {
+    mata: st_local("_haspx", strofreal(strpos(st_local("_pipcmd"), " -m pip install 'bokeh>=3.8'") > 1))
+    _chk "the upgrade command names c(python_exec)" "`_haspx'" "1"
+}
+
 if `fail' {
     display as error "SOME TESTS FAILED"
     exit 9

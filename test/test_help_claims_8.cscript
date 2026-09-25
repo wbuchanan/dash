@@ -791,7 +791,7 @@ _hc_done "HC8-18" "dash_setup, twoway and python all resolve"
 // ================================================================
 // HC8-19 -- dash_setup's summary
 // ================================================================
-_hc_run "" "_dash_setup_summary, failures(1) warnings(0) items(bokeh 2.4 (needs 3.0))"
+_hc_run "" "_dash_setup_summary, failures(1) warnings(0) items(bokeh 2.4 (needs 3.8))"
 _hc_expect "HC8-19" "(`r(rc)' == 198)" "one unmet requirement: rc `r(rc)'"
 _hc_log "HC8-19" "`r(logfile)'" "dash_setup did not complete: 1 unmet requirement(s)." 1
 _hc_run "" "_dash_setup_summary, failures(0) warnings(1) items(packaging)"

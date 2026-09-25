@@ -1658,7 +1658,7 @@ class TestDashSetupHelpMatchesTheAdo:
                 "the command that upgrades it, and counted as unmet.") in help_
         assert ("Tornado is installed with Bokeh, which depends on it, so no "
                 "separate installation is needed") in help_
-        assert ("one below 3.0 is reported as an unmet requirement -- it is "
+        assert ("one below 3.8 is reported as an unmet requirement -- it is "
                 "not upgraded for you -- and the run ends with r(198).") in help_
 
     def test_it_installs_only_what_is_missing(self):

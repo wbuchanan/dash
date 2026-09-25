@@ -625,16 +625,16 @@ local rc = r(rc)
 local match = r(match)
 assert `rc' == 198
 assert `match' == 1
-foreach p in "version 3.7.9 is below the minimum 3.8." ///
+foreach p in "version 3.7.9 is below the minimum 3.13." ///
     "bokeh ............. OK (version" "dash_render.py ..... OK" ///
     "dash_setup did not complete: 1 unmet requirement(s)." ///
-    "Unmet:  Python 3.7.9 (needs 3.8)" {
+    "Unmet:  Python 3.7.9 (needs 3.13)" {
     _pc_said "`p'"
     assert r(found) == 1
 }
 _pc_said "All dependencies are satisfied"
 assert r(found) == 0
-display "PC-16 PASS: Python 3.7.9 is reported below 3.8, every other check still runs, and the run fails naming it"
+display "PC-16 PASS: Python 3.7.9 is reported below 3.13, every other check still runs, and the run fails naming it"
 
 
 // ================================================================
@@ -645,7 +645,7 @@ _pc_setup
 local rc = r(rc)
 assert `rc' == 0
 assert r(match) == 1
-_pc_said "OK (version abc; could not be compared to 3.8)"
+_pc_said "OK (version abc; could not be compared to 3.13)"
 assert r(found) == 1
 display "PC-17 PASS: an unreadable Python version is reported as such and does not fail the run"
 
@@ -665,8 +665,8 @@ if `match' != 1 {
 }
 assert `rc' == 0
 foreach p in "packaging .......... missing" "could not install" ///
-    "(not verified against 3.0)" "(not verified against 1.23)" ///
-    "(not verified against 2.0)" "dash_setup complete, with 1 warning(s)." ///
+    "(not verified against 3.8)" "(not verified against 2.3)" ///
+    "dash_setup complete, with 1 warning(s)." ///
     "Warned:  packaging (version checks approximate)" {
     _pc_said "`p'"
     assert r(found) == 1
@@ -679,7 +679,7 @@ display "PC-18 PASS: without packaging, pip is asked for it once, versions are u
 //          --user is tried once, and the run stops there
 // ================================================================
 global PC_SB_SPEC `"{"block": ["bokeh"]}"'
-global PC_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "bokeh>=3.0"], ["PYTHON", "-m", "pip", "install", "--user", "bokeh>=3.0"]]"'
+global PC_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "bokeh>=3.8"], ["PYTHON", "-m", "pip", "install", "--user", "bokeh>=3.8"]]"'
 _pc_setup
 local rc = r(rc)
 local match = r(match)
@@ -691,21 +691,21 @@ if `match' != 1 {
 assert `rc' == 198
 foreach p in "bokeh ............. missing" "retrying with --user..." ///
     "Failed to install bokeh. Please install manually:" ///
-    "python -m pip install bokeh>=3.0" ///
+    "python -m pip install bokeh>=3.8" ///
     "Unmet:  bokeh (could not install)" {
     _pc_said "`p'"
     assert r(found) == 1
 }
 _pc_said "numpy ............."
 assert r(found) == 0
-display "PC-19 PASS: a bokeh pip cannot install is asked for as bokeh>=3.0, retried with --user, and stops the run"
+display "PC-19 PASS: a bokeh pip cannot install is asked for as bokeh>=3.8, retried with --user, and stops the run"
 
 
 // ================================================================
 // PC-20 -- bokeh missing and installed: one pip run, no retry
 // ================================================================
 global PC_SB_SPEC `"{"block": ["bokeh"], "unblock_on_install": ["bokeh"]}"'
-global PC_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "bokeh>=3.0"]]"'
+global PC_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "bokeh>=3.8"]]"'
 _pc_setup
 local rc = r(rc)
 local match = r(match)
@@ -732,13 +732,16 @@ local rc = r(rc)
 local match = r(match)
 assert `match' == 1
 assert `rc' == 198
-foreach p in "2.4.3 (below minimum 3.0)" ///
-    "To upgrade: python -m pip install --upgrade 'bokeh>=3.0'" ///
-    "Unmet:  bokeh 2.4.3 (needs 3.0)" {
+// Q27: the upgrade line names the interpreter Stata is linked to.
+local pc21wantcmd `"`c(python_exec)' -m pip install 'bokeh>=3.8'"'
+foreach p in "2.4.3 (below minimum 3.8)" ///
+    "Unmet:  bokeh 2.4.3 (needs 3.8)" {
     _pc_said "`p'"
     assert r(found) == 1
 }
-display "PC-21 PASS: bokeh 2.4.3 is reported below 3.0 with the upgrade command, and nothing is installed"
+_pc_said `"`pc21wantcmd'"'
+assert r(found) == 1
+display "PC-21 PASS: bokeh 2.4.3 is reported below 3.8 with the c(python_exec) upgrade command, and nothing is installed"
 
 
 // ================================================================

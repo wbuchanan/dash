@@ -37,9 +37,10 @@ present but older than {cmd:dash} needs is reported, not upgraded.
 
 {phang2}1.  Python.  Whether Python is linked to Stata is read from the
     setting {cmd:c(python_exec)}; with none, {cmd:dash_setup} stops at once,
-    r(198).  The linked interpreter's version is then compared with the 3.8
-    minimum, numerically per component, so 3.10 is correctly newer than
-    3.9; a version below 3.8 is reported as such and counted as unmet.
+    r(198).  The linked interpreter's version is then compared with the
+    3.13 minimum, numerically per component, so 3.10 is correctly newer
+    than 3.9; a version below 3.13 is reported as such and counted as
+    unmet.
 
 {phang2}2.  {cmd:packaging}, which the version comparisons below use, is
     installed with {cmd:pip} if it is missing.  If it cannot be installed,
@@ -67,7 +68,7 @@ runs {cmd:dash_setup} stops there.
 
 {pstd}{ul:Python}
 
-{phang2}Python 3.8 or later must be installed and linked to Stata.
+{phang2}Python 3.13 or later must be installed and linked to Stata.
 {cmd:dash_setup} does not install Python.  See {helpb python} for
 instructions on linking Python.
 
@@ -77,9 +78,9 @@ instructions on linking Python.
 starts, so without any of them {cmd:dash} cannot draw anything at all:
 
 {synoptset 20 tabbed}{...}
-{synopt:{opt bokeh}}3.0 or later{p_end}
-{synopt:{opt numpy}}1.23 or later{p_end}
-{synopt:{opt pandas}}2.0 or later{p_end}
+{synopt:{opt bokeh}}3.8 or later{p_end}
+{synopt:{opt numpy}}2.3 or later{p_end}
+{synopt:{opt pandas}}2.3 or later{p_end}
 {synoptline}
 
 {pstd}Nothing else is needed.  Earlier versions listed {cmd:scipy} and
@@ -90,14 +91,25 @@ neither installs nor checks them, and an installed copy is not used.
 {pstd}{cmd:dash_setup} also installs {cmd:packaging}, before the packages
 above, because the version comparisons use it.
 
+{pstd}These minimums are the versions {cmd:dash}'s own test suites run
+under (Python 3.13.9, bokeh 3.8.0, numpy 2.3.5, pandas 2.3.3 when this was
+written); nothing older is tested.  bokeh before 3.6 lacks
+{cmd:CustomJSTicker}, which every {cmd:dash} render imports, and
+{cmd:pandas} is required by {cmd:dash} itself: bokeh 3.9 no longer
+installs it.  A package below its minimum is not upgraded for you;
+{cmd:dash_setup} prints the {cmd:pip} command for the Python Stata is
+linked to and stops.
+
 {pstd}Missing packages are installed automatically.  If automatic
 installation fails (e.g., in a restricted network environment), install
-manually:
+manually -- the command {cmd:dash_setup} prints names the Python Stata is
+linked to, {cmd:c(python_exec)}, not necessarily {cmd:sys.executable}
+below if you run this outside Stata:
 
 {phang2}{cmd:python: import subprocess, sys}
 
 {phang2}{cmd:python: subprocess.run([sys.executable, "-m", "pip", "install",}
-{cmd:"bokeh", "numpy", "pandas"])}
+{cmd:"bokeh>=3.8", "numpy>=2.3", "pandas>=2.3"])}
 
 {pstd}{ul:Stata packages}
 
@@ -111,7 +123,7 @@ it.
 {cmd:dash build} use the Bokeh Server, which runs on the Tornado web
 framework.  Tornado is installed with Bokeh, which depends on it, so no
 separate installation is needed and {cmd:dash_setup} does not check it.
-{cmd:dash_setup} reports the installed bokeh version; one below 3.0 is
+{cmd:dash_setup} reports the installed bokeh version; one below 3.8 is
 reported as an unmet requirement -- it is not upgraded for you -- and the
 run ends with r(198).
 

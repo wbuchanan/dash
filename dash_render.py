@@ -25631,6 +25631,12 @@ class ServerAppBuilder:
             '# Or run directly: python <this_file.py>',
             '"""',
             "",
+            # GAPS2 K2: the first statement after the docstring, so every
+            # annotation below -- PEP 585 (list[int]) and PEP 604 (int |
+            # None) among them -- is a string, never evaluated at import.
+            # Without it the app raised TypeError on Python 3.8 and 3.9.
+            "from __future__ import annotations",
+            "",
             "import argparse as _argparse",
             "import base64",
             "import bisect",
@@ -25643,10 +25649,9 @@ class ServerAppBuilder:
             "import re",
             "import ast as _ast",
             # GlyphMapper's signatures annotate with Any, Callable and List.
-            # Annotations are evaluated when the class body runs on any
-            # interpreter without PEP 649's lazy evaluation -- Stata's
-            # embedded Python among them -- and the app then raises
-            # NameError at import. It did.
+            # The typing import stays for those names -- the served-app
+            # name checks read them -- not because Python evaluates the
+            # annotations: the future import above defers that.
             "from typing import Any, Callable, Iterable, List",
             "import numpy as np",
             "import warnings",

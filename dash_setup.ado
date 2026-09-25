@@ -57,7 +57,7 @@ program define dash_setup
     // configured.
     if `"`c(python_exec)'"' == "" {
         display as error "Python is not available to Stata."
-        display as error "Please install Python 3.8+ and link it to Stata:"
+        display as error "Please install Python `c_pymin' or later and link it to Stata:"
         display as error "  help python"
         local n_fail = `n_fail' + 1
         local fail_items `"`fail_items' Python (not linked to Stata)"'
@@ -68,11 +68,11 @@ program define dash_setup
 
     // Retrieve Python version string and compare it to the minimum.
     //
-    // Any linked Python answers, 3.6 included, and this step used to read
-    // the version only to print it.  dash_setup.sthlp says
-    // this step verifies Python 3.8+, so it now does: a user on 3.7 was told
-    // "OK (version 3.7.9)" and sent on to fail later inside bokeh, with a
-    // message about neither Python nor dash.
+    // Any linked Python answers, and this step used to read the version
+    // only to print it.  dash_setup.sthlp says this step verifies the
+    // declared minimum, so it now does: a user on a too-old Python was
+    // told "OK (version ...)" and sent on to fail later inside bokeh, with
+    // a message about neither Python nor dash.
     python: import sys; from sfi import Macro; Macro.setLocal("pyver", sys.version.split()[0])
     _dash_pyver_ok "`pyver'" "`c_pymin'"
     local pyok = r(ok)
@@ -143,11 +143,16 @@ program define dash_setup
     // Stata's own plotted points.  Nothing imports either any more, so
     // setup neither installs nor checks them.
     local pkg_list "bokeh numpy pandas"
-    local min_bokeh       "3.0"
-    local min_numpy       "1.23"
-    // pandas 2.0: dash_render.py holds Stata dates as datetime64[ms],
-    // which pandas 1.x cannot store (WP-25, 24sep2026).
-    local min_pandas      "2.0"
+    // The stata baseline of test/conftest.py, measured 25sep2026: Python
+    // 3.13.9, bokeh 3.8.0, numpy 2.3.5, pandas 2.3.3 -- the versions both
+    // test suites run under; nothing older is tested (GAPS2 K2).  Every
+    // render imports CustomJSTicker, present only from bokeh 3.6.0, so an
+    // installed bokeh 3.0-3.5 used to pass this check and then fail every
+    // dash command with r(7102); pandas is declared here because bokeh
+    // 3.9 no longer installs it as a dependency.
+    local min_bokeh       "3.8"
+    local min_numpy       "2.3"
+    local min_pandas      "2.3"
 
     foreach pkg of local pkg_list {
         // Try importing the package; if it fails, pip-install it
@@ -220,8 +225,11 @@ program define dash_setup
         else if "`verdict'" == "below" {
             display as text "  `pkg' ............. {res}`pkgver'{txt}" ///
                 " {err}(below minimum `minver'){txt}"
-            display as text "      To upgrade: python -m pip install" ///
-                " --upgrade '`pkg'>=`minver''"
+            // The Python Stata is linked to (Q27), never the bare word
+            // `python': installing with a different interpreter would
+            // upgrade the wrong Python.
+            _dash_pip_command "`pkg'" "`minver'"
+            display as text "      To upgrade: `r(cmd)'"
             // Reported as unmet rather than upgraded behind the user's
             // back: this package is already importable, so something else
             // in their environment may depend on the version they have.
@@ -292,7 +300,7 @@ program define _dash_pymin, rclass
         test/test_setup_python_gate.cscript asserts dash_setup.sthlp states
         the same number -- so the help cannot drift from the check.
     */
-    return local pymin "3.8"
+    return local pymin "3.13"
 end
 
 program define _dash_pyver_ok, rclass
@@ -377,6 +385,26 @@ program define _dash_pyver_ok, rclass
         }
     }
     return scalar ok = `answer'
+end
+
+// ================================================================
+// _dash_pip_command  — the pip install line dash_setup prints (Q27)
+//
+// The interpreter named is the one Stata is linked to (c(python_exec)),
+// never the bare word `python': installing with a different interpreter
+// than the one Stata runs against would upgrade the wrong Python, and a
+// bare `python' could be Python 2 or an unrelated environment.  Called
+// only from the `below' branch, after Python-not-linked has already
+// exited the run (line 58), so c(python_exec) is never empty here.
+//
+// Syntax:
+//   _dash_pip_command pkg minver
+//   -> r(cmd): "<c(python_exec)> -m pip install '<pkg>>=<minver>'"
+// ================================================================
+program define _dash_pip_command, rclass
+    version 16.0
+    args pkg minver
+    return local cmd `"`c(python_exec)' -m pip install '`pkg'>=`minver''"'
 end
 
 program define _dash_pkg_version

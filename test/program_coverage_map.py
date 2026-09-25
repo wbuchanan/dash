@@ -275,6 +275,7 @@ COVERAGE = {
                         "test_program_coverage.cscript:PC-16"),
         "_dash_pyver_ok": ("test_setup_python_gate.cscript",
                            "test_setup_honesty.cscript:HON-08"),
+        "_dash_pip_command": ("test_setup_python_gate.cscript",),
         "_dash_pkg_version": ("test_setup_version_gate.cscript:SVG-02",
                               "test_setup_injection.cscript:INJ-11",
                               "test_program_coverage.cscript:PC-22"),

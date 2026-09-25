@@ -376,12 +376,21 @@ and now matches Stata.
 
 ### Requirements
 
-- Python 3.8 or later, linked to Stata (`dash_setup` checks this). (WP-06)
-- bokeh >= 3.0, numpy >= 1.23 and pandas >= 2.0. pandas was >= 1.5; 1.x
-  cannot store dash's date columns. (WP-25)
+- Python 3.13 or later, linked to Stata (`dash_setup` checks this). Was
+  3.8: bokeh 3.8 needs 3.10, and 3.13 is the Python Stata links and both
+  suites run under. (WP-06, WP-28)
+- bokeh >= 3.8, numpy >= 2.3 and pandas >= 2.3, the versions the suites
+  run under. Were 3.0, 1.23 and 2.0: every render imports
+  `CustomJSTicker`, added in bokeh 3.6, so an installed 3.0-3.5 passed
+  `dash_setup` and then failed every command; pandas is declared by dash
+  itself because bokeh 3.9 no longer requires it. (WP-25, WP-28)
 - scipy and statsmodels are no longer needed (WP-18), and neither is
   jsonio: dash writes its data from Stata's own Python (WP-27).
-<!-- WP-28 K2 -->
+- The declared minimums are the tested ones -- Python 3.13, bokeh 3.8,
+  numpy 2.3, pandas 2.3 -- everywhere they appear; `dash_setup` refuses
+  anything below them, printing the exact `pip install` command for the
+  Python Stata is linked to and installing nothing, and the generated
+  server app opens with `from __future__ import annotations`. (WP-28, K2)
 
 ### Fixed in WP-28
 

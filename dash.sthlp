@@ -3187,10 +3187,10 @@ Run {helpb dash_setup} once before using {cmd:dash}.  It checks everything
 below and installs what it can -- the Python packages; a Python you install
 and link yourself:
 
-{phang2}{ul:Python 3.8+} -- linked to Stata; see {helpb python}.
+{phang2}{ul:Python 3.13+} -- linked to Stata; see {helpb python}.
 
-{phang2}{ul:Python packages, required} -- bokeh>=3.0, numpy>=1.23,
-    pandas>=2.0.
+{phang2}{ul:Python packages, required} -- bokeh>=3.8, numpy>=2.3,
+    pandas>=2.3.
 
 {phang2}{ul:Python packages, optional} -- none.  Every statistical
     layer is computed with numpy: {cmd:lfitci} and {cmd:mspline} no

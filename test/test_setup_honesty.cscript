@@ -8,12 +8,12 @@
 *! and FOUR branches reached it after reporting a failure:
 *!
 *!   1. Python below the minimum.  The branch displays "version X is below
-*!      the minimum 3.8" and "bokeh and pandas will not install or import
+*!      the minimum 3.13" and "bokeh and pandas will not install or import
 *!      reliably" -- and there is no `exit'.  Every `exit' in the file was on
 *!      another branch (no Python at all, a required pip install that failed,
 *!      and the two jsonio ones).
 *!   2. A required package present but BELOW its minimum.  The gate prints
-*!      "(below minimum 3.0)" and carries on.
+*!      "(below minimum 3.8)" and carries on.
 *!   3. An optional package that could not be installed -- `continue'.
 *!   4. `packaging' itself failing to install, which disables the gate.
 *!
@@ -56,12 +56,15 @@
 *! for exactly the length of each run, so it can reach pip and install
 *! nothing (WP-24: the helpers alone left the body's wiring untested).
 *!
-*! Tests: HON-01 through HON-28.  HON-19..25 run dash_setup itself with pip
+*! Tests: HON-01 through HON-30.  HON-19..25 run dash_setup itself with pip
 *! replaced by a recorder, so nothing is installed (see the section header).
 *! HON-26..28 run it in test/setup_sandbox.py's sandbox, for the order of its
 *! steps (packaging before the packages that need it) and for what it leaves
 *! alone (scipy and statsmodels) -- claims test_server.py and
-*! test_help_claims_8.py held by reading dash_setup.ado's text.
+*! test_help_claims_8.py held by reading dash_setup.ado's text.  HON-29..30
+*! (WP-28 K2) run the same sandbox against the declared floor -- bokeh
+*! 3.7.3 and Python 3.12.11, both below it -- refused by name with the
+*! c(python_exec) pip line (Q27), nothing installed.
 *!
 *! Usage:  do test/test_setup_honesty.cscript
 *! Version: 1.1  24sep2026
@@ -408,8 +411,9 @@ foreach m in packaging bokeh numpy pandas {
 // Put dash_setup's programs back after a case replaced one with a stub.
 capture program drop _hon_reload
 program define _hon_reload
-    foreach p in dash_setup _dash_pymin _dash_pyver_ok _dash_pkg_version ///
-            _dash_setup_summary _dash_setup_gate _dash_setup_check_files {
+    foreach p in dash_setup _dash_pymin _dash_pyver_ok _dash_pip_command ///
+            _dash_pkg_version _dash_setup_summary _dash_setup_gate ///
+            _dash_setup_check_files {
         capture program drop `p'
     }
     quietly do "../dash_setup.ado"
@@ -501,9 +505,12 @@ local h20rc = r(rc)
 local h20log "`r(log)'"
 local h20calls `"`r(calls)'"'
 _hon_reload
-_hon_has "`h20log'" "(below minimum 3.0)" h20below
-_hon_has "`h20log'" "--upgrade 'bokeh>=3.0'" h20cmd
-_hon_has "`h20log'" "bokeh 2.4 (needs 3.0)" h20unmet
+_hon_has "`h20log'" "(below minimum 3.8)" h20below
+// Q27: the upgrade line names the interpreter Stata is linked to, never
+// a bare `python'; built the same way _dash_pip_command builds it.
+local h20wantcmd `"`c(python_exec)' -m pip install 'bokeh>=3.8'"'
+_hon_has "`h20log'" `"`h20wantcmd'"' h20cmd
+_hon_has "`h20log'" "bokeh 2.4 (needs 3.8)" h20unmet
 _hon_has "`h20log'" "All dependencies are satisfied" h20ok
 assert `h20rc' == 198
 assert `h20below' == 1
@@ -521,9 +528,9 @@ local h21calls `"`r(calls)'"'
 _hon_has "`h21log'" "HONPIPOUT" h21out
 _hon_has "`h21log'" "with 1 warning" h21warn
 _hon_has "`h21log'" "All dependencies are satisfied" h21ok
-_hon_has "`h21log'" "(not verified against 3.0)" h21v1
-_hon_has "`h21log'" "(not verified against 1.23)" h21v2
-_hon_has "`h21log'" "(not verified against 2.0)" h21v3
+_hon_has "`h21log'" "(not verified against 3.8)" h21v1
+_hon_has "`h21log'" "(not verified against 2.3)" h21v2
+_hon_has "`h21log'" "(not verified against 2.3)" h21v3
 _hon_has "`h21log'" "bokeh ............. OK" h21k1
 _hon_has "`h21log'" "numpy ............. OK" h21k2
 _hon_has "`h21log'" "pandas ............. OK" h21k3
@@ -544,7 +551,7 @@ local h22calls `"`r(calls)'"'
 _hon_has "`h22log'" "bokeh (could not install)" h22unmet
 _hon_has "`h22log'" "All dependencies are satisfied" h22ok
 assert `h22rc' == 198
-assert `"`h22calls'"' == "-m pip install bokeh>=3.0 | -m pip install --user bokeh>=3.0"
+assert `"`h22calls'"' == "-m pip install bokeh>=3.8 | -m pip install --user bokeh>=3.8"
 assert `h22unmet' == 1
 assert `h22ok' == 0
 display "HON-22 PASS: pip is asked for bokeh>=3.0, then again with --user, and the failure is fatal"
@@ -697,11 +704,15 @@ if `h26m' != 1 {
 assert `h26m' == 1
 assert `h26rc' == 0
 foreach p in "packaging .......... missing" "packaging .......... could not install" ///
-    "(not verified against 3.0)" "(not verified against 1.23)" ///
-    "(not verified against 2.0)" "dash_setup complete, with 1 warning(s)." {
+    "(not verified against 3.8)" "dash_setup complete, with 1 warning(s)." {
     cert_log_has "`h26log'", needle("`p'")
     assert r(count) == 1
 }
+// numpy and pandas share one minimum (2.3) now, so the needle appears
+// twice -- once for each package -- where it appeared once per distinct
+// number before.
+cert_log_has "`h26log'", needle("(not verified against 2.3)")
+assert r(count) == 2
 foreach p in "bokeh ............. OK" "numpy ............. OK" "pandas ............. OK" ///
     "All dependencies are satisfied" {
     cert_log_has "`h26log'", needle("`p'")
@@ -716,7 +727,7 @@ display "HON-26 PASS: without packaging, pip is asked for it once, no version is
 // before packaging was there reports.  The absence below is shown readable
 // by HON-26, where the same line is there.
 global HON_SB_SPEC `"{"block": ["packaging", "bokeh"], "unblock_on_install": ["packaging", "bokeh"]}"'
-global HON_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "packaging"], ["PYTHON", "-m", "pip", "install", "bokeh>=3.0"]]"'
+global HON_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "packaging"], ["PYTHON", "-m", "pip", "install", "bokeh>=3.8"]]"'
 _hon_sb_setup
 local h27rc = r(rc)
 local h27m = r(match)
@@ -765,6 +776,59 @@ foreach p in "scipy" "statsmodels" {
     assert r(found) == 0
 }
 display "HON-28 PASS: with scipy and statsmodels missing, setup names neither, installs nothing, and succeeds"
+
+// ================================================================
+// HON-29..30 -- the floor is 3.13/3.8, and refuses without installing
+// (WP-28 K2, Q27)
+// ================================================================
+// A below-floor bokeh, and a below-floor Python, are refused by NAME --
+// r(198), the number, the Unmet: line -- and nothing is installed for
+// either: `fake' writes a fake .dist-info distribution _dash_pkg_version
+// reads, `pyversion' replaces sys.version, both through
+// test/setup_sandbox.py exactly as PC-16 and PC-21 drive them.
+
+// ---- HON-29: bokeh 3.7.3 is below the 3.8 floor ----
+global HON_SB_SPEC `"{"fake": [["bokeh", "3.7.3"]]}"'
+global HON_SB_EXPECT "[]"
+_hon_sb_setup
+local h29rc = r(rc)
+local h29m = r(match)
+local h29log "`r(log)'"
+if `h29m' != 1 {
+    mata: printf("{err}HON-29: %s\n", st_global("HON_SB_WHY"))
+}
+assert `h29m' == 1
+assert `h29rc' == 198
+_hon_has "`h29log'" "3.7.3 (below minimum 3.8)" h29below
+local h29wantcmd `"`c(python_exec)' -m pip install 'bokeh>=3.8'"'
+_hon_has "`h29log'" `"`h29wantcmd'"' h29cmd
+_hon_has "`h29log'" "Unmet:  bokeh 3.7.3 (needs 3.8)" h29unmet
+_hon_has "`h29log'" "All dependencies are satisfied" h29ok
+assert `h29below' == 1
+assert `h29cmd' == 1
+assert `h29unmet' == 1
+assert `h29ok' == 0
+display "HON-29 PASS: bokeh 3.7.3 is refused by name, the pip line names c(python_exec), nothing installed"
+
+// ---- HON-30: Python 3.12.11 is below the 3.13 floor ----
+global HON_SB_SPEC `"{"pyversion": "3.12.11 (dash test sandbox)"}"'
+global HON_SB_EXPECT "[]"
+_hon_sb_setup
+local h30rc = r(rc)
+local h30m = r(match)
+local h30log "`r(log)'"
+if `h30m' != 1 {
+    mata: printf("{err}HON-30: %s\n", st_global("HON_SB_WHY"))
+}
+assert `h30m' == 1
+assert `h30rc' == 198
+_hon_has "`h30log'" "version 3.12.11 is below the minimum 3.13." h30below
+_hon_has "`h30log'" "Unmet:  Python 3.12.11 (needs 3.13)" h30unmet
+_hon_has "`h30log'" "All dependencies are satisfied" h30ok
+assert `h30below' == 1
+assert `h30unmet' == 1
+assert `h30ok' == 0
+display "HON-30 PASS: Python 3.12.11 is refused by name, nothing installed"
 
 macro drop HON_SB_SPEC HON_SB_EXPECT HON_SB_WHY
 
