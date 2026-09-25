@@ -64,17 +64,20 @@ Silent when right, loud when refusing. An option dash now honours prints nothing
 - **G1 residuals:** the qualifier, by()-order and ustrfix columns are still generated in the user's dataset, so a dataset already at `c(maxvar)` may still fail; and a user variable named like a Bokeh glyph field (`x`, `y`, `top`, `count`, `density` and the like) is still shadowed by the derived value in `hover()` and `mlabel()`. Both are recorded, not fixed.
 - **G3:** the export stays JSON; row-drawing layers stay bounded by the limit; the served app still embeds every row, so the relaxed count applies to the saved page only.
 - **X2:** the continuous colour default, and `colorrule()`, `colorstart()` and `colorend()`, stay as documented.
-- **E1/E3:** `%x` and `%H` formats are refused, not written.
+- **E1/E3:** `%x`, `%H` and `%L` (the IEEE byte dumps) are refused with r(198), not written (Q6).
 - **E14:** the `filterposition(left)` layout difference found in research is recorded, not fixed.
-- **D1:** third-party scheme files are out of scope: dash reads the quoted values Stata's own schemes use, proven with a scheme file the test writes; the locally installed third-party schemes are neither swept nor pinned, and the CMYK, hsv and `colour*#` colour forms stay a separate gap (D7).
+- **D1:** third-party scheme files are out of scope by decision (Q30): dash reads the quoted RGB and %opacity values Stata's own schemes use, proven with a scheme file the test writes itself; the locally installed third-party schemes are neither swept nor pinned, no copied third-party scheme is committed as a fixture, and GAPS2 D1's plan step 4 (the 129-file sweep and the d3colors pin) is excluded, not deferred. The CMYK, hsv and `colour*#` colour forms of plan step 2 stay GAPS2 D7's gap and are not read here.
+- **B5:** a layer that drew nothing has no legend key, so `order()` naming its number draws nothing where twoway draws the key; recorded as a residual in the B5 entry.
+- **K2:** the floor is the tested one (Python 3.13, Bokeh 3.8, pandas 2.3, numpy 2.3), proven by sandbox fakes; no Python 3.10 venv matrix is built and nothing below the floor is installed to measure it (Q8).
+- **Demo pages:** no `.html` page is tracked (`.gitignore` ignores `*.html`), so the demo pages are regenerated locally at closeout from the merged renderer with the three `scripts/regen_*.py` page scripts and are not committed (Q25, corrected by measurement).
 - No new plot types and none of the other 100 GAPS2 gaps.
 - No commit to main: the merge command is reported at the end.
 
 ## 8. How we'll know it works
 
 - Every one of the 22 gaps has a regression test that fails at commit `91d97be` and passes after its fix, asserted in both modes wherever the gap has a page.
-- Stata-measured fixtures pin the truth: display outputs (about 200 values across the numeric formats, the European comma and every date kind with default and custom pictures), axis label text and drawn extents (about 20 label and range cases), title, axis-title and legend text from twoway's SVG, histogram counts for nlsw88 ttl_exp `bin(27|51|54|83)` and census pop `bin(75)`, colorvar fill groups on auto and nlsw88, twoway's return code and message for a string variable in every position of all 40 plot types, and Stata's own KPI display strings.
-- The full pytest suite is green under both interpreters with no skips; the certification suite passes with no skips; the release gate passes from an installed package with every example at rc 0.
+- Stata-measured fixtures pin the truth: display outputs (about 200 values across the numeric formats, the European comma and every date kind with default and custom pictures), axis label text and drawn extents (about 20 label and range cases), title, axis-title and legend text from twoway's SVG, histogram counts for nlsw88 ttl_exp `bin(27|51|54|83)` and census pop `bin(75)`, colorvar fill groups on auto and nlsw88, twoway's return code and message for a string variable in every position of all 40 plot types, and Stata's own KPI display strings. Every new or regenerated fixture carries a provenance stamp in its `_meta` (`stata_version`, `born_date`, `dash_commit`, `extracted`), which a test reads and nothing compares (Q31).
+- The full pytest suite is green under both interpreters with no skips; the certification suite (every registered script: the 65 of the audit commit plus one new script, `test/test_gaps2_truth.cscript`) passes with no skips and grows by at most about five minutes of wall time over its pre-WP-28 run, measured (Q28); the release gate passes from an installed package with every example at rc 0.
 - BUGS.md has no open S1 or S2 entry; 22 closed entries each name their test; WP-28 is marked done with its GAPS2 traceability table; every GAPS2 entry in scope carries a Tracked line naming the commit.
 - CHANGELOG lists every changed number, text or picture.
 
@@ -84,8 +87,8 @@ Silent when right, loud when refusing. An option dash now honours prints nothing
 - **Commits:** one per gap, the failing regression test then the fix, with the gap's BUGS.md entry landing closed in that same commit and naming the test. Shared components (the format writer, the SVG truth helper, the stateful node runner, the tracking-test change) land in their own commits first. No AI references in messages.
 - **Roadmap:** WP-28 is opened in ROADMAP.md at the start with user stories, business and technical requirements, acceptance criteria and a test plan, and its own GAPS2 traceability table; it is marked done at the end.
 - **GAPS2.md** is committed (added to the packaging allowlist) and each closed entry's Tracked line names WP-28, the BUGS.md title and the commit; C4 and the residuals are marked deferred with the reason.
-- **Documentation:** each gap updates the dash.sthlp paragraph GAPS2 cites and adds a CHANGELOG line; changed numbers or pictures go under "Results that change" with before and after.
-- **Execution:** independent sections run in parallel, one agent per section in its own worktree, merged with `patch -p1`; concurrent Stata runs stay at two or three, each with its own `STATATMP`.
+- **Documentation:** each gap updates the dash.sthlp paragraph GAPS2 cites and replaces its CHANGELOG marker with a line ending `(WP-28, <ID>)`; changed numbers or pictures go in the WP-28 group at the end of "Results that change" with before and after (the old value being the failing test's recorded output at the audit commit, Q24), behaviour changes and the floor at the ends of their existing lists, and the rest under a new `### Fixed in WP-28` heading (review D2).
+- **Execution:** independent sections run in parallel, one agent per section in its own worktree on a branch `wp28-s<NN>`, each commit landed on `s3-bugs` by the merger with `patch -p1`; concurrent Stata runs stay at three through `scripts/stata_slot.sh`, each with its own `STATATMP`.
 - **Exit:** the full pytest suite under both interpreters, the certification suite, and the WP-27 release gate from an installed package, all green; working tree clean.
 
 ## 10. Risks and concerns

@@ -23,10 +23,12 @@
 
 - Scope is fixed at 22 gaps (PRD §4); C4/E4 and the residuals in PRD §7 are out.
 - Branch `s3-bugs`; no commit to `main`; the merge command is reported.
-- Stata only through `arch -arm64 /usr/local/bin/stata-mp -b do` from a scratch directory with `STATATMP=<dir>/tmp/`; at most three concurrent Stata sessions.
+- Stata only through `scripts/stata_slot.sh <scratch-dir> <file>.do` (`sections/index.md` step 0: three `mkdir` slots, `STATATMP=<scratch-dir>/tmp/`, the console binary of CLAUDE.md rule 10), which keeps concurrent Stata sessions at three; a single cscript goes through the two-line driver of step 0; `make cert` and `make gate` run only in S19.
 - pytest: changed files while iterating; the full suite once before a commit; never a second full run while one executes.
 - Declared floor: Python 3.13, Bokeh 3.8, pandas 2.3, numpy 2.3 (the `stata` baseline in `test/conftest.py`).
-- The served app is assembled by copying named functions and constants (`dash_render.py` 24326-24428, 24466-24687): every new helper joins those lists and `test/function_test_map.py`.
+- The served app is assembled by copying named functions and constants (`dash_render.py` 24326-24428, 24466-24687): every new helper joins those lists, after the anchor entry `sections/index.md` R2's table names for its section, and `test/function_test_map.py`.
+- One new certification script only, `test/test_gaps2_truth.cscript` (S02; runner block `// 67.`; pins 66/48); every later Stata-truth comparison is a `GAPS2_ONLY`-gated block appended to it, and refusal, message and setup checks join the existing script for their area (review D11). The suite's wall time may grow by about five minutes at most, measured against the pre-batch-1 run of step 0b (Q28).
+- Commits: one per gap `(GAPS2 <ID>)`, one per shared component S01-S04 and one per S19 step `(WP-28 Snn)`; a section commits on its worktree branch `wp28-s<NN>` and the merger lands the commit on `s3-bugs`; no test-only commit; the failing tests' output at 91d97be opens each fix commit's body (Q24).
 
 ---
 
@@ -53,7 +55,7 @@
  JavaScript twins (strings in dash_render.py) ─────────────────────────────────
    _DASH_FMT_JS (S04) · _DASH_FILTER_MASK_JS / _FILTER_JS (S17, S05 recount) · ROW_ID (S07)
  Tests ─────────────────────────────────────────────────────────────────────────
-   S02 scripts/svg_truth.py + test/cert_svg.do   S03 test/js_runner.py (JsSession, mask_parity)
+   S02 scripts/svg_truth.py + test/cert_svg.do + test/test_gaps2_truth.cscript (the one new cscript)   S03 test/js_runner.py (JsSession, mask_parity)
    scripts/extract_*_truth.do → test/fixtures/*_truth.json (git add -f)
  Tracking ──────────────────────────────────────────────────────────────────────
    S01 ROADMAP WP-28, test_tracking_documents.py (GAPS2), test_packaging.py   S19 CHANGELOG, GAPS2 Tracked, gate
@@ -161,11 +163,11 @@ Section 19, after every other section has merged and the full suites are green.
 
 ## Execution order
 
-0. Create `scripts/stata_slot.sh` (text in `sections/index.md` step 0).
-1. Create one worktree per Batch 1 section; give each agent its section file, `sections/BRIEF.md`, `DISCOVERY.md`, `RESEARCH.md`, `review/DECISIONS.md` and the research report it cites. Each agent works in its worktree only.
-2. Merge each finished section with `patch -p1` from its worktree's diff (never `cd` into the worktree); remove the worktree; run the changed tests; after the last of the batch, run the full suite once (`python3 -m pytest test/ -q`) and the cscripts the batch added; commit per gap (gap id in the subject; the test name and the failing-test output at 91d97be in the body; no AI references).
-3. Repeat for Batch 2, Batch 3, then S19.
-4. S19 regenerates the demo pages, runs `make test`, `make test-dev`, `scripts/run_cert_suite.sh`, `scripts/run_release_gate.sh`, verifies BUGS.md and ROADMAP.md, and reports the merge command.
+0. In the main checkout on `s3-bugs`, before any worktree exists: (0a) create `scripts/stata_slot.sh` (the `mkdir`-slot text in `sections/index.md` step 0, which supersedes review D6's `flock` wording) and commit it alone, mode 755, as `… (WP-28 S00)`; (0b) record the certification suite's "before" wall time with `{ date +%s; make cert; date +%s; } > <scratch>/cert-baseline.log 2>&1` (review D11; S19 compares against it); (0c) give each section agent its section file, `sections/BRIEF.md`, `DISCOVERY.md`, `RESEARCH.md`, `review/DECISIONS.md`, `sections/index.md` and the research report it cites.
+1. Create one worktree per Batch 1 section from `s3-bugs` (`git worktree add <path>/wp28-s<NN> -b wp28-s<NN> s3-bugs`); each agent works in its worktree only and its closing task commits there, on `wp28-s<NN>`, after one green full run in the worktree.
+2. Land the batch in its merge order (review D4, contract C3): batch 1 `S01, S03, S02, S06, S07, S08, S09, S10`; batch 2 `S04, S05, S13, S17, S16, S14`; batch 3 `S18, S15, S11, S12`. For each commit of each section, oldest first: `git -C <worktree> format-patch -1 --stdout <sha> | patch -p1` (never `cd` into the worktree; rejected hunks applied by hand under `sections/index.md` R1-R6, copy-list entries after the anchors in R2's table), `git add` the patch's files, `git commit -F <the section's recorded message>` (subject `(GAPS2 <ID>)` or `(WP-28 Snn)`; the failing-test output at 91d97be in the body; no AI references). After the last section of the batch, run the full suite once (`python3 -m pytest test/ -q`), the registry tests of R2 and the batch's certification blocks and scripts through the step-0 driver; a red result is fixed in the owning section (a fresh worktree from `s3-bugs`, a commit with the gap's id, landed the same way) and the suite rerun once. Remove the worktrees.
+3. Repeat for Batch 2 and Batch 3, creating each batch's worktrees from `s3-bugs` after the previous batch has landed; then S19 in the main checkout, committing per step.
+4. S19 reconciles the CHANGELOG (zero `<!-- WP-28 ` markers; every line `(WP-28, <ID>)` in its place), has the residual list approved, writes GAPS2.md's Tracked lines, marks WP-28 DONE, appends the WP-28 invariants to `AGENTS.md` (review D14), regenerates the demo pages without committing them (none is tracked; Q25 corrected), dates the release, runs `make test`, `make test-dev`, `make cert` (timed against `<scratch>/cert-baseline.log`; a growth over about five minutes is folded before the gate) and `make gate` once each, verifies BUGS.md and ROADMAP.md, and reports the merge command without running it.
 
 ---
 
@@ -208,20 +210,23 @@ Section 19, after every other section has merged and the full suites are green.
 
 | Directory / file | Sections |
 |---|---|
-| `dash.ado` | 04 (fmt refusal, storage types), 07, 08, 09, 13 (axis routing), 14 (numlist), 16 (options), 05 (start() text) |
+| `dash.ado` | 04 (fmt refusal, storage types), 07, 08, 09, 13 (axis routing), 14 (numlist), 16 (options) |
 | `dash_parse.mata` | 07 (name check), 08 (per-graph accounting), 13 (repeat merge), 16 (categories, tables) |
 | `dash_setup.ado`, `dash_setup.sthlp`, `dash.pkg` | 09 |
 | `dash_render.py` | 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18 |
 | `dash.sthlp`, `CHANGELOG.md`, `BUGS.md` | every gap section; 19 |
 | `ROADMAP.md`, `GAPS2.md` | 01, 19 |
+| `AGENTS.md` | 19 (the "Invariants introduced by WP-28" section, review D14) |
 | `scripts/svg_truth.py`, `test/cert_svg.do` | 02 (18 rewires `extract_axis_truth.do` onto it) |
-| `scripts/stata_slot.sh` | orchestrator, before batch 1 (index.md step 0) |
-| `scripts/extract_format_truth.do`, `extract_text_truth.do`, `extract_colorvar_truth.do`, `extract_axis_truth.do` (extended), `extract_stat_truth.do` (extended), `extract_svg_truth_smoke.do` | 04, 13/15, 16, 14/18, 05/17, 02 |
+| `scripts/stata_slot.sh` | orchestrator, before batch 1 (index.md step 0a, committed as WP-28 S00) |
+| `scripts/extract_format_truth.do`, `extract_text_truth.do`, `extract_colorvar_truth.do`, `extract_axis_truth.do` (extended), `extract_stat_truth.do` (extended), `extract_filter_truth.do`, `extract_svg_truth_smoke.do`; `scripts/gen_string_varlists_cscript.py` | 04, 13/15, 16, 14/18, 05, 17, 02; 08 |
+| `test/test_gaps2_truth.cscript` (the one new certification script) | 02 creates and registers it (runner block `// 67.`); 05, 11, 13, 14, 15, 16, 17, 18 append `GAPS2_ONLY`-gated blocks in section order |
+| `scripts/regen_dashboards.py`, `regen_comprehensive.py`, `regen_bootstrap_examples.py` (run, not edited; their `.html` output is untracked) | 19 |
 | `test/fixtures/*_truth.json` | as above (`git add -f`) |
 | `test/js_runner.py` | 03 |
 | `test/test_tracking_documents.py`, `test/test_packaging.py` | 01 |
 | `test/function_test_map.py`, `test/program_coverage_map.py` | every section adding a function or program |
-| `test/test_*.py`, `test/test_*.cscript`, `test/run_all_cscripts.do` | every section |
+| `test/test_*.py`; the existing `test/test_*.cscript` files (blocks or cases added per contract C7); `test/run_all_cscripts.do` and `test/test_cscript_hygiene.py` (02 only) | every section; 02 |
 
 ---
 

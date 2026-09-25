@@ -1,15 +1,16 @@
 # Section 01: Tracking foundation
 
-> Part of: WP-28 · Gaps: all 22 (tracked here, closed elsewhere) · Risk: green · Batch: 1 · Depends on: none · Blocks: 19 
+> Part of: WP-28 · Gaps: all 22 (tracked here, closed elsewhere) · Risk: green · Batch: 1 · Depends on: none · Blocks: 19 · Tasks: 3, one commit (S01)
 
 
 ## Review amendments (Phase 4, 2026-09-25) — binding; they override any conflicting text below
 
-> Batch **1** · Depends on **none** · Blocks **19** · Risk **green** · Commits: one commit (S01)
+> Batch **1** · Depends on **none** · Blocks **19** · Risk **green** · Commits: one commit (S01), made by task 01-03
 
-- D2: task 01-03 places 23 `<!-- WP-28 <ID> -->` markers **in the list where each gap's entry belongs** (see `index.md` Gap coverage: Results that change / Changed behaviour / Requirements / Fixed in WP-28; E14 gets two), not all under one heading.
-- D3: the BUGS.md template's field name stays exactly `- Resolution:`; the text form is `Fixed <ddmonyyyy> (WP-28, <ID>). <what changed>. Pinned by test/<file>::<Class>::<test>.` (verify against `_FIELD` in test/test_tracking_documents.py:98-101).
-- Q24: the commit convention records the failing test's output at 91d97be in the fix commit body; CHANGELOG quotes it as the old value.
+- D2 (as corrected in the fixer pass): task 01-03 places 23 `<!-- WP-28 <ID> -->` markers **in the release's existing top-level list where each gap's entry belongs** -- a `**WP-28 (GAPS2 audit, 25sep2026)**` group at the end of `### Results that change` (B1 B2 B3 B5 B6 B7 C2 D1 E1 E2 E3 E14 G6 G16 X1 X2), the end of `### Changed behaviour` (G1 G2), the end of `### Requirements` (K2), and a new `### Fixed in WP-28` heading above `### Fixed after WP-27` (`E14 served`, F1, G3, G5) -- never all under one heading (see `index.md` Gap coverage; E14 gets two).
+- D3: the BUGS.md template's field name stays exactly `- Resolution:`; the text form is `Fixed <ddmonyyyy> (WP-28, <ID>). <what changed>. Pinned by test/<file>::<Class>::<test>.` (verified against `_FIELD` in test/test_tracking_documents.py:101: the regex tolerates an optional parenthetical after the field name, but the qualifier is written inside the text so every reader sees one form).
+- D1: this section is ONE commit. 01-01 writes the failing tests and does not commit; 01-02 turns them green and stages GAPS2.md without committing; 01-03 writes ROADMAP.md and CHANGELOG.md, runs the full suite once and makes the commit on the worktree branch `wp28-s01`, subject ending `(WP-28 S01)`; the merger lands it on `s3-bugs` (`index.md` step 1).
+- Q24: the commit convention records the failing test's output at 91d97be as the opening paragraph of the fix commit's body; CHANGELOG quotes it as the old value.
 
 Applies to every section:
 - D1 (binding): tasks are work steps; commits are per gap (S01-S04: one each). The failing regression tests are written first and run against the unmodified tree; their output at 91d97be is recorded in the fix commit's message (Q24) and they are committed together with the fix, never alone (CLAUDE.md rule 4).
@@ -19,7 +20,7 @@ Applies to every section:
 - D5 (binding): shared files follow merge rules R1-R6 in `index.md` (cscript registration and hygiene pins, copy lists and maps, help/CHANGELOG/BUGS.md, graph-key lists, fixtures, parity corpus).
 - D7: XML fields holding `&`, `<` or `>` are CDATA-wrapped (done mechanically); task names over 8 words are shortened and `done` fields put in the past tense during the detailed fixer pass.
 
-Detailed edits from `../review/consistency.md`, `../review/requirements-security.md` and `../review/feasibility.md` (as adjusted by `../review/DECISIONS.md`) are applied to this file in the fixer pass; until then this block governs.
+Detailed edits from `../review/consistency.md`, `../review/requirements-security.md` and `../review/feasibility.md` (as adjusted by `../review/DECISIONS.md`) were applied to this file in the fixer pass (2026-09-25); the text below conforms to this block.
 
 ## Overview
 
@@ -43,17 +44,26 @@ with severity, effort and the section that closes each in its own `#### GAPS2 tr
 table; the tracking tests read a `**GAPS2 closed:**` field and resolve it against GAPS2.md's
 `### <ID>.` headings, and once a package is DONE they require each listed entry's
 `- **Tracked:**` line to name that package, a closed BUGS.md entry and a commit that exists;
-`GAPS2.md` is committed and allowed at the root; `CHANGELOG.md` carries a `### Fixed in WP-28`
-stub with a marker per gap; and the two conventions every later section copies, the BUGS.md
-entry form and the commit-message form, are written down here.
+`GAPS2.md` is committed and allowed at the root; `CHANGELOG.md` carries one marker per gap in
+the release's existing list where that gap's line belongs -- a WP-28 group at the end of
+`### Results that change`, the ends of `### Changed behaviour` and `### Requirements` -- plus
+a new `### Fixed in WP-28` heading for the rest (D2); and the two conventions every later section copies, the BUGS.md entry form
+(D3) and the commit-message form (D1, Q24), are written down here.
 
 These belong together because they are the guards every later commit must pass. They run in
-batch 1 with no dependency: sections 05-18 need only the *text* of the conventions below,
+batch 1 with no dependency: sections 02 to 18 need only the *text* of the conventions below,
 which they read from this file, and section 19 needs the readers to prove closure.
 
-**Test order (CLAUDE.md rule 7): task 01-01 writes the failing tests for this section**, runs
-them against the unmodified tree and records the failure text for the commit that turns them
-green. No shipped file changes here.
+**Test order (CLAUDE.md rule 7) and commit rule (D1): task 01-01 writes the failing tests for
+this section**, runs them against the unmodified tree and saves the failure text to
+`<scratch>/01-01-failure.txt`; it does not commit (a red tree is never committed, rule 4).
+01-02 turns them green and stages GAPS2.md, still without committing; 01-03 writes ROADMAP.md
+and CHANGELOG.md, runs the full suite once and makes this section's ONE commit on the
+worktree branch `wp28-s01`, subject ending `(WP-28 S01)`, whose body opens with the saved
+failure text; the merger lands it onto `s3-bugs` with that message (`index.md` step 1). That
+is the convention every closing task of sections 02 to 18 follows (Q24): the failing tests'
+recorded output at 91d97be opens the fix commit's body and is the old value its CHANGELOG
+line quotes. No shipped file changes here.
 
 ## Risk: [green] — one test module extended, one allowlist entry, three documents; every existing assertion kept verbatim
 
@@ -74,8 +84,10 @@ green. No shipped file changes here.
 
 - Depends on: none.
 - Blocks: section 19 (the closeout proves closure through the readers added here).
-- Parallel batch: 1. Can run with sections 02-10; none touches `test_tracking_documents.py`,
-  `test_packaging.py`, `ROADMAP.md` or the CHANGELOG heading this section adds.
+- Parallel batch: 1. Can run with sections 02, 03, 06, 07, 08, 09 and 10; none touches
+  `test_tracking_documents.py`, `test_packaging.py`, `ROADMAP.md` or the CHANGELOG heading this
+  section adds. S01 is merged first in its batch (`index.md` step 1, C3) so the CHANGELOG
+  stub and the conventions exist before any gap section's commit.
 - Why: every other section's final task writes a BUGS.md entry and a CHANGELOG line in the
   forms recorded here, and section 19 updates GAPS2.md's Tracked lines in the form the new
   parser reads.
@@ -90,7 +102,7 @@ green. No shipped file changes here.
   98	_ENTRY = re.compile(r"^- \[(?P<mark>[ x])\] Title: (?P<title>\S.*)$")
   99	_FIELDS = ("File Names and Line Numbers", "Description", "Suggested fix",
  100	           "Resolution")
- 101	_FIELD = re.compile(r"^  - (?P<name><![CDATA[File Names and Line Numbers|Description|"
+ 101	_FIELD = re.compile(r"^  - (?P<name>File Names and Line Numbers|Description|"
  102	                    r"Suggested fix|Resolution)(?P<qual> \([^()\n]*\))?: \S")
 ```
 
@@ -230,12 +242,13 @@ none (measured: `grep -n 'PLAN\.md\|TODO\.md' GAPS2.md` is empty), so committing
   package, a BUGS.md entry that is closed, and a commit that exists, and a test checks all
   three both ways (package → entry, entry → package).
 - **BR-01.4** `GAPS2.md` is committed and the packaging test allows it at the root.
-- **BR-01.5** `CHANGELOG.md` has a place for WP-28's lines, one marker per gap, under the
-  current release heading.
+- **BR-01.5** `CHANGELOG.md` has a place for WP-28's lines, one marker per gap, in the
+  release's existing lists (plus one new `### Fixed in WP-28` heading) under the current
+  release heading.
 - **BR-01.6** Every existing assertion of `test_tracking_documents.py` and `test_packaging.py`
   passes unchanged.
 - **BR-01.7** The BUGS.md entry form, the CHANGELOG line form and the commit-message form are
-  written down once, here, and sections 05-18 follow them verbatim.
+  written down once, here, and every later section (02 to 19) follows them verbatim.
 
 ## Technical requirements
 
@@ -265,7 +278,7 @@ none (measured: `grep -n 'PLAN\.md\|TODO\.md' GAPS2.md` is empty), so committing
   `test_every_closed_gaps2_entry_is_listed_by_its_package` (the reverse: the named package
   exists, is DONE, and lists the id); `test_every_closed_gaps2_entry_names_a_closed_bugs_entry_and_a_commit`
   (the quoted title equals exactly one BUGS.md entry's title and that entry is closed and its
-  Resolution carries the qualifier `(<wp>, <id>)`; the commit resolves with
+  Resolution text holds `(<wp>, <id>)`, i.e. `"(%s, %s)" % (wp, gid)`; the commit resolves with
   `git cat-file -e <sha>^{commit}`, skipping only when `rev-parse --git-dir` fails, as
   `test_a_closing_commit_exists` does); `test_a_deferred_gaps2_entry_names_its_package_and_a_reason`
   (a Tracked line beginning `Deferred` matches `_GAPS2_DEFERRED` and its package exists in
@@ -303,43 +316,59 @@ none (measured: `grep -n 'PLAN\.md\|TODO\.md' GAPS2.md` is empty), so committing
   `test/test_tracking_documents.py::TestGaps2AndRoadmapAgree` as the closure check and the
   section files as the per-gap plans. **Inside WP-28 no line may begin with `# ` or `## `,
   and the text `## Traceability matrix` and the field `**Gaps closed:**` may not appear.**
-- **TR-01.7 CHANGELOG stub.** Insert before `### Fixed after WP-27 (the S3 batch, 24sep2026)`
-  (338), after `### Requirements`'s last line:
+- **TR-01.7 CHANGELOG stub (D2, as corrected in the fixer pass).** The markers go into the
+  release's EXISTING top-level lists, plus one new heading; nothing sits in a sub-heading of
+  its own. Four insertions in `CHANGELOG.md`, line numbers at 91d97be:
+  1. Under `### Results that change` (10), at the END of that section -- after the last item
+     of its last group, `**Colours, schemes and appearance**` (113-140, ending with the
+     "(S09)" legend item), and before `### Security` (142) -- a new bold group line and its 16
+     markers, in this order:
 
-  ```
-  ### Fixed in WP-28
+     ```
+     **WP-28 (GAPS2 audit, 25sep2026)**
 
-  The 22 gaps of GAPS2.md (the audit of 25sep2026) that WP-28 closes, one
-  line each, each ending with its gap in parentheses.
+     <!-- WP-28 B1 -->
+     <!-- WP-28 B2 -->
+     <!-- WP-28 B3 -->
+     <!-- WP-28 B5 -->
+     <!-- WP-28 B6 -->
+     <!-- WP-28 B7 -->
+     <!-- WP-28 C2 -->
+     <!-- WP-28 D1 -->
+     <!-- WP-28 E1 -->
+     <!-- WP-28 E2 -->
+     <!-- WP-28 E3 -->
+     <!-- WP-28 E14 -->
+     <!-- WP-28 G6 -->
+     <!-- WP-28 G16 -->
+     <!-- WP-28 X1 -->
+     <!-- WP-28 X2 -->
+     ```
+  2. Under `### Changed behaviour (may need your do-files changed)` (280), at the end of that
+     list (after the `saving()` item ending "(WP-23)" at 319, before `### Removed` at 321):
+     `<!-- WP-28 G1 -->` and `<!-- WP-28 G2 -->`.
+  3. Under `### Requirements` (330), at the end of that list (after the jsonio item at
+     335-336, before the blank line above 338): `<!-- WP-28 K2 -->` (S09 also rewrites the
+     floor items above it for K2; that rewrite is not a WP-28 line).
+  4. A new heading `### Fixed in WP-28` directly above `### Fixed after WP-27 (the S3 batch,
+     24sep2026)` (338), holding one sentence ("Failures the GAPS2 audit of 25sep2026 found
+     that WP-28 fixed without changing a drawn result; the results that changed are the WP-28
+     group under Results that change, the behaviour changes and the floor sit in their own
+     lists.") and the markers `<!-- WP-28 E14 served -->`, `<!-- WP-28 F1 -->`,
+     `<!-- WP-28 G3 -->`, `<!-- WP-28 G5 -->`.
 
-  Results that change:
-
-  <!-- WP-28 B1 -->
-  <!-- WP-28 B2 -->
-  … one marker per gap, in this order: B1 B2 B3 B5 B6 B7 C2 D1 E1 E3 E14 G6 G16 X1 X2
-
-  Changed behaviour (may need your do-files changed):
-
-  <!-- WP-28 G1 -->
-  <!-- WP-28 G2 -->
-
-  Requirements:
-
-  <!-- WP-28 K2 -->
-
-  Fixed:
-
-  <!-- WP-28 E2 -->
-  <!-- WP-28 E14 served -->
-  <!-- WP-28 F1 -->
-  <!-- WP-28 G3 -->
-  <!-- WP-28 G5 -->
-  ```
-
-  A section replaces its gap's marker with its line(s); E14 replaces both of its markers
-  (the bs filter bar under "Results that change", the served items under "Fixed"). A
-  "Results that change" line states the command, the old value and the new value (DISCOVERY
-  Q20). Section 19 removes any marker left and fails if one is.
+  That is 23 markers (22 gaps; E14 twice; C4/E4 none). The rules every closing task follows
+  (D2): a gap's closing task replaces only its own marker(s), in place, with line(s) ending
+  `(WP-28, <ID>)`, and adds nothing anywhere else; E14 replaces both of its markers (the saved
+  `layout(bs)` filter bar move in the Results group, the four served items under `### Fixed
+  in WP-28`); a Results line names the command, the old value (the failing test's recorded
+  output at 91d97be, Q24) and the new value (DISCOVERY Q20); S04's shared-component lines go
+  under `### Fixed in WP-28`, after the four markers, ending `(WP-28 S04)`. Section 19
+  verifies `grep -c '<!-- WP-28 ' CHANGELOG.md` prints 0 and, inside each list's awk range
+  (`/^### Results that change/,/^### Security/`; `/^### Changed behaviour/,/^### Removed/`;
+  `/^### Requirements/,/^### Fixed in WP-28/`; `/^### Fixed in WP-28/,/^### Fixed after WP-27/`),
+  `grep -c '(WP-28, <ID>)'` is at least 1 for every id that belongs there (E14 in two ranges);
+  it moves or completes a line, never rewords its fact.
 - **TR-01.8 The BUGS.md entry form** (every section's final task; parsed by `_ENTRY`,
   `_FIELD`, `_references`):
 
@@ -348,29 +377,42 @@ none (measured: `grep -n 'PLAN\.md\|TODO\.md' GAPS2.md` is empty), so committing
     - File Names and Line Numbers: <file>: `<function>' (<lines at 91d97be>)[; <file>: ...]
     - Description: GAPS2 <ID>. <the measured symptom: the command, what dash drew, what twoway draws, with the Stata rule's help/ado citation>
     - Suggested fix: <GAPS2's plan in one or two sentences>
-    - Resolution (WP-28, <ID>): Fixed <ddmonyyyy>. <what changed, in which functions, in both renderers>. Pinned by test/<file>.py::<Class>::<test>[, test/<file>.cscript <CASE-ID>][; fixture test/fixtures/<name>.json]. [Residual, deferred (WP-28): <what stays and why>.]
+    - Resolution: Fixed <ddmonyyyy> (WP-28, <ID>). <what changed, in which functions, in both renderers>. Pinned by test/<file>.py::<Class>::<test>[, test/<script>.cscript <CASE-ID>][; fixture test/fixtures/<name>.json]. [Residual, deferred (WP-28): <what and why>.]
   ```
 
-  Rules: appended at the end of BUGS.md with one blank line before it; the four fields once
-  each, in this order, each on one line or continued on lines indented four spaces; no other
-  line begins `- ` inside the entry; the title holds no `"` (section 19 quotes it in GAPS2.md)
-  and is unique; every `test_*.py`/`.cscript` name, `test_x.py::Class::test` node, `Test…`
-  word and `AB-12` case id in the entry must exist on disk when the entry is committed (a
-  cert case id must be displayed by its script); the entry lands closed, in the gap's fix
-  commit; no `Graded` line (that is for open entries). The Resolution qualifier `(WP-28, <ID>)`
-  is what section 19 counts and what `_GAPS2_CLOSED`'s cross-check reads.
+  Rules: appended at the END of BUGS.md with one blank line before it (never mid-file; D3);
+  the four fields once each, in this order, each on one line or continued on lines indented
+  four spaces; the field name is exactly `- Resolution:` with the WP and gap id inside the
+  text, never as a parenthetical on the field name (D3, C11); no other line begins `- `
+  inside the entry; the title holds no `"` (section 19 quotes it in GAPS2.md) and is unique;
+  every `test_*.py`/`.cscript` name, `test_x.py::Class::test` node, `Test…` word and `AB-12`
+  case id in the entry must exist on disk when the entry is committed (a cert case id must be
+  displayed by its script); the entry lands closed, in the gap's fix commit; no `Graded` line
+  (that is for open entries). The `(WP-28, <ID>)` text inside the Resolution field is what
+  section 19 counts (`grep -c '^  - Resolution: Fixed .*(WP-28, ' BUGS.md` prints 22) and what
+  `_GAPS2_CLOSED`'s cross-check reads (`_FIELD` at test_tracking_documents.py:101 tolerates an
+  optional parenthetical qualifier after the field name, but the qualifier is written inside
+  the text so every reader sees one form).
 - **TR-01.9 The commit-message form.** Subject: what now happens, as a sentence, ending with
-  the gap id in parentheses, `… (GAPS2 B1)`; a shared-component commit ends with its section,
-  `… (WP-28 S02)`. Body: the measured defect before the change (command, drawn value,
+  the gap id in parentheses, `… (GAPS2 B1)`; a shared-component commit (S01, S02, S03, S04)
+  ends with its section, `… (WP-28 S02)`, and so does each of section 19's closeout commits,
+  `… (WP-28 S19)`. Body: it OPENS with the failing tests' recorded output at 91d97be (the
+  `<scratch>/NN-01-failure.txt` task 1 saved; Q24, D1), which is also the old value the gap's
+  CHANGELOG line quotes; then the measured defect before the change (command, drawn value,
   twoway's value, the rule's citation); what changed and where (functions, both renderers,
   the copy lists); then one line each: `Regression: test/<file>.py::<Class>::<test> -- failed
   at 91d97be with <the wrong number or assertion text>`, `Flipped: <node> -- <old expectation>
   was wrong because <why>` (one per flipped test), `Fixture: test/fixtures/<name>.json
   (scripts/<extract script>)`, `BUGS.md: "<title>" (closed)`. No AI reference anywhere, no
   trailer naming a model or vendor (CLAUDE.md rule 6 governs; grep the message for
-  `claude|anthropic` before and after committing). One commit per gap; a red tree is never
-  committed (rule 4): the regression tests are written and run first, their failure text
-  saved to the scratch directory, and they land in the fix commit that turns them green.
+  `claude|anthropic` before and after committing). Commits are one per gap, one per shared
+  component S01-S04 and one per S19 step (D1, C13); tasks are steps, never commits. A section
+  with several gaps commits once per gap (S07 G1, G5; S08 G2, G3; S09 F1, K2; S13 B3, B6, B7;
+  S14 B1, G16; S17 E2, X1); S10 commits once (E14). A red tree is never committed (rule 4):
+  the regression tests are written and run first, their failure text saved to the scratch
+  directory, and they land in the fix commit that turns them green; no test-only commit ever
+  exists. Before each commit: `git merge --no-edit main` (expected `Already up to date`), then
+  the full suite once, `python3 -m pytest test/ -q` (rule 11).
 - **TR-01.10 Security (rule 1).** Nothing here reaches HTML, JS, a Bokeh field or `exec`;
   the readers use anchored regular expressions and `git cat-file -e` with a hex-validated
   argument, and `subprocess.run` with a list, never `shell=True`.
@@ -387,6 +429,8 @@ none (measured: `grep -n 'PLAN\.md\|TODO\.md' GAPS2.md` is empty), so committing
   or any shipped file; GAPS2.md is not shipped and is not added to `dash.pkg`.
 - Do not renumber sections or edit `.ultraplan/sections/index.md`.
 - Do not add C4/E4 to WP-28 (PRD §7); the CHANGELOG stub has no marker for them.
+- Do not put any marker under a heading of its own other than `### Fixed in WP-28`, and do
+  not write a WP-28 line: only markers (the lines are the closing tasks').
 
 ## Stata truth
 
@@ -444,15 +488,23 @@ Acceptance criteria:
   prints 1.
 - **AC-01.3** `python3 -m pytest test/test_tracking_documents.py -q` passes with 7 more tests
   than at 91d97be (26 → 33 test functions in the file), none skipped.
-- **AC-01.4** `CHANGELOG.md` holds `### Fixed in WP-28` with 23 `<!-- WP-28 … -->` markers
-  (22 gaps, E14 twice, C4/E4 none).
-- **AC-01.5** The full suite is green under `python3 -m pytest test/ -q` before each of the
-  two commits; no commit message mentions an AI.
+- **AC-01.4** `CHANGELOG.md` holds 23 `<!-- WP-28 … -->` markers (22 gaps, E14 twice, C4/E4
+  none): 16 in the WP-28 group at the end of `### Results that change`, 2 at the end of
+  `### Changed behaviour`, 1 at the end of `### Requirements`, 4 under the new
+  `### Fixed in WP-28` heading.
+- **AC-01.5** The full suite is green under `python3 -m pytest test/ -q` once, before the
+  section's one commit (made by 01-03 on the worktree branch `wp28-s01`, subject ending
+  `(WP-28 S01)`); no test-only commit exists; no commit message mentions an AI.
 
 ## Tasks
 
+Commit boundary: **one commit (S01)** holding 01-01 to 01-03, made by 01-03, subject ending
+`(WP-28 S01)`, body per TR-01.9 opening with `<scratch>/01-01-failure.txt`; the full pytest
+suite runs green once before it (CLAUDE.md rules 4 and 11). 01-01 and 01-02 do not commit.
+No Stata runs in this section. No AI references anywhere.
+
 <task type="auto" id="01-01">
-  <name>Write the failing tracking tests]]></name>
+  <name>Write the failing tracking tests</name>
   <files>test/test_tracking_documents.py</files>
   <action><![CDATA[
     In `/Users/billy/Desktop/Programs/StataPrograms/d/dash/test/test_tracking_documents.py`,
@@ -466,19 +518,22 @@ Acceptance criteria:
     'Closed in WP-nn, BUGS.md "title", commit sha' naming it, a closed BUGS.md entry and a
     commit that exists, and every such Tracked line is listed by its package." Do not define
     the readers in this task. Run `python3 -m pytest test/test_tracking_documents.py -q -k
-    Gaps2 2>&1 | tail -15` against the unmodified readers and save the output to the scratch
-    directory as `01-01-failure.txt`; every test in the class must fail with NameError. Do not
-    commit: a red tree is never committed (CLAUDE.md rule 4); this text becomes the first
-    paragraph of task 01-02's commit body.
+    Gaps2 2>&1 | tail -15` against the unmodified readers and save the output to
+    `<scratch>/01-01-failure.txt`; every test in the class must fail with NameError. Do not
+    commit: a red tree is never committed (CLAUDE.md rule 4); this text becomes the opening
+    paragraph of the section's one commit, made by 01-03 (TR-01.9). The same rule is the
+    convention every closing task of sections 02 to 18 follows (Q24): the failing test's
+    recorded output at 91d97be opens the fix commit's body and is the old value its
+    CHANGELOG line quotes.
   ]]></action>
-  <verify><![CDATA[`python3 -m pytest test/test_tracking_documents.py -q -k Gaps2 2>&1 | tail -3` reports 7 failed, 0 passed, and `python3 -m pytest test/test_tracking_documents.py -q -k "not Gaps2" 2>&1 | tail -1` still reports every existing test passing.]]></verify>
-  <done>Seven new tests exist under `TestGaps2AndRoadmapAgree`, all failing with NameError on the unmodified readers, and every pre-existing test in the file still passes.</done>
+  <verify><![CDATA[`python3 -m pytest test/test_tracking_documents.py -q -k Gaps2 2>&1 | tail -3` reports 7 failed, 0 passed; `python3 -m pytest test/test_tracking_documents.py -q -k "not Gaps2" 2>&1 | tail -1` still reports every existing test passing; `<scratch>/01-01-failure.txt` exists and holds `NameError`; `git status --porcelain` shows only `test/test_tracking_documents.py` modified and no new commit (`git log -1 --format=%s` is unchanged).]]></verify>
+  <done>Seven new tests existed under `TestGaps2AndRoadmapAgree`, all failed with NameError on the unmodified readers, every pre-existing test in the file still passed, the failure text was saved to the scratch directory, and nothing was committed.</done>
 </task>
 
 <task type="auto" id="01-02">
-  <name>Teach the tracking guards GAPS2.md and commit the audit</name>
+  <name>Teach the guards GAPS2.md and stage the audit</name>
   <files>test/test_tracking_documents.py, test/test_packaging.py, GAPS2.md</files>
-  <action>
+  <action><![CDATA[
     Implement TR-01.2 and TR-01.3 in `test/test_tracking_documents.py` immediately after
     `_parse_roadmap` (645): `_GAPS2_HEADING`, `_GAPS2_TRACKED`, `_GAPS2_CLOSED`,
     `_GAPS2_DEFERRED`, `_parse_gaps2(text)`, `_wp_sections(text)` and `_parse_roadmap_gaps2(text)`;
@@ -487,49 +542,65 @@ Acceptance criteria:
     fixture (648-654) with `gaps2`, `gaps2_dupes` (from `_parse_gaps2(_read("GAPS2.md"))`) and
     `wps2`. The BUGS.md cross-check reuses the `bugs` fixture's entries: match the quoted title
     to exactly one entry, require `e["closed"]` and `"(%s, %s)" % (wp, gid)` in
-    `e["fields"]["Resolution"]`. The commit check calls `_git("cat-file", "-e", sha + "^{commit}")`
-    only after `re.fullmatch(r"[0-9a-f]{7,40}", sha)`. Add `"GAPS2.md"` to `_ROOT_ALSO` in
-    `test/test_packaging.py:413` and run `git add GAPS2.md`. Then `git merge --no-edit main`
-    (expected "Already up to date"), run the full suite once, `python3 -m pytest test/ -q`,
-    and commit the three files with the subject `Teach the tracking guards GAPS2.md, and
-    commit the audit (WP-28 S01)`, the body opening with 01-01's failure text, then the two
-    directions the guard now checks, then `Regression: test/test_tracking_documents.py::TestGaps2AndRoadmapAgree`.
-  </action>
-  <verify><![CDATA[`python3 -m pytest test/test_tracking_documents.py test/test_packaging.py -q 2>&1 | tail -2` passes with no skip; `git ls-files GAPS2.md` prints `GAPS2.md`; `git log -1 --format=%B | grep -ci 'claude\|anthropic'` prints 0; `git status --porcelain -- test GAPS2.md` is empty.]]></verify>
-  <done>The readers exist, the seven tests pass, `_parse_roadmap`'s output is unchanged, GAPS2.md is tracked and allowed at the root, and one commit on `s3-bugs` holds all of it.</done>
+    `e["fields"]["Resolution"]` (the text of the field, whose name is exactly `Resolution`;
+    D3). The commit check calls `_git("cat-file", "-e", sha + "^{commit}")` only after
+    `re.fullmatch(r"[0-9a-f]{7,40}", sha)`. Add `"GAPS2.md"` to `_ROOT_ALSO` in
+    `test/test_packaging.py:413`, between `"GAPS.md"` and `"REMAINING.md"`, and run
+    `git add GAPS2.md` (no `-f`: it is not ignored) so `git ls-files` lists it for the
+    packaging test. Run `python3 -m pytest test/test_tracking_documents.py test/test_packaging.py -q`.
+    Do not commit: the section's one commit is made by 01-03 after ROADMAP.md and CHANGELOG.md
+    are written (D1); GAPS2.md and the two test files stay staged or modified until then.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_tracking_documents.py test/test_packaging.py -q 2>&1 | tail -2` passes with no skip (the seven new tests included, `test_the_roadmap_reader` untouched); `git ls-files GAPS2.md` prints `GAPS2.md`; `git status --porcelain -- GAPS2.md` prints `A  GAPS2.md`; `git log -1 --format=%s` is unchanged (no commit was made).]]></verify>
+  <done>The readers existed, the seven tests passed, `_parse_roadmap`'s output was unchanged, GAPS2.md was staged and allowed at the root, and nothing was committed.</done>
 </task>
 
 <task type="auto" id="01-03">
-  <name>Open WP-28 in ROADMAP.md and stub the CHANGELOG</name>
+  <name>Open WP-28, stub the CHANGELOG and commit</name>
   <files>ROADMAP.md, CHANGELOG.md</files>
-  <action>
-    Insert the WP-28 section of TR-01.6 into `/Users/billy/Desktop/Programs/StataPrograms/d/dash/ROADMAP.md`
-    after the `---` at 4241 and before `## Traceability matrix` at 4243, ending with `---` and
-    a blank line; write the user story, BR-28.1..k, TR-28.1..k, AC-28.1..k and the test plan
-    from the sources TR-01.6 names, and the `#### GAPS2 traceability` table with the 22 rows
-    given there. Check the hazards before saving: no line of the new text begins `# ` or
-    `## ` except its own heading; the strings `Gaps closed` and `## Traceability matrix` do
-    not occur in it; the heading has no `— DONE`. Insert the `### Fixed in WP-28` stub of
-    TR-01.7 into `CHANGELOG.md` before line 338, `### Fixed after WP-27 (the S3 batch, 24sep2026)`,
-    with its 23 markers. Run `python3 -m pytest test/test_tracking_documents.py -q`, then
-    `git merge --no-edit main` and the full suite `python3 -m pytest test/ -q`, and commit the
-    two files with the subject `Open WP-28: the 22 GAPS2 gaps, their sections and their
-    CHANGELOG place (WP-28 S01)`, the body naming the 22 ids by severity and the conventions
-    (BUGS.md entry form, commit form) this section file records.
-  </action>
-  <verify><![CDATA[`grep -c '^## WP-28 ' ROADMAP.md` prints 1 and `grep -c '## Traceability matrix' ROADMAP.md` prints 1; `awk '/^## WP-28 /,/^## Traceability matrix/' ROADMAP.md | grep -c 'Gaps closed'` prints 0; `awk '/^## WP-28 /,/^## Traceability matrix/' ROADMAP.md | grep -c '^| [A-KX][0-9]* |'` prints 22; `grep -c '<!-- WP-28 ' CHANGELOG.md` prints 23; `python3 -m pytest test/test_tracking_documents.py -q 2>&1 | tail -1` passes; `git log -1 --format=%B | grep -ci 'claude\|anthropic'` prints 0.]]></verify>
-  <done>WP-28 is open in ROADMAP.md with its 22-row GAPS2 traceability table and no DONE mark, the CHANGELOG has a marker per gap under `### Fixed in WP-28`, the tracking tests read them, and the second commit of this section is on `s3-bugs`.</done>
+  <action><![CDATA[
+    Insert the WP-28 section of TR-01.6 into
+    `/Users/billy/Desktop/Programs/StataPrograms/d/dash/ROADMAP.md` after the `---` at 4241
+    and before `## Traceability matrix` at 4243, ending with `---` and a blank line; write the
+    user story, BR-28.1..k, TR-28.1..k, AC-28.1..k and the test plan from the sources TR-01.6
+    names, and the `#### GAPS2 traceability` table with the 22 rows given there. Check the
+    hazards before saving: no line of the new text begins `# ` or `## ` except its own
+    heading; the strings `Gaps closed` and `## Traceability matrix` do not occur in it; the
+    heading has no `— DONE`. Make TR-01.7's four CHANGELOG insertions, bottom-up so the line
+    numbers hold: the `### Fixed in WP-28` heading with its sentence and four markers above
+    line 338; `<!-- WP-28 K2 -->` at the end of `### Requirements` (after 336); `<!-- WP-28 G1 -->`
+    and `<!-- WP-28 G2 -->` at the end of `### Changed behaviour (may need your do-files
+    changed)` (after 319); the `**WP-28 (GAPS2 audit, 25sep2026)**` group with its 16 markers
+    in TR-01.7's order at the end of `### Results that change` (after the "(S09)" item at 140,
+    before `### Security`). Run `python3 -m pytest test/test_tracking_documents.py -q`, then the
+    section's one full run, `python3 -m pytest test/ -q` (rule 11, in this worktree), and
+    commit the five files of this section (`test/test_tracking_documents.py`,
+    `test/test_packaging.py`, `GAPS2.md`, `ROADMAP.md`, `CHANGELOG.md`) as ONE commit on the
+    worktree branch `wp28-s01` with the subject `Track WP-28: teach the guards GAPS2.md, commit
+    the audit, open the package and place its CHANGELOG markers (WP-28 S01)`; the body opens
+    with `<scratch>/01-01-failure.txt`, then the two directions the guard now checks, then
+    `Regression: test/test_tracking_documents.py::TestGaps2AndRoadmapAgree -- failed at 91d97be with NameError: name '_parse_gaps2' is not defined`,
+    then the 22 ids by severity and the conventions this section file records (TR-01.7,
+    TR-01.8, TR-01.9). Grep the message for `claude|anthropic` before committing. The merger
+    lands it onto `s3-bugs` with this message, first in batch 1 (`index.md` step 1).
+  ]]></action>
+  <verify><![CDATA[`grep -c '^## WP-28 ' ROADMAP.md` prints 1 and `grep -c '## Traceability matrix' ROADMAP.md` prints 1; `awk '/^## WP-28 /,/^## Traceability matrix/' ROADMAP.md | grep -c 'Gaps closed'` prints 0; `awk '/^## WP-28 /,/^## Traceability matrix/' ROADMAP.md | grep -c '^| [A-KX][0-9]* |'` prints 22; `grep -c '<!-- WP-28 ' CHANGELOG.md` prints 23; `awk '/^### Results that change/,/^### Security/' CHANGELOG.md | grep -c '<!-- WP-28 '` prints 16 and the same range holds `**WP-28 (GAPS2 audit, 25sep2026)**` once; `awk '/^### Changed behaviour/,/^### Removed/' CHANGELOG.md | grep -c '<!-- WP-28 '` prints 2; `awk '/^### Requirements/,/^### Fixed in WP-28/' CHANGELOG.md | grep -c '<!-- WP-28 '` prints 1; `awk '/^### Fixed in WP-28/,/^### Fixed after WP-27/' CHANGELOG.md | grep -c '<!-- WP-28 '` prints 4; `grep -c '^### Fixed in WP-28' CHANGELOG.md` prints 1; `python3 -m pytest test/test_tracking_documents.py -q 2>&1 | tail -1` passes; the full run's tail reports no failures; `git log -1 --format=%s | grep -c '(WP-28 S01)'` prints 1; `git log -1 --format=%B | grep -ci 'claude\|anthropic'` prints 0; `git status --porcelain -- test GAPS2.md ROADMAP.md CHANGELOG.md` is empty.]]></verify>
+  <done>WP-28 was open in ROADMAP.md with its 22-row GAPS2 traceability table and no DONE mark, the CHANGELOG held one marker per gap in the release's existing lists plus the new `### Fixed in WP-28` heading, the tracking tests read them, and the section's one green commit on the worktree branch `wp28-s01` carried the readers, the allowlist, GAPS2.md and the two documents for the merger to land on `s3-bugs`.</done>
 </task>
 
 ## Section completion criteria
 
-- Two commits on `s3-bugs`, each after a green full run, neither mentioning an AI.
+- One commit, made by 01-03 on the worktree branch `wp28-s01` (subject ending `(WP-28 S01)`)
+  after one green full run, holding the readers, the allowlist, GAPS2.md, ROADMAP.md and
+  CHANGELOG.md, landed on `s3-bugs` by the merger first in batch 1; no test-only commit
+  exists (D1); no commit message mentions an AI.
 - `test/test_tracking_documents.py` has `TestGaps2AndRoadmapAgree` (7 tests) and every
   previous test unchanged; `test/test_packaging.py` allows `GAPS2.md`; `GAPS2.md` is tracked.
 - `ROADMAP.md` has WP-28 (not DONE) with `**GAPS2 closed:**` of 22 ids and a 22-row
-  `#### GAPS2 traceability` table; `CHANGELOG.md` has `### Fixed in WP-28` with 23 markers.
+  `#### GAPS2 traceability` table; `CHANGELOG.md` has 23 markers in the four places TR-01.7
+  shows (16 + 2 + 1 + 4).
 - The BUGS.md entry form (TR-01.8), the CHANGELOG line rule (TR-01.7) and the commit form
-  (TR-01.9) are recorded here for sections 05-18 and 19 to copy.
+  (TR-01.9) are recorded here for sections 02 to 19 to copy.
 
 ## Notes
 
@@ -543,16 +614,31 @@ Acceptance criteria:
   a `test_*.py` name that does not exist is *not* harmless: `test_no_entry_names_a_test_that_does_not_exist`
   fails. Sections must name only tests that exist in the same commit.
 - **A BUGS.md title with a `"` cannot be quoted in a Tracked line** (`[^"]+`); use Stata's
-  `\`x'` quoting or plain words in titles.
-- **Parallel merges.** Batch-1 sections append to BUGS.md and CHANGELOG.md concurrently, so
-  `patch -p1` of a worktree's diff may reject those hunks (`.rej` files). Apply them by hand:
-  BUGS.md entries in section order at the end of the file, CHANGELOG lines in place of their
-  markers. Never resolve by dropping an entry.
-- **The CHANGELOG markers are HTML comments** so the stub renders as nothing; section 19
-  fails the closeout if any `<!-- WP-28 ` marker survives.
+  `\`x'` quoting or plain words in titles (S13's B6 title spells empty text as `given empty
+  text`).
+- **Commit bodies** (every section, consistency #30) use TR-01.9's line forms verbatim:
+  the body opens with the saved failure text, then `Regression: test/<file>.py::<Class>::<test>
+  -- failed at 91d97be with <text>`, `Flipped: <node> -- <old expectation> was wrong because
+  <why>` (one per flip), `Fixture: test/fixtures/<name>.json (scripts/<extract script>)`,
+  `BUGS.md: "<title>" (closed)`. Section 19 reads the `Flipped:` lines into ROADMAP.md.
+- **Shared files follow merge rules R1-R6** in `index.md` (D5); every section's Notes cite
+  them by number for the shared files it touches. This section touches CHANGELOG.md (R3: it
+  places the markers and creates the `### Fixed in WP-28` heading; every later section
+  replaces only its own markers, in place) and no registry, copy list, fixture or corpus.
+- **Parallel merges.** Batch-1 sections append to BUGS.md and replace CHANGELOG markers
+  concurrently, so `patch -p1` of a worktree's diff may reject those hunks (`.rej` files).
+  Apply them by hand: BUGS.md entries in section order at the end of the file (R3), CHANGELOG
+  lines in place of their markers. Never resolve by dropping an entry. S01 is merged first in
+  batch 1 (`index.md` step 1) so the markers exist before any gap section's diff. This section
+  runs in its own worktree on branch `wp28-s01`; the merger lands its commit onto `s3-bugs`
+  with `format-patch | patch -p1` and the recorded message.
+- **The CHANGELOG markers are HTML comments** so they render as nothing; section 19 fails the
+  closeout if any `<!-- WP-28 ` marker survives. The group line `**WP-28 (GAPS2 audit,
+  25sep2026)**` follows the bold-group convention of `### Results that change` (16, 60, 83,
+  96, 113); no other heading is added besides `### Fixed in WP-28`.
 - **GAPS2.md needs no `git add -f`** (`git check-ignore` returns 1); fixtures under
   `test/fixtures/*.json` do (`.git/info/exclude` hides `*.json`).
-- **Two full runs in this section** (one per commit). The PreToolUse hook allows two free
-  full launches per session; if a third is needed, prefix the command with
-  `FULL_SUITE_RERUN=1` and say why in the report. Never launch a full run while one is
-  executing; read its log.
+- **One full run in this section**, before the single commit, in 01-03. The PreToolUse hook
+  allows two free full launches per session; a second is needed only if the first is red and
+  a fix follows; a third needs `FULL_SUITE_RERUN=1` and a reason in the report. Never launch
+  a full run while one is executing; read its log.
