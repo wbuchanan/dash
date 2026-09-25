@@ -731,7 +731,9 @@ class TestABadValueNoLongerAbortsTheRender:
         assert line == ("dash: jitterseed(-1) must be a non-negative "
                         "integer; drawing unseeded."), line
         fig = list(r.figures.values())[0]
-        assert fig.renderers[0].glyph.x == "_x_jit", "the jitter was drawn"
+        # G1 (WP-28): the jitter columns are named under the __dash prefix.
+        assert fig.renderers[0].glyph.x == dr._DASH_JITTER_X, \
+            "the jitter was drawn"
 
     def test_fractional_jitterseed(self):
         r, doc, std_w, srv_w = _both(

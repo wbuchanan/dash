@@ -802,9 +802,10 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
         spec = _spec([_plot_for("scatter", {"jitter": "5",
                                             "jitterseed": "1"})])
         r, _w = _saved(tmp_path, spec, _spread_frame(hole=True))
-        cols = [np.asarray(x.data_source.data["_x_jit"], dtype=float)
+        # G1 (WP-28): the jitter columns are named under the __dash prefix.
+        cols = [np.asarray(x.data_source.data[dr._DASH_JITTER_X], dtype=float)
                 for x in r.figures["g1"].renderers
-                if "_x_jit" in x.data_source.data]
+                if dr._DASH_JITTER_X in x.data_source.data]
         assert cols
         span = _HI_MS - _LO_MS
         finite = cols[0][np.isfinite(cols[0])]

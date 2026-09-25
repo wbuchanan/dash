@@ -176,9 +176,15 @@ def _qs_arr(v):
         if isinstance(a, list):
             return a
         if isinstance(a, dict) and a.get("type") == "bytes":
+            import gzip
             import numpy as np
-            return list(np.frombuffer(_qs_b64.b64decode(a["data"]),
-                                      dtype=v.get("dtype", "float64")))
+            raw = _qs_b64.b64decode(a["data"])
+            # Bokeh gzips a binary array that compresses well (measured on
+            # a bar chart's "top", G1 UN case): the gzip magic (1f 8b)
+            # decides, so an uncompressed array is read exactly as before.
+            if raw[:2] == b"\x1f\x8b":
+                raw = gzip.decompress(raw)
+            return list(np.frombuffer(raw, dtype=v.get("dtype", "float64")))
     return []
 
 def _qs_page():
@@ -228,6 +234,36 @@ def _qs_page():
     for k, (fid, rows) in enumerate(layers):
         _qs_M.setGlobal("QS_PAGE_LAYER" + str(k + 1), rows)
     _qs_M.setGlobal("QS_PAGE_HASQ", "1" if "__dashq" in page else "0")
+
+def _qs_col(name):
+    # G1 (WP-28): the page's own column, by name, in the data's own row
+    # order -- whichever glyph renderer (Scatter or VBar) carries it --
+    # joined the way _qs_join joins a set of row ids, but unsorted: the
+    # caller compares it with a Stata-built list in the same order.
+    with open(_qs_M.getGlobal("QS_PAGE"), encoding="utf-8") as fh:
+        page = fh.read()
+    m = _qs_re.search('<script type="application/json"[^>]*>(.*?)</script>', page, _qs_re.S)
+    docs = _qs_json.loads(_qs_html.unescape(m.group(1)))
+    objs, stack = {}, [docs]
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                objs[v["id"]] = v
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    def ref(v):
+        return objs.get(v["id"], v) if isinstance(v, dict) and "id" in v else v
+    for o in objs.values():
+        if o.get("name") != "GlyphRenderer":
+            continue
+        a = o.get("attributes", {})
+        ds = ref(a.get("data_source", {}))
+        data = dict(ref(ds).get("attributes", {}).get("data", {}).get("entries", []))
+        if name in data:
+            return " ".join(str(int(round(x))) for x in _qs_arr(data[name]))
+    return ""
 
 def _qs_tw_join():
     n = int(_qs_M.getGlobal("QS_TW_NP") or "0")
@@ -514,9 +550,70 @@ capture dash clear
 _qs_run `"dash scatter __dashqz rowid, saving("`p'.html")"'
 assert r(rc) == 110
 rename __dashqz mpg
+
+// G1 (WP-28): the __dash prefix is reserved for every column dash makes,
+// not only __dashq -- a variable already named __dash_row__, dash's own
+// row identity, is refused rather than overwritten.
+qui summarize price
+local price_mean = r(mean)
+rename price __dash_row__
+_qs_run `"dash scatter mpg rowid, saving("`p'.html")"'
+local rc6c = r(rc)
+cert_log_has "`r(log)'", needle("prefix __dash")
+local m6c = r(found)
+capture dash clear
+dash scatter mpg rowid, name(qs06b)
+_qs_run `"dash build, saving("`p'.html") replace nobrowser"'
+local rc6d = r(rc)
+cert_log_has "`r(log)'", needle("prefix __dash")
+local m6d = r(found)
+display as text "  QS-06 __dash_row__: one-line rc `rc6c' (message `m6c'), build rc `rc6d' (message `m6d')"
+assert `rc6c' == 110 & `rc6d' == 110 & `m6c' == 1 & `m6d' == 1
+confirm variable __dash_row__
+qui summarize __dash_row__
+assert reldif(r(mean), `price_mean') < 1e-12
+rename __dash_row__ price
+capture dash clear
+
+// A hand-made __dash-prefixed variable is refused the same way, on the
+// one-line route.
+generate byte __dash_x = 1
+_qs_run `"dash scatter mpg rowid, saving("`p'.html")"'
+local rc6e = r(rc)
+cert_log_has "`r(log)'", needle("prefix __dash")
+local m6e = r(found)
+display as text "  QS-06 __dash_x: rc `rc6e' (message `m6e')"
+assert `rc6e' == 110 & `m6e' == 1
+drop __dash_x
+capture dash clear
+
+// Every other Stata name -- even one that looks like a glyph field dash
+// derives, x or top -- is read as the user's own data (BR-07.3).
+rename mpg x
+tempfile p2
+_qs_run `"dash scatter x rowid, saving("`p2'.html")"'
+assert r(rc) == 0
+global QS_PAGE "`p2'.html"
+python: _qs_M.setGlobal("QS_COL", _qs_col("x"))
+mata: st_local("want_x", invtokens(strofreal(st_data(., "x"))'))
+assert "$QS_COL" == "`want_x'"
+capture erase "`p2'.html"
+capture dash clear
+rename x top
+tempfile p3
+_qs_run `"dash bar top rowid, saving("`p3'.html")"'
+assert r(rc) == 0
+global QS_PAGE "`p3'.html"
+python: _qs_M.setGlobal("QS_COL", _qs_col("top"))
+mata: st_local("want_top", invtokens(strofreal(st_data(., "top"))'))
+assert "$QS_COL" == "`want_top'"
+capture erase "`p3'.html"
+capture dash clear
+rename top mpg
+
 capture erase "`p'.html"
 capture dash clear
-display "QS-06 PASS: a variable named with the reserved prefix is refused, not overwritten"
+display "QS-06 PASS: a variable named with the reserved prefix is refused, not overwritten, and every other name is drawn with its own values"
 
 // ----------------------------------------------------------------
 // QS-07 -- a build leaves the data as it found them: no variable added,

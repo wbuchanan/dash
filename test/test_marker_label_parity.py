@@ -936,7 +936,8 @@ class TestAdversarialMarkerLabels:
         t0 = time.monotonic()
         gm._apply_mlabel_opts(fig, src, {"mlabel": "v"}, "x", "y")
         assert time.monotonic() - t0 < 2.0
-        assert src.data["__mlabel__v"][1999] == "L1999"
+        # G1 (WP-28): the marker-label column is named under the __dash prefix.
+        assert src.data[dr._DASH_MLABEL_PREFIX + "v"][1999] == "L1999"
 
     def test_a_number_stata_would_write_long_is_bounded(self):
         """The widest text a number becomes is Stata's own: 18 characters."""

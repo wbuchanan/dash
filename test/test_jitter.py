@@ -13,10 +13,16 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # This directory too, for test_abbreviations' syntax reader.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import dash_render as dr
 from dash_render import GlyphMapper, OptionTranslator, DashRenderer
 
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource
+
+# G1 (WP-28): the jitter columns are named under the __dash prefix
+# (dr._DASH_JITTER_X / dr._DASH_JITTER_Y, "__dash_xjit"/"__dash_yjit"), not
+# the bare "_x_jit"/"_y_jit" this file used to pin -- those are now read as
+# the user's own data (test_reserved_names.py::TestTheDashPrefix).
 
 
 # ============================================================
@@ -54,8 +60,8 @@ class TestMapScatterJitter:
         fig = figure()
         src = _make_source(auto_df, "weight", "mpg")
         r = gm.map_scatter(fig, src, "mpg", "weight", {"jitter": "5", "jseed": "42"})
-        assert r.glyph.x == "_x_jit"
-        assert r.glyph.y == "_y_jit"
+        assert r.glyph.x == dr._DASH_JITTER_X
+        assert r.glyph.y == dr._DASH_JITTER_Y
 
     def test_no_jitter_uses_original_columns(self, auto_df, gm):
         """JIT-02: renderer x/y use original column names when jitter absent."""
@@ -73,8 +79,8 @@ class TestMapScatterJitter:
         cds_data = r.data_source.data
         assert "weight" in cds_data
         assert "mpg" in cds_data
-        assert "_x_jit" in cds_data
-        assert "_y_jit" in cds_data
+        assert dr._DASH_JITTER_X in cds_data
+        assert dr._DASH_JITTER_Y in cds_data
 
     def test_deterministic_with_jseed(self, auto_df, gm):
         """JIT-04: two renders with same jseed produce identical jitter arrays."""
@@ -84,8 +90,8 @@ class TestMapScatterJitter:
         r1 = gm.map_scatter(fig1, src1, "mpg", "weight", {"jitter": "5", "jseed": "42"})
         r2 = gm.map_scatter(fig2, src2, "mpg", "weight", {"jitter": "5", "jseed": "42"})
         np.testing.assert_array_equal(
-            r1.data_source.data["_x_jit"],
-            r2.data_source.data["_x_jit"],
+            r1.data_source.data[dr._DASH_JITTER_X],
+            r2.data_source.data[dr._DASH_JITTER_X],
         )
 
     def test_different_jseed_produces_different_jitter(self, auto_df, gm):
@@ -96,8 +102,8 @@ class TestMapScatterJitter:
         r1 = gm.map_scatter(fig1, src1, "mpg", "weight", {"jitter": "5", "jseed": "1"})
         r2 = gm.map_scatter(fig2, src2, "mpg", "weight", {"jitter": "5", "jseed": "999"})
         assert not np.allclose(
-            r1.data_source.data["_x_jit"],
-            r2.data_source.data["_x_jit"],
+            r1.data_source.data[dr._DASH_JITTER_X],
+            r2.data_source.data[dr._DASH_JITTER_X],
         )
 
     def test_jitter_zero_no_jit_columns(self, auto_df, gm):
@@ -130,7 +136,7 @@ class TestMapScatterJitter:
         fig = figure()
         src = _make_source(auto_df, "weight", "mpg")
         r = gm.map_scatter(fig, src, "mpg", "weight", {"jitter": "999999"})
-        assert "_x_jit" in r.data_source.data
+        assert dr._DASH_JITTER_X in r.data_source.data
 
 
 # ============================================================
@@ -145,7 +151,7 @@ class TestJitterOnOtherPlots:
         r = gm.map_dot(fig, src, "mpg", "weight", {"jitter": "5", "jseed": "0"})
         # map_dot returns a list with one renderer
         renderer = r if hasattr(r, "glyph") else r[0]
-        assert renderer.glyph.x == "_x_jit"
+        assert renderer.glyph.x == dr._DASH_JITTER_X
 
     def test_jitter_on_dropline(self, auto_df, gm):
         """JIT-07: jitter option on dropline adds offset columns to CDS."""
@@ -183,7 +189,7 @@ class TestJitterNotOnLinePlot:
         r = gm.map_line(fig, src, "mpg", "weight", {"jitter": "5"})
         assert r.glyph.x == "weight"
         assert r.glyph.y == "mpg"
-        assert "_x_jit" not in r.data_source.data
+        assert dr._DASH_JITTER_X not in r.data_source.data
 
 
 # ============================================================
@@ -234,14 +240,15 @@ class TestJitterHtmlIntegration:
                 except OSError: pass
 
     def test_html_contains_jit_column(self):
-        """JIT-I1: full render with jitter(5) embeds _x_jit column in Bokeh JSON."""
+        """JIT-I1: full render with jitter(5) embeds the __dash_xjit column
+        in Bokeh JSON (G1: named under the __dash prefix)."""
         html_str = self._render({"jitter": "5", "jseed": "42"})
-        assert "_x_jit" in html_str
+        assert dr._DASH_JITTER_X in html_str
 
     def test_html_no_jit_column_without_jitter(self):
-        """No jitter → no _x_jit column in output."""
+        """No jitter -> no __dash_xjit column in output."""
         html_str = self._render({})
-        assert "_x_jit" not in html_str
+        assert dr._DASH_JITTER_X not in html_str
 
 
 # ============================================================
@@ -269,10 +276,11 @@ class TestStatasOwnSeedSpelling:
     unseeded draws differ anyway. Only "the same seed twice" separates a seed
     that works from one that is ignored.
 
-    The jittered values live in the source's ``_x_jit``/``_y_jit`` columns,
-    not in the original ones -- ``_build_jitter_source`` returns the effective
-    names alongside the source. Reading the original column compares an
-    untouched array against itself and passes no matter what.
+    The jittered values live in the source's ``__dash_xjit``/``__dash_yjit``
+    columns (G1, WP-28), not in the original ones -- ``_build_jitter_source``
+    returns the effective names alongside the source. Reading the original
+    column compares an untouched array against itself and passes no matter
+    what.
     """
 
     @staticmethod
@@ -494,8 +502,8 @@ class TestEverySeedSiteReadsBothSpellings:
                 doc = Document()
                 mod.make_document(doc)
             for m in doc.select({"type": _CDS}):
-                if "_x_jit" in m.data:
-                    return [float(v) for v in m.data["_x_jit"]]
+                if dr._DASH_JITTER_X in m.data:
+                    return [float(v) for v in m.data[dr._DASH_JITTER_X]]
             return None
 
         a, b = _cloud("a"), _cloud("b")

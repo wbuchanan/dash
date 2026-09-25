@@ -36,6 +36,7 @@ import sys
 import time
 import warnings
 
+import pandas as pd
 import pytest
 from bokeh.document import Document
 from bokeh.models import Div, GridBox, Select, Tabs
@@ -462,3 +463,123 @@ class TestAdversarialReservedNames:
         assert [g["graph_options"]["name"] for g in out["graphs"]] == ["ok"]
         assert out["kpis"] == []
         assert took < 5, f"{took:.1f} s"
+
+
+# ---------------------------------------------------------------------------
+# G1 (WP-28): the __dash prefix is reserved for the columns dash makes, so
+# it never collides with a user variable; every other Stata name -- even
+# one dash used to make up itself -- is read as the user's data.
+# ---------------------------------------------------------------------------
+
+def _reserved_df(extra_col, values=None):
+    """Four rows of mpg/weight, plus one column of the caller's choosing."""
+    df = pd.DataFrame({
+        "mpg": [22.0, 17.0, 25.0, 30.0],
+        "weight": [2930.0, 3350.0, 2200.0, 1800.0],
+    })
+    df[extra_col] = values if values is not None else [1.0, 2.0, 3.0, 4.0]
+    return df
+
+
+class TestTheDashPrefix:
+    """A variable named with the __dash prefix is refused, before any
+    export, unless the spec names it as a qualifier column; every other
+    Stata name is read as data (dash.sthlp:166-171; _dash_take_qual_columns;
+    _dash_qual_gen in dash.ado)."""
+
+    @pytest.mark.parametrize("name", [
+        "__dash_row__", "__dash_mlabel_y", "__dash_xjit",
+        "__dashfix0a1b2c3d4e5f", "__dash",
+    ])
+    def test_a_column_under_the_prefix_is_refused_in_both_modes(
+            self, tmp_path, name):
+        df = _reserved_df(name)
+        spec = _spec([_graph("g1")])
+        sp, dp = _write_inputs(tmp_path, spec, df=df)
+        with pytest.raises(ValueError, match="reserved") as exc:
+            DashRenderer(sp, dp)
+        assert "__dash" in str(exc.value)
+        ap = os.path.join(str(tmp_path), "app_%d.py" % next(_SEQ))
+        with pytest.raises(ValueError, match="reserved") as exc2:
+            dr.ServerAppBuilder(sp, dp).build(ap)
+        assert "__dash" in str(exc2.value)
+
+    def test_a_qualifier_column_the_spec_names_still_passes(self, tmp_path):
+        df = _reserved_df("__dashq1", values=[1.0, 0.0, 1.0, 0.0])
+        graph = _graph("g1")
+        graph["qual_col"] = "__dashq1"
+        spec = _spec([graph])
+        sp, dp = _write_inputs(tmp_path, spec, df=df)
+        r = DashRenderer(sp, dp)
+        r.render()
+        [fig] = list(r.figures.values())
+        [sc] = [x for x in fig.renderers
+               if type(x.glyph).__name__ == "Scatter"]
+        # The qualifier keeps rows 0 and 2 (mpg 22.0, 25.0); the column
+        # itself never reaches the source.
+        assert list(sc.data_source.data["mpg"]) == [22.0, 25.0]
+        assert "__dashq1" not in sc.data_source.data
+        ap = os.path.join(str(tmp_path), "app_%d.py" % next(_SEQ))
+        dr.ServerAppBuilder(sp, dp).build(ap)
+        with open(ap, encoding="utf-8") as fh:
+            assert "__dashq1" not in fh.read()
+
+    @pytest.mark.parametrize("name, mode", [
+        ("__mlabel__y", "mlabel"),
+        ("_x_jit", "jitter"),
+        ("__mlabel_values__", "mlabel"),
+        ("_y_jit", "jitter"),
+        ("x", "plain"),
+        ("top", "plain"),
+    ])
+    def test_a_name_dash_no_longer_makes_is_drawn_with_its_own_values(
+            self, tmp_path, name, mode):
+        values = [22.0, 17.0, 25.0, 30.0]
+        df = _reserved_df(name, values=values)
+        options = {}
+        if mode == "jitter":
+            options["jitter"] = "5"
+        elif mode == "mlabel":
+            options["mlabel"] = name
+        plot = {"type": "scatter", "yvar": name, "xvar": "weight",
+                "options": options}
+        spec = _spec([{"plots": [plot],
+                       "graph_options": {"name": "g1", "title": "g1"},
+                       "if_expr": "", "in_expr": ""}])
+        sp, dp = _write_inputs(tmp_path, spec, df=df)
+
+        r = DashRenderer(sp, dp)
+        r.render()
+        [fig] = list(r.figures.values())
+        [renderer] = [x for x in fig.renderers
+                      if type(x.glyph).__name__ == "Scatter"]
+        src = renderer.data_source
+        assert list(src.data[name]) == values
+        if mode == "mlabel":
+            text_col = dr._DASH_MLABEL_PREFIX + name
+            assert text_col in src.data
+            assert [str(v) for v in src.data[text_col]] == \
+                [str(v) for v in values]
+
+        ap = os.path.join(str(tmp_path), "app_%d.py" % next(_SEQ))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dr.ServerAppBuilder(sp, dp).build(ap)
+        with open(ap, encoding="utf-8") as fh:
+            ns = _load_app(fh.read(), "own_%d" % next(_SEQ))
+        doc = Document()
+        ns["make_document"](doc)
+        [sfig] = _figures(doc)
+        [srenderer] = [x for x in sfig.renderers
+                       if type(x.glyph).__name__ == "Scatter"]
+        assert list(srenderer.data_source.data[name]) == values
+
+    def test_the_stata_side_and_the_help_share_the_prefix(self):
+        _root = os.path.dirname(_HERE)
+        with open(os.path.join(_root, "dash.ado"), encoding="utf-8") as fh:
+            ado_text = fh.read()
+        assert "unab _dq_clash : __dash*" in ado_text
+        with open(os.path.join(_root, "dash.sthlp"), encoding="utf-8") as fh:
+            sthlp_text = fh.read()
+        assert "{cmd:__dash}" in sthlp_text
+        assert dr._DASH_RESERVED_PREFIX == "__dash"

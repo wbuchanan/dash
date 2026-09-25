@@ -4235,9 +4235,13 @@ end
 // (test_qualifier_in_stata.cscript).  A dashboard with no qualifier makes
 // no variable.
 //
-// The prefix is reserved: data already holding a variable named __dashq...
+// The __dash prefix is reserved for every column dash makes, not only the
+// qualifier columns (G1, WP-28): data already holding a variable so named
 // are refused, rc 110, rather than overwritten or exported beside a column
-// of the same name.  The if is read by value -- macval() -- inside the
+// of the same name -- the row identity __dash_row__, the marker-label and
+// jitter columns dash.ado never sees are the renderer's own half of the
+// same rule (_dash_take_qual_columns in dash_render.py).  The if is read
+// by value -- macval() -- inside the
 // parentheses _dash_qual_refusal proved it cannot leave, and the in is a
 // range that check proved is one; a qualifier Stata cannot evaluate against
 // the data now in memory (a variable dropped since the graph was
@@ -4252,10 +4256,10 @@ program define _dash_qual_gen
     version 16.0
     args cmdname
 
-    capture unab _dq_clash : __dashq*
+    capture unab _dq_clash : __dash*
     if _rc == 0 {
         local _dq_first : word 1 of `_dq_clash'
-        display as error "`cmdname': variable `_dq_first' is named with the prefix __dashq, which is reserved for the qualifier columns dash exports."
+        display as error "`cmdname': variable `_dq_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its row identity __dash_row__ and its marker-label and jitter columns)."
         display as error "      Rename it first, for example: rename `_dq_first' newname"
         exit 110
     }

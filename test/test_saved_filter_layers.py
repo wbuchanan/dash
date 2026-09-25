@@ -345,11 +345,14 @@ class TestAJitteredScatterFollowsAMove:
                               BooleanFilter)
         src = sc.data_source
         rid = dr._ROW_ID_COLUMN
+        # G1 (WP-28): the jitter columns are named under the __dash prefix.
         before = {int(i): (x, y) for i, x, y in zip(
-            src.data[rid], src.data["_x_jit"], src.data["_y_jit"])}
+            src.data[rid], src.data[dr._DASH_JITTER_X],
+            src.data[dr._DASH_JITTER_Y])}
         _move(r, _MOVES[2][2])
         after = {int(i): (x, y) for i, x, y in zip(
-            src.data[rid], src.data["_x_jit"], src.data["_y_jit"])}
+            src.data[rid], src.data[dr._DASH_JITTER_X],
+            src.data[dr._DASH_JITTER_Y])}
         want = {1, 3, 4, 6, 7, 9}
         if qual:
             want &= set(range(1, 9))          # in 2/9: observations 2..9
@@ -870,8 +873,9 @@ class TestALinkedJitteredScatter:
         assert all(got[o] == pytest.approx(want[o]) for o in want)
 
     def test_a_variable_named_like_the_jitter_column_is_kept(self):
-        """A Stata variable may be called ``_x_jit``: the layer's column
-        is named past it, and the variable's values stay as they were."""
+        """A Stata variable may be called ``_x_jit``: the glyph now draws
+        ``__dash_xjit`` (G1, WP-28), so the variable's own column is never
+        touched and its values stay as they were."""
         df = _DF_MISSING.rename(columns={"price": "_x_jit"})
         r = self._render(df=df, g2=[{"type": "scatter", "yvar": "_x_jit",
                                      "xvar": "weight", "options": {}}])
@@ -896,17 +900,18 @@ class TestALinkedJitteredScatter:
         view = CDSView(filter=BooleanFilter(booleans=[True, True, True,
                                                       False]))
         got = m._linked_jitter_columns(src, "x", "y", self._J, view)
-        assert got == (src, "_x_jit", "_y_jit")
+        # G1 (WP-28): the jitter columns are named under the __dash prefix.
+        assert got == (src, dr._DASH_JITTER_X, dr._DASH_JITTER_Y)
         xj, yj = dr._apply_jitter(np.array([1.0, 3.0]), np.array([5.0, 7.0]),
                                   5.0, 7)
-        xs = list(src.data["_x_jit"])
+        xs = list(src.data[dr._DASH_JITTER_X])
         assert math.isnan(xs[1]) and math.isnan(xs[3])
         assert [xs[0], xs[2]] == pytest.approx(list(xj))
-        assert [src.data["_y_jit"][i] for i in (0, 2)] == pytest.approx(
+        assert [src.data[dr._DASH_JITTER_Y][i] for i in (0, 2)] == pytest.approx(
             list(yj))
         # A second layer names its columns past the first's.
         assert m._linked_jitter_columns(src, "x", "y", self._J, None)[1:] \
-            == ("_x_jit_2", "_y_jit_2")
+            == (f"{dr._DASH_JITTER_X}_2", f"{dr._DASH_JITTER_Y}_2")
         assert m._linked_jitter_columns(src, "x", "y", {"jitter": "0"},
                                         None) == (src, "x", "y")
 

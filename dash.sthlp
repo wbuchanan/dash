@@ -165,10 +165,22 @@ order, and {cmd:_n} does not start again in each panel; the Total panel of
 The data keep their order and are not marked changed.  A qualifier the data no longer
 answer -- a variable dropped since the graph was registered -- stops the
 build with Stata's own message.  Each distinct qualifier travels to the
-dashboard as a column of 0s and 1s named {cmd:__dashq}{it:#}, which no
-tooltip, filter or download shows; names beginning with {cmd:__dashq} are
-reserved, and data holding such a variable are refused with
-{cmd:r(110)}.
+dashboard as a column of 0s and 1s (named {cmd:__dashq}{it:#}); no
+tooltip, filter or download shows it.  Names beginning with {cmd:__dash} are
+reserved for every column dash makes -- the qualifier columns
+{cmd:__dashq}{it:#}, the row identity {cmd:__dash_row__}, and its
+marker-label and jitter columns -- and data holding such a variable are
+refused with {cmd:r(110)} before anything is exported; every other Stata
+name, however dash-like it looks, is read as your data.
+
+{pstd}
+Two things this rule does not reach: the qualifier, {cmd:by()}-order and
+string-fix columns above are still generated in the data Stata holds in
+memory (dropped again before control returns), so a dataset already at
+{cmd:c(maxvar)} may fail with {cmd:r(900)}; and a variable named like a
+glyph field a plot derives ({cmd:x}, {cmd:y}, {cmd:top}, {cmd:count},
+{cmd:density} and the like) draws its own values as a plot variable but is
+shadowed by the derived field in {cmd:hover()} and {cmd:mlabel()}.
 
 {pstd}
 This help file documents only the features that differ from or extend

@@ -28,6 +28,7 @@ import numpy as np
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import dash_render as dr
 from dash_render import DashRenderer, GlyphMapper, OptionTranslator
 
 from bokeh.document import Document
@@ -287,20 +288,22 @@ class TestGlyphCount:
         assert n == _N
 
     def test_scatter_with_jitter_has_jit_column(self):
-        """GV-04: scatter with jitter(5) embeds _x_jit column of length N."""
+        """GV-04: scatter with jitter(5) embeds the __dash_xjit column of
+        length N (G1, WP-28: named under the __dash prefix)."""
         html = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
                          "options": {"jitter": "5", "jseed": "1"}}])
         model = _bokeh_model_json(html)
-        n = _count_data_points(model, "_x_jit")
-        assert n == _N, f"_x_jit column has {n} entries, expected {_N}"
+        n = _count_data_points(model, dr._DASH_JITTER_X)
+        assert n == _N, f"{dr._DASH_JITTER_X} column has {n} entries, expected {_N}"
 
     def test_scatter_no_jitter_has_no_jit_column(self):
-        """GV-05: scatter without jitter does NOT embed _x_jit column."""
+        """GV-05: scatter without jitter does NOT embed the jitter column."""
         html = _render([{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}])
-        assert "_x_jit" not in html
+        assert dr._DASH_JITTER_X not in html
 
     def test_jit_column_differs_from_original(self):
-        """GV-06: _x_jit values differ from original x values (noise was added)."""
+        """GV-06: the jitter column's values differ from the original x
+        values (noise was added)."""
         html = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
                          "options": {"jitter": "10", "jseed": "99"}}])
         model = _bokeh_model_json(html)
@@ -310,7 +313,7 @@ class TestGlyphCount:
             if "columndatasource" in combined:
                 raw = d.get("attributes", {}).get("data", {})
                 cols = _cds_data_as_dict(raw)
-                if "x" in cols and "_x_jit" in cols:
+                if "x" in cols and dr._DASH_JITTER_X in cols:
                     def _to_list(val):
                         if isinstance(val, list):
                             return val
@@ -324,12 +327,12 @@ class TestGlyphCount:
                             return list(struct.unpack(f"{n}{fmt}", b))
                         return []
                     orig = np.array(_to_list(cols["x"]), dtype=float)
-                    jit = np.array(_to_list(cols["_x_jit"]), dtype=float)
+                    jit = np.array(_to_list(cols[dr._DASH_JITTER_X]), dtype=float)
                     if len(orig) > 0 and len(jit) > 0:
                         assert not np.allclose(orig, jit), \
                             "Jittered x values identical to originals"
                         return
-        pytest.fail("Could not find x and _x_jit in any CDS")
+        pytest.fail(f"Could not find x and {dr._DASH_JITTER_X} in any CDS")
 
 
 # ============================================================

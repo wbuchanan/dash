@@ -630,7 +630,8 @@ def test_mlabformat_on_a_date_variable_is_named_and_the_dates_kept():
     assert notes == ["dash: mlabformat(%9.2f) is not applied to the date "
                      "variable when; its labels are drawn as dates."], notes
     ls = _labelset(fig)
-    assert ls.text == "__mlabel__when"
+    # G1 (WP-28): the marker-label column is named under the __dash prefix.
+    assert ls.text == dr._DASH_MLABEL_PREFIX + "when"
     assert _texts(ls) == ["16 Jan 2020", "01 Feb 2020"]
 
 
@@ -638,7 +639,9 @@ def test_the_formatted_column_is_named_by_variable_and_format():
     gm = dr.GlyphMapper(scheme=dr.SchemeParser("s2color"))
     src = ColumnDataSource({"x": [1.0], "y": [2.0], "v": [3.14159]})
     col = gm._mlabformat_column(src, "v", "%9.2f", "v")
-    assert col == "__mlabel__v__fmt_" + "%9.2f".encode("utf-8").hex()
+    # G1 (WP-28): the marker-label column is named under the __dash prefix.
+    assert col == (dr._DASH_MLABEL_PREFIX + "v_fmt_"
+                   + "%9.2f".encode("utf-8").hex())
     assert list(src.data[col]) == ["3.14"]
     assert gm._mlabformat_column(src, "v", "%9.3f", "v") != col
 

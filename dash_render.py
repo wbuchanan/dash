@@ -2006,6 +2006,20 @@ _NONSELECTION_ALPHA = 0.15
 # enough; a string key would cost real bytes in a file already over a
 # megabyte.
 _ROW_ID_COLUMN = "__dash_row__"
+# G1 (WP-28): every column a renderer makes up is named "__dash_<what>" --
+# a trailing "__" is kept only on the two legacy row-id names above and
+# below -- so a user's own variable of any other name (however dash-ish it
+# looks: __mlabel__y, _x_jit, x, top) is read as the user's data, never
+# overwritten.  Section 14's hover text column follows the same rule,
+# named __dash_hover_{var}.  test_internal_column_names.py guards it.
+_DASH_PC_ROW_COLUMN = "__dash_pc_row__"
+_DASH_MLABEL_PREFIX = "__dash_mlabel_"
+_DASH_MLABEL_VALUES = "__dash_mlabel_values"
+_DASH_MLABEL_X = "__dash_mlabel_x"
+_DASH_MLABEL_Y = "__dash_mlabel_y"
+_DASH_JITTER_X = "__dash_xjit"
+_DASH_JITTER_Y = "__dash_yjit"
+_DASH_LABEL_SUFFIX = "_label"
 # Marks the Legend that a discrete colorvar() builds, so the plot-legend
 # rebuild can leave it alone.  A colour key is not a series key: Stata
 # suppresses it with clegend(), not legend().
@@ -5553,7 +5567,7 @@ class GlyphMapper:
         """Return a (possibly jittered) source and effective x/y column names.
 
         If the ``jitter`` option is absent or zero, returns the original
-        *source* unchanged.  Otherwise adds ``_x_jit`` / ``_y_jit`` columns
+        *source* unchanged.  Otherwise adds ``_DASH_JITTER_X`` / ``_DASH_JITTER_Y`` columns
         and returns a new CDS that also contains the original columns so that
         hover tooltips and mlabel annotations can reference them.
 
@@ -5591,9 +5605,9 @@ class GlyphMapper:
         new_data = {k: (np.array(v) if getattr(v, "dtype", None) is not None
                         and v.dtype.kind == "M" else list(v))
                     for k, v in source.data.items()}
-        new_data["_x_jit"] = x_jit.tolist()
-        new_data["_y_jit"] = y_jit.tolist()
-        return ColumnDataSource(new_data), "_x_jit", "_y_jit"
+        new_data[_DASH_JITTER_X] = x_jit.tolist()
+        new_data[_DASH_JITTER_Y] = y_jit.tolist()
+        return ColumnDataSource(new_data), _DASH_JITTER_X, _DASH_JITTER_Y
 
     def _linked_jitter_columns(self, source, xvar, yvar, options, view):
         """Put a jittered scatter's points on the link group's source.
@@ -5604,7 +5618,7 @@ class GlyphMapper:
         never showed on it, nor one made on it in the others (BUGS.md,
         measured 24sep2026 under node, saved and served alike).  Here the
         points are added to the shared source as two columns of this
-        layer's own -- ``_x_jit``/``_y_jit``, or ``_x_jit_2``/``_y_jit_2``
+        layer's own -- ``__dash_xjit``/``__dash_yjit``, or ``__dash_xjit_2``/``__dash_yjit_2``
         and so on past any name the source already holds, a variable's
         included -- NaN on every row the layer does not draw, and the layer
         draws them through the view it was handed.  The values are the
@@ -5653,7 +5667,7 @@ class GlyphMapper:
         k = 1
         while True:
             sfx = "" if k == 1 else f"_{k}"
-            xname, yname = f"_x_jit{sfx}", f"_y_jit{sfx}"
+            xname, yname = f"{_DASH_JITTER_X}{sfx}", f"{_DASH_JITTER_Y}{sfx}"
             if xname not in data and yname not in data:
                 break
             k += 1
@@ -6843,7 +6857,7 @@ class GlyphMapper:
             # renderer; its value labels are keyed by Stata's numbers, so
             # they are read only for a column of numbers.
             _vlabels = ({} if _kind else self._mlabel_value_labels(mlabel_var))
-            text_col = f"__mlabel__{mlabel_var}"
+            text_col = f"{_DASH_MLABEL_PREFIX}{mlabel_var}"
             if text_col not in source.data:
                 raw = list(source.data[values_col])
                 if _vlabels:
@@ -7058,7 +7072,7 @@ class GlyphMapper:
                 f"format dash reproduces; the labels are drawn without it.",
             )
             return default_col
-        col = f"__mlabel__{var}__fmt_{fmt.encode('utf-8').hex()}"
+        col = f"{_DASH_MLABEL_PREFIX}{var}_fmt_{fmt.encode('utf-8').hex()}"
         if col not in source.data:
             raw = list(source.data[values_col or var])
             source.data[col] = ["." if m else
@@ -10925,13 +10939,13 @@ class GlyphMapper:
             # of millisecond datetimes back as nanoseconds, or as objects
             # once one is past 2262 (measured 24sep2026).
             _lv = source.data[_lab]
-            clean["__mlabel_values__"] = (
+            clean[_DASH_MLABEL_VALUES] = (
                 _lv if getattr(_lv, "dtype", None) is not None
                 and _lv.dtype.kind == "M" else list(_lv))
         # The row identity rides along, for the saved page's filter callback.
         _pc_has_ids = _ROW_ID_COLUMN in source.data
         if _pc_has_ids:
-            clean["__dash_pc_row__"] = list(source.data[_ROW_ID_COLUMN])
+            clean[_DASH_PC_ROW_COLUMN] = list(source.data[_ROW_ID_COLUMN])
         _pc_sel = self._view_mask(view, len(clean))
         if _pc_sel is not None:
             clean = clean[_pc_sel]
@@ -10942,7 +10956,7 @@ class GlyphMapper:
         y_all = np.concatenate([clean[y1var].values, clean[y2var].values])
         _pc_cols = {"x": x_all.tolist(), "y": y_all.tolist()}
         if _pc_has_ids:
-            _pc_ids = list(clean["__dash_pc_row__"])
+            _pc_ids = list(clean[_DASH_PC_ROW_COLUMN])
             _pc_cols[_ROW_ID_COLUMN] = _pc_ids + _pc_ids
         # The label goes at the FIRST point only -- twoway: "By default, the
         # labels are placed at ... the point defined by y1var and x1var"
@@ -10954,18 +10968,18 @@ class GlyphMapper:
         if _has_lab:
             _n = len(clean)
             _nan = np.full(_n, np.nan)
-            _pc_cols["__mlabel_x__"] = np.concatenate(
+            _pc_cols[_DASH_MLABEL_X] = np.concatenate(
                 [_dash_float_values(clean[x1var]), _nan])
-            _pc_cols["__mlabel_y__"] = np.concatenate(
+            _pc_cols[_DASH_MLABEL_Y] = np.concatenate(
                 [_dash_float_values(clean[y1var]), _nan])
-            if clean["__mlabel_values__"].dtype.kind == "M":
+            if clean[_DASH_MLABEL_VALUES].dtype.kind == "M":
                 # An array, not Timestamps: Bokeh writes a Timestamp
                 # through its nanosecond value, which raises past 2262.
-                _labs = clean["__mlabel_values__"].to_numpy()
-                _pc_cols["__mlabel_values__"] = np.concatenate([_labs, _labs])
+                _labs = clean[_DASH_MLABEL_VALUES].to_numpy()
+                _pc_cols[_DASH_MLABEL_VALUES] = np.concatenate([_labs, _labs])
             else:
-                _labs = list(clean["__mlabel_values__"])
-                _pc_cols["__mlabel_values__"] = _labs + _labs
+                _labs = list(clean[_DASH_MLABEL_VALUES])
+                _pc_cols[_DASH_MLABEL_VALUES] = _labs + _labs
         # Both markers of an observation carry its other columns -- the
         # variables hover() names; clean's index is the row in *source*.
         _pc_rows = clean.index.to_numpy()
@@ -10982,8 +10996,8 @@ class GlyphMapper:
         # No view here: pc_source already holds only the selected rows.
         r = fig.scatter("x", "y", **_pcsc_kwargs)
         self._apply_marker_opts(r, options)
-        self._apply_mlabel_opts(fig, pc_source, options, "__mlabel_x__",
-                                "__mlabel_y__", label_col="__mlabel_values__")
+        self._apply_mlabel_opts(fig, pc_source, options, _DASH_MLABEL_X,
+                                _DASH_MLABEL_Y, label_col=_DASH_MLABEL_VALUES)
         return [r]
 
     def _pc_clean_with_label(self, source: ColumnDataSource, y1var: str,
@@ -11438,7 +11452,7 @@ class GlyphMapper:
                 f"{_dash_display(', '.join(odd))} are not a whole number "
                 f"from 0 to 12; those labels are drawn at 12 (above), where "
                 f"twoway draws them.")
-        col = f"__{ptype}_label__"
+        col = f"{_DASH_RESERVED_PREFIX}_{ptype}{_DASH_LABEL_SUFFIX}"
         for pos, rows in groups.items():
             lab_src = ColumnDataSource({
                 xcol: [xs[i] for i in rows],
@@ -11637,14 +11651,14 @@ class GlyphMapper:
         # is named for itself, not for the variable: a variable called x
         # or y must not replace the points.
         if lab_vals is not None:
-            _rs_cols["__mlabel_values__"] = [
+            _rs_cols[_DASH_MLABEL_VALUES] = [
                 v for v, keep in zip(lab_vals + lab_vals, mask) if keep]
             if np.asarray(source.data[_lab]).dtype.kind == "M":
                 # A date label column as an array: in a list, a missing
                 # date is written by Bokeh as a bare NaN, which JSON
                 # refuses, and the page failed (measured 24sep2026).
-                _rs_cols["__mlabel_values__"] = np.array(
-                    _rs_cols["__mlabel_values__"], dtype="datetime64[ms]")
+                _rs_cols[_DASH_MLABEL_VALUES] = np.array(
+                    _rs_cols[_DASH_MLABEL_VALUES], dtype="datetime64[ms]")
         self._carry_cols(source, _rs_cols,
                          np.concatenate([_rs_rows, _rs_rows])[mask])
         rs_source = ColumnDataSource(_rs_cols)
@@ -11658,7 +11672,7 @@ class GlyphMapper:
         r = fig.scatter("x", "y", **_rs_kwargs)
         self._apply_marker_opts(r, options)
         self._apply_mlabel_opts(fig, rs_source, options, "x", "y",
-                                label_col="__mlabel_values__")
+                                label_col=_DASH_MLABEL_VALUES)
         return [r]
 
     def map_mspline(
@@ -14270,7 +14284,7 @@ for (let i = 0; i < active.length; i++) if (active[i]) rows.push(i);
 dash_csv_download(dash_csv_text(orig, text_source.data, rows, meta), meta.filename);
 """
 
-_FILTER_JS = _DASH_FILTER_MASK_JS + """
+_FILTER_JS = (_DASH_FILTER_MASK_JS + """
 // Bokeh 3.x serialises Python dicts as JavaScript Map objects, not plain {}.
 // All structured args (orig_data, filter_specs, kpi_config) are therefore
 // passed as JSON strings and parsed here to avoid Map-vs-object mismatches.
@@ -14312,7 +14326,7 @@ function dash_own_col(o, col) {
                                    enumerable: true, configurable: true});
 }
 
-const ROW_ID = "__dash_row__";
+const ROW_ID = __DASH_ROW_ID__;
 
 // The set of row identities that survived every active filter, taken from
 // the PRIMARY snapshot.  Masking on identity rather than on position is what
@@ -15008,7 +15022,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         src.change.emit();
     }
 }
-"""
+""").replace("__DASH_ROW_ID__", json.dumps(_ROW_ID_COLUMN))
 
 
 # ===========================================================================
@@ -18319,7 +18333,7 @@ def _dash_keep_jitter(new_data, snapshot):
     The saved page keeps a move's rows of the jittered copy by row id and
     moves none (``_FILTER_JS``).  Stata jitters once, when it draws; a
     filter is dash's own, and a point should not wander when it is kept.
-    Each ``_x_jit``/``_y_jit`` column of *new_data* takes the value the
+    Each ``__dash_xjit``/``__dash_yjit`` column of *new_data* takes the value the
     snapshot held for the same row label; a row the snapshot never held
     keeps its fresh value.
 
@@ -18339,7 +18353,7 @@ def _dash_keep_jitter(new_data, snapshot):
     for i, lab in enumerate(ids):
         pos.setdefault(lab, i)
     for col in list(new_data):
-        if not (col.startswith("_x_jit") or col.startswith("_y_jit")):
+        if not (col.startswith(_DASH_JITTER_X) or col.startswith(_DASH_JITTER_Y)):
             continue
         orig = snapshot.get(col)
         if orig is None:
@@ -20368,6 +20382,11 @@ def _dash_if_type_problem(expr, frame):
 # narrowed the frame first: a by() panel, a graph's qualifier, a filter move.
 # ---------------------------------------------------------------------------
 
+#: The prefix reserved for every column dash makes (G1, WP-28): the
+#: qualifier columns, the row identity, the marker-label and jitter
+#: columns.  Data already holding a variable named with it are refused
+#: (rc 110) unless the spec names it as a qualifier column (below).
+_DASH_RESERVED_PREFIX = "__dash"
 #: The prefix dash.ado reserves for its qualifier columns; it refuses data
 #: that already hold a variable named with it (rc 110).
 _DASH_QUAL_PREFIX = "__dashq"
@@ -20419,9 +20438,11 @@ def _dash_take_qual_columns(df, spec):
     reserved prefix, and ``{name: boolean Series indexed like df}`` for each
     column the spec names.  Each is validated before it is used: its name
     is one dash writes, it is in the data, and every value is 0 or 1.  A
-    column with the prefix that the spec does not name is refused as well --
-    dash.ado refuses data that hold one -- so a user's variable can never be
-    read as a qualifier nor a qualifier shown as a variable.
+    column with the reserved prefix (G1, WP-28: every column dash makes,
+    not only the qualifier columns) that the spec does not name is refused
+    as well -- dash.ado refuses data that hold one -- so a user's variable
+    can never be read as a qualifier, overwritten by a column dash makes
+    up, nor a qualifier shown as a variable.
 
     Raises:
         ValueError: A name, a missing column or a value dash would not
@@ -20429,13 +20450,13 @@ def _dash_take_qual_columns(df, spec):
     """
     names = _dash_qual_cols_named(spec)
     cols = [str(c) for c in df.columns]
-    reserved = [c for c in cols if c.startswith(_DASH_QUAL_PREFIX)]
+    reserved = [c for c in cols if c.startswith(_DASH_RESERVED_PREFIX)]
     for c in reserved:
         if c not in names:
             raise ValueError(
                 "dash: the data hold a column named %r; names beginning "
-                "with %s are reserved for the qualifier columns dash "
-                "exports." % (c[:40], _DASH_QUAL_PREFIX))
+                "with %s are reserved for the columns dash makes." %
+                (c[:40], _DASH_RESERVED_PREFIX))
     masks = {}
     for name in names:
         if name not in cols:
@@ -24434,6 +24455,14 @@ class ServerAppBuilder:
                       # out as re.compile(pattern, flags) below.
                       "_DASH_UNSAFE_BY", "_DASH_BY_SUPPORTED",
                       "_NONSELECTION_ALPHA", "_ROW_ID_COLUMN",
+                      # The __dash-prefixed column names GlyphMapper reads
+                      # (G1, WP-28): the pc row identity, the marker-label
+                      # columns and the jitter columns, and the suffix the
+                      # literal-label columns share.
+                      "_DASH_PC_ROW_COLUMN", "_DASH_MLABEL_PREFIX",
+                      "_DASH_MLABEL_VALUES", "_DASH_MLABEL_X",
+                      "_DASH_MLABEL_Y", "_DASH_JITTER_X", "_DASH_JITTER_Y",
+                      "_DASH_LABEL_SUFFIX",
                       # The plot-type categories.  The app used to carry its
                       # own copies inside an if/elif chain, which is how the
                       # two modes came to disagree about which types exist.
@@ -24482,7 +24511,9 @@ class ServerAppBuilder:
                       # _validate_if_expr's tree-depth bound (WP-20).
                       "_IF_EXPR_MAX_DEPTH",
                       # The qualifier columns dash.ado exports: their
-                      # reserved prefix and whole name.
+                      # reserved prefix and whole name; and the wider
+                      # prefix reserved for every column dash makes (G1).
+                      "_DASH_RESERVED_PREFIX",
                       "_DASH_QUAL_PREFIX", "_DASH_QUAL_NAME_RE",
                       # _dash_parse_axis_spec's tick bound (WP-20).
                       "_MAX_AXIS_TICKS",
@@ -25091,11 +25122,12 @@ class ServerAppBuilder:
                     self._frame(), {k for k, v in _isstr.items() if v},
                     self.limits, "server app", _fbytes)
 
-        # The qualifier columns the spec names are validated now, where the
+        # The qualifier columns the spec names, and any column under the
+        # reserved __dash prefix (G1, WP-28), are validated now, where the
         # user who built the app reads the refusal, and not first when a
         # session opens (the app validates them again as it loads).
         if _dash_qual_cols_named(self.spec) or (
-                _DASH_QUAL_PREFIX in self._raw_data_str):
+                _DASH_RESERVED_PREFIX in self._raw_data_str):
             self._frame()
 
         try:
@@ -26818,7 +26850,7 @@ class ServerAppBuilder:
             "",
             "    # ---- Wire filter callbacks ----",
             "    # Snapshot original (pre-filter) data for every raw source so that",
-            "    # derived columns that are not in _df_ref (e.g. _x_jit/_y_jit from",
+            "    # derived columns that are not in _df_ref (e.g. __dash_xjit/__dash_yjit from",
             "    # jitter()) can be correctly filtered by row index instead of being",
             "    # blanked with [] after each filter interaction.",
             "    _orig_src_data: dict = {}",

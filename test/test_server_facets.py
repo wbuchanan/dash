@@ -265,7 +265,9 @@ class TestEveryTypeFacetsTheSameWayInBothModes:
             # A numeric label is drawn from the column derived beside the
             # variable's (test_marker_label_parity.py): "." for a missing
             # value, and a column a served filter's redraw keeps.
-            assert p["labels"] == ["__mlabel__rep"], p
+            # G1 (WP-28): the marker-label column is named under the
+            # __dash prefix.
+            assert p["labels"] == [dr._DASH_MLABEL_PREFIX + "rep"], p
             assert any("price" in h for h in p["hover"]), p
 
     def test_a_linked_faceted_graph_agrees(self, tmp_path):

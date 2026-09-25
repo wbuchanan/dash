@@ -345,7 +345,19 @@ and now matches Stata.
 - A KPI draws one card, not one per `by()` panel. `update()` names a mode.
   (f92ef65)
 - `saving()` into a directory that does not exist is r(603). (WP-23)
-<!-- WP-28 G1 -->
+- A variable whose name begins `__dash` is refused with r(110) before any
+  export, naming the variable and the prefix, and telling you to rename
+  it: only names beginning `__dashq` were reserved before, so
+  `dash scatter mpg weight if __dash_row__ > 0` used to build with the
+  variable silently overwritten by dash's own row identity. Every column
+  dash makes -- the qualifier columns, the row identity `__dash_row__`,
+  and the marker-label and jitter columns, previously `__mlabel__*`,
+  `__mlabel_values__`, `__mlabel_x__`, `__mlabel_y__`, `_x_jit` and
+  `_y_jit` -- is now named under that one prefix (`__dash_mlabel_*`,
+  `__dash_xjit`/`__dash_yjit`, `__dash_pc_row__`, `__dash_<type>_label`),
+  so a variable named `__mlabel__y`, `_x_jit` or `top` now draws with its
+  own values where it used to be read as label text or overwritten.
+  (WP-28, G1)
 <!-- WP-28 G2 -->
 
 ### Removed

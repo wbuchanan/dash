@@ -7441,14 +7441,14 @@ class TestBug22MultiLayerSources:
 
 
 # ---------------------------------------------------------------------------
-# BUG-32: Server filter callback clears synthetic columns (e.g. _x_jit/_y_jit)
+# BUG-32: Server filter callback clears synthetic columns (e.g. __dash_xjit/__dash_yjit)
 # ---------------------------------------------------------------------------
 
 class TestServerFilterPreservesDerivedColumns:
     """BUG-32: Server-mode filter callbacks must not blank derived columns.
 
     Pre-fix: for any column in ``src.data`` not present in ``_gdf.columns``
-    (e.g. ``_x_jit``/``_y_jit`` from ``jitter()``, or Bokeh's implicit
+    (e.g. ``__dash_xjit``/``__dash_yjit`` from ``jitter()``, or Bokeh's implicit
     ``index`` column), the callback set it to ``[]``, causing a length
     mismatch warning and making glyphs disappear after filter interactions.
 
@@ -7458,7 +7458,7 @@ class TestServerFilterPreservesDerivedColumns:
     """
 
     def _make_jitter_spec(self) -> dict:
-        """Scatter with jitter option so _x_jit/_y_jit exist in src.data."""
+        """Scatter with jitter option so __dash_xjit/__dash_yjit exist in src.data."""
         return _make_spec_json(
             graphs=[{
                 "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
@@ -7474,7 +7474,9 @@ class TestServerFilterPreservesDerivedColumns:
         )
 
     @pytest.mark.parametrize("opts,column", [
-        ({"mlabel": "foreign"}, "__mlabel__foreign"),
+        # G1 (WP-28): the marker-label column is named under the __dash
+        # prefix now (dr._DASH_MLABEL_PREFIX + "foreign").
+        ({"mlabel": "foreign"}, "__dash_mlabel_foreign"),
         ({"colorvar": "foreign", "colordiscrete": "colordiscrete"},
          "_cvar_foreign_bin"),
     ], ids=["marker_labels", "colour_bins"])
@@ -7544,7 +7546,7 @@ class TestServerFilterPreservesDerivedColumns:
         assert [after[column][j] for j in range(len(kept))] == \
             [value_of[int(i)] for i in after["index"]], (
             f"{column} lost its rows' own values after the move")
-        if column == "__mlabel__foreign":
+        if column == "__dash_mlabel_foreign":
             assert set(after[column]) <= {"Domestic", "Foreign"}, after[column]
 
     def test_generated_callback_handles_index_column(self, dr_module, auto_df):
@@ -7572,7 +7574,7 @@ class TestServerFilterPreservesDerivedColumns:
 
         This asserted ``len(doc.roots) > 0``, which the layout column
         satisfies whether the jitter columns were built or not (WP-24,
-        measured 24sep2026).  jitter() adds the derived _x_jit/_y_jit that
+        measured 24sep2026).  jitter() adds the derived __dash_xjit/__dash_yjit that
         BUG-32 could blank; the served scatter must carry both, one value per
         row, over all 30 rows, and the foreign dropdown."""
         import importlib.util as _ilu
@@ -7593,7 +7595,9 @@ class TestServerFilterPreservesDerivedColumns:
             (_fig, r), = _glyph_layers(doc.roots)
             assert type(r.glyph).__name__ == "Scatter"
             data = r.data_source.data
-            assert {"_x_jit", "_y_jit"} <= set(data), (
+            # G1 (WP-28): the jitter columns are named under the __dash prefix.
+            assert {dr_module._DASH_JITTER_X, dr_module._DASH_JITTER_Y} \
+                <= set(data), (
                 f"jitter's derived columns are missing: {sorted(data)}")
             assert {len(v) for v in data.values()} == {len(auto_df)}, (
                 "every column, jitter's included, must hold one value per row")
@@ -7649,7 +7653,9 @@ class TestServerFilterPreservesDerivedColumns:
                 warnings.simplefilter("always")
                 fw.value = new_val
             lengths = {k: len(v) for k, v in srcs[0].data.items()}
-            assert {"_x_jit", "_y_jit"} <= set(lengths), lengths
+            # G1 (WP-28): the jitter columns are named under the __dash prefix.
+            assert {dr_module._DASH_JITTER_X, dr_module._DASH_JITTER_Y} \
+                <= set(lengths), lengths
             assert set(lengths.values()) == {want}, (
                 "BUG-32: after foreign=%s every column, derived ones "
                 "included, must hold the %d rows kept; got %r"

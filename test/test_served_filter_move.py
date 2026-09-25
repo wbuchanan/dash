@@ -71,6 +71,10 @@ _DROPDOWN = "foreign, type(dropdown)"
 _RANGE = "price, type(range)"
 _PRICE_RANGE = (4500.0, 11385.0)
 
+# G1 (WP-28): the marker-label column is named under the __dash prefix.
+_MLABEL_REP = dr._DASH_MLABEL_PREFIX + "rep"
+_MLABEL_X = dr._DASH_MLABEL_PREFIX + "x"
+
 
 # ===========================================================================
 # Helpers
@@ -213,7 +217,7 @@ def _layer_source():
     df = tp._DF.copy()
     own = df.iloc[2:8]
     src = ColumnDataSource(own[["weight", "mpg"]])
-    src.data["__mlabel__rep"] = ["r%d" % v for v in own["rep"]]
+    src.data[_MLABEL_REP] = ["r%d" % v for v in own["rep"]]
     return df, src, {c: list(v) for c, v in src.data.items()}
 
 
@@ -229,7 +233,7 @@ class TestTheUnlinkedRefresh:
         assert list(data["weight"]) == [1800.0, 3100.0, 2010.0]
         assert list(data["mpg"]) == [30.0, 19.0, 28.0]
         # The derived column keeps each row's own value: rep 5, 3, 4.
-        assert list(data["__mlabel__rep"]) == ["r5", "r3", "r4"]
+        assert list(data[_MLABEL_REP]) == ["r5", "r3", "r4"]
 
     def test_a_row_the_source_never_held_is_not_added(self):
         """A row dropped at the first draw -- its x missing -- stays out
@@ -269,13 +273,13 @@ class TestTheUnlinkedRefresh:
         same source, so the test can tell the two apart."""
         df, _, snap = _layer_source()
         frame = df[df["foreign"] == 1]
-        n = len(snap["__mlabel__rep"])
+        n = len(snap[_MLABEL_REP])
         old = {"index": frame.index.tolist(),
                "weight": frame["weight"].tolist(),
-               "__mlabel__rep": [snap["__mlabel__rep"][i]
+               _MLABEL_REP: [snap[_MLABEL_REP][i]
                                  for i in frame.index.tolist() if 0 <= i < n]}
         assert {k: len(v) for k, v in old.items()} == {
-            "index": 5, "weight": 5, "__mlabel__rep": 3}
+            "index": 5, "weight": 5, _MLABEL_REP: 3}
 
 
 # ===========================================================================
@@ -700,12 +704,12 @@ class TestAdversarialFilterMoves:
         n = 600_000
         ids = np.arange(n)
         src = ColumnDataSource({"index": ids, "x": ids.astype(float),
-                                "__mlabel__x": ["%d" % i for i in ids]})
+                                _MLABEL_X: ["%d" % i for i in ids]})
         snap = {c: list(v) for c, v in src.data.items()}
         frame = pd.DataFrame({"x": ids[::2].astype(float)}, index=ids[::2])
         t0 = time.monotonic()
         dr._dash_refresh_unlinked(src, frame, snap)
         took = time.monotonic() - t0
         assert len(src.data["index"]) == n // 2
-        assert src.data["__mlabel__x"][-1] == "%d" % (n - 2)
+        assert src.data[_MLABEL_X][-1] == "%d" % (n - 2)
         assert took < 20, took
