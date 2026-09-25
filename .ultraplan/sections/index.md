@@ -5,7 +5,7 @@
 ## Overview
 
 - **Total sections:** 19
-- **Total tasks:** 159 before the review's task splits (recounted at the end of Phase 4)
+- **Total tasks:** 205 after the review's task splits (recounted at the end of Phase 4: 160 before the fixer pass)
 - **Parallel batches:** 4
 - **Risk:** 4 green, 9 yellow, 6 red
 - **Scope:** the 22 GAPS2 gaps of `../PRD.md` §4, grouped by the component that closes them (DISCOVERY Q2), plus three shared components and a closeout.
@@ -41,27 +41,27 @@
 
 ## Section manifest
 
-| # | Section | Gaps | Risk | Batch | Depends on | Blocks |
-|---|---|---|---|---|---|---|
-| 01 | Tracking foundation | (all) | green | 1 | none | 19 |
-| 02 | Stata truth helper | truth for B1, B2, B3, B5, B6, B7, D1, G16, X2 | yellow | 1 | none | 13, 14, 15, 16, 18 |
-| 03 | Stateful node runner | tests for C2, E2, E3, X1 | green | 1 | none | 04, 05, 12, 17 |
-| 04 | Display-format writer core | E1, E3, G6 (foundation) | red | 2 | 03 | 11, 12 |
-| 05 | Histogram edge rule | C2 | yellow | 2 | 03 | 19 |
-| 06 | Scheme quoted values | D1 | green | 1 | none | 19 |
-| 07 | Reserved and Unicode names | G1, G5 | yellow | 1 | none | 14, 17, 19 |
-| 08 | Numeric varlists and the data limit | G2, G3 | yellow | 1 | none | 19 |
-| 09 | Serve launcher and version floor | F1, K2 | red | 1 | none | 19 |
-| 10 | Saved/served presentation parity | E14 | yellow | 1 | none | 19 |
-| 11 | KPI cards | E1 (+E3, G6 on cards) | yellow | 3 | 04, 17 | 19 |
-| 12 | Widgets, tooltips, date axes, marker labels, CSV | E3, G6 | red | 3 | 03, 04, 14, 16, 17 | 19 |
-| 13 | Textbox grammar | B3, B6, B7 | yellow | 2 | 02 | 15, 19 |
-| 14 | Axis labels and value labels | B1, G16 | red | 2 | 02, 07 | 12, 18 |
-| 15 | Legend order and labels | B5 | yellow | 3 | 02, 13 | 19 |
-| 16 | colorvar explicit forms | X2 | yellow | 2 | 02 | 12, 19 |
-| 17 | Filters: exclude() and dropdowns | E2, X1 | red | 2 | 03, 07 | 11, 12, 19 |
-| 18 | Axis scale extents | B2 | red | 3 | 02, 14 | 19 |
-| 19 | Closeout | (all) | green | 4 | all | none |
+| # | Section | Gaps | Risk | Batch | Depends on | Blocks | Tasks |
+|---|---|---|---|---|---|---|---|
+| 01 | Tracking foundation | (all) | green | 1 | none | 19 | 3 |
+| 02 | Stata truth helper | truth for B1, B2, B3, B5, B6, B7, D1, G16, X2 | yellow | 1 | none | 13, 14, 15, 16, 18 | 7 |
+| 03 | Stateful node runner | tests for C2, E2, E3, X1 | green | 1 | none | 04, 05, 12, 17 | 5 |
+| 04 | Display-format writer core | E1, E3, G6 (foundation) | red | 2 | 03 | 11, 12 | 16 |
+| 05 | Histogram edge rule | C2 | yellow | 2 | 03 | 19 | 6 |
+| 06 | Scheme quoted values | D1 | green | 1 | none | 19 | 4 |
+| 07 | Reserved and Unicode names | G1, G5 | yellow | 1 | none | 14, 17, 19 | 15 |
+| 08 | Numeric varlists and the data limit | G2, G3 | yellow | 1 | none | 19 | 11 |
+| 09 | Serve launcher and version floor | F1, K2 | red | 1 | none | 19 | 15 |
+| 10 | Saved/served presentation parity | E14 | yellow | 1 | none | 19 | 10 |
+| 11 | KPI cards | E1 (+E3, G6 on cards) | yellow | 3 | 04, 17 | 19 | 7 |
+| 12 | Widgets, tooltips, date axes, marker labels, CSV | E3, G6 | red | 3 | 03, 04, 14, 16, 17 | 19 | 15 |
+| 13 | Textbox grammar | B3, B6, B7 | yellow | 2 | 02 | 15, 19 | 15 |
+| 14 | Axis labels and value labels | B1, G16 | red | 2 | 02, 07 | 12, 18 | 15 |
+| 15 | Legend order and labels | B5 | yellow | 3 | 02, 13 | 19 | 9 |
+| 16 | colorvar explicit forms | X2 | yellow | 2 | 02 | 12, 19 | 10 |
+| 17 | Filters: exclude() and dropdowns | E2, X1 | red | 2 | 03, 07 | 11, 12, 19 | 15 |
+| 18 | Axis scale extents | B2 | red | 3 | 02, 14 | 19 | 15 |
+| 19 | Closeout | (all) | green | 4 | all | none | 12 |
 
 Why the dependencies (review D4): S04 and S05 use `test/js_runner.py`, whose predecessors S03 deletes; S14 uses S07's Unicode-aware name check; S17 relies on S07's `ROW_ID` fill; S15 adds probes to S13's `scripts/extract_text_truth.do` and regenerates `text_truth.json`; S12 builds on S14's hover signatures, S16's colour-key label site and S17's dropdown values; S11 adapts `dash_apply_kpis` to S17's per-group call; S18 consumes S14's tokenizer.
 
@@ -133,13 +133,13 @@ Batch 4: 19 ◄── all
    done
    ```
 
-   (`mkdir` is atomic on macOS and needs no `flock`; this text supersedes the `flock` wording of `../review/DECISIONS.md` D6; a stale slot directory left by a killed run is removed by hand.) A cscript is never handed to the wrapper directly: the runner `cd`s into `test/` first and every script opens `cscript … adodir ".."` and `do "cert_helpers.do"` relative to it, so a single script runs through a two-line driver, `printf 'cd "%s/test"\ndo "%s/test/%s"\n' "<repo>" "<repo>" "<script>.cscript" > <scratch>/run_<script>.do` then `scripts/stata_slot.sh <scratch> <scratch>/run_<script>.do` (`<repo>` = `/Users/billy/Desktop/Programs/StataPrograms/d/dash`); `GAPS2_ONLY=S<NN>` in that run's environment limits `test_gaps2_truth.cscript` to one section's block.
+   (`mkdir` is atomic on macOS and needs no `flock`; this text supersedes the `flock` wording of `../review/DECISIONS.md` D6; a stale slot directory left by a killed run is removed by hand.) A cscript is never handed to the wrapper directly: the runner `cd`s into `test/` first and every script opens `cscript … adodir ".."` and `do "cert_helpers.do"` relative to it, so a single script runs through a two-line driver, `printf 'cd "%s/test"\ndo "%s/test/%s"\n' "<repo>" "<repo>" "<script>.cscript" > <scratch>/run_<script>.do` then `scripts/stata_slot.sh <scratch> <scratch>/run_<script>.do` (`<repo>` is the root of the tree under test: the section's worktree `<path>/wp28-s<NN>` while the section runs there, and the main checkout `/Users/billy/Desktop/Programs/StataPrograms/d/dash` when the merger or section 19 runs); `GAPS2_ONLY=S<NN>` in that run's environment limits `test_gaps2_truth.cscript` to one section's block.
 
    0b. Records the certification suite's wall time on the unmodified tree (the "before" of review D11): `{ date +%s; make cert; date +%s; } > <scratch>/cert-baseline.log 2>&1`, run in the background and read on exit (the runner's log carries only a start timestamp, so the two `date` lines are the measurement). S19 task 19-10 compares its run against this file's last line minus its first; keep the path for S19.
 
    0c. Hands every section agent its section file, `sections/BRIEF.md`, `DISCOVERY.md`, `RESEARCH.md`, `review/DECISIONS.md`, this file and the research report the section cites.
 
-1. **Run every Batch 1 section, one agent per section in its own worktree**, created from `s3-bugs` after step 0a: `git worktree add <path>/wp28-s<NN> -b wp28-s<NN> s3-bugs`. A section's closing task commits on that branch (its one commit per gap, or per shared component), after running the full suite once in the worktree (CLAUDE.md rule 4). The merger then lands the batch in this **merge order** (review D4, contract C3): batch 1 `S01, S03, S02, S06, S07, S08, S09, S10` (S01 first so the CHANGELOG markers and the conventions exist; S03 before S07 and S10 for `test_statistical_helpers.py`, `test_saved_filter_layers.py`, `test_help_claims_3.py`; S02 before S06; S07 before S08 for `_dash_filter_refusal`/`_dash_filter_excludes` in dash_parse.mata). For each commit of each section, oldest first: `git -C <worktree> format-patch -1 --stdout <sha> | patch -p1` (never `cd` into the worktree; a rejected hunk is applied by hand under the merge rules R1-R6), `git add` the files the patch names, and `git commit -F <the section's recorded message>` (subject `(GAPS2 <ID>)` or `(WP-28 Snn)`, no AI reference). After the last section of the batch: run the full suite once (`python3 -m pytest test/ -q`), the registry tests of R2, and the batch's certification work (the blocks appended to `test_gaps2_truth.cscript` and the existing scripts the batch extended, each through the step-0 driver); the batch is complete only when that run is green. A red result belongs to the section that owns the test: fix it in a fresh worktree of that section from `s3-bugs`, commit there with the gap's id, land it the same way, rerun the failed file, then the full suite once more (prefix `FULL_SUITE_RERUN=1` if the hook asks). Remove the worktrees (`git worktree remove`).
+1. **Run every Batch 1 section, one agent per section in its own worktree**, created from `s3-bugs` after step 0a: `git worktree add <path>/wp28-s<NN> -b wp28-s<NN> s3-bugs`. A section's closing task commits on that branch (its one commit per gap, or per shared component), after running the full suite once in the worktree (CLAUDE.md rule 4); a section with several gaps repeats the cycle per gap -- that gap's failing tests written against the tree the previous gap's commit leaves, its fix, its commit -- so its worktree is never committed red. Every Stata run inside a worktree uses that worktree as `<repo>` (step 0a). The merger then lands the batch in this **merge order** (review D4, contract C3): batch 1 `S01, S03, S02, S06, S07, S08, S09, S10` (S01 first so the CHANGELOG markers and the conventions exist; S03 before S07 and S10 for `test_statistical_helpers.py`, `test_saved_filter_layers.py`, `test_help_claims_3.py`; S02 before S06; S07 before S08 for `_dash_filter_refusal`/`_dash_filter_excludes` in dash_parse.mata). For each commit of each section, oldest first: `git -C <worktree> format-patch -1 --stdout <sha> | patch -p1` (never `cd` into the worktree; a rejected hunk is applied by hand under the merge rules R1-R6), `git add` the files the patch names, and `git commit -F <the section's recorded message>` (subject `(GAPS2 <ID>)` or `(WP-28 Snn)`, no AI reference). After the last section of the batch: run the full suite once (`python3 -m pytest test/ -q`), the registry tests of R2, and the batch's certification work (the blocks appended to `test_gaps2_truth.cscript` and the existing scripts the batch extended, each through the step-0 driver); the batch is complete only when that run is green. A red result belongs to the section that owns the test: fix it in a fresh worktree of that section from `s3-bugs`, commit there with the gap's id, land it the same way, rerun the failed file, then the full suite once more (prefix `FULL_SUITE_RERUN=1` if the hook asks). Remove the worktrees (`git worktree remove`).
 2. **Repeat for Batch 2, then Batch 3**, creating each batch's worktrees from `s3-bugs` after the previous batch has landed: batch 2 merge order `S04, S05, S13, S17, S16, S14` (S13 → S17 → S16 → S14 for the `_dash_textbox` consumers, `_apply_colorvar` and `_on_filter_change`); batch 3 merge order `S18, S15, S11, S12` (S17 → S11 for the KPI region; S14, S16, S17 → S12; S18 before S12 for `_dash_apply_axis_spec`).
 3. **Then S19**, in the main checkout on `s3-bugs` (no worktree): it commits per step there, runs `make test`, `make test-dev`, `make cert` (timed against `<scratch>/cert-baseline.log`) and `make gate` once each, and reports the merge command without running it.
 4. After each section, its TDD stubs pass and the tests it flips are flipped in the same commit as the fix.
