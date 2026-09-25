@@ -65,6 +65,7 @@ set more off
 set graphics off
 
 do "cert_helpers.do"
+quietly do "cert_svg.do"
 qui do "../dash_parse.mata"
 qui do "../dash.ado"
 
@@ -206,7 +207,8 @@ program define _hc5_run, rclass
     return scalar rc = `rc'
 end
 
-// Export the twoway command's picture to `path': r(rc).
+// Export the twoway command's picture to `path': r(rc).  WP-28 S02: through
+// the shared cert_svg_export.
 capture program drop _hc5_svg
 program define _hc5_svg, rclass
     args cmdtext path
@@ -214,7 +216,10 @@ program define _hc5_svg, rclass
     capture graph drop _all
     capture `cmdtext'
     local rc = _rc
-    if `rc' == 0 quietly graph export "`path'", replace
+    if `rc' == 0 {
+        cert_svg_export, file("`path'")
+        local rc = r(rc)
+    }
     capture graph drop _all
     return scalar rc = `rc'
 end

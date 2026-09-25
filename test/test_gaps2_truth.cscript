@@ -1,0 +1,245 @@
+*! test_gaps2_truth.cscript
+*! WP-28's ONE new certification script (review D11): every comparison
+*! with twoway's drawing or with Stata's own values that WP-28 needs lives
+*! here, one block per section, so the certification suite grows by one
+*! script and about five minutes (DISCOVERY Q28), not by nine.  Refusal,
+*! message and return-code checks join the EXISTING script for their area
+*! instead (sections/index.md rule R1); this script never gains one of
+*! those.
+*!
+*! Blocks, in section order (extended by each later section that lands one):
+*!   S02  helper smoke: the cert_svg programs (SH-01..SH-08)
+*!
+*! Usage: via run_all_cscripts.do (registered as its last block).  One
+*! block alone: set GAPS2_ONLY=S<NN> in the environment of the driver run
+*! ("sections/BRIEF.md" "Running one cscript").
+
+cscript "GAPS2 truth: twoway comparisons" adodir ".."
+
+clear all
+set more off
+
+if `"`c(python_exec)'"' == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+do "cert_helpers.do"
+quietly do "cert_svg.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+global dash_nobrowser 1
+
+// ----------------------------------------------------------------
+// Tally helpers -- the _cs_expect/_cs_done pattern of
+// test_custom_scheme.cscript:218-247, renamed _gt_ for this script.
+// ----------------------------------------------------------------
+global gt_nfail    = 0
+global gt_faillist ""
+global gt_bad      = 0
+
+capture program drop _gt_expect
+program define _gt_expect
+    version 16.0
+    args id cond msg
+    if !(`cond') {
+        display as error `"`id' FAIL: `macval(msg)'"'
+        global gt_bad = 1
+    }
+end
+
+capture program drop _gt_done
+program define _gt_done
+    version 16.0
+    args id msg
+    if ${gt_bad} {
+        global gt_nfail    = ${gt_nfail} + 1
+        global gt_faillist "${gt_faillist} `id'"
+    }
+    else display as text `"`id' PASS: `macval(msg)'"'
+    global gt_bad = 0
+end
+
+local gt_work "`c(tmpdir)'dash_gt_work"
+capture mkdir "`gt_work'"
+
+* ==== S02 helper smoke: the cert_svg programs ====
+local only : env GAPS2_ONLY
+if inlist("`only'", "", "S02") {
+    display as text "S02 start `c(current_time)'"
+
+    // ------------------------------------------------------------
+    // SH-01: cert_svg_export
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    quietly twoway scatter mpg weight, name(sh1, replace)
+    cert_svg_export, name(sh1) file("`gt_work'/sh1.svg")
+    local sh1_rc   = r(rc)
+    local sh1_file "`r(file)'"
+    _gt_expect SH-01 "(`sh1_rc' == 0)" "cert_svg_export rc `sh1_rc'"
+    capture confirm file "`sh1_file'"
+    _gt_expect SH-01 "(_rc == 0)" "r(file) `sh1_file' does not exist"
+    // cert_file_has/cert_log_has/cert_file_count take their path through
+    // `anything(name=fpath)', not an option -- TRAP (measured 25sep2026,
+    // scratchpad probe_cfh.do): passed the compound-quote form `` `"`x'"' ``
+    // as this positional argument, `fpath' comes back EMPTY inside the
+    // program and it fails "cannot open " with no name at all, even though
+    // the caller's own macro was never empty.  cert_helpers.do's own usage
+    // comment shows the plain form (`cert_file_has "`outpath'", needle(...)'`
+    // ), which is the only form used below.
+    cert_file_has "`sh1_file'", needle("<svg")
+    _gt_expect SH-01 "(r(found) == 1)" "`sh1_file' does not open with <svg"
+    _gt_done SH-01 "cert_svg_export wrote a readable SVG and returned rc 0"
+
+    // ------------------------------------------------------------
+    // SH-02: cert_svg_texts
+    // ------------------------------------------------------------
+    cert_svg_texts, file("`sh1_file'")
+    local sh2_n    = r(n)
+    local sh2_list "`r(list)'"
+    local sh2_max  = r(maxsize)
+    local sh2_min  = r(minsize)
+    _gt_expect SH-02 "(`sh2_n' > 0)" "cert_svg_texts found no <text> elements"
+    capture confirm file "`sh2_list'"
+    _gt_expect SH-02 "(_rc == 0)" "r(list) `sh2_list' does not exist"
+    // One JSON `"text":' key per line (sort_keys puts it in every record):
+    // a needle built from char(34) avoids embedding a literal quote in the
+    // source.  TRAP (measured 25sep2026, scratchpad probe_cfc*.do): pass
+    // it through the COMPOUND quote `` needle(`"`sh2_needle'"') '' -- a
+    // plain `needle("`sh2_needle'")' lets the needle's OWN embedded quote
+    // close the option's string early (`needle(""text":")' parses as an
+    // empty value followed by garbage), so the search silently runs
+    // against the wrong text and finds nothing, with no error at all (an
+    // empty needle() is refused outright as "option needle() required" --
+    // this is not that; it is a different, silent failure).
+    local sh2_needle = char(34) + "text" + char(34) + ":"
+    cert_file_count "`sh2_list'", needle(`"`sh2_needle'"')
+    local sh2_lines = r(count)
+    _gt_expect SH-02 "(`sh2_lines' == `sh2_n')" "the list has `sh2_lines' lines but r(n) is `sh2_n'"
+    _gt_expect SH-02 "(`sh2_max' >= `sh2_min')" "maxsize `sh2_max' < minsize `sh2_min'"
+    _gt_expect SH-02 "(`sh2_min' > 0)" "minsize `sh2_min' is not positive"
+    _gt_done SH-02 "cert_svg_texts read `sh2_n' text elements, sizes `sh2_min' to `sh2_max'"
+
+    // ------------------------------------------------------------
+    // SH-03: cert_svg_has_text (the nbsp case)
+    // ------------------------------------------------------------
+    quietly twoway scatter mpg weight, title("a  b") name(sh3, replace)
+    cert_svg_export, name(sh3) file("`gt_work'/sh3.svg")
+    local sh3_file "`r(file)'"
+    cert_svg_has_text, file("`sh3_file'") text("a  b")
+    local sh3_found2sp = r(found)
+    local sh3_count2sp = r(count)
+    cert_svg_has_text, file("`sh3_file'") text("a b")
+    local sh3_found1sp = r(found)
+    cert_svg_has_text, file("`sh3_file'") text("A  B") lower
+    local sh3_foundlow = r(found)
+    _gt_expect SH-03 "(`sh3_found2sp' == 1)" "the two-space title was not found"
+    _gt_expect SH-03 "(`sh3_count2sp' == 1)" "r(count) `sh3_count2sp' != 1"
+    _gt_expect SH-03 "(`sh3_found1sp' == 0)" "a one-space title matched the two-space one"
+    _gt_expect SH-03 "(`sh3_foundlow' == 1)" "the case-insensitive match failed"
+    _gt_done SH-03 "cert_svg_has_text told a real space from Stata's nbsp"
+
+    // ------------------------------------------------------------
+    // SH-04: cert_svg_fills, markers
+    // ------------------------------------------------------------
+    quietly twoway scatter mpg weight, mcolor(red) name(sh4, replace)
+    cert_svg_export, name(sh4) file("`gt_work'/sh4.svg")
+    local sh4_file "`r(file)'"
+    cert_svg_fills, file("`sh4_file'") markers
+    local sh4_colours `"`r(colours)'"'
+    local sh4_list     "`r(list)'"
+    _gt_expect SH-04 `"(strpos(`"`sh4_colours'"', "#ff0000") > 0)"' "r(colours) [`sh4_colours'] does not hold #ff0000"
+    // A literal tab typed in the source does not survive as a tab through
+    // a plain-quoted option value (measured 25sep2026): build it with
+    // char(9) and pass it through the same compound-quote form as SH-02.
+    local sh4_needle = "#ff0000" + char(9) + "74"
+    cert_file_has "`sh4_list'", needle(`"`sh4_needle'"')
+    _gt_expect SH-04 "(r(found) == 1)" "#ff0000 does not have n=74 in r(list)"
+    _gt_done SH-04 "cert_svg_fills, markers counted every one of the 74 cars"
+
+    // ------------------------------------------------------------
+    // SH-05: cert_svg_extent, axis(y) on the smoke command
+    // ------------------------------------------------------------
+    quietly twoway (scatter mpg weight if foreign == 0) ///
+                   (scatter mpg weight if foreign == 1), ///
+        title("Smoke  title") ytitle("Miles per gallon") ///
+        legend(order(1 "Domestic cars" 2 "Foreign cars")) ///
+        yscale(range(0 60)) name(sh5, replace)
+    cert_svg_export, name(sh5) file("`gt_work'/sh5.svg")
+    local sh5_file "`r(file)'"
+    cert_svg_extent, file("`sh5_file'") axis(y)
+    local sh5_low  = r(low)
+    local sh5_high = r(high)
+    _gt_expect SH-05 "(`sh5_low' <= 0)" "y_extent low `sh5_low' is above 0"
+    _gt_expect SH-05 "(`sh5_high' >= 60)" "y_extent high `sh5_high' is below 60"
+    _gt_done SH-05 "cert_svg_extent, axis(y) covered the drawn range 0 60 (the same command extract_svg_truth_smoke.do measures)"
+
+    // ------------------------------------------------------------
+    // SH-06: cert_svg_extent, axis(x) values()
+    // ------------------------------------------------------------
+    quietly twoway scatter mpg weight, xlabel(2000 "low" 4000 "high") name(sh6, replace)
+    cert_svg_export, name(sh6) file("`gt_work'/sh6.svg")
+    local sh6_file "`r(file)'"
+    cert_svg_extent, file("`sh6_file'") axis(x) values(1 2)
+    local sh6_low_v = r(low)
+    _gt_expect SH-06 "(!missing(`sh6_low_v'))" "cert_svg_extent with values() returned missing"
+    cert_svg_extent, file("`sh6_file'") axis(x)
+    local sh6_low_nov = r(low)
+    local sh6_reason  "`r(reason)'"
+    _gt_expect SH-06 "(missing(`sh6_low_nov'))" "cert_svg_extent without values() fitted text labels it should not have"
+    _gt_expect SH-06 `"(`"`sh6_reason'"' != "")"' "no r(reason) was set for the unfitted case"
+    _gt_done SH-06 "values() fits text tick labels; without it the fit is refused with a reason"
+
+    // ------------------------------------------------------------
+    // SH-07: cert_graph_scale
+    // ------------------------------------------------------------
+    cert_graph_scale, axis(y) name(sh5)
+    local sh7_curmin = r(curmin)
+    local sh7_curmax = r(curmax)
+    _gt_expect SH-07 "(!missing(`sh7_curmin') | !missing(`sh7_curmax'))" "cert_graph_scale returned every member missing on a drawn graph"
+    _gt_done SH-07 "cert_graph_scale read .sh5's scale members"
+
+    // ------------------------------------------------------------
+    // SH-08: r() is clobbered; a missing file is r(603)
+    // ------------------------------------------------------------
+    quietly summarize mpg
+    local sh8_mean_before = r(mean)
+    cert_svg_texts, file("`sh1_file'")
+    _gt_expect SH-08 "(missing(r(mean)))" "r(mean) survived a call to cert_svg_texts"
+    capture cert_svg_texts, file("`gt_work'/no_such_file.svg")
+    _gt_expect SH-08 "(_rc == 603)" "a missing file did not return 603"
+    capture cert_svg_has_text, file("`gt_work'/no_such_file.svg") text("x")
+    _gt_expect SH-08 "(_rc == 603)" "a missing file did not return 603 (has_text)"
+    capture cert_svg_fills, file("`gt_work'/no_such_file.svg")
+    _gt_expect SH-08 "(_rc == 603)" "a missing file did not return 603 (fills)"
+    capture cert_svg_extent, file("`gt_work'/no_such_file.svg") axis(y)
+    _gt_expect SH-08 "(_rc == 603)" "a missing file did not return 603 (extent)"
+    _gt_done SH-08 "cert_svg_* clobber r() like cert_file_has and refuse a missing file with 603"
+
+    graph drop _all
+    display as text "S02 end `c(current_time)'"
+}
+* ==== end S02 ====
+
+* ==== append new blocks above this line ====
+
+// ----------------------------------------------------------------
+// Summary (the test_custom_scheme.cscript:553-572 shape)
+// ----------------------------------------------------------------
+capture graph drop _all
+capture dash clear
+local nfail    = ${gt_nfail}
+local faillist "${gt_faillist}"
+macro drop gt_nfail gt_faillist gt_bad
+display as text ""
+display as text "============================================================"
+if `nfail' == 0 {
+    display as text "  test_gaps2_truth: ALL CHECKS PASSED"
+    display as text "============================================================"
+}
+else {
+    display as error "  test_gaps2_truth: `nfail' CHECK(S) FAILED"
+    display as error "  failing:`faillist'"
+    display as text "============================================================"
+    exit 9
+}

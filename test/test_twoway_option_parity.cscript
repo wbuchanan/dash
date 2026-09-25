@@ -117,6 +117,7 @@ set more off
 set graphics off
 
 do "cert_helpers.do"
+quietly do "cert_svg.do"
 qui do "../dash_parse.mata"
 qui do "../dash.ado"
 
@@ -740,10 +741,14 @@ foreach tt of local dtypes {
     capture graph drop _all
     capture twoway `tt' `v'`sep' mlabel(zq)
     local tw_rc = _rc
-    if `tw_rc' == 0 capture graph export "`svgfile'", replace
+    if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
     capture graph drop _all
-    _ztp_count "`svgfile'" ">ZQLAB1<"
-    local tw_n = r(n)
+    // WP-28 S02: cert_svg_has_text, through scripts/svg_truth.py, in place
+    // of the raw byte search; guarded because it exits 603 on a missing
+    // file where the old mata _ztp_count returned -1 (twoway itself
+    // failed to draw for this plot type, so no SVG exists to open).
+    capture cert_svg_has_text, file("`svgfile'") text("ZQLAB1")
+    local tw_n = cond(_rc == 0, r(count), -1)
     if `tw_rc' != 0 | `tw_n' < 0 {
         display as error "TP-09 FAIL `tt': the twoway oracle failed, r(`tw_rc')"
         local bad = 1
@@ -793,12 +798,13 @@ foreach spec in "scatter mpg weight" "rscatter lo hi weight" "pccapsym mpg weigh
     capture graph drop _all
     capture twoway `spec', mlabel(zqf)
     local tw_rc = _rc
-    if `tw_rc' == 0 capture graph export "`svgfile'", replace
+    if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
     capture graph drop _all
-    _ztp_count "`svgfile'" ">ZQFOR<"
-    local tw_n = r(n)
-    _ztp_count "`svgfile'" ">ZQDOM<"
-    local tw_m = r(n)
+    // WP-28 S02: cert_svg_has_text (guarded as TP-09's is).
+    capture cert_svg_has_text, file("`svgfile'") text("ZQFOR")
+    local tw_n = cond(_rc == 0, r(count), -1)
+    capture cert_svg_has_text, file("`svgfile'") text("ZQDOM")
+    local tw_m = cond(_rc == 0, r(count), -1)
     capture erase "`htmlfile'"
     _ztp_run `"dash `spec', mlabel(zqf) saving("`htmlfile'")"' "`logfile'"
     local drc = r(rc)
@@ -837,7 +843,7 @@ foreach spec in "scatter mpg weight" "dot mpg weight" "rscatter lo hi weight" "p
         capture graph drop _all
         capture twoway `spec', `o'(red)
         local tw_rc = _rc
-        if `tw_rc' == 0 capture graph export "`svgfile'", replace
+        if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
         capture graph drop _all
         _ztp_count "`svgfile'" "stroke:#FF0000"
         local tw_n = r(n)

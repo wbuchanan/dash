@@ -81,6 +81,7 @@ if `"`c(python_exec)'"' == "" {
 }
 
 do "cert_helpers.do"
+quietly do "cert_svg.do"
 qui do "../dash_parse.mata"
 qui do "../dash.ado"
 qui do "../dash_setup.ado"
@@ -226,6 +227,8 @@ real scalar _hc_ndiff3(string scalar a, string scalar b, string scalar c)
 }
 
 // The largest font-size, in px, any <text> of an SVG is drawn at.
+// Superseded at its call sites (HC8-04) by cert_svg_texts's r(maxsize),
+// through scripts/svg_truth.py (WP-28 S02); kept for any private use.
 real scalar _hc_svg_maxfont(string scalar f)
 {
     string colvector L
@@ -350,7 +353,8 @@ program define _hc_tw, rclass
     return scalar rc = `rc'
 end
 
-// Export one twoway command's picture to `file'.
+// Export one twoway command's picture to `file' (WP-28 S02: through the
+// shared cert_svg_export, so every reader downstream is svg_truth.py's).
 capture program drop _hc_svg
 program define _hc_svg, rclass
     version 16.0
@@ -359,8 +363,10 @@ program define _hc_svg, rclass
     capture erase "`file'"
     capture `cmdtext' name(_hcg, replace)
     local rc = _rc
-    if `rc' == 0 capture graph export "`file'", name(_hcg) replace
-    if `rc' == 0 local rc = _rc
+    if `rc' == 0 {
+        cert_svg_export, name(_hcg) file("`file'")
+        local rc = r(rc)
+    }
     capture graph drop _all
     return scalar rc = `rc'
 end
@@ -453,8 +459,10 @@ local r2 = r(rc)
 _hc_svg "twoway scatter mpg weight, fxsize(50)" "`hc_dir'/hc04c.svg"
 local r3 = r(rc)
 _hc_expect "HC8-04" "(`r1' == 0 & `r2' == 0 & `r3' == 0)" "exports rc `r1' `r2' `r3'"
-mata: st_local("f1", strofreal(_hc_svg_maxfont(st_local("hc_dir") + "/hc04a.svg")))
-mata: st_local("f2", strofreal(_hc_svg_maxfont(st_local("hc_dir") + "/hc04b.svg")))
+cert_svg_texts, file("`hc_dir'/hc04a.svg")
+local f1 = r(maxsize)
+cert_svg_texts, file("`hc_dir'/hc04b.svg")
+local f2 = r(maxsize)
 _hc_expect "HC8-04" "(`f2' > 1.4 * `f1')" "scale(1.5) text `f2'px against `f1'px"
 mata: st_local("same", strofreal(_hc_svg_same(st_local("hc_dir") + "/hc04a.svg", st_local("hc_dir") + "/hc04c.svg")))
 _hc_expect "HC8-04" "(`same' == 0)" "fxsize(50) drew the same picture as no option"

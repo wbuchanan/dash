@@ -286,10 +286,13 @@ class TestTheChecksReachEveryScript:
         # test_qualifier_in_stata and test_string_values; the S3 batch's
         # test_ci_band_options), less
         # test_jsonio.cscript, which certified jsonio itself and went with
-        # it (24sep2026).  An empty
+        # it (24sep2026); plus WP-28's test_gaps2_truth, the one script the
+        # package adds (review D11): every twoway/Stata-value comparison of
+        # the GAPS2 fix package lives in this one script, one block per
+        # section, so 66 now.  An empty
         # glob would leave every per-script test above with no parameters,
         # and pytest reports that as a skip, not a failure.
-        assert len(_CSCRIPTS) == 65, (
+        assert len(_CSCRIPTS) == 66, (
             f"{len(_CSCRIPTS)} .cscript files found in {_HERE}"
         )
 
@@ -304,14 +307,18 @@ class TestTheChecksReachEveryScript:
         assert linked <= names, sorted(linked - names)
         # 42, and three of WP-24's new scripts: test_mata_library_guard
         # runs no Python.  And WP-27's test_qualifier_in_stata and
-        # test_string_values.
-        assert len(names) == 47, f"{len(names)}: {sorted(names)}"
+        # test_string_values.  WP-28's test_gaps2_truth gates on
+        # c(python_exec) itself (its own line, not cert_svg.do's, which
+        # loads after it and would otherwise be the only carrier), so 48.
+        assert len(names) == 48, f"{len(names)}: {sorted(names)}"
 
     def test_the_import_probes_are_found(self):
         with_probes = [_name(p) for p in _CSCRIPTS
                        if _import_probes(_read(p))[0]]
         # 11, and WP-24's test_bug_regressions and test_setup_honesty
-        # (HON-19..25 probe the four packages dash_setup checks).
+        # (HON-19..25 probe the four packages dash_setup checks).  WP-28's
+        # test_gaps2_truth carries no captured python: import probe, so
+        # this stays 13 (verified by running the file, not by inspection).
         assert len(with_probes) == 13, with_probes
 
 

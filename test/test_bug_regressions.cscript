@@ -86,6 +86,7 @@ if _rc != 0 {
     exit 222
 }
 
+quietly do "cert_svg.do"
 qui do "../dash.ado"
 
 // cscript drops every global; the runner's setting does not reach here.
@@ -491,10 +492,10 @@ foreach f in br03_gsvg br03_ggph br03_psvg br03_pgph br03_html br03_app {
     capture erase "``f''"
 }
 quietly twoway scatter mpg weight, ylabel(#5, grid) scheme(s1color) name(br03, replace)
-quietly graph export "`br03_gsvg'", as(svg)
+cert_svg_export, name(br03) file("`br03_gsvg'")
 quietly graph save br03 "`br03_ggph'"
 quietly twoway scatter mpg weight, ylabel(#5) scheme(s1color) name(br03, replace)
-quietly graph export "`br03_psvg'", as(svg)
+cert_svg_export, name(br03) file("`br03_psvg'")
 quietly graph save br03 "`br03_pgph'"
 graph drop br03
 
@@ -520,31 +521,25 @@ def _br03_svg(path):
     # The y labels and the horizontal gridlines of a twoway SVG.  The y axis
     # is the longest vertical black line; a y label is a number written left
     # of it; a gridline is a horizontal line in any colour but black that
-    # spans at least half the canvas.
-    txt = open(path, encoding="utf-8").read()
-    def attrs(s):
-        return dict(re.findall(r'([A-Za-z0-9:_-]+)="([^"]*)"', s))
-    width = float(re.search(r'viewBox="0 0 ([0-9.]+) ', txt).group(1))
-    lines = []
-    for m in re.finditer(r"<line ([^>]*)/>", txt):
-        a = attrs(m.group(1))
-        st = dict(kv.split(":", 1) for kv in a.get("style", "").split(";") if ":" in kv)
-        lines.append((float(a["x1"]), float(a["y1"]), float(a["x2"]),
-                      float(a["y2"]), st.get("stroke", "").lower()))
-    vert = [l for l in lines if abs(l[0] - l[2]) < 0.01 and l[4] == "#000000"]
-    axis_x = max(vert, key=lambda l: abs(l[3] - l[1]))[0]
+    # spans at least half the canvas.  WP-28 S02: reads through
+    # scripts/svg_truth.py instead of its own regex parser; located beside
+    # dash_render.py, whose path _dash_find_render already resolved.
+    sys.path.insert(0, os.path.dirname(Macro.getGlobal("br03_render")) + "/scripts")
+    import svg_truth
+    doc = svg_truth.svg_document(path)
+    axis_x = doc["axis_line"]["v_x"]
+    width = doc["canvas"]["w"]
     labels = []
-    for m in re.finditer(r"<text ([^>]*)>([^<]*)</text>", txt):
-        a = attrs(m.group(1))
+    for t in doc["texts"]:
         try:
-            v = float(m.group(2).replace(",", ""))
-        except ValueError:
+            v = float(t["text"].replace(",", ""))
+        except (TypeError, ValueError):
             continue
-        if float(a["x"]) < axis_x:
-            labels.append((round(float(a["y"]), 2), v))
-    grid = [(round(l[1], 2), l[4]) for l in lines
-            if abs(l[1] - l[3]) < 0.01 and l[4] != "#000000"
-            and abs(l[2] - l[0]) >= 0.5 * width]
+        if t["x"] is not None and t["x"] < axis_x:
+            labels.append((round(t["y"], 2), v))
+    grid = [(round(l["y1"], 2), l["stroke"]) for l in doc["hlines"]
+            if l["stroke"] != "#000000"
+            and abs(l["x2"] - l["x1"]) >= 0.5 * width]
     return sorted(labels), sorted(grid)
 
 def _br03_gph(path):

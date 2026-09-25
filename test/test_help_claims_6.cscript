@@ -61,6 +61,7 @@ set more off
 set graphics off
 
 do "cert_helpers.do"
+quietly do "cert_svg.do"
 qui do "../dash_parse.mata"
 qui do "../dash.ado"
 
@@ -1010,9 +1011,9 @@ end
 local sv1 "`c(tmpdir)'hc6_sw.svg"
 local sv0 "`c(tmpdir)'hc6_s0.svg"
 quietly twoway scatter mpg weight [aw=price] in 1/3, name(hc6s, replace)
-quietly graph export "`sv1'", replace name(hc6s)
+cert_svg_export, name(hc6s) file("`sv1'")
 quietly twoway scatter mpg weight in 1/3, name(hc6s, replace)
-quietly graph export "`sv0'", replace name(hc6s)
+cert_svg_export, name(hc6s) file("`sv0'")
 capture graph drop hc6s
 mata: st_local("r1", strofreal(_hc6_first_r(st_local("sv1"))))
 mata: st_local("r0", strofreal(_hc6_first_r(st_local("sv0"))))

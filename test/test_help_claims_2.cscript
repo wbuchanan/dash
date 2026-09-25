@@ -115,6 +115,7 @@ if `"`c(python_exec)'"' == "" {
 }
 
 do "cert_helpers.do"
+quietly do "cert_svg.do"
 qui do "../dash_parse.mata"
 qui do "../dash.ado"
 
@@ -1019,13 +1020,16 @@ _hc2_ok "HC2-40" `ok40' "import delimited reads through the byte-order mark and 
 // told otherwise (xlabel(, valuelabel)).
 twoway scatter mpg foreign
 local svg "`hc2f'_41.svg"
-quietly graph export "`svg'", replace as(svg)
-mata: st_local("_dom", strofreal(_hc2_rawhas(st_local("svg"), "Domestic")))
-mata: st_local("_one", strofreal(_hc2_rawhas(st_local("svg"), ">1</text>")))
+cert_svg_export, file("`svg'")
+cert_svg_has_text, file("`svg'") text("Domestic")
+local _dom = r(found)
+cert_svg_has_text, file("`svg'") text("1")
+local _one = r(found)
 _hc2_ok "HC2-41a" `=`_dom' == 0 & `_one' == 1' "twoway's axis for a value-labelled foreign reads 0 to 1, not Domestic"
 twoway scatter mpg foreign, xlabel(0 1, valuelabel)
-quietly graph export "`svg'", replace as(svg)
-mata: st_local("_dom", strofreal(_hc2_rawhas(st_local("svg"), "Domestic")))
+cert_svg_export, file("`svg'")
+cert_svg_has_text, file("`svg'") text("Domestic")
+local _dom = r(found)
 _hc2_ok "HC2-41b" `_dom' "with valuelabel twoway draws the labels (the control)"
 graph drop _all
 

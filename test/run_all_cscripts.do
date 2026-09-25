@@ -1713,6 +1713,34 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 67. test_gaps2_truth.cscript (WP-28: the one certification script for
+// every twoway/Stata-value comparison the GAPS2 fix package needs; one
+// block per section, appended above its own "append new blocks above
+// this line" marker -- review D11)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_gaps2_truth.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_gaps2_truth.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_gaps2_truth.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_gaps2_truth.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_gaps2_truth.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'
