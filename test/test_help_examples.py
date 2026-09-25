@@ -509,8 +509,8 @@ class TestTheShownCommands:
         pip = [s for s in shown if "pip" in s.text]
         assert [len(s.lines) for s in pip] == [2, 2, 2]
         assert pip[0].text == ('python: subprocess.run([sys.executable, "-m", '
-                               '"pip", "install", "bokeh", "numpy", '
-                               '"pandas"])')
+                               '"pip", "install", "bokeh>=3.8", "numpy>=2.3", '
+                               '"pandas>=2.3"])')
 
     def test_each_passes_the_check_its_pin_names(self, shown, pins, groups):
         kind = {text: value for k, value, text in pins if k == "shown"}

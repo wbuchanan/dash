@@ -969,7 +969,13 @@ class TestTheLauncherFlags:
         src = served.ns["__dash_source__"]
         main = src[src.index("if __name__ == '__main__':"):]
         code = "\n".join(l.split("#", 1)[0] for l in main.splitlines())
-        assert "_dash_arg_parser().parse_args()" in code
+        # GAPS2 F1 kept the parser object (_p) so it can raise the port
+        # error through _p.error(), splitting what used to be one chained
+        # call into two statements.
+        assert "_p = _dash_arg_parser()" in code
+        assert "_a = _p.parse_args()" in code
+        assert code.index("_p = _dash_arg_parser()") < code.index(
+            "_a = _p.parse_args()")
         assert (code.index("_dash_apply_limits(_a)")
                 < code.index("_dash_server_app(")), (
             "the launcher starts serving before it applies the limits")

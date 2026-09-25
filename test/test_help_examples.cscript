@@ -546,7 +546,7 @@ _hx_pin check pyapp `"dash build, saving(app.py) server replace"'
 //   python run, it installs packages (or is the recipe's first line);
 //          the Python after `python:' is compiled instead
 _hx_pin shown python `"python: import subprocess, sys"'
-_hx_pin shown python `"python: subprocess.run([sys.executable, "-m", "pip", "install", "bokeh", "numpy", "pandas"])"'
+_hx_pin shown python `"python: subprocess.run([sys.executable, "-m", "pip", "install", "bokeh>=3.8", "numpy>=2.3", "pandas>=2.3"])"'
 _hx_pin shown python `"python: subprocess.run([sys.executable, "-m", "pip", "install", "--index-url", "https://your.mirror/simple", "bokeh"])"'
 _hx_pin shown python `"python: subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "bokeh"])"'
 //   placeholder  a path to fill in, and it changes a setting permanently
