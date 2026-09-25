@@ -19,6 +19,7 @@ from bokeh.models import ColumnDataSource
 from bokeh.plotting import figure
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(__file__))
 import dash_render as dr  # noqa: E402
 
 GM = dr.GlyphMapper
@@ -807,56 +808,16 @@ class TestHistogramDiscreteTopBar:
 
 
 # ======================================================================
-# The saved page's JavaScript recount, run under node
+# The saved page's JavaScript recount, run under node (test/js_runner.py,
+# WP-28 S03).  ``_NODE`` and ``_run_filter_js_block`` stay as aliases of
+# the shared module's ``NODE``/``run_filter_js_block``: S05's
+# test_histogram_edge_rule.py imports both by these spellings.
 # ======================================================================
-import json as _json          # noqa: E402
-import shutil as _shutil      # noqa: E402
-import subprocess as _subprocess  # noqa: E402
-import tempfile as _tempfile  # noqa: E402
-
-_NODE = _shutil.which("node")
+from js_runner import (run_filter_js_block as _run_filter_js_block,  # noqa: E402,E501
+                       requires_node, NODE as _NODE)
 
 
-def _run_filter_js_block(kind, ac, vals, wts=None):
-    """Run the histogram or kdensity branch of dash's REAL _FILTER_JS on
-    one aggregate config and the surviving values, and return what it puts
-    in the source (None when it leaves the source untouched)."""
-    js = dr._FILTER_JS
-    helpers = js[js.index("function dash_pctl"):
-                 js.index("// agg_sources is a Bokeh model list")]
-    if kind == "histogram":
-        lo = js.index("if (ac.type === 'histogram') {")
-        hi = js.index("} else if (ac.type === 'kdensity') {")
-        block = js[lo + len("if (ac.type === 'histogram') {"):hi]
-    else:
-        lo = js.index("} else if (ac.type === 'kdensity') {")
-        lo += len("} else if (ac.type === 'kdensity') {")
-        end = js.index("src.data = { x: xs, y: ys };", js.index("// DASH_KDE_RULE"))
-        hi = js.index("src.change.emit();", end)
-        block = js[lo:hi + len("src.change.emit();")]
-    harness = (
-        helpers
-        + "\nconst ac = " + _json.dumps(ac)
-        + ";\nconst vals = " + _json.dumps([float(v) for v in vals])
-        + ";\nconst wts = " + (_json.dumps([float(w) for w in wts])
-                               if wts is not None else "null")
-        + ";\nconst src = { data: null, change: { emit: () => {} } };"
-        + "\nfor (let _i = 0; _i < 1; _i++) {\n" + block + "\n}"
-        + "\nprocess.stdout.write(JSON.stringify(src.data));"
-    )
-    with _tempfile.NamedTemporaryFile("w", suffix=".mjs", delete=False) as fh:
-        fh.write(harness)
-        path = fh.name
-    try:
-        res = _subprocess.run([_NODE, path], capture_output=True, text=True,
-                              timeout=60)
-        assert res.returncode == 0, res.stderr[:2000]
-        return _json.loads(res.stdout)
-    finally:
-        os.unlink(path)
-
-
-@pytest.mark.skipif(_NODE is None, reason="node is not installed")
+@requires_node
 class TestFilterJavaScript:
     def test_the_discrete_recount_folds_the_top_value_as_python_does(self):
         tops, _, _, r = _hist(_AUTO_MPG, {"discrete": "discrete", "width": "3",

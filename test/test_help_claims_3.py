@@ -41,6 +41,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+import js_runner  # noqa: E402
 import test_filter_exclude as tfe  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_adversarial_matrix import _app_source  # noqa: E402
@@ -316,36 +317,22 @@ def _card_value(text, name):
     return m.group(1) if m else None
 
 
-# The saved page's filter callback under node, as test_filter_exclude.py
-# runs it, reporting each Div's text as well as each source's rows.
-_RUNNER_DIVS = tfe._RUNNER.replace(
-    "process.stdout.write(JSON.stringify(out));",
-    "const divs = {};\n"
-    "for (const [id, o] of Object.entries(REG))\n"
-    "  if (o.__type__ === \"Div\") divs[id] = o.text;\n"
-    "process.stdout.write(JSON.stringify({sources: out, divs: divs}));")
-
+# The saved page's filter callback under node (test/js_runner.py, WP-28
+# S03): a dry run, reporting each Div's text as well as each source's rows.
 
 def _run_saved(args, code):
     """``(rows by source id, text by Div id)`` after *code* ran."""
-    import json
-    import subprocess
-    import tempfile
-    models = {}
-    payload = {"models": models, "args": tfe._encode(dict(args), models),
-               "code": code, "row_id": dr._ROW_ID_COLUMN}
-    with tempfile.NamedTemporaryFile("w", suffix=".cjs", delete=False,
-                                     encoding="utf-8") as fh:
-        fh.write("const RAW = " + json.dumps(payload) + ";\n" + _RUNNER_DIVS)
-        path = fh.name
-    try:
-        res = subprocess.run([tfe._node(), path], capture_output=True,
-                             text=True, timeout=120)
-        assert res.returncode == 0, res.stderr[:2000]
-        out = json.loads(res.stdout)
-        return out["sources"], out["divs"]
-    finally:
-        os.unlink(path)
+    out = js_runner.JsSession([]).run_code(code, args, commit=False)
+    sources, divs = {}, {}
+    for mid, state in out.items():
+        if "data" in state:
+            cols = list(state["data"].keys())
+            rows = len(state["data"][cols[0]]) if cols else 0
+            sources[mid] = {"rows": rows,
+                            "ids": state["data"].get(dr._ROW_ID_COLUMN)}
+        elif "text" in state:
+            divs[mid] = state["text"]
+    return sources, divs
 
 
 class TestAKpiCardCanBeExcluded:

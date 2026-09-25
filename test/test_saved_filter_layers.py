@@ -7,7 +7,9 @@ back into the Python document, and each figure's glyphs and marker labels
 are compared with the saved renderer given the move's rows as an ``if``: the
 page after a move must draw what the same page draws of the filtered data,
 which is what twoway draws of it (``test_mode_parity.py`` holds that render
-to the served app and to Stata's own row counts).
+to the served app and to Stata's own row counts).  The node run and its
+write-back are ``test/js_runner.py``'s ``JsSession`` (WP-28 S03); ``_run``
+here is a thin shim over it.
 
 Measured 24sep2026 by WP-24 under node at 7c28802 (BUGS.md): with a move
 that keeps 10 rows of 40, scatter and dot followed it while line, tsline,
@@ -28,8 +30,6 @@ import itertools
 import json
 import math
 import os
-import shutil
-import subprocess
 import sys
 import tempfile
 import warnings
@@ -37,7 +37,6 @@ import warnings
 import numpy as np
 import pandas as pd
 import pytest
-from bokeh.model import Model
 from bokeh.models import (BooleanFilter, ColumnDataSource, CustomJS, Div,
                           LabelSet, Line, Select)
 
@@ -46,6 +45,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from js_runner import JsSession  # noqa: E402
 from conftest import make_data_json  # noqa: E402
 from test_mode_parity import (_DF, _LABEL_NAMES, _VALUE_LABELS,  # noqa: E402
                               _arrows_of, _assert_heads_on_shafts, _diff,
@@ -79,139 +79,13 @@ _ROW_TYPES = ["scatter", "line", "tsline", "connected", "area", "bar",
 
 
 # ---------------------------------------------------------------------------
-# The page's own callback, run under node
+# The page's own callback, run under node (test/js_runner.py, WP-28 S03)
 # ---------------------------------------------------------------------------
-
-def _node():
-    node = shutil.which("node")
-    if node is None:
-        pytest.fail("node is not installed; the saved page's filter callback "
-                    "cannot be run (a skip here would hide an untested "
-                    "callback)")
-    return node
-
-
-def _plain(v):
-    if isinstance(v, (float, np.floating)):
-        v = float(v)
-        return None if math.isnan(v) else v
-    if isinstance(v, np.integer):
-        return int(v)
-    if isinstance(v, np.bool_):
-        return bool(v)
-    if isinstance(v, (pd.Timestamp, np.datetime64)):
-        return dr._dash_json_value(v)
-    return v
-
-
-def _encode(v, models, objs):
-    """*v* as JSON, each Bokeh model one shared stand-in, so identity is
-    what the page has."""
-    if isinstance(v, Model):
-        if v.id not in models:
-            models[v.id] = None
-            objs[v.id] = v
-            models[v.id] = _stand_in(v, models, objs)
-        return {"__ref__": v.id}
-    if isinstance(v, dict):
-        return {str(k): _encode(x, models, objs) for k, x in v.items()}
-    if isinstance(v, (list, tuple, np.ndarray, pd.Series)):
-        return [_encode(x, models, objs) for x in list(v)]
-    return _plain(v)
-
-
-def _stand_in(m, models, objs):
-    if isinstance(m, ColumnDataSource):
-        return {"__type__": "ColumnDataSource",
-                "data": {str(c): _encode(list(v), models, objs)
-                         for c, v in m.data.items()}}
-    if isinstance(m, BooleanFilter):
-        return {"__type__": "BooleanFilter",
-                "booleans": [bool(b) for b in (m.booleans or [])]}
-    if isinstance(m, Div):
-        return {"__type__": "Div", "text": m.text}
-    props = m.properties()
-    return {"__type__": type(m).__name__,
-            **{p: _encode(getattr(m, p), models, objs)
-               for p in ("value", "start", "end", "step", "indices", "width")
-               if p in props}}
-
-
-# BokehJS runs a CustomJS body as a strict-mode function whose parameters
-# are the args' names, then cb_obj and cb_data.
-_RUNNER = r"""
-"use strict";
-const REG = {};
-for (const [id, lit] of Object.entries(RAW.models))
-    REG[id] = Object.assign({}, lit);
-const resolve = (x) => {
-  if (Array.isArray(x)) return x.map(resolve);
-  if (x && typeof x === "object") {
-    if ("__ref__" in x) return REG[x.__ref__];
-    const o = {};
-    for (const [k, v] of Object.entries(x)) o[k] = resolve(v);
-    return o;
-  }
-  return x;
-};
-for (const o of Object.values(REG)) {
-  if (o.__type__ === "ColumnDataSource") {
-    o.selected = {indices: []};
-    o.change = {emit() {}};
-  } else if (o.__type__ === "BooleanFilter") {
-    o.change = {emit() {}};
-  }
-}
-const args = resolve(RAW.args);
-const names = Object.keys(args);
-const cb_obj = RAW.cb_obj ? resolve(RAW.cb_obj) : null;
-new Function(...names, "cb_obj", "cb_data", '"use strict";\n' + RAW.code)(
-  ...names.map((n) => args[n]), cb_obj, {});
-const out = {};
-for (const [id, o] of Object.entries(REG)) {
-  if (o.__type__ === "ColumnDataSource") out[id] = {data: o.data};
-  else if (o.__type__ === "BooleanFilter") out[id] = {booleans: o.booleans};
-  else if (o.__type__ === "Div") out[id] = {text: o.text};
-  else if ("width" in o) out[id] = {width: o.width};
-}
-process.stdout.write(JSON.stringify(out));
-"""
-
 
 def _run(code, args, cb_obj=None):
     """Run *code* under node with *args*; write what it left in every
     ColumnDataSource, BooleanFilter and Div back into the Python models."""
-    models, objs = {}, {}
-    payload = {"models": models, "args": _encode(dict(args), models, objs),
-               "code": code,
-               "cb_obj": _encode(cb_obj, models, objs) if cb_obj else None}
-    with tempfile.NamedTemporaryFile("w", suffix=".cjs", delete=False,
-                                     encoding="utf-8") as fh:
-        # Parsed, not written as an object literal: in a literal a
-        # "__proto__" key sets the prototype, as it does not in the page,
-        # whose data BokehJS parses.
-        fh.write("const RAW = JSON.parse(" + json.dumps(json.dumps(payload))
-                 + ");\n" + _RUNNER)
-        path = fh.name
-    try:
-        res = subprocess.run([_node(), path], capture_output=True, text=True,
-                             timeout=120)
-        assert res.returncode == 0, res.stderr[:3000]
-        out = json.loads(res.stdout)
-    finally:
-        os.unlink(path)
-    for mid, state in out.items():
-        m = objs[mid]
-        if "data" in state:
-            m.data = {c: [np.nan if v is None else v for v in col]
-                      for c, col in state["data"].items()}
-        elif "booleans" in state:
-            m.booleans = list(state["booleans"])
-        elif "text" in state:
-            m.text = state["text"]
-        elif "width" in state and isinstance(state["width"], (int, float)):
-            m.width = state["width"]
-    return out
+    return JsSession([]).run_code(code, args, cb_obj)
 
 
 def _write(spec, df):

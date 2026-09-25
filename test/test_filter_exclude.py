@@ -33,10 +33,7 @@ import itertools
 import json
 import math
 import os
-import shutil
-import subprocess
 import sys
-import tempfile
 import warnings
 
 import numpy as np
@@ -52,6 +49,7 @@ sys.path.insert(0, os.path.dirname(_HERE))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+import js_runner  # noqa: E402
 from test_adversarial_matrix import (_DF, _SCATTER, _load_app,  # noqa: E402
                                      _write_inputs)
 
@@ -100,14 +98,22 @@ def _ordered(order):
 # The saved page: its filter callback, run under node
 # ---------------------------------------------------------------------------
 
-def _node():
-    node = shutil.which("node")
-    if node is None:
-        pytest.fail("node is not installed; the saved page's filter callback "
-                    "cannot be run (a skip here would hide an untested "
-                    "callback)")
-    return node
+#: A thin alias (test/js_runner.py, WP-28 S03): ``test_filter_widget_data.py``
+#: imports ``_node`` directly by this name.
+_node = js_runner.node
 
+
+#: ``_plain``, ``_encode`` and ``_stand_in`` stay defined here, unchanged,
+#: for two files this section does not edit: ``test_filter_widget_data.py``
+#: imports ``_encode`` and ``_node`` directly by these names and this
+#: two-argument ``_encode(v, models)`` signature (js_runner's ``encode``
+#: takes three), and ``test_date_range.py`` monkeypatches THIS module's
+#: ``_plain`` at runtime -- it relies on ``_encode``'s unqualified call to
+#: ``_plain`` resolving in this module's own namespace, which only holds if
+#: ``_plain``/``_encode`` are real functions here, not aliases of
+#: js_runner's.  ``_run_callback`` below no longer uses any of the three:
+#: it goes through the shared js_runner module, as every other runner in
+#: this package now does.
 
 def _plain(v):
     if isinstance(v, (float, np.floating)):
@@ -151,63 +157,21 @@ def _stand_in(m, models):
                for p in ("value", "start", "end", "step") if p in props}}
 
 
-# BokehJS runs a CustomJS body as a strict-mode function whose parameters
-# are the args' names, then cb_obj and cb_data.
-_RUNNER = r"""
-"use strict";
-const REG = {};
-for (const [id, lit] of Object.entries(RAW.models))
-    REG[id] = Object.assign({}, lit);
-const resolve = (x) => {
-  if (Array.isArray(x)) return x.map(resolve);
-  if (x && typeof x === "object") {
-    if ("__ref__" in x) return REG[x.__ref__];
-    const o = {};
-    for (const [k, v] of Object.entries(x)) o[k] = resolve(v);
-    return o;
-  }
-  return x;
-};
-for (const o of Object.values(REG)) {
-  if (o.__type__ === "ColumnDataSource") {
-    o.selected = {indices: []};
-    o.change = {emit() {}};
-  } else if (o.__type__ === "BooleanFilter") {
-    o.change = {emit() {}};
-  }
-}
-const args = resolve(RAW.args);
-const names = Object.keys(args);
-new Function(...names, "cb_obj", "cb_data", '"use strict";\n' + RAW.code)(
-  ...names.map((n) => args[n]), null, {});
-const out = {};
-for (const [id, o] of Object.entries(REG)) {
-  if (o.__type__ !== "ColumnDataSource") continue;
-  const cols = Object.keys(o.data);
-  out[id] = {rows: cols.length ? o.data[cols[0]].length : 0,
-             ids: o.data[RAW.row_id] || null};
-}
-process.stdout.write(JSON.stringify(out));
-"""
-
-
 def _run_callback(args, code):
     """Run *code* with *args* under node; ``{model id: {"rows", "ids"}}``
-    for every ColumnDataSource the args reach, as the code left it."""
-    models = {}
-    payload = {"models": models, "args": _encode(dict(args), models),
-               "code": code, "row_id": dr._ROW_ID_COLUMN}
-    with tempfile.NamedTemporaryFile("w", suffix=".cjs", delete=False,
-                                     encoding="utf-8") as fh:
-        fh.write("const RAW = " + json.dumps(payload) + ";\n" + _RUNNER)
-        path = fh.name
-    try:
-        res = subprocess.run([_node(), path], capture_output=True, text=True,
-                             timeout=120)
-        assert res.returncode == 0, res.stderr[:2000]
-        return json.loads(res.stdout)
-    finally:
-        os.unlink(path)
+    for every ColumnDataSource the args reach, as the code left it.  A dry
+    run (test/js_runner.py, WP-28 S03): nothing is written back into the
+    Python models, as ``TestThePrimarySourceFallback`` requires."""
+    out = js_runner.JsSession([]).run_code(code, args, commit=False)
+    result = {}
+    for mid, state in out.items():
+        if "data" not in state:
+            continue
+        cols = list(state["data"].keys())
+        rows = len(state["data"][cols[0]]) if cols else 0
+        result[mid] = {"rows": rows,
+                       "ids": state["data"].get(dr._ROW_ID_COLUMN)}
+    return result
 
 
 def _renderer_source(fig):
