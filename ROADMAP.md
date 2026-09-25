@@ -4240,6 +4240,175 @@ commands, output and the resolved state of every `GAPS.md` finding — in
 
 ---
 
+## WP-28 · Close the GAPS2 audit's 22 gaps
+
+**GAPS2 closed:** B1, B2, B3, B5, B6, B7, C2, D1, E1, E2, E3, E14, F1, G1, G2, G3, G5, G6, G16, K2, X1, X2 · **Severity:** S1 (14), S2 (5), S3 (3) · **Effort:** L · **Depends on:** WP-27
+
+> **User story.** As the Stata user pasting twoway syntax, I want the
+> numbers, text and colours twoway draws, and twoway's refusals; as the
+> maintainer, I want each of the 22 audited defects closed by a regression
+> test that failed before its fix.
+
+### Business requirements
+
+- **BR-28.1** Every number, date and float a KPI card, dropdown, slider,
+  tooltip, date axis, marker label or CSV shows is written in the
+  variable's Stata display format or the card's `fmt()`, in both
+  renderers (E1, E3, G6).
+- **BR-28.2** `xlabel`/`ylabel`/`xtick`/`ytick` read numlists and
+  quoted-value pairs as Stata's own axis-label grammar does, and
+  label/tick values widen the axis unless `norescale`; `range()` only
+  widens (B1, B2). Value labels reach the axis and `hover()` (G16).
+- **BR-28.3** Every textbox sub-option abbreviation Stata accepts is
+  honoured or named, never drawn as literal text; `xtitle("")`/
+  `ytitle("")` remove the title; `ytitle2()`/`xtitle2()` follow textbox
+  grammar (B3, B6, B7).
+- **BR-28.4** `legend`'s `order()` text, `label()`-after-`order()` and
+  `lastlabel()` apply to the key Stata's own plot numbering names (B5).
+- **BR-28.5** A histogram counts every observation Stata counts, with
+  Stata's floor-and-clamp rule, in both the Python mapper and the saved
+  page's JavaScript recount (C2).
+- **BR-28.6** A scheme file's quoted RGB and %opacity values are read the
+  way Stata's own scheme reader reads them (D1).
+- **BR-28.7** `colorvar()` under `colordiscrete` with `colorcuts()` treats
+  the listed values as levels, drops cuts below the column minimum, and
+  honours `colorlevels()`, `colorvarminmax`, `zlabel()`, `ztitle()` and
+  `zscale()` (X2).
+- **BR-28.8** Every graph and card is masked by exactly the filters whose
+  `exclude()` does not name it, on every move, in both modes; dropdown
+  values compare as numbers for numeric columns and as exact text for
+  string columns (E2, X1).
+- **BR-28.9** The saved and served pages present one dashboard: the same
+  viewport tag, dimming, range-selection wiring and responsive
+  breakpoints; the saved `layout(bs)` filter bar sits below the header as
+  the served app's already does (E14).
+- **BR-28.10** `dash serve` returns a non-zero exit code and a message
+  naming the reason when no server starts, and refuses a `--port` outside
+  1024-65535 instead of clamping it; the declared Python/Bokeh/pandas/
+  numpy floor is the version the suites actually run under (F1, K2).
+- **BR-28.11** An internal column name can never silently overwrite a
+  user variable; string variables are refused as plot variables with
+  twoway's r(109); Unicode variable names work in `filter()`, `dash kpi`,
+  `by()`, `hover()` and `colorvar()`; the saved page's data-limit count
+  matches what it actually embeds (G1, G2, G3, G5).
+- **BR-28.12** An option dash newly honours prints nothing extra, exactly
+  as twoway prints nothing; only an option dash still cannot draw is
+  named in the note (DISCOVERY Q22).
+- **BR-28.13** Every refusal this package adds uses twoway's own return
+  code (r(109), r(110), r(198)) and, where twoway has one, twoway's
+  wording.
+
+### Technical requirements
+
+- **TR-28.1** One display-format module reached by all 14 number-to-text
+  sites, with a JavaScript twin the node runner tests against it; the
+  writer takes the full Stata format string and the variable's storage
+  type (RESEARCH.md "Key architecture decisions" 1).
+- **TR-28.2** Axis extents are computed in Python after the layers are
+  drawn, as the hull of drawn data, label/tick positions and `range()`
+  values, into a `Range1d` a fixture can pin in both modes (decision 2).
+- **TR-28.3** Legend keys are built by Stata's own plot number, with text
+  resolved default -> `label(#)` -> `order()` text -> `lastlabel()`; a
+  `-` row is a label-only `LegendItem` (decision 3).
+- **TR-28.4** Per-target filter masks are computed once per distinct
+  exclusion set, in JavaScript and pandas from one shared rule; `Select`
+  widgets carry numeric values for numeric columns (decision 4).
+- **TR-28.5** Truth comes from Stata once, through a shared SVG/`.Graph`
+  certification helper and per-family `scripts/extract_*_truth.do`
+  scripts; every new or regenerated fixture carries the `_meta`
+  provenance stamp (decision 5, D12).
+- **TR-28.6** The declared floor is the measured `stata` pytest baseline
+  (Python 3.13, Bokeh 3.8, pandas 2.3, numpy 2.3), not a modelled one
+  (decision 5; K2).
+- **TR-28.7** The served app's copy lists (`dash_render.py` constants
+  24326-24428, functions 24466-24687) carry every new module-level name
+  the served template reads; `test/function_test_map.py` and
+  `test/program_coverage_map.py` name every new function and Stata
+  program.
+- **TR-28.8** Every gap's regression test fails against the unmodified
+  tree at `91d97be`, is recorded in that gap's fix commit, and turns
+  green in the same commit as its fix; no test-only commit exists (D1).
+- **TR-28.9** Every gap's BUGS.md entry lands closed, in its fix commit,
+  in the form this file's section 01 records (TR-01.8); every CHANGELOG
+  line replaces the marker section 01 placed (TR-01.7); every closing
+  task updates the dash.sthlp paragraph GAPS2 cites for its gap.
+- **TR-28.10** `test/test_tracking_documents.py::TestGaps2AndRoadmapAgree`
+  (added by S01) is the mechanical reader that resolves this package's
+  `**GAPS2 closed:**` field against GAPS2.md's headings, and, once this
+  package is headed DONE, against each id's Tracked line, a closed
+  BUGS.md entry and a commit that exists.
+- **TR-28.11** Stata is invoked only through
+  `scripts/stata_slot.sh <scratch-dir> <file>.do` (never the GUI, never a
+  bare `stata-mp -b do`), holding concurrent Stata sessions at three
+  across every parallel section.
+
+### Acceptance criteria
+
+- **AC-28.1** Each of the 22 gaps has a regression test that failed at
+  `91d97be` and passes after its fix, asserted in both the saved and
+  served modes wherever the gap has a page.
+- **AC-28.2** The Stata-measured fixtures RESEARCH.md and the section
+  files name are on disk, `git add -f`'d, and carry the `_meta`
+  provenance stamp.
+- **AC-28.3** The full pytest suite (`python3 -m pytest test/ -q`) is
+  green under both interpreters with no skips.
+- **AC-28.4** The certification suite (the 65 scripts of the audit commit
+  plus `test/test_gaps2_truth.cscript`) passes with no skips, and grows
+  by at most about five minutes of wall time over the step-0b baseline.
+- **AC-28.5** BUGS.md has no open S1 or S2 entry; 22 entries are closed,
+  each naming a test that exists.
+- **AC-28.6** Every GAPS2.md entry in scope carries a Tracked line naming
+  WP-28, a closed BUGS.md title and a commit that exists;
+  `test_tracking_documents.py::TestGaps2AndRoadmapAgree` passes both
+  directions.
+- **AC-28.7** CHANGELOG.md holds no `<!-- WP-28 ` marker; every changed
+  number, text or picture is listed under its line ending
+  `(WP-28, <ID>)`.
+- **AC-28.8** The WP-27 release gate passes from an installed package
+  with every example at return code 0.
+
+### Test plan
+
+| What | How |
+|---|---|
+| Each gap's own regression test, both modes where the gap has a page | pytest, per section |
+| Twoway's own drawn truth (SVG text/fill, `.Graph` extents, `display` text) | the shared SVG/`.Graph` cert helper and `scripts/extract_*_truth.do`, per section |
+| The saved page's JavaScript twins | the stateful node runner (`test/js_runner.py`), per section |
+| twoway/Stata comparisons that are new certification work | `test/test_gaps2_truth.cscript`, one block per section |
+| Refusals, messages, return codes, setup checks | the existing cscript for each area |
+| This package's own closure | `test/test_tracking_documents.py::TestGaps2AndRoadmapAgree` |
+| No tracking-document regression | `python3 -m pytest test/ -q` before every commit |
+| The per-gap plan | the section file that closes it (`.ultraplan/sections/section-NN-*.md`) |
+
+#### GAPS2 traceability
+
+| Gap | Title | Sev | Effort | Closable | Section |
+|---|---|---|---|---|---|
+| B1 | Axis-label rules misread quoted numeric text, multi-line labels and numlist forms | S1 | M | yes | S14 |
+| B2 | Label/tick values do not widen the axis; xscale/yscale(range()) narrows or inverts it | S1 | M | yes | S18 |
+| B3 | Textbox sub-option abbreviations are drawn as part of the title/axis-title text | S1 | S | yes | S13 |
+| B5 | legend order() text and label()-after-order() are applied to the wrong keys | S1 | M | yes | S15 |
+| B6 | xtitle("")/ytitle("") do not remove the axis title | S1 | S | yes | S13 |
+| B7 | ytitle2()/xtitle2() draw their quote marks and ignore textbox grammar | S1 | S | yes | S13 |
+| C2 | histogram silently drops the maximum observation when the last bin edge falls short | S1 | S | yes | S05 |
+| D1 | A user or third-party scheme's quoted values are dropped without a warning | S1 | S | yes | S06 |
+| E1 | KPI fmt() accepts formats the card then does not apply, and %w.0g over-rounds | S1 | M | yes | S04+S11 |
+| E2 | exclude() leaves excluded graphs and cards showing a stale filter state | S1 | M | yes | S17 |
+| E3 | Dates and formatted numbers ignore the variable's Stata display format | S2 | L | yes | S04+S11+S12 |
+| E14 | The saved page and the served app still present the dashboard differently | S3 | M | yes | S10 |
+| F1 | dash serve returns rc 0 when no server ran; --port is clamped, not refused | S1 | S | yes | S09 |
+| G1 | Internal column names can overwrite a user variable | S1 | M | yes | S07 |
+| G2 | String variables are accepted as plot variables; twoway refuses them | S2 | S | yes | S08 |
+| G3 | The data limit counts exported values, refusing pages that would be small | S2 | M | partly | S08 |
+| G5 | Unicode variable names are refused by filter() and dash kpi | S2 | S | yes | S07 |
+| G6 | %g formats and float storage are not reproduced | S3 | M | yes | S04+S12 |
+| G16 | Value labels are never drawn on axes or in tooltips | S3 | S | yes | S14 |
+| K2 | The declared Python/Bokeh minimums are false | S2 | S | yes | S09 |
+| X1 | Dropdown filters rewrite numeric-looking string codes and drop categories | S1 | S | yes | S17 |
+| X2 | colorvar() explicit forms (colorcuts, colorlevels, z-axis) are not drawn | S1 | M | partly | S16 |
+
+---
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.

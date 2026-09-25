@@ -29,6 +29,11 @@ file holds, mechanically:
    ROADMAP_CORRECTIONS_PENDING name.  Both constants check that each of
    their entries is still needed, so neither can outlive its reason.
 6. TODO.md and PLAN.md are gone, and nothing in the repository links them.
+7. GAPS2.md (the audit of 91d97be) and ROADMAP.md agree: a package's
+   **GAPS2 closed:** ids have headings; a DONE package's ids carry a
+   Tracked line 'Closed in WP-nn, BUGS.md "title", commit sha' naming it,
+   a closed BUGS.md entry and a commit that exists, and every such Tracked
+   line is listed by its package.
 
 Run against the documents of 4ede074, before WP-23 changed them, 11 of
 these 24 tests failed, each where the documents were wrong: 26 closed
@@ -620,9 +625,12 @@ def _split_items(field):
     return [i.strip() for i in items if i.strip()]
 
 
-def _parse_roadmap(text):
-    """{WP-nn: {'done': bool, 'gaps': {gap: qualified?}}}."""
-    wps = {}
+def _wp_sections(text):
+    """(wp, head, section, done) for every ``## WP-nn ...`` section of a
+    ROADMAP.md text, in order.  Factored out of _parse_roadmap so a second
+    reader (_parse_roadmap_gaps2) can share the same splitting without
+    changing _parse_roadmap's return value (test_the_roadmap_reader pins
+    that value exactly)."""
     parts = re.split(r"^(?=## WP-\d{2} )", text, flags=re.M)
     for part in parts[1:]:
         head = part.split("\n", 1)[0]
@@ -631,6 +639,13 @@ def _parse_roadmap(text):
         section = re.split(r"^## (?!WP-)", section, flags=re.M)[0]
         done = (head.rstrip().endswith("\u2014 DONE")
                 or re.search(r"^> \*\*DONE\b", section, re.M) is not None)
+        yield wp, head, section, done
+
+
+def _parse_roadmap(text):
+    """{WP-nn: {'done': bool, 'gaps': {gap: qualified?}}}."""
+    wps = {}
+    for wp, _head, section, done in _wp_sections(text):
         gaps = {}
         m = re.search(r"^\*\*Gaps closed:\*\* (.+?)(?: \u00b7 |$)", section,
                       re.M)
@@ -645,13 +660,96 @@ def _parse_roadmap(text):
     return wps
 
 
+# ---------------------------------------------------------------------------
+# GAPS2.md and WP-28's **GAPS2 closed:** field (TR-01.2, TR-01.3)
+# ---------------------------------------------------------------------------
+#
+# GAPS2.md (the audit of 91d97be) heads each gap ``### <ID>. <title>`` and
+# ends its entry with a ``- **Tracked:** ...`` line.  A package that closes
+# GAPS2 gaps declares them through a new ``**GAPS2 closed:**`` header
+# field, never the old ``**Gaps closed:**`` field _parse_roadmap reads
+# above (that regex does not match this text, so the old reader silently
+# ignores it -- proven by test_the_gaps2_readers).
+
+_GAPS2_HEADING = re.compile(r"^### (?P<id>[A-NX]\d{1,2})\. (?P<title>\S.*)$")
+_GAPS2_TRACKED = re.compile(r"^- \*\*Tracked:\*\* (?P<text>\S.*)$")
+_GAPS2_CLOSED = re.compile(
+    r'^Closed in (WP-\d{2}), BUGS\.md "([^"]+)", commit ([0-9a-f]{7,40})\b')
+_GAPS2_DEFERRED = re.compile(r"^Deferred \((WP-\d{2})\): \S")
+
+
+def _parse_gaps2(text):
+    """({id: entry}, dupes) for a GAPS2.md text.  An entry is a dict:
+    ``title``, ``line`` (1-based), ``tracked`` (the Tracked line's text,
+    or None), ``closed`` (a (wp, bugs_title, sha) tuple when the Tracked
+    text matches _GAPS2_CLOSED) and ``deferred`` (a wp string when it
+    matches _GAPS2_DEFERRED).  Text after the point either pattern stops
+    matching is commentary (residuals, the original audit text) and is not
+    read further."""
+    entries, dupes = {}, []
+    lines = text.split("\n")
+    heads = [(i, m) for i, ln in enumerate(lines)
+             for m in (_GAPS2_HEADING.match(ln),) if m]
+    for k, (i, m) in enumerate(heads):
+        gid = m.group("id")
+        nxt = heads[k + 1][0] if k + 1 < len(heads) else len(lines)
+        tracked = None
+        for ln in lines[i + 1:nxt]:
+            if ln.startswith("## ") or ln.startswith("# "):
+                break
+            tm = _GAPS2_TRACKED.match(ln)
+            if tm:
+                tracked = tm.group("text")
+                break
+        closed = deferred = None
+        if tracked:
+            cm = _GAPS2_CLOSED.match(tracked)
+            if cm:
+                closed = (cm.group(1), cm.group(2), cm.group(3))
+            else:
+                dm = _GAPS2_DEFERRED.match(tracked)
+                if dm:
+                    deferred = dm.group(1)
+        if gid in entries:
+            dupes.append(gid)
+        entries[gid] = {"title": m.group("title"), "line": i + 1,
+                        "tracked": tracked, "closed": closed,
+                        "deferred": deferred}
+    return entries, dupes
+
+
+def _parse_roadmap_gaps2(text):
+    """{wp: {'done': bool, 'gaps2': {id: qualified?}}}, read from each
+    section's ``**GAPS2 closed:**`` field.  Mirrors _parse_roadmap's own
+    ``**Gaps closed:**`` reading, on the new field, so the two never
+    collide: a section with only the old field yields ``{}`` here, and a
+    section with only the new field yields ``{}`` from _parse_roadmap
+    (test_the_gaps2_readers pins both directions)."""
+    wps2 = {}
+    for wp, _head, section, done in _wp_sections(text):
+        gaps2 = {}
+        m = re.search(r"^\*\*GAPS2 closed:\*\* (.+?)(?: \u00b7 |$)", section,
+                      re.M)
+        if m:
+            for item in _split_items(m.group(1)):
+                g = re.match(r"^(?:and\s+)?([A-NX]\d{0,2})"
+                             r"(?![A-Za-z0-9-])(.*)$", item)
+                if g:
+                    rest = g.group(2).strip()
+                    gaps2[g.group(1)] = rest.startswith(("(", "'s"))
+        wps2[wp] = {"done": done, "gaps2": gaps2}
+    return wps2
+
+
 @pytest.fixture(scope="module")
 def docs():
     roadmap = _read("ROADMAP.md")
     matrix = _matrix_gaps(roadmap)
     gaps, dupes = _parse_gaps(_read("GAPS.md"), matrix)
+    gaps2, gaps2_dupes = _parse_gaps2(_read("GAPS2.md"))
     return {"matrix": matrix, "gaps": gaps, "dupes": dupes,
-            "wps": _parse_roadmap(roadmap)}
+            "wps": _parse_roadmap(roadmap), "gaps2": gaps2,
+            "gaps2_dupes": gaps2_dupes, "wps2": _parse_roadmap_gaps2(roadmap)}
 
 
 def _git(*args):
@@ -894,3 +992,235 @@ class TestTodoAndPlanAreRetired:
         assert not _links_to_retired("a.md", "see .ultraplan/PLAN.md")
         assert _links_to_retired("dash.pkg", "f TODO.md")
         assert not _links_to_retired("x.py", "MY_PLAN.md_x = 1")
+
+
+# ===========================================================================
+# GAPS2.md and WP-28 (item 7 of the module docstring)
+# ===========================================================================
+
+class TestGaps2AndRoadmapAgree:
+    """GAPS2.md (the audit of 91d97be, `GAPS2 closed:` fields, item 7 of
+    this module's docstring)."""
+
+    def test_the_gaps2_readers(self):
+        text = (
+            "### B1. Axis-label rules misread quoted numeric text\n\n"
+            "Body text describing the gap goes here.\n\n"
+            "- **Tracked:** Closed in WP-28, BUGS.md \"Axis labels are "
+            "wrong\", commit 0123abcd\n\n"
+            "### G1. Internal column names can overwrite a user variable\n\n"
+            "- **Tracked:** Deferred (WP-28): the c(maxvar) room issue "
+            "stays open.\n\n"
+            "### X1. Dropdown filters rewrite string codes\n\n"
+            "- **Tracked:** new.\n"
+        )
+        gaps2, dupes = _parse_gaps2(text)
+        assert dupes == []
+        assert set(gaps2) == {"B1", "G1", "X1"}
+        assert gaps2["B1"]["title"] == \
+            "Axis-label rules misread quoted numeric text"
+        assert gaps2["B1"]["closed"] == \
+            ("WP-28", "Axis labels are wrong", "0123abcd")
+        assert gaps2["B1"]["deferred"] is None
+        assert gaps2["G1"]["closed"] is None
+        assert gaps2["G1"]["deferred"] == "WP-28"
+        assert gaps2["X1"]["closed"] is None
+        assert gaps2["X1"]["deferred"] is None
+        assert gaps2["X1"]["tracked"] == "new."
+
+        roadmap = ("## WP-30 · Something\n\n"
+                  "**GAPS2 closed:** B1, G1 · **Severity:** S1\n\n"
+                  "> body\n")
+        assert _parse_roadmap_gaps2(roadmap) == {
+            "WP-30": {"done": False, "gaps2": {"B1": False, "G1": False}}}
+        # the old reader's field regex does not match the new field, so a
+        # section holding only **GAPS2 closed:** yields no gaps at all.
+        assert _parse_roadmap(roadmap) == {
+            "WP-30": {"done": False, "gaps": {}}}
+
+    def test_every_gaps2_id_a_package_declares_has_a_heading(self, docs):
+        text = ("## WP-30 · Something\n\n"
+                "**GAPS2 closed:** B1, X9 · **Severity:** S1\n\n")
+        wps2 = _parse_roadmap_gaps2(text)
+        known = {"B1"}
+        bad_inline = ["%s declares %s, which GAPS2.md has no heading for"
+                     % (wp, gid)
+                     for wp, info in wps2.items()
+                     for gid in sorted(info["gaps2"])
+                     if gid not in known]
+        assert bad_inline == \
+            ["WP-30 declares X9, which GAPS2.md has no heading for"]
+
+        bad = ["%s declares %s, which GAPS2.md has no heading for"
+              % (wp, gid)
+              for wp, info in sorted(docs["wps2"].items())
+              for gid in sorted(info["gaps2"])
+              if gid not in docs["gaps2"]]
+        assert not bad, "\n".join(bad)
+        assert not docs["gaps2_dupes"], \
+            "GAPS2.md ids with two headings: %s" % docs["gaps2_dupes"]
+
+    def test_every_gaps2_id_a_done_package_lists_is_closed_by_it(self, docs):
+        text_wp = ("## WP-30 · Something — DONE\n\n"
+                  "**GAPS2 closed:** B1 · **Severity:** S1\n\n")
+        text_gaps2 = "### B1. Axis labels misread\n\n- **Tracked:** new.\n"
+        wps2 = _parse_roadmap_gaps2(text_wp)
+        gaps2, _dupes = _parse_gaps2(text_gaps2)
+        bad_inline = []
+        for wp, info in wps2.items():
+            if not info["done"]:
+                continue
+            for gid in sorted(info["gaps2"]):
+                entry = gaps2.get(gid)
+                if entry is None or entry["closed"] is None or \
+                        entry["closed"][0] != wp:
+                    bad_inline.append(
+                        "%s is DONE and lists %s, whose Tracked line does "
+                        "not say Closed in %s" % (wp, gid, wp))
+        assert bad_inline == [
+            "WP-30 is DONE and lists B1, whose Tracked line does not say "
+            "Closed in WP-30"]
+
+        bad = []
+        for wp, info in sorted(docs["wps2"].items()):
+            if not info["done"]:
+                continue
+            for gid in sorted(info["gaps2"]):
+                entry = docs["gaps2"].get(gid)
+                if entry is None:
+                    bad.append("%s lists %s, which GAPS2.md lacks" %
+                              (wp, gid))
+                elif entry["closed"] is None or entry["closed"][0] != wp:
+                    bad.append(
+                        "%s is DONE and lists %s, whose Tracked line does "
+                        "not say Closed in %s" % (wp, gid, wp))
+        assert not bad, "\n".join(bad)
+
+    def test_every_closed_gaps2_entry_is_listed_by_its_package(self, docs):
+        text_gaps2 = (
+            "### B1. Axis labels misread\n\n"
+            "- **Tracked:** Closed in WP-30, BUGS.md \"x\", commit "
+            "0123abc\n")
+        text_wp = ("## WP-30 · Something\n\n"
+                  "**GAPS2 closed:** · **Severity:** S1\n\n")
+        gaps2, _dupes = _parse_gaps2(text_gaps2)
+        wps2 = _parse_roadmap_gaps2(text_wp)
+        bad_inline = []
+        for gid, entry in sorted(gaps2.items()):
+            if entry["closed"] is None:
+                continue
+            wp = entry["closed"][0]
+            info = wps2.get(wp)
+            if info is None or not info["done"] or gid not in info["gaps2"]:
+                bad_inline.append(
+                    "%s says Closed in %s, which does not list it as DONE"
+                    % (gid, wp))
+        assert bad_inline == [
+            "B1 says Closed in WP-30, which does not list it as DONE"]
+
+        bad = []
+        for gid, entry in sorted(docs["gaps2"].items()):
+            if entry["closed"] is None:
+                continue
+            wp = entry["closed"][0]
+            info = docs["wps2"].get(wp)
+            if info is None:
+                bad.append("%s names %s, which ROADMAP.md lacks" %
+                          (gid, wp))
+            elif not info["done"]:
+                bad.append("%s names %s, which is not headed DONE" %
+                          (gid, wp))
+            elif gid not in info["gaps2"]:
+                bad.append(
+                    "%s names %s, whose GAPS2 closed field does not list "
+                    "it" % (gid, wp))
+        assert not bad, "\n".join(bad)
+
+    def test_every_closed_gaps2_entry_names_a_closed_bugs_entry_and_a_commit(
+            self, docs, bugs):
+        text_gaps2 = (
+            "### B1. Axis labels misread\n\n"
+            "- **Tracked:** Closed in WP-30, BUGS.md \"No such title\", "
+            "commit 0123abc\n")
+        gaps2, _dupes = _parse_gaps2(text_gaps2)
+        fake_entries = [{"closed": True, "title": "A real title",
+                        "fields": {"Resolution":
+                                  "Fixed 01jan2027 (WP-30, B1)."}}]
+        bad_inline = []
+        for gid, entry in sorted(gaps2.items()):
+            _wp, title, _sha = entry["closed"]
+            if not [e for e in fake_entries if e["title"] == title]:
+                bad_inline.append(
+                    "%s: BUGS.md has no entry titled %r" % (gid, title))
+        assert bad_inline == [
+            "B1: BUGS.md has no entry titled 'No such title'"]
+
+        bugs_entries, _problems = bugs
+        bad = []
+        for gid, entry in sorted(docs["gaps2"].items()):
+            if entry["closed"] is None:
+                continue
+            wp, title, sha = entry["closed"]
+            match = [e for e in bugs_entries if e["title"] == title]
+            if not match:
+                bad.append("%s: BUGS.md has no entry titled %r" %
+                          (gid, title))
+            else:
+                e = match[0]
+                if not e["closed"]:
+                    bad.append("%s: BUGS.md entry %r is not closed" %
+                              (gid, title))
+                elif "(%s, %s)" % (wp, gid) not in \
+                        e["fields"].get("Resolution", ""):
+                    bad.append(
+                        "%s: BUGS.md entry %r's Resolution lacks (%s, %s)"
+                        % (gid, title, wp, gid))
+            if re.fullmatch(r"[0-9a-f]{7,40}", sha) and \
+                    _git("rev-parse", "--git-dir").returncode == 0:
+                if _git("cat-file", "-e", sha + "^{commit}").returncode:
+                    bad.append(
+                        "%s names commit %s, which git does not have" %
+                        (gid, sha))
+        assert not bad, "\n".join(bad)
+
+    def test_a_deferred_gaps2_entry_names_its_package_and_a_reason(
+            self, docs):
+        text_gaps2 = (
+            "### B1. Axis labels misread\n\n"
+            "- **Tracked:** Deferred (WP-28): out of scope for now.\n\n"
+            "### G1. Names collide\n\n"
+            "- **Tracked:** Deferred: no package named.\n")
+        gaps2, _dupes = _parse_gaps2(text_gaps2)
+        bad_inline = []
+        for gid, entry in sorted(gaps2.items()):
+            tracked = entry["tracked"] or ""
+            if tracked.startswith("Deferred") and entry["deferred"] is None:
+                bad_inline.append(
+                    "%s: %r does not name a package and a reason" %
+                    (gid, tracked))
+        assert bad_inline == [
+            "G1: 'Deferred: no package named.' does not name a package "
+            "and a reason"]
+
+        bad = []
+        for gid, entry in sorted(docs["gaps2"].items()):
+            tracked = entry["tracked"] or ""
+            if tracked.startswith("Deferred") and entry["deferred"] is None:
+                bad.append(
+                    "%s: %r does not name a package and a reason" %
+                    (gid, tracked))
+            elif entry["deferred"] is not None and \
+                    entry["deferred"] not in docs["wps2"]:
+                bad.append("%s: deferred by %s, which ROADMAP.md lacks" %
+                          (gid, entry["deferred"]))
+        assert not bad, "\n".join(bad)
+
+    def test_the_traceability_matrix_heading_appears_once(self):
+        roadmap = _read("ROADMAP.md")
+        assert roadmap.count("## Traceability matrix") == 1, (
+            "the matrix reader splits ROADMAP.md on this exact text once; "
+            "a second occurrence anywhere, including inside WP-28, would "
+            "move its split point")
+        # the GAPS2 reader must not mistake the heading, or anything past
+        # it, for a WP section: pins the same hazard for the new field.
+        _parse_roadmap_gaps2(roadmap)

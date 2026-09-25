@@ -139,6 +139,25 @@ and now matches Stata.
 - A graph with one series no longer draws a legend, as in twoway. Legend
   keys use variable labels and "Fitted values" / "95% CI". (S09)
 
+**WP-28 (GAPS2 audit, 25sep2026)**
+
+<!-- WP-28 B1 -->
+<!-- WP-28 B2 -->
+<!-- WP-28 B3 -->
+<!-- WP-28 B5 -->
+<!-- WP-28 B6 -->
+<!-- WP-28 B7 -->
+<!-- WP-28 C2 -->
+<!-- WP-28 D1 -->
+<!-- WP-28 E1 -->
+<!-- WP-28 E2 -->
+<!-- WP-28 E3 -->
+<!-- WP-28 E14 -->
+<!-- WP-28 G6 -->
+<!-- WP-28 G16 -->
+<!-- WP-28 X1 -->
+<!-- WP-28 X2 -->
+
 ### Security
 
 - Saved and served pages carry a `default-src 'none'` Content Security
@@ -317,6 +336,8 @@ and now matches Stata.
 - A KPI draws one card, not one per `by()` panel. `update()` names a mode.
   (f92ef65)
 - `saving()` into a directory that does not exist is r(603). (WP-23)
+<!-- WP-28 G1 -->
+<!-- WP-28 G2 -->
 
 ### Removed
 
@@ -334,6 +355,19 @@ and now matches Stata.
   cannot store dash's date columns. (WP-25)
 - scipy and statsmodels are no longer needed (WP-18), and neither is
   jsonio: dash writes its data from Stata's own Python (WP-27).
+<!-- WP-28 K2 -->
+
+### Fixed in WP-28
+
+Failures the GAPS2 audit of 25sep2026 found that WP-28 fixed without
+changing a drawn result; the results that changed are the WP-28 group
+under Results that change, the behaviour changes and the floor sit in
+their own lists.
+
+<!-- WP-28 E14 served -->
+<!-- WP-28 F1 -->
+<!-- WP-28 G3 -->
+<!-- WP-28 G5 -->
 
 ### Fixed after WP-27 (the S3 batch, 24sep2026)
 
