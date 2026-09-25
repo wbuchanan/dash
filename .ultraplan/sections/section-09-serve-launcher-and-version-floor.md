@@ -1,16 +1,19 @@
 # Section 09: Serve launcher and version floor (F1, K2)
 
-> Part of: WP-28 · Gaps: F1, K2 · Risk: red · Batch: 1 · Depends on: none · Blocks: 19 
+> Part of: WP-28 · Gaps: F1, K2 · Risk: red · Batch: 1 · Depends on: none · Blocks: 19 · Tasks: 15, 2 commits
 
 
 ## Review amendments (Phase 4, 2026-09-25) — binding; they override any conflicting text below
 
 > Batch **1** · Depends on **none** · Blocks **19** · Risk **red** · Commits: two commits: F1 → CHANGELOG `Fixed in WP-28`; K2 → `Requirements`
 
-- D9: risk is red (child-process plumbing, three refusal sites plus the embedded `_port` road, inverted tests).
-- D10: forwarded child stdout/stderr is bounded (last 20 lines, ≤ 4 KB); `communicate()` cannot serve the poll — reader threads, as the section says.
-- Q27: on a below-floor Bokeh, dash_setup refuses and prints the exact `<c(python_exec)> -m pip install 'bokeh>=3.8'` line; it never installs; a cscript asserts the printed command names `c(python_exec)`.
-- D7: split 09-01 and 09-03.
+- D9: risk is red (child-process plumbing, three refusal sites plus the embedded `_port` road, inverted tests, fifteen tasks).
+- D10, F-14 and feasibility #44: the child's stdout is forwarded live under a bound (printable characters only, 500 characters a line, at most 200 lines, then one notice) and the failure message carries the last 20 stderr lines cut to 4 KB; one structure per pipe; `communicate()` cannot serve the poll — reader threads, as the section says.
+- Q27: on a below-floor Bokeh, dash_setup refuses with r(198) and prints exactly `<c(python_exec)> -m pip install 'bokeh>=3.8'`; it never installs; a certification case asserts the printed command names `c(python_exec)` — in `test_setup_python_gate.cscript`, through the new `_dash_pip_command` helper and without adding a Python gate to that script (amendment H); HON-29 asserts the same line in a full run.
+- D11/C7: no new certification script. SPU-01..SPU-03 join `test/test_serve_launch.cscript` in its stub-renderer style; HON-29/HON-30 join `test/test_setup_honesty.cscript`; the floor cases and the pip-command case join `test/test_setup_python_gate.cscript`; `test/run_all_cscripts.do` and the hygiene pins are not edited by this section.
+- D1, F-01, feasibility #11/#12: F1 is one commit (09-01..09-07) and K2 one commit (09-08..09-15); 09-13 flips the help-claims cscript, 09-14 documents the floor and flips its pytest in the same task, 09-15 closes K2 in BUGS.md and CHANGELOG; no red intermediate state remains.
+- D7: the test-writing task was split (launcher pytest 09-01, serve cscript cases 09-02, floor pytest 09-08, setup cscript cases 09-09) and the launcher task was split (`_dash_port_value` at every site with `_FakeProc` in 09-03; `_dash_launch_app` with `__main__` in 09-04); names shortened.
+- D2/amendment A: F1's marker sits under the new `### Fixed in WP-28` heading; K2's at the end of the release's `### Requirements` list, whose floor lines K2 also rewrites.
 
 Applies to every section:
 - D1 (binding): tasks are work steps; commits are per gap (S01-S04: one each). The failing regression tests are written first and run against the unmodified tree; their output at 91d97be is recorded in the fix commit's message (Q24) and they are committed together with the fix, never alone (CLAUDE.md rule 4).
@@ -20,7 +23,7 @@ Applies to every section:
 - D5 (binding): shared files follow merge rules R1-R6 in `index.md` (cscript registration and hygiene pins, copy lists and maps, help/CHANGELOG/BUGS.md, graph-key lists, fixtures, parity corpus).
 - D7: XML fields holding `&`, `<` or `>` are CDATA-wrapped (done mechanically); task names over 8 words are shortened and `done` fields put in the past tense during the detailed fixer pass.
 
-Detailed edits from `../review/consistency.md`, `../review/requirements-security.md` and `../review/feasibility.md` (as adjusted by `../review/DECISIONS.md`) are applied to this file in the fixer pass; until then this block governs.
+Detailed edits from `../review/consistency.md`, `../review/requirements-security.md` and `../review/feasibility.md` (as adjusted by `../review/DECISIONS.md`) were applied to this file in the fixer pass (2026-09-25); the text below conforms to this block.
 
 ## Overview
 
@@ -47,7 +50,10 @@ TypeError on 3.8 and 3.9." No test runs below Python 3.13 or Bokeh 3.8. DISCOVER
 the floor as *what is tested today*: the `stata` baseline of `test/conftest.py:207-209` —
 **Python 3.13, bokeh 3.8, pandas 2.3, numpy 2.3** — declared in every place report C §6 lists,
 with pandas declared by dash itself because Bokeh 3.9 dropped it as a dependency (report W §1h),
-and the generated app opening with `from __future__ import annotations`.
+and the generated app opening with `from __future__ import annotations`. DISCOVERY Q27 settles
+what dash_setup does below the floor: it refuses with r(198) and prints the exact `pip` command
+for the interpreter Stata is linked to, `<c(python_exec)> -m pip install 'bokeh>=3.8'`, and
+installs nothing.
 
 **Why one section.** Both gaps live on the serve/setup surface and nowhere else: the launcher
 and the app template's header and `__main__` in `dash_render.py`, `_dash_serve` and
@@ -56,17 +62,26 @@ and the app template's header and `__main__` in `dash_render.py`, `_dash_serve` 
 other batch-1 section touches these regions (the one shared edit point is the served-app copy
 list; see Notes).
 
-**Test order (CLAUDE.md rule 7).** Task 09-01 writes every failing pytest and the failing
-cscript; 09-02 registers the cscript and records its failure. 09-03 to 09-06 close F1;
-09-07 to 09-12 close K2. The suite is red between 09-03 and 09-04 only for the three clamp
-tests being inverted, and green from 09-06 on.
+**Test order (CLAUDE.md rule 7) and commit rule (D1).** Tasks 09-01 and 09-02 write F1's
+regression tests (the launcher pytest file and SPU-01..SPU-03), run them against the unmodified
+tree and save the failure text to the scratch directory -- nothing is committed (a red tree is
+never committed, rule 4); 09-03 to 09-06 turn them green and invert the clamp tests; 09-07
+closes the F1 entry and makes the F1 commit, subject ending `(GAPS2 F1)`, body opening with the
+saved failure text (S01 TR-01.9). K2's regression tests are written only then -- 09-08 and
+09-09, run against the tree the F1 commit leaves, which is unmodified at every K2 site
+(`dash_setup.ado`, the app template's header, the floor texts) -- so that the full suite is
+green when F1 is committed; 09-10 to 09-14 turn them green and flip the pinned floor; 09-15
+closes the K2 entry and makes the K2 commit, subject ending `(GAPS2 K2)`. The failing tests of
+each gap land in that gap's commit, never alone; no intermediate tree is red at a commit.
 
-## Risk: [yellow] — the launcher runs inside Stata's embedded Python, where an escaping exception is r(7102) and a thread must never print; Ctrl+C must still stop the child; three tests require the clamp and five scripts assert the old floor
+## Risk: [red] — the launcher runs inside Stata's embedded Python, where an escaping exception is r(7102) and a thread must never print; Ctrl+C must still stop the child; three tests require the clamp and five scripts assert the old floor (D9)
 
 **Why.** The behaviour to change sits on a process boundary (Stata → its Python → a child) and
 the failure must travel back across it as text, not as an exception. The port clamp is pinned
 by `test_render_cli_port.py`, `test_resource_limits.py` and the adversarial registry; the old
-minimums are asserted by four cscripts and one pytest.
+minimums are asserted by four cscripts and one pytest. Red (D9): child-process plumbing with
+two pump threads, three refusal sites plus the embedded `_port` road, inverted tests, fifteen
+tasks in two commits, and the served copy list's tail shared with S04 and S07.
 
 **Risk factors.**
 1. A `RuntimeError` escaping `runpy.run_path` inside `python:` is r(7102) plus a traceback —
@@ -82,21 +97,32 @@ minimums are asserted by four cscripts and one pytest.
    (`test_adversarial_matrix.py:943-1000`, every node id must resolve).
 7. The served app imports `argparse as _argparse`; a copied helper that says `argparse.…`
    is a NameError in the app.
+8. The app's stdout can echo spec text (a title in a warning); forwarded raw and unbounded it
+   is a way into the Results window (requirements F-14).
 
 **Mitigation.** A shared dict handed through `runpy`'s `init_globals` carries the failure text
-back (TR-09.3/09.4); daemon reader threads drain both pipes into a bounded buffer and only the
-main thread prints (TR-09.2); the cscript holds `127.0.0.1`, the address the app binds
-(`dash_render.py:27320`), and listens; the tester socket sets `SO_REUSEADDR`; every renamed test
-is renamed in the registry in the same commit; the copied helper imports `argparse` locally.
+back (TR-09.3/09.4); daemon reader threads drain both pipes into bounded structures and only the
+main thread prints, under the F-14 bound (TR-09.2); the cscript holds `127.0.0.1`, the address
+the app binds (`dash_render.py:27320`), and listens; the tester socket sets `SO_REUSEADDR`;
+every renamed test is renamed in the registry in the same commit; the copied helper imports
+`argparse` locally.
 
 ## Dependencies
 - Depends on: none
 - Blocks: section-19 (closeout: CHANGELOG consolidation, GAPS2 Tracked lines, release gate)
-- Parallel batch: 1
+- Parallel batch: 1. **Batch-1 merge order (C3): S01, S03, S02, S06, S07, S08, S09, S10.**
 - Can run with: sections 01-08 and 10. Their `dash_render.py` regions (formatters, axes,
   legends, filters, the served layout CSS) and `dash.ado` regions (export, varlists, names) are
   disjoint from the launcher, the app header/`__main__`, `_dash_serve`, `_dash_require_python`
-  and `dash_setup.ado`.
+  and `dash_setup.ado`. **Shared edits to reconcile at the merge (R2, R3):** the served
+  functions copy list in `dash_render.py` (this section appends `"_dash_port_value"` at the END
+  of the tuple, 24466-24687, after S07's `"_dash_is_stata_name"` has landed; C6), `test/function_test_map.py`
+  and `test/program_coverage_map.py` (keys in alphabetical place), `test/test_serve_launch.cscript`,
+  `test/test_setup_honesty.cscript`, `test/test_setup_python_gate.cscript` and
+  `test/test_program_coverage.cscript` (cases appended or flipped in existing scripts; no runner
+  block, no hygiene pin, D11), `BUGS.md` (appended at the end), `CHANGELOG.md` (the F1 and K2
+  markers and the `### Requirements` floor lines only), `dash.sthlp` (727-729, 1353-1357,
+  1367-1374, 3131-3134), `dash_setup.sthlp` (this section alone).
 
 ## Evidence
 
@@ -209,7 +235,7 @@ text through `_dash_smcl_text`, so nothing in the message is read as SMCL. `_das
 - A pre-launch `socket.bind(("127.0.0.1", port))` raises `EADDRINUSE` when held; it is
   inherently racy, so the child's exit status stays the authority.
 - **Reasoned, not measured, from the BSD and Linux bind rules — the executor verifies it in
-  09-03's verify step:** a tester socket *without* `SO_REUSEADDR` also fails against a port
+  09-04's verify step:** a tester socket *without* `SO_REUSEADDR` also fails against a port
   whose last connections are in TIME_WAIT, which Tornado's `SO_REUSEADDR` server would bind;
   a tester *with* `SO_REUSEADDR` ignores TIME_WAIT and still fails against a live listener on
   the same address and port on both platforms. The tester therefore sets `SO_REUSEADDR`.
@@ -245,6 +271,7 @@ Python — proof that a thread inside Stata's Python works when it only stores s
 | | 60 | `"Please install Python 3.8+ and link it to Stata:"` |
 | | 73 | comment "verifies Python 3.8+" |
 | | 146, 147, 150 | `local min_bokeh "3.0"`, `min_numpy "1.23"`, `min_pandas "2.0"` |
+| | 222-224 | the `below` branch: `" {err}(below minimum `minver'){txt}"` then `display as text "      To upgrade: python -m pip install" " --upgrade '`pkg'>=`minver''"` — the bare word `python`, not the interpreter Stata is linked to (Q27) |
 | | 285-296 | `_dash_pymin` returns `"3.8"` (295) |
 | `dash_setup.sthlp` | 40-42 | "compared with the 3.8 minimum … below 3.8" |
 | | 70 | "Python 3.8 or later" |
@@ -254,7 +281,7 @@ Python — proof that a thread inside Stata's Python works when it only stores s
 | `dash.pkg` | 17 | `d Requires: Python 3.8+, bokeh>=3.0, numpy>=1.23, pandas>=2.0.` |
 | `dash.ado` | 205-207 | `_dash_require_python`: "link Stata to Python 3.8+" |
 | `dash.sthlp` | 3131-3134 | `{ul:Python 3.8+}`; "bokeh>=3.0, numpy>=1.23, pandas>=2.0" |
-| `CHANGELOG.md` | 330-334 | `### Requirements` |
+| `CHANGELOG.md` | 330-334 | `### Requirements` (the three lines above the `<!-- WP-28 K2 -->` marker S01 puts at the end of that list) |
 
 `dash.ado` cannot call `_dash_pymin`: it is a subprogram of `dash_setup.ado`, which Stata loads
 only when `dash_setup` itself runs. The number is written in `dash.ado` and tied to
@@ -319,10 +346,16 @@ floor is 3.8.**
   3.0)"`; PC-16 (622-637) fakes `pyversion "3.7.9 …"` → `"version 3.7.9 is below the minimum
   3.8."`, `"Unmet:  Python 3.7.9 (needs 3.8)"`.
 - HON-19 (`test_setup_honesty.cscript:~470`) monkeypatches `_dash_pymin` to `"99.0"` and runs
-  `dash_setup` with pip replaced by a recorder (`_hon_run_setup`).
+  `dash_setup` with pip replaced by a recorder (`_hon_run_setup`); HON-20 (488-514) replaces
+  `_dash_pkg_version` with one returning `"2.4"` for bokeh and reads the log through `_hon_has`.
+  Both scripts gate on `c(python_exec)` (honesty 71-73, program coverage 72-74) and exit 222
+  without it.
 - `_dash_setup_gate` (`dash_setup.ado:499`) and `_dash_pyver_ok` (298) take the versions as
   arguments; their cases (HON-06..13, `test_setup_python_gate.cscript`) test the comparator
-  with literal numbers and do not assert the floor.
+  with literal numbers and do not assert the floor. `test_setup_python_gate.cscript` has NO
+  Python gate (it drives the comparator and reads `dash_setup.sthlp` by file, 24-93) and is
+  one of the scripts the `len(names) == 47` pin at `test_cscript_hygiene.py:308` counts as
+  never skipping; it must stay that way (amendment H).
 
 ### K2.6 Existing tests that assert the old floor (flip, never delete)
 
@@ -331,10 +364,13 @@ floor is 3.8.**
   `r(pymin)` and requires `dash_setup.sthlp` to state it (dynamic — flips itself).
 - `test/test_setup_honesty.cscript`: HON-20 (504-506: "(below minimum 3.0)", "--upgrade
   'bokeh>=3.0'", "bokeh 2.4 (needs 3.0)"), HON-21 (524-526: "(not verified against 3.0 /
-  1.23 / 2.0)"), HON-22 (547-550: "-m pip install bokeh>=3.0 | … --user bokeh>=3.0"),
-  HON-26 (700-701), HON-27 (719); header lines 11 and 16.
+  1.23 / 2.0)"), HON-22 (547-550: "-m pip install bokeh>=3.0 | … --user bokeh>=3.0", the pip
+  argv recorded for a missing package), HON-26 (700-701), HON-27 (719); header lines 11 and
+  16. HON-20's upgrade-line needle becomes the Q27 form (the interpreter path from
+  `c(python_exec)` followed by ` -m pip install 'bokeh>=3.8'`).
 - `test/test_program_coverage.cscript`: PC-16 (628-637), PC-17 (648), PC-18 (668-669),
-  PC-19 (682, 694, 701), PC-20 (708), PC-21 (735-741).
+  PC-19 (682, 694, 701), PC-20 (708), PC-21 (735-741; its "To upgrade:" needle becomes the Q27
+  form).
 - `test/test_help_claims_8.cscript:786`: `items(bokeh 2.4 (needs 3.0))`.
 - `test/test_help_claims_8.py::TestDashSetupHelpMatchesTheAdo::test_a_package_below_its_minimum_is_unmet_not_a_warning`
   (1640-1660): asserts the sentence "one below 3.0 is reported as an unmet requirement -- it is
@@ -355,8 +391,9 @@ floor is 3.8.**
 - **US-09.3** As a dash serve operator running `python app.py --port 80`, I want the app to
   refuse the port and tell me the range, so that it never quietly serves on 1024.
 - **US-09.4** As a Stata user running `dash_setup`, I want a Python, bokeh, numpy or pandas
-  older than the versions dash is tested on refused by name with the upgrade command, so that I
-  never pass setup and then fail on every `dash` command with r(7102).
+  older than the versions dash is tested on refused by name with the exact upgrade command for
+  the Python Stata is linked to, so that I never pass setup and then fail on every `dash`
+  command with r(7102).
 - **US-09.5** As the maintainer, I want one declared floor, equal to the baseline the suites run
   under, held in every file by a test, so that the help, the package and the check cannot drift
   apart again.
@@ -372,19 +409,23 @@ floor is 3.8.**
   under 3 s) whatever `timeout()` says.
 - **BR-09.2** When the app stops with any status other than 0 before or after answering
   `/health`, `dash serve` returns r(198) and its message names the status
-  (`… the app exited with status S`) and carries the app's last error lines.
+  (`… the app exited with status S`) and carries the app's last error lines — at most 20,
+  printable characters only, the whole message at most 4 KB.
 - **BR-09.3** When the app comes up, one line naming the address is printed after `/health`
-  has answered and not before; the command then blocks until Ctrl+C or `timeout()` and returns
-  0, as today (HC4-19, `test_help_claims_1/4/5`).
+  has answered and not before; the app's own stdout lines reach the Results window before it,
+  printable characters only, at most 500 characters a line and at most 200 lines, after which
+  one line says further output is not shown; the command then blocks until Ctrl+C or
+  `timeout()` and returns 0, as today (HC4-19, `test_help_claims_1/4/5`).
 - **BR-09.4** `--port` below 1024, above 65535, or not written in ASCII digits is refused with a
   message naming 1024 and 65535 — by `dash_render.py`'s own command line (exit status 2,
   nothing written), by `main()` (raises, nothing written), by a `build_options` port (raises,
   nothing written) and by the generated app (exit status 2, nothing bound).
 - **BR-09.5** `dash_setup` declares Python 3.13, bokeh 3.8, numpy 2.3 and pandas 2.3; a version
   below any of them is reported `(below minimum X)`, counted `(needs X)`, ends the run with
-  r(198) and installs nothing; the same four numbers appear in `dash_setup.sthlp`, `dash.sthlp`,
-  `dash.pkg`, `dash.ado`'s message and CHANGELOG's `### Requirements`, and equal
-  `test/conftest.py`'s `stata` baseline.
+  r(198) and installs nothing, and the line `To upgrade: <c(python_exec)> -m pip install
+  '<pkg>>=X'` names the interpreter Stata is linked to (Q27); the same four numbers appear in
+  `dash_setup.sthlp`, `dash.sthlp`, `dash.pkg`, `dash.ado`'s message and CHANGELOG's
+  `### Requirements`, and equal `test/conftest.py`'s `stata` baseline.
 - **BR-09.6** The generated server app's first statement after its docstring is `from
   __future__ import annotations`.
 - **BR-09.7** Nothing else changes: the rate limiters, CSP and headers, the session flags, the
@@ -402,12 +443,13 @@ floor is 3.8.**
   applied in `main()` (`port=_dash_port_value(port)` at 27603); applied in
   `ServerAppBuilder.build` (24950-24955: `if bo.get("port"): port =
   _dash_port_value(bo["port"])`, replacing the silent `except`); applied in the launcher
-  (TR-09.2); and copied into the app through the function copy list (24466-24687), where the
-  template's `_dash_arg_parser` says `type=_dash_port_value` (25614) and `__main__` replaces
-  the clamp at 27371 with `try: _port = _dash_port_value(_a.port) except
-  _argparse.ArgumentTypeError as _e: _p.error(str(_e))` (`_p = _dash_arg_parser(); _a =
-  _p.parse_args()`), which covers an embedded non-string default the parser never sees.
-  Local `argparse` import because the app binds the module as `_argparse` (risk factor 7).
+  (TR-09.2); and copied into the app through the function copy list (24466-24687, appended at
+  the END of the tuple, C6), where the template's `_dash_arg_parser` says
+  `type=_dash_port_value` (25614) and `__main__` replaces the clamp at 27371 with `try: _port =
+  _dash_port_value(_a.port) except _argparse.ArgumentTypeError as _e: _p.error(str(_e))`
+  (`_p = _dash_arg_parser(); _a = _p.parse_args()`), which covers an embedded non-string
+  default the parser never sees. Local `argparse` import because the app binds the module as
+  `_argparse` (risk factor 7).
 - **TR-09.2 `_dash_launch_app(app_path, port, timeout, no_browser, *, ready_seconds=30.0,
   prebind=True)`**, module-level in `dash_render.py` between `main()` and the `__main__` block,
   replacing the inline launch code at 27670-27715 (`__main__` then calls it). Behaviour:
@@ -421,30 +463,37 @@ floor is 3.8.**
      `proc = subprocess.Popen(_cmd, stdout=PIPE, stderr=PIPE, text=True, errors="replace")`
      looked up as `subprocess.Popen` at call time (tests monkeypatch it). `FileNotFoundError`
      → `RuntimeError("no server started on port N: could not launch the dashboard app (…)")`.
-  4. Two daemon threads (`_pump(stream, sink)`), one per pipe, `readline()` into
-     `queue.Queue` (stdout) and `collections.deque(maxlen=50)` plus the same queue tagged
-     (stderr). **Threads only store; nothing prints off the main thread** (risk factor 3).
-  5. Main loop until `proc.poll()` is not `None`: drain the stdout queue and `print` each
-     line (`end=""`, `flush=True`) so the app's own messages (its URL, the
-     `BOKEH_ALLOW_WS_ORIGIN` warnings, `Server stopped.`) reach the Results window; every
-     0.25 s while not yet ready and `time.monotonic() < t0 + ready_seconds`, `GET
-     http://127.0.0.1:<port>/health` with `urllib.request.urlopen(timeout=1.0)`; an HTTP
-     response of any status (200, or 429 from the limiter) means ready — then print once
-     `dash: the server answers at http://localhost:<port>/ (health check
-     http://localhost:<port>/health); press Ctrl+C to stop.`; a connection error means not
-     yet. Past `ready_seconds` with the child alive, print once `dash: no answer from
-     http://127.0.0.1:<port>/health after <n> s; still waiting for the app (Ctrl+C stops
-     it).` and keep waiting — the exit status decides. `time.sleep(0.25)` between turns.
+  4. Two daemon threads (`_pump(stream, sink)`), one per pipe, each `readline()` into ONE
+     structure of its own (feasibility #44): stdout into a `queue.Queue`, stderr into a
+     `collections.deque(maxlen=20)`; nothing is tagged into the other's structure. **Threads
+     only store; nothing prints off the main thread** (risk factor 3).
+  5. Main loop until `proc.poll()` is not `None`: drain the stdout queue and forward each line
+     to the Results window under the F-14 bound — every character that is not
+     `c.isprintable() or c == "\n"` removed, the line cut to 500 characters, at most 200 lines
+     forwarded in the child's lifetime, after which one line `dash: (further app output not
+     shown)` is printed once and later lines are dropped (still drained) — with `print(line,
+     end="", flush=True)`, so the app's own messages (its URL, the `BOKEH_ALLOW_WS_ORIGIN`
+     warnings, `Server stopped.`) reach the Results window; every 0.25 s while not yet ready
+     and `time.monotonic() < t0 + ready_seconds`, `GET http://127.0.0.1:<port>/health` with
+     `urllib.request.urlopen(timeout=1.0)`; an HTTP response of any status (200, or 429 from
+     the limiter) means ready — then print once `dash: the server answers at
+     http://localhost:<port>/ (health check http://localhost:<port>/health); press Ctrl+C to
+     stop.`; a connection error means not yet. Past `ready_seconds` with the child alive,
+     print once `dash: no answer from http://127.0.0.1:<port>/health after <n> s; still
+     waiting for the app (Ctrl+C stops it).` and keep waiting — the exit status decides.
+     `time.sleep(0.25)` between turns.
   6. `KeyboardInterrupt` in the loop → `proc.terminate()`, `stopped_by_launcher = True`.
   7. Always finish with `proc.wait()` (so "the launcher waits on the app" stays literally
-     true for `_FakeProc.waited`), join the pumps (1 s), drain and print the remaining stdout.
+     true for `_FakeProc.waited`), join the pumps (1 s), drain and forward the remaining stdout
+     under the same bound.
   8. Verdict: clean when `stopped_by_launcher`, or `returncode in (0, -signal.SIGINT,
      -signal.SIGTERM)`. Otherwise build the message: if any of `"Address already in use"`,
-     `"EADDRINUSE"`, `"already in use"` is in the stderr tail → `"no server started on port
+     `"EADDRINUSE"`, `"already in use"` is in the stderr deque → `"no server started on port
      N: the port is in use"`; else `"no server started on port N: the app exited with status
-     S"`; append `"\n"` + the last 5 stderr lines with control characters other than `\n`
-     removed (`c.isprintable() or c == "\n"`), whole message cut to 2000 characters; `raise
-     RuntimeError(message)`. Print nothing else on failure: the caller prints.
+     S"`; append `"\n"` + the deque's lines (the last 20 of stderr) with every character that
+     is not `c.isprintable() or c == "\n"` removed, the whole message cut to 4096 characters
+     (4 KB, D10); `raise RuntimeError(message)`. Print nothing else on failure: the caller
+     prints.
 - **TR-09.3 `__main__` (27670-27715 →)**: `_report = globals().get("_dash_launch_report")`;
   `try: _dash_launch_app(args.output, args.port, args.timeout, args.no_browser) except
   RuntimeError as _exc: if _report is None: print("dash_render: error -- " + str(_exc),
@@ -456,7 +505,7 @@ floor is 3.8.**
   init_globals={"_dash_launch_report": _dash_srv_rep}, run_name="__main__")` (keep the
   assignment: `test_render_log_clean.cscript` holds that `run_path`'s dict is never echoed);
   then `python: from sfi import Macro as _dash_M` and `python: _dash_M.setLocal("_srv_err",
-  str(_dash_srv_rep.get("error", ""))[:2000])`; then
+  str(_dash_srv_rep.get("error", ""))[:4096])`; then
 
   ```stata
       if `: length local _srv_err' {
@@ -468,33 +517,46 @@ floor is 3.8.**
   `_py_render` is already in `test_cscript_hygiene.py`'s `_ALLOWED_INLINE_PY_MACROS`; the new
   lines put no macro inside a Python string. The "starting Bokeh Server on port" line
   (7421-7422) stays: it announces an attempt, not a result.
-- **TR-09.5 K2 floors in `dash_setup.ado`**: `_dash_pymin` returns `"3.13"` (295); 146-150
-  become `local min_bokeh "3.8"`, `local min_numpy "2.3"`, `local min_pandas "2.3"` with a
-  comment naming the source (the `stata` baseline of `test/conftest.py`, measured 25sep2026:
-  Python 3.13.9, bokeh 3.8.0, numpy 2.3.5, pandas 2.3.3; bokeh 3.6 introduced
-  `CustomJSTicker`, which every render imports; pandas is declared by dash because bokeh 3.9
-  no longer requires it); line 60 reads `"Please install Python `c_pymin' or later and link it
-  to Stata:"` (`c_pymin` is set at 45); the comment at 73 loses its number. Every message
-  keeps its shape (`(below minimum X)`, `(needs X)`, `(not verified against X)`, `To upgrade:
-  python -m pip install --upgrade 'pkg>=X'`) so only the numbers in the tests change.
+- **TR-09.5 K2 floors and the pip line in `dash_setup.ado`**: `_dash_pymin` returns `"3.13"`
+  (295); 146-150 become `local min_bokeh "3.8"`, `local min_numpy "2.3"`, `local min_pandas
+  "2.3"` with a comment naming the source (the `stata` baseline of `test/conftest.py`,
+  measured 25sep2026: Python 3.13.9, bokeh 3.8.0, numpy 2.3.5, pandas 2.3.3; bokeh 3.6
+  introduced `CustomJSTicker`, which every render imports; pandas is declared by dash because
+  bokeh 3.9 no longer requires it); line 60 reads `"Please install Python `c_pymin' or later
+  and link it to Stata:"` (`c_pymin` is set at 45); the comment at 73 loses its number. Q27:
+  a new rclass subprogram `_dash_pip_command` beside `_dash_pyver_ok` (298), `args pkg
+  minver`, returning `r(cmd)` = the text `` `c(python_exec)' -m pip install '`pkg'>=`minver'' ``
+  (the interpreter Stata is linked to, read from `c(python_exec)` at run time; it is never
+  empty in the package loop, because line 58 has already ended the run with r(198) when Python
+  is not linked); the `below` branch (222-224) prints `      To upgrade: `r(cmd)'` in place of
+  `python -m pip install --upgrade '…'`, keeps counting the package as unmet (225-231) and
+  installs nothing; the `(below minimum X)`, `(needs X)` and `(not verified against X)` shapes
+  are unchanged, so only numbers and the one upgrade line change in the tests.
 - **TR-09.6 `dash.ado:205-207`**: `"Python 3.13+: {help python}"`.
 - **TR-09.7 `dash.pkg:17`**: `d Requires: Python 3.13+, bokeh>=3.8, numpy>=2.3, pandas>=2.3.`
 - **TR-09.8 help and CHANGELOG** — `dash_setup.sthlp` 40-42, 70, 80-82, 97-98 (`"bokeh>=3.8",
-  "numpy>=2.3", "pandas>=2.3"`), 110-113 (`one below 3.8 …`), plus one new `{pstd}` under
-  `{ul:Python packages (minimum versions)}`: "These minimums are the versions {cmd:dash}'s
-  own test suites run under (Python 3.13.9, bokeh 3.8.0, numpy 2.3.5, pandas 2.3.3 when this
-  was written); nothing older is tested. bokeh before 3.6 lacks {cmd:CustomJSTicker}, which
-  every {cmd:dash} render imports, and {cmd:pandas} is required by {cmd:dash} itself: bokeh
-  3.9 no longer installs it." Keep verbatim the sentences `test_help_claims_8.py` asserts
-  (K2.6). `dash.sthlp` 3131-3134 (`{ul:Python 3.13+}`; `bokeh>=3.8, numpy>=2.3, pandas>=2.3`);
+  "numpy>=2.3", "pandas>=2.3"` in the manual line, which also says the command `dash_setup`
+  prints names the Python Stata is linked to), 110-113 (`one below 3.8 …`), plus one new
+  `{pstd}` under `{ul:Python packages (minimum versions)}`: "These minimums are the versions
+  {cmd:dash}'s own test suites run under (Python 3.13.9, bokeh 3.8.0, numpy 2.3.5, pandas
+  2.3.3 when this was written); nothing older is tested. bokeh before 3.6 lacks
+  {cmd:CustomJSTicker}, which every {cmd:dash} render imports, and {cmd:pandas} is required by
+  {cmd:dash} itself: bokeh 3.9 no longer installs it. A package below its minimum is not
+  upgraded for you; {cmd:dash_setup} prints the {cmd:pip} command for the Python Stata is
+  linked to and stops." Keep verbatim the sentences `test_help_claims_8.py` asserts (K2.6).
+  `dash.sthlp` 3131-3134 (`{ul:Python 3.13+}`; `bokeh>=3.8, numpy>=2.3, pandas>=2.3`);
   727-729 port(): add "; a port another program holds is refused with r(198) and named";
   1353-1357: add "{cmd:dash serve} prints the server's address once it answers
   {cmd:/health}. If no server starts -- the port is in use, or the app stops before it
   answers -- {cmd:dash serve} says why and returns r(198) instead of blocking."; 1367-1374:
   add "{cmd:--port} outside 1024 to 65535 is refused (exit status 2), not moved to the
-  nearest port." CHANGELOG `### Requirements` (330-334) rewritten for the new floor with the
-  old numbers and the reason, and two lines (F1, K2) under a `### Fixed in WP-28` heading
-  placed immediately before `### Fixed after WP-27` (338), created if absent.
+  nearest port." CHANGELOG (D2, amendment A): the F1 line replaces, in place, the marker
+  `<!-- WP-28 F1 -->` under the heading `### Fixed in WP-28` that S01 creates directly above
+  `### Fixed after WP-27 (the S3 batch, 24sep2026)` (:338) and ends `(WP-28, F1)`; the K2 line
+  replaces, in place, the marker `<!-- WP-28 K2 -->` that S01 put at the end of the release's
+  `### Requirements` list (330-334) and ends `(WP-28, K2)`, and K2 rewrites the three floor
+  lines above it (the release's requirement lines) to the new floor with the old numbers and
+  the reason (S19 checks them); nothing else is added anywhere in CHANGELOG.md.
 - **TR-09.9 the app's future import**: insert `"from __future__ import annotations",` and
   `""` between template lines 25204 (`'"""'`) and 25206 (`"import argparse as _argparse"`),
   so it is the first statement after the docstring; keep `from typing import …` (25222): the
@@ -505,15 +567,24 @@ floor is 3.8.**
   `returncode = 0`, `stdout = io.StringIO()`, `stderr = io.StringIO()`, `poll()` →
   `returncode`, `wait()` sets `waited` and returns `returncode`, `terminate()` no-op,
   `communicate()` → `("", "")`; `_launch` binds a free port instead of 5123.
-- **TR-09.11 new tests**: `test/test_serve_launcher.py`, `test/test_version_floor.py`,
-  `test/test_serve_port_in_use.cscript` (registered in `test/run_all_cscripts.do`; SPU-01
-  added to `program_coverage_map.py`'s `_dash_serve` references).
+- **TR-09.11 new tests and certification cases (D11)**: `test/test_serve_launcher.py` and
+  `test/test_version_floor.py` (new files); SPU-01..SPU-03 appended to
+  `test/test_serve_launch.cscript` after SRV-20 (its stub-renderer style, its `c(python_exec)`
+  gate, its `_srv_try`/`cert_log_has` reading), with `"test_serve_launch.cscript:SPU-01"` added
+  to `test/program_coverage_map.py`'s `_dash_serve` tuple (~251); HON-29 and HON-30 appended to
+  `test/test_setup_honesty.cscript` after HON-28; the floor comparator cases and the
+  pip-command case appended to `test/test_setup_python_gate.cscript` (no Python gate is added
+  to it, amendment H), with `"_dash_pip_command": ("test_setup_python_gate.cscript",)` in
+  `test/program_coverage_map.py` (the form its 262-265 use for that script). No new script, no
+  runner block, no hygiene-pin change.
 - **TR-09.12 `test/function_test_map.py`** gains `_dash_port_value`, `_dash_launch_app` and
   `_dash_launch_app.<locals>._pump` (and any other nested def), each naming a test in
   `test_serve_launcher.py`; the app's copy of `_dash_port_value` shares the original's entry.
 - **TR-09.13** No `shell=True`, no user text in `exec`/`eval`; the child's stderr reaches
-  Stata only through `_dash_say`, which neutralises SMCL, and with control characters removed
-  (TR-09.2 step 8).
+  Stata only through `_dash_say`, which neutralises SMCL, with control characters removed and
+  bounded to 20 lines and 4 KB (TR-09.2 step 8); its stdout reaches the Results window only
+  through the main thread's `print` under the bound of step 5 (F-14); the pip command is built
+  from `c(python_exec)` and two fixed words, never from user text.
 
 ## Boundaries
 
@@ -528,25 +599,50 @@ floor is 3.8.**
   self-serving launcher only.
 - The `__main__` block of the generated app keeps printing its own URL line; the launcher
   forwards it. No wording of the app's messages changes except the port refusal.
+- `dash_setup` installs nothing for a package below its minimum (Q27; it never did — AC-06.2
+  chose reporting); the missing-package branch (183-196) is not changed.
+- No certification script is created and neither `test/run_all_cscripts.do` nor the hygiene
+  pins are edited (D11); no `SKIP … Python` line is added to `test_setup_python_gate.cscript`
+  (amendment H: the `len(names)` pin counts it as a script that never skips).
 - `GAPS2.md` Tracked lines and ROADMAP WP-28 are sections 01 and 19; this section does not
   edit them.
 - Nothing in DISCOVERY is contradicted: Q12 (refuse, poll 30 s, print once answered, refuse
-  the range) and Q8 (tested versions only) are implemented as written.
+  the range), Q8 (tested versions only) and Q27 (refuse below the floor; print the command;
+  install nothing) are implemented as written.
 
 ## Stata truth
 
 None. No fixture is written. The floor is read from `test/conftest.py` `_BASELINES["stata"]`
-(measured 25sep2026 from `~/.stata19/console/stata19.rc`), not from a probe. The cscript
-measures rc and message in the run.
+(measured 25sep2026 from `~/.stata19/console/stata19.rc`), not from a probe. The certification
+cases measure rc and message in the run.
 
-Stata is run only as `cd <dir> && STATATMP=<dir>/tmp/ arch -arm64 /usr/local/bin/stata-mp -b do
-<file>.do` from a scratch directory (CLAUDE.md rule 10; trailing slash; `STATATMP` apart from
-the log's directory), at most three sessions at once, and `display c(python_exec)` is checked
-before trusting a skip.
+Stata is run only through the slot wrapper (D6, `index.md` step 0), which implements CLAUDE.md
+rule 10 — `cd <dir> && STATATMP=<dir>/tmp/ arch -arm64 /usr/local/bin/stata-mp -b do <file>`
+under one of three `mkdir` slots, never the GUI. A cscript cannot be handed to the wrapper
+directly (`run_all_cscripts.do` does `cd "<repo>/test"` first; every cscript declares
+`adodir ".."` and loads `cert_helpers.do`, `../dash_parse.mata` and `../dash.ado` by relative
+path), so each single-script run goes through a two-line driver in the scratch directory
+(amendment B):
+
+```
+printf 'cd "%s/test"\ndo "%s/test/%s"\n' "<repo>" "<repo>" "<script>.cscript" > <scratch>/run_<script>.do
+scripts/stata_slot.sh <scratch> <scratch>/run_<script>.do
+```
+
+where `<scratch>` is this section's scratch directory (say `/tmp/dash-s09`) and `<repo>` the
+root of the tree under test — this section's worktree; the main checkout is
+`/Users/billy/Desktop/Programs/StataPrograms/d/dash`. The batch log is
+`<scratch>/run_<script>.log`, `STATATMP` is `<scratch>/tmp/`, and nothing is written into the
+worktree. The one `dash_setup` run of 09-11 is its own two-line do-file, `<scratch>/run_dash_setup.do`
+(`cd "<repo>"` so `dash_setup` is found on the adopath, then `dash_setup`), run the same way.
+At most three Stata sessions run at once across all batch-1 agents (the slots enforce it); the
+scripts here run one at a time (HC4 takes about two minutes, HC4-19 about a minute of it), and
+`display c(python_exec)` is checked in a log before a skip is trusted.
 
 ## TDD test stubs
 
-Regression tests that fail at `91d97be` come first.
+Regression tests that fail at `91d97be` come first. F1's are written in 09-01..09-02, K2's in
+09-08..09-09 (after the F1 commit, against a tree unmodified at every K2 site).
 
 **`test/test_serve_launcher.py` (new, 09-01)**
 - Test: a listening socket on `127.0.0.1:P` makes the real launcher raise —
@@ -563,6 +659,15 @@ Regression tests that fail at `91d97be` come first.
   `…::TestTheLauncherReportsTheExitStatus::test_a_non_zero_exit_names_the_status_and_carries_stderr`:
   message starts `no server started on port P: the app exited with status 3` and contains
   `boom`.
+- Test: the stderr tail is bounded — `…::TestTheLauncherReportsTheExitStatus::test_the_stderr_tail_is_the_last_twenty_lines_and_under_4_kb`:
+  a stub writing 60 numbered lines of 300 characters (some holding `\x1b` and `\x07`) to
+  stderr and exiting 2: the message holds line 60 and not line 40, no control character, and
+  `len(message) <= 4096` (D10, F-14).
+- Test: the stdout forwarding is bounded — `…::TestTheLauncherForwardsBoundedStdout::test_lines_are_filtered_cut_and_capped`:
+  a stub printing 300 lines, the first 700 characters long with a `\x1b` in it, then exiting
+  0 without answering: `capsys` shows the first line cut to 500 printable characters, exactly
+  200 forwarded lines, then one `dash: (further app output not shown)` line and nothing after
+  it (F-14).
 - Test: a stub app that answers `/health` and then exits 0 —
   `…::TestTheLauncherPrintsTheUrlOnceHealthAnswers::test_the_ready_line_follows_the_first_health_answer`:
   the stub (`http.server`, `127.0.0.1:P`, answers `/health` 200 then exits 0 within 2 s of
@@ -588,7 +693,7 @@ Regression tests that fail at `91d97be` come first.
   (`"1024"`, `65535`, `" 5006 "` accepted; `"80"`, `"70000"`, `"٥٠٠٦"`, `"5_006"`, `""`,
   `"5006x"` raise `argparse.ArgumentTypeError`). Pre-fix: `AttributeError`.
 
-**`test/test_version_floor.py` (new, 09-01)**
+**`test/test_version_floor.py` (new, 09-08)**
 - Test: `test_version_floor.py::TestTheFloorIsTheTestedBaseline::test_dash_setup_declares_the_stata_baseline`:
   regex-read `return local pymin "X"` and `local min_bokeh|numpy|pandas "X"` from
   `dash_setup.ado`; equal to `conftest._BASELINES["stata"]` for python, bokeh, numpy, pandas.
@@ -604,6 +709,10 @@ Regression tests that fail at `91d97be` come first.
   none of `dash.pkg`, `dash.sthlp`, `dash_setup.sthlp`, the code lines of `dash.ado` and
   `dash_setup.ado` contains `Python 3.8`, `bokeh>=3.0`, `3.0 or later`, `1.23`, `2.0 or
   later`.
+- Test: `…::TestTheFloorIsTheTestedBaseline::test_the_upgrade_line_names_the_linked_interpreter`:
+  the text of `dash_setup.ado`'s `below` branch prints `_dash_pip_command`'s result and that
+  program's `return local cmd` line holds `c(python_exec)`, `-m pip install` and `>=` and no
+  bare `python -m pip` (Q27). Pre-fix: `_dash_pip_command` absent.
 - Test: `…::TestTheGeneratedAppEvaluatesNoAnnotationAtImport::test_the_future_import_is_the_first_statement`:
   build an app, `ast.parse`; `tree.body[0]` is the docstring `Expr`, `tree.body[1]` is
   `ImportFrom(module="__future__")` naming `annotations`. Pre-fix failure: `body[1]` is
@@ -615,35 +724,52 @@ Regression tests that fail at `91d97be` come first.
   as the control that the walker sees annotations, assert the walk visited more than 20
   annotations (55 at `91d97be`).
 
-**`test/test_serve_port_in_use.cscript` (new, 09-01; registered 09-02)**
+**`test/test_serve_launch.cscript` SPU-01..SPU-03 (appended after SRV-20; 09-02)**
 - Test: SPU-01 — a socket bound and listening on `127.0.0.1:P` from Stata's Python; one graph
   registered; log captured; `capture noisily dash serve, port(P) timeout(1) nobrowser`:
   `_rc == 198`, the log holds `no server started on port P` and `the port is in use`, holds
   no `Traceback` and no `Server running at`, and the elapsed time (`timer 92`) is under 40 s.
   Pre-fix: `_rc == 0` after about 2 s.
-- Test: SPU-02 — a stub `dash_render.py` first on the ado-path (SRV-17's pattern) that only
-  writes `globals().get("_dash_launch_report")["error"]` when the dict is present: `dash
-  serve, timeout(1) nobrowser` gives `_rc == 198` and the log holds the stub's text
+- Test: SPU-02 — a stub `dash_render.py` first on the ado-path (SRV-17's pattern, 249-265)
+  that only writes `globals().get("_dash_launch_report")["error"]` when the dict is present:
+  `dash serve, timeout(1) nobrowser` gives `_rc == 198` and the log holds the stub's text
   (`the app exited with status 3` and `stub: boom`). Pre-fix: `_rc == 0`.
 - Test: SPU-03 — the same stub told to write nothing: `_rc == 0` (the control: SPU-02's rc
   comes from the box, not from the stub itself).
 
+**`test/test_setup_honesty.cscript` HON-29, HON-30 and `test/test_setup_python_gate.cscript` (09-09)**
+- Test: HON-29 — sandbox `{"fake": [["bokeh", "3.7.3"]]}` through `_hon_sb_setup` with
+  `$HON_SB_EXPECT "[]"` → r(198), `3.7.3 (below minimum 3.8)`, the line `To upgrade: ` followed
+  by `c(python_exec)`'s value and ` -m pip install 'bokeh>=3.8'` (the needle is built in the
+  script from `c(python_exec)`), `Unmet:  bokeh 3.7.3 (needs 3.8)`, no `All dependencies are
+  satisfied`, no pip call. Pre-fix: 3.7.3 passes the 3.0 floor and the run says all
+  dependencies are satisfied.
+- Test: HON-30 — `{"pyversion": "3.12.11 (dash test sandbox)"}` → r(198), `version 3.12.11
+  is below the minimum 3.13.`, `Unmet:  Python 3.12.11 (needs 3.13)`, nothing installed.
+  Pre-fix: 3.12.11 passes the 3.8 floor.
+- Test: `test_setup_python_gate.cscript` floor cases through `_chk`, direct and through
+  `_gate16`: `3.13.9 >= 3.13` → 1, `3.13 >= 3.13` → 1, `3.12.11 < 3.13` → 0, `3.10.10 <
+  3.13` → 0 (comparator cases: they pass before and after and pin the floor's shape); and the
+  Q27 case: `_dash_pip_command "bokeh" "3.8"` → `r(cmd)` equals the string `c(python_exec)`
+  followed by ` -m pip install 'bokeh>=3.8'` (both sides built in the same session, so the
+  check holds whether or not Python is linked, and `_chk "the upgrade command names
+  c(python_exec)"` also asserts `strpos(r(cmd), " -m pip install 'bokeh>=3.8'") > 1` when
+  `c(python_exec)` is non-empty). Pre-fix: `_dash_pip_command` is an unknown command (r(199))
+  and the script stops there. No Python gate is added (amendment H).
+
 **Flips (same commit as the fix)**
 - `test_render_cli_port.py::TestPortReachesTheGeneratedApp::test_an_out_of_range_port_is_clamped_not_embedded_raw`
   → `…_is_refused_not_embedded`; `…_in_build_options_is_clamped_too` →
-  `…_in_build_options_is_refused_too` (09-04).
+  `…_in_build_options_is_refused_too` (09-05).
 - `test_resource_limits.py::TestTheBoundsThatAlreadyWorkedAreKept::test_the_port_is_clamped_in_every_place_it_is_read`
-  → `…_is_refused_in_every_place_it_is_read` (09-04).
-- `test_adversarial_matrix.py` lines 860 and 878 → the new node id (09-04).
+  → `…_is_refused_in_every_place_it_is_read` (09-05).
+- `test_adversarial_matrix.py` lines 860 and 878 → the new node id (09-05).
 - `test_help_claims_2.py::_FakeProc` (09-03).
-- `test_setup_python_gate.cscript` (floor cases added: `3.13.9 >= 3.13` → 1, `3.13 >= 3.13`
-  → 1, `3.12.11 < 3.13` → 0, `3.10.10 < 3.13` → 0, and the same four through `_gate16`;
-  header numbers), `test_setup_honesty.cscript` HON-20/21/22/26/27 plus new HON-29 (sandbox
-  `{"fake": [["bokeh", "3.7.3"]]}` → r(198), `3.7.3 (below minimum 3.8)`, `--upgrade
-  'bokeh>=3.8'`, `Unmet:  bokeh 3.7.3 (needs 3.8)`, no pip call) and HON-30 (`{"pyversion":
-  "3.12.11 (dash test sandbox)"}` → r(198), `version 3.12.11 is below the minimum 3.13.`,
-  `Unmet:  Python 3.12.11 (needs 3.13)`), `test_program_coverage.cscript` PC-16..21 numbers
-  (09-09); `test_help_claims_8.cscript:786` and `test_help_claims_8.py:1647-1660` (09-10).
+- `test_setup_python_gate.cscript` header numbers (11-15), `test_setup_honesty.cscript`
+  HON-20/21/22/26/27 and its header (HON-20's upgrade needle → the Q27 form),
+  `test_program_coverage.cscript` PC-16..21 numbers (PC-21's "To upgrade:" needle → the Q27
+  form) (09-12); `test_help_claims_8.cscript:786` (09-13) and `test_help_claims_8.py:1647-1660`
+  (09-14, in the same task as the help sentence it asserts).
 
 **Mutation table — proof the tests are not vacuous.** Apply, confirm the named test fails,
 revert:
@@ -652,11 +778,14 @@ revert:
 |---|---|
 | in `_dash_launch_app`, drop the returncode verdict (always return) | `TestTheLauncherReportsTheExitStatus::test_a_non_zero_exit_names_the_status_and_carries_stderr`, SPU-02 |
 | print the ready line before the first `/health` answer | `TestTheLauncherPrintsTheUrlOnceHealthAnswers::test_no_answer_no_ready_line` |
+| forward stdout without the 200-line cap or the 500-character cut | `TestTheLauncherForwardsBoundedStdout::test_lines_are_filtered_cut_and_capped` |
+| keep 50 stderr lines or skip the 4096 cut | `TestTheLauncherReportsTheExitStatus::test_the_stderr_tail_is_the_last_twenty_lines_and_under_4_kb` |
 | hold the cscript's socket on `0.0.0.0` instead of `127.0.0.1` (a fixture mutation) | SPU-01 passes for the wrong reason on macOS only if the app bound the wildcard; it binds loopback, so SPU-01 must still fail — this row documents why the address is fixed |
 | in `_dash_serve`, drop the `exit 198` after `_dash_say` | SPU-01, SPU-02 |
 | in `_dash_port_value`, use `int(s)` without the ASCII check | `TestPortRefusals::test_port_value_accepts_the_range_and_refuses_the_rest` (`"٥٠٠٦"`, `"5_006"`) |
 | restore the clamp at any one of the three sites | the matching case of `test_the_port_is_refused_in_every_place_it_is_read` |
 | set `min_bokeh "3.8"` but leave `_dash_pymin "3.8"` | `test_dash_setup_declares_the_stata_baseline` |
+| print `python -m pip install` instead of `c(python_exec)` in `_dash_pip_command` | the python-gate pip-command case, HON-29, `test_the_upgrade_line_names_the_linked_interpreter` |
 | put the future import after `import argparse` | `test_the_future_import_is_the_first_statement` (and the app would raise `SyntaxError` at import) |
 
 ## Test plan
@@ -665,305 +794,188 @@ revert:
 |---|---|---|---|
 | held port → `RuntimeError` text, no child | pytest, real `_dash_launch_app` | none | served only (the launcher) |
 | held port, `prebind=False` → child's errno 48 reported | pytest (`serve` mark), real app | none | served |
-| exit 3 named, stderr tail carried | pytest, stub app | none | served |
+| exit 3 named, stderr tail carried, bounded to 20 lines / 4 KB | pytest, stub app | none | served |
+| stdout forwarded under the 500-character / 200-line bound | pytest, stub app, capsys | none | served |
 | ready line after `/health`, none without | pytest, stub http app, capsys | none | served |
 | box protocol through `runpy` (with/without box) | pytest, fake `Popen` | none | served |
 | `--port 80`/`70000` refused at the CLI, `main()`, `build_options`, the app, the launcher | pytest (new + inverted) | none | served |
-| `dash serve` r(198) + message against a held port; box via stub renderer; control | cscript `test_serve_port_in_use.cscript` | none | Stata |
+| `dash serve` r(198) + message against a held port; box via stub renderer; control | cscript `test_serve_launch.cscript` SPU-01..SPU-03 | none | Stata |
 | real launches still block, answer `/health`, stop on SIGINT/timeout | existing pytest (`test_help_claims_1/4/5`) and HC4-19 | none | served |
 | floor in `dash_setup.ado` equals conftest's `stata` baseline; every file agrees | pytest `test_version_floor.py` | `test/conftest.py` | n/a |
 | future import first; PEP 585/604 annotations deferred | pytest, `ast` on a built app | none | served |
-| `dash_setup` refuses bokeh 3.7.3 and Python 3.12.11 by name, installs nothing | cscript HON-29/30 (sandbox), PC-16/21 flipped | `test/setup_sandbox.py` | Stata |
-| help and CHANGELOG say the floor and the refusal | pytest `test_version_floor.py`, `test_help_claims_8.py` flipped | none | n/a |
+| `dash_setup` refuses bokeh 3.7.3 and Python 3.12.11 by name, prints the `c(python_exec)` pip line, installs nothing | cscript HON-29/30 (sandbox), PC-16/21 flipped, the python-gate pip-command case | `test/setup_sandbox.py` | Stata |
+| help and CHANGELOG say the floor, the refusal and the pip line | pytest `test_version_floor.py`, `test_help_claims_8.py` flipped | none | n/a |
 
 **Acceptance criteria**
-- **AC-09.1** `test/test_serve_launcher.py` and `test/test_version_floor.py` fail at `91d97be`
-  for the reasons recorded in 09-01's commit message and pass after 09-06 / 09-11.
-- **AC-09.2** `test_serve_port_in_use.cscript` SPU-01..03 fail at `91d97be` (SPU-01/02 with
-  `_rc == 0`) and pass after 09-05; `run_all_cscripts.do` runs it; no SKIP.
+- **AC-09.1** `test/test_serve_launcher.py` fails at `91d97be` and `test/test_version_floor.py`
+  at the post-F1 tree for the reasons recorded in `<scratch>/09-01-failure.txt` and
+  `<scratch>/09-08-failure.txt`, and both pass after 09-07 / 09-15.
+- **AC-09.2** SPU-01..SPU-03 fail before 09-06 (SPU-01/02 with `_rc == 0`) and pass after it
+  inside `test_serve_launch.cscript`; HON-29/HON-30 and the python-gate cases fail before 09-11
+  and pass after 09-12; no SKIP in any of those logs.
 - **AC-09.3** The three inverted clamp tests and the two registry lines are renamed, not
   deleted; `grep -c "max(1024, min(" dash_render.py` is 0.
 - **AC-09.4** HC4-19..21, `TestServeBlocksUntilCtrlC`, `TestServingBlocksUntilInterrupted`,
   `TestTheRealHandoffServes`, SRV-17..20 and `test_serve_browser.cscript` pass unchanged.
 - **AC-09.5** `dash_setup` on this machine still ends `dash_setup complete` (the installed
-  versions meet the floor); HON-29 and HON-30 refuse with the texts above.
-- **AC-09.6** The full pytest suite under both interpreters (`make test`, `make test-dev`)
-  and the flipped cscripts pass; BUGS.md holds the two closed entries naming their tests;
-  `test_tracking_documents.py` passes.
+  versions meet the floor); HON-29 and HON-30 refuse with the texts above, HON-29's log
+  holding the `c(python_exec)` pip line and no pip call.
+- **AC-09.6** The full pytest suite is green in the worktree before each of the two commits
+  and the flipped cscripts pass; BUGS.md holds the two closed entries in the D3 form naming
+  their tests; `test_tracking_documents.py` passes.
 
 ## Tasks
 
-Each task is one commit on `s3-bugs`; the F1 group is 09-03..09-06 and the K2 group
-09-07..09-12, so the PRD's one-commit-per-gap form can be produced by squashing each group
-before merge if the maintainer prefers. No AI references in any message. Line numbers are
-those of `91d97be`; once a task inserts lines, later anchors in the same file are given as
-symbols too, and the symbol is authoritative. "The full suite" below means the one whole-suite
-run CLAUDE.md rule 11 allows before a commit (`pytest test/ -q`, never two at once).
+Commit boundary: **two commits, one per gap (D1).** The F1 commit holds 09-01 to 09-07 (the launcher pytest file, the SPU cases and the coverage-map line, `_dash_port_value` at every site with `_FakeProc`, `_dash_launch_app` and `__main__`, the inverted clamp tests, `_dash_serve`'s box, the help, the F1 CHANGELOG line and the closed F1 entry), subject ending `(GAPS2 F1)`; the K2 commit holds 09-08 to 09-15 (the floor pytest file, the HON/python-gate cases, the future import, the floor and the pip line in check, message and package, the flipped cscripts and help-claims tests, the help files, the `### Requirements` rewrite with the K2 line, and the closed K2 entry), subject ending `(GAPS2 K2)`. Each body opens with that gap's saved failure text and carries the `Regression:` / `Flipped:` / `BUGS.md:` lines of S01 TR-01.9; the full pytest suite runs green once in the worktree before each commit (CLAUDE.md rules 4 and 11: two full runs in the session, one per commit, never two at once; every other task runs only the changed files). No task commits a red tree, and no task leaves a test red for a later task: the pytest flipped in 09-14 is flipped in the same task as the help sentence it asserts. Every Stata run goes through `scripts/stata_slot.sh <scratch> <scratch>/<driver>.do`, the two-line driver of "Stata truth" (D6, amendment B). The section executes in its own worktree on the branch `wp28-s09`; each closing task commits there after the worktree's own full run, and the merger lands it on `s3-bugs` with the task's message after `git merge --no-edit main` and the batch's full run (index.md step 1, amendment J). Line numbers are those of `91d97be`; once a task inserts lines, later anchors in the same file are given as symbols too, and the symbol is authoritative. No AI references in any message.
 
 <task type="auto" id="09-01">
-  <name>Write the failing tests for both gaps</name>
-  <files>test/test_serve_launcher.py, test/test_version_floor.py, test/test_serve_port_in_use.cscript</files>
-  <action>
-    Create the three files with every test named in "TDD test stubs", under exactly those
-    names; write tests only, touch no source file. `test_serve_launcher.py`: copy the header
-    pattern of `test/test_render_cli_port.py:17-30` (`_HERE`, `sys.path` inserts, `import
-    dash_render as dr`, `make_data_json`), a `_free_port()` as in `test_help_claims_1.py:565`,
-    a `_held_port()` context manager that binds `127.0.0.1:0` with `SO_REUSEADDR` unset,
-    calls `listen(1)` and yields the port, a `_build_app(tmp_path)` through
-    `dr.ServerAppBuilder(...).build(...)`, and two stub apps written to `tmp_path` (one
-    writes `boom` to stderr and `sys.exit(3)`; one is an `http.server` answering `/health`
-    with 200 JSON then exiting 0 within 2 s of the first request); the box tests replace
-    `subprocess.Popen` with a fake carrying `returncode`, `stdout`/`stderr` `io.StringIO`,
-    `poll`, `wait`, `terminate`, `communicate`. `test_version_floor.py`: read the floor from
-    `dash_setup.ado` with `re.search(r'return local pymin "([^"]+)"')` and
-    `r'local min_(bokeh|numpy|pandas)\s+"([^"]+)"'`, import `_BASELINES` from `conftest`,
-    flatten SMCL as `test_help_claims_8.py::_flat` does, build an app for the `ast` tests.
-    The cscript follows `test/test_e2e_serve.cscript:1-53` (header, `c(python_exec)` guard,
-    a warmed-up and retried `capture python: import bokeh` probe, `do ../dash_parse.mata`,
-    `do ../dash.ado`, `do cert_helpers.do`), holds the socket in a `python:` block
-    (`socket.socket(AF_INET, SOCK_STREAM)`, `bind(("127.0.0.1", 0))`, `listen(1)`, port to
-    `$spu_port` via `sfi.Macro.setGlobal`), times the call with `timer 92`, reads the captured
-    log with `cert_log_has`, closes the socket in every path (`capture noisily {` … `}` then
-    `python: _spu_s.close()`), and builds SPU-02/03's stub exactly as
-    `test_serve_launch.cscript:249-265` does. Run the two pytest files against the
-    unmodified tree and paste the failure summary into the commit message; the cscript is
-    run in 09-02.
-  </action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_serve_launcher.py test/test_version_floor.py -q 2>&1 | tail -30` collects without error and reports 0 passed apart from the pure-comparator `test_port_value…` case, which also fails (`AttributeError`); the floor test fails with `'3.8' != '3.13'`; the future-import test fails naming `Import`. `python3 -m pytest test/test_cscript_hygiene.py -q -k "serve_port_in_use"` passes every rule except `TestEveryCscriptIsWiredIntoTheRunner` (09-02).]]></verify>
-  <done>The two pytest files and the cscript exist, collect cleanly and fail on the unmodified tree for the reasons recorded in the commit message; no source file changed.</done>
+  <name>Write the failing launcher tests</name>
+  <files>test/test_serve_launcher.py</files>
+  <action><![CDATA[
+    Write only tests; touch no source file. Create `test/test_serve_launcher.py` with every test named in "TDD test stubs" under that file, under exactly those names: copy the header pattern of `test/test_render_cli_port.py:17-30` (`_HERE`, `sys.path` inserts, `import dash_render as dr`, `make_data_json`), a `_free_port()` as in `test_help_claims_1.py:565`, a `_held_port()` context manager that binds `127.0.0.1:0` with `SO_REUSEADDR` unset, calls `listen(1)` and yields the port, a `_build_app(tmp_path)` through `dr.ServerAppBuilder(...).build(...)`, and four stub apps written to `tmp_path` (one writes `boom` to stderr and `sys.exit(3)`; one writes 60 numbered 300-character stderr lines holding `\x1b` and `\x07` and exits 2; one prints 300 stdout lines, the first 700 characters long with a `\x1b`, and exits 0; one is an `http.server` answering `/health` with 200 JSON then exiting 0 within 2 s of the first request); the box tests replace `subprocess.Popen` with a fake carrying `returncode`, `stdout`/`stderr` `io.StringIO`, `poll`, `wait`, `terminate`, `communicate`. Run `python3 -m pytest test/test_serve_launcher.py -q` against the unmodified tree. Do not commit: save the failure output to `<scratch>/09-01-failure.txt`; it opens the F1 commit's body (S01 TR-01.9, Q24).
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_serve_launcher.py -q 2>&1 | tail -30` collects without error and reports 0 passed: every launcher test fails with `AttributeError: module 'dash_render' has no attribute '_dash_launch_app'` or `'_dash_port_value'`, and the CLI refusal cases fail because the file is written and no `SystemExit(2)` is raised; `<scratch>/09-01-failure.txt` exists; `git status --short dash_render.py dash.ado` prints nothing.]]></verify>
+  <done>The launcher regression tests existed, collected cleanly and failed against the unmodified tree for the reasons the gap describes, with no product file changed and nothing committed.</done>
 </task>
 
 <task type="auto" id="09-02">
-  <name>Register the cscript and record its failure</name>
-  <files>test/run_all_cscripts.do, test/program_coverage_map.py</files>
+  <name>Write the failing serve certification cases</name>
+  <files>test/test_serve_launch.cscript, test/program_coverage_map.py</files>
   <action><![CDATA[
-    Append a block for `test_serve_port_in_use.cscript` to `test/run_all_cscripts.do`, copied
-    from the `test_serve_launch.cscript` block at 737-760 (numbered after the last script;
-    `[ RUN ]`/`[ PASS]`/`[ FAIL]`/`[ SKIP]` lines, rc 222 as SKIP). Add
-    `"test_serve_port_in_use.cscript:SPU-01"` to the `_dash_serve` tuple in
-    `test/program_coverage_map.py` (~251). Run the cscript alone from a scratch directory:
-    `d=$(mktemp -d) && cd "$d" && cp -R <repo>/test ./test && cd test && STATATMP="$d/tmp/"
-    arch -arm64 /usr/local/bin/stata-mp -b do test_serve_port_in_use.cscript` (the script
-    loads `../dash.ado`, so copy the tree or run from `<repo>/test` with `STATATMP` elsewhere);
-    read the log: SPU-01 must fail on `assert `spu_rc' != 0` after about 2 s and SPU-02 on the
-    same assertion. Check `display c(python_exec)` in the log before believing a skip. Record
-    both failures in the commit message.
+    Append SPU-01..SPU-03 to `test/test_serve_launch.cscript` after SRV-20 and before its closing `display` lines, in the script's own style (its `c(python_exec)` gate at 49 already covers them; `global dash_nobrowser 1` is set; `_srv_try` is defined at 64 and dropped at the end — place the cases before that `capture program drop _srv_try`): SPU-01 holds the socket in a `python:` block (`socket.socket(AF_INET, SOCK_STREAM)`, `bind(("127.0.0.1", 0))`, `listen(1)`, the port to `$spu_port` via `sfi.Macro.setGlobal`), registers one graph, times `capture noisily dash serve, port($spu_port) timeout(1) nobrowser` with `timer 92` inside a captured log, reads the log with `cert_log_has` and closes the socket on every path (`capture noisily {` … `}` then `python: _spu_s.close()`); SPU-02 and SPU-03 build their stub `dash_render.py` exactly as SRV-17's stub is built (249-265), the stub writing `globals().get("_dash_launch_report")["error"] = "no server started on port 5006: the app exited with status 3\nstub: boom"` when the dict is present (SPU-02) or nothing (SPU-03), and restore the real locator afterwards as SRV-19 does. Extend the header's `*! Tests:` line (33) with `SPU-01..SPU-03 (WP-28 F1)`. Add `"test_serve_launch.cscript:SPU-01"` to the `_dash_serve` tuple in `test/program_coverage_map.py` (~251). Run the script against the unmodified tree through the driver of "Stata truth" (`<scratch>/run_test_serve_launch.do`, then `scripts/stata_slot.sh <scratch> <scratch>/run_test_serve_launch.do`); read `<scratch>/run_test_serve_launch.log`: SRV-01..SRV-20 pass, SPU-01 fails on `assert `spu_rc' != 0` after about 2 s (the log holding `display c(python_exec)`'s value, not a skip). Append the failing case's text to `<scratch>/09-01-failure.txt`. Do not commit.
   ]]></action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_cscript_hygiene.py test/test_program_coverage_map.py -q 2>&1 | tail -3` passes; the batch log of the cscript ends with an assertion failure at SPU-01 and `r(9)`, not a SKIP.]]></verify>
-  <done>The cscript is wired into the runner and the coverage map, and its failure on the unmodified tree is recorded.</done>
+  <verify><![CDATA[`grep -c '"SPU-0[1-3] PASS' test/test_serve_launch.cscript` prints 3; `python3 -m pytest test/test_program_coverage_map.py test/test_cscript_hygiene.py -q 2>&1 | tail -3` passes (no new script, no pin changed); the batch log ends with an assertion failure at SPU-01 and `r(9)`, not a SKIP.]]></verify>
+  <done>The three serve certification cases lived in the serve-launch script, the coverage map named SPU-01, and the cases failed against the unmodified tree because a held port let dash serve return 0.</done>
 </task>
 
 <task type="auto" id="09-03">
-  <name>Build the launcher that reads exit status and health</name>
+  <name>Refuse the port range at every site</name>
   <files>dash_render.py, test/function_test_map.py, test/test_help_claims_2.py</files>
   <action><![CDATA[
-    In `dash_render.py`: add `_dash_port_value` (TR-09.1) immediately above `def main(`; make
-    the CLI parser's `--port` (27625-27630) use `type=_dash_port_value`; change `main()`'s
-    build call (27603) to `port=_dash_port_value(port)`; in `ServerAppBuilder.build`
-    (24950-24955) replace the `try/except` with `port = _dash_port_value(bo["port"])` under the
-    existing `if bo.get("port"):`; add `_dash_launch_app` (TR-09.2) between `main()` and the
-    `__main__` block, moving the launch code out of 27670-27715 and dropping the unused `_wb`
-    import; rewrite the `__main__` launch block as TR-09.3; add `"_dash_port_value"` at the
-    END of the function copy tuple (24466-24687) and, in the app template, `type=_dash_port_value`
-    at 25614 and the `__main__` validation of TR-09.1 in place of the clamp at 27371. Add
-    `function_test_map.py` entries for `_dash_port_value`, `_dash_launch_app` and every nested
-    def in it (`_dash_launch_app.<locals>._pump`), naming tests in `test_serve_launcher.py`.
-    Update `_FakeProc` and `_launch` in `test_help_claims_2.py` as TR-09.10. Verify the
-    TIME_WAIT reasoning of F1.5 once: start and stop a real app on a port, then call
-    `_dash_launch_app` on the same port within a second — it must not report the port in use.
+    In `dash_render.py` add `_dash_port_value` (TR-09.1) immediately above `def main(`; make the CLI parser's `--port` (27625-27630) use `type=_dash_port_value`; change `main()`'s build call (27603) to `port=_dash_port_value(port)`; in `ServerAppBuilder.build` (24950-24955) replace the `try/except` with `port = _dash_port_value(bo["port"])` under the existing `if bo.get("port"):`; in the launcher block (27680) replace the clamp with `_dash_port_value(args.port)` (the block itself moves in 09-04); append `"_dash_port_value"` at the END of the function copy tuple (24466-24687; C6, after S07's `"_dash_is_stata_name"` once merged) and, in the app template, write `type=_dash_port_value` at 25614 and the `__main__` validation of TR-09.1 in place of the clamp at 27371. Add the `function_test_map.py` entry for `_dash_port_value` naming `test/test_serve_launcher.py::TestPortRefusals::test_port_value_accepts_the_range_and_refuses_the_rest`. Update `_FakeProc` and `_launch` in `test_help_claims_2.py` as TR-09.10 (the fake accepts the keyword arguments 09-04 will pass and the free port removes the 5123 collision).
   ]]></action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_serve_launcher.py test/test_help_claims_2.py -q -k "Launcher or Report or Refusals or LaunchReportBox" 2>&1 | tail -3` passes; `grep -c "max(1024, min(" dash_render.py` prints 0; `python3 -m pytest test/test_function_test_map.py test/test_statistical_helpers.py test/test_resource_limits.py -q -k "map or CarriesEveryName or DefinesEveryName or clamped" 2>&1 | tail -3` shows only the parametrised clamp test failing (inverted in 09-04).]]></verify>
-  <done>`dash_render._dash_launch_app` raises `RuntimeError` naming the port and the child's status, polls `/health` and prints the address once it answers; every `--port` site refuses through `_dash_port_value`; the served app carries the same helper; the fake process in `test_help_claims_2.py` matches the new `Popen` call.</done>
+  <verify><![CDATA[`python3 -m pytest test/test_serve_launcher.py test/test_help_claims_2.py -q -k "Refusals or LauncherBehind" 2>&1 | tail -3` passes; `grep -c "max(1024, min(" dash_render.py` prints 0; `python3 -m pytest test/test_function_test_map.py test/test_statistical_helpers.py test/test_resource_limits.py -q -k "map or CarriesEveryName or DefinesEveryName or clamped" 2>&1 | tail -3` shows only the parametrised clamp test failing (inverted in 09-05).]]></verify>
+  <done>Every `--port` site refused a value outside 1024-65535 or not in ASCII digits through one copied helper, and the fake process in `test_help_claims_2.py` matched the launcher's coming `Popen` call.</done>
 </task>
 
 <task type="auto" id="09-04">
-  <name>Invert the tests that required the clamp</name>
-  <files>test/test_render_cli_port.py, test/test_resource_limits.py, test/test_adversarial_matrix.py</files>
-  <action>
-    Rename and invert, never delete: in `test_render_cli_port.py` the two tests at 151 and 160
-    become `test_an_out_of_range_port_is_refused_not_embedded` and
-    `test_an_out_of_range_port_in_build_options_is_refused_too`, each asserting
-    `pytest.raises(argparse.ArgumentTypeError)` for 80 and 70000 and that the output file does
-    not exist afterwards; keep `_bound_port` for the in-range tests. In `test_resource_limits.py`
-    the test at 1278 becomes `test_the_port_is_refused_in_every_place_it_is_read`, parametrised
-    over `given in (80, 70000)`: `main()` raises; the app run with `sys.argv = ["app.py",
-    "--port", str(given)]` raises `SystemExit` with `code == 2` and the `_Server` recorder saw
-    nothing; the launcher run through `runpy` with `--port str(given)` raises `SystemExit` code
-    2 and the `_Proc` recorder was never constructed; `capsys.readouterr().err` names `1024`
-    and `65535` for the app and launcher cases. Rewrite each docstring to say why the clamp was
-    wrong (80 served on 1024, silently). In `test_adversarial_matrix.py` replace the node id at
-    860 and 878 with `test/test_render_cli_port.py::TestPortReachesTheGeneratedApp::test_an_out_of_range_port_is_refused_not_embedded`.
-  </action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_render_cli_port.py test/test_resource_limits.py test/test_adversarial_matrix.py -q 2>&1 | tail -3` passes, and `grep -rn "is_clamped_not_embedded\|is_clamped_in_every" test/` prints nothing.]]></verify>
-  <done>The three clamp tests assert refusal at every site and the adversarial registry names the renamed test; no test was deleted.</done>
+  <name>Build the launcher that reads exit status</name>
+  <files>dash_render.py, test/function_test_map.py</files>
+  <action><![CDATA[
+    Add `_dash_launch_app` (TR-09.2, all eight steps, with the F-14 stdout bound and the 20-line / 4096-character stderr tail) between `main()` and the `__main__` block, moving the launch code out of 27670-27715 and dropping the unused `_wb` import; rewrite the `__main__` launch block as TR-09.3. Add `function_test_map.py` entries for `_dash_launch_app` and every nested def in it (`_dash_launch_app.<locals>._pump`), naming tests in `test_serve_launcher.py`. Verify the TIME_WAIT reasoning of F1.5 once: start and stop a real app on a port, then call `_dash_launch_app` on the same port within a second — it must not report the port in use; record the outcome in the F1 commit body.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_serve_launcher.py test/test_help_claims_2.py -q 2>&1 | tail -3` passes (the bounded-stdout and stderr-tail tests included); `python3 -m pytest test/test_function_test_map.py test/test_adversarial_matrix.py -q -k "map or without_a_shell" 2>&1 | tail -3` passes.]]></verify>
+  <done>`dash_render._dash_launch_app` raised `RuntimeError` naming the port and the child's status with a bounded stderr tail, forwarded the app's stdout under a bound, polled `/health` and printed the address once it answered, and the `__main__` block reported through the box when one was given.</done>
 </task>
 
 <task type="auto" id="09-05">
-  <name>Make dash serve report the launcher's failure</name>
-  <files>dash.ado</files>
-  <action>
-    In `_dash_serve` (7349-7439) apply TR-09.4: create `_dash_srv_rep` before the `runpy`
-    line, pass it as `init_globals={"_dash_launch_report": _dash_srv_rep}`, read
-    `_dash_srv_rep.get("error", "")` into the local `_srv_err` through `sfi.Macro.setLocal`,
-    and on a non-empty value print it with `mata: _dash_say("err", "dash serve: ",
-    st_local("_srv_err"), "")` and `exit 198`. Add a comment above the block explaining the
-    box: a `python:` line inside a program takes no compound statement, an exception escaping
-    `run_path` is r(7102) with a traceback, and the dict is the one object the executed
-    module and this program share. Run the new cscript and the three stub-renderer scripts
-    from a scratch directory as in 09-02 (`test_serve_port_in_use.cscript`,
-    `test_serve_launch.cscript`, `test_serve_browser.cscript`, `test_render_log_clean.cscript`;
-    at most three Stata sessions at once, each with its own `STATATMP`).
-  </action>
-  <verify><![CDATA[The batch logs show `SPU-01 PASS`, `SPU-02 PASS`, `SPU-03 PASS` with SPU-01's elapsed time under 40 s, and `test_serve_launch.cscript`, `test_serve_browser.cscript` and `test_render_log_clean.cscript` end in their PASS lines; `python3 -m pytest test/test_cscript_hygiene.py -q 2>&1 | tail -3` passes (no macro inside a Python string on the new lines).]]></verify>
-  <done>`dash serve, port(N)` against a held loopback port returns r(198) with `dash serve: no server started on port N: the port is in use`, and any launcher failure reaches the Results window as one message with no traceback.</done>
+  <name>Invert the tests that required the clamp</name>
+  <files>test/test_render_cli_port.py, test/test_resource_limits.py, test/test_adversarial_matrix.py</files>
+  <action><![CDATA[
+    Rename and invert, never delete: in `test_render_cli_port.py` the two tests at 151 and 160 become `test_an_out_of_range_port_is_refused_not_embedded` and `test_an_out_of_range_port_in_build_options_is_refused_too`, each asserting `pytest.raises(argparse.ArgumentTypeError)` for 80 and 70000 and that the output file does not exist afterwards; keep `_bound_port` for the in-range tests. In `test_resource_limits.py` the test at 1278 becomes `test_the_port_is_refused_in_every_place_it_is_read`, parametrised over `given in (80, 70000)`: `main()` raises; the app run with `sys.argv = ["app.py", "--port", str(given)]` raises `SystemExit` with `code == 2` and the `_Server` recorder saw nothing; the launcher run through `runpy` with `--port str(given)` raises `SystemExit` code 2 and the `_Proc` recorder was never constructed; `capsys.readouterr().err` names `1024` and `65535` for the app and launcher cases. Rewrite each docstring to say why the clamp was wrong (80 served on 1024, silently). In `test_adversarial_matrix.py` replace the node id at 860 and 878 with `test/test_render_cli_port.py::TestPortReachesTheGeneratedApp::test_an_out_of_range_port_is_refused_not_embedded`. Record each as a `Flipped:` line for the F1 commit body.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_render_cli_port.py test/test_resource_limits.py test/test_adversarial_matrix.py -q 2>&1 | tail -3` passes, and `grep -rn "is_clamped_not_embedded\|is_clamped_in_every" test/` prints nothing.]]></verify>
+  <done>The three clamp tests asserted refusal at every site and the adversarial registry named the renamed test; no test was deleted.</done>
 </task>
 
 <task type="auto" id="09-06">
-  <name>Document F1 and close its BUGS.md entry</name>
-  <files>dash.sthlp, CHANGELOG.md, BUGS.md</files>
-  <action>
-    `dash.sthlp`: the port() synopt (727-729), the blocking-behaviour paragraph (1353-1357) and
-    the independent-run paragraph (1367-1374) as TR-09.8. `CHANGELOG.md`: under `### Fixed in
-    WP-28` (create it immediately before `### Fixed after WP-27` at 338 if no other section
-    has yet; keep one heading after merge) add: "`dash serve` returns r(198) and says why when
-    no server started -- the port is in use, or the app stopped before it answered `/health`
-    -- where it returned 0 after the app had died on process stderr; the server's address is
-    printed once `/health` answers; `--port` outside 1024-65535 is refused by `dash_render.py`,
-    `main()`, a `build_options` port and the generated app instead of being moved (80 served
-    on 1024). (WP-28, GAPS2 F1)". `BUGS.md`: append a closed entry, five fields in order:
-    Title "`dash serve' returns rc 0 when no server ran, and an out-of-range --port is clamped
-    instead of refused"; File Names and Line Numbers `dash_render.py` (the --launch block
-    27670-27715 at 91d97be, the clamps at 27371, 27603 and 27680, `_dash_arg_parser`),
-    `dash.ado` (`_dash_serve` 7349-7439); Description quoting GAPS2 F1's measurement (rc 0
-    after 1.7 s with the port held; errno 48 on process stderr; `--port 80` served on 1024);
-    Suggested fix (read the child's exit status and stderr, refuse in dash.ado naming the port,
-    poll /health, refuse the range at every site); Resolution "Fixed 25sep2026 (WP-28)."
-    describing `_dash_launch_app`, `_dash_port_value` and the `_dash_launch_report` box, and
-    naming `test/test_serve_launcher.py::TestTheLauncherRefusesAHeldPort::test_a_socket_on_loopback_makes_the_launcher_raise`,
-    `test/test_serve_launcher.py::TestTheLauncherReportsTheExitStatus::test_a_non_zero_exit_names_the_status_and_carries_stderr`,
-    `test/test_resource_limits.py::TestTheBoundsThatAlreadyWorkedAreKept::test_the_port_is_refused_in_every_place_it_is_read`
-    and `test_serve_port_in_use.cscript` SPU-01 and SPU-02, each of which failed at 91d97be.
-  </action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_tracking_documents.py test/test_help_claims_1.py test/test_help_claims_4.py test/test_help_claims_5.py -q 2>&1 | tail -3` passes (the entry is well formed and names existing tests; the real launches still block and stop); `grep -ci "claude\|anthropic" BUGS.md CHANGELOG.md dash.sthlp` prints 0 for the new text.]]></verify>
-  <done>The help states the refusal and the readiness line, CHANGELOG records F1 under WP-28, and BUGS.md holds F1 closed with its regression tests named.</done>
+  <name>Make dash serve report the launcher's failure</name>
+  <files>dash.ado</files>
+  <action><![CDATA[
+    In `_dash_serve` (7349-7439) apply TR-09.4: create `_dash_srv_rep` before the `runpy` line, pass it as `init_globals={"_dash_launch_report": _dash_srv_rep}`, read `_dash_srv_rep.get("error", "")` cut to 4096 characters into the local `_srv_err` through `sfi.Macro.setLocal`, and on a non-empty value print it with `mata: _dash_say("err", "dash serve: ", st_local("_srv_err"), "")` and `exit 198`. Add a comment above the block explaining the box: a `python:` line inside a program takes no compound statement, an exception escaping `run_path` is r(7102) with a traceback, and the dict is the one object the executed module and this program share. Run, one at a time through their drivers, `test_serve_launch.cscript` (SPU-01..SPU-03 and SRV-01..SRV-20), `test_serve_browser.cscript` and `test_render_log_clean.cscript`.
+  ]]></action>
+  <verify><![CDATA[`<scratch>/run_test_serve_launch.log` shows `SPU-01 PASS`, `SPU-02 PASS`, `SPU-03 PASS` with SPU-01's elapsed time under 40 s and every SRV case passing; `<scratch>/run_test_serve_browser.log` and `<scratch>/run_test_render_log_clean.log` end in their PASS lines; `python3 -m pytest test/test_cscript_hygiene.py -q 2>&1 | tail -3` passes (no macro inside a Python string on the new lines).]]></verify>
+  <done>`dash serve, port(N)` against a held loopback port returned r(198) with `dash serve: no server started on port N: the port is in use`, and any launcher failure reached the Results window as one bounded message with no traceback.</done>
 </task>
 
 <task type="auto" id="09-07">
-  <name>Defer the generated app's annotations</name>
-  <files>dash_render.py</files>
-  <action>
-    Apply TR-09.9: insert `"from __future__ import annotations",` and `""` between the
-    template's closing docstring line (25204, `'"""'`) and `"import argparse as _argparse"`
-    (25206; find them by text — 09-03 moved lines below 27000 but not here). Reword the
-    comment at 25216-25221: the `typing` import stays because the annotations name `Any`,
-    `Callable`, `Iterable` and `List` and the served-app name checks read them, not because
-    Python evaluates them. Build an app and import it under the development interpreter to
-    show the future statement is accepted in that position.
-  </action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_version_floor.py -q -k "Annotation" 2>&1 | tail -3` passes both annotation tests; `python3 -m pytest test/test_server.py test/test_resource_limits.py -q -k "DefinesEveryName or source or health" 2>&1 | tail -3` passes.]]></verify>
-  <done>Every generated server app opens with `from __future__ import annotations` as its first statement after the docstring.</done>
+  <name>Document F1 and close its BUGS.md entry</name>
+  <files>dash.sthlp, CHANGELOG.md, BUGS.md</files>
+  <action><![CDATA[
+    `dash.sthlp`: the port() synopt (727-729), the blocking-behaviour paragraph (1353-1357) and the independent-run paragraph (1367-1374) as TR-09.8. `CHANGELOG.md`: replace, in place, the marker `<!-- WP-28 F1 -->` under the heading `### Fixed in WP-28` (which S01 created directly above `### Fixed after WP-27 (the S3 batch, 24sep2026)`; D2, amendment A) with one line ending `(WP-28, F1)`: "`dash serve` returns r(198) and says why when no server started -- the port is in use, or the app stopped before it answered `/health` -- where it returned 0 after the app had died on process stderr; the server's address is printed once `/health` answers and the app's own output reaches the Results window, bounded; `--port` outside 1024-65535 is refused by `dash_render.py`, `main()`, a `build_options` port and the generated app instead of being moved (80 served on 1024). (WP-28, F1)"; add nothing else anywhere in CHANGELOG.md. `BUGS.md`: append at the END of the file the closed entry, five fields in order: `- [x] Title: dash serve returns rc 0 when no server ran, and an out-of-range --port is clamped instead of refused`; File Names and Line Numbers `dash_render.py` (the --launch block 27670-27715 at 91d97be, the clamps at 27371, 27603 and 27680, `_dash_arg_parser`), `dash.ado` (`_dash_serve` 7349-7439); Description quoting GAPS2 F1's measurement (rc 0 after 1.7 s with the port held; errno 48 on process stderr; `--port 80` served on 1024); Suggested fix (read the child's exit status and stderr, refuse in dash.ado naming the port, poll /health, refuse the range at every site); and `- Resolution: Fixed <ddmonyyyy> (WP-28, F1). dash_render.py's launcher is _dash_launch_app: it pre-binds the port, runs the app with piped output, forwards its stdout under a bound, polls /health and prints the address once it answers, reads the exit status and raises RuntimeError naming the port and the status with the last stderr lines; the __main__ block writes that text into the _dash_launch_report box that dash.ado's _dash_serve passes through runpy and turns into r(198); _dash_port_value refuses a port outside 1024-65535 at the command line, in main(), for a build_options port and in the generated app. Pinned by test/test_serve_launcher.py::TestTheLauncherRefusesAHeldPort::test_a_socket_on_loopback_makes_the_launcher_raise, test/test_serve_launcher.py::TestTheLauncherReportsTheExitStatus::test_a_non_zero_exit_names_the_status_and_carries_stderr, test/test_resource_limits.py::TestTheBoundsThatAlreadyWorkedAreKept::test_the_port_is_refused_in_every_place_it_is_read, test/test_serve_launch.cscript SPU-01, SPU-02.` The title holds no `"`. Then run `python3 -m pytest test/test_tracking_documents.py test/test_help_claims_1.py test/test_help_claims_4.py test/test_help_claims_5.py -q` (the entry is well formed; the real launches still block and stop), the full pytest suite once in the worktree (`python3 -m pytest test/ -q`, the first of the session's two full runs; CLAUDE.md rule 4), and `test_help_claims_4.cscript` through its driver (HC4-16..21, about two minutes); grep the three documents and the message for `claude\|anthropic`; commit every file 09-01 to 09-07 touched (test/test_serve_launcher.py, test/test_serve_launch.cscript, test/program_coverage_map.py, dash_render.py, test/function_test_map.py, test/test_help_claims_2.py, test/test_render_cli_port.py, test/test_resource_limits.py, test/test_adversarial_matrix.py, dash.ado, dash.sthlp, CHANGELOG.md, BUGS.md) on the worktree branch `wp28-s09` as ONE commit, subject ending `(GAPS2 F1)`, body opening with `<scratch>/09-01-failure.txt` and carrying the `Regression:` / `Flipped:` / `BUGS.md: "<title>" (closed)` lines (S01 TR-01.9); the merger lands it on `s3-bugs` with this message after `git merge --no-edit main` and the batch's full run (index.md step 1, amendment J).
+  ]]></action>
+  <verify><![CDATA[The full suite's tail reports no failures and no new skips; `<scratch>/run_test_help_claims_4.log` shows `HC4-19 PASS` (rc 0 after about 60 s) with no SKIP; `grep -c '<!-- WP-28 F1 -->' CHANGELOG.md` prints 0 and `grep -c '(WP-28, F1)' CHANGELOG.md BUGS.md` prints 1 for each file; `grep -ci "claude\|anthropic" BUGS.md CHANGELOG.md dash.sthlp` prints 0 for the new text; `git log -1 --format=%s | grep -c '(GAPS2 F1)'` prints 1 and `git log -1 --format=%B | grep -ci 'claude\|anthropic'` prints 0; `git status --short` prints nothing.]]></verify>
+  <done>The help stated the refusal and the readiness line, the F1 CHANGELOG marker was replaced, BUGS.md held F1 closed naming its regression tests, and one green commit on the worktree branch `wp28-s09` carried the gap for the merger.</done>
 </task>
 
 <task type="auto" id="09-08">
-  <name>Raise the floor in the check, the message and the package</name>
-  <files>dash_setup.ado, dash.ado, dash.pkg</files>
-  <action>
-    Apply TR-09.5 (`_dash_pymin` "3.13"; `min_bokeh "3.8"`, `min_numpy "2.3"`, `min_pandas
-    "2.3"` with the sourcing comment; line 60 through `c_pymin`; the comment at 73), TR-09.6
-    (`dash.ado:205-207`, "Python 3.13+") and TR-09.7 (`dash.pkg:17`). Change no message
-    shape. Run `dash_setup` once on this machine from a scratch directory to confirm it still
-    ends `dash_setup complete` against the installed 3.13.9 / 3.8.0 / 2.3.5 / 2.3.3.
-  </action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_version_floor.py -q -k "declares_the_stata_baseline" 2>&1 | tail -3` passes; `grep -n '"3.8"\|"3.0"\|"1.23"\|"2.0"' dash_setup.ado` prints no floor line; the `dash_setup` batch log ends `dash_setup complete`.]]></verify>
-  <done>`dash_setup` refuses Python below 3.13, bokeh below 3.8, numpy and pandas below 2.3; `dash.ado` and `dash.pkg` name the same floor.</done>
+  <name>Write the failing version-floor tests</name>
+  <files>test/test_version_floor.py</files>
+  <action><![CDATA[
+    Write only tests; touch no source file. Create `test/test_version_floor.py` with every test named in "TDD test stubs" under that file: read the floor from `dash_setup.ado` with `re.search(r'return local pymin "([^"]+)"')` and `r'local min_(bokeh|numpy|pandas)\s+"([^"]+)"'`, import `_BASELINES` from `conftest`, flatten SMCL as `test_help_claims_8.py::_flat` does, read `dash_setup.ado`'s `below` branch and `_dash_pip_command` as text for the Q27 test, and build an app for the `ast` tests. Run `python3 -m pytest test/test_version_floor.py -q` against the tree the F1 commit leaves (unmodified at every K2 site). Do not commit: save the failure output to `<scratch>/09-08-failure.txt`; it opens the K2 commit's body (S01 TR-01.9, Q24).
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_version_floor.py -q 2>&1 | tail -20` collects cleanly: the floor test fails with `'3.8' != '3.13'`, the agreement and old-floor tests fail naming the files, the Q27 test fails because `_dash_pip_command` is absent, the future-import test fails naming `Import`, and the deferred-annotations test fails with 55 annotations found and no future import; `<scratch>/09-08-failure.txt` exists; `git status --short dash_setup.ado dash_render.py` prints nothing.]]></verify>
+  <done>The version-floor regression tests existed, collected cleanly and failed against the post-F1 tree at every K2 site for the reasons the gap describes.</done>
 </task>
 
 <task type="auto" id="09-09">
-  <name>Flip the cscripts that asserted the old floor</name>
-  <files>test/test_setup_python_gate.cscript, test/test_setup_honesty.cscript, test/test_program_coverage.cscript</files>
+  <name>Write the failing setup certification cases</name>
+  <files>test/test_setup_honesty.cscript, test/test_setup_python_gate.cscript</files>
   <action><![CDATA[
-    `test_setup_python_gate.cscript`: update the header's numbers (11-15) and add the floor
-    cases listed under "Flips" (direct and through `_gate16`); keep every existing comparator
-    case. `test_setup_honesty.cscript`: change 3.0 → 3.8, 1.23 → 2.3, 2.0 → 2.3 in HON-20
-    (504-506), HON-21 (524-526), HON-22 (547-550), HON-26 (700-701), HON-27 (719) and the
-    header (11, 16); add HON-29 and HON-30 after HON-28 using `_hon_sb_setup` with
-    `$HON_SB_SPEC` `{"fake": [["bokeh", "3.7.3"]]}` and `{"pyversion": "3.12.11 (dash test
-    sandbox)"}`, `$HON_SB_EXPECT "[]"`, asserting r(198), the "(below minimum 3.8)" /
-    "is below the minimum 3.13." lines, the "Unmet:" lines, no "All dependencies are
-    satisfied" and no pip call; extend the header's "Tests:" line. `test_program_coverage.cscript`:
-    PC-16 (628-637: needs 3.13), PC-17 (648), PC-18 (668-669), PC-19 (682, 694, 701), PC-20
-    (708), PC-21 (735-741: below minimum 3.8, `'bokeh>=3.8'`, needs 3.8). Run the three
-    scripts from a scratch directory (three sessions at most, own `STATATMP` each) and check
-    `c(python_exec)` in each log before reading a skip as a skip.
+    `test_setup_honesty.cscript`: append HON-29 and HON-30 after HON-28 using `_hon_sb_setup` with `$HON_SB_SPEC` `{"fake": [["bokeh", "3.7.3"]]}` and `{"pyversion": "3.12.11 (dash test sandbox)"}`, `$HON_SB_EXPECT "[]"`, asserting r(198), the "(below minimum 3.8)" / "is below the minimum 3.13." lines, the "Unmet:" lines, the `To upgrade: ` line built in the script as `"To upgrade: `c(python_exec)' -m pip install 'bokeh>=3.8'"` (HON-29 only), no "All dependencies are satisfied" and no pip call; extend the header's "Tests:" line (59). `test_setup_python_gate.cscript`: append, before the closing `if `fail'` block, the four floor comparator cases direct and through `_gate16` (`3.13.9 >= 3.13` → 1, `3.13 >= 3.13` → 1, `3.12.11 < 3.13` → 0, `3.10.10 < 3.13` → 0) and the Q27 case (`_dash_pip_command "bokeh" "3.8"` then `_chk` that `r(cmd)` equals `c(python_exec)` followed by ` -m pip install 'bokeh>=3.8'`, and that the command names the linked interpreter when `c(python_exec)` is non-empty); add NO Python gate to this script (amendment H). Run both scripts through their drivers against the current tree: the honesty log passes HON-01..HON-28 and fails at HON-29 (3.7.3 passes the 3.0 floor; the run says all dependencies are satisfied); the python-gate log stops at `_dash_pip_command` with r(199). Append both failing texts to `<scratch>/09-08-failure.txt`. Do not commit.
   ]]></action>
-  <verify><![CDATA[The three batch logs end in their PASS lines with `HON-29 PASS`, `HON-30 PASS`, `PC-16 PASS` and `PC-21 PASS` present and no SKIP; `cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_cscript_hygiene.py test/test_program_coverage_map.py -q 2>&1 | tail -3` passes.]]></verify>
-  <done>The three certification scripts assert the new floor, and two new cases prove `dash_setup` refuses bokeh 3.7.3 and Python 3.12.11 by name without installing anything.</done>
+  <verify><![CDATA[`grep -c '"HON-29 PASS\|"HON-30 PASS' test/test_setup_honesty.cscript` prints 2 and `grep -c '_dash_pip_command' test/test_setup_python_gate.cscript` is at least 1; `grep -c 'exit 222' test/test_setup_python_gate.cscript` prints 0; `<scratch>/run_test_setup_honesty.log` ends at HON-29's first failing assertion after `HON-28 PASS`, and `<scratch>/run_test_setup_python_gate.log` ends with `unrecognized command: _dash_pip_command` and `r(199)`; `python3 -m pytest test/test_cscript_hygiene.py -q 2>&1 | tail -2` passes unchanged.]]></verify>
+  <done>The K2 certification cases lived in the honesty and python-gate scripts and failed against the pre-fix tree because the old floor accepted bokeh 3.7.3 and Python 3.12.11 and no pip-command helper existed.</done>
 </task>
 
 <task type="auto" id="09-10">
-  <name>Flip the help-claims tests for dash_setup</name>
-  <files>test/test_help_claims_8.cscript, test/test_help_claims_8.py</files>
-  <action>
-    `test_help_claims_8.cscript:786`: `items(bokeh 2.4 (needs 3.8))`.
-    `test_help_claims_8.py::TestDashSetupHelpMatchesTheAdo::test_a_package_below_its_minimum_is_unmet_not_a_warning`
-    (1640-1660): the docstring's `(needs 3.0)` and the asserted sentence become "one below 3.8
-    is reported as an unmet requirement -- it is not upgraded for you -- and the run ends with
-    r(198)." (the sentence itself is changed in `dash_setup.sthlp` in 09-11, so this test is
-    red until then — record that in the commit message). Run `test_help_claims_8.cscript`
-    from a scratch directory.
-  </action>
-  <verify><![CDATA[The cscript's batch log ends in its PASS line with `HC8-19` present; `cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_help_claims_8.py -q -k "below_its_minimum" 2>&1 | tail -3` fails only on the 3.8 sentence.]]></verify>
-  <done>Both help-claims tests state the new floor; the pytest is red only until the help is edited.</done>
+  <name>Defer the generated app's annotations</name>
+  <files>dash_render.py</files>
+  <action><![CDATA[
+    Apply TR-09.9: insert `"from __future__ import annotations",` and `""` between the template's closing docstring line (25204, `'"""'`) and `"import argparse as _argparse"` (25206; find them by text — 09-04 moved lines below 27000 but not here). Reword the comment at 25216-25221: the `typing` import stays because the annotations name `Any`, `Callable`, `Iterable` and `List` and the served-app name checks read them, not because Python evaluates them. Build an app and import it under the development interpreter to show the future statement is accepted in that position.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_version_floor.py -q -k "Annotation" 2>&1 | tail -3` passes both annotation tests; `python3 -m pytest test/test_server.py test/test_resource_limits.py -q -k "DefinesEveryName or source or health" 2>&1 | tail -3` passes.]]></verify>
+  <done>Every generated server app opened with `from __future__ import annotations` as its first statement after the docstring.</done>
 </task>
 
 <task type="auto" id="09-11">
-  <name>Document the floor in the help files and CHANGELOG</name>
-  <files>dash_setup.sthlp, dash.sthlp, CHANGELOG.md</files>
+  <name>Raise the floor in check, message, package</name>
+  <files>dash_setup.ado, dash.ado, dash.pkg</files>
   <action><![CDATA[
-    Apply TR-09.8's K2 parts: `dash_setup.sthlp` 40-42, 70, 80-82, 97-98, 110-113 and the new
-    `{pstd}` on the tested baseline, keeping verbatim the sentences `test_help_claims_8.py`
-    asserts; `dash.sthlp` 3131-3134; CHANGELOG `### Requirements` (330-334) rewritten:
-    "- Python 3.13 or later, linked to Stata (`dash_setup` checks this). Was 3.8: bokeh 3.8
-    needs 3.10, and 3.13 is the Python Stata links and both suites run under. (WP-06, WP-28)"
-    and "- bokeh >= 3.8, numpy >= 2.3 and pandas >= 2.3, the versions the suites run under.
-    Were 3.0, 1.23 and 2.0: every render imports `CustomJSTicker`, added in bokeh 3.6, so an
-    installed 3.0-3.5 passed `dash_setup` and then failed every command; pandas is declared by
-    dash itself because bokeh 3.9 no longer requires it. (WP-25, WP-28)"; and under `### Fixed
-    in WP-28` a K2 line: "The declared minimums are the tested ones -- Python 3.13, bokeh
-    3.8, numpy 2.3, pandas 2.3 -- everywhere they appear, `dash_setup` refuses anything below
-    them, and the generated server app opens with `from __future__ import annotations`.
-    (WP-28, GAPS2 K2)".
+    Apply TR-09.5 (`_dash_pymin` "3.13"; `min_bokeh "3.8"`, `min_numpy "2.3"`, `min_pandas "2.3"` with the sourcing comment; line 60 through `c_pymin`; the comment at 73; the new rclass subprogram `_dash_pip_command` beside `_dash_pyver_ok` and the `below` branch printing `To upgrade: `r(cmd)'` — Q27 — with nothing installed and every other message shape unchanged), TR-09.6 (`dash.ado:205-207`, "Python 3.13+") and TR-09.7 (`dash.pkg:17`). Run `dash_setup` once on this machine through `<scratch>/run_dash_setup.do` (`cd "<repo>"` then `dash_setup`) with `scripts/stata_slot.sh <scratch> <scratch>/run_dash_setup.do` to confirm it still ends `dash_setup complete` against the installed 3.13.9 / 3.8.0 / 2.3.5 / 2.3.3, then `test_setup_python_gate.cscript` through its driver (no Python needed; its new cases pass; the `dash_setup.sthlp` check still fails until 09-14 flips the help, which is inside the same commit).
   ]]></action>
-  <verify><![CDATA[`cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_version_floor.py test/test_help_claims_8.py -q 2>&1 | tail -3` passes; the `test_setup_python_gate.cscript` batch log (re-run from a scratch directory) shows "dash_setup.sthlp states the same minimum (3.13)".]]></verify>
-  <done>Every help passage and the CHANGELOG state the tested floor and the reason, and the floor-consistency test is green.</done>
+  <verify><![CDATA[`python3 -m pytest test/test_version_floor.py -q -k "declares_the_stata_baseline or linked_interpreter" 2>&1 | tail -3` passes; `grep -n '"3.8"\|"3.0"\|"1.23"\|"2.0"' dash_setup.ado` prints no floor line; `grep -c 'python -m pip install --upgrade' dash_setup.ado` prints 0; `<scratch>/run_dash_setup.log` ends `dash_setup complete`; `<scratch>/run_test_setup_python_gate.log` shows every `ok:` line for the comparator and pip-command cases and fails only on `dash_setup.sthlp states the same minimum (3.13)`.]]></verify>
+  <done>`dash_setup` refused Python below 3.13 and bokeh, numpy and pandas below their floors, printed the exact pip command for the interpreter Stata is linked to and installed nothing, and `dash.ado` and `dash.pkg` named the same floor.</done>
 </task>
 
 <task type="auto" id="09-12">
-  <name>Close K2 in BUGS.md and run both suites</name>
-  <files>BUGS.md</files>
-  <action>
-    Append the closed K2 entry: Title "The declared minimums (Python 3.8, bokeh 3.0) are
-    false: every render needs bokeh 3.6+, and the served app crashes at import on 3.8/3.9";
-    File Names and Line Numbers `dash_setup.ado` (60, 73, 146-150, 285-296 at 91d97be),
-    `dash_setup.sthlp` (40-42, 70, 80-82, 110-113), `dash.pkg` (17), `dash.ado` (205-207),
-    `dash.sthlp` (3131-3134), `dash_render.py` (the app header 25198-25222); Description
-    quoting GAPS2 K2 (`CustomJSTicker` since bokeh 3.6, r(7102) on every command after a
-    passing setup, 55 annotations evaluated at import); Suggested fix (declare the tested
-    floor everywhere, refuse below it, defer the annotations); Resolution "Fixed 25sep2026
-    (WP-28)." naming
-    `test/test_version_floor.py::TestTheFloorIsTheTestedBaseline::test_dash_setup_declares_the_stata_baseline`,
-    `test/test_version_floor.py::TestTheGeneratedAppEvaluatesNoAnnotationAtImport::test_the_future_import_is_the_first_statement`
-    and `test_setup_honesty.cscript` HON-29 and HON-30, and stating the residual by decision
-    (DISCOVERY Q8): no interpreter or bokeh below the floor is run by any test. Then run the
-    full suite once under each interpreter (`make test`, then `make test-dev`; never two full
-    runs at once) and the certification scripts this section touched
-    (`test_serve_port_in_use`, `test_serve_launch`, `test_serve_browser`,
-    `test_render_log_clean`, `test_setup_python_gate`, `test_setup_honesty`,
-    `test_program_coverage`, `test_help_claims_8`, `test_help_claims_4` — the last takes about
-    two minutes), at most three at once.
-  </action>
-  <verify><![CDATA[Both full-suite logs report no failures and no skips beyond the baseline; every named cscript's log ends in its PASS line with no SKIP; `cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && python3 -m pytest test/test_tracking_documents.py -q 2>&1 | tail -3` passes; `git status` shows a clean tree after the commit.]]></verify>
-  <done>BUGS.md holds K2 closed naming its tests, both full-suite runs and the touched certification scripts are green, and the section's twelve commits are on `s3-bugs`.</done>
+  <name>Flip the cscripts that asserted the old floor</name>
+  <files>test/test_setup_python_gate.cscript, test/test_setup_honesty.cscript, test/test_program_coverage.cscript</files>
+  <action><![CDATA[
+    `test_setup_python_gate.cscript`: update the header's numbers (11-15); keep every existing comparator case (their "3.8" is an input) and the cases 09-09 added. `test_setup_honesty.cscript`: change 3.0 → 3.8, 1.23 → 2.3, 2.0 → 2.3 in HON-20 (504-506), HON-21 (524-526), HON-22 (547-550), HON-26 (700-701), HON-27 (719) and the header (11, 16), and make HON-20's upgrade-line needle the Q27 form (`c(python_exec)` then ` -m pip install 'bokeh>=3.8'`, built as in HON-29). `test_program_coverage.cscript`: PC-16 (628-637: needs 3.13), PC-17 (648), PC-18 (668-669), PC-19 (682, 694, 701), PC-20 (708), PC-21 (735-741: below minimum 3.8, `Unmet:  bokeh 2.4.3 (needs 3.8)`, the "To upgrade:" needle in the Q27 form). Record each as a `Flipped:` line for the K2 commit body. Run the three scripts through their drivers, one at a time, and check `c(python_exec)` in each log before reading a skip as a skip.
+  ]]></action>
+  <verify><![CDATA[The three batch logs end in their PASS lines with `HON-29 PASS`, `HON-30 PASS`, `PC-16 PASS` and `PC-21 PASS` present and no SKIP; the python-gate log fails only on `dash_setup.sthlp states the same minimum (3.13)` (09-14); `python3 -m pytest test/test_cscript_hygiene.py test/test_program_coverage_map.py -q 2>&1 | tail -3` passes.]]></verify>
+  <done>The three certification scripts asserted the new floor and the `c(python_exec)` pip line, and two new cases proved `dash_setup` refuses bokeh 3.7.3 and Python 3.12.11 by name without installing anything.</done>
+</task>
+
+<task type="auto" id="09-13">
+  <name>Flip the help-claims cscript and map the helper</name>
+  <files>test/test_help_claims_8.cscript, test/program_coverage_map.py</files>
+  <action><![CDATA[
+    `test_help_claims_8.cscript:786`: `items(bokeh 2.4 (needs 3.8))`. In `test/program_coverage_map.py` add `"_dash_pip_command": ("test_setup_python_gate.cscript",)` in alphabetical place, in the form the map's 262-265 use for that script. Run the cscript through its driver.
+  ]]></action>
+  <verify><![CDATA[`<scratch>/run_test_help_claims_8.log` ends in its PASS line with `HC8-19` present; `python3 -m pytest test/test_program_coverage_map.py -q 2>&1 | tail -2` passes.]]></verify>
+  <done>The help-claims certification script stated the new floor and the pip-command helper was mapped to its cases.</done>
+</task>
+
+<task type="auto" id="09-14">
+  <name>Document the floor and flip its pytest</name>
+  <files>dash_setup.sthlp, dash.sthlp, test/test_help_claims_8.py</files>
+  <action><![CDATA[
+    Apply TR-09.8's help parts (dash_setup.sthlp 40-42, 70, 80-82, 97-98, 110-113, the new `{pstd}`; dash.sthlp 3131-3134), keeping verbatim the sentences `test_help_claims_8.py` asserts, and in the same edit flip `test_help_claims_8.py::TestDashSetupHelpMatchesTheAdo::test_a_package_below_its_minimum_is_unmet_not_a_warning` (1640-1660) to "one below 3.8 is reported as an unmet requirement -- it is not upgraded for you -- and the run ends with r(198)." so the help sentence and the test that reads it change together (feasibility #12). Record the flip as a `Flipped:` line. Run `test_setup_python_gate.cscript` through its driver again.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_version_floor.py test/test_help_claims_8.py -q 2>&1 | tail -3` passes; `<scratch>/run_test_setup_python_gate.log` ends `ALL TESTS PASSED` with "dash_setup.sthlp states the same minimum (3.13)" among its `ok:` lines.]]></verify>
+  <done>The help stated the tested floor, the reason and the pip line for the linked interpreter, and the test that reads it passed in the same change.</done>
+</task>
+
+<task type="auto" id="09-15">
+  <name>Close K2 in BUGS.md and CHANGELOG</name>
+  <files>BUGS.md, CHANGELOG.md</files>
+  <action><![CDATA[
+    `CHANGELOG.md` (D2, amendment A): rewrite the three floor lines of the release's `### Requirements` list (330-334) to "- Python 3.13 or later, linked to Stata (`dash_setup` checks this). Was 3.8: bokeh 3.8 needs 3.10, and 3.13 is the Python Stata links and both suites run under. (WP-06, WP-28)" and "- bokeh >= 3.8, numpy >= 2.3 and pandas >= 2.3, the versions the suites run under. Were 3.0, 1.23 and 2.0: every render imports `CustomJSTicker`, added in bokeh 3.6, so an installed 3.0-3.5 passed `dash_setup` and then failed every command; pandas is declared by dash itself because bokeh 3.9 no longer requires it. (WP-25, WP-28)" (the scipy/jsonio line stays), and replace, in place, the marker `<!-- WP-28 K2 -->` that S01 put at the end of that list with one line ending `(WP-28, K2)`: "The declared minimums are the tested ones -- Python 3.13, bokeh 3.8, numpy 2.3, pandas 2.3 -- everywhere they appear; `dash_setup` refuses anything below them, printing the exact `pip install` command for the Python Stata is linked to and installing nothing, and the generated server app opens with `from __future__ import annotations`. (WP-28, K2)"; add nothing else anywhere in CHANGELOG.md. `BUGS.md`: append at the END of the file the closed entry `- [x] Title: The declared minimums (Python 3.8, bokeh 3.0) are false: every render needs bokeh 3.6+, and the served app crashes at import on 3.8/3.9`; File Names and Line Numbers `dash_setup.ado` (60, 73, 146-150, 222-224, 285-296 at 91d97be), `dash_setup.sthlp` (40-42, 70, 80-82, 97-98, 110-113), `dash.pkg` (17), `dash.ado` (205-207), `dash.sthlp` (3131-3134), `dash_render.py` (the app header 25198-25222); Description quoting GAPS2 K2 (`CustomJSTicker` since bokeh 3.6, r(7102) on every command after a passing setup, 55 annotations evaluated at import); Suggested fix (declare the tested floor everywhere, refuse below it, defer the annotations); and `- Resolution: Fixed <ddmonyyyy> (WP-28, K2). dash_setup.ado, dash_setup.sthlp, dash.sthlp, dash.pkg, dash.ado and CHANGELOG declare the tested floor (Python 3.13, bokeh 3.8, numpy 2.3, pandas 2.3, the stata baseline of test/conftest.py); dash_setup refuses a version below it with r(198) and prints the exact pip command for c(python_exec) through _dash_pip_command, installing nothing; the generated server app opens with from __future__ import annotations. Pinned by test/test_version_floor.py::TestTheFloorIsTheTestedBaseline::test_dash_setup_declares_the_stata_baseline, test/test_version_floor.py::TestTheGeneratedAppEvaluatesNoAnnotationAtImport::test_the_future_import_is_the_first_statement, test/test_setup_honesty.cscript HON-29, HON-30. Residual, deferred (WP-28): no interpreter or bokeh below the floor is run by any test (DISCOVERY Q8: no venv matrix).` The title holds no `"`. Then run `python3 -m pytest test/test_tracking_documents.py test/test_version_floor.py -q`, the full pytest suite once in the worktree (`python3 -m pytest test/ -q`, the session's second and last full run), and, one at a time through their drivers, `test_setup_python_gate.cscript`, `test_setup_honesty.cscript`, `test_program_coverage.cscript` and `test_help_claims_8.cscript`; grep the two documents and the message for `claude\|anthropic`; commit every file 09-08 to 09-15 touched (test/test_version_floor.py, test/test_setup_honesty.cscript, test/test_setup_python_gate.cscript, dash_render.py, dash_setup.ado, dash.ado, dash.pkg, test/test_program_coverage.cscript, test/test_help_claims_8.cscript, test/program_coverage_map.py, dash_setup.sthlp, dash.sthlp, test/test_help_claims_8.py, BUGS.md, CHANGELOG.md) on the worktree branch `wp28-s09` as ONE commit, subject ending `(GAPS2 K2)`, body opening with `<scratch>/09-08-failure.txt` and carrying the `Regression:` / `Flipped:` / `BUGS.md: "<title>" (closed)` lines; the merger lands it on `s3-bugs` with this message (index.md step 1, amendment J); report that landing command without running it.
+  ]]></action>
+  <verify><![CDATA[The full suite's tail reports no failures and no new skips; every named cscript's log ends in its PASS line with no SKIP; `grep -c '<!-- WP-28 K2 -->' CHANGELOG.md` prints 0 and `grep -c '(WP-28, K2)' CHANGELOG.md BUGS.md` prints 1 for each file; `awk '/^### Requirements/,/^### Fixed in WP-28/' CHANGELOG.md | grep -c 'Python 3.13'` is at least 1 and the same range holds no `3.8 or later`; `python3 -m pytest test/test_tracking_documents.py -q 2>&1 | tail -3` passes; `git log -1 --format=%s | grep -c '(GAPS2 K2)'` prints 1 and `git log -1 --format=%B | grep -ci 'claude\|anthropic'` prints 0; `git status --short` prints nothing.]]></verify>
+  <done>BUGS.md held K2 closed naming its tests, the CHANGELOG's requirements stated the tested floor with the K2 line in place of its marker, the full suite and the touched certification scripts were green, and one green commit on the worktree branch `wp28-s09` carried the gap for the merger.</done>
 </task>
 
 ## Section completion criteria
@@ -976,11 +988,17 @@ run CLAUDE.md rule 11 allows before a commit (`pytest test/ -q`, never two at on
   1024 and 65535.
 - `dash_setup.ado`, `dash_setup.sthlp`, `dash.sthlp`, `dash.pkg`, `dash.ado` and CHANGELOG all
   say Python 3.13, bokeh 3.8, numpy 2.3, pandas 2.3, and `test_version_floor.py` ties them to
-  `conftest._BASELINES["stata"]`.
+  `conftest._BASELINES["stata"]`; `dash_setup`'s upgrade line names `c(python_exec)` (Q27).
 - A generated app's second statement is `from __future__ import annotations`.
 - No test was deleted: every renamed test exists under its new name; the adversarial registry
   resolves; `function_test_map.py` and `program_coverage_map.py` name the new units.
-- BUGS.md has the two closed entries; no open S1/S2 entry was added.
+- No new `.cscript` file exists; `test/run_all_cscripts.do` and the hygiene pins are untouched;
+  SPU-01..03, HON-29/30 and the python-gate cases live in their existing scripts (D11).
+- BUGS.md has the two closed entries in the D3 form; the `<!-- WP-28 F1 -->` and
+  `<!-- WP-28 K2 -->` markers are replaced by lines ending `(WP-28, F1)` / `(WP-28, K2)`; no
+  open S1/S2 entry was added; two commits on the worktree branch `wp28-s09`, subjects ending
+  `(GAPS2 F1)` and `(GAPS2 K2)`, the full suite green in the worktree before each, landed on
+  `s3-bugs` by the merger (index.md step 1).
 
 ## Notes
 
@@ -994,7 +1012,11 @@ run CLAUDE.md rule 11 allows before a commit (`pytest test/ -q`, never two at on
   that only records what it saw. Keep every `print` on the main thread of the `python:` line.
 - **Drain both pipes always.** A `Popen` with `stdout=PIPE, stderr=PIPE` and no reader hangs
   the child once 64 KB accumulate; Bokeh logs each session to stderr. The pumps run for the
-  life of the child, the deque bounds memory.
+  life of the child; the stderr deque (20 lines) bounds memory, and the stdout queue is drained
+  on every turn of the loop even after the 200-line forwarding cap is reached.
+- **One structure per pipe** (feasibility #44): stdout lines go to the queue the main thread
+  prints from; stderr lines go to the deque the message quotes; nothing is tagged into the
+  other's structure.
 - **`SO_REUSEADDR` on the tester, `listen()` on the holder.** The tester without it refuses
   a port in TIME_WAIT that Tornado (which sets it) would bind — a false "in use" right after
   a restart; the holder must listen because that is the measured case, and it must be on
@@ -1006,8 +1028,9 @@ run CLAUDE.md rule 11 allows before a commit (`pytest test/ -q`, never two at on
   port held. A leaked holder would only pin an ephemeral port until the session ends.
 - **`_dash_port_value` is copied by source.** The app imports `argparse` as `_argparse`; the
   helper imports `argparse` locally so the copied text runs in both modules. Add it at the
-  end of the function copy tuple: section 04 adds its writer functions to the same tuple and
-  `patch -p1` merges cleanly only when the two insertions do not overlap.
+  END of the function copy tuple (C6): S07's `"_dash_is_stata_name"` sits after
+  `"_dash_parse_filter_raw"` and lands before this section in the merge order, so this
+  section's name follows it; the merger resolves the append by hand (R2).
 - **argparse never validates a non-string default**, so the app's `__main__` validates
   `_a.port` itself; without that, `build_options["port"] = 80` embedded at build time would
   bind 80 (and fail with EACCES) or, worse, an in-range hand edit would pass unchecked.
@@ -1018,15 +1041,13 @@ run CLAUDE.md rule 11 allows before a commit (`pytest test/ -q`, never two at on
 - **Every renamed test is named elsewhere**: the adversarial registry (860, 878) and, for new
   functions, `function_test_map.py`; `test_tracking_documents.py` also resolves every
   `file::Class::test` in BUGS.md — spell them exactly.
-- **Order of the 09-10/09-11 pair**: the pytest flipped in 09-10 is red until the help sentence
-  changes in 09-11; the commit message of 09-10 says so. Squash the pair if a red intermediate
-  commit is unwanted.
-- **Stata sessions.** Three at most, each `cd <dir> && STATATMP=<dir>/tmp/ arch -arm64
-  /usr/local/bin/stata-mp -b do …`; more can rewrite `~/.stata19/console/stata19.rc` without
-  its `python` lines, after which every Python cscript skips in a second. Check
-  `c(python_exec)` in the log; restore with `set python_exec /opt/anaconda3/bin/python3,
-  permanently`.
+- **Commit bodies** use S01 TR-01.9's line forms verbatim: `Regression: test/<file>.py::<Class>::<test> -- failed at <pre-fix tree> with <text>` (the SPU, HON and python-gate cases cited as `test/<script>.cscript <CASE-ID>`), `Flipped: <node> -- <old expectation> was wrong because <why>` (one per flip), `BUGS.md: "<title>" (closed)`; no `Fixture:` line (none here); the F1 body also records the TIME_WAIT check of 09-04.
+- **Shared registries (rules R1-R6).** R1: no cscript is registered and no pin moves (D11); the SPU, HON-29/30 and python-gate cases live in existing scripts, and no `SKIP … Python` line is added to `test_setup_python_gate.cscript` (amendment H: the `len(names)` pin counts it as never skipping). R2: the functions copy list gains `"_dash_port_value"` at its end; `test/function_test_map.py` and `test/program_coverage_map.py` gain keys in alphabetical place; the merger resolves append conflicts by hand. R3: BUGS.md entries are appended at the end in merge order; only the F1 and K2 markers are replaced and only the `### Requirements` floor lines are rewritten (S19 checks them); dash.sthlp 727-729, 1353-1357, 1367-1374, 3131-3134 and the whole of dash_setup.sthlp belong to this section alone. R4-R6: nothing here.
+- **The 09-13/09-14 pair.** The help-claims pytest is flipped in 09-14 together with the help sentence it asserts, inside the K2 commit; the python-gate script's `dash_setup.sthlp` check likewise turns green in 09-14. Nothing is red at either commit.
+- **Q27 in three places.** `_dash_pip_command` is the one source of the upgrade line; the python-gate case proves its text without Python (amendment H), HON-29 proves the printed line in a full run, and `test_version_floor.py` proves the `below` branch calls it. Do not add a second way of spelling the command.
+- **Stata invocation.** Every run is `scripts/stata_slot.sh <scratch> <scratch>/<driver>.do` with the two-line driver of "Stata truth" (D6, amendment B), or `<scratch>/run_dash_setup.do` for the one `dash_setup` run; the wrapper takes one of three `mkdir` slots, sets `STATATMP=<scratch>/tmp/` (trailing slash) and runs CLAUDE.md rule 10's console command; never the GUI, never a bare `stata-mp`, never `make cert` inside a section. More than three sessions can rewrite `~/.stata19/console/stata19.rc` without its `python` lines, after which every Python cscript skips in a second: check `c(python_exec)` in the log; restore with `set python_exec /opt/anaconda3/bin/python3, permanently`.
+- **Worktree and branch (amendment J).** This section runs in its own worktree on `wp28-s09`; `git merge --no-edit main` and the batch's full run are the merger's steps (index.md step 1); the two commits here are made on `wp28-s09` after the worktree's own full run, and the merger lands each on `s3-bugs` with the task's message.
+- **Two full-suite launches per session.** `.claude/hooks/guard-full-suite.sh` refuses a third `python3 -m pytest test/ -q` in one session unless prefixed `FULL_SUITE_RERUN=1`; this section needs exactly two (09-07, 09-15); every other task runs only the changed files.
 - **HC4-19 takes about 62 s** and SPU-01 must take under 40: if SPU-01 approaches a minute the
   server started, which means the fixture held the wrong address or the app bound the wildcard.
-- **CHANGELOG heading.** Other batch-1 sections may also create `### Fixed in WP-28`; after
-  merge keep exactly one, before `### Fixed after WP-27`. Section 19 consolidates.
+- **CHANGELOG headings.** Only S01 creates `### Fixed in WP-28` (directly above `### Fixed after WP-27`); this section replaces the F1 marker under it and the K2 marker at the end of `### Requirements`, and creates no heading.
