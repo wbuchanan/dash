@@ -486,6 +486,24 @@ COVERAGE = {
         "_dash_kernel_flag": ("test_twoway_option_parity.cscript:TP-16",),
         "_dash_spec_types_in": ("test_parser.cscript:P1A-75",
                                 "test_parser.cscript:P1A-74"),
+        # GAPS2 G3 (WP-28 section 08): e2e through _dash_prepare_spec and
+        # _dash_render_immediate.
+        "_dash_json_count_key": ("test_adversarial.cscript:DL-01",
+                                 "test_adversarial.cscript:DL-06"),
+        "_dash_json_has_value": ("test_adversarial.cscript:DL-01",
+                                 "test_adversarial.cscript:DL-03a"),
+        "_dash_json_first_num": ("test_adversarial.cscript:DL-01",
+                                 "test_adversarial.cscript:DL-06"),
+        "_dash_computed_plot_cells": ("test_adversarial.cscript:DL-01",
+                                      "test_adversarial.cscript:DL-06"),
+        "_dash_computed_cells": ("test_adversarial.cscript:DL-01",
+                                 "test_adversarial.cscript:DL-06"),
+        # _dash_filter_refusal calls this for its own exclude() check, so
+        # HC3-20/HC3-08 exercise it too; DL-03b is its own case.
+        "_dash_filter_excludes": ("test_adversarial.cscript:DL-03b",
+                                  "test_help_claims_3.cscript:HC3-20"),
+        "_dash_graph_touched": ("test_adversarial.cscript:DL-03b",),
+        "_dash_qual_cols_in": ("test_adversarial.cscript:DL-04",),
     },
 }
 

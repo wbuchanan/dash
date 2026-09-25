@@ -1535,10 +1535,16 @@ that moves it for the rest of the session:
 {synoptset 28 tabbed}{...}
 {synopthdr:global}
 {synoptline}
-{synopt:{cmd:$dash_max_cells}}values embedded, observations times the
-    variables a dashboard uses; default 5,000,000, at most 20,000,000.  Over
-    it the dashboard is refused with {cmd:r(134)} before anything is
-    exported.{p_end}
+{synopt:{cmd:$dash_max_cells}}values the saved page embeds: for a graph
+    that draws rows, or that a {cmd:filter()}, {cmd:link()}, {cmd:csv} or
+    {cmd:hover()} reaches, its variables and qualifier columns times the
+    observations; for a graph made only of computed layers ({cmd:histogram},
+    {cmd:kdensity}, a fit or a smoother) that nothing else reaches, the
+    values its layers draw, not one row per observation; KPI cards and
+    {cmd:filter()} variables always count.  A served app embeds every
+    observation of every variable it uses, whatever the graphs; default
+    5,000,000, at most 20,000,000.  Over it the build is refused with
+    {cmd:r(134)} before anything is exported, naming the count.{p_end}
 {synopt:{cmd:$dash_max_bytes}}bytes of text embedded: the length in bytes
     of every string value, {cmd:strL} values included, of the string
     variables a dashboard uses, as Stata stores them; default 50,000,000,
@@ -1579,20 +1585,37 @@ drop these globals, because they are settings rather than registry;
 {cmd:macro drop dash_max_*} does.
 
 {pstd}
-{ul:Why the data limit counts every observation.}  {cmd:dash} exports every
-observation of the variables a dashboard uses, because different plots can
-carry different qualifiers, and each distinct qualifier as one more column,
-counted like a variable.  A qualifier therefore does not reduce what is
-exported or held in memory, so reduce the data first -- {cmd:keep}, {cmd:drop}, {cmd:sample} or
-{cmd:collapse}, inside {cmd:preserve} and {cmd:restore}.  Above 1,000,000
-values {cmd:dash} notes the size the file will be, at about 24 bytes a value,
-which is what a saved page takes; a served app's file carries the values as
-text and takes up to about twice that.  Measured, 4,000,000 values made a
-95 MB page and took about 2 GB of memory to render.  A string value adds its
-own length to that, and a {cmd:strL} is exported whole, so text is held to
-{cmd:$dash_max_bytes} as well: 60 observations of a 1,000,000-byte
-{cmd:strL} are only 60 values but 60,000,000 bytes, and are refused at the
-default.
+{ul:What the data limit counts.}  {cmd:dash} still exports every
+observation of the variables a dashboard uses -- the data file on disk is
+unchanged, and each distinct qualifier is one more exported column,
+counted like a variable -- but the {cmd:$dash_max_cells} limit itself
+counts only what the saved page will actually embed.  A graph drawn from
+rows -- or touched by a {cmd:filter()} that does not exclude it, a
+{cmd:link()}, {cmd:csv}, or {cmd:hover()} -- counts its variables and
+qualifier columns times the observations, as before.  A graph made only
+of computed layers ({cmd:histogram}, {cmd:kdensity}, {cmd:lfit} and the
+other fits and smoothers) that nothing else reaches draws its own bounded
+output instead: a histogram's bars (four values a bin, the observations
+themselves only under {cmd:width()} or {cmd:discrete} with no
+{cmd:bin()}), a {cmd:lowess} curve (two values an observation, so it
+never escapes the cap on its own), and every other computed layer at most
+120,000 values.  KPI cards and {cmd:filter()} variables always count,
+whatever draws from them.  So a {cmd:histogram} on six million
+observations now builds a saved page -- a few dozen bars, not six million
+rows -- where a {cmd:scatter} of the same data is still refused.  A
+served app is unaffected: it embeds every observation of every variable
+it uses, because a live session can move a filter to any value, and says
+so in its own refusal.  Reduce the data first -- {cmd:keep}, {cmd:drop},
+{cmd:sample} or {cmd:collapse}, inside {cmd:preserve} and {cmd:restore} --
+when a row-drawing graph, a KPI or a filter is what is over the limit.
+Above 1,000,000 embedded values {cmd:dash} notes the size the file will
+be, at about 24 bytes a value, which is what a saved page takes; a served
+app's file carries the values as text and takes up to about twice that.
+Measured, 4,000,000 values made a 95 MB page and took about 2 GB of
+memory to render.  A string value adds its own length to that, and a
+{cmd:strL} is exported whole, so text is held to {cmd:$dash_max_bytes} as
+well: 60 observations of a 1,000,000-byte {cmd:strL} are only 60 values
+but 60,000,000 bytes, and are refused at the default.
 
 {pstd}
 {ul:A served dashboard} has rate limits of its own; see

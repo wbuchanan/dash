@@ -169,9 +169,11 @@ class TestLinkAll:
             "drift apart again"
         )
         assert "== '_all'" not in code and '== "_all"' not in code
-        # Defined once, called by the saved builder, the server builder and
-        # the app's make_document.
-        assert code.count("_dash_link_names(") == 4
+        # Defined once, called by the saved builder, the server builder,
+        # the app's make_document, and _dash_embedded_cells (GAPS2 G3,
+        # WP-28 section 08: which graphs link() reaches decides whether a
+        # computed-only graph's rows are counted).
+        assert code.count("_dash_link_names(") == 5
 
 
 # ======================================================================

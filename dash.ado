@@ -242,7 +242,8 @@ program define _dash_require_mata
         _dash_unbound_cands _dash_fn_names _dash_fn_space_call _dash_rep_scan ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed ///
-        _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag
+        _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag ///
+        _dash_computed_cells _dash_graph_touched _dash_qual_cols_in
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
     // alone and took the library for whole when it was there, so a library
@@ -2744,7 +2745,8 @@ program define _dash_plot_cap_refuse
 end
 
 // ----------------------------------------------------------------
-// _dash_cell_cap <nvars> [<nobs>]  -- the embedded-data limit, before the
+// _dash_cell_cap <nvars> [<nobs>] [<extra>] [<served>]  -- the
+//                                     embedded-data limit, before the
 //                                     export
 //
 // The export (_dash_write_data) writes every observation of every
@@ -2754,25 +2756,53 @@ end
 // caller exports fewer (the one-row placeholder a graph of literal values
 // sends).  Both callers run this before the file is written, so a
 // refusal leaves the data in memory exactly as it was.
+//
+// <extra> (GAPS2 G3) is the drawn output of computed-only graphs
+// (histogram, kdensity, a fit or a smoother) that no filter, link(), csv
+// or hover() reaches: those graphs' rows are never in <nvars>, so a
+// saved page can hold more observations than the cells limit alone would
+// allow.  <nvars> of 0 means every graph is computed-only and untouched
+// -- nothing row-shaped is embedded at all.  <served> of 1 says every
+// observation of every variable is embedded regardless (the served
+// route always calls this with the full count and extra empty): a third
+// line then says so.  The two-line message is byte for byte what it was
+// before <extra> and <served> existed.
 // ----------------------------------------------------------------
 program define _dash_cell_cap
     version 16.0
-    args nvars nobs
-    if "`nobs'" == "" local nobs = _N
+    args nvars nobs extra served
+    if "`nobs'"  == "" local nobs  = _N
+    if "`extra'" == "" local extra = 0
     _dash_limit, name(cells)
     local lim  = r(value)
     local ceil = r(ceiling)
-    if `nobs' * `nvars' <= `lim' exit
+    local total = `nobs' * `nvars' + `extra'
+    if `total' <= `lim' exit
 
-    _dash_count_fmt _cells_s `nobs' * `nvars'
-    _dash_count_fmt _obs_s   `nobs'
-    _dash_count_fmt _vars_s  `nvars'
+    _dash_count_fmt _cells_s `total'
     _dash_count_fmt _lim_s   `lim'
     _dash_count_fmt _ceil_s  `ceil'
-    local _obs_w  = cond(`nobs' == 1, "observation", "observations")
-    local _vars_w = cond(`nvars' == 1, "variable", "variables")
-    display as error "dash: this dashboard would embed `_cells_s' values (`_obs_s' `_obs_w' x `_vars_s' `_vars_w'), more than the `_lim_s' dash embeds."
+    if `nvars' == 0 {
+        local _shape "the drawn output of its computed layers"
+    }
+    else {
+        _dash_count_fmt _obs_s   `nobs'
+        _dash_count_fmt _vars_s  `nvars'
+        local _obs_w  = cond(`nobs' == 1, "observation", "observations")
+        local _vars_w = cond(`nvars' == 1, "variable", "variables")
+        if `extra' > 0 {
+            _dash_count_fmt _extra_s `extra'
+            local _shape "`_obs_s' `_obs_w' x `_vars_s' `_vars_w', and `_extra_s' values of computed layers"
+        }
+        else {
+            local _shape "`_obs_s' `_obs_w' x `_vars_s' `_vars_w'"
+        }
+    }
+    display as error "dash: this dashboard would embed `_cells_s' values (`_shape'), more than the `_lim_s' dash embeds."
     display as error "      Reduce the data in memory first (keep, drop, sample or collapse, inside preserve/restore), or set global dash_max_cells to a higher value (at most `_ceil_s')."
+    if "`served'" == "1" {
+        display as error "      A served app embeds every observation of every variable it uses."
+    }
     exit 134
 end
 
@@ -5944,7 +5974,28 @@ program define _dash_render_immediate
     local _dash_nvars : word count `needed_vars'
     // Each qualifier column is embedded with the data, and counted.
     mata: _dash_qual_export()
-    _dash_cell_cap `=`_dash_nvars' + `_dq_n''
+    // GAPS2 G3: the one-line route draws a single graph and never takes
+    // a server option (_dash_plot's own syntax has none), so the reduced
+    // accounting always applies -- unless the graph names no variable at
+    // all (the literal family, `_varfree'), which is never a computed-only
+    // type either, so the plain count below is exactly today's.
+    local _ri_gc = -1
+    local _ri_gt = 1
+    if !`_varfree' {
+        _dash_limit, name(by_groups)
+        local _ri_byg = r(value)
+        mata: st_local("_ri_gc", strofreal(_dash_computed_cells( ///
+            st_local("json_spec"), st_nobs(), `_ri_byg', ///
+            "`_pt_univar' `_pt_onefit'")))
+        mata: st_local("_ri_gt", strofreal(_dash_graph_touched( ///
+            "", st_local("json_spec"), "", "", "")))
+    }
+    if `_ri_gc' >= 0 & !`_ri_gt' {
+        _dash_cell_cap 0 "" `_ri_gc'
+    }
+    else {
+        _dash_cell_cap `=`_dash_nvars' + `_dq_n''
+    }
     _dash_byte_cap `needed_vars'
 
     // Collect display formats.  Each travels in the spec's formats map;
@@ -6717,6 +6768,17 @@ program define _dash_prepare_spec, rclass
     // And each distinct qualifier, which is evaluated in Stata and exported
     // as a column (_dash_qual_rewrite, _dash_qual_take, _dash_qual_gen).
     local all_vars ""
+    // GAPS2 G3: the saved page's cells limit counts what it embeds, not
+    // every exported variable -- row_vars/comp_cells decide that, beside
+    // all_vars (which the export still uses unchanged, per DISCOVERY
+    // Q9: the JSON export is not shrunk).  _pt_univar/_pt_onefit name the
+    // computed-only types; by_groups is the LIMIT, not any graph's actual
+    // group count, which is not known before the export.
+    local row_vars ""
+    local comp_cells = 0
+    _dash_plottype_families
+    _dash_limit, name(by_groups)
+    local _by_groups_lim = r(value)
     mata: _dash_qual_reset()
     local ntok_reg : word count `registry'
     forvalues k = 1/`ntok_reg' {
@@ -6747,6 +6809,10 @@ program define _dash_prepare_spec, rclass
             }
             local kpi_var = "${dash_kpi_`gname'__var}"
             if !`: list kpi_var in all_vars' local all_vars "`all_vars' `kpi_var'"
+            // GAPS2 G3: a KPI always counts its variable (and, below, its
+            // own qualifier column) -- it never draws from a computed-only
+            // layer, so it is never excluded from row_vars.
+            if !`: list kpi_var in row_vars' local row_vars "`row_vars' `kpi_var'"
             // The KPI's own if and in: the column that will hold Stata's
             // answer (_dash_qual_gen), read by value from the registry.
             // Its variables are not exported -- the answer is.  They used
@@ -6762,6 +6828,9 @@ program define _dash_prepare_spec, rclass
                     st_local("gname"), "' holds a qualifier dash cannot evaluate: " + ///
                     st_local("_dq_err") + ". Run dash clear and register it again.")
                 exit 198
+            }
+            if `: length local _kqc_`k'' {
+                if !`: list _kqc_`k' in row_vars' local row_vars "`row_vars' `_kqc_`k''"
             }
             continue
         }
@@ -6815,6 +6884,38 @@ program define _dash_prepare_spec, rclass
                     if !`: list v in all_vars' local all_vars "`all_vars' `v'"
                 }
             }
+
+            // GAPS2 G3: does this graph draw only its own computed
+            // output (_dash_computed_cells, on the rewritten graph so a
+            // qualifier's text is never scanned), and does nothing else
+            // reach its rows (_dash_graph_touched)?  filter is read here
+            // in its pre-rewrite form -- _dash_graph_touched needs only
+            // exclude()'s graph names, not the filter's own variable
+            // name, so the full-name rewrite below does not matter yet.
+            mata: st_local("_gc_`k'", strofreal(_dash_computed_cells( ///
+                st_local("_qg_`k'"), st_nobs(), `_by_groups_lim', ///
+                "`_pt_univar' `_pt_onefit'")))
+            mata: st_local("_gt_`k'", strofreal(_dash_graph_touched( ///
+                "`gname'", st_local("_qg_`k'"), st_local("filter"), ///
+                st_local("link"), st_local("csv"))))
+            if `_gc_`k'' >= 0 & !`_gt_`k'' {
+                local comp_cells = `comp_cells' + `_gc_`k''
+            }
+            else {
+                foreach v of local gvars {
+                    if !`: list v in row_vars' local row_vars "`row_vars' `v'"
+                }
+                foreach v of local qvars {
+                    capture confirm variable `v'
+                    if _rc == 0 {
+                        if !`: list v in row_vars' local row_vars "`row_vars' `v'"
+                    }
+                }
+                mata: st_local("_gqc_`k'", _dash_qual_cols_in(st_local("_qg_`k'")))
+                foreach v of local _gqc_`k' {
+                    if !`: list v in row_vars' local row_vars "`row_vars' `v'"
+                }
+            }
         }
     }
 
@@ -6847,6 +6948,10 @@ program define _dash_prepare_spec, rclass
         if !`: list _fvfull in all_vars' {
             local all_vars "`all_vars' `_fvfull'"
         }
+        // GAPS2 G3: a filter variable always counts, whatever it excludes.
+        if !`: list _fvfull in row_vars' {
+            local row_vars "`row_vars' `_fvfull'"
+        }
     }
     if !`: list _ffull == _fvars' {
         mata: st_local("filter", _dash_filter_setvars(st_local("filter"), ///
@@ -6854,6 +6959,7 @@ program define _dash_prepare_spec, rclass
     }
 
     local all_vars = strtrim("`all_vars'")
+    local row_vars = strtrim("`row_vars'")
 
     // No variable to export: every graph must draw from its own values --
     // scatteri, pci, pcarrowi and function alone, which twoway draws with
@@ -6907,7 +7013,18 @@ program define _dash_prepare_spec, rclass
     local _dash_nvars : word count `all_vars'
     // Each qualifier column is embedded with the data, and counted.
     mata: _dash_qual_export()
-    _dash_cell_cap `=`_dash_nvars' + `_dq_n''
+    // GAPS2 G3: the server route -- dash build, server (the SERVER
+    // option here) or dash serve (which never passes its own server
+    // option: `cmdname' alone decides it, checked above at "ignoring
+    // option(s) that only apply to dash build") -- embeds every
+    // observation of every variable and says so; the saved route counts
+    // only what the page will hold.
+    if "`server'" != "" | "`cmdname'" == "dash serve" {
+        _dash_cell_cap `=`_dash_nvars' + `_dq_n'' "" 0 1
+    }
+    else {
+        _dash_cell_cap `: word count `row_vars'' "" `comp_cells'
+    }
     _dash_byte_cap `all_vars'
 
     // Collect display formats, as on the immediate route.

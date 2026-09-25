@@ -626,9 +626,12 @@ class TestAnOversizedDatasetIsRefused:
             "an if qualifier does not reduce what is exported: " + advice)
 
     def test_the_saved_renderer_refuses_before_drawing(self, tmp_path):
+        # GAPS2 G3: the frame is 12 x 4 (y, x, g, s), but g1's lone
+        # scatter draws only y and x -- g and s are exported yet drawn by
+        # nothing, so the saved page's count is 12 x 2 = 24, not 48.
         spec = _spec([_graph("g1")], limits={"cells": 10})
-        _, sp, dp = _write(tmp_path, spec, _frame(12))   # 48 cells
-        with pytest.raises(dr.DashLimitError, match="48 values"):
+        _, sp, dp = _write(tmp_path, spec, _frame(12))
+        with pytest.raises(dr.DashLimitError, match="24 values"):
             dr.DashRenderer(sp, dp)
 
     def test_the_saved_renderer_draws_within_the_limit(self, tmp_path):

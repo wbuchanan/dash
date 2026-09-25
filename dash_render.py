@@ -970,31 +970,25 @@ _LARGE_DATASET_CELLS = 1_000_000
 _HTML_BYTES_PER_CELL = 24
 
 
-def _report_dataset_size(df: "pd.DataFrame", mode: str) -> None:
+def _report_dataset_shape(rows, cols, mode, stacklevel=3, extra=0):
     """Say so, once, when a dataset will make an unwieldy dashboard.
 
-    Neither renderer bounded or reported this. Measured by the adversarial
-    pass: 2,000,000 rows by 2 columns rendered to 90.6 MB of HTML at 1.71 GB
-    RSS with rc 0 and nothing said, and the served app embeds the same data
-    base64 and rebuilds the frame on every session. The user finds out when
-    the file will not open, and a Stata user has no way to know in advance --
-    `dash scatter y x' looks the same on 74 observations and on ten million.
+    Neither renderer bounded or reported this before WP-19. Measured by the
+    adversarial pass: 2,000,000 rows by 2 columns rendered to 90.6 MB of
+    HTML at 1.71 GB RSS with rc 0 and nothing said, and the served app
+    embeds the same data base64 and rebuilds the frame on every session.
+    The user finds out when the file will not open, and a Stata user has
+    no way to know in advance -- `dash scatter y x' looks the same on 74
+    observations and on ten million.
 
-    Args:
-        df:   The frame about to be embedded.
-        mode: "dashboard" or "server app", for the message.
+    ``rows``/``cols`` are the shape known without building a frame (the
+    served builder counts its JSON rather than parsing one; the saved
+    renderer passes ``len(row_cols)``, GAPS2 G3, not every column in
+    memory).  ``extra`` (also G3) is the drawn output of computed-only
+    layers no filter, link(), csv or hover() reaches; those rows are not
+    in *cols*.
     """
-    try:
-        rows, cols = int(df.shape[0]), int(df.shape[1])
-    except (AttributeError, TypeError, ValueError):
-        return
-    _report_dataset_shape(rows, cols, mode, stacklevel=4)
-
-
-def _report_dataset_shape(rows, cols, mode, stacklevel=3):
-    """:func:`_report_dataset_size` for a shape known without a frame --
-    the served builder counts its JSON rather than building one."""
-    cells = rows * cols
+    cells = int(rows) * int(cols) + int(extra)
     # Above the threshold, as the constant and dash.sthlp say: this said so
     # AT 1,000,000 as well.
     if cells <= _LARGE_DATASET_CELLS:
@@ -1065,6 +1059,28 @@ _DASH_LIMITS = {
 }
 
 
+#: Plot types whose only output is a computed layer -- a histogram's bars,
+#: a kdensity curve, a fit or a smoother's line -- rather than one glyph
+#: per row (GAPS2 G3).  Equal to dash.ado's ``_pt_univar`` plus
+#: ``_pt_onefit`` (``_dash_plottype_families``);
+#: test/test_embedded_cells.py::TestTheTwoLanguagesAgree pins the two
+#: equal.
+_DASH_COMPUTED_ONLY_TYPES = frozenset({
+    "histogram", "kdensity",
+    "lfit", "qfit", "lfitci", "qfitci", "fpfit", "fpfitci",
+    "mspline", "mband", "lowess", "lpoly", "lpolyci",
+})
+
+#: One bound on every computed layer above except a histogram and a
+#: lowess, which are counted exactly (see _dash_graph_computed_cells):
+#: kdensity/lpoly/lpolyci/the fits draw at most 2 or 4 * 10,000 = 40,000;
+#: fpfit/fpfitci at most 2 or 4 * _FP_GRID_MAX (20,000) = 80,000; mspline
+#: at most 2 * ((200-1)*300 + 200) = 119,800; mband at most 2 * 200 = 400.
+#: dash_parse.mata's _dash_computed_plot_cells() returns the same number;
+#: test/test_embedded_cells.py::TestTheTwoLanguagesAgree pins both.
+_DASH_COMPUTED_PLOT_CELLS = 120_000
+
+
 class DashLimitError(ValueError):
     """A dashboard over a limit dash refuses rather than clamps."""
 
@@ -1131,22 +1147,46 @@ def _dash_limit_hint(key, verb="raise the limit", start=False):
             f"(at most {ceiling:,})")
 
 
-def _dash_refuse_oversized(rows, cols, limits, mode):
-    """Raise :class:`DashLimitError` when rows x cols is over the cell limit.
+def _dash_refuse_oversized(rows, cols, limits, mode, extra=0):
+    """Raise :class:`DashLimitError` when rows x cols + extra is over the
+    cell limit.
 
     The same refusal dash.ado makes before it exports anything; this one is
     for a spec that reached the renderer another way.
+
+    ``extra`` (GAPS2 G3) is the drawn output of computed-only layers
+    (histogram, kdensity, a fit or a smoother) that no filter, link(), csv
+    or hover() reaches; those layers' own rows are never in *cols*, so a
+    saved page can embed more observations than the cells limit alone
+    would allow.  ``cols == 0`` means every graph is computed-only and
+    untouched -- nothing row-shaped is embedded at all -- so the message
+    names the drawn output rather than a row x column shape.  The message
+    is byte-identical to before this option existed when ``extra == 0``.
+    A served app always embeds every observation of every variable it
+    uses (``_embed_data``), so ``mode == "server app"`` adds a third
+    sentence saying so, whether or not extra is used on that route.
     """
-    cells = int(rows) * int(cols)
+    rows, cols, extra = int(rows), int(cols), int(extra)
+    cells = rows * cols + extra
     limit = int(limits["cells"])
     if cells <= limit:
         return
-    raise DashLimitError(
-        f"dash: this {mode} would embed {cells:,} values ({int(rows):,} "
-        f"observations x {int(cols)} variables), more than the {limit:,} "
-        f"dash embeds. Reduce the data in memory first (keep, drop, sample "
-        f"or collapse, inside preserve/restore), or "
-        f"{_dash_limit_hint('cells', 'a higher value')}.")
+    if cols == 0:
+        shape = "the drawn output of its computed layers"
+    elif extra > 0:
+        shape = (f"{rows:,} observations x {cols} variables, and "
+                 f"{extra:,} values of computed layers")
+    else:
+        shape = f"{rows:,} observations x {cols} variables"
+    msg = (
+        f"dash: this {mode} would embed {cells:,} values ({shape}), "
+        f"more than the {limit:,} dash embeds. Reduce the data in memory "
+        f"first (keep, drop, sample or collapse, inside preserve/restore), "
+        f"or {_dash_limit_hint('cells', 'a higher value')}.")
+    if mode == "server app":
+        msg += (" A served app embeds every observation of every "
+                "variable it uses.")
+    raise DashLimitError(msg)
 
 
 def _dash_refuse_string_plot_vars(spec, string_vars, mode):
@@ -1183,6 +1223,169 @@ def _dash_refuse_string_plot_vars(spec, string_vars, mode):
                         f"numeric variables there (r(109)). colorvar(), "
                         f"mlabel(), hover() and by() take a string "
                         f"variable.")
+
+
+def _dash_graph_qual_cols(g):
+    """The distinct qual_col/qual_col_total names a graph dict names, on
+    itself and on each of its plots (the Python twin of dash_parse.mata's
+    _dash_qual_cols_in, GAPS2 G3)."""
+    out = []
+    objs = [g] + [p for p in (g.get("plots") or []) if isinstance(p, dict)]
+    for o in objs:
+        if not isinstance(o, dict):
+            continue
+        for key in ("qual_col", "qual_col_total"):
+            v = o.get(key)
+            if v and v not in out:
+                out.append(v)
+    return out
+
+
+def _dash_graph_computed_cells(g, rows, by_groups_limit=1):
+    """-1 unless every plot of *g* is a computed-only type
+    (_DASH_COMPUTED_ONLY_TYPES) and *g* has no by(); else the cells its
+    computed layers draw -- the Python twin of dash_parse.mata's
+    _dash_computed_cells (GAPS2 G3).
+
+    bin()/width()/discrete() are read once for the whole graph, from the
+    first plot that gives one, so Mata (reading the graph's raw JSON text)
+    and Python (reading its plot list) decide the same thing from
+    different representations: a graph holding two histograms with
+    different bin() values is counted from the first.
+
+    by() returns -1 (not computed-only): the actual panel count is not
+    known before the export, and multiplying the per-panel bound by
+    *by_groups_limit* instead (100 by default) makes even a two-panel
+    by(foreign) on a generic computed type -- kdensity, lpoly, lpolyci,
+    the fits, mspline, mband, all bounded at _DASH_COMPUTED_PLOT_CELLS --
+    read as 12,000,000, over the default cells limit on any dataset,
+    however small.  A by()-faceted graph is counted in full instead, as
+    it was before this section.
+    """
+    if str((g.get("graph_options") or {}).get("by") or "").strip():
+        return -1
+    plots = [p for p in (g.get("plots") or []) if isinstance(p, dict)]
+    if not plots:
+        return -1
+    if any(str(p.get("type", "")) not in _DASH_COMPUTED_ONLY_TYPES
+           for p in plots):
+        return -1
+
+    bin_val = None
+    has_width_or_discrete = False
+    for p in plots:
+        opts = p.get("options") or {}
+        if bin_val is None:
+            raw = str(opts.get("bin") or "").strip()
+            if raw.isdigit():
+                # map_histogram's own _MAX_BINS (dash_render.py, ~9907)
+                # clamps an outsized bin() the same way before it ever
+                # draws a bar; reading the raw value here made bin(99999999)
+                # read as 399,999,996 cells and refused a build the
+                # renderer would draw with 1,000 bins and a warning.
+                bin_val = min(int(raw), 1000)
+        if (str(opts.get("width") or "").strip()
+                or str(opts.get("discrete") or "").strip()):
+            has_width_or_discrete = True
+
+    if bin_val is not None:
+        wd, bins = False, bin_val
+    elif has_width_or_discrete:
+        wd, bins = True, 0
+    elif rows > 0:
+        wd = False
+        bins = max(1, math.floor(min(math.sqrt(rows),
+                                     10 * math.log10(rows))))
+    else:
+        wd, bins = False, 1
+
+    total = 0
+    for p in plots:
+        ptype = str(p.get("type", ""))
+        if ptype == "lowess":
+            total += 2 * rows
+        elif ptype == "histogram":
+            total += 4 * (rows if wd else bins)
+        else:
+            total += _DASH_COMPUTED_PLOT_CELLS
+
+    return total
+
+
+def _dash_embedded_cells(spec, rows, columns, limits):
+    """(row_cols, extra) -- what a SAVED page embeds for *spec* over
+    *rows* observations of *columns* (GAPS2 G3): the Python twin of
+    dash.ado's _dash_prepare_spec accounting and dash_parse.mata's
+    _dash_computed_cells/_dash_graph_touched.
+
+    A graph made only of computed-only plot types
+    (_DASH_COMPUTED_ONLY_TYPES) that no filter, link(), csv or hover()
+    reaches draws its own bounded output (``extra``) and its variables are
+    not counted as ``row_cols``; every other graph, every KPI and every
+    filter variable counts its columns.  ``rows`` and ``columns`` are
+    plain numbers/names -- no frame is built here, which is how the
+    renderer calls this with ``self.df.shape[0]`` and
+    ``list(self.df.columns)``.
+    """
+    columns = list(columns or ())
+    colset = set(columns)
+    build = (spec or {}).get("build_options", {}) or {}
+    graphs = [g for g in (spec or {}).get("graphs", []) or []
+             if isinstance(g, dict)]
+    kpis = [k for k in (spec or {}).get("kpis", []) or []
+           if isinstance(k, dict)]
+
+    if _dash_csv_wanted(build):
+        return list(columns), 0
+
+    graph_names = [g.get("name", "") for g in graphs]
+    linked = set(_dash_link_names(build.get("link", ""), graph_names))
+    filters = _dash_parse_filter_raw(build.get("filter", ""), warn=False)
+    by_groups_limit = int((limits or {}).get(
+        "by_groups", _DASH_LIMITS["by_groups"][0]))
+
+    row_cols = []
+
+    def _add(name):
+        if name and name in colset and name not in row_cols:
+            row_cols.append(name)
+
+    extra = 0
+    for g in graphs:
+        gname = g.get("name", "")
+        go = g.get("graph_options") or {}
+        hover = str(go.get("hover") or "").strip()
+        touched = bool(
+            gname in linked or hover
+            or any(gname not in (f.get("exclude") or []) for f in filters))
+        gc = -1 if touched else _dash_graph_computed_cells(
+            g, rows, by_groups_limit)
+        if gc >= 0 and not touched:
+            extra += gc
+            continue
+        for p in g.get("plots") or []:
+            if not isinstance(p, dict):
+                continue
+            for key in DashRenderer._VAR_KEYS:
+                _add(p.get(key))
+            for v in _dash_option_columns(p.get("options") or {}):
+                _add(v)
+        bv, _bcols, _btotal, _bmiss, _unsup = _dash_parse_by(
+            str(go.get("by") or "").strip(), warn=False)
+        for name in bv.split():
+            _add(name)
+        for qc in _dash_graph_qual_cols(g):
+            _add(qc)
+
+    for k in kpis:
+        _add(k.get("var"))
+        for key in ("qual_col", "qual_col_total"):
+            _add(k.get(key))
+
+    for f in filters:
+        _add(f.get("varname"))
+
+    return row_cols, extra
 
 
 def _dash_text_bytes(df, string_vars):
@@ -21268,11 +21471,20 @@ class DashRenderer:
         self._facet_total_keys: set = set()
 
         self._load_data()
+        # What the saved page will actually embed (GAPS2 G3): a graph made
+        # only of computed layers that no filter, link(), csv or hover()
+        # reaches draws its own bounded output, not one glyph per row.
+        # Computed once and kept on self so the size note below (render())
+        # need not recompute it.
+        self._embedded_row_cols, self._embedded_extra = _dash_embedded_cells(
+            self.master_spec, self.df.shape[0], list(self.df.columns),
+            self.limits)
         # Refused before anything is drawn from it: dash.ado refuses the
         # same data before exporting it, so this is for a spec that reached
         # the renderer another way.
-        _dash_refuse_oversized(self.df.shape[0], self.df.shape[1],
-                               self.limits, "dashboard")
+        _dash_refuse_oversized(self.df.shape[0], len(self._embedded_row_cols),
+                               self.limits, "dashboard",
+                               extra=self._embedded_extra)
         _dash_refuse_overbytes(self.df, self.string_vars, self.limits,
                                "dashboard",
                                getattr(self, "_data_file_bytes", None))
@@ -24263,7 +24475,11 @@ class DashRenderer:
         kpis   = self.master_spec.get("kpis", [])
         build  = self.master_spec.get("build_options", {})
 
-        _report_dataset_size(self.df, "dashboard")
+        # GAPS2 G3: the note reports embedded bytes, under the same
+        # row_cols/extra count __init__ refused on (computed once there).
+        _report_dataset_shape(self.df.shape[0],
+                              len(self._embedded_row_cols), "dashboard",
+                              extra=self._embedded_extra)
         # Sub-option reports already made this render, so a by() panel does
         # not repeat its graph's.
         self._reported_subopts = set()

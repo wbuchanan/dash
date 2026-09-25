@@ -403,6 +403,22 @@ their own lists.
   and the renderers drew no panels, tooltip field, widget or colours for
   it, in silence. (WP-28, G5)
 
+### Fixed in WP-28
+
+- The saved page's `$dash_max_cells` limit counts what the page will
+  actually embed, not every exported variable times every observation: a
+  graph made only of computed layers (`histogram`, `kdensity`, a fit or a
+  smoother) that no `filter()`, `link()`, `csv` or `hover()` reaches draws
+  its own bounded output, so `dash histogram x` now builds a saved page on
+  more than 5,000,000 observations (measured: `set obs 6000000; dash
+  histogram x, bin(50)` built a 1,441,675-byte page with rc 0) where
+  `dash scatter y x` on the same 6,000,000 observations is still refused
+  ("this dashboard would embed 6,000,000 values (6,000,000 observations x
+  1 variable), more than the 5,000,000 dash embeds"). The size note
+  reports embedded bytes the same way. The served app's count is
+  unchanged, and its refusal now says a served app embeds every
+  observation of every variable it uses. (WP-28, G3)
+
 ### Fixed after WP-27 (the S3 batch, 24sep2026)
 
 Every entry BUGS.md graded S3 at release was taken up; the work found and

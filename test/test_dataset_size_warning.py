@@ -35,12 +35,26 @@ def _render(tmp_path, n_rows, n_cols, tag):
     rng = np.random.default_rng(3)
     df = pd.DataFrame({f"v{i}": rng.normal(size=n_rows)
                        for i in range(n_cols)})
+    # Every column beyond the scatter's own v0/v1 is a KPI's variable
+    # (GAPS2 G3): a saved page's cells limit -- and this note -- now
+    # counts only what is actually embedded, so a column nothing draws
+    # from (no plot, no KPI, no filter) is no longer part of the count;
+    # this fixture keeps every one of its n_cols columns embedded, as a
+    # real dashboard's exported columns always are (dash.ado never
+    # exports a variable nothing references).
+    kpis = [{"name": f"k{i}", "stat": "mean", "var": f"v{i}", "fmt": "",
+             "title": f"k{i}", "subtitle": "", "color": "", "bgcolor": "",
+             "update": "filter", "if_expr": "", "in_expr": "",
+             "qual_col": ""}
+            for i in range(2, n_cols)]
     spec = {"graphs": [{"name": "g1", "graph_options": {"name": "g1"},
                         "options": {},
                         "plots": [{"type": "scatter", "yvar": "v0",
                                    "xvar": "v1", "options": {}}]}],
-            "kpis": [],
-            "build_options": {"layout": "auto", "registry": "g1",
+            "kpis": kpis,
+            "build_options": {"layout": "auto",
+                              "registry": "g1 " + " ".join(
+                                  k["name"] for k in kpis),
                               "level": "95", "formats": {}, "theme": "",
                               "scheme": "", "session_scheme": ""}}
     sp = tmp_path / f"s_{tag}.json"
