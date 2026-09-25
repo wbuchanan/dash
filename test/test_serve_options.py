@@ -46,7 +46,8 @@ def _read_ado() -> str:
 
 def _program_body(src: str, name: str) -> str:
     m = re.search(
-        r"^program define %s(?:,\s*\w+)?\s*$(.*?)^end\s*$" % re.escape(name),
+        # Any properties after the comma: `rclass sortpreserve' is two.
+        r"^program define %s(?:,[ \t\w]*)?\s*$(.*?)^end\s*$" % re.escape(name),
         src, re.MULTILINE | re.DOTALL,
     )
     assert m, f"program {name} not found in dash.ado"

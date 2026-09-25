@@ -35,7 +35,7 @@
 *! (name() then the export dash build and dash serve run), in both render
 *! modes.
 *!
-*! Tests: QS-01 .. QS-15
+*! Tests: QS-01 .. QS-21
 *!
 *! Usage:  do test/test_qualifier_in_stata.cscript  (from test/)
 *! Version: 1.0  24sep2026
@@ -162,6 +162,7 @@ def _qs_modes():
         _qs_M.setGlobal("QS_" + tag + "_CARRIED", str(c))
         _qs_M.setGlobal("QS_" + tag + "_DRAWN", d)
         _qs_M.setGlobal("QS_" + tag + "_NLAYERS", str(len(layers)))
+        _qs_M.setGlobal("QS_" + tag + "_PSET", "|".join(sorted(layers)))
         for k, rows in enumerate(layers):
             _qs_M.setGlobal("QS_" + tag + "_LAYER" + str(k + 1), rows)
         _qs_M.setGlobal("QS_" + tag + "_KPI", _qs_kpi(roots))
@@ -223,9 +224,15 @@ def _qs_page():
     _qs_M.setGlobal("QS_PAGE_CARRIED", str(carried))
     _qs_M.setGlobal("QS_PAGE_DRAWN", _qs_join(drawn))
     _qs_M.setGlobal("QS_PAGE_NLAYERS", str(len(layers)))
+    _qs_M.setGlobal("QS_PAGE_PSET", "|".join(sorted(rows for _, rows in layers)))
     for k, (fid, rows) in enumerate(layers):
         _qs_M.setGlobal("QS_PAGE_LAYER" + str(k + 1), rows)
     _qs_M.setGlobal("QS_PAGE_HASQ", "1" if "__dashq" in page else "0")
+
+def _qs_tw_join():
+    n = int(_qs_M.getGlobal("QS_TW_NP") or "0")
+    rows = [_qs_M.getGlobal("QS_TWP" + str(k)) or "" for k in range(1, n + 1)]
+    _qs_M.setGlobal("QS_TW_PSET", "|".join(sorted(rows)))
 
 def _qs_spec_facts():
     with open(_qs_M.getGlobal("QS_SPEC"), encoding="utf-8") as fh:
@@ -733,6 +740,305 @@ assert r(N) == 22
 capture erase "`p'.html"
 capture dash clear
 display "QS-15 PASS: a qualifier after an estimation is exported under its name, and the estimates are kept"
+
+// ----------------------------------------------------------------
+// QS-16 .. QS-21 -- a by() graph's qualifiers, in twoway's order.
+//
+// twoway draws a by() graph after sorting the data on the by() variables,
+// stably (bygraph_g.class: bysort varlist (sortedby obsnum)), and
+// evaluates every plot's if and in, and the graph's, once over the whole
+// sorted data: _n does not restart within a group, missing by() values
+// sort last and still count, and `in' is read after the sort.  Its Total
+// panel is drawn after `bysort one (sortedby obsnum)', in the data's own
+// order.  Measured 24sep2026 from each panel's serset on auto sorted by
+// make: `(scatter rowid mpg if _n<10) (...), by(foreign)' draws rows
+// 1 2 3 7 8 9 10 11 12 in Domestic and none in Foreign, and the Total
+// panel rows 1-9.  dash evaluated each qualifier once in the data's order
+// and drew rows 1-9 split across both panels (BUGS.md S1).
+//
+// Each case is measured live here against twoway: the rows of the first
+// plot in each panel (its serset), against the rows the scatter in each
+// panel draws, on the immediate route and the named route, in both
+// modes.  Panels compare as a sorted set of row lists, so a panel order
+// difference is not read as a row difference.
+// ----------------------------------------------------------------
+
+// Each panel's rows of plot 1, from twoway's sersets: $QS_TW_PSET.
+capture program drop _qs_tw_pset
+program define _qs_tw_pset
+    version 16.0
+    local ng = 0`.Graph.graphs.arrnels'
+    forvalues k = 1/`ng' {
+        local id "`.Graph.graphs[`k'].plotregion1.plot1.serset.id'"
+        local r ""
+        if "`id'" != "" {
+            serset set `id'
+            preserve
+            serset use, clear
+            quietly count
+            if r(N) quietly levelsof rowid, local(r)
+            restore
+        }
+        local r : list retokenize r
+        global QS_TWP`k' "`r'"
+    }
+    global QS_TW_NP `ng'
+    python: import __main__ as _qs_mn; _qs_mn._qs_tw_join()
+end
+
+// One case: the twoway command and the dash command (no saving/name).
+// Returns r(ok) 1 when every route drew twoway's rows, r(rc) twoway's rc.
+capture program drop _qs_by_case
+program define _qs_by_case, rclass
+    version 16.0
+    args label twcmd dashcmd
+    capture `twcmd' nodraw
+    local twrc = _rc
+    local want ""
+    if !`twrc' {
+        _qs_tw_pset
+        local want "$QS_TW_PSET"
+    }
+    // The immediate route.
+    tempfile p
+    global QS_PAGE "`p'.html"
+    capture dash clear
+    capture noisily `dashcmd' saving("`p'.html")
+    local drc = _rc
+    local got ""
+    if !`drc' {
+        python: import __main__ as _qs_mn; _qs_mn._qs_page()
+        local got "$QS_PAGE_PSET"
+    }
+    capture erase "`p'.html"
+    local ok = (`drc' == `twrc') & (`"`got'"' == `"`want'"')
+    if !`ok' {
+        display as error "  `label' immediate: twoway rc `twrc' [`want']"
+        display as error "  `label' immediate: dash   rc `drc' [`got']"
+    }
+    // The named route, both modes.
+    capture dash clear
+    capture noisily `dashcmd' name(qsby)
+    local nrc = _rc
+    local ok = `ok' & (`nrc' == `twrc')
+    if !`nrc' {
+        tempfile s d a
+        _dash_prepare_spec, specpath("`s'") datapath("`d'")
+        global QS_SPEC "`s'"
+        global QS_DATA "`d'"
+        global QS_APP  "`a'"
+        python: import __main__ as _qs_mn; _qs_mn._qs_modes()
+        foreach m in SAVED SERVED {
+            if `"${QS_`m'_PSET}"' != `"`want'"' {
+                display as error "  `label' `m': dash [${QS_`m'_PSET}]"
+                display as error "  `label' `m': twoway [`want']"
+                local ok 0
+            }
+        }
+    }
+    capture dash clear
+    return scalar ok = `ok'
+    return scalar rc = `twrc'
+    return local want `"`want'"'
+end
+
+preserve
+quietly replace rep78 = . in 1/3
+sort make
+
+// ----------------------------------------------------------------
+// QS-16 -- each qualifier, a plot's own and the graph's, under by() with
+// one and two variables, total, and missing.
+// ----------------------------------------------------------------
+local qq1 "if _n<10"
+local qq2 "if _n==1"
+local qq3 "in 1/10"
+local qq4 "in -5/l"
+local qq5 "if mpg > mpg[_n-1]"
+local qq6 "if _n==_N"
+local qq7 "if price > 5000"
+local bb1 "foreign"
+local bb2 "foreign rep78"
+local bb3 "foreign, total"
+local bb4 "rep78, missing"
+local bb5 "foreign rep78, missing total"
+local n16 0
+local bad16 0
+forvalues b = 1/5 {
+    forvalues j = 1/7 {
+        // A plot's own qualifier; the graph draws a second plot beside it.
+        _qs_by_case "QS-16 plot [`qq`j''] by(`bb`b'')" ///
+            "twoway (scatter mpg rowid `qq`j'') (line mpg rowid), by(`bb`b'')" ///
+            "dash (scatter mpg rowid `qq`j'') (line mpg rowid), by(`bb`b'')"
+        local ++n16
+        if !r(ok) local ++bad16
+        // The graph's qualifier.
+        _qs_by_case "QS-16 graph [`qq`j''] by(`bb`b'')" ///
+            "twoway (scatter mpg rowid) (line mpg rowid) `qq`j'', by(`bb`b'')" ///
+            "dash (scatter mpg rowid) (line mpg rowid) `qq`j'', by(`bb`b'')"
+        local ++n16
+        if !r(ok) local ++bad16
+    }
+}
+display as text "  QS-16 `n16' cases, `bad16' drew other rows than twoway"
+assert `bad16' == 0
+display "QS-16 PASS: under by(), every qualifier selects twoway's rows in each panel, on both routes, in both modes"
+
+// ----------------------------------------------------------------
+// QS-17 -- ties keep the data's order: the sort twoway runs is stable,
+// so on data sorted otherwise (here by descending rowid, and by price)
+// `if _n < 30' picks the first rows of each group in that order.
+// ----------------------------------------------------------------
+local bad17 0
+gsort -rowid
+_qs_by_case "QS-17 gsort -rowid" ///
+    "twoway (scatter mpg rowid if _n < 30) (line mpg rowid), by(foreign)" ///
+    "dash (scatter mpg rowid if _n < 30) (line mpg rowid), by(foreign)"
+if !r(ok) local ++bad17
+sort price
+_qs_by_case "QS-17 sort price" ///
+    "twoway (scatter mpg rowid) (line mpg rowid) if _n < 10, by(foreign, total)" ///
+    "dash (scatter mpg rowid) (line mpg rowid) if _n < 10, by(foreign, total)"
+if !r(ok) local ++bad17
+sort make
+assert `bad17' == 0
+display "QS-17 PASS: twoway's sort is stable, and dash's is the same"
+
+// ----------------------------------------------------------------
+// QS-18 -- the panels themselves: a panel twoway leaves out, or a graph
+// it refuses, answered on the rows twoway counts in each panel.
+// ----------------------------------------------------------------
+local bad18 0
+local c18_1 "(scatter mpg rowid) (lfit mpg weight if _n == 1 | _n == 60), by(foreign)"
+local c18_2 "(scatter mpg rowid) (lfit mpg weight if _n == 1 | _n == 60), by(foreign, total)"
+local c18_3 "(scatter mpg rowid) (kdensity mpg if _n == 30 | _n == 60), by(foreign)"
+local c18_4 "(scatter mpg rowid) (lpoly mpg weight if _n <= 3 | _n == 60), by(foreign)"
+local c18_5 "scatter mpg rowid in -3/l, by(foreign)"
+local c18_6 "lfit mpg weight if _n == 1 | _n == 60, by(foreign)"
+forvalues j = 1/6 {
+    _qs_by_case "QS-18 [`j']" "twoway `c18_`j''" "dash `c18_`j''"
+    display as text "  QS-18 [`j'] twoway rc " r(rc)
+    if !r(ok) local ++bad18
+}
+assert `bad18' == 0
+display "QS-18 PASS: by() panels are counted on the rows twoway counts"
+
+// ----------------------------------------------------------------
+// QS-19 -- the build adds nothing, keeps the data's order and its sort
+// marker, and marks nothing changed (QS-07), under by() too.
+// ----------------------------------------------------------------
+sort price
+local sb0 : sortedby
+local k0 = c(k)
+local n0 = c(N)
+quietly save "`c(tmpdir)'qs19.dta", replace
+local ch0 = c(changed)
+mata: _qs19_o = st_data(., "rowid")
+tempfile p
+_qs_run `"dash (scatter mpg rowid if _n < 10) (line mpg rowid) in 5/70, by(foreign rep78, total) saving("`p'.html")"'
+assert r(rc) == 0
+capture dash clear
+dash (scatter mpg rowid if mpg > mpg[_n-1]) (line mpg rowid) in -40/l, by(foreign, total) name(qs19)
+tempfile s d
+_dash_prepare_spec, specpath("`s'") datapath("`d'")
+capture dash clear
+local sb1 : sortedby
+display as text "  QS-19 sortedby [`sb1'] (was [`sb0']), k " c(k) " (was `k0'), changed " c(changed) " (was `ch0')"
+assert "`sb1'" == "`sb0'" & c(k) == `k0' & c(N) == `n0' & c(changed) == `ch0'
+mata: assert(st_data(., "rowid") == _qs19_o)
+mata: mata drop _qs19_o
+capture unab left : __dashq*
+assert _rc == 111
+capture erase "`p'.html"
+capture erase "`c(tmpdir)'qs19.dta"
+sort make
+display "QS-19 PASS: a by() build keeps the data's order, adds nothing and marks nothing changed"
+
+// ----------------------------------------------------------------
+// QS-20 -- adversarial (rule 18).  (a) A qualifier holding macro text in
+// a string literal is evaluated by value on the sorted path too, at
+// registration and at build: a `=filewrite()' in it never runs.  (b) A
+// registry set by hand cannot put a command into by(), which the export
+// now sorts on, nor name its own Total column; each is refused and the
+// data are left as they were.
+// ----------------------------------------------------------------
+local f20 "`c(tmpdir)'qs20_side_effect.txt"
+capture erase "`f20'"
+capture dash clear
+capture noisily dash (scatter mpg rowid if _n > 0 & make != `"\`=filewrite("`f20'","x")'"') (line mpg rowid) in 1/60, by(foreign, total) name(qs20)
+local rc20a = _rc
+if !`rc20a' {
+    tempfile s d
+    capture noisily _dash_prepare_spec, specpath("`s'") datapath("`d'")
+    local rc20a = _rc
+}
+capture confirm file "`f20'"
+local made20 = (_rc == 0)
+display as text "  QS-20a rc `rc20a', side-effect file written: `made20'"
+assert `made20' == 0
+capture dash clear
+dash (scatter mpg rowid if _n < 10) (line mpg rowid), by(foreign, total) name(qs20)
+local orig : copy global dash_json_qs20
+local byok = char(34) + "by" + char(34) + ":" + char(34) + "foreign, total" + char(34)
+local b1 = char(34) + "by" + char(34) + ":" + char(34) + "foreign;drop _all, total" + char(34)
+local b2 = char(34) + "by" + char(34) + ":" + char(34) + "foreign \`=filewrite(" + char(92) + char(34) + "`f20'" + char(92) + char(34) + "," + char(92) + char(34) + "x" + char(92) + char(34) + ")', total" + char(34)
+local b3 = char(34) + "by" + char(34) + ":" + char(34) + "foreign 1x, total" + char(34)
+local fromq = char(34) + "in_expr" + char(34) + ":" + char(34) + char(34) + "}"
+local b4 = char(34) + "in_expr" + char(34) + ":" + char(34) + char(34) + "," + char(34) + "qual_col_total" + char(34) + ":" + char(34) + "mpg" + char(34) + "}"
+local nbad = 0
+forvalues b = 1/4 {
+    local from : copy local byok
+    if `b' == 4 local from : copy local fromq
+    mata: st_global("dash_json_qs20", subinstr(st_local("orig"), st_local("from"), st_local("b`b'"), 1))
+    mata: assert(st_global("dash_json_qs20") != st_local("orig"))
+    tempfile s d
+    capture noisily _dash_prepare_spec, specpath("`s'") datapath("`d'")
+    local rcb = _rc
+    capture confirm file "`f20'"
+    local made20 = (_rc == 0)
+    display as text "  QS-20b [`b'] rc `rcb', file written `made20', N " c(N) ", k " c(k)
+    assert `rcb' != 0 & `made20' == 0 & c(N) == 74 & c(k) == `k0'
+    capture unab left : __dashq*
+    assert _rc == 111
+    local ++nbad
+}
+assert `nbad' == 4
+mata: st_global("dash_json_qs20", st_local("orig"))
+capture dash clear
+display "QS-20 PASS: the by() path runs no macro text, and a hand-set by() or Total column is refused"
+
+restore
+
+// ----------------------------------------------------------------
+// QS-21 -- resource exhaustion (rule 18): the by() order costs a sort,
+// not a pass per group or per row.  100,000 observations, 10 groups.
+// ----------------------------------------------------------------
+preserve
+clear
+set obs 100000
+set seed 2721
+gen double x = runiform()
+gen double y = runiform()
+gen int g = ceil(10 * runiform())
+tempfile p
+timer clear 1
+timer clear 2
+timer on 1
+_qs_run `"dash scatter y x, by(g, total) saving("`p'.html")"'
+timer off 1
+assert r(rc) == 0
+timer on 2
+_qs_run `"dash (scatter y x if x > x[_n-1]) (scatter y x in 1/5000), by(g, total) saving("`p'.html") replace"'
+timer off 2
+assert r(rc) == 0
+quietly timer list
+local t1 = r(t1)
+local t2 = r(t2)
+display as text "  QS-21 100,000 rows, by(g, total): no qualifier `t1' s, ordered qualifiers `t2' s"
+assert `t2' < 2 * `t1' + 10
+capture erase "`p'.html"
+restore
+display "QS-21 PASS: a by() graph's ordered qualifiers stay linear"
 
 capture dash clear
 macro drop QS_*

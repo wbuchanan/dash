@@ -204,12 +204,15 @@ file close `fh'
 // The controls: two layers dash accepts and draws nothing for, one in each
 // form of the renderer's report (_dash_report_empty_layer, through the one
 // rule both modes run, _dash_note_empty_layer):
-//   ctl   a function whose expression the whitelist refuses -- it is not a
-//         function dash knows -- reported whatever the data:
+//   ctl   a function whose expression the renderer's whitelist refuses --
+//         normal(x), a function Stata has, which twoway draws (rc 0,
+//         measured 24sep2026), but not one dash draws -- reported whatever
+//         the data:
 //           dash: graph 'ctl' plot 1 (function) drew nothing.
-//         (twoway refuses this command, r(133) "unknown function";
-//         measured 24sep2026.  Were dash to refuse it too, ctl_rc below
-//         fails, and a function drawn empty must be found another way.)
+//         (It was nosuchfunction(x), which twoway refuses, r(133); dash now
+//         refuses that too, at registration (test_parser.cscript P1A-77).
+//         Were the renderer to draw normal(), a function drawn empty must
+//         be found another way.)
 //   ctl2  a scatter of a variable missing on every observation -- twoway
 //         draws it, empty and silent (rc 0, measured 24sep2026) -- which
 //         the renderer reports with the rows it had:
@@ -220,7 +223,7 @@ file close `fh'
 // see an empty figure and that each form of the report reaches this log in
 // the words C-03 reads.
 quietly generate double allmiss = .
-capture noisily dash function y = nosuchfunction(x), range(0 10) name(ctl)
+capture noisily dash function y = normal(x), range(0 10) name(ctl)
 local ctl_rc = _rc
 capture noisily dash scatter allmiss weight, name(ctl2)
 local ctl_rc = max(`ctl_rc', _rc)

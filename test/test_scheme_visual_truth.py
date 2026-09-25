@@ -41,15 +41,17 @@ WHAT IS COMPARED (each comparison measured 24sep2026 before it was written)
   white on white) the parser's border must be the colour of the fill.
 * The text colours with the record's: ``title_color`` (title),
   ``subheading_color`` (subtitle), ``axis_title_color`` (axis title),
-  ``key_label_color`` (legend label) and ``small_body_color`` (note, drawn
-  by ``_dash_text_annotations`` in the small_body box).  The record gives
+  ``key_label_color`` (legend label) and ``note_text_color`` (note, drawn
+  by ``_dash_text_annotations`` in the scheme's ``textboxstyle note``
+  box).  The record gives
   no colour for tick labels, so ``tick_label_color`` is not compared.
 * The text sizes on Stata's unit scale: a size is a relative unit, 100 =
   the graph's smaller dimension, 2.88pt per unit at the 4-inch reference the
   parser's pt strings are stated at, and the record's ``pct_of_height`` is
   that unit, the height being the smaller or equal dimension of all four
-  graphs.  ``note_font_size`` (``gsize note``) is drawn by nothing, so the
-  note is the small_body size, as ``_dash_text_annotations`` draws it.
+  graphs.  ``note_font_size`` (``gsize note``) is drawn by nothing; the
+  note is ``note_text_font_size``, its text box's size, as
+  ``_dash_text_annotations`` draws it.
 * ``graphsize_x``/``graphsize_y`` with ``graph_size_in``; ``symbolsize``
   with the markers' symbolsize name; ``default_marker_size`` and
   ``default_line_width`` in proportion to the drawn sizes, one constant
@@ -62,26 +64,25 @@ WHAT IS COMPARED (each comparison measured 24sep2026 before it was written)
   the scheme's graph size within a pixel of rounding (s2color and s1mono are
   1200 x 872 for 872.7), and its top-left pixel the graph region colour.
 
-WHERE THE PARSER DISAGREES WITH STATA
--------------------------------------
-Two cases, measured 24sep2026 and pinned as strict xfails (``raises=
-AssertionError``, so nothing but the comparison itself counts) whose reasons
-name the BUGS.md entry drafted for each; a fix turns them into failures
-that ask for the mark to go:
+WHERE THE PARSER DISAGREED WITH STATA (fixed in the S3 batch)
+------------------------------------------------------------
+Two cases, measured 24sep2026, were pinned here as strict xfails until
+the S3 batch fixed them:
 
 * economist's note.  Stata draws note() in the reverse_big text box
   (scheme-economist.scheme: ``textboxstyle note reverse_big``): medlarge,
   4.1660% of the graph's height, in #FFFFFF (both in the record), in a box
   filled with ``color reverse_big``, emidblue (read from the scheme file).
-  The parser gives note() the small_body box, as it does under every
-  scheme: 8pt (2.7778%) in #000000, and a rendered dashboard draws that, in
-  both modes.  This is the record's low-severity economist note-size entry,
-  measured again against what dash draws rather than against ``gsize
-  note``.
-* the plot region's border.  ``apply_to_figure`` outlines the plot region
+  The parser gave note() the small_body box under every scheme: 8pt
+  (2.7778%) in #000000.  It now reads ``textboxstyle note`` and that box's
+  keys (``note_text_font_size``, ``note_text_color``,
+  ``note_box_fill_color``).
+* the plot region's border.  ``apply_to_figure`` outlined the plot region
   in ``color axisline`` (#000000) under every scheme; Stata draws no
   visible border under stcolor or s2color (``color plotregion_line white``
-  on a white plot region) or economist (``linestyle plotregion none``).
+  on a white plot region) or economist (``areastyle twoway_plotregion
+  none``).  It now draws the scheme's effective border
+  (``plotregion_line_color``, None for none).
   s1mono's black border agrees.
 """
 import functools
@@ -124,21 +125,6 @@ PCT_TOL = 0.01
 #: (s1mono's diamond is 1.5314% where its circle is 1.5299%), under 0.01%
 #: for line widths.
 RATIO_TOL = 0.01
-
-#: The BUGS.md entries drafted 24sep2026 (TR-25.4) for the two
-#: disagreements; each xfail's reason names its entry by title.
-BUG_NOTE = ("BUGS.md (open, drafted 24sep2026 for TR-25.4): \"economist's "
-            "note() is drawn as a small black body note where Stata draws "
-            "its reverse_big box\"")
-BUG_OUTLINE = ("BUGS.md (open, drafted 24sep2026 for TR-25.4): \"Every "
-               "scheme outlines the plot region in black where Stata's "
-               "stcolor, s2color and economist draw no border\"")
-
-
-def _xfail(reason):
-    return pytest.mark.xfail(strict=True, raises=AssertionError,
-                             reason=reason)
-
 
 @functools.lru_cache(maxsize=None)
 def _truth():
@@ -303,24 +289,18 @@ def test_legend_border_is_what_stata_drew(name):
 _TEXT_COLOURS = (("title", "title_color"), ("subtitle", "subheading_color"),
                  ("axis_title", "axis_title_color"),
                  ("legend_label", "key_label_color"),
-                 ("note", "small_body_color"))
+                 ("note", "note_text_color"))
 _TEXT_SIZES = (("title", "heading_font_size"),
                ("subtitle", "subheading_font_size"),
                ("axis_title", "axis_title_font_size"),
                ("tick_label", "tick_label_font_size"),
                ("legend_label", "key_label_font_size"),
-               ("note", "small_body_font_size"))
+               ("note", "note_text_font_size"))
 
 
 def _text_params(pairs):
-    out = []
-    for name in SCHEMES:
-        for element, attr in pairs:
-            marks = (_xfail(BUG_NOTE)
-                     if (name, element) == ("economist", "note") else ())
-            out.append(pytest.param(name, element, attr, marks=marks,
-                                    id=f"{name}-{element}"))
-    return out
+    return [pytest.param(name, element, attr, id=f"{name}-{element}")
+            for name in SCHEMES for element, attr in pairs]
 
 
 @pytest.mark.parametrize("name,element,attr", _text_params(_TEXT_COLOURS))
@@ -383,6 +363,22 @@ def test_line_widths_keep_the_ratios_stata_drew():
     assert max(r.values()) / min(r.values()) - 1 <= RATIO_TOL, r
 
 
+def test_marker_outlines_are_as_wide_as_stata_drew_them():
+    """Stata draws every marker's outline at the scheme's `linewidth
+    p#mark' chain, which under all four schemes is the width of its lines
+    (outline_width_units == the line's width_units: s2color 8.64,
+    economist 19.01).  dash drew Bokeh's 1px outline under every scheme
+    (BUGS.md, S3); it now draws plot_line_width(i, "mark"), at the
+    line's pixel width, so the outline keeps Stata's ratio to the line."""
+    for name in SCHEMES:
+        sp = _parser(name)
+        for i in SERIES:
+            mk = _scheme(name)["markers"][f"p{i + 1}"]["outline_width_units"]
+            ln = _scheme(name)["lines_twoway_line"][f"p{i + 1}"]["width_units"]
+            assert sp.plot_line_width(i, "mark") / sp.plot_line_width(
+                i, "lineplot") == pytest.approx(mk / ln), (name, i)
+
+
 # ---------------------------------------------------------------------------
 # apply_to_figure
 # ---------------------------------------------------------------------------
@@ -402,9 +398,7 @@ def test_apply_to_figure_fills_what_stata_drew(name):
     assert _hex(fig.border_fill_color) == _hex(s["graph_region_background"])
 
 
-@pytest.mark.parametrize("name", [
-    pytest.param(n, marks=() if n == "s1mono" else _xfail(BUG_OUTLINE))
-    for n in SCHEMES])
+@pytest.mark.parametrize("name", SCHEMES)
 def test_apply_to_figure_borders_the_plot_region_as_stata_does(name):
     border = _scheme(name)["plot_region_border"]
     fig = _figure(name)
@@ -432,7 +426,7 @@ _HELD = {
     ("s1mono", ("linepattern p2line", "linepattern p3line")):
         "test_the_high_severity_disagreements_are_fixed",
     ("economist", ("gsize note",)):
-        "test_text_size_is_what_stata_drew[economist-note] (xfail)",
+        "test_text_size_is_what_stata_drew[economist-note]",
     ("economist", ("gsize heading",)):
         "test_text_size_is_what_stata_drew[economist-title]",
 }

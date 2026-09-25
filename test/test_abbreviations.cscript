@@ -803,9 +803,11 @@ capture quietly dash clear
 // run every case built for it, and must match its source where the source
 // states a size: the fixture's _meta.counts for A1 (options), A3
 // (dash_mismaps) and A5 (plottypes), the pinned lists above for R1 and for
-// R2 and R3 together.  And dash.sthlp documents 88 spellings, measured
-// 24sep2026 from its 75 {cmdab:} tokens (the KPI and layout ones set
-// aside) -- A4 runs the one-line ones and A4b the dash build ones.  A help
+// R2 and R3 together.  And dash.sthlp documents 102 spellings, measured
+// 24sep2026 from its {cmdab:} tokens (the KPI and layout ones set aside;
+// 88 before the S3 batch's table of a ci band's options added ac(),
+// alc(), alw(), alp(), fc(), fi() and lc() and their full names) -- A4
+// runs the one-line ones and A4b the dash build ones.  A help
 // file that documents another abbreviation changes that count on purpose;
 // one whose markup this parser no longer reads fails here.
 // ----------------------------------------------------------------
@@ -826,8 +828,8 @@ if `n_R2' + `n_R3' != ${ZQA_EXPN_R23} {
     local nfail = `nfail' + 1
     local faillist `"`faillist' size(R2+R3)"'
 }
-if ${ZQA_NDOC} != 88 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
-    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (88 measured); A4 ran `n_A4' and A4b `n_A4b'"
+if ${ZQA_NDOC} != 102 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
+    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (102 measured); A4 ran `n_A4' and A4b `n_A4b'"
     local nfail = `nfail' + 1
     local faillist `"`faillist' size(A4)"'
 }

@@ -176,8 +176,11 @@ class TestSecondaryAxisOptions:
         return list(figs.values())[0]
 
     def test_ytitle2_on_right_axis(self):
-        """DAX-07: ytitle2 option sets axis_label on the right axis."""
+        """DAX-07: ytitle2 option sets axis_label on the right axis (beside
+        a first-axis layer: a lone yaxis(2) graph draws one axis, on the
+        left -- TestALoneSecondAxisIsDrawnAsTwowayDrawsIt)."""
         plots = [
+            {"type": "scatter", "yvar": "y1", "xvar": "x", "options": {}},
             {"type": "line", "yvar": "y2", "xvar": "x", "options": {"yaxis": "2"}},
         ]
         graph_opts = {"name": "fig1", "ytitle2": "Secondary Y"}
@@ -191,6 +194,7 @@ class TestSecondaryAxisOptions:
         """DAX-08: ylabel2 option applies FixedTicker to secondary y-axis."""
         from bokeh.models.tickers import FixedTicker
         plots = [
+            {"type": "scatter", "yvar": "y1", "xvar": "x", "options": {}},
             {"type": "line", "yvar": "y2", "xvar": "x", "options": {"yaxis": "2"}},
         ]
         graph_opts = {"name": "fig1", "ylabel2": "1000 2000 3000 4000 5000"}
@@ -241,6 +245,7 @@ class TestMultiLayerSecondaryAxis:
     def test_single_right_axis_with_multiple_secondary_layers(self):
         """DAX-11: only one right-side axis added, not one per layer."""
         plots = [
+            {"type": "scatter", "yvar": "y1", "xvar": "x", "options": {}},
             {"type": "line",    "yvar": "y2", "xvar": "x", "options": {"yaxis": "2"}},
             {"type": "scatter", "yvar": "y3", "xvar": "x", "options": {"yaxis": "2"}},
         ]
@@ -267,3 +272,199 @@ class TestSecondaryAxisSecurity:
         # Should not raise; the string "2; import os" != "2", so no secondary axis
         fig = self._get_fig(plots)
         assert "y2" not in fig.extra_y_ranges
+
+
+# ============================================================
+# A graph whose every layer is on yaxis(2) (BUGS.md, S3)
+# ============================================================
+#
+# Measured 24sep2026, StataNow 19.5, `sysuse auto', from graph export svg:
+#
+#   twoway scatter mpg weight, yaxis(2)
+#       one y axis, on the LEFT (its labels 10 20 30 40 at x = 455 of the
+#       graph, where a first y axis's are), titled with the variable's
+#       label "Mileage (mpg)";
+#   ... yaxis(2) ytitle(TITLETWO, axis(2)) ylabel(#3, axis(2))
+#       the same left axis, titled TITLETWO -- the second axis's options
+#       style the one axis drawn;
+#   ... yaxis(2) ytitle(TITLEONE)
+#       refused, r(198): there is no first axis to title;
+#   ... yaxis(2) yscale(log axis(2))
+#       the left axis on a log scale;
+#   (scatter mpg weight, yaxis(2)) (line price weight, yaxis(2) sort)
+#       one left axis, 0 5000 10000 15000;
+#   twoway scatter mpg weight, xaxis(2)
+#       one x axis, at the BOTTOM.
+#
+# dash drew a left axis over nothing and a right axis for the layers.
+# dash's second-axis options are ytitle2(), ylabel2() and yscale2() (twoway
+# writes them with axis(2)); on a lone second axis they style the one axis.
+
+import importlib.util as _ilu
+import itertools as _it
+
+_LONE_SEQ = _it.count()
+_LONE_MODES = ("saved", "served")
+
+
+def _lone_figure(mode, plots, graph_opts=None):
+    """The one figure the saved renderer or the served app draws."""
+    from bokeh.document import Document
+    from bokeh.plotting import figure as _fig_cls
+    import dash_render as _dr
+    spec, data_json = _make_spec_and_data(plots, graph_opts)
+    d = tempfile.mkdtemp(prefix="dash_lone_y2_")
+    sp, dp = os.path.join(d, "spec.json"), os.path.join(d, "data.json")
+    with open(sp, "w") as f:
+        json.dump(spec, f)
+    with open(dp, "w") as f:
+        json.dump(data_json, f)
+    if mode == "saved":
+        r = DashRenderer(sp, dp)
+        return list(r._build_figures().values())[0]
+    ap = os.path.join(d, "app.py")
+    _dr.ServerAppBuilder(sp, dp).build(ap)
+    ms = _ilu.spec_from_file_location("_lone_y2_app_%d" % next(_LONE_SEQ), ap)
+    mod = _ilu.module_from_spec(ms)
+    ms.loader.exec_module(mod)
+    doc = Document()
+    mod.make_document(doc)
+    figs = [m for root in doc.roots for m in root.references()
+            if isinstance(m, _fig_cls)]
+    assert len(figs) == 1, figs
+    return figs[0]
+
+
+def _axes(side):
+    from bokeh.models import ContinuousAxis
+    return [a for a in side if isinstance(a, ContinuousAxis)]
+
+
+def _layers(fig):
+    from bokeh.models import GlyphRenderer
+    return [r for r in fig.renderers if isinstance(r, GlyphRenderer)]
+
+
+_LONE = [{"type": "scatter", "yvar": "y2", "xvar": "x",
+          "options": {"yaxis": "2"}}]
+
+
+@pytest.mark.parametrize("mode", _LONE_MODES)
+class TestALoneSecondAxisIsDrawnAsTwowayDrawsIt:
+    def test_one_y_axis_on_the_left(self, mode):
+        fig = _lone_figure(mode, _LONE)
+        assert len(_axes(fig.left)) == 1
+        assert _axes(fig.right) == []
+        assert "y2" not in fig.extra_y_ranges
+        assert [r.y_range_name for r in _layers(fig)] == ["default"]
+
+    def test_titled_with_the_variables_label(self, mode):
+        fig = _lone_figure(mode, _LONE)
+        assert [a.axis_label for a in _axes(fig.left)] == ["y2"]
+
+    def test_ytitle2_titles_it(self, mode):
+        fig = _lone_figure(mode, _LONE,
+                           {"name": "fig1", "ytitle2": "TITLETWO"})
+        assert [a.axis_label for a in _axes(fig.left)] == ["TITLETWO"]
+
+    def test_ylabel2_labels_it(self, mode):
+        from bokeh.models.tickers import FixedTicker
+        fig = _lone_figure(mode, _LONE,
+                           {"name": "fig1", "ylabel2": "1000(2000)5000"})
+        (ax,) = _axes(fig.left)
+        assert isinstance(ax.ticker, FixedTicker)
+        assert list(ax.ticker.ticks) == [1000.0, 3000.0, 5000.0]
+
+    def test_yscale2_log_makes_it_a_log_axis(self, mode):
+        from bokeh.models import LogAxis
+        fig = _lone_figure(mode, _LONE, {"name": "fig1", "yscale2": "log"})
+        (ax,) = _axes(fig.left)
+        assert isinstance(ax, LogAxis)
+
+    def test_two_layers_on_the_second_axis_share_the_one_axis(self, mode):
+        plots = [{"type": "scatter", "yvar": "y1", "xvar": "x",
+                  "options": {"yaxis": "2"}},
+                 {"type": "line", "yvar": "y2", "xvar": "x",
+                  "options": {"yaxis": "2"}}]
+        fig = _lone_figure(mode, plots)
+        assert len(_axes(fig.left)) == 1 and _axes(fig.right) == []
+        assert {r.y_range_name for r in _layers(fig)} == {"default"}
+
+    def test_a_lone_xaxis2_is_drawn_at_the_bottom(self, mode):
+        plots = [{"type": "scatter", "yvar": "y1", "xvar": "x",
+                  "options": {"xaxis": "2"}}]
+        fig = _lone_figure(mode, plots)
+        assert len(_axes(fig.below)) == 1
+        assert _axes(fig.above) == []
+        assert "x2" not in fig.extra_x_ranges
+
+    def test_a_first_axis_layer_keeps_both_axes(self, mode):
+        """Control: with a layer on the first axis, the second is drawn on
+        the right, as twoway draws it."""
+        plots = [{"type": "scatter", "yvar": "y1", "xvar": "x",
+                  "options": {}}] + _LONE
+        fig = _lone_figure(mode, plots)
+        assert len(_axes(fig.left)) == 1 and len(_axes(fig.right)) == 1
+        assert [r.y_range_name for r in _layers(fig)] == ["default", "y2"]
+
+    def test_a_hostile_title_is_canvas_text(self, mode):
+        """Adversarial: ytitle2() text reaches the axis title verbatim, as
+        text Bokeh draws on the canvas -- never markup, and never read as
+        another option (a title naming ylabel2() is only text)."""
+        hostile = '<script>alert(1)</script>" ylabel2(#9999999)'
+        fig = _lone_figure(mode, _LONE, {"name": "fig1", "ytitle2": hostile})
+        (ax,) = _axes(fig.left)
+        assert ax.axis_label == hostile
+        assert type(ax.ticker).__name__ != "FixedTicker"
+
+
+class TestTheLoneAxisRewrite:
+    """_dash_lone_second_axes, the one place both modes read it from."""
+
+    def test_the_callers_spec_is_not_modified(self):
+        import dash_render as _dr
+        spec = {"graphs": [{"plots": [{"type": "scatter", "yvar": "y",
+                                       "xvar": "x",
+                                       "options": {"yaxis": "2"}}],
+                            "graph_options": {"ytitle2": "T"}}]}
+        before = json.dumps(spec, sort_keys=True)
+        out = _dr._dash_lone_second_axes(spec)
+        assert json.dumps(spec, sort_keys=True) == before
+        g = out["graphs"][0]
+        assert "yaxis" not in g["plots"][0]["options"]
+        assert g["graph_options"]["ytitle"] == "T"
+        assert "ytitle2" not in g["graph_options"]
+
+    def test_a_mixed_graph_is_left_alone(self):
+        import dash_render as _dr
+        spec = {"graphs": [{"plots": [
+            {"type": "scatter", "yvar": "y", "xvar": "x", "options": {}},
+            {"type": "scatter", "yvar": "z", "xvar": "x",
+             "options": {"yaxis": "2"}}],
+            "graph_options": {"ytitle2": "T"}}]}
+        assert _dr._dash_lone_second_axes(spec) == spec
+
+    @pytest.mark.parametrize("bad", [None, [], "x", {"graphs": "x"},
+                                     {"graphs": [None, 3, {"plots": "x"}]},
+                                     {"graphs": [{"plots": [None, 1]}]},
+                                     {"graphs": [{"plots": [
+                                         {"options": "yaxis(2)"}]}]}])
+    def test_malformed_specs_pass_through(self, bad):
+        """Adversarial: a hand-written spec of the wrong shape is returned
+        as it came, for the loaders' own checks to refuse."""
+        import dash_render as _dr
+        assert _dr._dash_lone_second_axes(bad) == bad
+
+    def test_many_graphs_cost_one_pass(self):
+        """Resource: the rewrite is linear in the spec (2,000 graphs of 50
+        layers each, well under two seconds)."""
+        import time
+        import dash_render as _dr
+        g = {"plots": [{"type": "scatter", "yvar": "y", "xvar": "x",
+                        "options": {"yaxis": "2"}}] * 50,
+             "graph_options": {}}
+        t0 = time.perf_counter()
+        out = _dr._dash_lone_second_axes({"graphs": [g] * 2000})
+        assert time.perf_counter() - t0 < 2.0
+        assert all("yaxis" not in p["options"]
+                   for gg in out["graphs"] for p in gg["plots"])

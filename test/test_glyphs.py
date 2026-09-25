@@ -651,21 +651,28 @@ class TestEdgeCasesEmptyData:
         assert r is not None
         assert len(r.data_source.data["x"]) == 0
 
-    def test_qfit_fewer_than_3_points_returns_renderer(self, fig, gm):
-        """Regression: map_qfit with only 2 valid points returns empty renderer."""
+    def test_qfit_on_2_points_draws_twoways_fit(self, fig, gm):
+        """map_qfit on 2 points draws the fit twoway draws: regress omits x
+        (|2500 + 3000| > 1) and the curve runs through both points (BUGS.md,
+        S3 batch: it drew nothing and said so; measured 24sep2026)."""
         two_cds = ColumnDataSource({"mpg": [20.0, 25.0],
                                     "weight": [2500.0, 3000.0]})
         r = gm.map_qfit(fig, two_cds, "mpg", "weight", {})
-        assert r is not None
-        assert len(r.data_source.data["x"]) == 0
+        ys = np.asarray(r.data_source.data["y"], float)
+        assert len(ys) == 100
+        assert np.allclose([ys[0], ys[-1]], [20.0, 25.0])
 
-    def test_lfitci_fewer_than_3_points_returns_two_renderers(self, fig, gm):
-        """Regression: map_lfitci with only 2 valid points returns empty renderers."""
+    def test_lfitci_on_2_points_draws_the_line_and_no_band(self, fig, gm):
+        """map_lfitci on 2 points: the line through them, the band missing
+        (df 0), as twoway's serset (BUGS.md, S3 batch; measured
+        24sep2026)."""
         two_cds = ColumnDataSource({"mpg": [20.0, 25.0],
                                     "weight": [2500.0, 3000.0]})
-        renderers = gm.map_lfitci(fig, two_cds, "mpg", "weight", {})
+        renderers = gm.map_lfitci(fig, two_cds, "mpg", "weight", {"n": "3"})
         assert len(renderers) == 2
-        assert len(renderers[0].data_source.data["x_fit"]) == 0
+        d = renderers[0].data_source.data
+        assert np.allclose(np.asarray(d["y_fit"], float), [20.0, 22.5, 25.0])
+        assert np.isnan(np.asarray(d["y_lower"], float)).all()
 
     def test_lfitci_constant_xvar_returns_two_renderers(self, fig, gm):
         """map_lfitci with zero-variance x fits the constant, as regress
@@ -693,13 +700,25 @@ class TestEdgeCasesEmptyData:
         assert r is not None
         assert len(r.data_source.data["x"]) == 0
 
-    def test_qfitci_fewer_than_3_points_returns_two_renderers(self, fig, gm):
-        """Regression: map_qfitci with only 2 valid points returns empty renderers."""
+    def test_qfitci_on_2_points_draws_the_fit_and_no_band(self, fig, gm):
+        """map_qfitci on 2 points: qfit's curve, the band missing (df 0),
+        as twoway's serset (BUGS.md, S3 batch; measured 24sep2026)."""
         two_cds = ColumnDataSource({"mpg": [20.0, 25.0],
                                     "weight": [2500.0, 3000.0]})
         renderers = gm.map_qfitci(fig, two_cds, "mpg", "weight", {})
         assert len(renderers) == 2
+        d = renderers[0].data_source.data
+        ys = np.asarray(d["y_fit"], float)
+        assert np.allclose([ys[0], ys[-1]], [20.0, 25.0])
+        assert np.isnan(np.asarray(d["y_lower"], float)).all()
+
+    def test_qfitci_on_1_point_returns_two_empty_renderers(self, fig, gm):
+        """One point: nothing, and regress's note (the boundary kept)."""
+        one_cds = ColumnDataSource({"mpg": [20.0], "weight": [2500.0]})
+        renderers = gm.map_qfitci(fig, one_cds, "mpg", "weight", {})
+        assert len(renderers) == 2
         assert len(renderers[0].data_source.data["x_fit"]) == 0
+        assert renderers[0]._dash_unfit == "regress"
 
     def test_lowess_fewer_than_2_points_returns_renderer(self, fig, gm):
         """Regression: map_lowess with only 1 valid point returns empty renderer."""
@@ -1257,12 +1276,15 @@ class TestFitCIFillOptions:
         )
 
     def test_lfitci_fintensity_applied_to_band(self, fig, fit_cds, gm):
-        """fintensity option must set fill_alpha on the VArea CI band."""
+        """fintensity(50) is the band's intensity, drawn as twoway draws
+        it: s2color's gs12 band blended halfway to white, #E0E0E0, opaque
+        (measured 24sep2026: the graph object's intensity 50 on colour
+        192 192 192; the SVG draws red at fintensity(50) as #FF8080).  It
+        was an alpha of 0.5 on the line's colour."""
         renderers = gm.map_lfitci(fig, fit_cds, "y", "x", {"fintensity": "50"})
         band_r = renderers[1]
-        assert abs(band_r.glyph.fill_alpha - 0.5) < 0.01, (
-            f"Expected fill_alpha ~0.5, got {band_r.glyph.fill_alpha}"
-        )
+        assert band_r.glyph.fill_color == "#e0e0e0"
+        assert band_r.glyph.fill_alpha == 1.0
 
     def test_qfitci_fcolor_applied_to_band(self, fig, fit_cds, gm):
         """fcolor option must set fill_color on the qfitci VArea CI band."""
@@ -1273,10 +1295,12 @@ class TestFitCIFillOptions:
         )
 
     def test_qfitci_fintensity_applied_to_band(self, fig, fit_cds, gm):
-        """fintensity option must set fill_alpha on the qfitci VArea CI band."""
+        """fintensity(30): gs12 at intensity 30, 255 - 63 * .3 = #ECECEC,
+        opaque, as twoway draws it (test_ci_band_style.py)."""
         renderers = gm.map_qfitci(fig, fit_cds, "y", "x", {"fintensity": "30"})
         band_r = renderers[1]
-        assert abs(band_r.glyph.fill_alpha - 0.3) < 0.01
+        assert band_r.glyph.fill_color == "#ececec"
+        assert band_r.glyph.fill_alpha == 1.0
 
 
 # ----------------------------------------------------------------
@@ -2389,8 +2413,9 @@ class TestNewPlotTypes:
         Two observations are two bands and two knots in Stata
         (_gs_default_bands: at least min(N, 2) bands; the WP-18 review
         read `twoway mband' on N=2 back as (1,1),(2,2) for this data).
-        This used to require an empty line below four rows.  One row, or
-        an x that does not vary, still draws nothing.
+        This used to require an empty line below four rows.  One row is
+        the one point, (1, 1), as twoway mband's serset (BUGS.md, S3 batch;
+        measured 24sep2026) -- a line of one point, which shows nothing.
         """
         from bokeh.models.glyphs import Line
         gm = GlyphMapper(OptionTranslator())
@@ -2404,7 +2429,8 @@ class TestNewPlotTypes:
         assert list(line_rs[0].data_source.data["y_mb"]) == [1.0, 2.0]
         fig3 = figure()
         gm.map_mband(fig3, ColumnDataSource({"y": [1.0], "x": [1.0]}), "y", "x", {})
-        assert len(fig3.renderers[0].data_source.data["x_mb"]) == 0
+        assert list(fig3.renderers[0].data_source.data["x_mb"]) == [1.0]
+        assert list(fig3.renderers[0].data_source.data["y_mb"]) == [1.0]
 
     def test_pci_in_dispatch(self, fig, pc_cds):
         """_add_pc_glyph dispatches 'pci' correctly."""
@@ -2662,11 +2688,13 @@ class TestLpolyFpfit:
         result = gm.map_lpolyci(fig, xy_src, "y", "x", {})
         assert isinstance(result, list) and len(result) == 2
 
-    def test_map_lpolyci_adds_two_renderers(self, fig, xy_src):
+    def test_map_lpolyci_adds_three_renderers(self, fig, xy_src):
         gm = GlyphMapper()
         before = len(fig.renderers)
         gm.map_lpolyci(fig, xy_src, "y", "x", {})
-        assert len(fig.renderers) == before + 2
+        # The band, its outline (a closed path, as twoway strokes it) and
+        # the line.
+        assert len(fig.renderers) == before + 3
 
     def test_map_lpolyci_empty_data(self, fig):
         gm = GlyphMapper()
@@ -2701,11 +2729,12 @@ class TestLpolyFpfit:
         result = gm.map_fpfitci(fig, xy_src, "y", "x", {})
         assert isinstance(result, list) and len(result) == 2
 
-    def test_map_fpfitci_adds_two_renderers(self, fig, xy_src):
+    def test_map_fpfitci_adds_three_renderers(self, fig, xy_src):
         gm = GlyphMapper()
         before = len(fig.renderers)
         gm.map_fpfitci(fig, xy_src, "y", "x", {})
-        assert len(fig.renderers) == before + 2
+        # The band, its outline and the line.
+        assert len(fig.renderers) == before + 3
 
     def test_map_fpfitci_empty_data(self, fig):
         gm = GlyphMapper()

@@ -445,8 +445,14 @@ class TestAServedComputedLayerRecomputesWhenAFilterMoves:
         )
 
     def test_a_faceted_curve_is_recomputed_per_panel(self, tmp_path):
-        """Facets ride the same registration; every panel's fit must move."""
-        plots = [plot_for("scatter"), plot_for("lfit")]
+        """Facets ride the same registration; every panel's fit must move.
+
+        qfit, not lfit: the foreign cars leave rep 3 and rep 5 one car
+        each, and a fresh render of those rows leaves out lfit's panel of
+        one, as twoway does (_dash_by_panel_dropped, BUGS.md S3 batch),
+        where a filter move keeps the panels the build drew.  qfit draws a
+        panel of one with regress's note, so every panel is compared."""
+        plots = [plot_for("scatter"), plot_for("qfit")]
         served_now, _ = self._served_after_filter(tmp_path, plots, by="rep")
         want = self._saved_on_filtered_rows(tmp_path, plots, by="rep")
         assert served_now == want, (

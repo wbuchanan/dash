@@ -178,7 +178,7 @@ def _has_sidebar(doc):
     """A fixed-width column of widgets beside the content, as standalone builds."""
     return any(
         isinstance(m, Column)
-        and m.sizing_mode == "fixed"
+        and m.width_policy == "fixed"
         and m.width == dr._SIDEBAR_WIDTH_PX
         for m in _find(doc, Column)
     )

@@ -77,6 +77,68 @@
 *!       takes (gau is gaussian, ep and epan epanechnikov); any other
 *!       word as given, for the kernel rule to refuse.
 *!
+*!   _dash_fn_names(expr, cap)
+*!       The names a function expression calls -- each name written
+*!       directly before a `(' outside quotes, once, at most cap -- for
+*!       dash.ado to ask Stata whether each is a function.
+*!
+*!   _dash_unbound_cands(raw, cap)
+*!       The options of a parser's catch-all whose value -syntax- may not
+*!       have bound, into the caller's locals _ru_n, _ru_tok<i>, _ru_nm<i>
+*!       and _ru_rc<i> (twoway's code for each, r(109) or r(198)).
+*!
+*!   _dash_fn_space_call(expr)
+*!       The first operand of a function expression written with blanks
+*!       before a `(' -- "N <pos> <name>", "T <pos> <name>" (tabs alone)
+*!       or "O <pos>" -- or "", for dash.ado to refuse as twoway does.
+*!
+*!   _dash_rep_scan(opts, unk, cap)
+*!       Whether an option list may give an option twice, and its distinct
+*!       spellings, into the caller's locals _rp_go, _rp_n, _rp_nm<i> and
+*!       _rp_tok<i>.
+*!
+*!   _dash_rep_keyof(snames)
+*!       The option a word read alone set, from the parser's s() names.
+*!
+*!   _dash_rep_reduce(opts, ptype)
+*!       The option list with one copy of each option, as twoway reads a
+*!       repeated one (the last copy, or the copies merged); the caller's
+*!       local _rp_refuse names a unique option given twice.
+*!
+*!   _dash_rep_und_scan(opts, ptype)
+*!       An option dash does not declare, given twice where twoway takes
+*!       it once (_dash_rep_und_tab), into the caller's local _rp_refuse;
+*!       the graph-wide ones the list gives into its local _rp_gund.
+*!
+*!   _dash_rep_und_cross(acc, add)
+*!       The graph-wide ones of one more option list against the lists
+*!       before it; the caller's local _rp_refuse names a second copy.
+*!
+*!   _dash_log_split(src, out)
+*!       The plot parser's option text without the words log and nolog
+*!       (twoway's graph option logging), those words into local out.
+*!
+*!   _dash_logit_typed(opts)
+*!       The first word spelling lowess's logit or its off form, as typed.
+*!
+*!   _dash_foreign_scan(opts, ptype, unk, graph)
+*!       The option words of a list, for dash.ado to find one twoway
+*!       refuses even once: in upper case, or a plot option after the
+*!       paren-mode comma; into the caller's locals _fs_go, _fs_n, ...
+*!
+*!   _dash_kernel_clash(opts, ptype)
+*!       "one" for two kernel options, "old" for one beside kernel(), as
+*!       twoway refuses them on lpoly, lpolyci and kdensity; else "".
+*!
+*!   _dash_kernel_flag(unk, ptype)
+*!       A kernel written as an option of its own (gau, epan2 ...) on
+*!       lpoly, lpolyci or kdensity, read as kernel(<name>): the full
+*!       name into the caller's local _kf_name, unk less it into _kf_rest.
+*!
+*!   _dash_rep_merge_locals(key, m1, m2, out)
+*!       Two copies of option key, the caller's locals m1 then m2, merged
+*!       as twoway merges them, into the caller's local out.
+*!
 *!   _dash_immediate(vals, w)
 *!       Read the immediate values of scatteri (w = 2) or of pci and
 *!       pcarrowi (w = 4) as twoway reads them, into the caller's locals
@@ -116,8 +178,12 @@
 *!       the reason in errmacro when they cannot be evaluated.
 *!
 *!   _dash_qual_export()
-*!       The distinct qualifiers, into the caller's locals _dq_n, _dq_if_k
-*!       and _dq_in_k.
+*!       The distinct qualifiers, into the caller's locals _dq_n, _dq_if_k,
+*!       _dq_in_k and _dq_by_k.
+*!
+*!   _dash_qual_orders()
+*!       The distinct by() orders of that table, into the caller's locals
+*!       _dq_nord and _dq_ord_j.
 *!
 *!   _dash_extract_filters(filter_out, cmd_out)
 *!       Every filter() in the caller's `0': the groups, joined with
@@ -151,6 +217,10 @@
 *!   _dash_has_name_opt(s)
 *!       1 when the option text s holds a name() option (spelled name or
 *!       nam) at the top level: a second name(), which dash.ado refuses.
+*!
+*!   _dash_seg_by(seg)
+*!       The value of the last non-blank by() option the plot segment seg
+*!       gives after its first top-level comma, or "".
 *!
 *!   _dash_spec_types_in(s, allowed)
 *!       1 when the graph spec s names a plot type and every type it names
@@ -2552,8 +2622,8 @@ void _dash_qual_reset()
     external transmorphic scalar _dash_qual_tab
     external string matrix       _dash_qual_list
 
-    _dash_qual_tab  = asarray_create("string", 2)
-    _dash_qual_list = J(0, 2, "")
+    _dash_qual_tab  = asarray_create("string", 3)
+    _dash_qual_list = J(0, 3, "")
 }
 
 
@@ -2640,8 +2710,23 @@ string scalar _dash_qual_refusal(string scalar ifx, string scalar inx)
 // the pair, "" for none.  A pair _dash_qual_refusal refuses puts its reason
 // in the caller's local errmacro and takes no column.  With name_them 0
 // the pair is checked and no column is made: a dashboard with no data.
+// The pair is evaluated in the data's order (a KPI's, or a graph's with no
+// by()); _dash_qual_take_by names another order.
 string scalar _dash_qual_take(string scalar ifx, string scalar inx,
                               string scalar errmacro, real scalar name_them)
+{
+    return(_dash_qual_take_by(ifx, inx, "", errmacro, name_them))
+}
+
+
+// _dash_qual_take_by(ifx, inx, order, errmacro, name_them) -- as
+// _dash_qual_take, for the pair evaluated with the data sorted, stably, on
+// the variables order names ("" for the data's own order): a by() graph's
+// qualifier, as twoway evaluates it (_dash_qual_rewrite).  The same pair in
+// two orders is two columns.
+string scalar _dash_qual_take_by(string scalar ifx, string scalar inx,
+                                 string scalar order, string scalar errmacro,
+                                 real scalar name_them)
 {
     external transmorphic scalar _dash_qual_tab
     external string matrix       _dash_qual_list
@@ -2656,7 +2741,7 @@ string scalar _dash_qual_take(string scalar ifx, string scalar inx,
         return("")
     }
     if (!name_them) return("")
-    key = (ifx, inx)
+    key = (ifx, inx, order)
     if (asarray_contains(_dash_qual_tab, key)) {
         return("__dashq" + strofreal(asarray(_dash_qual_tab, key)))
     }
@@ -2668,6 +2753,174 @@ string scalar _dash_qual_take(string scalar ifx, string scalar inx,
     k = rows(_dash_qual_list)
     asarray(_dash_qual_tab, key, k)
     return("__dashq" + strofreal(k))
+}
+
+
+// _dash_qual_blank_lits(s) -- s with the text inside each of its string
+// literals, "..." and `"..."' (nested), made blanks, so what is left is
+// the expression's own words.  A literal left open blanks the rest.
+string scalar _dash_qual_blank_lits(string scalar s)
+{
+    real rowvector b
+    real scalar    n, i, lit
+
+    b = ascii(s)
+    n = cols(b)
+    i = 1
+    while (i <= n) {
+        if (b[i] == 96 & i < n) {
+            if (b[i + 1] == 34) {
+                lit = 1
+                i   = i + 2
+                while (i <= n & lit > 0) {
+                    if (b[i] == 96 & i < n) {
+                        if (b[i + 1] == 34) {
+                            lit++
+                            b[i]     = 32
+                            b[i + 1] = 32
+                            i = i + 2
+                            continue
+                        }
+                    }
+                    if (b[i] == 34 & i < n) {
+                        if (b[i + 1] == 39) {
+                            lit--
+                            if (lit > 0) {
+                                b[i]     = 32
+                                b[i + 1] = 32
+                            }
+                            i = i + 2
+                            continue
+                        }
+                    }
+                    b[i] = 32
+                    i++
+                }
+                continue
+            }
+        }
+        if (b[i] == 34) {
+            i++
+            while (i <= n) {
+                if (b[i] == 34) break
+                b[i] = 32
+                i++
+            }
+            i++
+            continue
+        }
+        i++
+    }
+    return(n ? char(b) : "")
+}
+
+
+// _dash_qual_ordered(ifx, inx) -- 1 when the rows the pair selects can
+// depend on the order of the observations: an in range, or an if holding
+// _n, _N, a subscript [...] or the running sum(), outside its string
+// literals.  Any other if reads each row alone and selects the same rows
+// in any order, so a by() graph shares the data-order column for it.
+real scalar _dash_qual_ordered(string scalar ifx, string scalar inx)
+{
+    string scalar t
+
+    if (strtrim(inx) != "") return(1)
+    t = _dash_qual_blank_lits(ifx)
+    if (strpos(t, "[")) return(1)
+    if (ustrregexm(t, "(^|[^A-Za-z0-9_])_[nN]($|[^A-Za-z0-9_])")) return(1)
+    if (ustrregexm(t, "(^|[^A-Za-z0-9_])sum[ \t]*\(")) return(1)
+    return(0)
+}
+
+
+// _dash_qual_by_of(json, total, errmacro) -- the variables of the "by"
+// value a registered graph's JSON holds, blank-separated ("" for none);
+// total is set to 1 when its sub-options give total (tot at least, as
+// twoway's TOTal; a parenthesised sub-option's text is not read), as
+// _dash_by_parts reads them.  Each variable must be a Stata name: the
+// value comes from a registry that may have been set by hand, and the
+// names go on a sort command line (_dash_qual_gen_by).  Two different by
+// values, or a by() that names something else, put the reason in the
+// caller's local errmacro and return "".
+string scalar _dash_qual_by_of(string scalar json, real scalar total,
+                               string scalar errmacro)
+{
+    real rowvector   b
+    real scalar      n, i, e, k, depth, cut, j, found
+    string scalar    tok, v, byv, vars, opts
+    string rowvector w
+
+    total = 0
+    b     = ascii(json)
+    n     = cols(b)
+    byv   = ""
+    found = 0
+    i     = 1
+    while (i <= n) {
+        if (b[i] != 34) {
+            i++
+            continue
+        }
+        e = i + 1
+        while (e <= n) {
+            if (b[e] == 34) break
+            e = e + (b[e] == 92 ? 2 : 1)
+        }
+        if (e > n) break
+        tok = (e - i > 1 ? substr(json, i + 1, e - i - 1) : "")
+        k   = _dash_qual_skipws(b, e + 1)
+        if (k > n) break
+        if (b[k] != 58 | tok != "by") {
+            i = e + 1
+            continue
+        }
+        k = _dash_qual_skipws(b, k + 1)
+        if (k > n) break
+        if (b[k] != 34) {
+            i = k
+            continue
+        }
+        v = _dash_qual_json_text(b, k)
+        if (found & v != byv) {
+            st_local(errmacro, "it holds two by() values")
+            return("")
+        }
+        byv   = v
+        found = 1
+        i     = k
+    }
+    if (strtrim(byv) == "") return("")
+    // The variables end at the first comma outside parentheses.
+    b     = ascii(byv)
+    n     = cols(b)
+    depth = 0
+    cut   = 0
+    for (j = 1; j <= n; j++) {
+        if (b[j] == 40) depth++
+        else if (b[j] == 41) depth--
+        else if (b[j] == 44 & depth == 0) {
+            cut = j
+            break
+        }
+    }
+    vars = strtrim(cut ? substr(byv, 1, cut - 1) : byv)
+    opts = (cut ? substr(byv, cut + 1, .) : "")
+    w = tokens(vars)
+    if (cols(w) > 20) {
+        st_local(errmacro, "its by() names more variables than dash reads (20)")
+        return("")
+    }
+    for (j = 1; j <= cols(w); j++) {
+        // A Stata name: letters (Unicode ones too), digits and _, not
+        // starting with a digit, at most 32 characters.
+        if (!ustrregexm(w[j], "^[\p{L}_][\p{L}\p{N}_]*$") | ustrlen(w[j]) > 32) {
+            st_local(errmacro, "its by() does not name variables")
+            return("")
+        }
+    }
+    while (ustrregexm(opts, "\([^()]*\)")) opts = ustrregexrf(opts, "\([^()]*\)", " ")
+    total = ustrregexm(opts, "(^|[ ,])tot(a|al)?($|[ ,])")
+    return(cols(w) ? invtokens(w) : "")
 }
 
 
@@ -2695,16 +2948,33 @@ real scalar _dash_qual_skipws(real rowvector b, real scalar k)
 // its "in_expr" -- or a pair _dash_qual_refusal refuses puts the reason in
 // the caller's local errmacro and returns "".  Linear in the JSON: its
 // pieces are joined once, at the end.
+//
+// A by() graph's qualifiers are evaluated as twoway evaluates them:
+// bygraph_g.class sorts the data on the by() variables, stably (bysort
+// varlist (sortedby obsnum)), and draws every panel from the whole sorted
+// data, so `if _n == 1', `in 1/10' or `if mpg > mpg[_n-1]' count rows in
+// that order, _n never restarting within a group; by(, total)'s Total
+// panel is drawn after `bysort one (sortedby obsnum)', in the data's own
+// order (measured 24sep2026 from each panel's serset;
+// test_qualifier_in_stata.cscript QS-16..).  A pair whose rows can depend
+// on the order (_dash_qual_ordered) takes, in such a graph, the column
+// evaluated in the by() order, and under total also "qual_col_total", the
+// data-order column its Total panel draws; any other pair keeps the one
+// data-order column.  A "qual_col_total" of the registry's own is refused
+// as a "qual_col" is.
 string scalar _dash_qual_rewrite(string scalar json, string scalar errmacro,
                                  real scalar name_them)
 {
     real rowvector   b
-    real scalar      n, i, e, k, from, m, cap
-    string scalar    tok, v1, v2, nm, q
+    real scalar      n, i, e, k, from, m, cap, total
+    string scalar    tok, v1, v2, nm, nt, q, order, eff
     string rowvector part
 
     q = char(34)
     st_local(errmacro, "")
+    total = 0
+    order = _dash_qual_by_of(json, total, errmacro)
+    if (st_local(errmacro) != "") return("")
     b    = ascii(json)
     n    = cols(b)
     cap  = 16
@@ -2726,7 +2996,7 @@ string scalar _dash_qual_rewrite(string scalar json, string scalar errmacro,
         tok = (e - i > 1 ? substr(json, i + 1, e - i - 1) : "")
         k   = _dash_qual_skipws(b, e + 1)
         if (k > n) break
-        if (b[k] != 58 | !anyof(("if_expr", "in_expr", "qual_col"), tok)) {
+        if (b[k] != 58 | !anyof(("if_expr", "in_expr", "qual_col", "qual_col_total"), tok)) {
             i = e + 1
             continue
         }
@@ -2787,15 +3057,22 @@ string scalar _dash_qual_rewrite(string scalar json, string scalar errmacro,
             st_local(errmacro, "its in_expr is not closed")
             return("")
         }
-        nm = _dash_qual_take(v1, v2, errmacro, name_them)
+        eff = (order != "" & _dash_qual_ordered(v1, v2) ? order : "")
+        nm  = _dash_qual_take_by(v1, v2, eff, errmacro, name_them)
         if (st_local(errmacro) != "") return("")
+        nt  = ""
+        if (eff != "" & total) {
+            nt = _dash_qual_take_by(v1, v2, "", errmacro, name_them)
+            if (st_local(errmacro) != "") return("")
+        }
         if (m + 2 > cap) {
             part = part, J(1, cap, "")
             cap  = 2 * cap
         }
         part[++m] = substr(json, from, i - from)
         part[++m] = q + "if_expr" + q + ":" + q + q + "," + q + "in_expr" + q +
-                    ":" + q + q + "," + q + "qual_col" + q + ":" + q + nm + q
+                    ":" + q + q + "," + q + "qual_col" + q + ":" + q + nm + q +
+                    (nt != "" ? "," + q + "qual_col_total" + q + ":" + q + nt + q : "")
         from = k
         i    = k
     }
@@ -2807,7 +3084,8 @@ string scalar _dash_qual_rewrite(string scalar json, string scalar errmacro,
 
 // _dash_qual_export() -- the distinct qualifiers, into the caller's locals:
 // _dq_n, and for each k the if and the in of column __dashq<k> in _dq_if_k
-// and _dq_in_k, by value.
+// and _dq_in_k, by value, and in _dq_by_k the variables it is evaluated
+// sorted on ("" for the data's order; Stata names, _dash_qual_by_of).
 void _dash_qual_export()
 {
     external string matrix _dash_qual_list
@@ -2817,7 +3095,30 @@ void _dash_qual_export()
     for (k = 1; k <= rows(_dash_qual_list); k++) {
         st_local("_dq_if_" + strofreal(k), _dash_qual_list[k, 1])
         st_local("_dq_in_" + strofreal(k), _dash_qual_list[k, 2])
+        st_local("_dq_by_" + strofreal(k), _dash_qual_list[k, 3])
     }
+}
+
+
+// _dash_qual_orders() -- the distinct by() orders the table holds, "" left
+// out, into the caller's locals: _dq_nord, and _dq_ord_j for each, in the
+// order first met.  Linear in the table.
+void _dash_qual_orders()
+{
+    external string matrix _dash_qual_list
+    transmorphic scalar    seen
+    real scalar            k, j
+
+    seen = asarray_create("string", 1)
+    j    = 0
+    for (k = 1; k <= rows(_dash_qual_list); k++) {
+        if (_dash_qual_list[k, 3] == "") continue
+        if (asarray_contains(seen, _dash_qual_list[k, 3])) continue
+        asarray(seen, _dash_qual_list[k, 3], 1)
+        j++
+        st_local("_dq_ord_" + strofreal(j), _dash_qual_list[k, 3])
+    }
+    st_local("_dq_nord", strofreal(j))
 }
 
 
@@ -3582,6 +3883,1188 @@ real scalar _dash_has_name_opt(string scalar s)
     if (unbalanced) names = tokens(_dash_option_names_scan(s, 0, unbalanced))
     if (cols(names) == 0) return(0)
     return(anyof(names, "name") | anyof(names, "nam"))
+}
+
+// _dash_seg_by(seg) -- the value of the last by() a plot segment gives, or
+// "" when it gives none.
+//
+// A segment's options are the text after its first comma outside quotes
+// and parentheses; by() is one of them when an option word there is
+// spelled by(...) -- BY(), which admits no abbreviation, and options are
+// case-sensitive -- with something other than blanks inside.  "by(" written
+// in an if's string, a title() or a note() is not an option word and is
+// stepped over.  twoway reads the graph's by() from every segment before
+// it draws any plot, so dash.ado reads it here before any segment is
+// checked (test_parser.cscript P1A-84).  Linear in the length of seg.
+string scalar _dash_seg_by(string scalar seg)
+{
+    string rowvector toks
+    string scalar    v, out
+    real scalar      pos, j
+
+    pos = _first_comma_pos(seg)
+    if (pos == 0) return("")
+    toks = _dash_rep_toks(substr(seg, pos + 1, .), 0)
+    out  = ""
+    for (j = 1; j <= cols(toks); j++) {
+        if (_dash_rep_optname(toks[j]) != "by") continue
+        v = _dash_rep_value(toks[j])
+        if (strtrim(v) != "") out = v
+    }
+    return(out)
+}
+
+// _dash_fn_names(expr, cap) -- the names a function expression calls.
+//
+// Every name written directly before a `(' -- as Stata reads a function
+// call, with no space between -- outside double and compound quotes, and
+// not the tail of a number or of another name, each once, at most cap of
+// them, space-separated.  dash.ado asks Stata whether each is a function
+// (_dash_fn_refuse); twoway refuses an expression calling one Stata does
+// not have, "error in expression", r(133).  Every name returned is a Stata
+// name of at most 32 characters, so it may be put on a command line.
+// Linear in the length of expr.
+string scalar _dash_fn_names(string scalar expr, real scalar cap)
+{
+    string scalar out, nm, prev
+    real scalar   i, j, n, k, in_dq, in_cq, nxt, c
+
+    n     = strlen(expr)
+    out   = " "
+    k     = 0
+    in_dq = 0
+    in_cq = 0
+    i     = 1
+    while (i <= n & k < cap) {
+        nxt = _dash_quote_step(expr, n, i, in_dq, in_cq)
+        if (nxt) {
+            i = nxt
+            continue
+        }
+        c = ascii(substr(expr, i, 1))
+        if ((c >= 65 & c <= 90) | (c >= 97 & c <= 122) | c == 95) {
+            prev = (i > 1 ? substr(expr, i - 1, 1) : " ")
+            j = i
+            while (j <= n) {
+                c = ascii(substr(expr, j, 1))
+                if (!((c >= 65 & c <= 90) | (c >= 97 & c <= 122) |
+                      (c >= 48 & c <= 57) | c == 95)) break
+                j++
+            }
+            nm = substr(expr, i, j - i)
+            if (j <= n & substr(expr, j, 1) == "(" & strlen(nm) <= 32 &
+                !(prev == "." | (ascii(prev) >= 48 & ascii(prev) <= 57))) {
+                if (!strpos(out, " " + nm + " ")) {
+                    out = out + nm + " "
+                    k++
+                }
+            }
+            i = j
+            continue
+        }
+        i++
+    }
+    return(strtrim(out))
+}
+
+// _dash_unbound_cands(raw, cap) -- the options of a parser's catch-all whose
+// value -syntax- may have been unable to bind.
+//
+// -syntax- leaves an option it declares in the catch-all when it cannot
+// bind the value to the declared string: jitter(x"' _dup(3) "INJ" `") is
+// one (measured 24sep2026 with syntax [, JITter(string) *]).  twoway
+// refuses such a command; dash named the option as unsupported.  A value
+// with no double quote in it always binds, so only an option whose text
+// holds one, written name(...) with name a Stata name, is a candidate:
+// dash.ado's _dash_refuse_unbound then asks the parser itself whether it
+// declares the name.  Sets the caller's locals _ru_n (how many, at most
+// cap, each option text counted once), _ru_tok<i> (the option's text),
+// _ru_nm<i> (its name) and _ru_rc<i> -- twoway's return code for it,
+// measured 24sep2026 on sixteen such values: r(109) "type mismatch" when
+// the value holds "' (a closing compound quote), otherwise r(198)
+// "parentheses do not balance".  Linear in the length of raw.
+void _dash_unbound_cands(string scalar raw, real scalar cap)
+{
+    string scalar    tok, ch, nm, seen
+    real scalar      i, n, depth, in_dq, in_cq, nxt, k, p
+    string rowvector toks
+
+    n     = strlen(raw)
+    toks  = J(1, 0, "")
+    tok   = ""
+    depth = 0
+    in_dq = 0
+    in_cq = 0
+    i     = 1
+    while (i <= n) {
+        nxt = _dash_quote_step(raw, n, i, in_dq, in_cq)
+        if (nxt) {
+            tok = tok + substr(raw, i, nxt - i)
+            i   = nxt
+            continue
+        }
+        ch = substr(raw, i, 1)
+        if (ch == "(") depth++
+        else if (ch == ")") {
+            if (depth > 0) depth--
+        }
+        else if (depth == 0 & (ch == " " | ch == char(9))) {
+            if (tok != "") toks = toks, tok
+            tok = ""
+            i++
+            continue
+        }
+        tok = tok + ch
+        i++
+    }
+    if (tok != "") toks = toks, tok
+
+    k    = 0
+    seen = char(0)
+    for (i = 1; i <= cols(toks) & k < cap; i++) {
+        tok = toks[i]
+        if (!strpos(tok, char(34))) continue
+        p = strpos(tok, "(")
+        if (p < 2 | substr(tok, strlen(tok), 1) != ")") continue
+        nm = substr(tok, 1, p - 1)
+        if (!_dash_is_name(nm) | strlen(nm) > 32) continue
+        if (strpos(seen, char(0) + tok + char(0))) continue
+        seen = seen + tok + char(0)
+        k++
+        st_local("_ru_tok" + strofreal(k), tok)
+        st_local("_ru_nm" + strofreal(k), nm)
+        st_local("_ru_rc" + strofreal(k),
+                 strpos(tok, char(34) + char(39)) ? "109" : "198")
+    }
+    st_local("_ru_n", strofreal(k))
+}
+
+// ============================================================
+// Repeated options -- what twoway does with an option given twice
+// ============================================================
+//
+// twoway takes most options more than once ([G-4] Concept: repeated
+// options, and measured 24sep2026 by exporting each picture to SVG): a
+// RIGHTMOST option draws what its last copy draws -- mcolor(red)
+// mcolor(blue) is blue, mc(red) mcolor(blue) too, and an earlier copy is
+// never read, so mcolor(bogus) mcolor(red) and mlabel(nosuch) mlabel(make)
+// are rc 0; a MERGED option joins its copies -- title(A) title(, color(red))
+// draws A in red, xlabel(1 2) xlabel(, angle(45)) the labels 1 2 at 45
+// degrees, legend(label(1 "A")) legend(label(2 "B")) both labels, yline(20)
+// yline(30) both lines, each in its own style; a UNIQUE option refuses its
+// second copy, "option scheme() not allowed", r(198).  dash's -syntax- kept
+// the FIRST copy and named the rest as unsupported, or bound a second
+// title() to title2() and a second xlabel() to the second axis' xlabel2().
+//
+// These functions read an option list the way twoway does before -syntax-
+// sees it.  dash.ado's _dash_opts_repeats asks the parser itself which
+// option each spelling is (so mc and mcolor are one), and
+// _dash_rep_reduce writes the list again with one copy of each option:
+// the last copy of a rightmost one, the merged value of a merged one.
+
+// _dash_rep_toks(s, commas) -- the top-level words of an option list: runs
+// of text split at blanks and tabs outside quotes and parentheses, and at
+// commas too when commas is set.  Linear in the length of s: each word is
+// cut out by position, and the vector doubles when it fills.
+string rowvector _dash_rep_toks(string scalar s, real scalar commas)
+{
+    string rowvector out
+    string scalar    ch
+    real scalar      i, n, depth, in_dq, in_cq, nxt, start, k
+
+    n     = strlen(s)
+    out   = J(1, 16, "")
+    k     = 0
+    depth = 0
+    in_dq = 0
+    in_cq = 0
+    start = 0
+    i     = 1
+    while (i <= n) {
+        nxt = _dash_quote_step(s, n, i, in_dq, in_cq)
+        if (nxt) {
+            if (!start) start = i
+            i = nxt
+            continue
+        }
+        ch = substr(s, i, 1)
+        if (depth == 0 & (ch == " " | ch == char(9) | (commas & ch == ","))) {
+            if (start) {
+                if (k == cols(out)) out = out, J(1, cols(out), "")
+                out[++k] = substr(s, start, i - start)
+                start = 0
+            }
+            i++
+            continue
+        }
+        if (ch == "(") depth++
+        else if (ch == ")" & depth > 0) depth--
+        if (!start) start = i
+        i++
+    }
+    if (start) {
+        if (k == cols(out)) out = out, J(1, cols(out), "")
+        out[++k] = substr(s, start, n - start + 1)
+    }
+    return(k ? out[|1 \ k|] : J(1, 0, ""))
+}
+
+// _dash_rep_optname(tok) -- the name an option word was typed with, or ""
+// when the word is not an option: name or name(...), name a Stata name of
+// at most 32 characters.
+string scalar _dash_rep_optname(string scalar tok)
+{
+    string scalar nm
+    real scalar   p
+
+    p  = strpos(tok, "(")
+    nm = (p ? substr(tok, 1, p - 1) : tok)
+    if (p & substr(tok, strlen(tok), 1) != ")") return("")
+    if (!_dash_is_name(nm) | strlen(nm) > 32) return("")
+    return(nm)
+}
+
+// _dash_rep_value(tok) -- what an option word holds between its outer
+// parentheses, exactly as typed (every option merged here is declared
+// string asis, so this is the value -syntax- gives it).
+string scalar _dash_rep_value(string scalar tok)
+{
+    real scalar p
+
+    p = strpos(tok, "(")
+    if (!p) return("")
+    return(substr(tok, p + 1, strlen(tok) - p - 1))
+}
+
+// _dash_rep_scan(opts, unk, cap) -- whether the list may give an option
+// twice, and which spellings to put to the parser.
+//
+// It may when the parser's catch-all is not empty (unk), or when one
+// typed name is another's prefix or the same name: any two spellings of
+// one option are both prefixes of its name, so one is the other's prefix.
+// (title(A) title(B) never reaches the catch-all: -syntax- binds the second
+// to title2(), whose minimum is title.)  A name written bare and written
+// with a value are two spellings -- a bare sort is sort, sort(mpg) is
+// sort() -- so each is written name or name( here.  Sets the caller's
+// locals _rp_go, _rp_n (distinct spellings, at most cap) and, for each,
+// _rp_nm<i> and _rp_tok<i>, its last word, which the parser is asked to
+// read alone.
+void _dash_rep_scan(string scalar opts, real scalar unk, real scalar cap)
+{
+    string rowvector toks, names, last
+    string scalar    nm
+    real scalar      i, j, k, go, a, b
+
+    toks  = _dash_rep_toks(opts, 0)
+    names = J(1, 0, "")
+    last  = J(1, 0, "")
+    go    = (unk != 0)
+    for (i = 1; i <= cols(toks); i++) {
+        nm = _dash_rep_optname(toks[i])
+        if (nm == "") continue
+        nm = nm + (strpos(toks[i], "(") ? "(" : "")
+        k = 0
+        for (j = 1; j <= cols(names); j++) {
+            if (names[j] == nm) {
+                k = j
+                break
+            }
+        }
+        if (k) {
+            last[k] = toks[i]
+            go = 1
+            continue
+        }
+        if (cols(names) >= cap) continue
+        names = names, nm
+        last  = last, toks[i]
+    }
+    if (!go) {
+        for (i = 1; i <= cols(names) & !go; i++) {
+            for (j = 1; j <= cols(names); j++) {
+                if (i == j) continue
+                a = strlen(subinstr(names[i], "(", ""))
+                b = strlen(subinstr(names[j], "(", ""))
+                if (a <= b & substr(names[j], 1, a) == substr(names[i], 1, a)) {
+                    go = 1
+                    break
+                }
+            }
+        }
+    }
+    st_local("_rp_go", strofreal(go))
+    st_local("_rp_n", strofreal(go ? cols(names) : 0))
+    if (!go) return
+    for (i = 1; i <= cols(names); i++) {
+        st_local("_rp_nm" + strofreal(i), names[i])
+        st_local("_rp_tok" + strofreal(i), last[i])
+    }
+}
+
+// _dash_rep_keyof(snames) -- the option a word read alone set: the s()
+// macros the parser left non-empty (snames, from : s(macros)), without its
+// catch-all and its pending list, in sorted order; "" when the word left
+// anything in the catch-all (it is no option of this parser, or its value
+// does not bind).  An option the parser only lists as pending is keyed by
+// that list, so sort(a) sort(b) is one option.
+string scalar _dash_rep_keyof(string scalar snames)
+{
+    string rowvector w
+    string scalar    key
+    real scalar      i
+
+    if (strtrim(st_global("s(_unknown)")) != "") return("")
+    w   = sort(tokens(snames)', 1)'
+    key = ""
+    for (i = 1; i <= cols(w); i++) {
+        if (w[i] == "_unknown" | w[i] == "_pending") continue
+        key = key + (key == "" ? "" : " ") + w[i]
+    }
+    if (key == "" & strtrim(st_global("s(_pending)")) != "") {
+        key = "_p:" + strtrim(st_global("s(_pending)"))
+    }
+    return(key)
+}
+
+// _dash_rep_bare(key) -- the key without the plot parser's g_ prefix.
+string scalar _dash_rep_bare(string scalar key)
+{
+    return(substr(key, 1, 2) == "g_" ? substr(key, 3, .) : key)
+}
+
+// _dash_rep_cat(key) -- how twoway treats a repeat of the option: "T" a
+// title (merged-explicit: the last text, every copy's sub-options), "L" an
+// axis label or tick list (merged-explicit: the last list unless add), "I"
+// legend() or a region (merged-implicit), "S" an axis scale (merged-
+// implicit, range() the union), "B" by() (the last varlist, every copy's
+// sub-options), "X" xline()/yline() (each copy a line of its own), "A"
+// text() (each copy added), "R" everything else (the last copy).
+string scalar _dash_rep_cat(string scalar key)
+{
+    string scalar k
+
+    k = _dash_rep_bare(key)
+    if (anyof(("title", "subtitle", "note", "caption", "xtitle", "ytitle",
+               "xtitle2", "ytitle2", "t1title", "t2title", "b1title",
+               "b2title", "l1title", "l2title", "r1title", "r2title",
+               "title2", "subtitle2"), k)) return("T")
+    if (anyof(("xlabel", "ylabel", "xlabel2", "ylabel2", "xtick", "ytick",
+               "xmtick", "ymtick", "xmlabel", "ymlabel"), k)) return("L")
+    if (anyof(("legend", "graphregion", "plotregion"), k)) return("I")
+    if (anyof(("xscale", "yscale", "xscale2", "yscale2"), k)) return("S")
+    if (k == "by") return("B")
+    if (k == "xline" | k == "yline") return("X")
+    if (k == "text") return("A")
+    return("R")
+}
+
+// _dash_rep_unique(key, typed, ptype) -- 1 when twoway refuses a second
+// copy of the option on this plot type, "option ...() not allowed",
+// r(198).  Measured 24sep2026, each given twice: on every type name()
+// saving() scheme() aspectratio() xsize() ysize() scale() fxsize()
+// fysize() nodraw play() yaxis() xaxis() colorvar() colordiscrete
+// colorcuts() mlabvposition() xoverhangs yoverhangs, a bare sort,
+// horizontal and vertical, stdp stdf stdr; bins() discrete fraction
+// percent frequency density on histogram; bwidth() (and bw()) and kernel()
+// on kdensity lpoly lpolyci lowess; degree() and n() on lpoly and lpolyci;
+// mean noweight adjust logit on lowess.  Everything else twoway takes
+// more than once.
+real scalar _dash_rep_unique(string scalar key, string scalar typed,
+                             string scalar ptype)
+{
+    string scalar k
+
+    k = _dash_rep_bare(key)
+    if (anyof(("name", "saving", "scheme", "aspectratio", "xsize", "ysize",
+               "scale", "fxsize", "fysize", "nodraw", "play", "yaxis",
+               "xaxis", "colorvar", "colordiscrete", "colorcuts",
+               "mlabvposition", "xoverhangs", "yoverhangs", "sort",
+               "horizontal", "vertical", "stdp", "stdf", "stdr"), k)) return(1)
+    if (ptype == "histogram" & (typed == "bins" |
+        anyof(("discrete", "fraction", "percent", "frequency", "density"), k)))
+        return(1)
+    if (anyof(("kdensity", "lpoly", "lpolyci", "lowess"), ptype) &
+        anyof(("bwidth", "bw", "kernel"), k)) return(1)
+    if (anyof(("lpoly", "lpolyci"), ptype) & anyof(("degree", "n"), k))
+        return(1)
+    if (ptype == "lowess" & anyof(("mean", "noweight", "adjust", "logit"), k))
+        return(1)
+    return(0)
+}
+
+// _dash_rep_und_tab() -- the options dash does not declare that twoway
+// takes once (and lowess's logit, whose spellings dash declares only in
+// part: see its rows): a second copy is "option atobs not allowed", r(198), naming
+// that copy as typed (with "()" when it took a value), or the noX copy of
+// an X and noX pair, which are one option.  One row per spelling:
+// option, full spelling, shortest spelling, 1 when it takes a value, the
+// plot types ("*" every type dash draws), 1 when twoway takes it once from
+// the whole graph (a second copy after the paren-mode comma, in another
+// plot group or || segment is refused too), and "no" for the noX half of a
+// pair.
+//
+// Measured 24sep2026, every name a twoway parser declares (its class and
+// ado files) that dash's parsers leave to the catch-all, on each of the 39
+// plot types dash draws: one copy taken, then two refused, on the types
+// listed; each shortest spelling taken alone and refused beside the full
+// one.  Every other such name twoway takes again (baroffset() on bar,
+// mlabgap() anywhere) or does not take once.  A plot option after the
+// paren-mode comma is refused by twoway even once, so there only the
+// graph-wide rows apply.  The shortest spelling of epan2 is epan2 (ep is
+// epanechnikov) and of colorend colore (c is color()).  log is logging
+// (noLOGging) on every type, lowess too: twoway takes the graph's options
+// out of each list before the plot's parser reads it, so lowess mpg
+// weight, log logging is "option logging not allowed".
+string matrix _dash_rep_und_tab()
+{
+    string matrix t
+    string scalar fits, cis, kerns, pcs
+
+    fits  = "lfit qfit lfitci qfitci fpfitci"
+    cis   = "lfitci qfitci lpolyci fpfitci"
+    kerns = "lpoly lpolyci kdensity"
+    pcs   = "pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi"
+    t = J(0, 7, "")
+    t = t \ ("atobs",        "atobs",        "ato",       "0", fits,        "0", "")
+    t = t \ ("xlog",         "xlog",         "xlog",      "0", fits,        "0", "")
+    t = t \ ("baroffset",    "baroffset",    "baroff",    "1", "rbar",      "0", "")
+    t = t \ ("biweight",     "biweight",     "bi",        "0", kerns,       "0", "")
+    t = t \ ("cosine",       "cosine",       "cos",       "0", kerns,       "0", "")
+    t = t \ ("epan2",        "epan2",        "epan2",     "0", kerns,       "0", "")
+    t = t \ ("epanechnikov", "epanechnikov", "ep",        "0", kerns,       "0", "")
+    t = t \ ("gaussian",     "gaussian",     "gau",       "0", kerns,       "0", "")
+    t = t \ ("parzen",       "parzen",       "par",       "0", kerns,       "0", "")
+    t = t \ ("rectangle",    "rectangle",    "rec",       "0", kerns,       "0", "")
+    t = t \ ("triangle",     "triangle",     "tri",       "0", kerns,       "0", "")
+    t = t \ ("boundary",     "boundary",     "boundary",  "0", "kdensity",  "0", "")
+    t = t \ ("ciplot",       "ciplot",       "cip",       "1", cis,         "0", "")
+    t = t \ ("fitplot",      "fitplot",      "fitp",      "1", cis,         "0", "")
+    t = t \ ("fit",          "fit",          "fit",       "0", cis,         "0", "")
+    t = t \ ("fit",          "nofit",        "nofit",     "0", cis,         "0", "no")
+    t = t \ ("headlabel",    "headlabel",    "head",      "0", pcs,         "0", "")
+    t = t \ ("mwidth",       "mwidth",       "mw",        "0", "histogram rbar", "0", "")
+    t = t \ ("back",         "back",         "back",      "0", "mspline mband", "0", "")
+    t = t \ ("back",         "noback",       "noback",    "0", "mspline mband", "0", "no")
+    t = t \ ("onepanel",     "onepanel",     "onep",      "0", "tsline tsrline", "0", "")
+    t = t \ ("pwidth",       "pwidth",       "pw",        "1", "lpolyci",   "0", "")
+    t = t \ ("smoothplot",   "smoothplot",   "smoothp",   "1", "lpolyci",   "0", "")
+    t = t \ ("var",          "var",          "v",         "1", "lpolyci",   "0", "")
+    t = t \ ("weight",       "weight",       "w",         "0", "lowess",    "0", "")
+    t = t \ ("colorallowmultiple", "colorallowmultiple", "colorallowmultiple", "0", "*", "0", "")
+    t = t \ ("colorend",     "colorend",     "colore",    "1", "*",         "0", "")
+    t = t \ ("colorfillonly", "colorfillonly", "colorfillonly", "0", "*",   "0", "")
+    t = t \ ("colorformissing", "colorformissing", "colorformiss", "1", "*", "0", "")
+    t = t \ ("colorkeysrange", "colorkeysrange", "colorkeysran", "0", "*",  "0", "")
+    t = t \ ("colorkeysreverse", "colorkeysreverse", "colorkeysrev", "0", "*", "0", "")
+    t = t \ ("colorotherlabel", "colorotherlabel", "colorotherlab", "1", "*", "0", "")
+    t = t \ ("colorrule",    "colorrule",    "colorr",    "1", "*",         "0", "")
+    t = t \ ("colorstart",   "colorstart",   "colorst",   "1", "*",         "0", "")
+    t = t \ ("colorvarminmax", "colorvarminmax", "colorvarminm", "0", "*",  "0", "")
+    t = t \ ("dropbase",     "dropbase",     "dropb",     "0", "*",         "0", "")
+    t = t \ ("dropbase",     "nodropbase",   "nodropb",   "0", "*",         "0", "no")
+    t = t \ ("below",        "below",        "below",     "0", "*",         "1", "")
+    t = t \ ("clegend",      "clegend",      "cleg",      "1", "*",         "1", "")
+    t = t \ ("copyscheme",   "copyscheme",   "copysch",   "0", "*",         "1", "")
+    t = t \ ("maxaxes",      "maxaxes",      "maxaxes",   "1", "*",         "1", "")
+    t = t \ ("logging",      "logging",      "log",       "0", "*",         "1", "")
+    t = t \ ("logging",      "nologging",    "nolog",     "0", "*",         "1", "no")
+    // lowess's logit, which dash declares (LOgit): its rows stand after
+    // logging's, so log and nolog are read as logging first, as twoway reads
+    // them, and lo, logi and logit (nolo, nologi, nologit) as logit.  Listed
+    // so lo nolo is one option given twice, "option nolo not allowed", and
+    // so a logit spelling after the plot groups' comma is a plot option.
+    t = t \ ("logit",        "logit",        "lo",        "0", "lowess",    "0", "")
+    t = t \ ("logit",        "nologit",      "nolo",      "0", "lowess",    "0", "no")
+    t = t \ ("refscheme",    "refscheme",    "refsch",    "0", "*",         "1", "")
+    t = t \ ("refscheme",    "norefscheme",  "norefsch",  "0", "*",         "1", "no")
+    t = t \ ("rescaling",    "rescaling",    "rescaling", "0", "*",         "1", "")
+    t = t \ ("rescaling",    "norescaling",  "norescaling", "0", "*",       "1", "no")
+    t = t \ ("titling",      "titling",      "titling",   "0", "*",         "1", "")
+    t = t \ ("titling",      "notitling",    "notitling", "0", "*",         "1", "no")
+    t = t \ ("omitallmiss",  "omitallmiss",  "omitallm",  "0", "*",         "1", "")
+    t = t \ ("omitanymiss",  "omitanymiss",  "omitanym",  "0", "*",         "1", "")
+    t = t \ ("omitdupmiss",  "omitdupmiss",  "omitdup",   "0", "*",         "1", "")
+    t = t \ ("omitnothing",  "omitnothing",  "omitn",     "0", "*",         "1", "")
+    t = t \ ("pcycle",       "pcycle",       "pcyc",      "1", "*",         "1", "")
+    t = t \ ("plegend",      "plegend",      "pleg",      "1", "*",         "1", "")
+    return(t)
+}
+
+// _dash_rep_und_rows(tab, ptype) -- 1 for each row of tab that applies to
+// an option list of plot type ptype, or to the list after the paren-mode
+// comma when ptype is "" (the graph-wide rows alone).
+real colvector _dash_rep_und_rows(string matrix tab, string scalar ptype)
+{
+    real colvector ok
+    real scalar    r
+
+    ok = J(rows(tab), 1, 0)
+    for (r = 1; r <= rows(tab); r++) {
+        if (ptype == "") ok[r] = (tab[r, 6] == "1")
+        else ok[r] = (tab[r, 5] == "*" | anyof(tokens(tab[r, 5]), ptype))
+    }
+    return(ok)
+}
+
+// _dash_rep_und_row(tok, tab, ok) -- the row of tab that the option word
+// tok spells, among the rows ok marks, or 0: its name, as typed (twoway's
+// names are lower case, and ATOBS is no spelling of atobs), from the
+// row's shortest spelling to its full one, with a value when the row takes
+// one and without when it does not.
+real scalar _dash_rep_und_row(string scalar tok, string matrix tab,
+                              real colvector ok)
+{
+    string scalar nm
+    real scalar   r, L, par
+
+    nm = _dash_rep_optname(tok)
+    if (nm == "") return(0)
+    par = (strpos(tok, "(") > 0)
+    L   = strlen(nm)
+    for (r = 1; r <= rows(tab); r++) {
+        if (!ok[r] | strtoreal(tab[r, 4]) != par) continue
+        if (L < strlen(tab[r, 3]) | L > strlen(tab[r, 2])) continue
+        if (substr(tab[r, 2], 1, L) == nm) return(r)
+    }
+    return(0)
+}
+
+// _dash_rep_und_name(t1, p1, t2, p2) -- the copy twoway names when an
+// option is given as t1 then t2 (each its name as typed, "()" after it
+// when it took a value; p1 and p2 "no" for a noX spelling): the noX copy
+// when one copy is X and the other noX, else the second.
+string scalar _dash_rep_und_name(string scalar t1, string scalar p1,
+                                 string scalar t2, string scalar p2)
+{
+    if (p1 != p2) return(p1 == "no" ? t1 : t2)
+    return(t2)
+}
+
+// _dash_rep_und_scan(opts, ptype) -- an option dash does not declare,
+// given twice in one option list where twoway takes it once
+// (_dash_rep_und_tab): sets the caller's local _rp_refuse to the copy
+// twoway names, and to "" when there is none.  Sets the caller's local
+// _rp_gund to the graph-wide ones the list gives, one word each,
+// option:typed:no-or-dash, for dash.ado to count across the command's
+// lists (_dash_rep_und_cross).  Linear in the number of words times the
+// rows of the table.
+void _dash_rep_und_scan(string scalar opts, string scalar ptype)
+{
+    string matrix    tab
+    string rowvector toks, seen, styped, spol
+    string scalar    typed, pol, gund
+    real colvector   ok
+    real scalar      i, j, r, k
+
+    st_local("_rp_refuse", "")
+    st_local("_rp_gund", "")
+    tab  = _dash_rep_und_tab()
+    ok   = _dash_rep_und_rows(tab, ptype)
+    toks = _dash_rep_toks(opts, 0)
+    seen   = J(1, 0, "")
+    styped = J(1, 0, "")
+    spol   = J(1, 0, "")
+    gund   = ""
+    for (i = 1; i <= cols(toks); i++) {
+        r = _dash_rep_und_row(toks[i], tab, ok)
+        if (!r) continue
+        typed = _dash_rep_optname(toks[i]) + (tab[r, 4] == "1" ? "()" : "")
+        pol   = (tab[r, 7] == "no" ? "no" : "-")
+        k = 0
+        for (j = 1; j <= cols(seen); j++) {
+            if (seen[j] == tab[r, 1]) {
+                k = j
+                break
+            }
+        }
+        if (k) {
+            st_local("_rp_refuse", _dash_rep_und_name(styped[k], spol[k], typed, pol))
+            return
+        }
+        seen   = seen, tab[r, 1]
+        styped = styped, typed
+        spol   = spol, pol
+        if (tab[r, 6] == "1") {
+            gund = gund + (gund == "" ? "" : " ") + tab[r, 1] + ":" + typed + ":" + pol
+        }
+    }
+    st_local("_rp_gund", gund)
+}
+
+// _dash_rep_und_cross(acc, add) -- the graph-wide options of one more
+// option list (the caller's local add, words from _dash_rep_und_scan)
+// against those of the lists before it (the caller's local acc): the
+// caller's local _rp_refuse names the copy twoway names when one is given
+// again, else add's words join acc.
+void _dash_rep_und_cross(string scalar acc, string scalar add)
+{
+    string rowvector a, b, wa, wb
+    real scalar      i, j
+
+    st_local("_rp_refuse", "")
+    a = tokens(st_local(acc))
+    b = tokens(st_local(add))
+    for (i = 1; i <= cols(b); i++) {
+        wb = tokens(b[i], ":")
+        if (cols(wb) != 5) continue
+        for (j = 1; j <= cols(a); j++) {
+            wa = tokens(a[j], ":")
+            if (cols(wa) != 5) continue
+            if (wa[1] == wb[1]) {
+                st_local("_rp_refuse", _dash_rep_und_name(wa[3], wa[5], wb[3], wb[5]))
+                return
+            }
+        }
+    }
+    st_local(acc, invtokens((a, b)))
+}
+
+// _dash_log_split(src, out) -- the plot parser's option text (the caller's
+// local src, ", <options>") without the top-level words log and nolog, and
+// those words into the caller's local out.  twoway reads log and nolog as
+// the graph option logging (noLOGging) on every plot type, lowess too: it
+// takes the graph's options out of a list before the plot's parser reads
+// it, so only lo, logi and logit are lowess's logit (measured 24sep2026 on
+// lowess, scatter, line, lfit, kdensity and histogram: lowess zb weight,
+// log draws the serset of lowess zb weight, and lo, logi and logit that of
+// its logit).  -syntax- would bind log, and nolog, to LOgit, so the plot
+// parser takes them out first and hands them to its catch-all, as typed.
+// src is left alone when neither word is there.  Read by value.
+void _dash_log_split(string scalar src, string scalar out)
+{
+    string rowvector toks, keep, took
+    string scalar    s, lead
+    real scalar      i
+
+    st_local(out, "")
+    s = strtrim(st_local(src))
+    lead = ""
+    if (substr(s, 1, 1) == ",") {
+        lead = ","
+        s = substr(s, 2, .)
+    }
+    toks = _dash_rep_toks(s, 0)
+    keep = J(1, 0, "")
+    took = J(1, 0, "")
+    for (i = 1; i <= cols(toks); i++) {
+        if (toks[i] == "log" | toks[i] == "nolog") took = took, toks[i]
+        else keep = keep, toks[i]
+    }
+    if (!cols(took)) return
+    st_local(src, lead + " " + invtokens(keep))
+    st_local(out, invtokens(took))
+}
+
+// _dash_logit_typed(opts) -- the first top-level word of opts that spells
+// lowess's logit or its off form, as typed -- lo, logi, logit, nolo,
+// nologi, nologit (log and nolog are logging) -- or "".  On any other plot
+// type twoway refuses it naming that word, "option lo not allowed",
+// r(198) (measured 24sep2026 on scatter, line, lfit, kdensity, histogram).
+string scalar _dash_logit_typed(string scalar opts)
+{
+    string rowvector toks
+    real scalar      i
+
+    toks = _dash_rep_toks(opts, 0)
+    for (i = 1; i <= cols(toks); i++) {
+        if (anyof(("lo", "logi", "logit", "nolo", "nologi", "nologit"),
+                  toks[i])) return(toks[i])
+    }
+    return("")
+}
+
+// _dash_foreign_scan(opts, ptype, unk, graph) -- the option words of a
+// list for dash.ado's _dash_refuse_foreign, which asks the parser about
+// each.  twoway refuses, even once, an option written in upper case
+// (ATOBS, MCOLOR(red), Title(x) -- its names are lower case) and, after
+// the plot groups' comma, any plot option (atobs, mcolor(), kernel(), lo),
+// "option MCOLOR() not allowed", r(198), naming the first word of the
+// list it does not take (measured 24sep2026).  graph is 1 for the list
+// after the paren-mode comma (ptype ""), 0 for a plot's list.  Sets the
+// caller's local _fs_go to 1 when the parser's catch-all (unk) may hold
+// such a word -- any word after the comma, a word in upper case in a
+// plot's list -- else 0; and then _fs_n (at most 300 words) and, for each
+// option word, _fs_tok<i> (the word), _fs_nm<i> (its name as typed, "()"
+// after it when it took a value), _fs_acc<i> (1 when twoway takes it here
+// though dash does not declare it: a row of _dash_rep_und_tab), _fs_uc<i>
+// (1 when its name is not in lower case) and _fs_plot<i> (1 when it is a
+// row of _dash_rep_und_tab for a plot, of any type).  Linear in the words
+// times the rows of the table.  Read by value; the words are the user's.
+void _dash_foreign_scan(string scalar opts, string scalar ptype,
+                        string scalar unk, real scalar graph)
+{
+    string matrix    tab
+    string rowvector toks, u
+    string scalar    nm, si
+    real colvector   ok, okp
+    real scalar      i, n, r, go
+
+    st_local("_fs_n", "0")
+    go = 0
+    if (graph) go = (strtrim(unk) != "")
+    else {
+        u = _dash_rep_toks(unk, 0)
+        for (i = 1; i <= cols(u) & !go; i++) {
+            nm = _dash_rep_optname(u[i])
+            if (nm != "" & nm != strlower(nm)) go = 1
+        }
+    }
+    st_local("_fs_go", strofreal(go))
+    if (!go) return
+    tab  = _dash_rep_und_tab()
+    ok   = _dash_rep_und_rows(tab, graph ? "" : ptype)
+    okp  = (tab[., 6] :== "0")
+    toks = _dash_rep_toks(opts, 0)
+    n = 0
+    for (i = 1; i <= cols(toks) & n < 300; i++) {
+        nm = _dash_rep_optname(toks[i])
+        if (nm == "") continue
+        n++
+        si = strofreal(n)
+        st_local("_fs_tok" + si, toks[i])
+        st_local("_fs_nm" + si, nm + (strpos(toks[i], "(") ? "()" : ""))
+        st_local("_fs_acc" + si, strofreal(_dash_rep_und_row(toks[i], tab, ok) > 0))
+        st_local("_fs_uc" + si, strofreal(nm != strlower(nm)))
+        r = _dash_rep_und_row(toks[i], tab, okp)
+        st_local("_fs_plot" + si, strofreal(r > 0))
+    }
+    st_local("_fs_n", strofreal(n))
+}
+
+// _dash_kernel_clash(opts, ptype) -- how twoway answers two kernels in
+// one option list of lpoly, lpolyci or kdensity: "old" when a kernel
+// written as an option of its own (gaussian, ep, epan2 ...) stands beside
+// kernel() -- "kernel(): old syntax may not be combined with new syntax",
+// whatever kernel() holds -- "one" when two such options name different
+// kernels -- "only one kernel may be specified" (ep and epan2 are two) --
+// and "" otherwise, or on any other type.  Measured 24sep2026, r(198) for
+// each, after twoway's refusal of a repeated option (gaussian gaussian,
+// kernel() twice).  kernel() is any spelling k( .. kernel(, as twoway
+// abbreviates it; a flag is a row of _dash_rep_und_tab.
+string scalar _dash_kernel_clash(string scalar opts, string scalar ptype)
+{
+    string matrix    tab
+    string rowvector toks, seen
+    string scalar    nm
+    real colvector   ok
+    real scalar      i, r, kfun
+
+    if (!anyof(("lpoly", "lpolyci", "kdensity"), ptype)) return("")
+    tab  = _dash_rep_und_tab()
+    ok   = _dash_rep_und_rows(tab, ptype)
+    toks = _dash_rep_toks(opts, 0)
+    seen = J(1, 0, "")
+    kfun = 0
+    for (i = 1; i <= cols(toks); i++) {
+        nm = _dash_rep_optname(toks[i])
+        if (nm == "") continue
+        if (strpos(toks[i], "(") & strlen(nm) <= 6 &
+            substr("kernel", 1, strlen(nm)) == nm) {
+            kfun = 1
+            continue
+        }
+        r = _dash_rep_und_row(toks[i], tab, ok)
+        if (!r) continue
+        if (!anyof(("epanechnikov", "epan2", "biweight", "cosine",
+                    "gaussian", "parzen", "rectangle", "triangle"),
+                   tab[r, 1])) continue
+        if (!anyof(seen, tab[r, 1])) seen = seen, tab[r, 1]
+    }
+    if (cols(seen) & kfun) return("old")
+    if (cols(seen) > 1) return("one")
+    return("")
+}
+
+// _dash_kernel_flag(unk, ptype) -- a kernel written as an option of its
+// own, twoway's old syntax, read as kernel(<name>): on lpoly, lpolyci and
+// kdensity, the first word of the catch-all unk that is a kernel row of
+// _dash_rep_und_tab (bi .. biweight, cos .. cosine, ep .. epanechnikov,
+// epan2, gau .. gaussian, par .. parzen, rec .. rectangle, tri ..
+// triangle, lower case, with no value).  Sets the caller's local _kf_name
+// to the full name, "" when there is none or on any other type, and
+// _kf_rest to unk less every such word.  Measured 24sep2026: each spelling
+// on each of the three types draws the serset of kernel(<name>); a shorter
+// one (e, b, co, ga, pa, re, tr) and every spelling on another type are
+// "option ... not allowed", r(198).  Called after _dash_kernel_clash and
+// the repeat checks, so at most one kernel is left.  Linear in the words
+// of unk; the words are the user's text, read by value.
+void _dash_kernel_flag(string scalar unk, string scalar ptype)
+{
+    string matrix    tab
+    string rowvector toks
+    string scalar    name, rest
+    real colvector   ok
+    real scalar      i, r
+
+    st_local("_kf_name", "")
+    st_local("_kf_rest", unk)
+    if (!anyof(("lpoly", "lpolyci", "kdensity"), ptype)) return
+    tab  = _dash_rep_und_tab()
+    ok   = _dash_rep_und_rows(tab, ptype)
+    toks = _dash_rep_toks(unk, 0)
+    name = ""
+    rest = ""
+    for (i = 1; i <= cols(toks); i++) {
+        r = _dash_rep_und_row(toks[i], tab, ok)
+        if (r) {
+            if (anyof(("epanechnikov", "epan2", "biweight", "cosine",
+                       "gaussian", "parzen", "rectangle", "triangle"),
+                      tab[r, 1])) {
+                if (name == "") name = tab[r, 1]
+                continue
+            }
+        }
+        rest = rest + (rest == "" ? "" : " ") + toks[i]
+    }
+    if (name == "") return
+    st_local("_kf_name", name)
+    st_local("_kf_rest", rest)
+}
+
+// _dash_rep_split(v, body, sub) -- a merged option's value at its first
+// comma outside quotes and parentheses: the text or list before it, and
+// the sub-options after.  Returns 1 when there is a comma.
+real scalar _dash_rep_split(string scalar v, string scalar body,
+                            string scalar sub)
+{
+    real scalar p
+
+    p = _first_comma_pos(v)
+    if (!p) {
+        body = v
+        sub  = ""
+        return(0)
+    }
+    body = substr(v, 1, p - 1)
+    sub  = substr(v, p + 1, .)
+    return(1)
+}
+
+// _dash_rep_subkey(tok, cat) -- which sub-option a word sets, for keeping
+// the last of each: its name in lower case, a noX taken as X (grid and
+// nogrid, box and nobox are one setting), pos as position, cols and rows
+// as one (twoway: legend(cols(1)) legend(rows(1)) draws rows(1)), on and
+// off as one, and label(# ...) keyed by its number.
+string scalar _dash_rep_subkey(string scalar tok, string scalar cat)
+{
+    string scalar nm, v
+    real scalar   p
+
+    p  = strpos(tok, "(")
+    nm = strlower(strtrim(p ? substr(tok, 1, p - 1) : tok))
+    if (strlen(nm) > 2 & substr(nm, 1, 2) == "no") nm = substr(nm, 3, .)
+    if (nm == "pos") nm = "position"
+    if (nm == "cols" | nm == "rows") nm = "cols|rows"
+    if (nm == "on" | nm == "off") nm = "on|off"
+    if (nm == "label" & cat == "I" & p) {
+        v = strtrim(_dash_rep_value(tok))
+        nm = nm + " " + (strpos(v, " ") ? substr(v, 1, strpos(v, " ") - 1) : v)
+    }
+    return(nm)
+}
+
+// _dash_rep_subs(s1, s2, cat, drop) -- two sub-option lists as one: every
+// word of s1 then s2, keeping only the last word of each setting
+// (_dash_rep_subkey), in the order the kept words stand, less the words
+// listed in drop (suffix, prefix, add: merging instructions, spent here).
+// On an axis scale ("S") every range() is one range(), the union of the
+// ranges written, as twoway draws xscale(range(0 8000)) xscale(range(1000
+// 6000)) over 0 to 8000.
+string scalar _dash_rep_subs(string scalar s1, string scalar s2,
+                             string scalar cat, string rowvector drop)
+{
+    string rowvector w, keys
+    string scalar    out, k
+    real scalar      i, j, keep, lo, hi, v, nr, rng, ok
+    real rowvector   nums
+
+    w = _dash_rep_toks(s1, 1), _dash_rep_toks(s2, 1)
+    keys = J(1, cols(w), "")
+    for (i = 1; i <= cols(w); i++) keys[i] = _dash_rep_subkey(w[i], cat)
+    lo  = .
+    hi  = .
+    nr  = 0
+    ok  = 1
+    rng = 0
+    if (cat == "S") {
+        for (i = 1; i <= cols(w); i++) {
+            if (keys[i] != "range" | !strpos(w[i], "(")) continue
+            nr++
+            rng = i
+            nums = strtoreal(tokens(_dash_rep_value(w[i])))
+            if (cols(nums) == 0 | missing(nums)) ok = 0
+            else {
+                lo = (lo >= . ? min(nums) : min((lo, min(nums))))
+                hi = (hi >= . ? max(nums) : max((hi, max(nums))))
+            }
+        }
+    }
+    out = ""
+    for (i = 1; i <= cols(w); i++) {
+        if (anyof(drop, strlower(w[i]))) continue
+        keep = 1
+        for (j = i + 1; j <= cols(w); j++) {
+            if (keys[j] == keys[i]) {
+                keep = 0
+                break
+            }
+        }
+        if (!keep) continue
+        if (cat == "S" & i == rng & nr > 1 & ok) {
+            out = out + (out == "" ? "" : " ") + "range(" +
+                  strtrim(strofreal(lo, "%21.0g")) + " " +
+                  strtrim(strofreal(hi, "%21.0g")) + ")"
+            continue
+        }
+        out = out + (out == "" ? "" : " ") + w[i]
+    }
+    return(out)
+}
+
+// _dash_rep_merge(key, v1, v2) -- the value twoway draws for option key
+// written first with value v1 and then with v2 (_dash_rep_cat says how).
+string scalar _dash_rep_merge(string scalar key, string scalar v1,
+                              string scalar v2)
+{
+    string scalar    cat, b1, s1, b2, s2, body, sub
+    string rowvector w2, drop
+    real scalar      c1, c2, has2, suf, pre, add
+
+    cat = _dash_rep_cat(key)
+    if (cat == "R" | strtrim(v1) == "") return(v2)
+    if (strtrim(v2) == "") return(v1)
+    if (cat == "A") return(v1 + " " + v2)
+    if (cat == "X") return(v1 + ", " + v2)
+    if (cat == "I" | cat == "S") {
+        return(_dash_rep_subs(v1, v2, cat, J(1, 0, "")))
+    }
+    c1 = _dash_rep_split(v1, b1, s1)
+    c2 = _dash_rep_split(v2, b2, s2)
+    w2   = strlower(_dash_rep_toks(s2, 1))
+    has2 = (strtrim(b2) != "")
+    suf  = (cat == "T" & anyof(w2, "suffix"))
+    pre  = (cat == "T" & anyof(w2, "prefix"))
+    add  = (cat == "L" & anyof(w2, "add"))
+    drop = ("suffix", "prefix")
+    if (cat == "L") drop = ("add")
+    if (suf & has2)       body = strtrim(b1) + " " + strtrim(b2)
+    else if (pre & has2)  body = strtrim(b2) + " " + strtrim(b1)
+    else if (add & has2)  body = strtrim(b1) + " " + strtrim(b2)
+    else                  body = (has2 ? strtrim(b2) : strtrim(b1))
+    sub = _dash_rep_subs(s1, s2, cat, drop)
+    return(body + (sub != "" ? ", " + sub : ""))
+}
+
+// _dash_rep_merge_locals(key, m1, m2, out) -- _dash_rep_merge on the
+// caller's locals m1 and m2, read by value, into its local out.
+void _dash_rep_merge_locals(string scalar key, string scalar m1,
+                            string scalar m2, string scalar out)
+{
+    st_local(out, _dash_rep_merge(key, st_local(m1), st_local(m2)))
+}
+
+// _dash_rep_reduce(opts, ptype) -- the option list with one copy of each
+// option, as twoway reads it.  Each word's option is the key the parser
+// gave its typed name (the caller's locals _rp_n, _rp_nm<i>, _rp_key<i>,
+// set by dash.ado's _dash_opts_repeats); a word whose name has no key is
+// left as typed, for the ignoring note.  An option given more than once
+// stands where its last copy stood: that copy as typed when the option is
+// rightmost, else name(merged value) under the last copy's spelling.  A
+// unique option given twice sets the caller's local _rp_refuse to the
+// second copy's name as typed, "()" after it when it took a value --
+// twoway's words, "option bwid() not allowed" -- and the list is returned
+// unchanged.  Linear in the number of words times the distinct names.
+string scalar _dash_rep_reduce(string scalar opts, string scalar ptype)
+{
+    string rowvector toks, keys, names, nkeys, val
+    string scalar    nm, out
+    real rowvector   cnt, lastpos
+    real scalar      i, j, n, k, nk
+
+    st_local("_rp_refuse", "")
+    n     = strtoreal(st_local("_rp_n"))
+    names = J(1, n, "")
+    nkeys = J(1, n, "")
+    for (i = 1; i <= n; i++) {
+        names[i] = st_local("_rp_nm" + strofreal(i))
+        nkeys[i] = st_local("_rp_key" + strofreal(i))
+    }
+    toks = _dash_rep_toks(opts, 0)
+    keys = J(1, cols(toks), "")
+    for (i = 1; i <= cols(toks); i++) {
+        nm = _dash_rep_optname(toks[i])
+        if (nm == "") continue
+        nm = nm + (strpos(toks[i], "(") ? "(" : "")
+        for (j = 1; j <= n; j++) {
+            if (names[j] == nm) {
+                keys[i] = nkeys[j]
+                // bins() folds into bin(): keyed apart, as twoway refuses
+                // a second bins() and takes a second bin().
+                if (nm == "bins(") keys[i] = keys[i] + "|bins"
+                break
+            }
+        }
+    }
+    // Per key: how many copies, where the last stands, the merged value.
+    nkeys   = J(1, 0, "")
+    cnt     = J(1, 0, .)
+    lastpos = J(1, 0, .)
+    val     = J(1, 0, "")
+    for (i = 1; i <= cols(toks); i++) {
+        if (keys[i] == "") continue
+        k = 0
+        for (j = 1; j <= cols(nkeys); j++) {
+            if (nkeys[j] == keys[i]) {
+                k = j
+                break
+            }
+        }
+        if (!k) {
+            nkeys   = nkeys, keys[i]
+            cnt     = cnt, 1
+            lastpos = lastpos, i
+            val     = val, _dash_rep_value(toks[i])
+            continue
+        }
+        if (_dash_rep_unique(subinstr(keys[i], "|bins", ""),
+                             _dash_rep_optname(toks[i]), ptype)) {
+            st_local("_rp_refuse", _dash_rep_optname(toks[i]) +
+                     (strpos(toks[i], "(") ? "()" : ""))
+            return(opts)
+        }
+        cnt[k]     = cnt[k] + 1
+        lastpos[k] = i
+        val[k]     = _dash_rep_merge(keys[i], val[k], _dash_rep_value(toks[i]))
+    }
+    nk  = 0
+    for (j = 1; j <= cols(cnt); j++) nk = nk + (cnt[j] > 1)
+    if (!nk) return(opts)
+    out = ""
+    for (i = 1; i <= cols(toks); i++) {
+        if (keys[i] != "") {
+            for (j = 1; j <= cols(nkeys); j++) {
+                if (nkeys[j] == keys[i]) break
+            }
+            if (cnt[j] > 1) {
+                if (lastpos[j] != i) continue
+                if (_dash_rep_cat(keys[i]) != "R") {
+                    out = out + " " + _dash_rep_optname(toks[i]) + "(" + val[j] + ")"
+                    continue
+                }
+            }
+        }
+        out = out + " " + toks[i]
+    }
+    return(strtrim(out))
+}
+
+// _dash_fn_space_call(expr) -- the first operand of a function expression
+// written with blanks before a `(', as `sin (x)' or `2 (x)', outside
+// double and compound quotes; "" when there is none.
+//
+// Stata never reads a name and a parenthesis apart as a call: `twoway
+// function y = sin (x)' is "error in expression", r(111) -- sin is looked
+// for as a variable and not found -- where sin(x) is drawn; and a name the
+// data does have (mpg, or mp for it), x, _n, _N and _pi, or a number, a
+// string or a closing parenthesis before the blanks, are r(198).  With
+// tabs alone between a name and its `(' it is r(133), an unknown function
+// (measured 24sep2026).  2 * (x) and x + (1) have an operator before the
+// `(' and are drawn.  Returns "N <pos> <name>" for a name (not the tail of
+// a number or of a dotted name) and blanks holding a space, "T <pos>
+// <name>" for a name and tabs alone, "O <pos>" for any other operand, pos
+// being where the operand begins, so the caller can ask which of this and
+// an unknown function Stata meets first.  Linear in the length of expr.
+string scalar _dash_fn_space_call(string scalar expr)
+{
+    string scalar ch
+    real scalar   i, j, n, in_dq, in_cq, nxt, c, c0, lastkind, lastpos
+    real scalar   lastend, blank, qstart
+
+    n        = strlen(expr)
+    in_dq    = 0
+    in_cq    = 0
+    lastkind = 0
+    lastpos  = 0
+    lastend  = 0
+    blank    = 0
+    qstart   = 0
+    i        = 1
+    while (i <= n) {
+        if (!in_dq & !in_cq) qstart = i
+        nxt = _dash_quote_step(expr, n, i, in_dq, in_cq)
+        if (nxt) {
+            // A closed string is an operand; it began where the quote
+            // opened (qstart holds the position before it opened).
+            if (!in_dq & !in_cq) {
+                lastkind = 3
+                blank    = 0
+            }
+            else if (lastkind != 4) {
+                lastpos  = qstart
+                lastkind = 4
+            }
+            i = nxt
+            continue
+        }
+        ch = substr(expr, i, 1)
+        c  = ascii(ch)
+        if (ch == " ") {
+            if (lastkind) blank = 1
+            i++
+            continue
+        }
+        if (ch == char(9)) {
+            if (lastkind & !blank) blank = 2
+            i++
+            continue
+        }
+        if (ch == "(") {
+            if (lastkind & blank) {
+                if (lastkind == 1) {
+                    return((blank == 1 ? "N " : "T ") + strofreal(lastpos) + " " +
+                           substr(expr, lastpos, lastend - lastpos + 1))
+                }
+                return("O " + strofreal(lastpos))
+            }
+            lastkind = 0
+            blank    = 0
+            i++
+            continue
+        }
+        if ((c >= 65 & c <= 90) | (c >= 97 & c <= 122) | c == 95 |
+            (c >= 48 & c <= 57) | c == 46) {
+            c0 = c
+            j  = i
+            while (j <= n) {
+                c = ascii(substr(expr, j, 1))
+                if (!((c >= 65 & c <= 90) | (c >= 97 & c <= 122) |
+                      (c >= 48 & c <= 57) | c == 95 | c == 46)) break
+                j++
+            }
+            // A name begins with a letter or _ and holds no dot; anything
+            // else here (2, 1.5, 1e5, a.b) is some other operand.
+            if (((c0 >= 65 & c0 <= 90) | (c0 >= 97 & c0 <= 122) | c0 == 95) &
+                !strpos(substr(expr, i, j - i), ".")) lastkind = 1
+            else lastkind = 3
+            lastpos = i
+            lastend = j - 1
+            blank   = 0
+            i = j
+            continue
+        }
+        if (ch == ")") {
+            lastkind = 3
+            lastpos  = i
+            blank    = 0
+            i++
+            continue
+        }
+        // An operator, a comma or anything else: no operand before a `('.
+        lastkind = 0
+        blank    = 0
+        i++
+    }
+    return("")
 }
 
 // _dash_spec_types_in(s, allowed) -- 1 when the graph spec s names a plot

@@ -326,8 +326,22 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               re-baselining, against HEAD's renderer: the one difference
 #               is the GridPlot's "cols":null, now "cols":"minmax(0, 1fr)";
 #               the Bokeh document is otherwise identical.  Intended.
+#   5ad925f7  S3 batch: the plot region's border is the scheme's own line
+#               (s2color: `color plotregion_line' white, `linewidth
+#               plotregion' thin), where it was `color axisline' black
+#               under every scheme; Stata's s2color draws it white on
+#               white (test/fixtures/scheme_visual/truth.json).  Diffed
+#               token by token against HEAD's renderer and HEAD's
+#               schemes/s2color.scheme before re-baselining: one chunk,
+#               "outline_line_color":"#000000" now "#ffffff" and an
+#               inserted "outline_line_width":0.8.  Intended.
+#   fd0db4f6  S3 batch: marker outlines follow linewidth p#mark -> pmark ->
+#               p# -> p.  Diffed against HEAD's renderer and schemes: the
+#               border chunk above and, on each of the scatter's three
+#               glyphs, an inserted "line_width":1.5 (s2color's linewidth
+#               p); nothing else.  Intended.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "3e545d0f473217ecd4fa71f55f48b0b22edc57ae24ba384d19ab87d4636e251f"
+    "fd0db4f6fd3d2ad1fd502a8fbefe4409a202f192ab57c04619a9b3b8cb7a1361"
 )
 
 

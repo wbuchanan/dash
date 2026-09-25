@@ -1567,7 +1567,9 @@ display "P20-15 PASS: an overlong-encoded <script> in title() or note() is refus
 
 // P20-16 — saving() spelled to slip past the traversal check: the minimum
 // abbreviation, a `///' continuation inside the option, and upper case,
-// which is not an alias of saving() at all and so cannot carry a path.
+// which is not an alias of saving() at all and so cannot carry a path:
+// SAVING() is no option, and twoway refuses it, "option SAVING() not
+// allowed", r(198), as dash does (test_twoway_option_parity.cscript TP-15).
 capture erase "../p2016c.html"
 capture dash scatter mpg weight, sav("../p2016a.html")
 assert _rc == 198
@@ -1575,7 +1577,7 @@ capture dash scatter mpg weight, saving( ///
     "../p2016b.html")
 assert _rc == 198
 capture noisily dash scatter mpg weight, SAVING("../p2016c.html")
-assert _rc == 0
+assert _rc == 198
 capture confirm file "../p2016c.html"
 assert _rc != 0
 display "P20-16 PASS: sav(), a /// continuation and SAVING() cannot carry a traversal"
@@ -1616,13 +1618,12 @@ display "P20-17 PASS: a backslash in layout() never reaches the spec: refused, n
 // P20-18 — a compound-quote breakout inside an option value.  If "' could
 // end the quotes a value is expanded in, what followed would be read as
 // display directives (the fmt() hole P9-11..14 closed).  No directive runs.
-// dash used to stop at the first line that put the command inside quotes;
-// it reads the command by value now (test_json_escaping.cscript
-// JSE-42..49), and Stata's own syntax does not take this text for
-// jitter()'s value -- it leaves the whole option to the catch-all
-// (measured 24sep2026 with syntax [, JITter(string) *]) -- so the graph
-// registers with jitter() named in the note and not applied.  twoway
-// stops, r(109).
+// Stata's own syntax does not take this text for jitter()'s value -- it
+// leaves the whole option to the catch-all (measured 24sep2026 with syntax
+// [, JITter(string) *]) -- and twoway refuses the command, "type mismatch",
+// r(109).  dash named jitter() as an unsupported option and registered the
+// graph (BUGS.md, S3); it now refuses as twoway does, r(109), naming the
+// option, and registers nothing.
 capture dash clear
 local p2018 = "x" + char(34) + char(39) + " _dup(3) " + char(34) + "INJ" + char(34) + " " + char(96) + char(34)
 local p2018lg "`c(tmpdir)'dash_adv_p20.log"
@@ -1633,19 +1634,84 @@ capture erase "`p2018lg'"
 quietly log using "`p2018lg'", name(_p20log) text replace
 capture noisily dash scatter mpg weight, name(p2018) jitter(`p2018')
 local p2018rc = _rc
+capture noisily twoway scatter mpg weight, jitter(`p2018') nodraw
+local p2018tw = _rc
 quietly log close _p20log
 set linesize `p2018ls'
-assert `p2018rc' == 0
+assert `p2018tw' == 109
+assert `p2018rc' == 109
 cert_file_has "`p2018lg'", needle("INJINJINJ")
 assert r(found) == 0
-cert_file_has "`p2018lg'", needle("ignoring unsupported option(s): jitter()")
+cert_file_has "`p2018lg'", needle("dash: option jitter() has a value Stata cannot read, as twoway reads it: type mismatch.")
 assert r(found) == 1
-assert "${dash_graph_registry}" == "p2018"
-mata: st_local("p2018j", strofreal(strpos(st_global("dash_json_p2018"), char(34) + "jitter" + char(34)) > 0))
-assert `p2018j' == 0
+cert_file_has "`p2018lg'", needle("ignoring unsupported option(s)")
+assert r(found) == 0
+assert "${dash_graph_registry}" == ""
 capture erase "`p2018lg'"
 capture dash clear
-display "P20-18 PASS: a quote breakout in an option value runs no directive, and the option is named, not applied"
+display "P20-18 PASS: a quote breakout in an option value runs no directive, and is refused r(109) as twoway refuses it"
+
+// P20-18b — the same, for every place such a value can stand: another
+// plot option (msize()), an abbreviation (jit()), a graph option after the
+// paren-mode comma (saving()), a || segment, and a value like a" "b, which
+// twoway refuses with "parentheses do not balance", r(198) (measured
+// 24sep2026, sixteen values).  Each twoway verdict is measured again here.
+// What twoway accepts is not refused: an option given twice, whose second
+// copy -syntax- also leaves to the catch-all, and an option dash does not
+// declare, which stays in the note.
+local p18q = char(34)
+local p18b = "a" + char(34) + " " + char(34) + "b"
+local p18c1 "scatter mpg weight, msize(@V@)"
+local p18w1 109
+local p18c2 "scatter mpg weight, jit(@V@)"
+local p18w2 109
+local p18c3 "(scatter mpg weight), saving(@V@)"
+local p18w3 109
+local p18c4 "scatter mpg weight || scatter price weight, msize(@V@)"
+local p18w4 109
+local p18c5 "scatter mpg weight, jitter(@B@)"
+local p18w5 198
+forvalues k = 1/5 {
+    local want `p18w`k''
+    mata: st_local("cmd", subinstr(subinstr(st_local("p18c" + st_local("k")), "@V@", st_local("p2018")), "@B@", st_local("p18b")))
+    capture dash clear
+    capture twoway `macval(cmd)' nodraw
+    local tw = _rc
+    capture dash `macval(cmd)' name(p2018b)
+    local rc = _rc
+    if `tw' != `want' | `rc' != `want' {
+        display as error "P20-18b FAIL: twoway r(`tw'), dash r(`rc'); want r(`want')"
+        exit 9
+    }
+    assert "${dash_graph_registry}" == ""
+}
+// Accepted, as twoway accepts them.
+capture dash clear
+capture twoway scatter mpg weight, jitter(1) jitter(2) nodraw
+assert _rc == 0
+capture noisily dash scatter mpg weight, jitter(1) jitter(2) name(p2018c)
+assert _rc == 0
+capture dash clear
+capture noisily dash scatter mpg weight, name(p2018d) nosuchopt(`p18q'a`p18q')
+assert _rc == 0
+capture dash clear
+// Resource exhaustion: 60 undeclared options each holding a quote (Stata's
+// -syntax- itself refuses a few more, "too many options") are named in the
+// note, only the first 50 put to the parser, and quickly.
+local p18many ""
+forvalues i = 1/60 {
+    local p18many `"`p18many' zz`i'(`p18q'a`p18q')"'
+}
+timer clear 18
+timer on 18
+capture noisily dash scatter mpg weight, name(p2018e) `p18many'
+local rc = _rc
+timer off 18
+assert `rc' == 0
+quietly timer list 18
+assert r(t18) < 10
+capture dash clear
+display "P20-18b PASS: an option dash declares whose value Stata cannot bind is refused with twoway's code wherever it stands; a repeat and an unknown option are not"
 
 // P20-19 — timeout() of 400 digits.  Measured: accepted with rc 0; the
 // launcher multiplies it by 60 into a float and the app died with

@@ -354,10 +354,13 @@ def test_declarations_resolve_abbreviations_like_twoway(truth, plot_decls):
 # where twoway, measured from the saved .gph, applies both and draws the
 # last, B, as the y title, the title and the t1title.  (For plot options its
 # class files merge a repeat before -syntax- sees it: twoway_yxview_parse.
-# class runs `_parse combop 0 : 0, option(SORT1) rightmost'.)  That is an
-# open defect, not a licence, so the list is pinned and can only shrink: a
-# new shared spelling fails here, and one that stops being shared must be
-# taken off the list.
+# class runs `_parse combop 0 : 0, option(SORT1) rightmost'.)  dash.ado's
+# _dash_opts_repeats now reads such a list as twoway does before the
+# result is used -- each spelling put to the parser alone, one copy of
+# each option kept (test_twoway_option_parity.cscript TP-14) -- but the
+# fall-through is still -syntax-'s, so the list stays pinned and can only
+# shrink: a new shared spelling fails here, and one that stops being
+# shared must be taken off the list.
 # ============================================================
 _SHARED_SPELLINGS = {
     "t": ("t1title", "t2title"),          "b": ("b1title", "b2title"),
@@ -486,10 +489,12 @@ def test_help_documents_only_accepted_abbreviations(declarations, plot_decls,
             bad.append("%s() is documented as an abbreviation of %s(), which "
                        "dash does not declare anywhere" % (mn, full))
 
-    # dash.sthlp's 75 {cmdab:} tokens hold 47 distinct spellings this checks
-    # (measured 24sep2026).  Markup that stopped matching the pattern --
-    # {opt}, say -- would leave the loop nothing to check.
-    assert len(seen) == 47, (
+    # dash.sthlp's {cmdab:} tokens hold 54 distinct spellings this checks
+    # (measured 24sep2026; 47 before the S3 batch's table of the ci band's
+    # options added ac, alc, alw, alp, fc, fi and lc).  Markup that
+    # stopped matching the pattern -- {opt}, say -- would leave the loop
+    # nothing to check.
+    assert len(seen) == 54, (
         "%d documented abbreviations were checked" % len(seen))
     assert not bad, (
         "dash.sthlp documents %d spelling(s) dash rejects.\n  "
@@ -585,19 +590,21 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     folds = _folds(bodies["_dash_parse_plot_opts"])
     assert ("mlg", "mlabgap") in folds and ("pbgc", "plotbgcolor") in folds
     assert ("pbgc", "plotbgcolor") in _folds(bodies["_dash_parse_graph_opts"])
-    # Exactly 11 programs declare options with -syntax- (measured 24sep2026:
+    # Exactly 12 programs declare options with -syntax- (measured 24sep2026:
     # _dash_do_render, the two parsers, _dash_limit, _dash_browser_wanted,
     # _dash_dashboard_browser, _dash_kpi, _dash_prepare_spec, _dash_build,
-    # _dash_serve_spec, and _dash_open_page, the one browser opener, since
-    # WP-24).  ">= 6" let four of them drop out of every whole-file scan
+    # _dash_serve_spec, _dash_open_page, the one browser opener, since
+    # WP-24, and _dash_by_panels, since the S3 batch's by() answers).  ">= 6" let four of them drop out of every whole-file scan
     # below -- a `program' written without `define' does.
     with_syntax = sorted(p for p, b in _bodies().items() if _syntax_options(b))
     assert len(with_syntax) >= 6
-    assert len(with_syntax) == 11, with_syntax
+    assert len(with_syntax) == 12, with_syntax
     assert "_dash_open_page" in with_syntax, with_syntax
-    # The comment lines the duplicate-block scan reads, per parser: 92 in
-    # the plot parser and 71 in the graph parser (measured 24sep2026, after
-    # the note on why the text options are declared asis).  It
+    # The comment lines the duplicate-block scan reads, per parser: 108
+    # in the plot parser and 71 in the graph parser (measured 24sep2026,
+    # after the S3 batch's notes on the fitarea options and on log and
+    # logit; 95 after the note on why the text options are declared
+    # asis).  It
     # was ">= 20", for the plot parser alone, and the plot parser split in
     # two -- its second half moved into a program of its own, a pasted
     # duplicate comment block with it -- still showed the scan 38 comment
@@ -606,7 +613,7 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     comments = {prog: sum(1 for ln in body.split("\n")
                           if ln.strip().startswith("//"))
                 for prog, body in bodies.items()}
-    assert comments == {"_dash_parse_plot_opts": 92,
+    assert comments == {"_dash_parse_plot_opts": 108,
                         "_dash_parse_graph_opts": 71}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

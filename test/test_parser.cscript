@@ -1,7 +1,7 @@
 *! test_parser.cscript  v2.0
 *! Certification script for the dash command parsing (syntax-based, v2.0 architecture).
 *!
-*! Tests: P1A-31 through P1A-76  (rewritten for syntax-based parsing)
+*! Tests: P1A-31 through P1A-84  (rewritten for syntax-based parsing)
 *!
 *! In v2.0 parsing is done via Stata's -syntax- command rather than a
 *! hand-rolled Mata parser.  These tests exercise:
@@ -99,12 +99,16 @@ display "P1A-38 PASS: mc(red) → mcolor:red inside options{} in JSON"
 // ================================================================
 // P1A-39 — _dash_process_segment: graph-level title propagated via c_local
 // ================================================================
-// Initialize g_title
+// The segment hands its graph-level options back as _sg_* locals, which
+// _dash_plot merges into its g_* accumulators as twoway merges a repeated
+// option (TP-14); it no longer writes over g_* itself.
 local g_title ""
+local _sg_title ""
 _dash_process_segment `"scatter mpg weight, title(My Plot)"' _pt3 _json3
-// g_title should now be set via c_local in _dash_process_segment
-assert `"`g_title'"' == "My Plot"
-display "P1A-39 PASS: title() propagated to g_title via c_local"
+// _sg_title should now be set via c_local in _dash_process_segment
+assert `"`_sg_title'"' == "My Plot"
+assert `"`g_title'"' == ""
+display "P1A-39 PASS: title() propagated to _sg_title via c_local"
 
 // ================================================================
 // P1A-40 — _dash_expand_plottype: abbreviation expansion works
@@ -1452,6 +1456,846 @@ if `"$P76_BAD"' != "" {
 assert `p76two' == 0
 macro drop P76_BAD
 display "P1A-76 PASS: no prefix of a plot-type name reaches two rows, and _expand_plottype_str returns the one each reaches, or nothing"
+
+// ================================================================
+// P1A-77 -- a function layer calling a function Stata does not have is
+//           refused as twoway refuses it (BUGS.md, S3)
+// ================================================================
+// Measured 24sep2026 with the console binary, and again below on every
+// run: `twoway function y = nosuchfunction(x), range(0 10) nodraw' is
+// "error in expression: nosuchfunction(x)", r(133); so is system(x), Sin(x)
+// (functions are case-sensitive), a call anywhere in the expression, and
+// the form with no `y ='.  normal(x), which Stata has, twoway draws (rc 0).
+// dash registered every refused one, rc 0, and drew an empty layer.
+sysuse auto, clear
+dash clear
+local rs77 = c(rngstate)
+foreach e in "y = nosuchfunction(x)" "y = system(x)" "y = Sin(x)" ///
+    "y = x*nosuch(x) + 2" "nosuchfunction(x)" "y = sin(x) + mpg(x)" {
+    capture twoway function `e', range(0 10) nodraw
+    local tw77 = _rc
+    _p1a_logrun `"dash function `e', range(0 10) name(p1a77)"'
+    local rc77 = r(rc)
+    local lg77 "`r(log)'"
+    if `tw77' != 133 | `rc77' != 133 {
+        display as error `"P1A-77: function `e': twoway r(`tw77'), dash r(`rc77'); both should be r(133)"'
+        exit 9
+    }
+    cert_file_has "`lg77'", needle("error in expression: ")
+    assert r(found) == 1
+    cert_file_has "`lg77'", needle("unknown function ")
+    assert r(found) == 1
+}
+capture twoway (function y = nosuchfunction(x), range(0 10)) (scatter mpg weight), nodraw
+assert _rc == 133
+_p1a_logrun `"dash (function y = nosuchfunction(x), range(0 10)) (scatter mpg weight), name(p1a77)"'
+assert r(rc) == 133
+assert "${dash_graph_registry}" == ""
+// Nothing was evaluated that could move the random-number state: a known
+// function is put to Stata with 32 arguments, which it refuses at parse.
+_p1a_logrun `"dash function y = runiform() + rnormal() + nosuch(x), range(0 1) name(p1a77)"'
+assert r(rc) == 133
+assert c(rngstate) == "`rs77'"
+// What twoway draws is still registered: functions Stata has, whether or
+// not the renderer draws them, and a name inside a string.
+foreach e in "y = x^2" "y = sin(x) + sqrt(abs(x))" "y = normal(x)" ///
+    "y = max(x, 1) + inlist(x, 1, 2)" `"y = strlen("nosuch(x)") + x"' {
+    capture twoway function `e', range(0 10) nodraw
+    local tw77 = _rc
+    capture dash clear
+    _p1a_logrun `"dash function `e', range(0 10) name(p1a77ok)"'
+    if `tw77' != 0 | r(rc) != 0 {
+        display as error `"P1A-77: function `e': twoway r(`tw77'), dash r(`r(rc)'); both should draw it"'
+        exit 9
+    }
+}
+capture dash clear
+// Adversarial (rule 18).  Injection: the expression is echoed only through
+// _dash_say, so SMCL in it is shown as typed, never obeyed; the function
+// name reaches a command line only as a Stata name.
+_p1a_logrun "dash function y = nosuch(x) + {bf:BOLD} + {res}, range(0 1) name(p1a77)"
+assert r(rc) == 133
+cert_file_has "`r(log)'", needle("{bf:BOLD} + {res}")
+assert r(found) == 1
+// Resource exhaustion: 5,000 distinct unknown calls are refused at the
+// first; 5,000 calls of one known function are one question to Stata.
+local e77 "x"
+local k77 "x"
+forvalues i = 1/5000 {
+    local e77 "`e77' + f`i'(x)"
+    local k77 "`k77' + sin(x)"
+}
+timer clear 77
+timer on 77
+_p1a_logrun `"dash function y = `e77', range(0 1) name(p1a77)"'
+assert r(rc) == 133
+// The refusal shows the expression's first 197 characters, not 55,000.
+local lg77 "`r(log)'"
+cert_file_has "`lg77'", needle("f22(x) + f23(...")
+assert r(found) == 1
+cert_file_has "`lg77'", needle("f4999(x)")
+assert r(found) == 0
+_p1a_logrun `"dash function y = `k77', range(0 1) name(p1a77k)"'
+assert r(rc) == 0
+timer off 77
+quietly timer list 77
+assert r(t77) < 10
+capture dash clear
+// The scanner alone: a name directly before `(', outside quotes, not the
+// tail of a number or of a dotted name, each once, at most cap of them.
+mata: st_local("n77", _dash_fn_names(`"sin(x)+ Sin(x) + a.b(x) + 2e(3) + f (x) + "g(x)" + `"h(x)"' + sin(x)"', 100))
+assert "`n77'" == "sin Sin"
+mata: st_local("n77", _dash_fn_names("a(x)+b(x)+c(x)", 2))
+assert "`n77'" == "a b"
+display "P1A-77 PASS: a function layer calling a function Stata does not have is refused, r(133), as twoway refuses it; what twoway draws is registered"
+
+// ================================================================
+// P1A-78 -- a function layer with a blank between a name and its `(' is
+//           refused as twoway refuses it (BUGS.md, S3)
+// ================================================================
+// Stata never reads sin (x) as a call.  Measured 24sep2026 with the console
+// binary, and again below on every run: `twoway function y = sin (x)' is
+// "error in expression:  sin (x)", r(111) -- sin looked for as a variable
+// -- and so is any name the data does not have (abs, max, c, nosuch, X),
+// anywhere in the expression and without `y ='; a name the data has (mpg,
+// or mp for it), x, _n, _N and _pi are r(198), and so is a number, a
+// string or a closing parenthesis before the blanks.  dash drew sin (x)
+// as sin(x), rc 0.  An operator before the `(' -- 2 * (x), x + (1) -- is
+// drawn by both.
+sysuse auto, clear
+dash clear
+foreach e in "y = sin (x)" "sin (x)" "y = x*sin (x)" "y = abs (x) + 1" ///
+    "y = sin  (x)" "y = max (x, 1)" "y = sin(x) + cos (x)" "y = c (pi)*x" ///
+    "y = mpg (x)" "y = mp (x)" "y = x (x)" "y = _pi (x)" "y = _n (x)" ///
+    "y = 2 (x)" "y = 1.5 (x)" "y = sin(x) (x)" "y = (x) (x)" "y = nosuch (x)" ///
+    "y = X (x)" "y = sin ( x )" "y = nosuch(x) + sin (x)" "y = sin (x) + nosuch(x)" {
+    capture twoway function `e', range(0 10) nodraw
+    local tw78 = _rc
+    _p1a_logrun `"dash function `e', range(0 10) name(p1a78)"'
+    local rc78 = r(rc)
+    if !inlist(`tw78', 111, 133, 198) | `rc78' != `tw78' {
+        display as error `"P1A-78: function `e': twoway r(`tw78'), dash r(`rc78'); dash should refuse as twoway does"'
+        exit 9
+    }
+    cert_file_has "`r(log)'", needle("error in expression: ")
+    assert r(found) == 1
+    assert "${dash_graph_registry}" == ""
+}
+// Tabs alone between the name and its `(' are r(133) in twoway, an
+// unknown function; a tab and a space r(111).
+local e78 = "y = sin" + char(9) + "(x)"
+capture twoway function `e78', range(0 10) nodraw
+assert _rc == 133
+_p1a_logrun `"dash function `e78', range(0 10) name(p1a78)"'
+assert r(rc) == 133
+local e78 = "y = sin" + char(9) + " (x)"
+capture twoway function `e78', range(0 10) nodraw
+assert _rc == 111
+_p1a_logrun `"dash function `e78', range(0 10) name(p1a78)"'
+assert r(rc) == 111
+// What twoway draws is registered.
+foreach e in "y = sin(x)" "y = 2 * (x)" "y = x + (1)" "y = -(x)" "y = x^(2)" ///
+    "y = sin( x )" "y = x > (1)" "y = x/(1+x)" "y = sin((x))" ///
+    `"y = strlen("a (b") + x"' "y = 3*(x) + (1)" {
+    capture twoway function `e', range(0 10) nodraw
+    local tw78 = _rc
+    capture dash clear
+    _p1a_logrun `"dash function `e', range(0 10) name(p1a78ok)"'
+    if `tw78' != 0 | r(rc) != 0 {
+        display as error `"P1A-78: function `e': twoway r(`tw78'), dash r(`r(rc)'); both should draw it"'
+        exit 9
+    }
+}
+capture dash clear
+// In a plot group and after ||, as twoway.
+capture twoway (function y = sin (x), range(0 10)) (scatter mpg weight), nodraw
+assert _rc == 111
+_p1a_logrun `"dash (function y = sin (x), range(0 10)) (scatter mpg weight), name(p1a78)"'
+assert r(rc) == 111
+_p1a_logrun `"dash scatter mpg weight || function y = sin (x), range(0 10) name(p1a78)"'
+assert r(rc) == 111
+assert "${dash_graph_registry}" == ""
+// Adversarial (rule 18).  Injection: the expression is echoed as typed,
+// SMCL shown, not obeyed, and a name only reaches -confirm- as a Stata
+// name.  Resource exhaustion: 5,000 terms before the blank are one pass.
+_p1a_logrun "dash function y = {bf:BOLD} + sin (x), range(0 1) name(p1a78)"
+assert r(rc) == 111
+cert_file_has "`r(log)'", needle("{bf:BOLD} + sin (x)")
+assert r(found) == 1
+local e78 "x"
+forvalues i = 1/5000 {
+    local e78 "`e78' + (x)"
+}
+timer clear 78
+timer on 78
+_p1a_logrun `"dash function y = `e78' + sin (x), range(0 1) name(p1a78)"'
+assert r(rc) == 111
+_p1a_logrun `"dash function y = `e78', range(0 1) name(p1a78k)"'
+assert r(rc) == 0
+timer off 78
+quietly timer list 78
+assert r(t78) < 10
+capture dash clear
+// The scanner alone: the operand's kind, where it begins, its name.
+mata: st_local("s78", _dash_fn_space_call("sin(x) + 2 * (x) + a.b (x)"))
+assert "`s78'" == "O 20"
+mata: st_local("s78", _dash_fn_space_call(`"strlen("f (x)") + g (x)"'))
+assert "`s78'" == "N 19 g"
+mata: st_local("s78", _dash_fn_space_call(`"x + "s" (x)"'))
+assert "`s78'" == "O 5"
+mata: st_local("s78", _dash_fn_space_call("x + (1) - sin(x)"))
+assert "`s78'" == ""
+display "P1A-78 PASS: a name or value written apart from its parenthesis is refused, r(111), r(133) or r(198), as twoway refuses it; what twoway draws is registered"
+
+
+// ----------------------------------------------------------------
+// P1A-79..81 share one check: the same command through twoway and
+// dash, each logged; the codes must agree, and each needle must be in
+// BOTH logs, so the words are twoway's own, measured on every run.
+// ----------------------------------------------------------------
+capture program drop _p1a_vs_tw
+program define _p1a_vs_tw
+    version 16.0
+    // _p1a_vs_tw <id> <twoway command> <dash command> [<needle> [<needle>]]
+    args id twcmd dcmd n1 n2
+    // nodraw is added to the twoway command after its comma, or with one.
+    if strpos(`"`twcmd'"', ",") local twcmd `"`twcmd' nodraw"'
+    else                        local twcmd `"`twcmd', nodraw"'
+    graph drop _all
+    // Logged here rather than by _p1a_logrun: twoway fpfit's refusal of a
+    // third variable leaves SMCL in paragraph mode, and its words stay
+    // unwritten until a {p_end}, after the log has closed.
+    local twlog "`c(tmpdir)'dash_p1a_tw.log"
+    local ls = c(linesize)
+    set linesize 255
+    capture log close _p1atw
+    quietly log using "`twlog'", name(_p1atw) text replace
+    capture noisily `twcmd'
+    local twrc = _rc
+    display as text "{p_end}"
+    quietly log close _p1atw
+    set linesize `ls'
+    _p1a_logrun `"`dcmd'"'
+    local drc = r(rc)
+    local dlog "`r(log)'"
+    if `twrc' != `drc' {
+        display as error `"`id': twoway r(`twrc'), dash r(`drc'): `dcmd'"'
+        exit 9
+    }
+    foreach n in n1 n2 {
+        if `"``n''"' == "" continue
+        cert_file_has "`twlog'", needle(`"``n''"')
+        local intw = r(found)
+        cert_file_has "`dlog'", needle(`"``n''"')
+        if `intw' != 1 | r(found) != 1 {
+            display as error `"`id': "``n''" in twoway's log `intw', in dash's `r(found)': `dcmd'"'
+            exit 9
+        }
+    }
+end
+
+// ================================================================
+// P1A-81 -- a range or paired-coordinate type given the wrong number of
+//           variables is refused as twoway refuses it (BUGS.md, S2)
+// ================================================================
+// Measured 24sep2026 with the console binary: a range type given one
+// variable is "too few variables specified", r(102); two, "rscatter
+// requires 3 variables: mpg weight", r(102); four or more, the same
+// words, r(103).  tsrline, drawn against the tsset time variable, names
+// it: "rline requires 3 variables: mpg t", r(102), and r(103) for three.
+// A pc type: one variable r(102) "too few variables specified"; two or
+// three "pcspike requires 4 variables: mpg weight", r(102); five, r(103).
+// dash registered the range types with two, and the render stopped in a
+// KeyError traceback, r(7102) (rspike drew nothing, rc 0); the pc types
+// and the too-many forms were refused in -syntax-'s words.
+sysuse auto, clear
+dash clear
+quietly generate t81 = _n
+quietly tsset t81
+local V78 "mpg weight price length turn"
+foreach t in rarea rbar rcap rcapsym rconnected rline rscatter rspike tsrline ///
+    pcspike pccapsym pcarrow pcbarrow pcscatter {
+    local need = cond(substr("`t'", 1, 2) == "pc", 4, cond("`t'" == "tsrline", 2, 3))
+    forvalues n = 1/5 {
+        if `n' == `need' continue
+        local vl ""
+        forvalues i = 1/`n' {
+            local vl "`vl' `: word `i' of `V78''"
+        }
+        local vl = strtrim("`vl'")
+        if "`t'" == "tsrline" local msg "rline requires 3 variables: `vl' t81"
+        else if `n' == 1      local msg "too few variables specified"
+        else                  local msg "`t' requires `need' variables: `vl'"
+        // The one-line form, a registered graph, a plot group beside
+        // another, and a || segment.
+        foreach form in "`t' `vl'" "`t' `vl', name(p1a81)" ///
+            "(scatter mpg weight) (`t' `vl'), name(p1a81)" ///
+            "scatter mpg weight || `t' `vl', name(p1a81)" {
+            _p1a_vs_tw P1A-81 "twoway `form'" "dash `form'" "`msg'"
+        }
+        _p1a_logrun "dash `t' `vl', name(p1a81)"
+        cert_file_has "`r(log)'", needle("Traceback")
+        assert r(found) == 0
+    }
+}
+assert "${dash_graph_registry}" == ""
+// The right number is still registered, in every form.
+foreach form in "rscatter mpg weight price, name(p1a78a)" ///
+    "(rcap mpg weight price), name(p1a78b)" ///
+    "scatter mpg weight || rarea mpg weight price, name(p1a78c)" ///
+    "tsrline mpg weight, name(p1a78d)" "pcspike mpg weight price length, name(p1a78e)" {
+    capture noisily dash `form'
+    assert _rc == 0
+}
+capture dash clear
+// Untsset, tsrline asks for tsset first, whatever the count, as twoway.
+quietly tsset, clear
+foreach vl in "mpg" "mpg weight price" {
+    _p1a_vs_tw P1A-81 "twoway tsrline `vl'" "dash tsrline `vl', name(p1a81)"
+}
+// Adversarial (rule 18).  Resource exhaustion: 2,000 variables to a range
+// type are refused at once, r(103), and nothing is registered or drawn.
+// Injection: the names are Stata names, echoed through _dash_say.
+preserve
+quietly {
+    clear
+    set obs 3
+    forvalues i = 1/2000 {
+        generate byte v`i' = `i'
+    }
+}
+timer clear 81
+timer on 81
+_p1a_logrun "dash rarea v1-v2000, name(p1a81)"
+timer off 81
+assert r(rc) == 103
+cert_file_has "`r(log)'", needle("rarea requires 3 variables: v1 v2 v3")
+assert r(found) == 1
+_p1a_logrun "dash pcspike v1-v2000"
+assert r(rc) == 103
+quietly timer list 81
+assert r(t81) < 10
+restore
+assert "${dash_graph_registry}" == ""
+display "P1A-81 PASS: a range or pc type given too few or too many variables is refused at registration, in twoway's words and with its code, in every form"
+// ================================================================
+// P1A-79 -- a fit or smoother type given more than two variables is
+//           refused as twoway refuses it
+// ================================================================
+// Measured 24sep2026: `twoway lfit mpg weight price' is "too many
+// variables specified: mpg weight price", r(103) -- and qfit, lfitci,
+// qfitci, fpfit, fpfitci, mspline and mband; lowess, lpoly and lpolyci
+// say "too many variables specified", r(103).  dash registered each and
+// drew one fit per y variable, rc 0.  scatter, line and the other types
+// that take several y variables are unchanged.
+sysuse auto, clear
+dash clear
+foreach t in lfit qfit lfitci qfitci fpfit fpfitci mspline mband lowess lpoly lpolyci {
+    foreach vl in "mpg weight price" "mpg weight price length turn" {
+        local msg "too many variables specified: `vl'"
+        if inlist("`t'", "lowess", "lpoly", "lpolyci") local msg "too many variables specified"
+        foreach form in "`t' `vl'" "`t' `vl', name(p1a79)" ///
+            "(scatter mpg weight) (`t' `vl'), name(p1a79)" ///
+            "scatter mpg weight || `t' `vl', name(p1a79)" {
+            _p1a_vs_tw P1A-79 "twoway `form'" "dash `form'" "`msg'"
+        }
+    }
+}
+assert "${dash_graph_registry}" == ""
+foreach t in scatter line connected area bar spike dropline dot {
+    _p1a_vs_tw P1A-79 "twoway `t' mpg weight price length" "dash `t' mpg weight price length, name(p1a79`t')"
+}
+capture dash clear
+display "P1A-79 PASS: a fit or smoother type given more than two variables is refused, r(103), in twoway's words; the several-y types still register"
+
+// ================================================================
+// P1A-80 -- a statistical plot with too few observations in its sample
+//           is refused as twoway refuses it (BUGS.md, S3)
+// ================================================================
+// Measured 24sep2026 with the console binary, on no observations, on a
+// sample the plot's if/in or the graph's qualifier empties, and on one
+// observation:
+//   histogram   _N == 0: "observation numbers out of range", r(198) --
+//               whatever the qualifier or option; a sample emptied by a
+//               qualifier or by missing values is drawn, rc 0
+//   lpoly(ci)   no observation in the sample: "no observations", r(2000);
+//               one: "insufficient observations", r(2001)
+//   lfit(ci)    one: "(note:  regress could not fit model)", then
+//               "insufficient observations", r(2001)
+//   kdensity    one: "insufficient observations", r(2001)
+//   fpfit(ci)   no observation the if and in select: "(note:  fracpoly
+//               could not fit model)", then "observation numbers out of
+//               range", r(198); emptied by missing values, the note, rc 0
+//   mspline,    no observation the if and in select, and no bands():
+//   mband       "bands must be between 1 and 200", r(198)
+// The sample is the plot's if and in, the graph's qualifier, the rows
+// whose variables are not missing, and, weighted, a weight above zero.
+// dash registered every one, rc 0, and drew an empty layer.  With by()
+// twoway answers panel by panel, and so does dash (P1A-83).
+capture program drop _p1a80
+program define _p1a80
+    // _p1a80 <plot> <qualifier> [needle] [needle]: the plot in each form
+    // <plot> is the plot with no options; <opts> its options, or "".
+    args plot q opts n1 n2
+    local pty : word 1 of `plot'
+    local c ""
+    if `"`opts'"' != "" local c ","
+    _p1a_vs_tw "P1A-80 `pty' `q'" "twoway `plot' `q'`c' `opts'" "dash `plot' `q', `opts' name(p1a80)" "`n1'" "`n2'"
+    _p1a_vs_tw "P1A-80 `pty' `q'" "twoway `plot' `q'`c' `opts'" "dash `plot' `q'`c' `opts'" "`n1'" "`n2'"
+    _p1a_vs_tw "P1A-80 `pty' (`q')" "twoway (`plot'`c' `opts') `q'," "dash (`plot'`c' `opts') `q', name(p1a80)" "`n1'" "`n2'"
+    _p1a_vs_tw "P1A-80 `pty' ||" "twoway scatter mpg weight || `plot' `q'`c' `opts'" "dash scatter mpg weight || `plot' `q', `opts' name(p1a80)" "`n1'" "`n2'"
+    capture dash clear
+end
+local nfit "(note:  fracpoly could not fit model)"
+local nreg "(note:  regress could not fit model)"
+local oor  "observation numbers out of range"
+local bnd  "bands must be between 1 and 200"
+// _p1a80d <plot> <qualifier> [opts]: drawn by both, rc 0, registered
+capture program drop _p1a80d
+program define _p1a80d
+    args plot q opts
+    local c ""
+    if `"`opts'"' != "" local c ","
+    _p1a_vs_tw "P1A-80 `plot' `q' `opts'" "twoway `plot' `q'`c' `opts'" "dash `plot' `q', `opts' name(p1a80)"
+    capture dash clear
+end
+// ---- no observation in the sample, by the qualifier
+sysuse auto, clear
+dash clear
+foreach q in "if price < 0" "in 1/5 if price > 100000" {
+    _p1a80 "lpoly mpg weight"   "`q'" "" "no observations"
+    _p1a80 "lpolyci mpg weight" "`q'" "" "no observations"
+    _p1a80 "fpfit mpg weight"   "`q'" "" "`nfit'" "`oor'"
+    _p1a80 "fpfitci mpg weight" "`q'" "" "`nfit'" "`oor'"
+    _p1a80 "mspline mpg weight" "`q'" "" "`bnd'"
+    _p1a80 "mband mpg weight"   "`q'" "" "`bnd'"
+    _p1a80 "mband mpg weight"   "`q'" "n(20)" "`bnd'"
+    foreach p in "lfit mpg weight" "qfitci mpg weight" "lowess mpg weight" ///
+        "kdensity mpg" "histogram mpg" {
+        _p1a80d "`p'" "`q'"
+    }
+    _p1a80d "mspline mpg weight" "`q'" "bands(5)"
+    _p1a80d "histogram mpg" "`q'" "bin(5)"
+}
+// ---- one observation in the sample
+foreach q in "if _n == 1" "in 1" {
+    _p1a80 "lfit mpg weight"    "`q'" "" "`nreg'" "insufficient observations"
+    _p1a80 "lfitci mpg weight"  "`q'" "" "`nreg'" "insufficient observations"
+    _p1a80 "lpoly mpg weight"   "`q'" "" "insufficient observations"
+    _p1a80 "lpolyci mpg weight" "`q'" "" "insufficient observations"
+    _p1a80 "kdensity mpg"       "`q'" "" "insufficient observations"
+    foreach p in "qfit mpg weight" "fpfit mpg weight" "lowess mpg weight" ///
+        "mspline mpg weight" "mband mpg weight" "histogram mpg" {
+        _p1a80d "`p'" "`q'"
+    }
+}
+// Beside another plot: the group's own qualifier, and the graph's.
+_p1a_vs_tw "P1A-80 two groups" "twoway (lfit mpg weight if _n==1) (lpoly mpg weight if _n<=2)" "dash (lfit mpg weight if _n==1) (lpoly mpg weight if _n<=2), name(p1a80)" "`nreg'" "insufficient observations"
+_p1a_vs_tw "P1A-80 graph qualifier" "twoway (lfit mpg weight) (scatter mpg weight) if _n==1" "dash (lfit mpg weight) (scatter mpg weight) if _n==1, name(p1a80)" "insufficient observations"
+assert "${dash_graph_registry}" == ""
+// ---- the sample emptied by weights, and by missing values
+generate w80 = cond(_n == 1, 1, .)
+_p1a80 "lpoly mpg weight [aw=w80]" "" "" "insufficient observations"
+_p1a80 "kdensity mpg [aw=w80]"     "" "" "insufficient observations"
+quietly replace w80 = cond(_n == 1, 1, 0)
+_p1a80 "lfit mpg weight [fw=w80]"  "" "" "`nreg'" "insufficient observations"
+_p1a80 "lpoly mpg weight [fw=w80]" "" "" "insufficient observations"
+quietly replace w80 = 0
+_p1a80 "lpoly mpg weight [fw=w80]" "" "" "no observations"
+foreach p in "fpfit mpg weight [fw=w80]" "lfit mpg weight [fw=w80]" "histogram mpg [fw=w80]" {
+    _p1a80d "`p'" ""
+}
+quietly replace mpg = . if _n > 1
+_p1a80 "lfit mpg weight" "" "" "`nreg'" "insufficient observations"
+_p1a80 "kdensity mpg"    "" "" "insufficient observations"
+// by(): twoway draws the panels, rc 0, and so does dash.
+_p1a80d "lfit mpg weight" "" "by(foreign)"
+quietly replace mpg = .
+_p1a80 "lpoly mpg weight" "" "" "no observations"
+foreach p in "fpfit mpg weight" "mband mpg weight" "histogram mpg" "lfit mpg weight" {
+    _p1a80d "`p'" ""
+}
+// ---- no observations at all
+sysuse auto, clear
+quietly drop in 1/l
+_p1a80 "histogram mpg"      "" ""       "`oor'"
+_p1a80 "histogram mpg"      "" "bin(5)" "`oor'"
+_p1a80 "histogram mpg"      "if price < 0" "discrete" "`oor'"
+_p1a80 "lpoly mpg weight"   "" ""       "no observations"
+_p1a80 "fpfitci mpg weight" "" ""       "`nfit'" "`oor'"
+_p1a80 "mband mpg weight"   "" ""       "`bnd'"
+foreach p in "lfit mpg weight" "qfit mpg weight" "lowess mpg weight" "kdensity mpg" {
+    _p1a80d "`p'" ""
+}
+_p1a80d "mspline mpg weight" "" "bands(5)"
+assert "${dash_graph_registry}" == ""
+// ---- the note twoway gives where it draws, from the saved page
+local h80 "`c(tmpdir)'dash_p1a80.html"
+_p1a_logrun `"dash lfit mpg weight, saving("`h80'", replace)"'
+assert r(rc) == 0
+// Saved first: cert_file_has is rclass and replaces r(log).
+local lg80 "`r(log)'"
+cert_file_has "`lg80'", needle("`nreg'")
+assert r(found) == 1
+cert_file_has "`lg80'", needle("drew nothing")
+assert r(found) == 0
+capture erase "`h80'"
+// Adversarial (rule 18).  The count runs the user's qualifier once, in
+// Stata, as -syntax- read it: a qualifier that would write a file when
+// expanded again is evaluated as text, and nothing is written.
+sysuse auto, clear
+local f80 "`c(tmpdir)'dash_p1a80_inj.txt"
+capture erase "`f80'"
+capture noisily dash lpoly mpg weight if make == `"\`=filewrite("`f80'","x")'"', name(p1a80)
+assert _rc == 2000
+capture confirm file "`f80'"
+assert _rc != 0
+// Resource exhaustion: 1,000,000 observations are counted in well under
+// the time a render takes.
+preserve
+quietly {
+    clear
+    set obs 1000000
+    generate y = runiform()
+    generate x = runiform()
+}
+timer clear 80
+timer on 80
+_p1a_logrun "dash lpoly y x if x > 2, name(p1a80)"
+timer off 80
+assert r(rc) == 2000
+quietly timer list 80
+assert r(t80) < 10
+restore
+assert "${dash_graph_registry}" == ""
+display "P1A-80 PASS: a statistical plot whose sample twoway cannot draw is refused at registration, in twoway's words and with its code"
+
+// ================================================================
+// P1A-82 -- a two-variable type given one variable is refused in
+//           twoway's words (BUGS.md, S3)
+// ================================================================
+// Measured 24sep2026 with the console binary: every type that takes a y
+// and an x -- scatter line connected area bar spike dropline dot and the
+// fits and smoothers -- given one variable is "too few variables
+// specified", r(102), in the one-line form, a plot group and after ||.
+// dash gave twoway's code in its own words, "dash: scatter requires a y
+// and an x variable (got: mpg)".  The words are checked in both logs, run
+// by run (_p1a_vs_tw).
+sysuse auto, clear
+dash clear
+local few "too few variables specified"
+foreach t in scatter line connected area bar spike dropline dot lfit qfit ///
+    lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband {
+    _p1a_vs_tw "P1A-82 `t'" "twoway `t' mpg" "dash `t' mpg, name(p1a82)" "`few'"
+    cert_file_has "`c(tmpdir)'dash_p1a_run.log", needle("requires a y and an x")
+    assert r(found) == 0
+    _p1a_vs_tw "P1A-82 (`t')" "twoway (scatter mpg weight) (`t' price if foreign)" "dash (scatter mpg weight) (`t' price if foreign), name(p1a82)" "`few'"
+    _p1a_vs_tw "P1A-82 || `t'" "twoway scatter mpg weight || `t' price" "dash scatter mpg weight || `t' price, name(p1a82)" "`few'"
+}
+// The one-variable types still register.
+foreach t in histogram kdensity {
+    _p1a_vs_tw "P1A-82 `t'" "twoway `t' mpg" "dash `t' mpg, name(p1a82)"
+    dash clear
+}
+// Adversarial: a variable name that is SMCL is not echoed at all now --
+// twoway's words name no variable.
+generate byte bf82 = 1
+_p1a_logrun "dash scatter bf82, name(p1a82)"
+assert r(rc) == 102
+cert_file_has "`r(log)'", needle("bf82")
+assert r(found) == 0
+drop bf82
+assert "${dash_graph_registry}" == ""
+display "P1A-82 PASS: a two-variable type given one variable is refused, r(102), in twoway's words, in every form"
+
+// ================================================================
+// P1A-83 -- a by() graph answers an empty panel as twoway does
+//           (BUGS.md, S3)
+// ================================================================
+// Measured 24sep2026 with the console binary (bygraph_g.class: a panel
+// is a by() group some row of the graph selects; none is "nothing to
+// graph", r(198)):
+//   no row the plots' if and in and the graph's qualifier select, in any
+//   group -- or the by() variable missing everywhere, without missing --
+//   every type: "nothing to graph", r(198).  Missing values of the
+//   plotted variables do not empty a panel.
+//   a panel the plot's if and in select no row of, the panel there for
+//   another plot: fpfit and fpfitci "(note:  fracpoly could not fit
+//   model)" and "observation numbers out of range", r(198); mspline and
+//   mband with no bands() "bands must be between 1 and 200", r(198); every
+//   other type rc 0 (lfit, qfit, lfitci and qfitci with regress's note,
+//   the renderer's: test_layer_reports.py).
+//   a panel of one observation, or one its missing values empty: rc 0
+//   for every type.
+// dash drew each, rc 0, with no panel at all where twoway refuses.
+sysuse auto, clear
+dash clear
+generate byte one83 = make == "Audi 5000"
+local T83 "lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband"
+local ntg "nothing to graph"
+// ---- no panel at all
+foreach t of local T83 {
+    _p1a_vs_tw "P1A-83 `t' none" "twoway `t' mpg weight if mpg > 1000, by(foreign)" "dash `t' mpg weight if mpg > 1000, by(foreign) name(p1a83)" "`ntg'"
+}
+foreach p in "kdensity mpg" "histogram mpg" {
+    _p1a_vs_tw "P1A-83 `p' none" "twoway `p' in 1/5 if price > 100000, by(foreign)" "dash `p' in 1/5 if price > 100000, by(foreign) name(p1a83)" "`ntg'"
+}
+_p1a_vs_tw "P1A-83 graph qualifier" "twoway (scatter mpg weight) (lfit mpg weight) if mpg > 1000, by(foreign)" "dash (scatter mpg weight) (lfit mpg weight) if mpg > 1000, by(foreign) name(p1a83)" "`ntg'"
+_p1a_vs_tw "P1A-83 each plot's if" "twoway (scatter mpg weight if mpg > 1000) (lpoly mpg weight if mpg > 1000), by(foreign)" "dash (scatter mpg weight if mpg > 1000) (lpoly mpg weight if mpg > 1000), by(foreign) name(p1a83)" "`ntg'"
+// Several plots and no graph qualifier: every group is a panel, and one
+// an empty lfit draws with its note.
+_p1a_vs_tw "P1A-83 || lfit draws" "twoway scatter mpg weight if mpg > 1000 || lfit mpg weight if mpg > 1000, by(foreign)" "dash scatter mpg weight if mpg > 1000 || lfit mpg weight if mpg > 1000, by(foreign) name(p1a83)"
+dash clear
+_p1a_vs_tw "P1A-83 one plot draws" "twoway (scatter mpg weight) (lfit mpg weight if mpg > 1000), by(foreign)" "dash (scatter mpg weight) (lfit mpg weight if mpg > 1000), by(foreign) name(p1a83)"
+dash clear
+// Every panel left out: lpoly on none, lfit and kdensity on one.
+_p1a_vs_tw "P1A-83 lfit every panel" "twoway lfit mpg weight if _n == 1 | _n == 60, by(foreign)" "dash lfit mpg weight if _n == 1 | _n == 60, by(foreign) name(p1a83)" "insufficient observations" "`ntg'"
+_p1a_vs_tw "P1A-83 kdensity every panel" "twoway kdensity mpg if _n == 1 | _n == 60, by(foreign)" "dash kdensity mpg if _n == 1 | _n == 60, by(foreign) name(p1a83)" "`ntg'"
+_p1a_vs_tw "P1A-83 lpolyci every panel" "twoway (scatter mpg weight) (lpolyci mpg weight if _n == 1 | _n == 60), by(foreign)" "dash (scatter mpg weight) (lpolyci mpg weight if _n == 1 | _n == 60), by(foreign) name(p1a83)" "`ntg'"
+// The first plot that cannot draw in a panel decides it: lpoly leaves the
+// panel out before fpfit can stop the command, and not after.
+_p1a_vs_tw "P1A-83 lpoly first" "twoway (lpoly mpg weight if foreign==0) (fpfit mpg weight if foreign==0), by(foreign)" "dash (lpoly mpg weight if foreign==0) (fpfit mpg weight if foreign==0), by(foreign) name(p1a83)"
+dash clear
+_p1a_vs_tw "P1A-83 fpfit first" "twoway (fpfit mpg weight if foreign==0) (lpoly mpg weight if foreign==0), by(foreign)" "dash (fpfit mpg weight if foreign==0) (lpoly mpg weight if foreign==0), by(foreign) name(p1a83)" "`nfit'" "`oor'"
+// A weight not above zero leaves the row out of the sample.
+generate w83 = cond(foreign, 0, 1)
+quietly replace w83 = 1 if one83
+_p1a_vs_tw "P1A-83 weighted" "twoway (scatter mpg weight) (lpoly mpg weight [aw=w83]), by(foreign)" "dash (scatter mpg weight) (lpoly mpg weight [aw=w83]), by(foreign) name(p1a83)"
+dash clear
+drop w83
+generate byte bm83 = .
+_p1a_vs_tw "P1A-83 by() missing" "twoway lfit mpg weight, by(bm83)" "dash lfit mpg weight, by(bm83) name(p1a83)" "`ntg'"
+_p1a_vs_tw "P1A-83 by(, missing)" "twoway lfit mpg weight, by(bm83, missing)" "dash lfit mpg weight, by(bm83, missing) name(p1a83)"
+dash clear
+_p1a_vs_tw "P1A-83 by(, miss)" "twoway lfit mpg weight, by(bm83, miss)" "dash lfit mpg weight, by(bm83, miss) name(p1a83)"
+dash clear
+// ---- a panel the plot selects no row of
+foreach t of local T83 {
+    local n1 ""
+    local n2 ""
+    if inlist("`t'", "fpfit", "fpfitci") {
+        local n1 "`nfit'"
+        local n2 "`oor'"
+    }
+    if inlist("`t'", "mspline", "mband") local n1 "`bnd'"
+    _p1a_vs_tw "P1A-83 `t' panel" "twoway (scatter mpg weight) (`t' mpg weight if foreign==0), by(foreign)" "dash (scatter mpg weight) (`t' mpg weight if foreign==0), by(foreign) name(p1a83)" "`n1'" "`n2'"
+    capture dash clear
+}
+foreach p in "kdensity mpg" "histogram mpg" {
+    _p1a_vs_tw "P1A-83 `p' panel" "twoway (scatter mpg weight) (`p' if foreign==0), by(foreign)" "dash (scatter mpg weight) (`p' if foreign==0), by(foreign) name(p1a83)"
+    dash clear
+}
+_p1a_vs_tw "P1A-83 in" "twoway (scatter mpg weight) (fpfit mpg weight in 1/10), by(foreign)" "dash (scatter mpg weight) (fpfit mpg weight in 1/10), by(foreign) name(p1a83)" "`nfit'" "`oor'"
+_p1a_vs_tw "P1A-83 || panel" "twoway scatter mpg weight || mband mpg weight if !foreign, by(foreign)" "dash scatter mpg weight || mband mpg weight if !foreign, by(foreign) name(p1a83)" "`bnd'"
+foreach t in mspline mband {
+    _p1a_vs_tw "P1A-83 `t' bands()" "twoway (scatter mpg weight) (`t' mpg weight if !foreign, bands(5)), by(foreign)" "dash (scatter mpg weight) (`t' mpg weight if !foreign, bands(5)), by(foreign) name(p1a83)"
+    dash clear
+}
+// A graph qualifier that removes a group removes its panel: no refusal.
+_p1a_vs_tw "P1A-83 no panel, no refusal" "twoway fpfit mpg weight if foreign==0, by(foreign)" "dash fpfit mpg weight if foreign==0, by(foreign) name(p1a83)"
+dash clear
+// ---- a panel of one observation, and one missing values empty
+foreach t of local T83 {
+    _p1a_vs_tw "P1A-83 `t' one" "twoway (scatter mpg weight) (`t' mpg weight if foreign==0 | one83), by(foreign)" "dash (scatter mpg weight) (`t' mpg weight if foreign==0 | one83), by(foreign) name(p1a83)"
+    dash clear
+}
+preserve
+quietly replace mpg = . if foreign
+foreach t in fpfit mspline mband lpoly {
+    _p1a_vs_tw "P1A-83 `t' missing" "twoway (scatter weight length) (`t' mpg weight), by(foreign)" "dash (scatter weight length) (`t' mpg weight), by(foreign) name(p1a83)"
+    dash clear
+}
+restore
+// ---- the order of the data is kept
+sort make
+generate long o83 = _n
+local sb83 : sortedby
+capture noisily dash (scatter mpg weight) (fpfit mpg weight if foreign==0), by(foreign) name(p1a83)
+assert _rc == 198
+assert o83 == _n
+assert "`: sortedby'" == "`sb83'"
+capture noisily dash (scatter mpg weight) (lpoly mpg weight if foreign==0), by(foreign) name(p1a83)
+assert _rc == 0
+assert o83 == _n
+dash clear
+drop o83
+// ---- the renderer's answer, from the saved page
+local h83 "`c(tmpdir)'dash_p1a83.html"
+_p1a_logrun `"dash (scatter mpg weight) (lfit mpg weight if foreign==0) (lowess mpg weight if foreign==0), by(foreign) saving("`h83'", replace)"'
+assert r(rc) == 0
+local lg83 "`r(log)'"
+cert_file_has "`lg83'", needle("`nreg'")
+assert r(found) == 1
+cert_file_has "`lg83'", needle("drew nothing")
+assert r(found) == 0
+capture erase "`h83'"
+// ---- adversarial (rule 18): each qualifier is evaluated as -syntax-
+// read it, once, by value -- a qualifier that would write a file when
+// expanded again writes nothing -- and a million observations in a
+// thousand groups are counted in well under the time a render takes.
+local f83 "`c(tmpdir)'dash_p1a83_inj.txt"
+capture erase "`f83'"
+capture noisily dash (scatter mpg weight) (fpfit mpg weight if make == `"\`=filewrite("`f83'","x")'"'), by(foreign) name(p1a83)
+assert _rc == 198
+capture confirm file "`f83'"
+assert _rc != 0
+capture noisily dash lfit mpg weight if make == `"\`=filewrite("`f83'","x")'"', by(foreign) name(p1a83)
+assert _rc == 198
+capture confirm file "`f83'"
+assert _rc != 0
+preserve
+quietly {
+    clear
+    set obs 1000000
+    generate long g = mod(_n, 1000)
+    generate y = runiform()
+    generate x = runiform()
+}
+timer clear 83
+timer on 83
+_p1a_logrun "dash (scatter y x) (mband y x if g > 0), by(g) name(p1a83)"
+timer off 83
+assert r(rc) == 198
+quietly timer list 83
+assert r(t83) < 10
+restore
+assert "${dash_graph_registry}" == ""
+display "P1A-83 PASS: a by() graph with no panel, or a panel twoway refuses, is refused in twoway's words and with its code; every other panel is drawn"
+
+// ================================================================
+// P1A-84 -- a by() given in another || segment or plot group than the
+//           plot, and by()'s Total panel, answered as twoway answers
+//           them (BUGS.md, S3)
+// ================================================================
+// Measured 24sep2026 with the console binary (graph.ado reads the graph's
+// by() from every segment before any plot is drawn; bygraph_g.class adds
+// the Total panel after the groups and draws it as it draws them):
+//   by() in a later || segment, a later plot group, a middle segment or
+//   an earlier one: each plot is answered panel by panel (P1A-83) --
+//   `lfit mpg weight if _n==1 || scatter mpg weight, by(foreign)' draws,
+//   rc 0; `lpoly ... if _n==1 || scatter ..., by(foreign)' "nothing to
+//   graph", r(198); histogram on no observations "nothing to graph".  dash
+//   read the plots before the by() was known, and gave the one-graph
+//   refusals: r(2001) "insufficient observations", r(2000) "no
+//   observations", "observation numbers out of range".
+//   by(, total): the Total panel holds the rows of every group (a row
+//   whose by() value is missing only under missing), and is answered as
+//   the groups are -- lfit and lfitci with one observation leave it out after
+//   regress's note and "insufficient observations", lpoly and lpolyci
+//   with one or none and kdensity with one leave it out in silence; it
+//   counts toward "nothing to graph".  total is TOTal (tot, tota, total).
+//   dash left the Total panel out of the count: `lfit mpg weight if _n==1
+//   | _n==60, by(foreign, total)' was "nothing to graph", r(198), where
+//   twoway draws the Total panel, rc 0.
+sysuse auto, clear
+dash clear
+local ntg "nothing to graph"
+local ins "insufficient observations"
+local nfit "(note:  fracpoly could not fit model)"
+local oor  "observation numbers out of range"
+local bnd  "bands must be between 1 and 200"
+// ---- (a) by() in another segment than the plot
+_p1a_vs_tw "P1A-84 || lpoly none" "twoway lpoly mpg weight if mpg > 1000 || scatter mpg weight, by(foreign)" "dash lpoly mpg weight if mpg > 1000 || scatter mpg weight, by(foreign) name(p1a84)" "`ntg'"
+_p1a_vs_tw "P1A-84 || lpoly one" "twoway lpoly mpg weight if _n==1 || scatter mpg weight, by(foreign)" "dash lpoly mpg weight if _n==1 || scatter mpg weight, by(foreign) name(p1a84)" "`ntg'"
+_p1a_vs_tw "P1A-84 || lpolyci none" "twoway lpolyci mpg weight if mpg > 1000 || scatter mpg weight, by(foreign)" "dash lpolyci mpg weight if mpg > 1000 || scatter mpg weight, by(foreign) name(p1a84)" "`ntg'"
+foreach t in lfit lfitci {
+    _p1a_vs_tw "P1A-84 || `t' one" "twoway `t' mpg weight if _n==1 || scatter mpg weight, by(foreign)" "dash `t' mpg weight if _n==1 || scatter mpg weight, by(foreign) name(p1a84)"
+    dash clear
+}
+_p1a_vs_tw "P1A-84 || kdensity one" "twoway kdensity mpg if _n==1 || scatter mpg weight, by(foreign)" "dash kdensity mpg if _n==1 || scatter mpg weight, by(foreign) name(p1a84)"
+dash clear
+_p1a_vs_tw "P1A-84 || fpfit" "twoway fpfit mpg weight if mpg > 1000 || scatter mpg weight, by(foreign)" "dash fpfit mpg weight if mpg > 1000 || scatter mpg weight, by(foreign) name(p1a84)" "`nfit'" "`oor'"
+_p1a_vs_tw "P1A-84 || mband" "twoway mband mpg weight if mpg > 1000 || scatter mpg weight, by(foreign)" "dash mband mpg weight if mpg > 1000 || scatter mpg weight, by(foreign) name(p1a84)" "`bnd'"
+_p1a_vs_tw "P1A-84 group lfit" "twoway (lfit mpg weight if _n==1) (scatter mpg weight, by(foreign))," "dash (lfit mpg weight if _n==1) (scatter mpg weight, by(foreign)), name(p1a84)"
+dash clear
+_p1a_vs_tw "P1A-84 group kdensity" "twoway (kdensity mpg if _n==1) (scatter mpg weight, by(foreign))," "dash (kdensity mpg if _n==1) (scatter mpg weight, by(foreign)), name(p1a84)"
+dash clear
+_p1a_vs_tw "P1A-84 group lpoly" "twoway (lpoly mpg weight if mpg > 1000) (scatter mpg weight, by(foreign))," "dash (lpoly mpg weight if mpg > 1000) (scatter mpg weight, by(foreign)), name(p1a84)" "`ntg'"
+_p1a_vs_tw "P1A-84 middle" "twoway lpoly mpg weight if _n==1 || scatter mpg weight, by(foreign) || line mpg weight," "dash lpoly mpg weight if _n==1 || scatter mpg weight, by(foreign) || line mpg weight, name(p1a84)" "`ntg'"
+_p1a_vs_tw "P1A-84 earlier kdensity" "twoway scatter mpg weight, by(foreign) || kdensity mpg if _n==1," "dash scatter mpg weight, by(foreign) || kdensity mpg if _n==1, name(p1a84)"
+dash clear
+_p1a_vs_tw "P1A-84 earlier lfit" "twoway scatter mpg weight, by(foreign) || lfit mpg weight if _n==1," "dash scatter mpg weight, by(foreign) || lfit mpg weight if _n==1, name(p1a84)"
+dash clear
+_p1a_vs_tw "P1A-84 earlier lpoly" "twoway scatter mpg weight, by(foreign) || lpoly mpg weight if mpg > 1000," "dash scatter mpg weight, by(foreign) || lpoly mpg weight if mpg > 1000, name(p1a84)" "`ntg'"
+// Adversarial: by( written in a title, a quoted if or a note is no by().
+_p1a_vs_tw "P1A-84 by in a title" "twoway lfit mpg weight if _n==1 || scatter mpg weight, title(by(foreign))" "dash lfit mpg weight if _n==1 || scatter mpg weight, title(by(foreign)) name(p1a84)" "`ins'"
+_p1a_vs_tw "P1A-84 by in a string" `"twoway lpoly mpg weight if make == ", by(foreign)" || scatter mpg weight,"' `"dash lpoly mpg weight if make == ", by(foreign)" || scatter mpg weight, name(p1a84)"' "no observations"
+_p1a_vs_tw "P1A-84 by in a note" `"twoway (kdensity mpg if _n==1) (scatter mpg weight, note("x, by(foreign)")),"' `"dash (kdensity mpg if _n==1) (scatter mpg weight, note("x, by(foreign)")), name(p1a84)"' "`ins'"
+preserve
+quietly {
+    clear
+    set obs 0
+    generate foreign = .
+    generate mpg = .
+}
+_p1a_vs_tw "P1A-84 || histogram empty" "twoway histogram mpg || scatter mpg foreign, by(foreign)" "dash histogram mpg || scatter mpg foreign, by(foreign) name(p1a84)" "`ntg'"
+restore
+assert "${dash_graph_registry}" == ""
+// ---- (b) by(, total)
+foreach t in lfit lfitci lpoly lpolyci {
+    _p1a_vs_tw "P1A-84 `t' total drawn" "twoway `t' mpg weight if _n==1 | _n==60, by(foreign, total)" "dash `t' mpg weight if _n==1 | _n==60, by(foreign, total) name(p1a84)"
+    dash clear
+    local n1 ""
+    if inlist("`t'", "lfit", "lfitci") local n1 "`ins'"
+    _p1a_vs_tw "P1A-84 `t' total out" "twoway `t' mpg weight if _n==1, by(foreign, total)" "dash `t' mpg weight if _n==1, by(foreign, total) name(p1a84)" "`ntg'" "`n1'"
+}
+_p1a_vs_tw "P1A-84 kdensity total drawn" "twoway kdensity mpg if _n==1 | _n==60, by(foreign, total)" "dash kdensity mpg if _n==1 | _n==60, by(foreign, total) name(p1a84)"
+dash clear
+_p1a_vs_tw "P1A-84 kdensity total out" "twoway kdensity mpg if _n==1, by(foreign, total)" "dash kdensity mpg if _n==1, by(foreign, total) name(p1a84)" "`ntg'"
+_p1a_vs_tw "P1A-84 total tot" "twoway lfit mpg weight if _n==1 | _n==60, by(foreign, tot)" "dash lfit mpg weight if _n==1 | _n==60, by(foreign, tot) name(p1a84)"
+dash clear
+_p1a_vs_tw "P1A-84 total in a title" `"twoway lfit mpg weight if _n==1 | _n==60, by(foreign, title("total"))"' `"dash lfit mpg weight if _n==1 | _n==60, by(foreign, title("total")) name(p1a84)"' "`ntg'"
+_p1a_vs_tw "P1A-84 total ||" "twoway lfit mpg weight if _n==1 || scatter mpg weight, by(foreign, total)" "dash lfit mpg weight if _n==1 || scatter mpg weight, by(foreign, total) name(p1a84)"
+dash clear
+_p1a_vs_tw "P1A-84 total lpoly first" "twoway lpoly mpg weight if _n==1 || lpoly mpg weight, by(foreign, total)" "dash lpoly mpg weight if _n==1 || lpoly mpg weight, by(foreign, total) name(p1a84)" "`ntg'"
+_p1a_vs_tw "P1A-84 total group" "twoway (scatter mpg weight) (lpoly mpg weight if _n==1), by(foreign, total)" "dash (scatter mpg weight) (lpoly mpg weight if _n==1), by(foreign, total) name(p1a84)" "`ntg'"
+_p1a_vs_tw "P1A-84 total fpfit" "twoway (scatter mpg weight) (fpfit mpg weight if foreign==0), by(foreign, total)" "dash (scatter mpg weight) (fpfit mpg weight if foreign==0), by(foreign, total) name(p1a84)" "`nfit'" "`oor'"
+_p1a_vs_tw "P1A-84 total none" "twoway lfit mpg weight if mpg > 1000, by(foreign, total)" "dash lfit mpg weight if mpg > 1000, by(foreign, total) name(p1a84)" "`ntg'"
+// The Total panel holds the rows of every group: a row whose by() value is
+// missing only under missing.  (The samples are marked by variables, not
+// _n: twoway reads a plot's if after sorting on the by() variables.)
+generate g84 = foreign
+quietly replace g84 = . in 1/5
+generate byte m84 = _n <= 5
+generate byte one84 = _n == 60
+_p1a_vs_tw "P1A-84 total missing lfit" "twoway lfit mpg weight if m84 | one84, by(g84, total)" "dash lfit mpg weight if m84 | one84, by(g84, total) name(p1a84)" "`ins'" "`ntg'"
+_p1a_vs_tw "P1A-84 total missing lpoly" "twoway (scatter mpg weight) (lpoly mpg weight if m84 | one84), by(g84, total)" "dash (scatter mpg weight) (lpoly mpg weight if m84 | one84), by(g84, total) name(p1a84)" "`ntg'"
+_p1a_vs_tw "P1A-84 total missing lpoly missing" "twoway (scatter mpg weight) (lpoly mpg weight if m84 | one84), by(g84, total missing)" "dash (scatter mpg weight) (lpoly mpg weight if m84 | one84), by(g84, total missing) name(p1a84)"
+dash clear
+_p1a_vs_tw "P1A-84 total no group" "twoway scatter mpg weight if m84, by(g84, total)" "dash scatter mpg weight if m84, by(g84, total) name(p1a84)" "`ntg'"
+drop g84 m84 one84
+// Adversarial (rule 18): a qualifier that would write a file when expanded
+// again writes nothing under total, and a million observations in a
+// thousand groups with a Total panel are counted in well under 10 s.
+local f84 "`c(tmpdir)'dash_p1a84_inj.txt"
+capture erase "`f84'"
+capture noisily dash lfit mpg weight if make == `"\`=filewrite("`f84'","x")'"', by(foreign, total) name(p1a84)
+assert _rc == 198
+capture confirm file "`f84'"
+assert _rc != 0
+capture noisily dash lfit mpg weight if make == `"\`=filewrite("`f84'","x")'"' || scatter mpg weight, by(foreign) name(p1a84)
+capture confirm file "`f84'"
+assert _rc != 0
+dash clear
+preserve
+quietly {
+    clear
+    set obs 1000000
+    generate long g = mod(_n, 1000)
+    generate y = runiform()
+    generate x = runiform()
+}
+timer clear 84
+timer on 84
+_p1a_logrun "dash (scatter y x) (lpoly y x if _n <= 1000), by(g, total) name(p1a84)"
+timer off 84
+assert r(rc) == 0
+quietly timer list 84
+assert r(t84) < 10
+restore
+dash clear
+assert "${dash_graph_registry}" == ""
+display "P1A-84 PASS: a by() in any segment, and by()'s Total panel, are answered panel by panel as twoway answers them"
 
 capture erase "`c(tmpdir)'dash_p1a_run.log"
 

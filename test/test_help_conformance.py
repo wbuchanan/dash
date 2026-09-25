@@ -515,9 +515,11 @@ class TestTheParsersFoundSomething:
         # guard here looks for), 76 without the space form of {opt}, 85
         # without the {phang} entries, 90 without the {synopt} rows.  The
         # count is pinned: a change to the help that adds or drops a
-        # definition moves it on purpose, and is re-measured here.
-        assert len(found) == 134, (
-            f"{len(found)} options parsed out of dash.sthlp, 134 measured "
+        # definition moves it on purpose, and is re-measured here.  138
+        # since the S3 batch's ci band: acolor(), alcolor(), alwidth() and
+        # alpattern(), twoway's fitarea options.
+        assert len(found) == 138, (
+            f"{len(found)} options parsed out of dash.sthlp, 138 measured "
             f"24sep2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -576,21 +578,23 @@ class TestTheParsersFoundSomething:
         # _dash_kpi left calling it, took the two options only it declares
         # out of the scan: 165, above "120", and the check that every
         # dash-only option is documented no longer saw them.  (The plot
-        # parser alone declares 90 options no other program does.)
-        assert len(_ado_declarations()) == 167
+        # parser alone declares 90 options no other program does.)  171
+        # since the S3 batch declared the four fitarea options.
+        assert len(_ado_declarations()) == 171
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
         # parser's 23 are among them).  The plot parser initialising
         # `_dash_unknown' at its top, before that list, ended the scan of
-        # the parser there: 23, above "20".
-        assert len(_ignored_options()) == 44
+        # the parser there: 23, above "20".  48 since the S3 batch named
+        # the four fitarea options off the ci types.
+        assert len(_ignored_options()) == 48
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
         # Unsupported section ended that entry after its first line: 37,
-        # above "3".
-        assert len(_unsupported_section()) == 44
+        # above "3".  48 with the fitarea options' entry (S3 batch).
+        assert len(_unsupported_section()) == 48
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -601,12 +605,14 @@ class TestTheParsersFoundSomething:
     def test_the_entry_parser_cuts_the_help_into_entries(self):
         entries = _help_entries()
         defs = [t for k, _, t in entries if k == "definition"]
-        # 319 definition entries (WP-27 added the saving() paragraph and
-        # the $dash_max_bytes row).  The six rows of the second-axis table
+        # 320 definition entries (WP-27 added the saving() paragraph and
+        # the $dash_max_bytes row; the S3 batch the scheme's Reference
+        # lines paragraph; 321 with the fitarea options' Unsupported
+        # entry).  The six rows of the second-axis table
         # written as {p2col:} rows, which the cutter starts no entry at,
         # left 311 -- above "150", with those rows read as prose.
-        assert len(defs) == 319, (
-            f"{len(defs)} definition entries cut out of dash.sthlp, 319 "
+        assert len(defs) == 321, (
+            f"{len(defs)} definition entries cut out of dash.sthlp, 321 "
             f"measured 24sep2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -916,11 +922,13 @@ class TestInternalLinksResolve:
         assert not dupes, f"duplicate {{marker}} names: {sorted(dupes)}"
 
     def test_the_reference_scan_found_something(self):
-        # 62 links to 27 markers (measured 24sep2026, after TR-27.2's two
-        # links from "At phone width" and Figure proportions; 60 before).
+        # 65 links to 28 markers (measured 24sep2026, after the S3
+        # batch's three ci band links, to ciband and unsupported; 62 to 27 after
+        # TR-27.2's two links from "At phone width" and Figure
+        # proportions; 60 before).
         # A link whose marker
         # is written with a capital -- {help dash##Scheme:...}, to no
         # marker at all -- is no link the scan reads: 59, above the "10"
         # this was, and the dead link passed the check above.
         refs = re.findall(r"dash##[a-z_0-9]+", _help_text())
-        assert len(refs) == 62 and len(set(refs)) == 27
+        assert len(refs) == 65 and len(set(refs)) == 28

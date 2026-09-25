@@ -55,7 +55,8 @@ color axisline        #ffffff
 * s1rcolor resolves p#, p#line, p#bar and p#mark to the same colour: Stata
 * sets only "color p1".."color p15" and every stub falls back to it (fixture
 * sources: p_line_colors[i] <- "color p{i}", likewise bar and mark).  dash's
-* parser has no stub fallback, so each family is written out in full.
+* parser follows the same p#stub -> pstub -> p# -> p chain, so only the p#
+* cycle is written.
 * ---------------------------------------------------------------------------
 color p1      #ffff00
 color p2      #00ff00
@@ -72,101 +73,6 @@ color p12     #0000ff
 color p13     #ff0080
 color p14     #6e8e84
 color p15     #a0522d
-
-* Per-plot line color (for line/connected plots)
-color p1line   #ffff00
-color p2line   #00ff00
-color p3line   #0080ff
-color p4line   #ff00ff
-color p5line   #ff7f00
-color p6line   #ff0000
-color p7line   #add8e6
-color p8line   #ffe474
-color p9line   #00ff80
-color p10line  #c0dcc0
-color p11line  #ff4500
-color p12line  #0000ff
-color p13line  #ff0080
-color p14line  #6e8e84
-color p15line  #a0522d
-
-* Per-plot bar/area fill color
-color p1bar    #ffff00
-color p2bar    #00ff00
-color p3bar    #0080ff
-color p4bar    #ff00ff
-color p5bar    #ff7f00
-color p6bar    #ff0000
-color p7bar    #add8e6
-color p8bar    #ffe474
-color p9bar    #00ff80
-color p10bar   #c0dcc0
-color p11bar   #ff4500
-color p12bar   #0000ff
-color p13bar   #ff0080
-color p14bar   #6e8e84
-color p15bar   #a0522d
-
-* Per-plot marker fill color (scatter)
-color p1mark   #ffff00
-color p2mark   #00ff00
-color p3mark   #0080ff
-color p4mark   #ff00ff
-color p5mark   #ff7f00
-color p6mark   #ff0000
-color p7mark   #add8e6
-color p8mark   #ffe474
-color p9mark   #00ff80
-color p10mark  #c0dcc0
-color p11mark  #ff4500
-color p12mark  #0000ff
-color p13mark  #ff0080
-color p14mark  #6e8e84
-color p15mark  #a0522d
-
-* ---------------------------------------------------------------------------
-* Marker symbol cycle
-* Stata's s1rcolor declares no per-plot symbol at all: all 15 resolve through
-* the bare "symbol p" class default, which is circle (fixture sources:
-* p_symbols[i] <- "symbol p").  dash's parser reads "symbol p{i}" by exact
-* key, so the constant cycle is written out.
-* ---------------------------------------------------------------------------
-symbol p1     circle
-symbol p2     circle
-symbol p3     circle
-symbol p4     circle
-symbol p5     circle
-symbol p6     circle
-symbol p7     circle
-symbol p8     circle
-symbol p9     circle
-symbol p10    circle
-symbol p11    circle
-symbol p12    circle
-symbol p13    circle
-symbol p14    circle
-symbol p15    circle
-
-* ---------------------------------------------------------------------------
-* Line patterns for line/connected plots
-* As with symbols, all 15 resolve through the bare "linepattern p" default:
-* s1rcolor distinguishes series by colour, never by dash pattern.
-* ---------------------------------------------------------------------------
-linepattern p1line   solid
-linepattern p2line   solid
-linepattern p3line   solid
-linepattern p4line   solid
-linepattern p5line   solid
-linepattern p6line   solid
-linepattern p7line   solid
-linepattern p8line   solid
-linepattern p9line   solid
-linepattern p10line  solid
-linepattern p11line  solid
-linepattern p12line  solid
-linepattern p13line  solid
-linepattern p14line  solid
-linepattern p15line  solid
 
 * ---------------------------------------------------------------------------
 * Line widths (Stata linewidth style names; "medium" is .30 Stata units)
@@ -290,6 +196,37 @@ linewidth axisline    thin
 numstyle legend_rows  0
 
 * ---------------------------------------------------------------------------
+* Added 24sep2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> s1color -> s1rcolor); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Per-plot linepattern p#line: only the keys this scheme's #include chain
+* declares.  SchemeParser resolves p#line -> pline -> p# -> p
+* itself, as Stata's scheme.class does, so nothing is written for a
+* step the chain does not declare.
+linepattern p  solid
+
+* ---------------------------------------------------------------------------
+* Added 24sep2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> s1color -> s1rcolor); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Marker symbol cycle: only the keys this scheme's #include chain
+* declares.  SchemeParser resolves symbol p# -> symbol p itself, as
+* Stata's scheme.class does (style/markerstyle-p#.style: `set symbol
+* scheme p#'), so nothing is written for a step the chain does not
+* declare.
+symbol p  circle
+
+* ---------------------------------------------------------------------------
 * HONEST GAP (project rule 2) -- the p#lineplot keys
 * ---------------------------------------------------------------------------
 * Stata does not read a plain `twoway line` plot's line from the
@@ -328,6 +265,79 @@ numstyle legend_rows  0
 *       (/Applications/StataNow/ado/base/s/scheme-s1rcolor.scheme:100-114)
 
 * ---------------------------------------------------------------------------
+* Added 24sep2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> s1color -> s1rcolor); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Reference lines, xline() and yline(): twoway draws them in the
+* `gridlinestyle' class default, whose style file reads `linestyle
+* xyline'; that linestyle reads these three keys.
+color xyline  #ff0000
+linepattern xyline  solid
+linewidth xyline  medium
+
+* The plot region's border, EFFECTIVE: plotregionstyle twoway ->
+* areastyle twoway_plotregion -> its linestyle.  `none' where Stata
+* draws no border; a scheme whose border is the foreground line
+* (s1color) carries the foreground's colour and width here.
+color plotregion_line  #ffffff
+linewidth plotregion       thin
+linepattern plotregion       solid
+
+* note()'s text box (Stata: textboxstyle note) and the keys that box
+* reads for its size, text colour and, where it draws a box, fill.
+textboxstyle note  small_body
+
+* ---------------------------------------------------------------------------
+* Added 24sep2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> s1color -> s1rcolor); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Bar and area outline widths (Stata: linewidth pbar, linewidth
+* parea), only where this scheme's #include chain declares them.
+* SchemeParser.plot_line_width resolves p#bar -> pbar (a bar stops
+* there) and p#area -> parea -> p# -> p itself.
+linewidth pbar  thin
+
+* ---------------------------------------------------------------------------
+* Added 24sep2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> s1color -> s1rcolor); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* A ci fit's band: areastyle ci (style/areastyle-ci.style) fills
+* it in `color ci_area' at `intensity ci_area' and outlines it in
+* `color ci_arealine' at `linewidth ci_area' and `linepattern
+* ci_area'.  pstyle(ci2) reads `color ci2_area', `color
+* ci2_arealine' and `linewidth ci2_area' and ci's other keys.
+* pstyle(ci) and pstyle(ci2) draw the fit line in linestyle ci:
+* `color ci_line', `linewidth ci', `linepattern ci'.  A width,
+* intensity or pattern no file in the #include chain writes is
+* Stata's class default, written here.
+color ci_area       #505050
+color ci_arealine   #505050
+intensity ci_area       full
+linewidth ci_area       medium
+linepattern ci_area       solid
+color ci_line       #808080
+linewidth ci            medium
+linepattern ci            solid
+color ci2_area      #1a476f
+color ci2_arealine  #1a476f
+linewidth ci2_area      medium
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -364,86 +374,25 @@ numstyle legend_rows  0
 * provenance: color p13 -- transcribed from scheme-s1rcolor.scheme:112 `color p13 pink'
 * provenance: color p14 -- transcribed from scheme-s1rcolor.scheme:113 `color p14 teal'
 * provenance: color p15 -- transcribed from scheme-s1rcolor.scheme:114 `color p15 sienna'
-* provenance: color p1line -- inferred: p#stub -> pstub -> p# -> p; `color p1line' is not set anywhere in the #include chain, took `color p1 yellow' (scheme-s1rcolor.scheme:100)
-* provenance: color p2line -- inferred: p#stub -> pstub -> p# -> p; `color p2line' is not set anywhere in the #include chain, took `color p2 lime' (scheme-s1rcolor.scheme:101)
-* provenance: color p3line -- inferred: p#stub -> pstub -> p# -> p; `color p3line' is not set anywhere in the #include chain, took `color p3 midblue' (scheme-s1rcolor.scheme:102)
-* provenance: color p4line -- inferred: p#stub -> pstub -> p# -> p; `color p4line' is not set anywhere in the #include chain, took `color p4 magenta' (scheme-s1rcolor.scheme:103)
-* provenance: color p5line -- inferred: p#stub -> pstub -> p# -> p; `color p5line' is not set anywhere in the #include chain, took `color p5 orange' (scheme-s1rcolor.scheme:104)
-* provenance: color p6line -- inferred: p#stub -> pstub -> p# -> p; `color p6line' is not set anywhere in the #include chain, took `color p6 red' (scheme-s1rcolor.scheme:105)
-* provenance: color p7line -- inferred: p#stub -> pstub -> p# -> p; `color p7line' is not set anywhere in the #include chain, took `color p7 ltblue' (scheme-s1rcolor.scheme:106)
-* provenance: color p8line -- inferred: p#stub -> pstub -> p# -> p; `color p8line' is not set anywhere in the #include chain, took `color p8 sandb' (scheme-s1rcolor.scheme:107)
-* provenance: color p9line -- inferred: p#stub -> pstub -> p# -> p; `color p9line' is not set anywhere in the #include chain, took `color p9 mint' (scheme-s1rcolor.scheme:108)
-* provenance: color p10line -- inferred: p#stub -> pstub -> p# -> p; `color p10line' is not set anywhere in the #include chain, took `color p10 olive_teal' (scheme-s1rcolor.scheme:109)
-* provenance: color p11line -- inferred: p#stub -> pstub -> p# -> p; `color p11line' is not set anywhere in the #include chain, took `color p11 orange_red' (scheme-s1rcolor.scheme:110)
-* provenance: color p12line -- inferred: p#stub -> pstub -> p# -> p; `color p12line' is not set anywhere in the #include chain, took `color p12 blue' (scheme-s1rcolor.scheme:111)
-* provenance: color p13line -- inferred: p#stub -> pstub -> p# -> p; `color p13line' is not set anywhere in the #include chain, took `color p13 pink' (scheme-s1rcolor.scheme:112)
-* provenance: color p14line -- inferred: p#stub -> pstub -> p# -> p; `color p14line' is not set anywhere in the #include chain, took `color p14 teal' (scheme-s1rcolor.scheme:113)
-* provenance: color p15line -- inferred: p#stub -> pstub -> p# -> p; `color p15line' is not set anywhere in the #include chain, took `color p15 sienna' (scheme-s1rcolor.scheme:114)
-* provenance: color p1bar -- inferred: p#stub -> pstub -> p# -> p; `color p1bar' is not set anywhere in the #include chain, took `color p1 yellow' (scheme-s1rcolor.scheme:100)
-* provenance: color p2bar -- inferred: p#stub -> pstub -> p# -> p; `color p2bar' is not set anywhere in the #include chain, took `color p2 lime' (scheme-s1rcolor.scheme:101)
-* provenance: color p3bar -- inferred: p#stub -> pstub -> p# -> p; `color p3bar' is not set anywhere in the #include chain, took `color p3 midblue' (scheme-s1rcolor.scheme:102)
-* provenance: color p4bar -- inferred: p#stub -> pstub -> p# -> p; `color p4bar' is not set anywhere in the #include chain, took `color p4 magenta' (scheme-s1rcolor.scheme:103)
-* provenance: color p5bar -- inferred: p#stub -> pstub -> p# -> p; `color p5bar' is not set anywhere in the #include chain, took `color p5 orange' (scheme-s1rcolor.scheme:104)
-* provenance: color p6bar -- inferred: p#stub -> pstub -> p# -> p; `color p6bar' is not set anywhere in the #include chain, took `color p6 red' (scheme-s1rcolor.scheme:105)
-* provenance: color p7bar -- inferred: p#stub -> pstub -> p# -> p; `color p7bar' is not set anywhere in the #include chain, took `color p7 ltblue' (scheme-s1rcolor.scheme:106)
-* provenance: color p8bar -- inferred: p#stub -> pstub -> p# -> p; `color p8bar' is not set anywhere in the #include chain, took `color p8 sandb' (scheme-s1rcolor.scheme:107)
-* provenance: color p9bar -- inferred: p#stub -> pstub -> p# -> p; `color p9bar' is not set anywhere in the #include chain, took `color p9 mint' (scheme-s1rcolor.scheme:108)
-* provenance: color p10bar -- inferred: p#stub -> pstub -> p# -> p; `color p10bar' is not set anywhere in the #include chain, took `color p10 olive_teal' (scheme-s1rcolor.scheme:109)
-* provenance: color p11bar -- inferred: p#stub -> pstub -> p# -> p; `color p11bar' is not set anywhere in the #include chain, took `color p11 orange_red' (scheme-s1rcolor.scheme:110)
-* provenance: color p12bar -- inferred: p#stub -> pstub -> p# -> p; `color p12bar' is not set anywhere in the #include chain, took `color p12 blue' (scheme-s1rcolor.scheme:111)
-* provenance: color p13bar -- inferred: p#stub -> pstub -> p# -> p; `color p13bar' is not set anywhere in the #include chain, took `color p13 pink' (scheme-s1rcolor.scheme:112)
-* provenance: color p14bar -- inferred: p#stub -> pstub -> p# -> p; `color p14bar' is not set anywhere in the #include chain, took `color p14 teal' (scheme-s1rcolor.scheme:113)
-* provenance: color p15bar -- inferred: p#stub -> pstub -> p# -> p; `color p15bar' is not set anywhere in the #include chain, took `color p15 sienna' (scheme-s1rcolor.scheme:114)
-* provenance: color p1mark -- inferred: p#stub -> pstub -> p# -> p; `color p1mark' is not set anywhere in the #include chain, took `color p1 yellow' (scheme-s1rcolor.scheme:100)
-* provenance: color p2mark -- inferred: p#stub -> pstub -> p# -> p; `color p2mark' is not set anywhere in the #include chain, took `color p2 lime' (scheme-s1rcolor.scheme:101)
-* provenance: color p3mark -- inferred: p#stub -> pstub -> p# -> p; `color p3mark' is not set anywhere in the #include chain, took `color p3 midblue' (scheme-s1rcolor.scheme:102)
-* provenance: color p4mark -- inferred: p#stub -> pstub -> p# -> p; `color p4mark' is not set anywhere in the #include chain, took `color p4 magenta' (scheme-s1rcolor.scheme:103)
-* provenance: color p5mark -- inferred: p#stub -> pstub -> p# -> p; `color p5mark' is not set anywhere in the #include chain, took `color p5 orange' (scheme-s1rcolor.scheme:104)
-* provenance: color p6mark -- inferred: p#stub -> pstub -> p# -> p; `color p6mark' is not set anywhere in the #include chain, took `color p6 red' (scheme-s1rcolor.scheme:105)
-* provenance: color p7mark -- inferred: p#stub -> pstub -> p# -> p; `color p7mark' is not set anywhere in the #include chain, took `color p7 ltblue' (scheme-s1rcolor.scheme:106)
-* provenance: color p8mark -- inferred: p#stub -> pstub -> p# -> p; `color p8mark' is not set anywhere in the #include chain, took `color p8 sandb' (scheme-s1rcolor.scheme:107)
-* provenance: color p9mark -- inferred: p#stub -> pstub -> p# -> p; `color p9mark' is not set anywhere in the #include chain, took `color p9 mint' (scheme-s1rcolor.scheme:108)
-* provenance: color p10mark -- inferred: p#stub -> pstub -> p# -> p; `color p10mark' is not set anywhere in the #include chain, took `color p10 olive_teal' (scheme-s1rcolor.scheme:109)
-* provenance: color p11mark -- inferred: p#stub -> pstub -> p# -> p; `color p11mark' is not set anywhere in the #include chain, took `color p11 orange_red' (scheme-s1rcolor.scheme:110)
-* provenance: color p12mark -- inferred: p#stub -> pstub -> p# -> p; `color p12mark' is not set anywhere in the #include chain, took `color p12 blue' (scheme-s1rcolor.scheme:111)
-* provenance: color p13mark -- inferred: p#stub -> pstub -> p# -> p; `color p13mark' is not set anywhere in the #include chain, took `color p13 pink' (scheme-s1rcolor.scheme:112)
-* provenance: color p14mark -- inferred: p#stub -> pstub -> p# -> p; `color p14mark' is not set anywhere in the #include chain, took `color p14 teal' (scheme-s1rcolor.scheme:113)
-* provenance: color p15mark -- inferred: p#stub -> pstub -> p# -> p; `color p15mark' is not set anywhere in the #include chain, took `color p15 sienna' (scheme-s1rcolor.scheme:114)
-* provenance: symbol p1 -- inferred: p#stub -> pstub -> p# -> p; `symbol p1' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: symbol p2 -- inferred: p#stub -> pstub -> p# -> p; `symbol p2' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: symbol p3 -- inferred: p#stub -> pstub -> p# -> p; `symbol p3' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: symbol p4 -- inferred: p#stub -> pstub -> p# -> p; `symbol p4' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: symbol p5 -- inferred: p#stub -> pstub -> p# -> p; `symbol p5' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: symbol p6 -- inferred: p#stub -> pstub -> p# -> p; `symbol p6' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: symbol p7 -- inferred: p#stub -> pstub -> p# -> p; `symbol p7' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: symbol p8 -- inferred: p#stub -> pstub -> p# -> p; `symbol p8' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: symbol p9 -- inferred: p#stub -> pstub -> p# -> p; `symbol p9' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: symbol p10 -- inferred: p#stub -> pstub -> p# -> p; `symbol p10' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: symbol p11 -- inferred: p#stub -> pstub -> p# -> p; `symbol p11' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: symbol p12 -- inferred: p#stub -> pstub -> p# -> p; `symbol p12' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: symbol p13 -- inferred: p#stub -> pstub -> p# -> p; `symbol p13' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: symbol p14 -- inferred: p#stub -> pstub -> p# -> p; `symbol p14' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: symbol p15 -- inferred: p#stub -> pstub -> p# -> p; `symbol p15' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
-* provenance: linepattern p1line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p1line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
-* provenance: linepattern p2line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p2line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
-* provenance: linepattern p3line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p3line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
-* provenance: linepattern p4line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p4line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
-* provenance: linepattern p5line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p5line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
-* provenance: linepattern p6line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p6line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
-* provenance: linepattern p7line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p7line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
-* provenance: linepattern p8line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p8line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
-* provenance: linepattern p9line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p9line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
-* provenance: linepattern p10line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p10line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
-* provenance: linepattern p11line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p11line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
-* provenance: linepattern p12line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p12line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
-* provenance: linepattern p13line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p13line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
-* provenance: linepattern p14line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p14line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
-* provenance: linepattern p15line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p15line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: symbol p -- transcribed from scheme-s2color.scheme:527 `symbol p circle'
+* provenance: linepattern p -- transcribed from scheme-s2color.scheme:599 `linepattern p solid'
 * provenance: linewidth p -- transcribed from scheme-s2color.scheme:1199 `linewidth p medium'
 * provenance: linewidth major_grid -- transcribed from scheme-s2color.scheme:1203 `linewidth major_grid medium'
+* provenance: linewidth pbar -- transcribed from scheme-s2color.scheme:1246 `linewidth pbar thin'
 * provenance: intensity p -- transcribed from scheme-s2color.scheme:1300 `intensity p inten80'
 * provenance: intensity bar -- transcribed from scheme-s1rcolor.scheme:151 `intensity bar inten80'
 * provenance: intensity area -- inferred: class default; `intensity area' is not set anywhere in the #include chain, took the bare `intensity full' class default (scheme-s2color.scheme:1267)
+* provenance: color ci_area -- transcribed from scheme-s1rcolor.scheme:66 `color ci_area gs5'
+* provenance: color ci_arealine -- transcribed from scheme-s1rcolor.scheme:65 `color ci_arealine gs5'
+* provenance: intensity ci_area -- transcribed from scheme-s2color.scheme:1272 `intensity ci_area full'
+* provenance: linewidth ci_area -- transcribed from scheme-s2color.scheme:1209 `linewidth ci_area medium'
+* provenance: linepattern ci_area -- transcribed from scheme-s2color.scheme:561 `linepattern ci_area solid'
+* provenance: color ci_line -- transcribed from scheme-s1rcolor.scheme:64 `color ci_line gs8'
+* provenance: linewidth ci -- transcribed from scheme-s2color.scheme:1208 `linewidth ci medium'
+* provenance: linepattern ci -- transcribed from scheme-s2color.scheme:560 `linepattern ci solid'
+* provenance: color ci2_area -- transcribed from scheme-s1rcolor.scheme:70 `color ci2_area navy'
+* provenance: color ci2_arealine -- transcribed from scheme-s1rcolor.scheme:69 `color ci2_arealine navy'
+* provenance: linewidth ci2_area -- transcribed from scheme-s2color.scheme:1211 `linewidth ci2_area medium'
 * provenance: gsize text -- transcribed from scheme-s2color.scheme:136 `gsize text medium'
 * provenance: gsize heading -- transcribed from scheme-s2color.scheme:139 `gsize heading large'
 * provenance: gsize axis_title -- transcribed from scheme-s2color.scheme:141 `gsize axis_title medsmall'
@@ -475,5 +424,12 @@ numstyle legend_rows  0
 * provenance: linewidth minor_grid -- transcribed from scheme-s2color.scheme:1204 `linewidth minor_grid thin'
 * provenance: linewidth axisline -- transcribed from scheme-s2color.scheme:1205 `linewidth axisline thin'
 * provenance: numstyle legend_rows -- transcribed from scheme-s2color.scheme:38 `numstyle legend_rows 0'
+* provenance: color xyline -- transcribed from scheme-s1rcolor.scheme:85 `color xyline red'
+* provenance: linepattern xyline -- transcribed from scheme-s2color.scheme:570 `linepattern xyline solid'
+* provenance: linewidth xyline -- transcribed from scheme-s2color.scheme:1214 `linewidth xyline medium'
+* provenance: color plotregion_line -- inferred: plotregionstyle twoway twoway -> style/plotregionstyle-twoway.style -> areastyle twoway_plotregion plotregion -> style/areastyle-plotregion.style -> linestyle plotregion foreground -> style/linestyle-foreground.style reads `color foreground white' (scheme-s1rcolor.scheme:19)
+* provenance: linewidth plotregion -- inferred: plotregionstyle twoway twoway -> style/plotregionstyle-twoway.style -> areastyle twoway_plotregion plotregion -> style/areastyle-plotregion.style -> linestyle plotregion foreground -> style/linestyle-foreground.style reads `linewidth foreground thin' (scheme-s2color.scheme:1200)
+* provenance: linepattern plotregion -- inferred: plotregionstyle twoway twoway -> style/plotregionstyle-twoway.style -> areastyle twoway_plotregion plotregion -> style/areastyle-plotregion.style -> linestyle plotregion foreground -> style/linestyle-foreground.style reads `linepattern foreground solid' (scheme-s2color.scheme:558)
+* provenance: textboxstyle note -- transcribed from scheme-s2color.scheme:1320 `textboxstyle note small_body'
 * END provenance (WP-17)
 * ---------------------------------------------------------------------------

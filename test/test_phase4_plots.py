@@ -471,14 +471,20 @@ class TestMapMspline:
                                       np.asarray(clean["y_sp"], float))
 
     def test_mspline_insufficient_points_returns_empty_renderer(self, gm):
-        """P4-36: mspline with fewer than 2 valid points returns an empty line renderer."""
+        """P4-36: mspline on one valid point draws that point, as twoway
+        mspline's serset holds it (BUGS.md, S3 batch; measured 24sep2026),
+        and on none an empty line renderer."""
         from bokeh.models.glyphs import Line
         df = pd.DataFrame({"t": [1.0], "y": [1.0]})
         cds = ColumnDataSource(df)
         tfig = figure()
         result = gm.map_mspline(tfig, cds, "y", "t", {})
         assert isinstance(result[0].glyph, Line)
-        # Empty source
+        assert list(result[0].data_source.data["x_sp"]) == [1.0]
+        assert list(result[0].data_source.data["y_sp"]) == [1.0]
+        cds0 = ColumnDataSource(pd.DataFrame({"t": [float("nan")],
+                                              "y": [1.0]}))
+        result = gm.map_mspline(figure(), cds0, "y", "t", {})
         assert len(result[0].data_source.data["x_sp"]) == 0
 
     def test_mspline_default_line_color(self, fig, ts_cds, gm):

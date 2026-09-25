@@ -69,6 +69,39 @@
 *!          and after the paren-mode comma, as twoway reads each -- and
 *!          clwidth() and lwidth() take 0 and 10000 and refuse -0.001 and
 *!          10000.001, where twoway draws them.
+*!   TP-14  an option given more than once (BUGS.md, S3): each command
+*!          twoway draws as another -- mcolor(red) mcolor(blue) as
+*!          mcolor(blue), title(A) title(, color(red)) as title(A,
+*!          color(red)), a plot group's legend() beside the one after the
+*!          comma as the two joined -- SVG exports compared in the run, is
+*!          registered as that other; a unique option given twice refused in
+*!          twoway's words; both routes; 10,000 copies r(1003) as in twoway,
+*!          and hostile values in a repeat stored as text.  TP-14f: the
+*!          options dash does not declare and names in the note -- atobs,
+*!          nofit, clegend(), nodropbase and the rest -- given twice where
+*!          twoway takes them once, refused in twoway's words (the second
+*!          copy as typed, the noX copy of a pair), in one list and, for
+*!          the graph-wide ones, across plot groups and || segments; given
+*!          twice where twoway takes them again, named in the note as
+*!          before; twoway's verdict asked in the run; a hostile value
+*!          never echoed or run; 250 copies then a pair refused quickly.
+*!   TP-15  log is the graph option logging, and only lo, logi and logit
+*!          are lowess's logit (twoway's serset of lowess compared with
+*!          the spec, in the run); a plot option after a plot group's comma,
+*!          an option in upper case, and two kernel flags or a flag beside
+*!          kernel() on lpoly, lpolyci and kdensity are refused in twoway's
+*!          words and code, naming the first word twoway does not take;
+*!          hostile values never echoed or run; 200 words then a refusal
+*!          answered quickly.
+*!   TP-16  a kernel written as an option of its own -- gaussian, twoway's
+*!          old syntax -- on lpoly, lpolyci and kdensity, from each
+*!          shortest spelling to the full name (bi, cos, ep, epan2, gau,
+*!          par, rec, tri): twoway draws the serset of kernel(<name>) (asked
+*!          in the run), and dash registers kernel(<name>) with no note, in
+*!          comma mode, in plot groups and in || segments; a shorter
+*!          spelling, and any spelling on another type, twoway refuses and
+*!          dash does not read as a kernel; a hostile value beside the flag
+*!          never run; 200 unknown words then a flag answered quickly.
 *!
 *! TP-01 to TP-08 render nothing: every dash probe registers with name(),
 *! and the spec is read back out of the registry, as in
@@ -489,6 +522,52 @@ if `nsort' != 1 | `msort' != 1 {
     local faillist "`faillist' TP-06(sort-named)"
 }
 else display as text "TP-06 PASS: sort sort(mpg) is named sort(), once, in the note"
+
+// TP-06b -- a bare sort on a connected type is what dash draws, so it is not
+// named (BUGS.md, S3).  twoway accepts sort on every type below (measured
+// again here); with it twoway joins the points in the order of x, which is
+// the order dash always joins line, connected, area, tsline and the range
+// line and area types in.  `dash line price weight, sort' said "ignoring
+// unsupported option(s): sort()" for the picture it had drawn.  On a type
+// dash does not join -- scatter, bar -- sort is still named, and so is
+// sort(varlist) on a connected type, which dash does not honour.
+quietly tsset t
+foreach tt in line connected area tsline rline rarea rconnected tsrline {
+    local v `v_`tt''
+    capture graph drop _all
+    capture twoway `tt' `v', sort nodraw
+    local tw_rc = _rc
+    _ztp_run `"dash `tt' `v', sort name(zqtp)"' "`logfile'"
+    local drc = r(rc)
+    local dnote = r(note)
+    if `tw_rc' != 0 | `drc' != 0 | `dnote' != 0 {
+        display as error "TP-06b FAIL: `tt', sort -- twoway r(`tw_rc'), dash rc `drc', note `dnote' (want none)"
+        local nfail = `nfail' + 1
+        local faillist "`faillist' TP-06b(`tt')"
+    }
+}
+_ztp_run `"dash (line mpg weight, sort) (scatter mpg weight), name(zqtp)"' "`logfile'"
+if r(rc) != 0 | r(note) != 0 {
+    display as error "TP-06b FAIL: a paren-mode line with sort is named or refused"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-06b(paren)"
+}
+foreach c in "scatter mpg weight, sort" "bar mpg weight, sort" "line mpg weight, sort(price)" "(line mpg weight, sort(price)) (scatter mpg weight)" {
+    local sep ""
+    if !strpos("`c'", ",") | substr("`c'", 1, 1) == "(" local sep ","
+    capture graph drop _all
+    capture twoway `c'`sep' nodraw
+    local tw_rc = _rc
+    _ztp_run `"dash `c'`sep' name(zqtp)"' "`logfile'"
+    local drc = r(rc)
+    cert_log_has "`logfile'", needle("ignoring unsupported option(s): sort()")
+    if `tw_rc' != 0 | `drc' != 0 | r(found) != 1 {
+        display as error "TP-06b FAIL: dash `c' -- twoway r(`tw_rc'), dash rc `drc', sort() named `r(found)' (want 1)"
+        local nfail = `nfail' + 1
+        local faillist "`faillist' TP-06b(`c')"
+    }
+}
+display as text "TP-06b: a bare sort on a connected type is not named; on scatter and bar, and as sort(varlist), it is"
 
 // ----------------------------------------------------------------
 // TP-07 -- what twoway refuses stays unknown, named as typed.
@@ -1043,6 +1122,1102 @@ if `bad' {
     local faillist "`faillist' TP-13"
 }
 else display as text "TP-13 PASS: a spelling one letter short of twoway's minimum is not the option, in either parser, and clwidth() stops at lwidth()'s ceiling, as in twoway"
+
+// ----------------------------------------------------------------
+// TP-14 -- an option given more than once (BUGS.md, S3).
+// ----------------------------------------------------------------
+// twoway takes most options more than once ([G-4] Concept: repeated
+// options): a rightmost one draws its last copy, a merged one -- title(),
+// xlabel(), legend(), xscale(), by(), the regions -- joins its copies, and
+// a unique one refuses the second, "option scheme() not allowed", r(198).
+// dash kept the FIRST copy and named the rest as unsupported (or bound a
+// second title() to title2() and a second xlabel() to xlabel2()).
+//
+// TP-14a: each row is a command R and a command E that twoway draws the
+// same: their SVG exports are compared here, byte for byte, on every run.
+// dash must then register the same graph for R as for E -- the stored
+// spec compared whole -- and name nothing R gives twice.  Measured
+// 24sep2026, and asserted below: every R draws what its E draws.
+local r1  `"scatter mpg weight, mcolor(red) mcolor(blue)"'
+local e1  `"scatter mpg weight, mcolor(blue)"'
+local r2  `"scatter mpg weight, mc(red) mcolor(blue)"'
+local e2  `"scatter mpg weight, mcolor(blue)"'
+local r3  `"scatter mpg weight, mcolor(red) mc(blue)"'
+local e3  `"scatter mpg weight, mc(blue)"'
+local r4  `"scatter mpg weight, msymbol(O) msymbol(T)"'
+local e4  `"scatter mpg weight, msymbol(T)"'
+local r5  `"scatter mpg weight, msize(small) msize(huge)"'
+local e5  `"scatter mpg weight, msize(huge)"'
+local r6  `"line mpg weight, lcolor(red) lcolor(blue)"'
+local e6  `"line mpg weight, lcolor(blue)"'
+local r7  `"line mpg weight, lwidth(thin) lwidth(vthick)"'
+local e7  `"line mpg weight, lwidth(vthick)"'
+local r8  `"scatter mpg weight, mlabel(make) mlabel(rep78)"'
+local e8  `"scatter mpg weight, mlabel(rep78)"'
+local r9  `"scatter mpg weight, jitter(1) jitter(8)"'
+local e9  `"scatter mpg weight, jitter(8)"'
+local r10 `"scatter mpg weight, mcolor(bogus) mcolor(red)"'
+local e10 `"scatter mpg weight, mcolor(red)"'
+local r11 `"scatter mpg weight, mlabel(nosuchvar) mlabel(make)"'
+local e11 `"scatter mpg weight, mlabel(make)"'
+local r12 `"(scatter mpg weight, mcolor(red) mcolor(blue)), title(T)"'
+local e12 `"(scatter mpg weight, mcolor(blue)), title(T)"'
+local r13 `"scatter mpg weight, title(A) title(B)"'
+local e13 `"scatter mpg weight, title(B)"'
+local r14 `"scatter mpg weight, ti(A) title(B)"'
+local e14 `"scatter mpg weight, title(B)"'
+local r15 `"scatter mpg weight, title(A) title(, color(red))"'
+local e15 `"scatter mpg weight, title(A, color(red))"'
+local r16 `"scatter mpg weight, title(A, color(red)) title(B)"'
+local e16 `"scatter mpg weight, title(B, color(red))"'
+local r17 `"scatter mpg weight, title(A, color(red)) title(B, color(blue))"'
+local e17 `"scatter mpg weight, title(B, color(blue))"'
+local r18 `"scatter mpg weight, title(A) title(B, suffix)"'
+local e18 `"scatter mpg weight, title(A B)"'
+local r19 `"scatter mpg weight, xtitle(A) xtitle(B)"'
+local e19 `"scatter mpg weight, xtitle(B)"'
+local r20 `"scatter mpg weight, xlabel(2000 3000) xlabel(4000 5000)"'
+local e20 `"scatter mpg weight, xlabel(4000 5000)"'
+local r21 `"scatter mpg weight, xla(2000 3000) xlabel(4000 5000)"'
+local e21 `"scatter mpg weight, xlabel(4000 5000)"'
+local r22 `"scatter mpg weight, xlabel(2000 3000) xlabel(, angle(45))"'
+local e22 `"scatter mpg weight, xlabel(2000 3000, angle(45))"'
+local r23 `"scatter mpg weight, xlabel(2000 3000) xlabel(4000, add)"'
+local e23 `"scatter mpg weight, xlabel(2000 3000 4000)"'
+local r24 `"(scatter mpg weight) (scatter price weight), legend(off) legend(on)"'
+local e24 `"(scatter mpg weight) (scatter price weight), legend(on)"'
+local r25 `"(scatter mpg weight) (scatter price weight), legend(label(1 "A")) legend(label(2 "B"))"'
+local e25 `"(scatter mpg weight) (scatter price weight), legend(label(1 "A") label(2 "B"))"'
+local r26 `"(scatter mpg weight) (scatter price weight), legend(cols(1)) legend(rows(1))"'
+local e26 `"(scatter mpg weight) (scatter price weight), legend(rows(1))"'
+local r27 `"scatter mpg weight, xscale(log) xscale(range(1000 6000))"'
+local e27 `"scatter mpg weight, xscale(log range(1000 6000))"'
+local r28 `"scatter mpg weight, graphregion(color(red)) graphregion(margin(zero))"'
+local e28 `"scatter mpg weight, graphregion(color(red) margin(zero))"'
+local r29 `"scatter mpg weight, by(foreign) by(, cols(1))"'
+local e29 `"scatter mpg weight, by(foreign, cols(1))"'
+local r30 `"(scatter mpg weight, title(A)), title(, color(red))"'
+local e30 `"(scatter mpg weight), title(A, color(red))"'
+local r31 `"(scatter mpg weight, legend(label(1 "A"))) (scatter price weight), legend(label(2 "B"))"'
+local e31 `"(scatter mpg weight) (scatter price weight), legend(label(1 "A") label(2 "B"))"'
+local r32 `"scatter mpg weight, title(A) || scatter price weight, title(B)"'
+local e32 `"scatter mpg weight || scatter price weight, title(B)"'
+local r33 `"(scatter mpg weight, title(INSIDE)) (line mpg weight), title(AFTER)"'
+local e33 `"(scatter mpg weight) (line mpg weight), title(AFTER)"'
+local n14 33
+local bad = 0
+forvalues k = 1/`n14' {
+    foreach w in r e {
+        capture graph drop _all
+        capture twoway ``w'`k''
+        if _rc {
+            display as error "TP-14a FAIL row `k': twoway refused the `w' command, r(`=_rc')"
+            local bad = 1
+            continue
+        }
+        quietly graph export "`c(tmpdir)'dash_tp14_`w'.svg", replace
+        quietly checksum "`c(tmpdir)'dash_tp14_`w'.svg"
+        local ck_`w' = r(checksum)
+        _ztp_run `"dash ``w'`k'' name(zq14)"' "`logfile'"
+        local rc_`w' = r(rc)
+        local note_`w' = r(note)
+        mata: st_local("js_`w'", st_global("dash_json_zq14"))
+    }
+    if "`ck_r'" != "`ck_e'" {
+        display as error `"TP-14a FAIL row `k': twoway no longer draws `r`k'' as `e`k''"'
+        local bad = 1
+    }
+    else if `rc_r' | `rc_e' {
+        display as error `"TP-14a FAIL row `k': dash r(`rc_r') for `r`k'', r(`rc_e') for `e`k''"'
+        local bad = 1
+    }
+    else {
+        mata: st_local("same", strofreal(st_local("js_r") == st_local("js_e")))
+        if !`same' | `note_r' != `note_e' {
+            display as error `"TP-14a FAIL row `k': dash registers `r`k'' (note `note_r') apart from `e`k'' (note `note_e')"'
+            local bad = 1
+        }
+        else display as text `"TP-14a row `k': `r`k'' is `e`k'', in twoway and in dash"'
+    }
+}
+capture erase "`c(tmpdir)'dash_tp14_r.svg"
+capture erase "`c(tmpdir)'dash_tp14_e.svg"
+
+// TP-14b: a unique option given twice -- in one list, spelled twice, in
+// two plot groups, beside the one after the comma, in two || segments --
+// is refused as twoway refuses it, in twoway's words and with its code,
+// and nothing is registered.
+local u1  `"scatter mpg weight, scheme(s1mono) scheme(s2color)"'
+local m1  "option scheme() not allowed"
+local u2  `"scatter mpg weight, sch(s1mono) scheme(s2color)"'
+local m2  "option scheme() not allowed"
+local u3  `"scatter mpg weight, xsize(3) xsize(4)"'
+local m3  "option xsize() not allowed"
+local u4  `"scatter mpg weight, aspectratio(1) aspectratio(0.5)"'
+local m4  "option aspectratio() not allowed"
+local u5  `"line mpg weight, sort sort"'
+local m5  "option sort not allowed"
+local u6  `"kdensity mpg, bwidth(1) bwid(2)"'
+local m6  "option bwid() not allowed"
+local u7  `"histogram mpg, percent percent"'
+local m7  "option percent not allowed"
+local u8  `"lpoly mpg weight, n(50) n(60)"'
+local m8  "option n() not allowed"
+local u9  `"(scatter mpg weight, scheme(s1mono)), scheme(s2color)"'
+local m9  "option scheme() not allowed"
+local u10 `"(scatter mpg weight, xsize(3)) (scatter price weight, xsize(4)), title(T)"'
+local m10 "option xsize() not allowed"
+local u11 `"scatter mpg weight, xsize(3) || scatter price weight, xsize(4)"'
+local m11 "option xsize() not allowed"
+local u12 `"scatter mpg weight, yaxis(1) yaxis(1)"'
+local m12 "option yaxis() not allowed"
+forvalues k = 1/12 {
+    capture graph drop _all
+    capture noisily twoway `u`k'' nodraw
+    local tw = _rc
+    _ztp_run `"dash `u`k'' name(zq14u)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_logged "`logfile'" "`m`k''"
+    local said = r(found)
+    if `tw' != 198 | `rc' != 198 | !`said' | "${dash_graph_registry}" != "" {
+        display as error `"TP-14b FAIL `u`k'': twoway r(`tw'), dash r(`rc'), "`m`k''" said `said'"'
+        local bad = 1
+    }
+    else display as text `"TP-14b `k': `u`k'' refused, r(198), "`m`k''""'
+}
+// A bare sort and sort(varlist) are two options to -syntax- and one to
+// twoway, which takes them together in either order (rc 0, measured
+// 24sep2026): not a unique option given twice.
+foreach o in "sort(mpg) sort" "sort sort(mpg)" {
+    capture twoway line mpg weight, `o' nodraw
+    local tw = _rc
+    _ztp_run `"dash line mpg weight, `o' name(zq14s)"' "`logfile'"
+    if `tw' | r(rc) {
+        display as error "TP-14b FAIL `o': twoway r(`tw'), dash r(`r(rc)')"
+        local bad = 1
+    }
+}
+
+// TP-14c: both routes.  The command drawn at once saves the page of the
+// last title(); the command registered with name() and drawn by dash build
+// saves the same.  Neither names the repeat.
+capture erase "`c(tmpdir)'dash_tp14_imm.html"
+_ztp_run `"dash scatter mpg weight, title(FirstTitle) title(LastTitle) saving("`c(tmpdir)'dash_tp14_imm.html", replace)"' "`logfile'"
+local rc = r(rc)
+local note = r(note)
+cert_file_has "`c(tmpdir)'dash_tp14_imm.html", needle("LastTitle")
+local last = r(found)
+cert_file_has "`c(tmpdir)'dash_tp14_imm.html", needle("FirstTitle")
+if `rc' | `note' | !`last' | r(found) {
+    display as error "TP-14c FAIL immediate: rc `rc', note `note', last title `last', first title `r(found)'"
+    local bad = 1
+}
+capture dash clear
+capture erase "`c(tmpdir)'dash_tp14_bld.html"
+capture noisily dash scatter mpg weight, name(zq14b) mc(red) title(FirstTitle) mcolor(blue) title(LastTitle)
+local rc1 = _rc
+capture noisily dash build, saving("`c(tmpdir)'dash_tp14_bld.html") replace
+local rc2 = _rc
+mata: st_local("js", st_global("dash_json_zq14b"))
+local blue = strpos(`"`macval(js)'"', `""mcolor":"blue""') > 0
+cert_file_has "`c(tmpdir)'dash_tp14_bld.html", needle("LastTitle")
+local last = r(found)
+cert_file_has "`c(tmpdir)'dash_tp14_bld.html", needle("FirstTitle")
+if `rc1' | `rc2' | !`blue' | !`last' | r(found) {
+    display as error "TP-14c FAIL build: rc `rc1'/`rc2', blue `blue', last title `last', first title `r(found)'"
+    local bad = 1
+}
+capture dash clear
+capture erase "`c(tmpdir)'dash_tp14_imm.html"
+capture erase "`c(tmpdir)'dash_tp14_bld.html"
+
+// TP-14d: xline()/yline() copies stay apart: the spec holds each copy,
+// comma-separated, and the renderer draws each in its own style
+// (test_axis_options.py TestReferenceLines).
+_ztp_run `"dash scatter mpg weight, yline(20, lcolor(red)) yline(30) name(zq14y)"' "`logfile'"
+local rc = r(rc)
+local note = r(note)
+local ok = 0
+if !`rc' {
+    mata: st_local("ok", strofreal(_ztp_hasval("zq14y", "yline", "20, lcolor(red), 30")))
+}
+if `rc' | `note' | !`ok' {
+    display as error "TP-14d FAIL: rc `rc', note `note', spec yline `ok'"
+    local bad = 1
+}
+
+// TP-14e: adversarial (CLAUDE.md rule 18).  Resource exhaustion: an
+// option given 10,000 times is "too many options", r(1003), in twoway and
+// dash alike, and quickly; 128 copies of mcolor() among 255 options -- the
+// most twoway takes with nodraw, and dash with name() -- draw the last, as
+// do 127 copies of title(), quickly.  Injection: a hostile value in a
+// repeat is stored as text, its macro characters escaped, never run; a copy whose value Stata cannot
+// bind is refused with twoway's code as before (P20-18b), and a copy that
+// only looks like another option inside a title() is text.
+local many ""
+forvalues i = 1/10000 {
+    local many "`many' mcolor(blue)"
+}
+timer clear 14
+timer on 14
+capture twoway scatter mpg weight, `many' nodraw
+local tw = _rc
+_ztp_run `"dash scatter mpg weight, name(zq14x) `many'"' "`logfile'"
+local rc = r(rc)
+timer off 14
+quietly timer list 14
+if `tw' != 1003 | `rc' != 1003 | r(t14) >= 10 | "${dash_graph_registry}" != "" {
+    display as error "TP-14e FAIL 10000 copies: twoway r(`tw'), dash r(`rc'), `r(t14)' s"
+    local bad = 1
+}
+local many ""
+forvalues i = 1/127 {
+    local many "`many' mcolor(red) title(T`i')"
+}
+local many "`many' mcolor(blue)"
+timer clear 14
+timer on 14
+capture twoway scatter mpg weight, `many' nodraw
+local tw = _rc
+_ztp_run `"dash scatter mpg weight, `many' name(zq14x)"' "`logfile'"
+local rc = r(rc)
+local note = r(note)
+timer off 14
+quietly timer list 14
+local ok = 0
+if !`rc' {
+    mata: st_local("ok", strofreal(_ztp_hasval("zq14x", "mcolor", "blue") & _ztp_hasval("zq14x", "title", "T127")))
+}
+if `tw' | `rc' | `note' | !`ok' | r(t14) >= 10 {
+    display as error "TP-14e FAIL 255 copies: twoway r(`tw'), dash r(`rc'), note `note', last `ok', `r(t14)' s"
+    local bad = 1
+}
+// A hostile value: SMCL, a global's name, a local's quotes, compound
+// quotes.  Typed on the command line with macval(), as a user's do-file
+// would hand it over unexpanded.
+local hv = "{bf:B} " + char(36) + "S_ADO " + char(96) + "c(pwd)" + char(39) + " " + char(96) + char(34) + "q" + char(34) + char(39)
+capture dash clear
+capture log close _ztplog
+quietly log using "`logfile'", name(_ztplog) text replace
+capture noisily dash scatter mpg weight, title(safe) title(`"`macval(hv)'"') name(zq14h)
+local rc = _rc
+quietly log close _ztplog
+_ztp_logged "`logfile'" "ignoring unsupported"
+local note = r(found)
+mata: st_local("js", st_global("dash_json_zq14h"))
+mata: st_local("ok", strofreal(strpos(st_local("js"), "{bf:B} \u0024S_ADO \u0060c(pwd)\u0027") > 0 & !strpos(st_local("js"), "safe")))
+if `rc' | `note' | !`ok' {
+    display as error "TP-14e FAIL hostile value: rc `rc', note `note', stored as text `ok'"
+    local bad = 1
+}
+// A copy Stata cannot bind: refused as twoway refuses it, no directive run.
+local brk = "x" + char(34) + char(39) + " _dup(3) " + char(34) + "INJ" + char(34) + " " + char(96) + char(34)
+capture twoway scatter mpg weight, jitter(1) jitter(`brk') nodraw
+local tw = _rc
+capture dash clear
+quietly log using "`logfile'", name(_ztplog) text replace
+capture noisily dash scatter mpg weight, jitter(1) jitter(`brk') name(zq14h)
+local rc = _rc
+quietly log close _ztplog
+_ztp_logged "`logfile'" "INJINJINJ"
+if `rc' != `tw' | !inlist(`tw', 109, 198) | r(found) | "${dash_graph_registry}" != "" {
+    display as error "TP-14e FAIL unbindable copy: twoway r(`tw'), dash r(`rc'), directive run `r(found)'"
+    local bad = 1
+}
+// An option's name inside a title's text is text, not a second copy.
+_ztp_run `"dash scatter mpg weight, title("scheme(s1mono) mcolor(red)") mcolor(blue) scheme(s2color) name(zq14h)"' "`logfile'"
+local rc = r(rc)
+mata: st_local("ok", strofreal(_ztp_hasval("zq14h", "mcolor", "blue")))
+if `rc' | !`ok' {
+    display as error "TP-14e FAIL option text inside a title: rc `rc', mcolor blue `ok'"
+    local bad = 1
+}
+
+// TP-14f: a repeated option dash does not declare (BUGS.md, S3).  twoway
+// refuses the second copy of some of the options dash names in its note
+// -- atobs, nofit, clegend(), nodropbase and the rest measured 24sep2026
+// beside _dash_rep_und_tab in dash_parse.mata -- "option atobs not
+// allowed", r(198), naming the second copy as typed, or the noX copy of an
+// X and noX pair; dash named both copies in the note.  Each row is asked
+// of twoway in this run, under a log, and dash must give twoway's code and
+// words, and register nothing.  x<k> is the code measured: the run fails
+// if twoway no longer gives it.
+local f1  `"lfit mpg weight, atobs atobs"'
+local g1  "option atobs not allowed"
+local f2  `"lfit mpg weight, ato atobs"'
+local g2  "option atobs not allowed"
+local f3  `"qfitci mpg weight, atobs ato"'
+local g3  "option ato not allowed"
+local f4  `"lfitci mpg weight, nofit nofit"'
+local g4  "option nofit not allowed"
+local f5  `"lpolyci mpg weight, fit nofit"'
+local g5  "option nofit not allowed"
+local f6  `"lfitci mpg weight, nofit fit"'
+local g6  "option nofit not allowed"
+local f7  `"kdensity mpg, gaussian gaussian"'
+local g7  "option gaussian not allowed"
+local f8  `"kdensity mpg, boundary boundary"'
+local g8  "option boundary not allowed"
+local f9  `"lpolyci mpg weight, var(1) v(2)"'
+local g9  "option v() not allowed"
+local f10 `"rbar lo hi weight, baroffset(1) baroffset(2)"'
+local g10 "option baroffset() not allowed"
+local f11 `"scatter mpg weight, nodropbase nodropbase"'
+local g11 "option nodropbase not allowed"
+local f12 `"line mpg weight, dropbase nodropbase"'
+local g12 "option nodropbase not allowed"
+local f13 `"scatter mpg weight, clegend(red) clegend(blue)"'
+local g13 "option clegend() not allowed"
+local f14 `"scatter mpg weight, colorstart(red) colorst(blue)"'
+local g14 "option colorst() not allowed"
+local f15 `"pcspike mpg weight turn length, headlabel headlabel"'
+local g15 "option headlabel not allowed"
+local f16 `"pcarrowi 20 3000 30 4000, headlabel headlabel"'
+local g16 "option headlabel not allowed"
+local f17 `"tsline mpg, onepanel onepanel"'
+local g17 "option onepanel not allowed"
+local f18 `"mspline mpg weight, noback noback"'
+local g18 "option noback not allowed"
+local f19 `"lowess mpg weight, w weight"'
+local g19 "option weight not allowed"
+local f20 `"histogram mpg, mwidth mwidth"'
+local g20 "option mwidth not allowed"
+local f21 `"kdensity mpg, epan2 epan2"'
+local g21 "option epan2 not allowed"
+local f22 `"lfit mpg weight, atobs mcolor(red) atobs"'
+local g22 "option atobs not allowed"
+local f23 `"qfit mpg weight, xlog xlog"'
+local g23 "option xlog not allowed"
+local f24 `"scatter mpg weight, log log"'
+local g24 "option log not allowed"
+local f25 `"scatter mpg weight, nologging logging"'
+local g25 "option nologging not allowed"
+local f26 `"scatter mpg weight, titling notitling"'
+local g26 "option notitling not allowed"
+local f27 `"(scatter mpg weight), clegend(red) clegend(red)"'
+local g27 "option clegend() not allowed"
+local f28 `"(scatter mpg weight, plegend(red)), plegend(red)"'
+local g28 "option plegend() not allowed"
+local f29 `"(scatter mpg weight, notitling) (scatter price weight, notitling), title(T)"'
+local g29 "option notitling not allowed"
+local f30 `"scatter mpg weight, pcycle(2) || scatter price weight, pcycle(2)"'
+local g30 "option pcycle() not allowed"
+local f31 `"(scatter mpg weight, below) (line mpg weight, below), title(T)"'
+local g31 "option below not allowed"
+local f32 `"scatter mpg weight, colorvarminmax colorvarminmax"'
+local g32 "option colorvarminmax not allowed"
+local n14f 32
+forvalues k = 1/`n14f' {
+    local x`k' 198
+}
+// Taken more than once by twoway, so named in the note as before: the
+// same word on a type that takes it again (baroffset() on bar), a plot
+// option in two plot groups or two || segments, and two options each
+// given once.
+local f33 `"bar mpg weight, baroffset(1) baroffset(2)"'
+local g33 "baroffset()"
+local f34 `"(lfit mpg weight, atobs) (lfit price weight, atobs), title(T)"'
+local g34 "atobs"
+local f35 `"lfitci mpg weight, nofit || lfitci price weight, nofit"'
+local g35 "nofit"
+local f36 `"scatter mpg weight, clegend(red) plegend(red)"'
+local g36 "clegend() plegend()"
+local f37 `"(scatter mpg weight, colorstart(red)) (scatter price weight, colorstart(red)), title(T)"'
+local g37 "colorstart()"
+local f38 `"scatter mpg weight, nodropbase"'
+local g38 "nodropbase"
+forvalues k = 33/38 {
+    local x`k' 0
+}
+// log is logging on lowess too, though lowess's own logit is spelled lo:
+// twoway takes the graph's options out first.  An X and noX pair names
+// the noX copy, whichever comes second.
+local f39 `"lowess mpg weight, log logging"'
+local g39 "option logging not allowed"
+local f40 `"scatter mpg weight, nodropb dropb"'
+local g40 "option nodropb not allowed"
+local x39 198
+local x40 198
+local n14f 40
+capture drop _t14f
+generate _t14f = _n
+quietly tsset _t14f
+forvalues k = 1/`n14f' {
+    capture graph drop _all
+    _ztp_run `"twoway `f`k'' nodraw"' "`logfile'"
+    local tw = r(rc)
+    local twsaid 1
+    if `x`k'' {
+        _ztp_logged "`logfile'" "`g`k''"
+        local twsaid = r(found)
+    }
+    _ztp_run `"dash `f`k'' name(zq14f)"' "`logfile'"
+    local rc = r(rc)
+    local note = r(note)
+    if `tw' != `x`k'' | !`twsaid' {
+        display as error `"TP-14f FAIL row `k': twoway gave r(`tw') (said "`g`k''": `twsaid') for `f`k'', not r(`x`k'') as measured"'
+        local bad = 1
+        continue
+    }
+    if `x`k'' {
+        _ztp_logged "`logfile'" "`g`k''"
+        local said = r(found)
+        if `rc' != 198 | !`said' | `note' | "${dash_graph_registry}" != "" {
+            display as error `"TP-14f FAIL row `k': `f`k'': dash r(`rc'), "`g`k''" said `said', note `note', registry ${dash_graph_registry}"'
+            local bad = 1
+        }
+        else display as text `"TP-14f row `k': `f`k'' refused, r(198), "`g`k''""'
+    }
+    else {
+        _ztp_logged "`logfile'" "ignoring unsupported option(s): `g`k''"
+        local said = r(found)
+        if `rc' | !`note' | !`said' {
+            display as error `"TP-14f FAIL row `k': `f`k'': dash r(`rc'), note `note', naming "`g`k''" `said'"'
+            local bad = 1
+        }
+        else display as text `"TP-14f row `k': `f`k'' drawn, "`g`k''" named in the note"'
+    }
+}
+// Adversarial (CLAUDE.md rule 18).  Injection: a hostile value in the
+// repeated option -- SMCL, a global's name, a local's quotes, compound
+// quotes, a directive -- is refused naming the option alone: the value is
+// never echoed, expanded or run, and nothing is registered.
+local hv = "{bf:B} " + char(36) + "S_ADO " + char(96) + "c(pwd)" + char(39) + " _dup(3) " + char(96) + char(34) + "INJ" + char(34) + char(39)
+capture graph drop _all
+capture twoway scatter mpg weight, colorotherlabel(`"`macval(hv)'"') colorotherlabel(`"`macval(hv)'"') nodraw
+local tw = _rc
+capture dash clear
+capture log close _ztplog
+quietly log using "`logfile'", name(_ztplog) text replace
+capture noisily dash scatter mpg weight, colorotherlabel(`"`macval(hv)'"') colorotherlabel(`"`macval(hv)'"') name(zq14f)
+local rc = _rc
+quietly log close _ztplog
+_ztp_logged "`logfile'" "option colorotherlabel() not allowed"
+local said = r(found)
+_ztp_logged "`logfile'" "INJINJINJ"
+local ran = r(found)
+_ztp_logged "`logfile'" "S_ADO"
+local echoed = r(found)
+if `tw' != 198 | `rc' != 198 | !`said' | `ran' | `echoed' | "${dash_graph_registry}" != "" {
+    display as error "TP-14f FAIL hostile value: twoway r(`tw'), dash r(`rc'), said `said', directive run `ran', value echoed `echoed'"
+    local bad = 1
+}
+// A hostile name: an option name that only looks like a repeat once its
+// case is folded is no option twoway takes -- it is not a second copy of
+// atobs, and it is refused as typed, as twoway refuses an option in upper
+// case (TP-15), "option ATOBS not allowed", r(198).
+_ztp_run `"dash lfit mpg weight, ATOBS atobs name(zq14f)"' "`logfile'"
+local rc = r(rc)
+_ztp_logged "`logfile'" "option ATOBS not allowed"
+if `rc' != 198 | !r(found) {
+    display as error "TP-14f FAIL case-folded name: dash r(`rc'), said `r(found)'"
+    local bad = 1
+}
+// The Mata helpers, each on its own: the scan names the copy twoway names
+// and hands back the graph-wide words; the cross check counts a word
+// given in an earlier list; a word inside a title's text is text.
+local _u_ok = 1
+mata: _dash_rep_und_scan("atobs mcolor(red) ato", "lfit")
+if "`_rp_refuse'" != "ato" | "`_rp_gund'" != "" local _u_ok = 0
+mata: _dash_rep_und_scan("nodropb dropbase", "scatter")
+if "`_rp_refuse'" != "nodropb" local _u_ok = 0
+mata: _dash_rep_und_scan("dropbase nodropbase", "bar")
+if "`_rp_refuse'" != "nodropbase" local _u_ok = 0
+mata: _dash_rep_und_scan("atobs atobs", "kdensity")
+if "`_rp_refuse'" != "" local _u_ok = 0
+mata: _dash_rep_und_scan(`"title("atobs atobs") atobs clegend(red) notitling"', "lfit")
+if "`_rp_refuse'" != "" | "`_rp_gund'" != "clegend:clegend():- titling:notitling:no" local _u_ok = 0
+mata: _dash_rep_und_scan("atobs clegend(a) clegend(b)", "")
+if "`_rp_refuse'" != "clegend()" local _u_ok = 0
+mata: _dash_rep_und_scan("colo(red) colorend(red) c(blue) ATOBS ATOBS", "scatter")
+if "`_rp_refuse'" != "" local _u_ok = 0
+local _u_acc "titling:titling:-"
+local _u_add "pcycle:pcyc():- titling:notitling:no"
+mata: _dash_rep_und_cross("_u_acc", "_u_add")
+if "`_rp_refuse'" != "notitling" local _u_ok = 0
+local _u_acc "titling:titling:-"
+local _u_add "pcycle:pcyc():-"
+mata: _dash_rep_und_cross("_u_acc", "_u_add")
+if "`_rp_refuse'" != "" | "`_u_acc'" != "titling:titling:- pcycle:pcyc():-" local _u_ok = 0
+if !`_u_ok' {
+    display as error "TP-14f FAIL: _dash_rep_und_scan or _dash_rep_und_cross read a list wrongly"
+    local bad = 1
+}
+// Resource exhaustion: 250 copies of an option twoway takes again, then a
+// pair it takes once, are refused as twoway refuses them, quickly; 10,000
+// copies are "too many options", r(1003), in twoway and dash alike.
+local many ""
+forvalues i = 1/250 {
+    local many "`many' baroffset(1)"
+}
+timer clear 14
+timer on 14
+capture twoway bar mpg weight, `many' nodropbase nodropbase nodraw
+local tw = _rc
+_ztp_run `"dash bar mpg weight, `many' nodropbase nodropbase name(zq14f)"' "`logfile'"
+local rc = r(rc)
+_ztp_logged "`logfile'" "option nodropbase not allowed"
+local said = r(found)
+timer off 14
+quietly timer list 14
+if `tw' != 198 | `rc' != 198 | !`said' | r(t14) >= 10 | "${dash_graph_registry}" != "" {
+    display as error "TP-14f FAIL 250 copies then a pair: twoway r(`tw'), dash r(`rc'), said `said', `r(t14)' s"
+    local bad = 1
+}
+local many ""
+forvalues i = 1/10000 {
+    local many "`many' atobs"
+}
+timer clear 14
+timer on 14
+capture twoway lfit mpg weight, `many' nodraw
+local tw = _rc
+_ztp_run `"dash lfit mpg weight, name(zq14f) `many'"' "`logfile'"
+local rc = r(rc)
+timer off 14
+quietly timer list 14
+if `tw' != 1003 | `rc' != 1003 | r(t14) >= 10 | "${dash_graph_registry}" != "" {
+    display as error "TP-14f FAIL 10000 copies: twoway r(`tw'), dash r(`rc'), `r(t14)' s"
+    local bad = 1
+}
+capture dash clear
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-14"
+}
+else display as text "TP-14 PASS: a repeated option draws what twoway draws -- the last copy, the copies merged, or refused as unique -- in both routes, with no note"
+
+// ----------------------------------------------------------------
+// TP-15 -- log and logit, a plot option after a plot group's comma, an
+// option in upper case, and two kernels (BUGS.md, S1 and S3).
+// ----------------------------------------------------------------
+// Measured 24sep2026, and asked of twoway again below on every run:
+//   * log is the graph option logging on every plot type, lowess too:
+//     twoway takes the graph's options out of each list first, so only
+//     lo, logi and logit are lowess's logit, and log, logg .. logging and
+//     nolog .. nologging draw what no option draws (the serset of lowess
+//     zb weight, log is the serset of lowess zb weight).  nolo, nologi and
+//     nologit are logit's off form: taken on lowess, refused elsewhere,
+//     "option nolo not allowed", r(198), as lo, logi and logit are.
+//   * after the plot groups' comma twoway takes only graph options: a
+//     plot option there -- atobs, mcolor(), kernel(), lo -- is refused even
+//     once, "option atobs not allowed", naming the first word it does not
+//     take; clegend(), below, logging and the other graph-wide ones are
+//     taken.
+//   * an option written in upper case -- ATOBS, MCOLOR(red), Title(x), and
+//     dash's own HOVER() -- is no option: "option MCOLOR() not allowed",
+//     r(198), in comma mode, in a plot group and after the comma, naming the
+//     first word twoway does not take.
+//   * on lpoly, lpolyci and kdensity two kernel flags are "only one kernel
+//     may be specified", and a flag beside kernel() "kernel(): old syntax
+//     may not be combined with new syntax" (kdensity: "option kernel():
+//     ..."), whatever kernel() holds, after the repeats' refusals.
+// dash read log as logit (a different lowess curve), and named the rest in
+// its note or took it.
+local bad15 = 0
+capture drop zb
+generate byte zb = mpg > 20
+// twoway's serset: the smooth of the plain lowess and of its logit.
+foreach k in plain lo {
+    capture graph drop _all
+    if "`k'" == "plain" quietly twoway lowess zb weight
+    else quietly twoway lowess zb weight, lo
+    preserve
+    quietly serset use, clear
+    quietly ds
+    local _sv : word 1 of `r(varlist)'
+    quietly summarize `_sv'
+    local m15_`k' = r(mean)
+    restore
+}
+if abs(`m15_plain' - `m15_lo') < 1e-6 {
+    display as error "TP-15a FAIL: the twoway oracle draws lowess zb weight, lo as the plain curve"
+    local bad15 = 1
+}
+// TP-15a: each spelling on four types, lowess in three forms; twoway's rc,
+// words and serset asked here, dash's rc, words and spec held to them.
+local sp15 "lo log logi logit logg loggi logging nolo nolog nologi nologit nologg nologging LOG LOGIT Lo"
+local fm15 "c p a"
+foreach tt in lowess scatter line lfit {
+    foreach s of local sp15 {
+        foreach f of local fm15 {
+            if "`tt'" != "lowess" & "`f'" != "c" continue
+            if "`f'" == "c" local cmd "`tt' zb weight, `s'"
+            if "`f'" == "p" local cmd "(`tt' zb weight, `s'), title(T)"
+            if "`f'" == "a" local cmd "(`tt' zb weight), `s'"
+            capture graph drop _all
+            _ztp_run `"twoway `cmd' nodraw"' "`logfile'"
+            local tw = r(rc)
+            local twsaid 1
+            if `tw' {
+                _ztp_logged "`logfile'" "option `s' not allowed"
+                local twsaid = r(found)
+            }
+            local twlogit 0
+            if !`tw' & "`tt'" == "lowess" {
+                capture graph drop _all
+                quietly twoway `cmd'
+                preserve
+                quietly serset use, clear
+                quietly ds
+                local _sv : word 1 of `r(varlist)'
+                quietly summarize `_sv'
+                local twlogit = abs(r(mean) - `m15_lo') < 1e-6
+                restore
+            }
+            _ztp_run `"dash `cmd' name(zq15)"' "`logfile'"
+            local rc = r(rc)
+            local said 1
+            local dlogit 0
+            if `rc' {
+                _ztp_logged "`logfile'" "option `s' not allowed"
+                local said = r(found)
+            }
+            else {
+                _ztp_has zq15 logit
+                local dlogit = r(found)
+            }
+            if !`twsaid' | `rc' != `tw' | !`said' | `dlogit' != `twlogit' {
+                display as error `"TP-15a FAIL `cmd': twoway r(`tw') (said `twsaid', logit `twlogit'); dash r(`rc') (said "option `s' not allowed": `said', logit `dlogit')"'
+                local bad15 = 1
+            }
+            else display as text `"TP-15a `cmd': r(`tw'), logit `twlogit', in twoway and dash"'
+        }
+    }
+}
+// Both routes: the command drawn at once answers each lowess spelling as
+// the registered one does.
+foreach s of local sp15 {
+    capture twoway lowess zb weight, `s' nodraw
+    local tw = _rc
+    capture erase "`c(tmpdir)'dash_tp15_imm.html"
+    _ztp_run `"dash lowess zb weight, `s' saving("`c(tmpdir)'dash_tp15_imm.html", replace)"' "`logfile'"
+    local rc = r(rc)
+    local said 1
+    if `rc' {
+        _ztp_logged "`logfile'" "option `s' not allowed"
+        local said = r(found)
+    }
+    if `rc' != `tw' | !`said' {
+        display as error "TP-15a FAIL immediate lowess, `s': twoway r(`tw'), dash r(`rc'), said `said'"
+        local bad15 = 1
+    }
+}
+capture erase "`c(tmpdir)'dash_tp15_imm.html"
+
+// TP-15b..d: each row a command twoway answers with code x<k> and first
+// words g<k> (asked in the run); dash must answer the same and register
+// nothing, or draw it where twoway does.
+local k = 0
+foreach r in ///
+    `"(lfit mpg weight), atobs~198~option atobs not allowed"' ///
+    `"(lfit mpg weight), ato~198~option ato not allowed"' ///
+    `"(lfit mpg weight), mcolor(red)~198~option mcolor() not allowed"' ///
+    `"(lfit mpg weight), mc(red)~198~option mc() not allowed"' ///
+    `"(scatter mpg weight), msymbol(O)~198~option msymbol() not allowed"' ///
+    `"(line mpg weight), sort~198~option sort not allowed"' ///
+    `"(line mpg weight), sort(mpg)~198~option sort() not allowed"' ///
+    `"(lpoly mpg weight), kernel(gaussian)~198~option kernel() not allowed"' ///
+    `"(lpoly mpg weight), bwidth(1)~198~option bwidth() not allowed"' ///
+    `"(kdensity mpg), gaussian~198~option gaussian not allowed"' ///
+    `"(lfitci mpg weight), nofit~198~option nofit not allowed"' ///
+    `"(lowess mpg weight), logit~198~option logit not allowed"' ///
+    `"(lowess mpg weight), mean~198~option mean not allowed"' ///
+    `"(histogram mpg), bin(5)~198~option bin() not allowed"' ///
+    `"(scatter mpg weight), colorstart(red)~198~option colorstart() not allowed"' ///
+    `"(scatter mpg weight), nodropbase~198~option nodropbase not allowed"' ///
+    `"(scatter mpg weight), mlabvposition(pos)~198~option mlabvposition() not allowed"' ///
+    `"(lfit mpg weight) (scatter mpg weight), mcolor(red) atobs~198~option mcolor() not allowed"' ///
+    `"(lfit mpg weight) (scatter mpg weight), atobs mcolor(red)~198~option atobs not allowed"' ///
+    `"(lfit mpg weight) (scatter mpg weight), title(x) atobs~198~option atobs not allowed"' ///
+    `"(lfit mpg weight), bogus atobs~198~option bogus not allowed"' ///
+    `"(lfit mpg weight), atobs bogus~198~option atobs not allowed"' ///
+    `"(lfit mpg weight), title(A) title(B) title(C) atobs~198~option atobs not allowed"' ///
+    `"(lfit mpg weight), title(x)~0~"' ///
+    `"(lfit mpg weight), xsize(4)~0~"' ///
+    `"(lfit mpg weight), clegend(red)~0~"' ///
+    `"(lfit mpg weight), below~0~"' ///
+    `"(lfit mpg weight), logging~0~"' ///
+    `"(lfit mpg weight), log~0~"' ///
+    `"(lfit mpg weight), xoverhangs~0~"' ///
+    `"(lfit mpg weight), title(A) title(B) title(C)~0~"' ///
+    `"lfit mpg weight, ATOBS~198~option ATOBS not allowed"' ///
+    `"lfit mpg weight, Atobs~198~option Atobs not allowed"' ///
+    `"scatter mpg weight, MCOLOR(red)~198~option MCOLOR() not allowed"' ///
+    `"scatter mpg weight, mColor(red)~198~option mColor() not allowed"' ///
+    `"scatter mpg weight, MC(red)~198~option MC() not allowed"' ///
+    `"scatter mpg weight, Title(x)~198~option Title() not allowed"' ///
+    `"scatter mpg weight, TITLE(x)~198~option TITLE() not allowed"' ///
+    `"scatter mpg weight, HOVER(x)~198~option HOVER() not allowed"' ///
+    `"scatter mpg weight, LINK(g)~198~option LINK() not allowed"' ///
+    `"scatter mpg weight, SORT~198~option SORT not allowed"' ///
+    `"scatter mpg weight, NODRAW~198~option NODRAW not allowed"' ///
+    `"scatter mpg weight, LOGGING~198~option LOGGING not allowed"' ///
+    `"lpoly mpg weight, N(5)~198~option N() not allowed"' ///
+    `"scatter mpg weight, MCOLOR(red) mcolor(blue)~198~option MCOLOR() not allowed"' ///
+    `"scatter mpg weight, mcolor(blue) MCOLOR(red)~198~option MCOLOR() not allowed"' ///
+    `"lfit mpg weight, ATOBS atobs~198~option ATOBS not allowed"' ///
+    `"lfit mpg weight, bogus ATOBS~198~option bogus not allowed"' ///
+    `"lfit mpg weight, ATOBS bogus~198~option ATOBS not allowed"' ///
+    `"lfit mpg weight, xreverse ATOBS~198~option xreverse not allowed"' ///
+    `"lfit mpg weight, ATOBS MCOLOR(red)~198~option ATOBS not allowed"' ///
+    `"(lfit mpg weight, MCOLOR(red)), title(T)~198~option MCOLOR() not allowed"' ///
+    `"(lfit mpg weight), TITLE(x)~198~option TITLE() not allowed"' ///
+    `"(lfit mpg weight), MC(red) atobs~198~option MC() not allowed"' ///
+    `"lfit mpg weight || scatter mpg weight, TITLE(x)~198~option TITLE() not allowed"' ///
+    `"lfit mpg weight, TITLE(x) || scatter mpg weight~198~option TITLE() not allowed"' ///
+    `"lpoly mpg weight, gaussian epan2~198~only one kernel may be specified"' ///
+    `"lpoly mpg weight, biweight gaussian~198~only one kernel may be specified"' ///
+    `"lpoly mpg weight, ep epan2~198~only one kernel may be specified"' ///
+    `"lpoly mpg weight, gaussian kernel(epan2)~198~kernel(): old syntax may not be combined with new syntax"' ///
+    `"lpoly mpg weight, kernel(epan2) gaussian~198~kernel(): old syntax may not be combined with new syntax"' ///
+    `"lpoly mpg weight, gau k(gaussian)~198~kernel(): old syntax may not be combined with new syntax"' ///
+    `"lpoly mpg weight, gaussian kernel(bogus)~198~kernel(): old syntax may not be combined with new syntax"' ///
+    `"lpoly mpg weight, gaussian epan2 kernel(gaussian)~198~kernel(): old syntax may not be combined with new syntax"' ///
+    `"lpolyci mpg weight, gaussian cosine~198~only one kernel may be specified"' ///
+    `"lpolyci mpg weight, kernel(epan2) triangle~198~kernel(): old syntax may not be combined with new syntax"' ///
+    `"kdensity mpg, gaussian epan2~198~only one kernel may be specified"' ///
+    `"kdensity mpg, parzen rectangle~198~only one kernel may be specified"' ///
+    `"kdensity mpg, gaussian kernel(epan2)~198~option kernel(): old syntax may not be combined with new syntax"' ///
+    `"kdensity mpg, kernel(gaussian) gaussian~198~option kernel(): old syntax may not be combined with new syntax"' ///
+    `"lpoly mpg weight, kernel(gau) kernel(epan2)~198~option kernel() not allowed"' ///
+    `"kdensity mpg, kernel(gaussian) kernel(gaussian)~198~option kernel() not allowed"' ///
+    `"lpoly mpg weight, bwidth(1) bwidth(2) gaussian epan2~198~option bwidth() not allowed"' ///
+    `"lpoly mpg weight, gaussian epan2 gaussian~198~option gaussian not allowed"' ///
+    `"lpoly mpg weight, gaussian GAUSSIAN~198~option GAUSSIAN not allowed"' ///
+    `"lpoly mpg weight, gaussian epan2 ATOBS~198~option ATOBS not allowed"' ///
+    `"lpoly mpg weight, gaussian epan2 mcolor(bogus)~198~only one kernel may be specified"' ///
+    `"lpoly mpg weight, gaussian || lpoly mpg weight, epan2~0~"' ///
+    `"lpoly mpg weight, kernel(gaussian) || lpoly price weight, kernel(epan2)~0~"' {
+    local ++k
+    gettoken c15 rest : r, parse("~")
+    gettoken x15 rest : rest, parse("~")
+    gettoken x15 rest : rest, parse("~")
+    gettoken g15 rest : rest, parse("~")
+    gettoken g15 rest : rest, parse("~")
+    if "`g15'" == "~" local g15 ""
+    local sep15 ""
+    if strpos(`"`c15'"', ", ") == 0 & substr(`"`c15'"', -1, 1) == ")" local sep15 ","
+    capture graph drop _all
+    _ztp_run `"twoway `c15'`sep15' nodraw"' "`logfile'"
+    local tw = r(rc)
+    local twsaid 1
+    if `x15' {
+        _ztp_logged "`logfile'" "`g15'"
+        local twsaid = r(found)
+    }
+    if `tw' != `x15' | !`twsaid' {
+        display as error `"TP-15 FAIL row `k': twoway gave r(`tw') (said "`g15'": `twsaid') for `c15', not r(`x15') as measured"'
+        local bad15 = 1
+        continue
+    }
+    _ztp_run `"dash `c15' name(zq15)"' "`logfile'"
+    local rc = r(rc)
+    local said 1
+    if `x15' {
+        _ztp_logged "`logfile'" "`g15'"
+        local said = r(found)
+    }
+    if `rc' != `x15' | !`said' | (`x15' & "${dash_graph_registry}" != "") {
+        display as error `"TP-15 FAIL row `k': `c15': dash r(`rc'), "`g15'" said `said', registry ${dash_graph_registry}"'
+        local bad15 = 1
+    }
+    else display as text `"TP-15 row `k': `c15' r(`x15') `g15'"'
+}
+
+// The Mata helpers, each on its own.  _dash_log_split takes log and nolog
+// out of a list, and no word inside a value; _dash_logit_typed finds the
+// first logit spelling as typed; _dash_foreign_scan marks what twoway takes
+// and what is a plot option or in upper case; _dash_kernel_clash tells
+// two kernels from one, and reads no word inside a title's text.
+local _k_ok = 1
+local _k_src `", mcolor(red) log title("log nolog") nolog"'
+mata: _dash_log_split("_k_src", "_k_out")
+if `"`_k_src'"' != `", mcolor(red) title("log nolog")"' | "`_k_out'" != "log nolog" local _k_ok = 0
+local _k_src ", mcolor(red) logging lo"
+mata: _dash_log_split("_k_src", "_k_out")
+if "`_k_src'" != ", mcolor(red) logging lo" | "`_k_out'" != "" local _k_ok = 0
+mata: st_local("_k_t", _dash_logit_typed(`"title("lo") log nolog nologi lo"'))
+if "`_k_t'" != "nologi" local _k_ok = 0
+mata: st_local("_k_t", _dash_logit_typed("log nolog logging logg"))
+if "`_k_t'" != "" local _k_ok = 0
+mata: _dash_foreign_scan("atobs mcolor(red) clegend(red)", "", "atobs mcolor(red)", 1)
+if "`_fs_go'`_fs_n'" != "13" | "`_fs_acc1'`_fs_acc2'`_fs_acc3'" != "001" | "`_fs_plot1'`_fs_plot2'`_fs_plot3'" != "100" | "`_fs_nm2'" != "mcolor()" local _k_ok = 0
+mata: _dash_foreign_scan("mcolor(red) ATOBS atobs", "lfit", "ATOBS", 0)
+if "`_fs_go'`_fs_n'" != "13" | "`_fs_uc1'`_fs_uc2'`_fs_uc3'" != "010" | "`_fs_acc3'" != "1" local _k_ok = 0
+mata: _dash_foreign_scan("atobs bogus", "lfit", "atobs bogus", 0)
+if "`_fs_go'" != "0" local _k_ok = 0
+mata: st_local("_k_t", _dash_kernel_clash("gaussian epan2", "lpoly"))
+if "`_k_t'" != "one" local _k_ok = 0
+mata: st_local("_k_t", _dash_kernel_clash("gau k(bogus)", "kdensity"))
+if "`_k_t'" != "old" local _k_ok = 0
+mata: st_local("_k_t", _dash_kernel_clash("ep epan2", "lpolyci"))
+if "`_k_t'" != "one" local _k_ok = 0
+mata: st_local("_k_t", _dash_kernel_clash("gaussian", "lpoly"))
+if "`_k_t'" != "" local _k_ok = 0
+mata: st_local("_k_t", _dash_kernel_clash("gaussian epan2", "lowess"))
+if "`_k_t'" != "" local _k_ok = 0
+mata: st_local("_k_t", _dash_kernel_clash(`"title("gaussian epan2") gaussian"', "lpoly"))
+if "`_k_t'" != "" local _k_ok = 0
+mata: _dash_rep_und_scan("lo nolo", "lowess")
+if "`_rp_refuse'" != "nolo" local _k_ok = 0
+mata: _dash_rep_und_scan("log lo", "lowess")
+if "`_rp_refuse'" != "" local _k_ok = 0
+if !`_k_ok' {
+    display as error "TP-15 FAIL: _dash_log_split, _dash_logit_typed, _dash_foreign_scan, _dash_kernel_clash or the logit rows read a list wrongly"
+    local bad15 = 1
+}
+// lowess's logit given as lo and as its off form is one option given
+// twice, as twoway reads it.
+foreach r in "lo nolo|nolo" "nologit lo|nologit" "logit logi|logi" {
+    gettoken o15 w15 : r, parse("|")
+    local w15 = substr("`w15'", 2, .)
+    capture graph drop _all
+    _ztp_run `"twoway lowess mpg weight, `o15' nodraw"' "`logfile'"
+    local tw = r(rc)
+    _ztp_logged "`logfile'" "option `w15' not allowed"
+    local twsaid = r(found)
+    _ztp_run `"dash lowess mpg weight, `o15' name(zq15)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_logged "`logfile'" "option `w15' not allowed"
+    if `tw' != 198 | !`twsaid' | `rc' != 198 | !r(found) {
+        display as error "TP-15 FAIL lowess, `o15': twoway r(`tw') said `twsaid', dash r(`rc') said `r(found)'"
+        local bad15 = 1
+    }
+}
+
+// TP-15e: adversarial (CLAUDE.md rule 18).  Injection: a hostile value in
+// an upper-case option, in a plot option after the comma and beside two
+// kernels is refused naming the option alone -- never echoed, expanded or
+// run -- and nothing is registered.  Resource exhaustion: 200 words twoway
+// does not take after the comma, or in comma mode, then the word that
+// refuses them, are answered as twoway answers them, quickly.
+local hv = "{bf:B} " + char(36) + "S_ADO " + char(96) + "c(pwd)" + char(39) + " _dup(3) " + char(96) + char(34) + "INJ" + char(34) + char(39)
+foreach form in u a k {
+    if "`form'" == "u" {
+        local pre "scatter mpg weight, MCOLOR("
+        local post ")"
+        local want "option MCOLOR() not allowed"
+    }
+    if "`form'" == "a" {
+        local pre "(scatter mpg weight), mcolor("
+        local post ")"
+        local want "option mcolor() not allowed"
+    }
+    if "`form'" == "k" {
+        local pre "lpoly mpg weight, gaussian kernel("
+        local post ")"
+        local want "kernel(): old syntax may not be combined with new syntax"
+    }
+    capture graph drop _all
+    capture twoway `pre'`"`macval(hv)'"'`post' nodraw
+    local tw = _rc
+    capture dash clear
+    capture log close _ztplog
+    quietly log using "`logfile'", name(_ztplog) text replace
+    capture noisily dash `pre'`"`macval(hv)'"'`post' name(zq15)
+    local rc = _rc
+    quietly log close _ztplog
+    _ztp_logged "`logfile'" "`want'"
+    local said = r(found)
+    _ztp_logged "`logfile'" "INJINJINJ"
+    local ran = r(found)
+    _ztp_logged "`logfile'" "S_ADO"
+    local echoed = r(found)
+    if `tw' != 198 | `rc' != 198 | !`said' | `ran' | `echoed' | "${dash_graph_registry}" != "" {
+        display as error "TP-15e FAIL hostile value (`form'): twoway r(`tw'), dash r(`rc'), said `said', directive run `ran', value echoed `echoed'"
+        local bad15 = 1
+    }
+}
+foreach form in a c {
+    local many ""
+    forvalues i = 1/200 {
+        local many "`many' zqbogus"
+    }
+    if "`form'" == "a" local cmd15 "(lfit mpg weight),`many' atobs"
+    else local cmd15 "lfit mpg weight,`many' ATOBS"
+    timer clear 15
+    timer on 15
+    capture twoway `cmd15' nodraw
+    local tw = _rc
+    _ztp_run `"dash `cmd15' name(zq15)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_logged "`logfile'" "option zqbogus not allowed"
+    local said = r(found)
+    timer off 15
+    quietly timer list 15
+    if `tw' != 198 | `rc' != 198 | !`said' | r(t15) >= 10 | "${dash_graph_registry}" != "" {
+        display as error "TP-15e FAIL 200 words then a refusal (`form'): twoway r(`tw'), dash r(`rc'), said `said', `r(t15)' s"
+        local bad15 = 1
+    }
+}
+capture dash clear
+capture drop zb
+if `bad15' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-15"
+}
+else display as text "TP-15 PASS: log is logging and only lo, logi and logit are lowess's logit; a plot option after the comma, an option in upper case and two kernels are refused in twoway's words"
+
+// ----------------------------------------------------------------
+// TP-16 -- a kernel written as an option of its own (BUGS.md, S2).
+// ----------------------------------------------------------------
+// Measured 24sep2026, and asked of twoway again below on every run: on
+// lpoly, lpolyci and kdensity each kernel name taken as an option of its
+// own -- bi .. biweight, cos .. cosine, ep .. epanechnikov (so ep, epa and
+// epan are epanechnikov), epan2 in full, gau .. gaussian, par .. parzen,
+// rec .. rectangle, tri .. triangle -- draws the serset of kernel(<name>);
+// a shorter spelling (e, b, co, ga, pa, re, tr) is "option ga not
+// allowed", r(198), and so is every spelling on another plot type
+// (scatter, line, lfit, lowess, histogram, mspline, lfitci, area).  dash
+// named the flag in its note and drew the default epanechnikov.
+local bad16 = 0
+capture program drop _ztp_sersum
+program define _ztp_sersum, rclass
+    preserve
+    quietly serset use, clear
+    local s 0
+    foreach v of varlist _all {
+        quietly summarize `v'
+        local s = `s' + r(sum) + 7 * r(sd)
+    }
+    restore
+    return scalar s = `s'
+end
+foreach t16 in lpoly lpolyci kdensity {
+    local v16 "mpg weight"
+    if "`t16'" == "kdensity" local v16 "mpg"
+    foreach r in bi|biweight biweight|biweight cos|cosine cosine|cosine ///
+        ep|epanechnikov epan|epanechnikov epanechnikov|epanechnikov ///
+        epan2|epan2 gau|gaussian gaus|gaussian gaussian|gaussian ///
+        par|parzen parzen|parzen rec|rectangle rectangle|rectangle ///
+        tri|triangle triangle|triangle {
+        gettoken f16 k16 : r, parse("|")
+        local k16 = substr("`k16'", 2, .)
+        capture graph drop _all
+        quietly twoway `t16' `v16', kernel(`k16')
+        _ztp_sersum
+        local ref16 = r(s)
+        capture graph drop _all
+        capture quietly twoway `t16' `v16', `f16'
+        local tw = _rc
+        local same16 0
+        if !`tw' {
+            _ztp_sersum
+            local same16 = reldif(r(s), `ref16') < 1e-9
+        }
+        if `tw' | !`same16' {
+            display as error "TP-16 FAIL: twoway `t16' `v16', `f16' gave r(`tw'), the serset of kernel(`k16') `same16', not as measured"
+            local bad16 = 1
+            continue
+        }
+        _ztp_run `"dash `t16' `v16', `f16' name(zq16)"' "`logfile'"
+        local rc = r(rc)
+        local note = r(note)
+        mata: st_local("ok", strofreal(_ztp_hasval("zq16", "kernel", "`k16'")))
+        if `rc' | `note' | !`ok' {
+            display as error "TP-16 FAIL: dash `t16' `v16', `f16': r(`rc'), note `note', kernel(`k16') in the spec `ok'"
+            local bad16 = 1
+        }
+        else display as text "TP-16 `t16', `f16': kernel(`k16'), as twoway draws it"
+    }
+}
+// Plot groups, one flag in each, and a || segment each: both kernels.
+foreach c16 in "(lpoly mpg weight, gau) (kdensity mpg, par), name(zq16)" ///
+    "lpolyci mpg weight, tri || lpoly price weight, cos name(zq16)" {
+    capture graph drop _all
+    local tc16 : subinstr local c16 "name(zq16)" "nodraw"
+    capture quietly twoway `tc16'
+    local tw = _rc
+    _ztp_run `"dash `c16'"' "`logfile'"
+    local rc = r(rc)
+    local note = r(note)
+    if strpos("`c16'", "gau") {
+        mata: st_local("ok", strofreal(_ztp_hasval("zq16", "kernel", "gaussian") & _ztp_hasval("zq16", "kernel", "parzen")))
+    }
+    else {
+        mata: st_local("ok", strofreal(_ztp_hasval("zq16", "kernel", "triangle") & _ztp_hasval("zq16", "kernel", "cosine")))
+    }
+    if `tw' | `rc' | `note' | !`ok' {
+        display as error "TP-16 FAIL: `c16': twoway r(`tw'), dash r(`rc'), note `note', both kernels in the spec `ok'"
+        local bad16 = 1
+    }
+}
+// What twoway refuses: a spelling one letter short, and a flag on another
+// type.  dash reads none of them as a kernel (whether it notes or refuses
+// the word is BUGS.md's separate entry on an undeclared lower-case word).
+foreach c16 in "lpoly mpg weight, ga" "kdensity mpg, co" "lpolyci mpg weight, e" ///
+    "lpoly mpg weight, b" "scatter mpg weight, gaussian" "lowess mpg weight, gau" ///
+    "lfit mpg weight, epan2" "line mpg weight, tri" {
+    capture graph drop _all
+    capture quietly twoway `c16' nodraw
+    local tw = _rc
+    _ztp_run `"dash `c16' name(zq16)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_has zq16 kernel
+    local has = r(found)
+    if `tw' != 198 | `has' {
+        display as error "TP-16 FAIL: `c16': twoway r(`tw') (measured 198), dash r(`rc') wrote a kernel `has'"
+        local bad16 = 1
+    }
+}
+// The Mata helper on its own: the first kernel word, the rest kept as
+// typed, nothing on another type, no word inside a value.
+local _k_ok = 1
+mata: _dash_kernel_flag(`"zqa(1) gau zqb"', "lpoly")
+if "`_kf_name'" != "gaussian" | "`_kf_rest'" != "zqa(1) zqb" local _k_ok = 0
+mata: _dash_kernel_flag("epan2", "kdensity")
+if "`_kf_name'" != "epan2" | "`_kf_rest'" != "" local _k_ok = 0
+mata: _dash_kernel_flag("ep", "lpolyci")
+if "`_kf_name'" != "epanechnikov" local _k_ok = 0
+mata: _dash_kernel_flag("gaussian", "lowess")
+if "`_kf_name'" != "" | "`_kf_rest'" != "gaussian" local _k_ok = 0
+mata: _dash_kernel_flag(`"zqa("gaussian") ga GAUSSIAN gaussian()"', "lpoly")
+if "`_kf_name'" != "" local _k_ok = 0
+if !`_k_ok' {
+    display as error "TP-16 FAIL: _dash_kernel_flag read a list wrongly"
+    local bad16 = 1
+}
+// Adversarial (CLAUDE.md rule 18).  Injection: a hostile value in an
+// undeclared option beside the flag is kept as text, never expanded or
+// run, and the kernel is still read.  Resource exhaustion: 200 unknown
+// words then the flag, read quickly.
+local hv = "{bf:B} " + char(36) + "S_ADO " + char(96) + "c(pwd)" + char(39) + " _dup(3) " + char(96) + char(34) + "INJ" + char(34) + char(39)
+capture dash clear
+capture log close _ztplog
+quietly log using "`logfile'", name(_ztplog) text replace
+capture noisily dash lpoly mpg weight, zqbogus(`"`macval(hv)'"') gau name(zq16)
+local rc = _rc
+quietly log close _ztplog
+_ztp_logged "`logfile'" "INJINJINJ"
+local ran = r(found)
+mata: st_local("ok", strofreal(_ztp_hasval("zq16", "kernel", "gaussian")))
+if `rc' | `ran' | !`ok' {
+    display as error "TP-16 FAIL hostile value beside a flag: dash r(`rc'), directive run `ran', kernel read `ok'"
+    local bad16 = 1
+}
+local many ""
+forvalues i = 1/200 {
+    local many "`many' zqbogus`i'"
+}
+timer clear 16
+timer on 16
+_ztp_run `"dash kdensity mpg,`many' rec name(zq16)"' "`logfile'"
+local rc = r(rc)
+timer off 16
+quietly timer list 16
+local t16 = r(t16)
+mata: st_local("ok", strofreal(_ztp_hasval("zq16", "kernel", "rectangle")))
+if `rc' | !`ok' | `t16' >= 10 {
+    display as error "TP-16 FAIL 200 words then a flag: dash r(`rc'), kernel read `ok', `t16' s"
+    local bad16 = 1
+}
+capture dash clear
+if `bad16' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-16"
+}
+else display as text "TP-16 PASS: a kernel written as an option of its own is kernel(<name>) on lpoly, lpolyci and kdensity, where twoway reads it so, and nowhere else"
 
 // ----------------------------------------------------------------
 // Summary

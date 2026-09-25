@@ -714,15 +714,27 @@ class TestEdgeCaseData:
         twoway on no observations: scatter draws nothing, rc 0, in silence;
         lfit notes "regress could not fit model", rc 0; histogram stops with
         r(198).  dash keeps the dashboard -- the one graph is built -- and
-        draws nothing.  What it says is left unasserted on purpose: today
-        it is "variable(s) [...] not found in data source", which is wrong
-        about variables that are there (reported as a defect), and silence,
-        twoway's answer for scatter, would be as right as a correct note.
+        draws nothing.  It said "variable(s) [...] not found in data
+        source", wrong about variables that are there (BUGS.md, "A dataset
+        with no observations is reported as missing the variables it
+        has"); the frame now has them as columns.  scatter is silent, as
+        twoway's is; lfit gives twoway's note, word for word (BUGS.md, "On a
+        dataset with no observations, dash draws an empty histogram where
+        twoway refuses it, and says nothing for lfit ..."); histogram, which
+        dash.ado now refuses as twoway does (test_parser.cscript P1A-80),
+        is silent when a hand-written spec reaches the renderer.
+        test_layer_reports.py holds the same in the served app.
         """
-        dr, _notes = self._render_noted(
+        dr, notes = self._render_noted(
             plots=[dict(plot, options={})], values=[],
             varnames=[v for k, v in plot.items() if k != "type"])
         assert all(rows == 0 for _g, rows in self._drawn(dr))
+        assert self._drawn(dr), "the layer left the figure with no renderer"
+        if plot["type"] == "lfit":
+            assert notes == ["dash: graph 'g1' plot 1 (lfit): (note:  "
+                             "regress could not fit model)"], notes
+        else:
+            assert notes == [], notes
 
     def test_ec02_single_row_scatter_draws_its_point(self):
         """EC-02: n=1 scatter draws the one point, as twoway does (rc 0)."""
@@ -741,9 +753,12 @@ class TestEdgeCaseData:
     def test_ec02_single_row_lfit_returns_empty(self):
         """EC-02: n=1 lfit returns empty (needs 2+ points), no crash.
 
-        twoway lfit refuses one observation -- "insufficient observations",
-        r(2001) -- and dash keeps the dashboard and names the empty layer.
-        This asserted only ``fig is not None``, which any figure satisfies.
+        twoway lfit refuses one observation -- "(note:  regress could not
+        fit model)", then "insufficient observations", r(2001) -- which
+        dash.ado reproduces (test_parser.cscript P1A-80).  A spec that
+        reaches the renderer with one row keeps the dashboard and gives
+        twoway's note for the empty layer.  This asserted only ``fig is
+        not None``, which any figure satisfies.
         """
         dr, notes = self._render_noted(
             plots=[{"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
@@ -751,16 +766,23 @@ class TestEdgeCaseData:
             varnames=["mpg", "weight"],
         )
         assert self._drawn(dr) == [("Line", 0)]
-        assert notes == ["dash: graph 'g1' plot 1 (lfit) drew nothing from 1 "
-                         "observations."]
+        # Both of twoway's lines, as it prints them in a by() panel of one
+        # (rc 0 there; BUGS.md, S3 batch, measured 24sep2026).
+        assert notes == ["dash: graph 'g1' plot 1 (lfit): (note:  regress "
+                         "could not fit model)",
+                         "dash: graph 'g1' plot 1 (lfit): insufficient "
+                         "observations"]
 
     @pytest.mark.parametrize("ptype,glyph", [("scatter", "Scatter"),
                                              ("histogram", "Quad")])
     def test_ec03_an_all_missing_column_draws_nothing_and_says_so(
             self, ptype, glyph):
-        """EC-03: all-NaN renders, draws nothing, and names the layer.
+        """EC-03: all-NaN renders and draws nothing.
 
         twoway scatter and twoway histogram both draw nothing here (rc 0).
+        dash names the scatter layer; the histogram it draws in silence, as
+        twoway does (BUGS.md, S3 batch: a histogram with no observation in
+        its sample, or in a by() panel, is twoway's silent empty layer).
         """
         plot = {"type": ptype, "yvar": "mpg", "options": {}}
         values = [{"mpg": None} for _ in range(5)]
@@ -772,8 +794,11 @@ class TestEdgeCaseData:
         dr, notes = self._render_noted(plots=[plot], values=values,
                                        varnames=varnames)
         assert self._drawn(dr) == [(glyph, 0)]
-        assert notes == ["dash: graph 'g1' plot 1 (%s) drew nothing from 5 "
-                         "observations." % ptype]
+        if ptype == "histogram":
+            assert notes == []
+        else:
+            assert notes == ["dash: graph 'g1' plot 1 (%s) drew nothing "
+                             "from 5 observations." % ptype]
 
     _CONST_X = [{"mpg": float(20 + i), "weight": 2500.0} for i in range(10)]
 

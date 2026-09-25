@@ -864,10 +864,14 @@ class TestTicksWithoutLabels:
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_the_rule_forms(self, mode):
+        # #4 marks where twoway puts #4 over the drawn weights, 1800 to
+        # 4080: `_natscale 1800 4080 4' is 2000(500)4000 (measured
+        # 24sep2026; BUGS.md "ylabel(#N) and xlabel(#N) ticks fall where
+        # Bokeh puts them").
         fig, _ = _render(mode, [plot_for("scatter")], {"xtick": "#4"})
-        every = _tick_args(_primary(fig, "x"))["every"]
-        assert type(every).__name__ == "BasicTicker"
-        assert every.desired_num_ticks == 4
+        args = _tick_args(_primary(fig, "x"))
+        assert "every" not in args
+        assert args["extra"] == [2000.0, 2500.0, 3000.0, 3500.0, 4000.0]
         fig, _ = _render(mode, [plot_for("scatter")],
                          {"xtick": "2000(500)3000"})
         assert _tick_args(_primary(fig, "x"))["extra"] == [2000.0, 2500.0,

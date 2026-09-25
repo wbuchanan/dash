@@ -1227,23 +1227,32 @@ def _fit_line(mapper, x, y, opts=None, w=None, wtype=None):
 
 
 class TestQuadraticFitsAgainstStata:
-    # x with two values: twoway qfit and qfitci omit x^2 (regress drops the
-    # later of a collinear pair), so they ARE lfit and lfitci.
+    # x with two values: regress keeps one of x and x^2 beside the
+    # constant.  On these, 1.3 and 1.7, it omits x -- "note: x omitted
+    # because of collinearity", y = -.66875 + 1.875 x^2 -- and twoway
+    # qfitci, n(5) plots the serset below (measured 24sep2026 with the
+    # console binary).  This class said qfit and qfitci were lfit and lfitci
+    # here (x^2 omitted), which twoway does only when |a + b| <= 1
+    # (_qfit_design; test_layer_reports.py).
     X2 = [1.3, 1.3, 1.7, 1.7, 1.7, 1.3, 1.7]
     Y2 = [2.0, 3.0, 4.5, 4.0, 5.5, 2.5, 5.0]
+    Q2_FIT = [2.5, 3.00625, 3.55, 4.13125, 4.75]
+    Q2_LO = [1.621979, 2.304605, 2.962462, 3.52941, 3.989612]
+    Q2_HI = [3.378021, 3.707895, 4.137538, 4.733091, 5.510389]
 
-    def test_qfitci_on_two_values_is_lfitci(self):
-        q = _fit_line("map_qfitci", self.X2, self.Y2)
-        l = _fit_line("map_lfitci", self.X2, self.Y2)
-        np.testing.assert_allclose(q["x_fit"], l["x_fit"])
-        np.testing.assert_allclose(q["y_fit"], l["y_fit"], rtol=1e-10)
-        np.testing.assert_allclose(q["y_lower"], l["y_lower"], rtol=1e-10)
-        np.testing.assert_allclose(q["y_upper"], l["y_upper"], rtol=1e-10)
+    def test_qfitci_on_two_values_is_twoways(self):
+        q = _fit_line("map_qfitci", self.X2, self.Y2, {"n": "5"})
+        np.testing.assert_allclose(q["x_fit"], [1.3, 1.4, 1.5, 1.6, 1.7])
+        np.testing.assert_allclose(q["y_fit"], self.Q2_FIT, rtol=1e-6)
+        np.testing.assert_allclose(q["y_lower"], self.Q2_LO, rtol=1e-6)
+        np.testing.assert_allclose(q["y_upper"], self.Q2_HI, rtol=1e-6)
 
-    def test_qfit_on_two_values_is_lfit(self):
-        q = _fit_line("map_qfit", self.X2, self.Y2)
-        l = _fit_line("map_lfit", self.X2, self.Y2)
-        np.testing.assert_allclose(q["y"], l["y"], rtol=1e-10)
+    def test_qfit_on_two_values_is_twoways(self):
+        q = _fit_line("map_qfit", self.X2, self.Y2, {"n": "5"})
+        np.testing.assert_allclose(q["y"], self.Q2_FIT, rtol=1e-6)
+        # ... and not lfit's line, which it was.
+        l = _fit_line("map_lfit", self.X2, self.Y2, {"n": "5"})
+        assert not np.allclose(q["y"], l["y"])
 
     def test_qfit_draws_qfitcis_own_line(self):
         rng = np.random.default_rng(11)

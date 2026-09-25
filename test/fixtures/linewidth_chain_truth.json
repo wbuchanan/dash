@@ -1,0 +1,2696 @@
+{
+ "_about": "Measured 24sep2026 with StataNow 19.5 (console, batch): each scheme below is a file in the working directory; each command is `twoway <cmd> price weight || <cmd> p2 weight' (range plots `<cmd> lo hi weight', pc plots `<cmd> lo weight hi w2', ci fits draw two plots each) on sysuse auto; the values are Stata linewidth units read from `.Graph.plotregion1.plot<k>.style.line.width.setting' (line), `.style.area.linestyle.width.setting' (area_line) and `.style.marker.linestyle.width.setting' (marker_line).  Units: vvthin .01, vthin .15, thin .2, medthin .25, medium .3, medthick .45, thick .8, vthick 1.4, vvthick 2.6, vvvthick 4.2 (style/linewidth-*.style).",
+ "cases": {
+  "lwt0": {
+   "area": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "bar": {
+    "1": {
+     "area_line": 0.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "connected": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "dropline": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "fpfit": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "fpfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "function": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "histogram": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "kdensity": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lfit": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "line": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lowess": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lpoly": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lpolyci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "mspline": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "pcarrow": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "pcarrowi": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "pcbarrow": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "pccapsym": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "pcspike": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "qfit": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "qfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rarea": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rbar": {
+    "1": {
+     "area_line": 0.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rcap": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rcapsym": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rconnected": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rline": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rspike": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "scatter": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "spike": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   }
+  },
+  "lwt1": {
+   "area": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "bar": {
+    "1": {
+     "area_line": 0.2,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.2,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "connected": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "dropline": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "fpfit": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "fpfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "function": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "histogram": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "kdensity": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "lfit": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "lfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "line": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "lowess": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "lpoly": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "lpolyci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "mspline": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "pcarrow": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "pcarrowi": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "pcbarrow": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "pccapsym": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "pcspike": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "qfit": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "qfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rarea": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "rbar": {
+    "1": {
+     "area_line": 0.2,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.2,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "rcap": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "rcapsym": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "rconnected": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "rline": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "rspike": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "scatter": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "spike": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   }
+  },
+  "lwt2": {
+   "area": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "bar": {
+    "1": {
+     "area_line": 0.2,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.2,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "connected": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "dropline": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "lfit_lfitci": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "lfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 2.6,
+     "line": 2.6,
+     "marker_line": 2.6
+    }
+   },
+   "lfitci_lfit": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "3": {
+     "area_line": 2.6,
+     "line": 2.6,
+     "marker_line": 2.6
+    }
+   },
+   "line": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "pcarrow": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "rarea": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "rcap": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "scatter_lfitci": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "scatterc": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   },
+   "spike": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 0.8,
+     "marker_line": 0.8
+    }
+   }
+  },
+  "lwt3": {
+   "area": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "bar": {
+    "1": {
+     "area_line": 0.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "connected": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "dropline": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lfit_lfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lfitci_lfit": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "line": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "pcarrow": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rarea": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rcap": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "scatter_lfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "scatterc": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "spike": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   }
+  },
+  "lwt4": {
+   "area": {
+    "1": {
+     "area_line": 0.8,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "bar": {
+    "1": {
+     "area_line": 0.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "connected": {
+    "1": {
+     "area_line": 4.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "dropline": {
+    "1": {
+     "area_line": 4.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lfit_lfitci": {
+    "1": {
+     "area_line": 4.2,
+     "line": 1.4,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 4.2,
+     "line": 1.4,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lfitci_lfit": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 4.2,
+     "line": 1.4,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "line": {
+    "1": {
+     "area_line": 4.2,
+     "line": 1.4,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "pcarrow": {
+    "1": {
+     "area_line": 4.2,
+     "line": 0.3,
+     "marker_line": 2.6
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rarea": {
+    "1": {
+     "area_line": 0.8,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rcap": {
+    "1": {
+     "area_line": 4.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "scatter_lfitci": {
+    "1": {
+     "area_line": 4.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "scatterc": {
+    "1": {
+     "area_line": 4.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "spike": {
+    "1": {
+     "area_line": 4.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   }
+  },
+  "lwt5": {
+   "area": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    }
+   },
+   "bar": {
+    "1": {
+     "area_line": 0.2,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.2,
+     "line": 1.4,
+     "marker_line": 1.4
+    }
+   },
+   "connected": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    }
+   },
+   "dropline": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    }
+   },
+   "lfit_lfitci": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    }
+   },
+   "lfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    }
+   },
+   "lfitci_lfit": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "3": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    }
+   },
+   "line": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    }
+   },
+   "pcarrow": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    }
+   },
+   "rarea": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    }
+   },
+   "rcap": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    }
+   },
+   "scatter_lfitci": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    }
+   },
+   "scatterc": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    }
+   },
+   "spike": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    }
+   }
+  },
+  "lwt6": {
+   "area": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "bar": {
+    "1": {
+     "area_line": 0.2,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "connected": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "dropline": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lfit_lfitci": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lfitci_lfit": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "line": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "pcarrow": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rarea": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rcap": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "scatter_lfitci": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "scatterc": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "spike": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   }
+  },
+  "lwt7": {
+   "area": {
+    "1": {
+     "area_line": 0.2,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.2,
+     "line": 1.2,
+     "marker_line": 1.2
+    }
+   },
+   "bar": {
+    "1": {
+     "area_line": 0.01,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.01,
+     "line": 1.2,
+     "marker_line": 1.2
+    }
+   },
+   "connected": {
+    "1": {
+     "area_line": 0.8,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 1.2,
+     "marker_line": 1.2
+    }
+   },
+   "dropline": {
+    "1": {
+     "area_line": 0.8,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 1.2,
+     "marker_line": 1.2
+    }
+   },
+   "lfit_lfitci": {
+    "1": {
+     "area_line": 0.8,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.8,
+     "line": 1.2,
+     "marker_line": 1.2
+    }
+   },
+   "lfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.8,
+     "line": 1.2,
+     "marker_line": 1.2
+    }
+   },
+   "lfitci_lfit": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "3": {
+     "area_line": 0.8,
+     "line": 1.2,
+     "marker_line": 1.2
+    }
+   },
+   "line": {
+    "1": {
+     "area_line": 0.8,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 1.2,
+     "marker_line": 1.2
+    }
+   },
+   "pcarrow": {
+    "1": {
+     "area_line": 0.8,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 1.2,
+     "marker_line": 1.2
+    }
+   },
+   "rarea": {
+    "1": {
+     "area_line": 0.2,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.2,
+     "line": 1.2,
+     "marker_line": 1.2
+    }
+   },
+   "rcap": {
+    "1": {
+     "area_line": 0.8,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 1.2,
+     "marker_line": 1.2
+    }
+   },
+   "scatter_lfitci": {
+    "1": {
+     "area_line": 0.8,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.8,
+     "line": 1.2,
+     "marker_line": 1.2
+    }
+   },
+   "scatterc": {
+    "1": {
+     "area_line": 0.8,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 1.2,
+     "marker_line": 1.2
+    }
+   },
+   "spike": {
+    "1": {
+     "area_line": 0.8,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.8,
+     "line": 1.2,
+     "marker_line": 1.2
+    }
+   }
+  },
+  "lwt8": {
+   "area": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "bar": {
+    "1": {
+     "area_line": 0.2,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "connected": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "dropline": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "lfit_lfitci": {
+    "1": {
+     "area_line": 1.4,
+     "line": 2.6,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "lfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 2.6,
+     "marker_line": 1.4
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "lfitci_lfit": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 1.4,
+     "line": 2.6,
+     "marker_line": 1.4
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "line": {
+    "1": {
+     "area_line": 1.4,
+     "line": 2.6,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "pcarrow": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rarea": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rcap": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "scatter_lfitci": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "scatterc": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "spike": {
+    "1": {
+     "area_line": 1.4,
+     "line": 1.4,
+     "marker_line": 1.4
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   }
+  },
+  "lwt9": {
+   "area": {
+    "1": {
+     "area_line": 0.45,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.45,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "bar": {
+    "1": {
+     "area_line": 0.8,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "connected": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "dropline": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "fpfit": {
+    "1": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "fpfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "function": {
+    "1": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "histogram": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "kdensity": {
+    "1": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "lfit": {
+    "1": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "lfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "line": {
+    "1": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "lowess": {
+    "1": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "lpoly": {
+    "1": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "lpolyci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "mband": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "mspline": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "pcarrow": {
+    "1": {
+     "area_line": 0.3,
+     "line": 1.4,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "pcbarrow": {
+    "1": {
+     "area_line": 0.3,
+     "line": 1.4,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "pccapsym": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "pcscatter": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "pcspike": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "qfit": {
+    "1": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "qfitci": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    },
+    "3": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "4": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "rarea": {
+    "1": {
+     "area_line": 0.45,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.45,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rbar": {
+    "1": {
+     "area_line": 0.8,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.2,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rcap": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rcapsym": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rconnected": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rline": {
+    "1": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 2.6,
+     "marker_line": 0.3
+    }
+   },
+   "rscatter": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "rspike": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "scatter": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   },
+   "spike": {
+    "1": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    },
+    "2": {
+     "area_line": 0.3,
+     "line": 0.3,
+     "marker_line": 0.3
+    }
+   }
+  }
+ },
+ "schemes": {
+  "lwt0": "#include s2color\n",
+  "lwt1": "#include s2color\nlinewidth p1 vthick\nlinewidth p2 thick\n",
+  "lwt2": "#include s2color\nlinewidth p1 vthick\nlinewidth p2 thick\nlinewidth p3 vvthick\nlinewidth p4 vvvthick\n",
+  "lwt3": "#include s2color\nlinewidth p1line vthick\n",
+  "lwt4": "#include s2color\nlinewidth p1lineplot vthick\nlinewidth p1area thick\nlinewidth p1arrow vvthick\nlinewidth p1other vvvthick\n",
+  "lwt5": "#include s2color\nlinewidth p vthick\n",
+  "lwt6": "#include s1manual\nlinewidth p1 vthick\n",
+  "lwt7": "#include economist\nlinewidth p1 vthick\n",
+  "lwt8": "#include s2color\nlinewidth p1 vthick\nlinewidth pline thick\nlinewidth plineplot vvthick\n",
+  "lwt9": "#include s2color\nlinewidth plineplot vvthick\nlinewidth p1arrowline vthick\nlinewidth p1bar thick\nlinewidth parea medthick\n"
+ },
+ "units": {
+  "medium": 0.3,
+  "medthick": 0.45,
+  "medthin": 0.25,
+  "thick": 0.8,
+  "thin": 0.2,
+  "vthick": 1.4,
+  "vthin": 0.15,
+  "vvthick": 2.6,
+  "vvthin": 0.01,
+  "vvvthick": 4.2
+ }
+}

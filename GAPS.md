@@ -954,8 +954,9 @@ allows.  Each is a twoway option dash does not implement; dash.sthlp's
 together).  Nothing is drawn wrong and nothing is dropped in silence, so
 what is left is the scope of twoway dash covers, not a defect of what it
 does: implementing any of them is new work, not release closeout.  `sort`
-is the one whose note misstates the page -- dash already draws what a bare
-sort asks for -- and is an open S3 entry in BUGS.md.
+was the one whose note misstated the page -- dash already draws what a bare
+sort asks for -- and since the S3 batch a bare sort on the connected types
+is taken without a note; sort(varlist) is still named.
 
 ### E2. Options dropped with *no* report — S2, CLOSED by WP-13
 

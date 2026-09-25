@@ -139,6 +139,10 @@ FAMILIES = {
     "grid_1x4": _spec(_FOUR, layout="1 4"),
     "grid_filters_left": _spec(_FOUR, _K4, layout="3 2", filter=_FILTERS,
                                filter_position="left"),
+    # BUGS.md "filterposition(left) under layout(auto) makes Bokeh print a
+    # W-1005 validation warning": the sidebar beside the automatic grid.
+    "auto_filters_left": _spec(_FOUR, _K4, filter=_FILTERS,
+                               filter_position="left"),
     "tabs": _spec(_FOUR, _K4, tabs="A: s1 h1 k1 k2 / B: s2 d1 k3 k4"),
     "tabs_facet": _spec([_graph("f", [_sc("mpg", "weight")], by="rep78"),
                          _graph("s1", [_sc("mpg", "weight")])],
@@ -151,7 +155,8 @@ FAMILIES = {
                                  by="rep78, cols(4)")]),
 }
 SERVED = ("bs_facet", "bs_filters_left", "grid_3x2_filters",
-          "grid_filters_left", "tabs_facet", "facet_linked")
+          "grid_filters_left", "auto_filters_left", "tabs_facet",
+          "facet_linked")
 
 
 def _write(spec):
@@ -485,6 +490,82 @@ class TestEveryGridIsReflowed:
         assert "_DASH_BS_STACK_BELOW_PX = 768" in src
         assert "_dash_reflow(gridplot(grid_rows" in src
         assert "_dash_reflow(row(filter_widgets" in src
+
+
+class TestTheSidebarPassesBokehValidation:
+    """BUGS.md "filterposition(left) under layout(auto) makes Bokeh print a
+    W-1005 validation warning on every build".  The sidebar was
+    ``column(..., sizing_mode="fixed", width=240)`` with no height, which
+    Bokeh's validator reports on every build (W-1005 FIXED_SIZING_MODE,
+    measured 24sep2026 through `dash build, filter(foreign)
+    filterposition(left)').  The sidebar keeps its fixed 240 px width and
+    the height of its widgets -- the drawing -- with no sizing mode that
+    asks for a height it does not have.  The Chrome families
+    ``auto_filters_left`` and ``grid_filters_left`` measure the page."""
+
+    def _roots(self, mode, name):
+        if mode == "saved":
+            _, sp, dp = _write(FAMILIES[name])
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                r = dr.DashRenderer(sp, dp)
+                r.render()
+            return [r._last_layout_root]
+        return list(_served_doc(FAMILIES[name]).roots)
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    @pytest.mark.parametrize("name", ("auto_filters_left",
+                                      "grid_filters_left"))
+    def test_no_validation_warning(self, mode, name):
+        from bokeh.core.validation import check_integrity
+        models = set()
+        for root in self._roots(mode, name):
+            models |= set(root.references())
+        issues = check_integrity(models)
+        codes = sorted("%s-%d %s" % ("W", w.code, w.name)
+                       for w in issues.warning) + sorted(
+            "E-%d %s" % (e.code, e.name) for e in issues.error)
+        assert codes == [], codes
+
+    def test_the_saved_build_logs_nothing(self):
+        """What the user saw: Bokeh's validator writes to the log when the
+        page is written."""
+        import logging
+        seen = []
+
+        class _H(logging.Handler):
+            def emit(self, record):
+                seen.append(record.getMessage())
+
+        log = logging.getLogger("bokeh.core.validation.check")
+        h = _H()
+        log.addHandler(h)
+        try:
+            _saved_page(FAMILIES["auto_filters_left"])
+        finally:
+            log.removeHandler(h)
+        assert not [m for m in seen if "W-1005" in m], seen
+
+    def test_the_guard_sees_w1005(self):
+        """Control: the check above reports a fixed column with no height."""
+        from bokeh.core.validation import check_integrity
+        from bokeh.layouts import column
+        from bokeh.models import Div
+        bad = column(Div(text="x"), sizing_mode="fixed", width=240)
+        issues = check_integrity(set(bad.references()))
+        assert [w.code for w in issues.warning] == [1005]
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_the_sidebar_keeps_its_fixed_width(self, mode):
+        from bokeh.models import Column
+        cols = [m for root in self._roots(mode, "auto_filters_left")
+                for m in root.references() if isinstance(m, Column)
+                and m.width == dr._SIDEBAR_WIDTH_PX]
+        assert len(cols) == 1, cols
+        side = cols[0]
+        assert side.width_policy == "fixed"
+        assert side.sizing_mode is None
+        assert side.height is None and side.height_policy in ("auto", "fit")
 
 
 class TestKpiCardMayNarrow:

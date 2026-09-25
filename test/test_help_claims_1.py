@@ -725,9 +725,10 @@ class TestTheFallbackTooltipIsSafe:
                         # reads what BokehJS would, "x" -- a column no
                         # renderer carries.  Every field must be one its
                         # renderers carry, and never the hostile column.
-                        # (Measured 24sep2026: dash builds no tooltip for
-                        # this figure at all, in either mode, since one of
-                        # the segment's four ends cannot be a field.)
+                        # (Measured 24sep2026 at a2c7502: dash built no
+                        # tooltip for this figure at all, in either mode;
+                        # it now builds one of the three plain ends --
+                        # test_the_tooltip_is_kept_and_the_column_named.)
                         carried = set()
                         for rd in (t.renderers
                                    if isinstance(t.renderers, list) else []):
@@ -737,6 +738,59 @@ class TestTheFallbackTooltipIsSafe:
                             f"tooltip fields {sorted(fields)} beside the "
                             f"columns its renderers carry {sorted(carried)}"
                             f": {t.tooltips}")
+
+
+    # BUGS.md "A column name holding markup gets no tooltip and no note":
+    # measured at a2c7502, the hostile pcspike above got no HoverTool in
+    # either mode and nothing said so, where dash.sthlp says every figure
+    # has tooltips.  The layer keeps its tooltip with the three plain ends,
+    # and a note names the column left out, in both modes.
+    _NOTE = "is not a plain name; leaving it out of the tooltip"
+
+    def _run(self, monkeypatch, name):
+        spec, df = self._spec_and_df(name)
+        monkeypatch.setattr(tp, "_DF", df)
+        r, w_saved, page = tp._standalone_page(spec)
+        doc, w_served = tp._served(spec)
+        return (r, w_saved, page), (doc, w_served)
+
+    def test_the_tooltip_is_kept_and_the_column_named(self, monkeypatch):
+        (r, w_saved, page), (doc, w_served) = self._run(monkeypatch,
+                                                        self._BAD)
+        for where, figs, warned in (("saved", _saved_figures(r), w_saved),
+                                    ("served", _served_figures(doc),
+                                     w_served)):
+            tools = [t for f in figs for t in f.tools
+                     if isinstance(t, HoverTool)]
+            assert len(tools) == 1, f"{where}: {tools}"
+            assert _fields(tools[0]) == {"mpg", "weight", "foreign"}, (
+                f"{where}: {tools[0].tooltips}")
+            notes = [w for w in warned if self._NOTE in w]
+            assert len(notes) == 1, f"{where}: {warned}"
+            assert "x}<img src=x onerror=alert(1)>" in notes[0], notes
+        # Never markup on the page: the name is data there, not HTML.
+        assert "<img src=x onerror" not in page
+
+    def test_a_long_or_control_laden_name_is_named_bounded(self,
+                                                           monkeypatch):
+        """Adversarial (rule 18), resource exhaustion and injection: a
+        100,000-character name holding a newline, an escape character and
+        markup is named in a note of bounded length, with no control
+        character, and the tooltip keeps the plain ends."""
+        bad = "a}\n\x1b[31m<script>alert(1)</script>" + "z" * 100_000
+        (r, w_saved, _page), (doc, w_served) = self._run(monkeypatch, bad)
+        for where, figs, warned in (("saved", _saved_figures(r), w_saved),
+                                    ("served", _served_figures(doc),
+                                     w_served)):
+            notes = [w for w in warned if self._NOTE in w]
+            assert len(notes) == 1, f"{where}: {[w[:200] for w in warned]}"
+            assert len(notes[0]) < 300, len(notes[0])
+            assert "\n" not in notes[0] and "\x1b" not in notes[0]
+            tools = [t for f in figs for t in f.tools
+                     if isinstance(t, HoverTool)]
+            assert len(tools) == 1
+            assert _fields(tools[0]) == {"mpg", "weight", "foreign"}
+            assert "<script" not in str(tools[0].tooltips)
 
 
 class TestTooltipsBesideADataLayer:

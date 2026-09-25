@@ -280,15 +280,16 @@ class TestTheChecksReachEveryScript:
     much each reader finds, measured 24sep2026."""
 
     def test_the_glob_finds_every_script(self):
-        # 64 certification scripts, each also named by run_all_cscripts.do
+        # 65 certification scripts, each also named by run_all_cscripts.do
         # (59, and WP-24's test_bug_regressions, test_program_coverage,
         # test_qualifier_literals and test_mata_library_guard; WP-27's
-        # test_qualifier_in_stata and test_string_values), less
+        # test_qualifier_in_stata and test_string_values; the S3 batch's
+        # test_ci_band_options), less
         # test_jsonio.cscript, which certified jsonio itself and went with
         # it (24sep2026).  An empty
         # glob would leave every per-script test above with no parameters,
         # and pytest reports that as a skip, not a failure.
-        assert len(_CSCRIPTS) == 64, (
+        assert len(_CSCRIPTS) == 65, (
             f"{len(_CSCRIPTS)} .cscript files found in {_HERE}"
         )
 

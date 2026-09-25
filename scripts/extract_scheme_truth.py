@@ -735,6 +735,11 @@ def extract(stata_base: str, scheme: str) -> dict:
     p_bar_colors = p_color_series("p_bar_colors", "bar")
     p_mark_colors = p_color_series("p_mark_colors", "mark")
     p_symbols = p_series("p_symbols", "symbol", "", lambda t: t)
+    # The marker size, per plot: style/markerstyle-p#.style says `set size
+    # scheme p#', so `symbolsize p#' -> `symbolsize p'.  Only s1manual's
+    # chain declares a `symbolsize p#' (scheme-s1manual.scheme:51-59).
+    p_symbolsizes = p_series("p_symbolsizes", "symbolsize", "",
+                             lambda t: resolve_sized(r, "symbolsize", t))
     p_line_patterns = p_series("p_line_patterns", "linepattern", "line",
                                lambda t: t)
     p_line_dash = [resolve_linepattern(r, t) for t in p_line_patterns]
@@ -770,15 +775,16 @@ def extract(stata_base: str, scheme: str) -> dict:
         )
 
     def scalar(out_key, cls, keys, conv, class_default=True,
-               chain_name="Stata's documented fallback"):
+               chain_name="Stata's documented fallback", required=True):
         tok, s, prov = getsrc(cls, keys, class_default=class_default,
                               chain_name=chain_name)
         sources[out_key] = s
         provenance[out_key] = prov
         if tok is None:
-            unresolvable.append(
-                f"{out_key}: none of [" + ", ".join(f"{cls} {k}" for k in keys)
-                + "] set and no class default")
+            if required:
+                unresolvable.append(
+                    f"{out_key}: none of [" + ", ".join(f"{cls} {k}" for k in keys)
+                    + "] set and no class default")
             return None
         return conv(tok)
 
@@ -839,6 +845,233 @@ def extract(stata_base: str, scheme: str) -> dict:
                  f"{info['style_file']}") if via else None)
         return tok.strip()
 
+    # --- style-file indirections: a line or a text box ------------------- #
+    # Stata draws a reference line, the plot region's border and note() by
+    # following a chain of style files, each `set <attr> scheme <key>'
+    # naming the scheme key the next link reads.  The translation carries
+    # the EFFECTIVE value under the key dash reads; a hit on that very key
+    # is a transcription, any other link is an inference whose rule spells
+    # the chain out.
+    def style_ref(setting):
+        """``("scheme", key)`` or ``("literal", token)`` or None."""
+        parts = setting.split() if setting else []
+        if len(parts) == 2 and parts[0] == "scheme":
+            return "scheme", parts[1]
+        if len(parts) == 1:
+            return "literal", parts[0].strip('"')
+        return None
+
+    def linked(out_key, dash_cls, dash_key, cls, ref, chain):
+        """The value a style file's *ref* names, with its provenance.
+
+        Sets ``sources``/``provenance`` for *out_key* and returns the raw
+        token, or None (unresolvable, or no link)."""
+        if ref is None:
+            sources[out_key] = None
+            provenance[out_key] = None
+            unresolvable.append(f"{out_key}: {chain} sets no {cls}")
+            return None
+        if ref[0] == "literal":
+            sources[out_key] = f"{chain}: {cls} {ref[1]}"
+            provenance[out_key] = {
+                "kind": "inferred", "directive": (f"{dash_cls} {dash_key}" if dash_key else dash_cls),
+                "value": ref[1], "file": chain.rsplit(" -> ", 1)[-1], "line": None,
+                "rule": f"{chain} sets the literal {cls} `{ref[1]}'"}
+            return ref[1]
+        key = ref[1]
+        tok = r.get(cls, key, class_default=False)
+        via_default = False
+        if tok is None:
+            tok = r.settings.get((cls, ""))
+            via_default = tok is not None
+        if tok is None:
+            sources[out_key] = None
+            provenance[out_key] = None
+            unresolvable.append(
+                f"{out_key}: {chain} reads `{cls} {key}', which is not set "
+                "anywhere in the #include chain and has no class default")
+            return None
+        if via_default:
+            sources[out_key] = f"{cls} <class-default>"
+            provenance[out_key] = prov_entry("inferred", cls, "", rule=(
+                f"{chain} reads `{cls} {key}', which is not set anywhere in "
+                f"the #include chain; took the bare `{spelled(cls, '')}' "
+                "class default"))
+        elif (cls, key) == (dash_cls, dash_key):
+            sources[out_key] = f"{cls} {key}"
+            provenance[out_key] = prov_entry("transcribed", cls, key)
+        else:
+            sources[out_key] = f"{cls} {key}"
+            provenance[out_key] = prov_entry("inferred", cls, key, rule=(
+                f"{chain} reads `{spelled(cls, key)}'"))
+        return tok
+
+    def line_via(prefix, dash_key_color, dash_key_line, ls_name, chain):
+        """Colour, width and pattern of linestyle *ls_name*: the effective
+        border or line, recorded as <prefix>_color / _line_width /
+        _pattern (and _drawn).  None colour means Stata draws no line."""
+        st = r.style("linestyle", ls_name.lower())
+        lchain = f"{chain} -> style/linestyle-{ls_name.lower()}.style"
+        if st is None:
+            unresolvable.append(f"{prefix}: no style/linestyle-"
+                                f"{ls_name.lower()}.style")
+            st = {}
+        ctok = linked(f"{prefix}_color", "color", dash_key_color, "color",
+                      style_ref(st.get("color")), lchain)
+        wtok = linked(f"{prefix}_line_width", "linewidth", dash_key_line,
+                      "linewidth", style_ref(st.get("width")), lchain)
+        ptok = linked(f"{prefix}_pattern", "linepattern", dash_key_line,
+                      "linepattern", style_ref(st.get("pattern")), lchain)
+        hexval = c.resolve(ctok) if ctok is not None else None
+        width = resolve_linewidth(r, wtok)
+        drawn = (hexval is not None
+                 and not (width and width.get("value") == 0))
+        if not drawn:
+            # The border is not drawn: the colour's provenance says why,
+            # and a width or pattern of a line that is not drawn is not
+            # carried.
+            if provenance.get(f"{prefix}_color") is None:
+                provenance[f"{prefix}_color"] = {
+                    "kind": "inferred",
+                    "directive": f"color {dash_key_color}", "value": "none",
+                    "file": lchain.rsplit(" -> ", 1)[-1], "line": None,
+                    "rule": f"{lchain} draws no line"}
+        return {
+            f"{prefix}_drawn": drawn,
+            f"{prefix}_color": hexval if drawn else None,
+            f"{prefix}_line_width": width if drawn else None,
+            f"{prefix}_pattern": (ptok.strip().strip('"')
+                                  if drawn and ptok is not None else None),
+        }
+
+    # Reference lines.  twoway's xline()/yline() build their gridline with
+    # `.gridlinestyle.new, style(scheme)' (_gs_parse_and_log_lines.ado):
+    # the `gridlinestyle' class default, whose style file sets `linestyle
+    # scheme xyline'; `linestyle xyline' names style/linestyle-<name>.style,
+    # which reads `color xyline', `linewidth xyline' and `linepattern
+    # xyline'.
+    def xyline_truth():
+        gls = (r.settings.get(("gridlinestyle", "")) or "default").strip()
+        gst = r.style("gridlinestyle", gls.lower()) or {}
+        chain = (f"gridlinestyle {gls} -> "
+                 f"style/gridlinestyle-{gls.lower()}.style")
+        ref = style_ref(gst.get("linestyle"))
+        if ref is not None and ref[0] == "scheme":
+            ls = r.get("linestyle", ref[1], class_default=True)
+            chain += f" -> linestyle {ref[1]} {ls}"
+        else:
+            ls = ref[1] if ref else None
+        if not ls:
+            unresolvable.append(f"xyline: {chain} names no linestyle")
+            return {"xyline_drawn": False, "xyline_color": None,
+                    "xyline_line_width": None, "xyline_pattern": None}
+        return line_via("xyline", "xyline", "xyline", ls.strip(), chain)
+
+    # The plot region's border.  twoway draws its plot region in
+    # `plotregionstyle twoway', whose style file sets `boxstyle scheme
+    # twoway_plotregion'; that areastyle sets `linestyle scheme plotregion'
+    # (or `none'), and the linestyle file reads `color plotregion_line',
+    # `linewidth plotregion' and `linepattern plotregion' (s2color), or
+    # the foreground's (s1color), or draws none (economist).
+    def plotregion_line_truth():
+        prs = (r.get("plotregionstyle", "twoway", class_default=False)
+               or "twoway").strip()
+        pst = r.style("plotregionstyle", prs.lower()) or {}
+        chain = (f"plotregionstyle twoway {prs} -> "
+                 f"style/plotregionstyle-{prs.lower()}.style")
+        ref = style_ref(pst.get("boxstyle"))
+        area, area_key = None, None
+        if ref is not None and ref[0] == "scheme":
+            area_key = ref[1]
+            area = r.get("areastyle", area_key, class_default=True)
+            chain += f" -> areastyle {area_key} {area}"
+        elif ref is not None:
+            area = ref[1]
+        ast = r.style("areastyle", (area or "").strip().lower()) or {}
+        chain += f" -> style/areastyle-{(area or '').strip().lower()}.style"
+        ref = style_ref(ast.get("linestyle"))
+        if ref is not None and ref[0] == "scheme":
+            ls = r.get("linestyle", ref[1], class_default=True)
+            chain += f" -> linestyle {ref[1]} {ls}"
+        else:
+            ls = ref[1] if ref else None
+        if not ls:
+            unresolvable.append(f"plotregion_line: {chain} names no linestyle")
+            return {"plotregion_line_drawn": False,
+                    "plotregion_line_color": None,
+                    "plotregion_line_line_width": None,
+                    "plotregion_line_pattern": None}
+        out_ = line_via("plotregion_line", "plotregion_line", "plotregion",
+                        ls.strip(), chain)
+        if (not out_["plotregion_line_drawn"] and area_key
+                and r.origins.get(("areastyle", area_key))):
+            # Where the chain ends in no line, name the directive that
+            # took it there (economist: `areastyle twoway_plotregion none').
+            provenance["plotregion_line_color"] = prov_entry(
+                "inferred", "areastyle", area_key, rule=(
+                    f"{chain}: Stata draws no border"))
+        return out_
+
+    # note().  Stata draws it in `textboxstyle note' (small_body in
+    # s2color; economist reverse_big, s1manual key_label), whose style
+    # file names the size, colour, box and fill keys.
+    def note_truth():
+        tb = r.get("textboxstyle", "note", class_default=False)
+        name = (tb or "small_body").strip().strip('"')
+        if tb is not None:
+            sources["note_textbox"] = "textboxstyle note"
+            provenance["note_textbox"] = prov_entry(
+                "transcribed", "textboxstyle", "note")
+        else:
+            sources["note_textbox"] = None
+            provenance["note_textbox"] = None
+            unresolvable.append("note_textbox: `textboxstyle note' is not "
+                                "set anywhere in the #include chain")
+        st = r.style("textboxstyle", name.lower()) or {}
+        chain = f"textboxstyle note {name} -> " \
+                f"style/textboxstyle-{name.lower()}.style"
+        size_ref = style_ref(st.get("size"))
+        color_ref = style_ref(st.get("color"))
+        draw_ref = style_ref(st.get("drawbox"))
+        fill_ref = style_ref(st.get("fillcolor"))
+        size_key = size_ref[1] if size_ref and size_ref[0] == "scheme" else None
+        color_key = (color_ref[1] if color_ref and color_ref[0] == "scheme"
+                     else None)
+        draw_key = draw_ref[1] if draw_ref and draw_ref[0] == "scheme" else None
+        fill_key = fill_ref[1] if fill_ref and fill_ref[0] == "scheme" else None
+        size_tok = linked("note_text_size", "gsize", size_key, "gsize",
+                          size_ref, chain)
+        color_tok = linked("note_text_color", "color", color_key, "color",
+                           color_ref, chain)
+        if draw_ref is None:
+            drawn = False
+        elif draw_ref[0] == "literal":
+            drawn = draw_ref[1].lower() == "yes"
+        else:
+            v = r.get("yesno", draw_key, class_default=False)
+            drawn = (v or "no").strip().lower() == "yes"
+        fill = None
+        if drawn:
+            ftok = linked("note_box_fill_color", "color", fill_key, "color",
+                          fill_ref, chain)
+            fill = c.resolve(ftok) if ftok is not None else None
+        else:
+            sources["note_box_fill_color"] = None
+            provenance["note_box_fill_color"] = None
+        return {
+            "note_textbox": {"name": name, "size_key": size_key,
+                             "color_key": color_key,
+                             "drawbox": (True if draw_ref and
+                                         draw_ref[0] == "literal" and drawn
+                                         else draw_key),
+                             "fill_key": fill_key},
+            "note_text_size": resolve_sized(r, "gsize", size_tok),
+            "note_text_color": (c.resolve(color_tok)
+                                if color_tok is not None else None),
+            "note_box_drawn": drawn,
+            "note_box_fill_color": fill,
+        }
+
     out = {
         # Stata's own `label "..."' for the scheme.
         "label": r.label,
@@ -850,6 +1083,7 @@ def extract(stata_base: str, scheme: str) -> dict:
         "p_bar_colors": p_bar_colors,
         "p_mark_colors": p_mark_colors,
         "p_symbols": p_symbols,
+        "p_symbolsizes": p_symbolsizes,
         "p_line_patterns": p_line_patterns,
         "p_line_dash_patterns": [d["dash"] if d else None for d in p_line_dash],
 
@@ -931,6 +1165,69 @@ def extract(stata_base: str, scheme: str) -> dict:
         "axis_line_width": scalar(
             "axis_line_width", "linewidth", ["axisline"],
             lambda t: resolve_linewidth(r, t), class_default=True),
+        # A bar's and an area's outline: linestyle-p#bar.style and
+        # linestyle-p#area.style read `linewidth p#bar' and `p#area', which
+        # fall to `pbar' and `parea'.  Every Stata scheme sets `linewidth
+        # pbar' (s2color thin, economist vvthin); only economist sets
+        # `parea' (thin), so an absent one is ordinary (the chain goes on
+        # to p# and p) and not unresolvable.  No Stata scheme sets a
+        # numbered p#bar, p#area or any p#mark/pmark width.
+        "bar_line_width": scalar(
+            "bar_line_width", "linewidth", ["pbar"],
+            lambda t: resolve_linewidth(r, t), class_default=False,
+            required=False),
+        "area_line_width": scalar(
+            "area_line_width", "linewidth", ["parea"],
+            lambda t: resolve_linewidth(r, t), class_default=False,
+            required=False),
+
+        # A ci fit's band and, under pstyle(ci) or pstyle(ci2), its line.
+        # twoway draws the band in areastyle ci (style/areastyle-ci.style:
+        # `set linestyle scheme ci_area', `set shadestyle scheme ci'), so
+        # its fill is `color ci_area' at `intensity ci_area'
+        # (shadestyle-ci.style) and its outline `color ci_arealine' at
+        # `linewidth ci_area' and `linepattern ci_area'
+        # (linestyle-ci_area.style); linestyle-ci.style reads `color
+        # ci_line', `linewidth ci' and `linepattern ci'.  ci2 reads only
+        # three keys of its own: shadestyle-ci2.style `color ci2_area' (at
+        # `intensity ci_area'), linestyle-ci2_area.style `color
+        # ci2_arealine' and `linewidth ci2_area' (at `linepattern
+        # ci_area'), and linestyle-ci2.style is ci's line (measured
+        # 24sep2026 from the graph object under all twenty schemes;
+        # test/fixtures/ci_band_style_truth.json).  A width, intensity or
+        # pattern no file in the chain writes is the class default, as
+        # Stata's scheme.class returns it.
+        "ci_area_color": color_of("ci_area_color", ["ci_area"]),
+        "ci_arealine_color": color_of("ci_arealine_color", ["ci_arealine"]),
+        "ci_line_color": color_of("ci_line_color", ["ci_line"]),
+        "ci2_area_color": color_of("ci2_area_color", ["ci2_area"]),
+        "ci2_arealine_color": color_of("ci2_arealine_color",
+                                       ["ci2_arealine"]),
+        "ci_area_alpha": scalar("ci_area_alpha", "intensity", ["ci_area"],
+                                lambda t: resolve_intensity(r, t)),
+        "ci_area_line_width": scalar(
+            "ci_area_line_width", "linewidth", ["ci_area"],
+            lambda t: resolve_linewidth(r, t), class_default=True),
+        "ci2_area_line_width": scalar(
+            "ci2_area_line_width", "linewidth", ["ci2_area"],
+            lambda t: resolve_linewidth(r, t), class_default=True),
+        "ci_line_width": scalar(
+            "ci_line_width", "linewidth", ["ci"],
+            lambda t: resolve_linewidth(r, t), class_default=True),
+        "ci_area_pattern": scalar(
+            "ci_area_pattern", "linepattern", ["ci_area"],
+            lambda t: t.strip().strip('"')),
+        "ci_pattern": scalar(
+            "ci_pattern", "linepattern", ["ci"],
+            lambda t: t.strip().strip('"')),
+        # A ci band under pstyle(p#) is areastyle p# (areastyle-p#.style:
+        # linestyle and shadestyle p#other), whose outline width is
+        # `linewidth p#other' -> `pother' -> p# -> p.  Only economist sets
+        # `linewidth pother' (thick); an absent one is ordinary.
+        "other_line_width": scalar(
+            "other_line_width", "linewidth", ["pother"],
+            lambda t: resolve_linewidth(r, t), class_default=False,
+            required=False),
 
         "fill_alpha": scalar("fill_alpha", "intensity", ["p"],
                              lambda t: resolve_intensity(r, t)),
@@ -977,6 +1274,9 @@ def extract(stata_base: str, scheme: str) -> dict:
                               lambda t: _as_number(t.strip()),
                               class_default=False),
     }
+    out.update(xyline_truth())
+    out.update(plotregion_line_truth())
+    out.update(note_truth())
     out.update(opacities)
 
     out["sources"] = sources
@@ -996,8 +1296,12 @@ def extract(stata_base: str, scheme: str) -> dict:
 #
 # A translated file is Stata's own one-directive-per-line grammar with every
 # colour pre-resolved to #rrggbb (plus Stata's %NN opacity suffix where the
-# scheme carries one) and the p#stub -> pstub -> p# -> p fallback flattened
-# into explicit p1..p15 lines, because SchemeParser reads by exact key.  The
+# scheme carries one).  A p#stub cycle (p#line, p#bar, p#mark, p#lineplot)
+# carries only the keys Stata's own chain declares, and SchemeParser follows
+# p#stub -> pstub -> p# -> p itself; the marker symbols likewise carry only
+# the `symbol p#' / `symbol p' keys the chain declares.  A resolved p#stub or
+# `symbol p#' line an older translation carried is removed
+# (_drop_undeclared_stubs).  The
 # files carry hand-written comments, so they are UPDATED IN PLACE rather than
 # rewritten: every directive the fixture pins is checked against the file; a
 # directive whose value disagrees is corrected on its own line and reported on
@@ -1100,11 +1404,6 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
                  (fixture_key, i))
                 for i in range(1, N_PLOTS + 1) if len(vals) >= i]
 
-    def name_cycle(cls, stub, fixture_key):
-        vals = e.get(fixture_key) or []
-        return [(cls, f"p{i}{stub}", vals[i - 1], (fixture_key, i))
-                for i in range(1, N_PLOTS + 1) if len(vals) >= i]
-
     group(["Background and region colours."], [
         scalar("color", "background", "background_color"),
         scalar("color", "plotregion", "plotregion_color"),
@@ -1120,28 +1419,112 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
            "appended."], [
         scalar("color", "grid", "grid_color_generic"),
     ], optional=True)
-    for stub, key in (("", "p_colors"), ("line", "p_line_colors"),
-                      ("bar", "p_bar_colors"), ("mark", "p_mark_colors")):
-        group([f"Per-plot colour cycle p#{stub} (Stata's p#stub -> pstub -> p# -> p chain, flattened)."],
-              color_cycle(stub, key))
-    decl = e.get("lineplot_declared") or {}
-    if decl.get("color"):
-        group(["Per-plot `twoway line' colour (Stata: color p#lineplot; declared by this chain)."],
-              color_cycle("lineplot", "p_lineplot_colors"))
-    group(["Marker symbol cycle."], name_cycle("symbol", "", "p_symbols"))
-    group(["Line patterns of the connecting line (Stata: linepattern p#line)."],
-          name_cycle("linepattern", "line", "p_line_patterns"))
-    if decl.get("linepattern"):
-        group(["Line patterns of `twoway line' (Stata: linepattern p#lineplot; declared by this chain)."],
-              name_cycle("linepattern", "lineplot", "p_lineplot_patterns"))
+    # A p#stub cycle carries only the keys Stata's own #include chain
+    # DECLARES -- the key its p#stub -> pstub -> p# -> p lookup stopped at
+    # -- and SchemeParser follows the chain itself.  Writing the chain out
+    # resolved, `color p1mark' and the rest, made the translation declare
+    # keys Stata's file does not, so a user's `#include s2color' then
+    # `color p1 red' reached a line plot and not a marker, a bar or a
+    # connecting line, where Stata reaches all four (measured 24sep2026).
+    seen: set = set()
+
+    def declared_cycle(cls, stub, fixture_key, colour, conv=None,
+                       numbered_only=False):
+        vals = e.get(fixture_key) or []
+        pcts = e.get(f"{fixture_key}_opacity") or [None] * len(vals)
+        prov = (e.get("provenance") or {}).get(fixture_key) or []
+        items = []
+        for i in range(1, min(N_PLOTS, len(vals)) + 1):
+            entry = prov[i - 1] if len(prov) >= i else None
+            tokens = ((entry or {}).get("directive") or "").split()
+            if len(tokens) != 2 or tokens[0] != cls:
+                continue
+            key = tokens[1]
+            if cls == "color" and re.fullmatch(r"p\d+", key):
+                continue    # the p# cycle above carries it
+            if numbered_only and not re.fullmatch(r"p\d+", key):
+                continue    # the bare `p' is written as a scalar
+            if (cls, key) in seen:
+                continue
+            seen.add((cls, key))
+            value = (_color_token(vals[i - 1],
+                                  pcts[i - 1] if len(pcts) >= i else None)
+                     if colour else vals[i - 1])
+            if conv is not None:
+                value = conv(value)
+            items.append((cls, key, value, (fixture_key, i)))
+        return items
+
+    def chain_comment(cls, stub):
+        return [f"Per-plot {cls} p#{stub}: only the keys this scheme's #include chain",
+                f"declares.  SchemeParser resolves p#{stub} -> p{stub} -> p# -> p",
+                "itself, as Stata's scheme.class does, so nothing is written for a",
+                "step the chain does not declare."]
+
+    group(["Per-plot colour cycle p# (Stata: color p#)."],
+          color_cycle("", "p_colors"))
+    for stub, key in (("line", "p_line_colors"), ("bar", "p_bar_colors"),
+                      ("mark", "p_mark_colors"),
+                      ("lineplot", "p_lineplot_colors")):
+        group(chain_comment("color", stub),
+              declared_cycle("color", stub, key, True))
+    # The marker symbols follow the same rule: style/markerstyle-p#.style
+    # reads `symbol p#', which falls back to `symbol p'.  Spelling the
+    # fallback out as `symbol p1'..`symbol p15' made a user's `#include
+    # s2color' then `symbol p diamond' reach no plot, where Stata draws
+    # every marker a diamond (measured 24sep2026, S3 batch).
+    group(["Marker symbol cycle: only the keys this scheme's #include chain",
+           "declares.  SchemeParser resolves symbol p# -> symbol p itself, as",
+           "Stata's scheme.class does (style/markerstyle-p#.style: `set symbol",
+           "scheme p#'), so nothing is written for a step the chain does not",
+           "declare."],
+          declared_cycle("symbol", "", "p_symbols", False))
+    for stub, key in (("line", "p_line_patterns"),
+                      ("lineplot", "p_lineplot_patterns")):
+        group(chain_comment("linepattern", stub),
+              declared_cycle("linepattern", stub, key, False))
     group(["Line widths (Stata linewidth style names)."], [
         scalar("linewidth", "p", "default_line_width", use_name=True),
         scalar("linewidth", "major_grid", "grid_line_width", use_name=True),
+    ])
+    group(["Bar and area outline widths (Stata: linewidth pbar, linewidth",
+           "parea), only where this scheme's #include chain declares them.",
+           "SchemeParser.plot_line_width resolves p#bar -> pbar (a bar stops",
+           "there) and p#area -> parea -> p# -> p itself."], [
+        scalar("linewidth", "pbar", "bar_line_width", use_name=True),
+        scalar("linewidth", "parea", "area_line_width", use_name=True),
     ])
     group(["Fill intensities."], [
         scalar("intensity", "p", "fill_alpha", use_name=True),
         scalar("intensity", "bar", "bar_alpha", use_name=True),
         scalar("intensity", "area", "area_alpha", use_name=True),
+    ])
+    group(["A ci fit's band: areastyle ci (style/areastyle-ci.style) fills",
+           "it in `color ci_area' at `intensity ci_area' and outlines it in",
+           "`color ci_arealine' at `linewidth ci_area' and `linepattern",
+           "ci_area'.  pstyle(ci2) reads `color ci2_area', `color",
+           "ci2_arealine' and `linewidth ci2_area' and ci's other keys.",
+           "pstyle(ci) and pstyle(ci2) draw the fit line in linestyle ci:",
+           "`color ci_line', `linewidth ci', `linepattern ci'.  A width,",
+           "intensity or pattern no file in the #include chain writes is",
+           "Stata's class default, written here."], [
+        scalar("color", "ci_area", "ci_area_color"),
+        scalar("color", "ci_arealine", "ci_arealine_color"),
+        scalar("intensity", "ci_area", "ci_area_alpha", use_name=True),
+        scalar("linewidth", "ci_area", "ci_area_line_width", use_name=True),
+        scalar("linepattern", "ci_area", "ci_area_pattern"),
+        scalar("color", "ci_line", "ci_line_color"),
+        scalar("linewidth", "ci", "ci_line_width", use_name=True),
+        scalar("linepattern", "ci", "ci_pattern"),
+        scalar("color", "ci2_area", "ci2_area_color"),
+        scalar("color", "ci2_arealine", "ci2_arealine_color"),
+        scalar("linewidth", "ci2_area", "ci2_area_line_width",
+               use_name=True),
+    ])
+    group(["A ci band's outline under pstyle(p#) (Stata: linewidth pother),",
+           "only where this scheme's #include chain declares it.",
+           "SchemeParser resolves p#other -> pother -> p# -> p itself."], [
+        scalar("linewidth", "pother", "other_line_width", use_name=True),
     ])
     group(["Font sizes (Stata gsize style names, relative units)."], [
         scalar("gsize", "text", "text_size", use_name=True),
@@ -1159,6 +1542,16 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         scalar("clockdir", "legend_position", "legend_position"),
         scalar("numstyle", "legend_cols", "legend_cols"),
     ])
+    # style/markerstyle-p#.style: `set size scheme p#', falling back to the
+    # `symbolsize p' above.  Only the `symbolsize p#' keys the chain
+    # declares are written (s1manual's p1..p9), so a user's `symbolsize p'
+    # reaches the plots Stata's reaches.
+    group(["Per-plot marker size symbolsize p#: only the keys this scheme's",
+           "#include chain declares.  SchemeParser resolves symbolsize p# ->",
+           "symbolsize p itself (style/markerstyle-p#.style: `set size scheme",
+           "p#'), as Stata's scheme.class does."],
+          declared_cycle("symbolsize", "", "p_symbolsizes", False,
+                         conv=name_of, numbered_only=True))
     group(["Major grid switches (effective per-axis values; see the minor-grid note)."], [
         scalar("yesno", "draw_major_hgrid", "draw_major_hgrid"),
         scalar("yesno", "draw_major_vgrid", "draw_major_vgrid"),
@@ -1205,7 +1598,67 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
     group(["Legend rows; 0 means not fixed, so the column count above decides."], [
         scalar("numstyle", "legend_rows", "legend_rows"),
     ])
-    return groups
+
+    # --- style-file indirections, carried as their EFFECTIVE values -------- #
+    def drawn_color(prefix):
+        """A line's colour token: #rrggbb, or `none' where Stata draws no
+        line (economist's plot region)."""
+        if e.get(f"{prefix}_drawn") is False:
+            return "none"
+        return e.get(f"{prefix}_color")
+
+    group([
+        "Reference lines, xline() and yline(): twoway draws them in the",
+        "`gridlinestyle' class default, whose style file reads `linestyle",
+        "xyline'; that linestyle reads these three keys.",
+    ], [
+        scalar("color", "xyline", "xyline_color", value=drawn_color("xyline")),
+        scalar("linepattern", "xyline", "xyline_pattern"),
+        scalar("linewidth", "xyline", "xyline_line_width", use_name=True),
+    ])
+    group([
+        "The plot region's border, EFFECTIVE: plotregionstyle twoway ->",
+        "areastyle twoway_plotregion -> its linestyle.  `none' where Stata",
+        "draws no border; a scheme whose border is the foreground line",
+        "(s1color) carries the foreground's colour and width here.",
+    ], [
+        scalar("color", "plotregion_line", "plotregion_line_color",
+               value=drawn_color("plotregion_line")),
+        scalar("linewidth", "plotregion", "plotregion_line_line_width",
+               use_name=True),
+        scalar("linepattern", "plotregion", "plotregion_line_pattern"),
+    ])
+    tb = e.get("note_textbox") or {}
+    note_items = [("textboxstyle", "note", tb.get("name"),
+                   ("note_textbox", None))]
+    if tb.get("size_key"):
+        note_items.append(scalar("gsize", tb["size_key"], "note_text_size",
+                                 use_name=True))
+    if tb.get("color_key"):
+        note_items.append(scalar("color", tb["color_key"], "note_text_color"))
+    if e.get("note_box_drawn") and tb.get("fill_key"):
+        note_items.append(scalar("color", tb["fill_key"],
+                                 "note_box_fill_color"))
+    group([
+        "note()'s text box (Stata: textboxstyle note) and the keys that box",
+        "reads for its size, text colour and, where it draws a box, fill.",
+    ], note_items)
+
+    # A directive an earlier group already carries is not carried twice
+    # (note()'s small_body box is `gsize small_body' above).
+    seen: set = set()
+    out_groups = []
+    for comment, items, optional in groups:
+        kept = []
+        for item in items:
+            ck = (item[0], item[1].lower())
+            if ck in seen:
+                continue
+            seen.add(ck)
+            kept.append(item)
+        if kept:
+            out_groups.append((comment, kept, optional))
+    return out_groups
 
 
 def _file_directives(lines: list[str]) -> dict:
@@ -1247,8 +1700,9 @@ def _render_block(name: str, e: dict, groups, stamp: str,
             "* from test/fixtures/scheme_truth.json.  Every value is resolved from",
             "* Stata's own #include chain and style files (chain:",
             f"* {_chain_text(name, e)}); colours are pre-resolved #rrggbb, a %NN",
-            "* suffix being Stata's opacity kept as written; every p#stub is spelled",
-            "* out p1..p15.  Re-running the script re-checks every directive here.",
+            "* suffix being Stata's opacity kept as written; a p#stub cycle carries",
+            "* only the keys Stata's chain declares, which SchemeParser follows.",
+            "* Re-running the script re-checks every directive here.",
             _RULE,
         ]
     else:
@@ -1290,8 +1744,9 @@ def _new_file_header(name: str, e: dict, stata_base: str, stamp: str) -> list[st
         "*",
         "* Every colour below is a RESOLVED #rrggbb value, not a Stata colour name",
         "* (a %NN suffix is Stata's opacity, kept as the scheme writes it), and",
-        "* every p#stub is spelled out p1..p15 because SchemeParser reads by exact",
-        "* key with no fallback.  The provenance block at the end says, for every",
+        "* a p#stub cycle carries only the keys Stata's own chain declares, since",
+        "* SchemeParser follows p#stub -> pstub -> p# -> p itself.  The",
+        "* provenance block at the end says, for every",
         "* directive, which Stata directive it was transcribed from or which",
         "* fallback rule inferred it.",
         "*",
@@ -1341,6 +1796,13 @@ def provenance_block(name: str, e: dict, groups, present: dict) -> "list[str] | 
             entry = prov.get(fixture_key)
             if isinstance(entry, list):
                 entry = entry[index - 1] if index and len(entry) >= index else None
+            # The fixture calls a p#stub value "inferred" when Stata's chain
+            # stopped at a shorter key (`color pline').  A directive that IS
+            # that key was transcribed, not inferred.
+            if (isinstance(entry, dict) and entry.get("kind") == "inferred"
+                    and (entry.get("directive") or "").lower()
+                    == f"{cls} {key}".lower()):
+                entry = dict(entry, kind="transcribed")
             text = _provenance_text(entry)
             if text is None:
                 continue
@@ -1401,9 +1863,10 @@ def update_scheme_file(path: str, name: str, e: dict, stata_base: str,
     else:
         with open(path, "r", encoding="utf-8") as fh:
             lines = fh.read().split("\n")
+    groups = expected_directives(e)
+    removed = _drop_undeclared_stubs(lines, groups)
     present = _file_directives(lines)
     changed, added, append_groups = [], [], []
-    groups = expected_directives(e)
     for comment, items, optional in groups:
         missing = []
         for cls, key, value, ref in items:
@@ -1430,14 +1893,58 @@ def update_scheme_file(path: str, name: str, e: dict, stata_base: str,
     present = _file_directives(lines)
     block = provenance_block(name, e, groups, present)
     prov_state = _upsert_provenance(lines, block) if block else None
-    if created or changed or added or prov_state:
+    if created or changed or added or removed or prov_state:
         text = "\n".join(lines)
         if not text.endswith("\n"):
             text += "\n"
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(text)
-    return {"changed": changed, "added": added, "created": created,
-            "provenance": prov_state}
+    return {"changed": changed, "added": added, "removed": removed,
+            "created": created, "provenance": prov_state}
+
+
+#: The resolved p#stub keys an older translation wrote out p1..p15.
+_STUB_KEY = {
+    "color": re.compile(r"p\d+(line|bar|mark|lineplot)"),
+    "linepattern": re.compile(r"p\d+(line|lineplot)"),
+    "symbol": re.compile(r"p\d+"),
+    "symbolsize": re.compile(r"p\d+"),
+}
+
+
+def _drop_undeclared_stubs(lines: list[str], groups) -> list[str]:
+    """Remove, in place, every ``color p#line|bar|mark|lineplot``,
+    ``linepattern p#line|lineplot`` and ``symbol p#`` directive that
+    *groups* does not expect
+    -- the chain an older translation wrote out resolved -- and return
+    them as ``"<class> <key>"``.  A paragraph (the lines between blank
+    lines) left with no directive goes whole, its comment with it, since
+    the comment described the lines removed."""
+    expected = {(c, k.lower()) for _cm, items, _o in groups
+                for c, k, _v, _r in items}
+    present = _file_directives(lines)
+    drop = {}
+    for (cls, key), (idx, _old) in present.items():
+        pat = _STUB_KEY.get(cls)
+        if pat and pat.fullmatch(key) and (cls, key) not in expected:
+            drop[idx] = f"{cls} {key}"
+    if not drop:
+        return []
+    directive_at = {idx for idx, _v in present.values()}
+    kill = set(drop)
+    start = 0
+    for end in range(len(lines) + 1):
+        if end < len(lines) and lines[end].strip():
+            continue
+        para = range(start, end)
+        ds = [i for i in para if i in directive_at]
+        if ds and all(i in drop for i in ds):
+            kill.update(para)
+            if end < len(lines):
+                kill.add(end)       # and one blank line after it
+        start = end + 1
+    lines[:] = [ln for i, ln in enumerate(lines) if i not in kill]
+    return [drop[i] for i in sorted(drop)]
 
 
 # --------------------------------------------------------------------------- #
@@ -1660,7 +2167,27 @@ def main(argv=None) -> int:
                               "color": "color body"},
                 "note()": {"style": "small_body", "size": "gsize small_body",
                            "color": "color small_body",
-                           "note": "Stata's note textbox does not read gsize note"},
+                           "note": "Stata's note textbox does not read gsize "
+                                   "note; the box is the scheme's "
+                                   "`textboxstyle note' (small_body in "
+                                   "s2color, reverse_big in economist, "
+                                   "key_label in s1manual), resolved per "
+                                   "scheme in note_textbox, note_text_size, "
+                                   "note_text_color and note_box_fill_color"},
+                "xline()/yline()": {
+                    "style": "linestyle xyline",
+                    "note": "the gridlinestyle class default's style file "
+                            "reads `linestyle xyline'; resolved per scheme "
+                            "in xyline_color, xyline_pattern and "
+                            "xyline_line_width"},
+                "plot region border": {
+                    "style": "areastyle twoway_plotregion",
+                    "note": "plotregionstyle twoway -> areastyle "
+                            "twoway_plotregion -> its linestyle; resolved "
+                            "per scheme in plotregion_line_drawn, "
+                            "plotregion_line_color, "
+                            "plotregion_line_line_width and "
+                            "plotregion_line_pattern"},
                 "legend keys": {"style": "key_label", "size": "gsize key_label",
                                 "color": "color key_label"},
                 "axis titles": {"style": "axis_title", "size": "gsize axis_title",

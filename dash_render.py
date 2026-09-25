@@ -550,6 +550,88 @@ def _dash_float_values(col, coerce: bool = False) -> "np.ndarray":
     return arr.astype(float, copy=False)
 
 
+def _dash_read_data_json(text):
+    """Parse the data file, each number as Stata holds it.
+
+    Stata holds every number as a double, or as missing: nothing beyond a
+    double's range (about 8.99e307), no infinity and no NaN.  Python's
+    reader made an integer literal an int of any size, so a hand-written or
+    corrupted file holding a 401-digit integer stopped ``pd.DataFrame``
+    with OverflowError, and one past 4,300 digits stopped the reader itself
+    with ValueError, in both loaders (BUGS.md, "A 401-digit integer in the
+    data file stops both loaders").  dash's own writer writes every number
+    as a double, so this changes nothing it writes.
+
+    * An integer of at most 17 characters within +/-2^53 stays an int (the
+      file's counts, and an old file's integer values, keep their type; a
+      double holds each exactly).  Any other integer is the double nearest
+      to it, as Stata would hold it -- ``float()`` of the digits, which is
+      linear in their number and has no length limit.
+    * A value beyond a double's range, and the literals ``NaN``,
+      ``Infinity`` and ``-Infinity`` (which Python's reader accepts), are
+      missing, ``None``.
+
+    Args:
+        text: The file's text (``str`` or UTF-8 ``bytes``).
+
+    Returns:
+        The parsed JSON.
+    """
+    def _double(s):
+        v = float(s)
+        return v if math.isfinite(v) else None
+
+    def _integer(s):
+        if len(s) <= 17:
+            v = int(s)
+            if -9007199254740992 <= v <= 9007199254740992:
+                return v
+        return _double(s)
+
+    return json.loads(text, parse_int=_integer, parse_float=_double,
+                      parse_constant=lambda _name: None)
+
+
+def _dash_empty_frame(names, string_vars=()):
+    """The frame of a dataset with no observations: its variables as
+    columns, none of them holding a row.
+
+    The data file of an empty dataset names the variables and holds no
+    records, and ``pd.DataFrame([])`` has no columns, so both loaders
+    reported the variables a layer names as "not found in data source" and
+    Bokeh logged MISSING_RENDERERS (BUGS.md, "A dataset with no observations
+    is reported as missing the variables it has").  twoway draws a
+    scatter's empty region in silence; with its columns the layer does too.
+
+    Args:
+        names:       The file's ``variableNames``.  Data, not trusted: only
+                     strings are taken, each once, in order; anything that
+                     is not a list is read as no names.
+        string_vars: The string variables, held as text; the rest as
+                     doubles, as Stata holds every number.
+
+    Returns:
+        A ``pandas.DataFrame`` with no rows.
+    """
+    cols = []
+    if isinstance(names, (list, tuple)):
+        cols = list(dict.fromkeys(n for n in names if isinstance(n, str)))
+    sv = set(string_vars or ())
+    return pd.DataFrame({c: pd.Series([], dtype=object if c in sv else float)
+                         for c in cols})
+
+
+def _dash_finite_numeric(col):
+    """A column read as numbers, as Stata would hold them: text that is
+    not a number is missing, and so is an infinity -- Stata has none, and
+    ``pd.to_numeric`` reads the text "Infinity" or "inf" in a numeric
+    column as one (S3 batch).  Used by :func:`_dash_load_columns`."""
+    num = pd.to_numeric(col, errors="coerce")
+    if pd.api.types.is_float_dtype(num):
+        num = num.where(np.isfinite(num))
+    return num
+
+
 def _dash_load_columns(df, formats, string_vars):
     """Read every column of a freshly loaded frame, in place, as both render
     modes hold it: a string variable as its text, a variable with a Stata
@@ -582,12 +664,12 @@ def _dash_load_columns(df, formats, string_vars):
         fmt = formats.get(str(col))
         kind = _stata_date_kind(fmt)
         if kind is None:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+            df[col] = _dash_finite_numeric(df[col])
             if _stata_numeric_pattern(fmt) is not None:
                 numeric_formats[col] = fmt
             continue
         raw = df[col]
-        numeric = pd.to_numeric(raw, errors="coerce")
+        numeric = _dash_finite_numeric(raw)
         if numeric.notna().any() or raw.isna().all():
             converted = _stata_dates_to_datetime(numeric, kind)
         else:
@@ -1549,6 +1631,77 @@ def _dash_named_once(graphs, kpis):
     return kept["graph"], kept["KPI"]
 
 
+#: A lone second axis's options, and the first axis's they become.
+_DASH_LONE_AXIS_OPTIONS = {"y": ("ytitle", "ylabel", "yscale"),
+                           "x": ("xtitle", "xlabel", "xscale")}
+
+
+def _dash_lone_second_axes(spec):
+    """The spec with a graph's lone second axis drawn as its only axis.
+
+    twoway draws a graph whose every layer is on yaxis(2) with ONE y axis,
+    on the left, which the second axis's options style: measured
+    24sep2026 from graph export svg, ``twoway scatter mpg weight, yaxis(2)``
+    has one left axis titled "Mileage (mpg)", ``ytitle(T, axis(2))``
+    titles it, ``yscale(log axis(2))`` makes it a log axis, and
+    ``ytitle(T)`` is refused, r(198); ``xaxis(2)`` alone is drawn at the
+    bottom.  dash drew a first axis over nothing and a second one for the
+    layers (BUGS.md).  So when no layer of a graph is on the first axis of
+    a side, its layers lose the yaxis(2)/xaxis(2) option and ytitle2(),
+    ylabel2() and yscale2() (xtitle2() ...) become ytitle(), ylabel() and
+    yscale() -- where one is given, it wins -- and both modes draw the one
+    axis as they draw any first axis.  Both loaders call this, before the
+    spec is drawn or embedded.  Returns a new dict and never modifies the
+    caller's; a spec of the wrong shape is returned as it came.
+    """
+    if not isinstance(spec, dict) or not isinstance(spec.get("graphs"), list):
+        return spec
+    changed = False
+    graphs = []
+    for g in spec["graphs"]:
+        plots = g.get("plots") if isinstance(g, dict) else None
+        if (not isinstance(plots, list) or not plots
+                or not all(isinstance(p, dict) for p in plots)):
+            graphs.append(g)
+            continue
+        lone = []
+        for side in ("y", "x"):
+            key = side + "axis"
+            if all(isinstance(p.get("options"), dict)
+                   and str(p["options"].get(key, "1")).strip() == "2"
+                   for p in plots):
+                lone.append(side)
+        if not lone:
+            graphs.append(g)
+            continue
+        g = dict(g)
+        new_plots = []
+        for p in plots:
+            opts = p.get("options")
+            if isinstance(opts, dict):
+                p = dict(p)
+                p["options"] = {k: v for k, v in opts.items()
+                                if k not in {s + "axis" for s in lone}}
+            new_plots.append(p)
+        g["plots"] = new_plots
+        go = g.get("graph_options")
+        if isinstance(go, dict):
+            go = dict(go)
+            for side in lone:
+                for first in _DASH_LONE_AXIS_OPTIONS[side]:
+                    second = go.pop(first + "2", None)
+                    if isinstance(second, str) and second.strip():
+                        go[first] = second
+            g["graph_options"] = go
+        graphs.append(g)
+        changed = True
+    if not changed:
+        return spec
+    out = dict(spec)
+    out["graphs"] = graphs
+    return out
+
+
 def _dash_cap_spec(spec, limits):
     """The spec with at most ``graphs`` items and ``plots`` plots a graph,
     and each item under a name of its own (``_dash_named_once``).
@@ -1739,6 +1892,95 @@ def _dash_by_groups(work_df, by_vars, by_missing, limit, where=""):
         if len(out) >= limit:
             break
     return out
+
+
+def _dash_by_panel_dropped(gdf, frame, plots, masks=None, where=""):
+    """True when twoway leaves the by() panel *gdf* out of the graph.
+
+    twoway draws a by() graph panel by panel, plot by plot, and a panel in
+    which a plot cannot be drawn is left out -- no scatter, no axes, no
+    subtitle -- while the others are drawn, rc 0 (bygraph_g.class RunGraph
+    keeps no graph whose plot failed).  Measured 24sep2026 with the console
+    binary, `(scatter mpg weight) (<type> mpg weight if ...), by(foreign)':
+
+    * lpoly and lpolyci with one observation in the panel's sample, or
+      none, leave it out in silence;
+    * lfit and lfitci with exactly one leave it out after "(note:  regress
+      could not fit model)" and "insufficient observations", which are
+      given here, as twoway prints them, in the words of dash's notes;
+    * kdensity with exactly one leaves it out in silence.
+
+    Every other type draws the panel (fpfit, fpfitci, mspline and mband on
+    none are refused by dash.ado, r(198), as twoway refuses them).  The
+    first plot, in order, that leaves the panel out decides.  The sample is
+    the panel's rows the plot's own qualifier selects -- its qualifier
+    column when dash.ado wrote one, its text otherwise, applied to the
+    whole *frame* so an ``in`` range counts rows of the data -- whose
+    plotted variables are not missing and whose weight is above zero.  dash
+    drew every panel.  Both render modes call this; the served app copies
+    it by source.
+
+    Args:
+        gdf:    The panel's rows (a slice of *frame*, by index).
+        frame:  The dataset the qualifiers select from.
+        plots:  The graph's plot dicts, in order.
+        masks:  The qualifier columns' masks, or None.
+        where:  The graph's name, for the notes.
+
+    Returns:
+        True to leave the panel out.
+    """
+    rules = {"lpoly": "0", "lpolyci": "0", "lfit": "1n", "lfitci": "1n",
+             "kdensity": "1"}
+    for pi, plot in enumerate(plots or [], 1):
+        if not isinstance(plot, dict):
+            continue
+        pt = str(plot.get("type", "") or "").lower()
+        rule = rules.get(pt)
+        if rule is None:
+            continue
+        if pt == "kdensity":
+            names = [str(plot.get("var") or plot.get("yvar") or "")]
+        else:
+            names = [str(plot.get("yvar") or ""), str(plot.get("xvar") or "")]
+        if not all(n and n in frame.columns for n in names):
+            continue
+        rows = gdf.index
+        p_if = str(plot.get("if_expr") or "").strip()
+        p_in = str(plot.get("in_expr") or "").strip()
+        try:
+            qual = _dash_qual_mask(plot, masks)
+        except ValueError:
+            qual = None
+        if qual is not None or p_if or p_in:
+            with warnings.catch_warnings():
+                # A qualifier the layer cannot apply is named when the
+                # layer is drawn; the count only needs its rows.
+                warnings.simplefilter("ignore")
+                sel = _dash_qualified_frame(frame, p_if, p_in, qual=qual,
+                                            copy=False)
+            rows = rows.intersection(sel.index)
+        ok = np.ones(len(rows), dtype=bool)
+        for n in names:
+            ok &= ~np.isnan(_dash_float_values(frame.loc[rows, n]))
+        _wt, wexp = _dash_weight_spec(plot.get("options") or {})
+        if _wt is not None and wexp in frame.columns:
+            w = _dash_float_values(frame.loc[rows, wexp])
+            with np.errstate(invalid="ignore"):
+                ok &= ~np.isnan(w) & (w > 0)
+        n_obs = int(ok.sum())
+        if rule == "0" and n_obs <= 1:
+            return True
+        if rule.startswith("1") and n_obs == 1:
+            if rule == "1n":
+                at = f"graph {where!r} plot {pi}" if where else f"plot {pi}"
+                warnings.warn(
+                    f"dash: {at} ({pt}): (note:  regress could not fit "
+                    f"model)", UserWarning, stacklevel=2)
+                warnings.warn(f"dash: {at} ({pt}): insufficient "
+                              f"observations", UserWarning, stacklevel=2)
+            return True
+    return False
 
 
 _WEBGL_THRESHOLD = 10_000
@@ -2826,6 +3068,14 @@ class OptionTranslator:
         "thick":    2.5,
         "vthick":   3.5,
         "vvthick":  5.0,
+        # Stata's linewidth-vvvthick.style, 4.2 units, drawn 1.615 times
+        # vvthick's 2.6 (twoway's SVG, measured 24sep2026: 120.96 and
+        # 74.88 units).  The rungs above medium compress Stata's units by
+        # a power of 0.588 (thick .8, vthick 1.4, vvthick 2.6 -> 2.5, 3.5,
+        # 5.0px); vvvthick continues it: 5.0 * (4.2/2.6)**0.588 = 6.6px.
+        # It was missing, so lwidth(vvvthick) was reported as an unknown
+        # name and drawn at the scheme's width.
+        "vvvthick": 6.6,
     }
 
     # ------------------------------------------------------------------
@@ -3087,7 +3337,7 @@ class OptionTranslator:
             return max(0.1, f)
         raise ValueError(
             f"Unrecognised Stata line width: '{value}'. "
-            "Use a keyword (vvthin … vvthick) or a positive number."
+            "Use a keyword (vvthin … vvvthick) or a positive number."
         )
 
     @staticmethod
@@ -3122,6 +3372,12 @@ class OptionTranslator:
 #: shipped one is two deep.  The bound is what stops a chain of hand-written
 #: files from exhausting the stack (SchemeParser._parse_file, WP-20).
 _MAX_SCHEME_INCLUDE_DEPTH = 32
+
+#: How many #include lines one scheme parse reads, across every file it
+#: reads.  StataCorp's deepest chain has three; each line costs a path
+#: resolution (several realpath calls), so 10,000 lines naming schemes that
+#: do not exist took 17s before this bound (S3 batch, 24sep2026).
+_MAX_SCHEME_INCLUDES = 256
 
 
 class SchemeParser:
@@ -3276,6 +3532,30 @@ class SchemeParser:
         "yesno draw_minor_grid":  "no",
         "yesno draw_minor_hgrid": "no",
         "yesno draw_minor_vgrid": "no",
+
+        # The reference line, the plot region's border and note()'s text
+        # box, at s2color's effective values (S3 batch).
+        "color xyline":           "cranberry",
+        "linepattern xyline":     "solid",
+        "linewidth xyline":       "medium",
+        "color plotregion_line":  "white",
+        "linewidth plotregion":   "thin",
+        "linepattern plotregion": "solid",
+        "textboxstyle note":      "small_body",
+
+        # A ci fit's band and its ci line style, at s2color's values
+        # (scheme-s2color.scheme 352-358, 560-561, 1208-1211, 1272).
+        "color ci_area":          "#c0c0c0",
+        "color ci_arealine":      "#c0c0c0",
+        "intensity ci_area":      "full",
+        "linewidth ci_area":      "medium",
+        "linepattern ci_area":    "solid",
+        "color ci_line":          "#808080",
+        "linewidth ci":           "medium",
+        "linepattern ci":         "solid",
+        "color ci2_area":         "#e5daa5",
+        "color ci2_arealine":     "#e5daa5",
+        "linewidth ci2_area":     "medium",
     }
 
     @classmethod
@@ -3535,6 +3815,7 @@ class SchemeParser:
         # Loop-invariant, so computed once.
         allowed = [os.path.abspath(d) for d in search_dirs]
         allowed.append(os.path.abspath(os.getcwd()))
+        real_allowed = [os.path.realpath(d) for d in allowed]
 
         for candidate in candidates:
             in_allowed = any(
@@ -3551,7 +3832,6 @@ class SchemeParser:
             # symlink placed in the CWD (e.g. evil.scheme -> /etc/passwd) would
             # pass the abspath boundary check above and silently read the target.
             real_candidate = os.path.realpath(candidate)
-            real_allowed = [os.path.realpath(d) for d in allowed]
             real_in_allowed = any(
                 real_candidate.startswith(rd + os.sep) or real_candidate == rd
                 for rd in real_allowed
@@ -3608,22 +3888,61 @@ class SchemeParser:
     # File parsing
     # ------------------------------------------------------------------
 
+    #: How many "(note: scheme X not found, using s2color)" warnings one
+    #: parse may raise.  Each distinct name is noted once; past this many,
+    #: one last warning says how many more there were, so a hostile file of
+    #: 10,000 distinct unresolvable #include lines cannot flood the log.
+    _MAX_INCLUDE_NOTES: int = 10
+
     def _parse_file(self, path: str, _visited: set[str],
-                    _depth: int = 0) -> dict[str, str]:
+                    _depth: int = 0,
+                    _memo: "dict[str, dict[str, str]] | None" = None,
+                    _notes: "dict[str, Any] | None" = None,
+                    ) -> dict[str, str]:
         """Parse one .scheme file and return a flat key→value dict.
 
-        Handles ``#include`` by recursively loading the parent first;
-        child properties override parent properties.  At most
-        ``_MAX_SCHEME_INCLUDE_DEPTH`` files deep: a chain of 1,500 distinct
-        files raised RecursionError out of here, which resolve_or_fallback
-        does not catch, so the render died with a traceback (measured
-        23sep2026, WP-20).
+        An ``#include`` is spliced in WHERE IT STANDS, as Stata's setscheme
+        does: it runs ``.setscheme , scheme(<name>)`` at that line, and a
+        later assignment to a key overwrites an earlier one.  So a directive
+        below an #include overrides the included scheme, and one ABOVE it is
+        overwritten by it (measured 24sep2026: `color p1 red' then `#include
+        s2color' strokes p1 #1A476F in Stata).  An #include that resolves
+        nowhere is not skipped: Stata includes s2color in its place and
+        prints "(note: scheme X not found, using s2color)", rc 0, and so does
+        this (``_include``).
+
+        Bounded three ways.  At most ``_MAX_SCHEME_INCLUDE_DEPTH`` files
+        deep: a chain of 1,500 distinct files raised RecursionError out of
+        here, which resolve_or_fallback does not catch (measured 23sep2026,
+        WP-20).  *_visited* is the chain of files being read, so a file that
+        includes itself, directly or through others, reads as empty at the
+        repeat.  And each file is read and parsed once per top-level parse
+        (*_memo*): a repeated #include splices the parsed dict again, so a
+        file with 10,000 #include lines, or a diamond of includes 32 deep,
+        costs one parse per distinct file, never one per path through them.
         """
         real = os.path.realpath(path)
         if real in _visited:
             return {}   # circular include guard
+        if _memo is None:
+            _memo = {}
+        if _notes is None:
+            _notes = {}
+        if real in _memo:
+            return _memo[real]
         _visited.add(real)
+        try:
+            props = self._parse_lines(path, _visited, _depth, _memo, _notes)
+        finally:
+            _visited.discard(real)
+        _memo[real] = props
+        return props
 
+    def _parse_lines(self, path: str, _visited: set[str], _depth: int,
+                     _memo: "dict[str, dict[str, str]]",
+                     _notes: "dict[str, Any]") -> dict[str, str]:
+        """The body of ``_parse_file``: read *path* and apply its lines in
+        order, splicing each #include in at its line."""
         props: dict[str, str] = {}
         try:
             with open(path, encoding="utf-8", errors="replace") as fh:
@@ -3636,29 +3955,34 @@ class SchemeParser:
             if not line or line.startswith("*"):
                 continue
 
-            # #include directive — load parent first
+            # #include directive -- the included scheme's keys land here, so
+            # later lines win over it and it wins over earlier ones.
             if line.startswith("#include"):
                 parts = line.split(None, 1)
                 if len(parts) == 2:
                     parent_name = parts[1].strip()
                     if _depth + 1 >= _MAX_SCHEME_INCLUDE_DEPTH:
                         warnings.warn(
-                            f"dash scheme: '#include {parent_name}' in "
+                            f"dash scheme: '#include "
+                            f"{self._safe_name(parent_name)}' in "
                             f"'{os.path.basename(path)}' is nested more than "
                             f"{_MAX_SCHEME_INCLUDE_DEPTH} files deep; it and "
                             f"the files it includes are not read.",
                             UserWarning, stacklevel=2)
                         continue
-                    try:
-                        parent_path = self._resolve_path(parent_name)
-                        parent_props = self._parse_file(
-                            parent_path, _visited, _depth + 1)
-                        # Parent provides base; will be overridden by child
-                        for k, v in parent_props.items():
-                            if k not in props:
-                                props[k] = v
-                    except ValueError:
-                        pass  # silently skip unresolvable includes
+                    done = _notes.get("\0includes", 0)
+                    _notes["\0includes"] = done + 1
+                    if done >= _MAX_SCHEME_INCLUDES:
+                        if done == _MAX_SCHEME_INCLUDES:
+                            warnings.warn(
+                                f"dash scheme: more than "
+                                f"{_MAX_SCHEME_INCLUDES} #include lines; "
+                                f"from '#include {self._safe_name(parent_name)}' in "
+                                f"'{os.path.basename(path)}' on, they are "
+                                "not read.", UserWarning, stacklevel=2)
+                        continue
+                    props.update(self._include(
+                        parent_name, path, _visited, _depth, _memo, _notes))
                 continue
 
             tokens = line.split()
@@ -3672,6 +3996,79 @@ class SchemeParser:
             props[key] = value
 
         return props
+
+    def _include(self, name: str, from_path: str, _visited: set[str],
+                 _depth: int, _memo: "dict[str, dict[str, str]]",
+                 _notes: "dict[str, Any]") -> dict[str, str]:
+        """The properties ``#include <name>`` in *from_path* contributes.
+
+        *name* resolves as ``scheme()`` does (``_resolve_path``, with its
+        containment and symlink checks).  When it resolves nowhere -- or
+        only outside the working directory and dash's schemes folder, which
+        dash never reads -- Stata's rule applies: s2color stands in its
+        place, and a warning says so in Stata's words, "(note: scheme X not
+        found, using s2color)" (measured 24sep2026, `#include w26nosuch':
+        that note, rc 0, s2color drawn at 5.5 x 4in).  Where even s2color
+        cannot be read (an install without its schemes/), the in-memory
+        ``_FALLBACK_PROPS``, which mirror it, stand in.
+        """
+        path, reason = self._resolve_cached(name, _notes)
+        if path is not None:
+            try:
+                return self._parse_file(path, _visited, _depth + 1, _memo,
+                                        _notes)
+            except ValueError as exc:
+                reason = str(exc)
+        safe = self._safe_name(name)
+        seen = _notes.setdefault("\0count", 0)
+        if safe not in _notes:
+            _notes[safe] = 1
+            _notes["\0count"] = seen + 1
+            if seen < self._MAX_INCLUDE_NOTES:
+                where = ("; it resolves outside the working directory and "
+                         "dash's schemes folder, which dash does not read"
+                         if "outside allowed" in reason else "")
+                warnings.warn(
+                    f"dash scheme: (note: scheme {safe} not found, using "
+                    f"s2color) -- '#include {safe}' in "
+                    f"'{os.path.basename(from_path)}'{where}.",
+                    UserWarning, stacklevel=3)
+            elif seen == self._MAX_INCLUDE_NOTES:
+                warnings.warn(
+                    f"dash scheme: more #include lines in "
+                    f"'{os.path.basename(from_path)}' name schemes that "
+                    "were not found; each uses s2color, and no more are "
+                    "noted.", UserWarning, stacklevel=3)
+        path, _why = self._resolve_cached("s2color", _notes)
+        if path is not None:
+            try:
+                return self._parse_file(path, _visited, _depth + 1, _memo,
+                                        _notes)
+            except ValueError:
+                pass
+        return dict(self._FALLBACK_PROPS)
+
+    @staticmethod
+    def _safe_name(name: str) -> str:
+        """An #include name as a warning may print it.  The name is file
+        text: printable characters only, and at most 80 of them, so a
+        hostile line cannot put control characters or a megabyte into the
+        log."""
+        return "".join(ch for ch in name if ch.isprintable())[:80]
+
+    def _resolve_cached(self, name: str, _notes: "dict[str, Any]"
+                        ) -> "tuple[str | None, str]":
+        """``(path, "")`` for a name ``_resolve_path`` resolves, or ``(None,
+        reason)``, remembered for the rest of the parse: 10,000 #include
+        lines naming one scheme resolve it once (and the s2color that
+        stands in for each unresolvable one, once)."""
+        key = "\0path:" + name
+        if key not in _notes:
+            try:
+                _notes[key] = (self._resolve_path(name), "")
+            except ValueError as exc:
+                _notes[key] = (None, str(exc))
+        return _notes[key]
 
     # ------------------------------------------------------------------
     # Property extraction
@@ -3729,6 +4126,30 @@ class SchemeParser:
         if hexval is None:
             return self._color(key, default), default_alpha
         return hexval, alpha
+
+    def _first_present(self, keys: "tuple[str, ...]") -> "str | None":
+        """The first of *keys* the scheme declares with a non-blank value,
+        or None: one step of Stata's p#stub -> pstub -> p# -> p lookup."""
+        for key in keys:
+            if self._props.get(key, "").strip():
+                return key
+        return None
+
+    def _stub_color_alpha(self, i: int, stub: str
+                          ) -> "tuple[str, float | None]":
+        """``(hex, opacity)`` of ``color p<i><stub>`` through Stata's chain
+        p#stub -> pstub -> p# -> p (scheme.class), p# and p being
+        ``p_colors``/``p_alphas`` already resolved.
+
+        Applied from the far end, so a step that is PRESENT but not a colour
+        dash can read warns (through ``_color``) and falls back to the rest
+        of the chain rather than to black.
+        """
+        val = (self.p_colors[i - 1], self.p_alphas[i - 1])
+        for key in (f"color p{stub}", f"color p{i}{stub}"):
+            if self._props.get(key, "").strip():
+                val = self._color_alpha(key, *val)
+        return val
 
     def _gsize(self, key: str, default: str = "10pt") -> str:
         raw = self._props.get(key, "").strip().lower()
@@ -3904,6 +4325,86 @@ class SchemeParser:
         )
         return default
 
+    #: The widest line a scheme may ask for, in Bokeh pixels.  Stata's
+    #: widest keyword, vvvthick, is 4.2 units (6.6px on dash's ladder, 21px
+    #: as a bare number); the bound refuses only the absurd (`linewidth
+    #: xyline 1e308' drew an infinite width).
+    _LWIDTH_MAX_PX: float = 100.0
+
+    def _line_color(self, key: str, default: str) -> "str | None":
+        """A line's colour, or None where the scheme writes Stata's `none'
+        (no line is drawn).  Anything else goes through ``_color``, which
+        refuses a colour it cannot use aloud."""
+        if self._props.get(key, "").strip().lower() == "none":
+            return None
+        return self._color(key, default)
+
+    def _bounded_lwidth(self, key: str, default: float) -> float:
+        """``_lwidth`` within [0, _LWIDTH_MAX_PX], refused aloud outside."""
+        val = self._lwidth(key, default)
+        if math.isfinite(val) and 0 <= val <= self._LWIDTH_MAX_PX:
+            return val
+        warnings.warn(
+            f"dash scheme: line width '{_dash_display(self._props.get(key, ''))}'"
+            f" (from '{key}') is outside the (0, {self._LWIDTH_MAX_PX:g}]px a "
+            f"figure can draw; falling back to {default:g}px.",
+            UserWarning,
+            stacklevel=3,
+        )
+        return default
+
+    # The text boxes note() may be routed to, from Stata's
+    # style/textboxstyle-<name>.style: (size key, colour key, drawbox,
+    # fill key).  drawbox is True (`set drawbox yes') or the `yesno' key
+    # the style reads (`set drawbox scheme textbox'); every shipped scheme
+    # sets `yesno textbox no'.  A name outside the table is small_body,
+    # said aloud: the name is a key into this table, never a path.
+    _NOTE_TEXTBOXES: "dict[str, tuple]" = {
+        "small_body":   ("small_body", "small_body", "textbox", "textbox"),
+        "body":         ("body", "body", "textbox", "textbox"),
+        "smbody":       ("small_body", "body", "textbox", "textbox"),
+        "key_label":    ("key_label", "key_label", "textbox", "textbox"),
+        "legend_key":   ("key_label", "key_label", "textbox", "textbox"),
+        "heading":      ("heading", "heading", "textbox", "textbox"),
+        "legend_title": ("heading", "heading", "textbox", "textbox"),
+        "subheading":   ("subheading", "subheading", "textbox", "textbox"),
+        "clegend":      ("subheading", "subheading", "textbox", "textbox"),
+        "axis_title":   ("axis_title", "axis_title", "textbox", "textbox"),
+        "label":        ("label", "label", "textbox", "textbox"),
+        "small_label":  ("small_label", "label", "textbox", "textbox"),
+        "reverse_big":  ("reverse_big", "reverse_big_text", True,
+                         "reverse_big"),
+        "filled":       ("filled_text", "filled_text", True, "filled"),
+    }
+
+    def _init_note_textbox(self) -> None:
+        raw = self._props.get("textboxstyle note", "").strip()
+        name = raw.lower() or "small_body"
+        if name not in self._NOTE_TEXTBOXES:
+            # Echo only a name shaped like a Stata style name: the value
+            # is a user file's text, and a warning may be shown as well
+            # as logged.
+            shown = (f"'{raw}'" if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,31}",
+                                                raw)
+                     else "(a value that is no Stata style name)")
+            warnings.warn(
+                f"dash scheme: textboxstyle note {shown} is "
+                "not a text box dash knows; note() is drawn in small_body.",
+                UserWarning,
+                stacklevel=3,
+            )
+            name = "small_body"
+        size_key, color_key, drawbox, fill_key = self._NOTE_TEXTBOXES[name]
+        self.note_textbox: str = name
+        self.note_text_font_size: str = self._gsize(
+            f"gsize {size_key}", self.small_body_font_size)
+        self.note_text_color: str = self._color(
+            f"color {color_key}", self.small_body_color)
+        drawn = drawbox is True or self._yesno(f"yesno {drawbox}", False)
+        self.note_box_fill_color: "str | None" = (
+            self._line_color(f"color {fill_key}", self.background_color)
+            if drawn else None)
+
     def _symbol(self, key: str, default: str = "circle") -> str:
         raw = self._props.get(key, "").strip()
         if not raw:
@@ -3951,34 +4452,44 @@ class SchemeParser:
         # the colour is opaque.  The fixture records the same lists as
         # p_colors_opacity and its line/bar/mark/lineplot twins;
         # default_alpha() reads them where default_color() reads the hex.
-        _p = [self._color_alpha(f"color p{i}") for i in range(1, 16)]
+        #
+        # Every p#stub colour follows Stata's own chain, p#stub -> pstub ->
+        # p# -> p (scheme.class), here at READ time.  The shipped files
+        # used to carry the chain resolved -- `color p1mark', `p1bar' and
+        # `p1line' written out -- so a user's `#include s2color' then
+        # `color p1 red' reached a line plot and nothing else, where Stata
+        # draws the markers, bars and connecting line red too (measured
+        # 24sep2026 for all twenty shipped schemes).  They now carry only
+        # the keys Stata's own chain declares.
+        _p = [self._color_alpha(self._first_present(
+                  (f"color p{i}", "color p")) or f"color p{i}")
+              for i in range(1, 16)]
         self.p_colors: list[str] = [c for c, _ in _p]
         self.p_alphas: "list[float | None]" = [a for _, a in _p]
-        _pl = [
-            self._color_alpha(f"color p{i}line", self.p_colors[i - 1],
-                              self.p_alphas[i - 1])
-            for i in range(1, 16)
-        ]
+        _pl = [self._stub_color_alpha(i, "line") for i in range(1, 16)]
         self.p_line_colors: list[str] = [c for c, _ in _pl]
         self.p_line_alphas: "list[float | None]" = [a for _, a in _pl]
-        _pb = [
-            self._color_alpha(f"color p{i}bar", self.p_colors[i - 1],
-                              self.p_alphas[i - 1])
-            for i in range(1, 16)
-        ]
+        _pb = [self._stub_color_alpha(i, "bar") for i in range(1, 16)]
         self.p_bar_colors: list[str] = [c for c, _ in _pb]
         self.p_bar_alphas: "list[float | None]" = [a for _, a in _pb]
-        _pm = [
-            self._color_alpha(f"color p{i}mark", self.p_colors[i - 1],
-                              self.p_alphas[i - 1])
-            for i in range(1, 16)
-        ]
+        _pm = [self._stub_color_alpha(i, "mark") for i in range(1, 16)]
         self.p_mark_colors: list[str] = [c for c, _ in _pm]
         self.p_mark_alphas: "list[float | None]" = [a for _, a in _pm]
 
-        # Marker symbol cycle
+        # Marker symbol cycle, through Stata's chain: style/markerstyle-p#
+        # .style says `set symbol scheme p#', and scheme.class falls back
+        # from `symbol p#' to `symbol p'.  The shipped files used to spell
+        # the fallback out -- `symbol p1 circle' .. `symbol p15 circle',
+        # keys Stata's own s2color does not write -- so a user's `#include
+        # stcolor' then `symbol p diamond' reached no plot, where Stata
+        # draws every marker a diamond (measured 24sep2026, S3 batch, for
+        # all twenty shipped schemes).  They now carry only the keys
+        # Stata's chain declares (s1mono's branch declares p1..p15 itself,
+        # which a bare `symbol p' then does not reach -- in Stata either).
         self.p_symbols: list[str] = [
-            self._symbol(f"symbol p{i}") for i in range(1, 16)
+            self._symbol(self._first_present(
+                (f"symbol p{i}", "symbol p")) or f"symbol p{i}")
+            for i in range(1, 16)
         ]
 
         # Line pattern cycles.  These are two DIFFERENT stubs, not a
@@ -4010,25 +4521,31 @@ class SchemeParser:
         ]
         # Kept under its historical name for the connected-plot path and for
         # the scheme fixture, which still means p#line by it.
+        # Stata's chain for it (style/linestyle-p#.style: `set pattern
+        # scheme p#line') is p#line -> pline -> p# -> p, so a user's
+        # `linepattern p1 dash' after `#include s2color' dashes the
+        # connecting line, as Stata does (measured 24sep2026), and s1mono's,
+        # stmono1's and s1manual's declared p#line stops it.
         self.p_line_patterns: list = [
-            self._lpattern(f"linepattern p{i}line") for i in range(1, 16)
+            self._lpattern_chain(
+                (f"linepattern p{i}line", "linepattern pline",
+                 f"linepattern p{i}", "linepattern p"))
+            for i in range(1, 16)
         ]
         # Colour of a plain line plot: `color p#lineplot' where the scheme
         # declares it, `color p#' otherwise -- NOT `color p#line'.  s1mono
         # declares `color p#line black'; Stata draws #606060 / #a0a0a0 /
         # #808080 for three overlaid line charts, and dash drew three
         # identical black lines.
-        _plp = []
-        for i in range(1, 16):
-            _dc, _da = self._color_alpha("color plineplot",
-                                         self.p_colors[i - 1],
-                                         self.p_alphas[i - 1])
-            _plp.append(self._color_alpha(f"color p{i}lineplot", _dc, _da))
+        _plp = [self._stub_color_alpha(i, "lineplot") for i in range(1, 16)]
         self.p_lineplot_colors: list[str] = [c for c, _ in _plp]
         self.p_lineplot_alphas: "list[float | None]" = [a for _, a in _plp]
 
         # Default line/grid widths
         self.default_line_width: float = self._lwidth("linewidth p", 1.5)
+        # ...and per plot, through Stata's chains (plot_line_width); the
+        # widths each declared key resolves to, so a bad one warns once.
+        self._plot_lwidth_memo: dict = {}
         self.grid_line_width: float = self._lwidth("linewidth major_grid", 0.8)
         # `linewidth minor_grid' is `thin' in every shipped scheme.
         self.minor_grid_line_width: float = self._lwidth(
@@ -4047,8 +4564,13 @@ class SchemeParser:
         self.bar_alpha: float = self._intensity("intensity bar", 0.8)
         self.area_alpha: float = self._intensity("intensity area", 0.8)
 
-        # Font sizes
-        self.text_font_size: str = self._gsize("gsize text", "10pt")
+        # Font sizes.  `gsize text' is parsed into _props and carried by
+        # every shipped file, but it has no attribute: Stata's
+        # scheme_other.sthlp calls it the "default text size when other
+        # size not specified", and every text dash draws is drawn by Stata
+        # through a text box style naming its own size key (no file under
+        # ado/base/style sets a size from `scheme text').  BUGS.md "The
+        # scheme's gsize text is parsed and read by nothing" retired it.
         self.heading_font_size: str = self._gsize("gsize heading", "13pt")
         self.axis_title_font_size: str = self._gsize("gsize axis_title", "10pt")
         self.tick_label_font_size: str = self._gsize("gsize tick_label", "10pt")
@@ -4062,13 +4584,47 @@ class SchemeParser:
         self.small_body_font_size: str = self._gsize("gsize small_body", "8pt")
         self.key_label_font_size: str = self._gsize("gsize key_label", "10pt")
 
+        # note()'s text box: Stata draws note() in `textboxstyle note'
+        # (small_body in s2color; economist's reverse_big, a white medlarge
+        # note in an emidblue box; s1manual's key_label), and that box's
+        # style file names the keys it reads.  The shipped files carry the
+        # directive and the keys (scripts/extract_scheme_truth.py).
+        self._init_note_textbox()
+
+        # Reference lines, xline() and yline(): twoway draws them in the
+        # `gridlinestyle' class default, whose style file reads `linestyle
+        # xyline', which reads these three keys.  s2color: cranberry,
+        # solid, medium; stcolor: black, dash (measured 24sep2026 from
+        # twoway's SVG export).  An explicit lcolor()/lpattern()/lwidth()
+        # still wins (_dash_reference_lines).
+        self.xyline_color: "str | None" = self._line_color(
+            "color xyline", "#c10534")
+        self.xyline_dash: list = self._lpattern("linepattern xyline")
+        self.xyline_width: float = self._bounded_lwidth(
+            "linewidth xyline", OptionTranslator.translate_lwidth("medium"))
+
+        # The plot region's border, EFFECTIVE (plotregionstyle twoway ->
+        # areastyle twoway_plotregion -> its linestyle), as the shipped
+        # files carry it: `color plotregion_line' is white in s2color (on
+        # a white plot region), black where the border is the foreground
+        # line (s1color, s1mono), and `none' in economist, which draws no
+        # border -- None here.  plotregion(lcolor()) still wins.
+        self.plotregion_line_color: "str | None" = self._line_color(
+            "color plotregion_line", "#ffffff")
+        self.plotregion_line_width: float = self._bounded_lwidth(
+            "linewidth plotregion", OptionTranslator.translate_lwidth("thin"))
+
         # Graph dimensions, in inches, as Stata schemes declare them.
-        # Parsed here only; section 10 consumes them for figure proportions.
-        # `graphsize x`/`graphsize y` override a bare `graphsize`, matching
-        # Stata, which treats the bare form as a square default.
-        _gs_both = self._float("graphsize", None)
-        self.graphsize_x: "float | None" = self._float("graphsize x", _gs_both)
-        self.graphsize_y: "float | None" = self._float("graphsize y", _gs_both)
+        # Section 10 consumes them for figure proportions.  Only `graphsize
+        # x' and `graphsize y' size a graph.  A bare `graphsize N' is the
+        # class default, which scheme.class's `style' program returns only
+        # for an EMPTY id, and every graph family asks for `scheme x' and
+        # `scheme y' (style/graphstyle-default.style), so Stata reads it for
+        # no graph's size: with no `graphsize x', twoway fails r(198), and
+        # `#include s2color' then `graphsize 3' draws 5.5 x 4in (measured
+        # 24sep2026).  A missing x or y stays None, "no declared size".
+        self.graphsize_x: "float | None" = self._float("graphsize x", None)
+        self.graphsize_y: "float | None" = self._float("graphsize y", None)
 
         # Grid visibility.
         #
@@ -4104,6 +4660,17 @@ class SchemeParser:
         # consumed: every scheme drew an 8px marker, so stcolor's `small'
         # and economist's `large' were indistinguishable.
         self.marker_size: float = self._markersize_px(self.symbolsize)
+        # ...per plot, through Stata's chain: style/markerstyle-p#.style
+        # says `set size scheme p#', which falls back from `symbolsize p#'
+        # to `symbolsize p'.  One size for every plot drew a user's
+        # `symbolsize p1 huge' nowhere, and under s1manual -- whose file
+        # declares `symbolsize p1'..`p9' 2.2 -- drew `symbolsize p huge'
+        # where Stata keeps 2.2 (measured 24sep2026, S3 batch).
+        self.p_marker_sizes: list[float] = [
+            self._markersize_px(self._props.get(self._first_present(
+                (f"symbolsize p{i}", "symbolsize p")) or "", ""))
+            for i in range(1, 16)
+        ]
         # Stata's clockdir is a numeric clock position (1-12), so expose it as
         # a number rather than the raw string — consumers compare it as one.
         # Range-checked: a hostile 99 used to reach _DASH_CLOCK_SIDE.get(
@@ -4118,6 +4685,84 @@ class SchemeParser:
         self.legend_rows: int = self._bounded_int(
             "numstyle legend_rows", 0, 0, self._LEGEND_GRID_MAX,
             "legend row count") or 0
+
+        # A ci fit's band (BUGS.md, S3: "A ci band is filled in its line's
+        # colour, where Stata fills it in pstyle ci").  twoway draws it in
+        # areastyle ci -- style/areastyle-ci.style, shadestyle-ci.style,
+        # linestyle-ci_area.style -- so the fill is `color ci_area' at
+        # `intensity ci_area', the outline `color ci_arealine' at
+        # `linewidth ci_area' and `linepattern ci_area'.  pstyle(ci2) has
+        # three keys of its own -- `color ci2_area', `color ci2_arealine',
+        # `linewidth ci2_area' -- and ci's intensity and pattern
+        # (shadestyle-ci2.style, linestyle-ci2_area.style).  pstyle(ci) and
+        # pstyle(ci2) both draw the fit line in `color ci_line', `linewidth
+        # ci', `linepattern ci' (linestyle-ci.style; linestyle-ci2.style
+        # reads the same keys).  Measured 24sep2026 from the graph object
+        # for the four ci types under all twenty schemes (test/fixtures/
+        # ci_band_style_truth.json).  The defaults are s2color's.
+        _ci_int = self._intensity("intensity ci_area", 1.0)
+        _ci_dash = self._lpattern_chain(("linepattern ci_area",))
+        self.ci_band_styles: dict = {}
+        for _w, _fill in (("ci", "#c0c0c0"), ("ci2", "#e5daa5")):
+            _fc, _fa = self._band_color(f"color {_w}_area", _fill)
+            _oc, _oa = self._band_color(f"color {_w}_arealine", _fc or _fill)
+            self.ci_band_styles[_w] = {
+                "fill": _fc, "fill_alpha": _fa, "intensity": _ci_int,
+                "line": _oc, "line_alpha": _oa,
+                "line_width": self._bounded_lwidth(
+                    f"linewidth {_w}_area", self.default_line_width),
+                "line_dash": list(_ci_dash),
+            }
+        _lc, _la = self._band_color("color ci_line", "#808080")
+        _ci_line = {
+            "line": _lc, "line_alpha": _la,
+            "line_width": self._bounded_lwidth("linewidth ci",
+                                              self.default_line_width),
+            "line_dash": self._lpattern_chain(("linepattern ci",)),
+        }
+        self.ci_line_styles: dict = {"ci": _ci_line, "ci2": dict(_ci_line)}
+        # ...and under pstyle(p#): areastyle p# (style/areastyle-p#.style)
+        # is linestyle and shadestyle p#other -- fill `color p#other' at
+        # `intensity p#bar' (shadestyle-p#other.style), outline `color
+        # p#otherline' at `linewidth p#other' and `linepattern p#other'
+        # (linestyle-p#other.style) -- each down Stata's p#stub -> pstub ->
+        # p# -> p chain.  economist's `linewidth pother thick' is the one
+        # key a shipped scheme sets.
+        self.p_other_band_styles: list = []
+        for _i in range(1, 16):
+            _fc, _fa = self._stub_color_alpha(_i, "other")
+            _oc, _oa = self._stub_color_alpha(_i, "otherline")
+            _ik = self._first_present((f"intensity p{_i}bar", "intensity pbar",
+                                       f"intensity p{_i}", "intensity p"))
+            self.p_other_band_styles.append({
+                "fill": _fc, "fill_alpha": _fa,
+                "intensity": (self._intensity(_ik, self.fill_alpha) if _ik
+                              else self.fill_alpha),
+                "line": _oc, "line_alpha": _oa,
+                "line_width": self._band_lwidth(
+                    (f"linewidth p{_i}other", "linewidth pother",
+                     f"linewidth p{_i}")),
+                "line_dash": self._lpattern_chain(
+                    (f"linepattern p{_i}other", "linepattern pother",
+                     f"linepattern p{_i}", "linepattern p")),
+            })
+
+    def _band_color(self, key: str, default: str
+                    ) -> "tuple[str | None, float | None]":
+        """``(hex, opacity)`` of a band colour key; ``(None, None)`` where
+        the scheme says ``none`` (Stata draws nothing there)."""
+        if self._props.get(key, "").strip().lower() == "none":
+            return None, None
+        return self._color_alpha(key, default)
+
+    def _band_lwidth(self, keys: "tuple[str, ...]") -> float:
+        """The first width *keys* declares that dash can draw, in pixels,
+        or ``linewidth p``'s where none does."""
+        for key in keys:
+            val = self._plot_lwidth_of(key)
+            if val is not None:
+                return val
+        return self.default_line_width
 
     # ------------------------------------------------------------------
     # Public API
@@ -4255,8 +4900,89 @@ class SchemeParser:
         return self.p_line_patterns[index % 15]
 
     def default_marker_size(self, index: int = 0) -> float:
-        """Return the marker diameter in pixels for the plot at *index*."""
-        return self.marker_size
+        """Return the marker diameter in pixels for the plot at *index*:
+        ``symbolsize p#`` -> ``symbolsize p``, cycling through fifteen as
+        the symbol cycle does."""
+        sizes = getattr(self, "p_marker_sizes", None)
+        if not sizes:
+            return self.marker_size
+        return sizes[int(index) % 15]
+
+    #: The chains a plot's line width follows, by the style file that sets
+    #: it (StataNow 19.5, ado/base/style): "lineplot" is linestyle-p#line
+    #: (`set width scheme p#lineplot') -- line, lfit, qfit, lowess, lpoly,
+    #: fpfit, kdensity, function, rline and a ci fit's line; "area" is
+    #: linestyle-p#area (area and rarea outlines); "arrowline" is
+    #: linestyle-p#arrowline (pcarrow, pcbarrow); "bar" is linestyle-p#bar;
+    #: "" is linestyle-p# (`set width scheme p#'), the line of every other
+    #: plot -- connected, spike, dropline, rspike, rcap, rcapsym,
+    #: rconnected, pcspike, pccapsym, mspline, mband; "mark" is
+    #: linestyle-p#mark (markerstyle-p#.style: `set linestyle scheme
+    #: p#mark'), the outline of every marker -- scatter, connected,
+    #: scatteri, dot, dropline, rcapsym, rscatter, rconnected, pcscatter,
+    #: pccapsym (measured 24sep2026; test/fixtures/
+    #: marker_linewidth_truth.json).
+    _PLOT_LWIDTH_KINDS: "frozenset[str]" = frozenset(
+        ("", "lineplot", "area", "arrowline", "bar", "mark"))
+
+    def _plot_lwidth_of(self, key: str) -> "float | None":
+        """The width *key* declares in pixels, or None when it is absent or
+        no width dash can draw (the chain then goes on), memoised so a bad
+        value warns once however many plots ask."""
+        if key in self._plot_lwidth_memo:
+            return self._plot_lwidth_memo[key]
+        val: "float | None" = None
+        if self._props.get(key, "").strip():
+            got = self._lwidth(key, float("nan"))
+            if math.isfinite(got) and 0 <= got <= self._LWIDTH_MAX_PX:
+                val = got
+            elif math.isfinite(got):
+                warnings.warn(
+                    f"dash scheme: line width "
+                    f"'{_dash_display(self._props.get(key, ''))}' (from "
+                    f"'{key}') is outside the (0, {self._LWIDTH_MAX_PX:g}]px"
+                    f" a figure can draw; it is not used.",
+                    UserWarning, stacklevel=3)
+        self._plot_lwidth_memo[key] = val
+        return val
+
+    def plot_line_width(self, index: int = 0,
+                        kind: str = "") -> "float | None":
+        """The line width in pixels for the plot at *index* (zero-based,
+        cycling through fifteen as the symbol cycle does).
+
+        Stata's scheme lookup (measured 24sep2026, S3 batch; test/fixtures/
+        linewidth_chain_truth.json) is ``linewidth p#<kind>`` ->
+        ``linewidth p<kind>`` -> ``linewidth p#`` -> ``linewidth p``: under
+        ``#include s2color`` + ``linewidth p1 vthick``, plot 1's line is 1.4
+        and plot 2's .3; ``linewidth plineplot`` beats ``p1`` on a line plot
+        and not on a connected one; ``linewidth p1line`` reaches nothing.
+
+        A bar stops at ``linewidth pbar``: every shipped Stata scheme sets
+        it (s2color and economist, and those that include them), so ``p#``
+        and ``p`` never reach a bar's outline; dash's transcriptions carry
+        it (scripts/extract_scheme_truth.py).  A user scheme with no
+        ``#include`` and no ``pbar`` reaches nothing, and for a bar None
+        means "leave the outline as Bokeh draws it".  A marker's outline
+        is kind ``"mark"``: ``linewidth p#mark`` -> ``pmark`` -> ``p#`` ->
+        ``p``.
+        """
+        k = kind if kind in self._PLOT_LWIDTH_KINDS else ""
+        try:
+            i = int(index) % 15 + 1
+        except (TypeError, ValueError, OverflowError):
+            i = 1
+        if k:
+            keys = [f"linewidth p{i}{k}", f"linewidth p{k}"]
+            if k != "bar":
+                keys.append(f"linewidth p{i}")
+        else:
+            keys = [f"linewidth p{i}"]
+        for key in keys:
+            val = self._plot_lwidth_of(key)
+            if val is not None:
+                return val
+        return None if k == "bar" else self.default_line_width
 
     def apply_to_figure(self, fig: Any) -> None:
         """Apply scheme defaults to *fig*.
@@ -4265,8 +4991,13 @@ class SchemeParser:
         """
         fig.background_fill_color = self.plotregion_color
         fig.border_fill_color = self.background_color
-        if self.axis_line_color:
-            fig.outline_line_color = self.axis_line_color
+        # The plot region's border is the scheme's own line, not the axis
+        # line's colour: it was `color axisline' (black) under every
+        # scheme, where Stata's stcolor and s2color draw white on white and
+        # economist none (truth.json plot_region_border).  None draws no
+        # outline; plotregion(lcolor()) is applied after this and wins.
+        fig.outline_line_color = self.plotregion_line_color
+        fig.outline_line_width = self.plotregion_line_width
 
         # Per axis, because the scheme decides each one separately.  This
         # loop used to colour every grid unconditionally, and Bokeh draws
@@ -4429,13 +5160,10 @@ def _floats_only(tree: "_ast.AST") -> "_ast.AST":
     return _ast.fix_missing_locations(tree)
 
 
-# Opacity of a confidence band.
-#
-# Deliberately a constant: it is a legibility judgement -- the band must read
-# as an envelope around the fit and not as a filled area in its own right --
-# and no scheme key describes it. Every *ci layer uses it, and the generated
-# app used to invent its own 0.35 for lpolyci.
-_CI_BAND_ALPHA = 0.2
+# A confidence band's look is the scheme's ci style, not a constant:
+# GlyphMapper._ci_band_style (BUGS.md, S3, "A ci band is filled in its line's
+# colour, where Stata fills it in pstyle ci").  The 0.2 alpha that stood here
+# was dash's own; twoway draws s2color's band opaque gs12.
 
 _MIN_BAR_WIDTH = 1e-9
 
@@ -4939,49 +5667,266 @@ class GlyphMapper:
         options: "dict[str, str]",
         lo_col: str = "y_lower",
         hi_col: str = "y_upper",
+        line_width: "float | None" = None,
     ) -> "tuple[Any, Any]":
-        """Render a confidence-interval band (varea + line) onto *fig*.
+        """Render a confidence-interval band, its outline and its fit line.
 
-        Applies ``_apply_line_opts`` and ``_apply_fill_opts`` from *options*.
+        The band is drawn in Stata's ci style, not the line's colour
+        (``_ci_band_glyphs``); the line in *color* and *line_width*, or in
+        the style a ``pstyle()`` names (``_ci_line_restyle``), then
+        ``_apply_line_opts``.  Drawn in Stata's order: fill, outline, line.
 
         Args:
             fig:     Bokeh Figure.
             source:  ColumnDataSource with the CI columns.
             x_col:   Name of the x column in *source*.
             y_col:   Name of the central-fit y column in *source*.
-            color:   Line and fill colour hex string.
+            color:   The fit line's colour hex string (its p# colour).
             yvar:    Variable name used for the legend label.
             options: Plot-level options dict (lcolor, lwidth, fcolor, …).
             lo_col:  Name of the lower-CI column (default ``"y_lower"``).
             hi_col:  Name of the upper-CI column (default ``"y_upper"``).
+            line_width: The fit line's width in pixels; the plot's
+                     ``plot_line_width(idx, "lineplot")`` from the caller,
+                     ``linewidth p`` when None.
 
         Returns:
-            A ``(line_renderer, band_renderer)`` tuple.
+            A ``(line_renderer, band_renderer)`` tuple; the outline is
+            ``band_renderer._dash_ci_outline``.
         """
-        band_r = fig.varea(
-            x=x_col, y1=lo_col, y2=hi_col,
-            source=source, fill_alpha=_CI_BAND_ALPHA, fill_color=color,
-        )
+        band_r, _outline_r = self._ci_band_glyphs(
+            fig, source, x_col, lo_col, hi_col, options)
         line_r = fig.line(
             x=x_col, y=y_col, source=source,
-            line_color=color, line_width=self.scheme.default_line_width, legend_label=yvar,
+            line_color=color,
+            line_width=(self.scheme.default_line_width if line_width is None
+                        else line_width),
+            legend_label=yvar,
         )
+        self._ci_line_restyle(line_r, options)
         self._apply_line_opts(line_r, options)
-        # color() colours the band as well as the line, as twoway's does:
-        # measured 23sep2026, `twoway lfitci mpg weight, color(red)' fills
-        # the band #FF0000 and strokes the fit #FF0000.  The band kept the
-        # scheme's colour, because only fcolor() reached it.  fcolor(), the
-        # specific option, still wins, below.
-        if "color" in options and "fcolor" not in options:
-            try:
-                band_r.glyph.fill_color = self.tr.translate_mcolor(
-                    options["color"])
-            except ValueError:
-                _dash_style_note("color", options["color"], "colour")
-            except AttributeError:
-                pass
-        self._apply_fill_opts(band_r, options)
         return line_r, band_r
+
+    #: The pstyle() names a ci layer is drawn in besides p1..p15, spelled
+    #: as Stata spells them: `P3' is not p3 (measured: default attributes).
+    _CI_PSTYLE_NAMED: "frozenset[str]" = frozenset({"ci", "ci2"})
+    _CI_PSTYLE_P: "dict[str, int]" = {"p%d" % _i: _i - 1
+                                      for _i in range(1, 16)}
+
+    def _ci_pstyle(self, options: "dict[str, str]"
+                   ) -> "tuple[str, int | None]":
+        """What a ci layer's ``pstyle()`` names: ``("", None)`` for none,
+        ``("ci", None)`` or ``("ci2", None)``, or ``("p", index)`` for
+        p1..p15.
+
+        Any other name is Stata's "named style ... not found in class
+        seriesstyle, default attributes used", which draws the band and
+        the line as p1 (measured 24sep2026: pstyle(p16), pstyle(P3) and
+        pstyle(bogus) all draw p1's); dash says so once, echoing the name
+        through ``_dash_display``, and draws p1.
+        """
+        raw = (options or {}).get("pstyle")
+        if raw is None:
+            return "", None
+        s = str(raw).strip(" \t")
+        if not s:
+            return "", None
+        if s in self._CI_PSTYLE_NAMED:
+            return s, None
+        if s in self._CI_PSTYLE_P:
+            return "p", self._CI_PSTYLE_P[s]
+        _shown = _dash_display(s)
+        _dash_warn_once(
+            ("ci-pstyle", _shown),
+            f"dash: pstyle({_shown}): named style not found; default "
+            f"attributes used -- p1's, as twoway draws them.",
+            stacklevel=4)
+        return "p", 0
+
+    @staticmethod
+    def _blend_intensity(hexval: str, f: float) -> str:
+        """*hexval* at intensity *f* (0-1), as Stata draws it: each channel
+        blended towards white, ``255 - (255 - c) * f``, rounded half up.
+        twoway's SVG draws red at fintensity(50) as #FF8080."""
+        h = str(hexval).lstrip("#")
+        try:
+            rgb = [int(h[k:k + 2], 16) for k in (0, 2, 4)]
+        except ValueError:
+            return str(hexval)
+        f = max(0.0, min(1.0, float(f)))
+        return "#%02x%02x%02x" % tuple(
+            max(0, min(255, int(math.floor(255.0 - (255.0 - c) * f + 0.5))))
+            for c in rgb)
+
+    def _ci_band_style(self, options: "dict[str, str]") -> dict:
+        """The band's resolved look: the scheme's ci style (or the one
+        ``pstyle()`` names), then the options, merged as twoway merges
+        them onto the band (measured 24sep2026, test/fixtures/
+        ci_band_style_truth.json).
+
+        Fill colour: color() < acolor() < fcolor().  Outline colour:
+        color() < lcolor() < acolor() < alcolor().  Outline width lwidth()
+        < alwidth(); pattern lpattern() < alpattern(); fintensity() the
+        intensity.  A colour's %NN sets the opacity and a colour without
+        one keeps it (pstyle(p3) acolor(red) under sttrans is red at 20%).
+        ``none`` draws nothing.  clcolor(), clwidth() and clpattern() are
+        the fit line's alone.  An unknown value is noted, and the style's
+        kept.
+        """
+        options = options or {}
+        ps, pi = self._ci_pstyle(options)
+        sch = self.scheme
+        if ps == "p":
+            st = dict(sch.p_other_band_styles[int(pi) % 15])
+        else:
+            st = dict(sch.ci_band_styles["ci2" if ps == "ci2" else "ci"])
+        st["line_dash"] = list(st.get("line_dash") or [])
+        none = {"fill": st.get("fill") is None, "line": st.get("line") is None}
+
+        def _col(key, keys):
+            val = options.get(key)
+            if val is None or not str(val).strip():
+                return
+            if OptionTranslator._means_no_color(val):
+                for k in keys:
+                    none[k] = True
+                return
+            c, a = self.tr.parse_color_alpha(str(val), key)
+            for k in keys:
+                if c:
+                    st[k] = c
+                    none[k] = False
+                if a is not None:
+                    st[k + "_alpha"] = a
+
+        _col("color", ("fill", "line"))
+        _col("lcolor", ("line",))
+        _col("acolor", ("fill", "line"))
+        _col("fcolor", ("fill",))
+        _col("alcolor", ("line",))
+
+        for key in ("lwidth", "alwidth"):
+            val = options.get(key)
+            if val is None or not str(val).strip():
+                continue
+            if str(val).strip().lower() == "none":
+                st["line_width"] = 0.0
+                continue
+            try:
+                w = self.tr.translate_lwidth(str(val))
+            except ValueError:
+                _dash_style_note(key, val, "line width")
+                continue
+            if math.isfinite(w) and 0.0 <= w <= 1000.0:
+                st["line_width"] = w
+        for key in ("lpattern", "alpattern"):
+            val = options.get(key)
+            if val is None or not str(val).strip():
+                continue
+            try:
+                st["line_dash"] = list(self.tr.translate_lpattern(str(val)))
+            except ValueError:
+                _dash_style_note(key, val, "line pattern")
+        if "fintensity" in options:
+            try:
+                v = str(options["fintensity"]).strip()
+                pct = float(v[5:] if v.startswith("inten") else v) / 100.0
+                if not math.isfinite(pct):
+                    raise ValueError(v)
+            except (TypeError, ValueError):
+                _dash_style_note("fintensity", options["fintensity"],
+                                 "fill intensity")
+            else:
+                st["intensity"] = max(0.0, min(1.0, pct))
+        for key in ("falpha", "fa"):
+            if key in options:
+                fa = _stat_option_float(options, key, None, "fill",
+                                        lo=0.0, hi=100.0)
+                if fa is not None:
+                    st["fill_alpha"] = fa / 100.0
+                break
+        if "lalpha" in options:
+            la = _stat_option_float(options, "lalpha", None, "line",
+                                    lo=0.0, hi=100.0)
+            if la is not None:
+                st["line_alpha"] = la / 100.0
+        st["fill_none"] = none["fill"]
+        st["line_none"] = none["line"] or not st.get("line_width")
+        return st
+
+    def _ci_band_glyphs(self, fig, source, x_col, lo_col, hi_col,
+                        options) -> "tuple[Any, Any]":
+        """The band (a VArea) and its outline (a closed Patch round it,
+        ends included, as twoway strokes it), in ``_ci_band_style``.
+
+        The outline has a source of its own, built from the band's rows,
+        and is tagged ``dash_ci_outline`` so no tooltip is built from its
+        polygon; the legend keys it with the band (a Patch is a band
+        glyph to ``_dash_legend_entries``).  Returns ``(band, outline)``.
+        """
+        st = self._ci_band_style(options)
+        fill = st.get("fill") or "#c0c0c0"
+        _fa = st.get("fill_alpha")
+        band_r = fig.varea(
+            x=x_col, y1=lo_col, y2=hi_col, source=source,
+            fill_color=self._blend_intensity(fill, st.get("intensity", 1.0)),
+            fill_alpha=(0.0 if st["fill_none"]
+                        else 1.0 if _fa is None else float(_fa)),
+        )
+        data = source.data
+        xs = list(data.get(x_col, []))
+        lo = list(data.get(lo_col, []))
+        hi = list(data.get(hi_col, []))
+        if xs and len(lo) == len(xs) and len(hi) == len(xs):
+            ox = xs + xs[::-1] + xs[:1]
+            oy = lo + hi[::-1] + lo[:1]
+        else:
+            ox, oy = [], []
+        _la = st.get("line_alpha")
+        outline_r = fig.patch(
+            x="x_ci_outline", y="y_ci_outline",
+            source=ColumnDataSource({"x_ci_outline": ox,
+                                     "y_ci_outline": oy}),
+            fill_color=None, fill_alpha=0.0,
+            line_color=st.get("line") or fill,
+            line_alpha=(0.0 if st["line_none"]
+                        else 1.0 if _la is None else float(_la)),
+            line_width=float(st.get("line_width") or 0.0),
+            line_dash=list(st.get("line_dash") or []),
+        )
+        # On the renderer: a glyph method's tags= lands on the glyph.
+        outline_r.tags = ["dash_ci_outline"]
+        band_r._dash_ci_outline = outline_r
+        return band_r, outline_r
+
+    def _ci_line_restyle(self, line_r, options) -> None:
+        """The fit line under a ``pstyle()``, before the user's line
+        options: pstyle(ci)/pstyle(ci2) draw it in linestyle ci/ci2
+        (``color ci_line``, ``linewidth ci``, ``linepattern ci``), and
+        pstyle(p#) in p#'s series line -- linestyle p#, the connecting
+        line's chain: ``color p#line``, ``linewidth p#``, ``linepattern
+        p#line`` (measured 24sep2026: s1mono's pstyle(p3) fit line is black
+        and vshortdash, its connecting line, where its plain fit is p1's
+        #606060 solid)."""
+        ps, pi = self._ci_pstyle(options)
+        g = line_r.glyph
+        if ps in self._CI_PSTYLE_NAMED:
+            ls = self.scheme.ci_line_styles[ps]
+            if ls.get("line") is None:
+                g.line_alpha = 0.0
+            else:
+                g.line_color = ls["line"]
+                if ls.get("line_alpha") is not None:
+                    g.line_alpha = ls["line_alpha"]
+            g.line_width = ls["line_width"]
+            g.line_dash = list(ls["line_dash"])
+        elif ps == "p":
+            g.line_color = self.scheme.default_color(pi, "connected")
+            _a = self.scheme.default_alpha(pi, "connected")
+            if _a is not None:
+                g.line_alpha = _a
+            g.line_width = self.scheme.plot_line_width(pi, "")
+            g.line_dash = list(self.scheme.default_connect_pattern(pi))
 
     @staticmethod
     def _bootstrap_ci(
@@ -6270,6 +7215,10 @@ class GlyphMapper:
             # stroke-opacity alike, 0.20 under sttrans.
             alpha=self._scheme_alpha(color_idx, "scatter",
                                      self.scheme.fill_alpha),
+            # The outline: `linewidth p#mark' -> pmark -> p# -> p, as Stata
+            # draws every marker's (markerstyle-p#.style); it was Bokeh's
+            # 1px under every scheme.  mlwidth() still wins, below.
+            line_width=self.scheme.plot_line_width(color_idx, "mark"),
             legend_label=yvar,
         )
         if view is not None:
@@ -6317,6 +7266,7 @@ class GlyphMapper:
         view=None,
         color_idx: int = 0,
         connected: bool = False,
+        line_kind: "str | None" = None,
     ) -> "GlyphRenderer":
         """Add a line glyph to *fig*.
 
@@ -6327,6 +7277,10 @@ class GlyphMapper:
             connected: True when this line is the connecting line of a
                        ``twoway connected``, which Stata styles from the
                        ``p#line`` stub rather than from ``p#lineplot``.
+            line_kind: The width chain (SchemeParser.plot_line_width):
+                       "lineplot" for a line plot, "" for a connected
+                       plot's line (the default by *connected*), and ""
+                       for rconnected, whose colour is a line's.
 
         Args:
             fig:     Bokeh Figure object.
@@ -6370,7 +7324,9 @@ class GlyphMapper:
             source=sorted_source,
             line_color=self.scheme.default_color(
                 color_idx, "connected" if connected else "line"),
-            line_width=self.scheme.default_line_width,
+            line_width=self.scheme.plot_line_width(
+                color_idx, ("" if connected else "lineplot")
+                if line_kind is None else line_kind),
             legend_label=yvar,
         )
         # The scheme's dash cycle.  default_line_pattern() had no call site,
@@ -6528,7 +7484,7 @@ class GlyphMapper:
                 _border_data[_ROW_ID_COLUMN] = _area_ids
             border_source = ColumnDataSource(_border_data)
             line_r = fig.line(x=xvar, y=yvar, source=border_source,
-                               line_color=border_color, line_width=self.scheme.default_line_width)
+                               line_color=border_color, line_width=self.scheme.plot_line_width(color_idx, "area"))
             self._apply_line_opts(line_r, options)
 
         # No marker labels: twoway draws none on an area (measured).
@@ -6656,6 +7612,11 @@ class GlyphMapper:
         _bar_line_alpha = self.scheme.default_alpha(color_idx, "bar")
         if _bar_line_alpha is not None:
             _vbar_kwargs["line_alpha"] = _bar_line_alpha
+        # `linewidth p#bar' -> `linewidth pbar' (plot_line_width); absent,
+        # the outline keeps the width it is drawn at today.
+        _bar_lw = self.scheme.plot_line_width(color_idx, "bar")
+        if _bar_lw is not None:
+            _vbar_kwargs["line_width"] = _bar_lw
         # No view here: clean_source already holds only the selected rows.
         r = fig.vbar(**_vbar_kwargs)
         if _bar_numeric:
@@ -6760,7 +7721,7 @@ class GlyphMapper:
         _seg_kwargs: dict = dict(x0="x0", y0="y0", x1="x1", y1="y1",
                                   source=seg_source,
                                   line_color=self.scheme.default_color(color_idx, "spike"),
-                                  line_width=self.scheme.default_line_width,
+                                  line_width=self.scheme.plot_line_width(color_idx, ""),
                                   legend_label=yvar)
         # No view here: seg_source already holds only the selected rows.
         r = fig.segment(**_seg_kwargs)
@@ -6984,6 +7945,70 @@ class GlyphMapper:
         return (*cols[:-1], w, wtype)
 
     @staticmethod
+    def _mark_unfit(renderers, command: str):
+        """Mark a fit layer twoway draws empty with a note, and return it.
+
+        *command* is ``"regress"`` or ``"fracpoly"``, the estimator whose
+        "(note:  <command> could not fit model)" twoway prints.  The mark
+        is a private attribute of the Python object, never serialised into
+        the page; ``_dash_note_empty_layer`` reads it after the layer is
+        drawn, in both modes, and gives twoway's note in place of dash's
+        own "drew nothing".  A static method, so the served app, which
+        copies GlyphMapper by source, carries it.
+        """
+        if command not in ("regress", "fracpoly"):
+            return renderers
+        for _r in (renderers if isinstance(renderers, (list, tuple))
+                   else [renderers]):
+            try:
+                _r._dash_unfit = command
+            except (AttributeError, TypeError):
+                pass
+        return renderers
+
+    @staticmethod
+    def _mark_insufficient(renderers):
+        """Mark a fit layer after whose note twoway also prints
+        "insufficient observations", and return it.
+
+        twoway lfit and lfitci on one observation in a by() panel print
+        "(note:  regress could not fit model)" and then "insufficient
+        observations", and draw the other panels, rc 0 (measured
+        24sep2026; outside by() dash.ado refuses the command, r(2001), as
+        twoway does).  Read by ``_dash_note_empty_layer`` beside
+        ``_mark_unfit``'s mark; a private attribute, never serialised.
+        """
+        for _r in (renderers if isinstance(renderers, (list, tuple))
+                   else [renderers]):
+            try:
+                _r._dash_insufficient = True
+            except (AttributeError, TypeError):
+                pass
+        return renderers
+
+    @staticmethod
+    def _mark_silent(renderers):
+        """Mark a layer twoway draws empty in silence, and return it.
+
+        lowess on fewer than three observations or with a smooth missing
+        everywhere, lpoly and lpolyci whose smooth is missing at every grid
+        point, kdensity on one observation or none, a histogram or a median
+        band or spline with no observation: twoway draws a missing serset,
+        or none, and prints nothing, rc 0 (measured 24sep2026, in and out
+        of a by() panel).  ``_dash_note_empty_layer`` gives no "drew
+        nothing" for a marked layer.  A private attribute, never
+        serialised; a static method, so the served app, which copies
+        GlyphMapper by source, carries it.
+        """
+        for _r in (renderers if isinstance(renderers, (list, tuple))
+                   else [renderers]):
+            try:
+                _r._dash_silent = True
+            except (AttributeError, TypeError):
+                pass
+        return renderers
+
+    @staticmethod
     def _masked_index(source: ColumnDataSource, view, *varnames: str):
         """Row indices selecting exactly the rows ``_masked`` keeps.
 
@@ -7051,10 +8076,19 @@ class GlyphMapper:
         x, y, w, _wt = self._layer_weights(source, view, options, "lfit",
                                            xvar, yvar)
 
-        # Need at least 2 points to fit a line
+        # Need at least 2 points to fit a line.  With none, twoway lfit
+        # draws nothing and notes "(note:  regress could not fit model)"
+        # (measured 24sep2026); with one it refuses, r(2001), which
+        # dash.ado reproduces -- a filtered or hand-written layer reaching
+        # here with one gets the note.
+        # In a by() panel of one, twoway prints the note, then
+        # "insufficient observations", and draws on, rc 0 (measured
+        # 24sep2026): _mark_insufficient.
         if len(x) < 2:
             empty = ColumnDataSource({"x": [], "y": []})
-            return fig.line(x="x", y="y", source=empty)
+            r = self._mark_unfit(fig.line(x="x", y="y", source=empty),
+                                 "regress")
+            return self._mark_insufficient(r) if len(x) == 1 else r
 
         # numpy's `w' multiplies the UNSQUARED residual, so the regression
         # weight w -- aweight, fweight or pweight, whose point estimates all
@@ -7080,7 +8114,7 @@ class GlyphMapper:
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
         r = fig.line(x="x", y="y", source=fit_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=self.scheme.default_line_width, line_dash="solid",
+                     line_width=self.scheme.plot_line_width(color_idx, "lineplot"), line_dash="solid",
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
@@ -7114,16 +8148,30 @@ class GlyphMapper:
         x, y, w, _wt = self._layer_weights(source, view, options, "qfit",
                                            xvar, yvar)
 
-        # Need at least 3 points for a degree-2 fit
-        if len(x) < 3:
+        # With none or one, twoway qfit draws nothing and notes that regress
+        # could not fit the model, rc 0 (measured 24sep2026).  Two are
+        # fitted: regress omits x or x^2 and draws the other (_qfit_design).
+        # dash drew nothing there, and said the layer drew nothing.
+        if len(x) < 2:
             empty = ColumnDataSource({"x": [], "y": []})
-            return fig.line(x="x", y="y", source=empty)
+            return self._mark_unfit(fig.line(x="x", y="y", source=empty),
+                                    "regress")
 
-        # Stata's grid, as map_lfit uses -- see the note there.
-        x_fit = _fit_grid(x, options, "qfit")
+        # Stata's grid, as map_lfit uses -- see the note there -- except
+        # that twoway_qfit_parse.class reads a points count of 3 as lfit's
+        # default and draws 100: `qfit y x, n(3)' plots 100 points
+        # (measured 24sep2026; qfitci, n(3) plots 3).
+        _qopts = options
+        try:
+            if float(str(options.get("n", "") or "").strip()) == 3.0:
+                _qopts = dict(options)
+                _qopts.pop("n", None)
+        except ValueError:
+            pass
+        x_fit = _fit_grid(x, _qopts, "qfit")
         # The regression qfitci draws its line from (_qfit_design,
         # _dash_wls): one fit for both, so an x with two values is the
-        # line regress fits with x^2 omitted.  np.polyfit returned an
+        # curve regress fits with x or x^2 omitted.  np.polyfit returned an
         # arbitrary least-norm quadratic there, and the two layers disagreed
         # between the points (the WP-18 review).
         X, Xg = _qfit_design(x, x_fit)
@@ -7136,7 +8184,7 @@ class GlyphMapper:
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
         r = fig.line(x="x", y="y", source=fit_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=self.scheme.default_line_width,
+                     line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
@@ -7171,23 +8219,35 @@ class GlyphMapper:
                                              xvar, yvar)
         n = len(x)
 
-        # Need at least 3 points.  An x with no spread is drawn: regress
+        # Need at least 2 points.  An x with no spread is drawn: regress
         # omits it and fits the constant (_dash_wls drops the zero column),
         # so the line is the mean of y and the band the mean's interval --
         # as twoway lfit draws the mean (measured 24sep2026).  This drew
-        # nothing, and said the layer drew nothing.
+        # nothing, and said the layer drew nothing.  Two points are the
+        # line through them and no band: df = 0, and twoway's serset
+        # carries the line and a missing band (measured 24sep2026: x = 1 3,
+        # y = 2 5, n(5) plots 2 2.75 3.5 4.25 5, the limits missing); dash
+        # drew nothing there, and said so.
         empty_ci_src = ColumnDataSource({
             "x_fit": [], "y_fit": [], "y_lower": [], "y_upper": []
         })
         _lfitci_color = self.scheme.default_color(color_idx, "line")
-        if n < 3:
-            band_r = fig.varea(
-                x="x_fit", y1="y_lower", y2="y_upper",
-                source=empty_ci_src, fill_alpha=_CI_BAND_ALPHA, fill_color=_lfitci_color
-            )
+        if n < 2:
+            # The ci style, as a band with rows draws it: an empty
+            # layer's legend key is the band twoway keys.
+            band_r, _ = self._ci_band_glyphs(
+                fig, empty_ci_src, "x_fit", "y_lower", "y_upper", options)
             line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
-                              line_color=_lfitci_color, line_width=self.scheme.default_line_width,
+                              line_color=_lfitci_color, line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                               legend_label=yvar)
+            self._ci_line_restyle(line_r, options)
+            # twoway lfitci on no observations: nothing, and the note that
+            # regress could not fit the model (one it refuses, r(2001); in
+            # a by() panel of one, the note and "insufficient
+            # observations", rc 0).
+            self._mark_unfit([line_r, band_r], "regress")
+            if n == 1:
+                self._mark_insufficient([line_r, band_r])
             return [line_r, band_r]
 
         # `regress y x [weight]' then `predict, stdp|stdf|stdr' on Stata's
@@ -7218,7 +8278,8 @@ class GlyphMapper:
         })
 
         line_r, band_r = self._render_ci_band(
-            fig, ci_source, "x_fit", "y_fit", _lfitci_color, yvar, options
+            fig, ci_source, "x_fit", "y_fit", _lfitci_color, yvar, options,
+            line_width=self.scheme.plot_line_width(color_idx, "lineplot")
         )
         return [line_r, band_r]
 
@@ -7277,19 +8338,25 @@ class GlyphMapper:
         x, y, w, wtype = self._layer_weights(source, view, options, "qfitci",
                                              xvar, yvar)
 
-        # Need at least 3 points for a degree-2 polyfit
+        # Two points are fitted, as qfit fits them (_qfit_design), the band
+        # missing (df 0): twoway's serset on x = 1 3, y = 2 5 is 2 2.46875
+        # 3.125 3.96875 5 with the limits missing (measured 24sep2026).
+        # dash drew nothing below three, and said so.
         _qfitci_color = self.scheme.default_color(color_idx, "line")
-        if len(x) < 3:
+        if len(x) < 2:
             empty_ci_src = ColumnDataSource({
                 "x_fit": [], "y_fit": [], "y_lower": [], "y_upper": []
             })
-            band_r = fig.varea(
-                x="x_fit", y1="y_lower", y2="y_upper",
-                source=empty_ci_src, fill_alpha=_CI_BAND_ALPHA, fill_color=_qfitci_color
-            )
+            # The ci style, as a band with rows draws it: an empty
+            # layer's legend key is the band twoway keys.
+            band_r, _ = self._ci_band_glyphs(
+                fig, empty_ci_src, "x_fit", "y_lower", "y_upper", options)
             line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
-                              line_color=_qfitci_color, line_width=self.scheme.default_line_width,
+                              line_color=_qfitci_color, line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                               legend_label=yvar)
+            self._ci_line_restyle(line_r, options)
+            # twoway qfitci on none or one: nothing, and regress's note.
+            self._mark_unfit([line_r, band_r], "regress")
             return [line_r, band_r]
 
         x_fit = _fit_grid(x, options, "qfitci")
@@ -7327,7 +8394,8 @@ class GlyphMapper:
             "y_lower": y_lower, "y_upper": y_upper,
         })
         line_r, band_r = self._render_ci_band(
-            fig, ci_source, "x_fit", "y_fit", _qfitci_color, yvar, options
+            fig, ci_source, "x_fit", "y_fit", _qfitci_color, yvar, options,
+            line_width=self.scheme.plot_line_width(color_idx, "lineplot")
         )
         return [line_r, band_r]
 
@@ -7389,6 +8457,12 @@ class GlyphMapper:
             # An empty layer is still the user's layer: apply the line
             # options so lwidth/lcolor/lpattern survive a bail-out.
             self._apply_line_opts(_r_empty, options)
+            # Fewer than three observations: twoway draws the missing
+            # smooth in silence, rc 0, on one, two or three (measured
+            # 24sep2026) -- in a by() panel too.  A constant x keeps
+            # dash's "drew nothing" (EC-04).
+            if len(x) < 3:
+                self._mark_silent(_r_empty)
             return _r_empty
 
         # Stata's smoother, not statsmodels'.  statsmodels' lowess is a
@@ -7445,9 +8519,14 @@ class GlyphMapper:
         })
         r = fig.line(x="x_lw", y="y_lw", source=lw_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=self.scheme.default_line_width,
+                     line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=yvar)
         self._apply_line_opts(r, options)
+        # A smooth missing everywhere -- three observations, whose
+        # neighbourhoods are too small -- twoway draws in silence (measured
+        # 24sep2026: x = 1 3 4 plots three missing values, rc 0).
+        if not len(x_lw):
+            self._mark_silent(r)
         return r
 
     @staticmethod
@@ -7487,33 +8566,84 @@ class GlyphMapper:
         n = len(xs)
         k = int((n * bw - 0.5) / 2.0)
         out = np.empty(n)
+        # The cost (BUGS.md, "lowess and fpfit cost more than they need to
+        # on large data"): the definition is O(N x window) and stays so, but
+        # each window ran two elementwise ``** 3`` -- libm pow(), about 13 ns
+        # an element -- allocated a fresh array for every intermediate, and
+        # summed through ``np.dot``, which hands every window to OpenBLAS's
+        # thread pool: 0.2 ms for an 80,000-element dot on an idle machine
+        # and 124 ms on a loaded one (measured 24sep2026, where a plain sum
+        # of the same products took 0.4 ms).  Now the cubes are two
+        # multiplications, the work arrays are allocated once, every sum is
+        # numpy's own pairwise sum on this thread, and Delta is read from
+        # the window's ends -- xs is sorted, so max |x_j - x_i| is at one
+        # end, the same float as the full scan.  A drawn value moves by
+        # under 1e-12 of its size (test_estimator_cost.py holds it to the
+        # old loop).  A window whose x are all equal (Delta 0) has no line,
+        # and is missing directly, as Stata's is; the old loop reached the
+        # same answer through a slope of 0/0.
+        L = min(n, 2 * k + 1) if n else 0
+        buf_d = np.empty(L)
+        buf_w = np.empty(L)
+        buf_t = np.empty(L)
         for i in range(n):
             lo, hi = max(0, i - k), min(n - 1, i + k)
+            m = hi - lo + 1
             xi = xs[lo:hi + 1]
             yi = ys[lo:hi + 1]
-            d = np.abs(xi - xs[i])
-            delta = 1.0001 * float(d.max())
-            if noweight or delta == 0.0:
-                w = np.ones_like(xi)
+            c = xs[i]
+            delta = 1.0001 * max(c - xs[lo], xs[hi] - c)
+            unit = noweight or delta == 0.0
+            t = buf_t[:m]
+            if unit:
+                w = None
+                sw = float(m)
+                ym = float(yi.sum()) / sw
             else:
-                w = (1.0 - (d / delta) ** 3) ** 3
-            sw = float(w.sum())
-            ym = float(np.dot(w, yi)) / sw
+                w = buf_w[:m]
+                d = buf_d[:m]
+                np.subtract(xi, c, out=d)
+                np.abs(d, out=d)
+                np.divide(d, delta, out=t)
+                np.multiply(t, t, out=w)          # (d/Delta)^3
+                np.multiply(w, t, out=w)
+                np.subtract(1.0, w, out=t)        # (1 - (d/Delta)^3)^3
+                np.multiply(t, t, out=w)
+                np.multiply(w, t, out=w)
+                sw = float(w.sum())
+                np.multiply(w, yi, out=t)
+                ym = float(t.sum()) / sw
             if mean:
                 out[i] = ym
                 continue
-            xm = float(np.dot(w, xi)) / sw
-            sxx = float(np.dot(w, (xi - xm) ** 2))
-            if sxx <= 0.0:
+            if delta == 0.0:
                 # Every x in the window equal (or k = 0): a line has no
                 # slope, and Stata's running line is MISSING there --
                 # measured on twenty rows with ten tied at x = 1, bwidth(.2),
                 # and on nlsw88 wage on grade, 495 of 2244 missing.  dash
                 # drew the window's mean.  The running mean is defined.
                 out[i] = np.nan
+                continue
+            if unit:
+                xm = float(xi.sum()) / sw
             else:
-                b = float(np.dot(w, (xi - xm) * (yi - ym))) / sxx
-                out[i] = ym + b * (xs[i] - xm)
+                np.multiply(w, xi, out=t)
+                xm = float(t.sum()) / sw
+            dx = buf_d[:m]
+            np.subtract(xi, xm, out=dx)
+            np.multiply(dx, dx, out=t)
+            if not unit:
+                np.multiply(t, w, out=t)
+            sxx = float(t.sum())
+            if sxx <= 0.0:
+                out[i] = np.nan
+                continue
+            np.subtract(yi, ym, out=t)
+            np.multiply(t, dx, out=t)
+            if not unit:
+                np.multiply(t, w, out=t)
+            b = float(t.sum()) / sxx
+            out[i] = ym + b * (c - xm)
         return xs, out
 
     # ------------------------------------------------------------------
@@ -7746,9 +8876,13 @@ class GlyphMapper:
         x, y, w, wtype = self._layer_weights(source, view, options, "lpoly",
                                              xvar, yvar)
 
+        # None or one: dash.ado refuses as twoway does, r(2000)/r(2001),
+        # except in a by() panel, where twoway draws nothing in silence, rc
+        # 0 (measured 24sep2026).
         if len(x) < 2:
             empty = ColumnDataSource({"x_lp": [], "y_lp": []})
-            return fig.line(x="x_lp", y="y_lp", source=empty)
+            return self._mark_silent(
+                fig.line(x="x_lp", y="y_lp", source=empty))
 
         bwidth = _stat_option_float(options, "bwidth", None, "lpoly", lo=0.0)
         if bwidth is not None and bwidth <= 0.0:
@@ -7784,9 +8918,15 @@ class GlyphMapper:
         })
         r = fig.line(x="x_lp", y="y_lp", source=lp_src,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=self.scheme.default_line_width,
+                     line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=yvar)
         self._apply_line_opts(r, options)
+        # A smooth missing at every grid point -- no observation within the
+        # bandwidth of any, on two, three, even eight observations --
+        # twoway plots as missing values, in silence, rc 0 (measured
+        # 24sep2026).
+        if not valid.any():
+            self._mark_silent(r)
         return r
 
     def map_lpolyci(
@@ -7823,14 +8963,18 @@ class GlyphMapper:
             "x_lp": [], "y_lp": [], "y_lower": [], "y_upper": []
         })
         if len(x) < 3:
-            band_r = fig.varea(
-                x="x_lp", y1="y_lower", y2="y_upper",
-                source=empty_src, fill_alpha=_CI_BAND_ALPHA, fill_color=_lpolyci_color,
-            )
+            # The ci style, as a band with rows draws it: an empty
+            # layer's legend key is the band twoway keys.
+            band_r, _ = self._ci_band_glyphs(
+                fig, empty_src, "x_lp", "y_lower", "y_upper", options)
             line_r = fig.line(x="x_lp", y="y_lp", source=empty_src,
-                              line_color=_lpolyci_color, line_width=self.scheme.default_line_width,
+                              line_color=_lpolyci_color, line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                               legend_label=yvar)
-            return [line_r, band_r]
+            self._ci_line_restyle(line_r, options)
+            # Two observations: twoway's smooth and band are missing, rc 0,
+            # nothing printed; none or one in a by() panel, the same
+            # (measured 24sep2026).
+            return self._mark_silent([line_r, band_r])
 
         # The same resolution map_lpoly uses.  This was left on the pre-S07
         # code -- bwidth clamped to [0.01, 1.0] as a FRACTION, no kernel
@@ -7898,8 +9042,12 @@ class GlyphMapper:
             "y_upper": y_upper[valid].tolist(),
         })
         line_r, band_r = self._render_ci_band(
-            fig, ci_src, "x_lp", "y_lp", _lpolyci_color, yvar, options
+            fig, ci_src, "x_lp", "y_lp", _lpolyci_color, yvar, options,
+            line_width=self.scheme.plot_line_width(color_idx, "lineplot")
         )
+        # Missing at every grid point: drawn in silence, as lpoly's is.
+        if not valid.any():
+            self._mark_silent([line_r, band_r])
         return [line_r, band_r]
 
     # ------------------------------------------------------------------
@@ -7971,6 +9119,140 @@ class GlyphMapper:
             h2 = lnx if p2 == 0.0 else np.power(xx, p2)
         return np.column_stack([np.ones_like(xx), h1, h2])
 
+    # _fp_screen's bounds: a pair is fitted in full when its screened rss
+    # is within _FP_SCREEN_MARGIN of the centred total sum of squares of
+    # the smallest, or when its 2x2 correlation matrix is conditioned worse
+    # than _FP_SCREEN_COND (the screen's error is then not small enough to
+    # rule it out).
+    _FP_SCREEN_MARGIN = 1e-9
+    _FP_SCREEN_COND = 1e6
+
+    @classmethod
+    def _fp_screen(cls, xx: "np.ndarray", y: "np.ndarray",
+                   w: "np.ndarray | None" = None,
+                   wtype: "str | None" = None) -> "set":
+        """The power pairs of :meth:`_fp_fit`'s search that could win it.
+
+        The search fitted all 36 pairs with :func:`_dash_wls` -- a Gram-
+        Schmidt pass and two SVDs of the n x 3 design each -- 2 to 7 s at
+        1e6 rows, repeated on every served filter move (BUGS.md, "lowess
+        and fpfit cost more than they need to on large data").  Here each
+        pair's residual sum of squares is found from its centred 2x2 normal
+        equations: every power column is built once (as ``_fp_design``
+        builds it), centred, and crossed with the other and with y, one
+        pass each.  Where the screen vouches for a pair (below), its rss
+        was within 2.7e-12 of the centred total sum of squares (TSS) of the
+        full fit's on every pair of 120 probe datasets (20 to 3,000 rows,
+        weighted and not; x uniform, lognormal, 1e4 + U(0,1), in (0.001,
+        0.01) and rounded to ten values; y noisy or an exact FP curve;
+        24sep2026), so a pair whose screened rss exceeds the smallest by
+        more than ``_FP_SCREEN_MARGIN`` x TSS -- 1e-9, some 400 times that
+        -- cannot have the smallest full rss.  On 1e5 and 1e6 rows one pair
+        is then fitted in full, where 1e-7 left eight.
+
+        A pair is returned -- fitted in full, as before -- when it is within
+        that margin, or when the screen cannot vouch for it: a column that
+        is not finite (the full search skips it itself), a quantity that
+        overflows, a column whose centred norm is under 1e-6 of its own
+        (the full fit's Gram-Schmidt may omit it), a condition number over
+        the bound, or a raw design whose singular-value ratio is within
+        1000x of the full fit's rank cutoff.  Degenerate data is fitted in
+        full, as slowly as it was; nothing is ruled out that could win.
+
+        Returns:
+            The set of ``(p1, p2)`` pairs to fit in full.
+        """
+        powers = cls._FP_POWERS
+        pairs = [(p1, p2) for i, p1 in enumerate(powers) for p2 in powers[i:]]
+        every = set(pairs)
+        n = len(xx)
+        with np.errstate(all="ignore"):
+            # Every sum is numpy's own pairwise sum, never np.dot: a dot
+            # goes to OpenBLAS's thread pool, which on a loaded machine
+            # costs a hundred times the arithmetic (see _stata_lowess).
+            ww = None if w is None else _dash_weight_norm(w, wtype, n)
+
+            def _wsum(v):
+                # sum of w * v, on a scratch copy when weighted
+                return float(v.sum() if ww is None else (ww * v).sum())
+
+            W = float(n) if ww is None else float(ww.sum())
+            if not (np.isfinite(W) and W > 0.0) or (
+                    ww is not None and not np.all(np.isfinite(ww))):
+                return every
+            ybar = _wsum(y) / W
+            yc = y - ybar
+            wyc = yc if ww is None else ww * yc
+            tss = float((wyc * yc).sum())
+            if not (np.isfinite(tss) and tss > 0.0):
+                return every
+            lnx = np.log(xx)
+            eps_rank = 1e3 * np.finfo(float).eps * max(n, 3)
+            sqW = math.sqrt(W)
+
+            def _column(h):
+                # (mean, centred column, weighted centred column, centred
+                # square norm, raw square norm, cross with y), or None when
+                # the column is not finite -- the full search skips it.
+                if not np.all(np.isfinite(h)):
+                    return None
+                m = _wsum(h) / W
+                hc = h - m
+                whc = hc if ww is None else ww * hc
+                return (m, hc, whc, float((whc * hc).sum()),
+                        _wsum(h * h), float((whc * yc).sum()))
+
+            base = {p: _column(lnx if p == 0.0 else np.power(xx, p))
+                    for p in powers}
+            screened = {}
+            vouch = set()
+            for p1, p2 in pairs:
+                a = base[p1]
+                if a is None:
+                    vouch.add((p1, p2))
+                    continue
+                if p1 == p2:
+                    h1 = lnx if p1 == 0.0 else np.power(xx, p1)
+                    b = _column(h1 * lnx)
+                else:
+                    b = base[p2]
+                if b is None:
+                    vouch.add((p1, p2))
+                    continue
+                ma, _hca, wha, caa, rawa, ga = a
+                mb, hcb, _whb, cbb, rawb, gb = b
+                cab = float((wha * hcb).sum())
+                vals = (ma, mb, caa, cbb, rawa, rawb, ga, gb, cab)
+                if (not all(math.isfinite(v) for v in vals)
+                        or not (caa > 1e-12 * rawa and cbb > 1e-12 * rawb)):
+                    vouch.add((p1, p2))
+                    continue
+                r = cab / math.sqrt(caa * cbb)
+                one_r2 = 1.0 - r * r
+                if (not math.isfinite(r) or abs(r) >= 1.0
+                        or (1.0 + abs(r)) / (1.0 - abs(r)) > cls._FP_SCREEN_COND
+                        or cbb * one_r2 <= 1e-12 * rawb):
+                    vouch.add((p1, p2))
+                    continue
+                R = np.array([[sqW, sqW * ma, sqW * mb],
+                              [0.0, math.sqrt(caa), cab / math.sqrt(caa)],
+                              [0.0, 0.0, math.sqrt(cbb * one_r2)]])
+                sv = np.linalg.svd(R, compute_uv=False)
+                if not (sv[-1] > eps_rank * sv[0]):
+                    vouch.add((p1, p2))
+                    continue
+                g1 = ga / math.sqrt(caa)
+                g2 = gb / math.sqrt(cbb)
+                rss = tss - (g1 * g1 - 2.0 * r * g1 * g2 + g2 * g2) / one_r2
+                if not math.isfinite(rss):
+                    vouch.add((p1, p2))
+                    continue
+                screened[(p1, p2)] = rss
+        if not screened:
+            return every
+        cut = min(screened.values()) + cls._FP_SCREEN_MARGIN * tss
+        return vouch | {pq for pq, v in screened.items() if v <= cut}
+
     @classmethod
     def _fp_fit(
         cls,
@@ -8001,9 +9283,15 @@ class GlyphMapper:
         if not (scale > 0.0):
             return None
         xx = (x + shift) / scale
+        # Only the pairs that could have the smallest rss are fitted in
+        # full (_fp_screen); the rest provably lose, so the winner, and so
+        # every drawn value, is the one the full search picks.
+        candidates = cls._fp_screen(xx, y, w, wtype)
         best = None
         for i, p1 in enumerate(cls._FP_POWERS):
             for p2 in cls._FP_POWERS[i:]:
+                if (p1, p2) not in candidates:
+                    continue
                 X = cls._fp_design(xx, p1, p2)
                 if not np.all(np.isfinite(X)):
                     continue
@@ -8117,6 +9405,11 @@ class GlyphMapper:
             # An empty layer is still the user's layer: style it so
             # lwidth/lcolor/lpattern survive the bail-out.
             self._apply_line_opts(r, options)
+            # twoway fpfit on one observation, or on a sample missing
+            # values empty: nothing, "(note:  fracpoly could not fit
+            # model)", rc 0 (measured 24sep2026).
+            if len(x) < 2:
+                self._mark_unfit(r, "fracpoly")
             return r
 
         x_grid = _fp_grid(x)
@@ -8132,7 +9425,7 @@ class GlyphMapper:
         })
         r = fig.line(x="x_fp", y="y_fp", source=fp_src,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=self.scheme.default_line_width,
+                     line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
@@ -8177,13 +9470,16 @@ class GlyphMapper:
         _fp_report_unsupported(options, "fpfitci")
         fit = self._fp_fit(x, y, w, wtype) if len(x) >= 2 else None
         if fit is None:
-            band_r = fig.varea(
-                x="x_fp", y1="y_lower", y2="y_upper",
-                source=empty_src, fill_alpha=_CI_BAND_ALPHA, fill_color=_fpfitci_color,
-            )
+            # The ci style, as a band with rows draws it: an empty
+            # layer's legend key is the band twoway keys.
+            band_r, _ = self._ci_band_glyphs(
+                fig, empty_src, "x_fp", "y_lower", "y_upper", options)
             line_r = fig.line(x="x_fp", y="y_fp", source=empty_src,
-                              line_color=_fpfitci_color, line_width=self.scheme.default_line_width,
+                              line_color=_fpfitci_color, line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                               legend_label=yvar)
+            self._ci_line_restyle(line_r, options)
+            if len(x) < 2:
+                self._mark_unfit([line_r, band_r], "fracpoly")
             return [line_r, band_r]
 
         x_grid = _fp_grid(x)
@@ -8215,7 +9511,8 @@ class GlyphMapper:
             "y_upper": y_upper[valid].tolist(),
         })
         line_r, band_r = self._render_ci_band(
-            fig, ci_src, "x_fp", "y_fp", _fpfitci_color, yvar, options
+            fig, ci_src, "x_fp", "y_fp", _fpfitci_color, yvar, options,
+            line_width=self.scheme.plot_line_width(color_idx, "lineplot")
         )
         return [line_r, band_r]
 
@@ -8255,8 +9552,13 @@ class GlyphMapper:
                                             "histogram", yvar)
         if not len(arr):
             empty_src = ColumnDataSource({"top": [], "left": [], "right": []})
-            return fig.quad(top="top", bottom=0, left="left", right="right",
-                            source=empty_src)
+            # No observation in the sample -- a qualifier, missing values,
+            # or a by() panel another plot draws in: twoway draws nothing
+            # in silence, rc 0 (measured 24sep2026; on a dataset with no
+            # observations dash.ado refuses it, as twoway does).
+            return self._mark_silent(
+                fig.quad(top="top", bottom=0, left="left", right="right",
+                         source=empty_src))
 
         edges, ymode = self._histogram_grid(arr, options, w)
         discrete = bool(str(options.get("discrete", "") or "").strip())
@@ -8509,7 +9811,12 @@ class GlyphMapper:
         # kernel() at all, and Stata's default kernel is epanechnikov.
         if len(arr) < 2 or np.std(arr) == 0.0:
             empty = ColumnDataSource({"x": [], "y": []})
-            return fig.line(x="x", y="y", source=empty)
+            r = fig.line(x="x", y="y", source=empty)
+            # None or one: dash.ado refuses one as twoway does, r(2001);
+            # in a by() panel twoway draws none or one in silence, rc 0
+            # (measured 24sep2026).  A constant variable keeps dash's
+            # "drew nothing" (EC-05).
+            return self._mark_silent(r) if len(arr) < 2 else r
 
         kernel = str(options.get("kernel", "") or "epanechnikov").strip().lower()
         if kernel not in _KERNELS:
@@ -8562,7 +9869,7 @@ class GlyphMapper:
         kd_source = ColumnDataSource({"x": x_range, "y": density})
         r = fig.line(x="x", y="y", source=kd_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=self.scheme.default_line_width,
+                     line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         # Tag renderer so DashRenderer can wire filter-callback recomputation.
@@ -8710,6 +10017,9 @@ class GlyphMapper:
                                    fill_color=self.scheme.default_color(color_idx, "bar"),
                                    line_alpha=0,
                                    legend_label=y1var)
+        _rbar_lw = self.scheme.plot_line_width(color_idx, "bar")
+        if _rbar_lw is not None:
+            _rbar_kwargs["line_width"] = _rbar_lw
         if view is not None:
             _rbar_kwargs["view"] = view
         r = fig.vbar(**_rbar_kwargs)
@@ -8786,7 +10096,7 @@ class GlyphMapper:
             return [fig.segment(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=empty_src)]
         _rseg_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=source,
                                    line_color=self.scheme.default_color(color_idx, "rspike"),
-                                   line_width=self.scheme.default_line_width,
+                                   line_width=self.scheme.plot_line_width(color_idx, ""),
                                    legend_label=y1var)
         if view is not None:
             _rseg_kwargs["view"] = view
@@ -8859,14 +10169,14 @@ class GlyphMapper:
         _rcap_color = self.scheme.default_color(color_idx, "rcap")
         _spine_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var,
                                     source=cap_source,
-                                    line_color=_rcap_color, line_width=self.scheme.default_line_width,
+                                    line_color=_rcap_color, line_width=self.scheme.plot_line_width(color_idx, ""),
                                     legend_label=y1var)
         _bot_kwargs: dict = dict(x0=_x0_col, y0=y1var, x1=_x1_col, y1=y1var,
                                   source=cap_source,
-                                  line_color=_rcap_color, line_width=self.scheme.default_line_width)
+                                  line_color=_rcap_color, line_width=self.scheme.plot_line_width(color_idx, ""))
         _top_kwargs: dict = dict(x0=_x0_col, y0=y2var, x1=_x1_col, y1=y2var,
                                   source=cap_source,
-                                  line_color=_rcap_color, line_width=self.scheme.default_line_width)
+                                  line_color=_rcap_color, line_width=self.scheme.plot_line_width(color_idx, ""))
         if view is not None:
             _spine_kwargs["view"] = view
             _bot_kwargs["view"] = view
@@ -8927,11 +10237,11 @@ class GlyphMapper:
         # the upper one used to take the NEXT series' colour (WP-23).
         _rl1_kwargs: dict = dict(x=xvar, y=y1var, source=source,
                                   line_color=self.scheme.default_color(color_idx, "line"),
-                                  line_width=self.scheme.default_line_width,
+                                  line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                                   legend_label=y1var)
         _rl2_kwargs: dict = dict(x=xvar, y=y2var, source=source,
                                   line_color=self.scheme.default_color(color_idx, "line"),
-                                  line_width=self.scheme.default_line_width)
+                                  line_width=self.scheme.plot_line_width(color_idx, "lineplot"))
         if view is not None:
             _rl1_kwargs["view"] = view
             _rl2_kwargs["view"] = view
@@ -8978,9 +10288,13 @@ class GlyphMapper:
         # both paths and all 148 markers in p1's #1A476F.  The upper end
         # used to take the next series' colour and symbol (WP-23).
         return [
-            self.map_line(fig, source, y1var, xvar, options, view=view, color_idx=color_idx),
+            # Its lines take linestyle p#'s width, not p#lineplot's
+            # (measured: `linewidth plineplot' leaves them at p1's).
+            self.map_line(fig, source, y1var, xvar, options, view=view,
+                          color_idx=color_idx, line_kind=""),
             self.map_scatter(fig, source, y1var, xvar, options, view=view, color_idx=color_idx),
-            self.map_line(fig, source, y2var, xvar, options, view=view, color_idx=color_idx),
+            self.map_line(fig, source, y2var, xvar, options, view=view,
+                          color_idx=color_idx, line_kind=""),
             self.map_scatter(fig, source, y2var, xvar, options, view=view, color_idx=color_idx),
         ]
 
@@ -9111,11 +10425,12 @@ class GlyphMapper:
 
         _dl_seg_kwargs: dict = dict(
             x0="x", y0="y0", x1="x", y1="y", source=dl_source,
-            line_color=seg_color, line_width=self.scheme.default_line_width)
+            line_color=seg_color, line_width=self.scheme.plot_line_width(color_idx, ""))
         _dl_dot_kwargs: dict = dict(
             x="x", y="y", source=dl_source,
             fill_color=dot_color, line_color=dot_color,
             size=self.scheme.default_marker_size(color_idx),
+            line_width=self.scheme.plot_line_width(color_idx, "mark"),
             legend_label=yvar)
         if view is not None:
             _dl_seg_kwargs["view"] = view
@@ -9209,16 +10524,19 @@ class GlyphMapper:
             pass
 
         _rcs_spine_kw: dict = dict(x0="x",     y0="y1",  x1="x",     y1="y2",
-                                    source=cap_source, line_color=color, line_width=1.5,
+                                    source=cap_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, ""),
                                     legend_label=y1var)
         _rcs_bcap_kw: dict  = dict(x0="x0_cap", y0="y1", x1="x1_cap", y1="y1",
-                                    source=cap_source, line_color=color, line_width=1.5)
+                                    source=cap_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, ""))
         _rcs_tcap_kw: dict  = dict(x0="x0_cap", y0="y2", x1="x1_cap", y1="y2",
-                                    source=cap_source, line_color=color, line_width=1.5)
+                                    source=cap_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, ""))
+        _rcs_mlw = self.scheme.plot_line_width(color_idx, "mark")
         _rcs_bdot_kw: dict  = dict(x="x", y="y1", source=cap_source,
-                                    fill_color=mark_color, line_color=mark_color, size=7)
+                                    fill_color=mark_color, line_color=mark_color, size=7,
+                                    line_width=_rcs_mlw)
         _rcs_tdot_kw: dict  = dict(x="x", y="y2", source=cap_source,
-                                    fill_color=mark_color, line_color=mark_color, size=7)
+                                    fill_color=mark_color, line_color=mark_color, size=7,
+                                    line_width=_rcs_mlw)
         if view is not None:
             for _kw in (_rcs_spine_kw, _rcs_bcap_kw, _rcs_tcap_kw, _rcs_bdot_kw, _rcs_tdot_kw):
                 _kw["view"] = view
@@ -9331,7 +10649,9 @@ class GlyphMapper:
 
         r = fig.scatter(x="x", y="y", source=si_source,
                         marker=marker, size=size,
-                        fill_color=color, line_color=color)
+                        fill_color=color, line_color=color,
+                        line_width=self.scheme.plot_line_width(color_idx,
+                                                               "mark"))
         # mcolor(), msize() and msymbol() are resolved above; msangle() and
         # malpha() are read only here, and dash.sthlp lists scatteri as
         # taking msangle().
@@ -9396,7 +10716,7 @@ class GlyphMapper:
         _pcseg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                                     source=source_clean,
                                     line_color=self.scheme.default_color(color_idx, "pcspike"),
-                                    line_width=1.5,
+                                    line_width=self.scheme.plot_line_width(color_idx, ""),
                                     legend_label=y1var)
         # No view here: source_clean already holds only the selected rows.
         r = fig.segment(**_pcseg_kwargs)
@@ -9560,6 +10880,8 @@ class GlyphMapper:
         _pcsc_kwargs: dict = dict(source=pc_source,
                                    size=self.scheme.default_marker_size(color_idx),
                                    color=self.scheme.default_color(color_idx, "scatter"),
+                                   line_width=self.scheme.plot_line_width(
+                                       color_idx, "mark"),
                                    legend_label=y1var)
         # No view here: pc_source already holds only the selected rows.
         r = fig.scatter("x", "y", **_pcsc_kwargs)
@@ -9687,7 +11009,7 @@ class GlyphMapper:
             pass
 
         _pca_seg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
-                                      source=pc_source, line_color=color, line_width=1.5,
+                                      source=pc_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, "arrowline"),
                                       legend_label=y1var)
         # No view here: pc_source already holds only the selected rows.
         seg = fig.segment(**_pca_seg_kwargs)
@@ -9768,7 +11090,7 @@ class GlyphMapper:
             pass
 
         _pcb_seg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
-                                      source=pc_source, line_color=color, line_width=1.5,
+                                      source=pc_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, "arrowline"),
                                       legend_label=y1var)
         # No view here: pc_source already holds only the selected rows.
         seg = fig.segment(**_pcb_seg_kwargs)
@@ -9869,7 +11191,7 @@ class GlyphMapper:
                           source=seg_src,
                           line_color=self.scheme.default_color(color_idx,
                                                                "pccapsym"),
-                          line_width=1.5, legend_label=y1var)
+                          line_width=self.scheme.plot_line_width(color_idx, ""), legend_label=y1var)
         self._apply_line_opts(seg, options)
 
         # One marker at each end, from the same rows: the starts, then the
@@ -9884,7 +11206,9 @@ class GlyphMapper:
         dots = fig.scatter(x="x", y="y", source=dot_src,
                            marker=self.scheme.default_symbol(color_idx),
                            size=self.scheme.default_marker_size(color_idx),
-                           fill_color=mark_color, line_color=mark_color)
+                           fill_color=mark_color, line_color=mark_color,
+                           line_width=self.scheme.plot_line_width(color_idx,
+                                                                  "mark"))
         # The line options never reach the markers: _apply_marker_opts
         # reads the outline from mlcolor()/mlwidth() alone, on every type
         # (this mapper used to filter lcolor()/lwidth()/lalpha() out itself,
@@ -10231,6 +11555,8 @@ class GlyphMapper:
         _rs_kwargs: dict = dict(source=rs_source,
                                  size=self.scheme.default_marker_size(color_idx),
                                  color=self.scheme.default_color(color_idx, "scatter"),
+                                 line_width=self.scheme.plot_line_width(
+                                     color_idx, "mark"),
                                  legend_label=y1var)
         # No view here: rs_source already holds only the selected rows.
         r = fig.scatter("x", "y", **_rs_kwargs)
@@ -10300,13 +11626,15 @@ class GlyphMapper:
                                            lo=1.0, hi=300.0) or 10.0)
 
         kx, ky = self._cross_medians(x_clean, y_clean, n_bands)
-        # No knot -- no data, or every x equal -- is no curve.
+        # No knot -- no observation -- is no curve, drawn in silence as
+        # twoway draws it (with bands(), or in a by() panel; with neither,
+        # dash.ado refuses it as twoway does).
         if len(kx) < 1:
             r = fig.line(x="x_sp", y="y_sp", source=empty)
             # An empty layer is still the user's layer: style it so
             # lwidth/lcolor/lpattern survive the bail-out.
             self._apply_line_opts(r, options)
-            return [r]
+            return self._mark_silent([r])
 
         if len(kx) < 3:
             # One or two knots: Stata's serset is the knots themselves --
@@ -10322,7 +11650,7 @@ class GlyphMapper:
         ms_source = ColumnDataSource({"x_sp": x_grid, "y_sp": y_grid})
         r = fig.line(x="x_sp", y="y_sp", source=ms_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=self.scheme.default_line_width,
+                     line_width=self.scheme.plot_line_width(color_idx, ""),
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return [r]
@@ -10343,8 +11671,13 @@ class GlyphMapper:
         point (fixture mband) and every mspline knot set (mspline_knots).
 
         Returns:
-            ``(kx, ky)``, one entry per non-empty band; empty when x does
-            not vary.
+            ``(kx, ky)``, one entry per non-empty band; empty when there is
+            no observation.  An x that does not vary -- one observation, or
+            every x equal -- is one band, its cross median the one point
+            (x, median y): twoway mspline and mband plot that serset, in
+            silence (measured 24sep2026: y = 2 at x = 1 gives (2, 1); y =
+            2 4 6 at x = 5 gives (4, 5)).  dash returned no knot, drew
+            nothing and said so.
         """
         x = np.asarray(x, dtype=float)
         y = np.asarray(y, dtype=float)
@@ -10352,7 +11685,7 @@ class GlyphMapper:
             return np.array([]), np.array([])
         x_min, x_max = float(x.min()), float(x.max())
         if x_max == x_min:
-            return np.array([]), np.array([])
+            return np.array([x_min]), np.array([float(np.median(y))])
         n_bands = max(1, int(n_bands))
         # The band of an observation is floor((x - min) * B / range), the
         # top band closed on the right -- an observation ON an edge belongs
@@ -10424,16 +11757,17 @@ class GlyphMapper:
         x_mids, y_meds = self._cross_medians(x_clean, y_clean, n_bands)
 
         if not len(x_mids):
-            # No data, or every x equal.  An empty layer is still the
-            # user's layer: style it so lwidth/lcolor/lpattern survive.
+            # No observation, drawn in silence as twoway draws it (see
+            # map_mspline).  An empty layer is still the user's layer:
+            # style it so lwidth/lcolor/lpattern survive.
             r = fig.line(x="x_mb", y="y_mb", source=empty)
             self._apply_line_opts(r, options)
-            return [r]
+            return self._mark_silent([r])
 
         mb_source = ColumnDataSource({"x_mb": x_mids, "y_mb": y_meds})
         r = fig.line(x="x_mb", y="y_mb", source=mb_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=self.scheme.default_line_width,
+                     line_width=self.scheme.plot_line_width(color_idx, ""),
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return [r]
@@ -10563,7 +11897,7 @@ class GlyphMapper:
             )
             return [fig.line(x="x_fn", y="y_fn", source=empty_source,
                              line_color=self.scheme.default_color(color_idx, "line"),
-                             line_width=self.scheme.default_line_width)]
+                             line_width=self.scheme.plot_line_width(color_idx, "lineplot"))]
 
         try:
             tree = _ast.parse(expr, mode="eval")
@@ -10575,7 +11909,7 @@ class GlyphMapper:
         except (SyntaxError, ValueError, RecursionError, MemoryError):
             return [fig.line(x="x_fn", y="y_fn", source=empty_source,
                              line_color=self.scheme.default_color(color_idx, "line"),
-                             line_width=self.scheme.default_line_width)]
+                             line_width=self.scheme.plot_line_width(color_idx, "lineplot"))]
 
         x_lo, x_hi = float(x_range[0]), float(x_range[1])
         x_arr = np.linspace(x_lo, x_hi, int(n_points))
@@ -10624,7 +11958,7 @@ class GlyphMapper:
         except Exception:
             return [fig.line(x="x_fn", y="y_fn", source=empty_source,
                              line_color=self.scheme.default_color(color_idx, "line"),
-                             line_width=self.scheme.default_line_width)]
+                             line_width=self.scheme.plot_line_width(color_idx, "lineplot"))]
 
         # A value Stata cannot hold is missing there, and twoway draws it
         # as a gap: numpy's inf and nan -- x/0, exp(1000*x), log(0) -- are
@@ -10634,7 +11968,7 @@ class GlyphMapper:
         fn_source = ColumnDataSource({"x_fn": x_arr, "y_fn": y_arr})
         r = fig.line(x="x_fn", y="y_fn", source=fn_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=self.scheme.default_line_width,
+                     line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=expr[:40])
         self._apply_line_opts(r, options)
         return [r]
@@ -11518,8 +12852,9 @@ def _dash_wls(X: "np.ndarray", y: "np.ndarray",
     is .8380293).
 
     A column that adds nothing to the columns BEFORE it is omitted, its
-    coefficient 0 -- regress drops the later of a collinear pair: qfitci
-    on an x with two values fits the line, x^2 omitted, with df N - 2.  The
+    coefficient 0 -- regress drops the later of a collinear pair (which of
+    x and x^2 qfitci keeps on an x with two values is twoway's own rule,
+    applied by :func:`_qfit_design`), with df N - 2.  The
     remaining fit and its covariance are held in SVD form, with lstsq's
     rank cutoff, because ``s2 * inv(X'WX)`` squares the condition number:
     on a date-time x (a large offset against its range) the band came out
@@ -11620,11 +12955,42 @@ def _qfit_design(x: "np.ndarray", x_fit: "np.ndarray"
     pseudo-inverse discarded a real singular value and the band came out
     about half as wide as Stata's.  A reparameterisation of the same
     column space, so every prediction and its variance are unchanged.
+
+    An x with exactly TWO values a and b cannot carry x and x^2 beside the
+    constant: regress omits one, and which one decides the curve drawn
+    between them.  Measured 24sep2026 on 22 samples (regress y x x2, and
+    twoway qfit/qfitci's plotted serset): x is omitted when |a + b| > 1 --
+    the centred x^2 is (a + b) times the centred x, so it is then the
+    larger -- and x^2 otherwise, ties included: x = 1 3 draws 1.625 +
+    .375 x^2, x = -1 2 the line, x = -5 6 the line and x = -5 6.2 the
+    parabola; the same with any number of observations on the two values.
+    The design is then the constant and the kept term, centred and
+    scaled.  dash always kept x -- the centred x^2 of two values is a
+    constant -- and drew the line where twoway draws the parabola.
     """
+    x = np.asarray(x, dtype=float)
+    xg = np.asarray(x_fit, dtype=float)
+    vals = np.unique(x[np.isfinite(x)])
+    if len(vals) == 2:
+        a, b = float(vals[0]), float(vals[1])
+        if abs(a + b) > 1.0:
+            # x omitted: the constant and x^2, centred and scaled.  The
+            # square is formed after dividing by the larger magnitude, so an
+            # x near 1e155 does not overflow; a common factor leaves every
+            # prediction unchanged.
+            s = max(abs(a), abs(b)) or 1.0
+            q = (x / s) ** 2
+            qg = (xg / s) ** 2
+            qmu = float(np.mean(q))
+            qsd = float(np.std(q)) or 1.0
+            q = (q - qmu) / qsd
+            qg = (qg - qmu) / qsd
+            return (np.column_stack([np.ones_like(q), q]),
+                    np.column_stack([np.ones_like(qg), qg]))
     mu = float(np.mean(x))
     sd = float(np.std(x)) or 1.0
-    z = (np.asarray(x, dtype=float) - mu) / sd
-    zg = (np.asarray(x_fit, dtype=float) - mu) / sd
+    z = (x - mu) / sd
+    zg = (xg - mu) / sd
     return (np.column_stack([np.ones_like(z), z, z * z]),
             np.column_stack([np.ones_like(zg), zg, zg * zg]))
 
@@ -14034,11 +15400,13 @@ _DASH_UNSAFE_BY = re.compile(
 )
 
 #: The by() sub-options dash implements, with the abbreviations Stata's
-#: by_option grammar allows for them (c:ols, miss:ing; total has none).
+#: by_option grammar allows for them (c:ols, miss:ing, tot:al --
+#: bygraph_g.class reads TOTal; total alone was read, so by(g, tot) drew no
+#: Total panel where twoway draws one: test_parser.cscript P1A-84).
 _DASH_BY_SUPPORTED = {
     "cols": ("c", "co", "col", "cols"),
     "missing": ("miss", "missi", "missin", "missing"),
-    "total": ("total",),
+    "total": ("tot", "tota", "total"),
 }
 
 
@@ -14712,6 +16080,527 @@ def _dash_parse_axis_label_opt(raw):
 #: 23sep2026, WP-20).  Two thousand labels on one axis is past legible.
 _MAX_AXIS_TICKS = 2000
 
+#: twoway's #N rule, as dash reproduces it (_dash_natscale_ticks).  An
+#: uncovered stretch of data beyond the outermost tick costs twice a
+#: stretch of axis beyond the data; a tick fewer or more than N costs
+#: 0.37/N of the range; neither end's tick may leave more than 0.455 of a
+#: step of data uncovered; two ticks must span the data; and at most N+1
+#: ticks are drawn.  Fitted to test/fixtures/natscale_truth.json.
+_DASH_NATSCALE_UNCOVERED = 2.0
+_DASH_NATSCALE_DENSITY = 0.37
+_DASH_NATSCALE_SIDE = 0.455
+#: natscale's step counter is a 32-bit integer (_dash_natscale_ticks).
+_DASH_NATSCALE_INT_LIMIT = 2.0 ** 31
+#: The tag an axis's placeholder ticker carries while its #N ticks wait for
+#: the drawn layers (_dash_finish_count_ticks); the count follows it.
+_DASH_COUNT_TAG = "dash_count:"
+
+
+def _dash_natscale_ticks(lo, hi, n):
+    """The ticks twoway draws for ``#n`` over data running *lo* to *hi*.
+
+    BUGS.md "ylabel(#N) and xlabel(#N) ticks fall where Bokeh puts them,
+    not where twoway does": dash handed #N to Bokeh as desired_num_ticks,
+    and ``ylabel(#5)`` on auto's mpg drew 15(5)40 where twoway draws
+    10(10)40.  twoway's rule is tickset_g.class's ``set_ticks``: the
+    builtin ``natscale`` over the axis's data minimum and maximum (the
+    graph's own record equals ``_natscale min max N`` in all 264 axes
+    measured), ticks from its minimum in steps of 1, 2 or 5 times a power
+    of ten; ``#1`` is the minimum and the maximum; a range of one value
+    gets that value less and plus one.  natscale is compiled and
+    undocumented, so this is a model of it fitted to Stata's own answers
+    (test/fixtures/natscale_truth.json): of all the candidate steps and
+    end ticks, the one of least cost under the ``_DASH_NATSCALE_*`` terms.
+    It agrees with 261 of the 264 drawn axes and 98.3% of 2,878 random
+    ranges; where it differs, it is one tick more or fewer at an end.
+    Where natscale's 32-bit step count overflows (data far from zero on a
+    narrow range: 1e9 to 1e9+1) twoway draws the data's ends less and
+    plus one, as here (72 of 72 measured cases).
+
+    Returns a list of at most ``_MAX_AXIS_TICKS + 1`` floats, or None for
+    a non-finite range or count.  Pure arithmetic: nothing here reads text.
+    """
+    try:
+        lo, hi, n = float(lo), float(hi), int(n)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not (math.isfinite(lo) and math.isfinite(hi)):
+        return None
+    n = max(1, min(n, _MAX_AXIS_TICKS))
+    if hi < lo:
+        lo, hi = hi, lo
+    if hi == lo:
+        return [lo - 1.0, lo + 1.0]
+    if n == 1:
+        return [lo, hi]
+    rng = hi - lo
+    if not math.isfinite(rng) or rng <= 0:
+        return [lo, hi]
+    tol = 1e-9
+    best = None
+    z_lo = math.floor(math.log10(rng / (n + 2))) - 1
+    z_hi = math.ceil(math.log10(rng)) + 1
+    for z in range(z_lo, z_hi + 1):
+        for m in (1, 2, 5):
+            d = m * 10.0 ** z
+            if not math.isfinite(d) or d <= 0:
+                continue
+            fl, fh = lo / d, hi / d
+            if not (math.isfinite(fl) and math.isfinite(fh)):
+                continue
+            for j0 in sorted({math.floor(fl + tol), math.ceil(fl - tol)}):
+                for j1 in sorted({math.floor(fh + tol), math.ceil(fh - tol)}):
+                    k = j1 - j0 + 1
+                    if k < 2 or k > n + 1:
+                        continue
+                    t0, t1 = j0 * d, j1 * d
+                    ulo, uhi = max(0.0, t0 - lo), max(0.0, hi - t1)
+                    if max(ulo, uhi) >= _DASH_NATSCALE_SIDE * d:
+                        continue
+                    if k == 2 and ulo + uhi > tol * rng:
+                        continue
+                    wide = max(0.0, lo - t0) + max(0.0, t1 - hi)
+                    cost = ((_DASH_NATSCALE_UNCOVERED * (ulo + uhi) + wide)
+                            / rng + _DASH_NATSCALE_DENSITY * abs(k - n) / n)
+                    if best is None or cost < best[0] - 1e-12:
+                        best = (cost, j0, j1, m, z)
+    if best is None:
+        return [lo, hi]
+    _, j0, j1, m, z = best
+    # natscale counts in 32-bit steps: past 2^31 steps of the power of ten
+    # below its step from zero it overflows ("natscale fooled",
+    # tickset_g.class), and twoway draws the data's ends less and plus
+    # one -- `ylabel(#3)' over 1e9 and 1e9+1 is 999999999 and 1000000002
+    # (72 cases measured 24sep2026, test/fixtures/natscale_axes_truth.json).
+    _p = 10.0 ** z
+    if _p > 0 and max(abs(lo), abs(hi)) >= _DASH_NATSCALE_INT_LIMIT * _p:
+        return [lo - 1.0, hi + 1.0]
+    scale = 10.0 ** z if z >= 0 else None
+    out = []
+    for j in range(j0, j1 + 1):
+        # j*m/10**-z, not j*m*0.1**-z: 3*0.1 is 0.30000000000000004.
+        v = j * m * scale if scale is not None else j * m / 10.0 ** (-z)
+        out.append(float("%.15g" % v))
+    return out
+
+
+def _dash_count_ticker(count):
+    """The placeholder ticker an axis with ``#count`` carries until
+    :func:`_dash_finish_count_ticks` replaces it with twoway's ticks: Bokeh's
+    choice of about *count*, which is what a figure never finished shows."""
+    from bokeh.models.tickers import BasicTicker
+    return BasicTicker(desired_num_ticks=int(count),
+                       tags=[_DASH_COUNT_TAG + str(int(count))])
+
+
+def _dash_count_of(ticker):
+    """The count a placeholder from :func:`_dash_count_ticker` carries, or
+    None.  Only a whole number of at most nine digits is read."""
+    for t in (getattr(ticker, "tags", None) or ()):
+        if isinstance(t, str) and t.startswith(_DASH_COUNT_TAG):
+            digits = t[len(_DASH_COUNT_TAG):]
+            if digits.isascii() and digits.isdigit() and len(digits) <= 9:
+                return int(digits)
+    return None
+
+
+#: The Stata date kinds whose #N ticks come from _tsnatscale, and its unit
+#: option for each (tickset_g.class set_ticks: d, w, m, q, h and y; %tc
+#: and %tC take natscale).
+_DASH_TS_UNITS = {"td": "d", "tw": "w", "tm": "m", "tq": "q", "th": "h",
+                  "ty": "y"}
+
+
+def _dash_unix_ms_to_unit(ms, unit):
+    """The value of epoch milliseconds *ms* in a Stata date *unit* ("d",
+    "w", "m", "q", "h" or "y"), with the fraction of the period elapsed;
+    None outside Stata's dates."""
+    try:
+        ms = float(ms)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not (math.isfinite(ms) and _STATA_MS_MIN + _STATA_EPOCH_UNIX_MS
+            <= ms <= _STATA_MS_MAX + _STATA_EPOCH_UNIX_MS):
+        return None
+    if unit == "d":
+        return (ms - _STATA_EPOCH_UNIX_MS) / 86_400_000.0
+    day = math.floor(ms / 86_400_000.0)
+    frac_day = ms / 86_400_000.0 - day
+    d64 = np.datetime64(int(day), "D")
+    m64 = d64.astype("datetime64[M]")
+    y = int(m64.astype("datetime64[Y]").astype(np.int64)) + 1970
+    mon = int(m64.astype(np.int64)) - (y - 1970) * 12       # 0..11
+    first = int(m64.astype("datetime64[D]").astype(np.int64))
+    nxt = int((m64 + 1).astype("datetime64[D]").astype(np.int64))
+    in_month = (day - first + frac_day) / float(nxt - first)
+    if unit == "w":
+        jan1 = int(np.datetime64(y - 1970, "Y").astype("datetime64[D]")
+                   .astype(np.int64))
+        return (y - 1960) * 52 + min(51.999, (day - jan1 + frac_day) / 7.0)
+    months = (y - 1960) * 12 + mon + in_month
+    per = {"m": 1, "q": 3, "h": 6, "y": 12}.get(unit)
+    if per is None:
+        return None
+    if unit == "y":
+        return 1960 + months / 12.0
+    return months / per
+
+
+#: _tsnatscale's model (_dash_tsnatscale_ticks): per unit, 18 cost weights
+#: and the limits (k over N, uncovered data before and after, axis past the
+#: data before and after, in steps), fitted by random search on half of
+#: test/fixtures/natscale_axes_truth.json's 2,000 random ranges per unit.
+_DASH_TS_PARAMS = {
+    "m": ((0.9571097091589719, 0.8616810932081929, 2.060349662029776,
+           1.6714638615792778, 0.05101477878475043, 0.07835461818186285,
+           0.01667941060336129, -0.0681192310405017, 0.0, 0.0,
+           1.0873526397377324, -0.0727817258662537, 0.10468001580574121,
+           -0.0231903843466796, -0.05162235227683797, 0.0007509456822262516,
+           0.08759649823093565, -0.07524942999521382),
+          (5, 0.37542670754495944, 0.48843604542479935, 0.5845318122305869,
+           0.5040751156406877)),
+    "q": ((2.238824132535263, 1.543123373811853, 1.3878814800890091,
+           1.4962958526410908, 0.028977254671998187, 0.020758111902084916,
+           0.0, 0.020747183004623134, 0.01087485463028424,
+           0.14667553484602822, 0.25065547258326953, 0.07667129304081777,
+           -0.07002316054425252, 0.04801988814379773, 0.020592888345600538,
+           0.09338008156670205, -0.00968293785218595, 0.044023393541789226),
+          (3, 0.40951554233183896, 0.5738682496221653, 1.01, 1.01)),
+    "h": ((2.4903855444635545, 2.242192146290143, 1.2419239449961934,
+           1.3025409289111127, 0.05177746851297251, 0.05537131627243111,
+           0.011990908383775888, 0.0, 0.0, 0.09066354262818513,
+           5.743775212906514, 0.011667596171091772, 0.0,
+           0.10460759886619996, 0.0, 0.08637348886605675,
+           0.11566366666545262, 0.0),
+          (5, 0.45559978211235314, 0.5203566374450356, 0.5949329410057442,
+           0.5184456196629745)),
+}
+#: Periods per year, the sub-year steps, the fallback's grids, and the
+#: year steps of the calendar ladder.
+_DASH_TS_PER = {"m": 12, "q": 4, "h": 2}
+_DASH_TS_SUB = {"m": (1, 2, 3, 6), "q": (1, 2), "h": (1,)}
+_DASH_TS_GRIDS = {"m": (1.0, 3.0, 6.0), "q": (1.0, 2.0), "h": (1.0,)}
+_DASH_TS_YEARS = (1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000)
+#: Each unit's values for 01jan0100 and 31dec9999.
+_DASH_TS_LIMITS = {
+    "d": (-679350, 2936549),
+    "w": ((100 - 1960) * 52, (9999 - 1960) * 52 + 51),
+    "m": ((100 - 1960) * 12, (9999 - 1960) * 12 + 11),
+    "q": ((100 - 1960) * 4, (9999 - 1960) * 4 + 3),
+    "h": ((100 - 1960) * 2, (9999 - 1960) * 2 + 1),
+    "y": (100, 9999),
+}
+
+
+def _dash_ts_ladder(unit):
+    """(step, grid, offset) of each calendar step of *unit* ("m", "q" or
+    "h"): the sub-year steps, then whole years on absolute calendar years
+    (a 50-year step sits on 2000, 2050, ...)."""
+    per = _DASH_TS_PER[unit]
+    out = [(float(s), 1.0 if s <= 2 else float(s), 0.0)
+           for s in _DASH_TS_SUB[unit]]
+    for yrs in _DASH_TS_YEARS:
+        d = float(yrs * per)
+        out.append((d, d, float((-(1960 % yrs) * per) % (yrs * per))))
+    return out
+
+
+def _dash_ts_cost(lo, hi, n, d, t0, t1, k, fb, params):
+    """The fitted cost of ticks *t0* to *t1* by *d* (*k* of them) over *lo*
+    to *hi*, or None past a limit; *fb* marks a centred fallback."""
+    w, (kcap, sl, sh, wl, wh) = params
+    if k < 2 or k > _MAX_AXIS_TICKS + 1:
+        return None
+    r = hi - lo
+    ulo, wlo = max(0.0, t0 - lo), max(0.0, lo - t0)
+    uhi, whi = max(0.0, hi - t1), max(0.0, t1 - hi)
+    dk = k - n
+    f = (ulo / r, wlo / r, uhi / r, whi / r,
+         max(dk, 0), max(-dk, 0), max(dk - 2, 0), max(-dk - 2, 0),
+         max(dk, 0) / n, max(-dk, 0) / n,
+         fb, fb * abs(dk),
+         ulo / d, uhi / d, wlo / d, whi / d,
+         1.0 if k == 2 else 0.0, 1.0 if dk == 0 else 0.0)
+    if fb == 0.0 and (dk > kcap or f[12] > sl or f[13] > sh or f[14] > wl
+                      or f[15] > wh):
+        return None
+    return sum(a * b for a, b in zip(w, f))
+
+
+def _dash_ts_candidates(unit, lo, hi, n, kcap):
+    """(step, first tick, count, fallback) candidates for *unit* ("m", "q"
+    or "h"): each calendar step from the grid point at or either side of
+    *lo*; and centred fallbacks, 2 to n+1 ticks on a 1, 3 or 6 month grid
+    (Stata's odd 9-, 18- and 30-month steps)."""
+    out = []
+    r = hi - lo
+    kmax = min(_MAX_AXIS_TICKS + 1, n + kcap)
+    for d, g, o in _dash_ts_ladder(unit):
+        if r / d > kmax + 1:
+            continue
+        fl = math.floor((lo - o) / g) * g + o
+        for t0 in ((fl, fl + g) if fl < lo else (fl,)):
+            fh = (hi - t0) / d
+            for m in {math.floor(fh), math.ceil(fh)}:
+                k = int(m) + 1
+                if 2 <= k <= kmax:
+                    out.append((d, t0, k, 0.0))
+        if d > 4 * r + 1:
+            break
+    c = (lo + hi) / 2.0
+    ks = set(range(2, min(n + 1, 14) + 1)) | set(range(max(2, n - 10),
+                                                       n + 2))
+    for g in _DASH_TS_GRIDS[unit]:
+        for k in ks:
+            base = r / (k - 1) / g
+            for mult in {math.floor(base), math.ceil(base)}:
+                if mult < 1:
+                    continue
+                d = mult * g
+                t0 = math.floor((c - d * (k - 1) / 2.0) / g + 0.5) * g
+                out.append((d, t0, k, 1.0))
+    return out
+
+
+def _dash_ts_tiny(lo, hi, n, unit):
+    """A range of at most *n* periods: every period, extended past the data
+    toward *n* -- e = min(5, 2(n-r-1)/3) more, at most two after *hi*."""
+    r = int(round(hi - lo))
+    dd = n - r - 1
+    e = min(5, (2 * dd) // 3) if dd > 0 else 0
+    if unit == "q" and 4 <= n <= 6:
+        e = max(e, 4 - r)
+    up = min((e + 1) // 2, 2)
+    start = math.floor(lo + 1e-9) - (e - up)
+    return [float(start + i) for i in range(r + 1 + e)]
+
+
+def _dash_ts_calendar(unit, lo, hi, n):
+    """The least-cost candidate for *unit* ("m", "q" or "h")."""
+    params = _DASH_TS_PARAMS[unit]
+    best = None
+    for d, t0, k, fb in _dash_ts_candidates(unit, lo, hi, n,
+                                            int(params[1][0])):
+        cst = _dash_ts_cost(lo, hi, n, d, t0, t0 + (k - 1) * d, k, fb, params)
+        if cst is not None and (best is None or cst < best[0] - 1e-12):
+            best = (cst, d, t0, k)
+    if best is None:
+        return [lo, hi]
+    _, d, t0, k = best
+    return [float(t0 + i * d) for i in range(k)]
+
+
+def _dash_ts_yearly(lo, hi, n):
+    """%ty: natscale with the step floored at one year (1,578 of 2,000
+    measured ranges are natscale's answer, the rest step 1)."""
+    t = _dash_natscale_ticks(lo, hi, n)
+    if t is not None and len(t) > 1 and t[1] - t[0] >= 1 - 1e-9:
+        return t
+    a, b = math.ceil(lo - 1e-9), math.floor(hi + 1e-9)
+    if b - a >= 1:
+        return [float(v) for v in range(int(a), int(b) + 1)]
+    return [float(math.floor(lo)), float(math.ceil(hi))]
+
+
+def _dash_ts_frac_month(td):
+    """A %td day as a %tm month and the fraction of it elapsed."""
+    import datetime
+    base = datetime.date(1960, 1, 1)
+    x = base + datetime.timedelta(days=int(math.floor(td)))
+    first = datetime.date(x.year, x.month, 1)
+    if x.year < 9999 or x.month < 12:
+        dim = (datetime.date(x.year + (x.month == 12), x.month % 12 + 1, 1)
+               - first).days
+    else:
+        dim = 31
+    return ((x.year - 1960) * 12 + x.month - 1
+            + (x.day - 1 + (td - math.floor(td))) / dim)
+
+
+def _dash_ts_month_day(j):
+    """The %td day of %tm month *j*'s first day, or None past 0100-9999."""
+    import datetime
+    y, mo = 1960 + j // 12, j % 12 + 1
+    if y < _STATA_YEAR_MIN or y > _STATA_YEAR_MAX:
+        return None
+    return float((datetime.date(y, mo, 1) - datetime.date(1960, 1, 1)).days)
+
+
+def _dash_ts_month_week(j):
+    """The %tw week holding %tm month *j*'s first day, or None."""
+    import datetime
+    td = _dash_ts_month_day(j)
+    if td is None:
+        return None
+    x = datetime.date(1960, 1, 1) + datetime.timedelta(days=int(td))
+    return float((x.year - 1960) * 52
+                 + min((x.timetuple().tm_yday - 1) // 7, 51))
+
+
+def _dash_ts_week_day(w):
+    """The %td day of %tw week *w*'s first day."""
+    import datetime
+    y = 1960 + int(math.floor(w / 52.0))
+    wk = int(w - (y - 1960) * 52)
+    return float((datetime.date(y, 1, 1) - datetime.date(1960, 1, 1)).days
+                 + 7 * wk)
+
+
+def _dash_ts_daily(unit, lo, hi, n):
+    """%td and %tw: steps of days (1, 2, 3, 7, 14, 21) or weeks (1, 2, 4)
+    from *lo*, and the monthly ladder on fractional months mapped to the
+    months' first days, under the monthly weights."""
+    params = _DASH_TS_PARAMS["m"]
+    kcap = int(params[1][0])
+    r = hi - lo
+    best = None
+    own = (1, 2, 3, 7, 14, 21) if unit == "d" else (1, 2, 4)
+    kmax = min(_MAX_AXIS_TICKS + 1, n + kcap)
+    for d in own:
+        d = float(d)
+        if r / d > kmax + 1:
+            continue
+        for t0 in {math.floor(lo), math.ceil(lo)}:
+            fh = (hi - t0) / d
+            for m in {math.floor(fh), math.ceil(fh)}:
+                k = int(m) + 1
+                if 2 <= k <= kmax:
+                    cst = _dash_ts_cost(lo, hi, n, d, t0, t0 + (k - 1) * d,
+                                        k, 0.0, params)
+                    if cst is not None and (best is None
+                                            or cst < best[0] - 1e-12):
+                        best = (cst, [t0 + i * d for i in range(k)])
+    if unit == "d":
+        flo, fhi = _dash_ts_frac_month(lo), _dash_ts_frac_month(hi)
+        tomap, per_step = _dash_ts_month_day, 30.436875
+    else:
+        flo = _dash_ts_frac_month(_dash_ts_week_day(math.floor(lo)))
+        fhi = _dash_ts_frac_month(_dash_ts_week_day(math.floor(hi)))
+        tomap, per_step = _dash_ts_month_week, 365.25 / 12.0 / 7.0
+    if fhi > flo:
+        for d, t0, k, fb in _dash_ts_candidates("m", flo, fhi, n, kcap):
+            if fb:
+                continue
+            ticks = []
+            for i in range(k):
+                v = tomap(int(round(t0 + i * d)))
+                if v is None:
+                    ticks = None
+                    break
+                ticks.append(v)
+            if not ticks:
+                continue
+            cst = _dash_ts_cost(lo, hi, n, d * per_step, ticks[0], ticks[-1],
+                                k, 0.0, params)
+            if cst is not None and (best is None or cst < best[0] - 1e-12):
+                best = (cst, ticks)
+    if best is None:
+        return [lo, hi]
+    return [float(v) for v in best[1]]
+
+
+def _dash_tsnatscale_ticks(lo, hi, n, unit):
+    """The ticks _tsnatscale gives for ``#n`` over *lo* to *hi* in a Stata
+    date *unit* ("d", "w", "m", "q", "h" or "y"), in that unit's values;
+    None for no rule.
+
+    _tsnatscale is compiled and undocumented, so this is a model fitted to
+    12,000 of its answers (test/fixtures/natscale_axes_truth.json; the
+    graph twoway draws is _tsnatscale's answer over the data in all 280
+    graphs measured).  Its structure: a range of at most *n* periods gets
+    every period, extended toward *n*; otherwise the least-cost candidate
+    among calendar steps (1, 2, 3, 6 months, then 1, 2, 5, 10, 20, 50 ...
+    years on absolute calendar years; %td and %tw also steps of days or
+    weeks) and centred fallbacks, the cost weighing the data left uncovered
+    and the axis past the data at each end and the count's distance from
+    *n*; %ty is natscale with the step floored at a year.  Exact agreement
+    with Stata over 2,000 random ranges each: %td 52%, %tw 58%, %tm 65%,
+    %tq 60%, %th 66%, %ty 98% (held-out halves within two points of the
+    fitted ones); a miss differs in step or in an end tick.  Pure
+    arithmetic, bounded: at most ``_MAX_AXIS_TICKS + 1`` ticks.
+    """
+    try:
+        lo, hi, n = float(lo), float(hi), int(n)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not (math.isfinite(lo) and math.isfinite(hi)) or \
+            unit not in _DASH_TS_LIMITS:
+        return None
+    n = max(1, min(n, _MAX_AXIS_TICKS))
+    if hi < lo:
+        lo, hi = hi, lo
+    a, b = _DASH_TS_LIMITS[unit]
+    if lo < a or hi > b:
+        return None
+    # tickset_g.class set_ticks: one value is that value less and plus
+    # one, and #1 the ends, before _tsnatscale is asked.
+    if hi == lo:
+        return [lo - 1.0, lo + 1.0]
+    if n == 1:
+        return [lo, hi]
+    try:
+        r = hi - lo
+        whole = abs(lo - round(lo)) < 1e-9 and abs(hi - round(hi)) < 1e-9
+        if unit == "y":
+            out = _dash_ts_yearly(lo, hi, n)
+        elif r <= n and whole and (
+                unit in "dwm" or n >= 7
+                or (unit == "q" and (n >= 5 or r >= 2) and n >= 4)):
+            out = _dash_ts_tiny(lo, hi, n, unit)
+        elif unit in ("d", "w"):
+            out = _dash_ts_daily(unit, lo, hi, n)
+        else:
+            out = _dash_ts_calendar(unit, lo, hi, n)
+    except (ValueError, OverflowError, ZeroDivisionError):
+        return None
+    if not out or len(out) > _MAX_AXIS_TICKS + 1:
+        return None
+    return [float("%.12g" % v) for v in out]
+
+
+def _dash_axis_count_ticks(lo, hi, n, kind=None):
+    """twoway's ticks for ``#n`` on an axis whose layers draw *lo* to *hi*,
+    as positions on the Bokeh axis, or None for none.
+
+    *kind* is None for a linear axis (natscale over the data), "log" for a
+    log axis -- twoway's tickset keeps .trans 0 there, so the rule is the
+    same linear natscale, less the ticks a log axis cannot draw (measured:
+    `yscale(log) ylabel(#5)' over 3291-15906 is 0(5000)15000, twoway's 0
+    off the axis) -- or a Stata date kind, whose positions are epoch
+    milliseconds: %tc and %tC take natscale over Stata's milliseconds, the
+    rest _tsnatscale in the variable's own unit (tickset_g.class
+    set_ticks).  Anything else is read as linear.
+    """
+    if kind == "log":
+        t = _dash_natscale_ticks(lo, hi, n)
+        t = [v for v in (t or ()) if v > 0]
+        return t or None
+    if kind in ("tc", "tC"):
+        try:
+            a = float(lo) - _STATA_EPOCH_UNIX_MS
+            b = float(hi) - _STATA_EPOCH_UNIX_MS
+        except (TypeError, ValueError, OverflowError):
+            return None
+        t = _dash_natscale_ticks(a, b, n)
+        return [v + _STATA_EPOCH_UNIX_MS for v in t] if t else None
+    unit = _DASH_TS_UNITS.get(kind) if isinstance(kind, str) else None
+    if unit is None:
+        return _dash_natscale_ticks(lo, hi, n)
+    a = _dash_unix_ms_to_unit(lo, unit)
+    b = _dash_unix_ms_to_unit(hi, unit)
+    if a is None or b is None:
+        return None
+    t = _dash_tsnatscale_ticks(a, b, n, unit)
+    if not t:
+        return None
+    with warnings.catch_warnings():
+        # A tick past 31dec9999 is no date: it is dropped, not counted.
+        warnings.simplefilter("ignore")
+        stamps = _stata_dates_to_datetime(pd.Series(t, dtype="float64"),
+                                          kind)
+    out = [float(v) for v in stamps.dropna().astype("int64").tolist()]
+    return out or None
+
 
 def _dash_parse_axis_spec(raw):
     """Parse Stata's full ``axis_label`` grammar.
@@ -14886,8 +16775,11 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                     ticks=[float(vals.min()), float(vals.max())])
     elif mode == "count":
         # Stata's #N is a SUGGESTION -- measured, xlabel(#10) on weight
-        # yields eight ticks.  Bokeh's desired_num_ticks means the same.
-        axis_obj.ticker = BasicTicker(desired_num_ticks=spec["count"])
+        # yields eight ticks -- and twoway places them by its own rule
+        # over the axis's data.  The data are what the layers draw, so the
+        # ticks are set once they are drawn (_dash_finish_count_ticks);
+        # until then the axis carries Bokeh's choice of about N.
+        axis_obj.ticker = _dash_count_ticker(spec["count"])
     elif mode == "explicit" and spec["ticks"]:
         axis_obj.ticker = FixedTicker(ticks=spec["ticks"])
         if spec["labels"]:
@@ -15002,7 +16894,9 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
         args["extra"] = [float(t) for t in spec["ticks"]]
         minor = _DASH_TICK_EXTRA_JS
     elif mode == "count":
-        args["every"] = BasicTicker(desired_num_ticks=spec["count"])
+        # twoway's positions, once the layers are drawn
+        # (_dash_finish_count_ticks); Bokeh's about-N until then.
+        args["every"] = _dash_count_ticker(spec["count"])
         minor = _DASH_TICK_EVERY_JS
     elif mode == "minmax" and values is not None:
         # A date in milliseconds, a missing one dropped (24sep2026).
@@ -15311,6 +17205,176 @@ def _dash_keep_primary_ranges(fig):
                and not _dash_is_swatch(r)]
         if own:
             rng.renderers = own
+
+
+def _dash_count_axes(fig):
+    """Each axis of *fig* that asked for ``#N`` ticks, as a dict: the axis,
+    its ticker and placeholders, its range, its kind (None, "log" or a
+    Stata date kind) and the minimum and maximum its layers draw (None
+    when they draw nothing).  Keyed by side and place, so a by() graph's
+    panels line up."""
+    import types
+    from bokeh.models import (CustomJSTicker, DataRange1d, DatetimeAxis,
+                              LogAxis)
+    from bokeh.models.axes import ContinuousAxis
+    out = []
+    for sides, range_attr, extra_attr, main_attr, letter in (
+            (("left", "right"), "y_range_name", "extra_y_ranges", "y_range",
+             "y"),
+            (("below", "above"), "x_range_name", "extra_x_ranges",
+             "x_range", "x")):
+        for side in sides:
+            for pos, ax in enumerate(list(getattr(fig, side))):
+                if not isinstance(ax, ContinuousAxis):
+                    continue
+                t = ax.ticker
+                base = every = None
+                if _dash_count_of(t) is not None:
+                    base = t
+                elif isinstance(t, CustomJSTicker):
+                    a = dict(t.args or {})
+                    if _dash_count_of(a.get("base")) is not None:
+                        base = a["base"]
+                    if _dash_count_of(a.get("every")) is not None:
+                        every = a["every"]
+                if base is None and every is None:
+                    continue
+                name = getattr(ax, range_attr, "default") or "default"
+                rng = (getattr(fig, main_attr) if name == "default"
+                       else getattr(fig, extra_attr).get(name))
+                if rng is None:
+                    continue
+                kind = None
+                if isinstance(ax, LogAxis):
+                    kind = "log"
+                elif isinstance(ax, DatetimeAxis):
+                    kind = (_dash_axis_date_kind(fig, letter)
+                            if name == "default" else None)
+                    if kind is None:
+                        continue        # a date axis of no known unit
+                # twoway's scale spans every layer on the axis.  On x, a
+                # range limited to some layers is read as it is limited: a
+                # fit's line is drawn 10% past the data there, which
+                # twoway's is not.
+                pool = list(fig.renderers)
+                if range_attr == "x_range_name" and \
+                        isinstance(rng, DataRange1d) and \
+                        rng.renderers not in ("auto", []):
+                    pool = list(rng.renderers)
+                _, vals = _dash_secondary_values(
+                    types.SimpleNamespace(renderers=pool), range_attr, name)
+                if kind == "log":
+                    vals = [v for v in vals if v > 0]
+                out.append({"key": (side, pos), "ax": ax, "t": t,
+                            "base": base, "every": every, "rng": rng,
+                            "kind": kind,
+                            "lo": min(vals) if vals else None,
+                            "hi": max(vals) if vals else None})
+    return out
+
+
+def _dash_place_count_ticks(e, lo, hi, common=False):
+    """Give the axis of entry *e* (from :func:`_dash_count_axes`) twoway's
+    ticks over *lo* to *hi*, and widen its range to reach them.  With
+    *common* -- a by() graph's panels, ticked over all their data -- the
+    range spans that common scale too, as each twoway panel's does."""
+    from bokeh.models import DataRange1d, FixedTicker, Range1d
+    ax, t, base, every, rng, kind = (e["ax"], e["t"], e["base"], e["every"],
+                                     e["rng"], e["kind"])
+    t_base = (_dash_axis_count_ticks(lo, hi, _dash_count_of(base), kind)
+              if base is not None else None)
+    t_every = (_dash_axis_count_ticks(lo, hi, _dash_count_of(every), kind)
+               if every is not None else None)
+    if base is not None and t_base:
+        fixed = FixedTicker(ticks=[float(v) for v in t_base])
+        if base is t:
+            ax.ticker = fixed
+        else:
+            t.args = dict(t.args, base=fixed)
+    if every is not None and t_every:
+        a = {k: v for k, v in dict(t.args).items() if k != "every"}
+        a["extra"] = [float(v) for v in t_every]
+        t.args = a
+        t.minor_code = _DASH_TICK_EXTRA_JS
+    if not t_base:
+        return
+    # The axis reaches its outermost labelled ticks, as twoway's does: a
+    # DataRange1d pads the data by 5% a side (in log space on a log axis),
+    # so only a tick past that is reached for; a reversed range is left.
+    t_lo, t_hi = min(t_base), max(t_base)
+    if kind == "log":
+        if lo <= 0 or hi <= 0:
+            return
+        llo, lhi = math.log10(lo), math.log10(hi)
+        pad = 0.05 * (lhi - llo)
+        d_lo, d_hi = 10 ** (llo - pad), 10 ** (lhi + pad)
+    else:
+        pad = 0.05 * (hi - lo)
+        d_lo, d_hi = lo - pad, hi + pad
+    if isinstance(rng, DataRange1d):
+        if getattr(rng, "flipped", False):
+            return
+        if common:
+            rng.start, rng.end = float(min(t_lo, d_lo)), float(max(t_hi, d_hi))
+            return
+        if t_lo < d_lo:
+            rng.start = t_lo
+        if t_hi > d_hi:
+            rng.end = t_hi
+    elif isinstance(rng, Range1d):
+        a0, a1 = rng.start, rng.end
+        if not all(isinstance(v, (int, float)) for v in (a0, a1)):
+            return
+        if a0 <= a1:
+            rng.start, rng.end = min(a0, t_lo), max(a1, t_hi)
+        else:
+            rng.start, rng.end = max(a0, t_hi), min(a1, t_lo)
+
+
+def _dash_finish_count_ticks(fig):
+    """Put twoway's ``#N`` ticks on every axis that asked for them.
+
+    Called once every layer is drawn and the ranges are restricted, in
+    both modes.  An axis whose ticker (or whose xtick()/ytick() positions)
+    is a placeholder from :func:`_dash_count_ticker` gets the ticks
+    :func:`_dash_axis_count_ticks` gives over the values the layers on its
+    range draw, as twoway's scale spans them -- natscale on a linear or log
+    axis, _tsnatscale on a date axis.  twoway's axis then runs to its
+    outermost ticks, so a range that stops short of one is widened to it.
+    An axis with no finite value keeps Bokeh's choice.  The axes are kept
+    on the figure, so a by() graph's panels can be ticked again over all
+    their data (:func:`_dash_common_count_ticks`).
+    """
+    entries = _dash_count_axes(fig)
+    fig._dash_count_entries = entries
+    for e in entries:
+        if e["lo"] is not None:
+            _dash_place_count_ticks(e, e["lo"], e["hi"])
+
+
+def _dash_common_count_ticks(figs):
+    """Tick a by() graph's panels on one scale, as twoway does.
+
+    twoway's by() ticks every panel over ALL the panels' data (measured
+    24sep2026: `twoway scatter mpg weight, by(foreign) ylabel(#5)' draws
+    10(10)40 on both panels, whose own data run 12-34 and 14-41, and both
+    panels' scales run 12 to 41).  Each axis that asked for #N is ticked
+    again over the minimum and maximum of that axis in every panel, and
+    its range spans that scale; a panel that draws nothing takes the same
+    ticks.  Called in both modes once every panel of the graph is drawn.
+    """
+    groups: dict = {}
+    for f in figs or ():
+        for e in getattr(f, "_dash_count_entries", None) or ():
+            groups.setdefault(e["key"], []).append(e)
+    for es in groups.values():
+        los = [e["lo"] for e in es if e["lo"] is not None]
+        his = [e["hi"] for e in es if e["hi"] is not None]
+        if not los or not his or len(es) < 2:
+            continue
+        lo, hi = min(los), max(his)
+        for e in es:
+            _dash_place_count_ticks(e, lo, hi, common=True)
 
 
 def _dash_assign_axis_ranges(fig, renderers, options, annotations=()):
@@ -16887,9 +18951,11 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None):
 
     With *scheme* given, the defaults are Stata's text boxes: subtitle()
     is the subheading box (``gsize subheading``, ``color subheading``),
-    caption() the body box, and note() the small_body box in its own
-    colour (``gsize note`` exists in every scheme and Stata's note
-    reads nothing from it).  The sizes reach Bokeh as the scheme's own pt
+    caption() the body box, and note() the scheme's ``textboxstyle note``
+    box -- small_body in most schemes, economist's reverse_big (white on
+    an emidblue fill) -- in its own size, colour and fill (``gsize note``
+    exists in every scheme and Stata's note reads nothing from it).  The
+    sizes reach Bokeh as the scheme's own pt
     strings.  ``_DASH_TEXTBOX_DEFAULTS`` were literal px and #555555 under
     every scheme; they remain the defaults for a caller with no scheme.
     An explicit size() or color() sub-option still wins.
@@ -16908,10 +18974,14 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None):
                 "subtitle": (scheme.subheading_font_size,
                              scheme.subheading_color),
                 "caption": (scheme.body_font_size, scheme.body_color),
-                "note": (scheme.small_body_font_size, scheme.small_body_color),
+                "note": (scheme.note_text_font_size, scheme.note_text_color),
             }[ann_key]
         else:
             size_default, color_default = f"{d['size']:g}px", d["color"]
+        # note()'s box is filled where the scheme's `textboxstyle note'
+        # draws one (economist's reverse_big: emidblue).
+        fill = (scheme.note_box_fill_color
+                if scheme is not None and ann_key == "note" else None)
         # None from either helper means "not given, or refused (and
         # named)": the default applies either way.
         px = _textbox_size(opts, None)
@@ -16920,6 +18990,7 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None):
             x=0, y=d["y"], x_units="screen", y_units="screen", text=text,
             text_font_size=(f"{px:g}px" if px is not None else size_default),
             text_color=colour if colour is not None else color_default,
+            background_fill_color=fill,
         ), d["side"])
 
 
@@ -16998,66 +19069,136 @@ def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar):
 _DASH_REFLINE_SUBOPTS = frozenset({"lcolor", "lpattern", "lwidth"})
 
 
-def _dash_reference_lines(fig, graph_opts, seen=None, key=""):
+def _dash_reference_lines(fig, graph_opts, seen=None, key="", scheme=None):
     """xline()/yline() as Spans, in both modes: a numlist of positions and
     lcolor()/lpattern()/lwidth(); every other sub-option named.
 
-    Stata's measured default is BLACK dashed at the gridline width.  The
+    With *scheme* given the line is the scheme's `xyline' style (`color
+    xyline', `linepattern xyline', `linewidth xyline'), as twoway draws
+    it: cranberry and solid under s2color, black and dashed under stcolor
+    (measured 24sep2026 from twoway's SVG export).  Without one it is
+    stcolor's, black and dashed.  An explicit sub-option still wins.  The
     generated app carried its own copy of this; one text now.
     """
     from bokeh.models import Span
     for opt, dim in (("xline", "height"), ("yline", "width")):
         raw = (graph_opts or {}).get(opt, "")
-        values, style, bad = [], {}, []
+        bad = []
         if not raw:
             # The legacy list form, xline_values/yline_values: positions
             # only, no sub-options.  dash.ado never writes it; the saved
             # renderer has always accepted it.
+            values = []
             for v in (graph_opts or {}).get(opt + "_values", []) or []:
                 try:
                     values.append(float(v))
                 except (ValueError, TypeError):
                     pass
-            raw = ""
-        for tok in _dash_by_tokens(str(raw).replace(",", " ").strip()) if raw else ():
+            instances = [(values, {})] if values else []
+        else:
+            instances = _dash_refline_instances(raw, bad)
+        _dash_report_suboptions(opt, bad, seen, key)
+        for values, style in instances:
+            _dash_refline_draw(fig, opt, dim, values, style, scheme, Span)
+
+
+def _dash_refline_instances(raw, bad):
+    """``[(positions, {sub-option: value}), ...]``: the lines of one
+    xline()/yline() value, each copy of the option its own entry.
+
+    twoway draws each copy of a repeated yline() in its own style --
+    yline(20, lcolor(red)) yline(30) is a red line at 20 and a default one
+    at 30 (measured 24sep2026 from the SVG export; added_line_options.sthlp,
+    "each is executed separately") -- and dash.ado joins the copies with a
+    comma between them (_dash_rep_merge): ``20, lcolor(red), 30``.  After a
+    comma, a position starts the next copy; a sub-option styles the copy it
+    follows.  A position after a comma is no sub-option twoway takes in one
+    copy, so a single copy reads as it always did.  Tokens that are neither
+    are appended to *bad*, as written.
+    """
+    instances = []
+    values, style = [], {}
+    in_subs = False
+    for seg_i, seg in enumerate(_dash_by_tokens_commas(str(raw))):
+        if seg_i > 0:
+            in_subs = True
+        for tok in _dash_by_tokens(seg.strip()):
             name = _dash_subopt_name(tok)
             if "(" in tok and name in _DASH_REFLINE_SUBOPTS:
                 style[name] = tok[len(name) + 1:-1].strip() if tok.endswith(")") else ""
                 continue
             try:
-                values.append(float(tok))
+                pos = float(tok)
             except ValueError:
                 bad.append(tok)
-        _dash_report_suboptions(opt, bad, seen, key)
-        kw = {"line_color": "#000000", "line_dash": "dashed", "line_width": 1.0}
-        # An unknown style inside xline()/yline() is named through the one
-        # helper, as a plot option's is: lpattern() and lwidth() were
-        # dropped in silence, and lcolor() had a wording of its own.
-        for sub, what, fn, attr in (
-                ("lcolor", "colour", OptionTranslator.translate_mcolor,
-                 "line_color"),
-                ("lpattern", "line pattern", OptionTranslator.translate_lpattern,
-                 "line_dash"),
-                ("lwidth", "line width", OptionTranslator.translate_lwidth,
-                 "line_width")):
-            if style.get(sub):
-                try:
-                    kw[attr] = fn(style[sub])
-                except (ValueError, TypeError):
-                    _dash_style_note(f"{opt}({sub})", style[sub], what,
-                                     "the default")
-        kind = _dash_axis_date_kind(fig, "x" if opt == "xline" else "y")
-        if kind:
-            # A number given for a date axis is a date in the variable's
-            # unit, as twoway reads it: xline(14979) on a %td axis is
-            # 04jan2001, where it was drawn at 1970-01-01 00:00:14.979.
-            pos = _dash_axis_positions(values, kind)
-            _dash_note_not_dates(
-                opt, [_fmt_num(v) for v, p in zip(values, pos) if p is None],
-                kind)
-            values = [p for p in pos if p is not None]
-        for v in values:
-            fig.add_layout(Span(location=v, dimension=dim, **kw))
+                continue
+            if in_subs and (values or style):
+                instances.append((values, style))
+                values, style = [], {}
+            in_subs = False
+            values.append(pos)
+    if values:
+        instances.append((values, style))
+    return instances
+
+
+def _dash_by_tokens_commas(raw):
+    """*raw* cut at each comma outside quotes and parentheses."""
+    out, cur, depth, quote = [], [], 0, False
+    for ch in raw:
+        if ch == '"':
+            quote = not quote
+        elif not quote and ch == "(":
+            depth += 1
+        elif not quote and ch == ")" and depth:
+            depth -= 1
+        elif not quote and not depth and ch == ",":
+            out.append("".join(cur))
+            cur = []
+            continue
+        cur.append(ch)
+    out.append("".join(cur))
+    return out
+
+
+def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span):
+    """One copy of xline()/yline(): a Span at each position, in the
+    scheme's `xyline' style unless its sub-options say otherwise."""
+    if scheme is not None:
+        kw = {"line_color": scheme.xyline_color,
+              "line_dash": list(scheme.xyline_dash),
+              "line_width": scheme.xyline_width}
+    else:
+        kw = {"line_color": "#000000", "line_dash": "dashed",
+              "line_width": 1.0}
+    # An unknown style inside xline()/yline() is named through the one
+    # helper, as a plot option's is: lpattern() and lwidth() were
+    # dropped in silence, and lcolor() had a wording of its own.
+    for sub, what, fn, attr in (
+            ("lcolor", "colour", OptionTranslator.translate_mcolor,
+             "line_color"),
+            ("lpattern", "line pattern", OptionTranslator.translate_lpattern,
+             "line_dash"),
+            ("lwidth", "line width", OptionTranslator.translate_lwidth,
+             "line_width")):
+        if style.get(sub):
+            try:
+                kw[attr] = fn(style[sub])
+            except (ValueError, TypeError):
+                _dash_style_note(f"{opt}({sub})", style[sub], what,
+                                 "the default")
+    kind = _dash_axis_date_kind(fig, "x" if opt == "xline" else "y")
+    if kind:
+        # A number given for a date axis is a date in the variable's
+        # unit, as twoway reads it: xline(14979) on a %td axis is
+        # 04jan2001, where it was drawn at 1970-01-01 00:00:14.979.
+        pos = _dash_axis_positions(values, kind)
+        _dash_note_not_dates(
+            opt, [_fmt_num(v) for v, p in zip(values, pos) if p is None],
+            kind)
+        values = [p for p in pos if p is not None]
+    for v in values:
+        fig.add_layout(Span(location=v, dimension=dim, **kw))
 
 
 #: filter() widget types dash builds.
@@ -17367,6 +19508,36 @@ _DASH_FIT_TYPES = frozenset({
 #: Plot types that produce TWO keys from one layer: the band and the line.
 #: Measured: ``twoway lfitci mpg weight`` has keys ["95% CI", "Fitted values"].
 _DASH_CI_TYPES = frozenset({"lfitci", "qfitci", "lpolyci", "fpfitci"})
+
+
+def _dash_plot_style_indices(plots):
+    """The zero-based p# index each layer of *plots* draws in, as twoway
+    numbers them.
+
+    twoway numbers pstyles by drawn plot, and a ci fit draws two: its band
+    (pstyle ci) and then its line, which twoway_lfitci_parse.class gives
+    ``seriesid(`seriesid'-1)`` -- a seriesid of 0 drawing as p1.  So a
+    layer that is plot n draws in p((n-1) mod 15 + 1), and a ci layer whose
+    line is plot n in that less one, p1 where it is 0 (measured 24sep2026:
+    ``lfitci || lfitci || lfit`` draws p1, p3 and p5; 14 scatters then
+    lfitci draw its line in p1; test/fixtures/ci_plot_index_truth.json).
+    dash gave each layer its layer index.  Anything that is not a dict
+    with a ci type counts as one plot, and the pass is linear.
+    """
+    out = []
+    n = 0                                   # plots drawn before this layer
+    for plot in (plots or ()):
+        ptype = plot.get("type") if isinstance(plot, dict) else None
+        is_ci = (isinstance(ptype, str)
+                 and ptype.strip().lower() in _DASH_CI_TYPES)
+        if is_ci:
+            line_series = (n + 1) % 15 + 1  # the line is plot n + 2
+            out.append(max(line_series - 1, 1) - 1)
+            n += 2
+        else:
+            out.append(n % 15)
+            n += 1
+    return out
 
 
 #: Statistics of a DATE variable whose RESULT is itself a date, and so is
@@ -17724,8 +19895,12 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
     # default -- is replaced, not added to.
     fig.tools = [t for t in fig.tools if not isinstance(t, HoverTool)]
 
+    # A ci band's outline is the band's polygon, drawn from a source of its
+    # own (GlyphMapper._ci_band_glyphs): a tooltip on it would name the
+    # polygon's vertices, so it answers for nothing; the band does.
     _rends = [r for r in fig.renderers if getattr(r, "data_source", None)
-              is not None]
+              is not None
+              and "dash_ci_outline" not in (getattr(r, "tags", None) or [])]
     if not _rends:
         return
 
@@ -18126,15 +20301,18 @@ def _dash_qual_cols_named(spec):
                 if isinstance(k, dict))
     out = []
     for o in objs:
-        name = o.get("qual_col", "")
-        if name in ("", None):
-            continue
-        if not isinstance(name, str) or not _DASH_QUAL_NAME_RE.match(name):
-            raise ValueError(
-                "dash: the spec names %r as a qualifier column; dash writes "
-                "only %s<k>." % (str(name)[:40], _DASH_QUAL_PREFIX))
-        if name not in out:
-            out.append(name)
+        # "qual_col_total": the column a by(, total) graph's Total panel
+        # draws (_dash_total_spec), validated as "qual_col" is.
+        for key in ("qual_col", "qual_col_total"):
+            name = o.get(key, "")
+            if name in ("", None):
+                continue
+            if not isinstance(name, str) or not _DASH_QUAL_NAME_RE.match(name):
+                raise ValueError(
+                    "dash: the spec names %r as a qualifier column; dash "
+                    "writes only %s<k>." % (str(name)[:40], _DASH_QUAL_PREFIX))
+            if name not in out:
+                out.append(name)
     return out
 
 
@@ -18195,6 +20373,37 @@ def _dash_qual_mask(obj, masks):
         raise ValueError("dash: the qualifier column %s is not in the data."
                          % str(name)[:40])
     return m
+
+
+def _dash_total_spec(g):
+    """The graph *g* as its by(, total) Total panel draws it.
+
+    twoway evaluates a by() graph's qualifiers with the data sorted on the
+    by() variables, and its Total panel's in the data's own order
+    (bygraph_g.class; measured 24sep2026, test_qualifier_in_stata.cscript
+    QS-16..).  dash.ado writes, on each object whose qualifier can depend
+    on that order, "qual_col" for the groups and "qual_col_total" for the
+    Total panel.  This is a copy of *g* whose graph and plots carry their
+    "qual_col_total" as "qual_col"; *g* itself when none carries one.
+    Both render modes call it; the served app copies it by source.
+    """
+    if not isinstance(g, dict):
+        return g
+    plots = g.get("plots") or []
+    objs = [g] + [p for p in plots if isinstance(p, dict)]
+    if not any(o.get("qual_col_total") for o in objs):
+        return g
+
+    def _swap(o):
+        o2 = dict(o)
+        t = o2.pop("qual_col_total", "")
+        if t:
+            o2["qual_col"] = t
+        return o2
+
+    out = _swap(g)
+    out["plots"] = [_swap(p) if isinstance(p, dict) else p for p in plots]
+    return out
 
 
 def _dash_qualified_frame(frame, if_expr, in_expr, where="", copy=True,
@@ -18427,6 +20636,33 @@ def _dash_note_empty_layer(gname, index, ptype, rows, renderers):
         return
     if _dash_layer_drew_anything(renderers):
         return
+    # A fit twoway draws empty with a note -- lfit, qfit, lfitci, qfitci
+    # on no observations, qfit, qfitci, fpfit, fpfitci on one (measured
+    # 24sep2026) -- is marked by its mapper (GlyphMapper._mark_unfit), and
+    # given twoway's note, word for word, in place of "drew nothing",
+    # whatever the rows: on no observations at all twoway still notes it.
+    unfit = next((getattr(_r, "_dash_unfit", "") for _r in renderers or ()
+                  if getattr(_r, "_dash_unfit", "")), "")
+    if unfit in ("regress", "fracpoly"):
+        where = f"graph {gname!r} plot {index}" if gname else f"plot {index}"
+        warnings.warn(
+            f"dash: {where} ({ptype}): (note:  {unfit} could not fit model)",
+            UserWarning, stacklevel=2,
+        )
+        # lfit and lfitci on one observation in a by() panel: twoway
+        # prints "insufficient observations" after the note, and draws on
+        # (GlyphMapper._mark_insufficient).
+        if any(getattr(_r, "_dash_insufficient", False) is True
+               for _r in renderers or ()):
+            warnings.warn(f"dash: {where} ({ptype}): insufficient "
+                          f"observations", UserWarning, stacklevel=2)
+        return
+    # A layer twoway draws empty in silence -- a smoother on too few
+    # observations, a by() panel another plot draws in -- is not reported
+    # (GlyphMapper._mark_silent, measured 24sep2026).
+    if any(getattr(_r, "_dash_silent", False) is True
+           for _r in renderers or ()):
+        return
     if pt == "function":
         _dash_report_empty_layer(gname, index, ptype)
     elif rows:
@@ -18616,6 +20852,25 @@ def _dash_function_args(options):
     return (x_lo, x_hi), n_pts
 
 
+def _dash_note_no_second_y(plot_type):
+    """Say that a range layer names no second y variable, in both modes.
+
+    twoway refuses a range plot that names too few variables; dash.ado
+    always writes ``yvar2``, so only a hand-written spec reaches this, and
+    at render time the layer can only be left undrawn.  The saved page said
+    "no glyph mapper for plot type", and the served app nothing (BUGS.md,
+    "A range layer with no second y variable is reported as a plot type
+    with no glyph mapper").  The type is shown by ``repr()``, so a spec's
+    text is quoted, never interpreted.
+    """
+    warnings.warn(
+        "dash: a %r layer takes two y variables and an x variable, and this "
+        "one names no second y variable; nothing was drawn for that layer."
+        % (str(plot_type or ""),),
+        UserWarning, stacklevel=3,
+    )
+
+
 def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
                     y2var="", view=None, color_idx=0):
     """Dispatch one plot layer to the GlyphMapper method that draws it."""
@@ -18630,7 +20885,13 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
 
     # Range plots take (fig, source, y1var, y2var, xvar, options).
     rfn = range_dispatch.get(pt)
-    if rfn is not None and y2var:
+    if rfn is not None and not y2var:
+        # A range type with no second y variable fell through to "no glyph
+        # mapper for plot type", which is false: the mapper exists and the
+        # variable is what is missing (BUGS.md, S3).
+        _dash_note_no_second_y(plot_type)
+        return None
+    if rfn is not None:
         return rfn(fig, source, yvar, y2var, xvar, options,
                    view=view, color_idx=color_idx)
 
@@ -18754,7 +21015,8 @@ class DashRenderer:
             self.master_spec: dict = json.loads(f.read())
 
         with open(data_json_path, encoding="utf-8") as f:
-            self.data_json: dict = json.loads(f.read())
+            # Each number as Stata holds it (_dash_read_data_json).
+            self.data_json: dict = _dash_read_data_json(f.read())
         # Its size bounds the text it holds (_dash_refuse_overbytes).
         self._data_file_bytes: int = os.path.getsize(data_json_path)
 
@@ -18764,6 +21026,9 @@ class DashRenderer:
         self.limits: dict = _dash_limits(
             self.master_spec.get("build_options", {}))
         self.master_spec = _dash_cap_spec(self.master_spec, self.limits)
+        # A graph whose every layer is on its second axis draws that axis
+        # alone, as the first, as twoway does (BUGS.md, S3).
+        self.master_spec = _dash_lone_second_axes(self.master_spec)
 
         self.translator = OptionTranslator()
 
@@ -18775,7 +21040,15 @@ class DashRenderer:
         self.default_level: float = _dash_session_level(_build_opts)
 
         _scheme_name: str = _resolve_scheme_name(self.master_spec)
-        self.scheme: SchemeParser = SchemeParser.resolve_or_fallback(
+        # Every scheme this build resolves, by the name it was asked for.
+        # A graph's own scheme() is the build's scheme on the immediate
+        # route (dash scatter ..., scheme(x)), so _make_figure used to
+        # parse the same file a second time, and every warning the parse
+        # raises -- Stata's "(note: scheme X not found, using s2color)"
+        # for an #include that resolves nowhere -- printed twice where
+        # twoway prints it once (S3 batch).  One parse per name per build.
+        self._schemes: "dict[str, SchemeParser]" = {}
+        self.scheme: SchemeParser = self._scheme_for(
             _scheme_name, "the dashboard",
         )
 
@@ -18816,6 +21089,10 @@ class DashRenderer:
         # Facet masks for by()+link() graphs: graph_name → [(label, bool_mask), ...]
         self._facet_masks: dict = {}
 
+        # The facet keys of by(, total) Total panels, drawn from their own
+        # qualifier columns (_dash_total_spec).
+        self._facet_total_keys: set = set()
+
         self._load_data()
         # Refused before anything is drawn from it: dash.ado refuses the
         # same data before exporting it, so this is for a spec that reached
@@ -18854,9 +21131,17 @@ class DashRenderer:
         """
         stata_json = self.data_json.get("StataJSON", self.data_json)
 
-        # Records
+        # Records.  A dataset with no observations still has its variables:
+        # a frame built from no records has no columns, and every layer said
+        # its variables were "not found in data source" (BUGS.md, S3).
         records = stata_json.get("values", [])
-        self.df = pd.DataFrame(records)
+        if records:
+            self.df = pd.DataFrame(records)
+        else:
+            _ts = dict(stata_json.get("variableTypeIsString", {}) or {})
+            _ts.update(stata_json.get("variableIsString", {}) or {})
+            self.df = _dash_empty_frame(stata_json.get("variableNames"),
+                                        {k for k, v in _ts.items() if v})
 
         # Variable labels
         self.variable_labels = stata_json.get("variableLabels", {})
@@ -19405,7 +21690,11 @@ class DashRenderer:
         if not by_missing:
             work_df = work_df.dropna(subset=valid_vars)
 
-        if work_df.empty:
+        _gname = (graph_opts.get("name") or graph_spec.get("name") or "")
+        # A Total panel whose qualifiers are its own (_dash_total_spec) can
+        # hold rows when no group does.
+        _t_own = by_total and _dash_total_spec(graph_spec) is not graph_spec
+        if work_df.empty and not _t_own:
             # All facet-key values are missing (by_missing=False) — return an
             # empty-DataFrame group so callers create a zero-row source rather
             # than falling back to the full original dataset.
@@ -19414,15 +21703,48 @@ class DashRenderer:
         groups: list[tuple[str, pd.DataFrame]] = []
         # The by_groups limit is applied where the groups are made, in the
         # helper both render modes share.
-        _gname = (graph_opts.get("name") or graph_spec.get("name") or "")
-        for key, group_df in _dash_by_groups(
+        for key, group_df in (() if work_df.empty else _dash_by_groups(
                 work_df, valid_vars, by_missing,
-                self._limits["by_groups"], _gname):
+                self._limits["by_groups"], _gname)):
+            # A panel twoway leaves out is left out (_dash_by_panel_dropped).
+            if _dash_by_panel_dropped(group_df, self.df,
+                                      graph_spec.get("plots", []),
+                                      getattr(self, "qual_masks", None),
+                                      _gname):
+                continue
             label = self._facet_label(valid_vars, key)
             groups.append((label, group_df.copy()))
 
+        # by(, total)'s Total panel -- the rows of every group, those whose
+        # by() value is missing only under missing (bygraph_g.class runs it
+        # with the groups' missvar) -- is one more panel, answered as the
+        # groups are: measured 24sep2026, `lfit mpg weight if _n==1,
+        # by(foreign, total)' leaves it out after regress's note and
+        # "insufficient observations", and says "nothing to graph", r(198)
+        # (test_parser.cscript P1A-84).  dash drew it whatever it held.
+        # Its qualifiers are evaluated in the data's order, where the
+        # groups' are evaluated sorted on the by() variables, as twoway
+        # evaluates each (_dash_total_spec; QS-16..).
         if by_total:
-            groups.append(("Total", work_df.copy()))
+            t_spec = _dash_total_spec(graph_spec)
+            t_df = work_df
+            if t_spec is not graph_spec:
+                t_df = self._apply_graph_filter(t_spec)
+                if not by_missing:
+                    t_df = t_df.dropna(subset=valid_vars)
+            if not t_df.empty and not _dash_by_panel_dropped(
+                    t_df, self.df, t_spec.get("plots", []),
+                    getattr(self, "qual_masks", None), _gname):
+                t_df = t_df.copy()
+                t_df.attrs["_dash_total"] = True
+                groups.append(("Total", t_df))
+        if not groups:
+            # Every panel left out: twoway says "nothing to graph", r(198),
+            # which dash.ado gives when it registers the graph; a spec that
+            # reaches here draws one empty panel and says so.
+            warnings.warn(f"dash: graph {_gname!r}: nothing to graph.",
+                          UserWarning, stacklevel=2)
+            return [("", work_df.iloc[0:0].copy())]
 
         # Defensive fallback: if the groupby loop produced no groups (should
         # not happen given the dropna / by_missing logic above), return an
@@ -19551,6 +21873,25 @@ class DashRenderer:
             if hasattr(ns, "line_alpha"):
                 ns.line_alpha = _NONSELECTION_ALPHA
 
+    def _scheme_for(self, name: str, context: str) -> "SchemeParser":
+        """The build's SchemeParser for *name*, parsed once per build.
+
+        ``resolve_or_fallback`` on the first request for a name; the same
+        object on every later one, so a scheme named by the build and by a
+        graph (or by fifty graphs) is read once and its notes print once,
+        as twoway prints them once.  The cache is the renderer's, so a
+        second build says them again.  A parser is never mutated after it
+        is built -- _make_figure swaps whole objects in and out -- so
+        sharing one is safe.
+        """
+        key = str(name or "")
+        cache = self.__dict__.setdefault("_schemes", {})
+        sch = cache.get(key)
+        if sch is None:
+            sch = SchemeParser.resolve_or_fallback(key, context)
+            cache[key] = sch
+        return sch
+
     def _make_figure(
         self,
         graph_spec: dict,
@@ -19578,7 +21919,7 @@ class DashRenderer:
         _gscheme = str(graph_opts.get("scheme", "") or "").strip()
         if _gscheme:
             _saved_scheme, _saved_mapper = self.scheme, self.mapper.scheme
-            self.scheme = SchemeParser.resolve_or_fallback(
+            self.scheme = self._scheme_for(
                 _gscheme, f"graph {graph_opts.get('name', '') or '(unnamed)'}")
             self.mapper.scheme = self.scheme
             try:
@@ -19762,7 +22103,7 @@ class DashRenderer:
                                  xvar, yvar)
 
         # xline()/yline(), through the helper the generated app runs as well.
-        _dash_reference_lines(fig, graph_opts, _seen, _gkey)
+        _dash_reference_lines(fig, graph_opts, _seen, _gkey, self.scheme)
 
         # note(), caption(), subtitle(), through the helper the generated
         # app runs as well, at the scheme's text-box sizes and colours.
@@ -19784,7 +22125,10 @@ class DashRenderer:
         _UNIVARIATE_TYPES = _DASH_UNIVARIATE_TYPES
         _PC_TYPES = _DASH_PC_TYPES
 
-        # Add glyphs for each plot layer
+        # Add glyphs for each plot layer.  Each draws in the p# twoway
+        # numbers it with, a ci fit counting as two plots
+        # (_dash_plot_style_indices); pi stays the layer's own number.
+        _pstyle_idx = _dash_plot_style_indices(plots)
         for pi, plot in enumerate(plots):
             ptype = plot.get("type", "scatter")
             pxvar = plot.get("xvar", xvar)
@@ -19881,7 +22225,7 @@ class DashRenderer:
             if ptype.lower() == "scatteri":
                 # An immediate list, one record per point -- [y, x] or
                 # [y, x, "label", clock] -- no shared source variable needed.
-                self.mapper.map_scatteri(fig, plot.get("values", []), popts, color_idx=pi)
+                self.mapper.map_scatteri(fig, plot.get("values", []), popts, color_idx=_pstyle_idx[pi])
             elif ptype.lower() == "pci":
                 # An immediate list too, one record per segment, as
                 # pcarrowi's: `pci 20 3000 30 4000' is [[20,3000,30,4000]].
@@ -19889,29 +22233,29 @@ class DashRenderer:
                 # map_pcspike, which wants variable names, so nothing was
                 # ever drawn.
                 self.mapper.map_pci_literal(fig, plot.get("values", []),
-                                            popts, color_idx=pi)
+                                            popts, color_idx=_pstyle_idx[pi])
             elif ptype.lower() == "pcarrowi":
                 # pcarrow's immediate form (WP-22): one record per arrow,
                 # [y1, x1, y2, x2] with an optional label and clock position.
                 self.mapper.map_pcarrowi(fig, plot.get("values", []),
-                                         popts, color_idx=pi)
+                                         popts, color_idx=_pstyle_idx[pi])
             elif ptype.lower() in _PC_TYPES:
                 py1var = plot.get("y1var", "")
                 px1var = plot.get("x1var", "")
                 py2var = plot.get("y2var", "")
                 px2var = plot.get("x2var", "")
                 self._add_pc_glyph(fig, source_for_plot, ptype, py1var, px1var, py2var, px2var, popts,
-                                   view=_plot_view, color_idx=pi)
+                                   view=_plot_view, color_idx=_pstyle_idx[pi])
             elif ptype.lower() in _RANGE_TYPES:
                 py1var = plot.get("yvar1", "")
                 py2var = plot.get("yvar2", "")
                 self._add_glyph(fig, source_for_plot, ptype, py1var, pxvar, popts,
-                                y2var=py2var, view=_plot_view, color_idx=pi)
+                                y2var=py2var, view=_plot_view, color_idx=_pstyle_idx[pi])
             elif ptype.lower() in _UNIVARIATE_TYPES:
                 pyvar = (plot.get("yvar", "") or plot.get("var", "")
                          or yvar)
                 self._add_glyph(fig, source_for_plot, ptype, pyvar, pxvar, popts,
-                                view=_plot_view, color_idx=pi)
+                                view=_plot_view, color_idx=_pstyle_idx[pi])
             elif ptype.lower() == "function":
                 pexpr = plot.get("expr", "")
                 # Stata's documented defaults for twoway function:
@@ -19920,14 +22264,14 @@ class DashRenderer:
                 # range(0 1) is assumed.")
                 _fn_range, _fn_n = _dash_function_args(popts)
                 self.mapper.map_function(fig, pexpr, _fn_range, _fn_n, popts,
-                                         color_idx=pi)
+                                         color_idx=_pstyle_idx[pi])
             else:
                 pyvar = plot.get("yvar", yvar)
                 if ptype.lower() == "scatter":
                     _plot_view = self._linked_scatter_view(
                         source_for_plot, pyvar, pxvar, popts, _plot_view)
                 self._add_glyph(fig, source_for_plot, ptype, pyvar, pxvar, popts,
-                                view=_plot_view, color_idx=pi)
+                                view=_plot_view, color_idx=_pstyle_idx[pi])
 
             _layer_renderers = list(fig.renderers[_r_before:])
             _plot_renderers.append((plot, _layer_renderers))
@@ -19987,6 +22331,8 @@ class DashRenderer:
         # ... and, beside a yaxis(2)/xaxis(2) axis, over the layers drawn on
         # the figure's own axes only -- the helper the generated app runs.
         _dash_keep_primary_ranges(fig)
+        # #N ticks where twoway puts them, over what the layers drew.
+        _dash_finish_count_ticks(fig)
 
         # ---- The figure's one HoverTool ----
         # Built by _dash_build_hover, which the generated server app runs
@@ -20754,8 +23100,12 @@ class DashRenderer:
             filters_cfg: Parsed filter specs.
 
         Writes: self.sources, self.figures, self._facet_map,
-                self._facet_masks, self.agg_source_registry
+                self._facet_masks, self._facet_total_keys,
+                self.agg_source_registry
         """
+        # A renderer a test made without __init__ has none yet.
+        if not hasattr(self, "_facet_total_keys"):
+            self._facet_total_keys = set()
         all_graph_names = [
             g.get("graph_options", {}).get("name", "") for g in graphs
         ]
@@ -20857,6 +23207,8 @@ class DashRenderer:
                         facet_masks_lnk   = []
                         for idx, (label, group_df) in enumerate(by_groups_lnk):
                             fkey = f"{name}__by__{idx}"
+                            if group_df.attrs.get("_dash_total"):
+                                self._facet_total_keys.add(fkey)
                             mask = [i in group_df.index for i in self.df.index]
                             facet_entries_lnk.append((fkey, label))
                             facet_masks_lnk.append((label, mask))
@@ -20911,6 +23263,8 @@ class DashRenderer:
                     facet_entries = []
                     for idx, (label, group_df) in enumerate(by_groups):
                         fkey = f"{name}__by__{idx}"
+                        if group_df.attrs.get("_dash_total"):
+                            self._facet_total_keys.add(fkey)
                         self.sources[fkey] = self._make_source(g_vars, df=group_df)
                         facet_entries.append((fkey, label))
                     self._facet_map[name] = facet_entries
@@ -20943,7 +23297,12 @@ class DashRenderer:
                     if src is None:
                         continue
                     try:
-                        fig = self._make_figure(g, src, facet_view=panel_view_r)
+                        # The Total panel draws its own qualifiers' rows
+                        # (_dash_total_spec).
+                        g_panel = (_dash_total_spec(g)
+                                   if fkey in self._facet_total_keys else g)
+                        fig = self._make_figure(g_panel, src,
+                                                facet_view=panel_view_r)
                         orig_title = fig.title.text if fig.title else ""
                         fig.title.text = f"{orig_title} — {label}" if orig_title else label
                         if name in link_names:
@@ -20953,6 +23312,12 @@ class DashRenderer:
                         raise RuntimeError(
                             f"dash_render: failed to build facet figure '{fkey}': {exc}"
                         ) from exc
+                # twoway ticks a by() graph's panels on one scale, over all
+                # their data (_dash_common_count_ticks); the served app runs
+                # the same helper.
+                _dash_common_count_ticks(
+                    [self.figures[fk] for fk, _ in self._facet_map[name]
+                     if fk in self.figures])
             else:
                 src = self.sources.get(name)
                 if src is None:
@@ -21649,8 +24014,13 @@ class DashRenderer:
             # equivalent of the Bootstrap sidebar -- the db-sidebar-* markup
             # and its CSS exist only inside the Bootstrap document.
             if filter_position == "left":
-                _sidebar = column(*filter_row_widgets, sizing_mode="fixed",
-                                  width=_SIDEBAR_WIDTH_PX)
+                # A fixed width and the height of its widgets.  It was
+                # sizing_mode="fixed" with no height, which Bokeh's
+                # validator reported on every build (W-1005, BUGS.md);
+                # the same box without the sizing mode that asks for one.
+                _sidebar = column(*filter_row_widgets,
+                                  width=_SIDEBAR_WIDTH_PX,
+                                  width_policy="fixed", height_policy="auto")
                 layout_root = _dash_reflow(row(_sidebar, _content,
                                                sizing_mode="stretch_width"))
             else:
@@ -21877,6 +24247,9 @@ class ServerAppBuilder:
         # plot limits BEFORE it is embedded: the app draws what it is given.
         self.limits: dict = _dash_limits(self.spec.get("build_options", {}))
         self.spec = _dash_cap_spec(self.spec, self.limits)
+        # A lone second axis drawn as the first, as the saved renderer
+        # draws it (_dash_lone_second_axes), before the spec is embedded.
+        self.spec = _dash_lone_second_axes(self.spec)
         # The data parsed, and as the saved renderer loads it -- each made
         # only if a build-time check needs it (see _data and _frame), and
         # dropped when the build is written.
@@ -21953,7 +24326,7 @@ class ServerAppBuilder:
         for _name in ("_TEXTBOX_SUBOPT_RE",
                       "_COLORVAR_LEGEND_NAME", "_KDE_BANDWIDTH_RULE",
                       "_LPOLY_ROT_C", "_FP_GRID_MAX", "_MAX_MBANDS",
-                      "_MIN_BAR_WIDTH", "_MAX_EXPR_CHARS", "_CI_BAND_ALPHA",
+                      "_MIN_BAR_WIDTH", "_MAX_EXPR_CHARS",
                       # _IF_EXPR_ALLOWED_NODES is deliberately absent: it is
                       # a frozenset of AST CLASSES, and repr() of a class is
                       # not source. It is written out by name below.
@@ -22017,6 +24390,14 @@ class ServerAppBuilder:
                       "_DASH_QUAL_PREFIX", "_DASH_QUAL_NAME_RE",
                       # _dash_parse_axis_spec's tick bound (WP-20).
                       "_MAX_AXIS_TICKS",
+                      # twoway's #N rule and its placeholder's tag.
+                      "_DASH_NATSCALE_UNCOVERED", "_DASH_NATSCALE_DENSITY",
+                      "_DASH_NATSCALE_SIDE", "_DASH_COUNT_TAG",
+                      # ... natscale's overflow, and the date units whose
+                      # #N ticks _tsnatscale gives (BUGS.md, S3).
+                      "_DASH_NATSCALE_INT_LIMIT", "_DASH_TS_UNITS",
+                      "_DASH_TS_PARAMS", "_DASH_TS_PER", "_DASH_TS_SUB",
+                      "_DASH_TS_GRIDS", "_DASH_TS_YEARS", "_DASH_TS_LIMITS",
                       # The blanks _dash_grid_dims and _dash_placement_map
                       # strip (WP-20).
                       "_DASH_ASCII_BLANKS",
@@ -22100,6 +24481,10 @@ class ServerAppBuilder:
                          # for a date axis, a KPI of a date, a column as a
                          # source holds it, and a widget's value.
                          "_dash_load_columns", "_dash_column_values",
+                         # An empty dataset's columns, and the data file
+                         # read as Stata holds its numbers (S3 batch).
+                         "_dash_empty_frame", "_dash_read_data_json",
+                         "_dash_finite_numeric",
                          "_dash_figure_date_kind", "_dash_mark_date_axes",
                          "_dash_axis_date_kind", "_dash_axis_positions",
                          "_dash_note_not_dates", "_dash_date_axis_spec",
@@ -22120,9 +24505,11 @@ class ServerAppBuilder:
                          # added to one is added to both.
                          "_dash_layer_source", "_dash_range_source",
                          "_dash_pc_source", "_dash_function_args",
+                         # The p# each layer draws in (a ci fit is two).
+                         "_dash_plot_style_indices",
                          "_dash_glyph_dispatch",
                          "_dash_pc_dispatch", "_dash_add_glyph",
-                         "_dash_add_pc_glyph",
+                         "_dash_add_pc_glyph", "_dash_note_no_second_y",
                          # A layer that drew nothing has to say so in BOTH
                          # modes, in the same words.
                          "_dash_layer_drew_anything",
@@ -22144,6 +24531,9 @@ class ServerAppBuilder:
                          # taken out of the frame, and read as masks.
                          "_dash_qual_cols_named", "_dash_take_qual_columns",
                          "_dash_qual_mask",
+                         # A by(, total) Total panel's own qualifier
+                         # columns, as the saved page reads them.
+                         "_dash_total_spec",
                          # The figure's one HoverTool.  HoverTool was
                          # imported into this app and never instantiated.
                          "_dash_hover_row", "_dash_hover_layer_vars",
@@ -22195,6 +24585,21 @@ class ServerAppBuilder:
                          "_dash_finish_secondary_axes",
                          "_dash_keep_primary_ranges",
                          "_dash_assign_axis_ranges",
+                         # twoway's #N ticks (BUGS.md, S3).
+                         "_dash_natscale_ticks", "_dash_count_ticker",
+                         "_dash_count_of", "_dash_finish_count_ticks",
+                         # ... on log and date axes, and on one scale over
+                         # a by() graph's panels.
+                         "_dash_unix_ms_to_unit",
+                         "_dash_tsnatscale_ticks", "_dash_axis_count_ticks",
+                         "_dash_ts_ladder", "_dash_ts_cost",
+                         "_dash_ts_candidates", "_dash_ts_tiny",
+                         "_dash_ts_calendar", "_dash_ts_yearly",
+                         "_dash_ts_frac_month", "_dash_ts_month_day",
+                         "_dash_ts_month_week", "_dash_ts_week_day",
+                         "_dash_ts_daily",
+                         "_dash_count_axes", "_dash_place_count_ticks",
+                         "_dash_common_count_ticks",
                          # The filter widgets and the rows they select.
                          "_whole_number_step", "_is_clock_kind",
                          "_date_slider_step_days", "_clock_slider_step_ms",
@@ -22221,6 +24626,8 @@ class ServerAppBuilder:
                          "_dash_limits", "_dash_limit_hint",
                          "_dash_dropdown_values",
                          "_dash_filter_truncation_note", "_dash_by_groups",
+                         # The by() panels twoway leaves out (S3 batch).
+                         "_dash_by_panel_dropped",
                          # The document: order, cells, tabs, header.
                          "_dash_layout_order", "_dash_auto_grid_cols",
                          "_dash_kpi_keys",
@@ -22261,6 +24668,8 @@ class ServerAppBuilder:
                          "_dash_figure_title", "_dash_style_axis_titles",
                          "_dash_text_annotations", "_dash_scale_spec",
                          "_dash_apply_scale_ranges", "_dash_reference_lines",
+                         "_dash_refline_instances", "_dash_by_tokens_commas",
+                         "_dash_refline_draw",
                          "_dash_display",
                          # plotregion(lwidth()) and the KPI colour: the
                          # saved renderer's readers, so a keyword width is
@@ -22523,7 +24932,6 @@ class ServerAppBuilder:
                 for _k, _v in (self.spec.get("build_options", {})
                                .get("formats", {}) or {}).items()
                 if _stata_numeric_pattern(str(_v))},),
-            "_CI_BAND_ALPHA = %r" % (_CI_BAND_ALPHA,),
         ]
 
     def build(self, output_path: str, port: int = 5006) -> None:
@@ -22630,7 +25038,7 @@ class ServerAppBuilder:
     def _data(self) -> dict:
         """The data JSON, parsed once for every build-time check."""
         if getattr(self, "_data_cache", None) is None:
-            self._data_cache = json.loads(self._raw_data_str)
+            self._data_cache = _dash_read_data_json(self._raw_data_str)
         return self._data_cache
 
     def _plan_by_groups(self) -> None:
@@ -23276,7 +25684,8 @@ class ServerAppBuilder:
             "def _load_spec_and_data():",
             '    """Decode embedded data and return (spec_dict, DataFrame, meta_dict)."""',
             "    spec = json.loads(base64.b64decode(_SPEC_B64).decode('utf-8'))",
-            "    data_json = json.loads(base64.b64decode(_DATA_B64).decode('utf-8'))",
+            "    # Each number as Stata holds it: a double, or missing.",
+            "    data_json = _dash_read_data_json(base64.b64decode(_DATA_B64).decode('utf-8'))",
             "    # jsonio has emitted the payload both flat and wrapped in a",
             "    # 'StataJSON' key over its life.  DashRenderer accepts both;",
             "    # this read only the top level, so a wrapped payload gave the",
@@ -23310,6 +25719,11 @@ class ServerAppBuilder:
             "                row = {}",
             "            rows.append(row)",
             "        df = pd.DataFrame(rows, columns=var_names)",
+            "    elif not values:",
+            "        # No observations: the variables are still the columns",
+            "        # (the saved loader's rule, _dash_empty_frame).",
+            "        df = _dash_empty_frame(",
+            "            var_names, {k for k, v in (type_is_str or {}).items() if v})",
             "    else:",
             "        df = pd.DataFrame()",
             "    # Every column read by the saved loader's own reader: text",
@@ -23552,7 +25966,8 @@ class ServerAppBuilder:
             "    # panel does not repeat its graph's.",
             "    _reported_subopts = set()",
             "",
-            "    def _dash_draw_layer(fig, g_df, plot, pi, gname, _ln, _shared, _fallback):",
+            "    def _dash_draw_layer(fig, g_df, plot, pi, gname, _ln, _shared, _fallback,",
+            "                         sidx=None):",
             '        """Draw one layer of one figure; return (layer_source, [drawn sources]).',
 
             "        The one place a plot type is dispatched to its mapper,",
@@ -23560,6 +25975,9 @@ class ServerAppBuilder:
             "        redraw a filter move triggers.  Family order is the",
             "        saved renderer's: literal, function, pc, range, else.",
             '        """',
+            "        # The p# twoway draws the layer in, a ci fit counting as two",
+            "        # plots (_dash_plot_style_indices); pi when no caller says.",
+            "        _sidx = pi if sidx is None else sidx",
             "        ptype = str(plot.get('type', '') or '').lower()",
             "        opts = plot.get('options', {})",
             "        yvar = plot.get('yvar', '') or plot.get('var', '')",
@@ -23569,15 +25987,15 @@ class ServerAppBuilder:
             "        _before_c = len(fig.center)",
             "        _ly_src = None",
             "        if ptype == 'scatteri':",
-            "            _DASH_MAPPER.map_scatteri(fig, plot.get('values', []), opts, color_idx=pi)",
+            "            _DASH_MAPPER.map_scatteri(fig, plot.get('values', []), opts, color_idx=_sidx)",
             "        elif ptype == 'pci':",
-            "            _DASH_MAPPER.map_pci_literal(fig, plot.get('values', []), opts, color_idx=pi)",
+            "            _DASH_MAPPER.map_pci_literal(fig, plot.get('values', []), opts, color_idx=_sidx)",
             "        elif ptype == 'pcarrowi':",
-            "            _DASH_MAPPER.map_pcarrowi(fig, plot.get('values', []), opts, color_idx=pi)",
+            "            _DASH_MAPPER.map_pcarrowi(fig, plot.get('values', []), opts, color_idx=_sidx)",
             "        elif ptype == 'function':",
             "            _fn_range, _fn_n = _dash_function_args(opts)",
             "            _DASH_MAPPER.map_function(fig, plot.get('expr', ''), _fn_range, _fn_n, opts,",
-            "                                      color_idx=pi)",
+            "                                      color_idx=_sidx)",
             "        elif ptype in _DASH_PC_TYPES:",
             "            # The mlabel() column rides along, as the saved page's",
             "            # source carries it (pccapsym labels its first point).",
@@ -23590,17 +26008,20 @@ class ServerAppBuilder:
             "                    _DASH_MAPPER, fig, _ly_src, ptype,",
             "                    plot.get('y1var', ''), plot.get('x1var', ''),",
             "                    plot.get('y2var', ''), plot.get('x2var', ''),",
-            "                    opts, color_idx=pi)",
+            "                    opts, color_idx=_sidx)",
             "        elif ptype in _DASH_RANGE_TYPES:",
             "            y1var = plot.get('yvar1', '') or plot.get('yvar', '') or plot.get('y1var', '')",
             "            y2var = plot.get('yvar2', '') or plot.get('y2var', '')",
+            "            if not y2var:",
+            "                # The saved page's words (_dash_add_glyph).",
+            "                _dash_note_no_second_y(ptype)",
             "            _ly_src, _ok = _dash_range_source(",
             "                g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
             "                extra_cols=_hv + _dash_option_columns(opts, df.columns))",
             "            if _ok:",
             "                _dash_add_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
-            "                    opts, y2var=y2var, color_idx=pi)",
+            "                    opts, y2var=y2var, color_idx=_sidx)",
             "        else:",
             "            _ly_src, _ly_view = _dash_layer_source(",
             "                g_df, df, xvar, yvar, opts.get('mlabel', ''),",
@@ -23609,7 +26030,7 @@ class ServerAppBuilder:
             "            if _ly_src is not None:",
             "                _dash_add_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
+            "                    view=_ly_view, color_idx=_sidx)",
             "        # A yaxis(2)/xaxis(2) layer draws on the secondary range, its",
             "        # marker labels and arrowheads with it.",
             "        _dash_assign_axis_ranges(fig, fig.renderers[_before:], opts,",
@@ -23661,6 +26082,7 @@ class ServerAppBuilder:
             "        _p_qc = str(plot.get('qual_col') or '')",
             "        _g_q = _dash_qual_mask(g, _qual_masks)",
             "        _p_q = _dash_qual_mask(plot, _qual_masks)",
+            "        _sidx = _dash_plot_style_indices(g.get('plots', []))[pi]",
             "        # The literal family draws from its own values, which no",
             "        # qualifier reaches, as in twoway and the live figure.",
             "        _p_lit = (str(plot.get('type', '') or '').lower()",
@@ -23680,7 +26102,7 @@ class ServerAppBuilder:
             "                                        qual=_p_q)",
             "            _tfig = bokeh_figure()",
             "            _ly, _srcs = _dash_draw_layer(_tfig, _fr, plot, pi, gname,",
-            "                                          set(), None, None)",
+            "                                          set(), None, None, sidx=_sidx)",
             "            return [_s for _s in _srcs if _s is not _ly]",
             "        return _redraw",
             "",
@@ -23711,6 +26133,7 @@ class ServerAppBuilder:
             "        _g_df_graph = g_df",
             "",
             "        plots = g.get('plots', [])",
+            "        _pstyle_idx = _dash_plot_style_indices(plots)",
             "        xv = plots[0].get('xvar', '') if plots else ''",
             "        yv = plots[0].get('yvar', '') if plots else ''",
             "        # Canvas text, through the helper the saved renderer runs:",
@@ -23835,7 +26258,7 @@ class ServerAppBuilder:
             "        # runs, at the scheme's text-box sizes and colours.",
             "        _dash_text_annotations(fig, go, _reported_subopts, gname, _DASH_SCHEME)",
             "        # xline()/yline(): the helper the saved renderer runs.",
-            "        _dash_reference_lines(fig, go, _reported_subopts, gname)",
+            "        _dash_reference_lines(fig, go, _reported_subopts, gname, _DASH_SCHEME)",
             "        # xlabel()/ylabel()/xtick()/ytick(): Stata's full grammar,",
             "        # through the helper the saved renderer runs.  A 14-line",
             "        # parser here read a bare numlist and angle() and nothing",
@@ -23921,7 +26344,8 @@ class ServerAppBuilder:
             "            # callback call as well, so there is exactly one place that",
             "            # decides how a layer is drawn.",
             "            _drawn = _dash_draw_layer(fig, g_df, plot, pi, gname,",
-            "                                      linked_names, shared_source, src)",
+            "                                      linked_names, shared_source, src,",
+            "                                      sidx=_pstyle_idx[pi])",
             "            _ly_src = _drawn[0]",
             "            _r_srcs = _drawn[1]",
             "            if _ly_src is not None and _r_srcs and _ly_src not in _r_srcs:",
@@ -23977,6 +26401,8 @@ class ServerAppBuilder:
             "        # Beside a second axis, the figure's own axes range over the",
             "        # layers drawn on them only, as the saved figure's do.",
             "        _dash_keep_primary_ranges(fig)",
+            "        # #N ticks where twoway puts them, as the saved figure's are.",
+            "        _dash_finish_count_ticks(fig)",
             "",
             '        # ---- Build the legend ----',
             '        #',
@@ -24055,6 +26481,8 @@ class ServerAppBuilder:
             "    # ---- Build figures: one call per graph, or per by() panel ----",
             "    _facet_map = {}         # gname -> [(panel_key, label)]",
             "    _facet_group_vals = {}  # panel_key -> (by_vars, group_key)",
+            "    # A Total panel's own graph qualifier, by its key.",
+            "    _total_quals = {}",
             "    # The rows each graph or panel shows, by its key: what a",
             "    # selection cleared on one of its sources counts (_brush_rows).",
             "    _owner_rows = {}",
@@ -24083,7 +26511,18 @@ class ServerAppBuilder:
             "        # renderer grouped the whole dataset until WP-11, and",
             "        # `if price > 4500, by(foreign)' faceted every row.",
             "        work_df = g_df if _bmissing else g_df.dropna(subset=by_vars)",
-            "        if work_df.empty:",
+            "        # by(, total)'s Total panel evaluates its qualifiers in the",
+            "        # data's order, the groups sorted on the by() variables, as",
+            "        # twoway does and as saved (_dash_total_spec; QS-16..).",
+            "        _g_tot = _dash_total_spec(g) if _btotal else g",
+            "        _t_df = work_df",
+            "        if _g_tot is not g:",
+            "            _t_df = _dash_qualified_frame(",
+            "                df, _g_if, _g_in, 'graph %r' % gname,",
+            "                qual=_dash_qual_mask(_g_tot, _qual_masks))",
+            "            if not _bmissing:",
+            "                _t_df = _t_df.dropna(subset=by_vars)",
+            "        if work_df.empty and (_g_tot is g or _t_df.empty):",
             "            # Every by() value is missing: one empty panel, as saved.",
             "            _owner_rows[gname] = work_df.index",
             "            figures[gname] = _dash_figure_for(g, gname, work_df)",
@@ -24099,14 +26538,28 @@ class ServerAppBuilder:
             "        _panels = []",
             "        # The saved renderer's grouping, under the same by_groups",
             "        # limit (the build said so when it was over).",
-            "        for _key, _gdf in _dash_by_groups(",
-            "                work_df, by_vars, _bmissing, _dash_lim['by_groups'], gname):",
+            "        for _key, _gdf in (() if work_df.empty else _dash_by_groups(",
+            "                work_df, by_vars, _bmissing, _dash_lim['by_groups'], gname)):",
+            "            # A panel twoway leaves out, as the saved renderer does.",
+            "            if _dash_by_panel_dropped(_gdf, df, g.get('plots', []),",
+            "                                      _qual_masks, gname):",
+            "                continue",
             "            _panels.append((_dash_facet_label(",
             "                by_vars, _key, val_label_names, val_labels,",
             "                date_vars=_date_vars,",
             "                date_formatter=_dash_stata_date_text), _gdf, _key))",
-            "        if _btotal:",
-            "            _panels.append(('Total', work_df, None))",
+            "        # The Total panel is one more panel, answered as the groups",
+            "        # are, as saved (P1A-84).",
+            "        _t_idx = -1",
+            "        if _btotal and not _t_df.empty and not _dash_by_panel_dropped(",
+            "                _t_df, df, _g_tot.get('plots', []), _qual_masks, gname):",
+            "            _panels.append(('Total', _t_df, None))",
+            "            _t_idx = len(_panels) - 1",
+            "        if not _panels:",
+            "            # Every panel left out: one empty panel, as saved.",
+            "            warnings.warn(f'dash: graph {gname!r}: nothing to graph.',",
+            "                          UserWarning, stacklevel=2)",
+            "            _panels.append(('', work_df.iloc[0:0], None))",
             "        _entries = []",
             "        for _fi, (_label, _gdf, _key) in enumerate(_panels):",
             "            _fname = f'{gname}__by__{_fi}'",
@@ -24119,11 +26572,23 @@ class ServerAppBuilder:
             "                graph_sources[_fname] = [ColumnDataSource(",
             "                    {_v: _dash_column_values(_gdf[_v]) for _v in _gvars})]",
             "            _owner_rows[_fname] = _gdf.index",
+            "            _g_pan = g",
+            "            if _fi == _t_idx and _g_tot is not g:",
+            "                # The Total panel: its own qualifier columns, drawn",
+            "                # and reapplied after a filter move (_total_quals).",
+            "                _g_pan = _g_tot",
+            "                _total_quals[_fname] = {",
+            "                    'if_expr': _g_if, 'in_expr': _g_in,",
+            "                    'qual_col': str(_g_tot.get('qual_col') or '')}",
             "            figures[_fname] = _dash_figure_for(",
-            "                g, _fname, _gdf, _fac_label=_label)",
+            "                _g_pan, _fname, _gdf, _fac_label=_label)",
             "            _entries.append((_fname, _label))",
             "            _facet_group_vals[_fname] = (by_vars, _key)",
             "        _facet_map[gname] = _entries",
+            "        # twoway ticks a by() graph's panels on one scale, over",
+            "        # all their data, as the saved figure's are.",
+            "        _dash_common_count_ticks([figures[_f] for _f, _ in _entries",
+            "                                  if _f in figures])",
             "",
             "    # ---- Persist per-graph qualifier metadata for filter callbacks ----",
             "    # Graph-level if_expr/in_expr are applied during initial rendering",
@@ -24139,6 +26604,9 @@ class ServerAppBuilder:
             "        if _qi or _qn or _qc:",
             "            _graph_qualifiers[_gnq] = {'if_expr': _qi, 'in_expr': _qn,",
             "                                       'qual_col': _qc}",
+            "    # A Total panel's own, by the panel's key: no graph name holds",
+            "    # two underscores in a row, so none is a panel's key.",
+            "    _graph_qualifiers.update(_total_quals)",
             "",
             "",
             "    # ---- Build KPI Divs ----",
@@ -24342,7 +26810,9 @@ class ServerAppBuilder:
             "                # a qualifier too deep to parse raised MemoryError out of",
             "                # every move (measured 24sep2026).",
             "                _orig_gn_cb = _gfac_to_orig.get(gname, gname)",
-            "                _qual_cb = _gquals.get(_orig_gn_cb, {})",
+            "                # A Total panel's own first (_total_quals).",
+            "                _qual_cb = (_gquals[gname] if gname in _gquals",
+            "                            else _gquals.get(_orig_gn_cb, {}))",
             "                _in_cb = _qual_cb.get('in_expr', '').strip()",
             "                _if_cb = _qual_cb.get('if_expr', '').strip()",
             "                # The column Stata filled, in a spec dash.ado wrote: the",
@@ -24774,8 +27244,10 @@ class ServerAppBuilder:
             '            # The plain-path equivalent of the Bootstrap sidebar: a',
             '            # fixed-width column beside the content, exactly as the',
             '            # standalone renderer builds it.',
-            "            sidebar = column(*filter_widgets, sizing_mode='fixed',",
-            '                             width=_SIDEBAR_WIDTH_PX)',
+            '            # A fixed width and the height of its widgets, with no',
+            '            # sizing mode that asks for a height (W-1005, BUGS.md).',
+            "            sidebar = column(*filter_widgets, width=_SIDEBAR_WIDTH_PX,",
+            "                             width_policy='fixed', height_policy='auto')",
             "            layout = _dash_reflow(row(sidebar, content, sizing_mode='stretch_width'))",
             '        else:',
             "            filter_bar = _dash_reflow(row(filter_widgets, sizing_mode='stretch_width'), stack=False)",

@@ -173,6 +173,21 @@ COVERAGE = {
         "_dash_plot": ("test_graph_option_scope.cscript:GOS-01",
                        "test_adversarial.cscript:P20-33"),
         "_dash_browser_wanted": ("test_nodraw_honoured.cscript:ND-04",),
+        # e2e: a by() graph's panels, and its Total panel, against live
+        # twoway.
+        "_dash_by_parts": ("test_parser.cscript:P1A-83",
+                           "test_parser.cscript:P1A-84"),
+        "_dash_by_panels": ("test_parser.cscript:P1A-83",
+                            "test_parser.cscript:P1A-84",
+                            "test_qualifier_in_stata.cscript:QS-18"),
+        # e2e: a by() graph's qualifiers, evaluated in twoway's order, the
+        # data's order kept, against live twoway.
+        "_dash_qual_mark": ("test_qualifier_in_stata.cscript:QS-18",
+                            "test_qualifier_in_stata.cscript:QS-16",
+                            "test_qualifier_in_stata.cscript:QS-19"),
+        "_dash_qual_gen_by": ("test_qualifier_in_stata.cscript:QS-16",
+                              "test_qualifier_in_stata.cscript:QS-19",
+                              "test_qualifier_in_stata.cscript:QS-21"),
         "_dash_registry_nodraw": ("test_nodraw_honoured.cscript:ND-05",),
         "_dash_dashboard_browser": ("test_serve_browser.cscript:SB-01",
                                     "test_serve_browser.cscript:SB-03",
@@ -192,6 +207,22 @@ COVERAGE = {
         "_dash_refuse_second_name": ("test_registry_collision.cscript:REG-37",
                                      "test_registry_collision.cscript:REG-38",
                                      "test_registry_collision.cscript:REG-40"),
+        # e2e: an unbindable value refused with twoway's code; a repeat and
+        # an undeclared option not.
+        "_dash_refuse_unbound": ("test_adversarial.cscript:P20-18",
+                                 "test_adversarial.cscript:P20-18b"),
+        # e2e: a function Stata does not have refused, r(133); what twoway
+        # draws registered, and the random-number state untouched.
+        "_dash_fn_refuse": ("test_parser.cscript:P1A-77",
+                            "test_parser.cscript:P1A-78"),
+        # e2e: each repeated option registered as the command twoway
+        # draws the same (SVG compared in the run); a unique one refused.
+        "_dash_opts_repeats": ("test_twoway_option_parity.cscript:TP-14",),
+        # e2e: TP-14b and TP-14f read twoway's words and code in the log.
+        "_dash_refuse_repeat": ("test_twoway_option_parity.cscript:TP-14",),
+        # e2e: TP-15 reads twoway's words and code in the log for each.
+        "_dash_refuse_kernel": ("test_twoway_option_parity.cscript:TP-15",),
+        "_dash_refuse_foreign": ("test_twoway_option_parity.cscript:TP-15",),
         "_dash_register_graph": ("test_varlist_expansion.cscript:V2-08",
                                  "test_registry_collision.cscript:REG-01"),
         # QL-14/15: each layer's own if and in select its rows, and the
@@ -356,6 +387,19 @@ COVERAGE = {
         "_dash_qual_refusal": ("test_qualifier_in_stata.cscript:QS-09",),
         "_dash_qual_take": ("test_qualifier_in_stata.cscript:QS-05",
                             "test_qualifier_in_stata.cscript:QS-03"),
+        # e2e: a by() graph's qualifiers in twoway's order -- the by()
+        # read and validated, each order-dependent pair a column of its
+        # by() order (and its Total panel's), each order evaluated once --
+        # against live twoway, and a hand-set by() refused.
+        "_dash_qual_take_by": ("test_qualifier_in_stata.cscript:QS-16",
+                               "test_qualifier_in_stata.cscript:QS-18"),
+        "_dash_qual_blank_lits": ("test_qualifier_in_stata.cscript:QS-16",
+                                  "test_qualifier_in_stata.cscript:QS-20"),
+        "_dash_qual_ordered": ("test_qualifier_in_stata.cscript:QS-16",),
+        "_dash_qual_by_of": ("test_qualifier_in_stata.cscript:QS-16",
+                             "test_qualifier_in_stata.cscript:QS-20"),
+        "_dash_qual_orders": ("test_qualifier_in_stata.cscript:QS-16",
+                              "test_qualifier_in_stata.cscript:QS-21"),
         "_dash_qual_skipws": ("test_qualifier_in_stata.cscript:QS-09",),
         "_dash_qual_rewrite": ("test_qualifier_in_stata.cscript:QS-05",
                                "test_qualifier_in_stata.cscript:QS-09",
@@ -385,6 +429,48 @@ COVERAGE = {
         # e2e: a second name() refused, text that looks like one not.
         "_dash_has_name_opt": ("test_registry_collision.cscript:REG-39",
                                "test_registry_collision.cscript:REG-37"),
+        # e2e: a by() in another segment read against live twoway, and
+        # by( in a title, a string or a note not read as one.
+        "_dash_seg_by": ("test_parser.cscript:P1A-84",),
+        "_dash_unbound_cands": ("test_adversarial.cscript:P20-18",
+                                "test_adversarial.cscript:P20-18b"),
+        "_dash_fn_names": ("test_parser.cscript:P1A-77",),
+        # direct: the scanner's verdicts; e2e: twoway's return codes.
+        "_dash_fn_space_call": ("test_parser.cscript:P1A-78",),
+        # e2e: TP-14 compares the spec of each repeated option with the
+        # spec of the command twoway draws the same; every row runs these.
+        "_dash_rep_toks": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_optname": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_value": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_scan": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_keyof": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_bare": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_cat": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_unique": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_split": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_subkey": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_subs": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_merge": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_merge_locals": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_reduce": ("test_twoway_option_parity.cscript:TP-14",),
+        # direct and e2e: TP-14f asks twoway for each row's verdict and
+        # calls the scan and the cross check on their own.
+        "_dash_rep_und_tab": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_und_rows": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_und_row": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_und_name": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_und_scan": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_und_cross": ("test_twoway_option_parity.cscript:TP-14",),
+        # direct and e2e: TP-15 calls each on its own, and holds dash's
+        # answer to log, an upper-case option, a plot option after the
+        # comma and two kernels to twoway's, asked in the run.
+        "_dash_log_split": ("test_twoway_option_parity.cscript:TP-15",),
+        "_dash_logit_typed": ("test_twoway_option_parity.cscript:TP-15",),
+        "_dash_foreign_scan": ("test_twoway_option_parity.cscript:TP-15",),
+        "_dash_kernel_clash": ("test_twoway_option_parity.cscript:TP-15",),
+        # direct and e2e: TP-16 calls it on its own, and holds the kernel a
+        # flag registers to twoway's serset of kernel(<name>), in the run.
+        "_dash_kernel_flag": ("test_twoway_option_parity.cscript:TP-16",),
         "_dash_spec_types_in": ("test_parser.cscript:P1A-75",
                                 "test_parser.cscript:P1A-74"),
     },

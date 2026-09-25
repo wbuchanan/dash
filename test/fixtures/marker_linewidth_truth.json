@@ -1,0 +1,247 @@
+{
+ "_about": "Measured 24sep2026 with StataNow 19.5 (console, batch) on sysuse auto: `twoway <type> ... || <type> ... || <type> ...' (three plots; dot on in 1/10; `ciscatter' is lfitci || scatter || scatter, whose band is plot 1 and line plot 2) under each scheme below, a file in the working directory (for 'economist', Stata's own economist); each value is the plot's marker outline width in Stata linewidth units, read from .Graph.plotregion1.plot<k>.style.marker.linestyle.width.setting.  markerstyle-p#.style: `set linestyle scheme p#mark'; linestyle-p#mark.style: `set width scheme p#mark', so the chain is linewidth p#mark -> pmark -> p# -> p; mk3's `p1dotmark' reaches no twoway dot.  'mlwidth' is `scatter, mlwidth(vthin) || scatter' under mk1.  The SVG of scheme_visual/truth.json agrees: every drawn marker outline is as wide as that scheme's lines (s2color 8.64 SVG units, economist 19.01).",
+ "cases": {
+  "economist": {
+   "ciscatter": [
+    0.3,
+    1.2,
+    1.2,
+    1.2
+   ],
+   "connected": [
+    1.2,
+    1.2,
+    1.2
+   ],
+   "dot": [
+    1.2,
+    1.2,
+    1.2
+   ],
+   "dropline": [
+    1.2,
+    1.2,
+    1.2
+   ],
+   "pccapsym": [
+    1.2,
+    1.2,
+    1.2
+   ],
+   "pcscatter": [
+    1.2,
+    1.2,
+    1.2
+   ],
+   "rcapsym": [
+    1.2,
+    1.2,
+    1.2
+   ],
+   "rconnected": [
+    1.2,
+    1.2,
+    1.2
+   ],
+   "rscatter": [
+    1.2,
+    1.2,
+    1.2
+   ],
+   "scatter": [
+    1.2,
+    1.2,
+    1.2
+   ],
+   "scatteri": [
+    1.2,
+    1.2,
+    1.2
+   ]
+  },
+  "mk1": {
+   "ciscatter": [
+    0.3,
+    1.4,
+    0.3,
+    0.3
+   ],
+   "connected": [
+    1.4,
+    0.8,
+    0.3
+   ],
+   "dot": [
+    1.4,
+    0.8,
+    0.3
+   ],
+   "dropline": [
+    1.4,
+    0.8,
+    0.3
+   ],
+   "mlwidth": [
+    0.15,
+    0.8
+   ],
+   "pccapsym": [
+    1.4,
+    0.8,
+    0.3
+   ],
+   "pcscatter": [
+    1.4,
+    0.8,
+    0.3
+   ],
+   "rcapsym": [
+    1.4,
+    0.8,
+    0.3
+   ],
+   "rconnected": [
+    1.4,
+    0.8,
+    0.3
+   ],
+   "rscatter": [
+    1.4,
+    0.8,
+    0.3
+   ],
+   "scatter": [
+    1.4,
+    0.8,
+    0.3
+   ],
+   "scatteri": [
+    1.4,
+    0.8,
+    0.3
+   ]
+  },
+  "mk2": {
+   "ciscatter": [
+    0.3,
+    0.2,
+    2.6,
+    2.6
+   ],
+   "connected": [
+    0.2,
+    2.6,
+    2.6
+   ],
+   "dot": [
+    0.2,
+    2.6,
+    2.6
+   ],
+   "dropline": [
+    0.2,
+    2.6,
+    2.6
+   ],
+   "pccapsym": [
+    0.2,
+    2.6,
+    2.6
+   ],
+   "pcscatter": [
+    0.2,
+    2.6,
+    2.6
+   ],
+   "rcapsym": [
+    0.2,
+    2.6,
+    2.6
+   ],
+   "rconnected": [
+    0.2,
+    2.6,
+    2.6
+   ],
+   "rscatter": [
+    0.2,
+    2.6,
+    2.6
+   ],
+   "scatter": [
+    0.2,
+    2.6,
+    2.6
+   ],
+   "scatteri": [
+    0.2,
+    2.6,
+    2.6
+   ]
+  },
+  "mk3": {
+   "ciscatter": [
+    0.3,
+    0.8,
+    0.3,
+    0.3
+   ],
+   "connected": [
+    0.8,
+    1.4,
+    0.3
+   ],
+   "dot": [
+    0.8,
+    1.4,
+    0.3
+   ],
+   "dropline": [
+    0.8,
+    1.4,
+    0.3
+   ],
+   "pccapsym": [
+    0.8,
+    1.4,
+    0.3
+   ],
+   "pcscatter": [
+    0.8,
+    1.4,
+    0.3
+   ],
+   "rcapsym": [
+    0.8,
+    1.4,
+    0.3
+   ],
+   "rconnected": [
+    0.8,
+    1.4,
+    0.3
+   ],
+   "rscatter": [
+    0.8,
+    1.4,
+    0.3
+   ],
+   "scatter": [
+    0.8,
+    1.4,
+    0.3
+   ],
+   "scatteri": [
+    0.8,
+    1.4,
+    0.3
+   ]
+  }
+ },
+ "schemes": {
+  "economist": "#include economist\n",
+  "mk1": "#include s2color\nlinewidth p1 vthick\nlinewidth p2mark thick\n",
+  "mk2": "#include s2color\nlinewidth pmark vvthick\nlinewidth p1mark thin\nlinewidth p3 vthick\n",
+  "mk3": "#include s2color\nlinewidth p1dotmark vvthick\nlinewidth p1mark thick\nlinewidth p2 vthick\n"
+ }
+}

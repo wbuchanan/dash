@@ -692,9 +692,11 @@ class TestDualAxisJsonVerification:
 
 
     def test_linear_axis_on_right(self):
-        """DAX-V3: yaxis(2) → a LinearAxis model exists in the JSON."""
+        """DAX-V3: yaxis(2) beside a first-axis layer → a LinearAxis on the
+        right, reading the y2 range, in the page's document."""
         from bokeh.models import LinearAxis
         html = _render([
+            {"type": "scatter", "yvar": "y", "xvar": "x", "options": {}},
             {"type": "line", "yvar": "y2", "xvar": "x",
              "options": {"yaxis": "2"}},
         ])
@@ -702,16 +704,30 @@ class TestDualAxisJsonVerification:
         # BokehJS 14 times in a page with no yaxis(2), whose own figure
         # has a LinearAxis on its left (measured 24sep2026).  The one this
         # test names is on the RIGHT, reading the y2 range the layer draws.
-        # That is dash.sthlp's promise ("a right-hand y axis"), not twoway's
-        # for a LONE yaxis(2) layer: twoway draws that layer's one axis on
-        # the left, where dash draws a left axis and a right one (measured
-        # 24sep2026 from graph export svg; BUGS.md, open).
         fig = _page_figure(html)
         assert [a.y_range_name for a in fig.right
                 if isinstance(a, LinearAxis)] == ["y2"]
         assert "y2" in fig.extra_y_ranges
         assert [(type(r.glyph).__name__, r.y_range_name)
-                for r in _layers(fig)] == [("Line", "y2")]
+                for r in _layers(fig)] == [("Scatter", "default"),
+                                           ("Line", "y2")]
+
+    def test_a_lone_second_axis_is_drawn_on_the_left(self):
+        """DAX-V3b: a LONE yaxis(2) layer gets twoway's one axis, on the
+        left (measured 24sep2026 from the SVG export of `twoway scatter
+        mpg weight, yaxis(2)'): no right axis and no second range in the
+        page's document (BUGS.md, S3)."""
+        from bokeh.models import LinearAxis
+        html = _render([
+            {"type": "line", "yvar": "y2", "xvar": "x",
+             "options": {"yaxis": "2"}},
+        ])
+        fig = _page_figure(html)
+        assert [a for a in fig.right if isinstance(a, LinearAxis)] == []
+        assert len([a for a in fig.left if isinstance(a, LinearAxis)]) == 1
+        assert "y2" not in fig.extra_y_ranges
+        assert [(type(r.glyph).__name__, r.y_range_name)
+                for r in _layers(fig)] == [("Line", "default")]
 
 
 

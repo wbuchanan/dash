@@ -155,7 +155,8 @@ def _tick_plan(axis):
         # ticker has carried them by (``marks_ticker``/``marks`` or
         # ``every``/``extra``): what the axis draws is the test.
         count_ticker = t.args.get("marks_ticker", t.args.get("every"))
-        if count_ticker is not None:
+        if count_ticker is not None and \
+                dr._dash_count_of(count_ticker) is not None:
             marks = ("count", count_ticker.desired_num_ticks)
         else:
             marks = sorted(float(v) for v in
@@ -188,11 +189,14 @@ class TestXtickDrawsMarksWithoutLabels:
         assert _tick_plan(fig.xaxis[0]) == (("fixed", []), [2500.0, 3500.0])
 
     def test_beside_a_count_the_labels_stay_the_counts(self, tmp_path, mode):
+        """xlabel(#4) over weight's 1760 to 4840 labels 2000(1000)5000, as
+        twoway draws it (test/fixtures/natscale_truth.json, auto weight
+        #4), and the marks sit beside those labels."""
         fig = _figure(mode, tmp_path, _scatter(
             {"xlabel": "#4", "xtick": "2500 3500"}), tag="count")
         plan = _tick_plan(fig.xaxis[0])
-        assert plan == (("auto", "BasicTicker"), [2500.0, 3500.0])
-        assert fig.xaxis[0].ticker.args["base"].desired_num_ticks == 4
+        assert plan == (("fixed", [2000.0, 3000.0, 4000.0, 5000.0]),
+                        [2500.0, 3500.0])
 
     def test_ytick_alone_keeps_the_default_labels(self, tmp_path, mode):
         fig = _figure(mode, tmp_path, _scatter({"ytick": "15 25 35"}),
@@ -209,10 +213,13 @@ class TestXtickDrawsMarksWithoutLabels:
             ("auto", "BasicTicker"), [1760.0, 4840.0])
 
     def test_a_count_marks_about_that_many(self, tmp_path, mode):
+        """xtick(#10) over weight's 1760 to 4840 marks 1500(500)5000, the
+        positions twoway gives #10 there (natscale_truth.json, auto weight
+        #10)."""
         fig = _figure(mode, tmp_path, _scatter({"xtick": "#10"}),
                       tag="tcount")
         assert _tick_plan(fig.xaxis[0]) == (
-            ("auto", "BasicTicker"), ("count", 10))
+            ("auto", "BasicTicker"), [1500.0 + 500 * i for i in range(8)])
 
     def test_a_label_written_in_xtick_is_not_drawn(self, tmp_path, mode):
         """twoway draws `xtick(2500 "a" 3500)' as two bare marks."""
@@ -297,7 +304,11 @@ class TestTheTickMarkCodeCarriesNoUserText:
         t0 = time.time()
         fig = _figure(mode, tmp_path / "count", _scatter(
             {"xtick": "#" + "9" * 400}), tag="hugecount")
-        assert _tick_plan(fig.xaxis[0])[1] == ("count", dr._MAX_AXIS_TICKS)
+        # Clamped to #2000, which twoway draws over 1760 to 4840 as
+        # 1760(2)4840, 1,541 marks (`_natscale 1760 4840 2000', measured).
+        marks = _tick_plan(fig.xaxis[0])[1]
+        assert len(marks) == 1541 and marks[0] == 1760.0 \
+            and marks[-1] == 4840.0
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             fig = _figure(mode, tmp_path / "range", _scatter(
@@ -754,12 +765,17 @@ class TestTheSchemeOpacityStopsWhereTheHelpSays:
     def test_the_colour_but_not_the_opacity(self, tmp_path, mode, ptype):
         """Under sttrans the second layer is drawn in sttrans' p2, #cc6677,
         at the alphas it has under s2color -- where no opacity is declared
-        -- so the %20 does not reach it.  (lfitci's band is 0.2 in both:
-        dash's own band alpha, _CI_BAND_ALPHA, not the scheme's.)"""
+        -- so the %20 does not reach it.  (lfitci's band is not in p2: it
+        is the scheme's ci style, opaque gs12 under both, as twoway draws
+        it -- test_ci_band_style.py -- and is left out here.)"""
         trans = _layer_styles(mode, tmp_path / "t",
                               _two_layer(ptype, "sttrans"), "t" + ptype)
         plain = _layer_styles(mode, tmp_path / "p",
                               _two_layer(ptype, "s2color"), "p" + ptype)
+        if ptype == "lfitci":
+            assert ("#c0c0c0", 1.0) in trans and ("#c0c0c0", 1.0) in plain
+            trans = [s for s in trans if s[0] != "#c0c0c0"]
+            plain = [s for s in plain if s[0] != "#c0c0c0"]
         assert trans and {c for c, _a in trans} == {"#cc6677"}, trans
         assert plain and {c for c, _a in plain} == {"#90353b"}, plain
         assert [a for _c, a in trans] == [a for _c, a in plain]
@@ -922,7 +938,7 @@ class TestAWorkingDirectorySchemeWinsOverAShippedOne:
 class TestWhatAnIncludeResolvesTo:
     """A user file's #include: the working directory first, then a shipped
     translation, never Stata's own scheme-<name>.scheme, and one that
-    resolves to neither is skipped in silence."""
+    resolves to neither is read as s2color, with Stata's note."""
 
     @staticmethod
     def _parse(wd, text, monkeypatch):
@@ -958,14 +974,27 @@ class TestWhatAnIncludeResolvesTo:
         assert sch.background_color.lower() != "#ff00ff"
         assert sch.p_colors[0].lower() == "#112233"
 
-    def test_an_include_that_resolves_to_nothing_is_skipped_in_silence(
+    def test_an_include_that_resolves_to_nothing_stands_s2color_in(
             self, tmp_path, monkeypatch):
+        """As Stata does (measured 24sep2026, `#include w26nosuch': "(note:
+        scheme w26nosuch not found, using s2color)", rc 0, s2color drawn):
+        s2color in its place, and Stata's note.  It used to be skipped in
+        silence, which dash.sthlp said."""
         wd = tmp_path / "wd"
         wd.mkdir()
         sch, w = self._parse(
             wd, "#include stcolor_meta\ncolor p1 #445566\n", monkeypatch)
+        s2 = dr.SchemeParser("s2color")
         assert sch.p_colors[0].lower() == "#445566"
-        assert w == [], w
+        assert sch.p_colors[1:] == s2.p_colors[1:]
+        assert sch.background_color == s2.background_color
+        assert (sch.graphsize_x, sch.graphsize_y) == (5.5, 4.0)
+        assert any("(note: scheme stcolor_meta not found, using s2color)"
+                   in m for m in w), w
+        help_text = re.sub(r"\s+", " ", _read(_HELP))
+        assert "skipped in silence" not in help_text
+        assert "(note: scheme} {it:name} {cmd:not found, using s2color)" \
+            in help_text
 
     def test_colours_may_be_names_or_hex(self, tmp_path, monkeypatch):
         wd = tmp_path / "wd"
@@ -981,12 +1010,23 @@ class TestWhatAnIncludeResolvesTo:
 class TestTheShippedFiles:
 
     @pytest.mark.parametrize("name", sorted(dr.SchemeParser._BUILTIN_NAMES))
-    def test_about_135_directives_or_165_for_the_s2mono_family(self, name):
+    def test_80_to_140_directives(self, name):
+        """80 to 140 directives: 79 or 80 for the colour schemes, 109 to 111
+        for the monochrome ones, whose chains declare a connecting-line
+        colour or pattern, a line-plot cycle and their marker symbols, 118
+        for s1manual, which declares symbolsize p1..p9, and 138 for
+        s2gmanual, which declares every p#line and p#lineplot key -- each
+        eleven more (economist twelve) since the S3 batch carried a ci
+        band's keys.  (About 135 and 165 before the S3 batch, when every
+        p#stub cycle and every marker symbol was written out resolved; the
+        batch also added the reference line's, the plot region border's and
+        note()'s text box's keys.)"""
         n = sum(1 for k, _v in _directives(os.path.join(_SCHEMES,
                                                         name + ".scheme"))
                 if not k.startswith(("sequence", "label")))
-        lo, hi = (155, 175) if name in _S2MONO_FAMILY else (125, 145)
-        assert lo <= n <= hi, (name, n)
+        assert 80 <= n <= 140, (name, n)
+        help_text = _read(_HELP)
+        assert re.search(r"80\s+to\s+140\s+directives", help_text)
 
     def test_the_s2mono_family_is_what_includes_s2mono(self):
         for name in _S2MONO_FAMILY:
@@ -1015,6 +1055,11 @@ class TestTheShippedFiles:
     def test_every_colour_is_rrggbb(self, name):
         for k, v in _directives(os.path.join(_SCHEMES, name + ".scheme")):
             if k.startswith("color "):
+                # `none' is Stata's own colour for no line: economist's
+                # plot region has no border.
+                if k == "color plotregion_line" and v.split()[0] == "none":
+                    assert name == "economist", (name, k, v)
+                    continue
                 pat = (r"#[0-9a-f]{6}%20" if name == "sttrans"
                        and re.fullmatch(r"color p\d*(line|bar|mark)?", k)
                        else r"#[0-9a-f]{6}")
@@ -1024,28 +1069,36 @@ class TestTheShippedFiles:
     def test_some_uncarried_directives_govern_what_dash_draws_its_own_way(
             self, tmp_path, mode):
         """Stata's s2color declares `color refline' and `color ci_area';
-        no shipped file carries either, and dash draws xline() in its own
-        default -- black, dashed -- whatever the scheme."""
+        no shipped file carries the first.  (xline() and yline() are not
+        refline: twoway draws them in `linestyle xyline', which the
+        shipped files do carry -- the S3 batch -- as they carry the ci
+        band's keys.)"""
         src = _stata_file("s/scheme-s2color.scheme")
         assert re.search(r"^color refline\s", src, re.M)
         assert re.search(r"^color ci_area\s", src, re.M)
+        assert re.search(r"^linestyle xyline\s+xyline\s", src, re.M)
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_some_uncarried_directives_govern_what_dash_draws_its_own_way_in_dash(
             self, tmp_path, mode):
         """The half that needs no Stata (see TestTheSchemeTableSaysWhat-
-        StataSays): no shipped file carries either directive, and xline()
-        is drawn black and dashed."""
+        StataSays): no shipped file carries `color refline', every one
+        carries `color ci_area' (the S3 batch's ci band); xline()
+        takes the scheme's `color xyline' and `linepattern xyline' --
+        s2color's cranberry and solid, as twoway draws it (measured
+        24sep2026 from its SVG export)."""
         for name in dr.SchemeParser._BUILTIN_NAMES:
             keys = {k for k, _v in _directives(
                 os.path.join(_SCHEMES, name + ".scheme"))}
-            assert not keys & {"color refline", "color ci_area"}, name
+            assert "color refline" not in keys, name
+            assert "color ci_area" in keys, name
+            assert {"color xyline", "linepattern xyline"} <= keys, name
         fig = _figure(mode, tmp_path, _scatter({"xline": "3000"},
                                                build={"scheme": "s2color"}),
                       tag="refline")
         spans = [m for m in fig.center if type(m).__name__ == "Span"]
-        assert spans and spans[0].line_color.lower() == "#000000"
-        assert spans[0].line_dash in ("dashed", [6])
+        assert spans and spans[0].line_color.lower() == "#c10534"
+        assert list(spans[0].line_dash) == []
 
     def test_no_directive_for_what_dash_does_not_draw(self):
         """graph bar/box/pie/dot/matrix styling, margins, tick geometry."""
@@ -1054,7 +1107,7 @@ class TestTheShippedFiles:
             keys |= {k for k, _v in _directives(
                 os.path.join(_SCHEMES, name + ".scheme"))}
         bad = sorted(k for k in keys if re.search(
-            r"box|pie|\bdot|matrix|margin|barlabel|barstyle|bar_|"
+            r"(?<!text)box|pie|\bdot|matrix|margin|barlabel|barstyle|bar_|"
             r"tick(?!_label)", k))
         assert not bad, bad
 
@@ -1155,7 +1208,10 @@ class TestTheUnitsAreStatas:
                         if re.fullmatch(r"linewidth p\d+", k)], name
         sec = _flat(_help_between("{marker scheme}", "{marker unsupported}"))
         assert "line-width cycles" not in sec
-        assert "the line width ({cmd:linewidth p})" in sec
+        # ... and a user's `linewidth p#' reaches plot #'s line (S3 batch,
+        # test/test_scheme_linewidth.py).
+        assert ("the line width ({cmd:linewidth p}, and "
+                "{cmd:linewidth p}{it:#} per plot)") in sec
 
 
 class TestDashDrawsBokehsMinorTicks:

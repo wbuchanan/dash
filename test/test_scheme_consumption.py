@@ -24,6 +24,7 @@ The last test class is the one that stops this recurring: every selector
 ``css_block()`` emits must match a class the HTML actually uses.
 """
 import json
+import math
 import os
 import re
 import sys
@@ -592,17 +593,12 @@ class TestNoParsedKeyIsDiscarded:
 
     @pytest.mark.parametrize("attr", [
         "fill_alpha", "bar_alpha", "area_alpha", "minor_grid_color",
-        pytest.param("text_font_size", marks=pytest.mark.xfail(
-            strict=True,
-            reason="PRODUCT FINDING 24sep2026: SchemeParser.text_font_size "
-                   "(`gsize text') is parsed and read by nothing -- no "
-                   "scheme.text_font_size, self.scheme.text_font_size or "
-                   "SchemeParser self.text_font_size load anywhere in "
-                   "dash_render.py since the legend moved to key_label.  "
-                   "The old `.text_font_size' count passed on Bokeh's "
-                   "fig.title.text_font_size.  Strict: a consumer, or a "
-                   "decision to retire the key, must remove this mark.")),
         "title_color", "heading_font_size",
+        # The S3 batch's keys: the reference line's, the plot region
+        # border's and note()'s text box.
+        "xyline_color", "xyline_dash", "xyline_width",
+        "plotregion_line_color", "plotregion_line_width",
+        "note_text_font_size", "note_text_color", "note_box_fill_color",
     ])
     def test_the_key_is_read_somewhere(self, attr):
         """A parsed key with no consumer is a key that does nothing.
@@ -612,13 +608,10 @@ class TestNoParsedKeyIsDiscarded:
         minor_grid_color, which only this covered, are also run by the test
         above, since no shipped scheme can show either.
 
-        text_font_size (`gsize text') is read by nothing: the legend takes
-        key_label's size (_dash_scheme_chrome) and dash draws no text() box,
-        so it is parsed and drawn from nowhere, as note_font_size is.  It
+        text_font_size (`gsize text') was parsed and read by nothing, and
         passed the old count only because `.text_font_size' is also Bokeh's
-        own name (fig.title.text_font_size, twice), which a count cannot
-        tell apart (WP-24, 24sep2026).  It is a strict xfail, BUGS.md's open
-        entry "The scheme's gsize text is parsed and read by nothing"."""
+        own name (WP-24, 24sep2026).  It is retired, not given a consumer:
+        see test_gsize_text_is_retired_because_stata_draws_nothing_with_it."""
         sp = SchemeParser("s2color")
         # A rename used to skip here, silently dropping the attribute from
         # the check; the list names what SchemeParser must parse.
@@ -633,6 +626,314 @@ class TestNoParsedKeyIsDiscarded:
         # (measured 24sep2026).
         reads = _scheme_attr_reads(attr)
         assert reads, f"scheme.{attr} is parsed and never read"
+
+
+    def test_gsize_text_is_retired_because_stata_draws_nothing_with_it(self):
+        """BUGS.md "The scheme's gsize text is parsed and read by nothing".
+
+        Stata's scheme_other.sthlp lists `gsize text' among the entries
+        "rarely, if ever, used by schemes shipped with Stata" ("default text
+        size when other size not specified").  Every text dash draws is
+        drawn by Stata through a text box style that names its own size key
+        -- title() heading, subtitle() subheading, caption() body, note()
+        `textboxstyle note', axis titles axis_title, tick labels tick_label,
+        legend keys key_label -- and no file under StataNow 19.5's
+        ado/base/style sets a size from `scheme text'.  So the directive
+        stays in the shipped files as a faithful transcription, like
+        `draw_major_grid', and SchemeParser no longer offers an attribute
+        nothing may read."""
+        sp = SchemeParser("s2color")
+        assert not hasattr(sp, "text_font_size")
+        assert not hasattr(SchemeParser.fallback(), "text_font_size")
+        assert _scheme_attr_reads("text_font_size") == []
+        # The directive itself is still parsed and carried.
+        assert sp._props.get("gsize text") == "medium"
+        boxes = _SCHEME_TRUTH_META()["textbox_styles"]
+        assert all(v.get("size") != "gsize text" for v in boxes.values()
+                   if isinstance(v, dict)), boxes
+
+
+# ======================================================================
+# The reference line, the plot region's border and note()'s text box,
+# from the scheme (S3 batch).  Stata's values are the fixture's, which
+# scripts/extract_scheme_truth.py resolves through Stata's own style
+# files; test_scheme_visual_truth.py holds four schemes to Stata's SVG.
+# ======================================================================
+
+_TRUTH_PATH = os.path.join(_HERE, "fixtures", "scheme_truth.json")
+
+
+def _SCHEME_TRUTH():
+    with open(_TRUTH_PATH, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _SCHEME_TRUTH_META():
+    return _SCHEME_TRUTH()["_meta"]
+
+
+_ALL_SCHEMES = sorted(SchemeParser._BUILTIN_NAMES)
+
+
+def _both_modes(tmp_path, plots, scheme, gopts=None):
+    """The g1 figure of a saved build and of the served app, one spec."""
+    import warnings
+    from bokeh.document import Document
+    from bokeh.models import Plot
+    spec = make_spec(plots)
+    spec["graphs"][0]["graph_options"].update(gopts or {})
+    spec["build_options"]["scheme"] = scheme
+    sp, dp, ap = (str(tmp_path / n) for n in ("s.json", "d.json", "app.py"))
+    with open(sp, "w") as f:
+        json.dump(spec, f)
+    with open(dp, "w") as f:
+        json.dump(make_data_json(_df()), f)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr = DashRenderer(sp, dp)
+        dr.render()
+        dash_render.ServerAppBuilder(sp, dp).build(ap)
+    with open(ap, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    assert attach in src
+    ns = {"__name__": "_s3_scheme_app"}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "_s3_scheme_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    served = [f for root in doc.roots for f in root.select({"type": Plot})]
+    assert len(served) == 1, served
+    return {"saved": dr.figures["g1"], "served": served[0]}
+
+
+def _spans(fig):
+    from bokeh.models import Span
+    return [m for m in list(fig.center) + list(fig.renderers)
+            if isinstance(m, Span)]
+
+
+def _labels(fig, text):
+    from bokeh.models import Label
+    return [m for side in ("below", "above", "center", "left", "right")
+            for m in getattr(fig, side) if isinstance(m, Label)
+            and m.text == text]
+
+
+_ONE_SCATTER = [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                 "options": {}}]
+
+
+class TestTheReferenceLineIsTheSchemes:
+    """BUGS.md "xline() and yline() are drawn black and dashed under every
+    scheme, where s2color draws them cranberry and solid".  Measured
+    24sep2026 from twoway's SVG export of `twoway scatter mpg weight,
+    xline(3000) yline(20)': s2color one solid #C10534 segment, stcolor
+    black and dashed.  Stata's chain: the gridlinestyle class default ->
+    `linestyle xyline' -> `color xyline', `linepattern xyline',
+    `linewidth xyline'."""
+
+    def test_the_two_measured_schemes(self):
+        s2, st = SchemeParser("s2color"), SchemeParser("stcolor")
+        assert (s2.xyline_color, s2.xyline_dash) == ("#c10534", [])
+        assert st.xyline_color == "#000000" and st.xyline_dash, (
+            st.xyline_color, st.xyline_dash)
+
+    @pytest.mark.parametrize("name", _ALL_SCHEMES)
+    def test_every_scheme_reads_what_stata_resolves(self, name):
+        e = _SCHEME_TRUTH()[name]
+        sp = SchemeParser(name)
+        T = dash_render.OptionTranslator
+        assert sp.xyline_color == e["xyline_color"], name
+        assert sp.xyline_dash == T.translate_lpattern(e["xyline_pattern"])
+        assert sp.xyline_width == T.translate_lwidth(
+            e["xyline_line_width"]["name"]), name
+
+    @pytest.mark.parametrize("scheme", ["s2color", "stcolor", "s1rcolor"])
+    def test_both_modes_draw_it(self, tmp_path, scheme):
+        sp = SchemeParser(scheme)
+        figs = _both_modes(tmp_path, _ONE_SCATTER, scheme,
+                           {"xline": "3000", "yline": "20"})
+        for mode, fig in figs.items():
+            spans = _spans(fig)
+            assert len(spans) == 2, (mode, spans)
+            for s in spans:
+                assert str(s.line_color).lower() == sp.xyline_color, (
+                    mode, s.line_color)
+                assert list(s.line_dash) == list(sp.xyline_dash), (
+                    mode, s.line_dash)
+                assert s.line_width == sp.xyline_width, (mode, s.line_width)
+
+    def test_an_explicit_suboption_still_wins(self, tmp_path):
+        figs = _both_modes(
+            tmp_path, _ONE_SCATTER, "s2color",
+            {"xline": "3000, lcolor(blue) lpattern(dash) lwidth(thick)"})
+        T = dash_render.OptionTranslator
+        for mode, fig in figs.items():
+            (s,) = _spans(fig)
+            assert str(s.line_color).lower() == "#0000ff", mode
+            assert list(s.line_dash) == T.translate_lpattern("dash"), mode
+            assert s.line_width == T.translate_lwidth("thick"), mode
+
+    def test_a_users_scheme_sets_it(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "s3xy.scheme").write_text(
+            "#include s2color\ncolor xyline #123456\n"
+            "linepattern xyline shortdash\nlinewidth xyline vthick\n",
+            encoding="utf-8")
+        sp = SchemeParser("s3xy")
+        T = dash_render.OptionTranslator
+        assert sp.xyline_color == "#123456"
+        assert sp.xyline_dash == T.translate_lpattern("shortdash")
+        assert sp.xyline_width == T.translate_lwidth("vthick")
+
+
+class TestThePlotRegionBorderIsTheSchemes:
+    """BUGS.md "Every scheme outlines the plot region in black where
+    Stata's stcolor, s2color and economist draw no border".  Stata's chain:
+    plotregionstyle twoway -> areastyle twoway_plotregion -> its linestyle
+    (s2color `plotregion': `color plotregion_line' white; s1color
+    `foreground': black; economist `areastyle twoway_plotregion none')."""
+
+    @pytest.mark.parametrize("name", _ALL_SCHEMES)
+    def test_every_scheme_reads_what_stata_resolves(self, name):
+        e = _SCHEME_TRUTH()[name]
+        sp = SchemeParser(name)
+        if not e["plotregion_line_drawn"]:
+            assert sp.plotregion_line_color is None, name
+            return
+        assert sp.plotregion_line_color == e["plotregion_line_color"], name
+        assert sp.plotregion_line_width == \
+            dash_render.OptionTranslator.translate_lwidth(
+                e["plotregion_line_line_width"]["name"]), name
+
+    @pytest.mark.parametrize("scheme", ["s2color", "economist", "s1mono"])
+    def test_both_modes_draw_it(self, tmp_path, scheme):
+        sp = SchemeParser(scheme)
+        figs = _both_modes(tmp_path, _ONE_SCATTER, scheme)
+        for mode, fig in figs.items():
+            got = fig.outline_line_color
+            if sp.plotregion_line_color is None:
+                assert got is None, (mode, got)
+            else:
+                assert str(got).lower() == sp.plotregion_line_color, (mode,
+                                                                     got)
+                assert fig.outline_line_width == sp.plotregion_line_width
+
+    def test_plotregion_lcolor_still_wins(self, tmp_path):
+        figs = _both_modes(tmp_path, _ONE_SCATTER, "economist",
+                           {"plotregion": "lcolor(red)"})
+        for mode, fig in figs.items():
+            assert str(fig.outline_line_color).lower() in ("red", "#ff0000"), (
+                mode, fig.outline_line_color)
+
+
+class TestNoteIsDrawnInItsTextbox:
+    """BUGS.md "economist's note() is drawn as a small black body note
+    where Stata draws its reverse_big box".  Measured (truth.json
+    fonts.note): 4.1660% of the height, medlarge, #FFFFFF; the box's fill
+    is `color reverse_big', emidblue, read from scheme-economist.scheme."""
+
+    @pytest.mark.parametrize("name", _ALL_SCHEMES)
+    def test_every_scheme_reads_what_stata_resolves(self, name):
+        e = _SCHEME_TRUTH()[name]
+        sp = SchemeParser(name)
+        assert sp.note_textbox == e["note_textbox"]["name"], name
+        assert sp.note_text_color == e["note_text_color"], name
+        probe = SchemeParser.fallback()
+        probe._props = {"gsize x": e["note_text_size"]["name"]}
+        assert sp.note_text_font_size == probe._gsize("gsize x"), name
+        assert sp.note_box_fill_color == e["note_box_fill_color"], name
+
+    @pytest.mark.parametrize("scheme", ["economist", "s2color", "s1manual"])
+    def test_both_modes_draw_it(self, tmp_path, scheme):
+        sp = SchemeParser(scheme)
+        figs = _both_modes(tmp_path, _ONE_SCATTER, scheme,
+                           {"note": "A note"})
+        for mode, fig in figs.items():
+            (lab,) = _labels(fig, "A note")
+            assert lab.text_font_size == sp.note_text_font_size, mode
+            assert str(lab.text_color).lower() == sp.note_text_color, mode
+            fill = lab.background_fill_color
+            if sp.note_box_fill_color is None:
+                assert fill is None, (mode, fill)
+            else:
+                assert str(fill).lower() == sp.note_box_fill_color, mode
+
+    def test_economist_is_white_on_emidblue_at_medlarge(self):
+        sp = SchemeParser("economist")
+        assert (sp.note_textbox, sp.note_text_font_size, sp.note_text_color,
+                sp.note_box_fill_color) == ("reverse_big", "12pt", "#ffffff",
+                                            "#7b92a8")
+
+    def test_an_explicit_size_and_colour_still_win(self, tmp_path):
+        figs = _both_modes(tmp_path, _ONE_SCATTER, "economist",
+                           {"note": "A note, size(small) color(red)"})
+        for mode, fig in figs.items():
+            (lab,) = _labels(fig, "A note")
+            assert str(lab.text_color).lower() in ("red", "#ff0000"), mode
+            assert lab.text_font_size != "12pt", mode
+
+
+class TestHostileSchemeValuesForTheNewKeys:
+    """Adversarial (CLAUDE.md rule 18): the new keys read text from a
+    user's scheme file in the working directory."""
+
+    def _parse(self, tmp_path, monkeypatch, body):
+        import warnings
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "s3bad.scheme").write_text(
+            "#include s2color\n" + body, encoding="utf-8")
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            sp = SchemeParser("s3bad")
+        return sp, [str(x.message) for x in w]
+
+    @pytest.mark.parametrize("name", [
+        "../../../../etc/passwd", "<script>alert(1)</script>",
+        "small_body;rm", pytest.param("x" * 5000, id="5000-chars"),
+        "__class__"])
+    def test_an_unknown_note_textbox_is_refused_aloud(
+            self, tmp_path, monkeypatch, name):
+        """Injection: a box name is a key into a table, never a path or an
+        attribute; an unknown one is small_body, said aloud, and the
+        warning echoes no markup and not more than 80 characters of it."""
+        sp, w = self._parse(tmp_path, monkeypatch,
+                            "textboxstyle note %s\n" % name)
+        assert sp.note_textbox == "small_body"
+        assert sp.note_text_font_size == sp.small_body_font_size
+        assert sp.note_text_color == sp.small_body_color
+        assert sp.note_box_fill_color is None
+        msgs = [m for m in w if "textboxstyle note" in m]
+        assert len(msgs) == 1, w
+        assert "<script>" not in msgs[0] and len(msgs[0]) < 400, msgs[0]
+
+    @pytest.mark.parametrize("value", [
+        "javascript:alert(1)", "#12345g", "url(x)", "‮#ff0000"])
+    def test_a_colour_that_is_no_colour_falls_back(
+            self, tmp_path, monkeypatch, value):
+        sp, _w = self._parse(tmp_path, monkeypatch,
+                             "color xyline %s\ncolor plotregion_line %s\n"
+                             % (value, value))
+        assert re.fullmatch(r"#[0-9a-f]{6}", sp.xyline_color), sp.xyline_color
+        assert re.fullmatch(r"#[0-9a-f]{6}", sp.plotregion_line_color), (
+            sp.plotregion_line_color)
+
+    @pytest.mark.parametrize("value", ["1e308", "-5", "nan", "inf"])
+    def test_an_absurd_width_is_bounded(self, tmp_path, monkeypatch, value):
+        """Resource exhaustion: a width a figure cannot draw is not drawn."""
+        sp, _w = self._parse(tmp_path, monkeypatch,
+                             "linewidth xyline %s\nlinewidth plotregion %s\n"
+                             % (value, value))
+        for width in (sp.xyline_width, sp.plotregion_line_width):
+            assert math.isfinite(width) and 0 <= width <= 100, width
+
+    def test_none_is_no_line(self, tmp_path, monkeypatch):
+        sp, _w = self._parse(tmp_path, monkeypatch,
+                             "color plotregion_line none\n")
+        assert sp.plotregion_line_color is None
 
 
 # ======================================================================
@@ -750,8 +1051,9 @@ class TestDirectivesOnlyAUserSchemeCarries:
     """Four SchemeParser branches that no shipped scheme reaches.
 
     dash's twenty shipped schemes are flattened translations: every
-    #include chain and every p#stub fallback is resolved into explicit keys
-    when scripts/extract_scheme_truth.py writes them.  So none of them
+    #include chain is resolved when scripts/extract_scheme_truth.py writes
+    them, and each p#stub cycle carries only the keys Stata's chain declares
+    (S3 batch; they used to carry the chain resolved).  So none of them
     carries
 
       1. `color plineplot', the line-plot colour of every p# (Stata's
@@ -772,14 +1074,13 @@ class TestDirectivesOnlyAUserSchemeCarries:
     Stata's working directory and drawn by twoway on eleven points, as line
     plots unless a test names another plot type.
     An `#include s2color' there is Stata's own scheme-s2color.scheme; here it
-    is dash's translation of it.  Where dash disagrees, the test asserts
-    Stata's value and is a strict xfail (raises=AssertionError, so only the
-    comparison counts; its controls fail through pytest.fail, which the mark
-    does not absorb) whose reason names the BUGS.md entry drafted for it.
+    is dash's translation of it.  Each test asserts Stata's value; five were
+    strict xfails, pinning the BUGS.md entries TR-26.7 drafted, until the S3
+    batch fixed them (controls fail through pytest.fail).
 
     The last two tests are not about the four branches.  The measurements
     for (2) and (4) found them: after an `#include s2color', a user's
-    `linepattern p#' or `color p#' reaches a line plot in dash, as in
+    `linepattern p#' or `color p#' reached a line plot in dash, as in
     Stata, but not a marker, a bar or a connected plot's connecting line.
     """
 
@@ -800,23 +1101,6 @@ class TestDirectivesOnlyAUserSchemeCarries:
     _DF = pd.DataFrame(dict(
         [("x", np.arange(11.0))]
         + [("y%d" % i, np.arange(11.0) + i) for i in range(1, 16)]))
-
-    _BUG_BARE_GRAPHSIZE = (
-        "BUGS.md (open, recorded 24sep2026 by TR-26.7): \"A bare graphsize "
-        "stands in for a missing graphsize x or y, where Stata reads it for "
-        "no graph's size\"")
-    _BUG_INCLUDE_ORDER = (
-        "BUGS.md (open, recorded 24sep2026 by TR-26.7): \"A directive above "
-        "an #include survives it, where Stata lets the included scheme "
-        "overwrite it\"")
-    _BUG_INCLUDE_NOWHERE = (
-        "BUGS.md (open, recorded 24sep2026 by TR-26.7): \"An #include that "
-        "resolves nowhere is skipped in silence, where Stata draws s2color "
-        "in its place and says so\"")
-    _BUG_STUB_SHADOW = (
-        "BUGS.md (open, recorded 24sep2026 by TR-26.7): \"A user's color p# "
-        "or linepattern p# after #include s2color does not reach markers, "
-        "bars or connected lines\"")
 
     @pytest.fixture
     def wd(self, tmp_path, monkeypatch):
@@ -961,8 +1245,6 @@ class TestDirectivesOnlyAUserSchemeCarries:
 
     # -- 3. a bare graphsize ------------------------------------------------
 
-    @pytest.mark.xfail(strict=True, raises=AssertionError,
-                       reason=_BUG_BARE_GRAPHSIZE)
     def test_a_bare_graphsize_sizes_nothing(self, wd):
         """Stata reads a bare `graphsize N' for no graph's size.
 
@@ -984,8 +1266,8 @@ class TestDirectivesOnlyAUserSchemeCarries:
         3in.  Under `set trace on', scheme.class's `style' program finds no
         `graphsize x', and graph_g.drawgraph reads `local xsize = .' and
         `local ysize = .' and runs `gdi init . . 234 242 243 , live', which
-        is the r(198).  dash reads the bare key as the default of both, so
-        it sizes the three (3.0, 3.0), (6.0, 3.0) and (3.0, 3.0).  Stata's
+        is the r(198).  dash read the bare key as the default of both, so
+        it sized the three (3.0, 3.0), (6.0, 3.0) and (3.0, 3.0).  Stata's
         missing declared size is None in dash's terms -- what graphsize_x
         holds when a scheme declares no size, as w26base alone shows below.
         The cases where dash and Stata agree are
@@ -1047,8 +1329,6 @@ class TestDirectivesOnlyAUserSchemeCarries:
         assert str(fig.border_fill_color).lower() == "#eaf2f3"
         assert fig.aspect_ratio == pytest.approx(5.5 / 4.0)
 
-    @pytest.mark.xfail(strict=True, raises=AssertionError,
-                       reason=_BUG_INCLUDE_ORDER)
     def test_an_include_overwrites_the_directives_above_it(self, wd):
         """Stata splices an #include in where it stands: setscheme reads the
         file line by line, runs `.setscheme , scheme(<name>)' at the
@@ -1057,8 +1337,9 @@ class TestDirectivesOnlyAUserSchemeCarries:
         scheme's own.  Measured 24sep2026: `color p1 red' then `#include
         s2color' (w26ord) strokes line 1 #1A476F, s2color's navy, and line
         2 #90353B; the two lines the other way round (w26ord2) stroke
-        #FF0000 and #90353B.  _parse_file lets the parent fill only the keys
-        the child has not set, so dash keeps red either way.  (Stata's
+        #FF0000 and #90353B.  _parse_file let the parent fill only the keys
+        the child had not set, so dash kept red either way; it now splices
+        the #include in at its line.  (Stata's
         scheme_files help tells a user to put the #include "before any
         scheme-file entries".)"""
         after, _ = self._parse(wd, "w26ord2",
@@ -1070,8 +1351,6 @@ class TestDirectivesOnlyAUserSchemeCarries:
                                 "color p1 red\n#include s2color\n")
         assert before.p_lineplot_colors[:2] == ["#1a476f", "#90353b"]
 
-    @pytest.mark.xfail(strict=True, raises=AssertionError,
-                       reason=_BUG_INCLUDE_NOWHERE)
     def test_an_include_that_resolves_nowhere_stands_s2color_in(self, wd):
         """Stata does not skip an #include it cannot find: setscheme runs
         `.setscheme , scheme(s2color)' in its place and says so.  Measured
@@ -1079,11 +1358,11 @@ class TestDirectivesOnlyAUserSchemeCarries:
         w26nosuch' then `color p1 red' (w26bad) prints "(note: scheme
         w26nosuch not found, using s2color)", returns rc 0, and draws
         s2color with p1 red -- strokes #FF0000 / #90353B / #55752F,
-        background #EAF2F3, 5.5 x 4in.  dash skips the line in silence, as
-        dash.sthlp says it does (TestWhatAnIncludeResolvesTo in
-        test_help_claims_8.py holds it to that): p2 and p3 fall to the
-        parser's #000000, the background to #d9e8f0, the size to none, and
-        nothing is said.  The control is the same file with `#include
+        background #EAF2F3, 5.5 x 4in.  dash skipped the line in silence,
+        as dash.sthlp said it did: p2 and p3 fell to the parser's #000000,
+        the background to #d9e8f0, the size to none, and nothing was said.
+        It now stands s2color in with Stata's note, and dash.sthlp says so
+        (TestWhatAnIncludeResolvesTo in test_help_claims_8.py).  The control is the same file with `#include
         s2color' written out."""
         ref, _ = self._parse(wd, "w26ref",
                              "#include s2color\ncolor p1 red\n")
@@ -1100,8 +1379,6 @@ class TestDirectivesOnlyAUserSchemeCarries:
 
     # -- found on the way: what a child's p# reaches through an #include --
 
-    @pytest.mark.xfail(strict=True, raises=AssertionError,
-                       reason=_BUG_STUB_SHADOW)
     def test_a_connected_line_follows_the_p_hash_line_chain_to_p_hash(
             self, wd):
         """A connected plot's connecting line is styled by
@@ -1114,12 +1391,12 @@ class TestDirectivesOnlyAUserSchemeCarries:
         exactly as `lpattern(dash)', `lpattern(dot)' and `lpattern(dash_dot)'
         draw them (every segment the same), and solid under w26inc.
 
-        dash draws them solid, for two reasons, and fixing either alone does
-        not change that (measured in a scratch copy): the shipped
+        dash drew them solid, for two reasons, each fixed in the S3 batch
+        (fixing either alone did not change that): the shipped
         schemes/s2color.scheme declares `linepattern p1line solid' ..
         `p15line solid', the extractor's resolution of Stata's chain, so
-        the parent's p#line stops the chain before the child's p#; and
-        SchemeParser.p_line_patterns reads `linepattern p#line' alone,
+        the parent's p#line stopped the chain before the child's p#; and
+        SchemeParser.p_line_patterns read `linepattern p#line' alone,
         with no chain after it."""
         text = "#include s2color\n" + "".join(
             "linepattern p%d %s\n" % (i + 1, p)
@@ -1132,8 +1409,6 @@ class TestDirectivesOnlyAUserSchemeCarries:
             dash_render.OptionTranslator.translate_lpattern(p)
             for p in self._PATTERNS[:3]]
 
-    @pytest.mark.xfail(strict=True, raises=AssertionError,
-                       reason=_BUG_STUB_SHADOW)
     def test_a_child_colour_p_hash_reaches_markers_bars_and_connected_lines(
             self, wd):
         """Stata's scheme-s2color.scheme declares `color p1' .. `color p15'
@@ -1153,11 +1428,12 @@ class TestDirectivesOnlyAUserSchemeCarries:
         #486C8C), so default_color's value for a bar is the outline's.
         Under w26inc every series-1 element is #1A476F (bar fill #486C8C).
 
-        dash gives the line plot red, as Stata does, but the markers, the
+        dash gave the line plot red, as Stata does, but the markers, the
         connecting line and the bars navy: the shipped schemes/s2color.scheme
-        declares `color p#mark', `color p#bar' and `color p#line' outright
+        declared `color p#mark', `color p#bar' and `color p#line' outright
         (the extractor's resolution of Stata's chain, #1a476f for p1), and
-        an included key the child does not set stands."""
+        an included key the child does not set stands.  The files now carry
+        only the keys Stata declares, and the parser follows the chain."""
         red, _ = self._parse(wd, "w26ord2", "#include s2color\ncolor p1 red\n")
         inc, _ = self._parse(wd, "w26inc", "#include s2color\n")
         kinds = ("line", "scatter", "connected", "bar")
@@ -1169,3 +1445,431 @@ class TestDirectivesOnlyAUserSchemeCarries:
                         "plot, or reached series 2")
         assert {k: red.default_color(0, k) for k in kinds} == {
             k: "#ff0000" for k in kinds}
+
+
+# ======================================================================
+# A child's p# through every shipped scheme (S3 batch)
+# ======================================================================
+
+class TestAChildPHashReachesWhatStatasChainReaches:
+    """`#include <scheme>' then `color p1 red' and `linepattern p1 dash',
+    for each of the twenty shipped schemes, against what Stata draws.
+
+    Measured 24sep2026 in console StataNow 19.5 (`stata-mp -b'): for each
+    scheme S, scheme-w26red_S.scheme (the three lines above) and
+    scheme-w26inc_S.scheme (`#include S' alone) in the working directory,
+    `twoway scatter|connected|bar|line y1 x, scheme(...) nodraw' on eleven
+    points, and the first plot's resolved style read from the graph object:
+    `.Graph.plotregion1.plot1.style.marker.fillcolor.setting' and
+    `.marker.linestyle.color' (scatter), `.line.color' and `.line.pattern'
+    (connected's connecting line, and line), `.area.linestyle.color' and
+    `.area.shadestyle.color' (bar).  Under w26red_S:
+
+      * markers (fill and outline) and bars (outline and fill): 255 0 0 in
+        all twenty;
+      * the connecting line's colour: 255 0 0 except in the nine schemes of
+        _CONNECT_COLOUR_KEPT, which keep their own `color pline' (or, in
+        s2gmanual, `color p#line'), the value under w26inc_S;
+      * the connecting line's pattern: dash except in _CONNECT_PATTERN_KEPT,
+        whose declared `linepattern p#line' keeps it solid;
+      * a line plot's colour and pattern: 255 0 0 and dash except in
+        _LINEPLOT_KEPT, which declare `p#lineplot' or `plineplot' keys.
+
+    So Stata's chain p#stub -> pstub -> p# -> p decides, per scheme; the
+    kept values are the scheme's own (#000000, or #606060 in s2gmanual).
+    """
+
+    _SCHEMES = sorted(SchemeParser._BUILTIN_NAMES)
+    _RED = "#ff0000"
+    _CONNECT_COLOUR_KEPT = {
+        "stmono1": "#000000", "stmono2": "#000000", "stsj": "#000000",
+        "s2mono": "#000000", "s1mono": "#000000", "sj": "#000000",
+        "s2manual": "#000000", "s1manual": "#000000", "s2gmanual": "#606060"}
+    _CONNECT_PATTERN_KEPT = {"stmono1", "s1mono", "s1manual"}
+    _LINEPLOT_KEPT = {
+        "stmono2": "#000000", "stsj": "#000000", "s2mono": "#000000",
+        "sj": "#000000", "s2manual": "#000000", "s2gmanual": "#606060"}
+
+    @pytest.fixture
+    def wd(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        return tmp_path
+
+    @staticmethod
+    def _parse(wd, name, text):
+        (wd / (name + ".scheme")).write_text(text, encoding="utf-8")
+        return SchemeParser(name)
+
+    def test_the_twenty_are_the_ones_measured(self):
+        assert len(self._SCHEMES) == 20
+        kept = (set(self._CONNECT_COLOUR_KEPT) | self._CONNECT_PATTERN_KEPT
+                | set(self._LINEPLOT_KEPT))
+        assert kept <= set(self._SCHEMES)
+
+    @pytest.mark.parametrize("scheme", _SCHEMES)
+    def test_what_a_child_p1_reaches(self, wd, scheme):
+        red = self._parse(wd, "w26red_" + scheme, "#include %s\ncolor p1 red\n"
+                          "linepattern p1 dash\n" % scheme)
+        inc = self._parse(wd, "w26inc_" + scheme, "#include %s\n" % scheme)
+        dash = dash_render.OptionTranslator.translate_lpattern("dash")
+        # Markers and bars: always the child's red.
+        assert red.default_color(0, "scatter") == self._RED
+        assert red.default_color(0, "bar") == self._RED
+        # The connecting line.
+        want = self._CONNECT_COLOUR_KEPT.get(scheme, self._RED)
+        assert red.default_color(0, "connected") == want
+        if scheme in self._CONNECT_COLOUR_KEPT:
+            assert inc.default_color(0, "connected") == want
+        want_pat = ([] if scheme in self._CONNECT_PATTERN_KEPT else dash)
+        assert red.default_connect_pattern(0) == want_pat
+        # A line plot.
+        want = self._LINEPLOT_KEPT.get(scheme, self._RED)
+        assert red.default_color(0, "line") == want
+        assert red.default_line_pattern(0) == (
+            inc.default_line_pattern(0) if scheme in self._LINEPLOT_KEPT
+            else dash)
+        # Series 2 is the scheme's own, for every kind.
+        for kind in ("scatter", "bar", "connected", "line"):
+            assert red.default_color(1, kind) == inc.default_color(1, kind)
+        assert red.default_connect_pattern(1) == inc.default_connect_pattern(1)
+
+    @pytest.mark.parametrize("scheme", _SCHEMES)
+    def test_the_shipped_file_draws_what_it_drew(self, scheme):
+        """Carrying only the keys Stata declares changes nothing a shipped
+        scheme draws: every cycle equals the fixture, which records Stata's
+        own resolution of its chain."""
+        with open(os.path.join(_HERE, "fixtures", "scheme_truth.json"),
+                  encoding="utf-8") as fh:
+            truth = json.load(fh)[scheme]
+        sp = SchemeParser(scheme)
+        for key in ("p_colors", "p_line_colors", "p_bar_colors",
+                    "p_mark_colors", "p_lineplot_colors"):
+            assert [c.lower() for c in getattr(sp, key)] == [
+                c.lower() for c in truth[key]], key
+            assert getattr(sp, key.replace("colors", "alphas")) == [
+                None if p is None else p / 100.0
+                for p in truth[key + "_opacity"]], key
+        for key in ("p_line_patterns", "p_lineplot_patterns"):
+            assert getattr(sp, key) == [
+                dash_render.OptionTranslator.translate_lpattern(p)
+                for p in truth[key]], key
+
+
+# ======================================================================
+# #include: order, a name that resolves nowhere, and its bounds (S3 batch)
+# ======================================================================
+
+class TestAnIncludeIsSplicedWhereItStands:
+    """The #include rules Stata applies, and the bounds that keep a hostile
+    file from turning them into an exhaustion or a read outside the
+    sandbox.  Stata's note, measured 24sep2026 (`#include w26nosuch'):
+    "(note: scheme w26nosuch not found, using s2color)", rc 0."""
+
+    @pytest.fixture
+    def wd(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        return tmp_path
+
+    @staticmethod
+    def _parse(wd, name, text):
+        import warnings
+        (wd / (name + ".scheme")).write_text(text, encoding="utf-8")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            sch = SchemeParser(name)
+        return sch, [str(w.message) for w in caught]
+
+    def test_a_repeated_include_overwrites_again(self, wd):
+        """`#include s2color', `color p1 red', `#include s2color': the
+        second include puts s2color's navy back, as any later line does."""
+        sch, _ = self._parse(wd, "rep", "#include s2color\ncolor p1 red\n"
+                             "#include s2color\n")
+        assert sch.p_colors[0] == "#1a476f"
+
+    def test_the_note_is_statas(self, wd):
+        _sch, said = self._parse(wd, "bad", "#include w26nosuch\n")
+        assert any("(note: scheme w26nosuch not found, using s2color)" in m
+                   for m in said), said
+
+    def test_an_include_that_escapes_is_not_read_and_s2color_stands_in(
+            self, tmp_path, monkeypatch):
+        """Adversarial (traversal and symlink): an #include that points
+        outside the working directory and dash's schemes folder is refused
+        by _resolve_path's containment, and s2color stands in, never the
+        file outside."""
+        inside, outside = tmp_path / "in", tmp_path / "out"
+        inside.mkdir()
+        outside.mkdir()
+        secret = outside / "secret.scheme"
+        secret.write_text("color background #5ec2e7\ncolor p2 #5ec2e7\n")
+        (inside / "link.scheme").symlink_to(secret)
+        monkeypatch.chdir(inside)
+        s2 = SchemeParser("s2color")
+        for spelling in ("../out/secret", "../out/secret.scheme", str(secret),
+                         "link", "..%s..%sout%ssecret.scheme"
+                         % (os.sep, os.sep, os.sep)):
+            sch, said = self._parse(inside, "evil",
+                                    "#include %s\ncolor p1 red\n" % spelling)
+            assert sch.background_color == s2.background_color, spelling
+            assert sch.p_colors[1] == s2.p_colors[1], spelling
+            assert sch.p_colors[0] == "#ff0000", spelling
+            assert any("using s2color" in m for m in said), (spelling, said)
+
+    def test_a_hostile_name_is_printed_bounded_and_printable(self, wd):
+        """Adversarial (injection into the log): control characters are
+        dropped from the echoed name and it is cut at 80 characters."""
+        name = "x\x1b[31m" + "y" * 5000
+        _sch, said = self._parse(wd, "inj", "#include %s\n" % name)
+        notes = [m for m in said if "not found" in m]
+        assert notes and all("\x1b" not in m for m in notes)
+        assert all(len(m) < 400 for m in notes), [len(m) for m in notes]
+
+    def test_ten_thousand_unresolvable_includes_are_cheap_and_quiet(self, wd):
+        """Adversarial (resource exhaustion): 10,000 distinct #include lines
+        that resolve nowhere.  Measured before the bound: 17s, each line a
+        path resolution.  Now the first _MAX_SCHEME_INCLUDES are read (each
+        splicing s2color, parsed once), the rest are not, and the warnings
+        are bounded: _MAX_INCLUDE_NOTES notes, one saying more were not
+        noted, one saying the rest were not read."""
+        import time
+        text = "".join("#include nosuch%d\n" % i for i in range(10000))
+        t0 = time.monotonic()
+        sch, said = self._parse(wd, "flood", text + "color p1 red\n")
+        assert time.monotonic() - t0 < 5
+        assert sch.p_colors[:2] == ["#ff0000", "#90353b"]
+        assert len(said) == SchemeParser._MAX_INCLUDE_NOTES + 2, said
+        assert any(str(dash_render._MAX_SCHEME_INCLUDES) in m
+                   and "not read" in m for m in said), said
+
+    def test_the_include_bound_leaves_ordinary_chains_whole(self, wd):
+        """_MAX_SCHEME_INCLUDES #include lines are all read; one more is
+        not.  Each includes a distinct file that sets its own key."""
+        n = dash_render._MAX_SCHEME_INCLUDES
+        for i in range(n + 1):
+            (wd / ("ib%d.scheme" % i)).write_text("color ib%d #%06x\n"
+                                                  % (i, i))
+        sch, said = self._parse(wd, "ibtop", "".join(
+            "#include ib%d\n" % i for i in range(n + 1)))
+        assert all("color ib%d" % i in sch._props for i in range(n))
+        assert "color ib%d" % n not in sch._props
+        assert len(said) == 1, said
+
+    def test_a_diamond_of_includes_is_parsed_once_per_file(self, wd):
+        """Adversarial (resource exhaustion): 30 levels, each file including
+        the next one twice, is 2^30 paths; each file is read once."""
+        import time
+        n = 30
+        for i in range(n):
+            nxt = ("#include dd%d\n#include dd%d\n" % (i + 1, i + 1)
+                   if i < n - 1 else "#include s2color\n")
+            (wd / ("dd%d.scheme" % i)).write_text(
+                nxt + "color dd%d #%06x\n" % (i, i))
+        t0 = time.monotonic()
+        sch, _ = self._parse(wd, "diamond", "#include dd0\n")
+        assert time.monotonic() - t0 < 10
+        assert all("color dd%d" % i in sch._props for i in range(n))
+        assert sch.p_colors[0] == "#1a476f"
+
+    def test_a_cycle_and_a_10000_deep_chain_terminate(self, wd):
+        import time
+        (wd / "cyc_a.scheme").write_text("#include cyc_b\ncolor p1 red\n")
+        (wd / "cyc_b.scheme").write_text("#include cyc_a\ncolor p2 blue\n")
+        n = 10000
+        for i in range(n):
+            (wd / ("deep%d.scheme" % i)).write_text(
+                ("#include deep%d\n" % (i + 1)) if i < n - 1 else
+                "color p1 red\n")
+        t0 = time.monotonic()
+        a, _ = self._parse(wd, "cyc_top", "#include cyc_a\n")
+        d, said = self._parse(wd, "deep_top", "#include deep0\n")
+        assert time.monotonic() - t0 < 10
+        assert a.p_colors[:2] == ["#ff0000", "#0000ff"]
+        assert d.p_colors[0] != "#ff0000"     # past the depth bound
+        assert any(str(dash_render._MAX_SCHEME_INCLUDE_DEPTH) in m
+                   for m in said)
+
+
+# A child's `symbol p' / `symbol p#' through every shipped scheme (S3 batch)
+# ======================================================================
+
+class TestAChildSymbolReachesWhatStatasChainReaches:
+    """`#include <scheme>' then `symbol p diamond', `symbol p1 diamond' or
+    `symbol p2 diamond', for each of the twenty shipped schemes, against
+    what Stata draws.
+
+    Measured 24sep2026 in console StataNow 19.5 (`stata-mp -b', S3 batch):
+    `twoway scatter y1 y2 x, scheme(<child>) nodraw', then
+    `.Graph.plotregion1.plot1.style.marker.symbol.setting' and plot2's.
+    style/markerstyle-p#.style reads `symbol p#', which scheme.class falls
+    back to `symbol p' for.  Under `symbol p diamond' both markers are
+    diamonds in the eleven schemes whose chain declares only `symbol p'
+    (s2color's `symbol p circle'); the nine of _DECLARE_P_HASH, whose chain
+    declares `symbol p1'..`symbol p15' (scheme-s1mono.scheme:135-149,
+    scheme-s2mono.scheme:152-166), keep circle / diamond.  `symbol p1
+    diamond' makes plot 1 a diamond and leaves plot 2 the scheme's own in
+    all twenty; `symbol p2 diamond' the other way round.
+
+    The shipped files wrote the fallback out, `symbol p1 circle' ..
+    `symbol p15 circle', keys Stata's s2color does not write, so a bare
+    `symbol p diamond' reached no plot in the eleven."""
+
+    _SCHEMES = sorted(SchemeParser._BUILTIN_NAMES)
+    _DECLARE_P_HASH = {"stmono1", "stmono2", "stsj", "s2mono", "s1mono",
+                       "sj", "s2manual", "s1manual", "s2gmanual"}
+    _DIAMOND = dash_render.OptionTranslator.translate_msymbol("diamond")
+    _CIRCLE = dash_render.OptionTranslator.translate_msymbol("circle")
+
+    @pytest.fixture
+    def wd(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        return tmp_path
+
+    @staticmethod
+    def _parse(wd, name, text):
+        (wd / (name + ".scheme")).write_text(text, encoding="utf-8")
+        return SchemeParser(name)
+
+    def test_the_nine_are_a_subset_of_the_twenty(self):
+        assert len(self._SCHEMES) == 20
+        assert self._DECLARE_P_HASH <= set(self._SCHEMES)
+
+    @pytest.mark.parametrize("scheme", _SCHEMES)
+    def test_a_bare_symbol_p(self, wd, scheme):
+        sp = self._parse(wd, "b2sp_" + scheme,
+                         "#include %s\nsymbol p diamond\n" % scheme)
+        inc = self._parse(wd, "b2inc_" + scheme, "#include %s\n" % scheme)
+        if scheme in self._DECLARE_P_HASH:
+            assert sp.p_symbols == inc.p_symbols
+            assert sp.p_symbols[:2] == [self._CIRCLE, self._DIAMOND]
+        else:
+            assert inc.p_symbols == [self._CIRCLE] * 15
+            assert sp.p_symbols == [self._DIAMOND] * 15
+
+    @pytest.mark.parametrize("scheme", _SCHEMES)
+    def test_a_symbol_p_hash(self, wd, scheme):
+        inc = self._parse(wd, "b2inc_" + scheme, "#include %s\n" % scheme)
+        p1 = self._parse(wd, "b2sp1_" + scheme,
+                         "#include %s\nsymbol p1 diamond\n" % scheme)
+        p2 = self._parse(wd, "b2sp2_" + scheme,
+                         "#include %s\nsymbol p2 diamond\n" % scheme)
+        assert p1.p_symbols[0] == self._DIAMOND
+        assert p1.p_symbols[1:] == inc.p_symbols[1:]
+        assert p2.p_symbols[1] == self._DIAMOND
+        assert p2.p_symbols[0] == inc.p_symbols[0]
+        assert p2.p_symbols[2:] == inc.p_symbols[2:]
+
+    @pytest.mark.parametrize("scheme", _SCHEMES)
+    def test_the_shipped_file_draws_the_symbols_it_drew(self, scheme):
+        """Carrying only the declared symbol keys changes nothing a shipped
+        scheme draws: every symbol equals the fixture's resolution."""
+        with open(os.path.join(_HERE, "fixtures", "scheme_truth.json"),
+                  encoding="utf-8") as fh:
+            truth = json.load(fh)[scheme]
+        assert SchemeParser(scheme).p_symbols == [
+            dash_render.OptionTranslator.translate_msymbol(s)
+            for s in truth["p_symbols"]]
+
+    @pytest.mark.parametrize("scheme", _SCHEMES)
+    def test_the_shipped_file_declares_only_what_stata_declares(self, scheme):
+        """No `symbol p#' line a Stata file in the chain does not write:
+        each one the file carries is `transcribed' in its provenance."""
+        path = os.path.join(_HERE, "..", "schemes", scheme + ".scheme")
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        keys = re.findall(r"(?m)^symbol\s+(p\d*)\s", text)
+        assert keys, scheme
+        for key in keys:
+            assert re.search(r"(?m)^\* provenance: symbol %s -- transcribed "
+                             % key, text), (scheme, key)
+
+    def test_a_hostile_symbol_value_falls_back_quietly(self, wd):
+        """Adversarial (injection): a `symbol p' value that is no Stata
+        symbol -- markup, a control character, a megabyte -- is not drawn;
+        the cycle falls back to circle rather than raising, and nothing of
+        the value reaches the parsed cycle."""
+        for bad in ("<script>alert(1)</script>", "diamond\x1b[31m",
+                    "x" * 1_000_000, "../../etc/passwd"):
+            sch = self._parse(wd, "b2bad", "#include s2color\nsymbol p %s\n"
+                              % bad)
+            assert sch.p_symbols == [self._CIRCLE] * 15, bad[:40]
+
+
+class TestAChildSymbolsizeReachesWhatStatasChainReaches:
+    """`#include <scheme>' then `symbolsize p huge' or `symbolsize p1
+    huge', for each of the twenty shipped schemes, against what Stata
+    draws.  style/markerstyle-p#.style says `set size scheme p#', so the
+    size follows `symbolsize p#' -> `symbolsize p', per plot.
+
+    Measured 24sep2026 (S3 batch), `twoway scatter y1 y2 x' and
+    `.Graph.plotregion1.plot<k>.style.marker.size.setting': under
+    `symbolsize p huge' both plots are 4.8611 (huge) in nineteen schemes,
+    and in s1manual both stay 2.2 -- scheme-s1manual.scheme:51-59 declares
+    `symbolsize p1'..`symbolsize p9' 2.2, which a bare `p' does not reach.
+    Under `symbolsize p1 huge' plot 1 is 4.8611 and plot 2 the scheme's
+    own in all twenty.  dash read only `symbolsize p', one size for every
+    plot: `symbolsize p1 huge' changed nothing, and under s1manual
+    `symbolsize p huge' drew huge markers where Stata draws 2.2."""
+
+    _SCHEMES = sorted(SchemeParser._BUILTIN_NAMES)
+
+    @pytest.fixture
+    def wd(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        return tmp_path
+
+    @staticmethod
+    def _parse(wd, name, text):
+        (wd / (name + ".scheme")).write_text(text, encoding="utf-8")
+        return SchemeParser(name)
+
+    @pytest.mark.parametrize("scheme", _SCHEMES)
+    def test_a_bare_symbolsize_p(self, wd, scheme):
+        inc = self._parse(wd, "b2inc_" + scheme, "#include %s\n" % scheme)
+        zp = self._parse(wd, "b2zp_" + scheme,
+                         "#include %s\nsymbolsize p huge\n" % scheme)
+        huge = zp._markersize_px("huge")
+        got = [zp.default_marker_size(0), zp.default_marker_size(1)]
+        if scheme == "s1manual":
+            assert got == [zp._markersize_px("2.2")] * 2
+            assert got == [inc.default_marker_size(0),
+                           inc.default_marker_size(1)]
+        else:
+            assert got == [huge, huge]
+
+    @pytest.mark.parametrize("scheme", _SCHEMES)
+    def test_a_symbolsize_p1(self, wd, scheme):
+        inc = self._parse(wd, "b2inc_" + scheme, "#include %s\n" % scheme)
+        zp1 = self._parse(wd, "b2zp1_" + scheme,
+                          "#include %s\nsymbolsize p1 huge\n" % scheme)
+        assert zp1.default_marker_size(0) == zp1._markersize_px("huge")
+        assert [zp1.default_marker_size(i) for i in range(1, 15)] == [
+            inc.default_marker_size(i) for i in range(1, 15)]
+
+    @pytest.mark.parametrize("scheme", _SCHEMES)
+    def test_the_shipped_file_draws_the_sizes_it_drew(self, scheme):
+        """Every shipped scheme's fifteen marker sizes are the one size it
+        drew before, and equal the fixture's per-plot resolution."""
+        with open(os.path.join(_HERE, "fixtures", "scheme_truth.json"),
+                  encoding="utf-8") as fh:
+            truth = json.load(fh)[scheme]
+        sp = SchemeParser(scheme)
+        assert [sp.default_marker_size(i) for i in range(15)] == [
+            sp.marker_size] * 15
+        assert [sp.default_marker_size(i) for i in range(15)] == [
+            sp._markersize_px(str(s["name"])) for s in truth["p_symbolsizes"]]
+
+    def test_the_index_wraps_and_a_hostile_size_is_bounded(self, wd):
+        """Adversarial: the plot index cycles through fifteen as the
+        symbol cycle does (plot 16 is plot 1), a negative or huge index
+        does not raise, and a hostile `symbolsize p1' (markup, NaN, a
+        negative, a megabyte) falls back or clamps rather than raising."""
+        sch = self._parse(wd, "b2zw", "#include s2color\n"
+                          "symbolsize p1 huge\n")
+        assert sch.default_marker_size(15) == sch.default_marker_size(0)
+        assert sch.default_marker_size(-1) == sch.default_marker_size(14)
+        sch.default_marker_size(10 ** 12)
+        for bad in ("<b>x</b>", "nan", "-5", "inf", "9" * 1_000_000):
+            s = self._parse(wd, "b2zbad", "#include s2color\n"
+                            "symbolsize p1 %s\n" % bad)
+            v = s.default_marker_size(0)
+            assert math.isfinite(v) and v >= 0, bad[:20]

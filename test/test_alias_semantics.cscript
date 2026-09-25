@@ -31,7 +31,8 @@
 *!   AS-06  the side titles: every spelling of t1title() .. r2title(), and
 *!          t(), b(), l() and r(), lands where twoway puts it at plot level,
 *!          inside a plot's parentheses, after them and after ||; and a
-*!          third spelling on one side is named in the note, never dropped.
+*!          third spelling on one side is a second copy of *1title(), kept
+*!          as twoway keeps it and named in the note, never dropped.
 *!
 *! No dashboard is rendered: every probe registers with name(), so the spec
 *! JSON can be read back out of the registry global.
@@ -347,16 +348,33 @@ foreach s in t b l r {
         }
     }
     // AS-06b: a third spelling on the same side, after the *1title() and
-    // *2title() are filled, is named in the note at every level.
+    // *2title() are filled, is a second copy of *1title(): twoway draws
+    // its text as the *1title (measured here from the .gph; [G-4] repeated
+    // options, the rightmost copy of a title).  dash keeps it there too
+    // (test_twoway_option_parity.cscript TP-14) -- it had named it in the
+    // note as an option of its own -- and names *1title() in the note, so
+    // nothing is dropped in silence, at every level.
+    local o `"`s'1title(ZQA) `s'2title(ZQB) `s'(ZQV)"'
+    capture erase "`gphfile'"
+    capture twoway scatter mpg weight, `o' nodraw saving("`gphfile'", replace)
+    local tw_rc = _rc
+    mata: st_local("tw_key", strofreal(_zas_gphbox(st_local("gphfile"), "`s'1title")))
+    if `tw_rc' != 0 | `tw_key' != 1 {
+        display as error "AS-06b FAIL `o': twoway rc=`tw_rc', `s'1title box holds ZQV=`tw_key' -- the expectation below is wrong"
+        local bad06 = `bad06' + 1
+    }
     foreach lev of local levels {
-        local o `"`s'1title(ZQA) `s'2title(ZQB) `s'(ZQC)"'
         if "`lev'" == "P" local c `"dash scatter mpg weight, `o' name(zqas)"'
         if "`lev'" == "Q" local c `"dash (scatter mpg weight, `o'), name(zqas)"'
         if "`lev'" == "G" local c `"dash (scatter mpg weight), `o' name(zqas)"'
         if "`lev'" == "V" local c `"dash scatter mpg weight || line mpg weight, `o' name(zqas)"'
-        _zas_note `"`c'"' "`logfile'" " `s'()"
-        if r(rc) != 0 | r(named) != 1 {
-            display as error "AS-06b FAIL `lev' `o': rc=`r(rc)', the note names `s'()=`r(named)' -- dropped in silence"
+        _zas_note `"`c'"' "`logfile'" " `s'1title()"
+        local drc = r(rc)
+        local named = r(named)
+        mata: st_local("v_1", _zas_val("zqas", "`s'1title"))
+        mata: st_local("v_2", _zas_val("zqas", "`s'2title"))
+        if `drc' != 0 | `named' != 1 | "`v_1'" != "ZQV" | "`v_2'" != "ZQB" {
+            display as error "AS-06b FAIL `lev' `o': rc=`drc', `s'1title=[`v_1'] `s'2title=[`v_2'], the note names `s'1title()=`named'"
             local bad06 = `bad06' + 1
         }
     }

@@ -335,6 +335,51 @@ and now matches Stata.
 - scipy and statsmodels are no longer needed (WP-18), and neither is
   jsonio: dash writes its data from Stata's own Python (WP-27).
 
+### Fixed after WP-27 (the S3 batch, 24sep2026)
+
+Every entry BUGS.md graded S3 at release was taken up; the work found and
+fixed more, several of them S1 or S2. Results that change:
+
+- A repeated option is read as twoway reads it: the last copy wins for most
+  options, the copies merge for titles, axis labels, `legend()`, `xline()`
+  and the like, and a unique option (`name()`, `saving()`, `scheme()`,
+  `kernel()`, ...) refuses its second copy, r(198). Before, dash kept the
+  first copy, sent a second `title()` or `xlabel()` to the second axis's
+  option, and dropped one plot group's `legend(label())` beside another's.
+- Under `by()`, a qualifier holding `_n`, a subscript or `in` selects the rows
+  twoway selects, after a stable sort on the `by()` variables; the Total
+  panel reads the data's own order.
+- `log` is twoway's graph option `logging`; only `lo`, `logi` and `logit`
+  turn on lowess's logit, which `log` used to.
+- `ylabel(#N)` and `xlabel(#N)` ticks follow twoway's rule, measured against
+  264 axes; `by()` panels share one scale; log and `%tc` axes follow it too.
+  (`%td` to `%th` axes follow a fitted model of twoway's compiled routine,
+  about 60% exact; an open entry.)
+- A graph whose every layer is on `yaxis(2)` draws one axis, on the left.
+- The next layer after a ci plot takes the colour twoway gives it, a ci band
+  counting as a plot; a ci band is drawn in the scheme's ci style (grey
+  under s2color) with its outline, and takes `acolor()`, `alcolor()`,
+  `alwidth()`, `alpattern()` and `pstyle()` as twoway does.
+- qfit, lfitci and qfitci on two observations draw twoway's fit; lowess,
+  mspline and mband on one draw what twoway draws, silently; a kernel flag
+  (`gaussian`, `bi`, ...) on lpoly, lpolyci and kdensity draws that kernel.
+- Reference lines, the plot region's border and `note()`'s box follow the
+  scheme; markers, bars and areas get the scheme's outline widths; a
+  custom scheme's `linewidth p#`, `symbol p`, `symbolsize p#`, `color p#`
+  and `linepattern p#` reach the plots Stata's chain reaches, and an
+  `#include` is read where it stands, with Stata's note when it resolves
+  nowhere.
+
+Refused as twoway refuses them: a function name Stata does not have, or one
+written with a blank before its parenthesis; an option value `-syntax-`
+cannot bind; a range or paired-coordinate type given the wrong number of
+variables (it ended in a Python traceback) and a fit given more than two;
+empty samples where twoway refuses them; a plot option after a plot group's
+comma; an option written in upper case; two kernel flags. A bare `sort` on
+the connected types is no longer named as unsupported; `lwidth(vvvthick)` is
+known; lowess and fpfit are faster on large data; a dataset with no
+observations and a data file holding an out-of-range number load.
+
 ### Fixed in WP-27
 
 Results that change:

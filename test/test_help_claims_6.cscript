@@ -444,11 +444,11 @@ _hc6_tw "lpoly mpg weight, bwidth(400) gaussian"
 local t = r(rc)
 _hc6_dash "dash lpoly mpg weight, gaussian name(hc6)"
 local d = r(rc)
-_hc6_said "unsupported option(s): gaussian()"
+_hc6_said "unsupported option(s)"
 local nn = r(n)
-mata: st_local("j", strofreal(_hc6_json_has(char(34) + "kernel" + char(34))))
-local bad = (`t' != 0 | `d' != 0 | `nn' != 1 | `j' != 0)
-_hc6_tally HC6-10 `bad' "a bare gaussian: twoway's old kernel syntax; dash names it in the note and registers no kernel (the default is drawn)"
+mata: st_local("j", strofreal(_hc6_json_has(char(34) + "kernel" + char(34) + ":" + char(34) + "gaussian" + char(34))))
+local bad = (`t' != 0 | `d' != 0 | `nn' != 0 | `j' != 1)
+_hc6_tally HC6-10 `bad' "a bare gaussian: twoway's old kernel syntax, drawn as kernel(gaussian); dash registers kernel(gaussian) and notes nothing (test_twoway_option_parity.cscript TP-16 holds every spelling to twoway's serset)"
 
 // ================================================================
 // HC6-11 .. 18 -- n()

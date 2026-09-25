@@ -79,6 +79,12 @@ _DF = pd.DataFrame({
 # belongs to. A new option on the pending list with no entry here fails
 # test_every_pending_option_is_covered, which is the point.
 PLOT_VALUES = {
+    # twoway's fitarea options: drawn on a ci fit's band
+    # (test_ci_band_style.py), accepted and named on every other type.
+    "acolor": ("red", "blue", "scatter"),
+    "alcolor": ("red", "blue", "scatter"),
+    "alwidth": ("thick", "vthin", "scatter"),
+    "alpattern": ("dash", "dot", "scatter"),
     "at": ("mpg", "weight", "bar"),
     "b1title": ("b1", "bA", "scatter"),
     "b2title": ("b2", "bB", "scatter"),
@@ -222,12 +228,13 @@ class TestTheListIsCoveredAndHonest:
         """Guards the guard: the pending-list scanner still finds its blocks
         in dash.ado, so the tests that use its lists cannot pass on
         nothing."""
-        # Exact counts, measured 24sep2026: _dash_parse_plot_opts names 44
-        # pending options and _dash_parse_graph_opts 23.  `> 5' passed after
+        # Exact counts, measured 24sep2026: _dash_parse_plot_opts names 48
+        # pending options (44 before the S3 batch's four fitarea options)
+        # and _dash_parse_graph_opts 23.  `> 5' passed after
         # a refactor dropped most of a block from the regex's reach, which
         # would turn every "reported unsupported really is" case below into
         # a silent no-op.
-        assert len(_plot_pending()) == 44, sorted(_plot_pending())
+        assert len(_plot_pending()) == 48, sorted(_plot_pending())
         assert len(_graph_pending()) == 23, sorted(_graph_pending())
 
 
@@ -487,8 +494,14 @@ LIVE_VALUES = {
     "range": ({"range": "10 30"}, {"range": "12 28"}, "kdensity", {}),
     "start": ({"start": "8"}, {"start": "11"}, "histogram", {}),
     "width": ({"width": "2"}, {"width": "4"}, "histogram", {}),
-    "xaxis": ({"xaxis": "1"}, {"xaxis": "2"}, "line", {}),
-    "yaxis": ({"yaxis": "1"}, {"yaxis": "2"}, "line", {}),
+    # A lone layer on the second axis is drawn on the one axis twoway
+    # draws, styled by the second axis's options (BUGS.md, S3): alone it
+    # renders as the first axis does, so the probe gives the graph a
+    # second-axis title, which only yaxis(2)/xaxis(2) reads.
+    "xaxis": ({"xaxis": "1"}, {"xaxis": "2"}, "line",
+              {"xtitle2": "Second"}),
+    "yaxis": ({"yaxis": "1"}, {"yaxis": "2"}, "line",
+              {"ytitle2": "Second"}),
     # ---- graph-level --------------------------------------------------------
     "aspectratio": ({}, {}, "scatter", ("aspectratio", "0.5", "2")),
     "bgcolor": ({}, {}, "scatter", ("bgcolor", "red", "blue")),
@@ -559,11 +572,13 @@ class TestEveryDeclaredOptionIsClassified:
         """Guards the guard: the syntax-block scanner still finds dash.ado's
         declarations, so the classification below cannot pass on
         nothing."""
-        # Exact, measured 24sep2026: the plot syntax block declares 156
-        # options and the graph block 65 (replace, WP-27).  The `>= 130'/`>= 60' floors let a
+        # Exact, measured 24sep2026: the plot syntax block declares 160
+        # options (156 before the S3 batch declared acolor(), alcolor(),
+        # alwidth() and alpattern()) and the graph block 65 (replace,
+        # WP-27).  The `>= 130'/`>= 60' floors let a
         # syntax block shrink by twenty options -- silently un-classifying
         # them -- and still pass.
-        assert len(_declared_plot()) == 156, len(_declared_plot())
+        assert len(_declared_plot()) == 160, len(_declared_plot())
         assert len(_declared_graph()) == 65, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):

@@ -342,6 +342,111 @@ class TestAServedFilterMoveKeepsALayersColumn:
 
 
 # ===========================================================================
+# A by(, total) graph's Total panel reads its own column
+# ===========================================================================
+
+class TestATotalPanelReadsItsOwnColumn:
+    """twoway evaluates a by() graph's qualifiers with the data sorted on
+    the by() variables, and its Total panel's in the data's own order
+    (bygraph_g.class; measured 24sep2026 from each panel's serset,
+    test_qualifier_in_stata.cscript QS-16).  dash.ado writes the groups'
+    column as "qual_col" and the Total panel's as "qual_col_total" on each
+    object whose qualifier can depend on that order.  Here __dashq1 (the
+    groups') holds rows 1 and 2, and __dashq2 (the Total panel's) rows
+    5, 6 and 7: the groups draw 1 (Domestic) and 2 (Foreign), the Total
+    panel 5, 6 and 7, in both modes and after a served filter move."""
+
+    @pytest.fixture(autouse=True)
+    def _quals(self, monkeypatch):
+        df = _with_quals(tp._DF, __dashq1=[1, 2], __dashq2=[5, 6, 7])
+        monkeypatch.setattr(tp, "_DF", df)
+
+    @staticmethod
+    def _spec(build_options=None):
+        plot = _plot(qual_col="__dashq1")
+        plot["qual_col_total"] = "__dashq2"
+        g = list(_graph([plot], "__dashq1", {"by": "foreign, total"}))
+        g[3] = dict(g[3], qual_col_total="__dashq2")
+        return tp._spec(graphs=[tuple(g)], build_options=build_options)
+
+    @staticmethod
+    def _by_label(figs):
+        out = {}
+        for f in figs:
+            label = (f.title.text or "").split("—")[-1].strip()
+            out[label] = _rows_drawn(f, tp._DF)
+        return out
+
+    def test_the_total_spec_swaps_the_columns(self):
+        g = self._spec()["graphs"][0]
+        t = dr._dash_total_spec(g)
+        assert t is not g
+        assert t["qual_col"] == "__dashq2"
+        assert t["plots"][0]["qual_col"] == "__dashq2"
+        assert "qual_col_total" not in t and \
+            "qual_col_total" not in t["plots"][0]
+        # g itself is untouched.
+        assert g["qual_col"] == "__dashq1"
+        assert g["plots"][0]["qual_col_total"] == "__dashq2"
+
+    def test_a_graph_without_one_is_its_own_total_spec(self):
+        g = tp._spec(graphs=[_graph([_plot(qual_col="__dashq1")],
+                                    "__dashq1")])["graphs"][0]
+        assert dr._dash_total_spec(g) is g
+        assert dr._dash_total_spec(None) is None
+
+    def test_both_names_are_read(self):
+        assert dr._dash_qual_cols_named(self._spec()) == [
+            "__dashq1", "__dashq2"]
+
+    @pytest.mark.parametrize("bad", [
+        "mpg", "__dashq0", "__dashq1') | (1", "__dashq1\n", 7, ["__dashq2"],
+    ])
+    def test_a_total_name_dash_does_not_write_is_refused(self, bad):
+        """Adversarial: a hand-written spec cannot make the Total panel
+        read a user's variable, or smuggle text through the name."""
+        spec = self._spec()
+        spec["graphs"][0]["qual_col_total"] = bad
+        with pytest.raises(ValueError, match="qualifier column"):
+            dr._dash_qual_cols_named(spec)
+        with pytest.raises(ValueError, match="qualifier column"):
+            dr._dash_take_qual_columns(tp._DF, spec)
+
+    def test_the_saved_page(self):
+        r, _ = tp._standalone(self._spec())
+        got = self._by_label(r.figures.values())
+        assert got == {"Domestic": [1], "Foreign": [2], "Total": [5, 6, 7]}
+
+    def test_the_served_app(self):
+        doc, _ = tp._served(self._spec())
+        got = self._by_label(sfm._figures(doc))
+        assert got == {"Domestic": [1], "Foreign": [2], "Total": [5, 6, 7]}
+
+    def test_a_served_filter_move_keeps_the_total_column(self):
+        doc, _ = tp._served(self._spec(
+            build_options={"filter": "foreign, type(dropdown)"}))
+        figs = sfm._figures(doc)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            sfm._move(doc, "Select", "Foreign")
+        got = self._by_label(figs)
+        assert got["Total"] == [6], got
+        assert got["Foreign"] == [2], got
+
+    def test_a_total_panel_with_rows_when_no_group_has_one(self):
+        """twoway draws the Total panel alone when the groups' column
+        selects no row and the Total panel's does (RunGraph skips each
+        empty group, then draws Total)."""
+        df = _with_quals(tp._DF.drop(columns=["__dashq1", "__dashq2"]),
+                         __dashq1=[], __dashq2=[5, 6, 7])
+        tp._DF = df
+        r, _ = tp._standalone(self._spec())
+        assert self._by_label(r.figures.values()) == {"Total": [5, 6, 7]}
+        doc, _ = tp._served(self._spec())
+        assert self._by_label(sfm._figures(doc)) == {"Total": [5, 6, 7]}
+
+
+# ===========================================================================
 # No qualifier column reaches the user
 # ===========================================================================
 

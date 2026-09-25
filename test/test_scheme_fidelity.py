@@ -728,12 +728,16 @@ def test_scheme_property_fidelity(name):
 
 @pytest.mark.parametrize("name", SCHEME_NAMES)
 def test_scheme_defines_all_15_p_entries(name):
-    """p1-p15 must be spelled out for colour, symbol and line pattern.
+    """p1-p15 must be supplied for colour, symbol and line pattern.
 
-    SchemeParser reads ``color p{i}``, ``symbol p{i}`` and ``linepattern
-    p{i}line`` by exact key — it implements no stub fallback — so a translated
-    scheme that relies on Stata's bare ``symbol p`` default would silently give
-    every plot the parser's hardcoded default instead.
+    ``color p{i}`` is spelled out.  The marker symbol follows Stata's chain
+    ``symbol p{i} -> symbol p`` in the parser (S3 batch): the shipped files
+    carry only the key the chain declares (s2color's bare ``symbol p``,
+    s1mono's and s2mono's ``symbol p1``..``p15``), so one step of it must be
+    present for every p#.  The connecting line's pattern follows Stata's chain
+    ``linepattern p{i}line -> pline -> p{i} -> p`` in the parser (S3 batch),
+    and the shipped files carry only the key the chain declares, so some
+    step of that chain must be present for every p#.
     """
     try:
         sp = parser_for(name)
@@ -743,9 +747,12 @@ def test_scheme_defines_all_15_p_entries(name):
     props = raw_props(sp)
     missing = []
     for i in range(1, N_PLOTS + 1):
-        for key in (f"color p{i}", f"symbol p{i}", f"linepattern p{i}line"):
-            if not str(props.get(key, "")).strip():
-                missing.append(key)
+        if not str(props.get(f"color p{i}", "")).strip():
+            missing.append(f"color p{i}")
+        if declared(sp, NAME_LISTS["p_symbols"], i) is None:
+            missing.append(f"symbol p{i} (or p)")
+        if declared(sp, NAME_LISTS["p_line_patterns"], i) is None:
+            missing.append(f"linepattern p{i}line (or pline, p{i}, p)")
     assert not missing, (
         f"scheme '{name}' does not define {len(missing)} of the 45 required "
         f"p1-p15 entries: {missing}"
@@ -1173,9 +1180,16 @@ def test_sttrans_shipped_file_carries_the_opacity():
     sp = parser_for("sttrans")
     props = raw_props(sp)
     for i in range(1, N_PLOTS + 1):
-        for stub in ("", "line", "bar", "mark"):
-            raw = props.get(f"color p{i}{stub}", "")
-            assert raw.endswith("%20"), f"color p{i}{stub} = {raw!r}"
+        raw = props.get(f"color p{i}", "")
+        assert raw.endswith("%20"), f"color p{i} = {raw!r}"
+        # sttrans declares no p#line/bar/mark colour (Stata's chain lands on
+        # p#), so the file carries none and the parser's chain carries the
+        # %20 to all three (S3 batch).
+        for stub in ("line", "bar", "mark"):
+            assert f"color p{i}{stub}" not in props, (i, stub)
+    for key in ("p_alphas", "p_line_alphas", "p_bar_alphas", "p_mark_alphas",
+                "p_lineplot_alphas"):
+        assert getattr(sp, key) == [ANCHOR_STTRANS_OPACITY / 100.0] * N_PLOTS, key
     assert colors_close(sp.p_colors[0], ANCHOR_STTRANS_P1)
 
 
@@ -1275,9 +1289,18 @@ def test_shipped_provenance_agrees_with_the_fixture():
         "transcribed from scheme-s2gmanual.scheme:")
     assert prov[("color", "p1")].startswith("transcribed from scheme-s2mono.scheme:")
     prov, _ = _provenance_lines(scheme_path("s2color"))
-    assert prov[("color", "p1line")].startswith("inferred: ")
-    assert "color p1" in prov[("color", "p1line")]
+    # s2color declares no `color p1line': Stata's chain lands on `color
+    # p1', and the file carries no p1line for a child's p1 to be shadowed
+    # by (S3 batch).  `linepattern p' is the key it does declare.
+    assert ("color", "p1line") not in prov
+    assert ("color", "p1line") not in _file_directives(scheme_path("s2color"))
+    assert prov[("linepattern", "p")].startswith(
+        "transcribed from scheme-s2color.scheme:")
     assert prov[("intensity", "area")].startswith("inferred: ")
+    # s2mono's connecting-line colour is its declared `color pline'.
+    prov_m, _ = _provenance_lines(scheme_path("s2mono"))
+    assert prov_m[("color", "pline")].startswith(
+        "transcribed from scheme-s2mono.scheme:")
     assert prov[("color", "background")].startswith(
         "transcribed from scheme-s2color.scheme:")
     prov, _ = _provenance_lines(scheme_path("economist"))
@@ -1298,6 +1321,103 @@ def test_regenerating_a_shipped_file_is_a_no_op(name, tmp_path):
                                     mod.DEFAULT_STATA_BASE, "01jan2000")
     assert result["changed"] == [], result
     assert result["added"] == [], result
+    assert result["removed"] == [], result
     assert not result["created"]
     assert not result.get("provenance"), result
     assert open(dst, "rb").read() == before, f"{name}: file rewritten"
+
+
+def test_an_older_translation_loses_its_resolved_stub_lines(tmp_path):
+    """update_scheme_file on a file that still carries the p#stub chain
+    written out resolved (`color p1mark' .. under s2color, as every shipped
+    file did before the S3 batch) removes those lines and the comment
+    paragraph that headed them, and adds the key Stata's chain declares
+    (`linepattern p'); a second run changes nothing."""
+    mod = _extractor()
+    dst = str(tmp_path / "s2color.scheme")
+    shutil.copyfile(scheme_path("s2color"), dst)
+    extra = ["", "* Per-plot marker fill color (resolved, spelled out).",
+             *[f"color p{i}mark   #1a476f" for i in range(1, N_PLOTS + 1)],
+             "", "* Line patterns, spelled out.",
+             *[f"linepattern p{i}line   solid" for i in range(1, N_PLOTS + 1)]]
+    text = open(dst, encoding="utf-8").read()
+    head, sep, tail = text.partition("* ---------------------------------------------------------------------------\n* BEGIN provenance")
+    text = head.replace("linepattern p  solid\n", "") + "\n".join(extra) + "\n\n" + sep + tail
+    open(dst, "w", encoding="utf-8").write(text)
+    r = mod.update_scheme_file(dst, "s2color", truth_for("s2color"),
+                               mod.DEFAULT_STATA_BASE, "01jan2000")
+    assert len(r["removed"]) == 2 * N_PLOTS, r
+    assert r["added"] == ["linepattern p"], r
+    after = open(dst, encoding="utf-8").read()
+    assert "Per-plot marker fill color (resolved" not in after
+    assert "Line patterns, spelled out." not in after
+    assert "color p1mark" not in after and "linepattern p1line" not in after
+    r2 = mod.update_scheme_file(dst, "s2color", truth_for("s2color"),
+                                mod.DEFAULT_STATA_BASE, "01jan2000")
+    assert (r2["changed"], r2["added"], r2["removed"], r2["provenance"]) == (
+        [], [], [], None), r2
+
+
+# ===========================================================================
+# S3 batch: the reference line, the plot region's border and note()'s text
+# box, resolved through Stata's style files by the extractor.
+# ===========================================================================
+
+_S3_KEYS = ("xyline_drawn", "xyline_color", "xyline_pattern",
+            "xyline_line_width", "plotregion_line_drawn",
+            "plotregion_line_color", "plotregion_line_line_width",
+            "plotregion_line_pattern", "note_textbox", "note_text_size",
+            "note_text_color", "note_box_drawn", "note_box_fill_color")
+
+
+@pytest.mark.parametrize("name", SCHEME_NAMES)
+def test_the_s3_keys_are_resolved(name):
+    t = truth_for(name)
+    missing = [k for k in _S3_KEYS if k not in t]
+    assert not missing, f"{name}: {missing}; regenerate the fixture"
+    assert t["xyline_drawn"] and t["xyline_color"], name
+    assert t["note_text_size"]["value"] and t["note_text_color"], name
+    assert t["note_box_drawn"] == (t["note_box_fill_color"] is not None)
+
+
+def test_the_s3_anchors():
+    """Against Stata's SVG export (test/fixtures/scheme_visual/truth.json,
+    measured 24sep2026) and BUGS.md's measurement of xline()."""
+    s2, st = truth_for("s2color"), truth_for("stcolor")
+    # twoway scatter mpg weight, xline(3000) yline(20): s2color one solid
+    # #C10534 segment, stcolor black and dashed.
+    assert (s2["xyline_color"], s2["xyline_pattern"]) == ("#c10534", "solid")
+    assert (st["xyline_color"], st["xyline_pattern"]) == ("#000000", "dash")
+    # plot_region_border: white (not visible) under s2color and stcolor,
+    # none under economist, black under s1mono.
+    for name, drawn, colour in (("s2color", True, "#ffffff"),
+                                ("stcolor", True, "#ffffff"),
+                                ("economist", False, None),
+                                ("s1mono", True, "#000000")):
+        t = truth_for(name)
+        assert (t["plotregion_line_drawn"], t["plotregion_line_color"]) == (
+            drawn, colour), name
+    # fonts.note: economist medlarge #FFFFFF in reverse_big's emidblue box.
+    e = truth_for("economist")
+    assert (e["note_textbox"]["name"], e["note_text_size"]["name"],
+            e["note_text_color"], e["note_box_fill_color"]) == (
+        "reverse_big", "medlarge", "#ffffff", "#7b92a8")
+    assert truth_for("s1manual")["note_textbox"]["name"] == "key_label"
+    assert s2["note_textbox"]["name"] == "small_body"
+
+
+@pytest.mark.parametrize("name", SCHEME_NAMES)
+def test_a_shipped_file_carries_each_directive_once(name):
+    """note()'s small_body box is `gsize small_body', which an earlier
+    group already carries; the extractor writes it once."""
+    seen, dup = set(), []
+    with open(scheme_path(name), encoding="utf-8") as fh:
+        for raw in fh:
+            line = raw.strip()
+            if not line or line.startswith(("*", "#include", "label")):
+                continue
+            key = tuple(line.split()[:2])
+            if key in seen:
+                dup.append(key)
+            seen.add(key)
+    assert not dup, (name, dup)

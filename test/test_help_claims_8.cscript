@@ -380,9 +380,11 @@ _hc_done "HC8-01" "the note is the help's, word for word"
 // ================================================================
 // HC8-02 -- every option on the list: accepted, and named
 // ================================================================
-// Plot level, comma mode: the 44 names of _dash_parse_plot_opts' list.
-local p_opts `"at(mpg) b1title(b) b2title(b) blabel(total) ciopts(lcolor(red)) cmissing(n) colorlist(red blue) coloruseplegend connect(l) filter(foreign) fitopts(lcolor(red)) fxsize(50) fysize(50) horizontal l1title(l) l2title(l) link(g9) lineopts(lcolor(red)) lstyle(p3) mlabtextstyle(heading) mlabvposition(pos) mlabwidth(thick) mlpattern(dash) mlstyle(p3) mstyle(p3) play(x) pstyle(p3) r1title(r) r2title(r) recast(line) scale(1.5) sort subtitle2(s) t1title(t) t2title(t) text(20 3000 "hi") title2(t) vertical xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
-local p_names "at b1title b2title blabel ciopts cmissing colorlist coloruseplegend connect filter fitopts fxsize fysize horizontal l1title l2title link lineopts lstyle mlabtextstyle mlabvposition mlabwidth mlpattern mlstyle mstyle play pstyle r1title r2title recast scale sort subtitle2 t1title t2title text title2 vertical xmlabel xmtick xoverhangs ymlabel ymtick yoverhangs"
+// Plot level, comma mode: the 48 names of _dash_parse_plot_opts' list (the
+// four fitarea options among them, named on scatter: _dash_fold_typed takes
+// them off only on the ci types).
+local p_opts `"acolor(red) alcolor(red) alpattern(dash) alwidth(thick) at(mpg) b1title(b) b2title(b) blabel(total) ciopts(lcolor(red)) cmissing(n) colorlist(red blue) coloruseplegend connect(l) filter(foreign) fitopts(lcolor(red)) fxsize(50) fysize(50) horizontal l1title(l) l2title(l) link(g9) lineopts(lcolor(red)) lstyle(p3) mlabtextstyle(heading) mlabvposition(pos) mlabwidth(thick) mlpattern(dash) mlstyle(p3) mstyle(p3) play(x) pstyle(p3) r1title(r) r2title(r) recast(line) scale(1.5) sort subtitle2(s) t1title(t) t2title(t) text(20 3000 "hi") title2(t) vertical xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
+local p_names "acolor alcolor alpattern alwidth at b1title b2title blabel ciopts cmissing colorlist coloruseplegend connect filter fitopts fxsize fysize horizontal l1title l2title link lineopts lstyle mlabtextstyle mlabvposition mlabwidth mlpattern mlstyle mstyle play pstyle r1title r2title recast scale sort subtitle2 t1title t2title text title2 vertical xmlabel xmtick xoverhangs ymlabel ymtick yoverhangs"
 _hc_run "" `"dash scatter mpg weight, mlabel(make) `p_opts' name(hc02p, replace)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
@@ -415,7 +417,7 @@ foreach nm of local g_names {
     }
 }
 _hc_expect "HC8-02" "(`nmiss' == 0)" "`nmiss' graph-level option(s) not named"
-_hc_done "HC8-02" "all 44 plot-level and 23 graph-level options accepted and named"
+_hc_done "HC8-02" "all 48 plot-level and 23 graph-level options accepted and named"
 
 // ================================================================
 // HC8-03 -- twoway's own verdict on each option the prose names

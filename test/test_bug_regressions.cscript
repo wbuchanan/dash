@@ -47,9 +47,9 @@
 *!          and gridlines -- and dash's saved page and served document are
 *!          held to it: the count twoway records reaches the y axis, and
 *!          the grid is drawn at the labels in the colour twoway draws it.
-*!          The tick positions are Bokeh's and are not compared: measured
-*!          24sep2026, dash's #5 on this data draws 15(5)40 where twoway
-*!          draws 10(10)40 (test_bug_regressions.py says more).
+*!          The y axis is ticked at the values twoway's SVG labels: dash
+*!          handed #5 to Bokeh, which drew 15(5)40 where twoway draws
+*!          10(10)40, until dash placed #N by twoway's rule (24sep2026).
 *!
 *! Each case was run with its defect restored, on a copy of the tree, and
 *! failed there (24sep2026):
@@ -63,8 +63,11 @@
 *!          instead: the immediate route's log holds one, and BR-02c stops
 *!          it.
 *!   BR-03  `.rstrip(",")' taken out of _dash_parse_axis_spec: BR-03b and
-*!          BR-03c report desired_num_ticks 6 where twoway records 5, and
-*!          BR-03b stops the script; BR-03a, the twoway oracle, passes.
+*!          BR-03c reported desired_num_ticks 6 where twoway records 5, and
+*!          BR-03b stopped the script; BR-03a, the twoway oracle, passed.
+*!          (Run against the count check this held before dash placed #N
+*!          by twoway's rule; the dropped count leaves Bokeh's default
+*!          ticker, which the label check now reports.)
 
 cscript "dash bug regressions" adodir ".."
 
@@ -273,6 +276,10 @@ def _br01_fills(fig):
         if gl is None or not hasattr(gl, "fill_alpha"):
             continue
         if type(gl).__name__ == "Scatter":
+            continue
+        # A ci band's outline (S3 batch) is a closed line round the band,
+        # drawn with no fill: a line, not a fill.
+        if "dash_ci_outline" in (getattr(r, "tags", None) or []):
             continue
         out.append((type(gl).__name__, float(_br_value(gl.fill_alpha))))
     for an in fig.center:
@@ -570,6 +577,10 @@ if len(_br03_colours) != 1:
 if _br03_pg:
     _br03_a.append("without grid twoway drew gridlines %s" % _br03_pg)
 _br03_count = _br03_gn
+# The values twoway labels (10 20 30 40, measured 24sep2026), which dash's
+# #5 now places by twoway's rule (BUGS.md "ylabel(#N) and xlabel(#N) ticks
+# fall where Bokeh puts them").
+_br03_values = sorted(v for _y, v in _br03_gl)
 _br03_colour = _br03_colours[0] if len(_br03_colours) == 1 else None
 
 def _br03_check(figs, mode):
@@ -587,10 +598,11 @@ def _br03_check(figs, mode):
             continue
         axis, g = axes[0], grids[0]
         t = axis.ticker
-        if type(t).__name__ != "BasicTicker" or t.desired_num_ticks != _br03_count:
-            bad.append("%s %s: the y axis asks for %s %s ticks where twoway records %s"
-                       % (mode, title, type(t).__name__,
-                          getattr(t, "desired_num_ticks", None), _br03_count))
+        got = (sorted(float(v) for v in t.ticks)
+               if type(t).__name__ == "FixedTicker" else None)
+        if got != _br03_values:
+            bad.append("%s %s: the y axis is ticked %s %s where twoway labels %s"
+                       % (mode, title, type(t).__name__, got, _br03_values))
         colour = g.grid_line_color
         if want_grid:
             if colour is None or str(colour).lower() != _br03_colour:
@@ -623,7 +635,7 @@ capture dash clear
 assert ${br03_a} == 0
 display "BR-03a PASS: twoway records suggest_ticks 5 for ylabel(#5, grid) and draws a gridline at each y label, none without grid"
 assert ${br03_b} == 0
-display "BR-03b PASS: the saved page asks the y axis for twoway's count and draws the grid at the labels in twoway's colour, none without grid"
+display "BR-03b PASS: the saved page ticks the y axis at twoway's labels and draws the grid at them in twoway's colour, none without grid"
 assert ${br03_c} == 0
 display "BR-03c PASS: the served document does the same"
 display "BR-03 PASS: ylabel(#5, grid) keeps its count and its grid, as twoway draws them, in both modes"

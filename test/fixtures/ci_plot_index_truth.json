@@ -1,0 +1,28 @@
+{
+  "_about": "Measured 24sep2026 with StataNow 19.5 (console, batch) on sysuse auto (lo = price - 1000, hi = price + 1000): each graph is drawn with nodraw and every plot's style is read from .Graph.plotregion1.plot<k>.style (line.color.setting, marker.fillcolor.setting, marker.symbol.setting, line.width.setting, marker.linestyle.width.setting).  A ci fit (lfitci, qfitci, lpolyci, fpfitci) draws two plots, its band (pstyle ci) and then its line; twoway_lfitci_parse.class gives the line seriesid(`seriesid'-1), and a seriesid of 0 is drawn as p1.  So a layer that is plot n of the graph draws in p((n-1) mod 15 + 1), and a ci layer whose line is plot n in p(((n-1) mod 15 + 1) - 1), p1 where that is 0.  'layers' are dash's plot entries (one per y variable); 'pstyle' is the 1-based p# each layer's p#-styled plot was drawn in (for a ci layer, its line), identified by its colour against the scheme's p1-p15 colours and, for 'z1', by its width under #include s2color, linewidth p1 vthick, p14 thick, p15 vvthick.",
+  "p_colors": {
+    "s2color": ["1a476f", "90353b", "55752f", "e37e00", "6e8e84", "c10534", "938dd2", "cac27e", "a0522d", "7b92a8", "2d6d66", "9c8847", "bfa19c", "ffd200", "d9e6eb"]
+  },
+  "cases": [
+    {"id": "lfitci_lfitci_lfit", "scheme": "s2color", "layers": ["lfitci", "lfitci", "lfit"], "pstyle": [1, 3, 5]},
+    {"id": "scatter_lfitci_scatter", "scheme": "s2color", "layers": ["scatter", "lfitci", "scatter"], "pstyle": [1, 2, 4]},
+    {"id": "qfitci_scatter", "scheme": "s2color", "layers": ["qfitci", "scatter"], "pstyle": [1, 3]},
+    {"id": "lpolyci_line", "scheme": "s2color", "layers": ["lpolyci", "line"], "pstyle": [1, 3]},
+    {"id": "fpfitci_connected", "scheme": "s2color", "layers": ["fpfitci", "connected"], "pstyle": [1, 3]},
+    {"id": "rarea_rcap_scatter", "scheme": "s2color", "layers": ["rarea", "rcap", "scatter"], "pstyle": [1, 2, 3]},
+    {"id": "two_y_scatter_lfit", "scheme": "s2color", "layers": ["scatter", "scatter", "lfit"], "pstyle": [1, 2, 3]},
+    {"id": "lfitci_rcapsym_pcarrow_scatter", "scheme": "s2color", "layers": ["lfitci", "rcapsym", "pcarrow", "scatter"], "pstyle": [1, 3, 4, 5]},
+    {"id": "histogram_lfitci_kdensity", "scheme": "s2color", "layers": ["histogram", "lfitci", "kdensity"], "pstyle": [1, 2, 4]},
+    {"id": "eight_lfitci_scatter", "scheme": "s2color", "layers": ["lfitci", "lfitci", "lfitci", "lfitci", "lfitci", "lfitci", "lfitci", "lfitci", "scatter"], "pstyle": [1, 3, 5, 7, 9, 11, 13, 1, 2]},
+    {"id": "seven_lfitci_qfitci_line", "scheme": "z1", "layers": ["lfitci", "lfitci", "lfitci", "lfitci", "lfitci", "lfitci", "lfitci", "qfitci", "line"], "pstyle": [1, 3, 5, 7, 9, 11, 13, 1, 2]},
+    {"id": "s1mono_lfitci_lfitci_line", "scheme": "s1mono", "layers": ["lfitci", "lfitci", "line"], "pstyle": [1, 3, 5]},
+    {"id": "s1mono_scatter_lpolyci_scatter", "scheme": "s1mono", "layers": ["scatter", "lpolyci", "scatter"], "pstyle": [1, 2, 4]},
+    {"id": "z1_12_scatters_lfitci_scatter", "scheme": "z1", "layers": ["12*scatter", "lfitci", "scatter"], "pstyle": [13, 15]},
+    {"id": "z1_13_scatters_lfitci_scatter", "scheme": "z1", "layers": ["13*scatter", "lfitci", "scatter"], "pstyle": [14, 1]},
+    {"id": "z1_14_scatters_lfitci_scatter", "scheme": "z1", "layers": ["14*scatter", "lfitci", "scatter"], "pstyle": [1, 2]},
+    {"id": "z1_15_scatters_lfitci_scatter", "scheme": "z1", "layers": ["15*scatter", "lfitci", "scatter"], "pstyle": [1, 3]},
+    {"id": "z1_28_scatters_lfitci_scatter", "scheme": "z1", "layers": ["28*scatter", "lfitci", "scatter"], "pstyle": [14, 1]},
+    {"id": "z1_29_scatters_lfitci_scatter", "scheme": "z1", "layers": ["29*scatter", "lfitci", "scatter"], "pstyle": [1, 2]}
+  ],
+  "_cases_note": "An 'N*scatter' entry is N scatter layers whose pstyles are 1..N cycling through 15 (measured, not listed); 'pstyle' then lists only the layers after them."
+}

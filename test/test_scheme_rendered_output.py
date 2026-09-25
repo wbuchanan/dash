@@ -497,15 +497,23 @@ class TestTheText:
                             "subheading_font_size")), abs=SIZE_TOL_PT)
         assert _hex(lab.text_color) == _hex(_truth(scheme, "subheading_color"))
 
-    def test_the_note_has_the_small_body_size_and_colour(self, scheme, mode):
+    def test_the_note_has_its_textboxs_size_colour_and_fill(self, scheme,
+                                                            mode):
         """This compared the note to ``body_color`` and passed only because
         body and small_body are the same colour in all fourteen shipped
-        schemes; the directive Stata reads is ``color small_body``."""
+        schemes; then to ``small_body``, which is the box of most schemes
+        but not economist's (``textboxstyle note reverse_big``: white
+        medlarge text in an emidblue box) or s1manual's (key_label).  The
+        box Stata reads is the scheme's ``textboxstyle note`` (S3 batch)."""
         lab = _label(_page(scheme, "titles", mode).fig, "N")
         assert _pt_of(lab.text_font_size) == pytest.approx(
-            _size_pt(_truth(scheme, "small_body_size",
-                            "small_body_font_size")), abs=SIZE_TOL_PT)
-        assert _hex(lab.text_color) == _hex(_truth(scheme, "small_body_color"))
+            _size_pt(_truth(scheme, "note_text_size")), abs=SIZE_TOL_PT)
+        assert _hex(lab.text_color) == _hex(_truth(scheme, "note_text_color"))
+        fill = _fixture()[scheme]["note_box_fill_color"]
+        if fill is None:
+            assert lab.background_fill_color is None, lab.background_fill_color
+        else:
+            assert _hex(lab.background_fill_color) == _hex(fill)
 
     def test_the_caption_has_the_body_size_and_colour(self, scheme, mode):
         lab = _label(_page(scheme, "titles", mode).fig, "C")

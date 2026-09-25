@@ -1,0 +1,380 @@
+*! test_ci_band_options.cscript
+*! Certification script: a ci fit's band options (BUGS.md, S3: "A ci band is
+*! filled in its line's colour, where Stata fills it in pstyle ci").
+*!
+*! twoway draws a ci fit's band -- lfitci, qfitci, lpolyci, fpfitci -- in
+*! areastyle ci, or in the style pstyle() names, and styles it with its
+*! fitarea options acolor(), alcolor(), alwidth() and alpattern()
+*! (fitarea_options.sthlp).  dash declares the four with twoway's measured
+*! minimum abbreviations -- ac(), alc(), alw(), alp(); twoway's help writes
+*! acol:or, and twoway takes ac() -- draws them and pstyle() on the four
+*! ci types, and names them in the note on every other type, where twoway
+*! accepts them (measured 24sep2026, rc 0).  The drawing itself is certified
+*! by test/test_ci_band_style.py against the graph object; this script
+*! certifies the Stata side.
+*!
+*! Groups:
+*!   CB-01  alwidth(-1), per plot type: dash refuses it, naming alwidth(),
+*!          exactly where twoway refuses it when it draws ("gm_linewidth
+*!          must be between 0.000 and 1.0e+04", r(198)); twoway is asked in
+*!          the same run.
+*!   CB-02  on each ci type the four options and pstyle(p3) reach the spec
+*!          and are not named in the note.
+*!   CB-03  on scatter they are named in the note, by their full names.
+*!   CB-04  twoway's minimum abbreviations, ac() alc() alw() alp(), reach
+*!          the spec under the full names; al(), which twoway reads as
+*!          alstyle(), is not alcolor() (named as typed).
+*!   CB-05  alwidth()'s bounds on lfitci: 0 and 10000 accepted, 10000.001
+*!          and 20000 refused, as twoway refuses them.
+*!   CB-06  adversarial values (CLAUDE.md rule 18): a hostile pstyle() and
+*!          a dollar sign stored as text, not expanded; a 20,000-character
+*!          colour and pattern accepted in bounded time; a numeric-looking
+*!          overflow refused.
+*!
+*! Usage:  do test/test_ci_band_options.cscript  (or run_all_cscripts.do)
+
+cscript "dash ci band options (S3)" adodir ".."
+
+clear all
+set more off
+set graphics off
+
+do "cert_helpers.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+// cscript drops every global; cert_helpers.do set it again, and so does this.
+global dash_nobrowser 1
+
+sysuse auto, clear
+generate lo  = mpg - 2
+generate hi  = mpg + 2
+generate t   = _n
+quietly tsset t
+
+local logfile "`c(tmpdir)'dash_ci_band_options.log"
+
+// ----------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------
+capture mata: mata drop _zcb_has()
+capture mata: mata drop _zcb_hasval()
+mata:
+real scalar _zcb_has(string scalar g, string scalar key)
+{
+    string scalar js
+    js = st_global("dash_json_" + g)
+    return(strpos(js, char(34) + key + char(34) + ":") > 0)
+}
+real scalar _zcb_hasval(string scalar g, string scalar key, string scalar val)
+{
+    string scalar js, q
+    js = st_global("dash_json_" + g)
+    q  = char(34)
+    return(strpos(js, q + key + q + ":" + q + val + q) > 0)
+}
+end
+
+capture program drop _zcb_has
+program define _zcb_has, rclass
+    args g key
+    mata: st_local("_zh", strofreal(_zcb_has(st_local("g"), st_local("key"))))
+    return scalar found = `_zh'
+end
+
+capture program drop _zcb_hasval
+program define _zcb_hasval, rclass
+    args g key val
+    mata: st_local("_zh", strofreal(_zcb_hasval(st_local("g"), ///
+        st_local("key"), st_local("val"))))
+    return scalar found = `_zh'
+end
+
+// Run one dash command under a named log: r(rc), and r(note) whether the
+// log carries the ignoring note.
+capture program drop _zcb_run
+program define _zcb_run, rclass
+    args cmdtext logpath
+    capture log close _zcblog
+    capture erase "`logpath'"
+    capture dash clear
+    log using "`logpath'", name(_zcblog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _zcblog
+    cert_log_has "`logpath'", needle("ignoring unsupported")
+    return scalar note = r(found)
+    return scalar rc   = `rc'
+end
+
+capture program drop _zcb_logged
+program define _zcb_logged, rclass
+    args logpath needle
+    cert_log_has "`logpath'", needle(`"`needle'"')
+    return scalar found = r(found)
+end
+
+local nfail = 0
+local faillist ""
+
+local types "line connected lfit qfit fpfit lpoly lowess mspline mband kdensity function tsline lfitci qfitci lpolyci fpfitci scatter area bar spike dot dropline histogram rarea rbar rspike rcap rcapsym rline rconnected rscatter tsrline pcspike pcarrow pcbarrow pcscatter pccapsym scatteri pci"
+foreach tt of local types {
+    local v_`tt' "mpg weight"
+}
+foreach tt in rarea rbar rspike rcap rcapsym rline rconnected rscatter {
+    local v_`tt' "lo hi weight"
+}
+foreach tt in pcspike pcarrow pcbarrow pcscatter pccapsym {
+    local v_`tt' "mpg weight turn length"
+}
+local v_histogram "mpg"
+local v_kdensity  "mpg"
+local v_tsline    "mpg"
+local v_tsrline   "lo hi"
+local v_function  "y=x, range(0 1)"
+local v_scatteri  "20 3000 30 4000"
+local v_pci       "20 3000 30 4000"
+
+// ----------------------------------------------------------------
+// CB-01 -- alwidth(-1), per plot type, against twoway.
+// ----------------------------------------------------------------
+foreach tt of local types {
+    local v `v_`tt''
+    local sep ","
+    if strpos("`v'", ",") local sep ""
+    capture graph drop _all
+    capture twoway `tt' `v'`sep' alwidth(-1)
+    local tw_rc = _rc
+    capture graph drop _all
+    if `tw_rc' != 0 & `tw_rc' != 198 {
+        display as error "CB-01 FAIL `tt': the twoway oracle itself failed, r(`tw_rc')"
+        local nfail = `nfail' + 1
+        local faillist "`faillist' CB-01(`tt')"
+        continue
+    }
+    _zcb_run `"dash (`tt' `v'`sep' alwidth(-1)), name(zqcb)"' "`logfile'"
+    local drc = r(rc)
+    local bad = 0
+    if `drc' != `tw_rc' {
+        display as error "CB-01 FAIL `tt': alwidth(-1) is r(`tw_rc') in twoway, rc `drc' in dash"
+        local bad = 1
+    }
+    else if `drc' == 198 {
+        _zcb_logged "`logfile'" "alwidth()"
+        if r(found) != 1 {
+            display as error "CB-01 FAIL `tt': alwidth(-1) refused without naming alwidth()"
+            local bad = 1
+        }
+    }
+    if `bad' {
+        local nfail = `nfail' + 1
+        local faillist "`faillist' CB-01(`tt')"
+    }
+    else display as text "CB-01 PASS `tt': alwidth(-1) rc `drc', as twoway"
+}
+
+// ----------------------------------------------------------------
+// CB-02 -- on each ci type: drawn, carried, not named.
+// ----------------------------------------------------------------
+foreach tt in lfitci qfitci lpolyci fpfitci {
+    _zcb_run `"dash (`tt' mpg weight, acolor(red) alcolor(navy) alwidth(thick) alpattern(dash) pstyle(p3)), name(zqcb)"' "`logfile'"
+    local bad = 0
+    if r(rc) != 0 {
+        display as error "CB-02 FAIL `tt': rc `r(rc)'"
+        local bad = 1
+    }
+    else if r(note) {
+        display as error "CB-02 FAIL `tt': a band option or pstyle() named in the note"
+        local bad = 1
+    }
+    foreach kv in "acolor red" "alcolor navy" "alwidth thick" "alpattern dash" "pstyle p3" {
+        gettoken k val : kv
+        local val = strtrim("`val'")
+        _zcb_hasval zqcb `k' "`val'"
+        if r(found) != 1 {
+            display as error "CB-02 FAIL `tt': the spec does not carry `k' `val'"
+            local bad = 1
+        }
+    }
+    if `bad' {
+        local nfail = `nfail' + 1
+        local faillist "`faillist' CB-02(`tt')"
+    }
+    else display as text "CB-02 PASS `tt': carried, not named"
+}
+
+// ----------------------------------------------------------------
+// CB-03 -- on scatter: named, by their full names.
+// ----------------------------------------------------------------
+_zcb_run `"dash (scatter mpg weight, acol(red) alc(navy) alw(thick) alp(dash) psty(p3)), name(zqcb)"' "`logfile'"
+local bad = 0
+if r(rc) != 0 | r(note) != 1 {
+    display as error "CB-03 FAIL: rc `r(rc)', note `r(note)'"
+    local bad = 1
+}
+foreach nm in acolor() alcolor() alwidth() alpattern() pstyle() {
+    _zcb_logged "`logfile'" "`nm'"
+    if r(found) != 1 {
+        display as error "CB-03 FAIL: `nm' not named on scatter"
+        local bad = 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CB-03"
+}
+else display as text "CB-03 PASS: named on scatter by their full names"
+
+// ----------------------------------------------------------------
+// CB-04 -- twoway's minimum abbreviations, and one letter short.
+// ----------------------------------------------------------------
+// twoway takes ac(), alc(), alw() and alp() (measured 24sep2026: its
+// fitarea_options.sthlp writes acol:or, and ac() draws the band red); al()
+// is alstyle(), a(red) is refused, r(198).  Each is asked of twoway here
+// and must reach dash's spec as twoway reads it.
+_zcb_run `"dash (lfitci mpg weight, ac(red) alc(navy) alw(thick) alp(dash)), name(zqcb)"' "`logfile'"
+local bad = 0
+if r(rc) != 0 | r(note) != 0 {
+    display as error "CB-04 FAIL: rc `r(rc)', note `r(note)'"
+    local bad = 1
+}
+foreach kv in "acolor red" "alcolor navy" "alwidth thick" "alpattern dash" {
+    gettoken k val : kv
+    local val = strtrim("`val'")
+    _zcb_hasval zqcb `k' "`val'"
+    if r(found) != 1 {
+        display as error "CB-04 FAIL: ac()/alc()/alw()/alp() did not reach `k'"
+        local bad = 1
+    }
+}
+foreach ab in ac alc alw alp {
+    local val = cond("`ab'" == "alw", "thick", cond("`ab'" == "alp", "dash", "red"))
+    capture graph drop _all
+    capture twoway lfitci mpg weight, `ab'(`val') nodraw
+    if _rc != 0 {
+        display as error "CB-04 FAIL: twoway refused `ab'(), r(`=_rc')"
+        local bad = 1
+    }
+}
+// al() is not alcolor() in twoway (it is alstyle()): dash names it as
+// typed and carries no alcolor.
+capture graph drop _all
+capture twoway lfitci mpg weight, al(red) nodraw
+local tw_rc = _rc
+local tw_rgb ""
+if `tw_rc' == 0 local tw_rgb "`.Graph.plotregion1.plot1.style.area.linestyle.color.rgb'"
+if "`tw_rgb'" == "255 0 0" {
+    display as error "CB-04 FAIL: twoway read al(red) as alcolor(red)"
+    local bad = 1
+}
+_zcb_run `"dash (lfitci mpg weight, al(red)), name(zqcb)"' "`logfile'"
+if r(rc) != 0 | r(note) != 1 {
+    display as error "CB-04 FAIL: al() rc `r(rc)', note `r(note)'"
+    local bad = 1
+}
+_zcb_has zqcb alcolor
+if r(found) {
+    display as error "CB-04 FAIL: al() reached alcolor"
+    local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CB-04"
+}
+else display as text "CB-04 PASS: ac() alc() alw() alp() are the options, as in twoway; al() is not alcolor()"
+
+// ----------------------------------------------------------------
+// CB-05 -- alwidth()'s bounds on lfitci.
+// ----------------------------------------------------------------
+local bad = 0
+foreach w in 0 10000 10000.001 20000 {
+    capture graph drop _all
+    capture twoway lfitci mpg weight, alwidth(`w')
+    local tw_rc = _rc
+    _zcb_run `"dash (lfitci mpg weight, alwidth(`w')), name(zqcb)"' "`logfile'"
+    if r(rc) != `tw_rc' {
+        display as error "CB-05 FAIL: alwidth(`w') is r(`tw_rc') in twoway, rc `r(rc)' in dash"
+        local bad = 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CB-05"
+}
+else display as text "CB-05 PASS: alwidth() takes 0 to 10000, as twoway"
+
+// ----------------------------------------------------------------
+// CB-06 -- adversarial values.
+// ----------------------------------------------------------------
+local bad = 0
+// Injection: a pstyle() that is no style, stored as text; the renderer
+// draws p1 and says so (test_ci_band_style.py).
+_zcb_run `"dash (lfitci mpg weight, pstyle(p3;rm -rf)), name(zqcb)"' "`logfile'"
+_zcb_hasval zqcb pstyle "p3;rm -rf"
+if r(found) != 1 {
+    display as error "CB-06 FAIL: pstyle(p3;rm -rf) not stored as text"
+    local bad = 1
+}
+// A dollar sign is the user's text, not a global.  Typed here, not through
+// _zcb_run: a command line built from a macro is expanded again.
+global G "EXPANDED"
+capture dash clear
+capture noisily dash (lfitci mpg weight, acolor(red\$G) alcolor(navy)), name(zqcb)
+if _rc != 0 {
+    display as error "CB-06 FAIL: a dollar sign in acolor() refused, rc `=_rc'"
+    local bad = 1
+}
+macro drop G
+// The spec writes a dollar sign as a JSON \u escape (_dash_json_str); the
+// needle is built in Mata, where a do-file line cannot turn it back.
+mata: st_local("_cbf", strofreal(_zcb_hasval("zqcb", "acolor", ///
+    "red" + char(92) + "u0024G")))
+if `_cbf' != 1 {
+    display as error "CB-06 FAIL: acolor(red\$G) was expanded"
+    local bad = 1
+}
+// Resource exhaustion: a 20,000-character colour and pattern.
+local long = 20000 * "x"
+timer clear 91
+timer on 91
+_zcb_run `"dash (lfitci mpg weight, acolor(`long') alpattern(`long')), name(zqcb)"' "`logfile'"
+local lrc = r(rc)
+timer off 91
+quietly timer list 91
+if `lrc' != 0 {
+    display as error "CB-06 FAIL: a long value: rc `lrc'"
+    local bad = 1
+}
+if r(t91) > 30 {
+    display as error "CB-06 FAIL: a long value took `r(t91)' seconds"
+    local bad = 1
+}
+// A number too large for a double is refused, not passed as a name.
+_zcb_run `"dash (lfitci mpg weight, alwidth(1e400)), name(zqcb)"' "`logfile'"
+if r(rc) != 198 {
+    display as error "CB-06 FAIL: alwidth(1e400) rc `r(rc)'"
+    local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CB-06"
+}
+else display as text "CB-06 PASS: hostile values stored as text, bounded, or refused"
+
+// ----------------------------------------------------------------
+// Summary
+// ----------------------------------------------------------------
+capture dash clear
+capture erase "`logfile'"
+display as text ""
+display as text "============================================================"
+if `nfail' == 0 {
+    display as text "  test_ci_band_options: ALL CHECKS PASSED"
+    display as text "============================================================"
+}
+else {
+    display as error "  test_ci_band_options: `nfail' CHECK(S) FAILED"
+    display as error "  failing:`faillist'"
+    display as text "============================================================"
+    exit 9
+}

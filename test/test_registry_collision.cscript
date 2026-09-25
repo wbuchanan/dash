@@ -966,6 +966,12 @@ program define _reg_refused
         local msg  "option name() not allowed"
         local msg2 "option nam() not allowed"
     }
+    // kind upper: an option written in upper case, NAME(), is no option
+    // twoway takes, "option NAME() not allowed", r(198) (measured
+    // 24sep2026; test_twoway_option_parity.cscript TP-15).
+    else if "`kind'" == "upper" {
+        local msg "option NAME() not allowed"
+    }
     else {
         local msg "dash: graph name '`nm'' already exists. Use name(`nm', replace) to overwrite."
     }
@@ -988,7 +994,9 @@ program define _reg_refused
     // "option name() not allowed" and "option nam() not allowed" break too
     // -- and did not see a note printed after a long line's worth of text
     // (measured 24sep2026).
-    cert_log_has "`lg'", needle(`"`msg'"') lower
+    // (kind upper matches case exactly: NAME() is the word it names.)
+    if "`kind'" == "upper" cert_log_has "`lg'", needle(`"`msg'"')
+    else cert_log_has "`lg'", needle(`"`msg'"') lower
     local said = (r(count) == 1)
     if `said' != 1 & `"`msg2'"' != "" {
         cert_log_has "`lg'", needle(`"`msg2'"') lower
@@ -1001,7 +1009,7 @@ program define _reg_refused
     // refusal.
     cert_log_has "`lg'", needle("ignoring unsupported option") lower
     global REG_NOTED = r(count)
-    if "`kind'" == "twice" & ${REG_NOTED} != 0 local said 0
+    if inlist("`kind'", "twice", "upper") & ${REG_NOTED} != 0 local said 0
     mata: st_local("same", strofreal(_reg_same("`nm'")))
     local why ""
     if `rc' != 198 local why "`why' rc=`rc'"
@@ -1103,12 +1111,16 @@ global REG_BAD ""
 _reg_refused graph g1 `"dash scatter price weight, name(g1) text(20 3000 "name(a, replace)")"'
 _reg_refused graph g1 `"dash scatter price weight, name(g1) ytitle("name(a, replace)") legend(label(1 "name(b, replace)"))"'
 _reg_refused graph g1 `"dash scatter price weight if make != "name(a, replace)", name(g1)"'
-_reg_refused graph g1 `"dash scatter price weight, name(g1) NAME(x, replace)"'
+// NAME() in upper case is no option twoway takes: refused as twoway
+// refuses it, "option NAME() not allowed", and g1 left whole (it was
+// named in the note until TP-15, 24sep2026).
+_reg_refused upper g1 `"dash scatter price weight, name(g1) NAME(x, replace)"'
+_reg_refused graph g1 `"dash scatter price weight, name(g1) zqname(x, replace)"'
 // The control for the note a second name() must not print (REG-33 and
-// REG-37..41 look for it through this same log and search): this NAME() is
-// noted, once, before g1 is refused (measured 24sep2026).
+// REG-37..41 look for it through this same log and search): this zqname()
+// is noted, once, before g1 is refused (measured 24sep2026).
 if "${REG_NOTED}" != "1" {
-    mata: st_global("REG_BAD", st_global("REG_BAD") + " | NAME() was not noted, or the note not seen: [" + st_global("REG_NOTED") + "]")
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | zqname() was not noted, or the note not seen: [" + st_global("REG_NOTED") + "]")
 }
 _reg_refused graph k1 `"dash scatter price weight, name(k1) title("name(k1, replace)")"'
 _reg_still_g1
@@ -1286,9 +1298,9 @@ display "REG-38 PASS: two name()s naming nothing registered are refused, and nei
 // after a paren command's comma, after an || command's last comma, or
 // abbreviated, registers the graph under that name; and text that only
 // looks like name() is not a second one -- a title or a note holding
-// "name(x)", or an option spelled NAME(), which is not name() (Stata's
-// options are case-sensitive; dash names NAME() in its note, as it names
-// any option it does not know).
+// "name(x)" is text.  An option spelled NAME() is not name() either
+// (Stata's options are case-sensitive): twoway refuses it, "option NAME()
+// not allowed", r(198), and so does dash (TP-15), registering nothing.
 dash clear
 global REG_BAD ""
 foreach c in ///
@@ -1297,19 +1309,23 @@ foreach c in ///
     `"dash (scatter price weight) (line price weight), name(b3)"' ///
     `"dash scatter price weight || line price weight, name(b4)"' ///
     `"dash scatter price weight, nam(b5)"' ///
-    `"dash scatter price weight, name(b6) title("name(x) and nam(y)") note("name(z, replace)")"' ///
-    `"dash scatter price weight, name(b7) NAME(zz)"' {
+    `"dash scatter price weight, name(b6) title("name(x) and nam(y)") note("name(z, replace)")"' {
     capture noisily `c'
     local rc39 = _rc
     if `rc39' != 0 {
         mata: st_global("REG_BAD", st_global("REG_BAD") + " | " + st_local("c") + " -> rc " + st_local("rc39"))
     }
 }
-if "${dash_graph_registry}" != "b1 b2 b3 b4 b5 b6 b7" {
+capture noisily dash scatter price weight, name(b7) NAME(zz)
+local rc39 = _rc
+if `rc39' != 198 {
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | name(b7) NAME(zz) -> rc " + st_local("rc39"))
+}
+if "${dash_graph_registry}" != "b1 b2 b3 b4 b5 b6" {
     mata: st_global("REG_BAD", st_global("REG_BAD") + " | registry [" + st_global("dash_graph_registry") + "]")
 }
 _reg_verdict REG-39
-display "REG-39 PASS: one name() names the graph wherever it is written, and text or NAME() is not a second"
+display "REG-39 PASS: one name() names the graph wherever it is written; text is not a second, and NAME() is refused as twoway refuses it"
 
 // ---- REG-40 -- a KPI card takes one name() too ----
 // dash kpi declares no catch-all, so Stata's own -syntax- refuses a second

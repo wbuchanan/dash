@@ -6,9 +6,9 @@
   "how": "one `capture noisily twoway ...` per probe, rc and the joined message recorded; `graph query <style>` output parsed for the vocabularies (this Stata stores nothing in r() for it); `confirm numeric format` for the format probes",
   "finding": "twoway never rejects a bad style NAME: it prints `(note: named style X not found in class Y, default attributes used)` and draws with the default (rc 0). It rejects bad numbers, ranges, enums and unknown variables (rc 198/125/126/121/122/111/4026).",
   "counts": {
-   "twoway": 264,
-   "twoway_rc0": 201,
-   "twoway_rejected": 63,
+   "twoway": 276,
+   "twoway_rc0": 210,
+   "twoway_rejected": 66,
    "formats": 28,
    "vocab": {
     "colorstyle": 1335,
@@ -24,7 +24,8 @@
    }
   },
   "additions": [
-   "23sep2026 (WP-22 TR-22.3): clwidth_1-8 and mlabangle_1-8, drawn with `set graphics off' in the same way; clwidth(-1) is refused only where the connecting line is drawn (bar: rc 0), mlabangle(400) only where marker labels are drawn (line: rc 0)"
+   "23sep2026 (WP-22 TR-22.3): clwidth_1-8 and mlabangle_1-8, drawn with `set graphics off' in the same way; clwidth(-1) is refused only where the connecting line is drawn (bar: rc 0), mlabangle(400) only where marker labels are drawn (line: rc 0)",
+   "24sep2026 (S3 batch, the ci band): alwidth_1-12, drawn with `set graphics off' in the same way; alwidth(-1) and alwidth(20000) are refused on lfitci and rarea, the types that draw an area's outline, and not on scatter or line (rc 0)"
   ]
  },
  "vocab": {
@@ -3991,6 +3992,102 @@
    "command": "twoway line mpg weight, mlabel(make) mlabangle(400)",
    "rc": 0,
    "message": ""
+  },
+  {
+   "id": "alwidth_1",
+   "option": "alwidth",
+   "value": "abc",
+   "command": "twoway lfitci mpg weight, alwidth(abc)",
+   "rc": 0,
+   "message": "(note: named style abc not found in class linewidth, default attributes used) (note: linewidth not found in scheme, default attributes used) (note: named style abc not found in class linewidth, default attributes used) (note: linewidth not found in scheme, default attributes used)"
+  },
+  {
+   "id": "alwidth_2",
+   "option": "alwidth",
+   "value": "*2",
+   "command": "twoway lfitci mpg weight, alwidth(*2)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "alwidth_3",
+   "option": "alwidth",
+   "value": "-1",
+   "command": "twoway lfitci mpg weight, alwidth(-1)",
+   "rc": 198,
+   "message": "gm_linewidth must be between 0.000 and 1.0e+04"
+  },
+  {
+   "id": "alwidth_4",
+   "option": "alwidth",
+   "value": "vvvthick",
+   "command": "twoway lfitci mpg weight, alwidth(vvvthick)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "alwidth_5",
+   "option": "alwidth",
+   "value": "2",
+   "command": "twoway lfitci mpg weight, alwidth(2)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "alwidth_6",
+   "option": "alwidth",
+   "value": "0",
+   "command": "twoway lfitci mpg weight, alwidth(0)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "alwidth_7",
+   "option": "alwidth",
+   "value": "none",
+   "command": "twoway lfitci mpg weight, alwidth(none)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "alwidth_8",
+   "option": "alwidth",
+   "value": "20000",
+   "command": "twoway lfitci mpg weight, alwidth(20000)",
+   "rc": 198,
+   "message": "gm_linewidth must be between 0.000 and 1.0e+04"
+  },
+  {
+   "id": "alwidth_9",
+   "option": "alwidth",
+   "value": "10000",
+   "command": "twoway lfitci mpg weight, alwidth(10000)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "alwidth_10",
+   "option": "alwidth",
+   "value": "-1",
+   "command": "twoway scatter mpg weight, alwidth(-1)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "alwidth_11",
+   "option": "alwidth",
+   "value": "-1",
+   "command": "twoway line mpg weight, alwidth(-1)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "alwidth_12",
+   "option": "alwidth",
+   "value": "-1",
+   "command": "twoway rarea mpg turn weight, alwidth(-1)",
+   "rc": 198,
+   "message": "gm_linewidth must be between 0.000 and 1.0e+04"
   }
  ]
 }

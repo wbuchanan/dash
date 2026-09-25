@@ -854,9 +854,10 @@ class TestKdensityRange:
         pending = _re.findall(r"_dash_pending' (\w+)\"", src[i:j])
         # The regex must actually have matched the pending list, or
         # "range not in pending" holds vacuously: `_dash_parse_plot_opts'
-        # carries 44 pending options (measured 24sep2026), among them the
+        # carries 48 pending options (measured 24sep2026; 44 before the S3
+        # batch's four fitarea options), among them the
         # genuinely-unsupported sort/text/scale, and never `range'.
-        assert len(pending) == 44, (len(pending), pending)
+        assert len(pending) == 48, (len(pending), pending)
         for really_pending in ("sort", "text", "scale"):
             assert really_pending in pending, (really_pending, pending)
         assert "range" not in pending, (

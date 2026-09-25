@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from bokeh.document import Document
-from bokeh.models import BasicTicker, Plot
+from bokeh.models import FixedTicker, Plot
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
@@ -66,25 +66,23 @@ _MODES = ("saved", "served")
 # labels and no gridline, under s1color and s1mono alike, which draw no y
 # grid by default.
 #
-# dash hands the count to Bokeh as desired_num_ticks, a suggestion as
-# twoway's is (dash.sthlp: "about N ticks, chosen over the data range"), and
-# Bokeh chooses the positions in the browser.  They are not twoway's:
-# measured in the browser on a page `dash build' saved from auto, both `#5'
-# and the pre-fix default ticker draw 15(5)40 over a y range of 10.55 to
-# 42.45, where twoway draws 10(10)40.  So what is compared with twoway here
-# is what each is asked for and what it draws beside the labels -- the
-# count, and a grid at the labels in the scheme's colour -- not the
-# positions Bokeh picks.
+# dash used to hand the count to Bokeh as desired_num_ticks, and Bokeh drew
+# 15(5)40 over a y range of 10.55 to 42.45 (the pre-fix default ticker drew
+# the same).  dash now places #N's ticks by twoway's rule over what the
+# layers draw (BUGS.md "ylabel(#N) and xlabel(#N) ticks fall where Bokeh
+# puts them", test_natscale.py), so what is compared with twoway here is
+# the labels themselves, 10 20 30 40, and the grid at them in the scheme's
+# colour.
 #
 # Mutation, run 24sep2026: with `.rstrip(",")' taken out of
 # `_dash_parse_axis_spec', test_the_count_reaches_the_axis and
-# test_the_sub_option_leaves_the_rule_alone fail in both modes
-# (desired_num_ticks 6, not 5), and so does test_nothing_is_reported_as_
+# test_the_sub_option_leaves_the_rule_alone fail in both modes (Bokeh's
+# default ticker, no FixedTicker), and so does test_nothing_is_reported_as_
 # ignored, because the reporter cc3c4ac added names the dropped `#5'.  The
 # two grid tests pass there: the defect dropped the count, not the grid.
 
-#: The count twoway records for ylabel(#5, grid) (live .gph, measured).
-_TWOWAY_SUGGESTED_TICKS = 5
+#: The labels twoway draws for it over mpg's 12 to 41 (SVG, measured).
+_TWOWAY_LABELS = [10.0, 20.0, 30.0, 40.0]
 #: The colour of the gridlines twoway draws under s1color (SVG, measured).
 _TWOWAY_S1COLOR_GRID = "#e0e0e0"
 
@@ -190,13 +188,15 @@ class TestYlabelCountWithAGridIsHonoured:
     at the labels, as twoway draws both (measured; see the note above)."""
 
     def test_the_count_reaches_the_axis(self, drawn, mode):
+        """The count places the ticks where twoway draws them for #5 over
+        12 to 41 -- 10 20 30 40 (SVG, measured) -- which dash computes by
+        twoway's rule (test_natscale.py; BUGS.md "ylabel(#N) and xlabel(#N)
+        ticks fall where Bokeh puts them").  A dropped count left Bokeh's
+        default ticker, which draws 15(5)40."""
         figs, _ = drawn[mode]
         ticker = _y_axis(figs["grid"]).ticker
-        assert isinstance(ticker, BasicTicker), type(ticker).__name__
-        assert ticker.desired_num_ticks == _TWOWAY_SUGGESTED_TICKS, (
-            "ylabel(#5, grid) asked Bokeh for %s ticks; twoway's record of "
-            "the same option suggests %d -- the count was dropped"
-            % (ticker.desired_num_ticks, _TWOWAY_SUGGESTED_TICKS))
+        assert isinstance(ticker, FixedTicker), type(ticker).__name__
+        assert list(ticker.ticks) == _TWOWAY_LABELS, list(ticker.ticks)
 
     def test_the_sub_option_leaves_the_rule_alone(self, drawn, mode):
         """``#5, grid`` asks for what ``#5`` asks for, as twoway records the
@@ -205,8 +205,7 @@ class TestYlabelCountWithAGridIsHonoured:
         with_grid = _y_axis(figs["grid"]).ticker
         without = _y_axis(figs["plain"]).ticker
         assert type(with_grid) is type(without)
-        assert with_grid.desired_num_ticks == without.desired_num_ticks == \
-            _TWOWAY_SUGGESTED_TICKS
+        assert list(with_grid.ticks) == list(without.ticks) == _TWOWAY_LABELS
 
     def test_the_grid_is_drawn_at_the_labels_in_the_schemes_colour(
             self, drawn, mode):

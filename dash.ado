@@ -232,13 +232,17 @@ program define _dash_require_mata
     local _needed _dash_check_utf8 _dash_comma_pos _dash_expand_plottype ///
         _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
-        _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
+        _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
         _dash_kpi_pctile _json_escape _dash_path_badchar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal ///
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
-        _dash_qual_rewrite _dash_qual_take _dash_qual_export ///
+        _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
         _dash_immediate _dash_say _dash_spec_types_in _dash_split_segs ///
-        _dash_text_args _dash_undrawn_plottype _dash_kernel_full
+        _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
+        _dash_unbound_cands _dash_fn_names _dash_fn_space_call _dash_rep_scan ///
+        _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
+        _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed ///
+        _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
     // alone and took the library for whole when it was there, so a library
@@ -885,6 +889,13 @@ program define _dash_parse_plot_opts, sclass
     // yoverhangs; twoway's measured minimum is xoverhang and yoverhang.
     // The text options are string asis, as in _dash_parse_graph_opts (see
     // the note there on xtitle(), ytitle() and t1title() .. r2title()).
+    // log and nolog are twoway's graph option logging, on lowess too, where
+    // -syntax- would bind them to LOgit: taken out here, by value, and
+    // handed to the catch-all as typed below (_dash_log_split).  dash read
+    // lowess mpg weight, log as logit, a different curve, and refused
+    // scatter mpg weight, log, where twoway draws both as if log were not
+    // there (BUGS.md, S1).
+    mata: _dash_log_split("0", "_dash_logw")
     syntax [, ///
         MColor(string)            Msymbol(string)           MSIze(string) ///
         MSAngle(string)           MFColor(string)           MLColor(string) ///
@@ -893,6 +904,8 @@ program define _dash_parse_plot_opts, sclass
         MALpha(string)            MARKER(string)            LColor(string) ///
         LWidth(string)            LPattern(string)          LALpha(string) ///
         FColor(string)            FIntensity(string)        FAlpha(string) ///
+        AColor(string)            ALColor(string)           ALWidth(string) ///
+        ALPattern(string) ///
         BARWidth(string)          BASE(string)              BLColor(string) ///
         BFColor(string)           JITter(string)            JSEed(string) ///
         YAXis(string)             XAXis(string)             COLORVar(string) ///
@@ -1041,14 +1054,27 @@ program define _dash_parse_plot_opts, sclass
     if `: length local mstyle' local _dash_pending `"`_dash_pending' mstyle"'
     if `: length local play' local _dash_pending `"`_dash_pending' play"'
     if `: length local pstyle' local _dash_pending `"`_dash_pending' pstyle"'
+    // fitarea_options, the look of a ci fit's band: twoway takes ac(),
+    // alc(), alw() and alp() (measured 24sep2026; al() is alstyle()).
+    // Drawn on lfitci, qfitci, lpolyci and fpfitci -- and pstyle() with
+    // them -- where _dash_fold_typed takes them off this list once the
+    // type is known; twoway accepts them on every type (rc 0), so
+    // elsewhere they are named here.
+    if `: length local acolor' local _dash_pending `"`_dash_pending' acolor"'
+    if `: length local alcolor' local _dash_pending `"`_dash_pending' alcolor"'
+    if `: length local alwidth' local _dash_pending `"`_dash_pending' alwidth"'
+    if `: length local alpattern' local _dash_pending `"`_dash_pending' alpattern"'
     if `: length local r1title' local _dash_pending `"`_dash_pending' r1title"'
     if `: length local r2title' local _dash_pending `"`_dash_pending' r2title"'
     if `: length local recast' local _dash_pending `"`_dash_pending' recast"'
     if `: length local scale' local _dash_pending `"`_dash_pending' scale"'
-    // sort and sort(varlist) are named alike, as sort(): the argument form
-    // arrives in `sort1', the name -syntax- gives it, which is Stata's
-    // plumbing and not a name the user wrote.
-    if `: length local sort' | `: length local sort1' local _dash_pending `"`_dash_pending' sort"'
+    // sort(varlist) is named as sort(): the argument form arrives in
+    // `sort1', the name -syntax- gives it, which is Stata's plumbing and not
+    // a name the user wrote.  A bare sort is not named here: dash joins the
+    // points of the connected types in the order of x, which is what sort
+    // asks twoway for, so _dash_fold_typed names it only on the other types,
+    // once the type is known.
+    if `: length local sort1' local _dash_pending `"`_dash_pending' sort"'
     if `: length local subtitle2' local _dash_pending `"`_dash_pending' subtitle2"'
     if `: length local t1title' local _dash_pending `"`_dash_pending' t1title"'
     if `: length local t2title' local _dash_pending `"`_dash_pending' t2title"'
@@ -1071,7 +1097,11 @@ program define _dash_parse_plot_opts, sclass
     // told a user who typed dash.sthlp's own example,
     //     dash scatter mpg weight, xsize(10) ysize(2)
     // that dash had ignored two options it had just applied.
-    // Whatever Stata could not match at all, via the trailing *.
+    // Whatever Stata could not match at all, via the trailing *, and the
+    // log and nolog taken out before -syntax- ran.
+    if `: length local _dash_logw' {
+        mata: st_local("options", strtrim(st_local("options") + " " + st_local("_dash_logw")))
+    }
     local _dash_unknown : copy local options
 
     sreturn local mcolor           : copy local mcolor
@@ -1095,6 +1125,10 @@ program define _dash_parse_plot_opts, sclass
     sreturn local fcolor           : copy local fcolor
     sreturn local fintensity       : copy local fintensity
     sreturn local falpha           : copy local falpha
+    sreturn local acolor           : copy local acolor
+    sreturn local alcolor          : copy local alcolor
+    sreturn local alwidth          : copy local alwidth
+    sreturn local alpattern        : copy local alpattern
     sreturn local barwidth         : copy local barwidth
     sreturn local base             : copy local base
     sreturn local blcolor          : copy local blcolor
@@ -1282,11 +1316,17 @@ program define _dash_parse_varpart_1v, sclass
 end
 
 // ================================================================
-// _dash_parse_varpart_3v   — 2 to 3 variables (range plots)
+// _dash_parse_varpart_3v   — the range plots' variables
+//
+// Any number: the count is checked by _dash_process_segment, in twoway's
+// words for each type.  max=3 answered four variables "too many variables
+// specified", where twoway says "rarea requires 3 variables: ...", and
+// min=2 refused tsrline's one variable in -syntax-'s words, where twoway
+// names the time variable (test_parser.cscript P1A-78).
 // ================================================================
 program define _dash_parse_varpart_3v, sclass
     version 16.0
-    syntax varlist(min=2 max=3) [if] [in] [aweight fweight pweight iweight]
+    syntax varlist [if] [in] [aweight fweight pweight iweight]
     // The weight type and its expression are handed to _dash_process_segment,
     // which honours, names or refuses them by plot type (WP-18).  syntax
     // leaves the expression in `exp' WITH its leading `= ' (measured:
@@ -1307,11 +1347,15 @@ program define _dash_parse_varpart_3v, sclass
 end
 
 // ================================================================
-// _dash_parse_varpart_4v   — exactly 4 variables (pc* plots)
+// _dash_parse_varpart_4v   — the pc* plots' variables
+//
+// Any number, checked by _dash_process_segment in twoway's words: "pcspike
+// requires 4 variables: mpg weight", where -syntax- said "too few
+// variables specified" (test_parser.cscript P1A-78).
 // ================================================================
 program define _dash_parse_varpart_4v, sclass
     version 16.0
-    syntax varlist(min=4 max=4) [if] [in] [aweight fweight pweight iweight]
+    syntax varlist [if] [in] [aweight fweight pweight iweight]
     // The weight type and its expression are handed to _dash_process_segment,
     // which honours, names or refuses them by plot type (WP-18).  syntax
     // leaves the expression in `exp' WITH its leading `= ' (measured:
@@ -1441,6 +1485,19 @@ program define _dash_fold_bw, sclass
     args ptype
     _dash_fold_cl "`ptype'"
     _dash_fold_mlab "`ptype'"
+    // A kernel written as an option of its own -- lpoly mpg weight,
+    // gaussian: twoway's old syntax -- is kernel(gaussian) on lpoly,
+    // lpolyci and kdensity, from each shortest spelling (gau, ep, epan2 ..)
+    // to the full name (_dash_kernel_flag; measured 24sep2026, the serset
+    // of kernel(<name>) each time).  It fell to the catch-all, was named in
+    // the note, and the default epanechnikov was drawn.  Two kernels, or one
+    // beside kernel(), were refused by _dash_opts_repeats before this; on
+    // any other type the word stays where it is.  Read by value.
+    mata: _dash_kernel_flag(st_global("s(_unknown)"), st_local("ptype"))
+    if `: length local _kf_name' {
+        sreturn local kernel : copy local _kf_name
+        sreturn local _unknown : copy local _kf_rest
+    }
     // kdensity: width(#) is twoway's own synonym for bwidth(#)
     // (twoway_kdensity_parse.class: Width(real 0) BWidth(real 0), the two
     // together "options width() and bwidth() may not be combined", r(198);
@@ -1637,6 +1694,32 @@ program define _dash_fold_typed, sclass
             if `_ft' local named "`named' `o'"
         }
     }
+    // A bare sort: twoway joins a connected type's points in the order of x
+    // with it, and dash always joins line, connected, area, tsline and the
+    // range line and area types in that order (map_line, map_area,
+    // map_rline, map_rarea and the types drawn through them), so there it is
+    // what dash draws and is not named.  On every other type it is named, as
+    // it was.  sort(varlist) is named by _dash_parse_plot_opts on every type.
+    local sort_types "line connected area tsline rline rarea rconnected tsrline"
+    mata: st_local("_ft", strofreal(st_global("s(sort)") != ""))
+    if `_ft' & !`: list ptype in sort_types' {
+        mata: st_local("_ft", strofreal(strpos(" " + st_global("s(_pending)") + " ", " sort ") > 0))
+        if !`_ft' local named "`named' sort"
+    }
+    // pstyle() and the fitarea options acolor(), alcolor(), alwidth() and
+    // alpattern() are drawn on a ci fit -- its band in the style pstyle()
+    // names, and in the scheme's ci style otherwise, as twoway draws it
+    // (BUGS.md, S3, "A ci band is filled in its line's colour, where Stata
+    // fills it in pstyle ci"; measured 24sep2026) -- so on lfitci, qfitci,
+    // lpolyci and fpfitci they come off the list _dash_parse_plot_opts
+    // named them on.  The list holds option names only, never values.
+    local ci_types "lfitci qfitci lpolyci fpfitci"
+    if `: list ptype in ci_types' {
+        local ci_drawn "pstyle acolor alcolor alwidth alpattern"
+        mata: st_local("_ftp", st_global("s(_pending)"))
+        local _ftk : list _ftp - ci_drawn
+        if "`_ftk'" != "`_ftp'" sreturn local _pending `"`_ftk'"'
+    }
     if "`named'" != "" sreturn local _pending `"`s(_pending)'`named'"'
 end
 
@@ -1785,7 +1868,20 @@ program define _dash_option_rules
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
         colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2 ///
         clwidth=style,0,10000 ///
+        alwidth=style,0,10000@lfitci|qfitci|lpolyci|fpfitci|area|bar|spike|dropline|histogram|rarea|rbar|rspike|rcap|rcapsym|rline|rconnected|tsrline|pcspike|pcarrow|pcbarrow|pcscatter|pccapsym|pci ///
         mlabangle=style,-360,360@scatter|connected|bar|dot|dropline|rcapsym|rconnected|rscatter|pcscatter|pccapsym|scatteri
+    // alwidth(), the outline of a ci fit's band, has them too: measured
+    // 24sep2026, `twoway lfitci mpg weight, alwidth(-1)' and alwidth(20000)
+    // are "gm_linewidth must be between 0.000 and 1.0e+04", r(198), and
+    // alwidth(0) and alwidth(10000) draw (fixtures/value_truth.json
+    // alwidth_1-12).  Drawn, twoway refuses alwidth(-1) on exactly the
+    // types listed -- every type with an area or a line style of its own
+    // besides the connecting line -- and draws it on line, connected, the
+    // fits and smooths, kdensity, function, tsline, scatter, dot, rscatter
+    // and scatteri (measured per type 24sep2026; test_ci_band_options
+    // .cscript asks twoway again).  Refused where twoway refuses it; dash
+    // draws it on the four ci types and names it on every other
+    // (_dash_fold_typed).
     // WP-22.  clwidth() has lwidth()'s bounds -- twoway refuses clwidth(-1)
     // and lwidth(-1) alike, "gm_linewidth must be between 0.000 and
     // 1.0e+04", r(198) -- but only where it draws the connecting line;
@@ -2768,6 +2864,7 @@ program define _dash_plot_opts_to_json, rclass
                    blabel horizontal vertical sort range colorlist jitterseed ///
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///
+                   acolor alcolor alwidth alpattern ///
                    weight wexp {
         // Read by value and measured, never copied or compared in quotes: a
         // copy through them expanded a macro in the value again --
@@ -2830,6 +2927,221 @@ program define _dash_plottype_families
     c_local _pt_literal "scatteri pci pcarrowi function"
     c_local _pt_imm     "scatteri pci pcarrowi"
     c_local _pt_ts      "tsline tsrline"
+    // The fits and smoothers: one y and one x, as twoway takes them.
+    // twoway names the variables when it refuses more for all but the
+    // three in _pt_onefit_bare (test_parser.cscript P1A-79).
+    c_local _pt_onefit  "lfit qfit lfitci qfitci fpfit fpfitci mspline mband lowess lpoly lpolyci"
+    c_local _pt_onefit_bare "lowess lpoly lpolyci"
+end
+
+// ================================================================
+// _dash_by_parts <string scalar>
+//
+// A by() value, validated (its variables written out), read by value from
+// the string scalar: c_local _by_vars gets the variables before the first
+// comma outside parentheses, and _by_miss 1 when the sub-options give
+// missing -- twoway's MISSing, abbreviated to miss at least
+// (bygraph_g.class) -- 0 otherwise, and _by_total 1 when they give total
+// (TOTal: tot at least).  A parenthesised sub-option's text,
+// title("a miss"), is not read for either.  The value is never put inside
+// quotes or on a command line.
+// ================================================================
+program define _dash_by_parts
+    version 16.0
+    args V
+    local len = strlen(scalar(`V'))
+    local depth = 0
+    local cut = 0
+    // As the byvarlist validator reads it: the text is compared through
+    // the scalar, never through a macro.
+    forvalues i = 1/`len' {
+        if substr(scalar(`V'), `i', 1) == "(" {
+            local depth = `depth' + 1
+        }
+        else if substr(scalar(`V'), `i', 1) == ")" {
+            local depth = `depth' - 1
+        }
+        else if substr(scalar(`V'), `i', 1) == "," & `depth' == 0 {
+            local cut = `i'
+            continue, break
+        }
+    }
+    if `cut' > 0 {
+        mata: st_local("_bv", strtrim(substr(st_strscalar(st_local("V")), 1, `cut' - 1)))
+        mata: st_local("_bt", substr(st_strscalar(st_local("V")), `cut' + 1, .))
+    }
+    else {
+        mata: st_local("_bv", strtrim(st_strscalar(st_local("V"))))
+        local _bt ""
+    }
+    // Parenthesised text is removed, innermost first, before the words are
+    // read; each pass removes one pair, so the loop ends.
+    mata: _dash_bt = st_local("_bt"); while (ustrregexm(_dash_bt, "\([^()]*\)")) _dash_bt = ustrregexrf(_dash_bt, "\([^()]*\)", " "); st_local("_bm", strofreal(ustrregexm(_dash_bt, "(^|[ ,])miss(i|in|ing)?($|[ ,])"))); st_local("_btot", strofreal(ustrregexm(_dash_bt, "(^|[ ,])tot(a|al)?($|[ ,])")))
+    mata: mata drop _dash_bt
+    c_local _by_vars `_bv'
+    c_local _by_miss `_bm'
+    c_local _by_total `_btot'
+end
+
+// ================================================================
+// _dash_qual_mark <target> <value> <ifscalar> <inscalar> [varlist]
+//
+// replace target = value for the rows the if and the in select -- every
+// row when both are empty -- evaluated with the data sorted, stably, on
+// varlist when one is given: the order twoway evaluates a by() graph's
+// qualifiers in (bygraph_g.class, `bysort varlist (sortedby obsnum)';
+// test_qualifier_in_stata.cscript QS-16..).  The if and the in are read
+// by value from the two string scalars, and the if is put inside the
+// parentheses -syntax- proved it cannot leave, never expanded again.
+// target and value are variable names (value may be 1), and varlist the
+// by() variables _dash_by_parts read from the validated by().
+// sortpreserve gives the data their order back; a sort marks nothing
+// changed.
+// ================================================================
+program define _dash_qual_mark, sortpreserve
+    version 16.0
+    gettoken target 0 : 0
+    gettoken value 0 : 0
+    gettoken sif 0 : 0
+    gettoken sin order : 0
+    local order : list retokenize order
+    mata: st_local("_qx", st_strscalar(st_local("sif")))
+    mata: st_local("_qn", st_strscalar(st_local("sin")))
+    if "`order'" != "" {
+        tempvar _obs
+        quietly generate double `_obs' = _n
+        sort `order' `_obs'
+    }
+    local q ""
+    // Blocks, never a one-line if: Stata expands a one-line if's command
+    // again (P1A-83).
+    if `: length local _qx' {
+        local q `"if (`macval(_qx)')"'
+    }
+    if `: length local _qn' {
+        local q `"`macval(q)' in `macval(_qn)'"'
+    }
+    quietly replace `target' = `value' `macval(q)'
+end
+
+// ================================================================
+// _dash_by_panels varlist, panel(varname) [missing total check(varlist)
+//                 rules(string)]
+//
+// The panels of a by(varlist) graph, as twoway draws them (bygraph_g.class
+// RunGraph): the groups of the by() variables -- missing values dropped
+// unless missing is given -- holding a row where panel() is 1, in sort
+// order.  check() names, plot by plot, a 0/1 variable marking each plot's
+// sample, and rules() its rule, one word each: R, the command stops when
+// the sample has no row in a panel; D0, the panel is left out when it has
+// one row or none; D1 and N1, when it has exactly one (N1: lfit and lfitci,
+// which print regress's note as they stop).  In each panel the first plot
+// whose rule applies decides.  total adds by()'s Total panel, after the
+// groups, over the rows of every group and decided as a group is (it
+// exists when a group does).  Returns r(n), the rows in panels (0: no
+// panel); r(refuse), the place in check() of the plot that stops the
+// command in the first panel where one does, or 0; r(kept), the panels
+// drawn; r(d1note), 1 when an N1 plot left a panel out.  sortpreserve: the
+// data keep their order.  tpanel() and tcheck() are the Total panel's
+// panel() and check(), evaluated in the data's order where the groups'
+// are evaluated sorted on the by() variables, as twoway evaluates each
+// (_dash_qual_mark); the Total panel is drawn when tpanel() selects a row.
+// ================================================================
+program define _dash_by_panels, rclass sortpreserve
+    version 16.0
+    syntax varlist(min=1), PANEL(varname) [MISSing TOTal CHECK(varlist) ///
+        RULES(string) TPANEL(varname) TCHECK(varlist)]
+    tempvar p tp anyp grp dec deck cnt first
+    quietly gen byte `p' = `panel' == 1
+    if "`missing'" == "" markout `p' `varlist', strok
+    // The Total panel's rows and samples: tpanel() and tcheck(), which
+    // the caller evaluated in the data's order as twoway's Total panel
+    // evaluates them (bygraph_g.class: bysort one (sortedby obsnum)), or
+    // panel() and check().
+    if "`tpanel'" == "" local tpanel `panel'
+    if "`tcheck'" == "" local tcheck `check'
+    quietly gen byte `tp' = 0
+    if "`total'" != "" {
+        quietly replace `tp' = `tpanel' == 1
+        if "`missing'" == "" markout `tp' `varlist', strok
+    }
+    quietly count if `tp'
+    local ntp = r(N)
+    quietly count if `p' | `tp'
+    return scalar n = r(N)
+    return scalar refuse = 0
+    return scalar kept = 0
+    return scalar d1note = 0
+    if r(N) == 0 exit
+    quietly bysort `varlist': egen byte `anyp' = max(`p')
+    quietly by `varlist': gen long `grp' = (_n == 1) & `anyp'
+    quietly replace `grp' = sum(`grp')
+    quietly gen byte `dec' = 0
+    quietly gen int `deck' = 0
+    local k = 0
+    foreach c of local check {
+        local ++k
+        local rule : word `k' of `rules'
+        capture drop `cnt'
+        quietly by `varlist': egen double `cnt' = total(`c' == 1)
+        if "`rule'" == "R"       local ev "2 * (`cnt' == 0)"
+        else if "`rule'" == "D0" local ev "(`cnt' <= 1)"
+        else if inlist("`rule'", "D1", "N1") local ev "(`cnt' == 1)"
+        else continue
+        quietly replace `deck' = `k' if `dec' == 0 & `ev' > 0
+        quietly replace `dec' = `ev' if `dec' == 0
+    }
+    // total: the Total panel, drawn after the groups (bygraph_g.class),
+    // holds the rows of every group -- `p', whose by() values are missing
+    // only under missing -- and is decided as a group is: tdec and tdeck
+    // are its `dec' and `deck'.  Each plot's sample lies inside the rows
+    // that make the panels, so it is counted over `p'.
+    local tdec 0
+    local tdeck 0
+    // A Total panel over no row is not drawn: twoway's RunGraph counts the
+    // graph's qualifier over it and leaves it out.
+    if "`total'" != "" & `ntp' == 0 local tdec 1
+    if "`total'" != "" & `ntp' > 0 {
+        local k = 0
+        foreach c of local tcheck {
+            local ++k
+            local rule : word `k' of `rules'
+            quietly count if `c' == 1 & `tp'
+            local tc = r(N)
+            if "`rule'" == "R"       local ev = 2 * (`tc' == 0)
+            else if "`rule'" == "D0" local ev = (`tc' <= 1)
+            else if inlist("`rule'", "D1", "N1") local ev = (`tc' == 1)
+            else continue
+            if `ev' > 0 {
+                local tdec `ev'
+                local tdeck `k'
+                continue, break
+            }
+        }
+    }
+    // The first panel, in by() order, that stops the command; the Total
+    // panel comes last.
+    quietly summarize `grp' if `anyp' & `dec' == 2, meanonly
+    if r(N) > 0 {
+        local g = r(min)
+        quietly summarize `deck' if `anyp' & `grp' == `g', meanonly
+        return scalar refuse = r(min)
+        exit
+    }
+    if `tdec' == 2 {
+        return scalar refuse = `tdeck'
+        exit
+    }
+    quietly by `varlist': gen byte `first' = (_n == 1) & `anyp'
+    quietly count if `first' & `dec' != 1
+    return scalar kept = r(N) + ("`total'" != "" & `tdec' != 1)
+    local k = 0
+    foreach c of local check {
+        local ++k
+        if "`: word `k' of `rules''" != "N1" continue
+        quietly count if `first' & `dec' == 1 & `deck' == `k'
+        if r(N) > 0 | (`tdec' == 1 & `tdeck' == `k') return scalar d1note = 1
+    }
 end
 
 // ================================================================
@@ -2998,6 +3310,23 @@ program define _dash_process_segment, rclass
     else if `: list ptype in _pt_range' {
         _dash_parse_varpart_3v `macval(varpart)'
         local vl = "`s(varlist)'"
+        local nv : word count `vl'
+        // twoway's count, measured 24sep2026 with the console binary: one
+        // variable is "too few variables specified", r(102); two are
+        // "rscatter requires 3 variables: mpg weight", r(102), and four or
+        // more the same words, r(103) -- for every range type in each
+        // form, one-line, grouped or after ||.  With two, dash registered
+        // the layer with no x and the render stopped in a KeyError
+        // traceback, r(7102) (rspike drew nothing, rc 0): BUGS.md, S2.
+        // tsrline takes two, and is counted below, after tsset.
+        if "`ptype'" != "tsrline" & `nv' != 3 {
+            if `nv' == 1 {
+                display as error "too few variables specified"
+                exit 102
+            }
+            mata: _dash_say("err", "`ptype' requires 3 variables: ", st_local("vl"), "")
+            exit cond(`nv' < 3, 102, 103)
+        }
         local yvar1 = word("`vl'", 1)
         local yvar2 = word("`vl'", 2)
         local xvar  = word("`vl'", 3)
@@ -3016,11 +3345,13 @@ program define _dash_process_segment, rclass
                     "tsset your data first, as twoway tsrline does."
                 exit(111)
             }
-            if "`xvar'" != "" {
-                display as error "dash: tsrline takes two variables, drawn " ///
-                    "against the time variable tsset set, as in twoway " ///
-                    "(got: `vl')"
-                exit(103)
+            // twoway draws `rline y1 y2 t' and counts that: `tsrline
+            // mpg' is "rline requires 3 variables: mpg t", r(102), and
+            // three are the same words, r(103) (measured 24sep2026).
+            if `nv' != 2 {
+                mata: _dash_say("err", "rline requires 3 variables: ", ///
+                    st_local("vl") + " " + st_global("_dta[_TStvar]"), "")
+                exit cond(`nv' < 2, 102, 103)
             }
             local xvar `"`_dta[_TStvar]'"'
         }
@@ -3030,6 +3361,18 @@ program define _dash_process_segment, rclass
     else if `: list ptype in _pt_pc' {
         _dash_parse_varpart_4v `macval(varpart)'
         local vl = "`s(varlist)'"
+        local nv : word count `vl'
+        // twoway: one variable "too few variables specified", r(102); two
+        // or three "pcspike requires 4 variables: mpg weight", r(102);
+        // five or more the same words, r(103) (measured 24sep2026).
+        if `nv' != 4 {
+            if `nv' == 1 {
+                display as error "too few variables specified"
+                exit 102
+            }
+            mata: _dash_say("err", "`ptype' requires 4 variables: ", st_local("vl"), "")
+            exit cond(`nv' < 4, 102, 103)
+        }
         local y1var = word("`vl'", 1)
         local x1var = word("`vl'", 2)
         local y2var = word("`vl'", 3)
@@ -3061,6 +3404,9 @@ program define _dash_process_segment, rclass
                 display as error "nothing found where expression expected"
                 exit 111
             }
+            // A function Stata does not have is refused as twoway refuses
+            // it, before anything is registered.
+            _dash_fn_refuse `"`macval(expr)'"'
         }
         else {
             mata: st_local("vals", st_global("s(vals)"))
@@ -3185,6 +3531,20 @@ program define _dash_process_segment, rclass
             }
             local yvarlist "`vl'"
         }
+        else if `nv' >= 3 & `: list ptype in _pt_onefit' {
+            // A fit or smoother takes one y and one x.  twoway, measured
+            // 24sep2026: "too many variables specified: mpg weight price",
+            // r(103), on lfit qfit lfitci qfitci fpfit fpfitci mspline
+            // mband; lowess, lpoly and lpolyci say it without the list.
+            // dash drew one fit per y variable, rc 0 (P1A-79).
+            if `: list ptype in _pt_onefit_bare' {
+                display as error "too many variables specified"
+            }
+            else {
+                mata: _dash_say("err", "too many variables specified: ", st_local("vl"), "")
+            }
+            exit 103
+        }
         else if `nv' >= 2 {
             local xvar = word("`vl'", `nv')
             local nyv = `nv' - 1
@@ -3215,8 +3575,10 @@ program define _dash_process_segment, rclass
             // "too few variables specified" r(102).  dash registered
             // such a segment with rc 0 and the build then died in
             // Python on the empty x column, r(7102).  Refused here,
-            // before any JSON is written.
-            display as error "dash: `ptype' requires a y and an x variable (got: `vl')"
+            // before any JSON is written, in twoway's words: dash said
+            // "dash: scatter requires a y and an x variable (got: mpg)"
+            // (BUGS.md, S3 batch; test_parser.cscript P1A-82).
+            display as error "too few variables specified"
             exit(102)
         }
         mata: st_local("if_cl", st_global("s(if_clause)"))
@@ -3414,16 +3776,40 @@ program define _dash_process_segment, rclass
     }
 
     sreturn clear
+    local _rp_gund_out ""
     // A weight-only segment goes through the parser and the validation
     // too, so the weight keys are in s() for the JSON writer and the flag
     // rules run on every segment; the parser takes an empty option list.
     if `: length local opts_raw' | `"`_seg_weight'"' != "" {
         _dash_parse_plot_opts , `macval(opts_raw)'
+        // An option it declares whose value -syntax- could not bind:
+        // refused as twoway refuses it, not named as unsupported.
+        _dash_refuse_unbound _dash_parse_plot_opts `"`macval(opts_raw)'"'
         // A second name() in this option list: -syntax- binds the first to
         // NAMe() and leaves any other to the catch-all, which is read by
         // value -- it is the user's text.
         mata: st_local("_seg_name2", strofreal(_dash_has_name_opt(st_global("s(_unknown)"))))
         if `_seg_name2' _dash_refuse_second_name
+        // An option written in upper case -- ATOBS, MCOLOR(red) -- is no
+        // option twoway takes: refused as twoway refuses it, naming the
+        // first word it does not take (_dash_refuse_foreign).
+        _dash_refuse_foreign _dash_parse_plot_opts `ptype' `"`macval(opts_raw)'"'
+        // An option given more than once: read as twoway reads it -- the
+        // last copy, the copies merged, or refused (_dash_opts_repeats).
+        _dash_opts_repeats _dash_parse_plot_opts `ptype' `"`macval(opts_raw)'"'
+        // lowess's logit, or its off form, on another plot type: refused
+        // naming the word as typed, as twoway names it -- scatter mpg
+        // weight, lo is "option lo not allowed", r(198) -- where the flag
+        // rule below named logit whatever was typed, and nolo, nologi and
+        // nologit were taken in silence.  log and nolog are logging.
+        if "`ptype'" != "lowess" {
+            mata: st_local("_lt_typed", _dash_logit_typed(st_local("opts_raw")))
+            if `: length local _lt_typed' {
+                mata: _dash_say("err", "option ", st_local("_lt_typed"), " not allowed")
+                display as error "      logit is an option of lowess alone; log is twoway's graph option logging."
+                exit 198
+            }
+        }
         _dash_fold_bw "`ptype'"
         if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' {
             _dash_seg_weight_s "`_seg_weight'" "`_seg_wexp'"
@@ -3451,6 +3837,91 @@ program define _dash_process_segment, rclass
         }
     }
 
+    // ---- A sample twoway's statistical command cannot draw ----
+    // Measured 24sep2026 with the console binary, on no observations, on
+    // a sample the plot's if/in or the graph's qualifier empties, on one
+    // observation, and on samples missing values and weights empty
+    // (test_parser.cscript P1A-80; BUGS.md, S3):
+    //   histogram  _N == 0: "observation numbers out of range", r(198),
+    //              whatever the qualifier or option; a sample emptied by
+    //              a qualifier or by missing values is drawn, rc 0
+    //   lpoly(ci)  none in the sample: "no observations", r(2000); one:
+    //              "insufficient observations", r(2001)
+    //   lfit(ci)   one: "(note:  regress could not fit model)", then
+    //              "insufficient observations", r(2001)
+    //   kdensity   one: "insufficient observations", r(2001)
+    //   fpfit(ci)  none the if and in select: "(note:  fracpoly could not
+    //              fit model)", then "observation numbers out of range",
+    //              r(198); emptied by missing values, the note, rc 0
+    //   mspline,   none the if and in select, and no bands(): "bands must
+    //   mband      be between 1 and 200", r(198)
+    // The sample is _psq -- the plot's if and in and the graph's
+    // qualifier -- and, where it is counted, the rows whose variables are
+    // not missing and, weighted, whose weight is above zero (a zero
+    // fweight or a missing aweight leaves lpoly "no observations").  dash
+    // registered each and drew an empty layer, rc 0.  What twoway draws
+    // with a note -- lfit on none, qfit, fpfit on one -- the renderer
+    // notes (GlyphMapper._mark_unfit).  Under by() twoway answers panel by
+    // panel -- lfit with one car in a panel notes it and leaves the panel
+    // out, rc 0 -- and _dash_plot answers it so, once the graph's by() is
+    // known (P1A-83).  The qualifier is run as
+    // -syntax- read it, by value (macval), once per count.
+    mata: st_local("_ss_bands", st_global("s(bands)"))
+    local _pt_fpfam "fpfit fpfitci"
+    local _pt_bands "mspline mband"
+    local _pt_lpfam "lpoly lpolyci"
+    local _ss_types "histogram lpoly lpolyci lfit lfitci kdensity fpfit fpfitci mspline mband"
+    mata: st_local("_ss_by", st_global("s(g_by)") + st_global("dash__g_by"))
+    if `: list ptype in _ss_types' & !`: length local _ss_by' {
+        local _ss_ifin ""
+        if `: length local _ps_in' {
+            local _ss_ifin `"in `macval(_ps_in)'"'
+        }
+        if "`ptype'" == "histogram" {
+            if _N == 0 {
+                display as error "observation numbers out of range"
+                exit 198
+            }
+        }
+        else if `: list ptype in _pt_fpfam' | ///
+            (`: list ptype in _pt_bands' & !`: length local _ss_bands') {
+            quietly count `macval(_psq)'
+            if r(N) == 0 {
+                if `: list ptype in _pt_fpfam' {
+                    display as text "(note:  fracpoly could not fit model)"
+                    display as error "observation numbers out of range"
+                }
+                else {
+                    display as error "bands must be between 1 and 200"
+                }
+                exit 198
+            }
+        }
+        else if !`: list ptype in _pt_bands' & !`: list ptype in _pt_fpfam' {
+            local _ss_c "!missing(`yvar')"
+            if "`ptype'" != "kdensity" local _ss_c "!missing(`yvar', `xvar')"
+            if `"`_seg_weight'"' != "" {
+                local _ss_c "`_ss_c' & !missing(`_seg_wexp') & `_seg_wexp' > 0"
+            }
+            if `: length local _ps_if' {
+                local _ss_c `"`_ss_c' & `macval(_ps_if)'"'
+            }
+            quietly count if `macval(_ss_c)' `macval(_ss_ifin)'
+            local _ss_n = r(N)
+            if `_ss_n' == 0 & `: list ptype in _pt_lpfam' {
+                display as error "no observations"
+                exit 2000
+            }
+            if `_ss_n' == 1 {
+                if "`ptype'" == "lfit" | "`ptype'" == "lfitci" {
+                    display as text "(note:  regress could not fit model)"
+                }
+                display as error "insufficient observations"
+                exit 2001
+            }
+        }
+    }
+
     // Accumulate this segment's unsupported options so _dash_plot can report
     // them once for the whole command rather than once per plot segment.
     // c_local cannot read the caller's local, so hand back only THIS
@@ -3462,13 +3933,21 @@ program define _dash_process_segment, rclass
     if `"`_seg_weight'"' != "" & !`: list ptype in _wt_honoured' local _seg_wtok `" [`_seg_weight']"'
     mata: st_local("_seg_ign", st_global("s(_pending)") + " " + st_global("s(_unknown)") + st_local("_seg_wtok"))
     c_local _seg_ignored_out : copy local _seg_ign
+    // The graph-wide options dash does not declare that this segment gave
+    // (clegend(), pcycle(), notitling, ...): twoway takes each once from
+    // the whole command, so _dash_plot counts them across segments.
+    c_local _seg_gund_out : copy local _rp_gund_out
     // Whether this segment gave name(): _dash_plot counts them across the
     // command and refuses a second (_dash_refuse_second_name).
     mata: st_local("_seg_named", strofreal(st_global("s(g_name)") != ""))
     c_local _seg_named_out `_seg_named'
 
-    // Accumulate graph-level options found in this segment into g_* locals
-    // (these live in _dash_plot's frame, not here — use c_local to propagate)
+    // Hand the graph-level options found in this segment to _dash_plot as
+    // _sg_* locals (they live in its frame, not here -- c_local propagates
+    // them); _dash_plot merges each into its g_* accumulator as twoway
+    // merges a repeated option (_dash_rep_merge).  They were c_local'ed
+    // over the accumulator, so a later group's legend(label(2 "B")) threw
+    // away an earlier group's legend(label(1 "A")), which twoway keeps.
     foreach gkey in title subtitle note caption name saving xtitle ytitle xlabel ///
             ylabel xline yline legend by xscale yscale aspectratio scheme ///
             plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
@@ -3478,7 +3957,7 @@ program define _dash_process_segment, rclass
             subtitle2 nodraw play replace {
         mata: st_local("gval", st_global("s(g_" + st_local("gkey") + ")"))
         if `: length local gval' {
-            c_local g_`gkey' : copy local gval
+            c_local _sg_`gkey' : copy local gval
         }
     }
 
@@ -3562,6 +4041,19 @@ program define _dash_process_segment, rclass
     // How many plot objects seg_json holds, for _dash_plot's running total
     // against the plot limit (WP-19).
     c_local _seg_nplots_out `_nyv'
+    // The plot's own if and in, as -syntax- read them (abbreviations
+    // written out), and whether it gave bands(): _dash_plot answers a by()
+    // graph's panels from them once every segment, and the graph's by(),
+    // is known (_dash_by_refuse).
+    c_local _seg_if_out : copy local if_expr
+    c_local _seg_in_out : copy local in_expr
+    c_local _seg_bands_out = `: length local _ss_bands' > 0
+    // The plotted variables and the weight's, which a panel's sample
+    // leaves out when missing (and a weight not above zero).
+    c_local _seg_vars_out `yvar' `xvar'
+    local _seg_wv ""
+    if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' local _seg_wv `_seg_wexp'
+    c_local _seg_wvar_out `_seg_wv'
 end
 
 
@@ -3751,6 +4243,10 @@ end
 // the data now in memory (a variable dropped since the graph was
 // registered) is refused with Stata's own error, as twoway refuses it, and
 // nothing is left behind.
+//
+// A by() graph's qualifier that can depend on the order of the rows is
+// evaluated in the order twoway evaluates it, sorted on the by()
+// variables (_dash_qual_gen_by, below; _dash_qual_rewrite).
 // ================================================================
 program define _dash_qual_gen
     version 16.0
@@ -3768,6 +4264,12 @@ program define _dash_qual_gen
     mata: _dash_qual_export()
     local made ""
     forvalues k = 1/`_dq_n' {
+        quietly generate byte __dashq`k' = 0
+        local made `made' __dashq`k'
+    }
+    // The data's own order: every column no by() graph sorts.
+    forvalues k = 1/`_dq_n' {
+        if `: length local _dq_by_`k'' continue
         local v "__dashq`k'"
         local _qx : copy local _dq_if_`k'
         local _qn : copy local _dq_in_`k'
@@ -3775,8 +4277,6 @@ program define _dash_qual_gen
         if `: length local _qn' {
             local _qr "in `_qn'"
         }
-        quietly generate byte `v' = 0
-        local made `made' `v'
         if `: length local _qx' {
             capture noisily quietly replace `v' = 1 if (`macval(_qx)') `_qr'
         }
@@ -3792,7 +4292,77 @@ program define _dash_qual_gen
             exit `rc'
         }
     }
+    // A by() graph's columns, in its by() order: once per distinct order,
+    // each column evaluated once (_dash_qual_gen_by).
+    local _dq_nord = 0
+    mata: _dash_qual_orders()
+    forvalues j = 1/`_dq_nord' {
+        capture noisily _dash_qual_gen_by "`cmdname'" `_dq_ord_`j''
+        local rc = _rc
+        if `rc' {
+            drop `made'
+            exit `rc'
+        }
+    }
     c_local _dash_qual_vars "`made'"
+end
+
+// ================================================================
+// _dash_qual_gen_by <cmdname> <varlist>  -- the columns of one by() order
+//
+// Each __dashq<k> _dash_qual_export gives varlist as its order
+// (_dash_qual_by_of named the variables, each a Stata name) is evaluated
+// with the data sorted as twoway sorts a by() graph's: bygraph_g.class
+// runs `bysort varlist (sortedby obsnum)', a stable sort on the by()
+// variables -- ties keep the data's order, missing values sort last --
+// and every plot's if and in, and the graph's, are evaluated once over
+// the whole sorted data, _n never restarting within a group (measured
+// 24sep2026 from each panel's serset; test_qualifier_in_stata.cscript
+// QS-16..).  Only the by() variables the data hold are sorted on: the
+// renderers facet on those alone.  sortpreserve gives the data their
+// order back; a sort marks nothing changed.  The if is read by value, as
+// in _dash_qual_gen, and each column is evaluated once.
+// ================================================================
+program define _dash_qual_gen_by, sortpreserve
+    version 16.0
+    gettoken cmdname order : 0
+    local order : list retokenize order
+    local _dq_n = 0
+    mata: _dash_qual_export()
+    local _sv ""
+    foreach _b of local order {
+        capture confirm variable `_b', exact
+        if _rc == 0 local _sv `_sv' `_b'
+    }
+    if "`_sv'" != "" {
+        tempvar _obs
+        quietly generate double `_obs' = _n
+        sort `_sv' `_obs'
+    }
+    forvalues k = 1/`_dq_n' {
+        local _o : copy local _dq_by_`k'
+        if !`: list _o == order' continue
+        local v "__dashq`k'"
+        local _qx : copy local _dq_if_`k'
+        local _qn : copy local _dq_in_`k'
+        local _qr ""
+        if `: length local _qn' {
+            local _qr "in `_qn'"
+        }
+        if `: length local _qx' {
+            capture noisily quietly replace `v' = 1 if (`macval(_qx)') `_qr'
+        }
+        else {
+            capture noisily quietly replace `v' = 1 `_qr'
+        }
+        local rc = _rc
+        if `rc' {
+            mata: _dash_say("err", "`cmdname': Stata cannot evaluate the qualifier ", ///
+                strtrim((st_local("_qx") != "" ? "if " + st_local("_qx") : "") + " " + st_local("_qr")), ///
+                " against the data in memory.")
+            exit `rc'
+        }
+    }
 end
 
 // ================================================================
@@ -3901,6 +4471,11 @@ program define _dash_plot
     // -- empty when there is no qualifier -- and dropped after the loop.
     mata: st_global("dash__gq_if", st_local("_gq_if"))
     mata: st_global("dash__gq_in", st_local("_gq_in"))
+    // by() written after the plot groups' comma is the graph's: a plot's
+    // sample is then counted panel by panel, which _dash_process_segment
+    // leaves to the renderer (P1A-80).  Set below, once that comma's
+    // options are read.
+    global dash__g_by ""
 
     // ---- Initialise graph-level option accumulators ----
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
@@ -3914,12 +4489,25 @@ program define _dash_plot
     }
 
     // ---- Parse graph-level opts from paren-mode suffix (if any) ----
+    // _gund_acc: the graph-wide options dash does not declare given so far
+    // (_dash_rep_und_scan's words), which twoway takes once from the whole
+    // command -- after the comma, in any plot group or || segment.
+    local _gund_acc ""
+    local _rp_gund_out ""
     if `: length local gopts_raw' {
         _dash_parse_graph_opts , `macval(gopts_raw)'
+        _dash_refuse_unbound _dash_parse_graph_opts `"`macval(gopts_raw)'"'
         // A second name() in the options after the comma, and whether they
         // gave one at all: a group's name() is then a second one too.
         mata: st_local("_g_name2", strofreal(_dash_has_name_opt(st_global("s(_unknown)"))))
         if `_g_name2' _dash_refuse_second_name
+        // A plot option after the comma -- (lfit mpg weight), atobs -- or
+        // an option in upper case: refused as twoway refuses it, even once,
+        // naming the first word it does not take (_dash_refuse_foreign).
+        _dash_refuse_foreign _dash_parse_graph_opts - `"`macval(gopts_raw)'"'
+        // An option given twice after the comma, read as twoway reads it.
+        _dash_opts_repeats _dash_parse_graph_opts - `"`macval(gopts_raw)'"'
+        local _gund_acc : copy local _rp_gund_out
         mata: st_local("_g_names_n", strofreal(st_global("s(name)") != ""))
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
@@ -3930,14 +4518,13 @@ program define _dash_plot
               subtitle2 nodraw play replace {
             mata: st_local("_gv", st_global("s(" + st_local("gk") + ")"))
             if `: length local _gv' {
-                local g_`gk' : copy local _gv
-                // Remembered so the segment loop below cannot overwrite it.
-                // An option written after the top-level comma applies to the
-                // GRAPH, and twoway lets it beat one written inside a plot:
+                // Kept apart and merged in after the segment loop: an option
+                // written after the top-level comma applies to the GRAPH,
+                // and twoway reads it after every plot's copy:
                 //     twoway (scatter y x, title("INSIDE")) (line y x), title("AFTER")
-                // stores "AFTER" -- measured from the saved .gph.  dash
-                // stored "INSIDE", because these accumulators are filled here
-                // first and _dash_process_segment then c_locals over them.
+                // stores "AFTER" -- measured from the saved .gph -- and
+                // (scatter y x, title(A)), title(, color(red)) draws A in
+                // red (measured 24sep2026 from the SVG export).
                 local _gafter_`gk' : copy local _gv
             }
         }
@@ -3955,6 +4542,30 @@ program define _dash_plot
 
     local _dash_ignored_acc : copy local _dash_gopt_ignored
     if "`_g_names_n'" == "" local _g_names_n 0
+    // The by() after the comma is held in _gafter_by until the segments
+    // are merged: g_by, read here before, is still empty, so a plot group's
+    // sample was counted as if there were no by() -- `(scatter mpg weight
+    // if mpg > 1000) (lpoly mpg weight if mpg > 1000), by(foreign)' was
+    // "no observations", r(2000), where twoway says "nothing to graph",
+    // r(198) (P1A-83).
+    mata: st_global("dash__g_by", st_local("_gafter_by"))
+    // A by() given in any segment is the graph's too: twoway reads it from
+    // every || segment and plot group before it draws a plot, so a plot in
+    // a segment before the one that gives it -- `lfit mpg weight if _n==1
+    // || scatter mpg weight, by(foreign)', rc 0 -- or after it is answered
+    // panel by panel.  Read here, by value, before any segment is checked:
+    // the other segments were checked as graphs of their own, r(2001)
+    // "insufficient observations" (measured 24sep2026; test_parser.cscript
+    // P1A-84).
+    if !`: length global dash__g_by' {
+        forvalues k = 1/`n_segs' {
+            mata: st_local("_pre_by", _dash_seg_by(st_local("_seg_`k'")))
+            if `: length local _pre_by' {
+                mata: st_global("dash__g_by", st_local("_pre_by"))
+                continue, break
+            }
+        }
+    }
 
     // ---- Parse each plot segment ----
     // WP-19: a graph holds at most `plots' plot entries -- one per y
@@ -3968,13 +4579,43 @@ program define _dash_plot
     local _dash_plot_ceil = r(ceiling)
     local _dash_nplots    = 0
     local plots_json ""
+    // The graph-level options twoway takes once from the whole command:
+    // a second copy, in another plot group, another || segment or after
+    // the comma, is "option scheme() not allowed", r(198) (measured
+    // 24sep2026 for each; name() has its own check, above and below).
+    local _g_unique "saving scheme aspectratio xsize ysize scale fxsize fysize nodraw play"
+    foreach gk of local _g_unique {
+        local _gseen_`gk' = `: length local _gafter_`gk'' > 0
+    }
     forvalues k = 1/`n_segs' {
         local seg : copy local _seg_`k'
 
         local _seg_ignored_out ""
+        local _seg_gund_out    ""
         local _seg_nplots_out  1
         local _seg_named_out   0
+        local _seg_if_out      ""
+        local _seg_in_out      ""
+        local _seg_bands_out   0
+        local _seg_vars_out    ""
+        local _seg_wvar_out    ""
+        foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
+              ylabel xline yline legend by xscale yscale aspectratio scheme ///
+              plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
+              xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+              t2title b1title b2title l1title l2title r1title r2title title2 ///
+              subtitle2 nodraw play replace {
+            local _sg_`gk' ""
+        }
         _dash_process_segment `"`macval(seg)'"' _pt_k _json_k `n_segs'
+        // Kept for the by() answer below, by value.
+        local _byq_pt_`k' `_pt_k'
+        local _byq_if_`k' : copy local _seg_if_out
+        local _byq_in_`k' : copy local _seg_in_out
+        local _byq_bd_`k' `_seg_bands_out'
+        local _byq_vv_`k' `_seg_vars_out'
+        local _byq_wv_`k' `_seg_wvar_out'
 
         // A graph takes one name(): a second, in another group or ||
         // segment than the first, or beside the one after the comma, is
@@ -3982,6 +4623,15 @@ program define _dash_plot
         // overwrite the first and before anything is registered.
         local _g_names_n = `_g_names_n' + `_seg_named_out'
         if `_g_names_n' > 1 _dash_refuse_second_name
+
+        // A graph-wide option dash does not declare, given in this segment
+        // and in an earlier one or after the comma: refused as twoway
+        // refuses it -- (scatter y x, notitling) (line y x, notitling) is
+        // "option notitling not allowed", r(198) (measured 24sep2026).
+        if `: length local _seg_gund_out' {
+            mata: _dash_rep_und_cross("_gund_acc", "_seg_gund_out")
+            if `: length local _rp_refuse' _dash_refuse_repeat `_rp_refuse'
+        }
 
         local _dash_nplots = `_dash_nplots' + `_seg_nplots_out'
         if `_dash_nplots' > `_dash_plot_lim' {
@@ -3996,21 +4646,44 @@ program define _dash_plot
             mata: st_local("_dash_ignored_acc", st_local("_dash_ignored_acc") + " " + st_local("_seg_ignored_out"))
         }
 
-        // _dash_process_segment pushes any found graph-level opts
-        // into g_* locals via c_local; they are now visible here.
+        // _dash_process_segment hands back this segment's graph-level
+        // options as _sg_* locals; each is merged into its g_* accumulator
+        // as twoway merges a repeated option -- the last copy of most, the
+        // copies joined for title() legend() xlabel() and the like -- and a
+        // second copy of one twoway takes once is refused as twoway
+        // refuses it.  The key is a word of the list and the values are
+        // read by value, in Mata.
+        foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
+              ylabel xline yline legend by xscale yscale aspectratio scheme ///
+              plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
+              xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+              t2title b1title b2title l1title l2title r1title r2title title2 ///
+              subtitle2 nodraw play replace {
+            if !`: length local _sg_`gk'' continue
+            if `: list gk in _g_unique' {
+                if `_gseen_`gk'' {
+                    display as error "option `gk'() not allowed"
+                    display as error "      A graph takes one `gk'(); this command gives it more than once, which twoway refuses as well."
+                    exit 198
+                }
+                local _gseen_`gk' 1
+            }
+            mata: _dash_rep_merge_locals(st_local("gk"), "g_`gk'", "_sg_`gk'", "g_`gk'")
+        }
 
         if `k' > 1 local plots_json `"`plots_json',"'
         local plots_json `"`plots_json'`_json_k'"'
     }
 
-    macro drop dash__gq_if dash__gq_in
+    macro drop dash__gq_if dash__gq_in dash__g_by
 
-    // ---- An after-comma option outranks a segment's ----
-    // Restored after the segment loop rather than guarded inside it: the
-    // loop reaches the accumulators through c_local from another program,
-    // so there is no single place inside it to test.  Only keys the
-    // after-comma parse actually set are restored, so a graph that names an
-    // option only inside a segment keeps that value.
+    // ---- An after-comma option comes after every segment's ----
+    // Merged after the segment loop, as twoway reads it: the last copy of
+    // a rightmost option, so the after-comma one outranks a segment's, and
+    // the copies joined for a merged one.  Only keys the after-comma parse
+    // set are merged, so a graph that names an option only inside a
+    // segment keeps that value.
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
@@ -4018,7 +4691,9 @@ program define _dash_plot
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 nodraw play replace {
-        if `: length local _gafter_`gk'' local g_`gk' : copy local _gafter_`gk'
+        if `: length local _gafter_`gk'' {
+            mata: _dash_rep_merge_locals(st_local("gk"), "g_`gk'", "_gafter_`gk'", "g_`gk'")
+        }
     }
 
     // ---- Validate the graph-level values (WP-15) ----
@@ -4042,6 +4717,165 @@ program define _dash_plot
     // one-line if's command again, macval() or not (JSE-69).
     if `: length local g_legend' {
         _dash_check_legend `"`macval(g_legend)'"'
+    }
+
+    // ---- A by() graph: its panels, as twoway answers them ----
+    // Measured 24sep2026 with the console binary (graph.ado, and
+    // bygraph_g.class RunGraph; test_parser.cscript P1A-83).  The panels
+    // are the by() groups -- the by() variables not missing, unless
+    // missing is given -- holding a row the graph's qualifier selects, or,
+    // with none and one plot, that plot's if and in; with several plots
+    // and no graph qualifier, every group of the data.  None is "nothing
+    // to graph", r(198).  Each panel is then drawn plot by plot, and the
+    // first plot that cannot be drawn in it decides:
+    //   fpfit, fpfitci   its if and in select no row of the panel: "(note:
+    //                    fracpoly could not fit model)", then "observation
+    //                    numbers out of range", r(198) -- the command stops
+    //   mspline, mband   the same, with no bands(): "bands must be between
+    //                    1 and 200", r(198)
+    //   lpoly, lpolyci   one observation in the panel's sample, or none: the
+    //                    panel is left out, in silence
+    //   lfit, lfitci     one: the panel is left out, after "(note:  regress
+    //                    could not fit model)" and "insufficient
+    //                    observations" (the renderer gives them)
+    //   kdensity         one: the panel is left out, in silence
+    // The sample counts rows whose plotted variables are not missing and
+    // whose weight is above zero.  With every panel left out, "nothing to
+    // graph", r(198).  The renderer leaves the same panels out
+    // (_dash_by_panel_dropped) and answers every other one
+    // (GlyphMapper._mark_unfit, _mark_silent).  dash drew every panel, rc
+    // 0.  An immediate plot or a function reads no observations, and a
+    // graph holding one is left as it was.  The qualifiers are run as
+    // -syntax- read them, by value, once each.
+    _dash_plottype_families
+    local _by_lit 0
+    forvalues k = 1/`n_segs' {
+        if `: list _byq_pt_`k' in _pt_literal' local _by_lit 1
+    }
+    if `: length local g_by' & !`_by_lit' {
+        // The by() variables and missing, read from the validated value
+        // through a string scalar (_dash_by_parts).
+        tempname _by_txt
+        mata: st_strscalar(st_local("_by_txt"), st_local("g_by"))
+        _dash_by_parts `_by_txt'
+        // Every qualifier here is evaluated as twoway evaluates a by()
+        // graph's: with the data sorted, stably, on the by() variables --
+        // `bysort varlist (sortedby obsnum)' in bygraph_g.class -- and over
+        // the whole sorted data, so `if _n == 1', `in 1/10' and `if mpg >
+        // mpg[_n-1]' count rows in that order; by(, total)'s Total panel
+        // evaluates them again in the data's own order (measured 24sep2026
+        // from each panel's serset; test_qualifier_in_stata.cscript
+        // QS-16..).  They were evaluated in the data's order alone, so on
+        // data not sorted on the by() variables the panels were counted
+        // over other rows than twoway draws.  _dash_qual_mark sorts, reads
+        // the qualifier by value from a scalar, and gives the data their
+        // order back.  Pass s is the by() order; pass t, under total alone,
+        // the data's.
+        local _by_passes "s"
+        if `_by_total' local _by_passes "s t"
+        tempname _by_sif _by_sin
+        // The plots that can stop the command or leave a panel out, and
+        // their rules.
+        local _by_rules ""
+        local _by_ks ""
+        local _by_fpfam "fpfit fpfitci"
+        local _by_bdfam "mspline mband"
+        local _by_d0 "lpoly lpolyci"
+        local _by_d1 "kdensity"
+        local _by_n1 "lfit lfitci"
+        forvalues k = 1/`n_segs' {
+            local _pk `_byq_pt_`k''
+            local _rule ""
+            if `: list _pk in _by_fpfam' local _rule "R"
+            if `: list _pk in _by_bdfam' & !`_byq_bd_`k'' local _rule "R"
+            if `: list _pk in _by_d0' local _rule "D0"
+            if `: list _pk in _by_d1' local _rule "D1"
+            if `: list _pk in _by_n1' local _rule "N1"
+            if "`_rule'" == "" continue
+            local _by_ks `_by_ks' `k'
+            local _by_rules `_by_rules' `_rule'
+            local _by_seg_`: word count `_by_ks'' `k'
+        }
+        foreach _bp of local _by_passes {
+            local _ord ""
+            if "`_bp'" == "s" local _ord `_by_vars'
+            // The rows the graph's qualifier selects.
+            tempvar _by_gq_`_bp'
+            quietly gen byte `_by_gq_`_bp'' = 0
+            mata: st_strscalar(st_local("_by_sif"), st_local("_gq_if"))
+            mata: st_strscalar(st_local("_by_sin"), st_local("_gq_in"))
+            _dash_qual_mark `_by_gq_`_bp'' 1 `_by_sif' `_by_sin' `_ord'
+            // The rows that make the panels: the graph's qualifier, or the
+            // one plot's own.
+            tempvar _by_base_`_bp'
+            quietly gen byte `_by_base_`_bp'' = `_by_gq_`_bp''
+            if `n_segs' == 1 & !`: length local _gq_if' & !`: length local _gq_in' {
+                if `: length local _byq_if_1' | `: length local _byq_in_1' {
+                    quietly replace `_by_base_`_bp'' = 0
+                    mata: st_strscalar(st_local("_by_sif"), st_local("_byq_if_1"))
+                    mata: st_strscalar(st_local("_by_sin"), st_local("_byq_in_1"))
+                    _dash_qual_mark `_by_base_`_bp'' 1 `_by_sif' `_by_sin' `_ord'
+                }
+            }
+            // Each such plot's sample.
+            local _by_chk_`_bp' ""
+            foreach k of local _by_ks {
+                local _rule : word `: list posof "`k'" in _by_ks' of `_by_rules'
+                tempvar _by_c`k'_`_bp'
+                quietly gen byte `_by_c`k'_`_bp'' = 0
+                mata: st_strscalar(st_local("_by_sif"), st_local("_byq_if_`k'"))
+                mata: st_strscalar(st_local("_by_sin"), st_local("_byq_in_`k'"))
+                _dash_qual_mark `_by_c`k'_`_bp'' `_by_gq_`_bp'' `_by_sif' `_by_sin' `_ord'
+                if "`_rule'" != "R" {
+                    // Rows with a plotted variable missing, or a weight
+                    // missing or not above zero, are not in the sample.
+                    foreach _v of local _byq_vv_`k' {
+                        quietly replace `_by_c`k'_`_bp'' = 0 if missing(`_v')
+                    }
+                    if `: length local _byq_wv_`k'' {
+                        quietly replace `_by_c`k'_`_bp'' = 0 if missing(`_byq_wv_`k'') | `_byq_wv_`k'' <= 0
+                    }
+                }
+                local _by_chk_`_bp' `_by_chk_`_bp'' `_by_c`k'_`_bp''
+            }
+        }
+        local _by_mopt ""
+        if `_by_miss' local _by_mopt "missing"
+        // by(, total): the Total panel is one more panel, answered as the
+        // groups are -- `lfit mpg weight if _n==1 | _n==60, by(foreign,
+        // total)' draws it alone, rc 0 (P1A-84) -- over the rows pass t
+        // selects.
+        if `_by_total' {
+            local _by_mopt "`_by_mopt' total tpanel(`_by_base_t')"
+            if `: length local _by_chk_t' local _by_mopt "`_by_mopt' tcheck(`_by_chk_t')"
+        }
+        local _by_copt ""
+        if `: length local _by_chk_s' local _by_copt "check(`_by_chk_s') rules(`_by_rules')"
+        _dash_by_panels `_by_vars', panel(`_by_base_s') `_by_mopt' `_by_copt'
+        if r(n) == 0 {
+            display as error "nothing to graph"
+            exit 198
+        }
+        if r(refuse) > 0 {
+            local k `_by_seg_`r(refuse)''
+            if `: list _byq_pt_`k' in _by_fpfam' {
+                display as text "(note:  fracpoly could not fit model)"
+                display as error "observation numbers out of range"
+            }
+            else {
+                display as error "bands must be between 1 and 200"
+            }
+            exit 198
+        }
+        if r(kept) == 0 {
+            // lfit and lfitci on one observation say so as they stop.
+            if r(d1note) {
+                display as text "(note:  regress could not fit model)"
+                display as text "insufficient observations"
+            }
+            display as error "nothing to graph"
+            exit 198
+        }
     }
 
     // ---- Report unsupported options, once, naming every one ----
@@ -4436,6 +5270,319 @@ program define _dash_refuse_second_name
     display as error "option name() not allowed"
     display as error "      A graph takes one name(); this command gives it more than once, which twoway refuses as well."
     exit 198
+end
+
+
+// ================================================================
+// _dash_fn_refuse  -- a function layer calling a function Stata lacks
+// ================================================================
+// twoway refuses `twoway function y = nosuchfunction(x)' -- "error in
+// expression: nosuchfunction(x)", r(133) -- and so it refuses any call of a
+// name that is no Stata function (system(x), Sin(x), mpg(x)), wherever it
+// stands in the expression (measured 24sep2026).  dash registered the
+// layer, rc 0, and the renderer drew it empty with a note.
+//
+// Called as _dash_fn_refuse `"<expression>"', read by value
+// (_dash_text_args).  Each name written directly before
+// a `(' (_dash_fn_names, at most 100 of them) is put to Stata as a call with
+// 32 arguments of 1, under capture: Stata answers r(133), "unknown
+// function", only for a name that is no function, and checks a known
+// function's arguments before it runs it, so none is evaluated -- the
+// random-number state is unchanged (measured: runiform() and rnormal()
+// with 32 arguments are r(198), c(rngstate) the same) -- save the pure
+// ones that take any number (max(), inlist()).  The name is a Stata name
+// (_dash_fn_names checks it), so it is safe on the command line, and the
+// expression is echoed only through _dash_say, at most 200 characters of
+// it.  A function Stata has but
+// the renderer does not draw -- normal(x) -- is not refused here: twoway
+// draws it, and the renderer's own check reports the layer it leaves empty.
+//
+// An operand written with blanks before a `(' (_dash_fn_space_call) is
+// refused too: Stata never reads sin (x) as a call.  twoway refuses
+// `function y = sin (x)' -- "error in expression:  sin (x)", r(111), sin
+// looked for as a variable -- and r(198) when the name is one the data has
+// (mpg, or mp for it), x, _n, _N or _pi, or the operand is a number, a
+// string or a closing parenthesis; with tabs alone between the name and
+// the `(' it is r(133), an unknown function (measured 24sep2026).  Stata
+// reports whichever it meets first: nosuch(x) + sin (x) is r(133), sin (x)
+// + nosuch(x) r(111), so only the calls written before the operand are
+// asked about first.  dash drew sin (x) as sin(x), rc 0.  2 * (x) and x +
+// (1) have an operator before the `(' and are drawn.  The name put to
+// -confirm- is a Stata name (_dash_fn_space_call reads only letters,
+// digits and _), and the expression is echoed only through _dash_say.
+program define _dash_fn_refuse
+    version 16.0
+    mata: _dash_text_args(0, 0, 0)
+    mata: st_local("_fn_sp", _dash_fn_space_call(st_local("_dash_txt")))
+    local _fn_upto : copy local _dash_txt
+    if `: length local _fn_sp' {
+        local _fn_pos : word 2 of `_fn_sp'
+        mata: st_local("_fn_upto", substr(st_local("_dash_txt"), 1, `_fn_pos' - 1))
+    }
+    mata: st_local("_fn_names", _dash_fn_names(st_local("_fn_upto"), 100))
+    local _fn_args "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1"
+    foreach _fn of local _fn_names {
+        capture local _fn_z = `_fn'(`_fn_args')
+        if _rc == 133 {
+            // twoway's words; an expression of more than 200 characters
+            // is shown in its first 197, so a refusal is never a page long.
+            mata: _dash_say("err", "error in expression: ", ///
+                (ustrlen(st_local("_dash_txt")) > 200 ? ///
+                usubstr(st_local("_dash_txt"), 1, 197) + "..." : st_local("_dash_txt")), "")
+            mata: _dash_say("err", "      unknown function ", st_local("_fn"), "()")
+            exit 133
+        }
+    }
+    if !`: length local _fn_sp' exit
+    local _fn_kind : word 1 of `_fn_sp'
+    local _fn_nm : word 3 of `_fn_sp'
+    mata: _dash_say("err", "error in expression: ", ///
+            (ustrlen(st_local("_dash_txt")) > 200 ? ///
+            usubstr(st_local("_dash_txt"), 1, 197) + "..." : st_local("_dash_txt")), "")
+    if "`_fn_kind'" == "T" {
+        display as error "      unknown function `_fn_nm'<tab>()"
+        exit 133
+    }
+    local _fn_rc 198
+    if "`_fn_kind'" == "N" {
+        capture confirm variable `_fn_nm'
+        if _rc & !inlist("`_fn_nm'", "x", "_n", "_N", "_pi") local _fn_rc 111
+    }
+    display as error "      A name or value and a parenthesis written apart are two operands to Stata, not a call."
+    exit `_fn_rc'
+end
+
+// ================================================================
+// _dash_refuse_unbound <parser> `"<options>"'  -- an option dash declares
+//                      whose value Stata's -syntax- cannot bind
+// ================================================================
+// -syntax- leaves a declared option in the parser's catch-all when it
+// cannot bind the value to the declared string: jitter(x"' _dup(3) "INJ"
+// `") and msize() alike (measured 24sep2026).  dash then named it as an
+// unsupported option -- "ignoring unsupported option(s): jitter()" -- and
+// registered the graph without it, where twoway refuses the command:
+// "type mismatch", r(109), for a value holding "', and "parentheses do not
+// balance", r(198), for one like a" "b (measured on sixteen values;
+// _dash_unbound_cands keeps the rule).  Refused here with twoway's return
+// code, naming the option, before anything is registered.
+//
+// Called right after <parser> (_dash_parse_plot_opts or
+// _dash_parse_graph_opts) read <options>, with its s() in place.  Each
+// candidate from s(_unknown) is put to the parser twice, under capture:
+// alone, as written -- if it binds then, it was a second copy of an option
+// the list already gave, which -syntax- leaves to the catch-all and twoway
+// accepts, so it stays in the note -- and as <name>(x), which binds only
+// when the parser declares <name> with a value.  A flag written with a
+// value, horizontal(x), binds neither way and stays in the note.  At most
+// 50 candidates are put to the parser (each costs two parses); any beyond
+// are named in the note as before.  When nothing is refused, <options> is
+// parsed once more so the caller finds the s() it had.  The option text is
+// read by value (_dash_text_args) and only reaches a command line through
+// macval(); the name is a Stata name (_dash_unbound_cands checks it), and
+// the message is printed through _dash_say.
+program define _dash_refuse_unbound
+    version 16.0
+    mata: _dash_text_args(1, 0, 0)
+    local parser : copy local _dash_a1
+    local opts : copy local _dash_txt
+    if !inlist("`parser'", "_dash_parse_plot_opts", "_dash_parse_graph_opts") exit
+    mata: _dash_unbound_cands(st_global("s(_unknown)"), 50)
+    if `_ru_n' == 0 exit
+    local refuse 0
+    forvalues i = 1/`_ru_n' {
+        capture `parser' , `macval(_ru_tok`i')'
+        if _rc continue
+        mata: st_local("_ru_alone", strofreal(strtrim(st_global("s(_unknown)")) != ""))
+        if !`_ru_alone' continue
+        capture `parser' , `_ru_nm`i''(x)
+        if _rc continue
+        mata: st_local("_ru_decl", strofreal(strtrim(st_global("s(_unknown)")) == ""))
+        if `_ru_decl' {
+            local refuse `i'
+            continue, break
+        }
+    }
+    if `refuse' {
+        local nm : copy local _ru_nm`refuse'
+        local rc `_ru_rc`refuse''
+        local why = cond(`rc' == 109, "type mismatch", "parentheses do not balance")
+        mata: _dash_say("err", "dash: option ", st_local("nm"), ///
+            "() has a value Stata cannot read, as twoway reads it: " + st_local("why") + ".")
+        exit `rc'
+    }
+    `parser' , `macval(opts)'
+end
+
+
+// ================================================================
+// _dash_opts_repeats <parser> <ptype> `"<options>"'  -- an option given
+//                    more than once, read as twoway reads it
+// ================================================================
+// twoway takes most options more than once: the last copy of a rightmost
+// one (mcolor(red) mcolor(blue) draws blue, and mc(red) mcolor(blue) too),
+// the copies merged for title(), xlabel(), legend(), xscale(), by(),
+// xline() and the like, and a unique one -- scheme(), saving(), xsize(), a
+// bare sort, bwidth() on kdensity -- refused, "option scheme() not
+// allowed", r(198) (measured 24sep2026 from twoway's SVG export; the rules
+// are in dash_parse.mata beside _dash_rep_merge).  -syntax- bound the
+// FIRST copy and left the others to the catch-all, which named them as
+// unsupported -- or, for title(A) title(B), bound the second to title2()
+// and the second xlabel() to xlabel2(), the second axis.
+//
+// Called right after <parser> read <options> (and _dash_refuse_unbound and
+// the name() check ran), with its s() in place.  When the list may give an
+// option twice (_dash_rep_scan: the catch-all is not empty, or one typed
+// name is another's prefix), each distinct typed name, at most 100, is put
+// to the parser alone, and the s() it sets is the option it spells
+// (_dash_rep_keyof); _dash_rep_reduce writes the list again with one copy
+// of each option, or names a unique one given twice, and the list is
+// parsed once more so the caller finds the s() of the list twoway reads.
+// Otherwise nothing is parsed again.  <ptype> is the plot type, or - for
+// the graph parser.  The option text is read by value (_dash_text_args)
+// and reaches a command line only through macval(); the refusal names an
+// option by a Stata name.
+program define _dash_opts_repeats
+    version 16.0
+    mata: _dash_text_args(2, 0, 0)
+    local parser : copy local _dash_a1
+    local ptype : copy local _dash_a2
+    local opts : copy local _dash_txt
+    if !inlist("`parser'", "_dash_parse_plot_opts", "_dash_parse_graph_opts") exit
+    if "`ptype'" == "-" local ptype ""
+    // First the options dash does not declare -- named in the note, one
+    // copy at a time -- that twoway takes once: atobs twice on lfit is
+    // "option atobs not allowed", r(198) (_dash_rep_und_tab).  The
+    // graph-wide ones the list gives go back to the caller as
+    // _rp_gund_out, which counts them across the command's lists.
+    mata: _dash_rep_und_scan(st_local("opts"), st_local("ptype"))
+    c_local _rp_gund_out : copy local _rp_gund
+    if `: length local _rp_refuse' _dash_refuse_repeat `_rp_refuse'
+    // Two kernels on lpoly, lpolyci or kdensity -- gaussian epan2, or
+    // gaussian beside kernel() -- refused in twoway's words once no
+    // repeated option is (_dash_kernel_clash): twoway refuses bwidth(1)
+    // bwidth(2) gaussian epan2 for bwidth() first.
+    mata: st_local("_rp_kern", _dash_kernel_clash(st_local("opts"), st_local("ptype")))
+    mata: _dash_rep_scan(st_local("opts"), strtrim(st_global("s(_unknown)")) != "", 100)
+    if !`_rp_go' {
+        if `: length local _rp_kern' _dash_refuse_kernel `_rp_kern' `ptype'
+        exit
+    }
+    forvalues i = 1/`_rp_n' {
+        local _rp_key`i' ""
+        sreturn clear
+        capture `parser' , `macval(_rp_tok`i')'
+        if _rc continue
+        local _rp_sm : s(macros)
+        mata: st_local("_rp_key`i'", _dash_rep_keyof(st_local("_rp_sm")))
+    }
+    mata: st_local("_rp_out", _dash_rep_reduce(st_local("opts"), st_local("ptype")))
+    if `: length local _rp_refuse' _dash_refuse_repeat `_rp_refuse'
+    if `: length local _rp_kern' _dash_refuse_kernel `_rp_kern' `ptype'
+    sreturn clear
+    `parser' , `macval(_rp_out)'
+end
+
+
+// _dash_refuse_repeat <name>  -- refuse a second copy of an option twoway
+// takes once, in twoway's words and with its code: "option atobs not
+// allowed", r(198).  <name> is the copy twoway names, a Stata name as
+// typed, "()" after it when it took a value (_dash_rep_reduce,
+// _dash_rep_und_scan); it is echoed as text.
+program define _dash_refuse_repeat
+    version 16.0
+    args nm
+    mata: _dash_say("err", "option ", st_local("nm"), " not allowed")
+    display as error "      twoway takes this option once; this command gives it more than once."
+    exit 198
+end
+
+
+// _dash_refuse_kernel <kind> <ptype>  -- two kernels in one option list of
+// lpoly, lpolyci or kdensity (_dash_kernel_clash), refused in twoway's
+// words, which differ on kdensity, with its code, r(198).
+program define _dash_refuse_kernel
+    version 16.0
+    args kind ptype
+    if "`kind'" == "one" {
+        display as error "only one kernel may be specified"
+    }
+    else {
+        local pre ""
+        if "`ptype'" == "kdensity" local pre "option "
+        display as error "`pre'kernel(): old syntax may not be combined with new syntax"
+        display as error "      A kernel written as an option of its own, such as gaussian, and kernel() may not be given together."
+    }
+    exit 198
+end
+
+
+// _dash_refuse_foreign <parser> <ptype> `"<options>"'  -- a word twoway
+// refuses even once, where dash would name it in its note.
+// ================================================================
+// twoway's option names are lower case: ATOBS, MCOLOR(red), Title(x) and
+// dash's own HOVER() are no options, "option MCOLOR() not allowed",
+// r(198).  And after the plot groups' comma twoway takes graph options
+// only: (lfit mpg weight), atobs -- or mcolor(red), kernel(), lo -- is
+// "option atobs not allowed", r(198), even once, though clegend(), below
+// and logging are taken there.  Either way twoway names the first word of
+// the list it does not take: (lfit mpg weight), bogus atobs is "option
+// bogus not allowed" (measured 24sep2026).  dash named every one in its
+// note and drew the graph.
+//
+// Called right after <parser> read <options>, with its s() in place, and
+// before _dash_opts_repeats; <ptype> is the plot type, or - for the list
+// after the paren-mode comma.  When the catch-all may hold such a word
+// (_dash_foreign_scan), each option word twoway does not take on dash's
+// behalf is put to the parser alone: one the parser takes (a repeat
+// -syntax- left to the catch-all, or an option of dash's own, such as
+// hover()) is skipped.  The first word left is the one twoway names, and
+// the command is refused when some word left is in upper case, or -- after
+// the comma -- is a plot option: a row of _dash_rep_und_tab for a plot, or
+// a word the plot parser takes alone.  Otherwise the list is parsed again,
+// so the caller finds its s() as it left it, and the note names the words
+// as before.  The option text is read by value (_dash_text_args); the
+// refusal names an option by a Stata name, echoed as text.
+program define _dash_refuse_foreign
+    version 16.0
+    mata: _dash_text_args(2, 0, 0)
+    local parser : copy local _dash_a1
+    local ptype : copy local _dash_a2
+    local opts : copy local _dash_txt
+    if !inlist("`parser'", "_dash_parse_plot_opts", "_dash_parse_graph_opts") exit
+    local graph = ("`ptype'" == "-")
+    if `graph' local ptype ""
+    mata: _dash_foreign_scan(st_local("opts"), st_local("ptype"), st_global("s(_unknown)"), `graph')
+    if !`_fs_go' exit
+    local first ""
+    local trig 0
+    forvalues i = 1/`_fs_n' {
+        if `_fs_acc`i'' continue
+        sreturn clear
+        capture `parser' , `macval(_fs_tok`i')'
+        if _rc continue
+        mata: st_local("_fs_u", strofreal(strtrim(st_global("s(_unknown)")) != ""))
+        if !`_fs_u' continue
+        if !`: length local first' local first : copy local _fs_nm`i'
+        local trig = `_fs_uc`i'' | (`graph' & `_fs_plot`i'')
+        if `graph' & !`trig' {
+            sreturn clear
+            capture _dash_parse_plot_opts , `macval(_fs_tok`i')'
+            if !_rc {
+                mata: st_local("trig", strofreal(strtrim(st_global("s(_unknown)")) == ""))
+            }
+        }
+        if `trig' continue, break
+    }
+    if `trig' {
+        mata: _dash_say("err", "option ", st_local("first"), " not allowed")
+        if `graph' {
+            display as error "      After the plot groups' comma twoway takes graph options only; a plot's own options go inside its parentheses, and option names are lower case."
+        }
+        else display as error "      twoway does not take this option; its option names are lower case."
+        exit 198
+    }
+    sreturn clear
+    `parser' , `macval(opts)'
 end
 
 

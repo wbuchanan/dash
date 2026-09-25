@@ -169,7 +169,7 @@ class TestTranslateLwidth:
 
     LWIDTH_KEYWORDS_ASC = [
         "vvthin", "vthin", "thin", "medthin", "medium",
-        "medthick", "thick", "vthick", "vvthick",
+        "medthick", "thick", "vthick", "vvthick", "vvvthick",
     ]
 
     def test_all_lwidth_keywords_positive(self):

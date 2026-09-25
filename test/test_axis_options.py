@@ -160,20 +160,18 @@ class TestAxisLabelGrammar:
     def test_hash_n_is_a_suggestion_not_a_count(self, truth):
         """Stata's #10 on weight gives EIGHT ticks: #N is a suggestion.
 
-        Bokeh's BasicTicker.desired_num_ticks has exactly those semantics, so
-        the option maps to it rather than to a fixed count.
+        twoway draws 1500(500)5000 for it over 1760 to 4840 (graph record,
+        test/fixtures/natscale_truth.json), and dash places them there by
+        twoway's rule (test_natscale.py); Bokeh's desired_num_ticks, which
+        this used to map to, chose its own positions.
         """
-        from bokeh.models import FixedTicker
         fig, _ = _fig_with_gopts(_SCATTER, {"xlabel": "#10"})
-        t = _ticker_of(fig)
-        assert not isinstance(t, FixedTicker), (
-            "#N must stay an adaptive ticker, not become a fixed list"
-        )
-        assert getattr(t, "desired_num_ticks", None) == 10
+        assert _fixed_ticks(fig) == [1500.0 + 500 * i for i in range(8)]
 
     def test_hash_one_behaves_like_minmax(self, truth):
+        """#1 is tickset's minmax: the data's extremes."""
         fig, _ = _fig_with_gopts(_SCATTER, {"xlabel": "#1"})
-        assert getattr(_ticker_of(fig), "desired_num_ticks", None) == 1
+        assert _fixed_ticks(fig) == [1760.0, 4840.0]
 
     def test_format_suboption_reaches_the_tick_labels(self):
         """ylabel(, format(%9.0fc)) rendered nothing at all."""
@@ -673,6 +671,79 @@ class TestReferenceLines:
             _SCATTER, {"yline": "20, lcolor(blue) lwidth(vthick)"})
         s = self._spans(fig)[0]
         assert str(s.line_color).lower() in ("blue", "#0000ff")
+
+
+class TestRepeatedReferenceLines:
+    """A repeated yline(): each copy is its own line in its own style.
+
+    Measured 24sep2026 from twoway's SVG export: yline(20, lcolor(red))
+    yline(30) draws a red line at 20 and a default one at 30 -- twoway
+    executes each copy separately (added_line_options.sthlp) -- and
+    yline(20) yline(30) draws what yline(20 30) draws.  dash.ado stores the
+    copies joined with a comma, ``20, lcolor(red), 30``
+    (test_twoway_option_parity.cscript TP-14d); the renderer drew every
+    position in one style, the last sub-options found.
+    """
+
+    def _spans(self, fig):
+        from bokeh.models import Span
+        return [r for r in fig.center if isinstance(r, Span)] + \
+               [r for r in fig.renderers if isinstance(r, Span)]
+
+    def test_each_copy_keeps_its_own_style(self):
+        fig, _ = _fig_with_gopts(
+            _SCATTER, {"yline": "20, lcolor(red), 30"})
+        spans = {s.location: s for s in self._spans(fig)}
+        assert sorted(spans) == [20.0, 30.0], sorted(spans)
+        assert str(spans[20.0].line_color).lower() in ("red", "#ff0000")
+        assert str(spans[30.0].line_color).lower() not in ("red", "#ff0000")
+
+    def test_a_later_copy_styles_only_itself(self):
+        fig, _ = _fig_with_gopts(
+            _SCATTER, {"xline": "2000, 3000, lcolor(blue)"})
+        spans = {s.location: s for s in self._spans(fig)}
+        assert sorted(spans) == [2000.0, 3000.0], sorted(spans)
+        assert str(spans[3000.0].line_color).lower() in ("blue", "#0000ff")
+        assert str(spans[2000.0].line_color).lower() not in ("blue", "#0000ff")
+
+    def test_one_copy_reads_as_it_always_did(self):
+        fig, _ = _fig_with_gopts(
+            _SCATTER, {"yline": "20 30, lcolor(red)"})
+        spans = self._spans(fig)
+        assert len(spans) == 2
+        assert all(str(s.line_color).lower() in ("red", "#ff0000")
+                   for s in spans)
+
+    def test_the_instances(self):
+        bad = []
+        got = dash_render._dash_refline_instances(
+            "20, lcolor(red), 30 40, lwidth(thick) nosuch(1)", bad)
+        assert got == [([20.0], {"lcolor": "red"}),
+                       ([30.0, 40.0], {"lwidth": "thick"})], got
+        assert bad == ["nosuch(1)"], bad
+
+    def test_the_comma_split_honours_quotes_and_parentheses(self):
+        assert dash_render._dash_by_tokens_commas(
+            'a, b(c, d) "e, f", g') == ["a", ' b(c, d) "e, f"', " g"]
+
+    def test_adversarial_many_copies_are_linear(self):
+        """Resource exhaustion: 20,000 copies are read in one pass."""
+        import time
+        raw = ", ".join("%d, lcolor(red)" % i for i in range(20000))
+        t0 = time.perf_counter()
+        got = dash_render._dash_refline_instances(raw, [])
+        assert len(got) == 20000
+        assert time.perf_counter() - t0 < 5.0
+
+    def test_adversarial_hostile_text_is_named_not_drawn(self):
+        """Injection: text that is no position nor sub-option is named
+        in the note, never drawn or evaluated."""
+        bad = []
+        got = dash_render._dash_refline_instances(
+            '20, lcolor(red), <script>alert(1)</script>, __import__("os")',
+            bad)
+        assert got == [([20.0], {"lcolor": "red"})], got
+        assert bad and all("20" not in b for b in bad), bad
 
 
 # ======================================================================

@@ -455,9 +455,12 @@ class TestHostileDateValues:
             "2001-01-02", None, None, None, None, None, None, "2001-01-09"]
         assert _drawn_date(r.figures["g1"]) == ["2001-01-02", "2001-01-09"]
         counts = _outside(str(w.message) for w in caught)
-        # Infinity, -Infinity, 1e400 (an infinity) and 1e300: four.  NaN
-        # and the text are missing values, as text in a numeric column is.
-        assert _count(counts) == 4
+        # 1e300 alone: the data file's reader (_dash_read_data_json, S3
+        # batch) reads Infinity, -Infinity and 1e400 as missing, as Stata,
+        # which holds no infinity, would hold them, so only 1e300 reaches
+        # the date conversion as a number outside Stata's range.  NaN and
+        # the text are missing values, as text in a numeric column is.
+        assert _count(counts) == 1
         assert "<html" in html.lower() and bad not in html
         doc, _w = _served(tmp_path, spec, json.loads(text))
         assert bad not in json.dumps(doc.to_json(), default=str)

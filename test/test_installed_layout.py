@@ -231,12 +231,21 @@ class TestAnInstalledTreeResolvesItsOwnSchemes:
         assert scheme.is_fallback is False
         on_disk = os.path.join(root, "s", "s2color.scheme")
         # It must have parsed the shipped file, not an in-memory dict: the
-        # file carries far more than the fallback's handful of properties.
-        assert len(scheme._props) > 100, (
-            "s2color parsed only %d properties; the fallback has 23 and the "
-            "shipped file at %s has over a hundred"
-            % (len(scheme._props), on_disk)
+        # file carries more properties than the fallback, and keys the
+        # fallback has none of (`symbol p', `linepattern p').  The file has
+        # 70 since its p#stub cycles and marker symbols carry only the keys
+        # Stata's chain declares -- `symbol p', where it wrote symbol p1 to
+        # p15 -- and the fallback 67 since it gained the reference line's,
+        # the border's and the note box's (S3 batch); the file had 136 when
+        # this said "over a hundred".
+        fallback = module.SchemeParser._FALLBACK_PROPS
+        assert len(scheme._props) > len(fallback), (
+            "s2color parsed only %d properties; the fallback has %d and the "
+            "shipped file at %s has more"
+            % (len(scheme._props), len(fallback), on_disk)
         )
+        for key in ("symbol p", "linepattern p"):
+            assert key in scheme._props and key not in fallback, key
 
 
 # ==========================================================================

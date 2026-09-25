@@ -57,6 +57,13 @@
 *!          rc 0, no UserWarning, page is s2color (#1e2d53 present,
 *!          #123456 absent).  Measured before the fix: rc 198, the
 *!          extension form was looked for as a working-directory file only
+*!   CS-15  a scheme with two #include lines that resolve nowhere: each
+*!          of twoway's "(note: scheme X not found, using s2color)" lines
+*!          once per build -- immediate route, registered graph with
+*!          scheme(), dash build scheme(), served build -- as twoway
+*!          prints it once.  Measured before the fix (S3 batch): twice on
+*!          the immediate route and the registered graph, where the
+*!          build's scheme and the graph's were parsed separately
 *!
 *! Every render is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.  The session
@@ -480,12 +487,66 @@ _cs_page CS-14 "b.html" "#123456" 0
 _cs_done CS-14 "dash build, scheme(s2color.scheme) with no such file in the working directory: rc 0, no warning, page is s2color"
 
 // ----------------------------------------------------------------
+// CS-15: an #include that resolves nowhere is noted ONCE per build,
+// as twoway notes it once per graph.  cs15inc.scheme includes two
+// names that resolve nowhere, so each note must appear exactly once
+// (one note is not allowed to swallow the other).  Measured before the
+// fix (S3 batch, 24sep2026): the immediate route and a registered graph
+// carrying scheme() printed each note twice -- the build's scheme and
+// the graph's own were parsed separately in one render.
+// ----------------------------------------------------------------
+tempname fh15
+file open `fh15' using "cs15inc.scheme", write text replace
+file write `fh15' "#include cs15nosuch" _n "#include cs15other" _n "color background #123456" _n
+file close `fh15'
+local n15a "(note: scheme cs15nosuch not found, using s2color)"
+local n15b "(note: scheme cs15other not found, using s2color)"
+// twoway itself: each note once (the control this case holds dash to)
+_cs_run "" "twoway scatter mpg weight, scheme(cs15inc) nodraw"
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-15 "(`rc' == 0)" "twoway: rc `rc'"
+_cs_log CS-15 "`lg'" "`n15a'" 1
+_cs_log CS-15 "`lg'" "`n15b'" 1
+// the immediate route
+capture erase "a.html"
+_cs_run "" "dash scatter mpg weight, scheme(cs15inc) saving(a.html, replace)"
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-15 "(`rc' == 0)" "immediate: rc `rc'"
+_cs_log CS-15 "`lg'" "`n15a'" 1
+_cs_log CS-15 "`lg'" "`n15b'" 1
+_cs_page CS-15 "a.html" "#123456" 1
+// a registered graph carrying scheme(), built with no scheme()
+capture erase "b.html"
+_cs_run "dash scatter mpg weight, name(g) scheme(cs15inc)" "dash build, saving(b.html) replace"
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-15 "(`rc' == 0)" "registered graph: rc `rc'"
+_cs_log CS-15 "`lg'" "`n15a'" 1
+_cs_log CS-15 "`lg'" "`n15b'" 1
+// dash build, scheme(), saved and served
+capture erase "c.html"
+_cs_run "dash scatter mpg weight, name(g)" "dash build, saving(c.html) scheme(cs15inc) replace"
+local lg `"`r(logfile)'"'
+_cs_log CS-15 "`lg'" "`n15a'" 1
+_cs_log CS-15 "`lg'" "`n15b'" 1
+capture erase "c15.py"
+_cs_run "dash scatter mpg weight, name(g) scheme(cs15inc)" "dash build, saving(c15.py) scheme(cs15inc) server replace"
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-15 "(`rc' == 0)" "served build: rc `rc'"
+_cs_log CS-15 "`lg'" "`n15a'" 1
+_cs_log CS-15 "`lg'" "`n15b'" 1
+_cs_done CS-15 "each unresolvable #include is noted once per build, on every route, as twoway notes it once"
+
+// ----------------------------------------------------------------
 // Restore the session, leave the working directory as it was found
 // ----------------------------------------------------------------
 capture set scheme `cs_scheme0'
 capture dash clear
 cd "`cs_home'"
-foreach f in a.html b.html c.html mytheme.scheme scheme-zzdashtest.scheme {
+foreach f in a.html b.html c.html c15.py cs15inc.scheme mytheme.scheme scheme-zzdashtest.scheme {
     capture erase "`cs_dir'/`f'"
 }
 capture rmdir "`cs_dir'"
