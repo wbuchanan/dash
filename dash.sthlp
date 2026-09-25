@@ -1116,8 +1116,9 @@ Syntax:
 {cmd:label(}{it:string}{cmd:)}]{cmd:)}
 
 {pstd}
-{it:varname} may be abbreviated, as anywhere in Stata.  Without
-{cmd:type()} the widget is a dropdown.
+{it:varname} may be abbreviated, as anywhere in Stata, and may hold
+Unicode letters, as any Stata name may.  Without {cmd:type()} the widget
+is a dropdown.
 
 {phang2}{cmd:type(dropdown)} -- select widget showing unique values of
     {it:varname}.  Value labels are used for display text when available.
@@ -1207,6 +1208,9 @@ brush selections change (depending on the {cmd:update()} option).
 {cmdab:ti:tle}{cmd:(}{it:string}{cmd:)}
 {cmdab:nam:e}{cmd:(}{it:id}{cmd:)}
 [{it:options}]
+
+{pstd}
+{it:varname} may hold Unicode letters, as any Stata name may.
 
 {pstd}
 {ul:Supported statistics:}

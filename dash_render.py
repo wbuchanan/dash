@@ -6471,8 +6471,12 @@ class GlyphMapper:
         if not varname or varname not in source.data:
             return
 
-        # Security: validate varname is a safe Stata identifier
-        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", varname):
+        # Security: validate varname is a safe Stata identifier.  G5
+        # (WP-28): _dash_is_stata_name admits a Unicode letter, as any
+        # Stata name may, and nothing else that could reach a Bokeh field
+        # unsafely -- no brace, quote, blank, $ or backtick passes
+        # isidentifier() either.
+        if not _dash_is_stata_name(varname):
             return
 
         from bokeh.models import (
@@ -15620,7 +15624,7 @@ def _dash_parse_by(by_raw, warn=True):
     varlist = varlist_part.strip()
     names = varlist.split()
     if (not names or _DASH_UNSAFE_BY.search(varlist)
-            or not all(_DASH_VARNAME_RE.match(v) for v in names)):
+            or not all(_dash_is_stata_name(v) for v in names)):
         if warn:
             warnings.warn(
                 "dash: by() variable list is not a list of variable names;"
@@ -19314,7 +19318,10 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span):
 #: filter() widget types dash builds.
 _DASH_FILTER_TYPES = ("dropdown", "range", "slider")
 _DASH_FILTER_SUBOPTS = frozenset({"type", "exclude", "label"})
-_DASH_VARNAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+# G5 (WP-28): every renderer name check calls _dash_is_stata_name (1183)
+# instead of the ASCII-only regex that used to live here; deleted, with
+# its served constants entry, so a Unicode variable name now works in
+# filter(), by(), hover(), exclude() and colorvar() as it does in Stata.
 
 
 def _dash_display(text, limit=80):
@@ -19447,7 +19454,7 @@ def _dash_parse_filter_raw(raw, warn=True):
     result = []
     for part in _dash_filter_split(raw, True):
         fvar = re.split(r"[,\s]", part)[0].strip()
-        if not _DASH_VARNAME_RE.match(fvar):
+        if not _dash_is_stata_name(fvar):
             if warn:
                 warnings.warn(
                     f"dash: filter({_dash_display(part)}) refused: "
@@ -19469,7 +19476,7 @@ def _dash_parse_filter_raw(raw, warn=True):
                 ftype = arg.strip().lower()
             elif name == "exclude" and "(" in tok:
                 excl = arg.split()
-                badx = [x for x in excl if not _DASH_VARNAME_RE.match(x)]
+                badx = [x for x in excl if not _dash_is_stata_name(x)]
                 if badx:
                     if warn:
                         warnings.warn(
@@ -20038,8 +20045,9 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
             # or a `{safe}' that turns escaping off, leaving markup in the
             # tooltip.  Stata cannot produce such a name; a hand-written
             # data file can, so it is refused by name rather than trusted
-            # into a field.
-            if not _DASH_VARNAME_RE.match(_c):
+            # into a field.  _dash_is_stata_name (G5, WP-28) admits a
+            # Unicode letter and nothing else that can break the field.
+            if not _dash_is_stata_name(_c):
                 _dash_warn_once(
                     ("hover", "unsafe-field", _c),
                     f"dash: variable {_dash_display(_c)!r} is not a plain "
@@ -20129,7 +20137,7 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
             v = getattr(glyph, prop, None)
             v = v.get("field") if isinstance(v, dict) else getattr(v, "field", v)
             if (isinstance(v, str) and v in data
-                    and _DASH_VARNAME_RE.match(v)):
+                    and _dash_is_stata_name(v)):
                 return v
             return None
 
@@ -24494,7 +24502,7 @@ class ServerAppBuilder:
                       "_DASH_TICK_MAJOR_JS", "_DASH_TICK_EXTRA_JS",
                       "_DASH_TICK_EVERY_JS",
                       "_DASH_REFLINE_SUBOPTS", "_DASH_FILTER_TYPES",
-                      "_DASH_FILTER_SUBOPTS", "_DASH_VARNAME_RE",
+                      "_DASH_FILTER_SUBOPTS",
                       # The resource limits (WP-19): the app groups by(),
                       # lists a dropdown and parses tabs() under them.
                       "_DASH_LIMITS",
@@ -24811,7 +24819,11 @@ class ServerAppBuilder:
                          "_dash_warn_filter_missing", "_dash_warn_filter_type",
                          # The filter() reader and the two helpers it calls.
                          "_dash_filter_split", "_dash_filter_label",
-                         "_dash_parse_filter_raw"):
+                         "_dash_parse_filter_raw",
+                         # G5 (WP-28): every renderer name check (by(),
+                         # filter(), exclude(), hover(), _drawn_field,
+                         # colorvar) now calls this Unicode-aware check.
+                         "_dash_is_stata_name"):
             if _fn_name in _emitted_names:
                 continue
             _fn = getattr(_mod, _fn_name, None)

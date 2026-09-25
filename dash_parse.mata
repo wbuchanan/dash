@@ -839,6 +839,15 @@ real scalar _dash_is_name(string scalar s) {
     return(1)
 }
 
+// 1 when s is a Stata name (G5, WP-28): letters -- Unicode ones too, as
+// Stata 14+ allows -- digits and _, not starting with a digit, at most 32
+// characters (the by() rule of 2916, [U] 11.3).  _dash_is_name above stays
+// ASCII-only on purpose: it also validates layout names and option words,
+// which are not variable names.
+real scalar _dash_is_varname(string scalar s) {
+    return(ustrregexm(s, "^[\p{L}_][\p{L}\p{N}_]*$") & ustrlen(s) <= 32)
+}
+
 // ============================================================
 // _dash_layout_refusal(layout, registry)
 //
@@ -3408,8 +3417,9 @@ string rowvector _dash_filter_items(string scalar group) {
 }
 
 // "" when every exclude() name of every group is in registry and every
-// group names a variable that is an ASCII Stata name, and vars_out is then
-// set to those variables, blank-separated; otherwise the refusal, without
+// group names a variable that is a Stata name (G5, WP-28: Unicode letters
+// included, _dash_is_varname), and vars_out is then set to those variables,
+// blank-separated; otherwise the refusal, without
 // the command's name -- the exclude() names first, as dash build has always
 // checked them first.  A sub-option is exclude() when its name, in any case,
 // is exclude and a parenthesis follows (dash_render.py's _dash_subopt_name).
@@ -3451,11 +3461,13 @@ string scalar _dash_filter_refusal(string scalar filter,
     for (g = 1; g <= cols(groups); g++) {
         items = _dash_filter_items(groups[g])
         v     = items[1]
-        if (!_dash_is_name(v)) {
+        if (!_dash_is_varname(v)) {
             // Every character a name cannot hold, and at most 40 of them:
             // this text is by definition not a variable name, and is shown.
+            // G5 (WP-28): a Unicode letter is not replaced, only a
+            // character no Stata name can hold at all.
             return("filter() names '" +
-                   ustrregexra(usubstr(v, 1, 40), "[^A-Za-z0-9_.\-]", "?") +
+                   ustrregexra(usubstr(v, 1, 40), "[^\p{L}\p{N}_.\-]", "?") +
                    "', which is not a valid Stata variable name.")
         }
         vars = vars, v

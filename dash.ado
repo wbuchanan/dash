@@ -6094,11 +6094,19 @@ program define _dash_kpi
     // Mata, in one statement so regexs() reads this match: expanded in the
     // expression, a statistic holding $name or `...' was read again for
     // macros and taken for what it expanded to -- mean(\$v) for mean(price)
-    // (measured 24sep2026; test_json_escaping.cscript JSE-58).
-    mata: st_local("_kst_ok", strofreal(regexm(st_local("statspec"), ///
-        "^([a-zA-Z0-9.]+)\(([a-zA-Z_][a-zA-Z0-9_]*)\)$"))); ///
-        st_local("stat", st_local("_kst_ok") == "1" ? regexs(1) : ""); ///
-        st_local("kpi_var", st_local("_kst_ok") == "1" ? regexs(2) : "")
+    // (measured 24sep2026; test_json_escaping.cscript JSE-58).  Mata's own
+    // ustrregexm/ustrregexs, not Stata's regexm/regexs, which follows the
+    // caller's version (5629 below): ICU is the same engine whatever
+    // version this program runs under.  The variable name accepts Unicode
+    // letters (G5, WP-28: 2916's rule) and is capped at 32 characters,
+    // checked once the match has already set _kst_ok and kpi_var so a
+    // failed match never reaches ustrregexs().
+    mata: st_local("_kst_ok", strofreal(ustrregexm(st_local("statspec"), ///
+        "^([a-zA-Z0-9.]+)\(([\p{L}_][\p{L}\p{N}_]*)\)$"))); ///
+        st_local("stat", st_local("_kst_ok") == "1" ? ustrregexs(1) : ""); ///
+        st_local("kpi_var", st_local("_kst_ok") == "1" ? ustrregexs(2) : ""); ///
+        st_local("_kst_ok", strofreal(st_local("_kst_ok") == "1" & ///
+            ustrlen(st_local("kpi_var")) <= 32))
     if !`_kst_ok' {
         display as error "dash kpi: syntax is stat(varname), e.g. mean(mpg)."
         exit(198)

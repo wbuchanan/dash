@@ -302,6 +302,10 @@ COVERAGE = {
         "_dash_layout_cells": ("test_echo_text.cscript:ECH-07",
                                "test_echo_text.cscript:ECH-09"),
         "_dash_is_name": ("test_echo_text.cscript:ECH-10",),
+        # G5 (WP-28): the by() rule of 2916, used by filter()'s Mata
+        # caller -- the accepted Unicode name, and its negative control
+        # (a brace).
+        "_dash_is_varname": ("test_statistical_options.cscript:UN-02",),
         "_dash_layout_refusal": ("test_echo_text.cscript:ECH-11",),
         # P1A-76: every prefix of every name, direct, and no prefix that
         # reaches two rows; e2e through _dash_expand_plottype.

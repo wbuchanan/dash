@@ -194,6 +194,10 @@
 *!           graph would not do: its source carries the fitted line, not
 *!           the data columns (measured: not even "mpg" appears in it).
 *!           Skipped without Python.
+*!   UN-01..UN-03 (G5, WP-28): a Unicode variable name works in dash kpi
+*!           and filter(), where it used to be refused with the ASCII-only
+*!           regex's r(198); negative controls -- a 33-character name and a
+*!           brace -- are still refused.  UN-02 and UN-03 need Python.
 *!
 *! Every refusal and note is read back out of a captured log with Stata's
 *! wrapped lines re-joined, as test_option_validation.cscript does.
@@ -482,6 +486,126 @@ _so_case SO-30 `"dash lfit mpg weight [aw=pri], name(so30)"' 0 "" `""weight":"aw
 quietly generate double größe = price
 _so_case SO-30u `"dash lfit mpg weight [aw=größe], name(so30u)"' 0 "" `""weight":"aweight""' `""wexp":"größe""'
 drop größe
+
+// ================================================================
+// UN-01 -- dash kpi accepts a Unicode variable name (G5, WP-28): the
+// 2916 rule (letters -- Unicode included -- digits, underscore, at
+// most 32 characters), not ASCII only.  Negative control: a
+// 33-character name is still refused at the same site, syntax is
+// stat(varname) -- no such variable need exist, since the regex
+// reads only the argument's text before confirm variable is reached.
+// ================================================================
+quietly generate double größe = price
+capture dash clear
+capture noisily dash kpi mean(größe), name(k1) title("G")
+local bad = (_rc != 0)
+if !`bad' {
+    quietly summarize größe
+    local bad = (reldif(${dash_kpi_k1__val}, r(mean)) >= 1e-15)
+}
+capture noisily dash kpi mean(größe1111111111111111111111111111), name(k2) title("G33")
+if !`bad' local bad = (_rc != 198)
+drop größe
+capture dash clear
+_so_tally "UN-01" `bad' "dash kpi mean(größe) equals summarize's mean; a 33-character Unicode name is refused, syntax is stat(varname)"
+
+if `"`c(python_exec)'"' != "" {
+    // ------------------------------------------------------------
+    // UN-02/UN-03 -- filter() accepts a Unicode variable name and
+    // builds its widget in the saved page (G5, WP-28), where
+    // _dash_filter_refusal used to refuse it, not a valid Stata
+    // variable name.  Negative control: a name that is not a Stata
+    // name is still refused, the brace shown as `?'.  Bokeh escapes
+    // non-ASCII in the page's JSON, so the page is read back through
+    // json, not a raw text search.
+    // ------------------------------------------------------------
+    // The python: block's own lines are flush left (column 0), whatever
+    // the surrounding Stata code's indentation: Stata hands them to
+    // Python verbatim, and Python is indentation-sensitive.
+    python:
+import html as _un_html
+import json as _un_json
+import re as _un_re
+from sfi import Macro as _un_M
+
+def _un_page_has(model_name, needle):
+    with open(_un_M.getGlobal("UN_PAGE"), encoding="utf-8") as fh:
+        page = fh.read()
+    m = _un_re.search(
+        '<script type="application/json"[^>]*>(.*?)</script>',
+        page, _un_re.S)
+    if not m:
+        _un_M.setGlobal("UN_FOUND", "0")
+        return
+    docs = _un_json.loads(_un_html.unescape(m.group(1)))
+    objs, stack = [], [docs]
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and v.get("name") == model_name:
+                objs.append(v)
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    found = any(
+        needle in _un_json.dumps(
+            o.get("attributes", {}).get("title", ""),
+            ensure_ascii=False)
+        for o in objs)
+    _un_M.setGlobal("UN_FOUND", "1" if found else "0")
+end
+
+    quietly generate double größe = price
+    capture dash clear
+    dash scatter mpg weight, name(g1)
+    tempfile p
+    global UN_PAGE "`p'.html"
+    capture noisily dash build, saving("`p'.html") replace nobrowser filter(größe, type(range))
+    local bad = (_rc != 0)
+    if !`bad' {
+        python: _un_page_has("RangeSlider", "größe")
+        local bad = ("$UN_FOUND" != "1")
+    }
+    capture dash clear
+    dash scatter mpg weight, name(g1b)
+    local logfile "`c(tmpdir)'dash_un02.log"
+    capture erase "`logfile'"
+    capture log close _unlog
+    quietly log using "`logfile'", name(_unlog) text replace
+    capture noisily dash build, saving("`p'.html") replace nobrowser filter(x}y, type(range))
+    local rc2 = _rc
+    quietly log close _unlog
+    if !`bad' local bad = (`rc2' != 198)
+    if !`bad' {
+        _so_count "`logfile'" "not a valid Stata variable name"
+        if r(n) == 0 local bad = 1
+        _so_count "`logfile'" "x?y"
+        if r(n) == 0 local bad = 1
+    }
+    capture erase "`logfile'"
+    capture erase "`p'.html"
+    capture dash clear
+    _so_tally "UN-02" `bad' "filter(größe, type(range)) builds a RangeSlider titled größe; filter(x}y, ...) is refused, the brace shown as ?"
+
+    dash scatter mpg weight, name(g2)
+    tempfile p2
+    global UN_PAGE "`p2'.html"
+    capture noisily dash build, saving("`p2'.html") replace nobrowser filter(größe, type(dropdown))
+    local bad = (_rc != 0)
+    if !`bad' {
+        python: _un_page_has("Select", "größe")
+        local bad = ("$UN_FOUND" != "1")
+    }
+    capture erase "`p2'.html"
+    capture dash clear
+    drop größe
+    _so_tally "UN-03" `bad' "filter(größe, type(dropdown)) builds a Select titled größe"
+}
+else {
+    display as text "UN-02 SKIP: no Python is linked to this Stata"
+    display as text "UN-03 SKIP: no Python is linked to this Stata"
+}
+
 _so_case SO-31 `"dash scatter mpg weight [aw=price+1], name(so31)"' 0 "[aweight]" `"!"wexp":"'
 _so_case SO-32 `"dash lfit mpg weight [aw=nosuchvar], name(so32)"' 111
 // SO-32w: "nosuchvar not found" (measured 24sep2026) -- the positive

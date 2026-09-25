@@ -390,6 +390,14 @@ their own lists.
 <!-- WP-28 G3 -->
 <!-- WP-28 G5 -->
 
+### Fixed in WP-28
+
+- A Unicode variable name (`größe`) now works in `filter()`, `dash kpi`,
+  `by()`, `hover()` and `colorvar()`, in both the saved page and the
+  served app: `filter()` and `dash kpi` used to refuse it with r(198),
+  and the renderers drew no panels, tooltip field, widget or colours for
+  it, in silence. (WP-28, G5)
+
 ### Fixed after WP-27 (the S3 batch, 24sep2026)
 
 Every entry BUGS.md graded S3 at release was taken up; the work found and
