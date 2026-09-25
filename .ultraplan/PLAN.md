@@ -1,216 +1,230 @@
-# Technical Plan — `dash` as a true drop-in replacement for `twoway`
+# UltraPlan: WP-28 — close 22 GAPS2 gaps · Master Technical Plan
 
-## Architecture: unchanged, and deliberately so
+> Generated: 2026-09-25
+> Phase: 3/6 - PLAN (Step 3b: Technical Plan)
+> Sections: 19 | Tasks: 159 | Parallel batches: 4
+> For plain-English requirements see `PRD.md`; for decisions `DISCOVERY.md`; for measurements `RESEARCH.md` and `research/`.
 
-The v2.0 decisions stay. Mata splits segments only. **Stata's `syntax` parses every option.**
-JSON is assembled in Stata by string concatenation and escaped through `_dash_json_str`.
-`jsonio` carries the data and is not modified. Python builds Bokeh models.
+---
 
-Three architectural changes are in scope, and only three:
+## Project overview
 
-1. **The abbreviation table is deleted.** `dash.ado` currently declares every option in
-   lowercase — which disables Stata's own abbreviation — and simulates abbreviation with a
-   fixed exact-match table in Mata (`dash_parse.mata:179-253`). Capitalising the minimum
-   abbreviation in the `syntax` declarations, the way every StataCorp command does, fixes
-   ~25 broken abbreviations and removes 5 silent mis-mappings in one change, and deletes
-   ~80 lines of Mata.
-2. **A `formats` map is added to the master JSON.** `jsonio` has no option that emits Stata
-   display formats — verified in its source and by `javap` on the shipped jar. `dash.ado`
-   collects `local f : format <var>` itself and carries the map. This is the only way dates
-   and numeric formats can reach Python.
-3. **Server mode stops being a second implementation.** 107 implementations currently cover
-   38 behaviours. The generated app will call into shared functions instead of re-deriving
-   them in generated string literals.
+### Summary
+
+`dash` accepts `twoway` syntax and renders an interactive HTML dashboard through two renderers in `dash_render.py`: `DashRenderer` writes a saved offline page whose interactivity is embedded JavaScript, and `ServerAppBuilder` emits a `bokeh serve` app whose interactivity is Python. This package closes 22 gaps from the 25 September 2026 audit (`GAPS2.md`) at commit `91d97be`: 15 where the page silently draws different numbers, text, colours or rows from twoway, and 7 where a documented capability fails visibly. Every fix lands as a failing regression test, then the fix, then a closed BUGS.md entry, in one commit per gap on `s3-bugs`; truth comes from Stata itself through measured fixtures; the exit is the WP-27 release gate with no open S1 or S2 defect.
+
+### Goals
+
+1. Every S1 gap in scope produces the numbers, text and rows twoway produces, proven by a Stata-measured fixture or SVG comparison and asserted in both renderers.
+2. Every refusal is loud and uses Stata's code (r(109), r(110), r(198), r(134)); every honoured option is silent.
+3. The package leaves the guards green throughout: the full pytest suite under both interpreters, the certification suite, the tracking tests, and finally the release gate from an installed package.
+
+### Constraints
+
+- Scope is fixed at 22 gaps (PRD §4); C4/E4 and the residuals in PRD §7 are out.
+- Branch `s3-bugs`; no commit to `main`; the merge command is reported.
+- Stata only through `arch -arm64 /usr/local/bin/stata-mp -b do` from a scratch directory with `STATATMP=<dir>/tmp/`; at most three concurrent Stata sessions.
+- pytest: changed files while iterating; the full suite once before a commit; never a second full run while one executes.
+- Declared floor: Python 3.13, Bokeh 3.8, pandas 2.3, numpy 2.3 (the `stata` baseline in `test/conftest.py`).
+- The served app is assembled by copying named functions and constants (`dash_render.py` 24326-24428, 24466-24687): every new helper joins those lists and `test/function_test_map.py`.
+
+---
+
+## Architecture overview
+
+```
+ Stata ────────────────────────────────────────────────────────────────────────
+   dash.ado / dash_parse.mata        S07 __dash prefix, Unicode names     S08 numeric varlists, cell cap
+   ├─ parse twoway syntax            S13 axis(#) routing (Mata, pre-merge)  S14 numlist expansion
+   ├─ validate options               S16 colorlevels/colorvarminmax/z*     S04 %x/%H refusal
+   ├─ export data.json  ──────────►  S04 storageTypes, formats             S09 serve: rc, /health, floor
+   └─ spec.json
+ Python (dash_render.py) ──────────────────────────────────────────────────────
+   loaders (both renderers)          S04 storage types, %g formats kept
+   OptionTranslator / textbox        S13 abbreviation table, "" titles, title2 textboxes
+   axis spec                         S14 tokenizer, valuelabel → major_label_overrides
+   GlyphMapper                       S05 histogram floor/clamp · S16 colorvar levels · S14 __dash_hover_*
+   SchemeParser                      S06 third-token grammar, quoted RGB/%opacity
+   legend                            S15 keys by Stata plot number, label-only rows
+   finish (after layers)             S18 hull extents (data ∪ ticks ∪ range), Range1d
+   hover / widgets / KPI / CSV       S11 cards · S12 widgets, tooltips, date axes, mlabels, CSV  ← S04 _dash_fmt
+   filter callbacks                  S17 per-target masks, numeric Select values
+   served template                   S10 viewport, dimming, range views, bs CSS
+ JavaScript twins (strings in dash_render.py) ─────────────────────────────────
+   _DASH_FMT_JS (S04) · _DASH_FILTER_MASK_JS / _FILTER_JS (S17, S05 recount) · ROW_ID (S07)
+ Tests ─────────────────────────────────────────────────────────────────────────
+   S02 scripts/svg_truth.py + test/cert_svg.do   S03 test/js_runner.py (JsSession, mask_parity)
+   scripts/extract_*_truth.do → test/fixtures/*_truth.json (git add -f)
+ Tracking ──────────────────────────────────────────────────────────────────────
+   S01 ROADMAP WP-28, test_tracking_documents.py (GAPS2), test_packaging.py   S19 CHANGELOG, GAPS2 Tracked, gate
+```
+
+### Architecture notes
+
+- **One rule, two twins.** Where the saved page recomputes in the browser (formats, filter masks, histogram recount), the Python original and the JS string are pinned against each other under node and against the Stata fixture.
+- **Truth is measured once.** A Stata extract script writes a fixture; pytest and cscripts consume it; live cscripts compare a `graph export .svg` through `test/cert_svg.do` where GAPS2 asks for it.
+- **Order of operations inside a figure differs between renderers** (research A §0.2). Fixes that depend on ordering (B7 styling of the second axis, B2's hull) are placed inside shared functions that run at the same point in both, or they add the missing step to the template.
+
+---
 
 ## Tech stack
 
-StataNow 19.5 (forced to its arm64 slice on this machine) · `jsonio`, unmodified ·
-Python 3.14.5 · Bokeh 3.9.0 · pandas 3.0.1 · numpy 2.4.3 · scipy 1.17.1 · statsmodels
-(currently broken here — S01 fixes the guard, not the install) · Bootstrap, inlined.
+| Layer | Technology | Purpose |
+|---|---|---|
+| Command | Stata ado + Mata (`dash.ado`, `dash_parse.mata`, `dash_setup.ado`) | parse, validate, export, launch |
+| Renderer | Python 3.13+ (`dash_render.py`), numpy 2.3+, pandas 2.3+ | build figures, pages, served app |
+| Plotting | Bokeh 3.8+ (BokehJS in the page) | figures, widgets, legend, colour bar |
+| Page logic | embedded JavaScript strings | filters, KPI cards, CSV, recount, formats |
+| Tests | pytest (`-n auto`), node v24 for JS, headless Chrome (optional), Stata cscripts | unit, parity, end-to-end, certification |
+| Tracking | BUGS.md, ROADMAP.md, CHANGELOG.md, GAPS2.md, dash.sthlp | guards read by `test_tracking_documents.py` |
 
-## The four decisions that bind this plan
+### Key libraries
 
-1. **Schemes are translated, not parsed from Stata.** `dash` keeps its own `schemes/`
-   directory. The translated set widens to the StataCorp schemes users actually have set, the
-   translations deepen until they faithfully reproduce the Stata aesthetic, and `scheme()` is
-   **restricted** to the translated set with a clear error naming the supported names — never
-   a silent fallback to black or to `s2color`.
-2. **Defaults change to match Stata.** Matching `twoway` is the definition of correct. Every
-   altered default gets a changelog entry and a migration note.
-3. **Server mode: fix the root bug, then unify.**
-4. **Unsupported options are accepted and reported together** — one note per command listing
-   every unsupported option that command used. Never an abort, never silence.
+| Library | Version (floor / dev) | Notes |
+|---|---|---|
+| bokeh | 3.8.0 / 3.9.0 | `Select` numeric values ≥ 3.4; label-only `LegendItem`; pandas optional from 3.9 |
+| pandas | 2.3.3 / 3.0.1 | declared by dash itself |
+| numpy | 2.3.5 / 2.4.3 | |
+| node | 24.13.1 | JS twin tests; skipped if absent (red under `DASH_STRICT`) |
+
+---
 
 ## Section index
 
-See `sections/index.md`. **16 sections, 89 tasks, 6 batches.**
+| # | Section | Gaps | Risk | Batch | Depends on | Blocks |
+|---|---|---|---|---|---|---|
+| 01 | Tracking foundation | all | green | 1 | none | 19 |
+| 02 | Stata truth helper | truth for B1, B2, B3, B5, B6, B7, D1, G16, X2 | yellow | 1 | none | 13, 14, 15, 16, 18 |
+| 03 | Stateful node runner | tests for C2, E2, E3, X1 | green | 1 | none | 04, 05, 12, 17 |
+| 04 | Display-format writer core | E1, E3, G6 (foundation) | red | 2 | 03 | 11, 12 |
+| 05 | Histogram edge rule | C2 | yellow | 2 | 03 | 19 |
+| 06 | Scheme quoted values | D1 | green | 1 | none | 19 |
+| 07 | Reserved and Unicode names | G1, G5 | yellow | 1 | none | 14, 17, 19 |
+| 08 | Numeric varlists and the data limit | G2, G3 | yellow | 1 | none | 19 |
+| 09 | Serve launcher and version floor | F1, K2 | red | 1 | none | 19 |
+| 10 | Saved/served presentation parity | E14 | yellow | 1 | none | 19 |
+| 11 | KPI cards | E1 (+E3, G6 on cards) | yellow | 3 | 04, 17 | 19 |
+| 12 | Widgets, tooltips, date axes, marker labels, CSV | E3, G6 | red | 3 | 03, 04, 14, 16, 17 | 19 |
+| 13 | Textbox grammar | B3, B6, B7 | yellow | 2 | 02 | 15, 19 |
+| 14 | Axis labels and value labels | B1, G16 | red | 2 | 02, 07 | 12, 18 |
+| 15 | Legend order and labels | B5 | yellow | 3 | 02, 13 | 19 |
+| 16 | colorvar explicit forms | X2 | yellow | 2 | 02 | 12, 19 |
+| 17 | Filters: exclude() and dropdowns | E2, X1 | red | 2 | 03, 07 | 11, 12, 19 |
+| 18 | Axis scale extents | B2 | red | 3 | 02, 14 | 19 |
+| 19 | Closeout | all | green | 4 | all | none |
+
+Section files: `sections/section-NN-<slug>.md`; the manifest with task counts is `sections/index.md`.
+
+---
 
 ## Dependency graph
 
 ```
-Batch 1  (parallel — no shared files)
-  S01 Baseline, environment, test integrity
-  S02 Packaging: make net install work
-  S03 Scheme translation: author the .scheme files
-
-Batch 2  (sequential — all edit dash.ado / dash_parse.mata)
-  S04 Abbreviations via Stata syntax
-   -> S05 Open the option surface + unsupported-option reporting
-   -> S06 Varlist and plot-spec correctness
-
-Batch 3  (sequential — all edit dash_render.py)
-  S07 Statistical defaults from the data and c(level)
-   -> S08 Display formats, dates and labels
-   -> S09 Axes, legend, titles, reference lines
-   -> S10 Figure geometry and layout sizing
-
-Batch 4  (sequential — all edit dash_render.py)
-  S11 Scheme consumption and fidelity
-   -> S12 Layout, tabs and faceting correctness
-   -> S13 Linking, filters and KPI correctness
-
-Batch 5  (sequential — server)
-  S14 Server mode: root fix and option pass-through
-   -> S15 Server/standalone unification
-
-Batch 6
-  S16 Help reconciliation, conformance suite, security and release
+Batch 1: 01  02  03  06  07  08  09  10
+             │   │       │
+Batch 2:     │   ├─► 04  │          (03)
+             │   ├─► 05  │          (03)
+             ├───┼─► 13  │          (02)
+             ├───┼─► 14 ◄┤          (02, 07)
+             ├───┼─► 16  │          (02)
+             │   └─► 17 ◄┘          (03, 07)
+Batch 3:     11 (04, 17)   12 (03, 04, 14, 16, 17)   15 (02, 13)   18 (02, 14)
+Batch 4: 19 ◄── all
 ```
 
-## A note on parallelism, stated honestly
+### Dependency notes (revised in review, D4)
 
-Only batch 1 is genuinely parallel. S01 touches `test/`, S02 touches `dash.pkg` and one
-`except` clause, S03 touches `schemes/` — three disjoint file sets.
-
-Everything after that is sequential, not because the work is logically dependent but because
-**S04-S06 all edit `dash.ado` and `dash_parse.mata`, and S07-S15 all edit `dash_render.py`.**
-Running them concurrently produces conflicting edits to two files. Do not be tempted to
-parallelise S07-S10 — they are independent in intent, not in file.
-
-There is one real logical dependency worth naming: **S05 gates batches 3 and 4.** An option
-that Stata's `syntax` rejects can never reach the renderer, so there is no point implementing
-`bin()` in `map_histogram` before `bin()` is accepted.
-
-## Working rules for every section
-
-1. **Test first.** Project rule 8: every defect gets a regression test that **fails before
-   the fix and passes after**. Demonstrate the failure before writing the fix. A task is not
-   done until the failure output has been read and confirmed to be the right failure.
-2. **One commit per fix**, on a single feature branch off `main`, single-issue style, message
-   in the imperative, **no mention of AI tooling** (rule 7). Never commit to `main` (rule 6).
-   The merge command is reported at the end, not run.
-3. **Full suite after every section**, compared against the S01 baseline (rule 5). The suite
-   must be green before any commit.
-4. **Every behaviour change to existing output is recorded** in a running `CHANGELOG` section,
-   with the before and after values.
-5. **Verify end to end through Stata**, not just through pytest. Structural assertions on
-   generated HTML are necessary but not sufficient for anything the user looks at.
-
-## Environment contract (established in S01, assumed thereafter)
-
-```stata
-clear all
-adopath ++ "/Users/billy/Desktop/Programs/Java/StataJSON"
-adopath ++ "/Users/billy/Desktop/Programs/StataPrograms/d/dash"
-dash clear
-```
-
-`adopath ++` prepends; `+` appends and lets an installed copy in `PLUS/d/` shadow the
-development tree. `dash.ado`'s Mata-load block runs once at file-load time, so set the path
-**before** the first `dash` call or `discard` afterwards.
-
-```bash
-arch -arm64 /usr/local/bin/stata-mp -b do <file>.do     # required on this machine
-```
-
-Launched without `arch -arm64`, Stata runs its x86_64 slice and fails to load the arm64
-`libpython3.13.dylib` with r(7100). Stata's `python_exec` is `/opt/anaconda3/bin/python3`
-(3.13.9); the pytest suite runs `/opt/homebrew/bin/python3.14`. **These are different
-interpreters with different library versions.** S01 pins and verifies both.
-
-## Measured baseline
-
-```
-python3 -m pytest test/ -q   ->   1,480 passed, 14 failed
-```
-
-All 14 are `lowess` tests failing on an unguarded `statsmodels` import
-(`dash_render.py:2547`). The suite is RED, which project rule 5 forbids committing over.
-S01 fixes the guard and re-establishes green.
-
-## Review notes
-
-_(populated by Phase 4)_
+- S02 is a hard dependency for every section whose truth is twoway's drawing (13, 14, 16, and through 13, 15; 18); their fixtures use `scripts/svg_truth.py`.
+- S03 is a hard dependency for S04 and S05 (their node tests import `run_js` / `run_filter_js_block` from `test/js_runner.py`, whose predecessors S03 deletes), for S17 (chained moves) and S12 (period-slider masks under node).
+- S07 is a hard dependency for S14 (its Unicode-aware name check) and S17 (the `ROW_ID` fill).
+- S04 is a hard dependency for S11 and S12: they call `_dash_fmt` and prepend `_DASH_FMT_JS`.
+- S17 precedes S11 (per-group `dash_apply_kpis` call) and S12 (dropdown values before labels); S16 precedes S12 (colour-key label site); S14 precedes S12 (hover signatures) and S18 (the tokenizer); S13 precedes S15 (`extract_text_truth.do`).
+- Batch 1 sections touch disjoint regions of `dash_render.py` and `dash.ado`; shared files follow the merge rules R1-R6 in `sections/index.md`; Stata runs go through `scripts/stata_slot.sh` (three slots).
 
 ---
 
-# Review Notes
+## Parallel batch groups
 
-**Review date:** 2026-09-18
+### Batch 1: foundation and independent leaves
+Sections 01, 02, 03, 06, 07, 08, 09, 10. Execute together.
 
-## Self-review results
-- Issues found: **9**
-- Auto-fixed: **7**
-- Escalated to the user: **4** (answered before the plan was written — see PLAN's
-  "four decisions that bind this plan")
-- Flagged and accepted: **2**
+### Batch 2: consumers of S02, S03 and S07
+Sections 04, 05, 13, 14, 16, 17. Execute together after batch 1.
 
-## Category results
+### Batch 3: consumers of batch 2
+Sections 11, 12, 15, 18. Execute together after batch 2.
 
-| # | Category | Result |
+### Batch 4: closeout
+Section 19, after every other section has merged and the full suites are green.
+
+---
+
+## Execution order
+
+0. Create `scripts/stata_slot.sh` (text in `sections/index.md` step 0).
+1. Create one worktree per Batch 1 section; give each agent its section file, `sections/BRIEF.md`, `DISCOVERY.md`, `RESEARCH.md`, `review/DECISIONS.md` and the research report it cites. Each agent works in its worktree only.
+2. Merge each finished section with `patch -p1` from its worktree's diff (never `cd` into the worktree); remove the worktree; run the changed tests; after the last of the batch, run the full suite once (`python3 -m pytest test/ -q`) and the cscripts the batch added; commit per gap (gap id in the subject; the test name and the failing-test output at 91d97be in the body; no AI references).
+3. Repeat for Batch 2, Batch 3, then S19.
+4. S19 regenerates the demo pages, runs `make test`, `make test-dev`, `scripts/run_cert_suite.sh`, `scripts/run_release_gate.sh`, verifies BUGS.md and ROADMAP.md, and reports the merge command.
+
+---
+
+## Risk summary
+
+### Risk distribution
+
+- **Green:** 4 sections (01, 03, 06, 19)
+- **Yellow:** 9 sections (02, 05, 07, 08, 10, 11, 13, 15, 16)
+- **Red:** 6 sections (04, 09, 12, 14, 17, 18)
+
+### High-risk sections
+
+| Section | Risk summary | Mitigation |
 |---|---|---|
-| 1 | Completeness | **WARN** — 6 research findings had no owning section. All 6 auto-fixed. |
-| 2 | Consistency | **WARN** — the task total in `index.md` and `PLAN.md` disagreed with the section files. Auto-fixed (84 → 89). |
-| 3 | Feasibility | **WARN** — S15 is disproportionately large. Flagged, not fixed; see below. |
-| 4 | Security | pass — S13-05, S14-05 and S16-04 cover every input surface, and S16-04 explicitly re-enumerates the surface *after* the plan's changes rather than reusing the current list. |
-| 5 | Scalability | pass — the one growth risk (per-row identifiers on every source, S13-03) is called out with a size constraint in the task itself. |
-| 6 | Edge cases | pass — minimum-N guards, all-missing columns, Stata's date range exceeding pandas', degenerate ranges and sentinel collisions are all carried into named tasks. |
-| 7 | User experience | pass — the accept-and-report note, the migration section, and three separate "look at it in a browser" verification steps (S08-06, S10-04, S11-06, S12-05). |
-| 8 | Cost & complexity | **WARN** — 89 tasks is a large plan. Flagged; the batching makes it stoppable at several points. |
+| 04 Display-format writer core | `%w.0g` has no documented algorithm; two twins to keep identical; loaders start carrying %g formats, which flips pinned tests | ~200-value Stata fixture pins both twins; every pinned test is flipped in the same commit with its reason |
+| 12 Widgets, tooltips, axes, labels, CSV | nine sites in both renderers; period sliders change the mask's column conversion; tooltip field pattern is a security guard | one site per task; `mask_parity` under node; the `_PLACEHOLDER` pattern widened deliberately with the format carried in `args` |
+| 17 Filters | the callback architecture changes in both modes; snapshot coercion touches marker labels and `dcount` | one documented mask rule pinned by `mask_parity`; chained-move tests through `JsSession`; Stata-counted truth |
+| 18 Axis scale extents | the hull interacts with count ticks, log/date axes, by() common scale and the saved-only renderers block | the hull lives in the one post-layer function both modes run; 20 SVG-fitted cases; a parity profile field for range renderers |
+| 09 Serve launcher and version floor | child-process plumbing with a live /health poll; three refusal sites plus the embedded port; tests that require clamping are inverted | reader threads, `_FakeProc` gains `returncode`; a held-socket pytest and cscript; every clamp site parametrised |
+| 14 Axis labels and value labels | a new tokenizer, numlist expansion in ado with a Python bound, and a hover column that must survive filter moves in both twins | ado never refuses; Python keeps `_MAX_AXIS_TICKS`; SVG fixture per numlist form; the hover column is built like the marker-label column |
 
-## The six completeness gaps, and where they went
+### Medium-risk sections
 
-Each was a finding in `RESEARCH.md` with no task claiming it:
+| Section | Risk summary | Mitigation |
+|---|---|---|
+| 02 | consolidating seven private SVG helpers | reuse without changing their tests' results; smoke fixture |
+| 05 | the recount's JS and the served mapper path | property test summing to N in Python, served path and node |
+| 07 | renaming internal columns across both twins | a guard test that no internal literal lacks the prefix |
+| 08 | per-graph accounting in Mata; a 6M-row cscript | a lowered-limit knob in tests; served keeps the full cap |
+| 10 | per-child CSS on a Bokeh GridBox | stylesheet on children or a resize handler; residual if neither |
+| 11 | date branch first in the KPI formatter; JS card escaping | Stata's own `kpi_display` as truth; escape in the rebuild |
+| 13 | `axis(2)` routing before the Mata repeat merge | Python-side rewrite as fallback |
+| 15 | key numbering with CI layers | `_dash_plot_style_indices` as the numbering source |
+| 16 | declaring z options touches seven graph-key lists | one task per list group; parity corpus cases |
 
-| Finding | Now owned by |
+---
+
+## File map
+
+| Directory / file | Sections |
 |---|---|
-| Dashboard title/subtitle **double HTML-escaped** in the Bootstrap path (`:7518-7519` vs `:6551`, `:6555`) | S09-07 |
-| Graph and axis titles `html.escape`d but drawn as **canvas text** (`:5638`, `:5610-5611`) | S09-07 |
-| `hover()` read at `:6063` and `:4940` but **absent from `dash.ado`** | S09-07 |
-| Secondary-axis range computed from the **unfiltered** frame (`:5729`, `:5764`) | S09-07 |
-| `mlabel()` on `line` plots uses the **unsorted** source (`:2014`, `:2030`) | S09-07 |
-| `dash build` has **no `nobrowser`**, and no `_rc` check after any of six `shell` calls | S14-04 |
+| `dash.ado` | 04 (fmt refusal, storage types), 07, 08, 09, 13 (axis routing), 14 (numlist), 16 (options), 05 (start() text) |
+| `dash_parse.mata` | 07 (name check), 08 (per-graph accounting), 13 (repeat merge), 16 (categories, tables) |
+| `dash_setup.ado`, `dash_setup.sthlp`, `dash.pkg` | 09 |
+| `dash_render.py` | 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18 |
+| `dash.sthlp`, `CHANGELOG.md`, `BUGS.md` | every gap section; 19 |
+| `ROADMAP.md`, `GAPS2.md` | 01, 19 |
+| `scripts/svg_truth.py`, `test/cert_svg.do` | 02 (18 rewires `extract_axis_truth.do` onto it) |
+| `scripts/stata_slot.sh` | orchestrator, before batch 1 (index.md step 0) |
+| `scripts/extract_format_truth.do`, `extract_text_truth.do`, `extract_colorvar_truth.do`, `extract_axis_truth.do` (extended), `extract_stat_truth.do` (extended), `extract_svg_truth_smoke.do` | 04, 13/15, 16, 14/18, 05/17, 02 |
+| `test/fixtures/*_truth.json` | as above (`git add -f`) |
+| `test/js_runner.py` | 03 |
+| `test/test_tracking_documents.py`, `test/test_packaging.py` | 01 |
+| `test/function_test_map.py`, `test/program_coverage_map.py` | every section adding a function or program |
+| `test/test_*.py`, `test/test_*.cscript`, `test/run_all_cscripts.do` | every section |
 
-## Two things flagged rather than fixed
+---
 
-**S15 (server/standalone unification) is the largest single item in the plan** — collapsing
-107 implementations of 38 behaviours in a 10,455-line file, in the half with the thinnest
-test coverage. It is sequenced last among the code sections precisely so it can be deferred:
-S14 alone makes server mode work and honour its options. If the effort has to be cut, cutting
-S15 leaves a working package with a known maintenance burden, whereas cutting anything earlier
-leaves a broken one. The cost of deferring is that every future parity fix must be written
-twice.
+## Review notes
 
-**89 tasks is a lot.** It is not padded — it is the number of distinct defects the audit found
-— but the batch structure gives four natural stopping points, each leaving the package in a
-better and self-consistent state:
-
-| Stop after | What the user gets |
-|---|---|
-| Batch 1 (S01-S03) | The package **installs and works** at all, and the test suite can fail honestly. This is the minimum defensible release. |
-| Batch 2 (S04-S06) | Pasted `twoway` syntax **runs**. No aborts, no silently dropped series. The drop-in claim becomes true at the syntax level. |
-| Batch 3 (S07-S10) | The **numbers and proportions** match Stata. |
-| Batch 4 (S11-S13) | It **looks** like Stata, and the interactive layer is correct. |
-| Batch 5-6 | Server mode works and everything is documented and proved. |
-
-## Refinement questions asked and answered
-Four decisions were put to the user before the plan was written. All four are recorded in
-`RESEARCH.md` §10 and bind the sections: scheme strategy (translate the widely-used StataCorp
-schemes and restrict `scheme()` to that set), breaking changes (match Stata), server mode
-(fix the root bug then unify), and unsupported options (accept, never abort, and report them
-together in one note per command).
-
-## Sections modified during review
-`section-09-axes-legend-titles.md` (new task 09-07, five register rows, five test stubs);
-`section-14-server-root-fix.md` (task 14-04 extended, two test stubs);
-`sections/index.md` and `PLAN.md` (task counts corrected).
+<!-- Populated in Phase 4 (REVIEW). -->
