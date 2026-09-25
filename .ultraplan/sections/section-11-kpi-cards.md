@@ -1,13 +1,14 @@
 # Section 11: KPI cards
 
-> Part of: WP-28 · Gaps: E1 (+ E3, G6 on cards) · Risk: yellow · Batch: 3 · Depends on: 04, 17 · Blocks: 19 
+> Part of: WP-28 · Gaps: E1 (+ E3, G6 on cards) · Risk: yellow · Batch: 3 · Depends on: 04, 17 · Blocks: 19 · Tasks: 7, 1 commit (E1)
 
 
 ## Review amendments (Phase 4, 2026-09-25) — binding; they override any conflicting text below
 
 > Batch **3** · Depends on **04, 17** · Blocks **19** · Risk **yellow** · Commits: one commit (E1) → CHANGELOG `Results that change`
 
-- D4: this section now follows S17: `dash_apply_kpis` is adapted to S17's per-group call, and the brush slice marker `dash_apply_kpis(new_data,` (dash_render.py:14650, 23485) must keep working or the slice is updated in the same task.
+- D4: this section follows S17: `dash_apply_kpis` is adapted to S17's per-group call, and the brush slice marker `dash_apply_kpis(new_data,` (dash_render.py:14650, 23485 at 91d97be; S17's comment line after batch 2) must keep working — 11-03 rewrites only the body of `function dash_apply_kpis(` and a test pins the marker order.
+- D11: KF-01..KF-05 are a block of the one truth script `test/test_gaps2_truth.cscript` (11-06); no new cscript, no runner edit, no hygiene-pin edit.
 
 Applies to every section:
 - D1 (binding): tasks are work steps; commits are per gap (S01-S04: one each). The failing regression tests are written first and run against the unmodified tree; their output at 91d97be is recorded in the fix commit's message (Q24) and they are committed together with the fix, never alone (CLAUDE.md rule 4).
@@ -17,7 +18,7 @@ Applies to every section:
 - D5 (binding): shared files follow merge rules R1-R6 in `index.md` (cscript registration and hygiene pins, copy lists and maps, help/CHANGELOG/BUGS.md, graph-key lists, fixtures, parity corpus).
 - D7: XML fields holding `&`, `<` or `>` are CDATA-wrapped (done mechanically); task names over 8 words are shortened and `done` fields put in the past tense during the detailed fixer pass.
 
-Detailed edits from `../review/consistency.md`, `../review/requirements-security.md` and `../review/feasibility.md` (as adjusted by `../review/DECISIONS.md`) are applied to this file in the fixer pass; until then this block governs.
+Detailed edits from `../review/consistency.md`, `../review/requirements-security.md` and `../review/feasibility.md` (as adjusted by `../review/DECISIONS.md`) were applied to this file in the fixer pass (2026-09-25); the text below conforms to this block.
 
 ## Overview
 
@@ -44,8 +45,14 @@ Why one section: report B §1.3 rows 1-3 are one code path with three entry poin
 agree or the card changes shape on the first interaction — the invariant
 `test_help_claims_4.py::TestACardKeepsItsFormatWhenAFilterMoves` already pins.
 
-**Test order (CLAUDE.md rule 7): task 11-01 writes every failing test for this section**
-and records the failure; 11-02 through 11-06 turn them green; 11-07 closes E1.
+**Test order (CLAUDE.md rule 7) and commit rule (D1): task 11-01 writes every regression
+test for this section**, runs it against the tree as batch 2 leaves it (sections 04 and 17
+merged) and saves the failure text to `<scratch>/11-01-failure.txt` -- it does not commit
+(a red tree is never committed, rule 4); 11-02 and 11-03 turn the sites green; 11-04 and
+11-05 flip the pinned tests; 11-06 appends the certification block; 11-07 closes the entry
+and makes the section's ONE commit (E1), subject ending `(GAPS2 E1)`, whose body opens with
+the saved failure text (Q24; S01 TR-01.9). The failing tests land in that commit, never
+alone.
 
 ## Risk: [yellow] — three writers in two languages must agree with Stata and with each other on every card, and one of them builds HTML by string concatenation
 
@@ -54,31 +61,42 @@ on the saved page; a difference is a card that flickers to a new value the momen
 touches a widget. The JavaScript rebuild is an HTML sink.
 
 **Risk factors.** (1) The JS config fields change (`numfmt`, `decimals`, `commas`,
-`general` retired), and three tests slice `_FILTER_JS` by comment markers. (2) A `%t`
-picture can carry the user's own text through `!`, which now reaches the JS rebuild.
-(3) A date KPI's value is epoch milliseconds in both modes and must be converted back
-before formatting. (4) The variable's own format is now consulted for every statistic,
-which is wrong for a count of a date variable.
+`general` retired), and three tests plus the brush wiring slice `_FILTER_JS` by comment
+markers — on a tree where section 17 has already replaced the single `dash_apply_kpis`
+call with a per-group loop. (2) A `%t` picture can carry the user's own text through `!`,
+which now reaches the JS rebuild. (3) A date KPI's value is epoch milliseconds in both
+modes and must be converted back before formatting. (4) The variable's own format is now
+consulted for every statistic, which is wrong for a count of a date variable.
 
-**Mitigation.** (1) Section 04's `_DASH_FMT_JS` is the only writer; the slice markers are
-updated deliberately in the tests that use them; the format-keeping invariant test is
-extended, not weakened. (2) `dash_html_escape` (section 04) wraps the text in the rebuild,
-and a test injects `!<` into a picture. (3) `_dash_stata_value_of` (section 04) in both
-twins; the fixture's `kpi` block holds Stata's text for date statistics. (4) The effective
-format rule is written once with the statistic in hand and pinned by Stata's strings for
-`count(when)`.
+**Mitigation.** (1) Section 04's `_DASH_FMT_JS` is the only writer; only the body of
+`function dash_apply_kpis(` is rewritten, section 17's loop and its marker comment are left
+as they are, the slice markers are updated deliberately in the tests that use them, a test
+pins the marker order, and the format-keeping invariant test is extended, not weakened.
+(2) `dash_html_escape` (section 04) wraps the text in the rebuild, and a test injects `!<`
+into a picture. (3) `_dash_stata_value_of` (section 04) in both twins; the fixture's `kpi`
+block holds Stata's text for date statistics. (4) The effective format rule is written
+once with the statistic in hand and pinned by Stata's strings for `count(when)`.
 
 ## Dependencies
 
 - Depends on: section 04 (`_dash_fmt_text`, `_dash_stata_value_of`, `_DASH_FMT_JS`,
-  `dash_html_escape`, `self.formats`/`_FORMATS`, `storage_types`, the `kpi` block of
-  `format_truth.json`, and the guard in `_dash_effective_kpi_fmt` this section removes).
+  `dash_html_escape`, `self.formats`/`_FORMATS`, `storage_types` and the served
+  `_storage_types` bound in `make_document`, the `kpi` block of `format_truth.json`, and
+  the guard in `_dash_effective_kpi_fmt` this section removes); section 17 (`kpi_config`
+  entries carry `"use"`, the per-group loop that calls
+  `dash_apply_kpis(_grp_data, _grp.config, _grp.divs, ROW_ID)` once per exclusion group,
+  and the comment line `// dash_apply_kpis(new_data, ...) runs once per exclusion group
+  below` that keeps the brush-wiring marker). Section 03's `test/js_runner.py` (batch 1)
+  is on the tree: one move suffices here, so the after-move tests may use `hc4._run_js` or
+  `js_runner.JsSession`.
 - Blocks: section 19 (closeout).
-- Parallel batch: 2. Can run with S12, S13, S14, S15, S16, S17. S12 also edits
-  dash_render.py but no function this section edits; S17 edits the dropdown branches of
-  the masks and `_dash_option_value`, which this section never touches. Section 03's
-  stateful runner is not required (one move suffices); if it has landed, the after-move
-  tests may use it.
+- Parallel batch: 3. Can run with: 12, 15, 18. Merge order inside batch 3: S18, S15, S11,
+  S12 (index.md); S12 merges after this section and edits no function this section edits
+  (`_format_date_value_standalone` and `_dash_stata_date_text` are left to it).
+- Why (D4 ordering): S17 (batch 2) rewrote `_FILTER_JS`'s KPI call site into the
+  per-group loop and gave `kpi_config` its `use` list; this section rewrites the body of
+  `dash_apply_kpis` on that tree, keeps the marker, and adds `fmt`/`storage` beside `use`
+  in the config.
 
 ## Evidence
 
@@ -129,12 +147,12 @@ handler (:27030-27050) call `_format_kpi`.
 `_kpi_callback_config`, :23385-23451, builds one config per card; the fields the writer
 reads are `decimals`, `commas` (from `_parse_fmt`, :22996, dead once `numfmt` is set),
 `general`, `numfmt` (from `_kpi_js_number_format`, :23004-23042, kind `f`/`e`/`g`/`str`)
-and `datekind` (set only for a date-valued statistic of a date variable).
-`dash_apply_kpis`, :14484-14648: the date branch (:14578-14604) has fixed pictures and
-`'—'` for a missing date; the number branch (:14605-14625) has `'.'` for a missing
-number, `dash_numfmt` (the only caller of the :14378-14482 family), then dead
-`k.general`/`toFixed` branches; the rebuild (:14637-14645) concatenates `fmt` (the card's
-text) raw:
+and `datekind` (set only for a date-valued statistic of a date variable); section 17 adds
+`use` (the per-target list). `dash_apply_kpis`, :14484-14648: the date branch
+(:14578-14604) has fixed pictures and `'—'` for a missing date; the number branch
+(:14605-14625) has `'.'` for a missing number, `dash_numfmt` (the only caller of the
+:14378-14482 family), then dead `k.general`/`toFixed` branches; the rebuild (:14637-14645)
+concatenates `fmt` (the card's text) raw:
 
 ```js
 14643            '<div id="kpi_val_' + k.name_html + '" style="font-size:36px; font-weight:bold; color:' + k.color + ';">' + fmt + '</div>' +
@@ -143,7 +161,14 @@ text) raw:
 while the Python card escapes it (`_dash_kpi_card_html`, :13629: `_v =
 html.escape(str(value))`). `_BRUSH_JS` (:14935) reuses `dash_apply_kpis` through the
 slices assembled at :23478-23496 (`// ---- KPI recompute, shared by` …
-`dash_apply_kpis(new_data,`, plus `function dash_pctl(` … `// Stata's kernels`).
+`dash_apply_kpis(new_data,`, plus `function dash_pctl(` … `// Stata's kernels`), and
+`test/test_kpi_brush.py:251` slices up to the FIRST `dash_apply_kpis(new_data,` too. At
+91d97be that marker is the single call `dash_apply_kpis(new_data, kpi_config, kpi_divs,
+ROW_ID);` at :14650; after section 17 (batch 2) that line reads
+`// dash_apply_kpis(new_data, ...) runs once per exclusion group below` and the loop below
+it calls `dash_apply_kpis(_grp_data, _grp.config, _grp.divs, ROW_ID)` once per exclusion
+group, so the slice still ends at a line that follows the whole function body. This
+section leaves that line and the loop as they are.
 
 ### Stata's own card text
 
@@ -187,6 +212,9 @@ prints it in `%9.0g`, and so does the fixture row.
 - `test/test_help_claims_4.py::TestACardKeepsItsFormatWhenAFilterMoves` (:784-810; `_FORMATS`
   :780-782) — **kept and extended** with `%9,2fc`, `%10.0g`, `%td`, `%tdCCYY-NN-DD`, `%tm`
   on a date variable, and asserted against the fixture, not only against itself.
+- `test/test_kpi_brush.py:251` slices `_FILTER_JS` up to the first `dash_apply_kpis(new_data,`
+  (section 17's comment line after batch 2): unchanged by this section, and
+  `TestConfig::test_the_brush_slice_markers_keep_their_order` guards the order.
 - `test/test_filter_widget_data.py::TestADashboardOfKpisAlone::test_the_filter_recomputes_the_card_in_both_modes`
   is `function_test_map.py`'s test for `_parse_fmt` (:84) → the map entry is removed with
   the function.
@@ -245,25 +273,36 @@ prints it in `%9.0g`, and so does the fixture row.
   `_dash_fmt_text(value, fmt_str, storage)`. The `date_formatter` parameter is retired.
   `_build_kpi_html`/`_format_kpi_value` pass `self.formats`, `self.date_vars`,
   `self.storage_types.get(varname)`; served `_format_kpi(value, fmt_str, varname, stat,
-  date_vars)` passes `_FORMATS` and `_storage_types.get(varname)`.
+  date_vars)` passes `_FORMATS` and `_storage_types.get(varname)` (section 04 binds
+  `_storage_types = meta.get('storage_types', {})` in `make_document`; read it, never
+  rebind it).
 - **TR-11.3 Config.** `_kpi_callback_config` emits `"fmt": kfmt` (the effective format,
   raw text; it is JSON-encoded into `kpi_config_json` and used only as `dash_fmt_text`'s
   argument), `"storage": self.storage_types.get(kvar, "")`, keeps `datekind` (set only for
-  a date-valued statistic of a date variable), `name`, `name_html`, `stat`, `varname`,
-  `has_qual`, `qual_ids`, `title`, `subtitle`, `text_color`, `color`, `bgcolor`; drops
-  `decimals`, `commas`, `general`, `numfmt`. `_parse_fmt` and `_kpi_js_number_format` are
-  deleted and removed from `function_test_map.py`.
-- **TR-11.4 JavaScript.** In `dash_apply_kpis` replace the date and number branches with:
-  `let text; if (result === null || result === undefined || Number.isNaN(result)) text =
-  '.'; else if (k.datekind) { const sv = dash_stata_value_of(result, k.datekind); text =
-  sv === null ? '.' : dash_fmt_text(sv, k.fmt); } else text = dash_fmt_text(result,
-  k.fmt, k.storage);` and in the rebuild write `dash_html_escape(text)`. Delete
-  `dash_tie_even` … `dash_numfmt` (:14378-14482) after `grep -n "dash_numfmt\|dash_fixed\|
-  dash_expo\|dash_py_g\|dash_pystr\|dash_py_group\|dash_tie_even\|dash_py_exp"
+  a date-valued statistic of a date variable), `use` (section 17's per-target list, never
+  dropped), `name`, `name_html`, `stat`, `varname`, `has_qual`, `qual_ids`, `title`,
+  `subtitle`, `text_color`, `color`, `bgcolor`; drops `decimals`, `commas`, `general`,
+  `numfmt`. `_parse_fmt` and `_kpi_js_number_format` are deleted and removed from
+  `function_test_map.py`.
+- **TR-11.4 JavaScript.** In the body of `function dash_apply_kpis(` replace the date and
+  number branches with: `let text; if (result === null || result === undefined ||
+  Number.isNaN(result)) text = '.'; else if (k.datekind) { const sv =
+  dash_stata_value_of(result, k.datekind); text = sv === null ? '.' : dash_fmt_text(sv,
+  k.fmt); } else text = dash_fmt_text(result, k.fmt, k.storage);` and in the rebuild write
+  `dash_html_escape(text)`. Nothing outside that body changes: section 17's per-group loop
+  (calls `dash_apply_kpis(_grp_data, _grp.config, _grp.divs, ROW_ID)`) and its comment
+  line `// dash_apply_kpis(new_data, ...) runs once per exclusion group below` stay
+  exactly as they are, because the brush wiring (:23483-23485) and
+  `test/test_kpi_brush.py:251` slice up to the FIRST `dash_apply_kpis(new_data,`, which is
+  that comment. Delete `dash_tie_even` … `dash_numfmt` (about :14378-14482 at 91d97be;
+  locate by the `function dash_tie_even(` and `function dash_numfmt(` lines) after
+  `grep -n "dash_numfmt\|dash_fixed\|dash_expo\|dash_py_g\|dash_pystr\|dash_py_group\|dash_tie_even\|dash_py_exp"
   dash_render.py test/*.py` shows no other caller; keep the `// ---- KPI recompute, shared
-  by` and `dash_apply_kpis(new_data,` markers the brush wiring (:23483-23485) slices on.
-  `_DASH_FMT_JS` is already in scope (section 04 prepends it to `_DASH_FILTER_MASK_JS`
-  and to the brush code).
+  by` marker. The script text must satisfy `index("// ---- KPI recompute, shared by") <
+  index("function dash_apply_kpis(") < index("dash_apply_kpis(new_data,")`, which
+  `TestConfig::test_the_brush_slice_markers_keep_their_order` pins. `_DASH_FMT_JS` is
+  already in scope (section 04 prepends it to `_DASH_FILTER_MASK_JS` and to the brush
+  code).
 - **TR-11.5 Served app.** `_format_kpi` (:25789-25803) becomes
   `_dash_format_kpi_value(value, _dash_effective_kpi_fmt({'fmt': fmt_str}, varname,
   _FORMATS, stat, date_vars), varname, stat, date_vars=date_vars,
@@ -282,21 +321,30 @@ prints it in `%9.0g`, and so does the fixture row.
   ones (`_dash_effective_kpi_fmt`, `_dash_format_kpi_value`) are already in the function
   copy list. `test/function_test_map.py` drops `DashRenderer._parse_fmt` and
   `DashRenderer._kpi_js_number_format` and names this section's tests for the two changed
-  functions.
+  functions; `test/program_coverage_map.py` gains `test_gaps2_truth.cscript:KF-01` for
+  `_dash_validate_value` and the `dash kpi` program (rule R2).
 - **TR-11.9 Tests slicing `_FILTER_JS`.** `test_kpi_values.py::_js_format` and
   `test_date_range.py:995-1012` are rewritten to prepend `dr._DASH_FMT_JS` and slice from
   `"        let text;"` to `"        // Rebuild the complete Div HTML"`.
 - **TR-11.10 Security.** The card text is escaped by `dash_html_escape` in the JS rebuild
   and by `html.escape` in Python; `k.fmt` never reaches `code`, HTML or CSS; `k.color`
   and `k.bgcolor` stay sanitised as today (`_resolve_kpi_color`).
+- **TR-11.11 Certification.** KF-01..KF-05 are a block `* ==== S11 E1: KPI card text ====`
+  of `test/test_gaps2_truth.cscript` (D11; the script S02 created and registered as runner
+  block 67 with the hygiene pins set once), appended above its closing line
+  `* ==== append new blocks above this line ====` in section order (rule R1 governs the
+  block order); the block is guarded by `local only : env GAPS2_ONLY` so it runs alone
+  under `GAPS2_ONLY=S11`. Case ids keep the `KF-` prefix so `program_coverage_map.py` and
+  BUGS.md cite `test/test_gaps2_truth.cscript KF-01`.
 
 ## Boundaries
 
 - Do not touch the widgets, tooltips, axes, facet titles, marker labels, CSV or colorvar
   labels (section 12), nor `_dash_stata_date_text`/`_format_date_value_standalone`
-  (section 12 retires them once their last caller moves).
-- Do not touch the filter masks, `_dash_option_value` or the exclusion rule (section 17)
-  or the `_FILTER_JS` histogram/kdensity blocks (section 05).
+  (section 12 retires them once their last caller moves; it merges after this section).
+- Do not touch the filter masks, `_dash_option_value`, the exclusion rule, the per-group
+  KPI loop or its marker comment (section 17, on the tree) or the `_FILTER_JS`
+  histogram/kdensity blocks (section 05).
 - Do not change the statistic arithmetic (`_compute_kpi_stat_on_df`, `dash_pctl`, the
   served `_compute_kpi`); a spread of a date variable is still computed in
   milliseconds — its unit is not in E1/E3/G6 and is recorded in Notes, not fixed.
@@ -306,22 +354,32 @@ prints it in `%9.0g`, and so does the fixture row.
   note is TR-11.7's.
 - The BUGS.md entry for E1 lands closed in task 11-07's commit; E3's and G6's land in
   section 12.
+- No new `.cscript` file, no edit to `test/run_all_cscripts.do` or
+  `test/test_cscript_hygiene.py` (D11, rule R1).
 
 ## Stata truth
 
 None added: this section consumes section 04's `format_truth.json` `kpi` block (Stata's
 `display` text for each statistic × variable × format, with the statistic's value) and
-its `date_formats` rows. The certification script computes its own expected strings in
-Stata at run time (`: display …`), the pattern of `test_help_claims_4.cscript`. Stata
-invocation for the cscript (rule 10; at most three concurrent sessions):
+its `date_formats` rows. The certification block computes its own expected strings in
+Stata at run time (`: display …`), the pattern of `test_help_claims_4.cscript`, inside
+`test/test_gaps2_truth.cscript`. Every Stata run goes through the slot wrapper (D6,
+index.md step 0; it implements CLAUDE.md rule 10's console invocation under one of three
+slots and sets `STATATMP=<scratch-dir>/tmp/`). A cscript resolves `cert_helpers.do`,
+`cert_svg.do` and `adodir ".."` from `test/`, as `test/run_all_cscripts.do` does with its
+`cd`, so it is run through a two-line driver written into the scratch directory:
 
 ```
-mkdir -p /tmp/dash-s11/tmp && cd /Users/billy/Desktop/Programs/StataPrograms/d/dash/test && \
-  STATATMP=/tmp/dash-s11/tmp/ arch -arm64 /usr/local/bin/stata-mp -b do test_kpi_format.cscript
+mkdir -p /tmp/dash-s11
+printf 'cd "%s/test"\ndo "%s/test/%s"\n' /Users/billy/Desktop/Programs/StataPrograms/d/dash /Users/billy/Desktop/Programs/StataPrograms/d/dash test_gaps2_truth.cscript > /tmp/dash-s11/run_test_gaps2_truth.do
+GAPS2_ONLY=S11 scripts/stata_slot.sh /tmp/dash-s11 /tmp/dash-s11/run_test_gaps2_truth.do
 ```
 
-Read `test/test_kpi_format.log`; never relaunch to check; set `$dash_nobrowser 1` (the
-cscript does, after `cscript` drops globals).
+Read `/tmp/dash-s11/run_test_gaps2_truth.log`; never relaunch to check. `GAPS2_ONLY=S11`
+makes the truth script run only this section's block (the other blocks test
+`inlist("`only'", "", "S<NN>")`). The script sets `$dash_nobrowser 1` itself (after
+`cscript` drops globals) and exits 222 when `c(python_exec)` is empty; a SKIP is not a
+pass.
 
 ## TDD test stubs
 
@@ -331,7 +389,8 @@ All in **`test/test_kpi_format.py`** (new, task 11-01) unless noted; helpers imp
 `_cards`) and the auto frame from `test/fixtures/data/auto.csv`, with `when = 14610 + i`
 (`%td`, i = 1..74) and `whenm = (year-1960)*12 + month-1` of `when` (`%tm`) so the fixture's
 `kpi` rows (built on `sysuse auto` with `when = mdy(1,1,2000)+_n`, `whenm = mofd(when)`)
-apply. Each stub names its pre-fix failure.
+apply. Each stub names its pre-fix failure; 11-01 records every failure text in
+`<scratch>/11-01-failure.txt` (Q24).
 
 - Test: `TestFirstPaint::test_every_kpi_row_of_the_fixture_saved` — parametrised over
   the `kpi` rows: a spec with that statistic, variable and `fmt` (or none), formats
@@ -368,25 +427,32 @@ apply. Each stub names its pre-fix failure.
   spec `fmt: %21x`: the card is `%9.0g`'s text, exactly one warning naming the KPI and
   `%21x`, both modes.
 - Test: `TestConfig::test_the_config_carries_fmt_and_storage_and_not_the_legacy_fields`
-  — `kpi_config_json` entries have `fmt`, `storage`, `datekind` and none of `numfmt`,
-  `decimals`, `commas`, `general`; `dash_render` has no `_parse_fmt`,
+  — `kpi_config_json` entries have `fmt`, `storage`, `datekind`, `use` and none of
+  `numfmt`, `decimals`, `commas`, `general`; `dash_render` has no `_parse_fmt`,
   `_kpi_js_number_format`, and `_FILTER_JS` has no `function dash_numfmt(`.
+- Test: `TestConfig::test_the_brush_slice_markers_keep_their_order` — in
+  `dash_render._FILTER_JS`, `index("// ---- KPI recompute, shared by") <
+  index("function dash_apply_kpis(") < index("dash_apply_kpis(new_data,")`, and the
+  text `dash_apply_kpis(new_data,` occurs exactly once (section 17's comment line); the
+  brush slice assembled at :23478-23496 therefore holds the whole rewritten body. A
+  guard: it passes before and after this section's edits.
 - Test (extended, `test/test_help_claims_4.py`): `TestACardKeepsItsFormatWhenAFilterMoves`
   `_FORMATS` gains `%9,2fc`, `%10.0g`, `%12,0gc`, `%09.2f`, `%tdCCYY-NN-DD`, `%tm` (the
   date ones on `when`), and a second assertion that each opened card equals
   `_dash_fmt_text` of the statistic.
-- cscript **`test/test_kpi_format.cscript`** (task 11-06): KF-01 saved page: for each
-  format in `%9.0g %10.0g %9.2f %9,2fc %12.0fc %8.0gc %9.2e %9.3gc %-9.2f %09.2f` on
-  `mean(price)` and `%td %tdCCYY-NN-DD %tdMonth_DD,_CCYY` on `max(when)`, `%tm` on
-  `min(whenm)`, the page's card text (read by a Mata helper between `id="kpi_val_NAME"`
-  and `</div>`) equals `${dash_kpi_<name><![CDATA[__dsp}`; KF-02 no `fmt()`: the card equals
-  `: display %<own> value` for `mean(price)` (`%8.0gc`), `max(when)` (`%td`) and
-  `%9.0g` for `count(when)`; KF-03 served: `dash build, saving(app.py) server replace`,
-  then a `python:` block that `exec`s the app into a namespace, calls
-  `make_document(Document())`, reads the `Div` texts and compares to the same globals,
-  then moves the `mpg` slider to its minimum by firing its `_callbacks` (the
-  `_served_filter_move` pattern) and compares again; KF-04 `mean(price) if price > 1e9`
-  reads `.` in both; KF-05 `fmt(%td!<!b!>DD)` on `max(when)`: the page holds `&lt;b&gt;`.
+- Certification block `* ==== S11 E1: KPI card text ====` of **`test/test_gaps2_truth.cscript`**
+  (task 11-06): KF-01 saved page: for each format in `%9.0g %10.0g %9.2f %9,2fc %12.0fc
+  %8.0gc %9.2e %9.3gc %-9.2f %09.2f` on `mean(price)` and `%td %tdCCYY-NN-DD
+  %tdMonth_DD,_CCYY` on `max(when)`, `%tm` on `min(whenm)`, the page's card text (read by
+  a Mata helper between `id="kpi_val_NAME"` and `</div>`) equals `${dash_kpi_<name>__dsp}`;
+  KF-02 no `fmt()`: the card equals `: display %<own> value` for `mean(price)`
+  (`%8.0gc`), `max(when)` (`%td`) and `%9.0g` for `count(when)`; KF-03 served: `dash
+  build, saving(app.py) server replace`, then a `python:` block that `exec`s the app into
+  a namespace, calls `make_document(Document())`, reads the `Div` texts and compares to
+  the same globals, then moves the `mpg` slider to its minimum by firing its `_callbacks`
+  (the `_served_filter_move` pattern) and compares again; KF-04 `mean(price) if price >
+  1e9` reads `.` in both; KF-05 `fmt(%td!<!b!>DD)` on `max(when)`: the page holds
+  `&lt;b&gt;`.
 
 **Mutation table**:
 
@@ -398,6 +464,7 @@ apply. Each stub names its pre-fix failure.
 | pass epoch ms to `dash_fmt_text` without `dash_stata_value_of` | `TestAfterAMove` date rows |
 | leave `numfmt` in the config and `dash_numfmt` in the page | `TestConfig` |
 | served `_format_kpi` still using `_NUM_FORMATS` | `TestFirstPaint::…_served` (`%8.0gc` row) |
+| delete section 17's marker comment while rewriting the body | `TestConfig::test_the_brush_slice_markers_keep_their_order` and `test_kpi_brush.py:251` |
 
 ## Test plan
 
@@ -411,8 +478,8 @@ apply. Each stub names its pre-fix failure.
 | Effective-format rule | pytest | none | n/a |
 | JS rebuild escapes text; format never in code | pytest + node | none | saved |
 | Hand-edited `%21x` falls back with one note | pytest | none | yes |
-| Config shape; legacy writer gone | pytest | none | saved |
-| Card equals Stata's `kpi_display` per format, both modes, served move | cscript KF-01..05 | none (Stata computes) | yes |
+| Config shape; legacy writer gone; slice markers in order | pytest | none | saved |
+| Card equals Stata's `kpi_display` per format, both modes, served move | block KF-01..05 of `test_gaps2_truth.cscript` | none (Stata computes) | yes |
 | Format-keeping invariant across all formats | pytest (extended) | none | saved |
 
 Acceptance criteria:
@@ -420,177 +487,126 @@ Acceptance criteria:
 - **AC-11.1** `python3 -m pytest test/test_kpi_format.py test/test_help_claims_4.py
   test/test_kpi_values.py test/test_date_range.py test/test_server_layer_defects.py -q`
   passes with no skips under both interpreters.
-- **AC-11.2** `test_kpi_format.cscript` passes KF-01..05 and is registered in
-  `run_all_cscripts.do`.
+- **AC-11.2** The `S11 E1` block of `test/test_gaps2_truth.cscript` passes KF-01..05 under
+  `GAPS2_ONLY=S11` and inside the whole script; the script is S02's, registered once, and
+  this section edits neither `test/run_all_cscripts.do` nor the hygiene pins (D11, R1).
 - **AC-11.3** `grep -c "dash_numfmt\|_kpi_js_number_format\|_parse_fmt" dash_render.py`
-  prints 0; `function_test_map.py` is current.
-- **AC-11.4** The full pytest suite is green; BUGS.md carries E1 closed naming
+  prints 0; `function_test_map.py` and `program_coverage_map.py` are current.
+- **AC-11.4** The full pytest suite is green; BUGS.md carries E1 closed (`- Resolution:
+  Fixed <ddmonyyyy> (WP-28, E1). …`) naming
   `test/test_kpi_format.py::TestFirstPaint::test_every_kpi_row_of_the_fixture_saved` and
-  `test_kpi_format.cscript KF-01`; CHANGELOG lists the changed card texts; dash.sthlp
-  :1242-1261 describes the rule.
+  `test/test_gaps2_truth.cscript KF-01`; the `<!-- WP-28 E1 -->` marker in the `**WP-28
+  (GAPS2 audit, 25sep2026)**` group of `### Results that change` is replaced by the E1 line
+  ending `(WP-28, E1)`; dash.sthlp :1242-1261 describes the rule.
 
 ## Tasks
 
+Commit boundary: **one commit (E1)** holding 11-01 to 11-07, subject ending `(GAPS2 E1)`,
+made by 11-07 on the worktree branch `wp28-s11` after the section's one full pytest run in
+the worktree (CLAUDE.md rules 4 and 11); the merger lands it on `s3-bugs` with the same
+message (index.md step 1). The body opens with `<scratch>/11-01-failure.txt` (Q24) and
+carries S01 TR-01.9's `Regression:` / `Flipped:` / `BUGS.md:` lines. Every Stata run goes
+through `scripts/stata_slot.sh <scratch-dir> <file>.do` (D6); the cscript through the
+two-line driver of "Stata truth". No AI references anywhere.
+
 <task type="auto" id="11-01">
-  <name>Write the failing card tests and extend the invariant test]]></name>
-  <files>test/test_kpi_format.py (new), test/test_help_claims_4.py</files>
-  <action>
-    Create `test/test_kpi_format.py`: import the render helpers from `test_help_claims_4`
-    (they are module-level functions; import the module as `hc4`), load
-    `test/fixtures/data/auto.csv` with pandas, add `when` and `whenm` as §TDD stubs
-    specify, load `test/fixtures/format_truth.json` (`pytest.fail` naming section 04 if
-    absent) and write every test named in §TDD stubs with exactly those names. Parametrise
-    the fixture-driven tests over the `kpi` rows by `(stat, var, fmt)` ids. The node runner
-    is `hc4._run_js`; skip only when node is absent and assert in a module test that the
-    node tests ran. In `test/test_help_claims_4.py` extend `_FORMATS` (:780-782) and give
-    `TestACardKeepsItsFormatWhenAFilterMoves` a date variable case and the
-    `_dash_fmt_text` equality assertion. Do not touch dash_render.py. Run both files
-    against the tree as section 04 left it; paste the failure summary (`6e+03`, `""`/`—`,
-    the raw bold tag after a move, `numfmt` present) into the commit message.
-  </action>
-  <verify><![CDATA[`python3 -m pytest test/test_kpi_format.py -q 2>&1 | tail -5` reports 0 passed and no collection error; the `%10.0g` first-paint case fails with `6e+03`, not with an exception.]]></verify>
-  <done>Every regression test of this section exists and fails for the recorded reason against the post-section-04 tree.</done>
+  <name>Write the failing card tests</name>
+  <files>test/test_kpi_format.py, test/test_help_claims_4.py</files>
+  <action><![CDATA[
+    Create `test/test_kpi_format.py`: import the render helpers from `test_help_claims_4` (they are module-level functions; import the module as `hc4`), load `test/fixtures/data/auto.csv` with pandas, add `when` and `whenm` as "TDD test stubs" specify, load `test/fixtures/format_truth.json` (`pytest.fail` naming section 04 if absent; never skip) and write every test named in "TDD test stubs" with exactly those names, including `TestConfig::test_the_brush_slice_markers_keep_their_order`. Parametrise the fixture-driven tests over the `kpi` rows by `(stat, var, fmt)` ids. The node runner is `hc4._run_js` (or `js_runner.JsSession` from section 03, on the tree since batch 1, for the after-move cases); skip only when node is absent and assert in a module test that the node tests ran. In `test/test_help_claims_4.py` extend `_FORMATS` (:780-782) and give `TestACardKeepsItsFormatWhenAFilterMoves` a date variable case and the `_dash_fmt_text` equality assertion. Do not touch dash_render.py. Run both files against the tree as batch 2 left it (sections 04 and 17 merged). Do not commit: save the failure output (`6e+03` for the `%10.0g` first-paint row, `""` and `—` on the missing date card, the raw bold tag after a move, `numfmt` present) to `<scratch>/11-01-failure.txt`; it opens the E1 commit's body and its `6e+03` is the CHANGELOG's old value (Q24, S01 TR-01.9).
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_kpi_format.py -q 2>&1 | tail -5` reports 0 passed apart from the marker-order guard, and no collection error; the `%10.0g` first-paint case fails with `6e+03`, not with an exception; `<scratch>/11-01-failure.txt` exists.]]></verify>
+  <done>Every regression test of this section existed and failed for its recorded reason against the post-batch-2 tree, with nothing committed.</done>
 </task>
 
 <task type="auto" id="11-02">
-  <name>Write the card through the format writer at first paint in both modes</name>
+  <name>Write the card through the writer first</name>
   <files>dash_render.py, test/function_test_map.py</files>
-  <action>
-    Rewrite `_dash_effective_kpi_fmt` as TR-11.1 (remove section 04's guard and its
-    comment) and `_dash_format_kpi_value` as TR-11.2 (retire `date_formatter`; docstring
-    names the fixture). Update the saved callers `DashRenderer._effective_kpi_fmt`,
-    `_format_kpi_value` (:21354) and `_build_kpi_html` (:23374) to pass `self.formats`,
-    `stat`, `self.date_vars` and `self.storage_types.get(varname)`, and add TR-11.7's
-    one-time note in `_build_kpi_html`. Rewrite the served `_format_kpi` (:25789-25803)
-    as TR-11.5 with the same note, binding `_storage_types` in `make_document` if section
-    04 left it as `meta['storage_types']` only. Update `test/function_test_map.py` entries
-    for the two functions to this section's tests.
-  </action>
-  <verify>`python3 -m pytest test/test_kpi_format.py -q -k "TestFirstPaint or TestEffectiveFormat or TestRefusedOnACard or (TestMissing and not move and not brush)"` passes; `python3 -m pytest test/test_server_layer_defects.py -q -k TheKpiFormatHelpers` shows only the `date_formatter` test failing (flipped in 11-04).</verify>
-  <done>Every card's first paint, saved and served, is Stata's text for its effective format, missing is `.`, and a hand-edited refused format falls back with one note.</done>
+  <action><![CDATA[
+    Rewrite `_dash_effective_kpi_fmt` as TR-11.1 (remove section 04's guard and its comment) and `_dash_format_kpi_value` as TR-11.2 (retire `date_formatter`; the docstring names the fixture). Update the saved callers `DashRenderer._effective_kpi_fmt`, `_format_kpi_value` (:21354) and `_build_kpi_html` (:23374) to pass `self.formats`, `stat`, `self.date_vars` and `self.storage_types.get(varname)`, and add TR-11.7's one-time note in `_build_kpi_html`. Rewrite the served `_format_kpi` (:25789-25803) as TR-11.5 with the same note, reading `_storage_types`, which section 04 already binds in `make_document` as `_storage_types = meta.get('storage_types', {})`; do not rebind it. Update `test/function_test_map.py` entries for the two functions to this section's tests.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_kpi_format.py -q -k "TestFirstPaint or TestEffectiveFormat or TestRefusedOnACard or (TestMissing and not move and not brush)"` passes; `python3 -m pytest test/test_server_layer_defects.py -q -k TheKpiFormatHelpers` shows only the `date_formatter` test failing (flipped in 11-04).]]></verify>
+  <done>Every card's first paint, saved and served, became Stata's text for its effective format, missing read `.`, and a hand-edited refused format fell back with one note.</done>
 </task>
 
 <task type="auto" id="11-03">
-  <name>Write the card through the JavaScript twin after moves and brushes</name>
+  <name>Write the card through the JS twin</name>
   <files>dash_render.py, test/function_test_map.py, test/test_kpi_values.py</files>
-  <action>
-    In `_kpi_callback_config` (:23385-23451) emit `fmt`, `storage` and drop `decimals`,
-    `commas`, `general`, `numfmt` (TR-11.3); delete `_parse_fmt` (:22996) and
-    `_kpi_js_number_format` (:23004-23042) and their `function_test_map.py` entries. In
-    `_FILTER_JS`'s `dash_apply_kpis` replace the date and number branches and escape the
-    rebuild (TR-11.4), renaming the local `fmt` to `text`; after the grep TR-11.4
-    prescribes shows no other caller, delete the `dash_tie_even` … `dash_numfmt` block
-    (:14378-14482) and its banner comment, keeping the two brush-slice markers. Rewrite
-    `test_kpi_values.py::_js_format` as TR-11.9 and make
-    `test_the_displayed_value_is_identical_before_and_after_a_filter` read `cfg["fmt"]`.
-    Confirm the brush wiring (:23478-23496) still slices cleanly by rendering a spec with
-    `update(brush)` and running the attached code under node.
-  </action>
-  <verify>`python3 -m pytest test/test_kpi_format.py -q -k "TestAfterAMove or TestAfterABrush or TestEscaping or TestConfig or TestMissing"` passes; `python3 -m pytest test/test_kpi_values.py test/test_help_claims_4.py -q -k "Filtering or KeepsItsFormat"` passes; `grep -c "function dash_numfmt(" dash_render.py` prints 0.</verify>
-  <done>After a filter move and after a brush the saved page writes every card through `dash_fmt_text`, escapes its text, and the legacy writer and its config fields are gone.</done>
+  <action><![CDATA[
+    In `_kpi_callback_config` (:23385-23451 at 91d97be; section 17 already added `"use"` to each entry) emit `fmt` and `storage` and drop `decimals`, `commas`, `general`, `numfmt` (TR-11.3); delete `_parse_fmt` (:22996) and `_kpi_js_number_format` (:23004-23042) and their `function_test_map.py` entries. In `_FILTER_JS` rewrite ONLY the body of `function dash_apply_kpis(`: replace the date and number branches and escape the rebuild (TR-11.4), renaming the local `fmt` to `text`; leave section 17's per-group loop and its comment line `// dash_apply_kpis(new_data, ...) runs once per exclusion group below` exactly as they are (the brush wiring at :23483-23485 and `test/test_kpi_brush.py:251` slice up to the FIRST `dash_apply_kpis(new_data,`, which is that comment). After the grep TR-11.4 prescribes shows no other caller, delete the `dash_tie_even` … `dash_numfmt` block (about :14378-14482 at 91d97be; locate it by the `function dash_tie_even(` and `function dash_numfmt(` lines) and its banner comment, keeping the `// ---- KPI recompute, shared by` marker. Rewrite `test_kpi_values.py::_js_format` as TR-11.9 and make `test_the_displayed_value_is_identical_before_and_after_a_filter` read `cfg["fmt"]`. Confirm the brush wiring still slices cleanly by rendering a spec with `update(brush)` and running the attached code under node.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_kpi_format.py -q -k "TestAfterAMove or TestAfterABrush or TestEscaping or TestConfig or TestMissing"` passes; `python3 -m pytest test/test_kpi_values.py test/test_kpi_brush.py test/test_help_claims_4.py -q -k "Filtering or KeepsItsFormat or brush"` passes; `grep -c "function dash_numfmt(" dash_render.py` prints 0; `python3 -c "import dash_render as d;s=d._FILTER_JS;assert s.index('// ---- KPI recompute, shared by') < s.index('function dash_apply_kpis(') < s.index('dash_apply_kpis(new_data,');assert s.count('dash_apply_kpis(new_data,') == 1"` prints nothing.]]></verify>
+  <done>After a filter move and after a brush the saved page wrote every card through `dash_fmt_text` and escaped its text, the legacy writer and its config fields were gone, and section 17's loop and marker comment were untouched.</done>
 </task>
 
 <task type="auto" id="11-04">
   <name>Flip the pinned card tests to Stata's text</name>
   <files>test/test_date_range.py, test/test_server_layer_defects.py, test/test_display_format_writer.py</files>
-  <action>
-    Flip, with a comment naming E1 and this section: `test_date_range.py::…
-    test_a_kpi_reads_the_placeholder_as_its_date` (:545) to `31dec9999`/`02jan2001`;
-    `test_the_page_callback_writes_a_kpi_year_in_four_digits` (:995-1012) to slice from
-    `"        let text;"`, prepend `dr._DASH_FMT_JS`, set `k = {datekind: kind, fmt:
-    "%"+kind}` and expect `01jan0100`, `0100`, `0100m1`, `01jan0100 00:00:00` (the
-    fixture's `%ty` and `%tm` rows for year 100 decide the exact text; read them);
-    `test_server_layer_defects.py::TestTheKpiFormatHelpers::test_a_date_valued_statistic_is_shown_as_a_date`
-    to pass `date_vars={"date": "td"}` and `"%td"` and expect `02jan2002`, and add a
-    `%tdCCYY-NN-DD` case; invert
-    `test_display_format_writer.py::TestTheGuard::test_a_card_on_a_g_variable_is_unchanged_until_section_11`
-    into `test_a_card_on_a_g_variable_uses_its_own_format` (`%8.0gc`). Record each
-    old/new text in the commit message.
-  </action>
-  <verify>`python3 -m pytest test/test_date_range.py test/test_server_layer_defects.py test/test_display_format_writer.py -q` passes.</verify>
-  <done>Every test that pinned the old card text now pins Stata's, none was deleted, and each flip is recorded.</done>
+  <action><![CDATA[
+    Flip, with a comment naming E1 and this section: `test_date_range.py::… test_a_kpi_reads_the_placeholder_as_its_date` (:545) to `31dec9999`/`02jan2001`; `test_the_page_callback_writes_a_kpi_year_in_four_digits` (:995-1012) to slice from `"        let text;"`, prepend `dr._DASH_FMT_JS`, set `k = {datekind: kind, fmt: "%"+kind}` and expect `01jan0100`, `0100`, `0100m1`, `01jan0100 00:00:00` (the fixture's `%ty` and `%tm` rows for year 100 decide the exact text; read them); `test_server_layer_defects.py::TestTheKpiFormatHelpers::test_a_date_valued_statistic_is_shown_as_a_date` to pass `date_vars={"date": "td"}` and `"%td"` and expect `02jan2002`, and add a `%tdCCYY-NN-DD` case; invert `test_display_format_writer.py::TestTheGuard::test_a_card_on_a_g_variable_is_unchanged_until_section_11` into `test_a_card_on_a_g_variable_uses_its_own_format` (`%8.0gc`). Record each old/new text as a `Flipped: <node> -- <old expectation> was wrong because <why>` line in `<scratch>/11-flips.txt` for the commit body.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_date_range.py test/test_server_layer_defects.py test/test_display_format_writer.py -q` passes; `<scratch>/11-flips.txt` holds one `Flipped:` line per changed assertion.]]></verify>
+  <done>Every test that pinned the old card text pinned Stata's, none was deleted, and each flip was recorded for the commit body.</done>
 </task>
 
 <task type="auto" id="11-05">
-  <name>Run the full suite and flip the remaining card pins</name>
+  <name>Flip the remaining card pins</name>
   <files>test/test_filter_widget_data.py, test/test_adversarial_matrix.py, test/test_mode_parity.py</files>
-  <action>
-    Run `python3 -m pytest test/ -q` once. Expected fallout, each flipped with a comment
-    citing this section: any assertion on a card's text for a variable carrying a `%g`
-    format (`test_filter_widget_data.py::TestADashboardOfKpisAlone`), any assertion that
-    `_dash_format_kpi_value` returns Python's `:g` text (`test_adversarial_matrix.py::
-    TestNumericFormatBounds::test_a_hand_edited_kpi_format_is_bounded` keeps its bound and
-    its `1.50`/`1,234.5` cases, which Stata agrees with), and any parity profile that
-    recorded a card's old text (`test_mode_parity.py` CORPUS entries with KPIs). Anything
-    else is a regression of this section: fix the code, not the test. List every flipped
-    assertion with old and new text in the commit message.
-  </action>
-  <verify><![CDATA[`python3 -m pytest test/ -q 2>&1 | tail -3` reports no failures and no new skips; `python3 -m pytest test/test_function_test_map.py test/test_resource_limits.py -q -k "map or DefinesEveryName"` passes.]]></verify>
-  <done>The full suite is green with every re-baselined card assertion explained, and the served app defines every name it reads.</done>
+  <action><![CDATA[
+    Run `python3 -m pytest test/test_filter_widget_data.py test/test_adversarial_matrix.py test/test_mode_parity.py test/test_function_test_map.py test/test_resource_limits.py -q` (changed files only; the section's one full run is 11-07's). Expected fallout, each flipped with a comment citing this section: any assertion on a card's text for a variable carrying a `%g` format (`test_filter_widget_data.py::TestADashboardOfKpisAlone`), any assertion that `_dash_format_kpi_value` returns Python's `:g` text (`test_adversarial_matrix.py::TestNumericFormatBounds::test_a_hand_edited_kpi_format_is_bounded` keeps its bound and its `1.50`/`1,234.5` cases, which Stata agrees with), and any parity profile that recorded a card's old text (`test_mode_parity.py` CORPUS entries with KPIs are re-profiled; this section edits neither `ALLOWED` nor `_MUST_WARN`, rule R6). Anything else is a regression of this section: fix the code, not the test. Add every flipped assertion with old and new text to `<scratch>/11-flips.txt`.
+  ]]></action>
+  <verify><![CDATA[`python3 -m pytest test/test_filter_widget_data.py test/test_adversarial_matrix.py test/test_mode_parity.py test/test_function_test_map.py test/test_resource_limits.py -q 2>&1 | tail -3` reports no failures and no new skips; `python3 -m pytest test/test_resource_limits.py -q -k DefinesEveryName` passes.]]></verify>
+  <done>Every re-baselined card assertion in the three files was flipped with its reason recorded, and the served app defined every name it read.</done>
 </task>
 
 <task type="auto" id="11-06">
-  <name>Certify the card against Stata's own display in both modes</name>
-  <files>test/test_kpi_format.cscript (new), test/run_all_cscripts.do, test/program_coverage_map.py</files>
-  <action>
-    Write `test/test_kpi_format.cscript` on `test_help_claims_4.cscript`'s skeleton
-    (`cscript … adodir ".."`, the `c(python_exec)` check that exits 222 — never a
-    `capture python: pass` probe, per `test_cscript_hygiene.py` — `do "cert_helpers.do"`,
-    `global dash_nobrowser 1`, `sysuse auto`, `generate when = mdy(1,1,2000) + _n`, `format
-    when %td`, `generate whenm = mofd(when)`, `format whenm %tm`). Add a Mata helper
-    `_kf_card(path, name)` returning the text between the value div's opening tag (the
-    one whose id is `kpi_val_` followed by the KPI's name) and its closing div tag. Write
-    KF-01..KF-05 as §TDD stubs specify, each ending in
-    `display "KF-0n PASS: …"`. For KF-03 the `python:` block reads the expected strings
-    from the `dash_kpi_*__dsp` globals through `sfi.Macro.getGlobal`, `exec`s the app
-    file into a dict, builds a `bokeh.document.Document`, fires the `mpg` slider's
-    `_callbacks` as `test_help_claims_4.py::_served_filter_move` does, and raises on any
-    mismatch (the block never calls back into Stata). Register the script in
-    `test/run_all_cscripts.do` as the next number with the HC4 block's shape (:1387-1407),
-    and add it to `test/program_coverage_map.py` as an `e2e` reference for
-    `_dash_validate_value` and the `dash kpi` program. Run it with the §Stata truth
-    command and read the log.
-  </action>
-  <verify>`tail -5 test/test_kpi_format.log` shows KF-05 PASS and the ALL CHECKS PASSED line; `python3 -m pytest test/test_cscript_hygiene.py test/test_program_coverage_map.py -q` passes.</verify>
-  <done>Stata itself certifies that the saved page and the served app show its `display` text for every accepted card format, before and after a served filter move, and the script is registered.</done>
+  <name>Certify the card against Stata's display</name>
+  <files>test/test_gaps2_truth.cscript, test/program_coverage_map.py</files>
+  <action><![CDATA[
+    Append to `test/test_gaps2_truth.cscript` (S02 created it in batch 1 and registered it as runner block 67; it opens with the Python gate that exits 222, loads `cert_helpers.do` and `cert_svg.do`, sets `global dash_nobrowser 1`, and ends with the line `* ==== append new blocks above this line ====`), above that last line and after every earlier section's block (rule R1: blocks in section order), the block
+```
+* ==== S11 E1: KPI card text ====
+local only : env GAPS2_ONLY
+if inlist("`only'", "", "S11") {
+    display as text "S11 start `c(current_time)'"
+    ... KF-01..KF-05 ...
+    display as text "S11 end `c(current_time)'"
+}
+* ==== end S11 ====
+```
+    holding inside the `if`: `sysuse auto, clear`, `generate when = mdy(1,1,2000) + _n`, `format when %td`, `generate whenm = mofd(when)`, `format whenm %tm`; a Mata helper `_kf_card(path, name)` returning the text between the value div's opening tag (the one whose id is `kpi_val_` followed by the KPI's name) and its closing div tag; and KF-01..KF-05 as "TDD test stubs" specify, each displaying `KF-0n PASS` or `KF-0n FAIL: <why>` through the script's PASS/FAIL helper and never `exit`ing on a failure, so the blocks after it still run. For KF-03 the `python:` block reads the expected strings from the `dash_kpi_*__dsp` globals through `sfi.Macro.getGlobal`, `exec`s the app file into a dict (the generated app, never user data), builds a `bokeh.document.Document`, fires the `mpg` slider's `_callbacks` as `test_help_claims_4.py::_served_filter_move` does, and raises on any mismatch (the block never calls back into Stata). Edit neither `test/run_all_cscripts.do` nor `test/test_cscript_hygiene.py` (D11: S02 alone set the pins). Add `test_gaps2_truth.cscript:KF-01` to `test/program_coverage_map.py` as an `e2e` reference for `_dash_validate_value` and the `dash kpi` program. Run the block with the driver of "Stata truth" under `GAPS2_ONLY=S11` and read `/tmp/dash-s11/run_test_gaps2_truth.log`.
+  ]]></action>
+  <verify><![CDATA[`grep -c "KF-0[1-5] PASS" /tmp/dash-s11/run_test_gaps2_truth.log` prints 5, `grep -c " FAIL" /tmp/dash-s11/run_test_gaps2_truth.log` prints 0 and `grep -c '^r([0-9]*);' /tmp/dash-s11/run_test_gaps2_truth.log` prints 0; `python3 -m pytest test/test_cscript_hygiene.py test/test_program_coverage_map.py -q` passes.]]></verify>
+  <done>Stata itself certified, in a block of the one truth script, that the saved page and the served app show its `display` text for every accepted card format before and after a served filter move.</done>
 </task>
 
 <task type="auto" id="11-07">
   <name>Close E1 in BUGS.md, help and changelog</name>
   <files>BUGS.md, dash.sthlp, CHANGELOG.md</files>
-  <action>
-    Append to BUGS.md a closed entry `- [x] Title: KPI fmt() accepts formats the card then
-    does not apply, and %w.0g rounds the card to one significant digit` with the five
-    fields in order (File Names and Line Numbers: dash_render.py `_dash_format_kpi_value`,
-    `_kpi_callback_config`, `dash_apply_kpis`, the served `_format_kpi`; Description:
-    GAPS2 E1's measured symptoms; Suggested fix: one writer of Stata formats; Resolution:
-    fixed, naming `test/test_kpi_format.py::TestFirstPaint::test_every_kpi_row_of_the_fixture_saved`,
-    `::TestAfterAMove::test_every_kpi_row_after_a_filter_move_saved`,
-    `::TestEscaping::test_the_js_rebuild_escapes_the_card_text` and
-    `test_kpi_format.cscript KF-01`, and stating that `%x`/`%H` are refused by section 04's
-    change). Rewrite dash.sthlp :1242-1250 (a date statistic is shown in the variable's
-    own picture, or `fmt()`'s) and :1259-1261 (the effective-format rule of BR-11.2, the
-    accepted families, `.` for missing). Add CHANGELOG lines: "Results that change" —
-    `dash kpi mean(price), fmt(%10.0g)` read `6e+03`, now `6165.257`; without `fmt()` on
-    auto's price `6165.26`, now `6,165.257` (its `%8.0gc`); `max(when)` on a `%td`
-    variable `02 Jan 2001`, now `02jan2001`; a missing date card `—`, now `.`;
-    "Security" — the page's card rebuild escapes its text. No AI references; grep the
-    message and the entry for `claude|anthropic` before and after committing.
-  </action>
-  <verify>`python3 -m pytest test/test_tracking_documents.py test/test_help_claims_4.py -q` passes (the new entry parses, names existing tests, and no open S1/S2 entry exists); `git log -1 --format=%B | grep -ci "claude\|anthropic"` prints 0.</verify>
-  <done>E1 is closed in BUGS.md naming its tests, the help states the card's format rule, and the changelog lists every card text that changed.</done>
+  <action><![CDATA[
+    Append at the end of BUGS.md (S01 TR-01.8; never mid-file) the closed entry `- [x] Title: KPI fmt() accepts formats the card then does not apply, and %w.0g rounds the card to one significant digit` with the fields in order (File Names and Line Numbers: dash_render.py `_dash_format_kpi_value`, `_kpi_callback_config`, `dash_apply_kpis`, the served `_format_kpi`; Description: GAPS2 E1's measured symptoms and the known residual that a spread of a date variable is computed in milliseconds; Suggested fix: one writer of Stata formats) and `- Resolution: Fixed <ddmonyyyy> (WP-28, E1). Every card, at first paint, after a filter move and after a brush, is written by _dash_fmt_text / dash_fmt_text under its effective format (fmt(), else the variable's own display format, else %9.0g) in _dash_format_kpi_value, _kpi_callback_config, dash_apply_kpis and the served _format_kpi, in both renderers; a missing statistic reads .; the JavaScript rebuild escapes its text; %x and %H are refused by section 04's change. Pinned by test/test_kpi_format.py::TestFirstPaint::test_every_kpi_row_of_the_fixture_saved, ::TestAfterAMove::test_every_kpi_row_after_a_filter_move_saved, ::TestEscaping::test_the_js_rebuild_escapes_the_card_text, test/test_gaps2_truth.cscript KF-01.` -- the title holds no `"`. Rewrite dash.sthlp :1242-1250 (a date statistic is shown in the variable's own picture, or `fmt()`'s) and :1259-1261 (the effective-format rule of BR-11.2, the accepted families, `.` for missing); grep `test/test_help_claims_4.py` and `test/test_help_claims_4.cscript` for the changed sentences and update any pin. In `CHANGELOG.md` replace the marker `<!-- WP-28 E1 -->` in the `**WP-28 (GAPS2 audit, 25sep2026)**` group at the end of the release's `### Results that change` list (S01 placed it there, D2) with ONE line ending `(WP-28, E1)` that names the command, the old value and the new: `dash kpi mean(price), fmt(%10.0g)` read `6e+03` (the value `<scratch>/11-01-failure.txt` recorded, Q24), now `6165.257`; without `fmt()` on auto's price `6165.26`, now `6,165.257` (its `%8.0gc`); `max(when)` on a `%td` variable `02 Jan 2001`, now `02jan2001`; a missing date card `—`, now `.`; and the sentence that the page's card rebuild now escapes its text (no separate security line). Write nothing under any other heading. Run the section's one full pytest run in the worktree (`python3 -m pytest test/ -q`; a pin it exposes that 11-05 did not list is flipped in 11-05's files before continuing), then the S11 block through the driver; grep the three files and the message for `claude|anthropic`; commit the whole section on the worktree branch `wp28-s11` as ONE commit, subject ending `(GAPS2 E1)`, body opening with `<scratch>/11-01-failure.txt` and carrying the `Regression:` / `Flipped:` (from `<scratch>/11-flips.txt`) / `BUGS.md: "<title>" (closed)` lines (S01 TR-01.9); the merger lands it on `s3-bugs` with this message (index.md step 1).
+  ]]></action>
+  <verify><![CDATA[The full suite's tail reports no failures and no new skips; `python3 -m pytest test/test_tracking_documents.py test/test_help_claims_4.py -q` passes (the new entry parses, names existing tests, and no open S1/S2 entry exists); `grep -c '<!-- WP-28 E1 -->' CHANGELOG.md` prints 0 and `grep -c '(WP-28, E1)' CHANGELOG.md BUGS.md` prints 2; `git log -1 --format=%B | grep -ci "claude\|anthropic"` prints 0 and `git log -1 --format=%s | grep -c '(GAPS2 E1)'` prints 1.]]></verify>
+  <done>E1 was closed in BUGS.md naming its tests, the help stated the card's format rule, the E1 CHANGELOG marker was replaced by the line with the recorded old values, and one green commit on `wp28-s11` carried the section.</done>
 </task>
 
 ## Section completion criteria
 
 - Every card, saved and served, at first paint, after a filter move and after a brush,
   equals Stata's `display` text for its effective format on every `kpi` fixture row, and
-  `.` when missing; the cscript proves it from Stata in both modes.
+  `.` when missing; the `S11 E1` block of `test/test_gaps2_truth.cscript` proves it from
+  Stata in both modes.
 - `dash_numfmt` and its family, `_parse_fmt` and `_kpi_js_number_format` are gone; the
-  config carries `fmt` and `storage`; the JS rebuild escapes its text.
-- The full pytest suite, `test_kpi_format.cscript` and the existing cscripts are green
-  with no skips; every flipped assertion is recorded.
-- BUGS.md carries E1 closed naming its tests; dash.sthlp and CHANGELOG are updated.
+  config carries `fmt`, `storage` and section 17's `use`; the JS rebuild escapes its
+  text; section 17's per-group loop and its marker comment are untouched and
+  `TestConfig::test_the_brush_slice_markers_keep_their_order` passes.
+- One commit on `wp28-s11`, subject ending `(GAPS2 E1)`, holding the failing tests, the
+  fix, the flips and the closed BUGS.md entry; no test-only commit exists (D1).
+- The full pytest suite is green with no skips; every flipped assertion is recorded as a
+  `Flipped:` line; no new `.cscript` file, no runner or hygiene-pin edit (D11).
+- BUGS.md carries E1 closed with `- Resolution: Fixed <ddmonyyyy> (WP-28, E1). …`;
+  dash.sthlp :1242-1261 is updated; the `<!-- WP-28 E1 -->` marker is replaced by a line
+  ending `(WP-28, E1)`.
 
 ## Notes
 
@@ -607,14 +623,37 @@ Acceptance criteria:
 - **Epoch milliseconds.** A date statistic reaches both writers as milliseconds; convert
   with `_dash_stata_value_of`/`dash_stata_value_of` before formatting. A value past
   31dec9999 converts to None and prints `.`.
-- **Slice markers.** The brush wiring and two tests slice `_FILTER_JS` by comment text;
-  keep `// ---- KPI recompute, shared by` and `dash_apply_kpis(new_data,` where they are,
-  and update the tests' `let fmt;` marker to `let text;`.
+- **Slice markers.** The brush wiring, `test_kpi_brush.py:251` and two tests slice
+  `_FILTER_JS` by text; keep `// ---- KPI recompute, shared by` where it is, leave section
+  17's comment line `// dash_apply_kpis(new_data, ...) runs once per exclusion group
+  below` (the first and only `dash_apply_kpis(new_data,`) and its loop untouched, and
+  update the tests' `let fmt;` marker to `let text;`.
+- **Commit bodies** use S01 TR-01.9's line forms verbatim: `Regression:
+  test/<file>.py::<Class>::<test> -- failed at <pre-fix tree> with <text>`, `Flipped: <node>
+  -- <old expectation> was wrong because <why>` (one per flip), `BUGS.md: "<title>"
+  (closed)`; no `Fixture:` line (this section regenerates none).
+- **Shared registries (rules R1-R6).** R1: the KF cases are a block of
+  `test_gaps2_truth.cscript` appended above its closing line, in section order; the runner
+  and the two hygiene pins are never edited here. R2: `function_test_map.py` loses the two
+  deleted names and `program_coverage_map.py` gains the KF-01 reference, each in
+  alphabetical place; no copy-list entry changes. R3: BUGS.md is appended at the end, only
+  the E1 marker is replaced in CHANGELOG, and dash.sthlp :1242-1261 is the one help region
+  this section owns. R6: `CORPUS` entries with KPIs are re-profiled only; `ALLOWED` and
+  `_MUST_WARN` are never edited here.
 - **Renderer order.** The served `_format_kpi` is a module-level function in the app and
   resolves `_FORMATS`/`_storage_types` from module scope; the saved renderer reads
   `self.*`. Both call the same two module functions, so parity is by construction; the
   tests still assert both.
-- **Section 12 will retire `_format_date_value_standalone`.** After this section its
-  only callers are section 12's sites; do not delete it here.
-- **Stata sessions.** One run for 11-06; if it SKIPs on Python, check `c(python_exec)`.
-- **Line numbers** are section 04's post-edit neighbourhood; symbols are authoritative.
+- **Section 12 (merged after this section in batch 3) will retire
+  `_format_date_value_standalone`.** After this section its only callers are section 12's
+  sites; do not delete it here.
+- **Stata invocation.** Every run is `scripts/stata_slot.sh <scratch-dir> <file>.do` (D6):
+  the wrapper takes one of three `mkdir` slots, sets `STATATMP=<scratch-dir>/tmp/`
+  (trailing slash) and runs Stata's console binary in batch; never the GUI, never a bare
+  `stata-mp`, never the full cert suite inside a section (S19 runs it). A cscript needs
+  the two-line driver of "Stata truth" because it resolves its helpers from `test/`.
+- **python_exec hazard.** Many concurrent Stata sessions can drop `python_exec` from
+  `~/.stata19/console/stata19.rc`; the truth script then exits 222 and a SKIP is not a
+  pass: check `c(python_exec)` before trusting a skip.
+- **Line numbers** are 91d97be's, shifted by sections 04 and 17 (batch 2); symbols are
+  authoritative.

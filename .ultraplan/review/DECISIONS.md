@@ -40,6 +40,8 @@ Add to `index.md` "How to execute" and `BRIEF.md`:
 
 `index.md` "How to execute" gains step 0: the orchestrator creates `scripts/stata_slot.sh` before batch 1 — a wrapper that acquires one of three `flock` slots (`/tmp/dash-stata-slot-{1,2,3}.lock`, non-blocking retry loop) and then runs `cd "$1" && STATATMP="$1/tmp/" arch -arm64 /usr/local/bin/stata-mp -b do "$2"`. Every section's Stata invocation is written as `scripts/stata_slot.sh <scratch-dir> <file>.do`. S02 task 02-07's `make cert` moves to S19 (a full cert run is never launched inside a section).
 
+> Orchestrator note (2026-09-25, fixer pass): the wrapper is implemented with three atomic `mkdir` slot directories as written in `sections/index.md` step 0, which supersedes the `flock` wording above; sections only call `scripts/stata_slot.sh`.
+
 ## D7. XML task schema (feasibility schema violations)
 
 - Any `<action>`, `<verify>` or `<done>` containing `&`, `<` or `>` (shell `&&`, `2>&1`, `<scratch>` placeholders) is wrapped in `<![CDATA[ … ]]>`; text stays readable, never entity-escaped.
