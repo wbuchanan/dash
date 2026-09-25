@@ -922,8 +922,12 @@ class TestInternalLinksResolve:
         assert not dupes, f"duplicate {{marker}} names: {sorted(dupes)}"
 
     def test_the_reference_scan_found_something(self):
-        # 65 links to 28 markers (measured 24sep2026, after the S3
-        # batch's three ci band links, to ciband and unsupported; 62 to 27 after
+        # 64 links to 28 markers (measured 25sep2026, after WP-28 E14
+        # dropped the "At phone width" paragraph's link to Server Mode --
+        # the served app's phone behaviour is now stated inline, since it
+        # matches the saved page's, rather than sent to a section that
+        # explained the difference; 65 to 28 before, after the S3 batch's
+        # three ci band links, to ciband and unsupported; 62 to 27 after
         # TR-27.2's two links from "At phone width" and Figure
         # proportions; 60 before).
         # A link whose marker
@@ -931,4 +935,4 @@ class TestInternalLinksResolve:
         # marker at all -- is no link the scan reads: 59, above the "10"
         # this was, and the dead link passed the check above.
         refs = re.findall(r"dash##[a-z_0-9]+", _help_text())
-        assert len(refs) == 65 and len(set(refs)) == 28
+        assert len(refs) == 64 and len(set(refs)) == 28

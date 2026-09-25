@@ -13,6 +13,11 @@ out, and posts to the host:
                scrolls sideways
     canvases   the figure canvases (width >= 120, height >= 60), deduped
     kpis       the KPI cards (.db-kpi-card), deduped
+    cells      for each retained KPI card (same order, same dedup as
+               `kpis`): [cellWidth, cellHeight, cellClass] of the nearest
+               ancestor -- crossing a shadow root via getRootNode().host --
+               whose class list has one starting with `db-cell-h-`, or
+               [-1, -1, ""] when none is found (WP-28 E14, TR-10.12)
     offscreen  how many canvases and cards reach past 0..W
     overlap    pairs of distinct canvases or cards that intersect by more
                than 2 px
@@ -46,19 +51,35 @@ CHROME_CANDIDATES = (
 PROBE_JS = r"""
 <script>
 window.addEventListener('load', () => setTimeout(() => {
-  const c = [], k = [];
+  const c = [], k = [], kc = [];
+  const cellOf = (start) => {
+    let el = start.parentElement, cur = start;
+    while (true) {
+      if (!el) {
+        const root = cur.getRootNode();
+        if (root && root.host) { el = root.host; cur = el; continue; }
+        return [-1, -1, ''];
+      }
+      const cls = [...(el.classList || [])].find(x => x.startsWith('db-cell-h-'));
+      if (cls) { const r = el.getBoundingClientRect();
+        return [Math.round(r.width), Math.round(r.height), cls]; }
+      cur = el; el = el.parentElement;
+    }
+  };
   const walk = (root) => { for (const el of root.querySelectorAll('*')) {
     if (el.shadowRoot) walk(el.shadowRoot);
     if (el.tagName === 'CANVAS') { const r = el.getBoundingClientRect();
       if (r.width >= 120 && r.height >= 60) c.push([r.left, r.top, r.width, r.height]); }
     if (el.classList && el.classList.contains('db-kpi-card')) { const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) k.push([r.left, r.top, r.width, r.height]); } } };
+      if (r.width > 0 && r.height > 0) { k.push([r.left, r.top, r.width, r.height]);
+        kc.push(cellOf(el)); } } } };
   walk(document);
   const same = (q, r) => Math.abs(q[0]-r[0]) < 1 && Math.abs(q[1]-r[1]) < 1
       && Math.abs(q[2]-r[2]) < 1 && Math.abs(q[3]-r[3]) < 1;
-  const u = [], kk = [];
+  const u = [], kk = [], cells = [];
   for (const r of c) if (!u.some(q => same(q, r))) u.push(r);
-  for (const r of k) if (!kk.some(q => same(q, r))) kk.push(r);
+  for (let i = 0; i < k.length; i++) if (!kk.some(q => same(q, k[i]))) {
+    kk.push(k[i]); cells.push(kc[i]); }
   const W = innerWidth;
   const all = u.concat(kk);
   const off = all.filter(r => r[0] < -1 || r[0] + r[2] > W + 1).length;
@@ -78,7 +99,7 @@ window.addEventListener('load', () => setTimeout(() => {
                 + ':' + Math.round(r.left) + '+' + Math.round(r.width)); } };
   walk2(document);
   const res = {W, sw: document.documentElement.scrollWidth, canvases: u.length,
-    kpis: kk.length, offscreen: off, overlap,
+    kpis: kk.length, cells, offscreen: off, overlap,
     min_width: u.length ? Math.round(Math.min(...u.map(r => r[2]))) : 0,
     min_height: u.length ? Math.round(Math.min(...u.map(r => r[3]))) : 0,
     widths: [...new Set(u.map(r => Math.round(r[2])))].sort((a, b) => a - b), past};

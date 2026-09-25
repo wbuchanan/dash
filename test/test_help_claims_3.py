@@ -720,10 +720,15 @@ class TestASelectionReachesTheLayersThatDrawTheGroupsRows:
         assert not any(saved) and not any(served), (saved, served)
 
     @pytest.mark.parametrize("ptype", ["rspike", "rconnected"])
-    def test_two_range_layers_draw_it_only_on_the_saved_page(self, ptype):
+    def test_two_range_layers_draw_it_in_both_modes(self, ptype):
+        """WP-28 E14: a served rspike or rconnected in a link group now
+        draws the group's shared source (_dash_range_source), through a
+        view when qualified, exactly as the saved page's mapper does; it
+        used to build a private source every time."""
         saved, served = _linked(ptype)
-        assert any(saved), saved
-        assert served and not any(served), served
+        assert any(saved) and any(served), (saved, served)
+        if ptype == "rconnected":
+            assert sorted(saved) == sorted(served)
 
 
 class TestAKpiNameInLinkHasNoEffect:

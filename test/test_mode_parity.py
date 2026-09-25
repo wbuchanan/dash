@@ -65,7 +65,7 @@ import pandas as pd
 import pytest
 from bokeh.document import Document
 from bokeh.models import (Arrow, Band, BoxAnnotation, ColumnDataSource, Div,
-                          GridPlot, HoverTool,
+                          GridBox, GridPlot, HoverTool,
                           Label, LabelSet, Legend, RangeSlider, Select,
                           Slider, Span, TabPanel, Tabs, ToolProxy, Widget)
 
@@ -121,20 +121,26 @@ ALLOWED = {
         "db-col-lg-N cells, each cell one separately embedded Bokeh "
         "component, so it has no Bokeh layout root to walk.  The served "
         "document draws the same rows and spans as a Bokeh GridBox of 12 "
-        "columns (WP-21 TR-21.4).  For a layout(bs) entry the saved tree is "
-        "therefore read from the page's markup -- its cells in page order, "
-        "each placed where a browser at 992px or more places it (a bs row "
-        "starts a line; a cell that would carry the line past 12 columns "
-        "starts the next) -- and compared with the served GridBox's "
-        "children: content, row, column and spans.  What the markup does "
-        "below 992px, where it reflows, has no served counterpart and is "
-        "not compared; dash.sthlp says the served grid keeps its spans "
-        "down to a 768px window and then stacks (TR-27.2).  "
-        "Nor is the rest of the page, which is why a layout(bs) entry sets "
-        "no filter(), tabs(), title() or subtitle(): the saved page puts "
-        "its filters above the title (or, filterposition(left), beside "
-        "it), and the served app -- as the saved page under every other "
-        "layout -- below it."
+        "columns (WP-21 TR-21.4).  For a layout(bs) entry the WHOLE page is "
+        "therefore read from its markup, in page order -- title, subtitle, "
+        "filter bar, tabs and grid alike (_bs_markup_page, WP-28 E14) -- "
+        "each part spelled as _layout_tree spells its served twin, and the "
+        "served document's nested Columns (built only for CSS sizing) are "
+        "unwrapped to the same flat list (_unwrap_columns) before the two "
+        "are compared.  The grid's cells are placed where a browser at "
+        "992px or more places them (a bs row starts a line; a cell that "
+        "would carry the line past 12 columns starts the next) and "
+        "compared with the served GridBox's children: content, row, "
+        "column and spans.  What the markup does below 992px, where it "
+        "reflows, has no served counterpart and is not compared; "
+        "dash.sthlp says the served grid keeps its spans down to a 768px "
+        "window, then stacks, and takes the saved page's half rows and "
+        "KPI cell heights between 768 and 991px (TR-27.2, WP-28 E14).  "
+        "One difference remains outside this comparison and is not fixed: "
+        "under filterposition(left) the saved page draws the title inside "
+        "the content column beside the filter sidebar, where the served "
+        "app draws it above sidebar and content -- a layout(bs) entry "
+        "never sets filterposition(left)."
     ),
 }
 
@@ -338,6 +344,24 @@ def _glyph_profile(fig):
         if g is None:
             continue
         entry = {"type": type(g).__name__, "visible": r.visible}
+        # WP-28 E14: a linked figure's nonselection alpha, and whether this
+        # renderer draws the link group's own shared source -- a served
+        # rspike/rconnected used to build a private source every time, so
+        # a selection on the group never reached it, and a served brush
+        # dimmed at Bokeh's 0.1 where the saved page dims at 0.15.  Neither
+        # was part of the profile, so both drifted unseen.
+        ns = getattr(r, "nonselection_glyph", None)
+        entry["dim"] = (
+            _num(float(ns.fill_alpha))
+            if ns is not None and getattr(ns, "fill_alpha", None) is not None
+            else None,
+            _num(float(ns.line_alpha))
+            if ns is not None and getattr(ns, "line_alpha", None) is not None
+            else None,
+        )
+        entry["on_link_source"] = bool(
+            getattr(getattr(r, "data_source", None), "_dash_link_source",
+                   False))
         for attr in _STYLE:
             if not hasattr(g, attr):
                 continue
@@ -842,6 +866,95 @@ def _bs_markup_tree(r, page, figures, embedded=None):
     return ("GridBox", cells)
 
 
+#: The saved bs page's title/subtitle, filter bar and tabs cell markers
+#: (WP-28 E14): _dash_header_fragments' own tags, and the two literal
+#: chunks _render_bootstrap_html writes around the filter bar and the tabs
+#: widget (dash_render.py:22712-22736 area).
+_BS_TITLE_RE = re.compile(r'<h2 class="db-title"[^>]*>.*?</h2>', re.S)
+_BS_SUBTITLE_RE = re.compile(r'<p class="db-subtitle"[^>]*>.*?</p>', re.S)
+_BS_FILTER_BAR_START = '<div class="db-row db-filter-bar">'
+_BS_TABS_CELL_START = '<div class="db-row db-section"><div class="db-col-md-12">'
+_BS_SECTION_ROW = '<div class="db-row db-section">'
+_ROOT_ID_RE = re.compile(r'data-root-id="([^"]+)"')
+
+
+def _bs_markup_page(r, page, figures, embedded):
+    """The saved ``layout(bs)`` page's title, subtitle, filter bar, tabs
+    and grid, read from the page itself, in PAGE ORDER (WP-28 E14).
+
+    Before this only ``_bs_markup_tree`` (the grid) existed, so a bs entry
+    that also set filter(), tabs(), title() or subtitle() had nothing to
+    compare those against and ``ALLOWED`` exempted the whole page outside
+    the grid -- which is how the filter bar sitting above the title
+    instead of below it went unseen here.  Each part is spelled exactly as
+    ``_layout_tree`` spells its served twin (a title/subtitle ``<h2>``/
+    ``<p>`` as ``("Div", ("text", fragment))``, the filter bar as
+    ``("Row", [("Widget", ...), ...])``, the tabs widget and the grid
+    through the existing readers), so ``_unwrap_columns(srv_tree)``
+    compares directly against the list this returns.
+    """
+    body = page[page.index('<div class="db-container">'):]
+    parts = []
+
+    m = _BS_TITLE_RE.search(body)
+    if m:
+        parts.append((m.start(), ("Div", ("text", m.group(0)))))
+    m = _BS_SUBTITLE_RE.search(body)
+    if m:
+        parts.append((m.start(), ("Div", ("text", m.group(0)))))
+
+    at = body.find(_BS_FILTER_BAR_START)
+    if at >= 0:
+        nxt = body.find(_BS_SECTION_ROW, at)
+        chunk = body[at:nxt if nxt >= 0 else len(body)]
+        widgets = [("Widget", _widget_profile(embedded[rid]))
+                  for rid in _ROOT_ID_RE.findall(chunk) if rid in embedded]
+        parts.append((at, ("Row", widgets)))
+
+    at = body.find(_BS_TABS_CELL_START)
+    if at >= 0:
+        idm = _ROOT_ID_RE.search(body, at + len(_BS_TABS_CELL_START))
+        if idm and idm.group(1) in embedded:
+            parts.append((at, _layout_tree(embedded[idm.group(1)], figures)))
+
+    grid_at = None
+    for gm in re.finditer(re.escape(_BS_SECTION_ROW), body):
+        nxt = body.find(_BS_SECTION_ROW, gm.end())
+        chunk = body[gm.start():nxt if nxt >= 0 else len(body)]
+        if "db-col-lg-" in chunk:
+            grid_at = gm.start()
+            break
+    parts.append((grid_at if grid_at is not None else len(body),
+                 _bs_markup_tree(r, page, figures, embedded)))
+
+    parts.sort(key=lambda p: p[0])
+    return [p[1] for p in parts]
+
+
+def _unwrap_columns(tree):
+    """A ``("Column", kids)`` is replaced by its unwrapped kids; a list of
+    roots by their concatenation; anything else is kept (WP-28 E14).
+
+    The served bs document nests its title, subtitle, filter bar and
+    content in ``Column``s purely for CSS sizing (``sizing_mode``); the
+    saved page's markup has no such nesting, so the two are compared as
+    flat, page-ordered lists of parts.  A ``Row`` or a ``Tabs``/``GridBox``
+    is kept whole -- only a ``Column`` wrapper is removed.
+    """
+    if isinstance(tree, list):
+        out = []
+        for t in tree:
+            u = _unwrap_columns(t)
+            if isinstance(u, list):
+                out.extend(u)
+            else:
+                out.append(u)
+        return out
+    if (isinstance(tree, tuple) and len(tree) == 2 and tree[0] == "Column"):
+        return _unwrap_columns(tree[1])
+    return tree
+
+
 def _render_pair(name, spec):
     """``{"std": ..., "srv": ...}`` -- each ``{"tree", "figures", "warnings",
     "widgets", "kpis"}``, and ``"bs"`` on the saved side when the page is
@@ -859,16 +972,30 @@ def _render_pair(name, spec):
     doc, srv_w = _served(spec)
     std_figs, srv_figs = [], []
     root = getattr(r, "_last_layout_root", None)
+    std_cells, srv_cells = [], []
     if root is None:
-        # No root to walk: the grid is read from the page's markup, and its
-        # figures are taken in page order.
+        # No root to walk: the whole page -- title, subtitle, filter bar,
+        # tabs and grid, in page order -- is read from its markup
+        # (_bs_markup_page, WP-28 E14); the served document's nested
+        # Columns (built only for CSS sizing) are unwrapped to the same
+        # flat shape before the two are compared.
         _allowed("layout(bs) is standalone markup")
-        std_tree = _bs_markup_tree(r, page, std_figs, embedded)
+        std_tree = _bs_markup_page(r, page, std_figs, embedded)
+        if len(std_tree) == 1:
+            # The same single-root collapse the served side gets from
+            # `if len(srv_tree) == 1: srv_tree = srv_tree[0]`: a bs page
+            # with nothing above the grid compares bare tuple to bare
+            # tuple, not a one-element list to a bare tuple.
+            std_tree = std_tree[0]
+        std_cells = _bs_grid_cell_classes_from_markup(page)
     else:
         std_tree = _layout_tree(root, std_figs)
     srv_tree = [_layout_tree(x, srv_figs) for x in doc.roots]
     if len(srv_tree) == 1:
         srv_tree = srv_tree[0]
+    if root is None:
+        srv_tree = _unwrap_columns(srv_tree)
+        srv_cells = _bs_grid_cell_classes_from_doc(doc)
 
     def leaves(tree, kind):
         out = []
@@ -886,7 +1013,9 @@ def _render_pair(name, spec):
         return [d[1:] for d in leaves(tree, "Div") if d[0] == "kpi"]
 
     if root is None:
-        # The markup tree holds the grid alone; the widgets sit outside it.
+        # The Row _bs_markup_page places is read from the same widgets;
+        # kept as a direct read rather than leaves(std_tree, "Widget") so
+        # a reader bug in the Row part cannot also hide from this check.
         std_widgets = [_widget_profile(w) for w in r.filter_widgets]
     else:
         std_widgets = leaves(std_tree, "Widget")
@@ -894,13 +1023,47 @@ def _render_pair(name, spec):
     pair = {
         "std": {"tree": std_tree, "figures": std_figs, "warnings": std_w,
                 "widgets": std_widgets, "kpis": std_kpis,
-                "bs": root is None},
+                "bs": root is None, "cells": std_cells},
         "srv": {"tree": srv_tree, "figures": srv_figs, "warnings": srv_w,
                 "widgets": leaves(srv_tree, "Widget"),
-                "kpis": kpis_of(srv_tree)},
+                "kpis": kpis_of(srv_tree), "cells": srv_cells},
     }
     _CACHE[name] = pair
     return pair
+
+
+_BS_GRID_CELL_RE = re.compile(
+    r'class="(db-col-12[^"]*)"><div id="[^"]*" data-root-id="([^"]+)"')
+
+
+def _bs_grid_cell_classes_from_markup(page):
+    """``[(lg_span, sorted(classes))]`` for a saved bs page's grid cells,
+    in page order -- the class attribute alone, filtered to
+    ``db-col-md-N``/``db-col-lg-N``/``db-cell-h-*`` (WP-28 E14)."""
+    body = page[page.index('<div class="db-container">'):]
+    out = []
+    for cls, _root in _BS_GRID_CELL_RE.findall(body):
+        lg = re.search(r"db-col-lg-(\d+)", cls)
+        classes = sorted(c for c in cls.split()
+                         if c.startswith(("db-col-md-", "db-col-lg-",
+                                          "db-cell-h-")))
+        out.append((int(lg.group(1)) if lg else None, classes))
+    return out
+
+
+def _bs_grid_cell_classes_from_doc(doc):
+    """``[(col_span, sorted(css_classes))]`` for the served GridBox's
+    children, in children order, filtered the same way (WP-28 E14)."""
+    boxes = list(doc.select({"type": GridBox}))
+    if not boxes:
+        return []
+    out = []
+    for m, _r, _c, _rs, cs in boxes[0].children:
+        classes = sorted(c for c in m.css_classes
+                         if c.startswith(("db-col-md-", "db-col-lg-",
+                                          "db-cell-h-")))
+        out.append((cs, classes))
+    return out
 
 
 def _diff(a, b, path="", out=None):
@@ -1147,6 +1310,12 @@ CORPUS = [
     _case("colorvar() on a linked graph", bo={"link": "g1 g2"},
           graphs=[("g1", [_sc(colorvar="foreign", colordiscrete="colordiscrete")]),
                   ("g2", [plot_for("line")])]),
+    # WP-28 E14: a served rspike or rconnected in a link group used to
+    # draw a private source every time, so a selection on the group never
+    # reached it; TestRangeLayersInALinkGroup reads on_link_source here.
+    _case("rspike and rconnected in a link group", bo={"link": "g1 g2"},
+          graphs=[("g1", [plot_for("rspike"), plot_for("rconnected")]),
+                  ("g2", [_sc()])]),
     # ---- graph options -------------------------------------------------------
     _case("reference lines", [_sc()], None, {"xline": "3000", "yline": "20"}),
     _case("a styled reference line", [_sc()], None,
@@ -1287,6 +1456,16 @@ CORPUS = [
           bo={"layout": "bs: g1=12 / g2=6"},
           graphs=[("g1", [_sc()], {"by": "rep, cols(2)"}),
                   ("g2", [plot_for("line")])]),
+    # WP-28 E14: the whole page, not the grid alone -- title, subtitle,
+    # filter bar and tabs -- read in page order (_bs_markup_page) and
+    # compared with the served document flattened the same way
+    # (_unwrap_columns); the saved bar now sits below the header.
+    _case("layout(bs) with a title, filters and tabs",
+          bo={"layout": "bs", "title": "Title", "subtitle": "Sub",
+              "filter": "foreign, type(dropdown); price, type(range)",
+              "tabs": "A: g2"},
+          graphs=[("g1", [_sc()]), ("g2", [plot_for("line")])],
+          kpis=[_kpi("k1")]),
     # ---- filter() -----------------------------------------------------------
     _case("filter(, type(dropdown))", [_sc()],
           {"filter": "foreign, type(dropdown)"}),
@@ -1490,20 +1669,16 @@ class _Agree:
     def test_same_document_tree(self, name, spec):
         """Where every figure, card and widget sits, in one tree.
 
-        A ``layout(bs)`` page has no Bokeh tree: its grid is read from the
-        page's markup (``ALLOWED``), and it is the grid alone -- so a
-        ``layout(bs)`` entry must not carry what sits outside it, and its
-        served document must be that grid and nothing else.
+        A ``layout(bs)`` page has no Bokeh tree: its whole page -- title,
+        subtitle, filter bar, tabs and grid -- is read from its markup, in
+        page order (``_bs_markup_page``, WP-28 E14), and compared with the
+        served document's tree flattened the same way (``_unwrap_columns``,
+        ``ALLOWED``).  What the markup does below the grid's 992px
+        breakpoint has no served counterpart and stays outside this
+        comparison, as does the recorded ``filterposition(left)``
+        difference -- a ``layout(bs)`` entry never sets it.
         """
         pair = _render_pair(name, spec)
-        if pair["std"]["bs"]:
-            bo = spec["build_options"]
-            outside = [k for k in ("filter", "tabs", "title", "subtitle")
-                       if bo.get(k)]
-            assert not outside, (
-                f"{name}: a layout(bs) entry compares the grid alone, and "
-                f"sets {outside}: "
-                + _allowed("layout(bs) is standalone markup"))
         diffs = _diff(pair["std"]["tree"], pair["srv"]["tree"])
         assert not diffs, _explain(name, "document trees", diffs)
 
@@ -1603,6 +1778,55 @@ class _Agree:
 @pytest.mark.parametrize("name,spec", CORPUS)
 class TestTheTwoModesAgree(_Agree):
     pass
+
+
+class TestRangeLayersInALinkGroup:
+    """WP-28 E14: a served rspike or rconnected in a link group draws the
+    group's shared source, as the saved page does, so a selection on the
+    group reaches it too."""
+
+    def test_rspike_and_rconnected_draw_the_groups_source_in_both_modes(
+            self):
+        entry = next(c for c in CORPUS
+                    if c.id == "rspike and rconnected in a link group")
+        pair = _render_pair(*entry.values)
+        for mode in ("std", "srv"):
+            for fig in pair[mode]["figures"]:
+                for g in fig["glyphs"]:
+                    if g["type"] in ("Segment", "Scatter"):
+                        assert g["on_link_source"], (mode, g["type"])
+                    elif g["type"] == "Line":
+                        assert not g["on_link_source"], (mode, g["type"])
+
+
+class TestTheBsCellsCarryOneSetOfClasses:
+    """WP-28 E14: a served layout(bs) grid's children carry the saved
+    page's own db-col-md-N/db-col-lg-N/db-cell-h-* classes."""
+
+    @pytest.mark.parametrize(
+        "name,spec", [c for c in CORPUS if c.id.startswith("layout(bs")])
+    def test_each_bs_entry(self, name, spec):
+        pair = _render_pair(name, spec)
+        assert pair["std"]["cells"], name
+        assert pair["std"]["cells"] == pair["srv"]["cells"], (
+            name, pair["std"]["cells"], pair["srv"]["cells"])
+
+
+class TestThePagesHeads:
+    """WP-28 E14: both pages declare the same viewport meta."""
+
+    def test_both_pages_declare_one_viewport(self):
+        from test_csp import _file_context
+        _, sp, dp = _write(_spec([_sc()]))
+        r = dr.DashRenderer(sp, dp)
+        page = r.render()
+        assert page.count(dr._DASH_VIEWPORT_META) == 1
+        assert page.index("Content-Security-Policy") < page.index(
+            dr._DASH_VIEWPORT_META)
+        served_page = dr._dash_served_template().render(_file_context())
+        assert served_page.count(dr._DASH_VIEWPORT_META) == 1
+        assert served_page.index("Content-Security-Policy") < (
+            served_page.index(dr._DASH_VIEWPORT_META))
 
 
 def test_every_must_warn_entry_is_in_the_corpus():

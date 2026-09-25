@@ -1640,21 +1640,24 @@ class TestTheLauncherServes:
                 session.close()
         assert roots and "429" not in texts
 
-    def test_the_page_has_no_mobile_viewport(self, tmp_path):
-        """A limitation: the saved page declares a viewport for phones
-        (test_geometry.py); the served page is Bokeh's own and does not."""
+    def test_the_page_has_a_mobile_viewport(self, tmp_path):
+        """WP-28 E14: the served page now declares the same viewport meta
+        the saved page declares (test_geometry.py), through the served
+        template (dr._dash_served_template)."""
         from test_server_serves import _Launched, _build_app
         app = _build_app(str(tmp_path))
         with _Launched(app) as srv:
             status, page = srv.get("/")
-        # The absence is read on the dashboard's own page, or it proves
+        # The presence is read on the dashboard's own page, or it proves
         # nothing.  A 4xx or 5xx raises out of get() (a make_document that
         # raises is a 500, measured 24sep2026), but a 200 page that is not
-        # the dashboard has no viewport either: a session the limiter
+        # the dashboard declares the viewport too, since the template
+        # governs every page the launcher serves: a session the limiter
         # refuses is served, with 200, as a page holding only the refusal
         # (test_a_refused_session_gets_the_refusal_page).  Measured
-        # 24sep2026: 200, 3564 bytes, the session Bokeh embeds (its token)
-        # and the title the app sets, and a charset and a CSP <meta>.
+        # 24sep2026: 200, the session Bokeh embeds (its token) and the
+        # title the app sets, a charset, a CSP <meta> and one viewport
+        # <meta> after it.
         assert status == 200, status
         assert "Bokeh.embed.embed_items" in page and '"token"' in page, (
             page[:600])
@@ -1662,14 +1665,25 @@ class TestTheLauncherServes:
         # The control: the same pattern finds the viewport the saved page
         # declares, in the form dash writes it.
         assert re.search(r'<meta[^>]+name="viewport"', dr._CSP_META)
-        assert not re.search(r'<meta[^>]+name="viewport"', page)
+        assert page.count(dr._DASH_VIEWPORT_META) == 1
+        assert page.index("Content-Security-Policy") < page.index(
+            dr._DASH_VIEWPORT_META)
 
 
 class TestTheModesDifferHere:
-    """Differences the help's limitations block lists, each measured."""
+    """What the help's server-mode section says of the two pages, each
+    measured (WP-28 E14: the viewport and the dimming below no longer
+    differ; the class name and docstring stay to hold the other rows of
+    the comparison table)."""
 
-    def test_a_brush_dims_unselected_points_less_when_served(self, tmp_path,
-                                                             truth):
+    def test_a_brush_dims_unselected_points_alike_when_served(self,
+                                                               tmp_path,
+                                                               truth):
+        """dr._dash_dim_nonselection, module-level and copied into the
+        served app, dims a linked figure's nonselection glyph to
+        dr._NONSELECTION_ALPHA in both renderers -- it used to be a
+        DashRenderer method the served app could not copy, so a served
+        brush always dimmed at Bokeh's own 0.1."""
         spec = _pair_spec(link="g1 g2")
         r = _saved(tmp_path, spec, _auto(truth))
         saved = {round(float(rr.nonselection_glyph.fill_alpha), 4)
@@ -1681,8 +1695,7 @@ class TestTheModesDifferHere:
                   for fig in doc.select({"type": type(r_fig())})
                   for rr in fig.renderers
                   if hasattr(rr, "nonselection_glyph")}
-        assert saved == {0.15}
-        assert served == {0.1}
+        assert saved == served == {0.15}
 
     def test_a_date_is_a_date_in_both_modes(self, tmp_path, truth):
         """The comparison table's Dates row, Yes in both columns since

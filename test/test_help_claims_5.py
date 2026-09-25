@@ -853,10 +853,11 @@ class TestAFacetedGraphInALinkGroup:
     carries a box select -- the mechanism by which a selection in one panel
     shows in all of them.  In both modes that holds for the markers of
     scatter, connected and dot layers, and the help says so and no more:
-    measured, a line, bar, spike, area, range, fit or paired-coordinate
-    layer draws from a source of its own when served (rbar, rspike and
-    rconnected's markers share it on the saved page only), so a selection
-    cannot reach it there."""
+    measured, a line, bar, spike, area, fit or paired-coordinate layer
+    draws from a source of its own in both modes; rspike and the markers of
+    rconnected share the group's source in both modes too (WP-28 E14: a
+    served range layer used to build a private source every time); rbar
+    draws its own rows in both modes (WP-27)."""
 
     @pytest.mark.parametrize("ptype", ["scatter", "connected", "dot"])
     def test_the_markers_follow_the_selection_in_both_modes(self, ptype):

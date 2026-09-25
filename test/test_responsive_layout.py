@@ -153,10 +153,14 @@ FAMILIES = {
                           link="_all"),
     "facet_cols4": _spec([_graph("f", [_sc("mpg", "weight")],
                                  by="rep78, cols(4)")]),
+    # WP-28 E14: the automatic layout(bs) grid the served half rows and KPI
+    # cell heights were measured against -- four span-3 KPI cards, two
+    # span-6 figures, one span-12 -- at 375/768/1440 (TR-10.12).
+    "bs_cards": _spec(_FOUR, _K4, layout="bs"),
 }
 SERVED = ("bs_facet", "bs_filters_left", "grid_3x2_filters",
           "grid_filters_left", "auto_filters_left", "tabs_facet",
-          "facet_linked")
+          "facet_linked", "bs_cards")
 
 
 def _write(spec):
@@ -195,7 +199,9 @@ def _served_doc(spec):
 def _served_page(spec):
     """The served document's layout as a standalone page: the same Bokeh
     models the server sends, without its Python callbacks, which do not
-    change a layout."""
+    change a layout.  Rendered through the served template (WP-28 E14) so
+    it declares the saved page's viewport meta, as a real ``bokeh serve``
+    session does (``doc.template = _dash_served_template()``, :25824)."""
     import logging
     from bokeh.embed import file_html
     from bokeh.resources import INLINE
@@ -204,7 +210,8 @@ def _served_page(spec):
     level = log.level
     log.setLevel(logging.ERROR)   # "real Python callbacks" in a file
     try:
-        return file_html(doc, INLINE, "served")
+        return file_html(doc, INLINE, "served",
+                         template=dr._dash_served_template())
     finally:
         log.setLevel(level)
 
@@ -254,9 +261,11 @@ class TestPagesFitInChrome:
 
 class TestServedDocumentsFitInChrome:
     """The served document's layout at the same widths (TR-27.2): its
-    grids stack as the saved ones do.  A phone shows the served app at
-    desktop width (it declares no viewport; dash.sthlp says so), so this
-    is the served app in a browser window of that width."""
+    grids stack as the saved ones do.  The served page declares the saved
+    page's viewport meta (WP-28 E14: rendered through
+    ``_dash_served_template``), so a phone lays it out at this width
+    rather than zooming out a 980px default; this is also the served app
+    in a browser window of that width."""
 
     @pytest.mark.parametrize("name", SERVED)
     def test_served_document_fits(self, name):
@@ -300,6 +309,28 @@ class TestTheProbe:
         monkeypatch.setenv("DASH_CHROME", str(f))
         assert rp.find_chrome() != str(f)
 
+    def test_cells_are_reported(self):
+        """TR-10.12: a KPI card's cell is the nearest ancestor with a
+        db-cell-h-* class, reported alongside the card itself."""
+        chrome = _chrome()
+        page = ("<html><body style='margin:0'>"
+                "<div class='db-cell-h-md' "
+                "style='width:220px;height:150px'>"
+                "<div class='db-kpi-card' "
+                "style='width:200px;height:80px'>x</div>"
+                "</div></body></html>")
+        r = rp.measure_many(page, (375,), chrome)[375]
+        assert r["cells"] == [[220, 150, "db-cell-h-md"]]
+
+    def test_a_card_with_no_cell_ancestor_reports_none(self):
+        chrome = _chrome()
+        page = ("<html><body style='margin:0'>"
+                "<div class='db-kpi-card' "
+                "style='width:200px;height:80px'>x</div>"
+                "</body></html>")
+        r = rp.measure_many(page, (375,), chrome)[375]
+        assert r["cells"] == [[-1, -1, ""]]
+
 
 # ---------------------------------------------------------------------------
 # The model properties and CSS the fix sets (no browser)
@@ -311,6 +342,70 @@ def _css(model):
 
 def _all_models(root, cls):
     return [m for m in root.references() if isinstance(m, cls)]
+
+
+class TestTheServedPageCarriesTheSavedPagesHead:
+    """WP-28 E14: the served page declares the saved page's viewport meta,
+    after its Content-Security-Policy meta -- no Chrome needed; this is
+    what lets the Chrome measurements below trust the served template."""
+
+    def test_viewport_and_policy(self):
+        page = _served_page(FAMILIES["bs_cards"])
+        assert page.count(dr._DASH_VIEWPORT_META) == 1
+        csp_at = page.lower().find('http-equiv="content-security-policy"')
+        assert csp_at >= 0
+        assert csp_at < page.index(dr._DASH_VIEWPORT_META)
+
+
+class TestTheServedBsGridReflowsAsTheSavedOne:
+    """WP-28 E14: between 768 and 991 px a served layout(bs) grid takes the
+    saved page's half rows and KPI cell minimum heights.  The saved page's
+    flex-wrap CSS gets this for free; the served GridBox gets one
+    stylesheet (_dash_bs_grid_css) built from the same numbers.  Measured
+    25sep2026 (dash_render.py Evidence item 4): a served span-3 KPI card
+    went from four across at every width to two per line at 768, four
+    across again at 1440, and one per line at 375 -- matching the saved
+    page's card and canvas counts and widths at every one.
+
+    Cell HEIGHT is a floor (min-height), not a fixed height, and the two
+    pages' cards are not byte-identical DOM (a saved card sits inside an
+    extra .db-col wrapper; a served card's own host element carries the
+    class): measured, the served cell sits almost exactly at the floor
+    (130/130/122 at 1440/768/375) while the saved one is a few pixels
+    above it at 768/1440 (132) and further above it at 375 (132, where the
+    card's own content -- not the floor -- decides the height).  Both
+    still meet AC-10.4's floor (>= 130 from 768, >= 120 below it) in both
+    modes, which is what is asserted; a byte-identical height is not.
+    """
+
+    @pytest.mark.parametrize("name", ["bs_cards", "bs_facet"])
+    def test_cards_and_canvases_agree(self, name):
+        chrome = _chrome()
+        saved = rp.measure_many(_saved_page(FAMILIES[name]), WIDTHS, chrome)
+        served = rp.measure_many(_served_page(FAMILIES[name]), WIDTHS,
+                                 chrome)
+        for w in WIDTHS:
+            s, v = saved[w], served[w]
+            assert s["kpis"] == v["kpis"], (w, "kpis", s["kpis"], v["kpis"])
+            assert s["canvases"] == v["canvases"], (
+                w, "canvases", s["canvases"], v["canvases"])
+            s_widths = sorted(c[0] for c in s["cells"])
+            v_widths = sorted(c[0] for c in v["cells"])
+            assert len(s_widths) == len(v_widths) == s["kpis"]
+            for a, b in zip(s_widths, v_widths):
+                assert abs(a - b) <= 24, (w, s_widths, v_widths)
+            for mode, cells in (("saved", s["cells"]), ("served", v["cells"])):
+                for cw, ch, cls in cells:
+                    frac = cw / w
+                    if w == 1440:
+                        assert frac < 0.30, (w, mode, cw)
+                    elif w == 768:
+                        assert 0.40 <= frac <= 0.60, (w, mode, cw)
+                    else:
+                        assert frac > 0.90, (w, mode, cw)
+                    min_h = 130 if w >= 768 else 120
+                    assert ch >= min_h, (w, mode, ch)
+                    assert cls == "db-cell-h-sm", (w, mode, cls)
 
 
 class TestReflowModel:

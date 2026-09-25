@@ -192,6 +192,21 @@ _DASH_BS_STACK_BELOW_PX = 768
 # The saved page's gutter: `.db-row>[class*="db-col"]' pads each cell 8px a
 # side, 16px between two cells, and `.db-section' puts 16px under a row.
 _DASH_BS_GUTTER_PX = 16
+# The saved layout(bs) page's lg breakpoint (the db-col-lg-* classes,
+# _DASH_GRID_CSS `@media(min-width:992px)`): between _DASH_BS_STACK_BELOW_PX
+# and here a cell takes its md span; from here it keeps the span it was
+# given (WP-28 E14).
+_DASH_BS_LG_FROM_PX = 992
+# A KPI card's cell keeps at least this many pixels, keyed to its span
+# (_DASH_GRID_CSS's .db-cell-h-sm/-md/-lg): "lg" from a span of 12, "md"
+# from 6, else "sm" (_cell_height_class).  WP-28 E14: the served grid's
+# stylesheet is built from these, so the saved and served numbers cannot
+# drift apart.
+_DASH_KPI_CELL_MIN_PX = (("sm", 130), ("md", 150), ("lg", 170))
+# Below _DASH_BS_STACK_BELOW_PX every cell -- KPI card or not -- stacks to
+# the grid's full width, and a KPI card's minimum height narrows to this
+# (_DASH_GRID_CSS `@media(max-width:767px)`).
+_DASH_KPI_CELL_MIN_NARROW_PX = 120
 
 # The band within which a figure's aspect ratio is honoured, in pixels.
 # Outside it the ratio yields, so that one square panel cannot fill an entire
@@ -2433,21 +2448,29 @@ def _dash_csp_meta(policy: str) -> str:
 
 
 def _dash_served_template():
-    """The served page's template: Bokeh's own page, plus the CSP <meta>.
+    """The served page's template: Bokeh's own page, plus the CSP <meta>
+    and the saved page's viewport <meta> (WP-28 E14).
 
     ``{% extends base %}`` over ``bokeh.core.templates.FILE`` -- the page
-    Bokeh writes anyway -- with the policy added to its ``preamble`` block,
-    which sits in the page's head after its title and ahead of every style
-    element and script Bokeh writes, so the policy governs all of them.
-    (No literal tag names here: this text is copied into the generated app,
-    whose source is checked for a raw script tag.)  Nothing else of the
-    page is replaced, and ``{{ super() }}`` keeps whatever a later Bokeh
-    puts in that block.  ``base`` is bound in the template's own globals, so
-    the template does not depend on Bokeh passing it (Bokeh 3.9 passes it).
+    Bokeh writes anyway -- with the policy and the viewport tag added to its
+    ``preamble`` block, which sits in the page's head after its title and
+    ahead of every style element and script Bokeh writes, so the policy
+    governs all of them and the viewport is declared before anything else
+    parses.  The CSP <meta> comes first so ``test_csp.py``'s ``_assert_first``
+    still finds the policy ahead of everything it governs.  (No literal tag
+    names here: this text is copied into the generated app, whose source is
+    checked for a raw script tag -- a ``<meta`` is not one, and
+    ``_dash_csp_meta`` already returns one.)  Nothing else of the page is
+    replaced, and ``{{ super() }}`` keeps whatever a later Bokeh puts in
+    that block.  ``base`` is bound in the template's own globals, so the
+    template does not depend on Bokeh passing it (Bokeh 3.9 passes it).
 
     A <meta> rather than a header because it is the one form that also
     holds under ``bokeh serve app.py``: make_document sets this template
-    on every document it builds, and Bokeh renders the page with it.
+    on every document it builds, and Bokeh renders the page with it.  A
+    served dashboard used to have no viewport at all, so every breakpoint
+    below 980px was unreachable on a phone (dash.sthlp used to list this as
+    a limitation).
 
     Returns:
         A ``jinja2.Template``.
@@ -2457,6 +2480,7 @@ def _dash_served_template():
         "{% extends base %}\n"
         "{% block preamble %}{{ super() }}    "
         + _dash_csp_meta(_DASH_CSP_SERVED)
+        + "\n    " + _DASH_VIEWPORT_META
         + "\n{% endblock %}",
         globals={"base": FILE})
 
@@ -2567,16 +2591,22 @@ def _dash_harden_origin_check() -> bool:
     return True
 
 
-# The saved page's <meta>, written into both standalone pages: the layout(bs)
-# page and the default one each put it first in <head>, because a <meta>
-# policy governs only what the page parses after it.
+# The viewport <meta> both pages declare (WP-28 E14): without it a mobile
+# browser lays the page out at its 980px default and zooms the whole thing
+# out to fit, so every breakpoint below 980px is unreachable on a phone and
+# the text is unreadable.  Found by opening a dashboard at 375px:
+# window.innerWidth reported 980.  A module constant, not inlined into
+# _CSP_META, because the served template needs it too and cannot copy a
+# method or a string built inside one.
+_DASH_VIEWPORT_META = ('<meta name="viewport" '
+                       'content="width=device-width, initial-scale=1">')
+
+# The saved page's <meta>s, written into both standalone pages: the
+# layout(bs) page and the default one each put them first in <head>, because
+# a <meta> policy governs only what the page parses after it.
 _CSP_META = (
     _dash_csp_meta(_DASH_CSP_STANDALONE)
-    # Without this a mobile browser lays the page out at its 980px default
-    # and zooms the whole thing out to fit, so every breakpoint below 980px
-    # is unreachable on a phone and the text is unreadable.  Found by opening
-    # a dashboard at 375px: window.innerWidth reported 980.
-    + '\n<meta name="viewport" content="width=device-width, initial-scale=1">'
+    + "\n" + _DASH_VIEWPORT_META
 )
 
 # Bootstrap-compatible 12-column responsive grid CSS (db- prefix avoids
@@ -18212,6 +18242,11 @@ def _dash_reflow(grid, stack=True):
     each at its own height -- a Bokeh row child's flex basis is 0, and
     stacked without ``flex: 0 0 auto`` the grid collapsed to 0 px tall.
     Nothing here reads user input: the CSS is built from integers.
+
+    A ``layout(bs)`` GridBox gets one more stylesheet after this: WP-28
+    E14's ``_dash_bs_grid`` appends ``_dash_bs_grid_css()`` to the stacking
+    rule this function adds, so the grid takes the saved page's md half
+    rows and KPI cell heights between 768 and 991 px too.
     """
     from bokeh.models import GridBox, InlineStyleSheet, Row
     below = int(_DASH_BS_STACK_BELOW_PX) - 0.02
@@ -18969,7 +19004,83 @@ def _dash_bs_grid_cells(rows):
     return cells
 
 
-def _dash_bs_grid(rows, cell_of):
+def _dash_bs_cell_classes(span, is_kpi, first):
+    """The Bootstrap classes one served ``layout(bs)`` cell carries.
+
+    Built only from *span* (an int, clamped 1-12 as ``_dash_bs_grid_cells``
+    clamps it), *is_kpi* and *first* -- never from the cell's name -- so a
+    hostile registered name cannot reach a class or the stylesheet
+    (BR-10.8).  ``db-bs-cell`` and, on the first placed cell of each bs row,
+    ``db-bs-first`` are read by ``_dash_bs_grid_css``'s stylesheet, which
+    turns Bokeh's explicit grid placement into the saved page's flex-wrap
+    reflow between 768 and 991 px; ``db-col-md-N``/``db-col-lg-N`` and, for
+    a KPI card, ``db-cell-h-*`` are the saved page's own classes
+    (``_render_bootstrap_html``), read by the same stylesheet's numbers.
+
+    Args:
+        span:   The cell's 12-column span at the large breakpoint.
+        is_kpi: Whether the cell is a KPI card (a cell height class only
+            applies to those, as on the saved page).
+        first:  Whether this is the first placed cell of its bs row (a name
+            ``_dash_bs_grid_cells`` dropped, or a repeat, is never first).
+
+    Returns:
+        A list of class names.
+    """
+    span = min(_DASH_BS_COLUMNS, max(1, int(span)))
+    classes = ["db-bs-cell", "db-col-md-%d" % _md_span(span),
+              "db-col-lg-%d" % span]
+    if is_kpi:
+        classes.append("db-cell-h-%s" % _cell_height_class(span))
+    if first:
+        classes.append("db-bs-first")
+    return classes
+
+
+def _dash_bs_grid_css():
+    """The served ``layout(bs)`` grid's own stylesheet: the saved page's
+    half rows and KPI cell heights, between 768 and 991 px wide.
+
+    BokehJS writes a GridBox child's place as a ``:host`` rule inside the
+    child's OWN shadow root (``parent_style``): a normal declaration, not
+    ``!important``.  The child's host element sits inside the GRID's shadow
+    root -- ``css_classes`` land on an element the grid's own stylesheet can
+    select as ``:host > .cls`` -- and CSS Cascade Level 5 gives a normal
+    rule from that OUTER encapsulation context precedence over one from the
+    child's inner context, before specificity is even compared.  So a plain
+    ``:host > .db-bs-cell { grid-row: auto; }`` on the grid overrides
+    Bokeh's explicit placement without ``!important`` (measured 25sep2026,
+    Bokeh 3.9.0, headless Chrome, through test/responsive_probe.py: a
+    GridBox of span-3 KPI cards went from four across at every width to two
+    per line at 768-991 px and back to four at 1440, with 130px cells).
+    Built only from the module's own constants (BR-10.8); the result
+    matches ``re.fullmatch(r"[\\w\\s:{}().;>,\\-!@/]+", css)``.
+
+    Returns:
+        The CSS text, appended to the grid's ``stylesheets`` as one
+        ``InlineStyleSheet``.
+    """
+    below = _DASH_BS_LG_FROM_PX - 0.02
+    parts = [
+        "@media (min-width: %dpx) and (max-width: %.2fpx) { "
+        ":host > .db-bs-cell { grid-row: auto; } "
+        % (_DASH_BS_STACK_BELOW_PX, below)
+    ]
+    for n in range(1, _DASH_BS_COLUMNS + 1):
+        parts.append(":host > .db-col-md-%d { grid-column: auto / span %d; } "
+                     % (n, n))
+    parts.append(":host > .db-bs-first { grid-column-start: 1; } } ")
+    for k, px in _DASH_KPI_CELL_MIN_PX:
+        parts.append(":host > .db-cell-h-%s { min-height: %dpx; } " % (k, px))
+    narrow = _DASH_BS_STACK_BELOW_PX - 0.02
+    parts.append(
+        "@media (max-width: %.2fpx) { :host > .db-cell-h-sm, "
+        ":host > .db-cell-h-md, :host > .db-cell-h-lg { min-height: %dpx; } }"
+        % (narrow, _DASH_KPI_CELL_MIN_NARROW_PX))
+    return "".join(parts)
+
+
+def _dash_bs_grid(rows, cell_of, kpi_names=()):
     """The served ``layout(bs)`` grid: a GridBox of 12 equal columns.
 
     *rows* is what ``_dash_parse_bs_layout`` returns and *cell_of(name)* the
@@ -18979,7 +19090,12 @@ def _dash_bs_grid(rows, cell_of):
     markup puts it at its large breakpoint.  Unlike that markup it keeps
     those spans, narrowing, down to a 768 px window, and below that stacks
     every item into one column, as the saved page does (_dash_reflow;
-    dash.sthlp says so).
+    dash.sthlp says so).  Between 768 and 991 px it takes the saved page's
+    md half rows and KPI cell minimum heights (WP-28 E14): each placed
+    child carries the saved page's own classes (``_dash_bs_cell_classes``)
+    and the grid carries one stylesheet built from them
+    (``_dash_bs_grid_css``) that turns Bokeh's explicit placement into the
+    same flex-wrap reflow the saved markup gets for free.
 
     A name with no renderable takes no columns, as the saved page leaves it
     out of its row.  A name the spec places twice keeps its first cell and
@@ -18992,13 +19108,14 @@ def _dash_bs_grid(rows, cell_of):
     saved page -- this is not a gridplot.
 
     Args:
-        rows:    ``[[(name, span), ...], ...]``.
-        cell_of: ``name -> renderable or None``; called once a name.
+        rows:      ``[[(name, span), ...], ...]``.
+        cell_of:   ``name -> renderable or None``; called once a name.
+        kpi_names: Names that are KPI cards, for the cell-height class.
 
     Returns:
         The GridBox; it has no children when nothing could be placed.
     """
-    from bokeh.models import GridBox
+    from bokeh.models import GridBox, InlineStyleSheet
     cell = {}
     kept = []
     for bs_row in rows or []:
@@ -19009,20 +19126,35 @@ def _dash_bs_grid(rows, cell_of):
             if cell[name] is not None:
                 keep.append((name, span))
         kept.append(keep)
+    # Which bs row (index into `kept`) each cell _dash_bs_grid_cells emits
+    # came from -- same nested order, so the k-th origin matches the k-th
+    # cell -- so "first" (TR-10.7) can be decided per bs row, not per
+    # wrapped grid line.
+    origins = [ri for ri, bs_row in enumerate(kept) for _n, _s in bs_row]
     placed = []
     done = set()
-    for name, r, c, r_span, c_span in _dash_bs_grid_cells(kept):
+    row_seen = set()
+    for k, (name, r, c, r_span, c_span) in enumerate(_dash_bs_grid_cells(kept)):
         if name in done:
             continue
         done.add(name)
-        placed.append((cell[name], r, c, r_span, c_span))
-    line_of = {r: i for i, r in enumerate(sorted({p[1] for p in placed}))}
-    children = [(m, line_of[r], c, r_span, c_span)
-                for m, r, c, r_span, c_span in placed]
-    return _dash_reflow(GridBox(children=children,
+        ri = origins[k]
+        first = ri not in row_seen
+        row_seen.add(ri)
+        placed.append((name, cell[name], r, c, r_span, c_span, first))
+    line_of = {r: i for i, r in enumerate(sorted({p[2] for p in placed}))}
+    children = []
+    for name, m, r, c, r_span, c_span, first in placed:
+        m.css_classes = list(m.css_classes) + _dash_bs_cell_classes(
+            c_span, name in kpi_names, first)
+        children.append((m, line_of[r], c, r_span, c_span))
+    grid = _dash_reflow(GridBox(children=children,
                                 cols=[_DASH_BS_TRACK] * _DASH_BS_COLUMNS,
                                 spacing=_DASH_BS_GUTTER_PX,
                                 sizing_mode="stretch_width"))
+    grid.stylesheets = list(grid.stylesheets) + [
+        InlineStyleSheet(css=_dash_bs_grid_css())]
+    return grid
 
 
 def _dash_header_fragments(title_text, subtitle_text):
@@ -19805,11 +19937,23 @@ def _dash_layer_source(g_df, df, xvar, yvar, label_var, gname, linked_names,
     return csrc, view
 
 
-def _dash_range_source(g_df, y1var, y2var, xvar, label_var, extra_cols=()):
-    """Build the ColumnDataSource for one range-plot layer.
+def _dash_range_source(g_df, y1var, y2var, xvar, label_var, extra_cols=(),
+                       *, df=None, gname="", linked_names=(),
+                       shared_source=None, shared_pos=None):
+    """Build the ColumnDataSource, and any view, for one range-plot layer.
 
     Range layers name their variables ``y1var``/``y2var``/``xvar`` rather than
-    ``yvar``/``xvar``, so they cannot use ``_dash_layer_source``.
+    ``yvar``/``xvar``, so they cannot use ``_dash_layer_source`` directly --
+    this is that function's rule for the range types (WP-28 E14).  A served
+    rspike or rconnected in a link group used to build a PRIVATE source
+    every time, whatever link() said, so a box or lasso selection on the
+    group's shared source never reached it; the saved renderer's
+    ``_add_glyph`` always hands a range layer the graph's shared source
+    with the plot's view, and that is what dash.sthlp's linking section
+    promises.  When *gname* is linked and *shared_source* is given, and the
+    three variables are columns of *g_df*, this returns *shared_source*
+    itself -- with a ``CDSView`` over the qualified rows when *g_df* is
+    narrower than *df* -- instead of a private copy.
 
     Every row the graph's frame holds is kept, as the saved page hands the
     same mappers the whole frame: a missing end is the mapper's to leave
@@ -19820,19 +19964,30 @@ def _dash_range_source(g_df, y1var, y2var, xvar, label_var, extra_cols=()):
     and a served rarea or rline closed the gap the saved page leaves.  The
     drop was there because ``map_rcap`` and ``map_rcapsym`` were once
     unguarded against a NaN row; both take the saved page's rows, NaN
-    included, and draw nothing where a coordinate is missing.
+    included, and draw nothing where a coordinate is missing.  The linked
+    view keeps the same rule: no ``dropna``, and its positions come from
+    ``g_df.index`` -- not a cleaned subset -- or ``_dash_linked_views``
+    would record the wrong members of the group.
 
-    Returns ``(source, ok)``; ``ok`` is False when a required variable is
-    missing, in which case the caller draws nothing, as the branches did.
+    Returns ``(source, view, ok)``; ``ok`` is False when a required
+    variable is missing, in which case the caller draws nothing, as the
+    branches did; *view* is ``None`` unless the layer is linked, given a
+    shared source, and narrower than the whole dataset.
     """
     if not (y1var and y2var and xvar):
-        return None, False
+        return None, None, False
+    if not all(v in g_df.columns for v in (y1var, y2var, xvar)):
+        return None, None, False
+    if gname in linked_names and shared_source is not None:
+        view = None
+        if df is not None and shared_pos is not None and len(g_df) != len(df):
+            view = CDSView(filter=IndexFilter(
+                [shared_pos[_l] for _l in g_df.index if _l in shared_pos]))
+        return shared_source, view, True
     cols = [c for c in [y1var, y2var, xvar, label_var] + list(extra_cols)
             if c and c in g_df.columns]
     cols = list(dict.fromkeys(cols))
-    if not all(v in g_df.columns for v in (y1var, y2var, xvar)):
-        return None, False
-    return ColumnDataSource(g_df[cols]), True
+    return ColumnDataSource(g_df[cols]), None, True
 
 
 def _dash_pc_source(g_df, y1var, x1var, y2var, x2var, label_var="",
@@ -21309,6 +21464,32 @@ def _dash_add_pc_glyph(mapper, fig, source, plot_type, y1var, x1var, y2var,
               view=view, color_idx=color_idx)
 
 
+def _dash_dim_nonselection(fig, alpha=_NONSELECTION_ALPHA) -> None:
+    """Dim a linked figure's non-selected points to dash's own alpha.
+
+    Bokeh attaches a nonselection glyph of its own at alpha 0.1, so
+    brushing does dim -- but dash's chosen ``_NONSELECTION_ALPHA`` used to
+    be applied only by a method on ``DashRenderer``, which the served app
+    cannot copy (the copy lists copy module-level ``def``s by name, not
+    bound methods), so a served brush always dimmed at Bokeh's 0.1 where
+    the saved page dimmed at 0.15 (WP-28 E14).  A module function both
+    renderers call fixes that with one body.
+
+    Args:
+        fig:   A figure belonging to a link group.
+        alpha: The alpha to dim to; ``_NONSELECTION_ALPHA`` unless a
+            caller asks otherwise.
+    """
+    for renderer in fig.renderers:
+        ns = getattr(renderer, "nonselection_glyph", None)
+        if ns is None:
+            continue
+        if hasattr(ns, "fill_alpha"):
+            ns.fill_alpha = alpha
+        if hasattr(ns, "line_alpha"):
+            ns.line_alpha = alpha
+
+
 class DashRenderer:
     """Orchestrates the full Bokeh dashboard build from a master spec JSON.
 
@@ -22243,27 +22424,6 @@ class DashRenderer:
         return _dash_figure_date_kind(plots, key, fallback,
                                       getattr(self, "date_vars", None))
 
-    def _apply_nonselection_dimming(self, fig) -> None:
-        """Dim a linked figure's non-selected points to dash's own alpha.
-
-        Bokeh attaches a nonselection glyph of its own at alpha 0.1, so
-        brushing does dim -- but dash's chosen ``_NONSELECTION_ALPHA`` was
-        applied only in ``_build_figures``, which ``render()`` never called,
-        so the constant the package documents had never reached a shipped
-        dashboard.
-
-        Args:
-            fig: A figure belonging to a link group.
-        """
-        for renderer in fig.renderers:
-            ns = getattr(renderer, "nonselection_glyph", None)
-            if ns is None:
-                continue
-            if hasattr(ns, "fill_alpha"):
-                ns.fill_alpha = _NONSELECTION_ALPHA
-            if hasattr(ns, "line_alpha"):
-                ns.line_alpha = _NONSELECTION_ALPHA
-
     def _scheme_for(self, name: str, context: str) -> "SchemeParser":
         """The build's SchemeParser for *name*, parsed once per build.
 
@@ -23077,7 +23237,12 @@ class DashRenderer:
         scheme_css_block = self.scheme.css_block()
 
         if filter_position == "left" and filter_row_widgets:
-            # Vertical sidebar: filters in a narrow left column, content on right
+            # Vertical sidebar: filters in a narrow left column, content on
+            # right.  filterposition(left) draws the header INSIDE the
+            # content column, beside the sidebar, where the served app
+            # draws it above row(sidebar, content) (:27435 area) -- the one
+            # layout(bs) difference WP-28 E14 records rather than fixes
+            # (dash.sthlp, "What still differs").
             sidebar_items_html = "\n".join(
                 f'<div class="db-sidebar-item">{d}</div>'
                 for d in fw_divs
@@ -23101,7 +23266,11 @@ class DashRenderer:
                 "</div>\n"
             )
         else:
-            # Horizontal filter bar above main content
+            # Horizontal filter bar below the header, above the content, as
+            # the served app and every other layout do (WP-28 E14): it used
+            # to sit above the title, where test_mode_parity.py's
+            # layout(bs) ALLOWED entry used to record it as a standalone-
+            # only difference.
             filter_bar_html = ""
             if any(fw_divs):
                 items_html = "\n".join(
@@ -23115,8 +23284,8 @@ class DashRenderer:
                     + "\n</div>\n"
                 )
             page_body_html = (
-                f"{filter_bar_html}"
                 f"{header_html}"
+                f"{filter_bar_html}"
                 f"{tabs_section_html}\n"
                 f"{grid_section_html}\n"
             )
@@ -23697,7 +23866,7 @@ class DashRenderer:
                         orig_title = fig.title.text if fig.title else ""
                         fig.title.text = f"{orig_title} — {label}" if orig_title else label
                         if name in link_names:
-                            self._apply_nonselection_dimming(fig)
+                            _dash_dim_nonselection(fig)
                         self.figures[fkey] = fig
                     except Exception as exc:
                         raise RuntimeError(
@@ -23720,7 +23889,7 @@ class DashRenderer:
                 try:
                     _fig = self._make_figure(g, src, facet_view=_qual_view)
                     if name in link_names:
-                        self._apply_nonselection_dimming(_fig)
+                        _dash_dim_nonselection(_fig)
                     self.figures[name] = _fig
                 except Exception as exc:
                     raise RuntimeError(
@@ -24780,8 +24949,10 @@ class ServerAppBuilder:
                       "_DASH_EVENT_RATE", "_DASH_EVENT_BURST",
                       # The served page's policy and the launcher's headers
                       # (WP-20), read by _dash_served_template and
-                      # _dash_server_transforms.
+                      # _dash_server_transforms; the viewport tag both pages
+                      # declare (WP-28 E14), read by the same template.
                       "_DASH_CSP_SERVED", "_DASH_SECURITY_HEADERS",
+                      "_DASH_VIEWPORT_META",
                       # SchemeParser._parse_file's include bound; the app
                       # is handed properties and never parses a file, but
                       # the method's source travels with the class.
@@ -24830,7 +25001,11 @@ class ServerAppBuilder:
                       "_MAX_KPIS_PER_ROW", "_DASH_BS_COLUMNS",
                       "_DASH_BS_TRACK", "_DASH_BS_GUTTER_PX",
                       # Every grid's stacking widths (_dash_reflow).
-                      "_DASH_MIN_COLUMN_PX", "_DASH_BS_STACK_BELOW_PX"):
+                      "_DASH_MIN_COLUMN_PX", "_DASH_BS_STACK_BELOW_PX",
+                      # layout(bs)'s served half rows and KPI cell heights,
+                      # the saved page's own numbers (WP-28 E14).
+                      "_DASH_BS_LG_FROM_PX", "_DASH_KPI_CELL_MIN_PX",
+                      "_DASH_KPI_CELL_MIN_NARROW_PX"):
             _val = getattr(_mod, _name, None)
             if _val is None:
                 continue
@@ -25044,6 +25219,9 @@ class ServerAppBuilder:
                          # A link group's source and views after a move.
                          "_dash_view_positions", "_dash_linked_views",
                          "_dash_refresh_linked", "_dash_own_redrawn_views",
+                         # A linked figure's own alpha when nothing is
+                         # selected, the same in both renderers (WP-28 E14).
+                         "_dash_dim_nonselection",
                          # An unlinked layer's own rows after a move.
                          "_dash_refresh_unlinked", "_dash_keep_jitter",
                          "_dash_parse_tabs", "_dash_tab_panels",
@@ -25055,6 +25233,13 @@ class ServerAppBuilder:
                          "_dash_auto_bs_layout",
                          "_dash_parse_bs_layout", "_dash_bs_grid_cells",
                          "_dash_bs_grid",
+                         # The saved page's own class rules for a bs cell's
+                         # span and KPI cell height, and the served grid's
+                         # stylesheet built from them (WP-28 E14): without
+                         # these the served grid calls a name that is not
+                         # in the app, a NameError in every session.
+                         "_md_span", "_cell_height_class",
+                         "_dash_bs_cell_classes", "_dash_bs_grid_css",
                          # The name every grid's save button writes: the
                          # cell and tab helpers above call it, and so does
                          # the grid make_document builds (WP-21).
@@ -26448,13 +26633,18 @@ class ServerAppBuilder:
             "            if not y2var:",
             "                # The saved page's words (_dash_add_glyph).",
             "                _dash_note_no_second_y(ptype)",
-            "            _ly_src, _ok = _dash_range_source(",
+            "            _ly_src, _ly_view, _ok = _dash_range_source(",
             "                g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
-            "                extra_cols=_hv + _dash_option_columns(opts, df.columns))",
+            "                extra_cols=_hv + _dash_option_columns(opts, df.columns),",
+            "                df=df, gname=gname, linked_names=_ln,",
+            "                shared_source=_shared, shared_pos=_shared_pos)",
             "            if _ok:",
+            "                # WP-28 E14: a linked rspike/rconnected draws _shared",
+            "                # through _ly_view, as an ordinary linked layer does",
+            "                # (_dash_layer_source), so a selection reaches it too.",
             "                _dash_add_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
-            "                    opts, y2var=y2var, color_idx=_sidx)",
+            "                    opts, y2var=y2var, view=_ly_view, color_idx=_sidx)",
             "        else:",
             "            _ly_src, _ly_view = _dash_layer_source(",
             "                g_df, df, xvar, yvar, opts.get('mlabel', ''),",
@@ -26909,6 +27099,13 @@ class ServerAppBuilder:
             "            _own = fig.title.text if fig.title is not None else ''",
             "            fig.title.text = (f'{_own} \u2014 {_fac_label}' if _own",
             "                              else _fac_label)",
+            "        # gname is the panel's own key for a by() panel (below,",
+            "        # linked_names gains that key when the graph is linked), so",
+            "        # this gate covers a plain linked graph and every panel of a",
+            "        # linked faceted one alike, as the saved renderer's two call",
+            "        # sites do (WP-28 E14).",
+            "        if gname in linked_names:",
+            "            _dash_dim_nonselection(fig, _NONSELECTION_ALPHA)",
             "        return fig",
 
             "    # ---- Build figures: one call per graph, or per by() panel ----",
@@ -27602,7 +27799,10 @@ class ServerAppBuilder:
             '    # where the saved page\'s markup puts it at its large breakpoint.',
             '    # Unlike that page it keeps those spans down to a 768 px window,',
             '    # then stacks every item into one column (_dash_reflow;',
-            '    # dash.sthlp says so).  Each item keeps its own toolbar, and its',
+            '    # dash.sthlp says so).  Between 768 and 991 px it takes the saved',
+            '    # page\'s md half rows and KPI cell minimum heights, from one',
+            '    # stylesheet on the grid and the saved page\'s own classes on its',
+            '    # children (WP-28 E14).  Each item keeps its own toolbar, and its',
             '    # save button writes the item under its own name, as on the',
             '    # saved page (_dash_name_save).',
             '    if _dash_is_bs_layout(layout_opt):',
@@ -27610,7 +27810,8 @@ class ServerAppBuilder:
             '        grid = _dash_bs_grid(',
             '            _dash_parse_bs_layout(layout_opt, grid_names, _kpi_names,',
             '                                  figures),',
-            '            lambda _n: _dash_name_save(_dash_cell(_n), _n))',
+            '            lambda _n: _dash_name_save(_dash_cell(_n), _n),',
+            '            kpi_names=_kpi_names)',
             '    else:',
             "        placement = {} if layout_opt.lower() in ('', 'auto') else _dash_placements(layout_opt)",
             '        placement = {k: v for k, v in placement.items() if k in grid_names}',

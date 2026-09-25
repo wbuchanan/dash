@@ -50,7 +50,9 @@ sys.path.insert(0, _HERE)
 import dash_render as dr
 from dash_render import DashRenderer
 from test_adversarial_matrix import (_DF, _SCATTER, _app_source, _load_app,
-                                     _session, _write_inputs)
+                                     _session, _unthrottled, _write_inputs)
+from test_csp import _file_context
+from test_server_layer_defects import plot_for
 
 _SEQ = itertools.count()
 
@@ -846,3 +848,358 @@ class TestTheAppCarriesTheBsRules:
         assert "if _dash_is_bs_layout(layout_opt):" in body
         assert "_dash_parse_bs_layout(layout_opt, grid_names" in body
         assert "_dash_bs_grid(" in body
+
+
+# ===========================================================================
+# WP-28 E14: saved/served presentation parity
+# ===========================================================================
+#
+# The saved offline page and the served bokeh serve app must present a
+# dashboard the same way.  GAPS2 E14 measured five places where they still
+# did not: the served page declared no viewport meta; a served brush dimmed
+# unselected points at Bokeh's own 0.1 instead of dash's 0.15; a served
+# rspike or rconnected in a link group always drew a source of its own, so
+# a selection never reached it; the served layout(bs) grid had no half rows
+# or KPI cell heights between 768 and 991 px; and the saved layout(bs) page
+# put its filter bar above the title instead of below it.
+
+class TestTheServedPageDeclaresTheSavedPagesViewport:
+    """Item 1: the served template renders the saved page's viewport meta,
+    once, after the CSP meta; the generated app carries the constant it is
+    built from (otherwise every served session raises NameError)."""
+
+    def test_one_viewport_after_the_policy(self):
+        page = dr._dash_served_template().render(_file_context())
+        assert page.count(dr._DASH_VIEWPORT_META) == 1
+        csp_at = page.lower().find('http-equiv="content-security-policy"')
+        assert csp_at >= 0
+        assert csp_at < page.index(dr._DASH_VIEWPORT_META)
+        assert dr._DASH_VIEWPORT_META in dr._CSP_META
+
+    def test_the_app_carries_the_constant(self, tmp_path):
+        import ast
+        src = _app_source(tmp_path, _spec(["g1"]))
+        found = [n for n in ast.parse(src).body
+                if isinstance(n, ast.Assign) and len(n.targets) == 1
+                and isinstance(n.targets[0], ast.Name)
+                and n.targets[0].id == "_DASH_VIEWPORT_META"]
+        assert len(found) == 1
+        assert ast.literal_eval(found[0].value) == dr._DASH_VIEWPORT_META
+
+
+class TestALinkedFigureDimsAlike:
+    """Item 2: one module function dims a linked figure's non-selected
+    points to dash's own alpha, copied into the app so a served brush dims
+    the same way a saved one does."""
+
+    def test_the_helper(self):
+        ns1 = types.SimpleNamespace(fill_alpha=0.1, line_alpha=0.1)
+        ns2 = types.SimpleNamespace(fill_alpha=0.1)  # no line_alpha
+        r1 = types.SimpleNamespace(nonselection_glyph=ns1)
+        r2 = types.SimpleNamespace(nonselection_glyph=ns2)
+        r3 = types.SimpleNamespace(nonselection_glyph=None)
+        fig = types.SimpleNamespace(renderers=[r1, r2, r3])
+        assert dr._dash_dim_nonselection(fig) is None
+        assert (ns1.fill_alpha, ns1.line_alpha) == (dr._NONSELECTION_ALPHA,) * 2
+        assert ns2.fill_alpha == dr._NONSELECTION_ALPHA
+        assert not hasattr(ns2, "line_alpha")
+        assert r3.nonselection_glyph is None
+        dr._dash_dim_nonselection(fig, alpha=0.3)
+        assert ns1.fill_alpha == 0.3 and ns1.line_alpha == 0.3
+
+    def test_the_served_document(self, tmp_path):
+        spec = _spec(["g1", "g2", "g3"], layout="auto", link="g1 g2")
+        doc = _served(tmp_path, spec)
+        figs = {f.title.text: f for f in doc.select({"type": figure})}
+        for gname in ("g1", "g2"):
+            seen = False
+            for r in figs[gname].renderers:
+                ns = getattr(r, "nonselection_glyph", None)
+                if ns is None:
+                    continue
+                seen = True
+                if hasattr(ns, "fill_alpha"):
+                    assert ns.fill_alpha == dr._NONSELECTION_ALPHA
+                if hasattr(ns, "line_alpha"):
+                    assert ns.line_alpha == dr._NONSELECTION_ALPHA
+            assert seen, gname
+        seen = False
+        for r in figs["g3"].renderers:
+            ns = getattr(r, "nonselection_glyph", None)
+            if ns is None:
+                continue
+            seen = True
+            if hasattr(ns, "fill_alpha"):
+                assert ns.fill_alpha == pytest.approx(0.1)
+        assert seen
+
+
+def _range_spec(link="g1 g2", g1_if=""):
+    """g1 = rspike + rconnected, g2 = a plain scatter, under *link*."""
+    return {
+        "graphs": [
+            {"name": "g1", "graph_options": {"name": "g1", "title": "g1"},
+             "plots": [plot_for("rspike"), plot_for("rconnected")],
+             "if_expr": g1_if, "in_expr": ""},
+            {"name": "g2", "graph_options": {"name": "g2", "title": "g2"},
+             "plots": [dict(_SCATTER)], "if_expr": "", "in_expr": ""},
+        ],
+        "kpis": [],
+        "build_options": {"layout": "auto", "link": link, "theme": "",
+                          "title": "", "subtitle": "", "registry": "g1 g2",
+                          "tabs": "", "filter_position": "top"},
+    }
+
+
+class TestALinkedRangeLayerDrawsTheGroupsSource:
+    """Item 3: a served rspike or rconnected in a link group draws the
+    group's shared source -- through a view when the graph carries its own
+    qualifier -- as an ordinary linked layer does (_dash_layer_source),
+    instead of a private ColumnDataSource no selection or filter move ever
+    reaches."""
+
+    def test_the_helper(self):
+        import pandas as pd
+        from bokeh.models import CDSView, IndexFilter
+        g_df = pd.DataFrame({"y1": [1.0, 2.0, float("nan")],
+                             "y2": [3.0, 4.0, 5.0], "x": [10.0, 20.0, 30.0]})
+        shared = dr.ColumnDataSource(g_df)
+        shared_pos = {i: i for i in g_df.index}
+        # Unlinked: a private source, no view, every row (NaN included).
+        src, view, ok = dr._dash_range_source(g_df, "y1", "y2", "x", "")
+        assert ok and view is None and src is not shared
+        assert [v for v in src.data["y1"]][:2] == [1.0, 2.0]
+        # Linked, over the whole frame: the shared source itself, no view.
+        src, view, ok = dr._dash_range_source(
+            g_df, "y1", "y2", "x", "", df=g_df, gname="g1",
+            linked_names={"g1"}, shared_source=shared, shared_pos=shared_pos)
+        assert ok and src is shared and view is None
+        # Linked, over a narrower (qualified) frame: a view of its
+        # positions in the shared source.
+        narrow = g_df.iloc[[0, 2]]
+        src, view, ok = dr._dash_range_source(
+            narrow, "y1", "y2", "x", "", df=g_df, gname="g1",
+            linked_names={"g1"}, shared_source=shared, shared_pos=shared_pos)
+        assert ok and src is shared
+        assert isinstance(view, CDSView) and isinstance(view.filter,
+                                                         IndexFilter)
+        assert list(view.filter.indices) == [0, 2]
+        # A required variable missing: draws nothing.
+        assert dr._dash_range_source(g_df, "", "y2", "x", "") == (
+            None, None, False)
+
+    def test_the_served_document(self, tmp_path):
+        doc = _served(tmp_path, _range_spec())
+        figs = {f.title.text: f for f in doc.select({"type": figure})}
+        g1, g2 = figs["g1"], figs["g2"]
+        g2_scatter = next(r for r in g2.renderers
+                          if type(r.glyph).__name__ == "Scatter")
+        seg = next(r for r in g1.renderers
+                  if type(r.glyph).__name__ == "Segment")
+        scatters = [r for r in g1.renderers
+                   if type(r.glyph).__name__ == "Scatter"]
+        lines = [r for r in g1.renderers if type(r.glyph).__name__ == "Line"]
+        assert len(scatters) == 2 and len(lines) == 2
+        assert seg.data_source is g2_scatter.data_source
+        assert all(s.data_source is g2_scatter.data_source for s in scatters)
+        assert all(ln.data_source is not g2_scatter.data_source
+                  for ln in lines)
+
+    def test_the_served_document_with_a_qualifier(self, tmp_path):
+        from bokeh.models import IndexFilter
+        doc = _served(tmp_path, _range_spec(g1_if="foreign==1"))
+        figs = {f.title.text: f for f in doc.select({"type": figure})}
+        seg = next(r for r in figs["g1"].renderers
+                  if type(r.glyph).__name__ == "Segment")
+        assert seg.view is not None
+        assert isinstance(seg.view.filter, IndexFilter)
+        want = set(_DF.index[_DF["foreign"] == 1.0])
+        got = {seg.data_source.data["index"][i]
+              for i in seg.view.filter.indices}
+        assert got == want
+
+    def test_after_a_filter_move(self, tmp_path):
+        from bokeh.models import Select
+        spec = _range_spec(g1_if="foreign==1")
+        spec["build_options"]["filter"] = "foreign, type(dropdown)"
+        doc = _served(tmp_path, spec)
+        figs = {f.title.text: f for f in doc.select({"type": figure})}
+        seg = next(r for r in figs["g1"].renderers
+                  if type(r.glyph).__name__ == "Segment")
+        shared = seg.data_source
+        sel = next(iter(doc.select({"type": Select})))
+        cb = _unthrottled(sel, "value")
+        sel.value = "0.0" if sel.value != "0.0" else "1.0"
+        cb("value", "", sel.value)
+        # g1's own qualifier (foreign==1) never widens; the widget can only
+        # narrow it further, so the view's rows stay inside it.
+        want = set(_DF.index[_DF["foreign"] == 1.0])
+        got = {shared.data["index"][i] for i in seg.view.filter.indices}
+        assert got <= want, (sel.value, got, want)
+
+
+class TestTheBsGridStylesheet:
+    """Item 4: a served layout(bs) grid's children carry the saved page's
+    own classes, and the grid carries one stylesheet built from the same
+    numbers as the saved page's CSS."""
+
+    def test_the_class_helper(self):
+        assert dr._dash_bs_cell_classes(3, True, True) == [
+            "db-bs-cell", "db-col-md-6", "db-col-lg-3", "db-cell-h-sm",
+            "db-bs-first"]
+        assert dr._dash_bs_cell_classes(8, False, False) == [
+            "db-bs-cell", "db-col-md-8", "db-col-lg-8"]
+        assert dr._dash_bs_cell_classes(12, True, False)[-1] == "db-cell-h-lg"
+        assert dr._dash_bs_cell_classes(6, True, False)[-1] == "db-cell-h-md"
+        assert dr._dash_bs_cell_classes(99, True, True)[2] == "db-col-lg-12"
+        assert dr._dash_bs_cell_classes(0, True, True)[2] == "db-col-lg-1"
+
+    def test_the_css_helper(self):
+        css = dr._dash_bs_grid_css()
+        assert "(min-width: 768px) and (max-width: 991.98px)" in css
+        assert ":host > .db-bs-cell { grid-row: auto; }" in css
+        for n in range(1, 13):
+            assert (":host > .db-col-md-%d { grid-column: auto / span %d; } "
+                   % (n, n)) in css
+        assert ":host > .db-bs-first { grid-column-start: 1; }" in css
+        assert ":host > .db-cell-h-sm { min-height: 130px; }" in css
+        assert ":host > .db-cell-h-md { min-height: 150px; }" in css
+        assert ":host > .db-cell-h-lg { min-height: 170px; }" in css
+        assert "(max-width: 767.98px)" in css
+        assert "min-height: 120px" in css
+        assert "!important" not in css
+        assert re.fullmatch(r"[\w\s:{}().;>,\-!@/]+", css)
+
+    def test_the_numbers_are_the_saved_pages(self):
+        css = dr._DASH_GRID_CSS
+        heights = dict(re.findall(
+            r"(?<!,)\.db-cell-h-(sm|md|lg)\{min-height:(\d+)px\}", css))
+        assert {k: int(v) for k, v in heights.items()} == dict(
+            dr._DASH_KPI_CELL_MIN_PX)
+        m = re.search(
+            r"@media\(max-width:767px\)\s*\{\s*"
+            r"\.db-cell-h-sm,\.db-cell-h-md,\.db-cell-h-lg\{"
+            r"min-height:(\d+)px\}", css)
+        assert m and int(m.group(1)) == dr._DASH_KPI_CELL_MIN_NARROW_PX
+        m = re.search(r"@media\(min-width:(\d+)px\)\{\n\.db-col-lg-1\{", css)
+        assert m and int(m.group(1)) == dr._DASH_BS_LG_FROM_PX
+
+    def test_the_grid_classes_its_children_and_carries_the_sheet(self):
+        from bokeh.models import InlineStyleSheet
+        k1, k2 = Div(text="k1"), Div(text="k2")
+        k1.stylesheets = [InlineStyleSheet(css=".mine{}")]
+        k1.css_classes = ["mine"]
+        g1, g2 = figure(), figure()
+        cell_of = {"k1": k1, "k2": k2, "g1": g1, "g2": g2}.get
+        g = dr._dash_bs_grid(
+            [[("k1", 3), ("k2", 3)], [("g1", 8), ("g2", 6)]], cell_of,
+            kpi_names={"k1", "k2"})
+        assert k1.css_classes == ["mine", "db-bs-cell", "db-col-md-6",
+                                  "db-col-lg-3", "db-cell-h-sm",
+                                  "db-bs-first"]
+        assert k2.css_classes == ["db-bs-cell", "db-col-md-6", "db-col-lg-3",
+                                  "db-cell-h-sm"]
+        assert g1.css_classes == ["db-bs-cell", "db-col-md-8", "db-col-lg-8",
+                                  "db-bs-first"]
+        assert g2.css_classes == ["db-bs-cell", "db-col-md-6", "db-col-lg-6"]
+        assert k1.stylesheets[0].css == ".mine{}"
+        assert g.stylesheets[-1].css == dr._dash_bs_grid_css()
+
+    def test_nothing_of_the_user_reaches_the_classes_or_css(self):
+        hostile = Div(text="x")
+        b = Div(text="b")
+        g = dr._dash_bs_grid([[("<script>x", 0)], [("b", 99)]],
+                             {"<script>x": hostile, "b": b}.get,
+                             kpi_names={"<script>x"})
+        for m, *_pos in g.children:
+            for c in m.css_classes:
+                assert re.fullmatch(r"db-[a-z0-9-]+", c), c
+        assert re.fullmatch(r"[\w\s:{}().;>,\-!@/]+", dr._dash_bs_grid_css())
+
+    def test_the_helpers_it_calls_are_in_the_app(self, tmp_path):
+        src = _app_source(tmp_path, _spec(["g1"]))
+        for name in ("_md_span", "_cell_height_class",
+                    "_dash_bs_cell_classes", "_dash_bs_grid_css"):
+            assert ("def %s(" % name) in src, name
+
+    def test_the_served_cells_carry_the_saved_cells_classes(self, tmp_path):
+        spec = _spec(["g1", "g2"], ["k1", "k2"],
+                     layout="bs: k1=3 k2=3 / g1=8 g2=6")
+        r, page, _ = _saved(tmp_path, spec)
+        doc = _served(tmp_path, spec)
+        names = {f.id: k for k, f in r.figures.items()}
+        names.update({d.id: k for k, d in r.kpi_divs.items()})
+        body = page[page.index('<div class="db-container">'):]
+        saved_classes = {}
+        for m in re.finditer(
+                r'class="(db-col-12[^"]*)"><div id="[^"]*" '
+                r'data-root-id="([^"]+)"', body):
+            cls, root = m.groups()
+            saved_classes[names.get(root, root)] = set(cls.split())
+        grid = _served_grid(doc)
+        assert grid.children
+        for m, *_pos in grid.children:
+            name = _name(m)
+            wanted = {c for c in saved_classes.get(name, set())
+                     if c.startswith(("db-col-md-", "db-col-lg-",
+                                      "db-cell-h-"))}
+            assert wanted, name
+            assert wanted <= set(m.css_classes), (name, wanted, m.css_classes)
+
+
+class TestTheSavedBsPagePutsItsFilterBarBelowTheHeader:
+    """Item 5: a saved layout(bs) page draws its title and subtitle, then
+    its filter bar, then its tabs and grid -- as the served app, and every
+    other layout, already do.  It used to draw the bar first."""
+
+    def test_top(self, tmp_path):
+        spec = _spec(["g1", "g2"], ["k1"], layout="bs: g1=6 g2=6",
+                     title="T", subtitle="S",
+                     filter="foreign, type(dropdown)", tabs="A: g2")
+        r, page, _ = _saved(tmp_path, spec)
+        body = page[page.index('<div class="db-container">'):]
+        assert (body.index('class="db-title"') < body.index(
+            'class="db-subtitle"') < body.index('db-filter-bar')
+            < body.index('class="db-col-md-12"') < body.index('db-col-lg-'))
+
+    def test_without_tabs(self, tmp_path):
+        spec = _spec(["g1", "g2"], ["k1"], layout="bs: g1=6 g2=6",
+                     title="T", filter="foreign, type(dropdown)")
+        r, page, _ = _saved(tmp_path, spec)
+        body = page[page.index('<div class="db-container">'):]
+        assert (body.index('class="db-title"') < body.index('db-filter-bar')
+                < body.index('db-col-lg-'))
+        assert 'class="db-col-md-12"' not in body
+
+    def test_without_a_subtitle(self, tmp_path):
+        spec = _spec(["g1"], layout="bs", title="T",
+                     filter="foreign, type(dropdown)")
+        r, page, _ = _saved(tmp_path, spec)
+        body = page[page.index('<div class="db-container">'):]
+        assert body.index('class="db-title"') < body.index('db-filter-bar')
+        assert 'class="db-subtitle"' not in body
+
+    def test_no_filters_no_bar(self, tmp_path):
+        spec = _spec(["g1"], layout="bs", title="T")
+        r, page, _ = _saved(tmp_path, spec)
+        body = page[page.index('<div class="db-container">'):]
+        assert "db-filter-bar" not in body
+        assert body.index('class="db-title"') < body.index('db-col-lg-')
+
+    def test_filterposition_left_is_recorded_not_changed(self, tmp_path):
+        """The one difference E14 records but does not fix: under
+        filterposition(left) the saved page draws the header inside the
+        content column beside the sidebar; the served app draws it above
+        row(sidebar, content) (dash.sthlp says so)."""
+        spec = _spec(["g1"], layout="bs", title="T",
+                     filter="foreign, type(dropdown)",
+                     filter_position="left")
+        r, page, _ = _saved(tmp_path, spec)
+        body = page[page.index('<div class="db-container">'):]
+        left_col = body[body.index('db-col-md-10'):]
+        assert 'class="db-title"' in left_col
+        doc = _served(tmp_path, spec)
+        root = doc.roots[0]
+        assert type(root).__name__ == "Column"
+        assert type(root.children[0]).__name__ == "Div"
+        assert type(root.children[-1]).__name__ == "Row"

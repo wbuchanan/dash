@@ -972,9 +972,8 @@ width, not the window's, so a facet grid in a narrow cell or tab stacks
 while the grid around it keeps its columns.  The filter bar wraps onto
 further lines, and below 768 pixels {cmd:filterposition(left)}'s sidebar
 moves above the dashboard.  A KPI card narrows below its usual 160 pixels
-when its cell is narrower.  The served app does the same in a browser
-window of the same width; on a phone, see
-{help dash##server_mode:Server mode}.
+when its cell is narrower.  The served app does the same, on a phone as
+in a narrow window: both pages declare a viewport.
 
 {pstd}
 A {cmd:layout()} that is not one of these forms as a whole, that names an
@@ -1025,14 +1024,14 @@ Graphs in the same link group draw their observations from a single Bokeh
 {cmd:ColumnDataSource}.  Selecting observations in one graph (via
 box-select or lasso-select) selects them in that source, and every linked
 graph highlights them where it draws them as markers: in its
-{cmd:scatter}, {cmd:connected} and {cmd:dot} layers.  The other layers --
-lines (the line of {cmd:connected} too), areas, bars, spikes, droplines,
-fits and their bands, smoothers, densities, histograms, and the range and
-paired-coordinate plots -- are drawn from data of their own and do not show
-a selection, except that a saved dashboard shows it on {cmd:rspike} and
-the markers of {cmd:rconnected}, where a served one does not.  An
-{cmd:rbar} shows it in neither: its bars are drawn from its own rows, their
-width from those rows' spacing.
+{cmd:scatter}, {cmd:connected} and {cmd:dot} layers, and on {cmd:rspike}
+and the markers of {cmd:rconnected}, which draw the group's rows in both
+modes.  The other layers -- lines (the line of {cmd:connected} and of
+{cmd:rconnected} too), areas, bars, droplines, fits and their bands,
+smoothers, densities, histograms, and the other range and paired-coordinate
+plots -- are drawn from data of their own and do not show a selection.  An
+{cmd:rbar} shows it in neither mode: its bars are drawn from its own rows,
+their width from those rows' spacing.
 
 {pstd}
 {cmd:link(}{it:name1} {it:name2} [{it:name3} ...]{cmd:)} -- link the
@@ -1339,7 +1338,7 @@ it.  The saved page and the served app differ as follows:
 {col 5}{cmd:scheme()}, {cmd:theme()}{col 38}Yes{col 59}Yes
 {col 5}{cmd:layout()}, {cmd:tabs()} and{col 38}Yes{col 59}Yes
 {col 7}{cmd:filterposition()}
-{col 5}Bootstrap {cmd:layout(bs)}{col 38}reflows{col 59}stacks below 768
+{col 5}Bootstrap {cmd:layout(bs)}{col 38}reflows{col 59}reflows
 {col 5}Health endpoint{col 38}n/a{col 59}{cmd:/health}
 {col 5}Deployment{col 38}email, open file{col 59}{cmd:python app.py}
 {col 5}{hline 72}
@@ -1363,12 +1362,13 @@ selection brushed on a graph it redraws, and a card that follows the brush
 shows.
 
 {pstd}
-{ul:What "reflow" means.}  A saved {cmd:layout(bs)} grid rearranges itself as
-the browser window narrows: half rows below 992 pixels, whole rows below
-768.  The served one keeps the rows and spans it was given down to a
-768-pixel window, narrowing, and below that stacks every item into one
-column.  Every other grid stacks the same way in both modes when it is too
-narrow for its columns.  See {help dash##layout:Layout}.
+{ul:What "reflow" means.}  A {cmd:layout(bs)} grid rearranges itself as the
+browser window narrows, in both modes: a cell of four columns or fewer
+takes half the row below 992 pixels, every cell takes the whole row below
+768, and a KPI card's cell keeps a minimum height keyed to its span (130
+pixels under six columns, 150 from six, 170 at twelve; 120 below 768).
+Every other grid stacks the same way in both modes when it is too narrow
+for its columns.  See {help dash##layout:Layout}.
 
 {pstd}
 {ul:Blocking behavior.}  {cmd:dash serve} blocks Stata until the server
@@ -1514,15 +1514,14 @@ that rate, and the server -- one process, one event loop -- runs one
 recomputation at a time for every session together.
 
 {pstd}
-{ul:What the served app does not do.}  The saved page has two things the
-served app lacks:
-
-{phang2}o A viewport for phones.  The page is Bokeh's own, which declares
-    none, so a phone lays it out at desktop width and shows it zoomed
-    out; its grids stack only in a browser window that is itself
-    narrow.{p_end}
-{phang2}o The saved page's dimming.  A brush dims the unselected points of
-    linked graphs to Bokeh's 10% opacity rather than to 15%.{p_end}
+{ul:What still differs.}  The two pages are laid out alike: both declare a
+viewport for phones, both dim the unselected points of linked graphs to
+15% when a brush is drawn, and a {cmd:layout(bs)} grid takes the same half
+rows and KPI cell heights in both.  One difference remains, recorded and
+not changed: under {cmd:layout(bs)} with {cmd:filterposition(left)}, the
+saved page draws the title and subtitle inside the content column beside
+the filter sidebar, where the served app draws them above the sidebar and
+the content together.
 
 {pstd}
 The generated app embeds every observation of the variables the dashboard

@@ -454,15 +454,22 @@ class TestTheServedTemplate:
     """``_dash_served_template`` extends Bokeh's own page and adds the
     <meta>; it replaces nothing."""
 
-    def test_it_is_bokehs_page_plus_the_meta(self):
+    def test_it_is_bokehs_page_plus_the_two_metas(self):
+        """WP-28 E14: the preamble now carries the viewport meta too, after
+        the CSP meta; stripping both, in order, leaves Bokeh's own page."""
         from bokeh.core.templates import FILE
         ctx = _file_context()
         ours = dr._dash_served_template().render(ctx)
         theirs = FILE.render(ctx)
         meta = dr._dash_csp_meta(dr._DASH_CSP_SERVED)
+        viewport = dr._DASH_VIEWPORT_META
         assert ours.count(meta) == 1
-        assert re.sub(r"[ \t]*" + re.escape(meta) + r"\n?", "", ours,
-                      count=1) == theirs, (
+        assert ours.count(viewport) == 1
+        stripped = re.sub(r"[ \t]*" + re.escape(meta) + r"\n?", "", ours,
+                          count=1)
+        stripped = re.sub(r"[ \t]*" + re.escape(viewport) + r"\n?", "",
+                          stripped, count=1)
+        assert stripped == theirs, (
             "the template changed more of Bokeh's page than its preamble")
 
     def test_the_policy_is_in_the_head_ahead_of_everything(self):
