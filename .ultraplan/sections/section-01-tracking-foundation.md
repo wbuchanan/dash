@@ -394,7 +394,8 @@ none (measured: `grep -n 'PLAN\.md\|TODO\.md' GAPS2.md` is empty), so committing
   optional parenthetical qualifier after the field name, but the qualifier is written inside
   the text so every reader sees one form).
 - **TR-01.9 The commit-message form.** Subject: what now happens, as a sentence, ending with
-  the gap id in parentheses, `… (GAPS2 B1)`; a shared-component commit (S01, S02, S03, S04)
+  the gap id in parentheses, `… (GAPS2 B1)` (a commit that closes two gaps through one code
+  path names both, `… (GAPS2 E3, G6)`: section 12 only); a shared-component commit (S01, S02, S03, S04)
   ends with its section, `… (WP-28 S02)`, and so does each of section 19's closeout commits,
   `… (WP-28 S19)`. Body: it OPENS with the failing tests' recorded output at 91d97be (the
   `<scratch>/NN-01-failure.txt` task 1 saved; Q24, D1), which is also the old value the gap's
