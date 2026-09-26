@@ -143,7 +143,11 @@ and now matches Stata.
 
 <!-- WP-28 B1 -->
 <!-- WP-28 B2 -->
-<!-- WP-28 B3 -->
+- `title("T", c(red))` drew the three lines `T`, `,` and `c(red)` in the
+  scheme's colour, and `ytitle("Volume", axis(2))` titled the left axis
+  `Volume` / `,` / `axis(2)`; a textbox sub-option is now read under any
+  of Stata's abbreviations, so the title is `T` in red and the right axis
+  is titled `Volume`. (WP-28, B3)
 <!-- WP-28 B5 -->
 <!-- WP-28 B6 -->
 - `ytitle2("P2")` drew `"P2"` with its quote marks, `ytitle2("a" "b")` one

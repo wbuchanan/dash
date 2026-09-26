@@ -1383,6 +1383,13 @@ CORPUS = [
           [_sc(), plot_for("line", yvar="price", xvar="weight",
                            options={"yaxis": "2"})], None,
           {"ytitle2": "Price", "ylabel2": "4000 8000", "yscale2": "log"}),
+    # WP-28 B3: abbreviated sub-options and axis(2) routing, both modes.
+    _case("title c() and xtitle si() abbreviations", [_sc()], None,
+          {"title": '"T", c(red)', "xtitle": '"W", si(large)'}),
+    _case("ytitle axis(2) routed to the second axis",
+          [_sc(), plot_for("line", yvar="price", xvar="weight",
+                           options={"yaxis": "2"})], None,
+          {"ytitle": '"Volume", axis(2)'}),
     _case("xaxis(2) on a second layer",
           [_sc(), plot_for("line", yvar="mpg", xvar="price",
                            options={"xaxis": "2"})]),

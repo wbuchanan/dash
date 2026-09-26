@@ -113,6 +113,11 @@ class TestParseTextboxOpt:
         assert text == "just one"
         assert "\n" not in text
 
+    def test_abbreviations_are_the_same_sub_options(self):
+        """WP-28 B3: Stata's minimum abbreviations are the sub-options."""
+        assert dr._parse_textbox_opt('"a", si(large) c(red)') == \
+            dr._parse_textbox_opt('"a", size(large) color(red)')
+
     def test_an_unquoted_value_is_unchanged(self):
         text, _ = dr._parse_textbox_opt("plaintext")
         assert text == "plaintext"
@@ -445,6 +450,13 @@ class TestTextboxSplitPoint:
         assert dr._textbox_split_point(raw) == raw.index(", size")
         raw2 = '"a" "b, size(large)", color(red)'
         assert dr._textbox_split_point(raw2) == raw2.index(", color")
+
+    def test_a_comma_before_any_word_splits(self):
+        """WP-28 B3: twoway's _parse comma splits before any name, not
+        only a known one; a digit or a quote after the comma stays text."""
+        assert dr._textbox_split_point('"a", bogus(1)') == 3
+        assert dr._textbox_split_point('"a", 2 more') == -1
+        assert dr._textbox_split_point('"a", "b"') == -1
 
     def test_a_stray_close_parenthesis_does_not_hide_the_comma(self):
         # -syntax- refuses an unbalanced parenthesis, so only a spec written

@@ -452,6 +452,21 @@ class TestTitleTextFidelity:
         assert styled.title.text_font_size != plain.title.text_font_size
         assert str(styled.title.text_color).lower() in ("red", "#ff0000")
 
+    def test_abbreviated_size_and_colour_are_applied(self):
+        """WP-28 B3: si()/c() (the minimum abbreviations) style the title
+        exactly as size()/color() do, and the drawn text matches what
+        twoway drew for the same command (t_size_color_abbr)."""
+        plain, _ = _fig_with_gopts(_SCATTER, {"title": "T"})
+        styled, _ = _fig_with_gopts(
+            _SCATTER, {"title": "T, si(large) c(red)"})
+        assert styled.title.text == "T"
+        with open(os.path.join(_HERE, "fixtures", "text_truth.json")) as fh:
+            text_truth = json.load(fh)
+        assert styled.title.text.split("\n") == \
+            text_truth["probes"]["t_size_color_abbr"]["added_texts"]
+        assert styled.title.text_font_size != plain.title.text_font_size
+        assert str(styled.title.text_color).lower() in ("red", "#ff0000")
+
     def test_canvas_text_is_not_html_escaped(self):
         """Bokeh draws a title as a canvas glyph, not as HTML."""
         fig, _ = _fig_with_gopts(_SCATTER, {"title": "R&D spend"})

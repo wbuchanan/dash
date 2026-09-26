@@ -229,7 +229,7 @@ program define _dash_require_mata
     // was missing, so a library without it passed and the first saving()
     // ended in r(3499) naming it (test_program_coverage.cscript PC-30);
     // test_program_coverage_map.py now fails a call this list does not name.
-    local _needed _dash_check_utf8 _dash_comma_pos _dash_expand_plottype ///
+    local _needed _dash_check_utf8 _dash_route_axis2 _dash_comma_pos _dash_expand_plottype ///
         _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
         _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
@@ -3841,6 +3841,9 @@ program define _dash_process_segment, rclass
     // too, so the weight keys are in s() for the JSON writer and the flag
     // rules run on every segment; the parser takes an empty option list.
     if `: length local opts_raw' | `"`_seg_weight'"' != "" {
+        // ytitle(, axis(2)) -> ytitle2() before the repeat merge folds
+        // copies of ytitle into one (WP-28 B3, _dash_route_axis2).
+        mata: st_local("opts_raw", _dash_route_axis2(st_local("opts_raw")))
         _dash_parse_plot_opts , `macval(opts_raw)'
         // An option it declares whose value -syntax- could not bind:
         // refused as twoway refuses it, not named as unsupported.
@@ -4559,6 +4562,7 @@ program define _dash_plot
     local _gund_acc ""
     local _rp_gund_out ""
     if `: length local gopts_raw' {
+        mata: st_local("gopts_raw", _dash_route_axis2(st_local("gopts_raw")))
         _dash_parse_graph_opts , `macval(gopts_raw)'
         _dash_refuse_unbound _dash_parse_graph_opts `"`macval(gopts_raw)'"'
         // A second name() in the options after the comma, and whether they

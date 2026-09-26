@@ -1903,6 +1903,64 @@ _DASH_LONE_AXIS_OPTIONS = {"y": ("ytitle", "ylabel", "yscale"),
                            "x": ("xtitle", "xlabel", "xscale")}
 
 
+def _dash_route_axis_titles(spec):
+    """The spec with ytitle(..., axis(2))/xtitle(..., axis(2)) moved to
+    ytitle2()/xtitle2() and an axis(1) token dropped (WP-28 B3).
+
+    dash.ado routes these in Mata before its repeat merge
+    (_dash_route_axis2); this is the renderer's own twin for a spec that
+    did not come through it.  The raw value is kept with its other
+    sub-options.  An explicit ytitle2() already present wins and the
+    routed copy is dropped with a note.  Both loaders call this BEFORE
+    _dash_lone_second_axes, so a lone axis(2) graph's routed title becomes
+    its one axis's title.  Returns a new dict; a spec of the wrong shape is
+    returned as it came.
+    """
+    if not isinstance(spec, dict) or not isinstance(spec.get("graphs"), list):
+        return spec
+    changed = False
+    graphs = []
+    for g in spec["graphs"]:
+        go = g.get("graph_options") if isinstance(g, dict) else None
+        if not isinstance(go, dict):
+            graphs.append(g)
+            continue
+        new_go = dict(go)
+        for side in ("y", "x"):
+            raw = new_go.get(f"{side}title")
+            if not isinstance(raw, str):
+                continue
+            ax = str(_parse_textbox_opt(raw)[1].get("axis", "")).strip()
+            if ax not in ("1", "2"):
+                continue
+            cut = _textbox_split_point(raw)
+            head, tail = raw[:cut].rstrip(), raw[cut + 1:]
+            rest = [t for t in _dash_by_tokens(tail.strip())
+                    if _dash_subopt_name(t) != "axis"]
+            value = head + (", " + " ".join(rest) if rest else "")
+            if ax == "1":
+                new_go[f"{side}title"] = value
+            else:
+                new_go.pop(f"{side}title")
+                if f"{side}title2" in new_go:
+                    _dash_warn_once(
+                        ("route", str(go.get("name", "")), side),
+                        "dash: %stitle(..., axis(2)) and %stitle2() both "
+                        "given; %stitle2() is drawn" % (side, side, side))
+                else:
+                    new_go[f"{side}title2"] = value
+            changed = True
+        if new_go != go:
+            g = dict(g)
+            g["graph_options"] = new_go
+        graphs.append(g)
+    if not changed:
+        return spec
+    out = dict(spec)
+    out["graphs"] = graphs
+    return out
+
+
 def _dash_lone_second_axes(spec):
     """The spec with a graph's lone second axis drawn as its only axis.
 
@@ -2731,14 +2789,53 @@ def _parse_scale_range(raw: str) -> "tuple[float | None, float | None]":
     return vals[0], vals[1]
 
 
+#: Stata's textbox sub-option table (WP-28 B3), transcribed from
+#: textbox_options.sthlp:41-77, title_options.sthlp:56-66 and
+#: axis_title_options.sthlp:54-63: (full name, minimum abbreviation).
+#: ``colour`` and ``style`` are NOT in this table -- twoway refuses
+#: ``title("T", colour(red))`` outright, r(198), and ``style()`` belongs to
+#: ``legend()``/region options, not a textbox (the textbox word is
+#: ``tstyle``) -- so a caller who types either is named, never honoured.
 _TEXTBOX_SUBOPTS = (
-    "size", "color", "colour", "position", "pos", "span", "box", "nobox",
-    "justification", "just", "alignment", "margin", "linegap", "bexpand",
-    "bmargin", "fcolor", "lcolor", "lwidth", "lpattern", "orientation",
-    "ring", "placement", "width", "height", "tstyle", "style",
+    ("tstyle", "tsty"), ("bcolor", "bc"),
+    ("orientation", "orient"), ("fcolor", "fc"),
+    ("size", "si"), ("lstyle", "ls"),
+    ("color", "c"), ("lpattern", "lp"),
+    ("justification", "j"), ("lwidth", "lw"),
+    ("alignment", "al"), ("lcolor", "lc"),
+    ("margin", "m"), ("lalign", "la"),
+    ("linegap", "linegap"), ("width", "width"), ("height", "height"),
+    ("bmargin", "bm"),
+    ("box", "box"), ("nobox", "nobox"),
+    ("bexpand", "bex"),
+    ("placement", "place"), ("position", "pos"),
+    ("ring", "ring"), ("span", "span"),
+    ("prefix", "prefix"), ("suffix", "suffix"), ("axis", "axis"),
 )
-_TEXTBOX_SUBOPT_RE = re.compile(
-    r",\s*(?=(?:" + "|".join(_TEXTBOX_SUBOPTS) + r")\b)", re.I)
+
+
+def _textbox_canon(name: str) -> "str | None":
+    """The full spelling of a textbox sub-option name, from any legal
+    abbreviation (Stata's own minimum, or anything longer) to its full
+    name; ``None`` when *name* is not one of ``_TEXTBOX_SUBOPTS``' names
+    at all -- ``colour``, ``style``, a misspelling, or too short to be any
+    one of them unambiguously.
+    """
+    nm = str(name or "").lower()
+    for full, minimum in _TEXTBOX_SUBOPTS:
+        if len(nm) >= len(minimum) and full.startswith(nm):
+            return full
+    return None
+
+
+# A comma followed by a name start: twoway's own ``_parse comma``
+# (_fr_title_parse_and_log.ado), the first top-level comma followed by
+# anything that could be a Stata name.  This used to require the word
+# after the comma to be one of a fixed keyword LIST, so
+# ``title("T", bogus(1))`` kept its comma as text; twoway's own rule does
+# not look the word up at all -- it just splits, and _textbox_canon is
+# what decides afterwards whether the word means anything dash reads.
+_TEXTBOX_SUBOPT_RE = re.compile(r",\s*(?=[A-Za-z_])")
 
 
 def _textbox_string_end(text: str, i: int) -> "tuple[int, int, int]":
@@ -2893,8 +2990,9 @@ def _textbox_size(opts: dict, default: "float | None") -> "float | None":
 def _textbox_color(opts: dict, default: "str | None") -> "str | None":
     """Resolve a textbox color() sub-option to CSS; *default* (None from
     every caller, which then keeps the scheme's colour) when it is not
-    given or is refused."""
-    raw = opts.get("color", "") or opts.get("colour", "")
+    given or is refused.  ``color`` only (WP-28 B3): ``colour`` is not one
+    of Stata's spellings and is named, never read, by ``_dash_textbox``."""
+    raw = opts.get("color", "")
     if not raw:
         return default
     try:
@@ -2971,10 +3069,14 @@ def _parse_textbox_opt(raw: str) -> "tuple[str, dict]":
     opts: dict = {}
     scan = tail[:tail.rfind(")") + 1]
     for m2 in re.finditer(r"\b([A-Za-z_]+)\s*\(([^)]*)\)", scan):
-        opts[m2.group(1).lower()] = m2.group(2).strip()
-    for flag in ("span", "box", "nobox"):
-        if re.search(r"\b" + flag + r"\b", tail, re.I):
-            opts[flag] = flag
+        # Stored under the full name (WP-28 B3): c(red) is color(red).
+        opts[_textbox_canon(m2.group(1)) or m2.group(1).lower()] = \
+            m2.group(2).strip()
+    for tok in _dash_by_tokens(tail.strip()):
+        if "(" not in tok:
+            nm = _textbox_canon(tok)
+            if nm in ("span", "box", "nobox", "bexpand", "prefix", "suffix"):
+                opts[nm] = nm
     return text, opts
 
 
@@ -18278,11 +18380,17 @@ def _dash_axis_labels(plots, graph_opts, var_labels, seen=None, key=""):
     # The text, split from its sub-options: xtitle("Weight", size(large))
     # used to title the axis "Weight, size(large)".  size() and color()
     # are applied by _dash_style_axis_titles; the rest is named.
-    x_text, _ = _dash_textbox(go.get("xtitle", ""), "xtitle", seen, key)
-    y_text, _ = _dash_textbox(go.get("ytitle", ""), "ytitle", seen, key)
-    x_label = x_text or x_default
-    y_label = y_text or y_default
-    return x_label, y_label
+    def _label(opt, default):
+        text, opts = _dash_textbox(go.get(opt, ""), opt, seen, key)
+        # A lone suffix/prefix adds its lines after/before the default, as
+        # twoway draws ytitle("extra", suffix) (WP-28 B3).
+        if "suffix" in opts:
+            return default + ("\n" + text if text else "")
+        if "prefix" in opts:
+            return (text + "\n" if text else "") + default
+        return text or default
+
+    return _label("xtitle", x_default), _label("ytitle", y_default)
 
 
 def _dash_parse_axis_label_opt(raw):
@@ -21224,7 +21332,8 @@ def _dash_legend_unsupported(legend_opt):
 
 #: Textbox sub-options the figure title, the axis titles, the subtitle, the
 #: note and the caption honour.
-_DASH_TEXTBOX_HONOURED = frozenset({"size", "color", "colour"})
+_DASH_TEXTBOX_HONOURED = frozenset({"size", "color", "prefix", "suffix",
+                                    "axis"})
 
 
 def _dash_textbox(raw, option, seen=None, key=""):
@@ -21241,8 +21350,20 @@ def _dash_textbox(raw, option, seen=None, key=""):
     cut = _textbox_split_point(raw_s)
     if cut >= 0:
         tail = raw_s[cut + 1:]
-        bad = [t for t in _dash_by_tokens(tail.strip())
-               if _dash_subopt_name(t) not in _DASH_TEXTBOX_HONOURED]
+        # Compared under the full name (WP-28 B3), named as written.
+        # axis(#) is honoured only as axis(1)/axis(2) on an axis title.
+        bad = []
+        for t in _dash_by_tokens(tail.strip()):
+            nm = _textbox_canon(_dash_subopt_name(t))
+            if nm == "axis":
+                arg = t[t.find("(") + 1:t.rfind(")")].strip() \
+                    if "(" in t else ""
+                if (option in ("xtitle", "ytitle", "xtitle2", "ytitle2")
+                        and arg in ("1", "2")):
+                    continue
+            elif nm in _DASH_TEXTBOX_HONOURED:
+                continue
+            bad.append(t)
         _dash_report_suboptions(option, bad, seen, key)
     return text, opts
 
@@ -23460,6 +23581,8 @@ class DashRenderer:
         self.master_spec = _dash_cap_spec(self.master_spec, self.limits)
         # A graph whose every layer is on its second axis draws that axis
         # alone, as the first, as twoway does (BUGS.md, S3).
+        # ytitle(, axis(2)) routed to ytitle2() first (WP-28 B3).
+        self.master_spec = _dash_route_axis_titles(self.master_spec)
         self.master_spec = _dash_lone_second_axes(self.master_spec)
 
         self.translator = OptionTranslator()
@@ -26694,6 +26817,7 @@ class ServerAppBuilder:
         self.spec = _dash_cap_spec(self.spec, self.limits)
         # A lone second axis drawn as the first, as the saved renderer
         # draws it (_dash_lone_second_axes), before the spec is embedded.
+        self.spec = _dash_route_axis_titles(self.spec)
         self.spec = _dash_lone_second_axes(self.spec)
         # The data parsed, and as the saved renderer loads it -- each made
         # only if a build-time check needs it (see _data and _frame), and
@@ -26768,7 +26892,7 @@ class ServerAppBuilder:
         # Constants these classes reference that are not already written out
         # by _shared_stat_lines and are not modules the app imports.
         _already = set(self._shared_stat_lines())
-        for _name in ("_TEXTBOX_SUBOPT_RE",
+        for _name in ("_TEXTBOX_SUBOPTS", "_TEXTBOX_SUBOPT_RE",
                       "_COLORVAR_LEGEND_NAME", "_KDE_BANDWIDTH_RULE",
                       "_LPOLY_ROT_C", "_FP_GRID_MAX", "_MAX_MBANDS",
                       "_MIN_BAR_WIDTH", "_MAX_EXPR_CHARS",
@@ -27157,6 +27281,7 @@ class ServerAppBuilder:
                          "_parse_scale_range",
                          "_dash_report_suboptions", "_dash_subopt_name",
                          "_dash_legend_unsupported", "_dash_textbox",
+                         "_textbox_canon", "_dash_route_axis_titles",
                          "_dash_figure_title", "_dash_style_axis_titles",
                          "_dash_text_annotations", "_dash_scale_spec",
                          "_dash_apply_scale_ranges", "_dash_reference_lines",

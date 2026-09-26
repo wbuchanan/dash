@@ -76,6 +76,14 @@ SUBOPTIONS = [
      "xline", ["lstyle(foreground)", "noextend"], ["lcolor"]),
     ("yline axis", {"yline": "20 25, lpattern(dash) axis(2)"}, None, "yline",
      ["axis(2)"], ["lpattern"]),
+    # WP-28 B3: abbreviations are canonicalised before the honoured check,
+    # so a bare "c" is not named beside a "bc" it does not abbreviate.
+    ("title c and bc", {"title": "T, c(red) bc(red)"}, None, "title",
+     ["bc(red)"], ["c"]),
+    ("xtitle orient", {"xtitle": "Weight, orient(vertical)"}, None,
+     "xtitle", ["orient(vertical)"], []),
+    ("ytitle axis 3", {"ytitle": "M, axis(3)"}, None, "ytitle",
+     ["axis(3)"], []),
 ]
 
 
@@ -111,6 +119,9 @@ class TestTheHonouredOnesStayQuiet:
          None),
         ({"xline": "3000, lcolor(red) lpattern(dash) lwidth(thick)",
           "yline": "20 25"}, None),
+        # WP-28 B3: every honoured spelling stays quiet, together.
+        ({"ytitle": "M, si(large) c(red) prefix"}, None),
+        ({"xtitle": "W, axis(1)"}, None),
     ])
     def test_no_warning(self, go, plots):
         _, _, std_w, srv_w = _both(None, go, plots)

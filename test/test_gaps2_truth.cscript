@@ -11,6 +11,7 @@
 *!   S02  helper smoke: the cert_svg programs (SH-01..SH-08)
 *!   S05  GAPS2 C2, histogram edge rule: dash's bars against
 *!        twoway__histogram_gen live (HE-05..HE-06)
+*!   S13  textbox grammar: B3, B6, B7 (TBG-01..TBG-06)
 *!
 *! Usage: via run_all_cscripts.do (registered as its last block).  One
 *! block alone: set GAPS2_ONLY=S<NN> in the environment of the driver run
@@ -378,6 +379,203 @@ end
     display as text "S05 end `c(current_time)'"
 }
 * ==== end S05 ====
+
+* ==== S13 B3 B6 B7: textbox grammar ====
+// Helpers, reached through __main__ (cert_svg.do's TRAP note):
+//   _tbg_spec()   TBG_OUT: the stored graph_options key TBG_KEY of the
+//                 graph whose spec is in global dash_json_<TBG_G>,
+//                 "<absent>" when there is no such key
+//   _tbg_axes()   TBG_OUT: "range_name=label|..." for every axis model
+//                 of the saved page TBG_PAGE, sorted
+//   _tbg_title()  TBG_OUT: "text|colour" of the page's Title models
+//   _tbg_textfill() TBG_OUT: the fill of <text> TBG_TXT in SVG TBG_SVG
+python:
+import json as _tbg_json, re as _tbg_re, html as _tbg_html
+import __main__ as _tbg_main
+from sfi import Macro as _tbg_M
+
+def _tbg_models():
+    try:
+        with open(_tbg_M.getGlobal("TBG_PAGE"), encoding="utf-8") as fh:
+            page = fh.read()
+    except OSError:
+        return {}
+    m = _tbg_re.search('<script type="application/json"[^>]*>(.*?)</script>', page, _tbg_re.S)
+    objs, stack = {}, ([_tbg_json.loads(_tbg_html.unescape(m.group(1)))] if m else [])
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                objs[v["id"]] = v
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    return objs
+
+def _tbg_val(v):
+    return v.get("value") if isinstance(v, dict) else v
+
+def _tbg_spec():
+    try:
+        d = _tbg_json.loads(_tbg_M.getGlobal("dash_json_" + _tbg_M.getGlobal("TBG_G")))
+        go = d.get("graph_options", d)
+        v = go.get(_tbg_M.getGlobal("TBG_KEY"), "<absent>")
+        v = "<absent>" if v in ("", None) else v
+    except (ValueError, AttributeError, TypeError):
+        v = "<unreadable>"
+    _tbg_M.setGlobal("TBG_OUT", str(v))
+
+def _tbg_axes():
+    out = []
+    for o in _tbg_models().values():
+        if o["name"] in ("LinearAxis", "LogAxis"):
+            a = o.get("attributes", {})
+            rn = a.get("y_range_name", a.get("x_range_name", "default"))
+            out.append("%s=%s" % (rn, _tbg_val(a.get("axis_label")) or ""))
+    _tbg_M.setGlobal("TBG_OUT", "|".join(sorted(out)))
+
+def _tbg_title():
+    out = []
+    for o in _tbg_models().values():
+        if o["name"] == "Title":
+            a = o.get("attributes", {})
+            out.append("%s|%s" % (_tbg_val(a.get("text")) or "", _tbg_val(a.get("text_color")) or ""))
+    _tbg_M.setGlobal("TBG_OUT", ";".join(sorted(out)))
+
+_tbg_main._tbg_spec = _tbg_spec
+_tbg_main._tbg_axes = _tbg_axes
+def _tbg_textfill():
+    # The fill of the <text> TBG_TXT in SVG TBG_SVG (a text's colour is a
+    # style on the <text>, not a shape fill cert_svg_fills reads).
+    import svg_truth
+    fills = [t["fill"] for t in svg_truth.svg_texts(_tbg_M.getGlobal("TBG_SVG"))
+             if t["text"] == _tbg_M.getGlobal("TBG_TXT")]
+    _tbg_M.setGlobal("TBG_OUT", " ".join(str(f) for f in fills))
+
+_tbg_main._tbg_title = _tbg_title
+_tbg_main._tbg_textfill = _tbg_textfill
+end
+
+local only : env GAPS2_ONLY
+if inlist("`only'", "", "S13") {
+    display as text "S13 start `c(current_time)'"
+    sysuse auto, clear
+    capture dash clear
+    tempfile tbg_page
+
+
+    // ---- TBG-01: title("T", c(red)) ----
+    quietly twoway scatter mpg weight, title("T", c(red)) name(tbg1, replace)
+    cert_svg_export, name(tbg1) file("`gt_work'/tbg1.svg")
+    local tbg_f "`r(file)'"
+    cert_svg_has_text, file("`tbg_f'") text("T")
+    local tbg_t = r(found)
+    cert_svg_has_text, file("`tbg_f'") text("c(red)")
+    local tbg_c = r(found)
+    global TBG_SVG "`tbg_f'"
+    global TBG_TXT "T"
+    python: __import__("__main__")._tbg_textfill()
+    local tbg_col "$TBG_OUT"
+    capture noisily dash scatter mpg weight, title("T", c(red)) name(tbg1)
+    local tbg_rc = _rc
+    capture noisily dash build, saving("`tbg_page'.html") replace nobrowser
+    global TBG_PAGE "`tbg_page'.html"
+    python: __import__("__main__")._tbg_title()
+    local tbg_dt "$TBG_OUT"
+    display as text "  TBG-01 twoway T:`tbg_t' c(red):`tbg_c' fills:`tbg_col'  dash rc `tbg_rc' title `tbg_dt'"
+    _gt_expect TBG-01 "(`tbg_t' == 1 & `tbg_c' == 0)" "twoway drew c(red) as text"
+    _gt_expect TBG-01 `"(strpos("`tbg_col'", "#ff0000") > 0)"' "twoway drew no red"
+    _gt_expect TBG-01 `"("`tbg_dt'" == "T|#ff0000" | "`tbg_dt'" == "T|red")"' "dash title `tbg_dt'"
+    _gt_done TBG-01 "title(T, c(red)) is a red T in twoway and dash"
+    capture dash clear
+
+    // ---- TBG-02: ytitle("Volume", axis(2)) ----
+    quietly twoway (scatter mpg weight) (line price weight, yaxis(2)), ytitle("Volume", axis(2)) name(tbg2, replace)
+    cert_svg_export, name(tbg2) file("`gt_work'/tbg2.svg")
+    cert_svg_has_text, file("`r(file)'") text("Volume")
+    local tbg_v = r(found)
+    capture noisily dash (scatter mpg weight) (line price weight, yaxis(2)), ytitle("Volume", axis(2)) name(tbg2)
+    local tbg_rc = _rc
+    global TBG_G "tbg2"
+    global TBG_KEY "ytitle2"
+    python: __import__("__main__")._tbg_spec()
+    local tbg_s2 `"$TBG_OUT"'
+    global TBG_KEY "ytitle"
+    python: __import__("__main__")._tbg_spec()
+    local tbg_s1 `"$TBG_OUT"'
+    capture noisily dash build, saving("`tbg_page'.html") replace nobrowser
+    python: __import__("__main__")._tbg_axes()
+    local tbg_ax `"$TBG_OUT"'
+    display as text `"  TBG-02 twoway Volume:`tbg_v'  rc `tbg_rc'  ytitle2 [`tbg_s2'] ytitle [`tbg_s1']  axes `tbg_ax'"'
+    _gt_expect TBG-02 "(`tbg_v' == 1 & `tbg_rc' == 0)" "twoway or dash failed"
+    _gt_expect TBG-02 `"(`"`tbg_s2'"' == `""Volume""' & "`tbg_s1'" == "<absent>")"' "spec not routed"
+    _gt_expect TBG-02 `"(strpos(`"`tbg_ax'"', "y2=Volume") > 0 & strpos(`"`tbg_ax'"', "default=Mileage (mpg)") > 0)"' "axes `tbg_ax'"
+    _gt_done TBG-02 "ytitle(Volume, axis(2)) titles the second axis"
+    capture dash clear
+
+    // ---- TBG-03: two copies, one on each axis (Mata route) ----
+    capture noisily dash (scatter mpg weight) (line price weight, yaxis(2)), ytitle("Left") ytitle("Right", axis(2)) name(tbg3)
+    local tbg_rc = _rc
+    global TBG_G "tbg3"
+    global TBG_KEY "ytitle"
+    python: __import__("__main__")._tbg_spec()
+    local tbg_s1 `"$TBG_OUT"'
+    global TBG_KEY "ytitle2"
+    python: __import__("__main__")._tbg_spec()
+    local tbg_s2 `"$TBG_OUT"'
+    display as text `"  TBG-03 rc `tbg_rc'  ytitle [`tbg_s1'] ytitle2 [`tbg_s2']"'
+    _gt_expect TBG-03 `"(`tbg_rc' == 0 & `"`tbg_s1'"' == `""Left""' & `"`tbg_s2'"' == `""Right""')"' "copies folded"
+    _gt_done TBG-03 "ytitle(Left) ytitle(Right, axis(2)) stores both titles"
+    capture dash clear
+
+    // ---- TBG-05: ytitle("extra", suffix) ----
+    quietly twoway scatter mpg weight, ytitle("extra", suffix) name(tbg5, replace)
+    cert_svg_export, name(tbg5) file("`gt_work'/tbg5.svg")
+    local tbg_f "`r(file)'"
+    cert_svg_has_text, file("`tbg_f'") text("Mileage (mpg)")
+    local tbg_m = r(found)
+    cert_svg_has_text, file("`tbg_f'") text("extra")
+    local tbg_e = r(found)
+    capture noisily dash scatter mpg weight, ytitle("extra", suffix) name(tbg5)
+    capture noisily dash build, saving("`tbg_page'.html") replace nobrowser
+    python: __import__("__main__")._tbg_axes()
+    local tbg_ax `"$TBG_OUT"'
+    display as text `"  TBG-05 twoway mpg:`tbg_m' extra:`tbg_e'  axes `tbg_ax'"'
+    _gt_expect TBG-05 "(`tbg_m' == 1 & `tbg_e' == 1)" "twoway texts"
+    _gt_expect TBG-05 `"(strpos(`"`tbg_ax'"', "default=Mileage (mpg)" + char(10) + "extra") > 0)"' "dash axes `tbg_ax'"
+    _gt_done TBG-05 "a lone suffix adds its line after the default"
+    capture dash clear
+
+    // ---- TBG-06: hostile titles pass _dash_route_axis2 unchanged ----
+    local tbg_ok 1
+    capture noisily dash scatter mpg weight, title(`"'90s"') name(tbg6a)
+    if _rc local tbg_ok 0
+    capture noisily dash scatter mpg weight, title("cost $ x") name(tbg6b)
+    if _rc local tbg_ok 0
+    capture noisily dash scatter mpg weight, title("say axis(2) here") ytitle("say axis(2)") name(tbg6c)
+    if _rc local tbg_ok 0
+    global TBG_KEY "title"
+    global TBG_G "tbg6a"
+    python: __import__("__main__")._tbg_spec()
+    local tbg_a `"$TBG_OUT"'
+    global TBG_G "tbg6b"
+    python: __import__("__main__")._tbg_spec()
+    local tbg_b `"$TBG_OUT"'
+    global TBG_G "tbg6c"
+    python: __import__("__main__")._tbg_spec()
+    local tbg_c `"$TBG_OUT"'
+    global TBG_KEY "ytitle2"
+    python: __import__("__main__")._tbg_spec()
+    local tbg_d `"$TBG_OUT"'
+    mata: st_local("tbg_ok", strofreal(`tbg_ok' & st_local("tbg_a") == char(96) + char(34) + char(39) + "90s" + char(34) + char(39) & st_local("tbg_b") == char(34) + "cost " + char(36) + " x" + char(34) & st_local("tbg_c") == char(34) + "say axis(2) here" + char(34) & st_local("tbg_d") == "<absent>"))
+    _gt_expect TBG-06 "(`tbg_ok' == 1)" "a hostile title changed"
+    _gt_done TBG-06 "hostile titles are stored as typed and never routed"
+    capture dash clear
+    capture erase "`tbg_page'.html"
+    graph drop _all
+    display as text "S13 end `c(current_time)'"
+}
+* ==== end S13 ====
 
 * ==== append new blocks above this line ====
 

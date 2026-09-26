@@ -478,6 +478,9 @@ COVERAGE = {
         "_dash_rep_und_name": ("test_twoway_option_parity.cscript:TP-14",),
         "_dash_rep_und_scan": ("test_twoway_option_parity.cscript:TP-14",),
         "_dash_rep_und_cross": ("test_twoway_option_parity.cscript:TP-14",),
+        # WP-28 B3: e2e, the stored spec of a routed and a two-copy title.
+        "_dash_route_axis2": ("test_gaps2_truth.cscript:TBG-03",
+                              "test_gaps2_truth.cscript:TBG-02"),
         # direct and e2e: TP-15 calls each on its own, and holds dash's
         # answer to log, an upper-case option, a plot option after the
         # comma and two kernels to twoway's, asked in the run.

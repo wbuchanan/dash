@@ -544,6 +544,17 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:filter()} that {cmd:dash} does not implement is named in a
     warning, as {cmd:by()}'s are:
     {cmd:dash: legend() sub-option(s) not implemented and ignored: span stack}.
+    A textbox sub-option -- of {cmd:title()}, {cmd:subtitle()},
+    {cmd:note()}, {cmd:caption()}, {cmd:xtitle()}/{cmd:ytitle()} and
+    {cmd:xtitle2()}/{cmd:ytitle2()} -- is read under any of Stata's
+    spellings, from its minimum abbreviation to its full name:
+    {cmd:c(red)} is {cmd:color(red)} and {cmd:si(large)} is
+    {cmd:size(large)}.  {cmd:size()}, {cmd:color()}, {cmd:prefix},
+    {cmd:suffix} and, on an axis title, {cmd:axis(1)}/{cmd:axis(2)} are
+    applied; every other sub-option, and any word that is not a textbox
+    sub-option ({cmd:colour()}, {cmd:style()}), is named, never drawn as
+    text.  A lone {cmd:suffix} on an axis title adds its lines after the
+    default title, {cmd:prefix} before it.
     A weight, {cmd:[aweight=}{it:varname}{cmd:]}, {cmd:[fweight=]} or
     {cmd:[pweight=]}, is honoured on the statistical layers that take it
     in {cmd:twoway} and refused, as {cmd:twoway} refuses it, where they do
@@ -2458,8 +2469,10 @@ nine, and any other value is refused.  {cmd:xlabel()}, {cmd:ylabel()},
 {cmd:xtick()} and {cmd:ytick()} style the bottom and left axes only; the
 second axes take the options below, which are {cmd:dash}'s own, as are
 their synonyms: {cmd:twoway} refuses all twelve, r(198), and writes
-{cmd:ytitle(}{it:text}{cmd:, axis(2))} and the like, which {cmd:dash} does
-not read as the second axis's.
+{cmd:ytitle(}{it:text}{cmd:, axis(2))} and the like.  {cmd:dash} reads
+{cmd:ytitle(, axis(2))} and {cmd:xtitle(, axis(2))} as the second axis's
+title too; {cmd:ylabel(, axis(2))} and {cmd:yscale(, axis(2))} are still
+named, not read.
 
 {pstd}
 When every layer of a graph is on {opt yaxis(2)}, {cmd:dash} draws one y

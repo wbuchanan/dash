@@ -4758,6 +4758,65 @@ real scalar _dash_rep_split(string scalar v, string scalar body,
     return(1)
 }
 
+// _dash_route_axis2(opts) -- the option list with ytitle(..., axis(2)) and
+// xtitle(..., axis(2)) rewritten as ytitle2(...)/xtitle2(...), and an
+// axis(1) word dropped (WP-28 B3).  It runs before -syntax- and before
+// _dash_rep_reduce, whose merge would otherwise fold ytitle("a")
+// ytitle("b", axis(2)) into one ytitle.  Only a word whose own name is a
+// prefix of ytitle or xtitle, three characters or more (yti .. ytitle;
+// never yti2), is touched; every other word, and every body, is returned
+// byte for byte, so a title holding "axis(2)", a quote, $ or a backtick
+// is kept as typed.  No regex (regexm follows the caller's version).
+string scalar _dash_route_axis2(string scalar opts)
+{
+    string rowvector toks, sub_w
+    string scalar    out, tok, nm, body, sub, w, arg, rest
+    real scalar      i, j, route, any
+
+    toks = _dash_rep_toks(opts, 0)
+    if (cols(toks) == 0) return(opts)
+    out  = ""
+    any  = 0
+    for (i = 1; i <= cols(toks); i++) {
+        tok = toks[i]
+        nm  = strlower(_dash_rep_optname(tok))
+        if (strlen(nm) >= 3 & strlen(nm) <= 6 & strpos(tok, "(") &
+            (substr("ytitle", 1, strlen(nm)) == nm |
+             substr("xtitle", 1, strlen(nm)) == nm)) {
+            if (_dash_rep_split(_dash_rep_value(tok), body, sub)) {
+                sub_w = _dash_rep_toks(sub, 1)
+                rest  = ""
+                route = 0
+                for (j = 1; j <= cols(sub_w); j++) {
+                    w   = strlower(strtrim(sub_w[j]))
+                    arg = ""
+                    if (strlen(w) > 6 & substr(w, 1, 5) == "axis(" &
+                        substr(w, strlen(w), 1) == ")") {
+                        arg = strtrim(substr(w, 6, strlen(w) - 6))
+                    }
+                    if (arg == "1" | arg == "2") {
+                        route = strtoreal(arg)
+                        continue
+                    }
+                    rest = rest + (rest == "" ? "" : " ") + sub_w[j]
+                }
+                if (route) {
+                    any = 1
+                    tok = substr(nm, 1, 1) + "title" +
+                          (route == 2 ? "2" : "") + "(" + body +
+                          (rest == "" ? "" : ", " + rest) + ")"
+                }
+            }
+        }
+        toks[i] = tok
+    }
+    // Nothing routed: the list exactly as typed, spacing and all (and no
+    // join, which the 10,000-copy exhaustion case TP-14e times).
+    if (!any) return(opts)
+    for (i = 1; i <= cols(toks); i++) out = out + (i > 1 ? " " : "") + toks[i]
+    return(out)
+}
+
 // _dash_rep_subkey(tok, cat) -- which sub-option a word sets, for keeping
 // the last of each: its name in lower case, a noX taken as X (grid and
 // nogrid, box and nobox are one setting), pos as position, cols and rows
