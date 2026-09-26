@@ -311,9 +311,9 @@ def hostile_inputs(payload):
             {"type": "scatter", "yvar": "price", "xvar": "weight",
              "options": {"yaxis": "2"}},
         ],
-            # ytitle2() reaches the axis as written: it is not read as a
-            # textbox, so it keeps every character.
-            ytitle2=free("ytitle2"),
+            # GAPS2 B7: ytitle2() is read as a textbox, as ytitle() is, so
+            # its text reaches the second axis without quotes or sub-options.
+            ytitle2=textbox("ytitle2"),
             ylabel2='5000 "%s" 10000' % quoted("tick2")),
         # WP-28 X2: ztitle() titles the colour key too -- a second source
         # beside the variable label g3/g4 already carry, so two new
