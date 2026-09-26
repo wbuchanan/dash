@@ -178,17 +178,34 @@ class TestSecondaryAxisOptions:
     def test_ytitle2_on_right_axis(self):
         """DAX-07: ytitle2 option sets axis_label on the right axis (beside
         a first-axis layer: a lone yaxis(2) graph draws one axis, on the
-        left -- TestALoneSecondAxisIsDrawnAsTwowayDrawsIt)."""
+        left -- TestALoneSecondAxisIsDrawnAsTwowayDrawsIt).  WP-28 B7: the
+        label is exactly the text, not a substring of something wider."""
         plots = [
             {"type": "scatter", "yvar": "y1", "xvar": "x", "options": {}},
             {"type": "line", "yvar": "y2", "xvar": "x", "options": {"yaxis": "2"}},
         ]
         graph_opts = {"name": "fig1", "ytitle2": "Secondary Y"}
         fig = self._get_fig(plots, graph_opts)
-        # The right-side axis should have the label
         right_axes = [ax for ax in fig.right
                       if hasattr(ax, "axis_label")]
-        assert any("Secondary Y" in ax.axis_label for ax in right_axes)
+        assert [ax.axis_label for ax in right_axes] == ["Secondary Y"]
+
+    def test_ytitle2_lines_size_and_colour(self):
+        """WP-28 B7: ytitle2() is read as a textbox, like every other text
+        option -- quoted lines joined with a newline, size() and color()
+        applied, in pixels and CSS, the same properties
+        _dash_style_axis_titles sets on the first axis."""
+        plots = [
+            {"type": "scatter", "yvar": "y1", "xvar": "x", "options": {}},
+            {"type": "line", "yvar": "y2", "xvar": "x", "options": {"yaxis": "2"}},
+        ]
+        graph_opts = {"name": "fig1",
+                      "ytitle2": '"a" "b", size(large) color(red)'}
+        fig = self._get_fig(plots, graph_opts)
+        (ax,) = [ax for ax in fig.right if hasattr(ax, "axis_label")]
+        assert ax.axis_label == "a\nb"
+        assert ax.axis_label_text_font_size is not None
+        assert str(ax.axis_label_text_color).lower() in ("red", "#ff0000")
 
     def test_ylabel2_custom_ticks(self):
         """DAX-08: ylabel2 option applies FixedTicker to secondary y-axis."""

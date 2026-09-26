@@ -2471,19 +2471,28 @@ drawn at the bottom, styled the same way by {cmd:xtitle2()},
 {cmd:xlabel2()} and {cmd:xscale2()}.
 
 {synoptset 38}{...}
-{synopt:{opt ytitle2(string)}}title for the right-hand y axis.
+{synopt:{opt ytitle2(tinfo)}}title for the right-hand y axis, in the
+    textbox grammar every text option takes: one or more quoted strings,
+    each its own line, and {cmd:size()}/{cmd:color()} honoured.
     Synonym: {cmd:yti2()}{p_end}
 {synopt:{opt ylabel2(rule)}}labels for the right-hand y axis, in the
     grammar {cmd:ylabel()} takes.  Synonym: {cmd:yla2()}{p_end}
 {synopt:{opt yscale2(log)}}log scale on the right-hand y axis.
     Synonym: {cmd:ysc2()}{p_end}
-{synopt:{opt xtitle2(string)}}title for the top x axis.
-    Synonym: {cmd:xti2()}{p_end}
+{synopt:{opt xtitle2(tinfo)}}title for the top x axis, in the same
+    textbox grammar.  Synonym: {cmd:xti2()}{p_end}
 {synopt:{opt xlabel2(rule)}}labels for the top x axis, in the grammar
     {cmd:xlabel()} takes.  Synonym: {cmd:xla2()}{p_end}
 {synopt:{opt xscale2(log)}}log scale on the top x axis.
     Synonym: {cmd:xsc2()}{p_end}
 {synoptline}
+
+{pstd}
+{cmd:ytitle2()} and {cmd:xtitle2()} are read the same way every other
+text option is: each quoted string is its own line, {cmd:size()} and
+{cmd:color()} are applied, and any other sub-option is named once.  An
+empty string ({cmd:ytitle2("")}) removes the title; an absent option
+draws no title either.
 
 {pstd}
 {cmd:ylabel2()} and {cmd:xlabel2()} read their rule and sub-options with

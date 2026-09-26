@@ -19241,7 +19241,8 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
                                     seen, key, grid_color, date_kind=kind)
 
 
-def _dash_add_secondary_axes(fig, plots, graph_opts, frame):
+def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
+                             key=""):
     """Build ``extra_y_ranges['y2']`` / ``extra_x_ranges['x2']`` and their axes.
 
     A layer with yaxis(2) or xaxis(2) asks for a second axis whose range is
@@ -19253,6 +19254,16 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame):
     once every layer is drawn, because the drawn values are what it must
     span -- a histogram's densities, a range plot's two boundaries, a
     function's curve -- and only the drawn layers have them.
+
+    ``{n}title2`` is read through ``_dash_textbox`` (WP-28 B7), the same
+    reader every other text option uses: lines joined with the quotes off,
+    the rest of a sub-option list named once.  ``size()``/``color()`` are
+    applied HERE, inside this function, to the same two axis-label text
+    properties ``_dash_style_axis_titles`` sets on the primary axes --
+    never in ``_dash_style_axis_titles`` itself, because the saved
+    renderer adds this axis AFTER that call and the served template
+    BEFORE it (WP-28 Notes "Renderer order"); styling the axis where it is
+    built is what makes that order not matter.
 
     Returns ``(has_y2, has_x2)``.
     """
@@ -19271,8 +19282,16 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame):
         n = name[0]
         toks = _dash_by_tokens(str(graph_opts.get(f"{n}scale2", "") or ""))
         is_log = "log" in [_dash_subopt_name(t) for t in toks]
+        text, opts = _dash_textbox(graph_opts.get(f"{n}title2", ""),
+                                   f"{n}title2", seen, key)
         ax = (LogAxis if is_log else LinearAxis)(
-            **{kw: name}, axis_label=graph_opts.get(f"{n}title2", ""))
+            **{kw: name}, axis_label=text)
+        px = _textbox_size(opts, None)
+        if px is not None:
+            ax.axis_label_text_font_size = f"{px:g}px"
+        colour = _textbox_color(opts, None)
+        if colour is not None:
+            ax.axis_label_text_color = colour
         fig.add_layout(ax, side)
     return has["y2"], has["x2"]
 
@@ -24506,7 +24525,8 @@ class DashRenderer:
         # already narrowed the source, so a right-hand axis computed from
         # the full frame spanned data the graph does not show.
         _has_y2, _has_x2 = _dash_add_secondary_axes(
-            fig, plots, graph_opts, _source_frame(source, self.df))
+            fig, plots, graph_opts, _source_frame(source, self.df),
+            _seen, _gkey)
 
         # xscale(range())/yscale(range()) and reverse, through the helper
         # the generated app runs as well: it read xrange/yrange keys
@@ -28728,7 +28748,8 @@ class ServerAppBuilder:
             "        _DASH_SCHEME.apply_to_figure(fig)",
             "        # yaxis(2)/xaxis(2): the second axis, from the rows this",
             "        # figure draws.  There used to be none when served.",
-            "        _dash_add_secondary_axes(fig, plots, go, g_df)",
+            "        _dash_add_secondary_axes(fig, plots, go, g_df,",
+            "                                 _reported_subopts, gname)",
             "        # title(), xtitle()/ytitle() sub-options, after the scheme so",
             "        # the user's size() and color() win; the rest named.",
             "        _dash_figure_title(fig, go, _reported_subopts, gname)",

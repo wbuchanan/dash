@@ -146,7 +146,12 @@ and now matches Stata.
 <!-- WP-28 B3 -->
 <!-- WP-28 B5 -->
 <!-- WP-28 B6 -->
-<!-- WP-28 B7 -->
+- `ytitle2("P2")` drew `"P2"` with its quote marks, `ytitle2("a" "b")` one
+  quoted line and `ytitle2("P2", size(large))` the sub-option text as part
+  of the label; `_dash_add_secondary_axes` now reads `ytitle2()`/`xtitle2()`
+  through the same textbox reader every other text option uses, so the
+  second axis draws `P2`, two lines, and a sized title, with no quotes.
+  (WP-28, B7)
 - A continuous `histogram` dropped the observation at its last edge
   when the computed edge fell a few units in the last place below the
   maximum, and the rows a tolerated `start()` lay above: `dash histogram

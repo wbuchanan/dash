@@ -87,6 +87,10 @@ if "`c(python_exec)'" == "" {
     exit 222
 }
 
+// WP-28 B7 (jg46l below) reads twoway's own SVG for the second axis's
+// title through the shared helper (S02); loaded here, before any `cd'.
+quietly do "cert_svg.do"
+
 qui sysuse auto, clear
 do "../dash_parse.mata"
 do "../dash.ado"
@@ -1971,7 +1975,7 @@ capture noisily dash scatter mpg weight, ytitle("line 1" "line 2") xtitle(`"a "b
 local jg_t1 = _rc
 capture noisily dash scatter mpg weight, xtitle("'90s x") ytitle(`"'90s y"') t1title("'90s t1") b2title(`"'90s b2"') name(jg46j)
 local jg_t2 = _rc
-capture noisily dash (scatter mpg weight) (line mpg weight), ytitle2("line 1" "line 2") xtitle2(`"a "b" c"') name(jg46k)
+capture noisily dash (scatter mpg weight) (line mpg weight, yaxis(2)), ytitle2("line 1" "line 2") xtitle2(`"a "b" c"') name(jg46k)
 local jg_t3 = _rc
 local jg_tk ""
 mata: st_global("JG_WANT", _jg_pq("line 1") + " " + _jg_pq("line 2"))
@@ -2012,8 +2016,42 @@ display as text "  axis titles -- rc: `jg_t1' `jg_t2' `jg_t3'  stored: `jg_tk'  
 assert `jg_t1' == 0 & `jg_t2' == 0 & `jg_t3' == 0
 assert "`jg_tk'" == "11111111"
 assert `jg_rb3' == 0
-assert "`jg_ta'" == "111"
+// WP-28 B7: _dash_add_secondary_axes now reads {n}title2 through
+// _dash_textbox, so jg46k's RIGHT axis draws "line 1\nline 2" too --
+// the count of LinearAxis models with that exact label goes from 1 to 2
+// (jg46i's left axis, and now jg46k's right one).
+assert "`jg_ta'" == "211"
 display "JSE-46 PASS: subtitle, note, caption, a legend label, by()'s title, text(), an unknown option and the axis and side titles are stored as typed, drawn or named"
+capture dash clear
+
+// jg46l (WP-28 B7): dash's right axis reads ytitle2() the way twoway
+// reads ytitle(..., axis(2)) on its one axis -- no quotes, joined lines --
+// compared directly against twoway's own SVG through the shared helper.
+capture noisily dash (scatter mpg weight) (line price weight, yaxis(2)), ///
+    ytitle2("a" "b") name(jg46l)
+local jg_t4 = _rc
+_jg_build "`jg_p46'.html"
+local jg_rb4 = r(rc)
+mata: st_global("JG_WANT", "a" + char(10) + "b")
+_jg_drawn LinearAxis
+local jg_ta4 = r(n)
+capture erase "`jg_p46'.html"
+
+capture graph drop zjg46l
+quietly twoway (scatter mpg weight) (line price weight, yaxis(2)), ///
+    ytitle("a" "b", axis(2)) name(zjg46l, replace)
+cert_svg_export, name(zjg46l) file("`c(tmpdir)'zjg46l.svg")
+local jg46l_rc = r(rc)
+local jg46l_svg `"`r(file)'"'
+cert_svg_has_text, file(`"`jg46l_svg'"') text("a")
+local jg46l_a = r(found)
+cert_svg_has_text, file(`"`jg46l_svg'"') text("b")
+local jg46l_b = r(found)
+capture graph drop zjg46l
+display as text "  jg46l -- rc: `jg_t4'  build: `jg_rb4'  drawn a-b: `jg_ta4'  twoway svg rc: `jg46l_rc'  a: `jg46l_a'  b: `jg46l_b'"
+assert `jg_t4' == 0 & `jg_rb4' == 0 & `jg_ta4' == 1
+assert `jg46l_rc' == 0 & `jg46l_a' == 1 & `jg46l_b' == 1
+display "JSE-46b PASS: dash's right axis (ytitle2) matches twoway's ytitle(, axis(2)) SVG"
 capture dash clear
 
 // ----------------------------------------------------------------
