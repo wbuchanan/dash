@@ -141,7 +141,14 @@ and now matches Stata.
 
 **WP-28 (GAPS2 audit, 25sep2026)**
 
-<!-- WP-28 B1 -->
+- `xlabel()`/`ylabel()` (and `xlabel2()`, `ylabel2()`, `xtick()`,
+  `ytick()`) read Stata's own grammar: `xlabel(1 "2019" 2 "2020" 3 "2021")`
+  drew six unlabelled ticks (1, 2, 3, 2019, 2020, 2021) and now draws three
+  labelled ones; `xlabel(10 20 to 40)` drew 10 20 40 with `to` as a label,
+  now 10 20 30 40; `xlabel(1/5)` and `xlabel(1[1]3)` drew the default ticks,
+  now 1..5 and 1 2 3; `xlabel(#5 50 "fifty")` drew 50 alone, now the count
+  ticks and 50 labelled "fifty"; a compound-quoted label was a lone
+  backtick, now its text. (WP-28, B1)
 <!-- WP-28 B2 -->
 - `title("T", c(red))` drew the three lines `T`, `,` and `c(red)` in the
   scheme's colour, and `ytitle("Volume", axis(2))` titled the left axis

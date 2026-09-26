@@ -434,11 +434,15 @@ class TestParseAxisLabelOpt:
         assert labels == {}
 
     def test_single_quoted_label(self):
-        """Single-quoted labels are also parsed."""
-        ticks, labels = _dash_parse_axis_label_opt("1 'One' 2 'Two'")
+        """A single quote is a character in Stata, not a string delimiter
+        (WP-28 S14, GAPS2 B1; twoway refuses xlabel(2000 'a' 4000) with
+        r(198), probe a1_single_quote): 'One' is a bare word, never a
+        label."""
+        bad = []
+        ticks, labels = _dash_parse_axis_label_opt("1 'One' 2 'Two'", bad)
         assert ticks == [1.0, 2.0]
-        assert labels["1.0"] == "One"
-        assert labels["2.0"] == "Two"
+        assert labels == {}
+        assert bad == ["'One'", "'Two'"]
 
     def test_output_ticks_sorted(self):
         """Output ticks are always sorted ascending regardless of input order."""

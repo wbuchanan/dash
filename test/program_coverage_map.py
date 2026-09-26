@@ -171,6 +171,9 @@ COVERAGE = {
         # direct: each distinct qualifier's column holds Stata's answer, a
         # reserved name is refused, a qualifier the data no longer answer
         # is refused with Stata's error, nothing is left in the data.
+        # WP-28 S14 (B1), direct: numlist's expansion of every bare run reaches r(norm).
+        "_dash_axis_expand": ("test_gaps2_truth.cscript:AL-01",
+                              "test_gaps2_truth.cscript:AL-03"),
         "_dash_qual_gen": ("test_qualifier_in_stata.cscript:QS-05",
                            "test_qualifier_in_stata.cscript:QS-06",
                            "test_qualifier_in_stata.cscript:QS-08",
@@ -319,6 +322,11 @@ COVERAGE = {
         # caller -- the accepted Unicode name, and its negative control
         # (a brace).
         "_dash_is_varname": ("test_statistical_options.cscript:UN-02",),
+        # WP-28 S14 (B1): direct -- an axis-label value split into strings,
+        # bare runs and hostile runs; the hostile run is never expanded.
+        "_dash_axis_pieces": ("test_gaps2_truth.cscript:AL-02",
+                              "test_gaps2_truth.cscript:AL-01"),
+        "_dash_axis_run_tag": ("test_gaps2_truth.cscript:AL-02",),
         "_dash_layout_refusal": ("test_echo_text.cscript:ECH-11",),
         # P1A-76: every prefix of every name, direct, and no prefix that
         # reaches two rows; e2e through _dash_expand_plottype.

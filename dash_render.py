@@ -18710,40 +18710,361 @@ def _dash_axis_labels(plots, graph_opts, var_labels, seen=None, key=""):
     return _label("xtitle", x_default), _label("ytitle", y_default)
 
 
-def _dash_parse_axis_label_opt(raw):
-    """Parse the numlist form of xlabel()/ylabel().
+def _dash_axis_tokens(head):
+    """The tokens of one axis-label head: ``(kind, text)`` pairs in order
+    (TR-14.2, WP-28 S14).
 
-    Supports a pure numeric list, ``"0 2 4 6"``, and a labelled list,
-    ``'0 "Zero" 5 "Five"'``.  Invalid tokens are dropped.
+    ``"str"`` for a plain or compound string (:func:`_textbox_string_end`;
+    an unclosed string runs to the end), *text* its content without
+    quotes.  Everything else is split at a blank or a comma outside a
+    string -- both are separators, so ``"2000,3000"`` and ``"2000 3000"``
+    tokenize alike -- into ``"bare"`` tokens; a run with no separator
+    inside it, ``"1(2)10"`` or the parenthesised piece of
+    ``"2000 (500) 4000"``, survives as one longer token.
+
+    Args:
+        head: The numlist portion of an axis-label option (its leading
+            rule and its sub-options already removed).
+
+    Returns:
+        A list of ``(kind, text)`` tuples.
+    """
+    out = []
+    i, n = 0, len(head)
+    while i < n:
+        ch = head[i]
+        if ch in " \t,":
+            i += 1
+            continue
+        if ch == '"' or head.startswith('`"', i):
+            start, end, after = _textbox_string_end(head, i)
+            out.append(("str", head[start:end]))
+            i = after
+            continue
+        j = i
+        while j < n and head[j] not in " \t,\"" and not head.startswith('`"', j):
+            j += 1
+        if j == i:
+            # A lone quote character _textbox_string_end did not open (an
+            # unmatched backtick with no following '"'): one character, so
+            # the scan always advances.
+            j = i + 1
+        out.append(("bare", head[i:j]))
+        i = j
+    return out
+
+
+def _dash_axis_head_split(text):
+    """``(head, tail)`` of one axis-label option's full raw value, split at
+    the first comma outside a string that is followed by optional blanks
+    and a letter or underscore -- Stata also accepts a comma inside the
+    numlist itself, so only a comma that INTRODUCES A SUB-OPTION NAME
+    separates (TR-14.2, WP-28 S14; the quote-aware twin of the regex the
+    old parser used, which cut ``xlabel(1 "a, b" 2 "c")`` inside the
+    string).
+
+    Args:
+        text: The option's whole raw value.
+
+    Returns:
+        ``(head, tail)``; *tail* is ``""`` when there is none, else keeps
+        its own leading comma.
+    """
+    i, n = 0, len(text)
+    while i < n:
+        ch = text[i]
+        if ch == '"' or text.startswith('`"', i):
+            i = _textbox_string_end(text, i)[2]
+            continue
+        if ch == ",":
+            j = i + 1
+            while j < n and text[j] in " \t":
+                j += 1
+            if j < n and (text[j].isalpha() or text[j] == "_"):
+                return text[:i], text[i:]
+        i += 1
+    return text, ""
+
+
+#: a(b)c / a[b]c: the increment form, whitespace tolerated around the
+#: parentheses (measured 25sep2026: twoway draws "2000 (500) 4000" and
+#: "2000(500)4000" alike).
+_DASH_AXIS_NUM = r"(-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)"
+_DASH_AXIS_INCR_RE = re.compile(
+    r"\A" + _DASH_AXIS_NUM + r"\s*[(\[]\s*" + _DASH_AXIS_NUM
+    + r"\s*[)\]]\s*" + _DASH_AXIS_NUM + r"\Z")
+#: a/b: step +-1 toward b, inclusive.
+_DASH_AXIS_SLASH_RE = re.compile(
+    r"\A" + _DASH_AXIS_NUM + "/" + _DASH_AXIS_NUM + r"\Z")
+#: a lone "y:z" token (the step comes from the value immediately before it).
+_DASH_AXIS_COLON_RE = re.compile(
+    r"\A" + _DASH_AXIS_NUM + ":" + _DASH_AXIS_NUM + r"\Z")
+
+
+def _dash_expand_numlist(tokens, limit=None):
+    """Expand one run of bare axis-label tokens by Stata's numlist forms
+    ([U] 11.1.8; TR-14.1, WP-28 S14): a plain number; ``a/b`` (step +-1
+    toward b, inclusive); ``a(b)c``/``a[b]c`` (from a by b while <= c for
+    b > 0, >= c for b < 0, ``a + i*b`` never accumulated, inclusive within
+    a 1e-9 tolerance); ``x y to z``/``x y:z`` (also ``x y : z`` and
+    ``y:z`` split from one token): step = y - x from the two values
+    immediately before the word.
+
+    Every count is found before any value of that span is made, and the
+    whole run stops with *too_many* set the moment the running total
+    would pass *limit* -- so ``0(0.000001)1000000`` costs one arithmetic
+    check, never ten billion floats.  A zero step, a non-finite endpoint,
+    a ``to``/``:`` with fewer than two values before it, or any other
+    token goes to *bad*.
+
+    Args:
+        tokens: The run's bare token texts, in order (no blanks or commas
+            inside any one of them: :func:`_dash_axis_tokens` already cut
+            those).
+        limit: The most ticks the whole run may produce; defaults to
+            :data:`_MAX_AXIS_TICKS`.
+
+    Returns:
+        ``(values, too_many, bad)``: *values* a flat list of floats (not
+        deduplicated or sorted), *bad* the tokens this run could not read.
+        When *too_many* is true, *values* is empty: the caller keeps the
+        axis's default ticks.
+    """
+    if limit is None:
+        limit = _MAX_AXIS_TICKS
+    # "2000 (500) 4000": blanks around the step (measured 25sep2026, probe
+    # a1_spaces_incr: twoway draws it as 2000(500)4000) -- rejoin the
+    # three tokens the blank-splitting tokenizer made.
+    tokens = list(tokens)
+    _j = 1
+    while _j < len(tokens) - 1:
+        _t = tokens[_j]
+        if (len(_t) >= 3 and _t[0] in "([" and _t[-1] in ")]"
+                and _t[0] + _t[-1] in ("()", "[]")):
+            tokens[_j - 1:_j + 2] = [tokens[_j - 1] + _t + tokens[_j + 1]]
+        else:
+            _j += 1
+    values = []
+    bad = []
+    too_many = False
+    i, n = 0, len(tokens)
+
+    def _reserve(count):
+        nonlocal too_many
+        if too_many or count < 0 or not math.isfinite(count):
+            return False
+        if len(values) + count > limit:
+            too_many = True
+            return False
+        return True
+
+    while i < n and not too_many:
+        tok = tokens[i]
+        if tok in ("to", ":"):
+            if i + 1 >= n or len(values) < 2:
+                bad.append(tok)
+                i += 1
+                continue
+            try:
+                z = float(tokens[i + 1])
+            except (TypeError, ValueError):
+                bad.append(tok)
+                i += 1
+                continue
+            if not math.isfinite(z):
+                bad.append(tok)
+                i += 1
+                continue
+            y = values.pop()
+            x = values.pop()
+            step = y - x
+            if step == 0 or not math.isfinite(step):
+                values.extend([x, y])
+                bad.append(tok)
+                i += 2
+                continue
+            span = (z - y) / step + 1e-9
+            if not math.isfinite(span):
+                values.extend([x, y])
+                bad.append(tok)
+                i += 2
+                continue
+            n_steps = max(0, int(math.floor(span)))
+            if not _reserve(n_steps):
+                values.extend([x, y])
+                i += 2
+                continue
+            values.append(x)
+            values.append(y)
+            values.extend(y + step * k for k in range(1, n_steps + 1))
+            i += 2
+            continue
+        m = _DASH_AXIS_INCR_RE.match(tok)
+        if m:
+            try:
+                a, b, c = (float(m.group(1)), float(m.group(2)),
+                           float(m.group(3)))
+            except ValueError:
+                bad.append(tok)
+                i += 1
+                continue
+            if b == 0 or not all(math.isfinite(v) for v in (a, b, c)):
+                bad.append(tok)
+                i += 1
+                continue
+            span = (c - a) / b + 1e-9
+            if not math.isfinite(span):
+                bad.append(tok)
+                i += 1
+                continue
+            n_steps = max(0, int(math.floor(span)))
+            if not _reserve(n_steps + 1):
+                i += 1
+                continue
+            values.extend(a + b * k for k in range(n_steps + 1))
+            i += 1
+            continue
+        m = _DASH_AXIS_SLASH_RE.match(tok)
+        if m:
+            try:
+                a, b = float(m.group(1)), float(m.group(2))
+            except ValueError:
+                bad.append(tok)
+                i += 1
+                continue
+            if not (math.isfinite(a) and math.isfinite(b)):
+                bad.append(tok)
+                i += 1
+                continue
+            step = 1.0 if b >= a else -1.0
+            n_steps = int(math.floor(abs(b - a) + 1e-9))
+            if not _reserve(n_steps + 1):
+                i += 1
+                continue
+            values.extend(a + step * k for k in range(n_steps + 1))
+            i += 1
+            continue
+        m = _DASH_AXIS_COLON_RE.match(tok)
+        if m and values:
+            x = values[-1]
+            y, z = float(m.group(1)), float(m.group(2))
+            step = y - x
+            if step == 0 or not math.isfinite(step):
+                bad.append(tok)
+                i += 1
+                continue
+            span = (z - y) / step + 1e-9
+            if not math.isfinite(span):
+                bad.append(tok)
+                i += 1
+                continue
+            n_steps = max(0, int(math.floor(span)))
+            if not _reserve(n_steps + 1):
+                i += 1
+                continue
+            values.extend(y + step * k for k in range(n_steps + 1))
+            i += 1
+            continue
+        try:
+            v = float(tok)
+        except (TypeError, ValueError):
+            bad.append(tok)
+            i += 1
+            continue
+        if not math.isfinite(v):
+            bad.append(tok)
+            i += 1
+            continue
+        if not _reserve(1):
+            i += 1
+            continue
+        values.append(v)
+        i += 1
+
+    if too_many:
+        return [], True, bad
+    return values, False, bad
+
+
+def _dash_parse_axis_label_opt(raw, unsupported=None):
+    """Parse the numlist form of xlabel()/ylabel() (rebuilt on
+    :func:`_dash_axis_tokens`/:func:`_dash_expand_numlist`, TR-14.3,
+    WP-28 S14).
+
+    A run of bare tokens between strings is expanded by
+    :func:`_dash_expand_numlist`; a ``str`` token labels the last value
+    that run produced, and a further consecutive ``str`` token joins it
+    with ``"\\n"``; a string before any value is dropped and reported
+    through *unsupported* (the caller's, e.g. :func:`_dash_parse_axis_spec`'s
+    -- this function's own return stays ``(ticks, labels)``, so a caller
+    that does not pass one, as the pinned unit tests do, sees only that).
+
+    Supports a pure numeric list, ``"0 2 4 6"``, a labelled list,
+    ``'0 "Zero" 5 "Five"'``, and every numlist form (``a/b``, ``a(b)c``,
+    ``x y to z``, ``x y:z``, mixed, comma-separated).
+
+    Args:
+        raw: The numlist portion of the option.
+        unsupported: An optional list a bad token, a too-many run (as its
+            whole text) or a premature string is appended to.
 
     Returns:
         ``(ticks, labels)``: a sorted list of floats and a dict mapping
         ``str(float)`` to its label (empty when none were given).
     """
+    if unsupported is None:
+        unsupported = []
     ticks = []
     labels = {}
-    tokens = re.findall(r'"([^"]*)"'  # double-quoted label
-                        r"|'([^']*)'"  # single-quoted label
-                        r"|([^\s,\"']+)",  # bare token (number or keyword)
-                        str(raw or ""))
-    flat = [dq or sq or bare for dq, sq, bare in tokens]
-    i = 0
-    while i < len(flat):
-        tok = flat[i]
-        try:
-            val = float(tok)
-            ticks.append(val)
-            if i + 1 < len(flat):
-                next_tok = flat[i + 1]
-                try:
-                    float(next_tok)
-                except ValueError:
-                    labels[str(val)] = next_tok
-                    i += 1
-            i += 1
-        except ValueError:
-            i += 1
+    run = []
+
+    def _flush():
+        if not run:
+            return
+        vals, too_many, bad = _dash_expand_numlist(run)
+        unsupported.extend(bad)
+        if too_many:
+            unsupported.append(" ".join(run))
+        else:
+            ticks.extend(vals)
+        run.clear()
+
+    for kind, text in _dash_axis_tokens(str(raw or "")):
+        if kind == "str":
+            _flush()
+            if not ticks:
+                unsupported.append(text)
+                continue
+            key = str(ticks[-1])
+            labels[key] = (labels[key] + "\n" + text) if key in labels else text
+            continue
+        run.append(text)
+    _flush()
     return sorted(ticks), labels
+
+
+def _dash_axis_too_many(head):
+    """True when *head*'s numlist tokens would expand past
+    :data:`_MAX_AXIS_TICKS` (TR-14.4, WP-28 S14): the same run-by-run
+    reservation :func:`_dash_expand_numlist` makes, called ahead of
+    :func:`_dash_parse_axis_label_opt` so the axis's default ticks are
+    kept and the warning is issued the moment any one run would pass the
+    bound, without materialising it."""
+    run = []
+    for kind, text in _dash_axis_tokens(str(head or "")):
+        if kind == "str":
+            if run:
+                _, too_many, _ = _dash_expand_numlist(run)
+                if too_many:
+                    return True
+                run = []
+            continue
+        run.append(text)
+    if run:
+        _, too_many, _ = _dash_expand_numlist(run)
+        if too_many:
+            return True
+    return False
 
 
 #: The most ticks one axis label option may ask for.  The ``a(b)c`` form
@@ -19274,38 +19595,50 @@ def _dash_axis_count_ticks(lo, hi, n, kind=None):
     return out or None
 
 
+#: #N / ##N, with an optional numlist ("label"...) after it (US-14.4,
+#: WP-28 S14): dash's own reproduction of axis_label_options.sthlp's
+#: "[rule] [numlist ...]" grammar, so `#5 50 "fifty"` keeps both instead
+#: of losing the #5.  A double hash is read the same as a single one: no
+#: probe of this section distinguishes them.
+_DASH_AXIS_RULE_RE = re.compile(r"\A#{1,2}\s*(\d+)\s*(.*)\Z", re.S)
+
+
 def _dash_parse_axis_spec(raw):
     """Parse Stata's full ``axis_label`` grammar.
 
-    Handles a numlist (including the ``a(b)c`` increment form), ``#N``,
-    ``minmax``, ``none``, explicit ``value "label"`` pairs, and the
-    sub-options ``format()``, ``labsize()``, ``angle()``, ``grid`` and
-    ``nogrid``.  The generated app used to carry a 14-line parser that read
-    a bare numlist and angle() and nothing else, so ``xlabel(2000(1000)4000)``
-    fixed the ticks when saved and was ignored when served.
+    Handles a numlist (every form of TR-14.1/BR-14.4, including the
+    ``a(b)c`` increment form), ``#N``/``##N`` (alone or before a labelled
+    list, US-14.4), ``minmax``, ``none``, explicit ``value "label"``
+    pairs (BR-14.1/14.2/14.3), and the sub-options ``format()``,
+    ``labsize()``, ``angle()``, ``grid``, ``nogrid`` and ``valuelabel``
+    (minimum ``val``, honoured from G16's task onward; TR-14.4).  The
+    generated app used to carry a 14-line parser that read a bare numlist
+    and angle() and nothing else, so ``xlabel(2000(1000)4000)`` fixed the
+    ticks when saved and was ignored when served.
 
     Returns:
-        A dict with keys ``mode`` (``"default"``, ``"explicit"``, ``"count"``,
-        ``"minmax"`` or ``"none"``), ``ticks``, ``count``, ``labels``,
-        ``format``, ``labsize``, ``angle`` and ``grid``.
+        A dict with keys ``mode`` (``"default"``, ``"explicit"``,
+        ``"count"``, ``"minmax"`` or ``"none"``), ``ticks``, ``count``,
+        ``labels``, ``format``, ``labsize``, ``angle``, ``grid`` and
+        ``valuelabel``.
     """
     out = {"mode": "default", "ticks": [], "count": None,
            "labels": {}, "format": None, "labsize": None,
-           "angle": None, "grid": None, "unsupported": []}
+           "angle": None, "grid": None, "valuelabel": False,
+           "unsupported": []}
     if not raw or not str(raw).strip():
         return out
     text = str(raw)
 
-    # The sub-options are what follows the first comma that introduces a
-    # name (Stata also accepts a comma-separated numlist, which must
-    # survive).  Each one dash does not honour is recorded, as written, for
-    # the caller to name: labcolor(), labgap(), tlength(), valuelabel ...
-    # used to be stripped or ignored without a word.
-    _m_tail = re.search(r",\s*(?=[A-Za-z_])", text)
-    if _m_tail:
-        for _tok in _dash_by_tokens(text[_m_tail.end():].strip()):
-            if _dash_subopt_name(_tok) not in ("format", "labsize", "angle",
-                                               "grid", "nogrid"):
+    # The head/tail split is quote-aware (TR-14.2): Stata also accepts a
+    # comma-separated numlist, which must survive, and a comma inside a
+    # compound-quoted label, which used to end the split early
+    # (`xlabel(1 "a, b" 2 "c")`).
+    head, tail = _dash_axis_head_split(text)
+    if tail:
+        for _tok in _dash_by_tokens(tail.lstrip(",").strip()):
+            _nm = _dash_subopt_name(_tok)
+            if _nm not in ("format", "labsize", "angle", "grid", "nogrid"):
                 out["unsupported"].append(_tok)
 
     out["angle"] = _parse_axis_angle(text)
@@ -19320,20 +19653,7 @@ def _dash_parse_axis_spec(raw):
     elif re.search(r"\bgrid\b", text, re.I):
         out["grid"] = True
 
-    # Strip every recognised sub-option so only the numlist remains.
-    head = re.sub(r"\b(?:format|labsize|angle|labcolor|labgap|tlength|"
-                  r"labstyle|tstyle|tposition)\s*\([^)]*\)", " ",
-                  text, flags=re.I)
-    head = re.sub(r"\b(?:no)?grid\b", " ", head, flags=re.I)
-    # Only a comma that INTRODUCES SUB-OPTIONS separates; Stata also
-    # accepts a comma-separated numlist, so xlabel(1,3,5) must survive.
-    m_sub = re.search(r",\s*(?=[A-Za-z_])", head)
-    if m_sub:
-        head = head[:m_sub.start()]
-    # Stripping the sub-options above leaves their comma behind, so
-    # `#5, grid' arrived here as `#5,' and matched none of the keyword
-    # forms: the count was dropped in silence.  Measured 22sep2026.
-    head = head.strip().rstrip(",").strip()
+    head = head.strip()
 
     if re.fullmatch(r"none", head, re.I):
         out["mode"] = "none"
@@ -19341,7 +19661,9 @@ def _dash_parse_axis_spec(raw):
     if re.fullmatch(r"minmax", head, re.I):
         out["mode"] = "minmax"
         return out
-    m = re.fullmatch(r"#\s*(\d+)", head)
+
+    head_rest = head
+    m = _DASH_AXIS_RULE_RE.match(head)
     if m:
         out["mode"] = "count"
         # Clamped, and never int() of a string too long for it (Python
@@ -19349,35 +19671,16 @@ def _dash_parse_axis_spec(raw):
         _digits = m.group(1)
         _n = int(_digits) if len(_digits) <= 9 else _MAX_AXIS_TICKS
         out["count"] = max(1, min(_n, _MAX_AXIS_TICKS))
+        head_rest = m.group(2)
+
+    if not head_rest.strip():
         return out
 
-    # a(b)c increment form, possibly repeated and mixed with bare values.
-    # The ticks are counted before any is made, so an increment that asks
-    # for millions costs nothing: past _MAX_AXIS_TICKS in all, the axis
-    # keeps its default ticks and says so.
-    ticks = []
-    rest = head
-    _too_many = False
-    for m in re.finditer(
-            r"(-?[\d.eE+]+)\s*\(\s*(-?[\d.eE+]+)\s*\)\s*(-?[\d.eE+]+)",
-            head):
-        rest = rest.replace(m.group(0), " ")
-        try:
-            a, b, c = (float(m.group(1)), float(m.group(2)),
-                       float(m.group(3)))
-        except ValueError:
-            continue
-        if b == 0 or not all(math.isfinite(v) for v in (a, b, c)):
-            continue
-        _span = (c - a) / b + 1e-9
-        if not math.isfinite(_span):
-            continue
-        if _span + 1 + len(ticks) > _MAX_AXIS_TICKS:
-            _too_many = True
-            break
-        n_steps = int(math.floor(_span))
-        ticks.extend(a + b * i for i in range(max(0, n_steps) + 1))
-    if _too_many:
+    # Every tick is counted before any is made (_dash_expand_numlist), so
+    # an increment that asks for millions costs one arithmetic check:
+    # past _MAX_AXIS_TICKS in all, the axis keeps its default ticks (or,
+    # after a rule, that rule's count ticks) and says so once.
+    if _dash_axis_too_many(head_rest):
         warnings.warn(
             f"dash: an axis label option asks for more than "
             f"{_MAX_AXIS_TICKS:,} ticks ({_dash_display(head)}); the axis "
@@ -19385,25 +19688,12 @@ def _dash_parse_axis_spec(raw):
             UserWarning, stacklevel=2)
         return out
 
-    bare_ticks, labels = _dash_parse_axis_label_opt(rest)
-    ticks.extend(bare_ticks)
-    # A bare word in the numlist that is not a number, a label or one of
-    # the keyword forms above is a sub-option written before the comma.
-    _prev_num = False
-    for _dq, _sq, _bare in re.findall(r'"([^"]*)"|\'([^\']*)\'|([^\s,"\']+)',
-                                      rest):
-        if _bare:
-            try:
-                float(_bare)
-                _prev_num = True
-                continue
-            except ValueError:
-                out["unsupported"].append(_bare)
-        _prev_num = False
+    ticks, labels = _dash_parse_axis_label_opt(head_rest, out["unsupported"])
     if ticks:
-        out["mode"] = "explicit"
         out["ticks"] = sorted(set(ticks))
         out["labels"] = labels
+        if out["mode"] != "count":
+            out["mode"] = "explicit"
     return out
 
 
@@ -19432,6 +19722,11 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                                          NumeralTickFormatter)
 
     mode = spec["mode"]
+
+    overrides = {}
+    if spec.get("labels"):
+        overrides.update({float(k): v for k, v in spec["labels"].items()})
+
     if mode == "none":
         # Zero ticks BY INTENT.  Measured: Stata's xlabel(none) also
         # removes the gridlines.
@@ -19445,6 +19740,8 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
             if len(vals):
                 axis_obj.ticker = FixedTicker(
                     ticks=[float(vals.min()), float(vals.max())])
+        if overrides:
+            axis_obj.major_label_overrides = overrides
     elif mode == "count":
         # Stata's #N is a SUGGESTION -- measured, xlabel(#10) on weight
         # yields eight ticks -- and twoway places them by its own rule
@@ -19452,22 +19749,32 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
         # ticks are set once they are drawn (_dash_finish_count_ticks);
         # until then the axis carries Bokeh's choice of about N.
         axis_obj.ticker = _dash_count_ticker(spec["count"])
+        if spec["ticks"]:
+            # US-14.4 (B1): a rule may precede a labelled list -- "#5 50
+            # 'fifty'" -- and both are drawn; _dash_place_count_ticks
+            # unions this into the FixedTicker it writes once the layers
+            # are drawn.
+            axis_obj._dash_extra_ticks = list(spec["ticks"])
+        if overrides:
+            axis_obj.major_label_overrides = overrides
     elif mode == "explicit" and spec["ticks"]:
         axis_obj.ticker = FixedTicker(ticks=spec["ticks"])
-        if spec["labels"]:
+        if overrides:
             # Raw, and carried in args -- not html.escape'd into the JS
             # `code'.  A tick label is drawn on the canvas, so escaping it
             # showed the entities (`R&amp;D'); and the label is user text,
             # which belongs in args as data the code parses, never in the
             # source.  The overrides carry the same raw text and BokehJS
             # lets them win on any tick they match.
-            _labels = {str(k): str(v) for k, v in spec["labels"].items()}
+            _labels = {str(k): str(v) for k, v in overrides.items()}
             axis_obj.formatter = CustomJSTickFormatter(
                 args={"labels": json.dumps(_labels)},
                 code="const m = JSON.parse(labels); "
                      "return m[String(tick)] || String(tick);")
-            axis_obj.major_label_overrides = {
-                float(k): v for k, v in spec["labels"].items()}
+            axis_obj.major_label_overrides = overrides
+    else:
+        if overrides:
+            axis_obj.major_label_overrides = overrides
 
     fmt = spec["format"] or fmt_fallback
     if fmt:
@@ -19976,6 +20283,16 @@ def _dash_place_count_ticks(e, lo, hi, common=False):
               if base is not None else None)
     t_every = (_dash_axis_count_ticks(lo, hi, _dash_count_of(every), kind)
                if every is not None else None)
+    # US-14.4 (B1, WP-28 S14): a rule may precede a labelled list --
+    # "#5 50 'fifty'" -- and twoway draws both; _dash_apply_axis_spec left
+    # the explicit values on the axis object, unioned in here once the
+    # count ticks are known.
+    _extra = getattr(ax, "_dash_extra_ticks", None)
+    if _extra:
+        if t_base:
+            t_base = sorted(set(t_base) | set(_extra))
+        else:
+            t_base = sorted(set(_extra))
     if base is not None and t_base:
         fixed = FixedTicker(ticks=[float(v) for v in t_base])
         if base is t:
@@ -27533,6 +27850,11 @@ class ServerAppBuilder:
                       "_DASH_QUAL_PREFIX", "_DASH_QUAL_NAME_RE",
                       # _dash_parse_axis_spec's tick bound (WP-20).
                       "_MAX_AXIS_TICKS",
+                      # WP-28 S14 (B1): _dash_parse_axis_spec's leading
+                      # rule, and _dash_expand_numlist's three numlist
+                      # forms.
+                      "_DASH_AXIS_RULE_RE", "_DASH_AXIS_INCR_RE",
+                      "_DASH_AXIS_SLASH_RE", "_DASH_AXIS_COLON_RE",
                       # twoway's #N rule and its placeholder's tag.
                       "_DASH_NATSCALE_UNCOVERED", "_DASH_NATSCALE_DENSITY",
                       "_DASH_NATSCALE_SIDE", "_DASH_COUNT_TAG",
@@ -27746,6 +28068,12 @@ class ServerAppBuilder:
                          "_dash_axis_labels",
                          "_dash_parse_axis_label_opt",
                          "_dash_parse_axis_spec", "_dash_apply_axis_spec",
+                         # WP-28 S14 (B1): the quote-aware tokenizer and
+                         # numlist expander _dash_parse_axis_label_opt is
+                         # rebuilt on, and the too-many pre-check
+                         # _dash_parse_axis_spec calls before it.
+                         "_dash_axis_tokens", "_dash_axis_head_split",
+                         "_dash_expand_numlist", "_dash_axis_too_many",
                          "_dash_primary_axes", "_dash_apply_tick_option",
                          "_dash_apply_axis_options",
                          "_dash_add_secondary_axes",

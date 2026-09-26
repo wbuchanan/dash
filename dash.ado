@@ -243,7 +243,8 @@ program define _dash_require_mata
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag ///
-        _dash_computed_cells _dash_graph_touched _dash_qual_cols_in
+        _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
+        _dash_axis_pieces
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
     // alone and took the library for whole when it was there, so a library
@@ -1944,7 +1945,10 @@ program define _dash_option_rules
     // alike, by the same rule `dash build' and `dash serve' apply.
     local graph ///
         xsize=style,1,100  ysize=style,1,100  aspectratio=num,0  hover=varlist  by=byvarlist ///
-        scheme=scheme
+        scheme=scheme ///
+        xlabel=axislist  ylabel=axislist  xlabel2=axislist  ylabel2=axislist ///
+        xtick=axislist  ytick=axislist  xmtick=axislist  ymtick=axislist ///
+        xmlabel=axislist  ymlabel=axislist
     // Flag applicability (WP-18): flag[|flag...]@type[|type...].  A flag
     // written on a type outside its list is refused as twoway refuses it,
     // r(198) "option <flag> not allowed" (measured 23sep2026: scatter
@@ -2181,6 +2185,14 @@ program define _dash_validate_value, rclass
             }
         }
     }
+    else if "`kind'" == "axislist" {
+        // WP-28 S14 (GAPS2 B1): every numlist run of an axis-label option
+        // expanded by Stata's own numlist (_dash_axis_expand); never a
+        // refusal -- a run numlist cannot read is left as written and the
+        // renderer names or bounds it.
+        _dash_axis_expand `"`macval(value)'"'
+        mata: st_local("norm", st_global("r(norm)"))
+    }
     else if inlist("`kind'", "var", "varlist", "byvarlist") {
         local head `"`macval(value)'"'
         local tail ""
@@ -2363,6 +2375,50 @@ program define _dash_validate_value, rclass
         exit 198
     }
     c_local _dash_vnorm `"`macval(norm)'"'
+end
+
+// ----------------------------------------------------------------
+// _dash_axis_expand value
+//
+// WP-28 S14 (GAPS2 B1).  An axis-label option's value (xlabel(), ylabel(),
+// their second-axis twins, xtick(), ytick(), xmtick(), ymtick(), xmlabel(),
+// ymlabel()) with every bare numlist run replaced by Stata's own numlist
+// expansion -- 1(2)10 becomes 1 3 5 7 9, 10 20 to 40 becomes 10 20 30 40 --
+// while strings, sub-options and hostile runs (a backtick, $ or ') are kept
+// exactly as written (_dash_axis_pieces).  numlist is always given
+// max(2000), dash's own _MAX_AXIS_TICKS: measured 25sep2026, bare numlist
+// has NO element cap (numlist "1/1800" is rc 0) and would try to expand
+// 0(0.000001)1000000 whole, while max(2000) refuses it at once (r(123)).
+// Never refuses: a run numlist cannot read -- a zero step, a bare word,
+// more than 2,000 values -- is left as written, because twoway does not
+// refuse those alike (xlabel(1(0)5) is rc 0, xlabel(2000 abc 4000) r(198))
+// and numlist's rc cannot tell them apart; the renderer names what it
+// cannot draw and bounds the rest.  Read by value (_dash_text_args).
+// Returns r(norm).
+// ----------------------------------------------------------------
+program define _dash_axis_expand, rclass
+    version 16.0
+    mata: _dash_text_args(0, 0, 0)
+    local value : copy local _dash_txt
+    mata: _dash_axis_pieces(st_local("value"))
+    local _n = `_ap_n'
+    local out ""
+    local tail ""
+    forvalues j = 1/`_n' {
+        local tag "`_ap_tag`j''"
+        local txt : copy local _ap_txt`j'
+        if "`tag'" == "T" {
+            local tail : copy local txt
+            continue
+        }
+        if "`tag'" == "B" {
+            capture numlist `"`macval(txt)'"', max(2000)
+            if !_rc local txt `"`r(numlist)'"'
+        }
+        if `"`macval(out)'"' == "" local out : copy local txt
+        else                       local out `"`macval(out)' `macval(txt)'"'
+    }
+    return local norm `"`macval(out)'`macval(tail)'"'
 end
 
 // ----------------------------------------------------------------

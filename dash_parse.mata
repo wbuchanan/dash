@@ -4127,6 +4127,115 @@ string rowvector _dash_rep_toks(string scalar s, real scalar commas)
     return(k ? out[|1 \ k|] : J(1, 0, ""))
 }
 
+// _dash_axis_pieces(s) -- an axis-label option's value split for
+// _dash_axis_expand (WP-28 S14, GAPS2 B1).  The head is cut from the tail
+// at the first comma outside a string followed by optional blanks and a
+// letter or underscore (Stata's sub-option boundary; the ado twin of
+// dash_render.py's _dash_axis_head_split).  The head splits, in order,
+// into strings (plain or compound, kept whole with their quotes, tag S)
+// and the runs of bare text between them (tag B, commas made blanks; tag
+// H, left exactly as written, when the run holds a backtick, $ or ' --
+// such text never reaches numlist's command line).  The tail, with its
+// comma, is last (tag T, possibly empty).  Sets the caller's locals
+// _ap_n and, for each piece i, _ap_tag<i> and _ap_txt<i>.
+void _dash_axis_pieces(string scalar s)
+{
+    string rowvector tags, txts
+    string scalar    head, tail, run, ch
+    real scalar      n, i, k, in_dq, in_cq, nxt, was_in, sstart, bstart
+
+    n    = strlen(s)
+    head = s
+    tail = ""
+    in_dq = 0
+    in_cq = 0
+    i = 1
+    while (i <= n) {
+        nxt = _dash_quote_step(s, n, i, in_dq, in_cq)
+        if (nxt) {
+            i = nxt
+            continue
+        }
+        if (substr(s, i, 1) == ",") {
+            k = i + 1
+            while (k <= n & (substr(s, k, 1) == " " | substr(s, k, 1) == char(9))) k++
+            if (k <= n) {
+                ch = substr(s, k, 1)
+                if (_dash_ascii_in(ch, 65, 90) | _dash_ascii_in(ch, 97, 122) | ch == "_") {
+                    head = substr(s, 1, i - 1)
+                    tail = substr(s, i, .)
+                    break
+                }
+            }
+        }
+        i++
+    }
+
+    tags = J(1, 0, "")
+    txts = J(1, 0, "")
+    n = strlen(head)
+    in_dq = 0
+    in_cq = 0
+    sstart = 0
+    bstart = 0
+    i = 1
+    while (i <= n) {
+        was_in = (in_dq != 0 | in_cq != 0)
+        nxt = _dash_quote_step(head, n, i, in_dq, in_cq)
+        if (nxt) {
+            if (!was_in) {
+                if (bstart) {
+                    run = strtrim(substr(head, bstart, i - bstart))
+                    if (run != "") {
+                        tags = tags, _dash_axis_run_tag(run)
+                        txts = txts, (_dash_axis_run_tag(run) == "B" ?
+                                      subinstr(run, ",", " ") : run)
+                    }
+                    bstart = 0
+                }
+                sstart = i
+            }
+            if (in_dq == 0 & in_cq == 0 & sstart) {
+                tags = tags, "S"
+                txts = txts, substr(head, sstart, nxt - sstart)
+                sstart = 0
+            }
+            i = nxt
+            continue
+        }
+        if (!bstart) bstart = i
+        i++
+    }
+    if (sstart) {
+        tags = tags, "H"
+        txts = txts, substr(head, sstart, .)
+    }
+    if (bstart) {
+        run = strtrim(substr(head, bstart, .))
+        if (run != "") {
+            tags = tags, _dash_axis_run_tag(run)
+            txts = txts, (_dash_axis_run_tag(run) == "B" ?
+                          subinstr(run, ",", " ") : run)
+        }
+    }
+    tags = tags, "T"
+    txts = txts, tail
+
+    st_local("_ap_n", strofreal(cols(tags)))
+    for (i = 1; i <= cols(tags); i++) {
+        st_local("_ap_tag" + strofreal(i), tags[i])
+        st_local("_ap_txt" + strofreal(i), txts[i])
+    }
+}
+
+// _dash_axis_run_tag(run) -- "H" when a bare run holds a backtick, $ or '
+// (never handed to numlist), else "B".
+string scalar _dash_axis_run_tag(string scalar run)
+{
+    if (strpos(run, char(96)) | strpos(run, "$") | strpos(run, char(39))) return("H")
+    return("B")
+}
+
 // _dash_rep_optname(tok) -- the name an option word was typed with, or ""
 // when the word is not an option: name or name(...), name a Stata name of
 // at most 32 characters.

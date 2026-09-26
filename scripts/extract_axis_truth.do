@@ -97,6 +97,20 @@ global ZA_EDIT = c(edition_real)
 global ZA_BORN = c(born_date)
 global ZA_DATE = c(current_date)
 
+* WP-28 S14 (D12): the fixture's _meta carries the commit this run was
+* measured against, captured with shell (never a Stata call from the
+* trailing python: block) into a tempfile and read back through a local.
+tempfile ZA_GITREV
+capture shell cd "${ZA_REPO}" && git rev-parse HEAD > "`ZA_GITREV'"
+local ZA_DASH_COMMIT ""
+capture confirm file "`ZA_GITREV'"
+if !_rc {
+    file open zagitrev using "`ZA_GITREV'", read text
+    file read zagitrev zagitline
+    local ZA_DASH_COMMIT = strtrim(`"`zagitline'"')
+    file close zagitrev
+}
+
 * ===========================================================================
 * Registration.  A probe is (id, group, dataset, body, options).  Body and
 * options are kept apart so that name(zqg, replace) can be appended without
@@ -104,17 +118,27 @@ global ZA_DATE = c(current_date)
 * ===========================================================================
 global ZA_N = 0
 program define zp
+    // WP-28 S14: two optional trailing arguments, `ticks' (the positions
+    // the option asks for, ascending -- for the SVG fit through
+    // scripts/svg_truth.py when the drawn labels are not plain numbers,
+    // as a %tm axis's are not) and `hull' (Section 18's; always empty
+    // here).  Both default to "" so every pre-existing zp call, which
+    // gives only 5 arguments, is unaffected.
     local id   `"`1'"'
     local grp  `"`2'"'
     local ds   `"`3'"'
     local body `"`4'"'
     local opts `"`5'"'
+    local ticks `"`6'"'
+    local hull  `"`7'"'
     global ZA_N = ${ZA_N} + 1
     global ZA_ID_${ZA_N}   `"`id'"'
     global ZA_GRP_${ZA_N}  `"`grp'"'
     global ZA_DS_${ZA_N}   `"`ds'"'
     global ZA_BODY_${ZA_N} `"`body'"'
     global ZA_OPTS_${ZA_N} `"`opts'"'
+    global ZA_TICKS_${ZA_N} `"`ticks'"'
+    global ZA_HULL_${ZA_N}  `"`hull'"'
 end
 
 * ---------------------------------------------------------------------------
@@ -176,6 +200,57 @@ zp "a_nl_ttl_hash10"  "axis_label" "nlsw88" "twoway scatter wage ttl_exp" "xlabe
 zp "a_nl_age_default" "axis_label" "nlsw88" "twoway scatter wage age" ""
 zp "a_nl_age_hash10"  "axis_label" "nlsw88" "twoway scatter wage age" "xlabel(#10)"
 zp "a_nl_age_minmax"  "axis_label" "nlsw88" "twoway scatter wage age" "xlabel(minmax)"
+
+* ---------------------------------------------------------------------------
+* A2. WP-28 S14 (GAPS2 B1): the numlist/label forms the old parser misread,
+* read straight from twoway's own SVG.  Group b1_label; auto unless noted;
+* the "rep78" probes use mpg/rep78 (values 1-5) so the tick range is small.
+* ---------------------------------------------------------------------------
+zp "a1_pairs3"     "b1_label" "auto" "twoway scatter mpg rep78" `"xlabel(1 "2019" 2 "2020" 3 "2021")"'
+zp "a1_twolines"   "b1_label" "auto" "twoway scatter mpg weight" `"xlabel(2000 "low" "end" 4000 "high")"'
+zp "a1_compound"   "b1_label" "auto" "twoway scatter mpg weight" `"xlabel(2000 `"c "q" d"' 4000 "high")"'
+zp "a1_to"         "b1_label" "auto" "twoway scatter mpg weight" "xlabel(2000 2500 to 4000)"
+zp "a1_colon"      "b1_label" "auto" "twoway scatter mpg weight" "xlabel(2000 2500:4000)"
+zp "a1_colon_sp"   "b1_label" "auto" "twoway scatter mpg weight" "xlabel(2000 2500 : 4000)"
+zp "a1_slash"      "b1_label" "auto" "twoway scatter mpg rep78" "xlabel(1/5)"
+zp "a1_slash_down" "b1_label" "auto" "twoway scatter mpg rep78" "xlabel(5/1)"
+zp "a1_bracket"    "b1_label" "auto" "twoway scatter mpg rep78" "xlabel(1[1]3)"
+zp "a1_step2"      "b1_label" "auto" "twoway scatter mpg rep78" "xlabel(1(2)10)"
+zp "a1_negstep"    "b1_label" "auto" "twoway scatter mpg weight" "ylabel(40(-10)10)"
+zp "a1_frac"       "b1_label" "auto" "twoway scatter mpg weight" "ylabel(10(2.5)20)"
+zp "a1_hash_list"  "b1_label" "auto" "twoway scatter mpg weight" `"xlabel(#5 3000 "three")"'
+zp "a1_hash_incr"  "b1_label" "auto" "twoway scatter mpg weight" "xlabel(#3 2000(1000)4000)"
+zp "a1_run_label"  "b1_label" "auto" "twoway scatter mpg weight" `"xlabel(2000(1000)4000 "top")"'
+zp "a1_commas"     "b1_label" "auto" "twoway scatter mpg weight" "xlabel(2000,3000,4000)"
+zp "a1_commas_grid" "b1_label" "auto" "twoway scatter mpg weight" "xlabel(2000,3000,4000, grid)"
+zp "a1_spaces_incr" "b1_label" "auto" "twoway scatter mpg weight" "xlabel(2000 (500) 4000)"
+zp "a1_single_quote" "b1_label" "auto" "twoway scatter mpg weight" "xlabel(2000 'a' 4000)"
+zp "a1_str_first"  "b1_label" "auto" "twoway scatter mpg weight" `"xlabel("a" 2000)"'
+zp "a1_bad_step"   "b1_label" "auto" "twoway scatter mpg weight" "xlabel(1(0)5)"
+zp "a1_bad_word"   "b1_label" "auto" "twoway scatter mpg weight" "xlabel(2000 abc 4000)"
+zp "a1_mixed"      "b1_label" "auto" "twoway scatter mpg rep78" "xlabel(1 2 3/5 8(2)12)"
+
+* ---------------------------------------------------------------------------
+* A3. WP-28 S14 (E3 probe for section 12): a %tm axis's default tick text
+* and its text under an explicit xlabel(..., format(%tm)), so section 12
+* can hold dash's date-axis formatter to twoway's own reading.  Dataset
+* sp500_tm (a new branch of the export loop, below).
+* ---------------------------------------------------------------------------
+zp "e3_tm_axis"     "b1_label" "sp500_tm" "twoway line close m" "" ""
+zp "e3_tm_axis_lab" "b1_label" "sp500_tm" "twoway line close m" "xlabel(492(3)501, format(%tm))" "492 495 498 501"
+
+* ---------------------------------------------------------------------------
+* A4. WP-28 S14 (GAPS2 G16): xlabel(valuelabel) and its abbreviation, read
+* through the value-labelled dataset auto_vl (a new branch, below).
+* ---------------------------------------------------------------------------
+zp "g16_vl_slash"      "g16_valuelabel" "auto_vl" "twoway scatter mpg rep78" "xlabel(1/5, valuelabel)"
+zp "g16_vl_abbrev"     "g16_valuelabel" "auto_vl" "twoway scatter mpg rep78" "xlabel(1/5, val)"
+zp "g16_vl_unlabelled" "g16_valuelabel" "auto_vl" "twoway scatter mpg rep78" "xlabel(0/6, valuelabel)"
+zp "g16_vl_mixed"      "g16_valuelabel" "auto_vl" "twoway scatter mpg rep78" `"xlabel(1 "one" 2/5, valuelabel)"'
+zp "g16_vl_default"    "g16_valuelabel" "auto_vl" "twoway scatter mpg rep78" "xlabel(, valuelabel)"
+zp "g16_vl_y"          "g16_valuelabel" "auto_vl" "twoway scatter rep78 mpg" "ylabel(1/5, valuelabel)"
+zp "g16_vl_by"         "g16_valuelabel" "auto_vl" "twoway scatter mpg rep78" "by(foreign) xlabel(1/5, valuelabel)"
+zp "g16_vl_off"        "g16_valuelabel" "auto_vl" "twoway scatter mpg rep78" "xlabel(1/5)"
 
 * ---------------------------------------------------------------------------
 * B. Axis scale
@@ -370,6 +445,10 @@ file write `rec' "META|stata_born_date|${ZA_BORN}" _n
 file write `rec' "META|run_date|${ZA_DATE}" _n
 file write `rec' "META|workdir|${ZA_WORK}" _n
 file write `rec' "META|scheme|`c(scheme)'" _n
+* WP-28 S14 (D12): the fixture provenance stamp, beside every existing key.
+file write `rec' "META|born_date|${ZA_BORN}" _n
+file write `rec' "META|extracted|${ZA_DATE}" _n
+file write `rec' `"META|dash_commit|`macval(ZA_DASH_COMMIT)'"' _n
 display as text "scheme in force: `c(scheme)'"
 
 * ---- data facts (min / max / N / display format) used to derive the default
@@ -395,9 +474,26 @@ forvalues i = 1/`N' {
     local ds   "${ZA_DS_`i'}"
     local body `"${ZA_BODY_`i'}"'
     local opts `"${ZA_OPTS_`i'}"'
+    local ticks `"${ZA_TICKS_`i'}"'
+    local hull  `"${ZA_HULL_`i'}"'
 
     if "`ds'" != "`curds'" {
-        sysuse `ds', clear
+        // WP-28 S14: two datasets beyond plain sysuse -- auto_vl carries a
+        // value label on rep78 (G16's probes), sp500_tm a %tm variable
+        // (E3's probe for section 12).
+        if "`ds'" == "auto_vl" {
+            sysuse auto, clear
+            label define alrep 1 "Poor" 2 "Fair" 3 "Average" 4 "Good" 5 "Excellent"
+            label values rep78 alrep
+        }
+        else if "`ds'" == "sp500_tm" {
+            sysuse sp500, clear
+            generate m = mofd(date)
+            format m %tm
+        }
+        else {
+            sysuse `ds', clear
+        }
         local curds "`ds'"
     }
 
@@ -423,7 +519,7 @@ forvalues i = 1/`N' {
         local rcg = _rc
     }
     capture graph drop zqg
-    file write `rec' `"PROBE|`id'|`grp'|`ds'|`rc'|`rcx'|`rcg'|`svg'|`gph'|`shown'"' _n
+    file write `rec' `"PROBE|`id'|`grp'|`ds'|`rc'|`rcx'|`rcg'|`svg'|`gph'|`ticks'|`hull'|`shown'"' _n
     display as text "probe `id' rc=`rc' svg_rc=`rcx'"
 }
 
@@ -450,11 +546,20 @@ display as text "records written to ${ZA_REC}"
 * Regexes that need one spell it \x60.
 * ===========================================================================
 python:
-import json, os, re, math, html, collections
+import json, os, re, math, html, collections, sys
 from sfi import Macro
 
 REC = Macro.getGlobal("ZA_REC")
 OUT = Macro.getGlobal("ZA_OUT")
+REPO = Macro.getGlobal("ZA_REPO")
+
+# WP-28 S14: the shared SVG reader (S02), used only for the new groups
+# (b1_label, g16_valuelabel) -- the private parse_svg/axis_facts below
+# stays the reader for every pre-existing group, unchanged, so this run
+# reproduces every one of them exactly.  Section 18 rewires the whole
+# script onto this module when it regenerates the fixture again.
+sys.path.insert(0, os.path.join(REPO, "scripts"))
+from svg_truth import svg_texts, svg_axis_extent
 
 RE_ATTR = re.compile(r'([\w:-]+)="([^"]*)"')
 RE_TEXT = re.compile(r'<text ([^>]*?)>(.*?)</text>', re.S)
@@ -871,10 +976,14 @@ with open(REC, "r", errors="replace") as fh:
                 "display_format": f[6], "variable_label": "|".join(f[7:]),
                 "source": "quietly summarize, plus the variable display format"}
         elif t == "PROBE":
+            # WP-28 S14: two fields inserted before the command text --
+            # ticks (the positions the option asks for, ascending; "" when
+            # none) and hull (Section 18's; always "" here).
             probes[f[1]] = {"group": f[2], "dataset": f[3], "rc": int(f[4]),
                             "export_rc": f[5], "save_rc": f[6],
                             "svg": f[7], "gph": f[8],
-                            "command": "|".join(f[9:])}
+                            "ticks": f[9], "hull": f[10],
+                            "command": "|".join(f[11:])}
 
 # --------------------------------------------------------------------------
 # Per-probe record
@@ -906,6 +1015,28 @@ for pid, p in sorted(probes.items()):
     e["svg_line_groups"] = {"vertical": line_groups(sv["vlines"], "x1"),
                             "horizontal": line_groups(sv["hlines"], "y1")}
     e["gph"] = parse_gph(p["gph"])
+    if p["group"] in ("b1_label", "g16_valuelabel"):
+        # WP-28 S14 (B1, G16; the E3 probe for section 12): every <text>
+        # element's normalised text, in document order, through the
+        # shared reader -- the private axis_facts() above answers only
+        # the label-parsing fit and cannot see a non-numeric label
+        # ("2019", "Poor", "2001m1"); the tests read texts directly.
+        e["texts"] = [t["text"] for t in svg_texts(p["svg"])]
+        ticks_raw = (p.get("ticks") or "").split()
+        if ticks_raw:
+            tick_values = [fnum(v) for v in ticks_raw]
+            for axis_key, axis_name in (("x_axis", "x"), ("y_axis", "y")):
+                try:
+                    mapping = svg_axis_extent(p["svg"], axis_name,
+                                              tick_values=tick_values)
+                except ValueError as exc:
+                    e[axis_key]["mapping"] = None
+                    e[axis_key]["mapping_note"] = (
+                        "svg_axis_extent(tick_values=%r) raised %s"
+                        % (tick_values, exc))
+                    continue
+                if mapping is not None:
+                    e[axis_key]["mapping"] = mapping
     parsed[pid] = e
 
 # --------------------------------------------------------------------------
@@ -1363,7 +1494,16 @@ doc = {
         "stata_edition": meta_rows.get("stata_edition"),
         "stata_born_date": meta_rows.get("stata_born_date"),
         "scheme_in_force": meta_rows.get("scheme"),
-        "datasets": ["sysuse auto, clear", "sysuse nlsw88, clear"],
+        # D12 (WP-28): the provenance stamp every new or regenerated
+        # fixture carries, beside the keys above (kept for the tests that
+        # already read them, e.g. test_axis_options.py:637's
+        # scheme_in_force).
+        "born_date": meta_rows.get("born_date"),
+        "dash_commit": meta_rows.get("dash_commit"),
+        "extracted": meta_rows.get("extracted"),
+        "datasets": ["sysuse auto, clear", "sysuse nlsw88, clear",
+                     "sysuse auto, clear (value-labelled rep78)",
+                     "sysuse sp500, clear (m = mofd(date), %tm)"],
         "method": (
             "Two oracles.  (1) The live-format .gph -- a plain-text "
             "graph-object script -- is authoritative for STRUCTURE: ring "

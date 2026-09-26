@@ -13,6 +13,7 @@
 *!        twoway__histogram_gen live (HE-05..HE-06)
 *!   S13  textbox grammar: B3, B6, B7 (TBG-01..TBG-06)
 *!   S17  filters vs count and summarize (FT-01..FT-06; GAPS2 X1, E2)
+*!   S14  axis labels, B1 (AL-01..AL-16)
 *!
 *! Usage: via run_all_cscripts.do (registered as its last block).  One
 *! block alone: set GAPS2_ONLY=S<NN> in the environment of the driver run
@@ -908,6 +909,120 @@ end
     display as text "S16 end `c(current_time)'"
 }
 * ==== end S16 ====
+
+* ==== S14 B1 G16: axis labels ====
+* AL-01 _dash_axis_expand's expansion; AL-02 _dash_axis_pieces (compound
+* string with a comma; a $ run never reaches numlist); AL-03 the page of
+* xlabel(1(2)10) carries 1 3 5 7 9; AL-04 an oversized list registers and
+* builds; AL-05..AL-16 twoway's SVG and dash's page for each B1 form twoway
+* draws (the page spells its ticks "ticks":[1.0,2.0,...], measured on
+* AL-03's page).
+local only : env GAPS2_ONLY
+if inlist("`only'", "", "S14") {
+    display as text "S14 start `c(current_time)'"
+
+    capture program drop _al_num
+    program define _al_num
+        version 16.0
+        args id plot opt ticks svgtext dir
+        quietly twoway `plot', `opt' name(al, replace)
+        cert_svg_export, name(al) file("`dir'/`id'.svg")
+        cert_svg_has_text, file("`dir'/`id'.svg") text("`svgtext'")
+        _gt_expect `id' "(r(found) == 1)" "twoway did not draw `svgtext' for `opt'"
+        dash clear
+        capture noisily dash `plot', `opt' saving("`dir'/`id'.html") replace
+        _gt_expect `id' "(_rc == 0)" "dash `opt' rc `_rc'"
+        local nd = char(34) + "ticks" + char(34) + ":[" + "`ticks'" + "]"
+        cert_file_has "`dir'/`id'.html", needle(`"`nd'"')
+        _gt_expect `id' "(r(found) == 1)" "the page of `opt' does not carry `nd'"
+        _gt_done `id' "`opt': twoway draws `svgtext', dash ticks [`ticks']"
+    end
+
+    sysuse auto, clear
+    local d "`gt_work'"
+
+    // AL-01
+    _dash_axis_expand `"1/5 "five" 10 20 to 40, grid"'
+    mata: st_local("al1", st_global("r(norm)"))
+    mata: st_local("ok", strofreal(st_local("al1") == "1 2 3 4 5 " + char(34) + "five" + char(34) + " 10 20 30 40, grid"))
+    _gt_expect AL-01 "(`ok' == 1)" "r(norm) is not the expanded list"
+    _gt_done AL-01 "_dash_axis_expand expanded every numlist run, string and tail kept"
+
+    // AL-02
+    local al2s `"2000 `"a, b"' 4000, grid"'
+    mata: _dash_axis_pieces(st_local("al2s"))
+    _gt_expect AL-02 "(`_ap_n' == 4)" "`_ap_n' pieces, not 4"
+    _gt_expect AL-02 `"("`_ap_tag2'" == "S")"' "piece 2 is `_ap_tag2', not S"
+    _gt_expect AL-02 `"("`_ap_tag4'" == "T")"' "piece 4 is `_ap_tag4', not T"
+    _dash_axis_expand `"2000 \$x 4000"'
+    mata: st_local("al2", st_global("r(norm)"))
+    mata: st_local("ok", strofreal(st_local("al2") == "2000 " + char(36) + "x 4000"))
+    _gt_expect AL-02 "(`ok' == 1)" "the dollar run was rewritten"
+    _gt_done AL-02 "_dash_axis_pieces kept a quoted comma and a dollar run as written"
+
+    // AL-03
+    dash clear
+    capture noisily dash scatter mpg rep78, xlabel(1(2)10) saving("`d'/al3.html") replace
+    _gt_expect AL-03 "(_rc == 0)" "rc `_rc'"
+    local nd = char(34) + "ticks" + char(34) + ":[1.0,3.0,5.0,7.0,9.0]"
+    cert_file_has "`d'/al3.html", needle(`"`nd'"')
+    _gt_expect AL-03 "(r(found) == 1)" "the page does not carry 1 3 5 7 9"
+    _gt_done AL-03 "xlabel(1(2)10) reached the page as 1 3 5 7 9"
+
+    // AL-04
+    dash clear
+    capture noisily dash scatter mpg weight, xlabel(0(0.000001)1000000) saving("`d'/al4a.html") replace
+    _gt_expect AL-04 "(_rc == 0)" "0(0.000001)1000000 rc `_rc'"
+    dash clear
+    capture noisily dash scatter mpg weight, xlabel(1/1800) saving("`d'/al4b.html") replace
+    _gt_expect AL-04 "(_rc == 0)" "1/1800 rc `_rc'"
+    _gt_done AL-04 "oversized lists register and build, never refused"
+
+    // AL-05: value "text" pairs
+    quietly twoway scatter mpg rep78, xlabel(1 "2019" 2 "2020" 3 "2021") name(al, replace)
+    cert_svg_export, name(al) file("`d'/al5.svg")
+    foreach t in 2019 2020 2021 {
+        cert_svg_has_text, file("`d'/al5.svg") text("`t'")
+        _gt_expect AL-05 "(r(found) == 1)" "twoway did not draw `t'"
+    }
+    dash clear
+    capture noisily dash scatter mpg rep78, xlabel(1 "2019" 2 "2020" 3 "2021") saving("`d'/al5.html") replace
+    _gt_expect AL-05 "(_rc == 0)" "rc `_rc'"
+    local nd = char(34) + "ticks" + char(34) + ":[1.0,2.0,3.0]"
+    cert_file_has "`d'/al5.html", needle(`"`nd'"')
+    _gt_expect AL-05 "(r(found) == 1)" "the page's ticks are not 1 2 3"
+    cert_file_has "`d'/al5.html", needle("2021")
+    _gt_expect AL-05 "(r(found) == 1)" "the page does not carry 2021"
+    _gt_done AL-05 "three value-text pairs: three labelled ticks in both"
+
+    // AL-06: a compound-quoted label
+    quietly twoway scatter mpg weight, xlabel(2000 `"c "q" d"' 4000 "high") name(al, replace)
+    cert_svg_export, name(al) file("`d'/al6.svg")
+    cert_svg_has_text, file("`d'/al6.svg") text("high")
+    _gt_expect AL-06 "(r(found) == 1)" "twoway did not draw high"
+    dash clear
+    capture noisily dash scatter mpg weight, xlabel(2000 `"c "q" d"' 4000 "high") saving("`d'/al6.html") replace
+    _gt_expect AL-06 "(_rc == 0)" "rc `_rc'"
+    local nd = char(34) + "ticks" + char(34) + ":[2000.0,4000.0]"
+    cert_file_has "`d'/al6.html", needle(`"`nd'"')
+    _gt_expect AL-06 "(r(found) == 1)" "the page's ticks are not 2000 4000"
+    _gt_done AL-06 "a compound-quoted label is one label"
+
+    _al_num AL-07 "scatter mpg weight" "xlabel(2000 2500 to 4000)" "2000.0,2500.0,3000.0,3500.0,4000.0" "3,500" "`d'"
+    _al_num AL-08 "scatter mpg weight" "xlabel(2000 2500:4000)" "2000.0,2500.0,3000.0,3500.0,4000.0" "3,500" "`d'"
+    _al_num AL-09 "scatter mpg weight" "xlabel(2000 2500 : 4000)" "2000.0,2500.0,3000.0,3500.0,4000.0" "3,500" "`d'"
+    _al_num AL-10 "scatter mpg rep78" "xlabel(1/5)" "1.0,2.0,3.0,4.0,5.0" "4" "`d'"
+    _al_num AL-11 "scatter mpg rep78" "xlabel(5/1)" "1.0,2.0,3.0,4.0,5.0" "4" "`d'"
+    _al_num AL-12 "scatter mpg rep78" "xlabel(1[1]3)" "1.0,2.0,3.0" "3" "`d'"
+    _al_num AL-13 "scatter mpg rep78" "xlabel(1(2)10)" "1.0,3.0,5.0,7.0,9.0" "9" "`d'"
+    _al_num AL-14 "scatter mpg weight" "ylabel(40(-10)10)" "10.0,20.0,30.0,40.0" "40" "`d'"
+    _al_num AL-15 "scatter mpg weight" "ylabel(10(2.5)20)" "10.0,12.5,15.0,17.5,20.0" "17.5" "`d'"
+    _al_num AL-16 "scatter mpg rep78" "xlabel(1 2 3/5 8(2)12)" "1.0,2.0,3.0,4.0,5.0,8.0,10.0,12.0" "12" "`d'"
+
+    graph drop _all
+    display as text "S14 end `c(current_time)'"
+}
+* ==== end S14 ====
 
 * ==== append new blocks above this line ====
 

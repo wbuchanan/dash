@@ -2413,10 +2413,22 @@ vocabulary, not just a list of numbers:
 {synoptset 24}{...}
 {synopt:{it:numlist}}explicit tick positions, e.g. {cmd:xlabel(1000 2000 3000)}{p_end}
 {synopt:{cmd:#}{it:N}}about {it:N} ticks, placed as {cmd:twoway} places them; see below{p_end}
-{synopt:{it:a}{cmd:(}{it:b}{cmd:)}{it:c}}from {it:a} to {it:c} in steps of {it:b}{p_end}
+{synopt:{it:a}{cmd:(}{it:b}{cmd:)}{it:c}}from {it:a} to {it:c} in steps of {it:b}; also {it:a}{cmd:[}{it:b}{cmd:]}{it:c}{p_end}
+{synopt:{it:a}{cmd:/}{it:b}}{it:a} to {it:b} in steps of 1 (or -1){p_end}
+{synopt:{it:x y} {cmd:to} {it:z}}from {it:x} to {it:z} in steps of {it:y}-{it:x}; also {it:x y}{cmd::}{it:z}{p_end}
+{synopt:{it:#} {cmd:"}{it:text}{cmd:"}}label the value before it with {it:text}; a second string is a second line, and a compound-quoted string keeps its quotes{p_end}
+{synopt:{cmd:#}{it:N} {it:numlist}}a rule may precede a (labelled) list: both are drawn{p_end}
 {synopt:{cmd:minmax}}label only the smallest and largest values{p_end}
 {synopt:{cmd:none}}draw no tick labels{p_end}
 {synoptline}
+
+{pstd}
+The forms mix freely ({cmd:xlabel(1 2 3/5 8(2)12)}).  {cmd:dash} expands
+the list with Stata's own {cmd:numlist} before the dashboard is drawn, and
+the renderer reads the same grammar for a spec written by hand; a single
+quote is a character, not a string delimiter, and a word that is no value,
+form, rule or label is named in the note.  More than 2,000 ticks in any
+form keep the axis's default ticks, with a note.
 
 {pstd}
 Any of those may be followed by a comma and the sub-options
