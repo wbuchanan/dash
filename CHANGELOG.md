@@ -401,7 +401,12 @@ changing a drawn result; the results that changed are the WP-28 group
 under Results that change, the behaviour changes and the floor sit in
 their own lists.
 
-<!-- WP-28 E14 served -->
+- The served app declares the saved page's viewport meta, dims unselected
+  linked points to 15% (was Bokeh's 10%), shows a selection on rspike and
+  rconnected's markers, and takes the saved `layout(bs)` half rows and KPI
+  cell heights between 768 and 991 px; `filterposition(left)` under
+  `layout(bs)` still places the title differently, recorded in the help.
+  (WP-28, E14)
 - `dash serve` returns r(198) and says why when no server started -- the
   port is in use, or the app stopped before it answered `/health` -- where
   it returned 0 after the app had died on process stderr; the server's
@@ -427,15 +432,6 @@ their own lists.
   served app: `filter()` and `dash kpi` used to refuse it with r(198),
   and the renderers drew no panels, tooltip field, widget or colours for
   it, in silence. (WP-28, G5)
-
-### Fixed in WP-28
-
-- The served app declares the saved page's viewport meta, dims unselected
-  linked points to 15% (was Bokeh's 10%), shows a selection on rspike and
-  rconnected's markers, and takes the saved `layout(bs)` half rows and KPI
-  cell heights between 768 and 991 px; `filterposition(left)` under
-  `layout(bs)` still places the title differently, recorded in the help.
-  (WP-28, E14)
 
 ### Fixed after WP-27 (the S3 batch, 24sep2026)
 
