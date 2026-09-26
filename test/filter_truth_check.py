@@ -1,0 +1,175 @@
+"""Both render modes' rows after a sequence of filter moves, for the Stata
+certification blocks of section 17 (GAPS2 X1, E2): test_gaps2_truth.cscript
+FT-01..FT-06 and test_e2e_filters.cscript FL-X1-1, FL-E2-1, FL-E2-2.
+
+The cscript builds the data in Stata and hands it here through ``sfi``; this
+module renders the saved page (its own filter callbacks run under node through
+``js_runner.JsSession``) and the served app (its own Python callbacks), moves
+the widgets, and returns what each figure and KPI card shows, so Stata can
+compare it with its own ``count if`` and ``summarize``.  Nothing here calls
+Stata.
+"""
+import json
+import os
+import sys
+import tempfile
+import warnings
+
+import numpy as np
+import pandas as pd
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_HERE, ".."))
+sys.path.insert(0, _HERE)
+
+import dash_render as dr  # noqa: E402
+import js_runner  # noqa: E402
+from conftest import make_data_json  # noqa: E402
+from test_adversarial_matrix import _load_app  # noqa: E402
+from test_help_claims_3 import _card_value  # noqa: E402
+
+
+def frame_from_stata(varnames):
+    """The current Stata dataset's *varnames* as a DataFrame and the set of
+    string variables among them."""
+    from sfi import Data
+    cols, strings = {}, set()
+    for v in varnames:
+        idx = Data.getVarIndex(v)
+        if Data.isVarTypeStr(idx):
+            strings.add(v)
+            cols[v] = [str(x) for x in Data.get(v)]
+        else:
+            vals = Data.get(v, missingval=np.nan)
+            cols[v] = [float(x[0] if isinstance(x, list) else x) for x in vals]
+    return pd.DataFrame(cols), strings
+
+
+def _write(tmp, spec, df, strings):
+    data = make_data_json(df)
+    for s in strings:
+        for key in ("variableIsString", "variableTypeIsString"):
+            data["StataJSON"][key][s] = True
+    sp = os.path.join(tmp, "spec.json")
+    dp = os.path.join(tmp, "data.json")
+    with open(sp, "w", encoding="utf-8") as fh:
+        json.dump(spec, fh)
+    with open(dp, "w", encoding="utf-8") as fh:
+        json.dump(data, fh)
+    return sp, dp
+
+
+def _src(fig):
+    from bokeh.models import GlyphRenderer
+    [r] = [r for r in fig.renderers if isinstance(r, GlyphRenderer)]
+    return r.data_source
+
+
+def _state(figs, divs, texts_of):
+    out = {}
+    for f in figs:
+        d = _src(f).data
+        n = len(next(iter(d.values()))) if d else 0
+        ys = [v for v in d.get("mpg", []) if v == v]
+        out[f.title.text] = (n, float(np.mean(ys)) if ys else float("nan"))
+    for name, text in texts_of(divs).items():
+        out[name] = text
+    return out
+
+
+def saved(df, strings, spec, moves):
+    """``moves``: [(filter index, value)], a value of None meaning "All" (a
+    dropdown's sentinel, a range's full extent).  Returns the state after
+    the last move."""
+    tmp = tempfile.mkdtemp(prefix="ft_saved_")
+    sp, dp = _write(tmp, spec, df, strings)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    s = js_runner.JsSession(r.filter_callbacks)
+    for fi, value in moves:
+        w, cb = r.filter_widgets[fi], r.filter_callbacks[fi]
+        if value is None:
+            value = (getattr(w, "_dash_sentinel", None)
+                     or (w.start, w.end))
+        s.set(w, value)
+        s.run(cb)
+    return _state(r.figures.values(), r.kpi_divs,
+                  lambda d: {k: _card_value(v.text, k) for k, v in d.items()}), r
+
+
+def served(df, strings, spec, moves):
+    from bokeh.document import Document
+    from bokeh.models import Div
+    tmp = tempfile.mkdtemp(prefix="ft_served_")
+    sp, dp = _write(tmp, spec, df, strings)
+    app = os.path.join(tmp, "app.py")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(sp, dp).build(app)
+        with open(app, encoding="utf-8") as fh:
+            ns = _load_app(fh.read(), "ft_%d" % os.getpid())
+        doc = Document()
+        ns["make_document"](doc)
+        widgets = {w._dash_var: w for w in _walk(doc)
+                   if hasattr(w, "_dash_var")}
+        order = [f.get("varname") for f in spec["build_options"]["filters"]]
+        for fi, value in moves:
+            w = widgets[order[fi]]
+            if value is None:
+                value = (getattr(w, "_dash_sentinel", None)
+                         or (w.start, w.end))
+            w.value = value
+            for key in ("value", "value_throttled"):
+                for cb in list(w._callbacks.get(key, [])):
+                    cb("value", None, value)
+    figs = [m for m in _walk(doc) if type(m).__name__ == "figure"]
+    divs = [m for m in _walk(doc) if isinstance(m, Div)]
+    names = [k["name"] for k in spec.get("kpis", [])]
+
+    def texts(ds):
+        out = {}
+        for d in ds:
+            for n in names:
+                v = _card_value(d.text, n)
+                if v:
+                    out[n] = v
+        return out
+    return _state(figs, divs, texts), doc
+
+
+def _walk(doc):
+    out = []
+    for root in doc.roots:
+        out.extend(root.references())
+    return out
+
+
+def scatter_graph(name, y, x):
+    return {"plots": [{"type": "scatter", "yvar": y, "xvar": x,
+                       "options": {}}],
+            "graph_options": {"name": name, "title": name},
+            "if_expr": "", "in_expr": ""}
+
+
+def kpi(name, var="mpg"):
+    return {"name": name, "stat": "count", "var": var, "fmt": "%9.0f",
+            "title": name, "subtitle": "", "color": "", "bgcolor": "",
+            "update": "filter", "if_expr": "", "in_expr": ""}
+
+
+def spec_of(graphs, filters, kpis=()):
+    names = [g["graph_options"]["name"] for g in graphs] + [
+        k["name"] for k in kpis]
+    return {"graphs": graphs, "kpis": list(kpis),
+            "build_options": {"layout": "auto", "link": "", "theme": "",
+                              "title": "", "subtitle": "",
+                              "registry": " ".join(names),
+                              "filters": list(filters)}}
+
+
+def put(name, value):
+    """A result into a Stata global, as text."""
+    from sfi import Macro
+    Macro.setGlobal(name, str(value))

@@ -12,6 +12,7 @@
 *!   S05  GAPS2 C2, histogram edge rule: dash's bars against
 *!        twoway__histogram_gen live (HE-05..HE-06)
 *!   S13  textbox grammar: B3, B6, B7 (TBG-01..TBG-06)
+*!   S17  filters vs count and summarize (FT-01..FT-06; GAPS2 X1, E2)
 *!
 *! Usage: via run_all_cscripts.do (registered as its last block).  One
 *! block alone: set GAPS2_ONLY=S<NN> in the environment of the driver run
@@ -594,6 +595,136 @@ if inlist("`only'", "", "S13") {
     display as text "S13 end `c(current_time)'"
 }
 * ==== end S13 ====
+
+* ==== S17 X1 E2: filters vs count and summarize ====
+local only : env GAPS2_ONLY
+if inlist("`only'", "", "S17") {
+    display as text "S17 start `c(current_time)'"
+
+    // X1: string codes, a double and a float, built in Stata.
+    clear
+    set obs 12
+    gen str10 fips = string(_n, "%02.0f")
+    replace fips = "1" in 3
+    replace fips = "1.0" in 4
+    replace fips = "None" in 5
+    replace fips = "nan" in 6
+    replace fips = "" in 7
+    replace fips = "__proto__" in 8
+    gen double tiny = 5e-05
+    replace tiny = 1e21 in 4/6
+    replace tiny = 0.1 in 7/12
+    gen float f32 = 0.1
+    replace f32 = 0.5 in 1/4
+    gen y = _n
+    gen x = _n
+    local ft_i = 0
+    foreach t in "01" "1" "1.0" "None" "nan" "" "__proto__" {
+        local ++ft_i
+        quietly count if fips == "`t'"
+        global ft_s`ft_i' = r(N)
+    }
+    quietly count if tiny == 5e-05
+    global ft_t1 = r(N)
+    quietly count if tiny == 1e21
+    global ft_t2 = r(N)
+    quietly count if f32 == float(0.1)
+    global ft_t3 = r(N)
+
+    python:
+import sys, os
+sys.path.insert(0, os.path.abspath("."))
+import filter_truth_check as ftc
+from sfi import Macro
+df, strings = ftc.frame_from_stata(["fips", "tiny", "f32", "y", "x"])
+spec = ftc.spec_of([ftc.scatter_graph("g1", "y", "x")],
+                   [{"varname": "fips", "type": "dropdown"},
+                    {"varname": "tiny", "type": "dropdown"},
+                    {"varname": "f32", "type": "dropdown"}])
+texts = ["01", "1", "1.0", "None", "nan", "", "__proto__"]
+for i, t in enumerate(texts, 1):
+    a, r = ftc.saved(df, strings, spec, [(0, t)])
+    b, _ = ftc.served(df, strings, spec, [(0, t)])
+    ftc.put("ft_sv%d" % i, a["g1"][0])
+    ftc.put("ft_se%d" % i, b["g1"][0])
+opts = [v for v, _ in r.filter_widgets[0].options][1:]
+ftc.put("ft_listed", int(all(t in opts for t in texts)))
+import dash_render as _dr
+ftc.put("ft_proto_code", int(any(c.code != _dr._FILTER_JS
+                                 for c in r.filter_callbacks)))
+for i, (fi, v) in enumerate([(1, 5e-05), (1, 1e21),
+                             (2, float(df["f32"].iloc[-1]))], 1):
+    a, _ = ftc.saved(df, strings, spec, [(fi, v)])
+    b, _ = ftc.served(df, strings, spec, [(fi, v)])
+    ftc.put("ft_tv%d" % i, a["g1"][0])
+    ftc.put("ft_te%d" % i, b["g1"][0])
+end
+
+    forvalues i = 1/6 {
+        _gt_expect FT-01 "(${ft_sv`i'} == ${ft_s`i'} & ${ft_se`i'} == ${ft_s`i'})" ///
+            "text case `i': saved ${ft_sv`i'} served ${ft_se`i'} Stata ${ft_s`i'}"
+    }
+    _gt_expect FT-01 "(${ft_listed} == 1)" "not every text was listed"
+    _gt_done FT-01 "a string dropdown keeps exactly count if fips == text, both modes"
+    forvalues i = 1/3 {
+        _gt_expect FT-02 "(${ft_tv`i'} == ${ft_t`i'} & ${ft_te`i'} == ${ft_t`i'})" ///
+            "number case `i': saved ${ft_tv`i'} served ${ft_te`i'} Stata ${ft_t`i'}"
+    }
+    _gt_done FT-02 "5e-05, 1e21 and float(0.1) keep Stata's count, both modes"
+    _gt_expect FT-03 "(${ft_sv7} == ${ft_s7} & ${ft_se7} == ${ft_s7})" "__proto__ rows"
+    _gt_expect FT-03 "(${ft_proto_code} == 0)" "__proto__ reached CustomJS code"
+    _gt_done FT-03 "__proto__ is listed data, selected, never code"
+
+    // E2: auto, g1 and k1 excluded from the price filter.
+    sysuse auto, clear
+    quietly count if foreign == 1
+    global ft_c1 = r(N)
+    quietly count if foreign == 1 & inrange(price, 4000, 5000)
+    global ft_c2 = r(N)
+    quietly summarize mpg if foreign == 1
+    global ft_m1 = r(mean)
+    quietly summarize mpg if foreign == 1 & inrange(price, 4000, 5000)
+    global ft_m2 = r(mean)
+
+    python:
+import filter_truth_check as ftc
+df, strings = ftc.frame_from_stata(["mpg", "price", "weight", "foreign"])
+spec = ftc.spec_of([ftc.scatter_graph("g1", "mpg", "price"),
+                    ftc.scatter_graph("g2", "mpg", "weight")],
+                   [{"varname": "foreign", "type": "dropdown"},
+                    {"varname": "price", "type": "range",
+                     "exclude": ["g1", "k1"]}],
+                   [ftc.kpi("k1"), ftc.kpi("k2")])
+fwd = [(0, 1.0), (1, (4000.0, 5000.0))]
+for tag, moves in (("f", fwd), ("r", fwd[::-1])):
+    for mode, run in (("sv", ftc.saved), ("se", ftc.served)):
+        st, _ = run(df, strings, spec, moves)
+        p = "ft_%s%s_" % (tag, mode)
+        ftc.put(p + "g1", st["g1"][0])
+        ftc.put(p + "g2", st["g2"][0])
+        ftc.put(p + "m1", repr(st["g1"][1]))
+        ftc.put(p + "m2", repr(st["g2"][1]))
+        ftc.put(p + "k1", st["k1"])
+        ftc.put(p + "k2", st["k2"])
+end
+
+    foreach m in sv se {
+        _gt_expect FT-04 "(${ft_f`m'_g1} == ${ft_c1} & ${ft_f`m'_k1} == ${ft_c1})" ///
+            "`m': g1 ${ft_f`m'_g1} k1 ${ft_f`m'_k1}, Stata ${ft_c1}"
+        _gt_expect FT-04 "(${ft_f`m'_g2} == ${ft_c2} & ${ft_f`m'_k2} == ${ft_c2})" ///
+            "`m': g2 ${ft_f`m'_g2} k2 ${ft_f`m'_k2}, Stata ${ft_c2}"
+        _gt_expect FT-05 "(reldif(${ft_f`m'_m1}, ${ft_m1}) < 1e-9 & reldif(${ft_f`m'_m2}, ${ft_m2}) < 1e-9)" ///
+            "`m': means ${ft_f`m'_m1} ${ft_f`m'_m2}, Stata ${ft_m1} ${ft_m2}"
+        foreach k in g1 g2 m1 m2 k1 k2 {
+            _gt_expect FT-06 "(${ft_f`m'_`k'} == ${ft_r`m'_`k'})" "`m' `k' depends on the order"
+        }
+    }
+    _gt_done FT-04 "excluded graph and card equal count if foreign==1, the rest the intersection"
+    _gt_done FT-05 "each graph's mean mpg equals Stata's summarize"
+    _gt_done FT-06 "the reverse order of moves gives the same numbers"
+    display as text "S17 end `c(current_time)'"
+}
+* ==== end S17 ====
 
 * ==== append new blocks above this line ====
 

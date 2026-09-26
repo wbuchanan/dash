@@ -3,6 +3,8 @@
 *!
 *! Tests: P2-73 through P2-75, FL-EX-1, FL-CP-1, FL-QT-1, FL-QT-2 and
 *! HE-01 through HE-04
+*! Tests: P2-73 through P2-75, FL-EX-1, FL-CP-1, FL-QT-1, FL-QT-2,
+*!        FL-X1-1, FL-E2-1 and FL-E2-2
 *!
 *! Usage:  do test/test_e2e_filters.cscript
 *!
@@ -347,6 +349,81 @@ assert r(found) == 1
 display "HE-04 PASS: start() above the minimum by more than reldif 1e-5 is refused with twoway's own words"
 
 sysuse auto, clear
+// ================================================================
+// FL-X1-1 / FL-E2-1 / FL-E2-2 (WP-28 S17, GAPS2 X1 and E2): page-only
+// checks, saved == served, through test/filter_truth_check.py.
+// ================================================================
+preserve
+clear
+set obs 12
+gen str10 fips = string(_n, "%02.0f")
+replace fips = "None" in 5
+replace fips = "nan" in 6
+replace fips = "" in 7
+gen double tiny = cond(_n <= 3, 5e-05, 1)
+gen y = _n
+gen x = _n
+python:
+import sys, os
+sys.path.insert(0, os.path.abspath("."))
+import filter_truth_check as ftc
+df, strings = ftc.frame_from_stata(["fips", "tiny", "y", "x"])
+spec = ftc.spec_of([ftc.scatter_graph("g1", "y", "x")],
+                   [{"varname": "fips", "type": "dropdown"},
+                    {"varname": "tiny", "type": "dropdown"}])
+_, r = ftc.saved(df, strings, spec, [])
+opts = [v for v, _ in r.filter_widgets[0].options][1:]
+ok = all(t in opts for t in ("None", "nan", ""))
+for fi, w in enumerate(r.filter_widgets):
+    for v in [v for v, _ in w.options][1:]:
+        a, _ = ftc.saved(df, strings, spec, [(fi, v)])
+        b, _ = ftc.served(df, strings, spec, [(fi, v)])
+        ok = ok and a["g1"][0] == b["g1"][0] and a["g1"][0] > 0
+ftc.put("fl_x1", int(ok))
+end
+assert "${fl_x1}" == "1"
+display "FL-X1-1 PASS: None, nan and the blank are listed; every option keeps the same rows saved and served"
+
+clear
+input mpg weight foreign price
+22 2930 0 4099
+17 3350 1 4749
+25 2200 0 3799
+30 1800 1 4816
+21 3000 0 5788
+19 3100 1 4453
+14 4080 0 5189
+28 2010 1 10372
+16 3600 0 4082
+23 2650 1 11385
+end
+python:
+import filter_truth_check as ftc
+df, strings = ftc.frame_from_stata(["mpg", "weight", "foreign", "price"])
+spec = ftc.spec_of([ftc.scatter_graph("g1", "mpg", "weight"),
+                    ftc.scatter_graph("g2", "mpg", "weight")],
+                   [{"varname": "foreign", "type": "dropdown"},
+                    {"varname": "price", "type": "range",
+                     "exclude": ["g1"]}])
+seq = [(1, (4000.0, 5000.0)), (0, 1.0), (1, None), (0, None)]
+want = [(10, 5), (5, 3), (5, 5), (10, 10)]
+ok = True
+for n in range(1, 5):
+    a, _ = ftc.saved(df, strings, spec, seq[:n])
+    b, _ = ftc.served(df, strings, spec, seq[:n])
+    got = (a["g1"][0], a["g2"][0])
+    ok = ok and got == want[n - 1] and got == (b["g1"][0], b["g2"][0])
+ftc.put("fl_e2a", int(ok))
+a, _ = ftc.saved(df, strings, spec, [seq[1], seq[0]])
+b, _ = ftc.served(df, strings, spec, [seq[1], seq[0]])
+ftc.put("fl_e2b", int((a["g1"][0], a["g2"][0]) == (5, 3)
+                      == (b["g1"][0], b["g2"][0])))
+end
+assert "${fl_e2a}" == "1"
+display "FL-E2-1 PASS: the four-state sequence gives 10/5/5/10 and 5/3/5/10 rows, saved == served"
+assert "${fl_e2b}" == "1"
+display "FL-E2-2 PASS: the reverse order reaches the same second state"
+restore
 
 // ----------------------------------------------------------------
 // Cleanup

@@ -198,3 +198,48 @@ class TestTheHelpers:
         a, b = W(["g1"]), W([])
         assert dr._dash_widgets_for("g1", [a, b], owner) == [b]
         assert dr._dash_widgets_for("g2", [a, b], owner) == [a, b]
+
+
+_TRUTH = os.path.join(_HERE, "fixtures", "filter_truth.json")
+
+
+def _truth():
+    if not os.path.exists(_TRUTH):
+        pytest.fail("section 17 task 17-08 must land first: "
+                    "test/fixtures/filter_truth.json is missing")
+    with open(_TRUTH, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+class TestAutoAgainstStata:
+    """test/fixtures/filter_truth.json (scripts/extract_filter_truth.do):
+    on sysuse auto, g1 and k1 excluded from price; foreign -> 1 then price
+    -> [4000, 5000]: the excluded pair equals Stata's foreign==1 count and
+    mean, the rest the intersection, in both modes."""
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    def test_auto_matches_stata(self, tmp_path, mode):
+        import numpy as np
+        import pandas as pd
+        import filter_truth_check as ftc
+        t = _truth()
+        df = pd.DataFrame(t["data"])
+        df["weight"] = np.arange(len(df), dtype=float)
+        spec = ftc.spec_of([ftc.scatter_graph("g1", "mpg", "price"),
+                            ftc.scatter_graph("g2", "mpg", "weight")],
+                           [{"varname": "foreign", "type": "dropdown"},
+                            {"varname": "price", "type": "range",
+                             "exclude": ["g1", "k1"]}],
+                           [ftc.kpi("k1"), ftc.kpi("k2")])
+        run = ftc.saved if mode == "saved" else ftc.served
+        st, _ = run(df, set(), spec, [(0, 1.0), (1, (4000.0, 5000.0))])
+        one, both = t["foreign_1"], t["foreign_1_price_4000_5000"]
+        assert st["g1"][0] == one["count"] and st["k1"] == str(one["count"])
+        assert st["g2"][0] == both["count"] and st["k2"] == str(both["count"])
+        assert st["g1"][1] == pytest.approx(one["mean_mpg"], rel=1e-9)
+        assert st["g2"][1] == pytest.approx(both["mean_mpg"], rel=1e-9)
+
+    def test_the_fixture_meta_carries_the_four_provenance_keys(self):
+        meta = _truth()["_meta"]
+        for key in ("stata_version", "born_date", "dash_commit", "extracted"):
+            assert key in meta
