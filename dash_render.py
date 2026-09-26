@@ -9958,19 +9958,16 @@ class GlyphMapper:
 
         edges, ymode = self._histogram_grid(arr, options, w)
         discrete = bool(str(options.get("discrete", "") or "").strip())
-        if discrete and len(arr):
-            # twoway__histogram_gen.ado:200-203: bar floor((v - min)/h), a
-            # value one past the last bar folded back into it.  With
-            # discrete, a width() coarser than the data's spacing leaves the
-            # maximum past the last edge (`histogram mpg, discrete width(3)'
-            # has its 41-mpg car there), and np.histogram dropped it.
-            nb = len(edges) - 1
-            h = (float(edges[-1]) - float(edges[0])) / nb
-            idx = np.floor((arr - float(edges[0])) / h)
-            idx = np.clip(idx, 0, nb - 1).astype(np.int64)
-            counts = np.bincount(idx, weights=w, minlength=nb).astype(float)
-        else:
-            counts, _ = np.histogram(arr, bins=edges, weights=w)
+        # twoway__histogram_gen.ado:200-203: every observation is bar
+        # floor((v - start)/h), an index below 0 folded into bar 0 and one
+        # at or past the last edge folded into the last bar.  This is
+        # Stata's rule for BOTH the discrete and the continuous grid --
+        # np.histogram's half-open/closed bin edges silently dropped a
+        # value that landed a few ULPs above edges[-1] (WP-28 C2).
+        nb = len(edges) - 1
+        start = float(edges[0])
+        h = (float(edges[-1]) - start) / nb
+        counts = self._histogram_counts(arr, w, start, h, nb)
         tops = _histogram_heights(counts, edges, ymode)
 
         hist_source = ColumnDataSource({
@@ -10016,11 +10013,75 @@ class GlyphMapper:
             # A discrete grid folds a value past its last edge into the
             # last bar, as the count above does; the JS recount must too.
             "discrete":  discrete,
+            # WP-28 C2: the JS recount reads these three numbers directly
+            # rather than rebuilding h from bin_edges -- an edges-derived
+            # width can differ from this one by an ULP and move a value
+            # across a bar.  start/width are the same numbers this count
+            # used; bin is len(bin_edges) - 1.
+            "start":     start,
+            "width":     h,
+            "bin":       nb,
         }
         # The rows these bars count; DashRenderer hands them to the recount
         # when they are a subset of the data.
         r._dash_agg_rows = self._agg_member_ids(source, view)
         return r
+
+    @staticmethod
+    def _histogram_counts(
+        arr: "np.ndarray", w: "np.ndarray | None",
+        start: float, width: float, nb: int,
+    ) -> "np.ndarray":
+        """Stata's own histogram counting rule, for one bin grid.
+
+        twoway__histogram_gen.ado:200-203, verbatim::
+
+            gen midbin = floor((v - min)/h)
+            replace midbin = 0        if midbin < 0
+            replace midbin = bin - 1  if midbin == bin
+
+        every observation lands in exactly one bar: an index below 0 folds
+        into bar 0, and one at or past the last edge folds into the last
+        bar.  ``np.histogram`` cannot express this -- its last bin is
+        closed on the right at ``edges[-1]``, so a value a few ULPs above
+        that (``edges[-1]`` is ``start + width*nb`` only in exact
+        arithmetic) fell outside every bin and was silently dropped
+        (WP-28 C2, GAPS2 measured 2245 of 2246 rows on nlsw88 ttl_exp
+        bin(27)).  The discrete grid already used this rule; this makes
+        the continuous grid match it.
+
+        Precondition: *arr* (and *w*, when given) must be finite.  The
+        caller drops missing rows through ``_layer_weights`` ->
+        ``_masked`` (dash_render.py's own joint-NaN mask) before the count
+        ever runs; a NaN reaching ``np.floor``/``astype(np.int64)`` would
+        become an undefined integer index and ``np.bincount`` would raise
+        an opaque error or silently miscount, so this is enforced rather
+        than assumed.
+
+        Args:
+            arr:   Finite observations being binned.
+            w:     Finite frequency weights aligned with *arr*, or None.
+            start: The grid's first edge (Stata's ``r(start)``/``min``).
+            width: The (uniform) bin width (Stata's ``r(width)``/``h``).
+            nb:    Number of bins.
+
+        Returns:
+            Per-bin counts (or weight sums), length *nb*.
+        """
+        arr = np.asarray(arr, dtype=float)
+        if not np.isfinite(arr).all():
+            raise ValueError(
+                "_histogram_counts: arr must be finite; the caller drops "
+                "missing rows through _layer_weights before counting")
+        if w is not None:
+            w = np.asarray(w, dtype=float)
+            if not np.isfinite(w).all():
+                raise ValueError(
+                    "_histogram_counts: w must be finite; the caller drops "
+                    "missing rows through _layer_weights before counting")
+        idx = np.floor((arr - start) / width)
+        idx = np.clip(idx, 0, nb - 1).astype(np.int64)
+        return np.bincount(idx, weights=w, minlength=nb).astype(float)
 
     @staticmethod
     def _histogram_grid(
@@ -10043,6 +10104,13 @@ class GlyphMapper:
         and the bin count ``int((max - (min - h/2))/h + .5)``.  ``start()``
         does not move that edge (:109-112).  ``bin()`` with ``discrete`` is
         refused by Stata (r(198)); the renderer names it and ignores it.
+
+        The returned grid's last edge is ``start + width*n_bins`` whether
+        or not it lands exactly on the data's maximum in floating point:
+        ``GlyphMapper._histogram_counts`` (WP-28 C2) folds a value at or
+        past it into the last bar, Stata's own rule
+        (twoway__histogram_gen.ado:200-203), so this method never widens
+        the grid to keep the top observation.
 
         Args:
             arr:     Finite observations being binned.
@@ -10144,22 +10212,17 @@ class GlyphMapper:
             width = span / n_bins
 
         edges = start + width * np.arange(n_bins + 1, dtype=float)
-        # The last edge must cover the data even when start()/width() were
-        # given explicitly, or np.histogram silently drops the top
-        # observations.
-        #
-        # The comparison needs a tolerance.  When width was DERIVED as
-        # span / n_bins, edges[-1] is a_max in exact arithmetic but can land a
-        # few ulps below it in floating point -- and then this appended a bin
-        # about 1e-14 wide.  A density is count / (total * width), so that bin
-        # became a spike twelve orders of magnitude above every real bar and
-        # flattened the rest of the histogram to nothing.  Measured on a
-        # 74-observation fixture: bin(6) and bin(12) each drew one bar more
-        # than asked for, of width 7.105e-15 and density 1.902e+12.
-        _edge_tol = 1e-9 * max(abs(float(a_max)), abs(float(start)),
-                               float(width), 1.0)
-        if edges[-1] < a_max - _edge_tol:
-            edges = np.append(edges, a_max)
+        # The last edge is start + width*n_bins -- Stata's r(max) -- whether
+        # or not it lands exactly on the sample maximum in floating point.
+        # No extra edge is appended: _histogram_counts (WP-28 C2) folds a
+        # value at or floating a few ULPs above this edge into the last
+        # bar, as twoway__histogram_gen.ado:200-203 does, so the grid never
+        # needs to be widened to keep the top observation.  (An appended
+        # bin used to be needed here to cover a derived width() landing a
+        # few ULPs short of the maximum -- and once did, at ~1e-14 wide, a
+        # 74-observation fixture's bin(6)/bin(12) -- but the fold-and-clamp
+        # count makes that unnecessary: the last bar simply claims anything
+        # at or past this edge.)
 
         return edges, _dash_histogram_ymode(options)
 
@@ -16092,33 +16155,30 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             continue;
         }
         const counts = new Array(n_bins).fill(0);
-        const bw = (edges[n_bins] - edges[0]) / n_bins;
-        for (let vi = 0; vi < vals.length; vi++) {
-            const v = vals[vi];
-            // An fweight counts its observation that many times; the
-            // density then divides by the weight total, as Stata's
-            // `tabulate midbin [fw]' does.
-            const wv = wts ? wts[vi] : 1;
-            if (ac.discrete) {
-                // twoway__histogram_gen.ado:200-203, as the Python count:
-                // bar floor((v - min)/h), clamped to the grid, so a value
-                // past the last edge folds into the last bar.
-                let b = Math.floor((v - edges[0]) / bw);
+        // twoway__histogram_gen.ado:200-203, as the Python count
+        // (GlyphMapper._histogram_counts, WP-28 C2): every value is bar
+        // floor((v - start)/width), an index below 0 folded into bar 0
+        // and one at or past the last edge folded into the last bar --
+        // for the discrete grid and the continuous one alike.  ac.start/
+        // ac.width/ac.bin are the SAME numbers Python counted with, so
+        // this never rebuilds a width from bin_edges (an edges-derived
+        // width can differ from ac.width by an ULP and move a value
+        // across a bar).
+        if (ac.width > 0) {
+            for (let vi = 0; vi < vals.length; vi++) {
+                const v = vals[vi];
+                // An fweight counts its observation that many times; the
+                // density then divides by the weight total, as Stata's
+                // `tabulate midbin [fw]' does.
+                const wv = wts ? wts[vi] : 1;
+                let b = Math.floor((v - ac.start) / ac.width);
                 if (b < 0) b = 0;
                 if (b > n_bins - 1) b = n_bins - 1;
                 counts[b] += wv;
-                continue;
-            }
-            if (v < edges[0] || v > edges[edges.length - 1]) continue;
-            if (v === edges[edges.length - 1]) {
-                // last bin is closed on the right
-                counts[n_bins - 1] += wv;
-            } else {
-                for (let b = 0; b < n_bins; b++) {
-                    if (v >= edges[b] && v < edges[b + 1]) { counts[b] += wv; break; }
-                }
             }
         }
+        // else: the page never generates a config with a non-positive
+        // width; leave every count at zero rather than derive one.
         src.data = {
             top:   dash_scale(counts),
             left:  edges.slice(0, n_bins),

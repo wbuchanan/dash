@@ -2105,6 +2105,10 @@ distinct values (1 when there is only one), each bar centred on its
 value; {cmd:start()} does not move the bars, as in Stata, and a value
 past the last bar's edge (a {cmd:width()} coarser than the data's
 spacing) is counted in the last bar, as Stata counts it.
+On every {cmd:histogram}, discrete or continuous, each observation is
+counted in bar {cmd:floor((v - start)/width)}, a value at or past the
+last edge in the last bar and one below a tolerated {cmd:start()} in
+the first, exactly as {cmd:twoway__histogram_gen} counts them.
 {cmd:discrete} with {cmd:bin()} is refused, r(198), as {cmd:twoway}
 refuses it.  On any {cmd:histogram} a {cmd:start()} above the smallest
 value of the plot's sample is refused, r(198), as {cmd:twoway} refuses

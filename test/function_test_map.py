@@ -143,6 +143,7 @@ FUNCTIONS = {
  'GlyphMapper._fp_plot_grid': 'test/test_statistical_helpers.py::TestFpPlotGrid::test_an_x_whose_higher_y_row_left_the_sample_stays',
  'GlyphMapper._fp_prepare': 'test/test_statistical_helpers.py::TestFpPrepare::test_a_constant_x_cannot_be_fitted',
  'GlyphMapper._fp_stdp': 'test/test_statistical_helpers.py::TestFpFitAndPrediction::test_stdp_is_the_quadratic_form_of_the_covariance',
+ 'GlyphMapper._histogram_counts': 'test/test_histogram_edge_rule.py::TestHistogramCounts::test_a_value_below_start_is_in_bar_zero_and_one_at_the_last_edge_in_the_last_bar',
  'GlyphMapper._histogram_grid': 'test/test_statistical_defaults.py::TestHistogramDefaults::test_explicit_density_is_honoured',
  'GlyphMapper._hover_tool': 'test/test_glyphs.py::TestMapLine::test_line_lpattern_applied',
  'GlyphMapper._immediate_labels': 'test/test_varlist_expansion.py::test_scatteri_labels_attach_to_their_own_points',

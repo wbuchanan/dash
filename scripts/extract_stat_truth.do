@@ -253,6 +253,22 @@ file write zqrec "META@@@run_date@@@`c(current_date)'" _n
 file write zqrec "META@@@workdir@@@${ZQ_WORK}" _n
 file write zqrec "META@@@c_level@@@`c(level)'" _n
 
+* Fixture provenance (WP-28 D12): the exact dash commit this fixture was
+* measured against, so a reviewer can re-derive it.  `shell' is Stata's
+* own subprocess launch, not a dash function, and this never touches user
+* input; the python block only reads the local back through Macro.getLocal.
+tempfile gitrev
+quietly shell git -C "${ZQ_REPO}" rev-parse HEAD > "`gitrev'"
+file open zqgitfh using "`gitrev'", read text
+file read zqgitfh zq_gitline
+local dash_commit = trim(`"`zq_gitline'"')
+file close zqgitfh
+if !ustrregexm("`dash_commit'", "^[0-9a-f]{40}$") {
+    display as error "extract_stat_truth.do: git rev-parse HEAD did not return a 40-character hex commit (got `dash_commit')"
+    exit 198
+}
+file write zqrec "META@@@dash_commit@@@`dash_commit'" _n
+
 * ---------------------------------------------------------------------------
 * Dataset inventory
 * ---------------------------------------------------------------------------
@@ -381,6 +397,87 @@ forvalues d = 1/`NDS' {
         display as text "histogram probed: `ds' `hv'"
     }
 }
+
+* ===========================================================================
+* LAYER 1c -- histogram edge rule (WP-28 C2)
+*
+* GAPS2 measured dash's continuous count losing the observation at the last
+* bin edge: nlsw88 ttl_exp bin(27|51|54|83) counted 2245 of 2246 rows, census
+* pop bin(75) counted 49 of 50.  twoway__histogram_gen.ado:200-203 folds a
+* value at or past the last edge into the last bar; this layer runs the
+* generator itself on those cases plus a tolerated start() and the density
+* y-axis, so dash's fix can be checked bar for bar, not just by bin count.
+* ===========================================================================
+capture program drop zq_hist_edge
+program define zq_hist_edge
+    syntax , Key(string) VARname(string) Opts(string) [ STARTreq(string) ]
+    capture drop zqh zqx
+    capture twoway__histogram_gen `varname', generate(zqh zqx) return `opts'
+    local rc = _rc
+    zq_n, sec(histogram_edge) key(`key') fld(rc) val(`rc')
+    zq_s, sec(histogram_edge) key(`key') fld(cmd) ///
+          val(twoway__histogram_gen `varname', generate(h x) return `opts')
+    if `rc' != 0 {
+        zq_s, sec(histogram_edge) key(`key') fld(error) ///
+              val(Stata returned _rc=`rc' for this option on this variable)
+        exit
+    }
+    zq_n, sec(histogram_edge) key(`key') fld(bin)   val(r(bin))
+    zq_n, sec(histogram_edge) key(`key') fld(start) val(r(start))
+    zq_n, sec(histogram_edge) key(`key') fld(width) val(r(width))
+    zq_n, sec(histogram_edge) key(`key') fld(xmin)  val(r(min))
+    zq_n, sec(histogram_edge) key(`key') fld(xmax)  val(r(max))
+    zq_n, sec(histogram_edge) key(`key') fld(N)     val(r(N))
+    zq_n, sec(histogram_edge) key(`key') fld(n_x)   val(r(n_x))
+    zq_s, sec(histogram_edge) key(`key') fld(type)  val(`r(type)')
+    if `"`startreq'"' != "" {
+        zq_n, sec(histogram_edge) key(`key') fld(start_requested) val(`startreq')
+    }
+    quietly summarize zqh, meanonly
+    zq_n, sec(histogram_edge) key(`key') fld(sum_height) val(r(sum))
+    preserve
+    quietly keep zqh zqx
+    quietly drop if missing(zqx)
+    quietly rename zqh bar_height
+    quietly rename zqx bin_midpoint
+    zq_curve bin_midpoint bar_height, sec(histogram_edge) key(`key') maxn(100)
+    restore
+end
+
+sysuse nlsw88, clear
+zq_hist_edge, key(nlsw88:ttl_exp:bin27) varname(ttl_exp) opts(frequency bin(27))
+zq_s, sec(histogram_edge) key(nlsw88:ttl_exp:bin27) fld(equivalent_user_cmd) ///
+      val(histogram ttl_exp, frequency bin(27))
+
+zq_hist_edge, key(nlsw88:ttl_exp:bin51) varname(ttl_exp) opts(frequency bin(51))
+zq_s, sec(histogram_edge) key(nlsw88:ttl_exp:bin51) fld(equivalent_user_cmd) ///
+      val(histogram ttl_exp, frequency bin(51))
+
+zq_hist_edge, key(nlsw88:ttl_exp:bin54) varname(ttl_exp) opts(frequency bin(54))
+zq_s, sec(histogram_edge) key(nlsw88:ttl_exp:bin54) fld(equivalent_user_cmd) ///
+      val(histogram ttl_exp, frequency bin(54))
+
+zq_hist_edge, key(nlsw88:ttl_exp:bin83) varname(ttl_exp) opts(frequency bin(83))
+zq_s, sec(histogram_edge) key(nlsw88:ttl_exp:bin83) fld(equivalent_user_cmd) ///
+      val(histogram ttl_exp, frequency bin(83))
+
+zq_hist_edge, key(nlsw88:ttl_exp:bin27_density) varname(ttl_exp) opts(bin(27))
+zq_s, sec(histogram_edge) key(nlsw88:ttl_exp:bin27_density) fld(equivalent_user_cmd) ///
+      val(histogram ttl_exp, bin(27))
+
+quietly summarize ttl_exp, meanonly
+local zq_hstart = r(min)*(1+5e-6)
+zq_hist_edge, key(nlsw88:ttl_exp:bin27_start) varname(ttl_exp) ///
+    opts(frequency bin(27) start(`zq_hstart')) startreq(`zq_hstart')
+zq_s, sec(histogram_edge) key(nlsw88:ttl_exp:bin27_start) fld(equivalent_user_cmd) ///
+      val(histogram ttl_exp, frequency bin(27) start(`zq_hstart'))
+
+sysuse census, clear
+zq_hist_edge, key(census:pop:bin75) varname(pop) opts(frequency bin(75))
+zq_s, sec(histogram_edge) key(census:pop:bin75) fld(equivalent_user_cmd) ///
+      val(histogram pop, frequency bin(75))
+
+display as text "histogram edge rule probed: 7 cases"
 
 * ===========================================================================
 * LAYER 2 -- kdensity
@@ -2101,6 +2198,18 @@ for key, ent in sections.get("histogram", {}).items():
     }
 hist_rule_all_agree = all(v["agree"] for v in hist_rule.values()) if hist_rule else None
 
+# ------------------------ histogram_edge: every frequency probe sums to N
+# (WP-28 C2).  dash's floor-and-clamp count is checked against this fixture
+# by test_statistical_truth.py::TestHistogramEdgeAgainstStata; this
+# self-check only confirms STATA'S OWN generator did what its rule says.
+histogram_edge_check = {}
+for key, ent in sections.get("histogram_edge", {}).items():
+    if ent.get("rc") != 0 or ent.get("type") != "frequency":
+        continue
+    histogram_edge_check[key] = (ent.get("sum_height") == ent.get("N"))
+histogram_edge_frequency_sums_equal_N = (
+    all(histogram_edge_check.values()) if histogram_edge_check else None)
+
 # ------------------------------------------------------------------- rules
 RULES = {
     "histogram.bin": {
@@ -2666,6 +2775,11 @@ doc = {
         "stata_flavor": meta.get("stata_flavor"),
         "stata_edition": meta.get("stata_edition"),
         "stata_born_date": meta.get("stata_born_date"),
+        # WP-28 D12: the provenance stamp every new/regenerated fixture
+        # carries, beside the keys above (which stay).
+        "born_date": meta.get("stata_born_date"),
+        "dash_commit": meta.get("dash_commit"),
+        "extracted": meta.get("run_date"),
         "c_level_default": num(meta.get("c_level")),
         "datasets": sorted(sections.get("datasets", {}).keys()),
         "method": (
@@ -2691,6 +2805,7 @@ doc = {
             "sample_index, together with the full n_points and the min/max of "
             "every series."),
         "self_checks": {
+            "histogram_edge_frequency_sums_equal_N": histogram_edge_frequency_sums_equal_N,
             "histogram_bin_rule_reproduces_stata": hist_rule_all_agree,
             "kdensity_ado_formula_reproduces_r_bwidth": kde_rot_all_agree,
             "ci_rebuild_agrees_with_plotted_serset": ci_all_agree,
@@ -2718,6 +2833,7 @@ doc = {
         "counts": {
             "datasets": len(sections.get("datasets", {})),
             "histogram_probes": len(sections.get("histogram", {})),
+            "histogram_edge_probes": len(sections.get("histogram_edge", {})),
             "histogram_resolved_cmd_probes": len(sections.get("histogram_resolved_cmd", {})),
             "kdensity_probes": len(sections.get("kdensity", {})),
             "kdensity_twoway_probes": len(sections.get("kdensity_twoway", {})),
@@ -2776,8 +2892,8 @@ doc = {
     "weight_acceptance_table": weight_table,
     "weighted_fit_check": weighted_fit_check,
 }
-for name in ("datasets", "histogram", "histogram_resolved_cmd", "kdensity",
-             "kdensity_rot_check", "kdensity_twoway", "lpoly", "lpoly_twoway",
+for name in ("datasets", "histogram", "histogram_edge", "histogram_resolved_cmd",
+             "kdensity", "kdensity_rot_check", "kdensity_twoway", "lpoly", "lpoly_twoway",
              "lowess", "ci_bands", "ci_rebuild", "fp_powers", "fpfit",
              "fpfit_optsupport", "mband", "function",
              # WP-18

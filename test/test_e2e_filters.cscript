@@ -1,7 +1,8 @@
 *! test_e2e_filters.cscript
 *! End-to-end certification script for filter widgets in dashboard output.
 *!
-*! Tests: P2-73 through P2-75, FL-EX-1, FL-CP-1, FL-QT-1 and FL-QT-2
+*! Tests: P2-73 through P2-75, FL-EX-1, FL-CP-1, FL-QT-1, FL-QT-2 and
+*! HE-01 through HE-04
 *!
 *! Usage:  do test/test_e2e_filters.cscript
 *!
@@ -232,6 +233,120 @@ assert r(found) == 1
 cert_file_has "`qtfile2'.html", needle(`":"select""') lower
 assert r(found) == 0
 display "FL-QT-2 PASS: a quoted ')' before filter( in the title is text too"
+
+// ---- WP-28 C2: histogram edge rule (HE-01..HE-04) ----
+// A continuous histogram used to drop the observation at its last bin
+// edge (2245 of 2246 rows on nlsw88 ttl_exp bin(27)) and accept a
+// tolerated start() while still dropping the rows below it.  These cases
+// build the real dashboard and read the drawn bars back out of its own
+// embedded document -- the one Bokeh document a saved page's
+// <script type="application/json"> block holds, reconstructed the way
+// test_e2e_kpi.cscript and test_adversarial.cscript P2-78 already read
+// one back -- rather than trust a byte count in the file.
+dash clear
+sysuse nlsw88, clear
+
+python:
+import json, re
+from sfi import Macro
+from bokeh.document import Document
+from bokeh.models import ColumnDataSource
+
+
+def _he_unescape(text):
+    ents = {"amp": "&", "lt": "<", "gt": ">", "quot": chr(34),
+            "#x27": chr(39), "#x60": chr(96)}
+    return re.sub(r"&(amp|lt|gt|quot|#x27|#x60);",
+                  lambda m: ents[m.group(1)], text)
+
+
+def _he_read(path, p):
+    """Set `p'_sum and `p'_nbar from the one histogram quad's source in
+    the page at *path*: the sum of its bars and how many there are."""
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    blocks = re.findall(
+        r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+        page, re.S)
+    docs = [d for b in blocks
+            for d in json.loads(_he_unescape(b)).values()]
+    if len(docs) != 1:
+        raise RuntimeError("%s holds %d Bokeh documents" % (path, len(docs)))
+    doc = Document.from_json(docs[0])
+    tops = None
+    for m in doc.models:
+        if isinstance(m, ColumnDataSource) and "left" in m.data:
+            tops = list(m.data["top"])
+            break
+    if tops is None:
+        raise RuntimeError("%s: no histogram source found" % path)
+    Macro.setGlobal(p + "_sum", str(int(round(sum(float(v) for v in tops)))))
+    Macro.setGlobal(p + "_nbar", str(len(tops)))
+end
+
+// HE-01 -- bin(27): the exact case GAPS2 measured at 2245 of 2246.
+tempfile he1
+local he1path = "`he1'.html"
+capture erase "`he1path'"
+capture noisily dash histogram ttl_exp, bin(27) frequency saving("`he1path'", replace)
+assert _rc == 0
+cert_file_has "`he1path'", needle("top")
+assert r(found) == 1
+python: _he_read(Macro.getLocal("he1path"), "he1")
+assert ${he1_sum} == 2246
+assert ${he1_nbar} == 27
+display "HE-01 PASS: dash histogram ttl_exp, bin(27) frequency counts all 2246 rows over 27 bars"
+
+// HE-02 -- bin(83): the widest of GAPS2's four measured bin counts.
+dash clear
+tempfile he2
+local he2path = "`he2'.html"
+capture erase "`he2path'"
+capture noisily dash histogram ttl_exp, bin(83) frequency saving("`he2path'", replace)
+assert _rc == 0
+cert_file_has "`he2path'", needle("top")
+assert r(found) == 1
+python: _he_read(Macro.getLocal("he2path"), "he2")
+assert ${he2_sum} == 2246
+assert ${he2_nbar} == 83
+display "HE-02 PASS: dash histogram ttl_exp, bin(83) frequency counts all 2246 rows over 83 bars"
+
+// HE-03 -- a start() dash.ado tolerates (reldif < 1e-5 above the
+// minimum): every row still counts, the ones below start() folded into
+// bar 0.
+dash clear
+quietly summarize ttl_exp, meanonly
+local s = r(min)*(1+5e-6)
+tempfile he3
+local he3path = "`he3'.html"
+capture erase "`he3path'"
+capture noisily dash histogram ttl_exp, bin(27) frequency start(`s') saving("`he3path'", replace)
+assert _rc == 0
+cert_file_has "`he3path'", needle("top")
+assert r(found) == 1
+python: _he_read(Macro.getLocal("he3path"), "he3")
+assert ${he3_sum} == 2246
+assert ${he3_nbar} == 27
+display "HE-03 PASS: start() tolerated within reldif 1e-5 of the minimum still counts all 2246 rows"
+
+// HE-04 -- a start() above that tolerance is refused with twoway's own
+// words (dash.ado:3827-3837, untouched by this section).
+dash clear
+quietly summarize ttl_exp, meanonly
+local s2 = r(min)*1.01
+tempfile he4log
+local he4logpath = "`he4log'.log"
+capture log close _all
+capture log using "`he4logpath'", replace text
+capture noisily dash histogram ttl_exp, bin(27) frequency start(`s2')
+local he4rc = _rc
+capture log close _all
+assert `he4rc' == 198
+cert_log_has "`he4logpath'", needle("option start() may not be larger than minimum of ttl_exp")
+assert r(found) == 1
+display "HE-04 PASS: start() above the minimum by more than reldif 1e-5 is refused with twoway's own words"
+
+sysuse auto, clear
 
 // ----------------------------------------------------------------
 // Cleanup

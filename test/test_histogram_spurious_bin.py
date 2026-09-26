@@ -1,14 +1,14 @@
-"""`bin(#)` sometimes drew #+1 bars, the last an infinite spike.
+"""`bin(#)` used to sometimes draw #+1 bars, the last an infinite spike.
 
-``_histogram_grid`` builds the edges as ``start + width * arange(n+1)`` and
-then guards against losing the top observations::
+``_histogram_grid`` built the edges as ``start + width * arange(n+1)`` and
+then guarded against losing the top observations::
 
     if edges[-1] < a_max:
         edges = np.append(edges, a_max)
 
 When ``width`` was derived as ``span / n_bins``, ``edges[-1]`` *is* ``a_max``
 in exact arithmetic — but in floating point it can land a few ulps below it.
-The guard then fires and appends a bin of width ~1e-14.
+The guard then fired and appended a bin of width ~1e-14.
 
 **Measured** on a 74-observation fixture, ``bin(6)`` and ``bin(12)``:
 
@@ -16,13 +16,24 @@ The guard then fires and appends a bin of width ~1e-14.
     bin(12) -> 13 bars  min_width=7.105e-15   max density = 1.902e+12
 
 A density is count / (total x width), so a 1e-14-wide bin holding one
-observation is a spike twelve orders of magnitude above every real bar. Every
-other bar is then drawn at visually zero height. It is data-dependent, so it
-strikes some datasets and not others, and the bar count silently disagrees
-with what the user asked for.
+observation was a spike twelve orders of magnitude above every real bar, with
+every other bar then drawn at visually zero height.
 
-The guard is still needed — an explicit ``start()``/``width()`` genuinely can
-stop short of the data — so it is kept, with a tolerance.
+**WP-28 C2 removed the tolerance edge altogether.**  GAPS2 found the SAME
+root cause on the other side: a value a few ULPs ABOVE ``edges[-1]`` (not
+appended here, genuinely past it) fell outside NumPy's histogram bins and
+was silently dropped -- 2245 of 2246 rows on nlsw88 ttl_exp ``bin(27)``, 49
+of 50 on census pop ``bin(75)``.  The fix is not a better tolerance on the
+old guard; it is Stata's own counting rule
+(twoway__histogram_gen.ado:200-203), applied to the continuous grid the way
+it already was to the discrete one: every observation is bar
+``floor((v - start)/width)``, an index below 0 folded into bar 0 and one at
+or past the last edge folded into the LAST bar, through
+``GlyphMapper._histogram_counts``.  ``bin(#)`` therefore gives exactly #
+bars by construction -- the grid is never widened to keep the top
+observation, because the last bar simply claims anything at or beyond its
+edge.  The spike this file measured cannot recur: there is no code path
+left that appends an extra edge.
 """
 import os
 import sys
@@ -82,22 +93,40 @@ class TestBinCountIsWhatWasAsked:
             assert len(edges) - 1 == n, f"seed {seed}, bin({n})"
 
 
-class TestTheGuardStillGuards:
+def _frequency_sum(arr, options):
+    """Every observation this section's mapper draws, through
+    GlyphMapper.map_histogram -- the production path, not a private copy
+    of its rule."""
+    from bokeh.models import ColumnDataSource
+    from bokeh.plotting import figure
+    mapper = dr.GlyphMapper(dr.OptionTranslator(), dr.SchemeParser("s2color"))
+    src = ColumnDataSource({"v": [float(v) for v in arr]})
+    opts = dict(options, frequency="frequency")
+    r = mapper.map_histogram(figure(), src, "v", opts)
+    d = r.data_source.data
+    return (np.asarray(d["top"], dtype=float), np.asarray(d["left"], dtype=float),
+            np.asarray(d["right"], dtype=float))
+
+
+class TestEveryObservationIsCounted:
+    """WP-28 C2: the tolerance edge this file measured is gone; every
+    observation is counted through GlyphMapper._histogram_counts instead,
+    so none is dropped whether the grid's last edge lands a few ULPs
+    below, on, or above the sample maximum."""
+
     def test_an_explicit_width_that_stops_short_still_covers_the_data(self):
-        """width() chosen so the grid genuinely ends below the maximum."""
+        """An explicit start()/width() genuinely can leave the top
+        observation past the grid's derived edge; it folds into the last
+        bar (GlyphMapper._histogram_counts) rather than needing an
+        appended one."""
         arr = np.array([0.0, 1.0, 2.0, 3.0, 9.7])
-        edges, _ = _grid({"start": "0", "width": "3"}, arr)
-        assert float(edges[-1]) >= float(arr.max()), (
-            "the top observation would fall outside every bin"
-        )
-        counts, _ = np.histogram(arr, bins=edges)
-        assert int(counts.sum()) == len(arr), "an observation was dropped"
+        tops, _left, _right = _frequency_sum(arr, {"start": "0", "width": "3"})
+        assert int(tops.sum()) == len(arr), "an observation was dropped"
 
     def test_width_alone_still_covers_the_data(self):
         arr = np.array([2.0, 4.0, 6.0, 8.0, 11.5])
-        edges, _ = _grid({"width": "3"}, arr)
-        counts, _ = np.histogram(arr, bins=edges)
-        assert int(counts.sum()) == len(arr)
+        tops, _, _ = _frequency_sum(arr, {"width": "3"})
+        assert int(tops.sum()) == len(arr)
 
     def test_the_default_rule_is_unaffected(self):
         edges, _ = _grid({})

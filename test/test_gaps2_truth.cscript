@@ -9,6 +9,8 @@
 *!
 *! Blocks, in section order (extended by each later section that lands one):
 *!   S02  helper smoke: the cert_svg programs (SH-01..SH-08)
+*!   S05  GAPS2 C2, histogram edge rule: dash's bars against
+*!        twoway__histogram_gen live (HE-05..HE-06)
 *!
 *! Usage: via run_all_cscripts.do (registered as its last block).  One
 *! block alone: set GAPS2_ONLY=S<NN> in the environment of the driver run
@@ -220,6 +222,162 @@ if inlist("`only'", "", "S02") {
     display as text "S02 end `c(current_time)'"
 }
 * ==== end S02 ====
+
+* ==== S05 C2: histogram bars against twoway__histogram_gen ====
+local only : env GAPS2_ONLY
+if inlist("`only'", "", "S05") {
+    display as text "S05 start `c(current_time)'"
+
+    // Reads the page's one histogram ColumnDataSource (Document.from_json,
+    // as test_e2e_kpi.cscript and test_adversarial.cscript P2-78 already
+    // read a saved page's document back), and sets, as GLOBALS for the
+    // caller (read into locals immediately, then dropped):
+    //   `p'_sum   the sum of every bar (dash's own count)
+    //   `p'_right the last right edge dash drew
+    //   `p'_tops  every bar height, in left-to-right order, space-separated
+    python:
+import json, re
+from sfi import Macro
+from bokeh.document import Document
+from bokeh.models import ColumnDataSource
+
+
+def _he5_unescape(text):
+    ents = {"amp": "&", "lt": "<", "gt": ">", "quot": chr(34),
+            "#x27": chr(39), "#x60": chr(96)}
+    return re.sub(r"&(amp|lt|gt|quot|#x27|#x60);",
+                  lambda m: ents[m.group(1)], text)
+
+
+def _he5_read(path, p):
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    blocks = re.findall(
+        r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+        page, re.S)
+    docs = [d for b in blocks
+            for d in json.loads(_he5_unescape(b)).values()]
+    if len(docs) != 1:
+        raise RuntimeError("%s holds %d Bokeh documents" % (path, len(docs)))
+    doc = Document.from_json(docs[0])
+    for m in doc.models:
+        if isinstance(m, ColumnDataSource) and "left" in m.data:
+            tops = [float(v) for v in m.data["top"]]
+            right = [float(v) for v in m.data["right"]]
+            Macro.setGlobal(p + "_sum", str(int(round(sum(tops)))))
+            Macro.setGlobal(p + "_right", repr(right[-1]))
+            Macro.setGlobal(p + "_tops", " ".join(repr(v) for v in tops))
+            return
+    raise RuntimeError("%s: no histogram source found" % path)
+
+end
+
+    // ------------------------------------------------------------
+    // HE-05: nlsw88 ttl_exp bin(27) -- the case GAPS2 measured at 2245 of
+    // 2246 -- against twoway__histogram_gen run live, bar for bar.
+    // ------------------------------------------------------------
+    capture dash clear
+    sysuse nlsw88, clear
+    twoway__histogram_gen ttl_exp, generate(zqh zqx) return frequency bin(27)
+    local he5_bin = r(bin)
+    local he5_max = r(max)
+    quietly summarize zqh, meanonly
+    local he5_gensum = r(sum)
+    _gt_expect HE-05 "(`he5_gensum' == 2246)" "twoway__histogram_gen's own bars sum to `he5_gensum', not 2246"
+
+    tempfile he5file
+    local he5path = "`he5file'.html"
+    capture erase "`he5path'"
+    capture noisily dash histogram ttl_exp, bin(27) frequency saving("`he5path'", replace)
+    local he5rc = _rc
+    _gt_expect HE-05 "(`he5rc' == 0)" "dash histogram ttl_exp, bin(27) frequency refused: rc `he5rc'"
+
+    python: _he5_read(Macro.getLocal("he5path"), "he5")
+    local he5_pagesum   = ${he5_sum}
+    local he5_pageright = ${he5_right}
+    local he5_tops_str  "${he5_tops}"
+    macro drop he5_sum he5_right he5_tops
+    _gt_expect HE-05 "(`he5_pagesum' == 2246)" "dash's page sums to `he5_pagesum', not 2246"
+    _gt_expect HE-05 "(reldif(`he5_pageright', `he5_max') < 1e-9)" "dash's last right edge `he5_pageright' != twoway's r(max) `he5_max'"
+
+    // generate() writes a row only for a POPULATED bin (twoway's own
+    // convention, the same one test_statistical_truth.py's
+    // TestHistogramAgainstStata compares against: "Stata reports only
+    // the non-empty bins").  dash's page draws all `bin' bars, zero
+    // height included, so both sides are reduced to their non-empty
+    // bins, in ascending order, before the bar-for-bar comparison.  A
+    // Mata one-liner per statement; values handed back to Stata through
+    // st_local (test_adversarial.cscript's own idiom).
+    mata: _he5_zh    = st_data(., "zqh")
+    mata: _he5_zx    = st_data(., "zqx")
+    mata: _he5_keep  = selectindex(_he5_zx :< .)
+    mata: _he5_ord   = order(_he5_zx[_he5_keep], 1)
+    mata: _he5_gen   = _he5_zh[_he5_keep][_he5_ord]
+    mata: _he5_pageall = strtoreal(tokens(st_local("he5_tops_str")))'
+    mata: _he5_page  = select(_he5_pageall, _he5_pageall :> 0)
+    mata: st_local("he5_n_bars", strofreal(rows(_he5_pageall)))
+    mata: st_local("he5_n_gen", strofreal(rows(_he5_gen)))
+    mata: st_local("he5_n_page", strofreal(rows(_he5_page)))
+    mata: st_local("he5_same", strofreal((rows(_he5_gen) == rows(_he5_page) & rows(_he5_gen) > 0) * (max(abs(_he5_gen - _he5_page)) < 1e-6)))
+    mata: mata drop _he5_zh _he5_zx _he5_keep _he5_ord _he5_gen _he5_pageall _he5_page
+    _gt_expect HE-05 "(`he5_n_bars' == `he5_bin')" "dash drew `he5_n_bars' bars, not the `he5_bin' bin(27) asked for"
+    _gt_expect HE-05 "(`he5_n_gen' == `he5_n_page')" "dash drew `he5_n_page' non-empty bars, twoway__histogram_gen `he5_n_gen'"
+    _gt_expect HE-05 "(`he5_same' == 1)" "dash's bars do not equal twoway__histogram_gen's, bar for bar"
+    _gt_done HE-05 "nlsw88 ttl_exp bin(27): dash's 27 bars sum to 2246 and equal twoway__histogram_gen's, bar for bar"
+
+    // ------------------------------------------------------------
+    // HE-06: census pop bin(75) -- 49 of 50 before the fix.
+    // ------------------------------------------------------------
+    dash clear
+    sysuse census, clear
+    twoway__histogram_gen pop, generate(zqh zqx) return frequency bin(75)
+    local he6_bin = r(bin)
+    local he6_max = r(max)
+    quietly summarize zqh, meanonly
+    local he6_gensum = r(sum)
+    _gt_expect HE-06 "(`he6_gensum' == 50)" "twoway__histogram_gen's own bars sum to `he6_gensum', not 50"
+
+    tempfile he6file
+    local he6path = "`he6file'.html"
+    capture erase "`he6path'"
+    capture noisily dash histogram pop, bin(75) frequency saving("`he6path'", replace)
+    local he6rc = _rc
+    _gt_expect HE-06 "(`he6rc' == 0)" "dash histogram pop, bin(75) frequency refused: rc `he6rc'"
+
+    python: _he5_read(Macro.getLocal("he6path"), "he6")
+    local he6_pagesum   = ${he6_sum}
+    local he6_pageright = ${he6_right}
+    local he6_tops_str  "${he6_tops}"
+    macro drop he6_sum he6_right he6_tops
+    _gt_expect HE-06 "(`he6_pagesum' == 50)" "dash's page sums to `he6_pagesum', not 50"
+    _gt_expect HE-06 "(reldif(`he6_pageright', `he6_max') < 1e-9)" "dash's last right edge `he6_pageright' != twoway's r(max) `he6_max'"
+
+    // generate() writes a row only for a populated bin -- see HE-05's
+    // comment; census pop bin(75) over 50 observations leaves most bins
+    // empty, so both sides are reduced to their non-empty bins first.
+    mata: _he6_zh    = st_data(., "zqh")
+    mata: _he6_zx    = st_data(., "zqx")
+    mata: _he6_keep  = selectindex(_he6_zx :< .)
+    mata: _he6_ord   = order(_he6_zx[_he6_keep], 1)
+    mata: _he6_gen   = _he6_zh[_he6_keep][_he6_ord]
+    mata: _he6_pageall = strtoreal(tokens(st_local("he6_tops_str")))'
+    mata: _he6_page  = select(_he6_pageall, _he6_pageall :> 0)
+    mata: st_local("he6_n_bars", strofreal(rows(_he6_pageall)))
+    mata: st_local("he6_n_gen", strofreal(rows(_he6_gen)))
+    mata: st_local("he6_n_page", strofreal(rows(_he6_page)))
+    mata: st_local("he6_same", strofreal((rows(_he6_gen) == rows(_he6_page) & rows(_he6_gen) > 0) * (max(abs(_he6_gen - _he6_page)) < 1e-6)))
+    mata: mata drop _he6_zh _he6_zx _he6_keep _he6_ord _he6_gen _he6_pageall _he6_page
+    _gt_expect HE-06 "(`he6_n_bars' == `he6_bin')" "dash drew `he6_n_bars' bars, not the `he6_bin' bin(75) asked for"
+    _gt_expect HE-06 "(`he6_n_gen' == `he6_n_page')" "dash drew `he6_n_page' non-empty bars, twoway__histogram_gen `he6_n_gen'"
+    _gt_expect HE-06 "(`he6_same' == 1)" "dash's bars do not equal twoway__histogram_gen's, bar for bar"
+    _gt_done HE-06 "census pop bin(75): dash's 75 bars sum to 50 and equal twoway__histogram_gen's, bar for bar"
+
+    capture drop zqh zqx
+    graph drop _all
+    dash clear
+    display as text "S05 end `c(current_time)'"
+}
+* ==== end S05 ====
 
 * ==== append new blocks above this line ====
 

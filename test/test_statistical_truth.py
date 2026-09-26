@@ -15,6 +15,7 @@ statistical layers.
 import json
 import math
 import os
+import re
 import sys
 import warnings
 
@@ -175,6 +176,97 @@ class TestHistogramAgainstStata:
             f"{len(want)} (cmd: {rec['cmd']})"
         )
         np.testing.assert_allclose(got_nonzero, want, rtol=1e-6)
+
+
+#: The seven WP-28 C2 probes: (fixture key, dataset name).  Both nlsw88
+#: cases bin the x column (ttl_exp); census bins the x column (pop) too --
+#: see zq_ds's hvars() in scripts/extract_stat_truth.do.
+_EDGE_CASES = [
+    ("nlsw88:ttl_exp:bin27", "nlsw88"),
+    ("nlsw88:ttl_exp:bin51", "nlsw88"),
+    ("nlsw88:ttl_exp:bin54", "nlsw88"),
+    ("nlsw88:ttl_exp:bin83", "nlsw88"),
+    ("census:pop:bin75", "census"),
+    ("nlsw88:ttl_exp:bin27_start", "nlsw88"),
+    ("nlsw88:ttl_exp:bin27_density", "nlsw88"),
+]
+
+
+class TestHistogramEdgeAgainstStata:
+    """WP-28 C2: dash's floor-and-clamp count against
+    twoway__histogram_gen itself -- the two cases GAPS2 measured directly
+    (nlsw88 ttl_exp bin(27|51|54|83), census pop bin(75)), plus a
+    tolerated start() and the density y-axis."""
+
+    @pytest.mark.parametrize("key,ds", _EDGE_CASES)
+    def test_bars_match_the_generator(self, truth, datasets, mapper, key, ds):
+        rec = _rec(truth, "histogram_edge", key)
+        _, x = _need(datasets, ds)
+
+        opts = {"bin": str(rec["bin"])}
+        if not key.endswith("_density"):
+            opts["frequency"] = "frequency"
+        if key.endswith("_start"):
+            opts["start"] = str(rec["start_requested"])
+
+        src = ColumnDataSource({"v": list(x)})
+        r = mapper.map_histogram(figure(), src, "v", opts)
+        d = r.data_source.data
+        tops = np.asarray(d["top"], float)
+        left = np.asarray(d["left"], float)
+        right = np.asarray(d["right"], float)
+
+        assert rec["rc"] == 0, f"{key}: Stata's own generator refused: {rec}"
+        assert len(tops) == rec["bin"]
+        assert float(left[0]) == pytest.approx(rec["start"], rel=1e-12)
+        assert float(right[-1]) == pytest.approx(rec["xmax"], rel=1e-12)
+
+        want_bar = _series(rec, "bar_height")
+        want_mid = _series(rec, "bin_midpoint")
+        if key.endswith("_start"):
+            # twoway__histogram_gen.ado:232-235: with a user start() one
+            # extra observation (x = start, height missing) is appended.
+            keep = ~np.isnan(want_bar)
+            want_bar = want_bar[keep]
+            want_mid = want_mid[keep]
+
+        nonzero = tops > 0
+        got_nonzero = tops[nonzero]
+        got_mid = ((left + right) / 2.0)[nonzero]
+        assert len(got_nonzero) == len(want_bar), (
+            f"{key}: dash drew {len(got_nonzero)} non-empty bins, Stata "
+            f"{len(want_bar)} (cmd: {rec['cmd']})"
+        )
+        rtol = 1e-9 if "frequency" in opts else 1e-6
+        np.testing.assert_allclose(got_nonzero, want_bar, rtol=rtol)
+        # bin_midpoint round-trips through the checked-in CSV (a Stata
+        # float/double stored as decimal text), so this is a ~1e-6
+        # relative comparison, like the bar heights above -- not equality.
+        np.testing.assert_allclose(got_mid, want_mid, rtol=1e-6)
+
+        if "frequency" in opts:
+            assert float(tops.sum()) == pytest.approx(float(rec["sum_height"]))
+            assert float(tops.sum()) == pytest.approx(float(rec["N"]))
+
+    def test_the_fixture_holds_the_seven_edge_probes(self, truth):
+        assert set(truth["histogram_edge"]) == {key for key, _ in _EDGE_CASES}, (
+            "a regenerated fixture must keep exactly these seven probes, "
+            "not shrink the parametrisation"
+        )
+        for key, rec in truth["histogram_edge"].items():
+            assert rec["rc"] == 0, f"{key}: rc={rec['rc']}"
+
+    def test_the_meta_stamp_holds_the_four_provenance_keys(self, truth):
+        """WP-28 D12: every new/regenerated fixture's provenance stamp."""
+        meta = truth["_meta"]
+        for key in ("stata_version", "born_date", "dash_commit", "extracted"):
+            val = meta.get(key)
+            assert isinstance(val, str) and val, f"_meta.{key} is missing or empty"
+        assert re.match(r"^[0-9a-f]{40}$", meta["dash_commit"]), (
+            f"_meta.dash_commit is not a 40-character hex commit: {meta['dash_commit']!r}"
+        )
+        for key in ("run_date", "counts", "self_checks"):
+            assert key in meta, f"_meta.{key} is missing"
 
 
 # ======================================================================

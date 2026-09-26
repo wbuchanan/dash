@@ -147,7 +147,14 @@ and now matches Stata.
 <!-- WP-28 B5 -->
 <!-- WP-28 B6 -->
 <!-- WP-28 B7 -->
-<!-- WP-28 C2 -->
+- A continuous `histogram` dropped the observation at its last edge
+  when the computed edge fell a few units in the last place below the
+  maximum, and the rows a tolerated `start()` lay above: `dash histogram
+  ttl_exp, bin(27)` on nlsw88 counted 2245 of 2246 rows and `histogram pop,
+  bin(75)` on census 49 of 50, with the density bars scaled to the rows
+  that remained. Every observation is now counted as Stata counts it, bar
+  `floor((v - start)/width)` clamped to the grid, in the page and after a
+  filter move (2246 and 50). (WP-28, C2)
 - A `.scheme` file in the working directory that wrote its colours the
   way Stata's own schemes do -- `color background "255 0 0"` or
   `color p1 "26 71 111 %20"` -- lost every such directive without a
