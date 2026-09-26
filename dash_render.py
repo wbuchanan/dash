@@ -2015,6 +2015,8 @@ def _dash_lone_second_axes(spec):
             for side in lone:
                 for first in _DASH_LONE_AXIS_OPTIONS[side]:
                     second = go.pop(first + "2", None)
+                    # A raw "" is deliberately moved (it is not blank):
+                    # ytitle2("") on a lone graph removes the one title.
                     if isinstance(second, str) and second.strip():
                         go[first] = second
             g["graph_options"] = go
@@ -18381,14 +18383,19 @@ def _dash_axis_labels(plots, graph_opts, var_labels, seen=None, key=""):
     # used to title the axis "Weight, size(large)".  size() and color()
     # are applied by _dash_style_axis_titles; the rest is named.
     def _label(opt, default):
-        text, opts = _dash_textbox(go.get(opt, ""), opt, seen, key)
+        raw = go.get(opt, "")
+        text, opts = _dash_textbox(raw, opt, seen, key)
+        # Given with empty text (xtitle("")) removes the title; only an
+        # ABSENT option takes twoway's default (WP-28 B6).  The spec keeps
+        # the typed quotes, so "" given is a non-blank raw value.
+        given = bool(str(raw or "").strip())
         # A lone suffix/prefix adds its lines after/before the default, as
         # twoway draws ytitle("extra", suffix) (WP-28 B3).
         if "suffix" in opts:
             return default + ("\n" + text if text else "")
         if "prefix" in opts:
             return (text + "\n" if text else "") + default
-        return text or default
+        return text if given else default
 
     return _label("xtitle", x_default), _label("ytitle", y_default)
 

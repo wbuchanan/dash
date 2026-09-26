@@ -483,3 +483,63 @@ class TestTheServedCopy:
         for name in ("_TEXTBOX_SUBOPTS", "_textbox_canon",
                      "_dash_route_axis_titles", "_DASH_TEXTBOX_HONOURED"):
             assert name in src, name
+
+
+# ============================================================
+# B6 (13-13 tests, 13-14 fix, 13-15 close): an option given with empty
+# text removes the title; an absent option keeps twoway's default.
+# ============================================================
+
+_EMPTY_IDS = ("t_ytitle_axis2_empty", "t_xtitle_empty", "t_ytitle_empty",
+              "t_both_empty", "t_xtitle_empty_size", "t_hist_ytitle_empty")
+_HIST = [{"type": "histogram", "var": "y1", "options": {}}]
+_KDENS = [{"type": "kdensity", "var": "y1", "options": {}}]
+_ONE = [{"type": "scatter", "yvar": "y1", "xvar": "x", "options": {}}]
+
+
+class TestEmptyTitles:
+    """xtitle("")/ytitle("") remove the axis title (axis_title_options.sthlp
+    218-228), in both modes and on the second axis.  Bokeh stores an
+    empty axis_label as None; either means no title is drawn."""
+
+    def test_empty_text_removes_the_title(self, truth):
+        for mode in ("saved", "served"):
+            fig = _lone_figure(mode, _ONE, {"name": "fig1", "xtitle": '""',
+                                            "ytitle": '""'})
+            assert fig.xaxis[0].axis_label in ("", None)
+            assert fig.yaxis[0].axis_label in ("", None)
+        assert set(truth["probes"]["t_both_empty"]["removed_texts"]) == {
+            "Mileage (mpg)", "Weight (lbs.)"}
+
+    def test_empty_text_with_a_sub_option(self):
+        for mode in ("saved", "served"):
+            fig = _lone_figure(mode, _ONE, {"name": "fig1",
+                                            "xtitle": '"", size(large)'})
+            assert fig.xaxis[0].axis_label in ("", None)
+
+    def test_defaults_stay_when_absent(self):
+        for mode in ("saved", "served"):
+            assert _lone_figure(mode, _HIST, {"name": "fig1"}) \
+                .yaxis[0].axis_label == "Density"
+            assert _lone_figure(mode, _KDENS, {"name": "fig1"}) \
+                .yaxis[0].axis_label == "kdensity y1"
+            assert _lone_figure(mode, _HIST, {"name": "fig1",
+                                              "ytitle": '""'}) \
+                .yaxis[0].axis_label in ("", None)
+
+    def test_second_axis_empty(self):
+        lone = [{"type": "scatter", "yvar": "y1", "xvar": "x",
+                 "options": {"yaxis": "2"}}]
+        for mode in ("saved", "served"):
+            assert _y2_axis(mode, '""').axis_label in ("", None)
+            fig = _lone_figure(mode, lone, {"name": "fig1", "ytitle2": '""'})
+            assert [a.axis_label or "" for a in _axes(fig.left)] == [""]
+
+    @pytest.mark.parametrize("pid", _EMPTY_IDS)
+    def test_the_fixture_probes_show_no_title(self, truth, pid):
+        probe = truth["probes"][pid]
+        assert probe["rc"] == 0
+        assert probe["removed_texts"], pid
+        # Nothing but tick labels (numbers) is ever added by an empty title.
+        assert not [t for t in probe["added_texts"]
+                    if not t.replace(",", "").replace(".", "").isdigit()], pid

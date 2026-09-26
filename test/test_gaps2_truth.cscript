@@ -528,6 +528,24 @@ if inlist("`only'", "", "S13") {
     _gt_done TBG-03 "ytitle(Left) ytitle(Right, axis(2)) stores both titles"
     capture dash clear
 
+    // ---- TBG-04: xtitle("") ytitle("") remove both titles ----
+    quietly twoway scatter mpg weight, xtitle("") ytitle("") name(tbg4, replace)
+    cert_svg_export, name(tbg4) file("`gt_work'/tbg4.svg")
+    local tbg_f "`r(file)'"
+    cert_svg_has_text, file("`tbg_f'") text("Weight (lbs.)")
+    local tbg_w = r(found)
+    cert_svg_has_text, file("`tbg_f'") text("Mileage (mpg)")
+    local tbg_m = r(found)
+    capture noisily dash scatter mpg weight, xtitle("") ytitle("") name(tbg4)
+    capture noisily dash build, saving("`tbg_page'.html") replace nobrowser
+    python: __import__("__main__")._tbg_axes()
+    local tbg_ax `"$TBG_OUT"'
+    display as text `"  TBG-04 twoway weight:`tbg_w' mpg:`tbg_m'  axes [`tbg_ax']"'
+    _gt_expect TBG-04 "(`tbg_w' == 0 & `tbg_m' == 0)" "twoway drew a default title"
+    _gt_expect TBG-04 `"(`"`tbg_ax'"' == "default=|default=")"' "dash axes `tbg_ax'"
+    _gt_done TBG-04 "empty xtitle/ytitle remove both titles"
+    capture dash clear
+
     // ---- TBG-05: ytitle("extra", suffix) ----
     quietly twoway scatter mpg weight, ytitle("extra", suffix) name(tbg5, replace)
     cert_svg_export, name(tbg5) file("`gt_work'/tbg5.svg")

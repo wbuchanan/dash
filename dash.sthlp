@@ -555,6 +555,11 @@ named in a note and drawn around -- because it is what would be drawn.
     sub-option ({cmd:colour()}, {cmd:style()}), is named, never drawn as
     text.  A lone {cmd:suffix} on an axis title adds its lines after the
     default title, {cmd:prefix} before it.
+    An axis title given with empty text -- {cmd:xtitle("")},
+    {cmd:ytitle("")}, {cmd:ytitle("", axis(2))} or {cmd:ytitle2("")} --
+    removes that title, as in {cmd:twoway}; an option not given at all
+    keeps the default (the variable's label, {cmd:Density},
+    {cmd:kdensity} {it:var}).
     A weight, {cmd:[aweight=}{it:varname}{cmd:]}, {cmd:[fweight=]} or
     {cmd:[pweight=]}, is honoured on the statistical layers that take it
     in {cmd:twoway} and refused, as {cmd:twoway} refuses it, where they do

@@ -149,7 +149,10 @@ and now matches Stata.
   of Stata's abbreviations, so the title is `T` in red and the right axis
   is titled `Volume`. (WP-28, B3)
 <!-- WP-28 B5 -->
-<!-- WP-28 B6 -->
+- `xtitle("")` still drew `weight` and `ytitle("")` still drew `mpg` (the
+  variable's label); an axis title given with empty text now removes the
+  title, as in twoway, while an absent option keeps the default.
+  (WP-28, B6)
 - `ytitle2("P2")` drew `"P2"` with its quote marks, `ytitle2("a" "b")` one
   quoted line and `ytitle2("P2", size(large))` the sub-option text as part
   of the label; `_dash_add_secondary_axes` now reads `ytitle2()`/`xtitle2()`

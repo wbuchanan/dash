@@ -1390,6 +1390,9 @@ CORPUS = [
           [_sc(), plot_for("line", yvar="price", xvar="weight",
                            options={"yaxis": "2"})], None,
           {"ytitle": '"Volume", axis(2)'}),
+    # WP-28 B6: empty text removes both axis titles, both modes.
+    _case("xtitle and ytitle given empty", [_sc()], None,
+          {"xtitle": '""', "ytitle": '""'}),
     _case("xaxis(2) on a second layer",
           [_sc(), plot_for("line", yvar="mpg", xvar="price",
                            options={"xaxis": "2"})]),

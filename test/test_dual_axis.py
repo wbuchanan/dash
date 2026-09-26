@@ -452,6 +452,13 @@ class TestTheLoneAxisRewrite:
         assert g["graph_options"]["ytitle"] == "T"
         assert "ytitle2" not in g["graph_options"]
 
+    def test_an_empty_second_title_is_moved_and_removes_the_title(self):
+        """WP-28 B6: ytitle2("") on a lone yaxis(2) graph is moved (a raw
+        "" is not blank) and removes the one axis's title, both modes."""
+        for mode in _LONE_MODES:
+            fig = _lone_figure(mode, _LONE, {"name": "fig1", "ytitle2": '""'})
+            assert [a.axis_label or "" for a in _axes(fig.left)] == [""]
+
     def test_a_mixed_graph_is_left_alone(self):
         import dash_render as _dr
         spec = {"graphs": [{"plots": [
