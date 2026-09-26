@@ -7049,12 +7049,8 @@ class GlyphMapper:
         # Used to render value labels on legend entries and to display the
         # variable label as the legend/colorbar title.
         var_display = self.variable_labels.get(varname, "") or varname
-        labelset    = self.value_label_names.get(varname, "")
-        vlabels     = self.value_labels.get(labelset, {}) if labelset else {}
-        if not vlabels:
-            _candidate = self.value_labels.get(varname, {})
-            if isinstance(_candidate, dict):
-                vlabels = _candidate
+        vlabels     = _dash_value_labels_for(varname, self.value_labels,
+                                             self.value_label_names)
 
         def _vlookup(v: float) -> str:
             """Return the Stata value label for v if defined, else numeric str.
@@ -7642,20 +7638,10 @@ class GlyphMapper:
         return col
 
     def _mlabel_value_labels(self, var: str) -> "dict[str, str]":
-        """The value labels of *var*, ``{code: text}``, or ``{}``.
-
-        Looked up by the label set's name first -- ``valueLabelNames`` maps
-        the variable to it -- and then by the variable's own name, which is
-        how real jsonio keys ``valueLabels`` (measured: ``jsonio out ...
-        metaprint(vallabs labelnames)`` writes ``{"r": {"0": "Zero"}}`` for
-        a variable ``r`` carrying the label set ``rl``).
-        """
-        labelset = getattr(self, "value_label_names", {}).get(var, "")
-        vlabels = (getattr(self, "value_labels", {}).get(labelset, {})
-                   if labelset else {})
-        if not vlabels:
-            vlabels = getattr(self, "value_labels", {}).get(var, {})
-        return vlabels if isinstance(vlabels, dict) else {}
+        """The value labels of *var*, ``{code: text}``, or ``{}``
+        (:func:`_dash_value_labels_for`, TR-14.6, WP-28 S14)."""
+        return _dash_value_labels_for(var, getattr(self, "value_labels", {}),
+                                      getattr(self, "value_label_names", {}))
 
     @staticmethod
     def _mlabel_column_kind(col: Any) -> "tuple[bool, np.ndarray]":
@@ -14652,12 +14638,8 @@ def _dash_csv_meta(columns, formats, string_flags, value_labels,
         if kind:
             dates[c] = kind
             continue
-        labelset = value_label_names.get(c, "")
-        vmap = value_labels.get(labelset, {}) if labelset else {}
-        if not vmap:
-            cand = value_labels.get(c, {})
-            vmap = cand if isinstance(cand, dict) else {}
-        if isinstance(vmap, dict) and vmap:
+        vmap = _dash_value_labels_for(c, value_labels, value_label_names)
+        if vmap:
             labels[c] = {str(k): str(v) for k, v in vmap.items()}
     return {"columns": cols, "strings": strings, "dates": dates,
             "labels": labels, "filename": str(filename)}
@@ -17366,15 +17348,7 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
         if _kind and date_formatter is not None:
             parts.append(date_formatter(val, _kind))
             continue
-        labelset = value_label_names.get(var, "")
-        vlabels = value_labels.get(labelset, {}) if labelset else {}
-        # jsonio keys valueLabels by the variable's name, not by the label
-        # set's (measured: metaprint(vallabs labelnames) writes
-        # {"r": {"0": "Zero"}} for a variable r carrying the set rl).
-        if not vlabels:
-            vlabels = value_labels.get(var, {})
-        if not isinstance(vlabels, dict):
-            vlabels = {}
+        vlabels = _dash_value_labels_for(var, value_labels, value_label_names)
         # Raw: a facet label titles a panel (fig.title.text), which Bokeh
         # draws on the canvas, and it also feeds a per-facet KPI card that
         # html-escapes it again -- so escaping here showed the entities on
@@ -19638,6 +19612,9 @@ def _dash_parse_axis_spec(raw):
     if tail:
         for _tok in _dash_by_tokens(tail.lstrip(",").strip()):
             _nm = _dash_subopt_name(_tok)
+            if _nm and len(_nm) >= 3 and "valuelabel".startswith(_nm):
+                out["valuelabel"] = True
+                continue
             if _nm not in ("format", "labsize", "angle", "grid", "nogrid"):
                 out["unsupported"].append(_tok)
 
@@ -19698,7 +19675,8 @@ def _dash_parse_axis_spec(raw):
 
 
 def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
-                          fmt_fallback="", grid_color=None):
+                          fmt_fallback="", grid_color=None,
+                          value_labels=None):
     """Apply a parsed ``axis_label`` spec to one axis.
 
     Args:
@@ -19716,6 +19694,12 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                       ``xlabel(, grid)`` under s1color drew a grid in no
                       scheme's colour.  None keeps that literal for a
                       caller with no scheme.
+        value_labels: ``{code: text}`` for this axis's variable (from
+                      :func:`_dash_value_labels_for`), read only when
+                      ``spec["valuelabel"]`` is set (G16, WP-28 S14):
+                      every whole-number code gets its label as a tick
+                      override, unless an explicit ``"text"`` names that
+                      same tick, which wins.
     """
     from bokeh.models.tickers import FixedTicker, BasicTicker
     from bokeh.models.formatters import (CustomJSTickFormatter,
@@ -19723,7 +19707,19 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
 
     mode = spec["mode"]
 
+    # G16 (WP-28 S14): valuelabel's overrides, merged under an explicit
+    # "text" of the same tick (measured by probe g16_vl_mixed) -- on
+    # every mode that draws ticks, since Bokeh applies an override only
+    # on a tick it matches and leaves every other tick to the formatter.
     overrides = {}
+    if spec.get("valuelabel") and value_labels:
+        for _code, _text in value_labels.items():
+            try:
+                _f = float(_code)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(_f) and _f.is_integer():
+                overrides[_f] = str(_text)
     if spec.get("labels"):
         overrides.update({float(k): v for k, v in spec["labels"].items()})
 
@@ -19943,12 +19939,16 @@ def _fmt_num(v):
 
 def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
                              numeric_formats, seen=None, key="",
-                             grid_color=None):
+                             grid_color=None, value_labels=None,
+                             value_label_names=None):
     """xlabel()/ylabel(), then xtick()/ytick() beside them, on the figure's
     own axes -- not a yaxis(2)/xaxis(2) axis, which ylabel2()/xlabel2()
     label; the sub-options the grammar does not honour are named.
     *grid_color* is the scheme's grid colour for an explicit ``grid``; both
-    modes pass their scheme's."""
+    modes pass their scheme's.  *value_labels*/*value_label_names* are the
+    dataset's, for ``valuelabel`` (G16, WP-28 S14): x options map through
+    *xvar*'s set, y options through *yvar*'s (the first y variable's, as
+    twoway does)."""
     cols = getattr(frame, "columns", [])
     for ax_key, tick_key, axes, grids, var, rattr in (
             ("xlabel", "xtick", fig.xaxis, fig.xgrid, xvar, "x_range_name"),
@@ -19957,6 +19957,7 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
         grid_obj = _dash_primary_axes(grids, rattr)
         col = frame[var] if var and var in cols else None
         kind = _dash_axis_date_kind(fig, ax_key[0])
+        vlabels = _dash_value_labels_for(var, value_labels, value_label_names)
         raw = graph_opts.get(ax_key, "")
         if raw:
             spec = _dash_parse_axis_spec(raw)
@@ -19966,7 +19967,7 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
                 spec = _dash_date_axis_spec(spec, kind, ax_key)
             _dash_apply_axis_spec(axis_obj, grid_obj, spec,
                                   col, (numeric_formats or {}).get(var, ""),
-                                  grid_color)
+                                  grid_color, vlabels)
         traw = graph_opts.get(tick_key, "")
         if traw:
             _dash_apply_tick_option(axis_obj, grid_obj, traw, tick_key, col,
@@ -20091,7 +20092,8 @@ def _dash_secondary_values(fig, range_attr, name):
 
 
 def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
-                                grid_color=None):
+                                grid_color=None, plots=None,
+                                value_labels=None, value_label_names=None):
     """Fit the second axes to what their layers drew, then label them.
 
     Called once every layer is drawn, in both modes.  Two claims of
@@ -20119,9 +20121,10 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
     Range1d, which has no such property, and was dropped without a word.
     """
     from bokeh.models import Grid, LinearAxis, LogAxis
-    for rng_attr, name, side, kw, dim in (
-            ("extra_y_ranges", "y2", "right", "y_range_name", 1),
-            ("extra_x_ranges", "x2", "above", "x_range_name", 0)):
+    plots = plots or []
+    for rng_attr, name, side, kw, dim, axis_key in (
+            ("extra_y_ranges", "y2", "right", "y_range_name", 1, "yaxis"),
+            ("extra_x_ranges", "x2", "above", "x_range_name", 0, "xaxis")):
         rng = getattr(fig, rng_attr).get(name)
         if rng is None:
             continue
@@ -20172,8 +20175,22 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                      **{kw: name})
             fig.add_layout(g, "center")
             grids.append(g)
+        # G16 (WP-28 S14): ylabel2(, valuelabel)/xlabel2(, valuelabel) map
+        # through the first layer that put a plot on this second axis --
+        # its y variable (or its range's yvar1) for y2, its x for x2, as
+        # the primary axis maps through xvar/yvar.
+        var2 = ""
+        for _p in plots:
+            if str((_p.get("options") or {}).get(axis_key, "1")).strip() != "2":
+                continue
+            if axis_key == "yaxis":
+                var2 = _p.get("yvar") or _p.get("yvar1") or ""
+            else:
+                var2 = _p.get("xvar") or ""
+            break
+        vlabels2 = _dash_value_labels_for(var2, value_labels, value_label_names)
         _dash_apply_axis_spec(ax, grids, spec, col_vals or None, "",
-                              grid_color)
+                              grid_color, vlabels2)
 
 
 def _dash_keep_primary_ranges(fig):
@@ -21920,6 +21937,40 @@ def _dash_option_columns(options, columns=None):
     return out
 
 
+def _dash_value_labels_for(var, value_labels, value_label_names):
+    """The value labels of *var*, ``{code: text}``, or ``{}`` (TR-14.6,
+    WP-28 S14 -- the one copy of the lookup ``GlyphMapper._mlabel_value_labels``
+    and four other sites each wrote for themselves).
+
+    Looked up by the label set's name first -- *value_label_names* maps
+    the variable to it -- and then by the variable's own name, which is
+    how real jsonio keys *value_labels* (measured: ``jsonio out ...
+    metaprint(vallabs labelnames)`` writes ``{"r": {"0": "Zero"}}`` for a
+    variable ``r`` carrying the label set ``rl``).
+
+    Args:
+        var: The variable's name, or ``""``/``None``.
+        value_labels: ``{labelset: {code: text}}``, or keyed by the
+            variable's own name, as real jsonio writes it; any non-dict
+            (including ``None``) is read as empty.
+        value_label_names: ``{varname: labelset}``; any non-dict read as
+            empty.
+
+    Returns:
+        A dict, possibly empty; never anything else.
+    """
+    if not var:
+        return {}
+    value_labels = value_labels if isinstance(value_labels, dict) else {}
+    value_label_names = (value_label_names
+                         if isinstance(value_label_names, dict) else {})
+    labelset = value_label_names.get(var, "")
+    vlabels = value_labels.get(labelset, {}) if labelset else {}
+    if not vlabels:
+        vlabels = value_labels.get(var, {})
+    return vlabels if isinstance(vlabels, dict) else {}
+
+
 def _dash_attach_labels(mapper, variable_labels=None, value_labels=None,
                         value_label_names=None, date_vars=None,
                         numeric_formats=None, storage_types=None):
@@ -23125,13 +23176,61 @@ def _dash_legend_entries(plot_renderers, var_labels=None,
     return out
 
 
-def _dash_hover_row(col, label, date_kind="", numeric_fmt=""):
+def _dash_hover_text_column(var):
+    """The derived hover-label column for *var* (TR-14.9, G16, WP-28 S14):
+    the ``__dash`` prefix Section 07 reserves, so a user column of that
+    name is refused before it could be silently overwritten (G1)."""
+    return f"__dash_hover_{var}"
+
+
+def _dash_add_hover_text(source, var, vlabels):
+    """Write *var*'s value-label text into its hover column on *source*
+    when it is absent (TR-14.9, G16, WP-28 S14) -- a derived column like
+    any other, so it survives a saved snapshot rebuild
+    (``_snapshot_of``/``_FILTER_JS``) and a served redraw the same way
+    ``__dash_mlabel_*`` does.
+
+    Args:
+        source: A Bokeh ``ColumnDataSource`` (or anything with a ``.data``
+            mapping), already carrying *var*'s own column.
+        var: The variable's name.
+        vlabels: ``{code: text}`` (:func:`_dash_value_labels_for`).
+
+    Returns:
+        The column's name, or ``None`` when *source* carries no *var*
+        column to derive it from (nothing is written); an existing
+        column of that name is never overwritten.
+    """
+    col = _dash_hover_text_column(var)
+    data = getattr(source, "data", None)
+    if data is None or var not in data:
+        return None
+    if col in data:
+        return col
+    vals = data[var]
+    try:
+        n = len(vals)
+    except TypeError:
+        return None
+    data[col] = [GlyphMapper._mlabel_value_text(v, vlabels) for v in vals]
+    return col
+
+
+def _dash_hover_row(col, label, date_kind="", numeric_fmt="", text_col=None):
     """One tooltip row for column *col*, honouring its Stata display format.
 
-    Returns ``(field, formatter_key_or_None)``.  A date column shows a date
-    rather than the underlying number, and a column with a Stata numeric
-    format shows the digits that format asks for.
+    Args:
+        text_col: When given (G16, WP-28 S14), the row reads this column
+            instead, with no format -- a value-labelled variable's
+            tooltip shows its label text, never a formatted number.
+
+    Returns:
+        ``(field, formatter_key_or_None)``.  A date column shows a date
+        rather than the underlying number, and a column with a Stata
+        numeric format shows the digits that format asks for.
     """
+    if text_col:
+        return (label, f"@{{{text_col}}}"), None
     if date_kind:
         spec = (f"@{{{col}}}{{%F %T}}" if date_kind == "tc"
                 else f"@{{{col}}}{{%F}}")
@@ -23171,7 +23270,8 @@ def _dash_hover_layer_vars(plot):
 
 def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
                       var_labels=None, date_vars=None, numeric_formats=None,
-                      univar="", layers=None):
+                      univar="", layers=None, value_labels=None,
+                      value_label_names=None):
     """Give *fig* its one comprehensive HoverTool, in either render mode.
 
     GAPS.md D2: ``HoverTool`` was imported into the generated app and never
@@ -23247,6 +23347,29 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
     for _r in _rends:
         _present |= _cols_of(_r)
 
+    # G16 (WP-28 S14): a hover() variable with value labels shows its
+    # label text, through a derived column written on every renderer
+    # source that carries the variable (never a date -- _dash_stata_date_text
+    # is its own formatter, and a value-labelled date is not a case
+    # measured).  Done before _fields_for reads _cols_of(), so a renderer
+    # that just gained the column qualifies for the full tooltip.
+    _text_cols = {}
+    for _name in (hover_extra or []):
+        if not _name or (date_vars or {}).get(_name):
+            continue
+        _vl = _dash_value_labels_for(_name, value_labels, value_label_names)
+        if not _vl:
+            continue
+        _col = None
+        for _r in _rends:
+            _src = getattr(_r, "data_source", None)
+            if _src is None:
+                continue
+            _got = _dash_add_hover_text(_src, _name, _vl)
+            _col = _col or _got
+        if _col:
+            _text_cols[_name] = _col
+
     def _fields_for(names):
         """(tooltip rows, formatters, every name considered) for the
         variables *names*, then hover()'s, that some renderer carries."""
@@ -23273,12 +23396,15 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
                 _seen.add(_c)
                 continue
             _wanted.append(_c)
-            _seen.add(_c)
+            # The column a renderer must carry for the full tooltip: the
+            # derived label column when hover() found one, else the
+            # variable itself.
+            _seen.add(_text_cols.get(_c, _c))
         _flds, _fmts = [], {}
         for _c in _wanted:
             _row, _fmt_key = _dash_hover_row(
                 _c, var_labels.get(_c, _c), date_vars.get(_c, ""),
-                numeric_formats.get(_c, ""))
+                numeric_formats.get(_c, ""), text_col=_text_cols.get(_c))
             _flds.append(_row)
             if _fmt_key:
                 _fmts[_fmt_key] = "datetime"
@@ -25492,7 +25618,9 @@ class DashRenderer:
                                  _source_frame(source, self.df),
                                  getattr(self, "numeric_formats", {}),
                                  _seen, _gkey,
-                                 grid_color=self.scheme.grid_color)
+                                 grid_color=self.scheme.grid_color,
+                                 value_labels=self.value_labels,
+                                 value_label_names=self.value_label_names)
 
         # Plot categories that use non-standard JSON variable keys.  Defined
         # at module level so the generated server app shares them rather than
@@ -25687,7 +25815,10 @@ class DashRenderer:
         # The second axes, fitted to what their layers drew and labelled
         # through ylabel()'s grammar -- the helper the generated app runs.
         _dash_finish_secondary_axes(fig, graph_opts, _seen, _gkey,
-                                    grid_color=self.scheme.grid_color)
+                                    grid_color=self.scheme.grid_color,
+                                    plots=plots,
+                                    value_labels=self.value_labels,
+                                    value_label_names=self.value_label_names)
 
         # ---- Legend: Stata's keys, and Stata's rule for showing one ----
         self._rebuild_legend(fig, locals().get("_plot_renderers", []),
@@ -25738,6 +25869,8 @@ class DashRenderer:
             univar=_p0.get("var", ""),
             # Each layer's tooltip names its own variables.
             layers=locals().get("_plot_renderers", []),
+            value_labels=self.value_labels,
+            value_label_names=self.value_label_names,
         )
         # A layer hover() cannot reach says so -- the rule the generated
         # app runs, once per layer however many by() panels draw it.
@@ -26986,12 +27119,8 @@ class DashRenderer:
                 fsource = ColumnDataSource(data={})
 
             # Resolve value labels (standard Stata format or direct-by-varname)
-            labelset = self.value_label_names.get(fvar, "")
-            vlabels  = self.value_labels.get(labelset, {}) if labelset else {}
-            if not vlabels:
-                candidate = self.value_labels.get(fvar, {})
-                if isinstance(candidate, dict):
-                    vlabels = candidate
+            vlabels = _dash_value_labels_for(fvar, self.value_labels,
+                                             self.value_label_names)
 
             # Resolve filter widget title:
             #   1. explicit label() option from the filter spec
@@ -28074,6 +28203,11 @@ class ServerAppBuilder:
                          # _dash_parse_axis_spec calls before it.
                          "_dash_axis_tokens", "_dash_axis_head_split",
                          "_dash_expand_numlist", "_dash_axis_too_many",
+                         # WP-28 S14 (G16): the one label-set lookup five
+                         # sites used to write for themselves, and the
+                         # hover text column it feeds.
+                         "_dash_value_labels_for",
+                         "_dash_hover_text_column", "_dash_add_hover_text",
                          "_dash_primary_axes", "_dash_apply_tick_option",
                          "_dash_apply_axis_options",
                          "_dash_add_secondary_axes",
@@ -29847,7 +29981,9 @@ class ServerAppBuilder:
             "        # else, so xlabel(2000(1000)4000) was ignored when served.",
             "        _dash_apply_axis_options(fig, go, xv, yv, g_df, _num_formats,",
             "                                 _reported_subopts, gname,",
-            "                                 grid_color=_DASH_SCHEME.grid_color)",
+            "                                 grid_color=_DASH_SCHEME.grid_color,",
+            "                                 value_labels=val_labels,",
+            "                                 value_label_names=val_label_names)",
             "",
             '        # Legend boundaries.  NOT ONE of the 44 glyph calls in this loop',
             '        # passed legend_label, so a served figure had no legend at all --',
@@ -29984,7 +30120,10 @@ class ServerAppBuilder:
             "        # labelled through ylabel()'s grammar: the saved renderer's",
             "        # helper, copied in above.",
             "        _dash_finish_secondary_axes(fig, go, _reported_subopts, gname,",
-            "                                    grid_color=_DASH_SCHEME.grid_color)",
+            "                                    grid_color=_DASH_SCHEME.grid_color,",
+            "                                    plots=plots,",
+            "                                    value_labels=val_labels,",
+            "                                    value_label_names=val_label_names)",
             "        # Beside a second axis, the figure's own axes range over the",
             "        # layers drawn on them only, as the saved figure's do.",
             "        _dash_keep_primary_ranges(fig)",
@@ -30047,7 +30186,16 @@ class ServerAppBuilder:
             "            # Each layer's tooltip names its own variables, as",
             "            # the saved renderer's does.",
             "            layers=_plot_rends,",
+            '            value_labels=val_labels,',
+            '            value_label_names=val_label_names,',
             '        )',
+            "        # G16 (WP-28 S14): this graph's own hover() variables",
+            "        # that carry value labels, added to the document-wide map",
+            "        # the redraw hook reads.",
+            "        for _hlv in (_hv.split() if _hv else []):",
+            "            _hlvl = _dash_value_labels_for(_hlv, val_labels, val_label_names)",
+            "            if _hlvl:",
+            "                _hover_label_vars[_hlv] = _hlvl",
             "        # A layer hover() cannot reach says so, in the saved",
             "        # renderer's words, once per layer across the panels.",
             "        # Named for the graph, not for the panel's key.",
@@ -30080,6 +30228,11 @@ class ServerAppBuilder:
             "    # The rows each graph or panel shows, by its key: what a",
             "    # selection cleared on one of its sources counts (_brush_rows).",
             "    _owner_rows = {}",
+            "    # G16 (WP-28 S14): every hover() variable, across every graph,",
+            "    # that carries value labels -- _on_filter_change's redraw hook",
+            "    # re-adds each one's derived column, since a redrawn source is",
+            "    # rebuilt from the frame, which has none.",
+            "    _hover_label_vars = {}",
             "    for g in graphs:",
             "        go = g.get('graph_options', {})",
             "        gname = go.get('name', '')",
@@ -30550,6 +30703,10 @@ class ServerAppBuilder:
             "                    # (_dash_keep_jitter), as on the saved page.",
             "                    _live.data = _dash_keep_jitter(",
             "                        dict(_new.data), _orig_src_data.get(id(_live), {}))",
+            "                    # G16 (WP-28 S14): a redraw rebuilds _live from the",
+            "                    # frame, which carries no derived label column.",
+            "                    for _hlv, _hlvl in _hover_label_vars.items():",
+            "                        _dash_add_hover_text(_live, _hlv, _hlvl)",
             "                    # Its rows are new too: a selection on them (a",
             "                    # jittered scatter's) is cleared, as in step 2.",
             "                    _live.selected.indices = []",

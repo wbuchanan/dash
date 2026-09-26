@@ -14,6 +14,7 @@
 *!   S13  textbox grammar: B3, B6, B7 (TBG-01..TBG-06)
 *!   S17  filters vs count and summarize (FT-01..FT-06; GAPS2 X1, E2)
 *!   S14  axis labels, B1 (AL-01..AL-16)
+*!   S14  axis labels and value labels, B1 and G16 (AL-01..AL-19)
 *!
 *! Usage: via run_all_cscripts.do (registered as its last block).  One
 *! block alone: set GAPS2_ONLY=S<NN> in the environment of the driver run
@@ -916,7 +917,7 @@ end
 * xlabel(1(2)10) carries 1 3 5 7 9; AL-04 an oversized list registers and
 * builds; AL-05..AL-16 twoway's SVG and dash's page for each B1 form twoway
 * draws (the page spells its ticks "ticks":[1.0,2.0,...], measured on
-* AL-03's page).
+* AL-03's page); AL-17..AL-19 valuelabel and hover() value labels (G16).
 local only : env GAPS2_ONLY
 if inlist("`only'", "", "S14") {
     display as text "S14 start `c(current_time)'"
@@ -1018,6 +1019,45 @@ if inlist("`only'", "", "S14") {
     _al_num AL-14 "scatter mpg weight" "ylabel(40(-10)10)" "10.0,20.0,30.0,40.0" "40" "`d'"
     _al_num AL-15 "scatter mpg weight" "ylabel(10(2.5)20)" "10.0,12.5,15.0,17.5,20.0" "17.5" "`d'"
     _al_num AL-16 "scatter mpg rep78" "xlabel(1 2 3/5 8(2)12)" "1.0,2.0,3.0,4.0,5.0,8.0,10.0,12.0" "12" "`d'"
+
+    // AL-17..AL-19 (G16): value labels on an axis and in a tooltip.
+    sysuse auto, clear
+    label define alrep 1 "Poor" 2 "Fair" 3 "Average" 4 "Good" 5 "Excellent"
+    label values rep78 alrep
+    quietly twoway scatter mpg rep78, xlabel(1/5, valuelabel) name(al, replace)
+    cert_svg_export, name(al) file("`d'/al17.svg")
+    cert_svg_has_text, file("`d'/al17.svg") text("Excellent")
+    _gt_expect AL-17 "(r(found) == 1)" "twoway did not draw Excellent"
+    dash clear
+    capture noisily dash scatter mpg rep78, xlabel(1/5, valuelabel) saving("`d'/al17.html") replace
+    _gt_expect AL-17 "(_rc == 0)" "dash rc"
+    foreach t in Poor Fair Average Good Excellent {
+        cert_file_has "`d'/al17.html", needle("`t'")
+        _gt_expect AL-17 "(r(found) == 1)" "the page does not carry `t'"
+    }
+    _gt_done AL-17 "xlabel(1/5, valuelabel): Poor..Excellent in twoway and dash"
+
+    quietly twoway scatter mpg rep78, xlabel(1/5) name(al, replace)
+    cert_svg_export, name(al) file("`d'/al18.svg")
+    cert_svg_has_text, file("`d'/al18.svg") text("Excellent")
+    _gt_expect AL-18 "(r(found) == 0)" "twoway drew a label without valuelabel"
+    dash clear
+    capture noisily dash scatter mpg rep78, xlabel(1/5) saving("`d'/al18.html") replace
+    _gt_expect AL-18 "(_rc == 0)" "dash rc"
+    cert_file_has "`d'/al18.html", needle("Excellent")
+    _gt_expect AL-18 "(r(found) == 0)" "dash drew a label without valuelabel"
+    _gt_done AL-18 "xlabel(1/5): numbers in both"
+
+    dash clear
+    // rep78 is plotted, so it is exported: a hover()-only variable is not
+    // exported on the one-line route (BUGS.md, a residual of G16).
+    capture noisily dash scatter mpg rep78, hover(rep78) saving("`d'/al19.html") replace
+    _gt_expect AL-19 "(_rc == 0)" "dash rc"
+    cert_file_has "`d'/al19.html", needle("__dash_hover_rep78")
+    _gt_expect AL-19 "(r(found) == 1)" "the tooltip does not read __dash_hover_rep78"
+    cert_file_has "`d'/al19.html", needle("Poor")
+    _gt_expect AL-19 "(r(found) == 1)" "the page does not carry Poor"
+    _gt_done AL-19 "hover(rep78) shows its value labels"
 
     graph drop _all
     display as text "S14 end `c(current_time)'"

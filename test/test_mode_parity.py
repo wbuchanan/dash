@@ -1295,6 +1295,9 @@ CORPUS = [
            plot_for("dropline", {"lcolor": "red", "lwidth": "vthick"})]),
     _case("hover()", [_sc()], None, {"hover": "foreign price"}),
     _case("hover() on a bar", [plot_for("bar")], None, {"hover": "foreign"}),
+    # G16 (WP-28 S14): valuelabel draws foreign's label set at the ticks.
+    _case("xlabel(0/1, valuelabel)", [plot_for("scatter", xvar="foreign")],
+          None, {"xlabel": "0/1, valuelabel"}),
     _case("hover() on a linked graph", bo={"link": "g1 g2"},
           graphs=[("g1", [_sc()], {"hover": "price"}),
                   ("g2", [plot_for("line")])]),
@@ -1355,7 +1358,7 @@ CORPUS = [
     _case("xline with an unimplemented sub-option", [_sc()], None,
           {"xline": "3000, lcolor(red) lstyle(foreground)"}),
     _case("xlabel with an unimplemented sub-option", [_sc()], None,
-          {"xlabel": "#5, valuelabel", "ytitle": "Miles, orientation(vertical)"}),
+          {"xlabel": "#5, labcolor(red)", "ytitle": "Miles, orientation(vertical)"}),
     _case("graph title", [_sc()], None, {"title": "G"}),
     _case("graph title and subtitle with an ampersand", [_sc()], None,
           {"title": "R&D", "subtitle": "a & b"}),
@@ -1667,7 +1670,7 @@ _MUST_WARN = {
         "lstyle(foreground)",
     "xlabel with an unimplemented sub-option":
         "dash: xlabel() sub-option(s) not implemented and ignored: "
-        "valuelabel",
+        "labcolor(red)",
     "by() with an unimplemented sub-option":
         "dash: by() sub-option(s) not implemented and ignored: "
         "rows(2) compact",

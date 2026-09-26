@@ -706,9 +706,15 @@ named in a note and drawn around -- because it is what would be drawn.
     filter widgets) and value labels (for filter dropdowns, the titles of
     {cmd:by()} panels, marker labels, the legend of a discrete
     {cmd:colorvar()} and the CSV download) without any additional options.
-    An axis is labelled with numbers, as in {cmd:twoway}: {cmd:dash} draws
-    no value labels on an axis ({cmd:xlabel(, valuelabel)} is named in the
-    note), and a hover tooltip shows the number too.
+    An axis is labelled with numbers, as in {cmd:twoway}, unless its
+    {cmd:xlabel()}/{cmd:ylabel()} (or {cmd:xlabel2()}/{cmd:ylabel2()})
+    gives the sub-option {cmd:valuelabel} (minimum {cmd:val}): then each
+    tick at a labelled code shows its label -- through the x variable's
+    labels for x options and the first y variable's for y options, on every
+    {cmd:by()} panel -- and an explicit {cmd:"}{it:text}{cmd:"} for the
+    same tick wins, as in {cmd:twoway}.  A hover tooltip shows the value
+    label of a {cmd:hover()} variable, as {cmd:list} and {cmd:browse} do,
+    before and after any filter move.
 
 
 {marker subcommands}
@@ -2433,7 +2439,8 @@ form keep the axis's default ticks, with a note.
 {pstd}
 Any of those may be followed by a comma and the sub-options
 {cmd:format(}{it:fmt}{cmd:)}, {cmd:labsize(}{it:size}{cmd:)},
-{cmd:angle(}{it:#}{cmd:)}, and {cmd:grid} or {cmd:nogrid}.  The axis range
+{cmd:angle(}{it:#}{cmd:)}, {cmd:grid} or {cmd:nogrid}, and
+{cmd:valuelabel} (the axis variable's value labels at the ticks).  The axis range
 itself is set with {cmd:xscale(range(}{it:a b}{cmd:))} /
 {cmd:yscale(range(}{it:a b}{cmd:))}.
 

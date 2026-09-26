@@ -17,7 +17,7 @@
 *!
 *!   SR-01  legend(span stack holes(1)) names all three, once, and not the
 *!          honoured position(6).
-*!   SR-02  xlabel(, valuelabel) names valuelabel.
+*!   SR-02  xlabel(, valuelabel) is drawn (WP-28 S14, G16), not named.
 *!   SR-03  ylabel(, labcolor(red)) names labcolor(red).
 *!   SR-04  yscale(reverse noline titlegap(2)) names noline and titlegap(2),
 *!          not the honoured reverse.
@@ -132,6 +132,12 @@ program define _sr_check, rclass
     local n = r(n)
     local line `"`r(line)'"'
     local bad = 0
+    // An option whose every sub-option is honoured prints no warning at
+    // all (SR-02 since WP-28 S14): with nothing to name, none is right.
+    if `n' == 0 & `"`named'"' == "" {
+        return scalar bad = 0
+        exit
+    }
     if `n' != 1 {
         display as error `"`id' FAIL: expected one `option'() warning, found `n'"'
         local bad = 1
@@ -174,12 +180,12 @@ else display as text "SR-01 PASS: legend(span stack holes(1)) is named once, pos
 _sr_render `"dash scatter mpg weight, xlabel(, valuelabel)"'
 local lg `"`r(logfile)'"'
 assert r(rc) == 0
-_sr_check SR-02 "`lg'" xlabel "valuelabel" ""
+_sr_check SR-02 "`lg'" xlabel "" "valuelabel"
 if r(bad) {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-02"
 }
-else display as text "SR-02 PASS: xlabel(, valuelabel) is named"
+else display as text "SR-02 PASS: xlabel(, valuelabel) is drawn and not named"
 
 _sr_render `"dash scatter mpg weight, ylabel(, labcolor(red))"'
 local lg `"`r(logfile)'"'

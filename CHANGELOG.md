@@ -191,7 +191,11 @@ and now matches Stata.
   the title and subtitle, where the served app and every other layout put
   it -- it sat above the title (a picture change, no numbers). (WP-28, E14)
 <!-- WP-28 G6 -->
-<!-- WP-28 G16 -->
+- Value labels on axes and in tooltips: `xlabel(1/5, valuelabel)` was
+  named in the note and drew 1..5, now draws the label set
+  (Poor..Excellent on auto's `rep78`), on second axes and every `by()`
+  panel too; `hover(foreign)` showed 0/1, now Domestic/Foreign, in both
+  modes and after a filter move. (WP-28, G16)
 - `filter(varname, type(dropdown))`: a string variable's codes '01', '1.0' and ' 2' were rewritten to '1' and '2' and their rows merged, the categories 'None', 'nan' and 'NaT' were not listed, and on the saved page a number below 1e-4 or at or above 1e21 selected no rows (5e-05 kept 0 rows saved, 1 served); the saved snapshot and CSV turned a string code into a number after a move (a dcount of codes merged '01' and '1'). Now numbers are compared as numbers and text exactly, every category is listed with the empty string as a blank entry, values sharing one display text are one entry, and snapshots keep text, in both modes. (WP-28, X1)
 - `dash scatter mpg weight, colorvar(rep78) colordiscrete colorcuts(2 4)`
   drew three interval colours (`≤2`, `2–4`, `>4`), so rep78 = 1, 3 and 5

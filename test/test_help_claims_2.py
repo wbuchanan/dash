@@ -596,16 +596,22 @@ class TestLabelsUsedAutomatically:
             assert type(ax.ticker).__name__ == "BasicTicker", ax.ticker
             assert type(ax.formatter).__name__ == "BasicTickFormatter"
 
-    def test_a_hover_tooltip_shows_the_number(self, tmp_path):
+    def test_a_hover_tooltip_shows_the_label(self, tmp_path):
+        """GAPS2 G16 (WP-28 S14): a hover() variable with value labels shows
+        its label, as list and browse do -- the tooltip reads the derived
+        column __dash_hover_foreign.  It showed the number (the raw
+        @{foreign}) before, which this test used to pin."""
         spec = _spec([plot_for("scatter")], {"hover": "foreign"})
         r, _, _, doc, _, _ = _both(tmp_path, spec)
         for fig in (_saved_figure(r), _served_figure(doc)):
             tools = [t for t in fig.tools if isinstance(t, HoverTool)]
             assert tools, "no hover tool"
             fields = [v for _k, v in tools[0].tooltips]
-            # The raw column, with no formatter that could map 0 to Domestic.
-            assert "@{foreign}" in fields, tools[0].tooltips
+            assert "@{__dash_hover_foreign}" in fields, tools[0].tooltips
+            assert "@{foreign}" not in fields, tools[0].tooltips
             assert not dict(tools[0].formatters), tools[0].formatters
+            col = fig.renderers[0].data_source.data["__dash_hover_foreign"]
+            assert set(col) == {"Domestic", "Foreign"}
 
 
 # ===========================================================================

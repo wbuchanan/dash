@@ -55,8 +55,6 @@ SUBOPTIONS = [
      ["cols"]),
     ("legend colfirst", {"legend": "colfirst on"}, None, "legend",
      ["colfirst"], ["on"]),
-    ("xlabel valuelabel", {"xlabel": ", valuelabel"}, None, "xlabel",
-     ["valuelabel"], []),
     ("ylabel labcolor", {"ylabel": ", labcolor(red)"}, None, "ylabel",
      ["labcolor(red)"], []),
     ("ylabel labgap tlength", {"ylabel": "10(10)30, labgap(2) tlength(3)"},
@@ -114,6 +112,8 @@ class TestTheHonouredOnesStayQuiet:
         ({"xlabel": "2000(1000)4000, format(%9.0fc) nogrid labsize(small) "
                     "angle(45)", "ylabel": "#5, grid"}, None),
         ({"xlabel": 'minmax', "ylabel": "none"}, None),
+        # G16 (WP-28 S14): valuelabel is drawn, so it is no longer named.
+        ({"xlabel": ", valuelabel"}, None),
         ({"xscale": "log", "yscale": "reverse range(10 40)"}, None),
         ({"xtitle": "Weight", "ytitle": "Miles, size(large) color(red)"},
          None),
