@@ -391,28 +391,24 @@ class TestAnExcludedMemberOfALinkGroupIsFilteredWithIt:
                          ["g1"], link="g1 g2")
 
     def test_saved(self, tmp_path):
-        _, after, _, _ = tfe._saved(tmp_path, self._spec(), "1")
+        _, after, _, _ = tfe._saved(tmp_path, self._spec(), 1.0)
         assert after == {"g1": 5, "g2": 5}
 
     def test_served(self, tmp_path):
-        _, after = tfe._served(tmp_path, self._spec(), "dropdown", "1")
+        _, after = tfe._served(tmp_path, self._spec(), "dropdown", 1.0)
         assert after == {"g1": 5, "g2": 5}
 
 
-class TestExcludeHoldsWhileItsOwnFilterMoves:
-    """What dash.sthlp documents of exclude() beside a second filter.
+class TestAnExclusionHoldsAgainstEveryMove:
+    """What dash.sthlp documents of exclude() (Filters): each graph and
+    card is redrawn on every move from the rows kept by the filters that
+    do not exclude it, so its state depends only on the widgets.
 
-    Measured at 4ede074, in both modes: filter(price, ... exclude(g1 k1))
-    leaves graph g1 and card k1 alone while the price filter is the one
-    that moves; when another filter moves, every graph and card it affects
-    is redrawn from the rows all the filters keep, so g1 and k1 then lose
-    the rows the price filter drops as well.  Each move applies its own
-    filter's exclude() list to the combined mask.  The help says so; when
-    exclude() is made to hold against every move, the help and this test
-    change together.
-
-    foreign == 1 keeps 5 of the 10 rows; with price in [4000, 5000] as well,
-    3 remain.  k1 counts mpg.
+    Rewritten from TestExcludeHoldsWhileItsOwnFilterMoves (GAPS2 E2): at
+    91d97be an excluded graph kept whatever the last move of ANOTHER
+    filter wrote (price, foreign, price back gave g1=3, g2=5, k1=3 where
+    the widgets imply 5).  foreign == 1 keeps 5 of the 10 rows; with price
+    in [4000, 5000] as well, 3 remain.  k1 counts mpg.
     """
 
     SPEC = {"graphs": [tfe._graph("g1"), tfe._graph("g2")],
@@ -424,8 +420,10 @@ class TestExcludeHoldsWhileItsOwnFilterMoves:
                             {"varname": "price", "type": "range",
                              "exclude": ["g1", "k1"]}]}}
     PRICE = (4000.0, 5000.0)
+    STATES = [{"g1": 10, "g2": 5, "k1": "10"}, {"g1": 5, "g2": 3, "k1": "5"},
+              {"g1": 5, "g2": 5, "k1": "5"}, {"g1": 10, "g2": 10, "k1": "10"}]
 
-    def _saved(self, tmp_path, move_foreign):
+    def test_saved(self, tmp_path):
         sp, dp = tfe._write_inputs(tmp_path, self.SPEC)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -433,25 +431,24 @@ class TestExcludeHoldsWhileItsOwnFilterMoves:
             r.render()
         (w_for, w_price), (cb_for, cb_price) = (r.filter_widgets,
                                                 r.filter_callbacks)
-        w_price.value = self.PRICE
-        cb = cb_price
-        if move_foreign:
-            w_for.value = "1"
-            cb = cb_for
-        out, divs = _run_saved(cb.args, cb.code)
-        rows = {}
-        for fig in r.figures.values():
-            src = tfe._renderer_source(fig)
-            rows[fig.title.text] = (out[src.id]["rows"] if src.id in out
-                                    else tfe._rows(src))
+        s = js_runner.JsSession(r.filter_callbacks)
         k1 = r.kpi_divs["k1"]
-        rows["k1"] = _card_value(divs.get(k1.id, k1.text), "k1")
-        return rows
 
-    def test_saved(self, tmp_path):
-        assert self._saved(tmp_path, False) == {"g1": 10, "g2": 5,
-                                                 "k1": "10"}
-        assert self._saved(tmp_path, True) == {"g1": 3, "g2": 3, "k1": "3"}
+        def state():
+            out = {f.title.text: tfe._rows(tfe._renderer_source(f))
+                   for f in r.figures.values()}
+            out["k1"] = _card_value(k1.text, "k1")
+            return out
+
+        full = (w_price.start, w_price.end)
+        got = []
+        for w, cb, v in ((w_price, cb_price, self.PRICE),
+                         (w_for, cb_for, 1.0), (w_price, cb_price, full),
+                         (w_for, cb_for, w_for._dash_sentinel)):
+            s.set(w, v)
+            s.run(cb)
+            got.append(state())
+        assert got == self.STATES
 
     def test_served(self, tmp_path):
         from bokeh.document import Document
@@ -476,12 +473,15 @@ class TestExcludeHoldsWhileItsOwnFilterMoves:
 
         [w_for] = list(doc.select({"type": Select}))
         [w_price] = list(doc.select({"type": RangeSlider}))
+        full = (w_price.start, w_price.end)
+        got = []
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            tp._fire(w_price, self.PRICE)
-            assert state() == {"g1": 10, "g2": 5, "k1": "10"}
-            tp._fire(w_for, "1")
-            assert state() == {"g1": 3, "g2": 3, "k1": "3"}
+            for w, v in ((w_price, self.PRICE), (w_for, 1.0),
+                         (w_price, full), (w_for, w_for._dash_sentinel)):
+                tp._fire(w, v)
+                got.append(state())
+        assert got == self.STATES
 
 
 # ===========================================================================

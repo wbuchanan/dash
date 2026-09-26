@@ -59,7 +59,7 @@ _FIGURE = type(figure())
 #: The value each filter type is moved to, and the rows of _DF's ten it keeps
 #: (five each): foreign == 1; 4000 <= price <= 5000; mpg >= 22.
 _MOVES = {
-    "dropdown": ({"varname": "foreign", "type": "dropdown"}, "1"),
+    "dropdown": ({"varname": "foreign", "type": "dropdown"}, 1.0),
     "range": ({"varname": "price", "type": "range"}, (4000.0, 5000.0)),
     "slider": ({"varname": "mpg", "type": "slider"}, 22.0),
 }
@@ -269,7 +269,7 @@ class TestTheSavedPageLeavesAnExcludedGraphAlone:
         among them."""
         spec = _spec([_graph("g1", if_expr="price > 4500"), _graph("g2")],
                      "dropdown", ["g1"])
-        _, _, r, out = _saved(tmp_path, spec, "1")
+        _, _, r, out = _saved(tmp_path, spec, 1.0)
         src = r.sources["g1"]
         want = list(src.data[dr._ROW_ID_COLUMN])
         assert want == [1, 3, 4, 6, 7, 9]
@@ -413,14 +413,16 @@ def _script_args(source, graph_sources, excluded):
     set to 1 (rows 1 and 3)."""
     frame = {"foreign": [0.0, 1.0, 0.0, 1.0], "mpg": [20.0, 30.0, 22.0, 28.0],
              dr._ROW_ID_COLUMN: [0, 1, 2, 3]}
-    w = Select(value="1", options=["__all__", "0", "1"])
+    w = Select(value=1.0, options=[("__all__", "All"), (0.0, "0"), (1.0, "1")])
     return {
         "source": source,
         "orig_source": ColumnDataSource(dict(frame)),
         "all_widgets": [w],
         "filter_specs_json": json.dumps([{"varname": "foreign",
                                           "type": "dropdown",
-                                          "sentinel": "__all__"}]),
+                                          "sentinel": "__all__",
+                                          "numeric": True,
+                                          "groups": [[0.0], [1.0]]}]),
         "kpi_config_json": "[]", "kpi_divs": [], "agg_sources": [],
         "agg_configs_json": "[]", "view_filters": [],
         "all_graph_sources": list(graph_sources),

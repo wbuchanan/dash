@@ -637,7 +637,8 @@ def _foreign_one(doc):
     """The served dropdown's value for foreign == 1."""
     w = list(doc.select({"type": Select}))[0]
     opts = [o[0] if isinstance(o, (list, tuple)) else o for o in w.options]
-    return [o for o in opts if o in ("1", "1.0")][0]
+    # A number since GAPS2 X1 (a numeric column's dropdown carries floats).
+    return [o for o in opts if o == 1.0 and not isinstance(o, str)][0]
 
 
 #: Every plot type whose drawn layer is computed from the rows, rather than

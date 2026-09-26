@@ -1385,10 +1385,11 @@ class TestTheHelpersOneByOne:
 
     def test_dropdown_values_are_the_listed_options_sorted(self):
         got = dr._dash_dropdown_values(pd.Series([3.0, 1.0, None, 1.0, 2.0]))
-        assert got == sorted(set(got), key=dr._dash_option_sort_key)
+        assert got == sorted(set(got))
         assert len(got) == 3
+        # GAPS2 X1: a Python None in a text column is the blank entry.
         assert dr._dash_dropdown_values(pd.Series(["b", "a", None, "b"])) \
-            == ["a", "b"]
+            == ["", "a", "b"]
 
     def test_the_truncation_note_names_everything_the_user_needs(self):
         msg = dr._dash_filter_truncation_note("make", 3142, 1000)

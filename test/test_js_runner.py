@@ -189,7 +189,7 @@ class TestASessionCarriesState:
         source = tfe._renderer_source(r.figures["g1"])
 
         s = js_runner.JsSession(r.filter_callbacks)
-        s.set(w_for, "1")
+        s.set(w_for, 1.0)
         s.run(cb_for)
         assert s.rows(source) == 5  # foreign == 1 alone, of _DF's ten
 
@@ -276,7 +276,8 @@ class TestMaskParity:
         df = pd.DataFrame({"code": ["01", "1", "1.0", "x"]})
         specs = [{"varname": "code", "type": "dropdown", "sentinel": "__all__"}]
         js_mask, pandas_mask = js_runner.mask_parity(df, specs, ["1"])
-        assert js_mask == pandas_mask == [True, True, True, False]
+        # GAPS2 X1: exact text -- '01' and '1.0' are other values.
+        assert js_mask == pandas_mask == [False, True, False, False]
 
     def test_a_missing_value_fails_every_range_in_both_twins(self):
         # The column's own span (3000..6000) is wider than the [4000,
@@ -296,8 +297,9 @@ class TestMaskParity:
         js_mask, pandas_mask = js_runner.mask_parity(df, specs, values)
         assert js_mask == pandas_mask == [True, True, True]
 
-    def test_a_dropdown_on_a_small_number_disagrees_today_x1(self):
-        """Report B section 2.1, measured 25sep2026: on the saved page a
+    def test_a_dropdown_on_a_small_number_agrees_since_x1(self):
+        """Flipped by section 17 (GAPS2 X1).  History: report B section
+        2.1, measured 25sep2026 at 91d97be: on the saved page a
         dropdown's small-number option keeps no row (JS ``String()`` uses
         exponent notation below 1e-6, not at 5e-05, so the option text and
         the column's text never match); the served pandas mask keeps the
@@ -306,12 +308,13 @@ class TestMaskParity:
         ``test_two_values_sharing_a_label_select_both`` beside it (Q26).
         """
         df = pd.DataFrame({"v": [5e-05, 1.0, 2.0]})
-        specs = [{"varname": "v", "type": "dropdown", "sentinel": "__all__"}]
-        values = [dr._dash_option_value(5e-05)]
-        js_mask, pandas_mask = js_runner.mask_parity(df, specs, values)
-        assert js_mask != pandas_mask
-        assert sum(pandas_mask) == 1
-        assert sum(js_mask) == 0
+        specs = [{"varname": "v", "type": "dropdown", "sentinel": "__all__",
+                  "numeric": True}]
+        for val in (5e-05, 1.0):
+            values = [dr._dash_option_value(val)]
+            js_mask, pandas_mask = js_runner.mask_parity(df, specs, values)
+            assert js_mask == pandas_mask
+            assert sum(js_mask) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -385,7 +388,7 @@ class TestASessionMeasuresE2:
         that staleness and flips this test to the implied value.
         """
         import test_help_claims_3 as thc3
-        spec = thc3.TestExcludeHoldsWhileItsOwnFilterMoves.SPEC
+        spec = thc3.TestAnExclusionHoldsAgainstEveryMove.SPEC
         r = _page(tmp_path, spec)
         (w_for, w_price), (cb_for, cb_price) = (r.filter_widgets,
                                                 r.filter_callbacks)
@@ -396,16 +399,16 @@ class TestASessionMeasuresE2:
         s = js_runner.JsSession(r.filter_callbacks)
         s.set(w_price, (4000.0, 5000.0))
         s.run(cb_price)
-        s.set(w_for, "1")
+        s.set(w_for, 1.0)
         s.run(cb_for)
         s.set(w_price, (w_price.start, w_price.end))
         s.run(cb_price)
 
         result = {"g1": s.rows(g1), "g2": s.rows(g2),
                   "k1": thc3._card_value(k1.text, "k1")}
-        implied = {"g1": 5, "g2": 5, "k1": "5"}  # for comparison only
-        assert result == {"g1": 3, "g2": 5, "k1": "3"}
-        assert result != implied
+        # Flipped by section 17 (GAPS2 E2): measured {3, 5, "3"} at
+        # 91d97be; now the state the widgets imply.
+        assert result == {"g1": 5, "g2": 5, "k1": "5"}
 
 
 #: apply, confirm the named test fails, revert (mutation table, section file):
@@ -419,7 +422,7 @@ class TestASessionMeasuresE2:
 #: - build the pandas widgets without _dash_ftype in mask_parity ->
 #:   TestMaskParity::test_a_numeric_range_and_a_slider_agree_in_both_twins
 #: - run the JS side of mask_parity with raw=True always ->
-#:   test_a_dropdown_on_a_small_number_disagrees_today_x1 (03-05)
+#:   test_a_dropdown_on_a_small_number_agrees_since_x1 (03-05)
 #: - pytest.fail instead of pytest.skip in node() ->
 #:   TestNode::test_a_missing_node_skips_with_the_override_named
 #: - drop "NODE as _NODE" from test_statistical_helpers.py's import ->

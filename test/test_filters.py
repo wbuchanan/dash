@@ -184,13 +184,13 @@ class TestBuildDropdown:
         )
         assert isinstance(widget, Select)
         assert [tuple(o) for o in widget.options] == [
-            ("__all__", "All"), ("0", "0"), ("1", "1")]
+            ("__all__", "All"), (0.0, "0"), (1.0, "1")]
         widget, _ = FilterBuilder.build_dropdown(
             "mpg", cds, auto_df, {},
             exclude_names=[], all_figure_names=["s1", "s2"]
         )
         assert [tuple(o) for o in widget.options] == [("__all__", "All")] + [
-            (v, v) for v in ("16", "18", "21", "24", "28", "30")]
+            (float(v), v) for v in ("16", "18", "21", "24", "28", "30")]
 
     # ----------------------------------------------------------------
     # P2-49 — dropdown uses valueLabels for display text
@@ -208,7 +208,7 @@ class TestBuildDropdown:
             exclude_names=[], all_figure_names=["s1", "s2"]
         )
         assert [tuple(o) for o in widget.options] == [
-            ("__all__", "All"), ("0", "Domestic"), ("1", "Foreign")], (
+            ("__all__", "All"), (0.0, "Domestic"), (1.0, "Foreign")], (
             f"Value labels not on their codes: {widget.options}"
         )
 
@@ -739,8 +739,8 @@ class TestParseFilterRaw:
         # 24sep2026: it passed with every filter built twice).
         assert [(type(w).__name__, w.title, [tuple(o) for o in w.options])
                 for w in r.filter_widgets] == [
-            ("Select", "foreign", [("__all__", "All"), ("0", "0"),
-                                   ("1", "1")])], (
+            ("Select", "foreign", [("__all__", "All"), (0.0, "0"),
+                                   (1.0, "1")])], (
             "render() must create filter widgets for non-linked graphs; "
             "filter variable 'foreign' must be included in the CDS data "
             "even when link() is not specified (Bug 7)"
@@ -844,7 +844,7 @@ class TestFilterVarMissingFromData:
         # twice (measured 24sep2026).
         assert [(type(w).__name__, [tuple(o) for o in w.options])
                 for w in r.filter_widgets] == [
-            ("Select", [("__all__", "All"), ("0", "0"), ("1", "1")])], (
+            ("Select", [("__all__", "All"), (0.0, "0"), (1.0, "1")])], (
             "Filter widget must be created when filter variable 'foreign' "
             "is present in the data JSON.  Got 0 widgets — the filter "
             "variable must be included in the jsonio serialization."
@@ -1195,15 +1195,9 @@ class TestFilterWiringPrimarySourceOnly:
             o[0] if isinstance(o, (list, tuple)) else str(o)
             for o in widget.options
         ]
-        # "0.0" and "1.0" must NOT appear — must be normalized to "0" and "1"
-        assert "0.0" not in option_values, (
-            "Float '0.0' must be normalized to '0' for JS String() comparison"
-        )
-        assert "1.0" not in option_values, (
-            "Float '1.0' must be normalized to '1' for JS String() comparison"
-        )
-        assert "0" in option_values, "Normalized '0' must be present"
-        assert "1" in option_values, "Normalized '1' must be present"
+        # GAPS2 X1: a numeric column's options are the numbers themselves,
+        # compared as numbers in both twins (no text normalisation).
+        assert option_values == ["__all__", 0.0, 1.0], option_values
 
     def test_dropdown_float_with_labels_normalized_bf09(self):
         """BF-09: dropdown with value labels uses normalized key for label lookup."""

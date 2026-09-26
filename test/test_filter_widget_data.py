@@ -100,8 +100,8 @@ _WANT_M = {
                "start": 10.0, "end": 18.0, "step": 1, "value": 10.0},
     "dropdown": {"type": "Select", "title": "m", "disabled": False,
                  "value": "__all__",
-                 "options": [("__all__", "All"), ("10", "10"), ("12", "12"),
-                             ("14", "14"), ("16", "16"), ("18", "18")]},
+                 "options": [("__all__", "All"), (10.0, "10"), (12.0, "12"),
+                             (14.0, "14"), (16.0, "16"), (18.0, "18")]},
 }
 
 # The saved page's date widgets, and `dm''s first and last dates as the

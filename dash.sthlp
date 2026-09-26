@@ -1140,8 +1140,16 @@ Syntax:
 Unicode letters, as any Stata name may.  Without {cmd:type()} the widget
 is a dropdown.
 
-{phang2}{cmd:type(dropdown)} -- select widget showing unique values of
-    {it:varname}.  Value labels are used for display text when available.
+{phang2}{cmd:type(dropdown)} -- select widget listing every distinct value
+    of {it:varname}: a numeric or date variable's values as numbers (a
+    missing value is not listed), a string variable's exact text, its empty
+    string as a blank row.  Selecting a value keeps the observations equal
+    to it -- a number compared as a number, a text compared exactly, so
+    {cmd:"01"} and {cmd:"1"} are two values -- in the saved page and the
+    served app alike.  A listed value is written in the variable's display
+    format, or its value label; values that share one display text are one
+    entry that selects them all; and a %tw, %tm, %tq, %th or %ty variable's
+    range slider moves over Stata's period numbers in steps of one.
     An "All" option removes the filter.  A dropdown lists at most 1,000
     values: over that, a numeric or date variable is drawn as
     {cmd:type(range)} instead, and a string variable lists its first 1,000
@@ -1161,13 +1169,14 @@ is a dropdown.
     missing (see {help dash##export:Exporting}).
 
 {phang2}{cmd:exclude(}{it:namelist}{cmd:)} -- prevent the filter from
-    affecting the specified graphs and KPI cards, each a registered name.
-    Excluding a {cmd:by()} graph excludes every one of its panels.  A graph
-    in a {cmd:link()} group draws from the group's one source, so it is
-    filtered with the group unless every graph of the group is excluded.
-    An exclusion holds while its own filter is the one that moves: when
-    another filter moves, the graphs and cards it affects are redrawn from
-    the observations that all the filters keep, this one included.
+    affecting the specified graphs and KPI cards, each a registered name,
+    whatever moves.  Each graph, card, and link group is redrawn on every
+    move from the observations kept by the filters that do not exclude it,
+    so its state depends only on the widgets' current values.  Excluding a
+    {cmd:by()} graph excludes every one of its panels.  A graph in a
+    {cmd:link()} group draws from the group's one source, so the group is
+    filtered by a filter unless every graph of the group is excluded from
+    it.
 
 {phang2}{cmd:label(}{it:string}{cmd:)} -- the text shown beside the widget.
     Without it the variable's own label is used, and failing that its name.

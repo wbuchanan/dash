@@ -1096,21 +1096,20 @@ class TestADateDropdown:
 
 
 class TestTheOptionValueOfADate:
-    """``_dash_option_value`` of a date is its epoch milliseconds, the
-    value the snapshot carries; the served mask applies the same function
-    to both sides, so its rows are unchanged."""
+    """``_dash_option_value`` of a date is its epoch milliseconds, as a
+    float since GAPS2 X1 (a number is a float, text its exact self)."""
 
     def test_a_timestamp_is_its_milliseconds(self):
         assert dr._dash_option_value(pd.Timestamp("2001-12-31")) == \
-            "1009756800000"
+            1009756800000.0
 
     def test_a_datetime64_is_its_milliseconds(self):
         assert dr._dash_option_value(np.datetime64("2001-12-31")) == \
-            "1009756800000"
+            1009756800000.0
 
     def test_a_date_past_2262_does_not_overflow(self):
         v = np.datetime64("9999-12-31", "ms")
-        assert dr._dash_option_value(v) == str(
+        assert dr._dash_option_value(v) == float(
             int(v.astype(np.int64)))
 
     def test_the_served_mask_still_selects_by_date(self):
@@ -1120,5 +1119,5 @@ class TestTheOptionValueOfADate:
                                                            False]
 
     def test_a_number_and_a_string_are_unchanged(self):
-        assert dr._dash_option_value(1.0) == "1"
+        assert dr._dash_option_value(1.0) == 1.0
         assert dr._dash_option_value("2001-12-31") == "2001-12-31"

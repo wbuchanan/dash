@@ -8438,7 +8438,8 @@ class TestMixedFilterSpecAlignment:
             filter_specs = json.loads(cb_args["filter_specs_json"])
             all_widgets = cb_args.get("all_widgets", [])
             assert filter_specs == [{"varname": "foreign", "type": "dropdown",
-                                     "sentinel": "__all__"}], (
+                                     "sentinel": "__all__", "numeric": True,
+                                     "groups": [[0.0], [1.0]]}], (
                 "BUG-FSALIGN-1g: the surviving spec is not foreign's: "
                 f"{filter_specs}")
             assert len(all_widgets) == 1, all_widgets
@@ -8448,7 +8449,7 @@ class TestMixedFilterSpecAlignment:
             assert w.value == "__all__"
             values = sorted(auto_df["foreign"].dropna().unique())
             assert [v for v, _label in w.options] == (
-                ["__all__"] + [str(int(v)) for v in values]), w.options
+                ["__all__"] + [float(v) for v in values]), w.options
         finally:
             for _p in (spec_path, data_path):
                 try: os.unlink(_p)

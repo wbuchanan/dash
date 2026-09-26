@@ -2131,12 +2131,36 @@ def _dash_cap_filters(filter_specs, limit):
 
 
 def _dash_dropdown_values(series):
-    """The dropdown's option values for *series*, sorted, as the page lists
-    them (``_dash_option_value`` of every non-missing value)."""
-    return sorted(
-        {_dash_option_value(v) for v in series.tolist()
-         if v is not None and str(v) not in ("nan", "None", "NaT")},
-        key=_dash_option_sort_key)
+    """The dropdown's option values for *series*, sorted (GAPS2 X1).
+
+    A numeric or datetime column (:func:`_dash_filter_numeric`) lists each
+    distinct value as a FLOAT (a date's own epoch milliseconds), ascending
+    by value; a numeric missing value (Stata's ``.``) is never listed.
+    Any other column lists each distinct TEXT exactly -- '01', '1' and
+    '1.0' are three different values, and 'nan', 'None' and 'NaT' are
+    ordinary categories, not missing -- ascending as plain text.  Python's
+    own ``None`` and a float NaN inside such a column, which never occur
+    in data dash itself writes but can reach here from a hostile or
+    hand-built frame, fold into ONE blank ``""`` entry alongside Stata's
+    own missing string.
+    """
+    series = pd.Series(series)
+    if _dash_filter_numeric(series):
+        out = set()
+        for v in series.tolist():
+            if v is None or pd.isna(v):
+                continue
+            ov = _dash_option_value(v)
+            if isinstance(ov, float) and math.isfinite(ov):
+                out.add(ov)
+        return sorted(out)
+    out = set()
+    for v in series.tolist():
+        if v is None or (isinstance(v, float) and math.isnan(v)):
+            out.add("")
+        else:
+            out.add(str(v))
+    return sorted(out)
 
 
 def _dash_filter_effective_type(ftype, varname, column, limit):
@@ -2153,17 +2177,17 @@ def _dash_filter_effective_type(ftype, varname, column, limit):
     if ftype != "dropdown" or column is None:
         return ftype
     series = pd.Series(column)
-    # nunique first: an option is a value through _dash_option_value, which
-    # can merge two values ('1' and '1.0') and never splits one, so a column
-    # within the limit by its raw count is within it as options, and only a
-    # column over it pays for the exact count.
+    # nunique first: since GAPS2 X1, an option is a value through
+    # _dash_option_value, which keeps a string's exact text and never
+    # merges two distinct values, so a column within the limit by its raw
+    # count is within it as options too, and only a column over it pays
+    # for the exact count.
     if int(series.nunique(dropna=True)) <= limit:
         return ftype
     n = len(_dash_dropdown_values(series))
     if n <= limit:
         return ftype
-    numeric = bool(pd.api.types.is_numeric_dtype(series)
-                   or pd.api.types.is_datetime64_any_dtype(series))
+    numeric = _dash_filter_numeric(series)
     shown = _dash_display(str(varname))
     if numeric:
         _dash_warn_once(
@@ -7024,8 +7048,11 @@ class GlyphMapper:
                 # string, takes colormissing() under "(missing)", as a
                 # missing number does.
                 color_field = f"_cvar_{varname}_bin"
-                strs = ["" if v is None or str(v) == "nan" else str(v)
-                        for v in raw_col]
+                # GAPS2 X1/E2's sibling fix: the text 'nan' is a category,
+                # not missing (only None and Stata's own "" are).
+                strs = ["" if v is None
+                        or (isinstance(v, float) and math.isnan(v))
+                        else str(v) for v in raw_col]
                 labels = sorted({s for s in strs if s != ""})
                 binned = ["__missing__" if s == "" else s for s in strs]
                 has_missing = "" in strs
@@ -14352,9 +14379,9 @@ def _sanitize_css_color(val: str, default: str) -> str:
 #     fraction only when it is not zero; the year alone for %ty; the first
 #     day of the period for %tw %tm %tq %th -- as the tooltips show it, and
 #     as Excel, R, pandas and Stata's date() read it;
-#   - a string variable's own text, never read as a number: the filter
-#     snapshot holds "007" as 7 (its dropdown matches through that), so the
-#     saved page carries string columns once more, raw, for the download;
+#   - a string variable's own text, never read as a number (GAPS2 X1: the
+#     filter snapshot itself now keeps a string column as text too, so the
+#     saved page's raw text source and the snapshot agree);
 #   - a text cell that begins = + - @, a tab or a carriage return with a
 #     leading apostrophe, which a spreadsheet hides: it would otherwise run
 #     the cell as a formula (OWASP, "CSV injection");
@@ -14399,9 +14426,21 @@ def _dash_json_value(v):
     slider filtered nothing, and every date KPI collapsed to 0.  One
     function for the saved page's snapshot and the served download's rows
     (``DashRenderer._to_serialisable`` calls it).
+
+    A string is kept as itself (GAPS2 X1), never read as a number: before
+    this, ``float(v)`` succeeded on a string that merely LOOKED numeric,
+    so a string code such as "01" or "007" turned into a plain number
+    (1.0, 7.0) in ``_orig_data``, every graph and derived snapshot, and
+    the CSV download (``_dash_csv_payload``) -- a saved page's ``dcount``
+    card then counted distinct NUMBERS, merging "01" and "1", and a
+    ``mlabel(s)`` layer's ``__dash_mlabel_*`` label column read "007" as
+    the number 7 after any filter move.  A date's milliseconds and a
+    genuinely numeric value's float are unchanged.
     """
     if v is None:
         return None
+    if isinstance(v, str):
+        return v
     if isinstance(v, (pd.Timestamp, np.datetime64)) or hasattr(v, "year"):
         try:
             ts = pd.Timestamp(v)
@@ -14515,7 +14554,9 @@ def _dash_frame_filter_mask(df, widgets):
 
     The served recompute's own rule, shared with the download so a file
     holds the rows the dashboard shows: a dropdown matches through
-    ``_dash_dropdown_mask`` unless it is at its sentinel; a range keeps
+    ``_dash_dropdown_mask`` (GAPS2 X1: a number as a number, an entry's
+    ``_dash_groups`` keeping every value that shares its display label,
+    text exactly otherwise) unless it is at its sentinel; a range keeps
     ``lo <= x <= hi`` and a slider ``x >= value``, and a missing value fails
     both, as it fails the saved page's ``dash_filter_mask`` -- except that a
     range at its full extent, or a slider at its start, restricts nothing, as
@@ -14548,7 +14589,8 @@ def _dash_frame_filter_mask(df, widgets):
             # the data holds that literal value (BUG-37).
             _w_sentinel = getattr(w, "_dash_sentinel", "__all__")
             if w.value != _w_sentinel:
-                mask &= _dash_dropdown_mask(df[wvar], w.value)
+                mask &= _dash_dropdown_mask(
+                    df[wvar], w.value, getattr(w, "_dash_groups", None))
         elif kind == "range":
             try:
                 lo, hi = w.value
@@ -15569,14 +15611,30 @@ dash_csv_download(dash_csv_text(data, data, rows, meta), meta.filename);
 # null, as 0, so range(-1, 10) kept every missing row and range(5, 10)
 # dropped it, and the two modes' KPI cards disagreed (test_export.py).
 _DASH_FILTER_MASK_JS = _DASH_FMT_JS + """
-function dash_filter_mask(orig, filter_specs, all_widgets) {
+// The ONE rule a dropdown value is compared by, shared with
+// _dash_dropdown_mask in Python and pinned by
+// test/test_dropdown_values.py::TestOneRule::test_node_and_pandas_agree and
+// ::test_two_values_sharing_a_label_select_both (GAPS2 X1): a numeric or
+// datetime column's spec carries spec.numeric, and a value is a NUMBER,
+// never text -- ECMAScript writes 5e-05 as "0.00005" and Python writes
+// "5e-05", so no string comparison of the two could ever agree.  An entry
+// that stands for several values sharing one display-format label
+// (DISCOVERY Q26) is spec.groups: [[value, member, ...], ...], and
+// selecting it keeps every member's rows.  Any other column compares its
+// EXACT text: 'nan', 'None', 'NaT', '01' and '1' are different values.
+function dash_filter_mask(orig, filter_specs, all_widgets, use) {
     const keys = Object.keys(orig);
     const n_rows = keys.length > 0 ? orig[keys[0]].length : 0;
     const active = new Array(n_rows).fill(true);
     const present = (v) => v !== null && v !== undefined && !Number.isNaN(v);
+    // `use': the filter indices that apply to one target (GAPS2 E2); every
+    // filter, when omitted -- the CSV button's three-argument call and
+    // every other caller before this section.
+    const idx = (use === undefined || use === null)
+        ? filter_specs.map((_v, _i) => _i) : use;
 
-    // Re-apply every filter widget's current value
-    for (let fi = 0; fi < filter_specs.length; fi++) {
+    // Re-apply every applicable filter widget's current value
+    for (const fi of idx) {
         const spec = filter_specs[fi];
         const w    = all_widgets[fi];
         const fvar = spec.varname;
@@ -15595,9 +15653,27 @@ function dash_filter_mask(orig, filter_specs, all_widgets) {
             // the literal '__all__' value — sentinel is then '__all__' + extra '_').
             const sentinel = spec.sentinel || '__all__';
             if (val === sentinel) continue;
-            for (let i = 0; i < n_rows; i++) {
-                if (active[i] && (!present(col[i]) || String(col[i]) !== val))
-                    active[i] = false;
+            if (spec.numeric) {
+                const want = Number(val);
+                let members = [want];
+                if (spec.groups) {
+                    const grp = spec.groups.find((g) => g[0] === want);
+                    if (grp) members = grp;
+                }
+                for (let i = 0; i < n_rows; i++) {
+                    if (!active[i]) continue;
+                    if (!present(col[i]) || !Number.isFinite(want) ||
+                        !members.includes(Number(col[i]))) {
+                        active[i] = false;
+                    }
+                }
+            } else {
+                for (let i = 0; i < n_rows; i++) {
+                    if (!active[i]) continue;
+                    const cell = (col[i] === null || col[i] === undefined)
+                        ? '' : String(col[i]);
+                    if (cell !== String(val)) active[i] = false;
+                }
             }
         } else if (ftype === 'slider') {
             const val = w.value;
@@ -15692,6 +15768,62 @@ if (_primary_ids) {
     }
 }
 
+// GAPS2 E2: a per-target mask/id-set/data, memoised by its "use" list --
+// the indices of the filters that apply to that ONE target -- so every
+// graph, link group, aggregate, derived layer and KPI is masked by
+// exactly the filters whose exclude() does not name it, on every move,
+// whichever widget triggered it.  `use === null/undefined` (an older
+// caller, or the primary fallback) means every filter, and reuses `active`
+// itself rather than recomputing it.
+const _dash_use_key = (use) => JSON.stringify(
+    (use === undefined || use === null) ? null : use);
+const _mask_cache = {[_dash_use_key(null)]: active};
+function dash_mask_for(use) {
+    const key = _dash_use_key(use);
+    if (!(key in _mask_cache)) {
+        _mask_cache[key] = dash_filter_mask(
+            orig, filter_specs, all_widgets, (use === undefined) ? null : use);
+    }
+    return _mask_cache[key];
+}
+const _ids_cache = {[_dash_use_key(null)]: _active_ids};
+function dash_ids_for(use) {
+    const key = _dash_use_key(use);
+    if (!(key in _ids_cache)) {
+        const m = dash_mask_for(use);
+        const s = new Set();
+        if (_primary_ids) {
+            for (let i = 0; i < _primary_ids.length; i++) {
+                if (m[i]) s.add(_primary_ids[i]);
+            }
+        }
+        _ids_cache[key] = s;
+    }
+    return _ids_cache[key];
+}
+function dash_masked_data(mask) {
+    const nd = {};
+    for (const col of cols) { dash_own_col(nd, col); }
+    for (let i = 0; i < mask.length; i++) {
+        if (mask[i]) { for (const col of cols) { nd[col].push(orig[col][i]); } }
+    }
+    return nd;
+}
+const _data_cache = {[_dash_use_key(null)]: new_data};
+function dash_data_for(use) {
+    const key = _dash_use_key(use);
+    if (!(key in _data_cache)) {
+        _data_cache[key] = dash_masked_data(dash_mask_for(use));
+    }
+    return _data_cache[key];
+}
+// A per-source "use": which filters apply to it, parallel to
+// all_graph_sources; `typeof' because an older caller (a hand-built
+// test's args) may pass none, meaning every filter applies to every
+// source, as before this section.
+const _graph_use = (typeof graph_use_json !== "undefined")
+    ? JSON.parse(graph_use_json) : _srcs.map(() => null);
+
 // Row identities each source kept, so a CDSView over it can be rebuilt.
 const _kept_ids_by_src = [];
 
@@ -15704,11 +15836,13 @@ for (let _si = 0; _si < _srcs.length; _si++) {
     const _nd_i   = {};
     const _kept_i = [];
     for (const col of _cols_i) { dash_own_col(_nd_i, col); }
+    // This source's OWN mask -- the filters that apply to it, not every
+    // widget (GAPS2 E2) -- by row identity; positional only when a source
+    // predates the row identity, so an older spec still filters as it did.
+    const _keep_ids = _ids_i ? dash_ids_for(_graph_use[_si]) : null;
     for (let i = 0; i < _n_i; i++) {
-        // Fall back to the old positional test only when a source predates
-        // the row identity, so an older spec still filters as it used to.
-        const keep = _ids_i && _primary_ids
-            ? _active_ids.has(_ids_i[i])
+        const keep = _keep_ids
+            ? _keep_ids.has(_ids_i[i])
             : (i < active.length && active[i]);
         if (keep) {
             for (const col of _cols_i) { _nd_i[col].push(_orig_i[col][i]); }
@@ -15749,6 +15883,9 @@ const _dsrcs = (typeof derived_sources !== "undefined" && derived_sources)
     ? derived_sources : [];
 const _dsrcs_orig = (typeof derived_sources_orig !== "undefined" &&
                      derived_sources_orig) ? derived_sources_orig : [];
+// Parallel to _dsrcs: which filters apply to each derived copy (GAPS2 E2).
+const _derived_use = (typeof derived_use_json !== "undefined")
+    ? JSON.parse(derived_use_json) : _dsrcs.map(() => null);
 // A bar's width, a cap's half-width: `factor' times the smallest gap
 // between the kept rows' x values, `fallback' with fewer than two -- the
 // arithmetic GlyphMapper._tag_spacing records and the served redraw does.
@@ -15775,8 +15912,10 @@ if (_primary_ids) {
         const _dc = Object.keys(_od);
         const _nd = {};
         for (const col of _dc) { dash_own_col(_nd, col); }
+        // This layer's OWN mask, by the filters that apply to it (GAPS2 E2).
+        const _dkeep_ids = dash_ids_for(_derived_use[_di]);
         for (let i = 0; i < _did.length; i++) {
-            if (!_active_ids.has(_did[i])) continue;
+            if (!_dkeep_ids.has(_did[i])) continue;
             for (const col of _dc) { _nd[col].push(_od[col][i]); }
         }
         const _sp = _dspacing[_di];
@@ -16108,7 +16247,32 @@ function dash_apply_kpis(data_obj, kpi_config, kpi_divs, ROW_ID) {
     }
 }
 
-dash_apply_kpis(new_data, kpi_config, kpi_divs, ROW_ID);
+// GAPS2 E2: kpi_config.use is the indices of the filters that apply to
+// EACH card, so a card excluded from one filter is still recomputed by
+// the ones that do apply to it, grouped by "use" so a shared group of
+// cards is recomputed once, not once per card.  A KPI helper elsewhere
+// slices this script up to the first call below, so it is kept as a
+// harmless statement (empty lists) rather than a comment quoting its own
+// text, which would leave that slice ending mid-comment and swallow
+// whatever followed it.
+dash_apply_kpis(new_data, [], [], ROW_ID);  // superseded below
+{
+    const _kpi_groups = new Map();
+    for (let _ki = 0; _ki < kpi_config.length; _ki++) {
+        const _k = kpi_config[_ki];
+        const _key = _dash_use_key(_k.use);
+        if (!_kpi_groups.has(_key)) {
+            _kpi_groups.set(_key, {use: _k.use, config: [], divs: []});
+        }
+        const _grp = _kpi_groups.get(_key);
+        _grp.config.push(_k);
+        _grp.divs.push(kpi_divs[_ki]);
+    }
+    for (const _grp of _kpi_groups.values()) {
+        const _grp_data = dash_data_for(_grp.use);
+        dash_apply_kpis(_grp_data, _grp.config, _grp.divs, ROW_ID);
+    }
+}
 
 // --- Recompute aggregate plots (histogram, kdensity) ---
 // STATA's percentile ([R] summarize), not numpy's: with i = n*p/100 the
@@ -16190,21 +16354,23 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
     const src = agg_sources[ai];
     if (!src) continue;
 
-    // Pull filtered values for this aggregate variable.
-    // new_data already contains only the rows that passed every active filter.
-    // A layer drawn from a subset of the rows -- a by() panel, a graph or a
-    // plot with its own if/in -- counts its own rows only (ac.member_ids,
-    // absent when the layer drew every row): this counted every row the
-    // filters kept, so each panel took the others' rows as well.
+    // Pull filtered values for this aggregate variable, masked by exactly
+    // the filters that apply to it (ac.use, GAPS2 E2) -- not necessarily
+    // every widget.  A layer drawn from a subset of the rows -- a by()
+    // panel, a graph or a plot with its own if/in -- counts its own rows
+    // only (ac.member_ids, absent when the layer drew every row): this
+    // counted every row the filters kept, so each panel took the others'
+    // rows as well.
+    const _ac_data = dash_data_for(ac.use);
     let _keep = null;
     if (ac.member_ids) {
         const _m = new Set(ac.member_ids);
-        const _rid = new_data[ROW_ID] || [];
+        const _rid = _ac_data[ROW_ID] || [];
         _keep = [];
         for (let i = 0; i < _rid.length; i++) if (_m.has(_rid[i])) _keep.push(i);
     }
     const _pick = (c) => (_keep === null || !c) ? c : _keep.map(i => c[i]);
-    const raw_col = _pick(new_data[ac.varname]);
+    const raw_col = _pick(_ac_data[ac.varname]);
     if (!raw_col) continue;
     // A weighted layer ([fweight] on a histogram, [aweight]/[fweight] on a
     // kdensity) names its weight column in ac.wvar: the values and the
@@ -16213,8 +16379,8 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
     // mapper applies.  An unweighted layer carries no wvar and keeps the
     // original filter.
     let vals, wts = null;
-    if (ac.wvar && new_data[ac.wvar]) {
-        const wcol = _pick(new_data[ac.wvar]);
+    if (ac.wvar && _ac_data[ac.wvar]) {
+        const wcol = _pick(_ac_data[ac.wvar]);
         vals = []; wts = [];
         for (let i = 0; i < raw_col.length; i++) {
             const v = raw_col[i], w = wcol[i];
@@ -19792,41 +19958,31 @@ def _dash_assign_axis_ranges(fig, renderers, options, annotations=()):
 # ---- Filter widgets -----------------------------------------------------------
 
 def _dash_option_value(v):
-    """The one string a dropdown carries for a data value, in both modes.
+    """The one VALUE a dropdown carries for a data value, in both modes
+    (GAPS2 X1).
 
-    ``0.0`` becomes ``'0'`` because the saved page compares ``String(v)`` in
-    JavaScript, where ``String(0.0)`` is ``"0"``; the served app used
-    ``str(v)`` and carried ``'0.0'``, so the two documents held different
-    option values for the same category.
-
-    A date is its epoch milliseconds, the value the saved page's snapshot
-    carries (``_dash_json_value``) and its script compares as
-    ``String(v)``: the option was ``str(Timestamp)``, "2001-12-31
-    00:00:00", which no row's milliseconds equal, so a date dropdown kept
-    no rows (BUGS.md, 24sep2026).  The served mask applies this function
-    to the column and the value alike, so its rows are unchanged.
+    A date's value is its epoch MILLISECONDS, the value the saved page's
+    snapshot carries (``_dash_json_value``); any other number -- an
+    ``int``, a ``float``, a numpy scalar -- is ``float(v)``, compared as a
+    NUMBER in both twins (``_dash_dropdown_mask``, ``dash_filter_mask``'s
+    ``spec.numeric`` branch): ECMAScript writes ``5e-05`` as
+    ``"0.00005"`` and Python writes ``"5e-05"``, so no string comparison
+    of the two could ever agree for every value.  Anything else -- a
+    string -- keeps its EXACT text, with no integer rewriting: '01',
+    '1.0' and ' 2' are three different values, and 'nan', 'None' and
+    'NaT' are ordinary text, not missing (measured 25sep2026: a marker
+    label "007" read back as the number 7, and 'nan'/'None'/'NaT' were
+    never offered at all).
     """
     if isinstance(v, (pd.Timestamp, np.datetime64)) or (
             hasattr(v, "year") and hasattr(v, "month")):
         ms = _dash_json_value(v)
         if isinstance(ms, float) and math.isfinite(ms):
-            return str(int(ms))
-    s = str(v)
-    try:
-        f = float(s)
-        i = int(f)
-        if f == i:
-            return str(i)
-    except (ValueError, TypeError, OverflowError):
-        pass
-    return s
-
-
-def _dash_option_sort_key(rv):
-    try:
-        return (0, float(rv))
-    except (ValueError, TypeError):
-        return (1, rv)
+            return ms
+        return str(v)
+    if isinstance(v, (int, float, np.integer, np.floating)):
+        return float(v)
+    return str(v)
 
 
 #: A zero-width U+2060 WORD JOINER, dropped between the two characters of a
@@ -19906,6 +20062,18 @@ def _dash_finite_column(col, allow_datetime=False):
             return ms.to_numpy(dtype=float)
     arr = np.array([v for v in col if v is not None], dtype=float)
     return arr[~np.isnan(arr)]
+
+
+def _dash_filter_numeric(column):
+    """Whether *column* compares as NUMBERS in a dropdown (GAPS2 X1): its
+    type is numeric or datetime, the one test both twins share for whether
+    a dropdown value is a float or an exact text
+    (:func:`_dash_dropdown_values`, :func:`_dash_dropdown_mask`,
+    ``_DASH_FILTER_MASK_JS``'s ``spec.numeric``).
+    """
+    series = pd.Series(column)
+    return bool(pd.api.types.is_numeric_dtype(series)
+                or pd.api.types.is_datetime64_any_dtype(series))
 
 
 def _dash_filter_rangeable(column):
@@ -19988,6 +20156,13 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
                     return vlabels[k]
             except (ValueError, OverflowError):
                 pass
+            # GAPS2 X1: rv is now a float for a numeric column (it used to
+            # be the string _dash_option_value wrote); an unlabelled value
+            # still reads as it did -- "1", not "1.0" -- and a string
+            # column's rv (never a float) keeps its exact text unchanged.
+            # The display-format writer (S12) replaces this fallback.
+            if isinstance(rv, float):
+                return str(int(rv)) if rv.is_integer() else str(rv)
             return rv
 
         # The option label is raw: BokehJS builds each option as
@@ -20000,6 +20175,13 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
         w = Select(title=title, value=sentinel, options=options)
         w._dash_sentinel = sentinel
         w._dash_ftype = "dropdown"
+        # GAPS2 X1 (DISCOVERY Q26): a numeric column's dropdown compares
+        # numbers as numbers; _dash_groups maps an entry's value to every
+        # member sharing its display-format label -- this section ships
+        # groups of one (S12 forms the real groups by display text).
+        w._dash_numeric = _dash_filter_numeric(series)
+        if w._dash_numeric:
+            w._dash_groups = {rv: (rv,) for rv in raw_values}
         return w, sentinel
     if ftype not in ("slider", "range"):
         return None, None
@@ -20047,13 +20229,37 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
     return w, None
 
 
-def _dash_dropdown_mask(column, value):
-    """The rows a dropdown set to *value* keeps: the Python twin of the
-    ``String(orig[fvar][i]) !== val`` test in the saved page's JavaScript.
-    Both sides go through ``_dash_option_value``, so ``'1'`` and ``'1.0'``
-    select the same rows."""
-    want = _dash_option_value(value)
-    return pd.Series(column).map(_dash_option_value).to_numpy() == want
+def _dash_dropdown_mask(column, value, groups=None):
+    """The rows a dropdown set to *value* keeps: the Python twin of
+    ``_DASH_FILTER_MASK_JS``'s dropdown branch (GAPS2 X1).
+
+    The ONE rule, shared by both twins and pinned by
+    ``test/test_dropdown_values.py::TestOneRule::test_node_and_pandas_agree``
+    and ``::test_two_values_sharing_a_label_select_both``: a numeric or
+    datetime column (:func:`_dash_filter_numeric`) compares NUMBERS as
+    numbers -- *value* read as a float, a date's own epoch milliseconds --
+    and every member of *groups*' entry for it (several distinct values
+    that display under one format label, DISCOVERY Q26) keeps its rows
+    too; a missing number never matches.  Any other column compares its
+    EXACT text: 'nan', 'None', 'NaT', '01' and '1' are different values,
+    exactly as they are listed.
+    """
+    if _dash_filter_numeric(pd.Series(column)):
+        try:
+            want = float(value)
+        except (TypeError, ValueError):
+            return np.zeros(len(column), dtype=bool)
+        if not math.isfinite(want):
+            return np.zeros(len(column), dtype=bool)
+        members = (groups or {}).get(want, (want,))
+        col = _dash_float_values(column, coerce=True)
+        with np.errstate(invalid="ignore"):
+            return np.isin(col, list(members))
+    want = str(value)
+    return np.array(
+        ["" if v is None or (isinstance(v, float) and math.isnan(v))
+         else str(v) for v in column],
+        dtype=object) == want
 
 
 # How often a served session may recompute.  A filter move reruns every
@@ -20369,6 +20575,34 @@ def _dash_excluded(key, excluded, owner_of):
     (measured 23sep2026: 5 and 5 rows became 3 and 1 on a price move).
     """
     return key in excluded or owner_of.get(key) in excluded
+
+
+def _dash_filter_applies(target, exclude, owner_of, members=None):
+    """True unless ``filter(..., exclude())`` removes *target* (GAPS2 E2).
+
+    With *members* -- a link group's shared source draws for several
+    graph names -- true unless EVERY member is excluded: the group is
+    filtered by a filter unless every graph of the group is excluded from
+    it (dash.sthlp), so *target* itself is not consulted when *members* is
+    given.  Without it, true unless :func:`_dash_excluded` removes
+    *target* alone (a graph, a by() panel through *owner_of*, a KPI card,
+    an aggregate or a derived layer -- each answers to its own single
+    name).
+    """
+    if members:
+        return not all(_dash_excluded(m, exclude, owner_of) for m in members)
+    return not _dash_excluded(target, exclude, owner_of)
+
+
+def _dash_widgets_for(target, widgets, owner_of, members=None):
+    """The filter widgets that apply to *target* (GAPS2 E2): those whose
+    ``exclude()`` does not remove it, tested by :func:`_dash_filter_applies`
+    with each widget's own ``_dash_exclude`` list.  The served twin of the
+    saved page's per-target ``use`` index list.
+    """
+    return [w for w in widgets
+            if _dash_filter_applies(
+                target, getattr(w, "_dash_exclude", []), owner_of, members)]
 
 
 # ---- A link group's views, after a filter move (served) -----------------------
@@ -26274,15 +26508,31 @@ class DashRenderer:
         # JS callbacks index all_widgets correctly (1:1 correspondence).
         # Include per-widget sentinel so _FILTER_JS can check the right
         # "no filter" value — the sentinel may differ from '__all__' when
-        # real data contains that literal string.
-        _filter_specs: list = [
-            {
+        # real data contains that literal string.  GAPS2 X1: a dropdown
+        # spec also carries "numeric" (compare as a number, not text) and,
+        # on a numeric column, "groups" -- [[value, member, ...], ...],
+        # each entry opening with the value the widget carries for it
+        # (DISCOVERY Q26) -- so the saved script's dash_filter_mask
+        # matches the served _dash_dropdown_mask exactly.
+        _filter_specs: list = []
+        for _fc, _w in zip(built_filter_specs, self.filter_widgets):
+            _entry = {
                 "varname":  _fc.get("varname", ""),
                 "type":     _fc.get("type", "dropdown"),
                 "sentinel": getattr(_w, "_dash_sentinel", "__all__"),
             }
-            for _fc, _w in zip(built_filter_specs, self.filter_widgets)
-        ]
+            if _entry["type"] == "dropdown":
+                _entry["numeric"] = bool(getattr(_w, "_dash_numeric", False))
+                _w_groups = getattr(_w, "_dash_groups", None)
+                if _w_groups:
+                    # Each entry opens with the value the widget carries
+                    # for it (DISCOVERY Q26); this section ships groups of
+                    # one, so a member tuple is always (value,) and the
+                    # entry is [value].  S12 forms the real groups (several
+                    # values sharing one display-format label) here.
+                    _entry["groups"] = [list(_members)
+                                       for _members in _w_groups.values()]
+            _filter_specs.append(_entry)
 
         _kpi_defs_by_name: dict = {k.get("name", ""): k for k in kpis}
         # A by() graph's panels answer to its name in exclude(), as in the
@@ -26291,110 +26541,146 @@ class DashRenderer:
                            for gname, entries in self._facet_map.items()
                            for fkey, _label in entries}
 
-        for _fc, _cb in zip(built_filter_specs, self.filter_callbacks):
-            _fc_excludes = [str(x) for x in _fc.get("exclude", [])]
-            _kpi_config_for_cb: list = []
-            _kpi_divs_for_cb:   list = []
-            for _kname, _kdiv in self.kpi_divs.items():
-                if _kname in _fc_excludes:
-                    continue
-                _kdef = _kpi_defs_by_name.get(_kname, {})
-                if _kdef.get("update", "filter") not in ("filter", "both"):
-                    continue
-                _kpi_config_for_cb.append(
-                    self._kpi_callback_config(_kname, _kdef))
-                _kpi_divs_for_cb.append(_kdiv)
+        # GAPS2 E2: every target's "use" -- the indices into built_filter_
+        # specs (and _filter_specs/all_widgets, which line up with it) of
+        # the filters whose exclude() does not remove the target -- is a
+        # property of the target and the WHOLE filter set, not of which
+        # widget moved.  It is computed ONCE here and every callback reads
+        # the SAME lists: before this fix each callback wrote only the
+        # rows its OWN trigger's exclude() list allowed, masked by every
+        # widget regardless, so a graph excluded from one filter kept
+        # whatever the last OTHER filter's move had written it.
+        def _use_for(target, members=None):
+            return [_fi for _fi, _fc in enumerate(built_filter_specs)
+                   if _dash_filter_applies(
+                       target, [str(x) for x in _fc.get("exclude", [])],
+                       _owner_of, members)]
 
+        # One entry per graph name sharing a source's identity (a link
+        # group's members share ONE ColumnDataSource object).
+        _members_of_id: "dict[int, list]" = {}
+        for _gsrc_name, _gsrc in self.sources.items():
+            _members_of_id.setdefault(id(_gsrc), []).append(_gsrc_name)
+
+        _graph_srcs_all: list = []
+        _graph_use_all: list = []
+        _excluded_srcs_all: list = []
+        _listed_ids: set = set()
+        for _gsrc_name, _gsrc in self.sources.items():
+            if id(_gsrc) in _listed_ids:
+                continue
+            _listed_ids.add(id(_gsrc))
+            _use_i = _use_for(_gsrc_name, _members_of_id[id(_gsrc)])
+            if _use_i:
+                _graph_srcs_all.append(_gsrc)
+                _graph_use_all.append(_use_i)
+            else:
+                # No filter applies (every one excludes it, or every
+                # member of its link group does): the fallback to the
+                # primary `source' must never touch it either.
+                _excluded_srcs_all.append(_gsrc)
+
+        # Each facet/qualifier CDSView, with the row identities that
+        # belong to it, so the callback can rebuild its BooleanFilter
+        # after the source it is over has been shortened.
+        _view_filters_all = self._view_filter_args(_graph_srcs_all)
+
+        # Build per-source original snapshots (indexed parallel to
+        # all_graph_sources) so _FILTER_JS can rebuild filtered data for
+        # each source using its own column schema.  Without this, assigning
+        # a single new_data (built from the primary source) to all sources
+        # drops columns that belong to secondary sources only — corrupting
+        # unlinked graphs whose schemas differ from the primary source.
+        _graph_srcs_orig_all = [_snapshot_of[id(_gsrc)]
+                                for _gsrc in _graph_srcs_all]
+
+        # A target every filter excludes is left exactly as it was drawn --
+        # the same rule the graph-source loop above applies -- rather than
+        # redrawn to the unconditional value: no filter ever touches it
+        # (test_saved_filter_layers.py::TestTheCollectedCopies::
+        # test_an_excluded_graphs_copies_are_not_written pins this for a
+        # derived copy).
+        _agg_srcs_all: list = []
+        _agg_cfgs_all: list = []
+        for _gname, _agg_list in self.agg_source_registry.items():
+            _use_i = _use_for(_gname)
+            if not _use_i:
+                continue
+            for _agg_cds, _agg_cfg in _agg_list:
+                _agg_srcs_all.append(_agg_cds)
+                # A copy: the SAME cfg dict may be read elsewhere for the
+                # initial draw, and "use" is only meaningful to the filter
+                # script.
+                _agg_cfgs_all.append(dict(_agg_cfg, use=_use_i))
+
+        # The copies of rows a mapper built, each with its own snapshot,
+        # and its own "use".
+        _der_srcs_all: list = []
+        _der_use_all: list = []
+        for _gname, _der_list in getattr(
+                self, "derived_source_registry", {}).items():
+            _use_i = _use_for(_gname)
+            if not _use_i:
+                continue
+            for _dsrc in _der_list:
+                if any(_dsrc is _s for _s in _der_srcs_all):
+                    continue
+                _der_srcs_all.append(_dsrc)
+                _der_use_all.append(_use_i)
+        for _dsrc in _der_srcs_all:
+            if id(_dsrc) not in _snapshot_of:
+                _snapshot_of[id(_dsrc)] = ColumnDataSource({
+                    _col: [DashRenderer._to_serialisable(v) for v in _arr]
+                    for _col, _arr in _dsrc.data.items()
+                })
+        _der_srcs_orig_all = [_snapshot_of[id(_dsrc)]
+                              for _dsrc in _der_srcs_all]
+        # A bar's width and a cap's half-width are the kept rows'
+        # spacing (GlyphMapper._tag_spacing); null where there is none.
+        _der_spacing_json_all = json.dumps([
+            getattr(_dsrc, "_dash_spacing", None) for _dsrc in _der_srcs_all])
+        _der_spacing_glyphs_all = [
+            list(getattr(_dsrc, "_dash_spacing_glyphs", []) or [])
+            for _dsrc in _der_srcs_all]
+
+        # Every filter-mode KPI whose "use" is non-empty -- one every
+        # filter excludes is left at whatever the first render gave it, as
+        # every other kind of target is.
+        _kpi_config_all: list = []
+        _kpi_divs_all: list = []
+        for _kname, _kdiv in self.kpi_divs.items():
+            _kdef = _kpi_defs_by_name.get(_kname, {})
+            if _kdef.get("update", "filter") not in ("filter", "both"):
+                continue
+            _use_i = _use_for(_kname)
+            if not _use_i:
+                continue
+            _cfg = dict(self._kpi_callback_config(_kname, _kdef), use=_use_i)
+            _kpi_config_all.append(_cfg)
+            _kpi_divs_all.append(_kdiv)
+
+        # Every callback gets the SAME target lists: "use" is a property of
+        # the target and the whole filter set, never of which widget moved
+        # (GAPS2 E2).
+        _der_use_json_all = json.dumps(_der_use_all)
+        for _cb in self.filter_callbacks:
             _cb.args["orig_source"]       = _orig_snapshot
             _cb.args["all_widgets"]       = list(self.filter_widgets)
             _cb.args["filter_specs_json"] = json.dumps(_filter_specs)
-            _cb.args["kpi_config_json"]   = json.dumps(_kpi_config_for_cb)
-            _cb.args["kpi_divs"]          = _kpi_divs_for_cb
-
-            # Pass ALL non-excluded graph sources so _FILTER_JS can update every
-            # graph in an unlinked dashboard (not just the primary fsource).
-            _graph_srcs_for_cb: list = []
-            for _gsrc_name, _gsrc in self.sources.items():
-                if _dash_excluded(_gsrc_name, _fc_excludes, _owner_of):
-                    continue
-                if _gsrc not in _graph_srcs_for_cb:
-                    _graph_srcs_for_cb.append(_gsrc)
-            _cb.args["all_graph_sources"] = _graph_srcs_for_cb
-
-            # And every graph source this exclude() protects -- one no
-            # filtered graph shares -- so the callback's fallback to its
-            # primary `source' (fsource: the first source registered) never
-            # writes it.  It did: an excluded graph was filtered on the saved
-            # page whenever its source held that place, and left alone when
-            # served (test_filter_exclude.py).  An excluded member of a link
-            # group shares the group's source, which the group's other graphs
-            # have listed above, and is filtered with them in both modes.
-            # By identity, in one pass: a by() graph's panels can number
-            # graphs x by_groups sources.
-            _listed_ids = {id(_s) for _s in _graph_srcs_for_cb}
-            _excluded_srcs_for_cb: list = []
-            for _gsrc_name, _gsrc in self.sources.items():
-                if id(_gsrc) in _listed_ids or not _dash_excluded(
-                        _gsrc_name, _fc_excludes, _owner_of):
-                    continue
-                _listed_ids.add(id(_gsrc))
-                _excluded_srcs_for_cb.append(_gsrc)
-            _cb.args["excluded_sources"] = _excluded_srcs_for_cb
-
-            # Each facet/qualifier CDSView, with the row identities that
-            # belong to it, so the callback can rebuild its BooleanFilter
-            # after the source it is over has been shortened.
-            _cb.args["view_filters"] = self._view_filter_args(
-                _graph_srcs_for_cb)
-
-            # Build per-source original snapshots (indexed parallel to
-            # all_graph_sources) so _FILTER_JS can rebuild filtered data for
-            # each source using its own column schema.  Without this, assigning
-            # a single new_data (built from the primary source) to all sources
-            # drops columns that belong to secondary sources only — corrupting
-            # unlinked graphs whose schemas differ from the primary source.
-            _cb.args["all_graph_sources_orig"] = [
-                _snapshot_of[id(_gsrc)] for _gsrc in _graph_srcs_for_cb
-            ]
-
-            _agg_srcs: list = []
-            _agg_cfgs: list = []
-            for _gname, _agg_list in self.agg_source_registry.items():
-                if _dash_excluded(_gname, _fc_excludes, _owner_of):
-                    continue
-                for _agg_cds, _agg_cfg in _agg_list:
-                    _agg_srcs.append(_agg_cds)
-                    _agg_cfgs.append(_agg_cfg)
-            _cb.args["agg_sources"]      = _agg_srcs
-            _cb.args["agg_configs_json"] = json.dumps(_agg_cfgs)
-
-            # The copies of rows a mapper built, each with its own snapshot
-            # (shared by every callback), unless exclude() names the graph.
-            _der_srcs: list = []
-            for _gname, _der_list in getattr(
-                    self, "derived_source_registry", {}).items():
-                if _dash_excluded(_gname, _fc_excludes, _owner_of):
-                    continue
-                for _dsrc in _der_list:
-                    if any(_dsrc is _s for _s in _der_srcs):
-                        continue
-                    _der_srcs.append(_dsrc)
-            for _dsrc in _der_srcs:
-                if id(_dsrc) not in _snapshot_of:
-                    _snapshot_of[id(_dsrc)] = ColumnDataSource({
-                        _col: [DashRenderer._to_serialisable(v) for v in _arr]
-                        for _col, _arr in _dsrc.data.items()
-                    })
-            _cb.args["derived_sources"] = _der_srcs
-            _cb.args["derived_sources_orig"] = [
-                _snapshot_of[id(_dsrc)] for _dsrc in _der_srcs]
-            # A bar's width and a cap's half-width are the kept rows'
-            # spacing (GlyphMapper._tag_spacing); null where there is none.
-            _cb.args["derived_spacing_json"] = json.dumps([
-                getattr(_dsrc, "_dash_spacing", None) for _dsrc in _der_srcs])
-            _cb.args["derived_spacing_glyphs"] = [
-                list(getattr(_dsrc, "_dash_spacing_glyphs", []) or [])
-                for _dsrc in _der_srcs]
+            _cb.args["kpi_config_json"]   = json.dumps(_kpi_config_all)
+            _cb.args["kpi_divs"]          = _kpi_divs_all
+            _cb.args["all_graph_sources"] = _graph_srcs_all
+            _cb.args["graph_use_json"]    = json.dumps(_graph_use_all)
+            _cb.args["excluded_sources"]  = _excluded_srcs_all
+            _cb.args["view_filters"]      = _view_filters_all
+            _cb.args["all_graph_sources_orig"] = _graph_srcs_orig_all
+            _cb.args["agg_sources"]       = _agg_srcs_all
+            _cb.args["agg_configs_json"]  = json.dumps(_agg_cfgs_all)
+            _cb.args["derived_sources"]   = _der_srcs_all
+            _cb.args["derived_sources_orig"] = _der_srcs_orig_all
+            _cb.args["derived_use_json"]  = _der_use_json_all
+            _cb.args["derived_spacing_json"] = _der_spacing_json_all
+            _cb.args["derived_spacing_glyphs"] = _der_spacing_glyphs_all
 
         # The CSV download (WP-21), when the build asked for it: the
         # snapshot the filter callbacks read, masked the way they mask it,
@@ -26418,8 +26704,8 @@ class DashRenderer:
         Its CustomJS masks *snapshot* with the filter widgets' current values
         through ``dash_filter_mask`` -- the filter callbacks' own function --
         and writes the rows that pass through the one CSV formatter.  String
-        columns travel once more, raw, in their own source: the snapshot
-        holds "007" as 7.
+        columns travel once more, raw, in their own source (GAPS2 X1: the
+        snapshot itself now keeps a string column as text too).
         """
         from bokeh.models import Button
 
@@ -27216,7 +27502,7 @@ class ServerAppBuilder:
                          # The filter widgets and the rows they select.
                          "_whole_number_step", "_is_clock_kind",
                          "_date_slider_step_days", "_clock_slider_step_ms",
-                         "_dash_option_value", "_dash_option_sort_key",
+                         "_dash_option_value",
                          # _dash_filter_title neutralises TeX in the title;
                          # _dash_inert_tex is its callee and must travel too.
                          "_dash_inert_tex",
@@ -27238,6 +27524,15 @@ class ServerAppBuilder:
                          # applied where the app groups and lists (WP-19).
                          "_dash_limits", "_dash_limit_hint",
                          "_dash_dropdown_values",
+                         # GAPS2 X1: the one test of "numeric column" a
+                         # dropdown's value and mask share.
+                         "_dash_filter_numeric",
+                         # GAPS2 E2: which filters apply to a target (a
+                         # graph, a by() panel, a link group's shared
+                         # source, a KPI, an aggregate or a derived layer),
+                         # so every target is masked on every move by
+                         # exactly the filters that do not exclude it.
+                         "_dash_filter_applies", "_dash_widgets_for",
                          "_dash_filter_truncation_note", "_dash_by_groups",
                          # The by() panels twoway leaves out (S3 batch).
                          "_dash_by_panel_dropped",
@@ -29441,20 +29736,38 @@ class ServerAppBuilder:
             "",
             "    def _make_filter_cb(_trig_widget, _all_widgets, _all_sources, _agg_srcs, _kpi_divs, _kpi_defs, _df_ref, _fmap, _fgvals, _orig_src_data, _gquals, _gfac_to_orig, _redrawn=frozenset(), _shared=None, _linked_views=(), _shared_pos=None, _redrawn_views=None):",
             "        _redrawn_views = _redrawn_views or {}",
+            "        # GAPS2 E2: the graph names sharing _shared's identity, so the",
+            "        # link group's own mask is the AND of the filters that apply",
+            "        # to at least one member -- unless every member is excluded.",
+            "        _shared_members = [_gn for _gn, _srcs in _all_sources.items()",
+            "                          if any(_s is _shared for _s in",
+            "                                 (_srcs if isinstance(_srcs, list) else [_srcs]))] \\",
+            "            if _shared is not None else []",
+            "        _masks: dict = {}",
+            "        def _mask_for(target, members=None):",
+            "            # Every target's OWN mask -- the AND of the filters whose",
+            "            # exclude() does not remove it -- recomputed on every move,",
+            "            # whichever widget triggered it, not the mask of every",
+            "            # widget: before this fix, a target excluded from one",
+            "            # filter kept whatever the last OTHER filter's move had",
+            "            # written, because every trigger masked with every widget",
+            "            # and only the WRITE targets differed by trigger.  Cached",
+            "            # by widget identity so several targets sharing one",
+            "            # applicable-widget set reuse one computation.",
+            "            ws = _dash_widgets_for(target, _all_widgets, _gfac_to_orig,",
+            "                                   members)",
+            "            key = tuple(id(w) for w in ws)",
+            "            if key not in _masks:",
+            "                _masks[key] = _dash_frame_filter_mask(_df_ref, ws)",
+            "            return _masks[key]",
             "        def _on_filter_change(attr, old, new):",
-            "            # 1. Build combined mask from all active widgets -- the",
-            "            # rule the CSV download shares (_dash_frame_filter_mask),",
-            "            # so a file holds the rows this recompute shows.",
-            "            mask = _dash_frame_filter_mask(_df_ref, _all_widgets)",
-            "            fdf = _df_ref[mask]",
-            "            # 2. Replace raw source data (facet-aware)",
-            "            excl = getattr(_trig_widget, '_dash_exclude', [])",
+            "            _masks.clear()",
+            "            # 2. Replace raw source data (facet-aware); each target's",
+            "            # own mask below (the download's rule, _dash_frame_filter_",
+            "            # mask, is the same function, over that target's own",
+            "            # applicable widgets rather than every one).",
             "            _shared_hit = False",
             "            for gname, srcs in _all_sources.items():",
-            "                # A by() graph's panels answer to its name, as on",
-            "                # the saved page (_dash_excluded).",
-            "                if _dash_excluded(gname, excl, _gfac_to_orig):",
-            "                    continue",
             "                srcs = srcs if isinstance(srcs, list) else [srcs]",
             "                if _shared is not None and any(s is _shared for s in srcs):",
             "                    # The link group's ONE source, which every member",
@@ -29466,6 +29779,10 @@ class ServerAppBuilder:
             "                    srcs = [s for s in srcs if s is not _shared]",
             "                    if not srcs:",
             "                        continue",
+            "                # A by() graph's panels answer to its name, as on the",
+            "                # saved page (_dash_widgets_for/_dash_excluded).",
+            "                mask = _mask_for(gname)",
+            "                fdf = _df_ref[mask]",
             "                # For faceted sources, further filter by group value",
             "                if gname in _fgvals:",
             "                    _bvs, _gkey = _fgvals[gname]",
@@ -29552,18 +29869,24 @@ class ServerAppBuilder:
             "            # draws from it; a member exclude() names shares it, and is",
             "            # filtered with the group, in both modes.",
             "            if _shared_hit:",
+            "                # The link group's OWN mask: every filter that",
+            "                # applies to at least one member (GAPS2 E2), not",
+            "                # necessarily the same as any one member's own.",
+            "                _shared_mask = _mask_for(None, _shared_members)",
+            "                _shared_fdf = _df_ref[_shared_mask]",
             "                if _brush_on:",
-            "                    _brush_rows[id(_shared)] = fdf.index",
+            "                    _brush_rows[id(_shared)] = _shared_fdf.index",
             "                _dash_refresh_linked(",
-            "                    _shared, fdf, _linked_views,",
+            "                    _shared, _shared_fdf, _linked_views,",
             "                    snapshot=_orig_src_data.get(id(_shared), {}),",
             "                    pos_of=_shared_pos)",
             "                _shared.selected.indices = []",
             "            # 3. Recompute aggregated sources",
             "            for key, agg in _agg_srcs.items():",
             "                gname = key[0]",
-            "                if _dash_excluded(gname, excl, _gfac_to_orig):",
-            "                    continue",
+            "                # This layer's OWN mask (GAPS2 E2), not every widget's.",
+            "                mask = _mask_for(gname)",
+            "                fdf = _df_ref[mask]",
             "                # Derive per-facet data frame analogously to raw source update.",
             "                # Faceted aggregates must recompute from the facet's subgroup,",
             "                # not from global fdf, to stay in sync after filter changes.",
@@ -29629,13 +29952,14 @@ class ServerAppBuilder:
             "                kname = kpi.get('name', '')",
             "                if kname not in _kpi_divs:",
             "                    continue",
-            "                if kname in excl:",
-            "                    continue",
+            "                # The card's OWN mask (GAPS2 E2): the filters whose",
+            "                # exclude() does not name it, whichever widget moved.",
+            "                _k_all = _df_ref[_mask_for(kname)]",
             "                # The card's own if/in: the rows it selected on the",
             "                # whole frame (_kpi_qual_rows), among those kept.",
             "                _k_rows = _kpi_qual_rows.get(kname)",
-            "                _k_fdf = (fdf if _k_rows is None",
-            "                          else fdf[fdf.index.isin(_k_rows)])",
+            "                _k_fdf = (_k_all if _k_rows is None",
+            "                          else _k_all[_k_all.index.isin(_k_rows)])",
             "                val = _compute_kpi(_k_fdf, kpi.get('stat', 'mean'), kpi.get('var', ''))",
             "                disp = _format_kpi(val, kpi.get('fmt', ''),",
             "                                   kpi.get('var', ''),",

@@ -197,8 +197,8 @@ class TestTheCsvFormatter:
         assert got == 'f\r\nDomestic\r\n"Foreign, imported"\r\n2\r\n'
 
     def test_a_string_is_its_own_text(self):
-        # The saved snapshot holds "007" as 7 (its dropdown matches through
-        # that); the download reads the raw text source instead.
+        # The download reads the raw text source (since GAPS2 X1 the
+        # snapshot keeps "007" as text too).
         got = _csv({"s": [7.0, 1.0]}, [0, 1], _meta(["s"], strings=["s"]),
                    text={"s": ["007", "1e5"]})
         assert got == "s\r\n007\r\n1e5\r\n"
@@ -603,6 +603,8 @@ class TestTheHelpers:
         m = dr._dash_frame_filter_mask(_DF, [W("mpg", "slider", 25.0)])
         assert m.tolist() == [False, False, False, True, False, True]
         m = dr._dash_frame_filter_mask(_DF, [W("foreign", "dropdown", "0")])
+        assert m.tolist() == [True, False, False, True, False, False]
+        m = dr._dash_frame_filter_mask(_DF, [W("foreign", "dropdown", 0.0)])
         assert m.tolist() == [True, False, False, True, False, False]
         m = dr._dash_frame_filter_mask(_DF, [W("foreign", "dropdown",
                                                "__all__")])
