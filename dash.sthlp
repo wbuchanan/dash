@@ -2359,6 +2359,9 @@ the plot specification).
 {synopt:{cmdab:xl:abel(}{it:#}[{it:#} ...]{cmd:, format(}{it:fmt}{cmd:))}}custom ticks with format string{p_end}
 {synopt:{cmdab:xsc:ale(log)}}display the x axis on a log scale{p_end}
 {synopt:{cmdab:ysc:ale(log)}}display the y axis on a log scale{p_end}
+{synopt:{cmdab:zti:tle(}{it:string}{cmd:)}}title of the colour key; see {cmd:colorvar()}{p_end}
+{synopt:{cmdab:zlab:el(}{it:#}[{it:#} ...]{cmd:)}}colour-bar tick positions; see {cmd:colorvar()}{p_end}
+{synopt:{cmdab:zsc:ale(}{it:range() log reverse}{cmd:)}}colour-bar range, scale and direction; see {cmd:colorvar()}{p_end}
 {synopt:{cmdab:xli:ne(}{it:#}[{it:#} ...]{cmd:)}}draw vertical reference lines at x = {it:#}{p_end}
 {synopt:{cmdab:yli:ne(}{it:#}[{it:#} ...]{cmd:)}}draw horizontal reference lines at y = {it:#}{p_end}
 {synopt:{cmd:note(}{it:string}{cmd:)}}footnote text below the figure{p_end}
@@ -2592,14 +2595,24 @@ is named too.
     bins for a numeric {it:varname}; an integer from 2 to 256{p_end}
 {synopt:{cmdab:colorm:issing(}{it:color}{cmd:)}}colour drawn for observations
     where {it:varname} is missing{p_end}
+{synopt:{cmdab:colorlev:els(}{it:#}{cmd:)}}# levels: # - 1 equally spaced cuts
+    between the minimum and maximum (Stata's spelling; {cmd:colornlevels()} is
+    the same){p_end}
+{synopt:{cmdab:colorvarminm:ax}}add the minimum and maximum of {it:varname} to
+    the cuts, and to the colour bar's ticks{p_end}
 {synoptline}
 
 {pstd}
-{cmd:colorvar()}, {cmd:colordiscrete} and {cmd:colorcuts()} are Stata 18's
-own; {cmd:colpalette()}, {cmd:colornlevels()} and {cmd:colormissing()} are
+{cmd:colorvar()}, {cmd:colordiscrete}, {cmd:colorcuts()},
+{cmd:colorlevels()} and {cmd:colorvarminmax} are Stata 18's own and drawn as
+Stata draws them: under {cmd:colordiscrete} the cuts are the levels and every
+other value is drawn in {cmd:colormissing()}'s colour with the missing
+values; a cut below the minimum is ignored, and the minimum is used if all
+are; {cmd:colorcuts()} and {cmd:colorlevels()} may not be combined.
+{cmd:colpalette()}, {cmd:colornlevels()} and {cmd:colormissing()} are
 {cmd:dash}'s, and {cmd:twoway} refuses them.  {cmd:twoway}'s other
-{cmd:colorvar} options, such as {cmd:colorlevels()}, {cmd:colorrule()} and
-{cmd:colorformissing()}, are named in the note.  How the colours are drawn
+{cmd:colorvar} options, {cmd:colorrule()}, {cmd:colorstart()},
+{cmd:colorend()} and {cmd:colorformissing()}, are named in the note.  How the colours are drawn
 is {cmd:dash}'s: an unbinned numeric {it:varname} is mapped continuously
 through the palette and a colour bar is drawn beside the figure, where
 {cmd:twoway} bins it at its z axis's ticks.  {cmd:colordiscrete},
@@ -2609,6 +2622,13 @@ entry is drawn per bin, in the scheme's series colours unless
 {it:varname} (a string one is r(7)); {cmd:dash} also takes a string
 variable, one colour and one key entry per value, an empty string drawn in
 {cmd:colormissing()}'s colour.
+
+{pstd}
+The colour key's own axis options, {cmd:ztitle()}, {cmd:zlabel()} and
+{cmd:zscale()}, are taken as graph options and drawn on the key: the title on
+either key; ticks, {cmd:#}{it:N}, {cmd:none} and {cmd:minmax}, and
+{cmd:range()} (widening only), {cmd:log} and {cmd:reverse}, on the colour bar.
+On a discrete key {cmd:zlabel()} and {cmd:zscale()} are named in the note.
 
 {pstd}
 {it:Example:}

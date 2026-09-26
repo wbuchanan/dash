@@ -726,6 +726,189 @@ end
 }
 * ==== end S17 ====
 
+* ==== S16 X2: colorvar explicit forms ====
+local only : env GAPS2_ONLY
+if inlist("`only'", "", "S16") {
+    display as text "S16 start `c(current_time)'"
+    // _dash_serve_spec finds dash_render.py through the ado-path.
+    quietly adopath ++ "`c(pwd)'/.."
+    sysuse auto, clear
+    local cvlog "`gt_work'/cv.log"
+    local cvspec "`gt_work'/cv_spec.json"
+    local cvdata "`gt_work'/cv_data.json"
+
+    // ------------------------------------------------------------
+    // CV-01: colordiscrete colorcuts(2 4) -- dash draws twoway's groups
+    // ------------------------------------------------------------
+    quietly twoway scatter mpg weight, colorvar(rep78) colordiscrete colorcuts(2 4) name(zcv0, replace)
+    cert_svg_export, name(zcv0) file("`gt_work'/zcv0.svg")
+    local cv1_svg "`r(file)'"
+    capture dash clear
+    capture log close _cvlog
+    log using "`cvlog'", name(_cvlog) text replace
+    capture noisily dash scatter mpg weight, colorvar(rep78) colordiscrete colorcuts(2 4) name(zcv1)
+    local cv1_rc = _rc
+    log close _cvlog
+    cert_log_has "`cvlog'", needle("ignoring unsupported")
+    local cv1_note = r(found)
+    _dash_serve_spec, specpath("`cvspec'") datapath("`cvdata'")
+    global cv_svg  "`cv1_svg'"
+    global cv_spec "`cvspec'"
+    global cv_data "`cvdata'"
+    global cv_repo "`c(pwd)'/.."
+    python:
+import sys, warnings
+from sfi import Macro
+sys.path.insert(0, Macro.getGlobal("cv_repo"))
+sys.path.insert(0, Macro.getGlobal("cv_repo") + "/scripts")
+import dash_render as _cvdr
+import svg_truth as _cvst
+_doc = _cvst.svg_document(Macro.getGlobal("cv_svg"))
+_pr = _doc["plotregion"]
+_fills = set(c["fill"] for c in _doc["circles"] if c["fill"] not in (None, "none") and _pr["left"] <= c["cx"] <= _pr["right"] and _pr["top"] <= c["cy"] <= _pr["bottom"])
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    _r = _cvdr.DashRenderer(Macro.getGlobal("cv_spec"), Macro.getGlobal("cv_data"))
+    _page = _r.render()
+_bins = set()
+for _fig in _r.figures.values():
+    for _m in _fig.select({"type": _cvdr.ColumnDataSource}):
+        if "_cvar_rep78_bin" in _m.data:
+            _bins = set(_m.data["_cvar_rep78_bin"])
+Macro.setGlobal("cv_tw_groups", str(len(_fills)))
+Macro.setGlobal("cv_dash_groups", str(len(_bins)))
+end
+    _gt_expect CV-01 "(`cv1_rc' == 0)" "dash rc `cv1_rc'"
+    _gt_expect CV-01 "(`cv1_note' == 0)" "dash printed the ignoring note"
+    _gt_expect CV-01 "(${cv_tw_groups} == 3)" "twoway drew ${cv_tw_groups} groups, not 3"
+    _gt_expect CV-01 "(${cv_dash_groups} == ${cv_tw_groups})" "dash drew ${cv_dash_groups} groups, twoway ${cv_tw_groups}"
+    _gt_done CV-01 "colordiscrete colorcuts(2 4): rep78 = 2, 4 and gray, as twoway draws them"
+
+    // ------------------------------------------------------------
+    // CV-02: colorcuts() with colorlevels() is refused in twoway's words
+    // ------------------------------------------------------------
+    capture twoway scatter mpg weight, colorvar(price) colorcuts(5000) colorlevels(4) nodraw
+    local cv2_tw = _rc
+    capture dash clear
+    capture log close _cvlog
+    log using "`cvlog'", name(_cvlog) text replace
+    capture noisily dash scatter mpg weight, colorvar(price) colorcuts(5000) colorlevels(4) name(zcv2)
+    local cv2_rc = _rc
+    log close _cvlog
+    cert_log_has "`cvlog'", needle("may not combine options colorcuts() and colorlevels()")
+    _gt_expect CV-02 "(r(found) == 1)" "dash's message is not twoway's"
+    _gt_expect CV-02 "(`cv2_tw' == 198 & `cv2_rc' == 198)" "twoway r(`cv2_tw'), dash r(`cv2_rc')"
+    _gt_done CV-02 "colorcuts() and colorlevels() refused together, r(198), twoway's words"
+
+    // ------------------------------------------------------------
+    // CV-03: colorlevels() and colorvarminmax register, silently, in the spec
+    // ------------------------------------------------------------
+    capture dash clear
+    capture log close _cvlog
+    log using "`cvlog'", name(_cvlog) text replace
+    capture noisily dash scatter mpg weight, colorvar(price) colorlevels(4) colorvarminmax name(zcv3)
+    local cv3_rc = _rc
+    log close _cvlog
+    cert_log_has "`cvlog'", needle("ignoring unsupported")
+    local cv3_note = r(found)
+    _dash_serve_spec, specpath("`cvspec'") datapath("`cvdata'")
+    cert_file_has "`cvspec'", needle(`""colorlevels":"4""')
+    local cv3_lv = r(found)
+    cert_file_has "`cvspec'", needle(`""colorvarminmax":"colorvarminmax""')
+    local cv3_mm = r(found)
+    _gt_expect CV-03 "(`cv3_rc' == 0 & `cv3_note' == 0)" "rc `cv3_rc', note `cv3_note'"
+    _gt_expect CV-03 "(`cv3_lv' == 1 & `cv3_mm' == 1)" "spec keys colorlevels `cv3_lv', colorvarminmax `cv3_mm'"
+    _gt_done CV-03 "colorlevels() and colorvarminmax registered with no note and reached the spec"
+
+    // ------------------------------------------------------------
+    // CV-04: a repeat is answered as twoway answers it
+    // ------------------------------------------------------------
+    capture twoway scatter mpg weight, colorvar(price) colorlevels(4) colorlevels(3) nodraw
+    local cv4_twl = _rc
+    capture dash clear
+    capture dash scatter mpg weight, colorvar(price) colorlevels(4) colorlevels(3) name(zcv4)
+    local cv4_dl = _rc
+    capture twoway scatter mpg weight, colorvar(price) colorvarminmax colorvarminmax nodraw
+    local cv4_twm = _rc
+    capture dash clear
+    capture dash scatter mpg weight, colorvar(price) colorvarminmax colorvarminmax name(zcv4)
+    local cv4_dm = _rc
+    _gt_expect CV-04 "(`cv4_twl' == `cv4_dl')" "colorlevels() twice: twoway r(`cv4_twl'), dash r(`cv4_dl')"
+    _gt_expect CV-04 "(`cv4_twm' == 198 & `cv4_dm' == 198)" "colorvarminmax twice: twoway r(`cv4_twm'), dash r(`cv4_dm')"
+    _gt_done CV-04 "colorlevels() twice taken and colorvarminmax twice refused, as twoway does"
+
+    // ------------------------------------------------------------
+    // CV-05: ztitle()/zlabel()/zscale() register and are drawn
+    // ------------------------------------------------------------
+    capture dash clear
+    capture log close _cvlog
+    log using "`cvlog'", name(_cvlog) text replace
+    capture noisily dash scatter mpg weight, colorvar(price) ztitle("Repair") zlabel(4000(4000)16000) zscale(range(0 20000)) name(zcv5)
+    local cv5_rc = _rc
+    log close _cvlog
+    cert_log_has "`cvlog'", needle("ignoring unsupported")
+    local cv5_note = r(found)
+    _dash_serve_spec, specpath("`cvspec'") datapath("`cvdata'")
+    local cv5_keys = 0
+    foreach k in ztitle zlabel zscale {
+        cert_file_has "`cvspec'", needle(`""`k'":"')
+        local cv5_keys = `cv5_keys' + r(found)
+    }
+    python:
+import warnings
+from sfi import Macro
+from bokeh.models import ColorBar as _CB
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    _r = _cvdr.DashRenderer(Macro.getGlobal("cv_spec"), Macro.getGlobal("cv_data"))
+    _page = _r.render()
+_bar = [b for f in _r.figures.values() for b in f.select({"type": _CB})][0]
+_ok = (_bar.title == "Repair" and list(_bar.ticker.ticks) == [4000.0, 8000.0, 12000.0, 16000.0] and _bar.color_mapper.low == 0.0 and _bar.color_mapper.high == 20000.0)
+Macro.setGlobal("cv5_drawn", "1" if _ok else "0")
+end
+    _gt_expect CV-05 "(`cv5_rc' == 0 & `cv5_note' == 0)" "rc `cv5_rc', note `cv5_note'"
+    _gt_expect CV-05 "(`cv5_keys' == 3)" "`cv5_keys' of 3 z keys in the spec"
+    _gt_expect CV-05 "(${cv5_drawn} == 1)" "the colour bar does not carry the title, ticks and range"
+    _gt_done CV-05 "ztitle(), zlabel() and zscale() registered silently and drew on the colour bar"
+
+    // ------------------------------------------------------------
+    // CV-06: hostile ztitle() text is inert
+    // ------------------------------------------------------------
+    local x "EXPANDED"
+    capture dash clear
+    capture log close _cvlog
+    log using "`cvlog'", name(_cvlog) text replace
+    capture noisily dash scatter mpg weight, colorvar(price) ztitle("\`x'") name(zcv6)
+    local cv6_rc = _rc
+    capture noisily dash scatter mpg weight, colorvar(price) ztitle("<script>") name(zcv6b)
+    local cv6_rcb = _rc
+    log close _cvlog
+    cert_log_has "`cvlog'", needle("EXPANDED")
+    _gt_expect CV-06 "(`cv6_rc' == 0 & `cv6_rcb' == 0)" "rc `cv6_rc' / `cv6_rcb'"
+    _gt_expect CV-06 "(r(found) == 0)" "a macro in ztitle() was expanded"
+    _gt_done CV-06 "hostile ztitle() text registered without expansion"
+
+    // ------------------------------------------------------------
+    // CV-07: colorlevels() is no longer named; colorrule() still is
+    // ------------------------------------------------------------
+    capture dash clear
+    capture log close _cvlog
+    log using "`cvlog'", name(_cvlog) text replace
+    capture noisily dash scatter mpg weight, colorvar(price) colorlevels(4) colorrule(hue) colorformissing(red) name(zcv7)
+    log close _cvlog
+    cert_log_has "`cvlog'", needle("colorrule()")
+    local cv7_rule = r(found)
+    cert_log_has "`cvlog'", needle("colorlevels()")
+    local cv7_lv = r(found)
+    _gt_expect CV-07 "(`cv7_rule' == 1 & `cv7_lv' == 0)" "colorrule() named `cv7_rule', colorlevels() named `cv7_lv'"
+    _gt_done CV-07 "the note names colorrule() and not colorlevels()"
+
+    capture dash clear
+    graph drop _all
+    display as text "S16 end `c(current_time)'"
+}
+* ==== end S16 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

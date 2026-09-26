@@ -314,14 +314,20 @@ if `rnote' | `nk' != 3 {
     display as error "HC7-02 FAIL: colorvar() and companions on scatter -- note `rnote', kept `nk' of 3"
     local bad = 1
 }
-// twoway's other colorvar options, which dash does not read, are named.
+// twoway's other colorvar options, which dash does not read, are named --
+// colorlevels() no longer among them (GAPS2 X2, WP-28): dash now reads
+// it, so it is dropped from the note while colorrule()/colorformissing()
+// stay named.
 capture twoway scatter mpg weight, colorvar(price) colorlevels(4) colorrule(hue) colorformissing(red) nodraw
 local tw = _rc
 _zh7_run `"dash scatter mpg weight, colorvar(price) colorlevels(4) colorrule(hue) colorformissing(red) name(zq7)"' "`logfile'"
 local drc = r(rc)
-_zh7_logged "`logfile'" "colorlevels() colorrule() colorformissing()"
-if `tw' != 0 | `drc' != 0 | r(found) != 1 {
-    display as error "HC7-02 FAIL: twoway's colorlevels()/colorrule()/colorformissing(): twoway r(`tw'), dash rc `drc', named `r(found)'"
+_zh7_logged "`logfile'" "colorrule() colorformissing()"
+local cv_named = r(found)
+_zh7_logged "`logfile'" "colorlevels()"
+local cv_lv_named = r(found)
+if `tw' != 0 | `drc' != 0 | `cv_named' != 1 | `cv_lv_named' != 0 {
+    display as error "HC7-02 FAIL: twoway's colorrule()/colorformissing() named, colorlevels() not: twoway r(`tw'), dash rc `drc', named `cv_named', colorlevels named `cv_lv_named'"
     local bad = 1
 }
 // A variable that does not exist is refused on every type, as twoway does.

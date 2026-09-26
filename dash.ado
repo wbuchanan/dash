@@ -721,6 +721,7 @@ program define _dash_parse_graph_opts, sclass
         PBGC(string)              XLA2(string asis)         XSC2(string asis) ///
         XTI2(string asis)         YLA2(string asis)         YSC2(string asis) ///
         YTI2(string asis) ///
+        ZLABel(string asis)       ZTItle(string asis)       ZSCale(string asis) ///
         * ///
     ]
 
@@ -852,6 +853,9 @@ program define _dash_parse_graph_opts, sclass
     sreturn local r2title      : copy local r2title
     sreturn local title2       : copy local title2
     sreturn local subtitle2    : copy local subtitle2
+    sreturn local zlabel       : copy local zlabel
+    sreturn local ztitle       : copy local ztitle
+    sreturn local zscale       : copy local zscale
     sreturn local nodraw       : copy local nodraw
     sreturn local play         : copy local play
     sreturn local replace      : copy local replace
@@ -912,6 +916,7 @@ program define _dash_parse_plot_opts, sclass
         YAXis(string)             XAXis(string)             COLORVar(string) ///
         COLPALette(string)        COLORDIScrete             COLORUSEPLEGend ///
         COLORNlevels(string)      COLORCUTs(string asis)    COLORMissing(string) ///
+        COLORLEVels(string)       COLORVARMINMax ///
         BWIDth(string)            DEGree(string)            PSTYle(string) ///
         CMISSing(string)          RECAST(string)            Connect(string) ///
         BIN(string)               BINS(string)              Width(string) ///
@@ -955,6 +960,7 @@ program define _dash_parse_plot_opts, sclass
         COLV(string)              PBGC(string)              XLA2(string asis) ///
         XSC2(string asis)         XTI2(string asis)         YLA2(string asis) ///
         YSC2(string asis)         YTI2(string asis) ///
+        ZLABel(string asis)       ZTItle(string asis)       ZSCale(string asis) ///
         * ///
     ]
     /* ---- plot-level ---- */
@@ -1145,6 +1151,8 @@ program define _dash_parse_plot_opts, sclass
     sreturn local colornlevels     : copy local colornlevels
     sreturn local colorcuts        : copy local colorcuts
     sreturn local colormissing     : copy local colormissing
+    sreturn local colorlevels      : copy local colorlevels
+    sreturn local colorvarminmax   : copy local colorvarminmax
     sreturn local bwidth           : copy local bwidth
     sreturn local bw               : copy local bw
     sreturn local degree           : copy local degree
@@ -1257,6 +1265,9 @@ program define _dash_parse_plot_opts, sclass
     sreturn local g_r2title      : copy local r2title
     sreturn local g_title2       : copy local title2
     sreturn local g_subtitle2    : copy local subtitle2
+    sreturn local g_zlabel       : copy local zlabel
+    sreturn local g_ztitle       : copy local ztitle
+    sreturn local g_zscale       : copy local zscale
     sreturn local g_nodraw       : copy local nodraw
     sreturn local g_play         : copy local play
     sreturn local g_replace      : copy local replace
@@ -1705,7 +1716,7 @@ program define _dash_fold_typed, sclass
     mata: st_local("_ft", strofreal(st_global("s(colorvar)") != ""))
     if `: list ptype in cv_types' & `_ft' local cv_drawn = 1
     if !`cv_drawn' {
-        foreach o in colorvar colordiscrete colorcuts colpalette colornlevels colormissing {
+        foreach o in colorvar colordiscrete colorcuts colpalette colornlevels colormissing colorlevels colorvarminmax {
             mata: st_local("_ft", strofreal(st_global("s(`o')") != ""))
             if `_ft' local named "`named' `o'"
         }
@@ -1888,7 +1899,7 @@ program define _dash_option_rules
         degree=int,0,3  bwidth=pos,1@lowess  bwidth=pos ///
         kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle ///
         n=int,1,300@mspline  n=int,2,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
-        colornlevels=int,2,256 ///
+        colornlevels=int,2,256  colorlevels=int,2,256 ///
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
         colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2 ///
         clwidth=style,0,10000 ///
@@ -2443,6 +2454,14 @@ program define _dash_validate_opts, sclass
         display as error "options discrete and bins() may not be combined"
         exit 198
     }
+    // colorcuts() and colorlevels() (GAPS2 X2, colorvar_options.sthlp:95-98)
+    // "may not be combined": twoway refuses the pair with these words, r(198)
+    // (measured 26sep2026, test/fixtures/colorvar_truth.json cuts_and_levels).
+    mata: st_local("_cvcl", strofreal(st_global("s(colorcuts)") != "" & st_global("s(colorlevels)") != ""))
+    if `_cvcl' {
+        display as error "may not combine options colorcuts() and colorlevels()"
+        exit 198
+    }
 
     // Options that have a type-specific rule for THIS type: their untyped
     // rule is skipped below, so the specific one wins.
@@ -2918,6 +2937,7 @@ program define _dash_plot_opts_to_json, rclass
                    lwidth lpattern lalpha fcolor fintensity falpha barwidth base ///
                    blcolor bfcolor jitter jseed yaxis xaxis colorvar colpalette ///
                    colordiscrete coloruseplegend colornlevels colorcuts colormissing ///
+                   colorlevels colorvarminmax ///
                    bwidth degree pstyle cmissing recast connect bin width start ///
                    percent frequency density fraction kernel n level bands at ciopts ///
                    lineopts fitopts color mlwidth mstyle lstyle mlstyle mlpattern ///
@@ -4017,7 +4037,7 @@ program define _dash_process_segment, rclass
             xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
             scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
             t2title b1title b2title l1title l2title r1title r2title title2 ///
-            subtitle2 nodraw play replace {
+            subtitle2 zlabel ztitle zscale nodraw play replace {
         mata: st_local("gval", st_global("s(g_" + st_local("gkey") + ")"))
         if `: length local gval' {
             c_local _sg_`gkey' : copy local gval
@@ -4551,7 +4571,7 @@ program define _dash_plot
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
           scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
-          subtitle2 nodraw play replace {
+          subtitle2 zlabel ztitle zscale nodraw play replace {
         local g_`gk' ""
     }
 
@@ -4583,7 +4603,7 @@ program define _dash_plot
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
-              subtitle2 nodraw play replace {
+              subtitle2 zlabel ztitle zscale nodraw play replace {
             mata: st_local("_gv", st_global("s(" + st_local("gk") + ")"))
             if `: length local _gv' {
                 // Kept apart and merged in after the segment loop: an option
@@ -4673,7 +4693,7 @@ program define _dash_plot
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
-              subtitle2 nodraw play replace {
+              subtitle2 zlabel ztitle zscale nodraw play replace {
             local _sg_`gk' ""
         }
         _dash_process_segment `"`macval(seg)'"' _pt_k _json_k `n_segs'
@@ -4727,7 +4747,7 @@ program define _dash_plot
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
-              subtitle2 nodraw play replace {
+              subtitle2 zlabel ztitle zscale nodraw play replace {
             if !`: length local _sg_`gk'' continue
             if `: list gk in _g_unique' {
                 if `_gseen_`gk'' {
@@ -4758,7 +4778,7 @@ program define _dash_plot
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
-              subtitle2 nodraw play replace {
+              subtitle2 zlabel ztitle zscale nodraw play replace {
         if `: length local _gafter_`gk'' {
             mata: _dash_rep_merge_locals(st_local("gk"), "g_`gk'", "_gafter_`gk'", "g_`gk'")
         }
@@ -5013,7 +5033,7 @@ program define _dash_plot
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
           scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
-          subtitle2 nodraw play replace {
+          subtitle2 zlabel ztitle zscale nodraw play replace {
         local gv : copy local g_`gk'
         if `: length local gv' {
             _dash_json_str `"`macval(gv)'"' _gjv

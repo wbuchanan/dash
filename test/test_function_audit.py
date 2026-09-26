@@ -313,7 +313,8 @@ def _binned(doc, column):
 
 
 class TestColorCutsPutEachPointInItsLabelledBin:
-    """``_apply_colorvar``'s ``_assign_cut``.
+    """``_apply_colorvar``'s interval branch, now the module-level
+    ``_dash_colorvar_cuts``/``_dash_colorvar_bins`` (GAPS2 X2).
 
     Audit: survived -- its three tests read the legend's labels, which are
     built without it, so every point could be coloured into the wrong bin
@@ -323,6 +324,16 @@ class TestColorCutsPutEachPointInItsLabelledBin:
 
     def test_each_value_lands_in_the_bin_its_label_describes(self):
         got, factors = _bins({"colorcuts": "2000 3000"},
+                             [1000.0, 2000.0, 2000.5, 3000.0, 3500.0,
+                              np.nan])
+        lo, mid, hi = f"{_LE}2000", f"2000{_DASH}3000", ">3000"
+        assert got == [lo, lo, mid, mid, hi, "__missing__"]
+        assert factors == [lo, mid, hi, "__missing__"]
+
+    def test_a_cut_below_the_minimum_is_dropped_here_too(self):
+        """GAPS2 X2: a cut below colorvar's minimum (500, min is 1000)
+        gives the same three bins as the two cuts above it alone."""
+        got, factors = _bins({"colorcuts": "500 2000 3000"},
                              [1000.0, 2000.0, 2000.5, 3000.0, 3500.0,
                               np.nan])
         lo, mid, hi = f"{_LE}2000", f"2000{_DASH}3000", ">3000"
@@ -366,7 +377,11 @@ class TestColorCutsPutEachPointInItsLabelledBin:
 
 
 class TestColorLevelsPutEachPointInItsLabelledBin:
-    """``_apply_colorvar``'s ``_assign_nlev``.
+    """``_apply_colorvar``'s equal-width branch, now the module-level
+    ``_dash_colorvar_cuts``/``_dash_colorvar_bins`` called with
+    ``closed_ends=True`` (GAPS2 X2): colorlevels()/colornlevels() label
+    their outer bins with the column's own minimum and maximum, not an
+    open ``<=``/``>``, since they divide the whole data range.
 
     Audit: survived -- ten tests execute it and read only how many factors
     the legend has.  Mutations: body skipped; the interior edges searched

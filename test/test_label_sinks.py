@@ -315,6 +315,17 @@ def hostile_inputs(payload):
             # textbox, so it keeps every character.
             ytitle2=free("ytitle2"),
             ylabel2='5000 "%s" 10000' % quoted("tick2")),
+        # WP-28 X2: ztitle() titles the colour key too -- a second source
+        # beside the variable label g3/g4 already carry, so two new
+        # graphs prove it without disturbing the vlprice/vlrep sinks.
+        graph("g7", [
+            {"type": "scatter", "yvar": "mpg", "xvar": "weight",
+             "options": {"colorvar": "price"}},
+        ], ztitle=textbox("zt")),
+        graph("g8", [
+            {"type": "scatter", "yvar": "mpg", "xvar": "weight",
+             "options": {"colorvar": "rep", "colordiscrete": "yes"}},
+        ], ztitle=textbox("zt")),
     ]
     kpis = [
         {"name": "k1", "stat": "mean", "var": "mpg", "fmt": "%9.1f",
@@ -334,8 +345,8 @@ def hostile_inputs(payload):
             "layout": "auto", "link": "", "theme": "", "scheme": "",
             "session_scheme": "",
             "title": free("dtitle"), "subtitle": free("dsub"),
-            "registry": "g1 g2 g3 g4 g5 g6 k1 k2 k3",
-            "tabs": "%s: g1 g2 g3 k1 / %s: g4 g5 g6 k2 k3"
+            "registry": "g1 g2 g3 g4 g5 g6 g7 g8 k1 k2 k3",
+            "tabs": "%s: g1 g2 g3 k1 / %s: g4 g5 g6 g7 g8 k2 k3"
                     % (tab("tab1"), tab("tab2")),
             "filter": filters,
             "filter_position": "top", "level": "95",
@@ -583,12 +594,17 @@ SINKS = (
     Sink("facet_title_from_value_label", "vlo0", ("Title",), "text", "text"),
     Sink("colorbar_title_from_variable_label", "vlprice", ("ColorBar",),
          "title", "text"),
+    # WP-28 X2: ztitle() is a second source for the same (model, property)
+    # pair -- the key title gains a second source, none removed.
+    Sink("colorbar_title_from_ztitle", "zt", ("ColorBar",), "title", "text"),
     # DOM text nodes.
     Sink("legend_key_from_variable_label", "vlmpg", ("LegendItem",),
          "label", "text"),
     Sink("legend_label_override", "leglab", ("LegendItem",), "label", "text"),
     Sink("colorvar_legend_title_from_variable_label", "vlrep", ("Legend",),
          "title", "text"),
+    Sink("colorvar_legend_title_from_ztitle", "zt", ("Legend",), "title",
+         "text"),
     Sink("colorvar_legend_key_from_value_label", "vlr1", ("LegendItem",),
          "label", "text"),
     Sink("tab_title", "tab1", ("TabPanel",), "title", "text"),

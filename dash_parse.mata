@@ -4265,11 +4265,11 @@ string scalar _dash_rep_cat(string scalar key)
     if (anyof(("title", "subtitle", "note", "caption", "xtitle", "ytitle",
                "xtitle2", "ytitle2", "t1title", "t2title", "b1title",
                "b2title", "l1title", "l2title", "r1title", "r2title",
-               "title2", "subtitle2"), k)) return("T")
+               "title2", "subtitle2", "ztitle"), k)) return("T")
     if (anyof(("xlabel", "ylabel", "xlabel2", "ylabel2", "xtick", "ytick",
-               "xmtick", "ymtick", "xmlabel", "ymlabel"), k)) return("L")
+               "xmtick", "ymtick", "xmlabel", "ymlabel", "zlabel"), k)) return("L")
     if (anyof(("legend", "graphregion", "plotregion"), k)) return("I")
-    if (anyof(("xscale", "yscale", "xscale2", "yscale2"), k)) return("S")
+    if (anyof(("xscale", "yscale", "xscale2", "yscale2", "zscale"), k)) return("S")
     if (k == "by") return("B")
     if (k == "xline" | k == "yline") return("X")
     if (k == "text") return("A")
@@ -4297,7 +4297,11 @@ real scalar _dash_rep_unique(string scalar key, string scalar typed,
                "scale", "fxsize", "fysize", "nodraw", "play", "yaxis",
                "xaxis", "colorvar", "colordiscrete", "colorcuts",
                "mlabvposition", "xoverhangs", "yoverhangs", "sort",
-               "horizontal", "vertical", "stdp", "stdf", "stdr"), k)) return(1)
+               "horizontal", "vertical", "stdp", "stdf", "stdr",
+               // GAPS2 X2: colorvarminmax, now declared, is refused a
+               // second time as twoway refuses it.  colorlevels() is NOT
+               // here: twoway takes it twice (measured 26sep2026).
+               "colorvarminmax"), k)) return(1)
     if (ptype == "histogram" & (typed == "bins" |
         anyof(("discrete", "fraction", "percent", "frequency", "density"), k)))
         return(1)
@@ -4377,7 +4381,8 @@ string matrix _dash_rep_und_tab()
     t = t \ ("colorotherlabel", "colorotherlabel", "colorotherlab", "1", "*", "0", "")
     t = t \ ("colorrule",    "colorrule",    "colorr",    "1", "*",         "0", "")
     t = t \ ("colorstart",   "colorstart",   "colorst",   "1", "*",         "0", "")
-    t = t \ ("colorvarminmax", "colorvarminmax", "colorvarminm", "0", "*",  "0", "")
+    // colorvarminmax left this table (GAPS2 X2): dash now declares it, so
+    // a second copy is refused by _dash_rep_unique instead.
     t = t \ ("dropbase",     "dropbase",     "dropb",     "0", "*",         "0", "")
     t = t \ ("dropbase",     "nodropbase",   "nodropb",   "0", "*",         "0", "no")
     t = t \ ("below",        "below",        "below",     "0", "*",         "1", "")

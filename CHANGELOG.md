@@ -186,7 +186,16 @@ and now matches Stata.
 <!-- WP-28 G6 -->
 <!-- WP-28 G16 -->
 - `filter(varname, type(dropdown))`: a string variable's codes '01', '1.0' and ' 2' were rewritten to '1' and '2' and their rows merged, the categories 'None', 'nan' and 'NaT' were not listed, and on the saved page a number below 1e-4 or at or above 1e21 selected no rows (5e-05 kept 0 rows saved, 1 served); the saved snapshot and CSV turned a string code into a number after a move (a dcount of codes merged '01' and '1'). Now numbers are compared as numbers and text exactly, every category is listed with the empty string as a blank entry, values sharing one display text are one entry, and snapshots keep text, in both modes. (WP-28, X1)
-<!-- WP-28 X2 -->
+- `dash scatter mpg weight, colorvar(rep78) colordiscrete colorcuts(2 4)`
+  drew three interval colours (`≤2`, `2–4`, `>4`), so rep78 = 1, 3 and 5
+  were coloured as ranges; it now draws rep78 = 2 and rep78 = 4 in two
+  colours and every other value gray, as twoway does.  `colorcuts(0 2 4)` on
+  rep78 drew an empty `≤0` key entry; a cut below the variable's minimum is
+  now dropped (and the minimum used if every cut is below it).
+  `colorlevels(#)`, `colorvarminmax`, `zlabel()`, `ztitle()` and `zscale()`
+  are now drawn and no longer named in the note; `colorcuts()` with
+  `colorlevels()` is refused with r(198) in twoway's words.  The continuous
+  default (no cuts, levels or `colordiscrete`) is unchanged. (WP-28, X2)
 
 ### Security
 

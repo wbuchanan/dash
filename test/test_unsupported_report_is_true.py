@@ -418,6 +418,10 @@ LIVE_VALUES = {
                      "scatter", {}),
     "colornlevels": ({**_CV, "colornlevels": "3"}, {**_CV, "colornlevels": "7"},
                      "scatter", {}),
+    "colorlevels": ({**_CV, "colorlevels": "3"}, {**_CV, "colorlevels": "7"},
+                    "scatter", {}),
+    "colorvarminmax": ({**_CV, "colorvarminmax": "colorvarminmax"}, dict(_CV),
+                       "scatter", {}),
     "colorvar": ({"colorvar": "foreign"}, {"colorvar": "price"}, "scatter", {}),
     "colpalette": ({**_CV, "colpalette": "viridis"},
                    {**_CV, "colpalette": "magma"}, "scatter", {}),
@@ -545,6 +549,11 @@ LIVE_VALUES = {
     "ytitle": ({}, {}, "scatter", ("ytitle", "A", "B")),
     "ytitle2": ({"yaxis": "2"}, {"yaxis": "2"}, "scatter",
                 ("ytitle2", "A", "B")),
+    # GAPS2 X2: the colour key's own axis options, drawn on the ColorBar.
+    "zlabel": (dict(_CV), dict(_CV), "scatter",
+               ("zlabel", "4000(4000)16000", "#3")),
+    "zscale": (dict(_CV), dict(_CV), "scatter", ("zscale", "log", "reverse")),
+    "ztitle": (dict(_CV), dict(_CV), "scatter", ("ztitle", "A", "B")),
 }
 
 
@@ -573,13 +582,15 @@ class TestEveryDeclaredOptionIsClassified:
         declarations, so the classification below cannot pass on
         nothing."""
         # Exact, measured 24sep2026: the plot syntax block declares 160
+        # (165 since GAPS2 X2 declared colorlevels(), colorvarminmax and
+        # the three z options; the graph block 68 with the z options)
         # options (156 before the S3 batch declared acolor(), alcolor(),
         # alwidth() and alpattern()) and the graph block 65 (replace,
         # WP-27).  The `>= 130'/`>= 60' floors let a
         # syntax block shrink by twenty options -- silently un-classifying
         # them -- and still pass.
-        assert len(_declared_plot()) == 160, len(_declared_plot())
-        assert len(_declared_graph()) == 65, len(_declared_graph())
+        assert len(_declared_plot()) == 165, len(_declared_plot())
+        assert len(_declared_graph()) == 68, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):
         """Pending, alias, route, or live -- a declared option with no

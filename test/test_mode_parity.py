@@ -1310,6 +1310,26 @@ CORPUS = [
     _case("colorvar() on a linked graph", bo={"link": "g1 g2"},
           graphs=[("g1", [_sc(colorvar="foreign", colordiscrete="colordiscrete")]),
                   ("g2", [plot_for("line")])]),
+    # WP-28 X2: colorvar()'s explicit forms and the colour key's own z
+    # options -- the corpus proves the saved and served mapper draw the
+    # same factors and the same key (BR-16.8).
+    _case("colorvar() colordiscrete colorcuts(2 4)",
+          [_sc(colorvar="rep", colordiscrete="colordiscrete",
+               colorcuts="2 4")]),
+    _case("colorvar() colorcuts(0 2 4)",
+          [_sc(colorvar="rep", colorcuts="0 2 4")]),
+    _case("colorvar() colorlevels(4)", [_sc(colorvar="price",
+                                            colorlevels="4")]),
+    _case("colorvar() colorvarminmax",
+          [_sc(colorvar="price", colorvarminmax="colorvarminmax")]),
+    _case("colorvar() ztitle on the colour key", [_sc(colorvar="price")],
+          None, {"ztitle": "Repair"}),
+    _case("colorvar() zlabel, the a(b)c spelling", [_sc(colorvar="price")],
+          None, {"zlabel": "1(1)5"}),
+    _case("colorvar() zlabel, the normalised spelling",
+          [_sc(colorvar="price")], None, {"zlabel": "1 2 3 4 5"}),
+    _case("colorvar() zscale(log)", [_sc(colorvar="price")], None,
+          {"zscale": "log"}),
     # WP-28 E14: a served rspike or rconnected in a link group used to
     # draw a private source every time, so a selection on the group never
     # reached it; TestRangeLayersInALinkGroup reads on_link_source here.

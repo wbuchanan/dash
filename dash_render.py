@@ -5864,6 +5864,126 @@ def _compute_secondary_range(
     return lo - padding_pct * span, hi + padding_pct * span
 
 
+def _dash_colorvar_cuts(col_vals, cuts, levels, minmax):
+    """The effective, sorted, de-duplicated colorvar cut list (GAPS2 X2).
+
+    Implements Stata 18's colorvar_options.sthlp rules for how cuts are
+    derived, independent of colordiscrete:
+
+    ``colorlevels(#)``/``colornlevels(#)`` (*levels*, :124-128) "creates
+    # - 1 equally spaced cuts between the minimum and maximum of colorvar":
+    ``np.linspace(lo, hi, levels + 1)[1:-1]``.
+
+    ``colorcuts(numlist)`` (*cuts*, :111-116): "Any values below the
+    minimum for colorvar are ignored; if all values are below the
+    minimum, the minimum value will be used as the cut."
+
+    ``colorvarminmax`` (*minmax*, :137-140) "specifies that the minimum
+    and maximum of colorvar be included in the list of cuts."
+
+    Returns ``[]`` when *col_vals* has no finite values.
+    """
+    finite = col_vals[~np.isnan(col_vals)] if hasattr(col_vals, "__len__") \
+        else np.asarray([v for v in col_vals if not np.isnan(v)])
+    if len(finite) == 0:
+        return []
+    lo_v = float(np.min(finite))
+    hi_v = float(np.max(finite))
+
+    if levels is not None:
+        edge_hi = hi_v if hi_v != lo_v else lo_v + 1.0
+        edges = np.linspace(lo_v, edge_hi, int(levels) + 1)
+        eff = [float(x) for x in edges[1:-1]]
+    elif cuts is not None:
+        kept = sorted({float(c) for c in cuts if float(c) >= lo_v})
+        eff = kept if kept else [lo_v]
+    else:
+        eff = []
+
+    if minmax:
+        eff = sorted(set(eff) | {lo_v, hi_v})
+    else:
+        eff = sorted(set(eff))
+    return eff
+
+
+def _dash_colorvar_bins(col_vals, cuts, discrete, label_of,
+                        closed_ends=False):
+    """Bin colorvar values into label groups (GAPS2 X2).
+
+    Interval mode (*discrete* False -- colorcuts()/colorlevels() without
+    colordiscrete, colorvar_options.sthlp:111-116): bins are
+    ``(-inf, c0], (c0, c1], ..., (ck, +inf)``, ``searchsorted(side="left")``
+    so a value on a cut boundary is in the bin below.  This is
+    colorcuts()'s own labelling, open at both ends, unaffected by
+    *closed_ends* whenever the caller passed explicit cuts (BR-16.1,
+    BR-16.2); *closed_ends* (True only for colorlevels()/colornlevels()
+    with no explicit colorcuts() and no colorvarminmax, the pre-existing
+    _assign_nlev behaviour this helper replaces) labels the two outer
+    bins with the column's own minimum and maximum instead of ``≤``/``>``,
+    since colorlevels() divides the whole data range and never leaves an
+    open tail the way an arbitrary colorcuts() numlist can.
+
+    Discrete mode (*discrete* True -- colordiscrete with colorcuts()/
+    colorlevels(), :119-121, :131-134): "the values in numlist will be the
+    levels. Any values that are not included in these levels will be
+    grouped with missing values and displayed in gray" -- each value is
+    its own label when it equals a cut exactly, else ``"__missing__"``.
+
+    NaN is always ``"__missing__"``.  Returns ``(labels, binned,
+    has_missing)``; ``labels`` is ``[]`` when *cuts* is empty, and every
+    value bins to ``"__missing__"`` (no level exists to put it in) --
+    ``_dash_colorvar_cuts`` returns ``[]`` only when *col_vals* has no
+    finite value, so *binned* still carries one entry per row.
+    """
+    if not cuts:
+        binned = ["__missing__" for _ in col_vals]
+        return [], binned, bool(len(binned))
+
+    if discrete:
+        labels = [label_of(c) for c in cuts]
+
+        def _assign(v: float) -> str:
+            if np.isnan(v):
+                return "__missing__"
+            for c, lab in zip(cuts, labels):
+                if float(v) == c:
+                    return lab
+            return "__missing__"
+
+        binned = [_assign(v) for v in col_vals]
+    else:
+        n_bins = len(cuts) + 1
+        if closed_ends:
+            _lo_v = float(np.nanmin(col_vals))
+            _hi_v = float(np.nanmax(col_vals))
+        labels = []
+        for i in range(n_bins):
+            lo_b = cuts[i - 1] if i > 0 else None
+            hi_b = cuts[i]     if i < len(cuts) else None
+            if closed_ends:
+                lo_b = _lo_v if lo_b is None else lo_b
+                hi_b = _hi_v if hi_b is None else hi_b
+                labels.append(f"{lo_b:g}–{hi_b:g}")
+            elif lo_b is None:
+                labels.append(f"≤{hi_b:g}")
+            elif hi_b is None:
+                labels.append(f">{lo_b:g}")
+            else:
+                labels.append(f"{lo_b:g}–{hi_b:g}")
+
+        def _assign(v: float) -> str:
+            if np.isnan(v):
+                return "__missing__"
+            idx = int(np.searchsorted(cuts, v, side="left"))
+            return labels[min(idx, n_bins - 1)]
+
+        binned = [_assign(v) for v in col_vals]
+
+    has_missing = any(b == "__missing__" for b in binned)
+    return labels, binned, has_missing
+
+
 # ===========================================================================
 # GlyphMapper
 # ===========================================================================
@@ -5957,6 +6077,14 @@ class GlyphMapper:
         self.variable_labels: dict[str, str]              = {}
         self.value_labels:    dict[str, dict[str, str]]   = {}
         self.value_label_names: dict[str, str]            = {}
+        # zlabel()/ztitle()/zscale() (GAPS2 X2): the colour key's own axis
+        # options, set by the figure builder right before the layer loop
+        # and reset right after it so one graph's z options never leak
+        # onto the next graph's colour key.  z_context is (seen, key) --
+        # the sub-option "named once" bookkeeping _dash_apply_z_options
+        # needs, the same pair every other graph-option reader takes.
+        self.z_options: dict[str, str] = {}
+        self.z_context: tuple = (None, "")
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -6891,7 +7019,7 @@ class GlyphMapper:
 
         from bokeh.models import (
             LinearColorMapper, CategoricalColorMapper, ColorBar,
-            Legend, LegendItem,
+            Legend, LegendItem, FixedTicker,
         )
         from bokeh import palettes as _bk_palettes
 
@@ -6943,13 +7071,21 @@ class GlyphMapper:
                 key = str(v)
             return vlabels.get(key, f"{v:g}")
 
-        # Parse colornlevels (must be an integer >= 2)
+        # Parse colornlevels (must be an integer >= 2); colorlevels() is
+        # Stata's own spelling of the same arithmetic and wins when both
+        # are given (dash.ado never sends both: colorcuts()/colorlevels()
+        # are refused together, GAPS2 X2, TR-16.1).
         nlevels = None
         try:
             nlevels = int((options.get("colornlevels") or "").strip())
             nlevels = max(2, nlevels)
         except (ValueError, TypeError):
             nlevels = None
+        try:
+            _levels = int((options.get("colorlevels") or "").strip())
+            nlevels = max(2, _levels)
+        except (ValueError, TypeError):
+            pass
 
         # Parse colorcuts (space-separated numlist → sorted float list)
         cuts = None
@@ -6959,6 +7095,11 @@ class GlyphMapper:
                 cuts = sorted(float(x) for x in cuts_str.split())
             except ValueError:
                 cuts = None
+
+        # colorvarminmax (GAPS2 X2): adds the column's minimum and maximum
+        # to the cuts of colorcuts()/colorlevels(), and to the continuous
+        # key's own ticks when neither is given.
+        minmax = bool(options.get("colorvarminmax"))
 
         # Determine whether the column is numeric (a date, in milliseconds)
         try:
@@ -6980,46 +7121,29 @@ class GlyphMapper:
             if is_numeric and (force_discrete or needs_binning):
                 color_field = f"_cvar_{varname}_bin"
 
-                if cuts is not None:
-                    # User-supplied boundaries: bins are (-∞, c0], (c0, c1], …, (cN, +∞)
-                    n_bins = len(cuts) + 1
-                    labels = []
-                    for i in range(n_bins):
-                        lo_b = cuts[i - 1] if i > 0 else None
-                        hi_b = cuts[i]     if i < len(cuts) else None
-                        if lo_b is None:
-                            labels.append(f"\u2264{hi_b:g}")
-                        elif hi_b is None:
-                            labels.append(f">{lo_b:g}")
-                        else:
-                            labels.append(f"{lo_b:g}\u2013{hi_b:g}")
-
-                    def _assign_cut(v: float) -> str:
-                        if np.isnan(v):
-                            return "__missing__"
-                        idx = int(np.searchsorted(cuts, v, side="left"))
-                        return labels[min(idx, n_bins - 1)]
-
-                    binned = [_assign_cut(v) for v in col_vals]
-
-                elif nlevels is not None:
-                    # Equal-width quantization into nlevels bins
-                    lo_v = float(np.nanmin(col_vals))
-                    hi_v = float(np.nanmax(col_vals))
-                    if lo_v == hi_v:
-                        hi_v = lo_v + 1.0
-                    edges  = np.linspace(lo_v, hi_v, nlevels + 1)
-                    labels = [f"{edges[i]:g}\u2013{edges[i + 1]:g}"
-                              for i in range(nlevels)]
-                    inner  = edges[1:-1]  # interior boundaries for searchsorted
-
-                    def _assign_nlev(v: float) -> str:
-                        if np.isnan(v):
-                            return "__missing__"
-                        idx = int(np.searchsorted(inner, v, side="left"))
-                        return labels[min(idx, nlevels - 1)]
-
-                    binned = [_assign_nlev(v) for v in col_vals]
+                if cuts is not None or nlevels is not None:
+                    # colorcuts()/colorlevels() (Stata's colorvar_options.
+                    # sthlp:95-140, GAPS2 X2): the cut arithmetic and the
+                    # binning live in two module-level helpers both
+                    # renderers copy, so S12 (batch 3) can later replace
+                    # their number-to-text expressions in one place.
+                    # Under colordiscrete each cut is a level and every
+                    # other value joins missing in gray (BR-16.1); without
+                    # it the cuts are interval boundaries, as they always
+                    # were.
+                    eff_cuts = _dash_colorvar_cuts(col_vals, cuts, nlevels,
+                                                   minmax)
+                    # colorlevels()/colornlevels() with no explicit
+                    # colorcuts() and no colorvarminmax divides the whole
+                    # data range, so its outer bins carry the column's own
+                    # minimum and maximum rather than an open "≤"/">" --
+                    # the pre-existing _assign_nlev labelling this call
+                    # replaces (test_function_audit.py
+                    # TestColorLevelsPutEachPointInItsLabelledBin).
+                    _closed = cuts is None and not minmax
+                    labels, binned, has_missing = _dash_colorvar_bins(
+                        col_vals, eff_cuts, force_discrete, _vlookup,
+                        closed_ends=_closed)
 
                 else:
                     # colordiscrete: each distinct numeric value → its own category.
@@ -7117,11 +7241,14 @@ class GlyphMapper:
             # plot and a plain plot in one figure) wrong.
             # Raw: a Legend title is a DOM text node in BokehJS, and the
             # factor labels above are too, so escaping only showed entities.
-            fig.add_layout(
-                Legend(items=legend_items, title=var_display,
-                       name=_COLORVAR_LEGEND_NAME),
-                "right",
-            )
+            _legend = Legend(items=legend_items, title=var_display,
+                             name=_COLORVAR_LEGEND_NAME)
+            # zlabel()/ztitle()/zscale() (GAPS2 X2): ztitle() titles a
+            # discrete key too; zlabel()/zscale() have nothing to draw on
+            # a Legend (no ticks, no mapper range) and are named once.
+            _dash_apply_z_options(fig, _legend, mapper, self.z_options,
+                                 *self.z_context)
+            fig.add_layout(_legend, "right")
 
         # ------------------------------------------------------------------
         # CONTINUOUS path — LinearColorMapper
@@ -7135,6 +7262,32 @@ class GlyphMapper:
             palette  = getattr(_bk_palettes, pal_name, _bk_palettes.Viridis256)
             mapper   = LinearColorMapper(palette=palette, low=lo, high=hi,
                                          nan_color=missing_color)
+
+            try:
+                # Raw: a ColorBar draws its title on the canvas, so escaping
+                # it only showed the entities.
+                _cbar = ColorBar(color_mapper=mapper, label_standoff=8,
+                                width=12, location=(0, 0),
+                                title=var_display)
+            except (ValueError, TypeError, KeyError) as _exc:  # noqa: BLE001
+                warnings.warn(f"dash: color bar skipped — {_exc}", stacklevel=2)
+                _cbar = None
+
+            if _cbar is not None:
+                # colorvarminmax alone (no cuts/levels, GAPS2 X2 BR-16.4):
+                # the minimum and maximum join the bar's own ticks, unless
+                # zlabel() sets the ticker below, which wins because it
+                # runs after this.
+                if minmax:
+                    _mm_ticks = sorted(
+                        {lo, hi} | set(_dash_axis_count_ticks(lo, hi, 5, "")
+                                       or ()))
+                    _cbar.ticker = FixedTicker(ticks=_mm_ticks)
+                mapper = _dash_apply_z_options(fig, _cbar, mapper,
+                                               self.z_options,
+                                               *self.z_context)
+                _cbar.color_mapper = mapper
+
             color_spec = {"field": varname, "transform": mapper}
             glyph      = renderer.glyph
             try:
@@ -7143,17 +7296,8 @@ class GlyphMapper:
             except (AttributeError, ValueError):
                 pass
 
-            try:
-                # Raw: a ColorBar draws its title on the canvas, so escaping
-                # it only showed the entities.
-                fig.add_layout(
-                    ColorBar(color_mapper=mapper, label_standoff=8,
-                             width=12, location=(0, 0),
-                             title=var_display),
-                    "right",
-                )
-            except (ValueError, TypeError, KeyError) as _exc:  # noqa: BLE001
-                warnings.warn(f"dash: color bar skipped — {_exc}", stacklevel=2)
+            if _cbar is not None:
+                fig.add_layout(_cbar, "right")
 
         # ------------------------------------------------------------------
         # Strip the auto-generated `legend_label=yvar` item for *renderer*
@@ -21796,6 +21940,118 @@ def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar):
                 pass
 
 
+def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key):
+    """Draw zlabel()/ztitle()/zscale() -- the colour key's own axis
+    options -- on the Legend or ColorBar :meth:`GlyphMapper._apply_colorvar`
+    built (GAPS2 X2).
+
+    Stata's colour key axis options (``axis_label_options.sthlp:32``,
+    ``axis_title_options.sthlp:37``, ``axis_scale_options.sthlp:38``) act
+    on a scatter's colorvar key exactly as xlabel()/xtitle()/xscale() act
+    on an axis; dash declared none of them and drew none.  A discrete key
+    (a ``Legend``) has no ticks and no mapper range, so zlabel() and
+    zscale() are named once instead of drawn there; ztitle() titles
+    either key.
+
+    Returns the (possibly new) colour mapper: zscale(log) with a
+    positive lower bound swaps in a :class:`LogColorMapper`, which the
+    caller must then use for both the key and the glyph's own
+    ``fill_color``/``line_color`` transform so the two never diverge.
+    """
+    from bokeh.models import FixedTicker, LogColorMapper, Legend
+
+    is_discrete = isinstance(key_obj, Legend)
+    out_mapper = mapper_obj
+
+    ztitle_raw = zopts.get("ztitle", "")
+    if ztitle_raw:
+        text, topts = _dash_textbox(ztitle_raw, "ztitle", seen, key)
+        # An empty text removes the title, as _dash_figure_title's pattern
+        # does for the graph title -- ztitle("") is a deliberate blank.
+        key_obj.title = text
+        px = _textbox_size(topts, None)
+        colour = _textbox_color(topts, None)
+        if px is not None:
+            key_obj.title_text_font_size = f"{px:g}px"
+        if colour is not None:
+            key_obj.title_text_color = colour
+
+    zlabel_raw = zopts.get("zlabel", "")
+    if zlabel_raw:
+        if is_discrete:
+            _dash_report_suboptions("zlabel", [zlabel_raw], seen, key)
+        else:
+            spec = _dash_parse_axis_spec(zlabel_raw)
+            # format()/labsize()/angle()/grid are honoured on an ordinary
+            # axis (_dash_parse_axis_spec keeps them out of "unsupported"
+            # for that reason) but the colour bar's ticker applies none of
+            # them, so they are named here instead.
+            _bad = list(spec.get("unsupported", []))
+            for _sub, _sv in (("format", spec.get("format")),
+                              ("labsize", spec.get("labsize"))):
+                if _sv:
+                    _bad.append(f"{_sub}({_sv})")
+            if spec.get("angle") is not None:
+                _bad.append(f"angle({spec['angle']:g})")
+            if spec.get("grid") is not None:
+                _bad.append("grid" if spec["grid"] else "nogrid")
+            _dash_report_suboptions("zlabel", _bad, seen, key)
+            if spec["mode"] == "none":
+                key_obj.ticker = FixedTicker(ticks=[])
+            elif spec["mode"] == "minmax":
+                lo = getattr(out_mapper, "low", None)
+                hi = getattr(out_mapper, "high", None)
+                if lo is not None and hi is not None:
+                    key_obj.ticker = FixedTicker(ticks=[float(lo), float(hi)])
+            elif spec["mode"] == "count":
+                key_obj.ticker = _dash_count_ticker(spec["count"])
+            elif spec["mode"] == "explicit" and spec["ticks"]:
+                key_obj.ticker = FixedTicker(ticks=spec["ticks"])
+                if spec["labels"]:
+                    key_obj.major_label_overrides = {
+                        float(k): v for k, v in spec["labels"].items()}
+
+    zscale_raw = zopts.get("zscale", "")
+    if zscale_raw:
+        if is_discrete:
+            _dash_report_suboptions("zscale", [zscale_raw], seen, key)
+        else:
+            zspec = _dash_scale_spec(zscale_raw, "zscale", seen, key)
+            lo, hi = zspec.get("lo"), zspec.get("hi")
+            cur_lo = getattr(out_mapper, "low", None)
+            cur_hi = getattr(out_mapper, "high", None)
+            # range() widens only (D §3): a narrower bound is ignored.
+            new_lo = min(cur_lo, lo) if lo is not None and cur_lo is not None \
+                else (lo if cur_lo is None else cur_lo)
+            new_hi = max(cur_hi, hi) if hi is not None and cur_hi is not None \
+                else (hi if cur_hi is None else cur_hi)
+            if zspec.get("reverse"):
+                try:
+                    out_mapper.palette = list(reversed(out_mapper.palette))
+                except (AttributeError, TypeError):
+                    pass
+            if zspec.get("log"):
+                _low = new_lo if new_lo is not None else cur_lo
+                if _low is not None and _low > 0:
+                    out_mapper = LogColorMapper(
+                        palette=out_mapper.palette,
+                        low=float(new_lo if new_lo is not None else cur_lo),
+                        high=float(new_hi if new_hi is not None else cur_hi),
+                        nan_color=out_mapper.nan_color)
+                else:
+                    _dash_warn_once(
+                        ("zscale", "log", key),
+                        "dash: zscale(log) needs a colorvar minimum above "
+                        "zero; keeping the linear colour mapper.")
+            else:
+                if new_lo is not None:
+                    out_mapper.low = float(new_lo)
+                if new_hi is not None:
+                    out_mapper.high = float(new_hi)
+
+    return out_mapper
+
+
 #: xline()/yline() sub-options dash honours.
 _DASH_REFLINE_SUBOPTS = frozenset({"lcolor", "lpattern", "lwidth"})
 
@@ -24743,6 +24999,13 @@ class DashRenderer:
         # made title("R&D spend") display as "R&amp;D spend".
         _seen = getattr(self, "_reported_subopts", None)
         _gkey = graph_opts.get("name", "")
+        # zlabel()/ztitle()/zscale() (GAPS2 X2): read once per figure, so
+        # _apply_colorvar can draw them on this graph's colour key; reset
+        # after the layer loop so they never leak onto the next figure's
+        # key (self.mapper is shared across every figure of a render).
+        self.mapper.z_options = {k: graph_opts.get(k, "")
+                                 for k in ("zlabel", "ztitle", "zscale")}
+        self.mapper.z_context = (_seen, _gkey)
         x_label, y_label = _dash_axis_labels(plots, graph_opts,
                                              self.variable_labels, _seen, _gkey)
 
@@ -25097,6 +25360,12 @@ class DashRenderer:
             # marker labels and arrowheads with it.
             _dash_assign_axis_ranges(fig, _layer_renderers, popts,
                                      list(fig.center[_c_before:]))
+
+        # z options apply to this graph's colour key only (GAPS2 X2); reset
+        # before the next figure builds so a titled key does not leak its
+        # title onto an untitled one.
+        self.mapper.z_options = {}
+        self.mapper.z_context = (None, "")
 
         # The second axes, fitted to what their layers drew and labelled
         # through ylabel()'s grammar -- the helper the generated app runs.
@@ -27581,7 +27850,14 @@ class ServerAppBuilder:
                          # Sub-options: honoured or named, in one text.
                          "_textbox_size", "_textbox_color",
                          "_parse_scale_range",
-                         "_dash_report_suboptions", "_dash_subopt_name",
+                         "_dash_report_suboptions",
+                         # colorcuts()/colorlevels()/colorvarminmax and the
+                         # colour key's own zlabel()/ztitle()/zscale()
+                         # (GAPS2 X2): the cut arithmetic, the binning and
+                         # the colour-key applier -- one text, both modes.
+                         "_dash_colorvar_cuts", "_dash_colorvar_bins",
+                         "_dash_apply_z_options",
+                         "_dash_subopt_name",
                          "_dash_legend_unsupported", "_dash_textbox",
                          "_textbox_canon", "_dash_route_axis_titles",
                          "_dash_figure_title", "_dash_style_axis_titles",
@@ -29089,6 +29365,12 @@ class ServerAppBuilder:
             "        can be the graph.",
             '        """',
             "        go = g.get('graph_options', {})",
+            "        # zlabel()/ztitle()/zscale() (GAPS2 X2): read once per",
+            "        # figure so _apply_colorvar draws them on this graph's",
+            "        # colour key; reset after the layer loop below.",
+            "        _DASH_MAPPER.z_options = {k: go.get(k, '')",
+            "                                  for k in ('zlabel', 'ztitle', 'zscale')}",
+            "        _DASH_MAPPER.z_context = (_reported_subopts, gname)",
             "        _src_list = graph_sources.get(gname)",
             "        src = (_src_list[-1] if isinstance(_src_list, list) and _src_list else shared_source)",
             "        # ---- Per-graph if_expr / in_expr filtering ----",
@@ -29363,6 +29645,11 @@ class ServerAppBuilder:
             # helper, so the two modes decide and word it identically.
             "            _dash_note_empty_layer(gname, pi + 1, ptype, len(g_df),",
             "                                   list(fig.renderers[_r_before:]))",
+            "",
+            "        # z options apply to this graph's colour key only",
+            "        # (GAPS2 X2); reset before the next figure builds.",
+            "        _DASH_MAPPER.z_options = {}",
+            "        _DASH_MAPPER.z_context = (None, '')",
             "",
 
             "        # The second axes, fitted to what their layers drew and",
