@@ -104,7 +104,11 @@ class FakeSfi:
 
             @staticmethod
             def isVarTypeString(v):
-                return fake.types[v] in ("str", "strL")
+                return str(fake.types[v]).startswith("str")
+
+            @staticmethod
+            def getVarType(v):
+                return fake.types[v]
 
             @staticmethod
             def isVarTypeStrL(v):
@@ -120,7 +124,7 @@ class FakeSfi:
                 if any(c[0] == var for c in fake.bad):
                     raise SystemError("returned a result with an exception set")
                 vals = list(fake.columns[var])
-                if fake.types[var] in ("str", "strL"):
+                if str(fake.types[var]).startswith("str"):
                     return vals
                 assert missingval is None, "missing values must come back as None"
                 return vals
@@ -282,7 +286,7 @@ class TestTheWriter:
         d = _load(path)
         assert set(d) == {"values", "firstRecordId", "lastRecordId",
                           "variableIndices", "variableIsString",
-                          "variableNames", "variableLabels",
+                          "storageTypes", "variableNames", "variableLabels",
                           "valueLabelNames", "valueLabels",
                           "numberOfRecords", "numberOfVariables"}
         n = len(ADVERSARIAL)

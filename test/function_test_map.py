@@ -32,8 +32,26 @@ FUNCTIONS = {
  'GlyphMapper._fp_screen': 'test/test_estimator_cost.py::TestFpfitFitsWhatItFitted::test_the_screen_keeps_the_winner',
  'GlyphMapper._fp_screen.<locals>._column': 'test/test_estimator_cost.py::TestFpfitFitsWhatItFitted::test_the_screen_keeps_the_winner',
  'GlyphMapper._fp_screen.<locals>._wsum': 'test/test_estimator_cost.py::TestFpfitFitsWhatItFitted::test_the_screen_keeps_the_winner',
+ '_dash_decimal_text': 'test/test_display_format_writer.py::TestPythonWriter::test_every_numeric_display_matches_stata_exactly',
  '_dash_empty_frame': 'test/test_layer_reports.py::TestAnEmptyDatasetKeepsItsVariables::test_the_saved_frame_has_the_variables_as_columns',
+ '_dash_f_sci_fallback': 'test/test_display_format_writer.py::TestPythonWriter::test_narrow_widths_1_to_7_follow_the_fixture',
+ '_dash_f_text': 'test/test_display_format_writer.py::TestPythonWriter::test_every_numeric_display_matches_stata_exactly',
  '_dash_finite_numeric': 'test/test_data_file_numbers.py::TestAdversarialNumbers::test_a_numeric_column_holding_the_text_infinity_is_missing',
+ '_dash_float32_text': 'test/test_display_format_writer.py::TestJavaScriptTwin::test_the_twins_agree_where_the_languages_disagree',
+ '_dash_fmt': 'test/test_display_format_writer.py::TestPythonWriter::test_every_numeric_display_matches_stata_exactly',
+ '_dash_fmt_calendar': 'test/test_display_format_writer.py::TestPythonWriter::test_every_date_display_matches_stata_exactly',
+ '_dash_fmt_date': 'test/test_display_format_writer.py::TestPythonWriter::test_every_date_display_matches_stata_exactly',
+ '_dash_fmt_kind': 'test/test_display_format_writer.py::TestParser::test_kinds',
+ '_dash_fmt_number': 'test/test_display_format_writer.py::TestPythonWriter::test_narrow_widths_1_to_7_follow_the_fixture',
+ '_dash_fmt_parse': 'test/test_display_format_writer.py::TestParser::test_kinds',
+ '_dash_fmt_picture_width': 'test/test_display_format_writer.py::TestPythonWriter::test_every_date_display_matches_stata_exactly',
+ '_dash_fmt_refusal': 'test/test_display_format_writer.py::TestParser::test_refusal_messages',
+ '_dash_fmt_render_code': 'test/test_display_format_writer.py::TestPythonWriter::test_every_date_display_matches_stata_exactly',
+ '_dash_fmt_text': 'test/test_display_format_writer.py::TestPythonWriter::test_text_strips_and_missing_is_a_dot',
+ '_dash_fmt_tokenize_picture': 'test/test_display_format_writer.py::TestPythonWriter::test_every_date_display_matches_stata_exactly',
+ '_dash_g_text': 'test/test_display_format_writer.py::TestPythonWriter::test_every_numeric_display_matches_stata_exactly',
+ '_dash_group_thousands': 'test/test_display_format_writer.py::TestPythonWriter::test_every_numeric_display_matches_stata_exactly',
+ '_dash_int_digit_count': 'test/test_display_format_writer.py::TestPythonWriter::test_every_numeric_display_matches_stata_exactly',
  '_dash_note_no_second_y': 'test/test_layer_reports.py::TestARangeLayerWithNoSecondY::test_a_hostile_type_name_is_not_echoed_raw',
  '_dash_read_data_json': 'test/test_data_file_numbers.py::TestTheReader::test_every_out_of_range_value_is_missing',
  '_dash_read_data_json.<locals>._double': 'test/test_data_file_numbers.py::TestTheReader::test_every_out_of_range_value_is_missing',
@@ -380,6 +398,11 @@ FUNCTIONS = {
  '_dash_place_count_ticks': 'test/test_natscale.py::TestBothModesDrawTwowaysTicks::test_the_reported_case',
  '_dash_common_count_ticks': 'test/test_natscale_axes.py::TestByPanelsShareOneScale::test_ylabel_count',
  '_dash_axis_count_ticks': 'test/test_natscale_axes.py::TestLogAxisTicks::test_price_under_yscale_log',
+ '_dash_sci_decimals': 'test/test_display_format_writer.py::TestPythonWriter::test_narrow_widths_1_to_7_follow_the_fixture',
+ '_dash_sci_text': 'test/test_display_format_writer.py::TestPythonWriter::test_every_numeric_display_matches_stata_exactly',
+ '_dash_stata_round': 'test/test_display_format_writer.py::TestPythonWriter::test_every_numeric_display_matches_stata_exactly',
+ '_dash_stata_value_of': 'test/test_display_format_writer.py::TestStataValueOf::test_each_kind',
+ '_dash_swap_decimal_comma': 'test/test_display_format_writer.py::TestConsumers::test_format_stata_numeric_delegates',
  '_dash_unix_ms_to_unit': 'test/test_natscale_axes.py::TestDateAxisTicks::test_a_date_axis_converts_its_unit',
  '_dash_tsnatscale_ticks': 'test/test_natscale_axes.py::TestDateAxisTicks::test_agreement_with_tsnatscale',
  '_dash_ts_ladder': 'test/test_natscale_axes.py::TestDateAxisTicks::test_the_models_parts',
@@ -628,6 +651,17 @@ DEAD = {}
 #: runs) -- and pointed their tests at the production functions.  Each kept
 #: one has its test in FUNCTIONS too.
 TEST_ONLY = {
+    "_dash_float32_text": (
+        "WP-28 S04 keeps it under WP-26's seam rule: the oracle of the twin-agreement test -- the "
+        "shortest float32 text, which Python and node must agree on; the "
+        "page writes a float's widened double, never this."),
+    "_dash_fmt_refusal": (
+        "WP-28 S04 keeps it under WP-26's seam rule: the named refusal sections 11 and 12 echo, and "
+        "the oracle TestDashAdo holds dash.ado's %x/%H/%L regex to."),
+    "_dash_stata_value_of": (
+        "WP-28 S04 keeps it under WP-26's seam rule: epoch milliseconds back to a Stata date value, "
+        "the hand-off section 12 wires into widgets, tooltips and axes; its "
+        "JS twin dash_stata_value_of ships in _DASH_FMT_JS today."),
     "DashRenderer._build_figures": (
         "WP-26 keeps it: a test seam (its docstring).  render() never calls "
         "it; twelve test files build the figures through it without "

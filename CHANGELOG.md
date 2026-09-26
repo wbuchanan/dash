@@ -432,6 +432,17 @@ their own lists.
   served app: `filter()` and `dash kpi` used to refuse it with r(198),
   and the renderers drew no panels, tooltip field, widget or colours for
   it, in silence. (WP-28, G5)
+- One Stata display-format writer, shared by the saved page and the served
+  app (Python, with a JavaScript twin): `%w.df`, `%w.dg`, `%w.de` with `c`,
+  the `0`/`-` flags and the comma decimal, and every `%t` picture, pinned
+  row for row to `test/fixtures/format_truth.json`; the data export now
+  carries each variable's storage type. (WP-28 S04)
+- `dash kpi ..., fmt(%21x)`, `fmt(%16H)` and `fmt(%16L)` are refused with
+  r(198) naming the format; a variable whose own display format is one of
+  these is drawn in `%9.0g` with one note. (WP-28 S04)
+- Marker labels of a variable with a `%g` or `%e` display format read as
+  Stata writes them, and `mlabformat(%9.3e)` of 1234.5678 reads `1.23e+03`,
+  not `1.235e+03`. (WP-28 S04)
 
 ### Fixed after WP-27 (the S3 batch, 24sep2026)
 

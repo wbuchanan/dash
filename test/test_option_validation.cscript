@@ -154,6 +154,8 @@
 *!   OV-118 fmt(%12s)                 rc 198 naming fmt()
 *!   OV-119 fmt(%tdCCYY-NN-DD)        rc 0
 *!   OV-120 fmt(%9.0fc)               rc 0
+*!   OV-163..165 fmt(%21x %16H %16L)  rc 198 naming fmt() (WP-28 S04)
+*!   OV-166..168 fmt(%9,2fc %tm %10.0g) rc 0
 *! The adversarial review's findings (DESIGN.md section 7.1, 22sep2026):
 *!   OV-121 colorvar(L.price) jitter(5), data tsset
 *!                                    rc 198 naming colorvar(), and the
@@ -845,6 +847,19 @@ _ov_case OV-160 `"dash kdensity mpg, kernel(gaussianx) name(ov160)"' 198 kernel
 _ov_case OV-161 `"dash kdensity mpg, kernel(gau;rm) name(ov161)"' 198 kernel
 local ov162 = "gau" + 50 * "ssian"
 _ov_case OV-162 `"dash kdensity mpg, kernel(`ov162') name(ov162)"' 198 kernel
+
+// ----------------------------------------------------------------
+// OV-163 .. OV-168 (WP-28 S04): confirm numeric format passes %21x, %16H
+// and %16L, but the page cannot write a hexadecimal or IEEE dump, so
+// fmt() refuses them with r(198) naming fmt(); every format the writer
+// places is still accepted.
+// ----------------------------------------------------------------
+_ov_case OV-163 `"dash kpi mean(mpg), name(k) title(T) fmt(%21x)"' 198 fmt
+_ov_case OV-164 `"dash kpi mean(mpg), name(k) title(T) fmt(%16H)"' 198 fmt
+_ov_case OV-165 `"dash kpi mean(mpg), name(k) title(T) fmt(%16L)"' 198 fmt
+_ov_case OV-166 `"dash kpi mean(mpg), name(k) title(T) fmt(%9,2fc)"' 0 ""
+_ov_case OV-167 `"dash kpi mean(mpg), name(k) title(T) fmt(%tm)"' 0 ""
+_ov_case OV-168 `"dash kpi mean(mpg), name(k) title(T) fmt(%10.0g)"' 0 ""
 
 // ----------------------------------------------------------------
 // CV-nn: the corpus arbiter.  Every line of the conformance corpus must

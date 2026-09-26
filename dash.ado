@@ -2334,6 +2334,13 @@ program define _dash_validate_value, rclass
             mata: _dash_say("err", "`prefix': `opt'() must be a numeric display format such as %9.2f or %12.0fc (got: ", st_local("value"), ")")
             exit 198
         }
+        // 3. confirm passes %21x, %16H and %16L, but the page cannot write
+        //    a hexadecimal or IEEE byte dump (WP-28 S04): refused here, as
+        //    dash_render.py's _dash_fmt_refusal refuses them.
+        if regexm(scalar(`V'), "^%-?[0-9]*[xHL]$") {
+            mata: _dash_say("err", "`prefix': `opt'() cannot be written by the dashboard: ", st_local("value"), " (hexadecimal %x and IEEE %H/%L formats are refused)")
+            exit 198
+        }
     }
 
     // Every refusal above and here echoes the value through _dash_say: the

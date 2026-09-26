@@ -1277,8 +1277,14 @@ both the saved page and the served app (see
 {synopt:{cmdab:nam:e}{cmd:(}{it:id}{cmd:)}}required; identifier for
     placement and filter exclusion{p_end}
 {synopt:{cmdab:fmt:}{cmd:(}{it:format}{cmd:)}}a numeric Stata display
-    format such as {cmd:%9.2f} or {cmd:%12.0fc}; anything else, including
-    a string format such as {cmd:%12s}, is refused with an error{p_end}
+    format such as {cmd:%9.2f} or {cmd:%12.0fc} -- {cmd:%}{it:w.d}{cmd:f},
+    {cmd:%}{it:w.d}{cmd:g} or {cmd:%}{it:w.d}{cmd:e}, each with {cmd:c}
+    and the comma decimal, or any {cmd:%t} picture; anything else,
+    including a string format such as {cmd:%12s}, is refused with an
+    error; the hexadecimal {cmd:%21x} and the IEEE {cmd:%16H} and
+    {cmd:%16L} formats, which {cmd:confirm numeric format} accepts, are
+    refused with r(198) too: the page cannot write a hexadecimal or IEEE
+    byte dump{p_end}
 {synopt:{cmdab:sub:title}{cmd:(}{it:string}{cmd:)}}smaller label displayed
     below the value{p_end}
 {synopt:{cmd:color(}{it:color}{cmd:)}}text color of the value (Stata color

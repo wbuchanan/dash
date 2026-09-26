@@ -61,6 +61,7 @@ Version: 1.0.0  25mar2026
 from __future__ import annotations
 
 import argparse
+import datetime as _dt
 import html
 import json
 import math
@@ -68,6 +69,7 @@ import os
 import re
 import secrets
 import warnings
+from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Context, Decimal
 from typing import Any
 
 import numpy as np
@@ -680,8 +682,16 @@ def _dash_load_columns(df, formats, string_vars):
         kind = _stata_date_kind(fmt)
         if kind is None:
             df[col] = _dash_finite_numeric(df[col])
-            if _stata_numeric_pattern(fmt) is not None:
+            if _dash_fmt_kind(fmt) in ("f", "g", "e"):
                 numeric_formats[col] = fmt
+            elif fmt and _dash_fmt_kind(fmt) in ("x", "H"):
+                # A hexadecimal or IEEE dump the page cannot write (WP-28
+                # S04, BR-04.5): drawn in %9.0g, named once per build.
+                _dash_warn_once(("format", col),
+                                f"dash: variable '{col}' has display format "
+                                f"{fmt!r}, which the dashboard cannot write; "
+                                f"it is shown in %9.0g.")
+                numeric_formats[col] = "%9.0g"
             continue
         raw = df[col]
         numeric = _dash_finite_numeric(raw)
@@ -926,31 +936,17 @@ def _format_stata_numeric(value: float, fmt: "str | None") -> str:
     Returns:
         The formatted text, or ``""`` for a missing value.
     """
-    parsed = _parse_stata_numeric_fmt(fmt)
+    # WP-28 S04: a thin wrapper over the shared writer, which follows
+    # Stata's own width rule for every kind (%e included: %9.3e of
+    # 1234.5678 is 1.23e+03) and writes %g as Stata does; its "" for a
+    # missing value -- the contract its callers test -- is kept here.
     try:
         val = float(value)
     except (TypeError, ValueError):
         return ""
     if not np.isfinite(val):
         return ""
-    if parsed is None:
-        return f"{val:g}"
-
-    width, dec, kind, comma = parsed
-
-    if kind == "e":
-        return f"{val:.{dec}e}"
-
-    plain = f"{val:.{dec}f}"
-    if comma:
-        grouped = f"{val:,.{dec}f}"
-        if len(grouped) <= width:
-            return grouped
-    if len(plain) <= width:
-        return plain
-    # Two mantissa decimals: measured for %9.0f, %9.2f and %12.2fc, i.e. at
-    # two different widths and two different decimal counts.
-    return f"{val:.2e}"
+    return _dash_fmt_text(val, fmt)
 
 
 
@@ -1547,9 +1543,12 @@ def _dash_write_stata_data(path, varnames, sfi=None):
         got = data.get(var=v, **kw) if nobs else []
         return got if isinstance(got, list) else [got]
 
-    is_str, cols = {}, {}
+    is_str, cols, storage_types = {}, {}, {}
     for v in names:
         is_str[v] = bool(data.isVarTypeString(v))
+        # byte int long float double str# strL: the display-format writer
+        # widens a float to the double Stata holds it as (WP-28 S04).
+        storage_types[v] = str(data.getVarType(v))
         if not is_str[v]:
             # Every missing value, . and .a to .z, as None: jsonio's "null".
             cols[v] = ["null" if x is None else float(x)
@@ -1625,6 +1624,7 @@ def _dash_write_stata_data(path, varnames, sfi=None):
         "lastRecordId": nobs,
         "variableIndices": [int(data.getVarIndex(v)) + 1 for v in names],
         "variableIsString": is_str,
+        "storageTypes": storage_types,
         "variableNames": names,
         "variableLabels": var_labels,
         "valueLabelNames": label_names,
@@ -14405,6 +14405,904 @@ def _dash_frame_filter_mask(df, widgets):
     return mask
 
 
+#: The Stata display-format writer's JavaScript twin (WP-28 S04): every
+#: function in this string is a line-for-line transliteration of the
+#: Python writer above it (dash_fmt_parse .. dash_html_escape), same
+#: branch order, same rounding rule, same narrow-width and comma
+#: corrections, checked row for row against the SAME
+#: test/fixtures/format_truth.json
+#: (test/test_display_format_writer.py::TestJavaScriptTwin).  Numbers are
+#: never rounded through float division or toFixed/toPrecision (both use
+#: the *platform's* rounding, not Stata's): every rounding decision is
+#: made on the value's EXACT decimal expansion, extracted from its IEEE
+#: 754 bits with BigInt (dash_fmt_exact_decimal), the same technique
+#: Python's Decimal(a_float) gives for free.  It is prepended exactly
+#: once to each shipped script (04-10): _DASH_FILTER_MASK_JS (so
+#: _FILTER_JS and _DASH_CSV_SAVED_JS carry it), _DASH_CSV_SERVED_JS, and
+#: the brush wiring -- never to _DASH_CSV_JS itself, which would define
+#: dash_fmt twice.
+_DASH_FMT_JS = """
+// ===========================================================================
+// The Stata display-format writer (WP-28 S04).  Python original:
+// dash_render.py's _dash_fmt_parse .. _dash_html_escape (module scope).
+// ===========================================================================
+
+var _DASH_FMT_NUM_RE = /^%(-)?(0)?(\\d{1,4})([.,])(\\d{1,4})(f|g|e)(c)?$/;
+var _DASH_FMT_DATE_RE = /^%(-)?t([cCdhmqwy])(.*)$/;
+var _DASH_FMT_X_RE = /^%-?\\d*x$/;
+var _DASH_FMT_H_RE = /^%-?\\d*[HL]$/;
+
+function dash_fmt_parse(fmt) {
+    // _dash_fmt_parse
+    if (fmt === null || fmt === undefined || typeof fmt !== "string") {
+        return null;
+    }
+    fmt = fmt.trim();
+    if (!/^[\\x00-\\x7F]*$/.test(fmt) || fmt.length > 60) {
+        return null;
+    }
+    var m = _DASH_FMT_NUM_RE.exec(fmt);
+    if (m) {
+        if (m[3].length > 4 || m[5].length > 4) {
+            return null;
+        }
+        var width = parseInt(m[3], 10), dec = parseInt(m[5], 10);
+        if (!(width >= 1 && width <= 2045) || dec >= width) {
+            return null;
+        }
+        return {kind: m[6], width: width, dec: dec, left: !!m[1],
+                zero: !!m[2], group: !!m[7], comma_dec: m[4] === ",",
+                tkind: null, picture: null};
+    }
+    m = _DASH_FMT_DATE_RE.exec(fmt);
+    if (m) {
+        return {kind: "t", width: null, dec: null, left: !!m[1],
+                zero: false, group: false, comma_dec: false,
+                tkind: m[2], picture: m[3]};
+    }
+    if (_DASH_FMT_X_RE.test(fmt)) {
+        return {kind: "x", width: null, dec: null, left: false,
+                zero: false, group: false, comma_dec: false,
+                tkind: null, picture: null};
+    }
+    if (_DASH_FMT_H_RE.test(fmt)) {
+        return {kind: "H", width: null, dec: null, left: false,
+                zero: false, group: false, comma_dec: false,
+                tkind: null, picture: null};
+    }
+    return null;
+}
+
+function dash_fmt_kind(fmt) {
+    // _dash_fmt_kind
+    var parsed = dash_fmt_parse(fmt);
+    return parsed ? parsed.kind : null;
+}
+
+function dash_fmt_refusal(fmt) {
+    // _dash_fmt_refusal
+    var kind = dash_fmt_kind(fmt);
+    if (kind === "x") {
+        return fmt + " is a hexadecimal display format the dashboard cannot write";
+    }
+    if (kind === "H") {
+        return fmt + " is an IEEE byte-dump display format the dashboard cannot write";
+    }
+    if (kind === null) {
+        return fmt + " is not a display format dash writes";
+    }
+    return null;
+}
+
+// ---- Exact decimal arithmetic on a double's own IEEE 754 bits ------------
+// _dash_stata_round's JS twin: BigInt-exact, never toFixed/toPrecision
+// (platform rounding) and never plain float division for a scientific
+// mantissa (20.5 / 10.0 is 2.0499999999999998 in IEEE 754, not 2.05).
+
+function dash_fmt_exact_decimal(x) {
+    // x: a non-negative finite number.  {int, frac}: digit strings; the
+    // decimal point sits between them (frac may be "").
+    if (x === 0) {
+        return {int: "0", frac: ""};
+    }
+    var buf = new ArrayBuffer(8);
+    var dv = new DataView(buf);
+    dv.setFloat64(0, x, false);
+    var hi = dv.getUint32(0, false), lo = dv.getUint32(4, false);
+    var expBits = (hi >>> 20) & 0x7FF;
+    var mantissa = BigInt(hi & 0xFFFFF) * 4294967296n + BigInt(lo);
+    var exponent;
+    if (expBits === 0) {
+        exponent = -1074;
+    } else {
+        mantissa = mantissa + (1n << 52n);
+        exponent = expBits - 1075;
+    }
+    var intPart, frac = "";
+    if (exponent >= 0) {
+        intPart = (mantissa << BigInt(exponent)).toString();
+    } else {
+        var denom = 1n << BigInt(-exponent);
+        intPart = (mantissa / denom).toString();
+        var rem = mantissa % denom;
+        var digits = [];
+        var maxDigits = 1100;
+        while (rem !== 0n && digits.length < maxDigits) {
+            rem *= 10n;
+            digits.push((rem / denom).toString());
+            rem = rem % denom;
+        }
+        frac = digits.join("");
+    }
+    return {int: intPart, frac: frac};
+}
+
+function dash_fmt_shift_decimal(ed, shift) {
+    // ed's value / 10**shift, exact (a decimal-point shift): the
+    // scientific mantissa a / 10**exp, with no float division.
+    var digits = ed.int + ed.frac;
+    var pointPos = ed.int.length - shift;
+    if (pointPos <= 0) {
+        digits = "0".repeat(1 - pointPos) + digits;
+        pointPos = 1;
+    }
+    if (pointPos >= digits.length) {
+        digits = digits + "0".repeat(pointPos - digits.length);
+    }
+    var intPart = digits.slice(0, pointPos).replace(/^0+(?=\\d)/, "");
+    var fracPart = digits.slice(pointPos);
+    return {int: intPart || "0", frac: fracPart};
+}
+
+function dash_fmt_bigint_add1(s) {
+    var r = (BigInt(s) + 1n).toString();
+    return r.length < s.length ? r.padStart(s.length, "0") : r;
+}
+
+function dash_fmt_round_digits(ed, ndigits, halfEven) {
+    // ed (exact {int, frac}) rounded to ndigits decimal places: {int, frac}
+    // with frac.length === ndigits.  _dash_stata_round's core.
+    if (ndigits < 0) {
+        ndigits = 0;
+    }
+    var frac = ed.frac;
+    while (frac.length < ndigits + 1) {
+        frac += "0";
+    }
+    var kept = frac.slice(0, ndigits);
+    var nextDigit = frac.charAt(ndigits);
+    var rest = frac.slice(ndigits + 1);
+    var restNonZero = /[1-9]/.test(rest);
+    var nd = nextDigit === "" ? 0 : parseInt(nextDigit, 10);
+    var roundUp = false;
+    if (nd > 5 || (nd === 5 && restNonZero)) {
+        roundUp = true;
+    } else if (nd === 5 && !restNonZero) {
+        var lastKeptChar = ndigits > 0
+            ? kept.charAt(ndigits - 1)
+            : ed.int.charAt(ed.int.length - 1);
+        var lastDigit = lastKeptChar === "" ? 0 : parseInt(lastKeptChar, 10);
+        roundUp = halfEven ? ((lastDigit % 2) === 1) : true;
+    }
+    var combined = ed.int + kept;
+    if (roundUp) {
+        combined = dash_fmt_bigint_add1(combined);
+    }
+    var splitAt = combined.length - ndigits;
+    var newInt = (splitAt > 0 ? combined.slice(0, splitAt) : "0")
+        .replace(/^0+(?=\\d)/, "");
+    var newFrac = ndigits > 0 ? combined.slice(splitAt) : "";
+    return {int: newInt || "0", frac: newFrac};
+}
+
+function dash_fmt_decimal_text(ed, decimals) {
+    // _dash_decimal_text: ed already rounded to `decimals` places.
+    var frac = (ed.frac + "0".repeat(decimals)).slice(0, decimals);
+    return decimals ? ed.int + "." + frac : ed.int;
+}
+
+function dash_fmt_int_digit_count(a) {
+    // _dash_int_digit_count
+    if (a < 1) {
+        return 0;
+    }
+    return dash_fmt_exact_decimal(Math.floor(a)).int.length;
+}
+
+function dash_fmt_group_thousands(digits) {
+    // _dash_group_thousands
+    var out = [];
+    for (var i = 0; i < digits.length; i++) {
+        var c = digits.charAt(digits.length - 1 - i);
+        if (i && i % 3 === 0) {
+            out.push(",");
+        }
+        out.push(c);
+    }
+    return out.reverse().join("");
+}
+
+function dash_fmt_swap_decimal_comma(text) {
+    // _dash_swap_decimal_comma
+    var out = "";
+    for (var i = 0; i < text.length; i++) {
+        var c = text.charAt(i);
+        out += c === "." ? "," : (c === "," ? "." : c);
+    }
+    return out;
+}
+
+function dash_fmt_sci_decimals(width, expDigits, dec, sigDigits) {
+    // _dash_sci_decimals
+    var base = width - (expDigits === 2 ? 7 : 8);
+    var floor_ = expDigits === 2 ? 1 : 0;
+    if (dec === 0) {
+        return Math.max(base, floor_);
+    }
+    var cap = sigDigits ? dec - 1 : dec;
+    return Math.max(Math.min(cap, base), 0);
+}
+
+function dash_fmt_sci_text(a, exp, decimals, halfEven) {
+    // _dash_sci_text
+    var mant = dash_fmt_shift_decimal(dash_fmt_exact_decimal(a), exp);
+    var r = dash_fmt_round_digits(mant, decimals, !!halfEven);
+    if (r.int.length > 1) {
+        exp += r.int.length - 1;
+        r = {int: r.int.slice(0, 1), frac: r.int.slice(1) + r.frac};
+    }
+    var mantText = dash_fmt_decimal_text(r, decimals);
+    if (decimals === 0 && mantText.indexOf(".") === -1) {
+        mantText += ".";
+    }
+    var expDigits = Math.abs(exp) >= 100 ? 3 : 2;
+    var expText = String(Math.abs(exp));
+    while (expText.length < expDigits) {
+        expText = "0" + expText;
+    }
+    return mantText + "e" + (exp >= 0 ? "+" : "-") + expText;
+}
+
+function dash_fmt_f_sci_fallback(a, width, dec) {
+    // _dash_f_sci_fallback
+    var exp = Math.floor(Math.log10(a));
+    var expDigits = Math.abs(exp) >= 100 ? 3 : 2;
+    var decimals = dash_fmt_sci_decimals(width, expDigits, dec, false);
+    return dash_fmt_sci_text(a, exp, decimals, true);
+}
+
+function dash_fmt_f_text(a, dec, width, group, signlen) {
+    // _dash_f_text
+    signlen = signlen || 0;
+    var ed = dash_fmt_exact_decimal(a);
+    var r = dash_fmt_round_digits(ed, dec, true);
+    var plain = dash_fmt_decimal_text(r, dec);
+    if (group) {
+        var parts = plain.split(".");
+        var grouped = dash_fmt_group_thousands(parts[0])
+            + (parts.length > 1 ? "." + parts[1] : "");
+        if (grouped.length + signlen <= width) {
+            return grouped;
+        }
+    }
+    if (plain.length + signlen <= Math.max(width, 8)) {
+        return plain;
+    }
+    return dash_fmt_f_sci_fallback(a, width, dec);
+}
+
+function dash_fmt_g_text(a, dec, width, group, signlen) {
+    // _dash_g_text
+    signlen = signlen || 0;
+    var exp = a === 0 ? 0 : Math.floor(Math.log10(a));
+    var intDigits = a === 0 ? 1 : Math.max(exp + 1, 0);
+    var pUpper = width - 2;
+
+    var useSci = intDigits > pUpper;
+    if (!useSci && intDigits === 0) {
+        if (dec === 0) {
+            var leadingZeros = -exp - 1;
+            var sigFixed = Math.max(pUpper - leadingZeros, 0);
+            var sciSig = 1 + dash_fmt_sci_decimals(
+                width, Math.abs(exp) >= 100 ? 3 : 2, 0, false);
+            useSci = sigFixed < sciSig;
+        } else {
+            useSci = exp < -4;
+        }
+    }
+    var text, decimals;
+    if (!useSci) {
+        if (intDigits >= 1) {
+            var sig = dec === 0 ? pUpper : Math.max(dec, intDigits);
+            if (sig > pUpper) {
+                useSci = true;
+            } else {
+                decimals = sig - intDigits;
+                if (dec === 0 && decimals === 0) {
+                    var sciSig2 = 1 + dash_fmt_sci_decimals(
+                        width, Math.abs(exp) >= 100 ? 3 : 2, 0, false);
+                    useSci = intDigits < sciSig2;
+                }
+            }
+        } else {
+            decimals = dec === 0 ? pUpper : dec + (-exp - 1);
+        }
+        if (!useSci) {
+            var ed0 = a === 0 ? {int: "0", frac: ""}
+                               : dash_fmt_exact_decimal(a);
+            var r = dash_fmt_round_digits(ed0, decimals, false);
+            var newDigits = r.int === "0" ? 0 : r.int.length;
+            if (newDigits > intDigits && intDigits >= 1) {
+                intDigits = newDigits;
+                sig = dec === 0 ? pUpper : Math.max(dec, intDigits);
+                decimals = Math.max(sig - intDigits, 0);
+                r = dash_fmt_round_digits(ed0, decimals, false);
+            }
+            text = dash_fmt_decimal_text(r, decimals);
+            if (group && intDigits >= 1) {
+                var nCommas = Math.floor((intDigits - 1) / 3);
+                var decimalsC, groupingOk;
+                if (dec === 0) {
+                    decimalsC = decimals - nCommas;
+                    groupingOk = decimalsC >= 0;
+                } else {
+                    decimalsC = decimals;
+                    groupingOk = true;
+                }
+                if (groupingOk) {
+                    var r2 = dash_fmt_round_digits(ed0, decimalsC, false);
+                    var text2 = dash_fmt_decimal_text(r2, decimalsC);
+                    var parts2 = text2.split(".");
+                    var grouped2 = dash_fmt_group_thousands(parts2[0])
+                        + (parts2.length > 1 ? "." + parts2[1] : "");
+                    if (grouped2.length + signlen <= width) {
+                        text = grouped2;
+                    }
+                }
+            }
+            if (text.indexOf(".") !== -1) {
+                text = text.replace(/0+$/, "").replace(/\\.$/, "");
+            }
+            if (intDigits === 0 && text.slice(0, 2) === "0.") {
+                text = text.slice(1);
+            }
+        }
+    }
+    if (useSci) {
+        var expDigits = Math.abs(exp) >= 100 ? 3 : 2;
+        decimals = dash_fmt_sci_decimals(width, expDigits, dec, true);
+        text = dash_fmt_sci_text(a, exp, decimals, false);
+    }
+    return text;
+}
+
+function dash_fmt_number(parsed, value) {
+    // _dash_fmt_number
+    var width = parsed.width, dec = parsed.dec, kind = parsed.kind,
+        comma = parsed.comma_dec, group = parsed.group, zero = parsed.zero,
+        left = parsed.left;
+    var sign = value < 0 ? "-" : "";
+    var a = Math.abs(value);
+    var signlen = sign.length;
+    var text;
+    if (kind === "e") {
+        var exp = a ? Math.floor(Math.log10(a)) : 0;
+        var expDigits = Math.abs(exp) >= 100 ? 3 : 2;
+        var decimals = dash_fmt_sci_decimals(width, expDigits, dec, false);
+        text = dash_fmt_sci_text(a, exp, decimals, false);
+    } else if (kind === "f") {
+        text = dash_fmt_f_text(a, dec, width, group, signlen);
+    } else {
+        text = dash_fmt_g_text(a, dec, width, group, signlen);
+    }
+    if (comma) {
+        text = dash_fmt_swap_decimal_comma(text);
+    }
+    var body = sign + text;
+    var padWidth = text.indexOf("e") !== -1 ? Math.max(width, 8) : width;
+    if (zero && kind === "f" && text.indexOf("e") === -1 && body.length < width) {
+        body = sign + "0".repeat(width - body.length) + text;
+        return left ? body : body.padStart(width, " ");
+    }
+    return left ? body.padEnd(padWidth, " ") : body.padStart(padWidth, " ");
+}
+
+function dash_float32_text(value) {
+    // _dash_float32_text
+    var v = Math.fround(value);
+    if (v === 0) {
+        return (1 / v) < 0 ? "-0" : "0";
+    }
+    var text = "";
+    for (var prec = 1; prec <= 17; prec++) {
+        var candidate = Number(v.toPrecision(prec));
+        if (Math.fround(candidate) === v) {
+            text = v.toPrecision(prec);
+            break;
+        }
+    }
+    if (!text) {
+        text = String(v);
+    }
+    var num = Number(text);
+    var exp = num === 0 ? 0 : Math.floor(Math.log10(Math.abs(num)));
+    if (exp < -6 || exp >= 21) {
+        // JS's own exponential form, trimmed of trailing mantissa zeros.
+        var es = num.toExponential();
+        var m = es.split("e");
+        var mant = m[0];
+        if (mant.indexOf(".") !== -1) {
+            mant = mant.replace(/0+$/, "").replace(/\\.$/, "");
+        }
+        var e2 = parseInt(m[1], 10);
+        text = mant + "e" + (e2 >= 0 ? "+" : "") + e2;
+    } else if (text.indexOf(".") !== -1 && text.indexOf("e") === -1) {
+        text = text.replace(/0+$/, "").replace(/\\.$/, "");
+    }
+    return text;
+}
+
+// ---- The date writer -------------------------------------------------------
+
+var _DASH_FMT_MONTHS = [null,
+    ["January", "Jan"], ["February", "Feb"], ["March", "Mar"],
+    ["April", "Apr"], ["May", "May"], ["June", "Jun"],
+    ["July", "Jul"], ["August", "Aug"], ["September", "Sep"],
+    ["October", "Oct"], ["November", "Nov"], ["December", "Dec"]];
+
+var _DASH_FMT_DAYS = [
+    ["Monday", "Mon", "Mo"], ["Tuesday", "Tue", "Tu"],
+    ["Wednesday", "Wed", "We"], ["Thursday", "Thu", "Th"],
+    ["Friday", "Fri", "Fr"], ["Saturday", "Sat", "Sa"],
+    ["Sunday", "Sun", "Su"]];
+
+var _DASH_FMT_CODES = [
+    "DAYNAME", "Dayname", "Month", "month", "a.m.", "A.M.", ".sss",
+    "JJJ", "jjj", "Mon", "mon", "Day", "day", ".ss",
+    "CC", "cc", "YY", "yy", "NN", "nn", "DD", "dd", "Da", "da",
+    "WW", "ww", "HH", "Hh", "hH", "hh", "MM", "mm", "SS", "ss",
+    "am", "AM", ".s",
+    "h", "q"];
+
+var _DASH_FMT_WIDTHS = {
+    "DAYNAME": 9, "Dayname": 9, "Month": 9, "month": 9,
+    "a.m.": 4, "A.M.": 4, ".sss": 4,
+    "JJJ": 3, "jjj": 3, "Mon": 3, "mon": 3, "Day": 4, "day": 4, ".ss": 3,
+    "CC": 2, "cc": 2, "YY": 2, "yy": 2, "NN": 2, "nn": 2, "DD": 2, "dd": 2,
+    "Da": 2, "da": 2, "WW": 2, "ww": 2, "HH": 2, "Hh": 2, "hH": 2, "hh": 2,
+    "MM": 2, "mm": 2, "SS": 2, "ss": 2, "am": 2, "AM": 2, ".s": 2,
+    "h": 1, "q": 1};
+
+var _DASH_FMT_RANGE = {
+    d: [-679350, 2936549], w: [-96720, 418079], m: [-22320, 96479],
+    q: [-7440, 32159], h: [-3720, 16079], y: [100, 9999]};
+var _DASH_FMT_FALLBACK_WIDTH = {d: 9, c: 18, C: 18, w: 7, m: 7, q: 6, h: 6, y: 4};
+var _DASH_FMT_DEFAULT_PICTURE = {
+    d: "DDmonCCYY", c: "DDmonCCYY_HH:MM:SS", C: "DDmonCCYY_HH:MM:SS",
+    w: "CCYY!www", m: "CCYY!mnn", q: "CCYY!qq", h: "CCYY!hh", y: "CCYY"};
+
+// A day-count since the Unix epoch (1970-01-01) to y/m/d, proleptic
+// Gregorian -- setUTCFullYear, never new Date(y, ...): years 0-99 are
+// remapped to 1900-1999 by the Date CONSTRUCTOR, but not by
+// setUTCFullYear (measured: %td -679350, year 0100, must not become 2000).
+function dash_fmt_ymd_from_days(daysSinceUnixEpoch) {
+    var d = new Date(0);
+    d.setUTCFullYear(1970, 0, 1 + daysSinceUnixEpoch);
+    return {year: d.getUTCFullYear(), month: d.getUTCMonth() + 1,
+            day: d.getUTCDate(), weekdaySun0: d.getUTCDay(),
+            doy: dash_fmt_day_of_year(d)};
+}
+
+function dash_fmt_day_of_year(d) {
+    var jan1 = new Date(0);
+    jan1.setUTCFullYear(d.getUTCFullYear(), 0, 1);
+    return Math.round((d.getTime() - jan1.getTime()) / 86400000) + 1;
+}
+
+function dash_fmt_calendar(value, tkind) {
+    // _dash_fmt_calendar
+    var v = Number(value);
+    if (!isFinite(v)) {
+        return null;
+    }
+    var STATA_EPOCH_UNIX_DAYS = -315619200000 / 86400000;  // 01jan1960
+
+    if (tkind === "c" || tkind === "C") {
+        var lo = -58695840000000, hi = 253717919999999;
+        if (!(v >= lo && v <= hi)) {
+            return null;
+        }
+        var ms = Math.floor(v);
+        var unixMs = ms + (-315619200000);
+        var days = Math.floor(unixMs / 86400000);
+        var ymd = dash_fmt_ymd_from_days(days);
+        var msOfDay = unixMs - days * 86400000;
+        var hour = Math.floor(msOfDay / 3600000);
+        var minute = Math.floor((msOfDay % 3600000) / 60000);
+        var second = Math.floor((msOfDay % 60000) / 1000);
+        var msFrac = ((ms % 1000) + 1000) % 1000;
+        var weekdayMon0 = (ymd.weekdaySun0 + 6) % 7;
+        return {year: ymd.year, month: ymd.month, day: ymd.day,
+                hour: hour, minute: minute, second: second, ms: msFrac,
+                weekday: weekdayMon0, doy: ymd.doy,
+                quarter: Math.floor((ymd.month - 1) / 3) + 1,
+                half: Math.floor((ymd.month - 1) / 6) + 1, week: null};
+    }
+
+    if (tkind === "d") {
+        var lo = _DASH_FMT_RANGE.d[0], hi = _DASH_FMT_RANGE.d[1];
+        if (!(v >= lo && v <= hi)) {
+            return null;
+        }
+        var dayN = Math.floor(v);
+        var ymd = dash_fmt_ymd_from_days(dayN + STATA_EPOCH_UNIX_DAYS);
+        var weekdayMon0 = (ymd.weekdaySun0 + 6) % 7;
+        return {year: ymd.year, month: ymd.month, day: ymd.day,
+                hour: 0, minute: 0, second: 0, ms: 0,
+                weekday: weekdayMon0, doy: ymd.doy,
+                quarter: Math.floor((ymd.month - 1) / 3) + 1,
+                half: Math.floor((ymd.month - 1) / 6) + 1,
+                week: (((Math.floor(dayN / 7) % 52) + 52) % 52) + 1};
+    }
+
+    if (tkind === "w") {
+        var lo = _DASH_FMT_RANGE.w[0], hi = _DASH_FMT_RANGE.w[1];
+        if (!(v >= lo && v <= hi)) {
+            return null;
+        }
+        var wk = Math.floor(v);
+        var year = 1960 + Math.floor(wk / 52);
+        var week = (((wk % 52) + 52) % 52) + 1;
+        var ymd = dash_fmt_ymd_from_days(wk * 7 + STATA_EPOCH_UNIX_DAYS);
+        var weekdayMon0 = (ymd.weekdaySun0 + 6) % 7;
+        return {year: year, month: ymd.month, day: ymd.day,
+                hour: 0, minute: 0, second: 0, ms: 0,
+                weekday: weekdayMon0, doy: ymd.doy,
+                quarter: Math.floor((ymd.month - 1) / 3) + 1,
+                half: Math.floor((ymd.month - 1) / 6) + 1, week: week};
+    }
+
+    if (tkind === "m") {
+        var lo = _DASH_FMT_RANGE.m[0], hi = _DASH_FMT_RANGE.m[1];
+        if (!(v >= lo && v <= hi)) {
+            return null;
+        }
+        var mo = Math.floor(v);
+        var year = 1960 + Math.floor(mo / 12);
+        var month = (((mo % 12) + 12) % 12) + 1;
+        var weekdayMon0 = (dash_fmt_ymd_from_days(
+            dash_fmt_days_from_ymd(year, month, 1)).weekdaySun0 + 6) % 7;
+        return {year: year, month: month, day: 1,
+                hour: 0, minute: 0, second: 0, ms: 0,
+                weekday: weekdayMon0, doy: null,
+                quarter: Math.floor((month - 1) / 3) + 1,
+                half: Math.floor((month - 1) / 6) + 1, week: null};
+    }
+
+    if (tkind === "q") {
+        var lo = _DASH_FMT_RANGE.q[0], hi = _DASH_FMT_RANGE.q[1];
+        if (!(v >= lo && v <= hi)) {
+            return null;
+        }
+        var qn = Math.floor(v);
+        var year = 1960 + Math.floor(qn / 4);
+        var quarter = (((qn % 4) + 4) % 4) + 1;
+        var month = (quarter - 1) * 3 + 1;
+        var weekdayMon0 = (dash_fmt_ymd_from_days(
+            dash_fmt_days_from_ymd(year, month, 1)).weekdaySun0 + 6) % 7;
+        return {year: year, month: month, day: 1,
+                hour: 0, minute: 0, second: 0, ms: 0,
+                weekday: weekdayMon0, doy: null, quarter: quarter,
+                half: Math.floor((month - 1) / 6) + 1, week: null};
+    }
+
+    if (tkind === "h") {
+        var lo = _DASH_FMT_RANGE.h[0], hi = _DASH_FMT_RANGE.h[1];
+        if (!(v >= lo && v <= hi)) {
+            return null;
+        }
+        var hn = Math.floor(v);
+        var year = 1960 + Math.floor(hn / 2);
+        var half = (((hn % 2) + 2) % 2) + 1;
+        var month = (half - 1) * 6 + 1;
+        var weekdayMon0 = (dash_fmt_ymd_from_days(
+            dash_fmt_days_from_ymd(year, month, 1)).weekdaySun0 + 6) % 7;
+        return {year: year, month: month, day: 1,
+                hour: 0, minute: 0, second: 0, ms: 0,
+                weekday: weekdayMon0, doy: null,
+                quarter: Math.floor((month - 1) / 3) + 1, half: half,
+                week: null};
+    }
+
+    if (tkind === "y") {
+        var lo = _DASH_FMT_RANGE.y[0], hi = _DASH_FMT_RANGE.y[1];
+        if (!(v >= lo && v <= hi)) {
+            return null;
+        }
+        var year = Math.floor(v);
+        var weekdayMon0 = (dash_fmt_ymd_from_days(
+            dash_fmt_days_from_ymd(year, 1, 1)).weekdaySun0 + 6) % 7;
+        return {year: year, month: 1, day: 1,
+                hour: 0, minute: 0, second: 0, ms: 0,
+                weekday: weekdayMon0, doy: 1, quarter: 1, half: 1,
+                week: null};
+    }
+    return null;
+}
+
+function dash_fmt_days_from_ymd(year, month, day) {
+    // The inverse of dash_fmt_ymd_from_days's UTC construction, in days
+    // since the Unix epoch (needed only to recover a weekday for a
+    // period's first day -- setUTCFullYear on a zero Date, never `new
+    // Date(year, ...)`, so years 0-99 are not remapped).
+    var d = new Date(0);
+    d.setUTCFullYear(year, month - 1, day);
+    return Math.floor(d.getTime() / 86400000);
+}
+
+function dash_fmt_render_code(code, ctx) {
+    // _dash_fmt_render_code
+    var y = ctx.year, mo = ctx.month, d = ctx.day;
+    function pad2(n) { return (n < 10 ? "0" : "") + n; }
+    function pad3(n) { return (n < 10 ? "00" : (n < 100 ? "0" : "")) + n; }
+    if (code === "CC") { return pad2(Math.abs(Math.trunc(y / 100)) % 100); }
+    if (code === "cc") { return String(Math.trunc(y / 100)); }
+    if (code === "YY") { return pad2(((y % 100) + 100) % 100); }
+    if (code === "yy") { return String(((y % 100) + 100) % 100); }
+    if (code === "NN") { return pad2(mo); }
+    if (code === "nn") { return String(mo); }
+    if (code === "DD") { return pad2(d); }
+    if (code === "dd") { return String(d); }
+    if (code === "Month" || code === "month") {
+        var name = _DASH_FMT_MONTHS[mo][0];
+        return code === "Month" ? name : name.toLowerCase();
+    }
+    if (code === "Mon" || code === "mon") {
+        var name2 = _DASH_FMT_MONTHS[mo][1];
+        return code === "Mon" ? name2 : name2.toLowerCase();
+    }
+    if (code === "Dayname" || code === "DAYNAME") {
+        return _DASH_FMT_DAYS[ctx.weekday][0];
+    }
+    if (code === "Day" || code === "day") {
+        var dn = _DASH_FMT_DAYS[ctx.weekday][1];
+        return code === "Day" ? dn : dn.toLowerCase();
+    }
+    if (code === "Da" || code === "da") {
+        var dn2 = _DASH_FMT_DAYS[ctx.weekday][2];
+        return code === "Da" ? dn2 : dn2.toLowerCase();
+    }
+    if (code === "WW" || code === "ww") {
+        var w = ctx.week === null || ctx.week === undefined ? 0 : ctx.week;
+        return code === "WW" ? pad2(w) : String(w);
+    }
+    if (code === "HH" || code === "hh" || code === "Hh" || code === "hH") {
+        var h = ctx.hour;
+        var twelve = h % 12;
+        twelve = twelve === 0 ? 12 : twelve;
+        if (code === "HH") { return pad2(h); }
+        if (code === "hH") { return String(h); }
+        if (code === "hh") { return pad2(twelve); }
+        return String(twelve);
+    }
+    if (code === "MM") { return pad2(ctx.minute); }
+    if (code === "mm") { return String(ctx.minute); }
+    if (code === "SS") { return pad2(ctx.second); }
+    if (code === "ss") { return String(ctx.second); }
+    if (code === ".s") { return "." + String(Math.floor(ctx.ms / 100)); }
+    if (code === ".ss") { return "." + pad2(Math.floor(ctx.ms / 10)); }
+    if (code === ".sss") { return "." + pad3(ctx.ms); }
+    if (code === "am" || code === "AM" || code === "a.m." || code === "A.M.") {
+        var pm = ctx.hour >= 12;
+        if (code === "am") { return pm ? "pm" : "am"; }
+        if (code === "AM") { return pm ? "PM" : "AM"; }
+        if (code === "a.m.") { return pm ? "p.m." : "a.m."; }
+        return pm ? "P.M." : "A.M.";
+    }
+    if (code === "JJJ" || code === "jjj") {
+        var doy = ctx.doy || 1;
+        return code === "JJJ" ? pad3(doy) : String(doy);
+    }
+    if (code === "h") { return String(ctx.half); }
+    if (code === "q") { return String(ctx.quarter); }
+    return code;
+}
+
+function dash_fmt_tokenize_picture(picture) {
+    // _dash_fmt_tokenize_picture
+    var tokens = [];
+    var i = 0, n = picture.length;
+    while (i < n) {
+        if (picture.charAt(i) === "!" && i + 1 < n) {
+            tokens.push(["lit", picture.charAt(i + 1)]);
+            i += 2;
+            continue;
+        }
+        if (picture.charAt(i) === "+") {
+            tokens.push(["lit", ""]);
+            i += 1;
+            continue;
+        }
+        if (picture.charAt(i) === "_") {
+            tokens.push(["lit", " "]);
+            i += 1;
+            continue;
+        }
+        var matched = null;
+        for (var c = 0; c < _DASH_FMT_CODES.length; c++) {
+            var code = _DASH_FMT_CODES[c];
+            if (picture.substr(i, code.length) === code) {
+                matched = code;
+                break;
+            }
+        }
+        if (matched) {
+            tokens.push(["code", matched]);
+            i += matched.length;
+        } else {
+            tokens.push(["lit", picture.charAt(i)]);
+            i += 1;
+        }
+    }
+    return tokens;
+}
+
+function dash_fmt_picture_width(parsed) {
+    // _dash_fmt_picture_width
+    var tkind = parsed.tkind;
+    var picture = parsed.picture || _DASH_FMT_DEFAULT_PICTURE[tkind] || "";
+    var width = 0;
+    var tokens = dash_fmt_tokenize_picture(picture);
+    for (var i = 0; i < tokens.length; i++) {
+        var kind_ = tokens[i][0], val_ = tokens[i][1];
+        if (kind_ === "code") {
+            width += _DASH_FMT_WIDTHS[val_] !== undefined
+                ? _DASH_FMT_WIDTHS[val_] : val_.length;
+        } else {
+            width += val_ ? 1 : 0;
+        }
+    }
+    return width;
+}
+
+function dash_fmt_date(parsed, value) {
+    // _dash_fmt_date
+    var tkind = parsed.tkind;
+    var ctx = dash_fmt_calendar(value, tkind);
+    var picture = parsed.picture || _DASH_FMT_DEFAULT_PICTURE[tkind];
+    if (ctx === null) {
+        var v = Number(value);
+        if (!isFinite(v)) { return "."; }
+        var w = _DASH_FMT_FALLBACK_WIDTH[tkind];
+        var sign = v < 0 ? "-" : "";
+        var text = dash_fmt_g_text(Math.abs(v), 0, w, false, sign.length);
+        var body = sign + text;
+        return body.length >= w ? body : body.padStart(w, " ");
+    }
+    var tokens = dash_fmt_tokenize_picture(picture);
+    var parts = [], width = 0;
+    for (var i = 0; i < tokens.length; i++) {
+        var kind_ = tokens[i][0], val_ = tokens[i][1];
+        if (kind_ === "code") {
+            parts.push(dash_fmt_render_code(val_, ctx));
+            width += _DASH_FMT_WIDTHS[val_] !== undefined
+                ? _DASH_FMT_WIDTHS[val_] : val_.length;
+        } else {
+            parts.push(val_);
+            width += val_ ? 1 : 0;
+        }
+    }
+    var text = parts.join("");
+    return parsed.left ? text.padEnd(width, " ") : text.padStart(width, " ");
+}
+
+function dash_unix_ms_to_unit(ms, unit) {
+    // _dash_unix_ms_to_unit's twin: months-since-1960 plus the fraction
+    // of the current period elapsed, using the same UTC calendar helpers
+    // as dash_fmt_calendar (no numpy in JS, so the month boundaries are
+    // read from dash_fmt_days_from_ymd instead of datetime64).
+    if (!isFinite(ms)) { return null; }
+    var STATA_MS_MIN = -58695840000000, STATA_MS_MAX = 253717919999999;
+    var STATA_EPOCH_UNIX_MS = -315619200000;
+    if (!(ms >= STATA_MS_MIN + STATA_EPOCH_UNIX_MS
+          && ms <= STATA_MS_MAX + STATA_EPOCH_UNIX_MS)) {
+        return null;
+    }
+    if (unit === "d") {
+        return (ms - STATA_EPOCH_UNIX_MS) / 86400000.0;
+    }
+    var day = Math.floor(ms / 86400000.0);
+    var fracDay = ms / 86400000.0 - day;
+    var ymd = dash_fmt_ymd_from_days(day);
+    var y = ymd.year, mon = ymd.month - 1;  // 0-based
+    var firstOfMonth = dash_fmt_days_from_ymd(y, mon + 1, 1);
+    var nextMonth = (mon === 11) ? dash_fmt_days_from_ymd(y + 1, 1, 1)
+                                  : dash_fmt_days_from_ymd(y, mon + 2, 1);
+    if (unit === "w") {
+        var jan1 = dash_fmt_days_from_ymd(y, 1, 1);
+        return (y - 1960) * 52 + Math.min(51.999, (day - jan1 + fracDay) / 7.0);
+    }
+    var inMonth = (day - firstOfMonth + fracDay) / (nextMonth - firstOfMonth);
+    var months = (y - 1960) * 12 + mon + inMonth;
+    var per = {m: 1, q: 3, h: 6, y: 12}[unit];
+    if (per === undefined) { return null; }
+    if (unit === "y") {
+        return 1960 + months / 12.0;
+    }
+    return months / per;
+}
+
+function dash_stata_value_of(columnValue, dateKind) {
+    // _dash_stata_value_of
+    var ms = Number(columnValue);
+    if (!isFinite(ms)) { return null; }
+    var STATA_EPOCH_UNIX_MS = -315619200000;
+    if (dateKind === "tc" || dateKind === "tC") {
+        var v = ms - STATA_EPOCH_UNIX_MS;
+        return (v >= -58695840000000 && v <= 253717919999999) ? v : null;
+    }
+    if (dateKind === "td") {
+        var v2 = (ms - STATA_EPOCH_UNIX_MS) / 86400000.0;
+        var r = _DASH_FMT_RANGE.d;
+        return (v2 >= r[0] && v2 <= r[1]) ? v2 : null;
+    }
+    var unitMap = {tw: "w", tm: "m", tq: "q", th: "h", ty: "y"};
+    var unit = unitMap[dateKind];
+    if (!unit) { return null; }
+    var u = dash_unix_ms_to_unit(ms, unit);
+    if (u === null || u === undefined || !isFinite(u)) { return null; }
+    var vfloor = Math.floor(u);
+    var range = _DASH_FMT_RANGE[unit];
+    return (vfloor >= range[0] && vfloor <= range[1]) ? vfloor : null;
+}
+
+function dash_fmt(value, fmt, storage, strip) {
+    // _dash_fmt
+    var v = Number(value);
+    if (isNaN(v) && value !== null && value !== undefined
+        && typeof value !== "number") {
+        v = NaN;
+    }
+    if (storage === "float" && isFinite(v)) {
+        v = Math.fround(v);
+        if (!isFinite(v)) { v = NaN; }
+    }
+    var parsed = dash_fmt_parse(fmt);
+    var kind = parsed ? parsed.kind : null;
+    if (kind === null || kind === "x" || kind === "H") {
+        parsed = {kind: "g", width: 9, dec: 0, left: false, zero: false,
+                  group: false, comma_dec: false};
+        kind = "g";
+    }
+    var result;
+    if (!isFinite(v)) {
+        var width = kind === "t" ? dash_fmt_picture_width(parsed) : parsed.width;
+        var text = ".";
+        result = parsed.left ? text.padEnd(width, " ") : text.padStart(width, " ");
+    } else if (kind === "t") {
+        result = dash_fmt_date(parsed, v);
+    } else {
+        result = dash_fmt_number(parsed, v);
+    }
+    return strip ? result.trim() : result;
+}
+
+function dash_fmt_text(value, fmt, storage) {
+    // _dash_fmt_text
+    return dash_fmt(value, fmt, storage, true);
+}
+
+function dash_html_escape(s) {
+    // dash_html_escape: html.escape(s, quote=True)'s five characters.
+    if (s === null || s === undefined) { return ""; }
+    if (typeof s !== "string") { s = String(s); }
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+        .replace(/'/g, "&#x27;");
+}
+"""
+
+
 _DASH_CSV_JS = """
 function dash_csv_missing(v) {
     return v === null || v === undefined ||
@@ -14474,7 +15372,7 @@ function dash_csv_download(text, filename) {
 # The served page's download: the server has put the filtered rows in the
 # source and then bumped its tags, which is what fires this -- a new tag each
 # click, so the same rows twice are two downloads.
-_DASH_CSV_SERVED_JS = _DASH_CSV_JS + """
+_DASH_CSV_SERVED_JS = _DASH_FMT_JS + _DASH_CSV_JS + """
 const meta = JSON.parse(meta_json);
 const data = src.data;
 const cols = meta.columns.filter((c) => c in data);
@@ -14503,7 +15401,7 @@ dash_csv_download(dash_csv_text(data, data, rows, meta), meta.filename);
 # (x >= 5 is false for NaN).  It used to be compared as JavaScript compares
 # null, as 0, so range(-1, 10) kept every missing row and range(5, 10)
 # dropped it, and the two modes' KPI cards disagreed (test_export.py).
-_DASH_FILTER_MASK_JS = """
+_DASH_FILTER_MASK_JS = _DASH_FMT_JS + """
 function dash_filter_mask(orig, filter_specs, all_widgets) {
     const keys = Object.keys(orig);
     const n_rows = keys.length > 0 ? orig[keys[0]].length : 0;
@@ -16048,6 +16946,899 @@ def _dash_stata_date_text(value, kind):
 # test/test_mode_parity.py measured the two renderers drawing the same
 # spec two ways.
 # ===========================================================================
+
+# ===========================================================================
+# The Stata display-format writer (WP-28 S04, E1/E3/G6 foundation).
+#
+# One writer, in Python, with a byte-identical JavaScript twin
+# (_DASH_FMT_JS, further below).  Both reproduce Stata's `display %fmt
+# (value)' text -- decimal places, comma grouping, the width-driven
+# fixed/scientific choice, and every %t picture -- against
+# test/fixtures/format_truth.json, which holds what a real `display'
+# actually printed for about 1,500 numeric rows and 220 date rows.  The
+# rule below is the plan's hypothesis, corrected wherever a measured row
+# disagreed with it (each such correction is called out where it applies).
+# %x, %H and %L (hexadecimal and IEEE dumps) are refused: a variable
+# carrying one is drawn in %9.0g with one note (BR-04.5).
+# ===========================================================================
+
+_DASH_FMT_NUM_RE = re.compile(
+    r"^%(-)?(0)?(\d{1,4})([.,])(\d{1,4})(f|g|e)(c)?$")
+_DASH_FMT_DATE_RE = re.compile(r"^%(-)?t([cCdhmqwy])(.*)$")
+_DASH_FMT_X_RE = re.compile(r"^%-?\d*x$")
+_DASH_FMT_H_RE = re.compile(r"^%-?\d*[HL]$")
+
+
+def _dash_fmt_parse(fmt):
+    """Split a Stata display format into its pieces, or ``None``.
+
+    Numeric grammar: ``%[-][0]w[.,]d(f|g|e)[c]``, ``1 <= w <= 2045``,
+    ``d < w``, each digit string at most four characters (WP-20's bounds,
+    kept exactly).  Date grammar: ``%[-]t[cCdhmqwy]`` then an optional
+    custom picture.  ``%[-]NNx`` is the hexadecimal dump, ``%[-]NN[HL]``
+    the IEEE byte dump -- both refused, never written (DISCOVERY Q6).
+
+    Args:
+        fmt: A Stata format string, as ``st_varformat`` or a user's
+             ``fmt()`` supplies it.
+
+    Returns:
+        A dict with keys ``kind`` (``"f"|"g"|"e"|"t"|"x"|"H"``), ``width``,
+        ``dec``, ``left``, ``zero``, ``group``, ``comma_dec``, ``tkind``,
+        ``picture``; or ``None`` when *fmt* is not a format this module
+        recognises at all (still written, in %9.0g, by the caller).
+    """
+    if not fmt or not isinstance(fmt, str):
+        return None
+    fmt = fmt.strip()
+    if not fmt.isascii() or len(fmt) > 60:
+        return None
+    m = _DASH_FMT_NUM_RE.fullmatch(fmt)
+    if m:
+        if len(m.group(3)) > 4 or len(m.group(5)) > 4:
+            return None
+        width, dec = int(m.group(3)), int(m.group(5))
+        if not 1 <= width <= 2045 or dec >= width:
+            return None
+        return {"kind": m.group(6), "width": width, "dec": dec,
+                "left": bool(m.group(1)), "zero": bool(m.group(2)),
+                "group": bool(m.group(7)), "comma_dec": m.group(4) == ",",
+                "tkind": None, "picture": None}
+    m = _DASH_FMT_DATE_RE.fullmatch(fmt)
+    if m:
+        return {"kind": "t", "width": None, "dec": None,
+                "left": bool(m.group(1)), "zero": False, "group": False,
+                "comma_dec": False, "tkind": m.group(2),
+                "picture": m.group(3)}
+    if _DASH_FMT_X_RE.fullmatch(fmt):
+        return {"kind": "x", "width": None, "dec": None, "left": False,
+                "zero": False, "group": False, "comma_dec": False,
+                "tkind": None, "picture": None}
+    if _DASH_FMT_H_RE.fullmatch(fmt):
+        return {"kind": "H", "width": None, "dec": None, "left": False,
+                "zero": False, "group": False, "comma_dec": False,
+                "tkind": None, "picture": None}
+    return None
+
+
+def _dash_fmt_kind(fmt):
+    """``"f"|"g"|"e"|"t"|"x"|"H"``, or ``None`` for a format this module
+    does not recognise at all."""
+    parsed = _dash_fmt_parse(fmt)
+    return parsed["kind"] if parsed else None
+
+
+def _dash_fmt_refusal(fmt):
+    """Why the dashboard cannot write *fmt*, or ``None`` when it can
+    (kinds f, g, e, t).  The text names the format so a caller can echo
+    it (dash.ado's TR-04.7, and BR-04.5's one-per-variable note)."""
+    kind = _dash_fmt_kind(fmt)
+    if kind == "x":
+        return f"{fmt} is a hexadecimal display format the dashboard cannot write"
+    if kind == "H":
+        return (f"{fmt} is an IEEE byte-dump display format the dashboard "
+                f"cannot write")
+    if kind is None:
+        return f"{fmt} is not a display format dash writes"
+    return None
+
+
+#: A double's magnitude needs at most about 309 integer digits plus up to
+#: 2044 decimals (WP-20's bound); the default Decimal context (28 digits)
+#: raises InvalidOperation quantizing that, so each rounding builds a
+#: Context(prec=2400) of its own (built in place, not a module constant:
+#: the served app copies constants by repr, which a Context has not got).
+
+
+def _dash_stata_round(a, ndigits, half_even=True):
+    """*a* (a non-negative float) rounded to *ndigits* decimal places the
+    way Stata's ``display`` rounds.
+
+    ``f`` and ``g``'s own auto (``%w.0g``) mode round half TO EVEN, on
+    the value's exact double bits (measured: ``%9.0f`` of both 20.5 and
+    -0.5 rounds to the even neighbour, 20 and 0, not 21 and -1; ``%9.0g``
+    of 1234567.5 is 1234568, also even) -- the same rule Python's own
+    ``round()`` uses.  ``g`` with an EXPLICIT decimal count rounds half
+    AWAY FROM ZERO instead (measured: ``%9.2g``/``%12,2gc`` of 20.5 is
+    21, the odd neighbour); a caller in that one case passes
+    ``half_even=False``.  *a* may already be a :class:`~decimal.Decimal`
+    (an exact-arithmetic intermediate, e.g. a scientific mantissa
+    computed by :func:`_dash_sci_text`) -- it is used as is, never
+    round-tripped through ``float()`` and back.  Returns a
+    :class:`~decimal.Decimal`.
+    """
+    d = a if isinstance(a, Decimal) else Decimal(float(a))
+    if ndigits < 0:
+        ndigits = 0
+    quant = Decimal(1).scaleb(-ndigits)
+    rounding = ROUND_HALF_EVEN if half_even else ROUND_HALF_UP
+    return d.quantize(quant, rounding=rounding,
+                       context=Context(prec=2400))
+
+
+def _dash_int_digit_count(a):
+    """The digit count of ``floor(a)`` for ``a >= 1``, else ``0``
+    (``a`` is a non-negative float; ``a == 0`` also gives ``0``)."""
+    if a < 1:
+        return 0
+    return len(str(int(math.floor(a))))
+
+
+def _dash_group_thousands(digits):
+    """*digits* (a plain digit string, no sign) with ',' inserted every
+    three digits from the right."""
+    out = []
+    for i, c in enumerate(reversed(digits)):
+        if i and i % 3 == 0:
+            out.append(",")
+        out.append(c)
+    return "".join(reversed(out))
+
+
+def _dash_decimal_text(value, decimals):
+    """*value* (a non-negative :class:`~decimal.Decimal`, already rounded
+    to *decimals* places) as plain fixed text, always showing exactly
+    *decimals* digits after the point (``decimals == 0`` omits the
+    point)."""
+    s = format(value, "f")
+    if "." in s:
+        intpart, frac = s.split(".", 1)
+    else:
+        intpart, frac = s, ""
+    frac = (frac + "0" * decimals)[:decimals]
+    return intpart + ("." + frac if decimals else "")
+
+
+def _dash_swap_decimal_comma(text):
+    """Swap ``.`` and ``,`` in *text* in one pass (the European comma
+    decimal), never as two separate ``str.replace`` calls (which would
+    swap twice)."""
+    return text.translate(str.maketrans(".,", ",."))
+
+
+def _dash_sci_decimals(width, exp_digits, dec, sig_digits=False):
+    """How many mantissa decimals a scientific rendering gets at *width*,
+    given the exponent needs *exp_digits* characters (2 or 3) and the
+    format's own requested decimal count *dec* (0 means "Stata chooses").
+
+    Measured (report W; ``format_truth.json``): the baseline is
+    ``width - 7`` (two-digit exponent) or ``width - 8`` (three-digit), with
+    a floor of 1 (two-digit) or 0 (three-digit) so a very narrow width
+    never goes negative (``%1.0f`` of 1e7 is ``1.0e+07``, one decimal, not
+    minus five).  An explicit *dec* caps it further -- but ``e`` and ``g``
+    read *dec* differently: ``%9.3e``'s ``3`` is mantissa DECIMAL PLACES
+    (``sig_digits=False``, cap is ``dec`` itself: width 10 gives all
+    three, ``6.165e+03``), while ``%12,2gc``'s ``2`` is SIGNIFICANT
+    DIGITS, one of which is the mantissa's leading integer digit, so the
+    cap is ``dec - 1`` (``sig_digits=True``: 5.23e+10 becomes ``5,2e+10``,
+    one decimal, not two).
+    """
+    base = width - (7 if exp_digits == 2 else 8)
+    floor = 1 if exp_digits == 2 else 0
+    if dec == 0:
+        return max(base, floor)
+    cap = (dec - 1) if sig_digits else dec
+    return max(min(cap, base), 0)
+
+
+def _dash_fmt_number(parsed, value):
+    """*value* (a finite float) written the way Stata's ``display``
+    writes it under *parsed* (a numeric ``_dash_fmt_parse`` result).  No
+    ``str(x)``, no ``format(x, "g")``, no locale: every digit is placed by
+    hand (TR-04.2)."""
+    width, dec, kind, comma = (parsed["width"], parsed["dec"],
+                                parsed["kind"], parsed["comma_dec"])
+    group, zero, left = parsed["group"], parsed["zero"], parsed["left"]
+    sign = "-" if value < 0 else ""
+    a = abs(value)
+
+    signlen = len(sign)
+    if kind == "e":
+        exp = math.floor(math.log10(a)) if a else 0
+        exp_digits = 3 if abs(exp) >= 100 else 2
+        decimals = _dash_sci_decimals(width, exp_digits, dec)
+        text = _dash_sci_text(a, exp, decimals)
+    elif kind == "f":
+        text = _dash_f_text(a, dec, width, group, signlen)
+    else:  # g
+        text = _dash_g_text(a, dec, width, group, signlen)
+
+    if comma:
+        text = _dash_swap_decimal_comma(text)
+
+    body = sign + text
+    # A scientific fallback pads to a floor of 8, not the (possibly much
+    # narrower) requested width -- measured: %1.0f of 123456789 is
+    # " 1.2e+08" (one leading space, width 8), not the unpadded 7
+    # characters width 1 alone would give.
+    pad_width = max(width, 8) if "e" in text else width
+    if zero and kind == "f" and "e" not in text and len(body) < width:
+        # The 0 flag is honoured only with f (format.sthlp:84-88): zeros
+        # are inserted between the sign and the digits, never before it,
+        # and never when the value fell back to scientific (measured:
+        # %09.2f of 1e7 is " 1.00e+07", space-padded, not zero-padded).
+        body = sign + "0" * (width - len(body)) + text
+        return body if left else body.rjust(width)
+    return body.ljust(pad_width) if left else body.rjust(pad_width)
+
+
+def _dash_sci_text(a, exp, decimals, half_even=False):
+    """The mantissa+exponent text for *a* (positive) at *exp* (its base-10
+    exponent) and *decimals* mantissa decimals, e.g. ``"1.23e+06"``.  The
+    decimal point is always shown, even at zero decimals (``"1.e+100"``,
+    measured).  *half_even* is ``False`` (Stata's ``e``/``g`` round ties
+    away from zero) unless the caller is ``f``'s scientific fallback,
+    which keeps ``f``'s own half-to-even rule.
+
+    The mantissa is computed in exact decimal arithmetic
+    (``Decimal(a) / Decimal(10) ** exp``), never float division: ``20.5
+    / 10.0`` is not exactly 2.05 in binary (it rounds down to
+    2.0499999999999998), and rounding THAT to one decimal gives 2.0,
+    not Stata's 2.1 (measured: %3.0g of 20.5 is 2.1e+01)."""
+    mant = (Decimal(a) / (Decimal(10) ** exp)).quantize(
+        Decimal(1).scaleb(-40), context=Context(prec=2400))
+    r = _dash_stata_round(mant, decimals, half_even=half_even)
+    if r >= 10:
+        r = r / 10
+        exp += 1
+    mant_text = _dash_decimal_text(r, decimals)
+    if decimals == 0 and "." not in mant_text:
+        mant_text += "."
+    exp_digits = 3 if abs(exp) >= 100 else 2
+    return f"{mant_text}e{'+' if exp >= 0 else '-'}{abs(exp):0{exp_digits}d}"
+
+
+def _dash_f_sci_fallback(a, width, dec):
+    """The scientific text an ``f``-kind value falls back to when even
+    its plain digits do not fit *width*: the same width-driven decimals
+    rule as ``e``'s own (``_dash_sci_decimals`` with ``sig_digits=False``,
+    since ``f``'s *dec* is decimal PLACES, not significant digits) --
+    measured: ``%1.0f`` of 123456789 is ``1.2e+08`` (dec 0, width-driven,
+    one decimal); ``%12.2fc`` of 52313712223 is ``5.23e+10`` (dec 2, its
+    own two decimals, not the width-driven five)."""
+    exp = math.floor(math.log10(a))
+    exp_digits = 3 if abs(exp) >= 100 else 2
+    decimals = _dash_sci_decimals(width, exp_digits, dec)
+    return _dash_sci_text(a, exp, decimals, half_even=True)
+
+
+def _dash_f_text(a, dec, width, group, signlen=0):
+    """The ``f``/``fc`` text for non-negative *a* (TR-04.2): exactly *dec*
+    decimals, comma-grouped when *group* and it fits, plain when it does
+    not, scientific when even the plain digits overflow.  ``f`` never
+    strips trailing zeros (unlike ``g``).  *signlen* (0 or 1) is added to
+    every "does it fit" check: a negative value's sign counts against the
+    width too (measured: %1.0f of -12345678 is -1.2e+07, scientific,
+    while the same 8 digits positive print in full)."""
+    r = _dash_stata_round(a, dec)
+    plain = _dash_decimal_text(r, dec)
+    if group:
+        intpart, _, frac = plain.partition(".")
+        grouped = _dash_group_thousands(intpart) + (("." + frac) if frac else "")
+        if len(grouped) + signlen <= width:
+            return grouped
+    # Measured: `%9.0fc' of -1234567.891 drops the commas rather than
+    # overflowing to scientific (report B); the effective cap widens to
+    # accommodate a narrow requested width (measured floor 8: %1.0f and
+    # %2.0f of an 8-digit integer still print it in full).
+    if len(plain) + signlen <= max(width, 8):
+        return plain
+    return _dash_f_sci_fallback(a, width, dec)
+
+
+def _dash_g_text(a, dec, width, group, signlen=0):
+    """The ``g``/``gc`` text for positive *a* (TR-04.2): Stata's own
+    default format.  ``dec == 0`` is "Stata chooses" (format.sthlp:
+    292-325): up to ``width - 2`` significant digits, trailing zeros and
+    a value's leading ``0`` before the point stripped.  ``dec > 0`` shows
+    ``max(dec, integer digits)`` significant digits.  ``g`` rounds ties
+    away from zero (measured: ``%9.2g``, ``%4.0g`` and ``%12,2gc`` of
+    20.5 are all 21, never the even-rounded 20 that ``%9.0f`` gives the
+    same tie -- ``f`` is the one kind that rounds half to even).
+
+    Scientific when the integer part alone needs more than ``width - 2``
+    digits.  Below 1, auto (``dec == 0``) and explicit *dec* disagree on
+    WHEN: auto compares how many significant digits each form would
+    actually show -- fixed's shrink as leading zeros eat the ``width - 2``
+    decimal budget, scientific's stay width-driven -- and switches when
+    fixed would show fewer (measured: at ``%6.0g``, 0.000123456's fixed
+    form keeps 1 digit against scientific's 2, so it goes scientific,
+    while ``%9.0g``'s wider budget keeps 4 against scientific's 3 and
+    stays fixed).  An explicit *dec* instead uses the plain, width-
+    independent ``%g`` threshold, exponent under -4 (measured:
+    0.0000029394 goes scientific under ``%12,2gc``, 0.000123456 does
+    not, at the SAME width)."""
+    exp = 0 if a == 0 else math.floor(math.log10(a))
+    # Zero has no digits of its own; treated as needing exactly one (as
+    # if it were any other single-digit number) so the same narrow-width
+    # scientific check applies to it (measured: %3.0g of 0 is 0.0e+00).
+    int_digits = 1 if a == 0 else max(exp + 1, 0)
+    p_upper = width - 2
+
+    use_sci = int_digits > p_upper
+    if not use_sci and int_digits == 0:
+        if dec == 0:
+            leading_zeros = -exp - 1
+            sig_fixed = max(p_upper - leading_zeros, 0)
+            sci_sig = 1 + _dash_sci_decimals(
+                width, 3 if abs(exp) >= 100 else 2, 0)
+            use_sci = sig_fixed < sci_sig
+        else:
+            use_sci = exp < -4
+    if not use_sci:
+        if int_digits >= 1:
+            sig = (p_upper if dec == 0 else max(dec, int_digits))
+            if sig > p_upper:
+                use_sci = True
+            else:
+                decimals = sig - int_digits
+                if dec == 0 and decimals == 0:
+                    # The integer part alone used up the whole budget:
+                    # the same sig-fig-vs-scientific comparison as the
+                    # below-1 case, since fixed form would show exactly
+                    # int_digits digits and nothing more (measured:
+                    # %3.0g of 3.14159 is 3.1e+00, not "3" -- one digit
+                    # loses to scientific's two).
+                    sci_sig = 1 + _dash_sci_decimals(
+                        width, 3 if abs(exp) >= 100 else 2, 0)
+                    use_sci = int_digits < sci_sig
+        else:
+            decimals = p_upper if dec == 0 else dec + (-exp - 1)
+        if not use_sci:
+            r = _dash_stata_round(a, decimals, half_even=False)
+            # A rounding carry can grow the integer part (999.6 at 0
+            # decimals becomes 1000): one correction pass.
+            new_digits = _dash_int_digit_count(float(r))
+            if new_digits > int_digits and int_digits >= 1:
+                int_digits = new_digits
+                sig = (p_upper if dec == 0 else max(dec, int_digits))
+                decimals = max(sig - int_digits, 0)
+                r = _dash_stata_round(a, decimals, half_even=False)
+            text = _dash_decimal_text(r, decimals)
+            if group and int_digits >= 1:
+                n_commas = (int_digits - 1) // 3
+                if dec == 0:
+                    # Auto: the comma reduces the sig-fig budget by the
+                    # commas it will insert (measured: %8.0gc of
+                    # 6165.2567 is 6,165.3, one decimal, not two -- the
+                    # comma "costs" a digit); if there is not enough
+                    # budget to spare even one, grouping is skipped
+                    # entirely, not clamped to zero decimals (measured:
+                    # %10.0gc of 1e7 stays "10000000", ungrouped, while
+                    # %12.0gc of the same value groups it -- width 10's
+                    # decimals is already 0 and needs 2 commas' worth of
+                    # spare budget it does not have; width 12's decimals
+                    # is 2, exactly covering both).
+                    decimals_c = decimals - n_commas
+                    grouping_ok = decimals_c >= 0
+                else:
+                    # An explicit *dec* does not shrink its own decimals
+                    # for the comma: the grouped text is tried as is and
+                    # kept only if it fits the width (measured: %12,2gc
+                    # of 6165.2567 is 6.165 -- decimals stayed 0, not
+                    # negative -- and of 1e7 is 10.000.000, both fitting
+                    # width 12 without any reduction).
+                    decimals_c = decimals
+                    grouping_ok = True
+                if grouping_ok:
+                    r2 = _dash_stata_round(a, decimals_c, half_even=False)
+                    text2 = _dash_decimal_text(r2, decimals_c)
+                    intpart2, _, frac2 = text2.partition(".")
+                    grouped = (_dash_group_thousands(intpart2)
+                               + (("." + frac2) if frac2 else ""))
+                    if len(grouped) + signlen <= width:
+                        text = grouped
+            # g strips trailing zeros (and the point they leave bare);
+            # e and f never do.
+            if "." in text:
+                text = text.rstrip("0").rstrip(".")
+            if int_digits == 0 and text.startswith("0."):
+                text = text[1:]
+    if use_sci:
+        exp_digits = 3 if abs(exp) >= 100 else 2
+        decimals = _dash_sci_decimals(width, exp_digits, dec, sig_digits=True)
+        text = _dash_sci_text(a, exp, decimals)
+    return text
+
+
+def _dash_float32_text(value):
+    """The shortest decimal text that reads back as the same float32 as
+    *value*, JavaScript-style exponent (``1e-7``, not ``1.0e-07``).  Used
+    only for the twin-agreement tests (report W §2): dash never writes a
+    variable's raw stored value to the page, only its display-formatted
+    text."""
+    v = float(np.float32(value))
+    if v == 0:
+        return "-0" if math.copysign(1.0, v) < 0 else "0"
+    for prec in range(1, 18):
+        s = repr(float(f"%.{prec}g" % v))
+        if float(np.float32(float(s))) == v:
+            break
+    else:
+        s = repr(v)
+    text = f"%.{prec}g" % v
+    if "e" in text:
+        mant, exp = text.split("e")
+        if "." in mant:
+            mant = mant.rstrip("0").rstrip(".")
+        exp_i = int(exp)
+        text = f"{mant}e{'+' if exp_i >= 0 else '-'}{abs(exp_i)}"
+    elif "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text
+
+
+# ---- The date writer -------------------------------------------------------
+
+#: Full and three-letter month names, 1-indexed (index 0 unused).
+_DASH_FMT_MONTHS = (
+    None,
+    ("January", "Jan"), ("February", "Feb"), ("March", "Mar"),
+    ("April", "Apr"), ("May", "May"), ("June", "Jun"),
+    ("July", "Jul"), ("August", "Aug"), ("September", "Sep"),
+    ("October", "Oct"), ("November", "Nov"), ("December", "Dec"),
+)
+
+#: Full, three-letter and two-letter weekday names, Monday-first (Python's
+#: ``date.weekday()`` order).
+_DASH_FMT_DAYS = (
+    ("Monday", "Mon", "Mo"), ("Tuesday", "Tue", "Tu"),
+    ("Wednesday", "Wed", "We"), ("Thursday", "Thu", "Th"),
+    ("Friday", "Fri", "Fr"), ("Saturday", "Sat", "Sa"),
+    ("Sunday", "Sun", "Su"),
+)
+
+#: Every code token dash's date picture parser recognises, LONGEST first
+#: so e.g. "Dayname" is not read as "Day" + "name".  Paired with its
+#: reserved column width in _DASH_FMT_WIDTHS.  "Day"/"day" (the 3-letter
+#: weekday abbreviation) reserve 4 columns, one more than their own text
+#: -- measured (format_truth.json, %tdDayname_Day_Da_day_da): every row of
+#: that picture carries two spare columns no code individually accounts
+#: for at 3; the fixture, not the grammar, sets the reserved width.
+_DASH_FMT_CODES = (
+    "DAYNAME", "Dayname", "Month", "month", "a.m.", "A.M.", ".sss",
+    "JJJ", "jjj", "Mon", "mon", "Day", "day", ".ss",
+    "CC", "cc", "YY", "yy", "NN", "nn", "DD", "dd", "Da", "da",
+    "WW", "ww", "HH", "Hh", "hH", "hh", "MM", "mm", "SS", "ss",
+    "am", "AM", ".s",
+    "h", "q",
+)
+
+_DASH_FMT_WIDTHS = {
+    "DAYNAME": 9, "Dayname": 9, "Month": 9, "month": 9,
+    "a.m.": 4, "A.M.": 4, ".sss": 4,
+    "JJJ": 3, "jjj": 3, "Mon": 3, "mon": 3, "Day": 4, "day": 4, ".ss": 3,
+    "CC": 2, "cc": 2, "YY": 2, "yy": 2, "NN": 2, "nn": 2, "DD": 2, "dd": 2,
+    "Da": 2, "da": 2, "WW": 2, "ww": 2, "HH": 2, "Hh": 2, "hH": 2, "hh": 2,
+    "MM": 2, "mm": 2, "SS": 2, "ss": 2, "am": 2, "AM": 2, ".s": 2,
+    "h": 1, "q": 1,
+    ".": 1, ",": 1, ":": 1, "-": 1, "_": 1, "/": 1, "\\": 1, "+": 0,
+}
+
+#: Stata's own range, one day/period/year count per kind (dash_render.py's
+#: header comment, measured 24sep2026); a value outside it prints the
+#: bare number, in the format's own default width (below), never a date.
+_DASH_FMT_RANGE = {
+    "d": (-679350, 2936549), "w": (-96720, 418079), "m": (-22320, 96479),
+    "q": (-7440, 32159), "h": (-3720, 16079), "y": (100, 9999),
+}
+_DASH_FMT_FALLBACK_WIDTH = {
+    "d": 9, "c": 18, "C": 18, "w": 7, "m": 7, "q": 6, "h": 6, "y": 4,
+}
+#: A kind's own default picture (DISCOVERY Q6, datetime_display_formats.sthlp).
+_DASH_FMT_DEFAULT_PICTURE = {
+    "d": "DDmonCCYY", "c": "DDmonCCYY_HH:MM:SS", "C": "DDmonCCYY_HH:MM:SS",
+    "w": "CCYY!www", "m": "CCYY!mnn", "q": "CCYY!qq", "h": "CCYY!hh",
+    "y": "CCYY",
+}
+
+
+def _dash_fmt_calendar(value, tkind):
+    """*value* (a Stata date/period number of kind *tkind*, one of
+    ``c C d h m q t w y``) as a calendar context dict: ``year, month,
+    day, hour, minute, second, ms, weekday`` (0=Monday), ``doy``
+    (day-of-year), ``quarter``, ``half``, ``week`` (this kind's own week
+    number, tw's rule).  ``None`` when *value* is not finite or lies
+    outside Stata's range for *tkind* (01jan0100 to 31dec9999).
+
+    The calendar comes from :mod:`datetime`, not ``pandas.Timestamp``:
+    Stata's range runs to year 9999 and down to year 100, both outside
+    pandas' nanosecond datetime64 (1677-2262), but inside Python's own
+    ``date``/``datetime`` (year 1-9999), which use the same proleptic
+    Gregorian calendar Stata does.
+    """
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(v):
+        return None
+    epoch = _dt.date(1960, 1, 1)
+
+    if tkind in ("c", "C"):
+        lo, hi = _STATA_MS_MIN, _STATA_MS_MAX
+        if not lo <= v <= hi:
+            return None
+        ms = int(math.floor(v))
+        base = _dt.datetime(1960, 1, 1)
+        delta = _dt.timedelta(milliseconds=ms)
+        dt_ = base + delta
+        # Milliseconds within the second, always 0-999: Python's modulo
+        # (never negative for a positive divisor) truncates toward the
+        # correct value even for a negative ms (measured: tc -120 is
+        # 23:59:59.880, and -120 % 1000 == 880).
+        ms_frac = ms % 1000
+        return {"year": dt_.year, "month": dt_.month, "day": dt_.day,
+                "hour": dt_.hour, "minute": dt_.minute,
+                "second": dt_.second, "ms": ms_frac,
+                "weekday": dt_.weekday(),
+                "doy": dt_.timetuple().tm_yday,
+                "quarter": (dt_.month - 1) // 3 + 1,
+                "half": (dt_.month - 1) // 6 + 1, "week": None}
+
+    if tkind == "d":
+        lo, hi = _DASH_FMT_RANGE["d"]
+        if not lo <= v <= hi:
+            return None
+        day_n = int(math.floor(v))
+        d = epoch + _dt.timedelta(days=day_n)
+        return {"year": d.year, "month": d.month, "day": d.day,
+                "hour": 0, "minute": 0, "second": 0, "ms": 0,
+                "weekday": d.weekday(), "doy": d.timetuple().tm_yday,
+                "quarter": (d.month - 1) // 3 + 1,
+                "half": (d.month - 1) // 6 + 1,
+                "week": (day_n // 7) % 52 + 1}
+
+    if tkind == "w":
+        lo, hi = _DASH_FMT_RANGE["w"]
+        if not lo <= v <= hi:
+            return None
+        wk = int(math.floor(v))
+        year = 1960 + wk // 52
+        week = wk % 52 + 1
+        d = epoch + _dt.timedelta(days=wk * 7)
+        return {"year": year, "month": d.month, "day": d.day,
+                "hour": 0, "minute": 0, "second": 0, "ms": 0,
+                "weekday": d.weekday(), "doy": d.timetuple().tm_yday,
+                "quarter": (d.month - 1) // 3 + 1,
+                "half": (d.month - 1) // 6 + 1, "week": week}
+
+    if tkind == "m":
+        lo, hi = _DASH_FMT_RANGE["m"]
+        if not lo <= v <= hi:
+            return None
+        mo = int(math.floor(v))
+        year = 1960 + mo // 12
+        month = mo % 12 + 1
+        return {"year": year, "month": month, "day": 1,
+                "hour": 0, "minute": 0, "second": 0, "ms": 0,
+                "weekday": _dt.date(year, month, 1).weekday(), "doy": None,
+                "quarter": (month - 1) // 3 + 1,
+                "half": (month - 1) // 6 + 1, "week": None}
+
+    if tkind == "q":
+        lo, hi = _DASH_FMT_RANGE["q"]
+        if not lo <= v <= hi:
+            return None
+        qn = int(math.floor(v))
+        year = 1960 + qn // 4
+        quarter = qn % 4 + 1
+        month = (quarter - 1) * 3 + 1
+        return {"year": year, "month": month, "day": 1,
+                "hour": 0, "minute": 0, "second": 0, "ms": 0,
+                "weekday": _dt.date(year, month, 1).weekday(), "doy": None,
+                "quarter": quarter, "half": (month - 1) // 6 + 1,
+                "week": None}
+
+    if tkind == "h":
+        lo, hi = _DASH_FMT_RANGE["h"]
+        if not lo <= v <= hi:
+            return None
+        hn = int(math.floor(v))
+        year = 1960 + hn // 2
+        half = hn % 2 + 1
+        month = (half - 1) * 6 + 1
+        return {"year": year, "month": month, "day": 1,
+                "hour": 0, "minute": 0, "second": 0, "ms": 0,
+                "weekday": _dt.date(year, month, 1).weekday(), "doy": None,
+                "quarter": (month - 1) // 3 + 1, "half": half, "week": None}
+
+    if tkind == "y":
+        lo, hi = _DASH_FMT_RANGE["y"]
+        if not lo <= v <= hi:
+            return None
+        year = int(math.floor(v))
+        return {"year": year, "month": 1, "day": 1,
+                "hour": 0, "minute": 0, "second": 0, "ms": 0,
+                "weekday": _dt.date(year, 1, 1).weekday(), "doy": 1,
+                "quarter": 1, "half": 1, "week": None}
+    return None
+
+
+def _dash_fmt_render_code(code, ctx):
+    """One picture code's text, from a calendar context dict (padding is
+    the caller's job, via _DASH_FMT_WIDTHS)."""
+    y, mo, d = ctx["year"], ctx["month"], ctx["day"]
+    if code == "CC":
+        return f"{(y // 100) % 100:02d}"
+    if code == "cc":
+        return str(y // 100)
+    if code == "YY":
+        return f"{y % 100:02d}"
+    if code == "yy":
+        return str(y % 100)
+    if code == "NN":
+        return f"{mo:02d}"
+    if code == "nn":
+        return str(mo)
+    if code == "DD":
+        return f"{d:02d}"
+    if code == "dd":
+        return str(d)
+    if code in ("Month", "month"):
+        name = _DASH_FMT_MONTHS[mo][0]
+        return name if code == "Month" else name.lower()
+    if code in ("Mon", "mon"):
+        name = _DASH_FMT_MONTHS[mo][1]
+        return name if code == "Mon" else name.lower()
+    if code in ("Dayname", "DAYNAME"):
+        # Measured (format_truth.json, %tdDAYNAME): both spell the full
+        # weekday name the SAME way, title case -- "DAYNAME" is not
+        # upper-cased, despite its own spelling.
+        return _DASH_FMT_DAYS[ctx["weekday"]][0]
+    if code in ("Day", "day"):
+        name = _DASH_FMT_DAYS[ctx["weekday"]][1]
+        return name if code == "Day" else name.lower()
+    if code in ("Da", "da"):
+        name = _DASH_FMT_DAYS[ctx["weekday"]][2]
+        return name if code == "Da" else name.lower()
+    if code in ("WW", "ww"):
+        w = ctx["week"] if ctx["week"] is not None else 0
+        return f"{w:02d}" if code == "WW" else str(w)
+    if code in ("HH", "hh", "Hh", "hH"):
+        h = ctx["hour"]
+        twelve = h % 12
+        twelve = 12 if twelve == 0 else twelve
+        if code == "HH":
+            return f"{h:02d}"
+        if code == "hH":
+            return str(h)
+        if code == "hh":
+            return f"{twelve:02d}"
+        return str(twelve)   # "Hh"
+    if code == "MM":
+        return f"{ctx['minute']:02d}"
+    if code == "mm":
+        return str(ctx["minute"])
+    if code == "SS":
+        return f"{ctx['second']:02d}"
+    if code == "ss":
+        return str(ctx["second"])
+    if code == ".s":
+        return "." + str(ctx["ms"] // 100)
+    if code == ".ss":
+        return f".{ctx['ms'] // 10:02d}"
+    if code == ".sss":
+        return f".{ctx['ms']:03d}"
+    if code in ("am", "AM", "a.m.", "A.M."):
+        pm = ctx["hour"] >= 12
+        if code == "am":
+            return "pm" if pm else "am"
+        if code == "AM":
+            return "PM" if pm else "AM"
+        if code == "a.m.":
+            return "p.m." if pm else "a.m."
+        return "P.M." if pm else "A.M."
+    if code in ("JJJ", "jjj"):
+        doy = ctx["doy"] or 1
+        return f"{doy:03d}" if code == "JJJ" else str(doy)
+    if code == "h":
+        return str(ctx["half"])
+    if code == "q":
+        return str(ctx["quarter"])
+    return code
+
+
+def _dash_fmt_tokenize_picture(picture):
+    """*picture* split into a list of tokens: a recognised code name, or a
+    one-character literal (``!x`` -> the literal ``x``, ``+`` -> nothing,
+    ``_`` -> a space (TR-04.3's own list: "_ a space"), any other
+    unrecognised character -> itself)."""
+    tokens = []
+    i, n = 0, len(picture)
+    while i < n:
+        if picture[i] == "!" and i + 1 < n:
+            tokens.append(("lit", picture[i + 1]))
+            i += 2
+            continue
+        if picture[i] == "+":
+            tokens.append(("lit", ""))
+            i += 1
+            continue
+        if picture[i] == "_":
+            tokens.append(("lit", " "))
+            i += 1
+            continue
+        matched = None
+        for code in _DASH_FMT_CODES:
+            if picture.startswith(code, i):
+                matched = code
+                break
+        if matched:
+            tokens.append(("code", matched))
+            i += len(matched)
+        else:
+            tokens.append(("lit", picture[i]))
+            i += 1
+    return tokens
+
+
+def _dash_fmt_date(parsed, value):
+    """*value* (a Stata date/period number) written under *parsed* (a
+    ``kind == "t"`` ``_dash_fmt_parse`` result): the picture's own default
+    when none is given, else the custom one, right-aligned (or left, for
+    ``%-t``) to the picture's own maximum width.  A value outside the
+    kind's range prints the bare number in the kind's default width
+    (%9.0g's own auto rule, TR-04.3)."""
+    tkind = parsed["tkind"]
+    kind_key = {"c": "c", "C": "C", "d": "d", "w": "w", "m": "m",
+                "q": "q", "h": "h", "y": "y"}[tkind]
+    ctx = _dash_fmt_calendar(value, tkind)
+    picture = parsed["picture"] or _DASH_FMT_DEFAULT_PICTURE[kind_key]
+    if ctx is None:
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            return "."
+        if not math.isfinite(v):
+            return "."
+        w = _DASH_FMT_FALLBACK_WIDTH[kind_key]
+        # Not through _dash_fmt_number: its scientific fallback pads to a
+        # floor of 8 (a numeric FORMAT's own %w.0g convention), but a
+        # date's own bare-number fallback does not (measured: %th of
+        # 2936549 is "2.9e+06", 7 characters, unpadded at width 6).
+        sign = "-" if v < 0 else ""
+        text = _dash_g_text(abs(v), 0, w, False, len(sign))
+        body = sign + text
+        return body.rjust(w)
+    tokens = _dash_fmt_tokenize_picture(picture)
+    parts, width = [], 0
+    for kind_, val_ in tokens:
+        if kind_ == "code":
+            parts.append(_dash_fmt_render_code(val_, ctx))
+            width += _DASH_FMT_WIDTHS.get(val_, len(val_))
+        else:
+            parts.append(val_)
+            width += 1 if val_ else 0
+    text = "".join(parts)
+    return text.ljust(width) if parsed["left"] else text.rjust(width)
+
+
+def _dash_fmt_picture_width(parsed):
+    """The maximum width a date/period ``parsed`` result's picture
+    renders to -- value-independent (every token's own reserved column
+    count, _DASH_FMT_WIDTHS), so a missing value can be padded to it
+    without a real calendar context."""
+    tkind = parsed.get("tkind")
+    picture = parsed.get("picture") or _DASH_FMT_DEFAULT_PICTURE.get(tkind, "")
+    width = 0
+    for kind_, val_ in _dash_fmt_tokenize_picture(picture):
+        width += (_DASH_FMT_WIDTHS.get(val_, len(val_)) if kind_ == "code"
+                   else (1 if val_ else 0))
+    return width
+
+
+def _dash_stata_value_of(column_value, date_kind):
+    """*column_value* (epoch milliseconds -- a float, or anything
+    ``float()`` accepts, as a rendered page's ColumnDataSource and a
+    saved dataframe both hold a date) back to the Stata value of
+    *date_kind* (``td tc tC tw tm tq th ty``): the inverse
+    ``_dash_unix_ms_to_unit``/the loader's own date conversion take.
+    ``None`` for a value that is missing, not finite, or outside Stata's
+    range."""
+    try:
+        ms = float(column_value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(ms):
+        return None
+    if date_kind in ("tc", "tC"):
+        v = ms - _STATA_EPOCH_UNIX_MS
+        lo, hi = _STATA_MS_MIN, _STATA_MS_MAX
+        return v if lo <= v <= hi else None
+    if date_kind == "td":
+        v = (ms - _STATA_EPOCH_UNIX_MS) / 86_400_000.0
+        lo, hi = _DASH_FMT_RANGE["d"]
+        return v if lo <= v <= hi else None
+    unit = {"tw": "w", "tm": "m", "tq": "q", "th": "h",
+            "ty": "y"}.get(date_kind)
+    if unit is None:
+        return None
+    u = _dash_unix_ms_to_unit(ms, {"w": "w", "m": "m", "q": "q",
+                                    "h": "h", "y": "y"}[unit])
+    if u is None:
+        return None
+    v = math.floor(u)
+    lo, hi = _DASH_FMT_RANGE[unit]
+    return float(v) if lo <= v <= hi else None
+
+
+def _dash_fmt(value, fmt, storage=None, strip=False):
+    """*value* (a Stata numeric value -- for a ``%t`` format, the Stata
+    date/period NUMBER itself, never epoch milliseconds) written exactly
+    as Stata's ``display %fmt (value)`` writes it, right-aligned to the
+    format's own width (a date to its picture's maximum width; ``%-``
+    left-aligns).  ``None``/``NaN`` is a missing value: ``"."``, padded.
+
+    ``storage="float"`` widens *value* to the double a float actually
+    holds (measured, task 04-06: ``%12.0g``/``%20.0g`` of a float 0.1
+    show the WIDENED double's digits, e.g. ``.10000000149011612`` at
+    ``%20.0g`` -- not the shortest float32 text -- so this is a one-line
+    ``float(np.float32(value))`` before writing, never
+    :func:`_dash_float32_text`, which exists only for the twin-agreement
+    tests).  A format ``_dash_fmt_kind`` cannot place (``None``, ``"x"``,
+    ``"H"``) is written in ``%9.0g`` instead -- never raises; naming the
+    refusal is the caller's job through :func:`_dash_fmt_refusal`.
+    """
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        v = float("nan")
+    if storage == "float" and math.isfinite(v):
+        with warnings.catch_warnings():
+            # A value beyond float32's range casts to +/-inf (numpy warns);
+            # Stata's own float() makes such a value missing, measured
+            # (format_truth.json: float(1e100) under %9.0g is ".").  A
+            # value below float32's smallest subnormal casts to 0, which
+            # is what Stata's float() gives too (float(1e-100) is "0").
+            warnings.simplefilter("ignore", RuntimeWarning)
+            v = float(np.float32(v))
+        if not math.isfinite(v):
+            v = float("nan")
+    parsed = _dash_fmt_parse(fmt)
+    kind = parsed["kind"] if parsed else None
+    if kind in (None, "x", "H"):
+        parsed = {"kind": "g", "width": 9, "dec": 0, "left": False,
+                  "zero": False, "group": False, "comma_dec": False}
+        kind = "g"
+    if not math.isfinite(v):
+        width = (_dash_fmt_picture_width(parsed) if kind == "t"
+                  else parsed["width"])
+        text = "."
+        result = text.ljust(width) if parsed["left"] else text.rjust(width)
+    elif kind == "t":
+        result = _dash_fmt_date(parsed, v)
+    else:
+        result = _dash_fmt_number(parsed, v)
+    return result.strip() if strip else result
+
+
+def _dash_fmt_text(value, fmt, storage=None):
+    """:func:`_dash_fmt` with its padding stripped -- the page-facing
+    form every card, label, tooltip and axis tick uses.  ``"."`` for a
+    missing value."""
+    return _dash_fmt(value, fmt, storage=storage, strip=True)
+
 
 # ---- The legend -----------------------------------------------------------
 
@@ -19242,7 +21033,7 @@ def _dash_option_columns(options, columns=None):
 
 def _dash_attach_labels(mapper, variable_labels=None, value_labels=None,
                         value_label_names=None, date_vars=None,
-                        numeric_formats=None):
+                        numeric_formats=None, storage_types=None):
     """Give *mapper* the dataset's Stata metadata, in either render mode.
 
     ``_apply_colorvar`` reads value labels for the colour key and the
@@ -19258,6 +21049,7 @@ def _dash_attach_labels(mapper, variable_labels=None, value_labels=None,
                                 if value_label_names is not None else {})
     mapper.date_vars = dict(date_vars or {})
     mapper.numeric_formats = dict(numeric_formats or {})
+    mapper.storage_types = dict(storage_types or {})
     return mapper
 
 
@@ -20125,7 +21917,10 @@ def _dash_effective_kpi_fmt(kpi, varname, numeric_formats=None):
     if explicit:
         return explicit
     own = (numeric_formats or {}).get(varname, "") or ""
-    if own:
+    # Temporary guard (WP-28 S04): the loaders now carry %g and %e formats
+    # too, which the KPI writers cannot yet place; a card keeps %9.0g for
+    # them.  Section 11 removes this guard when the cards move to _dash_fmt.
+    if own and _dash_fmt_kind(own) == "f":
         return own
     return "%9.0g"
 
@@ -21685,7 +23480,8 @@ class DashRenderer:
         _dash_attach_labels(self.mapper, self.variable_labels,
                             self.value_labels, self.value_label_names,
                             getattr(self, "date_vars", {}),
-                            getattr(self, "numeric_formats", {}))
+                            getattr(self, "numeric_formats", {}),
+                            storage_types=getattr(self, "storage_types", {}))
 
     # ------------------------------------------------------------------
     # Data loading
@@ -21745,6 +23541,10 @@ class DashRenderer:
         # generated server app calls it too.
         self.date_vars, self.numeric_formats = _dash_load_columns(
             self.df, self.formats, self.string_vars)
+        _st = stata_json.get("storageTypes", {})
+        self.storage_types: dict[str, str] = (
+            {str(k): str(v) for k, v in _st.items()}
+            if isinstance(_st, dict) else {})
 
         # The qualifier columns dash.ado exported, validated and taken out
         # of the frame as masks: no source, tooltip, filter or download ever
@@ -21757,6 +23557,7 @@ class DashRenderer:
             self.string_vars.discard(_qc)
             self.formats.pop(_qc, None)
             self.numeric_formats.pop(_qc, None)
+            self.storage_types.pop(_qc, None)
 
     # ------------------------------------------------------------------
     # The resource limits.  A `_df' property stood here too, an alias of
@@ -24058,7 +25859,7 @@ class DashRenderer:
         code = (
             'const ROW_ID = "%s";\n' % _ROW_ID_COLUMN
             + "const kpi_config = JSON.parse(kpi_config_json);\n"
-            + _helpers + _pctl + _BRUSH_JS
+            + _DASH_FMT_JS + _helpers + _pctl + _BRUSH_JS
         )
 
         # And every copy of rows a glyph draws from that holds what a card
@@ -24981,7 +26782,16 @@ class ServerAppBuilder:
                       # file's name, the button and the session's pace; and
                       # what _stata_dates_to_datetime reads to convert the
                       # served frame's Stata dates for it.
-                      "_DASH_CSV_SERVED_JS", "_DASH_CSV_FILENAME",
+                      "_DASH_CSV_SERVED_JS",
+                      # The Stata display-format writer's JS twin and the
+                      # tables the Python writer reads (WP-28 S04).
+                      "_DASH_FMT_JS", "_DASH_FMT_CODES", "_DASH_FMT_WIDTHS",
+                      "_DASH_FMT_MONTHS", "_DASH_FMT_DAYS",
+                      "_DASH_FMT_NUM_RE", "_DASH_FMT_DATE_RE",
+                      "_DASH_FMT_X_RE", "_DASH_FMT_H_RE",
+                      "_DASH_FMT_RANGE",
+                      "_DASH_FMT_FALLBACK_WIDTH", "_DASH_FMT_DEFAULT_PICTURE",
+                      "_DASH_CSV_FILENAME",
                       "_DASH_CSV_BUTTON_WIDTH", "_DASH_CSV_RATE",
                       "_DASH_CSV_BURST", "_STATA_DATE_KINDS",
                       # ... Stata's date range, in years and in
@@ -25141,6 +26951,18 @@ class ServerAppBuilder:
                          # by(): one parser, one panel-label rule.
                          "_dash_by_tokens", "_dash_parse_by",
                          "_dash_facet_label", "_dash_stata_date_text",
+                         # The Stata display-format writer (WP-28 S04).
+                         "_dash_fmt_parse", "_dash_fmt_kind",
+                         "_dash_fmt_refusal", "_dash_stata_round",
+                         "_dash_int_digit_count", "_dash_group_thousands",
+                         "_dash_decimal_text", "_dash_swap_decimal_comma",
+                         "_dash_sci_decimals", "_dash_fmt_number",
+                         "_dash_sci_text", "_dash_f_sci_fallback",
+                         "_dash_f_text", "_dash_g_text", "_dash_float32_text",
+                         "_dash_fmt_calendar", "_dash_fmt_render_code",
+                         "_dash_fmt_tokenize_picture", "_dash_fmt_date",
+                         "_dash_fmt_picture_width", "_dash_stata_value_of",
+                         "_dash_fmt", "_dash_fmt_text",
                          # _dash_plot_type_names is NOT copied: the parity
                          # guards read it from dash_render.py, and nothing
                          # in the app called its copy (WP-26, 24sep2026).
@@ -25530,7 +27352,13 @@ class ServerAppBuilder:
                 str(_k): str(_v)
                 for _k, _v in (self.spec.get("build_options", {})
                                .get("formats", {}) or {}).items()
-                if _stata_numeric_pattern(str(_v))},),
+                if _dash_fmt_kind(str(_v)) in ("f", "g", "e")},),
+            # The full display-format map, custom %t pictures included
+            # (WP-28 S04): _NUM_FORMATS keeps only what the writer places.
+            "_FORMATS = %r" % ({
+                str(_k): str(_v)
+                for _k, _v in (self.spec.get("build_options", {})
+                               .get("formats", {}) or {}).items()},),
         ]
 
     def build(self, output_path: str, port: int = 5006) -> None:
@@ -25833,6 +27661,10 @@ class ServerAppBuilder:
             "import os",
             "import re",
             "import ast as _ast",
+            # The display-format writer's calendar and exact rounding
+            # (WP-28 S04).
+            "import datetime as _dt",
+            "from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Context, Decimal",
             # GlyphMapper's signatures annotate with Any, Callable and List.
             # The typing import stays for those names -- the served-app
             # name checks read them -- not because Python evaluates the
@@ -26364,6 +28196,11 @@ class ServerAppBuilder:
             "                _qm.pop(_qc, None)",
             "        if isinstance(date_vars, dict):",
             "            date_vars.pop(_qc, None)",
+            "    _st = data_json.get('storageTypes', {})",
+            "    storage_types = ({str(k): str(v) for k, v in _st.items()}",
+            "                     if isinstance(_st, dict) else {})",
+            "    for _qc in qual_masks:",
+            "        storage_types.pop(_qc, None)",
             "    meta = {",
             "        'var_labels': var_labels,",
             "        'val_label_names': val_label_names,",
@@ -26371,6 +28208,7 @@ class ServerAppBuilder:
             "        'type_is_str': type_is_str,",
             "        'date_vars': date_vars,",
             "        'qual_masks': qual_masks,",
+            "        'storage_types': storage_types,",
             "    }",
             "    return spec, df, meta",
             "",
@@ -26487,12 +28325,15 @@ class ServerAppBuilder:
             "    # them as datetime64[ms], exactly as the saved renderer's does,",
             "    # so axes, tooltips, cards, widgets and moves read dates.",
             "    _date_vars = dict(meta.get('date_vars', {}) or {})",
+            "    # Each variable's storage type (WP-28 S04), for the writer.",
+            "    _storage_types = dict(meta.get('storage_types', {}) or {})",
             "    # The dataset's Stata metadata reaches the mapper, as it does",
             "    # when the saved renderer builds one: a served colour key used",
             "    # to read '0'/'1' where the saved one reads the value labels.",
             "    _dash_attach_labels(_DASH_MAPPER, var_labels, val_labels,",
             "                        val_label_names, date_vars=_date_vars,",
-            "                        numeric_formats=_NUM_FORMATS)",
+            "                        numeric_formats=_NUM_FORMATS,",
+            "                        storage_types=_storage_types)",
             "    # The session's c(level): a band with no level() of its own",
             "    # draws at it.  It used to reach the legend key and never",
             "    # the band, so `set level 90' served a 95% band labelled 90%.",
