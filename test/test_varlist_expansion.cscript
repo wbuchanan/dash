@@ -77,7 +77,7 @@ mata:
 string rowvector _dvx_hexes(string scalar fn)
 {
     real scalar        fh, i, n, found
-    string scalar      line, tok
+    string scalar      line, tok, piece
     string rowvector   out
 
     out   = J(1, 0, "")
@@ -85,6 +85,14 @@ string rowvector _dvx_hexes(string scalar fn)
     fh    = fopen(fn, "r")
     while ((line = fget(fh)) != J(0, 0, "")) {
         if (found) {
+            // fget() hands back a long line in 32,768-character pieces, and
+            // the document JSON is ~81 KB (measured 30sep2026): a second
+            // series' colour sat past the first piece, so the census saw
+            // none.  Join the pieces up to the closing </script>.
+            while (strpos(line, "</script>") == 0) {
+                if ((piece = fget(fh)) == J(0, 0, "")) break
+                line = line + piece
+            }
             n = strlen(line)
             for (i = 1; i <= n - 6; i++) {
                 if (substr(line, i, 1) == "#") {
