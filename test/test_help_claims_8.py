@@ -1386,19 +1386,13 @@ class TestTheUnsupportedProseIsTrue:
              if type(getattr(r, "glyph", None)).__name__ == "Scatter"][0]
         assert list(g.line_dash) == []
 
-    def test_xtick_does_not_widen_the_axis(self, tmp_path, mode):
-        """The documented exception: twoway widens the axis to show a mark
-        outside the data; dash leaves the range to Bokeh, which draws only
-        the marks inside it (checked in a browser, 23sep2026: ytick(15 25
-        35) on a 14..30 axis drew 15 and 25)."""
-        from bokeh.models import DataRange1d
+    def test_xtick_widens_the_axis(self, tmp_path, mode):
+        """As twoway: a tick mark outside the data widens the axis to show
+        it (GAPS2 B2; the old exception was dropped when B2 was fixed)."""
         fig = _figure(mode, tmp_path, _scatter({"xtick": "1000 6000"}),
                       tag="wide")
-        assert isinstance(fig.x_range, DataRange1d)
-        set_ = fig.x_range.properties_with_values(include_defaults=False)
-        assert "start" not in set_ and "end" not in set_
+        assert fig.x_range.start <= 1000.0 and fig.x_range.end >= 6000.0
         assert _tick_plan(fig.xaxis[0])[1] == [1000.0, 6000.0]
-        assert "v >= lo && v <= hi" in fig.xaxis[0].ticker.minor_code
 
     def test_xscale_alt_is_named_and_reverse_honoured(self, tmp_path, mode):
         spec = _scatter({"xscale": "alt"})

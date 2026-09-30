@@ -3161,9 +3161,8 @@ disagree in either direction.
     {opt ymlabel(numlist)} -- {cmd:dash} does not draw them.  {cmd:xtick()}
     and {cmd:ytick()} are honoured: each adds tick marks without labels
     beside the labels of {cmd:xlabel()} or {cmd:ylabel()}, or the default
-    ones, as {cmd:twoway} draws them -- except that a mark outside the
-    data's range is not drawn, where {cmd:twoway} widens the axis to show
-    it.
+    ones, as {cmd:twoway} draws them, and a mark outside the data's range
+    widens the axis to show it, as in {cmd:twoway}.
 
 {phang2}{ul:Sizing for graph combine, and scale().}
     {opt fxsize(#)} and {opt fysize(#)} make a graph use only that
