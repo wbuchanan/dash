@@ -1900,7 +1900,7 @@ program define _dash_option_rules
         degree=int,0,3  bwidth=pos,1@lowess  bwidth=pos ///
         kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle ///
         n=int,1,300@mspline  n=int,2,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
-        colornlevels=int,2,256  colorlevels=int,2,256 ///
+        colornlevels=int,2,256  colorlevels=int ///
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
         colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2 ///
         clwidth=style,0,10000 ///

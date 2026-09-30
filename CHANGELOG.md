@@ -229,6 +229,11 @@ and now matches Stata.
   are now drawn and no longer named in the note; `colorcuts()` with
   `colorlevels()` is refused with r(198) in twoway's words.  The continuous
   default (no cuts, levels or `colordiscrete`) is unchanged. (WP-28, X2)
+- `dash scatter mpg weight, colorvar(price) colorlevels(1)` was r(198), as
+  were 0, -1 and 257, and colorlevels(101) to (256) drew that many levels;
+  as in twoway, 0 and 1 now draw as if the option were absent, 2 to 100
+  exactly, and a negative number or one over 100 as colorlevels(5).
+  (follow-up to GAPS2 X2)
 
 ### Security
 

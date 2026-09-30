@@ -2664,7 +2664,8 @@ is named too.
     where {it:varname} is missing{p_end}
 {synopt:{cmdab:colorlev:els(}{it:#}{cmd:)}}# levels: # - 1 equally spaced cuts
     between the minimum and maximum (Stata's spelling; {cmd:colornlevels()} is
-    the same){p_end}
+    the same); as in {cmd:twoway}, 0 and 1 draw as if it were absent, and a
+    negative number or one over 100 draws 5 levels{p_end}
 {synopt:{cmdab:colorvarminm:ax}}add the minimum and maximum of {it:varname} to
     the cuts, and to the colour bar's ticks{p_end}
 {synoptline}

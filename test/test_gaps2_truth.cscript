@@ -13,7 +13,7 @@
 *!        twoway__histogram_gen live (HE-05..HE-06)
 *!   S13  textbox grammar: B3, B6, B7 (TBG-01..TBG-06)
 *!   S17  filters vs count and summarize (FT-01..FT-06; GAPS2 X1, E2)
-*!   S16  colorvar explicit forms, X2 (CV-01..CV-07)
+*!   S16  colorvar explicit forms, X2 (CV-01..CV-08)
 *!   S14  axis labels and value labels, B1 and G16 (AL-01..AL-19)
 *!   S18  axis scale extents, B2 (AE-01..AE-06)
 *!   S15  legend order and labels, B5 (LO-01..LO-08)
@@ -907,6 +907,29 @@ end
     local cv7_lv = r(found)
     _gt_expect CV-07 "(`cv7_rule' == 1 & `cv7_lv' == 0)" "colorrule() named `cv7_rule', colorlevels() named `cv7_lv'"
     _gt_done CV-07 "the note names colorrule() and not colorlevels()"
+
+    // ------------------------------------------------------------
+    // CV-08: colorlevels() of 0, 1, a negative number and one over 100
+    // is taken as twoway takes it, rc 0 with no note (0 and 1 draw as if
+    // absent, the others as colorlevels(5), test_colorvar_truth.py);
+    // 2.5 is refused as twoway refuses it
+    // ------------------------------------------------------------
+    local cv8_bad = 0
+    foreach v in 0 1 -1 101 257 {
+        capture twoway scatter mpg weight, colorvar(price) colorlevels(`v') nodraw
+        local cv8_tw = _rc
+        capture dash clear
+        capture dash scatter mpg weight, colorvar(price) colorlevels(`v') name(zcv8)
+        if (_rc != `cv8_tw') local cv8_bad = `cv8_bad' + 1
+    }
+    capture twoway scatter mpg weight, colorvar(price) colorlevels(2.5) nodraw
+    local cv8_tw = _rc
+    capture dash clear
+    capture dash scatter mpg weight, colorvar(price) colorlevels(2.5) name(zcv8)
+    local cv8_frac = _rc
+    _gt_expect CV-08 "(`cv8_bad' == 0)" "`cv8_bad' colorlevels() value(s) answered unlike twoway"
+    _gt_expect CV-08 "(`cv8_tw' == 198 & `cv8_frac' == 198)" "2.5: twoway r(`cv8_tw'), dash r(`cv8_frac')"
+    _gt_done CV-08 "colorlevels() 0, 1, -1, 101, 257 taken and 2.5 refused, as twoway does"
 
     capture dash clear
     graph drop _all

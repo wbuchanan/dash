@@ -6991,9 +6991,16 @@ class GlyphMapper:
             nlevels = None
         try:
             _levels = int((options.get("colorlevels") or "").strip())
-            nlevels = max(2, _levels)
         except (ValueError, TypeError):
-            pass
+            _levels = None
+        if _levels is not None:
+            # As twoway draws colorlevels(#) (measured 30sep2026): 0 and 1
+            # as if absent, 2 to 100 exactly, a negative number or one over
+            # 100 as colorlevels(5).
+            if _levels < 0 or _levels > 100:
+                nlevels = 5
+            elif _levels >= 2:
+                nlevels = _levels
 
         # Parse colorcuts (space-separated numlist → sorted float list)
         cuts = None

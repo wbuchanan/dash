@@ -107,3 +107,61 @@ class TestAgainstTwoway:
         meta = _truth()["_meta"]
         for key in ("stata_version", "born_date", "dash_commit", "extracted"):
             assert key in meta
+
+
+# ---------------------------------------------------------------------------
+# colorlevels() outside 2..100, as twoway draws it (measured 30sep2026,
+# StataNow 19, `twoway scatter mpg weight, colorvar(price) colorlevels(#)',
+# exported SVG): 0 and 1 draw twoway's default (the z axis's ticks, as if
+# the option were absent); 2 to 100 draw exactly # levels; a negative
+# number or one over 100 (101, 110, 128, 150, 199, 200, 255, 256, 257,
+# 300, 1000000) draws the same five levels and cuts (5,814 8,337 10,860
+# 13,383 on price) as colorlevels(5); 2.5 is r(198).
+# ---------------------------------------------------------------------------
+
+def _cv_bins(opts, values):
+    gm = dr.GlyphMapper(dr.OptionTranslator(), dr.SchemeParser("s2color"))
+    src = ColumnDataSource({"v": list(values), "y": [1.0] * len(values)})
+    fig = figure()
+    rend = fig.scatter(x="v", y="y", source=src)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        gm._apply_colorvar(fig, rend, src, dict(opts, colorvar="v"))
+    return {k: list(v) for k, v in src.data.items() if k != "v"}, rend
+
+
+_CV_VALUES = [float(v) for v in range(1, 301)]
+
+
+class TestColorlevelsOutsideTwoToAHundred:
+
+    @pytest.mark.parametrize("n", ["0", "1"])
+    def test_zero_and_one_draw_as_if_absent(self, n):
+        got, rend = _cv_bins({"colorlevels": n}, _CV_VALUES)
+        want, wrend = _cv_bins({}, _CV_VALUES)
+        assert got == want
+        g, w = rend.glyph.fill_color, wrend.glyph.fill_color
+        assert type(g) is type(w)
+        if hasattr(g, "transform"):
+            assert g.field == w.field
+            assert g.transform.properties_with_values(
+                include_defaults=False).keys() == \
+                w.transform.properties_with_values(
+                    include_defaults=False).keys()
+            for k in ("palette", "low", "high"):
+                assert getattr(g.transform, k) == getattr(w.transform, k)
+        else:
+            assert g == w
+
+    @pytest.mark.parametrize("n", ["-1", "-5", "101", "256", "257",
+                                   "1000000"])
+    def test_negative_or_over_a_hundred_draws_five_levels(self, n):
+        got, _ = _cv_bins({"colorlevels": n}, _CV_VALUES)
+        want, _ = _cv_bins({"colorlevels": "5"}, _CV_VALUES)
+        assert got == want
+        assert len(set(got["_cvar_v_bin"])) == 5
+
+    @pytest.mark.parametrize("n", [2, 3, 50, 100])
+    def test_two_to_a_hundred_draw_exactly_that_many(self, n):
+        got, _ = _cv_bins({"colorlevels": str(n)}, _CV_VALUES)
+        assert len(set(got["_cvar_v_bin"])) == n
