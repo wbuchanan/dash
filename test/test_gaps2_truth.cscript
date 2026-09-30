@@ -13,7 +13,7 @@
 *!        twoway__histogram_gen live (HE-05..HE-06)
 *!   S13  textbox grammar: B3, B6, B7 (TBG-01..TBG-06)
 *!   S17  filters vs count and summarize (FT-01..FT-06; GAPS2 X1, E2)
-*!   S14  axis labels, B1 (AL-01..AL-16)
+*!   S16  colorvar explicit forms, X2 (CV-01..CV-07)
 *!   S14  axis labels and value labels, B1 and G16 (AL-01..AL-19)
 *!   S18  axis scale extents, B2 (AE-01..AE-06)
 *!   S15  legend order and labels, B5 (LO-01..LO-08)
@@ -1200,6 +1200,42 @@ end
         c_local ae_page "`dir'/ae`id'.html"
         c_local ae_pid "`pid'"
         c_local ae_want "`want'"
+    end
+
+    sysuse auto, clear
+    local d "`gt_work'"
+    local ae_n 0
+    foreach c in 1 2 3 4 5 {
+        if `c' == 1 _ae_case 01 b2_ylab_0_100 "ylabel(0(20)100)" "100 80 60 40 20 0" range "`d'"
+        if `c' == 2 _ae_case 02 b2_range_100 "yscale(range(100))" "" range "`d'"
+        if `c' == 3 _ae_case 03 b2_range_20_30 "yscale(range(20 30))" "" range "`d'"
+        if `c' == 4 _ae_case 04 b2_r_0_100 "yscale(r(0 100))" "" range "`d'"
+        if `c' == 5 _ae_case 05 b2_ylab_list_nr "ylabel(0 20 40 60 80 100, norescale)" gs auto "`d'"
+        local id "AE-0`c'"
+        _gt_expect `id' "(`ae_rc' == 0)" "dash refused: rc `ae_rc'"
+        _gt_expect `id' "(!missing(`ae_lo') & !missing(`ae_hi'))" "no svg extent: `ae_reason'"
+        if `ae_rc' == 0 & !missing(`ae_lo') & !missing(`ae_hi') {
+            python: __import__("__main__")._ae_check()
+            _gt_expect `id' "(${ae_ok} == 1)" "${ae_msg}"
+        }
+        _gt_done `id' "`ae_pid': twoway's scale is the fixture's, and the page's y axis follows the same rule"
+    }
+
+    // AE-06: .Graph's scale members of AE-02's graph (yscale(range(100)))
+    cert_graph_scale, axis(y) name(ae02)
+    foreach k in min max curmin curmax major_min major_max major_delta {
+        local ae_gs_`k' = r(`k')
+    }
+    python: __import__("__main__")._ae_graph_scale()
+    _gt_expect AE-06 "(${ae_ok} == 1)" "${ae_msg}"
+    _gt_done AE-06 ".Graph's scale members match the fixture; curmin/curmax is the inner hull"
+    macro drop ae_ok ae_msg
+
+    graph drop _all
+    display as text "S18 end `c(current_time)'"
+}
+* ==== end S18 ====
+
 * ==== S15 B5: legend order and labels ====
 * LO-01..LO-07: twoway's legend texts -- the bare export's <text> entries
 * minus its legend(off) companion's, ordered top to bottom then left to
@@ -1318,38 +1354,6 @@ if inlist("`only'", "", "S15") {
 
     sysuse auto, clear
     local d "`gt_work'"
-    local ae_n 0
-    foreach c in 1 2 3 4 5 {
-        if `c' == 1 _ae_case 01 b2_ylab_0_100 "ylabel(0(20)100)" "100 80 60 40 20 0" range "`d'"
-        if `c' == 2 _ae_case 02 b2_range_100 "yscale(range(100))" "" range "`d'"
-        if `c' == 3 _ae_case 03 b2_range_20_30 "yscale(range(20 30))" "" range "`d'"
-        if `c' == 4 _ae_case 04 b2_r_0_100 "yscale(r(0 100))" "" range "`d'"
-        if `c' == 5 _ae_case 05 b2_ylab_list_nr "ylabel(0 20 40 60 80 100, norescale)" gs auto "`d'"
-        local id "AE-0`c'"
-        _gt_expect `id' "(`ae_rc' == 0)" "dash refused: rc `ae_rc'"
-        _gt_expect `id' "(!missing(`ae_lo') & !missing(`ae_hi'))" "no svg extent: `ae_reason'"
-        if `ae_rc' == 0 & !missing(`ae_lo') & !missing(`ae_hi') {
-            python: __import__("__main__")._ae_check()
-            _gt_expect `id' "(${ae_ok} == 1)" "${ae_msg}"
-        }
-        _gt_done `id' "`ae_pid': twoway's scale is the fixture's, and the page's y axis follows the same rule"
-    }
-
-    // AE-06: .Graph's scale members of AE-02's graph (yscale(range(100)))
-    cert_graph_scale, axis(y) name(ae02)
-    foreach k in min max curmin curmax major_min major_max major_delta {
-        local ae_gs_`k' = r(`k')
-    }
-    python: __import__("__main__")._ae_graph_scale()
-    _gt_expect AE-06 "(${ae_ok} == 1)" "${ae_msg}"
-    _gt_done AE-06 ".Graph's scale members match the fixture; curmin/curmax is the inner hull"
-    macro drop ae_ok ae_msg
-
-    graph drop _all
-    display as text "S18 end `c(current_time)'"
-}
-* ==== end S18 ====
-
     global LO_SORT 0
     local P2 "(scatter mpg weight) (lfit mpg weight)"
     local P3 "(scatter mpg weight) (lfit mpg weight) (qfit mpg weight)"

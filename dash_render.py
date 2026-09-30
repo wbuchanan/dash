@@ -303,51 +303,6 @@ def _tooltip_precision(values) -> str:
     return "0" if decimals == 0 else "0." + "0" * decimals
 
 
-def _format_date_value_standalone(value, kind: str) -> str:
-    """Render one date value; the module-level twin of
-    :meth:`DashRenderer._format_date_value`, for callers that have no
-    renderer instance (the glyph mapper builds marker labels on its own).
-
-    A number is epoch MILLISECONDS -- a KPI's min, max, mean or percentile
-    of a date variable reaches here as one.  It is read as an integer
-    count: pandas 2.3 refuses ``pd.Timestamp(<float>, unit="ms")`` for any
-    date after 2262-04-11 and gave the card the bare number
-    (253402214400000.0 for 31dec9999), where the integer form converts
-    (measured 24sep2026).  Only Stata's own range, 01jan0100 to 31dec9999,
-    is read as a date; a number beyond it is written as it is, as Stata
-    writes one.
-    """
-    try:
-        if isinstance(value, (int, float, np.integer, np.floating)):
-            f = float(value)
-            if math.isnan(f):
-                return ""
-            ms = math.floor(f)
-            if not (_STATA_MS_MIN + _STATA_EPOCH_UNIX_MS <= ms
-                    <= _STATA_MS_MAX + _STATA_EPOCH_UNIX_MS):
-                return str(value)
-            ts = pd.Timestamp(np.datetime64(ms, "ms"))
-        else:
-            ts = pd.Timestamp(value)
-    except (TypeError, ValueError, OverflowError):
-        return str(value)
-    if pd.isna(ts):
-        return ""
-    try:
-        # The year in four digits, as Stata writes it (`display %td
-        # -679350' is 01jan0100, `display %ty 100' is 0100), rather than
-        # through strftime's %Y, whose padding below 1000 is the platform's.
-        year = f"{ts.year:04d}"
-        if kind == "ty":
-            return year
-        if kind in ("tc", "tC"):
-            return f"{ts.strftime('%d %b')} {year} {ts.strftime('%H:%M:%S')}"
-        if kind in ("tm", "tq", "th"):
-            return f"{ts.strftime('%b')} {year}"
-        return f"{ts.strftime('%d %b')} {year}"
-    except (ValueError, OverflowError):
-        return str(value)
-
 
 def _stata_date_kind(fmt: "str | None") -> "str | None":
     """Classify a Stata display format as one of the eight date kinds.
@@ -25780,18 +25735,6 @@ class DashRenderer:
         # empty-row group rather than the original full dataset.
         return groups if groups else [("", work_df.copy())]
 
-    def _format_date_value(self, value, kind: str) -> str:
-        """Render one value of a date variable the way its format implies.
-
-        Args:
-            value: A Timestamp, datetime64 or epoch-millisecond number.
-            kind:  One of :data:`_STATA_DATE_KINDS`.
-
-        Returns:
-            The formatted date, or ``str(value)`` if it cannot be read.
-        """
-        return _format_date_value_standalone(value, kind)
-
     def _facet_label(self, by_vars: list[str], key) -> str:
         """Build a human-readable label for one facet group key.
 
@@ -28495,7 +28438,7 @@ class ServerAppBuilder:
                       "_DASH_CSV_BURST", "_STATA_DATE_KINDS",
                       # ... Stata's date range, in years and in
                       # milliseconds, which it and
-                      # _format_date_value_standalone hold a date to, and
+                      # _dash_stata_value_of hold a date to, and
                       # 01jan1960 in epoch milliseconds, which replaced the
                       # Timestamp _STATA_EPOCH (24sep2026).
                       "_STATA_YEAR_MIN", "_STATA_YEAR_MAX", "_STATA_MS_MIN",
@@ -28584,7 +28527,7 @@ class ServerAppBuilder:
                          # function whose callee stays behind is a NameError
                          # on the served page, not here.
                          "_tooltip_precision",
-                         "_format_date_value_standalone", "_fp_grid",
+                         "_fp_grid",
                          "_fp_report_unsupported", "_betacf", "_betainc",
                          "_t_cdf", "_t_ppf",
                          # The shared dispatch.  Copied verbatim, like the

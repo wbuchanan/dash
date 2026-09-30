@@ -960,30 +960,24 @@ class TestTheDateHelpers:
         assert dr._dash_json_value(pd.Timestamp("2001-01-02")) == _MS[0]
 
     @pytest.mark.parametrize("value,kind,want", [
-        # A KPI's statistic reaches the formatter as epoch milliseconds;
-        # pandas 2.3 refused the float past 2262 and the card read
-        # 253402214400000.0.
-        (253402214400000.0, "td", "31 Dec 9999"),
-        (np.float64(253402214400000.0), "td", "31 Dec 9999"),
-        (np.int64(978393600000), "td", "02 Jan 2001"),
-        # Four-digit years, as Stata writes them: `display %td -679350'
-        # 01jan0100 and `display %ty 100' 0100 (24sep2026).
-        (-59011459200000.0, "td", "01 Jan 0100"),
+        # A KPI's statistic reaches the writer as epoch milliseconds;
+        # pandas 2.3 refused the float past 2262.  Expected text is Stata's
+        # own `display %td`/`%ty`, measured 30sep2026: 2936549 -> 31dec9999,
+        # -679350 -> 01jan0100, 100 -> 0100.
+        (253402214400000.0, "td", "31dec9999"),
+        (np.float64(253402214400000.0), "td", "31dec9999"),
+        (np.int64(978393600000), "td", "02jan2001"),
+        (-59011459200000.0, "td", "01jan0100"),
         (-59011459200000.0, "ty", "0100"),
-        (-59011459200000.0, "tm", "Jan 0100"),
-        (-59011459200000.0, "tc", "01 Jan 0100 00:00:00"),
-        (pd.Timestamp("0100-01-01"), "td", "01 Jan 0100"),
-        (float("nan"), "td", ""),
+        (float("nan"), "td", "."),
+        (float("inf"), "td", "."),
     ])
-    def test_the_date_formatter(self, value, kind, want):
-        assert dr._format_date_value_standalone(value, kind) == want
-
-    @pytest.mark.parametrize("value", [
-        # Past Stata's last millisecond, or not a number a date can be.
-        253402300800000.0, -59011459200001.0, float("inf"), 1e300])
-    def test_the_date_formatter_writes_a_number_past_the_range_as_itself(
-            self, value):
-        assert dr._format_date_value_standalone(value, "td") == str(value)
+    def test_the_date_writer(self, value, kind, want):
+        # GAPS2 E3: dates are written through the one Stata writer; the
+        # fixed-picture helper this used to test (_format_date_value_
+        # standalone) was removed once nothing called it.
+        sv = dr._dash_stata_value_of(value, kind)
+        assert dr._dash_fmt_text(sv, "%" + kind) == want
 
     def test_a_kpi_sum_of_dates_neither_wraps_nor_names_the_wrong_epoch(
             self):
