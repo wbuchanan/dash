@@ -451,11 +451,18 @@ assert `rc' == 0
 cert_file_has "`lg'", needle("not in the data")
 assert r(found) == 0
 // foreign's dropdown, titled by its variable label, with its value labels
-mata: st_local("f1", strofreal(_cert_file_has(st_local("pg"), char(34) + "title" + char(34) + ":" + char(34) + "Car origin" + char(34) + "," + char(34) + "options" + char(34) + ":[[" + char(34) + "__all__" + char(34) + "," + char(34) + "All" + char(34) + "],[" + char(34) + "0" + char(34) + "," + char(34) + "Domestic" + char(34) + "]", 0)))
+// GAPS2 X1 writes a numeric variable's option values typed, so the
+// Domestic option is now [0.0,"Domestic"], not ["0","Domestic"].
+mata: st_local("f1", strofreal(_cert_file_has(st_local("pg"), char(34) + "title" + char(34) + ":" + char(34) + "Car origin" + char(34) + "," + char(34) + "options" + char(34) + ":[[" + char(34) + "__all__" + char(34) + "," + char(34) + "All" + char(34) + "],[" + "0.0," + char(34) + "Domestic" + char(34) + "]", 0)))
 // rep78's range slider, 1 to 5, titled by the label, whole
-mata: st_local("f2", strofreal(_cert_file_has(st_local("pg"), char(34) + "title" + char(34) + ":" + char(34) + "A || B; C" + char(34) + "," + char(34) + "value" + char(34) + ":[1.0,5.0]", 0)))
+// GAPS2 G6/E3 put the slider's Stata display-format writer right after
+// its title, so the title is now followed by "format":{ and the value
+// [1.0,5.0] is checked on its own.
+mata: st_local("f2", strofreal(_cert_file_has(st_local("pg"), char(34) + "title" + char(34) + ":" + char(34) + "A || B; C" + char(34) + "," + char(34) + "format" + char(34) + ":{", 0)))
+mata: st_local("f3", strofreal(_cert_file_has(st_local("pg"), char(34) + "value" + char(34) + ":[1.0,5.0]", 0)))
 assert `f1' == 1
 assert `f2' == 1
+assert `f3' == 1
 capture erase "`pg'"
 display "PC-13 PASS: filter(fore) and filter(rep, type(range) label(A || B; C)) filter on foreign and rep78"
 
