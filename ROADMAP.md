@@ -4420,12 +4420,25 @@ commands, output and the resolved state of every `GAPS.md` finding — in
   measured truth of text_truth.json and value_truth.json among them.
 - **Tests flipped.** 99 pinned expectations were flipped, each named
   with its reason in its fix commit's Flipped: line.
-- **Runs.** make test: <to be measured in 19-12>.  make test-dev: <to be
-  measured in 19-12>.  make cert: <to be measured in 19-12>, wall time
-  before and after <to be measured in 19-12>.  make gate: <to be
-  measured in 19-12>.
-- **Demo pages.** <to be measured in 19-12>; regenerated and left
-  untracked (.gitignore holds *.html).
+- **Runs (30sep2026, on the dated tree).** make test, under Stata's
+  Python (/opt/anaconda3/bin/python3, 3.13): 20,771 passed, 3 xfailed,
+  0 skipped.  make test-dev (python3, 3.14): 20,771 passed, 3 xfailed,
+  0 skipped.  Their first runs found nine stale pins the batch-3 merge
+  left in files no section owned and a node guard that skipped under
+  xdist; each was fixed under its gap's id.  make cert: 66 of 66
+  scripts, 0 skipped, after six scripts were fixed under B3, X1, X2,
+  E3 and G6 (stale needles, and a colour count that read only the
+  first 32,768 bytes of a line); wall time 575 s before WP-28 and
+  699 s after, a growth of about 2.1 minutes, within the five-minute
+  budget.  make gate: 12 of 12 examples and 20 of 20 scheme pages
+  clean from a net-installed copy.  No S1 or S2 entry is open, and the
+  22 closed WP-28 entries name tests that exist
+  (TestEveryClosedEntryNamesATestThatExists).
+- **Demo pages.** scatter (1.3 MB), dashboard (1.8), full_dashboard
+  (2.0), kelly22ex_dashboard (1.8), comprehensive_demo (2.4),
+  bs_equal_cols (1.7), bs_kpi_hero (1.7), bs_stacked (1.7) and
+  bs_responsive (1.7); regenerated and left untracked (.gitignore
+  holds *.html).
 - **AGENTS.md** carries "Invariants introduced by WP-28", each with its
   guarding test.
 - **Merge.** `git checkout main && git merge s3-bugs` -- reported, not run.
