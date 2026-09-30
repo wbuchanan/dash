@@ -602,7 +602,7 @@ class TestTheStataDateText:
     def test_missing_is_a_dot(self, value):
         assert dr._dash_stata_date_text(value, "td") == "."
 
-    def test_a_date_pandas_cannot_hold_is_a_dot(self):
+    def test_a_date_past_the_calendar_is_written_as_a_number(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             # GAPS2 E3/G6, WP-28 S12: a number past the calendar is
@@ -1492,11 +1492,16 @@ class TestAdversarialLabelPlacement:
 
     @pytest.mark.parametrize("value", [1e308, -1e308, float("inf"),
                                        float("-inf"), 2 ** 80])
-    def test_a_date_no_calendar_holds_is_a_dot_not_a_crash(self, value):
-        # GAPS2 E3/G6, WP-28 S12: an infinity is ".", a finite number
-        # past the calendar is written as _dash_fmt_text writes it (was
-        # "." for all); never a crash.
+    def test_a_date_no_calendar_holds_is_written_as_stata_does(self, value):
+        # GAPS2 E3/G6, WP-28 S12, measured in StataMP 19: an infinity and
+        # -1e308 are ".", 1e308 (past Stata's largest double) is ".z_", a
+        # finite number past the calendar is a number (was "." for all);
+        # never a crash.
         got = dr._dash_stata_date_text(value, "td")
         assert got == dr._dash_fmt_text(float(value), "%td")
-        if value in (float("inf"), float("-inf")):
-            assert got == "."
+        want = {1e308: ".z_", -1e308: ".", float("inf"): ".",
+                float("-inf"): "."}
+        if value in want:
+            assert got == want[value], (value, got)
+        else:
+            assert got[0].isdigit() and "e+" in got, got

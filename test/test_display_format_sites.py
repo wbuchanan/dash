@@ -713,3 +713,38 @@ def test_node_ran():
     """The node cases above ran rather than skipped (a skip is red)."""
     from js_runner import NODE
     assert NODE is not None, "node is required for this file"
+
+
+# ---------------------------------------------------------------------------
+# Out-of-calendar dates, measured with `display %fmt value' in StataMP 19
+# (30sep2026), verbatim with Stata's width padding.
+# ---------------------------------------------------------------------------
+
+_OUT_OF_CALENDAR = [
+    ("%td", 2936549.0, "31dec9999"),
+    ("%td", 2936550.0, "  2936550"),
+    ("%td", -679351.0, "  -679351"),
+    ("%td", -679350.0, "01jan0100"),
+    ("%td", 1e10, " 1.00e+10"),
+    ("%td", 1e308, "      .z_"),
+    ("%td", -1e308, "        ."),
+    ("%tc", 1e15, "       1.00000e+15"),
+    ("%tc", 1e308, "               .z_"),
+    ("%tm", 1e10, "1.0e+10"),
+]
+
+
+class TestOutOfCalendarDates:
+
+    @pytest.mark.parametrize("fmt,value,want", _OUT_OF_CALENDAR)
+    def test_python_writes_what_stata_displays(self, fmt, value, want):
+        assert dr._dash_fmt(value, fmt) == want
+        assert dr._dash_fmt_text(value, fmt) == want.strip()
+
+    def test_javascript_writes_what_stata_displays(self):
+        rows = [[f, v] for f, v, _w in _OUT_OF_CALENDAR]
+        src = (dr._DASH_FMT_JS + "\nconst rows = " + json.dumps(rows)
+               + ";\nprocess.stdout.write(JSON.stringify(rows.map((r) => "
+               "[dash_fmt(r[1], r[0], '', false), dash_fmt_text(r[1], r[0], '')])));")
+        got = run_js(src)
+        assert got == [[w, w.strip()] for _f, _v, w in _OUT_OF_CALENDAR]

@@ -15466,8 +15466,17 @@ function dash_fmt_date(parsed, value) {
         var v = Number(value);
         if (!isFinite(v)) { return "."; }
         var w = _DASH_FMT_FALLBACK_WIDTH[tkind];
+        // Past Stata's largest double (2**1023) a value is missing: .z_
+        // above, . below, padded to the picture's width (measured, S12).
+        if (Math.abs(v) >= Math.pow(2, 1023)) {
+            var mtext = v > 0 ? ".z_" : ".";
+            var mw = dash_fmt_picture_width(parsed);
+            return parsed.left ? mtext.padEnd(mw, " ") : mtext.padStart(mw, " ");
+        }
+        // A clock writes %12.0g's digits in its 18 columns (measured).
+        var gw = (tkind === "c" || tkind === "C") ? 12 : w;
         var sign = v < 0 ? "-" : "";
-        var text = dash_fmt_g_text(Math.abs(v), 0, w, false, sign.length);
+        var text = dash_fmt_g_text(Math.abs(v), 0, gw, false, sign.length);
         var body = sign + text;
         return body.length >= w ? body : body.padStart(w, " ");
     }
@@ -17990,6 +17999,11 @@ def _dash_fmt_tokenize_picture(picture):
     return tokens
 
 
+#: Stata's missing threshold: a double at or past 2**1023 (its largest
+#: non-missing value is just below) is a missing value (measured, S12).
+_DASH_FMT_MISSING_AT = 2.0 ** 1023
+
+
 def _dash_fmt_date(parsed, value):
     """*value* (a Stata date/period number) written under *parsed* (a
     ``kind == "t"`` ``_dash_fmt_parse`` result): the picture's own default
@@ -18010,12 +18024,23 @@ def _dash_fmt_date(parsed, value):
         if not math.isfinite(v):
             return "."
         w = _DASH_FMT_FALLBACK_WIDTH[kind_key]
+        # At or past Stata's largest double, 2**1023, a value is missing:
+        # measured in StataMP 19 (30sep2026), `display %td 1e308' is
+        # "      .z_" and `display %td -1e308' is "        .", each padded
+        # to the picture's width.
+        if abs(v) >= _DASH_FMT_MISSING_AT:
+            mtext = ".z_" if v > 0 else "."
+            mw = _dash_fmt_picture_width(parsed)
+            return mtext.ljust(mw) if parsed["left"] else mtext.rjust(mw)
         # Not through _dash_fmt_number: its scientific fallback pads to a
         # floor of 8 (a numeric FORMAT's own %w.0g convention), but a
         # date's own bare-number fallback does not (measured: %th of
-        # 2936549 is "2.9e+06", 7 characters, unpadded at width 6).
+        # 2936549 is "2.9e+06", 7 characters, unpadded at width 6).  A
+        # clock writes %12.0g's digits in its 18 columns (measured: %tc of
+        # 1e15 is "       1.00000e+15").
+        gw = 12 if kind_key in ("c", "C") else w
         sign = "-" if v < 0 else ""
-        text = _dash_g_text(abs(v), 0, w, False, len(sign))
+        text = _dash_g_text(abs(v), 0, gw, False, len(sign))
         body = sign + text
         return body.rjust(w)
     tokens = _dash_fmt_tokenize_picture(picture)
@@ -28459,7 +28484,7 @@ class ServerAppBuilder:
                       "_DASH_CSV_SERVED_JS",
                       # The Stata display-format writer's JS twin and the
                       # tables the Python writer reads (WP-28 S04).
-                      "_DASH_FMT_JS", "_DASH_FMT_MODEL_JS", "_DASH_FMT_CODES", "_DASH_FMT_WIDTHS",
+                      "_DASH_FMT_JS", "_DASH_FMT_MODEL_JS", "_DASH_FMT_MISSING_AT", "_DASH_FMT_CODES", "_DASH_FMT_WIDTHS",
                       "_DASH_FMT_MONTHS", "_DASH_FMT_DAYS",
                       "_DASH_FMT_NUM_RE", "_DASH_FMT_DATE_RE",
                       "_DASH_FMT_X_RE", "_DASH_FMT_H_RE",
