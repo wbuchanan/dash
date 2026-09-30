@@ -604,7 +604,10 @@ def _card_via_python(cfg, fmt):
                   expr)
     assert "?" not in expr, "an untranslated JS construct in the template"
     return eval(expr, {"__builtins__": {}},  # noqa: S307 - our own template
-                {"k": types.SimpleNamespace(**cfg), "fmt": fmt})
+                # The value is escaped by the page's dash_html_escape (WP-28
+                # section 11, GAPS2 E1), html.escape's twin.
+                {"k": types.SimpleNamespace(**cfg), "text": fmt,
+                 "dash_html_escape": _html.escape})
 
 
 def _card_via_node(cfg, fmt):
@@ -623,8 +626,9 @@ def _card_via_node(cfg, fmt):
                     "rebuild cannot be run (a silent skip here would hide "
                     "an untested template)")
     harness = (
+        dr._DASH_FMT_JS + "\n"
         "const k = " + json.dumps(cfg) + ";\n"
-        "const fmt = " + json.dumps(fmt) + ";\n"
+        "const text = " + json.dumps(fmt) + ";\n"
         "const kpi_div = {};\n"
         "kpi_div.text = " + _kpi_template_js() + ";\n"
         "process.stdout.write(kpi_div.text);\n"

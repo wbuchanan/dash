@@ -663,9 +663,9 @@ _DATE_STATS = ["p10", "p97.5", "p0.5", "p50", "median", "min", "max"]
 
 
 def _as_page_date(stata_days):
-    """Stata's day number as the saved page writes a %td date."""
-    t = pd.Timestamp("1960-01-01") + pd.Timedelta(days=float(stata_days))
-    return t.strftime("%d %b %Y")
+    """Stata's day number as ``display %td`` writes it, the text every card
+    now shows (WP-28 section 11, GAPS2 E1; the page wrote 02 Jan 2001)."""
+    return dr._dash_fmt_text(float(stata_days), "%td")
 
 
 class TestAPercentileOfADateIsADate:
@@ -778,7 +778,14 @@ class TestTheUpdateModes:
 
 #: fmt() values a card may take, each a format dash kpi accepts.
 _FORMATS = ["", "%9.0g", "%9.2f", "%12.0fc", "%12.2fc", "%8.0f", "%10.3e",
-            "%9.2g", "%9.3gc", "%-9.2f", "%09.2f", "%12.1e", "%10.4g"]
+            "%9.2g", "%9.3gc", "%-9.2f", "%09.2f", "%12.1e", "%10.4g",
+            # WP-28 section 11 (GAPS2 E1): the European and grouped forms
+            # and %w.0g, which read 6e+03 at %10.0g, and the %t pictures.
+            "%9,2fc", "%10.0g", "%12,0gc", "%tdCCYY-NN-DD", "%tm"]
+
+#: The %t formats a card on a DATE variable takes (its own is %td).
+_DATE_FORMATS = ["", "%td", "%tdCCYY-NN-DD", "%tdMonth_DD,_CCYY", "%tm",
+                 "%9.2f", "%10.0g"]
 
 
 class TestACardKeepsItsFormatWhenAFilterMoves:
@@ -822,6 +829,45 @@ class TestACardKeepsItsFormatWhenAFilterMoves:
                                                         names[k][1],
                                                         opened[k], moved[k])
                for k in names if opened[k] != moved.get(k)]
+        assert not bad, "\n  ".join(bad)
+        # And each is the writer's text of the statistic (WP-28 section
+        # 11): %10.0g of 6165.2567 opened on 6e+03 and kept it.
+        col = df[var].dropna()
+        stat = {"mean": col.mean(), "sum": col.sum(), "min": col.min()}
+        bad = ["%s %s: %r, the writer %r" % (f or '""', st, opened[k], w)
+               for k, (f, st) in names.items()
+               for w in [dr._dash_fmt_text(stat[st], f or "%9.0g")]
+               if opened[k] != w]
+        assert not bad, "\n  ".join(bad)
+
+    def test_a_date_variable(self, tmp_path, truth):
+        """A date statistic of a %td variable keeps fmt()'s picture, or
+        the variable's own %td, after the move (WP-28 section 11)."""
+        df = _auto(truth)
+        df["when"] = np.arange(14611, 14611 + len(df), dtype=float)
+        kpis = [{"name": "k%d" % i, "stat": st, "var": "when", "fmt": f,
+                 "title": "T", "update": "filter"}
+                for i, (f, st) in enumerate(
+                    [(f, st) for f in _DATE_FORMATS
+                     for st in ("max", "median", "count")])]
+        spec = self._spec("when")
+        spec["kpis"] = kpis
+        spec["build_options"]["formats"] = {"when": "%td"}
+        spec["build_options"]["registry"] = "g1 " + " ".join(
+            k["name"] for k in kpis)
+        r = _saved(tmp_path, spec, df)
+        opened = _cards(d.text for d in r.kpi_divs.values())
+        moved = _saved_filter_move(r, 0, float(df["mpg"].min()))
+        stat = {"max": df["when"].max(), "median": df["when"].median(),
+                "count": float(df["when"].count())}
+        bad = []
+        for k in kpis:
+            f = k["fmt"] or ("%td" if k["stat"] != "count" else "%9.0g")
+            w = dr._dash_fmt_text(stat[k["stat"]], f)
+            if not (opened[k["name"]] == moved.get(k["name"]) == w):
+                bad.append("%s %s: opened %r, moved %r, the writer %r" % (
+                    k["fmt"] or '""', k["stat"], opened[k["name"]],
+                    moved.get(k["name"]), w))
         assert not bad, "\n  ".join(bad)
 
 
@@ -959,7 +1005,11 @@ class TestATieIsRoundedAsTheCardFirstRoundedIt:
                                   "registry": "g1 k1 k2 k3 k4"}}
         r = _saved(tmp_path, spec, df)
         opened = _cards(d.text for d in r.kpi_divs.values())
-        assert opened == {"k1": "20", "k2": "0.2", "k3": "22", "k4": "20"}
+        # k4 is Stata's %9.2g of 20.5, 21 (WP-28 section 11, GAPS2 E1: the
+        # card is written by _dash_fmt_text, not Python's format()).
+        assert opened == {"k1": "20", "k2": "0.2", "k3": "22", "k4": "21"}
+        assert opened == {k["name"]: dr._dash_fmt_text(v, k["fmt"])
+                          for k, v in zip(kpis, (20.5, 0.25, 21.5, 20.5))}
         moved = _saved_filter_move(r, 0, 1.0)
         assert moved == opened
 

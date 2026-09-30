@@ -206,7 +206,7 @@ and now matches Stata.
   a scheme draws its declared colours and opacities (background `#ff0000`,
   p1 `#1a476f` at 0.2, p2 `#00ff00` at 0.5), and a line dash cannot read is
   named once with its line number. (WP-28, D1)
-<!-- WP-28 E1 -->
+- `dash kpi`: a card now shows the text Stata's `display` gives for its format, as the page opens, after every filter move and after a brush, saved and served: `dash kpi mean(price), fmt(%10.0g)` read `6e+03`, now `6165.2568`; `fmt(%9,2fc)` read `6,165.256756756757`, now `6.165,26`; without `fmt()` auto's mean price read `6165.26`, now `6,165.3` (its own `%8.0gc`); `min(when)` of a `%td` variable read `02 Jan 2000`, now `02jan2000`, and a date card honours `fmt()`; a missing date card read an empty card as the page opened and `—` after a move, now `.`; and the page's card rebuild now escapes its text. (WP-28, E1)
 - `filter(..., exclude())`: an excluded graph or card kept the rows of the last move made by a filter that did not exclude it -- price to [4000,5000], foreign to 1, price back to its full range left an excluded graph at 3 rows (k1 3) where the widgets imply 5. Every graph, link group, by() panel, aggregate and derived layer and KPI card is now masked on every move by exactly the filters that do not exclude it, in both modes. (WP-28, E2)
 <!-- WP-28 E3 -->
 - `dash build, layout(bs)` (the saved page): the filter bar now sits below

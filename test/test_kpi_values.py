@@ -343,7 +343,7 @@ class TestKpisUnderFiltering:
         helpers = js[js.index("function dash_pctl"):
                      js.index("// agg_sources is a Bokeh model list")]
         lo = js.index("    if (stat === 'count') {")
-        hi = js.index("    let fmt;", lo)
+        hi = js.index("    let text;", lo)
         block = js[lo:hi]
         harness = (
             helpers
@@ -425,19 +425,18 @@ class TestKpisUnderFiltering:
         if node is None:
             pytest.skip("node is not installed")
         js = dash_render._FILTER_JS
-        lo = js.index("    let fmt;")
-        hi = js.index("    // Rebuild the complete Div HTML", lo)
+        lo = js.index("        let text;")
+        hi = js.index("        // Rebuild the complete Div HTML", lo)
         block = js[lo:hi]
-        # The number writers the branch calls (dash_numfmt and its helpers,
-        # WP-23), which sit beside dash_apply_kpis.
-        writers = js[js.index("// ---- A number written as the card's"):
-                     js.index("function dash_apply_kpis(")]
+        # The writer the branch calls is Stata's own format writer,
+        # dash_fmt_text (WP-28 section 11, GAPS2 E1; it replaced
+        # dash_numfmt), which the page prepends to its callbacks.
         harness = (
-            writers
+            dash_render._DASH_FMT_JS
             + "\nconst k = " + json.dumps(cfg_entry) + ";"
             + "\nconst result = " + json.dumps(float(value)) + ";\n"
             + block
-            + "\nprocess.stdout.write(JSON.stringify(fmt));"
+            + "\nprocess.stdout.write(JSON.stringify(text));"
         )
         with tempfile.NamedTemporaryFile("w", suffix=".mjs",
                                           delete=False) as fh:
@@ -716,7 +715,7 @@ class TestQualifiedKpiUnderFiltering:
         # The KPI recompute now lives in dash_apply_kpis(), whose parameter
         # is `data_obj' so the brush path can pass the selected rows.
         lo = js.index("    const col = data_obj[k.varname];")
-        hi = js.index("    let fmt;", lo)
+        hi = js.index("    let text;", lo)
         block = js[lo:hi]
         payload = {
             "__dash_row__": [int(r) for r, _ in rows],

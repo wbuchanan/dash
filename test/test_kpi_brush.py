@@ -256,7 +256,10 @@ class TestTheShippedBrushJsActuallyComputes:
             varname: [float(v) for _, v in rows],
         }
         harness = (
-            pctl
+            # The Stata-format writer the card calls (WP-28 section 11,
+            # GAPS2 E1), which the page prepends to its callbacks.
+            dash_render._DASH_FMT_JS
+            + pctl
             + '\nconst ROW_ID = "__dash_row__";\n'
             + helpers
             + "\nconst brush_source = {data: " + json.dumps(payload) + "};"

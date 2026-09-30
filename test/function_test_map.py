@@ -87,7 +87,6 @@ FUNCTIONS = {
  'DashRenderer._head_of_file_html': 'test/test_scheme_review_fixes.py::TestBootstrapPageWithWidgets::test_a_page_without_widgets_is_unchanged',
  'DashRenderer._kpi_callback_config': 'test/test_scheme_review_fixes.py::test_the_carried_name_is_escaped',
  'DashRenderer._kpi_column': 'test/test_kpi.py::TestJsHelpers::test_dcount_js_logic',
- 'DashRenderer._kpi_js_number_format': 'test/test_help_claims_4.py::TestACardKeepsItsFormatWhenAFilterMoves::test_the_saved_page',
  'DashRenderer._kpi_qualifier_row_ids': 'test/test_kpi_values.py::TestQualifiedKpiUnderFiltering::test_the_callback_receives_the_qualifying_rows',
  'DashRenderer._kpi_statistic': 'test/test_kpi_values.py::TestKpisUnderFiltering::test_the_callback_agrees_with_the_initial_render',
  'DashRenderer._limits': 'test/test_resource_limits.py::TestTheHelpersOneByOne::test_a_renderer_built_without_init_has_the_default_limits',
@@ -99,7 +98,6 @@ FUNCTIONS = {
  'DashRenderer._linked_scatter_view': 'test/test_saved_filter_layers.py::TestALinkedScatterWithAMissingValue::test_the_view_helper_leaves_other_sources_alone',
  'DashRenderer._make_source': 'test/test_varlist_expansion.py::test_tsline_without_x_variable_reports_tsset',
  'DashRenderer._parse_filter_raw': 'test/test_filters.py::TestParseFilterRaw::test_empty_string_returns_empty_list',
- 'DashRenderer._parse_fmt': 'test/test_filter_widget_data.py::TestADashboardOfKpisAlone::test_the_filter_recomputes_the_card_in_both_modes',
  'DashRenderer._parse_link_and_filters': 'test/test_linking.py::TestLinkedBrushing::test_a_semicolon_does_not_create_a_second_link_group',
  'DashRenderer._parse_tabs_option': 'test/test_layout_tabs.py::TestTabsHoldFacetedGraphs::test_the_widget_reports_the_figure_keys_it_placed',
  'DashRenderer._placement_map': 'test/test_layout_tabs.py::TestNamedPlacementLayout::test_a_one_based_spec_is_accepted_too',
@@ -350,7 +348,7 @@ FUNCTIONS = {
  '_dash_display': 'test/test_option_validation.py::TestUserTextIsEchoedThroughDashDisplay::test_the_style_note',
  '_dash_dropdown_mask': 'test/test_export.py::TestTheHelpers::test_frame_filter_mask',
  '_dash_dropdown_values': 'test/test_resource_limits.py::TestTheHelpersOneByOne::test_dropdown_values_are_the_listed_options_sorted',
- '_dash_effective_kpi_fmt': 'test/test_server_layer_defects.py::TestTheKpiFormatHelpers::test_an_explicit_format_wins',
+ '_dash_effective_kpi_fmt': 'test/test_kpi_format.py::TestEffectiveFormat::test_the_rule',
  '_dash_embedded_cells': 'test/test_embedded_cells.py::TestTheCount::test_a_histogram_over_six_million_rows_passes_and_a_scatter_is_refused',
  '_dash_embedded_cells.<locals>._add': 'test/test_embedded_cells.py::TestTheCount::test_kpi_and_filter_variables_always_count',
  '_dash_event_throttle': 'test/test_served_throttle.py::TestTheDefaults::test_a_bucket_that_could_never_hold_a_token_is_refused',
@@ -378,7 +376,7 @@ FUNCTIONS = {
  '_dash_fitci_se': 'test/test_statistical_helpers.py::TestFitciStandardErrors::test_stdf_adds_the_residual_variance',
  '_dash_fitci_std': 'test/test_statistical_helpers.py::TestFitciStandardErrors::test_stdf_and_stdr_are_read',
  '_dash_float_values': 'test/test_date_range.py::TestTheDateHelpers::test_the_float_reader_reads_a_date_in_milliseconds',
- '_dash_format_kpi_value': 'test/test_adversarial_matrix.py::TestNumericFormatBounds::test_a_hand_edited_kpi_format_is_bounded',
+ '_dash_format_kpi_value': 'test/test_kpi_format.py::TestFirstPaint::test_every_kpi_row_of_the_fixture_saved',
  '_dash_frame_filter_mask': 'test/test_export.py::TestAFilterAtItsFullExtentRestrictsNothing::test_a_widget_whose_bounds_cannot_be_compared_still_filters',
  '_dash_frame_filter_mask.<locals>._at_full_extent': 'test/test_export.py::TestAFilterAtItsFullExtentRestrictsNothing::test_the_served_mask_keeps_missing_values_at_full_extent',
  '_dash_function_args': 'test/test_adversarial_matrix.py::TestHostileSpec::test_an_infinite_point_count_is_clamped_not_raised',
@@ -688,13 +686,6 @@ TEST_ONLY = {
         "WP-28 S04 keeps it under WP-26's seam rule: the oracle of the twin-agreement test -- the "
         "shortest float32 text, which Python and node must agree on; the "
         "page writes a float's widened double, never this."),
-    "_dash_fmt_refusal": (
-        "WP-28 S04 keeps it under WP-26's seam rule: the named refusal sections 11 and 12 echo, and "
-        "the oracle TestDashAdo holds dash.ado's %x/%H/%L regex to."),
-    "_dash_stata_value_of": (
-        "WP-28 S04 keeps it under WP-26's seam rule: epoch milliseconds back to a Stata date value, "
-        "the hand-off section 12 wires into widgets, tooltips and axes; its "
-        "JS twin dash_stata_value_of ships in _DASH_FMT_JS today."),
     "_dash_range_hull": (
         "WP-28 B2 keeps it under WP-26's seam rule: the inverse of "
         "_dash_padded_range -- the hull a padded Range1d was drawn from -- "

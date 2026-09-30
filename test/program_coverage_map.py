@@ -120,7 +120,8 @@ COVERAGE = {
                                "test_option_validation.cscript:OV-128"),
         "_dash_validate_value": ("test_option_validation.cscript:OV-100",
                                  "test_option_validation.cscript:OV-109",
-                                 "test_option_validation.cscript:OV-116"),
+                                 "test_option_validation.cscript:OV-116",
+                                 "test_gaps2_truth.cscript:KF-01"),
         "_dash_validate_opts": ("test_option_validation.cscript:OV-104",
                                 "test_option_validation.cscript:OV-126"),
         # e2e: every default and ceiling read back through _dash_limit.
@@ -248,7 +249,8 @@ COVERAGE = {
                         "test_clear_registry.cscript:CLR-04"),
         # e2e: the card's value in the page.
         "_dash_kpi": ("test_e2e_kpi.cscript:P2-76",
-                      "test_help_claims_4.cscript:HC4-01"),
+                      "test_help_claims_4.cscript:HC4-01",
+                      "test_gaps2_truth.cscript:KF-01"),
         "_dash_prepare_spec": ("test_json_escaping.cscript:JSE-15",
                                "test_program_coverage.cscript:PC-10",
                                "test_program_coverage.cscript:PC-13"),

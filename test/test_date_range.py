@@ -541,8 +541,8 @@ class TestTheSavedPageHoldsThePlaceholder:
     def test_a_kpi_reads_the_placeholder_as_its_date(self, tmp_path):
         kpis = [_kpi("k1", "max"), _kpi("k2", "min")]
         r, _w = _saved(tmp_path, _spec(_LABELLED, kpis=kpis), _frame())
-        assert _card(r.kpi_divs["k1"].text, "k1") == "31 Dec 9999"
-        assert _card(r.kpi_divs["k2"].text, "k2") == "02 Jan 2001"
+        assert _card(r.kpi_divs["k1"].text, "k1") == "31dec9999"  # Stata %td (WP-28 section 11, GAPS2 E1)
+        assert _card(r.kpi_divs["k2"].text, "k2") == "02jan2001"
 
     def test_the_filter_callback_recomputes_a_kpi_across_the_placeholder(
             self, tmp_path, monkeypatch):
@@ -560,10 +560,10 @@ class TestTheSavedPageHoldsThePlaceholder:
         card = r.kpi_divs["k1"].id
         w.value = (_MS[0], _MS[3])
         assert _card(tfw._div_texts_after(cb.args, cb.code)[card],
-                     "k1") == "05 Jan 2001"
+                     "k1") == "05jan2001"  # Stata %td (WP-28 section 11, E1)
         w.value = (_MS[0], _MS[4])
         assert _card(tfw._div_texts_after(cb.args, cb.code)[card],
-                     "k1") == "31 Dec 9999"
+                     "k1") == "31dec9999"
 
     def test_the_marker_labels_write_the_placeholder_as_a_date(self, tmp_path):
         r, _w = _saved(tmp_path, _spec(_LABELLED), _frame())
@@ -995,19 +995,22 @@ class TestTheDateHelpers:
     def test_the_page_callback_writes_a_kpi_year_in_four_digits(self):
         """The first render writes 01 Jan 0100; the callback wrote a
         filtered card's year with getUTCFullYear(), 100."""
+        # WP-28 section 11 (GAPS2 E1): the card is Stata's display of its
+        # %t picture, written by dash_fmt_text; it read 01 Jan 0100,
+        # 0100, Jan 0100 and 01 Jan 0100 00:00:00.
         js = dr._FILTER_JS
-        assert "padStart(4, '0')" in js
         from test_export import _run_js
-        start = js.index("        let fmt;\n        if (k.datekind) {")
-        end = js.index("\n        } else {\n            if (isNaN(result))", start)
-        body = js[start:end] + "\n        }\n"
+        start = js.index("        let text;")
+        end = js.index("        // Rebuild the complete Div HTML", start)
+        body = js[start:end]
         got = _run_js(
+            dr._DASH_FMT_JS +
             "const out = {};\n"
             "for (const kind of ['td', 'ty', 'tm', 'tc']) {\n"
-            "  const k = {datekind: kind};\n"
+            "  const k = {datekind: kind, fmt: '%' + kind};\n"
             "  const result = -59011459200000;\n"
             + body +
-            "  out[kind] = fmt;\n}\n"
+            "  out[kind] = text;\n}\n"
             "process.stdout.write(JSON.stringify(out));\n")
-        assert got == {"td": "01 Jan 0100", "ty": "0100", "tm": "Jan 0100",
-                       "tc": "01 Jan 0100 00:00:00"}
+        assert got == {"td": "01jan0100", "ty": "0100", "tm": "0100m1",
+                       "tc": "01jan0100 00:00:00"}

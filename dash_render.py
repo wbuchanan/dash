@@ -16148,112 +16148,6 @@ if (!_srcs.includes(source) && !(excluded_sources || []).includes(source)) {
 // should count: the filter path passes the rows that survived every widget,
 // the brush path passes the rows the user selected.
 
-// ---- A number written as the card's first render writes it ----
-//
-// _dash_format_kpi_value writes a card with Python's format(): %w.df, %w.de
-// and %w.dg, a 0 flag padding to the width with zeros, a trailing c
-// grouping the whole part, and str(value) for a format Python cannot apply.
-// k.numfmt says which (DashRenderer._kpi_js_number_format), and dash_numfmt
-// writes it the same way.  The page knew %w.df alone: %10.3e 6.165e+03 read
-// 6165 after the first filter move.  Python rounds a tie to even and
-// toFixed rounds it up, so a median of 20.5 in %9.0f read 20 as the page
-// opened and 21 after a move: dash_fixed and dash_expo round as Python does.
-function dash_tie_even(up, t, k) {
-    // t holds 20 more digits than up; a tail of 5 then zeros is a tie.
-    const m = t.slice(0, k);
-    if (m.slice(-20) !== '5' + '0'.repeat(19)) return up;
-    let down = m.slice(0, m.length - 20);
-    if (down.endsWith('.')) down = down.slice(0, -1);
-    const last = parseInt(down.replace('.', '').slice(-1), 10);
-    return (last % 2 === 0) ? down + t.slice(k) : up;
-}
-function dash_fixed(a, d) {
-    d = Math.min(Math.max(d, 0), 100);
-    const up = a.toFixed(d);
-    if (d > 80 || a >= 1e21) return up;
-    const t = a.toFixed(d + 20);
-    return dash_tie_even(up, t, t.length);
-}
-function dash_py_exp(s) {
-    // JavaScript writes the exponent with one digit at least, Python two.
-    return s.replace(/e([+-])(\\d)$/, (x, sg, dg) => 'e' + sg + '0' + dg);
-}
-function dash_expo(a, d) {
-    d = Math.min(Math.max(d, 0), 100);
-    const up = a.toExponential(d);
-    if (d > 80) return dash_py_exp(up);
-    const t = a.toExponential(d + 20);
-    return dash_py_exp(dash_tie_even(up, t, t.indexOf('e')));
-}
-function dash_py_g(a, p) {
-    // Python's 'g': the exponent of the value rounded to p significant
-    // digits picks fixed or exponent notation; trailing zeros are dropped.
-    if (!(p > 0)) p = 1;
-    if (a === 0) return '0';
-    const ex = dash_expo(a, p - 1);
-    const exp = parseInt(ex.slice(ex.indexOf('e') + 1), 10);
-    const s = (exp >= -4 && exp < p) ? dash_fixed(a, p - 1 - exp) : ex;
-    const k = s.indexOf('e');
-    let m = k < 0 ? s : s.slice(0, k);
-    if (m.indexOf('.') >= 0) m = m.replace(/0+$/, '').replace(/\\.$/, '');
-    return m + (k < 0 ? '' : s.slice(k));
-}
-function dash_pystr(v) {
-    // Python's str() of a float: the shortest digits that read back, fixed
-    // notation from 1e-4 to below 1e16, else an exponent of two digits.
-    if (!isFinite(v)) return isNaN(v) ? 'nan' : (v > 0 ? 'inf' : '-inf');
-    const ex = v.toExponential();
-    const neg = ex[0] === '-';
-    const k = ex.indexOf('e');
-    const exp = parseInt(ex.slice(k + 1), 10);
-    const digits = ex.slice(neg ? 1 : 0, k).replace('.', '');
-    let s;
-    if (exp >= -4 && exp < 16) {
-        if (exp >= 0) {
-            s = digits.slice(0, exp + 1).padEnd(exp + 1, '0') + '.' +
-                (digits.slice(exp + 1) || '0');
-        } else {
-            s = '0.' + '0'.repeat(-exp - 1) + digits;
-        }
-    } else {
-        s = digits[0] + (digits.length > 1 ? '.' + digits.slice(1) : '') +
-            'e' + (exp < 0 ? '-' : '+') + String(Math.abs(exp)).padStart(2, '0');
-    }
-    return (neg ? '-' : '') + s;
-}
-function dash_py_group(s) {
-    // _dash_format_kpi_value's c: the whole part grouped when it is one.
-    const t = s.trim();
-    const i = t.indexOf('.');
-    const ip = (i < 0 ? t : t.slice(0, i)).replace(/[ ,]/g, '');
-    const fp = i < 0 ? '' : t.slice(i + 1);
-    if (!/^[+-]?\\d+$/.test(ip)) return s;
-    let big;
-    try { big = BigInt(ip); } catch (e) { return s; }
-    const neg = big < 0n;
-    let g = (neg ? -big : big).toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
-    if (neg) g = '-' + g;
-    return fp ? g + '.' + fp : g;
-}
-function dash_numfmt(v, nf) {
-    if (nf.kind === 'str') {
-        const s = dash_pystr(v);
-        return (nf.commas ? dash_py_group(s) : s).trim();
-    }
-    const neg = v < 0 || Object.is(v, -0);
-    const a = Math.abs(v);
-    let s;
-    if (nf.kind === 'f') s = dash_fixed(a, nf.prec);
-    else if (nf.kind === 'e') s = dash_expo(a, nf.prec);
-    else s = dash_py_g(a, nf.prec);
-    if (nf.zero && nf.width > s.length + (neg ? 1 : 0)) {
-        s = s.padStart(nf.width - (neg ? 1 : 0), '0');
-    }
-    s = (neg ? '-' : '') + s;
-    if (nf.commas) s = dash_py_group(s);
-    return s.trim();
-}
-
 function dash_apply_kpis(data_obj, kpi_config, kpi_divs, ROW_ID) {
     for (let ki = 0; ki < kpi_config.length; ki++) {
         const k      = kpi_config[ki];
@@ -16348,53 +16242,19 @@ function dash_apply_kpis(data_obj, kpi_config, kpi_divs, ROW_ID) {
             }
         }
 
-        let fmt;
-        if (k.datekind) {
-            // The value is epoch milliseconds; render it the way the first
-            // render did, or a filtered date KPI reads as a raw number.
-            const d = new Date(result);
-            const MON = ['Jan','Feb','Mar','Apr','May','Jun',
-                         'Jul','Aug','Sep','Oct','Nov','Dec'];
-            // The year in four digits, as Stata and the first render write
-            // it: 01jan0100, not 01 Jan 100 (24sep2026).
-            const Y = String(d.getUTCFullYear()).padStart(4, '0');
-            if (isNaN(d.getTime())) {
-                fmt = '—';
-            } else if (k.datekind === 'ty') {
-                fmt = Y;
-            } else if (k.datekind === 'tc' || k.datekind === 'tC') {
-                fmt = ('0' + d.getUTCDate()).slice(-2) + ' ' + MON[d.getUTCMonth()] +
-                      ' ' + Y + ' ' +
-                      ('0' + d.getUTCHours()).slice(-2) + ':' +
-                      ('0' + d.getUTCMinutes()).slice(-2) + ':' +
-                      ('0' + d.getUTCSeconds()).slice(-2);
-            } else if (k.datekind === 'tm' || k.datekind === 'tq' ||
-                       k.datekind === 'th') {
-                fmt = MON[d.getUTCMonth()] + ' ' + Y;
-            } else {
-                fmt = ('0' + d.getUTCDate()).slice(-2) + ' ' + MON[d.getUTCMonth()] +
-                      ' ' + Y;
-            }
+        let text;
+        if (result === null || result === undefined ||
+                Number.isNaN(result)) {
+            // A missing statistic, as Stata displays one.
+            text = '.';
+        } else if (k.datekind) {
+            // Epoch milliseconds back to the Stata date, then its picture.
+            const sv = dash_stata_value_of(result, k.datekind);
+            text = sv === null ? '.' : dash_fmt_text(sv, k.fmt);
         } else {
-            if (isNaN(result)) {
-                // A missing value, written as Stata and the initial render
-                // write it.
-                fmt = '.';
-            } else if (k.numfmt) {
-                // The format as the first render applied it (dash_numfmt).
-                fmt = dash_numfmt(result, k.numfmt);
-            } else if (k.general) {
-                // Stata's %9.0g: six significant digits, the same as Python's
-                // f"{value:g}" on the initial render.
-                fmt = String(Number(result.toPrecision(6)));
-            } else {
-            fmt = result.toFixed(k.decimals);
-            if (k.commas) {
-                const parts = fmt.split('.');
-                parts[0] = parts[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
-                fmt = parts.join('.');
-            }
-            }
+            // Stata's display of the effective format (WP-28, GAPS2 E1):
+            // the text _dash_format_kpi_value wrote as the page opened.
+            text = dash_fmt_text(result, k.fmt, k.storage);
         }
 
         // Rebuild the complete Div HTML and assign to the Bokeh model property.
@@ -16413,7 +16273,7 @@ function dash_apply_kpis(data_obj, kpi_config, kpi_divs, ROW_ID) {
             'border-radius:8px; padding:20px; ' +
             'text-align:center; min-height:110px; min-width:min(160px,100%)">' +
             '<div style="font-size:13px; color:' + k.text_color + '; margin-bottom:6px;">' + k.title + '</div>' +
-            '<div id="kpi_val_' + k.name_html + '" style="font-size:36px; font-weight:bold; color:' + k.color + ';">' + fmt + '</div>' +
+            '<div id="kpi_val_' + k.name_html + '" style="font-size:36px; font-weight:bold; color:' + k.color + ';">' + dash_html_escape(text) + '</div>' +
             '<div style="font-size:11px; color:' + k.text_color + '; margin-top:4px;">' + k.subtitle + '</div>' +
             '</div>'
         );
@@ -23484,99 +23344,81 @@ def _dash_kpi_date_valued(stat):
     return s in _DASH_DATE_VALUED_STATS or _dash_kpi_pctile(s) is not None
 
 
-def _dash_effective_kpi_fmt(kpi, varname, numeric_formats=None):
-    """The format a KPI card is actually displayed with.
+def _dash_effective_kpi_fmt(kpi, varname, formats=None, stat="",
+                            date_vars=None):
+    """The format a KPI card is actually displayed with (WP-28, GAPS2 E1).
 
-    ``fmt()`` if given, else the variable's own Stata display format, else
-    Stata's default ``%9.0g`` -- six significant digits.  Written once
-    because the generated server app resolved none of these: it passed
-    ``kpi['fmt']`` straight through, so a card with no ``fmt()`` printed
-    ``round(value, 4)``.
+    ``fmt()`` if given (as written, even one the page cannot write: the
+    writer shows ``%9.0g`` for it and the builders name it once); else, for
+    a date variable, its own ``%t`` picture when the statistic is itself a
+    date (``_dash_kpi_date_valued``) and ``%9.0g`` for a count, a spread or
+    a sum of dates; else the variable's own display format when the writer
+    places it (kinds f, g, e); else Stata's default ``%9.0g``.
+
+    Args:
+        kpi:       The KPI spec.
+        varname:   The variable the statistic is taken of.
+        formats:   ``{varname: Stata display format}``, the full map (the
+                   saved renderer's ``self.formats``, the served
+                   ``_FORMATS``).
+        stat:      The statistic.
+        date_vars: ``{varname: "td"|"tm"|...}``.
+
+    Returns:
+        A Stata format string.
     """
     explicit = str(kpi.get("fmt", "") or "").strip()
     if explicit:
         return explicit
-    own = (numeric_formats or {}).get(varname, "") or ""
-    # Temporary guard (WP-28 S04): the loaders now carry %g and %e formats
-    # too, which the KPI writers cannot yet place; a card keeps %9.0g for
-    # them.  Section 11 removes this guard when the cards move to _dash_fmt.
-    if own and _dash_fmt_kind(own) == "f":
+    own = str((formats or {}).get(varname, "") or "").strip()
+    if (date_vars or {}).get(varname):
+        if own and _dash_kpi_date_valued(stat):
+            return own
+        return "%9.0g"
+    if own and _dash_fmt_kind(own) in ("f", "g", "e"):
         return own
     return "%9.0g"
 
 
 def _dash_format_kpi_value(value, fmt_str, varname="", stat="",
-                           date_vars=None, date_formatter=None):
-    """Format a KPI value the way the saved dashboard formats it.
+                           date_vars=None, storage=None):
+    """A KPI card's text: Stata's ``display`` of the statistic under
+    *fmt_str*, trimmed (``_dash_fmt_text``), the text
+    ``test/fixtures/format_truth.json``'s ``kpi`` block records.
 
-    The generated app had its own three-line formatter: it matched
-    ``%[w].[d][fge]``, ALWAYS comma-grouped an ``f``, ignored the ``c``
-    suffix that asks for grouping, had no ``%9.0g`` default and fell back to
-    ``round(value, 4)``.  So ``fmt(%12.0fc)`` was identical to ``fmt(%12.0f)``
-    when served, and a card with no ``fmt()`` read 21.2973 in one mode and
-    21.2973 or 21.29729... in the other depending on the value.
+    A date-valued statistic of a date variable reaches here as epoch
+    milliseconds and is converted back to its Stata value first
+    (``_dash_stata_value_of``); a missing statistic, or a date beyond
+    Stata's range, is ``.``.  The saved card, the served card and the
+    page's ``dash_apply_kpis`` (through ``dash_fmt_text``) write the same
+    text.  Python's ``format()`` wrote ``fmt(%10.0g)`` of 6165.2567 as
+    ``6e+03`` until WP-28 (GAPS2 E1).
 
     Args:
-        value:          The statistic.
-        fmt_str:        A Stata format string, already resolved by
-                        ``_dash_effective_kpi_fmt``.
-        varname:        The variable the statistic was taken of.
-        stat:           The statistic, which decides whether a date variable
-                        produces a date.
-        date_vars:      ``{varname: "td"|"tc"|...}``.
-        date_formatter: ``f(value, kind) -> str`` for a date-valued result.
+        value:     The statistic.
+        fmt_str:   A Stata format string, already resolved by
+                   ``_dash_effective_kpi_fmt``.
+        varname:   The variable the statistic was taken of.
+        stat:      The statistic, which decides whether a date variable
+                   produces a date.
+        date_vars: ``{varname: "td"|"tc"|...}``.
+        storage:   The variable's storage type (``"float"`` widens).
 
     Returns:
         The card's text.
     """
-    kind = (date_vars or {}).get(varname)
-    if (kind and date_formatter is not None
-            and _dash_kpi_date_valued(stat)):
-        return date_formatter(float(value), kind)
-
+    fmt = str(fmt_str or "").strip() or "%9.0g"
     try:
-        if math.isnan(float(value)):
-            return "."
+        v = float(value)
     except (TypeError, ValueError):
-        return str(value)
-
-    fmt = str(fmt_str or "").strip()
-    if fmt in ("", "%9.0g"):
-        # Stata's default display: six significant digits.  The browser-side
-        # callback does the same through toPrecision(6), so the card does not
-        # change shape when a filter moves.
-        return f"{float(value):g}"
-
-    fmt = fmt.lstrip("%")
-    use_comma = fmt.endswith("c")
-    if use_comma:
-        fmt = fmt[:-1]
-
-    # A width or precision Stata would refuse is not handed to Python, which
-    # formats whatever it is given: a hand-edited `fmt' of %9.999999999f made
-    # a card of a billion characters (measured 23sep2026, WP-20).
-    _wd = re.fullmatch(r"-?(\d+)\.(\d+)[A-Za-z]", fmt)
-    if _wd and (len(_wd.group(1)) > 4 or len(_wd.group(2)) > 4
-                or int(_wd.group(1)) > 2045
-                or int(_wd.group(2)) >= int(_wd.group(1))):
-        return f"{float(value):g}"
-
-    try:
-        formatted = f"{value:{fmt}}"
-    except (ValueError, TypeError):
-        formatted = str(value)
-
-    if use_comma:
-        parts = formatted.strip().split(".")
-        try:
-            int_val = int(parts[0].replace(" ", "").replace(",", ""))
-            formatted_int = f"{int_val:,}"
-            formatted = (f"{formatted_int}.{parts[1]}"
-                         if len(parts) > 1 and parts[1] else formatted_int)
-        except (ValueError, IndexError):
-            pass
-
-    return formatted.strip()
+        return "."
+    if math.isnan(v):
+        return "."
+    kind = (date_vars or {}).get(varname)
+    if kind and _dash_kpi_date_valued(stat):
+        sv = _dash_stata_value_of(v, kind)
+        return "." if sv is None else _dash_fmt_text(sv, fmt)
+    return _dash_fmt_text(v, fmt, storage)
 
 
 def _dash_placement_map(layout_opt, valid_names=None):
@@ -25395,19 +25237,22 @@ class DashRenderer:
             varname: The variable the statistic is taken of.
 
         Returns:
-            A Stata format string, possibly empty.
+            A Stata format string (WP-28, GAPS2 E1: the variable's own
+            format for every writable kind, a date's own picture for a
+            date-valued statistic, else %9.0g).
         """
         return _dash_effective_kpi_fmt(
-            kpi, varname, getattr(self, "numeric_formats", {}))
+            kpi, varname, getattr(self, "formats", {}),
+            kpi.get("stat", ""), getattr(self, "date_vars", {}))
 
     def _format_kpi_value(self, value: float, fmt_str: str,
                           varname: str = "", stat: str = "") -> str:
-        """Format a KPI value using a Stata format string.
+        """Format a KPI value as Stata's ``display`` writes it.
 
-        Supports standard Stata numeric formats: %w.df, %w.dfc (comma).  A
-        statistic of a DATE variable whose result is itself a date is
-        rendered as a date rather than as the raw Stata value -- ``dash kpi
-        max(date)`` on sp500 used to read 15340.
+        Every format the writer places (``_dash_fmt_text``); a statistic
+        of a DATE variable whose result is itself a date is written in the
+        effective ``%t`` picture -- ``dash kpi max(date)`` on sp500 used to
+        read 15340.
 
         Args:
             value:   Numeric value to format.
@@ -25422,7 +25267,7 @@ class DashRenderer:
         return _dash_format_kpi_value(
             value, fmt_str, varname, stat,
             date_vars=getattr(self, "date_vars", {}),
-            date_formatter=self._format_date_value,
+            storage=getattr(self, "storage_types", {}).get(varname),
         )
 
     # ------------------------------------------------------------------
@@ -27037,55 +26882,6 @@ class DashRenderer:
         return _dash_json_value(v)
 
     @staticmethod
-    def _parse_fmt(fmt: str) -> "tuple[int, bool]":
-        """Parse a Stata format string into (decimal_places, use_commas)."""
-        m = re.match(r'%[\d]*\.(\d+)f(c)?', (fmt or "").strip())
-        if m:
-            return int(m.group(1)), m.group(2) == 'c'
-        return 0, False
-
-    @staticmethod
-    def _kpi_js_number_format(fmt: str) -> dict:
-        """How the page's recompute must write a number in *fmt*.
-
-        The card's first render is ``_dash_format_kpi_value``, Python's
-        ``format()``; this says, rule for rule, what that does with *fmt*, so
-        the page's ``dash_numfmt`` writes the same text after a filter move.
-        The page knew ``%w.df`` alone: ``%10.3e`` 6.165e+03 became 6165 on
-        the first move, ``%-9.2f`` 6165.26 became 6165, and with no fmt() a
-        value of a million or more lost its exponent (test_help_claims_4.py).
-
-        Returns:
-            ``{"kind", "prec", "width", "zero", "commas"}``: *kind* ``f``,
-            ``e`` or ``g`` for Python's presentation type, ``str`` for a
-            format Python cannot apply (``%td`` on a number, ``%21x``),
-            where the card holds ``str(value)``.
-        """
-        f = str(fmt or "").strip()
-        general = {"kind": "g", "prec": 6, "width": 0, "zero": False,
-                   "commas": False}
-        if f in ("", "%9.0g"):
-            return general
-        spec = f.lstrip("%")
-        commas = spec.endswith("c")
-        if commas:
-            spec = spec[:-1]
-        # _dash_format_kpi_value's bound on a width or precision Stata
-        # would refuse: past it the card is the general format, ungrouped.
-        _wd = re.fullmatch(r"-?(\d+)\.(\d+)[A-Za-z]", spec)
-        if _wd and (len(_wd.group(1)) > 4 or len(_wd.group(2)) > 4
-                    or int(_wd.group(1)) > 2045
-                    or int(_wd.group(2)) >= int(_wd.group(1))):
-            return general
-        m = re.fullmatch(r"(-?)(0?)(\d*)\.(\d+)([feg])", spec)
-        if not m:
-            return {"kind": "str", "prec": 0, "width": 0, "zero": False,
-                    "commas": commas}
-        return {"kind": m.group(5), "prec": int(m.group(4)),
-                "width": int(m.group(3) or 0), "zero": m.group(2) == "0",
-                "commas": commas}
-
-    @staticmethod
     def _parse_link_and_filters(build: dict) -> "tuple[list, list]":
         """Read link() and filter() out of build_options.
 
@@ -27405,6 +27201,15 @@ class DashRenderer:
             varname = kpi.get("var") or kpi.get("varname", "")
 
             kpi_copy = dict(kpi)
+            # A hand-edited fmt() the page cannot write (dash kpi refuses
+            # it): the card shows %9.0g, said once (WP-28, GAPS2 E1).
+            _kfmt = str(kpi.get("fmt", "") or "").strip()
+            if _kfmt and _dash_fmt_refusal(_kfmt) is not None:
+                _dash_warn_once(
+                    ("kpi-format", name),
+                    f"dash: KPI '{_dash_display(name)}': "
+                    f"fmt({_dash_display(_kfmt)}) cannot be written by the "
+                    f"dashboard; shown in %9.0g.")
             if stat and varname and varname in self.df.columns:
                 try:
                     # Honour the KPI's own if/in qualifier.  Stata computes
@@ -27445,8 +27250,7 @@ class DashRenderer:
         kvar = kdef.get("var") or kdef.get("varname", "")
         # The SAME resolution the initial render uses, or the card changes
         # shape on the first interaction.
-        kfmt = self._effective_kpi_fmt(kdef, kvar)
-        dec, comma = DashRenderer._parse_fmt(kfmt)
+        kfmt = self._effective_kpi_fmt(dict(kdef, stat=kstat), kvar)
         # A KPI carrying its own if/in must keep carrying it.  The callback
         # works on row identities, so the qualifier travels as the set of
         # rows it selects rather than as an expression -- no evaluator in the
@@ -27461,15 +27265,13 @@ class DashRenderer:
             "name_html": html.escape(kname or "kpi"),
             "stat": kstat,
             "varname": kvar,
-            "decimals": dec,
-            "commas": comma,
+            # The effective format and the storage type, for dash_fmt_text
+            # (WP-28, GAPS2 E1).  Data only: JSON-encoded into
+            # kpi_config_json, never into the callback's code or a style.
+            "fmt": kfmt,
+            "storage": getattr(self, "storage_types", {}).get(kvar, "") or "",
             "has_qual": qual_ids is not None,
             "qual_ids": qual_ids if qual_ids is not None else [],
-            # No fixed format anywhere: both sides fall back to Stata's
-            # general display rather than to two different defaults.
-            "general": kfmt.strip() in ("", "%9.0g"),
-            # How the first render wrote the number, for dash_numfmt.
-            "numfmt": DashRenderer._kpi_js_number_format(kfmt),
             # A statistic of a date variable whose result is itself a date
             # has to be re-rendered as a date, not as a number of ms.
             "datekind": (
@@ -29135,6 +28937,9 @@ class ServerAppBuilder:
                 str(_k): str(_v)
                 for _k, _v in (self.spec.get("build_options", {})
                                .get("formats", {}) or {}).items()},),
+            # Each variable's storage type, filled by make_document from
+            # the data it loads, for the KPI writer (WP-28, GAPS2 E1).
+            "_STORAGE_TYPES = {}",
         ]
 
     def build(self, output_path: str, port: int = 5006) -> None:
@@ -30030,9 +29835,9 @@ class ServerAppBuilder:
             '    """',
             "    return _dash_format_kpi_value(",
             "        value, _dash_effective_kpi_fmt(",
-            "            {'fmt': fmt_str}, varname, _NUM_FORMATS),",
+            "            {'fmt': fmt_str}, varname, _FORMATS, stat, date_vars),",
             "        varname, stat, date_vars=date_vars,",
-            "        date_formatter=_format_date_value_standalone)",
+            "        storage=_STORAGE_TYPES.get(varname))",
             "",
             "",
         ]
@@ -30103,6 +29908,10 @@ class ServerAppBuilder:
             "    _date_vars = dict(meta.get('date_vars', {}) or {})",
             "    # Each variable's storage type (WP-28 S04), for the writer.",
             "    _storage_types = dict(meta.get('storage_types', {}) or {})",
+            "    # The KPI writer's module-level view of the same map",
+            "    # (_format_kpi is module-level; WP-28, GAPS2 E1).",
+            "    _STORAGE_TYPES.clear()",
+            "    _STORAGE_TYPES.update(_storage_types)",
             "    # The dataset's Stata metadata reaches the mapper, as it does",
             "    # when the saved renderer builds one: a served colour key used",
             "    # to read '0'/'1' where the saved one reads the value labels.",
@@ -30910,6 +30719,15 @@ class ServerAppBuilder:
             "        kstat = kpi.get('stat', 'mean')",
             "        kvar  = kpi.get('var', '')",
             "        kfmt  = kpi.get('fmt', '')",
+            "        # A hand-edited fmt() the page cannot write: %9.0g, said",
+            "        # once (WP-28, GAPS2 E1), as the saved renderer says it.",
+            "        _kfs = str(kfmt or '').strip()",
+            "        if _kfs and _dash_fmt_refusal(_kfs) is not None:",
+            "            _dash_warn_once(",
+            "                ('kpi-format', kname),",
+            "                \"dash: KPI '%s': fmt(%s) cannot be written by the \"",
+            "                \"dashboard; shown in %%9.0g.\"",
+            "                % (_dash_display(kname), _dash_display(_kfs)))",
             "        ktitle = kpi.get('title', '') or ''",
             "        ksub   = kpi.get('subtitle', '') or ''",
             "        kcolor = kpi.get('color', '') or ''",

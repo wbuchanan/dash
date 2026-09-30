@@ -17,6 +17,7 @@
 *!   S14  axis labels and value labels, B1 and G16 (AL-01..AL-19)
 *!   S18  axis scale extents, B2 (AE-01..AE-06)
 *!   S15  legend order and labels, B5 (LO-01..LO-08)
+*!   S11  KPI card text, E1 (KF-01..KF-05)
 *!
 *! Usage: via run_all_cscripts.do (registered as its last block).  One
 *! block alone: set GAPS2_ONLY=S<NN> in the environment of the driver run
@@ -1384,6 +1385,193 @@ if inlist("`only'", "", "S15") {
     display as text "S15 end `c(current_time)'"
 }
 * ==== end S15 ====
+
+* ==== S11 E1: KPI card text ====
+local only : env GAPS2_ONLY
+if inlist("`only'", "", "S11") {
+    display as text "S11 start `c(current_time)'"
+
+    // The fixture's frame: auto with a %td and a %tm variable.
+    sysuse auto, clear
+    generate when = mdy(1,1,2000) + _n
+    format when %td
+    generate whenm = mofd(when)
+    format whenm %tm
+
+    // KF-01: every accepted fmt() on the saved page equals Stata's
+    // `display' text, the __dsp global dash kpi stores.
+    dash clear
+    dash scatter mpg weight, name(g1)
+    local kf_fmts "%9.0g %10.0g %9.2f %9,2fc %12.0fc %8.0gc %9.2e %9.3gc %-9.2f %09.2f"
+    local kf_n = 0
+    foreach f of local kf_fmts {
+        local ++kf_n
+        dash kpi mean(price), name(kf`kf_n') title("T") fmt(`f')
+    }
+    foreach f in %td %tdCCYY-NN-DD %tdMonth_DD,_CCYY {
+        local ++kf_n
+        dash kpi max(when), name(kf`kf_n') title("T") fmt(`f')
+    }
+    local ++kf_n
+    dash kpi min(whenm), name(kf`kf_n') title("T") fmt(%tm)
+    // KF-02: no fmt(): the variable's own format, %9.0g for a count.
+    dash kpi mean(price), name(kn1) title("T")
+    dash kpi max(when), name(kn2) title("T")
+    dash kpi count(when), name(kn3) title("T")
+    local kf_v : display %8.0gc ${dash_kpi_kn1__val}
+    global kf_want_kn1 = strtrim("`kf_v'")
+    local kf_v : display %td ${dash_kpi_kn2__val}
+    global kf_want_kn2 = strtrim("`kf_v'")
+    local kf_v : display %9.0g ${dash_kpi_kn3__val}
+    global kf_want_kn3 = strtrim("`kf_v'")
+    // KF-04: a missing statistic.
+    dash kpi mean(price) if price > 1e9, name(km1) title("T") fmt(%9.2f)
+    dash kpi mean(price) if price > 1e9, name(km2) title("T")
+    // KF-05: a %t picture carrying markup never reaches a card: dash kpi
+    // refuses it (r(198)) and registers nothing; the page-side escape of
+    // a hand-edited spec is test_kpi_format.py's TestEscaping.
+    capture dash kpi max(when), name(kx1) title("T") fmt(%td!<!b!>DD)
+    global kf_rc5 = _rc
+    global kf_reg5 = ("${dash_kpi_kx1}" != "")
+    forvalues i = 1/`kf_n' {
+        global kf_want_kf`i' `"${dash_kpi_kf`i'__dsp}"'
+    }
+    global kf_want_km1 "."
+    global kf_want_km2 "."
+    global kf_names ""
+    forvalues i = 1/`kf_n' {
+        global kf_names "${kf_names} kf`i'"
+    }
+    global kf_names "${kf_names} kn1 kn2 kn3 km1 km2"
+
+    local kf_html "`gt_work'/s11_cards.html"
+    local kf_app  "`gt_work'/s11_cards_app.py"
+    capture erase "`kf_html'"
+    capture erase "`kf_app'"
+    quietly dash build, saving("`kf_html'") replace nobrowser ///
+        filter(mpg, type(slider))
+    quietly dash build, saving("`kf_app'") server replace ///
+        filter(mpg, type(slider))
+    global kf_html "`kf_html'"
+    global kf_app  "`kf_app'"
+
+    // The python block holds no brace: Stata still reads a block that
+    // another GAPS2_ONLY skips for its braces.
+    python:
+import html as _html
+import re as _re
+import warnings as _w
+from sfi import Macro as _M
+
+
+def _kf_card(text, name):
+    # The value div's text, between its opening tag and </div>, as the
+    # page stores it (the Div's text HTML-escaped once more in the JSON).
+    m = _re.search(r'id=\\"kpi_val_' + _re.escape(name)
+                   + r'\\"[^&]*&gt;(.*?)&lt;/div&gt;', text)
+    return None if m is None else _html.unescape(m.group(1))
+
+
+def _kf_served_card(text, name):
+    m = _re.search(r'id="kpi_val_' + _re.escape(name) + r'"[^>]*>(.*?)</div>',
+                   text or "")
+    return None if m is None else m.group(1)
+
+
+names = _M.getGlobal("kf_names").split()
+want = dict((n, _M.getGlobal("kf_want_" + n)) for n in names)
+with open(_M.getGlobal("kf_html"), encoding="utf-8") as fh:
+    page = fh.read()
+saved = dict((n, _kf_card(page, n)) for n in names)
+bad1 = [n for n in names
+        if n.startswith("kf") and saved[n] != _html.escape(want[n])]
+bad2 = [n for n in ("kn1", "kn2", "kn3")
+        if saved[n] != _html.escape(want[n])]
+bad4s = [n for n in ("km1", "km2") if saved[n] != "."]
+ok5 = int("kpi_val_kx1" not in page)
+_M.setGlobal("kf_bad1", " ".join("%s:%r/%r" % (n, saved[n], want[n])
+                                 for n in bad1) or "none")
+_M.setGlobal("kf_bad2", " ".join("%s:%r/%r" % (n, saved[n], want[n])
+                                 for n in bad2) or "none")
+_M.setGlobal("kf_ok5", str(ok5))
+_M.setGlobal("kf_n1", str(len(bad1)))
+_M.setGlobal("kf_n2", str(len(bad2)))
+
+# KF-03: the served app, as opened and after the mpg slider moves to its
+# minimum (no row removed).  The app is the generated file, never user
+# data; its curdoc attach is replaced so nothing is served.
+from bokeh.document import Document
+from bokeh.models import Div, Slider
+with open(_M.getGlobal("kf_app"), encoding="utf-8") as fh:
+    src = fh.read()
+attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+ns = dict(__name__="dash_s11_app")
+with _w.catch_warnings():
+    _w.simplefilter("ignore")
+    exec(compile(src.replace(attach, "pass"), "dash_s11_app.py", "exec"), ns)
+    doc = Document()
+    ns["make_document"](doc)
+
+
+def _served(doc):
+    out = dict()
+    for d in doc.select(dict(type=Div)):
+        for n in names:
+            v = _kf_served_card(d.text, n)
+            if v is not None:
+                out[n] = _html.unescape(v)
+    return out
+
+
+opened = _served(doc)
+sl = [s for s in doc.select(dict(type=Slider))
+      if getattr(s, "_dash_var", None) == "mpg"]
+fired = 0
+if len(sl) == 1:
+    old = sl[0].value
+    with _w.catch_warnings():
+        _w.simplefilter("ignore")
+        sl[0].value = sl[0].start
+        for attr in ("value", "value_throttled"):
+            for cb in sl[0]._callbacks.get(attr, []):
+                cb(attr, old, sl[0].start)
+                fired += 1
+moved = _served(doc)
+wanted = dict(want)
+bad3 = [n for n in names
+        if not (opened.get(n) == moved.get(n) == wanted[n])]
+_M.setGlobal("kf_fired", str(fired))
+_M.setGlobal("kf_n3", str(len(bad3)))
+_M.setGlobal("kf_bad3", " ".join("%s:%r/%r/%r" % (n, opened.get(n),
+                                                  moved.get(n), wanted[n])
+                                 for n in bad3) or "none")
+bad4 = [n for n in ("km1", "km2")
+        if opened.get(n) != "." or moved.get(n) != "."]
+_M.setGlobal("kf_bad4", " ".join(bad4s + bad4) or "none")
+_M.setGlobal("kf_n4", str(len(bad4s + bad4)))
+end
+
+    _gt_expect KF-01 "(${kf_n1} == 0)" `"saved cards differ: ${kf_bad1}"'
+    _gt_done KF-01 "every fmt() card on the saved page is Stata's display text"
+    _gt_expect KF-02 "(${kf_n2} == 0)" `"saved cards differ: ${kf_bad2}"'
+    _gt_done KF-02 "no fmt(): own format (%8.0gc, %td), %9.0g for count(when)"
+    _gt_expect KF-03 "(${kf_fired} == 1)" "the served mpg slider fired ${kf_fired} callbacks"
+    _gt_expect KF-03 "(${kf_n3} == 0)" `"served cards differ: ${kf_bad3}"'
+    _gt_done KF-03 "the served app shows the same text, opened and after a move"
+    _gt_expect KF-04 "(${kf_n4} == 0)" `"missing cards: ${kf_bad4}"'
+    _gt_done KF-04 "a missing statistic reads . in both modes"
+    _gt_expect KF-05 "(${kf_rc5} == 198)" "dash kpi fmt(%td!<!b!>DD) returned r(${kf_rc5})"
+    _gt_expect KF-05 "(${kf_reg5} == 0)" "the refused KPI was registered"
+    _gt_expect KF-05 "(${kf_ok5} == 1)" "the page holds the refused card"
+    _gt_done KF-05 "markup in a %t picture is refused and never reaches the page"
+
+    capture erase "`kf_html'"
+    capture erase "`kf_app'"
+    dash clear
+    macro drop kf_*
+    display as text "S11 end `c(current_time)'"
+}
+* ==== end S11 ====
 
 * ==== append new blocks above this line ====
 

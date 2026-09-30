@@ -1295,7 +1295,11 @@ filter can leave a card none -- {cmd:count}, {cmd:dcount} and {cmd:sum} are
 of one observation are missing too.  Of a date variable, {cmd:mean},
 {cmd:min}, {cmd:max}, {cmd:median} and every percentile are dates, and
 both the saved page and the served app (see
-{help dash##server_mode:Server Mode}) show them as dates.
+{help dash##server_mode:Server Mode}) show them as dates: in {cmd:fmt()}'s
+format if given, else in the variable's own {cmd:%t} picture, as
+{cmd:display} writes them ({cmd:%td} gives {cmd:02jan2001}).  A count, a
+distinct count, a spread, a sum or the skewness of a date variable is a
+number, shown in {cmd:%9.0g} unless {cmd:fmt()} says otherwise.
 
 {pstd}
 {ul:Options:}
@@ -1315,7 +1319,11 @@ both the saved page and the served app (see
     error; the hexadecimal {cmd:%21x} and the IEEE {cmd:%16H} and
     {cmd:%16L} formats, which {cmd:confirm numeric format} accepts, are
     refused with r(198) too: the page cannot write a hexadecimal or IEEE
-    byte dump{p_end}
+    byte dump.  The card shows the text {cmd:display} gives for its format,
+    as the page opens, after every filter move and after a brush, saved
+    and served: {cmd:fmt()} if given, else the variable's own display
+    format ({cmd:%8.0gc} shows {cmd:6,165.3} for auto's mean price),
+    else {cmd:%9.0g}; a missing statistic reads {cmd:.}{p_end}
 {synopt:{cmdab:sub:title}{cmd:(}{it:string}{cmd:)}}smaller label displayed
     below the value{p_end}
 {synopt:{cmd:color(}{it:color}{cmd:)}}text color of the value (Stata color

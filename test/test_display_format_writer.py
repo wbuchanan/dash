@@ -236,8 +236,10 @@ class TestLoaders:
 
 class TestTheGuard:
 
-    def test_a_card_on_a_g_variable_is_unchanged_until_section_11(self):
-        assert dr._dash_effective_kpi_fmt({}, "price", {"price": "%8.0gc"}) == "%9.0g"
+    # Inverted by WP-28 section 11 (GAPS2 E1), which removed the guard: a
+    # card on a %g variable is written in that variable's own format.
+    def test_a_card_on_a_g_variable_uses_its_own_format(self):
+        assert dr._dash_effective_kpi_fmt({}, "price", {"price": "%8.0gc"}) == "%8.0gc"
         assert dr._dash_effective_kpi_fmt({}, "price", {"price": "%9.2f"}) == "%9.2f"
 
 
