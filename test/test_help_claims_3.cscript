@@ -194,7 +194,8 @@ display "HC3-08 PASS: an unregistered exclude() or a bad name is r(198); a varia
 // ----------------------------------------------------------------
 _hc3_run `"dash build, saving("`hc3'09.html") replace filter(price, type(range) label(Bob's cars) exclude(g2))"'
 assert r(rc) == 0
-cert_file_has "`hc3'09.html", needle(`""title":"Bob's cars","value""')
+// GAPS2 E3/G6 gave the range slider a Stata display-format "format" key after its title
+cert_file_has "`hc3'09.html", needle(`""title":"Bob's cars","format""')
 assert r(found) == 1
 _hc3_run `"dash build, server saving("`hc3'09.py") replace filter(price, type(range) label(Bob's cars) exclude(g2))"'
 assert r(rc) == 0
@@ -219,7 +220,8 @@ _hc3_run `"dash build, saving("`hc3'11.html") replace filter(foreign, type(dropd
 assert r(rc) == 0
 cert_file_has "`hc3'11.html", needle(`""title":"Origin","options""')
 assert r(found) == 1
-cert_file_has "`hc3'11.html", needle(`""title":"Weight","value""')
+// GAPS2 E3/G6: the range slider writes "format" after its title
+cert_file_has "`hc3'11.html", needle(`""title":"Weight","format""')
 assert r(found) == 1
 display "HC3-11 PASS: a top-level semicolon still separates two filters"
 
@@ -234,7 +236,7 @@ display "HC3-11 PASS: a top-level semicolon still separates two filters"
 foreach v in trunk tru {
     _hc3_run `"dash build, saving("`hc3'11b_`v'.html") replace filter(foreign, type(dropdown) label(Origin); `v', type(range) label(Trunk))"'
     assert r(rc) == 0
-    cert_file_has "`hc3'11b_`v'.html", needle(`""title":"Trunk","value""')
+    cert_file_has "`hc3'11b_`v'.html", needle(`""title":"Trunk","format""')
     assert r(found) == 1
 }
 display "HC3-11b PASS: the variable of a group after a top-level semicolon is exported, abbreviated or not"

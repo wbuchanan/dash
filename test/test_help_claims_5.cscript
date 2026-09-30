@@ -408,7 +408,8 @@ _hc5_count "`svg'" ">14610<"
 assert r(n) == 1
 capture dash clear
 local q = char(34)
-foreach sc in "foreign rep78|Domestic / 3|Domestic / 3.0" "r2|Three|3.00" "r2|4|4.00" "d|01 Jan 2000|14610.0" {
+// GAPS2 E3/G6: a %td panel title is Stata's display %td text, 01jan2000
+foreach sc in "foreign rep78|Domestic / 3|Domestic / 3.0" "r2|Three|3.00" "r2|4|4.00" "d|01jan2000|14610.0" {
     gettoken byv rest : sc, parse("|")
     gettoken bar rest : rest, parse("|")
     gettoken want rest : rest, parse("|")
