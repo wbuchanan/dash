@@ -617,12 +617,13 @@ class TestTheParsersFoundSomething:
         # zlabel, ztitle, zscale) and S14's four axis-rule rows (a/b,
         # x y to z, # "text", #N numlist); the B7, X1/E2 and S14 edits
         # to xtitle2, ytitle2, type(dropdown), exclude() and a(b)c
-        # rewrote entries without adding any.  The six rows of the
+        # rewrote entries without adding any.  331 with S15's legend
+        # lastlabel() row (GAPS2 B5).  The six rows of the
         # second-axis table
         # written as {p2col:} rows, which the cutter starts no entry at,
         # left 311 -- above "150", with those rows read as prose.
-        assert len(defs) == 330, (
-            f"{len(defs)} definition entries cut out of dash.sthlp, 330 "
+        assert len(defs) == 331, (
+            f"{len(defs)} definition entries cut out of dash.sthlp, 331 "
             f"measured 30sep2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
