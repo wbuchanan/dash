@@ -4240,7 +4240,7 @@ commands, output and the resolved state of every `GAPS.md` finding — in
 
 ---
 
-## WP-28 · Close the GAPS2 audit's 22 gaps
+## WP-28 · Close the GAPS2 audit's 22 gaps — DONE
 
 **GAPS2 closed:** B1, B2, B3, B5, B6, B7, C2, D1, E1, E2, E3, E14, F1, G1, G2, G3, G5, G6, G16, K2, X1, X2 · **Severity:** S1 (14), S2 (5), S3 (3) · **Effort:** L · **Depends on:** WP-27
 
@@ -4406,6 +4406,29 @@ commands, output and the resolved state of every `GAPS.md` finding — in
 | K2 | The declared Python/Bokeh minimums are false | S2 | S | yes | S09 |
 | X1 | Dropdown filters rewrite numeric-looking string codes and drop categories | S1 | S | yes | S17 |
 | X2 | colorvar() explicit forms (colorcuts, colorlevels, z-axis) are not drawn | S1 | M | partly | S16 |
+
+### Done, measured (30sep2026)
+
+- **BR-28 / GAPS2.** The 22 gaps in scope are closed, each test first,
+  each by a commit whose subject names it and a closed BUGS.md entry
+  whose Resolution reads (WP-28, <ID>); GAPS2.md's Tracked line of each
+  names that entry and commit.  C4 and its duplicate E4 are deferred by
+  decision (DISCOVERY Q3).  Residuals deferred, as BUGS.md records them
+  and the maintainer approved: B1, B2, B5, D1, E1, E14, G1, G3, G16, K2
+  and X2.
+- **Fixtures.** test/fixtures gained or regrew ten files, the Stata-
+  measured truth of text_truth.json and value_truth.json among them.
+- **Tests flipped.** 99 pinned expectations were flipped, each named
+  with its reason in its fix commit's Flipped: line.
+- **Runs.** make test: <to be measured in 19-12>.  make test-dev: <to be
+  measured in 19-12>.  make cert: <to be measured in 19-12>, wall time
+  before and after <to be measured in 19-12>.  make gate: <to be
+  measured in 19-12>.
+- **Demo pages.** <to be measured in 19-12>; regenerated and left
+  untracked (.gitignore holds *.html).
+- **AGENTS.md** carries "Invariants introduced by WP-28", each with its
+  guarding test.
+- **Merge.** `git checkout main && git merge s3-bugs` -- reported, not run.
 
 ---
 

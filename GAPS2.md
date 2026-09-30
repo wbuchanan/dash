@@ -390,7 +390,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   - `xlabel2`/`ylabel2`/`xtick`/`ytick` share the parser.
 - **Closable:** yes.
 - **Plan:** 1. Tokenise with `_textbox_string_end`: a quoted or compound string is always label text, and consecutive strings are lines of one label. 2. Expand the numeric parts in dash.ado with Stata's `numlist` (or port the [U] numlist rules), write the expanded values into the spec, and keep the `_MAX_AXIS_TICKS` bound. 3. pytest each form in both modes. 4. cscript reading twoway's tick positions and label text (SVG) for the same rules.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-28, BUGS.md "Axis-label rules misread quoted numeric text, multi-line labels and numlist forms", commit 9cd93e8; residual deferred (WP-28): where twoway refuses a form outright (a second consecutive string, a label after an increment, single quotes, a bare word, a top-level comma list), dash draws what it can read and names the rest rather than refusing, because numlist's return code cannot tell those forms from ones twoway draws (a zero step is rc 0 in twoway); was: new.
 
 <a id="b2"></a>
 ### B2. Label/tick values do not widen the axis; `xscale`/`yscale(range())` narrows or inverts it
@@ -401,7 +401,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   - `yscale(r(0 100))` is named and ignored.
 - **Closable:** yes.
 - **Plan:** 1. After the layers are drawn (beside `_dash_finish_count_ticks`), set each axis extent to the hull of the drawn data, every label/tick position (unless `norescale`) and every `range()` value, never narrower than the data. 2. Treat `range(#)` as a value to include, not a bound; accept `r()` and missing values; handle log and date axes and `yscale2`/`xscale2`. 3. pytest in both modes. 4. cscript recording twoway's `.Graph.yaxis1` scale min/max for about 20 label/range combinations into a fixture, and assert against it.
-- **Tracked:** new (dash.sthlp documents only the `xtick` case).
+- **Tracked:** Closed in WP-28, BUGS.md "Label and tick values do not widen the axis and xscale/yscale range() narrows or inverts it", commit 866601a; residual deferred (WP-28): the margin stays Bokeh's 5% of the span and the default ticker Bokeh's, not twoway's 2.2% of the canvas and its tick rule (B25); an axis without an explicit value keeps Bokeh's autorange; the %td probe (b2_td_range) and the by() probe (b2_by_range0) have no SVG fit and are recorded through .Graph only; was: new (dash.sthlp documents only the `xtick` case).
 
 <a id="b3"></a>
 ### B3. Textbox sub-option abbreviations (and `bcolor`/`lstyle`/`lalign`/`prefix`/`suffix`) are drawn as part of the title/axis-title text
@@ -412,7 +412,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   - After a full name, a later abbreviation is only named, not applied.
 - **Closable:** yes.
 - **Plan:** 1. Replace `_TEXTBOX_SUBOPTS` with a (full name, minimum abbreviation) table transcribed from `textbox_options.sthlp`, `title_options.sthlp` and `axis_title_options.sthlp`. 2. Normalise names in `_parse_textbox_opt` so `c()`/`si()` reach `_textbox_color`/`_textbox_size`; name the rest through `_dash_textbox`; route `axis(2)` to the `ytitle2`/`xtitle2` path. 3. pytest table over every spelling on all six text options, in both modes. 4. cscript comparing twoway's `.Graph.title` text and colour (or its SVG) with dash's output.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-28, BUGS.md "Textbox sub-option abbreviations are drawn as title text", commit d66a093; was: new.
 
 <a id="b4"></a>
 ### B4. `by()` panels are drawn on independent scales by default
@@ -431,7 +431,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   - `-` lines are dropped and `lastlabel()` is only named.
 - **Closable:** yes.
 - **Plan:** 1. Parse `order()` entries with `_textbox_string_end`/`_textbox_lines`: a key number followed by zero or more strings, or `-` plus strings for a text-only entry. 2. Build each key's text by key number (default, then `label(#)`, then `order()` text, then `lastlabel()`), and only then select and order the keys. 3. Draw `-` entries as `LegendItem`s backed by an invisible placeholder renderer, after checking that BokehJS draws a label-only row. 4. pytest in both modes; cscript comparing twoway's SVG legend text and order.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-28, BUGS.md "legend order() text and label() after order() are applied to the wrong keys", commit 0f8b376; residual deferred (WP-28): a layer that drew nothing has no key, so order() naming its number draws nothing where twoway draws the key; was: new.
 
 <a id="b6"></a>
 ### B6. `xtitle("")` / `ytitle("")` do not remove the axis title
@@ -439,7 +439,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
 - **Gap:** `axis_title_options.sthlp:219-227` makes `xtitle("")` the standard way to remove an axis title, and dash.sthlp:455-458 treats empty text as clearing a title. `_dash_axis_labels` (dash_render.py:16036-16037) uses `x_label = x_text or x_default`, so `xtitle("")` still draws `weight` and `ytitle("")` still draws `mpg`, with no warning, in both modes. No test covers this.
 - **Closable:** yes.
 - **Plan:** 1. In `_dash_axis_labels`, tell an option given with empty text (raw value non-empty, `_textbox_lines` empty) from an absent option, and return `''` for the first; do the same for `ytitle2`/`xtitle2`. 2. pytest in both modes for `xtitle("")`, `ytitle("")`, `xtitle("", size(large))` and a histogram/kdensity default. 3. cscript: twoway's SVG for `scatter mpg weight, xtitle("") ytitle("")` has no axis-title text; assert that dash's `axis_label` is empty.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-28, BUGS.md "An empty xtitle() or ytitle() does not remove the axis title", commit 34a53a4; was: new.
 
 <a id="b7"></a>
 ### B7. `ytitle2()`/`xtitle2()` draw their quote marks and ignore textbox grammar
@@ -450,7 +450,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   - `"P2", size(large)` is drawn verbatim.
 - **Closable:** yes.
 - **Plan:** 1. Read `{n}title2` through `_dash_textbox(raw, 'ytitle2'/'xtitle2')`, joining lines with newlines and naming unhonoured sub-options. 2. Apply `size()`/`color()` to the y2/x2 axis as `_dash_style_axis_titles` does for the primary axes. 3. pytest in both modes with quoted, multi-line, compound-quoted and sub-option strings. 4. Extend JSE-46 to compare the rendered right-axis label with twoway's SVG text for `ytitle("a" "b", axis(2))`.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-28, BUGS.md "ytitle2() and xtitle2() draw their quote marks and ignore textbox grammar", commit f1f5589; was: new.
 
 **B8. Date axes ignore the variable's display format and `xlabel(, format(%t...))`** -- same gap as E3; see there.
 
@@ -735,7 +735,7 @@ The statistical layers should draw what twoway draws, with the same estimator, d
 - **Gap:** Stata counts every observation as `floor((v - min)/h)`, folding 0 and `bin` into the first and last bars (twoway__histogram_gen.ado:198-200). dash.sthlp's histogram paragraph promises the same. dash's continuous branch builds its edges as `start + width*arange(n+1)` (dash_render.py:9750-9766) and counts with `np.histogram` (dash_render.py:9577) and a JavaScript recount (dash_render.py:14817-14824). Both drop any value above the last edge. On nlsw88 ttl_exp, `bin(27|51|54|83)` counts 2245 of 2246 rows, census pop `bin(75)` counts 49 of 50, and about 4% of random rounded layers lose a row. No note is printed, and density bars are rescaled to the rows that remain. A `start()` above the minimum but within reldif 1e-5 of it passes dash.ado:3832, and the rows below it are then dropped. Stata counts them in bar 0.
 - **Closable:** yes. The discrete branch already uses Stata's rule (dash_render.py:9565-9575).
 - **Plan:** 1. In `GlyphMapper.map_histogram`, count the continuous branch as `idx = floor((v - start)/h)`, clamp it to 0 and `bin-1`, then call `np.bincount`. Set the last edge to `start + h*bin` and remove the tolerance-based extra edge. 2. Apply the same rule in the `_FILTER_JS` recount (dash_render.py:14800-14824); the served app follows. 3. Add a property test (random data, `bin` 1..100, `width()`, `start()` just above the minimum) checking that frequency bars sum to N in the saved page, in the served app, and in the JavaScript run under node. Add regressions for nlsw88 ttl_exp `bin(27)` and census pop `bin(75)`. 4. Add twoway__histogram_gen `generate()` output for these cases to scripts/extract_stat_truth.do and pin it in test_statistical_truth.py.
-- **Tracked:** new. The discrete case was fixed in BUGS.md "histogram, discrete dropped the values past its last edge". The `start()` case is a residual of BUGS.md "A histogram start() above the variable's minimum was accepted and the rows below it silently dropped".
+- **Tracked:** Closed in WP-28, BUGS.md "A continuous histogram dropped the observation at its last edge, and the rows a tolerated start() lies above", commit b06b662; was: new. The discrete case was fixed in BUGS.md "histogram, discrete dropped the values past its last edge". The `start()` case is a residual of BUGS.md "A histogram start() above the variable's minimum was accepted and the rows below it silently dropped".
 
 **C3. Options that change the estimate are named in the note and ignored: estopts(), predopts(), estcmd(), atobs, kdensity area() and boundary, lpolyci pwidth() and var()** -- same gap as A4; see there.
 
@@ -752,7 +752,7 @@ The statistical layers should draw what twoway draws, with the same estimator, d
   - histogram rebinning from the kept rows' min and max, and the kdensity grid over their range
 
   2. Tag every computed renderer with `_dash_agg_config`/`_dash_agg_rows` so the filter callback re-estimates it. Use a Web Worker when N × window exceeds a threshold. 3. Above a size ceiling, or for an unported type, show a cue while a filter is active (dim the layer and add a legend suffix such as "all rows"), and print a build-time note. 4. Test the JavaScript under node against the Python mappers on the four fixture datasets and filtered subsets (as `TestFilterJavaScript` does, test_statistical_helpers.py:860), and against the Stata fixtures on subsets (qualified_stat_truth.json). Add a test that the cue appears for an unported type.
-- **Tracked:** new. dash.sthlp Server Mode documents it ("does not redraw a fitted line"); it is not in BUGS.md or GAPS.md.
+- **Tracked:** Deferred (WP-28): out of scope by decision (DISCOVERY Q3), with its duplicate E4; nothing is ported to _FILTER_JS on its account; was: new. dash.sthlp Server Mode documents it ("does not redraw a fitted line"); it is not in BUGS.md or GAPS.md.
 
 **C5. function evaluates only ten Python functions: normalden(), normal(), ln(), _pi, comparisons, cond(), min(), max() and scalars draw nothing, and x^y^z is evaluated right to left** -- same gap as A6; see there.
 
@@ -843,7 +843,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
   3. Warn once for each directive line whose value cannot be read, naming the line, and never store a malformed key.
   4. Test that all 129 local third-party files parse with no malformed keys, and pin d3colors p1-p15 to the file's RGB values.
   5. Compare with Stata's SVG export of a scatter under the copied d3colors scheme.
-- **Tracked:** ROADMAP.md WP-16 notes (:2040, where the RGB misread was recorded and left unfixed for WP-17); otherwise new.
+- **Tracked:** Closed in WP-28, BUGS.md "A scheme's quoted values (RGB colours, %opacity) were dropped without a warning", commit 57590b9; residual deferred (WP-28): CMYK, hsv and colour*# scheme values are D7's (GAPS2 D7), not read here; third-party scheme files excluded by decision (DISCOVERY Q30); was: ROADMAP.md WP-16 notes (:2040, where the RGB misread was recorded and left unfixed for WP-17); otherwise new.
 
 <a id="d2"></a>
 ### D2. Size options are read on a private pixel ladder: numbers as pixels, keywords off the scheme's scale, and Stata's units refused (also reported as B9)
@@ -1108,7 +1108,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
   2. Refuse with r(198) in `_dash_validate_value 'format'` any format the page cannot write, naming it.
   3. Add a cert test: the rendered card equals the Stata-side kpi display for each accepted format, in both modes and after a filter move.
   4. Record a fixture of Stata `display` outputs and compare the Python and node output against it: %9.0g, %10.0g, %8.0g, %9.2g, %9,2f, %12.0fc, %9.2e, %td and %tdCCYY-NN-DD applied to 6165.2567, 3.14159, 1e7 and -0.5.
-- **Tracked:** new
+- **Tracked:** Closed in WP-28, BUGS.md "KPI fmt() accepts formats the card then does not apply, and %w.0g rounds the card to one significant digit", commit ef92806; residual deferred (WP-28): a spread of a date variable is computed in milliseconds (outside E1, E3 and G6); was: new
 
 <a id="e2"></a>
 ### E2. `exclude()` leaves excluded graphs and cards showing rows from a filter state that no longer exists
@@ -1121,7 +1121,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
   3. Served app: do the same in `_on_filter_change`, calling `_dash_frame_filter_mask` with each target's widget subset.
   4. Replace `TestExcludeHoldsWhileItsOwnFilterMoves` with multi-move sequences in both modes: node carries source state across moves, and served `_fire` calls are chained. Assert that the state depends only on the current widget values.
   5. Record Stata truth on auto: `count if foreign==1`, `count if foreign==1 & inrange(price,4000,5000)`, and `summarize mpg` over each. Rewrite dash.sthlp:1135-1138.
-- **Tracked:** ROADMAP.md:3633 (WP-23; records only the single-move rule), documented at dash.sthlp:1135; the stale state after several moves is new.
+- **Tracked:** Closed in WP-28, BUGS.md "An excluded graph or card keeps the rows of the last move made by a filter that does not exclude it", commit cdb3a3d; was: ROADMAP.md:3633 (WP-23; records only the single-move rule), documented at dash.sthlp:1135; the stale state after several moves is new.
 
 <a id="e3"></a>
 ### E3. Dates and formatted numbers on date axes, filter widgets, KPI cards and tooltips ignore the variable's Stata display format (also reported as G11, B8)
@@ -1143,7 +1143,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
      - slider labels
   3. For %tw/%tm/%tq/%th/%ty filters, use a numeric slider over the Stata period number (step 1) with this formatter instead of DateRangeSlider. The served app shares the functions.
   4. Record Stata truth: `display %tm 480`, `display %tq 160`, `display %tdDD/NN/CCYY 15000`, a %tC value, `display %9.0fc 4099`, and the twoway axis labels of a %tm variable. Compare the Python and node output, and the widget, card, axis and tooltip text, in both modes.
-- **Tracked:** new (planned in REMAINING.md:1057, 1076, 2220 and phases/PHASE-12; not in BUGS.md or GAPS.md)
+- **Tracked:** Closed in WP-28, BUGS.md "Dates and formatted numbers on date axes, filter widgets, KPI cards and tooltips ignore the variable's Stata display format", commit be6bee4; was: new (planned in REMAINING.md:1057, 1076, 2220 and phases/PHASE-12; not in BUGS.md or GAPS.md)
 
 **E4. The saved page does not re-estimate computed layers after a filter move (fits stay fitted to all rows; histogram bins and kdensity grid are frozen)** -- same gap as C4; see there.
 
@@ -1271,7 +1271,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
   3. Draw rspike and rconnected markers from row-identity copies in the app, as the saved page does.
   4. Give the served bs GridBox a stylesheet with the 992 px half-row rule and the KPI minimum heights, as `_dash_reflow` does at 768 px. Move the saved bs filter bar below the header, and drop the ALLOWED exemption.
   5. Add each item to test_mode_parity.py and test_served_bs_layout.py, plus a headless-Chrome check at 375, 900 and 1440 px (test_responsive_layout.py).
-- **Tracked:** documented at dash.sthlp:1486-1494 and 1015-1016; the bs items are in ROADMAP.md:3352 (WP-21 "Not done here, recorded for later"); not in BUGS.md
+- **Tracked:** Closed in WP-28, BUGS.md "The saved page and the served app present the dashboard differently", commit b565d21; residual deferred (WP-28): under layout(bs) with filterposition(left) the saved page draws the header inside the content column beside the sidebar where the served app draws it above sidebar and content (research amendment; dash.sthlp records it); was: documented at dash.sthlp:1486-1494 and 1015-1016; the bs items are in ROADMAP.md:3352 (WP-21 "Not done here, recorded for later"); not in BUGS.md
 
 <a id="e15"></a>
 ### E15. `tabs()` drops unknown names and whole tabs silently, and ignores `layout()` inside a tab
@@ -1311,7 +1311,7 @@ Served mode runs the registry as a live Bokeh Server app. There are two routes. 
 - **Gap:** dash.sthlp:711-715 and 1353-1356 say `dash serve` blocks until the server stops, and a failed command should return a non-zero rc. In fact the launcher calls `_proc.wait()` and never reads `returncode` (dash_render.py:27701-27715), and nothing checks the port first (`_dash_serve_spec`, dash.ado:7252-7345). Probe with the port held by another socket: rc 0 after 1.7 s. The only trace was the child's `OSError: [Errno 48] Address already in use` on process stderr, which never reaches Stata. Both routes default to port 5006, so a leftover `app.py` makes a new `dash serve` "succeed" while the browser shows the old dashboard. Separately, `python app.py --port 80` serves on 1024 because of the clamp at dash_render.py:27371. The banner does name 1024, and `dash serve` refuses the port itself before reaching that clamp (dash.ado:7303-7306).
 - **Closable:** yes.
 - **Plan:** 1. In the launcher, treat any child exit other than 0 or a SIGINT/SIGTERM stop as failure: capture stderr through a PIPE and raise `RuntimeError` with its last lines. `_dash_serve` then errors with "no server started on port N: the port is in use". 2. Poll /health for up to 30 s and print the URL only once it answers. 3. Optionally test-bind 127.0.0.1:port first. 4. Make the app's argparse refuse `--port` outside 1024-65535 instead of clamping, and drop the unreachable clamp at 27680. 5. Tests: a pytest that runs the launcher against a held socket and asserts failure plus the message. A cscript asserts `capture dash serve, port(held) timeout(1) nobrowser` gives `_rc != 0`.
-- **Tracked:** new
+- **Tracked:** Closed in WP-28, BUGS.md "dash serve returns rc 0 when no server ran, and an out-of-range --port is clamped instead of refused", commit 8f130a7; was: new
 
 <a id="f2"></a>
 ### F2. A killed Stata leaves the served app running, still holding the port and the data
@@ -1395,7 +1395,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
 - **Gap:** dash.sthlp:170-174 reserves only names that start with `__dashq`, so every other valid name should be read as data. But `_ROW_ID_COLUMN = "__dash_row__"` (dash_render.py:2008; JS `ROW_ID` at 14219) overwrites a user column of the same name in `_make_source` (21416). In the probe, a y holding 100..140 was drawn as 0..4 with no note. `__dash_pc_row__` and the `__mlabel__*` columns share the same namespace. The `__dashq<k>` qualifier columns (`_dash_qual_gen`, dash.ado:4220 onward) and the ustrfix strL (dash_render.py:1296-1300) are generated in the user's data, so data already at `c(maxvar)` would fail with r(900) (not measured).
 - **Closable:** yes.
 - **Plan:** 1. Rename the internal columns in both the Python and JS twins, using a character no Stata name can hold. Alternatively, reserve a `__dash` prefix and refuse it at export with r(110). 2. Build the qualifier, by()-ordered and ustrfix columns in a temporary frame (`frame put <needed vars>, into(tmp)`) and export from it, so nothing is added to the user's data. 3. pytest: variables named `__dash_row__` and `__mlabel__y` are drawn with their own values in both modes. 4. cscript: with `set maxvar 2048` and `c(k)==c(maxvar)`, a build with a plot qualifier, a by() qualifier and a non-UTF-8 strL succeeds and draws the rows twoway draws.
-- **Tracked:** new
+- **Tracked:** Closed in WP-28, BUGS.md "An internal column name could overwrite a user variable, and only __dashq was reserved", commit a158815; residual deferred (WP-28): the qualifier, by()-order and ustrfix columns are still generated in the data in memory, so a dataset at c(maxvar) may fail with r(900); a variable named like a drawn glyph field (x, y, x0, top, count, density and the like) draws its own values as a plot variable but is shadowed by the derived field in hover() and mlabel(); was: new
 
 <a id="g2"></a>
 ### G2. String variables are accepted as plot variables; twoway refuses them
@@ -1403,7 +1403,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
 - **Gap:** twoway refuses a string y or x with r(109), "string variables not allowed" (`varlist(numeric ts)` at twoway_yxview_parse.class:120; `varname(numeric)` for histogram and kdensity). dash.ado:1271 declares `syntax varlist` without `numeric`, and `_dash_process_segment` has no type check. In the probe, a string x produced meaningless Scatter/Line/VBar glyphs with no note, and lfit and histogram crashed with "could not convert string to float".
 - **Closable:** yes.
 - **Plan:** 1. Declare `numeric` in the four varpart parsers per plot type, with twoway's message and r(109). 2. Keep `colorvar()`, `mlabel()`, `hover()` and `by()` accepting strings. 3. cscript: for each of the 38 types, put a string in each position and check that dash's rc and message match twoway's. 4. pytest: a hand-written spec with a string plot column gets a named refusal, not a traceback.
-- **Tracked:** new
+- **Tracked:** Closed in WP-28, BUGS.md "String variables are accepted as plot variables where twoway refuses them", commit b62c224; was: new
 
 <a id="g3"></a>
 ### G3. The data limit counts exported values, so large histograms, densities and fits are refused although the page would be small
@@ -1411,7 +1411,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
 - **Gap:** The limits exist so that nothing "can grow without bound" (dash.sthlp:1504-1578). But `_dash_cell_cap` (dash.ado:2735-2754, called at 5920 and 6875) counts `_N` times (variables plus qualifier columns), whatever is drawn. As a result, `dash histogram x` on 5,000,001 obs is r(134) by default, and nothing can be drawn past 20M obs. Probe at 1e6 x 3: the page was 1.4 MB, but the note said "roughly 72 MB". The export was 57.3 MB of JSON, took 1.2 s and peaked at 1.35 GB RSS.
 - **Closable:** partly. Rows that the page must hold (row-drawing layers, filters, link/brush, csv, hover) stay bounded by browser string and heap limits, so only graphs built from computed layers alone can escape the cap.
 - **Plan:** 1. In dash.ado, count only the columns the page embeds. A computed-only graph with no filter, link or csv touching it counts only its drawn output. 2. Export in binary instead of JSON: a tempfile read with `pandas.read_stata`, or sfi arrays read into numpy. 3. Base the size note on what is embedded. 4. Test: a 6M-obs histogram builds, its bins equal `twoway__histogram_gen`'s and the page is under 2 MB; a 6M-obs scatter is still refused.
-- **Tracked:** new (the refusal is documented at dash.sthlp:1504-1578)
+- **Tracked:** Closed in WP-28, BUGS.md "The data limit counts exported values, so large histograms, densities and fits are refused although the page would be small", commit 4e23bc0; residual deferred (WP-28): a by()-faceted graph is never treated as computed-only and is counted in full, as it was before this section -- the actual panel count is not known before the export, and multiplying the generic 120,000-cell bound by the by_groups LIMIT (100 by default) would read a two-panel by(foreign) on a plain kdensity or lpoly as 12,000,000, over the default cells limit on any dataset however small, which measurably regressed test/test_help_claims_6.py's by()-faceted lpoly grid before this residual was chosen; the export still writes every observation as JSON (DISCOVERY Q9), row-drawing layers, filters, link(), csv and hover() stay bounded by the limit, and the served app embeds every row; was: new (the refusal is documented at dash.sthlp:1504-1578)
 
 <a id="g4"></a>
 ### G4. Time-series operators (L., F., D., S.) in a plot's varlist are refused; twoway draws them
@@ -1427,7 +1427,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
 - **Gap:** Stata 14+ names may hold Unicode letters, and dash accepts them elsewhere (the by() check at dash_parse.mata:2916 uses `\p{L}`; tests use `[aw=größe]`). But `_dash_is_name` (dash_parse.mata:828-840) accepts ASCII only, so `filter(größe)` is refused as "not a valid Stata variable name", r(198). The KPI pattern at dash.ado:6094-6096 refuses `dash kpi mean(größe)` with "syntax is stat(varname)". Found by reading the code; not run in Stata.
 - **Closable:** yes.
 - **Plan:** 1. Replace both checks with `ustrregexm("^[\p{L}_][\p{L}\p{N}_]*$")` and `ustrlen<=32`, then `unab`/`confirm`. 2. Correct the refusal messages. 3. cscript: after `rename price größe`, `dash kpi mean(größe)` equals `summarize`, and `filter(größe, type(range))` and `type(dropdown)` build widgets. 4. pytest: the renderer builds a filter widget over a Unicode-named column.
-- **Tracked:** new
+- **Tracked:** Closed in WP-28, BUGS.md "Unicode variable names are refused by filter() and dash kpi and ignored by the renderer", commit 8d43e21; was: new
 
 <a id="g6"></a>
 ### G6. %g formats (Stata's default) and float storage are not reproduced; values show full double expansions
@@ -1438,7 +1438,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
   - `_dash_format_kpi_value(1234567.5,'%9.0g')` gives '1.23457e+06' where Stata's rule gives 1234568 (not measured).
 - **Closable:** yes.
 - **Plan:** 1. The writer sends each variable's storage type, and floats are shown as the shortest float32 repr. 2. Implement `%w.dg` and `%w.dgc` in Python and JS. 3. Use them in marker labels, tooltips, KPI cards, dropdown labels and the CSV. 4. Build a fixture of about 200 values under `display %9.0g`, `%8.0gc` and `%10.0g`, measured in Stata. Test on auto (price `%8.0gc`) and on generated floats.
-- **Tracked:** new
+- **Tracked:** Closed in WP-28, BUGS.md "%g formats (Stata's default) and float storage are not reproduced, so values show full double expansions", commit be6bee4; was: new
 
 <a id="g7"></a>
 ### G7. %tC values are converted without leap seconds (off by up to 27 s)
@@ -1489,7 +1489,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
 - **Gap:** twoway's `xlabel(1/5, valuelabel)` puts value labels at the ticks, and a user expects `hover(foreign)` to show Domestic/Foreign, as `list` and `browse` do. dash draws numbers on axes and in tooltips and names `xlabel(, valuelabel)` only in the note (dash.sthlp:672-679, difference 6). `_dash_build_hover` (dash_render.py:19839) takes no value labels.
 - **Closable:** yes.
 - **Plan:** 1. Read the `valuelabel` sub-option and fill `major_label_overrides` from the axis variable's label set, reusing the explicit tick-label path (dash_render.py:16783-16798). 2. For `hover()`, add a derived text column like the marker-label one. 3. Compare with twoway's SVG for `scatter mpg rep78, xlabel(1/5, valuelabel)` with a label set.
-- **Tracked:** new (documented difference 6)
+- **Tracked:** Closed in WP-28, BUGS.md "Value labels are never drawn on axes or in tooltips", commit 429d679; residual deferred (WP-28): on the one-line route a hover()-only variable is not exported (BUGS.md's earlier hover-export entry), so its labels cannot be shown; an x or y variable not named in hover() keeps its number in the tooltip; was: new (documented difference 6)
 
 <a id="g17"></a>
 ### G17. Weight expressions are refused ([aw=price+1]); twoway takes an expression
@@ -1823,7 +1823,7 @@ This area should deliver a unit test for every function and end-to-end tests of 
   3. Emit `from __future__ import annotations` as the first statement of the generated app. Add a pytest that ast-scans a generated app for annotations evaluated at import (`X | Y` or builtin generics).
   4. Check `_proc.returncode` in the launcher and raise a dash error naming the exit status. Add a pytest with an app that exits non-zero.
   5. Against Stata: `python set exec` a 3.10 venv at the floor, then run dash_setup, `dash scatter mpg weight, saving(a.html)` and `dash serve, timeout(1)`, and check /health. Downgrade to bokeh 3.5 and confirm dash_setup refuses it.
-- **Tracked:** new
+- **Tracked:** Closed in WP-28, BUGS.md "The declared minimums (Python 3.8, bokeh 3.0) are false: every render needs bokeh 3.6+, and the served app crashes at import on 3.8/3.9", commit b6f274f; residual deferred (WP-28): no interpreter or bokeh below the floor is run by any test (DISCOVERY Q8: no venv matrix); was: new
 
 <a id="k3"></a>
 ### K3. 15 of 22 Stata truth fixtures cannot be regenerated from the repository
@@ -1936,7 +1936,7 @@ This area collects gaps that no single feature area covered: dropdown filters, `
   2. Remove the 'nan'/'None'/'NaT' exclusion from `_dash_dropdown_values` and from the `colorvar` string path. Decide missingness from the dtype and None/NaN only, with `""` as Stata's missing string.
   3. Make `_DASH_FILTER_MASK_JS` and `_dash_dropdown_mask` one rule. Pin it with a pytest that runs both (node and pandas) on the same columns and compares the masks.
   4. Write a cscript with `str fips = string(_n,"%02.0f")`, the values '1', '1.0', 'None' and 'nan', and a double holding 5e-05. For each option it compares the rows kept (served, and saved via node or headless Chrome) with `count if fips == "<text>"`.
-- **Tracked:** new
+- **Tracked:** Closed in WP-28, BUGS.md "A dropdown rewrites string codes to numbers, drops the categories nan None and NaT, and cannot select small numbers on the saved page", commit cdb3a3d; was: new
 
 <a id="x2"></a>
 ### X2. `colorvar()`: `colordiscrete` with `colorcuts()` is read as intervals, and cuts below the minimum are kept. twoway's `colorlevels()`, `colorvarminmax`, `colorrule()` and z-axis options are not drawn, and its default z-tick levels are replaced (documented) by a continuous map
@@ -1956,7 +1956,7 @@ This area collects gaps that no single feature area covered: dropdown filters, `
   3. Optionally, either behind a switch or as the new default, bin at the z ticks from dash's tick model with `colorrule(hue)`. Keep `colpalette()` as the continuous option and update dash.sthlp:2503-2507.
   4. Declare `zlabel()`, `ztitle()` and `zscale()` and draw them on the colour key.
   5. On auto and nlsw88, run `twoway scatter` over a grid of these options and `graph export .svg`. Save each marker's fill group as a fixture, and have pytest compare dash's factor per observation and its number of levels.
-- **Tracked:** new
+- **Tracked:** Closed in WP-28, BUGS.md "colordiscrete with colorcuts() is read as intervals, cuts below the minimum are kept, and colorlevels(), colorvarminmax and the z options are not drawn", commit 7acdcb1; residual deferred (WP-28): colorrule(), colorstart() and colorend() are still only named in the note; the continuous default is kept by decision (DISCOVERY Q5); was: new
 
 <a id="x3"></a>
 ### X3. The one-line form without `saving()` leaves its preview page, a copy of the graph's data, in the temp directory after the command ends
