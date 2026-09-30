@@ -763,7 +763,9 @@ quietly capture run "../dash_parse.mata"
 do "cert_helpers.do"
 cert_file_has "`lg23'", needle("3499")
 local e23crash = r(found)
-cert_file_has "`lg23b'", needle("Missing: _dash_comma_pos()")
+// GAPS2 B3 put _dash_route_axis2 second in dash.ado's _needed list, so the
+// refusal now reads "Missing: _dash_route_axis2() _dash_comma_pos() ...".
+cert_file_has "`lg23b'", needle("Missing: _dash_route_axis2() _dash_comma_pos()")
 local e23bnamed = r(found)
 capture erase "`lg23'"
 capture erase "`lg23b'"
