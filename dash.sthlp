@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.1.0  24sep2026}{...}
+{* *! version 0.1.0  30sep2026}{...}
 {viewerjumpto "Syntax"            "dash##syntax"}{...}
 {viewerjumpto "Description"       "dash##description"}{...}
 {viewerjumpto "Plot types"        "dash##plottypes"}{...}

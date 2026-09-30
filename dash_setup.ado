@@ -13,7 +13,7 @@
 *! Usage: dash_setup
 *!
 *! Author:  (see dash.sthlp)
-*! Version: 0.1.0  24sep2026
+*! Version: 0.1.0  30sep2026
 
 program define dash_setup
     version 16.0

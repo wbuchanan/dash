@@ -251,7 +251,7 @@
 *!       its sub-option tail, into the caller's locals _ap_n, _ap_tag<i>
 *!       and _ap_txt<i> (WP-28 S14, GAPS2 B1).
 *!
-*! Version: 0.1.0  24sep2026
+*! Version: 0.1.0  30sep2026
 
 // ============================================================
 // Compile into memory

@@ -19,8 +19,8 @@ d
 d Run -dash_setup- once after installation: it checks the
 d dependencies and installs the missing Python packages.
 d
-d Version: 0.1.0  24sep2026
-d Distribution-Date: 20260924
+d Version: 0.1.0  30sep2026
+d Distribution-Date: 20260930
 d
 f dash.ado
 f dash.sthlp
