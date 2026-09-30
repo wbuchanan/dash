@@ -5883,8 +5883,9 @@ def _dash_colorvar_cuts(col_vals, cuts, levels, minmax):
 
     Returns ``[]`` when *col_vals* has no finite values.
     """
-    finite = col_vals[~np.isnan(col_vals)] if hasattr(col_vals, "__len__") \
-        else np.asarray([v for v in col_vals if not np.isnan(v)])
+    vals = col_vals if isinstance(col_vals, np.ndarray) \
+        else np.asarray(list(col_vals), dtype=float)
+    finite = vals[~np.isnan(vals)]
     if len(finite) == 0:
         return []
     lo_v = float(np.min(finite))

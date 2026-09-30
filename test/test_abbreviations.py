@@ -491,10 +491,13 @@ def test_help_documents_only_accepted_abbreviations(declarations, plot_decls,
 
     # dash.sthlp's {cmdab:} tokens hold 54 distinct spellings this checks
     # (measured 24sep2026; 47 before the S3 batch's table of the ci band's
-    # options added ac, alc, alw, alp, fc, fi and lc).  Markup that
+    # options added ac, alc, alw, alp, fc, fi and lc).  59 since WP-28
+    # batch 2 (S16, GAPS2 X2) documented colorlev, colorvarminm, zlab, zti
+    # and zsc, each accepted by twoway (measured 30sep2026, rc 0; colorle,
+    # colorvarmin and zs refused, rc 198).  Markup that
     # stopped matching the pattern -- {opt}, say -- would leave the loop
     # nothing to check.
-    assert len(seen) == 54, (
+    assert len(seen) == 59, (
         "%d documented abbreviations were checked" % len(seen))
     assert not bad, (
         "dash.sthlp documents %d spelling(s) dash rejects.\n  "

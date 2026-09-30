@@ -6,9 +6,9 @@
   "how": "one `capture noisily twoway ...` per probe, rc and the joined message recorded; `graph query <style>` output parsed for the vocabularies (this Stata stores nothing in r() for it); `confirm numeric format` for the format probes",
   "finding": "twoway never rejects a bad style NAME: it prints `(note: named style X not found in class Y, default attributes used)` and draws with the default (rc 0). It rejects bad numbers, ranges, enums and unknown variables (rc 198/125/126/121/122/111/4026).",
   "counts": {
-   "twoway": 276,
-   "twoway_rc0": 210,
-   "twoway_rejected": 66,
+   "twoway": 311,
+   "twoway_rc0": 230,
+   "twoway_rejected": 81,
    "formats": 28,
    "vocab": {
     "colorstyle": 1335,
@@ -25,7 +25,8 @@
   },
   "additions": [
    "23sep2026 (WP-22 TR-22.3): clwidth_1-8 and mlabangle_1-8, drawn with `set graphics off' in the same way; clwidth(-1) is refused only where the connecting line is drawn (bar: rc 0), mlabangle(400) only where marker labels are drawn (line: rc 0)",
-   "24sep2026 (S3 batch, the ci band): alwidth_1-12, drawn with `set graphics off' in the same way; alwidth(-1) and alwidth(20000) are refused on lfitci and rarea, the types that draw an area's outline, and not on scatter or line (rc 0)"
+   "24sep2026 (S3 batch, the ci band): alwidth_1-12, drawn with `set graphics off' in the same way; alwidth(-1) and alwidth(20000) are refused on lfitci and rarea, the types that draw an area's outline, and not on scatter or line (rc 0)",
+   "30sep2026 (WP-28 S00, scripts/extract_value_truth_additions.do merged by scripts/merge_value_truth.py): colorlevels_1-8 (twoway refuses abc and 2.5, rc 198, and draws 1, 257 and -1, rc 0) and the axis-label/tick options ylabel, xtick, ytick, xmtick, ymtick, xmlabel, ymlabel _1-3 (abc refused rc 198, #5 and a numlist drawn); xlabel2 and ylabel2 are dash's own spellings, twoway refuses them as not allowed (rc 198)"
   ]
  },
  "vocab": {
@@ -4088,6 +4089,286 @@
    "command": "twoway rarea mpg turn weight, alwidth(-1)",
    "rc": 198,
    "message": "gm_linewidth must be between 0.000 and 1.0e+04"
+  },
+  {
+   "id": "colorlevels_1",
+   "option": "colorlevels",
+   "value": "abc",
+   "command": "twoway scatter mpg weight, colorvar(price) colorlevels(abc)",
+   "rc": 198,
+   "message": "option colorlevels() incorrectly specified"
+  },
+  {
+   "id": "colorlevels_2",
+   "option": "colorlevels",
+   "value": "1",
+   "command": "twoway scatter mpg weight, colorvar(price) colorlevels(1)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "colorlevels_3",
+   "option": "colorlevels",
+   "value": "2",
+   "command": "twoway scatter mpg weight, colorvar(price) colorlevels(2)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "colorlevels_4",
+   "option": "colorlevels",
+   "value": "4",
+   "command": "twoway scatter mpg weight, colorvar(price) colorlevels(4)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "colorlevels_5",
+   "option": "colorlevels",
+   "value": "256",
+   "command": "twoway scatter mpg weight, colorvar(price) colorlevels(256)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "colorlevels_6",
+   "option": "colorlevels",
+   "value": "257",
+   "command": "twoway scatter mpg weight, colorvar(price) colorlevels(257)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "colorlevels_7",
+   "option": "colorlevels",
+   "value": "-1",
+   "command": "twoway scatter mpg weight, colorvar(price) colorlevels(-1)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "colorlevels_8",
+   "option": "colorlevels",
+   "value": "2.5",
+   "command": "twoway scatter mpg weight, colorvar(price) colorlevels(2.5)",
+   "rc": 198,
+   "message": "option colorlevels() incorrectly specified"
+  },
+  {
+   "id": "xlabel2_1",
+   "option": "xlabel2",
+   "value": "abc",
+   "command": "twoway scatter mpg weight, xaxis(1 2) xlabel2(abc)",
+   "rc": 198,
+   "message": "option xlabel2() not allowed"
+  },
+  {
+   "id": "xlabel2_2",
+   "option": "xlabel2",
+   "value": "#5",
+   "command": "twoway scatter mpg weight, xaxis(1 2) xlabel2(#5)",
+   "rc": 198,
+   "message": "option xlabel2() not allowed"
+  },
+  {
+   "id": "xlabel2_3",
+   "option": "xlabel2",
+   "value": "1000(1000)5000",
+   "command": "twoway scatter mpg weight, xaxis(1 2) xlabel2(1000(1000)5000)",
+   "rc": 198,
+   "message": "option xlabel2() not allowed"
+  },
+  {
+   "id": "xmlabel_1",
+   "option": "xmlabel",
+   "value": "abc",
+   "command": "twoway scatter mpg weight,  xmlabel(abc)",
+   "rc": 198,
+   "message": "invalid label specifier, :  abc:"
+  },
+  {
+   "id": "xmlabel_2",
+   "option": "xmlabel",
+   "value": "#5",
+   "command": "twoway scatter mpg weight,  xmlabel(#5)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "xmlabel_3",
+   "option": "xmlabel",
+   "value": "1000(1000)5000",
+   "command": "twoway scatter mpg weight,  xmlabel(1000(1000)5000)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "xmtick_1",
+   "option": "xmtick",
+   "value": "abc",
+   "command": "twoway scatter mpg weight,  xmtick(abc)",
+   "rc": 198,
+   "message": "invalid label specifier, :  abc:"
+  },
+  {
+   "id": "xmtick_2",
+   "option": "xmtick",
+   "value": "#5",
+   "command": "twoway scatter mpg weight,  xmtick(#5)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "xmtick_3",
+   "option": "xmtick",
+   "value": "1000(1000)5000",
+   "command": "twoway scatter mpg weight,  xmtick(1000(1000)5000)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "xtick_1",
+   "option": "xtick",
+   "value": "abc",
+   "command": "twoway scatter mpg weight,  xtick(abc)",
+   "rc": 198,
+   "message": "invalid label specifier, :  abc:"
+  },
+  {
+   "id": "xtick_2",
+   "option": "xtick",
+   "value": "#5",
+   "command": "twoway scatter mpg weight,  xtick(#5)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "xtick_3",
+   "option": "xtick",
+   "value": "1000(1000)5000",
+   "command": "twoway scatter mpg weight,  xtick(1000(1000)5000)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "ylabel_1",
+   "option": "ylabel",
+   "value": "abc",
+   "command": "twoway scatter mpg weight,  ylabel(abc)",
+   "rc": 198,
+   "message": "invalid label specifier, :  abc:"
+  },
+  {
+   "id": "ylabel_2",
+   "option": "ylabel",
+   "value": "#5",
+   "command": "twoway scatter mpg weight,  ylabel(#5)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "ylabel_3",
+   "option": "ylabel",
+   "value": "10(5)40",
+   "command": "twoway scatter mpg weight,  ylabel(10(5)40)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "ylabel2_1",
+   "option": "ylabel2",
+   "value": "abc",
+   "command": "twoway scatter mpg weight, yaxis(1 2) ylabel2(abc)",
+   "rc": 198,
+   "message": "option ylabel2() not allowed"
+  },
+  {
+   "id": "ylabel2_2",
+   "option": "ylabel2",
+   "value": "#5",
+   "command": "twoway scatter mpg weight, yaxis(1 2) ylabel2(#5)",
+   "rc": 198,
+   "message": "option ylabel2() not allowed"
+  },
+  {
+   "id": "ylabel2_3",
+   "option": "ylabel2",
+   "value": "10(5)40",
+   "command": "twoway scatter mpg weight, yaxis(1 2) ylabel2(10(5)40)",
+   "rc": 198,
+   "message": "option ylabel2() not allowed"
+  },
+  {
+   "id": "ymlabel_1",
+   "option": "ymlabel",
+   "value": "abc",
+   "command": "twoway scatter mpg weight,  ymlabel(abc)",
+   "rc": 198,
+   "message": "invalid label specifier, :  abc:"
+  },
+  {
+   "id": "ymlabel_2",
+   "option": "ymlabel",
+   "value": "#5",
+   "command": "twoway scatter mpg weight,  ymlabel(#5)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "ymlabel_3",
+   "option": "ymlabel",
+   "value": "10(5)40",
+   "command": "twoway scatter mpg weight,  ymlabel(10(5)40)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "ymtick_1",
+   "option": "ymtick",
+   "value": "abc",
+   "command": "twoway scatter mpg weight,  ymtick(abc)",
+   "rc": 198,
+   "message": "invalid label specifier, :  abc:"
+  },
+  {
+   "id": "ymtick_2",
+   "option": "ymtick",
+   "value": "#5",
+   "command": "twoway scatter mpg weight,  ymtick(#5)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "ymtick_3",
+   "option": "ymtick",
+   "value": "10(5)40",
+   "command": "twoway scatter mpg weight,  ymtick(10(5)40)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "ytick_1",
+   "option": "ytick",
+   "value": "abc",
+   "command": "twoway scatter mpg weight,  ytick(abc)",
+   "rc": 198,
+   "message": "invalid label specifier, :  abc:"
+  },
+  {
+   "id": "ytick_2",
+   "option": "ytick",
+   "value": "#5",
+   "command": "twoway scatter mpg weight,  ytick(#5)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "ytick_3",
+   "option": "ytick",
+   "value": "10(5)40",
+   "command": "twoway scatter mpg weight,  ytick(10(5)40)",
+   "rc": 0,
+   "message": ""
   }
  ]
 }

@@ -242,6 +242,15 @@
 *!       The distinct qual_col/qual_col_total values named in gjson,
 *!       blank-separated (GAPS2 G3).
 *!
+*!   _dash_route_axis2(opts)
+*!       opts with ytitle(..., axis(2))/xtitle(..., axis(2)) rewritten as
+*!       ytitle2()/xtitle2() and an axis(1) word dropped (WP-28 B3).
+*!
+*!   _dash_axis_pieces(s)
+*!       An axis-label option's value split into strings, bare runs and
+*!       its sub-option tail, into the caller's locals _ap_n, _ap_tag<i>
+*!       and _ap_txt<i> (WP-28 S14, GAPS2 B1).
+*!
 *! Version: 2.0  24sep2026
 
 // ============================================================

@@ -517,10 +517,12 @@ class TestTheParsersFoundSomething:
         # count is pinned: a change to the help that adds or drops a
         # definition moves it on purpose, and is re-measured here.  138
         # since the S3 batch's ci band: acolor(), alcolor(), alwidth() and
-        # alpattern(), twoway's fitarea options.
-        assert len(found) == 138, (
-            f"{len(found)} options parsed out of dash.sthlp, 138 measured "
-            f"24sep2026: a reader of the parser lost a form, or the help "
+        # alpattern(), twoway's fitarea options.  143 since WP-28 batch 2
+        # (S16, GAPS2 X2): colorlevels(), colorvarminmax, zlabel(),
+        # ztitle() and zscale() (measured 30sep2026).
+        assert len(found) == 143, (
+            f"{len(found)} options parsed out of dash.sthlp, 143 measured "
+            f"30sep2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
 
@@ -579,8 +581,10 @@ class TestTheParsersFoundSomething:
         # out of the scan: 165, above "120", and the check that every
         # dash-only option is documented no longer saw them.  (The plot
         # parser alone declares 90 options no other program does.)  171
-        # since the S3 batch declared the four fitarea options.
-        assert len(_ado_declarations()) == 171
+        # since the S3 batch declared the four fitarea options.  176 since
+        # WP-28 batch 2 (S16) declared colorlevels, colorvarminmax, zlabel,
+        # ztitle and zscale (measured 30sep2026).
+        assert len(_ado_declarations()) == 176
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -608,12 +612,18 @@ class TestTheParsersFoundSomething:
         # 320 definition entries (WP-27 added the saving() paragraph and
         # the $dash_max_bytes row; the S3 batch the scheme's Reference
         # lines paragraph; 321 with the fitarea options' Unsupported
-        # entry).  The six rows of the second-axis table
+        # entry).  330 since WP-28 batch 2 (measured 30sep2026): S16's
+        # five colorvar()/colour-key rows (colorlevels, colorvarminmax,
+        # zlabel, ztitle, zscale) and S14's four axis-rule rows (a/b,
+        # x y to z, # "text", #N numlist); the B7, X1/E2 and S14 edits
+        # to xtitle2, ytitle2, type(dropdown), exclude() and a(b)c
+        # rewrote entries without adding any.  The six rows of the
+        # second-axis table
         # written as {p2col:} rows, which the cutter starts no entry at,
         # left 311 -- above "150", with those rows read as prose.
-        assert len(defs) == 321, (
-            f"{len(defs)} definition entries cut out of dash.sthlp, 321 "
-            f"measured 24sep2026")
+        assert len(defs) == 330, (
+            f"{len(defs)} definition entries cut out of dash.sthlp, 330 "
+            f"measured 30sep2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
         assert not any("dcount" in _option_tokens(t) for t in defs), (

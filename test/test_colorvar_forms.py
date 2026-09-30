@@ -182,6 +182,13 @@ class TestTheCutHelper:
         vals = np.array([np.nan, np.nan])
         assert dr._dash_colorvar_cuts(vals, [2.0], None, False) == []
 
+    def test_a_plain_list_or_iterator_gives_the_array_s_answer(self):
+        vals = [1.0, float("nan"), 5.0, 9.0]
+        want = dr._dash_colorvar_cuts(np.array(vals), [5.0], None, True)
+        assert want == [1.0, 5.0, 9.0]
+        assert dr._dash_colorvar_cuts(vals, [5.0], None, True) == want
+        assert dr._dash_colorvar_cuts(iter(vals), [5.0], None, True) == want
+
 
 class TestTheBinHelper:
     """Unit tests of the module-level ``_dash_colorvar_bins``."""

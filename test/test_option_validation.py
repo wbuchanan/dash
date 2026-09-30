@@ -58,8 +58,10 @@ _END = "// END option-validation table (WP-15)"
 # theme or a .scheme file in the working directory).  Checked against the
 # branches _dash_validate_value really has (_validator_kinds below): a kind
 # the chain has no branch for would pass every value unvalidated.
+# axislist since WP-28 S14 (GAPS2 B1): the axis-label and tick options,
+# expanded by Stata's numlist and never refused.
 KINDS = {"num", "int", "pos", "style", "istyle", "enum", "numlist", "var",
-         "varlist", "byvarlist", "format", "scheme"}
+         "varlist", "byvarlist", "format", "scheme", "axislist"}
 
 #: The contract's table, token for token (DESIGN.md section 2).  The test
 #: asserts the table in dash.ado carries every one of these; it may carry
@@ -1267,7 +1269,7 @@ class TestUserTextIsEchoedThroughDashDisplay:
 # ---- (e) the twoway oracle fixture keeps the table honest -----------------
 #
 # test/fixtures/value_truth.json is twoway's own verdict on bad values,
-# measured 22sep2026 (248 probes).  The kinds in dash.ado's table rest on
+# measured 22sep2026 (248 probes; 311 with the additions _meta lists).  The kinds in dash.ado's table rest on
 # it: `style` because twoway notes and defaults for a bad style NAME, and
 # the number kinds because twoway refuses those values itself.
 
@@ -1275,7 +1277,11 @@ _FIXTURE = os.path.join(_HERE, "fixtures", "value_truth.json")
 
 # Options twoway does not have, so the oracle cannot speak for them.
 _DASH_ONLY = {"jseed", "malpha", "lalpha", "falpha", "colornlevels",
-              "colpalette", "colorcuts", "colorvar", "hover"}
+              "colpalette", "colorcuts", "colorvar", "hover",
+              # dash's spellings of xlabel(..., axis(2)): the fixture's
+              # xlabel2_1-3/ylabel2_1-3 record twoway's "option xlabel2()
+              # not allowed" for every value (30sep2026).
+              "xlabel2", "ylabel2"}
 # Options whose refusal is dash's own and documented as such (dash.sthlp,
 # "Option values"): twoway accepts every value of these silently.  And
 # scheme, which these tests never saw until _TOKEN read every kind
