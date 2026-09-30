@@ -208,11 +208,11 @@ and now matches Stata.
   named once with its line number. (WP-28, D1)
 - `dash kpi`: a card now shows the text Stata's `display` gives for its format, as the page opens, after every filter move and after a brush, saved and served: `dash kpi mean(price), fmt(%10.0g)` read `6e+03`, now `6165.2568`; `fmt(%9,2fc)` read `6,165.256756756757`, now `6.165,26`; without `fmt()` auto's mean price read `6165.26`, now `6,165.3` (its own `%8.0gc`); `min(when)` of a `%td` variable read `02 Jan 2000`, now `02jan2000`, and a date card honours `fmt()`; a missing date card read an empty card as the page opened and `—` after a move, now `.`; and the page's card rebuild now escapes its text. (WP-28, E1)
 - `filter(..., exclude())`: an excluded graph or card kept the rows of the last move made by a filter that did not exclude it -- price to [4000,5000], foreign to 1, price back to its full range left an excluded graph at 3 rows (k1 3) where the widgets imply 5. Every graph, link group, by() panel, aggregate and derived layer and KPI card is now masked on every move by exactly the filters that do not exclude it, in both modes. (WP-28, E2)
-<!-- WP-28 E3 -->
+- Display formats on widgets, tooltips and date axes: a `%td` dropdown listed `2001-12-31 00:00:00`, now `31dec2001`; a `%9.0fc` dropdown `3799`, now `3,799`; a `%tm` range slider stepped days and stopped mid-month, now steps one month over Stata's period numbers and reads `2000m1`; slider labels read `0[.]00`/`%d %b %Y`, now the variable's format; a `%tC` tooltip dropped its time (`{%F}`), now keeps it; a `%tm` axis read `Jan 2000`, now `2000m1` as twoway draws it; an explicit axis `format(%9.2e)` or `%g` was ignored, now written; two values with one display text were listed twice, now once, selecting both -- in both modes. (WP-28, E3)
 - `dash build, layout(bs)` (the saved page): the filter bar now sits below
   the title and subtitle, where the served app and every other layout put
   it -- it sat above the title (a picture change, no numbers). (WP-28, E14)
-<!-- WP-28 G6 -->
+- `%g` formats and float storage: a float 0.1 marker label and dropdown read `0.10000000149011612`, now `.1`; a tooltip wrote 12345.67 as `1.235e+4`, now `12345.67`; `mlabformat(%9.3g)` was named and not applied, now applied; by() titles of a date read `01 Jan 2000`, now `01jan2000`; the colour key's number labels used `:g`, now the variable's format; the CSV wrote a float as `0.10000000149011612`, now its float32 digits `0.1` (dates stay ISO 8601). (WP-28, G6)
 - Value labels on axes and in tooltips: `xlabel(1/5, valuelabel)` was
   named in the note and drew 1..5, now draws the label set
   (Poor..Excellent on auto's `rep78`), on second axes and every `by()`

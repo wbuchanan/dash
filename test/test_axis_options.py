@@ -175,19 +175,22 @@ class TestAxisLabelGrammar:
 
     def test_format_suboption_reaches_the_tick_labels(self):
         """ylabel(, format(%9.0fc)) rendered nothing at all."""
-        from bokeh.models import NumeralTickFormatter
+        # GAPS2 E3/G6, WP-28 S12: a Stata-writing CustomJSTickFormatter.
+        from bokeh.models import CustomJSTickFormatter
         fig, _ = _fig_with_gopts(
             _SCATTER, {"ylabel": ", format(%9.0fc)"})
         fmt = fig.yaxis[0].formatter
-        assert isinstance(fmt, NumeralTickFormatter), type(fmt).__name__
-        assert "," in fmt.format
+        assert isinstance(fmt, CustomJSTickFormatter), type(fmt).__name__
+        assert fmt.args["fmt"] == "%9.0fc"
 
     def test_format_with_explicit_ticks_together(self):
-        from bokeh.models import NumeralTickFormatter
+        # GAPS2 E3/G6, WP-28 S12: a Stata-writing CustomJSTickFormatter.
+        from bokeh.models import CustomJSTickFormatter
         fig, _ = _fig_with_gopts(
             _SCATTER, {"xlabel": "2000 4000, format(%9.0fc)"})
         assert _fixed_ticks(fig) == [2000.0, 4000.0]
-        assert isinstance(fig.xaxis[0].formatter, NumeralTickFormatter)
+        assert isinstance(fig.xaxis[0].formatter, CustomJSTickFormatter)
+        assert fig.xaxis[0].formatter.args["fmt"] == "%9.0fc"
 
     def test_labsize_changes_the_tick_label_size(self):
         fig_small, _ = _fig_with_gopts(_SCATTER, {"xlabel": ", labsize(small)"})

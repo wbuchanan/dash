@@ -518,8 +518,10 @@ class TestThePanelTitles:
         r, doc, _, _ = _by("d", df=df, formats={"d": "%td"})
         saved = [t for _, _, t in _saved_panels(r)]
         served = [t for _, _, t in _served_panels(doc)]
-        assert saved == served == ["01 Jan 2000", "02 Jan 2000",
-                                   "03 Jan 2000"], (saved, served)
+        # GAPS2 E3/G6, WP-28 S12: Stata's %td text (was "01 Jan 2000").
+        want = [dr._dash_fmt_text(14610.0 + i, "%td") for i in range(3)]
+        assert saved == served == want == ["01jan2000", "02jan2000",
+                                           "03jan2000"], (saved, served)
 
     def test_the_graphs_title_leads_each_panels(self):
         r, doc, _, _ = _by("foreign",
@@ -566,11 +568,12 @@ class TestTheFacetLabelHelper:
     def test_a_date_goes_through_the_formatter(self):
         got = dr._dash_facet_label(["d"], 14610.0, date_vars={"d": "td"},
                                    date_formatter=dr._dash_stata_date_text)
-        assert got == "01 Jan 2000"
+        # GAPS2 E3/G6, WP-28 S12: Stata's %td text (was "01 Jan 2000").
+        assert got == "01jan2000"
         got = dr._dash_facet_label(["d"], pd.Timestamp("2000-01-01"),
                                    date_vars={"d": "td"},
                                    date_formatter=dr._dash_stata_date_text)
-        assert got == "01 Jan 2000"
+        assert got == "01jan2000"
 
     def test_a_long_number_is_bounded_as_stata_bounds_it(self):
         for v in (1e308, -1e308, 5e-324, 123456789012345678901234567890.0):
@@ -580,15 +583,20 @@ class TestTheFacetLabelHelper:
 class TestTheStataDateText:
     """``_dash_stata_date_text``: a date from either representation."""
 
+    # GAPS2 E3/G6, WP-28 S12: Stata's display text in the full format
+    # (was one fixed picture per kind: "01 Jan 2000", "Jan 2000").
     @pytest.mark.parametrize("value,kind,want", [
-        (14610.0, "td", "01 Jan 2000"), (14610, "td", "01 Jan 2000"),
-        (480.0, "tm", "Jan 2000"), (2000.0, "ty", "2000"),
-        (pd.Timestamp("2000-01-01"), "td", "01 Jan 2000"),
-        (np.datetime64("2000-01-01"), "td", "01 Jan 2000"),
-        (1262304000000.0, "tc", "01 Jan 2000 00:00:00"),
+        (14610.0, "td", "01jan2000"), (14610, "td", "01jan2000"),
+        (480.0, "tm", "2000m1"), (2000.0, "ty", "2000"),
+        (pd.Timestamp("2000-01-01"), "td", "01jan2000"),
+        (np.datetime64("2000-01-01"), "td", "01jan2000"),
+        (1262304000000.0, "tc", "01jan2000 00:00:00"),
     ])
     def test_each(self, value, kind, want):
         assert dr._dash_stata_date_text(value, kind) == want
+        assert dr._dash_stata_date_text(value, "%" + kind) == want
+        if isinstance(value, (int, float)):
+            assert want == dr._dash_fmt_text(float(value), "%" + kind)
 
     @pytest.mark.parametrize("value", [float("nan"), None, pd.NaT])
     def test_missing_is_a_dot(self, value):
@@ -597,7 +605,10 @@ class TestTheStataDateText:
     def test_a_date_pandas_cannot_hold_is_a_dot(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            assert dr._dash_stata_date_text(1e12, "td") == "."
+            # GAPS2 E3/G6, WP-28 S12: a number past the calendar is
+            # written as _dash_fmt_text writes it (was ".").
+            assert dr._dash_stata_date_text(1e12, "td") == \
+                dr._dash_fmt_text(1e12, "%td")
 
 
 class TestTheTotalAndMissingPanels:
@@ -1112,8 +1123,8 @@ class TestADateVariablesLabels:
     def test_are_its_dates_in_both_modes(self):
         a, b, _, _ = _dated(mlabel="d")
         assert _texts(a) == _texts(b), (_texts(a), _texts(b))
-        assert _texts(a)[:3] == ["03 Jan 2000", "04 Jan 2000",
-                                 "05 Jan 2000"]
+        # GAPS2 E3/G6, WP-28 S12: Stata's %td text (was "03 Jan 2000").
+        assert _texts(a)[:3] == ["03jan2000", "04jan2000", "05jan2000"]
 
     def test_a_value_label_on_it_is_not_read_in_either_mode(self):
         a, b, _, _ = _dated(mlabel="d")
@@ -1126,7 +1137,8 @@ class TestADateVariablesLabels:
         assert [m for m in saved if "mlabformat" in m] == want, saved
         assert [m for m in served if "mlabformat" in m] == want, served
         assert _texts(a) == _texts(b)
-        assert _texts(b)[0] == "03 Jan 2000"
+        # GAPS2 E3/G6, WP-28 S12: Stata's %td text (was "03 Jan 2000").
+        assert _texts(b)[0] == "03jan2000"
 
     def test_a_missing_date_is_a_dot_in_both_modes(self):
         df = _auto()
@@ -1481,4 +1493,10 @@ class TestAdversarialLabelPlacement:
     @pytest.mark.parametrize("value", [1e308, -1e308, float("inf"),
                                        float("-inf"), 2 ** 80])
     def test_a_date_no_calendar_holds_is_a_dot_not_a_crash(self, value):
-        assert dr._dash_stata_date_text(value, "td") == "."
+        # GAPS2 E3/G6, WP-28 S12: an infinity is ".", a finite number
+        # past the calendar is written as _dash_fmt_text writes it (was
+        # "." for all); never a crash.
+        got = dr._dash_stata_date_text(value, "td")
+        assert got == dr._dash_fmt_text(float(value), "%td")
+        if value in (float("inf"), float("-inf")):
+            assert got == "."

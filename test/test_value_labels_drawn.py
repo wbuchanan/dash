@@ -222,7 +222,10 @@ class TestHoverShowsValueLabels:
         assert dr._dash_hover_text_column("foreign") == "__dash_hover_foreign"
         import inspect
         ps = list(inspect.signature(dr._dash_build_hover).parameters)
-        assert ps[-3:] == ["layers", "value_labels", "value_label_names"]
+        # GAPS2 E3/G6, WP-28 S12: formats, storage_types and fmt_cache are
+        # appended after the value-label parameters.
+        assert ps[-6:] == ["layers", "value_labels", "value_label_names",
+                           "formats", "storage_types", "fmt_cache"]
 
     def test_no_labels_no_column(self):
         src = dr.ColumnDataSource(data={"mpg": [1.0]})

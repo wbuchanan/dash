@@ -472,9 +472,15 @@ class TestHostileDateValues:
 
 _LABELLED = [{"type": "scatter", "yvar": "close", "xvar": "date",
               "options": {"mlabel": "date"}}]
-# The labels dash writes for _DATES (its %td text, day month year).
-_LABELS = ["02 Jan 2001", "03 Jan 2001", "04 Jan 2001", "05 Jan 2001",
-           "31 Dec 9999"]
+# The labels dash writes for _DATES: Stata's own %td text (02jan2001 ...
+# 31dec9999).  GAPS2 E3/G6, WP-28 S12: was "02 Jan 2001" (dash's own
+# day-month-year text, not Stata's display).
+_LABELS = [dr._dash_fmt_text(d, "%td") for d in _DATES]
+
+
+def _td(v):
+    """Stata's %td text of day *v* ("." for missing), the oracle."""
+    return dr._dash_fmt_text(v, "%td")
 
 
 def _card(text, name):
@@ -516,8 +522,14 @@ class TestTheSavedPageHoldsThePlaceholder:
         fig = r.figures["g1"]
         assert any(isinstance(a, DatetimeAxis) for a in fig.xaxis)
         hover = [t for t in fig.tools if isinstance(t, HoverTool)]
-        assert any(dict(h.formatters or {}).get("@{date}") == "datetime"
-                   for h in hover)
+        # GAPS2 E3/G6, WP-28 S12: a Stata-format CustomJSHover, not Bokeh's
+        # "datetime"; it writes Stata's %td text of each date.
+        from bokeh.models import CustomJSHover
+        from test_display_format_sites import js_texts
+        fm = [f for h in hover for k, f in dict(h.formatters or {}).items()
+              if k == "@{date}"]
+        assert fm and isinstance(fm[0], CustomJSHover)
+        assert js_texts(fm[0], _MS, "value") == _LABELS
 
     def test_a_range_filter_spans_every_date(self, tmp_path):
         r, _w = _saved(tmp_path, _spec(_LABELLED, filters=[_filter("range")]),
@@ -566,6 +578,7 @@ class TestTheSavedPageHoldsThePlaceholder:
                      "k1") == "31dec9999"
 
     def test_the_marker_labels_write_the_placeholder_as_a_date(self, tmp_path):
+        # GAPS2 E3/G6, WP-28 S12: _LABELS is Stata's %td text now.
         r, _w = _saved(tmp_path, _spec(_LABELLED), _frame())
         (ls,) = [x for x in r.figures["g1"].center if isinstance(x, LabelSet)]
         assert list(ls.source.data[ls.text]) == _LABELS
@@ -579,7 +592,7 @@ class TestTheSavedPageHoldsThePlaceholder:
                        "options": {}}], graph_options={"by": "date"})
         r, _w = _saved(tmp_path, spec, df)
         assert [r.figures[k].title.text for k in ("g1__by__0", "g1__by__1")
-                ] == ["02 Jan 2001", "31 Dec 9999"]
+                ] == [_td(14977.0), _td(2936549.0)]  # # GAPS2 E3/G6, WP-28 S12: Stata text
 
     def test_the_download_writes_the_placeholder(self, tmp_path):
         from test_export import _saved_file
@@ -606,9 +619,11 @@ class TestTheSavedPageHoldsThePlaceholder:
         assert col[:3] == [_MS[0], _MS[1], _MS[4]]
         assert col[3] is None or math.isnan(col[3])
         hover = [t for t in fig.tools if isinstance(t, HoverTool)]
-        assert ("date", "@{date}{%F}") in list(hover[0].tooltips)
+        # GAPS2 E3/G6, WP-28 S12: a Stata-format hover, not {%F}.
+        assert ("date", "@{date}{custom}") in list(hover[0].tooltips)
 
     def test_a_value_past_statas_range_is_one_missing_point(self, tmp_path):
+        # GAPS2 E3/G6, WP-28 S12: _LABELS is Stata's %td text now.
         spec = _spec(_LABELLED, filters=[_filter("range")])
         r, w = _saved(tmp_path, spec, _frame(_DATES[:4] + [_PAST]))
         assert [_iso(v) for v in r.df["date"]] == _ISO[:4] + [None]
@@ -634,6 +649,7 @@ class TestTheSavedPageHoldsThePlaceholder:
 class TestTheServedAppWritesThePlaceholder:
 
     def test_the_marker_labels_write_the_placeholder_as_a_date(self, tmp_path):
+        # GAPS2 E3/G6, WP-28 S12: _LABELS is Stata's %td text now.
         doc, _w = _served(tmp_path, _spec(_LABELLED), _frame())
         (ls,) = list(doc.select({"type": LabelSet}))
         assert list(ls.source.data[ls.text]) == _LABELS
@@ -649,7 +665,8 @@ class TestTheServedAppWritesThePlaceholder:
         doc, _w = _served(tmp_path, spec, df)
         titles = sorted(p.title.text for p in doc.select({"type": Plot})
                         if p.title is not None and p.title.text)
-        assert titles == ["02 Jan 2001", "31 Dec 9999"]
+        # GAPS2 E3/G6, WP-28 S12: Stata's %td text.
+        assert titles == [_td(14977.0), _td(2936549.0)]
 
     def test_the_download_writes_the_placeholder(self, tmp_path):
         """Under pandas 3 the click raised OverflowError out of
@@ -794,7 +811,8 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
         (ls,) = [x for x in r.figures["g1"].center if isinstance(x, LabelSet)]
         labels = list(ls.source.data[ls.text])
         # `display %td 14977' 02jan2001, `display %td 14977+330' 28nov2001.
-        assert labels[0] == "02 Jan 2001" and labels[-1] == "28 Nov 2001"
+        # GAPS2 E3/G6, WP-28 S12: Stata's text, 02jan2001 .. 28nov2001.
+        assert labels[0] == _td(14977.0) and labels[-1] == _td(14977.0 + 330)
         assert "." not in labels
 
     def test_a_jittered_date_with_a_missing_one_stays_on_the_axis(
@@ -831,7 +849,8 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
         (labels,) = self._labelled(tmp_path, {
             "type": "rscatter", "yvar1": "lo", "yvar2": "hi", "xvar": "lo",
             "options": {"mlabel": "date"}})
-        assert labels == ["02 Jan 2001", "31 Dec 9999", ".", "03 Jan 2001"] * 2
+        # GAPS2 E3/G6, WP-28 S12: Stata's %td text.
+        assert labels == [_td(v) for v in self._LABEL_DATES] * 2
 
     def test_pcscatter_labels_a_missing_and_a_far_date(self, tmp_path):
         """The first point labelled; a list of Timestamps raised in Bokeh
@@ -839,8 +858,8 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
         (labels,) = self._labelled(tmp_path, {
             "type": "pcscatter", "y1var": "lo", "x1var": "hi", "y2var": "hi",
             "x2var": "lo", "options": {"mlabel": "date"}})
-        assert labels[:4] == ["02 Jan 2001", "31 Dec 9999", ".",
-                              "03 Jan 2001"]
+        # GAPS2 E3/G6, WP-28 S12: Stata's %td text.
+        assert labels[:4] == [_td(v) for v in self._LABEL_DATES]
 
     @pytest.mark.parametrize("ptype", ["pcarrow", "pcbarrow", "pccapsym"])
     def test_a_pc_arrow_labels_a_missing_and_a_far_date(self, tmp_path,
@@ -848,8 +867,8 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
         (labels,) = self._labelled(tmp_path, {
             "type": ptype, "y1var": "lo", "x1var": "hi", "y2var": "hi",
             "x2var": "lo", "options": {"mlabel": "date"}})
-        assert labels[:4] == ["02 Jan 2001", "31 Dec 9999", ".",
-                              "03 Jan 2001"]
+        # GAPS2 E3/G6, WP-28 S12: Stata's %td text.
+        assert labels[:4] == [_td(v) for v in self._LABEL_DATES]
 
     def test_a_jittered_layer_carries_a_date_label_with_a_missing_one(
             self, tmp_path):
@@ -858,7 +877,8 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
         (labels,) = self._labelled(tmp_path, {
             "type": "scatter", "yvar": "lo", "xvar": "hi",
             "options": {"jitter": "5", "jitterseed": "1", "mlabel": "date"}})
-        assert labels == ["02 Jan 2001", "31 Dec 9999", ".", "03 Jan 2001"]
+        # GAPS2 E3/G6, WP-28 S12: Stata's %td text.
+        assert labels == [_td(v) for v in self._LABEL_DATES]
 
     def test_a_date_colour_scale_runs_between_its_first_and_last_date(
             self, tmp_path):

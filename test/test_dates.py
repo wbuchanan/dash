@@ -451,7 +451,7 @@ class TestNumericDisplayFormats:
         assert len(cases) == 56, f"{len(cases)} cases found in the fixture"
         wrong = []
         for fmt, value, want in cases:
-            got = dash_render._format_stata_numeric(value, fmt)
+            got = dash_render._dash_fmt_text(value, fmt)  # GAPS2 E3/G6, WP-28 S12
             if got.strip() != want.strip():
                 wrong.append(f"  {fmt} {value!r}: dash {got.strip()!r}, "
                              f"Stata {want.strip()!r}")
@@ -462,32 +462,44 @@ class TestNumericDisplayFormats:
 
     def test_commas_are_dropped_rather_than_overflowing_the_width(self, truth):
         """%9.0fc of -1234567.891 is -1234568, with no commas: they would not fit."""
-        got = dash_render._format_stata_numeric(-1234567.891, "%9.0fc")
+        got = dash_render._dash_fmt_text(-1234567.891, "%9.0fc")  # GAPS2 E3/G6, WP-28 S12
         assert got.strip() == "-1234568"
 
     def test_scientific_fallback_when_the_value_cannot_fit(self, truth):
         """%9.2f of 1234567.891 is 1.23e+06, not 1234567.89."""
-        got = dash_render._format_stata_numeric(1234567.891, "%9.2f")
+        got = dash_render._dash_fmt_text(1234567.891, "%9.2f")  # GAPS2 E3/G6, WP-28 S12
         assert got.strip() == "1.23e+06"
 
     @pytest.mark.parametrize("fmt,want", [
-        ("%9.0fc", "0,0"),
-        ("%9.2fc", "0,0.00"),
-        ("%9.2f", "0.00"),
-        ("%9.0f", "0"),
-        ("%12.4f", "0.0000"),
+        ("%9.0fc", "1,235"),
+        ("%9.2fc", "1,234.57"),
+        ("%9.2f", "1234.57"),
+        ("%9.0f", "1235"),
+        ("%12.4f", "1234.5670"),
     ])
     def test_a_bokeh_tick_pattern_is_produced(self, fmt, want):
-        """Ticks and tooltips need a format string, not a formatted value."""
-        assert dash_render._stata_numeric_pattern(fmt) == want
+        """Ticks and tooltips write Stata's own text (GAPS2 E3/G6, WP-28
+        S12): the page-side formatter carries the format, not a pattern."""
+        assert dash_render._dash_fmt_text(1234.567, fmt) == want
+        tf = dash_render._dash_fmt_tick_formatter(fmt, None, None, {})
+        assert tf.args["fmt"] == fmt
 
     def test_an_unformattable_value_degrades(self):
-        assert dash_render._format_stata_numeric(float("nan"), "%9.2f") == ""
+        # GAPS2 E3/G6, WP-28 S12: a missing value is Stata's ".".
+        assert dash_render._dash_fmt_text(float("nan"), "%9.2f") == "."
 
-    @pytest.mark.parametrize("fmt", ["%td", "%9s", "%9.0g", "%12.0gc", "", None])
+    @pytest.mark.parametrize("fmt", ["%9s", "", None])
     def test_a_format_dash_does_not_reproduce_returns_none(self, fmt):
-        """%g is Stata's default and carries no user intent; leave it alone."""
-        assert dash_render._stata_numeric_pattern(fmt) is None
+        """GAPS2 E3/G6, WP-28 S12: %td and %g are now written (kinds t
+        and g); only a string or empty format is unrecognised."""
+        assert dash_render._dash_fmt_parse(fmt) is None
+
+    @pytest.mark.parametrize("fmt,kind", [("%td", "t"), ("%9.0g", "g"),
+                                          ("%12.0gc", "g")])
+    def test_a_format_dash_used_to_refuse_is_now_written(self, fmt, kind):
+        """GAPS2 E3/G6, WP-28 S12: flipped from the refusal cases above --
+        the writer now places a date and a %g format."""
+        assert dash_render._dash_fmt_kind(fmt) == kind
 
 
 # ======================================================================
@@ -614,11 +626,13 @@ class TestHoverShowsDates:
         fig = dr._build_figures()["g1"]
         hovers = [t for t in fig.tools if isinstance(t, HoverTool)]
         assert hovers, "no hover tool on the figure"
+        # GAPS2 E3/G6, WP-28 S12: a CustomJSHover writing the date format.
+        from bokeh.models import CustomJSHover
         assert any(
-            getattr(h, "formatters", None)
-            and any("datetime" in str(v) for v in h.formatters.values())
-            for h in hovers
-        ), "the date column has no datetime tooltip formatter"
+            isinstance(v, CustomJSHover) and v.args.get("fmt") == "%td"
+            for h in hovers for v in (getattr(h, "formatters", None)
+                                      or {}).values()
+        ), "the date column has no Stata date tooltip formatter"
 
     def test_tooltips_use_variable_labels_not_raw_names(self, tmp_path):
         """self.variable_labels is loaded and used for axes but not tooltips."""
@@ -796,7 +810,8 @@ class TestFacetAndMarkerLabels:
         # column -- rather than from the variable's own column.)
         assert labels
         texts = list(labels[0].source.data[labels[0].text])
-        assert texts == [0.0, 1.0, 2.0, 3.0], texts
+        # GAPS2 E3/G6, WP-28 S12: labels are Stata's %9.0g display text.
+        assert texts == ["0", "1", "2", "3"], texts
 
 
 class TestAMissingDateDoesNotBreakAFilteredPage:

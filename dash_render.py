@@ -349,30 +349,6 @@ def _format_date_value_standalone(value, kind: str) -> str:
         return str(value)
 
 
-def _datetime_formatter_for(kind: str):
-    """A DatetimeTickFormatter matched to a Stata date kind.
-
-    Args:
-        kind: One of :data:`_STATA_DATE_KINDS`.
-
-    Returns:
-        A configured ``DatetimeTickFormatter``.
-    """
-    from bokeh.models import DatetimeTickFormatter
-
-    if kind == "ty":
-        return DatetimeTickFormatter(years="%Y", months="%Y", days="%Y")
-    if kind in ("tc", "tC"):
-        return DatetimeTickFormatter(
-            years="%Y", months="%b %Y", days="%d %b %Y",
-            hours="%d %b %H:%M", minutes="%H:%M", seconds="%H:%M:%S",
-        )
-    if kind in ("tm", "tq", "th"):
-        return DatetimeTickFormatter(years="%Y", months="%b %Y",
-                                     days="%b %Y")
-    return DatetimeTickFormatter(years="%Y", months="%b %Y", days="%d %b %Y")
-
-
 def _stata_date_kind(fmt: "str | None") -> "str | None":
     """Classify a Stata display format as one of the eight date kinds.
 
@@ -859,96 +835,6 @@ def _dash_kpi_column(col, stat, varname):
     # 36,000 dates in 9999 (24sep2026).
     return (col.dropna().astype("datetime64[ms]").astype("int64")
             .astype("float64"))
-
-
-def _parse_stata_numeric_fmt(fmt: "str | None") -> "tuple | None":
-    """Split a Stata numeric format into ``(width, decimals, kind, comma)``.
-
-    Only the fixed (``f``) and exponential (``e``) families are recognised.
-    ``%g`` is Stata's DEFAULT numeric format and expresses no user intent, so
-    it is deliberately not reproduced -- a ``%g`` value is left alone.
-
-    Args:
-        fmt: A Stata format string.
-
-    Returns:
-        ``(width, decimals, kind, comma)`` or ``None``.
-    """
-    if not fmt or not isinstance(fmt, str):
-        return None
-    m = re.fullmatch(r"%(-)?(\d+)\.(\d+)(f|e)(c)?", fmt.strip())
-    if not m:
-        return None
-    # Only a format Stata itself accepts: a width of at most 2,045 and fewer
-    # decimals than the width (measured with `confirm numeric format':
-    # %2045.2044f passes, %2046.2f and %9.30f do not).  Reproducing any
-    # %w.df let `format(%9.999999999f)' build a pattern of a billion zeros
-    # (WP-20).  The digit strings are measured before int() reads them.
-    if len(m.group(2)) > 4 or len(m.group(3)) > 4:
-        return None
-    width, dec = int(m.group(2)), int(m.group(3))
-    if not 1 <= width <= 2045 or dec >= width:
-        return None
-    return width, dec, m.group(4), bool(m.group(5))
-
-
-def _stata_numeric_pattern(fmt: "str | None") -> "str | None":
-    """Return a Bokeh/numbro tick pattern for a Stata numeric format.
-
-    ``%9.0fc`` becomes ``"0,0"`` and ``%9.2f`` becomes ``"0.00"``.  Axis
-    ticks and tooltips take a pattern rather than a formatted value.
-
-    Args:
-        fmt: A Stata format string.
-
-    Returns:
-        The pattern, or ``None`` when dash does not reproduce that format.
-    """
-    parsed = _parse_stata_numeric_fmt(fmt)
-    if parsed is None:
-        return None
-    _w, dec, kind, comma = parsed
-    if kind != "f":
-        return None
-    head = "0,0" if comma else "0"
-    return f"{head}.{'0' * dec}" if dec else head
-
-
-def _format_stata_numeric(value: float, fmt: "str | None") -> str:
-    """Format *value* the way Stata's display format would.
-
-    Reproduces the MEANING of the format -- decimal places, comma grouping,
-    and the width-driven fallbacks Stata applies when a value does not fit --
-    but not Stata's fixed-width left padding, which exists to align console
-    columns and has none in an HTML dashboard.
-
-    Stata's fallbacks, both measured: when a comma-grouped value would
-    overflow the width the commas are dropped (``%9.0fc`` of -1234567.891 is
-    ``-1234568``), and when it still does not fit the value goes to
-    scientific notation with two mantissa decimals (``%9.2f`` of 1234567.891
-    is ``1.23e+06``, and ``%12.2fc`` of 1e12 is ``1.00e+12`` -- two decimals
-    at both widths and at both decimal counts, in every measured case).
-
-    Args:
-        value: The number to format.
-        fmt:   A Stata format string.
-
-    Returns:
-        The formatted text, or ``""`` for a missing value.
-    """
-    # WP-28 S04: a thin wrapper over the shared writer, which follows
-    # Stata's own width rule for every kind (%e included: %9.3e of
-    # 1234.5678 is 1.23e+03) and writes %g as Stata does; its "" for a
-    # missing value -- the contract its callers test -- is kept here.
-    try:
-        val = float(value)
-    except (TypeError, ValueError):
-        return ""
-    if not np.isfinite(val):
-        return ""
-    return _dash_fmt_text(val, fmt)
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -5955,7 +5841,7 @@ def _dash_colorvar_cuts(col_vals, cuts, levels, minmax):
 
 
 def _dash_colorvar_bins(col_vals, cuts, discrete, label_of,
-                        closed_ends=False):
+                        closed_ends=False, number_text=None):
     """Bin colorvar values into label groups (GAPS2 X2).
 
     Interval mode (*discrete* False -- colorcuts()/colorlevels() without
@@ -5982,6 +5868,11 @@ def _dash_colorvar_bins(col_vals, cuts, discrete, label_of,
     value bins to ``"__missing__"`` (no level exists to put it in) --
     ``_dash_colorvar_cuts`` returns ``[]`` only when *col_vals* has no
     finite value, so *binned* still carries one entry per row.
+
+    *number_text* writes an interval boundary (WP-28 S12, GAPS2 E3/G6:
+    the variable's display format, ``4,000`` under %8.0gc); Python's
+    ``:g`` when None, and whenever the format would give two boundaries
+    one text -- a label is a bin's identity, so two bins never share one.
     """
     if not cuts:
         binned = ["__missing__" for _ in col_vals]
@@ -6004,20 +5895,27 @@ def _dash_colorvar_bins(col_vals, cuts, discrete, label_of,
         if closed_ends:
             _lo_v = float(np.nanmin(col_vals))
             _hi_v = float(np.nanmax(col_vals))
-        labels = []
-        for i in range(n_bins):
-            lo_b = cuts[i - 1] if i > 0 else None
-            hi_b = cuts[i]     if i < len(cuts) else None
-            if closed_ends:
-                lo_b = _lo_v if lo_b is None else lo_b
-                hi_b = _hi_v if hi_b is None else hi_b
-                labels.append(f"{lo_b:g}–{hi_b:g}")
-            elif lo_b is None:
-                labels.append(f"≤{hi_b:g}")
-            elif hi_b is None:
-                labels.append(f">{lo_b:g}")
-            else:
-                labels.append(f"{lo_b:g}–{hi_b:g}")
+
+        def _interval_labels(nt):
+            out = []
+            for i in range(n_bins):
+                lo_b = cuts[i - 1] if i > 0 else None
+                hi_b = cuts[i]     if i < len(cuts) else None
+                if closed_ends:
+                    lo_b = _lo_v if lo_b is None else lo_b
+                    hi_b = _hi_v if hi_b is None else hi_b
+                    out.append(f"{nt(lo_b)}–{nt(hi_b)}")
+                elif lo_b is None:
+                    out.append(f"≤{nt(hi_b)}")
+                elif hi_b is None:
+                    out.append(f">{nt(lo_b)}")
+                else:
+                    out.append(f"{nt(lo_b)}–{nt(hi_b)}")
+            return out
+
+        labels = _interval_labels(number_text or (lambda v: f"{v:g}"))
+        if len(set(labels)) < len(labels):
+            labels = _interval_labels(lambda v: f"{v:g}")
 
         def _assign(v: float) -> str:
             if np.isnan(v):
@@ -7099,11 +6997,23 @@ class GlyphMapper:
         vlabels     = _dash_value_labels_for(varname, self.value_labels,
                                              self.value_label_names)
 
+        # A number in the key is the variable's display text (WP-28 S12,
+        # GAPS2 E3/G6): 4,099 under %8.0gc.  A date's column holds epoch
+        # milliseconds, which its format cannot write, so it keeps :g.
+        _cv_fmt = (getattr(self, "formats", {}) or {}).get(varname, "")
+        _cv_st = (getattr(self, "storage_types", {}) or {}).get(varname)
+        _num_text = (
+            (lambda v: _dash_fmt_text(v, _cv_fmt, _cv_st))
+            if _dash_fmt_kind(_cv_fmt) in ("f", "g", "e")
+            and not (getattr(self, "date_vars", {}) or {}).get(varname)
+            else (lambda v: f"{v:g}"))
+
         def _vlookup(v: float) -> str:
-            """Return the Stata value label for v if defined, else numeric str.
+            """Return the Stata value label for v if defined, else the
+            number in the variable's display format.
 
             Stata value labels are keyed on the integer code as a string
-            (e.g. "0" → "Domestic"); fall back to a generic numeric repr.
+            (e.g. "0" → "Domestic").
             """
             try:
                 if float(v).is_integer():
@@ -7112,7 +7022,7 @@ class GlyphMapper:
                     key = f"{v:g}"
             except (TypeError, ValueError):
                 key = str(v)
-            return vlabels.get(key, f"{v:g}")
+            return vlabels.get(key, _num_text(v))
 
         # Parse colornlevels (must be an integer >= 2); colorlevels() is
         # Stata's own spelling of the same arithmetic and wins when both
@@ -7186,7 +7096,7 @@ class GlyphMapper:
                     _closed = cuts is None and not minmax
                     labels, binned, has_missing = _dash_colorvar_bins(
                         col_vals, eff_cuts, force_discrete, _vlookup,
-                        closed_ends=_closed)
+                        closed_ends=_closed, number_text=_num_text)
 
                 else:
                     # colordiscrete: each distinct numeric value → its own category.
@@ -7195,6 +7105,11 @@ class GlyphMapper:
                     non_nan = [v for v in col_vals if not np.isnan(v)]
                     unique_sorted = sorted(set(non_nan))
                     val_label = {v: _vlookup(v) for v in unique_sorted}
+                    if len(set(val_label.values())) < len(val_label):
+                        # Two values the format writes alike keep their
+                        # own keys: each is its own colour (S12).
+                        _num_text = (lambda v: f"{v:g}")
+                        val_label = {v: _vlookup(v) for v in unique_sorted}
                     labels = [val_label[v] for v in unique_sorted]
                     binned = [
                         "__missing__" if np.isnan(v) else val_label[v]
@@ -7464,17 +7379,23 @@ class GlyphMapper:
             text_col = f"{_DASH_MLABEL_PREFIX}{mlabel_var}"
             if text_col not in source.data:
                 raw = list(source.data[values_col])
+                _st = getattr(self, "storage_types", {}).get(mlabel_var)
                 if _vlabels:
                     rendered = [self._mlabel_value_text(v, _vlabels)
                                 for v in raw]
                 elif _kind:
-                    rendered = self._mlabel_date_texts(raw, _miss, _kind)
-                elif _numfmt:
-                    rendered = ["." if m else
-                                _format_stata_numeric(v, _numfmt).strip()
+                    # The variable's own date format (GAPS2 E3): 02jan2000,
+                    # a custom picture as written.
+                    _dfmt = _dash_date_fmt(
+                        getattr(self, "formats", {}).get(mlabel_var), _kind)
+                    rendered = ["." if m else _dash_stata_date_text(v, _dfmt)
                                 for v, m in zip(raw, _miss)]
                 else:
-                    rendered = ["." if m else v
+                    # Stata's display text (GAPS2 G6): a float-stored 0.1
+                    # is .1, never 0.10000000149011612; no format at all
+                    # is Stata's %9.0g.
+                    rendered = ["." if m else
+                                _dash_fmt_text(v, _numfmt or "%9.0g", _st)
                                 for v, m in zip(raw, _miss)]
                 source.data[text_col] = rendered
 
@@ -7589,32 +7510,6 @@ class GlyphMapper:
             raise ValueError(f"not a finite gap: {text[:40]!r}")
         return gap
 
-    @staticmethod
-    def _mlabel_date_texts(col: Any, missing: Any, kind: str) -> list:
-        """A date variable's marker labels, "." for a missing one.
-
-        The saved renderer holds a date variable as datetimes, converted at
-        load, and so does the served app since WP-27 (it held Stata's
-        numbers, and labelled a %td variable 14612 where the saved page
-        wrote 03 Jan 2000).  A column of numbers -- a caller that hands
-        one -- is converted here by the saved renderer's own rule,
-        :func:`_stata_dates_to_datetime`, once, so both modes write the same
-        dates.
-        """
-        arr = np.asarray(col)
-        if arr.dtype.kind in "fiu":
-            vals = list(_stata_dates_to_datetime(
-                pd.Series(arr, dtype=float), kind))
-        else:
-            vals = list(col)
-        out = []
-        for v, m in zip(vals, missing):
-            if m or GlyphMapper._mlabel_missing(v):
-                out.append(".")
-            else:
-                out.append(_format_date_value_standalone(v, kind) or ".")
-        return out
-
     def _mlabformat_column(self, source: "ColumnDataSource", var: str,
                            fmt: str, default_col: str,
                            values_col: "str | None" = None) -> str:
@@ -7625,13 +7520,12 @@ class GlyphMapper:
         on a string variable, or one carrying value labels, the labels are
         the same whatever the format; ``mlabformat(abc)`` is accepted
         without a word and changes nothing; and a missing value is "." in
-        every format.  A ``%f`` or ``%e`` format, with or without ``c``, is
-        drawn by ``_format_stata_numeric``, which follows Stata's own width
-        fallbacks.  Any other format -- ``%g``, whose significant digits and
-        leading zero Stata sets by the width, a date or string format, or
-        text that is no format -- and any format on a date variable is named
-        once and the labels drawn without it: naming it is how nothing is
-        dropped in silence.
+        every format.  A ``%f``, ``%g`` or ``%e`` format, with or without
+        ``c``, is written by section 04's writer, ``_dash_fmt_text``
+        (WP-28 S12, GAPS2 G6).  Any other format -- a date or string
+        format, or text that is no format -- and any format on a date
+        variable is named once and the labels drawn without it: naming it
+        is how nothing is dropped in silence.
 
         The column is keyed by the variable AND the format: the saved page
         shares one source among its layers, and a column keyed by the
@@ -7667,9 +7561,12 @@ class GlyphMapper:
             return default_col
         if self._mlabel_value_labels(var):
             return default_col
-        # ASCII only: _parse_stata_numeric_fmt's \d also reads another
-        # script's digits, which Stata does not take as a format.
-        if not fmt.isascii() or _parse_stata_numeric_fmt(fmt) is None:
+        # ASCII only: a regex's \d also reads another script's digits,
+        # which Stata does not take as a format.  Every numeric kind is
+        # written (GAPS2 G6: %9.3g was named and not applied); a date or
+        # string format stays named (twoway's drawing of it unmeasured).
+        _fk = _dash_fmt_kind(fmt) if fmt.isascii() else None
+        if _fk not in ("f", "g", "e"):
             _dash_warn_once(
                 ("mlabformat", fmt, "not reproduced"),
                 f"dash: mlabformat({_dash_display(fmt)}) is not a display "
@@ -7679,8 +7576,8 @@ class GlyphMapper:
         col = f"{_DASH_MLABEL_PREFIX}{var}_fmt_{fmt.encode('utf-8').hex()}"
         if col not in source.data:
             raw = list(source.data[values_col or var])
-            source.data[col] = ["." if m else
-                                _format_stata_numeric(v, fmt).strip()
+            _st = getattr(self, "storage_types", {}).get(var)
+            source.data[col] = ["." if m else _dash_fmt_text(v, fmt, _st)
                                 for v, m in zip(raw, _miss)]
         return col
 
@@ -14657,7 +14554,8 @@ def _dash_csv_text_value(v):
 
 
 def _dash_csv_meta(columns, formats, string_flags, value_labels,
-                   value_label_names, filename=_DASH_CSV_FILENAME):
+                   value_label_names, filename=_DASH_CSV_FILENAME,
+                   storage_types=None):
     """What the CSV formatter needs to know about each column.
 
     The same for both render modes: the saved renderer passes its frame's
@@ -14666,8 +14564,11 @@ def _dash_csv_meta(columns, formats, string_flags, value_labels,
 
     Returns:
         ``{"columns": [...], "strings": [...], "dates": {var: kind},
-        "labels": {var: {code: label}}, "filename": str}``.  The row
-        identity column is never a column of the file.
+        "labels": {var: {code: label}}, "storage": {var: type},
+        "filename": str}``.  The row identity column is never a column of
+        the file.  *storage_types* (WP-28 S12, GAPS2 G6): a float-stored
+        column is written with its float32 digits (``0.1``, not
+        ``0.10000000149011612``).
     """
     formats = formats if isinstance(formats, dict) else {}
     string_flags = string_flags if isinstance(string_flags, dict) else {}
@@ -14688,8 +14589,12 @@ def _dash_csv_meta(columns, formats, string_flags, value_labels,
         vmap = _dash_value_labels_for(c, value_labels, value_label_names)
         if vmap:
             labels[c] = {str(k): str(v) for k, v in vmap.items()}
+    storage_types = (storage_types if isinstance(storage_types, dict)
+                     else {})
+    storage = {c: str(storage_types[c]) for c in cols
+               if c not in strings and c not in dates and c in storage_types}
     return {"columns": cols, "strings": strings, "dates": dates,
-            "labels": labels, "filename": str(filename)}
+            "labels": labels, "storage": storage, "filename": str(filename)}
 
 
 def _dash_csv_payload(frame, meta):
@@ -14775,6 +14680,9 @@ def _dash_frame_filter_mask(df, widgets):
             if _at_full_extent(w, lo, hi):
                 continue
             col = _dash_float_values(df[wvar], coerce=True)
+            # A period slider's value is Stata's period number (WP-28 S12).
+            if getattr(w, "_dash_unit", ""):
+                col = _dash_period_values(col, w._dash_unit)
             with np.errstate(invalid="ignore"):
                 mask &= (col >= lo) & (col <= hi)
         elif kind == "slider":
@@ -14782,6 +14690,8 @@ def _dash_frame_filter_mask(df, widgets):
             if _at_full_extent(w, v):
                 continue
             col = _dash_float_values(df[wvar], coerce=True)
+            if getattr(w, "_dash_unit", ""):
+                col = _dash_period_values(col, w._dash_unit)
             with np.errstate(invalid="ignore"):
                 mask &= (col >= v)
     return mask
@@ -15690,7 +15600,12 @@ function dash_csv_missing(v) {
     return v === null || v === undefined ||
         (typeof v === "number" && Number.isNaN(v));
 }
-function dash_csv_number(v) {
+function dash_csv_number(v, storage) {
+    // A float-stored value as the shortest text that reads back as the
+    // same float32 (GAPS2 G6); a double as JavaScript's shortest spelling.
+    if (storage === "float" && Number.isFinite(Math.fround(v)) &&
+        !Object.is(v, -0) && v !== 0)
+        return dash_float32_text(v);
     return Object.is(v, -0) ? "0" : String(v);
 }
 function dash_csv_date(ms, kind) {
@@ -15712,7 +15627,7 @@ function dash_csv_guard(s) {
 function dash_csv_quote(s) {
     return /[",\\r\\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 }
-function dash_csv_cell(v, is_text, kind, labels) {
+function dash_csv_cell(v, is_text, kind, labels, storage) {
     if (dash_csv_missing(v)) return "";
     if (is_text || typeof v === "string")
         return dash_csv_quote(dash_csv_guard(String(v)));
@@ -15721,7 +15636,7 @@ function dash_csv_cell(v, is_text, kind, labels) {
         const lab = labels[dash_csv_number(v)];
         if (lab !== undefined) return dash_csv_quote(dash_csv_guard(String(lab)));
     }
-    return Number.isFinite(v) ? dash_csv_number(v) : "";
+    return Number.isFinite(v) ? dash_csv_number(v, storage) : "";
 }
 function dash_csv_text(data, text, rows, meta) {
     const strings = new Set(meta.strings || []);
@@ -15731,11 +15646,13 @@ function dash_csv_text(data, text, rows, meta) {
     const text_col = cols.map((c) => strings.has(c));
     const kinds = cols.map((c) => (meta.dates || {})[c] || "");
     const labels = cols.map((c) => (meta.labels || {})[c] || null);
+    const storage = cols.map((c) => (meta.storage || {})[c] || "");
     const out = [cols.map((c) => dash_csv_quote(dash_csv_guard(c))).join(",")];
     for (const i of rows) {
         const cells = new Array(cols.length);
         for (let j = 0; j < cols.length; j++)
-            cells[j] = dash_csv_cell(srcs[j][i], text_col[j], kinds[j], labels[j]);
+            cells[j] = dash_csv_cell(srcs[j][i], text_col[j], kinds[j], labels[j],
+                                     storage[j]);
         out.push(cells.join(","));
     }
     return out.join("\\r\\n") + "\\r\\n";
@@ -15800,6 +15717,11 @@ function dash_filter_mask(orig, filter_specs, all_widgets, use) {
     const n_rows = keys.length > 0 ? orig[keys[0]].length : 0;
     const active = new Array(n_rows).fill(true);
     const present = (v) => v !== null && v !== undefined && !Number.isNaN(v);
+    // A %tw/%tm/%tq/%th/%ty slider moves over Stata's period numbers
+    // (WP-28 S12): a date's epoch milliseconds are its period first, as
+    // _dash_period_values reads it; null (missing) fails the filter.
+    const at = (v, unit) => (unit && present(v))
+        ? dash_stata_value_of(v, unit) : v;
     // `use': the filter indices that apply to one target (GAPS2 E2); every
     // filter, when omitted -- the CSV button's three-argument call and
     // every other caller before this section.
@@ -15854,7 +15776,8 @@ function dash_filter_mask(orig, filter_specs, all_widgets, use) {
             // included, as a dropdown at "All" restricts nothing.
             if (present(w.start) && val <= w.start) continue;
             for (let i = 0; i < n_rows; i++) {
-                if (active[i] && !(present(col[i]) && col[i] >= val))
+                const x = at(col[i], spec.unit);
+                if (active[i] && !(present(x) && x >= val))
                     active[i] = false;
             }
         } else if (ftype === 'range') {
@@ -15864,7 +15787,8 @@ function dash_filter_mask(orig, filter_specs, all_widgets, use) {
             if (present(w.start) && present(w.end) && lo <= w.start && hi >= w.end)
                 continue;
             for (let i = 0; i < n_rows; i++) {
-                if (active[i] && !(present(col[i]) && col[i] >= lo && col[i] <= hi))
+                const x = at(col[i], spec.unit);
+                if (active[i] && !(present(x) && x >= lo && x <= hi))
                     active[i] = false;
             }
         }
@@ -16659,6 +16583,10 @@ class FilterBuilder:
         label: str = "",
         column: "Any | None" = None,
         max_options: "int | None" = None,
+        fmt: str = "",
+        storage: str = "",
+        fmt_cache: "dict | None" = None,
+        date_kind: str = "",
     ) -> "tuple[Select, CustomJS]":
         """Build a categorical dropdown filter widget with CustomJS callback.
 
@@ -16699,7 +16627,8 @@ class FilterBuilder:
         widget, _sentinel = _dash_filter_widget(
             "dropdown", varname, _values,
             _dash_filter_title(label, FilterBuilder._safe(varname), "dropdown"),
-            vlabels, max_options=max_options)
+            vlabels, date_kind=date_kind, max_options=max_options, fmt=fmt,
+            storage=storage, fmt_cache=fmt_cache)
 
         callback = CustomJS(
             args={
@@ -16752,6 +16681,9 @@ class FilterBuilder:
         label: str = "",
         date_kind: str = "",
         column: "Any | None" = None,
+        fmt: str = "",
+        storage: str = "",
+        fmt_cache: "dict | None" = None,
     ) -> "tuple[Slider, CustomJS]":
         """Build a numeric threshold slider filter widget.
 
@@ -16767,7 +16699,8 @@ class FilterBuilder:
         _values = column if column is not None else source.data.get(varname, [])
         widget, _ = _dash_filter_widget(
             "slider", varname, _values,
-            _dash_filter_title(label, safe_var, "slider"), None, date_kind)
+            _dash_filter_title(label, safe_var, "slider"), None, date_kind,
+            fmt=fmt, storage=storage, fmt_cache=fmt_cache)
         if widget is None:
             widget = Slider(title=_dash_filter_title(label, safe_var, "slider"),
                             start=0, end=1, value=0, step=1, disabled=True)
@@ -16810,6 +16743,9 @@ class FilterBuilder:
         label: str = "",
         date_kind: str = "",
         column: "Any | None" = None,
+        fmt: str = "",
+        storage: str = "",
+        fmt_cache: "dict | None" = None,
     ) -> "tuple[RangeSlider, CustomJS]":
         """Build a numeric range filter widget.
 
@@ -16825,7 +16761,8 @@ class FilterBuilder:
         _values = column if column is not None else source.data.get(varname, [])
         widget, _ = _dash_filter_widget(
             "range", varname, _values,
-            _dash_filter_title(label, safe_var, "range"), None, date_kind)
+            _dash_filter_title(label, safe_var, "range"), None, date_kind,
+            fmt=fmt, storage=storage, fmt_cache=fmt_cache)
         if widget is None:
             widget = RangeSlider(title=_dash_filter_title(label, safe_var, "range"),
                                  start=0, end=1, value=(0, 1), step=1,
@@ -17205,7 +17142,7 @@ def _dash_parse_by(by_raw, warn=True):
 
 def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
                       date_vars=None, numeric_formats=None,
-                      date_formatter=None):
+                      date_formatter=None, formats=None):
     """The title of one by() panel, the same in both render modes.
 
     twoway's rule, measured 23sep2026 from its SVG export: the value's label
@@ -17234,7 +17171,11 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
         date_vars:          ``{varname: kind}`` for date variables.
         numeric_formats:    Accepted from callers and not read: a display
                             format plays no part in a panel title.
-        date_formatter:     ``f(value, kind) -> str``.
+        date_formatter:     ``f(value, fmt) -> str``, given the date
+                            variable's full format (WP-28 S12).
+        formats:            ``{varname: fmt}``, every display format; a
+                            date variable's panel is titled in its own
+                            picture (``2000m1``, ``02jan2000``).
 
     Returns:
         A display string like ``"Domestic"`` or ``"Domestic / 3"``.
@@ -17253,7 +17194,8 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
             continue
         _kind = date_vars.get(var)
         if _kind and date_formatter is not None:
-            parts.append(date_formatter(val, _kind))
+            parts.append(date_formatter(
+                val, _dash_date_fmt((formats or {}).get(var), _kind)))
             continue
         vlabels = _dash_value_labels_for(var, value_labels, value_label_names)
         # Raw: a facet label titles a panel (fig.title.text), which Bokeh
@@ -17264,32 +17206,32 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
     return " / ".join(parts)
 
 
-def _dash_stata_date_text(value, kind):
-    """One date as dash writes it, "." when it is missing, from either form
-    a date reaches a caller in.
-
-    The saved renderer converts a date variable to datetimes when it loads
-    the data, as the served app does since WP-27 (it kept Stata's numbers
-    before).  A number is converted by the
-    saved renderer's own rule, :func:`_stata_dates_to_datetime`, so a by()
-    panel of a date variable is titled alike in both modes; the served app
-    titled it with the number as Python writes a float, 14610.0.  The
-    conversion's own notes (a %tC variable, a date outside the range pandas
-    holds) are the loader's to give, and are not repeated per panel.
+def _dash_stata_date_text(value, fmt):
+    """One date as Stata's ``display`` writes it under the variable's full
+    date format *fmt* (``%td``, ``%tm``, ``%tdCCYY-NN-DD``...), "." when
+    it is missing, from either form a date reaches a caller in: a Stata
+    number in the format's own unit, or a datetime (the loaders hold a
+    date variable as one, in both modes).  GAPS2 E3 (WP-28 S12): it wrote
+    one fixed picture per kind -- ``02 Jan 2001``, ``Jan 2000`` for a %tm
+    -- where Stata writes ``02jan2001`` and ``2000m1``.  A bare kind
+    (``"td"``) is read as its default format.
     """
-    if value is None or isinstance(value, bool):
-        return "." if value is None else str(value)
+    fmt = str(fmt or "")
+    if fmt and not fmt.startswith("%"):
+        fmt = "%" + fmt
+    kind = _stata_date_kind(fmt) or "td"
+    if value is None:
+        return "."
+    if isinstance(value, bool):
+        return str(value)
     if GlyphMapper._mlabel_missing(value):
         return "."
     if isinstance(value, (int, float, np.integer, np.floating)):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            value = _stata_dates_to_datetime(
-                pd.Series([float(value)]), kind).iloc[0]
-        if GlyphMapper._mlabel_missing(value):
-            return "."
-    return _format_date_value_standalone(value, kind) or "."
-
+        return _dash_fmt_text(float(value), fmt)
+    ms = _dash_json_value(value)
+    if not isinstance(ms, float):
+        return str(value)
+    return _dash_fmt_text(_dash_stata_value_of(ms, kind), fmt)
 
 
 # ===========================================================================
@@ -18193,6 +18135,112 @@ def _dash_fmt_text(value, fmt, storage=None):
     form every card, label, tooltip and axis tick uses.  ``"."`` for a
     missing value."""
     return _dash_fmt(value, fmt, storage=storage, strip=True)
+
+
+#: The body of every page-side Stata formatter (WP-28 S12, GAPS2 E3/G6):
+#: _DASH_FMT_JS's dash_fmt_text under the args fmt, kind and storage.  A
+#: date column reaches BokehJS as epoch milliseconds, so *kind* turns it
+#: back into Stata's value first.  The format is DATA in args, never code.
+_DASH_FMT_MODEL_JS = """
+var _dash_v = kind ? dash_stata_value_of(%s, kind) : %s;
+if (_dash_v === null || _dash_v === undefined) { return "."; }
+return dash_fmt_text(_dash_v, fmt, storage);
+"""
+
+
+def _dash_fmt_model_args(fmt, kind, storage):
+    """The args of a page-side formatter: *fmt* (``%9.0g`` when empty),
+    the date *kind* (``""`` for a number) and the *storage* type."""
+    return {"fmt": str(fmt or "%9.0g"), "kind": str(kind or ""),
+            "storage": str(storage or "")}
+
+
+def _dash_fmt_tick_formatter(fmt, kind, storage, cache):
+    """A ``CustomJSTickFormatter`` writing each tick (or slider value) as
+    Stata's ``display`` text under *fmt*: section 04's JavaScript writer
+    with the format in ``args``, never in ``code`` (TR-12.1).  *kind* is
+    the date kind of an epoch-millisecond value (``""`` for a number or a
+    period number).  One model per ``(fmt, kind, storage)`` triple in
+    *cache* (a dict per rendered document; None builds a fresh one): the
+    writer is large, and a Bokeh model belongs to one document."""
+    from bokeh.models import CustomJSTickFormatter
+    args = _dash_fmt_model_args(fmt, kind, storage)
+    key = ("tick", args["fmt"], args["kind"], args["storage"])
+    if cache is not None and key in cache:
+        return cache[key]
+    model = CustomJSTickFormatter(
+        args=args, code=_DASH_FMT_JS + _DASH_FMT_MODEL_JS % ("tick", "tick"))
+    if cache is not None:
+        cache[key] = model
+    return model
+
+
+def _dash_fmt_hover(fmt, kind, storage, cache):
+    """The ``CustomJSHover`` twin of :func:`_dash_fmt_tick_formatter`, for
+    a ``@{col}{custom}`` tooltip field: it writes BokehJS's ``value``."""
+    from bokeh.models import CustomJSHover
+    args = _dash_fmt_model_args(fmt, kind, storage)
+    key = ("hover", args["fmt"], args["kind"], args["storage"])
+    if cache is not None and key in cache:
+        return cache[key]
+    model = CustomJSHover(
+        args=args,
+        code=_DASH_FMT_JS + _DASH_FMT_MODEL_JS % ("value", "value"))
+    if cache is not None:
+        cache[key] = model
+    return model
+
+
+def _dash_date_fmt(fmt, kind):
+    """*fmt* when it is a date format of *kind*, else the kind's default
+    ``%t?`` -- the full picture of a date variable (``%tdCCYY-NN-DD``)
+    wherever it is written, and never a numeric format on a date."""
+    if kind and _stata_date_kind(fmt) == kind:
+        return str(fmt).strip()
+    return "%" + str(kind or "td")
+
+
+def _dash_date_axis_formatter(fmt, storage, cache):
+    """A date axis's tick formatter: the variable's full date format,
+    written at each tick (epoch milliseconds) as twoway labels it."""
+    return _dash_fmt_tick_formatter(fmt, _stata_date_kind(fmt) or "",
+                                    storage, cache)
+
+
+def _dash_period_values(column, unit):
+    """A %tw/%tm/%tq/%th/%ty column (datetimes, or epoch milliseconds) as
+    Stata's period numbers, NaN for a missing value: the vectorised
+    :func:`_dash_stata_value_of`, which a period slider and both filter
+    masks compare in."""
+    ms = _dash_float_values(column, coerce=True)
+    out = np.full(len(ms), np.nan)
+    lo = _STATA_MS_MIN + _STATA_EPOCH_UNIX_MS
+    hi = _STATA_MS_MAX + _STATA_EPOCH_UNIX_MS
+    with np.errstate(invalid="ignore"):
+        ok = np.isfinite(ms) & (ms >= lo) & (ms <= hi)
+    if not ok.any():
+        return out
+    day = np.floor(ms[ok] / 86_400_000.0).astype(np.int64)
+    d64 = day.astype("datetime64[D]")
+    m64 = d64.astype("datetime64[M]")
+    y = m64.astype("datetime64[Y]").astype(np.int64) + 1970
+    mon = m64.astype(np.int64) - (y - 1970) * 12
+    if unit == "tw":
+        jan1 = (m64.astype("datetime64[Y]").astype("datetime64[D]")
+                .astype(np.int64))
+        v = (y - 1960) * 52 + np.minimum(51, (day - jan1) // 7)
+    elif unit == "tm":
+        v = (y - 1960) * 12 + mon
+    elif unit == "tq":
+        v = (y - 1960) * 4 + mon // 3
+    elif unit == "th":
+        v = (y - 1960) * 2 + mon // 6
+    elif unit == "ty":
+        v = y
+    else:
+        return out
+    out[ok] = v.astype(float)
+    return out
 
 
 # ---- The legend -----------------------------------------------------------
@@ -19690,7 +19738,7 @@ def _dash_parse_axis_spec(raw):
 
 def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                           fmt_fallback="", grid_color=None,
-                          value_labels=None):
+                          value_labels=None, fmt_cache=None):
     """Apply a parsed ``axis_label`` spec to one axis.
 
     Args:
@@ -19714,10 +19762,10 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                       every whole-number code gets its label as a tick
                       override, unless an explicit ``"text"`` names that
                       same tick, which wins.
+        fmt_cache:    The document's formatter models (WP-28 S12).
     """
     from bokeh.models.tickers import FixedTicker, BasicTicker
-    from bokeh.models.formatters import (CustomJSTickFormatter,
-                                         NumeralTickFormatter)
+    from bokeh.models.formatters import CustomJSTickFormatter
 
     mode = spec["mode"]
 
@@ -19797,9 +19845,13 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
 
     fmt = spec["format"] or fmt_fallback
     if fmt:
-        pattern = _stata_numeric_pattern(fmt)
-        if pattern is not None:
-            axis_obj.formatter = NumeralTickFormatter(format=pattern)
+        # Stata's display text at each tick (GAPS2 E3, G6): an explicit
+        # format() of any numeric kind, and -- as before -- a variable's
+        # own %f format; a %g variable's default ticks are GAPS2 G10's.
+        _fk = _dash_fmt_kind(fmt) if fmt.isascii() else None
+        if _fk in ("f", "g", "e") and (spec["format"] or _fk == "f"):
+            axis_obj.formatter = _dash_fmt_tick_formatter(
+                fmt, "", "", fmt_cache)
         elif spec["format"] and _stata_date_kind(fmt) is None:
             warnings.warn(
                 f"dash: axis format({spec['format']}) is not a numeric "
@@ -19970,7 +20022,7 @@ def _fmt_num(v):
 def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
                              numeric_formats, seen=None, key="",
                              grid_color=None, value_labels=None,
-                             value_label_names=None):
+                             value_label_names=None, fmt_cache=None):
     """xlabel()/ylabel(), then xtick()/ytick() beside them, on the figure's
     own axes -- not a yaxis(2)/xaxis(2) axis, which ylabel2()/xlabel2()
     label; the sub-options the grammar does not honour are named.
@@ -19997,7 +20049,7 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
                 spec = _dash_date_axis_spec(spec, kind, ax_key)
             _dash_apply_axis_spec(axis_obj, grid_obj, spec,
                                   col, (numeric_formats or {}).get(var, ""),
-                                  grid_color, vlabels)
+                                  grid_color, vlabels, fmt_cache=fmt_cache)
         traw = graph_opts.get(tick_key, "")
         if traw:
             _dash_apply_tick_option(axis_obj, grid_obj, traw, tick_key, col,
@@ -20123,7 +20175,8 @@ def _dash_secondary_values(fig, range_attr, name):
 
 def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                                 grid_color=None, plots=None,
-                                value_labels=None, value_label_names=None):
+                                value_labels=None, value_label_names=None,
+                                fmt_cache=None):
     """Fit the second axes to what their layers drew, then label them.
 
     Called once every layer is drawn, in both modes.  Two claims of
@@ -20228,7 +20281,7 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
             break
         vlabels2 = _dash_value_labels_for(var2, value_labels, value_label_names)
         _dash_apply_axis_spec(ax, grids, spec, col_vals or None, "",
-                              grid_color, vlabels2)
+                              grid_color, vlabels2, fmt_cache=fmt_cache)
 
 
 def _dash_keep_primary_ranges(fig):
@@ -20942,7 +20995,8 @@ def _dash_filter_rangeable(column):
 
 
 def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
-                        date_kind="", max_options=None):
+                        date_kind="", max_options=None, fmt="", storage="",
+                        fmt_cache=None):
     """The one filter widget both modes show for ``filter(varname, type())``.
 
     Args:
@@ -20959,6 +21013,14 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
                       caller that planned the widget with
                       ``_dash_filter_effective_type`` has said so already,
                       and the note is made once a render either way.
+        fmt:          The variable's Stata display format (WP-28 S12,
+                      GAPS2 E3/G6): option labels and slider labels are
+                      its ``display`` text; a %tw/%tm/%tq/%th/%ty slider
+                      moves over Stata's period numbers in steps of 1.
+        storage:      The variable's storage type (a float writes its
+                      float32 value).
+        fmt_cache:    The document's formatter models, one per format
+                      (:func:`_dash_fmt_tick_formatter`).
 
     Returns:
         ``(widget, sentinel)``.  The widget is None when the column cannot
@@ -20966,8 +21028,7 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
         that.  An all-missing numeric column gives a disabled widget.
     """
     from bokeh.models import (DateRangeSlider, DateSlider, DatetimeRangeSlider,
-                              DatetimeTickFormatter, RangeSlider, Select,
-                              Slider)
+                              RangeSlider, Select, Slider)
     series = pd.Series(column)
     is_date = bool(pd.api.types.is_datetime64_any_dtype(series))
     if ftype == "dropdown":
@@ -20988,30 +21049,33 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
             raw_values = raw_values[:limit]
 
         # A date's option value is its milliseconds (_dash_option_value);
-        # it is still shown as the date it was shown as.
-        date_text = ({_dash_option_value(d): str(d)
-                      for d in series.dropna().unique()}
-                     if is_date else {})
+        # its label is the date in the variable's own format (GAPS2 E3).
+        _dfmt = _dash_date_fmt(fmt, date_kind) if is_date else ""
+        _nfmt = (fmt if _dash_fmt_kind(fmt) in ("f", "g", "e")
+                 else "%9.0g")
 
         def _label(rv):
-            if rv in date_text:
-                return date_text[rv]
             if rv in vlabels:
                 return vlabels[rv]
-            try:
-                k = str(int(float(rv)))
-                if k in vlabels:
-                    return vlabels[k]
-            except (ValueError, OverflowError):
-                pass
-            # GAPS2 X1: rv is now a float for a numeric column (it used to
-            # be the string _dash_option_value wrote); an unlabelled value
-            # still reads as it did -- "1", not "1.0" -- and a string
-            # column's rv (never a float) keeps its exact text unchanged.
-            # The display-format writer (S12) replaces this fallback.
             if isinstance(rv, float):
-                return str(int(rv)) if rv.is_integer() else str(rv)
+                if is_date:
+                    return _dash_fmt_text(
+                        _dash_stata_value_of(rv, date_kind or "td"), _dfmt)
+                if rv.is_integer():
+                    k = str(int(rv))
+                    if k in vlabels:
+                        return vlabels[k]
+                # The variable's display text (GAPS2 E3, G6): %8.0gc's
+                # 4,099, a float-stored 0.1's .1.
+                return _dash_fmt_text(rv, _nfmt, storage or None)
             return rv
+
+        # DISCOVERY Q26: values sharing one display text are ONE entry --
+        # its value the first member's, its label the shared text -- that
+        # selects every member (S17's groups; this forms them by label).
+        _by_label = {}
+        for rv in raw_values:
+            _by_label.setdefault(str(_label(rv)), []).append(rv)
 
         # The option label is raw: BokehJS builds each option as
         # `option({value: label}, label)', a text node, so escaping it only
@@ -21019,23 +21083,29 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
         # value (rv) is compared, never displayed.  Both are pinned in
         # test_label_sinks.py.
         options = [(sentinel, "All")] + [
-            (rv, str(_label(rv))) for rv in raw_values]
+            (members[0], text) for text, members in _by_label.items()]
         w = Select(title=title, value=sentinel, options=options)
         w._dash_sentinel = sentinel
         w._dash_ftype = "dropdown"
         # GAPS2 X1 (DISCOVERY Q26): a numeric column's dropdown compares
         # numbers as numbers; _dash_groups maps an entry's value to every
-        # member sharing its display-format label -- this section ships
-        # groups of one (S12 forms the real groups by display text).
+        # member sharing its display text, the value first.
         w._dash_numeric = _dash_filter_numeric(series)
         if w._dash_numeric:
-            w._dash_groups = {rv: (rv,) for rv in raw_values}
+            w._dash_groups = {members[0]: tuple(members)
+                              for members in _by_label.values()}
         return w, sentinel
     if ftype not in ("slider", "range"):
         return None, None
     if not (pd.api.types.is_numeric_dtype(series) or is_date):
         return None, None
+    _period = is_date and date_kind in ("tw", "tm", "tq", "th", "ty")
     arr = _dash_finite_column(series, allow_datetime=True)
+    if _period:
+        # A period kind moves over Stata's period numbers (GAPS2 E3):
+        # 2000m1 is 480, and a step of 1 is one month.
+        arr = _dash_period_values(arr, date_kind)
+        arr = arr[np.isfinite(arr)]
     if len(arr) == 0:
         w = (RangeSlider(title=title, start=0, end=1, value=(0, 1), step=1,
                          disabled=True)
@@ -21044,34 +21114,52 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
                     disabled=True))
         w._dash_ftype = ftype
         w._dash_is_date = is_date
+        if _period:
+            w._dash_unit = date_kind
         return w, None
     vmin, vmax = float(arr.min()), float(arr.max())
     if vmin == vmax:
         vmax = vmin + 1.0
-    if is_date and _is_clock_kind(date_kind):
+    if is_date:
+        _tfmt = _dash_fmt_tick_formatter(
+            _dash_date_fmt(fmt, date_kind or "td"),
+            "" if _period else (date_kind or "td"), storage, fmt_cache)
+    else:
+        _tfmt = _dash_fmt_tick_formatter(
+            fmt if _dash_fmt_kind(fmt) in ("f", "g", "e") else "%9.0g",
+            "", storage, fmt_cache)
+    if _period:
+        w = (RangeSlider(title=title, start=vmin, end=vmax,
+                         value=(vmin, vmax), step=1, format=_tfmt)
+             if ftype == "range" else
+             Slider(title=title, start=vmin, end=vmax, value=vmin, step=1,
+                    format=_tfmt))
+        w._dash_unit = date_kind
+    elif is_date and _is_clock_kind(date_kind):
         # DateRangeSlider's step is a whole number of DAYS, so a clock
         # series spanning one day had a single reachable notch.
         step = _clock_slider_step_ms(vmin, vmax)
         w = (DatetimeRangeSlider(title=title, start=vmin, end=vmax,
-                                 value=(vmin, vmax), step=step)
+                                 value=(vmin, vmax), step=step, format=_tfmt)
              if ftype == "range" else
              Slider(title=title, start=vmin, end=vmax, value=vmin, step=step,
-                    format=DatetimeTickFormatter()))
+                    format=_tfmt))
     elif is_date:
         step = _date_slider_step_days(vmin, vmax)
         w = (DateRangeSlider(title=title, start=vmin, end=vmax,
-                             value=(vmin, vmax), step=step)
+                             value=(vmin, vmax), step=step, format=_tfmt)
              if ftype == "range" else
              DateSlider(title=title, start=vmin, end=vmax, value=vmin,
-                        step=step))
+                        step=step, format=_tfmt))
     else:
         # A range of whole numbers steps by 1: (vmax - vmin) / 100 gave
         # rep78, which takes the values 1..5, a step of 0.04.
         step = _whole_number_step(arr, vmax - vmin)
         w = (RangeSlider(title=title, start=vmin, end=vmax,
-                         value=(vmin, vmax), step=step)
+                         value=(vmin, vmax), step=step, format=_tfmt)
              if ftype == "range" else
-             Slider(title=title, start=vmin, end=vmax, value=vmin, step=step))
+             Slider(title=title, start=vmin, end=vmax, value=vmin, step=step,
+                    format=_tfmt))
     w._dash_ftype = ftype
     w._dash_is_date = is_date
     return w, None
@@ -22343,7 +22431,8 @@ def _dash_value_labels_for(var, value_labels, value_label_names):
 
 def _dash_attach_labels(mapper, variable_labels=None, value_labels=None,
                         value_label_names=None, date_vars=None,
-                        numeric_formats=None, storage_types=None):
+                        numeric_formats=None, storage_types=None,
+                        formats=None):
     """Give *mapper* the dataset's Stata metadata, in either render mode.
 
     ``_apply_colorvar`` reads value labels for the colour key and the
@@ -22360,6 +22449,9 @@ def _dash_attach_labels(mapper, variable_labels=None, value_labels=None,
     mapper.date_vars = dict(date_vars or {})
     mapper.numeric_formats = dict(numeric_formats or {})
     mapper.storage_types = dict(storage_types or {})
+    # Every display format, date pictures included (WP-28 S12): marker
+    # labels and the colour key write a variable's own text.
+    mapper.formats = dict(formats or {})
     return mapper
 
 
@@ -23592,28 +23684,34 @@ def _dash_add_hover_text(source, var, vlabels):
     return col
 
 
-def _dash_hover_row(col, label, date_kind="", numeric_fmt="", text_col=None):
-    """One tooltip row for column *col*, honouring its Stata display format.
+def _dash_hover_row(col, label, fmt="", kind="", storage="", cache=None,
+                    text_col=None):
+    """One tooltip row for column *col*, in its Stata display format.
 
     Args:
+        fmt:      The variable's display format.
+        kind:     Its date kind (the column holds epoch milliseconds).
+        storage:  Its storage type (a float writes its float32 value).
+        cache:    The document's formatter models
+                  (:func:`_dash_fmt_hover`).
         text_col: When given (G16, WP-28 S14), the row reads this column
             instead, with no format -- a value-labelled variable's
             tooltip shows its label text, never a formatted number.
 
     Returns:
-        ``(field, formatter_key_or_None)``.  A date column shows a date
-        rather than the underlying number, and a column with a Stata
-        numeric format shows the digits that format asks for.
+        ``(field, (formatter key, CustomJSHover) or None)``.  A variable
+        with a writable format, or a date, is ``@{col}{custom}``, written
+        by section 04's JavaScript writer with the format in the
+        formatter's ``args`` (GAPS2 E3, G6); any other column is plain.
     """
     if text_col:
         return (label, f"@{{{text_col}}}"), None
-    if date_kind:
-        spec = (f"@{{{col}}}{{%F %T}}" if date_kind == "tc"
-                else f"@{{{col}}}{{%F}}")
-        return (label, spec), f"@{{{col}}}"
-    pattern = _stata_numeric_pattern(numeric_fmt) if numeric_fmt else None
-    spec = f"@{{{col}}}{{{pattern}}}" if pattern else f"@{{{col}}}"
-    return (label, spec), None
+    if kind:
+        fmt = _dash_date_fmt(fmt, kind)
+    elif _dash_fmt_kind(fmt) not in ("f", "g", "e"):
+        return (label, f"@{{{col}}}"), None
+    return ((label, f"@{{{col}}}{{custom}}"),
+            (f"@{{{col}}}", _dash_fmt_hover(fmt, kind, storage, cache)))
 
 
 def _dash_hover_layer_vars(plot):
@@ -23647,7 +23745,8 @@ def _dash_hover_layer_vars(plot):
 def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
                       var_labels=None, date_vars=None, numeric_formats=None,
                       univar="", layers=None, value_labels=None,
-                      value_label_names=None):
+                      value_label_names=None, formats=None,
+                      storage_types=None, fmt_cache=None):
     """Give *fig* its one comprehensive HoverTool, in either render mode.
 
     GAPS.md D2: ``HoverTool`` was imported into the generated app and never
@@ -23695,10 +23794,16 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
                           in ``scatter mpg weight || scatter price weight``
                           a point of price showed its mpg (BUGS.md,
                           24sep2026).  Renderers in no layer keep that.
+        formats:          ``{varname: fmt}``, every display format (WP-28
+                          S12); *numeric_formats* stands in when absent.
+        storage_types:    ``{varname: type}``.
+        fmt_cache:        The document's formatter models.
     """
     var_labels = var_labels or {}
     date_vars = date_vars or {}
     numeric_formats = numeric_formats or {}
+    formats = numeric_formats if formats is None else formats
+    storage_types = storage_types or {}
 
     # Whatever came before -- a mapper's own per-layer tool, or Bokeh's
     # default -- is replaced, not added to.
@@ -23778,12 +23883,13 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
             _seen.add(_text_cols.get(_c, _c))
         _flds, _fmts = [], {}
         for _c in _wanted:
-            _row, _fmt_key = _dash_hover_row(
-                _c, var_labels.get(_c, _c), date_vars.get(_c, ""),
-                numeric_formats.get(_c, ""), text_col=_text_cols.get(_c))
+            _row, _fmt_pair = _dash_hover_row(
+                _c, var_labels.get(_c, _c), formats.get(_c, ""),
+                date_vars.get(_c, ""), storage_types.get(_c, ""),
+                fmt_cache, text_col=_text_cols.get(_c))
             _flds.append(_row)
-            if _fmt_key:
-                _fmts[_fmt_key] = "datetime"
+            if _fmt_pair:
+                _fmts[_fmt_pair[0]] = _fmt_pair[1]
         return _flds, _fmts, _seen
 
     # Each layer's renderers with the variables that layer plots; the
@@ -24939,6 +25045,9 @@ class DashRenderer:
         self.kpi_divs: dict[str, Div] = {}               # name → Div
         self.filter_widgets: list = []
         self.filter_callbacks: list = []
+        # One Stata formatter model per (format, kind, storage), for this
+        # document (WP-28 S12): sliders, axes and tooltips share them.
+        self._fmt_models: dict = {}
 
         # Registry of aggregate sources (histogram bins, KDE curve) that must
         # be recomputed by the JS filter callback.
@@ -24999,7 +25108,8 @@ class DashRenderer:
                             self.value_labels, self.value_label_names,
                             getattr(self, "date_vars", {}),
                             getattr(self, "numeric_formats", {}),
-                            storage_types=getattr(self, "storage_types", {}))
+                            storage_types=getattr(self, "storage_types", {}),
+                            formats=getattr(self, "formats", {}))
 
     # ------------------------------------------------------------------
     # Data loading
@@ -25673,7 +25783,8 @@ class DashRenderer:
             by_vars, key, self.value_label_names, self.value_labels,
             getattr(self, "date_vars", {}),
             getattr(self, "numeric_formats", {}),
-            self._format_date_value)
+            _dash_stata_date_text,
+            formats=getattr(self, "formats", {}))
 
     # ------------------------------------------------------------------
     # Figure construction helpers
@@ -25906,12 +26017,16 @@ class DashRenderer:
         # for a date axis is a Stata date in the variable's unit.
         _dash_mark_date_axes(fig, _x_date, _y_date)
 
-        # Tick formatting matched to the date kind: years for %ty, dates for
-        # %td/%tw/%tm/%tq/%th, date and time for %tc/%tC.  An explicit
-        # xlabel()/ylabel() tick list still wins -- it is applied later.
-        for _axis, _kind in ((fig.xaxis, _x_date), (fig.yaxis, _y_date)):
+        # Each tick in the axis variable's own date format, as twoway
+        # labels it (%tm's 2001m1, GAPS2 E3).  An explicit xlabel()/
+        # ylabel() tick list still wins -- it is applied later.
+        for _axis, _kind, _avar in ((fig.xaxis, _x_date, xvar),
+                                    (fig.yaxis, _y_date, yvar)):
             if _kind:
-                _axis.formatter = _datetime_formatter_for(_kind)
+                _axis.formatter = _dash_date_axis_formatter(
+                    _dash_date_fmt(getattr(self, "formats", {}).get(_avar),
+                                   _kind),
+                    "", getattr(self, "_fmt_models", None))
 
         # Apply scheme defaults (before explicit graph options so they take precedence)
         self.scheme.apply_to_figure(fig)
@@ -25999,7 +26114,8 @@ class DashRenderer:
                                  _seen, _gkey,
                                  grid_color=self.scheme.grid_color,
                                  value_labels=self.value_labels,
-                                 value_label_names=self.value_label_names)
+                                 value_label_names=self.value_label_names,
+                                 fmt_cache=getattr(self, "_fmt_models", None))
 
         # Plot categories that use non-standard JSON variable keys.  Defined
         # at module level so the generated server app shares them rather than
@@ -26197,7 +26313,9 @@ class DashRenderer:
                                     grid_color=self.scheme.grid_color,
                                     plots=plots,
                                     value_labels=self.value_labels,
-                                    value_label_names=self.value_label_names)
+                                    value_label_names=self.value_label_names,
+                                    fmt_cache=getattr(self, "_fmt_models",
+                                                      None))
 
         # ---- Legend: Stata's keys, and Stata's rule for showing one ----
         self._rebuild_legend(fig, locals().get("_plot_renderers", []),
@@ -26236,6 +26354,9 @@ class DashRenderer:
             layers=locals().get("_plot_renderers", []),
             value_labels=self.value_labels,
             value_label_names=self.value_label_names,
+            formats=getattr(self, "formats", {}),
+            storage_types=getattr(self, "storage_types", {}),
+            fmt_cache=getattr(self, "_fmt_models", None),
         )
         # A layer hover() cannot reach says so -- the rule the generated
         # app runs, once per layer however many by() panels draw it.
@@ -27468,6 +27589,10 @@ class DashRenderer:
                     label=flabel,
                     column=_fcol,
                     max_options=self._limits["filter_options"],
+                    fmt=getattr(self, "formats", {}).get(fvar, ""),
+                    storage=getattr(self, "storage_types", {}).get(fvar, ""),
+                    fmt_cache=getattr(self, "_fmt_models", None),
+                    date_kind=getattr(self, "date_vars", {}).get(fvar, ""),
                 )
             elif ftype in ("slider", "range"):
                 # A range or slider needs a numeric or date variable: a
@@ -27489,6 +27614,9 @@ class DashRenderer:
                     label=flabel,
                     date_kind=getattr(self, "date_vars", {}).get(fvar, ""),
                     column=_fcol,
+                    fmt=getattr(self, "formats", {}).get(fvar, ""),
+                    storage=getattr(self, "storage_types", {}).get(fvar, ""),
+                    fmt_cache=getattr(self, "_fmt_models", None),
                 )
             else:
                 _dash_warn_filter_type(fvar, ftype)
@@ -27558,15 +27686,17 @@ class DashRenderer:
                 "type":     _fc.get("type", "dropdown"),
                 "sentinel": getattr(_w, "_dash_sentinel", "__all__"),
             }
+            if getattr(_w, "_dash_unit", ""):
+                # A period slider's unit: both masks compare its period
+                # numbers (WP-28 S12).
+                _entry["unit"] = _w._dash_unit
             if _entry["type"] == "dropdown":
                 _entry["numeric"] = bool(getattr(_w, "_dash_numeric", False))
                 _w_groups = getattr(_w, "_dash_groups", None)
                 if _w_groups:
                     # Each entry opens with the value the widget carries
-                    # for it (DISCOVERY Q26); this section ships groups of
-                    # one, so a member tuple is always (value,) and the
-                    # entry is [value].  S12 forms the real groups (several
-                    # values sharing one display-format label) here.
+                    # for it (DISCOVERY Q26), then every other value that
+                    # shares its display text (WP-28 S12).
                     _entry["groups"] = [list(_members)
                                        for _members in _w_groups.values()]
             _filter_specs.append(_entry)
@@ -27750,7 +27880,8 @@ class DashRenderer:
             self.df.columns, getattr(self, "formats", {}),
             {c: True for c in getattr(self, "string_vars", set())},
             getattr(self, "value_labels", {}),
-            getattr(self, "value_label_names", {}))
+            getattr(self, "value_label_names", {}),
+            storage_types=getattr(self, "storage_types", {}))
         text = ColumnDataSource({
             c: [_dash_csv_text_value(v) for v in self.df[c]]
             for c in meta["strings"] if c in self.df.columns})
@@ -27988,6 +28119,7 @@ class DashRenderer:
         self._reported_subopts = set()
         # Likewise the style notes: one per (option, value) per render.
         _dash_reset_notes()
+        self._fmt_models = {}
 
         # ---- Parse build options ----
         link_names, filters_cfg = self._parse_link_and_filters(build)
@@ -28327,7 +28459,7 @@ class ServerAppBuilder:
                       "_DASH_CSV_SERVED_JS",
                       # The Stata display-format writer's JS twin and the
                       # tables the Python writer reads (WP-28 S04).
-                      "_DASH_FMT_JS", "_DASH_FMT_CODES", "_DASH_FMT_WIDTHS",
+                      "_DASH_FMT_JS", "_DASH_FMT_MODEL_JS", "_DASH_FMT_CODES", "_DASH_FMT_WIDTHS",
                       "_DASH_FMT_MONTHS", "_DASH_FMT_DAYS",
                       "_DASH_FMT_NUM_RE", "_DASH_FMT_DATE_RE",
                       "_DASH_FMT_X_RE", "_DASH_FMT_H_RE",
@@ -28420,14 +28552,13 @@ class ServerAppBuilder:
                          "_dash_figure_date_kind", "_dash_mark_date_axes",
                          "_dash_axis_date_kind", "_dash_axis_positions",
                          "_dash_note_not_dates", "_dash_date_axis_spec",
-                         "_fmt_num", "_datetime_formatter_for",
+                         "_fmt_num",
                          "_dash_kpi_column", "_dash_widget_number",
                          "_with_color_alias", "_jitter_seed", "_floats_only",
-                         "_parse_stata_numeric_fmt", "_format_stata_numeric",
                          # _dash_build_hover's own callees. A copied
                          # function whose callee stays behind is a NameError
                          # on the served page, not here.
-                         "_tooltip_precision", "_stata_numeric_pattern",
+                         "_tooltip_precision",
                          "_format_date_value_standalone", "_fp_grid",
                          "_fp_report_unsupported", "_betacf", "_betainc",
                          "_t_cdf", "_t_ppf",
@@ -28468,7 +28599,14 @@ class ServerAppBuilder:
                          "_dash_total_spec",
                          # The figure's one HoverTool.  HoverTool was
                          # imported into this app and never instantiated.
-                         "_dash_hover_row", "_dash_hover_layer_vars",
+                         "_dash_hover_row",
+                         # Stata's display text on the page (WP-28 S12):
+                         # formatter models, a date's own format, a
+                         # period slider's numbers.
+                         "_dash_fmt_model_args", "_dash_fmt_tick_formatter",
+                         "_dash_fmt_hover", "_dash_date_fmt",
+                         "_dash_date_axis_formatter", "_dash_period_values",
+                         "_dash_hover_layer_vars",
                          "_dash_build_hover",
                          # ... and the note for a layer it cannot reach.
                          "_dash_note_hover_unreached",
@@ -29271,6 +29409,8 @@ class ServerAppBuilder:
             "    CDSView,",
             "    ColumnDataSource,",
             "    Div,",
+            "    CustomJSHover,",
+            "    CustomJSTickFormatter,",
             "    HoverTool,",
             "    IndexFilter,",
             "    InlineStyleSheet,",
@@ -29912,13 +30052,17 @@ class ServerAppBuilder:
             "    # (_format_kpi is module-level; WP-28, GAPS2 E1).",
             "    _STORAGE_TYPES.clear()",
             "    _STORAGE_TYPES.update(_storage_types)",
+            "    # One Stata formatter model per format, for this document",
+            "    # only: a Bokeh model belongs to one document (WP-28 S12).",
+            "    _fmt_cache = {}",
             "    # The dataset's Stata metadata reaches the mapper, as it does",
             "    # when the saved renderer builds one: a served colour key used",
             "    # to read '0'/'1' where the saved one reads the value labels.",
             "    _dash_attach_labels(_DASH_MAPPER, var_labels, val_labels,",
             "                        val_label_names, date_vars=_date_vars,",
             "                        numeric_formats=_NUM_FORMATS,",
-            "                        storage_types=_storage_types)",
+            "                        storage_types=_storage_types,",
+            "                        formats=_FORMATS)",
             "    # The session's c(level): a band with no level() of its own",
             "    # draws at it.  It used to reach the legend key and never",
             "    # the band, so `set level 90' served a 95% band labelled 90%.",
@@ -30250,9 +30394,12 @@ class ServerAppBuilder:
             "        elif _ys_log: _fig_kw['y_axis_type'] = 'log'",
             "        fig = bokeh_figure(**_fig_kw)",
             "        _dash_mark_date_axes(fig, _x_date, _y_date)",
-            "        for _axis, _kind in ((fig.xaxis, _x_date), (fig.yaxis, _y_date)):",
+            "        for _axis, _kind, _avar in ((fig.xaxis, _x_date, xv),",
+            "                                    (fig.yaxis, _y_date, yv)):",
             "            if _kind:",
-            "                _axis.formatter = _datetime_formatter_for(_kind)",
+            "                _axis.formatter = _dash_date_axis_formatter(",
+            "                    _dash_date_fmt(_FORMATS.get(_avar), _kind), '',",
+            "                    _fmt_cache)",
             "        # Scheme first, so an explicit graph option still wins --",
             "        # through the SchemeParser method the saved figure uses,",
             "        # not a hand-copied rendering of it.",
@@ -30323,7 +30470,8 @@ class ServerAppBuilder:
             "                                 _reported_subopts, gname,",
             "                                 grid_color=_DASH_SCHEME.grid_color,",
             "                                 value_labels=val_labels,",
-            "                                 value_label_names=val_label_names)",
+            "                                 value_label_names=val_label_names,",
+            "                                 fmt_cache=_fmt_cache)",
             "",
             '        # Legend boundaries.  NOT ONE of the 44 glyph calls in this loop',
             '        # passed legend_label, so a served figure had no legend at all --',
@@ -30468,7 +30616,8 @@ class ServerAppBuilder:
             "                                    grid_color=_DASH_SCHEME.grid_color,",
             "                                    plots=plots,",
             "                                    value_labels=val_labels,",
-            "                                    value_label_names=val_label_names)",
+            "                                    value_label_names=val_label_names,",
+            "                                    fmt_cache=_fmt_cache)",
             "        # The autoranges over the graph's own source only, as the",
             "        # saved figure's are (WP-28 B2).",
             "        _dash_limit_ranges_to_primary(fig, _prim_srcs)",
@@ -30536,6 +30685,9 @@ class ServerAppBuilder:
             "            layers=_plot_rends,",
             '            value_labels=val_labels,',
             '            value_label_names=val_label_names,',
+            '            formats=_FORMATS,',
+            '            storage_types=_storage_types,',
+            '            fmt_cache=_fmt_cache,',
             '        )',
             "        # G16 (WP-28 S14): this graph's own hover() variables",
             "        # that carry value labels, added to the document-wide map",
@@ -30642,7 +30794,8 @@ class ServerAppBuilder:
             "            _panels.append((_dash_facet_label(",
             "                by_vars, _key, val_label_names, val_labels,",
             "                date_vars=_date_vars,",
-            "                date_formatter=_dash_stata_date_text), _gdf, _key))",
+            "                date_formatter=_dash_stata_date_text,",
+            "                formats=_FORMATS), _gdf, _key))",
             "        # The Total panel is one more panel, answered as the groups",
             "        # are, as saved (P1A-84).",
             "        _t_idx = -1",
@@ -30807,7 +30960,10 @@ class ServerAppBuilder:
             "        widget, _sent = _dash_filter_widget(",
             "            ftype, fvar, df[fvar], _ftitle, vlabels,",
             "            date_kind=_date_vars.get(fvar, ''),",
-            "            max_options=_dash_lim['filter_options'])",
+            "            max_options=_dash_lim['filter_options'],",
+            "            fmt=_FORMATS.get(fvar, ''),",
+            "            storage=_storage_types.get(fvar, ''),",
+            "            fmt_cache=_fmt_cache)",
             "        if widget is None:",
             "            if ftype not in _DASH_FILTER_TYPES:",
             "                _dash_warn_filter_type(fvar, ftype)",
@@ -31227,7 +31383,7 @@ class ServerAppBuilder:
             "        _csv_meta = _dash_csv_meta(",
             "            list(df.columns), bo.get('formats', {}) or {},",
             "            meta.get('type_is_str', {}) or {}, val_labels,",
-            "            val_label_names)",
+            "            val_label_names, storage_types=_storage_types)",
             "        _csv_src = ColumnDataSource(data={})",
             "        _csv_btn = _DashButton(label='Download CSV',",
             "                               name='dash_csv_download',",

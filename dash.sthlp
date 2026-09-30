@@ -905,7 +905,9 @@ differences: a date is written in ISO 8601 ({cmd:2020-01-16}; for {cmd:%tc},
 {cmd:%tm}, {cmd:%tq} and {cmd:%th}, the first day of the period); a number is
 written as the shortest decimal that reads back as the same number, with a
 leading zero ({cmd:0.5} and {cmd:1e-7}, where {cmd:export delimited} writes
-{cmd:.5} and {cmd:1.00000000000e-07}); an extended missing value ({cmd:.a} to
+{cmd:.5} and {cmd:1.00000000000e-07}), and a {cmd:float} variable's value as
+the shortest decimal that reads back as the same float ({cmd:0.1}, not
+{cmd:0.10000000149011612}); an extended missing value ({cmd:.a} to
 {cmd:.z}) is an empty field, as {cmd:.} is; a text value that begins with
 {cmd:=}, {cmd:+}, {cmd:-}, {cmd:@}, a tab or a carriage return is written
 after an apostrophe, so that a spreadsheet shows it rather than runs it as a
@@ -1766,8 +1768,9 @@ than there are panels puts them all in one row.
 A panel is titled with its value's label, when the value has one, and
 otherwise with the value as {cmd:twoway} writes it -- {cmd:3}, {cmd:.25} --
 whatever its display format; a string variable's panels are titled with
-their text, and a date variable's with their dates, where {cmd:twoway}
-writes the number ({cmd:14610}).  Several {cmd:by()} variables produce
+their text, and a date variable's with their dates in its display format
+({cmd:01jan2000}, {cmd:2000m1}), where {cmd:twoway} writes the number
+({cmd:14610}).  Several {cmd:by()} variables produce
 composite titles, "Domestic / 3", which {cmd:twoway} writes "Domestic, 3".
 A graph's own {cmd:title()} leads each of its panels' titles.
 One graph draws at most 100 groups by default, a panel each, and its Total
@@ -1833,12 +1836,12 @@ the per-plot specification (not to {cmd:dash build} options).
     A name that is not an anglestyle is reported and the label drawn
     horizontal, as {cmd:twoway} notes it{p_end}
 {synopt:{cmdab:mlabf:ormat(}{it:%fmt}{cmd:)}}display format of numeric
-    labels.  A {cmd:%f} or {cmd:%e} format, with or without {cmd:c}, is
-    drawn as Stata draws it: {cmd:mlabformat(%9.1fc)} labels 4099 as
-    {cmd:4,099.0}.  It changes nothing on a string or value-labelled
-    variable, as in {cmd:twoway}.  A {cmd:%g}, date or string format, one
-    on a date variable, or text that is no format is named in a note and
-    the labels drawn without it{p_end}
+    labels.  Any numeric display format -- {cmd:%f}, {cmd:%g} or {cmd:%e},
+    with or without {cmd:c} -- is drawn as Stata's {cmd:display} writes it:
+    {cmd:mlabformat(%9.1fc)} labels 4099 as {cmd:4,099.0}.  It changes
+    nothing on a string or value-labelled variable, as in {cmd:twoway}.  A
+    date or string format, one on a date variable, or text that is no
+    format is named in a note and the labels drawn without it{p_end}
 {synoptline}
 
 {pstd}
@@ -1875,11 +1878,12 @@ many variables specified", r(103) -- and so does {cmd:dash}.
 variable with value labels is labelled with its value labels, whatever the
 display format or {cmd:mlabformat()} says, and a value with no label with
 its number as {cmd:twoway} writes it ({cmd:2}, {cmd:.5}), not in the
-display format.  A date variable is labelled with its dates, in both render
-modes; a value label attached to one is not read, where {cmd:twoway} draws
+display format.  A date variable is labelled with its dates in its own
+display format ({cmd:02jan2001}, {cmd:2001m1}, a custom picture as
+written), in both render modes; a value label attached to one is not read, where {cmd:twoway} draws
 a labelled value's label and any other value's number.  Any other numeric
-variable is labelled with its values, in its display format where
-{cmd:dash} reproduces that format.  A missing value is drawn as {cmd:.};
+variable is labelled with its values in its display format, as Stata's
+{cmd:display} writes them (a {cmd:float} 0.1 is {cmd:.1}).  A missing value is drawn as {cmd:.};
 {cmd:twoway} draws an extended missing value, {cmd:.a} to {cmd:.z}, as its
 value label or its name, which {cmd:dash} cannot do, because the data it is
 handed carry every missing value alike.
@@ -2499,6 +2503,13 @@ are ticked on one scale, over all the panels' data, as {cmd:twoway} ticks
 them; {cmd:by(, yrescale)} is not implemented.
 
 {pstd}
+A date axis's ticks are written in the axis variable's display format, as
+{cmd:twoway} writes them: a {cmd:%tm} axis reads {cmd:2001m1 2001m4}, a
+{cmd:%td} axis {cmd:02jan2001}, a custom picture as written.  An explicit
+{cmd:format()} of any numeric display format ({cmd:%f}, {cmd:%g},
+{cmd:%e}) writes the ticks as Stata's {cmd:display} does.
+
+{pstd}
 On a date axis a number is a date in the variable's own units, as
 {cmd:twoway} reads it: days for {cmd:%td}, milliseconds for {cmd:%tc},
 weeks, months, quarters or half-years for {cmd:%tw}, {cmd:%tm}, {cmd:%tq}
@@ -2615,7 +2626,10 @@ observations -- {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci},
 {cmd:pcarrowi}) are typed in the command, so {cmd:hover()} cannot reach
 them: their tooltips, where they have one, show only what the layer draws,
 x and y or a histogram's bin and count, and {cmd:dash} names each such
-layer in a note, once.
+layer in a note, once.  A variable's value is written in its display
+format, as Stata's {cmd:display} writes it -- {cmd:4,099} under
+{cmd:%8.0gc}, {cmd:12345.67} under {cmd:%10.0g}, a date in its picture,
+a {cmd:%tc} or {cmd:%tC} date with its time -- in both render modes.
 
 
 {marker colorvar}

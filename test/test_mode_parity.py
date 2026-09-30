@@ -576,8 +576,13 @@ def _tools(fig):
             tt = t.tooltips
             e["tooltips"] = (list(tt) if isinstance(tt, (list, tuple))
                              else str(tt))
-            e["formatters"] = {k: str(v) for k, v in
-                               (t.formatters or {}).items()}
+            # A CustomJSHover is its type and args (WP-28 S12): its id
+            # differs per document, its format is what must agree.
+            e["formatters"] = {
+                k: (str(v) if isinstance(v, str)
+                    else (type(v).__name__,
+                          sorted((getattr(v, "args", None) or {}).items())))
+                for k, v in (t.formatters or {}).items()}
             e["mode"] = t.mode
             rs = t.renderers
             e["renderers"] = (sorted(type(x.glyph).__name__ for x in rs)
@@ -606,6 +611,8 @@ def _axes(fig):
         ori = a.major_label_orientation
         return {"type": type(a).__name__, "label": a.axis_label,
                 "formatter": type(a.formatter).__name__,
+                "formatter_args": sorted(
+                    (getattr(a.formatter, "args", None) or {}).items()),
                 "ticker": type(a.ticker).__name__,
                 "ticks": ([_num(float(t)) for t in a.ticker.ticks]
                           if hasattr(a.ticker, "ticks") else None),
@@ -1272,7 +1279,9 @@ CORPUS = [
           [_sc(mlabel="mpg", mlabformat="%9.2f"),
            plot_for("connected", {"mlabel": "mpg", "mlabformat": "%9.0f"})]),
     _case("a format mlabformat() cannot reproduce",
-          [_sc(mlabel="mpg", mlabformat="%9.3g")]),
+          # %9.3g is honoured since WP-28 S12 (GAPS2 G6); %12s, a string
+          # format, is still named.
+          [_sc(mlabel="mpg", mlabformat="%12s")]),
     # Marker labels where twoway draws them (test_marker_label_parity.py):
     # both ends of rcapsym, rconnected and rscatter, the first point of the
     # paired-coordinate types, and the value labels of a labelled variable
@@ -1675,7 +1684,7 @@ _MUST_WARN = {
     "line, a colour clcolor() cannot name":
         "dash: clcolor(notacolour) is not a recognised colour",
     "a format mlabformat() cannot reproduce":
-        "dash: mlabformat(%9.3g) is not a display format dash reproduces",
+        "dash: mlabformat(%12s) is not a display format dash reproduces",
     "scatteri with labels, clock positions and a missing point":
         "dash: scatteri clock position(s) 3.5 are not a whole number",
     "note, caption and subtitle with sub-options":

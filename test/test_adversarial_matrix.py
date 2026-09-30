@@ -1670,9 +1670,10 @@ class TestNumericFormatBounds:
                                      "%1" + "0" * 5000 + ".2f"])
     def test_a_format_stata_refuses_is_not_reproduced(self, fmt):
         t0 = time.monotonic()
-        assert dr._parse_stata_numeric_fmt(fmt) is None
-        assert dr._stata_numeric_pattern(fmt) is None
-        assert len(dr._format_stata_numeric(1.5, fmt)) < 64
+        # GAPS2 E3/G6, WP-28 S12: the writer replaced the deleted helpers.
+        assert dr._dash_fmt_parse(fmt) is None
+        assert dr._dash_fmt_kind(fmt) is None
+        assert len(dr._dash_fmt_text(1.5, fmt)) < 64
         assert time.monotonic() - t0 < 1
 
     @pytest.mark.parametrize("fmt,want", [
@@ -1682,7 +1683,9 @@ class TestNumericFormatBounds:
         ("%2045.2044f", (2045, 2044, "f", False)),
     ])
     def test_the_formats_stata_accepts_still_parse(self, fmt, want):
-        assert dr._parse_stata_numeric_fmt(fmt) == want
+        # GAPS2 E3/G6, WP-28 S12: _dash_fmt_parse returns a dict now.
+        p = dr._dash_fmt_parse(fmt)
+        assert (p["width"], p["dec"], p["kind"], p["group"]) == want
 
     def test_an_axis_format_with_a_billion_decimals_is_bounded(self):
         fig = figure()

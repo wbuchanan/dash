@@ -126,8 +126,16 @@ class TestTheServedFigureReadsTheDateAsTheSavedOne:
         doc, _w = _served(tmp_path, _spec(_LINE), _frame())
         fig = _served_fig(doc)
         assert _hover_tooltips(fig) == _hover_tooltips(r.figures["g1"])
-        assert any(("date", "@{date}{%F}") in t for t in _hover_tooltips(fig))
-        assert _hover_formatters(fig) == _hover_formatters(r.figures["g1"])
+        # GAPS2 E3/G6, WP-28 S12: a Stata-format hover, not {%F}.
+        assert any(("date", "@{date}{custom}") in t
+                   for t in _hover_tooltips(fig))
+        # GAPS2 E3/G6, WP-28 S12: each figure holds its own CustomJSHover
+        # model, so compare what they are (type, code, args), not identity.
+        def _fm(f):
+            return [{k: (type(v).__name__, getattr(v, "code", v),
+                         dict(getattr(v, "args", {}) or {}))
+                     for k, v in d.items()} for d in _hover_formatters(f)]
+        assert _fm(fig) == _fm(r.figures["g1"])
 
     def test_the_line_draws_every_date_the_saved_one_draws(self, tmp_path):
         """Stata's dates, 31dec9999 included, not its day numbers."""
@@ -226,7 +234,9 @@ class TestTheServedFigureReadsTheDateAsTheSavedOne:
         doc, _w = _served(tmp_path, spec, _frame())
         fig = _served_fig(doc)
         assert _hover_tooltips(fig) == _hover_tooltips(r.figures["g1"])
-        assert any(("date", "@{date}{%F}") in t for t in _hover_tooltips(fig))
+        # GAPS2 E3/G6, WP-28 S12: a Stata-format hover, not {%F}.
+        assert any(("date", "@{date}{custom}") in t
+                   for t in _hover_tooltips(fig))
 
     def test_a_date_past_statas_range_is_one_missing_point(self, tmp_path):
         """Alone, counted once, in the same words as the saved page."""

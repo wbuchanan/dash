@@ -190,6 +190,14 @@ class TestACalendarFilterStepsInWholeDays:
         dr = _render(_calendar_values(kind), "%" + kind)
         w = dr.filter_widgets[0]
         span, want = self._STEPS[kind]
+        if kind != "td":
+            # GAPS2 E3, WP-28 S12: a period kind is a RangeSlider over
+            # Stata's period numbers, one period a step (its 120 periods
+            # span 119), never a day-stepped DateRangeSlider that stops
+            # mid-period.
+            assert type(w).__name__ == "RangeSlider", type(w).__name__
+            assert (w.end - w.start, float(w.step)) == (119.0, 1.0), kind
+            return
         assert type(w).__name__ == "DateRangeSlider", type(w).__name__
         assert _span_days(w) == span, (kind, _span_days(w))
         step = float(w.step)
@@ -207,13 +215,10 @@ class TestACalendarFilterStepsInWholeDays:
         """
         dr = _render(_MONTHLY, "%tm")
         w = dr.filter_widgets[0]
-        assert type(w).__name__ == "DateRangeSlider", type(w).__name__
-        assert _span_days(w) == 3621.0, _span_days(w)
-        assert float(w.step) == 36.0, (
-            f"a {_span_days(w):.0f}-day span stepped {w.step} days at a time "
-            f"has {_notches(w):.1f} notches"
-        )
-        assert _notches(w) == pytest.approx(100.0, abs=1.0)
+        # GAPS2 E3, WP-28 S12: 2010m1..2019m12 is Stata's months 600..719,
+        # stepped one month at a time (119 notches), never in days.
+        assert type(w).__name__ == "RangeSlider", type(w).__name__
+        assert (w.start, w.end, float(w.step)) == (600.0, 719.0, 1.0)
 
     def test_a_short_daily_series_still_steps_one_day(self):
         """Flooring must not coarsen a range that is already fine."""

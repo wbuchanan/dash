@@ -139,6 +139,7 @@ import bokeh
 from bokeh.document import Document
 from bokeh.embed.util import contains_tex_string
 from bokeh.model import Model
+from bokeh.models import CustomJSHover
 from bokeh.models import Div, HoverTool, LabelSet
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -869,7 +870,10 @@ class TestDataSinks:
 
 #: The only fields dash writes: one placeholder per value, @{name} and an
 #: optional numeric or date format, and the histogram's "a to b".
-_PLACEHOLDER = r"@\{[^\W\d]\w*\}(?:\{[0-9.,%FT ]+\})?"
+#: Widened deliberately for WP-28 S12 (GAPS2 E3/G6): ``{custom}`` is
+#: admitted, and only with a CustomJSHover whose args carry the format
+#: (test_the_label_sink_pattern_admits_custom_only_with_a_formatter).
+_PLACEHOLDER = r"@\{[^\W\d]\w*\}(?:\{(?:[0-9.,%FT ]+|custom)\})?"
 _FIELD_RE = re.compile(rf"^{_PLACEHOLDER}(?: to {_PLACEHOLDER})?$")
 
 
@@ -912,6 +916,45 @@ class TestTooltips:
                     f"{mode}: user text reached the tooltip field {fld!r}")
                 assert _FIELD_RE.match(fld), (
                     f"{mode}: {fld!r} is not a field dash writes")
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_the_label_sink_pattern_admits_custom_only_with_a_formatter(
+            self, tmp_path, mode):
+        """GAPS2 E3/G6 (WP-28 S12): a variable's tooltip row is
+        ``@{name}{custom}``, written by a CustomJSHover whose args carry the
+        display format -- never concatenated into its code.  A figure over
+        variables that carry formats has at least one such row, so the
+        check below is not vacuous."""
+        df = pd.DataFrame({"price": np.linspace(3000.0, 9000.0, 6),
+                           "d": np.arange(14611.0, 14617.0)})
+        spec = {
+            "graphs": [{"name": "g1",
+                        "graph_options": {"name": "g1"}, "options": {},
+                        "if_expr": "", "in_expr": "",
+                        "plots": [{"type": "scatter", "yvar": "price",
+                                   "xvar": "d", "options": {}}]}],
+            "kpis": [],
+            "build_options": {"layout": "auto", "registry": "g1",
+                              "level": "95", "theme": "", "scheme": "",
+                              "session_scheme": "",
+                              "formats": {"price": "%9.0fc", "d": "%td"}},
+        }
+        b = _build(tmp_path, mode, "custom",
+                   inputs=(spec, make_data_json(df), {}))
+        customs = 0
+        for t in _hover_tools(b):
+            for _label, fld in t.tooltips:
+                assert _FIELD_RE.match(fld), fld
+                for m in re.finditer(r"(@\{[^}]*\})\{custom\}", fld):
+                    customs += 1
+                    f = (t.formatters or {}).get(m.group(1))
+                    assert isinstance(f, CustomJSHover), (fld, f)
+                    assert isinstance(f.args.get("fmt"), str), f.args
+                    # The code is the one fixed writer for every format:
+                    # the format is data in args, never spliced into code.
+                    assert f.code == (dr._DASH_FMT_JS + dr._DASH_FMT_MODEL_JS
+                                      % ("value", "value")), f.args
+        assert customs >= 2, f"{mode}: no {{custom}} tooltip field"
 
     @pytest.mark.parametrize("pid", list(PAYLOADS))
     @pytest.mark.parametrize("mode", MODES)

@@ -32,7 +32,8 @@ import re
 import sys
 
 import pytest
-from bokeh.models import (BasicTicker, ColorBar, FixedTicker, Grid,
+from bokeh.models import (BasicTicker, ColorBar, CustomJSTickFormatter,
+                          FixedTicker, Grid,
                           HoverTool, Legend, LinearAxis, LogAxis,
                           NumeralTickFormatter, Range1d)
 from bokeh.plotting import figure
@@ -258,7 +259,10 @@ def _ticker_profile(axis, text=""):
         out["desired"] = t.desired_num_ticks
     if "format" in text:
         fmt = axis.formatter
-        out["format"] = (fmt.format if isinstance(fmt, NumeralTickFormatter)
+        # GAPS2 E3/G6, WP-28 S12: format() is a CustomJSTickFormatter
+        # carrying the Stata format in args["fmt"].
+        out["format"] = (fmt.args.get("fmt")
+                         if isinstance(fmt, CustomJSTickFormatter)
                          else type(fmt).__name__)
     if "labsize" in text:
         out["labsize"] = axis.major_label_text_font_size

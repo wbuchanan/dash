@@ -1765,8 +1765,13 @@ class TestTheModesDifferHere:
         ms1 = ms0 + (truth["dates"]["n"] - 1) * 86400000.0
         for f, widget in ((fig, r.filter_widgets[0]), (sfig, w)):
             assert isinstance(f.xaxis[0], DatetimeAxis)
-            tips = [t.tooltips for t in f.tools if isinstance(t, HoverTool)]
-            assert ("date", "@{date}{%F}") in tips[0]
+            tips = [t for t in f.tools if isinstance(t, HoverTool)]
+            # GAPS2 E3/G6, WP-28 S12: the tooltip writes Stata's %td text
+            # through a CustomJSHover (was "@{date}{%F}", ISO text).
+            assert ("date", "@{date}{custom}") in tips[0].tooltips
+            hov = tips[0].formatters["@{date}"]
+            assert type(hov).__name__ == "CustomJSHover"
+            assert hov.args["fmt"] == "%td"
             assert type(widget).__name__ == "DateRangeSlider"
             assert (widget.start, widget.end) == (ms0, ms1)
 

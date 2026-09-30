@@ -562,7 +562,8 @@ class TestTheHelpers:
     def test_csv_meta_survives_nonsense(self):
         m = dr._dash_csv_meta(["a"], None, None, None, None)
         assert m == {"columns": ["a"], "strings": [], "dates": {},
-                     "labels": {}, "filename": "dashboard.csv"}
+                     "labels": {}, "storage": {},
+                     "filename": "dashboard.csv"}
 
     @pytest.mark.parametrize("v,want", [
         ("007", "007"), ("nan", "nan"), ("", None), (None, None),

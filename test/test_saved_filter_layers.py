@@ -1092,7 +1092,9 @@ class TestADateDropdown:
         r = _render(self._spec())
         [w] = r.filter_widgets
         labels = [lab for v, lab in w.options if v != w._dash_sentinel]
-        assert labels[0] == "2001-12-31 00:00:00", labels[:2]
+        # GAPS2 E3/G6, WP-28 S12: Stata's %td text (was ISO datetime).
+        assert labels[0] == dr._dash_fmt_text(15340.0, "%td") \
+            == "31dec2001", labels[:2]
 
 
 class TestTheOptionValueOfADate:

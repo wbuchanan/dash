@@ -246,9 +246,11 @@ class TestTheGuard:
 class TestConsumers:
 
     def test_format_stata_numeric_delegates(self):
-        assert dr._format_stata_numeric(1234.5678, "%9.3e") == "1.23e+03"
-        assert dr._format_stata_numeric(float("nan"), "%9.2f") == ""
-        assert dr._format_stata_numeric(1000.03, "%9,2fc") == "1.000,03"
+        # GAPS2 E3/G6, WP-28 S12: _format_stata_numeric was deleted; its
+        # callers use _dash_fmt_text, whose missing value is ".".
+        assert dr._dash_fmt_text(1234.5678, "%9.3e") == "1.23e+03"
+        assert dr._dash_fmt_text(float("nan"), "%9.2f") == "."
+        assert dr._dash_fmt_text(1000.03, "%9,2fc") == "1.000,03"
 
 
 class TestDashAdo:

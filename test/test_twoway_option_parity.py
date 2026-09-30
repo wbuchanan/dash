@@ -591,7 +591,9 @@ def test_mlabformat_changes_nothing_on_a_value_labelled_variable():
         assert _texts(_labelset(a)) == _texts(_labelset(b))
 
 
-@pytest.mark.parametrize("fmt", ["abc", "%9.3g", "%td", "%12s"])
+# GAPS2 E3/G6, WP-28 S12: %9.3g is now honoured (see
+# test_mlabformat_g_is_honoured_in_both_modes), so it left this list.
+@pytest.mark.parametrize("fmt", ["abc", "%td", "%12s"])
 def test_a_format_dash_does_not_reproduce_is_named(fmt):
     r0, d0, _, _ = _both([plot_for("scatter", {"mlabel": "mpg"})])
     r1, d1, s1, v1 = _both(
@@ -601,6 +603,17 @@ def test_a_format_dash_does_not_reproduce_is_named(fmt):
                   f"reproduces; the labels are drawn without it."], s1
     for a, b in zip(_figures(r0, d0), _figures(r1, d1)):
         assert _texts(_labelset(a)) == _texts(_labelset(b))
+
+
+def test_mlabformat_g_is_honoured_in_both_modes():
+    """GAPS2 E3/G6, WP-28 S12: every f/g/e format is written as Stata
+    writes it; %9.3g was named and dropped before."""
+    r, doc, s1, v1 = _both(
+        [plot_for("scatter", {"mlabel": "mpg", "mlabformat": "%9.3g"})])
+    assert s1 == v1 and not s1, s1
+    want = [dr._dash_fmt_text(float(v), "%9.3g") for v in _DF["mpg"]]
+    for fig in _figures(r, doc):
+        assert _texts(_labelset(fig)) == want
 
 
 def test_two_layers_label_one_variable_in_two_formats():
@@ -632,7 +645,8 @@ def test_mlabformat_on_a_date_variable_is_named_and_the_dates_kept():
     ls = _labelset(fig)
     # G1 (WP-28): the marker-label column is named under the __dash prefix.
     assert ls.text == dr._DASH_MLABEL_PREFIX + "when"
-    assert _texts(ls) == ["16 Jan 2020", "01 Feb 2020"]
+    # GAPS2 E3/G6, WP-28 S12: Stata's %td text (was "16 Jan 2020").
+    assert _texts(ls) == ["16jan2020", "01feb2020"]
 
 
 def test_the_formatted_column_is_named_by_variable_and_format():
@@ -678,7 +692,11 @@ class TestAdversarialTwowayOptions:
     def test_a_format_in_another_scripts_digits_is_not_applied(self):
         """_parse_stata_numeric_fmt's \\d reads Arabic-Indic digits, so the
         format is refused as not ASCII before it is parsed."""
-        assert dr._parse_stata_numeric_fmt(_ARABIC_FMT) is not None  # trap
+        # GAPS2 E3/G6, WP-28 S12: _parse_stata_numeric_fmt gave way to
+        # _dash_fmt_parse, which refuses non-ASCII itself; the trap is
+        # the grammar's \\d, still real.
+        assert dr._DASH_FMT_NUM_RE.fullmatch(_ARABIC_FMT)  # trap
+        assert dr._dash_fmt_parse(_ARABIC_FMT) is None
         gm = dr.GlyphMapper(scheme=dr.SchemeParser("s2color"))
         src = ColumnDataSource({"x": [1.0], "y": [2.0], "v": [3.14159]})
         col, notes = _notes(lambda: gm._mlabformat_column(
