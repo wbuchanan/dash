@@ -640,9 +640,9 @@ import filter_truth_check as ftc
 from sfi import Macro
 df, strings = ftc.frame_from_stata(["fips", "tiny", "f32", "y", "x"])
 spec = ftc.spec_of([ftc.scatter_graph("g1", "y", "x")],
-                   [{"varname": "fips", "type": "dropdown"},
-                    {"varname": "tiny", "type": "dropdown"},
-                    {"varname": "f32", "type": "dropdown"}])
+                   [dict(varname="fips", type="dropdown"),
+                    dict(varname="tiny", type="dropdown"),
+                    dict(varname="f32", type="dropdown")])
 texts = ["01", "1", "1.0", "None", "nan", "", "__proto__"]
 for i, t in enumerate(texts, 1):
     a, r = ftc.saved(df, strings, spec, [(0, t)])
@@ -693,9 +693,9 @@ import filter_truth_check as ftc
 df, strings = ftc.frame_from_stata(["mpg", "price", "weight", "foreign"])
 spec = ftc.spec_of([ftc.scatter_graph("g1", "mpg", "price"),
                     ftc.scatter_graph("g2", "mpg", "weight")],
-                   [{"varname": "foreign", "type": "dropdown"},
-                    {"varname": "price", "type": "range",
-                     "exclude": ["g1", "k1"]}],
+                   [dict(varname="foreign", type="dropdown"),
+                    dict(varname="price", type="range",
+                         exclude=["g1", "k1"])],
                    [ftc.kpi("k1"), ftc.kpi("k2")])
 fwd = [(0, 1.0), (1, (4000.0, 5000.0))]
 for tag, moves in (("f", fwd), ("r", fwd[::-1])):
