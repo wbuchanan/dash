@@ -49,7 +49,7 @@ _GATE = re.compile(r"^GATE (\S+)(.*)$", re.M)
 _KV = re.compile(r"(\w+)=(\[[^\]]*\]|\S+)")
 _ALLOWS = re.compile(r"^\*!\s*release-gate allows:\s*(.+?)\s*$", re.M)
 _DATE = re.compile(r"^d Distribution-Date:\s*(\d{8})\s*$", re.M)
-_SHIPPED_SCHEME = re.compile(r"^f schemes/(\S+)\.scheme\s*$", re.M)
+_SHIPPED_SCHEME = re.compile(r"^f dash-(\S+)\.scheme\s*$", re.M)
 
 INSTALLED = ("dash.ado", "dash_setup.ado", "dash_parse.mata",
              "dash_render.py", "locator")

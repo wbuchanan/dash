@@ -245,7 +245,7 @@ real scalar _hc_svg_maxfont(string scalar f)
 }
 end
 
-local hc_src "`hc_home'/../schemes/s1rcolor.scheme"
+local hc_src "`hc_home'/../dash-s1rcolor.scheme"
 mata: st_local("hc_nsub", strofreal(_hc_theme(st_local("hc_src"), ///
     st_local("hc_dir") + "/mytheme.scheme", "#123456")))
 if `hc_nsub' != 1 {
@@ -641,7 +641,7 @@ _hc_expect "HC8-13" "(`rc' == 0 & `r(found)' == 1)" "set scheme zzr with only zz
 // without it.
 set scheme s2color
 _hc_svg "twoway scatter mpg weight," "`hc_dir'/hc13c.svg"
-copy "`hc_home'/../schemes/s2color.scheme" "`hc_dir'/s2color.scheme", replace
+copy "`hc_home'/../dash-s2color.scheme" "`hc_dir'/s2color.scheme", replace
 set scheme s2color
 _hc_svg "twoway scatter mpg weight," "`hc_dir'/hc13d.svg"
 erase "`hc_dir'/s2color.scheme"

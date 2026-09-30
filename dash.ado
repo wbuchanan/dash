@@ -1817,8 +1817,8 @@ end
 // ================================================================
 // The one list of what dash can draw by name.
 //
-// `_dash_schemes' are the twenty scheme translations the package ships in
-// schemes/ -- dash_render.py's SchemeParser._BUILTIN_NAMES is the same
+// `_dash_schemes' are the twenty scheme translations the package ships as
+// dash-<name>.scheme -- dash_render.py's SchemeParser._BUILTIN_NAMES is the same
 // list, and test/test_scheme_resolution.py holds the two together --
 // and `_dash_themes' are the theme() aliases the renderer maps onto them.
 // _dash_validate_value reads both for the `scheme' kind and
@@ -2300,7 +2300,7 @@ program define _dash_validate_value, rclass
         scalar `L' = lower(scalar(`T'))
         // A shipped name written WITH the extension -- scheme(s2color.scheme),
         // in any case -- is the shipped scheme: the renderer's _resolve_path
-        // reads that spelling from the package's schemes/ too, so no file
+        // reads that spelling from the package's dash-<name>.scheme, so no file
         // in the working directory is needed.  Measured 22sep2026: the
         // extension form was looked for as a working-directory file only,
         // and scheme(s2color.scheme) was refused although the renderer

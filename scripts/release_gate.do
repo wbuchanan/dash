@@ -96,12 +96,12 @@ foreach f of local files {
 }
 
 // ---- 3. one page per shipped scheme -------------------------------------
-local schemes : dir "`src'/schemes" files "*.scheme"
+local schemes : dir "`src'" files "dash-*.scheme"
 local schemes : list sort schemes
 local nsch : word count `schemes'
 display "GATE schemes n=`nsch'"
 foreach s of local schemes {
-    local nm = subinstr("`s'", ".scheme", "", 1)
+    local nm = subinstr(subinstr("`s'", ".scheme", "", 1), "dash-", "", 1)
     capture dash clear
     quietly sysuse auto, clear
     capture log close _gate

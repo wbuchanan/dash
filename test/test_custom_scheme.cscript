@@ -5,7 +5,7 @@
 *! -- and an explicit scheme() or theme() that is none of those is refused
 *! in Stata, before Python runs.  A shipped name may be written with the
 *! extension too (scheme(s2color.scheme), in any case): the renderer reads
-*! that spelling from the package's schemes/, so the gate accepts it with
+*! that spelling from the package's dash-<name>.scheme, so the gate accepts it with
 *! no file in the working directory.  The session's own c(scheme) is inherited
 *! when nothing is requested, and one warning names the cause when dash
 *! cannot translate it.
@@ -27,7 +27,7 @@
 *! list of shipped names lives in one place, _dash_shipped_schemes.
 *!
 *! The cases run in a temporary working directory holding mytheme.scheme
-*! (schemes/s1rcolor.scheme with `color background #123456' substituted)
+*! (dash-s1rcolor.scheme with `color background #123456' substituted)
 *! and scheme-zzdashtest.scheme (`#include s2color', for `set scheme').  A
 *! page is fingerprinted by the custom background #123456 and by s2color's
 *! heading colour #1e2d53, which the half-applied page carried:
@@ -103,7 +103,7 @@ sysuse auto, clear
 // ----------------------------------------------------------------
 local cs_home    "`c(pwd)'"
 local cs_scheme0 "`c(scheme)'"
-local cs_src     "`cs_home'/../schemes/s1rcolor.scheme"
+local cs_src     "`cs_home'/../dash-s1rcolor.scheme"
 local cs_dir     "`c(tmpdir)'dash_cs_wd"
 capture mkdir "`cs_dir'"
 
@@ -507,7 +507,7 @@ _cs_done CS-13 "dash serve's spec path refuses scheme(nosuchthing) and theme(nos
 
 // ----------------------------------------------------------------
 // CS-14: a shipped name written with the extension needs no file in
-// the working directory -- the renderer reads it from schemes/
+// the working directory -- the renderer reads dash-s2color.scheme
 // ----------------------------------------------------------------
 capture confirm file "s2color.scheme"
 local nofile = _rc

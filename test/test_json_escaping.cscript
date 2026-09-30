@@ -3106,7 +3106,7 @@ tempfile j5_sd
 local j5_sdir "`j5_sd'_scheme"
 capture mkdir "`j5_sdir'"
 mata: st_local("j5_sfile", st_local("j5_sdir") + "/j58" + char(36) + "J5_G.scheme")
-copy "../schemes/s1rcolor.scheme" `"`macval(j5_sfile)'"', replace
+copy "../dash-s1rcolor.scheme" `"`macval(j5_sfile)'"', replace
 mata: st_local("j5_sthere", strofreal(fileexists(st_local("j5_sfile"))))
 assert `j5_sthere' == 1
 local j5_here "`c(pwd)'"

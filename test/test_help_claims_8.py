@@ -605,7 +605,7 @@ def _directives(path):
     return out
 
 
-_SCHEMES = os.path.join(_ROOT, "schemes")
+_SCHEMES = _ROOT
 _S2MONO_FAMILY = ("s2mono", "s2manual", "s2gmanual", "sj", "stsj", "stmono2")
 
 
@@ -667,7 +667,7 @@ class TestTheSchemeTableSaysWhatStataSays:
         # Every p1..p15 declared at twenty percent, in Stata and in dash.
         stata_p = dict(re.findall(r'^color (p\d+)\s+"([^"]+)"', src, re.M))
         assert all(stata_p["p%d" % i].endswith("%20") for i in range(1, 16))
-        ours = dict(_directives(os.path.join(_SCHEMES, "sttrans.scheme")))
+        ours = dict(_directives(os.path.join(_SCHEMES, "dash-sttrans.scheme")))
         for i in range(1, 16):
             r, g, b = (int(v) for v in stata_p["p%d" % i].split()[:3])
             assert ours["color p%d" % i].lower() == (
@@ -675,7 +675,7 @@ class TestTheSchemeTableSaysWhatStataSays:
 
     def test_sttrans_is_s2color_restyled_with_tols_muted_colours_in_dash(
             self):
-        ours = dict(_directives(os.path.join(_SCHEMES, "sttrans.scheme")))
+        ours = dict(_directives(os.path.join(_SCHEMES, "dash-sttrans.scheme")))
         # Every p1..p15 at twenty percent in dash's file too.
         assert all(ours["color p%d" % i].endswith("%20")
                    for i in range(1, 16))
@@ -898,7 +898,7 @@ class TestAnExplicitOptionBeatsTheScheme:
 def _custom_scheme(src_name, background):
     """A shipped scheme's text with its background replaced."""
     out = []
-    for ln in _read(os.path.join(_SCHEMES, src_name + ".scheme")).splitlines():
+    for ln in _read(os.path.join(_SCHEMES, "dash-" + src_name + ".scheme")).splitlines():
         if re.match(r"^color background\s", ln):
             ln = "color background      %s" % background
         out.append(ln)
@@ -1022,7 +1022,7 @@ class TestTheShippedFiles:
         batch also added the reference line's, the plot region border's and
         note()'s text box's keys.)"""
         n = sum(1 for k, _v in _directives(os.path.join(_SCHEMES,
-                                                        name + ".scheme"))
+                                                        "dash-" + name + ".scheme"))
                 if not k.startswith(("sequence", "label")))
         assert 80 <= n <= 140, (name, n)
         help_text = _read(_HELP)
@@ -1048,12 +1048,12 @@ class TestTheShippedFiles:
     @pytest.mark.parametrize("name", sorted(dr.SchemeParser._BUILTIN_NAMES))
     def test_the_include_chain_is_flattened(self, name):
         assert not re.search(r"^\s*#include",
-                             _read(os.path.join(_SCHEMES, name + ".scheme")),
+                             _read(os.path.join(_SCHEMES, "dash-" + name + ".scheme")),
                              re.M)
 
     @pytest.mark.parametrize("name", sorted(dr.SchemeParser._BUILTIN_NAMES))
     def test_every_colour_is_rrggbb(self, name):
-        for k, v in _directives(os.path.join(_SCHEMES, name + ".scheme")):
+        for k, v in _directives(os.path.join(_SCHEMES, "dash-" + name + ".scheme")):
             if k.startswith("color "):
                 # `none' is Stata's own colour for no line: economist's
                 # plot region has no border.
@@ -1089,7 +1089,7 @@ class TestTheShippedFiles:
         24sep2026 from its SVG export)."""
         for name in dr.SchemeParser._BUILTIN_NAMES:
             keys = {k for k, _v in _directives(
-                os.path.join(_SCHEMES, name + ".scheme"))}
+                os.path.join(_SCHEMES, "dash-" + name + ".scheme"))}
             assert "color refline" not in keys, name
             assert "color ci_area" in keys, name
             assert {"color xyline", "linepattern xyline"} <= keys, name
@@ -1105,7 +1105,7 @@ class TestTheShippedFiles:
         keys = set()
         for name in dr.SchemeParser._BUILTIN_NAMES:
             keys |= {k for k, _v in _directives(
-                os.path.join(_SCHEMES, name + ".scheme"))}
+                os.path.join(_SCHEMES, "dash-" + name + ".scheme"))}
         bad = sorted(k for k in keys if re.search(
             r"(?<!text)box|pie|\bdot|matrix|margin|barlabel|barstyle|bar_|"
             r"tick(?!_label)", k))
@@ -1127,9 +1127,10 @@ class TestAnInstalledTreeLooksOnlyForItsOwnTwenty:
         names = sorted(dr.SchemeParser._BUILTIN_NAMES)
         assert len(names) == 20
         for name in names:
-            (root / name[0]).mkdir(exist_ok=True)
-            shutil.copy2(os.path.join(_SCHEMES, name + ".scheme"),
-                         str(root / name[0] / (name + ".scheme")))
+            (root / "d").mkdir(exist_ok=True)
+            shutil.copy2(os.path.join(_SCHEMES, "dash-" + name + ".scheme"),
+                         str(root / "d" / ("dash-" + name + ".scheme")))
+        (root / "s").mkdir()
         (root / "s" / "scheme-zzthird.scheme").write_text(
             "#include s2color\ncolor background #ff00ff\n")
         (root / "z").mkdir()
@@ -1189,7 +1190,7 @@ class TestTheUnitsAreStatas:
 
     def test_a_medium_line_is_0_30_in_dash(self):
         assert "linewidth p" in dict(_directives(
-            os.path.join(_SCHEMES, "economist.scheme")))
+            os.path.join(_SCHEMES, "dash-economist.scheme")))
 
     def test_the_series_share_one_line_width(self):
         """The corrected Series paragraph: a scheme sets one line width,
@@ -1203,7 +1204,7 @@ class TestTheUnitsAreStatas:
     def test_the_series_share_one_line_width_in_dash(self):
         for name in dr.SchemeParser._BUILTIN_NAMES:
             keys = {k for k, _v in _directives(
-                os.path.join(_SCHEMES, name + ".scheme"))}
+                os.path.join(_SCHEMES, "dash-" + name + ".scheme"))}
             assert not [k for k in keys
                         if re.fullmatch(r"linewidth p\d+", k)], name
         sec = _flat(_help_between("{marker scheme}", "{marker unsupported}"))

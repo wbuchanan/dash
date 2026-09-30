@@ -792,7 +792,7 @@ _ov_case OV-145 `"dash scatter mpg weight, scheme(../x) name(ov145)"' 198 scheme
 // OV-146 .. OV-148: a shipped name written WITH the extension
 // (scheme(s2color.scheme), in any case) is the shipped scheme -- the
 // renderer's SchemeParser._resolve_path reads that spelling from the
-// package's schemes/ too -- so the gate accepts it with no file in the
+// package's dash-<name>.scheme too -- so the gate accepts it with no file in the
 // working directory (test/ holds no .scheme file).  A name that is not
 // shipped still needs the file.  Measured before the fix: OV-146 and
 // OV-147 were refused, rc 198 -- the extension form was looked for as a

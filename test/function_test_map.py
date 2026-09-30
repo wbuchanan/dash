@@ -241,6 +241,8 @@ FUNCTIONS = {
  'SchemeParser._gsize': 'test/test_scheme_review_fixes.py::TestNumericGsize::test_a_value_in_range_is_fixed_decimal',
  'SchemeParser._include': 'test/test_scheme_consumption.py::TestAnIncludeIsSplicedWhereItStands::test_an_include_that_escapes_is_not_read_and_s2color_stands_in',
  'SchemeParser._init_properties':'test/test_scheme_consumption.py::TestLinePatternFollowsStatasOwnChain::test_a_declared_solid_is_not_mistaken_for_an_absent_key',
+ 'SchemeParser._shipped_base': 'test/test_scheme_resolution.py::TestTheShippedFileHelpers::test_shipped_base',
+ 'SchemeParser._shipped_file': 'test/test_scheme_resolution.py::TestTheShippedFileHelpers::test_shipped_file',
  'SchemeParser._installed_letter_dir': 'test/test_installed_layout.py::TestTheInstalledLookupIsInertOutsideAnInstall::test_the_letter_directory_is_only_computed_for_shipped_names',
  'SchemeParser._int': 'test/test_scheme_coercion.py::TestScalarCoercions::test_int_absent_and_unparseable_return_the_default',
  'SchemeParser._intensity': 'test/test_scheme_coercion.py::TestIntensity::test_a_percentage_becomes_a_fraction',

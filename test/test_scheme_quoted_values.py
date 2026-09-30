@@ -12,7 +12,7 @@ the key ``label "s2`` and never skipped a ``sequence`` line.
 
 Third-party scheme files are out of scope (DISCOVERY Q30, review D13): no
 test here reads, copies, sweeps or names one.  Every test reads a scheme
-file it writes itself -- a copy of the shipped ``schemes/s1rcolor.scheme``
+file it writes itself -- a copy of the shipped ``dash-s1rcolor.scheme``
 edited to add the odd line forms Stata's own ``scheme.class`` (:189-226)
 must read: quoted RGB with and without ``%opacity``, an unclosed quote, a
 ``label`` line and a tab-separated directive.
@@ -49,13 +49,13 @@ def _props_scheme(props):
 
 
 def _write_scheme(tmp_path, name="myquoted"):
-    """Copy ``schemes/s1rcolor.scheme`` to ``<name>.scheme`` in *tmp_path*
+    """Copy ``dash-s1rcolor.scheme`` to ``<name>.scheme`` in *tmp_path*
     (the working-directory form dash.sthlp:2813 documents), replace its
     ``color background`` line with a quoted RGB triplet, and append every
     odd line form the reader must accept: quoted RGB with %opacity, an
     unclosed quote, a ``label`` line and a tab-separated directive.  No
     third-party file is copied or read (DISCOVERY Q30, review D13)."""
-    src = os.path.join(_ROOT, "schemes", "s1rcolor.scheme")
+    src = os.path.join(_ROOT, "dash-s1rcolor.scheme")
     with open(src, encoding="utf-8") as fh:
         lines = fh.readlines()
     out = []
@@ -290,9 +290,9 @@ class TestUnreadableLinesWarnOnceEach:
 
 
 class TestShippedSchemesParseAsBefore:
-    _SCHEMES_DIR = os.path.join(_ROOT, "schemes")
+    _SCHEMES_DIR = _ROOT
     _FILES = sorted(f for f in os.listdir(_SCHEMES_DIR)
-                    if f.endswith(".scheme"))
+                    if f.startswith("dash-") and f.endswith(".scheme"))
 
     @pytest.mark.parametrize("fname", _FILES)
     def test_every_shipped_scheme_gives_the_old_props_minus_label_and_sequence(

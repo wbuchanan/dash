@@ -13,7 +13,7 @@ sizes, line widths and intensities are *themselves* indirections into
 This script walks that whole graph and emits a single JSON document of fully
 resolved values, which is the specification the translated ``dash`` scheme files
 are written from -- and it then brings those twenty files
-(``schemes/<name>.scheme``) up to date with it: every directive the fixture pins
+(``dash-<name>.scheme`` in the package root) up to date with it: every directive the fixture pins
 is checked against the file, a value that disagrees is corrected on its own
 line and reported, a directive the file lacks is appended in a dated block
 after the file's last directive, and a file that does not exist is created
@@ -94,7 +94,7 @@ is identical, so either tree yields the same answer.  Override the location with
 USAGE
 -----
     /opt/homebrew/bin/python3.14 scripts/extract_scheme_truth.py \
-        --out test/fixtures/scheme_truth.json          # also updates schemes/*.scheme
+        --out test/fixtures/scheme_truth.json          # also updates dash-*.scheme
     ... --no-scheme-files                             # fixture only
     ... --schemes-dir /elsewhere                      # files live elsewhere
 
@@ -130,7 +130,7 @@ DEFAULT_STATA_BASE = "/Applications/StataNow/ado/base"
 STATA_VERSION = "StataNow 19.5 (MP), born 12 Aug 2026"
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFAULT_SCHEMES_DIR = os.path.join(REPO_ROOT, "schemes")
+DEFAULT_SCHEMES_DIR = REPO_ROOT
 
 # Number of overlaid plots in a Stata scheme's colour cycle.
 N_PLOTS = 15
@@ -1291,7 +1291,7 @@ def extract(stata_base: str, scheme: str) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# The translated scheme files (schemes/<name>.scheme)
+# The translated scheme files (dash-<name>.scheme in the package root)
 # --------------------------------------------------------------------------- #
 #
 # A translated file is Stata's own one-directive-per-line grammar with every
@@ -1851,7 +1851,7 @@ def _upsert_provenance(lines: list[str], block: list[str]) -> "str | None":
 
 def update_scheme_file(path: str, name: str, e: dict, stata_base: str,
                        stamp: str) -> dict:
-    """Bring ``schemes/<name>.scheme`` into line with fixture entry *e*.
+    """Bring ``dash-<name>.scheme`` into line with fixture entry *e*.
 
     Returns ``{"changed": [...], "added": [...], "created": bool,
     "provenance": "written" | "updated" | None}`` describing what was
@@ -1973,7 +1973,7 @@ def main(argv=None) -> int:
                     help="directory of dash's translated <name>.scheme files "
                          "to update from the fixture (default: %(default)s)")
     ap.add_argument("--no-scheme-files", action="store_true",
-                    help="write the fixture only; leave schemes/*.scheme alone")
+                    help="write the fixture only; leave dash-*.scheme alone")
     args = ap.parse_args(argv)
 
     base = args.stata_base
@@ -2066,7 +2066,7 @@ def main(argv=None) -> int:
                 "value is what Stata itself falls back to -- the documented "
                 "p#stub -> pstub -> p# -> p chain, a bare class default, or the "
                 "generic `color grid' -- and 'rule' says which. The shipped "
-                "schemes/<name>.scheme files carry the same as `* provenance:' "
+                "dash-<name>.scheme files carry the same as `* provenance:' "
                 "lines between `* BEGIN provenance (WP-17)' and `* END "
                 "provenance (WP-17)', one per directive."
             ),
@@ -2212,7 +2212,7 @@ def main(argv=None) -> int:
     if args.no_scheme_files:
         return 0
     for s in args.schemes:
-        path = os.path.join(args.schemes_dir, f"{s}.scheme")
+        path = os.path.join(args.schemes_dir, f"dash-{s}.scheme")
         result = update_scheme_file(path, s, doc[s], base, stamp)
         for line in result["changed"]:
             sys.stderr.write(f"{path}: CHANGED {line}\n")

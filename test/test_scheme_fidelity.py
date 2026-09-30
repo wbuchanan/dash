@@ -90,7 +90,7 @@ from dash_render import OptionTranslator, SchemeParser
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 FIXTURE_PATH = os.path.join(REPO_ROOT, "test", "fixtures", "scheme_truth.json")
-SCHEMES_DIR = os.path.join(REPO_ROOT, "schemes")
+SCHEMES_DIR = REPO_ROOT
 
 #: Minimum acceptable *faithful* coverage of a scheme's fixture properties.
 #:
@@ -323,7 +323,7 @@ def parser_for(name):
 
 def scheme_path(name):
     """Absolute path of the bundled .scheme file for *name*."""
-    return os.path.join(SCHEMES_DIR, name + ".scheme")
+    return os.path.join(SCHEMES_DIR, "dash-" + name + ".scheme")
 
 
 def raw_props(sp):
@@ -391,7 +391,8 @@ def include_targets(path, _seen=None):
                 unresolved.append(line)
                 continue
             target = parts[1].strip()
-            fname = target if target.endswith(".scheme") else target + ".scheme"
+            base = target[:-len(".scheme")] if target.endswith(".scheme") else target
+            fname = "dash-" + base + ".scheme"
             tpath = os.path.join(SCHEMES_DIR, fname)
             if os.path.isfile(tpath):
                 resolved.append(target)
@@ -661,7 +662,7 @@ def test_scheme_parser_exposes_props():
 def test_scheme_resolves(name):
     """Every one of Stata's 20 schemes is a real, parseable dash scheme.
 
-    "Without falling back" means three things: the file exists in schemes/, the
+    "Without falling back" means three things: the file dash-<name>.scheme exists, the
     parser does not raise, and no ``#include`` in the chain was silently skipped
     (SchemeParser._parse_file swallows an unresolvable include with a bare
     ``except ValueError: pass``, which would leave a child scheme parented on

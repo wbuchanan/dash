@@ -16,6 +16,11 @@ destinations, so this is not an artefact of how the source was staged::
 The ``schemes/`` component of each ``f schemes/<name>.scheme`` line is dropped;
 Stata files by basename and extension, not by the path in the manifest.
 
+That was the layout until WP-28.  Since then dash ships each scheme as
+``f dash-<name>.scheme`` in the package root, and Stata files every one of them
+under ``PLUS/d/`` (the first letter of ``dash-``).  The staging below follows
+the manifest, so it holds the current layout.
+
 The defect this file exists for
 -------------------------------
 ``SchemeParser._SCHEME_SEARCH_DIRS`` is ``(<dir of dash_render.py>/schemes,
@@ -80,7 +85,7 @@ import pytest
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
 
-from test_packaging import REPO_ROOT, SCHEMES_DIR, load_staged_render  # noqa: E402
+from test_packaging import REPO_ROOT, load_staged_render  # noqa: E402
 
 #: The fourteen schemes shipped when the install was measured, and the letter
 #: directory Stata filed each one under -- taken from that install, not from
@@ -103,17 +108,24 @@ def _manifest_schemes():
     held too.  Six were added after the measurement (WP-17), and with the
     lookup narrowed back to the measured fourteen, INST-01..16 all passed
     (WP-24); only test_help_claims_8.py's all-twenty staging noticed.
+    Since WP-28 each ships as ``f dash-<name>.scheme``, so every one lands in
+    ``d/``.
     """
     out = {}
     with open(os.path.join(REPO_ROOT, "dash.pkg"), encoding="utf-8") as fh:
         for raw in fh:
             parts = raw.split()
             if (len(parts) == 2 and parts[0] == "f"
-                    and parts[1].startswith("schemes/")
+                    and parts[1].startswith("dash-")
                     and parts[1].endswith(".scheme")):
-                name = parts[1][len("schemes/"):-len(".scheme")]
-                out[name] = name[0]
+                name = parts[1][len("dash-"):-len(".scheme")]
+                out[name] = "d"
     return out
+
+
+def _shipped(name):
+    """The file name dash ships scheme *name* under."""
+    return "dash-%s.scheme" % name
 
 
 #: Every scheme dash ships, and the letter directory Stata files it under.
@@ -140,8 +152,8 @@ def _build_installed_tree(root: str) -> str:
     shutil.copy2(os.path.join(REPO_ROOT, "dash_render.py"),
                  os.path.join(root, "py", "dash_render.py"))
     for name, letter in INSTALLED_SCHEMES.items():
-        shutil.copy2(os.path.join(SCHEMES_DIR, name + ".scheme"),
-                     os.path.join(root, letter, name + ".scheme"))
+        shutil.copy2(os.path.join(REPO_ROOT, _shipped(name)),
+                     os.path.join(root, letter, _shipped(name)))
     for rel, body in FOREIGN_FILES.items():
         target = os.path.join(root, rel)
         os.makedirs(os.path.dirname(target), exist_ok=True)
@@ -214,7 +226,8 @@ class TestAnInstalledTreeResolvesItsOwnSchemes:
 
         Every name the renderer treats as built in is shipped, every shipped
         name is one it treats as built in, and each of the fourteen measured
-        in the real install is still shipped, to the directory measured.
+        in the real install is still shipped -- now to ``d/``, as every
+        ``dash-<name>.scheme`` is (WP-28).
         """
         import dash_render as dr
         assert set(INSTALLED_SCHEMES) == set(dr.SchemeParser._BUILTIN_NAMES), (
@@ -222,14 +235,14 @@ class TestAnInstalledTreeResolvesItsOwnSchemes:
             % (set(INSTALLED_SCHEMES) ^ set(dr.SchemeParser._BUILTIN_NAMES),)
         )
         for name, letter in MEASURED_INSTALL.items():
-            assert INSTALLED_SCHEMES.get(name) == letter, name
+            assert INSTALLED_SCHEMES.get(name) == "d", (name, letter)
 
     def test_the_default_scheme_is_the_real_s2color(self, installed):
         """INST-03. The fallback mimics s2color, so only provenance separates them."""
         module, root, _cwd = installed
         scheme = module.SchemeParser("s2color")
         assert scheme.is_fallback is False
-        on_disk = os.path.join(root, "s", "s2color.scheme")
+        on_disk = os.path.join(root, "d", "dash-s2color.scheme")
         # It must have parsed the shipped file, not an in-memory dict: the
         # file carries more properties than the fallback, and keys the
         # fallback has none of (`symbol p', `linepattern p').  The file has
@@ -285,7 +298,7 @@ class TestTheInstalledLookupDoesNotWidenWhatElseIsReadable:
         IS an install, which is the only combination that can regress.
         """
         module, root, cwd = installed
-        target = os.path.join(root, "s", "someone_elses_secret.scheme")
+        target = os.path.join(root, "d", "someone_elses_secret.scheme")
         with open(target, "w", encoding="utf-8") as fh:
             fh.write("color background #123456\n")
         link = os.path.join(cwd, "s2color.scheme")
@@ -304,7 +317,7 @@ class TestTheInstalledLookupDoesNotWidenWhatElseIsReadable:
         the fourteen literals, never of an arbitrary caller string.
         """
         module, root, _cwd = installed
-        planted = os.path.join(root, "s", "planted.scheme")
+        planted = os.path.join(root, "d", "planted.scheme")
         with open(planted, "w", encoding="utf-8") as fh:
             fh.write("color background #abcdef\n")
         inst = module.SchemeParser.__new__(module.SchemeParser)
@@ -322,7 +335,7 @@ class TestTheInstalledLookupDoesNotWidenWhatElseIsReadable:
         outside = os.path.join(os.path.dirname(root), "outside.txt")
         with open(outside, "w", encoding="utf-8") as fh:
             fh.write("not a scheme\n")
-        shipped = os.path.join(root, "s", "s2color.scheme")
+        shipped = os.path.join(root, "d", "dash-s2color.scheme")
         os.remove(shipped)
         os.symlink(outside, shipped)
 
@@ -361,7 +374,7 @@ class TestTheInstalledLookupDoesNotWidenWhatElseIsReadable:
         """INST-09. Deleting the shipped files must still warn, not pretend."""
         root = _build_installed_tree(str(tmp_path / "plus"))
         for name, letter in INSTALLED_SCHEMES.items():
-            os.remove(os.path.join(root, letter, name + ".scheme"))
+            os.remove(os.path.join(root, letter, _shipped(name)))
         elsewhere = tmp_path / "elsewhere"
         elsewhere.mkdir()
         monkeypatch.chdir(elsewhere)
@@ -460,7 +473,7 @@ class TestTheDiagnosticsNameWhereItLooked:
         """
         root = _build_installed_tree(str(tmp_path / "plus"))
         for name, letter in INSTALLED_SCHEMES.items():
-            os.remove(os.path.join(root, letter, name + ".scheme"))
+            os.remove(os.path.join(root, letter, _shipped(name)))
         elsewhere = tmp_path / "elsewhere"
         elsewhere.mkdir()
         monkeypatch.chdir(elsewhere)
@@ -509,14 +522,16 @@ class TestTheDiagnosticsNameWhereItLooked:
 
 class TestTheHelpStatesTheInstalledLayout:
 
-    def test_the_help_says_where_an_install_puts_them_and_why_they_keep_their_names(
+    def test_the_help_says_where_an_install_puts_them_and_why_they_are_named_so(
             self):
         """INST-18. TR-05.7 closed B3 as a documented limitation: the plain
         ``<name>.scheme`` names are kept, deliberately, and the clash with
         another package's bare ``<name>.scheme`` is accepted.  The
         documentation IS the deliverable, so it is held here.  Measured under
         WP-24: with either of the two paragraphs deleted from dash.sthlp,
-        every help and tracking test passed.  Whitespace is normalised
+        every help and tracking test passed.  Since WP-28 the files are
+        ``dash-<name>.scheme`` in ``PLUS/d/`` and cannot clash, which the two
+        paragraphs now state.  Whitespace is normalised
         because SMCL wraps the sentences over lines.
         """
         with open(os.path.join(REPO_ROOT, "dash.sthlp"), encoding="utf-8") as fh:
@@ -524,10 +539,23 @@ class TestTheHelpStatesTheInstalledLayout:
         for phrase in (
             "{ul:Where the shipped schemes live after an install.}",
             "{cmd:dash_render.py} goes to {cmd:PLUS/py/}",
-            "{ul:They are named without Stata's {cmd:scheme-} prefix, deliberately.}",
-            "the clash is accepted as a known limitation",
+            "{cmd:PLUS/d/}",
+            "{ul:Why they are named {cmd:dash-}{it:name}{cmd:.scheme}.}",
+            "cannot collide with Stata's own {cmd:scheme-}{it:name}{cmd:.scheme} files",
+            "{cmd:set scheme} looks only for {cmd:scheme-}{it:name}{cmd:.scheme}, so it never reads them",
+            "you name each by Stata's own name, {cmd:scheme(s2color)}",
         ):
             assert phrase in text, (
                 "dash.sthlp no longer states %r; GAPS B3 was closed by "
                 "documenting it" % (phrase,)
             )
+
+
+def test_the_help_never_offers_set_scheme_dash():
+    """`set scheme <name>' reads only scheme-<name>.scheme, so the shipped
+    dash-<name>.scheme files are not Stata schemes by that name, and the
+    help must not say `set scheme dash-<name>' works."""
+    with open(os.path.join(REPO_ROOT, "dash.sthlp"), encoding="utf-8") as fh:
+        text = " ".join(fh.read().split())
+    assert "set scheme dash-" not in text
+    assert "{cmd:set scheme dash-}" not in text

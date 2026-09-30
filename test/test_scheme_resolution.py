@@ -85,9 +85,9 @@ _SENTINEL_END = "// END shipped schemes (WP-17)"
 
 @pytest.fixture
 def custom_cwd(tmp_path, monkeypatch):
-    """A tmp working directory holding ``mytheme.scheme``: schemes/s1rcolor
+    """A tmp working directory holding ``mytheme.scheme``: dash-s1rcolor.scheme
     with its ``color background`` line replaced by CUSTOM_BG."""
-    src = os.path.join(_ROOT, "schemes", "s1rcolor.scheme")
+    src = os.path.join(_ROOT, "dash-s1rcolor.scheme")
     with open(src, encoding="utf-8") as fh:
         text = fh.read()
     new, n = re.subn(r"(?m)^color background\s+\S+",
@@ -483,7 +483,7 @@ class TestTheShippedListIsOneList:
     @pytest.mark.parametrize("name", SHIPPED)
     def test_every_shipped_name_has_a_file(self, name):
         assert os.path.isfile(
-            os.path.join(_ROOT, "schemes", f"{name}.scheme")), name
+            os.path.join(_ROOT, f"dash-{name}.scheme")), name
 
 
 # ---------------------------------------------------------------------------
@@ -767,3 +767,167 @@ class TestEveryOtherSchemeIsUnchanged:
         want = {cls: PINNED_EXCEPTIONS.get((name, cls), v)
                 for cls, v in PINNED_ALPHAS.items()}
         assert got == want, (name, mode, got, want)
+
+
+# ---------------------------------------------------------------------------
+# WP-28: the shipped schemes are dash-<name>.scheme in the package root
+# ---------------------------------------------------------------------------
+
+def _layout(tmp_path, kind):
+    """Stage dash_render.py with every shipped ``dash-<name>.scheme`` beside it
+    (``kind == "source"``, the repo layout) or as a ``net install`` files
+    them (``kind == "installed"``: ``PLUS/py/dash_render.py`` and
+    ``PLUS/d/dash-<name>.scheme``).  Returns (module name, module, dir the
+    shipped files are in, an empty working directory)."""
+    import shutil
+    from test_packaging import load_staged_render
+    if kind == "source":
+        code_dir = files_dir = tmp_path / "src"
+        code_dir.mkdir()
+    else:
+        code_dir = tmp_path / "plus" / "py"
+        files_dir = tmp_path / "plus" / "d"
+        code_dir.mkdir(parents=True)
+        files_dir.mkdir()
+    shutil.copy2(os.path.join(_ROOT, "dash_render.py"),
+                 str(code_dir / "dash_render.py"))
+    for name in SHIPPED:
+        shutil.copy2(os.path.join(_ROOT, f"dash-{name}.scheme"),
+                     str(files_dir / f"dash-{name}.scheme"))
+    cwd = tmp_path / "work"
+    cwd.mkdir()
+    mod_name, mod = load_staged_render(str(code_dir))
+    return mod_name, mod, str(files_dir), cwd
+
+
+@pytest.mark.parametrize("kind", ("source", "installed"))
+class TestTheShippedFilesAreDashNameDotDash:
+
+    def test_a_shipped_name_bare_or_with_scheme_reads_its_dash_file(
+            self, tmp_path, monkeypatch, kind):
+        mod_name, mod, files_dir, cwd = _layout(tmp_path, kind)
+        monkeypatch.chdir(cwd)
+        try:
+            for name in SHIPPED:
+                want = os.path.realpath(
+                    os.path.join(files_dir, f"dash-{name}.scheme"))
+                for spelling in (name, name + ".scheme",
+                                 name.upper() + ".SCHEME"):
+                    inst = mod.SchemeParser.__new__(mod.SchemeParser)
+                    got = os.path.realpath(inst._resolve_path(spelling))
+                    assert got == want, (spelling, got)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("error")
+                    sch = mod.SchemeParser(name)
+                assert sch.is_fallback is False and sch.name == name, (
+                    name, sch.name)
+        finally:
+            sys.modules.pop(mod_name, None)
+
+    def test_a_scheme_file_in_the_working_directory_still_wins(
+            self, tmp_path, monkeypatch, kind):
+        mod_name, mod, _files_dir, cwd = _layout(tmp_path, kind)
+        (cwd / "mytheme.scheme").write_text(
+            "#include s1rcolor\ncolor background #123456\n", encoding="utf-8")
+        (cwd / "s2color.scheme").write_text(
+            "color background #0f0f0f\n", encoding="utf-8")
+        monkeypatch.chdir(cwd)
+        try:
+            inst = mod.SchemeParser.__new__(mod.SchemeParser)
+            for spelling in ("mytheme", "mytheme.scheme"):
+                assert os.path.realpath(inst._resolve_path(spelling)) == \
+                    os.path.realpath(str(cwd / "mytheme.scheme"))
+            assert os.path.realpath(inst._resolve_path("s2color")) == \
+                os.path.realpath(str(cwd / "s2color.scheme"))
+            sch = mod.SchemeParser("mytheme")
+            assert sch.name == "mytheme" and sch.is_fallback is False
+            assert sch._props.get("color background") == "#123456"
+        finally:
+            sys.modules.pop(mod_name, None)
+
+    def test_a_stray_name_dot_scheme_beside_the_renderer_is_not_read(
+            self, tmp_path, monkeypatch, kind):
+        mod_name, mod, files_dir, cwd = _layout(tmp_path, kind)
+        code_dir = os.path.dirname(mod.__file__)
+        for d in {files_dir, code_dir}:
+            with open(os.path.join(d, "s2color.scheme"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("color background #ff00ff\n")
+        monkeypatch.chdir(cwd)
+        try:
+            inst = mod.SchemeParser.__new__(mod.SchemeParser)
+            for spelling in ("s2color", "s2color.scheme"):
+                got = os.path.basename(inst._resolve_path(spelling))
+                assert got == "dash-s2color.scheme", (spelling, got)
+            assert mod.SchemeParser("s2color")._props.get(
+                "color background") != "#ff00ff"
+        finally:
+            sys.modules.pop(mod_name, None)
+
+    def test_a_missing_dash_file_falls_back_rather_than_reading_a_stray(
+            self, tmp_path, monkeypatch, kind):
+        mod_name, mod, files_dir, cwd = _layout(tmp_path, kind)
+        os.remove(os.path.join(files_dir, "dash-stcolor.scheme"))
+        with open(os.path.join(files_dir, "stcolor.scheme"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("color background #ff00ff\n")
+        monkeypatch.chdir(cwd)
+        try:
+            assert mod.SchemeParser.can_resolve("stcolor") is False
+        finally:
+            sys.modules.pop(mod_name, None)
+
+
+class TestTheRepoShipsDashNameDotDash:
+
+    def test_there_is_no_schemes_directory(self):
+        assert not os.path.exists(os.path.join(_ROOT, "schemes"))
+
+
+class TestTheShippedFileHelpers:
+
+    def test_shipped_file(self):
+        assert dr.SchemeParser._shipped_file("s2color") == "dash-s2color.scheme"
+        assert dr.SchemeParser._shipped_file("stcolor_alt") == \
+            "dash-stcolor_alt.scheme"
+
+    def test_shipped_base(self):
+        sb = dr.SchemeParser._shipped_base
+        assert sb("s2color") == "s2color"
+        assert sb(" S2COLOR.Scheme ") == "s2color"
+        assert sb("StColor_Alt") == "stcolor_alt"
+        for name in ("mytheme", "mytheme.scheme", "", None, "s/s2color",
+                     "../s2color.scheme", "dash-s2color.scheme",
+                     "scheme-s2color"):
+            assert sb(name) is None, name
+
+
+@pytest.mark.parametrize("kind", ("source", "installed"))
+class TestADashPrefixedNameIsTheUsersOwnFile:
+    """scheme(dash-s2color) is not a way to name the shipped file: it is the
+    user's dash-s2color.scheme in the working directory, or unresolvable."""
+
+    def test_without_a_file_in_the_working_directory_it_does_not_resolve(
+            self, tmp_path, monkeypatch, kind):
+        mod_name, mod, _files_dir, cwd = _layout(tmp_path, kind)
+        monkeypatch.chdir(cwd)
+        try:
+            for spelling in ("dash-s2color", "dash-s2color.scheme",
+                             "DASH-S2COLOR.SCHEME"):
+                assert mod.SchemeParser.can_resolve(spelling) is False, spelling
+        finally:
+            sys.modules.pop(mod_name, None)
+
+    def test_with_a_file_in_the_working_directory_it_reads_that_file(
+            self, tmp_path, monkeypatch, kind):
+        mod_name, mod, _files_dir, cwd = _layout(tmp_path, kind)
+        (cwd / "dash-s2color.scheme").write_text(
+            "#include s2color\ncolor background #0a0b0c\n", encoding="utf-8")
+        monkeypatch.chdir(cwd)
+        try:
+            for spelling in ("dash-s2color", "dash-s2color.scheme"):
+                sch = mod.SchemeParser(spelling)
+                assert sch.name == "dash-s2color", sch.name
+                assert sch._props.get("color background") == "#0a0b0c"
+        finally:
+            sys.modules.pop(mod_name, None)

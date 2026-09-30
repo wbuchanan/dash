@@ -23,7 +23,7 @@ EXAMPLES = sorted(f for f in os.listdir(os.path.join(ROOT, "examples"))
                   if f.endswith(".do"))
 with open(os.path.join(ROOT, "dash.pkg"), encoding="utf-8") as _fh:
     _PKG = _fh.read()
-SCHEMES = sorted(re.findall(r"^f schemes/(\S+)\.scheme\s*$", _PKG, re.M))
+SCHEMES = sorted(re.findall(r"^f dash-(\S+)\.scheme\s*$", _PKG, re.M))
 PKG_DATE = re.search(r"^d Distribution-Date:\s*(\d{8})", _PKG, re.M).group(1)
 CLEAN_LOG = ". dash build, saving(x.html)\n(dashboard saved)\n"
 

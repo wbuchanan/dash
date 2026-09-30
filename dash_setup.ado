@@ -585,7 +585,7 @@ end
 // reported as "All dependencies are satisfied" (see the BUGS.md entry).
 //
 // The schemes are checked by asking the RENDERER, not by `findfile'.
-// findfile locates PLUS/s/s2color.scheme perfectly well on the very install
+// findfile would locate PLUS/d/dash-s2color.scheme just as well on an install
 // where the renderer could not read a single scheme, so a findfile check
 // would have passed on the broken tree it exists to catch.
 //

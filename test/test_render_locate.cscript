@@ -331,10 +331,10 @@ _l13_miss, _l13_fb, _l13_nw, _l13_n, _l13_root = [], [], -1, 0, ""
 with open(_l13_os.path.join("..", "dash.pkg"), encoding="utf-8") as _l13_fh:
     for _l13_ln in _l13_fh:
         _l13_p = _l13_ln.split()
-        if len(_l13_p) == 2 and _l13_p[0] == "f" and _l13_p[1].startswith("schemes/"):
+        if len(_l13_p) == 2 and _l13_p[0] == "f" and _l13_p[1].startswith("dash-") and _l13_p[1].endswith(".scheme"):
             _l13_n += 1
-            _l13_b = _l13_p[1][len("schemes/"):]
-            if not _l13_os.path.isfile(_l13_os.path.join(_l13_plus, _l13_b[0], _l13_b)):
+            _l13_b = _l13_p[1]
+            if not _l13_os.path.isfile(_l13_os.path.join(_l13_plus, "d", _l13_b)):
                 _l13_miss.append(_l13_b)
 _l13_py = _l13_os.path.join(_l13_plus, "py", "dash_render.py")
 if _l13_os.path.isfile(_l13_py):
@@ -382,11 +382,11 @@ assert `loc13moved' == 1
 assert `loc13back' == 1
 assert `loc13sado' == 1
 assert `loc13rc' == 0
-assert `loc13nsch' > 0
+assert `loc13nsch' == 20
 assert "`loc13miss'" == ""
 assert `loc13py' == 1
 assert `loc13d' == 0
-display "LOC-13 PASS: net install files the renderer in PLUS/py and each of the `loc13nsch' shipped schemes in its letter directory"
+display "LOC-13 PASS: net install files the renderer in PLUS/py and each of the `loc13nsch' shipped dash-<name>.scheme schemes in PLUS/d"
 assert `loc13ffrc' == 0 & `loc13ffok' == 1
 assert `loc13frrc' == 0 & `loc13frok' == 1
 display "LOC-14 PASS: findfile, and the locator, find the installed renderer in PLUS/py"

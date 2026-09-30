@@ -3714,13 +3714,10 @@ class SchemeParser:
     ``color p1 "26 71 111 %20"``.
     """
 
-    _SCHEMES_DIR: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schemes")
-
-    # A `net install` may flatten a `f schemes/x.scheme` manifest line to
-    # `<install dir>/x.scheme` instead of preserving the subdirectory.  Search
-    # both layouts so the package works however Stata chose to place the files.
+    # The shipped schemes are `dash-<name>.scheme' files in the package root,
+    # beside this file (WP-28); the renderer's own directory is the one
+    # package directory searched.
     _SCHEME_SEARCH_DIRS: "tuple[str, ...]" = (
-        _SCHEMES_DIR,
         os.path.dirname(os.path.abspath(__file__)),
     )
 
@@ -3728,13 +3725,10 @@ class SchemeParser:
     # into a clean PLUS (Stata's own stata.trk records the same destinations):
     #
     #     PLUS/py/dash_render.py          <- EXTENSION subdirectory
-    #     PLUS/e/economist.scheme
-    #     PLUS/s/s2color.scheme  (+ the other eighteen)
+    #     PLUS/d/dash-s2color.scheme        (+ the other nineteen)
     #
-    # Stata files by basename and extension, so the `schemes/' component of
-    # each `f schemes/<name>.scheme' manifest line is dropped.  Neither search
-    # dir above exists on such a tree, so all twenty schemes fell back --
-    # including the default, which made every installed build warn.
+    # Stata files by first letter, so every `f dash-<name>.scheme' manifest
+    # line lands in PLUS/d, which is not the renderer's own directory.
     #
     # The `== "py"' guard is what keeps this inert everywhere else.  In the
     # repo, and in a loose copy of dash_render.py sitting in someone's
@@ -3805,7 +3799,7 @@ class SchemeParser:
         # size a step off (heading 14pt -> 13pt, text 11pt -> 10pt, note 8pt
         # -> 9pt).  "Recognisable" is the only reason this dict exists, so it
         # now carries s2color's own values for each.  Read from the shipped
-        # schemes/s2color.scheme, which is itself generated from Stata's
+        # dash-s2color.scheme, which is itself generated from Stata's
         # scheme-s2color.scheme by scripts/extract_scheme_truth.py.
         "color grid":             "#eaf2f3",
         "graphsize x":            "5.5",
@@ -3930,8 +3924,8 @@ class SchemeParser:
             + (f", {os.path.join(cls._PLUS_ROOT, '<letter>')}"
                if cls._PLUS_ROOT else "")
             + "). Falling back to built-in "
-            "defaults. The package's schemes/ directory appears to be missing "
-            "— reinstall dash or run dash_setup.",
+            "defaults. dash's shipped dash-<name>.scheme files appear to be "
+            "missing — reinstall dash or run dash_setup.",
             UserWarning,
             stacklevel=3,
         )
@@ -4035,14 +4029,38 @@ class SchemeParser:
         self._props = raw_props
         # Which scheme this actually is.  Callers had no way to ask, so
         # nothing could check that scheme() had been honoured, and a silent
-        # fallback was indistinguishable from a successful resolution.
-        self.name: str = os.path.splitext(os.path.basename(path))[0]
+        # fallback was indistinguishable from a successful resolution.  A
+        # shipped name read from its dash-<name>.scheme is <name>; a user's
+        # own file keeps its file name, dash- prefix or not.
+        shipped = self._shipped_base(raw)
+        if (shipped is not None
+                and os.path.basename(path) == self._shipped_file(shipped)):
+            self.name: str = shipped
+        else:
+            self.name = os.path.splitext(os.path.basename(path))[0]
         self.is_fallback: bool = False
         self._init_properties()
 
     # ------------------------------------------------------------------
     # Path resolution
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _shipped_file(base: str) -> str:
+        """The file name dash ships scheme *base* under (WP-28)."""
+        return "dash-%s.scheme" % base
+
+    @classmethod
+    def _shipped_base(cls, name: str) -> "str | None":
+        """*name* as one of the twenty shipped names, bare or with
+        ``.scheme`` in any case, or None."""
+        base = (name or "").strip()
+        if os.sep in base or "/" in base:
+            return None
+        if base.lower().endswith(".scheme"):
+            base = base[:-len(".scheme")]
+        base = base.lower()
+        return base if base in cls._BUILTIN_NAMES else None
 
     @classmethod
     def _installed_letter_dir(cls, name: str) -> "str | None":
@@ -4059,15 +4077,10 @@ class SchemeParser:
         """
         if cls._PLUS_ROOT is None:
             return None
-        base = (name or "").strip()
-        if os.sep in base or "/" in base:
+        if cls._shipped_base(name) is None:
             return None
-        if base.lower().endswith(".scheme"):
-            base = base[:-len(".scheme")]
-        base = base.lower()
-        if base not in cls._BUILTIN_NAMES:
-            return None
-        return os.path.join(cls._PLUS_ROOT, base[0])
+        # Every shipped file is dash-<name>.scheme, so Stata files it in d/.
+        return os.path.join(cls._PLUS_ROOT, "d")
 
     @classmethod
     def can_resolve(cls, name: str) -> bool:
@@ -4108,15 +4121,23 @@ class SchemeParser:
                        or "/" in name)
 
         search_dirs = list(self._SCHEME_SEARCH_DIRS)
+        shipped = self._shipped_base(name)
+        # The package directory is searched by <name>.scheme only for a name
+        # that cannot be one of dash's own files: scheme(dash-s2color) is
+        # the user's own dash-s2color.scheme in the working directory or
+        # nothing, never the shipped file reached by its file name.
+        own_file = os.path.basename(name).lower().startswith("dash-")
 
         if is_file_ref:
             # Try CWD first, then each scheme search dir
             candidates = [os.path.abspath(os.path.join(os.getcwd(), name))]
-            candidates += [
-                os.path.abspath(os.path.join(d, name)) for d in search_dirs
-            ]
+            if shipped is None and not own_file:
+                candidates += [
+                    os.path.abspath(os.path.join(d, name))
+                    for d in search_dirs
+                ]
         else:
-            # CWD first, then the package's own schemes/.  A bare base name
+            # CWD first, then the package's own directory.  A bare base name
             # used to be looked for ONLY in the package directory, so
             # dash.sthlp's instruction -- put a .scheme file in the working
             # directory and give its base name -- did not work: the name was
@@ -4125,8 +4146,17 @@ class SchemeParser:
             # exactly as it does to the file-reference branch.
             candidates = [os.path.abspath(
                 os.path.join(os.getcwd(), name + ".scheme"))]
+            if shipped is None and not own_file:
+                candidates += [
+                    os.path.abspath(os.path.join(d, name + ".scheme"))
+                    for d in search_dirs
+                ]
+        # A shipped name, bare or with .scheme, is read from its
+        # dash-<name>.scheme beside the renderer -- never from a stray
+        # <name>.scheme there (WP-28).
+        if shipped is not None:
             candidates += [
-                os.path.abspath(os.path.join(d, name + ".scheme"))
+                os.path.abspath(os.path.join(d, self._shipped_file(shipped)))
                 for d in search_dirs
             ]
 
@@ -4144,7 +4174,8 @@ class SchemeParser:
             if not in_allowed:
                 raise ValueError(
                     f"dash scheme: path '{name}' resolves outside allowed "
-                    "directories (CWD or the dash schemes/ folder)."
+                    "directories (CWD or dash's shipped dash-<name>.scheme "
+                    "files)."
                 )
             # Security: also validate the *realpath* so that symlinks pointing
             # outside allowed directories are rejected.  Without this check a
@@ -4158,7 +4189,8 @@ class SchemeParser:
             if not real_in_allowed:
                 raise ValueError(
                     f"dash scheme: path '{name}' resolves via symlink outside "
-                    "allowed directories (CWD or the dash schemes/ folder). "
+                    "allowed directories (CWD or dash's shipped "
+                    "dash-<name>.scheme files). "
                     "Symlinks pointing to external paths are not permitted."
                 )
             if os.path.isfile(candidate):
@@ -4169,17 +4201,15 @@ class SchemeParser:
         # Deliberately NOT a candidate in the loop above, and the letter
         # directory is deliberately NOT appended to `allowed'.  `allowed'
         # also governs the CWD candidate, which the caller fully controls, so
-        # adding <PLUS>/s to it would let a symlink named `s2color.scheme'
-        # planted in the working directory point at any file in <PLUS>/s --
+        # adding <PLUS>/d to it would let a symlink named `s2color.scheme'
+        # planted in the working directory point at any file in <PLUS>/d --
         # reopening BUG-51 for exactly the twenty names this is meant to
         # help.  Checking one path against its own directory keeps the
         # reachable set byte-identical to before.
         installed_dir = self._installed_letter_dir(name)
         if installed_dir is not None:
-            base = name.strip().lower()
-            if base.endswith(".scheme"):
-                base = base[:-len(".scheme")]
-            candidate = os.path.join(installed_dir, base + ".scheme")
+            candidate = os.path.join(
+                installed_dir, self._shipped_file(self._shipped_base(name)))
             if os.path.isfile(candidate):
                 real_dir = os.path.realpath(installed_dir)
                 if os.path.realpath(candidate).startswith(real_dir + os.sep):
@@ -4411,12 +4441,12 @@ class SchemeParser:
 
         *name* resolves as ``scheme()`` does (``_resolve_path``, with its
         containment and symlink checks).  When it resolves nowhere -- or
-        only outside the working directory and dash's schemes folder, which
-        dash never reads -- Stata's rule applies: s2color stands in its
+        only outside the working directory and dash's shipped
+        dash-<name>.scheme files, which dash never reads -- Stata's rule applies: s2color stands in its
         place, and a warning says so in Stata's words, "(note: scheme X not
         found, using s2color)" (measured 24sep2026, `#include w26nosuch':
         that note, rc 0, s2color drawn at 5.5 x 4in).  Where even s2color
-        cannot be read (an install without its schemes/), the in-memory
+        cannot be read (an install without its dash-<name>.scheme files), the in-memory
         ``_FALLBACK_PROPS``, which mirror it, stand in.
         """
         path, reason = self._resolve_cached(name, _notes)
@@ -4433,7 +4463,7 @@ class SchemeParser:
             _notes["\0count"] = seen + 1
             if seen < self._MAX_INCLUDE_NOTES:
                 where = ("; it resolves outside the working directory and "
-                         "dash's schemes folder, which dash does not read"
+                         "dash's shipped dash-<name>.scheme files, which dash does not read"
                          if "outside allowed" in reason else "")
                 warnings.warn(
                     f"dash scheme: (note: scheme {safe} not found, using "
@@ -5963,7 +5993,7 @@ class GlyphMapper:
         self.date_vars: dict[str, str] = {}
         self.numeric_formats: dict[str, str] = {}
         # Defer scheme import to avoid circular dependency; default to s2color.
-        # Must not raise: on an install missing schemes/ this is reached before
+        # Must not raise: on an install missing its schemes this is reached before
         # any user-facing error handling exists.
         if scheme is None:
             self.scheme: "SchemeParser" = SchemeParser.resolve_or_fallback(
@@ -28314,7 +28344,7 @@ class ServerAppBuilder:
             "# and this file run the SAME map_* methods, so a change to one",
             "# cannot land without the other. S15-03.",
             "",
-            "# SchemeParser resolves its bundled schemes/ directory relative",
+            "# SchemeParser resolves its bundled dash-<name>.scheme files relative",
             "# to __file__. This app is normally imported, and __file__ is",
             "# then set -- but it is also exec()'d, by tests and by anything",
             "# that reads the source and runs it, and there __file__ does not",

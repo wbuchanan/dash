@@ -1158,7 +1158,7 @@ class TestDirectivesOnlyAUserSchemeCarries:
         A base is needed because Stata cannot draw under a scheme with no
         #include at all: `graphsize 3' alone, or `color p1 red' alone,
         makes twoway fail with "option seriesid() not allowed", r(198)."""
-        with open(os.path.join(_HERE, "..", "schemes", "s2color.scheme"),
+        with open(os.path.join(_HERE, "..", "dash-s2color.scheme"),
                   encoding="utf-8") as fh:
             kept = [ln for ln in fh.read().splitlines()
                     if ln.split()[:1] != ["graphsize"]]
@@ -1773,7 +1773,7 @@ class TestAChildSymbolReachesWhatStatasChainReaches:
     def test_the_shipped_file_declares_only_what_stata_declares(self, scheme):
         """No `symbol p#' line a Stata file in the chain does not write:
         each one the file carries is `transcribed' in its provenance."""
-        path = os.path.join(_HERE, "..", "schemes", scheme + ".scheme")
+        path = os.path.join(_HERE, "..", "dash-" + scheme + ".scheme")
         with open(path, encoding="utf-8") as fh:
             text = fh.read()
         keys = re.findall(r"(?m)^symbol\s+(p\d*)\s", text)

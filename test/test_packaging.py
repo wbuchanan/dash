@@ -46,7 +46,6 @@ import pytest
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PKG_FILE = os.path.join(REPO_ROOT, "dash.pkg")
-SCHEMES_DIR = os.path.join(REPO_ROOT, "schemes")
 
 #: Sources that are shipped and therefore may reference other shipped files.
 SHIPPED_SOURCES = ("dash.ado", "dash_setup.ado", "dash_render.py")
@@ -330,11 +329,34 @@ def _findfile_targets() -> set[str]:
     return out
 
 
+def _shipped_scheme_files() -> "list[str]":
+    """Every ``dash-<name>.scheme`` scheme file in the package root."""
+    return sorted(f for f in os.listdir(REPO_ROOT)
+                  if f.startswith("dash-") and f.endswith(".scheme")
+                  and os.path.isfile(os.path.join(REPO_ROOT, f)))
+
+
+def test_the_repo_has_no_schemes_directory():
+    """WP-28: the shipped schemes live in the package root, not schemes/."""
+    assert not os.path.exists(os.path.join(REPO_ROOT, "schemes"))
+
+
+def test_the_root_holds_exactly_the_twenty_dash_files_the_manifest_ships():
+    """WP-28: ``f dash-<name>.scheme`` for each of the twenty, and no other
+    ``dash-*.scheme`` in the root."""
+    declared = sorted(d for d in parse_pkg_files()
+                      if re.fullmatch(r"dash-[a-z0-9_]+\.scheme", d))
+    assert len(declared) == 20, declared
+    assert _shipped_scheme_files() == declared
+    assert not [d for d in parse_pkg_files()
+                if d.endswith(".scheme") and d not in declared]
+
+
 def _required_runtime_files() -> set[str]:
     """Every repo file the installed package needs at run time.
 
-    Scheme files are collected by walking ``schemes/`` rather than by listing
-    names, so a scheme added later (section 03 is authoring more) becomes a
+    Scheme files are collected as every ``dash-*.scheme`` in the package root
+    rather than by listing names, so a scheme added later becomes a
     manifest requirement automatically, with no edit to this test.
     """
     required: set[str] = set()
@@ -355,18 +377,11 @@ def _required_runtime_files() -> set[str]:
         f"the reference scan does not see {unseen}, which the code "
         f"locates at run time")
 
-    scheme_files = set()
-    for dirpath, dirnames, filenames in os.walk(SCHEMES_DIR):
-        dirnames[:] = [d for d in dirnames if d not in EXCLUDED_DIRS]
-        for filename in filenames:
-            if filename.startswith("."):
-                continue
-            rel = os.path.relpath(os.path.join(dirpath, filename), REPO_ROOT)
-            scheme_files.add(rel.replace(os.sep, "/"))
+    scheme_files = set(_shipped_scheme_files())
 
-    # Guard the guard: if schemes/ ever vanishes, this test must not go quiet.
+    # Guard the guard: if the files ever vanish, this test must not go quiet.
     assert scheme_files, (
-        f"no scheme files found under {SCHEMES_DIR}; "
+        f"no dash-*.scheme scheme files found in {REPO_ROOT}; "
         "the manifest-completeness test would silently stop checking them."
     )
 

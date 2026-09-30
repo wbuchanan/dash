@@ -375,6 +375,9 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- The twenty shipped schemes are now `dash-<name>.scheme` files, installed in
+  `PLUS/d/` instead of `PLUS/s/<name>.scheme` and `PLUS/e/economist.scheme`.
+  `scheme(s2color)` and `scheme(s2color.scheme)` work as before. (after WP-28)
 - `scheme(nosuchthing)` and an unknown `theme()` are now r(198) on every
   entry point, not a warning. An unknown session `c(scheme)` still warns and
   uses s2color. (WP-17)

@@ -3104,28 +3104,32 @@ these files (see below).
 {phang2}{cmd:. dash build, saving(d.html) scheme(s1rcolor) replace}{p_end}
 
 {pstd}
-{ul:Where the shipped schemes live after an install.}  {cmd:net install}
-files by basename and extension rather than by the path in the manifest, so
-the twenty {cmd:.scheme} files land in the {cmd:PLUS} letter directories --
-{cmd:PLUS/s/s2color.scheme}, {cmd:PLUS/e/economist.scheme} and so on -- while
+{ul:Where the shipped schemes live after an install.}  {cmd:dash} ships
+its twenty schemes as {cmd:dash-}{it:name}{cmd:.scheme} files beside
+{cmd:dash.ado}, and {cmd:net install} files each by its first letter, so
+all twenty land in {cmd:PLUS/d/} -- {cmd:PLUS/d/dash-s2color.scheme},
+{cmd:PLUS/d/dash-economist.scheme} and so on -- while
 {cmd:dash_render.py} goes to {cmd:PLUS/py/}.  {cmd:dash} looks there for
 its own twenty names and for nothing else, so {cmd:scheme()} works the
-same from an installed copy as from a source checkout, and a third-party
-{cmd:scheme-}{it:name}{cmd:.scheme} in the same directory stays unread.
-A {cmd:.scheme} file you put in the working directory still wins over
-the shipped one of the same name.
+same from an installed copy as from a source checkout, and any other
+package's file in the same directory stays unread.  You still name them
+as before: {cmd:scheme(s2color)} or {cmd:scheme(s2color.scheme)}.  A
+{cmd:.scheme} file you put in the working directory still wins over the
+shipped one of the same name.
 
 {pstd}
-{ul:They are named without Stata's {cmd:scheme-} prefix, deliberately.}
-StataCorp's own files are {cmd:scheme-}{it:name}{cmd:.scheme} and
-{cmd:dash}'s are plain {it:name}{cmd:.scheme}.  {cmd:set scheme}
-{it:name} looks for {cmd:scheme-}{it:name}{cmd:.scheme} first and only then
-for {it:name}{cmd:.scheme}, so Stata always finds its own copy and
-{cmd:dash}'s translations never change how {cmd:graph} draws.  Renaming them
-to {cmd:dash_}{it:name}{cmd:.scheme} would end the chance of a clash with
-another package that ships a bare {it:name}{cmd:.scheme}, but
-{cmd:scheme(}{it:file}{cmd:.scheme)} is a supported way to name a file, so
-the current names are kept and the clash is accepted as a known limitation.
+{ul:Why they are named {cmd:dash-}{it:name}{cmd:.scheme}.}  The
+{cmd:dash-} prefix means the files cannot collide with Stata's own
+{cmd:scheme-}{it:name}{cmd:.scheme} files or with another package's
+{it:name}{cmd:.scheme}, so {cmd:set scheme} {it:name} still finds Stata's
+own copy and {cmd:dash}'s translations never change how {cmd:graph} draws
+by default.  They are {cmd:dash}'s alone: {cmd:set scheme} looks only
+for {cmd:scheme-}{it:name}{cmd:.scheme}, so it never reads them, and in
+{cmd:dash} you name each by Stata's own name, {cmd:scheme(s2color)},
+never by its file name.  In {cmd:dash},
+{cmd:scheme(dash-}{it:name}{cmd:)} is not another spelling of a shipped
+scheme: it names your own {cmd:dash-}{it:name}{cmd:.scheme} in the working
+directory, and is refused when there is none.
 
 
 {marker unsupported}

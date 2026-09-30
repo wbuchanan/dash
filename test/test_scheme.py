@@ -38,7 +38,7 @@ def _is_grayscale_hex(s: str) -> bool:
     return r == g == b
 
 
-SCHEMES_DIR = os.path.join(os.path.dirname(__file__), "..", "schemes")
+SCHEMES_DIR = os.path.join(os.path.dirname(__file__), "..")
 
 
 # ============================================================

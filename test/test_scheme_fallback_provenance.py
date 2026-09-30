@@ -150,8 +150,8 @@ class TestTheFallbackMirrorsS2color:
         finally:
             builtins.open = real_open
         assert [p for p in opened
-                if os.path.basename(p) == "s2color.scheme"], (
-            "the open() spy saw no read of s2color.scheme while the parser "
+                if os.path.basename(p) == "dash-s2color.scheme"], (
+            "the open() spy saw no read of dash-s2color.scheme while the parser "
             "parsed it, so its silence about fallback() means nothing: %r"
             % (opened,)
         )
