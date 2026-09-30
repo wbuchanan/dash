@@ -179,9 +179,6 @@ def served_moved(served, df):
     return out
 
 
-_NODE_RAN = []
-
-
 # ===========================================================================
 # First paint
 # ===========================================================================
@@ -214,7 +211,6 @@ class TestAfterAMove:
 
     @pytest.mark.parametrize("rid", _IDS)
     def test_every_kpi_row_after_a_filter_move_saved(self, saved_moved, rid):
-        _NODE_RAN.append(rid)
         assert saved_moved[_NAMES[rid]] == _expected(_BY_ID[rid])
 
     @pytest.mark.parametrize("rid", _IDS)
@@ -398,9 +394,9 @@ class TestConfig:
         assert s.count("dash_apply_kpis(new_data,") == 1
 
 
-def test_the_node_tests_ran():
-    """The after-move cases run under node; a machine without node skips
-    them, and this says so rather than passing silently."""
-    if not _NODE_RAN:
-        pytest.skip("no after-move case ran (node absent or deselected)")
-    assert len(_NODE_RAN) >= 1
+def test_the_node_tests_ran(saved_moved):
+    """The after-move cases run under node.  This asks for their fixture
+    itself, so it proves node ran whichever worker it lands on; a machine
+    without node skips here rather than passing silently (a skip, which
+    DASH_STRICT refuses)."""
+    assert set(saved_moved) >= {_NAMES[rid] for rid in _IDS}
