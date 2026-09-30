@@ -4944,7 +4944,7 @@ string scalar _dash_route_axis2(string scalar opts)
 // the last of each: its name in lower case, a noX taken as X (grid and
 // nogrid, box and nobox are one setting), pos as position, cols and rows
 // as one (twoway: legend(cols(1)) legend(rows(1)) draws rows(1)), on and
-// off as one, and label(# ...) keyed by its number.
+// off as one, and label(# ...) and lastlabel(# ...) keyed by their number.
 string scalar _dash_rep_subkey(string scalar tok, string scalar cat)
 {
     string scalar nm, v
@@ -4956,7 +4956,7 @@ string scalar _dash_rep_subkey(string scalar tok, string scalar cat)
     if (nm == "pos") nm = "position"
     if (nm == "cols" | nm == "rows") nm = "cols|rows"
     if (nm == "on" | nm == "off") nm = "on|off"
-    if (nm == "label" & cat == "I" & p) {
+    if ((nm == "label" | nm == "lastlabel") & cat == "I" & p) {
         v = strtrim(_dash_rep_value(tok))
         nm = nm + " " + (strpos(v, " ") ? substr(v, 1, strpos(v, " ") - 1) : v)
     }

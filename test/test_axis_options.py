@@ -424,6 +424,16 @@ class TestLegendOptions:
         # One key left -> by Stata's own rule there is no legend to draw.
         assert len(_legend_items(fig)) <= 1
 
+    def test_order_text_matches_the_measured_legend(self, truth):
+        """WP-28 B5: text after a key number in order() retitles that key
+        (axis_truth.json c_order_relab, order(2 "FIT" 1 "RAW"))."""
+        fig, _ = _fig_with_gopts(_TWO, {"legend": 'order(2 "FIT" 1 "RAW")'})
+        got = [getattr(i.label, "value", None) or i.label.get("value")
+               for i in _legend_items(fig)]
+        want = truth["findings"]["legend_cases"]["c_order_relab"][
+            "keys_in_drawn_order"]
+        assert got == want == ["FIT", "RAW"], got
+
     def test_cols_and_rows(self):
         fig, _ = _fig_with_gopts(_TWO, {"legend": "cols(2)"})
         assert fig.legend[0].ncols == 2

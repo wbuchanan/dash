@@ -109,6 +109,9 @@ class TestTheHonouredOnesStayQuiet:
          [plot_for("scatter"), plot_for("lfit")]),
         ({"legend": 'label(1 "Cars") rows(1) ring(0) pos(12)'},
          [plot_for("scatter"), plot_for("lfit")]),
+        # WP-28 B5: a - row and lastlabel() are drawn, never named.
+        ({"legend": 'order(1 - "Note" 2) lastlabel(2 "L")'},
+         [plot_for("scatter"), plot_for("lfit")]),
         ({"xlabel": "2000(1000)4000, format(%9.0fc) nogrid labsize(small) "
                     "angle(45)", "ylabel": "#5, grid"}, None),
         ({"xlabel": 'minmax', "ylabel": "none"}, None),

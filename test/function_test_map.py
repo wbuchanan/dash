@@ -476,6 +476,7 @@ FUNCTIONS = {
  '_dash_legend_arg': 'test/test_help_claims_7.py::TestTheNewHelpers::test_dash_legend_arg',
  '_dash_legend_entries': 'test/test_server_layer_defects.py::TestTheLegendKeyRule::test_a_layer_that_drew_nothing_gets_no_key',
  '_dash_legend_key': 'test/test_server_layer_defects.py::TestTheLegendKeyRule::test_a_ci_layer_is_keyed_fitted_values_on_its_own',
+ '_dash_legend_keys': 'test/test_legend_order.py::TestKeysAreNumberedByPlot::test_numbers_unit',
  '_dash_legend_parts': 'test/test_help_claims_7.py::TestTheNewHelpers::test_dash_legend_parts',
  '_dash_legend_unsupported': 'test/test_help_claims_5.py::TestTheSubOptionSplitterReadsStataQuotes::test_legend_names_what_follows_an_apostrophe',
  '_dash_limit_hint': 'test/test_resource_limits.py::TestTheLimitsTable::test_the_hint_names_the_global_and_its_ceiling',
@@ -506,6 +507,7 @@ FUNCTIONS = {
  '_dash_parse_bs_layout': 'test/test_adversarial_matrix.py::TestARepeatedLayoutNameIsPlacedOnce::test_the_bs_reader_keeps_the_first_place',
  '_dash_parse_by': 'test/test_help_claims_5.py::TestTheSubOptionSplitterReadsStataQuotes::test_by_keeps_its_cols_after_an_apostrophe',
  '_dash_parse_filter_raw': 'test/test_security_surface.py::TestFilterNamesCannotInjectScript::test_the_filter_parser_refuses_a_non_name_in_both_modes',
+ '_dash_parse_legend_order': 'test/test_legend_order.py::TestTheParser::test_cases',
  '_dash_parse_tabs': 'test/test_mode_parity.py::TestTheTabsEntryBuildsTwoTabs::test_the_string_parses_to_two_tabs',
  '_dash_pc_dispatch': 'test/test_server.py::TestTheServerDispatchesThroughTheSharedTable::test_every_shipped_plot_type_has_a_mapper',
  '_dash_pc_source': 'test/test_pccapsym_pcarrowi.py::TestTheServedPcSourceCarriesTheLabel::test_a_label_the_data_lacks_is_ignored',
@@ -678,6 +680,10 @@ DEAD = {}
 #: runs) -- and pointed their tests at the production functions.  Each kept
 #: one has its test in FUNCTIONS too.
 TEST_ONLY = {
+    "_dash_legend_entries": (
+        "WP-28 S15 (B5) keeps it under WP-26's seam rule: the number-free projection of "
+        "_dash_legend_keys, which _dash_apply_legend now calls: "
+        "test_server_layer_defects.py's direct keying tests read it."),
     "_dash_float32_text": (
         "WP-28 S04 keeps it under WP-26's seam rule: the oracle of the twin-agreement test -- the "
         "shortest float32 text, which Python and node must agree on; the "

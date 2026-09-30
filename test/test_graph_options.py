@@ -578,6 +578,19 @@ class TestLegendLabels:
         assert first  == "Series A", f"Expected 'Series A', got {first!r}"
         assert second == "Series B", f"Expected 'Series B', got {second!r}"
 
+    def test_label_names_the_key_number_not_the_position(self):
+        """WP-28 B5: label(1) names plot 1 wherever order() puts it; it
+        relabelled whatever order() had moved into the first row."""
+        r = self._make_two_plot_renderer(
+            {"legend": 'order(2 1) label(1 "Data")'})
+        fig = r._build_figures()["g1"]
+        items = fig.legend[0].items
+        assert [self._item_label(i) for i in items] == [
+            "Weight (lbs.)", "Data"]
+        first_layer = [x for x in fig.renderers
+                       if type(x.glyph).__name__ == "Scatter"][0]
+        assert list(items[1].renderers) == [first_layer]
+
     def test_legend_label_override_with_position(self):
         """P6-14: label() and a placement can coexist -- position(12), the
         twoway spelling of the legend(top) this test used to write."""

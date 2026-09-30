@@ -176,6 +176,29 @@ class TestTheLegendOptionsNowReachIt:
                   for i in figs[0].legend[0].items]
         assert "Cars" in labels[0]
 
+    def test_order_text_and_a_text_only_row_are_served(self, tmp_path):
+        """WP-28 B5: order() text retitles a key and a - inserts a row
+        with no renderers, in the served app as in the saved page."""
+        figs = _figs(tmp_path, _TWO,
+                     {"legend": 'order(1 "Cars" - "Note" 2)'})
+        items = figs[0].legend[0].items
+        labels = [getattr(i.label, "value", None) or i.label.get("value")
+                  for i in items]
+        assert labels == ["Cars", "Note", "Fitted values"], labels
+        assert list(items[1].renderers) == []
+        assert items[0].renderers and items[2].renderers
+
+    def test_lastlabel_is_applied_not_named(self, tmp_path):
+        """WP-28 B5: lastlabel() was named as not implemented."""
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            figs = _figs(tmp_path, _TWO, {"legend": 'lastlabel(2 "L")'})
+        items = figs[0].legend[0].items
+        labels = [getattr(i.label, "value", None) or i.label.get("value")
+                  for i in items]
+        assert labels == ["mpg", "L"], labels
+        assert not [w for w in caught if "sub-option" in str(w.message)]
+
     def test_on_is_not_a_placement(self, tmp_path):
         """The standalone renderer removed 'on' from the map as a bug."""
         figs = _figs(tmp_path, _TWO, {"legend": "on"})

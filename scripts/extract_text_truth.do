@@ -190,6 +190,49 @@ zp "t_colour_refused"   "title" "auto" "twoway scatter mpg weight" `"title("T", 
 zp "t_style_refused"    "title" "auto" "twoway scatter mpg weight" `"title("T", style(x))"' "t_default"
 
 * ---- section 15: legend probes ----
+// WP-28 S15 (B5): each legend probe's control is its own legend(off)
+// companion, so added_texts are the legend's texts alone (the pairing
+// extract_axis_truth.do uses).  44 registrations.
+zp "l_two" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "" "l_two__off"
+zp "l_two__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_order_text" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight) (qfit mpg weight)" `"legend(order(1 "Group 2" 3 "Three"))"' "l_order_text__off"
+zp "l_order_text__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight) (qfit mpg weight)" "legend(off)" ""
+zp "l_order_label" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" `"legend(order(2 1) label(1 "Data"))"' "l_order_label__off"
+zp "l_order_label__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_label_order" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" `"legend(label(1 "Data") order(2 1))"' "l_label_order__off"
+zp "l_label_order__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_order_beats_label" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" `"legend(order(1 "O") label(1 "L"))"' "l_order_beats_label__off"
+zp "l_order_beats_label__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_dash_text" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" `"legend(order(1 - "Note" 2))"' "l_dash_text__off"
+zp "l_dash_text__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_dash_blank" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" `"legend(order(1 - " " "Note" 2))"' "l_dash_blank__off"
+zp "l_dash_blank__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_dash_empty" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" `"legend(order(1 - "" 2))"' "l_dash_empty__off"
+zp "l_dash_empty__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_dash_two_lines" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" `"legend(order(1 - "Line 1" "Line 2" 2))"' "l_dash_two_lines__off"
+zp "l_dash_two_lines__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_lastlabel_pos" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" `"legend(order(2 1) lastlabel(2 "L"))"' "l_lastlabel_pos__off"
+zp "l_lastlabel_pos__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_lastlabel_all" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" `"legend(order(2 "Y" 1) label(2 "X") lastlabel(2 "L"))"' "l_lastlabel_all__off"
+zp "l_lastlabel_all__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_lastlabel_dash" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" `"legend(order(1 - "Note" 2) lastlabel(3 "L"))"' "l_lastlabel_dash__off"
+zp "l_lastlabel_dash__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_lastlabel_two" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" `"legend(lastlabel(1 "A") lastlabel(2 "B"))"' "l_lastlabel_two__off"
+zp "l_lastlabel_two__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_lastlabel_repeat" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" `"legend(lastlabel(1 "A")) legend(lastlabel(2 "B"))"' "l_lastlabel_repeat__off"
+zp "l_lastlabel_repeat__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_label_two_lines" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" `"legend(label(1 "A" "B"))"' "l_label_two_lines__off"
+zp "l_label_two_lines__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_order_repeat" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" `"legend(order(1 2 1))"' "l_order_repeat__off"
+zp "l_order_repeat__off" "legend" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "legend(off)" ""
+zp "l_ci_default" "legend" "auto" "twoway (scatter mpg weight) (lfitci mpg weight) (scatter price weight)" "" "l_ci_default__off"
+zp "l_ci_default__off" "legend" "auto" "twoway (scatter mpg weight) (lfitci mpg weight) (scatter price weight)" "legend(off)" ""
+zp "l_ci_order_last" "legend" "auto" "twoway (scatter mpg weight) (lfitci mpg weight) (scatter price weight)" `"legend(order(4 1))"' "l_ci_order_last__off"
+zp "l_ci_order_last__off" "legend" "auto" "twoway (scatter mpg weight) (lfitci mpg weight) (scatter price weight)" "legend(off)" ""
+zp "l_ci_order_band" "legend" "auto" "twoway (scatter mpg weight) (lfitci mpg weight) (scatter price weight)" `"legend(order(2 3))"' "l_ci_order_band__off"
+zp "l_ci_order_band__off" "legend" "auto" "twoway (scatter mpg weight) (lfitci mpg weight) (scatter price weight)" "legend(off)" ""
+zp "l_one_dash" "legend" "auto" "twoway scatter mpg weight" `"legend(order(1 - "Only"))"' "l_one_dash__off"
+zp "l_one_dash__off" "legend" "auto" "twoway scatter mpg weight" "legend(off)" ""
 
 // ===========================================================================
 // Export loop (extract_axis_truth.do:392-428's shape, SVG only, no .gph).
@@ -323,6 +366,19 @@ for pid, info in probes_raw.items():
             seen_removed[t] += 1
     added_fills = sorted(fills_cache[pid] - ctl_fills)
 
+    rec_extra = {}
+    if info["group"] == "legend":
+        # WP-28 S15: the added entries, as whole dicts, ordered top to
+        # bottom then left to right, and only then projected to text.
+        seen_e, added_e = collections.Counter(), []
+        for e in entries:
+            if seen_e[e["text"]] < added_counts.get(e["text"], 0):
+                added_e.append(e)
+                seen_e[e["text"]] += 1
+        added_e.sort(key=lambda e: (float(e.get("y") or 0.0),
+                                    float(e.get("x") or 0.0)))
+        rec_extra["keys_in_drawn_order"] = [e["text"] for e in added_e]
+
     probes_out[pid] = {
         "group": info["group"],
         "command": info["command"],
@@ -335,6 +391,7 @@ for pid, info in probes_raw.items():
         "added_fills": added_fills,
         "text_sizes": text_sizes,
     }
+    probes_out[pid].update(rec_extra)
 
 doc = {
     "_meta": {

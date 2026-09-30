@@ -16,6 +16,7 @@
 *!   S14  axis labels, B1 (AL-01..AL-16)
 *!   S14  axis labels and value labels, B1 and G16 (AL-01..AL-19)
 *!   S18  axis scale extents, B2 (AE-01..AE-06)
+*!   S15  legend order and labels, B5 (LO-01..LO-08)
 *!
 *! Usage: via run_all_cscripts.do (registered as its last block).  One
 *! block alone: set GAPS2_ONLY=S<NN> in the environment of the driver run
@@ -1198,6 +1199,120 @@ end
         c_local ae_page "`dir'/ae`id'.html"
         c_local ae_pid "`pid'"
         c_local ae_want "`want'"
+* ==== S15 B5: legend order and labels ====
+* LO-01..LO-07: twoway's legend texts -- the bare export's <text> entries
+* minus its legend(off) companion's, ordered top to bottom then left to
+* right as extract_text_truth.do orders keys_in_drawn_order -- against the
+* LegendItem labels of dash's saved page in Legend.items order (a label's
+* lines split, a hidden legend read as no rows).  LO-08: a repeated
+* legend() keeps both lastlabel() calls in the stored spec and on the page.
+// Helpers, reached through __main__ (cert_svg.do's TRAP note):
+//   _lo_compare() LO_OUT: "ok", or "twoway [..] dash [..]" for the
+//                 JSON-lines files LO_BARE / LO_OFF and the page LO_PAGE
+//                 (compared as multisets when LO_SORT is 1)
+//   _lo_spec()    LO_OUT: the stored legend value of graph LO_G
+python:
+import collections as _lo_col, json as _lo_json, re as _lo_re, html as _lo_html
+import __main__ as _lo_main
+from sfi import Macro as _lo_M
+
+def _lo_lines(path):
+    with open(path, encoding="utf-8") as fh:
+        return [_lo_json.loads(s) for s in fh if s.strip()]
+
+def _lo_twoway():
+    bare, off = _lo_lines(_lo_M.getGlobal("LO_BARE")), _lo_lines(_lo_M.getGlobal("LO_OFF"))
+    left = _lo_col.Counter(e["text"] for e in bare) - _lo_col.Counter(e["text"] for e in off)
+    seen, out = _lo_col.Counter(), []
+    for e in bare:
+        if seen[e["text"]] < left.get(e["text"], 0):
+            out.append(e)
+            seen[e["text"]] += 1
+    out.sort(key=lambda e: (float(e.get("y") or 0.0), float(e.get("x") or 0.0)))
+    return [e["text"] for e in out]
+
+def _lo_dash():
+    try:
+        with open(_lo_M.getGlobal("LO_PAGE"), encoding="utf-8") as fh:
+            page = fh.read()
+    except OSError:
+        return None
+    m = _lo_re.search('<script type="application/json"[^>]*>(.*?)</script>', page, _lo_re.S)
+    if not m:
+        return None
+    objs, stack = {}, [_lo_json.loads(_lo_html.unescape(m.group(1)))]
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                objs[v["id"]] = v
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    rows = None
+    for o in objs.values():
+        a = o.get("attributes", {})
+        if o["name"] != "Legend" or a.get("name") == "_dash_clegend":
+            continue
+        rows = []
+        if a.get("visible", True) is False:
+            continue
+        for ref in a.get("items", []):
+            it = objs.get(ref.get("id")) if isinstance(ref, dict) else None
+            lab = (it or {}).get("attributes", {}).get("label")
+            lab = lab.get("value") if isinstance(lab, dict) else lab
+            rows.extend(str(lab or "").split("\n"))
+    return rows
+
+def _lo_compare():
+    tw, dd = _lo_twoway(), _lo_dash()
+    if _lo_M.getGlobal("LO_SORT") == "1" and dd is not None:
+        # A key of two lines beside a key of one: the lines' heights
+        # interleave with the other key's, so the rows compare as a multiset.
+        tw, dd = sorted(tw), sorted(dd)
+    ok = dd is not None and tw == dd
+    _lo_M.setGlobal("LO_OUT", "ok" if ok else "twoway %s dash %s" % (
+        "|".join(tw), "<no page>" if dd is None else "|".join(dd)))
+
+def _lo_spec():
+    try:
+        d = _lo_json.loads(_lo_M.getGlobal("dash_json_" + _lo_M.getGlobal("LO_G")))
+        go = d.get("graph_options", d)
+        v = str(go.get("legend", "") or "")
+    except (ValueError, AttributeError, TypeError):
+        v = "<unreadable>"
+    _lo_M.setGlobal("LO_OUT", v.replace(chr(34), "'"))
+
+_lo_main._lo_compare = _lo_compare
+_lo_main._lo_spec = _lo_spec
+end
+
+local only : env GAPS2_ONLY
+if inlist("`only'", "", "S15") {
+    display as text "S15 start `c(current_time)'"
+
+    capture program drop _lo_case
+    program define _lo_case
+        version 16.0
+        args id body opt dir
+        quietly twoway `body', `opt' name(lob, replace)
+        cert_svg_export, name(lob) file("`dir'/`id'_bare.svg")
+        cert_svg_texts, file("`dir'/`id'_bare.svg")
+        global LO_BARE "`r(list)'"
+        quietly twoway `body', legend(off) name(loo, replace)
+        cert_svg_export, name(loo) file("`dir'/`id'_off.svg")
+        cert_svg_texts, file("`dir'/`id'_off.svg")
+        global LO_OFF "`r(list)'"
+        capture dash clear
+        capture noisily dash `body', `opt' name(lo)
+        _gt_expect `id' "(_rc == 0)" "dash rc `_rc'"
+        capture erase "`dir'/`id'.html"
+        capture noisily dash build, saving("`dir'/`id'.html") replace nobrowser
+        _gt_expect `id' "(_rc == 0)" "dash build rc `_rc'"
+        global LO_PAGE "`dir'/`id'.html"
+        python: __import__("__main__")._lo_compare()
+        display as text `"  `id' $LO_OUT"'
+        _gt_expect `id' `"("$LO_OUT" == "ok")"' `"$LO_OUT"'
     end
 
     sysuse auto, clear
@@ -1233,6 +1348,42 @@ end
     display as text "S18 end `c(current_time)'"
 }
 * ==== end S18 ====
+
+    global LO_SORT 0
+    local P2 "(scatter mpg weight) (lfit mpg weight)"
+    local P3 "(scatter mpg weight) (lfit mpg weight) (qfit mpg weight)"
+    local PC "(scatter mpg weight) (lfitci mpg weight) (scatter price weight)"
+
+    _lo_case LO-01 "`P3'" `"legend(order(1 "Group 2" 3 "Three"))"' "`d'"
+    _gt_done LO-01 "order() text retitles keys 1 and 3 and drops key 2"
+    _lo_case LO-02 "`P2'" `"legend(order(2 1) label(1 "Data"))"' "`d'"
+    _gt_done LO-02 "label(1) names plot 1 wherever order() puts it"
+    _lo_case LO-03 "`P2'" `"legend(order(1 - "Note" 2))"' "`d'"
+    _gt_done LO-03 "a - in order() draws a text-only row"
+    _lo_case LO-04 "`P2'" `"legend(order(2 1) lastlabel(2 "L"))"' "`d'"
+    _gt_done LO-04 "lastlabel() is applied last, by drawn position"
+    _lo_case LO-05 "`PC'" `"legend(order(4 1))"' "`d'"
+    _gt_done LO-05 "a ci layer is keys n and n+1"
+    _lo_case LO-06 "`P2'" `"legend(order(1 2 1))"' "`d'"
+    _gt_done LO-06 "a repeated number draws the key twice"
+    global LO_SORT 1
+    _lo_case LO-07 "`P2'" `"legend(label(1 "A" "B"))"' "`d'"
+    global LO_SORT 0
+    _gt_done LO-07 "each string of label() is a line"
+
+    // LO-08: two lastlabel() calls in repeated legend() options.
+    _lo_case LO-08 "`P2'" `"legend(lastlabel(1 "A")) legend(lastlabel(2 "B"))"' "`d'"
+    global LO_G "lo"
+    python: __import__("__main__")._lo_spec()
+    display as text `"  LO-08 stored legend: $LO_OUT"'
+    _gt_expect LO-08 `"(strpos(`"$LO_OUT"', "lastlabel(1") > 0 & strpos(`"$LO_OUT"', "lastlabel(2") > 0)"' "the stored legend lost a lastlabel()"
+    _gt_done LO-08 "a repeated legend() keeps every lastlabel()"
+
+    capture dash clear
+    graph drop _all
+    display as text "S15 end `c(current_time)'"
+}
+* ==== end S15 ====
 
 * ==== append new blocks above this line ====
 

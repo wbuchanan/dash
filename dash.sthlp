@@ -2384,10 +2384,14 @@ the plot specification).
     rather than beside it{p_end}
 {synopt:{cmdab:leg:end(cols(}{it:#}{cmd:))}}arrange legend entries in {it:#} columns{p_end}
 {synopt:{cmdab:leg:end(rows(}{it:#}{cmd:))}}arrange legend entries in {it:#} rows{p_end}
-{synopt:{cmdab:leg:end(order(}{it:numlist}{cmd:))}}reorder the entries; an
-    entry left out of {it:numlist} is dropped from the legend{p_end}
+{synopt:{cmdab:leg:end(order(}{c -(}{it:#}|{cmd:-}{c )-} [{it:"text"} ...] ...{cmd:))}}select
+    and order the keys by plot number, retitle one with text after its
+    number, or insert a text-only line after {cmd:-}; a key left out is
+    dropped and a number given twice draws the key twice{p_end}
 {synopt:{cmdab:leg:end(size(}{it:size}{cmd:))}}font size of the legend text{p_end}
-{synopt:{cmdab:leg:end(label(}{it:#} {it:"text"}{cmd:))}}override the label for entry {it:#}{p_end}
+{synopt:{cmdab:leg:end(label(}{it:#} {it:"text"}{cmd:))}}override the label for plot {it:#}{p_end}
+{synopt:{cmdab:leg:end(lastlabel(}{it:#} {it:"text"}{cmd:))}}the last label applied,
+    over {cmd:order()} and {cmd:label()}, to the {it:#}th row as drawn{p_end}
 {synopt:{cmdab:xsiz:e(}{it:#}{cmd:)}}graph width in inches; see
     {help dash##geometry:Figure proportions}{p_end}
 {synopt:{cmdab:ysiz:e(}{it:#}{cmd:)}}graph height in inches{p_end}
@@ -2407,6 +2411,13 @@ A label's text is read as {cmd:twoway} reads a title's: each string is a
 line, so {cmd:label(1 "top" "bottom")} is two; a string in compound
 quotes keeps the quotes it holds, nested compound quotes included; and
 text with no double quote is one line.
+Keys are numbered as {cmd:twoway} numbers its plots: a confidence-interval
+fit such as {cmd:lfitci} is two, its band {it:n} and its line {it:n}+1.
+{cmd:label(}{it:#}{cmd:)} names plot {it:#} wherever {cmd:order()} puts it;
+text after a number in {cmd:order()} wins over {cmd:label()}; and
+{cmd:lastlabel(}{it:#}{cmd:)} is applied last, to the {it:#}th row drawn, a
+{cmd:-} row counted, so {cmd:legend(order(2 1) lastlabel(2 "L"))} renames
+the first plot's key.
 {cmd:twoway} has no {cmd:legend(top)}, {cmd:legend(bottom)},
 {cmd:legend(left)} or {cmd:legend(right)} and refuses each
 ({cmd:option top not allowed}, r(198)); so does {cmd:dash}, naming the

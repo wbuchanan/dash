@@ -150,9 +150,11 @@ def _layer(t, k):
     return {"type": t, "yvar": y, "xvar": "x", "options": {}}
 
 
-def _spec(plots, scheme):
+def _spec(plots, scheme, legend=""):
     return {"graphs": [{"plots": plots,
-                        "graph_options": {"name": "g1", "title": '"t"'},
+                        "graph_options": dict(
+                            {"name": "g1", "title": '"t"'},
+                            **({"legend": legend} if legend else {})),
                         "if_expr": "", "in_expr": ""}],
             "kpis": [],
             "build_options": {"layout": "auto", "link": "", "filter": "",
@@ -163,13 +165,13 @@ def _spec(plots, scheme):
                               "level": "95", "formats": {}, "limits": {}}}
 
 
-def _figure(mode, wd, plots, scheme):
+def _figure(mode, wd, plots, scheme, legend=""):
     from bokeh.document import Document
     from bokeh.plotting import figure as _fig_cls
     tag = next(_SEQ)
     sp = wd / ("spec_%d.json" % tag)
     dp = wd / ("data_%d.json" % tag)
-    sp.write_text(json.dumps(_spec(plots, scheme)), encoding="utf-8")
+    sp.write_text(json.dumps(_spec(plots, scheme, legend)), encoding="utf-8")
     dp.write_text(json.dumps(make_data_json(_DF)), encoding="utf-8")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -272,6 +274,27 @@ class TestBothModes:
         sp = SchemeParser("s1mono")
         assert marks == [sp.default_symbol(0), sp.default_symbol(3)], marks
         assert sp.default_symbol(3) == "triangle"
+
+    def test_order_counts_a_ci_layer_as_two_keys(self, mode, wd):
+        """WP-28 B5: scatter || lfitci || scatter is keys 1, 2 (band),
+        3 (fit) and 4, so order(4 1) draws the second scatter's key then
+        the first's (text_truth.json l_ci_order_last), by Stata's plot
+        number; order(2 3) the band then the fit."""
+        plots = [_layer(t, k) for k, t in
+                 enumerate(["scatter", "lfitci", "scatter"])]
+        sp = SchemeParser("s2color")
+        for opt, want in (("order(4 1)", [sp.default_color(3, "scatter"),
+                                          sp.default_color(0, "scatter")]),
+                          ("order(2 3)", ["#c0c0c0",
+                                          sp.default_color(1, "line")])):
+            fig = _figure(mode, wd, plots, "s2color", opt)
+            items = [it for lg in fig.legend for it in lg.items]
+            assert len(items) == 2, (opt, [it.label for it in items])
+            for it, c in zip(items, want):
+                g = it.renderers[0].glyph
+                col = (getattr(g, "fill_color", None)
+                       or getattr(g, "line_color"))
+                assert _hex(col) == _hex(c), (opt, it.label, col, c)
 
     def test_the_legend_keeps_its_keys_in_order(self, mode, wd):
         """scatter || lfitci || scatter: four keys in layer order -- the

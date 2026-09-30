@@ -170,7 +170,14 @@ and now matches Stata.
   `Volume` / `,` / `axis(2)`; a textbox sub-option is now read under any
   of Stata's abbreviations, so the title is `T` in red and the right axis
   is titled `Volume`. (WP-28, B3)
-<!-- WP-28 B5 -->
+- `legend(order(1 "Group 2" 3 "Three"))` drew the three keys `mpg`,
+  `Fitted values` and `price` with their default text, now keys 1 and 3
+  titled `Group 2` and `Three`; `legend(order(2 1) label(1 "Data"))`
+  relabelled the fit, now the scatter; the text-only line of
+  `legend(order(1 - "Note" 2))` was dropped, now drawn; and
+  `legend(lastlabel(2 "L"))` was named as not implemented, now applied.
+  Keys are numbered by Stata's plot number, a ci fit counting two.
+  (WP-28, B5)
 - `xtitle("")` still drew `weight` and `ytitle("")` still drew `mpg` (the
   variable's label); an axis title given with empty text now removes the
   title, as in twoway, while an absent option keeps the default.

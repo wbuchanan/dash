@@ -18399,6 +18399,56 @@ def _dash_legend_arg(calls, names, pattern=None):
     return None
 
 
+#: One word of legend(order()): a run up to the next blank or string.
+_DASH_ORDER_WORD_RE = re.compile(r'(?:[^\s"`]|`(?!"))+')
+_DASH_ORDER_BLANK_RE = re.compile(r"\s+")
+
+
+def _dash_parse_legend_order(arg):
+    """legend(order()) read as twoway's ``orderinfo``: ``{#|-} ["text"
+    ["text" ...]]`` repeated (legend_options.sthlp:104-111, 216-275).
+
+    Returns ``[(key, lines), ...]`` in the order written: *key* is the
+    key number (an ``int`` of at most six digits, as
+    ``_DASH_LEGEND_LABEL_RE`` bounds a label's) or ``"-"`` for a text-only
+    row, and *lines* the strings that followed it, each a line (a compound
+    string keeps what it holds; a bare word is a line).  An empty string
+    ends that entry's lines, as it ends a textbox's, so ``- ""`` has none
+    and draws nothing.  A longer number starts nothing and closes the
+    entry before it.  One linear pass, no regex over the whole text.
+    """
+    text = str(arg or "")
+    out, cur, closed = [], None, False
+    i, n = 0, len(text)
+    while i < n:
+        m = _DASH_ORDER_BLANK_RE.match(text, i)
+        if m:
+            i = m.end()
+            continue
+        if text[i] == '"' or text.startswith('`"', i):
+            start, end, i = _textbox_string_end(text, i)
+            if cur is not None and not closed:
+                if end == start:
+                    closed = True
+                else:
+                    cur.append(text[start:end])
+            continue
+        m = _DASH_ORDER_WORD_RE.match(text, i)
+        if m is None:  # a lone backtick: skipped
+            i += 1
+            continue
+        word, i = m.group(), m.end()
+        if word == "-" or (word.isdigit() and word.isascii()
+                           and len(word) <= 6):
+            cur, closed = [], False
+            out.append(("-" if word == "-" else int(word), cur))
+        elif word.isdigit():
+            cur = None
+        elif cur is not None and not closed:
+            cur.append(word)
+    return out
+
+
 def _dash_move_legend(fig, legend, side):
     """Move an attached Legend into one of the figure's side panels, as
     Stata's ring 3: nearest the plot, and centred.
@@ -18465,8 +18515,10 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
 
     ``twoway`` draws a legend if and only if the graph has two or more keys;
     ``legend(on)`` forces one, ``legend(off)`` removes it, and position(),
-    ring(0), order(), size(), label(), cols() and rows() are all documented
-    in dash.sthlp.  The saved renderer honoured all of them; the generated
+    ring(0), order(), size(), label(), lastlabel(), cols() and rows() are
+    all documented in dash.sthlp.  Keys are Stata's plot numbers; order()
+    text and label() resolve by number before order() selects, and
+    lastlabel() applies last by drawn position (steps 1-2).  The saved renderer honoured all of them; the generated
     app had its own block that knew off, four bare keywords, label()
     and cols()/rows(), hard-coded a clickable legend and escaped the keys
     as HTML.  Measured: position(6) was below and horizontal when saved,
@@ -18511,27 +18563,77 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     plot_legends = [lg for lg in fig.legend if lg not in cv_legends]
     legend = plot_legends[0] if plot_legends else None
 
-    # 1. The keys, rebuilt IN PLACE on the mapper's own legend.  Raw text:
-    #    Bokeh draws a legend label on the canvas, not in the DOM.
-    if legend is not None and plot_renderers:
-        live = [(plot, [r for r in rends if r in fig.renderers])
-                for plot, rends in plot_renderers]
-        items = [LegendItem(label={"value": lbl}, renderers=rends)
-                 for lbl, rends in _dash_legend_entries(
-                     live, var_labels or {}, default_level)]
-        if items:
-            legend.items = items
-
     # The sub-options, read as sub-options: never out of a quoted label.
     _words, _calls = _dash_legend_parts(legend_opt)
 
-    # 2. order() -- 1-based, and it may also DROP keys.
-    _order = _dash_legend_arg(_calls, ("order",))
-    if _order is not None and legend is not None:
-        wanted = [int(t) for t in re.findall(r"\d+", _order)]
-        current = list(legend.items)
-        legend.items = [current[i - 1] for i in wanted
-                        if 1 <= i <= len(current)]
+    # 1-2. The keys, rebuilt IN PLACE on the mapper's own legend, by
+    #    Stata's plot number (a ci layer is two keys, band then line, and a
+    #    layer that drew nothing still takes its number: _dash_legend_keys).
+    #    Each key's text is resolved before anything is selected or moved
+    #    (legend_options.sthlp:216-314): the default, then every
+    #    label(# ...) by NUMBER (the last per number wins), then the text
+    #    after a number in the LAST order().  order() then selects, repeats
+    #    and orders the keys and inserts its `-' rows as LegendItems with no
+    #    renderers; a repeated number shares one LegendItem.  lastlabel()
+    #    is applied last, by the row's DRAWN position with a `-' row
+    #    counting (text_truth.json l_lastlabel_pos, l_lastlabel_all and
+    #    l_lastlabel_dash, measured 30sep2026), on a fresh LegendItem so a
+    #    shared one is not renamed elsewhere.  A number that is no key is
+    #    ignored, as twoway ignores it.  GAPS2 B5: order() was read as
+    #    displayed positions with its text dropped, label() applied by
+    #    position after the reorder, `-' rows dropped and lastlabel() only
+    #    named.  Raw text: a LegendItem label is a DOM text node in
+    #    BokehJS (test_label_sinks.py), never HTML.
+    n_keys = None
+    if legend is not None and plot_renderers:
+        live = [(plot, [r for r in rends if r in fig.renderers])
+                for plot, rends in plot_renderers]
+        keys = _dash_legend_keys(live, var_labels or {}, default_level)
+        if keys:
+            n_keys = len(keys)
+            texts = {n: [t] for n, t, _ in keys}
+            for _name, _arg in _calls:
+                if _name != "label":
+                    continue
+                lm = _DASH_LEGEND_LABEL_RE.fullmatch(_arg)
+                if lm and int(lm.group(1)) in texts:
+                    texts[int(lm.group(1))] = _textbox_lines(lm.group(2))
+            _order = None
+            for _name, _arg in _calls:
+                if _name == "order":
+                    _order = _arg
+            entries = _dash_parse_legend_order(_order)
+            for k, lines in entries:
+                if k != "-" and k in texts and lines:
+                    texts[k] = list(lines)
+            items_by_n = {n: LegendItem(label={"value": "\n".join(texts[n])},
+                                        renderers=rends)
+                          for n, _, rends in keys}
+            if not entries:
+                seq = [items_by_n[n] for n, _, _ in keys]
+            else:
+                seq = []
+                for k, lines in entries:
+                    if k == "-":
+                        if lines:
+                            seq.append(LegendItem(
+                                label={"value": "\n".join(lines)},
+                                renderers=[]))
+                    elif k in items_by_n:
+                        seq.append(items_by_n[k])
+            for _name, _arg in _calls:
+                if _name != "lastlabel":
+                    continue
+                lm = _DASH_LEGEND_LABEL_RE.fullmatch(_arg)
+                if not lm:
+                    continue
+                pos = int(lm.group(1)) - 1
+                if 0 <= pos < len(seq):
+                    seq[pos] = LegendItem(
+                        label={"value": "\n".join(
+                            _textbox_lines(lm.group(2)))},
+                        renderers=list(seq[pos].renderers))
+            legend.items = seq
 
     # 3. The scheme's chrome on EVERY legend, before the user's options so
     #    an explicit size() still wins.
@@ -18596,29 +18698,15 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                 if rows > 0:
                     legend.nrows = rows
 
-    # 5. label(N "text") overrides.  Raw: a LegendItem label is a DOM text
-    #    node in BokehJS (legend.js: `div({class: label}, `${label}`)'), so
-    #    escaping it here only showed the entities (`R&amp;D').  The security
-    #    of the whole legend rests on that text rendering, pinned in
-    #    test_label_sinks.py.  The text after the key number is read as
-    #    Stata reads a text, with _textbox_lines: a compound string keeps
-    #    the quotes it holds, each string is a line (the key's CSS is
+    # 5. label(N "text") is applied by key number in step 1-2.  Raw: a
+    #    LegendItem label is a DOM text node in BokehJS (legend.js:
+    #    `div({class: label}, `${label}`)'), so escaping it only showed the
+    #    entities (`R&amp;D'); the security of the whole legend rests on
+    #    that text rendering, pinned in test_label_sinks.py.  The text after
+    #    the key number is read with _textbox_lines: a compound string
+    #    keeps the quotes it holds, each string is a line (the key's CSS is
     #    white-space: pre, so a newline breaks it), and bare words are one
-    #    line.  The pattern here took only one plain-quoted string, so
-    #    label(1 `"'90s lc"') kept the default key where twoway draws
-    #    '90s lc (measured 24sep2026; test_textbox_multiline.py
-    #    TestALegendLabelIsReadAsStataReadsIt).
-    if legend is not None:
-        for _name, _arg in _calls:
-            if _name != "label":
-                continue
-            lm = _DASH_LEGEND_LABEL_RE.fullmatch(_arg)
-            if not lm:
-                continue
-            idx = int(lm.group(1)) - 1
-            if 0 <= idx < len(legend.items):
-                legend.items[idx].label = {
-                    "value": "\n".join(_textbox_lines(lm.group(2)))}
+    #    line (test_textbox_multiline.py TestALegendLabelIsReadAsStataReadsIt).
 
     # 6. cols()/rows() on every legend.  Stata treats the two as
     #    alternatives, so the one the user did not give goes back to
@@ -18654,10 +18742,14 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
 
     # 8. Stata's rule governs the SERIES key; `off' is a bare word, so
     #    legend(pos(6) off) hides it and label(1 "Turned off") does not.
-    #    A colour key stays visible.
+    #    A colour key stays visible.  The keys are counted before order():
+    #    twoway draws legend(order(1)) on a two-key graph with its one row
+    #    (axis_truth.json c_order1, text_truth.json l_order_beats_label)
+    #    and no legend for order(1 - "Only") on a one-key graph (l_one_dash).
     forced_on = "on" in _words
     turned_off = "off" in _words
-    n_keys = len(legend.items) if legend is not None else 0
+    if n_keys is None:
+        n_keys = len(legend.items) if legend is not None else 0
     show = not (turned_off or (n_keys < 2 and not forced_on))
     for lg in plot_legends:
         lg.visible = show
@@ -22485,8 +22577,8 @@ def _dash_subopt_name(tok):
 
 #: legend() sub-options _dash_apply_legend honours.
 _DASH_LEGEND_SUBOPTS = frozenset({
-    "on", "off", "position", "pos", "ring", "order", "label", "cols", "rows",
-    "size"})
+    "on", "off", "position", "pos", "ring", "order", "label", "lastlabel",
+    "cols", "rows", "size"})
 
 #: legend(label(# text)): the key's number, then its text, read by
 #: _textbox_lines.  The number is bounded so no label can make int() read
@@ -23558,13 +23650,16 @@ def _dash_legend_key(plot, var_labels=None):
     return (var_labels.get(yvar, yvar) or ptype) if yvar else ptype
 
 
-def _dash_legend_entries(plot_renderers, var_labels=None,
-                         default_level=None):
-    """``[(key_text, [renderer, ...]), ...]`` for one figure's layers.
+def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
+    """``[(number, key_text, [renderer, ...]), ...]`` for one figure's
+    layers, numbered as twoway numbers its plots.
 
-    Written once because both renderers need Stata's keying rules, and the
-    generated app had none of them: a ``lfitci`` band and its line were one
-    key named after the y variable.
+    ``n`` starts at 1.  A ci layer (``_DASH_CI_TYPES``) is two plots, its
+    band ``n`` ("``lvl``% CI") and its line ``n + 1`` ("Fitted values"), as
+    ``_dash_plot_style_indices`` numbers them; any other layer is plot
+    ``n``.  A layer whose renderers are empty or all swatches has no key but
+    still consumes its number, so ``order()`` names the same key twoway's
+    does (GAPS2 B5).
 
     Args:
         plot_renderers: ``[(plot_spec, [renderer, ...]), ...]`` in draw order.
@@ -23572,31 +23667,47 @@ def _dash_legend_entries(plot_renderers, var_labels=None,
         default_level:  The dashboard's ``level()``, for a CI band's key.
 
     Returns:
-        A list of ``(label, renderers)`` pairs, in order.
+        ``(number, text, renderers)`` triples, in number order.
     """
     out = []
+    n = 1
     for plot, rends in plot_renderers:
         rends = [r for r in rends if not _dash_is_swatch(r)]
-        if not rends:
-            continue
         ptype = str(plot.get("type", "")).lower()
-        if ptype in _DASH_CI_TYPES and len(rends) >= 2:
-            # The band is added alongside the line; Stata keys them
-            # separately, and the band's key carries the level.
-            lvl = _resolve_level(plot.get("options", {}) or {},
-                                 _DEFAULT_LEVEL if default_level is None
-                                 else default_level)
-            band = [r for r in rends
-                    if type(getattr(r, "glyph", None)).__name__
-                    in ("VArea", "Band", "Patch")]
-            line = [r for r in rends if r not in band]
-            if band:
-                out.append((f"{lvl:g}% CI", band))
-            if line:
-                out.append(("Fitted values", line))
+        if ptype in _DASH_CI_TYPES:
+            if rends:
+                # The band is added alongside the line; Stata keys them
+                # separately, and the band's key carries the level.
+                lvl = _resolve_level(plot.get("options", {}) or {},
+                                     _DEFAULT_LEVEL if default_level is None
+                                     else default_level)
+                band = [r for r in rends
+                        if type(getattr(r, "glyph", None)).__name__
+                        in ("VArea", "Band", "Patch")]
+                line = [r for r in rends if r not in band]
+                if band:
+                    out.append((n, f"{lvl:g}% CI", band))
+                if line:
+                    out.append((n + 1, "Fitted values", line))
+            n += 2
             continue
-        out.append((_dash_legend_key(plot, var_labels), rends))
+        if rends:
+            out.append((n, _dash_legend_key(plot, var_labels), rends))
+        n += 1
     return out
+
+
+def _dash_legend_entries(plot_renderers, var_labels=None,
+                         default_level=None):
+    """``[(key_text, [renderer, ...]), ...]`` for one figure's layers: the
+    pairs of ``_dash_legend_keys`` without their numbers.
+
+    Written once because both renderers need Stata's keying rules, and the
+    generated app had none of them: a ``lfitci`` band and its line were one
+    key named after the y variable.
+    """
+    return [(t, r) for _, t, r in
+            _dash_legend_keys(plot_renderers, var_labels, default_level)]
 
 
 def _dash_hover_text_column(var):
@@ -28353,6 +28464,7 @@ class ServerAppBuilder:
                       "_DASH_ANGLESTYLES",
                       # The sub-option tables and the filter parser's own.
                       "_DASH_LEGEND_SUBOPTS", "_DASH_LEGEND_LABEL_RE",
+                      "_DASH_ORDER_WORD_RE", "_DASH_ORDER_BLANK_RE",
                       "_DASH_TEXTBOX_HONOURED",
                       "_DASH_TEXTBOX_DEFAULTS", "_DASH_SCALE_SUBOPTS",
                       # The second axes' coordinate names and the
@@ -28560,6 +28672,7 @@ class ServerAppBuilder:
                          "_dash_note_hover_unreached",
                          # Stata's legend keying rules.
                          "_dash_legend_key", "_dash_legend_entries",
+                         "_dash_legend_keys", "_dash_parse_legend_order",
                          # layout(name:row,col), one parser for one spec,
                          # and layout(rows cols), one reading of the grid.
                          "_dash_placement_map", "_dash_grid_dims",
