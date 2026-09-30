@@ -438,6 +438,14 @@ def doc_cmd(spelling, full):
         return "scatter mpg weight, " + spelling + "(" + TMPSAV + ") name(zqab)"
     if full == "scheme":
         return "scatter mpg weight, " + spelling + "(s2color) name(zqab)"
+    # colorlevels() and colorvarminmax (GAPS2 X2) act only beside a
+    # colorvar(); alone, dash ignores them with a note and records nothing
+    # (measured 30sep2026; twoway ignores them silently).  colorlevels(4),
+    # not the default 1: dash takes 2 to 256.
+    if full == "colorlevels":
+        return "scatter mpg weight, colorvar(price) " + spelling + "(4) name(zqab)"
+    if full == "colorvarminmax":
+        return "scatter mpg weight, colorvar(price) " + spelling + " name(zqab)"
     if is_flag(full):
         return "scatter mpg weight, " + spelling + " name(zqab)"
     v = value_of(full)
@@ -451,8 +459,13 @@ def doc_cmd(spelling, full):
 # spec written, "ignoring unsupported option(s): zzzz()" -- so no A4 case
 # could fail.  The spec must now hold the option under its full name.
 for spelling, full in DOC:
+    # doc_cmd sends colorlevels() and colorvarminmax beside colorvar(), so
+    # the spec holds both keys, in the sorted order the driver records.
+    k = "" if full == "name" else full
+    if full in ("colorlevels", "colorvarminmax"):
+        k = " ".join(sorted([full, "colorvar"]))
     add("A4", "dash.sthlp documents " + spelling + "() for " + full + "()",
-        doc_cmd(spelling, full), keys=("" if full == "name" else full),
+        doc_cmd(spelling, full), keys=k,
         optname=spelling + "->" + full)
 # The documented names are candidates too: mlabangle, mlabformat and hover
 # are in neither the fixture nor the pinned lists above.
@@ -804,7 +817,8 @@ capture quietly dash clear
 // states a size: the fixture's _meta.counts for A1 (options), A3
 // (dash_mismaps) and A5 (plottypes), the pinned lists above for R1 and for
 // R2 and R3 together.  And dash.sthlp documents 102 spellings, measured
-// 24sep2026 from its {cmdab:} tokens (the KPI and layout ones set aside;
+// 24sep2026 from its {cmdab:} tokens, 112 since GAPS2 X2 (7acdcb1) added
+// zti(), zlab(), zsc(), colorlev() and colorvarminm() and their full names (the KPI and layout ones set aside;
 // 88 before the S3 batch's table of a ci band's options added ac(),
 // alc(), alw(), alp(), fc(), fi() and lc() and their full names) -- A4
 // runs the one-line ones and A4b the dash build ones.  A help
@@ -828,8 +842,8 @@ if `n_R2' + `n_R3' != ${ZQA_EXPN_R23} {
     local nfail = `nfail' + 1
     local faillist `"`faillist' size(R2+R3)"'
 }
-if ${ZQA_NDOC} != 102 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
-    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (102 measured); A4 ran `n_A4' and A4b `n_A4b'"
+if ${ZQA_NDOC} != 112 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
+    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (112 measured); A4 ran `n_A4' and A4b `n_A4b'"
     local nfail = `nfail' + 1
     local faillist `"`faillist' size(A4)"'
 }
