@@ -261,7 +261,7 @@ class TestTheServedKpiReadsTheDate:
         cards = {n: [_card(t, n) for t in texts if _card(t, n)]
                  for n in ("k1", "k2")}
         # `display %td 2936549' 31dec9999; `display %td 14977' 02jan2001.
-        assert cards == {"k1": ["31 Dec 9999"], "k2": ["02 Jan 2001"]}
+        assert cards == {"k1": ["31dec9999"], "k2": ["02jan2001"]}
 
     def test_a_sum_of_dates_is_named_as_the_saved_page_names_it(
             self, tmp_path):
@@ -307,7 +307,7 @@ class TestTheServedDateFilter:
 
     def test_a_range_move_keeps_the_dates_inside_it(self, tmp_path):
         """02jan2001 to 05jan2001: four points, and the card's max is
-        05 Jan 2001 (the saved page's callback gives the same,
+        05jan2001, as `display %td' writes it (the saved page's callback gives the same,
         test_date_range.py)."""
         spec = _spec(_SCATTER, filters=[_filter("range")],
                      kpis=[_kpi("k1", "max")])
@@ -317,7 +317,7 @@ class TestTheServedDateFilter:
         assert _drawn(_served_fig(doc)) == [_ISO[:4]]
         texts = [d.text for d in doc.select({"type": Div})]
         assert [_card(t, "k1") for t in texts if _card(t, "k1")] == [
-            "05 Jan 2001"]
+            "05jan2001"]
         _fire(w, (_MS[0], _MS[4]))
         assert _drawn(_served_fig(doc)) == [_ISO]
 

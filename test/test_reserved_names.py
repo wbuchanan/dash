@@ -558,8 +558,8 @@ class TestTheDashPrefix:
         if mode == "mlabel":
             text_col = dr._DASH_MLABEL_PREFIX + name
             assert text_col in src.data
-            assert [str(v) for v in src.data[text_col]] == \
-                [str(v) for v in values]
+            # the variable's %9.0g, as `display %9.0g 22' writes it
+            assert list(src.data[text_col]) == ["22", "17", "25", "30"]
 
         ap = os.path.join(str(tmp_path), "app_%d.py" % next(_SEQ))
         with warnings.catch_warnings():

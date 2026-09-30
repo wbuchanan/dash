@@ -736,7 +736,7 @@ SURFACES = {
             "test/test_resource_limits.py::TestADropdownOnAContinuousVariable::test_the_widget_lists_at_most_the_limit",
             "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_a_huge_label_set_is_read_at_once",
             "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_a_number_stata_would_write_long_is_bounded",
-            "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_a_date_no_calendar_holds_is_a_dot_not_a_crash",
+            "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_a_date_no_calendar_holds_is_written_as_stata_does",
             "test/test_date_range.py::TestHostileDateValues::test_two_million_values_convert_in_bounded_time_and_memory",
             "test/test_served_dates.py::TestOneColumnReader::test_a_million_dates_load_in_bounded_time",
             "test/test_saved_filter_layers.py::TestTheArrowHeadHelper::test_ten_thousand_arrows_are_one_model",
