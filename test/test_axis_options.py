@@ -237,19 +237,34 @@ class TestAxisLabelGrammar:
 class TestAxisScale:
 
     def test_range_sets_the_axis_bounds(self):
+        """range() widens the axis to include its values and never narrows
+        it (axis_scale_options.sthlp:336-341): mpg 12-41 inside 0-50, the
+        hull padded 5% a side (WP-28 B2; this pinned an exact 0 to 50)."""
+        from bokeh.models import Range1d
         fig, _ = _fig_with_gopts(_SCATTER, {"yscale": "range(0 50)"})
-        assert fig.y_range.start == pytest.approx(0.0)
-        assert fig.y_range.end == pytest.approx(50.0)
+        assert isinstance(fig.y_range, Range1d)
+        assert dash_render._dash_range_hull(fig.y_range) == pytest.approx(
+            (0.0, 50.0))
 
     def test_range_with_only_a_lower_bound(self):
+        """range() never narrows (axis_scale_options.sthlp:336-341): 0 is
+        included and the data's top kept, padded at both ends (WP-28 B2;
+        this pinned a start of exactly 0)."""
         fig, _ = _fig_with_gopts(_SCATTER, {"yscale": "range(0)"})
-        assert fig.y_range.start == pytest.approx(0.0)
+        assert dash_render._dash_range_hull(fig.y_range) == pytest.approx(
+            (0.0, 41.0))
+        assert fig.y_range.start < 0.0 and fig.y_range.end > 41.0
 
     def test_range_combines_with_log(self):
+        """range() never narrows (axis_scale_options.sthlp:336-341): on a
+        log axis the hull is padded in log space (WP-28 B2; this pinned a
+        start of exactly 1000)."""
         fig, _ = _fig_with_gopts(_SCATTER, {"xscale": "log range(1000 5000)"})
         from bokeh.models import LogAxis
         assert any(isinstance(a, LogAxis) for a in fig.xaxis)
-        assert fig.x_range.start == pytest.approx(1000.0)
+        assert fig.x_range.start < 1000.0
+        assert dash_render._dash_range_hull(fig.x_range, "log") == \
+            pytest.approx((1000.0, 5000.0))
 
     def test_reverse_still_works(self):
         fig, _ = _fig_with_gopts(_SCATTER, {"yscale": "reverse"})

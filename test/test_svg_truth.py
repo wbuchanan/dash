@@ -204,6 +204,45 @@ class TestAxisExtent:
         assert "fewer than two" in svg_truth.svg_axis_extent.last_reason
 
 
+class TestAxisReading:
+    """svg_axis_reading (WP-28 S18): the whole reading svg_axis_extent
+    answers from, kept even when no fit is possible."""
+
+    @pytest.mark.parametrize("path", [TINY, SMOKE_SVG])
+    @pytest.mark.parametrize("axis", ["x", "y"])
+    def test_its_fit_is_the_extent(self, path, axis):
+        r = svg_truth.svg_axis_reading(path, axis)
+        ext = svg_truth.svg_axis_extent(path, axis)
+        assert r["tick_px"] == ext["tick_px"]
+        assert r["labels"] == ext["tick_labels"]
+        assert r["fit"]["low"] == ext["low"] and r["fit"]["high"] == ext["high"]
+        assert len(r["label_objs"]) == r["n_ticks"]
+        assert r["tick_side"] in (("below plotregion", "above plotregion")
+                                  if axis == "x" else
+                                  ("left of plotregion", "right of plotregion"))
+
+    def test_the_reading_survives_a_failed_fit(self, tmp_path):
+        path = _one_tick_svg(tmp_path)
+        r = svg_truth.svg_axis_reading(path, "y")
+        assert r["fit"] is None and "fewer than two" in r["reason"]
+        assert r["plotregion"] is not None and r["n_ticks"] >= 1
+
+    def test_a_document_given_is_read_as_is(self):
+        doc = svg_truth.svg_document(TINY)
+        assert svg_truth.svg_axis_reading(None, "y", doc=doc)["fit"] == \
+            svg_truth.svg_axis_reading(TINY, "y")["fit"]
+
+    def test_as_written_keeps_the_writers_colour_spelling(self):
+        plain = svg_truth.svg_document(SMOKE_SVG)
+        kept = svg_truth.svg_document(SMOKE_SVG, as_written=True)
+        assert "fill_raw" not in plain["texts"][0]
+        assert "stroke_raw" not in (plain["hlines"] + plain["vlines"])[0]
+        for t in kept["texts"]:
+            assert (t["fill_raw"] or "").lower() == (t["fill"] or "")
+        for d in kept["hlines"] + kept["vlines"]:
+            assert (d["stroke_raw"] or "").lower() == (d["stroke"] or "")
+
+
 class TestTheSmokeFixture:
 
     def test_the_module_reads_the_committed_stata_svg_as_the_fixture_records(self, smoke):

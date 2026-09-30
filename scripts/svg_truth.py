@@ -126,7 +126,7 @@ def normalise_text(s):
 # ---------------------------------------------------------------------------
 # svg_document: the whole structural reading of one SVG file.
 # ---------------------------------------------------------------------------
-def svg_document(path):
+def svg_document(path, as_written=False):
     """The structural facts of a Stata-written SVG at *path*.
 
     Returns a dict with keys ``texts``, ``hlines``, ``vlines``,
@@ -138,6 +138,12 @@ def svg_document(path):
     any legend / by-panel regions, in that order -- or, when no such rect
     exists, the bounding box of the longest black horizontal and vertical
     ``<line>`` (``axis_line``).  Every colour is lower-cased at read time.
+
+    With *as_written*, each text and rect also carries ``fill_raw`` and
+    each line ``stroke_raw``: the colour as the writer spelled it (Stata
+    upper-cases the hex it computes and keeps a named colour's lower case,
+    ``#0000ff`` for blue), for a record that has always kept that spelling
+    (``scripts/extract_axis_truth.do``, WP-28 S18).
     """
     with open(path, "r", encoding="utf-8", errors="replace") as fh:
         txt = fh.read()
@@ -159,6 +165,10 @@ def svg_document(path):
             "rotate": rot,
             "size": _fnum(st.get("font-size", "").replace("px", "")),
             "fill": _lower(fill),
+            # As written (Stata upper-cases hex it computes and keeps a
+            # named colour's lower case: #0000ff for blue), for a record
+            # that has always kept the writer's own spelling.
+            "fill_raw": fill,
             "font_family": st.get("font-family"),
             "text": normalise_text(raw),
             "raw": raw,
@@ -175,6 +185,7 @@ def svg_document(path):
         d = {
             "x1": x1, "y1": y1, "x2": x2, "y2": y2,
             "stroke": _lower(st.get("stroke", a.get("stroke"))),
+            "stroke_raw": st.get("stroke", a.get("stroke")),
             "width": _fnum(st.get("stroke-width", a.get("stroke-width", ""))),
             "dasharray": st.get("stroke-dasharray", a.get("stroke-dasharray")),
         }
@@ -193,6 +204,7 @@ def svg_document(path):
             "x": _fnum(a.get("x")), "y": _fnum(a.get("y")),
             "w": _fnum(a.get("width")), "h": _fnum(a.get("height")),
             "fill": _lower(st.get("fill", a.get("fill"))),
+            "fill_raw": st.get("fill", a.get("fill")),
             "stroke": _lower(st.get("stroke", a.get("stroke"))),
         })
 
@@ -284,6 +296,12 @@ def svg_document(path):
     mver = _RE_VERSION.search(txt)
     if mver:
         version = mver.group(1).strip()
+
+    if not as_written:
+        for d in texts + rects:
+            d.pop("fill_raw", None)
+        for d in hlines + vlines + diaglines:
+            d.pop("stroke_raw", None)
 
     return {
         "texts": texts, "hlines": hlines, "vlines": vlines,
@@ -450,32 +468,35 @@ def fit_axis_mapping(pairs, edge_start, edge_end):
     return None
 
 
-def svg_axis_extent(path, axis, tick_values=None):
-    """The drawn extent of *axis* (``"x"`` or ``"y"``) in *path*: the data
-    value at each plot-region edge, fitted over the labelled ticks exactly
-    as ``extract_axis_truth.do``'s ``axis_facts`` locates them (short black
-    tick lines at the near plotregion edge; the row or column of ``<text>``
-    nearest that edge, matched to the nearest tick pixel within 250 px).
+def svg_axis_reading(path, axis, tick_values=None, doc=None):
+    """Everything the axis reader sees on *axis* (``"x"`` or ``"y"``) of
+    *path*, whether or not the ticks fit a scale -- the one reading
+    :func:`svg_axis_extent` answers from, kept whole for a caller that
+    records the tick marks, gridlines and label elements too
+    (``scripts/extract_axis_truth.do``, WP-28 S18, which read them through
+    a private copy of this logic until then).
 
-    When *tick_values* is given, it replaces ``label_value(label)`` for
-    every tick: it must have one entry per tick pixel found, in ascending
-    pixel order along that axis (left to right for the x axis -- pixel x
-    grows rightward; top to bottom for the y axis -- pixel y grows
-    downward, so the first entry is the axis's *top* tick).  A length
-    mismatch raises ``ValueError`` naming both counts.
+    *doc* is :func:`svg_document`'s reading of *path* when the caller
+    already has it.  *tick_values* is as for :func:`svg_axis_extent`; a
+    length mismatch raises the same ``ValueError``.
 
-    Returns ``{"low", "high", "space", "reversed", "tick_px", "tick_labels",
-    "tick_values", "residual", "plotregion", "n_ticks"}``, or ``None`` when
-    fewer than two ticks pair with a value or no fit satisfies the residual
-    rule -- in which case ``svg_axis_extent.last_reason`` names why.
+    Returns a dict: ``plotregion`` (None when none could be identified,
+    and then only ``reason`` besides), ``tick_px``, ``n_ticks``,
+    ``tick_side`` (``"below plotregion"``/``"above plotregion"`` on x,
+    ``"left of plotregion"``/``"right of plotregion"`` on y, or None),
+    ``grid`` (the gridline groups of :func:`line_groups`), ``label_objs``
+    (per tick pixel, the ``<text>`` element matched to it, or None),
+    ``label_offaxis_px`` (the row or column the labels were read from, or
+    None), ``labels``, ``pairs`` (the ``(px, value)`` pairs fitted),
+    ``fit`` (:func:`fit_axis_mapping`'s answer, or None) and ``reason``
+    (why there is no fit, else None).
     """
-    svg_axis_extent.last_reason = None
-    doc = svg_document(path)
+    if doc is None:
+        doc = svg_document(path)
     pr = doc["plotregion"]
     if pr is None:
-        svg_axis_extent.last_reason = (
-            "no plotregion could be identified in the SVG")
-        return None
+        return {"plotregion": None,
+                "reason": "no plotregion could be identified in the SVG"}
     tol = 2.5
 
     def _black(d):
@@ -498,6 +519,8 @@ def svg_axis_extent(path, axis, tick_values=None):
                 if g["n_segments"] > 3
                 and g["span_to"] - g["span_from"] > 0.8 * (pr["bottom"] - pr["top"])]
         tick_px = sorted(set(marks_below or marks_above))
+        tick_side = ("below plotregion" if marks_below else
+                     ("above plotregion" if marks_above else None))
         cand = [t for t in doc["texts"] if t["y"] is not None
                 and (t["y"] > pr["bottom"] or t["y"] < pr["top"])]
         keyc, offc = "x", "y"
@@ -520,6 +543,8 @@ def svg_axis_extent(path, axis, tick_values=None):
                 if g["n_segments"] > 3
                 and g["span_to"] - g["span_from"] > 0.8 * (pr["right"] - pr["left"])]
         tick_px = sorted(set(marks_left or marks_right))
+        tick_side = ("left of plotregion" if marks_left else
+                     ("right of plotregion" if marks_right else None))
         cand = [t for t in doc["texts"] if t["x"] is not None
                 and (t["x"] < pr["left"] or t["x"] > pr["right"])]
         keyc, offc = "y", "x"
@@ -532,12 +557,14 @@ def svg_axis_extent(path, axis, tick_values=None):
         tick_px = sorted({g["px"] for g in grid})
     n_ticks = len(tick_px)
 
-    labels, lab_px = [], []
+    labels, lab_px, label_objs = [], [], []
+    label_offaxis_px = None
     if cand and tick_px:
         clusters = collections.defaultdict(list)
         for t in cand:
             clusters[round(t[offc], 1)].append(t)
         best = min(clusters, key=lambda c: abs(c - near_edge))
+        label_offaxis_px = best
         row = clusters[best]
         used = set()
         for p in tick_px:
@@ -551,11 +578,14 @@ def svg_axis_extent(path, axis, tick_values=None):
             if pick is not None and pd < 250:
                 used.add(pick)
                 labels.append(row[pick]["text"])
+                label_objs.append(row[pick])
             else:
                 labels.append(None)
+                label_objs.append(None)
             lab_px.append(p)
     else:
         labels = [None] * len(tick_px)
+        label_objs = [None] * len(tick_px)
         lab_px = list(tick_px)
 
     if tick_values is not None:
@@ -569,27 +599,58 @@ def svg_axis_extent(path, axis, tick_values=None):
         pairs = [(px, label_value(l)) for px, l in zip(lab_px, labels)
                  if l is not None and label_value(l) is not None]
 
+    out = {"plotregion": pr, "tick_px": tick_px, "n_ticks": n_ticks,
+           "tick_side": tick_side, "grid": grid, "label_objs": label_objs,
+           "label_offaxis_px": label_offaxis_px, "labels": labels,
+           "pairs": pairs, "fit": None, "reason": None}
     if len(pairs) < 2:
-        svg_axis_extent.last_reason = (
+        out["reason"] = (
             "fewer than two tick labels parse as numbers, so the "
             "pixel<->data map could not be inverted; the tick pixel "
             "positions are still exact"
         )
-        return None
-
+        return out
     fit = fit_axis_mapping(pairs, edge_start, edge_end)
     if fit is None:
-        svg_axis_extent.last_reason = (
-            "no linear or log10 fit satisfied the residual rule")
-        return None
+        out["reason"] = "no linear or log10 fit satisfied the residual rule"
+        return out
+    out["fit"] = fit
+    return out
 
+
+def svg_axis_extent(path, axis, tick_values=None):
+    """The drawn extent of *axis* (``"x"`` or ``"y"``) in *path*: the data
+    value at each plot-region edge, fitted over the labelled ticks as
+    :func:`svg_axis_reading` locates them (short black tick lines at the
+    near plotregion edge; the row or column of ``<text>`` nearest that
+    edge, matched to the nearest tick pixel within 250 px).
+
+    When *tick_values* is given, it replaces ``label_value(label)`` for
+    every tick: it must have one entry per tick pixel found, in ascending
+    pixel order along that axis (left to right for the x axis -- pixel x
+    grows rightward; top to bottom for the y axis -- pixel y grows
+    downward, so the first entry is the axis's *top* tick).  A length
+    mismatch raises ``ValueError`` naming both counts.
+
+    Returns ``{"low", "high", "space", "reversed", "tick_px", "tick_labels",
+    "tick_values", "residual", "plotregion", "n_ticks"}``, or ``None`` when
+    fewer than two ticks pair with a value or no fit satisfies the residual
+    rule -- in which case ``svg_axis_extent.last_reason`` names why.
+    """
+    svg_axis_extent.last_reason = None
+    r = svg_axis_reading(path, axis, tick_values)
+    if r["plotregion"] is None or r["fit"] is None:
+        svg_axis_extent.last_reason = r["reason"]
+        return None
+    fit = r["fit"]
     return {
         "low": fit["low"], "high": fit["high"], "space": fit["space"],
-        "reversed": fit["reversed"], "tick_px": tick_px,
-        "tick_labels": labels,
+        "reversed": fit["reversed"], "tick_px": r["tick_px"],
+        "tick_labels": r["labels"],
         "tick_values": list(tick_values) if tick_values is not None
-                        else [p[1] for p in pairs],
-        "residual": fit["residual"], "plotregion": pr, "n_ticks": n_ticks,
+                        else [p[1] for p in r["pairs"]],
+        "residual": fit["residual"], "plotregion": r["plotregion"],
+        "n_ticks": r["n_ticks"],
     }
 
 

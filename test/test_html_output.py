@@ -24,6 +24,8 @@ import bokeh
 from bokeh import models as bkm
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import warnings  # noqa: E402
+import dash_render  # noqa: E402
 from dash_render import DashRenderer
 
 
@@ -1617,10 +1619,17 @@ class TestXrangeYrange:
         # passed with the range drawn on the y axis instead, and a page
         # carries "-37" whenever one of its UUIDs has a group beginning 37
         # -- 12 of 500 pages drawn with no range at all (measured 24sep2026).
-        assert [(name, attrs.get("start", bkm.Range1d().start),
-                 attrs.get("end"))
-                for name, attrs in _figure_models(html, "x_range")] \
-            == [("Range1d", -37.0, 99.0)]
+        # WP-28 B2: range() widens to include -37 and 99 and never narrows;
+        # the Range1d is that hull padded 5% a side (this pinned exactly
+        # (-37, 99)).
+        got = [(name, attrs.get("start", bkm.Range1d().start),
+                attrs.get("end"))
+               for name, attrs in _figure_models(html, "x_range")]
+        assert [g[0] for g in got] == ["Range1d"]
+        start, end = float(got[0][1]), float(got[0][2])
+        assert start < -37.0 and end > 99.0
+        assert dash_render._dash_range_hull(bkm.Range1d(start=start, end=end)) \
+            == pytest.approx((-37.0, 99.0))
         assert [name for name, _a in _figure_models(html, "y_range")] \
             == ["DataRange1d"]
 
@@ -1633,10 +1642,17 @@ class TestXrangeYrange:
         # copies, measured 24sep2026), so the page text passed with the
         # range ignored.  The document leaves out a start of 0, Bokeh's
         # own default for Range1d.start.
-        assert [(name, attrs.get("start", bkm.Range1d().start),
-                 attrs.get("end"))
-                for name, attrs in _figure_models(html, "y_range")] \
-            == [("Range1d", 0, 9999.0)]
+        # WP-28 B2: the hull of 0, 9999 and the data, padded 5% a side
+        # (this pinned exactly (0, 9999)); the padded start is never 0,
+        # so the document writes it.
+        got = [(name, attrs.get("start", bkm.Range1d().start),
+                attrs.get("end"))
+               for name, attrs in _figure_models(html, "y_range")]
+        assert [g[0] for g in got] == ["Range1d"]
+        start, end = float(got[0][1]), float(got[0][2])
+        assert start < 0.0 and end > 9999.0
+        assert dash_render._dash_range_hull(bkm.Range1d(start=start, end=end)) \
+            == pytest.approx((0.0, 9999.0))
         assert [name for name, _a in _figure_models(html, "x_range")] \
             == ["DataRange1d"]
 
@@ -1650,9 +1666,15 @@ class TestXrangeYrange:
         """
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["xscale"] = "range(bad_value)"
-        html = _render_to_html(spec, data)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            html = _render_to_html(spec, data)
         assert [name for name, _a in _figure_models(html, "x_range")] \
             == ["DataRange1d"]
+        # Named once (WP-28 B2): an unhonoured value is named, Q22.
+        assert [str(w.message) for w in caught
+                if "range()" in str(w.message)] == [
+            "dash: xscale(range()) ignores bad_value, which is not a number"]
         assert _figure_glyphs(html) == [["Scatter"]]
 
     def test_yrange_invalid_ignores_gracefully(self):
@@ -1663,9 +1685,14 @@ class TestXrangeYrange:
         """
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["yscale"] = "range(bad)"
-        html = _render_to_html(spec, data)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            html = _render_to_html(spec, data)
         assert [name for name, _a in _figure_models(html, "y_range")] \
             == ["DataRange1d"]
+        assert [str(w.message) for w in caught
+                if "range()" in str(w.message)] == [
+            "dash: yscale(range()) ignores bad, which is not a number"]
         assert _figure_glyphs(html) == [["Scatter"]]
 
 

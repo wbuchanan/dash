@@ -1135,6 +1135,16 @@ class TestXscaleYscaleReverse:
         fig = _get_figure({"xscale": "reverse"})
         assert getattr(fig.x_range, "flipped", False) is True
 
+    def test_reverse_with_a_range_is_start_above_end(self):
+        """WP-28 B2: reverse beside range() was dropped (a Range1d has no
+        flipped); the hull is drawn high end first."""
+        from bokeh.models import Range1d
+        import dash_render as _dr
+        fig = _get_figure({"yscale": "reverse range(0 50)"})
+        assert isinstance(fig.y_range, Range1d)
+        assert fig.y_range.start > fig.y_range.end
+        assert _dr._dash_range_reversed(fig.y_range) is True
+
     def test_yscale_reverse_flips_y_range(self):
         """P6-25b: yscale(reverse) must set fig.y_range.flipped = True."""
         fig = _get_figure({"yscale": "reverse"})

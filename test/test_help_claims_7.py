@@ -1032,7 +1032,9 @@ class TestTheSecondAxisIsItsOwn:
         assert rng.start > rng.end, "yscale2(reverse) did not reverse"
         fig, _ = _render(mode, _Y2, {"yscale2": "range(0 20000)"})
         rng = fig.extra_y_ranges["y2"]
-        assert (rng.start, rng.end) == (0.0, 20000.0)
+        # WP-28 B2: range() widens to 0 and 20000, padded 5% a side (this
+        # pinned exactly (0, 20000)).
+        assert dr._dash_range_hull(rng) == pytest.approx((0.0, 20000.0))
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_an_unhonoured_yscale2_suboption_is_named(self, mode):

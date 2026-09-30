@@ -409,6 +409,14 @@ FUNCTIONS = {
  '_dash_finish_count_ticks': 'test/test_natscale.py::TestBothModesDrawTwowaysTicks::test_the_reported_case',
  '_dash_count_axes': 'test/test_natscale_axes.py::TestBothModesTickLogAndDateAxes::test_log_axis',
  '_dash_place_count_ticks': 'test/test_natscale.py::TestBothModesDrawTwowaysTicks::test_the_reported_case',
+ # WP-28 B2: the extent after the layers.
+ '_dash_axis_hull': 'test/test_axis_extents.py::TestTheHelpers::test_axis_hull_returns_none_without_an_explicit_value',
+ '_dash_hull_ranges': 'test/test_axis_extents.py::TestTheHelpers::test_hull_ranges_leaves_an_axis_without_a_hull',
+ '_dash_limit_ranges_to_primary': 'test/test_axis_extents.py::TestTheHelpers::test_limit_ranges_to_primary',
+ '_dash_padded_range': 'test/test_axis_extents.py::TestTheHelpers::test_range_hull_inverts_padded_range',
+ '_dash_range_hull': 'test/test_axis_extents.py::TestTheHelpers::test_range_hull_inverts_padded_range',
+ '_dash_range_reversed': 'test/test_axis_extents.py::TestTheHelpers::test_range_reversed',
+ '_dash_scale_name': 'test/test_axis_extents.py::TestTheReader::test_scale_names',
  '_dash_common_count_ticks': 'test/test_natscale_axes.py::TestByPanelsShareOneScale::test_ylabel_count',
  '_dash_axis_count_ticks': 'test/test_natscale_axes.py::TestLogAxisTicks::test_price_under_yscale_log',
  '_dash_sci_decimals': 'test/test_display_format_writer.py::TestPythonWriter::test_narrow_widths_1_to_7_follow_the_fixture',
@@ -681,6 +689,11 @@ TEST_ONLY = {
         "WP-28 S04 keeps it under WP-26's seam rule: epoch milliseconds back to a Stata date value, "
         "the hand-off section 12 wires into widgets, tooltips and axes; its "
         "JS twin dash_stata_value_of ships in _DASH_FMT_JS today."),
+    "_dash_range_hull": (
+        "WP-28 B2 keeps it under WP-26's seam rule: the inverse of "
+        "_dash_padded_range -- the hull a padded Range1d was drawn from -- "
+        "that test_axis_extents.py and test_gaps2_truth.cscript's S18 block "
+        "compare with twoway's inner hull; no page needs it."),
     "DashRenderer._build_figures": (
         "WP-26 keeps it: a test seam (its docstring).  render() never calls "
         "it; twelve test files build the figures through it without "

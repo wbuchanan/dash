@@ -623,6 +623,12 @@ def _axes(fig):
                 e[attr] = _num(float(v))
         if getattr(r, "flipped", None):
             e["flipped"] = True
+        # WP-28 B2: which renderers an autorange spans (the saved page
+        # limited it to the graph's own source and the served app did not)
+        # and which way the axis runs, a Range1d having no flipped.
+        rs = getattr(r, "renderers", None)
+        e["renderers"] = len(rs) if isinstance(rs, list) else "auto"
+        e["reversed"] = dr._dash_range_reversed(r)
         return e
 
     return {"x": [one(a) for a in fig.xaxis], "y": [one(a) for a in fig.yaxis],
@@ -1641,6 +1647,12 @@ DATE_CORPUS = [
           [plot_for("line", yvar="mpg", xvar="when")], _W,
           go={"xline": "15342", "xlabel": "15340 15345 \"mid\" 15349",
               "xscale": "range(15339 15350)"}),
+    # WP-28 B2: the extent after the layers, the same in both modes.
+    _case("yscale(range(100))", [_sc()], None, {"yscale": "range(100)"}),
+    _case("yscale(r(0 100) rev)", [_sc()], None, {"yscale": "r(0 100) rev"}),
+    _case("ylabel(0(20)100, norescale)", [_sc()], None,
+          {"ylabel": "0(20)100, norescale"}),
+    _case("yscale(range(abc))", [_sc()], None, {"yscale": "range(abc)"}),
 ]
 
 #: The entries a report is the point of, with the report each must make.
@@ -1676,6 +1688,8 @@ _MUST_WARN = {
         "rows(2) compact",
     "filter() with an unknown type":
         "dash: filter(price, type(bogus)): type() must be one of",
+    "yscale(range(abc))":
+        "dash: yscale(range()) ignores abc, which is not a number",
 }
 
 #: The filter types that build a widget (dash.sthlp); a filter() group of

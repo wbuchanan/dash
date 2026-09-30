@@ -506,24 +506,42 @@ class TestANumberOnADateAxisIsAStataDate:
     def test_xscale_range_in_every_unit(self, tmp_path, kind, value, ms):
         spec = _spec(_LINE, formats={"date": "%" + kind},
                      graph_options={"xscale": f"range({value!r} {value!r})"})
+        # WP-28 B2: range() widens only; the data run one period either
+        # side of it, so the axis spans them, padded (this pinned the
+        # degenerate (ms, ms)).
+        ends = []
         for mode, fig, _w in _both(tmp_path, spec, _kind_frame(kind, value)):
             assert isinstance(fig.x_range, Range1d), mode
-            assert (fig.x_range.start, fig.x_range.end) == (ms, ms), mode
+            assert fig.x_range.start < ms < fig.x_range.end, mode
+            ends.append((fig.x_range.start, fig.x_range.end))
+        assert ends[0] == ends[1], ends
 
     def test_xscale_range_on_a_td_axis(self, tmp_path):
-        """xscale(range(14977 14980)): 02jan2001 to 05jan2001."""
+        """xscale(range(14977 14980)): 02jan2001 and 05jan2001 are dates,
+        read in the variable's unit; range() widens only (WP-28 B2), so
+        the axis spans the data's 02jan2001 to 31dec9999."""
         spec = _spec(_LINE, graph_options={"xscale": "range(14977 14980)"})
         for mode, fig, _w in _both(tmp_path, spec, _frame()):
-            assert (fig.x_range.start, fig.x_range.end) == (
-                _MS[0], _MS[3]), mode
+            # The hull the padded Range1d was drawn from (WP-28 B2): the
+            # data's 9999-12-31 widens it far past 05jan2001.
+            lo, hi = dr._dash_range_hull(fig.x_range)
+            assert lo == pytest.approx(_MS[0], abs=1), mode
+            assert hi == pytest.approx(_MS[4], abs=1), mode
 
-    def test_one_range_bound_keeps_the_datas_other(self, tmp_path):
+    def test_one_range_value_inside_the_data_changes_nothing(self,
+                                                              tmp_path):
+        """Was test_one_range_bound_keeps_the_datas_other, which pinned the
+        axis's start at 04jan2001: range() never narrows (WP-28 B2), and
+        14979 is the third of the four dates, so the axis spans the data
+        (02jan2001 to 05jan2001), padded, and is not narrowed to it."""
         spec = _spec(_LINE, graph_options={"xscale": "range(14979 .)"})
         df = _frame(_DATES[:4])
         for mode, fig, _w in _both(tmp_path, spec, df):
-            if not isinstance(fig.x_range, Range1d):
-                continue
-            assert fig.x_range.start == _JAN4_2001, mode
+            assert isinstance(fig.x_range, Range1d), mode
+            lo, hi = dr._dash_range_hull(fig.x_range)
+            assert lo == pytest.approx(_MS[0], abs=1), mode
+            assert hi == pytest.approx(_MS[3], abs=1), mode
+            assert fig.x_range.start < _JAN4_2001, mode
 
     def test_xlabel_numbers_tick_at_their_dates(self, tmp_path):
         """xlabel(14977 14979): ticks at 02jan2001 and 04jan2001, written
@@ -570,7 +588,9 @@ class TestANumberOnADateAxisIsAStataDate:
         for mode, fig, _w in _both(tmp_path, spec, _frame()):
             assert _spans(fig, "height") == [2.0], mode
             assert list(fig.xaxis[0].ticker.ticks) == [1.0, 3.0], mode
-            assert (fig.x_range.start, fig.x_range.end) == (1.0, 4.0), mode
+            # range() widens only (WP-28 B2): 1-4 inside close's 1-5.
+            assert dr._dash_range_hull(fig.x_range) == pytest.approx(
+                (1.0, 5.0)), mode
 
     def test_a_number_past_statas_range_is_named_and_not_drawn(
             self, tmp_path):

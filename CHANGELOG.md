@@ -149,7 +149,22 @@ and now matches Stata.
   now 1..5 and 1 2 3; `xlabel(#5 50 "fifty")` drew 50 alone, now the count
   ticks and 50 labelled "fifty"; a compound-quoted label was a lone
   backtick, now its text. (WP-28, B1)
-<!-- WP-28 B2 -->
+- An axis now spans its data, its label and tick positions and every
+  `range()` value, as twoway's does, padded 5% a side: `yscale(range(100))`
+  on mpg (12-41) drew the axis from 100 down to 41, now 12 to 100;
+  `yscale(range(20 30))` drew 20 to 30 and hid the other points, now the
+  data's 12 to 41; `ylabel(0(20)100)` drew 12 to 41 (Bokeh's top 42.45)
+  and never showed 60-100, now 0 to 100; `yscale(range(0))` ended at 41
+  exactly, now 0 to 41 padded at both ends; `yscale(reverse range(0 50))`
+  dropped the reverse, now 50 down to 0; `r()`, `rev` and `norescale` were
+  named as not implemented, now drawn (twoway drops `norescale` from a lone
+  `a(b)c` rule and widens that axis, and so does dash). `yscale2()`/
+  `xscale2()` and `ylabel2()`/`xlabel2()` follow the same rule, a by()
+  graph's panels share one extent, an axis with an explicit label, tick or
+  range value is a fixed range that holds across filter moves, and the
+  served app now limits its autoranges to the graph's own layers as the
+  saved page does (a fit's extended grid no longer widens its x axis).
+  (WP-28, B2)
 - `title("T", c(red))` drew the three lines `T`, `,` and `c(red)` in the
   scheme's colour, and `ytitle("Volume", axis(2))` titled the left axis
   `Volume` / `,` / `axis(2)`; a textbox sub-option is now read under any

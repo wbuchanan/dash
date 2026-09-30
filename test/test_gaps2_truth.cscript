@@ -15,6 +15,7 @@
 *!   S17  filters vs count and summarize (FT-01..FT-06; GAPS2 X1, E2)
 *!   S14  axis labels, B1 (AL-01..AL-16)
 *!   S14  axis labels and value labels, B1 and G16 (AL-01..AL-19)
+*!   S18  axis scale extents, B2 (AE-01..AE-06)
 *!
 *! Usage: via run_all_cscripts.do (registered as its last block).  One
 *! block alone: set GAPS2_ONLY=S<NN> in the environment of the driver run
@@ -1063,6 +1064,175 @@ if inlist("`only'", "", "S14") {
     display as text "S14 end `c(current_time)'"
 }
 * ==== end S14 ====
+
+* ==== S18 B2: axis scale extents ====
+* AE-01..AE-05: twoway's drawn extent, live, equals the extent the fixture
+* recorded (test/fixtures/axis_truth.json, group b2_extent), and dash's
+* saved page spans the requested hull: its y Range1d, less dash's 5% pad
+* a side, is the hull of the data, the label positions and the range()
+* values the fixture records (Stata's own margin is 2.2% of the canvas,
+* B25, so inner hulls are compared, never extents).  AE-05 is a list with
+* norescale: twoway does not widen -- its labels fall outside the plot
+* region, where the SVG fit is not reliable, so .Graph's curmin/curmax
+* (the inner hull, per the fixture's verdict) is compared with the
+* fixture's instead -- and dash keeps its autorange (no Range1d on y).  AE-06: .Graph's scale members on AE-02's graph equal
+* the fixture's, and curmin/curmax is the candidate the fixture's inner
+* verdict names.
+local only : env GAPS2_ONLY
+if inlist("`only'", "", "S18") {
+    display as text "S18 start `c(current_time)'"
+
+    // Reads the saved page's document (as S05's _he5_read does), and the
+    // fixture's record of the probe named in ae_pid, and sets the globals ae_ok (1/0)
+    // and ae_msg.  The svg extent measured live arrives as ae_lo/ae_hi.
+    python:
+import json, math, re
+from sfi import Macro
+from bokeh.document import Document
+
+
+def _ae_unescape(text):
+    ents = {"amp": "&", "lt": "<", "gt": ">", "quot": chr(34),
+            "#x27": chr(39), "#x60": chr(96)}
+    return re.sub(r"&(amp|lt|gt|quot|#x27|#x60);",
+                  lambda m: ents[m.group(1)], text)
+
+
+def _ae_check():
+    page = Macro.getLocal("ae_page")
+    pid = Macro.getLocal("ae_pid")
+    want_range = Macro.getLocal("ae_want") == "range"
+    with open("fixtures/axis_truth.json", encoding="utf-8") as fh:
+        rec = json.load(fh)["probes"][pid]
+    req = rec["requested"]["y"]
+    msgs = []
+    lo, hi = float(Macro.getLocal("ae_lo")), float(Macro.getLocal("ae_hi"))
+    if Macro.getLocal("ae_vals") == "gs":
+        g = rec["graph_scale"]["y"]
+        flo, fhi = g["curmin"], g["curmax"]
+    else:
+        ext = rec["drawn_extent"]["y"]
+        flo, fhi = ext["axis_low"], ext["axis_high"]
+    span = fhi - flo
+    if not (abs(lo - flo) <= 1e-3 * span and abs(hi - fhi) <= 1e-3 * span):
+        msgs.append("twoway drew %r..%r, the fixture holds %r..%r"
+                    % (lo, hi, flo, fhi))
+    with open(page, encoding="utf-8") as fh:
+        text = fh.read()
+    blocks = re.findall(
+        r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+        text, re.S)
+    docs = [d for b in blocks
+            for d in json.loads(_ae_unescape(b)).values()]
+    doc = Document.from_json(docs[0])
+    figs = [m for m in doc.models
+            if hasattr(m, "y_range") and hasattr(m, "renderers")
+            and type(m).__name__ in ("figure", "Figure", "Plot")]
+    rng = figs[0].y_range if len(figs) == 1 else None
+    name = type(rng).__name__
+    if not want_range:
+        if name == "Range1d":
+            msgs.append("the page's y axis is a Range1d, not left to "
+                        "Bokeh's autorange")
+    elif name != "Range1d":
+        msgs.append("the page's y axis is a %s, not a Range1d" % name)
+    else:
+        s, e = float(rng.start), float(rng.end)
+        a, b = min(s, e), max(s, e)
+        w = (b - a) / 1.1
+        h = (a + 0.05 * w, b - 0.05 * w)
+        rs = req[1] - req[0]
+        if not (abs(h[0] - req[0]) <= 1e-6 * rs
+                and abs(h[1] - req[1]) <= 1e-6 * rs):
+            msgs.append("the page spans the hull %r..%r, not %r..%r"
+                        % (h[0], h[1], req[0], req[1]))
+    Macro.setGlobal("ae_ok", "0" if msgs else "1")
+    Macro.setGlobal("ae_msg", "; ".join(msgs) if msgs else "ok")
+
+
+def _ae_graph_scale():
+    with open("fixtures/axis_truth.json", encoding="utf-8") as fh:
+        t = json.load(fh)
+    want = t["probes"]["b2_range_100"]["graph_scale"]["y"]
+    verdict = t["findings"]["graph_scale_matches_svg"]["verdict_inner"]
+    msgs = []
+    for k in ("min", "max", "curmin", "curmax", "major_min", "major_max",
+              "major_delta"):
+        got = float(Macro.getLocal("ae_gs_" + k))
+        if want[k] is None or abs(got - want[k]) > 1e-6 * max(1.0, abs(want[k])):
+            msgs.append("%s is %r live, %r in the fixture" % (k, got, want[k]))
+    if verdict != "curmin/curmax":
+        msgs.append("the fixture's inner verdict is %s" % verdict)
+    Macro.setGlobal("ae_ok", "0" if msgs else "1")
+    Macro.setGlobal("ae_msg", "; ".join(msgs) if msgs else "ok")
+
+end
+
+    capture program drop _ae_case
+    program define _ae_case
+        version 16.0
+        args id pid opt vals want dir
+        quietly twoway scatter mpg weight, `opt' name(ae`id', replace)
+        cert_svg_export, name(ae`id') file("`dir'/ae`id'.svg")
+        if `"`vals'"' == "gs" {
+            cert_graph_scale, axis(y) name(ae`id')
+            c_local ae_lo = r(curmin)
+            c_local ae_hi = r(curmax)
+            c_local ae_reason "no .Graph scale"
+        }
+        else {
+            if `"`vals'"' != "" {
+                cert_svg_extent, file("`dir'/ae`id'.svg") axis(y) values(`vals')
+            }
+            else {
+                cert_svg_extent, file("`dir'/ae`id'.svg") axis(y)
+            }
+            c_local ae_lo = r(low)
+            c_local ae_hi = r(high)
+            c_local ae_reason `"`r(reason)'"'
+        }
+        c_local ae_vals "`vals'"
+        dash clear
+        capture noisily dash scatter mpg weight, `opt' saving("`dir'/ae`id'.html") replace
+        c_local ae_rc = _rc
+        c_local ae_page "`dir'/ae`id'.html"
+        c_local ae_pid "`pid'"
+        c_local ae_want "`want'"
+    end
+
+    sysuse auto, clear
+    local d "`gt_work'"
+    local ae_n 0
+    foreach c in 1 2 3 4 5 {
+        if `c' == 1 _ae_case 01 b2_ylab_0_100 "ylabel(0(20)100)" "100 80 60 40 20 0" range "`d'"
+        if `c' == 2 _ae_case 02 b2_range_100 "yscale(range(100))" "" range "`d'"
+        if `c' == 3 _ae_case 03 b2_range_20_30 "yscale(range(20 30))" "" range "`d'"
+        if `c' == 4 _ae_case 04 b2_r_0_100 "yscale(r(0 100))" "" range "`d'"
+        if `c' == 5 _ae_case 05 b2_ylab_list_nr "ylabel(0 20 40 60 80 100, norescale)" gs auto "`d'"
+        local id "AE-0`c'"
+        _gt_expect `id' "(`ae_rc' == 0)" "dash refused: rc `ae_rc'"
+        _gt_expect `id' "(!missing(`ae_lo') & !missing(`ae_hi'))" "no svg extent: `ae_reason'"
+        if `ae_rc' == 0 & !missing(`ae_lo') & !missing(`ae_hi') {
+            python: __import__("__main__")._ae_check()
+            _gt_expect `id' "(${ae_ok} == 1)" "${ae_msg}"
+        }
+        _gt_done `id' "`ae_pid': twoway's scale is the fixture's, and the page's y axis follows the same rule"
+    }
+
+    // AE-06: .Graph's scale members of AE-02's graph (yscale(range(100)))
+    cert_graph_scale, axis(y) name(ae02)
+    foreach k in min max curmin curmax major_min major_max major_delta {
+        local ae_gs_`k' = r(`k')
+    }
+    python: __import__("__main__")._ae_graph_scale()
+    _gt_expect AE-06 "(${ae_ok} == 1)" "${ae_msg}"
+    _gt_done AE-06 ".Graph's scale members match the fixture; curmin/curmax is the inner hull"
+    macro drop ae_ok ae_msg
+
+    graph drop _all
+    display as text "S18 end `c(current_time)'"
+}
+* ==== end S18 ====
 
 * ==== append new blocks above this line ====
 

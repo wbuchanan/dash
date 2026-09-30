@@ -2440,9 +2440,21 @@ form keep the axis's default ticks, with a note.
 Any of those may be followed by a comma and the sub-options
 {cmd:format(}{it:fmt}{cmd:)}, {cmd:labsize(}{it:size}{cmd:)},
 {cmd:angle(}{it:#}{cmd:)}, {cmd:grid} or {cmd:nogrid}, and
-{cmd:valuelabel} (the axis variable's value labels at the ticks).  The axis range
-itself is set with {cmd:xscale(range(}{it:a b}{cmd:))} /
-{cmd:yscale(range(}{it:a b}{cmd:))}.
+{cmd:valuelabel} (the axis variable's value labels at the ticks), and
+{cmd:norescale}.  As in {cmd:twoway}, label and tick positions widen the
+axis to include them, unless {cmd:norescale} is given, which draws them
+without widening it; {cmd:twoway} drops {cmd:norescale} from a lone
+{it:a}{cmd:(}{it:b}{cmd:)}{it:c} rule and widens that axis anyway, and so
+does {cmd:dash}.  {cmd:xscale(range(}{it:numlist}{cmd:))} /
+{cmd:yscale(range(}{it:numlist}{cmd:))} widen the axis to include every
+value listed, in any order; they never narrow it or hide data.  One value
+is one value to include ({cmd:yscale(range(0))} reaches 0 and keeps the
+data's top), a missing value is ignored, {cmd:r()} is the abbreviation
+and {cmd:rev} that of {cmd:reverse}; a value that is not a number is named
+and ignored.  The axis then runs over the hull of its data, positions and
+{cmd:range()} values with a margin of 5% of that span at each end (in log
+units on a log axis; {cmd:twoway}'s margin is a fixed part of the graph
+instead), and holds across filter moves.
 
 {pstd}
 {cmd:#}{it:N} puts the ticks where {cmd:twoway} does: at 1, 2 or 5 times a
@@ -2550,7 +2562,10 @@ the parser {cmd:ylabel()} uses: a numlist, {cmd:#}{it:N},
 pairs, {cmd:format()}, {cmd:labsize()}, {cmd:angle()} and {cmd:grid}, which
 draws gridlines at the second axis's ticks; any other sub-option is named
 in a warning.  {cmd:yscale2()} and {cmd:xscale2()} take {cmd:log},
-{cmd:reverse} and {cmd:range(}{it:a b}{cmd:)}, and name anything else.
+{cmd:reverse} ({cmd:rev}) and {cmd:range(}{it:numlist}{cmd:)} ({cmd:r()}),
+which widens the second axis only, as {cmd:yscale(range())} does, and
+name anything else; {cmd:ylabel2()} and {cmd:xlabel2()} positions widen
+the second axis unless {cmd:norescale} is given.
 
 {pstd}
 {it:Example:}

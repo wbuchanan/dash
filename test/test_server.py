@@ -1282,7 +1282,10 @@ class TestServerPcarrowPcbarrow:
             "xrange option must appear in server-mode generated code"
 
     @pytest.mark.parametrize("given,bounds", [
-        ("range(10 40)", lambda df: (10.0, 40.0)),
+        # WP-28 B2: range() widens only (axis_scale_options.sthlp:336-341);
+        # The hull of 10, 40 and the data's own extremes.
+        ("range(10 40)", lambda df: (min(10.0, float(df["mpg"].min())),
+                                     max(40.0, float(df["mpg"].max())))),
         # range(0) extends the axis to 0 and keeps the data's own top.
         ("range(0)", lambda df: (0.0, float(df["mpg"].max()))),
     ], ids=["both_ends", "one_end"])
@@ -1299,11 +1302,14 @@ class TestServerPcarrowPcbarrow:
         scatter = {"type": "scatter", "yvar": "mpg", "xvar": "weight",
                    "options": {}}
         want = bounds(auto_df)
+        ends = []
         for mode, fig in zip(("saved", "served"), _both_figures(
                 dr_module, tmp_path, auto_df, scatter, yscale=given)):
             assert isinstance(fig.y_range, Range1d), (mode, fig.y_range)
-            assert (float(fig.y_range.start), float(fig.y_range.end)) == want, (
-                mode, fig.y_range.start, fig.y_range.end, want)
+            assert dr_module._dash_range_hull(fig.y_range) == pytest.approx(
+                want), (mode, fig.y_range.start, fig.y_range.end, want)
+            ends.append((fig.y_range.start, fig.y_range.end))
+        assert ends[0] == ends[1], ends
 
 
 class TestServerLegendLabelOverrides:

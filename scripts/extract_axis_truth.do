@@ -91,6 +91,16 @@ global ZA_WORK "`scratch'"
 global ZA_REC  "`scratch'/axis_records.txt"
 display as text "probe scratch dir: ${ZA_WORK}"
 
+* WP-28 S18: Section 02's programs, for cert_graph_scale (the .Graph scale
+* members read beside each b2_extent export).  cert_svg.do computes its
+* scripts directory from c(pwd), so it is loaded from test/ and the
+* working directory restored.  It exits 222 when c(python_exec) is empty,
+* which the python: block below needs anyway.
+local za_here "`c(pwd)'"
+quietly cd "${ZA_REPO}/test"
+quietly do "cert_svg.do"
+quietly cd "`za_here'"
+
 global ZA_SVER = c(stata_version)
 global ZA_FLAV = c(flavor)
 global ZA_EDIT = c(edition_real)
@@ -288,6 +298,44 @@ zp "b_ext_ticklist"   "axis_scale" "auto" "twoway scatter mpg weight" "xlabel(20
 zp "b_ext_ticklist_ne" "axis_scale" "auto" "twoway scatter mpg weight" "xlabel(2000 3000 4000) xscale(noextend)"
 
 * ---------------------------------------------------------------------------
+* B2. WP-28 S18 (GAPS2 B2): what widens an axis -- label and tick values
+* (unless norescale) and every range() value, never narrowing.  Group
+* b2_extent.  ticks = the labelled positions, for the SVG fit where the
+* labels are not plain numbers; hull = the axis, then the values the
+* option asks the axis to include.
+* ---------------------------------------------------------------------------
+zp "b2_ylab_0_100"     "b2_extent" "auto" "twoway scatter mpg weight" "ylabel(0(20)100)" "0 20 40 60 80 100" "y 0 100"
+zp "b2_ylab_0_100_nr"  "b2_extent" "auto" "twoway scatter mpg weight" "ylabel(0(20)100, norescale)" "0 20 40 60 80 100" "y 0 100"
+* measured 30sep2026: twoway records a lone a(b)c rule as ".major.range_ticks
+* 0 100 20" and drops norescale with it, where a list is ".add_ticks ...,
+* norescale" -- these two tell the forms apart.
+zp "b2_ylab_list_nr"   "b2_extent" "auto" "twoway scatter mpg weight" "ylabel(0 20 40 60 80 100, norescale)" "0 20 40 60 80 100" "y"
+zp "b2_ytick_rule_nr"  "b2_extent" "auto" "twoway scatter mpg weight" "ytick(0(20)100, norescale)" "" "y 0 100"
+zp "b2_ylab_pair"      "b2_extent" "auto" "twoway scatter mpg weight" `"ylabel(0 "zero" 60 "sixty")"' "0 60" "y 0 60"
+zp "b2_ytick_50"       "b2_extent" "auto" "twoway scatter mpg weight" "ytick(50)" "" "y 50"
+zp "b2_ytick_50_nr"    "b2_extent" "auto" "twoway scatter mpg weight" "ytick(50, norescale)" "" "y"
+zp "b2_range_100"      "b2_extent" "auto" "twoway scatter mpg weight" "yscale(range(100))" "" "y 100"
+zp "b2_range_0"        "b2_extent" "auto" "twoway scatter mpg weight" "yscale(range(0))" "" "y 0"
+zp "b2_range_20_30"    "b2_extent" "auto" "twoway scatter mpg weight" "yscale(range(20 30))" "" "y 20 30"
+zp "b2_r_0_100"        "b2_extent" "auto" "twoway scatter mpg weight" "yscale(r(0 100))" "" "y 0 100"
+zp "b2_range_dot_60"   "b2_extent" "auto" "twoway scatter mpg weight" "yscale(range(. 60))" "" "y 60"
+zp "b2_range_60_dot"   "b2_extent" "auto" "twoway scatter mpg weight" "yscale(range(60 .))" "" "y 60"
+zp "b2_range_unsorted" "b2_extent" "auto" "twoway scatter mpg weight" "yscale(range(100 0))" "" "y 0 100"
+zp "b2_range_three"    "b2_extent" "auto" "twoway scatter mpg weight" "yscale(range(0 50 100))" "" "y 0 50 100"
+zp "b2_range_bad"      "b2_extent" "auto" "twoway scatter mpg weight" "yscale(range(abc))" "" "y"
+zp "b2_log_range"      "b2_extent" "auto" "twoway scatter price weight" "yscale(log range(1000 20000))" "" "y 1000 20000"
+zp "b2_log_r_one"      "b2_extent" "auto" "twoway scatter price weight" "yscale(log r(100000))" "" "y 100000"
+zp "b2_rev_range"      "b2_extent" "auto" "twoway scatter mpg weight" "yscale(reverse range(0 50))" "" "y 0 50"
+zp "b2_rev_abbrev"     "b2_extent" "auto" "twoway scatter mpg weight" "yscale(rev)" "" "y"
+zp "b2_hash5_range100" "b2_extent" "auto" "twoway scatter mpg weight" "ylabel(#5) yscale(range(100))" "" "y 100"
+zp "b2_xlab_wide"      "b2_extent" "auto" "twoway scatter mpg weight" "xlabel(0(1000)6000)" "0 1000 2000 3000 4000 5000 6000" "x 0 6000"
+zp "b2_xtick_nr"       "b2_extent" "auto" "twoway scatter mpg weight" "xtick(0 6000, norescale)" "" "x"
+zp "b2_lfit_range0"    "b2_extent" "auto" "twoway (scatter mpg weight) (lfit mpg weight)" "yscale(range(0))" "" "y 0"
+zp "b2_bar_xrange0"    "b2_extent" "auto" "twoway bar mpg weight" "xscale(range(0))" "" "x 0"
+zp "b2_td_range"       "b2_extent" "sp500" "twoway scatter close date" "xscale(range(14900 15400))" "" "x 14900 15400"
+zp "b2_by_range0"      "b2_extent" "auto" "twoway scatter mpg weight" "by(foreign) yscale(range(0))" "" "y 0"
+
+* ---------------------------------------------------------------------------
 * C. Legend.  Every case is a PAIR: <id> bare and <id>__off with legend(off)
 * (or by(..., legend(off)) where by() is in play).  The anchorless <text>
 * elements present bare and absent off ARE the legend.
@@ -453,11 +501,12 @@ display as text "scheme in force: `c(scheme)'"
 
 * ---- data facts (min / max / N / display format) used to derive the default
 *      range-extension rule.  Never taken from memory. -----------------------
-foreach ds in auto nlsw88 {
+foreach ds in auto nlsw88 sp500 {
     sysuse `ds', clear
     local vlist ""
     if "`ds'" == "auto"   local vlist mpg weight price turn length gear_ratio headroom trunk displacement
     if "`ds'" == "nlsw88" local vlist wage hours ttl_exp age grade
+    if "`ds'" == "sp500"  local vlist close date
     foreach v of local vlist {
         quietly summarize `v'
         local fmt : format `v'
@@ -512,6 +561,35 @@ forvalues i = 1/`N' {
     local rc = _rc
     local rcx = .
     local rcg = .
+    if `rc' == 0 & "`grp'" == "b2_extent" {
+        // WP-28 S18: the .Graph scale members beside the export -- the
+        // four candidates (permanent min/max, temporary curmin/curmax)
+        // and twoway's major-tick triple -- read at once (the program
+        // clobbers r()); one GSCALE record per axis.  The SVG stays the
+        // truth; these are recorded to settle which member matches it.
+        foreach gax in y x {
+            capture cert_graph_scale, axis(`gax') name(zqg)
+            if _rc == 0 {
+                local g1 : display %21.0g r(min)
+                local g2 : display %21.0g r(max)
+                local g3 : display %21.0g r(curmin)
+                local g4 : display %21.0g r(curmax)
+                local g5 : display %21.0g r(major_min)
+                local g6 : display %21.0g r(major_max)
+                local g7 : display %21.0g r(major_delta)
+                file write `rec' "GSCALE|`id'|`gax'|`g1'|`g2'|`g3'|`g4'|`g5'|`g6'|`g7'" _n
+            }
+        }
+        if strpos(`"`opts'"', "by(") {
+            forvalues gk = 1/2 {
+                local gq1 "`.zqg.graphs[`gk'].plotregion1.yscale.min'"
+                local gq2 "`.zqg.graphs[`gk'].plotregion1.yscale.max'"
+                local gq3 "`.zqg.graphs[`gk'].plotregion1.yscale.curmin'"
+                local gq4 "`.zqg.graphs[`gk'].plotregion1.yscale.curmax'"
+                file write `rec' "GSCALE|`id'|y@graphs`gk'|`gq1'|`gq2'|`gq3'|`gq4'|||" _n
+            }
+        }
+    }
     if `rc' == 0 {
         capture graph export "`svg'", name(zqg) replace
         local rcx = _rc
@@ -553,21 +631,19 @@ REC = Macro.getGlobal("ZA_REC")
 OUT = Macro.getGlobal("ZA_OUT")
 REPO = Macro.getGlobal("ZA_REPO")
 
-# WP-28 S14: the shared SVG reader (S02), used only for the new groups
-# (b1_label, g16_valuelabel) -- the private parse_svg/axis_facts below
-# stays the reader for every pre-existing group, unchanged, so this run
-# reproduces every one of them exactly.  Section 18 rewires the whole
-# script onto this module when it regenerates the fixture again.
+# WP-28 S18 (D10): every SVG, for every group, is read through the shared
+# reader scripts/svg_truth.py (S02).  The private parse_svg/axis_facts
+# this block carried until then are gone; the two adapters below only
+# RESHAPE svg_truth's reading into the record this fixture has always
+# held, so every pre-existing probe's record is unchanged:
+#   * svg_truth lower-cases colours and turns U+00A0 into a space; the
+#     fixture has always recorded each colour as Stata's writer spells it
+#     (svg_document(as_written=True) keeps that spelling) and each text
+#     as html.unescape of its raw content;
+#   * svg_truth names a text's size "size"; the fixture, "font_size".
 sys.path.insert(0, os.path.join(REPO, "scripts"))
-from svg_truth import svg_texts, svg_axis_extent
-
-RE_ATTR = re.compile(r'([\w:-]+)="([^"]*)"')
-RE_TEXT = re.compile(r'<text ([^>]*?)>(.*?)</text>', re.S)
-RE_LINE = re.compile(r'<line ([^/>]*)/>')
-RE_RECT = re.compile(r'<rect ([^/>]*)/>')
-
-def attrs(s):
-    return dict(RE_ATTR.findall(s))
+from svg_truth import (svg_texts, svg_axis_extent, svg_document,
+                       svg_axis_reading, label_value)
 
 def fnum(s, default=None):
     try:
@@ -575,137 +651,59 @@ def fnum(s, default=None):
     except Exception:
         return default
 
-def style_of(a):
-    out = {}
-    for part in a.get("style", "").split(";"):
-        if ":" in part:
-            k, v = part.split(":", 1)
-            out[k.strip()] = v.strip()
-    return out
+def legacy_text(t):
+    return {"x": t["x"], "y": t["y"], "anchor": t["anchor"],
+            "rotate": t["rotate"], "font_size": t["size"],
+            "fill": t["fill_raw"], "font_family": t["font_family"],
+            "text": html.unescape(t["raw"])}
 
-# --------------------------------------------------------------------------
-# SVG parsing
-# --------------------------------------------------------------------------
-def parse_svg(path):
-    """Structural facts of a Stata-written SVG.
+def legacy_line(d):
+    return {"x1": d["x1"], "y1": d["y1"], "x2": d["x2"], "y2": d["y2"],
+            "stroke": d["stroke_raw"], "width": d["width"],
+            "dasharray": d["dasharray"]}
 
-    plotregion  -- the first solid-fill <rect> that is not the whole canvas.
-                   Stata writes each region as a fill rect followed by a
-                   border rect, outermost first: canvas, graphregion,
-                   plotregion, then any legend / by-panel regions.  This
-                   identification is INDEPENDENT of the axis lines, which
-                   matters because xscale(noextend) shortens the axis line to
-                   the outermost tick while leaving the plotregion alone.
-    axis_line   -- the extent of the longest black horizontal and vertical
-                   <line>, recorded separately so that noextend is measurable.
-    """
+def read_svg(path):
+    """svg_document's reading of *path* (colours as written), in the
+    record's shape; None when no SVG was written.  "_doc" keeps the shared
+    reader's own reading and "_as_written" maps each lower-cased colour
+    back to the writer's spelling."""
     if not path or not os.path.exists(path):
         return None
-    txt = open(path, "r", errors="replace").read()
-
-    texts = []
-    for m in RE_TEXT.finditer(txt):
-        a = attrs(m.group(1))
-        st = style_of(a)
-        rot = None
-        mr = re.search(r'rotate\((-?[\d.]+)', a.get("transform", ""))
-        if mr:
-            rot = float(mr.group(1))
-        texts.append({
-            "x": fnum(a.get("x")), "y": fnum(a.get("y")),
-            "anchor": a.get("text-anchor"),
-            "rotate": rot,
-            "font_size": fnum(st.get("font-size", "").replace("px", "")),
-            "fill": st.get("fill"),
-            "font_family": st.get("font-family"),
-            "text": html.unescape(m.group(2)),
-        })
-
-    hlines, vlines, diag = [], [], []
-    for m in RE_LINE.finditer(txt):
-        a = attrs(m.group(1))
-        st = style_of(a)
-        x1, y1 = fnum(a.get("x1")), fnum(a.get("y1"))
-        x2, y2 = fnum(a.get("x2")), fnum(a.get("y2"))
-        if None in (x1, y1, x2, y2):
+    doc = svg_document(path, as_written=True)
+    as_written = {}
+    for d in doc["hlines"] + doc["vlines"] + doc["diaglines"]:
+        as_written.setdefault(d["stroke"], d["stroke_raw"])
+    rect_fill = {}
+    for r in doc["rects"]:
+        if None in (r["x"], r["y"], r["w"], r["h"]):
             continue
-        d = {"x1": x1, "y1": y1, "x2": x2, "y2": y2,
-             "stroke": st.get("stroke"),
-             "width": fnum(st.get("stroke-width", "")),
-             "dasharray": st.get("stroke-dasharray")}
-        if abs(y1 - y2) < 0.01:
-            hlines.append(d)
-        elif abs(x1 - x2) < 0.01:
-            vlines.append(d)
-        else:
-            diag.append(d)
+        rect_fill.setdefault((r["x"], r["y"], r["x"] + r["w"],
+                              r["y"] + r["h"], r["fill"]), r["fill_raw"])
 
-    rects = []
-    for m in RE_RECT.finditer(txt):
-        a = attrs(m.group(1))
-        st = style_of(a)
-        rects.append({"x": fnum(a.get("x")), "y": fnum(a.get("y")),
-                      "w": fnum(a.get("width")), "h": fnum(a.get("height")),
-                      "fill": st.get("fill"), "stroke": st.get("stroke")})
-
-    canvas = None
-    mv = re.search(r'viewBox="([\d.\- ]+)"', txt)
-    if mv:
-        vb = [float(t) for t in mv.group(1).split()]
-        canvas = {"x": vb[0], "y": vb[1], "w": vb[2], "h": vb[3]}
-
-    regions = []
-    if canvas:
-        area = canvas["w"] * canvas["h"]
-        for r in rects:
-            if not r["w"] or not r["h"]:
-                continue
-            if r["fill"] in (None, "none"):
-                continue
-            if r["w"] * r["h"] >= 0.95 * area:
-                continue
-            regions.append({"left": r["x"], "top": r["y"],
-                            "right": r["x"] + r["w"],
-                            "bottom": r["y"] + r["h"],
-                            "fill": r["fill"]})
+    def region(r):
+        out = dict(r)
+        out["fill"] = rect_fill.get((r["left"], r["top"], r["right"],
+                                     r["bottom"], r["fill"]), r["fill"])
+        return out
+    regions = [region(r) for r in doc["regions"]]
     pr = None
-    if regions:
-        r = regions[0]
-        pr = dict(r)
-        pr["source"] = ("first solid-fill <rect> inside the graph region "
-                        "(Stata writes canvas, graphregion, plotregion, then "
-                        "legend / by-panel regions, in that order)")
-
-    def black(d):
-        return (d.get("stroke") or "").upper() == "#000000"
-    axline = None
-    hb = [d for d in hlines if black(d)]
-    vb_ = [d for d in vlines if black(d)]
-    if hb and vb_:
-        bot = max(hb, key=lambda d: abs(d["x2"] - d["x1"]))
-        lef = max(vb_, key=lambda d: abs(d["y2"] - d["y1"]))
-        axline = {"h_y": bot["y1"], "h_x_from": min(bot["x1"], bot["x2"]),
-                  "h_x_to": max(bot["x1"], bot["x2"]),
-                  "v_x": lef["x1"], "v_y_from": min(lef["y1"], lef["y2"]),
-                  "v_y_to": max(lef["y1"], lef["y2"])}
-    if pr is None and axline:
-        pr = {"left": axline["v_x"], "right": axline["h_x_to"],
-              "top": axline["v_y_from"], "bottom": axline["h_y"],
-              "source": "axis-line bounding box (no solid-fill region rect)"}
-
-    return {"texts": texts, "hlines": hlines, "vlines": vlines,
-            "diaglines": diag, "rects": rects, "canvas": canvas,
-            "regions": regions, "plotregion": pr, "axis_line": axline}
-
-def label_value(s):
-    """Parse a rendered tick label back to a number, or None."""
-    t = s.strip().replace("−", "-").replace(",", "")
-    if re.fullmatch(r'-?(\d+\.?\d*|\.\d+)', t or "x"):
-        return float(t)
-    return None
+    if doc["plotregion"] is not None:
+        pr = dict(doc["plotregion"])
+        if "axis-line" in (pr.get("source") or ""):
+            pr.pop("fill", None)
+        else:
+            pr["fill"] = region(pr)["fill"]
+    return {"texts": [legacy_text(t) for t in doc["texts"]],
+            "hlines": [legacy_line(d) for d in doc["hlines"]],
+            "vlines": [legacy_line(d) for d in doc["vlines"]],
+            "diaglines": [legacy_line(d) for d in doc["diaglines"]],
+            "canvas": doc["canvas"], "regions": regions,
+            "plotregion": pr, "axis_line": doc["axis_line"], "_doc": doc,
+            "_as_written": as_written}
 
 def line_groups(lines, coord):
-    """Collapse the segments of one drawn line into a single group."""
+    """Collapse the segments of one drawn line into a single group (the
+    record's own summary of svg_truth's lines: first segment and gap)."""
     g = collections.defaultdict(list)
     for d in lines:
         g[(round(d[coord], 2), d["stroke"], d["width"])].append(d)
@@ -729,107 +727,43 @@ def line_groups(lines, coord):
                                   if first_gap is not None else None)})
     return out
 
-def axis_facts(sv, which):
-    """Tick marks, tick labels, gridlines, side, and the data<->pixel map."""
+MAPPING_NOTE = (
+    "fewer than two tick labels parse as numbers, so the pixel<->data "
+    "map could not be inverted; the tick pixel positions above are "
+    "still exact")
+
+def legacy_mapping(fit):
+    """svg_truth's fit, under the record's names."""
+    lo, hi = fit["low"], fit["high"]
+    start, end = (hi, lo) if fit["reversed"] else (lo, hi)
+    return {"space": fit["space"],
+            "value_units_per_px": fit["units_per_px"],
+            "max_abs_residual_over_ticks": fit["residual"],
+            "value_at_plotregion_start": start,
+            "value_at_plotregion_end": end,
+            "axis_low": lo, "axis_high": hi,
+            "reversed": bool(fit["reversed"])}
+
+def axis_record(sv, which):
+    """Tick marks, tick labels, gridlines, side and the data<->pixel map of
+    one axis, from svg_axis_reading."""
     if sv is None or sv["plotregion"] is None:
         return {"error": "no plotregion could be identified in the SVG"}
+    r = svg_axis_reading(None, which, doc=sv["_doc"])
+    out = {"tick_side": r["tick_side"], "tick_px": r["tick_px"],
+           "n_ticks": r["n_ticks"],
+           "gridline_px": [g["px"] for g in r["grid"]],
+           "n_gridlines": len(r["grid"]),
+           "gridline_style": sorted({(sv["_as_written"].get(g["stroke"], g["stroke"]), g["width"],
+                                      g["n_segments"] > 1)
+                                     for g in r["grid"]})}
+    objs = r["label_objs"]
+    if r["label_offaxis_px"] is not None:
+        out["label_offaxis_px"] = r["label_offaxis_px"]
+    labels = [html.unescape(o["raw"]) if o is not None else None
+              for o in objs]
+    lab_objs = [legacy_text(o) for o in objs if o is not None]
     pr = sv["plotregion"]
-    tol = 2.5
-    out = {}
-
-    def black(d):
-        return (d.get("stroke") or "").upper() == "#000000"
-
-    if which == "x":
-        marks_below, marks_above = [], []
-        for d in sv["vlines"]:
-            if not black(d):
-                continue
-            ylo, yhi = min(d["y1"], d["y2"]), max(d["y1"], d["y2"])
-            if (yhi - ylo) > 0.5 * (pr["bottom"] - pr["top"]):
-                continue
-            if abs(ylo - pr["bottom"]) < tol:
-                marks_below.append(round(d["x1"], 2))
-            elif abs(yhi - pr["top"]) < tol:
-                marks_above.append(round(d["x1"], 2))
-        grid = [g for g in line_groups([d for d in sv["vlines"]
-                                        if not black(d)], "x1")
-                if g["n_segments"] > 3
-                and g["span_to"] - g["span_from"] >
-                0.8 * (pr["bottom"] - pr["top"])]
-        axis_pos = sorted(set(marks_below or marks_above))
-        out["tick_side"] = ("below plotregion" if marks_below else
-                            ("above plotregion" if marks_above else None))
-        cand = [t for t in sv["texts"]
-                if t["y"] is not None and
-                (t["y"] > pr["bottom"] or t["y"] < pr["top"])]
-        keyc, offc = "x", "y"
-        near_edge = (pr["bottom"] if marks_below else pr["top"])
-    else:
-        marks_left, marks_right = [], []
-        for d in sv["hlines"]:
-            if not black(d):
-                continue
-            xlo, xhi = min(d["x1"], d["x2"]), max(d["x1"], d["x2"])
-            if (xhi - xlo) > 0.5 * (pr["right"] - pr["left"]):
-                continue
-            if abs(xhi - pr["left"]) < tol:
-                marks_left.append(round(d["y1"], 2))
-            elif abs(xlo - pr["right"]) < tol:
-                marks_right.append(round(d["y1"], 2))
-        grid = [g for g in line_groups([d for d in sv["hlines"]
-                                        if not black(d)], "y1")
-                if g["n_segments"] > 3
-                and g["span_to"] - g["span_from"] >
-                0.8 * (pr["right"] - pr["left"])]
-        axis_pos = sorted(set(marks_left or marks_right))
-        out["tick_side"] = ("left of plotregion" if marks_left else
-                            ("right of plotregion" if marks_right else None))
-        cand = [t for t in sv["texts"]
-                if t["x"] is not None and
-                (t["x"] < pr["left"] or t["x"] > pr["right"])]
-        keyc, offc = "y", "x"
-        near_edge = (pr["left"] if marks_left else pr["right"])
-
-    if not axis_pos:
-        axis_pos = sorted({g["px"] for g in grid})
-    out["tick_px"] = axis_pos
-    out["n_ticks"] = len(axis_pos)
-    out["gridline_px"] = [g["px"] for g in grid]
-    out["n_gridlines"] = len(grid)
-    out["gridline_style"] = sorted({(g["stroke"], g["stroke_width"],
-                                     g["n_segments"] > 1) for g in grid})
-
-    # ---- tick labels: the row (x axis) / column (y axis) of text nearest the
-    #      axis edge.  Clustering first is what keeps the rotated axis TITLE,
-    #      which also sits outside the plotregion, out of the tick labels.
-    labels, lab_px, lab_objs = [], [], []
-    if cand and axis_pos:
-        clusters = collections.defaultdict(list)
-        for t in cand:
-            clusters[round(t[offc], 1)].append(t)
-        best = min(clusters, key=lambda c: abs(c - near_edge))
-        row = clusters[best]
-        used = set()
-        for p in axis_pos:
-            pick, pd = None, 1e18
-            for j, t in enumerate(row):
-                if j in used or t[keyc] is None:
-                    continue
-                dd = abs(t[keyc] - p)
-                if dd < pd:
-                    pick, pd = j, dd
-            if pick is not None and pd < 250:
-                used.add(pick)
-                labels.append(row[pick]["text"])
-                lab_objs.append(row[pick])
-            else:
-                labels.append(None)
-            lab_px.append(p)
-        out["label_offaxis_px"] = best
-    else:
-        labels = [None] * len(axis_pos)
-        lab_px = list(axis_pos)
     out["tick_labels"] = labels
     out["tick_values"] = [label_value(l) if l is not None else None
                           for l in labels]
@@ -851,48 +785,10 @@ def axis_facts(sv, which):
             out["label_side"] = ("left of plotregion"
                                  if lab_objs[0]["x"] < pr["left"]
                                  else "right of plotregion")
-
-    # ---- data <-> pixel map from the numeric labels ------------------------
-    pairs = [(px, label_value(l)) for px, l in zip(lab_px, labels)
-             if l is not None and label_value(l) is not None]
-    out["mapping"] = None
-    if len(pairs) >= 2:
-        for space in ("linear", "log10"):
-            pp = pairs
-            if space == "log10":
-                if any(v <= 0 for _, v in pairs):
-                    continue
-                pp = [(px, math.log10(v)) for px, v in pairs]
-            (p0, v0), (p1, v1) = pp[0], pp[-1]
-            if p1 == p0 or v1 == v0:
-                continue
-            slope = (v1 - v0) / (p1 - p0)
-            resid = max(abs((v - v0) - slope * (px - p0)) for px, v in pp)
-            scale = max(abs(v) for _, v in pp) or 1.0
-            if resid / scale < 1e-3 or len(pp) == 2:
-                def inv(px, v0=v0, p0=p0, slope=slope, space=space):
-                    z = v0 + slope * (px - p0)
-                    return 10 ** z if space == "log10" else z
-                if which == "x":
-                    lo, hi = inv(pr["left"]), inv(pr["right"])
-                else:
-                    lo, hi = inv(pr["bottom"]), inv(pr["top"])
-                out["mapping"] = {
-                    "space": space,
-                    "value_units_per_px": slope,
-                    "max_abs_residual_over_ticks": resid,
-                    "value_at_plotregion_start": lo,
-                    "value_at_plotregion_end": hi,
-                    "axis_low": min(lo, hi),
-                    "axis_high": max(lo, hi),
-                    "reversed": bool(hi < lo),
-                }
-                break
+    out["mapping"] = (legacy_mapping(r["fit"]) if r["fit"] is not None
+                      else None)
     if out["mapping"] is None:
-        out["mapping_note"] = (
-            "fewer than two tick labels parse as numbers, so the pixel<->data "
-            "map could not be inverted; the tick pixel positions above are "
-            "still exact")
+        out["mapping_note"] = MAPPING_NOTE
     return out
 
 # --------------------------------------------------------------------------
@@ -959,6 +855,7 @@ def parse_gph(path):
 # Read the record file
 # --------------------------------------------------------------------------
 meta_rows, probes, data_facts, selfchk = {}, {}, {}, None
+gscale = {}
 with open(REC, "r", errors="replace") as fh:
     for line in fh:
         line = line.rstrip("\n")
@@ -984,6 +881,13 @@ with open(REC, "r", errors="replace") as fh:
                             "svg": f[7], "gph": f[8],
                             "ticks": f[9], "hull": f[10],
                             "command": "|".join(f[11:])}
+        elif t == "GSCALE":
+            # WP-28 S18: the .Graph scale members of one axis of a
+            # b2_extent probe ("." or "" when the member was empty).
+            gscale.setdefault(f[1], {})[f[2]] = {
+                k: fnum(v) for k, v in zip(
+                    ("min", "max", "curmin", "curmax", "major_min",
+                     "major_max", "major_delta"), f[3:10])}
 
 # --------------------------------------------------------------------------
 # Per-probe record
@@ -997,7 +901,7 @@ for pid, p in sorted(probes.items()):
                        % p["rc"])
         parsed[pid] = e
         continue
-    sv = parse_svg(p["svg"])
+    sv = read_svg(p["svg"])
     if sv is None:
         e["status"] = "the graph drew but no SVG was written; nothing measured"
         parsed[pid] = e
@@ -1007,8 +911,8 @@ for pid, p in sorted(probes.items()):
     e["regions_px"] = sv["regions"]
     e["axis_line_px"] = sv["axis_line"]
     e["canvas_px"] = sv["canvas"]
-    e["x_axis"] = axis_facts(sv, "x")
-    e["y_axis"] = axis_facts(sv, "y")
+    e["x_axis"] = axis_record(sv, "x")
+    e["y_axis"] = axis_record(sv, "y")
     e["all_text_elements"] = sv["texts"]
     e["anchorless_texts"] = [t for t in sv["texts"]
                              if t["anchor"] is None and t["rotate"] is None]
@@ -1018,7 +922,7 @@ for pid, p in sorted(probes.items()):
     if p["group"] in ("b1_label", "g16_valuelabel"):
         # WP-28 S14 (B1, G16; the E3 probe for section 12): every <text>
         # element's normalised text, in document order, through the
-        # shared reader -- the private axis_facts() above answers only
+        # shared reader -- axis_record() above answers only
         # the label-parsing fit and cannot see a non-numeric label
         # ("2019", "Poor", "2001m1"); the tests read texts directly.
         e["texts"] = [t["text"] for t in svg_texts(p["svg"])]
@@ -1038,6 +942,234 @@ for pid, p in sorted(probes.items()):
                 if mapping is not None:
                     e[axis_key]["mapping"] = mapping
     parsed[pid] = e
+
+# --------------------------------------------------------------------------
+# B2. WP-28 S18: what widens an axis (group b2_extent)
+#
+# The drawn extent is the SVG's (DISCOVERY Q14 amendment): the tick fit
+# inverted at the plotregion edges, over the given tick positions when the
+# labels are not plain numbers, else over the numeric labels, else over
+# twoway's own major ticks (.Graph's major min/max/delta) when their count
+# matches the tick marks.  Stata's margin is 71.2 SVG units a side
+# (findings.axis_range_extension), so the INNER hull is the extent less
+# that margin; stata_inner is the data joined with every drawn tick (the
+# extension finding's own method).  .Graph's four scale candidates are
+# recorded beside the extent to settle, once, which of them it equals.
+# --------------------------------------------------------------------------
+MARGIN_PX = 71.2
+B2_TWIN = {("auto", "mpg", "y"): "b_default",
+           ("auto", "weight", "x"): "b_default",
+           ("auto", "price", "y"): "b_log_price"}
+
+def b2_vars(cmd):
+    m = re.search(r"(?:scatter|bar)\s+(\w+)\s+(\w+)", cmd.split(",")[0])
+    return (m.group(1), m.group(2)) if m else (None, None)
+
+def to_space(v, space):
+    return math.log10(v) if space == "log10" else v
+
+def from_space(v, space):
+    return 10 ** v if space == "log10" else v
+
+def near(a, b, span):
+    return (a is not None and b is not None
+            and abs(a - b) <= 1e-3 * abs(span))
+
+def b2_extent(p, e, axis, ticks):
+    """(extent dict, drawn tick values) or (None, reason)."""
+    ak = axis + "_axis"
+    if e.get("status") != "measured" or ak not in e:
+        return None, e.get("status") or "not measured"
+    tried = []
+    if ticks:
+        tv = sorted(ticks, reverse=(axis == "y"))
+        try:
+            r = svg_axis_reading(p["svg"], axis, tick_values=tv)
+        except ValueError as exc:
+            r = None
+            tried.append("tick positions: %s" % exc)
+        if r is not None and r["fit"] is not None:
+            e[ak]["mapping"] = legacy_mapping(r["fit"])
+            e[ak].pop("mapping_note", None)
+            return dict(e[ak]["mapping"], extent_from="tick positions"), tv
+        if r is not None:
+            tried.append("tick positions: %s" % r["reason"])
+    m = e[ak].get("mapping")
+    if m:
+        vals = [v for v in e[ak].get("tick_values") or [] if v is not None]
+        return dict(m, extent_from="numeric tick labels"), vals
+    tried.append("numeric tick labels: " + e[ak].get("mapping_note", "none"))
+    gs = gscale.get(p["id"], {}).get(axis) or {}
+    lo, hi, st = gs.get("major_min"), gs.get("major_max"), gs.get("major_delta")
+    if None not in (lo, hi, st) and st > 0:
+        n = int(round((hi - lo) / st)) + 1
+        tv = [lo + i * st for i in range(n)]
+        if len(tv) == e[ak].get("n_ticks"):
+            tv = sorted(tv, reverse=(axis == "y"))
+            try:
+                r = svg_axis_reading(p["svg"], axis, tick_values=tv)
+            except ValueError as exc:
+                r = None
+                tried.append("graph major ticks: %s" % exc)
+            if r is not None and r["fit"] is not None:
+                return (dict(legacy_mapping(r["fit"]),
+                             extent_from="graph major ticks"), tv)
+        else:
+            tried.append("graph major ticks: %d values for %s tick marks"
+                         % (len(tv), e[ak].get("n_ticks")))
+    return None, "; ".join(tried)
+
+range_per_probe, gs_per_probe, b2_unverified = {}, {}, {}
+gs_inner_per_probe = {}
+for pid in sorted(probes):
+    p = dict(probes[pid], id=pid)
+    if p["group"] != "b2_extent":
+        continue
+    e = parsed[pid]
+    e["graph_scale"] = gscale.get(pid, {})
+    if p["rc"] != 0:
+        range_per_probe[pid] = {"rc": p["rc"], "twoway_rejected": True}
+        continue
+    hull_tok = (p.get("hull") or "").split()
+    axis = hull_tok[0] if hull_tok else "y"
+    hull_vals = [fnum(v) for v in hull_tok[1:]]
+    ticks = [fnum(v) for v in (p.get("ticks") or "").split()]
+    yv, xv = b2_vars(p["command"])
+    var = yv if axis == "y" else xv
+    df = (data_facts.get(p["dataset"]) or {}).get(var) or {}
+    dmin, dmax = df.get("min"), df.get("max")
+    requested = [min([dmin] + hull_vals), max([dmax] + hull_vals)]
+    e["hull_values"] = {axis: hull_vals}
+    e["requested"] = {axis: requested}
+    is_by = "by(" in p["command"]
+    ext, drawn = b2_extent(p, e, axis, ticks)
+    if ext is None or is_by:
+        why = (drawn if ext is None else
+               "a by() graph: the SVG holds one plotregion per panel and the "
+               "reader fits the first it finds; the .Graph panel members "
+               "(graph_scale y@graphs1, y@graphs2) are the record")
+        range_per_probe[pid] = {"axis": axis, "unverified": why}
+        gs_per_probe[pid] = "unverified"
+        gs_inner_per_probe[pid] = "unverified"
+        b2_unverified[pid + " (b2 " + axis + " extent)"] = why
+        continue
+    space = ext.get("space")
+    lo, hi = ext["axis_low"], ext["axis_high"]
+    L, H = to_space(lo, space), to_space(hi, space)
+    s = H - L
+    pr = e.get("plotregion_px") or {}
+    px = ((pr["bottom"] - pr["top"]) if axis == "y"
+          else (pr["right"] - pr["left"]))
+    f = MARGIN_PX / px
+    inner_m = [from_space(L + f * s, space), from_space(H - f * s, space)]
+    # norescale is honoured only where twoway kept it (a list: no hull
+    # values registered); there the option's own positions sit outside.
+    norescale = "norescale" in p["command"] and not hull_vals
+    drawn = [v for v in drawn if v is not None]
+    inner_vals = [dmin, dmax] + hull_vals + [
+        v for v in drawn if not (norescale and v in ticks)]
+    si = [min(inner_vals), max(inner_vals)]
+    rq = [to_space(v, space) for v in requested]
+    rspan = (rq[1] - rq[0]) or 1.0
+    si_is_req = bool(near(to_space(si[0], space), rq[0], rspan)
+                     and near(to_space(si[1], space), rq[1], rspan))
+    tol = 1e-6 * abs(s)
+    contains = bool(L <= rq[0] + tol and H >= rq[1] - tol)
+    narrower = bool(L > to_space(dmin, space) + tol
+                    or H < to_space(dmax, space) - tol)
+    twin = B2_TWIN.get((p["dataset"], var, axis))
+    widened = None
+    if twin and twin != pid:
+        tm = ((parsed.get(twin) or {}).get(axis + "_axis") or {}).get("mapping")
+        if tm:
+            TL, TH = (to_space(tm["axis_low"], space),
+                      to_space(tm["axis_high"], space))
+            widened = bool(L < TL - 1e-3 * s or H > TH + 1e-3 * s)
+    e["drawn_extent"] = {axis: ext}
+    e["drawn_ticks"] = {axis: drawn}
+    e["stata_inner"] = {axis: si}
+    e["inner_from_margin"] = {axis: inner_m}
+    e["stata_inner_is_requested"] = {axis: si_is_req}
+    range_per_probe[pid] = {
+        "axis": axis, "extent_from": ext["extent_from"],
+        "contains_requested": contains, "narrower_than_data": narrower,
+        "widened_vs_default": widened, "default_twin": twin,
+        "stata_inner_is_requested": si_is_req}
+    g = (e["graph_scale"] or {}).get(axis) or {}
+    def _m(a, b):
+        return all(v is not None for v in (a, b)) and (
+            (near(a, lo, hi - lo) and near(b, hi, hi - lo))
+            or (space == "log10" and near(a, L, s) and near(b, H, s)))
+    mm, cm = _m(g.get("min"), g.get("max")), _m(g.get("curmin"),
+                                                 g.get("curmax"))
+    gs_per_probe[pid] = ("both" if mm and cm else "min/max" if mm
+                         else "curmin/curmax" if cm else "none")
+    # ... and against the extent less the measured margin (the inner hull)
+    IL, IH = to_space(inner_m[0], space), to_space(inner_m[1], space)
+    def _mi(a, b):
+        if a is None or b is None:
+            return False
+        a, b = to_space(a, space), to_space(b, space)
+        return abs(a - IL) <= 5e-3 * s and abs(b - IH) <= 5e-3 * s
+    mmi = _mi(g.get("min"), g.get("max"))
+    cmi = _mi(g.get("curmin"), g.get("curmax"))
+    gs_inner_per_probe[pid] = ("both" if mmi and cmi else "min/max" if mmi
+                               else "curmin/curmax" if cmi else "none")
+
+_ok = {k: v for k, v in range_per_probe.items()
+       if "contains_requested" in v}
+# norescale with a list (twoway: ".add_ticks ..., norescale") versus a
+# lone a(b)c rule (".range_ticks a c b", norescale dropped).
+NR_LIST = ("b2_ylab_list_nr", "b2_ytick_50_nr", "b2_xtick_nr")
+NR_RULE = ("b2_ylab_0_100_nr", "b2_ytick_rule_nr")
+_nr = [_ok[k]["widened_vs_default"] for k in NR_LIST if k in _ok]
+_nrr = [_ok[k]["widened_vs_default"] for k in NR_RULE if k in _ok]
+range_rule = {
+    "question": ("Which values widen a twoway axis, and does range() ever "
+                 "narrow it?  (axis_label_options.sthlp:344-350, "
+                 "axis_scale_options.sthlp:144-148, 336-341)"),
+    "per_probe": range_per_probe,
+    "all_contain_requested": all(v["contains_requested"]
+                                 for v in _ok.values()) and bool(_ok),
+    "none_narrower_than_data": not any(v["narrower_than_data"]
+                                       for v in _ok.values()),
+    "norescale_not_widened": bool(_nr) and all(w is False for w in _nr),
+    "norescale_probes_listed": list(NR_LIST),
+    "norescale_dropped_by_a_lone_rule": bool(_nrr)
+        and all(w is True for w in _nrr),
+    "norescale_rule_probes": list(NR_RULE),
+    "norescale_note": (
+        "twoway records ylabel(0(20)100, norescale) as .major.range_ticks "
+        "0 100 20 with no norescale, and draws it widened exactly as "
+        "without the option; a list, ylabel(0 20 40 60 80 100, norescale), "
+        "is .add_ticks ..., norescale and is not widened.  ytick() alike."),
+}
+def gs_verdict(per):
+    """The candidate that matches on every verified probe ("both" when
+    both always do), "none" when neither ever does, else "mixed"."""
+    a = [v for v in per.values() if v != "unverified"]
+    if not a or all(v == "none" for v in a):
+        return "none"
+    if all(v == "both" for v in a):
+        return "both"
+    for cand in ("curmin/curmax", "min/max"):
+        if all(v in (cand, "both") for v in a):
+            return cand
+    return "mixed"
+graph_scale_matches_svg = {
+    "question": (".Graph has no range member; which of plotregion1."
+                 "<axis>scale's min/max (permanent) and curmin/curmax "
+                 "(temporary) equals the drawn extent the SVG shows?"),
+    "per_probe": gs_per_probe,
+    "verdict": gs_verdict(gs_per_probe),
+    "per_probe_inner": gs_inner_per_probe,
+    "verdict_inner": gs_verdict(gs_inner_per_probe),
+    "inner_note": (
+        "per_probe compares with the drawn extent (the SVG's plotregion "
+        "edges); per_probe_inner with that extent less the measured margin "
+        "(71.2 SVG units a side, findings.axis_range_extension), within "
+        "0.5% of the span."),
+}
 
 # --------------------------------------------------------------------------
 # C. THE LEGEND RULE
@@ -1455,7 +1587,7 @@ for pid in sorted(parsed):
 # self-check
 # --------------------------------------------------------------------------
 def inventory(path):
-    sv = parse_svg(path)
+    sv = read_svg(path)
     if sv is None:
         return None
     return sorted((t["text"], t["x"], t["y"], t["font_size"], t["fill"])
@@ -1479,6 +1611,7 @@ for pid, e in sorted(parsed.items()):
             unverified[pid + " (" + w + " axis)"] = ax["error"]
         elif ax.get("mapping_note"):
             unverified[pid + " (" + w + " axis values)"] = ax["mapping_note"]
+unverified.update(b2_unverified)
 for k in disagree:
     unverified["legend verdict for " + k] = (
         "the legend(off) difference and the gph-textbox subtraction disagree; "
@@ -1503,7 +1636,8 @@ doc = {
         "extracted": meta_rows.get("extracted"),
         "datasets": ["sysuse auto, clear", "sysuse nlsw88, clear",
                      "sysuse auto, clear (value-labelled rep78)",
-                     "sysuse sp500, clear (m = mofd(date), %tm)"],
+                     "sysuse sp500, clear (m = mofd(date), %tm)",
+                     "sysuse sp500, clear"],
         "method": (
             "Two oracles.  (1) The live-format .gph -- a plain-text "
             "graph-object script -- is authoritative for STRUCTURE: ring "
@@ -1565,7 +1699,10 @@ doc = {
             "probes_where_sub_option_syntax_reached_the_canvas": title_leaks,
             "probes_where_a_requested_string_was_not_drawn": title_missing},
         "default_textbox_styles": default_styles,
-        "reference_lines": refline_findings},
+        "reference_lines": refline_findings,
+        # WP-28 S18 (B2)
+        "range_rule": range_rule,
+        "graph_scale_matches_svg": graph_scale_matches_svg},
     "unverified": unverified,
 }
 
