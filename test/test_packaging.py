@@ -426,7 +426,7 @@ def test_pkg_manifest_lists_every_runtime_file():
 _ROOT_ALSO = frozenset({
     "dash.pkg", "stata.toc", ".gitignore", "Makefile", "pyproject.toml",
     "AGENTS.md", "BUGS.md", "CHANGELOG.md", "CLAUDE.md", "GAPS.md",
-    "GAPS2.md", "REMAINING.md", "ROADMAP.md",
+    "GAPS2.md", "REMAINING.md", "ROADMAP.md", "TWOWAY_COVERAGE_AUDIT.md",
 })
 
 
