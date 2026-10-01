@@ -509,7 +509,33 @@ and now matches Stata.
   Python Stata is linked to and installing nothing, and the generated
   server app opens with `from __future__ import annotations`. (WP-28, K2)
 
-<!-- WP-29 P0.19 -->
+- `dash_setup` works on externally managed (PEP 668) Pythons -- Homebrew's,
+  and the system Python of Debian 12, Ubuntu 23.04, Arch Linux and later. It
+  inspects the linked Python first and, where pip installs are refused, runs
+  no pip command, says why, and suggests `dash_setup, venv("~/.dash/venv")`.
+  It was refused three times and printed pip's advice to pass
+  `--break-system-packages`. (WP-29, P0.19)
+- New option `dash_setup, venv(path)`. It creates or reuses a virtual
+  environment, installs packaging, bokeh, numpy and pandas into it, verifies
+  them and dash's schemes inside it, and prints the
+  `python set exec "<path>/bin/python", permanently` line to type after
+  restarting Stata. (WP-29, P0.19)
+- Printed pip commands name `c(python_exec)` and are quoted for the shell,
+  `<python> -m pip install 'bokeh>=3.8'` on macOS and Linux and double quotes
+  on Windows. The failure line was `python -m pip install bokeh>=3.8`, which
+  a shell runs as an unpinned install writing a file named `=3.8`. A Python
+  without pip gets the `-m ensurepip --upgrade` line, and a managed Python
+  gets no upgrade line pip would refuse. (WP-29, P0.19)
+- pip runs with the interpreter Stata is linked to. It ran `sys.executable`,
+  Homebrew's base interpreter under a venv-linked Stata. It now runs from a
+  private temporary directory with Python's safe-path flag (a `pip/` package
+  in Stata's working directory used to run in its place), without an
+  inherited `PYTHONPATH`, from wheels only, never prompting, and with PEP
+  668's protection forced on. Its output is decoded as UTF-8: a non-ASCII
+  byte in pip's message ended `dash_setup` with r(7102). A package that
+  `--user` installs is found in the same run. (WP-29, P0.19)
+- `dash_setup, garbage(1)` is r(198), was r(101), because the command now
+  takes an option. (WP-29, P0.19)
 
 ### Fixed in WP-29
 

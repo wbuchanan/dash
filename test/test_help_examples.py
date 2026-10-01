@@ -503,14 +503,18 @@ class TestTheShownCommands:
         # prose; WP-23 rewrote that paragraph, and the command is shown
         # once, as a command line.
         assert forms.count(("dash_setup.sthlp", "inline")) == 0
-        assert len({s.text for s in shown}) == 11
+        # WP-29 P0.19: the three two-line python: recipes and their shared
+        # `python: import subprocess, sys' became four one-line shell
+        # commands, and the venv() and ensurepip lines were added.
+        assert len({s.text for s in shown}) == 13
 
     def test_the_two_line_pip_commands_are_joined(self, shown):
+        # WP-29 P0.19: the recipes became one-line shell commands that name
+        # the linked Python and quote each requirement.
         pip = [s for s in shown if "pip" in s.text]
-        assert [len(s.lines) for s in pip] == [2, 2, 2]
-        assert pip[0].text == ('python: subprocess.run([sys.executable, "-m", '
-                               '"pip", "install", "bokeh>=3.8", "numpy>=2.3", '
-                               '"pandas>=2.3"])')
+        assert [len(s.lines) for s in pip] == [1, 1, 1, 1]
+        assert pip[0].text == ('"/path/to/python3" -m pip install "bokeh>=3.8" '
+                               '"numpy>=2.3" "pandas>=2.3"')
 
     def test_each_passes_the_check_its_pin_names(self, shown, pins, groups):
         kind = {text: value for k, value, text in pins if k == "shown"}
@@ -598,10 +602,12 @@ class TestThePinnedLists:
         nothing below."""
         lines = [ln for ln in cscript_source.splitlines()
                  if ln.startswith("_hx_pin ")]
-        assert len(lines) == len(pins) == 20
+        # WP-29 P0.19: the four `python' recipe pins became six
+        # `placeholder' pins (four shell lines, venv(), its link line).
+        assert len(lines) == len(pins) == 22
         kinds = [k for k, _v, _t in pins]
         assert (kinds.count("special"), kinds.count("expect"),
-                kinds.count("check"), kinds.count("shown")) == (1, 4, 4, 11)
+                kinds.count("check"), kinds.count("shown")) == (1, 4, 4, 13)
 
     def test_every_pin_names_what_the_help_holds(self, pins, groups, shown):
         texts = [c.text for c in _commands(groups)]

@@ -112,7 +112,7 @@
 {pstd}{ul:Setup}{p_end}
 
 {p 8 17 2}
-{cmd:dash_setup}
+{cmd:dash_setup} [{cmd:,} {it:{help dash_setup##options:setup_options}}]
 
 {pstd}
 where {it:plot_specs} = {cmd:(}{it:plottype varlist} {ifin} {weight} [{cmd:,} {it:options}]{cmd:)}
@@ -3344,6 +3344,14 @@ and link yourself:
     label; {cmd:unicode translate} converts such text first.  A binary strL
     is refused, r(198), naming the variable.  {helpb dash_setup} neither
     checks nor installs it.
+
+{pstd}
+On a Python that the operating system manages (PEP 668: Homebrew's, and
+recent Debian, Ubuntu and Arch Linux system Pythons), {cmd:dash_setup}
+installs nothing and says so; {cmd:dash_setup, venv(}{it:path}{cmd:)} sets
+up a private environment instead and prints the {cmd:python set exec} line
+that links Stata to it.  See
+{help dash_setup##pep668:Externally managed Pythons}.
 
 
 {marker author}

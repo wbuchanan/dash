@@ -543,14 +543,16 @@ _hx_pin check pyapp `"dash build, saving(app.py) server replace"'
 
 // shown -- commands the help shows and does not present as examples to
 // type, each with the reason it is not run; see _hx_shown.
-//   python run, it installs packages (or is the recipe's first line);
-//          the Python after `python:' is compiled instead
-_hx_pin shown python `"python: import subprocess, sys"'
-_hx_pin shown python `"python: subprocess.run([sys.executable, "-m", "pip", "install", "bokeh>=3.8", "numpy>=2.3", "pandas>=2.3"])"'
-_hx_pin shown python `"python: subprocess.run([sys.executable, "-m", "pip", "install", "--index-url", "https://your.mirror/simple", "bokeh"])"'
-_hx_pin shown python `"python: subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "bokeh"])"'
-//   placeholder  a path to fill in, and it changes a setting permanently
+//   placeholder  a path to fill in, and it installs packages, creates an
+//                environment or changes a setting permanently (WP-29 P0.19:
+//                the python: pip recipes became these shell lines)
 _hx_pin shown placeholder `"python set exec "/path/to/python3", permanently"'
+_hx_pin shown placeholder `""/path/to/python3" -m pip install "bokeh>=3.8" "numpy>=2.3" "pandas>=2.3""'
+_hx_pin shown placeholder `""/path/to/python3" -m pip install --index-url https://your.mirror/simple "bokeh>=3.8""'
+_hx_pin shown placeholder `""/path/to/python3" -m pip install --upgrade "bokeh>=3.8""'
+_hx_pin shown placeholder `""/path/to/python3" -m ensurepip --upgrade"'
+_hx_pin shown placeholder `"dash_setup, venv("~/.dash/venv")"'
+_hx_pin shown placeholder `"python set exec "/path/to/venv/bin/python", permanently"'
 //   outside  run outside Stata, it starts the server; the app it runs is
 //            the one an example writes, which the pyapp check compiles
 _hx_pin shown outside `"python app.py"'

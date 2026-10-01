@@ -713,3 +713,39 @@ TEST_ONLY = {
         "WP-26 keeps it with _dash_plot_type_names: the probe mapper that "
         "function reads the dispatch tables with, test-only with it."),
 }
+
+
+#: dash_setup_lib.py (WP-29 P0.19): every function and method it defines,
+#: by qualified name, each mapped to the test in test/test_setup_pep668.py
+#: that fails without it (test_function_test_map.py
+#: test_every_dash_setup_lib_function_names_its_test).
+_P = "test/test_setup_pep668.py::"
+SETUP_FUNCTIONS = {
+    "VenvPathError.__init__": _P + "TestValidateVenvPath::test_refusals",
+    "_internal": _P + "TestStataEntryPoints::test_stata_pip_never_raises_into_stata",
+    "_linked": _P + "TestStataEntryPoints::test_stata_pip_resolves_a_relative_exec",
+    "add_user_site": _P + "TestAddUserSite::test_a_user_site_made_after_start_becomes_importable",
+    "child_env": _P + "TestChildEnv::test_python_variables_are_dropped_and_protections_set",
+    "classify_failure": _P + "TestClassifyFailure::test_each_measured_refusal_is_classified",
+    "create_venv": _P + "TestCreateVenv::test_a_real_venv_is_created_offline_with_mode_0755",
+    "default_venv_path": _P + "TestMessages::test_default_venv_path",
+    "detect_environment": _P + "TestDetectEnvironment::test_a_venv_without_pip_is_reported_without_pip",
+    "interpret_detect": _P + "TestDetectEnvironment::test_interpret_detect_rules",
+    "managed_message": _P + "TestMessages::test_the_managed_message_names_the_python_and_never_the_override_flag",
+    "nopip_message": _P + "TestMessages::test_the_nopip_message_offers_ensurepip_only_where_it_works",
+    "pip_install_argv": _P + "TestPipArgv::test_the_exact_vector_and_safe_path_flag",
+    "resolve_exe": _P + "TestResolveExe::test_a_relative_path_is_resolved_against_the_stata_directory",
+    "run_child": _P + "TestRunChild::test_a_pip_package_in_the_working_directory_is_not_run",
+    "safe_flags": _P + "TestVersionAndFlags::test_safe_flags_only_from_3_11",
+    "shell_line": _P + "TestShellLine::test_the_posix_line_survives_sh",
+    "stata_detect": _P + "TestStataEntryPoints::test_stata_detect_sets_every_local",
+    "stata_guide": _P + "TestStataEntryPoints::test_stata_guide_prints_plain_text",
+    "stata_pip": _P + "TestStataEntryPoints::test_stata_pip_retries_with_user_only_when_allowed_and_adds_the_user_site",
+    "stata_shell_line": _P + "TestStataEntryPoints::test_stata_shell_line_names_the_linked_interpreter_quoted",
+    "stata_venv": _P + "TestStataEntryPoints::test_stata_venv_check_and_stata_venv_with_a_recorded_run",
+    "stata_venv_check": _P + "TestStataEntryPoints::test_stata_venv_check_and_stata_venv_with_a_recorded_run",
+    "validate_venv_path": _P + "TestValidateVenvPath::test_refusals",
+    "venv_python": _P + "TestCreateVenv::test_a_real_venv_is_created_offline_with_mode_0755",
+    "verify_in": _P + "TestVerifyIn::test_a_venv_seeing_the_packages_passes_versions_and_schemes",
+    "version_tuple": _P + "TestVersionAndFlags::test_version_tuple",
+}

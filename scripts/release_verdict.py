@@ -15,7 +15,11 @@ a clean run must not print.  A release passes only when:
 * adoupdate reported nothing to update against the installed source and
   reported dash against a copy one day newer (TR-27.5), and dash.pkg's
   Distribution-Date is no older than the newest change to a shipped file;
-* PLUS was put back and the run reached its end.
+* PLUS was put back and the run reached its end;
+* with the two venv-linked session logs (scripts/release_gate_venv.do,
+  WP-29 P0.19): a venv made from the linked Python, verified by
+  dash_setup, venv(); a fresh session linked to it by a relative path,
+  which dash_setup finds linked, builds a saved page and serves /health.
 
 A diagnostic is a line of a log that is not an echoed command (". " or
 "> ") and matches one of ``DIAGNOSTICS``, case-insensitively.  An example
@@ -24,6 +28,7 @@ that means to draw one declares it in its header, one per line::
     *! release-gate allows: <text the line holds>
 
 Usage:  python3 scripts/release_verdict.py <gate log> <repo> <min yyyymmdd>
+            [<venvmake log> <venvuse log>]
 Exit:   0 when the release passes; 1 otherwise, naming each failure.
 """
 import os
@@ -52,7 +57,19 @@ _DATE = re.compile(r"^d Distribution-Date:\s*(\d{8})\s*$", re.M)
 _SHIPPED_SCHEME = re.compile(r"^f dash-(\S+)\.scheme\s*$", re.M)
 
 INSTALLED = ("dash.ado", "dash_setup.ado", "dash_parse.mata",
-             "dash_render.py", "locator")
+             "dash_render.py", "dash_setup_lib.py", "locator")
+
+#: What the two venv-linked sessions must each report (WP-29 P0.19):
+#: (log, tag, {key: value}).
+VENV_REQUIRED = (
+    ("make", "venv-made", {"rc": "0"}),
+    ("make", "venv-setup", {"rc": "0", "ready": "1", "linked": "0"}),
+    ("use", "venv-link", {"rc": "0"}),
+    ("use", "venv-setup2", {"rc": "0", "linked": "1"}),
+    ("use", "venv-saved", {"rc": "0", "html": "1"}),
+    ("use", "venv-served", {"rc": "0", "health": "1"}),
+    ("use", "venv-done", {}),
+)
 
 
 def _unwrap(log_text):
@@ -226,8 +243,34 @@ def verdict(log_text, repo, min_date, read=_read):
     return ok, lines
 
 
+def venv_verdict(make_text, use_text):
+    """The problems of the two venv-linked sessions' logs ([] when both
+    report every VENV_REQUIRED line as required)."""
+    problems = []
+    logs = {"make": make_text, "use": use_text}
+    firsts = {}
+    for name, text in logs.items():
+        firsts[name] = {}
+        if text is None:
+            problems.append("no venv%s log" % name)
+            continue
+        for tag, kv in parse(text):
+            firsts[name].setdefault(tag, kv)
+    for name, tag, want in VENV_REQUIRED:
+        if logs[name] is None:
+            continue
+        kv = firsts[name].get(tag)
+        if kv is None:
+            problems.append("no %s line" % tag)
+            continue
+        for k, v in sorted(want.items()):
+            if kv.get(k) != v:
+                problems.append("%s: %s=%s, wanted %s" % (tag, k, kv.get(k), v))
+    return problems
+
+
 def main(argv):
-    if len(argv) != 4:
+    if len(argv) not in (4, 6):
         sys.stderr.write(__doc__)
         return 2
     text = _read(argv[1])
@@ -236,6 +279,14 @@ def main(argv):
         print("verdict: FAIL")
         return 1
     ok, lines = verdict(text, argv[2], argv[3])
+    if len(argv) == 6:
+        vp = venv_verdict(_read(argv[4]), _read(argv[5]))
+        lines.pop()                       # the verdict line, rewritten below
+        lines.append("venv-linked sessions: %s"
+                     % ("clean" if not vp else "%d problem(s)" % len(vp)))
+        lines += ["  " + p for p in vp]
+        ok = ok and not vp
+        lines.append("verdict: " + ("PASS" if ok else "FAIL"))
     print("\n".join(lines))
     return 0 if ok else 1
 

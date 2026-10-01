@@ -114,24 +114,44 @@ class TestTheFloorIsTheTestedBaseline:
                           "1.23 or later", "2.0 or later"):
                 assert needle not in text, (rel, needle)
 
-    def test_the_upgrade_line_names_the_linked_interpreter(self):
+    def test_the_upgrade_line_names_the_linked_interpreter(self, monkeypatch, capsys):
         """Q27: dash_setup's below-minimum branch prints the pip command
         for the interpreter Stata is linked to, never the bare word
         'python' -- installing with a different interpreter than the one
-        Stata runs against would upgrade the wrong Python."""
+        Stata runs against would upgrade the wrong Python.
+
+        WP-29 P0.19: the line is built by dash_setup_lib.stata_shell_line,
+        which names the resolved c(python_exec) and quotes it for the shell
+        (a bare `bokeh>=3.8' is a redirection to a file named =3.8)."""
+        import importlib.util
+        import types
         ado = _read("dash_setup.ado")
         m = re.search(r"program define _dash_pip_command.*?\bend\b", ado,
                       re.S)
         assert m, "no _dash_pip_command program in dash_setup.ado"
         body = m.group(0)
-        assert "c(python_exec)" in body, body
-        assert "-m pip install" in body, body
+        assert "stata_shell_line()" in body, body
         assert ">=" in body, body
         below = ado[ado.find('"below"'):]
-        below = below[:below.find("else", 1)] if "else" in below[1:] \
-            else below
-        assert "_dash_pip_command" in below, below
+        below = below[:below.find('"unverified"')]
+        assert re.search(r'_dash_pip_command "`pkg\'" "`minver\'" upgrade', below), below
         assert "python -m pip install --upgrade" not in below, below
+        spec = importlib.util.spec_from_file_location(
+            "dash_setup_lib_floor", os.path.join(_ROOT, "dash_setup_lib.py"))
+        lib = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(lib)
+        loc = {"spec": "bokeh>=3.8", "how": "upgrade"}
+        sfi = types.ModuleType("sfi")
+        sfi.Macro = types.SimpleNamespace(getLocal=lambda k: loc.get(k, ""),
+                                          setLocal=loc.__setitem__)
+        exp = {"\x60c(python_exec)'": "/opt/My Python/bin/python3",
+               "\x60c(pwd)'": "/tmp"}
+        sfi.SFIToolkit = types.SimpleNamespace(macroExpand=exp.__getitem__)
+        monkeypatch.setitem(sys.modules, "sfi", sfi)
+        lib.stata_shell_line()
+        want = "'/opt/My Python/bin/python3' -m pip install 'bokeh>=3.8'"
+        assert loc["pip_cmd"] == want
+        assert "To upgrade: " + want in capsys.readouterr().out
 
 
 class TestTheGeneratedAppEvaluatesNoAnnotationAtImport:

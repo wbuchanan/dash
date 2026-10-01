@@ -279,3 +279,78 @@ class TestTheGateScriptIsReadWhole:
         with open(os.path.join(ROOT, "scripts", "release_gate.do"),
                   encoding="utf-8") as fh:
             assert "set linesize 255" in fh.read()
+
+
+_VENV_MAKE = "GATE venv-made rc=0\nGATE venv-setup rc=0 ready=1 linked=0\nGATE venv-done\n"
+_VENV_USE = ("GATE venv-link rc=0\nGATE venv-setup2 rc=0 linked=1\n"
+             "GATE venv-saved rc=0 html=1\nGATE venv-served rc=0 health=1\n"
+             "GATE venv-done\n")
+
+
+class TestTheVenvSessions:
+    """WP-29 P0.19: the gate's two venv-linked sessions
+    (scripts/release_gate_venv.do) -- a venv dash_setup, venv() verified,
+    then a fresh session linked to it by a relative path that builds a
+    saved page and serves /health."""
+
+    def test_clean_venv_logs_pass(self):
+        assert rv.venv_verdict(_VENV_MAKE, _VENV_USE) == []
+
+    @pytest.mark.parametrize("which, old, new", [
+        ("make", "venv-made rc=0", "venv-made rc=1"),
+        ("make", "ready=1", "ready=0"),
+        ("use", "venv-link rc=0", "venv-link rc=7101"),
+        ("use", "venv-setup2 rc=0 linked=1", "venv-setup2 rc=0 linked=0"),
+        ("use", "html=1", "html=0"),
+        ("use", "health=1", "health=0"),
+        ("use", "GATE venv-done\n", ""),
+    ])
+    def test_each_bad_venv_line_fails(self, which, old, new):
+        make, use = _VENV_MAKE, _VENV_USE
+        if which == "make":
+            make = make.replace(old, new)
+        else:
+            use = use.replace(old, new)
+        assert (make, use) != (_VENV_MAKE, _VENV_USE)
+        assert rv.venv_verdict(make, use) != []
+        assert rv.venv_verdict(None, _VENV_USE) == ["no venvmake log"]
+
+    def test_main_takes_three_or_five_logs(self, tmp_path, capsys):
+        assert rv.main(["rv", "a", "b"]) == 2
+        assert rv.main(["rv", "a", "b", "c", "d"]) == 2
+        gate = tmp_path / "gate.log"
+        gate.write_text("GATE install rc=1\n")
+        make, use = tmp_path / "venvmake.log", tmp_path / "venvuse.log"
+        make.write_text(_VENV_MAKE)
+        use.write_text(_VENV_USE.replace("health=1", "health=0"))
+        assert rv.main(["rv", str(gate), ROOT, PKG_DATE]) == 1
+        assert rv.main(["rv", str(gate), ROOT, PKG_DATE, str(make), str(use)]) == 1
+        out = capsys.readouterr().out
+        assert "venv-served: health=0, wanted 1" in out
+        assert out.rstrip().endswith("verdict: FAIL")
+
+    def test_the_venv_gate_never_links_permanently_and_reads_whole(self):
+        with open(os.path.join(ROOT, "scripts", "release_gate_venv.do"),
+                  encoding="utf-8") as fh:
+            do = fh.read()
+        assert "permanently" not in do
+        assert "set python_exec" not in do
+        assert not [ln for ln in do.splitlines()
+                    if "/*" in re.sub(r'"[^"]*"', '""', ln)]
+        assert "\nset linesize 255\n" in do
+        assert "\nglobal dash_nobrowser 1\n" in do
+        assert 'python set exec "gatevenv/bin/python"' in do
+        # The link is the first thing the venvuse session does.
+        use = do[do.index('if "`phase\'" == "venvuse" {'):]
+        assert use.index("python set exec") < use.index("python:")
+
+    def test_the_runner_runs_both_phases_offline(self):
+        with open(os.path.join(ROOT, "scripts", "run_release_gate.sh"),
+                  encoding="utf-8") as fh:
+            sh = fh.read()
+        assert "for phase in venvmake venvuse" in sh
+        assert "PIP_NO_INDEX=1" in sh
+        assert "release_gate_venv.do" in sh
+        assert 'arch -arm64 "$STATA" -b do' in sh
+        assert '"$dir/work/venvmake.log" "$dir/work/venvuse.log"' in sh
+

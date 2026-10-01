@@ -1269,7 +1269,6 @@ WP29_OPEN = {
     "P0.16": "The colorvar() colour range ignores a per-plot if on the saved page and a linked graph's qualifier in both modes",
     "P0.17": "Fits, smooths and densities on the saved page stay fitted to all rows after a filter move, with no cue",
     "P0.18": "The served redraw keeps build-time bar and rbar widths and an emptied layer's style after a filter move",
-    "P0.19": "dash_setup fails on PEP 668 externally managed Pythons, and the commands it prints fail too",
     "P0.20": "KPI sd, var, iqr, cv and sum of a date variable are computed in epoch milliseconds",
 }
 

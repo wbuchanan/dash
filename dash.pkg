@@ -17,7 +17,9 @@ d
 d Requires: Python 3.13+, bokeh>=3.8, numpy>=2.3, pandas>=2.3.
 d
 d Run -dash_setup- once after installation: it checks the
-d dependencies and installs the missing Python packages.
+d dependencies and installs the missing Python packages; where the
+d Python refuses pip installs (PEP 668), -dash_setup, venv(path)-
+d sets up a private environment instead.
 d
 d Version: 0.1.0  30sep2026
 d Distribution-Date: 20260930
@@ -28,6 +30,7 @@ f dash_setup.ado
 f dash_setup.sthlp
 f dash_parse.mata
 f dash_render.py
+f dash_setup_lib.py
 f dash-economist.scheme
 f dash-s1color.scheme
 f dash-s1manual.scheme

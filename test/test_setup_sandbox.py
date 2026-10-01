@@ -12,6 +12,7 @@ import importlib
 import importlib.metadata
 import json
 import os
+import site
 import subprocess
 import sys
 import types
@@ -27,15 +28,20 @@ _REAL_RUN = subprocess.run
 _REAL_POPEN = subprocess.Popen
 _REAL_SYSTEM = os.system
 _REAL_EXE = sys.executable
+_REAL_ADDSITEDIR = site.addsitedir
+_REAL_GETUSERSITE = site.getusersitepackages
+_REAL_ENABLE_USER_SITE = site.ENABLE_USER_SITE
 
 
 @pytest.fixture(autouse=True)
 def _always_restored():
     """Whatever a test does, nothing it patched outlives it: the process
-    functions, sys.executable, sys.version, sys.path and PATH."""
+    functions, sys.executable, sys.version, sys.path, PATH, PYTHONPATH and
+    the site attributes the user-site gate replaces (WP-29 P0.19)."""
     sb.restore()
     path0, syspath0 = os.environ.get("PATH"), list(sys.path)
     version0 = sys.version
+    pp0 = os.environ.get("PYTHONPATH")
     yield
     sb.restore()
     assert subprocess.run is _REAL_RUN
@@ -45,6 +51,10 @@ def _always_restored():
     assert sys.version == version0
     assert os.environ.get("PATH") == path0
     assert sys.path == syspath0
+    assert os.environ.get("PYTHONPATH") == pp0
+    assert site.addsitedir is _REAL_ADDSITEDIR
+    assert site.getusersitepackages is _REAL_GETUSERSITE
+    assert site.ENABLE_USER_SITE == _REAL_ENABLE_USER_SITE
 
 
 def _marker_code(path):
@@ -232,6 +242,101 @@ class TestTheSimulatedStates:
         sb.restore()
         assert sys.version == before
 
+    # -- WP-29 P0.19: the probes dash_setup_lib.py starts ------------------
+
+    @staticmethod
+    def _detect(exe):
+        r = subprocess.run([exe, "-c", "print('DASH_DETECT_V1')"],
+                           capture_output=True, encoding="utf-8")
+        return r.returncode, json.loads(r.stdout)
+
+    def test_the_detect_probe_is_answered_from_the_spec(self):
+        sb.install(env={"managed": True, "pip": False, "version": [3, 13, 1]},
+                   python_exec="/opt/x/bin/python3")
+        rc, d = self._detect("/opt/x/bin/python3")
+        assert rc == 0
+        assert d["tag"] == "DASH_DETECT_V1"
+        assert d["marker"] is True and d["pip"] is False
+        assert d["prefix"] == d["base_prefix"]
+        assert d["version"] == [3, 13, 1]
+        assert sb.calls()[0]["argv"][0] == "PYTHON_EXEC"
+
+    def test_the_venv_probe_answers_differently_from_the_linked_one(self):
+        sb.install(env={"managed": True}, venv_env={"pip": False},
+                   python_exec="/opt/x/bin/python3")
+        _, linked = self._detect("/opt/x/bin/python3")
+        _, other = self._detect("/tmp/some/venv/bin/python")
+        assert linked["marker"] is True and linked["pip"] is True
+        assert other["prefix"] != other["base_prefix"]
+        assert other["pip"] is False and other["marker"] is False
+
+    def test_a_pip_response_is_replayed_from_the_fixture(self):
+        fx = json.load(open(sb.FIXTURE, encoding="utf-8"))
+        sb.install(pip={"rc": 1, "stderr": "externally_managed"})
+        r = subprocess.run([sys.executable, "-m", "pip", "install", "bokeh>=3.8"],
+                           capture_output=True, encoding="utf-8")
+        assert r.returncode == 1
+        assert r.stderr == fx["externally_managed"]["stderr"]
+        assert r.stderr.startswith("error: externally-managed-environment")
+
+    def test_an_install_that_lifts_a_block_returns_zero(self):
+        sb.install(block=("colorsys",), unblock_on_install=("colorsys",))
+        r = subprocess.run([sys.executable, "-m", "pip", "install", "colorsys>=1"])
+        assert r.returncode == 0
+        r = subprocess.run([sys.executable, "-m", "pip", "install", "other"])
+        assert r.returncode == sb._STUB_RC
+
+    def test_the_venv_effect_creates_the_environment(self, tmp_path):
+        sb.install()
+        v = tmp_path / "v"
+        r = subprocess.run([sys.executable, "-P", "-m", "venv", str(v)])
+        assert r.returncode == 0
+        assert (v / "pyvenv.cfg").is_file()
+        assert os.access(v / "bin" / "python", os.X_OK)
+
+    def test_the_verify_probe_is_answered_from_the_spec(self):
+        sb.install(verify={"ok": False, "why": "python"})
+        r = subprocess.run(["/v/bin/python", "-P", "-c", "x = 'DASH_VERIFY_V1'", "{}", "/r.py"],
+                           capture_output=True, encoding="utf-8")
+        d = json.loads(r.stdout)
+        assert r.returncode == 0
+        assert d["tag"] == "DASH_VERIFY_V1"
+        assert d["ok"] is False and d["why"] == "python"
+        assert d["schemes"] is True
+
+    def test_the_user_site_gate_admits_a_package_only_after_addsitedir(self):
+        import colorsys
+        sb.install(user_site_gate="colorsys")
+        us = site.getusersitepackages()
+        assert site.ENABLE_USER_SITE is True
+        with pytest.raises(ImportError):
+            importlib.import_module("colorsys")
+        r = subprocess.run([sys.executable, "-m", "pip", "install", "--user", "colorsys>=1"])
+        assert r.returncode == 0
+        assert os.path.isdir(us)
+        with pytest.raises(ImportError):
+            importlib.import_module("colorsys")
+        site.addsitedir(us)
+        assert importlib.import_module("colorsys") is colorsys
+
+    def test_cwd_env_and_umask_are_recorded_and_python_exec_maps_to_PYTHON_EXEC(self, tmp_path):
+        sb.install(python_exec="/opt/x/bin/python3")
+        env = {"PATH": "/bin", "PIP_USER": "0"}
+        subprocess.run(["/opt/x/bin/python3", "-m", "pip", "install", "a"],
+                       cwd=str(tmp_path), env=env, umask=0o022)
+        k = sb.kwargs_calls()[0]
+        assert k["cwd"] == str(tmp_path)
+        assert k["env"] == env and k["env"] is not env
+        assert k["umask"] == 0o022
+        assert sb.calls()[0]["argv"] == ["PYTHON_EXEC", "-m", "pip", "install", "a"]
+
+    def test_an_inherited_pythonpath_is_set_and_restored(self):
+        before = os.environ.get("PYTHONPATH")
+        sb.install(pythonpath="/dash/hostile/pythonpath")
+        assert os.environ["PYTHONPATH"] == "/dash/hostile/pythonpath"
+        sb.restore()
+        assert os.environ.get("PYTHONPATH") == before
+
 
 class TestTheStataWrappers:
     """stata_install / stata_verdict / stata_restored, against a stand-in
@@ -289,6 +394,41 @@ class TestTheStataWrappers:
         sb.install()
         sb.stata_restored()
         assert macro["local"]["pc_sb_clean"] == "0"
+
+    def test_an_ANY_wildcard_matches_one_argument(self, macro):
+        sb.install()
+        subprocess.run([sys.executable, "-c", "code", "x"])
+        macro["global"]["PC_SB_EXPECT"] = json.dumps([["PYTHON", "-c", "<ANY>", "x"]])
+        sb.stata_verdict()
+        assert macro["local"]["pc_sb_match"] == "1"
+        macro["global"]["PC_SB_EXPECT"] = json.dumps([["PYTHON", "-c", "<ANY>"]])
+        sb.stata_verdict()
+        assert macro["local"]["pc_sb_match"] == "0"
+        macro["global"]["PC_SB_EXPECT"] = json.dumps([["PYTHON", "-c", "<ANY>", "y"]])
+        sb.stata_verdict()
+        assert macro["local"]["pc_sb_match"] == "0"
+
+    def test_stata_pip_kwargs_reports_the_first_pip_install(self, macro, tmp_path):
+        sb.install()
+        sb.stata_pip_kwargs()
+        assert macro["local"]["pc_sb_cwd"] == ""
+        assert macro["local"]["pc_sb_umask"] == ""
+        gone = tmp_path / "gone"
+        subprocess.run([sys.executable, "-c", "pass"], cwd=str(tmp_path))
+        subprocess.run([sys.executable, "-m", "pip", "install", "a"], cwd=str(gone),
+                       env={"PIP_BREAK_SYSTEM_PACKAGES": "0", "PIP_USER": "0",
+                            "PYTHONDONTWRITEBYTECODE": "1"}, umask=0o022)
+        subprocess.run([sys.executable, "-m", "pip", "install", "b"], cwd=str(tmp_path),
+                       env={"PYTHONPATH": "/x"})
+        sb.stata_pip_kwargs()
+        loc = macro["local"]
+        assert loc["pc_sb_cwd"] == str(gone)
+        assert loc["pc_sb_cwdgone"] == "1"
+        assert loc["pc_sb_pp"] == "0"
+        assert loc["pc_sb_bsp"] == "0"
+        assert loc["pc_sb_puser"] == "0"
+        assert loc["pc_sb_dwb"] == "1"
+        assert loc["pc_sb_umask"] == "18"
 
     def test_a_stub_that_ran_fails_the_verdict(self, macro):
         """A process that got past the recorders and reached a PATH stub is

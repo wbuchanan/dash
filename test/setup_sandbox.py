@@ -34,16 +34,45 @@ environment: a package, and each submodule of it already imported, is made
 unimportable by ``sys.modules[name] = None`` (the import system's own
 "halted" marker), a package version by a fake ``.dist-info`` directory
 first on ``sys.path``, the interpreter's version by ``sys.version``.  ``unblock_on_install`` lets a recorded ``pip install``
-lift the block, which is what a successful install would do.
+lift the block, which is what a successful install would do (it then
+returns rc 0, as a successful install does).
+
+WP-29 P0.19: dash_setup now starts its children through dash_setup_lib.py,
+which inspects the linked Python in a child first (a ``-c`` probe whose code
+holds ``DASH_DETECT_V1``), may build a venv (``-m venv <path>``) and verify
+it (``DASH_VERIFY_V1``).  The recorder answers each of these from the case's
+spec instead of starting anything:
+
+* the DETECT probe gets the JSON line a real interpreter would print --
+  ``env`` for the linked interpreter (the one ``c(python_exec)`` names),
+  ``venv_env`` for any other -- so "externally managed", "in a venv" and
+  "no pip" are answers, and no real stdlib is touched;
+* ``-m venv <path>`` creates ``<path>/pyvenv.cfg`` and ``<path>/bin/python``;
+* the VERIFY probe gets ``verify``'s JSON line;
+* a pip install gets the ``pip`` response, its stderr one of the measured
+  refusals in test/fixtures/pip_refusals.json;
+* ``user_site_gate`` keeps a package blocked until ``site.addsitedir`` is
+  called on the sandbox's user site, which a ``--user`` install of it makes.
+
+Each call's ``cwd``, ``env`` and ``umask`` are recorded with its argv, the
+linked interpreter is written ``PYTHON_EXEC`` in ``calls()``, and
+``site.getusersitepackages``, ``site.ENABLE_USER_SITE``, ``site.addsitedir``
+and ``PYTHONPATH`` are put back by ``restore()``.
 """
 import asyncio
 import importlib
+import importlib.metadata
 import json
 import os
 import shutil
+import site
 import subprocess
 import sys
 import tempfile
+
+#: pip's measured refusal texts (scripts/extract_pip_refusals.py).
+FIXTURE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "fixtures", "pip_refusals.json")
 
 #: The stub every recorded process "returns", and the stubs' exit status.
 _STUB_RC = 97
@@ -61,13 +90,14 @@ class _Recorded:
     ``communicate`` for ``Popen`` users.
     """
 
-    def __init__(self, args, text=False):
+    def __init__(self, args, text=False, rc=_STUB_RC, stdout=None,
+                 stderr=""):
         self.args = args
-        self.returncode = _STUB_RC
+        self.returncode = rc
         self.pid = 0
-        empty = "" if text else b""
-        self.stdout = _STUB_NOTE if text else _STUB_NOTE.encode()
-        self.stderr = empty
+        out = _STUB_NOTE if stdout is None else stdout
+        self.stdout = out if text else out.encode()
+        self.stderr = stderr if text else stderr.encode()
         self.stdin = None
 
     def wait(self, timeout=None):
@@ -111,19 +141,104 @@ class _Sandbox:
         self.unblock_on_install = set()
         self.stub_log = os.path.join(workdir, "stub_calls.log")
         self.stubdir = os.path.join(workdir, "bin")
+        self.usersite = os.path.join(workdir, "usersite")
+        self.env = {}
+        self.venv_env = {}
+        self.pip = None
+        self.verify = {}
+        self.user_site_gate = None
+        self.python_exec = ""
+        self.saved_pythonpath = os.environ.get("PYTHONPATH", _MISSING)
 
     # -- recording -------------------------------------------------------
-    def record(self, kind, args):
+    def record(self, kind, args, kw=None):
+        """Record one process start.  Returns True when the call lifted a
+        block (a recorded install of a package unblock_on_install names)."""
         argv = _argv(args)
-        self.calls.append({"via": kind, "argv": argv})
+        kw = kw or {}
+        env = kw.get("env")
+        self.calls.append({"via": kind, "argv": argv, "cwd": kw.get("cwd"),
+                           "env": dict(env) if env is not None else None,
+                           "umask": kw.get("umask")})
+        lifted = False
         # A recorded `pip install X' lifts X's block when the case asked for
         # that: the install "succeeded".
         if "install" in argv:
             for name in list(self.unblock_on_install):
-                if any(a == name or a.startswith(name + ">") or
-                       a.startswith(name + "=") for a in argv):
+                if _names(argv, name):
                     self.unblock(name)
                     self.unblock_on_install.discard(name)
+                    lifted = True
+        return lifted
+
+    # -- answers ----------------------------------------------------------
+    def is_python_exec(self, exe):
+        pe = self.python_exec
+        return bool(pe) and exe in (pe, os.path.abspath(pe))
+
+    def detect_answer(self, exe):
+        over = self.env if self.is_python_exec(exe) else dict(
+            {"in_venv": True, "pip": True}, **self.venv_env)
+        d = {"tag": "DASH_DETECT_V1", "prefix": "/dash-sandbox/prefix",
+             "base_prefix": "/dash-sandbox/prefix",
+             "stdlib": "/dash-sandbox/prefix/lib/stdlib", "marker": False,
+             "pyvenv_cfg": False, "pip": True, "ensurepip": True,
+             "venv": True, "user_site_enabled": True,
+             "user_site": self.usersite,
+             "version": list(sys.version_info[:3]), "executable": exe}
+        if over.get("managed"):
+            d["marker"] = True
+        if over.get("in_venv"):
+            d["base_prefix"] = "/dash-sandbox/base"
+        for k in ("pip", "ensurepip", "user_site_enabled", "version"):
+            if k in over:
+                d[k] = over[k]
+        return json.dumps(d)
+
+    def verify_answer(self):
+        pk = {}
+        for name in ("packaging", "bokeh", "numpy", "pandas"):
+            try:
+                pk[name] = importlib.metadata.version(name)
+            except Exception:
+                pk[name] = ""
+        d = {"tag": "DASH_VERIFY_V1", "ok": True,
+             "version": list(sys.version_info[:3]), "packages": pk,
+             "schemes": True, "why": ""}
+        d.update(self.verify)
+        return json.dumps(d)
+
+    def answer(self, args, lifted, text):
+        """What a recorded process start hands back."""
+        argv = _argv(args)
+        if "-c" in argv[:-1]:
+            code = argv[argv.index("-c") + 1]
+            if "DASH_DETECT_V1" in code:
+                return _Recorded(args, text, 0, self.detect_answer(argv[0]) + "\n")
+            if "DASH_VERIFY_V1" in code:
+                return _Recorded(args, text, 0, self.verify_answer() + "\n")
+        if _module(argv) == "venv":
+            path = argv[-1]
+            os.makedirs(os.path.join(path, "bin"), exist_ok=True)
+            open(os.path.join(path, "pyvenv.cfg"), "w").close()
+            py = os.path.join(path, "bin", "python")
+            open(py, "w").close()
+            os.chmod(py, 0o755)
+            return _Recorded(args, text, 0, "")
+        if _module(argv) == "pip" and "install" in argv:
+            gate = self.user_site_gate
+            if gate and "--user" in argv and _names(argv, gate):
+                os.makedirs(self.usersite, exist_ok=True)
+                return _Recorded(args, text, 0, "")
+            if self.pip is not None:
+                err = ""
+                if self.pip.get("stderr"):
+                    with open(FIXTURE, encoding="utf-8") as fh:
+                        err = json.load(fh)[self.pip["stderr"]]["stderr"]
+                return _Recorded(args, text, int(self.pip.get("rc", 0)), "", err)
+            if lifted:
+                return _Recorded(args, text, 0, "")
+        return _Recorded(args, text)
 
     def _patch(self, owner, name, value):
         self.saved_attrs.append((owner, name, getattr(owner, name, _MISSING)))
@@ -133,10 +248,10 @@ class _Sandbox:
         sb = self
 
         def run(args, *a, **k):
-            sb.record("subprocess.run", args)
-            return _Recorded(args, text=bool(k.get("text") or
-                                              k.get("universal_newlines") or
-                                              k.get("encoding")))
+            lifted = sb.record("subprocess.run", args, k)
+            return sb.answer(args, lifted, bool(k.get("text") or
+                                                k.get("universal_newlines") or
+                                                k.get("encoding")))
 
         def call(args, *a, **k):
             sb.record("subprocess.call", args)
@@ -203,6 +318,21 @@ class _Sandbox:
                 self._patch(os, name, refuse(name))
         self._patch(asyncio, "create_subprocess_exec", create_subprocess_exec)
         self._patch(asyncio, "create_subprocess_shell", create_subprocess_shell)
+
+    def _install_site(self):
+        """The user site: where it is, that it is enabled, and an addsitedir
+        that lifts the user_site_gate block when given that directory."""
+        sb = self
+        real_addsitedir = site.addsitedir
+
+        def addsitedir(sitedir, known_paths=None):
+            if sb.user_site_gate and os.path.abspath(sitedir) == sb.usersite:
+                sb.unblock(sb.user_site_gate)
+            return real_addsitedir(sitedir, known_paths)
+
+        self._patch(site, "getusersitepackages", lambda: sb.usersite)
+        self._patch(site, "ENABLE_USER_SITE", True)
+        self._patch(site, "addsitedir", addsitedir)
 
     def _install_stubs(self):
         """Recording stand-ins for every installer name, first on PATH,
@@ -280,6 +410,10 @@ class _Sandbox:
             os.environ["PATH"] = self.saved_env_path
         sys.executable = self.saved_executable
         sys.version = self.saved_version
+        if self.saved_pythonpath is _MISSING:
+            os.environ.pop("PYTHONPATH", None)
+        else:
+            os.environ["PYTHONPATH"] = self.saved_pythonpath
 
 
 # ---------------------------------------------------------------------------
@@ -293,7 +427,23 @@ class _Sandbox:
 PREIMPORT = ("packaging", "packaging.version", "numpy", "pandas", "bokeh")
 
 
-def install(block=(), unblock_on_install=(), fake=(), pyversion=None):
+def _names(argv, name):
+    """Does an argument vector name the package `name' as a requirement?"""
+    return any(a == name or a.startswith(name + ">") or
+               a.startswith(name + "=") or a.startswith(name + ",")
+               for a in argv)
+
+
+def _module(argv):
+    """The module a `-m' argument vector runs, else None."""
+    if "-m" in argv[:-1]:
+        return argv[argv.index("-m") + 1]
+    return None
+
+
+def install(block=(), unblock_on_install=(), fake=(), pyversion=None,
+            env=None, venv_env=None, pip=None, verify=None,
+            user_site_gate=None, pythonpath=None, python_exec=None):
     """Close both install doors, then set up the simulated state.
 
     block              names made unimportable, with each submodule
@@ -302,6 +452,20 @@ def install(block=(), unblock_on_install=(), fake=(), pyversion=None):
     fake               ``(name, version)`` pairs of fake distributions
     pyversion          a replacement ``sys.version`` (its first word is what
                        dash_setup reads)
+    env                the linked Python's DETECT answer: ``managed``,
+                       ``in_venv``, ``pip``, ``ensurepip``,
+                       ``user_site_enabled``, ``version`` (default: an
+                       ordinary Python with pip)
+    venv_env           the same, for any other interpreter (default: in a
+                       venv, with pip)
+    pip                ``{"rc": int, "stderr": <record in pip_refusals.json>}``
+                       for every recorded ``-m pip install``
+    verify             overrides of the VERIFY answer
+    user_site_gate     a package kept blocked until ``site.addsitedir`` is
+                       given the sandbox's user site
+    pythonpath         ``os.environ["PYTHONPATH"]`` for the run
+    python_exec        the linked interpreter's text (``c(python_exec)``),
+                       written ``PYTHON_EXEC`` by ``calls()``
 
     Returns the sandbox's working directory.  Raises if a sandbox is already
     installed or the self-test fails -- in which case nothing stays patched.
@@ -319,7 +483,18 @@ def install(block=(), unblock_on_install=(), fake=(), pyversion=None):
     try:
         sb._install_recorders()
         sb._install_stubs()
+        sb._install_site()
         self_test()
+        sb.env = dict(env or {})
+        sb.venv_env = dict(venv_env or {})
+        sb.pip = dict(pip) if pip is not None else None
+        sb.verify = dict(verify or {})
+        sb.user_site_gate = user_site_gate
+        sb.python_exec = python_exec or ""
+        if user_site_gate:
+            sb.block(user_site_gate)
+        if pythonpath is not None:
+            os.environ["PYTHONPATH"] = pythonpath
         for name in block:
             sb.block(name)
         sb.unblock_on_install = set(unblock_on_install)
@@ -357,15 +532,35 @@ def self_test():
 
 def calls():
     """Every recorded process start, as ``[{"via": ..., "argv": [...]}]``,
-    with the sandbox's stub interpreter written ``PYTHON``."""
+    with the sandbox's stub interpreter written ``PYTHON`` and the linked
+    interpreter (``python_exec``) ``PYTHON_EXEC``."""
     if _state is None:
         return []
     out = []
+    stub = os.path.join(_state.stubdir, "python3")
     for c in _state.calls:
-        argv = ["PYTHON" if a == os.path.join(_state.stubdir, "python3")
-                else a for a in c["argv"]]
+        argv = ["PYTHON" if a == stub else
+                "PYTHON_EXEC" if _state.is_python_exec(a) else a
+                for a in c["argv"]]
         out.append({"via": c["via"], "argv": argv})
     return out
+
+
+def kwargs_calls():
+    """Every recorded process start with its cwd, env and umask."""
+    return [] if _state is None else [dict(c) for c in _state.calls]
+
+
+def _match(got, want):
+    """`want' with "<ANY>" matching any one argument."""
+    if not isinstance(want, list) or len(got) != len(want):
+        return False
+    for g, w in zip(got, want):
+        if not isinstance(w, list) or len(g) != len(w):
+            return False
+        if any(y != "<ANY>" and x != y for x, y in zip(g, w)):
+            return False
+    return True
 
 
 def stub_calls():
@@ -404,13 +599,22 @@ def is_installed():
 def stata_install(spec_global="PC_SB_SPEC"):
     """``install(**json.loads($PC_SB_SPEC))``; sets the locals pc_sb_ok
     ("1" or "0") and pc_sb_why (the reason)."""
+    import sfi
     from sfi import Macro
     try:
         spec = json.loads(Macro.getGlobal(spec_global) or "{}")
+        if hasattr(sfi, "SFIToolkit"):
+            pe = sfi.SFIToolkit.macroExpand("\x60c(python_exec)'")
+        else:
+            pe = spec.get("python_exec")
         install(block=spec.get("block", ()),
                 unblock_on_install=spec.get("unblock_on_install", ()),
                 fake=[tuple(p) for p in spec.get("fake", ())],
-                pyversion=spec.get("pyversion"))
+                pyversion=spec.get("pyversion"),
+                env=spec.get("env"), venv_env=spec.get("venv_env"),
+                pip=spec.get("pip"), verify=spec.get("verify"),
+                user_site_gate=spec.get("user_site_gate"),
+                pythonpath=spec.get("pythonpath"), python_exec=pe)
         Macro.setLocal("pc_sb_ok", "1")
         Macro.setLocal("pc_sb_why", "")
     except BaseException as exc:  # reported to Stata, which fails the case
@@ -420,19 +624,52 @@ def stata_install(spec_global="PC_SB_SPEC"):
 
 def stata_verdict(expect_global="PC_SB_EXPECT"):
     """Compare the recorded argument vectors with the JSON list in
-    $PC_SB_EXPECT (order matters), and require that no PATH stub ran.
+    $PC_SB_EXPECT (order matters; an element "<ANY>" matches any one
+    argument), and require that no PATH stub ran.
     Sets the locals pc_sb_match ("1"/"0"), pc_sb_n (calls recorded) and
     pc_sb_mwhy (what was recorded, when it does not match)."""
     from sfi import Macro
     want = json.loads(Macro.getGlobal(expect_global) or "[]")
     got = [c["argv"] for c in calls()]
     stubs = stub_calls()
-    ok = got == want and not stubs
+    ok = _match(got, want) and not stubs
     Macro.setLocal("pc_sb_match", "1" if ok else "0")
     Macro.setLocal("pc_sb_n", str(len(got)))
     Macro.setLocal("pc_sb_mwhy", "" if ok else
                    "recorded %s; expected %s; PATH stubs ran %s"
                    % (json.dumps(got), json.dumps(want), json.dumps(stubs)))
+
+
+def stata_pip_kwargs():
+    """Sets the locals pc_sb_cwd, pc_sb_cwdgone, pc_sb_pp, pc_sb_bsp,
+    pc_sb_puser, pc_sb_dwb and pc_sb_umask from the first recorded
+    ``-m pip install``: its working directory, whether that directory is
+    gone, whether PYTHONPATH reached it ("1"/"0"), its
+    PIP_BREAK_SYSTEM_PACKAGES, PIP_USER and PYTHONDONTWRITEBYTECODE, and
+    its umask.  All empty when there was none (or no env was passed)."""
+    from sfi import Macro
+    first = None
+    for c in kwargs_calls():
+        if _module(c["argv"]) == "pip" and "install" in c["argv"]:
+            first = c
+            break
+    vals = dict.fromkeys(("cwd", "cwdgone", "pp", "bsp", "puser", "dwb",
+                          "umask"), "")
+    if first is not None:
+        cwd = first.get("cwd")
+        if cwd:
+            vals["cwd"] = str(cwd)
+            vals["cwdgone"] = "0" if os.path.exists(cwd) else "1"
+        env = first.get("env")
+        if env is not None:
+            vals["pp"] = "1" if "PYTHONPATH" in env else "0"
+            vals["bsp"] = env.get("PIP_BREAK_SYSTEM_PACKAGES", "")
+            vals["puser"] = env.get("PIP_USER", "")
+            vals["dwb"] = env.get("PYTHONDONTWRITEBYTECODE", "")
+        if first.get("umask") is not None:
+            vals["umask"] = str(first["umask"])
+    for k, v in vals.items():
+        Macro.setLocal("pc_sb_" + k, v)
 
 
 def stata_restored():
@@ -442,11 +679,15 @@ def stata_restored():
     clean = (_state is None and subprocess.run is _ORIGINAL["run"]
              and subprocess.Popen is _ORIGINAL["Popen"]
              and os.system is _ORIGINAL["system"]
-             and sys.executable == _ORIGINAL["executable"])
+             and sys.executable == _ORIGINAL["executable"]
+             and site.addsitedir is _ORIGINAL["addsitedir"]
+             and site.getusersitepackages is _ORIGINAL["getusersitepackages"])
     Macro.setLocal("pc_sb_clean", "1" if clean else "0")
 
 
 #: The objects install() replaces, captured when this module is imported --
 #: before any sandbox exists -- so stata_restored() can prove restore().
 _ORIGINAL = {"run": subprocess.run, "Popen": subprocess.Popen,
-             "system": os.system, "executable": sys.executable}
+             "system": os.system, "executable": sys.executable,
+             "addsitedir": site.addsitedir,
+             "getusersitepackages": site.getusersitepackages}

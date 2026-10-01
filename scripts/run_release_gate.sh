@@ -37,8 +37,13 @@ echo "release gate: running in $dir"
 # Stata's batch mode names its log after the command line's last word, not
 # the do-file, so the log is the one .log the run wrote in $dir.
 log="$(ls -t "$dir"/*.log 2>/dev/null | head -1)"
+# WP-29 P0.19: the venv-linked sessions, from $dir/work so the second links by a relative path.
+for phase in venvmake venvuse; do
+    (cd "$dir/work" && PIP_NO_INDEX=1 STATATMP="$dir/tmp/" arch -arm64 "$STATA" -b do \
+        "$REPO/scripts/release_gate_venv.do" "$dir/work" "$dir/work/plus/" plus "$phase" >/dev/null 2>&1)
+done
 "$PYTHON" "$REPO/scripts/release_verdict.py" "${log:-$dir/release_gate.log}" \
-    "$REPO" "$newest"
+    "$REPO" "$newest" "$dir/work/venvmake.log" "$dir/work/venvuse.log"
 rc=$?
 echo "release gate log: ${log:-none}"
 exit $rc

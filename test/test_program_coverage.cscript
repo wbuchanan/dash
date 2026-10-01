@@ -44,6 +44,8 @@
 *!              can reach, installing nothing; PC-23 holds that it neither
 *!              checks nor installs jsonio (PC-24, its restart advice, went
 *!              with the jsonio step)
+*!   PEP-01..16 dash_setup on externally managed (PEP 668) Pythons and
+*!              dash_setup, venv(path), in the same sandbox (WP-29 P0.19)
 *!   PC-28      _json_escape, read back by JSON as the original.  PC-27
 *!              and PC-29 tested _html_escape, _dash_html_esc and
 *!              _dash_kv_json, and went with them (WP-26)
@@ -132,6 +134,28 @@ def _pc_formats_ok():
     _pc_M.setLocal("pc_ok", str(ok))
     _pc_M.setLocal("pc_why", why[:900])
 
+# WP-29 P0.19 (PEP-01..16): the argument vectors a case expects, each
+# element "F" standing for pip's three fixed flags, set as $PC_SB_EXPECT;
+# and the shlex oracle of a command line naming c(python_exec).
+def _pep_vec(vecs):
+    flags = ["--disable-pip-version-check", "--no-input", "--only-binary=:all:"]
+    out = []
+    for v in vecs:
+        w = []
+        for a in v:
+            if a == "F":
+                w.extend(flags)
+            else:
+                w.append(a)
+        out.append(w)
+    _pc_M.setGlobal("PC_SB_EXPECT", _pc_json.dumps(out))
+
+def _pep_oracle(name, *args):
+    import shlex
+    from sfi import SFIToolkit
+    exe = SFIToolkit.macroExpand(chr(96) + "c(python_exec)'")
+    _pc_M.setLocal(name, shlex.join([exe] + list(args)))
+
 _pc_sys.path.insert(0, _pc_os.getcwd())
 import setup_sandbox
 end
@@ -143,6 +167,27 @@ program define _pc_fail
     args id
     mata: printf("{err}%s FAIL: %s\n", st_local("id"), st_global("PC_WHY"))
     exit 9
+end
+
+// WP-29 P0.19: a PEP case reports and the run goes on; the ids that failed
+// are listed, and the script fails, after the last of them.
+capture program drop _pep_fail
+program define _pep_fail
+    args id rc
+    global PEP_FAILED `"$PEP_FAILED `id'"'
+    mata: printf("{err}%s FAIL rc %s: %s\n", st_local("id"), st_local("rc"), st_global("PC_WHY"))
+    global PC_WHY ""
+end
+
+// A case whose recorded process starts are not $PC_SB_EXPECT says what was
+// recorded, then fails.
+capture program drop _pep_match
+program define _pep_match
+    args match
+    if "`match'" != "1" {
+        mata: st_global("PC_WHY", st_global("PC_SB_WHY"))
+        exit 9
+    }
 end
 
 
@@ -516,10 +561,15 @@ end
 //   $PC_SB_ADO    the ado-path to run under ("" keeps it)
 //   $PC_SSC_RC    the stand-in ssc's return code
 //   $PC_SB_EXPECT the argument vectors pip is expected to be run with
+//   $PC_SB_CMD    the command to run ("" runs plain dash_setup; WP-29 P0.19)
 // Returns r(rc), r(match) (1 when the recorded process starts are exactly
 // $PC_SB_EXPECT and no PATH stub ran) and r(ncalls); $PC_SSC_CALLS holds
 // the ssc calls and $PC_SB_WHY what was recorded when r(match) is 0.  The
-// log is `c(tmpdir)'pc_setup.log.
+// log is `c(tmpdir)'pc_setup.log.  It also returns dash_setup's
+// r(hint_cmd), r(venv_python), r(venv_linked) and r(externally_managed),
+// and what the first recorded pip install was started with: r(pip_cwd),
+// r(pip_cwdgone), r(pip_pp), r(pip_bsp), r(pip_puser), r(pip_dwb) and
+// r(pip_umask) (setup_sandbox.stata_pip_kwargs).
 capture program drop _pc_setup
 program define _pc_setup, rclass
     local lg "`c(tmpdir)'pc_setup.log"
@@ -540,13 +590,26 @@ program define _pc_setup, rclass
         }
         capture log close _pcsetup
         quietly log using "`lg'", text replace name(_pcsetup)
-        capture noisily dash_setup
-        local rc = _rc
+        // The command is run from the global by value, so a path holding a
+        // double quote reaches dash_setup as typed (PEP-11).
+        mata: st_local("pc_hascmd", strofreal(st_global("PC_SB_CMD") != ""))
+        if `pc_hascmd' {
+            mata: st_local("rc", strofreal(_stata(st_global("PC_SB_CMD"))))
+        }
+        else {
+            capture noisily dash_setup
+            local rc = _rc
+        }
+        mata: st_local("pc_hint", st_global("r(hint_cmd)"))
+        mata: st_local("pc_vpy", st_global("r(venv_python)"))
+        mata: st_local("pc_vlinked", st_global("r(venv_linked)"))
+        mata: st_local("pc_em", st_global("r(externally_managed)"))
         quietly log close _pcsetup
     }
     local brc = _rc
     capture log close _pcsetup
     mata: st_global("S_ADO", st_local("ado0"))
+    python: import setup_sandbox; setup_sandbox.stata_pip_kwargs()
     python: import setup_sandbox; setup_sandbox.stata_verdict()
     python: import setup_sandbox; setup_sandbox.restore()
     python: import setup_sandbox; setup_sandbox.stata_restored()
@@ -561,6 +624,13 @@ program define _pc_setup, rclass
     return scalar rc = `rc'
     return scalar match = `pc_sb_match'
     return scalar ncalls = `pc_sb_n'
+    return local hint_cmd `"`pc_hint'"'
+    return local venv_python `"`pc_vpy'"'
+    return local venv_linked "`pc_vlinked'"
+    return local externally_managed "`pc_em'"
+    foreach k in cwd cwdgone pp bsp puser dwb umask {
+        return local pip_`k' "`pc_sb_`k''"
+    }
 end
 
 // Does the setup log hold a phrase?  Searched in Mata, by value, in the
@@ -660,8 +730,10 @@ display "PC-17 PASS: an unreadable Python version is reported as such and does n
 // ================================================================
 // PC-18 -- packaging missing: one pip install, then a warning
 // ================================================================
+// WP-29 P0.19: the linked Python is inspected first (DETECT), and pip runs
+// c(python_exec), not sys.executable (N2), with -P and its fixed flags (N3).
 global PC_SB_SPEC `"{"block": ["packaging"]}"'
-global PC_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "packaging"]]"'
+python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "packaging"]])
 _pc_setup
 local rc = r(rc)
 local match = r(match)
@@ -685,24 +757,31 @@ display "PC-18 PASS: without packaging, pip is asked for it once, versions are u
 // PC-19 -- bokeh missing and not installable: the minimum reaches pip,
 //          --user is tried once, and the run stops there
 // ================================================================
+// WP-29 P0.19: DETECT first, pip runs c(python_exec) with its flags, and
+// the manual line is the shlex oracle (the bare `python -m pip install
+// bokeh>=3.8' a shell runs as an unpinned install writing a file =3.8).
 global PC_SB_SPEC `"{"block": ["bokeh"]}"'
-global PC_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "bokeh>=3.8"], ["PYTHON", "-m", "pip", "install", "--user", "bokeh>=3.8"]]"'
+python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "--user", "bokeh>=3.8"]])
+python: _pep_oracle("pc19want", "-m", "pip", "install", "bokeh>=3.8")
 _pc_setup
 local rc = r(rc)
 local match = r(match)
+mata: st_local("pc19hint", strofreal(st_global("r(hint_cmd)") == st_local("pc19want")))
 if `match' != 1 {
     // _pc_setup leaves what the sandbox recorded in $PC_SB_WHY.
     mata: st_global("PC_WHY", st_global("PC_SB_WHY"))
     _pc_fail PC-19
 }
 assert `rc' == 198
+assert `pc19hint' == 1
 foreach p in "bokeh ............. missing" "retrying with --user..." ///
     "Failed to install bokeh. Please install manually:" ///
-    "python -m pip install bokeh>=3.8" ///
     "Unmet:  bokeh (could not install)" {
     _pc_said "`p'"
     assert r(found) == 1
 }
+_pc_said `"`pc19want'"'
+assert r(found) == 1
 _pc_said "numpy ............."
 assert r(found) == 0
 display "PC-19 PASS: a bokeh pip cannot install is asked for as bokeh>=3.8, retried with --user, and stops the run"
@@ -711,8 +790,9 @@ display "PC-19 PASS: a bokeh pip cannot install is asked for as bokeh>=3.8, retr
 // ================================================================
 // PC-20 -- bokeh missing and installed: one pip run, no retry
 // ================================================================
+// WP-29 P0.19: DETECT first, then pip with c(python_exec) and its flags.
 global PC_SB_SPEC `"{"block": ["bokeh"], "unblock_on_install": ["bokeh"]}"'
-global PC_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "bokeh>=3.8"]]"'
+python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8"]])
 _pc_setup
 local rc = r(rc)
 local match = r(match)
@@ -732,15 +812,20 @@ display "PC-20 PASS: a bokeh that installs is installed once, never retried, and
 // ================================================================
 // PC-21 -- bokeh below its minimum is reported, not upgraded
 // ================================================================
+// WP-29 P0.19: the below verdict asks whether the Python is managed
+// (DETECT; N4), and the upgrade line is the shlex oracle.
 global PC_SB_SPEC `"{"fake": [["bokeh", "2.4.3"]]}"'
-global PC_SB_EXPECT "[]"
+python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"]])
 _pc_setup
 local rc = r(rc)
 local match = r(match)
-assert `match' == 1
+if `match' != 1 {
+    mata: st_global("PC_WHY", st_global("PC_SB_WHY"))
+    _pc_fail PC-21
+}
 assert `rc' == 198
 // Q27: the upgrade line names the interpreter Stata is linked to.
-local pc21wantcmd `"`c(python_exec)' -m pip install 'bokeh>=3.8'"'
+python: _pep_oracle("pc21wantcmd", "-m", "pip", "install", "bokeh>=3.8")
 foreach p in "2.4.3 (below minimum 3.8)" ///
     "Unmet:  bokeh 2.4.3 (needs 3.8)" {
     _pc_said "`p'"
@@ -755,6 +840,7 @@ display "PC-21 PASS: bokeh 2.4.3 is reported below 3.8 with the c(python_exec) u
 // PC-22 -- a hostile installed version is not shown, and not SMCL
 // ================================================================
 global PC_SB_SPEC `"{"fake": [["bokeh", "3.9{bf:PCVERMARK}x"]]}"'
+global PC_SB_EXPECT "[]"
 _pc_setup
 local rc = r(rc)
 assert `rc' == 0
@@ -828,6 +914,313 @@ foreach p in "dash_render.py ..... OK" "schemes ............ unreachable" ///
     assert r(found) == 1
 }
 display "PC-26 PASS: a renderer that falls back for every scheme fails the run"
+
+
+// ================================================================
+// PEP-01..16 -- dash_setup on externally managed (PEP 668) Pythons, and
+//               dash_setup, venv(path) (WP-29 P0.19, GAPS2 H7, N1-N4)
+// ================================================================
+// Each case runs dash_setup in the sandbox, which answers dash_setup_lib's
+// DETECT probe (the linked Python: ordinary, externally managed, in a venv,
+// without pip), its venv and VERIFY steps, and replays pip's measured
+// refusals (test/fixtures/pip_refusals.json); nothing is installed.  Each
+// case reports and the run goes on; the ids that failed are listed after
+// the last one.  DETECT is [PYTHON_EXEC, "-c", <code>]; "F" stands for
+// pip's three fixed flags (_pep_vec).
+global PEP_FAILED ""
+global PC_SB_ADO ""
+global PC_SSC_RC 0
+local pep_tmp "`c(tmpdir)'"
+
+// ---- PEP-01: a managed Python, bokeh missing: no pip, the PEP 668 way ----
+capture noisily {
+    global PC_SB_SPEC `"{"block": ["bokeh"], "env": {"managed": true}}"'
+    global PC_SB_CMD ""
+    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"]])
+    _pc_setup
+    local rc = r(rc)
+    local m = r(match)
+    local em "`r(externally_managed)'"
+    mata: st_local("hint", st_global("r(hint_cmd)"))
+    _pep_match `m'
+    assert `rc' == 198
+    assert "`em'" == "1"
+    mata: st_local("hintok", strofreal(st_local("hint") == "dash_setup, venv(" + char(34) + "~/.dash/venv" + char(34) + ")"))
+    assert `hintok' == 1
+    foreach p in "This Python is externally managed (PEP 668):" ///
+        "bokeh (externally managed Python)" {
+        _pc_said "`p'"
+        assert r(found) == 1
+    }
+    _pc_said "break-system-packages"
+    assert r(found) == 0
+    display "PEP-01 PASS: on a managed Python a missing bokeh starts no pip, names PEP 668 and suggests venv(), r(198)"
+}
+if _rc _pep_fail PEP-01 `=_rc'
+
+// ---- PEP-02: a managed Python, only packaging missing: a warning, rc 0 ----
+capture noisily {
+    global PC_SB_SPEC `"{"block": ["packaging", "packaging.version"], "env": {"managed": true}}"'
+    global PC_SB_CMD ""
+    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"]])
+    _pc_setup
+    local rc = r(rc)
+    _pep_match `r(match)'
+    assert `rc' == 0
+    _pc_said "packaging (version checks approximate)"
+    assert r(found) == 1
+    _pc_said "break-system-packages"
+    assert r(found) == 0
+    display "PEP-02 PASS: on a managed Python a missing packaging alone starts no pip and is a warning, rc 0"
+}
+if _rc _pep_fail PEP-02 `=_rc'
+
+// ---- PEP-03: pip itself refuses (PEP 668): no --user retry, pip's
+//      advice to override is not shown ----
+capture noisily {
+    global PC_SB_SPEC `"{"block": ["bokeh"], "pip": {"rc": 1, "stderr": "externally_managed"}}"'
+    global PC_SB_CMD ""
+    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8"]])
+    _pc_setup
+    local rc = r(rc)
+    _pep_match `r(match)'
+    assert `rc' == 198
+    foreach p in "error: externally-managed-environment" ///
+        "This Python is externally managed (PEP 668):" {
+        _pc_said "`p'"
+        assert r(found) == 1
+    }
+    foreach p in "break-system-packages" "retrying with --user" {
+        _pc_said "`p'"
+        assert r(found) == 0
+    }
+    display "PEP-03 PASS: a PEP 668 refusal from pip is not retried with --user and shows dash's guidance, not pip's override, r(198)"
+}
+if _rc _pep_fail PEP-03 `=_rc'
+
+// ---- PEP-04: a Python without pip: the ensurepip line, no pip ----
+capture noisily {
+    global PC_SB_SPEC `"{"block": ["bokeh"], "env": {"pip": false}}"'
+    global PC_SB_CMD ""
+    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"]])
+    python: _pep_oracle("want", "-m", "ensurepip", "--upgrade")
+    _pc_setup
+    local rc = r(rc)
+    mata: st_local("hint", st_global("r(hint_cmd)"))
+    _pep_match `r(match)'
+    assert `rc' == 198
+    mata: st_local("hintok", strofreal(st_local("hint") == st_local("want")))
+    assert `hintok' == 1
+    _pc_said "This Python has no pip:"
+    assert r(found) == 1
+    display "PEP-04 PASS: a Python without pip is not asked to run it, and the ensurepip line names c(python_exec), r(198)"
+}
+if _rc _pep_fail PEP-04 `=_rc'
+
+// ---- PEP-05: a venv-linked Python: pip runs c(python_exec), no --user ----
+capture noisily {
+    global PC_SB_SPEC `"{"block": ["bokeh"], "env": {"in_venv": true}}"'
+    global PC_SB_CMD ""
+    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8"]])
+    _pc_setup
+    local rc = r(rc)
+    _pep_match `r(match)'
+    assert `rc' == 198
+    _pc_said "retrying with --user"
+    assert r(found) == 0
+    display "PEP-05 PASS: in a venv pip runs the linked interpreter and is never retried with --user, r(198)"
+}
+if _rc _pep_fail PEP-05 `=_rc'
+
+// ---- PEP-06: a --user install is found in the same run ----
+capture noisily {
+    global PC_SB_SPEC `"{"block": ["bokeh"], "user_site_gate": "bokeh"}"'
+    global PC_SB_CMD ""
+    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "--user", "bokeh>=3.8"]])
+    _pc_setup
+    local rc = r(rc)
+    _pep_match `r(match)'
+    assert `rc' == 0
+    _pc_said "bokeh ............. OK"
+    assert r(found) == 1
+    display "PEP-06 PASS: a package --user installed is added to sys.path and imports in the same run, rc 0"
+}
+if _rc _pep_fail PEP-06 `=_rc'
+
+// ---- PEP-07: how pip is started: a private, removed directory, no
+//      PYTHONPATH, PEP 668 forced on, no --user from config, no bytecode,
+//      umask 022 ----
+capture noisily {
+    global PC_SB_SPEC `"{"block": ["bokeh"], "unblock_on_install": ["bokeh"], "pythonpath": "/dash/hostile/pythonpath"}"'
+    global PC_SB_CMD ""
+    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8"]])
+    _pc_setup
+    local rc = r(rc)
+    local m = r(match)
+    foreach k in cwd cwdgone pp bsp puser dwb umask {
+        local p_`k' "`r(pip_`k')'"
+    }
+    display as text "  PEP-07: cwd [`p_cwd'] gone [`p_cwdgone'] PYTHONPATH [`p_pp'] BSP [`p_bsp'] PIP_USER [`p_puser'] DWB [`p_dwb'] umask [`p_umask']"
+    _pep_match `m'
+    assert `rc' == 0
+    assert `"`p_cwd'"' != ""
+    assert `"`p_cwd'"' != `"`c(pwd)'"'
+    assert "`p_cwdgone'" == "1"
+    assert "`p_pp'" == "0"
+    assert "`p_bsp'" == "0"
+    assert "`p_puser'" == "0"
+    assert "`p_dwb'" == "1"
+    assert "`p_umask'" == "18"
+    display "PEP-07 PASS: pip runs from a private directory it removes, without PYTHONPATH, with PEP 668 forced on, umask 022"
+}
+if _rc _pep_fail PEP-07 `=_rc'
+
+// ---- PEP-08: dash_setup, venv(): created, installed, verified, linked by
+//      the printed line ----
+capture noisily {
+    local p08 "`pep_tmp'pep08 dir"
+    python: import shutil, sfi; shutil.rmtree(sfi.Macro.getLocal("p08"), True)
+    mata: mkdir(st_local("p08"))
+    mata: st_global("PC_SB_CMD", "dash_setup, venv(" + char(34) + st_local("p08") + "/venv" + char(34) + ")")
+    global PC_SB_SPEC `"{"pip": {"rc": 0}}"'
+    python: import os, sfi; _pep_a = os.path.join(os.path.realpath(sfi.Macro.getLocal("p08")), "venv"); _pep_py = os.path.join(_pep_a, "bin", "python"); _pep_r = os.path.normpath(os.path.join(sfi.SFIToolkit.macroExpand(chr(96) + "c(pwd)'"), "..", "dash_render.py")); sfi.Macro.setLocal("a08", _pep_a); sfi.Macro.setLocal("py08", _pep_py)
+    python: _pep_vec([["PYTHON_EXEC", "-P", "-m", "venv", _pep_a], [_pep_py, "-c", "<ANY>"], [_pep_py, "-P", "-m", "pip", "install", "F", "packaging", "bokeh>=3.8", "numpy>=2.3", "pandas>=2.3"], [_pep_py, "-P", "-c", "<ANY>", "<ANY>", _pep_r]])
+    _pc_setup
+    local rc = r(rc)
+    local m = r(match)
+    mata: st_local("vpy", st_global("r(venv_python)"))
+    mata: st_local("hint", st_global("r(hint_cmd)"))
+    local vl "`r(venv_linked)'"
+    python: import shutil, sfi; shutil.rmtree(sfi.Macro.getLocal("p08"), True)
+    _pep_match `m'
+    assert `rc' == 0
+    mata: st_local("vpyok", strofreal(st_local("vpy") == st_local("py08")))
+    mata: st_local("hintok", strofreal(st_local("hint") == "python set exec " + char(34) + st_local("py08") + char(34) + ", permanently"))
+    assert `vpyok' == 1
+    assert `hintok' == 1
+    assert "`vl'" == "0"
+    _pc_said "dash_setup complete for the environment named above."
+    assert r(found) == 1
+    _pc_said "All dependencies are satisfied"
+    assert r(found) == 0
+    display "PEP-08 PASS: venv() creates, installs into and verifies the environment and returns its python set exec line, rc 0"
+}
+if _rc _pep_fail PEP-08 `=_rc'
+
+// ---- PEP-09..12: venv() paths refused before anything runs ----
+// 09 a directory that is neither empty nor a venv; 10 a venv others can
+// write; 11 a path holding a double quote (built in Mata: it reaches the
+// option as typed, M9); 12 a symbolic link.
+python: import os, sfi; _pep_t = sfi.Macro.getLocal("pep_tmp"); os.makedirs(os.path.join(_pep_t, "pep09"), exist_ok=True); open(os.path.join(_pep_t, "pep09", "x"), "w").close()
+python: import os, sfi; _pep_t = sfi.Macro.getLocal("pep_tmp"); os.makedirs(os.path.join(_pep_t, "pep10", "bin"), exist_ok=True); open(os.path.join(_pep_t, "pep10", "pyvenv.cfg"), "w").close(); os.chmod(os.path.join(_pep_t, "pep10"), 0o775)
+python: import os, sfi; _pep_t = sfi.Macro.getLocal("pep_tmp"); os.makedirs(os.path.join(_pep_t, "pep12real"), exist_ok=True); (os.path.lexists(os.path.join(_pep_t, "pep12link")) or os.symlink(os.path.join(_pep_t, "pep12real"), os.path.join(_pep_t, "pep12link")))
+local pep_n 8
+foreach pair in "pep09|is not empty and is not a virtual environment" ///
+        "pep10|can be written by other users" ///
+        "pep11|holds a character dash_setup will not put in a command" ///
+        "pep12link|is a symbolic link" {
+    local ++pep_n
+    local pid = "PEP-" + string(`pep_n', "%02.0f")
+    gettoken dir why : pair, parse("|")
+    local why = substr("`why'", 2, .)
+    capture noisily {
+        global PC_SB_SPEC "{}"
+        global PC_SB_EXPECT "[]"
+        if "`dir'" == "pep11" {
+            mata: st_global("PC_SB_CMD", "dash_setup, venv(" + char(96) + char(34) + st_local("pep_tmp") + "pep11" + char(34) + "x" + char(34) + char(39) + ")")
+        }
+        else {
+            mata: st_global("PC_SB_CMD", "dash_setup, venv(" + char(34) + st_local("pep_tmp") + st_local("dir") + char(34) + ")")
+        }
+        _pc_setup
+        local rc = r(rc)
+        _pep_match `r(match)'
+        assert `rc' == 198
+        _pc_said "`why'"
+        assert r(found) == 1
+        _pc_said "venv() (path refused)"
+        assert r(found) == 1
+        display "`pid' PASS: venv() refuses a path that `why', before anything runs, r(198)"
+    }
+    if _rc _pep_fail `pid' `=_rc'
+}
+python: import shutil, os, sfi; _pep_t = sfi.Macro.getLocal("pep_tmp"); [shutil.rmtree(os.path.join(_pep_t, d), True) for d in ("pep09", "pep10", "pep12real")]; os.path.lexists(os.path.join(_pep_t, "pep12link")) and os.remove(os.path.join(_pep_t, "pep12link"))
+
+// ---- PEP-13: venv() on a linked Python below the floor starts nothing ----
+capture noisily {
+    global PC_SB_SPEC `"{"pyversion": "3.12.11 (dash test sandbox)"}"'
+    global PC_SB_EXPECT "[]"
+    mata: st_global("PC_SB_CMD", "dash_setup, venv(" + char(34) + st_local("pep_tmp") + "pep13" + char(34) + ")")
+    _pc_setup
+    local rc = r(rc)
+    _pep_match `r(match)'
+    assert `rc' == 198
+    _pc_said "venv() ............ not started: Python 3.12.11 is below 3.13."
+    assert r(found) == 1
+    capture confirm file "`pep_tmp'pep13/pyvenv.cfg"
+    assert _rc != 0
+    display "PEP-13 PASS: venv() on Python 3.12.11 starts no process, r(198)"
+}
+if _rc _pep_fail PEP-13 `=_rc'
+
+// ---- PEP-14: a reused venv whose Python is below the floor ----
+capture noisily {
+    python: import os, sfi; _pep_a = os.path.join(os.path.realpath(sfi.Macro.getLocal("pep_tmp")), "pep14"); os.makedirs(os.path.join(_pep_a, "bin"), exist_ok=True); open(os.path.join(_pep_a, "pyvenv.cfg"), "w").close(); open(os.path.join(_pep_a, "bin", "python"), "w").close(); os.chmod(os.path.join(_pep_a, "bin", "python"), 0o755); os.chmod(os.path.join(_pep_a, "bin"), 0o755); os.chmod(_pep_a, 0o755)
+    global PC_SB_SPEC `"{"venv_env": {"version": [3, 12, 1]}}"'
+    python: _pep_vec([[os.path.join(_pep_a, "bin", "python"), "-c", "<ANY>"]])
+    mata: st_global("PC_SB_CMD", "dash_setup, venv(" + char(34) + st_local("pep_tmp") + "pep14" + char(34) + ")")
+    _pc_setup
+    local rc = r(rc)
+    local m = r(match)
+    python: import shutil; shutil.rmtree(_pep_a, True)
+    _pep_match `m'
+    assert `rc' == 198
+    _pc_said "The environment's Python 3.12.1 is below 3.13."
+    assert r(found) == 1
+    display "PEP-14 PASS: a reused venv on Python 3.12.1 is refused before pip runs, r(198)"
+}
+if _rc _pep_fail PEP-14 `=_rc'
+
+// ---- PEP-15: below the minimum on a managed Python: no upgrade line ----
+capture noisily {
+    global PC_SB_SPEC `"{"fake": [["bokeh", "2.4.3"]], "env": {"managed": true}}"'
+    global PC_SB_CMD ""
+    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"]])
+    _pc_setup
+    local rc = r(rc)
+    _pep_match `r(match)'
+    assert `rc' == 198
+    foreach p in "This Python is externally managed (PEP 668):" ///
+        "Unmet:  bokeh 2.4.3 (needs 3.8)" {
+        _pc_said "`p'"
+        assert r(found) == 1
+    }
+    _pc_said "To upgrade:"
+    assert r(found) == 0
+    display "PEP-15 PASS: bokeh 2.4.3 on a managed Python gets the venv guidance, not an upgrade pip would refuse, r(198)"
+}
+if _rc _pep_fail PEP-15 `=_rc'
+
+// ---- PEP-16: dash_setup_lib.py not reachable ----
+capture noisily {
+    global PC_SB_SPEC `"{"block": ["bokeh"]}"'
+    global PC_SB_CMD ""
+    global PC_SB_EXPECT "[]"
+    mata: st_global("PC_SB_ADO", st_local("pc_ado_nodash"))
+    _pc_setup
+    local rc = r(rc)
+    global PC_SB_ADO ""
+    _pep_match `r(match)'
+    assert `rc' == 198
+    foreach p in "dash_setup_lib.py .. not found" "dash's own files (dash_setup_lib.py)" {
+        _pc_said "`p'"
+        assert r(found) == 1
+    }
+    display "PEP-16 PASS: without dash_setup_lib.py nothing is started and the run fails naming dash's own files"
+}
+if _rc _pep_fail PEP-16 `=_rc'
+global PC_SB_CMD ""
+global PC_SB_ADO ""
 
 global PC_SB_ADO ""
 capture program drop ssc
@@ -986,10 +1379,18 @@ dash clear
 display "PC-31 PASS: an abbreviated variable, in a qualifier or its string literal, is read as the variable it names, on both routes, and a date's format comes back"
 
 set linesize `ls0'
-macro drop PC_SB_SPEC PC_SB_ADO PC_SSC_RC PC_SB_EXPECT PC_SSC_CALLS PC_SB_WHY PC_SETUP_LOG PC_WHY
+local pep_failed `"$PEP_FAILED"'
+macro drop PC_SB_SPEC PC_SB_ADO PC_SSC_RC PC_SB_EXPECT PC_SSC_CALLS PC_SB_WHY PC_SETUP_LOG PC_WHY PC_SB_CMD PEP_FAILED
 capture program drop _pc_fail
+capture program drop _pep_fail
+capture program drop _pep_match
 capture program drop _pc_setup
 capture program drop _pc_said
+
+if `"`pep_failed'"' != "" {
+    display as error "PEP FAILED: `pep_failed'"
+    exit 9
+}
 
 display ""
 display "test_program_coverage.cscript: ALL CHECKS PASSED"

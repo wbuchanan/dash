@@ -63,11 +63,9 @@ _ALLOWED_INLINE_PY_MACROS = {
         "port_int": "validated ^[0-9]+$ and range 1024-65535 in _dash_serve_spec",
         "timeout": "validated ^[0-9]+$ in _dash_serve_spec",
     },
-    "dash_setup.ado": {
-        "_spec": "built only from the fixed pkg_list and min_* constants "
-                 "in this file (e.g. 'bokeh>=3.0'), never from user or "
-                 "package-supplied text",
-    },
+    # dash_setup.ado has no entry: its last in-string macro, `_spec' in the
+    # inline pip call, went with that call (WP-29 P0.19) -- the spec now
+    # reaches Python by sfi.Macro.getLocal in dash_setup_lib.stata_pip.
 }
 
 
@@ -520,7 +518,8 @@ class TestTheShippedAdoFilesFollowTheSameRule:
         bad = []
         commands = _python_command_sources(src)
         # A reader that finds no python: command checks nothing and passes.
-        # Measured 24sep2026: 7 in dash.ado, 12 in dash_setup.ado.
+        # Measured 01oct2026 (WP-29 P0.19): 23 in dash.ado, 21 in
+        # dash_setup.ado.
         assert commands, f"{base}: no python: command was found to check"
         found = set()
         for start, py in commands:
