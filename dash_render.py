@@ -1174,7 +1174,9 @@ def _dash_embedded_cells(spec, rows, columns, limits):
     (_DASH_COMPUTED_ONLY_TYPES) that no filter, link(), csv or hover()
     reaches draws its own bounded output (``extra``) and its variables are
     not counted as ``row_cols``; every other graph, every KPI and every
-    filter variable counts its columns.  ``rows`` and ``columns`` are
+    filter variable counts its columns.  hover()'s own variables count
+    where a layer of their graph can show them (``_dash_hover_shown``,
+    WP-29 P0.10, design review A1); under csv every column counts.  ``rows`` and ``columns`` are
     plain numbers/names -- no frame is built here, which is how the
     renderer calls this with ``self.df.shape[0]`` and
     ``list(self.df.columns)``.
@@ -1228,6 +1230,11 @@ def _dash_embedded_cells(spec, rows, columns, limits):
             _add(name)
         for qc in _dash_graph_qual_cols(g):
             _add(qc)
+        # WP-29 P0.10: hover()'s variables are exported; the saved page
+        # holds them where a layer of this graph can show them.
+        if _dash_hover_shown(g):
+            for name in hover.split():
+                _add(name)
 
     for k in kpis:
         _add(k.get("var"))
@@ -1238,6 +1245,64 @@ def _dash_embedded_cells(spec, rows, columns, limits):
         _add(f.get("varname"))
 
     return row_cols, extra
+
+
+def _dash_hover_shown(g):
+    """Whether some layer of graph dict *g* can show hover()'s variables
+    (WP-29 P0.10, design review A1): True when *g* has no plot dicts, or
+    some plot whose type -- read exactly, as dash_parse.mata's
+    _dash_spec_types_in and _dash_graph_computed_cells read it -- is not
+    a computed-only or literal type (``_DASH_COMPUTED_ONLY_TYPES |
+    _DASH_LITERAL_TYPES``, dash.ado's _pt_univar, _pt_onefit and
+    _pt_literal).  Such a graph draws no observation, so the saved page
+    holds none of hover()'s rows for it."""
+    hidden = _DASH_COMPUTED_ONLY_TYPES | _DASH_LITERAL_TYPES
+    plots = [p for p in (g or {}).get("plots") or [] if isinstance(p, dict)]
+    if not plots:
+        return True
+    return any(str(p.get("type", "")) not in hidden for p in plots)
+
+
+def _dash_hover_unembedded(spec):
+    """The names only an unshowing hover() gives (WP-29 P0.10): the
+    hover() variables of graphs no layer of which can show them
+    (``_dash_hover_shown``), less every name the saved page holds for
+    another reason -- a plot's variable or option column, a by()
+    variable, a showing graph's hover(), a KPI's variable or a filter's.
+    Empty under csv, which puts every column in the download.  The Python
+    mirror of dash.ado's _hv_hide less _byte_vars: the saved bytes
+    re-check leaves these out, as Stata's count does."""
+    spec = spec or {}
+    build = spec.get("build_options", {}) or {}
+    if _dash_csv_wanted(build):
+        return set()
+    hidden, other = set(), set()
+    for g in spec.get("graphs", []) or []:
+        if not isinstance(g, dict):
+            continue
+        go = g.get("graph_options") or {}
+        names = str(go.get("hover") or "").split()
+        if _dash_hover_shown(g):
+            other.update(names)
+        else:
+            hidden.update(names)
+        for p in g.get("plots") or []:
+            if not isinstance(p, dict):
+                continue
+            for key in DashRenderer._VAR_KEYS:
+                v = p.get(key)
+                if v:
+                    other.add(v)
+            other.update(_dash_option_columns(p.get("options") or {}))
+        other.update(_dash_parse_by(str(go.get("by") or "").strip(),
+                                    warn=False)[0].split())
+    for k in spec.get("kpis", []) or []:
+        if isinstance(k, dict) and k.get("var"):
+            other.add(k.get("var"))
+    for f in _dash_parse_filter_raw(build.get("filter", ""), warn=False):
+        if f.get("varname"):
+            other.add(f.get("varname"))
+    return hidden - other
 
 
 def _dash_text_bytes(df, string_vars):
@@ -24986,6 +25051,47 @@ def _dash_note_hover_unreached(gname, plots, hover_extra):
             stacklevel=3)
 
 
+def _dash_note_hover_missing(gname, hover_extra, columns):
+    """Name the hover() variables a graph names that the data does not
+    hold, once per graph per render, in both modes (WP-29 P0.10).
+
+    dash.ado exports every variable hover() names and refuses one that is
+    not in memory, so from Stata this cannot fire; a spec handed to a
+    renderer another way could name one, and both renderers used to drop
+    it from the tooltip in silence.  At most three names are shown, each
+    through ``_dash_display`` (printable, at most 80 characters), and the
+    rest counted, so the note is one bounded line whatever the spec holds.
+
+    The served app copies this function by source.
+
+    Args:
+        gname:       The graph's name, "" for none.
+        hover_extra: The names hover() gives, as a list.
+        columns:     The data's column names.
+    """
+    if not hover_extra:
+        return
+    have = set(columns or ())
+    missing, seen = [], set()
+    for n in hover_extra:
+        if n in have or n in seen:
+            continue
+        seen.add(n)
+        missing.append(n)
+    if not missing:
+        return
+    where = (f"hover() of graph {_dash_display(gname)!r}" if gname
+             else "hover()")
+    shown = ", ".join(repr(_dash_display(n)) for n in missing[:3])
+    if len(missing) > 3:
+        shown += f" and {len(missing) - 3:,} more"
+    _dash_warn_once(
+        ("hover-missing", str(gname)),
+        f"dash: {where} names variable(s) not in the data -- {shown}; "
+        f"the tooltip leaves them out.",
+        stacklevel=3)
+
+
 def _dash_glyph_dispatch(mapper):
     """The one mapping from plot-type name to GlyphMapper method.
 
@@ -25720,9 +25826,14 @@ class DashRenderer:
         _dash_refuse_oversized(self.df.shape[0], len(self._embedded_row_cols),
                                self.limits, "dashboard",
                                extra=self._embedded_extra)
-        _dash_refuse_overbytes(self.df, self.string_vars, self.limits,
-                               "dashboard",
-                               getattr(self, "_data_file_bytes", None))
+        # WP-29 P0.10 (review A1(b)): a hover() string no layer of its
+        # graph can show is exported but not counted, as dash.ado's
+        # _byte_vars leaves it out.
+        _dash_refuse_overbytes(
+            self.df,
+            set(self.string_vars) - _dash_hover_unembedded(self.master_spec),
+            self.limits, "dashboard",
+            getattr(self, "_data_file_bytes", None))
         # A string plot variable is refused here too (GAPS2 G2): dash.ado
         # refuses it before export, and this is for a spec that reached
         # the renderer another way.
@@ -27005,6 +27116,11 @@ class DashRenderer:
         _dash_note_hover_unreached(
             graph_opts.get("name", "") or graph_spec.get("name", ""),
             plots, _hover_extra_str.split() if _hover_extra_str else [])
+        # And a hover() name the data does not hold (WP-29 P0.10).
+        _dash_note_hover_missing(
+            graph_opts.get("name", "") or graph_spec.get("name", ""),
+            _hover_extra_str.split() if _hover_extra_str else [],
+            list(self.df.columns))
 
         return fig
 
@@ -29285,6 +29401,8 @@ class ServerAppBuilder:
                          "_dash_csv_wanted", "_dash_json_value",
                          "_dash_csv_text_value", "_dash_csv_meta",
                          "_dash_csv_payload", "_dash_frame_filter_mask",
+                         # hover() names absent from the data (WP-29 P0.10).
+                         "_dash_note_hover_missing",
                          "_stata_dates_to_datetime",
                          # The KPI card's format resolution and rendering,
                          # and the percentile reader _kpi_statistic and the
@@ -31381,6 +31499,11 @@ class ServerAppBuilder:
             "        _dash_note_hover_unreached(",
             "            go.get('name', '') or g.get('name', '') or gname, plots,",
             "            _hv.split() if _hv else [])",
+            "        # hover() names the data does not hold, once per graph, in the",
+            "        # saved renderer's words (WP-29 P0.10).",
+            "        _dash_note_hover_missing(",
+            "            go.get('name', '') or g.get('name', '') or gname,",
+            "            _hv.split() if _hv else [], list(df.columns))",
             '',
             "        if _fac_label is not None:",
             "            # The panel title is the figure's OWN title text -- the",

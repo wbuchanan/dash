@@ -1075,15 +1075,14 @@ if inlist("`only'", "", "S14") {
     _gt_done AL-18 "xlabel(1/5): numbers in both"
 
     dash clear
-    // rep78 is plotted, so it is exported: a hover()-only variable is not
-    // exported on the one-line route (BUGS.md, a residual of G16).
-    capture noisily dash scatter mpg rep78, hover(rep78) saving("`d'/al19.html") replace
+    // WP-29 P0.10: rep78 is named only in hover(); it is exported.
+    capture noisily dash scatter mpg weight, hover(rep78) saving("`d'/al19.html") replace
     _gt_expect AL-19 "(_rc == 0)" "dash rc"
     cert_file_has "`d'/al19.html", needle("__dash_hover_rep78")
     _gt_expect AL-19 "(r(found) == 1)" "the tooltip does not read __dash_hover_rep78"
     cert_file_has "`d'/al19.html", needle("Poor")
     _gt_expect AL-19 "(r(found) == 1)" "the page does not carry Poor"
-    _gt_done AL-19 "hover(rep78) shows its value labels"
+    _gt_done AL-19 "hover(rep78), a variable no layer plots, shows its value labels"
 
     graph drop _all
     display as text "S14 end `c(current_time)'"

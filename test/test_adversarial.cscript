@@ -7,6 +7,7 @@
 *!         SV-01..SV-87 (WP-28 G2, generated region)
 *!         DL-01..DL-06 (WP-28 G3)
 *!         JO-31..JO-33 (WP-29 S02: sort() text, names, the reserved prefix)
+*!         HX-10..HX-25 (WP-29 P0.10)
 *!
 *! Usage:  do test/test_adversarial.cscript
 *!
@@ -3109,7 +3110,7 @@ _adv_p19_run `"dash build, saving("`dl3f'") replace nobrowser"'
 assert r(rc) == 134
 cert_file_has "`r(log)'", needle("dash: this dashboard would embed 74 values (74 observations x 1 variable), more than the 70 dash embeds.")
 assert r(found) == 1
-display "DL-03e PASS: hover() reaches the graph too; the hover variable itself is not exported and does not inflate the count"
+display "DL-03e PASS: hover() reaches the graph too; its hover() variable is exported, but no layer of h1 can show it, so it does not inflate the count"
 
 // DL-04: a KPI beside the untouched histogram always counts its own
 // variable, and h1's own bars still add their drawn cells beside it --
@@ -3164,6 +3165,393 @@ macro drop dash_max_cells
 capture dash clear
 restore
 * ==== end S08 ====
+
+* ==== WP-29 S06 P0.10: hover() export (HX-10..HX-25) ====
+// Every variable hover() names is exported (WP-29 P0.10); these are the
+// refusals and counts that follow.  A hover() variable dropped after
+// name() is r(111) at dash build, a registry hover() value that is not a
+// list of names r(198) with an 80-character echo, both before any file is
+// written; hover()'s variables count toward the limits where the page
+// holds them (a layer can show them, or csv, or a served app); a hostile
+// hover() value reaches the page only as data.  HX-20..HX-25 call the
+// Mata reader _dash_extract_hover_vars directly.
+preserve
+capture dash clear
+sysuse auto, clear
+label define alrep 1 "Poor" 2 "Fair" 3 "Average" 4 "Good" 5 "Excellent", replace
+label values rep78 alrep
+
+// HX-10: a hover() variable dropped after name() is refused at dash build,
+// saved and served, naming it, and nothing is written.
+dash scatter mpg weight, hover(rep78) name(g1)
+tempfile hx10
+local hx10f "`hx10'.html"
+local hx10p "`hx10'.py"
+drop rep78
+capture erase "`hx10f'"
+_adv_p19_run `"dash build, saving("`hx10f'") replace nobrowser"'
+assert r(rc) == 111
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("dash build: graph 'g1': hover(): variable rep78 not found")
+assert r(found) == 1
+capture confirm file "`hx10f'"
+assert _rc != 0
+capture erase "`hx10p'"
+_adv_p19_run `"dash build, server saving("`hx10p'") replace nobrowser"'
+assert r(rc) == 111
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("dash build: graph 'g1': hover(): variable rep78 not found")
+assert r(found) == 1
+capture confirm file "`hx10p'"
+assert _rc != 0
+sysuse auto, clear
+label define alrep 1 "Poor" 2 "Fair" 3 "Average" 4 "Good" 5 "Excellent", replace
+label values rep78 alrep
+display "HX-10 PASS: a hover() variable dropped after name() is r(111) at dash build, saved and served, and nothing is written"
+
+// HX-11: a registry hover() value that is not a list of names.
+mata: st_global("dash_json_g1", subinstr(st_global("dash_json_g1"), char(34)+"hover"+char(34)+":"+char(34)+"rep78", char(34)+"hover"+char(34)+":"+char(34)+"mpg;(", 1))
+tempfile hx11
+local hx11f "`hx11'.html"
+capture erase "`hx11f'"
+_adv_p19_run `"dash build, saving("`hx11f'") replace nobrowser"'
+assert r(rc) == 198
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("registry entry 'g1' holds a hover() value that is not a list of variable names (got: mpg;()")
+assert r(found) == 1
+capture confirm file "`hx11f'"
+assert _rc != 0
+display "HX-11 PASS: a hand-edited registry hover() value is r(198), echoed as text, and nothing is written"
+
+// HX-12: a 200-character word is echoed as its first 77 characters and
+// "...", and no line of the log holds more.
+dash clear
+dash scatter mpg weight, hover(rep78) name(g1)
+mata: st_global("dash_json_g1", subinstr(st_global("dash_json_g1"), char(34)+"hover"+char(34)+":"+char(34)+"rep78", char(34)+"hover"+char(34)+":"+char(34)+200*"a", 1))
+capture erase "`hx11f'"
+_adv_p19_run `"dash build, saving("`hx11f'") replace nobrowser"'
+assert r(rc) == 198
+local lg "`r(log)'"
+mata: st_local("hxneed", "(got: " + 77*"a" + "...)")
+cert_file_has "`lg'", needle("`hxneed'")
+assert r(found) == 1
+mata: st_numscalar("hx12", strpos(invtokens(cat(st_local("lg"))', " "), 78*"a") == 0)
+assert scalar(hx12) == 1
+capture confirm file "`hx11f'"
+assert _rc != 0
+display "HX-12 PASS: a 200-character hover() word is echoed in 80 characters (77 and ...), nothing longer"
+
+// HX-13: the one-line route's own refusals, for a spec handed to
+// _dash_render_immediate directly (registration refuses these first).
+// The JSON is given a saving() path, so a page written would show.
+dash clear
+dash scatter mpg weight, hover(rep78) name(g1)
+tempfile hx13
+local hx13f "`hx13'.html"
+local hx13l "`c(tmpdir)'dash_adv_hx13.log"
+mata: st_global("HX13_J", "{" + char(34) + "saving" + char(34) + ":" + char(34) + st_local("hx13f") + char(34) + "," + substr(subinstr(st_global("dash_json_g1"), char(34)+"hover"+char(34)+":"+char(34)+"rep78", char(34)+"hover"+char(34)+":"+char(34)+"mpg;(", 1), 2, .))
+capture erase "`hx13f'"
+capture log close _hx13
+quietly log using "`hx13l'", name(_hx13) text replace
+capture noisily _dash_render_immediate `"${HX13_J}"'
+local rc = _rc
+quietly log close _hx13
+assert `rc' == 198
+cert_file_has "`hx13l'", needle("dash: hover() must name variables (got: mpg;()")
+assert r(found) == 1
+capture confirm file "`hx13f'"
+assert _rc != 0
+mata: st_global("HX13_J", "{" + char(34) + "saving" + char(34) + ":" + char(34) + st_local("hx13f") + char(34) + "," + substr(subinstr(st_global("dash_json_g1"), char(34)+"hover"+char(34)+":"+char(34)+"rep78", char(34)+"hover"+char(34)+":"+char(34)+"rep", 1), 2, .))
+quietly log using "`hx13l'", name(_hx13) text replace
+capture noisily _dash_render_immediate `"${HX13_J}"'
+local rc = _rc
+quietly log close _hx13
+assert `rc' == 111
+cert_file_has "`hx13l'", needle("dash: hover(): variable rep not found")
+assert r(found) == 1
+capture confirm file "`hx13f'"
+assert _rc != 0
+capture erase "`hx13l'"
+macro drop HX13_J
+display "HX-13 PASS: the one-line route refuses a hover() word that is not a name (r(198)) or not a variable (r(111)) before writing"
+
+// HX-14: a served app counts every hover() variable.
+dash clear
+global dash_max_cells 200
+dash scatter mpg weight, hover(rep78 headroom trunk) name(g1)
+tempfile hx14
+local hx14p "`hx14'.py"
+capture erase "`hx14p'"
+_adv_p19_run `"dash build, server saving("`hx14p'") replace nobrowser"'
+assert r(rc) == 134
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("370 values (74 observations x 5 variables)")
+assert r(found) == 1
+cert_file_has "`lg'", needle("A served app embeds every observation of every variable it uses.")
+assert r(found) == 1
+capture confirm file "`hx14p'"
+assert _rc != 0
+display "HX-14 PASS: dash build, server counts hover(rep78 headroom trunk): 370 values (74 observations x 5 variables)"
+
+// HX-15: the one-line saved page counts them when a layer shows them.
+dash clear
+tempfile hx15
+local hx15f "`hx15'.html"
+capture erase "`hx15f'"
+_adv_p19_run `"dash scatter mpg weight, hover(rep78 headroom trunk) saving("`hx15f'") replace"'
+assert r(rc) == 134
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("370 values (74 observations x 5 variables)")
+assert r(found) == 1
+capture confirm file "`hx15f'"
+assert _rc != 0
+macro drop dash_max_cells
+display "HX-15 PASS: the one-line scatter counts its hover() variables: 370 values (74 observations x 5 variables)"
+
+// HX-16: a string hover() variable counts toward the bytes limit.
+global dash_max_bytes 100
+mata: st_local("hxb", strofreal(sum(strlen(st_sdata(., "make")))))
+local hxs : display %30.0fc `hxb'
+local hxs = strtrim("`hxs'")
+tempfile hx16
+local hx16f "`hx16'.html"
+capture erase "`hx16f'"
+_adv_p19_run `"dash scatter mpg weight, hover(make) saving("`hx16f'") replace"'
+assert r(rc) == 134
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("dash: this dashboard would embed `hxs' bytes of text (in 1 string variable), more than the 100 dash embeds.")
+assert r(found) == 1
+capture confirm file "`hx16f'"
+assert _rc != 0
+display "HX-16 PASS: hover(make) on a scatter counts make's `hxs' bytes of text against dash_max_bytes 100"
+
+// HX-17: no layer of a histogram can show hover()'s variable, so the
+// saved page leaves it out of its counts (review A1); a served app and
+// csv count it.
+dash clear
+tempfile hx17
+local hx17f "`hx17'.html"
+local hx17p "`hx17'.py"
+capture erase "`hx17f'"
+_adv_p19_run `"dash histogram price, bin(10) hover(make) saving("`hx17f'") replace"'
+assert r(rc) == 0
+confirm file "`hx17f'"
+dash histogram price, bin(10) hover(make) name(h1)
+capture erase "`hx17f'"
+_adv_p19_run `"dash build, saving("`hx17f'") replace nobrowser"'
+assert r(rc) == 0
+confirm file "`hx17f'"
+capture erase "`hx17p'"
+_adv_p19_run `"dash build, server saving("`hx17p'") replace nobrowser"'
+assert r(rc) == 134
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("bytes of text (in 1 string variable), more than the 100 dash embeds.")
+assert r(found) == 1
+capture confirm file "`hx17p'"
+assert _rc != 0
+macro drop dash_max_bytes
+global dash_max_cells 70
+dash clear
+dash histogram price, bin(10) hover(foreign) name(h1)
+capture erase "`hx17p'"
+_adv_p19_run `"dash build, server saving("`hx17p'") replace nobrowser"'
+assert r(rc) == 134
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("148 values (74 observations x 2 variables)")
+assert r(found) == 1
+cert_file_has "`lg'", needle("A served app embeds every observation of every variable it uses.")
+assert r(found) == 1
+capture erase "`hx17f'"
+_adv_p19_run `"dash build, saving("`hx17f'") replace nobrowser csv"'
+assert r(rc) == 134
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("148 values (74 observations x 2 variables)")
+assert r(found) == 1
+capture erase "`hx17f'"
+capture erase "`hx17p'"
+display "HX-17 PASS: a histogram's hover() variable does not count saved (one-line, build); it counts served (bytes; 148 = 74 x 2) and under csv (148)"
+
+// HX-18: a literal-only graph exports hover()'s variable but counts no
+// cell of it, and still says hover() does not reach it.
+dash clear
+global dash_max_cells 30
+tempfile hx18
+local hx18f "`hx18'.html"
+capture erase "`hx18f'"
+_adv_p19_run `"dash scatteri 1 2 3 4, hover(mpg) saving("`hx18f'") replace"'
+assert r(rc) == 0
+local lg "`r(log)'"
+confirm file "`hx18f'"
+cert_file_has "`lg'", needle("dash: hover() does not reach plot 1 (scatteri)")
+assert r(found) == 1
+capture erase "`hx18f'"
+macro drop dash_max_cells
+display "HX-18 PASS: scatteri with hover(mpg) builds at dash_max_cells 30 and names the layer hover() does not reach"
+
+// HX-19: a hostile string in a hover() column is data, never markup or a
+// field marked safe, saved and served.
+dash clear
+replace make = "<img src=x onerror=alert(1)>" in 2
+tempfile hx19
+local hx19f "`hx19'.html"
+local hx19p "`hx19'.py"
+capture erase "`hx19f'"
+capture erase "`hx19p'"
+_adv_p19_run `"dash scatter mpg weight, hover(make) saving("`hx19f'") replace"'
+assert r(rc) == 0
+dash scatter mpg weight, hover(make) name(g1)
+_adv_p19_run `"dash build, server saving("`hx19p'") replace nobrowser"'
+assert r(rc) == 0
+global HX19_F "`hx19f'"
+global HX19_P "`hx19p'"
+python:
+import json as _hx_json
+import re as _hx_re
+import warnings as _hx_w
+from sfi import Macro as _hx_M
+
+_hx_bad = []
+_hx_evil = "<img src=x onerror=alert(1)>"
+_hx_safe = chr(123) + "safe" + chr(125)
+_hx_mk = "@" + chr(123) + "make" + chr(125)
+
+
+def _hx_walk(o, tips, cols):
+    if isinstance(o, dict):
+        if o.get("type") == "map" and isinstance(o.get("entries"), list):
+            for e in o["entries"]:
+                if (isinstance(e, list) and len(e) == 2
+                        and isinstance(e[0], str)
+                        and isinstance(e[1], list) and e[0] not in cols):
+                    cols[e[0]] = e[1]
+        for key, v in o.items():
+            if key == "tooltips" and isinstance(v, list):
+                for row in v:
+                    if isinstance(row, list) and len(row) == 2:
+                        tips.append((str(row[0]), str(row[1])))
+            _hx_walk(v, tips, cols)
+    elif isinstance(o, list):
+        for x in o:
+            _hx_walk(x, tips, cols)
+
+
+with open(_hx_M.getGlobal("HX19_F"), encoding="utf-8") as fh:
+    _hx_raw = fh.read()
+if _hx_evil in _hx_raw:
+    _hx_bad.append("the raw page holds the hostile string")
+_hx_tips, _hx_cols = [], dict()
+for body in _hx_re.findall(r'<script type="application/json"[^>]*>(.*?)</script>', _hx_raw, _hx_re.S):
+    _hx_walk(_hx_json.loads(body), _hx_tips, _hx_cols)
+# The saved page holds string values HTML-escaped once (its own
+# defence; the tooltip renders them as text either way): the value is
+# there as data, never as markup.
+import html as _hx_html
+_hx_make = [_hx_html.unescape(str(x)) for x in (_hx_cols.get("make") or [])]
+if _hx_make[:2] != ["AMC Concord", _hx_evil]:
+    _hx_bad.append("saved make column starts %r" % (_hx_make[:2],))
+if _hx_mk not in [f for _l, f in _hx_tips]:
+    _hx_bad.append("saved: no make field")
+if any(_hx_safe in f for _l, f in _hx_tips):
+    _hx_bad.append("saved: a safe field")
+
+from bokeh.document import Document
+from bokeh.models import ColumnDataSource, HoverTool
+with open(_hx_M.getGlobal("HX19_P"), encoding="utf-8") as fh:
+    _hx_src = fh.read()
+_hx_ns = dict(__name__="dash_hx19_app")
+with _hx_w.catch_warnings():
+    _hx_w.simplefilter("ignore")
+    exec(compile(_hx_src.replace("if __name__ != '__main__':\n    make_document(curdoc())", "pass"), "dash_hx19_app.py", "exec"), _hx_ns)
+    _hx_doc = Document()
+    _hx_ns["make_document"](_hx_doc)
+_hx_ts = list(_hx_doc.select(dict(type=HoverTool)))
+if not _hx_ts or not all(isinstance(t.tooltips, list) for t in _hx_ts):
+    _hx_bad.append("served: a tooltip is not a list")
+elif any(_hx_safe in str(f) for t in _hx_ts for _l, f in t.tooltips):
+    _hx_bad.append("served: a safe field")
+if not any(_hx_evil in list(s.data.get("make", []))
+           for s in _hx_doc.select(dict(type=ColumnDataSource))):
+    _hx_bad.append("served: no source holds the hostile string as data")
+_hx_M.setGlobal("HX19_N", str(len(_hx_bad)))
+_hx_M.setGlobal("HX19_BAD", " | ".join(_hx_bad).replace(chr(34), "?").replace(chr(96), "?").replace(chr(36), "?"))
+end
+if ${HX19_N} != 0 {
+    display as error `"HX-19 FAIL: ${HX19_BAD}"'
+}
+assert ${HX19_N} == 0
+capture erase "`hx19f'"
+capture erase "`hx19p'"
+macro drop HX19_F HX19_P HX19_N HX19_BAD
+sysuse auto, clear
+display "HX-19 PASS: a hostile make in hover() is data in both modes: AMC Concord first, no safe-marked field, the raw markup never in the page"
+
+// HX-20..HX-25: _dash_extract_hover_vars, called directly.  Every JSON
+// with a backslash or a backtick is built from char() in Mata.
+// HX-20: escapes decoded; a Unicode name resolves.
+generate größe = mpg
+mata: st_global("HXJ", "{" + char(34) + "graph_options" + char(34) + ":{" + char(34) + "name" + char(34) + ":" + char(34) + "g" + char(34) + "," + char(34) + "hover" + char(34) + ":" + char(34) + "gr" + char(92) + "u00f6" + char(92) + "u00dfe mpg" + char(34) + "}}")
+mata: _dash_extract_hover_vars(st_global("HXJ"), "hxo", "hxb", "hxw")
+mata: assert(st_local("hxo") == "gr" + uchar(246) + uchar(223) + "e mpg")
+mata: assert(st_local("hxb") == "" & st_local("hxw") == "")
+drop größe
+display "HX-20 PASS: hover() read through its JSON escapes: a Unicode name and mpg"
+
+// HX-21: a title holding the escaped key is text; a real key after it is read.
+mata: hx_t = char(34) + "title" + char(34) + ":" + char(34) + "x " + char(92) + char(34) + "hover" + char(92) + char(34) + ":" + char(92) + char(34) + "nosuch" + char(92) + char(34) + " y" + char(34)
+mata: st_global("HXJ", "{" + char(34) + "graph_options" + char(34) + ":{" + hx_t + "," + char(34) + "name" + char(34) + ":" + char(34) + "g" + char(34) + "}}")
+mata: _dash_extract_hover_vars(st_global("HXJ"), "hxo", "hxb", "hxw")
+mata: assert(st_local("hxo") == "" & st_local("hxb") == "" & st_local("hxw") == "")
+mata: st_global("HXJ", "{" + char(34) + "graph_options" + char(34) + ":{" + hx_t + "," + char(34) + "hover" + char(34) + ":" + char(34) + "mpg" + char(34) + "}}")
+mata: _dash_extract_hover_vars(st_global("HXJ"), "hxo", "hxb", "hxw")
+mata: assert(st_local("hxo") == "mpg" & st_local("hxb") == "" & st_local("hxw") == "")
+mata: mata drop hx_t
+display "HX-21 PASS: an escaped hover key inside a title is never read; a real key after it is"
+
+// HX-22: each name once, in order; a JSON tab escape is a blank.
+mata: st_global("HXJ", "{" + char(34) + "hover" + char(34) + ":" + char(34) + "mpg weight mpg" + char(34) + "}")
+mata: _dash_extract_hover_vars(st_global("HXJ"), "hxo", "hxb", "hxw")
+mata: assert(st_local("hxo") == "mpg weight")
+mata: st_global("HXJ", "{" + char(34) + "hover" + char(34) + ":" + char(34) + "mpg" + char(92) + "tweight" + char(34) + "}")
+mata: _dash_extract_hover_vars(st_global("HXJ"), "hxo", "hxb", "hxw")
+mata: assert(st_local("hxo") == "mpg weight" & st_local("hxw") == "")
+display "HX-22 PASS: duplicates kept once in order; a tab escape separates names"
+
+// HX-23: no abbreviation: rep is not rep78.
+mata: st_global("HXJ", "{" + char(34) + "hover" + char(34) + ":" + char(34) + "rep" + char(34) + "}")
+mata: _dash_extract_hover_vars(st_global("HXJ"), "hxo", "hxb", "hxw")
+mata: assert(st_local("hxo") == "" & st_local("hxb") == "rep" & st_local("hxw") == "var")
+display "HX-23 PASS: an abbreviation is not a hover() variable (why var)"
+
+// HX-24: no hover key, an empty one and a blank one give nothing.
+foreach hxv in "none" "empty" "blank" {
+    if "`hxv'" == "none"  mata: st_global("HXJ", "{" + char(34) + "name" + char(34) + ":" + char(34) + "g" + char(34) + "}")
+    if "`hxv'" == "empty" mata: st_global("HXJ", "{" + char(34) + "hover" + char(34) + ":" + char(34) + char(34) + "}")
+    if "`hxv'" == "blank" mata: st_global("HXJ", "{" + char(34) + "hover" + char(34) + ":" + char(34) + "   " + char(34) + "}")
+    mata: _dash_extract_hover_vars(st_global("HXJ"), "hxo", "hxb", "hxw")
+    mata: assert(st_local("hxo") == "" & st_local("hxb") == "" & st_local("hxw") == "")
+}
+display "HX-24 PASS: no hover key, an empty and a blank value give no names and no refusal"
+
+// HX-25: bounded echoes, and no word is ever run.
+mata: st_global("HXJ", "{" + char(34) + "hover" + char(34) + ":" + char(34) + 200*"a" + char(34) + "}")
+mata: _dash_extract_hover_vars(st_global("HXJ"), "hxo", "hxb", "hxw")
+mata: assert(st_local("hxw") == "name" & st_local("hxb") == 77*"a" + "..." & ustrlen(st_local("hxb")) == 80 & st_local("hxo") == "")
+mata: st_global("HXJ", "{" + char(34) + "hover" + char(34) + ":" + char(34) + "mpg" + char(96) + "x" + char(39) + char(34) + "}")
+mata: _dash_extract_hover_vars(st_global("HXJ"), "hxo", "hxb", "hxw")
+mata: assert(st_local("hxw") == "name" & st_local("hxb") == "mpg" + char(96) + "x" + char(39))
+local hxN = _N
+local hxK = c(k)
+mata: st_global("HXJ", "{" + char(34) + "hover" + char(34) + ":" + char(34) + "x;drop _all" + char(34) + "}")
+mata: _dash_extract_hover_vars(st_global("HXJ"), "hxo", "hxb", "hxw")
+mata: assert(st_local("hxw") == "name" & st_local("hxb") == "x;drop")
+assert _N == `hxN' & c(k) == `hxK'
+macro drop HXJ
+display "HX-25 PASS: a 200-character word echoes in 80, a backtick word and x;drop are refused as text, the data unchanged"
+
+macro drop dash_max_cells dash_max_bytes
+capture dash clear
+restore
+* ==== end WP-29 S06 ====
 
 capture dash clear
 capture erase "`c(tmpdir)'dash_adv_p19.log"
@@ -3222,6 +3610,7 @@ display "  P22-02: A pcarrowi label carrying JSON, </script>, SMCL and control b
 display "  P22-03: 20,000 pcarrowi arrows and a 200,000-character label -> encoded in bounded time"
 display "  SV-01..SV-87: every plot type and variable position that takes one -> a string variable refused with twoway's own r(109) and words"
 display "  DL-01..DL-06: a computed-only graph's drawn output, not its rows, counts against the cells limit; a filter, link(), csv or hover() reaches it again; a served app always embeds every row"
+display "  HX-10..HX-25: hover() variables exported -> a vanished one r(111), a hand-edited one r(198) echoed in 80 characters, counted where the page holds them, a hostile value only data"
 
 // JO-31..JO-33 never stop the script at a failure; it ends here instead.
 if `jo_adv_nfail' > 0 {

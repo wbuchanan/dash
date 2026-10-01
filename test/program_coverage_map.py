@@ -408,6 +408,8 @@ COVERAGE = {
                            "test_json_escaping.cscript:JSE-13"),
         "_dash_extract_qual_vars": ("test_json_escaping.cscript:JSE-12",
                                     "test_json_escaping.cscript:JSE-30"),
+        "_dash_extract_hover_vars": ("test_adversarial.cscript:HX-20",
+                                     "test_wp29_truth.cscript:HX-01"),
         "_dash_extract_filters": ("test_parser_integrity.cscript:P1B-19",
                                   "test_parser_integrity.cscript:P1B-20"),
         "_dash_is_blank": ("test_program_coverage.cscript:PC-12",

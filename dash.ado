@@ -236,6 +236,7 @@ program define _dash_require_mata
     // test_program_coverage_map.py now fails a call this list does not name.
     local _needed _dash_check_utf8 _dash_route_axis2 _dash_comma_pos _dash_expand_plottype ///
         _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
+        _dash_extract_hover_vars ///
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
         _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
         _dash_kpi_pctile _json_escape _dash_path_badchar ///
@@ -2943,7 +2944,9 @@ end
 //
 // <extra> (GAPS2 G3) is the drawn output of computed-only graphs
 // (histogram, kdensity, a fit or a smoother) that no filter, link(), csv
-// or hover() reaches: those graphs' rows are never in <nvars>, so a
+// or hover() reaches; hover()'s own variables are counted only for a
+// graph one of whose layers can show them (WP-29 P0.10): those graphs'
+// rows are never in <nvars>, so a
 // saved page can hold more observations than the cells limit alone would
 // allow.  <nvars> of 0 means every graph is computed-only and untouched
 // -- nothing row-shaped is embedded at all.  <served> of 1 says every
@@ -6290,6 +6293,37 @@ program define _dash_render_immediate
             if !`: list _qv in needed_vars' local needed_vars "`needed_vars' `_qv'"
         }
     }
+    // WP-29 P0.10: every variable hover() names is exported -- it was
+    // not, so a variable named only there was left out of the tooltip
+    // with rc 0 and no note.  Read and checked in Mata
+    // (_dash_extract_hover_vars) before it reaches any command.  It is
+    // COUNTED (_cap_vars: the cells and bytes limits) only when a layer
+    // of this graph can show it: a graph made only of computed or
+    // literal layers draws no observation, and the page holds none of
+    // its rows (design review A1).
+    local _hvars ""
+    local _hv_bad ""
+    local _hv_why ""
+    mata: _dash_extract_hover_vars(st_local("json_spec"), "_hvars", "_hv_bad", "_hv_why")
+    if "`_hv_why'" == "name" {
+        mata: _dash_say("err", "dash: hover() must name variables (got: ", st_local("_hv_bad"), ")")
+        exit 198
+    }
+    if "`_hv_why'" == "var" {
+        mata: _dash_say("err", "dash: hover(): variable ", st_local("_hv_bad"), " not found")
+        exit 111
+    }
+    local _cap_vars `needed_vars'
+    if "`_hvars'" != "" {
+        _dash_plottype_families
+        local _hv_show = 1
+        mata: st_local("_hv_show", strofreal(!_dash_spec_types_in( ///
+            st_local("json_spec"), st_local("_pt_univar") + " " + ///
+            st_local("_pt_onefit") + " " + st_local("_pt_literal"))))
+        if `_hv_show' local _cap_vars : list _cap_vars | _hvars
+        local needed_vars : list needed_vars | _hvars
+    }
+    local _cap_vars = strtrim("`_cap_vars'")
     local needed_vars = strtrim("`needed_vars'")
 
     // The literal family -- scatteri, pci, pcarrowi and function -- takes
@@ -6350,7 +6384,7 @@ program define _dash_render_immediate
     // so a refusal leaves the user's data exactly as it was.
     _dash_limits_json
     local _dash_lim_json `"`r(json)'"'
-    local _dash_nvars : word count `needed_vars'
+    local _dash_nvars : word count `_cap_vars'
     // Each qualifier column is embedded with the data, and counted.
     mata: _dash_qual_export()
     // sort(varlist)'s join-order columns (WP-29 P0.1): each distinct
@@ -6398,7 +6432,7 @@ program define _dash_render_immediate
     else {
         _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n''
     }
-    _dash_byte_cap `needed_vars'
+    _dash_byte_cap `_cap_vars'
 
     // Collect display formats.  Each travels in the spec's formats map;
     // the data file carries every number as stored, whatever its format.
@@ -7188,8 +7222,12 @@ program define _dash_prepare_spec, rclass
     // all_vars (which the export still uses unchanged, per DISCOVERY
     // Q9: the JSON export is not shrunk).  _pt_univar/_pt_onefit name the
     // computed-only types; by_groups is the LIMIT, not any graph's actual
-    // group count, which is not known before the export.
+    // group count, which is not known before the export.  WP-29 P0.10:
+    // hover()'s variables are always in all_vars, and in row_vars only
+    // for a graph one of whose layers can show them (or under csv);
+    // _hv_hide holds the others, which a served app still counts.
     local row_vars ""
+    local _hv_hide ""
     local comp_cells = 0
     _dash_plottype_families
     _dash_limit, name(by_groups)
@@ -7300,6 +7338,43 @@ program define _dash_prepare_spec, rclass
                 }
             }
 
+            // WP-29 P0.10: every variable hover() names is exported -- a
+            // variable named only there was left out with rc 0 and no
+            // note.  Read and checked in Mata from the registry (ordinary
+            // globals a user can edit) before it reaches any command; a
+            // name no longer in memory is refused as a dropped plotted
+            // variable is.  Counted on the saved page only when a layer
+            // of this graph can show it, or csv puts it in the download
+            // (design review A1).
+            local _hv_k ""
+            local _hv_bad ""
+            local _hv_why ""
+            mata: _dash_extract_hover_vars(st_local("_qg_`k'"), "_hv_k", "_hv_bad", "_hv_why")
+            if "`_hv_why'" == "name" {
+                mata: _dash_say("err", "`cmdname': registry entry '" + ///
+                    st_local("gname") + "' holds a hover() value that is " + ///
+                    "not a list of variable names (got: ", st_local("_hv_bad"), ///
+                    "). Run dash clear and register it again.")
+                exit 198
+            }
+            if "`_hv_why'" == "var" {
+                mata: _dash_say("err", "`cmdname': graph '" + ///
+                    st_local("gname") + "': hover(): variable ", ///
+                    st_local("_hv_bad"), " not found")
+                exit 111
+            }
+            local _hv_show_`k' = 1
+            if "`_hv_k'" != "" & "`csv'" == "" {
+                mata: st_local("_hv_show_`k'", strofreal(!_dash_spec_types_in( ///
+                    st_local("_qg_`k'"), "`_pt_univar' `_pt_onefit' `_pt_literal'")))
+            }
+            if `_hv_show_`k'' {
+                local all_vars : list all_vars | _hv_k
+            }
+            else {
+                local _hv_hide : list _hv_hide | _hv_k
+            }
+
             // GAPS2 G3: does this graph draw only its own computed
             // output (_dash_computed_cells, on the rewritten graph so a
             // qualifier's text is never scanned), and does nothing else
@@ -7330,6 +7405,9 @@ program define _dash_prepare_spec, rclass
                 foreach v of local _gqc_`k' {
                     if !`: list v in row_vars' local row_vars "`row_vars' `v'"
                 }
+                // hover() makes a graph touched (_dash_graph_touched), so
+                // this branch is the only one a non-empty _hv_k reaches.
+                if `_hv_show_`k'' local row_vars : list row_vars | _hv_k
             }
         }
     }
@@ -7376,6 +7454,13 @@ program define _dash_prepare_spec, rclass
     local all_vars = strtrim("`all_vars'")
     local row_vars = strtrim("`row_vars'")
 
+    // WP-29 P0.10 (review A1): the saved page's text count leaves out
+    // the hover() variables no layer of their graph can show; a served
+    // app embeds every exported column, so it counts them.
+    local _byte_vars "`all_vars'"
+    local all_vars : list all_vars | _hv_hide
+    local all_vars = strtrim("`all_vars'")
+
     // No variable to export: every graph must draw from its own values --
     // scatteri, pci, pcarrowi and function alone, which twoway draws with
     // no data in memory -- and the data file then holds no variable
@@ -7419,8 +7504,11 @@ program define _dash_prepare_spec, rclass
     // As on the immediate route: every dash_max_* global the session has
     // set is validated and carried to the renderer as build_options.limits,
     // and what is about to be embedded -- every observation of every
-    // variable in all_vars -- is held to the cells limit, and the text in
-    // its string variables to the bytes limit.  All come before the file
+    // variable in all_vars on a served app; on a saved page what row_vars,
+    // comp_cells and _byte_vars count, which leave out what no filter,
+    // link(), csv or hover() reaches and hover()'s variables that no layer
+    // of their graph can show (WP-29 P0.10) -- is held to the cells limit,
+    // and the text in its string variables to the bytes limit.  All come before the file
     // is written, so a refusal leaves the data as it was, and before `dash
     // build' records its dash_opts_* globals.
     _dash_limits_json
@@ -7463,11 +7551,12 @@ program define _dash_prepare_spec, rclass
     // only what the page will hold.
     if "`server'" != "" | "`cmdname'" == "dash serve" {
         _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n'' "" 0 1
+        _dash_byte_cap `all_vars'
     }
     else {
         _dash_cell_cap `: word count `row_vars'' "" `comp_cells'
+        _dash_byte_cap `_byte_vars'
     }
-    _dash_byte_cap `all_vars'
 
     // Collect display formats, as on the immediate route.
     _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars

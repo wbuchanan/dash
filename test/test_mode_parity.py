@@ -1671,6 +1671,12 @@ DATE_CORPUS = [
           [plot_for("scatter", yvar="mpg", xvar="when")],
           {"formats": {"when": "%tc"}}),
     _case("hover() of a date", [_sc()], _W, go={"hover": "when"}),
+    # WP-29 P0.10: a variable named only in hover(), and one the data
+    # does not hold.
+    _case("hover() of a variable no layer plots, a dropdown filter",
+          [_sc()], {"filter": "foreign, type(dropdown)"}, {"hover": "rep"}),
+    _case("hover() naming a variable not in the data", [_sc()], None,
+          {"hover": "rep nosuch"}),
     _case("mlabel() of a date",
           [plot_for("scatter", {"mlabel": "when"}, yvar="mpg",
                     xvar="when")], _W),
@@ -1733,6 +1739,9 @@ _MUST_WARN = {
         "dash: filter(price, type(bogus)): type() must be one of",
     "yscale(range(abc))":
         "dash: yscale(range()) ignores abc, which is not a number",
+    "hover() naming a variable not in the data":
+        "dash: hover() of graph 'g1' names variable(s) not in the data -- "
+        "'nosuch'",
 }
 
 #: The filter types that build a widget (dash.sthlp); a filter() group of
@@ -3164,14 +3173,75 @@ class TestHoverReachesEveryLayerOrIsReported:
     @pytest.mark.parametrize("mode", ("saved", "served"))
     def test_a_huge_hover_list_is_one_note(self, mode):
         """Resource exhaustion: thousands of names are one note per layer,
-        and none of them is echoed."""
+        and none of them is echoed.  Since WP-29 P0.10 the names the data
+        does not hold get their own note, one per graph, naming three and
+        counting the rest."""
         names = " ".join(["rep"] + [f"v{i}" for i in range(5000)])
         spec = _spec([plot_for("line"), plot_for("lfit")], None,
                      {"hover": names})
         figs, caught = _figures_in(mode, spec)
         notes = _hover_notes(caught)
-        assert len(notes) == 1 and "v4999" not in notes[0], notes
+        unreached = [n for n in notes if "does not reach" in n]
+        missing = [n for n in notes if "not in the data" in n]
+        assert len(unreached) == 1, notes
+        assert missing == [
+            "dash: hover() of graph 'g1' names variable(s) not in the data "
+            "-- 'v0', 'v1', 'v2' and 4,997 more; the tooltip leaves them "
+            "out."], missing
+        assert len(notes) == 2, notes
+        assert all("v4999" not in n for n in notes), notes
         _assert_rows_align(figs[0])
+
+    # ---- WP-29 P0.10: a hover() name the data does not hold -------------
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_a_hover_variable_not_in_the_data_is_named(self, mode):
+        spec = _spec([_sc()], None, {"hover": "rep nosuch"})
+        figs, caught = _figures_in(mode, spec)
+        assert [n for n in caught if "not in the data" in n] == [
+            "dash: hover() of graph 'g1' names variable(s) not in the data "
+            "-- 'nosuch'; the tooltip leaves them out."]
+        assert _tools_showing(figs[0], "rep")
+        _assert_rows_align(figs[0])
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_missing_hover_names_are_one_bounded_note(self, mode):
+        names = " ".join(["rep"] + [f"v{i}" for i in range(5000)])
+        spec = _spec([_sc()], None, {"hover": names})
+        _figs, caught = _figures_in(mode, spec)
+        missing = [n for n in caught if "not in the data" in n]
+        assert missing == [
+            "dash: hover() of graph 'g1' names variable(s) not in the data "
+            "-- 'v0', 'v1', 'v2' and 4,997 more; the tooltip leaves them "
+            "out."], missing
+        assert "'v4999'" not in missing[0]
+        assert len(missing[0]) <= 400
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_a_hostile_absent_hover_name_is_shown_bounded(self, mode):
+        bad = "x" * 50000 + chr(27) + "<script>" + "y" * 50000
+        spec = _spec([_sc()], None, {"hover": bad})
+        figs, caught = _figures_in(mode, spec)
+        missing = [n for n in caught if "not in the data" in n]
+        assert len(missing) == 1, [n[:200] for n in missing]
+        note = missing[0]
+        assert "\n" not in note and chr(27) not in note
+        assert len(note) <= 400
+        m = re.search(r" -- ('.*?'); the tooltip", note)
+        assert m is not None and len(m.group(1)) <= 82, note
+        for f in figs:
+            for t in f.tools:
+                if isinstance(t, HoverTool) and isinstance(t.tooltips, list):
+                    assert all("<script>" not in fld and "{safe}" not in fld
+                               for _lab, fld in t.tooltips), t.tooltips
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_by_panels_name_a_missing_variable_once(self, mode):
+        spec = _spec([_sc()], None, {"hover": "rep nosuch", "by": "foreign"})
+        figs, caught = _figures_in(mode, spec)
+        assert len(figs) >= 2
+        assert len([n for n in caught if "not in the data" in n]) == 1, \
+            caught
 
     @pytest.mark.parametrize("mode", ("saved", "served"))
     def test_a_hostile_graph_name_is_quoted_not_obeyed(self, mode):

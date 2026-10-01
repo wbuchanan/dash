@@ -1255,7 +1255,6 @@ WP29_OPEN = {
     "P0.7": "The lpoly and lpolyci default bandwidth ignores kernel() and degree() and misses Stata's rule of thumb",
     "P0.8": "Computed layers on a date variable run in epoch milliseconds, so densities are per ms, width(), start() and bwidth() are read as ms, and lpoly draws nothing",
     "P0.9": "The lpolyci band is a bootstrap percentile band, not Stata's analytic band, and pwidth() and var() are ignored",
-    "P0.10": "A variable named only in hover() is never exported, so its tooltip field is empty in both modes",
     "P0.11": "The saved page embeds every row of each drawn variable, including rows that if and in exclude",
     "P0.12a": "The served app has no credential, so any local account can open a session and read the data",
     "P0.12b": "The served app, spec and data files are written with the default umask, readable by other accounts where the temp directory is shared",

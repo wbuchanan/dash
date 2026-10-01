@@ -165,6 +165,11 @@
 *!       The variables the plots of a spec name, blank-separated, into
 *!       out_macro.
 *!
+*!   _dash_extract_hover_vars(json_str, out_macro, bad_macro, why_macro)
+*!       The variables a graph's hover() names, each once and checked, into
+*!       out_macro; the first word that is not one into bad_macro, with
+*!       why_macro "name" or "var" (WP-29 P0.10).
+*!
 *!   _dash_extract_qual_vars(json_str, out_macro)
 *!       The names a spec's "by" and "if_expr" hold, each once, into
 *!       out_macro.
@@ -2238,6 +2243,64 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
     }
 
     st_local(out_macro, strtrim(varlist))
+}
+
+
+// ============================================================
+// 6a. hover() VARIABLE EXTRACTOR (WP-29 P0.10; used by
+//     _dash_prepare_spec and _dash_render_immediate)
+//     _dash_extract_hover_vars(json_str, out_macro, bad_macro, why_macro)
+//
+// The variables a graph's hover() names, each once, in the order first
+// written, blank-separated, into the caller's local out_macro.  hover()
+// is read the way _dash_graph_touched reads it -- _dash_json_get_str: the
+// first "hover":" key, its escapes decoded; a title holding that text
+// carries its quotes escaped and never matches -- and split as the
+// renderer splits it (_dash_blank_words).  Each word must be a Stata name
+// (_dash_is_varname) and the exact name of a variable in memory
+// (_st_varindex with no abbreviation: dash.ado stored the full names at
+// registration, OV-110).  The first word that is not stops the read:
+// bad_macro gets it, at most 80 characters (the first 77 and "..."),
+// why_macro "name" (not a Stata name) or "var" (no such variable), and
+// out_macro stays empty.  No word is ever run as code.
+// _dash_extract_vars is not used: it reads a raw value as ONE name and
+// decodes and checks nothing.
+// ============================================================
+void _dash_extract_hover_vars(string scalar json_str,
+                              string scalar out_macro,
+                              string scalar bad_macro,
+                              string scalar why_macro)
+{
+    string rowvector words
+    string scalar    w, out
+    real scalar      i
+    transmorphic     seen
+
+    st_local(out_macro, "")
+    st_local(bad_macro, "")
+    st_local(why_macro, "")
+    _dash_json_get_str(json_str, "hover", "_dehv_raw")
+    words = _dash_blank_words(st_local("_dehv_raw"))
+    st_local("_dehv_raw", "")
+    seen = asarray_create()
+    out  = ""
+    for (i = 1; i <= cols(words); i++) {
+        w = words[i]
+        if (asarray_contains(seen, w)) continue
+        if (!_dash_is_varname(w)) {
+            st_local(bad_macro, ustrlen(w) > 80 ? usubstr(w, 1, 77) + "..." : w)
+            st_local(why_macro, "name")
+            return
+        }
+        if (_st_varindex(w, 0) >= .) {
+            st_local(bad_macro, w)
+            st_local(why_macro, "var")
+            return
+        }
+        asarray(seen, w, 1)
+        out = out + (out == "" ? "" : " ") + w
+    }
+    st_local(out_macro, out)
 }
 
 

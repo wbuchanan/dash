@@ -11,6 +11,7 @@
 *!   S02  line join order against twoway's sersets and SVG (JO-01..JO-12)
 *!   S03  P0.3 unlabelled variables (UL-01..UL-08); P0.4 title sub-options without text (ET-01..ET-10)
 *!   S04  function points are twoway's (FX-20..FX-24)
+*!   S06  P0.10 hover() variables exported (HX-01..HX-08)
 *!
 *! Usage: via run_all_cscripts.do (registered as its block 68).  One
 *! block alone: set WP29_ONLY=S<NN> in the environment of the driver run
@@ -1537,6 +1538,535 @@ end
     display as text "S04 end `c(current_time)'"
 }
 * ==== end S04 ====
+* ==== S06 P0.10: hover() variables exported ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S06") {
+    display as text "S06 start `c(current_time)'"
+
+    // Every variable hover() names is exported and shown, its value-label
+    // text equal row by row to Stata's own `: label (var) value', on the
+    // one-line route, through dash build and in the served app, before
+    // and after a filter move, under by() and link(), for dates, strings
+    // and a Unicode name.  twoway has no hover() (it refuses the option,
+    // r(198)), so the truth is Stata's own text per observation, computed
+    // here into the scratch variable _hx_lab after each case's dash
+    // commands.  The python blocks read only the generated files and
+    // Stata's data; they hold no brace, so a WP29_ONLY that skips this
+    // block still reads it.  The work directory is this run's own fresh
+    // one (the scaffold's w29_work), never a fixed name in c(tmpdir).
+    local d "`w29_work'/s06"
+    capture mkdir "`d'"
+
+    python:
+import base64 as _hx_b64
+import json as _hx_json
+import re as _hx_re
+import struct as _hx_struct
+import warnings as _hx_w
+from sfi import Data as _hx_D
+from sfi import Macro as _hx_M
+
+_HX_O = chr(123)
+_HX_C = chr(125)
+_HX_FMT = dict(float64="d", float32="f", float16="e", int64="q",
+               int32="i", int16="h", int8="b", uint64="Q", uint32="I",
+               uint16="H", uint8="B", bool="?")
+_HX_REP = "Repair record 1978"
+_HX_GROSSE = "gr" + chr(246) + chr(223) + "e"
+
+
+def _hx_field(name):
+    return "@" + _HX_O + name + _HX_C
+
+
+def _hx_cols_named(field):
+    # The column names a tooltip field reads, as @<open>name<close>.
+    pat = "@" + chr(92) + _HX_O + "([^" + _HX_C + "]*)" + chr(92) + _HX_C
+    return _hx_re.findall(pat, field)
+
+
+def _hx_safe(text):
+    # A message Stata may echo: printable ASCII, no quote, backtick,
+    # dollar or backslash, at most 240 characters.
+    s = "".join(ch if (32 <= ord(ch) < 127 and ch not in chr(34) + chr(96)
+                       + chr(36) + chr(92) + chr(39)) else "?"
+                for ch in str(text))
+    return s if len(s) <= 240 else s[:237] + "..."
+
+
+def _hx_set(k, bad):
+    _hx_M.setGlobal("hx_n" + k, str(len(bad)))
+    _hx_M.setGlobal("hx_bad" + k, _hx_safe(" | ".join(bad) or "none"))
+
+
+def _hx_dec(v):
+    if isinstance(v, dict) and v.get("type") == "ndarray":
+        arr = v.get("array")
+        if isinstance(arr, dict) and arr.get("type") == "bytes":
+            raw = _hx_b64.b64decode(arr.get("data", ""))
+            f = _HX_FMT.get(str(v.get("dtype")))
+            if f is None or len(raw) % _hx_struct.calcsize(f):
+                return None
+            n = len(raw) // _hx_struct.calcsize(f)
+            return list(_hx_struct.unpack("<%d%s" % (n, f), raw))
+        return arr if isinstance(arr, list) else None
+    return v
+
+
+def _hx_walk(o, tips, cols):
+    if isinstance(o, dict):
+        if o.get("type") == "map" and isinstance(o.get("entries"), list):
+            for e in o["entries"]:
+                if (isinstance(e, list) and len(e) == 2
+                        and isinstance(e[0], str)):
+                    v = _hx_dec(e[1])
+                    if isinstance(v, list) and e[0] not in cols:
+                        cols[e[0]] = v
+        for key, v in o.items():
+            if key == "tooltips" and isinstance(v, list):
+                for row in v:
+                    if isinstance(row, list) and len(row) == 2:
+                        tips.append((str(row[0]), str(row[1])))
+            _hx_walk(v, tips, cols)
+    elif isinstance(o, list):
+        for x in o:
+            _hx_walk(x, tips, cols)
+
+
+def _hx_page(path):
+    # (tooltip rows, columns, raw text) of a saved page, its JSON decoded
+    # (review A2: Bokeh writes non-ASCII escaped).
+    with open(path, encoding="utf-8") as fh:
+        raw = fh.read()
+    tips, cols = [], dict()
+    pat = r'<script type="application/json"[^>]*>(.*?)</script>'
+    for body in _hx_re.findall(pat, raw, _hx_re.S):
+        _hx_walk(_hx_json.loads(body), tips, cols)
+    return tips, cols, raw
+
+
+def _hx_app(path):
+    # The generated app, loaded as KF-03 loads it: its curdoc attach is
+    # replaced, so nothing is served.
+    from bokeh.document import Document
+    with open(path, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s06_app")
+    with _hx_w.catch_warnings():
+        _hx_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s06_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    return doc
+
+
+def _hx_tools(doc):
+    from bokeh.models import HoverTool
+    return [t for t in doc.select(dict(type=HoverTool))
+            if isinstance(t.tooltips, list)]
+
+
+def _hx_rows(tool):
+    return [(str(a), str(b)) for a, b in tool.tooltips]
+
+
+def _hx_sources(tools):
+    seen, out = set(), []
+    for t in tools:
+        for r in t.renderers:
+            s = r.data_source
+            if id(s) not in seen:
+                seen.add(id(s))
+                out.append(s)
+    return out
+
+
+def _hx_fire(w, value):
+    with _hx_w.catch_warnings():
+        _hx_w.simplefilter("ignore")
+        w.value = value
+        for key in ("value", "value_throttled"):
+            for cb in list(w._callbacks.get(key, [])):
+                cb("value", None, value)
+
+
+def _hx_col(name):
+    return [r[0] if isinstance(r, list) else r for r in _hx_D.get(name)]
+
+
+def _hx_truth():
+    return dict(zip(_hx_col("make"), _hx_col("_hx_lab")))
+
+
+def _hx_saved_rep(k, path):
+    bad = []
+    try:
+        tips, cols, raw = _hx_page(path)
+    except Exception as e:
+        _hx_set(k, ["page not read: %s %s" % (type(e).__name__, e)])
+        return
+    want = (_HX_REP, _hx_field("__dash_hover_rep78"))
+    if want not in tips:
+        bad.append("no tooltip row %r in %r" % (want, tips[:6]))
+    for word in ("Poor", "Fair", "Average", "Good", "Excellent"):
+        if word not in raw:
+            bad.append("the page holds no %s" % word)
+    lab = _hx_col("_hx_lab")
+    got = cols.get("__dash_hover_rep78")
+    if got is None:
+        bad.append("no column __dash_hover_rep78")
+    elif [str(x) for x in got] != lab:
+        diff = [i for i in range(min(len(got), len(lab)))
+                if str(got[i]) != lab[i]]
+        bad.append("labels: %d entries, %d differ, first %r" % (
+            len(got), len(diff), diff[:3]))
+    elif lab.count(".") != 5:
+        bad.append("%d missing labels, not 5" % lab.count("."))
+    mpg = cols.get("mpg")
+    if mpg is None or [float(x) for x in mpg] != [float(x) for x in
+                                                  _hx_col("mpg")]:
+        bad.append("column mpg is not Stata's mpg in order")
+    _hx_set(k, bad)
+
+
+def _hx_served_rep(k, path, keep=None):
+    # keep: None (as opened), or the makes the move keeps.
+    bad = []
+    try:
+        doc = _hx_app(path)
+    except Exception as e:
+        _hx_set(k, ["app not loaded: %s" % type(e).__name__])
+        return None
+    _hx_set(k, bad)
+    return doc
+
+
+def _hx_check_rep_tools(k, doc, keep, onefor=False):
+    bad = []
+    want = (_HX_REP, _hx_field("__dash_hover_rep78"))
+    tools = [t for t in _hx_tools(doc) if want in _hx_rows(t)]
+    if not tools:
+        bad.append("no tooltip shows %r" % (want,))
+    elif not all(any(f.startswith(_hx_field("make")) for _l, f in
+                     _hx_rows(t)) for t in tools):
+        bad.append("a tooltip has no make field")
+    truth = _hx_truth()
+    makes = []
+    for s in _hx_sources(tools):
+        data = s.data
+        if "__dash_hover_rep78" not in data or "make" not in data:
+            bad.append("a source lacks __dash_hover_rep78 or make")
+            continue
+        ms = [str(m) for m in data["make"]]
+        ls = [str(x) for x in data["__dash_hover_rep78"]]
+        makes.extend(ms)
+        off = [m for m, x in zip(ms, ls) if truth.get(m) != x]
+        if off:
+            bad.append("%d rows show the wrong label, first %r" % (
+                len(off), off[:2]))
+        if onefor:
+            fr = dict(zip(_hx_col("make"), _hx_col("foreign")))
+            if len(set(fr.get(m) for m in ms)) > 1:
+                bad.append("a source mixes foreign values")
+    if keep is None:
+        if len(makes) != 74 or len(set(makes)) != 74:
+            bad.append("%d rows, not 74" % len(makes))
+    elif sorted(makes) != sorted(keep):
+        bad.append("%d rows kept, Stata keeps %d" % (len(makes), len(keep)))
+    _hx_set(k, bad)
+end
+
+    // ------------------------------------------------------------
+    // HX-01: the one-line route, saved.  rep78 is named only in hover().
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    label define alrep 1 "Poor" 2 "Fair" 3 "Average" 4 "Good" 5 "Excellent", replace
+    label values rep78 alrep
+    dash clear
+    capture erase "`d'/hx1.html"
+    capture noisily dash scatter mpg weight, hover(rep78) saving("`d'/hx1.html") replace
+    local hx_rc = _rc
+    capture drop _hx_lab
+    quietly generate str244 _hx_lab = ""
+    forvalues i = 1/`=_N' {
+        local hx_l : label (rep78) `=rep78[`i']'
+        quietly replace _hx_lab = `"`hx_l'"' in `i'
+    }
+    global hx_f1 "`d'/hx1.html"
+    python:
+_hx_saved_rep("1", _hx_M.getGlobal("hx_f1"))
+end
+    _w29_expect HX-01 "(`hx_rc' == 0)" "dash rc `hx_rc'"
+    _w29_expect HX-01 "(${hx_n1} == 0)" `"${hx_bad1}"'
+    _w29_done HX-01 "hover(rep78) alone: its labels on every row, 74 rows, saved one-line"
+
+    // ------------------------------------------------------------
+    // HX-02: name() then dash build, saved.
+    // ------------------------------------------------------------
+    drop _hx_lab
+    dash clear
+    capture erase "`d'/hx2.html"
+    quietly dash scatter mpg weight, hover(rep78) name(g1)
+    capture noisily dash build, saving("`d'/hx2.html") replace nobrowser
+    local hx_rc = _rc
+    quietly generate str244 _hx_lab = ""
+    forvalues i = 1/`=_N' {
+        local hx_l : label (rep78) `=rep78[`i']'
+        quietly replace _hx_lab = `"`hx_l'"' in `i'
+    }
+    global hx_f2 "`d'/hx2.html"
+    python:
+_hx_saved_rep("2", _hx_M.getGlobal("hx_f2"))
+end
+    _w29_expect HX-02 "(`hx_rc' == 0)" "dash build rc `hx_rc'"
+    _w29_expect HX-02 "(${hx_n2} == 0)" `"${hx_bad2}"'
+    _w29_done HX-02 "hover(rep78) alone through dash build: the same, saved"
+
+    // ------------------------------------------------------------
+    // HX-03: the served app as opened.
+    // ------------------------------------------------------------
+    drop _hx_lab
+    dash clear
+    capture erase "`d'/hx3.py"
+    quietly dash scatter mpg weight, hover(rep78 make) name(g1)
+    capture noisily dash build, server saving("`d'/hx3.py") replace nobrowser
+    local hx_rc = _rc
+    quietly generate str244 _hx_lab = ""
+    forvalues i = 1/`=_N' {
+        local hx_l : label (rep78) `=rep78[`i']'
+        quietly replace _hx_lab = `"`hx_l'"' in `i'
+    }
+    global hx_f3 "`d'/hx3.py"
+    python:
+_hx_doc = _hx_served_rep("3", _hx_M.getGlobal("hx_f3"))
+if _hx_doc is not None:
+    _hx_check_rep_tools("3", _hx_doc, None)
+end
+    _w29_expect HX-03 "(`hx_rc' == 0)" "dash build, server rc `hx_rc'"
+    _w29_expect HX-03 "(${hx_n3} == 0)" `"${hx_bad3}"'
+    _w29_done HX-03 "served as opened: rep78's labels and make on all 74 rows"
+
+    // ------------------------------------------------------------
+    // HX-04: the served app after a dropdown move to Foreign.
+    // ------------------------------------------------------------
+    drop _hx_lab
+    dash clear
+    capture erase "`d'/hx4.py"
+    quietly dash scatter mpg weight, hover(rep78 make) name(g1)
+    capture noisily dash build, server saving("`d'/hx4.py") replace nobrowser filter(foreign, type(dropdown))
+    local hx_rc = _rc
+    quietly count if foreign == 1
+    local hx_nf = r(N)
+    quietly generate str244 _hx_lab = ""
+    forvalues i = 1/`=_N' {
+        local hx_l : label (rep78) `=rep78[`i']'
+        quietly replace _hx_lab = `"`hx_l'"' in `i'
+    }
+    global hx_f4 "`d'/hx4.py"
+    python:
+_hx_doc = _hx_served_rep("4", _hx_M.getGlobal("hx_f4"))
+if _hx_doc is not None:
+    from bokeh.models import Select as _hx_Select
+    _hx_keep = [m for m, f in zip(_hx_col("make"), _hx_col("foreign"))
+                if f == 1]
+    _hx_sel = [w for w in _hx_doc.select(dict(type=_hx_Select))
+               if getattr(w, "_dash_var", None) == "foreign"]
+    _hx_raw = [o[0] for o in (_hx_sel[0].options if _hx_sel else [])
+               if isinstance(o, (list, tuple)) and o[1] == "Foreign"]
+    if len(_hx_sel) != 1 or not _hx_raw:
+        _hx_set("4", ["no foreign dropdown with a Foreign option"])
+    else:
+        _hx_fire(_hx_sel[0], _hx_raw[0])
+        _hx_check_rep_tools("4", _hx_doc, _hx_keep)
+end
+    _w29_expect HX-04 "(`hx_rc' == 0)" "dash build, server rc `hx_rc'"
+    _w29_expect HX-04 "(`hx_nf' == 22)" "Stata counts `hx_nf' foreign cars"
+    _w29_expect HX-04 "(${hx_n4} == 0)" `"${hx_bad4}"'
+    _w29_done HX-04 "served after a move to Foreign: 22 rows, each its own labels"
+
+    // ------------------------------------------------------------
+    // HX-05: served, by(foreign), after a price range move.
+    // ------------------------------------------------------------
+    drop _hx_lab
+    dash clear
+    capture erase "`d'/hx5.py"
+    quietly dash scatter mpg weight, by(foreign) hover(rep78 make) name(g1)
+    capture noisily dash build, server saving("`d'/hx5.py") replace nobrowser filter(price, type(range))
+    local hx_rc = _rc
+    quietly generate str244 _hx_lab = ""
+    forvalues i = 1/`=_N' {
+        local hx_l : label (rep78) `=rep78[`i']'
+        quietly replace _hx_lab = `"`hx_l'"' in `i'
+    }
+    global hx_f5 "`d'/hx5.py"
+    python:
+_hx_doc = _hx_served_rep("5", _hx_M.getGlobal("hx_f5"))
+if _hx_doc is not None:
+    from bokeh.models import RangeSlider as _hx_RS
+    _hx_keep = [m for m, p in zip(_hx_col("make"), _hx_col("price"))
+                if 5000 <= p <= 15906]
+    _hx_rs = [w for w in _hx_doc.select(dict(type=_hx_RS))
+              if getattr(w, "_dash_var", None) == "price"]
+    if len(_hx_rs) != 1:
+        _hx_set("5", ["%d price range sliders" % len(_hx_rs)])
+    else:
+        _hx_fire(_hx_rs[0], (5000.0, 15906.0))
+        _hx_check_rep_tools("5", _hx_doc, _hx_keep, onefor=True)
+end
+    _w29_expect HX-05 "(`hx_rc' == 0)" "dash build, server rc `hx_rc'"
+    _w29_expect HX-05 "(${hx_n5} == 0)" `"${hx_bad5}"'
+    _w29_done HX-05 "served by(foreign) after a range move: Stata's rows, one origin per panel, each its own labels"
+    drop _hx_lab
+
+    // ------------------------------------------------------------
+    // HX-06: a date and a number named only in hover(), both modes.
+    // ------------------------------------------------------------
+    sysuse sp500, clear
+    dash clear
+    capture erase "`d'/hx6.html"
+    capture erase "`d'/hx6.py"
+    capture noisily dash scatter close open, hover(date volume) saving("`d'/hx6.html") replace
+    local hx_rc = _rc
+    quietly dash scatter close open, hover(date volume) name(g1)
+    capture noisily dash build, server saving("`d'/hx6.py") replace nobrowser
+    local hx_rc2 = _rc
+    global hx_f6 "`d'/hx6.html"
+    global hx_f6s "`d'/hx6.py"
+    python:
+_hx_bad = []
+try:
+    _hx_t, _hx_c, _hx_r = _hx_page(_hx_M.getGlobal("hx_f6"))
+    _hx_f = [f for _l, f in _hx_t]
+    if (_hx_field("date") + _HX_O + "custom" + _HX_C) not in _hx_f:
+        _hx_bad.append("saved: no date field in %r" % (_hx_f[:6],))
+    if not any(f.startswith(_hx_field("volume")) for f in _hx_f):
+        _hx_bad.append("saved: no volume field")
+except Exception as e:
+    _hx_bad.append("page not read: %s %s" % (type(e).__name__, e))
+try:
+    _hx_doc = _hx_app(_hx_M.getGlobal("hx_f6s"))
+    _hx_f = [f for t in _hx_tools(_hx_doc) for _l, f in _hx_rows(t)]
+    if (_hx_field("date") + _HX_O + "custom" + _HX_C) not in _hx_f:
+        _hx_bad.append("served: no date field in %r" % (_hx_f[:6],))
+    if not any(f.startswith(_hx_field("volume")) for f in _hx_f):
+        _hx_bad.append("served: no volume field")
+except Exception as e:
+    _hx_bad.append("app not loaded: %s" % type(e).__name__)
+_hx_set("6", _hx_bad)
+end
+    _w29_expect HX-06 "(`hx_rc' == 0 & `hx_rc2' == 0)" "dash rc `hx_rc' / `hx_rc2'"
+    _w29_expect HX-06 "(${hx_n6} == 0)" `"${hx_bad6}"'
+    _w29_done HX-06 "hover(date volume): the date field and volume, saved and served"
+
+    // ------------------------------------------------------------
+    // HX-07: a string and a Unicode name named only in hover().
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    generate größe = mpg
+    dash clear
+    capture erase "`d'/hx7.html"
+    capture erase "`d'/hx7.py"
+    capture noisily dash scatter mpg weight, hover(make größe) saving("`d'/hx7.html") replace
+    local hx_rc = _rc
+    quietly dash scatter mpg weight, hover(make größe) name(g1)
+    capture noisily dash build, server saving("`d'/hx7.py") replace nobrowser
+    local hx_rc2 = _rc
+    global hx_f7 "`d'/hx7.html"
+    global hx_f7s "`d'/hx7.py"
+    python:
+_hx_bad = []
+try:
+    _hx_t, _hx_c, _hx_r = _hx_page(_hx_M.getGlobal("hx_f7"))
+    _hx_f = [f for _l, f in _hx_t]
+    if not any(f.startswith(_hx_field(_HX_GROSSE)) for f in _hx_f):
+        _hx_bad.append("saved: no field for the Unicode variable")
+    if not any(f.startswith(_hx_field("make")) for f in _hx_f):
+        _hx_bad.append("saved: no make field")
+    if len(_hx_c.get(_HX_GROSSE) or []) != 74:
+        _hx_bad.append("saved: the Unicode column has %d entries" % len(
+            _hx_c.get(_HX_GROSSE) or []))
+    if (_hx_c.get("make") or [None])[0] != "AMC Concord":
+        _hx_bad.append("saved: make does not start AMC Concord")
+except Exception as e:
+    _hx_bad.append("page not read: %s %s" % (type(e).__name__, e))
+try:
+    from bokeh.models import ColumnDataSource as _hx_CDS
+    _hx_doc = _hx_app(_hx_M.getGlobal("hx_f7s"))
+    if not any(_HX_GROSSE in s.data
+               for s in _hx_doc.select(dict(type=_hx_CDS))):
+        _hx_bad.append("served: no source holds the Unicode variable")
+except Exception as e:
+    _hx_bad.append("app not loaded: %s" % type(e).__name__)
+_hx_set("7", _hx_bad)
+end
+    _w29_expect HX-07 "(`hx_rc' == 0 & `hx_rc2' == 0)" "dash rc `hx_rc' / `hx_rc2'"
+    _w29_expect HX-07 "(${hx_n7} == 0)" `"${hx_bad7}"'
+    _w29_done HX-07 "hover(make größe): a string and a Unicode name exported in both modes"
+
+    // ------------------------------------------------------------
+    // HX-08: link() of two graphs, each with its own hover() variable.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    label define alrep 1 "Poor" 2 "Fair" 3 "Average" 4 "Good" 5 "Excellent", replace
+    label values rep78 alrep
+    dash clear
+    capture erase "`d'/hx8.html"
+    capture erase "`d'/hx8.py"
+    quietly dash scatter mpg weight, hover(rep78) name(g1)
+    quietly dash scatter price weight, hover(headroom) name(g2)
+    capture noisily dash build, link(g1 g2) filter(foreign, type(dropdown)) saving("`d'/hx8.html") replace nobrowser
+    local hx_rc = _rc
+    capture noisily dash build, server link(g1 g2) filter(foreign, type(dropdown)) saving("`d'/hx8.py") replace nobrowser
+    local hx_rc2 = _rc
+    global hx_f8 "`d'/hx8.html"
+    global hx_f8s "`d'/hx8.py"
+    python:
+_hx_bad = []
+try:
+    _hx_t, _hx_c, _hx_r = _hx_page(_hx_M.getGlobal("hx_f8"))
+    _hx_l = set(lab for lab, _f in _hx_t)
+    for _hx_w8 in (_HX_REP, "Headroom (in.)"):
+        if _hx_w8 not in _hx_l:
+            _hx_bad.append("saved: no row labelled %r" % _hx_w8)
+except Exception as e:
+    _hx_bad.append("page not read: %s %s" % (type(e).__name__, e))
+try:
+    _hx_doc = _hx_app(_hx_M.getGlobal("hx_f8s"))
+    _hx_ts = _hx_tools(_hx_doc)
+    _hx_l = set(lab for t in _hx_ts for lab, _f in _hx_rows(t))
+    for _hx_w8 in (_HX_REP, "Headroom (in.)"):
+        if _hx_w8 not in _hx_l:
+            _hx_bad.append("served: no row labelled %r" % _hx_w8)
+    for t in _hx_ts:
+        _hx_need = [c for _l, f in _hx_rows(t) for c in _hx_cols_named(f)]
+        for r in t.renderers:
+            data = r.data_source.data
+            _hx_gone = [c for c in _hx_need if c not in data]
+            if _hx_gone:
+                _hx_bad.append("served: a source lacks %r" % (_hx_gone,))
+            _hx_n = max((len(v) for v in data.values()), default=0)
+            if _hx_n != 74:
+                _hx_bad.append("served: a source has %d rows" % _hx_n)
+except Exception as e:
+    _hx_bad.append("app not loaded: %s" % type(e).__name__)
+_hx_set("8", _hx_bad)
+end
+    _w29_expect HX-08 "(`hx_rc' == 0 & `hx_rc2' == 0)" "dash build rc `hx_rc' / `hx_rc2'"
+    _w29_expect HX-08 "(${hx_n8} == 0)" `"${hx_bad8}"'
+    _w29_done HX-08 "link(g1 g2): each graph's hover() variable labelled, every field on every source"
+
+    forvalues k = 1/8 {
+        capture erase "`d'/hx`k'.html"
+        capture erase "`d'/hx`k'.py"
+    }
+    capture rmdir "`d'"
+    dash clear
+    macro drop hx_*
+    display as text "S06 end `c(current_time)'"
+}
+* ==== end S06 ====
 
 * ==== append new blocks above this line ====
 

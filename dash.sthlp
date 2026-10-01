@@ -694,7 +694,9 @@ named in a note and drawn around -- because it is what would be drawn.
     Variables: {cmd:mlabel()} and {cmd:colorvar()} name one, {cmd:hover()}
     one or more, and {cmd:by()} one or more before its comma; each is
     expanded as {cmd:twoway} expands it, so {cmd:by(for)} means
-    {cmd:by(foreign)}; a variable that does not exist is r(111), and a
+    {cmd:by(foreign)}; a variable that does not exist is r(111) ({cmd:dash build}
+    and {cmd:dash serve} also give r(111) for a {cmd:hover()} variable
+    dropped after the graph was registered), and a
     time-series expression such as {cmd:mlabel(L.mpg)} is refused, as
     {cmd:twoway} refuses it.  {cmd:xsize()},
     {cmd:ysize()}, {cmd:aspectratio()}, {cmd:hover()} and {cmd:by()} are
@@ -1669,8 +1671,9 @@ that moves it for the rest of the session:
 {synoptline}
 {synopt:{cmd:$dash_max_cells}}values the saved page embeds: for a graph
     that draws rows, or that a {cmd:filter()}, {cmd:link()}, {cmd:csv} or
-    {cmd:hover()} reaches, its variables and qualifier columns times the
-    observations; for a graph made only of computed layers ({cmd:histogram},
+    {cmd:hover()} reaches, its variables -- the ones its layers plot and
+    the ones {cmd:hover()} names when one of its layers can show them --
+    and qualifier columns times the observations; for a graph made only of computed layers ({cmd:histogram},
     {cmd:kdensity}, a fit or a smoother) that nothing else reaches, the
     values its layers draw, not one row per observation; KPI cards and
     {cmd:filter()} variables always count.  A served app embeds every
@@ -1681,8 +1684,11 @@ that moves it for the rest of the session:
     of every string value, {cmd:strL} values included, of the string
     variables a dashboard uses, as Stata stores them; default 50,000,000,
     at most 500,000,000.  Over it the dashboard is refused with
-    {cmd:r(134)} before anything is exported.  Numbers are counted by
-    {cmd:$dash_max_cells} alone.{p_end}
+    {cmd:r(134)} before anything is exported.  On the saved page a string
+    variable {cmd:hover()} names counts under the same rule as for
+    {cmd:$dash_max_cells} (when a layer of its graph can show it, or
+    {cmd:csv} is given); a served app counts every string variable it
+    exports.  Numbers are counted by {cmd:$dash_max_cells} alone.{p_end}
 {synopt:{cmd:$dash_max_graphs}}graphs and KPI cards in the registry; default
     100, at most 1,000.  A new name past it is refused with
     {cmd:r(134)}.  It also bounds the cells of a {cmd:layout()} grid, which
@@ -1724,7 +1730,12 @@ counted like a variable -- but the {cmd:$dash_max_cells} limit itself
 counts only what the saved page will actually embed.  A graph drawn from
 rows -- or touched by a {cmd:filter()} that does not exclude it, a
 {cmd:link()}, {cmd:csv}, or {cmd:hover()} -- counts its variables and
-qualifier columns times the observations, as before.  A graph made only
+qualifier columns times the observations, as before; the variables
+{cmd:hover()} names are among its counted variables when a layer of the
+graph can show them.  A graph made only of computed layers, or of
+{cmd:scatteri}, {cmd:pci}, {cmd:pcarrowi} or {cmd:function}, exports its
+{cmd:hover()} variables but does not count them unless {cmd:csv} is
+given.  A graph made only
 of computed layers ({cmd:histogram}, {cmd:kdensity}, {cmd:lfit} and the
 other fits and smoothers) that nothing else reaches draws its own bounded
 output instead: a histogram's bars (four values a bin, the observations
@@ -2713,6 +2724,16 @@ layer in a note, once.  A variable's value is written in its display
 format, as Stata's {cmd:display} writes it -- {cmd:4,099} under
 {cmd:%8.0gc}, {cmd:12345.67} under {cmd:%10.0g}, a date in its picture,
 a {cmd:%tc} or {cmd:%tC} date with its time -- in both render modes.
+Every variable {cmd:hover()} names is exported with the data, whether or
+not a layer plots it, so its value is in the tooltip of the saved
+dashboard and the served app, before and after a filter move; its values
+are part of the saved page's source, like the variables the layers draw.
+It counts toward {cmd:$dash_max_cells}, and a string one also toward
+{cmd:$dash_max_bytes}, on the saved page when a layer of its graph can
+show it or {cmd:csv} is given, and always in a served app (see
+{help dash##limits:Resource limits}).  {cmd:dash build} and
+{cmd:dash serve} refuse a {cmd:hover()} variable no longer in memory with
+r(111), as they refuse a dropped plotted variable.
 
 
 {marker colorvar}

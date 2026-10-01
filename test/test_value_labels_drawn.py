@@ -194,6 +194,66 @@ class TestHoverShowsValueLabels:
         at = src_text.index("_live.data = _dash_keep_jitter(")
         assert "_dash_add_hover_text(_live" in src_text[at:at + 600]
 
+    # -- WP-29 P0.10 (review A9): a hover-only column follows a saved
+    # filter move once it is in the data; the page's JavaScript needs no
+    # change.  foreign is named only in hover(); no layer plots it.
+
+    @staticmethod
+    def _hover_sources(r):
+        seen, out = set(), []
+        for fig in r.figures.values():
+            for rend in fig.renderers:
+                src = getattr(rend, "data_source", None)
+                if src is None or id(src) in seen:
+                    continue
+                seen.add(id(src))
+                if "__dash_hover_foreign" in src.data:
+                    out.append(src)
+        return out
+
+    def _aligned(self, srcs):
+        for src in srcs:
+            want = [{0.0: "Domestic", 1.0: "Foreign"}[float(f)]
+                    for f in src.data["foreign"]]
+            assert want == list(src.data["__dash_hover_foreign"]), (
+                want, list(src.data["__dash_hover_foreign"]))
+        return [len(src.data["__dash_hover_foreign"]) for src in srcs]
+
+    def _moved(self, plots, go, filt, action):
+        from test_saved_filter_layers import _move, _render
+        spec = tp._spec(plots, {"filter": filt},
+                        dict({"hover": "foreign"}, **(go or {})))
+        r = _render(spec)
+        _move(r, action)
+        return self._hover_sources(r)
+
+    def test_a_hover_only_column_follows_a_saved_filter_move(self):
+        srcs = self._moved([tp.plot_for("scatter")], None,
+                           "rep, type(dropdown)", ("Select", "3"))
+        assert self._aligned(srcs) == [4]
+        assert list(srcs[0].data["__dash_hover_foreign"]) == [
+            "Domestic", "Domestic", "Foreign", "Domestic"]
+
+    def test_a_hover_only_column_follows_a_move_under_by(self):
+        srcs = self._moved([tp.plot_for("scatter")], {"by": "rep"},
+                           "price, type(range)",
+                           ("RangeSlider", (4500.0, 11385.0)))
+        assert self._aligned(srcs) == [0, 4, 2]
+
+    def test_a_hover_only_column_follows_a_move_on_a_second_axis(self):
+        srcs = self._moved(
+            [tp.plot_for("scatter"),
+             tp.plot_for("scatter", {"yaxis": "2"}, yvar="price",
+                         xvar="weight")], None,
+            "price, type(range)", ("RangeSlider", (4500.0, 11385.0)))
+        assert self._aligned(srcs) == [6]
+
+    def test_a_hover_only_column_follows_a_move_on_a_line(self):
+        srcs = self._moved([tp.plot_for("line")], None,
+                           "price, type(range)",
+                           ("RangeSlider", (4500.0, 11385.0)))
+        assert self._aligned(srcs) == [6]
+
     def test_a_hostile_value_label_is_data(self, tmp_path):
         bad = "<img src=x onerror=alert(1)>"
         df, _vl, _n = _rep_frame()
