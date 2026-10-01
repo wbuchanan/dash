@@ -58,6 +58,7 @@ FUNCTIONS = {
  '_dash_g_text': 'test/test_display_format_writer.py::TestPythonWriter::test_every_numeric_display_matches_stata_exactly',
  '_dash_group_thousands': 'test/test_display_format_writer.py::TestPythonWriter::test_every_numeric_display_matches_stata_exactly',
  '_dash_int_digit_count': 'test/test_display_format_writer.py::TestPythonWriter::test_every_numeric_display_matches_stata_exactly',
+ '_dash_kpi_unit_kind': 'test/test_date_units.py::TestTheKpiConfig::test_the_unit_kind_rule',
  '_dash_note_no_second_y': 'test/test_layer_reports.py::TestARangeLayerWithNoSecondY::test_a_hostile_type_name_is_not_echoed_raw',
  '_dash_read_data_json': 'test/test_data_file_numbers.py::TestTheReader::test_every_out_of_range_value_is_missing',
  '_dash_read_data_json.<locals>._double': 'test/test_data_file_numbers.py::TestTheReader::test_every_out_of_range_value_is_missing',

@@ -1379,6 +1379,12 @@ format if given, else in the variable's own {cmd:%t} picture, as
 {cmd:display} writes them ({cmd:%td} gives {cmd:02jan2001}).  A count, a
 distinct count, a spread, a sum or the skewness of a date variable is a
 number, shown in {cmd:%9.0g} unless {cmd:fmt()} says otherwise.
+Each statistic is taken of the variable's Stata values, as
+{cmd:summarize} takes it: {cmd:sd()} of a {cmd:%td} variable is in days
+(105.3335 for {cmd:date} in {cmd:sysuse sp500}), {cmd:var()} in days
+squared, {cmd:iqr()} in days, {cmd:cv()} is the sd over the mean day
+number, and {cmd:sum()} adds up the day numbers, which a note says has no
+meaning; the mean of 2001m1 and 2001m3 is 2001m2.
 
 {pstd}
 {ul:Options:}

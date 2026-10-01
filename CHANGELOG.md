@@ -312,7 +312,17 @@ and now matches Stata.
 
 <!-- WP-29 P0.18 -->
 
-<!-- WP-29 P0.20 -->
+- `dash kpi sd(date)` on sysuse sp500 read 9.10e+09; it now reads 105.3335,
+  summarize's sd in days. Every KPI statistic of a date but count and
+  dcount is taken of the variable's Stata values, saved and served, at
+  first paint, after a filter move and after a brush. (WP-29, P0.20)
+- `var(date)` read 8.28e+19, now 11095.14; `iqr(date)` 1.60e+10, now 185;
+  `cv(date)` .0091564, now .0069496. (WP-29, P0.20)
+- `sum(date)` read 2.46e+14, now 3758900, and its note now names the units,
+  days since 01jan1960, where it named milliseconds since 01jan1970.
+  (WP-29, P0.20)
+- The mean of a %tm variable holding 2001m1 and 2001m3 read 2001m1; it now
+  reads 2001m2. (WP-29, P0.20)
 
 ### Security
 

@@ -990,6 +990,176 @@ class TestTheFixture:
             assert len(t["data"][c]) == 248, c
 
 
+# ===========================================================================
+# P0.20: KPI statistics of a date in Stata units
+# ===========================================================================
+
+_KPI_VARS = ("date", "m", "q", "w", "tc", "yr")
+_KPI_STATS = ("sd", "var", "iqr", "cv", "sum", "skewness", "mean", "p50",
+              "min", "max")
+_KPI_PLOTS = [{"type": "scatter", "yvar": "close", "xvar": "date",
+               "options": {}}]
+
+
+def _kpi_def(stat, var, update="filter"):
+    return {"name": "k_%s_%s" % (stat, var), "stat": stat, "var": var,
+            "fmt": "", "title": "T", "update": update, "if_expr": ""}
+
+
+def _kpi_spec(kpis, filters=_SLIDER, formats=None):
+    return _spec(_KPI_PLOTS, kpis=kpis, filters=filters, formats=formats)
+
+
+def _want(scope, var, stat):
+    return _truth()["kpi"][scope][var][stat]["display"]
+
+
+_ALL60 = [(v, s) for v in _KPI_VARS for s in _KPI_STATS]
+
+
+@pytest.fixture(scope="module")
+def _first_paint_cards(tmp_path_factory):
+    spec = _kpi_spec([_kpi_def(s, v) for v, s in _ALL60])
+    r = hc4._saved(tmp_path_factory.mktemp("kpi_saved"), spec, _df())
+    saved = hc4._cards(d.text for d in r.kpi_divs.values())
+    ns = hc4._served_app(tmp_path_factory.mktemp("kpi_served"), spec, _df())
+    served = hc4._served_cards(hc4._served_session(ns))
+    return {"saved": saved, "served": served}
+
+
+_MOVED = [("date", s) for s in ("sd", "var", "iqr", "cv", "sum")] + \
+    [("m", "mean"), ("m", "p50")]
+
+
+def _tm2_frame():
+    return pd.DataFrame({"m": [492.0, 494.0], "close": [1.0, 2.0],
+                         "date": [14977.0, 15000.0]})
+
+
+class TestKpiOfADate:
+
+    @pytest.mark.parametrize("var,stat", _ALL60,
+                             ids=["%s-%s" % vs for vs in _ALL60])
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_first_paint(self, _first_paint_cards, mode, var, stat):
+        got = _first_paint_cards[mode].get("k_%s_%s" % (stat, var))
+        assert got == _want("all", var, stat), (got, _want("all", var, stat))
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_a_monthly_mean_is_statas_month(self, tmp_path, mode):
+        spec = _kpi_spec([_kpi_def("mean", "m"), _kpi_def("p50", "m")])
+        if mode == "saved":
+            r = hc4._saved(tmp_path, spec, _tm2_frame())
+            cards = hc4._cards(d.text for d in r.kpi_divs.values())
+        else:
+            ns = hc4._served_app(tmp_path, spec, _tm2_frame())
+            cards = hc4._served_cards(hc4._served_session(ns))
+        assert _want("tm2", "m", "mean") == "2001m2"
+        assert cards.get("k_mean_m") == "2001m2", cards
+        assert cards.get("k_p50_m") == "2001m2", cards
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_after_a_move(self, tmp_path, mode):
+        spec = _kpi_spec([_kpi_def(s, v) for v, s in _MOVED])
+        if mode == "saved":
+            if js_runner.NODE is None:
+                pytest.skip("node is not installed")
+            r = hc4._saved(tmp_path, spec, _df())
+            cards = hc4._saved_filter_move(r, 0, 1200.0)
+        else:
+            ns = hc4._served_app(tmp_path, spec, _df())
+            cards = hc4._served_filter_move(ns, "close", 1200.0)
+        bad = ["%s(%s): card %r, Stata %r" % (s, v, cards.get(
+            "k_%s_%s" % (s, v)), _want("if close>=1200", v, s))
+            for v, s in _MOVED
+            if cards.get("k_%s_%s" % (s, v)) != _want("if close>=1200", v, s)]
+        assert not bad, bad
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_after_a_brush(self, tmp_path, mode):
+        spec = _kpi_spec([_kpi_def(s, v, update="brush") for v, s in _MOVED],
+                         filters=())
+        if mode == "saved":
+            if js_runner.NODE is None:
+                pytest.skip("node is not installed")
+            r = hc4._saved(tmp_path, spec, _df())
+            cards = hc4._saved_brush(r, "g1", list(range(50)))
+        else:
+            ns = hc4._served_app(tmp_path, spec, _df())
+            cards = hc4._served_brush(ns, list(range(50)))
+        bad = ["%s(%s): card %r, Stata %r" % (s, v, cards.get(
+            "k_%s_%s" % (s, v)), _want("in 1/50", v, s))
+            for v, s in _MOVED
+            if cards.get("k_%s_%s" % (s, v)) != _want("in 1/50", v, s)]
+        assert not bad, bad
+
+    def test_the_sum_note_names_the_units(self, tmp_path):
+        spec = _kpi_spec([_kpi_def("sum", "date")])
+        _f, ws, _r = _build("saved", tmp_path / "a", spec)
+        _f, wv, _d = _build("served", tmp_path / "b", spec)
+        ns = [x for x in ws if "adds up dates" in x]
+        nv = [x for x in wv if "adds up dates" in x]
+        assert len(ns) == 1 and "days since 01jan1960" in ns[0], ws
+        assert nv == ns, (nv, ns)
+
+    @_NODE
+    def test_js_drops_out_of_range_values(self, tmp_path):
+        spec = _kpi_spec([_kpi_def("sd", "date")])
+        r = hc4._saved(tmp_path, spec, _df())
+        cfg = json.loads(r.filter_callbacks[0].args["kpi_config_json"])
+        (k,) = [c for c in cfg if c.get("varname") == "date"]
+        days = [14977.0, 14990.0, 15020.0, 15100.0]
+        col = [ms_td(v) for v in days] + [1e18]
+        js = dr._FILTER_JS
+        helpers = js[js.index("// ---- KPI recompute, shared by"):
+                     js.index("dash_apply_kpis(new_data,")]
+        pctl = js[js.index("function dash_pctl"):
+                  js.index("// agg_sources is a Bokeh model list")]
+        script = (dr._DASH_FMT_JS + pctl
+                  + '\nconst ROW_ID = "__dash_row__";\n' + helpers
+                  + "\nconst data = " + json.dumps(
+                      {"date": col, "__dash_row__": list(range(len(col)))})
+                  + ";\nlet captured = null;"
+                  + "\nconst divs = [{set text(v) { captured = v; }}];"
+                  + "\ndash_apply_kpis(data, [" + json.dumps(k) + "], divs,"
+                  + " ROW_ID);"
+                  + "\nprocess.stdout.write(JSON.stringify(captured));")
+        text = _run_node(script)
+        _name, got = hc4._card(text)
+        want = dr._dash_fmt_text(float(np.std(days, ddof=1)), "%9.0g")
+        assert got == want, (got, want)
+
+    def test_a_missing_kind_is_refused(self):
+        col = dr._stata_dates_to_datetime(pd.Series([14977.0, 15000.0]), "td")
+        with pytest.raises(ValueError):
+            dr._dash_kpi_column(col, "sd", "date", None)
+        out = dr._dash_kpi_column(col, "count", "date", None)
+        assert np.asarray(out, float).dtype == np.float64 and len(out) == 2
+
+
+class TestTheKpiConfig:
+
+    def test_unitkind_reaches_every_statistic_but_counts(self, tmp_path):
+        spec = _kpi_spec([_kpi_def("sd", "date"), _kpi_def("count", "date"),
+                          _kpi_def("mean", "close"), _kpi_def("max", "date")])
+        r = hc4._saved(tmp_path, spec, _df())
+        cfg = {c["name"] if "name" in c else c.get("kname"): c
+               for c in json.loads(
+                   r.filter_callbacks[0].args["kpi_config_json"])}
+        by = {(c.get("stat"), c.get("varname")): c for c in cfg.values()}
+        assert by[("sd", "date")]["unitkind"] == "td"
+        assert by[("count", "date")]["unitkind"] == ""
+        assert by[("mean", "close")]["unitkind"] == ""
+        assert by[("max", "date")]["datekind"] == "td"
+
+    def test_the_unit_kind_rule(self):
+        assert dr._dash_kpi_unit_kind("sd", "td") == "td"
+        assert dr._dash_kpi_unit_kind("count", "td") == ""
+        assert dr._dash_kpi_unit_kind("DCOUNT", "tm") == ""
+        assert dr._dash_kpi_unit_kind("sd", "zz") == ""
+        assert dr._dash_kpi_unit_kind("sd", None) == ""
+
+
 @_NODE
 def test_the_node_tests_ran():
     """The node cases run on any worker; a machine without node skips here

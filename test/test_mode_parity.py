@@ -1791,6 +1791,11 @@ DATE_CORPUS = [
     _case("a date fit on an axis shared with a number",
           [plot_for("scatter", yvar="mpg", xvar="weight"),
            plot_for("lfit", yvar="mpg", xvar="when")], _W),
+    # WP-29 P0.20 (section 05): KPI statistics of a date in its units.
+    _case("spreads and a sum of a date", [_sc()], _W,
+          kpis=[_kpi(stat="sd", var="when"),
+                _kpi(name="k2", stat="iqr", var="when"),
+                _kpi(name="k3", stat="sum", var="when")]),
     # WP-28 B2: the extent after the layers, the same in both modes.
     _case("yscale(range(100))", [_sc()], None, {"yscale": "range(100)"}),
     _case("yscale(r(0 100) rev)", [_sc()], None, {"yscale": "r(0 100) rev"}),

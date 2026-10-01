@@ -877,28 +877,46 @@ def _dash_widget_number(v):
         return math.nan
 
 
-def _dash_kpi_column(col, stat, varname):
-    """A KPI column as a statistic is taken of it, in both render modes: a
-    datetime column as epoch milliseconds -- the representation Bokeh
-    itself uses -- so min, max, mean and the percentiles all work, and a
-    card formats the answer back into a date.  ``sum`` of dates is named.
+def _dash_kpi_column(col, stat, varname, kind=None):
+    """A KPI column as a statistic is taken of it, in both render modes.
+
+    A date column is read in its Stata values -- days for ``%td``, ms after
+    01jan1960 for ``%tc``, periods for the others, the *kind* -- as
+    ``summarize`` takes every statistic of it (WP-29 P0.20): sd(date) on
+    sysuse sp500 is 105.3335 days, where the epoch milliseconds dash read
+    gave 9.10e+09.  A date-valued result (mean, min, max, a percentile) is
+    then itself a Stata date the card writes in its picture.  ``count`` and
+    ``dcount`` are unit-free and keep the milliseconds.  A date column with
+    no Stata date kind is refused: no unit can be chosen for it.  ``sum``
+    of dates is named, with its units.
     """
     if not pd.api.types.is_datetime64_any_dtype(col):
         return col
-    if str(stat).lower().strip() == "sum":
-        # 01jan1970, the epoch the milliseconds count from (the page's
-        # callback sums the same numbers); this said 01jan1960.
+    s = str(stat).lower().strip()
+    if s in ("count", "dcount"):
+        # As floats, which hold every millisecond of Stata's range exactly
+        # (under 2**53): an int64 sum wrapped silently past 9.2e18, about
+        # 36,000 dates in 9999 (24sep2026).
+        return (col.dropna().astype("datetime64[ms]").astype("int64")
+                .astype("float64"))
+    if kind not in _STATA_DATE_KINDS:
+        raise ValueError(f"_dash_kpi_column: {varname!r} is a date column "
+                         f"with no Stata date kind")
+    if s == "sum":
+        units = {"td": "days since 01jan1960",
+                 "tc": "milliseconds since 01jan1960",
+                 "tC": "milliseconds since 01jan1960",
+                 "tw": "weeks since 1960w1", "tm": "months since 1960m1",
+                 "tq": "quarters since 1960q1",
+                 "th": "half-years since 1960h1", "ty": "years"}[kind]
         warnings.warn(
             f"dash: sum({varname}) adds up dates, which has no meaning. "
-            f"The result is shown as a number of milliseconds since "
-            f"01jan1970.",
+            f"The result is the sum of its Stata values ({units}), as "
+            f"summarize reports it.",
             UserWarning,
         )
-    # As floats, which hold every millisecond of Stata's range exactly
-    # (under 2**53): an int64 sum wrapped silently past 9.2e18, about
-    # 36,000 dates in 9999 (24sep2026).
-    return (col.dropna().astype("datetime64[ms]").astype("int64")
-            .astype("float64"))
+    u = _dash_date_units(col.dropna(), kind)
+    return pd.Series(u[~np.isnan(u)], dtype="float64")
 
 
 # ---------------------------------------------------------------------------
@@ -16589,8 +16607,12 @@ function dash_apply_kpis(data_obj, kpi_config, kpi_divs, ROW_ID) {
         // for those).  isNaN() dropped EVERY string, so count(make) read 0
         // from the first filter move on.
         const _cnt = (k.stat === 'count' || k.stat === 'dcount');
-        const vals = src_col.filter(v => v !== null && v !== undefined &&
+        const _vals0 = src_col.filter(v => v !== null && v !== undefined &&
             (typeof v === 'string' ? (_cnt && v !== '') : !isNaN(v)));
+        // WP-29 P0.20: a date in its Stata values, as summarize takes every
+        // statistic but count and dcount; a value with no Stata date is
+        // dropped (after the null test: Number(null) is 0).
+        const vals = k.unitkind ? _vals0.map(v => dash_stata_value_of(v, k.unitkind)).filter(v => v !== null) : _vals0;
 
         // Stata's answers on few rows: the count, distinct count and sum of
         // no rows are 0 and every other statistic is missing, and sd, var,
@@ -16660,9 +16682,8 @@ function dash_apply_kpis(data_obj, kpi_config, kpi_divs, ROW_ID) {
             // A missing statistic, as Stata displays one.
             text = '.';
         } else if (k.datekind) {
-            // Epoch milliseconds back to the Stata date, then its picture.
-            const sv = dash_stata_value_of(result, k.datekind);
-            text = sv === null ? '.' : dash_fmt_text(sv, k.fmt);
+            // Already a Stata date (WP-29 P0.20): written in its picture.
+            text = dash_fmt_text(result, k.fmt);
         } else {
             // Stata's display of the effective format (WP-28, GAPS2 E1):
             // the text _dash_format_kpi_value wrote as the page opened.
@@ -24153,6 +24174,22 @@ def _dash_kpi_date_valued(stat):
     return s in _DASH_DATE_VALUED_STATS or _dash_kpi_pctile(s) is not None
 
 
+def _dash_kpi_unit_kind(stat, kind):
+    """The Stata date kind a KPI statistic of a date is taken in, or ``""``.
+
+    Every statistic but ``count`` and ``dcount`` is taken of the date's
+    Stata values (WP-29 P0.20); the page's ``dash_apply_kpis`` converts each
+    value with ``dash_stata_value_of(v, unitkind)``.  A kind outside
+    ``_STATA_DATE_KINDS`` is ``""``, so nothing unvalidated reaches the
+    page.
+    """
+    k = str(kind or "")
+    if k in _STATA_DATE_KINDS and str(stat).lower().strip() not in (
+            "count", "dcount"):
+        return k
+    return ""
+
+
 def _dash_effective_kpi_fmt(kpi, varname, formats=None, stat="",
                             date_vars=None):
     """The format a KPI card is actually displayed with (WP-28, GAPS2 E1).
@@ -24195,10 +24232,10 @@ def _dash_format_kpi_value(value, fmt_str, varname="", stat="",
     *fmt_str*, trimmed (``_dash_fmt_text``), the text
     ``test/fixtures/format_truth.json``'s ``kpi`` block records.
 
-    A date-valued statistic of a date variable reaches here as epoch
-    milliseconds and is converted back to its Stata value first
-    (``_dash_stata_value_of``); a missing statistic, or a date beyond
-    Stata's range, is ``.``.  The saved card, the served card and the
+    A date-valued statistic of a date variable reaches here as its Stata
+    value -- every statistic of a date is taken in its Stata units (WP-29
+    P0.20) -- and is written in the date's picture; a missing statistic is
+    ``.``.  The saved card, the served card and the
     page's ``dash_apply_kpis`` (through ``dash_fmt_text``) write the same
     text.  Python's ``format()`` wrote ``fmt(%10.0g)`` of 6165.2567 as
     ``6e+03`` until WP-28 (GAPS2 E1).
@@ -24225,8 +24262,7 @@ def _dash_format_kpi_value(value, fmt_str, varname="", stat="",
         return "."
     kind = (date_vars or {}).get(varname)
     if kind and _dash_kpi_date_valued(stat):
-        sv = _dash_stata_value_of(v, kind)
-        return "." if sv is None else _dash_fmt_text(sv, fmt)
+        return _dash_fmt_text(v, fmt)
     return _dash_fmt_text(v, fmt, storage)
 
 
@@ -26492,9 +26528,10 @@ class DashRenderer:
                     ) -> "pd.Series":
         """Coerce a KPI column to something the statistic can be taken of.
 
-        A datetime column becomes epoch milliseconds -- the representation
-        Bokeh itself uses -- so min, max, mean and the percentiles all work;
-        :meth:`_format_kpi_value` turns the answer back into a date.
+        A datetime column becomes its Stata values, in the kind
+        ``date_vars`` records (WP-29 P0.20), as ``summarize`` takes every
+        statistic of it; :meth:`_format_kpi_value` writes a date-valued
+        answer in the date's picture.
 
         Args:
             col:     The raw column.
@@ -26504,7 +26541,9 @@ class DashRenderer:
         Returns:
             A numeric Series.
         """
-        return _dash_kpi_column(col, stat, varname)
+        return _dash_kpi_column(
+            col, stat, varname,
+            (getattr(self, "date_vars", {}) or {}).get(varname))
 
     @staticmethod
     def _kpi_statistic(col: "pd.Series", stat: str) -> float:
@@ -28717,6 +28756,12 @@ class DashRenderer:
                 if _dash_kpi_date_valued(kstat)
                 else ""
             ),
+            # The Stata date kind every value is converted to before the
+            # statistic is taken, "" for a count or a non-date (WP-29
+            # P0.20).  Data only: a kind from _STATA_DATE_KINDS, JSON
+            # encoded, never interpolated into code.
+            "unitkind": _dash_kpi_unit_kind(
+                kstat, (getattr(self, "date_vars", {}) or {}).get(kvar, "")),
             # HTML-escaped to prevent DOM XSS when the callback rebuilds
             # kpi_div.text by string concatenation.
             "title": html.escape(kdef.get("title", "") or ""),
@@ -29970,6 +30015,7 @@ class ServerAppBuilder:
                          "_dash_effective_kpi_fmt",
                          "_dash_format_kpi_value",
                          "_dash_kpi_pctile", "_dash_kpi_date_valued",
+                         "_dash_kpi_unit_kind",
                          # by(): one parser, one panel-label rule.
                          "_dash_by_tokens", "_dash_parse_by",
                          "_dash_facet_label", "_dash_stata_date_text",
@@ -31293,7 +31339,7 @@ class ServerAppBuilder:
             # nothing in it -- rscatter and pcscatter are drawn, and
             # redrawn after a filter move, by GlyphMapper.map_rscatter and
             # map_pcscatter.
-            "def _compute_kpi(df, stat, varname):",
+            "def _compute_kpi(df, stat, varname, date_vars=None):",
             '    """Compute a KPI statistic from df[varname]. Returns float.',
             "",
             "    Delegates to _kpi_statistic, which is the standalone",
@@ -31305,8 +31351,10 @@ class ServerAppBuilder:
             "    try:",
             "        series = (df[varname].dropna() if varname in df.columns",
             "                  else pd.Series([], dtype=float))",
-            "        # A date as epoch milliseconds, the saved card's rule.",
-            "        series = _dash_kpi_column(series, stat, varname)",
+            "        # A date in its Stata values, the saved card's rule (WP-29",
+            "        # P0.20).",
+            "        series = _dash_kpi_column(series, stat, varname,",
+            "                                  (date_vars or {}).get(varname))",
             "        return float(_kpi_statistic(series, stat))",
             "    except Exception:",
             "        return float('nan')",
@@ -32288,7 +32336,7 @@ class ServerAppBuilder:
             "                or (kpi.get('in_expr') or '').strip()",
             "                or kpi.get('qual_col')):",
             "            _kpi_qual_rows[kname] = _k_df.index",
-            "        val = _compute_kpi(_k_df, kstat, kvar)",
+            "        val = _compute_kpi(_k_df, kstat, kvar, _date_vars)",
             "        disp = _format_kpi(val, kfmt, kvar, kstat, _date_vars)",
             "        div_html = _dash_kpi_card(ktitle, disp, ksub, kcolor, kbg, kname)",
             "        # disable_math: the card is escaped HTML, not maths; a",
@@ -32638,7 +32686,7 @@ class ServerAppBuilder:
             "                _k_rows = _kpi_qual_rows.get(kname)",
             "                _k_fdf = (_k_all if _k_rows is None",
             "                          else _k_all[_k_all.index.isin(_k_rows)])",
-            "                val = _compute_kpi(_k_fdf, kpi.get('stat', 'mean'), kpi.get('var', ''))",
+            "                val = _compute_kpi(_k_fdf, kpi.get('stat', 'mean'), kpi.get('var', ''), _date_vars)",
             "                disp = _format_kpi(val, kpi.get('fmt', ''),",
             "                                   kpi.get('var', ''),",
             "                                   kpi.get('stat', 'mean'), _date_vars)",
@@ -32720,7 +32768,7 @@ class ServerAppBuilder:
             "                _k_rows = _kpi_qual_rows.get(kname)",
             "                _k_sel = (sel_df if _k_rows is None",
             "                          else sel_df[sel_df.index.isin(_k_rows)])",
-            "                val = _compute_kpi(_k_sel, kpi.get('stat', 'mean'), kpi.get('var', ''))",
+            "                val = _compute_kpi(_k_sel, kpi.get('stat', 'mean'), kpi.get('var', ''), _date_vars)",
             "                disp = _format_kpi(val, kpi.get('fmt', ''),",
             "                                   kpi.get('var', ''),",
             "                                   kpi.get('stat', 'mean'), _date_vars)",

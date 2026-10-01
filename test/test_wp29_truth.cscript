@@ -1897,6 +1897,213 @@ end
     display as text "S05 end `c(current_time)'"
 }
 * ==== end S05 ====
+* ==== S05 P0.20: KPI statistics of a date in Stata units ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S05") {
+    display as text "S05 P0.20 start `c(current_time)'"
+
+    // The card readers (KF-01/KF-03's) and the comparison.  The python
+    // block holds no brace: Stata still reads a block another WP29_ONLY
+    // skips.
+    python:
+import html as _kd_html
+import re as _kd_re
+import warnings as _kd_w
+from sfi import Macro as _KM
+from bokeh.document import Document as _KDoc
+from bokeh.models import Div as _KDiv, Slider as _KSlider
+
+
+def _kd_card(text, name):
+    m = _kd_re.search(r'id=\\"kpi_val_' + _kd_re.escape(name)
+                      + r'\\"[^&]*&gt;(.*?)&lt;/div&gt;', text)
+    return None if m is None else _kd_html.unescape(m.group(1))
+
+
+def _kd_served_card(text, name):
+    m = _kd_re.search(r'id="kpi_val_' + _kd_re.escape(name)
+                      + r'"[^>]*>(.*?)</div>', text or "")
+    return None if m is None else _kd_html.unescape(m.group(1))
+
+
+def _kd_session(path):
+    with open(path, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s05_kpi_app")
+    with _kd_w.catch_warnings():
+        _kd_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s05_kpi_app.py",
+                     "exec"), ns)
+        doc = _KDoc()
+        ns["make_document"](doc)
+    return doc
+
+
+def _kd_served(doc, names):
+    out = dict()
+    for d in doc.select(dict(type=_KDiv)):
+        for n in names:
+            v = _kd_served_card(d.text, n)
+            if v is not None:
+                out[n] = v
+    return out
+
+
+def _kd_move(doc, value):
+    sl = [s for s in doc.select(dict(type=_KSlider))
+          if getattr(s, "_dash_var", None) == "close"]
+    fired = 0
+    if len(sl) == 1:
+        old = sl[0].value
+        with _kd_w.catch_warnings():
+            _kd_w.simplefilter("ignore")
+            sl[0].value = value
+            for attr in ("value", "value_throttled"):
+                for cb in sl[0]._callbacks.get(attr, []):
+                    cb(attr, old, value)
+                    fired += 1
+    return fired
+
+
+def _kd_compare(got, names, prefix, label):
+    bad = []
+    for n in names:
+        want = _KM.getGlobal(prefix + n)
+        if got.get(n) != want:
+            bad.append("%s %s: card %r, Stata %r" % (label, n, got.get(n),
+                                                     want))
+    return bad
+end
+
+    // ------------------------------------------------------------
+    // KD-01 / KD-02: sd var iqr cv sum skewness of date and mean p50 of m
+    // on the saved page, and served as opened and after the close slider
+    // moves to 1200, against summarize's display text, live.
+    // ------------------------------------------------------------
+    sysuse sp500, clear
+    keep date close
+    generate m = mofd(date)
+    format m %tm
+    global kd_names "kd1 kd2 kd3 kd4 kd5 kd6 kd7 kd8"
+    foreach scope in all if {
+        if "`scope'" == "all" {
+            local kd_if ""
+            local kd_p "kd_want_"
+        }
+        else {
+            local kd_if "if close >= 1200"
+            local kd_p "kd_wantif_"
+        }
+        quietly summarize date `kd_if', detail
+        local v : display %9.0g r(sd)
+        global `kd_p'kd1 = strtrim("`v'")
+        local v : display %9.0g r(Var)
+        global `kd_p'kd2 = strtrim("`v'")
+        local v : display %9.0g r(p75) - r(p25)
+        global `kd_p'kd3 = strtrim("`v'")
+        local v : display %9.0g r(sd)/r(mean)
+        global `kd_p'kd4 = strtrim("`v'")
+        local v : display %9.0g r(sum)
+        global `kd_p'kd5 = strtrim("`v'")
+        local v : display %9.0g r(skewness)
+        global `kd_p'kd6 = strtrim("`v'")
+        quietly summarize m `kd_if', detail
+        local v : display %tm r(mean)
+        global `kd_p'kd7 = strtrim("`v'")
+        local v : display %tm r(p50)
+        global `kd_p'kd8 = strtrim("`v'")
+    }
+    capture dash clear
+    quietly dash scatter close date, name(g1)
+    quietly dash kpi sd(date), name(kd1) title("T")
+    quietly dash kpi var(date), name(kd2) title("T")
+    quietly dash kpi iqr(date), name(kd3) title("T")
+    quietly dash kpi cv(date), name(kd4) title("T")
+    quietly dash kpi sum(date), name(kd5) title("T")
+    quietly dash kpi skewness(date), name(kd6) title("T")
+    quietly dash kpi mean(m), name(kd7) title("T")
+    quietly dash kpi p50(m), name(kd8) title("T")
+    local kd_html "`w29_work'/kd_cards.html"
+    local kd_app  "`w29_work'/kd_cards_app.py"
+    capture erase "`kd_html'"
+    capture erase "`kd_app'"
+    capture noisily dash build, saving("`kd_html'") replace nobrowser filter(close, type(slider))
+    local kd_rc1 = _rc
+    capture noisily dash build, saving("`kd_app'") server replace filter(close, type(slider))
+    local kd_rc2 = _rc
+    python:
+_names = _KM.getGlobal("kd_names").split()
+with open(_KM.getLocal("kd_html"), encoding="utf-8") as _fh:
+    _page = _fh.read()
+_saved = dict((n, _kd_card(_page, n)) for n in _names)
+_b1 = _kd_compare(_saved, _names, "kd_want_", "saved")
+_doc = _kd_session(_KM.getLocal("kd_app"))
+_b2 = _kd_compare(_kd_served(_doc, _names), _names, "kd_want_", "served opened")
+_f = _kd_move(_doc, 1200.0)
+_b2 += _kd_compare(_kd_served(_doc, _names), _names, "kd_wantif_",
+                   "served moved")
+if _f != 1:
+    _b2.append("the close slider fired %d callbacks" % _f)
+_KM.setGlobal("kd_bad1", "; ".join(_b1))
+_KM.setGlobal("kd_n1", str(len(_b1)))
+_KM.setGlobal("kd_bad2", "; ".join(_b2))
+_KM.setGlobal("kd_n2", str(len(_b2)))
+end
+    _w29_expect KD-01 "(`kd_rc1' == 0)" "dash build (saved) refused: rc `kd_rc1'"
+    _w29_expect KD-01 "(${kd_n1} == 0)" `"${kd_bad1}"'
+    _w29_done KD-01 "saved cards of sd var iqr cv sum skewness (date) and mean p50 (m) are summarize's"
+    _w29_expect KD-02 "(`kd_rc2' == 0)" "dash build, server refused: rc `kd_rc2'"
+    _w29_expect KD-02 "(${kd_n2} == 0)" `"${kd_bad2}"'
+    _w29_done KD-02 "served cards are summarize's, opened and after the close slider moves to 1200"
+    capture erase "`kd_html'"
+    capture erase "`kd_app'"
+
+    // ------------------------------------------------------------
+    // KD-03: the mean of 2001m1 and 2001m3 is 2001m2, saved and served.
+    // ------------------------------------------------------------
+    clear
+    quietly set obs 2
+    generate m = 492 + 2*(_n-1)
+    format m %tm
+    generate close = _n
+    quietly summarize m
+    local v : display %tm r(mean)
+    global kd_want_kd9 = strtrim("`v'")
+    global kd_names "kd9"
+    capture dash clear
+    quietly dash scatter close m, name(g1)
+    quietly dash kpi mean(m), name(kd9) title("T")
+    local kd_html "`w29_work'/kd3_cards.html"
+    local kd_app  "`w29_work'/kd3_cards_app.py"
+    capture erase "`kd_html'"
+    capture erase "`kd_app'"
+    capture noisily dash build, saving("`kd_html'") replace nobrowser
+    local kd_rc1 = _rc
+    capture noisily dash build, saving("`kd_app'") server replace
+    local kd_rc2 = _rc
+    python:
+with open(_KM.getLocal("kd_html"), encoding="utf-8") as _fh:
+    _page = _fh.read()
+_b3 = _kd_compare(dict(kd9=_kd_card(_page, "kd9")), ["kd9"], "kd_want_",
+                  "saved")
+_b3 += _kd_compare(_kd_served(_kd_session(_KM.getLocal("kd_app")), ["kd9"]),
+                   ["kd9"], "kd_want_", "served")
+_KM.setGlobal("kd_bad3", "; ".join(_b3))
+_KM.setGlobal("kd_n3", str(len(_b3)))
+end
+    _w29_expect KD-03 "(`kd_rc1' == 0 & `kd_rc2' == 0)" "dash build refused: rc `kd_rc1' / `kd_rc2'"
+    _w29_expect KD-03 `"("${kd_want_kd9}" == "2001m2")"' "summarize's mean displays ${kd_want_kd9}"
+    _w29_expect KD-03 "(${kd_n3} == 0)" `"${kd_bad3}"'
+    _w29_done KD-03 "mean(m) of 2001m1 and 2001m3 reads 2001m2, saved and served"
+    capture erase "`kd_html'"
+    capture erase "`kd_app'"
+
+    capture dash clear
+    macro drop kd_*
+    display as text "S05 P0.20 end `c(current_time)'"
+}
+* ==== end S05 ====
 * ==== S06 P0.10: hover() variables exported ====
 local only : env WP29_ONLY
 if inlist("`only'", "", "S06") {
@@ -2793,6 +3000,7 @@ end
     display as text "S07 end `c(current_time)'"
 }
 * ==== end S07 ====
+
 
 * ==== append new blocks above this line ====
 

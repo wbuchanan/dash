@@ -1113,17 +1113,19 @@ class TestTheKpiFormatHelpers:
         assert dr._dash_format_kpi_value(1.0, "%notaformat")
 
     # WP-28 section 11 (GAPS2 E1): the date_formatter parameter is retired;
-    # a date-valued statistic (epoch milliseconds) is written in its
-    # effective %t picture by _dash_fmt_text, as Stata displays it.
-    _MS_02JAN2002 = (15342 - 3653) * 86_400_000.0
+    # a date-valued statistic (its Stata value since WP-29 P0.20) is
+    # written in its effective %t picture by _dash_fmt_text, as Stata
+    # displays it.
 
     def test_a_date_valued_statistic_is_shown_as_a_date(self):
+        # WP-29 P0.20 (section 05): the statistic is the Stata value,
+        # 15342 (02jan2002); it was epoch milliseconds.
         got = dr._dash_format_kpi_value(
-            self._MS_02JAN2002, "%td", "date", "max",
+            15342.0, "%td", "date", "max",
             date_vars={"date": "td"})
         assert got == "02jan2002"
         got = dr._dash_format_kpi_value(
-            self._MS_02JAN2002, "%tdCCYY-NN-DD", "date", "max",
+            15342.0, "%tdCCYY-NN-DD", "date", "max",
             date_vars={"date": "td"})
         assert got == "2002-01-02"
 

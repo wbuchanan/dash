@@ -987,16 +987,18 @@ class TestTheDateHelpers:
     def test_a_kpi_sum_of_dates_neither_wraps_nor_names_the_wrong_epoch(
             self):
         """40,000 dates in 9999 sum past int64's 9.2e18; as int64 the sum
-        wrapped silently.  The milliseconds count from 01jan1970."""
+        wrapped silently.  WP-29 P0.20 (section 05): the sum is of the
+        Stata values, days since 01jan1960, as summarize reports it (it
+        was epoch milliseconds since 01jan1970), and still never wraps."""
         col = pd.Series(np.full(40_000, np.datetime64("9999-12-31", "ms")))
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            vals = dr.DashRenderer._kpi_column(None, col, "sum", "date")
+            vals = dr._dash_kpi_column(col, "sum", "date", "td")
         total = dr.DashRenderer._kpi_statistic(vals, "sum")
-        assert total == pytest.approx(40_000 * _MS[4], rel=1e-12)
-        assert any("milliseconds since 01jan1970" in str(w.message)
+        assert total == pytest.approx(40_000 * 2936549.0, rel=1e-12)
+        assert any("days since 01jan1960" in str(w.message)
                    for w in caught)
-        assert dr.DashRenderer._kpi_statistic(vals, "max") == _MS[4]
+        assert dr.DashRenderer._kpi_statistic(vals, "max") == 2936549.0
 
     def test_a_date_that_arrives_as_text_is_held_in_milliseconds(
             self, tmp_path):
@@ -1027,7 +1029,10 @@ class TestTheDateHelpers:
             "const out = {};\n"
             "for (const kind of ['td', 'ty', 'tm', 'tc']) {\n"
             "  const k = {datekind: kind, fmt: '%' + kind};\n"
-            "  const result = -59011459200000;\n"
+            # WP-29 P0.20 (section 05): the statistic reaches the card as
+            # its Stata value, 01jan0100 in each kind; it was epoch ms.
+            "  const result = {td: -679350, ty: 100, tm: -22320,"
+            " tc: -58695840000000}[kind];\n"
             + body +
             "  out[kind] = text;\n}\n"
             "process.stdout.write(JSON.stringify(out));\n")
