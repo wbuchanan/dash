@@ -8347,8 +8347,10 @@ program define _dash_serve
     _dash_json_str `"`serve_app_path'"'   _py_serve
     _dash_json_str `"`render_py'"'        _py_render
 
+    // Break, not Ctrl+C: Ctrl+C is only console Stata's Break key, and GUI
+    // users were told to press it (WP-29 P0.13 F4, F9c).
     display as text "dash serve: starting Bokeh Server on port `port_int'." ///
-        "  Stata is blocked until the server stops (Ctrl+C)."
+        "  Stata waits while it runs; press Break (Ctrl+C in console Stata) to stop it."
 
     // Single-line python: calls to avoid ado-path IndentationError (see _dash_do_render).
     python: import sys, runpy
@@ -8378,10 +8380,15 @@ program define _dash_serve
     python: _dash_serve_ns = runpy.run_path("`_py_render'", init_globals={"_dash_launch_report": _dash_srv_rep}, run_name="__main__")
     python: from sfi import Macro as _dash_srv_M
     python: _dash_srv_M.setLocal("_srv_err", str(_dash_srv_rep.get("error", ""))[:4096])
+    // WP-29 P0.13 F4: Break (or Ctrl+C) stopped the server; the launcher
+    // put "interrupted" in the box rather than raise, so it ends here as
+    // any command interrupted by Break does: --Break--, r(1).
+    python: _dash_srv_M.setLocal("_srv_brk", "1" if _dash_srv_rep.get("interrupted") else "")
     if `: length local _srv_err' {
         _dash_tmp_close, dir(`"`_dash_run'"')
         mata: _dash_say("err", "dash serve: ", st_local("_srv_err"), "")
         exit 198
     }
     _dash_tmp_close, dir(`"`_dash_run'"')
+    if "`_srv_brk'" == "1" error 1
 end

@@ -151,12 +151,15 @@ def _fake_popen_class(returncode=0, stdout="", stderr=""):
         def poll(self):
             return self.returncode
 
-        def wait(self):
+        def wait(self, timeout=None):
             _FakeProc.waited = True
             return self.returncode
 
         def terminate(self):
             _FakeProc.terminated = True
+
+        def kill(self):
+            _FakeProc.killed = True
 
         def communicate(self):
             return ("", "")
@@ -288,7 +291,7 @@ class TestTheLauncherPrintsTheUrlOnceHealthAnswers:
                         self.returncode = 0
                 return self.returncode
 
-            def wait(self):
+            def wait(self, timeout=None):
                 while self.returncode is None:
                     self.poll()
                     time.sleep(0.05)
@@ -296,6 +299,9 @@ class TestTheLauncherPrintsTheUrlOnceHealthAnswers:
 
             def terminate(self):
                 self.returncode = 0
+
+            def kill(self):
+                self.returncode = -9
 
             def communicate(self):
                 return ("", "")
@@ -327,7 +333,7 @@ class TestTheLauncherPrintsTheUrlOnceHealthAnswers:
                     self.returncode = 0
                 return self.returncode
 
-            def wait(self):
+            def wait(self, timeout=None):
                 while self.returncode is None:
                     self.poll()
                     time.sleep(0.05)
@@ -335,6 +341,9 @@ class TestTheLauncherPrintsTheUrlOnceHealthAnswers:
 
             def terminate(self):
                 self.returncode = 0
+
+            def kill(self):
+                self.returncode = -9
 
             def communicate(self):
                 return ("", "")

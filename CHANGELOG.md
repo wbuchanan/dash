@@ -651,7 +651,11 @@ requirement changes sit in their own lists.
 - `dash scatter mpg weight, hover(rep78)` now shows rep78, by its value label, in the tooltip of the saved page and the served app, on the one-line route and through dash build and dash serve, before and after a filter move; a variable named only in hover() was never exported, and the tooltip left it out with rc 0 and no note (WP-29, P0.10)
 - hover()'s variables now count toward the data limits: on the saved page when a layer of the graph can show them (or csv is given), in a served app always. `dash scatter mpg weight, hover(rep78 headroom trunk)` at `dash_max_cells 200` counted 148 values and built; it is now refused with 370 values (74 observations x 5 variables), r(134). `dash build` and `dash serve` refuse a hover() variable dropped after name() with r(111) where they left it out with rc 0. The CSV download carries the hover() columns (WP-29, P0.10)
 
-<!-- WP-29 P0.13 -->
+- Break stops `dash serve` in every front end: the launcher polls Stata's
+  interface while it waits, stops the server and ends the command with r(1),
+  as any command interrupted by Break does; Ctrl+C in console Stata used to
+  return 0, and GUI Stata's Break was never seen. Messages and the help name
+  Break. (WP-29, P0.13)
 
 <!-- WP-29 P0.17 -->
 

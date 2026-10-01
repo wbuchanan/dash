@@ -95,7 +95,7 @@
 {cmd:server}
 [{it:other_build_options}]
 
-{pstd}{ul:Launch Bokeh Server (blocking -- press Ctrl+C to stop)}{p_end}
+{pstd}{ul:Launch Bokeh Server (blocking -- press Break to stop)}{p_end}
 
 {p 8 17 2}
 {cmd:dash serve}
@@ -826,8 +826,9 @@ See {help dash##dashboard_options:Dashboard Options}.
 
 {pstd}
 Launches a Bokeh Server serving the current registry as a live dashboard.
-The server runs in the foreground; Stata is blocked until you press
-Ctrl+C or the optional {cmd:timeout()} expires.  When a filter moves, the
+The server runs in the foreground: Stata waits until you press Break
+(Ctrl+C in console Stata), the optional {cmd:timeout()} expires, or Stata
+itself exits.  When a filter moves, the
 server recomputes, from the rows the filters leave, every layer computed
 from the data -- a histogram's bins as well as its bars, a fitted or
 smoothed line, a kernel density curve -- and every KPI card that follows
@@ -852,7 +853,7 @@ computed layers, and its histogram bins, as they were built; see
     keeps every {cmd:dash} window shut for the session; see
     {help dash##nobrowser_global:The global dash_nobrowser}{p_end}
 {synopt:{cmd:timeout(}{it:#}{cmd:)}}stop the server after {it:#} minutes,
-    at most nine digits; 0 means run until Ctrl+C (default){p_end}
+    at most nine digits; 0 means run until Break (default){p_end}
 {synoptline}
 
 {pstd}
@@ -1511,11 +1512,14 @@ for its columns.  See {help dash##layout:Layout}.
 
 {pstd}
 {ul:Blocking behavior.}  {cmd:dash serve} blocks Stata until the server
-stops: {cmd:timeout(}{it:#}{cmd:)} stops it after {it:#} minutes, and
-Ctrl+C in the Stata console stops it at once.  If Stata exits, crashes or
-is killed, the server stops by itself within a few seconds and frees its
-port (measured on macOS; Linux and Windows have not been measured).  Either
-way the command returns and dash removes its temporary folder.
+stops.  {cmd:timeout(}{it:#}{cmd:)} stops it after {it:#} minutes, and the
+command returns 0.  Break -- the Break button or menu item, or Ctrl+C in
+console Stata -- stops it at once, and the command ends with r(1), as any
+command interrupted by Break does.  If Stata exits, crashes or is killed,
+the server stops by itself within a few seconds and frees its port
+(measured on macOS; Linux and Windows have not been measured).  dash then
+removes its temporary folder; see
+{help dash##tempfiles:Temporary files and privacy}.
 
 {pstd}
 {cmd:dash serve} prints the server's address once it answers
@@ -1912,7 +1916,7 @@ but 60,000,000 bytes, and are refused at the default.
 {phang2}{cmd:. sysuse auto, clear}{p_end}
 {phang2}{cmd:. dash scatter mpg weight if foreign == 1, saving(foreign.html)}{p_end}
 
-{pstd}{ul:Live Bokeh Server (blocking — Ctrl+C to stop)}{p_end}
+{pstd}{ul:Live Bokeh Server (blocking — Break to stop)}{p_end}
 {phang2}{cmd:. sysuse auto, clear}{p_end}
 {phang2}{cmd:. dash scatter mpg weight, name(s1) title("MPG vs Weight")}{p_end}
 {phang2}{cmd:. dash kpi mean(mpg), title("Avg MPG") name(k1) fmt(%9.1f) update(filter)}{p_end}

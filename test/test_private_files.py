@@ -1314,7 +1314,13 @@ class TestTheLaunchFromTheOpenFile:
             if _wait_health(port, 40, p):
                 answered.append(True)
             if p.poll() is None:
-                p.send_signal(signal.SIGINT)
+                # The designed stop: the app's --parent-watch (WP-29 P0.13
+                # F2) ends it, exit 0, on end of file of its stdin.  A
+                # SIGINT, used before F4, now ends dash serve as a Break.
+                try:
+                    p.stdin.close()
+                except (OSError, ValueError):
+                    pass
 
         class _Swapping:
             def __new__(cls, cmd, **kw):

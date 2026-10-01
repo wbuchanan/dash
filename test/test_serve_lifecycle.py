@@ -30,6 +30,7 @@ import subprocess
 import sys
 import threading
 import time
+import types
 import urllib.request
 import warnings
 
@@ -627,3 +628,471 @@ class TestTheHelpSaysTheServerStopsWithStata:
         assert "stops by itself" in h
         assert "measured on macOS" in h
         assert "once the server answers" in h
+
+
+# ===========================================================================
+# F4: Break stops dash serve, r(1); messages name Break
+# ===========================================================================
+
+def _stub_sfi(raise_on=None, when=None):
+    """A stand-in for Stata's sfi: BreakError and SFIToolkit.pollstd, which
+    counts its calls and raises BreakError on call *raise_on* (1-based) or
+    once *when()* is true."""
+    mod = types.ModuleType("sfi")
+
+    class BreakError(Exception):
+        pass
+
+    calls = []
+
+    def pollstd():
+        calls.append(time.monotonic())
+        if raise_on is not None and len(calls) == raise_on:
+            raise BreakError("Break")
+        if when is not None and when():
+            raise BreakError("Break")
+
+    mod.BreakError = BreakError
+    mod.SFIToolkit = types.SimpleNamespace(pollstd=pollstd)
+    mod.calls = calls
+    return mod
+
+
+class _StopRec:
+    """A fake child that records how it is stopped: stdin.close, wait with
+    its timeout, terminate and kill.  It runs until its stdin is closed
+    (or *seconds* pass, or it is killed), then exits *code*."""
+
+    def __init__(self, seconds=30.0, code=0, ignores_close=False,
+                 ignores_terminate=False, wait_raises=None, banner=False):
+        self.events = []
+        self.code = code
+        self.ignores_close = ignores_close
+        self.ignores_terminate = ignores_terminate
+        self.wait_raises = list(wait_raises or [])
+        self.returncode = None
+        self._end = time.monotonic() + seconds
+        rec = self
+
+        class _In:
+            def write(self, b):
+                rec.events.append("write")
+                return len(b)
+
+            def flush(self):
+                pass
+
+            def close(self):
+                rec.events.append("close")
+                if not rec.ignores_close:
+                    rec._end = time.monotonic()
+
+        self.stdin = _In()
+        self.stdout = io.StringIO(
+            "Bokeh Server running at http://localhost:1/\n" if banner else "")
+        self.stderr = io.StringIO("")
+
+    def poll(self):
+        if self.returncode is None and time.monotonic() >= self._end:
+            self.returncode = self.code
+        return self.returncode
+
+    def wait(self, timeout=None):
+        self.events.append("wait(%s)" % timeout)
+        if self.wait_raises:
+            raise self.wait_raises.pop(0)
+        t_end = None if timeout is None else time.monotonic() + timeout
+        while self.poll() is None:
+            if t_end is not None and time.monotonic() >= t_end:
+                raise subprocess.TimeoutExpired("fake", timeout)
+            time.sleep(0.02)
+        return self.returncode
+
+    def terminate(self):
+        self.events.append("terminate")
+        if not self.ignores_terminate:
+            self._end = time.monotonic()
+
+    def kill(self):
+        self.events.append("kill")
+        self.returncode = -9
+
+
+def _popen_of(child):
+    made = []
+
+    def _popen(cmd, **kw):
+        made.append(cmd)
+        return child
+    _popen.made = made
+    return _popen
+
+
+def _app_in_run(tmp_path):
+    run = _run_inputs(tmp_path)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        written = dr.main(run["spec"], run["data"], run["app"],
+                          mode="server", launch=True)
+    return run, written
+
+
+class TestTheStataPoller:
+
+    def test_inside_stata_it_returns_pollstd_and_break_error(
+            self, monkeypatch):
+        poller = getattr(dr, "_dash_stata_poller")
+        stub = _stub_sfi()
+        monkeypatch.setitem(sys.modules, "sfi", stub)
+        poll, brk = poller()
+        assert poll is stub.SFIToolkit.pollstd
+        assert brk == (stub.BreakError,)
+        assert poller(stub) == (stub.SFIToolkit.pollstd, (stub.BreakError,))
+
+    def test_outside_stata_it_returns_nothing(self, monkeypatch):
+        poller = getattr(dr, "_dash_stata_poller")
+        monkeypatch.setitem(sys.modules, "sfi", None)
+        assert poller() == (None, ())
+        assert poller(types.SimpleNamespace()) == (None, ())
+
+
+class TestTheLauncherPollsStata:
+
+    def test_pollstd_is_called_while_it_waits(self, tmp_path, monkeypatch):
+        run, written = _app_in_run(tmp_path)
+        stub = _stub_sfi()
+        monkeypatch.setitem(sys.modules, "sfi", stub)
+        monkeypatch.setattr(subprocess, "Popen",
+                            _popen_of(_StopRec(seconds=1.0)))
+        dr._dash_launch_app(run["app"], _free_port(), 0, True,
+                            prebind=False, expect=written)
+        assert len(stub.calls) >= 3, len(stub.calls)
+
+    def test_break_closes_stdin_stops_the_child_and_raises_interrupted(
+            self, tmp_path, monkeypatch, capsys):
+        run, written = _app_in_run(tmp_path)
+        stub = _stub_sfi(raise_on=3)
+        monkeypatch.setitem(sys.modules, "sfi", stub)
+        child = _StopRec()
+        monkeypatch.setattr(subprocess, "Popen", _popen_of(child))
+        with pytest.raises(getattr(dr, "_DashServeInterrupted")):
+            dr._dash_launch_app(run["app"], _free_port(), 0, True,
+                                prebind=False, expect=written)
+        assert "close" in child.events
+        assert child.returncode is not None
+        assert "kill" not in child.events
+        assert "dash: stopped by Break; the server has stopped." in \
+            capsys.readouterr().out
+
+    def test_a_child_that_ignores_the_close_is_terminated_then_killed(self):
+        stop = getattr(dr, "_dash_stop_child")
+        child = _StopRec(ignores_close=True, ignores_terminate=True)
+        stop(child, grace=0.2)
+        assert child.events[0] == "close"
+        assert "terminate" in child.events and "kill" in child.events
+        assert child.events.index("terminate") < child.events.index("kill")
+        assert child.events[-1] == "wait(None)"
+
+    def test_break_during_the_build_starts_no_child(self, tmp_path,
+                                                     monkeypatch, capsys):
+        run, written = _app_in_run(tmp_path)
+        stub = _stub_sfi(raise_on=1)
+        monkeypatch.setitem(sys.modules, "sfi", stub)
+        popen = _popen_of(_StopRec())
+        monkeypatch.setattr(subprocess, "Popen", popen)
+        with pytest.raises(getattr(dr, "_DashServeInterrupted")):
+            dr._dash_launch_app(run["app"], _free_port(), 0, True,
+                                expect=written)
+        assert popen.made == []
+        assert "dash: stopped by Break; no server was started." in \
+            capsys.readouterr().out
+
+    def test_a_break_pending_when_the_child_exits_is_reported(
+            self, tmp_path, monkeypatch):
+        run, written = _app_in_run(tmp_path)
+        stub = _stub_sfi(raise_on=2)
+        monkeypatch.setitem(sys.modules, "sfi", stub)
+        monkeypatch.setattr(subprocess, "Popen",
+                            _popen_of(_StopRec(seconds=0.0)))
+        with pytest.raises(getattr(dr, "_DashServeInterrupted")):
+            dr._dash_launch_app(run["app"], _free_port(), 0, True,
+                                prebind=False, expect=written)
+        assert len(stub.calls) == 2
+
+    def test_keyboard_interrupt_outside_stata_stops_the_same_way(
+            self, tmp_path, monkeypatch, capsys):
+        run, written = _app_in_run(tmp_path)
+        monkeypatch.setitem(sys.modules, "sfi", None)
+        child = _StopRec()
+        n = []
+        real_poll = child.poll
+
+        def _poll():
+            n.append(1)
+            if len(n) == 3:
+                raise KeyboardInterrupt
+            return real_poll()
+        child.poll = _poll
+        monkeypatch.setattr(subprocess, "Popen", _popen_of(child))
+        with pytest.raises(getattr(dr, "_DashServeInterrupted")):
+            dr._dash_launch_app(run["app"], _free_port(), 0, True,
+                                prebind=False, expect=written)
+        assert "close" in child.events
+        assert "dash_render: interrupted; the server has stopped." in \
+            capsys.readouterr().out
+
+    def test_break_before_health_answers_is_not_swallowed(
+            self, tmp_path, monkeypatch):
+        """A1: BreakError is an Exception; a poll inside the /health
+        probe's ``except Exception`` would eat it."""
+        run, written = _app_in_run(tmp_path)
+        stub = _stub_sfi(raise_on=2)
+        monkeypatch.setitem(sys.modules, "sfi", stub)
+        child = _StopRec(seconds=8.0)
+        monkeypatch.setattr(subprocess, "Popen", _popen_of(child))
+        t0 = time.monotonic()
+        with pytest.raises(getattr(dr, "_DashServeInterrupted")):
+            dr._dash_launch_app(run["app"], _free_port(), 0, True,
+                                prebind=False, expect=written)
+        assert time.monotonic() - t0 < 5
+        assert "close" in child.events
+
+    def test_an_interrupt_between_popen_and_the_loop_stops_the_child(
+            self, tmp_path, monkeypatch):
+        """A4: from Popen on, one try/finally: an interrupt during the
+        hand-over still stops the child."""
+        run, written = _app_in_run(tmp_path)
+        monkeypatch.setitem(sys.modules, "sfi", None)
+        child = _StopRec()
+
+        def _boom(b):
+            raise KeyboardInterrupt
+        child.stdin.write = _boom
+        monkeypatch.setattr(subprocess, "Popen", _popen_of(child))
+        with pytest.raises(getattr(dr, "_DashServeInterrupted")):
+            dr._dash_launch_app(run["app"], _free_port(), 0, True,
+                                prebind=False, expect=written)
+        assert "close" in child.events
+        assert child.returncode is not None
+
+    def test_a_second_interrupt_during_the_stop_still_kills(self):
+        stop = getattr(dr, "_dash_stop_child")
+        child = _StopRec(wait_raises=[KeyboardInterrupt()])
+        stop(child, grace=5.0)
+        assert child.events[:2] == ["close", "wait(5.0)"]
+        assert "kill" in child.events
+        assert child.events[-1] == "wait(None)"
+
+    @pytest.mark.parametrize("code,interrupted", [
+        (130, True), (-signal.SIGINT, True), (0, False),
+        (-signal.SIGTERM, False)])
+    def test_a_child_exiting_130_is_an_interrupt_and_a_timeout_is_not(
+            self, tmp_path, monkeypatch, code, interrupted):
+        run, written = _app_in_run(tmp_path)
+        monkeypatch.setitem(sys.modules, "sfi", None)
+        monkeypatch.setattr(subprocess, "Popen",
+                            _popen_of(_StopRec(seconds=0.0, code=code)))
+        if interrupted:
+            with pytest.raises(getattr(dr, "_DashServeInterrupted")):
+                dr._dash_launch_app(run["app"], _free_port(), 0, True,
+                                    prebind=False, expect=written)
+        else:
+            dr._dash_launch_app(run["app"], _free_port(), 0, True,
+                                prebind=False, expect=written)
+
+    @pytest.mark.serve
+    def test_a_real_server_stops_on_break(self, tmp_path, monkeypatch):
+        run, written = _app_in_run(tmp_path)
+        port = _free_port()
+        up = threading.Event()
+
+        def _probe():
+            if _wait_health(port, 60):
+                up.set()
+        threading.Thread(target=_probe, daemon=True).start()
+        stub = _stub_sfi(when=up.is_set)
+        monkeypatch.setitem(sys.modules, "sfi", stub)
+        t0 = None
+        try:
+            with pytest.raises(getattr(dr, "_DashServeInterrupted")):
+                dr._dash_launch_app(run["app"], port, 0, True,
+                                    expect=written)
+            t0 = time.monotonic()
+            assert up.is_set()
+            assert _wait_gone(port, 10)
+        finally:
+            _kill_listeners(port)
+
+
+class TestTheLaunchReportBox:
+
+    def _argv(self, tmp_path, monkeypatch):
+        run = _run_inputs(tmp_path)
+        port = _free_port()
+        monkeypatch.setattr(sys, "argv", [
+            "dash_render.py", "--spec", run["spec"], "--data", run["data"],
+            "--output", run["app"], "--mode", "server", "--launch",
+            "--port", str(port), "--no-browser"])
+        return run
+
+    def _run(self, box=None):
+        import runpy
+        g = {} if box is None else {"_dash_launch_report": box}
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            runpy.run_path(_RENDER, init_globals=g, run_name="__main__")
+
+    def test_an_interrupt_lands_in_the_box(self, tmp_path, monkeypatch):
+        self._argv(tmp_path, monkeypatch)
+        monkeypatch.setitem(sys.modules, "sfi", None)
+        monkeypatch.setattr(subprocess, "Popen",
+                            _popen_of(_StopRec(seconds=0.0, code=130)))
+        box = {}
+        self._run(box)
+        assert box.get("interrupted") is True
+        assert "error" not in box
+
+    def test_without_a_box_an_interrupt_exits_130(self, tmp_path,
+                                                  monkeypatch):
+        self._argv(tmp_path, monkeypatch)
+        monkeypatch.setitem(sys.modules, "sfi", None)
+        monkeypatch.setattr(subprocess, "Popen",
+                            _popen_of(_StopRec(seconds=0.0, code=130)))
+        with pytest.raises(SystemExit) as ei:
+            self._run()
+        assert ei.value.code == 130
+
+    def test_the_interrupt_is_not_a_runtime_error(self):
+        cls = getattr(dr, "_DashServeInterrupted")
+        assert issubclass(cls, Exception)
+        assert not issubclass(cls, RuntimeError)
+
+    def test_keyboard_interrupt_during_the_build_lands_in_the_box(
+            self, tmp_path, monkeypatch):
+        self._argv(tmp_path, monkeypatch)
+        popen = _popen_of(_StopRec())
+        monkeypatch.setattr(subprocess, "Popen", popen)
+
+        def _ki(*_a, **_k):
+            raise KeyboardInterrupt
+        monkeypatch.setattr(json, "load", _ki)
+        box = {}
+        try:
+            self._run(box)
+        except KeyboardInterrupt:
+            # Turned into a failure here: an escaped KeyboardInterrupt
+            # would stop the whole pytest session.
+            pytest.fail("the KeyboardInterrupt escaped dash_render's "
+                        "__main__")
+        assert box.get("interrupted") is True
+        assert popen.made == []
+
+
+class TestTheStopHint:
+
+    def _ready_line(self, tmp_path, monkeypatch, stub):
+        run, written = _app_in_run(tmp_path)
+        monkeypatch.setitem(sys.modules, "sfi", stub)
+        monkeypatch.setattr(subprocess, "Popen",
+                            _popen_of(_StopRec(seconds=1.5)))
+        with _HealthStub() as hs:
+            dr._dash_launch_app(run["app"], hs.port, 0, True, prebind=False,
+                                expect=written)
+            return hs.port
+
+    def test_inside_stata_the_ready_line_names_break(self, tmp_path,
+                                                      monkeypatch, capsys):
+        port = self._ready_line(tmp_path, monkeypatch, _stub_sfi())
+        out = capsys.readouterr().out
+        assert ("dash: the server answers at http://localhost:%d/" % port) \
+            in out
+        assert "press Break (Ctrl+C in console Stata) to stop." in out
+        assert "press Ctrl+C to stop." not in out
+
+    def test_outside_stata_it_names_ctrl_c(self, tmp_path, monkeypatch,
+                                           capsys):
+        self._ready_line(tmp_path, monkeypatch, None)
+        out = capsys.readouterr().out
+        assert "press Ctrl+C to stop." in out
+        assert "Break" not in out
+
+
+@pytest.mark.serve
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX signals")
+class TestTheAppBanner:
+
+    def _start(self, tmp_path):
+        app = _built_app(tmp_path)
+        port = _free_port()
+        proc = subprocess.Popen(
+            [sys.executable, app, "--port", str(port), "--parent-watch"],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, text=True)
+        return proc, port
+
+    def test_parent_watch_prints_no_ctrl_c_line(self, tmp_path):
+        proc, port = self._start(tmp_path)
+        try:
+            assert _wait_health(port, 60, proc)
+            proc.stdin.close()
+            out = proc.stdout.read()
+            proc.wait(timeout=10)
+            assert "Stops when the program that started it ends." in out
+            assert "Press Ctrl+C to stop." not in out
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            _kill_listeners(port)
+
+    def test_parent_watch_exits_130_on_sigint(self, tmp_path):
+        proc, port = self._start(tmp_path)
+        try:
+            assert _wait_health(port, 60, proc)
+            proc.send_signal(signal.SIGINT)
+            assert proc.wait(timeout=15) == 130
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            _kill_listeners(port)
+
+
+class TestTheHelpNamesBreak:
+
+    def test_syntax_description_timeout_and_blocking_paragraph(self):
+        with open(os.path.join(_ROOT, "dash.sthlp"), encoding="utf-8") as fh:
+            raw = fh.read()
+        h = " ".join(raw.split())
+        assert "{ul:Launch Bokeh Server (blocking -- press Break to stop)}" \
+            in raw
+        assert "Stata waits until you press Break (Ctrl+C in console " \
+            "Stata), the optional {cmd:timeout()} expires, or Stata itself " \
+            "exits." in h
+        assert "0 means run until Break (default)" in h
+        assert "Break -- the Break button or menu item, or Ctrl+C in " \
+            "console Stata -- stops it at once, and the command ends with " \
+            "r(1)" in h
+        assert "{ul:Live Bokeh Server (blocking — Break to stop)}" in raw
+        assert "Stata is blocked until you press Ctrl+C" not in h
+
+
+class TestTheAdoEndsWithROne:
+
+    def test_serve_reads_interrupted_closes_and_errors_1(self):
+        with open(os.path.join(_ROOT, "dash.ado"), encoding="utf-8") as fh:
+            ado = fh.read()
+        import re as _re
+        m = _re.search(r"(?ms)^program define _dash_serve\n(.*?)^end\b", ado)
+        assert m, "dash.ado has no _dash_serve"
+        lines = [ln.strip() for ln in m.group(1).splitlines()
+                 if ln.strip() and not ln.strip().startswith("//")]
+        text = "\n".join(lines)
+        assert 'python: _dash_srv_M.setLocal("_srv_brk", "1" if ' \
+            '_dash_srv_rep.get("interrupted") else "")' in text
+        i_close = max(k for k, ln in enumerate(lines)
+                      if ln.startswith("_dash_tmp_close"))
+        i_err = lines.index('if "`_srv_brk\'" == "1" error 1')
+        assert i_close < i_err
+        assert "press Break (Ctrl+C in console Stata) to stop it." in text
+        assert "Stata is blocked until the server stops (Ctrl+C)" not in text

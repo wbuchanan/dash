@@ -43,6 +43,11 @@
 *! a held port and the box _dash_serve reads from the launch report.
 *! PF-07 (WP-29 P0.12b), after SPU-02: the r(198) branch leaves no run
 *! folder of this session.
+*! LC-02..LC-04 (WP-29 P0.13 F4), after SPU-03 and before SRV-19: an
+*! interruption the launcher reports ends dash serve with r(1) and no
+*! traceback (LC-02); a real launch stopped by a patched pollstd ends r(1)
+*! with its port freed (LC-03, dash's catch, not Stata's Break key); the
+*! announcement names Break (LC-04).
 *!
 *! Usage:  do test/test_serve_launch.cscript
 *! Version: 1.2  24sep2026
@@ -632,6 +637,136 @@ capture erase "`spustub'/dash_render.py"
 capture rmdir "`spustub'"
 dash clear
 display "SPU-03 PASS: without a launch report error, dash serve returns rc 0 (the control)"
+
+// ================================================================
+// LC-02..LC-04 (WP-29 P0.13 F4) -- Break ends dash serve with r(1)
+// ================================================================
+// LC-02: a stub renderer reports an interruption in the launch box, as the
+// real launcher does when Break (sfi's BreakError) or Ctrl+C stops the
+// server; dash serve removes its run folder and ends with r(1) -- --Break--,
+// no traceback, no r(7102).  LC-04 reads the announcement in the same log.
+// LC-03: a real launch, stopped by a patched pollstd that raises BreakError
+// once /health has answered: this tests dash's catch and its error 1, not
+// Stata's own Break key (A11; the manual GUI check is recorded apart).
+// Names are built from c(tmpdir) and the Python pid, with no tempfile or
+// tempname draw (see the SPU note above).
+global lc_tmp "`c(tmpdir)'"
+python:
+import os as _lc_os, re as _lc_re, socket as _lc_sock
+from sfi import Macro as _lc_M
+_lc_pid = _lc_os.getpid()
+_lc_M.setGlobal("lc_pid", str(_lc_pid))
+_lc_root = _lc_os.path.join(_lc_M.getGlobal("lc_tmp"), "dash-%d" % _lc_os.getuid())
+def _lc_runs():
+    if not _lc_os.path.isdir(_lc_root):
+        return ""
+    return " ".join(sorted(n for n in _lc_os.listdir(_lc_root)
+                           if _lc_re.match(r"^run-%d-" % _lc_pid, n)))
+end
+local lcstub "`c(tmpdir)'dash_lc_stub_${lc_pid}"
+capture mkdir "`lcstub'"
+file open _lcfh using "`lcstub'/dash_render.py", write text replace
+file write _lcfh `"_lc_g = globals().get("_dash_launch_report")"' _n
+file write _lcfh `"if _lc_g is not None:"' _n
+file write _lcfh `"    _lc_g["interrupted"] = True"' _n
+file close _lcfh
+adopath ++ "`lcstub'"
+dash clear
+dash scatter mpg weight, name(lc02)
+local lc02lg "`c(tmpdir)'dash_lc_${lc_pid}_02.log"
+capture erase "`lc02lg'"
+quietly log using "`lc02lg'", replace text name(_lc02lf)
+capture noisily dash serve, port(5006) timeout(1) nobrowser
+local lc02rc = _rc
+quietly log close _lc02lf
+adopath - "`lcstub'"
+cert_log_has "`lc02lg'", needle("traceback") lower
+local lc02tb = r(found)
+cert_log_has "`lc02lg'", needle("r(7102)")
+local lc02r7 = r(found)
+cert_log_has "`lc02lg'", needle("press Break (Ctrl+C in console Stata)")
+local lc04brk = r(found)
+cert_log_has "`lc02lg'", needle("Stata is blocked until the server stops (Ctrl+C)")
+local lc04old = r(found)
+capture erase "`lc02lg'"
+python: _lc_M.setGlobal("lc_runs", _lc_runs())
+display as text "  LC-02 rc `lc02rc', traceback `lc02tb', r(7102) `lc02r7', run folders left [${lc_runs}]"
+assert `lc02rc' == 1
+assert `lc02tb' == 0
+assert `lc02r7' == 0
+assert "${lc_runs}" == ""
+display "LC-02 PASS: an interruption the launcher reports ends dash serve with r(1), no traceback, and its run folder removed"
+display as text "  LC-04 Break hint `lc04brk', old Ctrl+C line `lc04old'"
+assert `lc04brk' == 1
+assert `lc04old' == 0
+display "LC-04 PASS: dash serve's announcement names Break (Ctrl+C in console Stata)"
+capture erase "`lcstub'/dash_render.py"
+capture rmdir "`lcstub'"
+
+// LC-03: the real launcher and app; pollstd raises BreakError once a
+// thread has seen /health answer.  The original pollstd is restored after.
+dash clear
+dash scatter mpg weight, name(lc03)
+python:
+import threading as _lc_th, time as _lc_time, urllib.request as _lc_url
+import sfi as _lc_sfi
+_lc_s = _lc_sock.socket()
+_lc_s.bind(("127.0.0.1", 0))
+_lc_port = _lc_s.getsockname()[1]
+_lc_s.close()
+_lc_M.setGlobal("lc_port", str(_lc_port))
+_lc_up = _lc_th.Event()
+def _lc_probe():
+    _end = _lc_time.time() + 120
+    while _lc_time.time() < _end:
+        try:
+            _lc_url.urlopen("http://127.0.0.1:%d/health" % _lc_port, timeout=1)
+            _lc_up.set()
+            return
+        except Exception:
+            _lc_time.sleep(0.2)
+_lc_th.Thread(target=_lc_probe, daemon=True).start()
+_lc_orig = _lc_sfi.SFIToolkit.pollstd
+def _lc_poll():
+    if _lc_up.is_set():
+        raise _lc_sfi.BreakError("LC-03 Break")
+    return _lc_orig()
+_lc_sfi.SFIToolkit.pollstd = _lc_poll
+end
+timer clear 93
+timer on 93
+capture noisily dash serve, port(${lc_port}) timeout(1) nobrowser
+local lc03rc = _rc
+timer off 93
+quietly timer list 93
+local lc03s = r(t93)
+python:
+_lc_sfi.SFIToolkit.pollstd = _lc_orig
+_lc_free = False
+for _i in range(50):
+    _b = _lc_sock.socket()
+    try:
+        _b.setsockopt(_lc_sock.SOL_SOCKET, _lc_sock.SO_REUSEADDR, 1)
+        _b.bind(("127.0.0.1", _lc_port))
+        _lc_free = True
+        break
+    except OSError:
+        _lc_time.sleep(0.2)
+    finally:
+        _b.close()
+_lc_M.setGlobal("lc_free", "1" if _lc_free else "0")
+_lc_M.setGlobal("lc_up", "1" if _lc_up.is_set() else "0")
+_lc_M.setGlobal("lc_runs", _lc_runs())
+end
+display as text "  LC-03 rc `lc03rc' after `lc03s' s, served ${lc_up}, port free ${lc_free}, run folders left [${lc_runs}]"
+assert `lc03rc' == 1
+assert `lc03s' < 40
+assert "${lc_up}" == "1"
+assert "${lc_free}" == "1"
+assert "${lc_runs}" == ""
+display "LC-03 PASS: Break (a patched pollstd) stops a real dash serve with r(1) in `lc03s' s; the port is free and no run folder is left"
+dash clear
+macro drop lc_*
 
 // ================================================================
 // SRV-19 -- dash serve writes its app into a private run folder of this

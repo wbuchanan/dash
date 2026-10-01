@@ -519,6 +519,9 @@ FUNCTIONS = {
  # program that started it.
  '_dash_watch_parent': 'test/test_serve_lifecycle.py::TestTheParentWatch::test_eof_on_stdin_asks_the_loop_to_stop',
  '_dash_watch_parent.<locals>._watch': 'test/test_serve_lifecycle.py::TestTheParentWatch::test_eof_on_stdin_asks_the_loop_to_stop',
+ # WP-29 P0.13 F4 (section 08, commit 3): Break stops dash serve.
+ '_dash_stata_poller': 'test/test_serve_lifecycle.py::TestTheStataPoller::test_inside_stata_it_returns_pollstd_and_break_error',
+ '_dash_stop_child': 'test/test_serve_lifecycle.py::TestTheLauncherPollsStata::test_a_child_that_ignores_the_close_is_terminated_then_killed',
  '_dash_is_stata_name': 'test/test_string_value_export.py::TestTheWriter::test_the_name_check',
  '_dash_write_stata_data.<locals>._note': 'test/test_string_value_export.py::TestTheWriter::test_text_that_is_not_utf8_is_read_through_ustrfix',
  '_dash_write_stata_data.<locals>._column':'test/test_string_value_export.py::TestTheWriter::test_numbers_are_doubles_and_missing_is_jsonios_null',

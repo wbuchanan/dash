@@ -33979,14 +33979,21 @@ class ServerAppBuilder:
             "    print(f'Session limits per minute: {_a.sessions_per_client} per '",
             "          f'client, {_a.new_clients_per_minute} new clients, '",
             "          f'{_a.sessions_per_minute} in all.', flush=True)",
-            "    print('Press Ctrl+C to stop.', flush=True)",
-            f"    try:",
-            f"        _server.io_loop.start()",
-            f"    except KeyboardInterrupt:",
-            f"        pass",
-            f"    finally:",
-            f"        _server.stop()",
-            f"        print('Server stopped.')",
+            "    print('Stops when the program that started it ends.'",
+            "          if _a.parent_watch else 'Press Ctrl+C to stop.',",
+            "          flush=True)",
+            "    # WP-29 P0.13 F4: interrupted under dash serve, exit 130, which",
+            "    # the launcher reads as Break (r(1)), not as a timeout.",
+            "    _dash_int = False",
+            "    try:",
+            "        _server.io_loop.start()",
+            "    except KeyboardInterrupt:",
+            "        _dash_int = True",
+            "    finally:",
+            "        _server.stop()",
+            "        print('Server stopped.', flush=True)",
+            "    if _dash_int and _a.parent_watch:",
+            "        raise SystemExit(130)",
         ]
 
         lines = self._supply_missing_constants(lines)
@@ -34478,6 +34485,64 @@ def _dash_hand_over(proc, frame):
     raw.flush()
 
 
+class _DashServeInterrupted(Exception):
+    """``dash serve`` was stopped by Break (WP-29 P0.13 F4): Stata's
+    BreakError seen by the launcher's poll, Ctrl+C (KeyboardInterrupt), or
+    the app's own exit 130 / -SIGINT.  ``__main__`` puts it in the launch
+    report box, which dash.ado ends with ``error 1``, r(1); without a box
+    it exits 130.  Deliberately NOT a RuntimeError: ``__main__`` maps
+    RuntimeError to the r(198) of a failed launch (A2).  Launcher-only."""
+
+
+def _dash_stata_poller(sfi=None):
+    """``(pollstd, (BreakError,))`` inside Stata, else ``(None, ())``.
+
+    Measured at 7421d3d (p7): the launcher never called
+    ``sfi.SFIToolkit.pollstd()``, so Break in GUI Stata could not stop
+    ``dash serve`` (GAPS2 F4, H2).  Polling Stata's interface is what lets a
+    pending Break be raised, as ``sfi.BreakError``.  Outside Stata (the
+    renderer's command line) there is no sfi, and KeyboardInterrupt alone
+    stops the launcher.  *sfi* is a stand-in module for tests."""
+    if sfi is None:
+        try:
+            import sfi as _sfi
+        except ImportError:
+            return (None, ())
+        sfi = _sfi
+    poll = getattr(getattr(sfi, "SFIToolkit", None), "pollstd", None)
+    brk = getattr(sfi, "BreakError", None)
+    if poll is None or brk is None:
+        return (None, ())
+    return (poll, (brk,))
+
+
+def _dash_stop_child(proc, grace=5.0, interrupts=(KeyboardInterrupt,)):
+    """Stop the served child (WP-29 P0.13 F4): close its stdin, which its
+    ``--parent-watch`` reads to end of file and stops cleanly on (0.08 s
+    measured, u12 p6); wait *grace* seconds; then ``terminate`` and wait
+    again; then ``kill``.  A second Break or Ctrl+C during the stop (one of
+    *interrupts*) goes straight to ``kill`` (A4).  It never polls Stata
+    while it stops.  Launcher-only."""
+    import subprocess
+    try:
+        proc.stdin.close()
+    except (OSError, ValueError, AttributeError):
+        pass
+    try:
+        try:
+            proc.wait(timeout=grace)
+            return
+        except subprocess.TimeoutExpired:
+            proc.terminate()
+        proc.wait(timeout=grace)
+    except (subprocess.TimeoutExpired,) + tuple(interrupts):
+        try:
+            proc.kill()
+        except OSError:
+            pass
+        proc.wait()
+
+
 def _dash_launch_app(app_path, port, timeout, no_browser, *,
                       ready_seconds=30.0, prebind=True, expect=None,
                       erase_app_when_ready=False):
@@ -34502,6 +34567,13 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     private run folder, ``_dash_private_run_of``), the app file is erased
     once /health answers AND the app's own flushed banner has been read
     (A6), so no copy of the data stays on disk while it serves.
+
+    WP-29 P0.13 F4: inside Stata it calls sfi's ``pollstd`` before the
+    prebind, on every pass of its wait and once after, outside every broad
+    except (A1); Break or Ctrl+C there stops the child
+    (``_dash_stop_child``: close stdin, terminate, kill) and raises
+    ``_DashServeInterrupted``, as does the app's own exit 130 or -SIGINT.
+    The messages name Break inside Stata and Ctrl+C outside it.
 
     GAPS2 F1: the old inline launch started the app with
     ``Popen(cmd).wait()`` and never read ``returncode``, so a port already
@@ -34529,6 +34601,19 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     import urllib.request
 
     port = _dash_port_value(port)
+
+    # WP-29 P0.13 F4: inside Stata, the launcher polls Stata's interface,
+    # so Break (the GUI's button, Command+. or console Ctrl+C) is seen
+    # while it waits -- it never was (p7: 0 pollstd calls).
+    poll, brk = _dash_stata_poller()
+    interrupts = (KeyboardInterrupt,) + brk
+    if poll is not None:
+        try:
+            poll()
+        except interrupts:
+            print("dash: stopped by Break; no server was started.",
+                  flush=True)
+            raise _DashServeInterrupted("no server was started")
 
     if prebind:
         # The measured case (F1.5): a holder on 127.0.0.1 refuses a second
@@ -34592,39 +34677,8 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     _t_err = threading.Thread(target=_pump,
                               args=(proc.stderr, _err_dq.append),
                               daemon=True)
-    _t_out.start()
-    _t_err.start()
-
     def _clean(text):
         return "".join(c for c in text if c.isprintable() or c == "\n")
-
-    # The app, handed over once both pumps run (a child that writes while
-    # it reads cannot fill a pipe).  A child that cannot take it is
-    # stopped and reported; the pipe is never closed while it serves.
-    try:
-        _dash_hand_over(proc, _frame)
-    except BaseException as exc:
-        if proc.poll() is None:
-            try:
-                proc.kill()
-            except OSError:
-                pass
-        proc.wait()
-        _t_err.join(1)
-        try:
-            proc.stdin.close()
-        except (OSError, ValueError, AttributeError):
-            pass
-        if not isinstance(exc, (OSError, ValueError, AttributeError)):
-            raise
-        _reason = ("no server started on port %d: the app could not be "
-                   "handed to Python (%s)" % (port, exc))
-        _tail = _clean("".join(_err_dq))
-        _budget = 4096 - len(_reason) - 1
-        if _tail and len(_tail) > _budget > 0:
-            _tail = _tail[-_budget:]
-        raise RuntimeError((_reason + ("\n" + _tail if _tail else ""))[:4096])
-    del _frame
 
     _forwarded = 0
     _banner = False
@@ -34647,15 +34701,45 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
             if _forwarded == 200:
                 print("dash: (further app output not shown)", flush=True)
 
+    # Inside Stata the messages name Break, Ctrl+C being only console
+    # Stata's Break key (F9c); outside it they keep Ctrl+C.
+    if poll is not None:
+        _stop_hint = "press Break (Ctrl+C in console Stata) to stop."
+        _wait_hint = "(press Break, or Ctrl+C in console Stata, to stop it)."
+    else:
+        _stop_hint = "press Ctrl+C to stop."
+        _wait_hint = "(Ctrl+C stops it)."
+
     _ready = False
     _erased = False
     _no_answer_shown = False
-    _stopped_by_launcher = False
+    _interrupted = False
+    _handover_exc = None
     _t0 = time.monotonic()
     _next_health = _t0
 
+    # From Popen to the final wait, one try/finally (A4): whatever ends this
+    # -- Break, Ctrl+C, an error -- the child is stopped.  The pumps start
+    # first, then the app is handed over (a child that writes while it reads
+    # cannot fill a pipe), then the wait.  poll() runs outside every broad
+    # except: sfi's BreakError is an Exception, and the /health probe's
+    # `except Exception' would swallow it (A1).
     try:
-        while proc.poll() is None:
+        _t_out.start()
+        _t_err.start()
+        try:
+            _dash_hand_over(proc, _frame)
+        except (OSError, ValueError, AttributeError) as exc:
+            _handover_exc = exc
+            if proc.poll() is None:
+                try:
+                    proc.kill()
+                except OSError:
+                    pass
+        del _frame
+        while _handover_exc is None and proc.poll() is None:
+            if poll is not None:
+                poll()
             _drain_stdout()
             _now = time.monotonic()
             if not _ready and _now >= _next_health:
@@ -34666,16 +34750,16 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
                     _ready = True
                     print(
                         "dash: the server answers at http://localhost:%d/ "
-                        "(health check http://localhost:%d/health); press "
-                        "Ctrl+C to stop." % (port, port), flush=True)
+                        "(health check http://localhost:%d/health); %s"
+                        % (port, port, _stop_hint), flush=True)
                 except Exception:
                     if not _no_answer_shown and \
                             _now - _t0 > ready_seconds:
                         print(
                             "dash: no answer from http://127.0.0.1:%d/"
                             "health after %d s; still waiting for the app "
-                            "(Ctrl+C stops it)."
-                            % (port, int(ready_seconds)), flush=True)
+                            "%s" % (port, int(ready_seconds), _wait_hint),
+                            flush=True)
                         _no_answer_shown = True
             if erase_app_when_ready and _ready and _banner and not _erased:
                 # The child never opens app.py (it runs the bytes handed
@@ -34683,9 +34767,15 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
                 _dash_erase_quietly(app_path)
                 _erased = True
             time.sleep(0.25)
-    except KeyboardInterrupt:
-        proc.terminate()
-        _stopped_by_launcher = True
+        # A Break pending when the child exited on its own.
+        if _handover_exc is None and poll is not None:
+            poll()
+    except interrupts:
+        _dash_stop_child(proc, interrupts=interrupts)
+        _interrupted = True
+    finally:
+        if proc.poll() is None:
+            _dash_stop_child(proc, interrupts=interrupts)
 
     proc.wait()
     try:
@@ -34696,8 +34786,25 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     _t_err.join(1)
     _drain_stdout()
 
-    if _stopped_by_launcher or proc.returncode in (
-            0, -signal.SIGINT, -signal.SIGTERM):
+    if _handover_exc is not None:
+        _reason = ("no server started on port %d: the app could not be "
+                   "handed to Python (%s)" % (port, _handover_exc))
+        _tail = _clean("".join(_err_dq))
+        _budget = 4096 - len(_reason) - 1
+        if _tail and len(_tail) > _budget > 0:
+            _tail = _tail[-_budget:]
+        raise RuntimeError((_reason + ("\n" + _tail if _tail else ""))[:4096])
+
+    # Interrupted: by this launcher (Break, Ctrl+C), or the app's own
+    # KeyboardInterrupt (it exits 130 under --parent-watch; -SIGINT when it
+    # dies of the signal; A5b).  A timeout() expiry is 0 or -SIGTERM.
+    if _interrupted or proc.returncode in (130, -signal.SIGINT):
+        _said = ("dash: stopped by Break; the server has stopped."
+                 if poll is not None else
+                 "dash_render: interrupted; the server has stopped.")
+        print(_said, flush=True)
+        raise _DashServeInterrupted(_said)
+    if proc.returncode in (0, -signal.SIGTERM):
         return
 
     _tail = _clean("".join(_err_dq))
@@ -34782,9 +34889,26 @@ if __name__ == "__main__":
     # no .py (_validate_output_path).
     # _written: the app's identity and digest, which the launch verifies
     # before it hands the bytes to Python (WP-29 P0.12b, R-9).
-    _written = main(args.spec, args.data, args.output, args.mode, args.port,
-                    launch=args.mode == "server" and args.launch,
-                    private_output=args.private_output)
+    #
+    # WP-29 P0.13 F4: on the launch route, a Ctrl+C (or Break) while the app
+    # is built is an interruption, not a traceback: it lands in the box
+    # dash.ado reads (which ends with r(1)), or the command line exits 130.
+    import sys as _sys
+    _report = globals().get("_dash_launch_report")
+    _launching = args.mode == "server" and args.launch
+    try:
+        _written = main(args.spec, args.data, args.output, args.mode,
+                        args.port, launch=_launching,
+                        private_output=args.private_output)
+    except KeyboardInterrupt:
+        if not _launching:
+            raise
+        if _report is None:
+            print("dash_render: interrupted; nothing was served.",
+                  file=_sys.stderr, flush=True)
+            raise SystemExit(130)
+        _report["interrupted"] = True
+        _launching = False
 
     # When mode is 'server' AND the caller asked for it, launch the app.
     #
@@ -34794,8 +34918,7 @@ if __name__ == "__main__":
     # `display' lines that follow it in dash.ado never printed, and killing
     # Stata left the server orphaned.  Writing a file must not start a
     # server as a side effect, so launching is opt-in.
-    if args.mode == "server" and args.launch:
-        import sys as _sys
+    if _launching:
 
         # Run the generated app AS A SCRIPT, not through `bokeh serve'.
         #
@@ -34816,7 +34939,6 @@ if __name__ == "__main__":
         # exception under Stata's embedded Python (r(7102) plus a
         # traceback) -- dash.ado's _dash_serve does (TR-09.4); a bare
         # command line does not, so it prints and exits 1 instead.
-        _report = globals().get("_dash_launch_report")
         try:
             # The app file is erased once it serves only inside dash's own
             # private run folder (R-1); a command-line user's file never.
@@ -34824,6 +34946,12 @@ if __name__ == "__main__":
             _dash_launch_app(args.output, args.port, args.timeout,
                              args.no_browser, expect=_written,
                              erase_app_when_ready=_erase)
+        except _DashServeInterrupted:
+            # Before RuntimeError: an interruption is r(1), not the r(198)
+            # of a failed launch (A2).
+            if _report is None:
+                raise SystemExit(130)
+            _report["interrupted"] = True
         except RuntimeError as _exc:
             if _report is None:
                 print("dash_render: error -- " + str(_exc),
