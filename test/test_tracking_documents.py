@@ -1252,7 +1252,6 @@ class TestGaps2AndRoadmapAgree:
 WP29_OPEN = {
     "P0.1": "line, connected, area, rline, rarea and rconnected are joined in x order, never in the data's order as twoway joins them, and sort(varlist) is ignored",
     "P0.2": "by() panels are drawn on independent scales by default, and by(, yrescale) is named and ignored",
-    "P0.3": "An unlabelled variable gets a blank axis title, a legend key named after the plot type and a blank tooltip label, where twoway uses the variable name",
     "P0.4": "A title sub-option with no text, such as ytitle(, size(large)), deletes the default axis title",
     "P0.5": "axis(2) on ylabel(), yscale(), yline() and xtick() is applied to the first axis",
     "P0.6": "function evaluates ^ from the right and accepts pi and e, which twoway refuses",

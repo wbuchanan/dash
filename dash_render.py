@@ -6978,7 +6978,7 @@ class GlyphMapper:
         # Stata label metadata, populated by DashRenderer after _load_data().
         # Used to render value labels on legend entries and to display the
         # variable label as the legend/colorbar title.
-        var_display = self.variable_labels.get(varname, "") or varname
+        var_display = _dash_var_label(self.variable_labels, varname)
         vlabels     = _dash_value_labels_for(varname, self.value_labels,
                                              self.value_label_names)
 
@@ -18721,12 +18721,14 @@ def _dash_axis_labels(plots, graph_opts, var_labels, seen=None, key=""):
             x_default = "x"
             y_default = ("kdensity %s" % var) if var else ""
         else:
-            x_default = vl.get(var, var)
+            x_default = _dash_var_label(vl, var)
             y_default = _DASH_HIST_YTITLES[
                 _dash_histogram_ymode(p0.get("options"))]
     else:
         xvar, yvar = p0.get("xvar", ""), p0.get("yvar", "")
-        x_default, y_default = vl.get(xvar, xvar), vl.get(yvar, yvar)
+        # The label when it is not "", else the name (WP-29 P0.3).
+        x_default = _dash_var_label(vl, xvar)
+        y_default = _dash_var_label(vl, yvar)
     # The text, split from its sub-options: xtitle("Weight", size(large))
     # used to title the axis "Weight, size(large)".  size() and color()
     # are applied by _dash_style_axis_titles; the rest is named.
@@ -22446,6 +22448,70 @@ def _dash_value_labels_for(var, value_labels, value_label_names):
     return vlabels if isinstance(vlabels, dict) else {}
 
 
+def _dash_var_label(var_labels, name, default=""):
+    """The text twoway draws for variable *name*: its label when the label
+    is not ``""``, otherwise the name (WP-29 P0.3).
+
+    Measured in Stata 19 by SVG export (test/fixtures/unlabelled_truth.json,
+    scripts/extract_unlabelled_truth.do): an unlabelled variable -- which
+    Stata's exporter writes with the label ``""`` -- is drawn by its name as
+    axis title, legend key and colour-key title.  A label of blanks is NOT
+    empty and is drawn as given (E.svg), so the label is never stripped.
+
+    Total: *default* when *name* is ``None`` or ``""``; ``str(name)`` for a
+    name that is not text; the name when *var_labels* is not a mapping or
+    holds a non-text label.  It raises nothing.
+
+    Security: the result goes only to sinks that already carry arbitrary
+    label text (canvas axis titles and keys, BokehJS tooltip text nodes);
+    a name replacing an empty label adds no new sink.
+    """
+    if name is None or name == "":
+        return default
+    if not isinstance(name, str):
+        return str(name)
+    lab = (var_labels if isinstance(var_labels, dict) else {}).get(name)
+    if isinstance(lab, str) and lab != "":
+        return lab
+    return name
+
+
+def _dash_clean_var_labels(raw):
+    """``variableLabels`` as both renderers keep it: text keyed by name.
+
+    A label that is ``""`` (an unlabelled variable, as Stata's exporter
+    writes it) or not text becomes the name, so any ``.get(v, v)`` reads
+    twoway's rule (:func:`_dash_var_label`); a mapping that is not a dict
+    is ``{}``, and a key that is not non-empty text is dropped.  Every
+    variable keeps its key, so membership still tells the dataset's
+    variables from computed columns.  A malformed map used to abort the
+    build (a list: ``'list' object has no attribute 'get'``; an int, dict
+    or null label: a Bokeh validation error) -- WP-29 P0.3.
+    """
+    if not isinstance(raw, dict):
+        return {}
+    return {k: (v if isinstance(v, str) and v != "" else k)
+            for k, v in raw.items() if isinstance(k, str) and k}
+
+
+def _dash_filter_base_title(label, var_labels, name):
+    """A filter widget's title before :func:`_dash_filter_title` adds its
+    inequality: ``label()``, else the variable's label, else the name.
+
+    A text of blanks counts as absent here (the saved page's documented
+    chain), unlike :func:`_dash_var_label`, which draws a label of blanks
+    as given.  Not ``_dash_filter_label``: that name is the ``filter()``
+    option parser.  The served app used to pass the raw ``""`` label of an
+    unlabelled variable, which titled its widget ``""`` (WP-29 P0.3).
+    Security: a Select title is a text node and a slider title still passes
+    ``_dash_inert_tex`` in ``_dash_filter_title``.
+    """
+    vl = var_labels if isinstance(var_labels, dict) else {}
+    return (str(label or "").strip()
+            or str(vl.get(name, "") or "").strip()
+            or str(name))
+
+
 def _dash_attach_labels(mapper, variable_labels=None, value_labels=None,
                         value_label_names=None, date_vars=None,
                         numeric_formats=None, storage_types=None,
@@ -23596,9 +23662,19 @@ def _dash_legend_key(plot, var_labels=None):
     ptype = str(plot.get("type", "")).lower()
     if ptype in _DASH_FIT_TYPES or ptype in _DASH_CI_TYPES:
         return "Fitted values"
+    # twoway keys a histogram by its y-scale word and a kdensity layer
+    # "kdensity <name>" -- the NAME, even when the variable is labelled
+    # (HK.svg, KD2.svg, KDLAB.svg; WP-29 P0.3).
+    if ptype == "histogram":
+        return _DASH_HIST_YTITLES[_dash_histogram_ymode(plot.get("options"))]
+    if ptype == "kdensity":
+        v = plot.get("var", "") or plot.get("yvar", "")
+        return ("kdensity %s" % v) if v else ptype
     yvar = (plot.get("yvar", "") or plot.get("var", "")
             or plot.get("yvar1", ""))
-    return (var_labels.get(yvar, yvar) or ptype) if yvar else ptype
+    # The label when it is not "", else the name: an unlabelled variable
+    # used to be keyed by the plot type (WP-29 P0.3).
+    return _dash_var_label(var_labels, yvar) if yvar else ptype
 
 
 def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
@@ -23901,7 +23977,7 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
         _flds, _fmts = [], {}
         for _c in _wanted:
             _row, _fmt_pair = _dash_hover_row(
-                _c, var_labels.get(_c, _c), formats.get(_c, ""),
+                _c, _dash_var_label(var_labels, _c), formats.get(_c, ""),
                 date_vars.get(_c, ""), storage_types.get(_c, ""),
                 fmt_cache, text_col=_text_cols.get(_c))
             _flds.append(_row)
@@ -23988,11 +24064,18 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
 
         def _named(col, fallback):
             """A column that is one of the dataset's variables is labelled
-            as the variable; a computed one takes *fallback*."""
-            return var_labels[col] if col in var_labels else fallback
+            as the variable; a computed one takes *fallback*.  A computed
+            source's generic x/y/y1/y2 column is named after a dataset
+            variable of that name only when the layer plots it: kdensity z
+            or lfit y2 y1 used to name their rows after unrelated x and y
+            (WP-29 P0.3)."""
+            if col in var_labels and (col not in ("x", "y", "y1", "y2")
+                                      or col in (xvar, y1var, y2var)):
+                return _dash_var_label(var_labels, col)
+            return fallback
 
-        _x_label = var_labels.get(xvar, xvar or "x")
-        _y_label = var_labels.get(y1var, y1var or "y")
+        _x_label = _dash_var_label(var_labels, xvar, "x")
+        _y_label = _dash_var_label(var_labels, y1var, "y")
 
         def _bins(rd, data):
             if not ("top" in data and "left" in data):
@@ -24002,7 +24085,7 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
             # carried its variable under the `var' key, which is the key
             # dash.ado writes for every histogram.
             _bin_var = y1var or univar
-            _bin_label = var_labels.get(_bin_var, _bin_var or "value")
+            _bin_label = _dash_var_label(var_labels, _bin_var, "value")
             _p = _tooltip_precision(data.get("left", []))
             # Quad hit-testing wants the cursor exactly on the bar; vline
             # fires anywhere within the bin's x-range.
@@ -24024,8 +24107,10 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
             if not all(c in data for c in ("x", "y1", "y2")):
                 return None
             return ([_cell(_x_label, "x", data),
-                     _cell(var_labels.get(y1var, y1var or "y1"), "y1", data),
-                     _cell(var_labels.get(y2var, y2var or "y2"), "y2", data)],
+                     _cell(_dash_var_label(var_labels, y1var, "y1"), "y1",
+                           data),
+                     _cell(_dash_var_label(var_labels, y2var, "y2"), "y2",
+                           data)],
                     "mouse")
 
         def _segment(rd, data):
@@ -25157,7 +25242,10 @@ class DashRenderer:
                                         {k for k, v in _ts.items() if v})
 
         # Variable labels
-        self.variable_labels = stata_json.get("variableLabels", {})
+        # Cleaned to text keyed by name: an unlabelled variable's "" label
+        # becomes its name, as twoway draws it (WP-29 P0.3).
+        self.variable_labels = _dash_clean_var_labels(
+            stata_json.get("variableLabels", {}))
 
         # Value labels — stored as {labelset: {str(code): display_text}}
         self.value_labels = stata_json.get("valueLabels", {})
@@ -27574,9 +27662,8 @@ class DashRenderer:
             #   1. explicit label() option from the filter spec
             #   2. Stata variable label (e.g. "Repair record 1978")
             #   3. variable name (final fallback)
-            flabel = (fc.get("label") or "").strip() \
-                     or self.variable_labels.get(fvar, "").strip() \
-                     or fvar
+            flabel = _dash_filter_base_title(fc.get("label"),
+                                             self.variable_labels, fvar)
             # A dropdown over the option limit on a numeric or date
             # variable is drawn as a range; the spec the page's script
             # filters by must say so too, or it would test a slider's
@@ -28617,6 +28704,8 @@ class ServerAppBuilder:
                          "_dash_note_hover_unreached",
                          # Stata's legend keying rules.
                          "_dash_legend_key", "_dash_legend_entries",
+                         # twoway's label-or-name rule (WP-29 P0.3).
+                         "_dash_var_label", "_dash_clean_var_labels",
                          "_dash_legend_keys", "_dash_parse_legend_order",
                          # layout(name:row,col), one parser for one spec,
                          # and layout(rows cols), one reading of the grid.
@@ -28713,7 +28802,9 @@ class ServerAppBuilder:
                          # _dash_filter_title neutralises TeX in the title;
                          # _dash_inert_tex is its callee and must travel too.
                          "_dash_inert_tex",
-                         "_dash_filter_title", "_dash_finite_column",
+                         "_dash_filter_title",
+                         "_dash_filter_base_title",
+                         "_dash_finite_column",
                          "_dash_filter_widget", "_dash_dropdown_mask",
                          # The token bucket make_document wraps every filter
                          # and brush callback in.
@@ -29871,7 +29962,7 @@ class ServerAppBuilder:
             "    data_json = data_json.get('StataJSON', data_json)",
             "    values = data_json.get('values', [])",
             "    var_names = data_json.get('variableNames', [])",
-            "    var_labels = data_json.get('variableLabels', {})",
+            "    var_labels = _dash_clean_var_labels(data_json.get('variableLabels', {}))",
             "    val_label_names = data_json.get('valueLabelNames', {})",
             "    val_labels = data_json.get('valueLabels', {})",
             "    # jsonio emits 'variableIsString'.  This asked for",
@@ -30950,8 +31041,10 @@ class ServerAppBuilder:
             "        # file read only the last two, so",
             "        # filter(rep78, label(\"Repair record\")) showed up",
             "        # titled `rep78'.",
-            "        _ftitle = _dash_filter_title(fspec.get('label', ''),",
-            "                                     var_labels.get(fvar, fvar), ftype)",
+            "        _ftitle = _dash_filter_title(",
+            "            _dash_filter_base_title(fspec.get('label', ''),",
+            "                                    var_labels, fvar),",
+            "            fvar, ftype)",
             "        if fvar not in df.columns:",
             "            _dash_warn_filter_missing(fvar)",
             "            continue",

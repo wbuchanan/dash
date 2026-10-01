@@ -1018,8 +1018,23 @@ class TestTheLegendKeyRule:
     def test_a_data_layer_falls_back_to_the_variable_name(self):
         assert dr._dash_legend_key({"type": "scatter", "yvar": "mpg"}) == "mpg"
 
-    def test_a_univariate_layer_uses_its_var_key(self):
-        assert dr._dash_legend_key({"type": "histogram", "var": "mpg"}) == "mpg"
+    def test_a_univariate_layer_uses_twoways_key(self):
+        """WP-29 P0.3 (flipped): twoway keys a histogram by its y-scale word
+        and a kdensity layer ``kdensity <name>``, by the NAME even when the
+        variable is labelled (HK.svg, KDLAB.svg) -- never by the variable."""
+        assert dr._dash_legend_key({"type": "histogram", "var": "mpg"}) == \
+               "Density"
+        assert dr._dash_legend_key({"type": "histogram", "var": "mpg",
+                                    "options": {"percent": "percent"}}) == \
+               "Percent"
+        assert dr._dash_legend_key({"type": "kdensity", "var": "mpg"},
+                                   {"mpg": "Mileage (mpg)"}) == "kdensity mpg"
+
+    def test_an_empty_label_falls_back_to_the_name(self):
+        """WP-29 P0.3: Stata's exporter writes "" for an unlabelled variable;
+        twoway keys it by its name, never by the plot type."""
+        assert dr._dash_legend_key({"type": "scatter", "yvar": "mpg"},
+                                   {"mpg": ""}) == "mpg"
 
     def test_a_range_layer_uses_its_first_boundary(self):
         assert dr._dash_legend_key({"type": "rbar", "yvar1": "lo"}) == "lo"

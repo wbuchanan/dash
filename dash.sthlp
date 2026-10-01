@@ -702,8 +702,9 @@ named in a note and drawn around -- because it is what would be drawn.
     the triplet {cmd:255 0 0}.
 
 {phang2}6.  {ul:Variable and value labels used automatically.}
-    {cmd:dash} reads variable labels (for axis titles and the titles of
-    filter widgets) and value labels (for filter dropdowns, the titles of
+    {cmd:dash} reads variable labels (they title the axes, key the legend,
+    name the tooltip rows and the colour key, and title filter widgets)
+    and value labels (for filter dropdowns, the titles of
     {cmd:by()} panels, marker labels, the legend of a discrete
     {cmd:colorvar()} and the CSV download) without any additional options.
     An axis is labelled with numbers, as in {cmd:twoway}, unless its
@@ -714,7 +715,13 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:by()} panel -- and an explicit {cmd:"}{it:text}{cmd:"} for the
     same tick wins, as in {cmd:twoway}.  A hover tooltip shows the value
     label of a {cmd:hover()} variable, as {cmd:list} and {cmd:browse} do,
-    before and after any filter move.
+    before and after any filter move.  A variable with no label is
+    named by its name there, as {cmd:twoway} names it; a label of blanks
+    is drawn as given, except on a filter widget, which then shows the
+    name.
+    A {cmd:histogram} layer is keyed {cmd:Density}, {cmd:Percent},
+    {cmd:Frequency} or {cmd:Fraction}, and a {cmd:kdensity} layer
+    {cmd:kdensity} {it:varname}, as in {cmd:twoway}.
 
 
 {marker subcommands}
@@ -2608,7 +2615,8 @@ the second axis unless {cmd:norescale} is given.
 plots -- its x and y, a range's two ends, a paired-coordinate layer's
 x1, y1, x2 and y2 -- so in {cmd:(scatter mpg weight) (scatter price weight)}
 a point of the second layer shows {cmd:weight} and {cmd:price}, not
-{cmd:mpg}.  {cmd:hover(}{it:varlist}{cmd:)} adds the variables' values
+{cmd:mpg}.  Each row is named by the variable's label, or by its name
+when it has none.  {cmd:hover(}{it:varlist}{cmd:)} adds the variables' values
 to the tooltip of every layer whose marks are observations --
 {cmd:scatter}, {cmd:connected}, {cmd:line}, {cmd:tsline}, {cmd:area},
 {cmd:dot}, {cmd:dropline}, {cmd:bar}, {cmd:spike}, every range type

@@ -8,6 +8,7 @@
 *!
 *! Blocks, in section order (extended by each section that lands one):
 *!   S01  scaffold smoke: the helpers load and a twoway SVG is read (W29-01)
+*!   S03  P0.3 unlabelled variables (UL-01..UL-08)
 *!
 *! Usage: via run_all_cscripts.do (registered as its block 68).  One
 *! block alone: set WP29_ONLY=S<NN> in the environment of the driver run
@@ -105,6 +106,399 @@ if inlist("`only'", "", "S01") {
     display as text "S01 end `c(current_time)'"
 }
 * ==== end S01 ====
+
+// S03's helpers, defined here, outside every block and gate, where a
+// python block may hold braces (test_cscript_hygiene.py requires each
+// block to open with its gate).  Used by the S03 P0.3 and P0.4 blocks.
+// Helpers, reached through __main__ (cert_svg.do's TRAP note).  Defined
+// outside the gate, where braces are safe:
+//   _s03_page()        S03_AX S03_AXS S03_KEYS S03_TIPS S03_W S03_CBAR of the
+//                      saved page S03_PAGE (KEYS: each legend's labels in
+//                      order joined by "|", legends sorted and joined by ";")
+//   _s03_app()         the same, prefixed S03_S, of the served app S03_APP;
+//                      then fires the RangeSlider filtering S03_MOVE and sets
+//                      S03_FIRED and S03_SAME_AFTER
+//   _s03_twoway_keys() S03_TW: twoway's legend keys, S03_BARE minus S03_OFF
+//                      (cert_svg_texts lists), sorted by y then x
+//   _s03_text()        S03_OUT: "size|fill|rotate" of each <text> equal to
+//                      S03_TXT in S03_SVG, joined by ";"
+python:
+import collections as _s03_col, json as _s03_json, re as _s03_re, html as _s03_html
+import warnings as _s03_w
+import __main__ as _s03_main
+from sfi import Macro as _s03_M
+
+_S03_AXES = ("LinearAxis", "LogAxis", "DatetimeAxis", "CategoricalAxis")
+_S03_WIDGETS = ("Select", "RangeSlider", "Slider", "DateRangeSlider", "DateSlider")
+
+
+def _s03_val(v):
+    if isinstance(v, dict):
+        return v.get("value")
+    inner = getattr(v, "value", None)
+    return v if inner is None else inner
+
+
+def _s03_models(path):
+    try:
+        with open(path, encoding="utf-8") as fh:
+            page = fh.read()
+    except OSError:
+        return []
+    objs, stack = {}, []
+    for blob in _s03_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s03_re.S):
+        try:
+            stack.append(_s03_json.loads(_s03_html.unescape(blob)))
+        except ValueError:
+            pass
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                objs.setdefault(v["id"], v)
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    return list(objs.values())
+
+
+class _S03Saved:
+    """A saved page's model, read as the served one is."""
+
+    def __init__(self, obj):
+        self.kind = obj["name"]
+        self.attrs = obj.get("attributes", {}) or {}
+        self._defaults = None
+
+    def get(self, attr):
+        if attr in self.attrs:
+            return _s03_val(self.attrs[attr])
+        if self._defaults is None:
+            import bokeh.models as _bm
+            try:
+                self._defaults = getattr(_bm, self.kind)()
+            except Exception:
+                self._defaults = False
+        return _s03_val(getattr(self._defaults, attr, None)) if self._defaults else None
+
+
+class _S03Served:
+    def __init__(self, model):
+        self.kind = type(model).__name__
+        self.model = model
+
+    def get(self, attr):
+        return _s03_val(getattr(self.model, attr, None))
+
+
+def _s03_summary(models, by_id):
+    ax, axs, keys, tips, ws, cbar = [], [], [], [], [], []
+    for m in models:
+        if m.kind in _S03_AXES:
+            rn = m.get("y_range_name")
+            if rn in (None, "default"):
+                rn = m.get("x_range_name") or "default"
+            lab = m.get("axis_label")
+            lab = "" if lab is None else str(lab)
+            ax.append("%s=%s" % (rn, lab))
+            axs.append("%s=%s@%s@%s" % (rn, lab, m.get("axis_label_text_font_size"),
+                                        m.get("axis_label_text_color")))
+        elif m.kind == "Legend":
+            if m.get("name") == "_dash_clegend":
+                if m.get("title"):
+                    cbar.append("%s@%s@%s" % (m.get("title"), m.get("title_text_font_size"),
+                                              m.get("title_text_color")))
+                continue
+            one = []
+            for it in (m.get("items") or []):
+                item = by_id(it)
+                if item is not None:
+                    lab = item.get("label")
+                    one.append("" if lab is None else str(lab))
+            keys.append("|".join(one))
+        elif m.kind == "HoverTool":
+            tt = m.get("tooltips")
+            if isinstance(tt, list):
+                tips.append(",".join(str(p[0]) for p in tt))
+        elif m.kind in _S03_WIDGETS:
+            ws.append(str(m.get("title") or ""))
+        elif m.kind == "ColorBar":
+            cbar.append("%s@%s@%s" % (m.get("title"), m.get("title_text_font_size"),
+                                      m.get("title_text_color")))
+    return dict(AX="|".join(sorted(ax)), AXS="|".join(sorted(axs)),
+                KEYS=";".join(sorted(keys)), TIPS=";".join(sorted(tips)),
+                W="|".join(sorted(ws)), CBAR="|".join(sorted(cbar)))
+
+
+def _s03_set(prefix, summ):
+    for k, v in summ.items():
+        _s03_M.setGlobal(prefix + k, v)
+
+
+def _s03_page():
+    objs = _s03_models(_s03_M.getGlobal("S03_PAGE"))
+    by = dict((o["id"], _S03Saved(o)) for o in objs)
+    models = [by[o["id"]] for o in objs]
+
+    def by_id(ref):
+        rid = ref.get("id") if isinstance(ref, dict) else getattr(ref, "id", None)
+        return by.get(rid)
+    _s03_set("S03_", _s03_summary(models, by_id))
+
+
+def _s03_doc_summary(doc):
+    from bokeh.model import Model
+    seen = dict()
+    for root in doc.roots:
+        for m in root.references():
+            seen[m.id] = m
+    wrapped = [_S03Served(m) for m in seen.values()]
+
+    def by_id(ref):
+        return _S03Served(ref) if ref is not None else None
+    return _s03_summary(wrapped, by_id)
+
+
+def _s03_app():
+    from bokeh.document import Document
+    from bokeh.models import RangeSlider
+    with open(_s03_M.getGlobal("S03_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s03_app")
+    with _s03_w.catch_warnings():
+        _s03_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s03_app.py", "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    before = _s03_doc_summary(doc)
+    _s03_set("S03_S", before)
+    var = _s03_M.getGlobal("S03_MOVE")
+    sl = [s for s in doc.select(dict(type=RangeSlider)) if getattr(s, "_dash_var", None) == var]
+    fired = 0
+    if len(sl) == 1:
+        old = sl[0].value
+        lo, hi = old
+        new = (lo + (hi - lo) / 4.0, hi)
+        sl[0].value = new
+        with _s03_w.catch_warnings():
+            _s03_w.simplefilter("ignore")
+            for attr in ("value", "value_throttled"):
+                for cb in sl[0]._callbacks.get(attr, []):
+                    cb(attr, old, new)
+                    fired += 1
+    _s03_M.setGlobal("S03_FIRED", str(fired))
+    _s03_M.setGlobal("S03_SAME_AFTER", str(int(_s03_doc_summary(doc) == before)))
+
+
+def _s03_lines(path):
+    with open(path, encoding="utf-8") as fh:
+        return [_s03_json.loads(s) for s in fh if s.strip()]
+
+
+def _s03_twoway_keys():
+    bare = _s03_lines(_s03_M.getGlobal("S03_BARE"))
+    off = _s03_lines(_s03_M.getGlobal("S03_OFF"))
+    left = _s03_col.Counter(e["text"] for e in bare) - _s03_col.Counter(e["text"] for e in off)
+    seen, out = _s03_col.Counter(), []
+    for e in bare:
+        if seen[e["text"]] < left.get(e["text"], 0):
+            out.append(e)
+            seen[e["text"]] += 1
+    out.sort(key=lambda e: (float(e.get("y") or 0.0), float(e.get("x") or 0.0)))
+    _s03_M.setGlobal("S03_TW", "|".join(e["text"] for e in out))
+
+
+def _s03_text():
+    import svg_truth as _s03_svg
+    want = _s03_M.getGlobal("S03_TXT")
+    out = []
+    for e in _s03_svg.svg_texts(_s03_M.getGlobal("S03_SVG")):
+        if e["text"] == want:
+            out.append("%s|%s|%s" % (e["size"], e["fill"], e["rotate"]))
+    _s03_M.setGlobal("S03_OUT", ";".join(out))
+
+
+_s03_main._s03_page = _s03_page
+_s03_main._s03_app = _s03_app
+_s03_main._s03_twoway_keys = _s03_twoway_keys
+_s03_main._s03_text = _s03_text
+end
+
+* ==== S03 P0.3: unlabelled variables ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S03") {
+    // UL-01..UL-08: an unlabelled variable (label "" as Stata holds it) is
+    // named by its name in dash's axis titles, legend keys, tooltip rows and
+    // filter widgets, as twoway draws it; saved page and served app agree,
+    // before and after a filter move.
+    display as text "S03 P0.3 start `c(current_time)'"
+    // dash build finds dash_render.py through the ado-path.
+    quietly adopath ++ "`c(pwd)'/.."
+
+    capture program drop _s03_data
+    program define _s03_data
+        version 16.0
+        clear
+        quietly set obs 12
+        quietly gen double y = _n + 0.5
+        quietly gen double y1 = _n
+        quietly gen double y2 = _n + 3
+        quietly gen double x = _n*2
+        quietly gen double z = mod(_n,4)
+        quietly gen g = mod(_n,2)
+        quietly gen double w = _n*1.5
+    end
+
+    // Builds the saved page of one dash command and reads it.
+    capture program drop _s03_dash
+    program define _s03_dash
+        version 16.0
+        args id gname cmd dir
+        capture dash clear
+        capture noisily dash `cmd' name(`gname')
+        _w29_expect `id' "(_rc == 0)" "dash rc `_rc'"
+        capture erase "`dir'/`gname'.html"
+        capture noisily dash build, saving("`dir'/`gname'.html") replace nobrowser
+        _w29_expect `id' "(_rc == 0)" "dash build rc `_rc'"
+        global S03_PAGE "`dir'/`gname'.html"
+        python: __import__("__main__")._s03_page()
+    end
+
+    // twoway's legend keys of `body' (bare minus legend(off)) against
+    // dash's.
+    capture program drop _s03_keys
+    program define _s03_keys
+        version 16.0
+        args id gname body dir want
+        quietly twoway `body', name(s03b, replace)
+        cert_svg_export, name(s03b) file("`dir'/`id'_bare.svg")
+        cert_svg_texts, file("`dir'/`id'_bare.svg")
+        global S03_BARE "`r(list)'"
+        quietly twoway `body', legend(off) name(s03o, replace)
+        cert_svg_export, name(s03o) file("`dir'/`id'_off.svg")
+        cert_svg_texts, file("`dir'/`id'_off.svg")
+        global S03_OFF "`r(list)'"
+        python: __import__("__main__")._s03_twoway_keys()
+        _s03_dash `id' `gname' "`body'," "`dir'"
+        display as text `"  `id' twoway [$S03_TW] dash [$S03_KEYS]"'
+        _w29_expect `id' `"("$S03_TW" == "$S03_KEYS")"' `"twoway $S03_TW dash $S03_KEYS"'
+        _w29_expect `id' `"("$S03_KEYS" == "`want'")"' `"dash keys $S03_KEYS, want `want'"'
+        capture graph drop s03b s03o
+    end
+
+    local d "`w29_work'"
+
+    // ---- UL-01: scatter y x ----
+    _s03_data
+    quietly twoway scatter y x, name(s03a, replace)
+    cert_svg_export, name(s03a) file("`d'/ul01.svg")
+    local f "`r(file)'"
+    cert_svg_has_text, file("`f'") text("y")
+    local ty = r(found)
+    cert_svg_has_text, file("`f'") text("x")
+    local tx = r(found)
+    _s03_dash UL-01 ul01 "scatter y x," "`d'"
+    display as text `"  UL-01 twoway y:`ty' x:`tx' dash [$S03_AX]"'
+    _w29_expect UL-01 "(`ty' == 1 & `tx' == 1)" "twoway did not title the axes y and x"
+    _w29_expect UL-01 `"("$S03_AX" == "default=x|default=y")"' "dash axes $S03_AX"
+    _w29_done UL-01 "scatter y x is titled x and y in twoway and dash"
+
+    // ---- UL-02: two layers keyed by name ----
+    _s03_data
+    _s03_keys UL-02 ul02 "(scatter y1 x) (scatter y2 x)" "`d'" "y1|y2"
+    _w29_done UL-02 "two unlabelled layers are keyed y1 and y2"
+
+    // ---- UL-03: a fit beside data ----
+    _s03_data
+    _s03_keys UL-03 ul03 "(scatter y x) (lfit y x)" "`d'" "y|Fitted values"
+    _w29_done UL-03 "the data layer is keyed y, the fit Fitted values"
+
+    // ---- UL-04: a label of blanks is drawn as given ----
+    _s03_data
+    label variable w "   "
+    quietly twoway scatter w x, name(s03a, replace)
+    cert_svg_export, name(s03a) file("`d'/ul04.svg")
+    global S03_SVG "`r(file)'"
+    global S03_TXT "   "
+    python: __import__("__main__")._s03_text()
+    local tw4 "$S03_OUT"
+    _s03_dash UL-04 ul04 "scatter w x," "`d'"
+    display as text `"  UL-04 twoway [`tw4'] dash [$S03_AX]"'
+    _w29_expect UL-04 `"(strpos("`tw4'", "|-90") > 0)"' "twoway drew no rotated blank title: `tw4'"
+    _w29_expect UL-04 `"("$S03_AX" == "default=   |default=x")"' "dash axes $S03_AX"
+    _s03_data
+    label variable w "   "
+    _s03_keys UL-04 ul04k "(scatter w x) (scatter y2 x)" "`d'" "   |y2"
+    _w29_done UL-04 "a label of blanks is drawn blank, as twoway draws it"
+
+    // ---- UL-05: histogram ----
+    _s03_data
+    quietly twoway histogram x, name(s03a, replace)
+    cert_svg_export, name(s03a) file("`d'/ul05.svg")
+    local f "`r(file)'"
+    cert_svg_has_text, file("`f'") text("Density")
+    local td = r(found)
+    cert_svg_has_text, file("`f'") text("x")
+    local tx = r(found)
+    _s03_dash UL-05 ul05 "histogram x," "`d'"
+    display as text `"  UL-05 twoway Density:`td' x:`tx' dash [$S03_AX]"'
+    _w29_expect UL-05 "(`td' == 1 & `tx' == 1)" "twoway titles differ"
+    _w29_expect UL-05 `"("$S03_AX" == "default=Density|default=x")"' "dash axes $S03_AX"
+    _w29_done UL-05 "histogram x is titled Density and x"
+
+    // ---- UL-06: univariate keys ----
+    _s03_data
+    _s03_keys UL-06 ul06a "(histogram x) (kdensity x)" "`d'" "Density|kdensity x"
+    _s03_data
+    _s03_keys UL-06 ul06b "(kdensity x) (kdensity y)" "`d'" "kdensity x|kdensity y"
+    _w29_done UL-06 "histogram and kdensity layers are keyed as twoway keys them"
+
+    // ---- UL-07: tooltip rows on the saved page ----
+    _s03_data
+    _s03_dash UL-07 ul07a "scatter y x," "`d'"
+    local t1 "$S03_TIPS"
+    _s03_data
+    _s03_dash UL-07 ul07b "lfit y2 y1," "`d'"
+    local t2 "$S03_TIPS"
+    display as text `"  UL-07 scatter [`t1'] lfit [`t2']"'
+    _w29_expect UL-07 `"("`t1'" == "x,y")"' "scatter tooltip `t1'"
+    _w29_expect UL-07 `"("`t2'" == "y1,y2")"' "lfit tooltip `t2'"
+    _w29_done UL-07 "tooltip rows name the layer's own variables"
+
+    // ---- UL-08: the served app agrees, before and after a move ----
+    _s03_data
+    capture dash clear
+    capture noisily dash scatter y x, name(ul08a)
+    _w29_expect UL-08 "(_rc == 0)" "dash rc `_rc'"
+    capture noisily dash (scatter y1 x) (scatter y2 x), name(ul08b)
+    _w29_expect UL-08 "(_rc == 0)" "dash rc `_rc'"
+    capture erase "`d'/ul08.html"
+    capture erase "`d'/ul08_app.py"
+    capture noisily dash build, saving("`d'/ul08.html") replace nobrowser ///
+        filter(x, type(range)) filter(g, type(dropdown))
+    _w29_expect UL-08 "(_rc == 0)" "saved build rc `_rc'"
+    capture noisily dash build, saving("`d'/ul08_app.py") server replace ///
+        filter(x, type(range)) filter(g, type(dropdown))
+    _w29_expect UL-08 "(_rc == 0)" "served build rc `_rc'"
+    global S03_PAGE "`d'/ul08.html"
+    python: __import__("__main__")._s03_page()
+    global S03_APP "`d'/ul08_app.py"
+    global S03_MOVE "x"
+    python: __import__("__main__")._s03_app()
+    display as text `"  UL-08 saved [$S03_AX][$S03_KEYS][$S03_TIPS][$S03_W]"'
+    display as text `"  UL-08 served [$S03_SAX][$S03_SKEYS][$S03_STIPS][$S03_SW] fired $S03_FIRED same $S03_SAME_AFTER"'
+    _w29_expect UL-08 `"("$S03_AX" == "$S03_SAX" & "$S03_KEYS" == "$S03_SKEYS" & "$S03_TIPS" == "$S03_STIPS")"' "saved and served differ"
+    _w29_expect UL-08 `"("$S03_W" == "g|x" & "$S03_SW" == "g|x")"' "widget titles $S03_W / $S03_SW"
+    _w29_expect UL-08 `"(strpos(";$S03_KEYS;", ";y1|y2;") > 0)"' "keys $S03_KEYS"
+    _w29_expect UL-08 "($S03_FIRED == 1 & $S03_SAME_AFTER == 1)" "after the move: fired $S03_FIRED same $S03_SAME_AFTER"
+    _w29_done UL-08 "the served app names the variables as the saved page does, before and after a move"
+
+    capture dash clear
+    capture graph drop _all
+    display as text "S03 P0.3 end `c(current_time)'"
+}
+* ==== end S03 ====
 
 * ==== append new blocks above this line ====
 

@@ -1,0 +1,1715 @@
+{
+  "_meta": {
+    "born_date": "12 Aug 2026",
+    "dash_commit": "e77651efb92a528076f3732f30691afe35fc3f57",
+    "extracted": " 1 Oct 2026",
+    "method": "Each probe regenerates 12 unlabelled observations (_zu_data), runs its setup, exports the twoway command to SVG and reads it through scripts/svg_truth.py; texts exclude numeric tick labels; keys_in_drawn_order are the probe's <text> entries minus its legend(off) twin's, by multiset, sorted by (y, x).",
+    "scheme_in_force": "s2color",
+    "stata_version": "19.5"
+  },
+  "probes": {
+    "ul_axis2": {
+      "command": "twoway (scatter y x) (scatter y1 x, yaxis(2))",
+      "control": "",
+      "flat": [
+        "x",
+        "y",
+        "y1"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [
+        [
+          "y",
+          190.71
+        ],
+        [
+          "y1",
+          3809.04
+        ]
+      ],
+      "setup": "",
+      "texts": [
+        [
+          "y1",
+          99.99,
+          "#000000",
+          -90.0,
+          3809.04,
+          1167.25
+        ],
+        [
+          "y",
+          99.99,
+          "#000000",
+          -90.0,
+          190.71,
+          1167.25
+        ],
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          1980.0,
+          2473.6
+        ],
+        [
+          "y",
+          99.99,
+          "#000000",
+          null,
+          1829.15,
+          2686.46
+        ],
+        [
+          "y1",
+          99.99,
+          "#000000",
+          null,
+          2125.53,
+          2686.46
+        ]
+      ]
+    },
+    "ul_blank_key": {
+      "command": "twoway (scatter w x) (scatter y2 x)",
+      "control": "ul_blank_key__off",
+      "flat": [
+        "x",
+        "   ",
+        "y2"
+      ],
+      "keys_in_drawn_order": [
+        "   ",
+        "y2"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "   ",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "label variable w \"   \"",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2473.6
+        ],
+        [
+          "   ",
+          99.99,
+          "#000000",
+          null,
+          1904.64,
+          2686.46
+        ],
+        [
+          "y2",
+          99.99,
+          "#000000",
+          null,
+          2240.0,
+          2686.46
+        ]
+      ]
+    },
+    "ul_blank_key__off": {
+      "command": "twoway (scatter w x) (scatter y2 x), legend(off)",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "   ",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "label variable w \"   \"",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2729.16
+        ]
+      ]
+    },
+    "ul_blank_title": {
+      "command": "twoway scatter w x",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "   ",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [
+        [
+          "   ",
+          190.71
+        ]
+      ],
+      "setup": "label variable w \"   \"",
+      "texts": [
+        [
+          "   ",
+          99.99,
+          "#000000",
+          -90.0,
+          190.71,
+          1294.96
+        ],
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2124.91,
+          2729.16
+        ]
+      ]
+    },
+    "ul_by": {
+      "command": "twoway scatter y x, by(g)",
+      "control": "",
+      "flat": [
+        "x",
+        "Graphs by g"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [
+        [
+          "y",
+          170.79
+        ]
+      ],
+      "setup": "",
+      "texts": [
+        [
+          "y",
+          99.99,
+          "#000000",
+          -90.0,
+          170.79,
+          1332.71
+        ],
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2030.0,
+          2634.61
+        ],
+        [
+          "Graphs by g",
+          79.94,
+          "#000000",
+          null,
+          218.05,
+          2737.89
+        ]
+      ]
+    },
+    "ul_by_labelled": {
+      "command": "twoway scatter y x, by(g)",
+      "control": "",
+      "flat": [
+        "x",
+        "Graphs by Group"
+      ],
+      "labels": {
+        "g": "Group",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [
+        [
+          "y",
+          170.79
+        ]
+      ],
+      "setup": "label variable g \"Group\"",
+      "texts": [
+        [
+          "y",
+          99.99,
+          "#000000",
+          -90.0,
+          170.79,
+          1332.71
+        ],
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2030.0,
+          2634.61
+        ],
+        [
+          "Graphs by Group",
+          79.94,
+          "#000000",
+          null,
+          218.05,
+          2737.89
+        ]
+      ]
+    },
+    "ul_colorvar": {
+      "command": "twoway scatter y x, colorvar(z)",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": "z"
+      },
+      "rc": 0,
+      "rotated": [
+        [
+          "y",
+          190.71
+        ],
+        [
+          "z",
+          3713.87
+        ]
+      ],
+      "setup": "",
+      "texts": [
+        [
+          "y",
+          99.99,
+          "#000000",
+          -90.0,
+          190.71,
+          1294.96
+        ],
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          1785.59,
+          2729.16
+        ],
+        [
+          "z",
+          99.99,
+          "#000000",
+          -90.0,
+          3713.87,
+          1294.96
+        ]
+      ]
+    },
+    "ul_date": {
+      "command": "twoway line y t",
+      "control": "",
+      "flat": [
+        "02jan2000",
+        "05jan2000",
+        "08jan2000",
+        "11jan2000",
+        "14jan2000",
+        "t"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [
+        [
+          "y",
+          190.71
+        ]
+      ],
+      "setup": "",
+      "texts": [
+        [
+          "y",
+          99.99,
+          "#000000",
+          -90.0,
+          190.71,
+          1294.96
+        ],
+        [
+          "02jan2000",
+          99.99,
+          "#000000",
+          null,
+          454.16,
+          2619.14
+        ],
+        [
+          "05jan2000",
+          99.99,
+          "#000000",
+          null,
+          1289.47,
+          2619.14
+        ],
+        [
+          "08jan2000",
+          99.99,
+          "#000000",
+          null,
+          2124.91,
+          2619.14
+        ],
+        [
+          "11jan2000",
+          99.99,
+          "#000000",
+          null,
+          2960.35,
+          2619.14
+        ],
+        [
+          "14jan2000",
+          99.99,
+          "#000000",
+          null,
+          3795.66,
+          2619.14
+        ],
+        [
+          "t",
+          99.99,
+          "#000000",
+          null,
+          2124.91,
+          2729.16
+        ]
+      ]
+    },
+    "ul_fit": {
+      "command": "twoway (scatter y x) (lfit y x)",
+      "control": "ul_fit__off",
+      "flat": [
+        "x",
+        "y",
+        "Fitted values"
+      ],
+      "keys_in_drawn_order": [
+        "y",
+        "Fitted values"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2473.6
+        ],
+        [
+          "y",
+          99.99,
+          "#000000",
+          null,
+          1520.52,
+          2686.46
+        ],
+        [
+          "Fitted values",
+          99.99,
+          "#000000",
+          null,
+          2147.43,
+          2686.46
+        ]
+      ]
+    },
+    "ul_fit__off": {
+      "command": "twoway (scatter y x) (lfit y x), legend(off)",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2729.16
+        ]
+      ]
+    },
+    "ul_hist": {
+      "command": "twoway histogram x",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [
+        [
+          "Density",
+          190.71
+        ]
+      ],
+      "setup": "",
+      "texts": [
+        [
+          "Density",
+          99.99,
+          "#000000",
+          -90.0,
+          190.71,
+          1294.96
+        ],
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2124.91,
+          2729.16
+        ]
+      ]
+    },
+    "ul_hist_kd": {
+      "command": "twoway (histogram x) (kdensity x)",
+      "control": "ul_hist_kd__off",
+      "flat": [
+        "x",
+        "Density",
+        "kdensity x"
+      ],
+      "keys_in_drawn_order": [
+        "Density",
+        "kdensity x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2473.6
+        ],
+        [
+          "Density",
+          99.99,
+          "#000000",
+          null,
+          1604.91,
+          2686.46
+        ],
+        [
+          "kdensity x",
+          99.99,
+          "#000000",
+          null,
+          2523.63,
+          2686.46
+        ]
+      ]
+    },
+    "ul_hist_kd__off": {
+      "command": "twoway (histogram x) (kdensity x), legend(off)",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2729.16
+        ]
+      ]
+    },
+    "ul_histfrac_kd": {
+      "command": "twoway (histogram x, fraction) (kdensity x)",
+      "control": "ul_histfrac_kd__off",
+      "flat": [
+        "x",
+        "Fraction",
+        "kdensity x"
+      ],
+      "keys_in_drawn_order": [
+        "Fraction",
+        "kdensity x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2473.6
+        ],
+        [
+          "Fraction",
+          99.99,
+          "#000000",
+          null,
+          1591.3,
+          2686.46
+        ],
+        [
+          "kdensity x",
+          99.99,
+          "#000000",
+          null,
+          2537.37,
+          2686.46
+        ]
+      ]
+    },
+    "ul_histfrac_kd__off": {
+      "command": "twoway (histogram x, fraction) (kdensity x), legend(off)",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2729.16
+        ]
+      ]
+    },
+    "ul_histfreq_kd": {
+      "command": "twoway (histogram x, frequency) (kdensity x)",
+      "control": "ul_histfreq_kd__off",
+      "flat": [
+        "x",
+        "Frequency",
+        "kdensity x"
+      ],
+      "keys_in_drawn_order": [
+        "Frequency",
+        "kdensity x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2473.6
+        ],
+        [
+          "Frequency",
+          99.99,
+          "#000000",
+          null,
+          1535.61,
+          2686.46
+        ],
+        [
+          "kdensity x",
+          99.99,
+          "#000000",
+          null,
+          2592.93,
+          2686.46
+        ]
+      ]
+    },
+    "ul_histfreq_kd__off": {
+      "command": "twoway (histogram x, frequency) (kdensity x), legend(off)",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2729.16
+        ]
+      ]
+    },
+    "ul_histpct_kd": {
+      "command": "twoway (histogram x, percent) (kdensity x)",
+      "control": "ul_histpct_kd__off",
+      "flat": [
+        "x",
+        "Percent",
+        "kdensity x"
+      ],
+      "keys_in_drawn_order": [
+        "Percent",
+        "kdensity x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2473.6
+        ],
+        [
+          "Percent",
+          99.99,
+          "#000000",
+          null,
+          1601.7,
+          2686.46
+        ],
+        [
+          "kdensity x",
+          99.99,
+          "#000000",
+          null,
+          2526.85,
+          2686.46
+        ]
+      ]
+    },
+    "ul_histpct_kd__off": {
+      "command": "twoway (histogram x, percent) (kdensity x), legend(off)",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2729.16
+        ]
+      ]
+    },
+    "ul_kd2": {
+      "command": "twoway (kdensity x) (kdensity y)",
+      "control": "ul_kd2__off",
+      "flat": [
+        "x",
+        "kdensity x",
+        "kdensity y"
+      ],
+      "keys_in_drawn_order": [
+        "kdensity x",
+        "kdensity y"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2473.6
+        ],
+        [
+          "kdensity x",
+          99.99,
+          "#000000",
+          null,
+          1547.62,
+          2686.46
+        ],
+        [
+          "kdensity y",
+          99.99,
+          "#000000",
+          null,
+          2577.71,
+          2686.46
+        ]
+      ]
+    },
+    "ul_kd2__off": {
+      "command": "twoway (kdensity x) (kdensity y), legend(off)",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2729.16
+        ]
+      ]
+    },
+    "ul_kd_labelled": {
+      "command": "twoway (kdensity x) (kdensity y)",
+      "control": "ul_kd_labelled__off",
+      "flat": [
+        "x",
+        "kdensity x",
+        "kdensity y"
+      ],
+      "keys_in_drawn_order": [
+        "kdensity x",
+        "kdensity y"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "Horizontal",
+        "y": "Vertical",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "_zu_label_xy",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2473.6
+        ],
+        [
+          "kdensity x",
+          99.99,
+          "#000000",
+          null,
+          1547.62,
+          2686.46
+        ],
+        [
+          "kdensity y",
+          99.99,
+          "#000000",
+          null,
+          2577.71,
+          2686.46
+        ]
+      ]
+    },
+    "ul_kd_labelled__off": {
+      "command": "twoway (kdensity x) (kdensity y), legend(off)",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "Horizontal",
+        "y": "Vertical",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "_zu_label_xy",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2729.16
+        ]
+      ]
+    },
+    "ul_kdensity": {
+      "command": "twoway kdensity x",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [
+        [
+          "kdensity x",
+          190.71
+        ]
+      ],
+      "setup": "",
+      "texts": [
+        [
+          "kdensity x",
+          99.99,
+          "#000000",
+          -90.0,
+          190.71,
+          1294.96
+        ],
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2124.91,
+          2729.16
+        ]
+      ]
+    },
+    "ul_legend_on": {
+      "command": "twoway scatter y x, legend(on)",
+      "control": "ul_legend_on__off",
+      "flat": [
+        "x",
+        "y"
+      ],
+      "keys_in_drawn_order": [
+        "y"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [
+        [
+          "y",
+          190.71
+        ]
+      ],
+      "setup": "",
+      "texts": [
+        [
+          "y",
+          99.99,
+          "#000000",
+          -90.0,
+          190.71,
+          1167.25
+        ],
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2124.91,
+          2473.6
+        ],
+        [
+          "y",
+          99.99,
+          "#000000",
+          null,
+          2080.73,
+          2686.46
+        ]
+      ]
+    },
+    "ul_legend_on__off": {
+      "command": "twoway scatter y x, legend(off)",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [
+        [
+          "y",
+          190.71
+        ]
+      ],
+      "setup": "",
+      "texts": [
+        [
+          "y",
+          99.99,
+          "#000000",
+          -90.0,
+          190.71,
+          1294.96
+        ],
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2124.91,
+          2729.16
+        ]
+      ]
+    },
+    "ul_mixed": {
+      "command": "twoway (scatter y1 x) (scatter y2 x)",
+      "control": "ul_mixed__off",
+      "flat": [
+        "x",
+        "First",
+        "y2"
+      ],
+      "keys_in_drawn_order": [
+        "First",
+        "y2"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "First",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "label variable y1 \"First\"",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2473.6
+        ],
+        [
+          "First",
+          99.99,
+          "#000000",
+          null,
+          1847.96,
+          2686.46
+        ],
+        [
+          "y2",
+          99.99,
+          "#000000",
+          null,
+          2296.68,
+          2686.46
+        ]
+      ]
+    },
+    "ul_mixed__off": {
+      "command": "twoway (scatter y1 x) (scatter y2 x), legend(off)",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "First",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "label variable y1 \"First\"",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2729.16
+        ]
+      ]
+    },
+    "ul_multi_y": {
+      "command": "twoway scatter y1 y2 x",
+      "control": "ul_multi_y__off",
+      "flat": [
+        "x",
+        "y1",
+        "y2"
+      ],
+      "keys_in_drawn_order": [
+        "y1",
+        "y2"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2473.6
+        ],
+        [
+          "y1",
+          99.99,
+          "#000000",
+          null,
+          1895.73,
+          2686.46
+        ],
+        [
+          "y2",
+          99.99,
+          "#000000",
+          null,
+          2248.91,
+          2686.46
+        ]
+      ]
+    },
+    "ul_multi_y__off": {
+      "command": "twoway scatter y1 y2 x, legend(off)",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2729.16
+        ]
+      ]
+    },
+    "ul_range_key": {
+      "command": "twoway (rarea y1 y2 x) (scatter y x)",
+      "control": "ul_range_key__off",
+      "flat": [
+        "x",
+        "y1/y2",
+        "y"
+      ],
+      "keys_in_drawn_order": [
+        "y1/y2",
+        "y"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2473.6
+        ],
+        [
+          "y1/y2",
+          99.99,
+          "#000000",
+          null,
+          2019.48,
+          2686.46
+        ],
+        [
+          "y",
+          99.99,
+          "#000000",
+          null,
+          2512.25,
+          2686.46
+        ]
+      ]
+    },
+    "ul_range_key__off": {
+      "command": "twoway (rarea y1 y2 x) (scatter y x), legend(off)",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2729.16
+        ]
+      ]
+    },
+    "ul_rcap": {
+      "command": "twoway rcap y1 y2 x",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [
+        [
+          "y1/y2",
+          190.71
+        ]
+      ],
+      "setup": "",
+      "texts": [
+        [
+          "y1/y2",
+          99.99,
+          "#000000",
+          -90.0,
+          190.71,
+          1294.96
+        ],
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2124.91,
+          2729.16
+        ]
+      ]
+    },
+    "ul_scatter": {
+      "command": "twoway scatter y x",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [
+        [
+          "y",
+          190.71
+        ]
+      ],
+      "setup": "",
+      "texts": [
+        [
+          "y",
+          99.99,
+          "#000000",
+          -90.0,
+          190.71,
+          1294.96
+        ],
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2124.91,
+          2729.16
+        ]
+      ]
+    },
+    "ul_two_layers": {
+      "command": "twoway (scatter y1 x) (scatter y2 x)",
+      "control": "ul_two_layers__off",
+      "flat": [
+        "x",
+        "y1",
+        "y2"
+      ],
+      "keys_in_drawn_order": [
+        "y1",
+        "y2"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2473.6
+        ],
+        [
+          "y1",
+          99.99,
+          "#000000",
+          null,
+          1895.73,
+          2686.46
+        ],
+        [
+          "y2",
+          99.99,
+          "#000000",
+          null,
+          2248.91,
+          2686.46
+        ]
+      ]
+    },
+    "ul_two_layers__off": {
+      "command": "twoway (scatter y1 x) (scatter y2 x), legend(off)",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [],
+      "setup": "",
+      "texts": [
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2074.92,
+          2729.16
+        ]
+      ]
+    },
+    "ul_xlabelled": {
+      "command": "twoway scatter y x",
+      "control": "",
+      "flat": [
+        "Horizontal"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "Horizontal",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [
+        [
+          "y",
+          190.71
+        ]
+      ],
+      "setup": "label variable x \"Horizontal\"",
+      "texts": [
+        [
+          "y",
+          99.99,
+          "#000000",
+          -90.0,
+          190.71,
+          1294.96
+        ],
+        [
+          "Horizontal",
+          99.99,
+          "#000000",
+          null,
+          2124.91,
+          2729.16
+        ]
+      ]
+    },
+    "ul_ytitle_size": {
+      "command": "twoway scatter y x, ytitle(, size(large))",
+      "control": "",
+      "flat": [
+        "x"
+      ],
+      "labels": {
+        "g": "",
+        "t": "",
+        "w": "",
+        "x": "",
+        "y": "",
+        "y1": "",
+        "y2": "",
+        "z": ""
+      },
+      "rc": 0,
+      "rotated": [
+        [
+          "y",
+          218.69
+        ]
+      ],
+      "setup": "",
+      "texts": [
+        [
+          "y",
+          139.96,
+          "#000000",
+          -90.0,
+          218.69,
+          1294.96
+        ],
+        [
+          "x",
+          99.99,
+          "#000000",
+          null,
+          2144.96,
+          2729.16
+        ]
+      ]
+    }
+  }
+}
