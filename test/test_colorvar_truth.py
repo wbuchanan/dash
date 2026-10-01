@@ -25,6 +25,9 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
 
+sys.path.insert(0, _HERE)
+import colour_bins as cb  # noqa: E402
+
 _FIXTURE = os.path.join(_HERE, "fixtures", "colorvar_truth.json")
 
 
@@ -92,7 +95,8 @@ class TestAgainstTwoway:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             gm._apply_colorvar(fig, rend, src, dict(opts, colorvar="v"))
-        binned = list(src.data["_cvar_v_bin"])
+        # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+        binned = cb.colour_values(rend)
         assert len(set(binned)) == probe["n_groups"], (pid, sorted(set(binned)))
         if truth["_meta"]["marker_order_selfcheck"] == "observation":
             assert _canonical(binned) == _canonical(probe["fill_groups"]), pid
@@ -156,12 +160,227 @@ class TestColorlevelsOutsideTwoToAHundred:
     @pytest.mark.parametrize("n", ["-1", "-5", "101", "256", "257",
                                    "1000000"])
     def test_negative_or_over_a_hundred_draws_five_levels(self, n):
-        got, _ = _cv_bins({"colorlevels": n}, _CV_VALUES)
+        got, rend = _cv_bins({"colorlevels": n}, _CV_VALUES)
         want, _ = _cv_bins({"colorlevels": "5"}, _CV_VALUES)
         assert got == want
-        assert len(set(got["_cvar_v_bin"])) == 5
+        # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+        assert len(set(cb.colour_values(rend))) == 5
 
     @pytest.mark.parametrize("n", [2, 3, 50, 100])
     def test_two_to_a_hundred_draw_exactly_that_many(self, n):
-        got, _ = _cv_bins({"colorlevels": str(n)}, _CV_VALUES)
-        assert len(set(got["_cvar_v_bin"])) == n
+        _got, rend = _cv_bins({"colorlevels": str(n)}, _CV_VALUES)
+        # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+        assert len(set(cb.colour_values(rend))) == n
+
+
+# ---------------------------------------------------------------------------
+# WP-29 P0.16: the key is drawn from the layer's own rows, as twoway draws it
+# (test/fixtures/colorvar_qualifier_truth.json, written by
+# scripts/extract_colorvar_qualifier_truth.do in StataNow 19.5).
+# ---------------------------------------------------------------------------
+
+import pandas as pd  # noqa: E402
+
+import test_mode_parity as tp  # noqa: E402
+from test_server_layer_defects import plot_for  # noqa: E402
+
+_QFIXTURE = os.path.join(_HERE, "fixtures", "colorvar_qualifier_truth.json")
+
+
+def _qtruth():
+    if not os.path.exists(_QFIXTURE):
+        pytest.fail("WP-29 task 07-05 must land first: "
+                    "test/fixtures/colorvar_qualifier_truth.json is missing")
+    with open(_QFIXTURE, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _auto_frame():
+    """auto's columns from the fixture, with y2 and x2 as Stata built them
+    (missing where price >= 15000)."""
+    d = _qtruth()["_data"]["auto"]
+    df = pd.DataFrame({k: [np.nan if v is None else float(v) for v in vs]
+                       for k, vs in d.items()})
+    df["y2"] = df["mpg"].where(df["price"] < 15000)
+    df["x2"] = df["weight"].where(df["price"] < 15000)
+    df = df.rename(columns={"rep78": "rep78"})
+    return df
+
+
+def _render(spec, mode):
+    if mode == "saved":
+        r, _ = tp._standalone(spec)
+        return r._last_layout_root
+    doc, _ = tp._served(spec)
+    return doc
+
+
+def _colour_figs(root):
+    return [f for f in cb._figures(root) if cb.colour_renderers(f)]
+
+
+def _bounds(rend):
+    """Every interval bound of *rend*'s factors, sorted."""
+    out = set()
+    for lo, hi in cb.interval_bounds(cb.colour_mapper(rend).factors):
+        out |= {b for b in (lo, hi) if b is not None}
+    return sorted(out)
+
+
+def _key_numbers(texts):
+    out = []
+    for t in texts:
+        try:
+            out.append(float(t.replace(",", "")))
+        except ValueError:
+            pass
+    return out
+
+
+def _linked_spec(plots, go=None, if_expr="", linked=False, bo=None):
+    """One graph, or (linked) the graph g1 linked with a plain g2."""
+    if not linked:
+        return tp._spec(plots, bo, go, None, None, if_expr)
+    return tp._spec(None, dict(bo or {}, link="g1 g2"), None,
+                    [("g1", plots, go, {"if_expr": if_expr}),
+                     ("g2", [plot_for("scatter")])])
+
+
+_MODES = ["saved", "served"]
+
+
+class TestTheKeyIsDrawnFromTheLayersRows:
+    """twoway draws a colorvar() key from the observations the plot draws:
+    its own if/in, the graph's if/in and its by() panel, counting an
+    observation whose y or x is missing."""
+
+    @pytest.fixture(autouse=True)
+    def _auto(self, monkeypatch):
+        monkeypatch.setattr(tp, "_DF", _auto_frame())
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_a_layers_own_if(self, mode):
+        p = _qtruth()["probes"]["q_if_cont"]
+        spec = tp._spec([
+            plot_for("scatter", {"colorvar": "price"},
+                     if_expr="foreign == 1"),
+            plot_for("scatter", if_expr="foreign == 0")])
+        assert cb.colour_bars(_render(spec, mode)) == [
+            (p["summ_min"], p["summ_max"])]
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_colordiscrete_levels_of_a_layers_own_if(self, mode):
+        spec = tp._spec([
+            plot_for("scatter", {"colorvar": "rep78",
+                                 "colordiscrete": "colordiscrete"},
+                     if_expr="foreign == 1"),
+            plot_for("scatter", if_expr="foreign == 0")])
+        root = _render(spec, mode)
+        (rend,) = cb.colour_renderers(root)
+        assert list(cb.colour_mapper(rend).factors) == ["3", "4", "5"]
+        (fig,) = _colour_figs(root)
+        legs = [a for a in fig.right if type(a).__name__ == "Legend"
+                and a.name == dr._COLORVAR_LEGEND_NAME]
+        last = legs[0].items[-1].label
+        assert "(missing)" in str(getattr(last, "value", last))
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_colorlevels_cuts_of_a_layers_own_if(self, mode):
+        truth = _qtruth()
+        p = truth["probes"]["q_if_lv3"]
+        spec = tp._spec([
+            plot_for("scatter", {"colorvar": "price", "colorlevels": "3"},
+                     if_expr="foreign == 1"),
+            plot_for("scatter", if_expr="foreign == 0")])
+        root = _render(spec, mode)
+        (rend,) = cb.colour_renderers(root)
+        b = _bounds(rend)
+        assert b[0] == 3748.0 and b[-1] == 12990.0, b
+        assert abs(b[1] - 6828.667) < 0.01 and abs(b[2] - 9909.333) < 0.01
+        keys = _key_numbers(p["key_texts"])
+        assert [round(x, 1) for x in b[1:3]] == [6828.7, 9909.3]
+        assert {6828.7, 9909.3} <= set(keys), keys
+        drawn = cb.drawn_colour_values(rend)
+        n = len(p["qual_obs"])
+        assert len(drawn) == n == 22
+        assert _canonical(drawn) == _canonical(p["fills"][:n])
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_a_linked_graphs_own_if(self, mode):
+        p = _qtruth()["probes"]["q_cmd_if"]
+        spec = _linked_spec([plot_for("scatter", {"colorvar": "price"})],
+                            if_expr="foreign == 1", linked=True)
+        assert cb.colour_bars(_render(spec, mode)) == [
+            (p["summ_min"], p["summ_max"])]
+
+    @pytest.mark.parametrize("linked", [False, True],
+                             ids=["unlinked", "linked"])
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_each_by_panel_maps_its_own_rows(self, mode, linked):
+        probes = _qtruth()["probes"]
+        spec = _linked_spec([plot_for("scatter", {"colorvar": "price",
+                                                  "colorlevels": "4"})],
+                            go={"by": "foreign"}, linked=linked)
+        figs = _colour_figs(_render(spec, mode))
+        assert len(figs) == 2
+        for fig, pid in zip(figs, ("by_lv4_p0", "by_lv4_p1")):
+            p = probes[pid]
+            (rend,) = cb.colour_renderers(fig)
+            b = _bounds(rend)
+            assert (b[0], b[-1]) == (p["summ_min"], p["summ_max"]), (pid, b)
+            drawn = cb.drawn_colour_values(rend)
+            n = len(p["qual_obs"])
+            assert len(drawn) == n
+            assert _canonical(drawn) == _canonical(p["fills"][:n]), pid
+        spec = _linked_spec([plot_for("scatter", {"colorvar": "price"})],
+                            go={"by": "foreign"}, linked=linked)
+        bars = [cb.colour_bars(f)[0]
+                for f in _colour_figs(_render(spec, mode))]
+        assert bars == [(probes[k]["summ_min"], probes[k]["summ_max"])
+                        for k in ("by_lv4_p0", "by_lv4_p1")]
+
+    def _one_cut(self, mode, linked, ptype, y, x, pid):
+        p = _qtruth()["probes"][pid]
+        spec = _linked_spec([dict(plot_for(ptype, {"colorvar": "price",
+                                                   "colorlevels": "2"}),
+                                  yvar=y, xvar=x)], linked=linked)
+        rends = cb.colour_renderers(_render(spec, mode))
+        assert rends
+        for rend in rends:
+            b = _bounds(rend)
+            assert len(b) == 3 and b[1] == 9598.5, (pid, b)
+        assert 9598.5 in _key_numbers(p["key_texts"])
+
+    @pytest.mark.parametrize("linked", [False, True],
+                             ids=["unlinked", "linked"])
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_rows_with_a_missing_y_count(self, mode, linked):
+        self._one_cut(mode, linked, "scatter", "y2", "weight",
+                      "missing_y_lv2")
+
+    @pytest.mark.parametrize("linked", [False, True],
+                             ids=["unlinked", "linked"])
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_rows_with_a_missing_x_count(self, mode, linked):
+        self._one_cut(mode, linked, "scatter", "mpg", "x2",
+                      "missing_x_lv2")
+
+    @pytest.mark.parametrize("linked", [False, True],
+                             ids=["unlinked", "linked"])
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_a_connected_layer_with_a_missing_y_counts(self, mode, linked):
+        self._one_cut(mode, linked, "connected", "y2", "weight",
+                      "missing_y_connected")
+
+    def test_the_qualifier_fixture_carries_its_provenance_and_self_checks(
+            self):
+        truth = _qtruth()
+        meta, probes = truth["_meta"], truth["probes"]
+        for key in ("stata_version", "born_date", "dash_commit",
+                    "extracted"):
+            assert key in meta
+        assert meta["qualified_order_selfcheck"] == "held"
+        assert meta["by_panel_selfcheck"] == "held"
+        assert probes["rconnected_key"]["key_title_count"] == 1
+        assert probes["multi_colorvar"]["rc"] == 198
+        assert probes["empty_layer"]["rc"] == 3001

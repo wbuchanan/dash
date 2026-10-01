@@ -3463,8 +3463,11 @@ class TestApplyColorvarOptions:
         gm  = self._gm()
         gm._apply_colorvar(fig, r, cds,
                            {"colorvar": "x", "colordiscrete": "colordiscrete"})
-        assert "_cvar_x_bin" in cds.data
-        assert set(cds.data["_cvar_x_bin"]) == {"0", "1"}
+        # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+        field = r.glyph.fill_color["field"]
+        import dash_render as dr
+        assert field.startswith(dr._DASH_CVAR_PREFIX) and field in cds.data
+        assert set(cds.data[field]) == {"0", "1"}
 
     # ------------------------------------------------------------------
     # colornlevels
@@ -3480,8 +3483,8 @@ class TestApplyColorvarOptions:
                            {"colorvar": "weight", "colornlevels": "4"})
         mapper = r.glyph.fill_color["transform"]
         assert isinstance(mapper, CategoricalColorMapper)
-        non_missing = [f for f in mapper.factors if f != "__missing__"]
-        assert len(non_missing) == 4
+        # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+        assert len(mapper.factors) == 4
 
     def test_colornlevels_uses_categorical_mapper(self):
         """P1A-46g: colornlevels forces CategoricalColorMapper for numeric data."""
@@ -3508,8 +3511,8 @@ class TestApplyColorvarOptions:
                            {"colorvar": "weight", "colorcuts": "2000 3000"})
         mapper = r.glyph.fill_color["transform"]
         assert isinstance(mapper, CategoricalColorMapper)
-        non_missing = [f for f in mapper.factors if f != "__missing__"]
-        assert len(non_missing) == 3  # ≤2000 / 2000–3000 / >3000
+        # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+        assert len(mapper.factors) == 3  # ≤2000 / 2000–3000 / >3000
 
     def test_colorcuts_bin_labels_correct(self):
         """P1A-46i: colorcuts bin labels follow ≤lo / lo–hi / >hi pattern."""
@@ -3548,7 +3551,9 @@ class TestApplyColorvarOptions:
         assert mapper.nan_color == "#ff0000"
 
     def test_colormissing_included_in_palette_for_discrete(self):
-        """P1A-46k: colormissing color appears at end of palette for NaN rows."""
+        """P1A-46k: colormissing() colours the NaN rows: the mapper's
+        nan_color, with a "(missing)" key entry (WP-29 P0.16: missing is
+        None, never a factor)."""
         from bokeh.models import CategoricalColorMapper
         fig = self._fig()
         cds = ColumnDataSource({"x": [1.0, float("nan"), 2.0],
@@ -3560,11 +3565,19 @@ class TestApplyColorvarOptions:
                             "colormissing": "red"})
         mapper = r.glyph.fill_color["transform"]
         assert isinstance(mapper, CategoricalColorMapper)
-        assert "__missing__" in mapper.factors
-        missing_idx = list(mapper.factors).index("__missing__")
+        # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+        assert "__missing__" not in mapper.factors
         # Translated through the Stata colour map -- see
         # test_colormissing_sets_nan_color_for_continuous.
-        assert mapper.palette[missing_idx] == "#ff0000"
+        assert mapper.nan_color == "#ff0000"
+        field = r.glyph.fill_color["field"]
+        assert cds.data[field][1] is None
+        import dash_render as dr
+        keys = [m for m in fig.right if type(m).__name__ == "Legend"
+                and str(m.name or "") == dr._COLORVAR_LEGEND_NAME]
+        labels = [str(getattr(i.label, "value", i.label))
+                  for i in keys[0].items]
+        assert labels[-1] == "(missing)"
 
     # ------------------------------------------------------------------
     # coloruseplegend

@@ -7504,8 +7504,9 @@ class TestServerFilterPreservesDerivedColumns:
         # G1 (WP-28): the marker-label column is named under the __dash
         # prefix now (dr._DASH_MLABEL_PREFIX + "foreign").
         ({"mlabel": "foreign"}, "__dash_mlabel_foreign"),
-        ({"colorvar": "foreign", "colordiscrete": "colordiscrete"},
-         "_cvar_foreign_bin"),
+        # WP-29 P0.16: the colour column is named under __dash_cvar, one
+        # per layer; None here is resolved to the Scatter's colour field.
+        ({"colorvar": "foreign", "colordiscrete": "colordiscrete"}, None),
     ], ids=["marker_labels", "colour_bins"])
     def test_a_derived_column_keeps_each_kept_rows_value_after_a_move(
             self, dr_module, auto_df, tmp_path, opts, column):
@@ -7533,6 +7534,11 @@ class TestServerFilterPreservesDerivedColumns:
         labels = ({"origin": {"0": "Domestic", "1": "Foreign"}},
                   {"foreign": "origin"})
         doc, _ = _ql_served(dr_module, tmp_path, spec, auto_df, labels)
+        if column is None:
+            import colour_bins as cb
+            (rend,) = [r for r in cb.colour_renderers(doc)
+                       if type(r.glyph).__name__ == "Scatter"]
+            column = cb.colour_field(rend)
 
         def _layer():
             found = [r.data_source for root in doc.roots

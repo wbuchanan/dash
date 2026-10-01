@@ -62,7 +62,7 @@ class TestEveryInternalColumnIsUnderThePrefix:
     def test_no_column_literal_escapes_the_prefix(self):
         bad = [(ln, v) for ln, v in _string_constants(_DASH_RENDER_PATH)
                if "__mlabel" in v or "_x_jit" in v or "_y_jit" in v
-               or "_label__" in v]
+               or "_label__" in v or v.startswith("_cvar_")]
         assert bad == [], bad
 
     def test_every_dunder_looking_constant_is_allowed_or_under_the_prefix(
@@ -76,7 +76,7 @@ class TestEveryInternalColumnIsUnderThePrefix:
 def test_every_column_constant_starts_with_the_prefix():
     for name in ("_DASH_PC_ROW_COLUMN", "_DASH_MLABEL_PREFIX",
                  "_DASH_MLABEL_VALUES", "_DASH_MLABEL_X", "_DASH_MLABEL_Y",
-                 "_DASH_JITTER_X", "_DASH_JITTER_Y"):
+                 "_DASH_JITTER_X", "_DASH_JITTER_Y", "_DASH_CVAR_PREFIX"):
         val = getattr(dr, name)
         assert val.startswith("__dash"), (name, val)
     assert dr._DASH_LABEL_SUFFIX == "_label"

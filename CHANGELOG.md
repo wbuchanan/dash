@@ -274,7 +274,21 @@ and now matches Stata.
   every move, a second move and a reset; the saved page now draws 14 and 9.
   (WP-29, P0.15)
 
-<!-- WP-29 P0.16 -->
+- `colorvar()`'s key is drawn from the observations the plot draws, as
+  twoway draws it.  `dash (scatter mpg weight if foreign==1,
+  colorvar(price)) (scatter mpg weight if foreign==0)` drew its colour bar
+  over 3,291-15,906 on the saved page; it is now 3,748-12,990 in both
+  modes, and `colordiscrete` on rep78 there gave levels 1-5 and is now
+  3-5.  A linked graph with its own `if` and each linked `by()` panel were
+  coloured over the whole dataset in both modes and now over their own
+  observations.  `scatter y2 weight, colorvar(price) colorlevels(2)` with
+  y2 missing on the 15,906 car cut at 8,895.5 and now cuts at 9,598.5, as
+  twoway does (an observation whose y or x is missing counts).
+  `rconnected` drew two keys and now draws one.  A missing value is drawn
+  in `colormissing()`'s colour and is no longer a key level, and the
+  derived colour column is now named under the reserved `__dash_cvar`
+  prefix, one per layer, so a variable called `_cvar_price_bin` is never
+  overwritten. (WP-29, P0.16)
 
 <!-- WP-29 P0.18 -->
 

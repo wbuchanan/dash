@@ -1,7 +1,8 @@
 """Both render modes' rows after a sequence of filter moves, for the Stata
 certification blocks of section 17 (GAPS2 X1, E2): test_gaps2_truth.cscript
 FT-01..FT-06 and test_e2e_filters.cscript FL-X1-1, FL-E2-1, FL-E2-2, and
-of WP-29 section 07: test_e2e_filters.cscript QF-01, QF-02 (``layer_rows``).
+of WP-29 section 07: test_e2e_filters.cscript QF-01, QF-02 (``layer_rows``)
+and test_wp29_truth.cscript CQV-01..CQV-09 (``colour_keys``).
 
 The cscript builds the data in Stata and hands it here through ``sfi``; this
 module renders the saved page (its own filter callbacks run under node through
@@ -234,6 +235,49 @@ def layer_rows(spec_path, data_path, moves):
                 for cb in list(w._callbacks.get(key, [])):
                     cb("value", None, value)
     return {"saved": saved_rows, "served": _figure_rows(doc.roots[0])}
+
+
+def _keys_of(root):
+    import colour_bins as cb
+    out = []
+    for f in cb._figures(root):
+        out.append({
+            "bars": [[float(lo), float(hi)] for lo, hi in cb.colour_bars(f)],
+            "factors": [list(cb.colour_mapper(r).factors)
+                        for r in cb.colour_renderers(f)
+                        if hasattr(cb.colour_mapper(r), "factors")],
+            "drawn": [cb.drawn_colour_values(r)
+                      for r in cb.colour_renderers(f)],
+            "keys": cb.colour_keys(f)})
+    return out
+
+
+def colour_keys(spec_path, data_path):
+    """WP-29 P0.16 (test_wp29_truth.cscript CQV-01..CQV-09): each figure's
+    colour keys in both modes, in layout order.
+
+    Returns ``{"saved": [fig, ...], "served": [fig, ...]}``, each fig
+    ``{"bars": [[low, high], ...], "factors": [[...] per colour-mapped
+    renderer], "drawn": [[the colour value of each drawn row] per
+    colour-mapped renderer], "keys": <ColorBars + Legends named
+    dr._COLORVAR_LEGEND_NAME>}``.  Nothing here calls Stata.
+    """
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(spec_path, data_path)
+        r.render()
+    saved_keys = _keys_of(r._last_layout_root)
+    tmp = tempfile.mkdtemp(prefix="ft_colour_keys_")
+    app = os.path.join(tmp, "app.py")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(spec_path, data_path).build(app)
+        with open(app, encoding="utf-8") as fh:
+            ns = _load_app(fh.read(), "ftk_%d" % os.getpid())
+        doc = Document()
+        ns["make_document"](doc)
+    return {"saved": saved_keys, "served": _keys_of(doc)}
 
 
 def put(name, value):

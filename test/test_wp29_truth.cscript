@@ -12,6 +12,7 @@
 *!   S03  P0.3 unlabelled variables (UL-01..UL-08); P0.4 title sub-options without text (ET-01..ET-10)
 *!   S04  function points are twoway's (FX-20..FX-24)
 *!   S06  P0.10 hover() variables exported (HX-01..HX-08)
+*!   S07  colorvar key from the layer's rows, saved and served (CQV-01..09)
 *!
 *! Usage: via run_all_cscripts.do (registered as its block 68).  One
 *! block alone: set WP29_ONLY=S<NN> in the environment of the driver run
@@ -2067,6 +2068,373 @@ end
     display as text "S06 end `c(current_time)'"
 }
 * ==== end S06 ====
+* ==== S07 P0.16: colorvar key from the layer's rows ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S07") {
+    display as text "S07 start `c(current_time)'"
+
+    // twoway draws a colorvar() key from the observations the plot draws:
+    // its own if/in, the graph's and its by() panel's, an observation
+    // whose y or x is missing included.  Each case exports twoway's SVG
+    // live and compares dash's saved and served pages with it and with
+    // Stata's own summarize/levelsof.  Globals carry numbers and file
+    // names only; the python blocks never call back into Stata.
+    python:
+import os, sys
+sys.path.insert(0, os.path.abspath("."))
+sys.path.insert(0, os.path.abspath(os.path.join("..", "scripts")))
+import filter_truth_check as ftc
+import colour_bins as _cqv_cb
+from svg_truth import svg_document as _cqv_doc
+from sfi import Macro as _cqv_M
+
+
+def _cqv_g(name):
+    return _cqv_M.getGlobal(name)
+
+
+def _cqv_texts(path):
+    return [t["text"] for t in _cqv_doc(path)["texts"]]
+
+
+def _cqv_num(t):
+    try:
+        return float(str(t).replace(",", ""))
+    except ValueError:
+        return None
+
+
+def _cqv_key_numbers(path):
+    """The numbers twoway writes right of the plot region: its key."""
+    d = _cqv_doc(path)
+    pr = d["plotregion"] or {}
+    return [t["text"] for t in d["texts"] if pr and t.get("x") is not None
+            and t["x"] > pr["right"] and _cqv_num(t["text"]) is not None]
+
+
+def _cqv_matches(b, key_texts):
+    """Does bound *b* round to one of twoway's key texts, at the text's
+    own precision?"""
+    for t in key_texts:
+        v = _cqv_num(t)
+        dec = len(t.split(".", 1)[1]) if "." in t else 0
+        if v is not None and abs(b - v) <= 0.5 * 10 ** (-dec) + 1e-9:
+            return True
+    return False
+
+
+def _cqv_inner(factors):
+    out = set()
+    for lo, hi in _cqv_cb.interval_bounds(factors):
+        out |= {x for x in (lo, hi) if x is not None}
+    s = sorted(out)
+    return s[1:-1]
+
+
+def _cqv_fills(path):
+    """(in-region circle fills in document order, counts over every
+    circle)."""
+    d = _cqv_doc(path)
+    pr = d["plotregion"] or {}
+    cs = [c for c in d["circles"] if c.get("fill") and c["fill"] != "none"]
+    inside = [c["fill"] for c in cs if pr and c.get("cx") is not None
+              and pr["left"] <= c["cx"] <= pr["right"]
+              and pr["top"] <= c["cy"] <= pr["bottom"]]
+    counts = {}
+    for c in cs:
+        counts[c["fill"]] = counts.get(c["fill"], 0) + 1
+    return inside, counts
+
+
+def _cqv_keys():
+    return ftc.colour_keys(_cqv_g("cqv_spec"), _cqv_g("cqv_data"))
+
+
+def _cqv_cut_case():
+    keys = _cqv_key_numbers(_cqv_g("cqv_svg"))
+    k = _cqv_keys()
+    inner = {m: [_cqv_inner(fs) for f in k[m] for fs in f["factors"]]
+             for m in ("saved", "served")}
+    ok = "9,598.5" in keys and all(
+        v and all(x == [9598.5] for x in v) for v in inner.values())
+    _cqv_put(ok, "twoway key %s; dash interior bounds %s" % (keys, inner))
+
+
+def _cqv_put(ok, why):
+    ftc.put("cqv_ok", int(bool(ok)))
+    ftc.put("cqv_why", why if not ok else "")
+
+end
+
+    // ------------------------------------------------------------
+    // CQV-01: a plot's own if sets its continuous key's range.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    quietly twoway (scatter mpg weight if foreign==1, colorvar(price)) ///
+        (scatter mpg weight if foreign==0), name(cqv1, replace)
+    cert_svg_export, name(cqv1) file("`w29_work'/cqv1.svg")
+    global cqv_svg "`r(file)'"
+    quietly summarize price if foreign == 1
+    global cqv_min = r(min)
+    global cqv_max = r(max)
+    dash clear
+    dash (scatter mpg weight if foreign==1, colorvar(price)) ///
+        (scatter mpg weight if foreign==0), name(cqv1)
+    tempfile cqv1s cqv1d
+    global cqv_spec "`cqv1s'"
+    global cqv_data "`cqv1d'"
+    _dash_serve_spec, specpath("${cqv_spec}") datapath("${cqv_data}")
+    python:
+t = _cqv_texts(_cqv_g("cqv_svg"))
+want = [float(_cqv_g("cqv_min")), float(_cqv_g("cqv_max"))]
+k = _cqv_keys()
+got = {m: k[m][0]["bars"] for m in ("saved", "served")}
+ok = ("4,000" in t and "14,000" in t and "15,000" not in t
+      and all(got[m] == [want] for m in got))
+_cqv_put(ok, "twoway key %s; dash bars %s, want %s" % (
+    [x for x in t if _cqv_num(x) is not None], got, want))
+end
+    _w29_expect CQV-01 "${cqv_ok}" "${cqv_why}"
+    _w29_done CQV-01 "the bar spans summarize price if foreign==1 (${cqv_min} to ${cqv_max}) in both modes; twoway's key is 4,000-14,000"
+    capture graph drop cqv1
+
+    // ------------------------------------------------------------
+    // CQV-02: colordiscrete levels of a plot's own if.
+    // ------------------------------------------------------------
+    quietly twoway (scatter mpg weight if foreign==1, colorvar(rep78) ///
+        colordiscrete) (scatter mpg weight if foreign==0), name(cqv2, replace)
+    cert_svg_export, name(cqv2) file("`w29_work'/cqv2.svg")
+    global cqv_svg "`r(file)'"
+    quietly count if foreign == 1
+    global cqv_n = r(N)
+    quietly levelsof rep78 if foreign == 1
+    global cqv_levels "`r(levels)'"
+    dash clear
+    dash (scatter mpg weight if foreign==1, colorvar(rep78) colordiscrete) ///
+        (scatter mpg weight if foreign==0), name(cqv2)
+    tempfile cqv2s cqv2d
+    global cqv_spec "`cqv2s'"
+    global cqv_data "`cqv2d'"
+    _dash_serve_spec, specpath("${cqv_spec}") datapath("${cqv_data}")
+    python:
+inside, _c = _cqv_fills(_cqv_g("cqv_svg"))
+n = int(_cqv_g("cqv_n"))
+groups = {f for f in inside[:n] if f != "#808080"}
+want = _cqv_g("cqv_levels").split()
+k = _cqv_keys()
+got = {m: k[m][0]["factors"] for m in ("saved", "served")}
+ok = len(groups) == 3 and all(got[m] == [want] for m in got)
+_cqv_put(ok, "twoway %d non-gray groups; dash factors %s, want %s" % (
+    len(groups), got, want))
+end
+    _w29_expect CQV-02 "${cqv_ok}" "${cqv_why}"
+    _w29_done CQV-02 "the levels are levelsof rep78 if foreign==1 (${cqv_levels}) in both modes, twoway's three colours"
+    capture graph drop cqv2
+
+    // ------------------------------------------------------------
+    // CQV-03: colorlevels(3) cuts of a plot's own if.
+    // ------------------------------------------------------------
+    quietly twoway (scatter mpg weight if foreign==1, colorvar(price) ///
+        colorlevels(3)) (scatter mpg weight if foreign==0), name(cqv3, replace)
+    cert_svg_export, name(cqv3) file("`w29_work'/cqv3.svg")
+    global cqv_svg "`r(file)'"
+    dash clear
+    dash (scatter mpg weight if foreign==1, colorvar(price) colorlevels(3)) ///
+        (scatter mpg weight if foreign==0), name(cqv3)
+    tempfile cqv3s cqv3d
+    global cqv_spec "`cqv3s'"
+    global cqv_data "`cqv3d'"
+    _dash_serve_spec, specpath("${cqv_spec}") datapath("${cqv_data}")
+    python:
+keys = _cqv_key_numbers(_cqv_g("cqv_svg"))
+k = _cqv_keys()
+inner = {m: _cqv_inner(k[m][0]["factors"][0]) for m in ("saved", "served")}
+ok = ("6,828.7" in keys and "9,909.3" in keys and all(
+    len(v) == 2 and all(_cqv_matches(b, ["6,828.7", "9,909.3"]) for b in v)
+    for v in inner.values()))
+_cqv_put(ok, "twoway key %s; dash interior bounds %s" % (keys, inner))
+end
+    _w29_expect CQV-03 "${cqv_ok}" "${cqv_why}"
+    _w29_done CQV-03 "the interior bounds are twoway's 6,828.7 and 9,909.3 in both modes"
+    capture graph drop cqv3
+
+    // ------------------------------------------------------------
+    // CQV-04: a linked graph's own if sets its key's range.
+    // ------------------------------------------------------------
+    quietly twoway scatter mpg weight if foreign==1, colorvar(price) ///
+        name(cqv4, replace)
+    cert_svg_export, name(cqv4) file("`w29_work'/cqv4.svg")
+    global cqv_svg "`r(file)'"
+    quietly summarize price if foreign == 1
+    global cqv_min = r(min)
+    global cqv_max = r(max)
+    dash clear
+    dash scatter mpg weight if foreign == 1, colorvar(price) name(c4a)
+    dash scatter mpg weight, name(c4b)
+    tempfile cqv4s cqv4d
+    global cqv_spec "`cqv4s'"
+    global cqv_data "`cqv4d'"
+    _dash_serve_spec, specpath("${cqv_spec}") datapath("${cqv_data}") ///
+        link(c4a c4b)
+    python:
+t = _cqv_texts(_cqv_g("cqv_svg"))
+want = [float(_cqv_g("cqv_min")), float(_cqv_g("cqv_max"))]
+k = _cqv_keys()
+got = {m: [b for f in k[m] for b in f["bars"]] for m in ("saved", "served")}
+ok = "14,000" in t and "15,000" not in t and all(
+    got[m] == [want] for m in got)
+_cqv_put(ok, "dash bars %s, want %s" % (got, want))
+end
+    _w29_expect CQV-04 "${cqv_ok}" "${cqv_why}"
+    _w29_done CQV-04 "a linked graph's if: the bar spans ${cqv_min} to ${cqv_max} in both modes"
+    capture graph drop cqv4
+
+    // ------------------------------------------------------------
+    // CQV-05: by(foreign) colorlevels(4), linked: each panel its own.
+    // ------------------------------------------------------------
+    quietly twoway scatter mpg weight, colorvar(price) colorlevels(4) ///
+        by(foreign) name(cqv5, replace)
+    cert_svg_export, name(cqv5) file("`w29_work'/cqv5.svg")
+    global cqv_svg "`r(file)'"
+    quietly twoway scatter mpg weight if foreign==0, colorvar(price) ///
+        colorlevels(4) name(cqv5a, replace)
+    cert_svg_export, name(cqv5a) file("`w29_work'/cqv5a.svg")
+    global cqv_svga "`r(file)'"
+    quietly twoway scatter mpg weight if foreign==1, colorvar(price) ///
+        colorlevels(4) name(cqv5b, replace)
+    cert_svg_export, name(cqv5b) file("`w29_work'/cqv5b.svg")
+    global cqv_svgb "`r(file)'"
+    dash clear
+    dash scatter mpg weight, colorvar(price) colorlevels(4) by(foreign) ///
+        name(c5a)
+    dash scatter mpg weight, name(c5b)
+    tempfile cqv5s cqv5d
+    global cqv_spec "`cqv5s'"
+    global cqv_data "`cqv5d'"
+    _dash_serve_spec, specpath("${cqv_spec}") datapath("${cqv_data}") ///
+        link(c5a c5b)
+    python:
+ka = _cqv_key_numbers(_cqv_g("cqv_svga"))
+kb = _cqv_key_numbers(_cqv_g("cqv_svgb"))
+_i, cby = _cqv_fills(_cqv_g("cqv_svg"))
+_i, ca = _cqv_fills(_cqv_g("cqv_svga"))
+_i, cb_ = _cqv_fills(_cqv_g("cqv_svgb"))
+panels_ok = all(
+    cby.get(c, 0) == max(ca.get(c, 0) - 1, 0) + max(cb_.get(c, 0) - 1, 0)
+    for c in set(cby) | set(ca) | set(cb_))
+k = _cqv_keys()
+why, ok = [], panels_ok
+for m in ("saved", "served"):
+    figs = [f for f in k[m] if f["factors"]]
+    inner = [_cqv_inner(f["factors"][0]) for f in figs]
+    good = (len(inner) == 2 and len(inner[0]) == 3 and len(inner[1]) == 3
+            and all(_cqv_matches(b, ka) for b in inner[0])
+            and all(_cqv_matches(b, kb) for b in inner[1]))
+    ok = ok and good
+    why.append("%s %s" % (m, inner))
+
+_cqv_put(ok, "twoway panels %s / %s; by() counts per panel %s; dash %s" % (
+    ka, kb, panels_ok, "; ".join(why)))
+end
+    _w29_expect CQV-05 "${cqv_ok}" "${cqv_why}"
+    _w29_done CQV-05 "each linked by() panel's cuts are its own single-panel twoway key, in both modes"
+    capture graph drop cqv5 cqv5a cqv5b
+
+    // ------------------------------------------------------------
+    // CQV-06..08: an observation whose y or x is missing counts.
+    // ------------------------------------------------------------
+    quietly gen y2 = mpg if price < 15000
+    quietly gen x2 = weight if price < 15000
+    // CQV-06: scatter y2 weight
+    quietly twoway scatter y2 weight, colorvar(price) colorlevels(2) ///
+        name(cqv6, replace)
+    cert_svg_export, name(cqv6) file("`w29_work'/cqv6.svg")
+    global cqv_svg "`r(file)'"
+    dash clear
+    dash scatter y2 weight, colorvar(price) colorlevels(2) name(cqv6)
+    tempfile cqv6s cqv6d
+    global cqv_spec "`cqv6s'"
+    global cqv_data "`cqv6d'"
+    _dash_serve_spec, specpath("${cqv_spec}") datapath("${cqv_data}")
+    python:
+_cqv_cut_case()
+end
+    _w29_expect CQV-06 "${cqv_ok}" "${cqv_why}"
+    _w29_done CQV-06 "scatter y2 weight, colorlevels(2): the cut is twoway's 9,598.5 in both modes"
+    capture graph drop cqv6
+    // CQV-07: scatter mpg x2
+    quietly twoway scatter mpg x2, colorvar(price) colorlevels(2) ///
+        name(cqv7, replace)
+    cert_svg_export, name(cqv7) file("`w29_work'/cqv7.svg")
+    global cqv_svg "`r(file)'"
+    dash clear
+    dash scatter mpg x2, colorvar(price) colorlevels(2) name(cqv7)
+    tempfile cqv7s cqv7d
+    global cqv_spec "`cqv7s'"
+    global cqv_data "`cqv7d'"
+    _dash_serve_spec, specpath("${cqv_spec}") datapath("${cqv_data}")
+    python:
+_cqv_cut_case()
+end
+    _w29_expect CQV-07 "${cqv_ok}" "${cqv_why}"
+    _w29_done CQV-07 "scatter mpg x2, colorlevels(2): the cut is twoway's 9,598.5 in both modes"
+    capture graph drop cqv7
+    // CQV-08: connected y2 weight
+    quietly twoway connected y2 weight, colorvar(price) colorlevels(2) ///
+        name(cqv8, replace)
+    cert_svg_export, name(cqv8) file("`w29_work'/cqv8.svg")
+    global cqv_svg "`r(file)'"
+    dash clear
+    dash connected y2 weight, colorvar(price) colorlevels(2) name(cqv8)
+    tempfile cqv8s cqv8d
+    global cqv_spec "`cqv8s'"
+    global cqv_data "`cqv8d'"
+    _dash_serve_spec, specpath("${cqv_spec}") datapath("${cqv_data}")
+    python:
+_cqv_cut_case()
+end
+    _w29_expect CQV-08 "${cqv_ok}" "${cqv_why}"
+    _w29_done CQV-08 "connected y2 weight, colorlevels(2): the cut is twoway's 9,598.5 in both modes"
+    capture graph drop cqv8
+    drop y2 x2
+
+    // ------------------------------------------------------------
+    // CQV-09: rconnected draws one key.
+    // ------------------------------------------------------------
+    quietly gen lo = mpg - 2
+    quietly twoway rconnected lo mpg weight, colorvar(price) ///
+        name(cqv9, replace)
+    cert_svg_export, name(cqv9) file("`w29_work'/cqv9.svg")
+    global cqv_svg "`r(file)'"
+    dash clear
+    dash rconnected lo mpg weight, colorvar(price) name(cqv9)
+    tempfile cqv9s cqv9d
+    global cqv_spec "`cqv9s'"
+    global cqv_data "`cqv9d'"
+    _dash_serve_spec, specpath("${cqv_spec}") datapath("${cqv_data}")
+    python:
+n_title = sum(1 for t in _cqv_texts(_cqv_g("cqv_svg")) if t == "Price")
+k = _cqv_keys()
+got = {m: sum(f["keys"] for f in k[m]) for m in ("saved", "served")}
+ok = n_title == 1 and all(v == 1 for v in got.values())
+_cqv_put(ok, "twoway draws Price %d time(s); dash keys %s" % (n_title, got))
+end
+    _w29_expect CQV-09 "${cqv_ok}" "${cqv_why}"
+    _w29_done CQV-09 "rconnected draws one key, as twoway's one Price title"
+    drop lo
+    capture graph drop cqv9
+
+    dash clear
+    capture erase "`w29_work'/cqv1.svg"
+    forvalues i = 2/9 {
+        capture erase "`w29_work'/cqv`i'.svg"
+    }
+    capture erase "`w29_work'/cqv5a.svg"
+    capture erase "`w29_work'/cqv5b.svg"
+    macro drop cqv_*
+    display as text "S07 end `c(current_time)'"
+}
+* ==== end S07 ====
 
 * ==== append new blocks above this line ====
 

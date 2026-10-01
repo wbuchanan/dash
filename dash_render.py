@@ -2336,6 +2336,9 @@ _DASH_MLABEL_X = "__dash_mlabel_x"
 _DASH_MLABEL_Y = "__dash_mlabel_y"
 _DASH_JITTER_X = "__dash_xjit"
 _DASH_JITTER_Y = "__dash_yjit"
+# The colour bins of colorvar(), one column per layer: __dash_cvar<k>_<var>
+# (_dash_colorvar_field; WP-29 P0.16).
+_DASH_CVAR_PREFIX = "__dash_cvar"
 _DASH_LABEL_SUFFIX = "_label"
 # Marks the Legend that a discrete colorvar() builds, so the plot-legend
 # rebuild can leave it alone.  A colour key is not a series key: Stata
@@ -5964,8 +5967,15 @@ def _dash_colorvar_cuts(col_vals, cuts, levels, minmax):
 
 
 def _dash_colorvar_bins(col_vals, cuts, discrete, label_of,
-                        closed_ends=False, number_text=None):
-    """Bin colorvar values into label groups (GAPS2 X2).
+                        closed_ends=False, number_text=None, bin_values=None):
+    """Bin colorvar values into label groups (GAPS2 X2; WP-29 P0.16).
+
+    *col_vals* is the DOMAIN: the layer's colour rows, the observations
+    twoway draws the key from (``_dash_colorvar_domain``).  The labels,
+    the closed-end bounds and *has_missing* come from the domain only.
+    *bin_values* are the rows to bin -- the source's whole column, which
+    may hold rows outside the domain (another panel's, another layer's);
+    None bins the domain itself.
 
     Interval mode (*discrete* False -- colorcuts()/colorlevels() without
     colordiscrete, colorvar_options.sthlp:111-116): bins are
@@ -5974,50 +5984,61 @@ def _dash_colorvar_bins(col_vals, cuts, discrete, label_of,
     colorcuts()'s own labelling, open at both ends, unaffected by
     *closed_ends* whenever the caller passed explicit cuts (BR-16.1,
     BR-16.2); *closed_ends* (True only for colorlevels()/colornlevels()
-    with no explicit colorcuts() and no colorvarminmax, the pre-existing
-    _assign_nlev behaviour this helper replaces) labels the two outer
-    bins with the column's own minimum and maximum instead of ``≤``/``>``,
-    since colorlevels() divides the whole data range and never leaves an
-    open tail the way an arbitrary colorcuts() numlist can.
+    with no explicit colorcuts() and no colorvarminmax) labels the two
+    outer bins with the domain's own minimum and maximum instead of
+    ``≤``/``>``, since colorlevels() divides the whole data range and
+    never leaves an open tail the way an arbitrary colorcuts() numlist can.
 
     Discrete mode (*discrete* True -- colordiscrete with colorcuts()/
     colorlevels(), :119-121, :131-134): "the values in numlist will be the
     levels. Any values that are not included in these levels will be
     grouped with missing values and displayed in gray" -- each value is
-    its own label when it equals a cut exactly, else ``"__missing__"``.
+    its own label when it equals a cut exactly, else None.
 
-    NaN is always ``"__missing__"``.  Returns ``(labels, binned,
-    has_missing)``; ``labels`` is ``[]`` when *cuts* is empty, and every
-    value bins to ``"__missing__"`` (no level exists to put it in) --
-    ``_dash_colorvar_cuts`` returns ``[]`` only when *col_vals* has no
-    finite value, so *binned* still carries one entry per row.
+    A binned entry is None -- drawn in the mapper's ``nan_color``, never
+    a factor -- for a missing value, for a value below the domain's finite
+    minimum or above its maximum (never clamped into an end bin), and in
+    discrete mode for a value equal to no cut.  *has_missing* is: in
+    interval mode, any domain NaN; in discrete mode, any domain value NaN
+    or equal to no cut; with empty *cuts*, True when the domain has a row.
+    Returns ``(labels, binned, has_missing)``; ``labels`` is ``[]`` when
+    *cuts* is empty, and then every row bins to None.
 
     *number_text* writes an interval boundary (WP-28 S12, GAPS2 E3/G6:
     the variable's display format, ``4,000`` under %8.0gc); Python's
     ``:g`` when None, and whenever the format would give two boundaries
     one text -- a label is a bin's identity, so two bins never share one.
     """
+    dom = np.asarray(col_vals, dtype=float)
+    rows = dom if bin_values is None else np.asarray(bin_values, dtype=float)
+    finite = dom[~np.isnan(dom)]
+    if len(finite):
+        _lo_v, _hi_v = float(np.min(finite)), float(np.max(finite))
+    else:
+        _lo_v = _hi_v = None
+
+    def _outside(v: float) -> bool:
+        return np.isnan(v) or _lo_v is None or v < _lo_v or v > _hi_v
+
     if not cuts:
-        binned = ["__missing__" for _ in col_vals]
-        return [], binned, bool(len(binned))
+        return [], [None for _ in rows], bool(len(dom))
 
     if discrete:
         labels = [label_of(c) for c in cuts]
 
-        def _assign(v: float) -> str:
-            if np.isnan(v):
-                return "__missing__"
+        def _assign(v: float) -> "str | None":
+            if _outside(v):
+                return None
             for c, lab in zip(cuts, labels):
                 if float(v) == c:
                     return lab
-            return "__missing__"
+            return None
 
-        binned = [_assign(v) for v in col_vals]
+        binned = [_assign(v) for v in rows]
+        has_missing = bool(np.isnan(dom).any()) or any(
+            not any(float(v) == c for c in cuts) for v in finite)
     else:
         n_bins = len(cuts) + 1
-        if closed_ends:
-            _lo_v = float(np.nanmin(col_vals))
-            _hi_v = float(np.nanmax(col_vals))
 
         def _interval_labels(nt):
             out = []
@@ -6040,15 +6061,15 @@ def _dash_colorvar_bins(col_vals, cuts, discrete, label_of,
         if len(set(labels)) < len(labels):
             labels = _interval_labels(lambda v: f"{v:g}")
 
-        def _assign(v: float) -> str:
-            if np.isnan(v):
-                return "__missing__"
+        def _assign(v: float) -> "str | None":
+            if _outside(v):
+                return None
             idx = int(np.searchsorted(cuts, v, side="left"))
             return labels[min(idx, n_bins - 1)]
 
-        binned = [_assign(v) for v in col_vals]
+        binned = [_assign(v) for v in rows]
+        has_missing = bool(np.isnan(dom).any())
 
-    has_missing = any(b == "__missing__" for b in binned)
     return labels, binned, has_missing
 
 
@@ -6153,6 +6174,10 @@ class GlyphMapper:
         # needs, the same pair every other graph-option reader takes.
         self.z_options: dict[str, str] = {}
         self.z_context: tuple = (None, "")
+        # WP-29 P0.16: the colour rows of the layer being drawn
+        # (_dash_colorvar_domain), or None for every row of its source.
+        # Callers set it per layer and reset it in a finally.
+        self.colorvar_domain = None
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -7057,8 +7082,25 @@ class GlyphMapper:
         renderer: Any,
         source: "ColumnDataSource",
         options: dict[str, str],
+        add_key: bool = True,
     ) -> None:
         """Map a CDS variable's values to glyph fill/line color.
+
+        WP-29 P0.16: the colour bar's range, the cuts of colorcuts()/
+        colorlevels(), the colordiscrete levels, a string variable's
+        categories and whether a "(missing)" entry exists are computed from
+        ``self.colorvar_domain`` -- the layer's colour rows, the
+        observations twoway draws the key from (its own if/in, its graph's
+        and its by() panel's, rows with a missing x or y included), which
+        the figure builder sets for each layer and resets after it -- and
+        from every row of *source* when it is None.  An empty domain draws
+        no key.  Each row is coloured from its own value: a row that is
+        missing, outside the domain's range or not one of its levels is
+        None, drawn in the mapper's ``nan_color`` (``colormissing()``),
+        never a factor.  Derived bins go in a column of this layer's own,
+        ``_dash_colorvar_field``'s ``__dash_cvar<k>_<var>``.  *add_key*
+        False builds the same mapper but adds no key: rconnected's second
+        end, which twoway colours from the one key it draws.
 
         Supports Stata 18 colorvar_options:
             colorvar(varname)   — variable whose values drive the color mapping
@@ -7083,6 +7125,13 @@ class GlyphMapper:
         # unsafely -- no brace, quote, blank, $ or backtick passes
         # isidentifier() either.
         if not _dash_is_stata_name(varname):
+            return
+
+        # WP-29 P0.16: the layer's colour rows, or None for every row.  A
+        # layer whose rows are empty draws no key (twoway stops with
+        # r(3001) from _calc_levels()).
+        dom = self.colorvar_domain
+        if dom is not None and len(dom) == 0:
             return
 
         from bokeh.models import (
@@ -7192,18 +7241,39 @@ class GlyphMapper:
             is_numeric = False
             col_vals = None
 
+        # WP-29 P0.16: the key's values -- the domain read as numbers.
+        dom_vals = col_vals
+        if is_numeric and dom is not None:
+            try:
+                dom_vals = _dash_float_values(dom)
+            except (ValueError, TypeError):
+                warnings.warn(
+                    f"dash: colorvar({varname}): the colour key's "
+                    f"observations could not be read; the key is drawn "
+                    f"from every row.", UserWarning)
+                dom_vals = col_vals
+        # Every colour row missing: no level, every row in colormissing().
+        dom_all_missing = bool(is_numeric and np.all(np.isnan(dom_vals)))
+
         needs_binning = cuts is not None or nlevels is not None
-        use_discrete  = force_discrete or not is_numeric or needs_binning
+        use_discrete  = (force_discrete or not is_numeric or needs_binning
+                         or dom_all_missing)
 
         # ------------------------------------------------------------------
         # DISCRETE path — CategoricalColorMapper
         # ------------------------------------------------------------------
         if use_discrete:
-            color_field = varname  # overridden for derived bin columns
+            # A column of this layer's own under the reserved prefix: a
+            # second colorvar layer on the same source, or a user variable
+            # named like dash's old derived column, never shares it.
+            color_field = _dash_colorvar_field(source.data, varname)
+            if color_field is None:
+                return
 
-            if is_numeric and (force_discrete or needs_binning):
-                color_field = f"_cvar_{varname}_bin"
-
+            if is_numeric and dom_all_missing:
+                labels, has_missing = [], True
+                source.data[color_field] = [None for _ in col_vals]
+            elif is_numeric and (force_discrete or needs_binning):
                 if cuts is not None or nlevels is not None:
                     # colorcuts()/colorlevels() (Stata's colorvar_options.
                     # sthlp:95-140, GAPS2 X2): the cut arithmetic and the
@@ -7214,7 +7284,7 @@ class GlyphMapper:
                     # other value joins missing in gray (BR-16.1); without
                     # it the cuts are interval boundaries, as they always
                     # were.
-                    eff_cuts = _dash_colorvar_cuts(col_vals, cuts, nlevels,
+                    eff_cuts = _dash_colorvar_cuts(dom_vals, cuts, nlevels,
                                                    minmax)
                     # colorlevels()/colornlevels() with no explicit
                     # colorcuts() and no colorvarminmax divides the whole
@@ -7225,14 +7295,15 @@ class GlyphMapper:
                     # TestColorLevelsPutEachPointInItsLabelledBin).
                     _closed = cuts is None and not minmax
                     labels, binned, has_missing = _dash_colorvar_bins(
-                        col_vals, eff_cuts, force_discrete, _vlookup,
-                        closed_ends=_closed, number_text=_num_text)
+                        dom_vals, eff_cuts, force_discrete, _vlookup,
+                        closed_ends=_closed, number_text=_num_text,
+                        bin_values=col_vals)
 
                 else:
                     # colordiscrete: each distinct numeric value → its own category.
                     # Resolve the Stata value label for each level so the legend
                     # shows e.g. "Domestic"/"Foreign" instead of "0"/"1".
-                    non_nan = [v for v in col_vals if not np.isnan(v)]
+                    non_nan = [v for v in dom_vals if not np.isnan(v)]
                     unique_sorted = sorted(set(non_nan))
                     val_label = {v: _vlookup(v) for v in unique_sorted}
                     if len(set(val_label.values())) < len(val_label):
@@ -7241,14 +7312,14 @@ class GlyphMapper:
                         _num_text = (lambda v: f"{v:g}")
                         val_label = {v: _vlookup(v) for v in unique_sorted}
                     labels = [val_label[v] for v in unique_sorted]
+                    # A row outside the domain's levels is None too.
                     binned = [
-                        "__missing__" if np.isnan(v) else val_label[v]
+                        None if np.isnan(v) else val_label.get(v)
                         for v in col_vals
                     ]
+                    has_missing = bool(np.isnan(dom_vals).any())
 
-                has_missing = any(b == "__missing__" for b in binned)
                 source.data[color_field] = binned
-                factors = labels + (["__missing__"] if has_missing else [])
 
             else:
                 # A string variable: one level per DISTINCT value.  This
@@ -7259,22 +7330,27 @@ class GlyphMapper:
                 # numeric bins do, and an empty string, Stata's missing
                 # string, takes colormissing() under "(missing)", as a
                 # missing number does.
-                color_field = f"_cvar_{varname}_bin"
                 # GAPS2 X1/E2's sibling fix: the text 'nan' is a category,
                 # not missing (only None and Stata's own "" are).
-                strs = ["" if v is None
-                        or (isinstance(v, float) and math.isnan(v))
-                        else str(v) for v in raw_col]
-                labels = sorted({s for s in strs if s != ""})
-                binned = ["__missing__" if s == "" else s for s in strs]
-                has_missing = "" in strs
+                def _strs(col):
+                    return ["" if v is None
+                            or (isinstance(v, float) and math.isnan(v))
+                            else str(v) for v in col]
+                strs = _strs(raw_col)
+                strs_dom = strs if dom is None else _strs(dom)
+                labels = sorted({s for s in strs_dom if s != ""})
+                _levels_set = set(labels)
+                binned = [s if s in _levels_set else None for s in strs]
+                has_missing = "" in strs_dom
                 source.data[color_field] = binned
-                factors = labels + (["__missing__"] if has_missing else [])
 
-            if not factors:
+            # The factors are the levels only: missing is the mapper's
+            # nan_color, so no value or label text can be "missing".
+            factors = labels
+            if not labels and not has_missing:
                 return
 
-            non_missing_factors = [f for f in factors if f != "__missing__"]
+            non_missing_factors = list(labels)
             # With no explicit palette(), the discrete colours are the
             # scheme's own p1-p15 cycle -- the same colours the scheme gives
             # overlaid series.  Bokeh's Category10 was used unconditionally,
@@ -7290,10 +7366,10 @@ class GlyphMapper:
             while len(pal_list) < len(non_missing_factors):
                 pal_list += pal_list
             pal_colors = pal_list[:len(non_missing_factors)]
-            if "__missing__" in factors:
-                pal_colors = pal_colors + [missing_color]
 
-            mapper     = CategoricalColorMapper(factors=factors, palette=pal_colors)
+            mapper     = CategoricalColorMapper(factors=factors,
+                                                palette=pal_colors,
+                                                nan_color=missing_color)
             color_spec = {"field": color_field, "transform": mapper}
             glyph      = renderer.glyph
             try:
@@ -7308,15 +7384,16 @@ class GlyphMapper:
             # identify the colored categories by name. Dummy invisible
             # renderers carry the per-factor color into the legend item.
             legend_items = []
-            for factor, color in zip(non_missing_factors,
-                                     pal_colors[:len(non_missing_factors)]):
+            for factor, color in (zip(non_missing_factors, pal_colors)
+                                  if add_key else ()):
                 _r = fig.scatter(
                     x=[float("nan")], y=[float("nan")],
                     color=color, size=0,
                     visible=False, name=f"{_DASH_SWATCH_PREFIX}{factor}",
                 )
                 legend_items.append(LegendItem(label=factor, renderers=[_r]))
-            if "__missing__" in factors:
+            if has_missing and add_key:
+                # A model name, never a factor.
                 _rm = fig.scatter(
                     x=[float("nan")], y=[float("nan")],
                     color=missing_color, size=0,
@@ -7336,14 +7413,15 @@ class GlyphMapper:
             # a Legend (no ticks, no mapper range) and are named once.
             _dash_apply_z_options(fig, _legend, mapper, self.z_options,
                                  *self.z_context)
-            fig.add_layout(_legend, "right")
+            if add_key:
+                fig.add_layout(_legend, "right")
 
         # ------------------------------------------------------------------
         # CONTINUOUS path — LinearColorMapper
         # ------------------------------------------------------------------
         else:
-            lo = float(np.nanmin(col_vals))
-            hi = float(np.nanmax(col_vals))
+            lo = float(np.nanmin(dom_vals))
+            hi = float(np.nanmax(dom_vals))
             if lo == hi:
                 hi = lo + 1.0
             pal_name = self._PALETTE_MAP.get(palette_key or "viridis", "Viridis256")
@@ -7384,7 +7462,7 @@ class GlyphMapper:
             except (AttributeError, ValueError):
                 pass
 
-            if _cbar is not None:
+            if _cbar is not None and add_key:
                 fig.add_layout(_cbar, "right")
 
         # ------------------------------------------------------------------
@@ -7864,6 +7942,7 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
+        colorvar_key: bool = True,
     ) -> "GlyphRenderer":
         """Add a scatter glyph to *fig*.
 
@@ -7873,6 +7952,8 @@ class GlyphMapper:
             yvar:    Name of the y-axis variable (CDS column).
             xvar:    Name of the x-axis variable (CDS column).
             options: Translated plot-level options dict.
+            colorvar_key: Add colorvar()'s key (False for a second marker
+                     set coloured from the same key, rconnected's).
 
         Returns:
             The single GlyphRenderer created.
@@ -7957,7 +8038,8 @@ class GlyphMapper:
         r = fig.scatter(**_scatter_kwargs)
         self._apply_marker_opts(r, options)
         # colorvar: map a variable's values to fill/line color via a color mapper
-        self._apply_colorvar(fig, r, plot_source, options)
+        self._apply_colorvar(fig, r, plot_source, options,
+                             add_key=colorvar_key)
         # mlabel uses original column names (not jittered) for readable labels
         # A LabelSet takes no view, so under one -- a layer's own if/in, a
         # linked by() panel -- the labels are drawn from a copy of the rows
@@ -11151,7 +11233,10 @@ class GlyphMapper:
             self.map_scatter(fig, source, y1var, xvar, options, view=view, color_idx=color_idx),
             self.map_line(fig, source, y2var, xvar, options, view=view,
                           color_idx=color_idx, line_kind="", order=order),
-            self.map_scatter(fig, source, y2var, xvar, options, view=view, color_idx=color_idx),
+            # twoway draws ONE colorvar() key for rconnected (measured:
+            # "Price" once, E-16.2); the second end is coloured from it.
+            self.map_scatter(fig, source, y2var, xvar, options, view=view,
+                             color_idx=color_idx, colorvar_key=False),
         ]
 
     def map_dot(
@@ -22494,6 +22579,83 @@ def _dash_option_columns(options, columns=None):
     return out
 
 
+def _dash_colorvar_domain(columns, options, mask=None, where=""):
+    """The colour rows of a colorvar() layer: the values its key is drawn
+    from (WP-29 P0.16).
+
+    twoway draws a colorvar() key from the observations the plot draws --
+    its own if/in, the graph's if/in and, under by(), its panel -- and
+    counts an observation whose y or x is missing (measured in StataNow
+    19.5, test/fixtures/colorvar_qualifier_truth.json).  The saved page
+    passes the layer's source columns and the view's row mask; the served
+    app passes the layer's frame before any missing x or y is dropped.
+
+    A numeric or date column is read through ``_dash_float_values`` on the
+    column object itself (a served date column is datetime64, which a list
+    of Timestamps would refuse), so a date comes back in epoch
+    milliseconds.  A column that cannot be read as numbers (a string
+    variable) comes back as a list.
+
+    Args:
+        columns: A DataFrame or a ColumnDataSource ``.data`` dict.
+        options: The layer's options; ``colorvar`` names the variable.
+        mask:    A boolean flag per row, or None for every row.
+        where:   Names the layer in the one warning this can give.
+
+    Returns:
+        A float array or a list, or None when there is no colorvar, its
+        name is not a Stata name, the column is absent, or *mask* does not
+        align with it (that case warns: the key is then drawn from every
+        row).
+    """
+    var = str((options or {}).get("colorvar", "") or "").strip()
+    if not var or not _dash_is_stata_name(var):
+        return None
+    try:
+        col = columns[var]
+    except (KeyError, TypeError, IndexError):
+        return None
+    sel = None
+    if mask is not None:
+        sel = np.asarray(mask, dtype=bool)
+        if sel.shape != (len(col),):
+            warnings.warn(
+                f"dash: {where or 'a layer'}: its colour key could not be "
+                f"restricted to its observations ({sel.size} flags for "
+                f"{len(col)} rows); the key is drawn from every row.",
+                UserWarning, stacklevel=2)
+            return None
+    try:
+        vals = _dash_float_values(col)
+    except (ValueError, TypeError):
+        vals = col.tolist() if hasattr(col, "tolist") else list(col)
+        if sel is None:
+            return vals
+        return [v for v, keep in zip(vals, sel) if keep]
+    return vals if sel is None else vals[sel]
+
+
+def _dash_colorvar_field(data, varname):
+    """A name for a colorvar() layer's colour bins that no column holds
+    (WP-29 P0.16).
+
+    The first ``f"{_DASH_CVAR_PREFIX}{k}_{varname}"`` for k = 1, 2, ...
+    that is not a key of *data*, so two colorvar layers on one source each
+    keep their own bins, and no user variable can be overwritten: the
+    loader refuses a variable under the reserved ``__dash`` prefix.
+
+    Returns None when *varname* is not a Stata name.
+    """
+    if not _dash_is_stata_name(varname):
+        return None
+    keys = set(data.keys()) if hasattr(data, "keys") else set(data)
+    for k in range(1, len(keys) + 2):
+        name = f"{_DASH_CVAR_PREFIX}{k}_{varname}"
+        if name not in keys:
+            return name
+    return None
+
+
 def _dash_value_labels_for(var, value_labels, value_label_names):
     """The value labels of *var*, ``{code: text}``, or ``{}`` (TR-14.6,
     WP-28 S14 -- the one copy of the lookup ``GlyphMapper._mlabel_value_labels``
@@ -26650,7 +26812,13 @@ class DashRenderer:
                 return self._make_figure_body(graph_spec, source, facet_view)
             finally:
                 self.scheme, self.mapper.scheme = _saved_scheme, _saved_mapper
-        return self._make_figure_body(graph_spec, source, facet_view)
+                # WP-29 P0.16: no figure, render or exception inherits a
+                # layer's colour rows.
+                self.mapper.colorvar_domain = None
+        try:
+            return self._make_figure_body(graph_spec, source, facet_view)
+        finally:
+            self.mapper.colorvar_domain = None
 
     def _make_figure_body(
         self,
@@ -26958,6 +27126,22 @@ class DashRenderer:
                         f"be applied ({_pexc}); the layer is drawn unfiltered.",
                         stacklevel=2,
                     )
+
+            # WP-29 P0.16: the layer's colour rows -- the rows its view
+            # selects (its own if/in AND its panel's or linked graph's),
+            # read before map_scatter's missing x/y mask, since twoway
+            # counts a row whose y or x is missing.  Set for every layer,
+            # so none inherits another's; _make_figure resets it.
+            _cv_mask = None
+            if _plot_view is not None and str(
+                    popts.get("colorvar") or "").strip():
+                _cv_mask = self.mapper._view_mask(
+                    _plot_view,
+                    len(next(iter(source_for_plot.data.values()), [])))
+            self.mapper.colorvar_domain = _dash_colorvar_domain(
+                source_for_plot.data, popts, _cv_mask,
+                where=f"graph {graph_opts.get('name', '') or '(unnamed)'} "
+                      f"plot {pi + 1}")
 
             # Snapshot renderer list so new glyphs can be identified -- and
             # the annotations, so a yaxis(2) layer's labels and arrowheads
@@ -29145,6 +29329,7 @@ class ServerAppBuilder:
                       "_DASH_PC_ROW_COLUMN", "_DASH_MLABEL_PREFIX",
                       "_DASH_MLABEL_VALUES", "_DASH_MLABEL_X",
                       "_DASH_MLABEL_Y", "_DASH_JITTER_X", "_DASH_JITTER_Y",
+                      "_DASH_CVAR_PREFIX",
                       "_DASH_LABEL_SUFFIX",
                       # The plot-type categories.  The app used to carry its
                       # own copies inside an if/elif chain, which is how the
@@ -29578,6 +29763,7 @@ class ServerAppBuilder:
                          # (GAPS2 X2): the cut arithmetic, the binning and
                          # the colour-key applier -- one text, both modes.
                          "_dash_colorvar_cuts", "_dash_colorvar_bins",
+                         "_dash_colorvar_domain", "_dash_colorvar_field",
                          "_dash_apply_z_options",
                          "_dash_subopt_name",
                          "_dash_legend_unsupported", "_dash_textbox",
@@ -30951,7 +31137,7 @@ class ServerAppBuilder:
             "    _reported_subopts = set()",
             "",
             "    def _dash_draw_layer(fig, g_df, plot, pi, gname, _ln, _shared, _fallback,",
-            "                         sidx=None):",
+            "                         sidx=None, cv_domain=None):",
             '        """Draw one layer of one figure; return (layer_source, [drawn sources]).',
 
             "        The one place a plot type is dispatched to its mapper,",
@@ -30970,62 +31156,71 @@ class ServerAppBuilder:
             "        _before = len(fig.renderers)",
             "        _before_c = len(fig.center)",
             "        _ly_src = None",
-            "        if ptype == 'scatteri':",
-            "            _DASH_MAPPER.map_scatteri(fig, plot.get('values', []), opts, color_idx=_sidx)",
-            "        elif ptype == 'pci':",
-            "            _DASH_MAPPER.map_pci_literal(fig, plot.get('values', []), opts, color_idx=_sidx)",
-            "        elif ptype == 'pcarrowi':",
-            "            _DASH_MAPPER.map_pcarrowi(fig, plot.get('values', []), opts, color_idx=_sidx)",
-            "        elif ptype == 'function':",
-            "            _fn_range, _fn_n = _dash_function_args(opts)",
-            "            _DASH_MAPPER.map_function(fig, plot.get('expr', ''), _fn_range, _fn_n, opts,",
-            "                                      color_idx=_sidx, points=plot.get('points'))",
-            "        elif ptype in _DASH_PC_TYPES:",
-            "            # The mlabel() column rides along, as the saved page's",
-            "            # source carries it (pccapsym labels its first point).",
-            "            _ly_src, _ok = _dash_pc_source(",
-            "                g_df, plot.get('y1var', ''), plot.get('x1var', ''),",
-            "                plot.get('y2var', ''), plot.get('x2var', ''),",
-            "                _dash_mlabel_names(opts)[0], extra_cols=_hv)",
-            "            if _ok:",
-            "                _dash_add_pc_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype,",
-            "                    plot.get('y1var', ''), plot.get('x1var', ''),",
+            "        # WP-29 P0.16: the layer's colour rows, the frame before",
+            "        # any missing x or y is dropped (twoway counts those rows);",
+            "        # a redraw hands in the build's.  Reset after the layer.",
+            "        _DASH_MAPPER.colorvar_domain = (",
+            "            cv_domain if cv_domain is not None",
+            "            else _dash_colorvar_domain(g_df, opts))",
+            "        try:",
+            "            if ptype == 'scatteri':",
+            "                _DASH_MAPPER.map_scatteri(fig, plot.get('values', []), opts, color_idx=_sidx)",
+            "            elif ptype == 'pci':",
+            "                _DASH_MAPPER.map_pci_literal(fig, plot.get('values', []), opts, color_idx=_sidx)",
+            "            elif ptype == 'pcarrowi':",
+            "                _DASH_MAPPER.map_pcarrowi(fig, plot.get('values', []), opts, color_idx=_sidx)",
+            "            elif ptype == 'function':",
+            "                _fn_range, _fn_n = _dash_function_args(opts)",
+            "                _DASH_MAPPER.map_function(fig, plot.get('expr', ''), _fn_range, _fn_n, opts,",
+            "                                          color_idx=_sidx, points=plot.get('points'))",
+            "            elif ptype in _DASH_PC_TYPES:",
+            "                # The mlabel() column rides along, as the saved page's",
+            "                # source carries it (pccapsym labels its first point).",
+            "                _ly_src, _ok = _dash_pc_source(",
+            "                    g_df, plot.get('y1var', ''), plot.get('x1var', ''),",
             "                    plot.get('y2var', ''), plot.get('x2var', ''),",
-            "                    opts, color_idx=_sidx)",
-            "        elif ptype in _DASH_RANGE_TYPES:",
-            "            y1var = plot.get('yvar1', '') or plot.get('yvar', '') or plot.get('y1var', '')",
-            "            y2var = plot.get('yvar2', '') or plot.get('y2var', '')",
-            "            if not y2var:",
-            "                # The saved page's words (_dash_add_glyph).",
-            "                _dash_note_no_second_y(ptype)",
-            "            _ly_src, _ly_view, _ok = _dash_range_source(",
-            "                g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
-            "                extra_cols=_hv + _dash_option_columns(opts, df.columns),",
-            "                df=df, gname=gname, linked_names=_ln,",
-            "                shared_source=_shared, shared_pos=_shared_pos)",
-            "            # A joining layer's join key, read by frame label.",
-            "            _jo = (_dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
-            "                   if ptype in _DASH_JOIN_TYPES and _ok else None)",
-            "            if _ok:",
-            "                # WP-28 E14: a linked rspike/rconnected draws _shared",
-            "                # through _ly_view, as an ordinary linked layer does",
-            "                # (_dash_layer_source), so a selection reaches it too.",
-            "                _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
-            "                    opts, y2var=y2var, view=_ly_view, color_idx=_sidx,",
-            "                    order=_jo)",
-            "        else:",
-            "            _ly_src, _ly_view = _dash_layer_source(",
-            "                g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                gname, _ln, _shared, _shared_pos, _fallback,",
-            "                extra_cols=_hv + _dash_option_columns(opts, df.columns))",
-            "            _jo = (_dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
-            "                   if ptype in _DASH_JOIN_TYPES and _ly_src is not None else None)",
-            "            if _ly_src is not None:",
-            "                _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=_sidx, order=_jo)",
+            "                    _dash_mlabel_names(opts)[0], extra_cols=_hv)",
+            "                if _ok:",
+            "                    _dash_add_pc_glyph(",
+            "                        _DASH_MAPPER, fig, _ly_src, ptype,",
+            "                        plot.get('y1var', ''), plot.get('x1var', ''),",
+            "                        plot.get('y2var', ''), plot.get('x2var', ''),",
+            "                        opts, color_idx=_sidx)",
+            "            elif ptype in _DASH_RANGE_TYPES:",
+            "                y1var = plot.get('yvar1', '') or plot.get('yvar', '') or plot.get('y1var', '')",
+            "                y2var = plot.get('yvar2', '') or plot.get('y2var', '')",
+            "                if not y2var:",
+            "                    # The saved page's words (_dash_add_glyph).",
+            "                    _dash_note_no_second_y(ptype)",
+            "                _ly_src, _ly_view, _ok = _dash_range_source(",
+            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
+            "                    extra_cols=_hv + _dash_option_columns(opts, df.columns),",
+            "                    df=df, gname=gname, linked_names=_ln,",
+            "                    shared_source=_shared, shared_pos=_shared_pos)",
+            "                # A joining layer's join key, read by frame label.",
+            "                _jo = (_dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
+            "                       if ptype in _DASH_JOIN_TYPES and _ok else None)",
+            "                if _ok:",
+            "                    # WP-28 E14: a linked rspike/rconnected draws _shared",
+            "                    # through _ly_view, as an ordinary linked layer does",
+            "                    # (_dash_layer_source), so a selection reaches it too.",
+            "                    _dash_add_glyph(",
+            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
+            "                        opts, y2var=y2var, view=_ly_view, color_idx=_sidx,",
+            "                        order=_jo)",
+            "            else:",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                    gname, _ln, _shared, _shared_pos, _fallback,",
+            "                    extra_cols=_hv + _dash_option_columns(opts, df.columns))",
+            "                _jo = (_dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
+            "                       if ptype in _DASH_JOIN_TYPES and _ly_src is not None else None)",
+            "                if _ly_src is not None:",
+            "                    _dash_add_glyph(",
+            "                        _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                        view=_ly_view, color_idx=_sidx, order=_jo)",
+            "        finally:",
+            "            _DASH_MAPPER.colorvar_domain = None",
             "        # A yaxis(2)/xaxis(2) layer draws on the secondary range, its",
             "        # marker labels and arrowheads with it.",
             "        _dash_assign_axis_ranges(fig, fig.renderers[_before:], opts,",
@@ -31058,7 +31253,7 @@ class ServerAppBuilder:
             "                        if _c and _c in df.columns]",
             "        return []",
             "",
-            "    def _dash_redraw_for(g, plot, pi, gname):",
+            "    def _dash_redraw_for(g, plot, pi, gname, cv_domain=None):",
             '        """A closure that redraws one layer from a frame the callback hands it.',
 
             "        The frame arrives filtered and, for a by() panel, masked to",
@@ -31082,6 +31277,9 @@ class ServerAppBuilder:
             "        # qualifier reaches, as in twoway and the live figure.",
             "        _p_lit = (str(plot.get('type', '') or '').lower()",
             "                  in _DASH_LITERAL_TYPES)",
+            "        # WP-29 P0.16: the build's colour rows, so a redrawn copy",
+            "        # keeps the key's bins (BR-07.4), never the moved frame's.",
+            "        _cv_dom = cv_domain",
             "        def _redraw(frame):",
             "            # The graph's qualifier, then the layer's own where it",
             "            # differs -- the same two steps the live figure took.",
@@ -31097,7 +31295,8 @@ class ServerAppBuilder:
             "                                        qual=_p_q)",
             "            _tfig = bokeh_figure()",
             "            _ly, _srcs = _dash_draw_layer(_tfig, _fr, plot, pi, gname,",
-            "                                          set(), None, None, sidx=_sidx)",
+            "                                          set(), None, None, sidx=_sidx,",
+            "                                          cv_domain=_cv_dom)",
             "            return [_s for _s in _srcs if _s is not _ly]",
             "        return _redraw",
             "",
@@ -31383,7 +31582,10 @@ class ServerAppBuilder:
             "                agg_sources[(gname, pi)] = {",
             "                    'type': ptype,",
             "                    'sources': [_rs for _rs in _r_srcs if _rs is not _ly_src],",
-            "                    'redraw': _dash_redraw_for(g, plot, pi, gname),",
+            "                    'redraw': _dash_redraw_for(",
+            "                        g, plot, pi, gname,",
+            "                        cv_domain=_dash_colorvar_domain(",
+            "                            g_df, plot.get('options', {}))),",
             "                }",
             "                for _rs in agg_sources[(gname, pi)]['sources']:",
             "                    _redrawn_ids.add(id(_rs))",

@@ -777,9 +777,12 @@ with warnings.catch_warnings():
     _page = _r.render()
 _bins = set()
 for _fig in _r.figures.values():
-    for _m in _fig.select({"type": _cvdr.ColumnDataSource}):
-        if "_cvar_rep78_bin" in _m.data:
-            _bins = set(_m.data["_cvar_rep78_bin"])
+    for _rr in [_x for _x in _fig.renderers if getattr(_x, "glyph", None) is not None]:
+        _f = _rr.glyph.fill_color
+        _fld = _f.get("field") if isinstance(_f, dict) else getattr(_f, "field", None)
+        _tr = _f.get("transform") if isinstance(_f, dict) else getattr(_f, "transform", None)
+        if _tr is not None and type(_rr.glyph).__name__ == "Scatter":
+            _bins = set(_rr.data_source.data[_fld])
 Macro.setGlobal("cv_tw_groups", str(len(_fills)))
 Macro.setGlobal("cv_dash_groups", str(len(_bins)))
 end

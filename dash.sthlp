@@ -2799,6 +2799,27 @@ variable, one colour and one key entry per value, an empty string drawn in
 {cmd:colormissing()}'s colour.
 
 {pstd}
+{ul:Which observations set the colours.}  The colours, the colour bar's
+range, the cuts of {cmd:colorcuts()} and {cmd:colorlevels()}, the levels of
+{cmd:colordiscrete} and a string variable's categories ({cmd:dash}'s own;
+{cmd:twoway} stops with r(7)) come from the observations the plot draws, as
+{cmd:twoway} takes them: those its own {cmd:if} and {cmd:in}, the graph's
+{cmd:if} and {cmd:in} and, under {cmd:by()}, its panel select.  An
+observation whose y or x is missing counts too.  So in {cmd:sysuse auto}, a
+scatter of {cmd:mpg} on {cmd:weight} with its own {cmd:if foreign==1} and
+{cmd:colorvar(price)}, drawn beside a scatter of the domestic cars, spans
+3,748 to 12,990, the prices of the foreign cars.  Under {cmd:by()}
+each panel colours its own observations, as {cmd:twoway} does; {cmd:dash}
+draws each panel's key, where {cmd:twoway} draws none unless
+{cmd:by(, clegend(on))} asks for the first panel's, and its note names
+{cmd:clegend()}.  A filter move keeps the colours and the key chosen when
+the dashboard was built, in both the saved page and the served app.
+{cmd:rconnected} draws one key for both ends.  A plot whose {cmd:if}
+selects no observation draws no key ({cmd:twoway} stops with r(3001)), and
+one whose observations are all missing on the variable draws a
+"(missing)" entry where {cmd:twoway} draws the key's title alone.
+
+{pstd}
 The colour key's own axis options, {cmd:ztitle()}, {cmd:zlabel()} and
 {cmd:zscale()}, are taken as graph options and drawn on the key: the title on
 either key; ticks, {cmd:#}{it:N}, {cmd:none} and {cmd:minmax}, and

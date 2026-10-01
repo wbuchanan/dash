@@ -37,6 +37,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 from conftest import make_data_json  # noqa: E402
+import colour_bins as cb  # noqa: E402
 
 _ATTACH = "if __name__ != '__main__':\n    make_document(curdoc())"
 
@@ -299,17 +300,8 @@ def _bins(options, values):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         gm._apply_colorvar(fig, rend, src, dict(options, colorvar="v"))
-    return list(src.data["_cvar_v_bin"]), list(
-        rend.glyph.fill_color["transform"].factors)
-
-
-def _binned(doc, column):
-    """The data of the one served renderer that carries *column* -- the
-    scatter, not the legend's swatches beside it."""
-    (src,) = {id(r.data_source): r.data_source.data
-              for r in _renderers(doc.select({"type": Plot}))
-              if column in r.data_source.data}.values()
-    return src
+    # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+    return cb.colour_values(rend), list(cb.colour_mapper(rend).factors)
 
 
 class TestColorCutsPutEachPointInItsLabelledBin:
@@ -327,8 +319,9 @@ class TestColorCutsPutEachPointInItsLabelledBin:
                              [1000.0, 2000.0, 2000.5, 3000.0, 3500.0,
                               np.nan])
         lo, mid, hi = f"{_LE}2000", f"2000{_DASH}3000", ">3000"
-        assert got == [lo, lo, mid, mid, hi, "__missing__"]
-        assert factors == [lo, mid, hi, "__missing__"]
+        # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+        assert got == [lo, lo, mid, mid, hi, None]
+        assert factors == [lo, mid, hi]
 
     def test_a_cut_below_the_minimum_is_dropped_here_too(self):
         """GAPS2 X2: a cut below colorvar's minimum (500, min is 1000)
@@ -337,8 +330,9 @@ class TestColorCutsPutEachPointInItsLabelledBin:
                              [1000.0, 2000.0, 2000.5, 3000.0, 3500.0,
                               np.nan])
         lo, mid, hi = f"{_LE}2000", f"2000{_DASH}3000", ">3000"
-        assert got == [lo, lo, mid, mid, hi, "__missing__"]
-        assert factors == [lo, mid, hi, "__missing__"]
+        # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+        assert got == [lo, lo, mid, mid, hi, None]
+        assert factors == [lo, mid, hi]
 
     def test_the_cuts_may_come_in_any_order(self):
         a, _f = _bins({"colorcuts": "3000 2000"}, [2500.0, 1000.0, 4000.0])
@@ -361,7 +355,9 @@ class TestColorCutsPutEachPointInItsLabelledBin:
             warnings.simplefilter("ignore")
             gm._apply_colorvar(fig, rend, src,
                                {"colorvar": "v", "colorcuts": cuts})
-        assert "_cvar_v_bin" not in src.data
+        # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+        assert not any(str(k).startswith(dr._DASH_CVAR_PREFIX)
+                       for k in src.data)
 
     def test_the_served_scatter_colours_the_same_bins(self, tmp_path):
         df = pd.DataFrame({"mpg": [12.0, 20.0, 20.5, 30.0, 35.0],
@@ -369,8 +365,10 @@ class TestColorCutsPutEachPointInItsLabelledBin:
         plot = {"type": "scatter", "yvar": "weight", "xvar": "mpg",
                 "options": {"colorvar": "mpg", "colorcuts": "20 30"}}
         doc, _w = _served(tmp_path, _spec([plot]), df)
-        data = _binned(doc, "_cvar_mpg_bin")
-        pairs = sorted(zip(data["mpg"], data["_cvar_mpg_bin"]))
+        # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+        (rend,) = cb.colour_renderers(doc)
+        data = rend.data_source.data
+        pairs = sorted(zip(data["mpg"], data[cb.colour_field(rend)]))
         assert pairs == [(12.0, f"{_LE}20"), (20.0, f"{_LE}20"),
                          (20.5, f"20{_DASH}30"), (30.0, f"20{_DASH}30"),
                          (35.0, ">30")]
@@ -392,8 +390,9 @@ class TestColorLevelsPutEachPointInItsLabelledBin:
         got, factors = _bins({"colornlevels": "2"},
                              [0.0, 4.0, 5.0, 5.5, 10.0, np.nan])
         a, b = f"0{_DASH}5", f"5{_DASH}10"
-        assert got == [a, a, a, b, b, "__missing__"]
-        assert factors == [a, b, "__missing__"]
+        # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+        assert got == [a, a, a, b, b, None]
+        assert factors == [a, b]
 
     def test_four_levels_each_take_their_quarter(self):
         got, _f = _bins({"colornlevels": "4"}, [0.0, 3.0, 6.0, 9.0, 12.0])
@@ -415,9 +414,11 @@ class TestColorLevelsPutEachPointInItsLabelledBin:
         plot = {"type": "scatter", "yvar": "weight", "xvar": "mpg",
                 "options": {"colorvar": "mpg", "colornlevels": "2"}}
         doc, _w = _served(tmp_path, _spec([plot]), df)
-        data = _binned(doc, "_cvar_mpg_bin")
+        # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+        (rend,) = cb.colour_renderers(doc)
+        data = rend.data_source.data
         a, b = f"10{_DASH}15", f"15{_DASH}20"
-        assert sorted(zip(data["mpg"], data["_cvar_mpg_bin"])) == [
+        assert sorted(zip(data["mpg"], data[cb.colour_field(rend)])) == [
             (10.0, a), (14.0, a), (15.0, a), (16.0, b), (20.0, b)]
 
 

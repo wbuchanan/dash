@@ -1232,3 +1232,95 @@ class TestTheTruthCheckHelpers:
         sp, dp = _write(spec, _DF)
         assert ftc.layer_rows(sp, dp, [(0, 1.0)]) == {
             "saved": [[5]], "served": [[5]]}
+
+
+# ---------------------------------------------------------------------------
+# WP-29 P0.16: the colour key is fixed at build and holds through a move
+# ---------------------------------------------------------------------------
+
+def _colour_layouts(opts):
+    """(id, spec kwargs) of the four layouts a colorvar() scatter is
+    drawn in."""
+    lay = plot_for("scatter", dict(opts, colorvar=opts.get("colorvar",
+                                                           "price")))
+    return [
+        ("unlinked", dict(plots=[lay])),
+        ("linked graph if", dict(graphs=[
+            ("g1", [lay], None, {"if_expr": "foreign == 1"}),
+            ("g2", [plot_for("scatter")])], bo={"link": "g1 g2"})),
+        ("linked by()", dict(graphs=[
+            ("g1", [lay], {"by": "foreign"}),
+            ("g2", [plot_for("scatter")])], bo={"link": "g1 g2"})),
+        ("unlinked by()", dict(plots=[lay], go={"by": "foreign"})),
+    ]
+
+
+def _colour_spec(plots=None, go=None, graphs=None, bo=None):
+    return _spec(plots, dict(bo or {}, filter="price, type(range)"), go,
+                 graphs, None, "")
+
+
+_KEY_CASES = [
+    *[pytest.param(_colour_spec(plots=[plot_for(t, {"colorvar": "price",
+                                                     "colorlevels": "3"})]),
+                   id=f"{t} colorlevels(3), unlinked")
+      for t in ("scatter", "connected", "rconnected", "dot")],
+    *[pytest.param(_colour_spec(**kw), id=f"scatter {name}, {lay}")
+      for name, opts in (("colorlevels(3)", {"colorlevels": "3"}),
+                         ("colordiscrete on rep",
+                          {"colorvar": "rep",
+                           "colordiscrete": "colordiscrete"}),
+                         ("colorcuts(4500 9000)",
+                          {"colorcuts": "4500 9000"}))
+      for lay, kw in _colour_layouts(opts)],
+]
+
+_BAR_CASES = [pytest.param(_colour_spec(**kw), id=lay)
+              for lay, kw in _colour_layouts({})]
+
+_RANGE_MOVE = ("RangeSlider", (4500.0, 11385.0))
+
+
+def _after_move_root(spec, mode):
+    """The page's layout root after the range move, in either mode, and
+    before it (a fresh render)."""
+    import colour_bins as cb  # noqa: F401
+    import test_mode_parity as tp
+    if mode == "saved":
+        before = _render(spec)
+        r = _render(spec)
+        _move(r, _RANGE_MOVE)
+        return before._last_layout_root, r._last_layout_root
+    before, _ = tp._served(spec)
+    doc, _ = tp._served(spec)
+    ws = [w for w in tp._widgets_of(doc)
+          if type(w).__name__ == "RangeSlider"]
+    tp._fire(ws[0], _RANGE_MOVE[1])
+    return before, doc
+
+
+class TestTheColourKeyHoldsThroughAMove:
+    """The colours and the key are fixed at build time, in both modes, and
+    a filter move never re-bins or re-ranges them (BR-07.4)."""
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    @pytest.mark.parametrize("spec", _KEY_CASES)
+    def test_every_colour_value_is_a_key_level(self, spec, mode):
+        import colour_bins as cb
+        _before, root = _after_move_root(spec, mode)
+        rends = [r for r in cb.colour_renderers(root)
+                 if hasattr(cb.colour_mapper(r), "factors")]
+        assert rends
+        for r in rends:
+            factors = set(cb.colour_mapper(r).factors)
+            bad = [v for v in cb.drawn_colour_values(r)
+                   if v is not None and v not in factors]
+            assert not bad, (bad, sorted(factors))
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    @pytest.mark.parametrize("spec", _BAR_CASES)
+    def test_the_colour_bar_keeps_its_range(self, spec, mode):
+        import colour_bins as cb
+        before, after = _after_move_root(spec, mode)
+        assert cb.colour_bars(before)
+        assert cb.colour_bars(after) == cb.colour_bars(before)

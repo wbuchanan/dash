@@ -64,7 +64,8 @@ from unittest import mock
 import pandas as pd
 import pytest
 from bokeh.document import Document
-from bokeh.models import (Arrow, Band, BoxAnnotation, ColumnDataSource, Div,
+from bokeh.models import (Arrow, Band, BoxAnnotation, ColorBar,
+                          ColumnDataSource, Div,
                           GridBox, GridPlot, HoverTool,
                           Label, LabelSet, Legend, RangeSlider, Select,
                           Slider, Span, TabPanel, Tabs, ToolProxy, Widget)
@@ -374,6 +375,19 @@ def _glyph_profile(fig):
                 entry[attr] = _spec_of(v)
         data, idx = _drawn(r)
         entry["rows"] = len(idx) if idx is not None else None
+        # WP-29 P0.16: a colour-mapped glyph is compared on its colours --
+        # the mapper and the colour value of every drawn row -- not on the
+        # name of the derived column it reads, which each mode numbers on
+        # its own source (__dash_cvar<k>_<var>).
+        _cs = _colour_of(g, data, idx)
+        if _cs is not None:
+            entry["colour"] = _cs
+            for attr in ("fill_color", "line_color"):
+                sp = entry.get(attr)
+                if (isinstance(sp, tuple) and sp[0] == "field"
+                        and (str(sp[1]).startswith(_CVAR_PREFIX)
+                             or str(sp[1]).startswith("_cvar_"))):
+                    entry[attr] = ("field", "<colour bins>")
         coords = {}
         if data is not None:
             for attr in _COORDS:
@@ -400,6 +414,38 @@ def _glyph_profile(fig):
         entry["coords"] = coords
         prof.append(entry)
     return prof
+
+
+#: The derived colour column's prefix (WP-29 P0.16); "_cvar_" before it.
+_CVAR_PREFIX = getattr(dr, "_DASH_CVAR_PREFIX", "__dash_cvar")
+
+
+def _colour_of(g, data, idx):
+    """A glyph's colour mapping, as plain data: the mapper's type, factors,
+    palette, range and nan_color, and the colour value of each drawn row
+    (None kept as None).  None for a glyph with no colour mapper."""
+    v = getattr(g, "fill_color", None)
+    tr = v.get("transform") if isinstance(v, dict) else getattr(
+        v, "transform", None)
+    field = v.get("field") if isinstance(v, dict) else getattr(
+        v, "field", None)
+    if tr is None or not isinstance(field, str):
+        return None
+    col = list((data or {}).get(field, []))
+    vals = []
+    for i in (idx or []):
+        x = col[i] if i < len(col) else None
+        if isinstance(x, float):
+            x = None if math.isnan(x) else _num(x)
+        vals.append(x)
+    factors = getattr(tr, "factors", None)
+    return {"mapper": type(tr).__name__,
+            "factors": list(factors) if factors is not None else None,
+            "palette": list(getattr(tr, "palette", []) or []),
+            "low": _num(getattr(tr, "low", None)),
+            "high": _num(getattr(tr, "high", None)),
+            "nan_color": str(getattr(tr, "nan_color", "")),
+            "values": vals}
 
 
 def _label_of(item):
@@ -497,6 +543,14 @@ def _annotations(fig):
                         "click_policy": r.click_policy,
                         "background": r.background_fill_color,
                         "border": r.border_line_color})
+        elif isinstance(r, ColorBar):
+            # WP-29 P0.16: the colour bar's title, mapper and range.
+            m = r.color_mapper
+            out.append({"kind": "ColorBar", "title": r.title,
+                        "mapper": type(m).__name__,
+                        "low": _num(getattr(m, "low", None)),
+                        "high": _num(getattr(m, "high", None)),
+                        "side": panel.get(id(r))})
         elif isinstance(r, BoxAnnotation):
             out.append({"kind": "BoxAnnotation",
                         "left": _num(r.left), "right": _num(r.right),
@@ -1348,6 +1402,30 @@ CORPUS = [
           [_sc(colorvar="price")], None, {"zlabel": "1 2 3 4 5"}),
     _case("colorvar() zscale(log)", [_sc(colorvar="price")], None,
           {"zscale": "log"}),
+    # WP-29 P0.16: the key is drawn from the layer's own rows -- its own
+    # if, a linked graph's if and each linked by() panel -- in both modes.
+    _case("colorvar() with a layer's own if",
+          [plot_for("scatter", {"colorvar": "price"},
+                    if_expr="foreign == 1"),
+           plot_for("scatter", if_expr="foreign == 0")]),
+    _case("colorvar() colordiscrete with a layer's own if",
+          [plot_for("scatter", {"colorvar": "rep",
+                                "colordiscrete": "colordiscrete"},
+                    if_expr="foreign == 1"),
+           plot_for("scatter", if_expr="foreign == 0")]),
+    _case("colorvar() colorlevels(3) with a layer's own if",
+          [plot_for("scatter", {"colorvar": "price", "colorlevels": "3"},
+                    if_expr="foreign == 1"),
+           plot_for("scatter", if_expr="foreign == 0")]),
+    _case("colorvar() on a linked graph with its own if",
+          bo={"link": "g1 g2"},
+          graphs=[("g1", [_sc(colorvar="price")], None,
+                   {"if_expr": "foreign == 1"}),
+                  ("g2", [_sc()])]),
+    _case("colorvar() under a linked by()", bo={"link": "g1 g2"},
+          graphs=[("g1", [_sc(colorvar="price", colorlevels="3")],
+                   {"by": "foreign"}),
+                  ("g2", [_sc()])]),
     # WP-28 E14: a served rspike or rconnected in a link group used to
     # draw a private source every time, so a selection on the group never
     # reached it; TestRangeLayersInALinkGroup reads on_link_source here.

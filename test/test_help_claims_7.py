@@ -512,8 +512,9 @@ class TestAStringColorvar:
                       if type(r_.glyph).__name__ == "Scatter"][0]
             mapper = (mapper.get("transform") if isinstance(mapper, dict)
                       else mapper.transform)
-            assert list(mapper.factors) == ["D", "F", "__missing__"]
-            assert str(list(mapper.palette)[-1]).lower() == "#ff0000"
+            # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+            assert list(mapper.factors) == ["D", "F"]
+            assert str(mapper.nan_color).lower() == "#ff0000"
 
 
 def _colour_mapped_one(r):
