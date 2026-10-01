@@ -76,7 +76,7 @@ No test-only commit exists and no commit is red.
 5. A served note printed only in a session never reaches the Stata log (HC5-08). The parity guard cannot see this (`test_mode_parity._served` merges build and session warnings, test_mode_parity.py:233-252).
 6. A shared DataRange1d with 100 panels makes each plot's `update_dataranges` loop over the union renderer list. One move is about 100 plots × (100 × layers) bound checks, plus 100 repaints.
 7. BokehJS 3.9.0 `DataRange1d.update` returns early once `have_updated_interactively` is set (bokeh.js `update(bounds, dimension, plot, ratio) { if (this.have_updated_interactively) return; …`). After a user pans one panel, the shared range stops following filter moves on EVERY panel. Today the same happens per panel.
-8. GitNexus has no index of this repository (`list_repos` lists only TYME and PhotoShootPlannerPro), so the impact analysis CLAUDE.md requires needs `npx gitnexus analyze` first.
+8. GitNexus has no index of this repository (`list_repos` lists only TYME and PhotoShootPlannerPro), so the impact analysis CLAUDE.md requires needs `gitnexus analyze` first.
 9. S13 (P0.12a token) merges after this section and may gate `make_document`.
 
 **Mitigation.**
@@ -87,7 +87,7 @@ No test-only commit exists and no commit is red.
 5. The two notes are decided by pure helpers at build time. BSC-10 reads the note in the Stata log after `dash build, server`, and `TestTheNoteReachesTheUser::test_served_build_raises_the_range_note` pins it in pytest.
 6. `test_by_scales_chrome.py::test_hundred_panels_settle` bounds the settle time at 3 s. The measured number goes into the P0.2 commit body.
 7. The help says panning or zooming one panel moves the others and stops the autorange for them all, as Bokeh does for any one panel today.
-8. Tasks 10-01 and 10-14 run `npx gitnexus analyze` and `gitnexus_impact`.
+8. Tasks 10-01 and 10-14 run `gitnexus analyze` and `gitnexus_impact`.
 9. The new served tests go through `test_mode_parity._served`, `test_dual_axis._lone_figure` and one new helper, `test_by_scales._served_doc`, which is the one place S13 must touch.
 
 ## Dependencies
@@ -110,7 +110,7 @@ Line numbers are HEAD `7421d3d`'s. Batch 1 shifts them, so locate everything by 
 
 ### Blast radius (R8; grep-based, because GitNexus has no `dash` index)
 
-`mcp gitnexus list_repos` at plan time returned only `TYME` and `PhotoShootPlannerPro`. Tasks 10-01 and 10-14 run `npx gitnexus analyze` and then `gitnexus_impact({target, direction: "upstream"})` for each symbol below. They record the output in `<scratch>/10-impact.txt` and report any HIGH or CRITICAL result to the orchestrator before editing. By grep at `7421d3d`:
+`mcp gitnexus list_repos` at plan time returned only `TYME` and `PhotoShootPlannerPro`. Tasks 10-01 and 10-14 run `gitnexus analyze` and then `gitnexus_impact({target, direction: "upstream"})` for each symbol below. They record the output in `<scratch>/10-impact.txt` and report any HIGH or CRITICAL result to the orchestrator before editing. By grep at `7421d3d`:
 
 | Symbol | Callers | Expected risk |
 |---|---|---|
@@ -970,7 +970,7 @@ The merger lands them on `wp29-p0` in order with `patch -p1` (index step 1). Eve
   <name>Extract the axis(2) truth fixture</name>
   <files>scripts/extract_axis2_truth.do, test/fixtures/axis2_truth.json, test/test_fixtures_are_committed.py</files>
   <action><![CDATA[
-First run `npx gitnexus analyze` in the worktree, then `gitnexus_impact({target, direction: "upstream"})` for `_dash_route_axis2`, `_dash_rep_cat`, `_dash_route_axis_titles`, `_dash_lone_second_axes`, `_textbox_canon`, `_dash_finish_secondary_axes`, `_dash_reference_lines`, `_dash_refline_draw` and `ServerAppBuilder.build`. Write each result to `<scratch>/10-impact.txt`. Report any HIGH or CRITICAL result to the orchestrator before editing those symbols. If the index cannot be built, record the grep table from this section's Evidence instead and say so.
+First run `gitnexus analyze` in the worktree, then `gitnexus_impact({target, direction: "upstream"})` for `_dash_route_axis2`, `_dash_rep_cat`, `_dash_route_axis_titles`, `_dash_lone_second_axes`, `_textbox_canon`, `_dash_finish_secondary_axes`, `_dash_reference_lines`, `_dash_refline_draw` and `ServerAppBuilder.build`. Write each result to `<scratch>/10-impact.txt`. Report any HIGH or CRITICAL result to the orchestrator before editing those symbols. If the index cannot be built, record the grep table from this section's Evidence instead and say so.
 
 Create `scripts/extract_axis2_truth.do` as "Stata truth" specifies:
 - the `W29_REPO` guard and `adopath ++`;
@@ -1206,7 +1206,7 @@ Run `python3 -m pytest test/ -q` once (the full suite, rule 4; read its log, nev
   <name>Extract the by() scales truth fixture</name>
   <files>scripts/extract_by_scales_truth.do, test/fixtures/by_scales_truth.json, test/test_fixtures_are_committed.py</files>
   <action><![CDATA[
-Run `gitnexus_impact` (upstream) for `_dash_parse_by`, `_dash_apply_scale_ranges`, `_dash_hull_ranges`, `_dash_common_count_ticks`, `DashRenderer._make_figure`, `DashRenderer._make_figure_body`, `DashRenderer._build_figures` and `ServerAppBuilder._plan_by_groups`, re-running `npx gitnexus analyze` first if the index is stale. Append the results to `<scratch>/10-impact.txt`. `_make_figure_body` is expected HIGH (index R8): report it to the orchestrator before task 10-18 edits it.
+Run `gitnexus_impact` (upstream) for `_dash_parse_by`, `_dash_apply_scale_ranges`, `_dash_hull_ranges`, `_dash_common_count_ticks`, `DashRenderer._make_figure`, `DashRenderer._make_figure_body`, `DashRenderer._build_figures` and `ServerAppBuilder._plan_by_groups`, re-running `gitnexus analyze` first if the index is stale. Append the results to `<scratch>/10-impact.txt`. `_make_figure_body` is expected HIGH (index R8): report it to the orchestrator before task 10-18 edits it.
 
 Create `scripts/extract_by_scales_truth.do` as "Stata truth" specifies:
 - the `W29_REPO` guard;

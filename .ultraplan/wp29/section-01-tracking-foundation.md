@@ -197,7 +197,7 @@ All line numbers are at `7421d3d` (HEAD of `wp29-p0` at plan time; `git log --on
 ### GitNexus
 
 `gitnexus_impact({target: "test_no_open_entry_is_s1_or_s2", direction: "upstream", repo: "dash"})` answered `Repository "dash" not found. Available: TYME, PhotoShootPlannerPro`. `gitnexus_list_repos()` lists only those two. There is no `.gitnexus/` in the main checkout. The maintainer's uncommitted `.gitignore` edit adds `.gitnexus` (`git diff .gitignore`: `+.gitnexus`); a worktree cut from `wp29-p0` does not have that line. So:
-- task 01-02 runs `npx gitnexus analyze` in the MAIN checkout, never the worktree;
+- task 01-02 runs `gitnexus analyze` in the MAIN checkout, never the worktree;
 - no step stages `.gitnexus/`.
 
 ### Twoway truth behind one entry (P0.4), measured
@@ -558,7 +558,7 @@ Do not commit. This text opens the section's commit body (TR-01.10.4).
   <files>test/test_tracking_documents.py</files>
   <action><![CDATA[
 **GitNexus first** (CLAUDE.md).
-1. Call `gitnexus_list_repos()`. If no repo named `dash` with path `/Users/billy/Desktop/Programs/StataPrograms/d/dash` is listed (at plan time it was not), run `cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && npx gitnexus analyze` in the MAIN checkout, never in `<W>`. The main checkout's uncommitted `.gitignore` ignores `.gitnexus`; nothing it writes is ever staged.
+1. Call `gitnexus_list_repos()`. If no repo named `dash` with path `/Users/billy/Desktop/Programs/StataPrograms/d/dash` is listed (at plan time it was not), run `cd /Users/billy/Desktop/Programs/StataPrograms/d/dash && gitnexus analyze` in the MAIN checkout, never in `<W>`. The main checkout's uncommitted `.gitignore` ignores `.gitnexus`; nothing it writes is ever staged.
 2. Call `gitnexus_impact({target: "test_no_open_entry_is_s1_or_s2", direction: "upstream", repo: "dash", includeTests: true, file_path: "test/test_tracking_documents.py"})` and record the risk and direct callers in `<scratch>/01-impact.txt`. The expected result is LOW with no caller other than pytest collection. Report HIGH or CRITICAL to the maintainer before editing.
 
 **Then, in `<W>/test/test_tracking_documents.py`:**
@@ -745,7 +745,7 @@ In `<scratch>/s99/run_test_wp29_truth.log`:
 - **`_CASE_ID` and source ids.**
   - A source id such as `AUDIT-08`, `REM-08-05-C3b` or `WP-29` matches `_CASE_ID`, but a case id is only ever "found" or ignored, never dangling (test_tracking_documents.py:325-328). Source ids in a Description are therefore safe.
   - A `test_*.py`/`.cscript` name or `Test…` word that does not exist is not safe: `test_no_entry_names_a_test_that_does_not_exist` fails.
-- **`.gitnexus/`.** The worktree's `.gitignore` (committed text) does not ignore `.gitnexus`. Never run `npx gitnexus analyze` in `<W>`, and never stage with `-A`/`.`. Not measured: whether files under `.gitnexus/` in the main checkout trip `test_nothing_links_them` (it walks every directory except `.git`, `.claude`, `__pycache__`, `.pytest_cache`, `node_modules`). If a full run there fails on a `.gitnexus/` path, stop and report it to the maintainer rather than editing the walker in this section.
+- **`.gitnexus/`.** The worktree's `.gitignore` (committed text) does not ignore `.gitnexus`. Never run `gitnexus analyze` in `<W>`, and never stage with `-A`/`.`. Not measured: whether files under `.gitnexus/` in the main checkout trip `test_nothing_links_them` (it walks every directory except `.git`, `.claude`, `__pycache__`, `.pytest_cache`, `node_modules`). If a full run there fails on a `.gitnexus/` path, stop and report it to the maintainer rather than editing the walker in this section.
 - **Python linkage.** Many concurrent Stata sessions can drop `python_exec` from `~/.stata19/console/stata19.rc`, after which the script SKIPs (r(222)). A SKIP is not a pass. `scripts/stata_slot.sh` caps sessions at three.
 - **Commit message template** (01-08; TR-01.10.4):
 

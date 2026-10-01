@@ -423,7 +423,7 @@ The decompression has no bound. Bokeh itself calls it in `WSHandler.open` (ws.py
 
 ### 5. GitNexus
 
-GitNexus has no index for this repository: S06 and S08 record that `list_repos` lists only TYME and PhotoShootPlannerPro. Task 13-01 runs `npx gitnexus analyze` in the worktree and impact analysis on:
+GitNexus has no index for this repository: S06 and S08 record that `list_repos` lists only TYME and PhotoShootPlannerPro. Task 13-01 runs `gitnexus analyze` in the worktree and impact analysis on:
 - `_dash_launch_app` (expected HIGH, index R8);
 - `ServerAppBuilder._glyph_layer_lines` (the copy lists);
 - `ServerAppBuilder._generate_app_source` (the emitted app);
@@ -1439,7 +1439,7 @@ There is no `Fixture:` line. Run Stata only through `"$WT"/scripts/stata_slot.sh
 
        If any prints 0, STOP and report: this section's design depends on S08.
     3. Check that S01 is on the tree: `grep -n '"P0.12a"' "$WT"/test/test_tracking_documents.py` and `grep -c "<!-- WP-29 P0.12a -->" "$WT"/CHANGELOG.md`, which must print 2.
-    4. Run `(cd "$WT" && npx gitnexus analyze)`. Then `git -C "$WT" status --porcelain`; restore `CLAUDE.md` and `AGENTS.md` with `git -C "$WT" checkout -- CLAUDE.md AGENTS.md` if changed. Never stage `.gitnexus/`.
+    4. Run `(cd "$WT" && gitnexus analyze)`. Then `git -C "$WT" status --porcelain`; restore `CLAUDE.md` and `AGENTS.md` with `git -C "$WT" checkout -- CLAUDE.md AGENTS.md` if changed. Never stage `.gitnexus/`.
     5. Run `gitnexus_impact({target, direction: "upstream"})` for `_dash_launch_app`, `_glyph_layer_lines`, `_generate_app_source` and `_dash_build`. Use `gitnexus_context` to disambiguate; for a Stata program the index cannot resolve, use `grep -n` callers.
     6. Write each target's direct callers, affected processes and risk level to `<scratch>/13-impact.txt`.
     7. (Round 2, answer B; L-2, L-5.) Read S08's launch in `_dash_launch_app` on the tree: TR-08.8a and TR-08.14 as amended in round 2. Write to `<scratch>/13-launch.txt`:

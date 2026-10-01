@@ -361,7 +361,7 @@ malformed ['a'] / {'y': 5} / {'y': {'a': 1}} / {'y': None}: both modes draw y ti
 
 ### Blast radius (R8; GitNexus has no index for this repository)
 
-`mcp__gitnexus__list_repos` on 30sep2026 listed only TYME and PhotoShootPlannerPro. 03-01 runs `npx gitnexus analyze` first. Callers found by grep:
+`mcp__gitnexus__list_repos` on 30sep2026 listed only TYME and PhotoShootPlannerPro. 03-01 runs `gitnexus analyze` first. Callers found by grep:
 
 | Symbol | Callers (dash_render.py) |
 |---|---|
@@ -901,7 +901,7 @@ No AI reference anywhere; grep the message for `claude|anthropic` before and aft
   <name>Record the blast radius before editing</name>
   <files>none</files>
   <action><![CDATA[
-    Set `S=<scratch>/s03` (the scratch directory the orchestrator handed over) and run `mkdir -p "$S"`. From `$WT` run `npx gitnexus analyze`, then `mcp__gitnexus__list_repos` to read the name the worktree was indexed under. Run `gitnexus_impact({target, direction: "upstream", repo})` for: `_dash_axis_labels`, `_dash_legend_key`, `_dash_build_hover`, `_dash_filter_title`, `DashRenderer._load_data`, `DashRenderer._build_filter_widgets`, `GlyphMapper._apply_colorvar`, `_textbox_split_point`, `_parse_textbox_opt`, `_dash_textbox`, `_dash_apply_z_options`, `_dash_add_secondary_axes`, `SchemeParser.apply_to_figure`, `ServerAppBuilder.build`, and `make_data_json` (test/conftest.py). Write each result's direct callers, affected processes and risk level to `$S/03-impact.txt`, beside the grep table of Evidence "Blast radius". HIGH is expected for `_dash_axis_labels` and `make_data_json` (index R8). State that warning in the agent's progress output and continue. If any other symbol returns HIGH or CRITICAL, stop and report it to the orchestrator before editing (CLAUDE.md "Never Do").
+    Set `S=<scratch>/s03` (the scratch directory the orchestrator handed over) and run `mkdir -p "$S"`. From `$WT` run `gitnexus analyze`, then `mcp__gitnexus__list_repos` to read the name the worktree was indexed under. Run `gitnexus_impact({target, direction: "upstream", repo})` for: `_dash_axis_labels`, `_dash_legend_key`, `_dash_build_hover`, `_dash_filter_title`, `DashRenderer._load_data`, `DashRenderer._build_filter_widgets`, `GlyphMapper._apply_colorvar`, `_textbox_split_point`, `_parse_textbox_opt`, `_dash_textbox`, `_dash_apply_z_options`, `_dash_add_secondary_axes`, `SchemeParser.apply_to_figure`, `ServerAppBuilder.build`, and `make_data_json` (test/conftest.py). Write each result's direct callers, affected processes and risk level to `$S/03-impact.txt`, beside the grep table of Evidence "Blast radius". HIGH is expected for `_dash_axis_labels` and `make_data_json` (index R8). State that warning in the agent's progress output and continue. If any other symbol returns HIGH or CRITICAL, stop and report it to the orchestrator before editing (CLAUDE.md "Never Do").
   ]]></action>
   <verify><![CDATA[`test -s "$S/03-impact.txt" && grep -c "risk" "$S/03-impact.txt"` prints at least 15.]]></verify>
   <done>The blast radius of every symbol this section edits was recorded, and any unexpected HIGH or CRITICAL result was reported before an edit.</done>

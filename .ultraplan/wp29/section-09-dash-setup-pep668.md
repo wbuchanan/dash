@@ -32,7 +32,7 @@ Corrections made while writing this section, each measured (M-numbers in Evidenc
 - **C4.** New cscript cases use the manifest's prefix `PEP-` (index.md "Section numbers in case ids"; `grep -rn "PEP-[0-9]" test/ scripts/` is empty at `7421d3d`), not the research's PC-32..39 and HON-31..33.
 - **C5.** With detection in a child (A2), every run that installs or hints starts one DETECT probe. The pinned call vectors of PC-18..21, HON-20..22, HON-26, HON-27 and HON-29 therefore gain that probe. They are flipped with that reason (Evidence, "Tests that pin today's behaviour"). PC-15, PC-16, PC-17, PC-22 and HON-19, HON-28, HON-30 still start no process.
 - **C6.** The venv path never travels through Stata's parser between programs. `stata_venv_check` validates it and holds `(abs, state)` in the helper module for the immediately following `stata_venv` call (TR-09.17).
-- **C7.** The GitNexus MCP has no index for this repository: `impact` answered `Repository "dash" not found. Available: TYME, PhotoShootPlannerPro`. Task 09-01 runs `npx gitnexus analyze` before the impact queries (R8). The blast radius below was taken with `grep`.
+- **C7.** The GitNexus MCP has no index for this repository: `impact` answered `Repository "dash" not found. Available: TYME, PhotoShootPlannerPro`. Task 09-01 runs `gitnexus analyze` before the impact queries (R8). The blast radius below was taken with `grep`.
 - **C8.** Flipped tests keep their names and case ids. The closed K2 entry in BUGS.md (line 2644) cites `test_version_floor.py::...::test_the_upgrade_line_names_the_linked_interpreter`, `PC-21` and `HON-29`, and other closed entries cite PC-18 and HON-14. A rename would leave those references dangling (`test_tracking_documents.py::TestEveryClosedEntryNamesATestThatExists`).
 
 Applies to this section as to every WP-29 section (index.md, PLAN.md, BRIEF.md with index.md's deltas):
@@ -1189,7 +1189,7 @@ Path notes:
     - `grep -n '"P0.19"' test/test_tracking_documents.py` finds the `WP29_OPEN` key;
     - `grep -n '<!-- WP-29 P0.19 -->' CHANGELOG.md` finds one marker under `### Requirements`.
 
-    Run `npx gitnexus analyze` (the index has no `dash`: C7), then `gitnexus_impact({target: "_dash_pip_command", direction: "upstream"})`, the same for `dash_setup`, `install` (test/setup_sandbox.py) and `verdict` (scripts/release_verdict.py). If GitNexus still cannot index the Stata programs, record the Evidence grep table instead.
+    Run `gitnexus analyze` (the index has no `dash`: C7), then `gitnexus_impact({target: "_dash_pip_command", direction: "upstream"})`, the same for `dash_setup`, `install` (test/setup_sandbox.py) and `verdict` (scripts/release_verdict.py). If GitNexus still cannot index the Stata programs, record the Evidence grep table instead.
 
     Save the blast radius to `<scratch>/09-impact.txt` and report any HIGH or CRITICAL result to the maintainer before editing (R8). Also record `python3 -m pytest --collect-only -q 2>/dev/null | tail -1` (the node count) in `<scratch>/09-nodes-before.txt`.
   ]]></action>
@@ -1637,7 +1637,7 @@ Path notes:
   - **R3:** dash.sthlp edits are confined to the Setup syntax line (:115) and one paragraph after the Dependencies list. CHANGELOG replaces only `<!-- WP-29 P0.19 -->`, BUGS.md closes only its own entry in place, and `test_tracking_documents.py` deletes only the `"P0.19"` line.
   - **R5:** the fixture is regenerated only by its script.
   - **R7:** flips keep names and ids (C8).
-  - **R8:** GitNexus needs `npx gitnexus analyze` first (C7).
+  - **R8:** GitNexus needs `gitnexus analyze` first (C7).
 - **Sandbox traps.**
   - A recorded pip install that lifts a block now returns rc 0, not 97, so `stata_pip` does not retry `--user` after a "successful" install (PC-20).
   - The HON recorder (`_hon_run_setup`) answers the DETECT probe with `HONPIPOUT`, so detection fails and the run proceeds as for an ordinary Python. This is intended, and it exercises the detection-failure path.

@@ -372,7 +372,7 @@ The review's `p_moved.py` found that lowess, qfit, fpfit, mband, mspline, lpolyc
 
 ### E-12.0 Blast radius (R8)
 
-At plan time the GitNexus server holds no `dash` repository (`list_repos` lists TYME and PhotoShootPlannerPro only). The executor runs `npx gitnexus analyze` in the worktree, never stages `.gitnexus/`, then runs `gitnexus_impact({target, direction: "upstream"})` on each symbol below. Grep counts at `7421d3d`:
+At plan time the GitNexus server holds no `dash` repository (`list_repos` lists TYME and PhotoShootPlannerPro only). The executor runs `gitnexus analyze` in the worktree, never stages `.gitnexus/`, then runs `gitnexus_impact({target, direction: "upstream"})` on each symbol below. Grep counts at `7421d3d`:
 - `GlyphMapper._layer_weights` — 14 occurrences: the 13 computed mappers plus its definition. S05 measured it HIGH.
 - `DashRenderer._make_figure_body` — 3: the definition plus 2 calls from `_make_figure`. Expected HIGH (index R8).
 - `DashRenderer._build_filter_widgets` — 2.
@@ -1008,7 +1008,7 @@ No AI reference and no co-author trailer appear anywhere (CLAUDE.md rule 6). Eve
 
 If any check fails, stop and report to the orchestrator. Never cut or rebase the worktree yourself.
 
-In `<W>` run `npx gitnexus analyze`; the index lacks this repository at plan time (E-12.0). Never stage the `.gitnexus/` it writes.
+In `<W>` run `gitnexus analyze`; the index lacks this repository at plan time (E-12.0). Never stage the `.gitnexus/` it writes.
 
 Run `gitnexus_impact({target, direction: "upstream"})` for each of these targets:
 - `GlyphMapper._layer_weights`, `DashRenderer._make_figure_body`, `DashRenderer._build_filter_widgets`, `DashRenderer.render`;

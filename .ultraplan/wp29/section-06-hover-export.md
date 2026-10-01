@@ -190,7 +190,7 @@ The note precedent `_dash_note_hover_unreached` (:24638-24684) holds its type ta
 
 ### GitNexus
 
-`mcp__gitnexus__list_repos` (30sep2026) returns only `TYME` and `PhotoShootPlannerPro`. Task 06-01 runs `npx gitnexus analyze` in the worktree. That command also rewrites `CLAUDE.md`/`AGENTS.md` context files and writes `.gitnexus/` (gitignored only by the maintainer's uncommitted `.gitignore` line, so untracked in a worktree). It then records `gitnexus_impact` for:
+`mcp__gitnexus__list_repos` (30sep2026) returns only `TYME` and `PhotoShootPlannerPro`. Task 06-01 runs `gitnexus analyze` in the worktree. That command also rewrites `CLAUDE.md`/`AGENTS.md` context files and writes `.gitnexus/` (gitignored only by the maintainer's uncommitted `.gitignore` line, so untracked in a worktree). It then records `gitnexus_impact` for:
 - `_dash_embedded_cells`
 - `_make_figure_body`
 - `_generate_app_source` (ServerAppBuilder)
@@ -617,7 +617,7 @@ There is no `Fixture:` line. Every Stata run goes through `scripts/stata_slot.sh
   <files>none</files>
   <action><![CDATA[
     Index and measure:
-    1. In the worktree, run `(cd "$WT" && npx gitnexus analyze)`. analyze also rewrites context files and writes `.gitnexus/`, so then run `git -C "$WT" status --porcelain`. If `CLAUDE.md` or `AGENTS.md` changed, restore them with `git -C "$WT" checkout -- CLAUDE.md AGENTS.md`. Never stage `.gitnexus/`.
+    1. In the worktree, run `(cd "$WT" && gitnexus analyze)`. analyze also rewrites context files and writes `.gitnexus/`, so then run `git -C "$WT" status --porcelain`. If `CLAUDE.md` or `AGENTS.md` changed, restore them with `git -C "$WT" checkout -- CLAUDE.md AGENTS.md`. Never stage `.gitnexus/`.
     2. Run `gitnexus_impact({target, direction: "upstream"})` for each of: `_dash_embedded_cells`, `_make_figure_body`, `_generate_app_source`, `__init__` of `DashRenderer` (use `gitnexus_context` to disambiguate), `_dash_prepare_spec`, `_dash_render_immediate`. If the index cannot resolve a Stata program, record that and use `grep -n` callers instead.
     3. Write each target's direct callers, affected processes and risk level to `<scratch>/06-impact.txt`.
   ]]></action>

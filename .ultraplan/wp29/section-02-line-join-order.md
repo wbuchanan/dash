@@ -303,7 +303,7 @@ dash_parse.mata:
 
 ### E4. Impact analysis (CLAUDE.md "Always Do"; index.md R8)
 
-`mcp__gitnexus__list_repos` (30sep2026) lists only `TYME` and `PhotoShootPlannerPro`: **dash is not indexed**. Task 02-01 runs `npx gitnexus analyze` in the worktree first, then the mandatory `gitnexus_impact` calls. Task 02-02 reports HIGH/CRITICAL results to the maintainer before any edit.
+`mcp__gitnexus__list_repos` (30sep2026) lists only `TYME` and `PhotoShootPlannerPro`: **dash is not indexed**. Task 02-01 runs `gitnexus analyze` in the worktree first, then the mandatory `gitnexus_impact` calls. Task 02-02 reports HIGH/CRITICAL results to the maintainer before any edit.
 
 Callers found by grep at 7421d3d:
 - `map_line` ← `map_connected` :7981, `map_rconnected` :10949 and :10952, `map_tsline` :12085, dispatch :24706.
@@ -758,7 +758,7 @@ Acceptance criteria:
   <name>Index the repository and measure impact</name>
   <files>none</files>
   <action><![CDATA[
-In the worktree, run `npx gitnexus analyze` (E4: dash is not indexed), then `mcp__gitnexus__list_repos` to confirm `dash` is listed. Run `gitnexus_impact({target, direction: "upstream"})` for each of:
+In the worktree, run `gitnexus analyze` (E4: dash is not indexed), then `mcp__gitnexus__list_repos` to confirm `dash` is listed. Run `gitnexus_impact({target, direction: "upstream"})` for each of:
 - GlyphMapper.map_line, map_connected, map_area, map_rline, map_rarea, map_rconnected, map_tsline, map_tsrline, _masked_order;
 - _dash_add_glyph;
 - DashRenderer._load_data, _make_figure_body, _add_glyph;

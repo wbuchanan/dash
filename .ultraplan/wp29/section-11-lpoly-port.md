@@ -117,7 +117,7 @@ No test-only commit exists, and no commit is red.
 6. A fast path keeps `np.polyfit` on every well-conditioned window (float sweep pivots ≥ 1e-6·diagonal and ≥ 1e-16). Measured: the existing pins are unchanged, and 933 of 1191 windows take the fast path on the truth sets.
 7. `TestSources::test_three_sources_drawn_or_empty` and a served move that empties a by() panel.
 8. `lpvar` (A8), with `TestNoVarKey` and LB-41.
-9. Tasks 11-01 and 11-13 run `npx gitnexus analyze` and then `gitnexus_impact`. Until then the blast radius below is grep-based.
+9. Tasks 11-01 and 11-13 run `gitnexus analyze` and then `gitnexus_impact`. Until then the blast radius below is grep-based.
 
 ## Dependencies
 
@@ -908,7 +908,7 @@ Every Stata run is `<repo>/scripts/stata_slot.sh <scratch>/s11 <file>.do` with `
   <name>Extract the rule-of-thumb truth fixture</name>
   <files>scripts/extract_lpoly_rot_truth.do, test/fixtures/lpoly_rot_truth.json, test/test_fixtures_are_committed.py</files>
   <action><![CDATA[
-Run `npx gitnexus analyze` in the worktree, then `gitnexus_impact({target, direction: "upstream"})` for `_default_lpoly_bwidth`, `_compute_lpoly_fit`, `map_lpoly`, `map_lpolyci`, `_render_ci_band`, `_resolve_level` and `ServerAppBuilder._shared_stat_lines`. Write the results to `<scratch>/11-impact.txt`, and report any HIGH or CRITICAL result to the orchestrator before editing. If the index cannot be built, copy the grep table of "Blast radius" there and say so.
+Run `gitnexus analyze` in the worktree, then `gitnexus_impact({target, direction: "upstream"})` for `_default_lpoly_bwidth`, `_compute_lpoly_fit`, `map_lpoly`, `map_lpolyci`, `_render_ci_band`, `_resolve_level` and `ServerAppBuilder._shared_stat_lines`. Write the results to `<scratch>/11-impact.txt`, and report any HIGH or CRITICAL result to the orchestrator before editing. If the index cannot be built, copy the grep table of "Blast radius" there and say so.
 
 Create `scripts/extract_lpoly_rot_truth.do` as "Stata truth" specifies, with these parts:
 - the `W29_REPO` guard, `adopath ++` and the `git rev-parse` capture;
@@ -1124,7 +1124,7 @@ Run `python3 -m pytest test/ -q` once (rule 4; read its log), then the S11 P0.7 
   <name>Extract the lpolyci band truth fixture</name>
   <files>scripts/extract_lpolyci_truth.do, test/fixtures/lpolyci_truth.json, test/test_fixtures_are_committed.py</files>
   <action><![CDATA[
-Run `gitnexus_impact` (after `npx gitnexus analyze` if the P0.7 commit made the index stale) for `map_lpolyci`, `_render_ci_band`, `_resolve_level`, `_dash_legend_keys`, `_dash_fold_bw`, `_dash_validate_opts` and `_dash_plot_opts_to_json`. Append the results to `<scratch>/11-impact.txt`.
+Run `gitnexus_impact` (after `gitnexus analyze` if the P0.7 commit made the index stale) for `map_lpolyci`, `_render_ci_band`, `_resolve_level`, `_dash_legend_keys`, `_dash_fold_bw`, `_dash_validate_opts` and `_dash_plot_opts_to_json`. Append the results to `<scratch>/11-impact.txt`.
 
 Create `scripts/extract_lpolyci_truth.do` as "Stata truth" specifies:
 - the `W29_REPO` guard;

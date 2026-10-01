@@ -257,7 +257,7 @@ The review checked that `x0 + dx*np.arange(n)` equals twoway's x bit for bit on 
 
 ### E9. GitNexus
 
-`mcp__gitnexus__list_repos` lists only `TYME` and `PhotoShootPlannerPro`; dash is not indexed. Task 04-01 runs `npx gitnexus analyze` and the mandatory impact queries.
+`mcp__gitnexus__list_repos` lists only `TYME` and `PhotoShootPlannerPro`; dash is not indexed. Task 04-01 runs `gitnexus analyze` and the mandatory impact queries.
 
 Interim grep-based blast radius:
 
@@ -700,7 +700,7 @@ Every stub below marked "FAILS" fails at the batch-1 base, and its text goes in 
   <name>Index the tree and measure impact</name>
   <files>none</files>
   <action><![CDATA[
-    In the worktree root run `npx gitnexus analyze` (dash is not indexed: `list_repos` shows only TYME and PhotoShootPlannerPro) and note the repo name it reports. Run `gitnexus_impact({target, direction: "upstream", repo})` for `map_function`, `_stata_expr_to_python`, `_floats_only`, `_make_figure_body`, `_generate_app_source`, `DashRenderer.__init__` (file_path dash_render.py, kind Method) and `ServerAppBuilder.__init__`. For the Stata and Mata units the index may not parse (`_dash_plot`, `_dash_process_segment`, `_dash_register_graph`, `_dash_render_immediate`, `_dash_prepare_spec`, `_dash_clear`, `_dash_item_globals`, `_dash_fn_refuse`, `_dash_fn_names`, `_dash_fn_space_call`), record `grep -n "\b<name>\b" dash.ado dash_parse.mata` callers instead (Evidence E9 lists them). Write every result (direct callers, processes, risk) to `<scratch>/04-impact.txt`.
+    In the worktree root run `gitnexus analyze` (dash is not indexed: `list_repos` shows only TYME and PhotoShootPlannerPro) and note the repo name it reports. Run `gitnexus_impact({target, direction: "upstream", repo})` for `map_function`, `_stata_expr_to_python`, `_floats_only`, `_make_figure_body`, `_generate_app_source`, `DashRenderer.__init__` (file_path dash_render.py, kind Method) and `ServerAppBuilder.__init__`. For the Stata and Mata units the index may not parse (`_dash_plot`, `_dash_process_segment`, `_dash_register_graph`, `_dash_render_immediate`, `_dash_prepare_spec`, `_dash_clear`, `_dash_item_globals`, `_dash_fn_refuse`, `_dash_fn_names`, `_dash_fn_space_call`), record `grep -n "\b<name>\b" dash.ado dash_parse.mata` callers instead (Evidence E9 lists them). Write every result (direct callers, processes, risk) to `<scratch>/04-impact.txt`.
   ]]></action>
   <verify><![CDATA[`<scratch>/04-impact.txt` exists and holds one block per symbol with a risk level or a grep count; `grep -c "risk" <scratch>/04-impact.txt` is at least 7.]]></verify>
   <done>The blast radius of every symbol this section edits was recorded before any edit.</done>

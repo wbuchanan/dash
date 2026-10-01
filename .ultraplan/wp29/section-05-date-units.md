@@ -138,7 +138,7 @@ GitNexus (rule R8). In the planning session, `gitnexus_impact` returned `Error: 
 | `_kpi_callback_config` | 3 | 2 | MEDIUM |
 | `map_histogram`, `map_kdensity`, the 11 fit/smooth mappers | 1 each (dispatch) | 6-10 each | MEDIUM |
 
-The executor runs `gitnexus_impact({target, direction: "upstream"})` on each before editing (after `npx gitnexus analyze` if the index is stale), records the result in the commit body, and reports any HIGH/CRITICAL to the maintainer before the edit (CLAUDE.md).
+The executor runs `gitnexus_impact({target, direction: "upstream"})` on each before editing (after `gitnexus analyze` if the index is stale), records the result in the commit body, and reports any HIGH/CRITICAL to the maintainer before the edit (CLAUDE.md).
 
 ### 1. Stata truth (StataNow 19.5 MP, `scripts/stata_slot.sh`, sysuse sp500: `date` %td, N=248, min 14977, max 15340)
 

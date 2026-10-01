@@ -277,7 +277,7 @@ Names: `color_field = f"_cvar_{varname}_bin"` (:7067, :7124), outside `_DASH_RES
 
 ### E-16.8 Blast radius (R8)
 
-At plan time the GitNexus server did not hold this repository: `impact` answered `Repository "dash" not found. Available: TYME, PhotoShootPlannerPro`. The executor runs `npx gitnexus analyze`, then `gitnexus_impact({target, direction: "upstream"})` for each edited symbol, and records the result in the commit body. The callers by grep at `7421d3d`:
+At plan time the GitNexus server did not hold this repository: `impact` answered `Repository "dash" not found. Available: TYME, PhotoShootPlannerPro`. The executor runs `gitnexus analyze`, then `gitnexus_impact({target, direction: "upstream"})` for each edited symbol, and records the result in the commit body. The callers by grep at `7421d3d`:
 - `_apply_colorvar`: 1 (`map_scatter` :7822).
 - `_dash_colorvar_bins`: 1 (:7089), plus the app copy.
 - `map_scatter`: 4 direct, plus the dynamic dispatch through `_add_glyph`/`_dash_add_glyph` for every scatter layer in both modes.
@@ -754,7 +754,7 @@ Run the script through the driver against the unmodified dash_render.py and appe
   <name>Register the intersected rows of each view</name>
   <files>dash_render.py, test/function_test_map.py, dash.sthlp</files>
   <action><![CDATA[
-1. Run `npx gitnexus analyze` if the index lacks this repository, then `gitnexus_impact({target: "_make_figure_body", direction: "upstream"})`. Report the HIGH result to the maintainer before editing, and record it in `<scratch>/07-impact.txt`.
+1. Run `gitnexus analyze` if the index lacks this repository, then `gitnexus_impact({target: "_make_figure_body", direction: "upstream"})`. Report the HIGH result to the maintainer before editing, and record it in `<scratch>/07-impact.txt`.
 2. Apply TR-07.1 at dash_render.py:26212-26213 (`DashRenderer._make_figure_body`, the per-plot qualifier block), with the comment it describes. Change nothing else.
 3. Repoint `function_test_map.py`'s `DashRenderer._register_view_filter` entry as TR-07.11 says.
 4. In dash.sthlp's "What a filter move redraws" paragraph (1394-1409), after "-- each layer from its own rows among them --", add the sentence: `A plot's own {cmd:if} or {cmd:in} inside a linked {cmd:by()} panel, or inside a linked graph with its own {cmd:if} or {cmd:in}, keeps to that panel's or graph's observations after every move, in both.`
