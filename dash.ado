@@ -137,6 +137,11 @@ program define dash
     // ----------------------------------------------------------------
     // Plot definition  (pass full args including plot-type word)
     // ----------------------------------------------------------------
+    // The caller's version, for a function layer's evaluation: graph.ado
+    // sets ._Gr_Global.callerver to it before every graph, and
+    // twoway__function_gen evaluates under it (_dash_fn_points; WP-29
+    // P0.6).  Read here, where _caller() is the user's.
+    global dash__uv = string(_caller())
     _dash_plot `macval(0)'
 end
 
@@ -240,7 +245,7 @@ program define _dash_require_mata
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
         _dash_immediate _dash_say _dash_spec_types_in _dash_split_segs ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
-        _dash_unbound_cands _dash_fn_names _dash_fn_space_call _dash_rep_scan ///
+        _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag ///
@@ -3616,6 +3621,10 @@ program define _dash_process_segment, rclass
     else if `: list ptype in _pt_literal' {
         _dash_parse_varpart_any `macval(varpart)'
         if "`ptype'" == "function" {
+            // The text as typed, `y =' and all, for the generator
+            // (_dash_fn_points evaluates it after every plot is read; WP-29
+            // P0.6).
+            mata: st_local("_fn_raw", strtrim(st_global("s(vals)")))
             // Remove optional "y=" prefix, in Mata: an expression holding "'
             // -- strlen("'x") -- ended the compound quotes it was cut in
             // (test_json_escaping.cscript JSE-47).
@@ -3637,9 +3646,9 @@ program define _dash_process_segment, rclass
                 display as error "nothing found where expression expected"
                 exit 111
             }
-            // A function Stata does not have is refused as twoway refuses
-            // it, before anything is registered.
-            _dash_fn_refuse `"`macval(expr)'"'
+            // Whatever else twoway refuses in the expression, it refuses
+            // when it evaluates it: _dash_plot hands the text to the
+            // generator once every plot and by() are checked.
         }
         else {
             mata: st_local("vals", st_global("s(vals)"))
@@ -4010,6 +4019,9 @@ program define _dash_process_segment, rclass
 
     sreturn clear
     local _rp_gund_out ""
+    local _fn_rtyped ""
+    local _fn_rnorm ""
+    local _fn_nval ""
     // A weight-only segment goes through the parser and the validation
     // too, so the weight keys are in s() for the JSON writer and the flag
     // rules run on every segment; the parser takes an empty option list.
@@ -4033,6 +4045,9 @@ program define _dash_process_segment, rclass
         // An option given more than once: read as twoway reads it -- the
         // last copy, the copies merged, or refused (_dash_opts_repeats).
         _dash_opts_repeats _dash_parse_plot_opts `ptype' `"`macval(opts_raw)'"'
+        // function's range() as typed, before validation normalises it
+        // through numlist, which keeps 13 digits (WP-29 P0.6, S4-D5).
+        if "`ptype'" == "function" mata: st_local("_fn_rtyped", st_global("s(range)"))
         // lowess's logit, or its off form, on another plot type: refused
         // naming the word as typed, as twoway names it -- scatter mpg
         // weight, lo is "option lo not allowed", r(198) -- where the flag
@@ -4051,6 +4066,10 @@ program define _dash_process_segment, rclass
             _dash_seg_weight_s "`_seg_weight'" "`_seg_wexp'"
         }
         _dash_validate_opts "`ptype'"
+        if "`ptype'" == "function" {
+            mata: st_local("_fn_rnorm", st_global("s(range)"))
+            mata: st_local("_fn_nval", st_global("s(n)"))
+        }
         // colorvar() and its companions, and jitter(), on a plot type dash
         // does not draw them on: named in the note -- after the validation
         // above, so a bad value is refused first, as twoway refuses it
@@ -4302,6 +4321,37 @@ program define _dash_process_segment, rclass
     local _seg_wv ""
     if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' local _seg_wv `_seg_wexp'
     c_local _seg_wvar_out `_seg_wv'
+    // A function layer's text and the generator's range() and n(): the
+    // typed range when it is two plain numbers (numlist keeps 13 digits,
+    // the generator all 17), else the validated one, else twoway's 0 1;
+    // n() or twoway's 300 (WP-29 P0.6).
+    if "`ptype'" == "function" {
+        local _fn_lo 0
+        local _fn_hi 1
+        local _fn_ok 0
+        if `: word count `_fn_rtyped'' == 2 {
+            local _fn_a : word 1 of `_fn_rtyped'
+            local _fn_b : word 2 of `_fn_rtyped'
+            capture confirm number `_fn_a'
+            local _fn_ok = !_rc
+            capture confirm number `_fn_b'
+            local _fn_ok = `_fn_ok' & !_rc
+            if `_fn_ok' {
+                local _fn_lo `_fn_a'
+                local _fn_hi `_fn_b'
+            }
+        }
+        if !`_fn_ok' & `: word count `_fn_rnorm'' == 2 {
+            local _fn_lo : word 1 of `_fn_rnorm'
+            local _fn_hi : word 2 of `_fn_rnorm'
+        }
+        local _fn_n 300
+        if "`_fn_nval'" != "" local _fn_n `_fn_nval'
+        c_local _seg_fnraw_out : copy local _fn_raw
+        c_local _seg_fnlo_out `_fn_lo'
+        c_local _seg_fnhi_out `_fn_hi'
+        c_local _seg_fnn_out `_fn_n'
+    }
 end
 
 
@@ -4894,6 +4944,8 @@ program define _dash_plot
     // the comma, is "option scheme() not allowed", r(198) (measured
     // 24sep2026 for each; name() has its own check, above and below).
     local _g_unique "saving scheme aspectratio xsize ysize scale fxsize fysize nodraw play"
+    // The function layers, collected for evaluation after the loop.
+    local _fn_m 0
     foreach gk of local _g_unique {
         local _gseen_`gk' = `: length local _gafter_`gk'' > 0
     }
@@ -4909,6 +4961,10 @@ program define _dash_plot
         local _seg_bands_out   0
         local _seg_vars_out    ""
         local _seg_wvar_out    ""
+        local _seg_fnraw_out   ""
+        local _seg_fnlo_out    ""
+        local _seg_fnhi_out    ""
+        local _seg_fnn_out     ""
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
@@ -4944,6 +5000,16 @@ program define _dash_plot
         }
 
         local _dash_nplots = `_dash_nplots' + `_seg_nplots_out'
+        // A function layer: its place in the plots array (from 1), its
+        // text, range() and n(), for _dash_fn_points below (WP-29 P0.6).
+        if "`_pt_k'" == "function" {
+            local ++_fn_m
+            local _fn_k_`_fn_m' `_dash_nplots'
+            local _fn_raw_`_fn_m' : copy local _seg_fnraw_out
+            local _fn_lo_`_fn_m' : copy local _seg_fnlo_out
+            local _fn_hi_`_fn_m' : copy local _seg_fnhi_out
+            local _fn_n_`_fn_m' : copy local _seg_fnn_out
+        }
         if `_dash_nplots' > `_dash_plot_lim' {
             // The graph's total is known only once its last segment is in.
             if `k' == `n_segs' {
@@ -5011,10 +5077,42 @@ program define _dash_plot
     // be written, and before the report below, so a refused value is never
     // half-reported.  The rules live in _dash_option_rules; a normalised
     // value (an expanded variable name) is written back to its g_ local.
+    //
+    // twoway's order (WP-29 P0.6, measured): every plot's variables and
+    // options and the by() variables are checked, then each function
+    // layer is evaluated, in order, then the graph options are checked.
+    // So by() is validated alone first, the layers are evaluated
+    // (_dash_fn_points, which advances the random-number state as twoway
+    // does), and the other graph rules follow.  A pre-check of every layer
+    // would refuse (function y=runiform()) (function y=nosuch(x)) before
+    // the first layer draws, where twoway has drawn it.
     _dash_option_rules
     foreach _vrule of local _dash_rules_graph {
         local _veq   = strpos("`_vrule'", "=")
         local _vopt  = substr("`_vrule'", 1, `_veq' - 1)
+        if "`_vopt'" != "by" continue
+        local _vspec = substr("`_vrule'", `_veq' + 1, .)
+        local _vval : copy local g_`_vopt'
+        if !`: length local _vval' continue
+        _dash_validate_value "dash" "`_vopt'" "`_vspec'" `"`macval(_vval)'"' ""
+        local g_`_vopt' : copy local _dash_vnorm
+    }
+    // Each function layer's points, as one JSON object keyed by the
+    // layer's place, held in a string scalar -- never a macro, which a
+    // dashboard of 10,000-point layers would overflow (_dash_register_graph
+    // checks it against c(macrolen)).
+    tempname _fp_sc _fx_raw
+    mata: st_strscalar(st_local("_fp_sc"), "")
+    forvalues _m = 1/`_fn_m' {
+        mata: st_strscalar(st_local("_fx_raw"), st_local("_fn_raw_`_m'"))
+        _dash_fn_points `_fx_raw' `_fn_lo_`_m'' `_fn_hi_`_m'' `_fn_n_`_m'' `_fn_k_`_m'' `_fp_sc'
+    }
+    mata: st_strscalar(st_local("_fp_sc"), (st_strscalar(st_local("_fp_sc")) == "" ? "" : "{" + st_strscalar(st_local("_fp_sc")) + "}"))
+    macro drop dash__uv
+    foreach _vrule of local _dash_rules_graph {
+        local _veq   = strpos("`_vrule'", "=")
+        local _vopt  = substr("`_vrule'", 1, `_veq' - 1)
+        if "`_vopt'" == "by" continue
         local _vspec = substr("`_vrule'", `_veq' + 1, .)
         local _vval : copy local g_`_vopt'
         if !`: length local _vval' continue
@@ -5325,10 +5423,10 @@ program define _dash_plot
         mata: st_strscalar(st_local("_rg_name"), st_local("graph_name"))
         mata: st_strscalar(st_local("_rg_json"), st_local("graph_json"))
         mata: st_strscalar(st_local("_rg_spec"), st_local("0"))
-        _dash_register_graph `_rg_name' `_rg_json' `_rg_spec'
+        _dash_register_graph `_rg_name' `_rg_json' `_rg_spec' `_fp_sc'
     }
     else {
-        _dash_render_immediate `"`graph_json'"'
+        _dash_render_immediate `"`graph_json'"' `_fp_sc'
     }
 end
 
@@ -5584,82 +5682,87 @@ end
 
 
 // ================================================================
-// _dash_fn_refuse  -- a function layer calling a function Stata lacks
+// _dash_fn_points raw_sc lo hi n k obj_sc  -- evaluate one function layer
+//                                            with twoway's own generator
 // ================================================================
-// twoway refuses `twoway function y = nosuchfunction(x)' -- "error in
-// expression: nosuchfunction(x)", r(133) -- and so it refuses any call of a
-// name that is no Stata function (system(x), Sin(x), mpg(x)), wherever it
-// stands in the expression (measured 24sep2026).  dash registered the
-// layer, rc 0, and the renderer drew it empty with a note.
+// dash evaluated `function' itself, in Python, and lost Stata's grammar: ^
+// was folded right to left (2^3^x drew 512 where twoway draws 64), / and
+// * and - and + were grouped Python's way, and pi, e, x**2 and +x were
+// drawn where twoway refuses them (WP-29 P0.6).  It now runs
+// twoway__function_gen -- the generator twoway function itself calls --
+// as twoway calls it, and keeps the points.
 //
-// Called as _dash_fn_refuse `"<expression>"', read by value
-// (_dash_text_args).  Each name written directly before
-// a `(' (_dash_fn_names, at most 100 of them) is put to Stata as a call with
-// 32 arguments of 1, under capture: Stata answers r(133), "unknown
-// function", only for a name that is no function, and checks a known
-// function's arguments before it runs it, so none is evaluated -- the
-// random-number state is unchanged (measured: runiform() and rnormal()
-// with 32 arguments are r(198), c(rngstate) the same) -- save the pure
-// ones that take any number (max(), inlist()).  The name is a Stata name
-// (_dash_fn_names checks it), so it is safe on the command line, and the
-// expression is echoed only through _dash_say, at most 200 characters of
-// it.  A function Stata has but
-// the renderer does not draw -- normal(x) -- is not refused here: twoway
-// draws it, and the renderer's own check reports the layer it leaves empty.
+// raw_sc is a string scalar holding the layer's text as typed (`y =' and
+// all); lo, hi and n are the generator's range() and n(); k is the layer's
+// place in the graph's plots (from 1); obj_sc is a string scalar the
+// points are appended to, as "<k>":{"x0":..,"dx":..,"y":[..]}, comma
+// separated (_dash_fn_points_json).
 //
-// An operand written with blanks before a `(' (_dash_fn_space_call) is
-// refused too: Stata never reads sin (x) as a call.  twoway refuses
-// `function y = sin (x)' -- "error in expression:  sin (x)", r(111), sin
-// looked for as a variable -- and r(198) when the name is one the data has
-// (mpg, or mp for it), x, _n, _N or _pi, or the operand is a number, a
-// string or a closing parenthesis; with tabs alone between the name and
-// the `(' it is r(133), an unknown function (measured 24sep2026).  Stata
-// reports whichever it meets first: nosuch(x) + sin (x) is r(133), sin (x)
-// + nosuch(x) r(111), so only the calls written before the operand are
-// asked about first.  dash drew sin (x) as sin(x), rc 0.  2 * (x) and x +
-// (1) have an operator before the `(' and are drawn.  The name put to
-// -confirm- is a Stata name (_dash_fn_space_call reads only letters,
-// digits and _), and the expression is echoed only through _dash_say.
-program define _dash_fn_refuse
+//   * A top-level comma in the text would reach the generator's own option
+//     list -- y = x, generate(mpg weight, replace) -- so it is refused
+//     before the command line is built, r(198), as twoway refuses the
+//     expression (section 04 A7).
+//   * ._Gr_Global.callerver is set to the user's version ($dash__uv, set
+//     at dash's entry), as graph.ado sets it before every graph: the
+//     generator evaluates under it, so runiform() draws the user's
+//     version's numbers (section 04 S4-D6, M6).
+//   * Like twoway (twoway_function_parse.class), the data are preserved
+//     only when they hold fewer than n observations, where the generator
+//     adds some; otherwise it works in them, through tempvars, and the
+//     data are marked changed as twoway marks them (K1-K4).  Observations
+//     without a variable end as twoway ends them: none.
+//   * The text reaches the command line only through macval(): the one
+//     expansion it gets is the generator's own, as under twoway (M11).
+//   * A refusal is echoed in twoway's one line, "error in expression: "
+//     and the text after the `=' as typed (at most 200 characters), through
+//     _dash_say so SMCL in it is shown, not obeyed, and ends with the
+//     generator's code.  Break (r(1)) ends the command at once, unechoed.
+program define _dash_fn_points
     version 16.0
-    mata: _dash_text_args(0, 0, 0)
-    mata: st_local("_fn_sp", _dash_fn_space_call(st_local("_dash_txt")))
-    local _fn_upto : copy local _dash_txt
-    if `: length local _fn_sp' {
-        local _fn_pos : word 2 of `_fn_sp'
-        mata: st_local("_fn_upto", substr(st_local("_dash_txt"), 1, `_fn_pos' - 1))
+    args raw_sc lo hi n k obj_sc
+    mata: st_local("_fx_raw", st_strscalar(st_local("raw_sc")))
+    mata: st_local("_fx_echo", (ustrregexm(st_local("_fx_raw"), ///
+        "^([A-Za-z_][A-Za-z0-9_]*)?[ \t]*=") ? ///
+        substr(st_local("_fx_raw"), strlen(ustrregexs(0)) + 1, .) : st_local("_fx_raw")))
+    mata: st_local("_fx_echo", (ustrlen(st_local("_fx_echo")) > 200 ? ///
+        usubstr(st_local("_fx_echo"), 1, 197) + "..." : st_local("_fx_echo")))
+    mata: _dash_comma_pos(st_local("_fx_raw"), "_fx_cpos")
+    // A "' with no `" open before it ends a compound quote that was never
+    // opened: twoway's own parse of its command refuses it, r(198), before
+    // the generator is reached (y = strlen("'x"); the generator alone
+    // takes it; measured, test_json_escaping.cscript JSE-47).  A balanced
+    // compound string, strlen(`"ab"'), is drawn (Q1).
+    mata: st_local("_fx_cq", strofreal(_dash_fn_stray_close(st_local("_fx_raw"))))
+    if `_fx_cq' local _fx_cpos 1
+    if `_fx_cpos' != 0 {
+        mata: _dash_say("err", "error in expression: ", st_local("_fx_echo"), "")
+        exit 198
     }
-    mata: st_local("_fn_names", _dash_fn_names(st_local("_fn_upto"), 100))
-    local _fn_args "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1"
-    foreach _fn of local _fn_names {
-        capture local _fn_z = `_fn'(`_fn_args')
-        if _rc == 133 {
-            // twoway's words; an expression of more than 200 characters
-            // is shown in its first 197, so a refusal is never a page long.
-            mata: _dash_say("err", "error in expression: ", ///
-                (ustrlen(st_local("_dash_txt")) > 200 ? ///
-                usubstr(st_local("_dash_txt"), 1, 197) + "..." : st_local("_dash_txt")), "")
-            mata: _dash_say("err", "      unknown function ", st_local("_fn"), "()")
-            exit 133
-        }
+    local uv : copy global dash__uv
+    if "`uv'" == "" local uv = string(c(version))
+    if "`._Gr_Global.isa'" == "" {
+        ._Gr_Global = .global_g.new
     }
-    if !`: length local _fn_sp' exit
-    local _fn_kind : word 1 of `_fn_sp'
-    local _fn_nm : word 3 of `_fn_sp'
-    mata: _dash_say("err", "error in expression: ", ///
-            (ustrlen(st_local("_dash_txt")) > 200 ? ///
-            usubstr(st_local("_dash_txt"), 1, 197) + "..." : st_local("_dash_txt")), "")
-    if "`_fn_kind'" == "T" {
-        display as error "      unknown function `_fn_nm'<tab>()"
-        exit 133
+    ._Gr_Global.callerver = "`uv'"
+    // Data with observations and no variable hold nothing to keep: twoway
+    // leaves none there (its tempvars go, and _N with them; measured,
+    // section 04 A5), so they are not preserved.
+    if _N < `n' & c(k) > 0 {
+        preserve
     }
-    local _fn_rc 198
-    if "`_fn_kind'" == "N" {
-        capture confirm variable `_fn_nm'
-        if _rc & !inlist("`_fn_nm'", "x", "_n", "_N", "_pi") local _fn_rc 111
+    tempvar fy fx
+    capture twoway__function_gen `macval(_fx_raw)', range(`lo' `hi') x(x) n(`n') generate(`fy' `fx')
+    local rc = _rc
+    if `rc' == 1 exit 1
+    if `rc' {
+        mata: _dash_say("err", "error in expression: ", st_local("_fx_echo"), "")
+        exit `rc'
     }
-    display as error "      A name or value and a parenthesis written apart are two operands to Stata, not a call."
-    exit `_fn_rc'
+    mata: st_strscalar(st_local("obj_sc"), st_strscalar(st_local("obj_sc")) + ///
+        (st_strscalar(st_local("obj_sc")) == "" ? "" : ",") + ///
+        char(34) + st_local("k") + char(34) + ":" + ///
+        _dash_fn_points_json(st_local("fy"), strtoreal(st_local("n")), ///
+        st_numscalar("r(min)"), st_numscalar("r(delta)")))
 end
 
 // ================================================================
@@ -5905,7 +6008,7 @@ end
 // 24sep2026; test_json_escaping.cscript JSE-45, JSE-47).
 program define _dash_register_graph
     version 16.0
-    args name_sc json_sc spec_sc
+    args name_sc json_sc spec_sc fp_sc
     mata: st_local("name", st_strscalar(st_local("name_sc")))
     mata: st_local("json_spec", st_strscalar(st_local("json_sc")))
     mata: st_local("raw_spec", st_strscalar(st_local("spec_sc")))
@@ -6017,6 +6120,20 @@ program define _dash_register_graph
         exit(198)
     }
 
+    // A function graph's points are kept in one global, which holds
+    // c(macrolen) characters; st_global() past that truncates in silence
+    // (WP-29 P0.6, section 04 E6).  Refused before anything is stored.
+    local _fp_len 0
+    if "`fp_sc'" != "" {
+        mata: st_local("_fp_len", strofreal(strlen(st_strscalar(st_local("fp_sc")))))
+    }
+    if `_fp_len' > c(macrolen) {
+        _dash_count_fmt _fp_len_s `_fp_len'
+        display as error "dash: graph '`name'' holds `_fp_len_s' characters of function points, more than the `c(macrolen)' one Stata macro holds."
+        display as error "      Use a smaller n(), put the function layers in separate graphs, or raise c(macrolen) with set maxvar."
+        exit 134
+    }
+
     // WP-19: the registry holds at most `graphs' graphs and KPI cards.  A
     // NEW name past the limit is refused here, before any global is set or
     // retired; a name already registered is a replace and never counts.
@@ -6033,6 +6150,14 @@ program define _dash_register_graph
     // was expanded again, and an =exp in it evaluated (JSE-67).
     mata: st_global("dash_spec_" + st_local("name"), st_local("raw_spec"))
     mata: st_global("dash_json_" + st_local("name"), st_local("json_spec"))
+    // The graph's function points (WP-29 P0.6), or none: a graph that
+    // replaced a function graph keeps no points of it.
+    if `_fp_len' {
+        mata: st_global("dash_fpts_" + st_local("name"), st_strscalar(st_local("fp_sc")))
+    }
+    else {
+        capture macro drop dash_fpts_`name'
+    }
 
     // Update registry
     if `already' == 0 {
@@ -6054,8 +6179,9 @@ end
 program define _dash_render_immediate
     version 16.0
     // The graph JSON alone; the command, handed over as well, was read by
-    // nothing (see _dash_plot).
-    args json_spec
+    // nothing (see _dash_plot).  fp_sc is the string scalar holding the
+    // graph's function points (WP-29 P0.6), "" when it has none.
+    args json_spec fp_sc
 
     // ---- Extract saving() path from JSON ----
     local saving_path ""
@@ -6333,7 +6459,9 @@ program define _dash_render_immediate
     local _dash_lvl = c(level)
     local _dash_sess_scheme = c(scheme)
     _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
-    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'}}"'
+    // The final } is written by _dash_fn_spec_tail, after the function
+    // points (WP-29 P0.6).
+    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'}"'
 
     tempname fh
     // quietly: `write replace' notes a missing file, and this path is a
@@ -6341,6 +6469,7 @@ program define _dash_render_immediate
     quietly file open `fh' using "`spec_json_path'", write replace text
     file write `fh' `"`master_json'"'
     file close `fh'
+    mata: _dash_fn_spec_tail(st_local("spec_json_path"), "", st_local("fp_sc"))
 
     // ---- Locate dash_render.py ----
     _dash_find_render
@@ -6404,7 +6533,7 @@ program define _dash_clear
     // survived indefinitely.  A prefix sweep has neither problem and needs
     // no maintenance when a new per-graph global is added.
     //
-    // These four prefixes are dash's own namespace.  A user global that
+    // These five prefixes are dash's own namespace.  A user global that
     // happens to start with one of them is not distinguishable from dash's
     // and is cleared too; that is what `dash clear' means.
     //
@@ -6417,6 +6546,7 @@ program define _dash_clear
     capture macro drop dash_json_*
     capture macro drop dash_opts_*
     capture macro drop dash_kpi_*
+    capture macro drop dash_fpts_*
 
     capture macro drop dash_graph_registry
     // Leading-underscore globals, if any command ever sets one.
@@ -7406,6 +7536,7 @@ program define _dash_prepare_spec, rclass
         // (_dash_qual_rewrite, above), joined by value.
         mata: st_local("graphs_json", st_local("graphs_json") + st_local("_qg_`k'"))
         local n_graphs = `n_graphs' + 1
+        local _fp_names `_fp_names' `gname'
     }
 
     // assemble KPIs JSON
@@ -7511,7 +7642,26 @@ program define _dash_prepare_spec, rclass
     // uses -- a served dashboard otherwise sends the browser only what it
     // plots.  A flag, so only "1" or "0" reaches the spec.
     local _csv_flag = cond("`csv'" != "", "1", "0")
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'}}"'
+    // The function points of the graphs drawn, written beside them by
+    // _dash_fn_spec_tail, count against the bytes the dashboard embeds
+    // (WP-29 P0.6): refused here, before the file is written.
+    local _fp_bytes 0
+    foreach _fpn of local _fp_names {
+        local _fp_l : strlen global dash_fpts_`_fpn'
+        local _fp_bytes = `_fp_bytes' + `_fp_l'
+    }
+    _dash_limit, name(bytes)
+    if `_fp_bytes' > r(value) {
+        _dash_count_fmt _fp_bytes_s `_fp_bytes'
+        _dash_count_fmt _fp_lim_s   `r(value)'
+        _dash_count_fmt _fp_ceil_s  `r(ceiling)'
+        display as error "dash: this dashboard would embed `_fp_bytes_s' characters of function points, more than the `_fp_lim_s' dash embeds."
+        display as error "      Use a smaller n(), or set global dash_max_bytes to a higher value (at most `_fp_ceil_s')."
+        exit 134
+    }
+    // The final } is written by _dash_fn_spec_tail, after the function
+    // points (WP-29 P0.6).
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'}"'
 
     tempname fh
     // quietly: see the note at the other spec writer -- `write replace'
@@ -7519,6 +7669,7 @@ program define _dash_prepare_spec, rclass
     quietly file open `fh' using "`specpath'", write replace text
     file write `fh' `"`master_json'"'
     file close `fh'
+    mata: _dash_fn_spec_tail(st_local("specpath"), st_local("_fp_names"), "")
 
     return local layout          `"`layout'"'
     return local filterposition  `"`filterposition'"'

@@ -1627,6 +1627,18 @@ CORPUS = [
     # order (bare, each joins in the data's order: the cases above).
     *[_case(f"{t}, sort", [plot_for(t, {"sort": "sort"})])
       for t in ("line", "connected", "area", "rline", "rarea", "rconnected")],
+    # ---- function points Stata computed (WP-29 P0.6) -------------------------
+    # The expression is twoway's 2^3^x, which a renderer evaluating it
+    # would draw as 2 8 512; the stored points, 1 8 64, are drawn instead.
+    _case("function with stored points",
+          [plot_for("function", {"range": "0 2", "n": "3"},
+                    expr="2^3^x",
+                    points={"x0": 0, "dx": 1, "y": [1, 8, 64]})]),
+    _case("function points under by()",
+          [plot_for("function", {"range": "0 2", "n": "3"},
+                    expr="2^3^x",
+                    points={"x0": 0, "dx": 1, "y": [1, 8, 64]})],
+          None, {"by": "foreign"}),
 ]
 
 
@@ -2223,6 +2235,13 @@ MOVE_CORPUS = [
     *[_move_case(e["name"], e["move"], e["plots"], e["go"],
                  graphs=e["graphs"], if_expr=e["if_expr"])
       for e in _OWN_QUALIFIER_MOVES if e["parity"]],
+    # A function layer's stored points are fixed by Stata: a move leaves
+    # them where they are, in both modes (WP-29 P0.6).
+    _move_case("function with stored points, dropdown", _MOVES[0],
+               [_sc(), plot_for("function", {"range": "0 2", "n": "3"},
+                                expr="2^3^x",
+                                points={"x0": 0, "dx": 1,
+                                        "y": [1, 8, 64]})]),
 ]
 
 

@@ -2753,11 +2753,11 @@
   - Suggested fix: WP-29 section 10 (axis(#) routing and by() shared scales): route axis(#) on every axis option to the axis it names, and refuse an axis number no layer uses with twoway's return code and message.
   - Resolution: Not fixed because WP-29 section 10 has not landed. Graded S1 (WP-29): an option is drawn on the wrong axis; yscale(log axis(2)) logs the primary axis.
 
-- [ ] Title: function evaluates ^ from the right and accepts pi and e, which twoway refuses
+- [x] Title: function evaluates ^ from the right and accepts pi and e, which twoway refuses
   - File Names and Line Numbers: dash_render.py at 7421d3d: GlyphMapper.map_function (12431; _SAFE_FUNCS at 12477), _dash_function_args (24792); dash.ado at 7421d3d: _dash_fn_refuse (5457)
   - Description: DROPIN-REMAINING.md P0.6, verified at 357c368: `function` evaluates `^` right to left and accepts `pi` and `e`. `2^3^x` at x=2 draws 512 where Stata gives 64. `pi*x` draws, where `twoway` refuses it r(111). Sources: GAPS2-A6-d, GAPS2-C5-g, GAPS2-A6-c.
   - Suggested fix: WP-29 section 04 (function evaluated by Stata): take the points from Stata's own twoway__function_gen at registration, so the curve and the refusals are Stata's, with the RNG state as twoway leaves it.
-  - Resolution: Not fixed because WP-29 section 04 has not landed. Graded S1 (WP-29): wrong numbers drawn (512 for 64), and commands twoway refuses are drawn.
+  - Resolution: Fixed 01oct2026 (WP-29, P0.6). function layers are evaluated at registration by twoway__function_gen (dash.ado _dash_fn_points, after the plot and by() checks, before the graph options); their points are stored in $dash_fpts_<name>, written beside the graphs by _dash_fn_spec_tail, and drawn by both renderers without evaluating the expression (_dash_attach_function_points, _dash_function_points); a spec without points is drawn by _stata_fn_parse/_stata_fn_eval with Stata's grammar and missing rules. Pinned by test/test_function_expr.py::TestStataGrammarFallback::test_caret_is_left_associative, ::TestStoredPoints::test_the_points_are_drawn_not_the_expression, ::TestAgainstTheFixture::test_every_stored_probe, test/test_parser.cscript FX-01, test/test_wp29_truth.cscript FX-20; fixture test/fixtures/function_expr_truth.json. Residual, deferred (WP-29): by() evaluates once where twoway evaluates once per panel (FX-24); the points-free fallback knows ten functions; a malformed y-form is echoed as typed rather than as twoway's token.
 
 - [ ] Title: The lpoly and lpolyci default bandwidth ignores kernel() and degree() and misses Stata's rule of thumb
   - File Names and Line Numbers: dash_render.py at 7421d3d: _LPOLY_ROT_C (229), GlyphMapper._default_lpoly_bwidth (9247), GlyphMapper.map_lpoly (9437), GlyphMapper.map_lpolyci (9525)

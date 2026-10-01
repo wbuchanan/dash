@@ -1870,6 +1870,66 @@ def _dash_lone_second_axes(spec):
     return out
 
 
+def _dash_attach_function_points(spec):
+    """The spec with each function layer's stored points on its plot.
+
+    Stata writes a function layer's points beside the graphs, as the
+    top-level member ``"function_points"``: ``{<graph name>: {<k>: points}}``
+    with k the layer's place in the graph's plots, from 1 (WP-29 P0.6;
+    dash.ado's _dash_fn_spec_tail).  Both renderers call this first, before
+    the spec is capped or embedded, so a plot carries ``"points"`` and
+    ``GlyphMapper.map_function`` draws them; the served app embeds plots
+    that already hold them.
+
+    A graph is named by ``graph_options.name``, else ``name``, else ""
+    (the one-line form's graph); only the first graph of a name takes a
+    table.  A key that is not 1-4 ASCII digits, a place past the plots, a
+    plot that is not a function, and a table that is not a dict are
+    ignored.  The points themselves are checked where they are drawn
+    (``_dash_function_points``).  The input is never mutated; the copy has
+    no ``"function_points"``.
+    """
+    if not isinstance(spec, dict):
+        return spec
+    out = dict(spec)
+    fp = out.pop("function_points", None)
+    graphs = out.get("graphs")
+    if not isinstance(fp, dict) or not isinstance(graphs, list):
+        return out
+    graphs = list(graphs)
+    seen = set()
+    for gi, g in enumerate(graphs):
+        if not isinstance(g, dict):
+            continue
+        go = g.get("graph_options")
+        name = str((go.get("name") if isinstance(go, dict) else None)
+                   or g.get("name") or "")
+        if name in seen:
+            continue
+        seen.add(name)
+        table = fp.get(name)
+        plots = g.get("plots")
+        if not isinstance(table, dict) or not isinstance(plots, list):
+            continue
+        plots = list(plots)
+        changed = False
+        for key, val in table.items():
+            if not isinstance(key, str) or not re.fullmatch(r"[0-9]{1,4}", key):
+                continue
+            k = int(key)
+            if not 1 <= k <= len(plots):
+                continue
+            p = plots[k - 1]
+            if not isinstance(p, dict) or str(p.get("type", "")).lower() != "function":
+                continue
+            plots[k - 1] = dict(p, points=val)
+            changed = True
+        if changed:
+            graphs[gi] = dict(g, plots=plots)
+    out["graphs"] = graphs
+    return out
+
+
 def _dash_cap_spec(spec, limits):
     """The spec with at most ``graphs`` items and ``plots`` plots a graph,
     and each item under a name of its own (``_dash_named_once``).
@@ -5597,37 +5657,17 @@ def _apply_jitter(
 # The smallest bar width dash will pass to Bokeh.  Bokeh raises
 # "Distances must be positive!" on anything at or below zero, and that
 # exception is not confined to the bar -- it loses the whole dashboard.
-# The longest function() expression dash will validate.  _validate_expr_node
-# recurses once per AST node, so a machine-generated expression of tens of
-# thousands of terms raised RecursionError -- which is not a SyntaxError or a
-# ValueError, so it escaped the guard and lost the whole dashboard.
+# The longest function() expression the points-free fallback will parse
+# (_stata_fn_parse).  A spec Stata wrote carries the layer's points and is
+# never parsed; a spec written by hand with a longer expression draws the
+# layer empty with a note.
 _MAX_EXPR_CHARS = 5000
 
-
-def _floats_only(tree: "_ast.AST") -> "_ast.AST":
-    """Make every numeric literal in *tree* a float.
-
-    Stata evaluates in double precision, so ``9^9^9^9`` overflows to missing.
-    Python's integer power is exact and unbounded, so the same expression
-    computed a number with billions of digits: measured past 20 seconds with
-    the GIL held throughout, which means Stata's Break key cannot recover it
-    and the process must be killed.
-
-    Turning the constants into floats gives Python the same arithmetic Stata
-    has -- ``9.0 ** 9.0 ** 9.0`` is ``inf`` immediately -- so an expression
-    that overflows draws nothing instead of never returning.
-
-    Args:
-        tree: A parsed, already-validated expression tree.
-
-    Returns:
-        The same tree, with integer constants replaced by floats.
-    """
-    for node in _ast.walk(tree):
-        if isinstance(node, _ast.Constant) and isinstance(node.value, int) \
-                and not isinstance(node.value, bool):
-            node.value = float(node.value)
-    return _ast.fix_missing_locations(tree)
+# The deepest nesting of parentheses (and calls) _stata_fn_parse takes:
+# twoway draws 40 nested parentheses and refuses 50 (measured, WP-29
+# section 04 E3), and the parser recurses only there, so the stack it can
+# use is bounded whatever the expression.
+_FN_EXPR_MAX_NEST = 40
 
 
 # A confidence band's look is the scheme's ci style, not a constant:
@@ -12535,24 +12575,35 @@ class GlyphMapper:
         n_points: int = 300,
         options: dict = {},
         color_idx: int = 0,
+        points: Any = None,
     ) -> list:
-        """Add a mathematical function curve to *fig*.
+        """Add a twoway function curve to *fig*.
 
-        Evaluates a user-supplied expression string over a uniform grid and
-        renders the result as a line.  The expression is validated against an
-        AST whitelist before any evaluation; raw ``eval()`` on unvalidated
-        strings is never performed.
+        A spec ``dash`` wrote carries the layer's *points*: Stata evaluated
+        the expression at registration with twoway's own generator
+        (twoway__function_gen, WP-29 P0.6), and the points are drawn as
+        they are -- the expression is never parsed or evaluated here.  A
+        points object that is not valid (``_dash_function_points``) draws
+        the layer empty, and the caller notes it.
 
-        Security: Only a restricted set of AST node types and function names
-        is permitted.  ``__builtins__`` is removed from the evaluation
-        namespace to prevent access to Python built-ins.
+        A spec without points (written by hand) is drawn by a small
+        interpreter of Stata's grammar (``_stata_fn_parse``,
+        ``_stata_fn_eval``): ``x``, ``_pi``, numbers and Stata's missing
+        values, ``+ - * / ^`` with Stata's precedence (``^`` folds left to
+        right and a sign after it takes one operand; ``/`` binds tighter
+        than ``*``, ``-`` than ``+``), and the functions ``sin``, ``cos``,
+        ``tan``, ``exp``, ``log``, ``log10``, ``sqrt``, ``abs``, ``floor``
+        and ``ceil``.  A missing value propagates as in Stata.  Anything
+        else -- ``pi``, ``e``, ``**``, a leading ``+``, any other name --
+        draws the layer empty.  No text reaches ``eval`` or ``compile``.
+        The grid is twoway's: ``x = lo + dx*(i-1)``, ``dx = (hi-lo)/(n-1)``.
 
         Args:
             fig:      Bokeh Figure object.
-            expr:     Mathematical expression string using variable ``x`` and
-                      the safe function names listed below.
-            x_range:  ``(x_lo, x_hi)`` tuple defining the evaluation domain.
-            n_points: Number of grid points.  Stata's default is 300.
+            expr:     The expression as the user typed it (the legend's
+                      text, and the fallback's input).
+            x_range:  ``(x_lo, x_hi)`` for the fallback's grid.
+            n_points: The fallback's number of grid points (twoway's 300).
             options:  Translated plot-level options dict.
             color_idx: The layer's place in the graph, which picks its
                       colour from the scheme's p1..p15 cycle as every other
@@ -12560,171 +12611,56 @@ class GlyphMapper:
                       a function drawn second is p2's #90353B, third p3's
                       #55752F.  This mapper used to take p1 whatever its
                       place (WP-23; test_help_claims_8.py).
-
-        Permitted names in expressions:
-            Variables: ``x``, ``pi``, ``e``
-            Functions: ``sin``, ``cos``, ``tan``, ``exp``, ``log``,
-                       ``log10``, ``sqrt``, ``abs``, ``floor``, ``ceil``
+            points:   The stored points object
+                      ``{"x0": .., "dx": .., "y": [..]}``, or None.
 
         Returns:
-            List with the single line GlyphRenderer, or an empty renderer
-            if validation or evaluation fails.
+            List with the single line GlyphRenderer; its source is empty
+            when the points or the expression cannot be drawn.
         """
-        import ast as _ast
-
-        _SAFE_NAMES: frozenset = frozenset({"x", "pi", "e"})
-        _SAFE_FUNCS: frozenset = frozenset({
-            "sin", "cos", "tan", "exp", "log", "log10",
-            "sqrt", "abs", "floor", "ceil",
-        })
-
-        def _validate_expr_node(node: _ast.AST) -> None:
-            """Recursively validate that *node* contains only safe AST constructs."""
-            if isinstance(node, _ast.Expression):
-                _validate_expr_node(node.body)
-            elif isinstance(node, _ast.Constant):
-                # Only REAL numeric literals.  The docstring promises "numeric
-                # literals are always safe", and _floats_only -- the coercion
-                # that turns 9^9^9^9 into inf instead of an exact bignum -- acts
-                # on int and float alone.  So anything else here reaches eval():
-                # a str/bytes constant is a resource vector (`'%50000000d' % 1`
-                # allocates 50 MB, `'a'*n` a long string), and a power tower of
-                # bool constants -- `(True+True)**(True+True+True)**...` -- is
-                # computed EXACTLY, because _floats_only deliberately skips bool,
-                # holding the GIL past 15 s (measured) the same way the int tower
-                # used to.  Reject bool, str, bytes, complex, None and Ellipsis;
-                # accept int and float, which _floats_only then makes float.
-                if isinstance(node.value, bool) or not isinstance(
-                        node.value, (int, float)):
-                    raise ValueError(
-                        "Only real numeric literals are allowed in function "
-                        f"expressions, not {type(node.value).__name__}."
-                    )
-            elif isinstance(node, _ast.Name):
-                if node.id not in _SAFE_NAMES:
-                    raise ValueError(
-                        f"Unsafe name in function expression: {node.id!r}. "
-                        f"Allowed names: {sorted(_SAFE_NAMES)}"
-                    )
-            elif isinstance(node, (_ast.BinOp, _ast.UnaryOp)):
-                # iter_child_nodes on BinOp yields (left, op, right) where op
-                # is an operator node (Add, Sub, Mult, etc.).  Operator nodes
-                # carry no dangerous payload; skip them explicitly so the
-                # else-branch does not reject them.
-                _OP_NODES = (
-                    _ast.Add, _ast.Sub, _ast.Mult, _ast.Div, _ast.FloorDiv,
-                    _ast.Mod, _ast.Pow, _ast.UAdd, _ast.USub, _ast.BitXor,
-                    _ast.BitOr, _ast.BitAnd,
-                )
-                for child in _ast.iter_child_nodes(node):
-                    if isinstance(child, _OP_NODES):
-                        continue  # safe: pure operator, no state
-                    _validate_expr_node(child)
-            elif isinstance(node, _ast.Call):
-                if (
-                    not isinstance(node.func, _ast.Name)
-                    or node.func.id not in _SAFE_FUNCS
-                ):
-                    raise ValueError(
-                        f"Disallowed function call in expression. "
-                        f"Allowed functions: {sorted(_SAFE_FUNCS)}"
-                    )
-                for arg in node.args:
-                    _validate_expr_node(arg)
-                if node.keywords:
-                    raise ValueError("Keyword arguments are not allowed in function expressions.")
-            else:
-                raise ValueError(
-                    f"Disallowed AST node type in expression: {type(node).__name__}"
-                )
-
+        text = str(expr)
         empty_source = ColumnDataSource({"x_fn": [], "y_fn": []})
 
-        expr = _stata_expr_to_python(expr)
-
-        if len(expr) > _MAX_EXPR_CHARS:
-            warnings.warn(
-                f"dash: function expression is {len(expr)} characters, over "
-                f"the {_MAX_EXPR_CHARS} limit; the layer is drawn empty. "
-                f"Validating it is recursive, one frame per term, so a long "
-                f"expression exhausts the stack.",
-                UserWarning, stacklevel=2,
-            )
+        def _empty():
             return [fig.line(x="x_fn", y="y_fn", source=empty_source,
                              line_color=self.scheme.default_color(color_idx, "line"),
                              line_width=self.scheme.plot_line_width(color_idx, "lineplot"))]
 
-        try:
-            tree = _ast.parse(expr, mode="eval")
-            _validate_expr_node(tree)
-            tree = _floats_only(tree)
-            code = compile(tree, "<function>", "eval")
-        # RecursionError is neither a SyntaxError nor a ValueError, so a deep
-        # expression escaped this guard and took the whole dashboard with it.
-        except (SyntaxError, ValueError, RecursionError, MemoryError):
-            return [fig.line(x="x_fn", y="y_fn", source=empty_source,
-                             line_color=self.scheme.default_color(color_idx, "line"),
-                             line_width=self.scheme.plot_line_width(color_idx, "lineplot"))]
-
-        x_lo, x_hi = float(x_range[0]), float(x_range[1])
-        x_arr = np.linspace(x_lo, x_hi, int(n_points))
-
-        ns: dict = {
-            "x":      x_arr,
-            "pi":     math.pi,
-            "e":      math.e,
-            "sin":    np.sin,
-            "cos":    np.cos,
-            "tan":    np.tan,
-            "exp":    np.exp,
-            "log":    np.log,
-            "log10":  np.log10,
-            "sqrt":   np.sqrt,
-            "abs":    np.abs,
-            "floor":  np.floor,
-            "ceil":   np.ceil,
-        }
-
-        try:
-            # __builtins__ blocked: prevents access to Python built-ins from
-            # the evaluated code.  The AST whitelist ensures no harmful nodes
-            # reached compile(); this is defence-in-depth.
-            #
-            # With numpy's floating-point warnings off.  Outside a
-            # function's domain -- the square root of a negative number, the
-            # log of 0 -- numpy warns, and a warning raised inside this
-            # eval() looked __import__ up in the empty builtins: the
-            # KeyError failed the whole layer, so `function y = sqrt(x),
-            # range(-1 1)' drew nothing where twoway draws the curve from 0
-            # to 1, and was reported empty (measured 24sep2026;
-            # test_immediate_dashboards.py).
-            with np.errstate(all="ignore"):
-                y_arr = eval(code, {"__builtins__": {}}, ns)  # noqa: S307 (intentional safe eval)
-                y_arr = np.asarray(y_arr, dtype=float)
-            # Broadcast scalar results (e.g. "pi", "e", "3.14") to match x_arr length
+        if points is not None:
+            got = _dash_function_points(points)
+            if got is None:
+                return _empty()
+            x_arr, y_arr = got
+        else:
+            if len(text) > _MAX_EXPR_CHARS:
+                warnings.warn(
+                    f"dash: function expression is {len(text)} characters, "
+                    f"over the {_MAX_EXPR_CHARS} limit; the layer is drawn "
+                    f"empty.",
+                    UserWarning, stacklevel=2,
+                )
+                return _empty()
+            try:
+                tree = _stata_fn_parse(text)
+            except ValueError:
+                return _empty()
+            x_lo, x_hi = float(x_range[0]), float(x_range[1])
+            n = int(n_points)
+            dx = (x_hi - x_lo) / (n - 1)
+            x_arr = x_lo + dx * np.arange(n, dtype=float)
+            try:
+                y_arr = np.asarray(_stata_fn_eval(tree, x_arr), dtype=float)
+            except (ValueError, MemoryError, FloatingPointError):
+                return _empty()
+            # Broadcast a scalar result to the grid.
             if y_arr.ndim == 0:
                 y_arr = np.full(len(x_arr), float(y_arr))
-        except (ZeroDivisionError, OverflowError):
-            # Python's own float arithmetic raises where Stata's gives a
-            # missing value: `function y = 1/0' and `y = 10^400' are
-            # missing everywhere, and twoway draws them as nothing, in
-            # silence.
-            y_arr = np.full(len(x_arr), np.nan)
-        except Exception:
-            return [fig.line(x="x_fn", y="y_fn", source=empty_source,
-                             line_color=self.scheme.default_color(color_idx, "line"),
-                             line_width=self.scheme.plot_line_width(color_idx, "lineplot"))]
-
-        # A value Stata cannot hold is missing there, and twoway draws it
-        # as a gap: numpy's inf and nan -- x/0, exp(1000*x), log(0) -- are
-        # drawn as the same gaps, never as numbers.
-        y_arr = np.where(np.isfinite(y_arr), y_arr, np.nan)
 
         fn_source = ColumnDataSource({"x_fn": x_arr, "y_fn": y_arr})
         r = fig.line(x="x_fn", y="y_fn", source=fn_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
-                     legend_label=expr[:40])
+                     legend_label=text[:40])
         self._apply_line_opts(r, options)
         return [r]
 
@@ -13846,40 +13782,6 @@ def _natural_cubic_spline(kx: "np.ndarray", ky: "np.ndarray",
     u = xg - x0
     return (m0 * t ** 3 / (6.0 * hh) + m1 * u ** 3 / (6.0 * hh)
             + (y0 / hh - m0 * hh / 6.0) * t + (y1 / hh - m1 * hh / 6.0) * u)
-
-
-def _stata_expr_to_python(expr: str) -> str:
-    """Rewrite Stata's arithmetic operators into their Python spellings.
-
-    Stata writes exponentiation as ``^``.  Python reads ``^`` as a bitwise
-    XOR, which is a legal operator node, so ``x^2`` passes the AST whitelist
-    unchanged and only fails at evaluation time with a TypeError on the float
-    array -- drawing an empty line instead of a parabola.
-
-    Only the operator is rewritten, and only outside string literals.  The
-    caller validates the REWRITTEN expression, so this adds nothing to what
-    the whitelist permits.
-
-    Args:
-        expr: A Stata expression, e.g. ``"x^2"`` or ``"2*x^3 - 1"``.
-
-    Returns:
-        The equivalent Python expression, e.g. ``"x**2"``.
-    """
-    out: list[str] = []
-    quote = ""
-    for ch in expr:
-        if quote:
-            out.append(ch)
-            if ch == quote:
-                quote = ""
-            continue
-        if ch in ("'", '"'):
-            quote = ch
-            out.append(ch)
-            continue
-        out.append("**" if ch == "^" else ch)
-    return "".join(out)
 
 
 _LITERAL_MARK = "\x01"
@@ -25218,6 +25120,307 @@ def _dash_function_args(options):
     return (x_lo, x_hi), n_pts
 
 
+def _dash_function_points(points, n_cap=10000):
+    """``(x, y)`` arrays of a stored function points object, or None.
+
+    *points* is what Stata wrote for a function layer (WP-29 P0.6):
+    ``{"x0": <r(min)>, "dx": <r(delta)>, "y": [<y1>, ..., <yn>]}``, each y
+    a number or null (missing).  x is rebuilt as the generator built it,
+    ``x0 + dx*(i-1)`` -- bit for bit twoway's (measured on ten ranges, n
+    from 3 to 10000; ``np.linspace`` is not twoway's rule).
+
+    The object is checked before anything is converted, so a spec written
+    by hand cannot make this allocate or loop without bound: a dict; x0 and
+    dx real numbers, not booleans; y a list of 1..*n_cap* entries (counted
+    first), each None or a real number, not a boolean.  The conversion is
+    guarded, and a non-finite x0, dx, x or y -- NaN, Infinity, ``1e400``,
+    an integer such as ``10**400`` -- refuses the whole object: Stata never
+    writes one (a missing value is null).
+
+    Returns:
+        ``(x, y)`` float arrays, y NaN where Stata had a missing value; or
+        None when *points* is not such an object.
+    """
+    if not isinstance(points, dict):
+        return None
+    x0, dx, y = points.get("x0"), points.get("dx"), points.get("y")
+
+    def _real(v):
+        return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+    if not (_real(x0) and _real(dx)):
+        return None
+    if not isinstance(y, list) or not 1 <= len(y) <= n_cap:
+        return None
+    for v in y:
+        if v is not None and not _real(v):
+            return None
+    try:
+        fx0 = float(x0)
+        fdx = float(dx)
+        vals = []
+        for v in y:
+            if v is None:
+                vals.append(np.nan)
+                continue
+            f = float(v)
+            if not math.isfinite(f):
+                return None
+            vals.append(f)
+    except (OverflowError, TypeError, ValueError):
+        return None
+    if not (math.isfinite(fx0) and math.isfinite(fdx)):
+        return None
+    with np.errstate(all="ignore"):
+        x = fx0 + fdx * np.arange(len(vals), dtype=float)
+    if not np.isfinite(x).all():
+        return None
+    return x, np.array(vals, dtype=float)
+
+
+def _stata_fn_parse(text):
+    """Parse a twoway function expression by Stata's grammar, for a spec
+    without stored points (WP-29 P0.6).
+
+    The grammar is the one measured in twoway (section 04 E1):
+
+        sum  := diff ('+' diff)*        diff := prod ('-' prod)*
+        prod := quot ('*' quot)*        quot := neg ('/' neg)*
+        neg  := '-'* pow                pow  := atom ('^' expo)*
+        expo := ('-' | '+')* atom
+        atom := NUMBER | MISSING | 'x' | '_pi' | FUNC '(' sum ')'
+              | '(' sum ')'
+
+    so ``2^3^x`` is ``(2^3)^x``, ``2^-1^2`` is ``(2^-1)^2``, ``-x^2`` is
+    ``-(x^2)``, ``0.1*3/0.3`` is ``0.1*(3/0.3)`` and ``1e16+1-2`` is
+    ``1e16+(1-2)``.  Tokens are ASCII only; blanks and tabs separate them.
+    A NUMBER is ``digits[.digits][e[+-]digits]``, ``.digits[...]`` or
+    ``digits.``; MISSING is ``.`` or ``.a``-``.z``; the bare names are
+    ``x`` and ``_pi``; FUNC is one of ten names written directly before
+    its ``(``.  Everything else is refused, as twoway refuses ``pi``,
+    ``e``, ``**``, ``%``, ``//``, ``+x``, ``x^``, ``2x``, ``sin (x)`` and
+    ``sin(x,1)`` -- and as this fallback refuses what it does not know.
+
+    Chains are folded in loops, into n-ary nodes, and the parser recurses
+    only into a parenthesis or a call, at most ``_FN_EXPR_MAX_NEST`` deep,
+    so no expression can exhaust the stack.  Self-contained: the served app
+    copies it verbatim.
+
+    Returns:
+        A tree of tuples: ``("c", value)``, ``("x",)``, ``("neg", node)``,
+        ``("fold", op, [nodes])``, ``("pow", base, [(odd, node), ...])``
+        (odd: the exponent's sign is minus) and ``("call", name, node)``.
+
+    Raises:
+        ValueError: the text is not an expression this grammar takes.
+    """
+    funcs = ("sin", "cos", "tan", "exp", "log", "log10", "sqrt", "abs",
+             "floor", "ceil")
+    if not isinstance(text, str) or not text.isascii():
+        raise ValueError("function expressions are ASCII")
+    toks = []
+    i, n = 0, len(text)
+    namech = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789"
+    while i < n:
+        ch = text[i]
+        if ch in " \t":
+            i += 1
+            continue
+        if ch.isdigit() or (ch == "." and i + 1 < n and text[i + 1].isdigit()):
+            j = i
+            while j < n and text[j].isdigit():
+                j += 1
+            if j < n and text[j] == ".":
+                j += 1
+                while j < n and text[j].isdigit():
+                    j += 1
+            if j < n and text[j] in "eE":
+                k = j + 1
+                if k < n and text[k] in "+-":
+                    k += 1
+                if not (k < n and text[k].isdigit()):
+                    raise ValueError("malformed number")
+                while k < n and text[k].isdigit():
+                    k += 1
+                j = k
+            if j < n and (text[j] in namech or text[j] == "."):
+                raise ValueError("malformed number")
+            toks.append(("c", float(text[i:j])))
+            i = j
+            continue
+        if ch == ".":
+            j = i + 1
+            if j < n and text[j] in "abcdefghijklmnopqrstuvwxyz":
+                j += 1
+            if j < n and (text[j] in namech or text[j] == "."):
+                raise ValueError("malformed missing value")
+            toks.append(("c", float("nan")))
+            i = j
+            continue
+        if ch in namech:
+            j = i
+            while j < n and text[j] in namech:
+                j += 1
+            name = text[i:j]
+            if j < n and text[j] == "(":
+                if name not in funcs:
+                    raise ValueError("unknown function")
+                toks.append(("f", name))
+                i = j + 1
+                continue
+            if name == "x":
+                toks.append(("x",))
+            elif name == "_pi":
+                toks.append(("c", math.pi))
+            else:
+                raise ValueError("unknown name")
+            i = j
+            continue
+        if ch in "+-*/^()":
+            toks.append(("o", ch))
+            i += 1
+            continue
+        raise ValueError("character not in the grammar")
+
+    pos = [0]
+    depth = [0]
+
+    def peek():
+        return toks[pos[0]] if pos[0] < len(toks) else None
+
+    def is_op(t, c):
+        return t is not None and t[0] == "o" and t[1] == c
+
+    def fold(op, nodes):
+        return nodes[0] if len(nodes) == 1 else ("fold", op, nodes)
+
+    def atom():
+        t = peek()
+        if t is None:
+            raise ValueError("expression ends early")
+        if t[0] in ("c", "x"):
+            pos[0] += 1
+            return t
+        if t[0] == "f" or is_op(t, "("):
+            depth[0] += 1
+            if depth[0] > _FN_EXPR_MAX_NEST:
+                raise ValueError("nested too deeply")
+            pos[0] += 1
+            inner = level_sum()
+            if not is_op(peek(), ")"):
+                raise ValueError("unbalanced parenthesis")
+            pos[0] += 1
+            depth[0] -= 1
+            return ("call", t[1], inner) if t[0] == "f" else inner
+        raise ValueError("operand expected")
+
+    def level_pow():
+        base = atom()
+        exps = []
+        while is_op(peek(), "^"):
+            pos[0] += 1
+            odd = False
+            while is_op(peek(), "-") or is_op(peek(), "+"):
+                if is_op(peek(), "-"):
+                    odd = not odd
+                pos[0] += 1
+            exps.append((odd, atom()))
+        return ("pow", base, exps) if exps else base
+
+    def level_neg():
+        odd = False
+        while is_op(peek(), "-"):
+            odd = not odd
+            pos[0] += 1
+        node = level_pow()
+        return ("neg", node) if odd else node
+
+    def chain(op, lower):
+        nodes = [lower()]
+        while is_op(peek(), op):
+            pos[0] += 1
+            nodes.append(lower())
+        return fold(op, nodes)
+
+    def level_quot():
+        return chain("/", level_neg)
+
+    def level_prod():
+        return chain("*", level_quot)
+
+    def level_diff():
+        return chain("-", level_prod)
+
+    def level_sum():
+        return chain("+", level_diff)
+
+    if not toks:
+        raise ValueError("expression required")
+    tree = level_sum()
+    if pos[0] != len(toks):
+        raise ValueError("unexpected text after the expression")
+    return tree
+
+
+def _stata_fn_eval(tree, x):
+    """Evaluate a ``_stata_fn_parse`` tree over the grid *x* with Stata's
+    missing-value rules (WP-29 P0.6).
+
+    Stata has no infinity: any operation whose result it cannot hold is
+    missing, and a missing value stays missing through every later
+    operation.  numpy heals some of them -- ``1/inf`` is 0, ``exp(-inf)``
+    is 0, ``inf**0`` and ``1**nan`` are 1 -- so every intermediate value
+    that is not finite is made NaN, and ``^`` with a NaN on either side is
+    NaN: ``x^.``, ``(0^-1)^0+x``, ``1/(1/0)+x`` and ``exp(-exp(1000))+x``
+    are missing at every x, as in twoway (section 04 E5).  ``^`` is folded
+    left to right, each exponent's sign applied to it alone.
+
+    Self-contained (numpy only): the served app copies it verbatim.
+
+    Returns:
+        A float array the shape of *x*, NaN where Stata has a missing value.
+    """
+    xs = np.asarray(x, dtype=float)
+    table = {"sin": np.sin, "cos": np.cos, "tan": np.tan, "exp": np.exp,
+             "log": np.log, "log10": np.log10, "sqrt": np.sqrt,
+             "abs": np.abs, "floor": np.floor, "ceil": np.ceil}
+    ops = {"+": np.add, "-": np.subtract, "*": np.multiply,
+           "/": np.divide}
+
+    def m(v):
+        return np.where(np.isfinite(v), v, np.nan)
+
+    def ev(node):
+        kind = node[0]
+        if kind == "c":
+            return m(np.full(xs.shape, node[1], dtype=float))
+        if kind == "x":
+            return xs.copy()
+        if kind == "neg":
+            return -ev(node[1])
+        if kind == "fold":
+            f = ops[node[1]]
+            acc = ev(node[2][0])
+            for sub in node[2][1:]:
+                acc = m(f(acc, ev(sub)))
+            return acc
+        if kind == "pow":
+            a = ev(node[1])
+            for odd, sub in node[2]:
+                b = ev(sub)
+                if odd:
+                    b = -b
+                a = np.where(np.isnan(a) | np.isnan(b), np.nan,
+                             m(np.power(a, b)))
+            return a
+        if kind == "call":
+            return m(table[node[1]](ev(node[2])))
+        raise ValueError("not a function expression tree")
+
+    with np.errstate(all="ignore"):
+        return ev(tree)
+
+
 def _dash_note_no_second_y(plot_type):
     """Say that a range layer names no second y variable, in both modes.
 
@@ -25424,6 +25627,9 @@ class DashRenderer:
         # The resource limits (WP-19): the defaults, moved by any global the
         # user set, and the spec held to the graph and plot limits before
         # anything is built from it.
+        # Each function layer's stored points onto its plot (WP-29 P0.6),
+        # before anything is capped or drawn.
+        self.master_spec = _dash_attach_function_points(self.master_spec)
         self.limits: dict = _dash_limits(
             self.master_spec.get("build_options", {}))
         self.master_spec = _dash_cap_spec(self.master_spec, self.limits)
@@ -26694,8 +26900,11 @@ class DashRenderer:
                 # (twoway_function.sthlp: "If range() is not specified,
                 # range(0 1) is assumed.")
                 _fn_range, _fn_n = _dash_function_args(popts)
+                # The points Stata computed, when the spec carries them
+                # (WP-29 P0.6); the expression is then never evaluated.
                 self.mapper.map_function(fig, pexpr, _fn_range, _fn_n, popts,
-                                         color_idx=_pstyle_idx[pi])
+                                         color_idx=_pstyle_idx[pi],
+                                         points=plot.get("points"))
             else:
                 pyvar = plot.get("yvar", yvar)
                 if ptype.lower() == "scatter":
@@ -28704,6 +28913,9 @@ class ServerAppBuilder:
         """
         with open(spec_path, "r", encoding="utf-8") as f:
             self.spec: dict = json.load(f)
+        # Each function layer's stored points onto its plot (WP-29 P0.6),
+        # before the spec is capped and embedded: the app draws them.
+        self.spec = _dash_attach_function_points(self.spec)
 
         with open(data_path, "r", encoding="utf-8") as f:
             self._raw_data_str: str = f.read()
@@ -28792,7 +29004,7 @@ class ServerAppBuilder:
         for _name in ("_TEXTBOX_SUBOPTS", "_TEXTBOX_SUBOPT_RE",
                       "_COLORVAR_LEGEND_NAME", "_KDE_BANDWIDTH_RULE",
                       "_LPOLY_ROT_C", "_FP_GRID_MAX", "_MAX_MBANDS",
-                      "_MIN_BAR_WIDTH", "_MAX_EXPR_CHARS",
+                      "_MIN_BAR_WIDTH", "_MAX_EXPR_CHARS", "_FN_EXPR_MAX_NEST",
                       # _IF_EXPR_ALLOWED_NODES is deliberately absent: it is
                       # a frozenset of AST CLASSES, and repr() of a class is
                       # not source. It is written out by name below.
@@ -28998,7 +29210,7 @@ class ServerAppBuilder:
                          "_dash_note_not_dates", "_dash_date_axis_spec",
                          "_fmt_num",
                          "_dash_kpi_column", "_dash_widget_number",
-                         "_with_color_alias", "_jitter_seed", "_floats_only",
+                         "_with_color_alias", "_jitter_seed",
                          # _dash_build_hover's own callees. A copied
                          # function whose callee stays behind is a NameError
                          # on the served page, not here.
@@ -29012,6 +29224,11 @@ class ServerAppBuilder:
                          # added to one is added to both.
                          "_dash_layer_source", "_dash_range_source",
                          "_dash_pc_source", "_dash_function_args",
+                         # A function layer's stored points, and the
+                         # points-free fallback's parser and evaluator
+                         # (WP-29 P0.6).
+                         "_dash_function_points",
+                         "_stata_fn_parse", "_stata_fn_eval",
                          # The p# each layer draws in (a ci fit is two).
                          "_dash_plot_style_indices",
                          "_dash_glyph_dispatch",
@@ -29422,7 +29639,7 @@ class ServerAppBuilder:
                     # Stata's logical operators (24sep2026).
                     _mask_string_literals, _unmask_string_literals,
                     _stata_logic_to_pandas,
-                    _stata_if_to_pandas, _stata_expr_to_python):
+                    _stata_if_to_pandas):
             out += _textwrap.dedent(
                 _inspect.getsource(_fn)).rstrip("\n").split("\n")
             out += ["", ""]
@@ -30638,7 +30855,7 @@ class ServerAppBuilder:
             "        elif ptype == 'function':",
             "            _fn_range, _fn_n = _dash_function_args(opts)",
             "            _DASH_MAPPER.map_function(fig, plot.get('expr', ''), _fn_range, _fn_n, opts,",
-            "                                      color_idx=_sidx)",
+            "                                      color_idx=_sidx, points=plot.get('points'))",
             "        elif ptype in _DASH_PC_TYPES:",
             "            # The mlabel() column rides along, as the saved page's",
             "            # source carries it (pccapsym labels its first point).",

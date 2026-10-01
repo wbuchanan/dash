@@ -77,20 +77,27 @@
 *!       takes (gau is gaussian, ep and epan epanechnikov); any other
 *!       word as given, for the kernel rule to refuse.
 *!
-*!   _dash_fn_names(expr, cap)
-*!       The names a function expression calls -- each name written
-*!       directly before a `(' outside quotes, once, at most cap -- for
-*!       dash.ado to ask Stata whether each is a function.
+*!   _dash_fn_points_json(yvar, n, x0, dx)
+*!       A function layer's points as the JSON object
+*!       {"x0":..,"dx":..,"y":[..]}: x0 and dx the generator's r(min) and
+*!       r(delta), y the first n values of yvar, each %24.17g, a missing
+*!       value null.
 *!
 *!   _dash_unbound_cands(raw, cap)
 *!       The options of a parser's catch-all whose value -syntax- may not
 *!       have bound, into the caller's locals _ru_n, _ru_tok<i>, _ru_nm<i>
 *!       and _ru_rc<i> (twoway's code for each, r(109) or r(198)).
 *!
-*!   _dash_fn_space_call(expr)
-*!       The first operand of a function expression written with blanks
-*!       before a `(' -- "N <pos> <name>", "T <pos> <name>" (tabs alone)
-*!       or "O <pos>" -- or "", for dash.ado to refuse as twoway does.
+*!   _dash_fn_stray_close(s)
+*!       1 when s holds a compound-quote close "' with no open before it,
+*!       which twoway's parse refuses in a function expression, r(198).
+*!
+*!   _dash_fn_spec_tail(path, names, sc)
+*!       Closes the spec file at path, whose last "}" was left off, with
+*!       ,"function_points":{..}} -- the string scalar sc's points as the
+*!       one-line graph's, or each named graph's $dash_fpts_<name> -- or a
+*!       bare "}" when there are none; points that are not dash's are
+*!       skipped with a note.
 *!
 *!   _dash_rep_scan(opts, unk, cap)
 *!       Whether an option list may give an option twice, and its distinct
@@ -217,8 +224,9 @@
 *!
 *!   _dash_item_globals(name, out_macro)
 *!       The globals one registry item owns that Stata holds, by exact name:
-*!       dash_json_<name>, dash_spec_<name>, dash_kpi_<name> and
-*!       dash_kpi_<name>__<field> for each field _dash_kpi_fields() lists.
+*!       dash_json_<name>, dash_spec_<name>, dash_fpts_<name>,
+*!       dash_kpi_<name> and dash_kpi_<name>__<field> for each field
+*!       _dash_kpi_fields() lists.
 *!
 *!   _dash_option_names(in_macro, out_macro)
 *!       The option names in the option text held by the local in_macro,
@@ -1433,6 +1441,38 @@ string scalar _dash_json_number(real scalar v)
     s = strtrim(strofreal(v, "%21.0g"))
     if (substr(s, 1, 1) == ".")  s = "0" + s
     if (substr(s, 1, 2) == "-.") s = "-0" + substr(s, 2, .)
+    return(s)
+}
+
+// _dash_json_number17(v) -- each value of v as a JSON number that reads
+// back to the same double, or null for a missing value (WP-29 P0.6).
+//
+// A function layer's points are drawn as Stata computed them, so every
+// digit must survive the trip.  %21.0g does not: in exponent form it keeps
+// 15 digits, and 3.3333333333333e-301, -6.66666666666667e-08 and
+// -1.46666666666667e+70 read back as other doubles (measured, section 04
+// E7).  %24.17g reads back exactly.  It writes .5 and -.5, which JSON does
+// not allow, so the zero is put back; 0 is 0 however it was signed; . and
+// .a-.z are null (twoway draws a missing value as a gap).
+string colvector _dash_json_number17(real colvector v)
+{
+    string colvector s
+    real scalar      i
+
+    s = J(rows(v), 1, "")
+    for (i = 1; i <= rows(v); i++) {
+        if (v[i] >= .) {
+            s[i] = "null"
+            continue
+        }
+        if (v[i] == 0) {
+            s[i] = "0"
+            continue
+        }
+        s[i] = strtrim(strofreal(v[i], "%24.17g"))
+        if (substr(s[i], 1, 1) == ".")       s[i] = "0" + s[i]
+        else if (substr(s[i], 1, 2) == "-.") s[i] = "-0" + substr(s[i], 2, .)
+    }
     return(s)
 }
 
@@ -3894,9 +3934,11 @@ string rowvector _dash_kpi_fields()
 // as the KPI, so the graph the user just registered would vanish.
 //
 // An item's globals are these EXACT names and no others: a graph's
-// dash_json_<name> and dash_spec_<name>, and a KPI's marker dash_kpi_<name>
-// and its fields dash_kpi_<name>__<field> (_dash_kpi_fields).  Only the
-// ones Stata holds are returned; an empty field is no global at all.
+// dash_json_<name> and dash_spec_<name>, a function graph's points
+// dash_fpts_<name> (WP-29 P0.6: replacing or dropping the graph drops its
+// points with it), and a KPI's marker dash_kpi_<name> and its fields
+// dash_kpi_<name>__<field> (_dash_kpi_fields).  Only the ones Stata holds
+// are returned; an empty field is no global at all.
 //
 // No prefix is safe.  `macro drop dash_kpi_g1*' also takes g10's globals,
 // and g1 and g10 may be registered at once.  This matched dash_kpi_<name>_*
@@ -3923,7 +3965,8 @@ void _dash_item_globals(string scalar nm, string scalar out_macro)
     real scalar      i, j
 
     fld = _dash_kpi_fields()
-    own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_kpi_" + nm)
+    own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_fpts_" + nm,
+           "dash_kpi_" + nm)
     for (j = 1; j <= length(fld); j++) {
         own = own, "dash_kpi_" + nm + "__" + fld[j]
     }
@@ -4022,57 +4065,121 @@ string scalar _dash_seg_by(string scalar seg)
     return(out)
 }
 
-// _dash_fn_names(expr, cap) -- the names a function expression calls.
-//
-// Every name written directly before a `(' -- as Stata reads a function
-// call, with no space between -- outside double and compound quotes, and
-// not the tail of a number or of another name, each once, at most cap of
-// them, space-separated.  dash.ado asks Stata whether each is a function
-// (_dash_fn_refuse); twoway refuses an expression calling one Stata does
-// not have, "error in expression", r(133).  Every name returned is a Stata
-// name of at most 32 characters, so it may be put on a command line.
-// Linear in the length of expr.
-string scalar _dash_fn_names(string scalar expr, real scalar cap)
+// _dash_fn_points_json(yvar, n, x0, dx) -- a function layer's points, as
+// twoway__function_gen made them, as one JSON object (WP-29 P0.6):
+// {"x0":<x0>,"dx":<dx>,"y":[<y1>,...,<yn>]}.  x0 and dx are the
+// generator's r(min) and r(delta), so x is x0 + dx*(i-1) exactly as the
+// generator built it (the renderers rebuild it so, bit for bit; section 04
+// E7); y is the first n values of yvar in the generator's order, missing
+// as null.  Every number is _dash_json_number17's, so the object holds no
+// character but digits, . + - e E, the letters of null, x0, dx and y, and
+// " : , { } [ ] -- _dash_fn_spec_tail checks exactly that.
+string scalar _dash_fn_points_json(string scalar yvar, real scalar n,
+                                   real scalar x0, real scalar dx)
 {
-    string scalar out, nm, prev
-    real scalar   i, j, n, k, in_dq, in_cq, nxt, c
+    string scalar q
+    string colvector y
 
-    n     = strlen(expr)
-    out   = " "
-    k     = 0
-    in_dq = 0
-    in_cq = 0
-    i     = 1
-    while (i <= n & k < cap) {
-        nxt = _dash_quote_step(expr, n, i, in_dq, in_cq)
-        if (nxt) {
-            i = nxt
-            continue
+    q = char(34)
+    y = _dash_json_number17(st_data((1, n), yvar))
+    return("{" + q + "x0" + q + ":" + _dash_json_number17(x0) + "," +
+           q + "dx" + q + ":" + _dash_json_number17(dx) + "," +
+           q + "y" + q + ":[" + invtokens(y', ",") + "]}")
+}
+
+// _dash_fn_stray_close(s) -- 1 when s holds a compound-quote close "'
+// with no compound open `" before it (counted as a depth), else 0.  twoway's
+// parse of its own command line refuses such a function expression, r(198)
+// -- y = strlen("'x") -- before twoway__function_gen sees it, and the
+// generator alone would take it (WP-29 P0.6, measured); dash refuses it at
+// the same point.
+real scalar _dash_fn_stray_close(string scalar s)
+{
+    real scalar i, n, depth
+    string scalar two
+
+    n = strlen(s)
+    depth = 0
+    for (i = 1; i < n; i++) {
+        two = substr(s, i, 2)
+        if (two == char(96) + char(34)) {
+            depth++
+            i++
         }
-        c = ascii(substr(expr, i, 1))
-        if ((c >= 65 & c <= 90) | (c >= 97 & c <= 122) | c == 95) {
-            prev = (i > 1 ? substr(expr, i - 1, 1) : " ")
-            j = i
-            while (j <= n) {
-                c = ascii(substr(expr, j, 1))
-                if (!((c >= 65 & c <= 90) | (c >= 97 & c <= 122) |
-                      (c >= 48 & c <= 57) | c == 95)) break
-                j++
-            }
-            nm = substr(expr, i, j - i)
-            if (j <= n & substr(expr, j, 1) == "(" & strlen(nm) <= 32 &
-                !(prev == "." | (ascii(prev) >= 48 & ascii(prev) <= 57))) {
-                if (!strpos(out, " " + nm + " ")) {
-                    out = out + nm + " "
-                    k++
-                }
-            }
-            i = j
-            continue
+        else if (two == char(34) + char(39)) {
+            if (depth == 0) return(1)
+            depth--
+            i++
         }
-        i++
     }
-    return(strtrim(out))
+    return(0)
+}
+
+// _dash_fn_points_ok(txt) -- 1 when txt is a points table dash wrote: it
+// begins with {, ends with }, and every byte is one of 0-9 . + - e E n u l
+// x d y " : , { } [ ] (an ascii() lookup).  A global the user set by hand
+// to anything else -- }],"graphs":[ among them -- cannot reach the spec.
+real scalar _dash_fn_points_ok(string scalar txt)
+{
+    real rowvector ok, b
+    string scalar  allowed
+
+    if (strlen(txt) < 2) return(0)
+    if (substr(txt, 1, 1) != "{" | substr(txt, strlen(txt), 1) != "}") return(0)
+    allowed = "0123456789.+-eEnulxdy" + char(34) + ":,{}[]"
+    ok = J(1, 256, 0)
+    b  = ascii(allowed)
+    ok[b :+ 1] = J(1, cols(b), 1)
+    b = ascii(txt)
+    return(all(ok[b :+ 1]))
+}
+
+// _dash_fn_spec_tail(path, names, sc) -- close the spec file at path with
+// the function points beside the graphs (WP-29 P0.6).
+//
+// The writers leave the spec's last } off and call this after closing the
+// file, so the points -- up to c(macrolen) characters a graph -- never
+// travel through a macro concatenation (a local past c(macrolen) is an
+// uncapturable r(920), and st_global() past it truncates in silence;
+// section 04 E6).  With sc != "", the string scalar sc holds the one-line
+// graph's table and is the single entry, keyed "" (the graph has no name).
+// Otherwise there is one entry "<name>":$dash_fpts_<name> for each word of
+// names whose global is not empty.  An entry that is not dash's
+// (_dash_fn_points_ok) is skipped with a note; the renderers then draw that
+// layer from its expression.  Appends ,"function_points":{<entries>}} or,
+// with no entry, the bare }.
+void _dash_fn_spec_tail(string scalar path, string scalar names,
+                        string scalar sc)
+{
+    string rowvector nm
+    string scalar    q, out, txt
+    real scalar      i, fh
+
+    q   = char(34)
+    out = ""
+    if (sc != "") {
+        txt = st_strscalar(sc)
+        if (_dash_fn_points_ok(txt)) out = q + q + ":" + txt
+        else _dash_say("txt", "dash: the function points stored for graph '",
+                       "", "' are not dash's; that layer is drawn from its expression.")
+    }
+    else {
+        nm = tokens(names)
+        for (i = 1; i <= cols(nm); i++) {
+            txt = st_global("dash_fpts_" + nm[i])
+            if (txt == "") continue
+            if (!_dash_fn_points_ok(txt)) {
+                _dash_say("txt", "dash: the function points stored for graph '",
+                          nm[i], "' are not dash's; that layer is drawn from its expression.")
+                continue
+            }
+            out = out + (out == "" ? "" : ",") + q + nm[i] + q + ":" + txt
+        }
+    }
+    fh = fopen(path, "a")
+    if (out == "") fwrite(fh, "}")
+    else fwrite(fh, "," + q + "function_points" + q + ":{" + out + "}}")
+    fclose(fh)
 }
 
 // _dash_unbound_cands(raw, cap) -- the options of a parser's catch-all whose
@@ -5248,115 +5355,6 @@ string scalar _dash_rep_reduce(string scalar opts, string scalar ptype)
         out = out + " " + toks[i]
     }
     return(strtrim(out))
-}
-
-// _dash_fn_space_call(expr) -- the first operand of a function expression
-// written with blanks before a `(', as `sin (x)' or `2 (x)', outside
-// double and compound quotes; "" when there is none.
-//
-// Stata never reads a name and a parenthesis apart as a call: `twoway
-// function y = sin (x)' is "error in expression", r(111) -- sin is looked
-// for as a variable and not found -- where sin(x) is drawn; and a name the
-// data does have (mpg, or mp for it), x, _n, _N and _pi, or a number, a
-// string or a closing parenthesis before the blanks, are r(198).  With
-// tabs alone between a name and its `(' it is r(133), an unknown function
-// (measured 24sep2026).  2 * (x) and x + (1) have an operator before the
-// `(' and are drawn.  Returns "N <pos> <name>" for a name (not the tail of
-// a number or of a dotted name) and blanks holding a space, "T <pos>
-// <name>" for a name and tabs alone, "O <pos>" for any other operand, pos
-// being where the operand begins, so the caller can ask which of this and
-// an unknown function Stata meets first.  Linear in the length of expr.
-string scalar _dash_fn_space_call(string scalar expr)
-{
-    string scalar ch
-    real scalar   i, j, n, in_dq, in_cq, nxt, c, c0, lastkind, lastpos
-    real scalar   lastend, blank, qstart
-
-    n        = strlen(expr)
-    in_dq    = 0
-    in_cq    = 0
-    lastkind = 0
-    lastpos  = 0
-    lastend  = 0
-    blank    = 0
-    qstart   = 0
-    i        = 1
-    while (i <= n) {
-        if (!in_dq & !in_cq) qstart = i
-        nxt = _dash_quote_step(expr, n, i, in_dq, in_cq)
-        if (nxt) {
-            // A closed string is an operand; it began where the quote
-            // opened (qstart holds the position before it opened).
-            if (!in_dq & !in_cq) {
-                lastkind = 3
-                blank    = 0
-            }
-            else if (lastkind != 4) {
-                lastpos  = qstart
-                lastkind = 4
-            }
-            i = nxt
-            continue
-        }
-        ch = substr(expr, i, 1)
-        c  = ascii(ch)
-        if (ch == " ") {
-            if (lastkind) blank = 1
-            i++
-            continue
-        }
-        if (ch == char(9)) {
-            if (lastkind & !blank) blank = 2
-            i++
-            continue
-        }
-        if (ch == "(") {
-            if (lastkind & blank) {
-                if (lastkind == 1) {
-                    return((blank == 1 ? "N " : "T ") + strofreal(lastpos) + " " +
-                           substr(expr, lastpos, lastend - lastpos + 1))
-                }
-                return("O " + strofreal(lastpos))
-            }
-            lastkind = 0
-            blank    = 0
-            i++
-            continue
-        }
-        if ((c >= 65 & c <= 90) | (c >= 97 & c <= 122) | c == 95 |
-            (c >= 48 & c <= 57) | c == 46) {
-            c0 = c
-            j  = i
-            while (j <= n) {
-                c = ascii(substr(expr, j, 1))
-                if (!((c >= 65 & c <= 90) | (c >= 97 & c <= 122) |
-                      (c >= 48 & c <= 57) | c == 95 | c == 46)) break
-                j++
-            }
-            // A name begins with a letter or _ and holds no dot; anything
-            // else here (2, 1.5, 1e5, a.b) is some other operand.
-            if (((c0 >= 65 & c0 <= 90) | (c0 >= 97 & c0 <= 122) | c0 == 95) &
-                !strpos(substr(expr, i, j - i), ".")) lastkind = 1
-            else lastkind = 3
-            lastpos = i
-            lastend = j - 1
-            blank   = 0
-            i = j
-            continue
-        }
-        if (ch == ")") {
-            lastkind = 3
-            lastpos  = i
-            blank    = 0
-            i++
-            continue
-        }
-        // An operator, a comma or anything else: no operand before a `('.
-        lastkind = 0
-        blank    = 0
-        i++
-    }
-    return("")
 }
 
 // _dash_spec_types_in(s, allowed) -- 1 when the graph spec s names a plot

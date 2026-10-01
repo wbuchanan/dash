@@ -1377,10 +1377,16 @@ class TestFunctionExpressionEncodings:
             result = gm.map_function(fig, expr, (0, 1), 10, {})
         assert len(result[0].data_source.data["x_fn"]) == 0
 
-    def test_a_folded_spelling_of_an_allowed_function_still_draws(self, gm,
-                                                                   fig):
-        # NFKC folds \uff53\uff49\uff4e to sin, which is allowed: harmless.
+    def test_a_folded_spelling_is_refused_as_twoway_refuses_it(self, gm,
+                                                               fig):
+        # Flipped and renamed (WP-29 P0.6) from
+        # test_a_folded_spelling_of_an_allowed_function_still_draws: Python
+        # folded \uff53\uff49\uff4e to sin (NFKC) and drew it, but Stata
+        # does not fold names -- `twoway function y = \uff53\uff49\uff4e(x)'
+        # is r(133), an unknown function -- and the fallback takes ASCII only.
         result = gm.map_function(fig, "\uff53\uff49\uff4e(x)", (0, 1), 10, {})
+        assert len(result[0].data_source.data["x_fn"]) == 0
+        result = gm.map_function(fig, "sin(x)", (0, 1), 10, {})
         assert len(result[0].data_source.data["x_fn"]) == 10
 
 

@@ -10,6 +10,7 @@
 *!   S01  scaffold smoke: the helpers load and a twoway SVG is read (W29-01)
 *!   S02  line join order against twoway's sersets and SVG (JO-01..JO-12)
 *!   S03  P0.3 unlabelled variables (UL-01..UL-08); P0.4 title sub-options without text (ET-01..ET-10)
+*!   S04  function points are twoway's (FX-20..FX-24)
 *!
 *! Usage: via run_all_cscripts.do (registered as its block 68).  One
 *! block alone: set WP29_ONLY=S<NN> in the environment of the driver run
@@ -1236,6 +1237,306 @@ if inlist("`only'", "", "S03") {
     display as text "S03 P0.4 end `c(current_time)'"
 }
 * ==== end S03 ====
+* ==== S04 P0.6: function points are twoway's ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S04") {
+    display as text "S04 start `c(current_time)'"
+
+    // A function layer's points are Stata's own (section 04): dash runs
+    // twoway__function_gen at registration and stores x0, dx and y in
+    // $dash_fpts_<name>; both renderers draw those numbers.  Each case
+    // compares them with twoway's serset, read live, then builds the
+    // saved page and the served app and reads the drawn source back.
+
+    // _fx_serset: twoway's last graph's first plot, read from its serset
+    // into the row matrices fx_sy and fx_sx (y, then x, as twoway keeps
+    // them; sorted by x).
+    capture program drop _fx_serset
+    program define _fx_serset
+        version 16.0
+        preserve
+        serset set `.Graph.plotregion1.plot1.serset.id'
+        serset use, clear
+        mata: st_matrix("fx_sy", st_data(., 1)')
+        mata: st_matrix("fx_sx", st_data(., 2)')
+        restore
+    end
+    // _fx_stored <name>: the stored points of graph <name>'s layer 1, as
+    // the row matrix fx_dy and the locals fx_x0, fx_dx (r()-free).
+    capture program drop _fx_stored
+    program define _fx_stored
+        version 16.0
+        args name
+        mata: _s = st_global("dash_fpts_" + st_local("name")); _a = strpos(_s, `""y":["') + 5; _t = substr(_s, _a, strpos(substr(_s, _a, .), "]") - 1); _v = tokens(_t, ","); _v = select(_v, _v :!= ","); st_matrix("fx_dy", strtoreal(_v)); _b = strpos(_s, `""x0":"') + 5; st_local("_x0", substr(_s, _b, strpos(substr(_s, _b, .), ",") - 1)); _b = strpos(_s, `""dx":"') + 5; st_local("_dx", substr(_s, _b, strpos(substr(_s, _b, .), ",") - 1))
+        c_local fx_x0 `_x0'
+        c_local fx_dx `_dx'
+    end
+    // _fx_gen <exp> <lo> <hi> <n>: the generator's own r(min), r(delta).
+    capture program drop _fx_gen
+    program define _fx_gen
+        version 16.0
+        args e lo hi n
+        preserve
+        tempvar fy fx
+        quietly twoway__function_gen `macval(e)', range(`lo' `hi') x(x) n(`n') generate(`fy' `fx')
+        c_local fx_g0 = r(min)
+        c_local fx_gd = r(delta)
+        restore
+    end
+
+    // ------------------------------------------------------------
+    // FX-20: E1's twenty expressions -- stored, saved and served points
+    // equal twoway's serset.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    dash clear
+    local fx20_list `" "2^3^x" "2^-1^2" "x^2^-1" "-x^-x^-1" "2^-x^2" "-2^-2^-2" "2^-2^-1" "x^-1^-1" "2^+1" "-2^2" "-x^2" "x*-2^2" "3-2^2" "- -x" "--x" "0.1*3/0.3" "1e16+1-2" "1+0.1-0.7" "10-2-3" "100/10/5" "'
+    local k 0
+    local fx_names ""
+    foreach e of local fx20_list {
+        local ++k
+        quietly twoway function y = `e', range(0 2) n(3) nodraw
+        _fx_serset
+        matrix fx_want_`k' = fx_sy
+        matrix fx_wantx_`k' = fx_sx
+        capture noisily dash function y = `e', range(0 2) n(3) name(fx20_`k') title("fx20_`k'")
+        _w29_expect FX-20 "(_rc == 0)" `"dash function y = `e' r(`=_rc')"'
+        _fx_stored fx20_`k'
+        mata: st_local("fx_eq", strofreal(st_matrix("fx_dy") == st_matrix("fx_sy")))
+        _w29_expect FX-20 "(`fx_eq' == 1)" `"`e': stored y differs from twoway's serset"'
+        _fx_gen `"y = `e'"' 0 2 3
+        _w29_expect FX-20 `"(real("`fx_x0'") == `fx_g0' & real("`fx_dx'") == `fx_gd')"' `"`e': x0 `fx_x0' dx `fx_dx', generator `fx_g0' `fx_gd'"'
+        local fx_names `fx_names' fx20_`k'
+    }
+    local fx20_html "`w29_work'/fx20.html"
+    local fx20_app  "`w29_work'/fx20_app.py"
+    quietly dash build, saving("`fx20_html'") replace nobrowser
+    quietly dash build, saving("`fx20_app'") server replace
+    global fx_names "`fx_names'"
+    global fx_html "`fx20_html'"
+    global fx_app "`fx20_app'"
+    python:
+import json as _json
+import math as _math
+import re as _re
+import warnings as _w
+from sfi import Macro as _M, Matrix as _X, Missing as _Miss
+from bokeh.document import Document as _Doc
+from bokeh.models import Plot as _Plot
+
+
+def _fx_plots_saved(path):
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    out = dict()
+    for blob in _re.findall(r'<script type="application/json" id="[^"]*">\s*(.*?)\s*</script>', page, _re.S):
+        dj = _json.loads(blob)
+        for dd in dj.values():
+            doc = _Doc.from_json(dd)
+            for p in doc.select(dict(type=_Plot)):
+                out[p.title.text if p.title is not None else ""] = p
+    return out
+
+
+def _fx_plots_served(path):
+    with open(path, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s04_app")
+    with _w.catch_warnings():
+        _w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s04_app.py", "exec"), ns)
+        doc = _Doc()
+        ns["make_document"](doc)
+    out = dict()
+    for p in doc.select(dict(type=_Plot)):
+        out[p.title.text if p.title is not None else ""] = p
+    return out
+
+
+def _fx_xy(plot):
+    for g in plot.renderers:
+        src = getattr(g, "data_source", None)
+        if src is not None and "x_fn" in src.data:
+            return [float(v) for v in src.data["x_fn"]], [float(v) for v in src.data["y_fn"]]
+    return None, None
+
+
+def _fx_row(name):
+    vals = _X.get(name)[0]
+    return [float("nan") if _Miss.isMissing(v) else float(v) for v in vals]
+
+
+def _fx_same(a, b):
+    if len(a) != len(b):
+        return False
+    for u, v in zip(a, b):
+        if _math.isnan(u) and _math.isnan(v):
+            continue
+        if u != v:
+            return False
+    return True
+
+
+def _fx_check(names, html, app):
+    bad = []
+    for mode, plots in (("saved", _fx_plots_saved(html)), ("served", _fx_plots_served(app))):
+        for i, nm in enumerate(names):
+            k = nm.split("_")[-1]
+            pre = nm.rsplit("_", 1)[0]
+            want_y = _fx_row("fx_want_" + k if pre == "fx20" else pre + "_want_" + k)
+            want_x = _fx_row("fx_wantx_" + k if pre == "fx20" else pre + "_wantx_" + k)
+            x, y = _fx_xy(plots[nm]) if nm in plots else (None, None)
+            if y is None:
+                bad.append(mode + ":" + nm + ":missing")
+                continue
+            pairs = sorted(zip(x, y), key=lambda t: t[0])
+            if sorted(x) != want_x or not _fx_same([t[1] for t in pairs], want_y):
+                bad.append(mode + ":" + nm + ":" + repr(y[:4]))
+    return bad
+
+
+_bad = _fx_check(_M.getGlobal("fx_names").split(), _M.getGlobal("fx_html"), _M.getGlobal("fx_app"))
+_M.setGlobal("fx_bad", " ".join(_bad))
+end
+    _w29_expect FX-20 `"("${fx_bad}" == "")"' `"drawn points differ: ${fx_bad}"'
+    _w29_done FX-20 "twenty expressions: the stored, saved and served points are twoway's serset, x0 and dx the generator's"
+    dash clear
+    capture erase "`fx20_html'"
+    capture erase "`fx20_app'"
+
+    // ------------------------------------------------------------
+    // FX-21: what only Stata can evaluate -- estimates, scalars, ln(),
+    // c(pi) and a variable -- is drawn at twoway's points.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    dash clear
+    quietly regress mpg weight
+    scalar s = 2
+    gen educ = 7
+    local fx21_list `" "_b[_cons]+_b[weight]*x|1760 4840" "s*normalden(x)|0 2" "ln(x)|0.5 2" "c(pi)*x|0 2" "educ*x|0 2" "'
+    local k 0
+    local fx_names ""
+    foreach item of local fx21_list {
+        local ++k
+        gettoken e rest : item, parse("|")
+        local rng = substr(`"`rest'"', 2, .)
+        quietly twoway function y = `e', range(`rng') n(5) nodraw
+        _fx_serset
+        matrix fx21_want_`k' = fx_sy
+        matrix fx21_wantx_`k' = fx_sx
+        capture noisily dash function y = `e', range(`rng') n(5) name(fx21_`k') title("fx21_`k'")
+        _w29_expect FX-21 "(_rc == 0)" `"dash function y = `e' r(`=_rc')"'
+        _fx_stored fx21_`k'
+        mata: st_local("fx_eq", strofreal(st_matrix("fx_dy") == st_matrix("fx_sy")))
+        _w29_expect FX-21 "(`fx_eq' == 1)" `"`e': stored y differs from twoway's serset"'
+        local fx_names `fx_names' fx21_`k'
+    }
+    local fx21_html "`w29_work'/fx21.html"
+    local fx21_app  "`w29_work'/fx21_app.py"
+    quietly dash build, saving("`fx21_html'") replace nobrowser
+    quietly dash build, saving("`fx21_app'") server replace
+    global fx_names "`fx_names'"
+    global fx_html "`fx21_html'"
+    global fx_app "`fx21_app'"
+    python:
+_bad = _fx_check(_M.getGlobal("fx_names").split(), _M.getGlobal("fx_html"), _M.getGlobal("fx_app"))
+_M.setGlobal("fx_bad", " ".join(_bad))
+end
+    _w29_expect FX-21 `"("${fx_bad}" == "")"' `"drawn points differ: ${fx_bad}"'
+    _w29_done FX-21 "estimates, a scalar, ln(), c(pi) and a variable are drawn at twoway's points, saved and served"
+    drop educ
+    scalar drop s
+    dash clear
+    capture erase "`fx21_html'"
+    capture erase "`fx21_app'"
+
+    // ------------------------------------------------------------
+    // FX-22: the caller's version picks the random-number generator.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    dash clear
+    version 13: set seed 1
+    version 13: twoway function y = runiform(), n(3) nodraw
+    version 13: local fx22_st = c(rngstate)
+    _fx_serset
+    version 13: set seed 1
+    version 13: dash function y = runiform(), n(3) name(fx22)
+    version 13: local fx22_dst = c(rngstate)
+    _fx_stored fx22
+    mata: st_local("fx_eq", strofreal(st_matrix("fx_dy") == st_matrix("fx_sy")))
+    _w29_expect FX-22 "(`fx_eq' == 1)" "version 13: stored y differs from version 13's twoway"
+    _w29_expect FX-22 `"("`fx22_dst'" == "`fx22_st'")"' "version 13: the random-number state differs from twoway's"
+    _w29_done FX-22 "under version 13 the points and the random-number state are version 13's twoway's"
+    dash clear
+
+    // ------------------------------------------------------------
+    // FX-23: a descending range is the generator's order, drawn as
+    // twoway's polyline; a typed range keeps its 17 digits.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    dash clear
+    quietly twoway function y = x^2, range(2 0) n(3) nodraw
+    _fx_serset
+    matrix fx23_want_1 = fx_sy
+    matrix fx23_wantx_1 = fx_sx
+    dash function y = x^2, range(2 0) n(3) name(fx23_1) title("fx23_1")
+    _w29_expect FX-23 `"(strpos(`"${dash_fpts_fx23_1}"', `""x0":2,"dx":-1,"y":[4,1,0]"') > 0)"' `"stored ${dash_fpts_fx23_1}"'
+    dash function y = x, range(0 0.123456789012345678) n(3) name(fx23_2)
+    _w29_expect FX-23 `"(strpos(`"${dash_fpts_fx23_2}"', "0.12345678901234568]") > 0)"' `"stored ${dash_fpts_fx23_2}"'
+    local fx23_html "`w29_work'/fx23.html"
+    local fx23_app  "`w29_work'/fx23_app.py"
+    quietly dash build, saving("`fx23_html'") replace nobrowser
+    quietly dash build, saving("`fx23_app'") server replace
+    global fx_names "fx23_1"
+    global fx_html "`fx23_html'"
+    global fx_app "`fx23_app'"
+    python:
+_bad = _fx_check(_M.getGlobal("fx_names").split(), _M.getGlobal("fx_html"), _M.getGlobal("fx_app"))
+_M.setGlobal("fx_bad", " ".join(_bad))
+end
+    _w29_expect FX-23 `"("${fx_bad}" == "")"' `"drawn polyline differs: ${fx_bad}"'
+    _w29_done FX-23 "range(2 0) is stored in the generator's order and drawn as twoway's polyline; a typed range keeps 17 digits"
+    dash clear
+    capture erase "`fx23_html'"
+    capture erase "`fx23_app'"
+
+    // ------------------------------------------------------------
+    // FX-24: by() -- the documented residual.  twoway evaluates once per
+    // panel (by(foreign, total): draws 1-3, 4-6, 7-9); dash once, drawn in
+    // every panel: its points are twoway's first panel's, and the state is
+    // left after 3 draws where twoway leaves it after 9.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    dash clear
+    preserve
+    clear
+    quietly set obs 9
+    set seed 1
+    quietly gen double u = runiform() in 1/3
+    local fx24_s3 = c(rngstate)
+    quietly replace u = runiform() in 4/9
+    local fx24_s9 = c(rngstate)
+    mata: st_matrix("fx24_want", st_data((1, 3), "u")')
+    restore
+    set seed 1
+    quietly twoway function y = runiform(), range(0 2) n(3) by(foreign, total) nodraw
+    _w29_expect FX-24 `"(c(rngstate) == "`fx24_s9'")"' "twoway's by(foreign, total) did not take nine draws"
+    set seed 1
+    capture noisily dash function y = runiform(), range(0 2) n(3) by(foreign, total) name(fx24)
+    _w29_expect FX-24 "(_rc == 0)" "dash by() r(`=_rc')"
+    _w29_expect FX-24 `"(c(rngstate) == "`fx24_s3'")"' "dash did not take exactly three draws"
+    _fx_stored fx24
+    mata: st_local("fx_eq", strofreal(st_matrix("fx_dy") == st_matrix("fx24_want")))
+    _w29_expect FX-24 "(`fx_eq' == 1)" "the stored points are not the first three draws"
+    _w29_done FX-24 "by(): one evaluation, twoway's first panel's points, drawn in every panel (the documented residual)"
+    dash clear
+    macro drop fx_names fx_html fx_app fx_bad
+    capture matrix drop fx_sy fx_sx fx_dy fx24_want
+
+    display as text "S04 end `c(current_time)'"
+}
+* ==== end S04 ====
 
 * ==== append new blocks above this line ====
 

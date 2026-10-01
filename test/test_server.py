@@ -4678,10 +4678,11 @@ def _exec_function_app(dr_module, expr, accepted=None):
     """Build a server app with *expr* as the function expression and run make_document.
 
     Returns the Bokeh Document; raises if make_document raises.  With a
-    list for *accepted*, the app's own ``_floats_only`` -- which its
-    map_function calls only once the AST whitelist has ACCEPTED the
-    expression, right before compiling it -- is wrapped to record each
-    call, so the served validator's verdict is read in the served code
+    list for *accepted*, the app's own ``_stata_fn_eval`` -- which its
+    map_function calls only once ``_stata_fn_parse`` has ACCEPTED the
+    expression (WP-29 P0.6; it wrapped ``_floats_only``, gone with the
+    eval() it guarded) -- is wrapped to record each call, so the served
+    grammar's verdict is read in the served code
     (test_server_function_security.py counts it the same way).
     """
     import pandas as pd, numpy as np, importlib.util, tempfile, os
@@ -4703,12 +4704,12 @@ def _exec_function_app(dr_module, expr, accepted=None):
         app_mod = importlib.util.module_from_spec(app_spec)
         app_spec.loader.exec_module(app_mod)
         if accepted is not None:
-            _real = app_mod._floats_only
+            _real = app_mod._stata_fn_eval
 
-            def _counted(tree):
+            def _counted(tree, x):
                 accepted.append(tree)
-                return _real(tree)
-            app_mod._floats_only = _counted
+                return _real(tree, x)
+            app_mod._stata_fn_eval = _counted
         doc = Document()
         app_mod.make_document(doc)
         return doc
@@ -4755,15 +4756,19 @@ class TestServerFunctionExpressionOperators:
         What must remain true is that the app still validates before it
         evaluates. The seven behavioural cases below check the other half:
         that ordinary arithmetic is permitted.
+
+        Flipped (WP-29 P0.6): the whitelist and eval() are gone; a spec
+        without points is parsed by Stata's grammar (_stata_fn_parse) and
+        only its tree is evaluated (_stata_fn_eval), so those two are what
+        the app must carry, and no eval( or compile( of the text.
         """
         source = _build_function_app(dr_module, "x + 1")
-        assert "_validate_expr_node" in source, (
+        assert "def _stata_fn_parse(" in source, (
             "the generated app evaluates a user-supplied expression with no "
-            "AST whitelist in sight"
+            "grammar in sight"
         )
-        assert "_SAFE_FUNCS" in source and "_SAFE_NAMES" in source, (
-            "the expression validator's name and function whitelists are "
-            "not in the generated app"
+        assert "def _stata_fn_eval(" in source, (
+            "the fallback's evaluator is not in the generated app"
         )
         # And nothing still calls the retired inline validator.
         assert "_val_node(" not in source, (
@@ -4804,11 +4809,17 @@ class TestServerFunctionExpressionOperators:
 
     # BUG-FE-1f: exponentiation (BinOp with Pow)
     def test_function_power_does_not_raise(self, dr_module, auto_df):
-        """BUG-FE-1f: x ** 2 must not raise ValueError in server make_document."""
-        doc = _exec_function_app(dr_module, "x ** 2")
+        """BUG-FE-1f: x ^ 2 must not raise ValueError in server make_document.
+
+        Flipped (WP-29 P0.6): ``x ** 2`` is not Stata's (twoway r(198)) and
+        draws nothing; Stata's power is ``^``, and its values are drawn."""
+        doc = _exec_function_app(dr_module, "x ^ 2")
         assert _count_glyph_renderers(doc) > 0, (
-            "the function layer for 'x ** 2' was not drawn"
+            "the function layer for 'x ^ 2' was not drawn"
         )
+        (_fig, r), = _glyph_layers(doc.roots)
+        xs = _drawn_values(r, "x_fn")
+        assert _drawn_values(r, "y_fn") == [v ** 2 for v in xs]
 
     # BUG-FE-1g: unary negation (UnaryOp with USub)
     def test_function_unary_negation_does_not_raise(self, dr_module, auto_df):
@@ -4820,10 +4831,13 @@ class TestServerFunctionExpressionOperators:
 
     # BUG-FE-1h: complex nested expression
     def test_function_complex_expr_does_not_raise(self, dr_module, auto_df):
-        """BUG-FE-1h: sin(x) + x**2 - 1 must not raise ValueError."""
-        doc = _exec_function_app(dr_module, "sin(x) + x**2 - 1")
+        """BUG-FE-1h: sin(x) + x^2 - 1 must not raise ValueError.
+
+        Flipped (WP-29 P0.6): written with Stata's ``^``; ``**`` is
+        refused as twoway refuses it."""
+        doc = _exec_function_app(dr_module, "sin(x) + x^2 - 1")
         assert _count_glyph_renderers(doc) > 0, (
-            "make_document must add roots for complex expression 'sin(x) + x**2 - 1'"
+            "make_document must add roots for complex expression 'sin(x) + x^2 - 1'"
         )
 
     # Safety: unsafe names must be blocked — generated source must contain _SAFE_NAMES guard
@@ -4835,12 +4849,14 @@ class TestServerFunctionExpressionOperators:
         eval() is never reached with the unsafe code, not that make_document raises.
         Verify the guard exists in the generated source.
         """
+        # Flipped (WP-29 P0.6): the names are now refused by the grammar,
+        # _stata_fn_parse, which takes x and _pi alone.
         source = _build_function_app(dr_module, "x + 1")
-        assert "_SAFE_NAMES" in source, (
-            "generated server source must contain _SAFE_NAMES to block disallowed names"
+        assert "def _stata_fn_parse(" in source, (
+            "generated server source must contain _stata_fn_parse to block disallowed names"
         )
-        assert "Unsafe name" in source, (
-            "generated server source must contain 'Unsafe name' error text for _SAFE_NAMES guard"
+        assert '"unknown name"' in source, (
+            "generated server source must contain the parser's refusal of any other name"
         )
 
     # Safety: unsafe function calls must be blocked — generated source must contain _SAFE_FUNCS guard
@@ -4850,12 +4866,14 @@ class TestServerFunctionExpressionOperators:
         Same rationale as test_function_unsafe_name_guard_in_source: the try/except
         silences the error but the eval() path is never reached for unsafe expressions.
         """
+        # Flipped (WP-29 P0.6): the parser's function-name table and its
+        # refusal of any other call.
         source = _build_function_app(dr_module, "x + 1")
-        assert "_SAFE_FUNCS" in source, (
-            "generated server source must contain _SAFE_FUNCS to block disallowed function calls"
+        assert '"floor", "ceil")' in source, (
+            "generated server source must contain the parser's function-name table"
         )
-        assert "Disallowed function call" in source, (
-            "generated server source must contain 'Disallowed function call' guard text"
+        assert '"unknown function"' in source, (
+            "generated server source must contain the parser's refusal of any other call"
         )
 
     # Safety: unsafe expression silently skipped (dashboard still loads, no line from unsafe expr)
@@ -4868,8 +4886,8 @@ class TestServerFunctionExpressionOperators:
         This asserted only ``doc is not None``, which make_document's return
         guarantees whatever the validator does: with the whitelist call
         deleted from map_function it stayed green (WP-24, measured
-        24sep2026).  The served validator must REFUSE the expression -- it
-        never reaches _floats_only, so it is never compiled or evaluated --
+        24sep2026).  The served grammar must REFUSE the expression -- it
+        never reaches _stata_fn_eval, so it is never evaluated (WP-29 P0.6) --
         and the figure loads with its function layer empty.  The control is
         a plain expression, which the same count sees accepted once and the
         same reader sees drawn at all 20 points.
@@ -5101,10 +5119,13 @@ class TestServerFunctionConstantExpressions:
     """
 
     def test_constant_pi_renders_glyph(self, dr_module, auto_df):
-        """BUG-31-1a: function expression 'pi' must produce a glyph renderer."""
-        doc = _exec_function_app(dr_module, "pi")
+        """BUG-31-1a: function expression '_pi' must produce a glyph renderer.
+
+        Flipped (WP-29 P0.6): Stata's constant is ``_pi``; twoway refuses
+        ``pi`` (r(111))."""
+        doc = _exec_function_app(dr_module, "_pi")
         assert _count_glyph_renderers(doc) > 0, (
-            "function expression 'pi' must produce at least one glyph renderer"
+            "function expression '_pi' must produce at least one glyph renderer"
         )
 
     def test_constant_integer_renders_glyph(self, dr_module, auto_df):

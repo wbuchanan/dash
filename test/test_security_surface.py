@@ -365,25 +365,26 @@ class TestTheFunctionExpressionWhitelist:
 
     @staticmethod
     def _draw_with_eval_spy(expr, mapper=None):
-        """Draw *expr* and report ``(eval_was_called, n_points)``.
+        """Draw *expr* and report ``(evaluator_was_called, n_points)``.
 
-        ``eval`` is a module global inside ``map_function``; shadowing
-        ``dr.eval`` records whether execution was reached at all -- the
-        strongest "nothing ran" proof for a payload with no file side effect.
+        Flipped (WP-29 P0.6): map_function holds no eval() any more; a
+        spec without points is parsed by Stata's grammar and only an
+        accepted tree reaches ``_stata_fn_eval``, a module global inside
+        ``map_function``.  Shadowing ``dr._stata_fn_eval`` records whether
+        evaluation was reached at all -- the strongest "nothing ran" proof
+        for a payload with no file side effect.
         """
         from bokeh.plotting import figure
-        import builtins
         calls = []
-        real_eval = builtins.eval
         gm = mapper or dr.GlyphMapper()
-        saved = getattr(dr, "eval", real_eval)
-        dr.eval = lambda *a, **k: (calls.append(1), real_eval(*a, **k))[1]
+        saved = dr._stata_fn_eval
+        dr._stata_fn_eval = lambda t, x: (calls.append(1), saved(t, x))[1]
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 r = gm.map_function(figure(), expr, (0.0, 1.0), 5, {})
         finally:
-            dr.eval = saved
+            dr._stata_fn_eval = saved
         return bool(calls), len(r[0].data_source.data["x_fn"])
 
     @pytest.mark.parametrize("expr", _REFUSED)
@@ -499,7 +500,8 @@ class TestTheFunctionExpressionWhitelist:
 
     @pytest.mark.parametrize("expr", [
         "x", "x^2", "2*x^3 - 1", "sin(x)", "exp(-x) * cos(x)",
-        "log(x + 1)", "sqrt(abs(x))", "2*pi*x", "3.14", "9^9^9^9",
+        # 2*_pi*x: Stata's pi (WP-29 P0.6; `2*pi*x' is r(111) in twoway).
+        "log(x + 1)", "sqrt(abs(x))", "2*_pi*x", "3.14", "9^9^9^9",
     ])
     def test_ordinary_expressions_still_draw(self, expr):
         """The control: a numeric expression must survive the tighter guard.

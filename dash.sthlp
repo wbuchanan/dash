@@ -361,15 +361,45 @@ nothing and says nothing, as {cmd:twoway} does.
 
 {pstd}
 {ul:Functions.}  {cmd:function} draws {it:y} = {it:f}({it:x}) over
-{cmd:range()}.  A value that is missing in Stata -- outside the function's
-domain, such as the square root of a negative number, or too large to
-hold, such as {cmd:1/0} -- is drawn as a gap, as {cmd:twoway} draws it:
-{cmd:sqrt(x)} over {cmd:range(-1 1)} is drawn from 0 to 1, and an
-expression missing everywhere draws nothing, in silence.  An expression
-{cmd:dash} does not evaluate draws nothing, and a note names its layer.
-With no expression, {cmd:function} is refused as {cmd:twoway}
-refuses it: {cmd:expression required}, {cmd:r(100)}, or after {it:y}
-{cmd:=}, {cmd:nothing found where expression expected}, {cmd:r(111)}.
+{cmd:range()}.  Stata evaluates the expression when the graph is
+registered, with the generator {cmd:twoway function} itself uses, over
+{cmd:twoway}'s points ({cmd:range()} and {cmd:n()}), under your
+{cmd:version}, and after every plot's variables and options and the
+{cmd:by()} variables are checked, before the graph's other options, as
+{cmd:twoway} orders it.  So {cmd:twoway}'s grammar applies: {cmd:^} is
+read from left to right ({cmd:2^3^x} is 1 8 64 at x = 0 1 2), a sign
+after {cmd:^} takes one operand, {cmd:/} binds tighter than {cmd:*} and
+{cmd:-} tighter than {cmd:+}, Stata's constant is {cmd:_pi}, and every
+Stata function, estimate ({cmd:_b[]}), scalar and variable may be used.
+What {cmd:twoway} refuses is refused with its code and its one line,
+{cmd:error in expression:} and the text after the {cmd:=}:
+{cmd:pi*x} and {cmd:e*x} are {cmd:r(111)}, {cmd:x**2}, {cmd:x%2}, a
+leading {cmd:+} and {cmd:2x} {cmd:r(198)}, an unknown or full-width
+function name {cmd:r(133)}, and an expression too long for Stata
+{cmd:r(130)}.  A value that is missing in Stata -- outside the
+function's domain, such as the square root of a negative number, or too
+large to hold, such as {cmd:1/0} -- is drawn as a gap, as {cmd:twoway}
+draws it: {cmd:sqrt(x)} over {cmd:range(-1 1)} is drawn from 0 to 1, and
+an expression missing everywhere draws nothing, in silence.  With no
+expression, {cmd:function} is refused as {cmd:twoway} refuses it:
+{cmd:expression required}, {cmd:r(100)}, or after {it:y} {cmd:=},
+{cmd:nothing found where expression expected}, {cmd:r(111)}.
+
+{pstd}
+The points are fixed when the graph is registered, as {cmd:twoway}'s
+drawing is fixed when its command runs: a later change to the data or to
+the estimates does not move them, and neither does a filter on the page,
+saved or served.  Evaluating has {cmd:twoway}'s side effects:
+{cmd:runiform()} advances the random-number stream as {cmd:twoway} does,
+and data holding at least {cmd:n()} observations are marked changed
+({cmd:c(changed)}).  Under {cmd:by()}, {cmd:dash} evaluates the expression
+once and draws it in every panel, where {cmd:twoway} evaluates it once per
+panel; only random draws differ.  A dashboard spec written by hand without
+the points is drawn by {cmd:dash} itself, with the same operators and
+missing values, {cmd:x}, {cmd:_pi} and ten functions -- {cmd:sin},
+{cmd:cos}, {cmd:tan}, {cmd:exp}, {cmd:log}, {cmd:log10}, {cmd:sqrt},
+{cmd:abs}, {cmd:floor} and {cmd:ceil}; anything else draws that layer
+empty, and a note names it.
 
 {pstd}
 {ul:Graphs that need no data.}  A graph whose plots are all
@@ -446,7 +476,8 @@ named in a note and drawn around -- because it is what would be drawn.
     underscore and holds only letters, digits and underscores: at most 22
     characters for a graph and 18 for a KPI card.  {cmd:dash} keeps each
     item in Stata globals named after it: a graph in
-    {cmd:$dash_json_}{it:name} and {cmd:$dash_spec_}{it:name}, a KPI card
+    {cmd:$dash_json_}{it:name} and {cmd:$dash_spec_}{it:name} (and a
+    {cmd:function} graph's points in {cmd:$dash_fpts_}{it:name}), a KPI card
     in {cmd:$dash_kpi_}{it:name} and in one global for each of its fields,
     {cmd:$dash_kpi_}{it:name}{cmd:__}{it:field}, a field being at most three
     letters (the card's statistic is {cmd:$dash_kpi_}{it:name}{cmd:__sta}).
@@ -851,7 +882,7 @@ discards the remembered options along with the registry.
 Empties the registry: every graph and KPI card goes, and so do the options
 remembered from the last {cmd:dash build} -- the globals
 {cmd:$dash_graph_registry}, {cmd:$dash_json_*}, {cmd:$dash_spec_*},
-{cmd:$dash_kpi_*} and {cmd:$dash_opts_*}.  Settings stay:
+{cmd:$dash_fpts_*}, {cmd:$dash_kpi_*} and {cmd:$dash_opts_*}.  Settings stay:
 {cmd:$dash_nobrowser} and the {cmd:$dash_max_*} limits remain until you drop
 them (see {help dash##limits:Resource limits}).  Run this before starting a
 new dashboard definition.
@@ -2014,7 +2045,10 @@ options -- see below.
     {cmd:regress} omits x, so every point is at that x and the mean of
     {it:yvar}, as {cmd:twoway lfit} draws it, and the band of
     {cmd:lfitci} and {cmd:qfitci} is the mean's.  {cmd:function}: 300 by
-    default, over {cmd:range()}.  On these types {cmd:dash} takes 2 to 10000;
+    default, over {cmd:range()}; one graph's {cmd:function} points must fit
+    in one Stata macro, {cmd:c(macrolen)} characters (645,200 by default,
+    about 21 a point; {cmd:set maxvar} raises it), or the graph is refused
+    with {cmd:r(134)}.  On these types {cmd:dash} takes 2 to 10000;
     {cmd:twoway} takes any whole number from 1 up, with no upper bound
     ({cmd:lpoly} reads 1 as 50).  {cmd:mspline}: the number of points
     drawn between each pair of adjacent knots, default 10, 1 to 300, as in

@@ -233,10 +233,12 @@ COVERAGE = {
         # an undeclared option not.
         "_dash_refuse_unbound": ("test_adversarial.cscript:P20-18",
                                  "test_adversarial.cscript:P20-18b"),
-        # e2e: a function Stata does not have refused, r(133); what twoway
-        # draws registered, and the random-number state untouched.
-        "_dash_fn_refuse": ("test_parser.cscript:P1A-77",
-                            "test_parser.cscript:P1A-78"),
+        # e2e: each function layer evaluated by twoway__function_gen:
+        # twoway's refusals and codes, its order of checks and its
+        # random-number state (FX-01..FX-06); the stored points equal
+        # twoway's serset (FX-20).
+        "_dash_fn_points": ("test_parser.cscript:FX-01",
+                            "test_wp29_truth.cscript:FX-20"),
         # e2e: each repeated option registered as the command twoway
         # draws the same (SVG compared in the run); a unique one refused.
         "_dash_opts_repeats": ("test_twoway_option_parity.cscript:TP-14",),
@@ -379,6 +381,7 @@ COVERAGE = {
         "_dash_imm_decimal": ("test_parser.cscript:P1A-67",),
         "_dash_json_number": ("test_parser.cscript:P1A-67",
                               "test_parser.cscript:P1A-58"),
+        "_dash_json_number17": ("test_parser.cscript:FX-10",),
         "_dash_imm_number": ("test_parser.cscript:P1A-67",),
         "_dash_imm_clock": ("test_parser.cscript:P1A-67",),
         "_dash_imm_echo": ("test_parser.cscript:P1A-67",),
@@ -479,7 +482,8 @@ COVERAGE = {
                                     "test_registry_collision.cscript:REG-39"),
         "_dash_kpi_fields": ("test_registry_collision.cscript:REG-26",),
         "_dash_item_globals": ("test_registry_collision.cscript:REG-26",
-                               "test_registry_collision.cscript:REG-20"),
+                               "test_registry_collision.cscript:REG-20",
+                               "test_parser.cscript:FX-08"),
         "_dash_option_names": ("test_parser_integrity.cscript:P1B-24",
                                "test_parser_integrity.cscript:P1B-25"),
         # e2e: a second name() refused, text that looks like one not.
@@ -490,9 +494,15 @@ COVERAGE = {
         "_dash_seg_by": ("test_parser.cscript:P1A-84",),
         "_dash_unbound_cands": ("test_adversarial.cscript:P20-18",
                                 "test_adversarial.cscript:P20-18b"),
-        "_dash_fn_names": ("test_parser.cscript:P1A-77",),
-        # direct: the scanner's verdicts; e2e: twoway's return codes.
-        "_dash_fn_space_call": ("test_parser.cscript:P1A-78",),
+        # direct: the points object, the spec tail and its character check
+        # (FX-10); e2e: a hand-set table skipped with a note (FX-08).
+        "_dash_fn_points_json": ("test_parser.cscript:FX-10",),
+        "_dash_fn_spec_tail": ("test_parser.cscript:FX-10",
+                               "test_parser.cscript:FX-08"),
+        # e2e: y = strlen("'x") refused r(198) as twoway refuses it.
+        "_dash_fn_stray_close": ("test_json_escaping.cscript:JSE-47",),
+        "_dash_fn_points_ok": ("test_parser.cscript:FX-08",
+                               "test_parser.cscript:FX-10"),
         # e2e: TP-14 compares the spec of each repeated option with the
         # spec of the command twoway draws the same; every row runs these.
         "_dash_rep_toks": ("test_twoway_option_parity.cscript:TP-14",),

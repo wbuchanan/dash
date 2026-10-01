@@ -554,13 +554,18 @@ class TestMapFunction:
         assert abs(src["x_fn"][-1] - 7.0) < 1e-9
 
     def test_function_y_values_correct_for_constant(self, fig, gm):
-        """P4-44: map_function evaluates correctly for a constant expression."""
-        result = gm.map_function(fig, "pi", (0, 1), 10, {})
+        """P4-44: map_function evaluates correctly for a constant expression.
+
+        Flipped (WP-29 P0.6): Stata's constant is _pi; ``twoway function y
+        = pi`` is r(111), so ``pi`` draws nothing."""
+        result = gm.map_function(fig, "_pi", (0, 1), 10, {})
         src = result[0].data_source.data
         # The loop below is over the points drawn: none drew, none failed.
         assert len(src["y_fn"]) == 10, len(src["y_fn"])
         for y in src["y_fn"]:
             assert abs(float(y) - math.pi) < 1e-9
+        result = gm.map_function(fig, "pi", (0, 1), 10, {})
+        assert len(result[0].data_source.data["y_fn"]) == 0
 
     def test_function_y_values_correct_for_quadratic(self, fig, gm):
         """P4-45: map_function evaluates x*x correctly."""
@@ -657,31 +662,31 @@ class TestMapFunction:
         assert result[0].glyph.line_color == "#ff00ff"
 
     # ----------------------------------------------------------------
-    # Security: AST whitelist enforcement
+    # Security: the points-free fallback's grammar
     # ----------------------------------------------------------------
-    # "Drew nothing" alone proves nothing about the whitelist: the mapper
-    # evaluates with empty builtins and swallows every evaluation error,
-    # so __import__, open, eval, range and an unknown name all fail AT
-    # EVALUATION whatever the validator does (measured 24sep2026: with the
-    # validator bypassed, six of these seven payloads still drew nothing).
-    # The verdict is read where the docstring puts it -- no unvalidated
-    # expression reaches eval() -- through a spy on the eval() map_function
-    # calls; and each test beside it runs a payload that WOULD draw if the
-    # whitelist let it through.
+    # "Drew nothing" alone proves nothing about the grammar: an evaluation
+    # error would also draw nothing.  The verdict is read where it is made
+    # -- only a tree _stata_fn_parse accepted reaches _stata_fn_eval (WP-29
+    # P0.6; map_function holds no eval() at all) -- through a spy on the
+    # evaluator; and each test beside it runs a payload that WOULD draw if
+    # the grammar let it through.
 
     @pytest.fixture
     def evaluated(self, monkeypatch):
-        """The expressions map_function handed to eval(), by source."""
-        import builtins
+        """The expressions map_function handed to its evaluator.
+
+        Flipped (WP-29 P0.6): map_function no longer calls eval(); the
+        points-free fallback's acceptance point is _stata_fn_eval, which
+        receives only a tree _stata_fn_parse accepted."""
         import dash_render as _dr
         seen = []
+        real = _dr._stata_fn_eval
 
-        def spy(code, *a, **k):
-            if getattr(code, "co_filename", "") == "<function>":
-                seen.append(code)
-            return builtins.eval(code, *a, **k)
+        def spy(tree, x):
+            seen.append(tree)
+            return real(tree, x)
 
-        monkeypatch.setattr(_dr, "eval", spy, raising=False)
+        monkeypatch.setattr(_dr, "_stata_fn_eval", spy)
         return seen
 
     def test_the_eval_spy_sees_an_accepted_expression(self, fig, gm,
@@ -698,14 +703,14 @@ class TestMapFunction:
         # Must not raise; returns empty renderer
         src = result[0].data_source.data
         assert len(src["x_fn"]) == 0
-        assert not evaluated, "__import__ reached eval()"
+        assert not evaluated, "__import__ reached the evaluator"
 
     def test_function_rejects_open_builtin(self, fig, gm, evaluated):
         """P4-55: map_function rejects expressions that call 'open'."""
         result = gm.map_function(fig, "open('/etc/passwd')", (0, 1), 10, {})
         src = result[0].data_source.data
         assert len(src["x_fn"]) == 0
-        assert not evaluated, "open() reached eval()"
+        assert not evaluated, "open() reached the evaluator"
 
     def test_function_rejects_attribute_access(self, fig, gm, evaluated):
         """P4-56: map_function rejects attribute access (e.g., os.getcwd)."""
@@ -716,14 +721,14 @@ class TestMapFunction:
         # function if accepted.
         result = gm.map_function(fig, "sin.__call__(x)", (0, 1), 10, {})
         assert len(result[0].data_source.data["x_fn"]) == 0
-        assert not evaluated, "an attribute access reached eval()"
+        assert not evaluated, "an attribute access reached the evaluator"
 
     def test_function_rejects_unknown_name(self, fig, gm, evaluated):
         """P4-57: map_function rejects expressions containing disallowed names."""
         result = gm.map_function(fig, "os", (0, 1), 10, {})
         src = result[0].data_source.data
         assert len(src["x_fn"]) == 0
-        assert not evaluated, "an unknown name reached eval()"
+        assert not evaluated, "an unknown name reached the evaluator"
 
     def test_function_rejects_disallowed_function_call(self, fig, gm,
                                                        evaluated):
@@ -731,7 +736,7 @@ class TestMapFunction:
         result = gm.map_function(fig, "eval('1+1')", (0, 1), 10, {})
         src = result[0].data_source.data
         assert len(src["x_fn"]) == 0
-        assert not evaluated, "eval() reached eval()"
+        assert not evaluated, "eval() reached the evaluator"
 
     def test_function_rejects_list_comprehension(self, fig, gm, evaluated):
         """P4-59: map_function rejects list comprehension expressions."""
@@ -741,7 +746,7 @@ class TestMapFunction:
         # One that needs no builtin draws ten points if accepted.
         result = gm.map_function(fig, "[sin(v) for v in x]", (0, 1), 10, {})
         assert len(result[0].data_source.data["x_fn"]) == 0
-        assert not evaluated, "a comprehension reached eval()"
+        assert not evaluated, "a comprehension reached the evaluator"
 
     def test_function_rejects_syntax_error(self, fig, gm):
         """P4-60: map_function handles syntax errors gracefully (returns empty renderer)."""
@@ -763,11 +768,14 @@ class TestMapFunction:
         # numpy takes out=None, so this one draws sin(x) if accepted.
         result = gm.map_function(fig, "sin(x, out=None)", (0, 1), 10, {})
         assert len(result[0].data_source.data["x_fn"]) == 0
-        assert not evaluated, "a keyword argument reached eval()"
+        assert not evaluated, "a keyword argument reached the evaluator"
 
     def test_function_pi_constant_accessible(self, fig, gm):
-        """P4-63: map_function makes pi constant available in expressions."""
-        result = gm.map_function(fig, "sin(pi * x)", (0, 1), 5, {})
+        """P4-63: map_function makes Stata's _pi available in expressions.
+
+        Flipped (WP-29 P0.6): twoway refuses ``pi`` (r(111)); its constant
+        is ``_pi``."""
+        result = gm.map_function(fig, "sin(_pi * x)", (0, 1), 5, {})
         src = result[0].data_source.data
         assert len(src["x_fn"]) == 5
         x_vals = np.array(src["x_fn"])
@@ -775,8 +783,13 @@ class TestMapFunction:
         assert np.allclose(y_vals, np.sin(math.pi * x_vals), atol=1e-12)
 
     def test_function_e_constant_accessible(self, fig, gm):
-        """P4-64: map_function makes e constant available in expressions."""
+        """P4-64: Euler's number is reached as Stata reaches it, exp(1).
+
+        Flipped (WP-29 P0.6): twoway refuses ``e`` (r(111)); ``e * x``
+        now draws nothing, and ``exp(1) * x`` draws e*x."""
         result = gm.map_function(fig, "e * x", (1, 3), 3, {})
+        assert len(result[0].data_source.data["y_fn"]) == 0
+        result = gm.map_function(fig, "exp(1) * x", (1, 3), 3, {})
         src = result[0].data_source.data
         assert len(src["y_fn"]) == 3, len(src["y_fn"])
         x_vals = np.array(src["x_fn"])

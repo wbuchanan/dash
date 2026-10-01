@@ -257,7 +257,7 @@ and now matches Stata.
 
 <!-- WP-29 P0.5 -->
 
-<!-- WP-29 P0.6 -->
+- `dash function y = 2^3^x, range(0 2) n(3)` drew 2 8 512, now 1 8 64; `2^-1^2` .5, now .25; `0.1*3/0.3` 1.0000000000000002, now 1; `1e16+1-2` 9999999999999998, now 1e16; `normalden(x)`, `ln(x)`, `_pi*x`, `_b[]` and scalars drew nothing, now twoway's points (WP-29, P0.6)
 
 <!-- WP-29 P0.7 -->
 
@@ -494,7 +494,7 @@ and now matches Stata.
 
 <!-- WP-29 P0.5 -->
 
-<!-- WP-29 P0.6 -->
+- `pi`, `e`, `x**2`, `x%2`, `x//1`, a leading `+` and full-width names are refused with twoway's r(111), r(198) and r(133), and a too-long expression with r(130); registering a function evaluates it once, so a later data or estimate change does not move it, `runiform()` advances the random-number stream, data with at least n() observations are marked changed, and a graph whose points exceed c(macrolen) is refused r(134) (WP-29, P0.6)
 
 <!-- WP-29 P0.12a -->
 

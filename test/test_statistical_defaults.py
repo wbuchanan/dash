@@ -93,9 +93,16 @@ class TestFunctionOperatorAndDomain:
         assert ys == pytest.approx([2.0, 2 * 8 + 4 - 1])
 
     def test_double_star_still_works(self, mapper):
-        """The translation must not break expressions that already use **."""
+        """``**`` is not Stata's: ``twoway function y = x**2`` is r(198).
+
+        Flipped (WP-29 P0.6): it used to draw x squared through Python's
+        operator; it now draws nothing, as twoway draws nothing, and the
+        same curve is ``x^2``."""
         fig = figure()
         mapper.map_function(fig, "x**2", (0.0, 10.0), 5)
+        ys = list(fig.renderers[-1].data_source.data["y_fn"])
+        assert ys == []
+        mapper.map_function(fig, "x^2", (0.0, 10.0), 5)
         ys = list(fig.renderers[-1].data_source.data["y_fn"])
         np.testing.assert_allclose(ys, [0.0, 6.25, 25.0, 56.25, 100.0])
 
@@ -106,19 +113,20 @@ class TestFunctionOperatorAndDomain:
         # swallows its own errors into the same empty curve (the names are
         # absent from the evaluation namespace, and a bare `x.__class__' is
         # no array of numbers), so only `(lambda: 1)()' drew when the
-        # whitelist was bypassed (measured 24sep2026).  The validator's own
+        # whitelist was bypassed (measured 24sep2026).  The grammar's own
         # verdict is read instead: map_function hands a tree to
-        # _floats_only only after the whitelist accepted it, so every
-        # hostile expression must reach it zero times -- and `x^2', the
-        # positive control, once.
+        # _stata_fn_eval only after _stata_fn_parse accepted it (WP-29
+        # P0.6; flipped from the _floats_only spy, which is gone with the
+        # eval() it guarded), so every hostile expression must reach it
+        # zero times -- and `x^2', the positive control, once.
         accepted = []
-        real = dash_render._floats_only
+        real = dash_render._stata_fn_eval
 
-        def verdict(tree):
+        def verdict(tree, x):
             accepted.append(tree)
-            return real(tree)
+            return real(tree, x)
 
-        monkeypatch.setattr(dash_render, "_floats_only", verdict)
+        monkeypatch.setattr(dash_render, "_stata_fn_eval", verdict)
         fig = figure()
         for hostile in (
             "__import__('os').system('true')",
