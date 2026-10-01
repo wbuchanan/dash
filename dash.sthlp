@@ -1480,7 +1480,10 @@ or {cmd:in}, from its own rows among them -- and keeps the bin edges and the
 grid chosen when the dashboard was built, so neither moves as you filter; it
 does not redraw a fitted line.  The served app draws every layer again from
 the rows that pass the filter -- each layer from its own rows among them --
-bins, grid and fitted line included.  In both, a filter move clears a
+bins, grid and fitted line included.  A plot's own {cmd:if} or {cmd:in}
+inside a linked {cmd:by()} panel, or inside a linked graph with its own
+{cmd:if} or {cmd:in}, keeps to that panel's or graph's observations after
+every move, in both.  In both, a filter move clears a
 selection brushed on a graph it redraws, and a card that follows the brush
 ({cmd:update(brush)} or {cmd:update(both)}) then counts the rows that graph
 shows.

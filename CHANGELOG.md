@@ -265,7 +265,14 @@ and now matches Stata.
 
 <!-- WP-29 P0.9 -->
 
-<!-- WP-29 P0.15 -->
+- `dash (scatter mpg weight) (scatter mpg weight if price>6000), by(foreign)`
+  linked with a second graph, with the price range moved to 5,000-15,906:
+  the saved page drew 23 observations in each panel's second plot, where
+  `count` gives 14 and 9 and the served app draws them.  A plot's own
+  `if`/`in` inside a linked `by()` panel, or inside a linked graph with its
+  own `if`/`in`, now keeps to that panel's or graph's observations after
+  every move, a second move and a reset; the saved page now draws 14 and 9.
+  (WP-29, P0.15)
 
 <!-- WP-29 P0.16 -->
 

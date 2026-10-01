@@ -26944,8 +26944,14 @@ class DashRenderer:
                                  for a, b in zip(_prev_bools, _mask)]
                     _pf = BooleanFilter(booleans=_mask)
                     _plot_view = CDSView(filter=_pf)
+                    # WP-29 P0.15: register the source's row ids the mask
+                    # keeps -- the layer's qualifier AND the panel's or
+                    # linked graph's view -- never every row the layer's
+                    # qualifier selects in the whole dataset, or the filter
+                    # callback rebuilds the view with the other panel's rows.
                     self._register_view_filter(
-                        source, _pf, self._row_ids_for(_pdf))
+                        source, _pf,
+                        [int(r) for r, keep in zip(_ids, _mask) if keep])
                 except Exception as _pexc:          # never lose the layer
                     warnings.warn(
                         f"dash: per-plot qualifier on layer {pi + 1} could not "

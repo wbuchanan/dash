@@ -50,6 +50,7 @@ from conftest import make_data_json  # noqa: E402
 from test_mode_parity import (_DF, _LABEL_NAMES, _VALUE_LABELS,  # noqa: E402
                               _arrows_of, _assert_heads_on_shafts, _diff,
                               _explain, _kpi, _layout_tree, _spec)
+from test_mode_parity import _served_after_move  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
 _SEQ = itertools.count()
@@ -197,6 +198,30 @@ _CORPUS = [
           [plot_for("scatter", {"mlabel": "rep"}, in_expr="3/8")]),
     _case("a labelled connected plot with its own if, range", _MOVES[1],
           [plot_for("connected", {"mlabel": "rep"}, if_expr="mpg > 18")]),
+    # WP-29 P0.15: a layer's own if inside a linked by() panel, or inside a
+    # linked graph with its own if.  The page registered, for the callback
+    # to rebuild the layer's view from, every row the layer's if selects in
+    # the WHOLE dataset, so after a move each panel's layer drew the other
+    # panel's rows too (measured: both panels drew observations
+    # [1, 3, 4, 6, 7, 9] where the oracle draws [4, 6] and [1, 3, 7, 9]).
+    *[_case(f"{t} with its own if under a linked by(), {_MOVES[1][0]}",
+            _MOVES[1],
+            graphs=[("g1", [plot_for("scatter"),
+                            plot_for(t, if_expr="price > 4500")],
+                     {"by": "foreign"}),
+                    ("g2", [plot_for("scatter")])],
+            bo={"link": "g1 g2"})
+      for t in ("scatter", "connected", "dot", "rspike", "rconnected",
+                "line", "area", "bar", "rcap")],
+    *[_case(f"{t} with its own if in a linked graph with its own if, "
+            f"{_MOVES[1][0]}", _MOVES[1],
+            graphs=[("g1", [plot_for("scatter"),
+                            plot_for(t, if_expr="price > 4500")], None,
+                     {"if_expr": "foreign == 1"}),
+                    ("g2", [plot_for("scatter")])],
+            bo={"link": "g1 g2"})
+      for t in ("scatter", "connected", "dot", "rspike", "rconnected",
+                "line", "area", "bar", "rcap")],
 ]
 
 
@@ -1132,3 +1157,78 @@ class TestTheOptionValueOfADate:
     def test_a_number_and_a_string_are_unchanged(self):
         assert dr._dash_option_value(1.0) == 1.0
         assert dr._dash_option_value("2001-12-31") == "2001-12-31"
+
+
+# ---------------------------------------------------------------------------
+# WP-29 P0.15: a linked layer's own if after moves, against the served app
+# ---------------------------------------------------------------------------
+
+def _linked_layer_if_spec(layout):
+    """g1 holds a plain scatter and a scatter with its own ``if price >
+    4500``, under a linked by(foreign) or in a linked graph with its own
+    ``if foreign == 1``; g2 is a plain scatter; a range filter on price."""
+    layer = plot_for("scatter", if_expr="price > 4500")
+    if layout == "by":
+        g1 = ("g1", [plot_for("scatter"), layer], {"by": "foreign"})
+    else:
+        g1 = ("g1", [plot_for("scatter"), layer], None,
+              {"if_expr": "foreign == 1"})
+    return _spec(None, {"filter": "price, type(range)", "link": "g1 g2"},
+                 None, [g1, ("g2", [plot_for("scatter")])], None, "")
+
+
+class TestALinkedLayersOwnIfAcrossMoves:
+    """WP-29 P0.15: a move, a second move and a reset on ONE page each draw
+    what the saved renderer draws of the rows kept; the reset draws the
+    first paint again."""
+
+    @pytest.mark.parametrize("layout", ["by", "graph-if"])
+    def test_every_step_draws_the_kept_rows(self, layout):
+        spec = _linked_layer_if_spec(layout)
+        r = _render(spec)
+        first = _profile(r)
+        ws = [w for w in r.filter_widgets
+              if type(w).__name__ == "RangeSlider"]
+        assert len(ws) == 1
+        w = ws[0]
+        full = (float(w.start), float(w.end))
+        steps = [((4500.0, 11385.0), "price >= 4500 & price <= 11385"),
+                 ((5000.0, 11385.0), "price >= 5000 & price <= 11385"),
+                 (full, None)]
+        for value, rows in steps:
+            _move(r, ("RangeSlider", value))
+            oracle = first if rows is None else _saved_of_rows(spec, rows)
+            _assert_same(f"{layout} after the move to {value}",
+                         _profile(r), oracle)
+
+
+class TestTheSavedPageAgreesWithTheServedApp:
+    """WP-29 P0.15: after a move the saved page draws what the served app
+    draws, figure by figure."""
+
+    @pytest.mark.parametrize("layout", ["by", "graph-if"])
+    def test_a_qualified_layer_in_a_linked_graph(self, layout):
+        spec = _linked_layer_if_spec(layout)
+        action = ("RangeSlider", (4500.0, 11385.0))
+        saved = _saved_after_move(spec, action)
+        served = _served_after_move(spec, action)[0]
+        assert len(saved) == len(served), "figure counts differ"
+        for i, (a, b) in enumerate(zip(saved, served)):
+            diffs = _diff(a["glyphs"], b["glyphs"])
+            assert not diffs, _explain(layout, f"figure {i} glyphs, saved "
+                                               f"against served", diffs)
+
+
+class TestTheTruthCheckHelpers:
+    """WP-29 P0.15: ``filter_truth_check.layer_rows``, which the Stata
+    cases QF-01 and QF-02 read, counts each layer's rows in both modes."""
+
+    def test_layer_rows_reads_both_modes(self):
+        import filter_truth_check as ftc
+        spec = _spec([plot_for("scatter")],
+                     {"filter": "foreign, type(dropdown)"})
+        spec["build_options"]["filters"] = [
+            {"varname": "foreign", "type": "dropdown"}]
+        sp, dp = _write(spec, _DF)
+        assert ftc.layer_rows(sp, dp, [(0, 1.0)]) == {
+            "saved": [[5]], "served": [[5]]}

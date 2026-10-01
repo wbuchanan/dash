@@ -104,7 +104,7 @@ FUNCTIONS = {
  'DashRenderer._parse_tabs_option': 'test/test_layout_tabs.py::TestTabsHoldFacetedGraphs::test_the_widget_reports_the_figure_keys_it_placed',
  'DashRenderer._placement_map': 'test/test_layout_tabs.py::TestNamedPlacementLayout::test_a_one_based_spec_is_accepted_too',
  'DashRenderer._rebuild_legend': 'test/test_graph_options.py::TestLegendLabels::test_legend_label_override_with_position',
- 'DashRenderer._register_view_filter': 'test/test_per_plot_qualifier_linking.py::TestALinkedLayerStaysOnTheSharedSource::test_the_filter_callback_knows_about_it',
+ 'DashRenderer._register_view_filter': 'test/test_per_plot_qualifier_linking.py::TestTheRegisteredRowsAreTheViewsOwn::test_every_registered_view_names_exactly_its_true_rows',
  'DashRenderer._render_bootstrap_html': 'test/test_adversarial_matrix.py::TestARepeatedLayoutNameIsPlacedOnce::test_the_saved_page_embeds_a_repeated_item_once',
  'DashRenderer._render_bootstrap_html.<locals>._gopts_of': 'test/test_served_bs_layout.py::TestAByGraphsCellHonoursCols::test_the_saved_cell_is_the_served_cell',
  'DashRenderer._resolve_aspect_ratio': 'test/test_graph_options.py::TestAspectRatio::test_aspectratio_is_inverted_for_bokeh',

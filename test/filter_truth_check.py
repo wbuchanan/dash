@@ -1,6 +1,7 @@
 """Both render modes' rows after a sequence of filter moves, for the Stata
 certification blocks of section 17 (GAPS2 X1, E2): test_gaps2_truth.cscript
-FT-01..FT-06 and test_e2e_filters.cscript FL-X1-1, FL-E2-1, FL-E2-2.
+FT-01..FT-06 and test_e2e_filters.cscript FL-X1-1, FL-E2-1, FL-E2-2, and
+of WP-29 section 07: test_e2e_filters.cscript QF-01, QF-02 (``layer_rows``).
 
 The cscript builds the data in Stata and hands it here through ``sfi``; this
 module renders the saved page (its own filter callbacks run under node through
@@ -167,6 +168,72 @@ def spec_of(graphs, filters, kpis=()):
                               "title": "", "subtitle": "",
                               "registry": " ".join(names),
                               "filters": list(filters)}}
+
+
+def _figure_rows(root):
+    """Rows drawn by each visible glyph renderer, per figure in layout
+    order, as ``test_mode_parity._layout_tree`` profiles count them."""
+    import test_mode_parity as tp
+    figs = []
+    tp._layout_tree(root, figs)
+    return [[g["rows"] for g in f["glyphs"] if g["visible"]] for f in figs]
+
+
+def layer_rows(spec_path, data_path, moves):
+    """WP-29 P0.15 (test_e2e_filters.cscript QF-01, QF-02): the rows each
+    layer draws in both modes after ``moves``, ``[(filter index, value)]``
+    (a value of None meaning "All").
+
+    Returns ``{"saved": [[rows per visible glyph renderer] per figure in
+    layout order], "served": [...]}``.  The saved page runs its own filter
+    callbacks under node; the served app runs its own Python callbacks.
+    The filter order is the spec's ``build_options["filters"]``, or its
+    ``filter`` text as dash.ado writes it.  Nothing
+    here calls Stata.
+    """
+    from bokeh.document import Document
+    with open(spec_path, encoding="utf-8") as fh:
+        spec = json.load(fh)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(spec_path, data_path)
+        r.render()
+    s = js_runner.JsSession(r.filter_callbacks)
+    for fi, value in moves:
+        w, cb = r.filter_widgets[fi], r.filter_callbacks[fi]
+        if value is None:
+            value = (getattr(w, "_dash_sentinel", None)
+                     or (w.start, w.end))
+        s.set(w, value)
+        s.run(cb)
+    saved_rows = _figure_rows(r._last_layout_root)
+
+    tmp = tempfile.mkdtemp(prefix="ft_layer_rows_")
+    app = os.path.join(tmp, "app.py")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(spec_path, data_path).build(app)
+        with open(app, encoding="utf-8") as fh:
+            ns = _load_app(fh.read(), "ftl_%d" % os.getpid())
+        doc = Document()
+        ns["make_document"](doc)
+        widgets = {w._dash_var: w for w in _walk(doc)
+                   if hasattr(w, "_dash_var")}
+        bo = spec["build_options"]
+        # A spec dash.ado writes holds the filter() text, not the list.
+        order = [f.get("varname") for f in (
+            bo.get("filters") or dr._dash_parse_filter_raw(
+                bo.get("filter", "") or "", warn=False))]
+        for fi, value in moves:
+            w = widgets[order[fi]]
+            if value is None:
+                value = (getattr(w, "_dash_sentinel", None)
+                         or (w.start, w.end))
+            w.value = value
+            for key in ("value", "value_throttled"):
+                for cb in list(w._callbacks.get(key, [])):
+                    cb("value", None, value)
+    return {"saved": saved_rows, "served": _figure_rows(doc.roots[0])}
 
 
 def put(name, value):

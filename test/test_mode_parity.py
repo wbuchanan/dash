@@ -2251,6 +2251,22 @@ MOVE_CORPUS = [
                                 expr="2^3^x",
                                 points={"x0": 0, "dx": 1,
                                         "y": [1, 8, 64]})]),
+    # WP-29 P0.15: a layer's own if inside a linked by() panel, or inside a
+    # linked graph with its own if.  The served app recomputes each layer
+    # from its own frame (guards; the saved page is
+    # test_saved_filter_layers.py's).
+    _move_case("a layer's own if under a linked by(), range", _MOVES[1],
+               graphs=[("g1", [_sc(), plot_for("scatter",
+                                               if_expr="price > 4500")],
+                        {"by": "foreign"}), ("g2", [_sc()])],
+               bo={"link": "g1 g2"}),
+    _move_case("a layer's own if in a linked graph with its own if, range",
+               _MOVES[1],
+               graphs=[("g1", [_sc(), plot_for("scatter",
+                                               if_expr="price > 4500")],
+                        None, {"if_expr": "foreign == 1"}),
+                       ("g2", [_sc()])],
+               bo={"link": "g1 g2"}),
 ]
 
 

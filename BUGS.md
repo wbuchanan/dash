@@ -2813,11 +2813,11 @@
   - Suggested fix: WP-29 section 08 (private files and serve lifecycle): write previews 0600 under unique names in a 0700 folder of the per-user root, keep at most five per session, and remove them with dash clear and once their session is dead (section 08 R-6, ratified 01oct2026).
   - Resolution: Not fixed because WP-29 section 08 has not landed. Graded S2 (WP-29): copies of the data are left on disk; not S1 because the command names each preview's path when it writes it.
 
-- [ ] Title: After a filter move the saved page registers a layer's own if rows, not their intersection with its panel or graph qualifier
-  - File Names and Line Numbers: dash_render.py at 7421d3d: DashRenderer._make_figure_body (25920, the per-plot view block), DashRenderer._register_view_filter (25538), DashRenderer._row_ids_for (25604), _FILTER_JS (15812; the view rebuild at 15966)
+- [x] Title: After a filter move the saved page registers a layer's own if rows, not their intersection with its panel or graph qualifier
+  - File Names and Line Numbers: dash_render.py: DashRenderer._make_figure_body (the per-plot qualifier registration)
   - Description: DROPIN-REMAINING.md P0.15, verified at 357c368: after a filter move, the saved page registers per-plot rows rather than the intersection. In a linked `by()` graph, or a linked graph with its own graph-level qualifier, a layer with its own `if` then draws rows outside its panel. The served app is correct. Sources: REM-06-06-C7.
   - Suggested fix: WP-29 section 07 (saved filter rows and colorvar domain): register the intersection of the layer's rows with its panel or graph qualifier, so every move keeps the layer inside it.
-  - Resolution: Not fixed because WP-29 section 07 has not landed. Graded S1 (WP-29): rows outside a panel are drawn in it after the first move, silently.
+  - Resolution: Fixed 01oct2026 (WP-29, P0.15). DashRenderer._make_figure_body registers a layer's own if/in view with the source row identities its mask keeps -- the layer's qualifier AND the linked by() panel's or linked graph's view -- so _FILTER_JS rebuilds it inside its panel or graph after every move, a second move and a reset; the served app already recomputed each layer from its own frame. Pinned by test/test_per_plot_qualifier_linking.py::TestTheRegisteredRowsAreTheViewsOwn::test_every_registered_view_names_exactly_its_true_rows, test/test_saved_filter_layers.py::TestALinkedLayersOwnIfAcrossMoves::test_every_step_draws_the_kept_rows, test/test_saved_filter_layers.py::TestTheSavedPageAgreesWithTheServedApp::test_a_qualified_layer_in_a_linked_graph, test/test_e2e_filters.cscript QF-01.
 
 - [ ] Title: The colorvar() colour range ignores a per-plot if on the saved page and a linked graph's qualifier in both modes
   - File Names and Line Numbers: dash_render.py at 7421d3d: GlyphMapper._apply_colorvar (6916), _dash_colorvar_bins (5828)
