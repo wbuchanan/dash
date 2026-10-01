@@ -112,6 +112,11 @@ COVERAGE = {
         # e2e: colorvar() and jitter() named in the note per type.
         "_dash_fold_typed": ("test_help_claims_7.cscript:HC7-02",
                              "test_help_claims_7.cscript:HC7-03"),
+        # e2e: sort() refused, named or silent as twoway, on every type
+        # (WP-29 P0.1).
+        "_dash_sort_opt": ("test_twoway_option_parity.cscript:JO-21",
+                           "test_twoway_option_parity.cscript:JO-22"),
+        "_dash_sort_names": ("test_twoway_option_parity.cscript:JO-21",),
         # e2e: legend(top) and the rest refused, labels accepted.
         "_dash_check_legend": ("test_help_claims_7.cscript:HC7-01",),
         "_dash_shipped_schemes": ("test_custom_scheme.cscript:CS-12",),
@@ -201,6 +206,10 @@ COVERAGE = {
         "_dash_qual_gen_by": ("test_qualifier_in_stata.cscript:QS-16",
                               "test_qualifier_in_stata.cscript:QS-19",
                               "test_qualifier_in_stata.cscript:QS-21"),
+        # e2e: sort(varlist)'s rank columns, against twoway's serset;
+        # a dropped variable refused, and a __dashs variable (WP-29 P0.1).
+        "_dash_sort_gen": ("test_wp29_truth.cscript:JO-09",
+                           "test_adversarial.cscript:JO-33"),
         "_dash_registry_nodraw": ("test_nodraw_honoured.cscript:ND-05",),
         "_dash_dashboard_browser": ("test_serve_browser.cscript:SB-01",
                                     "test_serve_browser.cscript:SB-03",
@@ -442,6 +451,11 @@ COVERAGE = {
                              "test_qualifier_in_stata.cscript:QS-20"),
         "_dash_qual_orders": ("test_qualifier_in_stata.cscript:QS-16",
                               "test_qualifier_in_stata.cscript:QS-21"),
+        # e2e: the join-order table each sort(varlist) list is ranked from,
+        # against twoway's serset (WP-29 P0.1).
+        "_dash_sort_reset": ("test_wp29_truth.cscript:JO-01",),
+        "_dash_sort_scan": ("test_wp29_truth.cscript:JO-01",),
+        "_dash_sort_export": ("test_wp29_truth.cscript:JO-01",),
         "_dash_qual_skipws": ("test_qualifier_in_stata.cscript:QS-09",),
         "_dash_qual_rewrite": ("test_qualifier_in_stata.cscript:QS-05",
                                "test_qualifier_in_stata.cscript:QS-09",

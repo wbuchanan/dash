@@ -237,6 +237,7 @@ program define _dash_require_mata
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal ///
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
         _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
+        _dash_sort_reset _dash_sort_scan _dash_sort_export ///
         _dash_immediate _dash_say _dash_spec_types_in _dash_split_segs ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_names _dash_fn_space_call _dash_rep_scan ///
@@ -1076,12 +1077,12 @@ program define _dash_parse_plot_opts, sclass
     if `: length local r2title' local _dash_pending `"`_dash_pending' r2title"'
     if `: length local recast' local _dash_pending `"`_dash_pending' recast"'
     if `: length local scale' local _dash_pending `"`_dash_pending' scale"'
-    // sort(varlist) is named as sort(): the argument form arrives in
-    // `sort1', the name -syntax- gives it, which is Stata's plumbing and not
-    // a name the user wrote.  A bare sort is not named here: dash joins the
-    // points of the connected types in the order of x, which is what sort
-    // asks twoway for, so _dash_fold_typed names it only on the other types,
-    // once the type is known.
+    // sort(varlist) arrives in `sort1', -syntax-'s name for it, and is
+    // returned in s(sort1); it is named here as sort().  _dash_sort_opt
+    // checks it as twoway does once the repeats are reduced, honours it
+    // on line, connected, area, rline, rarea and rconnected and is silent
+    // on tsline and tsrline, taking sort off this list there (WP-29
+    // P0.1); on every other type it stays named.
     if `: length local sort1' local _dash_pending `"`_dash_pending' sort"'
     if `: length local subtitle2' local _dash_pending `"`_dash_pending' subtitle2"'
     if `: length local t1title' local _dash_pending `"`_dash_pending' t1title"'
@@ -1186,6 +1187,7 @@ program define _dash_parse_plot_opts, sclass
     sreturn local horizontal       : copy local horizontal
     sreturn local vertical         : copy local vertical
     sreturn local sort             : copy local sort
+    sreturn local sort1            : copy local sort1
     sreturn local range            : copy local range
     sreturn local colorlist        : copy local colorlist
     sreturn local jitterseed       : copy local jitterseed
@@ -1757,6 +1759,101 @@ program define _dash_fold_typed, sclass
         if "`_ftk'" != "`_ftp'" sreturn local _pending `"`_ftk'"'
     }
     if "`named'" != "" sreturn local _pending `"`s(_pending)'`named'"'
+end
+
+// ================================================================
+// _dash_sort_names  -- sort()'s names checked as twoway checks them
+//
+// twoway reads sort(varlist) with -syntax-'s namelist
+// (twoway_yxview_parse.class:187), on every plot type: a malformed name
+// is refused with one line naming the first bad character or token --
+// "* invalid name" for sort(x*), "( invalid name" for sort(z(1)) -- and
+// r(198) (measured on all forty types, WP-29 P0.1).  -confirm names- and
+// -syntax, sort(varlist)- answer otherwise.  Called by _dash_sort_opt
+// with the value by value; prints twoway's line itself.
+// ================================================================
+program define _dash_sort_names
+    version 16.0
+    syntax [, SORT1(namelist)]
+end
+
+// ================================================================
+// _dash_sort_opt <ptype>  -- sort(varlist) as twoway reads it
+//
+// Called by _dash_process_segment after _dash_opts_repeats has reduced
+// the list to the copies twoway reads -- of several sort() copies the
+// rightmost one that is not empty -- and after _dash_fold_typed.
+// Measured on StataNow 19.5 (WP-29 P0.1):
+//   * a malformed name is refused on every type (_dash_sort_names);
+//   * on the 23 types that draw a serset, each name must be a variable:
+//     unab's line, or "<word> is invalid variable name" for if, in, using
+//     and with, then "option sort() incorrectly specified", r(198); and
+//     at most ten names, _all counting every variable and two of twoway's
+//     own: "too many variables specified", the same second line, r(198);
+//   * on the other 17 types sort() is not read, rc 0.
+// On line, connected, area, rline, rarea and rconnected it is honoured:
+// s(sortvars) holds the names unab gave, single-spaced, which the plot's
+// JSON carries as "sortvars"; dash.ado makes their rank in Stata at export
+// (_dash_sort_gen).  On those six and on tsline and tsrline (which join in
+// time order whatever is given) sort comes off the pending list
+// _dash_parse_plot_opts named it on; elsewhere it stays named.  The value
+// is read by value and reaches a command line only through macval(); the
+// only echo of the user's text goes through _dash_say.  sclass: it sets
+// s(sortvars) and s(_pending) and touches nothing else in s().
+// ================================================================
+program define _dash_sort_opt, sclass
+    version 16.0
+    args ptype
+    mata: st_local("_so_e", strofreal(strtrim(st_global("s(sort1)")) == ""))
+    if `_so_e' exit
+    mata: st_local("_so_v", st_global("s(sort1)"))
+    capture noisily _dash_sort_names , sort1(`macval(_so_v)')
+    if _rc exit 198
+    local _so_six "line connected area rline rarea rconnected"
+    local _so_ts "tsline tsrline"
+    local _so_ser "scatter line connected area bar spike dropline dot rarea rbar rspike rcap rcapsym rscatter rline rconnected pcspike pcarrow pcbarrow pcscatter pccapsym mband mspline"
+    if `: list ptype in _so_ser' {
+        // Every token is a name now (namelist), so tokens() splits it
+        // whole and each reaches unab as a name.
+        mata: st_local("_so_nt", strofreal(cols(tokens(st_local("_so_v")))))
+        local _so_out ""
+        local _so_cnt = 0
+        forvalues _so_i = 1/`_so_nt' {
+            mata: st_local("_so_t", tokens(st_local("_so_v"))[`_so_i'])
+            if inlist("`_so_t'", "if", "in", "using", "with") {
+                mata: _dash_say("err", "", st_local("_so_t"), " is invalid variable name")
+                display as error "option sort() incorrectly specified"
+                exit 198
+            }
+            if "`_so_t'" == "_all" {
+                unab _so_u : _all
+                local _so_cnt = `_so_cnt' + c(k) + 2
+            }
+            else {
+                capture noisily unab _so_u : `_so_t', max(1)
+                if _rc {
+                    display as error "option sort() incorrectly specified"
+                    exit 198
+                }
+                local ++_so_cnt
+            }
+            local _so_out `_so_out' `_so_u'
+        }
+        if `_so_cnt' > 10 {
+            display as error "too many variables specified"
+            display as error "option sort() incorrectly specified"
+            exit 198
+        }
+        if `: list ptype in _so_six' sreturn local sortvars "`: list retokenize _so_out'"
+    }
+    if `: list ptype in _so_six' | `: list ptype in _so_ts' {
+        mata: st_local("_so_p", st_global("s(_pending)"))
+        local _so_rm "sort"
+        if `: list _so_rm in _so_p' {
+            local _so_k : list _so_p - _so_rm
+            sreturn local _pending `"`_so_k'"'
+        }
+    }
 end
 
 // ================================================================
@@ -3959,6 +4056,9 @@ program define _dash_process_segment, rclass
         // above, so a bad value is refused first, as twoway refuses it
         // (WP-23).
         _dash_fold_typed "`ptype'"
+        // sort(varlist): checked as twoway checks it, after the repeats
+        // are reduced, and honoured on the six joining types (WP-29 P0.1).
+        _dash_sort_opt "`ptype'"
         // twoway__histogram_gen.ado:102-107: a start() above the variable's
         // minimum over the plot's sample is r(198), discrete or not.  dash
         // drew it, the observations below start() silently left out of
@@ -4143,6 +4243,15 @@ program define _dash_process_segment, rclass
 
     // Options JSON
     _dash_plot_opts_to_json _opts_json
+    // sort(varlist) on a joining type: the names unab gave
+    // (_dash_sort_opt), which dash.ado ranks at export (_dash_sort_gen).
+    // A plot without it writes nothing new.
+    mata: st_local("_jsv", st_global("s(sortvars)"))
+    local _jsvf ""
+    if "`_jsv'" != "" {
+        _dash_json_str "`_jsv'" _jsv2
+        local _jsvf `","sortvars":"`_jsv2'""'
+    }
 
     // if/in, in compound quotes.  In plain quotes a qualifier holding a
     // double quote was split at it: -args- in _dash_json_str took the text
@@ -4167,12 +4276,12 @@ program define _dash_process_segment, rclass
             _dash_json_str "`xvar'"   _jxv
             local vfields `""yvar":"`_jyv'","xvar":"`_jxv'""'
             if `_yi' > 1 local seg_json `"`seg_json',"'
-            local seg_json `"`seg_json'{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"}"'
+            local seg_json `"`seg_json'{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
         }
     }
     else {
         local _nyv = 1
-        local seg_json `"{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"}"'
+        local seg_json `"{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
     }
 
     c_local `plottype_out' "`ptype'"
@@ -4398,7 +4507,7 @@ program define _dash_qual_gen
     capture unab _dq_clash : __dash*
     if _rc == 0 {
         local _dq_first : word 1 of `_dq_clash'
-        display as error "`cmdname': variable `_dq_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "`cmdname': variable `_dq_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its row identity __dash_row__ and its marker-label and jitter columns)."
         display as error "      Rename it first, for example: rename `_dq_first' newname"
         exit 110
     }
@@ -4506,6 +4615,63 @@ program define _dash_qual_gen_by, sortpreserve
             exit `rc'
         }
     }
+end
+
+// ================================================================
+// _dash_sort_gen <cmdname>  -- sort(varlist)'s rank columns, made in Stata
+//
+// twoway joins line, connected, area, rline, rarea and rconnected in the
+// order -sort varlist- gives (strings byte by byte, . before .a before
+// .b), which the data writer cannot carry: it writes every missing value
+// as null.  So for each distinct varlist the table holds
+// (_dash_sort_scan, _dash_sort_export) one double column __dashs<k> is
+// made here, the rank of each row under -sort varlist obs-: ties keep the
+// data's order.  The caller exports the columns with its variables and
+// drops them at once, whether or not the export succeeded; the names come
+// back in the caller's local _dash_sort_vars.  The sort variables
+// themselves are never exported.  sortpreserve gives the data its order
+// back.  Run after _dash_qual_gen, which has refused any variable already
+// named __dash* (rc 110); the check is made again for __dashs*.  A sort()
+// variable that is gone -- dropped or renamed since its graph was
+// registered -- is refused in twoway's words, r(198), with nothing left
+// behind (WP-29 P0.1).  Every name was checked to be a Stata name by
+// _dash_sort_scan before it reaches the sort command.
+// ================================================================
+program define _dash_sort_gen, sortpreserve
+    version 16.0
+    args cmdname
+    local _ds_n = 0
+    mata: _dash_sort_export()
+    if `_ds_n' == 0 {
+        c_local _dash_sort_vars ""
+        exit
+    }
+    capture unab _ds_clash : __dashs*
+    if _rc == 0 {
+        local _ds_first : word 1 of `_ds_clash'
+        display as error "`cmdname': variable `_ds_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "      Rename it first, for example: rename `_ds_first' newname"
+        exit 110
+    }
+    tempvar _ds_obs
+    quietly generate double `_ds_obs' = _n
+    local made ""
+    forvalues k = 1/`_ds_n' {
+        foreach _ds_nm of local _ds_v`k' {
+            capture confirm variable `_ds_nm', exact
+            if _rc {
+                if "`made'" != "" drop `made'
+                mata: _dash_say("err", "variable ", st_local("_ds_nm"), " not found")
+                display as error "option sort() incorrectly specified"
+                display as error "      `cmdname': the variable was dropped or renamed after the graph was registered."
+                exit 198
+            }
+        }
+        sort `_ds_v`k'' `_ds_obs'
+        quietly generate double __dashs`k' = _n
+        local made `made' __dashs`k'
+    }
+    c_local _dash_sort_vars "`made'"
 end
 
 // ================================================================
@@ -6061,6 +6227,29 @@ program define _dash_render_immediate
     local _dash_nvars : word count `needed_vars'
     // Each qualifier column is embedded with the data, and counted.
     mata: _dash_qual_export()
+    // sort(varlist)'s join-order columns (WP-29 P0.1): each distinct
+    // "sortvars" list the plots carry, checked again to be names
+    // (_dash_sort_scan; the registry is a global a do-file can set), one
+    // rank column each, embedded with the data and counted.
+    local _ds_bad ""
+    mata: _dash_sort_reset()
+    mata: _dash_sort_scan(st_local("json_spec"))
+    mata: st_local("_ds_isbad", strofreal(st_local("_ds_bad") != ""))
+    if `_ds_isbad' {
+        display as error "option sort() incorrectly specified"
+        display as error "      dash: a sort() list in the registered graph is not Stata names."
+        exit 198
+    }
+    local _ds_n = 0
+    mata: _dash_sort_export()
+    local _ds_json ""
+    forvalues _dsk = 1/`_ds_n' {
+        _dash_json_str "`_ds_v`_dsk''" _ds_vj
+        local _ds_sep ""
+        if `_dsk' > 1 local _ds_sep ","
+        local _ds_json `"`_ds_json'`_ds_sep'"`_ds_vj'":"__dashs`_dsk'""'
+    }
+    if `_ds_n' > 0 local _ds_json `","sort_cols":{`_ds_json'}"'
     // GAPS2 G3: the one-line route draws a single graph and never takes
     // a server option (_dash_plot's own syntax has none), so the reduced
     // accounting always applies -- unless the graph names no variable at
@@ -6081,7 +6270,7 @@ program define _dash_render_immediate
         _dash_cell_cap 0 "" `_ri_gc'
     }
     else {
-        _dash_cell_cap `=`_dash_nvars' + `_dq_n''
+        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n''
     }
     _dash_byte_cap `needed_vars'
 
@@ -6101,11 +6290,20 @@ program define _dash_render_immediate
         // it "(e)" rather than __dashq1, and the renderer refused the
         // spec (measured 24sep2026; test_qualifier_in_stata.cscript QS-15).
         local _dash_qual_vars ""
-        if `_dq_n' > 0 {
+        local _dash_sort_vars ""
+        if `_dq_n' + `_ds_n' > 0 {
             tempname _dash_eh
             _estimates hold `_dash_eh', restore nullok
         }
         _dash_qual_gen "dash"
+        // The join-order columns after the qualifier columns; a sort()
+        // variable gone since registration drops what was made.
+        capture noisily _dash_sort_gen "dash"
+        if _rc {
+            local _ds_rc = _rc
+            if "`_dash_qual_vars'" != "" capture drop `_dash_qual_vars'
+            exit `_ds_rc'
+        }
         // Captured, so the qualifier columns are dropped when the export
         // fails too.  The writer reads each stored value whatever its
         // display format, so no format is touched (until 24sep2026 jsonio
@@ -6113,10 +6311,10 @@ program define _dash_render_immediate
         // export left it so: test_program_coverage.cscript PC-11).  Its
         // message is still shown and its code returned; no value is
         // expanded on the way (test_string_values.cscript).
-        capture noisily _dash_write_data "`data_json_path'" `needed_vars' `_dash_qual_vars'
+        capture noisily _dash_write_data "`data_json_path'" `needed_vars' `_dash_qual_vars' `_dash_sort_vars'
         local _dash_jrc = _rc
-        if "`_dash_qual_vars'" != "" {
-            capture drop `_dash_qual_vars'
+        if "`_dash_qual_vars'`_dash_sort_vars'" != "" {
+            capture drop `_dash_qual_vars' `_dash_sort_vars'
         }
     }
     if `_dash_jrc' exit `_dash_jrc'
@@ -6135,7 +6333,7 @@ program define _dash_render_immediate
     local _dash_lvl = c(level)
     local _dash_sess_scheme = c(scheme)
     _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
-    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'}}"'
+    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'}}"'
 
     tempname fh
     // quietly: `write replace' notes a missing file, and this path is a
@@ -7100,6 +7298,33 @@ program define _dash_prepare_spec, rclass
     local _dash_nvars : word count `all_vars'
     // Each qualifier column is embedded with the data, and counted.
     mata: _dash_qual_export()
+    // sort(varlist)'s join-order columns (WP-29 P0.1): each distinct
+    // "sortvars" list the plots carry, checked again to be names
+    // (_dash_sort_scan; the registry is a global a do-file can set), one
+    // rank column each, embedded with the data and counted.
+    local _ds_bad ""
+    mata: _dash_sort_reset()
+    forvalues k = 1/`ntok_reg' {
+        local gname : word `k' of `registry'
+        if "${dash_kpi_`gname'}" == "1" continue
+        mata: _dash_sort_scan(st_local("_qg_`k'"))
+    }
+    mata: st_local("_ds_isbad", strofreal(st_local("_ds_bad") != ""))
+    if `_ds_isbad' {
+        display as error "option sort() incorrectly specified"
+        display as error "      `cmdname': a sort() list in the registered graph is not Stata names."
+        exit 198
+    }
+    local _ds_n = 0
+    mata: _dash_sort_export()
+    local _ds_json ""
+    forvalues _dsk = 1/`_ds_n' {
+        _dash_json_str "`_ds_v`_dsk''" _ds_vj
+        local _ds_sep ""
+        if `_dsk' > 1 local _ds_sep ","
+        local _ds_json `"`_ds_json'`_ds_sep'"`_ds_vj'":"__dashs`_dsk'""'
+    }
+    if `_ds_n' > 0 local _ds_json `","sort_cols":{`_ds_json'}"'
     // GAPS2 G3: the server route -- dash build, server (the SERVER
     // option here) or dash serve (which never passes its own server
     // option: `cmdname' alone decides it, checked above at "ignoring
@@ -7107,7 +7332,7 @@ program define _dash_prepare_spec, rclass
     // observation of every variable and says so; the saved route counts
     // only what the page will hold.
     if "`server'" != "" | "`cmdname'" == "dash serve" {
-        _dash_cell_cap `=`_dash_nvars' + `_dq_n'' "" 0 1
+        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n'' "" 0 1
     }
     else {
         _dash_cell_cap `: word count `row_vars'' "" `comp_cells'
@@ -7125,16 +7350,24 @@ program define _dash_prepare_spec, rclass
         // exported with the data, dropped the moment the file is written, the
         // estimates in memory held meanwhile (QS-15).
         local _dash_qual_vars ""
-        if `_dq_n' > 0 {
+        local _dash_sort_vars ""
+        if `_dq_n' + `_ds_n' > 0 {
             tempname _dash_eh
             _estimates hold `_dash_eh', restore nullok
         }
         _dash_qual_gen "`cmdname'"
+        // The join-order columns, as on the immediate route.
+        capture noisily _dash_sort_gen "`cmdname'"
+        if _rc {
+            local _ds_rc = _rc
+            if "`_dash_qual_vars'" != "" capture drop `_dash_qual_vars'
+            exit `_ds_rc'
+        }
         // Captured for the same reason as on the immediate route.
-        capture noisily _dash_write_data "`datapath'" `all_vars' `_dash_qual_vars'
+        capture noisily _dash_write_data "`datapath'" `all_vars' `_dash_qual_vars' `_dash_sort_vars'
         local _dash_jrc = _rc
-        if "`_dash_qual_vars'" != "" {
-            capture drop `_dash_qual_vars'
+        if "`_dash_qual_vars'`_dash_sort_vars'" != "" {
+            capture drop `_dash_qual_vars' `_dash_sort_vars'
         }
     }
     if `_dash_jrc' exit `_dash_jrc'
@@ -7278,7 +7511,7 @@ program define _dash_prepare_spec, rclass
     // uses -- a served dashboard otherwise sends the browser only what it
     // plots.  A flag, so only "1" or "0" reaches the spec.
     local _csv_flag = cond("`csv'" != "", "1", "0")
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'}}"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'}}"'
 
     tempname fh
     // quietly: see the note at the other spec writer -- `write replace'

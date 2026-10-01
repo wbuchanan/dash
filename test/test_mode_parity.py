@@ -1623,6 +1623,10 @@ CORPUS = [
     _case("a second axis titled by default and by ytitle2(, size(large))",
           [_sc(), plot_for("line", {"yaxis": "2"}, yvar="price")],
           go={"ytitle2": ", size(large)"}),
+    # WP-29 P0.1: the joining types under sort, both modes joining in x
+    # order (bare, each joins in the data's order: the cases above).
+    *[_case(f"{t}, sort", [plot_for(t, {"sort": "sort"})])
+      for t in ("line", "connected", "area", "rline", "rarea", "rconnected")],
 ]
 
 
@@ -3220,7 +3224,9 @@ class TestALinkedByGraphsLinesOnASavedBuild:
     Bokeh's E-1024 error on every saved build" (measured 24sep2026 with
     Bokeh 3.9.0): each panel's Line got a CDSView with a BooleanFilter,
     which Bokeh refuses on a connected glyph.  The pin: no E-1024, and
-    each panel's line holds its own panel's observations, in x order."""
+    each panel's line holds its own panel's observations, in the data's
+    order within its group, as twoway joins each by() panel (WP-29 P0.1;
+    this pinned x order until then, which was wrong)."""
 
     _SPEC = staticmethod(lambda: _spec(
         build_options={"link": "g1 g2"},
@@ -3289,9 +3295,14 @@ class TestALinkedByGraphsLinesOnASavedBuild:
             for ln in lines:
                 data = ln.data_source.data
                 xs = [float(data["weight"][i]) for i in _view_rows(ln)]
-                assert xs == sorted(xs), ("not drawn along x", xs)
                 groups |= {float(_DF.loc[_DF["weight"] == x, "foreign"]
                                  .iloc[0]) for x in xs}
+                # Flipped (WP-29 P0.1): _DF's weights of the panel's group
+                # in the data's order, where this held xs == sorted(xs).
+                grp = float(_DF.loc[_DF["weight"] == xs[0], "foreign"].iloc[0])
+                assert xs == [float(w) for w in
+                              _DF.loc[_DF["foreign"] == grp, "weight"]], (
+                    "not joined in the data's order", xs)
                 assert len(xs) == 5, xs
             assert len(groups) == 1, groups
             panels.append(groups.pop())

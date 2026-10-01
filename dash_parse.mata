@@ -185,6 +185,16 @@
 *!       The distinct by() orders of that table, into the caller's locals
 *!       _dq_nord and _dq_ord_j.
 *!
+*!   _dash_sort_reset()
+*!       Empty the join-order table (sort(varlist)'s rank columns).
+*!
+*!   _dash_sort_scan(json)
+*!       Every "sortvars" value of json into that table, once each; the
+*!       caller's _ds_bad set to the first value that is not names.
+*!
+*!   _dash_sort_export()
+*!       The table into the caller's locals _ds_n and _ds_v<k>.
+*!
 *!   _dash_extract_filters(filter_out, cmd_out)
 *!       Every filter() in the caller's `0': the groups, joined with
 *!       " || ", into the local filter_out, and `0' without them into
@@ -3156,6 +3166,77 @@ void _dash_qual_orders()
 }
 
 
+// ------------------------------------------------------------
+// The join-order table (WP-29 P0.1).  Each distinct "sortvars" value a
+// dashboard's plots carry -- the names _dash_sort_opt took from
+// sort(varlist) on a joining type -- gets one rank column __dashs<k>,
+// made in Stata by _dash_sort_gen.  The values are read back from the
+// registry's JSON, which a do-file can set by hand, so every token is
+// checked to be a name again before any reaches a sort command.
+// ------------------------------------------------------------
+
+// _dash_sort_reset() -- empty the table.
+void _dash_sort_reset()
+{
+    external string colvector _dash_sort_list
+
+    _dash_sort_list = J(0, 1, "")
+}
+
+// _dash_sort_scan(json) -- add every "sortvars" value of json to the
+// table, each once, in the order first met (read as _dash_qual_cols_in
+// reads its keys: the value up to the next double quote).  Sets the
+// caller's local _ds_bad to the first value holding a token that is not a
+// Stata name, and leaves it alone otherwise.
+void _dash_sort_scan(string scalar json)
+{
+    external string colvector _dash_sort_list
+    string scalar    needle, tail, val
+    string rowvector t
+    real scalar      pos, vstart, vend, i, ok
+
+    if (rows(_dash_sort_list) == 0 & cols(_dash_sort_list) == 0) {
+        _dash_sort_list = J(0, 1, "")
+    }
+    needle = char(34) + "sortvars" + char(34) + ":" + char(34)
+    tail   = json
+    pos    = strpos(tail, needle)
+    while (pos) {
+        vstart = pos + strlen(needle)
+        vend   = strpos(substr(tail, vstart, .), char(34))
+        if (!vend) break
+        val = substr(tail, vstart, vend - 1)
+        t   = tokens(val)
+        ok  = (cols(t) > 0 & val == invtokens(t))
+        for (i = 1; i <= cols(t) & ok; i++) ok = st_isname(t[i])
+        if (!ok) {
+            if (st_local("_ds_bad") == "") st_local("_ds_bad", val)
+        }
+        else if (!anyof(_dash_sort_list, val)) {
+            _dash_sort_list = _dash_sort_list \ val
+        }
+        tail = substr(tail, vstart + vend, .)
+        pos  = strpos(tail, needle)
+    }
+}
+
+// _dash_sort_export() -- the table into the caller's locals: _ds_n, and
+// _ds_v<k>, the names of column __dashs<k>.
+void _dash_sort_export()
+{
+    external string colvector _dash_sort_list
+    real scalar k
+
+    if (rows(_dash_sort_list) == 0 & cols(_dash_sort_list) == 0) {
+        _dash_sort_list = J(0, 1, "")
+    }
+    st_local("_ds_n", strofreal(rows(_dash_sort_list)))
+    for (k = 1; k <= rows(_dash_sort_list); k++) {
+        st_local("_ds_v" + strofreal(k), _dash_sort_list[k])
+    }
+}
+
+
 // ============================================================
 // 7.  FILTER EXTRACTION
 //     _dash_extract_filters(filter_out, cmd_out)
@@ -4307,7 +4388,13 @@ void _dash_rep_scan(string scalar opts, real scalar unk, real scalar cap)
             }
         }
         if (k) {
-            last[k] = toks[i]
+            // twoway reads sort(varlist) as the rightmost copy that is not
+            // empty (_parse combop ..., rightmost skips an empty one:
+            // sort(zz) sort() and sort() sort(zz) both sort on zz,
+            // measured, WP-29 P0.1 M4), so an empty sort() does not
+            // displace a copy with names as the word the parser reads.
+            if (!(nm == "sort(" & strtrim(_dash_rep_value(toks[i])) == "" &
+                  strtrim(_dash_rep_value(last[k])) != "")) last[k] = toks[i]
             go = 1
             continue
         }
@@ -5133,7 +5220,12 @@ string scalar _dash_rep_reduce(string scalar opts, string scalar ptype)
             return(opts)
         }
         cnt[k]     = cnt[k] + 1
-        lastpos[k] = i
+        // sort(varlist): the rightmost copy that is not empty stands, as
+        // twoway reads it (WP-29 P0.1 M4); an empty copy is left out with
+        // the others.
+        if (!(keys[i] == "sort1" & strtrim(_dash_rep_value(toks[i])) == "")) {
+            lastpos[k] = i
+        }
         val[k]     = _dash_rep_merge(keys[i], val[k], _dash_rep_value(toks[i]))
     }
     nk  = 0

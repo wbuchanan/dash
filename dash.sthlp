@@ -168,7 +168,8 @@ build with Stata's own message.  Each distinct qualifier travels to the
 dashboard as a column of 0s and 1s (named {cmd:__dashq}{it:#}); no
 tooltip, filter or download shows it.  Names beginning with {cmd:__dash} are
 reserved for every column dash makes -- the qualifier columns
-{cmd:__dashq}{it:#}, the row identity {cmd:__dash_row__}, and its
+{cmd:__dashq}{it:#}, the join-order columns {cmd:__dashs}{it:#}, the row
+identity {cmd:__dash_row__}, and its
 marker-label and jitter columns -- and data holding such a variable are
 refused with {cmd:r(110)} before anything is exported; every other Stata
 name, however dash-like it looks, is read as your data.
@@ -254,6 +255,30 @@ is missing everywhere -- {cmd:dash} draws in silence too, and
 {cmd:mspline} and {cmd:mband} on one observation draw that point.  A
 one-variable plot of a type that takes a {it:y} and an {it:x} is "too few
 variables specified", r(102).
+
+{pstd}
+{ul:Join order.}  {cmd:line}, {cmd:connected}, {cmd:area}, {cmd:rline},
+{cmd:rarea} and {cmd:rconnected} join their points in the order of the
+data, as {cmd:twoway} does.  {cmd:sort} joins them in the order of {it:x},
+and {cmd:sort(}{it:varlist}{cmd:)} in the order of {it:varlist}, whether or
+not {cmd:sort} is also given; of several copies the last one that is not
+empty counts.  Points whose keys tie keep the order of the data
+({cmd:twoway}'s order among them changes from one run to the next).
+Strings sort byte by byte, and {cmd:.} before {cmd:.a} before {cmd:.b}, as
+Stata's {cmd:sort} sorts them.  {cmd:tsline} and {cmd:tsrline} join in time
+order and ignore both.  On data not sorted by {it:x} an area follows the
+data and crosses itself where {cmd:twoway}'s does; add {cmd:sort} for a
+picture along {it:x}.  Each bound of {cmd:rline} and {cmd:tsrline} keeps
+its own missing values: it is drawn through the observations where that
+bound is present, as {cmd:twoway} draws it ({cmd:rarea} leaves out an
+observation missing either bound).  A malformed name in {cmd:sort()} is
+refused on every plot type -- {cmd:sort(x*)} is "* invalid name",
+r(198) -- and a name that is no usable variable on the plot types that
+draw observations: {cmd:sort(nosuch)} on {cmd:line} is "variable nosuch not
+found" and "option sort() incorrectly specified", r(198), in {cmd:twoway}'s
+words, and so are more than ten names.  The {cmd:sort()} variables are
+never written to the dashboard: their order travels as a rank column,
+{cmd:__dashs}{it:#}, that no tooltip, filter or download shows.
 
 {pstd}
 With {cmd:by()} {cmd:twoway} answers panel by panel, and so does
@@ -471,7 +496,10 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:mc(red) mcolor(blue)} draw blue, an option written after the
     top-level comma beats one written inside a segment, and among segments
     the last one to name it wins -- including when the last one gives an
-    empty text, {cmd:title("")}, which clears it.  {cmd:title()} and the
+    empty text, {cmd:title("")}, which clears it.  Of
+    {cmd:sort(}{it:varlist}{cmd:)} the last copy that is not empty counts,
+    as in {cmd:twoway}: {cmd:sort(z) sort()} joins in the order of z.
+    {cmd:title()} and the
     other titles, the axis labels and ticks, {cmd:legend()},
     {cmd:xscale()}/{cmd:yscale()}, {cmd:by()}, the regions and
     {cmd:xline()}/{cmd:yline()} merge their copies:
@@ -1410,7 +1438,7 @@ it.  The saved page and the served app differ as follows:
 {ul:What a filter move redraws.}  The saved page draws every layer that
 plots observations -- scatter, line, area, bar, spike, dropline, the range
 and paired-coordinate plots, and their marker labels -- from the rows that
-pass the filter, each from its own rows among them, a line still along x
+pass the filter, each from its own rows among them, a line still in its join order
 and a bar's or cap's width taken from the spacing of the rows kept.  It
 recounts a histogram's
 bars, and re-estimates a density on its grid, from the rows that pass the
@@ -3250,18 +3278,14 @@ disagree in either direction.
     {cmd:twoway} plot's: {cmd:twoway} refuses both, r(198).
 
 {phang2}{ul:Connection order.}
-    {opt sort(varlist)}, and {opt sort} on the other plot types --
-    {cmd:dash} always joins the points of {cmd:line}, {cmd:connected},
-    {cmd:area}, {cmd:tsline} and the range line and area plots
-    ({cmd:rline}, {cmd:rarea}, {cmd:rconnected}, {cmd:tsrline}) in the order
-    of x, which is the picture {cmd:twoway} draws with {cmd:sort}; without
-    it {cmd:twoway} joins them in the order of the data.  So a bare
-    {cmd:sort} on those plots is what {cmd:dash} draws, and is not named in
-    the note; on any other plot type it is named.
-    {cmd:sort(}{it:varlist}{cmd:)}, which joins them in the order of other
-    variables, is not honoured: they are still joined in the order of x, and
-    it is named on every plot type.  Where {it:varlist} has ties,
-    {cmd:twoway}'s own order among them changes from one run to the next.
+    {opt sort} and {opt sort(varlist)} on every plot type other than
+    {cmd:line}, {cmd:connected}, {cmd:area}, {cmd:rline}, {cmd:rarea},
+    {cmd:rconnected}, {cmd:tsline} and {cmd:tsrline} -- {cmd:dash} joins no
+    points there, and names them in the note.  On the first six they are
+    honoured, and {cmd:tsline} and {cmd:tsrline} join in time order, as
+    {cmd:twoway} does, so none of the eight names them (see
+    {ul:Join order} under the plot types).  A malformed {cmd:sort()} is
+    refused on every type, as {cmd:twoway} refuses it.
 
 {phang2}{ul:Marker-label placement and text style.}
     {opt mlabvposition(varname)} -- a layer's labels all sit at the one

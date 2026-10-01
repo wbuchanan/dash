@@ -44,8 +44,10 @@
 *!          (twoway accepts mlabformat(abc) with no note).
 *!   TP-06  the declared-but-not-honoured ones are named in the note by
 *!          their full names, however they were abbreviated, in comma mode
-*!          and after the paren-mode comma: sort(varlist), mlabvposition(),
-*!          mlabtextstyle(), xoverhangs, yoverhangs.
+*!          and after the paren-mode comma: sort(varlist) where dash does
+*!          not join (scatter), mlabvposition(), mlabtextstyle(),
+*!          xoverhangs, yoverhangs; sort sort(varlist) on line is honoured,
+*!          silent and written as "sortvars" (WP-29 P0.1).
 *!   TP-07  what twoway itself refuses stays UNKNOWN and is named as typed:
 *!          xreverse yreverse xalternate yalternate xcommon ycommon
 *!          lockaspect zoom() altaxis ddensity addplot() margin() region()
@@ -102,6 +104,11 @@
 *!          spelling, and any spelling on another type, twoway refuses and
 *!          dash does not read as a kernel; a hostile value beside the flag
 *!          never run; 200 unknown words then a flag answered quickly.
+*!   JO-21..27  sort() as twoway checks it (WP-29 S02): a malformed name
+*!          refused on all forty types, a name that is no usable variable on
+*!          the 23 serset types, each in twoway's words and r(198); the 17
+*!          other types take it; repeats read as twoway reads them; silent
+*!          on the six joining types and tsline/tsrline, named elsewhere.
 *!
 *! TP-01 to TP-08 render nothing: every dash probe registers with name(),
 *! and the spec is read back out of the registry, as in
@@ -449,8 +456,10 @@ else display as text "TP-05 PASS: mlabformat() recorded, abbreviated mlabf(), an
 // id | dash command | twoway command | the name the note must carry
 local n6 = 0
 local ++n6
-local c6_`n6' `"dash line mpg weight, sort(mpg) name(zqtp)"'
-local t6_`n6' `"twoway line mpg weight, sort(mpg) nodraw"'
+// Flipped (WP-29 P0.1): sort(varlist) is honoured on line, so the row
+// that pins its note is on scatter, where dash still does not join.
+local c6_`n6' `"dash scatter mpg weight, sort(mpg) name(zqtp)"'
+local t6_`n6' `"twoway scatter mpg weight, sort(mpg) nodraw"'
 local w6_`n6' "sort()"
 local ++n6
 local c6_`n6' `"dash scatter mpg weight, mlabel(make) mlabv(pos) name(zqtp)"'
@@ -492,46 +501,35 @@ forvalues i = 1/`n6' {
     }
     else display as text `"TP-06 PASS: `w6_`i'' named in the note"'
 }
-// sort(varlist) is reported as sort() once, beside the flag, and carried
-// nowhere in the spec.
+// Flipped (WP-29 P0.1): sort sort(mpg) on line was named sort() once
+// and carried nowhere, which was wrong: twoway joins the line in mpg's
+// order (sort(varlist) wins over sort).  It is honoured now: rc 0, no
+// note, the spec carries "sortvars" and never sort1, -syntax-'s internal
+// name, which no note names either.
 _ztp_run `"dash line mpg weight, sort sort(mpg) name(zqtp)"' "`logfile'"
 local drc = r(rc)
+local dnote = r(note)
 _ztp_has zqtp sort1
-if r(found) != 0 | `drc' != 0 {
-    display as error "TP-06 FAIL: sort sort(mpg) wrote a sort1 key or failed"
-    local nfail = `nfail' + 1
-    local faillist "`faillist' TP-06(sort1)"
-}
+local h1 = r(found)
+mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", "mpg")))
 _ztp_logged "`logfile'" "sort1"
-if r(found) != 0 {
-    display as error "TP-06 FAIL: the note names sort1, Stata's internal name, not sort()"
+local n1 = r(found)
+if `drc' != 0 | `dnote' != 0 | `h1' != 0 | `hv' != 1 | `n1' != 0 {
+    display as error "TP-06 FAIL: sort sort(mpg) on line -- rc `drc', note `dnote', sort1 key `h1', sortvars mpg `hv', sort1 in the log `n1'"
     local nfail = `nfail' + 1
-    local faillist "`faillist' TP-06(sort1-note)"
+    local faillist "`faillist' TP-06(sort-honoured)"
 }
-// ... and it IS reported.  The two checks above pass just as well when
-// sort(mpg) is dropped in silence, so the note must name sort() -- on one
-// line, the note's, and once in the whole log (measured 24sep2026: "dash:
-// ignoring unsupported option(s): sort()", 44 characters, under the 79
-// columns cscript sets, so the count cannot be split by a wrap).
-cert_log_has "`logfile'", needle("ignoring unsupported option(s): sort()")
-local nsort = r(count)
-cert_file_count "`logfile'", needle("sort()")
-local msort = r(count)
-if `nsort' != 1 | `msort' != 1 {
-    display as error "TP-06 FAIL: sort sort(mpg) is not reported as sort() once: `nsort' note line(s) name it, sort() is written `msort' time(s)"
-    local nfail = `nfail' + 1
-    local faillist "`faillist' TP-06(sort-named)"
-}
-else display as text "TP-06 PASS: sort sort(mpg) is named sort(), once, in the note"
+else display as text "TP-06 PASS: sort sort(mpg) on line is honoured in silence and written as sortvars, never sort1"
 
 // TP-06b -- a bare sort on a connected type is what dash draws, so it is not
 // named (BUGS.md, S3).  twoway accepts sort on every type below (measured
-// again here); with it twoway joins the points in the order of x, which is
-// the order dash always joins line, connected, area, tsline and the range
-// line and area types in.  `dash line price weight, sort' said "ignoring
-// unsupported option(s): sort()" for the picture it had drawn.  On a type
-// dash does not join -- scatter, bar -- sort is still named, and so is
-// sort(varlist) on a connected type, which dash does not honour.
+// again here); with it twoway joins the points in the order of x, as dash
+// joins line, connected, area and the range line and area types under it
+// (tsline and tsrline join in time order whatever is given).  `dash line
+// price weight, sort' said "ignoring unsupported option(s): sort()" for the
+// picture it had drawn.  On a type dash does not join -- scatter, bar --
+// sort is still named.  Flipped (WP-29 P0.1): sort(varlist) on a connected
+// type is honoured now, so it is not named either (the last loop below).
 quietly tsset t
 foreach tt in line connected area tsline rline rarea rconnected tsrline {
     local v `v_`tt''
@@ -553,7 +551,7 @@ if r(rc) != 0 | r(note) != 0 {
     local nfail = `nfail' + 1
     local faillist "`faillist' TP-06b(paren)"
 }
-foreach c in "scatter mpg weight, sort" "bar mpg weight, sort" "line mpg weight, sort(price)" "(line mpg weight, sort(price)) (scatter mpg weight)" {
+foreach c in "scatter mpg weight, sort" "bar mpg weight, sort" {
     local sep ""
     if !strpos("`c'", ",") | substr("`c'", 1, 1) == "(" local sep ","
     capture graph drop _all
@@ -568,7 +566,263 @@ foreach c in "scatter mpg weight, sort" "bar mpg weight, sort" "line mpg weight,
         local faillist "`faillist' TP-06b(`c')"
     }
 }
-display as text "TP-06b: a bare sort on a connected type is not named; on scatter and bar, and as sort(varlist), it is"
+foreach c in "line mpg weight, sort(price)" "(line mpg weight, sort(price)) (scatter mpg weight)" {
+    local sep ""
+    if !strpos("`c'", ",") | substr("`c'", 1, 1) == "(" local sep ","
+    capture graph drop _all
+    capture twoway `c'`sep' nodraw
+    local tw_rc = _rc
+    _ztp_run `"dash `c'`sep' name(zqtp)"' "`logfile'"
+    local drc = r(rc)
+    local dnote = r(note)
+    if `tw_rc' != 0 | `drc' != 0 | `dnote' != 0 {
+        display as error "TP-06b FAIL: dash `c' -- twoway r(`tw_rc'), dash rc `drc', note `dnote' (want none)"
+        local nfail = `nfail' + 1
+        local faillist "`faillist' TP-06b(`c')"
+    }
+}
+display as text "TP-06b: a bare sort, and sort(varlist), on a connected type are not named; a bare sort on scatter and bar is"
+
+// ----------------------------------------------------------------
+// JO -- sort() as twoway checks it (WP-29 S02)
+// ----------------------------------------------------------------
+// twoway checks sort()'s names with -syntax-'s namelist on every plot
+// type (twoway_yxview_parse.class:187), so a malformed name is refused
+// on all forty, r(198), with one line naming the first bad character or
+// token.  On the 23 types that draw a serset, serset create then reads
+// the names as variables: one that is not a usable variable is refused
+// with Stata's varlist line and "option sort() incorrectly specified",
+// r(198), and so are more than ten names (_all counting the variables in
+// memory and two of twoway's own).  On the other 17 types sort() is not
+// read.  dash used to accept every sort() with a note.  Every expectation
+// is asked of twoway in the same run.
+local jologtw "`c(tmpdir)'dash_jo_twoway.log"
+capture program drop _zjo_tw
+program define _zjo_tw, rclass
+    args cmdtext logpath
+    capture log close _zjotw
+    capture erase "`logpath'"
+    log using "`logpath'", name(_zjotw) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _zjotw
+    return scalar rc = `rc'
+end
+// twoway and dash given one plot type, varlist and option: r(ok) is 1
+// when both return `wrc' and both logs carry each wanted line.
+capture program drop _zjo_pair
+program define _zjo_pair, rclass
+    args t v o ltw ld wrc l1 l2
+    local sep ","
+    if strpos(`"`v'"', ",") local sep ""
+    capture graph drop _all
+    _zjo_tw `"twoway `t' `v'`sep' `o' nodraw"' "`ltw'"
+    local trc = r(rc)
+    capture graph drop _all
+    _ztp_run `"dash `t' `v'`sep' `o' name(zqtp)"' "`ld'"
+    local drc = r(rc)
+    local dnote = r(note)
+    local ok = (`trc' == `wrc' & `drc' == `wrc')
+    local miss ""
+    foreach l in l1 l2 {
+        if `"``l''"' == "" continue
+        foreach f in ltw ld {
+            cert_log_has "``f''", needle(`"``l''"')
+            if r(found) < 1 {
+                local ok = 0
+                local miss "`miss' `f'"
+            }
+        }
+    }
+    return scalar ok = `ok'
+    return scalar note = `dnote'
+    return local why "twoway r(`trc'), dash r(`drc'), a wanted line missing from:`miss'"
+end
+local v_pccapsym "mpg weight turn length"
+local v_pcarrowi "20 3000 30 4000"
+local jo_all "`types' pccapsym pcarrowi"
+local jo_ser "scatter line connected area bar spike dropline dot rarea rbar rspike rcap rcapsym rscatter rline rconnected pcspike pcarrow pcbarrow pcscatter pccapsym mband mspline"
+local jo_oth "lfit lfitci qfit qfitci fpfit fpfitci lowess lpoly lpolyci function tsline tsrline histogram kdensity scatteri pci pcarrowi"
+local jo_six "line connected area rline rarea rconnected"
+
+// JO-21: a malformed name, on all forty types.
+local bad = 0
+foreach tt of local jo_all {
+    local v `v_`tt''
+    local k = 0
+    foreach o in "x*" "z+" "L.x" "-zz" "1x" "z, stable" "z(1)" {
+        local ++k
+        local w : word `k' of "*" "+" "L.x" "-" "1x" "," "("
+        _zjo_pair `tt' `"`v'"' `"sort(`o')"' "`jologtw'" "`logfile'" 198 `"`w' invalid name"'
+        if !r(ok) {
+            display as error `"JO-21 FAIL: `tt', sort(`o') -- `r(why)'"'
+            local bad = 1
+        }
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' JO-21"
+}
+else display as text "JO-21 PASS: a malformed name in sort() is refused r(198) in twoway's words on all forty types"
+
+// JO-22: a name that is no usable variable, on the 23 serset types.
+generate zz = mod(_n, 5)
+generate zb = mod(_n, 3)
+local bad = 0
+foreach tt of local jo_ser {
+    local v `v_`tt''
+    foreach o in nosuch z _N int in if using with _b "zz nosuch" {
+        local w "variable `o' not found"
+        if "`o'" == "z" local w "z ambiguous abbreviation"
+        if "`o'" == "int" local w "int not allowed"
+        if inlist("`o'", "in", "if", "using", "with") local w "`o' is invalid variable name"
+        if "`o'" == "zz nosuch" local w "variable nosuch not found"
+        _zjo_pair `tt' `"`v'"' `"sort(`o')"' "`jologtw'" "`logfile'" 198 `"`w'"' "option sort() incorrectly specified"
+        if !r(ok) {
+            display as error `"JO-22 FAIL: `tt', sort(`o') -- `r(why)'"'
+            local bad = 1
+        }
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' JO-22"
+}
+else display as text "JO-22 PASS: a name that is no usable variable is refused r(198) in twoway's two lines on the 23 serset types"
+
+// JO-23: the 17 other types take sort(nosuch); dash names it in the
+// note, except on tsline and tsrline, which join in time order.
+local bad = 0
+foreach tt of local jo_oth {
+    local v `v_`tt''
+    _zjo_pair `tt' `"`v'"' "sort(nosuch)" "`jologtw'" "`logfile'" 0
+    local ok = r(ok)
+    local note = r(note)
+    local why `"`r(why)'"'
+    cert_log_has "`logfile'", needle("sort()")
+    local named = r(found)
+    if inlist("`tt'", "tsline", "tsrline") local want = (`note' == 0 & `named' == 0)
+    else local want = (`note' == 1 & `named' >= 1)
+    if !`ok' | !`want' {
+        display as error `"JO-23 FAIL: `tt', sort(nosuch) -- `why', note `note', sort() named `named'"'
+        local bad = 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' JO-23"
+}
+else display as text "JO-23 PASS: the 17 types twoway does not sort take sort(nosuch); named except on tsline and tsrline"
+
+// JO-24: an abbreviation is unabbreviated, and _all where twoway takes it.
+local bad = 0
+drop zb
+_zjo_pair line "mpg weight" "sort(z)" "`jologtw'" "`logfile'" 0
+mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", "zz")))
+if !r(ok) | !`hv' {
+    display as error "JO-24 FAIL: sort(z) with zz alone -- `r(why)', sortvars zz `hv'"
+    local bad = 1
+}
+preserve
+keep mpg weight zz
+_zjo_pair line "mpg weight" "sort(_all)" "`jologtw'" "`logfile'" 0
+mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", "mpg weight zz")))
+if !r(ok) | !`hv' {
+    display as error "JO-24 FAIL: sort(_all) over three variables -- `r(why)', sortvars `hv'"
+    local bad = 1
+}
+restore
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' JO-24"
+}
+else display as text "JO-24 PASS: sort(z) is written as zz and sort(_all) as every variable, where twoway takes them"
+
+// JO-25: repeated copies, as twoway reads them: the rightmost non-empty
+// copy is checked and used.
+generate z = -_n
+local bad = 0
+local k = 0
+foreach o in "sort(x*) sort(z)" "sort(z) sort(x*)" "sort(nosuch) sort(z)" "sort(z) sort(nosuch)" "sort(zz) sort()" "sort() sort(zz)" "sort()" {
+    local ++k
+    local wrc : word `k' of 0 198 0 198 0 0 0
+    local w1 : word `k' of "" "* invalid name" "" "variable nosuch not found" "" "" ""
+    local sv : word `k' of "z" "" "z" "" "zz" "zz" ""
+    _zjo_pair line "mpg weight" `"`o'"' "`jologtw'" "`logfile'" `wrc' `"`w1'"'
+    local ok = r(ok)
+    local why `"`r(why)'"'
+    local note = r(note)
+    if "`sv'" != "" mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", st_local("sv"))))
+    else {
+        _ztp_has zqtp sortvars
+        local hv = (r(found) == 0)
+    }
+    if `wrc' != 0 local hv = 1
+    if !`ok' | !`hv' | (`wrc' == 0 & `note' != 0) {
+        display as error `"JO-25 FAIL: line, `o' -- `why', sortvars `hv', note `note'"'
+        local bad = 1
+    }
+}
+quietly tsset t
+_zjo_pair tsline "mpg" "sort(x*)" "`jologtw'" "`logfile'" 198 "* invalid name"
+if !r(ok) {
+    display as error `"JO-25 FAIL: tsline, sort(x*) -- `r(why)'"'
+    local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' JO-25"
+}
+else display as text "JO-25 PASS: of repeated sort() copies the rightmost non-empty one is checked and used, as twoway does"
+
+// JO-26: the note.  Silent on the six joining types and on tsline and
+// tsrline; sort() named once on scatter, bar and lfit.
+local bad = 0
+foreach tt of local jo_six {
+    local v `v_`tt''
+    foreach o in "sort" "sort(z)" "sort sort(z)" {
+        _ztp_run `"dash `tt' `v', `o' name(zqtp)"' "`logfile'"
+        if r(rc) != 0 | r(note) != 0 {
+            display as error "JO-26 FAIL: `tt', `o' -- rc `r(rc)', note `r(note)' (want none)"
+            local bad = 1
+        }
+    }
+}
+foreach tt in tsline tsrline {
+    _ztp_run `"dash `tt' `v_`tt'', sort(mpg) name(zqtp)"' "`logfile'"
+    if r(rc) != 0 | r(note) != 0 {
+        display as error "JO-26 FAIL: `tt', sort(mpg) -- rc `r(rc)', note `r(note)' (want none)"
+        local bad = 1
+    }
+}
+foreach tt in scatter bar lfit {
+    _ztp_run `"dash `tt' mpg weight, sort(z) name(zqtp)"' "`logfile'"
+    local drc = r(rc)
+    cert_log_has "`logfile'", needle("ignoring unsupported option(s): sort()")
+    if `drc' != 0 | r(count) != 1 {
+        display as error "JO-26 FAIL: `tt', sort(z) -- rc `drc', `r(count)' note line(s) naming sort() (want 1)"
+        local bad = 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' JO-26"
+}
+else display as text "JO-26 PASS: sort and sort() are silent where dash honours them and named once where it does not"
+
+// JO-27: a name given twice.
+_zjo_pair line "mpg weight" "sort(z z)" "`jologtw'" "`logfile'" 0
+mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", "z z")))
+if !r(ok) | !`hv' {
+    display as error "JO-27 FAIL: sort(z z) -- `r(why)', sortvars z z `hv'"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' JO-27"
+}
+else display as text "JO-27 PASS: sort(z z) is taken, as twoway takes it"
+drop z zz
+capture erase "`jologtw'"
+capture dash clear
 
 // ----------------------------------------------------------------
 // TP-07 -- what twoway refuses stays unknown, named as typed.

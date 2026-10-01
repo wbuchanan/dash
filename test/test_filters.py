@@ -1674,7 +1674,7 @@ class TestFilterReachesTheRenderedSource:
         (index, x, y) that neither the callback's all_graph_sources nor its
         agg_sources held, so a filter move left it as it was (a strict xfail
         until WP-27).  Every layer that draws from a copy its mapper builds
-        -- a line sorted by x, an area, a bar, a spike, a dropline -- now
+        -- a line in its join order, an area, a bar, a spike, a dropline -- now
         carries its row identity and is written by the script as one of its
         derived_sources; test_saved_filter_layers.py runs the script."""
         dr = self._build(ptype)

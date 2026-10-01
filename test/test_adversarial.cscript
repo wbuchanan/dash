@@ -6,6 +6,7 @@
 *! Tests: P2-78 through P2-84, P4-84 through P4-86
 *!         SV-01..SV-87 (WP-28 G2, generated region)
 *!         DL-01..DL-06 (WP-28 G3)
+*!         JO-31..JO-33 (WP-29 S02: sort() text, names, the reserved prefix)
 *!
 *! Usage:  do test/test_adversarial.cscript
 *!
@@ -2589,6 +2590,137 @@ assert r(rc) == 0
 capture dash clear
 display "P20-36 PASS: 20,000 scatteri points, 20,000 pci segments and a 200,000-character label are read in bounded time, echoes are cut at 80 characters, and a 2,000-point command registers"
 // ================================================================
+// JO-31..JO-33 -- sort(varlist), a new input surface (WP-29 S02)
+// ================================================================
+// sort()'s text is the user's: dash checks it with -syntax-'s namelist
+// and unab as twoway does, carries it by value, and writes only the names
+// unab returns to the spec; dash build re-checks every name it reads back
+// from the registry before any reaches a sort command, and the rank
+// columns it makes are __dashs#, under the reserved prefix.  Each case
+// prints JO-nn PASS or JO-nn FAIL and never stops the script; a failure
+// is counted and the script ends r(9) after its last case.
+local jo_adv_nfail = 0
+qui sysuse auto, clear
+generate zz = mod(_n, 5)
+tempfile jo3p
+local jo3page "`jo3p'.html"
+
+// JO-31: hostile text in sort(), built by value.
+global G "zz; drop _all"
+local bad = 0
+local k = 0
+foreach which in quote local global paren {
+    local ++k
+    if "`which'" == "quote"  local c `""a""'
+    if "`which'" == "local"  mata: st_local("c", char(96) + "c" + char(39))
+    if "`which'" == "global" local c "\$G"
+    if "`which'" == "paren"  local c "zz)"
+    quietly datasignature
+    local sig0 "`r(datasignature)'"
+    capture graph drop _all
+    capture noisily twoway line mpg weight, sort(`macval(c)') nodraw
+    local trc = _rc
+    capture graph drop _all
+    capture erase "`jo3page'"
+    capture noisily dash line mpg weight, sort(`macval(c)') saving("`jo3page'", replace)
+    local drc = _rc
+    quietly datasignature
+    local sig1 "`r(datasignature)'"
+    capture confirm file "`jo3page'"
+    local pg = (_rc == 0)
+    // A macro reference is the one place dash and twoway part: twoway
+    // expands it again in its own program, where it names nothing, and
+    // draws (rc 0); dash never expands the user's text a second time, so
+    // the reference is a name with a bad character, refused as namelist
+    // refuses it ("` invalid name", r(198)).
+    local want = `trc'
+    if "`which'" == "local" local want = 198
+    if `drc' != `want' | "`sig0'" != "`sig1'" | `"$G"' != "zz; drop _all" | (`drc' != 0 & `pg') {
+        display as error "JO-31 FAIL: hostile sort() text `which': twoway r(`trc'), dash r(`drc'), data changed `=("`sig0'" != "`sig1'")', page `pg'"
+        local bad = 1
+    }
+}
+capture erase "`jo3page'"
+if `bad' local ++jo_adv_nfail
+else display "JO-31 PASS: hostile sort() text is refused as twoway refuses it (a macro reference r(198), never expanded), nothing run or written"
+
+// JO-32: a thousand copies of a name, answered quickly and as twoway
+// answers them: more than ten names is "too many variables specified".
+local bad = 0
+mata: st_local("many", " zz" * 1000)
+capture graph drop _all
+capture twoway line mpg weight, sort(`many') nodraw
+local trc = _rc
+timer clear 32
+timer on 32
+_adv_p19_run `"dash line mpg weight, sort(`many') name(jo32)"'
+local drc = r(rc)
+local lg "`r(log)'"
+timer off 32
+quietly timer list 32
+local t32 = r(t32)
+cert_file_has "`lg'", needle("too many variables specified")
+if `drc' != `trc' | `drc' != 198 | r(found) != 1 | `t32' >= 10 {
+    display as error "JO-32 FAIL: 1,000 copies of zz: twoway r(`trc'), dash r(`drc'), `t32' s"
+    local bad = 1
+}
+_adv_p19_run `"dash line mpg weight, sort(`many' x*) name(jo32)"'
+local drc = r(rc)
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("* invalid name")
+if `drc' != 198 | r(found) != 1 {
+    display as error "JO-32 FAIL: 1,000 copies of zz then x*: dash r(`drc'), * invalid name `r(found)'"
+    local bad = 1
+}
+capture dash clear
+if `bad' local ++jo_adv_nfail
+else display "JO-32 PASS: 1,000 names in sort() are answered in `t32' s, as twoway answers them"
+
+// JO-33: a variable under the join-order prefix, and a registry edited to
+// carry a sort() list that is not names.
+local bad = 0
+generate __dashs1 = 1
+quietly datasignature
+local sig0 "`r(datasignature)'"
+capture erase "`jo3page'"
+capture noisily dash line mpg weight, sort(zz) saving("`jo3page'", replace)
+local drc = _rc
+quietly datasignature
+local sig1 "`r(datasignature)'"
+capture confirm file "`jo3page'"
+local pg = (_rc == 0)
+if `drc' != 110 | "`sig0'" != "`sig1'" | `pg' {
+    display as error "JO-33 FAIL: a variable named __dashs1: dash r(`drc'), data changed `=("`sig0'" != "`sig1'")', page `pg'"
+    local bad = 1
+}
+drop __dashs1
+capture dash clear
+quietly dash line mpg weight, sort(zz) name(jo33)
+mata: st_global("dash_json_jo33", subinstr(st_global("dash_json_jo33"), ///
+    char(34) + "sortvars" + char(34) + ":" + char(34) + "zz" + char(34), ///
+    char(34) + "sortvars" + char(34) + ":" + char(34) + "zz; drop" + char(34)))
+mata: st_local("edited", strofreal(strpos(st_global("dash_json_jo33"), "zz; drop") > 0))
+quietly datasignature
+local sig0 "`r(datasignature)'"
+capture erase "`jo3page'"
+capture noisily dash build, saving("`jo3page'") replace
+local brc = _rc
+quietly datasignature
+local sig1 "`r(datasignature)'"
+capture confirm file "`jo3page'"
+local pg = (_rc == 0)
+capture unab _jo33_left : __dash*
+local urc = _rc
+if !`edited' | `brc' != 198 | "`sig0'" != "`sig1'" | `pg' | `urc' != 111 {
+    display as error "JO-33 FAIL: an edited sortvars: edited `edited', dash build r(`brc'), data changed `=("`sig0'" != "`sig1'")', page `pg', __dash* unab rc `urc'"
+    local bad = 1
+}
+capture erase "`jo3page'"
+capture dash clear
+drop zz
+if `bad' local ++jo_adv_nfail
+else display "JO-33 PASS: a __dashs variable is refused rc 110 and an edited sort() list r(198) at dash build, nothing exported"
+// ================================================================
 // P22 -- pcarrowi's immediate values (WP-22, a new input surface)
 // ================================================================
 // `pcarrowi #y1 #x1 #y2 #x2 [(#clockpos)] ["label"] ...' carries numbers,
@@ -3084,8 +3216,15 @@ display "  P20-33: name(g1, replace) in any spelling, with by(), on a new name -
 display "  P20-34: scatteri and pci coordinates and clock positions spelled to pass (SMCL, hex, non-ASCII digits, glued blanks, ranges) -> rc=198, echoed as text"
 display "  P20-35: scatteri and pci values that broke the spec, and a label carrying JSON, </script>, SMCL and control bytes -> valid spec, the label exact, the page builds"
 display "  P20-36: 20,000 scatteri points, 20,000 pci segments and a 200,000-character label -> read in bounded time, echoes cut at 80 characters"
+display "  JO-31..33: hostile sort() text, 1,000 names, a __dashs variable and an edited sort() list -> refused as twoway refuses them, nothing expanded or exported"
 display "  P22-01: pcarrowi coordinates and clock positions spelled to pass (SMCL, hex, non-ASCII digits, 12.000001) -> rc=198, echoed as text"
 display "  P22-02: A pcarrowi label carrying JSON, </script>, SMCL and control bytes -> valid spec, one plot, the label exact, data in the page"
 display "  P22-03: 20,000 pcarrowi arrows and a 200,000-character label -> encoded in bounded time"
 display "  SV-01..SV-87: every plot type and variable position that takes one -> a string variable refused with twoway's own r(109) and words"
 display "  DL-01..DL-06: a computed-only graph's drawn output, not its rows, counts against the cells limit; a filter, link(), csv or hover() reaches it again; a served app always embeds every row"
+
+// JO-31..JO-33 never stop the script at a failure; it ends here instead.
+if `jo_adv_nfail' > 0 {
+    display as error "test_adversarial: `jo_adv_nfail' of JO-31..JO-33 FAILED"
+    exit 9
+}

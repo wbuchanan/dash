@@ -598,10 +598,12 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # _dash_dashboard_browser, _dash_kpi, _dash_prepare_spec, _dash_build,
     # _dash_serve_spec, _dash_open_page, the one browser opener, since
     # WP-24, and _dash_by_panels, since the S3 batch's by() answers).  ">= 6" let four of them drop out of every whole-file scan
-    # below -- a `program' written without `define' does.
+    # below -- a `program' written without `define' does.  Flipped to 13
+    # (WP-29 P0.1): _dash_sort_names declares SORT1(namelist), the check
+    # twoway makes of sort()'s names.
     with_syntax = sorted(p for p, b in _bodies().items() if _syntax_options(b))
     assert len(with_syntax) >= 6
-    assert len(with_syntax) == 12, with_syntax
+    assert len(with_syntax) == 13, with_syntax
     assert "_dash_open_page" in with_syntax, with_syntax
     # The comment lines the duplicate-block scan reads, per parser: 108
     # in the plot parser and 71 in the graph parser (measured 24sep2026,

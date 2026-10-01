@@ -1,10 +1,16 @@
-"""A line-like glyph must be drawn in x order, not in dataset order.
+"""A line-like glyph is joined in the order twoway joins it.
 
 Bokeh's ``line`` and ``varea`` connect their points in the order the
-ColumnDataSource gives them. Stata's ``twoway line`` and ``twoway area`` draw
-along x. So a mapper that hands over unsorted rows draws a shape that crosses
-itself — the classic "scribble" plot — and it does so silently, because every
-point is present and correct.
+ColumnDataSource gives them.  Stata's ``twoway line``, ``connected``,
+``area``, ``rline``, ``rarea`` and ``rconnected`` join them in the DATA's
+order, in x order under ``sort``, and in sort(varlist)'s order under that
+option; ``tsline`` and ``tsrline`` in time order (measured, WP-29 P0.1;
+test/fixtures/join_order_truth.json, test/test_join_order.py).  On data not
+sorted by x twoway's own picture crosses itself, and dash's must too.
+
+The history below is WP-09's, when dash joined every one of them in x
+order; that was itself wrong (WP-29 P0.1), and the tests that pinned it are
+flipped below.
 
 ``map_line`` and ``map_connected`` sort. ``map_area`` did not. Measured on
 x = [3, 1, 2]:
@@ -67,14 +73,15 @@ def _range_source():
     })
 
 
-def _range_drawn_x(name):
+def _range_drawn_x(name, options=None):
     """The x values a range mapper handed to Bokeh, in order."""
     mapper = dr.GlyphMapper()
     fig = figure()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         result = getattr(mapper, name)(fig, _range_source(), "y1", "y2", "x",
-                                       {}, view=None, color_idx=0)
+                                       dict(options or {}), view=None,
+                                       color_idx=0)
     renderers = result if isinstance(result, (list, tuple)) else [result]
     for rend in renderers:
         data = getattr(getattr(rend, "data_source", None), "data", {})
@@ -92,13 +99,14 @@ def _source():
     })
 
 
-def _drawn_x(name):
+def _drawn_x(name, options=None):
     """The x values the mapper handed to Bokeh, in the order it handed them."""
     mapper = dr.GlyphMapper()
     fig = figure()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        result = getattr(mapper, name)(fig, _source(), "y", "x", {},
+        result = getattr(mapper, name)(fig, _source(), "y", "x",
+                                       dict(options or {}),
                                        view=None, color_idx=0)
     renderers = result if isinstance(result, (list, tuple)) else [result]
     for rend in renderers:
@@ -110,14 +118,21 @@ def _drawn_x(name):
 
 
 @pytest.mark.parametrize("name", _PATH_MAPPERS)
-def test_the_glyph_is_drawn_in_x_order(name):
-    """The invariant. map_area failed this; the other two always passed."""
+def test_the_glyph_is_drawn_in_data_order(name):
+    """Flipped (WP-29 P0.1): this pinned x order (``got == sorted(got)``),
+    which was wrong -- twoway joins in the data's order unless sort is
+    given (twoway line y x draws x = 2, 5, 3, 6, 1 for that data order)."""
     got = _drawn_x(name)
-    assert got == sorted(got), (
-        "%s drew its points in dataset order %r; Bokeh joins points in the "
-        "order they are given, so this is a self-intersecting shape where "
-        "Stata draws a clean one" % (name, got)
-    )
+    assert got == list(_X), (
+        "%s drew its points in %r; twoway joins them in the data's order %r"
+        % (name, got, _X))
+
+
+@pytest.mark.parametrize("name", _PATH_MAPPERS)
+def test_the_glyph_is_drawn_in_x_order_under_sort(name):
+    """Under sort twoway joins in the order of x, and so does dash."""
+    got = _drawn_x(name, {"sort": "sort"})
+    assert got == sorted(_X), (name, got)
 
 
 @pytest.mark.parametrize("name", _PATH_MAPPERS)
@@ -164,7 +179,7 @@ def test_the_pairing_of_x_and_y_survives_the_sort(name):
 
 
 @pytest.mark.parametrize("name", _RANGE_PATH_MAPPERS)
-def test_a_range_path_is_drawn_in_x_order(name):
+def test_a_range_path_is_drawn_in_data_order(name):
     """The same invariant, for the range plots that draw a path or a band.
 
     ``map_rconnected`` sorted; ``map_rline``, ``map_rarea`` and
@@ -176,12 +191,24 @@ def test_a_range_path_is_drawn_in_x_order(name):
     Found the same way as the ``map_area`` case above: the generated server
     app sorts in its own inline branch for these types, so this is a place
     where the two render modes disagreed and the SERVER was right.
+
+    Flipped (WP-29 P0.1): it pinned x order for all four, which was wrong
+    for rline, rarea and rconnected -- twoway joins them in the data's
+    order unless sort is given.  tsrline joins in time order whatever it
+    is given, so it keeps x order.
     """
     got = _range_drawn_x(name)
-    assert got == sorted(got), (
-        "%s drew its points in dataset order %r; a path or band joined in "
-        "that order crosses itself" % (name, got)
-    )
+    want = sorted(_RX) if name == "map_tsrline" else list(_RX)
+    assert got == want, (
+        "%s drew its points in %r; twoway joins them in %r"
+        % (name, got, want))
+
+
+@pytest.mark.parametrize("name", _RANGE_PATH_MAPPERS)
+def test_a_range_path_is_drawn_in_x_order_under_sort(name):
+    """Under sort each range type joins in the order of x."""
+    got = _range_drawn_x(name, {"sort": "sort"})
+    assert got == sorted(_RX), (name, got)
 
 
 @pytest.mark.parametrize("name", _RANGE_PATH_MAPPERS)

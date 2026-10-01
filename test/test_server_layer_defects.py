@@ -1186,13 +1186,22 @@ class TestTheMaskedIndex:
         idx = dr.GlyphMapper._masked_index(self._src(), None, "x")
         assert list(idx) == [0, 2, 3]
 
-    def test_masked_order_is_the_same_rows_sorted_by_x(self):
-        idx = dr.GlyphMapper._masked_order(self._src(), None, "x", "y")
+    # Flipped (WP-29 P0.1): _masked_order, the drawn rows in x order, is
+    # gone -- twoway joins in the data's order unless sort is given -- and
+    # these two hold _join_order under sort to what it pinned.
+    def test_join_order_under_sort_is_the_same_rows_sorted_by_x(self):
+        src = self._src()
+        idx = dr.GlyphMapper._join_order(
+            src, dr.GlyphMapper._masked_index(src, None, "x", "y"), "x",
+            {"sort": "sort"})
         assert list(idx) == [2, 0]
 
-    def test_the_two_select_the_same_set(self):
-        a = set(dr.GlyphMapper._masked_index(self._src(), None, "x", "y"))
-        b = set(dr.GlyphMapper._masked_order(self._src(), None, "x", "y"))
+    def test_join_order_selects_the_masked_rows(self):
+        src = self._src()
+        a = set(dr.GlyphMapper._masked_index(src, None, "x", "y"))
+        b = set(dr.GlyphMapper._join_order(
+            src, dr.GlyphMapper._masked_index(src, None, "x", "y"), "x",
+            {"sort": "sort"}))
         assert a == b
 
 

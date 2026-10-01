@@ -237,7 +237,17 @@ and now matches Stata.
 
 **WP-29 (drop-in P0, 30sep2026)**
 
-<!-- WP-29 P0.1 -->
+- `dash line mpg weight`, and `connected`, `area`, `rline`, `rarea` and
+  `rconnected`, on data not sorted by x joined their points in x order,
+  the picture `twoway` draws only with `sort`; they now join them in the
+  data's order, as `twoway` does. On the ten-car parity frame a line
+  through weight 1800, 2010, 2200, ... now runs 2930, 3350, 2200, ...;
+  after a move to Foreign, 1800, 2010, 2650, 3100, 3350 is now 3350,
+  1800, 3100, 2010, 2650. `sort(varlist)` was ignored with a note; it is
+  now honoured. rline's lower path on x = 2 5 3 6 1 7 with the upper
+  bound missing at 5 was 1 2 6 7, now 2 5 6 1 7. The WP-09 line under
+  "Geometry, dates and labels" ("They now draw along x") describes the
+  order this replaces. (WP-29, P0.1)
 
 <!-- WP-29 P0.2 -->
 
@@ -474,7 +484,13 @@ and now matches Stata.
   a fit or a histogram. `colorvar()`, `mlabel()`, `hover()` and `by()`
   still take a string variable. (WP-28, G2)
 
-<!-- WP-29 P0.1 -->
+- line, connected, area, rline, rarea and rconnected join their points
+  in the data's order unless `sort` or `sort(varlist)` is given; add
+  `sort` for the old picture along x. An invalid `sort()` is refused
+  r(198) in `twoway`'s words (`sort(x*)`: `* invalid name`;
+  `sort(nosuch)` on line: `variable nosuch not found`, `option sort()
+  incorrectly specified`), where dash accepted it with a note.
+  (WP-29, P0.1)
 
 <!-- WP-29 P0.5 -->
 

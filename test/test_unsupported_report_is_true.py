@@ -137,7 +137,10 @@ PLOT_VALUES = {
     "recast": ("line", "area", "scatter"),
     "scale": ("1.5", "0.5", "scatter"),
     "scheme": ("economist", "s1mono", "scatter"),
-    "sort": ("sort", "", "line"),
+    # Flipped (WP-29 P0.1): sort is honoured on line now -- twoway joins a
+    # line in x order under it -- so the inert case is on scatter, where it
+    # is still named and draws nothing.
+    "sort": ("sort", "", "scatter"),
     "start": ("8", "11", "histogram"),
     "subtitle2": ("S2", "SS", "scatter"),
     "t1title": ("t1", "tA", "scatter"),

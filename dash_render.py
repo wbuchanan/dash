@@ -7893,11 +7893,16 @@ class GlyphMapper:
         color_idx: int = 0,
         connected: bool = False,
         line_kind: "str | None" = None,
+        order=None,
+        by_x: bool = False,
     ) -> "GlyphRenderer":
         """Add a line glyph to *fig*.
 
-        Data is sorted by the x variable before rendering to match Stata
-        behaviour (Stata's twoway line auto-sorts by x).
+        The points are joined as twoway joins them (``_join_order``): in
+        the data's order, in the order of x under ``sort``, in the order of
+        *order* -- the rank Stata made for ``sort(varlist)`` -- when one is
+        given, and in time order when *by_x* (tsline).  twoway does not
+        sort a line by x unless asked to (WP-29 P0.1).
 
         Args:
             connected: True when this line is the connecting line of a
@@ -7907,6 +7912,8 @@ class GlyphMapper:
                        "lineplot" for a line plot, "" for a connected
                        plot's line (the default by *connected*), and ""
                        for rconnected, whose colour is a line's.
+            order:     One join key per row of *source*, or None.
+            by_x:      Join in the order of x whatever else is given.
 
         Args:
             fig:     Bokeh Figure object.
@@ -7918,7 +7925,7 @@ class GlyphMapper:
         Returns:
             The single GlyphRenderer created.
         """
-        # Drop NaN and sort by x for correct line rendering.  No marker-label
+        # Drop NaN and put the rows in their join order.  No marker-label
         # column rides along: twoway draws no mlabel() on a line (below).
         _cols = {xvar: source.data[xvar], yvar: source.data[yvar]}
         df = pd.DataFrame(_cols)
@@ -7933,10 +7940,13 @@ class GlyphMapper:
         if _line_sel is not None:
             df = df[_line_sel]
             view = None
-        # The sort is stable, so the rows a saved-page filter move keeps
-        # (by their row id, carried below) are in the order a sort of them
-        # alone gives (_collect_derived_sources).
-        df = df.dropna(subset=[xvar, yvar]).sort_values(xvar, kind="stable")
+        # twoway's join order (_join_order).  It is stable, so the rows a
+        # saved-page filter move keeps (by their row id, carried below) are
+        # in the order the same rule gives them alone
+        # (_collect_derived_sources).
+        df = df.dropna(subset=[xvar, yvar])
+        df = df.loc[self._join_order(source, df.index.to_numpy(), xvar,
+                                     options, order, by_x)]
         # Each point is an observation, so the caller's other columns --
         # the variables hover() names -- ride along in the same order
         # (df's index is the row's position in *source*).
@@ -7992,8 +8002,11 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
+        order=None,
     ) -> list:
         """Add connected (line + scatter) glyphs to *fig*.
+
+        The line joins its points as map_line does; *order* is its join key.
 
         Args:
             fig:     Bokeh Figure object.
@@ -8012,7 +8025,7 @@ class GlyphMapper:
         opts_no_label = {k: v for k, v in options.items() if k != "mlabel"}
         renderers = [
             self.map_line(fig, source, yvar, xvar, opts_no_label, view=view,
-                          color_idx=color_idx, connected=True),
+                          color_idx=color_idx, connected=True, order=order),
             self.map_scatter(fig, source, yvar, xvar, options, view=view,
                              color_idx=color_idx),
         ]
@@ -8027,8 +8040,14 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
+        order=None,
     ) -> "GlyphRenderer":
         """Add an area glyph (filled between y=0 and y=yvar) to *fig*.
+
+        The outline joins its points as twoway's area does: in the data's
+        order unless ``sort`` or *order* (``sort(varlist)``'s rank) says
+        otherwise (``_join_order``), so on unsorted data the polygon crosses
+        itself exactly where twoway's does.
 
         Args:
             fig:     Bokeh Figure object.
@@ -8046,22 +8065,11 @@ class GlyphMapper:
         # have nothing left to filter.
         # The row positions as well, so the caller's other columns -- the
         # variables hover() names -- can ride along with each point.
-        _area_idx = self._masked_index(source, view, xvar, yvar)
-        x_arr, y_arr = self._masked(source, view, xvar, yvar)
-
-        # Bokeh's varea joins its points in the order it is given them, and
-        # Stata's twoway area draws along x -- so unsorted rows produce a
-        # self-intersecting polygon, silently, with every point present and
-        # correct.  map_line and map_connected have always sorted; this did
-        # not.  Measured on x = [3, 1, 2]: map_line gave [1, 2, 3] and
-        # map_area gave [3, 1, 2].  Found while comparing the two render
-        # modes, where the generated server app's own area branch sorts and
-        # this one did not.
-        if len(x_arr):
-            _order = np.argsort(x_arr, kind="stable")
-            x_arr = x_arr[_order]
-            y_arr = y_arr[_order]
-            _area_idx = _area_idx[_order]
+        _area_idx = self._join_order(
+            source, self._masked_index(source, view, xvar, yvar), xvar,
+            options, order)
+        x_arr = _dash_float_values(source.data[xvar])[_area_idx]
+        y_arr = _dash_float_values(source.data[yvar])[_area_idx]
         # The row identity, for the border line's copy: the saved page's
         # filter callback keeps a move's rows of each copy by it.
         _area_ids = None
@@ -8660,16 +8668,46 @@ class GlyphMapper:
         return idx
 
     @staticmethod
-    def _masked_order(source: ColumnDataSource, view, xvar: str, *others: str):
-        """Row indices selecting the drawn rows, in x order.
+    def _join_order(source: ColumnDataSource, idx, xvar: str, options,
+                    order=None, by_x: bool = False):
+        """The drawn rows *idx* (positions in ``source.data``) in the order
+        twoway joins them -- the one rule every joining layer uses.
 
-        ``_masked_index`` sorted by *xvar*.
+        twoway joins line, connected, area, rline, rarea and rconnected in
+        the data's order; ``sort`` joins them in the order of x, and
+        ``sort(varlist)`` in the order Stata's ``sort varlist`` gives,
+        winning over ``sort``; tsline and tsrline join in time order
+        whatever they are given (measured, WP-29 P0.1;
+        test/fixtures/join_order_truth.json).  In that precedence:
+
+        1. *by_x*: the order of x (a date in epoch milliseconds);
+        2. *order*, one key per row of *source* (the rank dash.ado made
+           for ``sort(varlist)``, ``_dash_join_key``);
+        3. ``sort`` in *options*: the order of x;
+        4. otherwise *idx* as given, the data's order.
+
+        Every sort is stable, so rows whose keys tie keep the data's order
+        (twoway's is random).
+
+        Raises:
+            ValueError: *order* does not hold one key per row of *source*.
         """
-        idx = GlyphMapper._masked_index(source, view, xvar, *others)
-        if len(idx):
-            xs = _dash_float_values(source.data[xvar])[idx]
-            idx = idx[np.argsort(xs, kind="stable")]
-        return idx
+        idx = np.asarray(idx, dtype=np.int64)
+        key = None
+        if order is not None:
+            key = np.asarray(order, dtype=float)
+            if key.ndim != 1 or len(key) != len(source.data[xvar]):
+                raise ValueError(
+                    "dash: a join key holds %d values for %d rows."
+                    % (key.size, len(source.data[xvar])))
+        if not len(idx):
+            return idx
+        if by_x or (key is None and
+                    (options or {}).get("sort") == "sort"):
+            key = _dash_float_values(source.data[xvar])
+        if key is None:
+            return idx
+        return idx[np.argsort(key[idx], kind="stable")]
 
     def map_lfit(
         self,
@@ -10600,8 +10638,15 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
+        order=None,
     ) -> list:
         """Add a range area glyph (filled between y1 and y2) to *fig*.
+
+        The band joins its rows as twoway's rarea does: in the data's order
+        unless ``sort`` or *order* (``sort(varlist)``'s rank) says otherwise
+        (``_join_order``).  One VArea is twoway's polygon where both bounds
+        are present; a row missing one bound is left out of both (twoway
+        keeps the other bound's point there; WP-29 residual O1).
 
         Args:
             fig:    Bokeh Figure object.
@@ -10618,10 +10663,11 @@ class GlyphMapper:
             empty_src = ColumnDataSource({xvar: [], y1var: [], y2var: []})
             return [fig.varea(x=xvar, y1=y1var, y2=y2var, source=empty_src)]
 
-        # Sorted for the same reason as map_rline above: a varea joined in
-        # dataset order is a band with no relation to the data.  Masked and
-        # rebuilt rather than sorted in place, because the source is shared.
-        _ord = self._masked_order(source, view, xvar, y1var, y2var)
+        # Masked and rebuilt in the join order rather than reordered in
+        # place, because the source is shared.
+        _ord = self._join_order(
+            source, self._masked_index(source, view, xvar, y1var, y2var),
+            xvar, options, order)
         _cols = {
             v: _dash_float_values(source.data[v])[_ord]
             for v in (xvar, y1var, y2var)
@@ -10888,8 +10934,16 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
+        order=None,
+        by_x: bool = False,
     ) -> list:
         """Add two connected range lines (lower and upper boundaries) to *fig*.
+
+        Each bound is drawn through the rows where it and x are present, as
+        twoway draws each path of rline, and joined in twoway's order
+        (``_join_order``; *by_x* for tsrline).  The two bounds are two
+        sources, both built whether or not either has a row: the served
+        redraw pairs a layer's sources with a fresh draw's by position.
 
         Args:
             fig:    Bokeh Figure object.
@@ -10902,33 +10956,37 @@ class GlyphMapper:
         Returns:
             List with [lower_line_renderer, upper_line_renderer].
         """
-        # Bokeh joins a line's points in the order it is given them and
-        # Stata's twoway rline draws along x, so unsorted rows make both
-        # boundaries cross themselves.  The rows cannot be sorted in the
-        # SHARED source -- other layers draw from it, and a view over it is
-        # an IndexFilter in the original row order -- so the mask is applied
-        # here and a sorted source built from the result, exactly as
-        # map_area does.  That is also why no view is passed on below: these
-        # rows are already the selected ones.
-        _ord = self._masked_order(source, view, xvar, y1var, y2var)
-        _cols = {
-            v: _dash_float_values(source.data[v])[_ord]
-            for v in (xvar, y1var, y2var)
-        }
-        # The caller's other columns -- the variables hover() names --
-        # ride along in the same order: each point is an observation.
-        source = ColumnDataSource(self._carry_cols(source, _cols, _ord))
+        # The rows cannot be reordered in the SHARED source -- other layers
+        # draw from it, and a view over it is an IndexFilter in the original
+        # row order -- so the mask is applied here and a source built from
+        # the result for each bound, in its join order, as map_area does.
+        # That is also why no view is passed on below: these rows are
+        # already the selected ones.  Each bound keeps its own rows: twoway
+        # leaves a row out of the bound that is missing there only (WP-29
+        # P0.1; dash left it out of both).
+        _xs = _dash_float_values(source.data[xvar])
+        _bound_src = {}
+        for _yv in (y1var, y2var):
+            _ord = self._join_order(
+                source, self._masked_index(source, view, xvar, _yv), xvar,
+                options, order, by_x)
+            # The caller's other columns -- the variables hover() names --
+            # ride along in the same order: each point is an observation.
+            _bound_src[_yv] = ColumnDataSource(self._carry_cols(
+                source, {xvar: _xs[_ord],
+                         _yv: _dash_float_values(source.data[_yv])[_ord]},
+                _ord))
         view = None
 
         # Both boundaries in the layer's own colour: one plot, one pstyle.
         # Measured in Stata 19.5 under s2color, `twoway rline' draws both
         # paths in p1's #1A476F, and after a scatter both in p2's #90353B;
         # the upper one used to take the NEXT series' colour (WP-23).
-        _rl1_kwargs: dict = dict(x=xvar, y=y1var, source=source,
+        _rl1_kwargs: dict = dict(x=xvar, y=y1var, source=_bound_src[y1var],
                                   line_color=self.scheme.default_color(color_idx, "line"),
                                   line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                                   legend_label=y1var)
-        _rl2_kwargs: dict = dict(x=xvar, y=y2var, source=source,
+        _rl2_kwargs: dict = dict(x=xvar, y=y2var, source=_bound_src[y2var],
                                   line_color=self.scheme.default_color(color_idx, "line"),
                                   line_width=self.scheme.plot_line_width(color_idx, "lineplot"))
         if view is not None:
@@ -10952,8 +11010,12 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
+        order=None,
     ) -> list:
         """Add range connected (lines + scatter) glyphs for two boundaries.
+
+        Each bound's line joins its own rows as map_line does; *order* is
+        their join key.
 
         Args:
             fig:    Bokeh Figure object.
@@ -10980,10 +11042,10 @@ class GlyphMapper:
             # Its lines take linestyle p#'s width, not p#lineplot's
             # (measured: `linewidth plineplot' leaves them at p1's).
             self.map_line(fig, source, y1var, xvar, options, view=view,
-                          color_idx=color_idx, line_kind=""),
+                          color_idx=color_idx, line_kind="", order=order),
             self.map_scatter(fig, source, y1var, xvar, options, view=view, color_idx=color_idx),
             self.map_line(fig, source, y2var, xvar, options, view=view,
-                          color_idx=color_idx, line_kind=""),
+                          color_idx=color_idx, line_kind="", order=order),
             self.map_scatter(fig, source, y2var, xvar, options, view=view, color_idx=color_idx),
         ]
 
@@ -12102,8 +12164,9 @@ class GlyphMapper:
     ) -> list:
         """Add a time-series line glyph to *fig*.
 
-        Delegates directly to ``map_line``.  Provided as a named alias so
-        Stata's ``twoway tsline`` syntax is explicitly supported.
+        Drawn by ``map_line`` in time order, whatever option is given:
+        twoway's tsline marks sort and sort() "ignored" and sorts on the
+        time variable (twoway_tsline_parse.class:21-32).
 
         Args:
             fig:     Bokeh Figure object.
@@ -12115,7 +12178,8 @@ class GlyphMapper:
         Returns:
             The result of ``map_line``.
         """
-        return self.map_line(fig, source, yvar, xvar, options, view=view, color_idx=color_idx)
+        return self.map_line(fig, source, yvar, xvar, options, view=view,
+                             color_idx=color_idx, by_x=True)
 
     def map_tsrline(
         self,
@@ -12130,8 +12194,9 @@ class GlyphMapper:
     ) -> list:
         """Add time-series range lines to *fig*.
 
-        Delegates directly to ``map_rline``.  Provided as a named alias so
-        Stata's ``twoway tsrline`` syntax is explicitly supported.
+        Drawn by ``map_rline`` in time order, whatever option is given:
+        twoway's tsrline marks sort and sort() "ignored" and sorts on the
+        time variable (twoway_tsline_parse.class:21-32).
 
         Args:
             fig:    Bokeh Figure object.
@@ -12144,7 +12209,8 @@ class GlyphMapper:
         Returns:
             The result of ``map_rline``.
         """
-        return self.map_rline(fig, source, y1var, y2var, xvar, options, view=view, color_idx=color_idx)
+        return self.map_rline(fig, source, y1var, y2var, xvar, options,
+                              view=view, color_idx=color_idx, by_x=True)
 
     def map_rscatter(
         self,
@@ -16000,12 +16066,12 @@ for (const vf of (view_filters || [])) {
     vf.filter.change.emit();
 }
 
-// A layer that draws from a copy its mapper built -- a line sorted by x, an
+// A layer that draws from a copy its mapper built -- a line in its join order, an
 // area, a bar, a spike, a range or paired-coordinate layer, a scatter
 // without its missing values, a layer's own marker labels -- holds its rows
 // in the order it draws them, each with its row identity.  The move keeps
 // the rows of that copy that survived every filter, in that order, so a
-// line stays sorted and an area stays a polygon along x.  These copies were
+// line and an area keep their join order (WP-29 P0.1).  These copies were
 // in no list this script wrote, so each of those layers stayed as it was
 // drawn while the scatter beside it followed the move (BUGS.md, measured
 // 24sep2026 under node).  `typeof' because an older caller passes no such
@@ -21735,7 +21801,7 @@ def _dash_own_redrawn_views(figures, redrawn_ids):
     of its own, and return those filters by source.
 
     A linked layer's mapper can draw from a copy of the shared source -- a
-    line sorted along x, connected's line, a jittered scatter, dropline's
+    line in its join order, connected's line, a jittered scatter, dropline's
     segments -- and keep the view it was handed.  A filter move redraws the
     copy from the layer's own filtered rows, which are exactly the rows to
     draw, so after one its view selects every row.  The view is often the
@@ -24393,8 +24459,8 @@ def _dash_if_type_problem(expr, frame):
 # ---------------------------------------------------------------------------
 
 #: The prefix reserved for every column dash makes (G1, WP-28): the
-#: qualifier columns, the row identity, the marker-label and jitter
-#: columns.  Data already holding a variable named with it are refused
+#: qualifier columns, the join-order columns __dashs<k> (WP-29 P0.1), the
+#: row identity, the marker-label and jitter columns.  Data already holding a variable named with it are refused
 #: (rc 110) unless the spec names it as a qualifier column (below).
 _DASH_RESERVED_PREFIX = "__dash"
 #: The prefix dash.ado reserves for its qualifier columns; it refuses data
@@ -24402,6 +24468,15 @@ _DASH_RESERVED_PREFIX = "__dash"
 _DASH_QUAL_PREFIX = "__dashq"
 #: A qualifier column's whole name, as dash.ado writes it.
 _DASH_QUAL_NAME_RE = re.compile(r"__dashq[1-9][0-9]{0,4}\Z")
+#: The prefix of the join-order columns dash.ado writes for sort(varlist):
+#: one rank per distinct varlist, made by Stata's own sort (WP-29 P0.1).
+_DASH_SORT_PREFIX = "__dashs"
+#: A join-order column's whole name, as dash.ado writes it.
+_DASH_SORT_NAME_RE = re.compile(r"__dashs[1-9][0-9]{0,4}\Z")
+#: The plot types twoway joins in the data's order, x order under sort and
+#: sort(varlist)'s order: the types a join key is handed to.
+_DASH_JOIN_TYPES = frozenset({"line", "connected", "area", "rline", "rarea",
+                              "rconnected"})
 
 
 def _dash_qual_cols_named(spec):
@@ -24452,7 +24527,10 @@ def _dash_take_qual_columns(df, spec):
     not only the qualifier columns) that the spec does not name is refused
     as well -- dash.ado refuses data that hold one -- so a user's variable
     can never be read as a qualifier, overwritten by a column dash makes
-    up, nor a qualifier shown as a variable.
+    up, nor a qualifier shown as a variable.  The join-order columns
+    ``__dashs<k>`` are taken out before this runs
+    (``_dash_take_sort_columns``); one the spec does not name is refused
+    here like any other reserved column.
 
     Raises:
         ValueError: A name, a missing column or a value dash would not
@@ -24500,6 +24578,167 @@ def _dash_qual_mask(obj, masks):
         raise ValueError("dash: the qualifier column %s is not in the data."
                          % str(name)[:40])
     return m
+
+
+# ---------------------------------------------------------------------------
+# The join-order columns (WP-29 P0.1)
+#
+# twoway joins line, connected, area, rline, rarea and rconnected in the
+# order sort(varlist) gives -- Stata's own sort, strings byte by byte and
+# missing values . < .a < .b, which the data writer cannot carry (it writes
+# every missing value as null).  dash.ado therefore makes the order in
+# Stata: one rank column __dashs<k> per distinct varlist (_dash_sort_gen,
+# `sort varlist obs'), named in build_options.sort_cols as
+# {"<varlist>": "__dashs<k>"}, each plot naming its varlist in "sortvars".
+# Both renderers take the columns out of the frame the moment the data are
+# loaded, before the qualifier columns, so no source, tooltip, filter, CSV
+# download or page holds one; the sort variables themselves are never
+# exported.  Every value is validated, and a layer reads its key by row.
+# ---------------------------------------------------------------------------
+
+def _dash_sort_cols_named(spec):
+    """build_options.sort_cols of *spec*, validated: ``{varlist: column}``.
+
+    Each column is a name dash.ado writes (``__dashs<k>``), named once; each
+    varlist is one to 120,000 Stata names, one blank apart; and every plot
+    that names a varlist in "sortvars" names one of the map.
+
+    Raises:
+        ValueError: anything dash.ado would not have written.
+    """
+    bo = (spec or {}).get("build_options") if isinstance(spec, dict) else {}
+    cols = (bo or {}).get("sort_cols", {}) if isinstance(bo, dict) else {}
+    if cols in (None, ""):
+        cols = {}
+    if not isinstance(cols, dict):
+        raise ValueError(
+            "dash: the spec's sort_cols is not a map of sort() lists to the "
+            "%s<k> columns dash writes." % _DASH_SORT_PREFIX)
+    out = {}
+    for key, col in cols.items():
+        if (not isinstance(col, str) or not _DASH_SORT_NAME_RE.match(col)
+                or col in out.values()):
+            raise ValueError(
+                "dash: the spec names %r as a join-order column; dash writes "
+                "only %s<k>, one per sort() list." % (str(col)[:40],
+                                                     _DASH_SORT_PREFIX))
+        toks = key.split(" ") if isinstance(key, str) else []
+        if (not toks or len(toks) > 120000
+                or not all(_dash_is_stata_name(t) for t in toks)):
+            raise ValueError(
+                "dash: the spec names %r as the sort() list of a %s<k> "
+                "column; dash writes Stata names, one blank apart."
+                % (str(key)[:40], _DASH_SORT_PREFIX))
+        out[key] = col
+    for g in ((spec or {}).get("graphs") or []):
+        if not isinstance(g, dict):
+            continue
+        for p in (g.get("plots") or []):
+            if not isinstance(p, dict):
+                continue
+            sv = p.get("sortvars", "")
+            if sv in (None, ""):
+                continue
+            if not isinstance(sv, str) or sv not in out:
+                raise ValueError(
+                    "dash: a plot names the sort() list %r, which has no %s<k> "
+                    "column in the spec." % (str(sv)[:40], _DASH_SORT_PREFIX))
+    return out
+
+
+def _dash_take_sort_columns(df, spec):
+    """Take dash.ado's join-order columns out of *df*.
+
+    Returns ``(frame, keys)``: *df* without the columns the spec names, and
+    ``{column: float Series indexed like df}``.  Each column must be in the
+    data and hold distinct whole numbers from 1 to 2**53 -- Stata's rank of
+    each row; not necessarily 1..N, so a subset of the rows keeps its keys.
+    Run before ``_dash_take_qual_columns``, which refuses any reserved
+    column the spec does not name as a qualifier.
+
+    Raises:
+        ValueError: a name, a missing column or a value dash would not
+            write.
+    """
+    names = _dash_sort_cols_named(spec)
+    cols = [str(c) for c in df.columns]
+    keys = {}
+    for col in names.values():
+        if col not in cols:
+            raise ValueError(
+                "dash: the spec names the join-order column %s, which is not "
+                "in the data." % col)
+        vals = pd.to_numeric(df[col], errors="coerce").to_numpy(
+            dtype=float, na_value=np.nan)
+        if (not bool(np.isfinite(vals).all())
+                or bool((vals != np.floor(vals)).any())
+                or bool((vals < 1).any()) or bool((vals > 2.0 ** 53).any())
+                or len(np.unique(vals)) != len(vals)):
+            raise ValueError(
+                "dash: the join-order column %s holds a value that is not a "
+                "distinct whole number from 1 to 2^53." % col)
+        keys[col] = pd.Series(vals, index=df.index)
+    if keys:
+        df = df.drop(columns=list(keys))
+    return df, keys
+
+
+def _dash_sort_col_of(plot, spec):
+    """The join-order column of *plot*'s "sortvars", or "" for none.
+
+    Raises:
+        ValueError: the plot names a list the spec maps to no column.
+    """
+    sv = plot.get("sortvars", "") if isinstance(plot, dict) else ""
+    if sv in (None, ""):
+        return ""
+    names = _dash_sort_cols_named(spec)
+    if not isinstance(sv, str) or sv not in names:
+        raise ValueError(
+            "dash: a plot names the sort() list %r, which has no %s<k> "
+            "column in the spec." % (str(sv)[:40], _DASH_SORT_PREFIX))
+    return names[sv]
+
+
+def _dash_join_key(source, sort_keys, col):
+    """One join key per row of *source*, read from the column *col* of
+    *sort_keys*; None when *col* is empty.
+
+    A saved source carries each row's position in the renderer's frame
+    (``__dash_row__``); a served one its frame label (``index``).  Ids are
+    bounds-checked, and a label the keys lack is refused.
+
+    Raises:
+        ValueError: no such column, no row identity, or an id that is not
+            a row.
+    """
+    if not col:
+        return None
+    rank = (sort_keys or {}).get(col)
+    if rank is None:
+        raise ValueError("dash: the join-order column %s is not in the data."
+                         % str(col)[:40])
+    data = getattr(source, "data", None) or {}
+    if _ROW_ID_COLUMN in data:
+        try:
+            ids = np.asarray(data[_ROW_ID_COLUMN], dtype=float)
+        except (TypeError, ValueError):
+            raise ValueError("dash: a layer's row ids are not numbers.")
+        if ids.size and (not bool(np.isfinite(ids).all())
+                         or bool((ids != np.floor(ids)).any())
+                         or bool((ids < 0).any())
+                         or bool((ids >= len(rank)).any())):
+            raise ValueError("dash: a layer's row id is not a row of the "
+                             "data.")
+        return rank.to_numpy(dtype=float)[ids.astype(np.int64)]
+    if "index" in data:
+        key = rank.reindex(list(data["index"])).to_numpy(dtype=float)
+        if bool(np.isnan(key).any()):
+            raise ValueError("dash: a layer's row label is not a row of the "
+                             "data.")
+        return key
+    raise ValueError("dash: a layer's source carries no row identity to read "
+                     "its join key by.")
 
 
 def _dash_total_spec(g):
@@ -24999,8 +25238,14 @@ def _dash_note_no_second_y(plot_type):
 
 
 def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
-                    y2var="", view=None, color_idx=0):
-    """Dispatch one plot layer to the GlyphMapper method that draws it."""
+                    y2var="", view=None, color_idx=0, order=None):
+    """Dispatch one plot layer to the GlyphMapper method that draws it.
+
+    *order* is the layer's join key (``_dash_join_key``), one value per row
+    of *source*; it reaches the mapper of a joining type only
+    (``_DASH_JOIN_TYPES``).  tsline and tsrline join in time order and take
+    none.
+    """
     dispatch, range_dispatch = _dash_glyph_dispatch(mapper)
     pt = (plot_type or "").lower()
 
@@ -25011,6 +25256,8 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
             return None
 
     # Range plots take (fig, source, y1var, y2var, xvar, options).
+    _jkw = ({"order": order}
+            if pt in _DASH_JOIN_TYPES and order is not None else {})
     rfn = range_dispatch.get(pt)
     if rfn is not None and not y2var:
         # A range type with no second y variable fell through to "no glyph
@@ -25020,7 +25267,7 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
         return None
     if rfn is not None:
         return rfn(fig, source, yvar, y2var, xvar, options,
-                   view=view, color_idx=color_idx)
+                   view=view, color_idx=color_idx, **_jkw)
 
     fn = dispatch.get(pt)
     if fn is None:
@@ -25037,7 +25284,8 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
     # histogram and kdensity are univariate -- no xvar positional argument.
     if pt in _DASH_UNIVARIATE_TYPES:
         return fn(fig, source, yvar, options, view=view, color_idx=color_idx)
-    return fn(fig, source, yvar, xvar, options, view=view, color_idx=color_idx)
+    return fn(fig, source, yvar, xvar, options, view=view, color_idx=color_idx,
+              **_jkw)
 
 
 def _dash_add_pc_glyph(mapper, fig, source, plot_type, y1var, x1var, y2var,
@@ -25358,9 +25606,15 @@ class DashRenderer:
         # The qualifier columns dash.ado exported, validated and taken out
         # of the frame as masks: no source, tooltip, filter or download ever
         # holds one (_dash_take_qual_columns).
+        # The join-order columns first (_dash_take_sort_columns): the
+        # qualifier take-out refuses any reserved column it does not name.
+        # self.sort_keys is indexed like self.df; anything that later
+        # changes self.df's rows must rebuild it.
+        self.df, self.sort_keys = _dash_take_sort_columns(
+            self.df, self.master_spec)
         self.df, self.qual_masks = _dash_take_qual_columns(
             self.df, self.master_spec)
-        for _qc in list(self.qual_masks):
+        for _qc in list(self.qual_masks) + list(self.sort_keys):
             self.variable_labels.pop(_qc, None)
             self.value_label_names.pop(_qc, None)
             self.string_vars.discard(_qc)
@@ -25605,7 +25859,7 @@ class DashRenderer:
         """The sources a figure draws rows from that are no graph's source.
 
         A mapper that must reorder, drop or reshape its rows draws from a
-        copy it builds: a line sorted by x, an area, a bar or a spike, a
+        copy it builds: a line in its join order, an area, a bar or a spike, a
         range or paired-coordinate layer, a scatter without its missing
         values, a layer's own marker labels.  Each copy carries every row's
         identity (``__dash_row__``), and the saved page's filter callback
@@ -26390,6 +26644,14 @@ class DashRenderer:
             if pi == 0:
                 _plot_renderers: list = []
 
+            # A joining layer's join key: sort(varlist)'s rank, read by row
+            # (_dash_join_key); None draws in the data's order, or x's under
+            # sort (GlyphMapper._join_order).
+            _jo = (_dash_join_key(source_for_plot,
+                                  getattr(self, "sort_keys", None) or {},
+                                  _dash_sort_col_of(plot, self.master_spec))
+                   if ptype.lower() in _DASH_JOIN_TYPES else None)
+
             if ptype.lower() == "scatteri":
                 # An immediate list, one record per point -- [y, x] or
                 # [y, x, "label", clock] -- no shared source variable needed.
@@ -26418,7 +26680,8 @@ class DashRenderer:
                 py1var = plot.get("yvar1", "")
                 py2var = plot.get("yvar2", "")
                 self._add_glyph(fig, source_for_plot, ptype, py1var, pxvar, popts,
-                                y2var=py2var, view=_plot_view, color_idx=_pstyle_idx[pi])
+                                y2var=py2var, view=_plot_view, color_idx=_pstyle_idx[pi],
+                                order=_jo)
             elif ptype.lower() in _UNIVARIATE_TYPES:
                 pyvar = (plot.get("yvar", "") or plot.get("var", "")
                          or yvar)
@@ -26439,7 +26702,8 @@ class DashRenderer:
                     _plot_view = self._linked_scatter_view(
                         source_for_plot, pyvar, pxvar, popts, _plot_view)
                 self._add_glyph(fig, source_for_plot, ptype, pyvar, pxvar, popts,
-                                view=_plot_view, color_idx=_pstyle_idx[pi])
+                                view=_plot_view, color_idx=_pstyle_idx[pi],
+                                order=_jo)
 
             _layer_renderers = list(fig.renderers[_r_before:])
             _plot_renderers.append((plot, _layer_renderers))
@@ -26546,6 +26810,7 @@ class DashRenderer:
         y2var: str = "",
         view=None,
         color_idx: int = 0,
+        order=None,
     ) -> None:
         """Dispatch a single plot layer to the correct GlyphMapper method.
 
@@ -26559,9 +26824,11 @@ class DashRenderer:
             y2var:      Second y variable for range plot types (empty for
                         non-range plots).
             color_idx:  Zero-based plot index for scheme color cycling.
+            order:      The layer's join key (``_dash_join_key``), or None.
         """
         _dash_add_glyph(self.mapper, fig, source, plot_type, yvar, xvar,
-                        options, y2var=y2var, view=view, color_idx=color_idx)
+                        options, y2var=y2var, view=view, color_idx=color_idx,
+                        order=order)
 
     def _add_pc_glyph(
         self,
@@ -28602,6 +28869,10 @@ class ServerAppBuilder:
                       # prefix reserved for every column dash makes (G1).
                       "_DASH_RESERVED_PREFIX",
                       "_DASH_QUAL_PREFIX", "_DASH_QUAL_NAME_RE",
+                      # The join-order columns and the joining types
+                      # (WP-29 P0.1).
+                      "_DASH_SORT_PREFIX", "_DASH_SORT_NAME_RE",
+                      "_DASH_JOIN_TYPES",
                       # _dash_parse_axis_spec's tick bound (WP-20).
                       "_MAX_AXIS_TICKS",
                       # WP-28 S14 (B1): _dash_parse_axis_spec's leading
@@ -28708,6 +28979,10 @@ class ServerAppBuilder:
                          # milliseconds (24sep2026): GlyphMapper's masks
                          # and the axis helpers call it.
                          "_dash_float_values",
+                         # sort(varlist)'s join key (WP-29 P0.1): the load
+                         # takes the rank columns out, each layer reads its.
+                         "_dash_join_key", "_dash_sort_col_of",
+                         "_dash_sort_cols_named", "_dash_take_sort_columns",
                          # One column reader for both modes' loaders, and
                          # the date axes it makes possible (WP-27): the
                          # axis kind, its tick formatter, a number given
@@ -30084,8 +30359,11 @@ class ServerAppBuilder:
             "    # The qualifier columns dash.ado exported: validated and taken",
             "    # out of the frame as masks, as the saved renderer takes them,",
             "    # so no source, tooltip, filter or download holds one.",
+            "    # The join-order columns too, first (_dash_take_sort_columns):",
+            "    # the qualifier take-out refuses a reserved column it does not name.",
+            "    df, sort_keys = _dash_take_sort_columns(df, spec)",
             "    df, qual_masks = _dash_take_qual_columns(df, spec)",
-            "    for _qc in qual_masks:",
+            "    for _qc in list(qual_masks) + list(sort_keys):",
             "        for _qm in (var_labels, val_label_names, type_is_str):",
             "            if isinstance(_qm, dict):",
             "                _qm.pop(_qc, None)",
@@ -30094,7 +30372,7 @@ class ServerAppBuilder:
             "    _st = data_json.get('storageTypes', {})",
             "    storage_types = ({str(k): str(v) for k, v in _st.items()}",
             "                     if isinstance(_st, dict) else {})",
-            "    for _qc in qual_masks:",
+            "    for _qc in list(qual_masks) + list(sort_keys):",
             "        storage_types.pop(_qc, None)",
             "    meta = {",
             "        'var_labels': var_labels,",
@@ -30103,6 +30381,7 @@ class ServerAppBuilder:
             "        'type_is_str': type_is_str,",
             "        'date_vars': date_vars,",
             "        'qual_masks': qual_masks,",
+            "        'sort_keys': sort_keys,",
             "        'storage_types': storage_types,",
             "    }",
             "    return spec, df, meta",
@@ -30199,6 +30478,8 @@ class ServerAppBuilder:
             "    # qualifier of a spec it wrote selects its rows with one, and",
             "    # none is translated (_dash_qualified_frame's qual).",
             "    _qual_masks = meta['qual_masks']",
+            "    # sort(varlist)'s ranks, by frame label (_dash_join_key).",
+            "    _sort_keys = meta['sort_keys']",
             "    graphs = spec.get('graphs', [])",
             "    kpi_defs = spec.get('kpis', [])",
             "    bo = spec.get('build_options', {})",
@@ -30382,22 +30663,28 @@ class ServerAppBuilder:
             "                extra_cols=_hv + _dash_option_columns(opts, df.columns),",
             "                df=df, gname=gname, linked_names=_ln,",
             "                shared_source=_shared, shared_pos=_shared_pos)",
+            "            # A joining layer's join key, read by frame label.",
+            "            _jo = (_dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
+            "                   if ptype in _DASH_JOIN_TYPES and _ok else None)",
             "            if _ok:",
             "                # WP-28 E14: a linked rspike/rconnected draws _shared",
             "                # through _ly_view, as an ordinary linked layer does",
             "                # (_dash_layer_source), so a selection reaches it too.",
             "                _dash_add_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
-            "                    opts, y2var=y2var, view=_ly_view, color_idx=_sidx)",
+            "                    opts, y2var=y2var, view=_ly_view, color_idx=_sidx,",
+            "                    order=_jo)",
             "        else:",
             "            _ly_src, _ly_view = _dash_layer_source(",
             "                g_df, df, xvar, yvar, opts.get('mlabel', ''),",
             "                gname, _ln, _shared, _shared_pos, _fallback,",
             "                extra_cols=_hv + _dash_option_columns(opts, df.columns))",
+            "            _jo = (_dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
+            "                   if ptype in _DASH_JOIN_TYPES and _ly_src is not None else None)",
             "            if _ly_src is not None:",
             "                _dash_add_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=_sidx)",
+            "                    view=_ly_view, color_idx=_sidx, order=_jo)",
             "        # A yaxis(2)/xaxis(2) layer draws on the secondary range, its",
             "        # marker labels and arrowheads with it.",
             "        _dash_assign_axis_ranges(fig, fig.renderers[_before:], opts,",
@@ -30744,7 +31031,7 @@ class ServerAppBuilder:
             "                graph_sources[gname].append(_rs)",
             "            if _r_srcs and any(_rs is not _ly_src for _rs in _r_srcs):",
             "                # A source the mapper BUILT -- a fitted line, a histogram,",
-            "                # a line sorted along x -- cannot be refreshed by swapping",
+            "                # a line in its join order -- cannot be refreshed by swapping",
             "                # its columns for the filtered rows: the columns are not",
             "                # dataset columns, or are not in dataset order.  Measured",
             "                # after one filter move: a served lfit was ten points of",
@@ -31187,7 +31474,7 @@ class ServerAppBuilder:
             "    # now, while the source holds every row.  A move writes the",
             "    # source once and recounts each view (_dash_refresh_linked).",
             "    _linked_views = _dash_linked_views(figures.values(), shared_source)",
-            "    # A linked layer drawn from a COPY of that source (a sorted line,",
+            "    # A linked layer drawn from a COPY of that source (a line in its join order,",
             "    # a jittered scatter) keeps its view; the redraw a move triggers",
             "    # is that layer's own rows, so the view then selects them all.",
             "    _redrawn_views = _dash_own_redrawn_views(figures.values(), _redrawn_ids)",

@@ -1250,7 +1250,6 @@ class TestGaps2AndRoadmapAgree:
 #: closed or not in the WP-29 open form, so the allowance cannot outlive its
 #: reason.  The closeout (S15) leaves it {}.
 WP29_OPEN = {
-    "P0.1": "line, connected, area, rline, rarea and rconnected are joined in x order, never in the data's order as twoway joins them, and sort(varlist) is ignored",
     "P0.2": "by() panels are drawn on independent scales by default, and by(, yrescale) is named and ignored",
     "P0.5": "axis(2) on ylabel(), yscale(), yline() and xtick() is applied to the first axis",
     "P0.6": "function evaluates ^ from the right and accepts pi and e, which twoway refuses",

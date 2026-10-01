@@ -161,7 +161,9 @@ class TestMapScatter:
 # ================================================================
 class TestMapLine:
     def test_line_sorted_by_x(self, fig, cds, gm):
-        """P1A-89: line glyph source data is sorted by xvar before rendering."""
+        """P1A-89, flipped (WP-29 P0.1): it pinned x order ("Stata
+        auto-sorts"), which was wrong -- twoway joins a line in the data's
+        order and in x order only under sort."""
         # Create an intentionally unsorted dataset
         unsorted_df = pd.DataFrame({
             "y": [3.0, 1.0, 4.0, 1.0, 5.0],
@@ -170,9 +172,13 @@ class TestMapLine:
         unsorted_cds = ColumnDataSource(unsorted_df)
         renderer = gm.map_line(fig, unsorted_cds, "y", "x", {})
         assert isinstance(renderer, GlyphRenderer)
-        # The rendered source data for x should be sorted ascending
+        # The data's order, as twoway joins it.
         x_data = renderer.data_source.data["x"]
-        assert list(x_data) == sorted(x_data), "x data is not sorted for line glyph"
+        assert list(x_data) == [5.0, 2.0, 4.0, 1.0, 3.0]
+        # Under sort, the order of x.
+        renderer = gm.map_line(fig, unsorted_cds, "y", "x", {"sort": "sort"})
+        x_data = renderer.data_source.data["x"]
+        assert list(x_data) == sorted(x_data), "x data is not sorted under sort"
 
     def test_line_uses_correct_columns(self, fig, cds, gm):
         """P1A-89: line glyph references yvar and xvar columns."""
@@ -226,14 +232,21 @@ class TestMapConnected:
             f"connected must draw a line and markers, got {sorted(types)}")
 
     def test_connected_data_sorted(self, fig, cds, gm):
-        """Connected: x data in line component is sorted."""
-        renderers = gm.map_connected(fig, cds, "mpg", "weight", {})
-        # Find the line renderer
+        """Connected: the line joins the data's order, and x's under sort.
+
+        Flipped (WP-29 P0.1): it pinned x order, which was wrong -- twoway
+        joins a connected plot's line in the data's order unless sort is
+        given."""
         from bokeh.models.glyphs import Line, MultiLine
-        line_renderer = next((r for r in renderers
-                               if isinstance(r.glyph, (Line, MultiLine))), renderers[0])
-        x_data = line_renderer.data_source.data["weight"]
-        assert list(x_data) == sorted(x_data)
+        want = [float(v) for v in cds.data["weight"]
+                if v == v]
+        for opts, order in (({}, want), ({"sort": "sort"}, sorted(want))):
+            renderers = gm.map_connected(fig, cds, "mpg", "weight", opts)
+            line_renderer = next((r for r in renderers
+                                  if isinstance(r.glyph, (Line, MultiLine))),
+                                 renderers[0])
+            x_data = [float(v) for v in line_renderer.data_source.data["weight"]]
+            assert x_data == order, (opts, x_data)
 
 
 # ================================================================

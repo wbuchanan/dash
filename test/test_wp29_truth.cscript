@@ -8,6 +8,7 @@
 *!
 *! Blocks, in section order (extended by each section that lands one):
 *!   S01  scaffold smoke: the helpers load and a twoway SVG is read (W29-01)
+*!   S02  line join order against twoway's sersets and SVG (JO-01..JO-12)
 *!   S03  P0.3 unlabelled variables (UL-01..UL-08); P0.4 title sub-options without text (ET-01..ET-10)
 *!
 *! Usage: via run_all_cscripts.do (registered as its block 68).  One
@@ -107,6 +108,554 @@ if inlist("`only'", "", "S01") {
 }
 * ==== end S01 ====
 
+// Helpers of block S02 (line join order), defined before it: programs
+// are not defined inside a block's braces.
+
+// twoway joins line, connected, area, rline, rarea and rconnected in
+// the data's order, in x order under sort, in the order of sort()'s
+// varlist under sort(varlist), and tsline and tsrline in time order;
+// each bound of a range line keeps its own rows (WP-29 P0.1).  Every
+// case below asks twoway in the same run: its serset (serset use) or
+// its exported SVG, against the sources of dash's saved page or
+// served app.  Data: scripts/extract_join_order_truth.do's datasets A
+// (eight rows, y = 100 * obs, tie-free under every key) and B
+// (missing values).
+
+capture program drop _jo_dataA
+program define _jo_dataA
+    version 16.0
+    clear
+    quietly set obs 8
+    generate double obs = _n
+    generate double x = .
+    generate double z = .
+    generate str1 s = ""
+    generate double zz = .
+    generate double keyw = 9 - _n
+    generate double g = .
+    generate double t = .
+    local xs  4 1 3 2 8 5 7 6
+    local zs  3 .b 1 .a 2 . 5 4
+    local ss  `""b" "B" "a" "" "_" "A" "C" "c""'
+    local zzs 2 1 2 1 1 2 1 2
+    local gs  1 2 1 2 . 1 2 1
+    local ts  3 8 1 6 2 7 4 5
+    forvalues i = 1/8 {
+        quietly replace x  = `: word `i' of `xs''  in `i'
+        quietly replace z  = `: word `i' of `zs''  in `i'
+        quietly replace s  = `"`: word `i' of `ss''"' in `i'
+        quietly replace zz = `: word `i' of `zzs'' in `i'
+        quietly replace g  = `: word `i' of `gs''  in `i'
+        quietly replace t  = `: word `i' of `ts''  in `i'
+    }
+    generate double y  = 100 * obs
+    generate double y2 = y + 1
+end
+
+capture program drop _jo_dataB
+program define _jo_dataB
+    version 16.0
+    clear
+    quietly set obs 7
+    generate double x   = .
+    generate double y   = .
+    generate double y2a = .
+    generate double y2b = .
+    local xs  2 5 3 6 1 . 7
+    local ys  10 20 . 40 50 45 60
+    local as  11 . 31 41 51 46 61
+    local bs  11 21 . 41 51 46 61
+    forvalues i = 1/7 {
+        quietly replace x   = `: word `i' of `xs'' in `i'
+        quietly replace y   = `: word `i' of `ys'' in `i'
+        quietly replace y2a = `: word `i' of `as'' in `i'
+        quietly replace y2b = `: word `i' of `bs'' in `i'
+    }
+end
+
+// Every serset in memory, each as its observations (y = 100 * obs),
+// ";"-joined, into the global jo_tw.
+capture program drop _jo_sersets
+program define _jo_sersets
+    version 16.0
+    local all ""
+    forvalues k = 0/40 {
+        capture serset set `k'
+        if _rc continue
+        preserve
+        serset use, clear
+        local o ""
+        forvalues i = 1/`=_N' {
+            local o `o' `=round(y[`i'] / 100)'
+        }
+        restore
+        local all "`all';`o'"
+    }
+    global jo_tw "`all'"
+end
+
+// twoway's sersets for one command (run with nodraw).
+capture program drop _jo_twoway
+program define _jo_twoway, rclass
+    version 16.0
+    serset clear
+    capture graph drop _all
+    capture noisily `0'
+    return scalar rc = _rc
+    if _rc == 0 _jo_sersets
+    else global jo_tw ""
+    capture graph drop _all
+end
+
+// A dash command under its own log: r(rc), r(note) (the ignoring
+// note is in the log), r(log).
+capture program drop _jo_dash
+program define _jo_dash, rclass
+    version 16.0
+    args cmdtext logpath
+    capture log close _jolog
+    capture erase "`logpath'"
+    log using "`logpath'", name(_jolog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _jolog
+    cert_log_has "`logpath'", needle("ignoring unsupported")
+    return scalar note = r(found)
+    return scalar rc   = `rc'
+    return local log "`logpath'"
+end
+
+python:
+import json as _jo_json, os as _jo_os, re as _jo_re, sys as _jo_sys
+import warnings as _jo_w
+from sfi import Macro as _JoM
+from bokeh.document import Document as _JoDoc
+from bokeh.models import Line as _JoLine, VArea as _JoVArea
+
+
+def _jo_unescape(text):
+    ents = {"amp": "&", "lt": "<", "gt": ">", "quot": chr(34),
+            "#x27": chr(39), "#x60": chr(96)}
+    return _jo_re.sub(r"&(amp|lt|gt|quot|#x27|#x60);",
+                      lambda m: ents[m.group(1)], text)
+
+
+def _jo_figs(doc):
+    out = []
+
+    def visit(m):
+        if isinstance(m, (list, tuple)):
+            for x in m:
+                visit(x)
+            return
+        if m is None:
+            return
+        if type(m).__name__ in ("figure", "Plot"):
+            out.append(m)
+            return
+        for attr in ("children", "tabs", "child"):
+            k = getattr(m, attr, None)
+            if k is not None:
+                visit(k)
+    for r in doc.roots:
+        visit(r)
+    return out
+
+
+def _jo_field(v):
+    if isinstance(v, dict):
+        return v.get("field")
+    return getattr(v, "field", v)
+
+
+def _jo_doc_xs(doc):
+    out = []
+    for f in _jo_figs(doc):
+        for g in f.renderers:
+            gl = getattr(g, "glyph", None)
+            if isinstance(gl, (_JoLine, _JoVArea)):
+                col = _jo_field(gl.x)
+                data = g.data_source.data
+                if col in data:
+                    out.append([float(v) for v in data[col]])
+    return out
+
+
+def _jo_page_doc(path):
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    blocks = _jo_re.findall(
+        r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+        page, _jo_re.S)
+    docs = [d for b in blocks
+            for d in _jo_json.loads(_jo_unescape(b)).values()]
+    if len(docs) != 1:
+        raise RuntimeError("%s holds %d Bokeh documents" % (path, len(docs)))
+    return _JoDoc.from_json(docs[0]), page
+
+
+def _jo_xmap():
+    xs = _JoM.getGlobal("jo_xs").split()
+    return dict((float(v), i + 1) for i, v in enumerate(xs) if v != ".")
+
+
+def _jo_obs_str(lists):
+    m = _jo_xmap()
+    return ";" + ";".join(" ".join(str(m[v]) for v in xs) for xs in lists)
+
+
+def _jo_page():
+    # global jo_page: the saved page; jo_dash: its sources as observations.
+    doc, page = _jo_page_doc(_JoM.getGlobal("jo_page"))
+    _JoM.setGlobal("jo_dash", _jo_obs_str(_jo_doc_xs(doc)))
+    _JoM.setGlobal("jo_hasdashs", str(int("__dashs" in page)))
+    # The variable as a name: quoted, as a column or a key would be
+    # ("keyw" alone is in the page's JavaScript, inside "keyword").
+    _JoM.setGlobal("jo_haskeyw", str(int(chr(34) + "keyw" + chr(34) in page)))
+
+
+def _jo_page_xs():
+    # The raw x of each source (dataset B: x has a missing row).
+    doc, _page = _jo_page_doc(_JoM.getGlobal("jo_page"))
+    lists = _jo_doc_xs(doc)
+    _JoM.setGlobal("jo_dash", ";" + ";".join(
+        " ".join("%g" % v for v in xs) for xs in lists))
+
+
+def _jo_app():
+    # global jo_app: a generated served app, run without being served.
+    with open(_JoM.getGlobal("jo_app"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_jo_app")
+    with _jo_w.catch_warnings():
+        _jo_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_jo_app.py", "exec"),
+             ns)
+        doc = _JoDoc()
+        ns["make_document"](doc)
+        spec, _df, _meta = ns["_load_spec_and_data"]()
+    _JoM.setGlobal("jo_dash", _jo_obs_str(_jo_doc_xs(doc)))
+    cols = (spec.get("build_options") or {}).get("sort_cols")
+    _JoM.setGlobal("jo_sortcols", _jo_json.dumps(cols, sort_keys=True))
+
+
+def _jo_svg():
+    # global jo_svg: twoway's SVG; jo_tw: the x of every path's vertices,
+    # read through the x axis's own labels; area paths cut to their data
+    # vertices (consecutive repeats merged, the return to the start
+    # dropped), rarea's to its lower bound.
+    _jo_sys.path.insert(0, _jo_os.path.abspath(_jo_os.path.join("..", "scripts")))
+    import svg_truth
+    path = _JoM.getGlobal("jo_svg")
+    kind = _JoM.getGlobal("jo_kind")
+    pairs = svg_truth.svg_axis_reading(path, "x").get("pairs") or []
+    if len(pairs) < 2:
+        raise RuntimeError("no x axis reading in " + path)
+    n = float(len(pairs))
+    mx = sum(p for p, _ in pairs) / n
+    mv = sum(v for _, v in pairs) / n
+    b = (sum((p - mx) * (v - mv) for p, v in pairs)
+         / sum((p - mx) ** 2 for p, _ in pairs))
+    a = mv - b * mx
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    out = []
+    for d in _jo_re.findall(r'<path[^>]*\sd="([^"]*)"', text):
+        xs = []
+        for px, _py in _jo_re.findall(r"[ML]\s*(-?[0-9.]+)\s+(-?[0-9.]+)", d):
+            v = a + b * float(px)
+            if abs(v - round(v)) > 1e-3:
+                raise RuntimeError("vertex x %r is not an integer" % v)
+            xs.append(int(round(v)))
+        if kind == "area":
+            xs = [v for i, v in enumerate(xs) if i == 0 or v != xs[i - 1]][:-1]
+        elif kind == "rarea":
+            xs = xs[1:len(xs) // 2]
+        out.append(xs)
+    _JoM.setGlobal("jo_tw", ";" + ";".join(" ".join(str(v) for v in xs)
+                                           for xs in out))
+
+
+def _jo_same():
+    # jo_eq: 1 when jo_dash and jo_tw hold the same set of joins and
+    # neither is empty.
+    def parts(s):
+        return set(p.strip() for p in s.split(";")[1:])
+    d, t = parts(_JoM.getGlobal("jo_dash")), parts(_JoM.getGlobal("jo_tw"))
+    _JoM.setGlobal("jo_eq", str(int(bool(d) and d == t)))
+end
+
+// Compare one twoway command's sersets with dash's saved page of the
+// same command: `t' the type, `v' the varlist and any qualifier, `o' the
+// options.  Sets the globals jo_ok (1 when equal) and jo_why.
+capture program drop _jo_case
+program define _jo_case
+    version 16.0
+    args t v o page
+    _jo_twoway twoway `t' `v', `o' nodraw
+    local twrc = r(rc)
+    global jo_twrc = `twrc'
+    capture erase "`page'"
+    capture noisily dash `t' `v', `o' saving("`page'", replace)
+    local drc = _rc
+    global jo_ok = 0
+    global jo_why "twoway r(`twrc'), dash r(`drc')"
+    // Both refused with the same code: the same answer (sort(_all) over
+    // more than eight variables, measured: twoway counts two variables of
+    // its own and takes ten names at most).
+    if `twrc' != 0 & `twrc' == `drc' global jo_ok = 1
+    if `twrc' == 0 & `drc' == 0 {
+        global jo_page "`page'"
+        global jo_dash ""
+        global jo_eq 0
+        capture noisily python: __import__("__main__")._jo_page()
+        capture noisily python: __import__("__main__")._jo_same()
+        global jo_ok = ${jo_eq}
+        global jo_why "twoway ${jo_tw} dash ${jo_dash}"
+    }
+end
+
+* ==== S02 P0.1: line join order ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S02") {
+    display as text "S02 start `c(current_time)'"
+    local jo_log "`w29_work'/jo.log"
+    local jo_pg  "`w29_work'/jo.html"
+    local six "line connected area rline rarea rconnected"
+
+    _jo_dataA
+    global jo_xs "4 1 3 2 8 5 7 6"
+
+    // JO-01: the data's order, no option.
+    foreach t of local six {
+        local v "y x"
+        if inlist("`t'", "rline", "rarea", "rconnected") local v "y y2 x"
+        _jo_case `t' "`v'" "" "`jo_pg'"
+        _w29_expect JO-01 "(${jo_ok} == 1)" "`t': ${jo_why}"
+    }
+    _w29_done JO-01 "the six types join in the data's order, as twoway's serset"
+
+    // JO-02: sort, the order of x.
+    foreach t of local six {
+        local v "y x"
+        if inlist("`t'", "rline", "rarea", "rconnected") local v "y y2 x"
+        _jo_case `t' "`v'" "sort" "`jo_pg'"
+        _w29_expect JO-02 "(${jo_ok} == 1)" "`t' sort: ${jo_why}"
+    }
+    _w29_done JO-02 "sort joins the six types in the order of x"
+
+    // JO-03: sort(varlist): missing values, strings, an abbreviation, two
+    // variables and _all.
+    foreach t of local six {
+        local v "y x"
+        if inlist("`t'", "rline", "rarea", "rconnected") local v "y y2 x"
+        foreach o in "sort(z)" "sort(s)" "sort(key)" "sort(zz x)" "sort(_all)" {
+            _jo_case `t' "`v'" "`o'" "`jo_pg'"
+            _w29_expect JO-03 "(${jo_ok} == 1)" "`t' `o': ${jo_why}"
+        }
+    }
+    // sort(_all) where twoway takes it: eight variables or fewer.
+    preserve
+    keep obs x y y2 z
+    foreach t of local six {
+        local v "y x"
+        if inlist("`t'", "rline", "rarea", "rconnected") local v "y y2 x"
+        _jo_case `t' "`v'" "sort(_all)" "`jo_pg'"
+        _w29_expect JO-03 "(${jo_ok} == 1 & ${jo_twrc} == 0)" "`t' sort(_all) on five variables: ${jo_why}"
+    }
+    restore
+    _w29_done JO-03 "sort(varlist) joins in Stata's order of the varlist"
+
+    // JO-04: repeats and the bare flag beside sort(): the rightmost
+    // non-empty copy decides; dash's rc is twoway's.  The empty copy is
+    // set beside z, which has no ties (zz has: twoway's tie order is
+    // random).
+    foreach t of local six {
+        local v "y x"
+        if inlist("`t'", "rline", "rarea", "rconnected") local v "y y2 x"
+        foreach o in "sort sort(z)" "sort(z) sort(x)" "sort(x*) sort(z)" "sort(z) sort()" "sort() sort(z)" {
+            _jo_case `t' "`v'" "`o'" "`jo_pg'"
+            _w29_expect JO-04 "(${jo_ok} == 1)" "`t' `o': ${jo_why}"
+        }
+    }
+    _w29_done JO-04 "repeated sort() copies join as twoway's rightmost non-empty copy"
+
+    // JO-05: dataset B, missing values: each path dash draws is the path
+    // twoway's SVG draws.  rarea is compared where both bounds are missing
+    // together (y2b); with one bound missing twoway's polygon keeps the
+    // other bound's row, which one VArea cannot draw (residual O1).
+    _jo_dataB
+    global jo_xs "2 5 3 6 1 . 7"
+    foreach c in "line y x" "connected y x" "area y x" "rline y y2a x" "rconnected y y2a x" "rarea y y2b x" {
+        gettoken t v : c
+        foreach o in "" "sort" {
+            capture graph drop _all
+            serset clear
+            quietly twoway `t' `v', `o' xscale(range(0 8)) xlabel(0(2)8)
+            global jo_svg "`w29_work'/jo05.svg"
+            capture erase "${jo_svg}"
+            quietly graph export "${jo_svg}", replace as(svg)
+            capture graph drop _all
+            global jo_kind "`t'"
+            global jo_tw ""
+            capture noisily python: __import__("__main__")._jo_svg()
+            capture erase "`jo_pg'"
+            capture noisily dash `t' `v', `o' saving("`jo_pg'", replace)
+            local drc = _rc
+            global jo_page "`jo_pg'"
+            global jo_dash ""
+            global jo_eq 0
+            if `drc' == 0 capture noisily python: __import__("__main__")._jo_page_xs()
+            capture noisily python: __import__("__main__")._jo_same()
+            _w29_expect JO-05 "(`drc' == 0 & ${jo_eq} == 1)" "`t' `v' `o': twoway ${jo_tw} dash ${jo_dash} (rc `drc')"
+        }
+    }
+    capture erase "`w29_work'/jo05.svg"
+    _w29_done JO-05 "with missing values each path dash draws is twoway's, each range bound its own rows"
+
+    // JO-06: by(), by(, total), by(, total missing): each panel joins in
+    // the data's order within its group (per-panel joins, as a set).
+    _jo_dataA
+    global jo_xs "4 1 3 2 8 5 7 6"
+    foreach t in line rline {
+        local v "y x"
+        if "`t'" == "rline" local v "y y2 x"
+        foreach b in "by(g)" "by(g, total)" "by(g, total missing)" {
+            foreach o in "" "sort" {
+                _jo_case `t' "`v'" "`b' `o'" "`jo_pg'"
+                _w29_expect JO-06 "(${jo_ok} == 1)" "`t' `b' `o': ${jo_why}"
+            }
+        }
+    }
+    _w29_done JO-06 "every by() panel, the Total panel included, joins as twoway's"
+
+    // JO-07: in and if.
+    foreach t of local six {
+        local v "y x"
+        if inlist("`t'", "rline", "rarea", "rconnected") local v "y y2 x"
+        foreach q in "in 2/6" "if g==1" {
+            _jo_case `t' "`v' `q'" "" "`jo_pg'"
+            _w29_expect JO-07 "(${jo_ok} == 1)" "`t' `q': ${jo_why}"
+        }
+    }
+    _w29_done JO-07 "in and if join the rows they keep in the data's order"
+
+    // JO-08: tsline and tsrline join in time order whatever they are
+    // given, and sort and sort(y) on them are silent, rc 0.
+    quietly tsset t
+    foreach t in tsline tsrline {
+        local v "y"
+        if "`t'" == "tsrline" local v "y y2"
+        global jo_xs "3 8 1 6 2 7 4 5"
+        foreach o in "" "sort" "sort(y)" {
+            _jo_case `t' "`v'" "`o'" "`jo_pg'"
+            _w29_expect JO-08 "(${jo_ok} == 1)" "`t' `o': ${jo_why}"
+            capture dash clear
+            _jo_dash `"dash `t' `v', `o' name(jo08)"' "`jo_log'"
+            _w29_expect JO-08 "(r(rc) == 0 & r(note) == 0)" "`t' `o': dash rc `r(rc)', note `r(note)'"
+        }
+    }
+    quietly tsset, clear
+    sort obs
+    global jo_xs "4 1 3 2 8 5 7 6"
+    _w29_done JO-08 "tsline and tsrline join in time order, silent under sort and sort(y)"
+
+    // JO-09: the build route; then a sort() variable dropped after the
+    // graph was registered is refused in twoway's words, nothing left.
+    capture dash clear
+    _jo_twoway twoway line y x, sort(z) nodraw
+    quietly dash line y x, sort(z) name(g1)
+    capture erase "`jo_pg'"
+    capture noisily dash build, saving("`jo_pg'") replace
+    local brc = _rc
+    global jo_dash ""
+    global jo_page "`jo_pg'"
+    global jo_eq 0
+    if `brc' == 0 capture noisily python: __import__("__main__")._jo_page()
+    capture noisily python: __import__("__main__")._jo_same()
+    _w29_expect JO-09 "(`brc' == 0 & ${jo_eq} == 1)" "dash build rc `brc': twoway ${jo_tw} dash ${jo_dash}"
+    preserve
+    drop z
+    capture erase "`jo_pg'"
+    _jo_dash `"dash build, saving("`jo_pg'") replace"' "`jo_log'"
+    local brc = r(rc)
+    cert_log_has "`jo_log'", needle("variable z not found")
+    local h1 = r(found)
+    cert_log_has "`jo_log'", needle("option sort() incorrectly specified")
+    local h2 = r(found)
+    capture unab _jo_left : __dash*
+    local urc = _rc
+    capture confirm file "`jo_pg'"
+    local pgrc = _rc
+    restore
+    _w29_expect JO-09 "(`brc' == 198 & `h1' == 1 & `h2' == 1 & `urc' == 111 & `pgrc' != 0)" "dropped z: rc `brc', lines `h1'/`h2', __dash* unab rc `urc', page rc `pgrc'"
+    capture dash clear
+    _w29_done JO-09 "dash build joins by sort(); a dropped sort() variable is refused r(198) in twoway's words"
+
+    // JO-10: estimates in memory survive the rank columns.
+    quietly regress y x
+    _jo_case line "y x" "sort(z)" "`jo_pg'"
+    _w29_expect JO-10 "(${jo_ok} == 1)" "line sort(z) after regress: ${jo_why}"
+    local ok10 = ("`e(cmd)'" == "regress")
+    _w29_expect JO-10 "(`ok10' == 1)" "e(cmd) is `e(cmd)', not regress"
+    ereturn clear
+    _w29_done JO-10 "estimates in memory are held while the rank columns are made"
+
+    // JO-11: the served app joins as twoway does.
+    local jo_app "`w29_work'/jo11.py"
+    foreach t in line rline {
+        local v "y x"
+        if "`t'" == "rline" local v "y y2 x"
+        foreach o in "" "sort(z)" {
+            capture dash clear
+            _jo_twoway twoway `t' `v', `o' nodraw
+            quietly dash `t' `v', `o' name(g1)
+            capture erase "`jo_app'"
+            capture noisily dash build, server saving("`jo_app'") replace nobrowser
+            local brc = _rc
+            global jo_dash ""
+            global jo_app "`jo_app'"
+            global jo_eq 0
+            if `brc' == 0 capture noisily python: __import__("__main__")._jo_app()
+            capture noisily python: __import__("__main__")._jo_same()
+            _w29_expect JO-11 "(`brc' == 0 & ${jo_eq} == 1)" "`t' `o' served rc `brc': twoway ${jo_tw} dash ${jo_dash}"
+        }
+    }
+    capture dash clear
+    _w29_done JO-11 "the served app joins as twoway does"
+
+    // JO-12: a variable named only in sort() reaches no page; the spec
+    // maps it to its rank column.
+    capture erase "`jo_pg'"
+    capture noisily dash line y x, sort(keyw) saving("`jo_pg'", replace)
+    local drc = _rc
+    global jo_hasdashs = 1
+    global jo_haskeyw = 1
+    global jo_page "`jo_pg'"
+    if `drc' == 0 capture noisily python: __import__("__main__")._jo_page()
+    _w29_expect JO-12 "(`drc' == 0 & ${jo_hasdashs} == 0 & ${jo_haskeyw} == 0)" "page rc `drc', __dashs in page ${jo_hasdashs}, keyw in page ${jo_haskeyw}"
+    capture dash clear
+    quietly dash line y x, sort(keyw) name(g1)
+    capture erase "`jo_app'"
+    capture noisily dash build, server saving("`jo_app'") replace nobrowser
+    local brc = _rc
+    global jo_sortcols ""
+    global jo_app "`jo_app'"
+    if `brc' == 0 capture noisily python: __import__("__main__")._jo_app()
+    local ok12 = (`"${jo_sortcols}"' == `"{"keyw": "__dashs1"}"')
+    if !`ok12' display as error `"JO-12: sort_cols is ${jo_sortcols}"'
+    _w29_expect JO-12 "(`ok12' == 1)" "the served spec's sort_cols does not map keyw to __dashs1 (rc `brc')"
+    capture dash clear
+    _w29_done JO-12 "a variable named only in sort() is never written; its rank column is named in the spec"
+
+    capture erase "`jo_pg'"
+    capture erase "`jo_app'"
+    capture erase "`jo_log'"
+    macro drop jo_*
+    display as text "S02 end `c(current_time)'"
+}
+* ==== end S02 ====
 // S03's helpers, defined here, outside every block and gate, where a
 // python block may hold braces (test_cscript_hygiene.py requires each
 // block to open with its gate).  Used by the S03 P0.3 and P0.4 blocks.

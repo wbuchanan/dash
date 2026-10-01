@@ -311,8 +311,10 @@ def _profile_full(r):
 class TestTheLineFollowsTheMoveAsTwowayDraws:
     """The rows a moved line draws, held to Stata's own count: _DF's
     foreign == 1 observations are 2, 4, 6, 8 and 10 (``count if foreign ==
-    1'), and twoway line draws them along x (``sort'), weight 1800, 2010,
-    2650, 3100, 3350."""
+    1'), and twoway line and connected join them in the data's order,
+    weight 3350, 1800, 3100, 2010, 2650; tsline in time order, 1800, 2010,
+    2650, 3100, 3350.  Flipped (WP-29 P0.1): line and connected were held
+    to x order, which twoway draws only under sort."""
 
     @pytest.mark.parametrize("ptype", ["line", "tsline", "connected"])
     def test_the_line_draws_the_foreign_cars_in_x_order(self, ptype):
@@ -322,7 +324,9 @@ class TestTheLineFollowsTheMoveAsTwowayDraws:
         [fig] = r.figures.values()
         [line] = [g for g in fig.renderers if isinstance(g.glyph, Line)]
         xs = [float(x) for x in line.data_source.data["weight"]]
-        assert xs == [1800.0, 2010.0, 2650.0, 3100.0, 3350.0], xs
+        want = ([1800.0, 2010.0, 2650.0, 3100.0, 3350.0] if ptype == "tsline"
+                else [3350.0, 1800.0, 3100.0, 2010.0, 2650.0])
+        assert xs == want, xs
 
 
 class TestAJitteredScatterFollowsAMove:
@@ -508,7 +512,9 @@ class TestTheCopiesAgainstHostileInput:
         [line] = [g for g in r.figures["g1"].renderers
                   if isinstance(g.glyph, Line)]
         xs = [float(x) for x in line.data_source.data[name]]
-        assert xs == [1800.0, 2010.0, 2650.0, 3100.0, 3350.0], xs
+        # Flipped (WP-29 P0.1): the Foreign cars in the data's order, as
+        # twoway joins a line; the name survives either way.
+        assert xs == [3350.0, 1800.0, 3100.0, 2010.0, 2650.0], xs
 
     def test_the_spacing_travels_as_data_not_code(self):
         """The rule reaches the page as a JSON string that the script
@@ -542,13 +548,14 @@ class TestTheCopiesAgainstHostileInput:
 class TestALinesOwnQualifier:
     """``(line mpg weight in 3/8)``: twoway's serset holds observations 3 to
     8, x 2200, 1800, 3000, 3100, 4080, 2010 (measured 24sep2026, BUGS.md),
-    and draws them along x.  The saved page drew 2200, 2650, 2930, 3000,
-    3100, 3350: rows 3 to 8 of a copy sorted by x.  ``if mpg > 18'
-    selects observations 1, 3, 4, 5, 6, 8, 10 (mpg 22, 25, 30, 21, 19, 28,
-    23)."""
+    and joins them in that, the data's, order (WP-29 P0.1; tsline joins in
+    time order).  The saved page drew 2200, 2650, 2930, 3000, 3100, 3350:
+    rows 3 to 8 of a copy sorted by x.  ``if mpg > 18' selects observations
+    1, 3, 4, 5, 6, 8, 10 (mpg 22, 25, 30, 21, 19, 28, 23).  Flipped (WP-29
+    P0.1): line, connected and rconnected were held to x order."""
 
-    _IN_3_8 = [1800.0, 2010.0, 2200.0, 3000.0, 3100.0, 4080.0]
-    _IF = [1800.0, 2010.0, 2200.0, 2650.0, 2930.0, 3000.0, 3100.0]
+    _IN_3_8 = [2200.0, 1800.0, 3000.0, 3100.0, 4080.0, 2010.0]
+    _IF = [2930.0, 2200.0, 1800.0, 3000.0, 3100.0, 2010.0, 2650.0]
 
     def _lines(self, plot):
         with warnings.catch_warnings(record=True) as caught:
@@ -568,6 +575,8 @@ class TestALinesOwnQualifier:
         assert not isinstance(getattr(line.view, "filter", None),
                               BooleanFilter)
         xs = [float(x) for x in line.data_source.data["weight"]]
+        if ptype == "tsline":
+            want = sorted(want)
         assert xs == want, xs
 
     def test_rconnected_draws_both_ends_from_the_same_rows(self):
