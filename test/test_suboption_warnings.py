@@ -72,8 +72,11 @@ SUBOPTIONS = [
     ("xline lstyle noextend",
      {"xline": "3000, lcolor(red) lstyle(foreground) noextend"}, None,
      "xline", ["lstyle(foreground)", "noextend"], ["lcolor"]),
-    ("yline axis", {"yline": "20 25, lpattern(dash) axis(2)"}, None, "yline",
-     ["axis(2)"], ["lpattern"]),
+    # Flipped (WP-29 P0.5): axis(2) is honoured now -- the line is drawn
+    # on the second axis's range -- so the entry names axis(3), which no
+    # layer can use and which a hand-made spec still carries to the note.
+    ("yline axis", {"yline": "20 25, lpattern(dash) axis(3)"}, None, "yline",
+     ["axis(3)"], ["lpattern"]),
     # WP-28 B3: abbreviations are canonicalised before the honoured check,
     # so a bare "c" is not named beside a "bc" it does not abbreviate.
     ("title c and bc", {"title": "T, c(red) bc(red)"}, None, "title",
@@ -125,6 +128,10 @@ class TestTheHonouredOnesStayQuiet:
         # WP-28 B3: every honoured spelling stays quiet, together.
         ({"ytitle": "M, si(large) c(red) prefix"}, None),
         ({"xtitle": "W, axis(1)"}, None),
+        # WP-29 P0.5: yline(#, axis(2)) is drawn on the second axis.
+        ({"yline": "20 25, axis(2)"},
+         [plot_for("scatter"), dict(plot_for("scatter"),
+                                    options={"yaxis": "2"})]),
     ])
     def test_no_warning(self, go, plots):
         _, _, std_w, srv_w = _both(None, go, plots)

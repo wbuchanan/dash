@@ -541,8 +541,30 @@ COVERAGE = {
         "_dash_rep_und_scan": ("test_twoway_option_parity.cscript:TP-14",),
         "_dash_rep_und_cross": ("test_twoway_option_parity.cscript:TP-14",),
         # WP-28 B3: e2e, the stored spec of a routed and a two-copy title.
-        "_dash_route_axis2": ("test_gaps2_truth.cscript:TBG-03",
+        # WP-29 P0.5: direct, every family's axis(2) rewrite and the forms
+        # left as typed (AX-01).
+        "_dash_route_axis2": ("test_twoway_option_parity.cscript:AX-01",
+                              "test_wp29_truth.cscript:AX-11",
+                              "test_gaps2_truth.cscript:TBG-03",
                               "test_gaps2_truth.cscript:TBG-02"),
+        # WP-29 P0.5: the route's and the axis check's own helpers -- the
+        # family table, one axis option read, the word after a second comma.
+        "_dash_ax_parse": ("test_twoway_option_parity.cscript:AX-01",
+                           "test_twoway_option_parity.cscript:AX-03"),
+        "_dash_ax_word": ("test_twoway_option_parity.cscript:AX-05",),
+        "_dash_axfam": ("test_twoway_option_parity.cscript:AX-01",
+                        "test_twoway_option_parity.cscript:AX-04"),
+        # WP-29 P0.5: direct, twoway's axis number rule.
+        "_dash_axis_num": ("test_twoway_option_parity.cscript:AX-02",),
+        # WP-29 P0.5: e2e, twoway's refusals and their order; the record
+        # emptied after 10,000 copies (AX-08).
+        "_dash_axreq_add": ("test_twoway_option_parity.cscript:AX-03",
+                            "test_twoway_option_parity.cscript:AX-04"),
+        "_dash_axreq_check": ("test_twoway_option_parity.cscript:AX-03",
+                              "test_twoway_option_parity.cscript:AX-04"),
+        "_dash_axreq_clear": ("test_twoway_option_parity.cscript:AX-03",
+                              "test_twoway_option_parity.cscript:AX-04",
+                              "test_twoway_option_parity.cscript:AX-08"),
         # direct and e2e: TP-15 calls each on its own, and holds dash's
         # answer to log, an upper-case option, a plot option after the
         # comma and two kernels to twoway's, asked in the run.

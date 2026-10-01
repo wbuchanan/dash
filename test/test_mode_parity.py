@@ -526,7 +526,9 @@ def _annotations(fig):
         elif isinstance(r, Span):
             out.append({"kind": "Span", "dimension": r.dimension,
                         "location": _num(r.location), "color": r.line_color,
-                        "width": r.line_width, "dash": list(r.line_dash or [])})
+                        "width": r.line_width, "dash": list(r.line_dash or []),
+                        # WP-29 P0.5: the range the line is drawn on.
+                        "range_names": (r.x_range_name, r.y_range_name)})
         elif isinstance(r, Legend):
             out.append({"kind": "Legend",
                         "items": [(_label_of(i),
@@ -671,6 +673,13 @@ def _axes(fig):
                 "ticks": ([_num(float(t)) for t in a.ticker.ticks]
                           if hasattr(a.ticker, "ticks") else None),
                 "visible": a.visible,
+                # WP-29 P0.5: which range the axis reads, and the tick-only
+                # positions ytick()/ytick(..., axis(2)) put on it.
+                "range_names": (a.x_range_name, a.y_range_name),
+                "tick_extra": (sorted(_num(float(v)) for v in
+                                      (a.ticker.args or {}).get("extra", []))
+                               if type(a.ticker).__name__ == "CustomJSTicker"
+                               else None),
                 "label_font": a.axis_label_text_font_size,
                 "tick_font": a.major_label_text_font_size,
                 "orientation": (ori if isinstance(ori, str)
@@ -1717,6 +1726,21 @@ CORPUS = [
                     expr="2^3^x",
                     points={"x0": 0, "dx": 1, "y": [1, 8, 64]})],
           None, {"by": "foreign"}),
+    # ---- axis(#) routed to the axis it names (WP-29 P0.5) ----------------
+    _case("ylabel/yscale/yline/ytick axis(2) routed",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
+          go={"ylabel": "5000 10000, axis(2)", "yscale": "log axis(2)",
+              "yline": "6000, axis(2)", "ytick": "7500, axis(2)"}),
+    _case("xlabel/xscale/xline/xtick axis(2) routed",
+          [_sc(), plot_for("scatter", {"xaxis": "2"}, xvar="price")],
+          go={"xlabel": "5000 10000, axis(2)", "xscale": "log axis(2)",
+              "xline": "6000, axis(2)", "xtick": "7500, axis(2)"}),
+    _case("axis(2) under by()",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
+          go={"by": "foreign", "ylabel": "5000 10000, axis(2)",
+              "yline": "6000, axis(2)", "ytick": "7500, axis(2)"}),
+    _case("ylabel2 with no second-axis layer", [_sc()],
+          go={"ylabel2": "5"}),
 ]
 
 
@@ -1842,6 +1866,10 @@ _MUST_WARN = {
     "hover() naming a variable not in the data":
         "dash: hover() of graph 'g1' names variable(s) not in the data -- "
         "'nosuch'",
+    # WP-29 P0.5: raised at build time in both modes.
+    "ylabel2 with no second-axis layer":
+        "dash: graph 'g1': ylabel2() (ylabel(..., axis(2))) is not drawn: "
+        "no layer is on yaxis(2).",
 }
 
 #: The filter types that build a widget (dash.sthlp); a filter() group of
@@ -2367,6 +2395,11 @@ MOVE_CORPUS = [
                         None, {"if_expr": "foreign == 1"}),
                        ("g2", [_sc()])],
                bo={"link": "g1 g2"}),
+    # WP-29 P0.5: the routed options stay on the second axis after a move.
+    _move_case("yaxis(2) with axis(2) options, dropdown", _MOVES[0],
+               [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
+               go={"ylabel": "5000 10000, axis(2)", "yscale": "log axis(2)",
+                   "yline": "6000, axis(2)", "ytick": "7500, axis(2)"}),
 ]
 
 

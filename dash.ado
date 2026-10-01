@@ -251,7 +251,8 @@ program define _dash_require_mata
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag ///
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
-        _dash_axis_pieces
+        _dash_axis_pieces ///
+        _dash_axreq_clear _dash_axreq_add _dash_axreq_check
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
     // alone and took the library for whole when it was there, so a library
@@ -734,6 +735,8 @@ program define _dash_parse_graph_opts, sclass
         PBGC(string)              XLA2(string asis)         XSC2(string asis) ///
         XTI2(string asis)         YLA2(string asis)         YSC2(string asis) ///
         YTI2(string asis) ///
+        ytick2(string asis)       xtick2(string asis)       yline2(string asis) ///
+        xline2(string asis) ///
         ZLABel(string asis)       ZTItle(string asis)       ZSCale(string asis) ///
         * ///
     ]
@@ -843,6 +846,10 @@ program define _dash_parse_graph_opts, sclass
     sreturn local xlabel2      : copy local xlabel2
     sreturn local yscale2      : copy local yscale2
     sreturn local xscale2      : copy local xscale2
+    sreturn local ytick2       : copy local ytick2
+    sreturn local xtick2       : copy local xtick2
+    sreturn local yline2       : copy local yline2
+    sreturn local xline2       : copy local xline2
     sreturn local xsize        : copy local xsize
     sreturn local ysize        : copy local ysize
     sreturn local fxsize       : copy local fxsize
@@ -973,6 +980,8 @@ program define _dash_parse_plot_opts, sclass
         COLV(string)              PBGC(string)              XLA2(string asis) ///
         XSC2(string asis)         XTI2(string asis)         YLA2(string asis) ///
         YSC2(string asis)         YTI2(string asis) ///
+        ytick2(string asis)       xtick2(string asis)       yline2(string asis) ///
+        xline2(string asis) ///
         ZLABel(string asis)       ZTItle(string asis)       ZSCale(string asis) ///
         * ///
     ]
@@ -1256,6 +1265,10 @@ program define _dash_parse_plot_opts, sclass
     sreturn local g_xlabel2      : copy local xlabel2
     sreturn local g_yscale2      : copy local yscale2
     sreturn local g_xscale2      : copy local xscale2
+    sreturn local g_ytick2       : copy local ytick2
+    sreturn local g_xtick2       : copy local xtick2
+    sreturn local g_yline2       : copy local yline2
+    sreturn local g_xline2       : copy local xline2
     sreturn local g_xsize        : copy local xsize
     sreturn local g_ysize        : copy local ysize
     sreturn local g_fxsize       : copy local fxsize
@@ -2055,7 +2068,8 @@ program define _dash_option_rules
         xsize=style,1,100  ysize=style,1,100  aspectratio=num,0  hover=varlist  by=byvarlist ///
         scheme=scheme ///
         xlabel=axislist  ylabel=axislist  xlabel2=axislist  ylabel2=axislist ///
-        xtick=axislist  ytick=axislist  xmtick=axislist  ymtick=axislist ///
+        xtick=axislist  ytick=axislist  xtick2=axislist  ytick2=axislist ///
+        xmtick=axislist  ymtick=axislist ///
         xmlabel=axislist  ymlabel=axislist
     // Flag applicability (WP-18): flag[|flag...]@type[|type...].  A flag
     // written on a type outside its list is refused as twoway refuses it,
@@ -4034,10 +4048,15 @@ program define _dash_process_segment, rclass
     // too, so the weight keys are in s() for the JSON writer and the flag
     // rules run on every segment; the parser takes an empty option list.
     if `: length local opts_raw' | `"`_seg_weight'"' != "" {
-        // ytitle(, axis(2)) -> ytitle2() before the repeat merge folds
-        // copies of ytitle into one (WP-28 B3, _dash_route_axis2).
+        // axis(2) on an axis option -> ytitle2(), ylabel2(), ytick2(),
+        // yline2(), yscale2() (x too) before the repeat merge folds copies
+        // of one option into one (WP-28 B3, WP-29 P0.5, _dash_route_axis2).
+        // The raw text is kept for _dash_plot's axis check, which refuses
+        // what twoway refuses once every layer's axis is known.
+        local _opts_pre : copy local opts_raw
         mata: st_local("opts_raw", _dash_route_axis2(st_local("opts_raw")))
         _dash_parse_plot_opts , `macval(opts_raw)'
+        c_local _seg_axreq_raw : copy local _opts_pre
         // An option it declares whose value -syntax- could not bind:
         // refused as twoway refuses it, not named as unsupported.
         _dash_refuse_unbound _dash_parse_plot_opts `"`macval(opts_raw)'"'
@@ -4207,6 +4226,14 @@ program define _dash_process_segment, rclass
     // command and refuses a second (_dash_refuse_second_name).
     mata: st_local("_seg_named", strofreal(st_global("s(g_name)") != ""))
     c_local _seg_named_out `_seg_named'
+    // The axes this segment's layers are drawn on (yaxis(), xaxis(); 1 when
+    // not given), for _dash_plot's axis check (WP-29 P0.5).
+    mata: st_local("_seg_ya", st_global("s(yaxis)"))
+    mata: st_local("_seg_xa", st_global("s(xaxis)"))
+    local _seg_ya = cond(real("`_seg_ya'") < ., real("`_seg_ya'"), 1)
+    local _seg_xa = cond(real("`_seg_xa'") < ., real("`_seg_xa'"), 1)
+    c_local _seg_yaxis_out `_seg_ya'
+    c_local _seg_xaxis_out `_seg_xa'
 
     // Hand the graph-level options found in this segment to _dash_plot as
     // _sg_* locals (they live in its frame, not here -- c_local propagates
@@ -4217,7 +4244,8 @@ program define _dash_process_segment, rclass
     foreach gkey in title subtitle note caption name saving xtitle ytitle xlabel ///
             ylabel xline yline legend by xscale yscale aspectratio scheme ///
             plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-            xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+            xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xsize ysize fxsize fysize ///
             scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
             t2title b1title b2title l1title l2title r1title r2title title2 ///
             subtitle2 zlabel ztitle zscale nodraw play replace {
@@ -4997,12 +5025,19 @@ program define _dash_plot
     // leaves to the renderer (P1A-80).  Set below, once that comma's
     // options are read.
     global dash__g_by ""
+    // The axis options recorded for twoway's axis check (WP-29 P0.5):
+    // emptied for this command, filled per segment, checked and emptied
+    // again after the options after the comma are merged.
+    mata: _dash_axreq_clear()
+    local _g_ys ""
+    local _g_xs ""
 
     // ---- Initialise graph-level option accumulators ----
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
           ylabel xline yline legend by xscale yscale aspectratio scheme ///
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-          xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+          xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xsize ysize fxsize fysize ///
           scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 zlabel ztitle zscale nodraw play replace {
@@ -5015,6 +5050,7 @@ program define _dash_plot
     // command -- after the comma, in any plot group or || segment.
     local _gund_acc ""
     local _rp_gund_out ""
+    local _gopts_axraw : copy local gopts_raw
     if `: length local gopts_raw' {
         mata: st_local("gopts_raw", _dash_route_axis2(st_local("gopts_raw")))
         _dash_parse_graph_opts , `macval(gopts_raw)'
@@ -5034,7 +5070,8 @@ program define _dash_plot
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-              xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+              xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xsize ysize fxsize fysize ///
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
@@ -5127,16 +5164,27 @@ program define _dash_plot
         local _seg_fnlo_out    ""
         local _seg_fnhi_out    ""
         local _seg_fnn_out     ""
+        local _seg_axreq_raw   ""
+        local _seg_yaxis_out   1
+        local _seg_xaxis_out   1
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-              xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+              xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xsize ysize fxsize fysize ///
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
             local _sg_`gk' ""
         }
         _dash_process_segment `"`macval(seg)'"' _pt_k _json_k `n_segs'
+        // This segment's axis options, as typed, and its layers' axes, for
+        // twoway's axis check after the loop (WP-29 P0.5).
+        mata: _dash_axreq_add(st_local("_seg_axreq_raw"), `k')
+        local _g_ys `_g_ys' `_seg_yaxis_out'
+        local _g_ys : list uniq _g_ys
+        local _g_xs `_g_xs' `_seg_xaxis_out'
+        local _g_xs : list uniq _g_xs
         // Kept for the by() answer below, by value.
         local _byq_pt_`k' `_pt_k'
         local _byq_if_`k' : copy local _seg_if_out
@@ -5194,7 +5242,8 @@ program define _dash_plot
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-              xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+              xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xsize ysize fxsize fysize ///
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
@@ -5225,7 +5274,8 @@ program define _dash_plot
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-              xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+              xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xsize ysize fxsize fysize ///
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
@@ -5233,6 +5283,16 @@ program define _dash_plot
             mata: _dash_rep_merge_locals(st_local("gk"), "g_`gk'", "_gafter_`gk'", "g_`gk'")
         }
     }
+
+    // ---- axis(#) as twoway checks it (WP-29 P0.5) ----
+    // twoway's ParseAndLogAxes refuses an axis option whose axis(#) names
+    // an axis no layer is drawn on, an axis() in capitals or given twice,
+    // and a second comma, r(198), side by side, family by family, the
+    // segments before the options after the comma.  The options after the
+    // comma are read last, as segment n_segs+1.
+    mata: _dash_axreq_add(st_local("_gopts_axraw"), `n_segs' + 1)
+    mata: st_local("_axrc", strofreal(_dash_axreq_check(st_local("_g_ys"), st_local("_g_xs"))))
+    if `_axrc' exit 198
 
     // ---- Validate the graph-level values (WP-15) ----
     // After the restore above, so the value checked is the one that will
@@ -5512,7 +5572,8 @@ program define _dash_plot
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
           ylabel xline yline legend by xscale yscale aspectratio scheme ///
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-          xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+          xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xsize ysize fxsize fysize ///
           scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 zlabel ztitle zscale nodraw play replace {

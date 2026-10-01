@@ -519,10 +519,11 @@ class TestTheParsersFoundSomething:
         # since the S3 batch's ci band: acolor(), alcolor(), alwidth() and
         # alpattern(), twoway's fitarea options.  143 since WP-28 batch 2
         # (S16, GAPS2 X2): colorlevels(), colorvarminmax, zlabel(),
-        # ztitle() and zscale() (measured 30sep2026).
-        assert len(found) == 143, (
-            f"{len(found)} options parsed out of dash.sthlp, 143 measured "
-            f"30sep2026: a reader of the parser lost a form, or the help "
+        # ztitle() and zscale() (measured 30sep2026).  147 since WP-29
+        # P0.5 documented ytick2(), xtick2(), yline2() and xline2().
+        assert len(found) == 147, (
+            f"{len(found)} options parsed out of dash.sthlp, 147 measured "
+            f"01oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
 
@@ -583,8 +584,9 @@ class TestTheParsersFoundSomething:
         # parser alone declares 90 options no other program does.)  171
         # since the S3 batch declared the four fitarea options.  176 since
         # WP-28 batch 2 (S16) declared colorlevels, colorvarminmax, zlabel,
-        # ztitle and zscale (measured 30sep2026).
-        assert len(_ado_declarations()) == 176
+        # ztitle and zscale (measured 30sep2026).  180 since WP-29 P0.5
+        # declared ytick2, xtick2, yline2 and xline2.
+        assert len(_ado_declarations()) == 180
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -622,9 +624,11 @@ class TestTheParsersFoundSomething:
         # second-axis table
         # written as {p2col:} rows, which the cutter starts no entry at,
         # left 311 -- above "150", with those rows read as prose.
-        assert len(defs) == 331, (
-            f"{len(defs)} definition entries cut out of dash.sthlp, 331 "
-            f"measured 30sep2026")
+        # 335 with WP-29 P0.5's four second-axis rows (ytick2, xtick2,
+        # yline2, xline2).
+        assert len(defs) == 335, (
+            f"{len(defs)} definition entries cut out of dash.sthlp, 335 "
+            f"measured 01oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
         assert not any("dcount" in _option_tokens(t) for t in defs), (

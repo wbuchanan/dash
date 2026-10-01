@@ -17,6 +17,8 @@
 *!   S08  private temporary files: twoway leaves nothing, named-page modes
 *!        match twoway's, every copy is 0600 in a 0700 folder (PF-01..PF-06,
 *!        PF-11, PF-12)
+*!   S10  P0.5 axis(#) routed to the axis it names, against twoway's .Graph
+*!        members, saved and served (AX-11..AX-18)
 *!
 *! Usage: via run_all_cscripts.do (registered as its block 68).  One
 *! block alone: set WP29_ONLY=S<NN> in the environment of the driver run
@@ -3518,6 +3520,332 @@ end
     display as text "S08 end `c(current_time)'"
 }
 * ==== end S08 ====
+
+// Helpers of block S10 (axis(#) routing and by() shared scales), defined
+// before it: programs and python definitions are not made inside a
+// block's braces.
+//
+// twoway routes ylabel(), yscale(), yline() and ytick() (x too) to the axis
+// axis(#) names (graph_g.class ParseAndLogAxes; WP-29 P0.5).  Each AX case
+// draws the command in twoway, reads its .Graph members, and compares them
+// with the models of dash's saved page and of its served app (imported,
+// make_document) for the same command.
+
+// _s10_ticks <object path> <set>: the tick positions of
+// .Graph.<path>.<set> (major, majornl ...), blank-separated, in r(list).
+capture program drop _s10_ticks
+program define _s10_ticks, rclass
+    version 16.0
+    args obj set
+    local n "`.Graph.`obj'.`set'.dlg_tickpos.arrnels'"
+    local v ""
+    if "`n'" != "" {
+        forvalues i = 1/`n' {
+            local v `v' `.Graph.`obj'.`set'.dlg_tickpos[`i']'
+        }
+    }
+    return local list "`v'"
+end
+
+// _s10_build <stub>: dash's saved page and served app of the graphs
+// registered, into <stub>.html and <stub>_app.py.
+capture program drop _s10_build
+program define _s10_build
+    version 16.0
+    args stub
+    quietly dash build, saving("`stub'.html") replace nobrowser
+    quietly dash build, saving("`stub'_app.py") server replace
+    global s10_html "`stub'.html"
+    global s10_app  "`stub'_app.py"
+end
+
+python:
+import json as _s10_json
+import re as _s10_re
+import warnings as _s10_w
+from sfi import Macro as _s10_M
+from bokeh.document import Document as _s10_Doc
+from bokeh.models import Plot as _s10_Plot
+
+
+def _s10_saved():
+    with open(_s10_M.getGlobal("s10_html"), encoding="utf-8") as fh:
+        page = fh.read()
+    out = []
+    for blob in _s10_re.findall(r'<script type="application/json" id="[^"]*">\s*(.*?)\s*</script>', page, _s10_re.S):
+        for dd in _s10_json.loads(blob).values():
+            out += list(_s10_Doc.from_json(dd).select(dict(type=_s10_Plot)))
+    return sorted(out, key=lambda p: str(p.title.text if p.title is not None else ""))
+
+
+def _s10_served():
+    with open(_s10_M.getGlobal("s10_app"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s10_app")
+    with _s10_w.catch_warnings():
+        _s10_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s10_app.py", "exec"), ns)
+        doc = _s10_Doc()
+        ns["make_document"](doc)
+    return sorted(doc.select(dict(type=_s10_Plot)),
+                  key=lambda p: str(p.title.text if p.title is not None else ""))
+
+
+def _s10_cont(side):
+    return [a for a in side if type(a).__name__ in ("LinearAxis", "LogAxis", "DatetimeAxis")]
+
+
+def _s10_axis(p, side, rname):
+    attr = "y_range_name" if side in ("left", "right") else "x_range_name"
+    got = [a for a in _s10_cont(getattr(p, side)) if getattr(a, attr) == rname]
+    return got[0] if len(got) == 1 else None
+
+
+def _s10_major(a):
+    t = a.ticker
+    if type(t).__name__ == "CustomJSTicker":
+        t = (t.args or {}).get("base")
+    if t is not None and type(t).__name__ == "FixedTicker":
+        return sorted(float(v) for v in t.ticks)
+    return None
+
+
+def _s10_extra(a):
+    t = a.ticker
+    if type(t).__name__ == "CustomJSTicker":
+        return sorted(float(v) for v in (t.args or {}).get("extra", []))
+    return None
+
+
+def _s10_spans(p):
+    return [(float(s.location), s.dimension, s.y_range_name, s.x_range_name)
+            for s in p.center if type(s).__name__ == "Span"]
+
+
+def _s10_nums(name):
+    return sorted(float(v) for v in _s10_M.getGlobal(name).split())
+
+
+def _s10_put(ok, why):
+    _s10_M.setGlobal("s10_ok", "1" if ok else "0")
+    _s10_M.setGlobal("s10_why", "" if ok else str(why)[:600])
+
+
+def _s10_both(check):
+    """check(plots) -> list of problems, for the saved page and the app."""
+    bad = []
+    for mode, get in (("saved", _s10_saved), ("served", _s10_served)):
+        try:
+            plots = get()
+            bad += ["%s: %s" % (mode, b) for b in check(plots)]
+        except Exception as e:  # noqa: BLE001 -- reported as the failure
+            bad.append("%s: %s %s" % (mode, type(e).__name__, e))
+    _s10_put(not bad, "; ".join(bad))
+
+
+def _s10_ax11(plots):
+    want = _s10_nums("s10_tw")
+    a = _s10_axis(plots[0], "right", "y2")
+    if a is None or _s10_major(a) != want:
+        return ["y2 ticks %s, twoway yaxis2 %s" % (a and _s10_major(a), want)]
+    if _s10_major(_s10_axis(plots[0], "left", "default")) == want:
+        return ["the left axis has the y2 ticks"]
+    return []
+
+
+def _s10_ax12(plots):
+    a = _s10_axis(plots[0], "right", "y2")
+    left = _s10_axis(plots[0], "left", "default")
+    if _s10_M.getGlobal("s10_tw") != "log":
+        return ["twoway plotregion2 transform %s" % _s10_M.getGlobal("s10_tw")]
+    if a is None or type(a).__name__ != "LogAxis" or type(left).__name__ != "LinearAxis":
+        return ["right %s left %s" % (type(a).__name__, type(left).__name__)]
+    return []
+
+
+def _s10_ax13(plots):
+    want = _s10_nums("s10_tw")
+    got = sorted(s[0] for s in _s10_spans(plots[0]) if s[2] == "y2")
+    if got != want or [s for s in _s10_spans(plots[0]) if s[2] != "y2"]:
+        return ["spans %s, twoway plotregion2 lines %s" % (_s10_spans(plots[0]), want)]
+    return []
+
+
+def _s10_ax14(plots):
+    want = _s10_nums("s10_tw")
+    a = _s10_axis(plots[0], "right", "y2")
+    if a is None or _s10_extra(a) != want:
+        return ["y2 tick-only %s, twoway yaxis2 majornl %s" % (a and _s10_extra(a), want)]
+    return []
+
+
+def _s10_ax15(plots):
+    p = plots[0]
+    a = _s10_axis(p, "above", "x2")
+    bad = []
+    if a is None:
+        return ["no x2 axis"]
+    if _s10_M.getGlobal("s10_tr") == "log" and type(a).__name__ != "LogAxis":
+        bad.append("x2 is %s, twoway log" % type(a).__name__)
+    if _s10_major(a) != _s10_nums("s10_tw"):
+        bad.append("x2 labels %s, twoway %s" % (_s10_major(a), _s10_nums("s10_tw")))
+    if _s10_extra(a) != _s10_nums("s10_tk"):
+        bad.append("x2 ticks %s, twoway %s" % (_s10_extra(a), _s10_nums("s10_tk")))
+    got = sorted(s[0] for s in _s10_spans(p) if s[3] == "x2")
+    if got != _s10_nums("s10_tl"):
+        bad.append("x2 lines %s, twoway %s" % (got, _s10_nums("s10_tl")))
+    return bad
+
+
+def _s10_ax16(plots):
+    by_title = {str(p.title.text if p.title is not None else ""): p for p in plots}
+    tick, line = by_title.get("ax16a"), by_title.get("ax16b")
+    if tick is None or line is None:
+        return ["graphs %s" % sorted(by_title)]
+    t2, l2 = tick.extra_y_ranges.get("y2"), line.extra_y_ranges.get("y2")
+    tmax = float(_s10_M.getGlobal("s10_tw"))
+    lmax = float(_s10_M.getGlobal("s10_tl"))
+    bad = []
+    if not (tmax >= 20000 and max(t2.start, t2.end) >= 20000):
+        bad.append("ytick(20000, axis(2)): dash y2 ends %s, twoway curmax %s" % (max(t2.start, t2.end), tmax))
+    if not (lmax < 30000 and max(l2.start, l2.end) < 30000):
+        bad.append("yline(30000, axis(2)): dash y2 ends %s, twoway curmax %s" % (max(l2.start, l2.end), lmax))
+    return bad
+
+
+def _s10_ax17(plots):
+    p = plots[0]
+    want = _s10_nums("s10_tw")
+    left = _s10_cont(p.left)
+    if len(left) != 1 or _s10_cont(p.right) or _s10_major(left[0]) != want:
+        return ["left %s right %s, twoway yaxis2 %s" % (
+            [_s10_major(a) for a in left], _s10_cont(p.right), want)]
+    return []
+
+
+def _s10_ax18(plots):
+    want = [sorted(float(v) for v in w.split()) for w in _s10_M.getGlobal("s10_tw").split("|") if w.strip()]
+    got = [_s10_major(_s10_axis(p, "right", "y2")) for p in plots]
+    if len(got) != len(want) or any(g != w for g, w in zip(got, want)):
+        return ["panels' y2 ticks %s, twoway %s" % (got, want)]
+    return []
+
+end
+
+* ==== S10 P0.5: axis(#) routing ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S10") {
+    display as text "S10 start `c(current_time)'"
+    local s10d "`w29_work'/s10"
+    capture mkdir "`s10d'"
+    local B "(scatter mpg weight) (line price weight, yaxis(2) sort)"
+
+    // AX-11: ylabel(..., axis(2)) labels the second axis.
+    sysuse auto, clear
+    quietly twoway `B', ylabel(5000 10000 15000, axis(2))
+    _s10_ticks yaxis2 major
+    global s10_tw "`r(list)'"
+    dash clear
+    quietly dash `B', ylabel(5000 10000 15000, axis(2)) name(ax11)
+    _s10_build "`s10d'/ax11"
+    python: _s10_both(_s10_ax11)
+    _w29_expect AX-11 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done AX-11 "ylabel(5000 10000 15000, axis(2)) labels the second axis, as twoway's yaxis2 (${s10_tw}), saved and served"
+
+    // AX-12: yscale(log axis(2)) logs the second axis only.
+    quietly twoway `B', yscale(log axis(2))
+    global s10_tw "`.Graph.plotregion2.yscale.transform.stylename'"
+    dash clear
+    quietly dash `B', yscale(log axis(2)) name(ax12)
+    _s10_build "`s10d'/ax12"
+    python: _s10_both(_s10_ax12)
+    _w29_expect AX-12 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done AX-12 "yscale(log axis(2)) is a log second axis and a linear first one, as twoway's plotregion2 (${s10_tw})"
+
+    // AX-13: yline(#, axis(2)) is drawn on the second axis's scale.
+    quietly twoway `B', yline(5000, axis(2))
+    global s10_tw "`.Graph.plotregion2._xylines[1].z'"
+    dash clear
+    quietly dash `B', yline(5000, axis(2)) name(ax13)
+    _s10_build "`s10d'/ax13"
+    python: _s10_both(_s10_ax13)
+    _w29_expect AX-13 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done AX-13 "yline(5000, axis(2)) is drawn on the second axis, where twoway's plotregion2 holds it"
+
+    // AX-14: ytick(..., axis(2)) ticks the second axis.
+    quietly twoway `B', ytick(5000 7500, axis(2))
+    _s10_ticks yaxis2 majornl
+    global s10_tw "`r(list)'"
+    dash clear
+    quietly dash `B', ytick(5000 7500, axis(2)) name(ax14)
+    _s10_build "`s10d'/ax14"
+    python: _s10_both(_s10_ax14)
+    _w29_expect AX-14 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done AX-14 "ytick(5000 7500, axis(2)) ticks the second axis, as twoway's yaxis2 majornl (${s10_tw})"
+
+    // AX-15: the x family on the second x axis.
+    local X "(scatter mpg weight) (scatter mpg length, xaxis(2))"
+    local o "xlabel(150 200, axis(2)) xscale(log axis(2)) xline(200, axis(2)) xtick(160 180, axis(2))"
+    quietly twoway `X', `o'
+    _s10_ticks xaxis2 major
+    global s10_tw "`r(list)'"
+    _s10_ticks xaxis2 majornl
+    global s10_tk "`r(list)'"
+    global s10_tr "`.Graph.plotregion2.xscale.transform.stylename'"
+    global s10_tl "`.Graph.plotregion2._xylines[1].z'"
+    dash clear
+    quietly dash `X', `o' name(ax15)
+    _s10_build "`s10d'/ax15"
+    python: _s10_both(_s10_ax15)
+    _w29_expect AX-15 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done AX-15 "xlabel(), xscale(log), xline() and xtick() with axis(2) are on the second x axis, as twoway draws them"
+
+    // AX-16: a tick widens the second axis, a line does not.
+    quietly twoway `B', ytick(20000, axis(2))
+    global s10_tw "`.Graph.plotregion2.yscale.curmax'"
+    quietly twoway `B', yline(30000, axis(2))
+    global s10_tl "`.Graph.plotregion2.yscale.curmax'"
+    dash clear
+    quietly dash `B', ytick(20000, axis(2)) title("ax16a") name(ax16a)
+    quietly dash `B', yline(30000, axis(2)) title("ax16b") name(ax16b)
+    _s10_build "`s10d'/ax16"
+    python: _s10_both(_s10_ax16)
+    _w29_expect AX-16 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done AX-16 "ytick(20000, axis(2)) widens the second axis to 20000 and yline(30000, axis(2)) does not, as in twoway (${s10_tw}, ${s10_tl})"
+
+    // AX-17: a lone yaxis(2) graph's one axis takes the axis(2) options.
+    quietly twoway line price weight, yaxis(2) sort ylabel(5000 10000, axis(2))
+    _s10_ticks yaxis2 major
+    global s10_tw "`r(list)'"
+    dash clear
+    quietly dash line price weight, yaxis(2) sort ylabel(5000 10000, axis(2)) name(ax17)
+    _s10_build "`s10d'/ax17"
+    python: _s10_both(_s10_ax17)
+    _w29_expect AX-17 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done AX-17 "a lone yaxis(2) graph draws one left axis labelled ${s10_tw}, as twoway's"
+
+    // AX-18: under by(), every panel's second axis.
+    quietly twoway `B', by(foreign) ylabel(5000 10000, axis(2))
+    local tw ""
+    forvalues k = 1/2 {
+        _s10_ticks graphs[`k'].yaxis2 major
+        local tw "`tw'`r(list)'|"
+    }
+    global s10_tw "`tw'"
+    dash clear
+    quietly dash `B', by(foreign) ylabel(5000 10000, axis(2)) name(ax18)
+    _s10_build "`s10d'/ax18"
+    python: _s10_both(_s10_ax18)
+    _w29_expect AX-18 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done AX-18 "under by(), every panel's second axis is labelled as twoway's (${s10_tw})"
+
+    capture dash clear
+    capture graph drop _all
+    macro drop s10_*
+    display as text "S10 end `c(current_time)'"
+}
+* ==== end S10 ====
 
 * ==== append new blocks above this line ====
 

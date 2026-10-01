@@ -109,6 +109,22 @@
 *!          the 23 serset types, each in twoway's words and r(198); the 17
 *!          other types take it; repeats read as twoway reads them; silent
 *!          on the six joining types and tsline/tsrline, named elsewhere.
+*!   AX-01  _dash_route_axis2 rewrites each family's axis(2) form to dash's
+*!          second-axis key, drops axis(1), renames twoway's plurals and
+*!          leaves every refused form, and hostile text, as typed (P0.5).
+*!   AX-02  _dash_axis_num: twoway's axis number (a whole number within
+*!          its integer bounds, else 1).
+*!   AX-03  every axis(#) form twoway refuses dash refuses, r(198), with
+*!          twoway's message (an axis no layer uses, AXIS(), a second
+*!          axis(), axis-1 options on a lone yaxis(2) graph).
+*!   AX-04  the first refusal is twoway's: side, family, position, the
+*!          segments before the options after the comma.
+*!   AX-05  a second comma is refused, invalid '<word>', r(198); a trailing
+*!          empty comma is accepted.
+*!   AX-06  every spelling twoway accepts (ax, axi, 02, 2.0, a, 1e300, hex,
+*!          plot groups, by(), the plurals) dash accepts.
+*!   AX-07  the stored spec keeps each axis's copy through the repeat merge.
+*!   AX-08  10,000 copies end r(1003) quickly and leave nothing behind.
 *!
 *! TP-01 to TP-08 render nothing: every dash probe registers with name(),
 *! and the spec is read back out of the registry, as in
@@ -2478,6 +2494,412 @@ if `bad16' {
     local faillist "`faillist' TP-16"
 }
 else display as text "TP-16 PASS: a kernel written as an option of its own is kernel(<name>) on lpoly, lpolyci and kdensity, where twoway reads it so, and nowhere else"
+
+// ----------------------------------------------------------------
+// AX -- axis(#) routed to the axis it names (WP-29 S10, P0.5)
+// ----------------------------------------------------------------
+// twoway's ParseAndLogAxes (graph_g.class:1300-1422) routes ytitle(),
+// ylabel(), ymlabel(), ytick(), ymtick(), yline() and yscale() (x too) to
+// the axis axis(#) names, and refuses an axis no layer uses, AXIS(), a
+// second axis() and a second comma, r(198), in its own order: side (X
+// before Y), then family (SCale Labels MLabels TICks MTicks Title LInes),
+// then where it was typed, every plot segment before the options after
+// the comma.  dash drew every one on the first axis.  Each case asks
+// twoway in the same run.  test/fixtures/axis2_truth.json holds the same
+// measurements (scripts/extract_axis2_truth.do).
+local saved_ls = c(linesize)
+set linesize 255
+
+capture mata: mata drop _zax_first_line()
+mata:
+// The first non-blank line of a text log (a command run inside a program
+// under capture noisily prints no echo, so it is the error line).
+string scalar _zax_first_line(string scalar path)
+{
+    real scalar   fh
+    string scalar ln
+    fh = _fopen(path, "r")
+    if (fh < 0) return("")
+    while ((ln = fget(fh)) != J(0, 0, "")) {
+        if (strtrim(ln) != "") {
+            fclose(fh)
+            return(strtrim(ln))
+        }
+    }
+    fclose(fh)
+    return("")
+}
+end
+
+// twoway under its own quiet log: r(rc), and r(err) its first error line.
+capture program drop _zax_tw
+program define _zax_tw, rclass
+    args cmdtext logpath
+    capture log close _zaxlog
+    capture erase "`logpath'"
+    capture graph drop _all
+    quietly log using "`logpath'", name(_zaxlog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    quietly log close _zaxlog
+    capture graph drop _all
+    mata: st_local("err", _zax_first_line(st_local("logpath")))
+    return local err `"`macval(err)'"'
+    return scalar rc = `rc'
+end
+
+local twlog "`c(tmpdir)'dash_ax_twoway.log"
+local B "(scatter mpg weight) (line price weight, yaxis(2) sort)"
+local L "line price weight, yaxis(2) sort"
+
+// ---- AX-01 (direct): _dash_route_axis2 rewrites each family ----------
+local bad01 = 0
+local n = 0
+local ++n
+local in`n'  `"ylabel(5000 10000, axis(2)) ylabel(10 20)"'
+local out`n' `"ylabel2(5000 10000) ylabel(10 20)"'
+local ++n
+local in`n'  `"yscale(log ax(2))"'
+local out`n' `"yscale2(log)"'
+local ++n
+local in`n'  `"yline(5000, axis(2) lcolor(red))"'
+local out`n' `"yline2(5000, lcolor(red))"'
+local ++n
+local in`n'  `"ytitle(T, ax(2))"'
+local out`n' `"ytitle2(T)"'
+local ++n
+local in`n'  `"xt(V, axis(2))"'
+local out`n' `"xtitle2(V)"'
+local ++n
+local in`n'  `"ylabels(5000)"'
+local out`n' `"ylabel(5000)"'
+local ++n
+local in`n'  `"ytick(5000, axis(2),)"'
+local out`n' `"ytick2(5000)"'
+local ++n
+local in`n'  `"yticks(1, axis(1))"'
+local out`n' `"ytick(1)"'
+// byte for byte
+foreach w in `"ymlabel(1, axis(2))"' `"ylabel(5000, AXIS(2))"' `"ylabel(5000, axis(2) axis(1))"' `"ylabel(5000, angle(0), axis(2))"' `"ylabel(1, axis(3))"' {
+    local ++n
+    local in`n'  `"`w'"'
+    local out`n' `"`w'"'
+}
+forvalues i = 1/`n' {
+    capture mata: st_local("got", _dash_route_axis2(st_local("in`i'")))
+    if _rc {
+        display as error "AX-01 FAIL _dash_route_axis2 r(" _rc ")"
+        local bad01 = 1
+        continue
+    }
+    mata: st_local("eq", strofreal(st_local("got") == st_local("out`i'")))
+    if !`eq' {
+        mata: _dash_say("err", "AX-01 FAIL got ", st_local("got"), " for " + st_local("in`i'"))
+        local bad01 = 1
+    }
+}
+// hostile text: a $, a backtick and a quoted "axis(2)" come back as typed;
+// a routed body is kept byte for byte.
+mata: st_local("h1", "ylabel(1 " + char(34) + char(36) + "x" + char(96) + "y'" + char(34) + ")")
+mata: st_local("h2", "ylabel(1 " + char(34) + "axis(2)" + char(34) + ")")
+mata: st_local("h3", "ylabel(1 " + char(34) + char(36) + "x" + char(34) + ", axis(2))")
+mata: st_local("w3", "ylabel2(1 " + char(34) + char(36) + "x" + char(34) + ")")
+foreach h in h1 h2 h3 {
+    local want "`h'"
+    if "`h'" == "h3" local want "w3"
+    capture mata: st_local("got", _dash_route_axis2(st_local("`h'")))
+    if _rc {
+        local bad01 = 1
+        continue
+    }
+    mata: st_local("eq", strofreal(st_local("got") == st_local("`want'")))
+    if !`eq' {
+        mata: _dash_say("err", "AX-01 FAIL hostile ", st_local("got"), "")
+        local bad01 = 1
+    }
+}
+if `bad01' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-01"
+}
+else display as text "AX-01 PASS: _dash_route_axis2 routes every family's axis(2), drops axis(1), renames plurals and leaves the refused forms as typed"
+
+// ---- AX-02 (direct): _dash_axis_num, twoway's integer rule ------------
+local bad02 = 0
+local cases `"2=2 02=2 2.0=2 +2=2 2e0=2 1.0x+1=2 a=1 2.5=1 #2=1 .=1 1e300=1 2147483648=1 -2147483649=1 2147483647=2147483647 -2147483648=-2147483648 1e9=1000000000 -0=0 1e1=10"'
+foreach c of local cases {
+    gettoken a rest : c, parse("=")
+    local want = substr("`rest'", 2, .)
+    local got ""
+    capture mata: st_local("got", strofreal(_dash_axis_num(st_local("a")), "%11.0f"))
+    if _rc | strtrim("`got'") != "`want'" {
+        display as error "AX-02 FAIL _dash_axis_num(`a') = `got' (r(" _rc "), want `want')"
+        local bad02 = 1
+    }
+}
+foreach a in " 2 " "" "2 1" {
+    local want = cond("`a'" == " 2 ", "2", "1")
+    local got ""
+    capture mata: st_local("got", strofreal(_dash_axis_num(st_local("a")), "%11.0f"))
+    if _rc | strtrim("`got'") != "`want'" {
+        display as error "AX-02 FAIL _dash_axis_num('`a'') = `got' (want `want')"
+        local bad02 = 1
+    }
+}
+if `bad02' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-02"
+}
+else display as text "AX-02 PASS: the axis number is a whole number within twoway's integer bounds, else 1"
+
+// ---- AX-03 (refusal parity): twoway r(198), dash r(198), same message -
+local bad03 = 0
+local n = 0
+foreach c in ///
+    `"scatter mpg weight, ylabel(20 30, axis(2))"' ///
+    `"scatter mpg weight, yscale(log axis(2))"' ///
+    `"scatter mpg weight, yline(20, axis(2))"' ///
+    `"scatter mpg weight, ytick(20 30, axis(2))"' ///
+    `"scatter mpg weight, ymlabel(20 30, axis(2))"' ///
+    `"scatter mpg weight, ymtick(20 30, axis(2))"' ///
+    `"scatter mpg weight, ytitle(T, axis(2))"' ///
+    `"scatter mpg weight, xlabel(2000, axis(2))"' ///
+    `"`B', ylabel(5000, axis(3))"' ///
+    `"`B', ylabel(5000, axis(0))"' ///
+    `"`B', ylabel(5000, axis(-1))"' ///
+    `"`B', ylabel(5000, axis(10))"' ///
+    `"`B', ylabel(5000, axis(3) axis(1))"' ///
+    `"`B', ylabel(5000, axis(1) axis(3))"' ///
+    `"`B', ylabel(5000, AXIS(3))"' ///
+    `"`B', ytitle(T, AXIS(2))"' ///
+    `"`B', yscale(log AXIS(2))"' ///
+    `"`B', yline(5000, AXIS(2))"' ///
+    `"`B', ylabel(5000, Axis(2))"' ///
+    `"`B', xlabel(2000, axis(2))"' ///
+    `"`L' ylabel(5000 10000)"' ///
+    `"`L' ytitle(T)"' ///
+    `"`B', ylabel(5000, axis(2147483647))"' ///
+    `"`B', ylabel(5000, axis(-2147483648))"' ///
+    `"`B', ylabel(5000, axis(1e9))"' ///
+    `"`B', ylabel(5000, axis(-0))"' ///
+    `"`B', ylabel(5000, axis(1e1))"' {
+    local ++n
+    _zax_tw `"twoway `c'"' "`twlog'"
+    local tw = r(rc)
+    local err `"`r(err)'"'
+    _ztp_run `"dash `c'"' "`logfile'"
+    local rc = r(rc)
+    cert_log_has "`logfile'", needle(`"`macval(err)'"')
+    local hit = r(count)
+    if `tw' != 198 | `rc' != 198 | `hit' != 1 {
+        display as error `"AX-03 FAIL (`n') `c': twoway r(`tw') dash r(`rc'), twoway's line found `hit' time(s): `macval(err)'"'
+        local bad03 = 1
+    }
+}
+// SD-2: a quoted value breaks twoway's own message (r(133)); dash refuses
+// it, r(198), with the message intact.
+_zax_tw `"twoway scatter mpg weight, ytitle("T", axis(2))"' "`twlog'"
+local tw = r(rc)
+_ztp_run `"dash scatter mpg weight, ytitle("T", axis(2))"' "`logfile'"
+local rc = r(rc)
+cert_log_has "`logfile'", needle(`"ytitle("T", axis(2)) not allowed, yaxis2 does not exist"')
+if `tw' == 0 | `rc' != 198 | !r(found) {
+    display as error "AX-03 FAIL quoted ytitle: twoway r(`tw') dash r(`rc'), message found " r(found)
+    local bad03 = 1
+}
+if `bad03' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-03"
+}
+else display as text "AX-03 PASS: every form twoway refuses for axis(#) dash refuses, r(198), in twoway's words"
+
+// ---- AX-04 (order): the first refusal is twoway's ---------------------
+local bad04 = 0
+local n = 0
+foreach c in ///
+    `"`B', ylabel(1, axis(3)) xscale(log axis(3))"' ///
+    `"`B', yline(1, axis(3)) ylabel(1, axis(4))"' ///
+    `"`B', ylabel(5000, axis(3) axis(1))"' ///
+    `"`B', ylabel(5000, AXIS(2) axis(3))"' ///
+    `"`B', ylabel(5000, axis(2)) yscale(axis(3))"' ///
+    `"(scatter mpg weight, ylabel(1, axis(3))) (line price weight, yaxis(2) sort), yscale(log axis(4))"' ///
+    `"`B', ytitle(T, axis(3)) ylabel(1, AXIS(2))"' ///
+    `"(scatter mpg weight, ylabel(1, axis(3))) (line price weight, yaxis(2) sort), ylabel(1, axis(4))"' ///
+    `"scatter mpg weight, ylabel(1, axis(4)) || line price weight, yaxis(2) sort ylabel(1, axis(5))"' ///
+    `"`L' ylabel(5000, AXIS(2))"' {
+    local ++n
+    _zax_tw `"twoway `c'"' "`twlog'"
+    local tw = r(rc)
+    local err `"`r(err)'"'
+    _ztp_run `"dash `c'"' "`logfile'"
+    local rc = r(rc)
+    cert_log_has "`logfile'", needle(`"`macval(err)'"')
+    local hit = r(count)
+    cert_log_has "`logfile'", needle("not allowed")
+    local all = r(count)
+    if `tw' != 198 | `rc' != 198 | `hit' != 1 | `all' != 1 {
+        display as error `"AX-04 FAIL (`n') `c': twoway r(`tw') dash r(`rc'), twoway's line `hit', refusals `all': `macval(err)'"'
+        local bad04 = 1
+    }
+}
+if `bad04' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-04"
+}
+else display as text "AX-04 PASS: dash names the refusal twoway names first: side, family, then position, segments before the options after the comma"
+
+// ---- AX-05 (double comma) ---------------------------------------------
+local bad05 = 0
+foreach c in ///
+    `"`B', yscale(log, axis(2))"' ///
+    `"`B', ytitle(TT, size(small), axis(2))"' ///
+    `"`B', yline(5000, lcolor(red), axis(2))"' ///
+    `"`B', ylabel(5000, angle(0), axis(2))"' ///
+    `"`B', ytick(20 30, grid, axis(1))"' ///
+    `"`B', ytitle(TT, size(small), color(red))"' ///
+    `"`B', yscale(log, range(1 50))"' ///
+    `"`B', yscale(, log)"' ///
+    `"`B', yline(20, lcolor(red), lwidth(thick))"' {
+    _zax_tw `"twoway `c'"' "`twlog'"
+    local tw = r(rc)
+    local err `"`r(err)'"'
+    _ztp_run `"dash `c'"' "`logfile'"
+    local rc = r(rc)
+    cert_log_has "`logfile'", needle(`"`macval(err)'"')
+    if `tw' != 198 | `rc' != 198 | !r(found) | substr(`"`macval(err)'"', 1, 9) != "invalid '" {
+        display as error `"AX-05 FAIL `c': twoway r(`tw') dash r(`rc'): `macval(err)'"'
+        local bad05 = 1
+    }
+}
+foreach c in `"`B', ytitle(TT, size(small),) name(zax5)"' `"`B', ytick(5000, axis(2),) name(zax5)"' {
+    _zax_tw `"twoway `c'"' "`twlog'"
+    local tw = r(rc)
+    _ztp_run `"dash `c'"' "`logfile'"
+    local rc = r(rc)
+    if `tw' | `rc' {
+        display as error `"AX-05 FAIL `c': twoway r(`tw') dash r(`rc')"'
+        local bad05 = 1
+    }
+}
+mata: st_local("ok", strofreal(_ztp_hasval("zax5", "ytick2", "5000")))
+if !`ok' {
+    display as error "AX-05 FAIL ytick(5000, axis(2),) is not stored as ytick2 5000"
+    local bad05 = 1
+}
+capture dash clear
+if `bad05' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-05"
+}
+else display as text "AX-05 PASS: a second comma is refused as twoway refuses it, and a trailing empty one is not"
+
+// ---- AX-06 (accepted parity) ------------------------------------------
+local bad06 = 0
+foreach c in ///
+    `"`B', ylabel(5000, ax(2))"' ///
+    `"`B', ylabel(5000, axi(2))"' ///
+    `"`B', ylabel(5000, axis(02))"' ///
+    `"`B', ylabel(5000, axis(2.0))"' ///
+    `"`B', ylabel(5000, axis(a))"' ///
+    `"`B', ylabel(5000, axis(1e300))"' ///
+    `"`B', ylabel(5000, axis(1.0x+1))"' ///
+    `"(scatter mpg weight, ylabel(5000, axis(2))) (line price weight, yaxis(2) sort)"' ///
+    `"`B', by(foreign) ylabel(5000 10000, axis(2))"' ///
+    `"`B', ylabels(5000 10000, axis(2))"' ///
+    `"`B', yticks(5000, axis(2))"' ///
+    `"`B', ylines(5000, axis(2))"' ///
+    `"`B', ymticks(5000, axis(2))"' ///
+    `"`B', ytic(5000, ax(2)) yli(5000, ax(2)) ysc(log ax(2)) yml(6000, ax(2)) ymt(6000, ax(2)) ytitle(T, ax(2))"' {
+    _zax_tw `"twoway `c'"' "`twlog'"
+    local tw = r(rc)
+    _ztp_run `"dash `c'"' "`logfile'"
+    local rc = r(rc)
+    if `tw' | `rc' {
+        display as error `"AX-06 FAIL `c': twoway r(`tw') dash r(`rc')"'
+        local bad06 = 1
+    }
+}
+if `bad06' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-06"
+}
+else display as text "AX-06 PASS: every spelling twoway accepts for axis(#), its plurals included, dash accepts"
+
+// ---- AX-07 (the spec after the merge) ---------------------------------
+local bad07 = 0
+local n = 0
+foreach c in ///
+    `"`B', ylabel(10 20) ylabel(5000 10000, axis(2)) name(zax7)"' ///
+    `"`B', ylabel(5000 10000, axis(2)) ylabel(10 20) name(zax7)"' {
+    local ++n
+    _ztp_run `"dash `c'"' "`logfile'"
+    local rc = r(rc)
+    mata: st_local("a", strofreal(_ztp_hasval("zax7", "ylabel", "10 20")))
+    mata: st_local("b", strofreal(_ztp_hasval("zax7", "ylabel2", "5000 10000")))
+    if `rc' | !`a' | !`b' {
+        display as error `"AX-07 FAIL `c': r(`rc'), ylabel 10 20 `a', ylabel2 5000 10000 `b'"'
+        local bad07 = 1
+    }
+}
+_ztp_run `"dash `B', yscale(log axis(2)) yscale(reverse) name(zax7)"' "`logfile'"
+local rc = r(rc)
+mata: st_local("a", strofreal(_ztp_hasval("zax7", "yscale", "reverse")))
+mata: st_local("b", strofreal(_ztp_hasval("zax7", "yscale2", "log")))
+if r(rc) | !`a' | !`b' {
+    display as error "AX-07 FAIL yscale: r(`rc'), yscale reverse `a', yscale2 log `b'"
+    local bad07 = 1
+}
+_ztp_run `"dash `B', yline(5000, axis(2)) yline(20) name(zax7)"' "`logfile'"
+local rc = r(rc)
+mata: st_local("a", strofreal(_ztp_hasval("zax7", "yline", "20")))
+mata: st_local("b", strofreal(_ztp_hasval("zax7", "yline2", "5000")))
+if `rc' | !`a' | !`b' {
+    display as error "AX-07 FAIL yline: r(`rc'), yline 20 `a', yline2 5000 `b'"
+    local bad07 = 1
+}
+_ztp_run `"dash `B', ylabels(5000) name(zax7)"' "`logfile'"
+local rc = r(rc)
+mata: st_local("a", strofreal(_ztp_hasval("zax7", "ylabel", "5000")))
+if `rc' | !`a' {
+    display as error "AX-07 FAIL ylabels(5000): r(`rc'), ylabel 5000 `a'"
+    local bad07 = 1
+}
+capture dash clear
+if `bad07' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-07"
+}
+else display as text "AX-07 PASS: each axis keeps its own copy through the repeat merge"
+
+// ---- AX-08 (exhaustion) ------------------------------------------------
+local bad08 = 0
+local many ""
+forvalues i = 1/10000 {
+    local many "`many' ylabel(1, axis(2))"
+}
+_zax_tw `"twoway `B',`many'"' "`twlog'"
+local tw = r(rc)
+timer clear 18
+timer on 18
+_ztp_run `"dash `B',`many'"' "`logfile'"
+local rc = r(rc)
+timer off 18
+quietly timer list 18
+local t18 = r(t18)
+capture mata: st_local("rows", strofreal(rows(_dash_axreq)))
+if _rc local rows "(no _dash_axreq)"
+if `tw' != 1003 | `rc' != 1003 | `t18' >= 10 | "`rows'" != "0" {
+    display as error "AX-08 FAIL 10000 copies: twoway r(`tw'), dash r(`rc'), `t18' s, _dash_axreq rows `rows'"
+    local bad08 = 1
+}
+capture dash clear
+if `bad08' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-08"
+}
+else display as text "AX-08 PASS: 10,000 copies of an axis(2) option end r(1003) as in twoway, quickly, keeping nothing"
+capture erase "`twlog'"
+set linesize `saved_ls'
 
 // ----------------------------------------------------------------
 // Summary

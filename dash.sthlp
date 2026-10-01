@@ -610,8 +610,8 @@ named in a note and drawn around -- because it is what would be drawn.
     spellings, from its minimum abbreviation to its full name:
     {cmd:c(red)} is {cmd:color(red)} and {cmd:si(large)} is
     {cmd:size(large)}.  {cmd:size()}, {cmd:color()}, {cmd:prefix},
-    {cmd:suffix} and, on an axis title, {cmd:axis(1)}/{cmd:axis(2)} are
-    applied; every other sub-option, and any word that is not a textbox
+    {cmd:suffix} and, on an axis title, {cmd:axis(1)}/{cmd:axis(2)}
+    (minimum {cmd:ax()}, in lower case) are applied; every other sub-option, and any word that is not a textbox
     sub-option ({cmd:colour()}, {cmd:style()}), is named, never drawn as
     text.  A lone {cmd:suffix} on an axis title adds its lines after the
     default title, {cmd:prefix} before it.
@@ -2750,6 +2750,9 @@ sub-option {cmd:grid}, which draws gridlines at the ticks; another
 sub-option is named in a warning.  Bokeh labels one set of ticks per axis,
 so these are drawn as its minor ticks, at the major ticks' length; Bokeh's
 own minor ticks, which Stata does not draw, are not drawn on that axis.
+With {cmd:axis(2)} the ticks are on the second axis's scale, and they
+widen that axis, as a label does, unless {cmd:norescale} is given; a line,
+{cmd:yline(}{it:#}{cmd:, axis(2))}, never widens an axis.
 
 {pstd}
 {it:Examples:}
@@ -2765,23 +2768,44 @@ right-hand y axis scaled to what the layers on that axis draw, or
 with it, and the left or bottom axis spans only the layers drawn on it.
 Both are plot-level options, given inside the layer's parentheses.  Either
 takes 1 or 2 only: {cmd:dash} draws two axes where {cmd:twoway} allows
-nine, and any other value is refused.  {cmd:xlabel()}, {cmd:ylabel()},
-{cmd:xtick()} and {cmd:ytick()} style the bottom and left axes only; the
-second axes take the options below, which are {cmd:dash}'s own, as are
-their synonyms: {cmd:twoway} refuses all twelve, r(198), and writes
-{cmd:ytitle(}{it:text}{cmd:, axis(2))} and the like.  {cmd:dash} reads
-{cmd:ytitle(, axis(2))} and {cmd:xtitle(, axis(2))} as the second axis's
-title too; {cmd:ylabel(, axis(2))} and {cmd:yscale(, axis(2))} are still
-named, not read.
+nine, and any other value is refused.
+
+{pstd}
+As in {cmd:twoway}, the sub-option {cmd:axis(2)} puts {cmd:ytitle()},
+{cmd:ylabel()}, {cmd:ytick()}, {cmd:yline()} and {cmd:yscale()} -- and the
+x forms -- on the second axis, and {cmd:axis(1)}, or no {cmd:axis()}, on the
+first: {cmd:ylabel(5000 10000, axis(2))} labels the right-hand axis,
+{cmd:yscale(log axis(2))} makes it a log axis, {cmd:yline(5000, axis(2))}
+is drawn on its scale and {cmd:ytick(7500, axis(2))} ticks it, in the saved
+page and the served app, before and after any filter move.  Each axis keeps
+its own copy: {cmd:ylabel(10 20) ylabel(5000 10000, axis(2))} labels both.
+{cmd:twoway}'s spellings are read -- its abbreviations ({cmd:yl},
+{cmd:ytic}, {cmd:yli}, {cmd:ysc}, {cmd:yt}), its plurals
+({cmd:ylabels()}, {cmd:yticks()}, {cmd:ylines()}) and the sub-option's own
+minimum, {cmd:ax(2)} -- written in lower case.  The axis number is read as
+{cmd:twoway} reads it: a number that is not a whole number within
+{cmd:twoway}'s integer range ({cmd:axis(2.5)}, {cmd:axis(a)},
+{cmd:axis(1e300)}) means axis 1.  An {cmd:axis()} naming an axis no layer
+is drawn on, an {cmd:axis()} given twice, {cmd:AXIS()} in capitals and a
+second comma ({cmd:ylabel(5000, angle(0), axis(2))}) are refused, r(198),
+with {cmd:twoway}'s message, in the order {cmd:twoway} checks them.
+{cmd:ymlabel()} and {cmd:ymtick()} are checked the same way but are drawn
+on neither axis (named in a warning).  {cmd:add} on a label routed to the
+second axis ({cmd:ylabel(5000, axis(2) add)}) is named, not applied.  The
+second axes also take the options below, which are {cmd:dash}'s own
+spellings of the {cmd:axis(2)} forms, as are their synonyms:
+{cmd:twoway} refuses all sixteen, r(198).  Given on a graph with no layer
+on that second axis, they are named in a warning when the dashboard is
+built, saved or served.
 
 {pstd}
 When every layer of a graph is on {opt yaxis(2)}, {cmd:dash} draws one y
-axis, on the left, as {cmd:twoway} does; {cmd:ytitle2()}, {cmd:ylabel2()}
-and {cmd:yscale2()} style it, and where one is given it takes the place of
-{cmd:ytitle()}, {cmd:ylabel()} or {cmd:yscale()}, which {cmd:twoway} refuses
-on such a graph.  When every layer is on {opt xaxis(2)}, the one x axis is
-drawn at the bottom, styled the same way by {cmd:xtitle2()},
-{cmd:xlabel2()} and {cmd:xscale2()}.
+axis, on the left, as {cmd:twoway} does; the {cmd:axis(2)} forms --
+{cmd:ytitle2()}, {cmd:ylabel2()}, {cmd:yscale2()}, {cmd:ytick2()} and
+{cmd:yline2()} -- style it, and the first axis's options are refused,
+r(198), with {cmd:twoway}'s message ({cmd:ylabels(5000 10000) not allowed,}
+{cmd:yaxis1 does not exist}).  When every layer is on {opt xaxis(2)}, the
+one x axis is drawn at the bottom, styled the same way by the x forms.
 
 {synoptset 38}{...}
 {synopt:{opt ytitle2(tinfo)}}title for the right-hand y axis, in the
@@ -2798,6 +2822,16 @@ drawn at the bottom, styled the same way by {cmd:xtitle2()},
     {cmd:xlabel()} takes.  Synonym: {cmd:xla2()}{p_end}
 {synopt:{opt xscale2(log)}}log scale on the top x axis.
     Synonym: {cmd:xsc2()}{p_end}
+{synopt:{opt ytick2(rule)}}ticks without labels on the right-hand y axis,
+    in the grammar {cmd:ytick()} takes; twoway writes it with the
+    sub-option axis(2).  No abbreviation.{p_end}
+{synopt:{opt xtick2(rule)}}ticks without labels on the top x axis.  No
+    abbreviation.{p_end}
+{synopt:{opt yline2(linelist)}}lines at the right-hand y axis's values, as
+    {cmd:yline()} draws them; twoway writes it with the sub-option
+    axis(2).  No abbreviation.{p_end}
+{synopt:{opt xline2(linelist)}}lines at the top x axis's values.  No
+    abbreviation.{p_end}
 {synoptline}
 
 {pstd}
@@ -3147,7 +3181,9 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     in the scheme's {cmd:color xyline}, {cmd:linepattern xyline} and
     {cmd:linewidth xyline}, as {cmd:twoway} draws them: cranberry and solid
     under {cmd:s2color}, black and dashed under {cmd:stcolor}.  Their
-    {cmd:lcolor()}, {cmd:lpattern()} and {cmd:lwidth()} still win.{p_end}
+    {cmd:lcolor()}, {cmd:lpattern()} and {cmd:lwidth()} still win.
+    A line given the sub-option axis(2) is drawn at that value of the
+    second axis; no line widens an axis.{p_end}
 
 {phang2}{ul:Series.}  The colour, symbol and line-pattern cycles
     ({cmd:p1} to {cmd:p15}), the line width ({cmd:linewidth p}, and

@@ -266,8 +266,28 @@
 *!       blank-separated (GAPS2 G3).
 *!
 *!   _dash_route_axis2(opts)
-*!       opts with ytitle(..., axis(2))/xtitle(..., axis(2)) rewritten as
-*!       ytitle2()/xtitle2() and an axis(1) word dropped (WP-28 B3).
+*!       opts with each x/y title, label, tick, line and scale option's
+*!       axis(2) rewritten as ytitle2()/ylabel2()/ytick2()/yline2()/
+*!       yscale2() (x too), an axis(1) word dropped and twoway's plurals
+*!       renamed; every form twoway refuses is left as typed (WP-28 B3,
+*!       WP-29 P0.5).  _dash_axfam(), _dash_ax_parse(), _dash_ax_word()
+*!       and _dash_axis_num() (the axis number axis(arg) names, as twoway
+*!       reads it: a whole number within -2147483648..2147483647, else 1)
+*!       are its internal helpers, shared with _dash_axreq_add.
+*!
+*!   _dash_axreq_clear()
+*!       Empties the external _dash_axreq, the axis options recorded for
+*!       the command being parsed (WP-29 P0.5).
+*!
+*!   _dash_axreq_add(opts, seg)
+*!       Records each axis option of the raw option text opts of plot
+*!       segment seg (the options after the comma are segment n_segs+1).
+*!
+*!   _dash_axreq_check(ys, xs)
+*!       Refuses, r(198) with twoway's message and in twoway's order, the
+*!       first recorded axis option twoway refuses -- a second comma, an
+*!       axis no layer uses (ys, xs: the layers' axes), an axis word in
+*!       capitals or given twice -- and clears the record; 0 otherwise.
 *!
 *!   _dash_axis_pieces(s)
 *!       An axis-label option's value split into strings, bare runs and
@@ -4642,11 +4662,12 @@ string scalar _dash_rep_cat(string scalar key)
                "b2title", "l1title", "l2title", "r1title", "r2title",
                "title2", "subtitle2", "ztitle"), k)) return("T")
     if (anyof(("xlabel", "ylabel", "xlabel2", "ylabel2", "xtick", "ytick",
-               "xmtick", "ymtick", "xmlabel", "ymlabel", "zlabel"), k)) return("L")
+               "xtick2", "ytick2", "xmtick", "ymtick", "xmlabel", "ymlabel",
+               "zlabel"), k)) return("L")
     if (anyof(("legend", "graphregion", "plotregion"), k)) return("I")
     if (anyof(("xscale", "yscale", "xscale2", "yscale2", "zscale"), k)) return("S")
     if (k == "by") return("B")
-    if (k == "xline" | k == "yline") return("X")
+    if (anyof(("xline", "yline", "xline2", "yline2"), k)) return("X")
     if (k == "text") return("A")
     return("R")
 }
@@ -5138,63 +5159,306 @@ real scalar _dash_rep_split(string scalar v, string scalar body,
     return(1)
 }
 
-// _dash_route_axis2(opts) -- the option list with ytitle(..., axis(2)) and
-// xtitle(..., axis(2)) rewritten as ytitle2(...)/xtitle2(...), and an
-// axis(1) word dropped (WP-28 B3).  It runs before -syntax- and before
-// _dash_rep_reduce, whose merge would otherwise fold ytitle("a")
-// ytitle("b", axis(2)) into one ytitle.  Only a word whose own name is a
-// prefix of ytitle or xtitle, three characters or more (yti .. ytitle;
-// never yti2), is touched; every other word, and every body, is returned
-// byte for byte, so a title holding "axis(2)", a quote, $ or a backtick
-// is kept as typed.  No regex (regexm follows the caller's version).
+// _dash_axis_num(arg) -- the axis number twoway's _axisnum reads from
+// axis(arg) (WP-29 P0.5): syntax [, AXis(integer 1)], so a whole number
+// within Stata's integer bounds, -2147483648 .. 2147483647, and 1 for
+// anything else -- a blank, a word, a fraction, a missing value, a number
+// past the bounds (measured: axis(2.5), axis(a), axis(1e300) and
+// axis(2147483648) all give axis 1, silently; axis(02), axis(2.0),
+// axis(+2), axis(2e0) and axis(1.0x+1) give axis 2).
+real scalar _dash_axis_num(string scalar arg)
+{
+    real scalar v
+
+    v = strtoreal(strtrim(arg))
+    if (v < . & v == floor(v) & v >= -2147483648 & v <= 2147483647) return(v)
+    return(1)
+}
+
+// _dash_axfam() -- twoway's axis option families (graph_g.class
+// ParseAndLogAxes, optnames SCale Labels MLabels TICks MTicks Title LInes),
+// one row each: the family, twoway's full name after the side letter, dash's
+// name, the minimum length of the whole option name (side letter included),
+// twoway's order of the family, and the name an axis(2) copy is written as
+// ("" when dash does not route that family).  Read by _dash_ax_parse.
+string matrix _dash_axfam()
+{
+    return(("title",  "title",   "title",  "2", "6", "title2" \
+            "label",  "labels",  "label",  "2", "2", "label2" \
+            "mlabel", "mlabels", "mlabel", "3", "3", ""       \
+            "tick",   "ticks",   "tick",   "4", "4", "tick2"  \
+            "mtick",  "mticks",  "mtick",  "3", "5", ""       \
+            "line",   "lines",   "line",   "3", "7", "line2"  \
+            "scale",  "scale",   "scale",  "3", "1", "scale2"))
+}
+
+// _dash_ax_word(s) -- the first blank-delimited word of s, cut at its
+// first "(": the word twoway names in "invalid '<word>'".
+string scalar _dash_ax_word(string scalar s)
+{
+    string scalar t
+    real scalar   p
+
+    t = strltrim(subinstr(s, char(9), " "))
+    p = strpos(t, " ")
+    if (p) t = substr(t, 1, p - 1)
+    p = strpos(t, "(")
+    if (p) t = substr(t, 1, p - 1)
+    return(t)
+}
+
+// _dash_ax_parse(tok, fam, d, r, v, body, words, dcw, nax, n, badw, axpos)
+// -- 1 when the option word tok is one of twoway's axis options (an x or y
+// option of a family of _dash_axfam(), its name typed in lower case, at
+// least the family's minimum long and a prefix of twoway's full name),
+// else 0.  Sets, by reference: d the side letter; r the family's row; v
+// the value as typed; body the text before the first comma (not for a
+// scale); words the sub-option words the axis words are read from (after
+// the first comma, or every word of a scale); dcw the word after a second
+// comma ("" when none -- a comma followed by blanks only is no second
+// comma); nax the lower-case axis words; n the axis the first of them
+// names (1 when none); badw the first axis word in capitals or second
+// lower-case one, as typed, cut at "("; axpos the first axis word's place
+// in words.  An axis word is ax, axi or axis, then "(".  No regex.
+real scalar _dash_ax_parse(string scalar tok, string matrix fam,
+                           string scalar d, real scalar r, string scalar v,
+                           string scalar body, string rowvector words,
+                           string scalar dcw, real scalar nax,
+                           real scalar n, string scalar badw,
+                           real scalar axpos)
+{
+    string scalar nm, full, sub, b2, s2, w, an, la, arg
+    real scalar   i, j, p, mn
+
+    if (!strpos(tok, "(")) return(0)
+    nm = _dash_rep_optname(tok)
+    if (nm == "" | nm != strlower(nm)) return(0)
+    d = substr(nm, 1, 1)
+    if (d != "x" & d != "y") return(0)
+    r = 0
+    for (i = 1; i <= rows(fam); i++) {
+        full = d + fam[i, 2]
+        mn   = strtoreal(fam[i, 4])
+        if (strlen(nm) >= mn & strlen(nm) <= strlen(full) &
+            substr(full, 1, strlen(nm)) == nm) {
+            r = i
+            break
+        }
+    }
+    if (!r) return(0)
+    v    = _dash_rep_value(tok)
+    dcw  = ""
+    body = ""
+    sub  = ""
+    if (fam[r, 1] == "scale") {
+        // A scale's value is read after a comma twoway puts in front of
+        // it, so any comma in it is a second one; a trailing one is not.
+        if (_dash_rep_split(v, b2, s2)) {
+            if (strtrim(s2) != "") dcw = _dash_ax_word(s2)
+            sub = b2
+        }
+        else sub = v
+    }
+    else if (_dash_rep_split(v, body, sub)) {
+        if (_dash_rep_split(sub, b2, s2)) {
+            if (strtrim(s2) != "") dcw = _dash_ax_word(s2)
+            sub = b2
+        }
+    }
+    words = _dash_rep_toks(sub, 0)
+    n     = 1
+    nax   = 0
+    badw  = ""
+    axpos = 0
+    for (j = 1; j <= cols(words); j++) {
+        w = words[j]
+        p = strpos(w, "(")
+        if (!p) continue
+        an = substr(w, 1, p - 1)
+        la = strlower(an)
+        if (strlen(la) < 2 | strlen(la) > 4) continue
+        if (substr("axis", 1, strlen(la)) != la) continue
+        if (an != la) {
+            if (badw == "") badw = an
+            continue
+        }
+        nax++
+        if (nax == 1) {
+            arg = substr(w, p + 1, .)
+            if (substr(arg, strlen(arg), 1) == ")") arg = substr(arg, 1, strlen(arg) - 1)
+            n     = _dash_axis_num(arg)
+            axpos = j
+        }
+        else if (badw == "") badw = an
+    }
+    return(1)
+}
+
+// _dash_route_axis2(opts) -- the option list with each axis option's
+// axis(#) applied, as twoway's ParseAndLogAxes applies it (WP-29 P0.5;
+// WP-28 B3 did the titles).  It runs before -syntax- and before
+// _dash_rep_reduce, whose merge would otherwise fold ylabel(10 20)
+// ylabel(5000 10000, axis(2)) into one ylabel and lose the first axis's
+// list.  For each x or y title, label, mlabel, tick, mtick, line and scale
+// option (_dash_axfam: twoway's spellings and plurals, typed in lower
+// case):
+//   axis(1), or a number that is no whole number within twoway's bounds:
+//       the axis word is dropped; a plural is written as dash's name
+//       (ylabels(5000) is ylabel(5000), as twoway reads it);
+//   axis(2): written as dash's second-axis option -- ytitle2(), ylabel2(),
+//       ytick2(), yline2(), yscale2() -- the axis word dropped and the
+//       other words kept, each body byte for byte;
+//   any other axis, an mlabel or mtick on axis 2, a second axis word, an
+//       axis word in capitals and a second comma: left as typed, for
+//       _dash_axreq_check to refuse in twoway's words (or, for ymlabel()
+//       and ymtick() on axis 2, for the note).
+// Every other word, and every body, is returned byte for byte, so text
+// holding "axis(2)", a quote, $ or a backtick is kept as typed.  No regex
+// (regexm follows the caller's version).
 string scalar _dash_route_axis2(string scalar opts)
 {
-    string rowvector toks, sub_w
-    string scalar    out, tok, nm, body, sub, w, arg, rest
-    real scalar      i, j, route, any
+    string rowvector toks, words
+    string matrix    fam
+    string scalar    out, tok, d, v, body, dcw, badw, rest, dn
+    real scalar      i, j, r, nax, n, axpos, any, scale
 
     toks = _dash_rep_toks(opts, 0)
     if (cols(toks) == 0) return(opts)
-    out  = ""
-    any  = 0
+    fam = _dash_axfam()
+    out = ""
+    any = 0
     for (i = 1; i <= cols(toks); i++) {
         tok = toks[i]
-        nm  = strlower(_dash_rep_optname(tok))
-        if (strlen(nm) >= 3 & strlen(nm) <= 6 & strpos(tok, "(") &
-            (substr("ytitle", 1, strlen(nm)) == nm |
-             substr("xtitle", 1, strlen(nm)) == nm)) {
-            if (_dash_rep_split(_dash_rep_value(tok), body, sub)) {
-                sub_w = _dash_rep_toks(sub, 1)
-                rest  = ""
-                route = 0
-                for (j = 1; j <= cols(sub_w); j++) {
-                    w   = strlower(strtrim(sub_w[j]))
-                    arg = ""
-                    if (strlen(w) > 6 & substr(w, 1, 5) == "axis(" &
-                        substr(w, strlen(w), 1) == ")") {
-                        arg = strtrim(substr(w, 6, strlen(w) - 6))
-                    }
-                    if (arg == "1" | arg == "2") {
-                        route = strtoreal(arg)
-                        continue
-                    }
-                    rest = rest + (rest == "" ? "" : " ") + sub_w[j]
-                }
-                if (route) {
+        if (!_dash_ax_parse(tok, fam, d, r, v, body, words, dcw, nax, n,
+                            badw, axpos)) continue
+        if (dcw != "" | badw != "") continue
+        scale = (fam[r, 1] == "scale")
+        rest  = ""
+        for (j = 1; j <= cols(words); j++) {
+            if (j == axpos) continue
+            rest = rest + (rest == "" ? "" : " ") + words[j]
+        }
+        if (n == 1) {
+            dn = d + fam[r, 3]
+            if (!nax) {
+                // No axis word: only a plural is renamed, its value as typed.
+                if (_dash_rep_optname(tok) == d + fam[r, 2] & fam[r, 2] != fam[r, 3]) {
+                    toks[i] = dn + "(" + v + ")"
                     any = 1
-                    tok = substr(nm, 1, 1) + "title" +
-                          (route == 2 ? "2" : "") + "(" + body +
-                          (rest == "" ? "" : ", " + rest) + ")"
                 }
+                continue
             }
         }
-        toks[i] = tok
+        else if (n == 2 & fam[r, 6] != "") dn = d + fam[r, 6]
+        else continue
+        toks[i] = dn + "(" + (scale ? rest :
+                  body + (rest == "" ? "" : ", " + rest)) + ")"
+        any = 1
     }
     // Nothing routed: the list exactly as typed, spacing and all (and no
     // join, which the 10,000-copy exhaustion case TP-14e times).
     if (!any) return(opts)
     for (i = 1; i <= cols(toks); i++) out = out + (i > 1 ? " " : "") + toks[i]
     return(out)
+}
+
+// _dash_axreq_clear(), _dash_axreq_add(opts, seg) and
+// _dash_axreq_check(ys, xs) -- twoway's refusals of an axis option
+// (WP-29 P0.5).  _dash_axreq_add records, from the RAW option text of plot
+// segment seg (the options after the top-level comma are segment n_segs+1,
+// read after every segment, as twoway reads them), one row per axis option
+// in the external string matrix _dash_axreq: side (1 x, 2 y), twoway's
+// family order (scale 1 .. lines 7), seg, the word's place, the axis
+// number, the name twoway's message uses (ylabels, ytitle, yscale ...),
+// the value as typed, the word after a second comma and the first axis
+// word in capitals or second lower-case one.  dash's own ytitle2() ...
+// are no axis option of twoway's and are not recorded.  _dash_axreq_check
+// orders the rows as twoway does -- side, family, segment, place -- and
+// refuses the first that fails, testing in twoway's order: a second comma
+// ("invalid '<word>'"), an axis no layer uses ("ylabels(...) not allowed,
+// yaxis3 does not exist"; ys and xs are the layers' axes), then a bad axis
+// word ("option AXIS() not allowed").  Each message goes through
+// _dash_say, so the user's text is shown as typed.  The matrix is cleared
+// at the start of every graph command and after the check, so no typed
+// text is kept.  Linear: one pass over the words into a block sized by
+// their count.
+void _dash_axreq_clear()
+{
+    external string matrix _dash_axreq
+
+    _dash_axreq = J(0, 9, "")
+}
+
+void _dash_axreq_add(string scalar opts, real scalar seg)
+{
+    external string matrix _dash_axreq
+    string rowvector toks, words
+    string matrix    fam, blk
+    string scalar    d, v, body, dcw, badw
+    real scalar      i, k, r, nax, n, axpos
+
+    toks = _dash_rep_toks(opts, 0)
+    if (cols(toks) == 0) return
+    fam = _dash_axfam()
+    blk = J(cols(toks), 9, "")
+    k   = 0
+    for (i = 1; i <= cols(toks); i++) {
+        if (!_dash_ax_parse(toks[i], fam, d, r, v, body, words, dcw, nax, n,
+                            badw, axpos)) continue
+        k++
+        blk[k, .] = ((d == "x" ? "1" : "2"), fam[r, 5], strofreal(seg),
+                     strofreal(i), strofreal(n, "%21.0f"), d + fam[r, 2], v,
+                     dcw, badw)
+    }
+    if (!k) return
+    blk = blk[|1, 1 \ k, 9|]
+    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 9) _dash_axreq = blk
+    else _dash_axreq = _dash_axreq \ blk
+}
+
+real scalar _dash_axreq_check(string scalar ys, string scalar xs)
+{
+    external string matrix _dash_axreq
+    string matrix    a
+    string scalar    d
+    real rowvector   yset, xset, set
+    real colvector   o
+    real scalar      i, n
+
+    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 9) {
+        _dash_axreq_clear()
+        return(0)
+    }
+    a    = _dash_axreq
+    yset = strtoreal(tokens(ys))
+    xset = strtoreal(tokens(xs))
+    if (cols(yset) == 0) yset = 1
+    if (cols(xset) == 0) xset = 1
+    o = order(strtoreal(a[., (1, 2, 3, 4)]), (1, 2, 3, 4))
+    for (i = 1; i <= rows(o); i++) {
+        d = (a[o[i], 1] == "1" ? "x" : "y")
+        if (a[o[i], 8] != "") {
+            _dash_say("err", "invalid '", a[o[i], 8], "'")
+            _dash_axreq_clear()
+            return(198)
+        }
+        n   = strtoreal(a[o[i], 5])
+        set = (d == "x" ? xset : yset)
+        if (!anyof(set, n)) {
+            _dash_say("err", a[o[i], 6] + "(", a[o[i], 7],
+                      ") not allowed, " + d + "axis" +
+                      strtrim(strofreal(n, "%11.0f")) + " does not exist")
+            _dash_axreq_clear()
+            return(198)
+        }
+        if (a[o[i], 9] != "") {
+            _dash_say("err", "option ", a[o[i], 9], "() not allowed")
+            _dash_axreq_clear()
+            return(198)
+        }
+    }
+    _dash_axreq_clear()
+    return(0)
 }
 
 // _dash_rep_subkey(tok, cat) -- which sub-option a word sets, for keeping

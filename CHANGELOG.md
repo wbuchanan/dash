@@ -255,7 +255,7 @@ and now matches Stata.
 
 - A title option given only sub-options keeps twoway's default title, in both modes: `ytitle(, size(large))`, `xtitle(, color(red))`, `ztitle(, size(large))` and any title option given only sub-options drew no title (axis_label None, an empty key title), and now draw the default title styled by them, as in twoway; `ytitle(,)` drew a literal comma and `title(A,)` drew `A,`, and a comma followed by nothing or by another comma now opens an empty sub-option list (`ytitle(A,,)` is `ytitle(A)`); the second axis of a yaxis(2)/xaxis(2) graph had no title and Bokeh's 13px #444444 style, and is now titled by its layers' label (`Density` or `kdensity` varname for those layers) in the scheme's axis style, and untitled under by(). (WP-29, P0.4)
 
-<!-- WP-29 P0.5 -->
+- `axis(2)` on an axis option is drawn on the second axis, in the saved page and the served app, before and after a filter move: `ylabel(20 30, axis(2))` was drawn as a [20, 30] ticker on the left axis with a note and now labels the right axis; `yscale(log axis(2))` logged the left axis and now logs the right one; `yline(5000, axis(2))` was drawn at 5000 on the left axis's scale and is now drawn on the right axis's; `xtick(160, axis(2))` ticked the bottom axis and now ticks the top one; `ylabel(10 20) ylabel(5000 10000, axis(2))` lost the first axis's labels and now keeps both lists; `ylabels()`, `yticks()` and `ylines()` were dropped with a note and are now read as `ylabel()`, `ytick()` and `yline()` (WP-29, P0.5)
 
 - `dash function y = 2^3^x, range(0 2) n(3)` drew 2 8 512, now 1 8 64; `2^-1^2` .5, now .25; `0.1*3/0.3` 1.0000000000000002, now 1; `1e16+1-2` 9999999999999998, now 1e16; `normalden(x)`, `ln(x)`, `_pi*x`, `_b[]` and scalars drew nothing, now twoway's points (WP-29, P0.6)
 
@@ -580,7 +580,7 @@ and now matches Stata.
   incorrectly specified`), where dash accepted it with a note.
   (WP-29, P0.1)
 
-<!-- WP-29 P0.5 -->
+- `axis(#)` is refused as twoway refuses it, r(198), with twoway's message and in its order, where dash drew on the first axis with rc 0: an `axis()` naming an axis no layer is drawn on (`ylabels(20 30, axis(2)) not allowed, yaxis2 does not exist`), an `axis()` given twice, `AXIS()` in capitals, a second comma (`invalid 'axis'`), and the first axis's options on a graph whose every layer is on `yaxis(2)` (`ylabels(5000 10000) not allowed, yaxis1 does not exist`); the new options `ytick2()`, `xtick2()`, `yline2()` and `xline2()` are dash's spellings of the `axis(2)` forms (WP-29, P0.5)
 
 - `pi`, `e`, `x**2`, `x%2`, `x//1`, a leading `+` and full-width names are refused with twoway's r(111), r(198) and r(133), and a too-long expression with r(130); registering a function evaluates it once, so a later data or estimate change does not move it, `runiform()` advances the random-number stream, data with at least n() observations are marked changed, and a graph whose points exceed c(macrolen) is refused r(134) (WP-29, P0.6)
 

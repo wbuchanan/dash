@@ -450,8 +450,9 @@ _TEXT_OPT_PROBES = {
 class TestTheFixtureIsPinned:
     """dash's textbox reader draws exactly what twoway's SVG drew for the
     fixture's title probes, minus the six empty-title ids (B6),
-    t_axis3/t_axis2_no_layer (Boundaries: recorded, not pinned) and the
-    two refused-word ids (TestForeignWordsAreNamed)."""
+    t_axis3/t_axis2_no_layer (refusals: dash.ado refuses both, r(198), in
+    twoway's words, pinned by test_twoway_option_parity.cscript AX-03,
+    WP-29 P0.5) and the two refused-word ids (TestForeignWordsAreNamed)."""
 
     @pytest.mark.parametrize("pid", sorted(_TEXT_OPT_PROBES))
     def test_dash_draws_what_twoway_draws(self, truth, pid):

@@ -1251,7 +1251,6 @@ class TestGaps2AndRoadmapAgree:
 #: reason.  The closeout (S15) leaves it {}.
 WP29_OPEN = {
     "P0.2": "by() panels are drawn on independent scales by default, and by(, yrescale) is named and ignored",
-    "P0.5": "axis(2) on ylabel(), yscale(), yline() and xtick() is applied to the first axis",
     "P0.7": "The lpoly and lpolyci default bandwidth ignores kernel() and degree() and misses Stata's rule of thumb",
     "P0.9": "The lpolyci band is a bootstrap percentile band, not Stata's analytic band, and pwidth() and var() are ignored",
     "P0.11": "The saved page embeds every row of each drawn variable, including rows that if and in exclude",

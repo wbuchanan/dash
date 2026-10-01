@@ -691,3 +691,56 @@ def test_no_declaration_is_shadowed_by_an_earlier_one():
     assert not bad, (
         "declared options -syntax- never binds by their own name:\n  "
         + "\n  ".join(bad))
+
+
+# ============================================================
+# WP-29 P0.5: the axis route's spellings are twoway's, and the seven
+# graph-key lists of dash.ado carry the four new second-axis keys.
+# ============================================================
+class TestTheAxisRouteKnowsDashsSpellings:
+    """dash_parse.mata's ``_dash_axfam`` is twoway's ParseAndLogAxes table
+    (graph_g.class:1300-1422): optnames SCale Labels MLabels TICks MTicks
+    Title LInes, so the whole option names' minimums -- the side letter
+    included -- are xt/yt 2, xl 2, xml 3, xtic 4, xmt 3, xli 3, xsc 3, and
+    the full names are twoway's plurals."""
+
+    _ROW = re.compile(r'"(\w+)",\s*"(\w+)",\s*"(\w+)",\s*"(\d)",\s*"(\d)",'
+                      r'\s*"(\w*)"')
+
+    def _table(self):
+        src = _read(MATA_PATH)
+        m = re.search(r"^string matrix _dash_axfam\(\)\s*\{(.*?)^\}", src,
+                      re.S | re.M)
+        assert m, "dash_parse.mata defines no _dash_axfam()"
+        return {r[0]: r[1:] for r in self._ROW.findall(m.group(1))}
+
+    def test_mata_family_minimums_match_twoway(self):
+        t = self._table()
+        assert list(t) == ["title", "label", "mlabel", "tick", "mtick",
+                           "line", "scale"]
+        assert [int(t[f][2]) for f in t] == [2, 2, 3, 4, 3, 3, 3]
+        assert {f: t[f][0] for f in t} == {
+            "title": "title", "label": "labels", "mlabel": "mlabels",
+            "tick": "ticks", "mtick": "mticks", "line": "lines",
+            "scale": "scale"}
+        # twoway's family order: SCale Labels MLabels TICks MTicks Title LInes
+        assert {f: int(t[f][3]) for f in t} == {
+            "scale": 1, "label": 2, "mlabel": 3, "tick": 4, "mtick": 5,
+            "title": 6, "line": 7}
+        # dash draws title, label, tick, line and scale on axis 2
+        assert {f: t[f][4] for f in t} == {
+            "title": "title2", "label": "label2", "mlabel": "",
+            "tick": "tick2", "mtick": "", "line": "line2",
+            "scale": "scale2"}
+
+    def test_the_seven_graph_key_lists_agree(self):
+        src = _read(ADO_PATH)
+        lists = []
+        for m in re.finditer(r"foreach (?:gk|gkey) in ((?:[^{]|\n)*?)\{",
+                             src):
+            words = m.group(1).replace("///", " ").split()
+            lists.append(tuple(words))
+        assert len(lists) == 7, len(lists)
+        assert len(set(lists)) == 1, set(lists)
+        for key in ("ytick2", "xtick2", "yline2", "xline2"):
+            assert key in lists[0], key

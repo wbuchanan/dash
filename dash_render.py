@@ -2715,22 +2715,95 @@ def _dash_named_once(graphs, kpis):
 
 
 #: A lone second axis's options, and the first axis's they become.
-_DASH_LONE_AXIS_OPTIONS = {"y": ("ytitle", "ylabel", "yscale"),
-                           "x": ("xtitle", "xlabel", "xscale")}
+_DASH_LONE_AXIS_OPTIONS = {"y": ("ytitle", "ylabel", "yscale", "ytick",
+                                 "yline"),
+                           "x": ("xtitle", "xlabel", "xscale", "xtick",
+                                 "xline")}
+
+#: dash's second-axis options: what an axis(2) copy of ytitle(), ylabel(),
+#: yscale(), ytick() and yline() (x too) is written as (WP-29 P0.5).
+_DASH_AXIS2_KEYS = {"y": ("ytitle2", "ylabel2", "yscale2", "ytick2", "yline2"),
+                    "x": ("xtitle2", "xlabel2", "xscale2", "xtick2", "xline2")}
+
+#: A number as twoway's ``axis(integer)`` reads it: an optional sign, digits
+#: with an optional point, or a point and digits, and an optional exponent.
+_DASH_AXIS_NUM_RE = re.compile(r"[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?")
+
+
+def _dash_axis_number(arg):
+    """The axis ``axis(arg)`` names, as twoway's ``_axisnum`` reads it
+    (``syntax [, AXis(integer 1)]``, WP-29 P0.5): *arg* when it is a whole
+    number within Stata's integer bounds, -2147483648 .. 2147483647, else
+    1 -- a blank, a word, a fraction, a missing value or a number past the
+    bounds is axis 1, silently (measured: ``axis(2.5)``, ``axis(a)``,
+    ``axis(1e300)`` and ``axis(2147483648)``).  The twin of dash_parse.mata's
+    ``_dash_axis_num`` for a spec that did not come through dash.ado, so it
+    reads decimal forms only (``inf``, ``nan``, ``1_0`` and Stata's hex
+    ``1.0x+1`` are 1 here; dash.ado routes the hex form before any spec
+    exists).  Never raises; returns an ``int``."""
+    s = str(arg if arg is not None else "").strip()
+    if len(s) > 400 or not _DASH_AXIS_NUM_RE.fullmatch(s):
+        return 1
+    try:
+        v = float(s)
+    except (ValueError, OverflowError):
+        return 1
+    if not math.isfinite(v) or v != math.floor(v) \
+            or not -2147483648 <= v <= 2147483647:
+        return 1
+    return int(v)
+
+
+def _dash_axis_word(tok):
+    """``(is an axis word, typed in lower case, its argument)`` of one
+    sub-option word: ``ax``, ``axi`` or ``axis`` then ``(``, as twoway's
+    ``AXis()`` declaration admits; a word in capitals (``AXIS(2)``) is an
+    axis word twoway refuses, ``(True, False, ...)``."""
+    if "(" not in tok:
+        return False, False, ""
+    name = tok.split("(", 1)[0].strip()
+    low = name.lower()
+    if not 2 <= len(low) <= 4 or not "axis".startswith(low):
+        return False, False, ""
+    arg = tok[tok.index("(") + 1:]
+    if arg.endswith(")"):
+        arg = arg[:-1]
+    return True, name == low, arg
+
+
+def _dash_axis_words(toks):
+    """``(axis, place)`` the sub-option words *toks* name: the first axis
+    word typed in lower case gives the axis (``_dash_axis_number``) and its
+    place; ``(1, None)`` with none.  ``(None, None)`` when twoway refuses
+    the words -- a second axis word, or one in capitals -- so the caller
+    leaves the option as typed (dash.ado's check refuses it)."""
+    axis, place = 1, None
+    for i, t in enumerate(toks):
+        is_ax, lower, arg = _dash_axis_word(t)
+        if not is_ax:
+            continue
+        if not lower or place is not None:
+            return None, None
+        axis, place = _dash_axis_number(arg), i
+    return axis, place
 
 
 def _dash_route_axis_titles(spec):
     """The spec with ytitle(..., axis(2))/xtitle(..., axis(2)) moved to
-    ytitle2()/xtitle2() and an axis(1) token dropped (WP-28 B3).
+    ytitle2()/xtitle2() and an axis(1) word dropped (WP-28 B3).
 
     dash.ado routes these in Mata before its repeat merge
     (_dash_route_axis2); this is the renderer's own twin for a spec that
-    did not come through it.  The raw value is kept with its other
-    sub-options.  An explicit ytitle2() already present wins and the
-    routed copy is dropped with a note.  Both loaders call this BEFORE
-    _dash_lone_second_axes, so a lone axis(2) graph's routed title becomes
-    its one axis's title.  Returns a new dict; a spec of the wrong shape is
-    returned as it came.
+    did not come through it.  The axis is read from the first axis word
+    typed in lower case (``ax``, ``axi`` or ``axis``, WP-29 P0.5) by
+    twoway's number rule (``_dash_axis_number``): axis 1 drops the word,
+    axis 2 routes, any other axis -- and a second axis word or one in
+    capitals, which twoway refuses -- leaves the title as it is.  The raw
+    value is kept with its other sub-options.  An explicit ytitle2()
+    already present wins and the routed copy is dropped with a note.  Both
+    loaders call this BEFORE _dash_lone_second_axes, so a lone axis(2)
+    graph's routed title becomes its one axis's title.  Returns a new
+    dict; a spec of the wrong shape is returned as it came.
     """
     if not isinstance(spec, dict) or not isinstance(spec.get("graphs"), list):
         return spec
@@ -2746,15 +2819,17 @@ def _dash_route_axis_titles(spec):
             raw = new_go.get(f"{side}title")
             if not isinstance(raw, str):
                 continue
-            ax = str(_parse_textbox_opt(raw)[1].get("axis", "")).strip()
-            if ax not in ("1", "2"):
-                continue
             cut = _textbox_split_point(raw)
+            if cut < 0:
+                continue
             head, tail = raw[:cut].rstrip(), raw[cut + 1:]
-            rest = [t for t in _dash_by_tokens(tail.strip())
-                    if _dash_subopt_name(t) != "axis"]
+            toks = _dash_by_tokens(tail.strip())
+            ax, place = _dash_axis_words(toks)
+            if place is None or ax not in (1, 2):
+                continue
+            rest = [t for i, t in enumerate(toks) if i != place]
             value = head + (", " + " ".join(rest) if rest else "")
-            if ax == "1":
+            if ax == 1:
                 new_go[f"{side}title"] = value
             else:
                 new_go.pop(f"{side}title")
@@ -2774,6 +2849,179 @@ def _dash_route_axis_titles(spec):
         return spec
     out = dict(spec)
     out["graphs"] = graphs
+    return out
+
+
+def _dash_route_line_copies(raw):
+    """``(first, second, changed)``: the copies of one yline()/xline()
+    value on each axis, joined ``", "`` as dash.ado joins copies.
+
+    dash.ado joins a repeated yline() with a comma between the copies
+    (_dash_rep_merge, "X"); after a comma a position starts the next copy
+    (as ``_dash_refline_instances`` reads them).  Each copy is routed on its
+    own: axis(1) drops the word, axis(2) moves the copy, any other axis or
+    a refused axis word leaves it as typed on the first axis.
+    """
+    copies = []
+    for seg in _dash_by_tokens_commas(str(raw)):
+        toks = _dash_by_tokens(seg.strip())
+        starts = False
+        if toks:
+            try:
+                float(toks[0])
+                starts = True
+            except ValueError:
+                starts = False
+        if starts or not copies:
+            copies.append([seg.strip()])
+        else:
+            copies[-1].append(seg.strip())
+    first, second, changed = [], [], False
+    for parts in copies:
+        subs = _dash_by_tokens(" ".join(parts[1:]))
+        ax, place = _dash_axis_words(subs)
+        text = ", ".join(parts)
+        if place is not None and ax in (1, 2):
+            rest = [t for i, t in enumerate(subs) if i != place]
+            text = parts[0] + (", " + " ".join(rest) if rest else "")
+            changed = True
+            if ax == 2:
+                second.append(text)
+                continue
+        first.append(text)
+    return ", ".join(first), ", ".join(second), changed
+
+
+def _dash_route_axis_options(spec):
+    """The spec with ylabel(), ytick(), yscale() and yline() (x too) moved to
+    the axis their ``axis(#)`` names (WP-29 P0.5).
+
+    dash.ado routes every axis option in Mata before its repeat merge
+    (_dash_route_axis2); this is the renderer's twin for a spec that did
+    not come through it, as ``_dash_route_axis_titles`` is for the titles.
+    The axis is the first axis word typed in lower case (``ax``, ``axi``,
+    ``axis``), read by twoway's number rule (``_dash_axis_number``):
+    axis 1 drops the word, axis 2 writes the option as ylabel2(), ytick2(),
+    yscale2() or yline2() with its other words, and any other axis -- or a
+    second axis word, or one in capitals, which twoway refuses -- leaves it
+    as typed.  A label's or tick's words are read after the comma that
+    starts its sub-options (``_dash_axis_head_split``), so a label holding
+    "axis(2)" is text; a scale's are all its words; a line's copies are
+    routed one by one (``_dash_route_line_copies``).  An explicit second
+    key already given wins over a routed label, tick or scale, with a note
+    (as ytitle2() does); routed line copies join it.  Pure and linear:
+    returns a new dict, never modifies the caller's, and returns a spec of
+    the wrong shape as it came.  Both loaders call it between
+    ``_dash_route_axis_titles`` and ``_dash_lone_second_axes``.
+    """
+    if not isinstance(spec, dict) or not isinstance(spec.get("graphs"), list):
+        return spec
+    changed = False
+    graphs = []
+    for g in spec["graphs"]:
+        go = g.get("graph_options") if isinstance(g, dict) else None
+        if not isinstance(go, dict):
+            graphs.append(g)
+            continue
+        new_go = dict(go)
+        name = str(go.get("name", ""))
+        for side in ("y", "x"):
+            for fam in ("label", "tick", "scale"):
+                key = side + fam
+                raw = new_go.get(key)
+                if not isinstance(raw, str):
+                    continue
+                if fam == "scale":
+                    head, toks = "", _dash_by_tokens(raw.strip())
+                else:
+                    head, tail = _dash_axis_head_split(raw)
+                    if not tail:
+                        continue
+                    parts = _dash_by_tokens_commas(tail[1:])
+                    if any(p.strip() for p in parts[1:]):
+                        continue        # a second comma: twoway refuses it
+                    toks = _dash_by_tokens(parts[0].strip())
+                ax, place = _dash_axis_words(toks)
+                if place is None or ax not in (1, 2):
+                    continue
+                rest = " ".join(t for i, t in enumerate(toks) if i != place)
+                value = rest if fam == "scale" else (
+                    head.rstrip() + (", " + rest if rest else ""))
+                if ax == 1:
+                    new_go[key] = value
+                else:
+                    new_go.pop(key)
+                    if isinstance(new_go.get(key + "2"), str) \
+                            and new_go[key + "2"].strip():
+                        _dash_warn_once(
+                            ("route", name, key),
+                            "dash: %s(..., axis(2)) and %s2() both given; "
+                            "%s2() is drawn" % (key, key, key))
+                    else:
+                        new_go[key + "2"] = value
+            key = side + "line"
+            raw = new_go.get(key)
+            if isinstance(raw, str) and raw.strip():
+                first, second, moved = _dash_route_line_copies(raw)
+                if moved:
+                    if first:
+                        new_go[key] = first
+                    else:
+                        new_go.pop(key)
+                    if second:
+                        had = new_go.get(key + "2")
+                        new_go[key + "2"] = (
+                            had + ", " + second
+                            if isinstance(had, str) and had.strip()
+                            else second)
+        if new_go != go:
+            g = dict(g)
+            g["graph_options"] = new_go
+            changed = True
+        graphs.append(g)
+    if not changed:
+        return spec
+    out = dict(spec)
+    out["graphs"] = graphs
+    return out
+
+
+def _dash_unused_second_axis_notes(graph):
+    """``[(key, text)]``: one note per second-axis option of *graph* that no
+    layer can use (WP-29 P0.5, SD-3).
+
+    ytitle2(), ylabel2(), yscale2(), ytick2() and yline2() -- and the
+    routed ``ytitle(..., axis(2))`` forms they hold -- style the axis a
+    ``yaxis(2)`` layer draws on; with no such layer there is nothing to
+    style (twoway refuses the axis(2) forms, r(198), which dash.ado does;
+    dash's own *2 spellings are accepted and named here).  Pure, decided
+    from the spec alone, so both modes raise it at build time: the saved
+    renderer as it builds its figures, the served app's builder in
+    ``ServerAppBuilder._plan_graph_notes``.  The key is
+    ``("axis2-unused", graph name, option)`` for ``_dash_warn_once``.
+    """
+    if not isinstance(graph, dict):
+        return []
+    go = graph.get("graph_options")
+    if not isinstance(go, dict):
+        return []
+    plots = graph.get("plots")
+    plots = plots if isinstance(plots, list) else []
+    name = str(go.get("name", "") or "")
+    out = []
+    for d in ("y", "x"):
+        if any(isinstance(p, dict) and isinstance(p.get("options"), dict)
+               and str(p["options"].get(d + "axis", "1")).strip() == "2"
+               for p in plots):
+            continue
+        for key in _DASH_AXIS2_KEYS[d]:
+            v = go.get(key)
+            if isinstance(v, str) and v.strip():
+                out.append((
+                    ("axis2-unused", name, key),
+                    "dash: graph '%s': %s() (%s(..., axis(2))) is not drawn: "
+                    "no layer is on %saxis(2)."
+                    % (_dash_display(name), key, key[:-1], d)))
     return out
 
 
@@ -2833,7 +3081,15 @@ def _dash_lone_second_axes(spec):
                     second = go.pop(first + "2", None)
                     # A raw "" is deliberately moved (it is not blank):
                     # ytitle2("") on a lone graph removes the one title.
-                    if isinstance(second, str) and second.strip():
+                    if not (isinstance(second, str) and second.strip()):
+                        continue
+                    had = go.get(first)
+                    if first.endswith("line") and isinstance(had, str) \
+                            and had.strip():
+                        # Each copy of yline() is a line of its own
+                        # (WP-29 A8): the one axis draws both.
+                        go[first] = had + ", " + second
+                    else:
                         go[first] = second
             g["graph_options"] = go
         graphs.append(g)
@@ -3761,7 +4017,7 @@ _TEXTBOX_SUBOPTS = (
     ("bexpand", "bex"),
     ("placement", "place"), ("position", "pos"),
     ("ring", "ring"), ("span", "span"),
-    ("prefix", "prefix"), ("suffix", "suffix"), ("axis", "axis"),
+    ("prefix", "prefix"), ("suffix", "suffix"), ("axis", "ax"),
 )
 
 
@@ -21586,6 +21842,13 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
         raw = str(graph_opts.get(f"{n}label2", "") or "")
         spec = (_dash_parse_axis_spec(raw)
                 if raw.strip() and ax is not None else None)
+        # ytick(..., axis(2)) -- dash's ytick2() (WP-29 P0.5): its positions
+        # widen the axis as a label's do, unless norescale (twoway measured:
+        # ytick(20000, axis(2)) runs yaxis2 to 20000); the first axis is
+        # never touched by them.
+        tick_raw = str(graph_opts.get(f"{n}tick2", "") or "")
+        tspec = (_dash_parse_axis_spec(tick_raw)
+                 if tick_raw.strip() and ax is not None else None)
 
         # WP-28 B2: the hull of what the layers drew, every range() value
         # and the label positions -- range() widens only, as yscale()'s
@@ -21596,6 +21859,9 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
         if spec is not None and not spec.get("norescale") \
                 and spec.get("mode") in ("explicit", "count"):
             vals += [float(t) for t in spec.get("ticks") or []]
+        if tspec is not None and tspec.get("mode") == "explicit" \
+                and not tspec.get("norescale"):
+            vals += [float(t) for t in tspec.get("ticks") or []]
         vals = [v for v in vals if math.isfinite(v)]
         if is_log:
             vals = [v for v in vals if v > 0]
@@ -21607,32 +21873,45 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
         elif "reverse" in names:
             rng.start, rng.end = rng.end, rng.start
 
-        if spec is None:
-            continue
-        _dash_report_suboptions(f"{n}label2", spec.get("unsupported", []),
-                                seen, key)
-        grids = []
-        if spec.get("grid"):
-            g = Grid(dimension=dim, axis=ax, grid_line_color=None,
-                     **{kw: name})
-            fig.add_layout(g, "center")
-            grids.append(g)
-        # G16 (WP-28 S14): ylabel2(, valuelabel)/xlabel2(, valuelabel) map
-        # through the first layer that put a plot on this second axis --
-        # its y variable (or its range's yvar1) for y2, its x for x2, as
-        # the primary axis maps through xvar/yvar.
-        var2 = ""
-        for _p in plots:
-            if str((_p.get("options") or {}).get(axis_key, "1")).strip() != "2":
-                continue
-            if axis_key == "yaxis":
-                var2 = _p.get("yvar") or _p.get("yvar1") or ""
-            else:
-                var2 = _p.get("xvar") or ""
-            break
-        vlabels2 = _dash_value_labels_for(var2, value_labels, value_label_names)
-        _dash_apply_axis_spec(ax, grids, spec, col_vals or None, "",
-                              grid_color, vlabels2, fmt_cache=fmt_cache)
+        if spec is not None:
+            _dash_report_suboptions(f"{n}label2", spec.get("unsupported", []),
+                                    seen, key)
+            grids = []
+            if spec.get("grid"):
+                g = Grid(dimension=dim, axis=ax, grid_line_color=None,
+                         **{kw: name})
+                fig.add_layout(g, "center")
+                grids.append(g)
+            # G16 (WP-28 S14): ylabel2(, valuelabel)/xlabel2(, valuelabel)
+            # map through the first layer that put a plot on this second
+            # axis -- its y variable (or its range's yvar1) for y2, its x
+            # for x2, as the primary axis maps through xvar/yvar.
+            var2 = ""
+            for _p in plots:
+                if str((_p.get("options") or {}).get(axis_key, "1")
+                       ).strip() != "2":
+                    continue
+                if axis_key == "yaxis":
+                    var2 = _p.get("yvar") or _p.get("yvar1") or ""
+                else:
+                    var2 = _p.get("xvar") or ""
+                break
+            vlabels2 = _dash_value_labels_for(var2, value_labels,
+                                              value_label_names)
+            _dash_apply_axis_spec(ax, grids, spec, col_vals or None, "",
+                                  grid_color, vlabels2, fmt_cache=fmt_cache)
+        if tspec is not None:
+            # After the labels, so its CustomJSTicker keeps their ticks as
+            # its labelled ones; whether or not ylabel2() is given.
+            tgrids = []
+            if tspec.get("grid"):
+                g = Grid(dimension=dim, axis=ax, grid_line_color=None,
+                         **{kw: name})
+                fig.add_layout(g, "center")
+                tgrids.append(g)
+            _dash_apply_tick_option([ax], tgrids, tick_raw, f"{n}tick2",
+                                    col_vals or None, seen, key, grid_color,
+                                    date_kind=None)
 
 
 def _dash_keep_primary_ranges(fig):
@@ -24427,6 +24706,17 @@ def _dash_reference_lines(fig, graph_opts, seen=None, key="", scheme=None):
     for opt, dim in (("xline", "height"), ("yline", "width")):
         raw = (graph_opts or {}).get(opt, "")
         bad = []
+        # yline(#, axis(2)) -- dash's yline2() -- on the second axis's
+        # range (WP-29 P0.5), only where the figure has one: an unused
+        # second-axis option is named at build time
+        # (_dash_unused_second_axis_notes).  A line never widens an axis.
+        raw2 = (graph_opts or {}).get(opt + "2", "")
+        rname = "y2" if opt == "yline" else "x2"
+        extra = fig.extra_y_ranges if opt == "yline" else fig.extra_x_ranges
+        if isinstance(raw2, str) and raw2.strip() and rname in extra:
+            for values, style in _dash_refline_instances(raw2, bad):
+                _dash_refline_draw(fig, opt, dim, values, style, scheme,
+                                   Span, range_name=rname)
         if not raw:
             # The legacy list form, xline_values/yline_values: positions
             # only, no sub-options.  dash.ado never writes it; the saved
@@ -24504,9 +24794,13 @@ def _dash_by_tokens_commas(raw):
     return out
 
 
-def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span):
+def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
+                       range_name="default"):
     """One copy of xline()/yline(): a Span at each position, in the
-    scheme's `xyline' style unless its sub-options say otherwise."""
+    scheme's `xyline' style unless its sub-options say otherwise, on the
+    range *range_name* -- ``"y2"``/``"x2"`` for a yline(#, axis(2)) copy
+    (WP-29 P0.5), whose numbers are read as they stand (a second axis is
+    never a date axis)."""
     if scheme is not None:
         kw = {"line_color": scheme.xyline_color,
               "line_dash": list(scheme.xyline_dash),
@@ -24530,7 +24824,8 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span):
             except (ValueError, TypeError):
                 _dash_style_note(f"{opt}({sub})", style[sub], what,
                                  "the default")
-    kind = _dash_axis_date_kind(fig, "x" if opt == "xline" else "y")
+    kind = (_dash_axis_date_kind(fig, "x" if opt == "xline" else "y")
+            if range_name == "default" else None)
     if kind:
         # A number given for a date axis is a date in the variable's
         # unit, as twoway reads it: xline(14979) on a %td axis is
@@ -24540,6 +24835,8 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span):
             opt, [_fmt_num(v) for v, p in zip(values, pos) if p is None],
             kind)
         values = [p for p in pos if p is not None]
+    if range_name != "default":
+        kw["y_range_name" if dim == "width" else "x_range_name"] = range_name
     for v in values:
         fig.add_layout(Span(location=v, dimension=dim, **kw))
 
@@ -27087,6 +27384,7 @@ class DashRenderer:
         # alone, as the first, as twoway does (BUGS.md, S3).
         # ytitle(, axis(2)) routed to ytitle2() first (WP-28 B3).
         self.master_spec = _dash_route_axis_titles(self.master_spec)
+        self.master_spec = _dash_route_axis_options(self.master_spec)
         self.master_spec = _dash_lone_second_axes(self.master_spec)
 
         self.translator = OptionTranslator()
@@ -29372,6 +29670,10 @@ class DashRenderer:
         # ---- 3. Build figures ----
         for g in graphs:
             name = g.get("graph_options", {}).get("name", "")
+            # Notes decided from the spec alone, raised here and, for the
+            # served app, at build time (ServerAppBuilder._plan_graph_notes).
+            for _nk, _nt in _dash_unused_second_axis_notes(g):
+                _dash_warn_once(_nk, _nt)
             if name in self._facet_map:
                 shared_src_render = self.sources.get(name)
                 masks_render      = self._facet_masks.get(name, [])
@@ -30427,6 +30729,7 @@ class ServerAppBuilder:
         # A lone second axis drawn as the first, as the saved renderer
         # draws it (_dash_lone_second_axes), before the spec is embedded.
         self.spec = _dash_route_axis_titles(self.spec)
+        self.spec = _dash_route_axis_options(self.spec)
         self.spec = _dash_lone_second_axes(self.spec)
         # The data parsed, and as the saved renderer loads it -- each made
         # only if a build-time check needs it (see _data and _frame), and
@@ -30502,6 +30805,8 @@ class ServerAppBuilder:
         # by _shared_stat_lines and are not modules the app imports.
         _already = set(self._shared_stat_lines())
         for _name in ("_TEXTBOX_SUBOPTS", "_TEXTBOX_SUBOPT_RE",
+                      # _dash_route_axis_titles' axis-number rule (P0.5).
+                      "_DASH_AXIS_NUM_RE",
                       "_COLORVAR_LEGEND_NAME", "_KDE_BANDWIDTH_RULE",
                       "_LPOLY_ROT_C", "_FP_GRID_MAX", "_MAX_MBANDS",
                       "_MIN_BAR_WIDTH", "_MAX_EXPR_CHARS", "_FN_EXPR_MAX_NEST",
@@ -30969,7 +31274,12 @@ class ServerAppBuilder:
                          "_textbox_canon", "_dash_route_axis_titles",
                          "_dash_figure_title", "_dash_style_axis_titles",
                          "_dash_text_annotations", "_dash_scale_spec",
-                         "_dash_apply_scale_ranges", "_dash_reference_lines",
+                         "_dash_apply_scale_ranges",
+                         # the copied _dash_route_axis_titles reads the
+                         # axis word as twoway does (WP-29 P0.5)
+                         "_dash_axis_number", "_dash_axis_word",
+                         "_dash_axis_words",
+                         "_dash_reference_lines",
                          "_dash_refline_instances", "_dash_by_tokens_commas",
                          "_dash_refline_draw",
                          "_dash_display",
@@ -31362,6 +31672,7 @@ class ServerAppBuilder:
             # see, so they are told here, at build time, as the saved
             # renderer tells them at render time.
             self._plan_by_groups()
+            self._plan_graph_notes()
             source = self._generate_app_source(port)
         finally:
             # The parsed data is the size of the dataset again; the file
@@ -31400,6 +31711,17 @@ class ServerAppBuilder:
         if getattr(self, "_data_cache", None) is None:
             self._data_cache = _dash_read_data_json(self._raw_data_str)
         return self._data_cache
+
+    def _plan_graph_notes(self) -> None:
+        """Raise, at build time, the notes a graph's spec alone decides --
+        a second-axis option no layer can use
+        (``_dash_unused_second_axis_notes``, WP-29 P0.5) -- as the saved
+        renderer raises them when it renders.  The app never repeats them:
+        a session's output never reaches the Stata log of the user who
+        built it (HC5-08).  The frame is never loaded."""
+        for g in self.spec.get("graphs", []) or []:
+            for key, text in _dash_unused_second_axis_notes(g):
+                _dash_warn_once(key, text)
 
     def _plan_by_groups(self) -> None:
         """Say, at build time, which by() graphs are over the group limit,
