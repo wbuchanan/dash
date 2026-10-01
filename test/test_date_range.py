@@ -700,17 +700,22 @@ _HALF_GAP = 15 * 86400000.0     # a cap or a bar reaches half a gap past
 _RANGE = {"rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
           "rcapsym", "rscatter", "tsrline"}
 _PC = {"pcspike", "pcarrow", "pcbarrow", "pcscatter", "pccapsym"}
-# lpoly and lpolyci draw nothing from these twelve rows as plain numbers
-# too (measured 24sep2026, before and after); every other type that reads
-# a date column is here.
+# WP-29 P0.8 (section 05): every type that reads a date column is here.
+# lpoly and lpolyci were left out because they drew nothing on these twelve
+# 30-day rows, with the default bandwidth and with any bwidth() read in
+# milliseconds; with bwidth(60) read in days (_plot_for) they draw, at the
+# dates on the date axis.  Their default bandwidth on these rows is section
+# 11's to measure, so this pins only the explicit one (A10).
 _COMPUTED = sorted(
     t for t in dr._dash_plot_type_names()
-    if t not in ("scatteri", "pci", "pcarrowi", "function", "lpoly",
-                 "lpolyci"))
+    if t not in ("scatteri", "pci", "pcarrowi", "function"))
 
 
 def _plot_for(ptype, options=None):
     o = dict(options or {})
+    if ptype in ("lpoly", "lpolyci"):
+        # WP-29 P0.8 (section 05): sixty days, read in the date's units.
+        o.setdefault("bwidth", "60")
     if ptype in ("histogram", "kdensity"):
         return {"type": ptype, "var": "date", "options": o}
     if ptype in _RANGE:

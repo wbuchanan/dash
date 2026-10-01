@@ -29,10 +29,13 @@ fncov_mutate.py --map.
 """
 
 FUNCTIONS = {
+ 'GlyphMapper._drop_off_dates': 'test/test_date_units.py::TestOutOfRange::test_out_of_range_edges_never_reach_the_page_json',
  'GlyphMapper._fp_screen': 'test/test_estimator_cost.py::TestFpfitFitsWhatItFitted::test_the_screen_keeps_the_winner',
  'GlyphMapper._fp_screen.<locals>._column': 'test/test_estimator_cost.py::TestFpfitFitsWhatItFitted::test_the_screen_keeps_the_winner',
  'GlyphMapper._fp_screen.<locals>._wsum': 'test/test_estimator_cost.py::TestFpfitFitsWhatItFitted::test_the_screen_keeps_the_winner',
  '_dash_attach_function_points': 'test/test_function_expr.py::TestAttach::test_the_transport',
+ '_dash_axis_vars': 'test/test_date_units.py::TestTheUnitHelpers::test_axis_vars_reads_a_univariate_first_layer',
+ '_dash_date_units': 'test/test_date_units.py::TestTheUnitHelpers::test_date_units_reads_every_kind',
  '_dash_decimal_text': 'test/test_display_format_writer.py::TestPythonWriter::test_every_numeric_display_matches_stata_exactly',
  '_dash_empty_frame': 'test/test_layer_reports.py::TestAnEmptyDatasetKeepsItsVariables::test_the_saved_frame_has_the_variables_as_columns',
  '_dash_f_sci_fallback': 'test/test_display_format_writer.py::TestPythonWriter::test_narrow_widths_1_to_7_follow_the_fixture',
@@ -131,6 +134,7 @@ FUNCTIONS = {
  'GlyphMapper._apply_mlabel_opts': 'test/test_glyphs.py::TestMlabwidth::test_mlabwidth_label_still_created',
  'GlyphMapper._bootstrap_ci': 'test/test_statistical_defaults.py::TestBootstrapConfiguration::test_confidence_level_widens_the_band',
  'GlyphMapper._build_jitter_source': 'test/test_jitter.py::TestStatasOwnSeedSpelling::test_the_jittered_columns_are_not_the_originals',
+ 'GlyphMapper._layer_units': 'test/test_date_units.py::TestTheUnitHelpers::test_layer_units_drops_unconvertible_rows_jointly',
  'GlyphMapper._linked_jitter_columns': 'test/test_saved_filter_layers.py::TestALinkedJitteredScatter::test_the_column_helper',
  'GlyphMapper._carry_cols': 'test/test_server_layer_defects.py::TestTheColumnCarry::test_a_column_of_the_wrong_length_is_skipped',
  'GlyphMapper._check_vars': 'test/test_glyphs.py::TestHardeningGuards::test_check_vars_ignores_empty_string_varnames',
@@ -165,6 +169,7 @@ FUNCTIONS = {
  'GlyphMapper._mlabel_value_labels': 'test/test_marker_label_parity.py::TestTheLabelSetLookup::test_an_unlabelled_variable_has_none',
  'GlyphMapper._mlabel_value_text': 'test/test_marker_label_parity.py::TestTheValueLabelText::test_a_label_is_drawn_whole',
  'GlyphMapper._mlabformat_column': 'test/test_twoway_option_parity.py::TestAdversarialTwowayOptions::test_the_widest_format_stata_accepts_is_bounded_by_stata',
+ 'GlyphMapper._on_axis': 'test/test_date_units.py::TestTheUnitHelpers::test_on_axis_follows_the_figures_axis',
  'GlyphMapper._pc_clean_with_label': 'test/test_marker_label_parity.py::TestThePairedCoordinateRows::test_a_repeated_coordinate_is_one_column',
  'GlyphMapper._pc_immediate_records': 'test/test_immediate_values.py::TestTheRecordReader::test_pcarrowis_reader_is_the_same_reader',
  'GlyphMapper._predict_fp2': 'test/test_statistical_helpers.py::TestFpFitAndPrediction::test_the_prediction_is_the_design_times_beta_on_raw_x',
@@ -315,6 +320,7 @@ FUNCTIONS = {
  '_dash_axis_labels': 'test/test_varlist_expansion.py::test_tsline_without_x_variable_reports_tsset',
  '_dash_add_hover_text': 'test/test_value_labels_drawn.py::TestHoverShowsValueLabels::test_a_served_redraw_re_adds_the_column',
  '_dash_hover_text_column': 'test/test_value_labels_drawn.py::TestHoverShowsValueLabels::test_the_row_helper_takes_text_col_last',
+ '_dash_units_to_axis': 'test/test_date_units.py::TestTheUnitHelpers::test_units_to_axis_places_whole_and_fractional_periods',
  '_dash_value_labels_for': 'test/test_value_labels_drawn.py::TestTheLookup::test_by_variable_name_as_jsonio_writes_it',
  '_dash_var_label': 'test/test_unlabelled_variables.py::TestTheVarLabelRule::test_an_empty_label_is_the_name',
  '_dash_axis_head_split':'test/test_axis_label_grammar.py::TestTheTokenizer::test_the_head_split_is_quote_aware',

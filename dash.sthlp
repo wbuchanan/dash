@@ -2003,7 +2003,8 @@ options -- see below.
 {synoptset 20}{...}
 {synopt:{opt bwidth(#)}}the bandwidth of {cmd:lpoly}, {cmd:lpolyci},
     {cmd:kdensity} and {cmd:lowess}.  On the first three it is the
-    half-width of the smoothing kernel, in the units of x, as
+    half-width of the smoothing kernel, in the units of x, days for a
+    {cmd:%td} x and months for a {cmd:%tm} one, as
     {helpb twoway lpoly} defines it; with no {cmd:bwidth()} it is
     computed from the data, by {cmd:twoway}'s own rule on {cmd:kdensity}
     and by the rule of thumb under {it:Default bandwidth} below on
@@ -2610,6 +2611,24 @@ and {cmd:%th}, and years for {cmd:%ty}.  So on a {cmd:%td} axis
 {cmd:xtick()} and {cmd:xscale(range())} read their numbers the same way,
 in both render modes.  A number that is no date Stata shows (outside
 01jan0100 to 31dec9999) is named in a note and not drawn.
+
+{pstd}
+{ul:Computed layers of a date.}  The 13 computed types -- {cmd:histogram},
+{cmd:kdensity}, {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci},
+{cmd:lowess}, {cmd:lpoly}, {cmd:lpolyci}, {cmd:mspline}, {cmd:mband},
+{cmd:fpfit} and {cmd:fpfitci} -- compute from a date in its own units, as
+{cmd:twoway} does.  {cmd:width()}, {cmd:start()}, {cmd:bin()},
+{cmd:bwidth()}, {cmd:range()} and {cmd:n()} read days for {cmd:%td},
+milliseconds after 01jan1960 for {cmd:%tc}, and weeks, months, quarters,
+half-years or years for the others.  A density is per day (per month for
+{cmd:%tm}), so {cmd:dash histogram date, width(7)} draws week-wide bars.
+A histogram's or kdensity's variable is on the x axis.  An axis shows
+dates whenever every layer's variable on it is a date of one kind, and a
+date layer that shares an axis with a plain number is drawn at its Stata
+values, as {cmd:twoway} draws it.  A bar or point computed outside
+01jan0100 to 31dec9999 is not drawn, and a note says how many.
+{it:Difference from twoway:} twoway labels the axis with the variable's numbers (15000, 15100, ...) when the first layer is {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci}, {cmd:kdensity}, {cmd:lpoly} or {cmd:lpolyci}; dash keeps its date axis there and draws those layers at the dates their values denote.
+So {cmd:dash kdensity date} has a date axis where {cmd:twoway kdensity date} shows 15000 to 15400, and a {cmd:range()} that reaches before 01jan0100 loses those points, with a note, where twoway draws them.
 
 {pstd}
 {ul:Ticks without labels.}  {cmd:xtick()} and {cmd:ytick()} add ticks

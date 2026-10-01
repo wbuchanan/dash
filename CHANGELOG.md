@@ -261,7 +261,27 @@ and now matches Stata.
 
 <!-- WP-29 P0.7 -->
 
-<!-- WP-29 P0.8 -->
+- `dash histogram date, width(30) start(14975)` on sysuse sp500 drew 15 bars
+  with every row in the last, after the note that width(30) would need more
+  than 1000 bins, and densities per millisecond (3.47e-11); it now draws
+  twoway's 13 bars, 30 days wide from 14975, with densities per day
+  (.0025538, .0028226, .002957, ...). Every computed layer of a date reads
+  the variable, its weight, width(), start(), bin(), bwidth(), range() and
+  n() in the date's Stata units. (WP-29, P0.8)
+- `dash kdensity date, bwidth(10)` drew a curve of spikes up to 1.35e-04 (the
+  bandwidth read as 10 milliseconds); it is now Stata's curve, per day.
+  (WP-29, P0.8)
+- `dash lpoly close date, bwidth(30)` drew nothing; it now draws Stata's curve
+  (1325.6916 at 02jan2001 with n(5)). (WP-29, P0.8)
+- `dash fpfit close date` read 1329.5113 at 02jan2001; it now reads Stata's
+  1329.5387. (WP-29, P0.8)
+- A histogram or kdensity of a date drew the date axis on y and the bars or
+  curve in milliseconds on a numeric x axis; the date axis is now x, in the
+  variable's own display format, and yline(), xline(), xlabel() and
+  yscale(log) read the density and the dates as twoway does. (WP-29, P0.8)
+- `dash (scatter close obs) (lfit close date)` drew the fit at 978393600000
+  and beyond (epoch milliseconds) beside obs 1..248; it is now drawn at the
+  day numbers 14977-15340, as twoway draws it. (WP-29, P0.8)
 
 <!-- WP-29 P0.9 -->
 

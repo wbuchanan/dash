@@ -498,6 +498,90 @@ def _dash_float_values(col, coerce: bool = False) -> "np.ndarray":
     return arr.astype(float, copy=False)
 
 
+def _dash_date_units(column, kind):
+    """A date column (datetimes, or epoch milliseconds) in its Stata units.
+
+    twoway computes every layer from a date in the variable's own units --
+    days for ``%td`` (the time of day kept as a fraction), milliseconds
+    after 01jan1960 for ``%tc``/``%tC``, and period numbers for ``%tw``,
+    ``%tm``, ``%tq``, ``%th`` and ``%ty`` -- where dash holds the column in
+    epoch milliseconds, the unit its axis is drawn in (WP-29 P0.8).  A
+    period kind is read by ``_dash_period_values``, exact at period starts.
+    Any other *kind* leaves the milliseconds unchanged.  A missing value, or
+    one outside Stata's dates (01jan0100 to 31dec9999), is NaN.  Measured
+    round trip: %td 14977.5 -> 978436800000 ms -> 14977.5.  Never raises.
+
+    Returns:
+        A float64 array.
+    """
+    ms = _dash_float_values(column, coerce=True)
+    lo = _STATA_MS_MIN + _STATA_EPOCH_UNIX_MS
+    hi = _STATA_MS_MAX + _STATA_EPOCH_UNIX_MS
+    with np.errstate(all="ignore"):
+        ok = np.isfinite(ms) & (ms >= lo) & (ms <= hi)
+        if kind == "td":
+            out = (ms - _STATA_EPOCH_UNIX_MS) / 86_400_000.0
+        elif kind in ("tc", "tC"):
+            out = ms - _STATA_EPOCH_UNIX_MS
+        elif kind in ("tw", "tm", "tq", "th", "ty"):
+            out = _dash_period_values(ms, kind)
+        else:
+            return ms
+    out = np.asarray(out, dtype=float).copy()
+    out[~ok] = np.nan
+    return out
+
+
+def _dash_units_to_axis(values, kind):
+    """Stata values of a date *kind* (fractions allowed) as epoch ms.
+
+    The inverse of :func:`_dash_date_units`, for the positions a computed
+    layer draws on a date axis: ``%td`` days times 86,400,000 after
+    01jan1960, ``%tc``/``%tC`` milliseconds after 01jan1960, and a period
+    kind placed at its period's start, a fraction of a period linearly
+    between that start and the next (``%tm`` 492.5 is 2001-01-16 12:00).
+    NaN where the value is missing, not a number, or outside Stata's dates,
+    and for an unknown kind.  Every warning raised inside is silenced, and
+    nothing raises.
+
+    Returns:
+        A float64 array.
+    """
+    try:
+        v = np.asarray(values, dtype=float)
+    except (TypeError, ValueError):
+        v = np.asarray(pd.to_numeric(pd.Series(list(values), dtype=object),
+                                     errors="coerce"), dtype=float)
+    v = np.atleast_1d(v).astype(float)
+    E = float(_STATA_EPOCH_UNIX_MS)
+    out = np.full(v.shape, np.nan)
+    with warnings.catch_warnings(), np.errstate(all="ignore"):
+        warnings.simplefilter("ignore")
+        fin = np.isfinite(v)
+        if kind == "td":
+            out = v * 86_400_000.0 + E
+        elif kind in ("tc", "tC"):
+            out = v + E
+        elif kind in ("tw", "tm", "tq", "th", "ty") and fin.any():
+            # Bound the period numbers first: one far past Stata's range
+            # must not reach the calendar arithmetic.
+            sane = fin & (np.abs(v) < 1e7)
+            f = np.where(sane, np.floor(v), 0.0)
+            a = _dash_float_values(_stata_dates_to_datetime(
+                pd.Series(f, dtype="float64"), kind), coerce=True)
+            b = _dash_float_values(_stata_dates_to_datetime(
+                pd.Series(f + 1.0, dtype="float64"), kind), coerce=True)
+            out = np.where(v == f, a, a + (v - f) * (b - a))
+            out = np.where(sane, out, np.nan)
+        else:
+            return out
+        out = np.asarray(out, dtype=float)
+        bad = ~(np.isfinite(out) & fin
+                & (out >= _STATA_MS_MIN + E) & (out <= _STATA_MS_MAX + E))
+        out[bad] = np.nan
+    return out
+
+
 def _dash_read_data_json(text):
     """Parse the data file, each number as Stata holds it.
 
@@ -673,19 +757,44 @@ def _dash_figure_date_kind(plots, key, fallback, date_vars):
     Every layer must agree: a date series and a numeric one cannot share a
     date axis, and picking the first plot's answer would misplace the
     other.  The saved renderer's rule, in both modes.
+
+    A univariate layer (histogram, kdensity) draws its variable on x, as
+    twoway does, so its ``var`` counts on the ``"xvar"`` key and nothing on
+    ``"yvar"`` (WP-29 P0.8; ``horizontal`` is not read here yet, P1.9).
+    Where twoway's first-plot rule labels the axis with the variable's
+    numbers -- an ``lfit``, ``qfit``, ``lfitci``, ``qfitci``, ``kdensity``,
+    ``lpoly`` or ``lpolyci`` first, measured in WP-29 S05 Evidence §6 --
+    dash keeps its date axis: a documented divergence, ratified 01oct2026.
     """
     if not date_vars:
         return None
     kinds = set()
     for plot in plots or []:
-        name = plot.get(key, "") or (
-            plot.get("var", "") if key == "yvar" else "") or fallback
+        if str(plot.get("type", "")).lower() in _DASH_UNIVARIATE_TYPES:
+            if key != "xvar":
+                continue
+            name = plot.get("var", "") or fallback
+        else:
+            name = plot.get(key, "") or fallback
         if not name:
             continue
         kinds.add(date_vars.get(name))
     if not kinds or len(kinds) > 1 or None in kinds:
         return None
     return kinds.pop()
+
+
+def _dash_axis_vars(plots):
+    """``(xv, yv)``: the variables a figure's axes are named and formatted
+    by, read from its first layer.  A univariate first layer (histogram,
+    kdensity) draws its variable on x and its density on y, so its ``var``
+    is the x variable and y has none (WP-29 P0.8): the tick formatter, the
+    log notes and the axis options read ``''`` for a histogram's x before.
+    """
+    p0 = (plots or [{}])[0] or {}
+    if str(p0.get("type", "")).lower() in _DASH_UNIVARIATE_TYPES:
+        return (p0.get("var", "") or p0.get("xvar", "") or "", "")
+    return (p0.get("xvar", "") or "", p0.get("yvar", "") or "")
 
 
 def _dash_mark_date_axes(fig, x_kind, y_kind):
@@ -8636,7 +8745,8 @@ class GlyphMapper:
         return [int(r) for r in rid]
 
     @staticmethod
-    def _masked(source: ColumnDataSource, view, *varnames: str) -> tuple:
+    def _masked(source: ColumnDataSource, view, *varnames: str,
+                units=None) -> tuple:
         """Float arrays for *varnames*, restricted to the rows *view* selects.
 
         Rows where any of the named columns is NaN are dropped together, so
@@ -8647,8 +8757,18 @@ class GlyphMapper:
             One float array per name in *varnames*, in order; a date in
             epoch milliseconds, the unit its axis is drawn in, and a
             missing date NaN, so it is dropped with the others (24sep2026).
+            With *units* (``{name: Stata date kind}``, keyword only) each
+            named date column is read in its Stata units instead -- days,
+            ms after 01jan1960 or periods, as twoway computes from it --
+            BEFORE the joint NaN mask, so a value that has no Stata date
+            drops its whole row and no estimator sees a NaN (WP-29 P0.8).
         """
         cols = [_dash_float_values(source.data[v]) for v in varnames]
+        if units:
+            for _i, _v in enumerate(varnames):
+                _k = units.get(_v)
+                if _k in _STATA_DATE_KINDS:
+                    cols[_i] = _dash_date_units(cols[_i], _k)
         n = len(cols[0]) if cols else 0
 
         sel = GlyphMapper._view_mask(view, n)
@@ -8662,7 +8782,7 @@ class GlyphMapper:
 
     @staticmethod
     def _layer_weights(source: ColumnDataSource, view, options, layer: str,
-                       *varnames: str) -> tuple:
+                       *varnames: str, units=None) -> tuple:
         """``_masked`` plus the layer's weight: ``(cols..., w, wtype)``.
 
         The weight clause of a plot -- ``[aweight=price]`` -- reaches the
@@ -8686,10 +8806,15 @@ class GlyphMapper:
             One float array per name in *varnames*, then ``w`` (raw values,
             not yet normalised -- each estimator normalises as its Stata
             counterpart does) and ``wtype`` in {"aw", "fw", "pw", "iw"}.
+            *units* is passed to every ``_masked`` call: a date column it
+            names -- the weight included -- is read in its Stata units, so
+            the negative and non-integer checks see the Stata value, as
+            ``marksample`` does (WP-29 P0.8, D05-2).
         """
         wtype, wexp = _dash_weight_spec(options)
         if wtype is None:
-            return (*GlyphMapper._masked(source, view, *varnames), None, None)
+            return (*GlyphMapper._masked(source, view, *varnames,
+                                          units=units), None, None)
         wname = _DASH_WEIGHT_NAMES.get(wtype, wtype)
         clause = f"[{wname}={wexp}]"
         if wexp not in source.data:
@@ -8697,7 +8822,8 @@ class GlyphMapper:
                 ("weight-missing", layer, wexp),
                 f"dash: {layer} {clause}: the data carries no variable "
                 f"{wexp!r}, so the layer is drawn unweighted.")
-            return (*GlyphMapper._masked(source, view, *varnames), None, None)
+            return (*GlyphMapper._masked(source, view, *varnames,
+                                          units=units), None, None)
         try:
             _dash_float_values(source.data[wexp])
         except (TypeError, ValueError):
@@ -8708,7 +8834,8 @@ class GlyphMapper:
                 ("weight-not-numeric", layer, wexp),
                 f"dash: {layer} {clause}: {wexp!r} is not numeric (twoway: "
                 f"type mismatch, r(109)); the layer is drawn unweighted.")
-            return (*GlyphMapper._masked(source, view, *varnames), None, None)
+            return (*GlyphMapper._masked(source, view, *varnames,
+                                          units=units), None, None)
         if wtype not in _DASH_WEIGHT_ACCEPTS.get(layer, ()):
             if layer == "lowess":
                 why = "weights not allowed"
@@ -8718,15 +8845,18 @@ class GlyphMapper:
                 ("weight-refused", layer, wtype),
                 f"dash: {layer} {clause}: twoway {layer} refuses it "
                 f"({why}, r(101)); the layer is drawn unweighted.")
-            return (*GlyphMapper._masked(source, view, *varnames), None, None)
+            return (*GlyphMapper._masked(source, view, *varnames,
+                                          units=units), None, None)
         if layer in _DASH_WEIGHT_INERT:
             _dash_warn_once(
                 ("weight-inert", layer, wtype),
                 f"dash: {layer} {clause}: twoway {layer} accepts the weight "
                 f"and does not use it (measured: the curve equals the "
                 f"unweighted one), so neither does dash.")
-            return (*GlyphMapper._masked(source, view, *varnames), None, None)
-        cols = GlyphMapper._masked(source, view, *varnames, wexp)
+            return (*GlyphMapper._masked(source, view, *varnames,
+                                          units=units), None, None)
+        cols = GlyphMapper._masked(source, view, *varnames, wexp,
+                                   units=units)
         w = cols[-1]
         nothing = tuple(c[:0] for c in cols)
         # A weight's VALUES, as twoway treats them on this layer.  dash.ado
@@ -8764,6 +8894,60 @@ class GlyphMapper:
             cols = tuple(c[pos] for c in cols)
             w = cols[-1]
         return (*cols[:-1], w, wtype)
+
+    def _layer_units(self, source: ColumnDataSource, view, options,
+                     layer: str, *varnames: str) -> tuple:
+        """``_layer_weights`` with every date variable -- the weight
+        included -- read in its Stata units, as twoway computes a layer
+        (WP-29 P0.8): ``units`` is this mapper's ``date_vars``."""
+        return self._layer_weights(source, view, options, layer, *varnames,
+                                   units=dict(self.date_vars or {}) or None)
+
+    def _on_axis(self, fig, values, var, axis):
+        """``(drawn, off)``: a computed layer's output *values* (Stata units
+        of *var*) as the positions *fig*'s *axis* draws them.
+
+        A variable that is no date is drawn as it is.  On a figure whose
+        axes were marked (``_dash_mark_date_axes``) the axis decides: a
+        date axis takes its kind's epoch milliseconds; a numeric axis --
+        a date sharing it with a non-date or another date kind -- the Stata
+        values themselves, as twoway draws ``(scatter close obs)(lfit close
+        date)``.  An unmarked figure (a mapper used on its own) converts by
+        the variable's kind.  *off* marks a finite value that has no date
+        on the axis (outside 01jan0100 to 31dec9999); it is NaN in *drawn*.
+        """
+        vals = np.asarray(values, dtype=float)
+        kind = (self.date_vars or {}).get(var)
+        none = np.zeros(vals.shape, dtype=bool)
+        if kind not in _STATA_DATE_KINDS:
+            return vals, none
+        if getattr(fig, "_dash_date_kinds", None) is not None:
+            kind = _dash_axis_date_kind(fig, axis)
+            if not kind:
+                return vals, none
+        drawn = _dash_units_to_axis(vals, kind)
+        with np.errstate(invalid="ignore"):
+            off = np.isfinite(vals) & ~np.isfinite(drawn)
+        return drawn, off
+
+    def _drop_off_dates(self, layer, what, off, *arrays):
+        """*arrays* without the rows *off* marks, naming how many once.
+
+        A computed bar or point that lands outside Stata's dates is not
+        drawn, and one note per layer says how many (WP-29 P0.8, A1): it
+        would otherwise reach the page as NaN, which the page's JSON cannot
+        parse.  *what* is ``"bar(s)"`` or ``"point(s)"``.
+        """
+        off = np.asarray(off, dtype=bool)
+        n = int(off.sum())
+        if not n:
+            return arrays
+        _dash_warn_once(
+            ("off-dates", layer, what),
+            f"dash: {layer}: {n:,} {what} outside Stata's dates "
+            f"(01jan0100 to 31dec9999) not drawn.")
+        keep = ~off
+        return tuple(np.asarray(a)[keep] for a in arrays)
 
     @staticmethod
     def _mark_unfit(renderers, command: str):
@@ -8924,7 +9108,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, _wt = self._layer_weights(source, view, options, "lfit",
+        x, y, w, _wt = self._layer_units(source, view, options, "lfit",
                                            xvar, yvar)
 
         # Need at least 2 points to fit a line.  With none, twoway lfit
@@ -8961,6 +9145,13 @@ class GlyphMapper:
         # observation reaches, which twoway does not do.
         x_fit = _fit_grid(x, options, "lfit")
         y_fit = np.polyval(coeffs, x_fit)
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x")
+        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y")
+        x_fit, y_fit = self._drop_off_dates("lfit", "point(s)", _ox | _oy,
+                                            x_fit, y_fit)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
         r = fig.line(x="x", y="y", source=fit_source,
@@ -8996,7 +9187,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, _wt = self._layer_weights(source, view, options, "qfit",
+        x, y, w, _wt = self._layer_units(source, view, options, "qfit",
                                            xvar, yvar)
 
         # With none or one, twoway qfit draws nothing and notes that regress
@@ -9031,6 +9222,13 @@ class GlyphMapper:
         except np.linalg.LinAlgError:
             empty = ColumnDataSource({"x": [], "y": []})
             return fig.line(x="x", y="y", source=empty)
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x")
+        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y")
+        x_fit, y_fit = self._drop_off_dates("qfit", "point(s)", _ox | _oy,
+                                            x_fit, y_fit)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
         r = fig.line(x="x", y="y", source=fit_source,
@@ -9066,7 +9264,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, wtype = self._layer_weights(source, view, options, "lfitci",
+        x, y, w, wtype = self._layer_units(source, view, options, "lfitci",
                                              xvar, yvar)
         n = len(x)
 
@@ -9122,6 +9320,17 @@ class GlyphMapper:
 
         y_lower = y_fit - t_crit * se_band
         y_upper = y_fit + t_crit * se_band
+
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x")
+        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y")
+        y_lower, _ol = self._on_axis(fig, y_lower, yvar, "y")
+        y_upper, _ou = self._on_axis(fig, y_upper, yvar, "y")
+        x_fit, y_fit, y_lower, y_upper = self._drop_off_dates(
+            "lfitci", "point(s)", _ox | _oy | _ol | _ou,
+            x_fit, y_fit, y_lower, y_upper)
 
         ci_source = ColumnDataSource({
             "x_fit": x_fit, "y_fit": y_fit,
@@ -9186,7 +9395,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, wtype = self._layer_weights(source, view, options, "qfitci",
+        x, y, w, wtype = self._layer_units(source, view, options, "qfitci",
                                              xvar, yvar)
 
         # Two points are fitted, as qfit fits them (_qfit_design), the band
@@ -9239,6 +9448,17 @@ class GlyphMapper:
                 x, y, x_fit, lambda xi, yi, xg: np.polyval(np.polyfit(xi, yi, 2), xg),
                 fallback=y_fit, level=_lvl, seed=_resolve_seed(options),
             )
+
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x")
+        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y")
+        y_lower, _ol = self._on_axis(fig, y_lower, yvar, "y")
+        y_upper, _ou = self._on_axis(fig, y_upper, yvar, "y")
+        x_fit, y_fit, y_lower, y_upper = self._drop_off_dates(
+            "qfitci", "point(s)", _ox | _oy | _ol | _ou,
+            x_fit, y_fit, y_lower, y_upper)
 
         ci_source = ColumnDataSource({
             "x_fit": x_fit, "y_fit": y_fit,
@@ -9295,7 +9515,7 @@ class GlyphMapper:
         # had excluded, and said nothing.  lowess takes no weight in Stata
         # (lowess.ado:9, twoway_lowess_parse.class:35: r(101) for every
         # type); _layer_weights names one and draws the layer without it.
-        x, y, _w, _wt = self._layer_weights(source, view, options, "lowess",
+        x, y, _w, _wt = self._layer_units(source, view, options, "lowess",
                                             xvar, yvar)
 
         # lowess.ado:89 smooths only when r(N) >= 3 and the range of x is at
@@ -9338,7 +9558,12 @@ class GlyphMapper:
         if str(options.get("adjust", "") or "").strip():
             y_all = None
             if self.dataset is not None and yvar in getattr(self.dataset, "columns", ()):
-                y_all = _dash_float_values(self.dataset[yvar])
+                # In y's Stata units when y is a date, as the smooth is
+                # (WP-29 P0.8).
+                _yk = (self.date_vars or {}).get(yvar)
+                y_all = (_dash_date_units(self.dataset[yvar], _yk)
+                         if _yk in _STATA_DATE_KINDS
+                         else _dash_float_values(self.dataset[yvar]))
             if y_all is None or not np.isfinite(y_all).any():
                 y_all = y
             _ms = float(np.nanmean(y_lw)) if np.isfinite(y_lw).any() else np.nan
@@ -9363,6 +9588,13 @@ class GlyphMapper:
         # on either side, as twoway's cmissing(y) default does.
         _keep = np.isfinite(y_lw)
         x_lw, y_lw = x_lw[_keep], y_lw[_keep]
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        x_lw, _ox = self._on_axis(fig, x_lw, xvar, "x")
+        y_lw, _oy = self._on_axis(fig, y_lw, yvar, "y")
+        x_lw, y_lw = self._drop_off_dates("lowess", "point(s)", _ox | _oy,
+                                          x_lw, y_lw)
 
         lw_source = ColumnDataSource({
             "x_lw": x_lw,
@@ -9724,7 +9956,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, wtype = self._layer_weights(source, view, options, "lpoly",
+        x, y, w, wtype = self._layer_units(source, view, options, "lpoly",
                                              xvar, yvar)
 
         # None or one: dash.ado refuses as twoway does, r(2000)/r(2001),
@@ -9763,9 +9995,16 @@ class GlyphMapper:
             n_grid=self._lpoly_grid_n(options, "lpoly", len(x)),
             w=_dash_lpoly_weights(w, wtype))
         valid = ~np.isnan(y_fit)
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x")
+        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y")
+        _xd, _yd = self._drop_off_dates("lpoly", "point(s)", _ox | _oy,
+                                        _xd, _yd)
         lp_src = ColumnDataSource({
-            "x_lp": x_grid[valid].tolist(),
-            "y_lp": y_fit[valid].tolist(),
+            "x_lp": _xd.tolist(),
+            "y_lp": _yd.tolist(),
         })
         r = fig.line(x="x_lp", y="y_lp", source=lp_src,
                      line_color=self.scheme.default_color(color_idx, "line"),
@@ -9806,7 +10045,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, wtype = self._layer_weights(source, view, options, "lpolyci",
+        x, y, w, wtype = self._layer_units(source, view, options, "lpolyci",
                                              xvar, yvar)
 
         _lpolyci_color = self.scheme.default_color(color_idx, "line")
@@ -9886,11 +10125,20 @@ class GlyphMapper:
         )
 
         valid = ~np.isnan(y_fit)
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x")
+        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y")
+        _yl, _ol = self._on_axis(fig, y_lower[valid], yvar, "y")
+        _yu, _ou = self._on_axis(fig, y_upper[valid], yvar, "y")
+        _xd, _yd, _yl, _yu = self._drop_off_dates(
+            "lpolyci", "point(s)", _ox | _oy | _ol | _ou, _xd, _yd, _yl, _yu)
         ci_src = ColumnDataSource({
-            "x_lp":    x_grid[valid].tolist(),
-            "y_lp":    y_fit[valid].tolist(),
-            "y_lower": y_lower[valid].tolist(),
-            "y_upper": y_upper[valid].tolist(),
+            "x_lp":    _xd.tolist(),
+            "y_lp":    _yd.tolist(),
+            "y_lower": _yl.tolist(),
+            "y_upper": _yu.tolist(),
         })
         line_r, band_r = self._render_ci_band(
             fig, ci_src, "x_lp", "y_lp", _lpolyci_color, yvar, options,
@@ -10242,7 +10490,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, wtype = self._layer_weights(source, view, options, "fpfit",
+        x, y, w, wtype = self._layer_units(source, view, options, "fpfit",
                                              xvar, yvar)
 
         _fp_report_unsupported(options, "fpfit")
@@ -10265,14 +10513,23 @@ class GlyphMapper:
 
         x_grid = _fp_grid(x)
         if w is not None:
-            x_all, y_all = self._masked(source, view, xvar, yvar)
+            x_all, y_all = self._masked(
+                source, view, xvar, yvar,
+                units=dict(self.date_vars or {}) or None)
             x_grid = self._fp_plot_grid(x_all, y_all, x, y)
         y_fit = self._predict_fp2(x_grid, fit)
 
         valid = ~np.isnan(y_fit)
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x")
+        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y")
+        _xd, _yd = self._drop_off_dates("fpfit", "point(s)", _ox | _oy,
+                                        _xd, _yd)
         fp_src = ColumnDataSource({
-            "x_fp": x_grid[valid].tolist(),
-            "y_fp": y_fit[valid].tolist(),
+            "x_fp": _xd.tolist(),
+            "y_fp": _yd.tolist(),
         })
         r = fig.line(x="x_fp", y="y_fp", source=fp_src,
                      line_color=self.scheme.default_color(color_idx, "line"),
@@ -10311,7 +10568,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, wtype = self._layer_weights(source, view, options, "fpfitci",
+        x, y, w, wtype = self._layer_units(source, view, options, "fpfitci",
                                              xvar, yvar)
 
         _fpfitci_color = self.scheme.default_color(color_idx, "line")
@@ -10335,7 +10592,9 @@ class GlyphMapper:
 
         x_grid = _fp_grid(x)
         if w is not None:
-            x_all, y_all = self._masked(source, view, xvar, yvar)
+            x_all, y_all = self._masked(
+                source, view, xvar, yvar,
+                units=dict(self.date_vars or {}) or None)
             x_grid = self._fp_plot_grid(x_all, y_all, x, y)
         y_fit = self._predict_fp2(x_grid, fit)
 
@@ -10355,11 +10614,20 @@ class GlyphMapper:
         y_lower = y_fit - t_crit * se_fit
         y_upper = y_fit + t_crit * se_fit
 
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x")
+        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y")
+        _yl, _ol = self._on_axis(fig, y_lower[valid], yvar, "y")
+        _yu, _ou = self._on_axis(fig, y_upper[valid], yvar, "y")
+        _xd, _yd, _yl, _yu = self._drop_off_dates(
+            "fpfitci", "point(s)", _ox | _oy | _ol | _ou, _xd, _yd, _yl, _yu)
         ci_src = ColumnDataSource({
-            "x_fp":    x_grid[valid].tolist(),
-            "y_fp":    y_fit[valid].tolist(),
-            "y_lower": y_lower[valid].tolist(),
-            "y_upper": y_upper[valid].tolist(),
+            "x_fp":    _xd.tolist(),
+            "y_fp":    _yd.tolist(),
+            "y_lower": _yl.tolist(),
+            "y_upper": _yu.tolist(),
         })
         line_r, band_r = self._render_ci_band(
             fig, ci_src, "x_fp", "y_fp", _fpfitci_color, yvar, options,
@@ -10399,7 +10667,7 @@ class GlyphMapper:
                             source=empty_src)
         # twoway__histogram_gen.ado:6 admits [fw] only; any other type is
         # named by _layer_weights and the bars are counted unweighted.
-        arr, w, wtype = self._layer_weights(source, view, options,
+        arr, w, wtype = self._layer_units(source, view, options,
                                             "histogram", yvar)
         if not len(arr):
             empty_src = ColumnDataSource({"top": [], "left": [], "right": []})
@@ -10425,10 +10693,22 @@ class GlyphMapper:
         counts = self._histogram_counts(arr, w, start, h, nb)
         tops = _histogram_heights(counts, edges, ymode)
 
+        # WP-29 P0.8: the grid, the counts and the heights are in the
+        # variable's Stata units, as twoway__histogram_gen computes them;
+        # the edges are drawn where the figure's x axis draws the variable.
+        # A bar with an edge outside Stata's dates is not drawn (one note):
+        # the edges are monotone, so only the ends can leave the range and
+        # the bars kept are one contiguous run [i0, i1).
+        axis_edges, off_e = self._on_axis(fig, edges, yvar, "x")
+        bar_off = off_e[:-1] | off_e[1:]
+        self._drop_off_dates("histogram", "bar(s)", bar_off)
+        _kept = np.flatnonzero(~bar_off)
+        i0 = int(_kept[0]) if _kept.size else 0
+        i1 = int(_kept[-1]) + 1 if _kept.size else 0
         hist_source = ColumnDataSource({
-            "top":   tops,
-            "left":  edges[:-1],
-            "right": edges[1:],
+            "top":   tops[i0:i1],
+            "left":  axis_edges[i0:i1],
+            "right": axis_edges[i0 + 1:i1 + 1],
         })
         r = fig.quad(top="top", bottom=0, left="left", right="right",
                      source=hist_source,
@@ -10450,12 +10730,17 @@ class GlyphMapper:
         self._apply_fill_opts(r, options)
         # Quad supports line_width/line_dash/line_color for bin border styling
         self._apply_line_opts(r, options)
+        if i1 <= i0:
+            # No bar has a date on the axis: nothing for the page to
+            # recount.
+            return r
         # Tag renderer so DashRenderer can wire filter-callback recomputation.
         r._dash_agg_source = hist_source
         r._dash_agg_config = {
             "type":      "histogram",
             "varname":   yvar,
-            "bin_edges": edges.tolist(),
+            # The drawn edges of the kept bars (axis units).
+            "bin_edges": axis_edges[i0:i1 + 1].tolist(),
             # The y-axis family must be recomputed under a filter too: a
             # density histogram of a filtered subset has to renormalise to the
             # surviving rows, or the curve silently stops integrating to 1.
@@ -10477,6 +10762,22 @@ class GlyphMapper:
             "width":     h,
             "bin":       nb,
         }
+        # WP-29 P0.8: a date variable (and a date weight) is recounted in
+        # its Stata units: the page converts each value with
+        # dash_stata_value_of(v, datekind), counts on the full unit grid
+        # (start, width, bin) and draws the kept run from bar bin_first,
+        # each density divided by its unit width.  Kind strings come from
+        # _STATA_DATE_KINDS only, and every number is finite.
+        _hk = (self.date_vars or {}).get(yvar)
+        if _hk in _STATA_DATE_KINDS:
+            r._dash_agg_config["datekind"] = _hk
+            r._dash_agg_config["unit_edges"] = edges[i0:i1 + 1].tolist()
+            r._dash_agg_config["bin_first"] = int(i0)
+        _wk = (self.date_vars or {}).get(
+            str(options.get("wexp", "")).strip()) if wtype is not None \
+            else None
+        if _wk in _STATA_DATE_KINDS:
+            r._dash_agg_config["wdatekind"] = _wk
         # The rows these bars count; DashRenderer hands them to the recount
         # when they are a subset of the data.
         r._dash_agg_rows = self._agg_member_ids(source, view)
@@ -10717,7 +11018,7 @@ class GlyphMapper:
             options["bwidth"] = options["width"]
         # twoway__kdensity_gen.ado:7 admits [fw aw]; pw/iw are named by
         # _layer_weights and the density is estimated unweighted.
-        arr, w, wtype = self._layer_weights(source, view, options,
+        arr, w, wtype = self._layer_units(source, view, options,
                                             "kdensity", yvar)
 
         # Stata's kernels are implemented directly (see _KERNELS): scipy's
@@ -10780,7 +11081,15 @@ class GlyphMapper:
                               int(n_pts))
         density = _kde_curve(arr, x_range, bw, kernel, w)
 
-        kd_source = ColumnDataSource({"x": x_range, "y": density})
+        # WP-29 P0.8: the grid, range() and the bandwidth are in the
+        # variable's Stata units; the curve is drawn where the figure's x
+        # axis draws the variable, a point with no date there dropped with
+        # one note.
+        x_draw, _off = self._on_axis(fig, x_range, yvar, "x")
+        x_draw, x_range, density = self._drop_off_dates(
+            "kdensity", "point(s)", _off, x_draw, x_range, density)
+
+        kd_source = ColumnDataSource({"x": x_draw, "y": density})
         r = fig.line(x="x", y="y", source=kd_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
@@ -10796,7 +11105,8 @@ class GlyphMapper:
         r._dash_agg_config = {
             "type":      "kdensity",
             "varname":   yvar,
-            "x_grid":    x_range.tolist(),
+            # The drawn grid (axis units).
+            "x_grid":    x_draw.tolist(),
             "kernel":    kernel,
             "bw_rule":   _KDE_BANDWIDTH_RULE,
             "bw_fixed":  (float(bw)
@@ -10807,6 +11117,18 @@ class GlyphMapper:
                           if wtype is not None else None),
             "wtype":     wtype,
         }
+        # WP-29 P0.8: a date variable is re-estimated in its Stata units at
+        # x_eval, the unit grid of the points drawn at x_grid; see
+        # map_histogram.
+        _kk = (self.date_vars or {}).get(yvar)
+        if _kk in _STATA_DATE_KINDS:
+            r._dash_agg_config["datekind"] = _kk
+            r._dash_agg_config["x_eval"] = x_range.tolist()
+        _wk = (self.date_vars or {}).get(
+            str(options.get("wexp", "")).strip()) if wtype is not None \
+            else None
+        if _wk in _STATA_DATE_KINDS:
+            r._dash_agg_config["wdatekind"] = _wk
         # The rows this curve is estimated from; see map_histogram.
         r._dash_agg_rows = self._agg_member_ids(source, view)
         return r
@@ -12555,7 +12877,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x_clean, y_clean, _w, _wt = self._layer_weights(
+        x_clean, y_clean, _w, _wt = self._layer_units(
             source, view, options, "mspline", xvar, yvar)
 
         empty = ColumnDataSource({"x_sp": [], "y_sp": []})
@@ -12592,6 +12914,13 @@ class GlyphMapper:
                  for i in range(len(kx) - 1)] + [kx[-1:]])
             y_grid = _natural_cubic_spline(kx, ky, x_grid)
 
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        x_grid, _ox = self._on_axis(fig, x_grid, xvar, "x")
+        y_grid, _oy = self._on_axis(fig, y_grid, yvar, "y")
+        x_grid, y_grid = self._drop_off_dates("mspline", "point(s)",
+                                              _ox | _oy, x_grid, y_grid)
         ms_source = ColumnDataSource({"x_sp": x_grid, "y_sp": y_grid})
         r = fig.line(x="x_sp", y="y_sp", source=ms_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
@@ -12687,7 +13016,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x_clean, y_clean, _w, _wt = self._layer_weights(
+        x_clean, y_clean, _w, _wt = self._layer_units(
             source, view, options, "mband", xvar, yvar)
 
         empty = ColumnDataSource({"x_mb": [], "y_mb": []})
@@ -12709,6 +13038,13 @@ class GlyphMapper:
             self._apply_line_opts(r, options)
             return self._mark_silent([r])
 
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        x_mids, _ox = self._on_axis(fig, x_mids, xvar, "x")
+        y_meds, _oy = self._on_axis(fig, y_meds, yvar, "y")
+        x_mids, y_meds = self._drop_off_dates("mband", "point(s)",
+                                              _ox | _oy, x_mids, y_meds)
         mb_source = ColumnDataSource({"x_mb": x_mids, "y_mb": y_meds})
         r = fig.line(x="x_mb", y="y_mb", source=mb_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
@@ -16492,33 +16828,58 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         const wcol = _pick(_ac_data[ac.wvar]);
         vals = []; wts = [];
         for (let i = 0; i < raw_col.length; i++) {
-            const v = raw_col[i], w = wcol[i];
+            let v = raw_col[i], w = wcol[i];
             if (v === null || v === undefined || isNaN(v)) continue;
-            if (w === null || w === undefined || isNaN(w) || !(w > 0)) continue;
+            if (w === null || w === undefined || isNaN(w)) continue;
+            // WP-29 P0.8: a date (and a date weight) in its Stata units,
+            // as the Python mapper reads it; a value with no Stata date is
+            // dropped with its row.  After the null tests: Number(null) is
+            // 0, a 1960 date.
+            if (ac.datekind) {
+                v = dash_stata_value_of(v, ac.datekind);
+                if (v === null) continue;
+            }
+            if (ac.wdatekind) {
+                w = dash_stata_value_of(w, ac.wdatekind);
+                if (w === null) continue;
+            }
+            if (!(w > 0)) continue;
             vals.push(v); wts.push(w);
         }
     } else {
         vals = raw_col.filter(v => v !== null && v !== undefined && !isNaN(v));
+        if (ac.datekind) {
+            vals = vals.map(v => dash_stata_value_of(v, ac.datekind))
+                       .filter(v => v !== null);
+        }
     }
 
     if (ac.type === 'histogram') {
         const edges = ac.bin_edges;
         const n_bins = edges.length - 1;
+        // WP-29 P0.8: a date is counted on the full unit grid (ac.bin bars
+        // from ac.start) and the kept run of bars from ac.bin_first is
+        // drawn; densities divide by the bar's width in units.  A config
+        // without these fields counts and draws bin_edges as before.
+        const uedges = ac.unit_edges || edges;
+        const first = ac.bin_first || 0;
+        const n_grid = ac.bin || n_bins;
         // Bar HEIGHTS must be rescaled for the surviving rows -- a density
         // histogram of a filtered subset still has to integrate to 1.  The
         // bin BOUNDARIES deliberately stay put: a grid that moves as you drag
         // a filter is far more confusing than one that does not, and with
         // start()/width() now explicit the grid is the user's choice.
-        const dash_scale = function (counts) {
+        const dash_scale = function (all_counts) {
             let total = 0;
-            for (const c of counts) total += c;
+            for (const c of all_counts) total += c;
+            const counts = all_counts.slice(first, first + n_bins);
             if (total <= 0) return counts;
             const mode = ac.ymode || 'density';
             if (mode === 'frequency') return counts;
             if (mode === 'fraction')  return counts.map(c => c / total);
             if (mode === 'percent')   return counts.map(c => 100 * c / total);
             return counts.map((c, i) => {
-                const w = edges[i + 1] - edges[i];
+                const w = uedges[i + 1] - uedges[i];
                 return c / (total * (w || 1));
             });
         };
@@ -16533,7 +16894,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             src.change.emit();
             continue;
         }
-        const counts = new Array(n_bins).fill(0);
+        const counts = new Array(n_grid).fill(0);
         // twoway__histogram_gen.ado:200-203, as the Python count
         // (GlyphMapper._histogram_counts, WP-28 C2): every value is bar
         // floor((v - start)/width), an index below 0 folded into bar 0
@@ -16552,7 +16913,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
                 const wv = wts ? wts[vi] : 1;
                 let b = Math.floor((v - ac.start) / ac.width);
                 if (b < 0) b = 0;
-                if (b > n_bins - 1) b = n_bins - 1;
+                if (b > n_grid - 1) b = n_grid - 1;
                 counts[b] += wv;
             }
         }
@@ -16632,7 +16993,9 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         }
         const kfn = dash_kernel(ac.kernel || 'epanechnikov');
         const xs = ac.x_grid;
-        const ys = xs.map(x => {
+        // WP-29 P0.8: evaluated at the unit grid, drawn at x_grid.
+        const xe = ac.x_eval || xs;
+        const ys = xe.map(x => {
             let s = 0;
             if (wv) {
                 for (let i = 0; i < n; i++) s += wv[i] * kfn((x - vals[i]) / h);
@@ -26833,6 +27196,9 @@ class DashRenderer:
         # Determine axis variables from the first plot layer
         xvar = plots[0].get("xvar", "") if plots else ""
         yvar = plots[0].get("yvar", "") if plots else ""
+        # The variables the axes are drawn, named and formatted by: a
+        # univariate first layer's variable is on x (WP-29 P0.8).
+        _xa, _ya = _dash_axis_vars(plots)
 
         # xtitle()/ytitle() first, else Stata's own default, through the
         # helper the generated app runs as well.  Canvas text, NOT html:
@@ -26893,20 +27259,20 @@ class DashRenderer:
         # Axis type is decided ONCE, before the single bokeh_figure() call.
         # Commit c3941de fixed a bug caused by re-creating a figure to change
         # its axis type; do not reintroduce it.
-        _x_date = self._figure_date_kind(plots, "xvar", xvar)
-        _y_date = self._figure_date_kind(plots, "yvar", yvar)
+        _x_date = self._figure_date_kind(plots, "xvar", _xa)
+        _y_date = self._figure_date_kind(plots, "yvar", _ya)
 
         if _x_date and _xs_log:
             warnings.warn(
                 f"dash: xscale(log) is meaningless for the date variable "
-                f"'{xvar}'; drawing a date axis instead.",
+                f"'{_xa}'; drawing a date axis instead.",
                 UserWarning,
             )
             _xs_log = False
         if _y_date and _ys_log:
             warnings.warn(
                 f"dash: yscale(log) is meaningless for the date variable "
-                f"'{yvar}'; drawing a date axis instead.",
+                f"'{_ya}'; drawing a date axis instead.",
                 UserWarning,
             )
             _ys_log = False
@@ -26928,8 +27294,8 @@ class DashRenderer:
         # Each tick in the axis variable's own date format, as twoway
         # labels it (%tm's 2001m1, GAPS2 E3).  An explicit xlabel()/
         # ylabel() tick list still wins -- it is applied later.
-        for _axis, _kind, _avar in ((fig.xaxis, _x_date, xvar),
-                                    (fig.yaxis, _y_date, yvar)):
+        for _axis, _kind, _avar in ((fig.xaxis, _x_date, _xa),
+                                    (fig.yaxis, _y_date, _ya)):
             if _kind:
                 _axis.formatter = _dash_date_axis_formatter(
                     _dash_date_fmt(getattr(self, "formats", {}).get(_avar),
@@ -27016,7 +27382,7 @@ class DashRenderer:
         # xlabel()/ylabel(), xtick()/ytick(): Stata's full grammar, through
         # the helper the generated app runs as well.  Its own parser read a
         # bare numlist and angle() and nothing else.
-        _dash_apply_axis_options(fig, graph_opts, xvar, yvar,
+        _dash_apply_axis_options(fig, graph_opts, _xa, _ya,
                                  _source_frame(source, self.df),
                                  getattr(self, "numeric_formats", {}),
                                  _seen, _gkey,
@@ -29574,6 +29940,9 @@ class ServerAppBuilder:
                          "_dash_fmt_model_args", "_dash_fmt_tick_formatter",
                          "_dash_fmt_hover", "_dash_date_fmt",
                          "_dash_date_axis_formatter", "_dash_period_values",
+                         # Stata units for computed layers (WP-29 P0.8)
+                         "_dash_date_units", "_dash_units_to_axis",
+                         "_dash_axis_vars",
                          "_dash_hover_layer_vars",
                          "_dash_build_hover",
                          # ... and the note for a layer it cannot reach.
@@ -31280,6 +31649,14 @@ class ServerAppBuilder:
             "        # WP-29 P0.16: the build's colour rows, so a redrawn copy",
             "        # keeps the key's bins (BR-07.4), never the moved frame's.",
             "        _cv_dom = cv_domain",
+            "        # The live figure's axis kinds, by the same calls it made",
+            "        # (WP-29 P0.8): a date layer on a mixed numeric axis redraws",
+            "        # in Stata units, one on a date axis at its dates.",
+            "        _rax = _dash_axis_vars(g.get('plots', []))",
+            "        _rkinds = (_dash_figure_date_kind(g.get('plots', []), 'xvar',",
+            "                                          _rax[0], _date_vars),",
+            "                   _dash_figure_date_kind(g.get('plots', []), 'yvar',",
+            "                                          _rax[1], _date_vars))",
             "        def _redraw(frame):",
             "            # The graph's qualifier, then the layer's own where it",
             "            # differs -- the same two steps the live figure took.",
@@ -31294,6 +31671,7 @@ class ServerAppBuilder:
             "                                        'graph %r plot %d' % (gname, pi + 1),",
             "                                        qual=_p_q)",
             "            _tfig = bokeh_figure()",
+            "            _dash_mark_date_axes(_tfig, *_rkinds)",
             "            _ly, _srcs = _dash_draw_layer(_tfig, _fr, plot, pi, gname,",
             "                                          set(), None, None, sidx=_sidx,",
             "                                          cv_domain=_cv_dom)",
@@ -31336,6 +31714,9 @@ class ServerAppBuilder:
             "        _pstyle_idx = _dash_plot_style_indices(plots)",
             "        xv = plots[0].get('xvar', '') if plots else ''",
             "        yv = plots[0].get('yvar', '') if plots else ''",
+            "        # The axes' variables: a univariate first layer's is on x",
+            "        # (WP-29 P0.8), as the saved renderer reads them.",
+            "        _xa, _ya = _dash_axis_vars(plots)",
             "        # Canvas text, through the helper the saved renderer runs:",
             "        # this used to html.escape the user's title and to title a",
             "        # histogram's y axis with the variable, where the saved",
@@ -31372,20 +31753,20 @@ class ServerAppBuilder:
             "        # A date axis, by the saved renderer's rule and in its words:",
             "        # every layer's x (or y) a date variable of one kind.  The",
             "        # served figure used to draw every date on a numeric axis.",
-            "        _x_date = _dash_figure_date_kind(plots, 'xvar', xv, _date_vars)",
-            "        _y_date = _dash_figure_date_kind(plots, 'yvar', yv, _date_vars)",
+            "        _x_date = _dash_figure_date_kind(plots, 'xvar', _xa, _date_vars)",
+            "        _y_date = _dash_figure_date_kind(plots, 'yvar', _ya, _date_vars)",
             "        _xs_log, _ys_log = _xsc['log'], _ysc['log']",
             "        if _x_date and _xs_log:",
             "            warnings.warn(",
             "                f\"dash: xscale(log) is meaningless for the date variable \"",
-            "                f\"'{xv}'; drawing a date axis instead.\",",
+            "                f\"'{_xa}'; drawing a date axis instead.\",",
             "                UserWarning,",
             "            )",
             "            _xs_log = False",
             "        if _y_date and _ys_log:",
             "            warnings.warn(",
             "                f\"dash: yscale(log) is meaningless for the date variable \"",
-            "                f\"'{yv}'; drawing a date axis instead.\",",
+            "                f\"'{_ya}'; drawing a date axis instead.\",",
             "                UserWarning,",
             "            )",
             "            _ys_log = False",
@@ -31395,8 +31776,8 @@ class ServerAppBuilder:
             "        elif _ys_log: _fig_kw['y_axis_type'] = 'log'",
             "        fig = bokeh_figure(**_fig_kw)",
             "        _dash_mark_date_axes(fig, _x_date, _y_date)",
-            "        for _axis, _kind, _avar in ((fig.xaxis, _x_date, xv),",
-            "                                    (fig.yaxis, _y_date, yv)):",
+            "        for _axis, _kind, _avar in ((fig.xaxis, _x_date, _xa),",
+            "                                    (fig.yaxis, _y_date, _ya)):",
             "            if _kind:",
             "                _axis.formatter = _dash_date_axis_formatter(",
             "                    _dash_date_fmt(_FORMATS.get(_avar), _kind), '',",
@@ -31468,7 +31849,7 @@ class ServerAppBuilder:
             "        # through the helper the saved renderer runs.  A 14-line",
             "        # parser here read a bare numlist and angle() and nothing",
             "        # else, so xlabel(2000(1000)4000) was ignored when served.",
-            "        _dash_apply_axis_options(fig, go, xv, yv, g_df, _num_formats,",
+            "        _dash_apply_axis_options(fig, go, _xa, _ya, g_df, _num_formats,",
             "                                 _reported_subopts, gname,",
             "                                 grid_color=_DASH_SCHEME.grid_color,",
             "                                 value_labels=val_labels,",

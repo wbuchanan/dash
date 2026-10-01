@@ -11,6 +11,7 @@
 *!   S02  line join order against twoway's sersets and SVG (JO-01..JO-12)
 *!   S03  P0.3 unlabelled variables (UL-01..UL-08); P0.4 title sub-options without text (ET-01..ET-10)
 *!   S04  function points are twoway's (FX-20..FX-24)
+*!   S05  P0.8 / P0.20 date units (DU-01..DU-06, KD-01..KD-03)
 *!   S06  P0.10 hover() variables exported (HX-01..HX-08)
 *!   S07  colorvar key from the layer's rows, saved and served (CQV-01..09)
 *!
@@ -1539,6 +1540,363 @@ end
     display as text "S04 end `c(current_time)'"
 }
 * ==== end S04 ====
+* ==== S05 P0.8: computed layers on a date in Stata units ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S05") {
+    display as text "S05 start `c(current_time)'"
+    // Every variable the probes generate is a double: a float keeps seven
+    // digits, and the comparisons are at 1e-9.
+    local du_type = c(type)
+    set type double
+
+
+    // The page and app readers, and the comparisons.  The python blocks
+    // hold no brace: Stata still reads a block another WP29_ONLY skips.
+    python:
+import json as _json
+import re as _re
+import warnings as _w
+from sfi import Macro as _M
+from bokeh.document import Document as _Doc
+from bokeh.models import Plot as _Plot, Slider as _Slider
+
+
+def _du_unescape(text):
+    ents = dict(amp="&", lt="<", gt=">", quot=chr(34))
+    ents["#x27"] = chr(39)
+    ents["#x60"] = chr(96)
+    return _re.sub(r"&(amp|lt|gt|quot|#x27|#x60);",
+                   lambda m: ents[m.group(1)], text)
+
+
+def _du_read(path):
+    # A saved page's one Bokeh document (HE-05's _he5_read).
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    blocks = _re.findall(
+        r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+        page, _re.S)
+    docs = [d for b in blocks
+            for d in _json.loads(_du_unescape(b)).values()]
+    if len(docs) != 1:
+        raise RuntimeError("%s holds %d Bokeh documents" % (path, len(docs)))
+    return _Doc.from_json(docs[0])
+
+
+def _du_app(path):
+    # One session of the generated app, its curdoc attach replaced so
+    # nothing is served (KF-03).  The app is dash's file, never user data.
+    with open(path, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s05_app")
+    with _w.catch_warnings():
+        _w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s05_app.py", "exec"),
+             ns)
+        doc = _Doc()
+        ns["make_document"](doc)
+    return doc
+
+
+def _du_move(doc, value):
+    sl = [s for s in doc.select(dict(type=_Slider))
+          if getattr(s, "_dash_var", None) == "close"]
+    fired = 0
+    if len(sl) == 1:
+        old = sl[0].value
+        with _w.catch_warnings():
+            _w.simplefilter("ignore")
+            sl[0].value = value
+            for attr in ("value", "value_throttled"):
+                for cb in sl[0]._callbacks.get(attr, []):
+                    cb(attr, old, value)
+                    fired += 1
+    return fired
+
+
+def _du_layers(doc):
+    # (plot, data) of every computed layer: no scatter, no row source.
+    out = []
+    for p in doc.select(dict(type=_Plot)):
+        for r in p.renderers:
+            g = getattr(r, "glyph", None)
+            if g is None or type(g).__name__ == "Scatter":
+                continue
+            if "__dash_row__" in r.data_source.data:
+                continue
+            out.append((p, r.data_source.data))
+    return out
+
+
+def _du_col(doc, col):
+    hits = [(p, d) for p, d in _du_layers(doc) if col in d]
+    if not hits:
+        return None, []
+    p, d = hits[-1]
+    return p, [float(v) for v in d[col]]
+
+
+def _du_nums(name):
+    return [float(t) for t in (_M.getGlobal(name) or "").split()]
+
+
+def _du_same(a, b, tol):
+    return len(a) == len(b) and len(a) > 0 and all(
+        abs(x - y) <= tol * abs(y) + 1e-15 for x, y in zip(a, b))
+
+
+def _du_bars(px, ph, start, width, nbin):
+    # twoway__histogram_gen's generate() pairs placed at their bars.
+    out = [0.0] * nbin
+    for x, h in zip(px, ph):
+        i = int((x - start) / width + 1e-7)
+        if 0 <= i < nbin:
+            out[i] = h
+    return out
+
+
+def _du_axes(p):
+    return type(p.xaxis[0]).__name__, type(p.yaxis[0]).__name__
+
+
+def _du_hist_bad(doc, pre, label):
+    bad = []
+    p, tops = _du_col(doc, "top")
+    _p, left = _du_col(doc, "left")
+    nbin = int(float(_M.getGlobal(pre + "_bin")))
+    want = _du_bars(_du_nums(pre + "_x"), _du_nums(pre + "_h"),
+                    float(_M.getGlobal(pre + "_start")),
+                    float(_M.getGlobal(pre + "_width")), nbin)
+    if len(tops) != nbin:
+        bad.append("%s: %d bars, twoway %d" % (label, len(tops), nbin))
+    elif not _du_same(tops, want, 1e-9):
+        bad.append("%s: tops %r, twoway %r" % (label, tops[:3], want[:3]))
+    lw = _M.getGlobal(pre + "_left")
+    if lw and (not left or left[0] != float(lw)):
+        bad.append("%s: first left %r, want %s" % (label, left[:1], lw))
+    return bad, p
+
+
+def _du_curve_bad(doc, xcol, ycol, pre, label):
+    bad = []
+    p, xs = _du_col(doc, xcol)
+    _p, ys = _du_col(doc, ycol)
+    if not _du_same(ys, _du_nums(pre + "_y"), 1e-9):
+        bad.append("%s: y %r, Stata %r" % (label, ys, _du_nums(pre + "_y")))
+    if not _du_same(xs, _du_nums(pre + "_xms"), 1e-12):
+        bad.append("%s: x %r, Stata (ms) %r" % (label, xs,
+                                                 _du_nums(pre + "_xms")))
+    return bad, p
+end
+
+    sysuse sp500, clear
+    keep date close
+    generate m = mofd(date)
+    format m %tm
+    capture dash clear
+
+    // ------------------------------------------------------------
+    // DU-01: histogram date, width(30) start(14975): twoway's 13 bars,
+    // per day, from 14975 (978220800000 ms), the date on x.
+    // ------------------------------------------------------------
+    twoway__histogram_gen date, density width(30) start(14975) gen(duh dux, replace)
+    global du1_bin   = r(bin)
+    global du1_start = r(start)
+    global du1_width = r(width)
+    global du1_left  = strofreal((r(start) - td(01jan1970))*86400000, "%21.0g")
+    mata: _du_v = st_data(., "dux")
+    mata: st_global("du1_x", invtokens(strofreal(select(_du_v, _du_v :< .), "%21.0g")'))
+    mata: _du_v = st_data(., "duh")
+    mata: st_global("du1_h", invtokens(strofreal(select(_du_v, _du_v :< .), "%21.0g")'))
+    drop duh dux
+    local du1 "`w29_work'/du1.html"
+    capture erase "`du1'"
+    capture noisily dash histogram date, width(30) start(14975) saving("`du1'", replace)
+    local du_rc = _rc
+    _w29_expect DU-01 "(`du_rc' == 0)" "dash histogram date, width(30) start(14975) refused: rc `du_rc'"
+    _w29_expect DU-01 "(${du1_bin} == 13)" "twoway__histogram_gen gave ${du1_bin} bars, not 13"
+    python:
+_d = _du_read(_M.getLocal("du1"))
+_bad, _p = _du_hist_bad(_d, "du1", "DU-01")
+if _p is None or _du_axes(_p) != ("DatetimeAxis", "LinearAxis"):
+    _bad.append("axes %r" % (None if _p is None else _du_axes(_p),))
+_M.setGlobal("du_bad", "; ".join(_bad))
+_M.setGlobal("du_nbad", str(len(_bad)))
+end
+    _w29_expect DU-01 "(${du_nbad} == 0)" `"${du_bad}"'
+    _w29_done DU-01 "13 bars equal twoway__histogram_gen's per day, from 14975, on a date x axis"
+    capture erase "`du1'"
+
+    // ------------------------------------------------------------
+    // DU-02: histogram m (%tm): the non-empty bars equal twoway's.
+    // ------------------------------------------------------------
+    twoway__histogram_gen m, density gen(duh dux, replace)
+    global du2_bin   = r(bin)
+    global du2_start = r(start)
+    global du2_width = r(width)
+    global du2_left  ""
+    mata: _du_v = st_data(., "dux")
+    mata: st_global("du2_x", invtokens(strofreal(select(_du_v, _du_v :< .), "%21.0g")'))
+    mata: _du_v = st_data(., "duh")
+    mata: st_global("du2_h", invtokens(strofreal(select(_du_v, _du_v :< .), "%21.0g")'))
+    drop duh dux
+    local du2 "`w29_work'/du2.html"
+    capture erase "`du2'"
+    capture noisily dash histogram m, saving("`du2'", replace)
+    local du_rc = _rc
+    _w29_expect DU-02 "(`du_rc' == 0)" "dash histogram m refused: rc `du_rc'"
+    python:
+_d = _du_read(_M.getLocal("du2"))
+_bad, _p = _du_hist_bad(_d, "du2", "DU-02")
+if _p is None or _du_axes(_p)[0] != "DatetimeAxis":
+    _bad.append("axes %r" % (None if _p is None else _du_axes(_p),))
+_M.setGlobal("du_bad", "; ".join(_bad))
+_M.setGlobal("du_nbad", str(len(_bad)))
+end
+    _w29_expect DU-02 "(${du_nbad} == 0)" `"${du_bad}"'
+    _w29_done DU-02 "a %tm histogram's bars equal twoway__histogram_gen's, on a date x axis"
+    capture erase "`du2'"
+
+    // ------------------------------------------------------------
+    // DU-03: kdensity date, bwidth(10) range(14900 15400) n(5): y is
+    // twoway__kdensity_gen's, x its grid in epoch ms, on a date axis.
+    // ------------------------------------------------------------
+    twoway__kdensity_gen date, gen(dud dux) n(5) range(14900 15400) bwidth(10)
+    generate double duxms = (dux - td(01jan1970))*86400000
+    mata: _du_v = st_data(., "dud")
+    mata: st_global("du3_y", invtokens(strofreal(select(_du_v, _du_v :< .), "%21.0g")'))
+    mata: _du_v = st_data(., "duxms")
+    mata: st_global("du3_xms", invtokens(strofreal(select(_du_v, _du_v :< .), "%21.0g")'))
+    drop dud dux duxms
+    local du3 "`w29_work'/du3.html"
+    capture erase "`du3'"
+    capture noisily dash kdensity date, bwidth(10) range(14900 15400) n(5) saving("`du3'", replace)
+    local du_rc = _rc
+    _w29_expect DU-03 "(`du_rc' == 0)" "dash kdensity date refused: rc `du_rc'"
+    python:
+_d = _du_read(_M.getLocal("du3"))
+_bad, _p = _du_curve_bad(_d, "x", "y", "du3", "DU-03")
+if _p is None or _du_axes(_p)[0] != "DatetimeAxis":
+    _bad.append("axes %r" % (None if _p is None else _du_axes(_p),))
+_M.setGlobal("du_bad", "; ".join(_bad))
+_M.setGlobal("du_nbad", str(len(_bad)))
+end
+    _w29_expect DU-03 "(${du_nbad} == 0)" `"${du_bad}"'
+    _w29_done DU-03 "kdensity of a date equals twoway__kdensity_gen per day, drawn at its dates"
+    capture erase "`du3'"
+
+    // ------------------------------------------------------------
+    // DU-04: lpoly close date, bwidth(30) n(5): Stata's curve, at its
+    // grid in epoch ms, on a date axis.
+    // ------------------------------------------------------------
+    quietly lpoly close date, nograph gen(dux duy) n(5) bwidth(30)
+    generate double duxms = (dux - td(01jan1970))*86400000
+    mata: _du_v = st_data(., "duy")
+    mata: st_global("du4_y", invtokens(strofreal(select(_du_v, _du_v :< .), "%21.0g")'))
+    mata: _du_v = st_data(., "duxms")
+    mata: st_global("du4_xms", invtokens(strofreal(select(_du_v, _du_v :< .), "%21.0g")'))
+    drop dux duy duxms
+    local du4 "`w29_work'/du4.html"
+    capture erase "`du4'"
+    capture noisily dash lpoly close date, bwidth(30) n(5) saving("`du4'", replace)
+    local du_rc = _rc
+    _w29_expect DU-04 "(`du_rc' == 0)" "dash lpoly close date refused: rc `du_rc'"
+    python:
+_d = _du_read(_M.getLocal("du4"))
+_bad, _p = _du_curve_bad(_d, "x_lp", "y_lp", "du4", "DU-04")
+if _p is None or _du_axes(_p)[0] != "DatetimeAxis":
+    _bad.append("axes %r" % (None if _p is None else _du_axes(_p),))
+_M.setGlobal("du_bad", "; ".join(_bad))
+_M.setGlobal("du_nbad", str(len(_bad)))
+end
+    _w29_expect DU-04 "(${du_nbad} == 0)" `"${du_bad}"'
+    _w29_done DU-04 "lpoly over a date, bwidth(30) in days, is Stata's curve at its dates"
+    capture erase "`du4'"
+
+    // ------------------------------------------------------------
+    // DU-05: fpfit close date: the first and last fitted values equal
+    // fracpoly's predictions.
+    // ------------------------------------------------------------
+    preserve
+    sort date
+    quietly fracpoly: regress close date
+    quietly predict double dufp
+    global du5_y = strofreal(dufp[1], "%21.0g") + " " + strofreal(dufp[_N], "%21.0g")
+    restore
+    local du5 "`w29_work'/du5.html"
+    capture erase "`du5'"
+    capture noisily dash fpfit close date, saving("`du5'", replace)
+    local du_rc = _rc
+    _w29_expect DU-05 "(`du_rc' == 0)" "dash fpfit close date refused: rc `du_rc'"
+    python:
+_d = _du_read(_M.getLocal("du5"))
+_p, _ys = _du_col(_d, "y_fp")
+_bad = []
+if not _ys or not _du_same([_ys[0], _ys[-1]], _du_nums("du5_y"), 1e-9):
+    _bad.append("y_fp ends %r, fracpoly %r" % (_ys[:1] + _ys[-1:],
+                                               _du_nums("du5_y")))
+_M.setGlobal("du_bad", "; ".join(_bad))
+_M.setGlobal("du_nbad", str(len(_bad)))
+end
+    _w29_expect DU-05 "(${du_nbad} == 0)" `"${du_bad}"'
+    _w29_done DU-05 "fpfit over a date equals fracpoly's predictions"
+    capture erase "`du5'"
+
+    // ------------------------------------------------------------
+    // DU-06: the served app of DU-01's histogram and DU-04's lpoly with
+    // a close slider: as opened, and after the slider moves to 1200
+    // (the served app re-bins and refits from the kept rows).
+    // ------------------------------------------------------------
+    twoway__histogram_gen date if close >= 1200, density width(30) start(14975) gen(duh dux, replace)
+    global du6_bin   = r(bin)
+    global du6_start = r(start)
+    global du6_width = r(width)
+    global du6_left  = strofreal((r(start) - td(01jan1970))*86400000, "%21.0g")
+    mata: _du_v = st_data(., "dux")
+    mata: st_global("du6_x", invtokens(strofreal(select(_du_v, _du_v :< .), "%21.0g")'))
+    mata: _du_v = st_data(., "duh")
+    mata: st_global("du6_h", invtokens(strofreal(select(_du_v, _du_v :< .), "%21.0g")'))
+    drop duh dux
+    quietly lpoly close date if close >= 1200, nograph gen(dux duy) n(5) bwidth(30)
+    generate double duxms = (dux - td(01jan1970))*86400000
+    mata: _du_v = st_data(., "duy")
+    mata: st_global("du7_y", invtokens(strofreal(select(_du_v, _du_v :< .), "%21.0g")'))
+    mata: _du_v = st_data(., "duxms")
+    mata: st_global("du7_xms", invtokens(strofreal(select(_du_v, _du_v :< .), "%21.0g")'))
+    drop dux duy duxms
+    capture dash clear
+    quietly dash histogram date, width(30) start(14975) name(du6h)
+    quietly dash lpoly close date, bwidth(30) n(5) name(du6l)
+    local du6 "`w29_work'/du6_app.py"
+    capture erase "`du6'"
+    capture noisily dash build, saving("`du6'") server replace filter(close, type(slider))
+    local du_rc = _rc
+    _w29_expect DU-06 "(`du_rc' == 0)" "dash build, server refused: rc `du_rc'"
+    python:
+_d = _du_app(_M.getLocal("du6"))
+_b1, _p = _du_hist_bad(_d, "du1", "DU-06 opened")
+_b2, _p = _du_curve_bad(_d, "x_lp", "y_lp", "du4", "DU-06 opened")
+_f = _du_move(_d, 1200.0)
+_b3, _p = _du_hist_bad(_d, "du6", "DU-06 moved")
+_b4, _p = _du_curve_bad(_d, "x_lp", "y_lp", "du7", "DU-06 moved")
+_bad = _b1 + _b2 + _b3 + _b4
+if _f != 1:
+    _bad.append("the close slider fired %d callbacks" % _f)
+_M.setGlobal("du_bad", "; ".join(_bad))
+_M.setGlobal("du_nbad", str(len(_bad)))
+end
+    _w29_expect DU-06 "(${du_nbad} == 0)" `"${du_bad}"'
+    _w29_done DU-06 "served: bars and lpoly equal Stata's, opened and after the close slider moves to 1200"
+    capture erase "`du6'"
+
+    capture dash clear
+    set type `du_type'
+    macro drop du1_* du2_* du3_* du4_* du5_* du6_* du7_* du_bad du_nbad
+    capture mata: mata drop _du_v
+    display as text "S05 end `c(current_time)'"
+}
+* ==== end S05 ====
 * ==== S06 P0.10: hover() variables exported ====
 local only : env WP29_ONLY
 if inlist("`only'", "", "S06") {

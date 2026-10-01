@@ -564,6 +564,10 @@ _hx_pin shown fragment `"dash build, server"'
 _hx_pin shown fragment `"dash scatter"'
 _hx_pin shown fragment `"dash kpi p25(price)"'
 _hx_pin shown fragment `"dash kpi p97.5(price)"'
+//   (WP-29 P0.8) two illustrations of the date-unit rule in a sentence,
+//   on sp500's date, which no example loads
+_hx_pin shown fragment `"dash histogram date, width(7)"'
+_hx_pin shown fragment `"dash kdensity date"'
 
 mata: _hx_pins_check()
 if `hx_badpins' > 0 exit 9

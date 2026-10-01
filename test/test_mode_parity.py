@@ -1774,6 +1774,23 @@ DATE_CORPUS = [
           [plot_for("line", yvar="mpg", xvar="when")], _W,
           go={"xline": "15342", "xlabel": "15340 15345 \"mid\" 15349",
               "xscale": "range(15339 15350)"}),
+    # WP-29 P0.8 (section 05): computed layers of a date in its units.
+    _case("a histogram of a date, width() and start() in days",
+          [plot_for("histogram", {"width": "3", "start": "15340"},
+                    var="when")], _W),
+    _case("a kdensity of a monthly date",
+          [plot_for("kdensity", {"bwidth": "1"}, var="when")],
+          {"formats": {"when": "%tm"}}),
+    _case("an lpoly over a date, bwidth() in days",
+          [plot_for("scatter", yvar="mpg", xvar="when"),
+           plot_for("lpoly", {"bwidth": "3"}, yvar="mpg", xvar="when")], _W),
+    # D05-1 struck (01oct2026): a lone fit keeps the date axis.
+    _case("a lone lfit over a date keeps the date axis",
+          [plot_for("lfit", yvar="mpg", xvar="when")], _W),
+    # D05-4's mixed axis (section 05 Evidence 8).
+    _case("a date fit on an axis shared with a number",
+          [plot_for("scatter", yvar="mpg", xvar="weight"),
+           plot_for("lfit", yvar="mpg", xvar="when")], _W),
     # WP-28 B2: the extent after the layers, the same in both modes.
     _case("yscale(range(100))", [_sc()], None, {"yscale": "range(100)"}),
     _case("yscale(r(0 100) rev)", [_sc()], None, {"yscale": "r(0 100) rev"}),
