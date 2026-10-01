@@ -235,6 +235,34 @@ and now matches Stata.
   exactly, and a negative number or one over 100 as colorlevels(5).
   (follow-up to GAPS2 X2)
 
+**WP-29 (drop-in P0, 30sep2026)**
+
+<!-- WP-29 P0.1 -->
+
+<!-- WP-29 P0.2 -->
+
+<!-- WP-29 P0.3 -->
+
+<!-- WP-29 P0.4 -->
+
+<!-- WP-29 P0.5 -->
+
+<!-- WP-29 P0.6 -->
+
+<!-- WP-29 P0.7 -->
+
+<!-- WP-29 P0.8 -->
+
+<!-- WP-29 P0.9 -->
+
+<!-- WP-29 P0.15 -->
+
+<!-- WP-29 P0.16 -->
+
+<!-- WP-29 P0.18 -->
+
+<!-- WP-29 P0.20 -->
+
 ### Security
 
 - Saved and served pages carry a `default-src 'none'` Content Security
@@ -270,6 +298,16 @@ and now matches Stata.
 - In the `csv` download, a text cell that begins with `=`, `+`, `-`, `@`, a
   tab or a carriage return is prefixed with an apostrophe to guard against
   CSV injection. (WP-21)
+
+<!-- WP-29 P0.11 -->
+
+<!-- WP-29 P0.12a -->
+
+<!-- WP-29 P0.12b -->
+
+<!-- WP-29 P0.13 -->
+
+<!-- WP-29 P0.14 -->
 
 ### New
 
@@ -436,6 +474,14 @@ and now matches Stata.
   a fit or a histogram. `colorvar()`, `mlabel()`, `hover()` and `by()`
   still take a string variable. (WP-28, G2)
 
+<!-- WP-29 P0.1 -->
+
+<!-- WP-29 P0.5 -->
+
+<!-- WP-29 P0.6 -->
+
+<!-- WP-29 P0.12a -->
+
 ### Removed
 
 - `dash_setup` no longer installs or checks scipy or statsmodels. No
@@ -462,6 +508,21 @@ and now matches Stata.
   anything below them, printing the exact `pip install` command for the
   Python Stata is linked to and installing nothing, and the generated
   server app opens with `from __future__ import annotations`. (WP-28, K2)
+
+<!-- WP-29 P0.19 -->
+
+### Fixed in WP-29
+
+Failures the drop-in re-audit of 30sep2026 ranked P0 that WP-29 fixed
+without changing a drawn result; the results that changed are the WP-29
+group under Results that change, and the security, behaviour and
+requirement changes sit in their own lists.
+
+<!-- WP-29 P0.10 -->
+
+<!-- WP-29 P0.13 -->
+
+<!-- WP-29 P0.17 -->
 
 ### Fixed in WP-28
 

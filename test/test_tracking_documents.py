@@ -34,6 +34,13 @@ file holds, mechanically:
    Tracked line 'Closed in WP-nn, BUGS.md "title", commit sha' naming it,
    a closed BUGS.md entry and a commit that exists, and every such Tracked
    line is listed by its package.
+8. WP-29's P0 entries (.ultraplan/wp29/index.md A4) are open in BUGS.md
+   in the form "Not fixed because WP-29 section NN has not landed. Graded
+   S1|S2 (WP-29): ..." and listed in WP29_OPEN, which alone exempts them
+   from the release guard, with a "<!-- WP-29 <id> -->" marker in each
+   CHANGELOG list WP29_LISTS names, until their section lands; then the
+   key is gone, no marker is left, each of those lists holds a line ending
+   "(WP-29, <id>)", and a closed entry's Resolution holds "(WP-29, <id>)".
 
 Run against the documents of 4ede074, before WP-23 changed them, 11 of
 these 24 tests failed, each where the documents were wrong: 26 closed
@@ -502,8 +509,12 @@ class TestNoOpenEntryBlocksARelease:
 
     def test_no_open_entry_is_s1_or_s2(self, bugs):
         entries, _p = bugs
+        # WP-29's P0 entries stay open, S1 or S2, until their sections land
+        # (WP29_OPEN); TestWp29Tracking holds each one to its WP-29 form.
+        allowed = set(WP29_OPEN.values())
         bad = ["line %d: %s %s" % (e["line"], g, e["title"][:90])
                for e in entries if not e["closed"]
+               and e["title"] not in allowed
                for g in self._GRADE.findall(e["fields"].get("Resolution", ""))
                if g in ("S1", "S2")]
         assert not bad, ("open S1/S2 BUGS.md entries block the release:\n"
@@ -1224,3 +1235,295 @@ class TestGaps2AndRoadmapAgree:
         # the GAPS2 reader must not mistake the heading, or anything past
         # it, for a WP section: pins the same hazard for the new field.
         _parse_roadmap_gaps2(roadmap)
+
+
+# ===========================================================================
+# WP-29's P0 entries (item 8 of the module docstring)
+# ===========================================================================
+
+#: WP-29 (.ultraplan/wp29/index.md, decision A4): the BUGS.md entries the
+#: tracking foundation (S01) opened, one per P0 entry, by id, with their
+#: exact titles.  Each stays open, graded S1 or S2, until the section that
+#: fixes it lands; that section closes the entry in place and deletes its key
+#: here in the same commit.  test_no_open_entry_is_s1_or_s2 skips exactly
+#: these titles, and TestWp29Tracking fails on a key whose entry is missing,
+#: closed or not in the WP-29 open form, so the allowance cannot outlive its
+#: reason.  The closeout (S15) leaves it {}.
+WP29_OPEN = {
+    "P0.1": "line, connected, area, rline, rarea and rconnected are joined in x order, never in the data's order as twoway joins them, and sort(varlist) is ignored",
+    "P0.2": "by() panels are drawn on independent scales by default, and by(, yrescale) is named and ignored",
+    "P0.3": "An unlabelled variable gets a blank axis title, a legend key named after the plot type and a blank tooltip label, where twoway uses the variable name",
+    "P0.4": "A title sub-option with no text, such as ytitle(, size(large)), deletes the default axis title",
+    "P0.5": "axis(2) on ylabel(), yscale(), yline() and xtick() is applied to the first axis",
+    "P0.6": "function evaluates ^ from the right and accepts pi and e, which twoway refuses",
+    "P0.7": "The lpoly and lpolyci default bandwidth ignores kernel() and degree() and misses Stata's rule of thumb",
+    "P0.8": "Computed layers on a date variable run in epoch milliseconds, so densities are per ms, width(), start() and bwidth() are read as ms, and lpoly draws nothing",
+    "P0.9": "The lpolyci band is a bootstrap percentile band, not Stata's analytic band, and pwidth() and var() are ignored",
+    "P0.10": "A variable named only in hover() is never exported, so its tooltip field is empty in both modes",
+    "P0.11": "The saved page embeds every row of each drawn variable, including rows that if and in exclude",
+    "P0.12a": "The served app has no credential, so any local account can open a session and read the data",
+    "P0.12b": "The served app, spec and data files are written with the default umask, readable by other accounts where the temp directory is shared",
+    "P0.13": "The served app outlives a killed Stata, its files survive a crash, and Break cannot stop dash serve",
+    "P0.14": "One-line preview pages are never deleted and are written 0644, each a copy of the graph's data",
+    "P0.15": "After a filter move the saved page registers a layer's own if rows, not their intersection with its panel or graph qualifier",
+    "P0.16": "The colorvar() colour range ignores a per-plot if on the saved page and a linked graph's qualifier in both modes",
+    "P0.17": "Fits, smooths and densities on the saved page stay fitted to all rows after a filter move, with no cue",
+    "P0.18": "The served redraw keeps build-time bar and rbar widths and an emptied layer's style after a filter move",
+    "P0.19": "dash_setup fails on PEP 668 externally managed Pythons, and the commands it prints fail too",
+    "P0.20": "KPI sd, var, iqr, cv and sum of a date variable are computed in epoch milliseconds",
+}
+
+#: Every WP-29 P0 entry, permanently, and the CHANGELOG.md lists of the
+#: current release its line belongs in (index.md "P0 coverage").  S01 put
+#: one ``<!-- WP-29 <id> -->`` marker in each; the closing commit replaces
+#: each marker in place with a line ending ``(WP-29, <id>)``.
+WP29_LISTS = {
+    "P0.1": ("Results that change", "Changed behaviour"),
+    "P0.2": ("Results that change",),
+    "P0.3": ("Results that change",),
+    "P0.4": ("Results that change",),
+    "P0.5": ("Results that change", "Changed behaviour"),
+    "P0.6": ("Results that change", "Changed behaviour"),
+    "P0.7": ("Results that change",),
+    "P0.8": ("Results that change",),
+    "P0.9": ("Results that change",),
+    "P0.10": ("Fixed in WP-29",),
+    "P0.11": ("Security",),
+    "P0.12a": ("Security", "Changed behaviour"),
+    "P0.12b": ("Security",),
+    "P0.13": ("Security", "Fixed in WP-29"),
+    "P0.14": ("Security",),
+    "P0.15": ("Results that change",),
+    "P0.16": ("Results that change",),
+    "P0.17": ("Fixed in WP-29",),
+    "P0.18": ("Results that change",),
+    "P0.19": ("Requirements",),
+    "P0.20": ("Results that change",),
+}
+
+#: The 21 ids, in P0 order.
+WP29_ALL = tuple(WP29_LISTS)
+
+_WP29_MARKER = re.compile(r"<!-- WP-29 (P0\.\d{1,2}[ab]?) -->")
+_WP29_OPEN_FORM = re.compile(
+    r"^  - Resolution: Not fixed because WP-29 section \d{2} has not landed\."
+    r" Graded S[12] \(WP-29\): \S")
+
+
+def _wp29_markers(text):
+    """The ids of every ``<!-- WP-29 <id> -->`` marker in *text*, in order,
+    repeats kept."""
+    return _WP29_MARKER.findall(text)
+
+
+def _changelog_lists(text):
+    """{heading: body} for every ``### `` list of the newest release (the
+    first ``## `` section) of a CHANGELOG.md text.  The heading is the text
+    after ``### ``; the body runs to the next ``### `` or ``## `` line."""
+    releases = re.split(r"^## ", text, flags=re.M)
+    if len(releases) < 2:
+        return {}
+    parts = re.split(r"^### (.+)$", releases[1], flags=re.M)
+    return {parts[i].strip(): parts[i + 1] for i in range(1, len(parts), 2)}
+
+
+def _changelog_list(lists, name):
+    """The body of the list *name* names: the heading equal to it, or that
+    starts with it and a parenthesis ("Changed behaviour (may need ...)");
+    None unless exactly one heading matches."""
+    hits = [b for h, b in lists.items()
+            if h == name or h.startswith(name + " (")]
+    return hits[0] if len(hits) == 1 else None
+
+
+def _wp29_open_problems(open_map, entries):
+    """What is wrong with the allowance *open_map* ({id: title}) against the
+    BUGS.md *entries*: an id WP-29 lacks, a title with a double quote or
+    shared by two ids, a title no entry or two entries carry, an entry that
+    is closed (the allowance is stale), or one not in the WP-29 open form."""
+    bad = []
+    unknown = sorted(set(open_map) - set(WP29_ALL))
+    if unknown:
+        bad.append("ids WP-29 does not have: %s" % unknown)
+    titles = list(open_map.values())
+    if len(set(titles)) != len(titles):
+        bad.append("two ids share one title")
+    for pid, title in open_map.items():
+        if '"' in title:
+            bad.append("%s: the title holds a double quote" % pid)
+        match = [e for e in entries if e["title"] == title]
+        if len(match) != 1:
+            bad.append("%s: %d BUGS.md entries are titled %r"
+                       % (pid, len(match), title))
+            continue
+        e = match[0]
+        if e["closed"]:
+            bad.append("%s: %r is closed; delete its WP29_OPEN key"
+                       % (pid, title))
+        elif not _WP29_OPEN_FORM.match(e["fields"].get("Resolution", "")):
+            bad.append("%s: %r's Resolution is not 'Not fixed because WP-29 "
+                       "section NN has not landed. Graded S1|S2 (WP-29): ...'"
+                       % (pid, title))
+    return bad
+
+
+def _wp29_marker_problems(open_ids, markers):
+    """A marker naming no WP-29 id, and an open id with no marker left."""
+    bad = ["a marker names %s, which WP-29 does not have" % m
+           for m in sorted(set(markers) - set(WP29_ALL))]
+    bad += ["%s is open and CHANGELOG.md holds no marker for it" % pid
+            for pid in WP29_ALL if pid in open_ids and pid not in markers]
+    return bad
+
+
+def _wp29_closure_problems(open_ids, markers, entries):
+    """A closed id (in WP29_ALL, not open) whose marker is still in the
+    CHANGELOG, or whose (WP-29, <id>) no closed entry's Resolution holds."""
+    bad = []
+    for pid in WP29_ALL:
+        if pid in open_ids:
+            continue
+        if pid in markers:
+            bad.append("%s is closed and CHANGELOG.md still holds its "
+                       "marker" % pid)
+        tag = "(WP-29, %s)" % pid
+        if not [e for e in entries if e["closed"]
+                and tag in e["fields"].get("Resolution", "")]:
+            bad.append("%s is closed and no closed BUGS.md entry's "
+                       "Resolution holds %s" % (pid, tag))
+    return bad
+
+
+def _wp29_list_problems(lists_map, changelog):
+    """Each id's marker or its (WP-29, <id>) line must sit in every list
+    *lists_map* names for it, and its marker nowhere else."""
+    lists = _changelog_lists(changelog)
+    bad = []
+    names = sorted({n for ls in lists_map.values() for n in ls})
+    bodies = {n: _changelog_list(lists, n) for n in names}
+    for n in names:
+        if bodies[n] is None:
+            bad.append("CHANGELOG.md has no single '### %s' list" % n)
+    for pid, wanted in lists_map.items():
+        mark, line = "<!-- WP-29 %s -->" % pid, "(WP-29, %s)" % pid
+        for n in wanted:
+            body = bodies.get(n)
+            if body is not None and mark not in body and line not in body:
+                bad.append("%s: '### %s' holds neither its marker nor a line "
+                           "ending %s" % (pid, n, line))
+        for h, body in lists.items():
+            if mark in body and not any(
+                    h == n or h.startswith(n + " (") for n in wanted):
+                bad.append("%s: its marker sits under '### %s'" % (pid, h))
+    return bad
+
+
+class TestWp29Tracking:
+    """WP-29's 21 P0 entries (index.md A4): open in BUGS.md with a marker in
+    each CHANGELOG list they belong to until their section lands, then
+    closed with no marker left and a Resolution naming (WP-29, <id>)."""
+
+    def test_every_allowed_title_is_an_open_entry(self, bugs):
+        entries, _p = bugs
+        bad = _wp29_open_problems(WP29_OPEN, entries)
+        assert not bad, "\n".join(bad)
+
+    def test_an_open_p0_keeps_its_marker(self):
+        bad = _wp29_marker_problems(
+            set(WP29_OPEN), _wp29_markers(_read("CHANGELOG.md")))
+        assert not bad, "\n".join(bad)
+
+    def test_a_closed_p0_has_no_marker_and_a_resolution(self, bugs):
+        entries, _p = bugs
+        bad = _wp29_closure_problems(
+            set(WP29_OPEN), set(_wp29_markers(_read("CHANGELOG.md"))),
+            entries)
+        assert not bad, "\n".join(bad)
+
+    def test_each_p0_sits_in_its_changelog_lists(self):
+        assert WP29_ALL == tuple(WP29_LISTS) and len(WP29_ALL) == 21
+        bad = _wp29_list_problems(WP29_LISTS, _read("CHANGELOG.md"))
+        assert not bad, "\n".join(bad)
+
+    def test_the_marker_reader(self):
+        text = ("# Changelog\n\n## 1.0, 01jan2027\n\nintro\n\n"
+                "### Results that change\n\n- a line. (WP-29, P0.2)\n"
+                "<!-- WP-29 P0.1 -->\n\n"
+                "### Changed behaviour (may need your do-files changed)\n\n"
+                "<!-- WP-29 P0.1 -->\n<!-- WP-29 P0.12a -->\n\n"
+                "### Fixed in WP-29\n\n<!-- WP-29 P0.13 -->\n\n"
+                "## 0.9, 01jan2026\n\n### Results that change\n\n"
+                "<!-- WP-29 P0.99 -->\n")
+        assert _wp29_markers(text) == ["P0.1", "P0.1", "P0.12a", "P0.13",
+                                       "P0.99"]
+        assert _wp29_markers("<!-- WP-28 B1 --> <!-- WP-29 P0.1-->") == []
+        lists = _changelog_lists(text)
+        assert list(lists) == [
+            "Results that change",
+            "Changed behaviour (may need your do-files changed)",
+            "Fixed in WP-29"]
+        assert "P0.99" not in "".join(lists.values())
+        assert _changelog_list(lists, "Changed behaviour").startswith(
+            "\n\n<!-- WP-29 P0.1 -->")
+        assert _changelog_list(lists, "Security") is None
+        assert _changelog_lists("no release heading") == {}
+
+    def test_the_wp29_problem_readers(self):
+        def entry(title, closed, res):
+            return {"title": title, "closed": closed,
+                    "fields": {"Resolution": "  - Resolution: " + res}}
+        open_form = ("Not fixed because WP-29 section 02 has not landed. "
+                     "Graded S1 (WP-29): wrong path.")
+        good = [entry("T1", False, open_form),
+                entry("T2", True, "Fixed 01oct2026 (WP-29, P0.2). Done.")]
+        assert _wp29_open_problems({"P0.1": "T1"}, good) == []
+        for open_map, entries, says in (
+                ({"P0.1": "T2"}, good, "is closed"),
+                ({"P0.1": "T9"}, good, "0 BUGS.md entries"),
+                ({"P0.1": "T1"}, good + [entry("T1", False, open_form)],
+                 "2 BUGS.md entries"),
+                ({"P0.1": "T1"},
+                 [entry("T1", False, "Not fixed because x. Graded S3 "
+                        "(WP-27): y.")], "not 'Not fixed because WP-29"),
+                ({"P0.99": "T1"}, good, "does not have"),
+                ({"P0.1": 'a "q"'}, [entry('a "q"', False, open_form)],
+                 "double quote"),
+                ({"P0.1": "T1", "P0.3": "T1"}, good, "share one title")):
+            bad = _wp29_open_problems(open_map, entries)
+            assert any(says in b for b in bad), (says, bad)
+
+        assert _wp29_marker_problems({"P0.1"}, ["P0.1"]) == []
+        assert _wp29_marker_problems({"P0.1"}, []) == [
+            "P0.1 is open and CHANGELOG.md holds no marker for it"]
+        assert _wp29_marker_problems(set(), ["P0.12"]) == [
+            "a marker names P0.12, which WP-29 does not have"]
+
+        others = set(WP29_ALL) - {"P0.2"}
+        assert _wp29_closure_problems(others, others, good) == []
+        assert _wp29_closure_problems(others, others | {"P0.2"}, good) == [
+            "P0.2 is closed and CHANGELOG.md still holds its marker"]
+        assert _wp29_closure_problems(others, others, good[:1]) == [
+            "P0.2 is closed and no closed BUGS.md entry's Resolution "
+            "holds (WP-29, P0.2)"]
+        # (WP-29, P0.1) is not read inside (WP-29, P0.12a) or (WP-29, P0.10)
+        near = [entry("T3", True, "Fixed (WP-29, P0.12a). (WP-29, P0.10).")]
+        assert _wp29_closure_problems(set(WP29_ALL) - {"P0.1"}, set(),
+                                      near) == [
+            "P0.1 is closed and no closed BUGS.md entry's Resolution "
+            "holds (WP-29, P0.1)"]
+
+        log = ("## 1.0\n\n### Results that change\n\n<!-- WP-29 P0.1 -->\n"
+               "### Changed behaviour (may need your do-files changed)\n\n"
+               "- a line. (WP-29, P0.1)\n### Security\n\n"
+               "<!-- WP-29 P0.11 -->\n")
+        rules = {"P0.1": ("Results that change", "Changed behaviour"),
+                 "P0.11": ("Security",)}
+        assert _wp29_list_problems(rules, log) == []
+        assert _wp29_list_problems(
+            {"P0.1": ("Results that change", "Changed behaviour"),
+             "P0.11": ("Results that change",)}, log) == [
+            "P0.11: '### Results that change' holds neither its marker nor "
+            "a line ending (WP-29, P0.11)",
+            "P0.11: its marker sits under '### Security'"]
+        assert _wp29_list_problems({"P0.10": ("Fixed in WP-29",)}, log) == [
+            "CHANGELOG.md has no single '### Fixed in WP-29' list"]

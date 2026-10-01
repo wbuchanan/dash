@@ -1,0 +1,139 @@
+*! test_wp29_truth.cscript
+*! WP-29's ONE new certification script (.ultraplan/wp29/index.md, A3):
+*! every comparison with twoway's drawing or with Stata's own values that
+*! WP-29's sections need lives here, one block per section, in section
+*! order, so the certification suite grows by one script.  Refusal,
+*! message and return-code checks join the EXISTING script for their area
+*! instead (index.md rule R1); this script never gains one of those.
+*!
+*! Blocks, in section order (extended by each section that lands one):
+*!   S01  scaffold smoke: the helpers load and a twoway SVG is read (W29-01)
+*!
+*! Usage: via run_all_cscripts.do (registered as its block 68).  One
+*! block alone: set WP29_ONLY=S<NN> in the environment of the driver run
+*! (index.md "The cscript driver").  Each block prints "S<NN> start" and
+*! "S<NN> end" with the time, so the closeout can time it.
+
+cscript "WP-29 truth: twoway comparisons" adodir ".."
+
+clear all
+set more off
+
+if `"`c(python_exec)'"' == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+do "cert_helpers.do"
+quietly do "cert_svg.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+global dash_nobrowser 1
+
+// ----------------------------------------------------------------
+// Tally helpers -- test_gaps2_truth.cscript's _gt_expect/_gt_done,
+// renamed _w29_ for this script.
+// ----------------------------------------------------------------
+global w29_nfail    = 0
+global w29_faillist ""
+global w29_bad      = 0
+global w29_ncase    = 0
+
+capture program drop _w29_expect
+program define _w29_expect
+    version 16.0
+    args id cond msg
+    if !(`cond') {
+        display as error `"`id' FAIL: `macval(msg)'"'
+        global w29_bad = 1
+    }
+end
+
+capture program drop _w29_done
+program define _w29_done
+    version 16.0
+    args id msg
+    if ${w29_bad} {
+        global w29_nfail    = ${w29_nfail} + 1
+        global w29_faillist "${w29_faillist} `id'"
+    }
+    else display as text `"`id' PASS: `macval(msg)'"'
+    global w29_bad   = 0
+    global w29_ncase = ${w29_ncase} + 1
+end
+
+// A fresh directory for this run's files, never one that already exists:
+// a fixed name in a shared temp directory could be planted by another
+// account (rule 1), so a name Stata has not handed out before is made and
+// the run fails if it cannot be.
+tempfile w29_base
+local w29_work "`w29_base'_w29"
+capture mkdir "`w29_work'"
+if _rc {
+    display as error "test_wp29_truth: cannot create the work directory `w29_work' (rc `=_rc')"
+    exit 9
+}
+
+* ==== S01 scaffold: the helpers load and a twoway SVG is read ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S01") {
+    display as text "S01 start `c(current_time)'"
+
+    // ------------------------------------------------------------
+    // W29-01: cert_svg_export and cert_svg_texts on one twoway scatter,
+    // and dash's own programs are loaded from this tree.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    quietly twoway scatter mpg weight, name(w29s01, replace)
+    cert_svg_export, name(w29s01) file("`w29_work'/w29s01.svg")
+    local s01_rc   = r(rc)
+    local s01_file "`r(file)'"
+    _w29_expect W29-01 "(`s01_rc' == 0)" "cert_svg_export rc `s01_rc'"
+    capture confirm file "`s01_file'"
+    _w29_expect W29-01 "(_rc == 0)" "r(file) `s01_file' does not exist"
+    cert_svg_texts, file("`s01_file'")
+    local s01_n    = r(n)
+    local s01_list "`r(list)'"
+    _w29_expect W29-01 "(`s01_n' > 0)" "cert_svg_texts found no text elements"
+    capture program list _dash_serve
+    _w29_expect W29-01 "(_rc == 0)" "dash.ado's _dash_serve is not loaded"
+    _w29_done W29-01 "a twoway SVG was written and read (`s01_n' texts); dash is loaded"
+
+    capture erase "`s01_file'"
+    capture erase "`s01_list'"
+    capture graph drop w29s01
+    display as text "S01 end `c(current_time)'"
+}
+* ==== end S01 ====
+
+* ==== append new blocks above this line ====
+
+// ----------------------------------------------------------------
+// Summary (test_gaps2_truth.cscript's shape)
+// ----------------------------------------------------------------
+capture graph drop _all
+capture dash clear
+capture rmdir "`w29_work'"
+local nfail    = ${w29_nfail}
+local faillist "${w29_faillist}"
+local ncase    = ${w29_ncase}
+local only : env WP29_ONLY
+macro drop w29_nfail w29_faillist w29_bad w29_ncase
+display as text ""
+display as text "============================================================"
+if `ncase' == 0 {
+    // A WP29_ONLY that names no block ran nothing: that is not a pass.
+    display as error "  test_wp29_truth: no case ran (WP29_ONLY=`only')"
+    display as text "============================================================"
+    exit 9
+}
+else if `nfail' == 0 {
+    display as text "  test_wp29_truth: ALL CHECKS PASSED"
+    display as text "============================================================"
+}
+else {
+    display as error "  test_wp29_truth: `nfail' CHECK(S) FAILED"
+    display as error "  failing:`faillist'"
+    display as text "============================================================"
+    exit 9
+}

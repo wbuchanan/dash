@@ -289,10 +289,11 @@ class TestTheChecksReachEveryScript:
         # it (24sep2026); plus WP-28's test_gaps2_truth, the one script the
         # package adds (review D11): every twoway/Stata-value comparison of
         # the GAPS2 fix package lives in this one script, one block per
-        # section, so 66 now.  An empty
+        # section, so 66; plus WP-29's test_wp29_truth, the one script that
+        # package adds (.ultraplan/wp29/index.md A3), so 67 now.  An empty
         # glob would leave every per-script test above with no parameters,
         # and pytest reports that as a skip, not a failure.
-        assert len(_CSCRIPTS) == 66, (
+        assert len(_CSCRIPTS) == 67, (
             f"{len(_CSCRIPTS)} .cscript files found in {_HERE}"
         )
 
@@ -309,8 +310,9 @@ class TestTheChecksReachEveryScript:
         # runs no Python.  And WP-27's test_qualifier_in_stata and
         # test_string_values.  WP-28's test_gaps2_truth gates on
         # c(python_exec) itself (its own line, not cert_svg.do's, which
-        # loads after it and would otherwise be the only carrier), so 48.
-        assert len(names) == 48, f"{len(names)}: {sorted(names)}"
+        # loads after it and would otherwise be the only carrier), so 48;
+        # WP-29's test_wp29_truth gates the same way, so 49.
+        assert len(names) == 49, f"{len(names)}: {sorted(names)}"
 
     def test_the_import_probes_are_found(self):
         with_probes = [_name(p) for p in _CSCRIPTS
@@ -868,3 +870,107 @@ class TestJsonioIsNotADependency:
             code = _code_only(fh.read())
         assert "jsonio" not in code, (
             "dash_setup.ado still checks or installs jsonio")
+
+
+# ---------------------------------------------------------------------------
+# WP-29's truth script: one block per section, gated, closed, in order
+# ---------------------------------------------------------------------------
+# test/test_wp29_truth.cscript is WP-29's one new certification script
+# (.ultraplan/wp29/index.md A3, merge rule R1).  The fix sections append
+# blocks to it from parallel worktrees: a block that is not gated cannot be
+# run alone (WP29_ONLY=S<NN>), one that is not closed swallows the next,
+# and one below the marker runs after the summary has judged the run.
+
+_WP29_TRUTH = os.path.join(_HERE, "test_wp29_truth.cscript")
+_W29_OPEN = re.compile(r"^\* ==== (S\d{2}) (.+) ====$")
+_W29_CLOSE = re.compile(r"^\* ==== end (S\d{2}) ====$")
+_W29_MARK = "* ==== append new blocks above this line ===="
+
+
+def _wp29_blocks(src):
+    """``(blocks, problems)`` for the truth script's text.  A block is
+    ``(section, header line, end line)``; a problem names a marker line that
+    is not there exactly once, or a block that is not closed by its own end
+    line, not gated by its own section, below the marker, or out of section
+    order."""
+    lines = src.split("\n")
+    bad = []
+    marks = [n for n, ln in enumerate(lines, 1) if ln.rstrip() == _W29_MARK]
+    if len(marks) != 1:
+        bad.append("the line %r appears %d times" % (_W29_MARK, len(marks)))
+    mark = marks[0] if marks else len(lines) + 1
+    blocks, cur = [], None
+    for n, ln in enumerate(lines, 1):
+        o, c = _W29_OPEN.match(ln.rstrip()), _W29_CLOSE.match(ln.rstrip())
+        if o:
+            if cur:
+                bad.append("%s (line %d) is not closed before line %d"
+                           % (cur[0], cur[1], n))
+            cur = (o.group(1), n)
+        elif c:
+            if cur is None or c.group(1) != cur[0]:
+                bad.append("line %d closes %s, which is not the open block"
+                           % (n, c.group(1)))
+            else:
+                blocks.append((cur[0], cur[1], n))
+            cur = None
+    if cur:
+        bad.append("%s (line %d) is never closed" % cur)
+    for k, (sec, first, last) in enumerate(blocks):
+        code = [ln.strip() for ln in lines[first:last - 1] if ln.strip()]
+        if code[:2] != ["local only : env WP29_ONLY",
+                        'if inlist("`only\'", "", "%s") {' % sec]:
+            bad.append("%s (line %d) is not gated by WP29_ONLY=%s"
+                       % (sec, first, sec))
+        if last > mark:
+            bad.append("%s (line %d) is below the marker" % (sec, first))
+        if k and sec < blocks[k - 1][0]:
+            bad.append("%s (line %d) follows %s: blocks go in section order"
+                       % (sec, first, blocks[k - 1][0]))
+    return blocks, bad
+
+
+class TestTheWp29TruthScript:
+    """The scaffold section 01 writes, and every block a later section
+    appends to it."""
+
+    def test_the_scaffold_is_in_order(self):
+        text = _read(_WP29_TRUTH)
+        order = ['cscript "WP-29 truth', "SKIP: Python not available.",
+                 'do "cert_helpers.do"', 'do "cert_svg.do"', "* ==== S01 ",
+                 "local only : env WP29_ONLY", "* ==== end S01 ====",
+                 _W29_MARK, "test_wp29_truth: ALL CHECKS PASSED"]
+        positions = [text.find(s) for s in order]
+        assert -1 not in positions, dict(zip(order, positions))
+        assert positions == sorted(positions), (order, positions)
+        assert "capture python:" not in text
+
+    def test_every_block_is_gated_closed_and_in_section_order(self):
+        blocks, bad = _wp29_blocks(_read(_WP29_TRUTH))
+        assert not bad, "\n".join(bad)
+        assert blocks and blocks[0][0] == "S01", blocks
+
+    def test_the_block_reader(self):
+        good = ('cscript "x"\n'
+                "* ==== S01 scaffold ====\nlocal only : env WP29_ONLY\n"
+                'if inlist("`only\'", "", "S01") {\n}\n'
+                "* ==== end S01 ====\n"
+                "* ==== S10 P0.5: axis(2) ====\nlocal only : env WP29_ONLY\n"
+                'if inlist("`only\'", "", "S10") {\n}\n'
+                "* ==== end S10 ====\n" + _W29_MARK + "\nexit 9\n")
+        blocks, bad = _wp29_blocks(good)
+        assert bad == [], bad
+        assert blocks == [("S01", 2, 6), ("S10", 7, 11)], blocks
+        moved = good.replace(_W29_MARK + "\n", "")
+        for text, says in (
+                (good.replace('"S10") {', '"S01") {'), "not gated"),
+                (good.replace("* ==== end S10 ====\n", ""), "never closed"),
+                (good.replace("* ==== end S01 ====\n", ""),
+                 "not closed before"),
+                (good.replace("S10", "S00"), "section order"),
+                (moved, "appears 0 times"),
+                (moved.replace('cscript "x"\n',
+                               'cscript "x"\n' + _W29_MARK + "\n"),
+                 "below the marker")):
+            _blocks, bad = _wp29_blocks(text)
+            assert any(says in b for b in bad), (says, bad)

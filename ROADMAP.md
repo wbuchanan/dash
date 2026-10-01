@@ -4445,6 +4445,224 @@ commands, output and the resolved state of every `GAPS.md` finding — in
 
 ---
 
+## WP-29 · Close the drop-in P0 gaps
+
+**GAPS2 closed:** (filled at closeout) · **Severity:** S1 (19), S2 (2) · **Effort:** XL · **Depends on:** WP-28
+
+> **User story.** As the Stata user pasting twoway syntax, I want dash to
+> draw what twoway draws -- joins, scales, titles, axes, functions,
+> smooths, bands and dates -- with nothing I named dropped; as the
+> dashboard publisher, I want the page and the served app to carry only
+> the rows a reader may see, to admit only me, and to stop with my Stata
+> session; as the installer, I want dash_setup to work on an externally
+> managed Python; as the maintainer, I want each of the 20 P0 items of the
+> drop-in re-audit (`.ultraplan/handoff/DROPIN-REMAINING.md` section 3, P0,
+> verified at 357c368) closed by a regression test that failed before its
+> fix.
+
+### Business requirements
+
+- **BR-29.1** Join order: data order by default, x order under `sort`,
+  varlist order under `sort(varlist)` (the rightmost copy wins), time
+  order for the ts types, ties stable; in both modes and after a move; an
+  invalid `sort()` name is refused with twoway's message and r(198) (P0.1).
+- **BR-29.2** by() axes: one shared scale per axis by default (x, y, y2,
+  x2, the Total panel included), the union of the drawn data after any
+  move; the rescale forms and their abbreviations give per-panel scales; a
+  `range()` twoway ignores on a rescaled axis is named once, at build
+  time, in both modes (P0.2).
+- **BR-29.3** Text: a variable's label when it is non-empty, else its
+  name; a title sub-option with no text keeps the default text; a typed
+  `""` empties the title; wherever a title, key or tooltip names a
+  variable (P0.3, P0.4).
+- **BR-29.4** axis(#): every routed option draws on the axis it names; an
+  axis number no layer uses is refused with twoway's rc and message;
+  axis-number parsing follows twoway's integer bounds; nothing is dropped
+  unnamed (P0.5).
+- **BR-29.5** function: the points are Stata's own
+  (`twoway__function_gen`), written to round-trip exactly (`%24.17g`); an
+  expression Stata refuses is refused with Stata's rc, before graph-level
+  options are checked; the RNG state matches twoway's (P0.6).
+- **BR-29.6** lpoly: the default bandwidth equals Stata's `r(bwidth)`
+  within 1e-7 relative on exact rows (degree 0/1, x centred within three
+  half-ranges of 0) and within 5e-5 relative on noisy rows (degree 2/3,
+  or an offset x such as years, dates or `weight+20000`), where Stata's
+  own float64 arithmetic varies; a missing or zero `r(bwidth)` draws y=0
+  on every grid point, as twoway does; the lpolyci band at a given
+  `bwidth()` and `pwidth()` or `var()` equals Stata's `lpoly, ci` band
+  within 1e-8 times max(1,|y|), and at the default bandwidths within the
+  bandwidth's tier; for every kernel, degrees 0-3 (the only degrees dash
+  draws; the degree 4-7 constants are unit-tested, not drawn),
+  `pwidth()`, `var()`, weights and the small-x scales where Stata drops
+  pivots, in served recomputes too, with the option checks in twoway's
+  order; the divergences D1-D9 that section 11 measures are documented
+  and pinned (P0.7, P0.9).
+- **BR-29.7** Dates: computed layers and KPI statistics run in Stata units
+  and draw on the date axis; out-of-range bins or points are dropped and
+  named in one note, alike in both modes; no non-finite number reaches page
+  JSON; when every layer is computed and the first is lfit, qfit, lfitci,
+  qfitci, kdensity, lpoly or lpolyci over a date, dash keeps its date axis
+  where twoway labels numbers, a documented divergence (P0.8, P0.20).
+- **BR-29.8** hover(): every named variable is exported, and counted
+  against the data limits, when some layer can show it; a name that is not
+  a variable is refused before any Stata command text is built (P0.10).
+- **BR-29.9** Embedding: the saved page holds a cell only when a layer, a
+  recomputed KPI card, a filter or the csv export reads that variable on
+  that observation; Stata-computed results still use the whole data; both
+  modes number the rows they send 0..m-1 in data order (the saved page's
+  row ids and the served sources' `index`), so no row number reveals an
+  excluded observation; the help discloses the rule (P0.11).
+- **BR-29.10** Served access: without the per-launch token no session,
+  page, autoload, metadata or row reaches a client, under `dash serve`,
+  `python app.py` and `bokeh serve app.py`; the app never runs without a
+  token: started with none, it makes its own, writes its link to a 0600
+  file and prints only that file's path; the key is never printed, except
+  when no link file can be written in any folder dash tries: then one
+  warning line and the link alone are printed once, to the output of
+  whoever started the server, which keeps serving; `/health` and BokehJS
+  static files stay open; tokens are compared in constant time (P0.12a).
+- **BR-29.11** Private files: every temporary copy of the data lives in a
+  per-user directory dash makes 0700, and every file is created 0600; a
+  location that cannot be kept private (a `c(tmpdir)` other accounts can
+  change, a disk that keeps no permissions, a `dash-<uid>` that is not the
+  user's own folder) is never refused: dash proceeds, leaves a planted
+  `dash-<uid>` alone for a 0700 fallback, and prints one note naming the
+  location; as an anti-hijack guard, not for privacy, no write goes
+  through a symbolic link, into a FIFO or device, or over a hard-linked or
+  another account's file, and no replaced app file is started, each ending
+  r(7102); dash starts its served app only from the bytes it wrote, read
+  through a descriptor it opened and verified, never by path, so an app
+  file swapped in after that check never runs; one-line preview pages are
+  private and bounded (unique names, 0600 in a 0700 folder; a session
+  keeps its newest five; `dash clear` removes the session's pages except
+  one a browser was asked to open in the last 60 s; another session's
+  pages are removed only once that session is dead or the page is more
+  than 24 h old; all sessions together keep at most 25); a server app the
+  user names is written 0600 into the folder the user names, which is
+  never refused or re-moded, and pages the user names keep twoway's umask
+  semantics (P0.12b, P0.14).
+- **BR-29.12** Lifecycle: the served app stops within the grace period
+  after its parent Stata dies; no data file stays on disk while it serves;
+  Break stops `dash serve` from every front end and ends it with r(1); the
+  messages name Break, not Ctrl+C, in the GUI (P0.13).
+- **BR-29.13** Saved filters: a linked or by() layer's view stays inside
+  its panel or graph qualifier after any move; a colorvar's domain, levels
+  and bins come from the layer's drawn rows, in both modes, for numeric,
+  string and date colorvars (P0.15, P0.16).
+- **BR-29.14** Stale and redraw: after a move that removed a row of a
+  frozen layer's estimation sample the layer shows a visible cue, cleared
+  when the move is undone; the served app recomputes bar and rbar widths
+  and an emptied layer's style as the saved build does (P0.17, P0.18).
+- **BR-29.15** Setup: on a PEP 668 Python `dash_setup` starts no pip
+  process, names the reason and the `venv()` route, never suggests
+  `--break-system-packages` and ends r(198); `venv(path)` creates,
+  installs into and verifies a private environment and prints how to link
+  Stata to it; printed commands run as printed in cmd.exe and POSIX
+  shells (P0.19).
+- **BR-29.16** Every P0 BUGS.md entry is closed with a Resolution naming
+  tests that exist, every CHANGELOG marker is replaced, and the GAPS2 ids
+  this package lists are closed with commits that exist.
+
+### Technical requirements
+
+- **TR-29.1** The plan is `.ultraplan/wp29/`: `PLAN.md` (context, goals,
+  risks, exit gates) and `index.md` (the 15 sections, the four batches and
+  their merge order, merge rules R1-R8, the cscript driver and gates
+  G0-G11); each section file carries its own TR-NN.k and test plan.
+- **TR-29.2** Tracking (section 01): 21 BUGS.md entries opened in the
+  WP-29 form, the `WP29_OPEN` allowance and `TestWp29Tracking` in
+  `test/test_tracking_documents.py`, 26 CHANGELOG markers in five lists,
+  and the one truth script `test/test_wp29_truth.cscript` (runner block
+  68, gated by `WP29_ONLY=S<NN>`).
+- **TR-29.3** One commit per P0 entry (P0.13 two), subject ending
+  `(WP-29 P0.<n>)`, each on a tree that was never red, its body opening
+  with the failing tests' saved output.
+- **TR-29.4** Both renderers every time: a helper the served app needs is
+  added to the served copy lists and named in `test/function_test_map.py`;
+  `test/test_mode_parity.py` gains each section's corpus cases and its
+  `ALLOWED` set is unchanged.
+
+### Acceptance criteria
+
+- **AC-29.1** The 21 BUGS.md entries section 01 opened are closed; each
+  Resolution holds `(WP-29, P0.<n>)` and names tests that exist;
+  `WP29_OPEN` is empty.
+- **AC-29.2** Each P0 entry's fix commit body opens with its saved failure
+  text, with a `Regression:` line per regression test.
+- **AC-29.3** `test/test_wp29_truth.cscript` runs every section block with
+  every case PASS and no SKIP on a machine with Python; its fixtures carry
+  the `_meta` stamp and are committed.
+- **AC-29.4** `test/test_mode_parity.py` is green with every section's
+  corpus cases, and `ALLOWED` is unchanged.
+- **AC-29.5** Both served-name guards are green, the `__main__` block
+  included.
+- **AC-29.6** The security tests are green: no session, page or data
+  without the token, and an app started without one makes its own and
+  prints only its link file's path, or, when no link file can be written
+  anywhere, prints the link once after a warning line and keeps serving;
+  0600 files in a 0700 root wherever the disk keeps permissions; a
+  location that is not private proceeds with one note, never an error; a
+  link, FIFO or device, hard-linked or foreign file at a target, or a
+  replaced app, refused r(7102); an app path swapped after the launch's
+  check runs nothing but the verified bytes; every preview page 0600 in a
+  0700 folder, at most five per session and 25 in all, removed by `dash
+  clear` (except a page a browser was asked to open in the last 60 s) and
+  once its session is dead; the app exits within the grace period after
+  its parent dies; Break ends `dash serve` with r(1); no non-finite number
+  in page JSON; no saved-page cell outside BR-29.9, and no served `index`
+  value that is an original observation number.
+- **AC-29.7** CHANGELOG.md holds no WP-29 marker; every WP-29 line ends
+  `(WP-29, P0.<n>)`, and each Results line names the command, the old
+  value and the new.
+- **AC-29.8** WP-29 is headed DONE here; each id its `GAPS2 closed` field
+  lists has a GAPS2.md Tracked line `Closed in WP-29, ...` naming a commit
+  that exists; `test/test_tracking_documents.py` is green.
+- **AC-29.9** `make test`, `make test-dev`, `make cert` and `make gate`
+  are green once each on `wp29-p0`, and the cert wall time is reported
+  against the baseline recorded before batch 1.
+- **AC-29.10** No WP-29 commit message names an AI tool or vendor, and no
+  WP-29 commit holds `CLAUDE.md` or `.gitignore`.
+- **AC-29.11** Each commit's change detection showed only its section's
+  symbols, and every HIGH or CRITICAL impact was reported before its edit.
+- **AC-29.12** The merge into `main` is reported, not run, and the
+  worktrees are removed.
+
+### Test plan
+
+`test/test_tracking_documents.py::TestWp29Tracking` checks the entries,
+the allowance and the CHANGELOG markers at every commit; each section's
+regression tests, truth block and parity corpus cases are listed in its
+section file; the closeout runs the full suites, the certification suite
+and the release gate once each.
+
+#### P0 traceability
+
+| P0 | Entry (BUGS.md) | Grade | Section |
+|---|---|---|---|
+| P0.1 | line types joined in x order; sort(varlist) ignored | S1 | 02 |
+| P0.2 | by() panels independently scaled | S1 | 10 |
+| P0.3 | unlabelled variables: blank titles, type-named keys, blank tooltips | S1 | 03 |
+| P0.4 | a title sub-option with no text deletes the title | S1 | 03 |
+| P0.5 | axis(2) on ylabel/yscale/yline/xtick applied to axis 1 | S1 | 10 |
+| P0.6 | function: ^ right-associative, pi and e accepted | S1 | 04 |
+| P0.7 | lpoly/lpolyci default bandwidth wrong | S1 | 11 |
+| P0.8 | computed layers on a date run in ms | S1 | 05 |
+| P0.9 | lpolyci band a bootstrap, not Stata's | S1 | 11 |
+| P0.10 | hover()-only variable never exported | S1 | 06 |
+| P0.11 | saved page embeds rows if/in exclude | S1 | 14 |
+| P0.12a | served app has no credential | S1 | 13 |
+| P0.12b | served app files readable by other accounts | S1 | 08 |
+| P0.13 | served app outlives Stata; Break cannot stop serve | S1 | 08 |
+| P0.14 | one-line preview pages never deleted, 0644 | S2 | 08 |
+| P0.15 | saved filter registers per-plot rows, not the intersection | S1 | 07 |
+| P0.16 | colorvar range ignores qualifiers | S1 | 07 |
+| P0.17 | saved fits stale after a filter move, no cue | S1 | 12 |
+| P0.18 | served redraw keeps build-time bar widths | S1 | 12 |
+| P0.19 | dash_setup fails on PEP 668 Pythons | S2 | 09 |
+| P0.20 | KPI sd/var/iqr/cv/sum of a date in ms | S1 | 05 |
+
+---
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.

@@ -2722,3 +2722,129 @@
   - Description: `dash scatter mpg weight, colorvar(price) colorlevels(1)` was r(198) (so were 0, -1 and 257), and colorlevels(101) to (256) drew that many levels, where twoway draws all of them at rc 0: 0 and 1 as if the option were absent, 2 to 100 exactly, a negative number or one over 100 as colorlevels(5) (measured 30sep2026 from twoway's SVG: 101, 128, 199, 256, 257 and 1000000 drew the five cuts 5,814 8,337 10,860 13,383 of colorlevels(5)). colorlevels(1000000) would also have tried to build a million levels.
   - Suggested fix: Take any integer in dash.ado and map it in the renderer as twoway does.
   - Resolution: Fixed 30sep2026 (follow-up to GAPS2 X2). dash.ado's rule is `colorlevels=int`, and the renderer draws 0 and 1 as if absent, 2 to 100 exactly, and anything else as 5 levels; a fraction is still r(198), as in twoway. Pinned by test/test_colorvar_truth.py::TestColorlevelsOutsideTwoToAHundred and test/test_gaps2_truth.cscript CV-08.
+
+- [ ] Title: line, connected, area, rline, rarea and rconnected are joined in x order, never in the data's order as twoway joins them, and sort(varlist) is ignored
+  - File Names and Line Numbers: dash_render.py at 7421d3d: GlyphMapper.map_line (7852; sort_values(xvar) at 7906), called by map_connected (7981) and map_rconnected (10949, 10952); GlyphMapper.map_area (7988; argsort at 8028); GlyphMapper._masked_order (8630; argsort at 8638), called by map_rarea (10591) and map_rline (10880); dash.sthlp: the Connection order paragraph (3229)
+  - Description: DROPIN-REMAINING.md P0.1, verified at 357c368: line, connected, area, rline, rarea and rconnected always sort by x, so `twoway line y x` without `sort` draws a different picture, with no note; tests pin the x order. twoway joins these types in the data's order and `sort` gives x order (line.sthlp). Sources: GAPS2-A1-a, AUDIT-08, REM-§2-S06-sort, REM-S06-b, GAPS2-A4-o, GAPS2-B12-e, AUDIT-10, GAPS2-G15-b, GAPS2-A1-c.
+  - Suggested fix: WP-29 section 02 (line join order): join every connecting type in the data's order unless sort or sort(varlist) is given, honour sort(varlist) with ties kept in the data's order, in both modes and after a filter move (maintainer decision M1).
+  - Resolution: Not fixed because WP-29 section 02 has not landed. Graded S1 (WP-29): silently wrong output in common use; twoway line y x without sort draws another path, and nothing says so.
+
+- [ ] Title: by() panels are drawn on independent scales by default, and by(, yrescale) is named and ignored
+  - File Names and Line Numbers: dash_render.py at 7421d3d: DashRenderer._expand_by_groups (25660), DashRenderer._make_figure_body (25920; each panel's ranges are limited to its own layers at 26331), _dash_common_count_ticks (20758, the only shared-range path, for #N ticks), ServerAppBuilder._plan_by_groups (29209)
+  - Description: DROPIN-REMAINING.md P0.2, verified at 357c368: a plain `by(foreign)` autoranges each panel separately; axes are shared only when ticks or a range are given explicitly. `by(, yrescale)` is named in the note and ignored. twoway draws by() panels on one common scale unless yrescale or xrescale is given. Sources: GAPS2-B4-a, GAPS2-B4-b.
+  - Suggested fix: WP-29 section 10 (axis(#) routing and by() shared scales): share one range per axis across every panel, the Total panel included, unless yrescale, xrescale or rescale is given, in both modes and after a filter move.
+  - Resolution: Not fixed because WP-29 section 10 has not landed. Graded S1 (WP-29): silently wrong output; panels that look comparable are drawn on different scales.
+
+- [ ] Title: An unlabelled variable gets a blank axis title, a legend key named after the plot type and a blank tooltip label, where twoway uses the variable name
+  - File Names and Line Numbers: dash_render.py at 7421d3d: _dash_axis_labels (18702), _dash_legend_key (23579), GlyphMapper._hover_tool (6193); test/conftest.py: make_data_json (425), which labels every variable and so hides the defect
+  - Description: DROPIN-REMAINING.md P0.3, verified at 357c368: unlabelled variables get blank axis titles, legend keys named after the plot type, and blank tooltip labels; twoway uses the variable name. The test data helper gives every variable a label, which hides this. Sources: REM-08-05-C3b, REM-08-05-C3a, REM-08-05-M3.
+  - Suggested fix: WP-29 section 03 (default and empty titles): use the variable's name wherever its label is empty, in axis titles, legend keys and tooltips, in both modes, and stop the test data helper labelling every variable.
+  - Resolution: Not fixed because WP-29 section 03 has not landed. Graded S1 (WP-29): silently wrong text in common use; most variables in real data have no label.
+
+- [ ] Title: A title sub-option with no text, such as ytitle(, size(large)), deletes the default axis title
+  - File Names and Line Numbers: dash_render.py at 7421d3d: _TEXTBOX_SUBOPT_RE (2751), _textbox_split_point (2790), _dash_axis_labels (18702)
+  - Description: DROPIN-REMAINING.md P0.4, verified at 357c368: `xtitle(, size())` or `ytitle(, color())` with no text deletes the default title. For example, `ytitle(, size(large))` removes the y title in both modes. twoway keeps the default title and restyles it. Sources: CRIT-01.
+  - Suggested fix: WP-29 section 03 (default and empty titles): a title sub-option with no text restyles the default title; only a typed empty string removes it.
+  - Resolution: Not fixed because WP-29 section 03 has not landed. Graded S1 (WP-29): a documented option deletes the title it was asked to restyle, with no note.
+
+- [ ] Title: axis(2) on ylabel(), yscale(), yline() and xtick() is applied to the first axis
+  - File Names and Line Numbers: dash_parse.mata at 7421d3d: _dash_route_axis2 (4893, routes only the title options); dash_render.py at 7421d3d: _dash_add_secondary_axes (20076), _dash_apply_scale_ranges (22749)
+  - Description: DROPIN-REMAINING.md P0.5, verified at 357c368: `axis(2)` on `ylabel`/`yscale`/`yline`/`xtick` is applied to axis 1. `yscale(log axis(2))` logs the primary axis, and the note names only `axis(2)`. `ytitle(, axis(2))` is already routed correctly. Sources: REM-09-02-AXIS-N, GAPS2-B15-a, AUDIT-27, GAPS2-B22-c.
+  - Suggested fix: WP-29 section 10 (axis(#) routing and by() shared scales): route axis(#) on every axis option to the axis it names, and refuse an axis number no layer uses with twoway's return code and message.
+  - Resolution: Not fixed because WP-29 section 10 has not landed. Graded S1 (WP-29): an option is drawn on the wrong axis; yscale(log axis(2)) logs the primary axis.
+
+- [ ] Title: function evaluates ^ from the right and accepts pi and e, which twoway refuses
+  - File Names and Line Numbers: dash_render.py at 7421d3d: GlyphMapper.map_function (12431; _SAFE_FUNCS at 12477), _dash_function_args (24792); dash.ado at 7421d3d: _dash_fn_refuse (5457)
+  - Description: DROPIN-REMAINING.md P0.6, verified at 357c368: `function` evaluates `^` right to left and accepts `pi` and `e`. `2^3^x` at x=2 draws 512 where Stata gives 64. `pi*x` draws, where `twoway` refuses it r(111). Sources: GAPS2-A6-d, GAPS2-C5-g, GAPS2-A6-c.
+  - Suggested fix: WP-29 section 04 (function evaluated by Stata): take the points from Stata's own twoway__function_gen at registration, so the curve and the refusals are Stata's, with the RNG state as twoway leaves it.
+  - Resolution: Not fixed because WP-29 section 04 has not landed. Graded S1 (WP-29): wrong numbers drawn (512 for 64), and commands twoway refuses are drawn.
+
+- [ ] Title: The lpoly and lpolyci default bandwidth ignores kernel() and degree() and misses Stata's rule of thumb
+  - File Names and Line Numbers: dash_render.py at 7421d3d: _LPOLY_ROT_C (229), GlyphMapper._default_lpoly_bwidth (9247), GlyphMapper.map_lpoly (9437), GlyphMapper.map_lpolyci (9525)
+  - Description: DROPIN-REMAINING.md P0.7, verified at 357c368: the lpoly/lpolyci default bandwidth ignores `kernel()` and `degree()` (10-90% too small, e.g. biweight degree 2: 63.8 vs 302.5). Even the Epanechnikov degree 0/1 default is off by -22% to +14%, and 185 vs 77 on a 7-observation sample. Sources: GAPS2-A9-a, GAPS2-A9-b, GAPS2-C1, GAPS2-C13, AUDIT-24, GAPS2-C12-e.
+  - Suggested fix: WP-29 section 11 (lpoly port): port Stata's per-kernel, per-degree rule-of-thumb bandwidth to Python, pinned to Stata's r(bwidth) in both modes and in served recomputes (maintainer decision M2).
+  - Resolution: Not fixed because WP-29 section 11 has not landed. Graded S1 (WP-29): a smooth drawn with the wrong bandwidth, silently.
+
+- [ ] Title: Computed layers on a date variable run in epoch milliseconds, so densities are per ms, width(), start() and bwidth() are read as ms, and lpoly draws nothing
+  - File Names and Line Numbers: dash_render.py at 7421d3d: _stata_dates_to_datetime (326, the loader's conversion to epoch ms), GlyphMapper.map_histogram (10112), GlyphMapper.map_kdensity (10426), GlyphMapper.map_lpoly (9437), GlyphMapper.map_lpolyci (9525)
+  - Description: DROPIN-REMAINING.md P0.8, verified at 357c368: computed layers on a date variable run in milliseconds. histogram/kdensity densities are per ms, and `width()`, `start()` and `bwidth()` are read as ms. lpoly/lpolyci draw nothing. histogram/kdensity put the date axis on Y. Sources: REM-08-05-C6d, REM-08-04-C2, REM-08-05-C6c, REM-08-04-C3a, REM-08-04-C12.
+  - Suggested fix: WP-29 section 05 (date computations in Stata units): compute histograms, densities and smooths of a date in its Stata units and draw them on the date axis, in both modes.
+  - Resolution: Not fixed because WP-29 section 05 has not landed. Graded S1 (WP-29): wrong numbers on every computed layer of a date, and an empty smooth.
+
+- [ ] Title: The lpolyci band is a bootstrap percentile band, not Stata's analytic band, and pwidth() and var() are ignored
+  - File Names and Line Numbers: dash_render.py at 7421d3d: GlyphMapper._bootstrap_ci (6510), GlyphMapper.map_lpolyci (9525)
+  - Description: DROPIN-REMAINING.md P0.9, verified at 357c368: the lpolyci band is a bootstrap percentile band, not Stata's analytic band. Band width is 0.51-1.33 times Stata's, and edges are off by up to 2.25 mpg. `pwidth()` and `var()` are ignored. It costs about 100 times lpoly. Sources: AUDIT-23, GAPS2-A10-a, GAPS2-C7-a, GAPS2-C7-b, GAPS2-A10-b, GAPS2-C7-c, GAPS2-C7-e.
+  - Suggested fix: WP-29 section 11 (lpoly port): port lpolyci's analytic band with pwidth() and var() to Python, pinned to Stata's band, and remove the bootstrap (maintainer decision M2).
+  - Resolution: Not fixed because WP-29 section 11 has not landed. Graded S1 (WP-29): a confidence band drawn 0.51 to 1.33 times Stata's width, silently.
+
+- [ ] Title: A variable named only in hover() is never exported, so its tooltip field is empty in both modes
+  - File Names and Line Numbers: dash.ado at 7421d3d: the export's variable list (5981, mata _dash_extract_vars), _dash_cell_cap (2830-2861); dash_parse.mata at 7421d3d: _dash_extract_vars (2148)
+  - Description: DROPIN-REMAINING.md P0.10, verified at 357c368: a variable named only in `hover()` is never exported. Both routes and both modes drop it silently, with rc 0 and no note. Two existing certification cases pin the defect and must change (WP-29 section 06 names them). Sources: REM-09-07-HOVER-EXPORT, GAPS2-G16-res, REM-09-07-HOVER-TEST.
+  - Suggested fix: WP-29 section 06 (hover() variables exported): export every hover() variable a layer can show and count it against the data limits, in both modes, refusing a name that is not a variable before any command text is built.
+  - Resolution: Not fixed because WP-29 section 06 has not landed. Graded S1 (WP-29): a variable the user named is dropped in silence.
+
+- [ ] Title: The saved page embeds every row of each drawn variable, including rows that if and in exclude
+  - File Names and Line Numbers: dash_render.py at 7421d3d: DashRenderer._make_figure_body (25920); dash.ado at 7421d3d: _dash_write_data (4308)
+  - Description: DROPIN-REMAINING.md P0.11, verified at 357c368: the saved page embeds rows that `if`/`in` exclude. Every row of each drawn variable is in the HTML source, and the help does not disclose it. Sources: GAPS2-I2-a, GAPS2-I2-b.
+  - Suggested fix: WP-29 section 14 (embed only the rows a consumer reads): embed a cell only when a layer, a recomputed KPI card, a filter or the csv export reads that variable on that observation, number the rows both modes send by rank so no row number reveals an excluded observation (the served index included, ratified 01oct2026), and say so in the help.
+  - Resolution: Not fixed because WP-29 section 14 has not landed. Graded S1 (WP-29): data the user excluded is published in the page source, undisclosed.
+
+- [ ] Title: The served app has no credential, so any local account can open a session and read the data
+  - File Names and Line Numbers: dash_render.py at 7421d3d: ServerAppBuilder (28242; the emitted make_document at 29994), main (31888), _dash_launch_app (31944)
+  - Description: DROPIN-REMAINING.md P0.12, verified at 357c368: the served app has no credential. Any local account can open a session and read the data. The help's "only this machine" wording understates this. Sources: GAPS2-I3-a, GAPS2-I3-c, AUDIT-87.
+  - Suggested fix: WP-29 section 13 (served-app token): require a per-launch secret token before any session, page, autoload, metadata or row reaches a client, compare it in constant time, have Stata open the tokenized 127.0.0.1 URL, and never run without a token: an app started without one makes its own and writes its link to a private file, and only if no folder takes that file prints the link once, after a warning, and keeps serving (maintainer decision M4, ratified 01oct2026; round 2, answer A).
+  - Resolution: Not fixed because WP-29 section 13 has not landed. Graded S1 (WP-29): any account on the machine can read the dataset while dash serve runs.
+
+- [ ] Title: The served app, spec and data files are written with the default umask, readable by other accounts where the temp directory is shared
+  - File Names and Line Numbers: dash_render.py at 7421d3d: main (31888; open(output_path, "w") at 31940); dash.ado at 7421d3d: _dash_serve (7588; tempfiles at 7598 and 7652), _dash_write_data (4308)
+  - Description: DROPIN-REMAINING.md P0.12, verified at 357c368: the app and the spec/data JSON are written 0644; on macOS the per-user 0700 temp directory mitigates this, and the shared-/tmp case on Linux is unmeasured. Sources: GAPS2-I3-b, GAPS2-I3-c, AUDIT-87.
+  - Suggested fix: WP-29 section 08 (private files and serve lifecycle): write the app, spec and data files 0600, never through a symlink or into a FIFO, inside a 0700 per-user directory; where a location cannot be kept private, proceed and print one note naming it rather than refuse; start the served app only from the bytes dash wrote, read through a descriptor it opened and verified, never by path (maintainer decision M4, ratified 01oct2026; round 2, answer B).
+  - Resolution: Not fixed because WP-29 section 08 has not landed. Graded S1 (WP-29): other accounts can read the dataset from disk where the temp directory is shared.
+
+- [ ] Title: The served app outlives a killed Stata, its files survive a crash, and Break cannot stop dash serve
+  - File Names and Line Numbers: dash_render.py at 7421d3d: _dash_launch_app (31944; Popen at 31999, KeyboardInterrupt at 32079, proc.wait() at 32083); dash.ado at 7421d3d: _dash_serve (7588; the Ctrl+C message at 7661); dash.sthlp: Ctrl+C at 97, 752, 777, 1423 and 1719
+  - Description: DROPIN-REMAINING.md P0.13, verified at 357c368: killing Stata leaves the server running, holding its port and the data. Temp files survive a crash. Break in GUI Stata cannot stop `dash serve`: sfi `pollstd` is never called. The messages tell GUI users to press Ctrl+C. Sources: GAPS2-F2a, GAPS2-F2b, GAPS2-F4, GAPS2-H2a, GAPS2-F9c, GAPS2-H2b.
+  - Suggested fix: WP-29 section 08 (private files and serve lifecycle): stop the app within a grace period when its parent Stata dies, delete its data files once it serves, poll Break while dash serve blocks so it ends with r(1), and name Break in the messages.
+  - Resolution: Not fixed because WP-29 section 08 has not landed. Graded S1 (WP-29): the data stays served and on disk after Stata dies, and the GUI has no working way to stop dash serve.
+
+- [ ] Title: One-line preview pages are never deleted and are written 0644, each a copy of the graph's data
+  - File Names and Line Numbers: dash.ado at 7421d3d: the one-line form's preview path (5956-5957, tempfile saving_path_tmp plus .html, a name Stata never erases)
+  - Description: DROPIN-REMAINING.md P0.14, verified at 357c368: one-line preview pages are never deleted and are 0644. 39 orphans of about 1.2 MB each were observed. Nothing prunes them and nothing documents them. Sources: GAPS2-X3-a, GAPS2-X3-b, GAPS2-X3-c.
+  - Suggested fix: WP-29 section 08 (private files and serve lifecycle): write previews 0600 under unique names in a 0700 folder of the per-user root, keep at most five per session, and remove them with dash clear and once their session is dead (section 08 R-6, ratified 01oct2026).
+  - Resolution: Not fixed because WP-29 section 08 has not landed. Graded S2 (WP-29): copies of the data are left on disk; not S1 because the command names each preview's path when it writes it.
+
+- [ ] Title: After a filter move the saved page registers a layer's own if rows, not their intersection with its panel or graph qualifier
+  - File Names and Line Numbers: dash_render.py at 7421d3d: DashRenderer._make_figure_body (25920, the per-plot view block), DashRenderer._register_view_filter (25538), DashRenderer._row_ids_for (25604), _FILTER_JS (15812; the view rebuild at 15966)
+  - Description: DROPIN-REMAINING.md P0.15, verified at 357c368: after a filter move, the saved page registers per-plot rows rather than the intersection. In a linked `by()` graph, or a linked graph with its own graph-level qualifier, a layer with its own `if` then draws rows outside its panel. The served app is correct. Sources: REM-06-06-C7.
+  - Suggested fix: WP-29 section 07 (saved filter rows and colorvar domain): register the intersection of the layer's rows with its panel or graph qualifier, so every move keeps the layer inside it.
+  - Resolution: Not fixed because WP-29 section 07 has not landed. Graded S1 (WP-29): rows outside a panel are drawn in it after the first move, silently.
+
+- [ ] Title: The colorvar() colour range ignores a per-plot if on the saved page and a linked graph's qualifier in both modes
+  - File Names and Line Numbers: dash_render.py at 7421d3d: GlyphMapper._apply_colorvar (6916), _dash_colorvar_bins (5828)
+  - Description: DROPIN-REMAINING.md P0.16, verified at 357c368: the `colorvar()` range ignores qualifiers. On the saved page it spans every row under a per-plot `if`. In both modes it ignores a linked graph's graph-level qualifier. Which colour key `twoway` draws under `by()` is not yet measured. Sources: REM-06-06-C8b, REM-06-06-C8b-link.
+  - Suggested fix: WP-29 section 07 (saved filter rows and colorvar domain): take the colorvar domain, levels and bins from the rows the layer draws, in both modes, for numeric, string and date colorvars.
+  - Resolution: Not fixed because WP-29 section 07 has not landed. Graded S1 (WP-29): colours mean other values than the rows drawn, silently.
+
+- [ ] Title: Fits, smooths and densities on the saved page stay fitted to all rows after a filter move, with no cue
+  - File Names and Line Numbers: dash_render.py at 7421d3d: _FILTER_JS (15812); the _dash_agg_config tags that only histogram (10197) and kdensity (10538) carry; dash.sthlp: the sentence that the saved page does not redraw a fitted line (1404)
+  - Description: DROPIN-REMAINING.md P0.17, verified at 357c368: saved-page fits go stale after a filter move, with no cue. Filtered points sit under a fit computed on all rows. Sources: GAPS2-C4, GAPS2-E4a, GAPS2-E4c, AUDIT-38.
+  - Suggested fix: WP-29 section 12 (stale cue and served redraw widths): show a visible stale cue on a frozen computed layer after a move that removes a row of its estimation sample, cleared when the move is undone; the served app keeps refitting, and no estimator is ported to JavaScript (maintainer decision M3).
+  - Resolution: Not fixed because WP-29 section 12 has not landed. Graded S1 (WP-29): a fit that no longer matches the points shown, with no cue.
+
+- [ ] Title: The served redraw keeps build-time bar and rbar widths and an emptied layer's style after a filter move
+  - File Names and Line Numbers: dash_render.py at 7421d3d: ServerAppBuilder's emitted _dash_redraw_for (30264) and _on_filter_change (31049); GlyphMapper.map_bar (8086), GlyphMapper.map_rbar (10623)
+  - Description: DROPIN-REMAINING.md P0.18, verified at 357c368: the served redraw keeps build-time bar/rbar widths. After a move, bar widths stay 56 where the qualified saved draw gives 168. An emptied lowess panel keeps its style. bar and rbar are not in the moved-layer tests. Sources: REM-15-03-C15.
+  - Suggested fix: WP-29 section 12 (stale cue and served redraw widths): recompute bar and rbar widths, and an emptied layer's style, in the served redraw as the saved build does.
+  - Resolution: Not fixed because WP-29 section 12 has not landed. Graded S1 (WP-29): served bars are drawn at the wrong width after a move, silently.
+
+- [ ] Title: dash_setup fails on PEP 668 externally managed Pythons, and the commands it prints fail too
+  - File Names and Line Numbers: dash_setup.ado at 7421d3d: the pip install and --user retry (172-190), the printed fallback (197), _dash_pip_command (404; the single-quoted command at 407)
+  - Description: DROPIN-REMAINING.md P0.19, verified at 357c368: `dash_setup` fails on externally-managed Pythons (PEP 668, e.g. Homebrew). There is no detection and no `venv()` option. The manual fallback names a bare, unquoted `python`, and the single-quoted hint breaks in cmd.exe. The `--user` site is not added to the path, there is no ensurepip hint, and the help gives no guidance. Sources: GAPS2-H7a, GAPS2-H7b, GAPS2-H7c, GAPS2-H7d, GAPS2-H7e, GAPS2-H7f, GAPS2-H7g.
+  - Suggested fix: WP-29 section 09 (dash_setup on PEP 668 Pythons): detect an externally managed Python before any pip process starts, offer venv(path), and print commands that run as printed in cmd.exe and POSIX shells.
+  - Resolution: Not fixed because WP-29 section 09 has not landed. Graded S2 (WP-29): installation fails visibly on common Pythons, and the fixes it prints fail too.
+
+- [ ] Title: KPI sd, var, iqr, cv and sum of a date variable are computed in epoch milliseconds
+  - File Names and Line Numbers: dash_render.py at 7421d3d: DashRenderer._kpi_statistic (25250), _dash_kpi_date_valued (23437), _FILTER_JS's dash_apply_kpis (16076)
+  - Description: DROPIN-REMAINING.md P0.20, verified at 357c368: KPI `sd`, `var`, `iqr`, `cv` and `sum` of a date are computed in epoch ms. `sd` is 86,400,000 times Stata's value on a %td variable. Sources: GAPS2-E1-residual.
+  - Suggested fix: WP-29 section 05 (date computations in Stata units): compute KPI sd, var, iqr, cv and sum of a date in its Stata units, in both modes and after every move.
+  - Resolution: Not fixed because WP-29 section 05 has not landed. Graded S1 (WP-29): wrong numbers on a KPI card, 86,400,000 times Stata's.
