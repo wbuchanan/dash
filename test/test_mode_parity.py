@@ -1615,6 +1615,14 @@ CORPUS = [
           kpis=[_kpi(fmt="%9.1f"),
                 _kpi(name="k2", stat="count", update="brush",
                      update_graph="g2")]),
+    # ---- WP-29 P0.4: title options that give only sub-options -------------
+    _case("ytitle(, size(large)) keeps the default", [_sc()],
+          go={"ytitle": ", size(large)"}),
+    _case("xtitle(, color(red)) and ytitle(A,,)", [_sc()],
+          go={"xtitle": ", color(red)", "ytitle": "A,,"}),
+    _case("a second axis titled by default and by ytitle2(, size(large))",
+          [_sc(), plot_for("line", {"yaxis": "2"}, yvar="price")],
+          go={"ytitle2": ", size(large)"}),
 ]
 
 

@@ -34,8 +34,8 @@
 *! already carries its own top-level comma, such as
 *! `twoway scatter mpg weight, yaxis(2)`, gets `option' name(...)` appended
 *! to that SAME list instead of a second comma: `_zt_has_top_comma` decides
-*! which). Only ONE of the 42 probes below needs this
-*! (`t_ytitle_axis2_lone`).
+*! which). Only TWO of the 82 title probes below need this
+*! (`t_ytitle_axis2_lone`, `t_ytitle_lone_nt_size`).
 *!
 *! Per probe the fixture records "texts" (every <text> in document order),
 *! "fills" (svg_fills' colours, sorted), "added_texts"/"removed_texts" (a
@@ -144,7 +144,7 @@ program define zp
 end
 
 // ---------------------------------------------------------------------------
-// title/axis-title probes (B3, B6, B7).  42 probes.
+// title/axis-title probes (B3, B6, B7).  42 probes, then WP-29 P0.4's 40.
 // ---------------------------------------------------------------------------
 zp "t_default"          "title" "auto" "twoway scatter mpg weight" "" ""
 zp "t_y2_default"       "title" "auto" "twoway (scatter mpg weight) (line price weight, yaxis(2))" "" ""
@@ -188,6 +188,49 @@ zp "t_title_two_suffix" "title" "auto" "twoway scatter mpg weight" `"title("A") 
 zp "t_xtitle_two_suffix" "title" "auto" "twoway scatter mpg weight" `"xtitle("A") xtitle("B", suffix)"' "t_default"
 zp "t_colour_refused"   "title" "auto" "twoway scatter mpg weight" `"title("T", colour(red))"' "t_default"
 zp "t_style_refused"    "title" "auto" "twoway scatter mpg weight" `"title("T", style(x))"' "t_default"
+// WP-29 section 03 (P0.4): title options that give only sub-options,
+// trailing and doubled commas, merges, the second axis's default
+// title and the colour key's title.  40 probes.
+zp "t_ytitle_nt_size" "title" "auto" "twoway scatter mpg weight" `"ytitle(, size(large))"' "t_default"
+zp "t_xtitle_nt_color" "title" "auto" "twoway scatter mpg weight" `"xtitle(, color(red))"' "t_default"
+zp "t_ytitle_nt_c" "title" "auto" "twoway scatter mpg weight" `"ytitle(, c(red))"' "t_default"
+zp "t_ytitle_nt_comma" "title" "auto" "twoway scatter mpg weight" `"ytitle(,)"' "t_default"
+zp "t_ytitle_nt_dcomma" "title" "auto" "twoway scatter mpg weight" `"ytitle(,,)"' "t_default"
+zp "t_ytitle_trailing" "title" "auto" "twoway scatter mpg weight" `"ytitle(A,)"' "t_default"
+zp "t_ytitle_qtrailing" "title" "auto" "twoway scatter mpg weight" `"ytitle("A",)"' "t_default"
+zp "t_ytitle_dcomma" "title" "auto" "twoway scatter mpg weight" `"ytitle(A,,)"' "t_default"
+zp "t_ytitle_spcomma" "title" "auto" "twoway scatter mpg weight" `"ytitle(A, ,)"' "t_default"
+zp "t_ytitle_size_trailing" "title" "auto" "twoway scatter mpg weight" `"ytitle(A, size(large),)"' "t_default"
+zp "t_title_nt_comma" "title" "auto" "twoway scatter mpg weight" `"title(,)"' "t_default"
+zp "t_title_trailing" "title" "auto" "twoway scatter mpg weight" `"title(A,)"' "t_default"
+zp "t_note_qtrailing" "title" "auto" "twoway scatter mpg weight" `"note("N",)"' "t_default"
+zp "t_ytitle_nt_orient" "title" "auto" "twoway scatter mpg weight" `"ytitle(, orientation(horizontal))"' "t_default"
+zp "t_ytitle_axis1_nt_size" "title" "auto" "twoway scatter mpg weight" `"ytitle(, axis(1) size(large))"' "t_default"
+zp "t_ytitle_empty_suffix" "title" "auto" "twoway scatter mpg weight" `"ytitle("", suffix)"' "t_default"
+zp "t_ytitle_merge_empty_size" "title" "auto" "twoway scatter mpg weight" `"ytitle("") ytitle(, size(large))"' "t_default"
+zp "t_ytitle_merge_size_text" "title" "auto" "twoway scatter mpg weight" `"ytitle(, size(large)) ytitle("A")"' "t_default"
+zp "t_ytitle_merge_trailing_size" "title" "auto" "twoway scatter mpg weight" `"ytitle(A,) ytitle(, size(large))"' "t_default"
+zp "t_ytitle_merge_comma_size" "title" "auto" "twoway scatter mpg weight" `"ytitle(,) ytitle(, size(large))"' "t_default"
+zp "t_by_ytitle_nt_size" "title" "auto" "twoway scatter mpg weight" `"by(foreign) ytitle(, size(large))"' "t_default"
+zp "t_ytitle_axis2_nt_size" "title" "auto" "twoway (scatter mpg weight) (line price weight, yaxis(2))" `"ytitle(, axis(2) size(large))"' "t_y2_default"
+zp "t_ytitle_axis2_nt" "title" "auto" "twoway (scatter mpg weight) (line price weight, yaxis(2))" `"ytitle(, axis(2))"' "t_y2_default"
+zp "t_ytitle_axis2_suffix" "title" "auto" "twoway (scatter mpg weight) (line price weight, yaxis(2))" `"ytitle(, axis(2) suffix)"' "t_y2_default"
+zp "t_y2_by" "title" "auto" "twoway (scatter mpg weight) (line price weight, yaxis(2))" `"by(foreign)"' "t_y2_default"
+zp "t_y2_by_title" "title" "auto" "twoway (scatter mpg weight) (line price weight, yaxis(2))" `"by(foreign) ytitle(P, axis(2))"' "t_y2_default"
+zp "t_x2_default" "title" "auto" "twoway (scatter mpg weight) (scatter mpg length, xaxis(2))" `""' ""
+zp "t_y2_hist" "title" "auto" "twoway (scatter mpg weight) (histogram weight, yaxis(2))" `""' ""
+zp "t_y2_two_layers" "title" "auto" "twoway (scatter mpg weight) (line price weight, yaxis(2)) (line turn weight, yaxis(2))" `""' ""
+zp "t_xtitle_axis2_nt_size" "title" "auto" "twoway (scatter mpg weight) (scatter mpg length, xaxis(2))" `"xtitle(, axis(2) size(large))"' "t_x2_default"
+zp "t_ytitle_lone_nt_size" "title" "auto" "twoway scatter mpg weight, yaxis(2)" `"ytitle(, axis(2) size(large))"' ""
+zp "t_hist_ytitle_nt_size" "title" "auto" "twoway histogram mpg" `"ytitle(, size(large))"' "t_hist_default"
+zp "t_hist_pct_ytitle_nt_size" "title" "auto" "twoway histogram mpg" `"percent ytitle(, size(large))"' "t_hist_default"
+zp "t_kdens_ytitle_nt_size" "title" "auto" "twoway kdensity mpg" `"ytitle(, size(large))"' "t_kdens_default"
+zp "t_kdens_xtitle_nt_size" "title" "auto" "twoway kdensity mpg" `"xtitle(, size(large))"' "t_kdens_default"
+zp "t_z_default" "title" "auto" "twoway scatter mpg weight" `"colorvar(price)"' ""
+zp "t_ztitle_nt_size" "title" "auto" "twoway scatter mpg weight" `"colorvar(price) ztitle(, size(large))"' "t_z_default"
+zp "t_ztitle_nt_color" "title" "auto" "twoway scatter mpg weight" `"colorvar(price) ztitle(, color(red))"' "t_z_default"
+zp "t_ztitle_suffix" "title" "auto" "twoway scatter mpg weight" `"colorvar(price) ztitle("extra", suffix)"' "t_z_default"
+zp "t_ztitle_empty" "title" "auto" "twoway scatter mpg weight" `"colorvar(price) ztitle("")"' "t_z_default"
 
 * ---- section 15: legend probes ----
 // WP-28 S15 (B5): each legend probe's control is its own legend(off)
@@ -390,6 +433,11 @@ for pid, info in probes_raw.items():
         "removed_texts": removed_texts,
         "added_fills": added_fills,
         "text_sizes": text_sizes,
+        # WP-29 S03 (D-03b): every text with its size, fill and rotation,
+        # in document order -- the maps above keyed by text lose a text
+        # drawn twice (b1 draws "Price" rotated at 157.44 and as a key).
+        "text_records": [[e["text"], e["size"], e["fill"], e["rotate"]]
+                         for e in entries],
     }
     probes_out[pid].update(rec_extra)
 

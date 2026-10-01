@@ -458,6 +458,16 @@ class TestTextboxSplitPoint:
         assert dr._textbox_split_point('"a", 2 more') == -1
         assert dr._textbox_split_point('"a", "b"') == -1
 
+    def test_a_comma_before_another_comma_or_the_end_splits(self):
+        """WP-29 P0.4 (u04 A4): a comma followed, after blanks, by another
+        comma or by nothing also opens the (empty) sub-option list, as
+        twoway reads ytitle(A,) and ytitle(A,,)."""
+        assert dr._textbox_split_point("A,") == 1
+        assert dr._textbox_split_point("A,,") == 1
+        assert dr._textbox_split_point("A, ,") == 1
+        assert dr._textbox_split_point('"A",') == 3
+        assert dr._textbox_split_point(",") == 0
+
     def test_a_stray_close_parenthesis_does_not_hide_the_comma(self):
         # -syntax- refuses an unbalanced parenthesis, so only a spec written
         # by hand holds one; a stray ")" closes nothing that was open.

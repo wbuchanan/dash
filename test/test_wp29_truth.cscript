@@ -8,7 +8,7 @@
 *!
 *! Blocks, in section order (extended by each section that lands one):
 *!   S01  scaffold smoke: the helpers load and a twoway SVG is read (W29-01)
-*!   S03  P0.3 unlabelled variables (UL-01..UL-08)
+*!   S03  P0.3 unlabelled variables (UL-01..UL-08); P0.4 title sub-options without text (ET-01..ET-10)
 *!
 *! Usage: via run_all_cscripts.do (registered as its block 68).  One
 *! block alone: set WP29_ONLY=S<NN> in the environment of the driver run
@@ -112,7 +112,8 @@ if inlist("`only'", "", "S01") {
 // block to open with its gate).  Used by the S03 P0.3 and P0.4 blocks.
 // Helpers, reached through __main__ (cert_svg.do's TRAP note).  Defined
 // outside the gate, where braces are safe:
-//   _s03_page()        S03_AX S03_AXS S03_KEYS S03_TIPS S03_W S03_CBAR of the
+//   _s03_page()        S03_AX S03_AXS S03_KEYS S03_TIPS S03_W S03_CBAR
+//                      S03_TITLE of the
 //                      saved page S03_PAGE (KEYS: each legend's labels in
 //                      order joined by "|", legends sorted and joined by ";")
 //   _s03_app()         the same, prefixed S03_S, of the served app S03_APP;
@@ -192,7 +193,7 @@ class _S03Served:
 
 
 def _s03_summary(models, by_id):
-    ax, axs, keys, tips, ws, cbar = [], [], [], [], [], []
+    ax, axs, keys, tips, ws, cbar, titles = [], [], [], [], [], [], []
     for m in models:
         if m.kind in _S03_AXES:
             rn = m.get("y_range_name")
@@ -222,12 +223,16 @@ def _s03_summary(models, by_id):
                 tips.append(",".join(str(p[0]) for p in tt))
         elif m.kind in _S03_WIDGETS:
             ws.append(str(m.get("title") or ""))
+        elif m.kind == "Title":
+            if m.get("text"):
+                titles.append(str(m.get("text")))
         elif m.kind == "ColorBar":
             cbar.append("%s@%s@%s" % (m.get("title"), m.get("title_text_font_size"),
                                       m.get("title_text_color")))
     return dict(AX="|".join(sorted(ax)), AXS="|".join(sorted(axs)),
                 KEYS=";".join(sorted(keys)), TIPS=";".join(sorted(tips)),
-                W="|".join(sorted(ws)), CBAR="|".join(sorted(cbar)))
+                W="|".join(sorted(ws)), CBAR="|".join(sorted(cbar)),
+                TITLE="|".join(sorted(titles)))
 
 
 def _s03_set(prefix, summ):
@@ -497,6 +502,189 @@ if inlist("`only'", "", "S03") {
     capture dash clear
     capture graph drop _all
     display as text "S03 P0.3 end `c(current_time)'"
+}
+* ==== end S03 ====
+
+* ==== S03 P0.4: title sub-options without text ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S03") {
+    // ET-01..ET-10: a title option that gives only sub-options keeps
+    // twoway's default title and is styled by them; trailing and doubled
+    // commas open an empty sub-option list; the second axis is titled by
+    // default except under by(); the colour key keeps its title; saved and
+    // served agree before and after a move.  The helpers are S03 P0.3's.
+    display as text "S03 P0.4 start `c(current_time)'"
+    quietly adopath ++ "`c(pwd)'/.."
+    local d "`w29_work'"
+
+    // twoway's size|fill|rotate of each <text> equal to `txt' in a fresh
+    // export of `cmd'.
+    capture program drop _s03_tw
+    program define _s03_tw
+        version 16.0
+        args cmd txt file
+        quietly `cmd' name(s03t, replace)
+        cert_svg_export, name(s03t) file("`file'")
+        global S03_SVG "`file'"
+        global S03_TXT "`txt'"
+        python: __import__("__main__")._s03_text()
+        capture graph drop s03t
+    end
+
+    // twoway's default title size under the scheme in force: every size
+    // check below is against it.
+    sysuse auto, clear
+    _s03_tw "twoway scatter mpg weight," "Mileage (mpg)" "`d'/et00.svg"
+    local base = real(substr("$S03_OUT", 1, strpos("$S03_OUT", "|") - 1))
+    display as text "  twoway default title size `base'"
+
+    // ---- ET-01: ytitle(, size(large)) ----
+    _s03_tw "twoway scatter mpg weight, ytitle(, size(large))" "Mileage (mpg)" "`d'/et01.svg"
+    local tw "$S03_OUT"
+    _s03_dash ET-01 et01 "scatter mpg weight, ytitle(, size(large))" "`d'"
+    display as text `"  ET-01 twoway [`tw'] dash [$S03_AXS]"'
+    _w29_expect ET-01 `"(real(substr("`tw'", 1, strpos("`tw'", "|") - 1)) > `base' & strpos("`tw'", "|-90") > 0)"' "twoway `tw'"
+    _w29_expect ET-01 `"(strpos("$S03_AXS", "default=Mileage (mpg)@15px@") > 0)"' "dash $S03_AXS"
+    _w29_done ET-01 "ytitle(, size(large)) keeps Mileage (mpg), at large"
+
+    // ---- ET-02: xtitle(, color(red)) ----
+    _s03_tw "twoway scatter mpg weight, xtitle(, color(red))" "Weight (lbs.)" "`d'/et02.svg"
+    local tw "$S03_OUT"
+    _s03_dash ET-02 et02 "scatter mpg weight, xtitle(, color(red))" "`d'"
+    display as text `"  ET-02 twoway [`tw'] dash [$S03_AXS]"'
+    _w29_expect ET-02 `"(strpos("`tw'", "|#ff0000|") > 0)"' "twoway `tw'"
+    _w29_expect ET-02 `"(ustrregexm("$S03_AXS", "default=Weight \(lbs\.\)@[^@|]*@#ff0000"))"' "dash $S03_AXS"
+    _w29_done ET-02 "xtitle(, color(red)) keeps Weight (lbs.), in red"
+
+    // ---- ET-03: ytitle(,), ytitle(A,), title(A,) ----
+    _s03_tw "twoway scatter mpg weight, ytitle(,)" "Mileage (mpg)" "`d'/et03a.svg"
+    local tw1 "$S03_OUT"
+    _s03_tw "twoway scatter mpg weight, ytitle(A,)" "A" "`d'/et03b.svg"
+    local tw2 "$S03_OUT"
+    _s03_tw "twoway scatter mpg weight, title(A,)" "A" "`d'/et03c.svg"
+    local tw3 "$S03_OUT"
+    _s03_dash ET-03 et03a "scatter mpg weight, ytitle(,)" "`d'"
+    local a1 "$S03_AX"
+    _s03_dash ET-03 et03b "scatter mpg weight, ytitle(A,)" "`d'"
+    local a2 "$S03_AX"
+    _s03_dash ET-03 et03c "scatter mpg weight, title(A,)" "`d'"
+    local t3 "$S03_TITLE"
+    display as text `"  ET-03 twoway [`tw1'][`tw2'][`tw3'] dash [`a1'][`a2'][`t3']"'
+    _w29_expect ET-03 `"("`tw1'" != "" & "`tw2'" != "" & "`tw3'" != "")"' "twoway texts missing"
+    _w29_expect ET-03 `"("`a1'" == "default=Mileage (mpg)|default=Weight (lbs.)")"' "ytitle(,) `a1'"
+    _w29_expect ET-03 `"("`a2'" == "default=A|default=Weight (lbs.)")"' "ytitle(A,) `a2'"
+    _w29_expect ET-03 `"("`t3'" == "A")"' "title(A,) `t3'"
+    _w29_done ET-03 "a comma followed by nothing opens an empty sub-option list"
+
+    // ---- ET-04: histogram and kdensity keep their titles ----
+    _s03_tw "twoway histogram mpg, ytitle(, size(large))" "Density" "`d'/et04a.svg"
+    local tw1 "$S03_OUT"
+    _s03_tw "twoway kdensity mpg, ytitle(, size(large))" "kdensity mpg" "`d'/et04b.svg"
+    local tw2 "$S03_OUT"
+    _s03_dash ET-04 et04a "histogram mpg, ytitle(, size(large))" "`d'"
+    local a1 "$S03_AXS"
+    _s03_dash ET-04 et04b "kdensity mpg, ytitle(, size(large))" "`d'"
+    local a2 "$S03_AXS"
+    display as text `"  ET-04 twoway [`tw1'][`tw2'] dash [`a1'][`a2']"'
+    _w29_expect ET-04 `"(real(substr("`tw1'", 1, strpos("`tw1'", "|") - 1)) > `base' & real(substr("`tw2'", 1, strpos("`tw2'", "|") - 1)) > `base')"' "twoway `tw1' `tw2'"
+    _w29_expect ET-04 `"(strpos("`a1'", "default=Density@15px@") > 0)"' "histogram `a1'"
+    _w29_expect ET-04 `"(strpos("`a2'", "default=kdensity mpg@15px@") > 0)"' "kdensity `a2'"
+    _w29_done ET-04 "histogram and kdensity keep Density and kdensity mpg at large"
+
+    // ---- ET-05: the second axis ----
+    local Y2 "(scatter mpg weight) (line price weight, yaxis(2))"
+    _s03_tw "twoway `Y2', ytitle(, axis(2) size(large))" "Price" "`d'/et05a.svg"
+    local tw1 "$S03_OUT"
+    _s03_tw "twoway `Y2'," "Price" "`d'/et05b.svg"
+    local tw2 "$S03_OUT"
+    _s03_dash ET-05 et05a "`Y2', ytitle(, axis(2) size(large))" "`d'"
+    local a1 "$S03_AXS"
+    _s03_dash ET-05 et05b "`Y2'," "`d'"
+    local a2 "$S03_AXS"
+    display as text `"  ET-05 twoway [`tw1'][`tw2'] dash [`a1'][`a2']"'
+    _w29_expect ET-05 `"(real(substr("`tw1'", 1, strpos("`tw1'", "|") - 1)) > `base' & strpos("`tw1'", "|-90") > 0 & real(substr("`tw2'", 1, strpos("`tw2'", "|") - 1)) == `base' & strpos("`tw2'", "|-90") > 0)"' "twoway `tw1' / `tw2'"
+    _w29_expect ET-05 `"(strpos("`a1'", "y2=Price@15px@") > 0)"' "sized `a1'"
+    _w29_expect ET-05 `"(strpos("`a2'", "y2=Price@") > 0 & strpos("`a2'", "y2=Price@15px@") == 0)"' "default `a2'"
+    _w29_done ET-05 "the second axis is titled Price, styled by ytitle(, axis(2) size(large))"
+
+    // ---- ET-06: the colour key ----
+    _s03_tw "twoway scatter mpg weight, colorvar(price) ztitle(, size(large))" "Price" "`d'/et06.svg"
+    local tw "$S03_OUT"
+    _s03_dash ET-06 et06 "scatter mpg weight, colorvar(price) ztitle(, size(large))" "`d'"
+    display as text `"  ET-06 twoway [`tw'] dash [$S03_CBAR]"'
+    _w29_expect ET-06 `"(real(substr("`tw'", 1, strpos("`tw'", "|") - 1)) > `base')"' "twoway `tw'"
+    _w29_expect ET-06 `"(strpos("$S03_CBAR", "Price@15px@") == 1)"' "dash $S03_CBAR"
+    _w29_done ET-06 "ztitle(, size(large)) keeps the key title Price"
+
+    // ---- ET-07: merges ----
+    _s03_tw `"twoway scatter mpg weight, ytitle("") ytitle(, size(large))"' "Mileage (mpg)" "`d'/et07a.svg"
+    local tw1 "$S03_OUT"
+    _s03_tw `"twoway scatter mpg weight, ytitle(, size(large)) ytitle("A")"' "A" "`d'/et07b.svg"
+    local tw2 "$S03_OUT"
+    _s03_dash ET-07 et07a `"scatter mpg weight, ytitle("") ytitle(, size(large))"' "`d'"
+    local a1 "$S03_AX"
+    _s03_dash ET-07 et07b `"scatter mpg weight, ytitle(, size(large)) ytitle("A")"' "`d'"
+    local a2 "$S03_AXS"
+    display as text `"  ET-07 twoway [`tw1'][`tw2'] dash [`a1'][`a2']"'
+    _w29_expect ET-07 `"("`tw1'" == "" & real(substr("`tw2'", 1, strpos("`tw2'", "|") - 1)) > `base')"' "twoway `tw1' / `tw2'"
+    _w29_expect ET-07 `"("`a1'" == "default=|default=Weight (lbs.)")"' "removed `a1'"
+    _w29_expect ET-07 `"(strpos("`a2'", "default=A@15px@") > 0)"' "merged `a2'"
+    _w29_done ET-07 `"ytitle("") still removes; ytitle("A") merged with size(large) is A at large"'
+
+    // ---- ET-08: doubled and trailing commas ----
+    _s03_tw "twoway scatter mpg weight, ytitle(A,,)" "A" "`d'/et08a.svg"
+    local tw1 "$S03_OUT"
+    _s03_tw "twoway scatter mpg weight, ytitle(A, size(large),)" "A" "`d'/et08b.svg"
+    local tw2 "$S03_OUT"
+    _s03_dash ET-08 et08a "scatter mpg weight, ytitle(A,,)" "`d'"
+    local a1 "$S03_AX"
+    _s03_dash ET-08 et08b "scatter mpg weight, ytitle(A, size(large),)" "`d'"
+    local a2 "$S03_AXS"
+    display as text `"  ET-08 twoway [`tw1'][`tw2'] dash [`a1'][`a2']"'
+    _w29_expect ET-08 `"(strpos("`tw1'", "|-90") > 0 & real(substr("`tw2'", 1, strpos("`tw2'", "|") - 1)) > `base')"' "twoway `tw1' / `tw2'"
+    _w29_expect ET-08 `"("`a1'" == "default=A|default=Weight (lbs.)")"' "ytitle(A,,) `a1'"
+    _w29_expect ET-08 `"(strpos("`a2'", "default=A@15px@") > 0)"' "ytitle(A, size(large),) `a2'"
+    _w29_done ET-08 "ytitle(A,,) and ytitle(A, size(large),) title A"
+
+    // ---- ET-09: no axis-2 default under by() ----
+    _s03_tw "twoway `Y2', by(foreign)" "Price" "`d'/et09.svg"
+    local tw "$S03_OUT"
+    _s03_dash ET-09 et09 "`Y2', by(foreign)" "`d'"
+    display as text `"  ET-09 twoway [`tw'] dash [$S03_AX]"'
+    _w29_expect ET-09 `"(strpos("`tw'", "|-90") == 0)"' "twoway drew a rotated Price: `tw'"
+    _w29_expect ET-09 `"(strpos("$S03_AX", "y2=") > 0 & !ustrregexm("$S03_AX", "y2=[^|]"))"' "dash $S03_AX"
+    _w29_done ET-09 "under by() the second axis has no default title, as in twoway"
+
+    // ---- ET-10: the served app of ET-01, ET-05 and ET-06 ----
+    capture dash clear
+    capture noisily dash scatter mpg weight, ytitle(, size(large)) name(et10a)
+    _w29_expect ET-10 "(_rc == 0)" "dash rc `_rc'"
+    capture noisily dash `Y2', ytitle(, axis(2) size(large)) name(et10b)
+    _w29_expect ET-10 "(_rc == 0)" "dash rc `_rc'"
+    capture noisily dash scatter mpg weight, colorvar(price) ztitle(, size(large)) name(et10c)
+    _w29_expect ET-10 "(_rc == 0)" "dash rc `_rc'"
+    capture erase "`d'/et10.html"
+    capture erase "`d'/et10_app.py"
+    capture noisily dash build, saving("`d'/et10.html") replace nobrowser filter(mpg, type(range))
+    _w29_expect ET-10 "(_rc == 0)" "saved build rc `_rc'"
+    capture noisily dash build, saving("`d'/et10_app.py") server replace filter(mpg, type(range))
+    _w29_expect ET-10 "(_rc == 0)" "served build rc `_rc'"
+    global S03_PAGE "`d'/et10.html"
+    python: __import__("__main__")._s03_page()
+    global S03_APP "`d'/et10_app.py"
+    global S03_MOVE "mpg"
+    python: __import__("__main__")._s03_app()
+    display as text `"  ET-10 saved [$S03_AXS][$S03_CBAR]"'
+    display as text `"  ET-10 served [$S03_SAXS][$S03_SCBAR] fired $S03_FIRED same $S03_SAME_AFTER"'
+    _w29_expect ET-10 `"("$S03_AXS" == "$S03_SAXS" & "$S03_CBAR" == "$S03_SCBAR")"' "saved and served differ"
+    _w29_expect ET-10 `"(strpos("$S03_SAXS", "default=Mileage (mpg)@15px@") > 0 & strpos("$S03_SAXS", "y2=Price@15px@") > 0)"' "served axes $S03_SAXS"
+    _w29_expect ET-10 `"(strpos("$S03_SCBAR", "Price@15px@") == 1)"' "served key $S03_SCBAR"
+    _w29_expect ET-10 "($S03_FIRED == 1 & $S03_SAME_AFTER == 1)" "after the move: fired $S03_FIRED same $S03_SAME_AFTER"
+    _w29_done ET-10 "the served app draws the same titles, sizes and key title, before and after a move"
+
+    capture dash clear
+    capture graph drop _all
+    display as text "S03 P0.4 end `c(current_time)'"
 }
 * ==== end S03 ====
 

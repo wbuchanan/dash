@@ -322,6 +322,30 @@ class TestZOptions:
             go={"zlabel": "1(1)5, format(%9.2f)"}, plots=plots)
         assert any("format(%9.2f)" in w for w in std_w3)
 
+    def test_ztitle_suboptions_keep_the_key_title(self):
+        """WP-29 P0.4: ztitle() with only sub-options keeps the colour
+        variable's title and styles it, as twoway draws it (f1, f2); a typed
+        "" still removes it (f3).  It emptied the key's title."""
+        large = f"{dr._textbox_size({'size': 'large'}, None):g}px"
+        bar_plots = [tp.plot_for("scatter", {"colorvar": "price"})]
+        r, doc, _sw, _rw = _both(go={"ztitle": ", size(large)"},
+                                 plots=bar_plots)
+        for bar in (_colorbar(list(r.figures.values())[0]), _colorbar(doc)):
+            assert bar.title == "price"
+            assert bar.title_text_font_size == large
+        disc = [tp.plot_for("scatter", {"colorvar": "rep",
+                                        "colordiscrete": "colordiscrete"})]
+        r, doc, _sw, _rw = _both(go={"ztitle": ", color(red)"}, plots=disc)
+        for leg in (_colorvar_legend(list(r.figures.values())[0]),
+                    _colorvar_legend(doc)):
+            assert leg is not None and leg.title == "rep"
+            assert leg.title_text_color == "#ff0000"
+        for raw, want in ((",", "price"), ('"extra", suffix', "price\nextra"),
+                          ('""', "")):
+            r, doc, _sw, _rw = _both(go={"ztitle": raw}, plots=bar_plots)
+            assert _colorbar(list(r.figures.values())[0]).title == want, raw
+            assert _colorbar(doc).title == want, raw
+
 
 class TestBothModes:
     """The saved and served mapper draw the same factors (BR-16.8)."""

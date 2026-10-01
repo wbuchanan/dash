@@ -560,6 +560,15 @@ named in a note and drawn around -- because it is what would be drawn.
     removes that title, as in {cmd:twoway}; an option not given at all
     keeps the default (the variable's label, {cmd:Density},
     {cmd:kdensity} {it:var}).
+    An axis title given only sub-options -- {cmd:xtitle(, size(large))},
+    {cmd:ytitle(, color(red))}, {cmd:ytitle(, axis(2) size(large))},
+    {cmd:ztitle(, size(large))} -- keeps the default title and applies
+    them, as in {cmd:twoway}; only empty quotes remove a title, and
+    {cmd:ytitle("", suffix)} keeps it.  The first comma outside quotes and
+    parentheses that is followed by a sub-option name, another comma or
+    nothing opens the sub-options, and empty slots are ignored:
+    {cmd:ytitle(A,)} and {cmd:ytitle(A,,)} are {cmd:ytitle(A)}, and
+    {cmd:ytitle(,)} keeps the default.
     A weight, {cmd:[aweight=}{it:varname}{cmd:]}, {cmd:[fweight=]} or
     {cmd:[pweight=]}, is honoured on the statistical layers that take it
     in {cmd:twoway} and refused, as {cmd:twoway} refuses it, where they do
@@ -2589,8 +2598,12 @@ drawn at the bottom, styled the same way by {cmd:xtitle2()},
 {cmd:ytitle2()} and {cmd:xtitle2()} are read the same way every other
 text option is: each quoted string is its own line, {cmd:size()} and
 {cmd:color()} are applied, and any other sub-option is named once.  An
-empty string ({cmd:ytitle2("")}) removes the title; an absent option
-draws no title either.
+empty string ({cmd:ytitle2("")}) removes the title; without one, the
+second axis is titled as {cmd:twoway} titles it -- by the label (or
+name) of its first layer's variable, {cmd:Density} or {cmd:kdensity}
+{it:varname} for those layers -- in the scheme's axis style, and
+sub-options alone style that title; under {cmd:by()} it has no default
+title, as in {cmd:twoway}.
 
 {pstd}
 {cmd:ylabel2()} and {cmd:xlabel2()} read their rule and sub-options with
@@ -2705,6 +2718,8 @@ The colour key's own axis options, {cmd:ztitle()}, {cmd:zlabel()} and
 either key; ticks, {cmd:#}{it:N}, {cmd:none} and {cmd:minmax}, and
 {cmd:range()} (widening only), {cmd:log} and {cmd:reverse}, on the colour bar.
 On a discrete key {cmd:zlabel()} and {cmd:zscale()} are named in the note.
+{cmd:ztitle()} given only sub-options styles the key's default title, the
+colour variable's label; {cmd:suffix} and {cmd:prefix} add lines to it.
 
 {pstd}
 {it:Example:}

@@ -243,7 +243,7 @@ and now matches Stata.
 
 - Unlabelled variables are named as twoway names them, in both modes: `dash scatter y x` on unlabelled data drew no axis titles, the key `scatter` and tooltip rows `''`, and now draws the titles `x` and `y`, the key `y` and the rows `x` and `y`; `(scatter y1 x) (scatter y2 x)` was keyed `scatter scatter` and is now keyed `y1 y2`; `(histogram mpg) (kdensity mpg)` was keyed by the variable twice and is now keyed `Density` and `kdensity mpg`; the served app's filter widgets were untitled and are now titled by the variable's label or name; a data file whose variableLabels is malformed aborted the build and now draws names.  Until P1.16, a multi-layer unlabelled graph draws its first layer's name as y title where twoway draws none. (WP-29, P0.3)
 
-<!-- WP-29 P0.4 -->
+- A title option given only sub-options keeps twoway's default title, in both modes: `ytitle(, size(large))`, `xtitle(, color(red))`, `ztitle(, size(large))` and any title option given only sub-options drew no title (axis_label None, an empty key title), and now draw the default title styled by them, as in twoway; `ytitle(,)` drew a literal comma and `title(A,)` drew `A,`, and a comma followed by nothing or by another comma now opens an empty sub-option list (`ytitle(A,,)` is `ytitle(A)`); the second axis of a yaxis(2)/xaxis(2) graph had no title and Bokeh's 13px #444444 style, and is now titled by its layers' label (`Density` or `kdensity` varname for those layers) in the scheme's axis style, and untitled under by(). (WP-29, P0.4)
 
 <!-- WP-29 P0.5 -->
 

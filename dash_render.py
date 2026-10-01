@@ -2748,7 +2748,16 @@ def _textbox_canon(name: str) -> "str | None":
 # ``title("T", bogus(1))`` kept its comma as text; twoway's own rule does
 # not look the word up at all -- it just splits, and _textbox_canon is
 # what decides afterwards whether the word means anything dash reads.
-_TEXTBOX_SUBOPT_RE = re.compile(r",\s*(?=[A-Za-z_])")
+#
+# WP-29 P0.4 (u04 A4): the first comma outside strings and parentheses that
+# is followed, after blanks, by a name, another comma, or the end opens the
+# sub-options; empty slots are ignored.  Measured in twoway (StataNow 19.5,
+# text_truth.json): ytitle(A,,) draws A (r6), ytitle(A, ,) draws A (r10),
+# ytitle(A, size(large),) draws A at large (r18), and ytitle(,) keeps the
+# default title -- dash drew "A,,", "A, ," and a literal ",".  A comma
+# followed by a digit or a quote stays text ('"a", 2 more', '"a", "b"').
+# The lookahead is one character, so the scan stays linear.
+_TEXTBOX_SUBOPT_RE = re.compile(r",\s*(?=[A-Za-z_,]|\Z)")
 
 
 def _textbox_string_end(text: str, i: int) -> "tuple[int, int, int]":
@@ -2991,6 +3000,22 @@ def _parse_textbox_opt(raw: str) -> "tuple[str, dict]":
             if nm in ("span", "box", "nobox", "bexpand", "prefix", "suffix"):
                 opts[nm] = nm
     return text, opts
+
+
+def _textbox_has_text(raw) -> bool:
+    """Whether a textbox option's TEXT part is given (WP-29 P0.4).
+
+    The text is everything before the sub-option comma
+    (:func:`_textbox_split_point`).  A typed ``""`` is given (it removes a
+    title); ``', size(large)'``, ``','`` and ``',,'`` are not, so the
+    default title is kept and only styled -- as twoway's
+    ``_gs_parse_and_log_axtitle.ado`` replaces the text only when it is not
+    empty.  dash used to test the whole raw value, sub-options included,
+    so every sub-option-only title deleted the default.
+    """
+    s = str(raw or "")
+    cut = _textbox_split_point(s)
+    return bool((s[:cut] if cut >= 0 else s).strip())
 
 
 #: Stata's anglestyles: the anglestyle-*.style files it installs under
@@ -5472,13 +5497,21 @@ class SchemeParser:
             fig.title.text_font_size = self.heading_font_size
 
         for axis in list(fig.xaxis) + list(fig.yaxis):
-            axis.axis_line_color = self.axis_line_color
-            axis.axis_line_width = self.axis_line_width
-            axis.axis_label_text_font_size = self.axis_title_font_size
-            axis.major_label_text_font_size = self.tick_label_font_size
-            # The axis_title and tick_label boxes' colours.
-            axis.axis_label_text_color = self.axis_title_color
-            axis.major_label_text_color = self.tick_label_color
+            self.apply_to_axis(axis)
+
+    def apply_to_axis(self, axis: Any) -> None:
+        """The scheme's axis style on one axis: its line, its title's and
+        its tick labels' sizes and colours.  :meth:`apply_to_figure` runs
+        it on the primary axes; ``_dash_add_secondary_axes`` on a second
+        axis as it is built, so that axis is styled from the scheme, never
+        copied from the primary (WP-29 P0.4)."""
+        axis.axis_line_color = self.axis_line_color
+        axis.axis_line_width = self.axis_line_width
+        axis.axis_label_text_font_size = self.axis_title_font_size
+        axis.major_label_text_font_size = self.tick_label_font_size
+        # The axis_title and tick_label boxes' colours.
+        axis.axis_label_text_color = self.axis_title_color
+        axis.major_label_text_color = self.tick_label_color
 
     def css_block(self) -> str:
         """Return the scheme's CSS rules for the dashboard outer chrome.
@@ -18733,19 +18766,12 @@ def _dash_axis_labels(plots, graph_opts, var_labels, seen=None, key=""):
     # used to title the axis "Weight, size(large)".  size() and color()
     # are applied by _dash_style_axis_titles; the rest is named.
     def _label(opt, default):
-        raw = go.get(opt, "")
-        text, opts = _dash_textbox(raw, opt, seen, key)
-        # Given with empty text (xtitle("")) removes the title; only an
-        # ABSENT option takes twoway's default (WP-28 B6).  The spec keeps
-        # the typed quotes, so "" given is a non-blank raw value.
-        given = bool(str(raw or "").strip())
-        # A lone suffix/prefix adds its lines after/before the default, as
-        # twoway draws ytitle("extra", suffix) (WP-28 B3).
-        if "suffix" in opts:
-            return default + ("\n" + text if text else "")
-        if "prefix" in opts:
-            return (text + "\n" if text else "") + default
-        return text if given else default
+        # A typed "" removes the title (WP-28 B6); an option that gives only
+        # sub-options -- ytitle(, size(large)), ytitle(,) -- keeps the
+        # default and is styled by them, as twoway draws it (WP-29 P0.4);
+        # suffix/prefix add lines to the default (WP-28 B3).
+        return _dash_textbox_or_default(go.get(opt, ""), opt, default,
+                                        seen, key)[0]
 
     return _label("xtitle", x_default), _label("ytitle", y_default)
 
@@ -20076,7 +20102,7 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
 
 
 def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
-                             key=""):
+                             key="", var_labels=None, scheme=None):
     """Build ``extra_y_ranges['y2']`` / ``extra_x_ranges['x2']`` and their axes.
 
     A layer with yaxis(2) or xaxis(2) asks for a second axis whose range is
@@ -20099,6 +20125,17 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
     BEFORE it (WP-28 Notes "Renderer order"); styling the axis where it is
     built is what makes that order not matter.
 
+    The axis is titled by default as twoway titles it (WP-29 P0.4): through
+    ``_dash_axis_labels`` over the layers on that axis, so its first
+    layer's label (or name), ``Density`` for a histogram, ``kdensity
+    <name>`` for a kdensity (b0, r8).  Sub-options alone style that
+    default (``ytitle(, axis(2) size(large))``, b1), ``suffix`` adds to it
+    (r13) and a typed ``""`` removes it (r12).  Under ``by()`` twoway draws
+    no axis-2 title (r7), so there is no default there.  *scheme* styles
+    the axis as it is built (``SchemeParser.apply_to_axis``), before its
+    own size()/color(); it is never copied from the primary axis, which
+    the saved renderer has styled by now and the served app has not.
+
     Returns ``(has_y2, has_x2)``.
     """
     from bokeh.models import LinearAxis, LogAxis, Range1d
@@ -20116,10 +20153,20 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
         n = name[0]
         toks = _dash_by_tokens(str(graph_opts.get(f"{n}scale2", "") or ""))
         is_log = "log" in [_dash_subopt_name(t) for t in toks]
-        text, opts = _dash_textbox(graph_opts.get(f"{n}title2", ""),
-                                   f"{n}title2", seen, key)
+        if str(graph_opts.get("by", "") or "").strip():
+            dflt = ""
+        else:
+            own = [p for p in plots
+                   if str(p.get("options", {}).get(axis_key, "1")).strip()
+                   == "2"]
+            dflt = _dash_axis_labels(own, {}, var_labels)[
+                0 if n == "x" else 1]
+        text, opts = _dash_textbox_or_default(
+            graph_opts.get(f"{n}title2", ""), f"{n}title2", dflt, seen, key)
         ax = (LogAxis if is_log else LinearAxis)(
             **{kw: name}, axis_label=text)
+        if scheme is not None:
+            scheme.apply_to_axis(ax)
         px = _textbox_size(opts, None)
         if px is not None:
             ax.axis_label_text_font_size = f"{px:g}px"
@@ -22652,6 +22699,11 @@ def _dash_textbox(raw, option, seen=None, key=""):
         # axis(#) is honoured only as axis(1)/axis(2) on an axis title.
         bad = []
         for t in _dash_by_tokens(tail.strip()):
+            # An empty slot -- ytitle(A,,), ytitle(A, ,) -- is ignored, as
+            # twoway ignores it, and never named (WP-29 P0.4; it also kept
+            # a comma-only value from echoing itself back at its own length).
+            if not t.strip(", "):
+                continue
             nm = _textbox_canon(_dash_subopt_name(t))
             if nm == "axis":
                 arg = t[t.find("(") + 1:t.rfind(")")].strip() \
@@ -22664,6 +22716,28 @@ def _dash_textbox(raw, option, seen=None, key=""):
             bad.append(t)
         _dash_report_suboptions(option, bad, seen, key)
     return text, opts
+
+
+def _dash_textbox_or_default(raw, option, default, seen=None, key=""):
+    """``(text, sub-options)`` of a title option that has a DEFAULT text.
+
+    twoway keeps the default title when the option gives no text and only
+    styles it (``_gs_parse_and_log_axtitle.ado:25-31``): ``ytitle(,
+    size(large))`` is the default at large, ``ytitle(,)`` the default, and
+    only a typed ``""`` removes the title.  ``suffix``/``prefix`` add the
+    text after/before the default, and ``ytitle("", suffix)`` keeps it
+    (r5).  dash used to take "given" over the whole raw value, so every
+    sub-option-only title deleted the default in both modes (WP-29 P0.4).
+
+    The text is canvas text or a DOM text node exactly as before; the
+    default is the label already drawn.  No new sink.
+    """
+    text, opts = _dash_textbox(raw, option, seen, key)
+    if "suffix" in opts:
+        return "\n".join(p for p in (default, text) if p), opts
+    if "prefix" in opts:
+        return "\n".join(p for p in (text, default) if p), opts
+    return (text if _textbox_has_text(raw) else default), opts
 
 
 def _dash_figure_title(fig, graph_opts, seen=None, key=""):
@@ -22883,9 +22957,11 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key):
 
     ztitle_raw = zopts.get("ztitle", "")
     if ztitle_raw:
-        text, topts = _dash_textbox(ztitle_raw, "ztitle", seen, key)
-        # An empty text removes the title, as _dash_figure_title's pattern
-        # does for the graph title -- ztitle("") is a deliberate blank.
+        # ztitle("") removes the title; ztitle(, size(large)) keeps the
+        # colour variable's label and styles it, as twoway draws it
+        # (f1-f3; WP-29 P0.4).
+        text, topts = _dash_textbox_or_default(
+            ztitle_raw, "ztitle", key_obj.title or "", seen, key)
         key_obj.title = text
         px = _textbox_size(topts, None)
         colour = _textbox_color(topts, None)
@@ -26183,7 +26259,7 @@ class DashRenderer:
         # the full frame spanned data the graph does not show.
         _has_y2, _has_x2 = _dash_add_secondary_axes(
             fig, plots, graph_opts, _source_frame(source, self.df),
-            _seen, _gkey)
+            _seen, _gkey, self.variable_labels, self.scheme)
 
         # xscale(range())/yscale(range()) and reverse, through the helper
         # the generated app runs as well: it read xrange/yrange keys
@@ -28620,6 +28696,7 @@ class ServerAppBuilder:
             _l.split("(")[0][4:] for _l in _already if _l.startswith("def ")
         }
         for _fn_name in ("_parse_textbox_opt", "_textbox_split_point",
+                         "_textbox_has_text",
                          # The strings of a text, read as Stata reads
                          # them: the lines and the sub-option comma.
                          "_textbox_lines", "_textbox_string_end",
@@ -28888,6 +28965,7 @@ class ServerAppBuilder:
                          "_dash_apply_z_options",
                          "_dash_subopt_name",
                          "_dash_legend_unsupported", "_dash_textbox",
+                         "_dash_textbox_or_default",
                          "_textbox_canon", "_dash_route_axis_titles",
                          "_dash_figure_title", "_dash_style_axis_titles",
                          "_dash_text_annotations", "_dash_scale_spec",
@@ -30503,7 +30581,8 @@ class ServerAppBuilder:
             "        # yaxis(2)/xaxis(2): the second axis, from the rows this",
             "        # figure draws.  There used to be none when served.",
             "        _dash_add_secondary_axes(fig, plots, go, g_df,",
-            "                                 _reported_subopts, gname)",
+            "                                 _reported_subopts, gname,",
+            "                                 var_labels, _DASH_SCHEME)",
             "        # title(), xtitle()/ytitle() sub-options, after the scheme so",
             "        # the user's size() and color() win; the rest named.",
             "        _dash_figure_title(fig, go, _reported_subopts, gname)",
