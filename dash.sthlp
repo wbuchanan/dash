@@ -1949,7 +1949,27 @@ Observations with a missing {cmd:by()} value are left out unless
     observations{p_end}
 {synopt:{opt by(varlist, missing)}}include a panel, titled "Missing", of
     the observations with a missing value{p_end}
+{synopt:{opt by(varlist, yrescale|xrescale|rescale)}}draw each panel on its
+    own y scale, x scale or both; abbreviations {cmd:yr}, {cmd:xr} and
+    {cmd:r}, and {cmd:noyrescale}, {cmd:noxrescale} and {cmd:norescale}
+    ({cmd:noyr}, {cmd:noxr}, {cmd:nor}) to keep one scale; when both are
+    given, the rescale wins, as in {cmd:twoway}{p_end}
+{synopt:{opt by(varlist, style(rescale))}}and style(combine): only
+    their separate scales are drawn, with a note{p_end}
 {synoptline}
+
+{pstd}
+As in {cmd:twoway}, a {cmd:by()} graph's panels share one scale per axis --
+y, x and a second axis -- spanning every panel's data, the Total panel's
+too, and they keep sharing it after a filter move.  Panning or zooming one
+panel moves the others, and, as in any Bokeh plot, stops that axis
+following later filter moves.  With {cmd:yrescale}, {cmd:xrescale} or
+{cmd:rescale} each panel is drawn and ticked ({cmd:#}{it:N}) over its own
+data on that axis; there {cmd:yscale(range())} and {cmd:xscale(range())},
+those of the second axis included, are not applied, as in {cmd:twoway},
+and a note says so; labels and ticks still widen each panel, and reverse
+and log are kept.  {cmd:twoway} draws only the outer axes of shared panels,
+where {cmd:dash} draws every panel's.
 
 {pstd}
 The Total panel draws the observations of every group, as {cmd:twoway}'s
@@ -1977,8 +1997,8 @@ One graph draws at most 100 groups by default, a panel each, and its Total
 panel one more: over that, the first 100 groups in sort order are drawn and
 a note names the limit and the global that raises it (see
 {help dash##limits:Resource limits}).
-{cmd:cols()}, {cmd:total} and {cmd:missing} are the {cmd:by()} sub-options
-{cmd:dash} implements.  Any other sub-option of Stata's {cmd:by()} -- for
+{cmd:cols()}, {cmd:total}, {cmd:missing} and the rescale forms above are
+the {cmd:by()} sub-options {cmd:dash} implements.  Any other sub-option of Stata's {cmd:by()} -- for
 example {cmd:rows()}, {cmd:holes()} or {cmd:compact} -- is accepted, named
 in a warning, and ignored.
 {cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group
@@ -2704,7 +2724,8 @@ of it fitted to 12,000 of Stata's answers, which agrees exactly with 98% of
 {cmd:%ty} ranges and with 52% to 66% of the others, and where it differs
 it picks another calendar step or end tick.  A {cmd:by()} graph's panels
 are ticked on one scale, over all the panels' data, as {cmd:twoway} ticks
-them; {cmd:by(, yrescale)} is not implemented.
+them; with {cmd:by(, yrescale)} each panel is ticked over its own data,
+as {cmd:twoway} ticks it.
 
 {pstd}
 A date axis's ticks are written in the axis variable's display format, as

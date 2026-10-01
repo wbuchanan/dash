@@ -1741,6 +1741,18 @@ CORPUS = [
               "yline": "6000, axis(2)", "ytick": "7500, axis(2)"}),
     _case("ylabel2 with no second-axis layer", [_sc()],
           go={"ylabel2": "5"}),
+    # ---- by() shared scales and rescale (WP-29 P0.2) -----------------------
+    _case("by(foreign, yrescale)", [_sc()], go={"by": "foreign, yrescale"}),
+    _case("by(foreign) with yaxis(2)",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
+          go={"by": "foreign"}),
+    _case("by(foreign, rescale) ylabel(#5)", [_sc()],
+          go={"by": "foreign, rescale", "ylabel": "#5"}),
+    _case("by(foreign, yrescale) yscale(range(0))", [_sc()],
+          go={"by": "foreign, yrescale", "yscale": "range(0)"}),
+    _case("by(foreign, yrescale) yscale(range(0)) with every foreign missing",
+          [_sc()], go={"by": "foreign, yrescale", "yscale": "range(0)"},
+          if_expr="foreign > 5"),
 ]
 
 
@@ -1866,6 +1878,10 @@ _MUST_WARN = {
     "hover() naming a variable not in the data":
         "dash: hover() of graph 'g1' names variable(s) not in the data -- "
         "'nosuch'",
+    # WP-29 P0.2: raised at build time in both modes.
+    "by(foreign, yrescale) yscale(range(0))":
+        "dash: graph 'g1': by(, yrescale) draws each panel on its own y "
+        "scale; yscale(range()) is not applied, as in twoway.",
     # WP-29 P0.5: raised at build time in both modes.
     "ylabel2 with no second-axis layer":
         "dash: graph 'g1': ylabel2() (ylabel(..., axis(2))) is not drawn: "
@@ -2395,6 +2411,9 @@ MOVE_CORPUS = [
                         None, {"if_expr": "foreign == 1"}),
                        ("g2", [_sc()])],
                bo={"link": "g1 g2"}),
+    # WP-29 P0.2: the panels keep one shared scale after a move.
+    _move_case("by(foreign) shared scale, price slider", _MOVES[1], [_sc()],
+               go={"by": "foreign"}),
     # WP-29 P0.5: the routed options stay on the second axis after a move.
     _move_case("yaxis(2) with axis(2) options, dropdown", _MOVES[0],
                [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
@@ -3545,3 +3564,34 @@ class TestALinkedByGraphsLinesOnASavedBuild:
             assert len(groups) == 1, groups
             panels.append(groups.pop())
         assert sorted(panels) == [0.0, 1.0], panels
+
+
+# ---------------------------------------------------------------------------
+# WP-29 P0.2: a by() graph's panels share range objects the same way in
+# both modes.
+# ---------------------------------------------------------------------------
+_BY_CASES = [c for c in CORPUS
+             if any(str((g.get("graph_options") or {}).get("by") or "").strip()
+                    for g in c.values[1]["graphs"])]
+
+
+def _partition(figs, attr):
+    """Which panels share a range object, as sorted groups of titles."""
+    groups = {}
+    for f in sorted(figs, key=lambda f: str(f.title.text if f.title else "")):
+        groups.setdefault(id(getattr(f, attr)), []).append(
+            str(f.title.text if f.title else ""))
+    return sorted(groups.values())
+
+
+class TestByPanelsShareInBothModes:
+    @pytest.mark.parametrize("name,spec", _BY_CASES)
+    def test_the_sharing_partition_agrees(self, name, spec):
+        from bokeh.plotting import figure as _Fig
+        r, _ = _standalone(spec)
+        saved = [f for f in r.figures.values() if isinstance(f, _Fig)]
+        doc, _ = _served(spec)
+        served = [m for root in doc.roots for m in root.references()
+                  if isinstance(m, _Fig)]
+        for attr in ("x_range", "y_range"):
+            assert _partition(saved, attr) == _partition(served, attr), attr

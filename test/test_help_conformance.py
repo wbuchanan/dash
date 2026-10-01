@@ -625,9 +625,9 @@ class TestTheParsersFoundSomething:
         # written as {p2col:} rows, which the cutter starts no entry at,
         # left 311 -- above "150", with those rows read as prose.
         # 335 with WP-29 P0.5's four second-axis rows (ytick2, xtick2,
-        # yline2, xline2).
-        assert len(defs) == 335, (
-            f"{len(defs)} definition entries cut out of dash.sthlp, 335 "
+        # yline2, xline2); 337 with P0.2's two by() rescale rows.
+        assert len(defs) == 337, (
+            f"{len(defs)} definition entries cut out of dash.sthlp, 337 "
             f"measured 01oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

@@ -249,7 +249,7 @@ and now matches Stata.
   "Geometry, dates and labels" ("They now draw along x") describes the
   order this replaces. (WP-29, P0.1)
 
-<!-- WP-29 P0.2 -->
+- A by() graph's panels share one scale per axis, as twoway draws them: `dash scatter mpg weight, by(foreign)` drew Domestic on 12-34 and Foreign on 14-41 and now draws both on 12-41, with second axes shared too; `by(foreign, yrescale) ylabel(#5)` drew 10(10)40 on both panels and now draws 10(5)35 and 15(5)40; `by(, yrescale) yscale(range(0))` drew both panels from 0 and now leaves range() unapplied, with a note; by() panels now pan and zoom together (WP-29, P0.2)
 
 - Unlabelled variables are named as twoway names them, in both modes: `dash scatter y x` on unlabelled data drew no axis titles, the key `scatter` and tooltip rows `''`, and now draws the titles `x` and `y`, the key `y` and the rows `x` and `y`; `(scatter y1 x) (scatter y2 x)` was keyed `scatter scatter` and is now keyed `y1 y2`; `(histogram mpg) (kdensity mpg)` was keyed by the variable twice and is now keyed `Density` and `kdensity mpg`; the served app's filter widgets were untitled and are now titled by the variable's label or name; a data file whose variableLabels is malformed aborted the build and now draws names.  Until P1.16, a multi-layer unlabelled graph draws its first layer's name as y title where twoway draws none. (WP-29, P0.3)
 

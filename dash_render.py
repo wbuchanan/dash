@@ -18576,7 +18576,20 @@ _DASH_BY_SUPPORTED = {
     "cols": ("c", "co", "col", "cols"),
     "missing": ("miss", "missi", "missin", "missing"),
     "total": ("tot", "tota", "total"),
+    # twoway's rescale sub-options (bygraph_g.class:268-269: NORescale
+    # Rescale NOXRescale NOYRescale XRescale YRescale), every spelling from
+    # the minimum to the full name (WP-29 P0.2).
+    "rescale": ('r', 're', 'res', 'resc', 'resca', 'rescal', 'rescale'),
+    "norescale": ('nor', 'nore', 'nores', 'noresc', 'noresca', 'norescal', 'norescale'),
+    "xrescale": ('xr', 'xre', 'xres', 'xresc', 'xresca', 'xrescal', 'xrescale'),
+    "yrescale": ('yr', 'yre', 'yres', 'yresc', 'yresca', 'yrescal', 'yrescale'),
+    "noxrescale": ('noxr', 'noxre', 'noxres', 'noxresc', 'noxresca', 'noxrescal', 'noxrescale'),
+    "noyrescale": ('noyr', 'noyre', 'noyres', 'noyresc', 'noyresca', 'noyrescal', 'noyrescale'),
 }
+
+#: The keys of _DASH_BY_SUPPORTED that are rescale words, taken bare.
+_DASH_BY_RESCALE_KEYS = ("rescale", "norescale", "xrescale", "yrescale",
+                         "noxrescale", "noyrescale")
 
 
 def _dash_by_tokens(subopts):
@@ -18702,6 +18715,19 @@ def _dash_parse_by(by_raw, warn=True):
             by_total = True
         elif name in _DASH_BY_SUPPORTED["missing"] and "(" not in tok:
             by_missing = True
+        elif "(" not in tok and any(name in _DASH_BY_SUPPORTED[k]
+                                    for k in _DASH_BY_RESCALE_KEYS):
+            # yrescale, xrescale, rescale and their no forms: honoured by
+            # _dash_by_rescale (WP-29 P0.2), never named.
+            pass
+        elif name == "style" and arg.strip() in ("rescale", "combine"):
+            # style(rescale|combine): its separate scales are drawn
+            # (_dash_by_rescale); the rest of the style is not.
+            if warn:
+                warnings.warn(
+                    "dash: by() sub-option style(%s): only its separate "
+                    "scales are drawn; the rest of the style is not "
+                    "implemented." % arg.strip(), UserWarning, stacklevel=2)
         else:
             unsupported.append(tok)
     if unsupported and warn:
@@ -18713,6 +18739,88 @@ def _dash_parse_by(by_raw, warn=True):
             UserWarning, stacklevel=2,
         )
     return varlist, by_cols, by_total, by_missing, unsupported
+
+
+def _dash_by_rescale(by_raw):
+    """The letters (``"x"``, ``"y"``) a by() graph draws on each panel's own
+    scale, as twoway decides them (bygraph_g.class:292-385, WP-29 P0.2).
+
+    ``rescale`` rescales both axes and, failing it, ``norescale`` neither;
+    ``xrescale``/``yrescale`` and ``noxrescale``/``noyrescale`` decide one
+    axis, a yes winning over a no; with neither, the last ``style()``
+    decides -- exactly ``style(rescale)`` or ``style(combine)`` rescales
+    both, any other style (``style(resc)``, ``style(compact)``) neither.
+    ``compact`` never matters.  Only the text after the first comma is
+    read, through the quote-aware ``_dash_by_tokens``, so ``title("yrescale")``
+    is text; a word in capitals is read as its lower-case spelling (twoway
+    refuses it; a by() validation item).  Never raises on any input and is
+    linear.  Returns a frozenset.
+    """
+    try:
+        text = by_raw if isinstance(by_raw, str) else str(by_raw)
+    except Exception:  # noqa: BLE001 -- any object at all
+        return frozenset()
+    _, comma, subs = text.partition(",")
+    if not comma:
+        return frozenset()
+    yes, no, base = set(), set(), False
+    for tok in _dash_by_tokens(subs.strip()):
+        name = tok.split("(", 1)[0].strip().lower()
+        if "(" in tok:
+            if name == "style":
+                arg = tok[tok.index("(") + 1:]
+                arg = arg[:-1] if arg.endswith(")") else arg
+                base = arg.strip() in ("rescale", "combine")
+            continue
+        if name in _DASH_BY_SUPPORTED["rescale"]:
+            yes |= {"x", "y"}
+        elif name in _DASH_BY_SUPPORTED["norescale"]:
+            no |= {"x", "y"}
+        elif name in _DASH_BY_SUPPORTED["xrescale"]:
+            yes.add("x")
+        elif name in _DASH_BY_SUPPORTED["yrescale"]:
+            yes.add("y")
+        elif name in _DASH_BY_SUPPORTED["noxrescale"]:
+            no.add("x")
+        elif name in _DASH_BY_SUPPORTED["noyrescale"]:
+            no.add("y")
+    return frozenset(d for d in ("x", "y")
+                     if d in yes or (d not in no and base))
+
+
+def _dash_by_range_notes(graph):
+    """``[(key, text)]``: one note per rescaled axis of a by() graph whose
+    range() is not applied (WP-29 P0.2, SD-8).
+
+    twoway draws a rescaled axis of each panel over that panel's own data
+    and does not apply ``yscale(range())`` there (axis(2)'s included);
+    dash does the same and says so once, decided from the spec alone so
+    both modes raise it at build time (the saved renderer's figure loop,
+    ``ServerAppBuilder._plan_graph_notes``).  The key is ``("by-range",
+    graph name, letter)``.
+    """
+    if not isinstance(graph, dict):
+        return []
+    go = graph.get("graph_options")
+    if not isinstance(go, dict):
+        return []
+    by = str(go.get("by") or "").strip()
+    if not by or not _dash_parse_by(by, warn=False)[0]:
+        return []
+    name = str(go.get("name", "") or "")
+    out = []
+    resc = _dash_by_rescale(by)
+    for d in ("y", "x"):
+        if d not in resc:
+            continue
+        if any(_DASH_SCALE_RANGE_RE.search(str(go.get(k) or ""))
+               for k in (d + "scale", d + "scale2")):
+            out.append((("by-range", name, d),
+                        "dash: graph '%s': by(, %srescale) draws each panel "
+                        "on its own %s scale; %sscale(range()) is not "
+                        "applied, as in twoway."
+                        % (_dash_display(name), d, d, d)))
+    return out
 
 
 def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
@@ -21835,6 +21943,10 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
             f"{n}scale2", [t for t, nm in zip(toks, names)
                            if nm not in _DASH_SCALE2_SUBOPTS], seen, key)
         want = _parse_scale_range(scale_raw, f"{n}scale2")
+        if n in (getattr(fig, "_dash_rescaled", None) or ()):
+            # A by() panel on its own scale: range() is not applied, as in
+            # twoway (WP-29 P0.2).
+            want = []
         is_log = isinstance(ax, LogAxis)
 
         # The label positions are read before the range is set: unless
@@ -21870,6 +21982,12 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                                      "log" if is_log else None,
                                      "reverse" in names)
             rng.start, rng.end = float(new.start), float(new.end)
+            # The hull before padding, for a by() graph's one shared second
+            # axis (_dash_share_by_scales, WP-29 P0.2).
+            hulls = getattr(fig, "_dash_secondary_hulls", None) or {}
+            hulls[name] = (min(vals), max(vals), "log" if is_log else None,
+                           "reverse" in names)
+            fig._dash_secondary_hulls = hulls
         elif "reverse" in names:
             rng.start, rng.end = rng.end, rng.start
 
@@ -22272,7 +22390,7 @@ def _dash_axis_hull(fig, e):
     return min(vals), max(vals)
 
 
-def _dash_hull_ranges(fig, entries, common=None):
+def _dash_hull_ranges(fig, entries, common=None, made=None):
     """Give each of *fig*'s own axes with a hull a padded Range1d over it.
 
     *entries* are :func:`_dash_count_axes` entries (``every_axis=True``).
@@ -22310,7 +22428,12 @@ def _dash_hull_ranges(fig, entries, common=None):
                      or {}).get(letter))
                or _dash_range_reversed(getattr(fig, attr)))
         kind = es[0].get("kind")
-        new = _dash_padded_range(lo, hi, kind, rev)
+        if made is not None and common is not None and hkey in made:
+            new = made[hkey]
+        else:
+            new = _dash_padded_range(lo, hi, kind, rev)
+            if made is not None and common is not None:
+                made[hkey] = new
         setattr(fig, attr, new)
         for e in es:
             e["rng"] = new
@@ -22368,7 +22491,7 @@ def _dash_finish_count_ticks(fig):
     _dash_hull_ranges(fig, entries)
 
 
-def _dash_common_count_ticks(figs):
+def _dash_common_count_ticks(figs, letters=("x", "y")):
     """Tick a by() graph's panels on one scale, and give them one extent,
     as twoway does.
 
@@ -22381,12 +22504,16 @@ def _dash_common_count_ticks(figs):
     draws nothing takes the same ticks.  Then (WP-28 B2) every axis with
     a hull in any panel spans one hull, the union of every panel's hull
     and data (`by(foreign) yscale(range(0))': both panels 0 to 41).
-    Called in both modes once every panel of the graph is drawn.
+    Called in both modes once every panel of the graph is drawn, through
+    :func:`_dash_share_by_scales`.  *letters* are the axes the panels share
+    (a rescaled one is ticked and hulled per panel, WP-29 P0.2); every
+    shared hull is one range object (``made``).
     """
     groups: dict = {}
     for f in figs or ():
         for e in getattr(f, "_dash_count_entries", None) or ():
-            groups.setdefault(e["key"], []).append(e)
+            if e.get("letter") in letters:
+                groups.setdefault(e["key"], []).append(e)
     for es in groups.values():
         los = [e.get("tick_lo", e["lo"]) for e in es
                if e.get("tick_lo", e["lo"]) is not None]
@@ -22400,7 +22527,8 @@ def _dash_common_count_ticks(figs):
     panels: dict = {}
     for f in figs or ():
         for e in getattr(f, "_dash_hull_axes", None) or ():
-            if e.get("name", "default") != "default":
+            if e.get("name", "default") != "default" \
+                    or e.get("letter") not in letters:
                 continue
             per = panels.setdefault(("default", e["letter"]), {})
             per.setdefault(id(f), (f, []))[1].append(e)
@@ -22418,8 +22546,87 @@ def _dash_common_count_ticks(figs):
             continue
         lo = min([h[0] for h in hulls] + data)
         hi = max([h[1] for h in hulls] + data)
+        made: dict = {}
         for f, es in per.values():
-            _dash_hull_ranges(f, es, common={hkey: (lo, hi)})
+            _dash_hull_ranges(f, es, common={hkey: (lo, hi)}, made=made)
+
+
+def _dash_share_repoint(figs, letter, name, rng):
+    """Point every count and hull entry of *letter* on range *name* at *rng*."""
+    for f in figs:
+        for attr in ("_dash_count_entries", "_dash_hull_axes"):
+            for e in getattr(f, attr, None) or ():
+                if e.get("letter") == letter \
+                        and e.get("name", "default") == name:
+                    e["rng"] = rng
+
+
+def _dash_share_by_scales(figs, rescale=frozenset()):
+    """Draw a by() graph's panels on one scale per axis, as twoway does
+    (bygraph_g.class axis_allrange; WP-29 P0.2).
+
+    For each axis the graph does not rescale (*rescale*, from
+    ``_dash_by_rescale``): when every panel's range is a DataRange1d, ONE
+    DataRange1d replaces them, its renderers the union of the panels' (a
+    panel that left its range to every renderer contributes its own
+    first-axis layers; all of them doing so keeps BokehJS's "auto"), so
+    BokehJS spans the union of what every panel draws, before and after
+    any filter move; on the second axis (``y2``/``x2``), one Range1d over
+    the union of the panels' hulls (``fig._dash_secondary_hulls``).  Then
+    the shared axes are ticked and hulled over every panel
+    (:func:`_dash_common_count_ticks`).  The order is the design: the
+    ranges are shared first, so the ``#N`` start and end land on the
+    shared object.  Sharing never crosses graphs: it is called once per
+    by() graph with that graph's panels.  Called in both modes.
+    """
+    from bokeh.models import DataRange1d
+    figs = [f for f in (figs or ()) if f is not None]
+    if len(figs) < 2:
+        return
+    rescale = frozenset(rescale or ())
+    letters = tuple(d for d in ("x", "y") if d not in rescale)
+    for letter in letters:
+        attr = letter + "_range"
+        rngs = [getattr(f, attr) for f in figs]
+        if all(isinstance(r, DataRange1d) for r in rngs) \
+                and len({id(r) for r in rngs}) > 1:
+            kw = {k: v for k, v in rngs[0].properties_with_values(
+                include_defaults=False).items()
+                if k not in ("renderers", "start", "end", "id", "name")}
+            shared = DataRange1d(**kw)
+            shared.flipped = any(bool(r.flipped) for r in rngs)
+            lists = [list(r.renderers) if isinstance(r.renderers, list)
+                     else [] for r in rngs]
+            if any(lists):
+                rname = letter + "_range_name"
+                seen, union = set(), []
+                for f, lst in zip(figs, lists):
+                    if not lst:
+                        lst = [r for r in f.renderers
+                               if getattr(r, rname, "default") == "default"
+                               and not _dash_is_swatch(r)]
+                    for r in lst:
+                        if id(r) not in seen:
+                            seen.add(id(r))
+                            union.append(r)
+                shared.renderers = union
+            for f in figs:
+                setattr(f, attr, shared)
+            _dash_share_repoint(figs, letter, "default", shared)
+        name = letter + "2"
+        extra = "extra_%s_ranges" % letter
+        if all(name in getattr(f, extra) for f in figs):
+            hulls = [(getattr(f, "_dash_secondary_hulls", None) or {}).get(name)
+                     for f in figs]
+            hulls = [h for h in hulls if h is not None]
+            if hulls:
+                new = _dash_padded_range(min(h[0] for h in hulls),
+                                         max(h[1] for h in hulls),
+                                         hulls[0][2], hulls[0][3])
+                for f in figs:
+                    setattr(f, extra, {**getattr(f, extra), name: new})
+                _dash_share_repoint(figs, letter, name, new)
+    _dash_common_count_ticks(figs, letters=letters)
 
 
 def _dash_limit_ranges_to_primary(fig, source):
@@ -24527,7 +24734,8 @@ def _dash_scale_spec(raw, option="", seen=None, key=""):
             "hi": max(vals) if vals else None}
 
 
-def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar):
+def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar,
+                             rescale=frozenset()):
     """Record xscale(range())/yscale(range()) and reverse on the figure.
 
     twoway decides an axis's extent once its layers are drawn: the hull of
@@ -24545,6 +24753,11 @@ def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar):
 
     *frame*, *xvar* and *yvar* are no longer read; both call sites pass
     them, and the signature is kept for them.
+
+    *rescale* holds the letters a by() panel draws on its own scale
+    (``_dash_by_rescale``, WP-29 P0.2): twoway does not apply range() on
+    such an axis, so its values are dropped; reverse is kept.  The set is
+    recorded as ``fig._dash_rescaled``.
     """
     from bokeh.models import DataRange1d
     vals, rev = {}, {}
@@ -24569,8 +24782,11 @@ def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar):
         rev[axis] = bool(spec.get("reverse"))
         if rev[axis] and isinstance(getattr(fig, attr), DataRange1d):
             getattr(fig, attr).flipped = True
+    for letter in frozenset(rescale or ()):
+        vals[letter] = []
     fig._dash_scale_values = vals
     fig._dash_scale_reverse = rev
+    fig._dash_rescaled = frozenset(rescale or ())
 
 
 def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key):
@@ -28266,6 +28482,7 @@ class DashRenderer:
         graph_spec: dict,
         source: ColumnDataSource,
         facet_view: "Optional[Any]" = None,
+        rescale: frozenset = frozenset(),
     ) -> Any:
         """Build and return a fully-configured Bokeh Figure for one graph spec.
 
@@ -28292,14 +28509,16 @@ class DashRenderer:
                 _gscheme, f"graph {graph_opts.get('name', '') or '(unnamed)'}")
             self.mapper.scheme = self.scheme
             try:
-                return self._make_figure_body(graph_spec, source, facet_view)
+                return self._make_figure_body(graph_spec, source, facet_view,
+                                              rescale)
             finally:
                 self.scheme, self.mapper.scheme = _saved_scheme, _saved_mapper
                 # WP-29 P0.16: no figure, render or exception inherits a
                 # layer's colour rows.
                 self.mapper.colorvar_domain = None
         try:
-            return self._make_figure_body(graph_spec, source, facet_view)
+            return self._make_figure_body(graph_spec, source, facet_view,
+                                          rescale)
         finally:
             self.mapper.colorvar_domain = None
 
@@ -28308,8 +28527,11 @@ class DashRenderer:
         graph_spec: dict,
         source: ColumnDataSource,
         facet_view: "Optional[Any]" = None,
+        rescale: frozenset = frozenset(),
     ) -> Any:
-        """The body of :meth:`_make_figure`, run under the graph's scheme."""
+        """The body of :meth:`_make_figure`, run under the graph's scheme.
+        *rescale*: the letters a by() panel draws on its own scale
+        (``_dash_by_rescale``)."""
         graph_opts = graph_spec.get("graph_options", {})
         plots = graph_spec.get("plots", [])
 
@@ -28490,7 +28712,7 @@ class DashRenderer:
         # the generated app runs as well: it read xrange/yrange keys
         # dash.ado never writes, so a served range() was dropped.
         _dash_apply_scale_ranges(fig, _xsc, _ysc, _source_frame(source, self.df),
-                                 xvar, yvar)
+                                 xvar, yvar, rescale=rescale)
 
         # xline()/yline(), through the helper the generated app runs as well.
         _dash_reference_lines(fig, graph_opts, _seen, _gkey, self.scheme)
@@ -29670,9 +29892,14 @@ class DashRenderer:
         # ---- 3. Build figures ----
         for g in graphs:
             name = g.get("graph_options", {}).get("name", "")
+            # The letters a by() graph's panels draw on their own scales
+            # (WP-29 P0.2); empty for any other graph.
+            _brs = _dash_by_rescale(
+                str(g.get("graph_options", {}).get("by", "") or ""))
             # Notes decided from the spec alone, raised here and, for the
             # served app, at build time (ServerAppBuilder._plan_graph_notes).
-            for _nk, _nt in _dash_unused_second_axis_notes(g):
+            for _nk, _nt in (_dash_unused_second_axis_notes(g)
+                             + _dash_by_range_notes(g)):
                 _dash_warn_once(_nk, _nt)
             if name in self._facet_map:
                 shared_src_render = self.sources.get(name)
@@ -29704,7 +29931,8 @@ class DashRenderer:
                         g_panel = (_dash_total_spec(g)
                                    if fkey in self._facet_total_keys else g)
                         fig = self._make_figure(g_panel, src,
-                                                facet_view=panel_view_r)
+                                                facet_view=panel_view_r,
+                                                rescale=_brs)
                         orig_title = fig.title.text if fig.title else ""
                         fig.title.text = f"{orig_title} — {label}" if orig_title else label
                         if name in link_names:
@@ -29714,12 +29942,14 @@ class DashRenderer:
                         raise RuntimeError(
                             f"dash_render: failed to build facet figure '{fkey}': {exc}"
                         ) from exc
-                # twoway ticks a by() graph's panels on one scale, over all
-                # their data (_dash_common_count_ticks); the served app runs
-                # the same helper.
-                _dash_common_count_ticks(
+                # twoway draws a by() graph's panels on one scale per axis,
+                # over all their data, unless rescaled; one range object is
+                # shared, then the panels are ticked on it
+                # (_dash_share_by_scales); the served app runs the same
+                # helper.
+                _dash_share_by_scales(
                     [self.figures[fk] for fk, _ in self._facet_map[name]
-                     if fk in self.figures])
+                     if fk in self.figures], _brs)
             else:
                 src = self.sources.get(name)
                 if src is None:
@@ -29729,7 +29959,8 @@ class DashRenderer:
                 _qual_view = _linked_graph_views.get(name) \
                     if "_linked_graph_views" in dir() else None
                 try:
-                    _fig = self._make_figure(g, src, facet_view=_qual_view)
+                    _fig = self._make_figure(g, src, facet_view=_qual_view,
+                                             rescale=_brs)
                     if name in link_names:
                         _dash_dim_nonselection(_fig)
                     self.figures[name] = _fig
@@ -31106,6 +31337,7 @@ class ServerAppBuilder:
                          "_dash_kpi_unit_kind",
                          # by(): one parser, one panel-label rule.
                          "_dash_by_tokens", "_dash_parse_by",
+                         "_dash_by_rescale",
                          "_dash_facet_label", "_dash_stata_date_text",
                          # The Stata display-format writer (WP-28 S04).
                          "_dash_fmt_parse", "_dash_fmt_kind",
@@ -31176,6 +31408,7 @@ class ServerAppBuilder:
                          "_dash_ts_daily",
                          "_dash_count_axes", "_dash_place_count_ticks",
                          "_dash_common_count_ticks",
+                         "_dash_share_by_scales", "_dash_share_repoint",
                          # The filter widgets and the rows they select.
                          "_whole_number_step", "_is_clock_kind",
                          "_date_slider_step_days", "_clock_slider_step_ms",
@@ -31720,7 +31953,8 @@ class ServerAppBuilder:
         a session's output never reaches the Stata log of the user who
         built it (HC5-08).  The frame is never loaded."""
         for g in self.spec.get("graphs", []) or []:
-            for key, text in _dash_unused_second_axis_notes(g):
+            for key, text in (_dash_unused_second_axis_notes(g)
+                              + _dash_by_range_notes(g)):
                 _dash_warn_once(key, text)
 
     def _plan_by_groups(self) -> None:
@@ -32864,7 +33098,8 @@ class ServerAppBuilder:
             "            return [_s for _s in _srcs if _s is not _ly]",
             "        return _redraw",
             "",
-            "    def _dash_figure_for(g, gname, g_df, _fac_label=None):",
+            "    def _dash_figure_for(g, gname, g_df, _fac_label=None,",
+            "                         _rescale=frozenset()):",
             '        """Build one figure: a graph, or one by() panel of it.',
 
             "        This is the body of what used to be the per-graph loop.",
@@ -33025,7 +33260,8 @@ class ServerAppBuilder:
             "            if _gr_bg:",
             "                _c = _dash_graph_color('graphregion(color)', _gr_bg)",
             "                if _c: fig.border_fill_color = _c",
-            "        _dash_apply_scale_ranges(fig, _xsc, _ysc, g_df, xv, yv)",
+            "        _dash_apply_scale_ranges(fig, _xsc, _ysc, g_df, xv, yv,",
+            "                                 rescale=_rescale)",
             "        # note(), caption(), subtitle(): the helper the saved renderer",
             "        # runs, at the scheme's text-box sizes and colours.",
             "        _dash_text_annotations(fig, go, _reported_subopts, gname, _DASH_SCHEME)",
@@ -33325,6 +33561,8 @@ class ServerAppBuilder:
             "        # session does not repeat it.",
             "        _bv, _bcols, _btotal, _bmissing, _ = _dash_parse_by(",
             "            (go.get('by') or '').strip(), warn=False)",
+            "        # The letters the panels draw on their own scales (P0.2).",
+            "        _brs = _dash_by_rescale((go.get('by') or '').strip())",
             "        by_vars = [v for v in _bv.split() if v in df.columns]",
             "        if not by_vars:",
             "            figures[gname] = _dash_figure_for(g, gname, g_df)",
@@ -33349,7 +33587,8 @@ class ServerAppBuilder:
             "        if work_df.empty and (_g_tot is g or _t_df.empty):",
             "            # Every by() value is missing: one empty panel, as saved.",
             "            _owner_rows[gname] = work_df.index",
-            "            figures[gname] = _dash_figure_for(g, gname, work_df)",
+            "            figures[gname] = _dash_figure_for(g, gname, work_df,",
+            "                                              _rescale=_brs)",
             "            continue",
             "        if gname not in linked_names:",
             "            graph_sources.pop(gname, None)",
@@ -33406,14 +33645,14 @@ class ServerAppBuilder:
             "                    'if_expr': _g_if, 'in_expr': _g_in,",
             "                    'qual_col': str(_g_tot.get('qual_col') or '')}",
             "            figures[_fname] = _dash_figure_for(",
-            "                _g_pan, _fname, _gdf, _fac_label=_label)",
+            "                _g_pan, _fname, _gdf, _fac_label=_label, _rescale=_brs)",
             "            _entries.append((_fname, _label))",
             "            _facet_group_vals[_fname] = (by_vars, _key)",
             "        _facet_map[gname] = _entries",
-            "        # twoway ticks a by() graph's panels on one scale, over",
-            "        # all their data, as the saved figure's are.",
-            "        _dash_common_count_ticks([figures[_f] for _f, _ in _entries",
-            "                                  if _f in figures])",
+            "        # twoway draws a by() graph's panels on one scale per",
+            "        # axis unless rescaled, as the saved figure's are.",
+            "        _dash_share_by_scales([figures[_f] for _f, _ in _entries",
+            "                               if _f in figures], _brs)",
             "",
             "    # ---- Persist per-graph qualifier metadata for filter callbacks ----",
             "    # Graph-level if_expr/in_expr are applied during initial rendering",

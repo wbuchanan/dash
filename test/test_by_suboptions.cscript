@@ -11,7 +11,7 @@
 *! the log; this script captures the log and reads it back, the way
 *! test_render_log_clean.cscript and test_conformance.cscript do.
 *!
-*! Tests: BYS-01 through BYS-06
+*! Tests: BYS-01 through BYS-06; BSC-08 through BSC-10 (WP-29 P0.2)
 *!
 *! Usage:  do test/test_by_suboptions.cscript
 *! Version: 1.0  22sep2026
@@ -175,6 +175,82 @@ _bys_take
 assert `_bys_n' == 1
 assert strpos(`"`_bys_line'"', "rows(2)") > 0
 display "BYS-06 PASS: the report is still printed after dash_setup's probe"
+
+// ================================================================
+// BSC-08..10 -- twoway's rescale sub-options are honoured, not named,
+// and a range() a rescaled axis does not apply is said once in the log
+// of a saved and of a served build (WP-29 P0.2)
+// ================================================================
+mata:
+// How many logical lines of a captured log hold `needle'.
+void _bsc_scan(string scalar fn, string scalar needle)
+{
+    real scalar   fh, n
+    string scalar line, full
+    fh = fopen(fn, "r")
+    n = 0
+    full = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (substr(line, 1, 2) == "> ") {
+            full = full + substr(line, 3, .)
+            continue
+        }
+        if (strpos(full, needle)) n = n + 1
+        full = line
+    }
+    if (strpos(full, needle)) n = n + 1
+    fclose(fh)
+    st_local("_bsc_n", strofreal(n))
+}
+end
+
+// Run one command with the log captured; r(n) is how many logical lines
+// of the log hold the range() note.
+capture program drop _bsc_logrun
+program define _bsc_logrun, rclass
+    version 16.0
+    args cmd
+    local logfile "`c(tmpdir)'dash_bsc_`=subinstr("`c(current_time)'", ":", "", .)'.log"
+    set linesize 80
+    capture log close _bsclog
+    log using "`logfile'", name(_bsclog) text replace
+    capture noisily `cmd'
+    local rc = _rc
+    log close _bsclog
+    mata: _bsc_scan("`logfile'", "scale(range()) is not applied, as in twoway")
+    capture erase "`logfile'"
+    if `rc' != 0 {
+        display as error "command failed with rc=`rc'"
+        exit `rc'
+    }
+    return scalar n = `_bsc_n'
+end
+
+// BSC-08: no rescale spelling is named; style(rescale) has its own note.
+_bys_render "foreign, yrescale xrescale rescale r norescale noyrescale"
+_bys_take
+assert `_bys_n' == 0
+_bys_render "foreign, style(rescale)"
+_bys_take
+assert `_bys_n' == 1
+assert strpos(`"`_bys_line'"', "only its separate scales are drawn") > 0
+display "BSC-08 PASS: yrescale, xrescale, rescale, r, norescale and noyrescale are honoured, not named; style(rescale) has its own note"
+
+// BSC-09: the saved build says once that range() is not applied.
+tempfile out9
+dash clear
+_bsc_logrun `"dash scatter mpg weight, by(foreign, yrescale) yscale(range(0)) saving("`out9'.html") replace"'
+assert r(n) == 1
+display "BSC-09 PASS: by(foreign, yrescale) yscale(range(0)) says once that range() is not applied (saved)"
+
+// BSC-10: and so does the served build, where the user reads it.
+tempfile out10
+dash clear
+quietly dash scatter mpg weight, by(foreign, yrescale) yscale(range(0)) name(bsc10)
+_bsc_logrun `"dash build, saving("`out10'.py") replace server"'
+assert r(n) == 1
+display "BSC-10 PASS: the served build says it once too, at build time"
+capture erase "`out10'.py"
 
 capture program drop _bys_render
 dash clear

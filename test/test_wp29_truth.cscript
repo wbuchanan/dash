@@ -18,7 +18,8 @@
 *!        match twoway's, every copy is 0600 in a 0700 folder (PF-01..PF-06,
 *!        PF-11, PF-12)
 *!   S10  P0.5 axis(#) routed to the axis it names, against twoway's .Graph
-*!        members, saved and served (AX-11..AX-18)
+*!        members, saved and served (AX-11..AX-18); P0.2 by() panels share
+*!        one scale per axis unless rescaled (BSC-01..BSC-07)
 *!
 *! Usage: via run_all_cscripts.do (registered as its block 68).  One
 *! block alone: set WP29_ONLY=S<NN> in the environment of the driver run
@@ -3839,6 +3840,171 @@ if inlist("`only'", "", "S10") {
     python: _s10_both(_s10_ax18)
     _w29_expect AX-18 "(${s10_ok} == 1)" `"${s10_why}"'
     _w29_done AX-18 "under by(), every panel's second axis is labelled as twoway's (${s10_tw})"
+
+    capture dash clear
+    capture graph drop _all
+    macro drop s10_*
+    display as text "S10 end `c(current_time)'"
+}
+* ==== end S10 ====
+
+// Helpers of block S10 P0.2 (by() shared scales).  twoway draws a by()
+// graph's panels on one scale per axis unless yrescale, xrescale or
+// rescale gives each its own (bygraph_g.class); each BSC case reads the
+// live .Graph.graphs[k] members and compares them with the panels of
+// dash's saved page and served app (test_by_scales.py's emulated hull,
+// what BokehJS spans over a shared DataRange1d).
+
+// _s10_panels: every panel of the current by() graph, into $s10_tw as
+// "title|ymin|ymax|xmin|xmax|y2min|y2max|majmin|majmax|majdelta|curmin;".
+capture program drop _s10_panels
+program define _s10_panels
+    version 16.0
+    local n "`.Graph.graphs.arrnels'"
+    local out ""
+    forvalues k = 1/`n' {
+        local p ".Graph.graphs[`k']"
+        local out "`out'``p'.subtitle.text[1]'|``p'.plotregion1.yscale.min'|``p'.plotregion1.yscale.max'|``p'.plotregion1.xscale.min'|``p'.plotregion1.xscale.max'|``p'.yaxis2.plotregion.yscale.min'|``p'.yaxis2.plotregion.yscale.max'|``p'.yaxis1.major.min'|``p'.yaxis1.major.max'|``p'.yaxis1.major.delta'|``p'.plotregion1.yscale.curmin';"
+    }
+    global s10_tw "`out'"
+end
+
+python:
+import os as _s10_os
+import sys as _s10_sys
+_s10_sys.path.insert(0, _s10_os.path.abspath("."))
+import test_by_scales as _s10_tb
+
+
+def _s10_live():
+    out = {}
+    for row in _s10_M.getGlobal("s10_tw").split(";"):
+        f = row.split("|")
+        if len(f) < 11:
+            continue
+        num = [float(v) if v.strip() not in ("", ".") else None for v in f[1:]]
+        out[f[0]] = dict(zip(("ymin", "ymax", "xmin", "xmax", "y2min", "y2max",
+                              "majmin", "majmax", "majdelta", "curmin"), num))
+    return out
+
+
+def _s10_panelmap(plots):
+    return {str(p.title.text if p.title is not None else ""): p for p in plots}
+
+
+def _s10_by(shared, rescaled=(), y2=False, ticks=False, no_zero=False):
+    def check(plots):
+        live, got, bad = _s10_live(), _s10_panelmap(plots), []
+        if sorted(live) != sorted(got):
+            return ["panels %s, twoway %s" % (sorted(got), sorted(live))]
+        figs = [got[t] for t in sorted(live)]
+        for d in ("x", "y"):
+            ids = {id(getattr(f, d + "_range")) for f in figs}
+            if d in shared and len(ids) != 1:
+                bad.append("%s is not one shared range" % d)
+            if d in rescaled and len(ids) != len(figs):
+                bad.append("%s is not per panel" % d)
+            for t in sorted(live):
+                f = got[t]
+                h = (_s10_tb._emulated_hull(figs, d) if d in shared
+                     else _s10_tb._hull_of(f, d))
+                want = (live[t][d + "min"], live[t][d + "max"])
+                if not _s10_tb._close(h, want):
+                    bad.append("%s %s hull %s, twoway %s" % (t, d, h, want))
+        if y2:
+            for t in sorted(live):
+                r2 = got[t].extra_y_ranges.get("y2")
+                h = _s10_tb.dr._dash_range_hull(r2) if r2 is not None else None
+                want = (live[t]["y2min"], live[t]["y2max"])
+                if not _s10_tb._close(h, want):
+                    bad.append("%s y2 hull %s, twoway %s" % (t, h, want))
+        if ticks:
+            for t in sorted(live):
+                tk = _s10_tb._major_ticks(_s10_tb._left(got[t]))
+                want = _s10_tb._steps(live[t]["majmin"], live[t]["majmax"],
+                                      live[t]["majdelta"])
+                if tk != want:
+                    bad.append("%s ticks %s, twoway %s" % (t, tk, want))
+        if no_zero:
+            for t in sorted(live):
+                h = _s10_tb._hull_of(got[t], "y")
+                if h is None or h[0] <= 0 or live[t]["curmin"] != 10:
+                    bad.append("%s hull %s, twoway curmin %s" % (t, h, live[t]["curmin"]))
+        return bad
+    return check
+
+
+def _s10_bsc_check():
+    g = _s10_M.getGlobal
+    _s10_both(_s10_by(g("s10_sh"), g("s10_rs"), ticks=g("s10_tk") == "1",
+                      no_zero=g("s10_nz") == "1"))
+
+end
+
+// (the check runs in the block: a python line inside a program does not
+// see the definitions above)
+// _s10_bsc <id> <dir> `"<by and graph options>"' <shared> <rescaled> <ticks> <nozero> `"<what>"'
+capture program drop _s10_bsc
+program define _s10_bsc
+    version 16.0
+    args id dir opts sh rs tk nz why
+    quietly twoway scatter mpg weight, `opts'
+    _s10_panels
+    dash clear
+    quietly dash scatter mpg weight, `opts' name(`=lower(subinstr("`id'", "-", "", .))')
+    _s10_build "`dir'/`id'"
+    global s10_sh "`sh'"
+    global s10_rs "`rs'"
+    global s10_tk "`tk'"
+    global s10_nz "`nz'"
+end
+
+* ==== S10 P0.2: by() shared scales ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S10") {
+    display as text "S10 start `c(current_time)'"
+    local s10d "`w29_work'/s10b"
+    capture mkdir "`s10d'"
+    sysuse auto, clear
+
+    _s10_bsc BSC-01 "`s10d'" "by(foreign)" "xy" "" 0 0
+    python: _s10_bsc_check()
+    _w29_expect BSC-01 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done BSC-01 "by(foreign): one shared x and y scale spanning every panel, as twoway's"
+    _s10_bsc BSC-02 "`s10d'" "by(foreign, yrescale)" "x" "y" 0 0
+    python: _s10_bsc_check()
+    _w29_expect BSC-02 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done BSC-02 "yrescale gives each panel its own y scale, as twoway"
+    _s10_bsc BSC-03 "`s10d'" "by(foreign, rescale)" "" "xy" 0 0
+    python: _s10_bsc_check()
+    _w29_expect BSC-03 "(${s10_ok} == 1)" `"${s10_why}"'
+    _s10_bsc BSC-03 "`s10d'" "by(foreign, r)" "" "xy" 0 0
+    python: _s10_bsc_check()
+    _w29_expect BSC-03 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done BSC-03 "rescale and r give each panel its own x and y scales, as twoway"
+    _s10_bsc BSC-04 "`s10d'" "by(foreign, total)" "xy" "" 0 0
+    python: _s10_bsc_check()
+    _w29_expect BSC-04 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done BSC-04 "the Total panel shares the scale, as twoway's"
+    _s10_bsc BSC-06 "`s10d'" "by(foreign, yrescale) ylabel(#5)" "x" "y" 1 0
+    python: _s10_bsc_check()
+    _w29_expect BSC-06 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done BSC-06 "ylabel(#5) ticks each rescaled panel over its own data, as twoway"
+    _s10_bsc BSC-07 "`s10d'" "by(foreign, yrescale) yscale(range(0))" "x" "y" 0 1
+    python: _s10_bsc_check()
+    _w29_expect BSC-07 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done BSC-07 "range(0) is not applied on a rescaled axis; twoway's curmin is 10"
+
+    // BSC-05: under by(), the second axis is shared too.
+    local D "(scatter mpg weight) (scatter price weight, yaxis(2))"
+    quietly twoway `D', by(foreign)
+    _s10_panels
+    dash clear
+    quietly dash `D', by(foreign) name(bsc5)
+    _s10_build "`s10d'/bsc5"
+    python: _s10_both(_s10_by("xy", y2=True))
+    _w29_expect BSC-05 "(${s10_ok} == 1)" `"${s10_why}"'
+    _w29_done BSC-05 "the panels' second axis spans every panel's data, as twoway's yaxis2"
 
     capture dash clear
     capture graph drop _all
