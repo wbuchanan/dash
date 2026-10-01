@@ -1512,8 +1512,10 @@ for its columns.  See {help dash##layout:Layout}.
 {pstd}
 {ul:Blocking behavior.}  {cmd:dash serve} blocks Stata until the server
 stops: {cmd:timeout(}{it:#}{cmd:)} stops it after {it:#} minutes, and
-Ctrl+C in the Stata console stops it at once.  Either way the command
-returns and dash removes its temporary folder.
+Ctrl+C in the Stata console stops it at once.  If Stata exits, crashes or
+is killed, the server stops by itself within a few seconds and frees its
+port (measured on macOS; Linux and Windows have not been measured).  Either
+way the command returns and dash removes its temporary folder.
 
 {pstd}
 {cmd:dash serve} prints the server's address once it answers
@@ -1673,9 +1675,12 @@ the content together.
 {pstd}
 The generated app embeds every observation of the variables the dashboard
 uses, base64-encoded.  Treat the {cmd:.py} file as you would the data:
-{cmd:dash serve} writes its copy into a folder only you can open and removes
-it when the command ends, and a file you name with {cmd:saving()} is written
-readable only by you (0600) and is yours to manage.
+{cmd:dash serve} writes its copy into a folder only you can open, erases the
+specification and data once the application is written, and the application
+once the server answers; only a crash in the seconds before the server
+answers can leave a private copy, which the next dash command removes.  A
+file you name with {cmd:saving()} is written readable only by you (0600) and
+is yours to manage.
 
 
 {marker tempfiles}{...}
@@ -1692,7 +1697,10 @@ day).
 
 {pstd}
 {ul:dash serve.}  {cmd:dash serve} writes its application there and erases
-the specification and data once the application is written.
+the specification and data once the application is written, and the
+application once the server answers, so no copy of the data stays on disk
+while the server runs; only a crash in the seconds before the server answers
+can leave a private copy, which the next dash command removes.
 
 {pstd}
 {ul:Previews.}  The one-line form's pages go to

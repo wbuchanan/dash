@@ -1367,16 +1367,22 @@ def _free_port():
 @pytest.mark.serve
 class TestTheRealHandoffServes:
     """The renderer run exactly as _dash_serve runs it -- runpy on
-    dash_render.py with the same sys.argv, the output a fresh extension-less
-    tempfile name -- starts a server that answers /health on the port asked
-    for, and a Ctrl+C (SIGINT) stops the launcher and the app it started."""
+    dash_render.py with the same sys.argv, the spec, data and app in a
+    private run folder (WP-29 P0.12b) -- starts a server that answers
+    /health on the port asked for, keeps no copy of the data on disk while
+    it serves (WP-29 P0.13 F2: the spec and data go once the app is
+    written, the app once /health and its banner have arrived), and a
+    Ctrl+C (SIGINT) stops the launcher and the app it started."""
 
     def test_it_serves_and_stops(self, tmp_path, truth):
         import signal
         import urllib.request
         spec = _kpi_spec("price", "none", ["p97.5"], filters=[])
-        sp, dp = _write_inputs(tmp_path, spec, _auto(truth))
-        out = str(tmp_path / "S_86564.000002")
+        _sp, _dp = _write_inputs(tmp_path, spec, _auto(truth))
+        run = dr._dash_run_open(str(tmp_path))
+        sp, dp, out = run["spec"], run["data"], run["app"]
+        os.replace(_sp, sp)
+        os.replace(_dp, dp)
         port = _free_port()
         render = os.path.join(os.path.dirname(_HERE), "dash_render.py")
         argv = ["dash_render.py", "--spec", sp, "--data", dp,
@@ -1406,7 +1412,17 @@ class TestTheRealHandoffServes:
             up = time.time() - t0
             assert status == 200, "no server answered on port %d" % port
             assert json.loads(body).get("status") == "ok", body
-            assert os.path.exists(out), "the app was not written"
+            # Flipped (WP-29 P0.13 F2): the app was required to exist while
+            # it served; now no copy of the data may: within 5 s of the
+            # first /health 200 the app, the spec and the data are gone.
+            left = [out, sp, dp]
+            t_gone = time.time() + 5
+            while time.time() < t_gone:
+                left = [p for p in (out, sp, dp) if os.path.exists(p)]
+                if not left:
+                    break
+                time.sleep(0.1)
+            assert not left, "on disk while serving: %s" % left
         finally:
             proc.send_signal(signal.SIGINT)
             try:

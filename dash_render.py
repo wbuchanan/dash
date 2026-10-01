@@ -30995,7 +30995,10 @@ class ServerAppBuilder:
                          # and __main__ share this with the launcher and
                          # main() (GAPS2 F1), so the range is refused the
                          # same way everywhere a port is read.
-                         "_dash_port_value"):
+                         "_dash_port_value",
+                         # WP-29 P0.13 F2: the app stops when the program
+                         # that started it ends (--parent-watch).
+                         "_dash_watch_parent"):
             if _fn_name in _emitted_names:
                 continue
             _fn = getattr(_mod, _fn_name, None)
@@ -31997,6 +32000,13 @@ class ServerAppBuilder:
             "                   help='Open a browser window once the server is up.')",
             "    p.add_argument('--timeout', type=int, default=0,",
             "                   help='Shut down after N minutes (0 = never).')",
+            "    p.add_argument('--parent-watch', action='store_true',",
+            "                   dest='parent_watch',",
+            "                   help='Stop when standard input reaches end of '",
+            "                        'file.  dash serve passes this so the '",
+            "                        'server ends with the Stata session that '",
+            "                        'started it; started by hand, the server '",
+            "                        'stops on Ctrl+D.')",
             "    p.add_argument('--sessions-per-client', type=_dash_limit_value,",
             "                   default=_RATE_LIMIT_RPM, metavar='N',",
             "                   help='Dashboard sessions one client may open per '",
@@ -33947,6 +33957,10 @@ class ServerAppBuilder:
             "                  'admit only this app\\'s list.', flush=True)",
             "    _server = _dash_server_app(port=_port, address=_a.address,",
             "                               origins=_a.origins)",
+            "    # WP-29 P0.13 F2: under dash serve, stop with the Stata that",
+            "    # started this server, however it ends (_dash_watch_parent).",
+            "    if _a.parent_watch:",
+            "        _dash_watch_parent(_server.io_loop)",
             "    _server.start()",
             "    # A browser opens only when asked.  It used to open",
             "    # unconditionally, so every scripted or batch run took over the",
@@ -33956,12 +33970,16 @@ class ServerAppBuilder:
             "    if _a.timeout > 0:",
             "        _server.io_loop.call_later(_a.timeout * 60,",
             "                                   _server.io_loop.stop)",
-            "    print(f'Bokeh Server running at http://localhost:{_port}/')",
-            "    print(f'Health check:  http://localhost:{_port}/health')",
+            "    # Flushed: the launcher erases the app file only once this",
+            "    # banner and /health have both reached it (WP-29 P0.13 F2).",
+            "    print(f'Bokeh Server running at http://localhost:{_port}/',",
+            "          flush=True)",
+            "    print(f'Health check:  http://localhost:{_port}/health',",
+            "          flush=True)",
             "    print(f'Session limits per minute: {_a.sessions_per_client} per '",
             "          f'client, {_a.new_clients_per_minute} new clients, '",
-            "          f'{_a.sessions_per_minute} in all.')",
-            "    print('Press Ctrl+C to stop.')",
+            "          f'{_a.sessions_per_minute} in all.', flush=True)",
+            "    print('Press Ctrl+C to stop.', flush=True)",
             f"    try:",
             f"        _server.io_loop.start()",
             f"    except KeyboardInterrupt:",
@@ -34126,6 +34144,56 @@ def _dash_port_value(value):
             "--port must be an integer from 1024 to 65535 (got: %r)"
             % (s[:40],))
     return n
+
+
+def _dash_watch_parent(io_loop, fd=None, grace=5.0, _exit=None):
+    """Stop the served app when the program that started it ends (WP-29
+    P0.13 F2).
+
+    Measured at 7421d3d: a SIGKILL or SIGTERM of Stata left the app
+    answering /health with ppid 1, holding its port, beside the data (t3,
+    t4).  ``dash serve`` starts the app with a pipe on its stdin
+    (``--parent-watch``) that only Stata's process holds; the OS closes it
+    however Stata ends.  A daemon thread reads that pipe (fd 0, after the
+    app's own frame, which the bootstrap consumed exactly) and discards
+    every byte; at end of file it asks the loop to stop through Tornado's
+    one thread-safe call, ``add_callback``, and starts a daemon timer that
+    exits the process after *grace* seconds, a backstop for a loop stuck in
+    a recompute (the u12 p6 prototype: /health stopped within one 0.1 s
+    poll after a SIGKILL of the parent, and a graceful close gave rc 0
+    after 0.08 s).  With no stdin it prints one line and returns None.
+    Copied into the generated app (R-3)."""
+    import os
+    import sys
+    import threading
+
+    if fd is None:
+        try:
+            if sys.stdin is None:
+                raise ValueError("no standard input")
+            fd = sys.stdin.fileno()
+        except (AttributeError, ValueError, OSError):
+            print("dash: no standard input to watch; the server will not "
+                  "stop with the program that started it.", flush=True)
+            return None
+
+    def _watch():
+        while True:
+            try:
+                b = os.read(fd, 4096)
+            except OSError:
+                break
+            if not b:
+                break
+        io_loop.add_callback(io_loop.stop)
+        t = threading.Timer(grace, _exit or os._exit, (0,))
+        t.daemon = True
+        t.start()
+
+    th = threading.Thread(target=_watch, name="dash-parent-watch",
+                          daemon=True)
+    th.start()
+    return th
 
 
 def main(
@@ -34411,7 +34479,8 @@ def _dash_hand_over(proc, frame):
 
 
 def _dash_launch_app(app_path, port, timeout, no_browser, *,
-                      ready_seconds=30.0, prebind=True, expect=None):
+                      ready_seconds=30.0, prebind=True, expect=None,
+                      erase_app_when_ready=False):
     """Run the generated Bokeh Server app as a subprocess and block until
     it answers ``/health`` or fails, forwarding its own output as it runs.
 
@@ -34424,6 +34493,15 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     working folder off ``sys.path``.  A refusal is ``_DashUnsafePath``
     (r(7102)); an app that cannot be read, or a child that cannot take it,
     is a launch failure (RuntimeError).
+
+    WP-29 P0.13 F2: the child always gets ``--parent-watch``, and the stdin
+    pipe stays open while it serves, held only by this process (Popen's
+    pipes are not inheritable), so the app stops when Stata ends, however
+    it ends.  The child stays in Stata's process group (A5a).  With
+    *erase_app_when_ready* (``__main__`` passes it only for dash's own
+    private run folder, ``_dash_private_run_of``), the app file is erased
+    once /health answers AND the app's own flushed banner has been read
+    (A6), so no copy of the data stays on disk while it serves.
 
     GAPS2 F1: the old inline launch started the app with
     ``Popen(cmd).wait()`` and never read ``returncode``, so a port already
@@ -34483,6 +34561,7 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
         _cmd.append("--show")
     if timeout > 0:
         _cmd += ["--timeout", str(timeout)]
+    _cmd.append("--parent-watch")
 
     try:
         proc = subprocess.Popen(_cmd, stdin=subprocess.PIPE,
@@ -34548,14 +34627,18 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     del _frame
 
     _forwarded = 0
+    _banner = False
 
     def _drain_stdout():
-        nonlocal _forwarded
+        nonlocal _forwarded, _banner
         while True:
             try:
                 line = _out_q.get_nowait()
             except queue.Empty:
                 break
+            # Before the cap: the banner counts even when not shown.
+            if "Bokeh Server running at" in line:
+                _banner = True
             if _forwarded >= 200:
                 continue  # still drained, never printed (F-14)
             _line = _clean(line).rstrip("\n")[:500]
@@ -34565,6 +34648,7 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
                 print("dash: (further app output not shown)", flush=True)
 
     _ready = False
+    _erased = False
     _no_answer_shown = False
     _stopped_by_launcher = False
     _t0 = time.monotonic()
@@ -34593,6 +34677,11 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
                             "(Ctrl+C stops it)."
                             % (port, int(ready_seconds)), flush=True)
                         _no_answer_shown = True
+            if erase_app_when_ready and _ready and _banner and not _erased:
+                # The child never opens app.py (it runs the bytes handed
+                # over, R-9); the rule is kept as A6 states it.
+                _dash_erase_quietly(app_path)
+                _erased = True
             time.sleep(0.25)
     except KeyboardInterrupt:
         proc.terminate()
@@ -34729,8 +34818,12 @@ if __name__ == "__main__":
         # command line does not, so it prints and exits 1 instead.
         _report = globals().get("_dash_launch_report")
         try:
+            # The app file is erased once it serves only inside dash's own
+            # private run folder (R-1); a command-line user's file never.
+            _erase = _dash_private_run_of(args.output) is not None
             _dash_launch_app(args.output, args.port, args.timeout,
-                             args.no_browser, expect=_written)
+                             args.no_browser, expect=_written,
+                             erase_app_when_ready=_erase)
         except RuntimeError as _exc:
             if _report is None:
                 print("dash_render: error -- " + str(_exc),

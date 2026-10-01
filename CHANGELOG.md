@@ -390,7 +390,14 @@ and now matches Stata.
   account's file at that name is refused (r(7102)) where it used to be
   written through. (WP-29, P0.12b)
 
-<!-- WP-29 P0.13 -->
+- A server started by `dash serve` kept running after Stata was killed or
+  crashed -- answering /health, holding its port and the data -- and left
+  three copies of the data in c(tmpdir) (the specification, the data and a
+  1.25 MB application, 0644). It now stops within about five seconds of the
+  Stata that started it ending, however Stata ends, and dash erases the
+  specification and data once the application is written and the application
+  once the server answers (measured on macOS; Linux and Windows have not
+  been measured). (WP-29, P0.13)
 
 - The one-line form without saving() left its preview page (1.3 MB holding
   every row of the graph's variables, 0644) in c(tmpdir) for good, one per

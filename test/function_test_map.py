@@ -515,6 +515,10 @@ FUNCTIONS = {
  '_dash_run_sweep': 'test/test_private_files.py::TestTheRunDir::test_open_sweeps_this_pids_stale_runs',
  '_dash_tmp_clear': 'test/test_private_files.py::TestThePreviews::test_clear_prunes_and_removes_an_emptied_fallback_root',
  '_dash_tmp_write_text': 'test/test_private_files.py::TestTheSpecWriter::test_text_is_written_exactly_and_0600',
+ # WP-29 P0.13 F2 (section 08, commit 2): the served app stops with the
+ # program that started it.
+ '_dash_watch_parent': 'test/test_serve_lifecycle.py::TestTheParentWatch::test_eof_on_stdin_asks_the_loop_to_stop',
+ '_dash_watch_parent.<locals>._watch': 'test/test_serve_lifecycle.py::TestTheParentWatch::test_eof_on_stdin_asks_the_loop_to_stop',
  '_dash_is_stata_name': 'test/test_string_value_export.py::TestTheWriter::test_the_name_check',
  '_dash_write_stata_data.<locals>._note': 'test/test_string_value_export.py::TestTheWriter::test_text_that_is_not_utf8_is_read_through_ustrfix',
  '_dash_write_stata_data.<locals>._column':'test/test_string_value_export.py::TestTheWriter::test_numbers_are_doubles_and_missing_is_jsonios_null',

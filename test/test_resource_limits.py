@@ -1202,12 +1202,22 @@ class TestTheServedAppDefinesEveryNameItReads:
                 walk(c, p)
 
         walk(top, [])
+        # Extended (WP-29 P0.13 F2, A3): the module level too -- the app's
+        # __main__ calls _dash_watch_parent, and a name read only there
+        # escaped the walk of child scopes.  Dunder names are skipped:
+        # Python 3.14's symtable reports __conditional_annotations__.
+        for sym in top.get_symbols():
+            nm = sym.get_name()
+            if sym.is_referenced() and not sym.is_assigned() and \
+                    not sym.is_imported() and \
+                    not re.match(r"^__\w+__$", nm):
+                used.setdefault(nm, "<module>")
         missing = {n: where for n, where in used.items()
                    if n not in defined and not hasattr(builtins, n)}
         assert not missing, missing
         for name in ("_DASH_LIMITS", "_dash_limits", "_dash_limit_hint",
                      "_dash_by_groups", "_dash_dropdown_values",
-                     "_dash_filter_truncation_note"):
+                     "_dash_filter_truncation_note", "_dash_watch_parent"):
             assert name in defined, name
 
 

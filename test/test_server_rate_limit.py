@@ -989,8 +989,11 @@ class TestTheLauncherFlags:
     def test_the_launcher_help_lists_every_flag(self, served):
         r = self._run(served, "--help")
         assert r.returncode == 0, r.stderr[-2000:]
+        # --parent-watch: WP-29 P0.13 F2, the server stops with the Stata
+        # that started it.
         for flag in ["--port", "--address", "--allow-websocket-origin",
-                     "--trust-forwarded-for", "--show", "--timeout"] + [
+                     "--trust-forwarded-for", "--show", "--timeout",
+                     "--parent-watch"] + [
                          f for f, _dest, _d in _NEW_FLAGS]:
             assert flag in r.stdout, (flag, r.stdout)
 
