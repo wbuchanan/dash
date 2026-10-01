@@ -14,6 +14,9 @@
 *!   S05  P0.8 / P0.20 date units (DU-01..DU-06, KD-01..KD-03)
 *!   S06  P0.10 hover() variables exported (HX-01..HX-08)
 *!   S07  colorvar key from the layer's rows, saved and served (CQV-01..09)
+*!   S08  private temporary files: twoway leaves nothing, named-page modes
+*!        match twoway's, every copy is 0600 in a 0700 folder (PF-01..PF-06,
+*!        PF-11, PF-12)
 *!
 *! Usage: via run_all_cscripts.do (registered as its block 68).  One
 *! block alone: set WP29_ONLY=S<NN> in the environment of the driver run
@@ -3001,6 +3004,520 @@ end
 }
 * ==== end S07 ====
 
+* ==== S08 P0.12b, P0.14: private temporary files ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S08") {
+    display as text "S08 start `c(current_time)'"
+    // dash's temporary copies of the data (spec, data, the served app and
+    // the one-line preview) are 0600 in a 0700 c(tmpdir)dash-<uid>/ folder
+    // and removed when the command ends; a location that cannot be private
+    // is noted once, never refused (section 08 R-8, ratified 01oct2026).
+    // twoway is the truth for what a command leaves behind (PF-01) and for
+    // the mode of a page the user names (PF-03).  The uid and pid come from
+    // Python (c(pid) does not exist, A1); paths are compared as spelled
+    // from c(tmpdir), never through realpath (A2).  The python blocks hold
+    // no brace, so a WP29_ONLY that skips this block still reads it.
+    sysuse auto, clear
+    set linesize 255
+    local pf_tmp "`c(tmpdir)'"
+    local d8 "`w29_work'/s08"
+    capture mkdir "`d8'"
+    python:
+import json as _pf_json
+import os as _pf_os
+import re as _pf_re
+import shutil as _pf_shutil
+import stat as _pf_stat
+import sys as _pf_sys
+from sfi import Macro as _pf_M
+
+_PF_UID = _pf_os.getuid()
+_PF_PID = _pf_os.getpid()
+_PF_TMP = _pf_M.getLocal("pf_tmp")
+_PF_ROOT = _pf_os.path.join(_PF_TMP, "dash-%d" % _PF_UID)
+_PF_FB = _pf_re.compile("^dash-%d-" % _PF_UID + "[a-z0-9_]" * 8 + "$")
+_PF_RUN = _pf_re.compile("^run-%d-[A-Za-z0-9_]+$" % _PF_PID)
+_pf_M.setLocal("pf_pid", str(_PF_PID))
+_pf_M.setLocal("pf_uid", str(_PF_UID))
+
+
+def _pf_safe(s):
+    s = str(s)
+    for ch in (chr(34), chr(39), chr(96), chr(36)):
+        s = s.replace(ch, " ")
+    return s[:600]
+
+
+def _pf_mode(p):
+    try:
+        return oct(_pf_stat.S_IMODE(_pf_os.lstat(p).st_mode))
+    except OSError:
+        return "none"
+
+
+def _pf_log_lines(p):
+    try:
+        with open(p, encoding="utf-8", errors="replace") as fh:
+            t = fh.read()
+    except OSError:
+        return []
+    t = t.replace(chr(13), "").replace(chr(10) + "> ", "")
+    return t.split(chr(10))
+
+
+def _pf_notes(p):
+    return [x for x in _pf_log_lines(p) if x.startswith("dash: note:")]
+
+
+def _pf_roots():
+    out = []
+    try:
+        names = sorted(_pf_os.listdir(_PF_TMP))
+    except OSError:
+        return out
+    for n in names:
+        p = _pf_os.path.join(_PF_TMP, n)
+        if (n == "dash-%d" % _PF_UID or _PF_FB.match(n)) and \
+                _pf_os.path.isdir(p) and not _pf_os.path.islink(p):
+            out.append(p)
+    return out
+
+
+def _pf_my_pages():
+    pages = []
+    for r in _pf_roots():
+        d = _pf_os.path.join(r, "previews")
+        if _pf_os.path.isdir(d) and not _pf_os.path.islink(d):
+            for n in _pf_os.listdir(d):
+                if n.startswith("dash-preview-") and \
+                        ("-%d-" % _PF_PID) in n:
+                    pages.append(_pf_os.path.join(d, n))
+    return sorted(pages, key=lambda p: (_pf_os.lstat(p).st_mtime, p))
+
+
+def _pf_my_runs():
+    out = []
+    for r in _pf_roots():
+        for n in _pf_os.listdir(r):
+            if _PF_RUN.match(n):
+                out.append(_pf_os.path.join(r, n))
+    return out
+
+
+def _pf_walk():
+    work = _pf_M.getLocal("w29_work")
+    seen = set()
+    for dp, dns, fns in _pf_os.walk(_PF_TMP):
+        if dp.startswith(work):
+            continue
+        for f in fns:
+            seen.add(_pf_os.path.join(dp, f))
+    return seen
+
+
+def _pf_set(case, bad):
+    _pf_M.setLocal(case + "_bad", str(len(bad)))
+    _pf_M.setLocal(case + "_why", _pf_safe("; ".join(bad)))
+end
+
+    // ------------------------------------------------------------
+    // PF-01 (truth guard): twoway leaves no file anywhere in c(tmpdir).
+    // ------------------------------------------------------------
+    // Stata keeps each graph in memory in its own session files (SG<pid>.*,
+    // SJ<pid>.*) until the graph is dropped, so the graphs are dropped
+    // before the second snapshot: what is measured is what twoway leaves.
+    quietly twoway scatter mpg price, name(pf01w, replace)
+    capture graph drop pf01w
+    python: _pf_before = _pf_walk()
+    quietly twoway scatter mpg weight, name(pf01a, replace)
+    quietly twoway line mpg weight, sort name(pf01b, replace)
+    capture graph drop pf01a pf01b
+    python: _pf_new = sorted(_pf_walk() - _pf_before)
+    python: _pf_set("pf01", ["twoway added " + _pf_os.path.basename(x) for x in _pf_new])
+    _w29_expect PF-01 "(`pf01_bad' == 0)" `"`pf01_why'"'
+    _w29_done PF-01 "twoway scatter and twoway line leave no file under c(tmpdir)"
+
+    // ------------------------------------------------------------
+    // PF-02: three one-line previews, then dash clear, leave no page of
+    // this session: no St<pid>*.html in c(tmpdir), no dash-preview of
+    // this pid; the root and previews/ are 0700.
+    // ------------------------------------------------------------
+    capture dash clear
+    capture noisily {
+        dash scatter mpg weight
+        dash scatter mpg price
+        dash line mpg weight, sort
+        dash clear
+    }
+    local pf02rc = _rc
+    python:
+_pf_b = []
+if _pf_M.getLocal("pf02rc") != "0":
+    _pf_b.append("the previews or dash clear ended rc " + _pf_M.getLocal("pf02rc"))
+for _n in _pf_os.listdir(_PF_TMP):
+    if _pf_re.match(r"^St0*%d[.]" % _PF_PID, _n) and _n.endswith(".html"):
+        _pf_b.append(_n + " remains in c(tmpdir)")
+for _p in _pf_my_pages():
+    _pf_b.append(_pf_os.path.basename(_p) + " remains in previews")
+if _pf_mode(_PF_ROOT) != "0o700":
+    _pf_b.append("the root is " + _pf_mode(_PF_ROOT))
+if _pf_mode(_pf_os.path.join(_PF_ROOT, "previews")) != "0o700":
+    _pf_b.append("previews/ is " + _pf_mode(_pf_os.path.join(_PF_ROOT, "previews")))
+_pf_set("pf02", _pf_b)
+end
+    _w29_expect PF-02 "(`pf02_bad' == 0)" `"`pf02_why'"'
+    _w29_done PF-02 "three previews and dash clear leave no page of this session; root and previews/ are 0700"
+
+    // ------------------------------------------------------------
+    // PF-03 (parity guard): dash's saving(.html) has the mode twoway's
+    // saving(.gph) and graph export .svg have, under this runner's umask.
+    // ------------------------------------------------------------
+    capture erase "`d8'/pf03.html"
+    capture noisily {
+        dash scatter mpg weight, saving("`d8'/pf03.html")
+        quietly twoway scatter mpg weight, saving("`d8'/pf03.gph", replace) name(pf03, replace)
+        quietly graph export "`d8'/pf03.svg", replace name(pf03)
+    }
+    local pf03rc = _rc
+    python:
+_pf_ms = [_pf_mode(_pf_os.path.join(_pf_M.getLocal("d8"), "pf03" + x)) for x in (".html", ".gph", ".svg")]
+_pf_b = [] if (_pf_M.getLocal("pf03rc") == "0" and _pf_ms[0] == _pf_ms[1] == _pf_ms[2] and _pf_ms[0] != "none") else ["modes html/gph/svg " + " ".join(_pf_ms) + " rc " + _pf_M.getLocal("pf03rc")]
+_pf_set("pf03", _pf_b)
+_pf_M.setLocal("pf03_m", _pf_ms[0])
+end
+    _w29_expect PF-03 "(`pf03_bad' == 0)" `"`pf03_why'"'
+    _w29_done PF-03 "dash saving(.html), twoway saving(.gph) and graph export .svg are all `pf03_m'"
+    capture graph drop pf03
+
+    // ------------------------------------------------------------
+    // PF-04: the one-line preview is 0600, owned, in a 0700 previews/
+    // under a 0700 root, its path spelled from c(tmpdir), and the
+    // "dashboard saved to" line names it.
+    // ------------------------------------------------------------
+    capture log close pf04
+    quietly log using "`d8'/pf04.log", text replace name(pf04)
+    capture noisily dash scatter mpg weight
+    local pf04rc = _rc
+    quietly log close pf04
+    python:
+_pf_b = []
+_pf_pg = _pf_my_pages()
+if not _pf_pg:
+    _pf_b.append("no preview of pid %d under dash-%d/previews" % (_PF_PID, _PF_UID))
+else:
+    _p = _pf_pg[-1]
+    if _pf_mode(_p) != "0o600":
+        _pf_b.append("page " + _pf_mode(_p))
+    if _pf_os.lstat(_p).st_uid != _PF_UID:
+        _pf_b.append("page not owned by the uid")
+    if _pf_mode(_pf_os.path.dirname(_p)) != "0o700":
+        _pf_b.append("previews/ " + _pf_mode(_pf_os.path.dirname(_p)))
+    if _pf_mode(_pf_os.path.dirname(_pf_os.path.dirname(_p))) != "0o700":
+        _pf_b.append("root " + _pf_mode(_pf_os.path.dirname(_pf_os.path.dirname(_p))))
+    if not _p.startswith(_PF_TMP):
+        _pf_b.append("path not spelled from c(tmpdir)")
+    _said = [x for x in _pf_log_lines(_pf_os.path.join(_pf_M.getLocal("d8"), "pf04.log")) if x.startswith("dash: dashboard saved to") and _pf_os.path.basename(_p) in x]
+    if not _said:
+        _pf_b.append("the saved-to line does not name the page")
+if _pf_M.getLocal("pf04rc") != "0":
+    _pf_b.append("rc " + _pf_M.getLocal("pf04rc"))
+_pf_set("pf04", _pf_b)
+end
+    _w29_expect PF-04 "(`pf04_bad' == 0)" `"`pf04_why'"'
+    _w29_done PF-04 "the preview is 0600 in a 0700 previews/ and root, and the log names it"
+
+    // ------------------------------------------------------------
+    // PF-05: the spec writer reproduces Macro.getLocal exactly (a backtick
+    // and dollar sequence, and 300 KB with compound quotes, a backslash and
+    // CJK), and _dash_empty_data writes its JSON plus one newline.
+    // ------------------------------------------------------------
+    capture noisily _dash_xm_load
+    local pf05rc = _rc
+    mata: st_local("pf05a", char(96) + "x' " + char(36) + "y " + char(96) + "c(pid)'")
+    mata: st_local("pf05b", (char(96) + char(34) + "q" + char(34) + char(39) + " " + char(92) + " 中文 ") * 30000)
+    capture erase "`d8'/pf05e.json"
+    capture noisily _dash_empty_data "`d8'/pf05e.json"
+    local pf05erc = _rc
+    python:
+def _pf05():
+    bad = []
+    if _pf_M.getLocal("pf05rc") != "0":
+        bad.append("_dash_xm_load rc " + _pf_M.getLocal("pf05rc"))
+    xm = _pf_sys.modules.get("_dash_render_export")
+    if xm is None or not hasattr(xm, "_dash_tmp_write_text"):
+        bad.append("no _dash_tmp_write_text")
+        return bad
+    d = _pf_M.getLocal("d8")
+    for k in ("pf05a", "pf05b"):
+        v = _pf_M.getLocal(k)
+        p = _pf_os.path.join(d, k + ".json")
+        r = xm._dash_tmp_write_text(p, v)
+        with open(p, encoding="utf-8") as fh:
+            got = fh.read()
+        if r != "" or got != v:
+            bad.append("%s differs (%d vs %d chars)" % (k, len(got), len(v)))
+        if _pf_mode(p) != "0o600":
+            bad.append(k + " " + _pf_mode(p))
+    e = _pf_os.path.join(d, "pf05e.json")
+    if _pf_M.getLocal("pf05erc") != "0":
+        bad.append("_dash_empty_data rc " + _pf_M.getLocal("pf05erc"))
+        return bad
+    with open(e, encoding="utf-8") as fh:
+        t = fh.read()
+    want = dict(values=[], variableIsString=dict(), variableNames=[],
+                variableLabels=dict(), valueLabelNames=dict(),
+                valueLabels=dict(), numberOfRecords=0, numberOfVariables=0)
+    if not t.endswith(chr(10)) or chr(10) in t[:-1]:
+        bad.append("the empty data does not end in exactly one newline")
+    elif _pf_json.loads(t) != want:
+        bad.append("the empty data is not the empty layout")
+    if _pf_mode(e) != "0o600":
+        bad.append("empty data " + _pf_mode(e))
+    return bad
+
+
+try:
+    _pf_set("pf05", _pf05())
+except Exception as _e:
+    _pf_set("pf05", ["raised " + repr(_e)])
+end
+    _w29_expect PF-05 "(`pf05_bad' == 0)" `"`pf05_why'"'
+    _w29_done PF-05 "the spec writer keeps the text exactly, 0600; the empty data is its JSON and one newline"
+
+    // ------------------------------------------------------------
+    // The stand-in renderer for PF-06 and PF-12's dash serve route: first
+    // on the ado-path, it records the modes of --spec, --data and their
+    // folder, the folder, and whether --private-output was passed, and
+    // writes --output with a plain open.  Its folder is named from
+    // c(tmpdir) and the Python pid.
+    // ------------------------------------------------------------
+    local pf_sd "`pf_tmp'dash_pf06_`pf_pid'"
+    capture mkdir "`pf_sd'"
+    tempname pfh
+    file open `pfh' using "`pf_sd'/dash_render.py", write text replace
+    file write `pfh' `"import os, stat, sys"' _n
+    file write `pfh' `"_a = sys.argv[1:]"' _n
+    file write `pfh' `"_v = lambda k: _a[_a.index(k) + 1] if k in _a else """' _n
+    file write `pfh' `"def _m(p):"' _n
+    file write `pfh' `"    try:"' _n
+    file write `pfh' `"        return oct(stat.S_IMODE(os.lstat(p).st_mode))"' _n
+    file write `pfh' `"    except OSError:"' _n
+    file write `pfh' `"        return "none""' _n
+    file write `pfh' `"_s = _v("--spec")"' _n
+    file write `pfh' `"_d = _v("--data")"' _n
+    file write `pfh' `"_dir = os.path.dirname(_s)"' _n
+    file write `pfh' `"_pv = "1" if "--private-output" in _a else "0""' _n
+    file write `pfh' `"_ln = " ".join([_m(_s), _m(_d), _m(_dir), _pv, _dir])"' _n
+    file write `pfh' `"_r = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rec.txt")"' _n
+    file write `pfh' `"open(_r, "a", encoding="utf-8").write(_ln + chr(10))"' _n
+    file write `pfh' `"open(_v("--output"), "w", encoding="utf-8").write("x")"' _n
+    file close `pfh'
+    python:
+def _pf06_check(route, want_priv):
+    rec = _pf_os.path.join(_pf_M.getLocal("pf_sd"), "rec.txt")
+    try:
+        with open(rec, encoding="utf-8") as fh:
+            last = fh.read().strip().split(chr(10))[-1]
+    except OSError:
+        return [route + ": the stand-in recorded nothing"]
+    f = last.split(" ", 4)
+    bad = []
+    if len(f) < 5:
+        return [route + ": record " + last]
+    if f[0] != "0o600" or f[1] != "0o600":
+        bad.append(route + ": spec " + f[0] + " data " + f[1])
+    if f[2] != "0o700":
+        bad.append(route + ": folder " + f[2])
+    if not _PF_RUN.match(_pf_os.path.basename(f[4])):
+        bad.append(route + ": folder " + _pf_os.path.basename(f[4]))
+    if f[3] != want_priv:
+        bad.append(route + ": --private-output " + f[3])
+    if _pf_os.path.lexists(f[4]) and _PF_RUN.match(_pf_os.path.basename(f[4])):
+        bad.append(route + ": the run folder is still there")
+    return bad
+
+
+_pf06_bad = []
+end
+
+    // ------------------------------------------------------------
+    // PF-06: every route hands the renderer a 0600 spec and data in one
+    // 0700 run-<pid>-* folder, passes --private-output on the one-line
+    // route only, and removes the folder when the command ends.
+    // ------------------------------------------------------------
+    capture erase "`pf_sd'/rec.txt"
+    capture dash clear
+    adopath ++ "`pf_sd'"
+    capture noisily {
+        dash scatter mpg weight
+        python: _pf06_bad += _pf06_check("one-line", "1")
+        // name() registers without drawing; build and serve need a graph.
+        dash scatter mpg weight, name(pf06)
+        dash build, saving("`d8'/pf06.html") replace nobrowser
+        python: _pf06_bad += _pf06_check("build", "0")
+        dash build, server saving("`d8'/pf06.py") replace nobrowser
+        python: _pf06_bad += _pf06_check("build server", "0")
+        dash serve, nobrowser timeout(1)
+        python: _pf06_bad += _pf06_check("serve", "0")
+    }
+    local pf06rc = _rc
+    adopath - "`pf_sd'"
+    python: _pf_set("pf06", _pf06_bad + ([] if _pf_M.getLocal("pf06rc") == "0" else ["a route ended rc " + _pf_M.getLocal("pf06rc")]))
+    _w29_expect PF-06 "(`pf06_bad' == 0)" `"`pf06_why'"'
+    _w29_done PF-06 "each route's spec and data are 0600 in a 0700 run folder that is gone after it; --private-output on the one-line form only"
+    capture dash clear
+
+    // ------------------------------------------------------------
+    // PF-11: dash build, server's .py is 0600 whatever the umask (M4, R-7),
+    // replace makes a new file, a link at the name is refused r(7102)
+    // with its target kept, and a folder of the user's that others can
+    // write is neither refused, re-moded nor noted.
+    // ------------------------------------------------------------
+    local pf11d "`pf_tmp'dash_pf11_`pf_pid'"
+    python:
+_pf11d = _pf_M.getLocal("pf11d")
+_pf_shutil.rmtree(_pf11d, True)
+_pf_os.mkdir(_pf11d, 0o700)
+_pf_u = _pf_os.umask(0o022)
+_pf_os.umask(_pf_u)
+_pf_M.setLocal("pf11_umask", oct(_pf_u))
+with open(_pf_os.path.join(_pf11d, "pf11r.py"), "w") as _fh:
+    _fh.write("OLD")
+_pf_os.chmod(_pf_os.path.join(_pf11d, "pf11r.py"), 0o644)
+with open(_pf_os.path.join(_pf11d, "pf11v.txt"), "w") as _fh:
+    _fh.write("V")
+_pf_os.chmod(_pf_os.path.join(_pf11d, "pf11v.txt"), 0o644)
+_pf_os.symlink(_pf_os.path.join(_pf11d, "pf11v.txt"), _pf_os.path.join(_pf11d, "pf11l.py"))
+end
+    display as text "PF-11: the runner's umask is `pf11_umask'"
+    capture dash clear
+    capture noisily dash scatter mpg weight, name(pf11)
+    capture noisily dash build, server saving("`pf11d'/pf11.py") replace nobrowser
+    local pf11rc1 = _rc
+    capture noisily dash build, server saving("`pf11d'/pf11r.py") replace nobrowser
+    local pf11rc2 = _rc
+    capture log close pf11
+    quietly log using "`d8'/pf11.log", text replace name(pf11)
+    capture noisily dash build, server saving("`pf11d'/pf11l.py") replace nobrowser
+    local pf11rc3 = _rc
+    quietly log close pf11
+    python: _pf_os.chmod(_pf11d, 0o777)
+    capture log close pf11o
+    quietly log using "`d8'/pf11o.log", text replace name(pf11o)
+    capture noisily dash build, server saving("`pf11d'/pf11o.py") replace nobrowser
+    local pf11rc4 = _rc
+    quietly log close pf11o
+    python:
+_pf_b = []
+_j = lambda n: _pf_os.path.join(_pf11d, n)
+if _pf_M.getLocal("pf11rc1") != "0" or _pf_mode(_j("pf11.py")) != "0o600" or _pf_os.lstat(_j("pf11.py")).st_uid != _PF_UID:
+    _pf_b.append("step 1 rc " + _pf_M.getLocal("pf11rc1") + " mode " + _pf_mode(_j("pf11.py")))
+with open(_j("pf11r.py"), encoding="utf-8", errors="replace") as _fh:
+    _t = _fh.read()
+if _pf_M.getLocal("pf11rc2") != "0" or _pf_mode(_j("pf11r.py")) != "0o600" or "_DATA_B64" not in _t:
+    _pf_b.append("step 2 rc " + _pf_M.getLocal("pf11rc2") + " mode " + _pf_mode(_j("pf11r.py")))
+_lg = " ".join(_pf_log_lines(_pf_os.path.join(_pf_M.getLocal("d8"), "pf11.log")))
+with open(_j("pf11v.txt"), encoding="utf-8", errors="replace") as _fh:
+    _v = _fh.read()
+if _pf_M.getLocal("pf11rc3") != "7102":
+    _pf_b.append("step 3 rc " + _pf_M.getLocal("pf11rc3"))
+if "refused to write" not in _lg or "(it is a link)" not in _lg:
+    _pf_b.append("step 3 log does not name the refusal")
+if _v != "V":
+    _pf_b.append("step 3 the victim was overwritten")
+if not _pf_os.path.islink(_j("pf11l.py")):
+    _pf_b.append("step 3 the link is gone")
+if _pf_M.getLocal("pf11rc4") != "0" or _pf_mode(_j("pf11o.py")) != "0o600":
+    _pf_b.append("step 4 rc " + _pf_M.getLocal("pf11rc4") + " mode " + _pf_mode(_j("pf11o.py")))
+if _pf_mode(_pf11d) != "0o777":
+    _pf_b.append("step 4 the folder is now " + _pf_mode(_pf11d))
+if [x for x in _pf_notes(_pf_os.path.join(_pf_M.getLocal("d8"), "pf11o.log")) if _pf11d in x]:
+    _pf_b.append("step 4 a note names the folder")
+_pf_set("pf11", _pf_b)
+_pf_shutil.rmtree(_pf11d, True)
+end
+    _w29_expect PF-11 "(`pf11_bad' == 0)" `"`pf11_why'"'
+    _w29_done PF-11 "dash build, server .py is 0600 under umask `pf11_umask', replace writes anew, a link is refused r(7102), the user's folder is left as it is"
+    capture dash clear
+
+    // ------------------------------------------------------------
+    // PF-12 (ratified 01oct2026): a c(tmpdir) other accounts can change
+    // (group write, as a STATATMP made under umask 002) stops no route, as
+    // it stops no twoway command: each gives rc 0 and exactly one note
+    // naming c(tmpdir), chmod go-w and STATATMP.  The mode is restored
+    // whatever fails, before anything is asserted.
+    // ------------------------------------------------------------
+    python: _pf_m12 = _pf_stat.S_IMODE(_pf_os.stat(_PF_TMP).st_mode)
+    python: _pf_M.setLocal("pf12_before", oct(_pf_m12))
+    capture erase "`pf_sd'/rec.txt"
+    capture dash clear
+    python: _pf_os.chmod(_PF_TMP, _pf_m12 | 0o020)
+    capture noisily {
+        capture log close pf12
+        quietly log using "`d8'/pf12_1.log", text replace name(pf12)
+        capture noisily dash scatter mpg weight
+        local pf12rc1 = _rc
+        quietly log close pf12
+        python: _pf12_page = (_pf_my_pages() or [""])[-1]
+        // name() registers without drawing: the graph routes 2-4 build.
+        capture dash scatter mpg weight, name(pf12)
+        quietly log using "`d8'/pf12_2.log", text replace name(pf12)
+        capture noisily dash build, saving("`d8'/pf12.html") replace nobrowser
+        local pf12rc2 = _rc
+        quietly log close pf12
+        quietly log using "`d8'/pf12_3.log", text replace name(pf12)
+        capture noisily dash build, server saving("`d8'/pf12.py") replace nobrowser
+        local pf12rc3 = _rc
+        quietly log close pf12
+        adopath ++ "`pf_sd'"
+        quietly log using "`d8'/pf12_4.log", text replace name(pf12)
+        capture noisily dash serve, nobrowser timeout(1)
+        local pf12rc4 = _rc
+        quietly log close pf12
+        adopath - "`pf_sd'"
+    }
+    local pf12rc = _rc
+    capture log close pf12
+    capture adopath - "`pf_sd'"
+    python: _pf_os.chmod(_PF_TMP, _pf_m12)
+    python: _pf_M.setLocal("pf12_after", oct(_pf_stat.S_IMODE(_pf_os.stat(_PF_TMP).st_mode)))
+    display as text "PF-12: c(tmpdir) mode before `pf12_before', after the restore `pf12_after'"
+    python:
+_pf_b = []
+if _pf_M.getLocal("pf12rc") != "0":
+    _pf_b.append("the routes block ended rc " + _pf_M.getLocal("pf12rc"))
+for _i in ("1", "2", "3", "4"):
+    _rc = _pf_M.getLocal("pf12rc" + _i)
+    if _rc != "0":
+        _pf_b.append("route %s rc %s" % (_i, _rc))
+    _lp = _pf_os.path.join(_pf_M.getLocal("d8"), "pf12_%s.log" % _i)
+    _ns = _pf_notes(_lp)
+    if len(_ns) != 1:
+        _pf_b.append("route %s has %d note lines" % (_i, len(_ns)))
+    elif _PF_TMP not in _ns[0] or "chmod go-w" not in _ns[0] or "STATATMP" not in _ns[0]:
+        _pf_b.append("route %s note lacks c(tmpdir), chmod go-w or STATATMP" % _i)
+    _all = _pf_log_lines(_lp)
+    if [x for x in _all if x.startswith("r(603);") or x.startswith("r(198);")]:
+        _pf_b.append("route %s logged r(603) or r(198)" % _i)
+if not _pf12_page or _pf_mode(_pf12_page) != "0o600" or _pf_mode(_pf_os.path.dirname(_pf12_page)) != "0o700":
+    _pf_b.append("route 1 preview " + _pf_mode(_pf12_page) + " in " + _pf_mode(_pf_os.path.dirname(_pf12_page)))
+if _pf_mode(_pf_os.path.join(_pf_M.getLocal("d8"), "pf12.py")) != "0o600":
+    _pf_b.append("route 3 pf12.py " + _pf_mode(_pf_os.path.join(_pf_M.getLocal("d8"), "pf12.py")))
+_pf_b += _pf06_check("route 4", "0")
+if _pf_M.getLocal("pf12_before") != _pf_M.getLocal("pf12_after"):
+    _pf_b.append("c(tmpdir) mode not restored")
+_pf_set("pf12", _pf_b)
+end
+    _w29_expect PF-12 "(`pf12_bad' == 0)" `"`pf12_why'"'
+    _w29_done PF-12 "a c(tmpdir) others can change stops no route: rc 0 and one note naming chmod go-w and STATATMP on each"
+
+    capture dash clear
+    python: _pf_shutil.rmtree(_pf_M.getLocal("pf_sd"), True)
+    python: _pf_shutil.rmtree(_pf_M.getLocal("d8"), True)
+    set linesize 80
+    display as text "S08 end `c(current_time)'"
+}
+* ==== end S08 ====
 
 * ==== append new blocks above this line ====
 

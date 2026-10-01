@@ -61,13 +61,20 @@ Version: 1.0.0  25mar2026
 from __future__ import annotations
 
 import argparse
+import collections
 import datetime as _dt
+import errno
+import hashlib
 import html
 import json
 import math
 import os
 import re
 import secrets
+import shutil
+import stat
+import tempfile
+import time
 import warnings
 from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Context, Decimal
 from typing import Any
@@ -1671,18 +1678,794 @@ def _dash_write_stata_data(path, varnames, sfi=None):
     # chunks and took three times as long over 100,000 observations.
     text = json.dumps(doc, ensure_ascii=False, allow_nan=False,
                       separators=(",", ":"))
-    with open(path, "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(text)
+    # 0600, never through a link, a FIFO or another account's file (WP-29
+    # P0.12b; _dash_private_write).  Nothing is caught: a refusal or an
+    # OSError leaves the python: line as an exception, r(7102).
+    _dash_private_write(path, text)
+    return ""
+
+
+# ===========================================================================
+# Private temporary files (WP-29 P0.12b, P0.14; section 08)
+# ===========================================================================
+#
+# Measured at 7421d3d (section 08, Evidence §2): every temporary copy of the
+# user's data -- the spec and data files of each render, `dash serve''s
+# application (which embeds every observation in base64) and the one-line
+# form's preview page -- was written with the user's umask (0644; 0664 under
+# umask 002, D4-D7, U2) at a predictable Stata tempfile name directly in
+# c(tmpdir); a symbolic link at such a name was followed (D9), a
+# pre-created 0666 file kept its mode (D8), and the preview was never
+# deleted (D1-D3).
+#
+# Each condition the helpers below meet falls into one of three classes,
+# never mixed (section 08 R-8, ratified 01oct2026):
+#
+# * privacy shortfall -- a c(tmpdir) other accounts can change, a planted
+#   dash-<uid>, a folder or file the disk will not keep private: dash
+#   PROCEEDS, still creating every file 0600 where it can, and the command
+#   prints one `dash: note:' naming the location and the remedy;
+# * anti-hijack -- a symbolic link, a FIFO or device, a file with other hard
+#   links, another account's file at the target name, a name that appears
+#   mid-write, or an app that is not the one dash wrote: REFUSED with
+#   _DashUnsafePath, which ends the command r(7102) (M4a);
+# * operating system -- the folder cannot be made at all: an OSError, which
+#   dash.ado reports as r(603), Stata's own code there (§3a S1).
+
+#: Previews a session keeps (P0.14, R-6): the newest five.
+_DASH_PREVIEW_KEEP = 5
+#: A page a browser was asked to open is kept this long (seconds), so the
+#: browser can still read it after `open'/`xdg-open' returns (R-6).
+_DASH_PREVIEW_GRACE_S = 60
+#: Another session's page, or (on Windows only) a run folder, older than
+#: this is stale (seconds).
+_DASH_STALE_AGE_S = 86400
+#: Every session's previews together are bounded by this many pages.
+_DASH_PREVIEW_CEILING = 25
+#: A run folder: run-<pid>-<mkdtemp's random part>.
+_DASH_RUN_RE = re.compile(r"^run-(\d+)-[A-Za-z0-9_]+$")
+#: A preview page: its time, the session's pid, 8 random hex digits, and b
+#: (a browser was asked to open it) or q (it was not).
+_DASH_PREVIEW_RE = re.compile(
+    r"^dash-preview-\d{8}-\d{6}-(\d+)-[0-9a-f]{8}-([bq])\.html$")
+#: A fallback root, formatted with re.escape(_dash_root_name()): tempfile's
+#: own 8-character alphabet (measured, §3a R1).
+_DASH_FALLBACK_FMT = r"^%s-[a-z0-9_]{8}$"
+
+#: The note's sentences (R-8).  (a): c(tmpdir) itself.
+_DASH_NOTE_BASE = (
+    "Stata's temporary directory %s can be changed by other accounts (%s), "
+    "so another account could move or replace the folders that hold dash's "
+    "copies of your data, though not read them.  To keep them private, run "
+    "chmod go-w on it, or start Stata with STATATMP set to a folder only you "
+    "can write.")
+#: (b): a dash-<uid> (or previews/) dash will not use.
+_DASH_NOTE_PLANTED = (
+    "%s is not yours to use (%s), so dash left it alone and kept its copies "
+    "of your data in %s, which only you can open.  Remove %s to stop this "
+    "note.")
+#: (c): a folder dash chose that the disk will not keep private.
+_DASH_NOTE_LOOSE = (
+    "%s could not be made private (%s), so other accounts may read the "
+    "copies of your data dash keeps there.  To keep them private, start "
+    "Stata with STATATMP set to a folder on a disk that keeps permissions.")
+#: (d): a file outside every folder dash chose (the .py of dash build,
+#: server), printed by the renderer.
+_DASH_NOTE_FILE = (
+    "dash: note: %s could not be made private (its permissions stay 0o%03o "
+    "after dash set them to 0600); it holds every observation of the "
+    "dashboard's variables, so keep it where other accounts cannot read it.")
+#: The anti-hijack refusal of a write (TR-08.3).
+_DASH_WRITE_REFUSAL = (
+    "dash: refused to write %s (%s); dash never writes through a link, into "
+    "a pipe or device, or over another account's file.")
+#: The anti-hijack refusal of a launch (TR-08.8a).
+_DASH_RUN_REFUSAL = (
+    "dash: refused to run %s (%s); dash runs only the application it wrote.")
+#: The open's errno that the writer refuses as anti-hijack, and why.
+_DASH_ERRNO_WHY = {errno.ELOOP: "it is a link", errno.ENXIO: "it is a pipe",
+                   errno.EEXIST: "it appeared while dash was writing it"}
+
+
+class _DashUnsafePath(Exception):
+    """An anti-hijack refusal (section 08 R-8): a symbolic link, a FIFO or
+    device, a file with other hard links, another account's file or folder
+    at the target name, a name that appeared mid-write, or an application
+    that is not the one dash wrote.
+
+    Raised ONLY for those, never for privacy: a location that cannot be
+    private proceeds with a note (ratified 01oct2026).  Out of a `python:'
+    line it ends the command r(7102), the message the traceback's last line
+    (measured, M4a); it is never turned into a SystemExit, which Stata
+    reports as rc 0 (M4b).  ``why`` holds the reason in brackets.
+    """
+
+    why = ""
+
+
+#: What ``ServerAppBuilder.build(private=True)`` and ``main()`` return for a
+#: server app (round 2, R-9): the writer's ``os.stat_result`` (``st``) and
+#: the SHA-256 of the UTF-8 bytes written (``sha256``), which the launcher
+#: checks the file it opens against before it hands the bytes to Python.
+_DashWrittenApp = collections.namedtuple("_DashWrittenApp", ["st", "sha256"])
+
+
+def _dash_root_name():
+    """The private root's name: ``dash-<uid>``, or ``dash`` where there is
+    no ``os.getuid`` (Windows, A13), whose TEMP is the user's own."""
+    if hasattr(os, "getuid"):
+        return "dash-%d" % os.getuid()
+    return "dash"
+
+
+def _dash_mode_private(st):
+    """True when *st* (a stat result) gives no group or other account any
+    permission; always True on Windows, which keeps no POSIX modes.  The
+    privacy class (R-8): a False here is noted, never refused."""
+    if os.name == "nt":
+        return True
+    return stat.S_IMODE(st.st_mode) & 0o077 == 0
+
+
+def _dash_private_msg(exc, path):
+    """The user-facing text for a write of *path* that failed or was
+    refused (TR-08.3).
+
+    *exc* is a reason (str), a ``_DashUnsafePath`` or an ``OSError``.  A
+    reason, and an ELOOP, ENXIO or EEXIST from the open (a link, a pipe, a
+    name that appeared mid-write), give the anti-hijack refusal; any other
+    OSError gives ``dash: <path> could not be written: <strerror>.`` (the
+    operating-system class)."""
+    if isinstance(exc, _DashUnsafePath):
+        return str(exc)
+    if isinstance(exc, str):
+        return _DASH_WRITE_REFUSAL % (path, exc)
+    why = _DASH_ERRNO_WHY.get(getattr(exc, "errno", None))
+    if why is not None:
+        return _DASH_WRITE_REFUSAL % (path, why)
+    return "dash: %s could not be written: %s." % (
+        path, getattr(exc, "strerror", None) or exc)
+
+
+def _dash_private_dir_ok(path):
+    """Check, and tighten to 0700, a folder dash chose; return ``""`` or the
+    privacy reason it stays loose (R-8 (c)).
+
+    Anti-hijack (raises ``_DashUnsafePath``, ``why`` set): *path* is a
+    symbolic link, not a folder, or another account's.  The open never
+    follows a link (``O_NOFOLLOW``; macOS gives ENOTDIR for a link to a
+    folder, not ELOOP, so the cause is read with ``lstat``, §3a R2), and
+    every check after it is on the open descriptor.  Privacy (returned,
+    never raised): ``fchmod(0o700)`` failed, or the disk kept group or
+    other bits after it (measured: a umask-002 STATATMP folder is 0775,
+    A14; P6 tightened a loose root of the user's to 0700).  Any other
+    OSError (the folder is missing) propagates: the operating-system
+    class."""
+    why = ""
+    fd = None
+    if os.name == "nt":
+        if not os.path.lexists(path):
+            why = "it is missing"
+        elif os.path.islink(path):
+            why = "it is a link"
+        elif not os.path.isdir(path):
+            why = "it is not a folder"
+    else:
+        try:
+            fd = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+                         | getattr(os, "O_NOFOLLOW", 0)
+                         | getattr(os, "O_CLOEXEC", 0))
+        except OSError as exc:
+            if exc.errno not in (errno.ELOOP, errno.ENOTDIR, errno.EMLINK):
+                raise
+            why = ("it is a link" if stat.S_ISLNK(os.lstat(path).st_mode)
+                   else "it is not a folder")
+    loose = ""
+    if fd is not None:
+        try:
+            st = os.fstat(fd)
+            _uid = getattr(os, "getuid", None)
+            if not stat.S_ISDIR(st.st_mode):
+                why = "it is not a folder"
+            elif _uid is not None and st.st_uid != _uid():
+                why = "it belongs to another account"
+            elif stat.S_IMODE(st.st_mode) != 0o700:
+                try:
+                    if getattr(os, "fchmod", None) is None:
+                        raise OSError(errno.ENOTSUP, "not supported here")
+                    os.fchmod(fd, 0o700)
+                    st = os.fstat(fd)
+                    if stat.S_IMODE(st.st_mode) & 0o077:
+                        loose = ("its permissions stay 0o%03o after dash set "
+                                 "them to 0700" % stat.S_IMODE(st.st_mode))
+                except OSError as exc:
+                    loose = "its permissions could not be set: %s" % (
+                        exc.strerror or exc)
+        finally:
+            os.close(fd)
+    if why:
+        refusal = _DashUnsafePath(_dash_private_msg(why, path))
+        refusal.why = why
+        raise refusal
+    return loose
+
+
+def _dash_fallback_root(tmpdir, create=True):
+    """The fallback root ``dash-<uid>-<8 chars>`` beside a ``dash-<uid>``
+    dash will not use (TR-08.2a, R-8 (b), ratified 01oct2026).
+
+    An existing one is reused only when ``lstat`` shows a folder, not a
+    link, of this account and of mode exactly 0700 (measured, §3a R5: a
+    0755 one beside it is skipped).  Otherwise, with *create*, a new one is
+    made by ``tempfile.mkdtemp`` -- O_EXCL semantics, mode 0700 and an
+    unguessable name, so it cannot be planted (§3a R3) -- and spelled from
+    *tmpdir* (A2: only mkdtemp's basename is used).  Returns None when
+    there is none and *create* is False."""
+    pat = re.compile(_DASH_FALLBACK_FMT % re.escape(_dash_root_name()))
+    _uid = getattr(os, "getuid", None)
+    for name in sorted(os.listdir(tmpdir)):
+        if not pat.match(name):
+            continue
+        p = os.path.join(tmpdir, name)
+        try:
+            lst = os.lstat(p)
+        except OSError:
+            continue
+        if not stat.S_ISDIR(lst.st_mode):
+            continue
+        if os.name != "nt" and (
+                (_uid is not None and lst.st_uid != _uid())
+                or stat.S_IMODE(lst.st_mode) != 0o700):
+            continue
+        return p
+    if not create:
+        return None
+    mk = tempfile.mkdtemp(prefix=_dash_root_name() + "-", dir=tmpdir)
+    return os.path.join(tmpdir, os.path.basename(mk))
+
+
+def _dash_own_root(path, tmpdir=None):
+    """True when *path* is one of this account's private roots: named
+    ``dash-<uid>`` or a fallback's name, a folder (not a link, by
+    ``lstat``) owned by this account, and -- with *tmpdir* -- directly in
+    *tmpdir* as spelled (A2).  The sweep, the close, ``dash clear`` and the
+    erase rule recognise a root only through this.  Never raises."""
+    try:
+        name = os.path.basename(path)
+        pat = re.compile(_DASH_FALLBACK_FMT % re.escape(_dash_root_name()))
+        if name != _dash_root_name() and not pat.match(name):
+            return False
+        lst = os.lstat(path)
+        if not stat.S_ISDIR(lst.st_mode):
+            return False
+        _uid = getattr(os, "getuid", None)
+        if os.name != "nt" and _uid is not None and lst.st_uid != _uid():
+            return False
+        if tmpdir is not None and os.path.dirname(path) != os.path.dirname(
+                os.path.join(tmpdir, "x")):
+            return False
+        return True
+    except OSError:
+        return False
+
+
+def _dash_private_root(tmpdir, create=True):
+    """``(root, note)``: the folder dash keeps its copies in under *tmpdir*,
+    and the note sentences (R-8 (a)-(c)) for the locations that are not
+    private, without the ``dash: note: `` prefix (``""`` when there are
+    none).
+
+    The root is ``<tmpdir>dash-<uid>``, spelled from *tmpdir* as given --
+    never through realpath, which breaks the prefix (measured, A2) --
+    created 0700 (P1; never ``os.umask``, which Stata's process shares).
+    Privacy, never refused (ratified 01oct2026): a *tmpdir* other accounts
+    can write without a sticky bit (P8, A14) or that belongs to another
+    account adds sentence (a); a root the disk keeps loose adds (c).
+    Anti-hijack: a ``dash-<uid>`` that is a link, not a folder or another
+    account's is left alone -- never used or followed (P7) -- and the
+    fallback root is used instead, with sentence (b).  Raises only OSError
+    (the operating-system class: *tmpdir* missing, not a folder,
+    read-only).  Without *create*, returns ``(None, "")`` when there is no
+    root."""
+    notes = []
+    if os.name != "nt":
+        bst = os.stat(tmpdir)
+        if not stat.S_ISDIR(bst.st_mode):
+            raise NotADirectoryError(errno.ENOTDIR,
+                                     os.strerror(errno.ENOTDIR), tmpdir)
+        _uid = getattr(os, "getuid", None)
+        why = ""
+        if _uid is not None and bst.st_uid not in (0, _uid()):
+            why = "it belongs to another account"
+        elif bst.st_mode & 0o022 and not bst.st_mode & stat.S_ISVTX:
+            why = "other accounts can write to it and it has no sticky bit"
+        if why:
+            notes.append(_DASH_NOTE_BASE % (tmpdir, why))
+    root = os.path.join(tmpdir, _dash_root_name())
+    if create:
+        try:
+            os.mkdir(root, 0o700)
+        except FileExistsError:
+            pass
+    elif not os.path.lexists(root):
+        return (None, "")
+    try:
+        why = _dash_private_dir_ok(root)
+    except _DashUnsafePath as exc:
+        fb = _dash_fallback_root(tmpdir, create=create)
+        if fb is None:
+            return (None, "")
+        notes.append(_DASH_NOTE_PLANTED % (root, exc.why, fb, root))
+        root = fb
+    else:
+        if why:
+            notes.append(_DASH_NOTE_LOOSE % (root, why))
+    return (root, "  ".join(notes))
+
+
+def _dash_private_write(path, text, exclusive=False):
+    """Write *text* (UTF-8) to *path* readable and writable by this account
+    only, and return ``os.fstat`` of the file as written.
+
+    Measured at 7421d3d: every copy followed the umask (D4-D7: 0644; 0664
+    under umask 002, U2), a pre-created 0666 file kept its mode (D8), and a
+    link at the name was followed (D9).  Here the file is created 0600
+    (whatever the umask: P2, P3) and ``fchmod``ed to 0600.
+
+    Anti-hijack (``_DashUnsafePath``, r(7102)): ``O_NOFOLLOW`` refuses a
+    link (ELOOP, P4); ``O_NONBLOCK`` makes a FIFO with no reader fail at
+    once (ENXIO) instead of blocking (measured, A3); the open descriptor
+    must be a regular file of this account with no other link (P5); with
+    *exclusive*, a name that appeared mid-write (EEXIST).  Privacy (R-8
+    (d)): a failed ``fchmod`` is ignored -- a fresh file is 0600 anyway
+    (§3a R7) -- and the caller reads the returned mode.  Any other OSError
+    (the operating-system class) propagates.  ``O_NOFOLLOW``,
+    ``O_CLOEXEC``, ``O_NONBLOCK``, ``fchmod`` and ``getuid`` are read with
+    ``getattr`` (Windows, A13)."""
+    flags = (os.O_WRONLY | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+             | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NONBLOCK", 0)
+             | getattr(os, "O_BINARY", 0) | (os.O_EXCL if exclusive else 0))
+    try:
+        fd = os.open(path, flags, 0o600)
+    except OSError as exc:
+        if exc.errno in _DASH_ERRNO_WHY:
+            refusal = _DashUnsafePath(_dash_private_msg(exc, path))
+            refusal.why = _DASH_ERRNO_WHY[exc.errno]
+            raise refusal from None
+        raise
+    try:
+        st = os.fstat(fd)
+        _uid = getattr(os, "getuid", None)
+        why = ""
+        if not stat.S_ISREG(st.st_mode):
+            why = "it is not a regular file"
+        elif _uid is not None and st.st_uid != _uid():
+            why = "it belongs to another account"
+        elif st.st_nlink != 1:
+            why = "it has other links"
+        if why:
+            refusal = _DashUnsafePath(_dash_private_msg(why, path))
+            refusal.why = why
+            raise refusal
+        if getattr(os, "O_NONBLOCK", 0):
+            try:
+                import fcntl
+                fcntl.fcntl(fd, fcntl.F_SETFL,
+                            fcntl.fcntl(fd, fcntl.F_GETFL) & ~os.O_NONBLOCK)
+            except ImportError:
+                pass
+        os.ftruncate(fd, 0)
+        _fchmod = getattr(os, "fchmod", None)
+        if _fchmod is not None:
+            try:
+                _fchmod(fd, 0o600)
+            except OSError:
+                pass
+        data = text.encode("utf-8")
+    except BaseException:
+        os.close(fd)
+        raise
+    with os.fdopen(fd, "wb") as fh:
+        fh.write(data)
+        fh.flush()
+        st = os.fstat(fh.fileno())
+    return st
+
+
+def _dash_pid_alive(pid):
+    """Whether process *pid* may still be running, for the sweep.
+
+    Only ProcessLookupError means dead: ``os.kill(pid, 0)`` raises
+    PermissionError for another account's live process (measured, A4), so
+    any other OSError means alive.  A pid below 1 is never signalled
+    (``kill(0, ...)`` signals the group), and on Windows ``os.kill`` is
+    never called (it sends CTRL_C_EVENT or terminates): both count as
+    alive."""
+    if pid < 1 or os.name == "nt":
+        return True
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except OSError:
+        return True
+    return True
+
+
+def _dash_run_sweep(root, now=None):
+    """Remove the run folders left in *root* by an error, Break or crash;
+    return how many.
+
+    A run folder goes when its pid is this process (no dash command of this
+    Stata can be running: Stata is single-threaded and ``dash serve``
+    blocks), or, on POSIX, when its pid is dead.  A live pid's folder is
+    never removed by age on POSIX (a long ``dash serve``, A5); on Windows,
+    where liveness is never probed, a folder older than a day goes.  A link
+    or non-folder at a run name is unlinked, never followed; a folder goes
+    through ``shutil.rmtree``, which does not follow links.  Every OSError
+    is ignored: the sweep never fails a render."""
+    now = time.time() if now is None else now
+    try:
+        names = os.listdir(root)
+    except OSError:
+        return 0
+    removed = 0
+    for name in names:
+        m = _DASH_RUN_RE.match(name)
+        if not m:
+            continue
+        path = os.path.join(root, name)
+        try:
+            pid = int(m.group(1))
+            lst = os.lstat(path)
+            if pid == os.getpid():
+                drop = True
+            elif os.name == "nt":
+                drop = now - lst.st_mtime > _DASH_STALE_AGE_S
+            else:
+                drop = not _dash_pid_alive(pid)
+            if not drop:
+                continue
+            if stat.S_ISDIR(lst.st_mode):
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                os.unlink(path)
+            removed += 1
+        except OSError:
+            continue
+    return removed
+
+
+def _dash_run_open(tmpdir):
+    """Open a private run folder for one command; the dict dash.ado reads.
+
+    ``{"rundir", "spec", "data", "app", "err", "note"}``: the folder
+    ``<tmpdir>dash-<uid>/run-<pid>-<random>/`` (0700, made by
+    ``tempfile.mkdtemp`` and spelled from *tmpdir*, A2) and the three paths
+    in it; ``note`` the R-8 note with its ``dash: note: `` prefix, or
+    ``""``.  The root's stale runs are swept first.  An OSError (the
+    operating-system class) gives every path ``""`` and ``err`` the reason,
+    which dash.ado ends with r(603).  A ``_DashUnsafePath`` from the fresh
+    folder's own check (anti-hijack) is not caught: r(7102)."""
+    out = {"rundir": "", "spec": "", "data": "", "app": "", "err": "",
+           "note": ""}
+    note = ""
+    try:
+        root, note = _dash_private_root(tmpdir)
+        _dash_run_sweep(root)
+        mk = tempfile.mkdtemp(prefix="run-%d-" % os.getpid(), dir=root)
+        rundir = os.path.join(root, os.path.basename(mk))
+        why = _dash_private_dir_ok(rundir)
+        if why and "could not be made private" not in note:
+            note = "  ".join(x for x in (note, _DASH_NOTE_LOOSE
+                                         % (rundir, why)) if x)
+    except OSError as exc:
+        out["err"] = ("dash: dash could not make its temporary folder in "
+                      "%s: %s." % (tmpdir, getattr(exc, "strerror", None)
+                                   or exc))
+        out["note"] = ("dash: note: " + note) if note else ""
+        return out
+    out.update(rundir=rundir, spec=os.path.join(rundir, "spec.json"),
+               data=os.path.join(rundir, "data.json"),
+               app=os.path.join(rundir, "app.py"),
+               note=("dash: note: " + note) if note else "")
+    return out
+
+
+def _dash_run_close(rundir, tmpdir):
+    """Remove a run folder ``_dash_run_open`` made; ``""`` or a note.
+
+    Only a ``run-<pid>-*`` folder directly in one of this account's roots
+    in *tmpdir* (``_dash_own_root``) is removed; anything else is left and
+    named.  A folder already gone is not an error.  A link at the name is
+    unlinked, not followed.  An emptied fallback root is removed too
+    (``rmdir``, so a root still holding a preview stays)."""
+    if rundir == "":
+        return ""
+    root = os.path.dirname(rundir)
+    if not _dash_own_root(root, tmpdir) or not _DASH_RUN_RE.match(
+            os.path.basename(rundir)):
+        return "dash: %s is not a dash run folder; nothing was removed." \
+            % rundir
+    if not os.path.lexists(rundir):
+        return ""
+    try:
+        if os.path.islink(rundir):
+            os.unlink(rundir)
+        else:
+            shutil.rmtree(rundir, ignore_errors=True)
+    except OSError:
+        pass
+    if os.path.basename(root) != _dash_root_name():
+        try:
+            os.rmdir(root)
+        except OSError:
+            pass
+    return ""
+
+
+def _dash_erase_quietly(path):
+    """Unlink *path*, ignoring every OSError: a link is removed, never its
+    target, and a folder is never removed."""
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
+
+
+def _dash_private_run_of(output_path):
+    """The run folder *output_path* sits in, when it is ``app.py`` in one of
+    dash's own private run folders; else None (A10, R-1).
+
+    The only rule by which dash erases inputs (``main()``) or the app (the
+    launcher): the folder is ``run-<pid>-*`` directly in a root
+    ``_dash_own_root`` accepts (``dash-<uid>`` or a fallback), and both are
+    folders of this account with no group or other bits.  A command-line
+    user's files never qualify.  On a disk that keeps no permissions the
+    mode clause fails, so nothing is erased early (R-8 residual).  Reads
+    only the filesystem, so it holds under ``runpy.run_path``."""
+    if os.path.basename(output_path) != "app.py":
+        return None
+    rundir = os.path.dirname(output_path)
+    if not _DASH_RUN_RE.match(os.path.basename(rundir)):
+        return None
+    root = os.path.dirname(rundir)
+    if not _dash_own_root(root):
+        return None
+    _uid = getattr(os, "getuid", None)
+    try:
+        for p in (root, rundir):
+            lst = os.lstat(p)
+            if not stat.S_ISDIR(lst.st_mode):
+                return None
+            if os.name != "nt" and (
+                    (_uid is not None and lst.st_uid != _uid())
+                    or stat.S_IMODE(lst.st_mode) & 0o077):
+                return None
+    except OSError:
+        return None
+    return rundir
+
+
+def _dash_private_clear_name(path):
+    """Make room for an exclusive create at a path the user named (R-7).
+
+    Anti-hijack (``_DashUnsafePath``): a symbolic link (the link and its
+    target are both left), anything that is not a regular file, or another
+    account's file at *path* is refused.  This account's regular file is
+    unlinked, so a ``replace`` creates a new file and a reader holding the
+    old one open never sees the new data; a name planted after the unlink
+    makes the following ``O_EXCL`` create fail (EEXIST), never a write
+    through it.  ``lstat`` only: a link is never followed (at 7421d3d
+    ``open(output_path, "w")`` followed it).  The folder's mode is never
+    looked at: a folder the user names is never refused (ratified)."""
+    if not os.path.lexists(path):
+        return None
+    st = os.lstat(path)
+    why = ""
+    _uid = getattr(os, "getuid", None)
+    if stat.S_ISLNK(st.st_mode):
+        why = "it is a link"
+    elif not stat.S_ISREG(st.st_mode):
+        why = "it is not a regular file"
+    elif os.name != "nt" and _uid is not None and st.st_uid != _uid():
+        why = "it belongs to another account"
+    if why:
+        refusal = _DashUnsafePath(_dash_private_msg(why, path))
+        refusal.why = why
+        raise refusal
+    os.unlink(path)
+    return None
+
+
+def _dash_chosen_path(path):
+    """True when *path* is in a folder dash chose -- a run folder or
+    ``previews/`` directly in ``dash-<uid>`` or a fallback root -- so the
+    renderer prints no R-8 (d) note for it (its folder's sentence covers
+    it).  Pure: names only, no filesystem."""
+    parent = os.path.basename(os.path.dirname(path))
+    grand = os.path.basename(os.path.dirname(os.path.dirname(path)))
+    if not (_DASH_RUN_RE.match(parent) or parent == "previews"):
+        return False
+    return grand == _dash_root_name() or bool(re.match(
+        _DASH_FALLBACK_FMT % re.escape(_dash_root_name()), grand))
+
+
+def _dash_prune_previews(prev, trigger, now=None):
+    """Prune the one-line previews in *prev*; return how many went (P0.14).
+
+    Measured at 7421d3d: the preview was never deleted and a second
+    overwrote the first (D1, D2; GAPS2 X3 counted 66).  Only names
+    ``_DASH_PREVIEW_RE`` matches whose ``lstat`` is a regular file are
+    touched; a link is never followed.  This session's pages: on a
+    ``"preview"`` the newest four are kept (five once the new page is
+    written) and of the rest a page a browser was asked to open in the last
+    minute; on ``"clear"`` only such a young opened page stays.  Another
+    session's page goes only when it is a day old or, on POSIX, its pid is
+    dead (A6).  Then all sessions together are cut to 25 pages, oldest
+    first, a young opened page excepted."""
+    now = time.time() if now is None else now
+    try:
+        names = os.listdir(prev)
+    except OSError:
+        return 0
+    me = os.getpid()
+    entries = []
+    for name in names:
+        m = _DASH_PREVIEW_RE.match(name)
+        if not m:
+            continue
+        p = os.path.join(prev, name)
+        try:
+            lst = os.lstat(p)
+        except OSError:
+            continue
+        if stat.S_ISREG(lst.st_mode):
+            entries.append((lst.st_mtime, name, p, int(m.group(1)),
+                            m.group(2)))
+    drop = set()
+    mine = sorted((e for e in entries if e[3] == me), reverse=True)
+    if trigger == "preview":
+        for e in mine[_DASH_PREVIEW_KEEP - 1:]:
+            if e[4] == "q" or now - e[0] >= _DASH_PREVIEW_GRACE_S:
+                drop.add(e[2])
+    else:
+        for e in mine:
+            if not (e[4] == "b" and now - e[0] < _DASH_PREVIEW_GRACE_S):
+                drop.add(e[2])
+    for e in entries:
+        if e[3] != me and (now - e[0] > _DASH_STALE_AGE_S or (
+                os.name != "nt" and not _dash_pid_alive(e[3]))):
+            drop.add(e[2])
+    left = sorted(e for e in entries if e[2] not in drop)
+    excess = len(left) - _DASH_PREVIEW_CEILING
+    for e in left:
+        if excess <= 0:
+            break
+        if e[4] == "b" and now - e[0] < _DASH_PREVIEW_GRACE_S:
+            continue
+        drop.add(e[2])
+        excess -= 1
+    removed = 0
+    for p in drop:
+        try:
+            os.unlink(p)
+            removed += 1
+        except OSError:
+            pass
+    return removed
+
+
+def _dash_preview_path(tmpdir, opened):
+    """Name the one-line preview page; ``{"path", "err", "note"}`` (P0.14).
+
+    The page goes in ``<root>/previews/`` (0700) under a unique name --
+    time, pid, 8 random hex digits, and ``b`` when a browser is to be asked
+    to open it (*opened* ``"1"``) else ``q`` -- so a preview never
+    overwrites another (D1).  The session's older pages are pruned first.
+    The file is not created here: ``main(private_output=True)`` creates it
+    0600 with ``O_EXCL``.  A ``previews`` planted inside the root (which
+    needs a root others can write) is left alone and the fallback root used
+    (R-8 (b)); a second planted one is refused (anti-hijack).  ``err`` and
+    ``note`` are built as ``_dash_run_open`` builds them."""
+    out = {"path": "", "err": "", "note": ""}
+    note = ""
+    try:
+        root, note = _dash_private_root(tmpdir)
+        for attempt in (0, 1):
+            prev = os.path.join(root, "previews")
+            try:
+                os.mkdir(prev, 0o700)
+            except FileExistsError:
+                pass
+            try:
+                why = _dash_private_dir_ok(prev)
+            except _DashUnsafePath as exc:
+                if attempt:
+                    raise
+                root = _dash_fallback_root(tmpdir)
+                note = "  ".join(x for x in (note, _DASH_NOTE_PLANTED % (
+                    prev, exc.why, root, prev)) if x)
+                continue
+            if why and "could not be made private" not in note:
+                note = "  ".join(x for x in (note, _DASH_NOTE_LOOSE
+                                             % (prev, why)) if x)
+            break
+        _dash_prune_previews(prev, "preview")
+    except OSError as exc:
+        out["err"] = ("dash: dash could not make its temporary folder in "
+                      "%s: %s." % (tmpdir, getattr(exc, "strerror", None)
+                                   or exc))
+        out["note"] = ("dash: note: " + note) if note else ""
+        return out
+    name = "dash-preview-%s-%d-%s-%s.html" % (
+        time.strftime("%Y%m%d-%H%M%S"), os.getpid(), secrets.token_hex(4),
+        "b" if str(opened).strip() == "1" else "q")
+    out.update(path=os.path.join(prev, name),
+               note=("dash: note: " + note) if note else "")
+    return out
+
+
+def _dash_tmp_write_text(path, text):
+    """dash.ado's spec and empty-data writer: *text* to *path* through
+    ``_dash_private_write`` (0600, no link, FIFO or foreign file), returning
+    ``""``.
+
+    It replaces Stata's ``file write``, which resets the mode to the umask
+    (T2, T3) and expands a macro reference found inside the value a second
+    time (A9: "R1 identical: False").  A refusal (anti-hijack) or an
+    OSError is raised, never returned as text (ratified 01oct2026), so the
+    ``python:`` line ends r(7102) with the message last (M4a)."""
+    _dash_private_write(path, text)
+    return ""
+
+
+def _dash_tmp_clear(tmpdir):
+    """``dash clear``'s pruning: in each of this account's roots in
+    *tmpdir* -- ``dash-<uid>`` and every fallback root, each accepted by
+    ``_dash_own_root`` -- sweep the stale runs and remove the session's
+    previews but a young opened one (R-6); then remove an emptied fallback
+    root.  Never creates a root; a planted ``previews`` is skipped, never
+    followed.  Returns ``""``."""
+    pat = re.compile(_DASH_FALLBACK_FMT % re.escape(_dash_root_name()))
+    try:
+        names = sorted(os.listdir(tmpdir))
+    except OSError:
+        return ""
+    for name in names:
+        if name != _dash_root_name() and not pat.match(name):
+            continue
+        root = os.path.join(tmpdir, name)
+        if not _dash_own_root(root, tmpdir):
+            continue
+        _dash_run_sweep(root)
+        prev = os.path.join(root, "previews")
+        if os.path.lexists(prev):
+            try:
+                _dash_private_dir_ok(prev)
+            except (_DashUnsafePath, OSError):
+                pass
+            else:
+                _dash_prune_previews(prev, "clear")
+        if name != _dash_root_name():
+            for d in (prev, root):
+                try:
+                    os.rmdir(d)
+                except OSError:
+                    pass
     return ""
 
 
 #: The functions dash.ado calls by name on this module, loaded as
-#: ``_dash_render_export`` (its program _dash_write_data), rather than
-#: through ``main()``.  Named here so the call graph of the dead-code audit
+#: ``_dash_render_export`` (its programs _dash_write_data and _dash_xm_load,
+#: and the _dash_tmp_* programs of WP-29 P0.12b), rather than through
+#: ``main()``.  Named here so the call graph of the dead-code audit
 #: (scripts/fncov/fncov_reach.py), whose roots are this module's own code,
 #: counts them as run; test_string_value_export.py holds this tuple and
 #: dash.ado's calls to the same names.
-_DASH_ADO_ENTRY_POINTS = (_dash_write_stata_data,)
+_DASH_ADO_ENTRY_POINTS = (_dash_write_stata_data, _dash_run_open,
+                          _dash_run_close, _dash_preview_path,
+                          _dash_tmp_write_text, _dash_tmp_clear)
 
 
 #: The blanks a layout() may carry: the six ASCII ones.  str.strip(),
@@ -30471,12 +31254,29 @@ class ServerAppBuilder:
             "_STORAGE_TYPES = {}",
         ]
 
-    def build(self, output_path: str, port: int = 5006) -> None:
+    def build(self, output_path: str, port: int = 5006,
+              private: bool = False) -> "_DashWrittenApp | None":
         """Generate the Bokeh Server app file and write it to *output_path*.
 
         Args:
             output_path: Destination path for the generated ``.py`` file.
             port:        Port number to embed in the ``__main__`` launch block.
+            private:     Write the app 0600, as a new file, never through a
+                         link (WP-29 P0.12b, M4, R-7).  The app embeds every
+                         observation, so ``main()`` passes it on every server
+                         route.  Once the source is complete -- so a refused
+                         port leaves an existing file untouched -- this
+                         account's file at the name is removed
+                         (``_dash_private_clear_name``, which refuses a link,
+                         a non-regular or another account's file) and the
+                         app created with ``O_EXCL`` (``_dash_private_write``).
+                         Off by default for the tests that call ``build``
+                         directly.
+
+        Returns:
+            With *private*, the ``_DashWrittenApp`` (the file's
+            ``os.stat_result`` and the SHA-256 of its bytes) the launcher
+            verifies before it runs the app; otherwise None.
         """
         # A build is a render of its own: the notes an earlier render in
         # this process made must not silence this one's (the saved renderer
@@ -30565,8 +31365,14 @@ class ServerAppBuilder:
             # being written needs none of it.
             self._data_cache = None
             self._frame_cache = None
+        if private:
+            _dash_private_clear_name(output_path)
+            st = _dash_private_write(output_path, source, exclusive=True)
+            return _DashWrittenApp(
+                st, hashlib.sha256(source.encode("utf-8")).hexdigest())
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(source)
+        return None
 
     def _frame(self) -> "pd.DataFrame":
         """The dataset as the saved renderer loads it, for build-time plans.
@@ -33239,16 +34045,17 @@ def _validate_output_path(output_path: str, mode: str,
     the renderer directly.
 
     *launch* is the ``--launch`` route, ``dash serve``'s, which writes the
-    app, runs it with ``python <path>`` and waits.  ``dash serve`` hands it
-    a Stata tempfile -- ``S_86564.000002``, no ``.py`` -- on purpose: a
-    registered name is what Stata erases when the command ends, on success,
-    error or Break, and the app embeds the data (an unregistered ``.py``
-    beside it once left 142 of them behind).  So on that route a name with
-    no ``.py`` is taken when no file of that name exists yet: the route can
-    still never overwrite a file that is not a ``.py``.  Measured at
-    4ede074, requiring ``.py`` on every server path stopped every
-    ``dash serve`` with this function's ValueError, r(7102).  ``dash build,
-    server`` -- a file the user keeps -- still needs the ``.py``.
+    app, runs it (from the bytes it verified, ``_dash_launch_app``) and
+    waits.  Since WP-29 P0.12b ``dash serve`` hands it
+    ``<c(tmpdir)>dash-<uid>/run-<pid>-<random>/app.py``, in a private run
+    folder dash removes when the command ends.  It used to hand a Stata
+    tempfile -- ``S_86564.000002``, no ``.py`` -- so a command-line user
+    may still name one: on that route a name with no ``.py`` is taken when
+    no file of that name exists yet, so the route can never overwrite a
+    file that is not a ``.py`` (measured at 4ede074, requiring ``.py`` on
+    every server path stopped every ``dash serve`` with this function's
+    ValueError, r(7102)).  ``dash build, server`` -- a file the user keeps
+    -- still needs the ``.py``.
 
     Returns the path unchanged, so it can be used inline.
     """
@@ -33328,7 +34135,8 @@ def main(
     mode: str = "standalone",
     port: int = 5006,
     launch: bool = False,
-) -> None:
+    private_output: bool = False,
+) -> "_DashWrittenApp | None":
     """Build the dashboard and write it to *output_path*.
 
     Dispatches to ``DashRenderer`` (standalone HTML) or ``ServerAppBuilder``
@@ -33342,9 +34150,27 @@ def main(
         port:             Port to embed in the generated server app.  Ignored
                           for standalone.  ``build_options["port"]`` still
                           wins, because that is what dash.ado writes.
-        launch:           The ``--launch`` route (``dash serve``), whose
-                          output is a Stata tempfile; see
+        launch:           The ``--launch`` route (``dash serve``); see
                           :func:`_validate_output_path`.
+        private_output:   Write the standalone page readable by this
+                          account only (0600), as a new file, never through
+                          a link: the one-line form's preview (WP-29 P0.14).
+                          A page the user names keeps the umask, as twoway's
+                          ``saving()`` does.
+
+    Every server app is written 0600 where the disk allows, as a new file,
+    and never through a link (WP-29 P0.12b, M4; an anti-hijack refusal is
+    a ``_DashUnsafePath``, never caught here, r(7102) under Stata).  On the
+    launch route the spec and data are erased once the app (which embeds
+    them) is written -- only inside dash's own private run folder
+    (``_dash_private_run_of``); a command-line user's files never are.  A
+    user-named ``.py`` the disk will not keep at 0600 is written and noted
+    once (R-8 (d)).
+
+    Returns:
+        In server mode the written app's ``_DashWrittenApp`` (its
+        ``os.stat_result`` and SHA-256), which the launcher verifies before
+        it hands the bytes to Python; None in standalone mode.
 
     Raises:
         ValueError: If *mode* is not a recognised value.
@@ -33360,6 +34186,7 @@ def main(
         )
 
     _validate_output_path(output_path, mode, launch=launch)
+    run = _dash_private_run_of(output_path) if launch else None
 
     if mode == "server":
         # --port used to stop here: this call passed three arguments and no
@@ -33369,18 +34196,234 @@ def main(
         # server' followed by `python app.py' -- the documented non-blocking
         # route -- served on 5006 regardless.
         builder = ServerAppBuilder(master_spec_path, data_json_path)
-        builder.build(output_path, port=_dash_port_value(port))
+        written = builder.build(output_path, port=_dash_port_value(port),
+                                private=True)
+        # The app embeds the spec and data (_SPEC_B64, _DATA_B64), so dash
+        # serve's copies of them go now -- only inside dash's own run
+        # folder (R-1).
+        if run is not None and \
+                os.path.dirname(master_spec_path) == run and \
+                os.path.dirname(data_json_path) == run and \
+                os.path.basename(master_spec_path) == "spec.json" and \
+                os.path.basename(data_json_path) == "data.json":
+            _dash_erase_quietly(master_spec_path)
+            _dash_erase_quietly(data_json_path)
+        if not _dash_mode_private(written.st) and \
+                not _dash_chosen_path(output_path):
+            print(_DASH_NOTE_FILE % (output_path,
+                                     stat.S_IMODE(written.st.st_mode)),
+                  flush=True)
+        return written
+    renderer = DashRenderer(master_spec_path, data_json_path)
+    html_content = renderer.render()
+    if private_output:
+        _dash_private_write(output_path, html_content, exclusive=True)
     else:
-        renderer = DashRenderer(master_spec_path, data_json_path)
-        html_content = renderer.render()
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(html_content)
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Launch from the open file (WP-29 P0.12b, section 08 R-9; ratified
+# 01oct2026, round 2, answer B).  Launcher-only: none of these is copied
+# into the generated app (R-3).
+#
+# Measured (section 08, §3b): `python app.py' ran an app.py swapped in
+# after dash had written it (A: rc 3, "EVIL RAN"), and imported a
+# linecache.py planted beside it (C); `python -c' imports one planted in the
+# working folder at start-up (F).  So dash never starts its app by name: it
+# reads the app.py main() wrote through a descriptor it opened and checked,
+# and hands those bytes to `python -P -c _DASH_BOOT' on the child's stdin.
+# The child never opens a path, and -P keeps both folders off sys.path
+# (B, D, F with -P, G).  An anti-hijack guard (R-8): every refusal is a
+# _DashUnsafePath, r(7102).
+# ---------------------------------------------------------------------------
+
+#: The bootstrap ``python -P -c`` runs (R-9 item 2): it reads one frame,
+#: ``DASHAPP1 <n> <sha256>`` and a newline, then exactly *n* bytes, from
+#: fd 0 with ``os.read`` only (so whatever follows the frame -- S13's key
+#: line, F2's watch -- is left on stdin, §3b 3), checks the length and the
+#: SHA-256 (a short or damaged frame exits 1 and runs nothing, §3b 5, 5b),
+#: and runs the text as ``__main__`` compiled under the app's own name, so
+#: tracebacks, ``__file__``, argv and exit statuses are those of ``python
+#: app.py`` (§3b 1-3).  It holds no double quote and no backslash, so
+#: Windows' list2cmdline only wraps it in quotes, and no secret (argv is
+#: visible through ``ps``).
+_DASH_BOOT = "\n".join([
+    "import sys",
+    "if not getattr(sys.flags, 'safe_path', False) and sys.path[:1] == ['']:",
+    "    del sys.path[0]",
+    "def _dash_boot():",
+    "    import os, hashlib, linecache, types, builtins",
+    "    bad = 'dash: the app was not handed over on standard input'",
+    "    nl = bytes([10])",
+    "    head = b''",
+    "    while not head.endswith(nl):",
+    "        if len(head) >= 128:",
+    "            raise SystemExit(bad)",
+    "        c = os.read(0, 1)",
+    "        if not c:",
+    "            raise SystemExit(bad)",
+    "        head += c",
+    "    try:",
+    "        tag, n, digest = head.decode('ascii').split()",
+    "    except ValueError:",
+    "        raise SystemExit(bad)",
+    "    if tag != 'DASHAPP1' or not n.isdigit() or len(digest) != 64 or "
+    "digest.strip('0123456789abcdef'):",
+    "        raise SystemExit(bad)",
+    "    left = int(n)",
+    "    parts = []",
+    "    while left > 0:",
+    "        b = os.read(0, min(left, 1048576))",
+    "        if not b:",
+    "            raise SystemExit(bad)",
+    "        parts.append(b)",
+    "        left -= len(b)",
+    "    data = b''.join(parts)",
+    "    del parts",
+    "    if hashlib.sha256(data).hexdigest() != digest:",
+    "        raise SystemExit('dash: the app handed over on standard input "
+    "was damaged')",
+    "    app = sys.argv[1]",
+    "    src = data.decode('utf-8')",
+    "    code = compile(src, app, 'exec', dont_inherit=True)",
+    "    linecache.cache[app] = (len(src), None, src.splitlines(True), app)",
+    "    mod = types.ModuleType('__main__')",
+    "    mod.__file__ = app",
+    "    mod.__builtins__ = builtins",
+    "    old = sys.modules.get('__main__')",
+    "    sys.modules['__main__'] = mod",
+    "    sys.argv = sys.argv[1:]",
+    "    del data, src",
+    "    exec(code, mod.__dict__)",
+    "    return old",
+    "_dash_boot()",
+    ""])
+assert '"' not in _DASH_BOOT and "\\" not in _DASH_BOOT
+
+
+def _dash_read_verified_app(app_path, expect=None):
+    """The bytes of the app ``main()`` wrote, read through a descriptor
+    opened and checked here; the launcher hands exactly these to Python.
+
+    Anti-hijack (``_DashUnsafePath``, ``dash: refused to run <path> (<why>);
+    dash runs only the application it wrote.``): a link (``O_NOFOLLOW``; on
+    Windows, which has none, an ``lstat`` link or reparse point is refused
+    first and a swap after it is caught by the checks below), anything but a
+    regular file (a FIFO opened ``O_NONBLOCK`` does not block, A3), another
+    account's file, and -- with *expect*, the ``_DashWrittenApp`` main()
+    returned -- another ``(st_dev, st_ino)`` (a renamed and replaced folder,
+    measured §3a R9), another size, or other bytes (SHA-256).  Every check
+    after the open is on the descriptor, and the path is never read twice
+    (§3b B).  An OSError from the open or the read (the file is gone) is
+    the launch-failure class and propagates.  ``O_NOFOLLOW``,
+    ``O_NONBLOCK``, ``O_CLOEXEC`` and ``os.getuid`` are read with
+    ``getattr`` (Windows, A13)."""
+    why = ""
+    if os.name == "nt":
+        lst = os.lstat(app_path)
+        if stat.S_ISLNK(lst.st_mode) or (
+                getattr(lst, "st_file_attributes", 0)
+                & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)):
+            why = "it is a link"
+    fd = None
+    if not why:
+        try:
+            fd = os.open(app_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+                         | getattr(os, "O_NONBLOCK", 0)
+                         | getattr(os, "O_CLOEXEC", 0)
+                         | getattr(os, "O_BINARY", 0))
+        except OSError as exc:
+            if exc.errno == errno.ELOOP:
+                why = "it is a link"
+            elif exc.errno in (errno.ENOTDIR, errno.EMLINK):
+                try:
+                    if stat.S_ISLNK(os.lstat(app_path).st_mode):
+                        why = "it is a link"
+                except OSError:
+                    pass
+            if not why:
+                raise
+    data = b""
+    if fd is not None:
+        try:
+            st = os.fstat(fd)
+            _uid = getattr(os, "getuid", None)
+            if not stat.S_ISREG(st.st_mode):
+                why = "it is not a regular file"
+            elif _uid is not None and st.st_uid != _uid():
+                why = "it belongs to another account"
+            elif expect is not None and (st.st_dev, st.st_ino) != (
+                    expect.st.st_dev, expect.st.st_ino):
+                why = "it was replaced after dash wrote it"
+            elif expect is not None and st.st_size != expect.st.st_size:
+                why = "it changed after dash wrote it"
+            else:
+                parts = []
+                left = st.st_size
+                while left > 0:
+                    b = os.read(fd, min(left, 1 << 20))
+                    if not b:
+                        break
+                    parts.append(b)
+                    left -= len(b)
+                if left > 0 or os.read(fd, 1):
+                    why = "it changed after dash wrote it"
+                data = b"".join(parts)
+        finally:
+            os.close(fd)
+    if not why and expect is not None and \
+            hashlib.sha256(data).hexdigest() != expect.sha256:
+        why = "it changed after dash wrote it"
+    if why:
+        refusal = _DashUnsafePath(_DASH_RUN_REFUSAL % (app_path, why))
+        refusal.why = why
+        raise refusal
+    return data
+
+
+def _dash_app_frame(data):
+    """One ``DASHAPP1 <n> <sha256>`` header line and the *n* bytes of
+    *data*: what ``_DASH_BOOT`` reads from stdin.  Pure."""
+    return ("DASHAPP1 %d %s\n" % (len(data), hashlib.sha256(data).hexdigest())
+            ).encode("ascii") + data
+
+
+def _dash_child_stdin(proc):
+    """The binary writer of the child's stdin.  The launcher's Popen is
+    ``text=True`` (its pump threads read text), so this is the text
+    wrapper's ``buffer``: the frame never passes through the locale
+    encoding or Windows' newline translation, either of which would break
+    it.  A fake child's stdin with no ``buffer`` is used as it is."""
+    return getattr(proc.stdin, "buffer", proc.stdin)
+
+
+def _dash_hand_over(proc, frame):
+    """Write the app's *frame* to the child's stdin and flush it; never
+    close the pipe (the child reads it after the frame).  A child that
+    exited first gives BrokenPipeError, which the launcher reports
+    (Stata's Python ignores SIGPIPE, §3b ST2, ST4)."""
+    raw = _dash_child_stdin(proc)
+    raw.write(frame)
+    raw.flush()
 
 
 def _dash_launch_app(app_path, port, timeout, no_browser, *,
-                      ready_seconds=30.0, prebind=True):
+                      ready_seconds=30.0, prebind=True, expect=None):
     """Run the generated Bokeh Server app as a subprocess and block until
     it answers ``/health`` or fails, forwarding its own output as it runs.
+
+    WP-29 P0.12b (R-9): the child runs the bytes this process read through
+    a descriptor it opened and verified (``_dash_read_verified_app``;
+    *expect* is the ``_DashWrittenApp`` main() returned), handed to
+    ``python -P -c _DASH_BOOT <app_path>`` as one frame on its stdin
+    (``_dash_hand_over``) -- never the path, so an app.py or folder swapped
+    in after the check never runs, and -P keeps the app's folder and the
+    working folder off ``sys.path``.  A refusal is ``_DashUnsafePath``
+    (r(7102)); an app that cannot be read, or a child that cannot take it,
+    is a launch failure (RuntimeError).
 
     GAPS2 F1: the old inline launch started the app with
     ``Popen(cmd).wait()`` and never read ``returncode``, so a port already
@@ -33425,14 +34468,25 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
                 "no server started on port %d: the port is in use" % port)
         _s.close()
 
-    _cmd = [sys.executable, app_path, "--port", str(port)]
+    try:
+        _data = _dash_read_verified_app(app_path, expect)
+    except OSError as exc:
+        raise RuntimeError(
+            "no server started on port %d: the app could not be read (%s)"
+            % (port, exc.strerror or exc))
+    _frame = _dash_app_frame(_data)
+    del _data
+
+    _cmd = [sys.executable, "-P", "-c", _DASH_BOOT, app_path, "--port",
+            str(port)]
     if not no_browser:
         _cmd.append("--show")
     if timeout > 0:
         _cmd += ["--timeout", str(timeout)]
 
     try:
-        proc = subprocess.Popen(_cmd, stdout=subprocess.PIPE,
+        proc = subprocess.Popen(_cmd, stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, text=True,
                                 errors="replace")
     except FileNotFoundError:
@@ -33464,6 +34518,34 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
 
     def _clean(text):
         return "".join(c for c in text if c.isprintable() or c == "\n")
+
+    # The app, handed over once both pumps run (a child that writes while
+    # it reads cannot fill a pipe).  A child that cannot take it is
+    # stopped and reported; the pipe is never closed while it serves.
+    try:
+        _dash_hand_over(proc, _frame)
+    except BaseException as exc:
+        if proc.poll() is None:
+            try:
+                proc.kill()
+            except OSError:
+                pass
+        proc.wait()
+        _t_err.join(1)
+        try:
+            proc.stdin.close()
+        except (OSError, ValueError, AttributeError):
+            pass
+        if not isinstance(exc, (OSError, ValueError, AttributeError)):
+            raise
+        _reason = ("no server started on port %d: the app could not be "
+                   "handed to Python (%s)" % (port, exc))
+        _tail = _clean("".join(_err_dq))
+        _budget = 4096 - len(_reason) - 1
+        if _tail and len(_tail) > _budget > 0:
+            _tail = _tail[-_budget:]
+        raise RuntimeError((_reason + ("\n" + _tail if _tail else ""))[:4096])
+    del _frame
 
     _forwarded = 0
 
@@ -33517,6 +34599,10 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
         _stopped_by_launcher = True
 
     proc.wait()
+    try:
+        proc.stdin.close()
+    except (OSError, ValueError, AttributeError):
+        pass
     _t_out.join(1)
     _t_err.join(1)
     _drain_stdout()
@@ -33591,13 +34677,25 @@ if __name__ == "__main__":
             "`dash serve' passes this; `dash build, server' does not."
         ),
     )
+    parser.add_argument(
+        "--private-output",
+        dest="private_output",
+        action="store_true",
+        default=False,
+        help="Write the output readable by this account only (0600) and "
+             "never through a link.  dash.ado passes this for the one-line "
+             "form's preview page.",
+    )
     args = parser.parse_args()
 
     # Build the output file (HTML or server app .py).  --launch is passed
     # through: `dash serve' names its app with a Stata tempfile, which has
     # no .py (_validate_output_path).
-    main(args.spec, args.data, args.output, args.mode, args.port,
-         launch=args.mode == "server" and args.launch)
+    # _written: the app's identity and digest, which the launch verifies
+    # before it hands the bytes to Python (WP-29 P0.12b, R-9).
+    _written = main(args.spec, args.data, args.output, args.mode, args.port,
+                    launch=args.mode == "server" and args.launch,
+                    private_output=args.private_output)
 
     # When mode is 'server' AND the caller asked for it, launch the app.
     #
@@ -33632,7 +34730,7 @@ if __name__ == "__main__":
         _report = globals().get("_dash_launch_report")
         try:
             _dash_launch_app(args.output, args.port, args.timeout,
-                             args.no_browser)
+                             args.no_browser, expect=_written)
         except RuntimeError as _exc:
             if _report is None:
                 print("dash_render: error -- " + str(_exc),

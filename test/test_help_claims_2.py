@@ -762,17 +762,38 @@ class TestTheSavedPageIsSelfContained:
         assert "Bokeh" in page and len(page) > 200_000
 
 
+class _RecStdin:
+    """A fake child's stdin (a copy of test_private_files._RecStdin): since
+    WP-29 P0.12b (R-9) the launcher hands the app it verified to the child
+    as one frame on its stdin; this records the bytes."""
+
+    def __init__(self):
+        self.writes = []
+
+    def write(self, b):
+        self.writes.append(bytes(b))
+        return len(b)
+
+    def flush(self):
+        pass
+
+    def close(self):
+        pass
+
+
 class _FakeProc:
     """Stands in for subprocess.Popen (GAPS2 F1): the real launcher now
     pipes the child's stdout/stderr and reads its exit status
     (_dash_launch_app, TR-09.2), so the fake takes **kw and offers text
-    streams, a returncode and poll()/terminate()/communicate() too."""
+    streams, a returncode and poll()/terminate()/communicate() too, and a
+    stdin the app is handed over on (WP-29 P0.12b)."""
     waited = False
 
     def __init__(self, cmd, **kw):
         type(self).cmd = list(cmd)
         type(self).kw = kw
         self.returncode = 0
+        self.stdin = _RecStdin()
         self.stdout = io.StringIO()
         self.stderr = io.StringIO()
 

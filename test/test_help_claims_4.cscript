@@ -433,8 +433,10 @@ macro drop hc415_*
 display "HC4-15 PASS: the served app embeds mpg, price and weight -- all `=_N' observations -- and no other variable"
 
 // ================================================================
-// HC4-16..18 -- `dash serve' writes its app to a Stata temporary file and
-// Stata erases it when the command ends
+// HC4-16..18 -- `dash serve' writes its app into a private run folder,
+// c(tmpdir)dash-<uid>/run-<pid>-<random>/, and dash removes the folder
+// when the command ends (WP-29 P0.12b; it was a Stata tempfile that Stata
+// erased)
 // ================================================================
 // dash serve is run against a STUB dash_render.py placed first on the
 // ado-path (the method of test_serve_browser.cscript): the stub writes a
@@ -475,7 +477,12 @@ capture noisily {
     capture confirm file "`hc4_app'"
     assert _rc != 0
     assert strpos("`hc4_app'", "`c(tmpdir)'") == 1
-    display "HC4-18 PASS: that file, in c(tmpdir), is gone once dash serve returns"
+    // Strengthened (WP-29 P0.12b): the app's run folder is gone too.
+    mata: st_local("hc418dir", substr(st_local("hc4_app"), 1, strrpos(st_local("hc4_app"), "/") - 1))
+    mata: st_local("hc418gone", strofreal(!direxists(st_local("hc418dir"))))
+    display as text "  HC4-18 app folder [`hc418dir'] gone `hc418gone'"
+    assert `hc418gone' == 1
+    display "HC4-18 PASS: that file, in c(tmpdir), and its folder are gone once dash serve returns"
 }
 local rc_hc4 = _rc
 adopath - "`stubdir'"
@@ -530,6 +537,39 @@ def _hc4_poll():
             time.sleep(0.25)
 _hc4_thread = threading.Thread(target=_hc4_poll, daemon=True)
 _hc4_thread.start()
+# PF-08 (WP-29 P0.12b): a second thread watches for this session's new
+# run folder while dash serve blocks: app.py's mode when first seen, and,
+# once /health answers, the folder's and the root's modes and whether
+# spec.json or data.json is still there.
+import re as _pf8_re, stat as _pf8_st
+_pf8_root = os.path.join(Macro.getGlobal("hc4_tmpdir"), "dash-%d" % os.getuid())
+_pf8_pat = _pf8_re.compile(r"^run-%d-[A-Za-z0-9_]+$" % os.getpid())
+_pf8_old = set(os.listdir(_pf8_root)) if os.path.isdir(_pf8_root) else set()
+_pf8 = {"dir": "", "app": "", "dirmode": "", "rootmode": "", "inputs": ""}
+def _pf8_mode(p):
+    try:
+        return oct(_pf8_st.S_IMODE(os.lstat(p).st_mode))
+    except OSError:
+        return "none"
+def _pf8_watch():
+    deadline = time.time() + 150
+    while time.time() < deadline:
+        if not _pf8["dir"] and os.path.isdir(_pf8_root):
+            for _n in os.listdir(_pf8_root):
+                if _n not in _pf8_old and _pf8_pat.match(_n):
+                    _pf8["dir"] = os.path.join(_pf8_root, _n)
+        if _pf8["dir"] and not _pf8["app"]:
+            if os.path.exists(os.path.join(_pf8["dir"], "app.py")):
+                _pf8["app"] = _pf8_mode(os.path.join(_pf8["dir"], "app.py"))
+        if _pf8["dir"] and _hc4_seen["status"] is not None:
+            _pf8["dirmode"] = _pf8_mode(_pf8["dir"])
+            _pf8["rootmode"] = _pf8_mode(_pf8_root)
+            _pf8["inputs"] = " ".join(_f for _f in ("spec.json", "data.json")
+                                      if os.path.exists(os.path.join(_pf8["dir"], _f)))
+            return
+        time.sleep(0.05)
+_pf8_thread = threading.Thread(target=_pf8_watch, daemon=True)
+_pf8_thread.start()
 end
 timer clear 91
 timer on 91
@@ -542,17 +582,49 @@ python:
 _hc4_thread.join(5)
 Macro.setGlobal("hc4_status", str(_hc4_seen["status"]))
 Macro.setGlobal("hc4_ok", "1" if '"status": "ok"' in _hc4_seen["body"] else "0")
+# HC4-21, strengthened (WP-29 P0.12b): a recursive walk limited to this
+# session's files -- top-level St<pid>.* tempfiles, its run-<pid>-*
+# folders and its previews under every dash-<uid> root -- finds no file
+# newer than t0 holding the app's data, the spec or the data file, and no
+# run folder of this session is left.  The top-level listing it replaces
+# would pass vacuously once the app moved into a folder.
+_hc4_tmp = Macro.getGlobal("hc4_tmpdir")
+_hc4_pid = os.getpid()
+_hc4_uid = "dash-%d" % os.getuid()
+_hc4_cands = []
+_hc4_runs = []
+for _f in os.listdir(_hc4_tmp):
+    _p = os.path.join(_hc4_tmp, _f)
+    if _pf8_re.match(r"^St0*%d[.]" % _hc4_pid, _f) and os.path.isfile(_p):
+        _hc4_cands.append(_p)
+    if (_f == _hc4_uid or _f.startswith(_hc4_uid + "-")) and os.path.isdir(_p) \
+            and not os.path.islink(_p):
+        for _n in os.listdir(_p):
+            _q = os.path.join(_p, _n)
+            if _n.startswith("run-%d-" % _hc4_pid):
+                _hc4_runs.append(_q)
+                for _dp, _dn, _fn in os.walk(_q):
+                    _hc4_cands += [os.path.join(_dp, _x) for _x in _fn]
+            if _n == "previews" and os.path.isdir(_q):
+                _hc4_cands += [os.path.join(_q, _x) for _x in os.listdir(_q)
+                               if ("-%d-" % _hc4_pid) in _x]
 _hc4_left = []
-for _f in os.listdir(Macro.getGlobal("hc4_tmpdir")):
-    _p = os.path.join(Macro.getGlobal("hc4_tmpdir"), _f)
+for _p in _hc4_cands:
     try:
         if os.path.isfile(_p) and os.path.getmtime(_p) >= _hc4_t0 - 1:
             with open(_p, encoding="utf-8", errors="replace") as _fh:
-                if "_DATA_B64 = " in _fh.read():
-                    _hc4_left.append(_f)
+                _txt = _fh.read()
+            if "_DATA_B64 = " in _txt or '"graphs":' in _txt or '"variableNames"' in _txt:
+                _hc4_left.append(os.path.basename(_p))
     except OSError:
         pass
-Macro.setGlobal("hc4_left", " ".join(_hc4_left))
+Macro.setGlobal("hc4_left", " ".join(_hc4_left + [os.path.basename(_r) for _r in _hc4_runs]))
+_pf8_thread.join(5)
+Macro.setGlobal("pf08_dir", _pf8["dir"])
+Macro.setGlobal("pf08_app", _pf8["app"])
+Macro.setGlobal("pf08_dirmode", _pf8["dirmode"])
+Macro.setGlobal("pf08_rootmode", _pf8["rootmode"])
+Macro.setGlobal("pf08_inputs", _pf8["inputs"])
 end
 assert `hc419rc' == 0
 assert `hc419s' >= 50
@@ -561,8 +633,15 @@ assert "${hc4_status}" == "200"
 assert ${hc4_ok} == 1
 display "HC4-20 PASS: while dash serve blocked, /health on port ${hc4_port} answered 200 {status: ok}"
 assert `"${hc4_left}"' == ""
-display "HC4-21 PASS: no file holding the app's data is left in c(tmpdir)"
-macro drop hc4_*
+display "HC4-21 PASS: no file holding the app's data, spec or data, and no run folder of this session, is left under c(tmpdir)"
+display as text "  PF-08 run folder [${pf08_dir}] app ${pf08_app} folder ${pf08_dirmode} root ${pf08_rootmode} inputs [${pf08_inputs}]"
+assert "${pf08_dir}" != ""
+assert "${pf08_app}" == "0o600"
+assert "${pf08_dirmode}" == "0o700"
+assert "${pf08_rootmode}" == "0o700"
+assert "${pf08_inputs}" == ""
+display "PF-08 PASS: while dash serve ran, its app was 0600 in a 0700 run folder under a 0700 root, with no spec or data left beside it"
+macro drop hc4_* pf08_*
 
 // ----------------------------------------------------------------
 // Cleanup

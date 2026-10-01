@@ -401,7 +401,7 @@ end
 program define _dash_do_render
     version 16.0
     syntax, SPEC(string) DATA(string) OUTPUT(string) RENDERPY(string) ///
-            [MODE(string)]
+            [MODE(string) PRIVate]
 
     // The directory the page or the app goes in must exist: refused here,
     // before Python, on every route, with twoway's r(603) (JSE-52).
@@ -430,6 +430,11 @@ program define _dash_do_render
     // Single-line python: statements do not have this issue.
     python: import sys, runpy
     python: sys.argv = ["dash_render.py", "--spec", "`_py_spec'", "--data", "`_py_data'", "--output", "`_py_output'", "--mode", "`_py_mode'"]
+    // private: the one-line form's preview page, written 0600 as a new
+    // file and never through a link (WP-29 P0.14; main(private_output)).
+    if "`private'" != "" {
+        python: _dash_priv_argv = sys.argv.append("--private-output")
+    }
     // Assign the result.  A single-line `python:' ECHOES the value of the
     // expression it evaluates, and run_path returns the executed module's
     // globals dict -- so this line printed the whole of dash_render.py's
@@ -4438,11 +4443,19 @@ end
 program define _dash_empty_data
     version 16.0
     args path
-    tempname fh
-    // quietly: `write replace' notes a file that is not there yet.
-    quietly file open `fh' using `"`path'"', write text replace
-    file write `fh' `"{"values":[],"variableIsString":{},"variableNames":[],"variableLabels":{},"valueLabelNames":{},"valueLabels":{},"numberOfRecords":0,"numberOfVariables":0}"' _n
-    file close `fh'
+    // Written from Python, 0600 and never through a link, a FIFO or another
+    // account's file (WP-29 P0.12b): Stata's `file write' wrote it with the
+    // umask (0644, measured D7) and followed a link at the name (D9).  The
+    // text crosses by value (Macro.getLocal), with its trailing newline
+    // (P1A-75 reads one line, then r(eof); A8).  No error branch: an
+    // anti-hijack refusal or an OSError ends the python: line, r(7102).
+    _dash_require_python
+    _dash_xm_load
+    local _ed `"{"values":[],"variableIsString":{},"variableNames":[],"variableLabels":{},"valueLabelNames":{},"valueLabels":{},"numberOfRecords":0,"numberOfVariables":0}"'
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_ed = _dash_xm._dash_tmp_write_text(_dash_M.getLocal("path"), _dash_M.getLocal("_ed") + chr(10))
 end
 
 
@@ -4474,11 +4487,37 @@ program define _dash_write_data
     unab _dw_vars : `_dw_vars'
     local _dw_vars : list uniq _dw_vars
     _dash_require_python
-    // The dash_render.py installed beside dash.ado first: the one the
-    // package ships.  A renderer found earlier on the ado-path -- a
-    // stand-in a test puts there to watch what it is handed -- replaces
-    // the render, never the export (test_json_escaping.cscript runs
-    // such a stand-in).  Then the ado-path, as the render looks.
+    _dash_xm_load
+    local _dw_err ""
+    // One statement per line: a python: block inside a program fails to
+    // load from the ado-path (see _dash_do_render).  Each program binds
+    // sys, _dash_M and _dash_xm in its own python: lines.
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_M.setLocal("_dw_err", _dash_xm._dash_write_stata_data(_dash_M.getLocal("_dw_path"), _dash_M.getLocal("_dw_vars")))
+    if `: length local _dw_err' {
+        mata: _dash_say("err", st_local("_dw_err"), "", "")
+        exit 198
+    }
+end
+
+
+// ================================================================
+// _dash_xm_load  -- load dash_render.py as _dash_render_export, once
+// ================================================================
+// Moved verbatim out of _dash_write_data (WP-29 P0.12b), which still calls
+// it, so the private-file programs below load the same module the same
+// way.  The dash_render.py installed beside dash.ado first: the one the
+// package ships.  A renderer found earlier on the ado-path -- a stand-in a
+// test puts there to watch what it is handed -- replaces the render, never
+// the export (test_json_escaping.cscript runs such a stand-in).  Then the
+// ado-path, as the render looks.  The module is kept in sys.modules, keyed
+// by its realpath, size and time, so a second command costs nothing to
+// load.  The guard first: no python: line runs before it (A7, ENV-12).
+program define _dash_xm_load
+    version 16.0
+    _dash_require_python
     local _dw_py ""
     capture findfile dash.ado
     if _rc == 0 {
@@ -4491,7 +4530,6 @@ program define _dash_write_data
         _dash_find_render
         local _dw_py `"`r(fn)'"'
     }
-    local _dw_err ""
     // One statement per line: a python: block inside a program fails to
     // load from the ado-path (see _dash_do_render).
     python: import sys, os, importlib.util
@@ -4510,11 +4548,132 @@ program define _dash_write_data
     python: _dash_xr = _dash_ok or _dash_xs.loader.exec_module(_dash_xm)
     python: _dash_xm._dash_export_key = _dash_key
     python: sys.modules["_dash_render_export"] = _dash_xm
-    python: _dash_M.setLocal("_dw_err", _dash_xm._dash_write_stata_data(_dash_M.getLocal("_dw_path"), _dash_M.getLocal("_dw_vars")))
-    if `: length local _dw_err' {
-        mata: _dash_say("err", st_local("_dw_err"), "", "")
-        exit 198
+end
+
+
+// ================================================================
+// _dash_tmp_open, _dash_tmp_preview, _dash_tmp_close, _dash_tmp_clear
+// -- dash's private temporary folder (WP-29 P0.12b, P0.14)
+// ================================================================
+// Measured at 7421d3d (section 08, D1-D9): every temporary copy of the data
+// -- the spec and data files of each render, dash serve's application and
+// the one-line preview -- was a Stata tempfile written with the umask
+// (0644; 0664 under umask 002) in c(tmpdir), a link at its name was
+// followed, and the preview was never deleted.  These programs put every
+// copy in c(tmpdir)dash-<uid>/run-<pid>-<random>/ (0700, files 0600),
+// remove it when the command ends, and keep the previews in .../previews/
+// under unique names, five a session (dash_render.py's _dash_run_open,
+// _dash_run_close, _dash_preview_path, _dash_tmp_clear).  A location that
+// cannot be private is never refused: the command prints ONE note naming
+// it and the remedy, and goes on (section 08 R-8, ratified 01oct2026).
+// Only an operating-system failure to make the folder at all ends r(603),
+// Stata's own code for a file it cannot create.  Each program calls
+// _dash_require_python before its first python: line (A7); every python:
+// line is an import, an assignment or a setLocal (A11); every path and
+// text crosses by value through Macro.getLocal/setLocal.  Callers read
+// r() on the very next line (A12).
+
+// _dash_tmp_open: opens the command's run folder; returns r(rundir),
+// r(spec), r(data), r(app), and r(noted) "1" when it printed the note.
+program define _dash_tmp_open, rclass
+    version 16.0
+    _dash_require_python
+    _dash_xm_load
+    local _to_tmp `"`c(tmpdir)'"'
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_to = _dash_xm._dash_run_open(_dash_M.getLocal("_to_tmp"))
+    python: _dash_M.setLocal("_to_err", _dash_to["err"])
+    python: _dash_M.setLocal("_to_note", _dash_to["note"])
+    python: _dash_M.setLocal("_to_dir", _dash_to["rundir"])
+    python: _dash_M.setLocal("_to_spec", _dash_to["spec"])
+    python: _dash_M.setLocal("_to_data", _dash_to["data"])
+    python: _dash_M.setLocal("_to_app", _dash_to["app"])
+    local _to_noted ""
+    // The privacy class (R-8): printed, never an error.
+    if `: length local _to_note' {
+        mata: _dash_say("txt", "", st_local("_to_note"), "")
+        local _to_noted "1"
     }
+    // The operating-system class, never a privacy refusal: the folder could
+    // not be made at all (c(tmpdir) missing, read-only or full), where
+    // Stata's own `file open' gives 603 (measured, §3a S1).
+    if `: length local _to_err' {
+        mata: _dash_say("err", "", st_local("_to_err"), "")
+        exit 603
+    }
+    return local rundir `"`_to_dir'"'
+    return local spec   `"`_to_spec'"'
+    return local data   `"`_to_data'"'
+    return local app    `"`_to_app'"'
+    return local noted  "`_to_noted'"
+end
+
+// _dash_tmp_preview, opened() [noted()]: names the one-line preview page in
+// previews/ (0600 once written: main(private_output)); returns r(path).
+// Its note is printed only when _dash_tmp_open printed none for this
+// command (noted() is not "1"): one note per command.
+program define _dash_tmp_preview, rclass
+    version 16.0
+    syntax, OPENED(string) [NOTED(string)]
+    _dash_require_python
+    _dash_xm_load
+    local _tp_tmp `"`c(tmpdir)'"'
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_tp = _dash_xm._dash_preview_path(_dash_M.getLocal("_tp_tmp"), _dash_M.getLocal("opened"))
+    python: _dash_M.setLocal("_tp_err", _dash_tp["err"])
+    python: _dash_M.setLocal("_tp_note", _dash_tp["note"])
+    python: _dash_M.setLocal("_tp_path", _dash_tp["path"])
+    if "`noted'" != "1" {
+        if `: length local _tp_note' {
+            mata: _dash_say("txt", "", st_local("_tp_note"), "")
+        }
+    }
+    // The operating-system class, as in _dash_tmp_open.
+    if `: length local _tp_err' {
+        mata: _dash_say("err", "", st_local("_tp_err"), "")
+        exit 603
+    }
+    return local path `"`_tp_path'"'
+end
+
+// _dash_tmp_close, dir(): removes the run folder _dash_tmp_open made.  A
+// path that is not one is named and left; it never changes the return
+// code.  A folder an error leaves behind is swept by the next command.
+program define _dash_tmp_close
+    version 16.0
+    syntax, DIR(string)
+    _dash_require_python
+    _dash_xm_load
+    local _tc_tmp `"`c(tmpdir)'"'
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_tc = _dash_xm._dash_run_close(_dash_M.getLocal("dir"), _dash_M.getLocal("_tc_tmp"))
+    python: _dash_M.setLocal("_tc_err", _dash_tc)
+    if `: length local _tc_err' {
+        mata: _dash_say("txt", "", st_local("_tc_err"), "")
+    }
+end
+
+// _dash_tmp_clear: dash clear's pruning -- this session's previews (but a
+// page a browser was asked to open in the last minute) and stale run
+// folders, in dash-<uid> and every fallback root.  With no dash* folder in
+// c(tmpdir), Mata says so and no Python runs (A15).
+program define _dash_tmp_clear
+    version 16.0
+    _dash_require_python
+    mata: st_local("_tcl_has", strofreal(rows(dir(c("tmpdir"), "dirs", "dash*")) > 0))
+    if "`_tcl_has'" != "1" exit
+    _dash_xm_load
+    local _tcl_tmp `"`c(tmpdir)'"'
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_tcl = _dash_xm._dash_tmp_clear(_dash_M.getLocal("_tcl_tmp"))
 end
 
 
@@ -6248,13 +6407,19 @@ program define _dash_render_immediate
         _dash_saving_clobber `"`saving_path'"' "`replace'" "dash"
     }
     else {
-        tempfile saving_path_tmp
-        local saving_path = "`saving_path_tmp'.html"
+        // No saving(): the preview page.  It is named once the data are
+        // exported (_dash_tmp_preview, below), in c(tmpdir)dash-<uid>/
+        // previews/, 0600, under a name no other preview has (WP-29 P0.14).
+        // It was a Stata tempfile plus .html, a name Stata never registered:
+        // never deleted, 0644, and each preview overwrote the last (D1-D3).
+        local _dash_preview 1
         local open_browser = 1
     }
 
-    if !regexm(lower("`saving_path'"), "\.html$") {
-        local saving_path = "`saving_path'.html"
+    if "`_dash_preview'" != "1" {
+        if !regexm(lower("`saving_path'"), "\.html$") {
+            local saving_path = "`saving_path'.html"
+        }
     }
 
     // ---- The qualifiers, evaluated in Stata ----
@@ -6361,7 +6526,8 @@ program define _dash_render_immediate
     }
 
     // ---- Write the data file (_dash_write_data) ----
-    tempfile data_json_path spec_json_path
+    // Into this command's private run folder (_dash_tmp_open, below, once
+    // every limit has been checked), not Stata tempfiles (WP-29 P0.12b).
 
     // Always export ALL rows for the needed variables.  Do NOT pre-filter with
     // if/in qualifiers here: multiple plots in the same graph can have different
@@ -6437,6 +6603,16 @@ program define _dash_render_immediate
     // Collect display formats.  Each travels in the spec's formats map;
     // the data file carries every number as stored, whatever its format.
     _dash_formats_json "`needed_vars'" _dash_fmt_json _dash_date_vars
+
+    // ---- The private run folder (WP-29 P0.12b) ----
+    // After every refusal above, so a refused command makes no folder.  r()
+    // is read on the very next lines (A12); r(noted) says whether the
+    // command's one note was printed.
+    _dash_tmp_open
+    local _dash_run      `"`r(rundir)'"'
+    local spec_json_path `"`r(spec)'"'
+    local data_json_path `"`r(data)'"'
+    local _dash_noted    `"`r(noted)'"'
     local _dash_jrc = 0
     if `_varfree' {
         _dash_empty_data "`data_json_path'"
@@ -6477,11 +6653,15 @@ program define _dash_render_immediate
             capture drop `_dash_qual_vars' `_dash_sort_vars'
         }
     }
-    if `_dash_jrc' exit `_dash_jrc'
+    if `_dash_jrc' {
+        _dash_tmp_close, dir(`"`_dash_run'"')
+        exit `_dash_jrc'
+    }
 
     // The file itself is the witness that the export ran.
     capture confirm file "`data_json_path'"
     if _rc != 0 {
+        _dash_tmp_close, dir(`"`_dash_run'"')
         display as error "dash: the data could not be written. " ///
             "Check that all variables exist and the data is loaded."
         exit(198)
@@ -6497,33 +6677,54 @@ program define _dash_render_immediate
     // points (WP-29 P0.6).
     local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'}"'
 
-    tempname fh
-    // quietly: `write replace' notes a missing file, and this path is a
-    // fresh tempfile, so the note fired on every successful render.
-    quietly file open `fh' using "`spec_json_path'", write replace text
-    file write `fh' `"`master_json'"'
-    file close `fh'
+    // Written from Python, 0600 and never through a link (WP-29 P0.12b):
+    // Stata's `file write' wrote it with the umask (D4) and expanded a macro
+    // reference inside the value a second time (A9).  By value, with no
+    // newline added.  No error branch: a refusal or an OSError ends the
+    // python: line, r(7102), and the folder it leaves is swept later.
+    _dash_require_python
+    _dash_xm_load
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_wsp = _dash_xm._dash_tmp_write_text(_dash_M.getLocal("spec_json_path"), _dash_M.getLocal("master_json"))
     mata: _dash_fn_spec_tail(st_local("spec_json_path"), "", st_local("fp_sc"))
 
     // ---- Locate dash_render.py ----
     _dash_find_render
     local render_py `"`r(fn)'"'
 
+    // ---- Name the preview page (WP-29 P0.14) ----
+    // The browser decision first: whether a browser will be asked to open
+    // the page is part of its name (b or q), which the pruning reads.  One
+    // decision, in a program a certification script can call without
+    // launching anything: saving() given, $dash_nobrowser set, or the
+    // graph's own nodraw each keep the window shut.  nodraw is honoured
+    // here, and is therefore NOT on either _dash_pending list.
+    local _dash_priv ""
+    if "`_dash_preview'" == "1" {
+        _dash_browser_wanted, spec(`"`json_spec'"')
+        local open_browser = r(open)
+        _dash_tmp_preview, opened(`open_browser') noted(`_dash_noted')
+        local saving_path `"`r(path)'"'
+        local _dash_priv "private"
+    }
+
     // ---- Invoke Python renderer via helper ----
     // (python:...end must be in a dedicated program; see _dash_do_render)
     _dash_do_render, spec("`spec_json_path'") data("`data_json_path'") ///
-        output("`saving_path'") renderpy("`render_py'")
+        output("`saving_path'") renderpy("`render_py'") `_dash_priv'
+    _dash_tmp_close, dir(`"`_dash_run'"')
 
     // ---- Open in browser if no explicit saving() ----
     // The same suppression as `dash build'.  This path sets open_browser
     // only when no saving() was given, but a do-file run in batch still does
-    // not want a browser window.
-    // One decision, in a program a certification script can call without
-    // launching anything: saving() given, $dash_nobrowser set, or the
-    // graph's own nodraw each keep the window shut.  nodraw is honoured
-    // here, and is therefore NOT on either _dash_pending list: the note
-    // used to say "ignoring unsupported option(s): nodraw()" for an option
-    // this line had just applied.
+    // not want a browser window.  The decision was made above, where the
+    // preview page was named, and is read again here, beside the opener
+    // (_dash_browser_wanted is pure, so both reads agree), so the opener
+    // never runs without a decision next to it (test_packaging.py).  The
+    // note used to say "ignoring unsupported option(s): nodraw()" for an
+    // option this decision had just applied.
     if "`open_browser'" == "1" {
         _dash_browser_wanted, spec(`"`json_spec'"')
         local open_browser = r(open)
@@ -6585,6 +6786,10 @@ program define _dash_clear
     capture macro drop dash_graph_registry
     // Leading-underscore globals, if any command ever sets one.
     capture macro drop _dash_*
+
+    // The session's preview pages and stale run folders (WP-29 P0.14):
+    // captured, so dash clear still clears the registry with no Python.
+    capture _dash_tmp_clear
 
     display as text "dash: registry cleared."
 end
@@ -6955,9 +7160,9 @@ end
 //
 // which produced a served dashboard with no filter and no message.
 //
-// The caller owns the tempfiles: a `tempfile' macro is erased when the
-// program that declared it ends, so specpath() and datapath() come in
-// from the caller rather than being created here.
+// The caller owns the paths: specpath() and datapath() come in from the
+// caller rather than being created here -- _dash_build's private run
+// folder (WP-29 P0.12b), or a test seam's own files.
 //
 // The option list below is the full build surface.  It is repeated in
 // `_dash_build' and `_dash_serve' because each of those also has
@@ -7752,12 +7957,17 @@ program define _dash_prepare_spec, rclass
     // points (WP-29 P0.6).
     local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'}"'
 
-    tempname fh
-    // quietly: see the note at the other spec writer -- `write replace'
-    // reports a missing file, and this path is always a fresh tempfile.
-    quietly file open `fh' using "`specpath'", write replace text
-    file write `fh' `"`master_json'"'
-    file close `fh'
+    // Written from Python, 0600 and never through a link (WP-29 P0.12b;
+    // see _dash_render_immediate's spec writer).  Callers hand the path:
+    // _dash_build and _dash_serve their run folder's spec.json, a test seam
+    // its own file; so this opens no run and prints no note.  No error
+    // branch: a refusal or an OSError ends the python: line, r(7102).
+    _dash_require_python
+    _dash_xm_load
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_wsp = _dash_xm._dash_tmp_write_text(_dash_M.getLocal("specpath"), _dash_M.getLocal("master_json"))
     mata: _dash_fn_spec_tail(st_local("specpath"), st_local("_fp_names"), "")
 
     return local layout          `"`layout'"'
@@ -7857,15 +8067,19 @@ program define _dash_build
     // ---- validate, collect, serialize and assemble ----
     //
     // Shared with `dash serve', which used to do all of this itself with
-    // the build options hardcoded to blanks.  The tempfiles are declared
-    // here because a `tempfile' macro is erased when the program that
-    // declares it ends.
+    // the build options hardcoded to blanks.  The spec and data go in this
+    // command's private run folder (WP-29 P0.12b), opened here and removed
+    // after the render; r() is read on the very next lines (A12).  It
+    // prints the command's one note, if any location is not private.
     //
     // `0' is the command's own option string with the filter() groups
     // already removed by _dash_extract_filters, so it is forwarded as
     // written rather than reassembled option by option -- reassembling
     // would expand the user's title() and label() text a second time.
-    tempfile data_json_path master_json_path
+    _dash_tmp_open
+    local _dash_run        `"`r(rundir)'"'
+    local master_json_path `"`r(spec)'"'
+    local data_json_path   `"`r(data)'"'
 
     // -syntax- leaves `0' as it found it, which means it still carries the
     // leading comma.  Forwarding it after options of our own produced two
@@ -7918,6 +8132,7 @@ program define _dash_build
     // (python:...end must be in a dedicated program; see _dash_do_render)
     _dash_do_render, spec("`master_json_path'") data("`data_json_path'") ///
         output("`saving'") renderpy("`render_py'") mode("`render_mode'")
+    _dash_tmp_close, dir(`"`_dash_run'"')
 
     if "`server'" != "" {
         mata: _dash_say("txt", "dash build: server app written to ", st_local("saving"), "")
@@ -7957,9 +8172,9 @@ end
 // test_serve_options.cscript calls this directly and reads the master
 // JSON it writes.
 //
-// The caller owns the two paths: a `tempfile' macro is erased when the
-// program that declares it ends, so a file created here would be gone
-// before `_dash_serve' could launch anything from it.
+// The caller owns the two paths: _dash_serve hands those of its private
+// run folder (WP-29 P0.12b), which outlives this program, so the app can
+// be built from them.
 // ================================================================
 program define _dash_serve_spec, rclass
     version 16.0
@@ -8068,7 +8283,16 @@ program define _dash_serve
     // them went straight to Python.
     mata: _dash_check_utf8(strtrim(st_local("0")))
 
-    tempfile data_json_path master_json_path
+    // The private run folder (WP-29 P0.12b): spec, data and the app go in
+    // c(tmpdir)dash-<uid>/run-<pid>-<random>/ (0700, files 0600), removed
+    // when the command ends.  Opened before _dash_serve_spec, whose rclass
+    // results would clobber r() (A12).  The command's one note, if any
+    // location is not private, prints here, before the announcement.
+    _dash_tmp_open
+    local _dash_run        `"`r(rundir)'"'
+    local master_json_path `"`r(spec)'"'
+    local data_json_path   `"`r(data)'"'
+    local serve_app_path   `"`r(app)'"'
 
     // `0' still carries the leading comma -syntax- left on it, so forwarding
     // it after options of our own put TWO commas on one line and everything
@@ -8108,21 +8332,14 @@ program define _dash_serve
     _dash_find_render
     local render_py `"`r(fn)'"'
 
-    // Temp path for the generated Bokeh Server app.
-    //
-    // Use the tempfile macro DIRECTLY.  It used to be `_serve_app_base'.py',
-    // a name Stata never registered, so Stata dutifully erased the
-    // extension-less file it had registered -- which nothing ever wrote --
-    // and left the .py behind for good.  Each one embeds the whole dataset
-    // in decodable base64: measured on this machine, 142 orphans totalling
-    // 18 MB, the newest decoding to 74 observations of mpg, weight and
-    // foreign, in a directory any local user can read.
-    //
-    // No .py suffix is needed because the app is launched as
-    // `python <path>', which does not care about the extension.  If that
-    // ever reverts to `bokeh serve', which dispatches on the extension, the
-    // suffix has to come back -- and so does an explicit erase.
-    tempfile serve_app_path
+    // The generated Bokeh Server app is app.py in the private run folder
+    // opened above (WP-29 P0.12b): written 0600 by the renderer, which
+    // erases the spec and data once it is written (they are embedded in
+    // it), and removed with the folder when the command ends.  It used to
+    // be a Stata tempfile, 0644 under umask 022 and 0664 under 002 (D5,
+    // U2) -- and before that an unregistered .py that Stata never erased
+    // (142 orphans, 18 MB, measured).  The launcher starts it from the
+    // bytes it verified, never by name (R-9).
 
     // Escape paths for safe Python string literal interpolation (see _dash_do_render).
     _dash_json_str `"`master_json_path'"' _py_master
@@ -8162,7 +8379,9 @@ program define _dash_serve
     python: from sfi import Macro as _dash_srv_M
     python: _dash_srv_M.setLocal("_srv_err", str(_dash_srv_rep.get("error", ""))[:4096])
     if `: length local _srv_err' {
+        _dash_tmp_close, dir(`"`_dash_run'"')
         mata: _dash_say("err", "dash serve: ", st_local("_srv_err"), "")
         exit 198
     }
+    _dash_tmp_close, dir(`"`_dash_run'"')
 end

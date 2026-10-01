@@ -53,6 +53,38 @@ _SPEC = {
 }
 
 
+class _RecStdin:
+    """A fake child's stdin (a copy of test_private_files._RecStdin): it
+    records the bytes the launcher hands over, since WP-29 P0.12b (R-9)
+    starts the app from the bytes it verified, written as one frame to the
+    child's stdin.  No ``buffer``, so ``_dash_child_stdin`` returns it as
+    it is."""
+
+    def __init__(self):
+        self.writes = []
+        self.closed = False
+
+    def write(self, b):
+        self.writes.append(bytes(b))
+        return len(b)
+
+    def flush(self):
+        pass
+
+    def close(self):
+        self.closed = True
+
+
+@pytest.fixture(autouse=True)
+def _an_app_to_read(tmp_path, monkeypatch):
+    """The launcher reads the app it starts through a verified descriptor
+    (WP-29 P0.12b, R-9), so the ``"app.py"`` these fakes are launched with
+    must exist: a stand-in in the test's own folder, made the working
+    folder."""
+    (tmp_path / "app.py").write_text("# a stand-in app\n")
+    monkeypatch.chdir(tmp_path)
+
+
 def _free_port():
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -112,6 +144,7 @@ def _fake_popen_class(returncode=0, stdout="", stderr=""):
             _FakeProc.cmd = list(cmd)
             _FakeProc.kw = kw
             self.returncode = returncode
+            self.stdin = _RecStdin()
             self.stdout = io.StringIO(stdout)
             self.stderr = io.StringIO(stderr)
 
@@ -241,6 +274,7 @@ class TestTheLauncherPrintsTheUrlOnceHealthAnswers:
         class _FakeProc:
             def __init__(self, cmd, **kw):
                 _FakeProc.cmd = list(cmd)
+                self.stdin = _RecStdin()
                 self.stdout = io.StringIO("")
                 self.stderr = io.StringIO("")
                 self.returncode = None
@@ -281,6 +315,7 @@ class TestTheLauncherPrintsTheUrlOnceHealthAnswers:
         class _FakeProc:
             def __init__(self, cmd, **kw):
                 _FakeProc.cmd = list(cmd)
+                self.stdin = _RecStdin()
                 self.stdout = io.StringIO("")
                 self.stderr = io.StringIO("")
                 self.returncode = None

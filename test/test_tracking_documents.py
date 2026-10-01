@@ -1256,9 +1256,7 @@ WP29_OPEN = {
     "P0.9": "The lpolyci band is a bootstrap percentile band, not Stata's analytic band, and pwidth() and var() are ignored",
     "P0.11": "The saved page embeds every row of each drawn variable, including rows that if and in exclude",
     "P0.12a": "The served app has no credential, so any local account can open a session and read the data",
-    "P0.12b": "The served app, spec and data files are written with the default umask, readable by other accounts where the temp directory is shared",
     "P0.13": "The served app outlives a killed Stata, its files survive a crash, and Break cannot stop dash serve",
-    "P0.14": "One-line preview pages are never deleted and are written 0644, each a copy of the graph's data",
     "P0.17": "Fits, smooths and densities on the saved page stay fitted to all rows after a filter move, with no cue",
     "P0.18": "The served redraw keeps build-time bar and rbar widths and an emptied layer's style after a filter move",
 }

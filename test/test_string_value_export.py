@@ -548,9 +548,15 @@ class TestDashAdoUsesTheWriter:
         assert "which jsonio" not in code
 
     def test_every_entry_point_is_called_by_the_ado_and_no_other(self):
+        """Flipped (WP-29 P0.12b): dash.ado calls the module for its private
+        temporary folder too -- the run folder, its close, the preview's
+        name, the spec and empty-data writer and dash clear's pruning --
+        so the six names of TR-08.9, not the data writer alone."""
         called = set(re.findall(r"_dash_xm\.(_dash_\w+)\(", _ado()))
         declared = {f.__name__ for f in dr._DASH_ADO_ENTRY_POINTS}
-        assert called == declared == {"_dash_write_stata_data"}
+        assert called == declared == {
+            "_dash_write_stata_data", "_dash_run_open", "_dash_run_close",
+            "_dash_preview_path", "_dash_tmp_write_text", "_dash_tmp_clear"}
 
     def test_names_and_path_reach_python_by_value(self):
         """The path and the variable names are read by Macro.getLocal(),

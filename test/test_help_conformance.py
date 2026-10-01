@@ -933,9 +933,11 @@ class TestInternalLinksResolve:
         assert not dupes, f"duplicate {{marker}} names: {sorted(dupes)}"
 
     def test_the_reference_scan_found_something(self):
-        # 65 links to 28 markers (WP-29 P0.10: the Tooltips paragraph
-        # links its hover() counting rule to Resource limits); 64 to 28
-        # (measured 25sep2026, after WP-28 E14
+        # 71 links to 29 markers (WP-29 P0.12b: the "Temporary files and
+        # privacy" section, its viewerjumpto line and five links to it;
+        # WP-29 P0.10: the Tooltips paragraph links its hover() counting
+        # rule to Resource limits).
+        # 64 links to 28 markers (measured 25sep2026, after WP-28 E14
         # dropped the "At phone width" paragraph's link to Server Mode --
         # the served app's phone behaviour is now stated inline, since it
         # matches the saved page's, rather than sent to a section that
@@ -948,4 +950,4 @@ class TestInternalLinksResolve:
         # marker at all -- is no link the scan reads: 59, above the "10"
         # this was, and the dead link passed the check above.
         refs = re.findall(r"dash##[a-z_0-9]+", _help_text())
-        assert len(refs) == 65 and len(set(refs)) == 28
+        assert len(refs) == 71 and len(set(refs)) == 29

@@ -364,11 +364,41 @@ and now matches Stata.
 
 <!-- WP-29 P0.12a -->
 
-<!-- WP-29 P0.12b -->
+- dash's working copies of your data -- the specification and data files of
+  every render, and `dash serve`'s application -- were written into
+  c(tmpdir) with your umask (0644; 0664 under umask 002, which let another
+  member of your group rewrite the application before it ran), under
+  predictable names, and a symbolic link at such a name was followed. They
+  are now written 0600, never through a link, a FIFO or another account's
+  file, inside c(tmpdir)dash-<uid>/run-<pid>-<random>/, a folder only you
+  can open (0700) that dash removes when the command ends. Where a location
+  cannot be private -- a c(tmpdir) other accounts can change, or a disk that
+  keeps no permissions -- dash still writes, 0600 wherever it can, and
+  prints one note per command naming the location and the remedy; a
+  dash-<uid> that is a link, not a folder or another account's is left alone
+  and dash uses a private dash-<uid>-<random> folder beside it. As a guard
+  against planted names, dash refuses (r(7102)) to write through a link,
+  into a pipe or device, or over a hard-linked or another account's file,
+  and `dash serve` no longer starts its application by name: it reads the
+  file it wrote through a descriptor it checked (type, owner, identity, size
+  and SHA-256) and hands that text to Python on the server's standard input,
+  with neither the application's folder nor the working folder on Python's
+  import path, so an application or module planted beside it is never run.
+  The .py that dash build, server writes, which embeds every observation,
+  was written with your umask too (0644); it is now written 0600 whatever
+  the umask, replace creates a new file, and a symbolic link or another
+  account's file at that name is refused (r(7102)) where it used to be
+  written through. (WP-29, P0.12b)
 
 <!-- WP-29 P0.13 -->
 
-<!-- WP-29 P0.14 -->
+- The one-line form without saving() left its preview page (1.3 MB holding
+  every row of the graph's variables, 0644) in c(tmpdir) for good, one per
+  session, and a second preview overwrote the first. Previews now go to
+  c(tmpdir)dash-<uid>/previews/ (0600 in 0700) under unique names; a session
+  keeps its newest five, `dash clear` removes them except a page a browser
+  was asked to open in the last minute, and the path printed under
+  $dash_nobrowser moves there. (WP-29, P0.14)
 
 ### New
 

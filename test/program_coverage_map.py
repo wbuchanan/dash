@@ -164,7 +164,8 @@ COVERAGE = {
                                "test_program_coverage.cscript:PC-03",
                                "test_program_coverage.cscript:PC-04"),
         "_dash_empty_data": ("test_parser.cscript:P1A-75",
-                             "test_parser.cscript:P1A-72"),
+                             "test_parser.cscript:P1A-72",
+                             "test_wp29_truth.cscript:PF-05"),
         # direct: every string value, label and number reaches both
         # renderers byte for byte; text that is not UTF-8 is read through
         # ustrfix() and noted; a binary strL is refused, naming the
@@ -174,6 +175,15 @@ COVERAGE = {
                              "test_string_values.cscript:SV-06",
                              "test_string_values.cscript:SV-07",
                              "test_string_values.cscript:SV-09"),
+        # WP-29 P0.12b, P0.14 (section 08), direct: the module loader the
+        # private-file programs share; the run folder, its close, the
+        # preview's name and dash clear's pruning.
+        "_dash_xm_load": ("test_wp29_truth.cscript:PF-05",),
+        "_dash_tmp_open": ("test_wp29_truth.cscript:PF-06",),
+        "_dash_tmp_preview": ("test_wp29_truth.cscript:PF-04",),
+        "_dash_tmp_close": ("test_wp29_truth.cscript:PF-06",
+                            "test_serve_launch.cscript:PF-07"),
+        "_dash_tmp_clear": ("test_wp29_truth.cscript:PF-02",),
         # direct: each distinct qualifier's column holds Stata's answer, a
         # reserved name is refused, a qualifier the data no longer answer
         # is refused with Stata's error, nothing is left in the data.

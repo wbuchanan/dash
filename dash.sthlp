@@ -12,6 +12,7 @@
 {viewerjumpto "Filters"           "dash##filters"}{...}
 {viewerjumpto "KPI Cards"         "dash##kpi"}{...}
 {viewerjumpto "Server Mode"       "dash##server_mode"}{...}
+{viewerjumpto "Temporary files"   "dash##tempfiles"}{...}
 {viewerjumpto "Resource limits"   "dash##limits"}{...}
 {viewerjumpto "Examples"          "dash##examples"}{...}
 {viewerjumpto "Dependencies"      "dash##dependencies"}{...}
@@ -886,8 +887,10 @@ remembered from the last {cmd:dash build} -- the globals
 {cmd:$dash_graph_registry}, {cmd:$dash_json_*}, {cmd:$dash_spec_*},
 {cmd:$dash_fpts_*}, {cmd:$dash_kpi_*} and {cmd:$dash_opts_*}.  Settings stay:
 {cmd:$dash_nobrowser} and the {cmd:$dash_max_*} limits remain until you drop
-them (see {help dash##limits:Resource limits}).  Run this before starting a
-new dashboard definition.
+them (see {help dash##limits:Resource limits}).  It also removes this
+session's preview pages, but one a browser was asked to open in the last
+minute (see {help dash##tempfiles:Temporary files and privacy}).  Run this
+before starting a new dashboard definition.
 
 
 {marker dashboard_options}
@@ -941,8 +944,10 @@ The following options are available on {cmd:dash build}.
 {cmd:global dash_nobrowser 1} -- it keeps every {cmd:dash} window shut for
 the rest of the session, as {cmd:nobrowser} does for one command:
 {cmd:dash build} writes its file and opens nothing; the one-line form with
-neither {cmd:saving()} nor {cmd:name()} writes its dashboard to a temporary
-file, says where, and opens nothing; and {cmd:dash serve} starts its server
+neither {cmd:saving()} nor {cmd:name()} writes its dashboard to a page in
+{cmd:c(tmpdir)}{cmd:dash-}{it:uid}{cmd:/previews/} (see
+{help dash##tempfiles:Temporary files and privacy}), says where, and opens
+nothing; and {cmd:dash serve} starts its server
 without opening a browser.  Only whether it holds a value counts, so
 {cmd:global dash_nobrowser 0} keeps windows shut too.  {cmd:dash clear}
 leaves it set; {cmd:macro drop dash_nobrowser} lets windows open again.
@@ -1447,8 +1452,9 @@ panel.  For a statistic of each group, register a card per group:
 
 {pstd}
 {cmd:dash serve} runs the dashboard as a Bokeh Server application: it writes
-the application to a Stata temporary file, runs it with Python and waits
-until the server stops.  {cmd:dash build, server} writes the same
+the application into a private temporary folder (see
+{help dash##tempfiles:Temporary files and privacy}), runs it with Python and
+waits until the server stops.  {cmd:dash build, server} writes the same
 application to the file {cmd:saving()} names and returns without starting
 it.  The saved page and the served app differ as follows:
 
@@ -1507,7 +1513,7 @@ for its columns.  See {help dash##layout:Layout}.
 {ul:Blocking behavior.}  {cmd:dash serve} blocks Stata until the server
 stops: {cmd:timeout(}{it:#}{cmd:)} stops it after {it:#} minutes, and
 Ctrl+C in the Stata console stops it at once.  Either way the command
-returns and Stata erases its temporary copy of the application.
+returns and dash removes its temporary folder.
 
 {pstd}
 {cmd:dash serve} prints the server's address once it answers
@@ -1519,7 +1525,12 @@ instead of blocking.
 {ul:Running the generated .py file independently.}
 {cmd:dash build, saving(app.py) server} writes a self-contained server app
 that embeds, base64-encoded, every observation of the variables the
-dashboard uses.  Run it outside Stata with:
+dashboard uses.  dash writes it readable only by you (0600); see
+{help dash##tempfiles:Temporary files and privacy}.  When you run the file
+yourself, with {cmd:python} or {cmd:bokeh serve}, Python opens it by its name
+and imports modules from the folder that holds it, so keep it in a folder
+only you can write.  {cmd:dash serve} does not run its own copy that way: it
+hands Python the text it wrote and checked.  Run it outside Stata with:
 
 {phang2}{cmd:python app.py}{p_end}
 
@@ -1552,7 +1563,10 @@ binds the loopback interface, so by default only this machine can reach it.
 {cmd:--address} {it:addr} opens it deliberately
 -- {cmd:--address 0.0.0.0} listens on every interface -- and
 {cmd:--allow-websocket-origin} {it:host:port} then admits the {cmd:Origin}
-values a browser will send from there.
+values a browser will send from there.  The files {cmd:dash serve} writes are
+readable only by you wherever your disk keeps permissions, and dash notes any
+location where they are not; see
+{help dash##tempfiles:Temporary files and privacy}.
 
 {pstd}
 Understand what that second option is, before relying on it.  The
@@ -1659,9 +1673,88 @@ the content together.
 {pstd}
 The generated app embeds every observation of the variables the dashboard
 uses, base64-encoded.  Treat the {cmd:.py} file as you would the data:
-{cmd:dash serve} writes its copy to a Stata temporary file that Stata erases
-when the command ends, and a file you name with {cmd:saving()} is yours to
-manage.
+{cmd:dash serve} writes its copy into a folder only you can open and removes
+it when the command ends, and a file you name with {cmd:saving()} is written
+readable only by you (0600) and is yours to manage.
+
+
+{marker tempfiles}{...}
+{title:Temporary files and privacy}
+
+{pstd}
+{ul:Run folders.}  Each render's specification and data go into a folder
+{cmd:c(tmpdir)}{cmd:dash-}{it:uid}{cmd:/run-}{it:pid}{cmd:-}{it:random},
+which only you can open (0700), in files only you can read (0600).  dash
+removes the folder when the command ends.  A folder left by an error,
+Break, a crash or a killed Stata is removed by the next dash command of that
+session, or by any session once that Stata has ended (on Windows, after a
+day).
+
+{pstd}
+{ul:dash serve.}  {cmd:dash serve} writes its application there and erases
+the specification and data once the application is written.
+
+{pstd}
+{ul:Previews.}  The one-line form's pages go to
+{cmd:c(tmpdir)}{cmd:dash-}{it:uid}{cmd:/previews/} under unique names,
+readable only by you.  The newest five of a session are kept, and
+{cmd:dash clear} removes the session's pages except one a browser was asked
+to open in the last minute.
+
+{pstd}
+{ul:When a location is not private.}  dash never stops a command for
+privacy.  If {cmd:c(tmpdir)} can be changed by other accounts (others can
+write to it and it has no sticky bit, as a {cmd:STATATMP} folder made under
+umask 002 has, or it belongs to another account), if a {cmd:dash-}{it:uid}
+there is a link, not a folder or another account's, or if your disk will not
+keep a folder private, dash goes on: it writes each file readable only by
+you wherever the disk allows and prints one note per command, beginning
+{cmd:dash: note:}, that names the location and the remedy -- {cmd:chmod go-w}
+on the folder, or starting Stata with {cmd:STATATMP} set to a folder only you
+can write.  A {cmd:dash-}{it:uid} dash cannot use is left alone: dash keeps
+its copies in a folder {cmd:dash-}{it:uid}{cmd:-}{it:xxxxxxxx} beside it that
+only you can open, and the note names both.  Under {cmd:quietly} the note is
+not shown, like dash's other notes.  Only {cmd:c(tmpdir)} itself is checked,
+not the folders above it.  In a {cmd:c(tmpdir)} others can write without a
+sticky bit, another account could move dash's folders, though not read the
+files in them.  It cannot change what {cmd:dash serve} runs: dash does not
+start its application by name, but opens the file it wrote, checks that it
+is that file with the same contents, and hands the text to Python itself, so
+a file swapped in afterwards is never run, and no module beside it or in your
+working folder is imported (measured on macOS; Linux and Windows have not
+been measured).  Such an account could still replace the specification or
+data between their writing and their reading, or keep the server from
+starting.
+
+{pstd}
+{ul:A guard against planted names.}  This guard does not depend on privacy.
+dash never writes through a symbolic link, into a pipe or device, over a
+file with other hard links or over another account's file, and never runs an
+application other than the one it wrote; in each case it stops with
+r(7102) and names the path.  If dash cannot create its folder at all
+({cmd:c(tmpdir)} missing, read-only or full), it stops with r(603), as
+Stata's own file commands do.
+
+{pstd}
+{ul:Named files.}  A page you name with {cmd:saving()} is written with your
+umask, as twoway's {cmd:saving()} and {cmd:graph export} write theirs
+(usually 0644); it embeds the data.  The server app that {cmd:dash build}
+writes with {cmd:server} to the {cmd:.py} file you name in {cmd:saving()}
+also embeds every observation, so it is written readable only by you (0600),
+whatever your umask.  If your disk does not keep that permission, dash still writes the
+file and prints a note naming it.  {cmd:replace} writes a new file rather
+than rewriting the old one.  As a guard against a planted name, dash
+refuses, r(7102), a symbolic link or another account's file at that name,
+and never writes to a link's target.  The folder you name keeps its own
+permissions: dash neither refuses nor notes a folder of yours that others
+can read, so choose one other accounts cannot list if the file's name is
+itself private.
+
+{pstd}
+{ul:Stata's own files and Windows.}  Stata's own temporary files (a
+{cmd:preserve} larger than {cmd:max_preservemem}, for instance) follow your
+umask.  On Windows, privacy rests on your per-user TEMP folder, which has not
+been tested.
 
 
 {marker limits}

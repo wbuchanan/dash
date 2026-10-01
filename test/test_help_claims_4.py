@@ -1308,12 +1308,15 @@ def r_fig():
 # Measured at 4ede074: after `dash scatter mpg weight, name(g1)`,
 # `dash serve, port(5127) timeout(1) nobrowser' stopped with
 #     ValueError: dash_render: --output must end in .py for mode 'server'
-# r(7102), on every launch.  _dash_serve hands the renderer a Stata tempfile
-# on purpose -- a registered name is what Stata erases when the command
+# r(7102), on every launch.  _dash_serve handed the renderer a Stata
+# tempfile then -- a registered name is what Stata erases when the command
 # ends, and the app it names embeds the data -- and the renderer's output
 # check, added later, asked every server-mode path for a .py.  Nothing ran
 # the real handoff: the launch test stops early and the browser test uses a
-# stub renderer.
+# stub renderer.  Since WP-29 P0.12b dash serve hands it app.py in a private
+# run folder, c(tmpdir)dash-<uid>/run-<pid>-<random>/, which dash removes;
+# TestTheOutputPathRule stays, because the extension-less launch rule is
+# kept for command-line users.
 
 class TestTheOutputPathRule:
     """What --output the renderer takes on each route."""

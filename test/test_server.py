@@ -33,6 +33,7 @@ Tests:
 from __future__ import annotations
 
 import ast
+import hashlib
 import base64
 import importlib.util
 import json
@@ -5364,9 +5365,14 @@ class TestCLIServeFlagsAccepted:
         try:
             # Must not raise -- and what it accepted it acted on: the file
             # (created empty above) now holds Python defining the entry
-            # point bokeh serve calls.
-            assert dr_module.main(spec_path, data_path, out_f.name,
-                                  "server") is None
+            # point bokeh serve calls.  Flipped (WP-29 P0.12b): main()
+            # returns the written app's identity and digest, which the
+            # launcher verifies before it runs the app; it returned None.
+            _written = dr_module.main(spec_path, data_path, out_f.name,
+                                      "server")
+            with open(out_f.name, "rb") as fh:
+                assert _written.sha256 == hashlib.sha256(
+                    fh.read()).hexdigest()
             with open(out_f.name, encoding="utf-8") as fh:
                 tree = ast.parse(fh.read())
             assert "make_document" in {
@@ -10782,7 +10788,9 @@ class TestServeUniqueAppPath:
     The fix is dash.ado's, and is certified by running it:
     test_serve_launch.cscript SRV-19 runs dash serve with the renderer
     stubbed to record its arguments, and requires the app file it is
-    handed to be a tempfile of the session.  A test here used to read
+    handed to be app.py in a private run folder of the session,
+    c(tmpdir)dash-<uid>/run-<pid>-<random>/ (WP-29 P0.12b; it was a Stata
+    tempfile of the session).  A test here used to read
     _dash_serve's text for `tempfile ... serve_app'; measured (WP-24), a
     COMMENT in _dash_serve satisfied it, so with the tempfile line deleted
     and the fixed name restored it stayed green.  It was removed for SRV-19.
