@@ -4661,7 +4661,7 @@ and the release gate once each.
 | P0.19 | dash_setup fails on PEP 668 Pythons | S2 | 09 | 4d74922 |
 | P0.20 | KPI sd/var/iqr/cv/sum of a date in ms | S1 | 05 | 529875d |
 
-### Done, measured (<to be measured in 15-17>)
+### Done, measured (02oct2026)
 
 - **P0 entries.** The 21 BUGS.md entries section 01 opened are closed,
   each test first, by a commit whose subject names it (P0.13 by two, F2
@@ -4710,7 +4710,7 @@ and the release gate once each.
   G16 (P0.10), G3 (P0.10). C4: partly closed by the stale cue; the saved
   page does not re-estimate, by decision M3.
 - **Residuals.** 19 deferred clauses, as BUGS.md records them and the
-  maintainer approved; filed in DROPIN-REMAINING.md as P2.30-P2.40, with
+  maintainer approved; filed in DROPIN-REMAINING.md as P2.30-P2.41, with
   notes on P1.3, P1.4, P1.8, P1.9, P1.15-P1.18, P1.22, P1.23, P1.26,
   P1.30, P1.34, P2.2, P2.7, P2.14, P2.18, P2.21, P2.24, P2.28, P3.2 and
   P3.12. lpoly's tolerance rulings (a 1e-4 tier for four offset rows, the
@@ -4718,12 +4718,35 @@ and the release gate once each.
   x=4405.71) are recorded in section 11's commit.
 - **Fixtures.** test/fixtures: 13 files changed, 74,657 insertions and 315
   deletions.
-- **Tests flipped.** 157 Flipped: lines name each pinned expectation and
+- **Tests flipped.** 160 Flipped: lines name each pinned expectation and
   its reason in its fix commit; every pytest node named collects under
   its current name.
-- **Security (AC-29.6).** <to be measured in 15-17>
-- **Runs (<to be measured in 15-17>, on the final tree).** <to be measured
-  in 15-17>
+- **Security (AC-29.6).** The per-launch key (TestTheServedAppRequiresItsToken,
+  TestTheSessionGate, the self-made key included), the once-printed link
+  (TestTheLauncherPassesTheToken), the private files and the location that
+  is not private (TestTheDataFileIsPrivate), the anti-hijack refusals
+  r(7102), the launch from the open file (TestTheLaunchFromTheOpenFile),
+  the previews (PF-01 to PF-05), the parent watch
+  (TestTheServerDiesWithItsLauncher), Break (LC-03) and the embedded rows
+  (TestTheSavedPageHoldsOnlySelectedRows, TestTheServedIndexIsARank), all
+  green in both runs below.
+- **Runs (02oct2026).** make test, under Stata's Python
+  (/opt/anaconda3/bin/python3, 3.13.9): 24,574 passed, 3 xfailed, 0
+  skipped. make test-dev (python3, 3.14.5): 24,574 passed, 3 xfailed, 0
+  skipped. make cert: 67 of 67 scripts, 0 skipped; wall time 1,178 s
+  before WP-29 (step 0b, measured under load) and 907 s after, about 4.5
+  minutes less; the 10 timed blocks of test_wp29_truth.cscript took 97 s,
+  the slowest S02 (48 s) and S10 (18 s). make gate: 12 of 12 examples and
+  20 of 20 scheme pages clean from a net-installed copy, venv-linked
+  sessions clean. The closeout's runs found, and fixed under their P0
+  ids, a cost bound Stata's Python could not meet (P0.1), a lost filter
+  cap note on a saved build after a served one (P0.11), a note on every
+  one-line saving() about function points the graph did not have (P0.6),
+  three certification pins and one case P0.3, P0.11 and P0.14 had left
+  stale or unisolated, and the gate reading the venv logs under the wrong
+  name (P0.19). The last of those touched only the gate's runner and its
+  test; the full suite on the final tree: 24,575 passed, 3 xfailed. No S1
+  or S2 entry is open.
 - **Not measured.** Windows, Linux and Stata before 19 (the package's
   non-goals): the commands dash_setup prints were tested in the sandbox
   for cmd.exe and POSIX shells only; GUI Break was verified through a
