@@ -3896,6 +3896,552 @@ def _dash_harden_origin_check() -> bool:
     return True
 
 
+# ---------------------------------------------------------------------------
+# The served dashboard's key (WP-29 P0.12a)
+# ---------------------------------------------------------------------------
+# Measured at 7421d3d: `python app.py', `bokeh serve app.py' and `dash
+# serve' served every session to any client on the machine -- a second
+# local client with no credential and no Origin pulled every row of mpg
+# through bokeh.client.  Every launch now has a 256-bit key; Gate A
+# (_dash_token_auth, a Bokeh AuthProvider) refuses every page, autoload,
+# metadata and websocket request without it, and Gate B
+# (_dash_session_token_ok, in make_document) every session, before the
+# limiter and before the data is decoded.  The app never runs without a key
+# (ratified 01oct2026): started with none, it makes one, writes its link to
+# a 0600 link.html in a fresh 0700 folder, and prints only that file's
+# path; when no file can be written anywhere it prints the link once after
+# a warning and keeps serving (round 2).  These are copied into the app;
+# each reads its module constants in its body, so the copy order does not
+# matter, and imports tornado and bokeh lazily (`import dash_render' loads
+# no tornado).
+
+#: P0.12a: the query parameter that carries the key (threat: none; its name).
+_DASH_TOKEN_ARG = "token"
+#: P0.12a: the variable an operator chooses the key with; it is popped from
+#: the environment at start so no child inherits it.
+_DASH_TOKEN_ENV = "DASH_SERVE_TOKEN"
+#: P0.12a: the key's form -- 32 to 128 of A-Z a-z 0-9 _ -; anything else
+#: (homoglyphs, NUL, padding, an overlong value) is refused before use.
+_DASH_TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{32,128}")
+#: P0.12a: the most bytes the app reads for the --token-stdin line, so a
+#: pipe that never sends a newline cannot grow memory.
+_DASH_TOKEN_LINE_MAX = 256
+#: P0.12a: Gate A's constant 403 reason; nothing from the request is
+#: reflected.
+_DASH_TOKEN_REFUSAL = ("Forbidden: this dashboard opens only through the "
+                       "link that holds its key")
+#: P0.12a: Gate B's constant refusal page (no request data, no path, no key).
+_DASH_TOKEN_REFUSED_HTML = (
+    '<h2 style="font-family:sans-serif;color:#c00">403 Forbidden</h2>'
+    '<p style="font-family:sans-serif">This dashboard opens only through '
+    'the link that holds its key.  When it was started without a key, it '
+    'made one, wrote the link to a file named link.html that only the '
+    'account that started it can read, and printed that file\'s path where '
+    'it was started: open that file.  To choose the key instead, set '
+    'DASH_SERVE_TOKEN to 32 to 128 of the characters A-Z a-z 0-9 _ - before '
+    'starting it, and open its address followed by ?token= and that '
+    'value.</p>')
+#: P0.12a: the longest Sec-WebSocket-Protocol header decoded before the
+#: client is authenticated (a decompression bomb before auth).
+_DASH_WS_PROTOCOL_MAX = 16384
+#: P0.12a: the most a session JWT's zlib member may inflate to before it is
+#: refused unread.
+_DASH_JWT_PAYLOAD_MAX = 262144
+#: P0.12a: a URL's query string, which a log line must never carry (the
+#: key travels in ?token=).
+_DASH_QUERY_RE = re.compile(r"(?<=\S)\?[^\s?#]*=[^\s#]*")
+#: P0.12a: seconds the browser's 0600 redirect page lives (A8).
+_DASH_REDIRECT_TTL_S = 60
+#: P0.12a (ratified 01oct2026, K-4): the sys.modules name of the bokeh serve
+#: process's own key, which every session's fresh module reads.
+_DASH_KEY_HOLDER = "_dash_serve_key"
+#: P0.12a (K-3): the line before a printed link-file path; the launcher's
+#: ready line 2 too.  It never holds the key.
+_DASH_LINK_SAID = ("dash: the dashboard opens only through its link, which "
+                   "holds a key made for this run; the link is in this file, "
+                   "which only you can read:")
+#: P0.12a (K-5): plain bokeh serve admits only localhost, so the
+#: 127.0.0.1 link's websocket is refused unless the operator widens it.
+_DASH_BS_ORIGIN_HINT = ("dash: under bokeh serve the link's page stays blank "
+                        "unless the server was started with "
+                        "--allow-websocket-origin 127.0.0.1:%d (Bokeh admits "
+                        "only localhost by default).")
+#: P0.12a (round 2, K-9): the warning before the one printed link, when no
+#: folder takes the link file.  %s is an exception's type name only.
+_DASH_LINK_UNWRITTEN = ("dash: WARNING -- the dashboard's link could not be "
+                        "written to a file (%s), so it is printed on the next "
+                        "line, this once; it holds the dashboard's key, which "
+                        "is now in this output and in any log of it, and "
+                        "anyone who can read them can open the dashboard "
+                        "while this server runs.")
+
+
+def _dash_new_token():
+    """A new key (WP-29 P0.12a): ``secrets.token_urlsafe(32)``, 43
+    characters, 256 bits.  Threat: a guessable key."""
+    import secrets
+    return secrets.token_urlsafe(32)
+
+
+def _dash_token_valid(value):
+    """True when *value* has the key's form (WP-29 P0.12a): 32 to 128 of
+    A-Z a-z 0-9 _ -.  Bytes are decoded as ASCII first.  Threat: a doubled,
+    overlong, homoglyph or NUL key reaching a comparison."""
+    if isinstance(value, (bytes, bytearray)):
+        try:
+            value = bytes(value).decode("ascii")
+        except UnicodeDecodeError:
+            return False
+    return isinstance(value, str) and len(value) <= 128 and \
+        _DASH_TOKEN_RE.fullmatch(value) is not None
+
+
+def _dash_token_matches(given, expected):
+    """True when *given* is the key *expected* (WP-29 P0.12a), compared in
+    constant time.  Both must have the key's form.  Threat: timing."""
+    import hmac
+    if not (_dash_token_valid(given) and _dash_token_valid(expected)):
+        return False
+    if isinstance(given, (bytes, bytearray)):
+        given = bytes(given).decode("ascii")
+    return hmac.compare_digest(given.encode("ascii"),
+                               expected.encode("ascii"))
+
+
+def _dash_one_value(values):
+    """Exactly one value (WP-29 P0.12a): a list or tuple of one element
+    gives it, any other list or tuple None, anything else itself.  Threat:
+    ``?token=x&token=T`` read as T."""
+    if isinstance(values, (list, tuple)):
+        return values[0] if len(values) == 1 else None
+    return values
+
+
+def _dash_env_token(environ=None):
+    """``DASH_SERVE_TOKEN`` when it has the key's form, else None (WP-29
+    P0.12a).  Threat: a weak operator key used as given."""
+    if environ is None:
+        environ = os.environ
+    v = environ.get(_DASH_TOKEN_ENV)
+    return v if _dash_token_valid(v) else None
+
+
+def _dash_ws_payload(protocol):
+    """The payload of a browser websocket's session JWT, read from its
+    ``Sec-WebSocket-Protocol`` header (``bokeh, <jwt>``), or None (WP-29
+    P0.12a).  Bokeh's own decoder inflates the JWT's zlib member without a
+    bound, and this runs before the client is authenticated, so the header
+    and the inflated size are bounded first.  Never raises.  Threat: a
+    decompression bomb before auth."""
+    import base64
+    import json
+    import zlib
+    try:
+        if not isinstance(protocol, str) or \
+                len(protocol) > _DASH_WS_PROTOCOL_MAX:
+            return None
+        parts = [p.strip() for p in protocol.split(",")]
+        if len(parts) != 2 or parts[0] != "bokeh" or not parts[1]:
+            return None
+        jwt = parts[1]
+        s = jwt.split(".")[0]
+        head = json.loads(base64.urlsafe_b64decode(s + "=" * (-len(s) % 4)))
+        if not isinstance(head, dict):
+            return None
+        if "__bk__zlib_" in head:
+            m = head["__bk__zlib_"]
+            raw = base64.urlsafe_b64decode(m + "=" * (-len(m) % 4))
+            d = zlib.decompressobj()
+            d.decompress(raw, _DASH_JWT_PAYLOAD_MAX)
+            if d.unconsumed_tail:
+                return None
+        from bokeh.util.token import get_token_payload
+        return get_token_payload(jwt)
+    except Exception:
+        return None
+
+
+def _dash_request_token(handler):
+    """The key a request carries, or None (WP-29 P0.12a): its ``?token=``
+    (the page, /autoload.js, /metadata, bokeh.client's /ws), else the
+    ``arguments`` of the browser websocket's session JWT, which carry the
+    page's own ``?token=``.  Threat: a request without the key."""
+    try:
+        req = getattr(handler, "request", None)
+        args = getattr(req, "arguments", None) or {}
+        if _DASH_TOKEN_ARG in args:
+            return _dash_one_value(args[_DASH_TOKEN_ARG])
+        payload = _dash_ws_payload(
+            req.headers.get("Sec-WebSocket-Protocol", ""))
+        return _dash_one_value(((payload or {}).get("arguments") or {})
+                               .get(_DASH_TOKEN_ARG))
+    except Exception:
+        return None
+
+
+def _dash_token_auth(expected):
+    """Gate A (WP-29 P0.12a): a Bokeh ``AuthProvider`` that admits a
+    request only with the key *expected*, and refuses every other with a
+    constant 403 in ``prepare``, before any handler body and before the
+    websocket upgrade.  Built here so tornado is imported only when a
+    Server is.  Threat: another account reading the data over loopback."""
+    from bokeh.server.auth_provider import AuthProvider
+    from tornado.web import HTTPError
+    if not _dash_token_valid(expected):
+        raise ValueError("dash: the served app was given no valid key")
+
+    async def _admit(handler):
+        if _dash_token_matches(_dash_request_token(handler), expected):
+            return "dash"
+        raise HTTPError(403, reason=_DASH_TOKEN_REFUSAL)
+
+    def _refuse(handler):
+        raise HTTPError(403, reason=_DASH_TOKEN_REFUSAL)
+
+    class _DashTokenAuth(AuthProvider):
+        @property
+        def get_user_async(self):
+            return _admit
+
+        @property
+        def get_login_url(self):
+            return _refuse
+
+    return _DashTokenAuth()
+
+
+def _dash_session_token_ok(doc, expected):
+    """Gate B (WP-29 P0.12a): True when *doc*'s session was asked for with
+    the key *expected*.  A document with no session context is an
+    in-process build with no network path, and is admitted; a context
+    without a request, or a key of None, fails closed.  Threat: a session
+    without the key, under bokeh serve the only gate."""
+    ctx = getattr(doc, "session_context", None)
+    if ctx is None:
+        return True
+    req = getattr(ctx, "request", None)
+    if req is None:
+        return False
+    args = getattr(req, "arguments", None)
+    if not isinstance(args, dict):
+        return False
+    return _dash_token_matches(_dash_one_value(args.get(_DASH_TOKEN_ARG)),
+                               expected)
+
+
+def _dash_redact_query(text, secret=None):
+    """*text* with every URL query replaced by ``?<query redacted>``, and
+    *secret* by ``<key>`` (WP-29 P0.12a).  Threat: the key in a log."""
+    out = _DASH_QUERY_RE.sub("?<query redacted>", text)
+    if secret:
+        out = out.replace(secret, "<key>")
+    return out
+
+
+def _dash_redact_access_record(record):
+    """A logging filter (WP-29 P0.12a): rewrites the record's message and
+    its str arguments through ``_dash_redact_query``.  Always True, so no
+    record is dropped.  Threat: Tornado logs a 403 with its raw URI."""
+    try:
+        if isinstance(record.msg, str):
+            record.msg = _dash_redact_query(record.msg)
+        if isinstance(record.args, tuple):
+            record.args = tuple(_dash_redact_query(a) if isinstance(a, str)
+                                else a for a in record.args)
+        elif isinstance(record.args, dict):
+            record.args = {k: (_dash_redact_query(v) if isinstance(v, str)
+                               else v) for k, v in record.args.items()}
+    except Exception:
+        pass
+    return True
+
+
+def _dash_install_access_log_redaction():
+    """Put ``_dash_redact_access_record`` on Tornado's three loggers, once
+    (WP-29 P0.12a); returns how many were added.  bokeh serve runs the app
+    afresh for every session, so a filter already marked is never added
+    again.  Threat: filters piling up per session (exhaustion)."""
+    import logging
+    _dash_redact_access_record._dash_redacts_queries = True
+    added = 0
+    for name in ("tornado.access", "tornado.general", "tornado.application"):
+        lg = logging.getLogger(name)
+        if any(getattr(f, "_dash_redacts_queries", False)
+               for f in lg.filters):
+            continue
+        lg.addFilter(_dash_redact_access_record)
+        added += 1
+    return added
+
+
+def _dash_tokenized_url(port, token, address=None, path="/"):
+    """The dashboard's link, ``http://<host>:<port><path>?token=<key>``
+    (WP-29 P0.12a).  Loopback is always 127.0.0.1, never localhost, which
+    another account can answer on ::1 (A1); ``::`` and ``::1`` are
+    ``[::1]`` (TD-1).  ValueError for a bad port, key, path or address.
+    Threat: the link reaching an IPv6 squatter."""
+    import ipaddress
+    import urllib.parse
+    try:
+        port = _dash_port_value(port)
+    except Exception:
+        raise ValueError("dash: not a port from 1024 to 65535")
+    if not isinstance(path, str) or not path.startswith("/"):
+        raise ValueError("dash: not an app path")
+    qpath = urllib.parse.quote(path, safe="/")
+    if not _dash_token_valid(token):
+        raise ValueError("dash: not a valid key")
+    if address in (None, "", "0.0.0.0", "127.0.0.1", "localhost"):
+        host = "127.0.0.1"
+    elif address in ("::", "::1"):
+        host = "[::1]"
+    elif not isinstance(address, str) or "%" in address:
+        raise ValueError("dash: no link can name this address")
+    else:
+        try:
+            ip = ipaddress.ip_address(address)
+            host = ("[%s]" % ip.compressed) if ip.version == 6 else \
+                ip.compressed
+        except ValueError:
+            if not re.fullmatch(
+                    r"[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?",
+                    address):
+                raise ValueError("dash: no link can name this address")
+            host = address
+    return "http://%s:%d%s?%s=%s" % (host, port, qpath, _DASH_TOKEN_ARG,
+                                     token)
+
+
+def _dash_redirect_page(url):
+    """A page that forwards to *url* and sends no referrer (WP-29 P0.12a);
+    the link file and the browser's redirect page.  Threat: markup in the
+    link."""
+    import html as _html
+    e = _html.escape(url, quote=True)
+    return ('<!doctype html><html><head><meta charset="utf-8">'
+            '<meta name="referrer" content="no-referrer">'
+            '<meta http-equiv="refresh" content="0;url=' + e + '">'
+            '<title>dash</title></head><body><p><a href="' + e + '">' + e +
+            '</a></p></body></html>')
+
+
+def _dash_open_tokenized(url, platform=None, environ=None, opener=None,
+                         osa=None, out=None):
+    """Open the dashboard's link without putting it on any command line
+    (WP-29 P0.12a): on macOS with no ``BROWSER``, through osascript's
+    standard input; otherwise through a 0600 redirect page in a fresh 0700
+    folder, whose folder is returned for removal.  A page that cannot be
+    written (round 2, K-9) opens nothing and prints one key-free line; it
+    never falls back to the URL itself.  Threat: the key in argv, ``ps``
+    or /proc."""
+    import os
+    import pathlib
+    import sys
+    import webbrowser
+    if platform is None:
+        platform = sys.platform
+    if environ is None:
+        environ = os.environ
+    if out is None:
+        out = sys.stdout
+    if platform == "darwin" and not environ.get("BROWSER") and (
+            osa is not None or hasattr(webbrowser, "MacOSXOSAScript")):
+        (osa or webbrowser.MacOSXOSAScript("default").open)(url)
+        return None
+    try:
+        d, p = _dash_private_page(_dash_redirect_page(url), "dash-open-",
+                                  "open.html", out=out)
+    except OSError as e:
+        print("dash: the browser was not opened: its page could not be "
+              "written (" + type(e).__name__ + "); open the dashboard's "
+              "link instead.", file=out, flush=True)
+        return None
+    (opener or webbrowser.open)(pathlib.Path(p).as_uri())
+    return d
+
+
+def _dash_read_token_line(fd, limit=None):
+    """One key line from descriptor *fd*, read a byte at a time so nothing
+    after its newline is consumed (the parent watch reads the rest), or
+    None (WP-29 P0.12a).  At most *limit* bytes; one trailing CR is
+    dropped.  Threat: an endless line growing memory."""
+    import os
+    if limit is None:
+        limit = _DASH_TOKEN_LINE_MAX
+    buf = b""
+    while True:
+        b = os.read(fd, 1)
+        if not b:
+            return None
+        if b == b"\n":
+            break
+        buf += b
+        if len(buf) > limit:
+            return None
+    try:
+        s = buf.decode("ascii")
+    except UnicodeDecodeError:
+        return None
+    return s[:-1] if s.endswith("\r") else s
+
+
+def _dash_private_page(text, prefix, name, out=None):
+    """Write *text* to *name*, 0600, in a fresh 0700 ``mkdtemp`` folder,
+    and return ``(folder, path)`` (WP-29 P0.12a, ratified 01oct2026).
+    The one writer of every page holding the key: the self-made key's
+    link.html, the browser's open.html and the launcher's fallback.
+    Anti-hijack (kept): ``O_EXCL|O_NOFOLLOW``, and the open file must be a
+    regular file of this account.  Privacy (K-8, answer 2): a disk that
+    will not keep 0600 even after ``fchmod`` is noted on one line naming
+    the file, never refused.  Any failure removes the folder and raises.
+    Threat: the key at rest readable by another account."""
+    import errno
+    import os
+    import shutil
+    import stat
+    import sys
+    import tempfile
+    if out is None:
+        out = sys.stdout
+    d = tempfile.mkdtemp(prefix=prefix)
+    p = os.path.join(d, name)
+    try:
+        fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                      | getattr(os, "O_NOFOLLOW", 0)
+                      | getattr(os, "O_CLOEXEC", 0), 0o600)
+        try:
+            st = os.fstat(fd)
+            _uid = getattr(os, "geteuid", None)
+            if not stat.S_ISREG(st.st_mode) or (
+                    _uid is not None and st.st_uid != _uid()):
+                raise OSError(errno.EPERM,
+                              "not a regular file of this account")
+            loose = False
+            if st.st_mode & 0o077:
+                if hasattr(os, "fchmod"):
+                    try:
+                        os.fchmod(fd, 0o600)
+                    except OSError:
+                        pass
+                loose = bool(os.fstat(fd).st_mode & 0o077)
+        except BaseException:
+            os.close(fd)
+            raise
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        if loose:
+            print("dash: note: " + p + " holds the dashboard's link, but "
+                  "its disk keeps no file permissions, so other accounts of "
+                  "this machine may read it; set TMPDIR to a folder on a "
+                  "disk that keeps them.", file=out, flush=True)
+    except BaseException:
+        shutil.rmtree(d, True)
+        raise
+    return d, p
+
+
+def _dash_announce_key(url, out=None, hint=None):
+    """Write the link *url* to a private link.html and print that file's
+    path, never the key; return the folder (WP-29 P0.12a, ratified
+    01oct2026, K-3).  When no file can be written (round 2, K-9), print
+    ``_DASH_LINK_UNWRITTEN`` and then the link itself, once, and return
+    None: the caller serves on.  *hint* follows either.  Threat: a
+    self-made key nobody can use, or one printed into a log."""
+    import sys
+    if out is None:
+        out = sys.stdout
+    try:
+        d, p = _dash_private_page(_dash_redirect_page(url), "dash-link-",
+                                  "link.html", out=out)
+    except OSError as e:
+        print(_DASH_LINK_UNWRITTEN % type(e).__name__, file=out, flush=True)
+        print(url, file=out, flush=True)
+        if hint:
+            print(hint, file=out, flush=True)
+        return None
+    print(_DASH_LINK_SAID, file=out, flush=True)
+    print(p, file=out, flush=True)
+    if hint:
+        print(hint, file=out, flush=True)
+    return d
+
+
+def _dash_process_key():
+    """The bokeh serve process's own key holder (WP-29 P0.12a, ratified
+    01oct2026, K-4): a module at ``sys.modules[_DASH_KEY_HOLDER]`` with
+    ``key``, ``linked`` (app paths announced) and ``warned``.  bokeh serve
+    runs the app in a fresh module per session; ``sys.modules`` persists,
+    so every session reads one key.  A malformed holder is replaced.
+    Threat: a key per session (unusable) or none (open)."""
+    import sys
+    import types
+    h = sys.modules.get(_DASH_KEY_HOLDER)
+    if isinstance(h, types.ModuleType) and \
+            _dash_token_valid(getattr(h, "key", None)) and \
+            isinstance(getattr(h, "linked", None), set):
+        return h
+    h = types.ModuleType(_DASH_KEY_HOLDER)
+    h.key = _dash_new_token()
+    h.linked = set()
+    h.warned = False
+    sys.modules[_DASH_KEY_HOLDER] = h
+    return h
+
+
+def _dash_bokeh_serve_key(doc, out=None):
+    """The key Gate B uses under bokeh serve when neither the app's global
+    nor ``DASH_SERVE_TOKEN`` gives one, or None (WP-29 P0.12a, ratified
+    01oct2026, K-1, K-4, K-9).  The process makes one key; the first page
+    request of each app path writes its link (host and port from the
+    server side of the connection, never the Host header) and prints the
+    file's path, or, when no file can be written, the link once.  A set but
+    invalid variable fails closed with one warning.  Never raises.  Threat:
+    a bokeh serve app served with no key."""
+    import atexit
+    import os
+    import shutil
+    try:
+        ctx = getattr(doc, "session_context", None)
+        if ctx is None:
+            return None
+        h = _dash_process_key()
+        if os.environ.get(_DASH_TOKEN_ENV) is not None:
+            if not h.warned:
+                h.warned = True
+                print("dash: " + _DASH_TOKEN_ENV + " is set but is not 32 to "
+                      "128 of A-Z a-z 0-9 _ -; its value is not shown, and "
+                      "every session is refused.", file=out, flush=True)
+            return None
+        try:
+            app_path = ctx.server_context.application_context.url
+            local = ctx.request.connection.stream.socket.getsockname()
+        except Exception:
+            return h.key
+        if app_path in h.linked:
+            return h.key
+        h.linked.add(app_path)
+        try:
+            if not (isinstance(local, tuple) and len(local) >= 2 and
+                    isinstance(local[1], int)):
+                raise ValueError("no address")
+            host = "127.0.0.1" if local[0] in (
+                "127.0.0.1", "::1", "::ffff:127.0.0.1") else local[0]
+            port = local[1]
+            url = _dash_tokenized_url(port, h.key, host, path=app_path)
+        except ValueError:
+            print("dash: the dashboard's key was made but no link can name "
+                  "this server's address; set " + _DASH_TOKEN_ENV +
+                  " and restart to choose the key.", file=out, flush=True)
+            return h.key
+        d = _dash_announce_key(url, out=out,
+                               hint=_DASH_BS_ORIGIN_HINT % port)
+        if d:
+            atexit.register(shutil.rmtree, d, True)
+        return h.key
+    except Exception:
+        return None
+
+
 # The viewport <meta> both pages declare (WP-28 E14): without it a mobile
 # browser lays the page out at its 980px default and zooms the whole thing
 # out to fit, so every breakpoint below 980px is unreachable on a phone and
@@ -32030,6 +32576,18 @@ class ServerAppBuilder:
                       # declare (WP-28 E14), read by the same template.
                       "_DASH_CSP_SERVED", "_DASH_SECURITY_HEADERS",
                       "_DASH_VIEWPORT_META",
+                      # The served dashboard's key (WP-29 P0.12a): its
+                      # form, its refusals, the JWT and line bounds, the
+                      # log redaction, the redirect's life, the bokeh serve
+                      # holder, and the lines that name the link file, the
+                      # bokeh serve origin flag and the once-only print.
+                      "_DASH_TOKEN_ARG", "_DASH_TOKEN_ENV", "_DASH_TOKEN_RE",
+                      "_DASH_TOKEN_LINE_MAX", "_DASH_TOKEN_REFUSAL",
+                      "_DASH_TOKEN_REFUSED_HTML", "_DASH_WS_PROTOCOL_MAX",
+                      "_DASH_JWT_PAYLOAD_MAX", "_DASH_QUERY_RE",
+                      "_DASH_REDIRECT_TTL_S", "_DASH_KEY_HOLDER",
+                      "_DASH_LINK_SAID", "_DASH_BS_ORIGIN_HINT",
+                      "_DASH_LINK_UNWRITTEN",
                       # SchemeParser._parse_file's include bound; the app
                       # is handed properties and never parses a file, but
                       # the method's source travels with the class.
@@ -32351,6 +32909,11 @@ class ServerAppBuilder:
                          # (WP-20).
                          "_dash_csp_meta", "_dash_served_template",
                          "_dash_server_transforms",
+                         # The served dashboard's key (WP-29 P0.12a): made,
+                         # checked, compared in constant time, and named in
+                         # a 127.0.0.1 link.
+                         "_dash_new_token", "_dash_token_valid",
+                         "_dash_token_matches", "_dash_tokenized_url",
                          # The websocket origin check made exact under a
                          # Bokeh whose matcher is not (bokeh 3.8).
                          "_dash_strict_match_host",
@@ -32465,7 +33028,22 @@ class ServerAppBuilder:
                          "_dash_port_value",
                          # WP-29 P0.13 F2: the app stops when the program
                          # that started it ends (--parent-watch).
-                         "_dash_watch_parent"):
+                         "_dash_watch_parent",
+                         # WP-29 P0.12a: the two gates and what they read,
+                         # the log redaction, the opener and the key line
+                         # (_dash_one_value .. _dash_read_token_line); the
+                         # self-made key's private page, announcement,
+                         # process holder and bokeh serve key (ratified
+                         # 01oct2026).
+                         "_dash_one_value", "_dash_env_token",
+                         "_dash_ws_payload", "_dash_request_token",
+                         "_dash_token_auth", "_dash_session_token_ok",
+                         "_dash_redact_query", "_dash_redact_access_record",
+                         "_dash_install_access_log_redaction",
+                         "_dash_redirect_page", "_dash_open_tokenized",
+                         "_dash_read_token_line", "_dash_private_page",
+                         "_dash_announce_key", "_dash_process_key",
+                         "_dash_bokeh_serve_key"):
             if _fn_name in _emitted_names:
                 continue
             _fn = getattr(_mod, _fn_name, None)
@@ -33383,6 +33961,14 @@ class ServerAppBuilder:
             "# True, only when a proxy you control rewrites the header.",
             "_TRUST_FORWARDED_FOR = False",
             "",
+            "# The dashboard's key (WP-29 P0.12a): the one _dash_server_app",
+            "# installed, which make_document's Gate B reads, else the",
+            "# environment's, else (under bokeh serve) the process's own",
+            "# (_dash_bokeh_serve_key, ratified 01oct2026); and the folder of",
+            "# the link file the app wrote for a key it made itself (K-2).",
+            "_DASH_SERVE_TOKEN = None",
+            "_DASH_LINK_DIR = None",
+            "",
             "",
             "def _client_ip_from_request(req):",
             "    '''Return the bucket key for rate-limiting.",
@@ -33501,6 +34087,12 @@ class ServerAppBuilder:
             "                        'server ends with the Stata session that '",
             "                        'started it; started by hand, the server '",
             "                        'stops on Ctrl+D.')",
+            "    p.add_argument('--token-stdin', action='store_true',",
+            "                   dest='token_stdin',",
+            "                   help='Read the dashboard key as one line on '",
+            "                        'standard input instead of making one.  '",
+            "                        'dash serve passes this; it never puts '",
+            "                        'the key on a command line.')",
             "    p.add_argument('--sessions-per-client', type=_dash_limit_value,",
             "                   default=_RATE_LIMIT_RPM, metavar='N',",
             "                   help='Dashboard sessions one client may open per '",
@@ -33535,6 +34127,35 @@ class ServerAppBuilder:
             "        what='session', flags=_SESSION_LIMIT_FLAGS)",
             "    _LIMITER = _SESSION_LIMITER",
             "    return _SESSION_LIMITER",
+            "",
+            "",
+            "def _dash_resolve_token(args, fd=None, environ=None):",
+            "    \"\"\"The key the operator supplied, or None (WP-29 P0.12a): the",
+            "    --token-stdin line (dash serve), else DASH_SERVE_TOKEN.  The",
+            "    variable is popped either way, so no child inherits it.  A",
+            "    supplied key of any other form is a ValueError naming where it",
+            "    came from, never its value.  It makes no key: _dash_server_app",
+            "    makes, installs and announces one when none is supplied",
+            "    (ratified 01oct2026).\"\"\"",
+            "    if environ is None:",
+            "        environ = os.environ",
+            "    env = environ.pop(_DASH_TOKEN_ENV, None)",
+            "    if getattr(args, 'token_stdin', False):",
+            "        if fd is None:",
+            "            import sys",
+            "            try:",
+            "                fd = sys.stdin.fileno()",
+            "            except (AttributeError, OSError, ValueError):",
+            "                raise ValueError('dash: --token-stdin was given but there is no standard input to read the key from')",
+            "        tok = _dash_read_token_line(fd)",
+            "        if not _dash_token_valid(tok):",
+            "            raise ValueError('dash: the key on standard input is not 32 to 128 of A-Z a-z 0-9 _ -')",
+            "        return tok",
+            "    if env is not None:",
+            "        if not _dash_token_valid(env):",
+            "            raise ValueError('dash: ' + _DASH_TOKEN_ENV + ' is set but is not 32 to 128 of A-Z a-z 0-9 _ -; its value is not shown')",
+            "        return env",
+            "    return None",
             "",
         ]
 
@@ -33709,6 +34330,14 @@ class ServerAppBuilder:
             "    # The previous document's style notes, forgotten: one note per",
             "    # (option, value) per render, as DashRenderer.render() does.",
             "    _dash_reset_notes()",
+            "    # ---- The dashboard's key (WP-29 P0.12a) ----",
+            "    # Before the limiter, so a client without the key spends no",
+            "    # session budget, and before the data is decoded.  With no key",
+            "    # installed and none in the environment (bokeh serve), the",
+            "    # process makes its own (ratified 01oct2026): never no key.",
+            "    if not _dash_session_token_ok(doc, _DASH_SERVE_TOKEN or _dash_env_token() or _dash_bokeh_serve_key(doc)):",
+            "        doc.add_root(Div(text=_DASH_TOKEN_REFUSED_HTML))",
+            "        return",
             "    # ---- Rate-limit enforcement at session creation ----",
             "    # The bucket key comes from the shared helper: the peer's",
             "    # remote_ip, which the client cannot forge.  X-Forwarded-For is",
@@ -35347,11 +35976,16 @@ class ServerAppBuilder:
             "# builds its own Server and is unaffected.",
             "_port = %d" % port,
             "",
+            "# WP-29 P0.12a: Tornado's logs never carry a query string (the",
+            "# key travels in ?token=).  Idempotent; under bokeh serve, which",
+            "# runs this module afresh per session, the only hook there is.",
+            "_dash_install_access_log_redaction()",
+            "",
             "if __name__ != '__main__':",
             "    make_document(curdoc())",
             "",
             "",
-            "def _dash_server_app(port=None, address=None, origins=None):",
+            "def _dash_server_app(port=None, address=None, origins=None, token=None):",
             "    \"\"\"Build the Server used by the `python app.py` launcher.",
             "",
             "    allow_websocket_origin used to be the single literal",
@@ -35359,8 +35993,23 @@ class ServerAppBuilder:
             "    another machine got a blank page with no way to widen it.",
             "    Both spellings of loopback are accepted by default and",
             "    --allow-websocket-origin adds more.",
+            "",
+            "    WP-29 P0.12a: every Server it builds has Gate A, the key's",
+            "    AuthProvider, and the key it uses is the global",
+            "    _DASH_SERVE_TOKEN, the one Gate B reads (A5).  With no key",
+            "    given, installed or in the environment, it makes one, installs",
+            "    it for both gates and announces its link file before any",
+            "    session (ratified 01oct2026); when no file can be written it",
+            "    prints the link once after a warning and serves on (round 2,",
+            "    K-9).  An address no link can name stops the Server and",
+            "    raises RuntimeError.",
             "    \"\"\"",
             "    _p = int(port or _port)",
+            "    global _DASH_SERVE_TOKEN, _DASH_LINK_DIR",
+            "    if token is not None and not _dash_token_valid(token):",
+            "        raise ValueError('dash: the key given to _dash_server_app is not 32 to 128 of A-Z a-z 0-9 _ -')",
+            "    _dash_made = not (token or _DASH_SERVE_TOKEN or _dash_env_token())",
+            "    _DASH_SERVE_TOKEN = token or _DASH_SERVE_TOKEN or _dash_env_token() or _dash_new_token()",
             "    _origins = [f'localhost:{_p}', f'127.0.0.1:{_p}']",
             "    for _o in (origins or []):",
             "        if _o and _o not in _origins:",
@@ -35402,14 +36051,23 @@ class ServerAppBuilder:
             "              'only begins with an allowed host; dash checks '",
             "              'each websocket origin label for label instead.',",
             "              flush=True)",
-            "    return Server(",
+            "    _dash_srv = Server(",
             "        {'/': Application(FunctionHandler(make_document))},",
             "        port=_p,",
             "        allow_websocket_origin=_origins,",
             "        num_procs=1,",
             "        extra_patterns=[('/health', _HealthHandler)],",
+            "        auth_provider=_dash_token_auth(_DASH_SERVE_TOKEN),",
             "        **_kw",
             "    )",
+            "    if _dash_made:",
+            "        try:",
+            "            _dash_link_url = _dash_tokenized_url(_p, _DASH_SERVE_TOKEN, address)",
+            "        except ValueError:",
+            "            _dash_srv.stop()",
+            "            raise RuntimeError('dash: the dashboard\\'s key was made but no link can name the address ' + repr(address) + '; set DASH_SERVE_TOKEN or pass --token-stdin to choose the key')",
+            "        _DASH_LINK_DIR = _dash_announce_key(_dash_link_url)",
+            "    return _dash_srv",
             "",
             "",
             "if __name__ == '__main__':",
@@ -35435,6 +36093,15 @@ class ServerAppBuilder:
             "        _port = _dash_port_value(_a.port)",
             "    except _argparse.ArgumentTypeError as _e:",
             "        _p.error(str(_e))",
+            "    # WP-29 P0.12a: the key, before any server exists -- the",
+            "    # --token-stdin line (dash serve), else DASH_SERVE_TOKEN, else",
+            "    # none, and _dash_server_app makes one.  A supplied key of any",
+            "    # other form stops the app (exit status 2) without its value.",
+            "    _dash_install_access_log_redaction()",
+            "    try:",
+            "        _DASH_SERVE_TOKEN = _dash_resolve_token(_a)",
+            "    except ValueError as _e:",
+            "        _p.error(str(_e))",
             "    # BOKEH_ALLOW_WS_ORIGIN, when set, REPLACES the websocket",
             "    # origins this launcher admits: Bokeh's handler reads it at",
             "    # every handshake and uses it instead of the list passed to",
@@ -35454,12 +36121,17 @@ class ServerAppBuilder:
             "              '--allow-websocket-origin): ' + _dash_env_origins,",
             "              flush=True)",
             "        if any('*' in _o for _o in _dash_env_origins.split(',')):",
-            "            print('dash: WARNING -- it holds *, so any web site '",
-            "                  'can open a session with this dashboard and read '",
-            "                  'what it draws.  Unset BOKEH_ALLOW_WS_ORIGIN to '",
-            "                  'admit only this app\\'s list.', flush=True)",
-            "    _server = _dash_server_app(port=_port, address=_a.address,",
-            "                               origins=_a.origins)",
+            "            print('dash: WARNING -- it holds *, so the websocket '",
+            "                  'origin check admits every web site; only the '",
+            "                  'dashboard\\'s key, in its link, still keeps other '",
+            "                  'pages out.  Unset BOKEH_ALLOW_WS_ORIGIN to admit '",
+            "                  'only this app\\'s list.', flush=True)",
+            "    try:",
+            "        _server = _dash_server_app(port=_port, address=_a.address,",
+            "                                   origins=_a.origins,",
+            "                                   token=_DASH_SERVE_TOKEN)",
+            "    except RuntimeError as _e:",
+            "        _p.error(str(_e))",
             "    # WP-29 P0.13 F2: under dash serve, stop with the Stata that",
             "    # started this server, however it ends (_dash_watch_parent).",
             "    if _a.parent_watch:",
@@ -35468,17 +36140,26 @@ class ServerAppBuilder:
             "    # A browser opens only when asked.  It used to open",
             "    # unconditionally, so every scripted or batch run took over the",
             "    # user's screen.",
+            "    # WP-29 P0.12a: it opens the 127.0.0.1 link with the key, never",
+            "    # on a command line; its 0600 redirect page is removed after a",
+            "    # minute and at stop.",
+            "    import shutil as _shutil",
+            "    _dash_url = _dash_tokenized_url(_port, _DASH_SERVE_TOKEN, _a.address)",
+            "    _dash_base = _dash_url.split('?', 1)[0]",
+            "    _dash_open_dir = None",
             "    if _a.show:",
-            "        _server.io_loop.add_callback(_server.show, '/')",
+            "        _dash_open_dir = _dash_open_tokenized(_dash_url)",
+            "        if _dash_open_dir:",
+            "            _server.io_loop.call_later(_DASH_REDIRECT_TTL_S, _shutil.rmtree, _dash_open_dir, True)",
             "    if _a.timeout > 0:",
             "        _server.io_loop.call_later(_a.timeout * 60,",
             "                                   _server.io_loop.stop)",
             "    # Flushed: the launcher erases the app file only once this",
             "    # banner and /health have both reached it (WP-29 P0.13 F2).",
-            "    print(f'Bokeh Server running at http://localhost:{_port}/',",
-            "          flush=True)",
-            "    print(f'Health check:  http://localhost:{_port}/health',",
-            "          flush=True)",
+            "    # WP-29 P0.12a: the address without the key; a key the app made",
+            "    # has its link in the file _dash_server_app named.",
+            "    print(f'Bokeh Server running at {_dash_base} -- the dashboard opens only through the link that holds its key.', flush=True)",
+            "    print(f'Health check:  {_dash_base}health', flush=True)",
             "    print(f'Session limits per minute: {_a.sessions_per_client} per '",
             "          f'client, {_a.new_clients_per_minute} new clients, '",
             "          f'{_a.sessions_per_minute} in all.', flush=True)",
@@ -35494,6 +36175,10 @@ class ServerAppBuilder:
             "        _dash_int = True",
             "    finally:",
             "        _server.stop()",
+            "        if _dash_open_dir:",
+            "            _shutil.rmtree(_dash_open_dir, True)",
+            "        if _DASH_LINK_DIR:",
+            "            _shutil.rmtree(_DASH_LINK_DIR, True)",
             "        print('Server stopped.', flush=True)",
             "    if _dash_int and _a.parent_watch:",
             "        raise SystemExit(130)",
@@ -36047,9 +36732,52 @@ def _dash_stop_child(proc, grace=5.0, interrupts=(KeyboardInterrupt,)):
         proc.wait()
 
 
+def _dash_write_link(link_dir, url):
+    """Write the dashboard's link *url* where only this account can read
+    it, and return ``(path, folder_made_or_None)`` (WP-29 P0.12a; launcher
+    only, never copied into the app).
+
+    In the run folder (*link_dir*, Q-2): ``link.html`` through
+    ``_dash_private_write(..., exclusive=True)`` (anti-hijack: no link,
+    FIFO or other account's file at the name), then checked with ``lstat``
+    -- a regular file of this account with no group or other permission
+    bits.  A write that is refused or fails (round 2) goes straight to a
+    fresh 0700 ``dash-link-*`` folder of the system temp directory,
+    through ``_dash_private_page``; so does a file that fails the check
+    (K-8), which is erased first.  Without a run folder (a command-line
+    ``--launch``), that fresh folder is the only one.  A disk that keeps no
+    permissions anywhere gets the file anyway, with ``_dash_private_page``'s
+    one note (K-8, answer 2): no location is refused for privacy.  When
+    the fresh folder fails too, this prints nothing and raises, and the
+    launcher prints the link once (K-9).  Threat: the key at rest readable
+    by another account."""
+    page = _dash_redirect_page(url)
+    if link_dir is not None:
+        path = os.path.join(link_dir, "link.html")
+        wrote = False
+        try:
+            _dash_private_write(path, page, exclusive=True)
+            wrote = True
+        except (_DashUnsafePath, OSError):
+            pass
+        if wrote:
+            try:
+                st = os.lstat(path)
+                _uid = getattr(os, "geteuid", None)
+                if stat.S_ISREG(st.st_mode) and \
+                        (_uid is None or st.st_uid == _uid()) and \
+                        st.st_mode & 0o077 == 0:
+                    return path, None
+            except OSError:
+                pass
+            _dash_erase_quietly(path)
+    d, p = _dash_private_page(page, "dash-link-", "link.html")
+    return p, d
+
+
 def _dash_launch_app(app_path, port, timeout, no_browser, *,
                       ready_seconds=30.0, prebind=True, expect=None,
-                      erase_app_when_ready=False):
+                      erase_app_when_ready=False, link_dir=None):
     """Run the generated Bokeh Server app as a subprocess and block until
     it answers ``/health`` or fails, forwarding its own output as it runs.
 
@@ -36093,6 +36821,17 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     ``stdout=PIPE, stderr=PIPE`` and no reader hangs once a pipe fills.
     Only the main thread ever prints: a thread that prints under Stata's
     embedded Python is not guaranteed to reach the Results window.
+
+    WP-29 P0.12a: each launch makes a new key (``_dash_new_token``) and
+    hands it to the app as one line on the same stdin pipe, after the app
+    text (``--token-stdin``; the pipe stays open, it is the parent watch),
+    never in argv.  Once the server answers, the link that holds it is
+    written to a 0600 ``link.html`` in *link_dir* (``_dash_write_link``)
+    and only that file's path is printed; when no folder takes the file,
+    the link is printed once after ``_DASH_LINK_UNWRITTEN`` and the server
+    keeps serving (round 2, K-9).  Every forwarded line and the stderr tail
+    are redacted (``_dash_redact_query``), and the link file is removed at
+    stop.  A 429 from ``/health`` counts as answering.
     """
     import collections
     import queue
@@ -36102,9 +36841,13 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     import sys
     import threading
     import time
+    import urllib.error
     import urllib.request
 
     port = _dash_port_value(port)
+    # WP-29 P0.12a: this launch's key, handed over stdin, never argv.
+    token = _dash_new_token()
+    _link_path = _link_tmp = None
 
     # WP-29 P0.13 F4: inside Stata, the launcher polls Stata's interface,
     # so Break (the GUI's button, Command+. or console Ctrl+C) is seen
@@ -36151,6 +36894,8 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     if timeout > 0:
         _cmd += ["--timeout", str(timeout)]
     _cmd.append("--parent-watch")
+    # WP-29 P0.12a: the key follows the app text on stdin (L-4).
+    _cmd.append("--token-stdin")
 
     try:
         proc = subprocess.Popen(_cmd, stdin=subprocess.PIPE,
@@ -36199,7 +36944,8 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
                 _banner = True
             if _forwarded >= 200:
                 continue  # still drained, never printed (F-14)
-            _line = _clean(line).rstrip("\n")[:500]
+            # WP-29 P0.12a: no forwarded line carries a query or the key.
+            _line = _dash_redact_query(_clean(line), token).rstrip("\n")[:500]
             print(_line, flush=True)
             _forwarded += 1
             if _forwarded == 200:
@@ -36241,6 +36987,18 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
                 except OSError:
                     pass
         del _frame
+        # WP-29 P0.12a: the key line, after the app text, on the same pipe,
+        # as bytes through the binary writer (L-1..L-3); the pipe stays
+        # open (TD-4).  A child that cannot take it is stopped (finally).
+        if _handover_exc is None:
+            try:
+                _raw = _dash_child_stdin(proc)
+                _raw.write((token + "\n").encode("ascii"))
+                _raw.flush()
+            except (AttributeError, OSError, ValueError):
+                raise RuntimeError("no server started on port %d: the "
+                                   "dashboard's key could not be handed to "
+                                   "the app" % port)
         while _handover_exc is None and proc.poll() is None:
             if poll is not None:
                 poll()
@@ -36248,15 +37006,42 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
             _now = time.monotonic()
             if not _ready and _now >= _next_health:
                 _next_health = _now + 0.25
+                _answers = False
                 try:
                     urllib.request.urlopen(
                         "http://127.0.0.1:%d/health" % port, timeout=1.0)
+                    _answers = True
+                except urllib.error.HTTPError as _e:
+                    # A /health flood answering 429 is still the server
+                    # answering (A6); any other code is not (a squatter).
+                    _answers = _e.code == 429
+                except Exception:
+                    pass
+                if _answers:
                     _ready = True
                     print(
-                        "dash: the server answers at http://localhost:%d/ "
-                        "(health check http://localhost:%d/health); %s"
+                        "dash: the server answers at http://127.0.0.1:%d/ "
+                        "(health check http://127.0.0.1:%d/health); %s"
                         % (port, port, _stop_hint), flush=True)
-                except Exception:
+                    # WP-29 P0.12a: the link goes to a file only this
+                    # account can read, and only its path is printed.
+                    _url = _dash_tokenized_url(port, token)
+                    try:
+                        _link_path, _link_tmp = _dash_write_link(link_dir,
+                                                                 _url)
+                    except (_DashUnsafePath, OSError) as _lexc:
+                        # Round 2, K-9: no folder took it.  The link is
+                        # printed once, after the warning, and the server
+                        # keeps serving.
+                        _link_path = _link_tmp = None
+                        print(_DASH_LINK_UNWRITTEN % type(_lexc).__name__,
+                              flush=True)
+                        print(_url, flush=True)
+                    else:
+                        print(_DASH_LINK_SAID, flush=True)
+                        print(_link_path, flush=True)
+                    del _url
+                else:
                     if not _no_answer_shown and \
                             _now - _t0 > ready_seconds:
                         print(
@@ -36278,8 +37063,15 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
         _dash_stop_child(proc, interrupts=interrupts)
         _interrupted = True
     finally:
-        if proc.poll() is None:
-            _dash_stop_child(proc, interrupts=interrupts)
+        try:
+            if proc.poll() is None:
+                _dash_stop_child(proc, interrupts=interrupts)
+        finally:
+            # WP-29 P0.12a: the link file goes when the server stops.
+            if _link_path is not None:
+                _dash_erase_quietly(_link_path)
+            if _link_tmp is not None and os.path.isdir(_link_tmp):
+                shutil.rmtree(_link_tmp, ignore_errors=True)
 
     proc.wait()
     try:
@@ -36293,7 +37085,7 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     if _handover_exc is not None:
         _reason = ("no server started on port %d: the app could not be "
                    "handed to Python (%s)" % (port, _handover_exc))
-        _tail = _clean("".join(_err_dq))
+        _tail = _dash_redact_query(_clean("".join(_err_dq)), token)
         _budget = 4096 - len(_reason) - 1
         if _tail and len(_tail) > _budget > 0:
             _tail = _tail[-_budget:]
@@ -36311,7 +37103,7 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     if proc.returncode in (0, -signal.SIGTERM):
         return
 
-    _tail = _clean("".join(_err_dq))
+    _tail = _dash_redact_query(_clean("".join(_err_dq)), token)
     if any(s in _tail for s in
           ("Address already in use", "EADDRINUSE", "already in use")):
         _reason = "no server started on port %d: the port is in use" % port
@@ -36374,7 +37166,11 @@ if __name__ == "__main__":
         help=(
             "After writing a server app, start it and wait. Off by default: "
             "writing a file must not start a server as a side effect. "
-            "`dash serve' passes this; `dash build, server' does not."
+            "`dash serve' passes this; `dash build, server' does not.  "
+            "The app needs a key made for each launch; the launcher writes "
+            "the link that holds it to a file only you can read and prints "
+            "the file's path; if no file can be written, it prints a "
+            "warning and the link itself, once."
         ),
     )
     parser.add_argument(
@@ -36449,6 +37245,7 @@ if __name__ == "__main__":
             _erase = _dash_private_run_of(args.output) is not None
             _dash_launch_app(args.output, args.port, args.timeout,
                              args.no_browser, expect=_written,
+                             link_dir=_dash_private_run_of(args.output),
                              erase_app_when_ready=_erase)
         except _DashServeInterrupted:
             # Before RuntimeError: an interruption is r(1), not the r(198)

@@ -48,6 +48,11 @@
 *! traceback (LC-02); a real launch stopped by a patched pollstd ends r(1)
 *! with its port freed (LC-03, dash's catch, not Stata's Break key); the
 *! announcement names Break (LC-04).
+*! TOK-01..TOK-04 (WP-29 P0.12a), after LC-04 and before SRV-19: the
+*! served dashboard needs its per-launch key; dash build, server says so
+*! (TOK-01); a real dash serve refuses without the key and serves 74 rows
+*! with it, the link in a 0600 file of a 0700 folder (TOK-02); no log
+*! holds the key (TOK-03); the help names it (TOK-04).
 *!
 *! Usage:  do test/test_serve_launch.cscript
 *! Version: 1.2  24sep2026
@@ -767,6 +772,216 @@ assert "${lc_runs}" == ""
 display "LC-03 PASS: Break (a patched pollstd) stops a real dash serve with r(1) in `lc03s' s; the port is free and no run folder is left"
 dash clear
 macro drop lc_*
+
+// ================================================================
+// TOK-01..TOK-04 (WP-29 P0.12a) -- the served dashboard needs its key
+// ================================================================
+// TOK-02 follows LC-03's and PF-08's pattern (TD-3): a daemon thread,
+// started in Stata's Python before dash serve blocks, waits for /health,
+// reads the key from the run folder's 0600 link.html, runs
+// serve_token_probe.py with the file's PATH (never the key), and stops the
+// listener whatever happened.  The key stays in Python memory
+// (_tok_state) only, so TOK-03 can look for it in the logs without it ever
+// passing through a Stata macro or a display.  The thread calls no sfi
+// function.  Names are built from c(tmpdir) and the Python pid.
+python:
+import os as _tok_os
+from sfi import Macro as _tok_M
+_tok_M.setLocal("tokpid", str(_tok_os.getpid()))
+end
+local tokdir "`c(tmpdir)'"
+
+// TOK-01: dash build, server writes an app that makes its own key
+sysuse auto, clear
+dash clear
+dash scatter mpg weight, name(tok01)
+local tok01py "`tokdir'dash_tok_`tokpid'_01.py"
+local tok01lg "`tokdir'dash_tok_`tokpid'_01.log"
+capture erase "`tok01lg'"
+quietly log using "`tok01lg'", replace text name(_tok01)
+dash build, saving("`tok01py'") server replace
+quietly log close _tok01
+cert_log_has "`tok01lg'", needle("a new key for each launch")
+local tok01a = r(found)
+cert_file_has "`tok01py'", needle("--token-stdin")
+local tok01b = r(found)
+cert_file_has "`tok01py'", needle("auth_provider=_dash_token_auth(")
+local tok01c = r(found)
+cert_file_has "`tok01py'", needle("_DASH_SERVE_TOKEN = None")
+local tok01d = r(found)
+capture erase "`tok01lg'"
+capture erase "`tok01py'"
+display as text "  TOK-01 access line `tok01a', flag `tok01b', provider `tok01c', global `tok01d'"
+assert `tok01a' == 1
+assert `tok01b' == 1
+assert `tok01c' == 1
+assert `tok01d' == 1
+display "TOK-01 PASS: dash build, server names the per-launch key and writes an app that requires it"
+
+// TOK-02: a real dash serve refuses without the key and serves with it
+dash clear
+dash scatter mpg weight, name(tok02)
+local toktmp "`tokdir'"
+local tokres "`tokdir'dash_tok_`tokpid'_02.txt"
+local toklg "`tokdir'dash_tok_`tokpid'_02.log"
+local toksm "`tokdir'dash_tok_`tokpid'_02.smcl"
+capture erase "`tokres'"
+capture erase "`toklg'"
+capture erase "`toksm'"
+python:
+import glob as _tok_glob, re as _tok_re, signal as _tok_sig
+import socket as _tok_sock, stat as _tok_stat, subprocess as _tok_sp
+import sys as _tok_sys, threading as _tok_th, time as _tok_time
+import urllib.error as _tok_ue, urllib.request as _tok_url
+_tok_s = _tok_sock.socket()
+_tok_s.bind(("127.0.0.1", 0))
+_tok_port = _tok_s.getsockname()[1]
+_tok_s.close()
+_tok_M.setLocal("tokport", str(_tok_port))
+_tok_tmp = _tok_M.getLocal("toktmp")
+_tok_res = _tok_M.getLocal("tokres")
+_tok_probe = _tok_os.path.abspath("serve_token_probe.py")
+_tok_state = {}
+def _tok_status(url):
+    try:
+        with _tok_url.urlopen(url, timeout=5) as r:
+            return r.status
+    except _tok_ue.HTTPError as e:
+        return e.code
+    except Exception as e:
+        return type(e).__name__
+def _tok_run():
+    lines = []
+    try:
+        t0 = _tok_time.time()
+        while _tok_time.time() - t0 < 60:
+            if _tok_status("http://127.0.0.1:%d/health" % _tok_port) == 200:
+                break
+            _tok_time.sleep(0.2)
+        link = None
+        t0 = _tok_time.time()
+        pat = _tok_os.path.join(_tok_tmp, "dash-%d" % _tok_os.getuid(),
+                                "run-%d-*" % _tok_os.getpid(), "link.html")
+        while _tok_time.time() - t0 < 10:
+            found = _tok_glob.glob(pat)
+            if found:
+                link = found[0]
+                break
+            _tok_time.sleep(0.2)
+        if link is None:
+            lines.append("link=missing")
+            lines.append("root_without_key=%s" % _tok_status(
+                "http://127.0.0.1:%d/" % _tok_port))
+        else:
+            lines.append("link=found")
+            lines.append("link_mode=" + oct(_tok_stat.S_IMODE(
+                _tok_os.stat(link).st_mode))[-3:])
+            lines.append("link_dir_mode=" + oct(_tok_stat.S_IMODE(
+                _tok_os.stat(_tok_os.path.dirname(link)).st_mode))[-3:])
+            _tok_state["link"] = link
+            with open(link, encoding="utf-8") as fh:
+                m = _tok_re.search(r"\?token=([A-Za-z0-9_-]{43})", fh.read())
+            _tok_state["token"] = m.group(1) if m else ""
+            r = _tok_sp.run([_tok_sys.executable, _tok_probe, str(_tok_port),
+                             link, _tok_res], timeout=120,
+                            capture_output=True, text=True)
+            if r.stderr:
+                lines.append("probe_stderr=" + r.stderr[-300:].replace(
+                    "\n", " ").replace("\r", " "))
+    except Exception as e:
+        lines.append("thread_error=" + type(e).__name__)
+    finally:
+        try:
+            out = _tok_sp.run(["lsof", "-ti", "tcp:%d" % _tok_port,
+                               "-sTCP:LISTEN"], capture_output=True,
+                              text=True, timeout=10).stdout
+            for pid in out.split():
+                try:
+                    _tok_os.kill(int(pid), _tok_sig.SIGTERM)
+                except (ValueError, OSError):
+                    pass
+        except Exception:
+            pass
+        lines.append("stopped=1")
+        with open(_tok_res, "a", encoding="utf-8") as fh:
+            fh.write("\n".join(lines) + "\n")
+_tok_thread = _tok_th.Thread(target=_tok_run, daemon=True)
+_tok_thread.start()
+end
+quietly log using "`toklg'", replace text name(_tok02t)
+quietly log using "`toksm'", replace smcl name(_tok02s)
+timer clear 93
+timer on 93
+capture noisily dash serve, port(`tokport') timeout(1) nobrowser
+local tok02rc = _rc
+timer off 93
+quietly timer list 93
+local tok02s = r(t93)
+quietly log close _tok02s
+quietly log close _tok02t
+python: _tok_thread.join(60)
+foreach n in link=found link_port=ok health=200 root_without_key=403 near_miss=403 page_with_key=200 pull_without_key=refused pull_with_key_rows=74 link_mode=600 link_dir_mode=700 stopped=1 {
+    cert_file_has "`tokres'", needle("`n'")
+    local tok02_`=strtoname("`n'")' = r(found)
+}
+type "`tokres'"
+display as text "  TOK-02 rc `tok02rc' after `tok02s' s"
+assert `tok02rc' == 0
+assert `tok02s' < 60
+foreach n in link=found link_port=ok health=200 root_without_key=403 near_miss=403 page_with_key=200 pull_without_key=refused pull_with_key_rows=74 link_mode=600 link_dir_mode=700 stopped=1 {
+    assert `tok02_`=strtoname("`n'")'' == 1
+}
+display "TOK-02 PASS: a real dash serve refuses every request without its key and serves 74 rows with it, its link 0600 in a 0700 folder"
+
+// TOK-03: no log holds the key
+python:
+_tok_bad = 0
+_tok_key = _tok_state.get("token", "")
+for _tok_p in (_tok_M.getLocal("toklg"), _tok_M.getLocal("toksm")):
+    with open(_tok_p, encoding="utf-8", errors="replace") as fh:
+        _tok_txt = fh.read().replace("\n> ", "")
+    if (_tok_key and _tok_key in _tok_txt) or \
+            _tok_re.search(r"\?token=[A-Za-z0-9_-]{32,}", _tok_txt):
+        _tok_bad += 1
+_tok_M.setLocal("tok03bad", str(_tok_bad))
+_tok_M.setLocal("tok03len", str(len(_tok_key)))
+_tok_gone = "link" in _tok_state and not _tok_os.path.exists(_tok_state["link"])
+_tok_M.setLocal("tok03gone", "1" if _tok_gone else "0")
+end
+cert_log_has "`toklg'", needle("opens only through its link")
+local tok03a = r(found)
+cert_log_has "`toklg'", needle("link.html")
+local tok03b = r(found)
+display as text "  TOK-03 logs holding the key `tok03bad', key length `tok03len', link removed `tok03gone', said `tok03a' `tok03b'"
+capture erase "`toklg'"
+capture erase "`toksm'"
+capture erase "`tokres'"
+assert `tok03bad' == 0
+assert `tok03len' == 43
+assert `tok03gone' == 1
+assert `tok03a' == 1
+assert `tok03b' == 1
+display "TOK-03 PASS: neither the text log nor the SMCL log holds the key, and the link file is gone once the server stops"
+
+// TOK-04: the help names the key
+cert_file_has "../dash.sthlp", needle("DASH_SERVE_TOKEN")
+local tok04a = r(found)
+cert_file_has "../dash.sthlp", needle("?token=")
+local tok04b = r(found)
+cert_file_has "../dash.sthlp", needle("--token-stdin")
+local tok04c = r(found)
+cert_file_has "../dash.sthlp", needle("only this machine can reach it")
+local tok04d = r(found)
+cert_file_has "../dash.sthlp", needle("There is no password")
+local tok04e = r(found)
+display as text "  TOK-04 `tok04a' `tok04b' `tok04c' stale `tok04d' `tok04e'"
+assert `tok04a' == 1
+assert `tok04b' == 1
+assert `tok04c' == 1
+assert `tok04d' == 0
+assert `tok04e' == 0
+display "TOK-04 PASS: the help names DASH_SERVE_TOKEN, ?token= and --token-stdin, and no longer claims only this machine can reach it"
+dash clear
 
 // ================================================================
 // SRV-19 -- dash serve writes its app into a private run folder of this

@@ -546,7 +546,7 @@ _pf8_root = os.path.join(Macro.getGlobal("hc4_tmpdir"), "dash-%d" % os.getuid())
 _pf8_pat = _pf8_re.compile(r"^run-%d-[A-Za-z0-9_]+$" % os.getpid())
 _pf8_old = set(os.listdir(_pf8_root)) if os.path.isdir(_pf8_root) else set()
 _pf8 = {"dir": "", "app": "", "dirmode": "", "rootmode": "", "inputs": "",
-        "lc01": "(not reached)"}
+        "lc01": "(not reached)", "lc01link": "(not reached)"}
 def _pf8_mode(p):
     try:
         return oct(_pf8_st.S_IMODE(os.lstat(p).st_mode))
@@ -569,14 +569,28 @@ def _pf8_watch():
                                       if os.path.exists(os.path.join(_pf8["dir"], _f)))
             # LC-01 (WP-29 P0.13 F2): within 5 s of the first /health 200,
             # while dash serve still blocks, the run folder holds no file;
-            # polled every 0.1 s, the names left reported.
+            # polled every 0.1 s, the names left reported.  Flipped (WP-29
+            # P0.12a, Q-3): no file but link.html, which is 0600 and holds
+            # none of the app's data, the spec or the data file.
             _lc1_end = time.time() + 5
             while True:
                 try:
-                    _pf8["lc01"] = " ".join(sorted(os.listdir(_pf8["dir"])))
+                    _lc1_names = sorted(os.listdir(_pf8["dir"]))
+                    _pf8["lc01"] = " ".join(_n for _n in _lc1_names
+                                            if _n != "link.html")
+                    if "link.html" in _lc1_names:
+                        _lc1_p = os.path.join(_pf8["dir"], "link.html")
+                        with open(_lc1_p, encoding="utf-8") as _lc1_fh:
+                            _lc1_t = _lc1_fh.read()
+                        _lc1_bad = any(_x in _lc1_t for _x in (
+                            "_DATA_B64 = ", '"graphs":', '"variableNames"'))
+                        _pf8["lc01link"] = _pf8_mode(_lc1_p) + \
+                            (" data" if _lc1_bad else " clean")
                 except OSError:
                     _pf8["lc01"] = "(the run folder is gone)"
-                if not _pf8["lc01"] or time.time() >= _lc1_end:
+                if (not _pf8["lc01"] and
+                        _pf8["lc01link"] != "(not reached)") or \
+                        time.time() >= _lc1_end:
                     return
                 time.sleep(0.1)
         time.sleep(0.05)
@@ -638,6 +652,7 @@ Macro.setGlobal("pf08_dirmode", _pf8["dirmode"])
 Macro.setGlobal("pf08_rootmode", _pf8["rootmode"])
 Macro.setGlobal("pf08_inputs", _pf8["inputs"])
 Macro.setGlobal("lc01_left", _pf8["lc01"])
+Macro.setGlobal("lc01_link", _pf8["lc01link"])
 end
 assert `hc419rc' == 0
 assert `hc419s' >= 50
@@ -659,7 +674,9 @@ if `"${lc01_left}"' != "" {
     display as error "LC-01 FAIL: the run folder still held ${lc01_left} while dash serve ran"
 }
 assert `"${lc01_left}"' == ""
-display "LC-01 PASS: within 5 s of /health answering, while dash serve blocked, its run folder held no file"
+display as text "  LC-01 link file: [${lc01_link}]"
+assert `"${lc01_link}"' == "0o600 clean"
+display "LC-01 PASS: within 5 s of /health answering, while dash serve blocked, its run folder held no file but its 0600 link.html, which holds no data"
 macro drop hc4_* pf08_* lc01_*
 
 // ----------------------------------------------------------------

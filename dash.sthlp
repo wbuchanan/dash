@@ -836,6 +836,8 @@ smoothed line, a kernel density curve -- and every KPI card that follows
 the filters.  A saved dashboard recomputes those cards, its kernel density
 curves and its histogram bar heights in the browser, and keeps its other
 computed layers, and its histogram bins, as they were built; see
+{help dash##server_mode:Server Mode}.  The dashboard opens only through a
+link holding a key made for each launch; see
 {help dash##server_mode:Server Mode}.
 
 {pstd}
@@ -1478,6 +1480,7 @@ it.  The saved page and the served app differ as follows:
 {col 7}{cmd:filterposition()}
 {col 5}Bootstrap {cmd:layout(bs)}{col 38}reflows{col 59}reflows
 {col 5}Health endpoint{col 38}n/a{col 59}{cmd:/health}
+{col 5}Who can open it{col 38}who has the file{col 59}who has its link
 {col 5}Deployment{col 38}email, open file{col 59}{cmd:python app.py}
 {col 5}{hline 72}
 
@@ -1538,8 +1541,22 @@ removes its temporary folder; see
 {help dash##tempfiles:Temporary files and privacy}.
 
 {pstd}
-{cmd:dash serve} prints the server's address once it answers
-{cmd:/health}.  If no server starts -- the port is in use, or the app
+{cmd:dash serve} makes a new key for each launch.  Once the server answers
+{cmd:/health} it prints the server's address and the path of a file,
+readable only by you, holding the dashboard's link --
+{cmd:http://127.0.0.1:}{it:port}{cmd:/?token=}{it:key} -- and, unless
+{cmd:nobrowser}, {cmd:$dash_nobrowser} or a {cmd:nodraw} graph says not to,
+opens that link in your browser.  The key itself is never printed, so no
+Stata log holds it, with one exception: if no such file can be written
+anywhere, {cmd:dash serve} prints a warning line and then the link itself,
+once, and keeps serving.  The key is then in Results and in any log you have
+open, so treat that log like the link.  Open the file, or copy the link from
+it, to reach the dashboard again while the server runs; it is removed when
+the server stops.  On a disk that keeps no file permissions the file is
+written anyway, and a line beginning {cmd:dash: note:} names it.
+
+{pstd}
+If no server starts -- the port is in use, or the app
 stops before it answers -- {cmd:dash serve} says why and returns r(198)
 instead of blocking.
 
@@ -1566,6 +1583,25 @@ the rate limits {cmd:--sessions-per-client} {it:N},
 given, so the app is usable from a script or a batch job.
 
 {pstd}
+The app never runs without a key, and only a link holding it opens the
+dashboard: {cmd:http://127.0.0.1:}{it:N}{cmd:/?token=}{it:key}.  Unless you
+choose the key, each start makes a new one, writes that link to a file named
+{cmd:link.html}, readable only by you, in a new folder only you can open,
+and prints the file's path on a line of its own before the server starts;
+the key itself is never printed.  Open the file, or copy the link from it;
+the folder is removed when the app stops.  On a disk that keeps no file
+permissions the file is written anyway, and a line beginning
+{cmd:dash: note:} names it; set {cmd:TMPDIR} to a folder on a disk that
+keeps them.  If no such file can be written at all, the app
+prints a warning line and then the link itself, once, and keeps serving; the
+key is then in that output and in any log of it.  To choose the key, set the
+environment variable {cmd:DASH_SERVE_TOKEN} to 32 to 128 of the characters
+A-Z, a-z, 0-9, _ and -, or pass {cmd:--token-stdin} and write it as one line
+on standard input; the app then writes no link file.  A value of any other
+form stops the app at once (exit status 2), naming the variable but not the
+value.
+
+{pstd}
 {cmd:--port} outside 1024 to 65535 is refused (exit status 2), not moved
 to the nearest port.
 
@@ -1578,10 +1614,32 @@ every session starts a new count), and the app's flags above are not read.
 {cmd:bokeh serve} takes its own {cmd:--port}, {cmd:--address} and
 {cmd:--allow-websocket-origin}, and listens on every interface unless it is
 given {cmd:--address}.
+Under {cmd:bokeh serve} the app still never runs without a key.  Start it as
+{cmd:bokeh serve app.py --allow-websocket-origin 127.0.0.1:5006}: Bokeh
+otherwise admits only {cmd:localhost}, and the link's page stays blank.
+With {cmd:DASH_SERVE_TOKEN} set as above, open
+{cmd:http://127.0.0.1:5006/app?token=}{it:key}.  Without it, the app makes
+one key for the server when the first session is asked for, and at the first
+page request writes
+{cmd:http://127.0.0.1:}{it:port}{cmd:/app?token=}{it:key} to a
+{cmd:link.html} only you can read and prints that file's path (if no such
+file can be written, it prints a warning line and then the link itself, once
+for each app); the folder is removed when {cmd:bokeh serve} stops.  Every
+session without the key gets a page saying where the link is and naming
+{cmd:DASH_SERVE_TOKEN}.  {cmd:bokeh serve --show} opens the address without
+the key, so it shows that page and makes the link: open the file it names.
+The link names no {cmd:--prefix}, and a session asked for only through
+{cmd:bokeh.client} leaves the link to the first page request.
 
 {pstd}
 {ul:Security.}  Run as {cmd:python app.py}, or by {cmd:dash serve}, the app
-binds the loopback interface, so by default only this machine can reach it.
+binds the loopback interface, so by default only programs on this machine
+can reach it, and of those only one holding the dashboard's link opens it:
+every page, session, {cmd:/autoload.js} and {cmd:/metadata} request without
+the link's key is refused (403) before any data is read.  The key is new at
+every launch, is compared in constant time, and travels only in the link's
+{cmd:?token=}; {cmd:/health} and BokehJS's own files under {cmd:/static}
+stay open and hold no data.
 {cmd:--address} {it:addr} opens it deliberately
 -- {cmd:--address 0.0.0.0} listens on every interface -- and
 {cmd:--allow-websocket-origin} {it:host:port} then admits the {cmd:Origin}
@@ -1595,7 +1653,8 @@ Understand what that second option is, before relying on it.  The
 {cmd:Origin} allow-list filters a header the {it:client} supplies, so it
 stops a page on another website from driving your dashboard in your browser.
 It is not an access control: a client that is not a browser can omit the
-header or forge an accepted one.  There is no password.
+header or forge an accepted one.  The dashboard's key is the access control: a client without it gets nothing,
+whatever {cmd:Origin} it sends.
 
 {pstd}
 An origin is admitted only when its host matches an allowed one label for
@@ -1611,15 +1670,25 @@ Bokeh's environment variable {cmd:BOKEH_ALLOW_WS_ORIGIN}, when it is set,
 replaces that allow-list: Bokeh admits the origins it names {it:instead of}
 {cmd:localhost}, {cmd:127.0.0.1} and {cmd:--allow-websocket-origin}.  The
 app says so when it starts, naming them, and warns when the variable holds
-{cmd:*}, which lets any website open a session with your dashboard.  Unset
-it to have the app's own list apply.
+{cmd:*}: the origin check then admits every website, and only the
+dashboard's key keeps another site's page out.  Unset it to have the app's
+own list apply.
 
 {pstd}
-So the generated app is a single-user tool.  It embeds every observation of
-the variables the dashboard uses, and anything that can reach the port can
-read them.  If you open it beyond loopback, put it behind something that
-authenticates -- an SSH tunnel, a reverse proxy, a firewall rule -- and
-treat the port as public otherwise.
+The generated app embeds every observation of the variables the dashboard
+uses, and anyone who holds its link can read them.  The key is in the link,
+so it is wherever the link is: the browser's address bar and history, the
+file {cmd:dash serve}, {cmd:python app.py} or {cmd:bokeh serve} names, the
+output and any log where one of them printed it because no file could be
+written, and anything you paste it into.  Treat the link as a password while
+the server runs; a new launch makes a new key, and the old link stops
+working.  The key travels in plain HTTP: on loopback that stays on this
+machine, but with {cmd:--address} beyond loopback anyone who can watch the
+network can read it, so reach such a server through an SSH tunnel or a
+reverse proxy that adds TLS.  The browser is handed the link without it
+appearing on any command line: on macOS through {cmd:osascript}'s standard
+input, elsewhere (or when {cmd:BROWSER} is set) through a page only you can
+read that forwards to it.  Linux and Windows have not been tested.
 
 {pstd}
 Within the file, data values are base64-encoded so that no data content can

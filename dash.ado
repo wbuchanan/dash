@@ -8234,6 +8234,8 @@ program define _dash_build
         // app serves itself.  Running it directly also honours --port and
         // the websocket origins, and opens no browser unless asked.
         mata: _dash_say("txt", "  To launch: python " + char(34), st_local("saving"), char(34))
+        // WP-29 P0.12a: the served dashboard opens only through its key.
+        display as text `"  Access:    the app makes a new key for each launch unless DASH_SERVE_TOKEN gives one, writes the link that holds it to a file only you can read, and prints that file's path; only that link opens the dashboard"'
         display as text `"  Options:   --port N  --show  --timeout MINUTES  (--help lists them all)"'
         display as text `"  Limits:    --sessions-per-client N  --new-clients-per-minute N  --sessions-per-minute N"'
     }

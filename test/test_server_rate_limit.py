@@ -61,12 +61,15 @@ sys.path.insert(0, _HERE)
 from dash_render import ServerAppBuilder
 
 from conftest import make_spec, make_data_json
+from serve_token_probe import TEST_TOKEN, token_args
 
 
 class _Req:
-    def __init__(self, remote_ip="10.0.0.1", **headers):
+    def __init__(self, remote_ip="10.0.0.1", arguments=None, **headers):
         self.remote_ip = remote_ip
         self.headers = headers
+        # WP-29 P0.12a: a session request carries the dashboard's key.
+        self.arguments = token_args() if arguments is None else arguments
 
 
 @pytest.fixture(scope="module")
@@ -89,6 +92,8 @@ def app_module():
         src = fh.read()
     ns: dict = {"__name__": "dash_app_under_test"}
     exec(compile(src.split("if __name__ !=")[0], op, "exec"), ns)
+    # WP-29 P0.12a: the key Gate B checks, as _dash_server_app installs it.
+    ns["_DASH_SERVE_TOKEN"] = TEST_TOKEN
     # The launcher tests read the whole file and run it as a script.
     ns["__dash_source__"] = src
     ns["__dash_app_path__"] = op
@@ -132,6 +137,9 @@ def _launch_as_script(src, monkeypatch, *flags):
 
     monkeypatch.setattr(bss, "Server", _Server)
     monkeypatch.setattr(sys, "argv", ["app.py", *flags])
+    # WP-29 P0.12a: the launcher resolves the shared test key, so it makes
+    # and announces none.
+    monkeypatch.setenv("DASH_SERVE_TOKEN", TEST_TOKEN)
     ns = {"__name__": "__main__"}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -993,7 +1001,9 @@ class TestTheLauncherFlags:
         # that started it.
         for flag in ["--port", "--address", "--allow-websocket-origin",
                      "--trust-forwarded-for", "--show", "--timeout",
-                     "--parent-watch"] + [
+                     "--parent-watch",
+                     # WP-29 P0.12a: dash serve hands the key on stdin.
+                     "--token-stdin"] + [
                          f for f, _dest, _d in _NEW_FLAGS]:
             assert flag in r.stdout, (flag, r.stdout)
 

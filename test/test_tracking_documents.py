@@ -1251,7 +1251,6 @@ class TestGaps2AndRoadmapAgree:
 #: reason.  The closeout (S15) leaves it {}.
 WP29_OPEN = {
     "P0.11": "The saved page embeds every row of each drawn variable, including rows that if and in exclude",
-    "P0.12a": "The served app has no credential, so any local account can open a session and read the data",
 }
 
 #: Every WP-29 P0 entry, permanently, and the CHANGELOG.md lists of the

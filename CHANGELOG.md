@@ -362,7 +362,24 @@ and now matches Stata.
 
 <!-- WP-29 P0.11 -->
 
-<!-- WP-29 P0.12a -->
+- The served app had no credential: while `dash serve`, `python app.py` or
+  `bokeh serve app.py` ran, any program on the machine, under any local
+  account, could open a session and read every row the dashboard draws
+  (measured: `bokeh.client.pull_session`, with no credential and no Origin,
+  received all 74 values of auto's `mpg`). The app now requires a key made
+  new at every launch. Every page, session, /autoload.js and /metadata
+  request without it is refused (403) before any data is read, and the key
+  is compared in constant time. `dash serve` hands the key to the app over a
+  pipe, never on a command line. It writes the link that holds it to a file
+  only you can read, and opens that link at 127.0.0.1, never localhost,
+  which another account can answer on ::1. The app never runs without a key:
+  started by hand with none (`python app.py`, `bokeh serve app.py`), it
+  makes its own and writes its link to a file only you can read, printing
+  only that file's path. No Stata log and no server log holds the key, with
+  one exception: when no file can be written anywhere to hold the link, dash
+  prints the link once, after a warning that the key is now in that output
+  and its log, and keeps serving. /health and BokehJS's static files stay
+  open. (WP-29, P0.12a)
 
 - dash's working copies of your data -- the specification and data files of
   every render, and `dash serve`'s application -- were written into
@@ -584,7 +601,18 @@ and now matches Stata.
 
 - `pi`, `e`, `x**2`, `x%2`, `x//1`, a leading `+` and full-width names are refused with twoway's r(111), r(198) and r(133), and a too-long expression with r(130); registering a function evaluates it once, so a later data or estimate change does not move it, `runiform()` advances the random-number stream, data with at least n() observations are marked changed, and a graph whose points exceed c(macrolen) is refused r(134) (WP-29, P0.6)
 
-<!-- WP-29 P0.12a -->
+- A served dashboard's address now needs its key: http://localhost:5006/,
+  bookmarked or typed, answers 403. Open the link in the file `dash serve`,
+  `python app.py` or `bokeh serve app.py` names (each prints the file's
+  path, never the key), http://127.0.0.1:<port>/?token=<key>; under bokeh
+  serve, start it with --allow-websocket-origin 127.0.0.1:<port> or the page
+  stays blank. To choose the key, set DASH_SERVE_TOKEN (32 to 128 of A-Z a-z
+  0-9 _ -) and open /?token=<that value> (/app?token=<that value> under
+  bokeh serve); the app then writes no link file. `python app.py` stops with
+  exit status 2, and bokeh serve refuses every session, when
+  DASH_SERVE_TOKEN holds anything else. If the link file cannot be written
+  anywhere, the server is no longer stopped: the link is printed once, after
+  a warning line, and the dashboard keeps serving. (WP-29, P0.12a)
 
 ### Removed
 

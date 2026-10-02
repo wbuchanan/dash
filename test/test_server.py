@@ -52,6 +52,8 @@ import pytest
 
 _HERE = os.path.dirname(__file__)
 _DASH_DIR = os.path.dirname(_HERE)
+sys.path.insert(0, os.path.abspath(_HERE))
+from serve_token_probe import TEST_TOKEN, token_args  # noqa: E402  (P0.12a)
 
 def _load_dash_render():
     """Import dash_render module from the parent directory."""
@@ -4303,6 +4305,8 @@ def _load_app_module(dr_module, auto_df, spec_dict):
         app_spec = importlib.util.spec_from_file_location("_rl_app", out_f.name)
         app_mod = importlib.util.module_from_spec(app_spec)
         app_spec.loader.exec_module(app_mod)
+        # WP-29 P0.12a: the key Gate B checks, as _dash_server_app installs.
+        app_mod._DASH_SERVE_TOKEN = TEST_TOKEN
         return app_mod
     finally:
         for _p in (spec_path, data_path, out_f.name):
@@ -4457,6 +4461,8 @@ class TestRateLimiterEnforcement:
                 class request:
                     remote_ip = "10.1.1.1"
                     headers = {}
+                    # WP-29 P0.12a: the session carries the key.
+                    arguments = token_args()
 
             doc._session_context = lambda: _FakeSessionContext
             assert doc.session_context.request.remote_ip == "10.1.1.1"
@@ -4500,6 +4506,8 @@ class TestRateLimiterEnforcement:
             class request:
                 remote_ip = "10.2.2.2"
                 headers = {}
+                # WP-29 P0.12a: the session carries the key.
+                arguments = token_args()
 
         doc._session_context = lambda: _FakeSessionContext
 
@@ -5695,6 +5703,8 @@ def _ql_app_ns(dr, tmp_path, spec, df=None):
     with _w.catch_warnings():
         _w.simplefilter("ignore")
         exec(compile(src.replace(attach, "pass"), "_ql_app_ns.py", "exec"), ns)
+    # WP-29 P0.12a: the key Gate B checks, as _dash_server_app installs it.
+    ns["_DASH_SERVE_TOKEN"] = TEST_TOKEN
     return ns
 
 

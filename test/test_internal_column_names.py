@@ -35,6 +35,8 @@ _ALLOWED_DUNDER_PREFIXES = (
     "__missing__", "__all__", "__tabs__", "__fw_", "__by__",
     "__builtins__", "__name__", "__main__", "__future__",
     "__dashq", "__dashfix", "__DASH_ROW_ID__",
+    # Bokeh's session-JWT member _dash_ws_payload bounds (WP-29 P0.12a).
+    "__bk__zlib_",
 )
 
 

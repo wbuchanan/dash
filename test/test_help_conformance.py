@@ -943,6 +943,8 @@ class TestInternalLinksResolve:
         assert not dupes, f"duplicate {{marker}} names: {sorted(dupes)}"
 
     def test_the_reference_scan_found_something(self):
+        # 73 links to 29 markers (WP-29 P0.12a: the dash serve entry links
+        # its per-launch key to Server Mode).
         # 72 links to 29 markers (WP-29 P0.12b: the "Temporary files and
         # privacy" section, its viewerjumpto line and five links to it;
         # WP-29 P0.13 F4: the Blocking behavior paragraph links to it too;
@@ -961,4 +963,4 @@ class TestInternalLinksResolve:
         # marker at all -- is no link the scan reads: 59, above the "10"
         # this was, and the dead link passed the check above.
         refs = re.findall(r"dash##[a-z_0-9]+", _help_text())
-        assert len(refs) == 72 and len(set(refs)) == 29
+        assert len(refs) == 73 and len(set(refs)) == 29

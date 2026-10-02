@@ -55,6 +55,7 @@ from bokeh.model import Model  # noqa: E402
 from bokeh.models import BooleanFilter, ColumnDataSource  # noqa: E402
 from test_adversarial_matrix import _load_app, _write_inputs  # noqa: E402
 from test_filter_exclude import _node  # noqa: E402
+from serve_token_probe import TEST_TOKEN  # noqa: E402  (WP-29 P0.12a)
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "kpi_pctile_truth.json")
 _SEQ = count()
@@ -1556,7 +1557,8 @@ class TestUnderBokehServe:
     own address and port, no /health, no launcher flags and no session
     limits (dash.sthlp, Server Mode)."""
 
-    def test_the_session_limits_do_not_hold(self, tmp_path, truth):
+    def test_the_session_limits_do_not_hold(self, tmp_path, truth,
+                                            monkeypatch):
         """bokeh serve runs the script afresh, in a new module, for every
         session (bokeh.application.handlers.code.CodeHandler), so the
         module-level limiter starts empty each time.  With one session a
@@ -1584,6 +1586,9 @@ class TestUnderBokehServe:
             launcher.append(refused(doc))
         assert launcher == [False, True, True, True]
 
+        # Flipped (WP-29 P0.12a): bokeh serve's session gate reads
+        # DASH_SERVE_TOKEN; _Req carries the same key.
+        monkeypatch.setenv("DASH_SERVE_TOKEN", TEST_TOKEN)
         handler = CodeHandler(source=src,
                               filename=str(tmp_path / "app_bs.py"))
         served = []
@@ -1650,8 +1655,9 @@ class TestTheLauncherOpensABrowserOnlyWhenAsked:
                 seen.setdefault("callbacks", []).append(
                     getattr(fn, "__name__", ""))
 
-            def call_later(self, delay, fn):
-                seen["later"] = (delay, getattr(fn, "__name__", ""))
+            def call_later(self, delay, fn, *a):
+                seen.setdefault("later", []).append(
+                    (delay, getattr(fn, "__name__", "")) + a)
 
             def start(self):
                 seen["loop_started"] = True
@@ -1674,6 +1680,15 @@ class TestTheLauncherOpensABrowserOnlyWhenAsked:
                 seen["stopped"] = True
 
         monkeypatch.setattr(bss, "Server", _Server)
+        # WP-29 P0.12a: the browser is handed the 127.0.0.1 link through a
+        # 0600 page (BROWSER set: the file route on every platform), never
+        # _server.show; the key is the test's, so no link file is made.
+        import webbrowser
+        monkeypatch.setenv("BROWSER", "x")
+        monkeypatch.setenv("DASH_SERVE_TOKEN", TEST_TOKEN)
+        monkeypatch.setattr(webbrowser, "open",
+                            lambda u, *a, **k: seen.setdefault(
+                                "opened", []).append(u) or True)
         src = _app_source(tmp_path, _pair_spec(), _auto(truth))
         runs = {}
         for argv in (["app.py"], ["app.py", "--show", "--timeout", "1"]):
@@ -1686,9 +1701,16 @@ class TestTheLauncherOpensABrowserOnlyWhenAsked:
         plain, asked = runs[1], runs[4]
         assert plain["started"] and plain["stopped"]
         assert "show" not in plain.get("callbacks", [])
-        assert "later" not in plain
-        assert asked.get("callbacks") == ["show"]
-        assert asked["later"] == (60, "stop")
+        assert "later" not in plain and "opened" not in plain
+        # Flipped (WP-29 P0.12a): no show callback; one browser open of a
+        # file:// page; (60, "stop") among the recorded call_laters; Gate A
+        # on the Server.
+        assert "show" not in asked.get("callbacks", [])
+        assert len(asked["opened"]) == 1 and \
+            asked["opened"][0].startswith("file://")
+        assert (60, "stop") in asked["later"]
+        assert type(asked["kw"]["auth_provider"]).__name__ == \
+            "_DashTokenAuth"
 
 
 @pytest.mark.serve
@@ -1701,9 +1723,12 @@ class TestTheLauncherServes:
         app = _build_app(str(tmp_path))
         with _Launched(app, ["--sessions-per-client", "1"]) as srv:
             # _Launched spent the one session when it waited for the app.
+            # Flipped (WP-29 P0.12a): the page and the pull carry the key,
+            # so the refusal is still the limiter's.
             status, page = srv.get("/")
             assert status == 200
-            session = pull_session(url=srv.url("/"))
+            session = pull_session(url=srv.url("/", token=False),
+                                   arguments={"token": srv.token})
             try:
                 texts = [d.text for d in session.document.select(
                     {"type": Div})]
@@ -1721,13 +1746,18 @@ class TestTheLauncherServes:
         from test_server_serves import _Launched, _build_app
         app = _build_app(str(tmp_path))
         with _Launched(app) as srv:
-            session = pull_session(url=srv.url("/"))
+            session = pull_session(url=srv.url("/", token=False),
+                                   arguments={"token": srv.token})
             try:
                 roots = list(session.document.roots)
                 texts = " ".join(d.text for d in session.document.select(
                     {"type": Div}))
             finally:
                 session.close()
+            # Flipped (WP-29 P0.12a): no Origin plus the key is admitted;
+            # no Origin without the key is refused (403).
+            with pytest.raises(OSError):
+                pull_session(url=srv.url("/", token=False)).close()
         assert roots and "429" not in texts
 
     def test_the_page_has_a_mobile_viewport(self, tmp_path):

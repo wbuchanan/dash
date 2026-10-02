@@ -275,8 +275,11 @@ COVERAGE = {
         "_dash_prepare_spec": ("test_json_escaping.cscript:JSE-15",
                                "test_program_coverage.cscript:PC-10",
                                "test_program_coverage.cscript:PC-13"),
+        # e2e: TOK-01, dash build, server names the per-launch key and
+        # writes an app that requires it (WP-29 P0.12a).
         "_dash_build": ("test_render_locate.cscript:LOC-08",
-                        "test_e2e_single.cscript:P1C-18c"),
+                        "test_e2e_single.cscript:P1C-18c",
+                        "test_serve_launch.cscript:TOK-01"),
         "_dash_serve_spec": ("test_serve_launch.cscript:SRV-01",
                              "test_export.cscript:EXP-04",
                              "test_adversarial.cscript:P20-14"),
@@ -288,7 +291,10 @@ COVERAGE = {
         "_dash_serve": ("test_help_claims_4.cscript:HC4-19",
                         "test_serve_browser.cscript:SB-02",
                         "test_serve_launch.cscript:SRV-20",
-                        "test_serve_launch.cscript:SPU-01"),
+                        "test_serve_launch.cscript:SPU-01",
+                        # e2e: TOK-02, a real dash serve refuses without its
+                        # key and serves with it (WP-29 P0.12a).
+                        "test_serve_launch.cscript:TOK-02"),
     },
     "dash_setup.ado": {
         # e2e: every branch this machine can reach, installing nothing.

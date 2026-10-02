@@ -77,6 +77,7 @@ sys.path.insert(0, _ROOT)
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from serve_token_probe import FakeStdin  # noqa: E402  (WP-29 P0.12a)
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
@@ -762,25 +763,6 @@ class TestTheSavedPageIsSelfContained:
         assert "Bokeh" in page and len(page) > 200_000
 
 
-class _RecStdin:
-    """A fake child's stdin (a copy of test_private_files._RecStdin): since
-    WP-29 P0.12b (R-9) the launcher hands the app it verified to the child
-    as one frame on its stdin; this records the bytes."""
-
-    def __init__(self):
-        self.writes = []
-
-    def write(self, b):
-        self.writes.append(bytes(b))
-        return len(b)
-
-    def flush(self):
-        pass
-
-    def close(self):
-        pass
-
-
 class _FakeProc:
     """Stands in for subprocess.Popen (GAPS2 F1): the real launcher now
     pipes the child's stdout/stderr and reads its exit status
@@ -793,7 +775,7 @@ class _FakeProc:
         type(self).cmd = list(cmd)
         type(self).kw = kw
         self.returncode = 0
-        self.stdin = _RecStdin()
+        self.stdin = FakeStdin()
         self.stdout = io.StringIO()
         self.stderr = io.StringIO()
 

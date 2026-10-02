@@ -24,6 +24,7 @@ import http.server
 import io
 import json
 import os
+import re
 import signal
 import socket
 import subprocess
@@ -42,6 +43,7 @@ sys.path.insert(0, _ROOT)
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from serve_token_probe import FakeStdin  # noqa: E402  (WP-29 P0.12a)
 from conftest import make_data_json  # noqa: E402
 from test_serve_launcher import _DF, _SPEC, _free_port  # noqa: E402
 
@@ -52,9 +54,29 @@ _RENDER = os.path.join(_ROOT, "dash_render.py")
 # helpers
 # ---------------------------------------------------------------------------
 
-def _url(port, path):
-    """Every real-server URL, in one place (S13 adds its token here)."""
-    return "http://127.0.0.1:%d%s" % (port, path)
+def _url(port, path, token=None):
+    """Every real-server URL, in one place; with *token*, the dashboard's
+    key appended (WP-29 P0.12a)."""
+    u = "http://127.0.0.1:%d%s" % (port, path)
+    if token:
+        u += ("&" if "?" in path else "?") + "token=" + token
+    return u
+
+
+def _token_in(rundir, seconds=10):
+    """The key in the run folder's link.html (WP-29 P0.12a), waited for."""
+    p = os.path.join(rundir, "link.html")
+    t0 = time.monotonic()
+    while time.monotonic() - t0 < seconds:
+        try:
+            with open(p, encoding="utf-8") as fh:
+                m = re.search(r"\?token=([A-Za-z0-9_-]{32,128})", fh.read())
+            if m:
+                return m.group(1)
+        except OSError:
+            pass
+        time.sleep(0.1)
+    raise AssertionError("no link.html in " + rundir)
 
 
 def _port_free(port):
@@ -149,9 +171,12 @@ def _launcher(run, port, timeout_min=1):
     code = ("import sys, runpy; sys.argv = %r; "
             "runpy.run_path(%r, init_globals={'_dash_launch_report': {}}, "
             "run_name='__main__')" % (argv, _RENDER))
+    # WP-29 P0.12a: a launcher killed hard leaves its link folder behind
+    # (a recorded residual), so its temp folder is the test's own.
+    env = dict(os.environ, TMPDIR=os.path.dirname(run["app"]))
     return subprocess.Popen([sys.executable, "-c", code],
                             stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL)
+                            stderr=subprocess.DEVNULL, env=env)
 
 
 class _FakeLoop:
@@ -163,22 +188,6 @@ class _FakeLoop:
 
     def stop(self):
         pass
-
-
-class _RecStdin:
-    def __init__(self):
-        self.writes = []
-        self.closed = False
-
-    def write(self, b):
-        self.writes.append(bytes(b))
-        return len(b)
-
-    def flush(self):
-        pass
-
-    def close(self):
-        self.closed = True
 
 
 # ===========================================================================
@@ -252,7 +261,9 @@ class TestTheGeneratedAppWatchesStdin:
         proc = subprocess.Popen(
             [sys.executable, app, "--port", str(port), "--parent-watch"],
             stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+            # WP-29 P0.12a: a keyless start writes its link folder here.
+            env=dict(os.environ, TMPDIR=str(tmp_path)))
         try:
             assert _wait_health(port, 60, proc), (
                 proc.poll(), proc.stderr.read()[-2000:]
@@ -273,7 +284,9 @@ class TestTheGeneratedAppWatchesStdin:
         proc = subprocess.Popen(
             [sys.executable, app, "--port", str(port)],
             stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL)
+            stderr=subprocess.DEVNULL,
+            # WP-29 P0.12a: a keyless start writes its link folder here.
+            env=dict(os.environ, TMPDIR=str(tmp_path)))
         try:
             assert _wait_health(port, 60, proc)
             proc.stdin.close()
@@ -299,7 +312,7 @@ class TestTheLauncherStartsTheChildWatched:
         class _Fake:
             def __init__(self, cmd, **kw):
                 rec["cmd"], rec["kw"] = list(cmd), kw
-                self.stdin = _RecStdin()
+                self.stdin = FakeStdin()
                 self.stdout = io.StringIO("")
                 self.stderr = io.StringIO("")
                 self.returncode = 0
@@ -406,9 +419,13 @@ class TestNoCopyOfTheDataWhileServing:
             while os.path.exists(run["app"]) and time.monotonic() - t0 < 5:
                 time.sleep(0.1)
             assert not os.path.exists(run["app"])
+            # Flipped (WP-29 P0.12a): the session carries the key from the
+            # run folder's link.html.
+            key = _token_in(os.path.dirname(run["app"]))
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                with pull_session(url=_url(port, "/")) as session:
+                with pull_session(url=_url(port, "/"),
+                                  arguments={"token": key}) as session:
                     roots = list(session.document.roots)
             assert roots, "the new session has no roots"
         finally:
@@ -547,7 +564,7 @@ def _fake_child(banner, seconds=1.5):
     *seconds*."""
     class _Fake:
         def __init__(self, cmd, **kw):
-            self.stdin = _RecStdin()
+            self.stdin = FakeStdin()
             self.stdout = io.StringIO(
                 "Bokeh Server running at http://localhost:1/\n"
                 if banner else "starting\n")
@@ -1004,7 +1021,7 @@ class TestTheStopHint:
                                                       monkeypatch, capsys):
         port = self._ready_line(tmp_path, monkeypatch, _stub_sfi())
         out = capsys.readouterr().out
-        assert ("dash: the server answers at http://localhost:%d/" % port) \
+        assert ("dash: the server answers at http://127.0.0.1:%d/" % port) \
             in out
         assert "press Break (Ctrl+C in console Stata) to stop." in out
         assert "press Ctrl+C to stop." not in out

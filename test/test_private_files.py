@@ -596,14 +596,47 @@ class TestThePrivateClearName:
 class TestTheServedAppWritesNoFile:
 
     def test_the_generated_app_has_no_file_writing_call(self, tmp_path):
-        """Guard (R-3): the served app writes no file, so it needs none of
-        the private-file helpers.  S13 flips this in place (index
-        "Served app writes")."""
+        """Guard (R-3, flipped in place by WP-29 P0.12a, index override
+        "Served app writes"): the served app writes only through
+        ``_dash_private_page`` -- one ``tempfile.mkdtemp`` folder, one
+        ``os.open`` with ``O_CREAT``, ``O_EXCL`` and ``O_NOFOLLOW`` at
+        ``0o600`` and its ``os.fdopen`` write -- and removes only the
+        folders that makes: ``_dash_private_page``'s own failure path,
+        ``_dash_bokeh_serve_key``'s ``atexit`` removal of ``d``, and
+        ``__main__``'s removal of ``_dash_open_dir`` and ``_DASH_LINK_DIR``.
+        Any other write, in any scope, fails it."""
         import ast
         out = _built_app(tmp_path)
         with open(out, encoding="utf-8") as fh:
             tree = ast.parse(fh.read())
-        bad = []
+        parents = {}
+        for node in ast.walk(tree):
+            for child in ast.iter_child_nodes(node):
+                parents[child] = node
+
+        def scope(node):
+            n = node
+            while n in parents:
+                n = parents[n]
+                if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    return n.name
+                if isinstance(n, ast.If) and "__main__" in ast.dump(n.test) \
+                        and isinstance(n.test, ast.Compare) and \
+                        isinstance(n.test.ops[0], ast.Eq):
+                    return "__main__"
+            return "<module>"
+
+        def first_arg(call):
+            if call.args and isinstance(call.args[0], ast.Name):
+                return call.args[0].id
+            return None
+
+        def flag_names(expr):
+            return {n.attr for n in ast.walk(expr)
+                    if isinstance(n, ast.Attribute)}
+
+        aliases = {"tempfile", "shutil", "_tempfile", "_shutil"}
+        hits = []
         for node in ast.walk(tree):
             if isinstance(node, ast.Call):
                 f = node.func
@@ -617,18 +650,75 @@ class TestTheServedAppWritesNoFile:
                                                           ast.Constant):
                             mode = k.value.value
                     if mode and any(c in str(mode) for c in "wax+"):
-                        bad.append("open(%r)" % mode)
+                        hits.append((scope(node), "open(%r)" % mode, node))
                 if isinstance(f, ast.Attribute):
                     if f.attr in ("write_text", "write_bytes"):
-                        bad.append(f.attr)
+                        hits.append((scope(node), f.attr, node))
                     if isinstance(f.value, ast.Name) and \
                             f.value.id == "os" and f.attr == "open":
-                        bad.append("os.open")
+                        hits.append((scope(node), "os.open", node))
+                    if isinstance(f.value, ast.Name) and \
+                            f.value.id == "os" and f.attr == "fdopen":
+                        mode = node.args[1].value if len(node.args) > 1 \
+                            and isinstance(node.args[1], ast.Constant) \
+                            else None
+                        if mode and any(c in str(mode) for c in "wax+"):
+                            hits.append((scope(node), "os.fdopen", node))
             if isinstance(node, ast.Attribute) and \
                     isinstance(node.value, ast.Name) and \
-                    node.value.id in ("tempfile", "shutil"):
-                bad.append("%s.%s" % (node.value.id, node.attr))
+                    node.value.id in aliases:
+                hits.append((scope(node), "%s.%s" % (node.value.id,
+                                                     node.attr), node))
+
+        allowed, bad, page = [], [], set()
+        for where, what, node in hits:
+            up = parents.get(node)
+            ok = False
+            if where == "_dash_private_page":
+                if what == "tempfile.mkdtemp" and isinstance(up, ast.Call) \
+                        and [k.arg for k in up.keywords] == ["prefix"]:
+                    ok = True
+                    page.add("mkdtemp")
+                elif what == "os.open":
+                    flags = flag_names(node.args[1]) if len(node.args) > 1 \
+                        else set()
+                    mode = node.args[2].value if len(node.args) > 2 and \
+                        isinstance(node.args[2], ast.Constant) else None
+                    if {"O_CREAT", "O_EXCL"} <= flags and \
+                            "O_NOFOLLOW" in ast.dump(node.args[1]) and \
+                            mode == 0o600:
+                        ok = True
+                        page.add("os.open")
+                elif what == "os.fdopen" and first_arg(node) == "fd":
+                    ok = True
+                    page.add("fdopen")
+                elif what == "shutil.rmtree" and isinstance(up, ast.Call) \
+                        and up.func is node and first_arg(up) == "d":
+                    ok = True
+                    page.add("rmtree")
+            elif where == "_dash_bokeh_serve_key" and \
+                    what == "shutil.rmtree" and isinstance(up, ast.Call) and \
+                    isinstance(up.func, ast.Attribute) and \
+                    up.func.attr == "register" and \
+                    len(up.args) >= 2 and up.args[0] is node and \
+                    isinstance(up.args[1], ast.Name) and \
+                    up.args[1].id == "d":
+                ok = True
+            elif where == "__main__" and what == "_shutil.rmtree" and \
+                    isinstance(up, ast.Call):
+                if up.func is node and first_arg(up) in (
+                        "_dash_open_dir", "_DASH_LINK_DIR"):
+                    ok = True
+                elif isinstance(up.func, ast.Attribute) and \
+                        up.func.attr == "call_later" and \
+                        len(up.args) >= 3 and up.args[1] is node and \
+                        isinstance(up.args[2], ast.Name) and \
+                        up.args[2].id == "_dash_open_dir":
+                    ok = True
+            (allowed if ok else bad).append((where, what))
         assert not bad, bad
+        assert page == {"mkdtemp", "os.open", "fdopen", "rmtree"}, (
+            "the scan missed _dash_private_page's writes: %s" % sorted(page))
 
 
 class TestTheSavedPreviewIsPrivate:
@@ -1364,7 +1454,11 @@ class TestTheLaunchFromTheOpenFile:
                                 getattr(dr, "_DASH_BOOT", None), out], \
             Fake.cmd[:3]
         assert Fake.kw.get("stdin") is subprocess.PIPE
-        data = b"".join(Fake.last.stdin.writes)
+        # Adjusted (WP-29 P0.12a): the key line follows the frame on the
+        # same pipe (L-1); the frame is every write before it.
+        writes = Fake.last.stdin.writes
+        assert dr._dash_token_valid(writes[-1].rstrip(b"\n"))
+        data = b"".join(writes[:-1])
         tag, n, sha, body = _parse_frame(data)
         assert tag == "DASHAPP1" and n == len(original)
         assert body == original

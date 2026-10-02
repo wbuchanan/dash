@@ -266,6 +266,9 @@ def app(tmp_path_factory):
     throwaway = Document()
     with patch_curdoc(throwaway):
         exec(compile(src, path, "exec"), ns)
+    # WP-29 P0.12a: a key installed, as dash serve's is, so building a
+    # Server here makes and announces none.
+    ns["_DASH_SERVE_TOKEN"] = "dashTestKey_0123456789abcdefghijklmnopqrstuvwxyz"
     return types.SimpleNamespace(path=path, src=src, ns=ns)
 
 
@@ -687,7 +690,9 @@ class TestThePythonLauncherServes:
         """The transform runs on the websocket handshake's response as well;
         a session must still open and deliver the whole document."""
         from bokeh.client import pull_session
-        session = pull_session(url=launched.url("/"))
+        # Flipped (WP-29 P0.12a): the session carries the dashboard's key.
+        session = pull_session(url=launched.url("/", token=False),
+                               arguments={"token": launched.token})
         try:
             assert list(session.document.roots), "the session is empty"
             assert session.document.title == "CSP Launcher"

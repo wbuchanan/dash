@@ -114,6 +114,29 @@ class TestServeBindsLoopbackByDefault:
         )
 
 
+    def test_the_help_names_the_key_and_its_limits(self):
+        """WP-29 P0.12a: the served dashboard opens only through the link
+        that holds its per-launch key, and the help says so -- who can open
+        it, where the key lives, and what plain HTTP exposes."""
+        with open(os.path.join(_HERE, "..", "dash.sthlp"),
+                  encoding="utf-8") as fh:
+            h = fh.read()
+        i = h.index("{marker server_mode}")
+        j = h.index("{marker examples}", i)
+        sec = re.sub(r"\s+", " ", h[i:j])
+        for needle in ("DASH_SERVE_TOKEN", "?token=", "constant time",
+                       "address bar", "history", "SSH tunnel",
+                       "{cmd:http://127.0.0.1:", "link.html",
+                       "never runs without a key",
+                       "--allow-websocket-origin 127.0.0.1"):
+            assert needle in sec, needle
+        for stale in ("only this machine can reach it",
+                      "There is no password", "single-user tool",
+                      "every session gets a page saying so"):
+            assert stale not in sec, stale
+        assert not re.search(r"localhost[^ ]*\?token=", sec)
+
+
 # ---------------------------------------------------------------------------
 # 2. Colour reaching CSS
 # ---------------------------------------------------------------------------
@@ -990,6 +1013,10 @@ class TestTheGeneratedAppBindsLoopbackAtRuntime:
                 raise AssertionError("the pin started a real server")
 
         mod.Server = _FakeServer
+        # WP-29 P0.12a: a key installed, as dash serve's is, so a call
+        # makes and announces none (test_every_server_gets_the_key_check
+        # clears it to see the key made).
+        mod._DASH_SERVE_TOKEN = "dashTestKey_0123456789abcdefghijklmnopqrstuvwxyz"
         return mod, seen
 
     def test_no_address_binds_loopback(self, tmp_path):
@@ -1011,6 +1038,22 @@ class TestTheGeneratedAppBindsLoopbackAtRuntime:
         assert seen[-1].get("address") == "0.0.0.0", (
             "--address no longer overrides the loopback default"
         )
+
+
+    def test_every_server_gets_the_key_check(self, tmp_path, monkeypatch):
+        """WP-29 P0.12a: every Server the app builds carries Gate A, the
+        per-launch key's provider.  Each call makes and announces a key, so
+        its link folder goes under tmp_path."""
+        import tempfile
+        monkeypatch.delenv("DASH_SERVE_TOKEN", raising=False)
+        monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+        mod, seen = self._app_with_fake_server(tmp_path)
+        mod.Server.stop = lambda self: None
+        for address in (None, "", "0.0.0.0"):
+            mod._DASH_SERVE_TOKEN = None
+            mod._dash_server_app(address=address)
+            assert seen[-1]["auth_provider"].__class__.__name__ == \
+                "_DashTokenAuth", address
 
 
 # ---------------------------------------------------------------------------

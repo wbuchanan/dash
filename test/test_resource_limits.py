@@ -1217,7 +1217,13 @@ class TestTheServedAppDefinesEveryNameItReads:
         assert not missing, missing
         for name in ("_DASH_LIMITS", "_dash_limits", "_dash_limit_hint",
                      "_dash_by_groups", "_dash_dropdown_values",
-                     "_dash_filter_truncation_note", "_dash_watch_parent"):
+                     "_dash_filter_truncation_note", "_dash_watch_parent",
+                     # WP-29 P0.12a: the key's gates, opener and self-made
+                     # key, and the globals __main__ and Gate B read.
+                     "_dash_token_auth", "_dash_session_token_ok",
+                     "_dash_open_tokenized", "_dash_announce_key",
+                     "_dash_bokeh_serve_key", "_DASH_TOKEN_RE",
+                     "_DASH_SERVE_TOKEN", "_DASH_LINK_DIR"):
             assert name in defined, name
 
 
