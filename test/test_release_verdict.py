@@ -354,3 +354,17 @@ class TestTheVenvSessions:
         assert 'arch -arm64 "$STATA" -b do' in sh
         assert '"$dir/work/venvmake.log" "$dir/work/venvuse.log"' in sh
 
+    def test_the_runner_reads_the_log_stata_names_for_each_phase(self):
+        # Stata's batch mode names its log after the command line's text
+        # past its last /, here " plus venvmake.log" (the PLUS argument ends
+        # in /), so the verdict found no venvmake.log or venvuse.log and the
+        # gate failed with both phases done (make gate, 02oct2026).  The
+        # runner moves each phase's log to the name the verdict reads.
+        with open(os.path.join(ROOT, "scripts", "run_release_gate.sh"),
+                  encoding="utf-8") as fh:
+            sh = fh.read()
+        loop = sh[sh.index("for phase in venvmake venvuse"):]
+        loop = loop[:loop.index("\ndone")]
+        assert 'mv -f "$f" "$dir/work/$phase.log"' in loop
+        assert '"$dir/work/"*" $phase.log"' in loop
+

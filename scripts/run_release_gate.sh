@@ -41,6 +41,11 @@ log="$(ls -t "$dir"/*.log 2>/dev/null | head -1)"
 for phase in venvmake venvuse; do
     (cd "$dir/work" && PIP_NO_INDEX=1 STATATMP="$dir/tmp/" arch -arm64 "$STATA" -b do \
         "$REPO/scripts/release_gate_venv.do" "$dir/work" "$dir/work/plus/" plus "$phase" >/dev/null 2>&1)
+    # Batch mode names the log after the command line's text past its last
+    # /, here " plus <phase>.log": moved to the name the verdict reads.
+    for f in "$dir/work/"*" $phase.log"; do
+        [ -f "$f" ] && mv -f "$f" "$dir/work/$phase.log"
+    done
 done
 "$PYTHON" "$REPO/scripts/release_verdict.py" "${log:-$dir/release_gate.log}" \
     "$REPO" "$newest" "$dir/work/venvmake.log" "$dir/work/venvuse.log"
