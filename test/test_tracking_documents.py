@@ -41,6 +41,8 @@ file holds, mechanically:
    CHANGELOG list WP29_LISTS names, until their section lands; then the
    key is gone, no marker is left, each of those lists holds a line ending
    "(WP-29, <id>)", and a closed entry's Resolution holds "(WP-29, <id>)".
+   WP-29's closeout left WP29_OPEN empty; test_no_wp29_entry_remains_open
+   keeps every P0 entry closed with no marker left.
 
 Run against the documents of 4ede074, before WP-23 changed them, 11 of
 these 24 tests failed, each where the documents were wrong: 26 closed
@@ -1242,15 +1244,11 @@ class TestGaps2AndRoadmapAgree:
 # ===========================================================================
 
 #: WP-29 (.ultraplan/wp29/index.md, decision A4): the BUGS.md entries the
-#: tracking foundation (S01) opened, one per P0 entry, by id, with their
-#: exact titles.  Each stays open, graded S1 or S2, until the section that
-#: fixes it lands; that section closes the entry in place and deletes its key
-#: here in the same commit.  test_no_open_entry_is_s1_or_s2 skips exactly
-#: these titles, and TestWp29Tracking fails on a key whose entry is missing,
-#: closed or not in the WP-29 open form, so the allowance cannot outlive its
-#: reason.  The closeout (S15) leaves it {}.
-WP29_OPEN = {
-}
+#: tracking foundation (S01) opened, one per P0 entry, while they were open.
+#: Each fix section closed its entry in place and deleted its key here; the
+#: closeout (S15.1) left the allowance empty, and
+#: TestWp29Tracking::test_no_wp29_entry_remains_open keeps it so.
+WP29_OPEN = {}
 
 #: Every WP-29 P0 entry, permanently, and the CHANGELOG.md lists of the
 #: current release its line belongs in (index.md "P0 coverage").  S01 put
@@ -1506,3 +1504,22 @@ class TestWp29Tracking:
             "P0.11: its marker sits under '### Security'"]
         assert _wp29_list_problems({"P0.10": ("Fixed in WP-29",)}, log) == [
             "CHANGELOG.md has no single '### Fixed in WP-29' list"]
+
+    def test_no_wp29_entry_remains_open(self, bugs):
+        # WP-29's closeout (S15.1): every P0 entry is closed, the allowance
+        # is empty and no marker is left, so the release guard exempts
+        # nothing and each id's (WP-29, <id>) sits in a closed entry.
+        # Reopening an entry, putting a key back or re-adding a marker
+        # fails here.
+        entries, _p = bugs
+        assert WP29_OPEN == {}, (
+            "WP29_OPEN is {} after WP-29's closeout; it holds %s"
+            % sorted(WP29_OPEN))
+        markers = _wp29_markers(_read("CHANGELOG.md"))
+        assert not markers, (
+            "markers left in CHANGELOG.md: %s" % markers)
+        bad = _wp29_closure_problems(set(), set(markers), entries)
+        bad += ["%r is open in the WP-29 form" % e["title"]
+                for e in entries if not e["closed"]
+                and _WP29_OPEN_FORM.match(e["fields"].get("Resolution", ""))]
+        assert not bad, "\n".join(bad)

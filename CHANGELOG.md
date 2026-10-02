@@ -248,19 +248,12 @@ and now matches Stata.
   bound missing at 5 was 1 2 6 7, now 2 5 6 1 7. The WP-09 line under
   "Geometry, dates and labels" ("They now draw along x") describes the
   order this replaces. (WP-29, P0.1)
-
 - A by() graph's panels share one scale per axis, as twoway draws them: `dash scatter mpg weight, by(foreign)` drew Domestic on 12-34 and Foreign on 14-41 and now draws both on 12-41, with second axes shared too; `by(foreign, yrescale) ylabel(#5)` drew 10(10)40 on both panels and now draws 10(5)35 and 15(5)40; `by(, yrescale) yscale(range(0))` drew both panels from 0 and now leaves range() unapplied, with a note; by() panels now pan and zoom together (WP-29, P0.2)
-
 - Unlabelled variables are named as twoway names them, in both modes: `dash scatter y x` on unlabelled data drew no axis titles, the key `scatter` and tooltip rows `''`, and now draws the titles `x` and `y`, the key `y` and the rows `x` and `y`; `(scatter y1 x) (scatter y2 x)` was keyed `scatter scatter` and is now keyed `y1 y2`; `(histogram mpg) (kdensity mpg)` was keyed by the variable twice and is now keyed `Density` and `kdensity mpg`; the served app's filter widgets were untitled and are now titled by the variable's label or name; a data file whose variableLabels is malformed aborted the build and now draws names.  Until P1.16, a multi-layer unlabelled graph draws its first layer's name as y title where twoway draws none. (WP-29, P0.3)
-
 - A title option given only sub-options keeps twoway's default title, in both modes: `ytitle(, size(large))`, `xtitle(, color(red))`, `ztitle(, size(large))` and any title option given only sub-options drew no title (axis_label None, an empty key title), and now draw the default title styled by them, as in twoway; `ytitle(,)` drew a literal comma and `title(A,)` drew `A,`, and a comma followed by nothing or by another comma now opens an empty sub-option list (`ytitle(A,,)` is `ytitle(A)`); the second axis of a yaxis(2)/xaxis(2) graph had no title and Bokeh's 13px #444444 style, and is now titled by its layers' label (`Density` or `kdensity` varname for those layers) in the scheme's axis style, and untitled under by(). (WP-29, P0.4)
-
 - `axis(2)` on an axis option is drawn on the second axis, in the saved page and the served app, before and after a filter move: `ylabel(20 30, axis(2))` was drawn as a [20, 30] ticker on the left axis with a note and now labels the right axis; `yscale(log axis(2))` logged the left axis and now logs the right one; `yline(5000, axis(2))` was drawn at 5000 on the left axis's scale and is now drawn on the right axis's; `xtick(160, axis(2))` ticked the bottom axis and now ticks the top one; `ylabel(10 20) ylabel(5000 10000, axis(2))` lost the first axis's labels and now keeps both lists; `ylabels()`, `yticks()` and `ylines()` were dropped with a note and are now read as `ylabel()`, `ytick()` and `yline()` (WP-29, P0.5)
-
 - `dash function y = 2^3^x, range(0 2) n(3)` drew 2 8 512, now 1 8 64; `2^-1^2` .5, now .25; `0.1*3/0.3` 1.0000000000000002, now 1; `1e16+1-2` 9999999999999998, now 1e16; `normalden(x)`, `ln(x)`, `_pi*x`, `_b[]` and scalars drew nothing, now twoway's points (WP-29, P0.6)
-
 - `dash lpoly mpg weight, kernel(biweight) degree(2)` used a default bandwidth of 63.80 and drew 34 points; it now uses Stata's rule of thumb, 302.45, and draws Stata's 50, for every kernel, degree, weight, by() panel and qualifier; `lpoly mpg weight in 1/7` used 185, now Stata's 77.35; `lpoly mpg foreign` drew a curve between the group means, now a line at 0 as twoway draws it; after a served move to Foreign the bandwidth was 26.88, now Stata's 287.78; and a local window whose powers of x are nearly collinear keeps the columns Stata's invsym keeps (foreign==1 biweight degree(2) was up to 8.857 mpg off Stata's curve) (WP-29, P0.7)
-
 - `dash histogram date, width(30) start(14975)` on sysuse sp500 drew 15 bars
   with every row in the last, after the note that width(30) would need more
   than 1000 bins, and densities per millisecond (3.47e-11); it now draws
@@ -282,9 +275,7 @@ and now matches Stata.
 - `dash (scatter close obs) (lfit close date)` drew the fit at 978393600000
   and beyond (epoch milliseconds) beside obs 1..248; it is now drawn at the
   day numbers 14977-15340, as twoway draws it. (WP-29, P0.8)
-
 - `dash lpolyci mpg weight, degree(1) bwidth(500) pwidth(800)` drew a bootstrap percentile band 0.85 to 1.55 times Stata's width, its edges up to 44.7 mpg off at degree(1); it now draws Stata's analytic band; `pwidth()` and `var()` on lpolyci were named as ignored and are now honoured; `lpolyci ..., level(5)` was drawn and is now refused r(198) as twoway refuses it; two observations at `bwidth(1000)` drew nothing and now draw the smooth, with no band, as twoway does; and the band is about 70 times faster at N=20000 (WP-29, P0.9)
-
 - `dash (scatter mpg weight) (scatter mpg weight if price>6000), by(foreign)`
   linked with a second graph, with the price range moved to 5,000-15,906:
   the saved page drew 23 observations in each panel's second plot, where
@@ -293,7 +284,6 @@ and now matches Stata.
   own `if`/`in`, now keeps to that panel's or graph's observations after
   every move, a second move and a reset; the saved page now draws 14 and 9.
   (WP-29, P0.15)
-
 - `colorvar()`'s key is drawn from the observations the plot draws, as
   twoway draws it.  `dash (scatter mpg weight if foreign==1,
   colorvar(price)) (scatter mpg weight if foreign==0)` drew its colour bar
@@ -309,9 +299,7 @@ and now matches Stata.
   derived colour column is now named under the reserved `__dash_cvar`
   prefix, one per layer, so a variable called `_cvar_price_bin` is never
   overwritten. (WP-29, P0.16)
-
 - In the served app, after a filter move a bar's and an rbar's width follows the kept rows: dash bar mpg weight served with filter(foreign) drew the Foreign cars' bars 56 wide (the build's spacing), now 168, as the saved page draws them. A computed, bar or range layer left with no observations -- dash (scatter mpg weight) (lowess mpg weight if price >= 10000), or a served layer with its own if that selects nothing -- was drawn in Bokeh's #1f77b4 at width 1, now in its own scheme colour and width with its legend key (#90353b, 1.5 for the second plot under s2color), as twoway keys it (WP-29, P0.18)
-
 - `dash kpi sd(date)` on sysuse sp500 read 9.10e+09; it now reads 105.3335,
   summarize's sd in days. Every KPI statistic of a date but count and
   dcount is taken of the variable's Stata values, saved and served, at
@@ -361,7 +349,6 @@ and now matches Stata.
   CSV injection. (WP-21)
 
 - A saved page now holds only the observations its graphs, cards and filters select, and numbers its own rows; a served `link()` group sends only its rows. `filter(price, type(range))` under a graph `if price > 4500` spanned 3799-11385 and now 4749-11385, in both modes; a dropdown within its limit on its reach stays a dropdown; a filter that reaches no observation is greyed out (range, slider) or lists only All; a card following the brush counts the rows its graph shows (`update(brush)` on a layer with `in 3/8`, after a move to Foreign, 23.4 -> 25.66667). The served app numbers its rows as the saved page does, so no row number a browser receives shows where an excluded observation was (a layer `if price > 4500` sent `index` 1, 3, 4, 6, 7, 9 and now sends 0-5). With csv the page still holds every row. (WP-29, P0.11)
-
 - The served app had no credential: while `dash serve`, `python app.py` or
   `bokeh serve app.py` ran, any program on the machine, under any local
   account, could open a session and read every row the dashboard draws
@@ -380,7 +367,6 @@ and now matches Stata.
   prints the link once, after a warning that the key is now in that output
   and its log, and keeps serving. /health and BokehJS's static files stay
   open. (WP-29, P0.12a)
-
 - dash's working copies of your data -- the specification and data files of
   every render, and `dash serve`'s application -- were written into
   c(tmpdir) with your umask (0644; 0664 under umask 002, which let another
@@ -406,7 +392,6 @@ and now matches Stata.
   the umask, replace creates a new file, and a symbolic link or another
   account's file at that name is refused (r(7102)) where it used to be
   written through. (WP-29, P0.12b)
-
 - A server started by `dash serve` kept running after Stata was killed or
   crashed -- answering /health, holding its port and the data -- and left
   three copies of the data in c(tmpdir) (the specification, the data and a
@@ -415,7 +400,6 @@ and now matches Stata.
   specification and data once the application is written and the application
   once the server answers (measured on macOS; Linux and Windows have not
   been measured). (WP-29, P0.13)
-
 - The one-line form without saving() left its preview page (1.3 MB holding
   every row of the graph's variables, 0644) in c(tmpdir) for good, one per
   session, and a second preview overwrote the first. Previews now go to
@@ -596,11 +580,8 @@ and now matches Stata.
   `sort(nosuch)` on line: `variable nosuch not found`, `option sort()
   incorrectly specified`), where dash accepted it with a note.
   (WP-29, P0.1)
-
 - `axis(#)` is refused as twoway refuses it, r(198), with twoway's message and in its order, where dash drew on the first axis with rc 0: an `axis()` naming an axis no layer is drawn on (`ylabels(20 30, axis(2)) not allowed, yaxis2 does not exist`), an `axis()` given twice, `AXIS()` in capitals, a second comma (`invalid 'axis'`), and the first axis's options on a graph whose every layer is on `yaxis(2)` (`ylabels(5000 10000) not allowed, yaxis1 does not exist`); the new options `ytick2()`, `xtick2()`, `yline2()` and `xline2()` are dash's spellings of the `axis(2)` forms (WP-29, P0.5)
-
 - `pi`, `e`, `x**2`, `x%2`, `x//1`, a leading `+` and full-width names are refused with twoway's r(111), r(198) and r(133), and a too-long expression with r(130); registering a function evaluates it once, so a later data or estimate change does not move it, `runiform()` advances the random-number stream, data with at least n() observations are marked changed, and a graph whose points exceed c(macrolen) is refused r(134) (WP-29, P0.6)
-
 - A served dashboard's address now needs its key: http://localhost:5006/,
   bookmarked or typed, answers 403. Open the link in the file `dash serve`,
   `python app.py` or `bokeh serve app.py` names (each prints the file's
@@ -678,13 +659,11 @@ requirement changes sit in their own lists.
 
 - `dash scatter mpg weight, hover(rep78)` now shows rep78, by its value label, in the tooltip of the saved page and the served app, on the one-line route and through dash build and dash serve, before and after a filter move; a variable named only in hover() was never exported, and the tooltip left it out with rc 0 and no note (WP-29, P0.10)
 - hover()'s variables now count toward the data limits: on the saved page when a layer of the graph can show them (or csv is given), in a served app always. `dash scatter mpg weight, hover(rep78 headroom trunk)` at `dash_max_cells 200` counted 148 values and built; it is now refused with 370 values (74 observations x 5 variables), r(134). `dash build` and `dash serve` refuse a hover() variable dropped after name() with r(111) where they left it out with rc 0. The CSV download carries the hover() columns (WP-29, P0.10)
-
 - Break stops `dash serve` in every front end: the launcher polls Stata's
   interface while it waits, stops the server and ends the command with r(1),
   as any command interrupted by Break does; Ctrl+C in console Stata used to
   return 0, and GUI Stata's Break was never seen. Messages and the help name
   Break. (WP-29, P0.13)
-
 - A saved page now marks a fitted or smoothed line, a histogram's bins and a density's grid that a filter move left computed from observations the filter removed: the layer is dimmed, its legend key gains (unfiltered), (bins unfiltered) or (grid unfiltered), the graph shows a caption and the filter area a status line. Before, dash (scatter mpg weight) (lfit mpg weight) with filter(foreign) kept the all-rows line (29.105 at weight 1800, where the Foreign cars' fit is 29.917) under the filtered points with no sign that it ignored the filter. The served app refits as before (WP-29, P0.17)
 
 ### Fixed in WP-28
