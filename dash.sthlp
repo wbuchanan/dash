@@ -1467,9 +1467,9 @@ it.  The saved page and the served app differ as follows:
 {col 5}Filter widgets{col 38}JavaScript{col 59}Python callbacks
 {col 5}KPI recomputation on filter{col 38}Yes{col 59}Yes
 {col 5}Brush/lasso KPI update{col 38}Yes{col 59}Yes
-{col 5}Histogram recompute on filter{col 38}bar heights{col 59}heights and bins
-{col 5}Kernel density on filter{col 38}on the same grid{col 59}grid recomputed
-{col 5}Fit-line recompute on filter{col 38}No{col 59}Yes
+{col 5}Histogram recompute on filter{col 38}heights; bins marked{col 59}heights and bins
+{col 5}Kernel density on filter{col 38}same grid, marked{col 59}grid recomputed
+{col 5}Fit-line recompute on filter{col 38}No; marked{col 59}Yes
 {col 5}A slider recomputes{col 38}at every step{col 59}when released
 {col 5}Dates{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as PNG{col 38}Yes{col 59}Yes
@@ -1492,7 +1492,20 @@ bars, and re-estimates a density on its grid, from the rows that pass the
 filter -- for a {cmd:by()} panel, or a graph or plot with its own {cmd:if}
 or {cmd:in}, from its own rows among them -- and keeps the bin edges and the
 grid chosen when the dashboard was built, so neither moves as you filter; it
-does not redraw a fitted line.  The served app draws every layer again from
+does not refit a fitted or smoothed line ({cmd:lfit}, {cmd:qfit},
+{cmd:lfitci}, {cmd:qfitci}, {cmd:fpfit}, {cmd:fpfitci}, {cmd:lowess},
+{cmd:lpoly}, {cmd:lpolyci}, {cmd:mband}, {cmd:mspline}).  When a move
+removes observations such a line, a histogram's bins or a density's grid was
+computed from, the page marks the layer: it is dimmed, its legend key reads
+"(unfiltered)", "(bins unfiltered)" or "(grid unfiltered)", the graph shows
+"Marked layers were computed before the filter", and a note under the
+filters says the same in text a screen reader reads.  A density drawn over
+{cmd:range()} keeps the grid you gave and is not marked.  The marks go when
+the filters again keep every observation the layer was computed from; a move
+that removes only observations the layer never used (a missing y, x or
+weight, a zero weight, or one outside the plot's own {cmd:if} or {cmd:in})
+marks nothing, and a graph {cmd:exclude()} protects is never marked.  The
+served app draws every layer again from
 the rows that pass the filter -- each layer from its own rows among them --
 bins, grid and fitted line included.  A plot's own {cmd:if} or {cmd:in}
 inside a linked {cmd:by()} panel, or inside a linked graph with its own

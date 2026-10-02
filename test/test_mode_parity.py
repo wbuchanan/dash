@@ -363,6 +363,9 @@ def _glyph_profile(fig):
         entry["on_link_source"] = bool(
             getattr(getattr(r, "data_source", None), "_dash_link_source",
                    False))
+        # WP-29 P0.17: a saved page mutes a frozen layer while it is
+        # stale; the served app refits and never mutes one.
+        entry["muted"] = bool(getattr(r, "muted", False))
         for attr in _STYLE:
             if not hasattr(g, attr):
                 continue
@@ -847,6 +850,15 @@ def _widget_profile(w):
     return e
 
 
+def _is_stale_status(m):
+    """The saved page's hidden note that it does not refit (WP-29 P0.17):
+    the standalone half of the allowance below, never a served model."""
+    if isinstance(m, Div) and "dash_stale_status" in (m.tags or []):
+        _allowed("aggregate layers recompute live")
+        return True
+    return False
+
+
 def _layout_tree(m, figures):
     """The document as nested plain data.
 
@@ -870,7 +882,8 @@ def _layout_tree(m, figures):
         # as much as the position is.
         return ("at", m[1], m[2], m[3], m[4], _layout_tree(m[0], figures))
     if isinstance(m, (list, tuple)):
-        return [_layout_tree(x, figures) for x in m]
+        return [_layout_tree(x, figures) for x in m
+                if not _is_stale_status(x)]
     if m is None:
         return None
     tn = type(m).__name__
@@ -984,7 +997,8 @@ def _bs_markup_page(r, page, figures, embedded):
         nxt = body.find(_BS_SECTION_ROW, at)
         chunk = body[at:nxt if nxt >= 0 else len(body)]
         widgets = [("Widget", _widget_profile(embedded[rid]))
-                  for rid in _ROOT_ID_RE.findall(chunk) if rid in embedded]
+                  for rid in _ROOT_ID_RE.findall(chunk) if rid in embedded
+                  and not _is_stale_status(embedded[rid])]
         parts.append((at, ("Row", widgets)))
 
     at = body.find(_BS_TABS_CELL_START)
@@ -3610,3 +3624,65 @@ class TestByPanelsShareInBothModes:
                   if isinstance(m, _Fig)]
         for attr in ("x_range", "y_range"):
             assert _partition(saved, attr) == _partition(served, attr), attr
+
+
+class TestTheServedAppHasNoStaleCue:
+    """WP-29 P0.17: the served app refits every layer after a move and
+    carries no cue model and no muted renderer (decision M3)."""
+
+    @pytest.mark.parametrize("t,filt,move,go", [
+        ("lfit", "foreign, type(dropdown)", ("Select", "Foreign"), None),
+        ("histogram", "price, type(range)",
+         ("RangeSlider", (4500.0, 11385.0)), {"by": "foreign"}),
+        ("lfitci", "price, type(slider)", ("Slider", 4500.0), None),
+    ], ids=["lfit dropdown", "histogram by() range", "lfitci slider"])
+    def test_no_model_tagged_dash_stale(self, t, filt, move, go):
+        from test_server_layer_defects import plot_for
+        spec = _spec([_sc(), plot_for(t)], {"filter": filt}, go)
+        doc, _ = _served(spec)
+        kind, want = move
+        w = [x for x in _widgets_of(doc) if type(x).__name__ == kind][0]
+        if isinstance(w, Select):
+            want = [v for v, lab in w.options if lab == want][0]
+        _fire(w, want)
+        tagged = [m for m in doc.models
+                  if any(str(tg).startswith("dash_stale")
+                         for tg in (getattr(m, "tags", None) or []))]
+        assert tagged == []
+        assert not any(getattr(m, "muted", False) for m in doc.models
+                       if type(m).__name__ == "GlyphRenderer")
+
+
+class TestTheGlyphProfile:
+
+    def test_it_records_muted(self):
+        from bokeh.plotting import figure
+        fig = figure()
+        a = fig.line([1, 2], [1, 2])
+        fig.line([1, 2], [2, 1])
+        a.muted = True
+        prof = _glyph_profile(fig)
+        assert [e["muted"] for e in prof] == [True, False]
+
+
+class TestTheStaleStatusSkip:
+    """D12-1: only the saved page's status Div tagged dash_stale_status is
+    skipped, through the existing allowance."""
+
+    def test_only_a_div_tagged_dash_stale_status_is_skipped(self):
+        keep = Div(text="x", tags=["other"])
+        skip = Div(text="", tags=["dash_stale_status"])
+        figs = []
+        assert _layout_tree([keep, skip], figs) == [("Div", ("text", "x"))]
+        assert _is_stale_status(skip) and not _is_stale_status(keep)
+
+    def test_a_saved_page_with_a_fit_and_a_filter_compares_equal_to_its_served_twin(
+            self):
+        from test_server_layer_defects import plot_for
+        spec = _spec([_sc(), plot_for("lfit")],
+                     {"filter": "foreign, type(dropdown)"})
+        r, _ = _standalone(spec)
+        assert any(_is_stale_status(m)
+                   for m in r._last_layout_root.references())
+        pair = _render_pair("lfit with a dropdown", spec)
+        assert pair["std"]["tree"] == pair["srv"]["tree"]

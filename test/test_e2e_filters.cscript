@@ -4,7 +4,8 @@
 *! Tests: P2-73 through P2-75, FL-EX-1, FL-CP-1, FL-QT-1, FL-QT-2 and
 *! HE-01 through HE-04
 *! Tests: P2-73 through P2-75, FL-EX-1, FL-CP-1, FL-QT-1, FL-QT-2,
-*!        FL-X1-1, FL-E2-1 and FL-E2-2, QF-01 and QF-02
+*!        FL-X1-1, FL-E2-1 and FL-E2-2, QF-01 and QF-02,
+*!        SCU-01, SCU-02 and SCU-03
 *!
 *! Usage:  do test/test_e2e_filters.cscript
 *!
@@ -488,6 +489,101 @@ ftc.put("qf_02", int(all(got[m][0][1] == w1 for m in ("saved", "served"))))
 end
 assert "${qf_02}" == "1"
 display "QF-02 PASS: the linked graph's qualified plot draws its own count (${qf_want1}) after the move, saved and served"
+dash clear
+restore
+
+// ================================================================
+// SCU-01 / SCU-02 / SCU-03 (WP-29 P0.17): the saved page marks a fit a
+// filter move left computed from removed observations, and clears it on
+// moving back; the served app refits to Stata's own regress and carries
+// no cue; a page with no filter carries no cue model.
+// ================================================================
+preserve
+sysuse auto, clear
+quietly regress mpg weight if foreign == 1
+local scu_b = _b[weight]
+local scu_c = _b[_cons]
+quietly summarize weight if foreign == 1
+global scu_x0 = r(min)
+global scu_x1 = r(max)
+global scu_y0 = `scu_c' + `scu_b' * r(min)
+global scu_y1 = `scu_c' + `scu_b' * r(max)
+python:
+import filter_truth_check as ftc
+import dash_render as dr
+from sfi import Macro
+df, strings = ftc.frame_from_stata(["mpg", "weight", "foreign"])
+spec = ftc.spec_of([ftc.fit_graph("g1", "mpg", "weight")],
+                   [{"varname": "foreign", "type": "dropdown"}])
+_, r = ftc.saved(df, strings, spec, [(0, 1.0)])
+a = ftc.stale_state(r)
+_, r = ftc.saved(df, strings, spec, [(0, 1.0), (0, None)])
+b = ftc.stale_state(r)
+_, doc = ftc.served(df, strings, spec, [(0, 1.0)])
+[fig] = [m for m in ftc._walk(doc) if type(m).__name__ == "figure"]
+got = ftc.line_ends(fig)
+want = tuple(float(Macro.getGlobal(k))
+             for k in ("scu_x0", "scu_y0", "scu_x1", "scu_y1"))
+print("SCU-01 saved after the move:", a)
+print("SCU-01 saved moved back:", b)
+print("SCU-01 served line ends:", got, "Stata:", want)
+ok = (a["titles"] == [True] and a["muted"] and all(a["muted"])
+      and any(l.endswith(" (unfiltered)") for l in a["labels"])
+      and a["status_visible"]
+      and a["status_text"] == dr._DASH_STALE_STATUS_HTML
+      and b["titles"] == [False] and not any(b["muted"])
+      and not any(l.endswith("(unfiltered)") for l in b["labels"])
+      and not b["status_visible"] and b["status_text"] == ""
+      and all(abs(g - w) <= 1e-9 * max(1.0, abs(w))
+              for g, w in zip(got, want))
+      and ftc.served_stale_models(doc) == 0)
+ftc.put("scu_01", int(ok))
+end
+assert "${scu_01}" == "1"
+display "SCU-01 PASS: the saved lfit is marked after the move to Foreign and cleared on moving back; served ends (${scu_x0}, ${scu_y0}) (${scu_x1}, ${scu_y1}) are regress's, with no cue"
+
+quietly summarize price
+global scu_pmin = r(min)
+quietly regress mpg weight
+local scu_ball = _b[weight]
+quietly regress mpg weight if price >= ${scu_pmin}
+assert e(N) == 74
+assert reldif(_b[weight], `scu_ball') < 1e-12
+python:
+import filter_truth_check as ftc
+from sfi import Macro
+df, strings = ftc.frame_from_stata(["mpg", "weight", "price"])
+spec = ftc.spec_of([ftc.fit_graph("g1", "mpg", "weight")],
+                   [{"varname": "price", "type": "slider"}])
+pmin = float(Macro.getGlobal("scu_pmin"))
+_, r = ftc.saved(df, strings, spec, [(0, pmin)])
+a = ftc.stale_state(r)
+print("SCU-02 saved, slider at", pmin, ":", a)
+ftc.put("scu_02", int(a["titles"] == [False] and a["muted"]
+                      and not any(a["muted"]) and not a["status_visible"]))
+end
+assert "${scu_02}" == "1"
+display "SCU-02 PASS: the slider at its start (${scu_pmin}) keeps all 74 observations and regress's b; the saved page marks nothing"
+restore
+
+preserve
+sysuse auto, clear
+dash clear
+dash (scatter mpg weight) (lfit mpg weight), name(gscu)
+tempfile scu3a scu3b
+dash build, saving("`scu3a'.html") replace
+cert_file_count "`scu3a'.html", needle("dash_stale_cue")
+assert r(count) == 0
+cert_file_count "`scu3a'.html", needle("dash_stale_status")
+assert r(count) == 0
+dash build, saving("`scu3b'.html") replace filter(foreign, type(dropdown))
+cert_file_count "`scu3b'.html", needle("dash_stale_cue")
+assert r(count) == 1
+cert_file_count "`scu3b'.html", needle("dash_stale_status")
+assert r(count) == 1
+capture erase "`scu3a'.html"
+capture erase "`scu3b'.html"
+display "SCU-03 PASS: a page with no filter holds no cue model; with filter(foreign) one caption and one status line"
 dash clear
 restore
 

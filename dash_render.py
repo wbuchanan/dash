@@ -99,6 +99,7 @@ from bokeh.models import (
     HoverTool,
     IndexFilter,
     InlineStyleSheet,
+    Legend as _BkLegend,
     LassoSelectTool,
     NormalHead,
     OpenHead,
@@ -110,6 +111,7 @@ from bokeh.models import (
     Span,
     TabPanel,
     Tabs,
+    Title as _BkTitle,
     WheelZoomTool,
 )
 from bokeh.plotting import figure as bokeh_figure
@@ -1081,6 +1083,65 @@ _DASH_COMPUTED_ONLY_TYPES = frozenset({
     "lfit", "qfit", "lfitci", "qfitci", "fpfit", "fpfitci",
     "mspline", "mband", "lowess", "lpoly", "lpolyci",
 })
+
+# ---- The saved page's stale cue (WP-29 P0.17, decision M3) ----
+# A saved page does not refit a computed layer after a filter move; while
+# the filters that reach it have removed a row of its estimation sample it
+# is marked instead.  Each constant below is part of that cue (M3: a
+# visible cue, no JavaScript estimator).  Saved-page only: the served app
+# refits and reads none of them.
+#: WP-29 P0.17 (M3): a marked layer draws at this share of its own alphas.
+_DASH_STALE_ALPHA = 0.3
+#: WP-29 P0.17 (M3): what a marked layer's legend key gains, by kind.
+_DASH_STALE_SUFFIX = {"fit": " (unfiltered)", "bins": " (bins unfiltered)",
+                      "grid": " (grid unfiltered)"}
+#: WP-29 P0.17 (M3): the caption a marked layer's graph shows.
+_DASH_STALE_CUE_TEXT = "Marked layers were computed before the filter"
+#: WP-29 P0.17 (M3): the filter area's status line, a fixed text (no user
+#: text is ever spliced in); #3d2f00 on #fff4ce is about 11.9:1.
+_DASH_STALE_STATUS_HTML = (
+    '<p role="status" aria-live="polite" aria-atomic="true" '
+    'style="margin:0;padding:2px 6px;background:#fff4ce;color:#3d2f00;'
+    'font-size:12px">Layers marked (unfiltered), (bins unfiltered) or '
+    '(grid unfiltered) were computed before the filter was applied, and a '
+    'saved page does not recompute them; dash serve does.</p>')
+
+
+def _dash_stale_kind(ptype, options):
+    """The stale cue's kind for a layer (WP-29 P0.17): ``"fit"``,
+    ``"bins"`` (histogram), ``"grid"`` (kdensity), or None for a layer a
+    saved page redraws or never computes -- and for a kdensity drawn over
+    ``range()``, whose grid is the user's and twoway's."""
+    t = str(ptype or "").lower()
+    if t not in _DASH_COMPUTED_ONLY_TYPES:
+        return None
+    if t == "histogram":
+        return "bins"
+    if t == "kdensity":
+        with warnings.catch_warnings():
+            # The mapper has already named a range() it cannot read.
+            warnings.simplefilter("ignore")
+            rng = _dash_range_pair(options or {}, "kdensity", "")
+        return None if rng is not None else "grid"
+    return "fit"
+
+
+def _dash_stale_glyph(glyph):
+    """A copy of *glyph* at ``_DASH_STALE_ALPHA`` of each of its alphas
+    (WP-29 P0.17): a number is scaled (0 stays 0), anything else -- a
+    field, a spec, None -- becomes the constant.  Colour, width and dash
+    stay as cloned."""
+    g = glyph.clone()
+    props = g.properties()
+    for a in ("line_alpha", "fill_alpha", "hatch_alpha"):
+        if a not in props:
+            continue
+        v = getattr(g, a)
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            setattr(g, a, v * _DASH_STALE_ALPHA)
+        else:
+            setattr(g, a, _DASH_STALE_ALPHA)
+    return g
 
 #: One bound on every computed layer above except a histogram and a
 #: lowess, which are counted exactly (see _dash_graph_computed_cells):
@@ -9872,6 +9933,42 @@ class GlyphMapper:
         return tuple(c[finite] for c in cols)
 
     @staticmethod
+    def _layer_weight_column(source: ColumnDataSource, options,
+                             layer: str) -> tuple:
+        """``(wtype, wexp, why)``: whether ``_layer_weights`` applies a
+        layer's weight, decided without a warning (WP-29 P0.17, so the
+        saved page's stale cue reads the same sample).  *why* is
+        ``"none"`` (no clause), ``"missing"``, ``"not-numeric"``,
+        ``"refused"``, ``"inert"``, or None when the weight is applied."""
+        wtype, wexp = _dash_weight_spec(options)
+        if wtype is None:
+            return wtype, wexp, "none"
+        if wexp not in source.data:
+            return wtype, wexp, "missing"
+        try:
+            _dash_float_values(source.data[wexp])
+        except (TypeError, ValueError):
+            return wtype, wexp, "not-numeric"
+        if wtype not in _DASH_WEIGHT_ACCEPTS.get(layer, ()):
+            return wtype, wexp, "refused"
+        if layer in _DASH_WEIGHT_INERT:
+            return wtype, wexp, "inert"
+        return wtype, wexp, None
+
+    @staticmethod
+    def _layer_weight_values_state(w, wtype, layer: str) -> "str | None":
+        """``"negative"`` when a weight is negative on a layer that then
+        draws nothing, else ``"nonint"`` for a non-integer fweight, else
+        None -- the order ``_layer_weights`` checks them in (WP-29
+        P0.17)."""
+        w = np.asarray(w, dtype=float)
+        if (w < 0).any() and layer not in _DASH_WEIGHT_NEG_EXCLUDED:
+            return "negative"
+        if wtype == "fw" and np.any(w != np.floor(w)):
+            return "nonint"
+        return None
+
+    @staticmethod
     def _layer_weights(source: ColumnDataSource, view, options, layer: str,
                        *varnames: str, units=None) -> tuple:
         """``_masked`` plus the layer's weight: ``(cols..., w, wtype)``.
@@ -9902,22 +9999,21 @@ class GlyphMapper:
             the negative and non-integer checks see the Stata value, as
             ``marksample`` does (WP-29 P0.8, D05-2).
         """
-        wtype, wexp = _dash_weight_spec(options)
-        if wtype is None:
+        wtype, wexp, why = GlyphMapper._layer_weight_column(
+            source, options, layer)
+        if why == "none":
             return (*GlyphMapper._masked(source, view, *varnames,
                                           units=units), None, None)
         wname = _DASH_WEIGHT_NAMES.get(wtype, wtype)
         clause = f"[{wname}={wexp}]"
-        if wexp not in source.data:
+        if why == "missing":
             _dash_warn_once(
                 ("weight-missing", layer, wexp),
                 f"dash: {layer} {clause}: the data carries no variable "
                 f"{wexp!r}, so the layer is drawn unweighted.")
             return (*GlyphMapper._masked(source, view, *varnames,
                                           units=units), None, None)
-        try:
-            _dash_float_values(source.data[wexp])
-        except (TypeError, ValueError):
+        if why == "not-numeric":
             # dash.ado refuses a string weight as twoway does (r(109)
             # "type mismatch"); a hand-written spec could still reach here,
             # and the float conversion in _masked took the render down.
@@ -9927,7 +10023,7 @@ class GlyphMapper:
                 f"type mismatch, r(109)); the layer is drawn unweighted.")
             return (*GlyphMapper._masked(source, view, *varnames,
                                           units=units), None, None)
-        if wtype not in _DASH_WEIGHT_ACCEPTS.get(layer, ()):
+        if why == "refused":
             if layer == "lowess":
                 why = "weights not allowed"
             else:
@@ -9938,7 +10034,7 @@ class GlyphMapper:
                 f"({why}, r(101)); the layer is drawn unweighted.")
             return (*GlyphMapper._masked(source, view, *varnames,
                                           units=units), None, None)
-        if layer in _DASH_WEIGHT_INERT:
+        if why == "inert":
             _dash_warn_once(
                 ("weight-inert", layer, wtype),
                 f"dash: {layer} {clause}: twoway {layer} accepts the weight "
@@ -9953,8 +10049,9 @@ class GlyphMapper:
         # A weight's VALUES, as twoway treats them on this layer.  dash.ado
         # refuses the commands twoway refuses; what reaches here is
         # twoway's own "accepted, draws nothing", or a hand-written spec.
+        state = GlyphMapper._layer_weight_values_state(w, wtype, layer)
         neg = w < 0
-        if neg.any() and layer not in _DASH_WEIGHT_NEG_EXCLUDED:
+        if state == "negative":
             why = ("fracpoly cannot fit it, and twoway draws nothing"
                    if layer in ("fpfit", "fpfitci")
                    else "twoway refuses it, negative weights encountered, "
@@ -9964,7 +10061,7 @@ class GlyphMapper:
                 f"dash: {layer} {clause}: {int(neg.sum())} negative "
                 f"weight(s) -- {why}; dash draws nothing for this layer.")
             return (*nothing[:-1], nothing[-1], wtype)
-        if wtype == "fw" and np.any(w != np.floor(w)):
+        if state == "nonint":
             why = ("regress and fracpoly cannot use non-integer frequency "
                    "weights, and twoway draws nothing"
                    if layer in _DASH_FW_NONINT_NOTHING
@@ -18595,6 +18692,81 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         });
         src.data = { x: xs, y: ys };
         src.change.emit();
+    }
+}
+// ---- Marks on the layers a saved page does not recompute (WP-29 P0.17) ----
+// A fit or smooth, a histogram's bins and a density's grid are computed
+// when the page is built.  A layer is marked while the filters that apply
+// to it (c.use) remove a row of its estimation sample: a row of its own
+// (c.members; every row when -1) whose variables are finite numbers and,
+// when weighted, whose weight is finite and -- under c.wrule "positive"
+// -- above zero: the rows GlyphMapper._layer_weights fits from.  Labels
+// arrive as JSON data and are drawn as canvas text; the status note is a
+// module constant.  Last, outside every loop above.
+if (typeof stale_configs_json !== "undefined") {
+    const _stl_cfgs = JSON.parse(stale_configs_json);
+    const _stl_text = (typeof stale_text_json !== "undefined")
+        ? JSON.parse(stale_text_json) : {};
+    const _stl_rends = (typeof stale_renderers !== "undefined" && stale_renderers) ? stale_renderers : [];
+    const _stl_titles = (typeof stale_titles !== "undefined" && stale_titles) ? stale_titles : [];
+    const _stl_items = (typeof stale_legend_items !== "undefined" && stale_legend_items) ? stale_legend_items : [];
+    const _stl_members = (typeof stale_members !== "undefined" && stale_members) ? stale_members : [];
+    const _stl_fin = (v) => typeof v === "number" && Number.isFinite(v);
+    const _stl_col = (name) =>
+        Object.prototype.hasOwnProperty.call(orig, name) ? orig[name] : null;
+    const _stl_ids = orig[ROW_ID] || null;
+    const _stl_sets = {};
+    const _stl_title_on = _stl_titles.map(() => false);
+    const _stl_item_text = _stl_items.map(() => null);
+    const _stl_item_suffix = _stl_items.map(() => null);
+    let _stl_any = false;
+    for (let ci = 0; ci < _stl_cfgs.length; ci++) {
+        const c = _stl_cfgs[ci];
+        const keep = dash_mask_for(c.use);
+        let mset = null;
+        if (c.members >= 0) {
+            if (!(c.members in _stl_sets)) {
+                const ms = _stl_members[c.members];
+                _stl_sets[c.members] = new Set((ms && ms.data && ms.data.id) || []);
+            }
+            mset = _stl_sets[c.members];
+        }
+        const vcols = (c.vars || []).map(_stl_col);
+        const wcol = c.wvar ? _stl_col(c.wvar) : null;
+        let stale = false;
+        for (let i = 0; i < n_rows && !stale; i++) {
+            if (keep[i]) continue;
+            if (mset !== null && !(_stl_ids && mset.has(_stl_ids[i]))) continue;
+            let used = true;
+            for (const col of vcols) {
+                if (col !== null && !_stl_fin(col[i])) { used = false; break; }
+            }
+            if (used && wcol !== null) {
+                const w = wcol[i];
+                used = _stl_fin(w) && (c.wrule === "any" || w > 0);
+            }
+            stale = used;
+        }
+        for (const r of (_stl_rends[ci] || [])) { r.muted = stale; }
+        if (stale) {
+            _stl_any = true;
+            if (c.title >= 0 && c.title < _stl_title_on.length) _stl_title_on[c.title] = true;
+        }
+        for (const [k, text] of (c.items || [])) {
+            if (!(k >= 0 && k < _stl_items.length)) continue;
+            _stl_item_text[k] = text;
+            if (stale) _stl_item_suffix[k] = c.suffix || "";
+        }
+    }
+    for (let k = 0; k < _stl_items.length; k++) {
+        if (_stl_item_text[k] === null) continue;
+        _stl_items[k].label = {value: _stl_item_suffix[k] === null
+            ? _stl_item_text[k] : _stl_item_text[k] + _stl_item_suffix[k]};
+    }
+    for (let t = 0; t < _stl_titles.length; t++) _stl_titles[t].visible = _stl_title_on[t];
+    if (typeof stale_status !== "undefined" && stale_status) {
+        stale_status.visible = _stl_any;
+        stale_status.text = _stl_any ? String(_stl_text.status_html || "") : "";
     }
 }
 """).replace("__DASH_ROW_ID__", json.dumps(_ROW_ID_COLUMN))
@@ -28562,6 +28734,65 @@ class DashRenderer:
         data_dict[_ROW_ID_COLUMN] = self._row_ids_for(frame)
         return ColumnDataSource(data=data_dict)
 
+    def _frozen_layer_tag(self, ptype, options, source, view, varnames):
+        """The stale cue's tag for one frozen layer (WP-29 P0.17), or None.
+
+        ``{"type", "kind", "vars", "wvar", "wrule"}`` plus ``member_ids``
+        when the layer is drawn from a strict subset of the rows (render()
+        step 3b's rule, so ``[]`` is kept).  The sample is the one
+        ``GlyphMapper._layer_weights`` fits from: ``wrule`` "positive"
+        counts a row whose weight is finite and above zero; "any" (the
+        build drew nothing because of a weight state) any finite weight.
+        A layer whose columns cannot be read drew nothing to mark: None.
+        """
+        kind = _dash_stale_kind(ptype, options)
+        if kind is None:
+            return None
+        try:
+            wtype, wexp, why = GlyphMapper._layer_weight_column(
+                source, options, ptype)
+            if why is None:
+                units = dict(getattr(self.mapper, "date_vars", None)
+                             or {}) or None
+                cols = GlyphMapper._masked(source, view, *varnames, wexp,
+                                           units=units)
+                state = GlyphMapper._layer_weight_values_state(
+                    cols[-1], wtype, ptype)
+                wvar, wrule = wexp, ("any" if state else "positive")
+            else:
+                GlyphMapper._masked(source, view, *varnames)
+                wvar = wrule = None
+            rows = GlyphMapper._agg_member_ids(source, view)
+        except (KeyError, TypeError, ValueError):
+            return None
+        tag = {"type": ptype, "kind": kind,
+               "vars": [str(v) for v in varnames],
+               "wvar": wvar, "wrule": wrule}
+        if rows is not None and len(rows) < len(self.df):
+            tag["member_ids"] = rows
+        return tag
+
+    def _collect_frozen_layers(self) -> dict:
+        """``{fig_key: [(tag, [renderers])]}``: each figure's frozen layers,
+        grouped by the identity of their tag, in renderer order (WP-29
+        P0.17).  A figure with none is absent."""
+        out: dict = {}
+        for key, fig in self.figures.items():
+            groups: list = []
+            for r in fig.renderers:
+                tag = getattr(r, "_dash_frozen", None)
+                if tag is None:
+                    continue
+                for g in groups:
+                    if g[0] is tag:
+                        g[1].append(r)
+                        break
+                else:
+                    groups.append((tag, [r]))
+            if groups:
+                out[key] = groups
+        return out
+
     def _collect_derived_sources(self) -> dict:
         """The sources a figure draws rows from that are no graph's source.
 
@@ -29387,6 +29618,8 @@ class DashRenderer:
             _c_before = len(fig.center)
             if pi == 0:
                 _plot_renderers: list = []
+            # The variables a frozen layer is computed from (WP-29 P0.17).
+            _frozen_vars = None
 
             # A joining layer's join key: sort(varlist)'s rank, read by row
             # (_dash_join_key); None draws in the data's order, or x's under
@@ -29429,6 +29662,7 @@ class DashRenderer:
             elif ptype.lower() in _UNIVARIATE_TYPES:
                 pyvar = (plot.get("yvar", "") or plot.get("var", "")
                          or yvar)
+                _frozen_vars = [pyvar]
                 self._add_glyph(fig, source_for_plot, ptype, pyvar, pxvar, popts,
                                 view=_plot_view, color_idx=_pstyle_idx[pi])
             elif ptype.lower() == "function":
@@ -29445,6 +29679,7 @@ class DashRenderer:
                                          points=plot.get("points"))
             else:
                 pyvar = plot.get("yvar", yvar)
+                _frozen_vars = [pyvar, pxvar]
                 if ptype.lower() == "scatter":
                     _plot_view = self._linked_scatter_view(
                         source_for_plot, pyvar, pxvar, popts, _plot_view)
@@ -29454,6 +29689,18 @@ class DashRenderer:
 
             _layer_renderers = list(fig.renderers[_r_before:])
             _plot_renderers.append((plot, _layer_renderers))
+            # A layer the saved page computes at build and does not refit
+            # carries ONE tag on every renderer: its kind, variables,
+            # weight rule and member rows (WP-29 P0.17).  Private to the
+            # Python object; never serialised.
+            if _frozen_vars and ptype.lower() in _DASH_COMPUTED_ONLY_TYPES:
+                _ftag = self._frozen_layer_tag(ptype.lower(), popts,
+                                               source_for_plot, _plot_view,
+                                               _frozen_vars)
+                if _ftag is not None:
+                    for _fr in _layer_renderers:
+                        if not _dash_is_swatch(_fr):
+                            _fr._dash_frozen = _ftag
 
             # A layer that drew nothing used to say nothing: `pci' and
             # `pcscatter' each produced a titled, axed, empty plot region
@@ -31032,6 +31279,12 @@ class DashRenderer:
             _kpi_config_all.append(_cfg)
             _kpi_divs_all.append(_kdiv)
 
+        # The saved page's stale cue (WP-29 P0.17): one set of models and
+        # lists, shared by every callback; None when no frozen layer is
+        # reached by a filter, and then nothing is added.
+        _stale_args = (self._stale_cue_args(_use_for, filter_row_widgets)
+                       if self.filter_callbacks else None)
+
         # Every callback gets the SAME target lists: "use" is a property of
         # the target and the whole filter set, never of which widget moved
         # (GAPS2 E2).
@@ -31054,6 +31307,9 @@ class DashRenderer:
             _cb.args["derived_use_json"]  = _der_use_json_all
             _cb.args["derived_spacing_json"] = _der_spacing_json_all
             _cb.args["derived_spacing_glyphs"] = _der_spacing_glyphs_all
+            if _stale_args:
+                for _k, _v in _stale_args.items():
+                    _cb.args[_k] = _v
 
         # The CSV download (WP-21), when the build asked for it: the
         # snapshot the filter callbacks read, masked the way they mask it,
@@ -31070,6 +31326,90 @@ class DashRenderer:
                 self._csv_button(_orig_snapshot, _filter_specs))
 
         return filter_row_widgets
+
+    def _stale_cue_args(self, use_for, filter_row_widgets):
+        """The saved page's stale-cue models and callback args (WP-29
+        P0.17, decision M3), or None when no figure a filter reaches holds
+        a frozen layer.
+
+        Per marked figure, one hidden caption Title at index 0 of
+        ``fig.above`` (nearest the frame); per frozen layer, its renderers'
+        rebuilt muted glyph, its legend items, and its config; one shared
+        ``ColumnDataSource({"id": ...})`` per distinct member set, so ids
+        never travel in the per-callback JSON; one hidden status Div,
+        appended to *filter_row_widgets* before the CSV button.  Labels
+        travel as data; the caption and status are module constants.
+        """
+        legends = []
+        for fig in self.figures.values():
+            for side in (fig.center, fig.above, fig.below, fig.left,
+                         fig.right):
+                legends.extend(m for m in side
+                               if isinstance(m, _BkLegend))
+        configs, rend_lists, titles, items, members = [], [], [], [], []
+        item_index: dict = {}
+        member_index: dict = {}
+        for fig_key, entries in getattr(self, "frozen_layer_registry",
+                                        {}).items():
+            use = use_for(fig_key)
+            if not use:
+                continue  # an excluded graph gets nothing
+            fig = self.figures[fig_key]
+            cue = _BkTitle(text=_DASH_STALE_CUE_TEXT, visible=False,
+                           tags=["dash_stale_cue"], text_font_size="9pt",
+                           text_font_style="normal", text_color="#3d2f00",
+                           background_fill_color="#fff4ce",
+                           border_line_color="#8a6d00", align="left")
+            fig.above = [cue] + list(fig.above)
+            titles.append(cue)
+            t_idx = len(titles) - 1
+            for tag, rends in entries:
+                ids = {id(r) for r in rends}
+                for r in rends:
+                    r.muted_glyph = _dash_stale_glyph(r.glyph)
+                    r.muted = False
+                its = []
+                for leg in legends:
+                    for it in leg.items:
+                        if not any(id(x) in ids for x in it.renderers):
+                            continue
+                        lab = it.label
+                        if isinstance(lab, dict):
+                            text = lab.get("value")
+                        else:
+                            text = getattr(lab, "value", None)
+                        if not isinstance(text, str):
+                            continue  # a field label
+                        if id(it) not in item_index:
+                            items.append(it)
+                            item_index[id(it)] = len(items) - 1
+                        its.append([item_index[id(it)], text])
+                m_idx = -1
+                if "member_ids" in tag:
+                    key = tuple(int(i) for i in tag["member_ids"])
+                    if key not in member_index:
+                        members.append(ColumnDataSource(
+                            {"id": list(key)}, tags=["dash_stale_members"]))
+                        member_index[key] = len(members) - 1
+                    m_idx = member_index[key]
+                configs.append({"use": use, "vars": tag["vars"],
+                                "wvar": tag["wvar"], "wrule": tag["wrule"],
+                                "members": m_idx, "title": t_idx,
+                                "items": its,
+                                "suffix": _DASH_STALE_SUFFIX[tag["kind"]]})
+                rend_lists.append(list(rends))
+        if not configs:
+            return None
+        # disable_math: the note is fixed HTML, never maths (test_label_sinks).
+        status = Div(text="", visible=False, tags=["dash_stale_status"],
+                     sizing_mode="stretch_width", disable_math=True)
+        filter_row_widgets.append(status)
+        return {"stale_configs_json": json.dumps(configs, allow_nan=False),
+                "stale_members": members, "stale_renderers": rend_lists,
+                "stale_titles": titles, "stale_legend_items": items,
+                "stale_status": status,
+                "stale_text_json": json.dumps(
+                    {"status_html": _DASH_STALE_STATUS_HTML})}
 
     def _csv_button(self, snapshot, filter_specs):
         """The saved page's Download CSV button (WP-21).
@@ -31382,6 +31722,9 @@ class DashRenderer:
 
         # ---- 3c. The copies of rows the mappers built ----
         self.derived_source_registry = self._collect_derived_sources()
+
+        # ---- 3d. The layers a saved page does not refit (WP-29 P0.17) ----
+        self.frozen_layer_registry = self._collect_frozen_layers()
 
         # ---- 4. Build KPI Divs ----
         self._build_kpi_html(kpis)

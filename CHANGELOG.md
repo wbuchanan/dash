@@ -657,7 +657,7 @@ requirement changes sit in their own lists.
   return 0, and GUI Stata's Break was never seen. Messages and the help name
   Break. (WP-29, P0.13)
 
-<!-- WP-29 P0.17 -->
+- A saved page now marks a fitted or smoothed line, a histogram's bins and a density's grid that a filter move left computed from observations the filter removed: the layer is dimmed, its legend key gains (unfiltered), (bins unfiltered) or (grid unfiltered), the graph shows a caption and the filter area a status line. Before, dash (scatter mpg weight) (lfit mpg weight) with filter(foreign) kept the all-rows line (29.105 at weight 1800, where the Foreign cars' fit is 29.917) under the filtered points with no sign that it ignored the filter. The served app refits as before (WP-29, P0.17)
 
 ### Fixed in WP-28
 

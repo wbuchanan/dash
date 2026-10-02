@@ -486,7 +486,19 @@ class TestAfterAFilterMove:
         module_js = [v for v in vars(dr).values()
                      if isinstance(v, str) and len(v) > 200
                      and ("function" in v or "=>" in v)]
+        # Flipped by WP-29 P0.17: the stale cue's block, the last of
+        # _FILTER_JS, writes one thing -- a frozen layer's legend key, as its
+        # build text plus a fixed suffix (" (unfiltered)") and back.  It
+        # never writes a title, axis label or tooltip, and no other write
+        # is allowed anywhere.
+        cue = "// ---- Marks on the layers a saved page does not recompute"
         for code in codes + module_js:
+            if cue in code:
+                head, block = code.split(cue, 1)
+                assert [m.group(0) for m in _JS_TITLE_WRITE.finditer(block)] \
+                    == [".label ="], block
+                assert "_stl_items[k].label = {value:" in block
+                code = head
             m = _JS_TITLE_WRITE.search(code)
             assert m is None, code[max(0, m.start() - 80):m.end() + 80]
         assert CustomJS  # the model the page scripts are

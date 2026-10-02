@@ -4,8 +4,8 @@
 server comparison table, says brush updating works in standalone HTML:
 
     :427  KPI recomputation on filter    Yes (JS aggregation)  Yes
-    :428  Histogram recompute on filter  No                    Yes
-    :429  Fit-line recompute on filter   No                    Yes
+    :428  Histogram recompute on filter  heights; bins marked  heights and bins
+    :429  Fit-line recompute on filter   No; marked            Yes
     :430  Brush/lasso KPI update         Yes                   Yes
 
 Lines 428-429 show the table is written to admit standalone limitations

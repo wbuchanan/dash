@@ -71,7 +71,8 @@ _MOVES = [
 
 #: Every plot type that draws one mark per observation.  The fitted and
 #: binned types are recomputed by the script from the rows (agg_sources) or
-#: are the saved page's documented exception (a fitted line is not redrawn,
+#: are the saved page's documented exception (a fitted line is not refitted,
+#: and is marked (WP-29 P0.17),
 #: dash.sthlp "What a filter move redraws"); the literal types draw no data.
 _ROW_TYPES = ["scatter", "line", "tsline", "connected", "area", "bar",
               "spike", "dropline", "dot", "rarea", "rbar", "rspike", "rcap",

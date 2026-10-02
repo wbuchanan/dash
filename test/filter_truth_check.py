@@ -284,3 +284,78 @@ def put(name, value):
     """A result into a Stata global, as text."""
     from sfi import Macro
     Macro.setGlobal(name, str(value))
+
+
+# ---------------------------------------------------------------------------
+# WP-29 section 12: test_e2e_filters.cscript SCU-01..SCU-03 (P0.17) and
+# EW-01 (P0.18)
+# ---------------------------------------------------------------------------
+
+def fit_graph(name, y, x, ptype="lfit", options=None, if_expr=""):
+    """A graph of one fitted layer, ``(<ptype> y x)`` (SCU-01, SCU-02)."""
+    return {"plots": [{"type": ptype, "yvar": y, "xvar": x,
+                       "options": dict(options or {}), "if_expr": if_expr}],
+            "graph_options": {"name": name, "title": name},
+            "if_expr": "", "in_expr": ""}
+
+
+def bar_graph(name, y, x, ptype="bar", if_expr=""):
+    """A graph of one bar layer, ``(<ptype> y x)`` (EW-01)."""
+    return {"plots": [{"type": ptype, "yvar": y, "xvar": x, "options": {},
+                       "if_expr": if_expr}],
+            "graph_options": {"name": name, "title": name},
+            "if_expr": "", "in_expr": ""}
+
+
+def stale_state(r):
+    """The saved page's stale cue as the renderer *r* holds it now
+    (SCU-01, SCU-02): caption visibility per marked figure, ``muted`` of
+    every renderer carrying ``_dash_frozen``, every legend label, and the
+    status line's visibility and text."""
+    from bokeh.models import Legend
+    titles, muted, labels = [], [], []
+    for fig in r.figures.values():
+        titles += [t.visible for t in fig.above
+                   if "dash_stale_cue" in (getattr(t, "tags", None) or [])]
+        muted += [x.muted for x in fig.renderers
+                  if hasattr(x, "_dash_frozen")]
+        for side in (fig.center, fig.above, fig.below, fig.left, fig.right):
+            for m in side:
+                if isinstance(m, Legend):
+                    labels += [getattr(i.label, "value", None)
+                               for i in m.items]
+    st = (r.filter_callbacks[0].args.get("stale_status")
+          if r.filter_callbacks else None)
+    return {"titles": titles, "muted": muted, "labels": labels,
+            "status_visible": bool(st.visible) if st is not None else False,
+            "status_text": st.text if st is not None else ""}
+
+
+def served_stale_models(doc):
+    """How many models of the served document carry a ``dash_stale*`` tag
+    (SCU-01: the served app carries no cue)."""
+    return sum(1 for m in doc.models
+               if any(str(t).startswith("dash_stale")
+                      for t in (getattr(m, "tags", None) or [])))
+
+
+def _one_glyph(fig, kind):
+    from bokeh.models import GlyphRenderer
+    rs = [r for r in fig.renderers if isinstance(r, GlyphRenderer)
+          and type(r.glyph).__name__ == kind]
+    assert len(rs) == 1, "%d %s glyphs" % (len(rs), kind)
+    return rs[0]
+
+
+def line_ends(fig):
+    """``(x[0], y[0], x[-1], y[-1])`` of *fig*'s single Line (SCU-01)."""
+    d = _one_glyph(fig, "Line").data_source.data
+    xs = [float(v) for v in d["x"]]
+    ys = [float(v) for v in d["y"]]
+    return xs[0], ys[0], xs[-1], ys[-1]
+
+
+def vbar_width(fig):
+    """The width *fig*'s single VBar draws (EW-01)."""
+    w = _one_glyph(fig, "VBar").glyph.width
+    return float(getattr(w, "value", w))

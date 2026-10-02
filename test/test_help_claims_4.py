@@ -1506,6 +1506,27 @@ class TestAFitLineOnAFilterMove:
         assert {c: [float(v) for v in after[c]] for c in ("x", "y")} \
             == before
 
+    def test_the_saved_page_marks_its_line(self, tmp_path, truth):
+        """WP-29 P0.17: the line is not refitted, and it is marked -- its
+        renderer muted and its graph's caption shown -- after the move."""
+        from js_runner import JsSession
+        spec = _pair_spec(filters=_AGG_FILTERS, plots2=self._FIT)
+        r = _saved(tmp_path, spec, _auto(truth))
+        src = self._fit_source(r.figures.values())
+        before = {c: [float(v) for v in src.data[c]] for c in ("x", "y")}
+        rend = [rr for f in r.figures.values() for rr in f.renderers
+                if rr.data_source is src]
+        cues = [t for f in r.figures.values() for t in f.above
+                if "dash_stale_cue" in (getattr(t, "tags", None) or [])]
+        assert rend and len(cues) == 1, (
+            f"no Title tagged dash_stale_cue ({len(cues)} found)")
+        r.filter_widgets[0].value = _AGG_MOVE
+        JsSession(r.filter_callbacks).run(r.filter_callbacks[0])
+        assert {c: [float(v) for v in src.data[c]] for c in ("x", "y")} \
+            == before
+        assert all(rr.muted for rr in rend)
+        assert cues[0].visible is True
+
     def test_the_served_app_draws_it_again_from_the_kept_rows(self, tmp_path,
                                                               truth):
         df = _auto(truth)
