@@ -4445,9 +4445,9 @@ commands, output and the resolved state of every `GAPS.md` finding — in
 
 ---
 
-## WP-29 · Close the drop-in P0 gaps
+## WP-29 · Close the drop-in P0 gaps — DONE
 
-**GAPS2 closed:** (filled at closeout) · **Severity:** S1 (19), S2 (2) · **Effort:** XL · **Depends on:** WP-28
+**GAPS2 closed:** A1, A6, A9, B4, C7, F2, F4, H7, I2, I3, X3 · **Severity:** S1 (19), S2 (2) · **Effort:** XL · **Depends on:** WP-28
 
 > **User story.** As the Stata user pasting twoway syntax, I want dash to
 > draw what twoway draws -- joins, scales, titles, axes, functions,
@@ -4637,29 +4637,103 @@ and the release gate once each.
 
 #### P0 traceability
 
-| P0 | Entry (BUGS.md) | Grade | Section |
-|---|---|---|---|
-| P0.1 | line types joined in x order; sort(varlist) ignored | S1 | 02 |
-| P0.2 | by() panels independently scaled | S1 | 10 |
-| P0.3 | unlabelled variables: blank titles, type-named keys, blank tooltips | S1 | 03 |
-| P0.4 | a title sub-option with no text deletes the title | S1 | 03 |
-| P0.5 | axis(2) on ylabel/yscale/yline/xtick applied to axis 1 | S1 | 10 |
-| P0.6 | function: ^ right-associative, pi and e accepted | S1 | 04 |
-| P0.7 | lpoly/lpolyci default bandwidth wrong | S1 | 11 |
-| P0.8 | computed layers on a date run in ms | S1 | 05 |
-| P0.9 | lpolyci band a bootstrap, not Stata's | S1 | 11 |
-| P0.10 | hover()-only variable never exported | S1 | 06 |
-| P0.11 | saved page embeds rows if/in exclude | S1 | 14 |
-| P0.12a | served app has no credential | S1 | 13 |
-| P0.12b | served app files readable by other accounts | S1 | 08 |
-| P0.13 | served app outlives Stata; Break cannot stop serve | S1 | 08 |
-| P0.14 | one-line preview pages never deleted, 0644 | S2 | 08 |
-| P0.15 | saved filter registers per-plot rows, not the intersection | S1 | 07 |
-| P0.16 | colorvar range ignores qualifiers | S1 | 07 |
-| P0.17 | saved fits stale after a filter move, no cue | S1 | 12 |
-| P0.18 | served redraw keeps build-time bar widths | S1 | 12 |
-| P0.19 | dash_setup fails on PEP 668 Pythons | S2 | 09 |
-| P0.20 | KPI sd/var/iqr/cv/sum of a date in ms | S1 | 05 |
+| P0 | Entry (BUGS.md) | Grade | Section | Commit |
+|---|---|---|---|---|
+| P0.1 | line types joined in x order; sort(varlist) ignored | S1 | 02 | b0d170d |
+| P0.2 | by() panels independently scaled | S1 | 10 | ab53f25 |
+| P0.3 | unlabelled variables: blank titles, type-named keys, blank tooltips | S1 | 03 | 8d3593e |
+| P0.4 | a title sub-option with no text deletes the title | S1 | 03 | e908b78 |
+| P0.5 | axis(2) on ylabel/yscale/yline/xtick applied to axis 1 | S1 | 10 | 3208b2b |
+| P0.6 | function: ^ right-associative, pi and e accepted | S1 | 04 | 96aa267 |
+| P0.7 | lpoly/lpolyci default bandwidth wrong | S1 | 11 | 758cf59 |
+| P0.8 | computed layers on a date run in ms | S1 | 05 | cd210ea |
+| P0.9 | lpolyci band a bootstrap, not Stata's | S1 | 11 | e32be3a |
+| P0.10 | hover()-only variable never exported | S1 | 06 | 735c534 |
+| P0.11 | saved page embeds rows if/in exclude | S1 | 14 | cbeef4e |
+| P0.12a | served app has no credential | S1 | 13 | 7f5c8f5 |
+| P0.12b | served app files readable by other accounts | S1 | 08 | fd51038 |
+| P0.13 | served app outlives Stata; Break cannot stop serve | S1 | 08 | F2 ece0752, F4 c595259 |
+| P0.14 | one-line preview pages never deleted, 0644 | S2 | 08 | fd51038 |
+| P0.15 | saved filter registers per-plot rows, not the intersection | S1 | 07 | 3cff164 |
+| P0.16 | colorvar range ignores qualifiers | S1 | 07 | 85dc7d2 |
+| P0.17 | saved fits stale after a filter move, no cue | S1 | 12 | b242b99 |
+| P0.18 | served redraw keeps build-time bar widths | S1 | 12 | 2d52fbe |
+| P0.19 | dash_setup fails on PEP 668 Pythons | S2 | 09 | 4d74922 |
+| P0.20 | KPI sd/var/iqr/cv/sum of a date in ms | S1 | 05 | 529875d |
+
+### Done, measured (<to be measured in 15-17>)
+
+- **P0 entries.** The 21 BUGS.md entries section 01 opened are closed,
+  each test first, by a commit whose subject names it (P0.13 by two, F2
+  then F4); each Resolution reads (WP-29, P0.<n>) and names tests that
+  exist. WP29_OPEN is {} and test_no_wp29_entry_remains_open keeps it so.
+  No CHANGELOG marker is left; the 39 WP-29 lines sit in the lists
+  WP29_LISTS names (P0.8, P0.10, P0.19 and P0.20 keep several items each,
+  accepted at the closeout on 02oct2026).
+- **Per P0.** P0.1 (b0d170d): the six joining types join in the data's
+  order unless sort or sort(varlist) is given; tsline and tsrline in time
+  order. P0.2 (ab53f25): by() panels share one scale per axis and
+  yrescale/xrescale are honoured; 100 panels settle 7.98 s after a move
+  in headless Chrome (the plan's 3 s not met; the maintainer accepted a
+  30 s bound, 1.5 times the per-panel control's 19.28 s, left for a later
+  performance task). P0.3 (8d3593e): unlabelled variables are named by
+  their names in titles, keys, tooltips and widgets. P0.4 (e908b78): a
+  title option of sub-options only keeps the default title. P0.5
+  (3208b2b): axis(#) options are drawn on the axis they name, and refused
+  as twoway refuses them. P0.6 (96aa267): function layers are evaluated
+  by Stata's own generator. P0.7 (758cf59): lpoly's default bandwidth is
+  Stata's rule of thumb for every kernel and degree. P0.8 (cd210ea):
+  computed layers of a date run in the variable's Stata units. P0.9
+  (e32be3a): lpolyci draws Stata's analytic band with pwidth() and var();
+  at N=20000 the band costs 0.066 s, where the bootstrap took 4.23 s.
+  P0.10 (735c534): every variable hover() names is exported, saved and
+  served. P0.11 (cbeef4e): a page embeds only the rows its graphs, cards
+  and filters read (a range filter under if price > 4500 spans 4749-11385,
+  was 3799; a brushed card 25.66667, was 23.4); served row numbers are the
+  page's ranks (index 0-5, was 1, 3, 4, 6, 7, 9). P0.12a (7f5c8f5): the
+  served app requires a per-launch key and makes its own when started
+  without one. P0.12b (fd51038): dash's temporary copies are private.
+  P0.13 (ece0752 F2, c595259 F4): the served app stops when Stata ends,
+  keeps no copy of the data on disk while it serves, and Break ends dash
+  serve with r(1). P0.14 (fd51038): previews are private and pruned to
+  five per session. P0.15 (3cff164): a linked layer's own if holds inside
+  its panel after a saved move. P0.16 (85dc7d2): the colour key is drawn
+  from the rows each colorvar layer draws. P0.17 (b242b99): the saved page
+  marks layers it does not recompute after a move. P0.18 (2d52fbe): the
+  served redraw follows bar widths and keeps an emptied layer's style.
+  P0.19 (4d74922): dash_setup works on externally managed Pythons and
+  adds venv(). P0.20 (529875d): KPI statistics of a date are taken in its
+  Stata units.
+- **GAPS2.** Closed: A1, A6, A9, B4, C7, F2, F4, H7, I2, I3, X3. Partly
+  closed, each Tracked line saying what is open: A4, A13, B12, B15, B16,
+  B22, C12, F9 and C4. WP-28 residuals closed or narrowed: E1 (P0.20),
+  G16 (P0.10), G3 (P0.10). C4: partly closed by the stale cue; the saved
+  page does not re-estimate, by decision M3.
+- **Residuals.** 19 deferred clauses, as BUGS.md records them and the
+  maintainer approved; filed in DROPIN-REMAINING.md as P2.30-P2.40, with
+  notes on P1.3, P1.4, P1.8, P1.9, P1.15-P1.18, P1.22, P1.23, P1.26,
+  P1.30, P1.34, P2.2, P2.7, P2.14, P2.18, P2.21, P2.24, P2.28, P3.2 and
+  P3.12. lpoly's tolerance rulings (a 1e-4 tier for four offset rows, the
+  exact-fit threshold 1e-6 of var(y), the drawn-curve exclusion at
+  x=4405.71) are recorded in section 11's commit.
+- **Fixtures.** test/fixtures: 13 files changed, 74,657 insertions and 315
+  deletions.
+- **Tests flipped.** 157 Flipped: lines name each pinned expectation and
+  its reason in its fix commit; every pytest node named collects under
+  its current name.
+- **Security (AC-29.6).** <to be measured in 15-17>
+- **Runs (<to be measured in 15-17>, on the final tree).** <to be measured
+  in 15-17>
+- **Not measured.** Windows, Linux and Stata before 19 (the package's
+  non-goals): the commands dash_setup prints were tested in the sandbox
+  for cmd.exe and POSIX shells only; GUI Break was verified through a
+  patched pollstd only. Commits cd210ea (P0.8) and 529875d (P0.20) open
+  with their failure text but carry no Regression: line in the formal
+  form (recorded, history not rewritten).
+- **AGENTS.md** carries "Invariants introduced by WP-29", 20 paragraphs,
+  each with its guarding test.
+- **Merge.** `git checkout main && git merge --no-ff wp29-p0` -- reported,
+  not run.
 
 ---
 

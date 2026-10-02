@@ -117,7 +117,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   2. Carry `__dash_row__` so the filter callback and the served redraw keep that order.
   3. Honour bare `sort`, stop naming `sort(varlist)` on tsline/tsrline, and rewrite dash.sthlp's "Connection order" paragraph and the `map_line` docstring.
   4. Test path order against twoway serset/SVG on unsorted auto and on a time path, with and without `sort`, in both modes and after a filter move, with a 1e6-row bound.
-- **Tracked:** GAPS.md E1 (`sort(varlist)` deferred); BUGS.md:2441-2443 (bare `sort` not named on the eight types); the data-order default is new.
+- **Tracked:** Closed in WP-29, BUGS.md "line, connected, area, rline, rarea and rconnected are joined in x order, never in the data's order as twoway joins them, and sort(varlist) is ignored", commit b0d170d; residual deferred (WP-29): rarea with exactly one bound missing on a row leaves that row out of both bounds, tied keys keep the data order, and connected markers paint in data order under sort; was: GAPS.md E1 (`sort(varlist)` deferred); BUGS.md:2441-2443 (bare `sort` not named on the eight types); the data-order default is new.
 
 <a id="a2"></a>
 ### A2. Arrowheads of pcarrow, pcbarrow and pcarrowi ignore the marker options, and pcbarrow's heads are filled black
@@ -225,7 +225,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   2. Store the (x, y) pairs as literal records, as scatteri's values are, within the `n()` cap. `map_function` draws them, and the expression evaluator stays only for hand-written specs.
   3. Use the same route for `range(varname)`, `droplines()` and `horizontal`.
   4. Test the stored points against `twoway__function_gen` in a cscript over this corpus: `normalden`, `ln`, `_pi`, `c(pi)`, `cond`, comparisons, `min`/`max`, `int`/`round`, `invlogit`, `chi2den`, `_b[]` after regress, `scalar()`, `2^3^x`, `1/0` and sqrt of negatives. Add pytest in both modes and adversarial cases: the RNG state is unchanged, 10,000 points, and backticks or `$` in the expression.
-- **Tracked:** new (the empty-layer note is documented at dash.sthlp:327-328).
+- **Tracked:** Closed in WP-29, BUGS.md "function evaluates ^ from the right and accepts pi and e, which twoway refuses", commit 96aa267; residual deferred (WP-29): under by() the function is evaluated once where twoway evaluates it per panel, the points-free fallback for hand-written specs knows ten functions, and range(varname), droplines() and horizontal stay refused or ignored; was: new (the empty-layer note is documented at dash.sthlp:327-328).
 
 **A7. `horizontal` is not drawn on any plot type** -- same gap as B12; see there.
 
@@ -256,7 +256,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   2. Rewrite `_default_lpoly_bwidth(x, y, w, degree, kernel)` on eq. (3)'s structure. Fit it to `r(bwidth)` for 4 datasets × 8 kernels × degrees 0-3, weighted and unweighted, stored in stat_truth.json. Use it only for filter moves, and call it approximate in the help unless it matches to 1e-6.
   3. Pass `degree` and `kernel` from `map_lpoly` and `map_lpolyci`.
   4. Update dash.sthlp's Default bandwidth paragraph and the docstring. Tests hold the registered value to `r(bwidth)` exactly, and the filter-move value to the measured tolerance.
-- **Tracked:** GAPS.md A4 (the rule of thumb "stays as it was"); dash.sthlp Default bandwidth.
+- **Tracked:** Closed in WP-29, BUGS.md "The lpoly and lpolyci default bandwidth ignores kernel() and degree() and misses Stata's rule of thumb", commit 758cf59; residual deferred (WP-29): exact-fit divergences when y is exactly linear in x at degree 0/1 or tiny at degree 2, and the gaussian two-observation weight threshold; was: GAPS.md A4 (the rule of thumb "stays as it was"); dash.sthlp Default bandwidth.
 
 **A10. lpolyci's band is a bootstrap percentile band, not Stata's, and pwidth() and var() are not read** -- same gap as C7; see there.
 
@@ -420,7 +420,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
 - **Gap:** twoway draws `by()` panels on one common scale unless `yrescale`/`xrescale` is given; test/test_natscale_axes.py:10-15 records both panels at 12-41, and dash.sthlp:2356-2358 promises one scale. In dash each panel gets its own `DataRange1d`. A common scale is imposed only for `#N` (`_dash_common_count_ticks`, dash_render.py:17355-17377), so Foreign mpg 72-99 and Domestic 12-39 are shown on different y ranges with no note, in both modes.
 - **Closable:** yes.
 - **Plan:** 1. After all panels are drawn, take the union extent per axis over every panel and share one range object across the panels, then place default ticks over it. 2. Implement `yrescale`/`xrescale` to keep independent ranges. 3. Use the same helper in the served app. 4. pytest asserting equal start/end across panels in both modes; cscript reading twoway's `.Graph.graphs[k].yaxis1` min/max.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-29, BUGS.md "by() panels are drawn on independent scales by default, and by(, yrescale) is named and ignored", commit ab53f25; residual deferred (WP-29): twoway common scale includes fit lines; was: new.
 
 <a id="b5"></a>
 ### B5. `legend` `order()` text and `label()`-after-`order()` are applied to the wrong keys
@@ -767,7 +767,7 @@ The statistical layers should draw what twoway draws, with the same estimator, d
   `pwidth()` and `var()` are ignored (dash.sthlp:1808, 2075). No fixture holds a Stata lpolyci band. At N=20000 it takes 6.5 s, against 0.24 s for lpoly.
 - **Closable:** partly. The build-time draw can be exact, because dash.ado can take the band, `r(bwidth)` and `r(pwidth)` from Stata's own lpoly. A served filter move runs without Stata, though, so its default pilot bandwidth (computed in compiled Mata `_lpoly_work`) and eq. 4's σ² normalization can only be approximated. A served band is exact only when both `bwidth()` and `pwidth()` (or `var()`) are given.
 - **Plan:** 1. In dash.ado, for each lpolyci layer (each `by()` panel, over the plot's sample and weights), run `lpoly y x [w] if <sample>, degree() kernel() bwidth() pwidth() var() n(#) generate(gx gy) se(gse) nograph`. Write gx, gy ± `invnormal((100+level)/200)*gse`, `r(bwidth)` and `r(pwidth)` into the spec, and have the renderer draw them. 2. For served recomputes, add `_lpoly_se(x, y, w, grid, h, pilot, degree, kernel, var)` implementing eq. 4, and reuse the build-time h and h* when the filter keeps every row. Fit the normalization to Stata output from extract_stat_truth.do (four datasets, degree 0/1/2, several kernels, with and without aw/fw). 3. Remove `_bootstrap_ci` from `map_lpolyci`, honour `pwidth()`/`var()`, take them off dash.sthlp's ignored list, and refuse `level()` outside 10-99.99. 4. Add `TestLpolyciAgainstStata`: about 1e-6 with explicit bandwidths and at build time, and within the rule-of-thumb tolerance for served defaults. Add a cost test holding lpolyci under 3× lpoly.
-- **Tracked:** GAPS.md A4; ROADMAP.md WP-18 follow-up; BUGS.md:1237 ("The band is still a bootstrap"); documented at dash.sthlp:2075.
+- **Tracked:** Closed in WP-29, BUGS.md "The lpolyci band is a bootstrap percentile band, not Stata's analytic band, and pwidth() and var() are ignored", commit e32be3a; residual deferred (WP-29): rows whose pilot has no residual degrees of freedom are pinched where Stata is often missing, and pwidth()/var() on other types are named, not refused; was: GAPS.md A4; ROADMAP.md WP-18 follow-up; BUGS.md:1237 ("The band is still a bootstrap"); documented at dash.sthlp:2075.
 
 **C8. A constant-x lowess and a constant kdensity print dash's 'drew nothing' note, where twoway draws in silence** -- same gap as A11; see there.
 
@@ -1319,7 +1319,7 @@ Served mode runs the registry as a live Bokeh Server app. There are two routes. 
 - **Gap:** dash.sthlp:1353-1356 and 1496-1501 say Stata erases the temporary app, which embeds the data, when `dash serve` ends. The app is a `Popen` child with no parent-death watch (dash_render.py:27701; no getppid, atexit or signal handling). Probe: after SIGKILL of the launcher (what a GUI force-quit, crash or Task Manager kill does), /health still returned 200 and the app file with the base64 data was still on disk. The spec and data JSON tempfiles (dash.ado:7392) are left behind too. Under `timeout(0)` the orphan holds 5006 forever, which feeds F1. Closing a console terminal does stop the child, because SIGHUP goes to the process group.
 - **Closable:** yes.
 - **Plan:** 1. Start the child with `stdin=PIPE`. Behind a `--parent-watch` flag, a daemon thread in the app blocks on `sys.stdin.read()` and on EOF schedules `io_loop.stop` via `add_callback`. Do not use `os.kill(ppid, 0)`: on Windows it terminates the target process. 2. The launcher deletes the spec and data JSON once the app is written, and deletes the app file once /health answers. 3. Tests: SIGKILL the launcher (TerminateProcess on Windows CI), then assert /health stops within 5 s and that no file holding `_DATA_B64` or the data JSON remains. Keep the HC4-21 cscript check.
-- **Tracked:** new
+- **Tracked:** Closed in WP-29, BUGS.md "The served app outlives a killed Stata, its files survive a crash, and Break cannot stop dash serve", commit ece0752; residual deferred (WP-29): Linux and Windows are not measured, and a crash between /health answering and the launcher next pass leaves the private app until the next dash command; was: new
 
 <a id="f3"></a>
 ### F3. Each session reloads the whole dataset, sessions have no cap, and one event loop serves them all (also reported as I4)
@@ -1335,7 +1335,7 @@ Served mode runs the registry as a live Bokeh Server app. There are two routes. 
 - **Gap:** dash.sthlp:711-715, 1353-1356 and 737-738 say the server runs until Ctrl+C or `timeout()`, and a Stata user expects Break to end any command with r(1). The launcher blocks in `subprocess.wait()` (dash_render.py:27711-27715), catches only `KeyboardInterrupt`, and never calls `sfi.SFIToolkit.pollstd()`/`pollnow()`. Stata's sfi.py:5723-5746 says Break reaches Python only as a `BreakError` from those calls. The only recorded stop test (BUGS.md:1579) sends SIGINT to the console's process group. So in the GUI with the default `timeout(0)`, the likely only exit is to kill the child by hand. This is unmeasured in the GUI, because rule 22 forbids launching it.
 - **Closable:** yes.
 - **Plan:** 1. Replace `_proc.wait()` with `while proc.poll() is None: sfi.SFIToolkit.pollstd(); time.sleep(0.2)`, importing sfi only inside Stata. 2. On `BreakError`/`KeyboardInterrupt`, terminate and wait for the child, then re-raise so the command ends with r(1). 3. Say "press Break" in dash.ado:7422 and dash.sthlp. 4. Tests: a stub sfi whose `pollstd` raises `BreakError` after N calls, asserting the child is gone and the port is free. `TestTheRealHandoffServes` must still pass. Record one manual GUI check.
-- **Tracked:** new
+- **Tracked:** Closed in WP-29, BUGS.md "The served app outlives a killed Stata, its files survive a crash, and Break cannot stop dash serve", commit c595259; residual deferred (WP-29): GUI Break is verified only through a patched pollstd, and the manual GUI check was not run; was: new
 
 <a id="f5"></a>
 ### F5. The served app's notes, warnings, URL and errors never reach Stata's Results window or log
@@ -1547,7 +1547,7 @@ This area promises a one-command setup: `dash_setup` finds Stata's Python, insta
 - **Gap:** `dash_setup.sthlp` says setup installs the packages, retries with `--user`, and names a manual command. Measured: Homebrew Python refuses `pip install 'bokeh>=3.0'` with `externally-managed-environment`, with or without `--user`. So do Debian 12+ and Ubuntu 23.04+ `/usr/bin/python3`. The fallback it prints, `python -m pip install bokeh>=3.0` (`dash_setup.ado:192`), is unquoted, so the shell treats `>` as a redirect: bokeh installs unpinned and a file named `=3.0` appears. It also names `python`, which may not be Stata's interpreter. The upgrade hint uses single quotes, which cmd.exe ignores (`dash_setup.ado:223-224`). Also: no venv guidance in the help, a `--user` site created during the run is not on `sys.path`, and a Python without pip gets no `ensurepip` hint.
 - **Closable:** yes.
 - **Plan:** 1. Before calling pip, detect `EXTERNALLY-MANAGED` (in `sysconfig.get_path('stdlib')`) and whether pip is present (`find_spec('pip')`). 2. Add `dash_setup, venv(path)`: create the venv with `c(python_exec) -m venv`, install into it, then print or run `python set exec "<venv python>", permanently`, and document that Stata must restart. 3. Print every fix with `c(python_exec)` and the requirement in double quotes (`"bokeh>=3.0"`). 4. After a `--user` install, call `site.addsitedir(site.getusersitepackages())` and `importlib.invalidate_caches()` before re-checking. 5. Tests: the setup_sandbox pip recorder returns PEP 668 stderr and the test expects venv guidance with no `--user` retry. A pytest reproduces the refusal with `--dry-run --no-index`.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-29, BUGS.md "dash_setup fails on PEP 668 externally managed Pythons, and the commands it prints fail too", commit 4d74922; residual deferred (WP-29): Windows quoting, Scripts\python.exe and Debian ensurepip-less venv are tested as pure functions only; was: new.
 
 <a id="h8"></a>
 ### H8. A failed dash_setup leaves already-installed packages in place (rollback deferred)
@@ -1635,7 +1635,7 @@ Outside the served app, a saved page silently carries the rows its `if`/`in` exc
      - a pytest that parses docs_json and asserts that the CDS row count equals the union count
      - a regression test that `lowess adjust` and `lpoly n()` still match test/fixtures/qualified_stat_truth.json
      - a cscript comparing the CDS N with `count if` for each qualifier, and with twoway's serset N for a single-graph dashboard
-- **Tracked:** new.
+- **Tracked:** Closed in WP-29, BUGS.md "The saved page embeds every row of each drawn variable, including rows that if and in exclude", commit cbeef4e; residual deferred (WP-29): csv embeds every row, rows selected only for computed layers are embedded, and the served files on disk hold every row; was: new.
 
 <a id="i3"></a>
 ### I3. Served app: any local account can read the whole dataset; loopback-only is not single-user on a shared host
@@ -1653,7 +1653,7 @@ Outside the served app, a saved page silently carries the rows its `if`/`in` exc
      - live-server tests: a session without the token is refused, one with it is served, and `/health` still answers
      - a check that the app file's mode is 0600
      - adversarial entries for a forged or missing cookie
-- **Tracked:** GAPS.md L10 records "no auth model" as the design. The multi-user and file-permission exposure is new.
+- **Tracked:** Closed in WP-29, BUGS.md "The served app has no credential, so any local account can open a session and read the data", commit 7f5c8f5; with BUGS.md "The served app, spec and data files are written with the default umask, readable by other accounts where the temp directory is shared", commit fd51038; residual deferred (WP-29): Linux and Windows are not measured, under bokeh serve only the session gate applies, and when no link file can be written the link is printed once to the starter output; was: GAPS.md L10 records "no auth model" as the design. The multi-user and file-permission exposure is new.
 
 **I4. Served app: no cap on sessions open at once, and each session holds its own decoded copy of the data** -- same gap as F3; see there.
 
@@ -1970,7 +1970,7 @@ This area collects gaps that no single feature area covered: dropdown filters, `
   2. Record each preview path in a global. Erase older previews on the next preview (keeping the last N), on `dash clear`, and from a Python atexit handler.
   3. Document in dash.sthlp where previews go and when they are removed.
   4. Write a cscript under `$dash_nobrowser` that makes three previews, runs `dash clear`, and asserts no preview or `St*.html` remains. A pytest checks the permission bits. Measure the atexit path once across a Stata exit.
-- **Tracked:** new
+- **Tracked:** Closed in WP-29, BUGS.md "One-line preview pages are never deleted and are written 0644, each a copy of the graph's data", commit fd51038; residual deferred (WP-29): the newest five pages of a session stay until dash clear or its end, Windows prunes other sessions pages by age, and Linux and Windows are not measured; was: new
 
 <a id="x4"></a>
 ### X4. The renderer's notes are raw Python warnings: a warnings filter silences them or turns them into a failed render, and otherwise they print internal paths and source lines
