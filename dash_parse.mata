@@ -4248,7 +4248,10 @@ void _dash_fn_spec_tail(string scalar path, string scalar names,
     out = ""
     if (sc != "") {
         txt = st_strscalar(sc)
-        if (_dash_fn_points_ok(txt)) out = q + q + ":" + txt
+        // An empty table is a graph with no function layer: nothing to
+        // write and nothing to say (it noted every one-line saving()).
+        if (txt == "") {}
+        else if (_dash_fn_points_ok(txt)) out = q + q + ":" + txt
         else _dash_say("txt", "dash: the function points stored for graph '",
                        "", "' are not dash's; that layer is drawn from its expression.")
     }

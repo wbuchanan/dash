@@ -2,7 +2,7 @@
 *! Certification script for the dash command parsing (syntax-based, v2.0 architecture).
 *!
 *! Tests: P1A-31 through P1A-84  (rewritten for syntax-based parsing), and
-*!        FX-01 through FX-10 (function evaluated by Stata, WP-29 P0.6)
+*!        FX-01 through FX-11 (function evaluated by Stata, WP-29 P0.6)
 *!
 *! In v2.0 parsing is done via Stata's -syntax- command rather than a
 *! hand-rolled Mata parser.  These tests exercise:
@@ -2726,6 +2726,29 @@ mata: _dash_fn_spec_tail(st_local("t10"), "", st_local("s10"))
 mata: st_local("f10", invtokens(cat(st_local("t10"))'))
 assert `"`f10'"' == `"{"a":1,"function_points":{"":{"1":{"x0":0,"dx":1,"y":[1]}}}}"'
 display "FX-10 PASS: points are written %24.17g with null for missing, and appended to the spec beside the graphs"
+
+// ================================================================
+// FX-11 -- a one-line graph with no function layer: its points scalar is
+// empty, so the tail writes the bare } and says nothing.  Every one-line
+// saving() printed "the function points stored for graph '' are not
+// dash's" before this (548 times in one certification run, 02oct2026).
+// ================================================================
+tempname s11
+mata: st_strscalar(st_local("s11"), "")
+capture erase "`t10'"
+mata: _fx10_fh = fopen(st_local("t10"), "w"); fwrite(_fx10_fh, `"{"a":1"'); fclose(_fx10_fh)
+tempfile lg11
+quietly log using "`lg11'", text replace name(fx11)
+mata: _dash_fn_spec_tail(st_local("t10"), "", st_local("s11"))
+quietly log close fx11
+mata: st_local("f11", invtokens(cat(st_local("t10"))'))
+assert `"`f11'"' == `"{"a":1}"'
+mata: st_local("n11", strofreal(sum(strpos(cat(st_local("lg11")), "are not dash's") :> 0)))
+if `n11' != 0 {
+    display as error "FX-11 FAIL: an empty points scalar printed the not-dash's note `n11' time(s)"
+    exit 9
+}
+display "FX-11 PASS: a graph with no function points writes the bare } and no note"
 
 // ================================================================
 // LB-41..LB-43 (WP-29 P0.9) -- lpolyci's pwidth() and var(): the Mata
