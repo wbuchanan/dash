@@ -249,7 +249,7 @@ program define _dash_require_mata
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed ///
-        _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag ///
+        _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
         _dash_axis_pieces ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check
@@ -1560,6 +1560,21 @@ program define _dash_fold_bw, sclass
         sreturn local kernel : copy local _kf_name
         sreturn local _unknown : copy local _kf_rest
     }
+    // WP-29 P0.9: lpolyci's pwidth(#) and var(#), taken out of the
+    // catch-all by value (_dash_lpolyci_opts), and twoway's refusals of
+    // them and of level(), with twoway's return codes and words, in its
+    // order.  The JSON key for var() is lpvar: _dash_extract_vars reads
+    // every "var": in a plot's JSON as a variable name.
+    mata: _dash_lpolyci_opts(st_global("s(_unknown)"), st_local("ptype"))
+    if "`_lpo_rc'" != "0" {
+        mata: _dash_say("err", "", st_local("_lpo_msg"), "")
+        exit `_lpo_rc'
+    }
+    if "`ptype'" == "lpolyci" {
+        sreturn local pwidth : copy local _lpo_pwidth
+        sreturn local lpvar : copy local _lpo_var
+        sreturn local _unknown : copy local _lpo_rest
+    }
     // kdensity: width(#) is twoway's own synonym for bwidth(#)
     // (twoway_kdensity_parse.class: Width(real 0) BWidth(real 0), the two
     // together "options width() and bwidth() may not be combined", r(198);
@@ -2021,6 +2036,7 @@ program define _dash_option_rules
         degree=int,0,3  bwidth=pos,1@lowess  bwidth=pos ///
         kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle ///
         n=int,1,300@mspline  n=int,2,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
+        level=num,10,99.99@lpolyci ///
         colornlevels=int,2,256  colorlevels=int ///
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
         colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2 ///
@@ -2706,6 +2722,19 @@ program define _dash_validate_opts, sclass
         }
     }
 
+    // WP-29 P0.9: lpolyci's var() <= 0, after the kernel, bwidth and
+    // degree rules above, as twoway orders it (measured: var(0) bwidth(0)
+    // names bwidth(), var(0) kernel(foo) the kernel).
+    if "`ptype'" == "lpolyci" {
+        mata: st_local("_lpv", st_global("s(lpvar)"))
+        if `: length local _lpv' {
+            if !(real("`_lpv'") > 0) {
+                display as error "var() must be a positive number"
+                exit 198
+            }
+        }
+    }
+
     // legend(top), (bottom), (left) and (right) inside this segment:
     // refused as twoway refuses them, even where an after-comma legend()
     // outranks this one (WP-23).  _dash_plot checks the value it writes.
@@ -3125,6 +3154,7 @@ program define _dash_plot_opts_to_json, rclass
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///
                    acolor alcolor alwidth alpattern ///
+                   pwidth lpvar ///
                    weight wexp {
         // Read by value and measured, never copied or compared in quotes: a
         // copy through them expanded a macro in the value again --

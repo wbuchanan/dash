@@ -520,9 +520,10 @@ class TestTheParsersFoundSomething:
         # alpattern(), twoway's fitarea options.  143 since WP-28 batch 2
         # (S16, GAPS2 X2): colorlevels(), colorvarminmax, zlabel(),
         # ztitle() and zscale() (measured 30sep2026).  147 since WP-29
-        # P0.5 documented ytick2(), xtick2(), yline2() and xline2().
-        assert len(found) == 147, (
-            f"{len(found)} options parsed out of dash.sthlp, 147 measured "
+        # P0.5 documented ytick2(), xtick2(), yline2() and xline2().  149
+        # since WP-29 P0.9 documented lpolyci's pwidth() and var().
+        assert len(found) == 149, (
+            f"{len(found)} options parsed out of dash.sthlp, 149 measured "
             f"01oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -625,9 +626,10 @@ class TestTheParsersFoundSomething:
         # written as {p2col:} rows, which the cutter starts no entry at,
         # left 311 -- above "150", with those rows read as prose.
         # 335 with WP-29 P0.5's four second-axis rows (ytick2, xtick2,
-        # yline2, xline2); 337 with P0.2's two by() rescale rows.
-        assert len(defs) == 337, (
-            f"{len(defs)} definition entries cut out of dash.sthlp, 337 "
+        # yline2, xline2); 337 with P0.2's two by() rescale rows; 339 with
+        # P0.9's pwidth() and var() rows.
+        assert len(defs) == 339, (
+            f"{len(defs)} definition entries cut out of dash.sthlp, 339 "
             f"measured 01oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -695,6 +697,10 @@ class TestEveryDocumentedOptionIsAccepted:
         subopts = {"type", "exclude", "label", "format", "replace", "cols",
                    "rows", "color", "lcolor", "lwidth", "fcolor", "off", "on",
                    "range", "degree", "estopts"}
+        # WP-29 P0.9: lpolyci's pwidth() and var() are read out of the
+        # catch-all by value (_dash_lpolyci_opts), undeclared so that the
+        # repeat check refuses either written twice, as twoway does.
+        subopts |= {"pwidth", "var"}
         missing = sorted(set(documented) - set(declared) - subopts)
         assert not missing, (
             f"{len(missing)} options the help documents are not declared by "

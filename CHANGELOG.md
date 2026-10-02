@@ -283,7 +283,7 @@ and now matches Stata.
   and beyond (epoch milliseconds) beside obs 1..248; it is now drawn at the
   day numbers 14977-15340, as twoway draws it. (WP-29, P0.8)
 
-<!-- WP-29 P0.9 -->
+- `dash lpolyci mpg weight, degree(1) bwidth(500) pwidth(800)` drew a bootstrap percentile band 0.85 to 1.55 times Stata's width, its edges up to 44.7 mpg off at degree(1); it now draws Stata's analytic band; `pwidth()` and `var()` on lpolyci were named as ignored and are now honoured; `lpolyci ..., level(5)` was drawn and is now refused r(198) as twoway refuses it; two observations at `bwidth(1000)` drew nothing and now draw the smooth, with no band, as twoway does; and the band is about 70 times faster at N=20000 (WP-29, P0.9)
 
 - `dash (scatter mpg weight) (scatter mpg weight if price>6000), by(foreign)`
   linked with a second graph, with the price range moved to 5,000-15,906:

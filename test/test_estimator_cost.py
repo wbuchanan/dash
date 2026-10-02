@@ -325,3 +325,32 @@ class TestTheCostIsBounded:
         fit = GM._fp_fit(x, y)
         assert time.perf_counter() - t0 < 60.0
         assert fit is not None
+
+
+class TestLpolyciCost:
+    """WP-29 P0.9: lpolyci's band is lpoly's analytic band, two local fits
+    per grid point, where it was a 200-resample bootstrap (4.23 s against
+    lpoly's 0.022 s at N=20000, about 190x).  The spy tests of
+    test_lpolyci_band.py (TestNoBootstrap) are the primary assertion; this
+    bound is generous for a loaded machine (the module docstring)."""
+
+    def test_the_band_costs_a_few_lpolys(self):
+        from bokeh.models import ColumnDataSource
+        from bokeh.plotting import figure
+        rng = np.random.default_rng(20000)
+        n = 20000
+        x = rng.uniform(1500.0, 5000.0, n)
+        y = 40.0 - 0.006 * x + rng.normal(0.0, 3.0, n)
+        src = ColumnDataSource({"y": y, "x": x})
+        m = dr.GlyphMapper()
+
+        def best(fn):
+            out = []
+            for _ in range(3):
+                t0 = time.perf_counter()
+                fn(figure(), src, "y", "x", {"bwidth": "200"})
+                out.append(time.perf_counter() - t0)
+            return min(out)
+        t_lp = best(m.map_lpoly)
+        t_ci = best(m.map_lpolyci)
+        assert t_ci <= 20.0 * t_lp, (t_ci, t_lp)

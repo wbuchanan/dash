@@ -657,7 +657,8 @@ named in a note and drawn around -- because it is what would be drawn.
 
 {phang2}    The bounds checked in Stata.  Numbers: {cmd:jitter()} 0 to 100;
     {cmd:malpha()}, {cmd:lalpha()} and {cmd:falpha()} 0 to 100;
-    {cmd:level()} strictly between 0 and 100; {cmd:aspectratio()} 0 or
+    {cmd:level()} strictly between 0 and 100 (on {cmd:lpolyci}, 10 to
+    99.99, as {cmd:twoway}); {cmd:aspectratio()} 0 or
     more; {cmd:base()} any number; {cmd:start()} any number, except that
     on {cmd:histogram} a {cmd:start()} above the variable's minimum is
     refused in {cmd:twoway}'s own words,
@@ -712,7 +713,7 @@ named in a note and drawn around -- because it is what would be drawn.
     10000 (on {cmd:mspline}, 1 to 300 is {cmd:twoway}'s own bound), and
     the {cmd:lowess} {cmd:bwidth()} fraction.  The others carry
     no second sentence: {cmd:jitter()} 0 to 100, {cmd:level()} strictly
-    inside 0 and 100, {cmd:barwidth()} positive, {cmd:aspectratio()} 0 or
+    inside 0 and 100 (on {cmd:lpolyci}, {cmd:twoway}'s words), {cmd:barwidth()} positive, {cmd:aspectratio()} 0 or
     more, {cmd:jitterseed()} 0 or more, and the {cmd:kdensity}
     {cmd:bwidth()} positive ({cmd:kdensity} itself accepts
     {cmd:bwidth(0)}).  {cmd:malpha()}, {cmd:lalpha()}, {cmd:falpha()},
@@ -2126,9 +2127,11 @@ it, its default and its bounds -- {cmd:twoway}'s, measured against
 changes an estimate is honoured or refused; the few {cmd:dash} cannot
 compute -- {cmd:area()} and {cmd:boundary} on {cmd:kdensity}, a kernel
 written as an option of its own (a bare {cmd:gaussian}), {cmd:atobs},
-{cmd:estcmd()}, {cmd:estopts()} and {cmd:predopts()} on the fits,
-{cmd:pwidth()} and {cmd:var()} on {cmd:lpolyci} -- are named in the note
-as ignored.  {cmd:fpfit} and {cmd:fpfitci} take none of the smoothing
+{cmd:estcmd()}, {cmd:estopts()} and {cmd:predopts()} on the fits --
+are named in the note as ignored.  {cmd:pwidth()} and {cmd:var()} are
+honoured on {cmd:lpolyci}; on {cmd:lpoly}, {cmd:scatter}, {cmd:lfitci},
+{cmd:kdensity} and the other types, where {cmd:twoway} refuses them with
+r(198), {cmd:dash} names them in the note and draws the layer.  {cmd:fpfit} and {cmd:fpfitci} take none of the smoothing
 options -- see below.
 
 {synoptset 20}{...}
@@ -2152,6 +2155,20 @@ options -- see below.
     reads {cmd:bw()} as {cmd:barwidth()}, a synonym of its own
     ({cmd:twoway} refuses {cmd:bw()} there), and on any other plot type
     names it in the note{p_end}
+{synopt:{opt pwidth(#)}}{cmd:lpolyci}: the pilot bandwidth of the
+    band's variance estimate, in the units of x; by default 1.5 times the
+    rule of thumb under {it:Default bandwidth}, even when {cmd:bwidth()}
+    is given, as Stata's {cmd:r(pwidth)}.  A positive number; anything
+    else is refused in {cmd:twoway}'s words, r(198).  {cmd:pw()} is its
+    shortest spelling ({cmd:p()} is {cmd:pstyle()}, as in {cmd:twoway}).
+    {cmd:pwidth(+800)} is read as 800, where {cmd:twoway} says
+    {cmd:expression invalid}, r(3000){p_end}
+{synopt:{opt var(#)}}{cmd:lpolyci}: a constant residual variance for the
+    band, in place of the pilot fit's; the pilot window must still hold
+    two observations, as in Stata, or that point has no band.  A positive
+    number: zero or less is r(198), and a value that is not one number
+    r(7), each in {cmd:twoway}'s words.  {cmd:v()} is its shortest
+    spelling{p_end}
 {synopt:{opt degree(#)}}{cmd:lpoly} and {cmd:lpolyci}: the degree of the
     local polynomial -- 0, the Nadaraya-Watson kernel estimator (the
     default); 1, local linear; 2, local quadratic; 3, local cubic.
@@ -2392,11 +2409,12 @@ to the maximum of the plot's sample, or over {cmd:range()}, as
 {cmd:fpfitci}, {cmd:lpolyci}, {cmd:lfitci} and {cmd:qfitci} draw a
 confidence band at {cmd:level()}, defaulting to the session's
 {cmd:c(level)} -- so {cmd:set level 90} is honoured, as {cmd:twoway}
-honours it.  {cmd:level(}{it:#}{cmd:)} must be a number strictly between
-0 and 100 and is refused otherwise, with r(198); {cmd:twoway}'s
-{cmd:lfitci}, {cmd:qfitci} and {cmd:fpfitci} take any number, and its
-{cmd:lpolyci} only 10 to 99.99 (so {cmd:dash} draws an {cmd:lpolyci}
-band at {cmd:level(5)}, which {cmd:twoway} refuses, r(198)).
+honours it.  On {cmd:lfitci}, {cmd:qfitci} and {cmd:fpfitci},
+{cmd:level(}{it:#}{cmd:)} must be a number strictly between 0 and 100
+and is refused otherwise, with r(198); {cmd:twoway} takes any number
+there.  On {cmd:lpolyci} it is {cmd:twoway}'s rule: 10 to 99.99, with at
+most two digits after the decimal point as typed, each refused r(198) in
+{cmd:twoway}'s words, and a value that is not one number r(7).
 {cmd:lfitci} and {cmd:qfitci} build the band on {cmd:stdp}, {cmd:stdf} or
 {cmd:stdr}, {it:t} times that standard error with the same {it:t} for all
 three; with an {cmd:aweight}, {cmd:stdf} and {cmd:stdr} are refused as
@@ -2404,8 +2422,17 @@ three; with an {cmd:aweight}, {cmd:stdf} and {cmd:stdr} are refused as
 r(135)), and with a {cmd:pweight} likewise (r(198)).  An {it:x} with two
 values fits the line ({cmd:qfit} and {cmd:qfitci} omit x^2, as
 {cmd:regress} does), and three observations draw the quadratic fit with
-no band.  {cmd:lpolyci}'s band is a bootstrap percentile band, not
-Stata's, every resample evaluated on the drawn line's own grid.  The
+no band.  {cmd:lpolyci}'s band is {cmd:lpoly}'s analytic band
+({helpb lpoly}, Methods and formulas): the smooth plus and minus
+invnormal times its standard error, a sandwich variance with a pilot
+local fit of degree p+2 at {cmd:pwidth()}, or {cmd:var()}.  At given
+bandwidths it is Stata's; at the default bandwidths it is as exact as the
+rule of thumb.  A grid point whose pilot window has no residual degrees of
+freedom is drawn with zero width; Stata's value there is round-off, often
+missing.  The band is drawn where its standard error is defined and joins
+across the points where it is not, as {cmd:twoway lpolyci} draws it.  The
+saved page keeps the band computed when it was built; the served app
+refits it after every filter move.  The
 bound of every checked option is listed under
 {help dash##validation:Option values}.
 

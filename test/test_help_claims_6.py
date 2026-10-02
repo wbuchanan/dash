@@ -511,7 +511,11 @@ class TestLpolyGrid:
                                 "xvar": "weight",
                                 "options": {"bwidth": "400"}}],
                     layer + "by", graph_options={"by": "foreign"})[mode][0]
-        xs = [d["x_lp"] for d in _data_with(got, "x_lp", "y_lp")
+        # WP-29 P0.9: lpolyci's band has a source of its own beside the
+        # line's (it is drawn only where the standard error is defined), so
+        # the curve is the source without y_lower.
+        lines = [r for r in got if "y_lower" not in r.data_source.data]
+        xs = [d["x_lp"] for d in _data_with(lines, "x_lp", "y_lp")
               if len(d["x_lp"])]
         assert len(xs) == 2, f"{len(xs)} panels drew a curve"
         spans = sorted((len(x), float(x[0]), float(x[-1])) for x in xs)
@@ -637,61 +641,62 @@ class TestLpolyAtEveryDegree:
 
 
 class TestLpolyciBand:
-    """"lpolyci's band is a bootstrap percentile band, not Stata's, every
-    resample evaluated on the drawn line's own grid."  Stata's band is
-    invnormal times a Mata standard error (lpoly.ado:319-324); dash's is
-    GlyphMapper._bootstrap_ci over the point estimate's grid."""
+    """lpolyci's band is Stata's analytic band (WP-29 P0.9, section 11):
+    smooth +/- invnormal x the sandwich standard error with a degree p+2
+    pilot ([R] lpoly eq. 4; lpoly.ado:319-324), computed once by
+    _lpoly_se.  These tests pinned a 200-resample bootstrap percentile band
+    (GlyphMapper._bootstrap_ci) and its distance from Stata's; they now
+    pin that no resample is drawn and that the band is Stata's."""
 
     # twoway lpolyci mpg weight, bwidth(400), serset 0, first row:
     # x 1760, smooth 27.8661240248368, band 26.2413063049316 to
-    # 29.4909420013428 (23sep2026).
+    # 29.4909420013428 (23sep2026; twoway's serset holds floats).
     _TW_FIRST = (1760.0, 27.8661240248368, 26.2413063049316,
                  29.4909420013428)
 
-    def test_every_resample_is_evaluated_on_the_drawn_grid(self,
-                                                           monkeypatch):
+    def test_no_resample_is_drawn(self, monkeypatch):
+        """Flipped (P0.9): the spy saw 201 fits, the point estimate and
+        200 resamples; now one fit, and _bootstrap_ci is never called."""
         from bokeh.models import ColumnDataSource
         from bokeh.plotting import figure
         grids = []
+        boots = []
         real = dr.GlyphMapper._compute_lpoly_fit
 
         def spy(*a, **k):
             grids.append(k.get("x_grid"))
             return real(*a, **k)
+
+        def boot(*a, **k):
+            boots.append(1)
+            raise AssertionError("lpolyci ran a bootstrap")
         monkeypatch.setattr(dr.GlyphMapper, "_compute_lpoly_fit",
                             staticmethod(spy))
+        monkeypatch.setattr(dr.GlyphMapper, "_bootstrap_ci",
+                            staticmethod(boot))
         src = ColumnDataSource({"mpg": list(_AUTO.mpg),
                                 "weight": list(_AUTO.weight)})
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            line, _band = dr.GlyphMapper().map_lpolyci(
+            dr.GlyphMapper().map_lpolyci(
                 figure(), src, "mpg", "weight", {"bwidth": "400"})
-        drawn = np.asarray(line.data_source.data["x_lp"], float)
-        assert grids[0] is None, "the point estimate builds its own grid"
-        resamples = grids[1:]
-        assert len(resamples) >= 100, len(resamples)
-        # Every resample, not a hundred of them: the band is the percentiles
-        # of n_boot rows, and a row no fit filled stays zero and drags the
-        # band down.  Measured 24sep2026: 201 fits, the point estimate and
-        # then _N_BOOT_DEFAULT (200) resamples, each on the drawn grid.
-        assert len(resamples) == dr._N_BOOT_DEFAULT, len(resamples)
-        for g in resamples:
-            np.testing.assert_array_equal(np.asarray(g, float), drawn)
+        assert len(grids) == 1 and grids[0] is None, grids
+        assert boots == []
 
     @pytest.mark.parametrize("mode", _MODES)
-    def test_the_line_is_statas_and_the_band_is_not(self, tmp_path, mode):
+    def test_the_line_and_band_are_statas(self, tmp_path, mode):
+        """Flipped (P0.9): asserted the lower edge more than 0.1 off
+        Stata's (dash's bootstrap gave 25.70 where Stata's is 26.24)."""
         got = _both(tmp_path, [{"type": "lpolyci", "yvar": "mpg",
                                 "xvar": "weight",
                                 "options": {"bwidth": "400"}}],
                     "lpcib")[mode][0]
         d = _one(got, "x_lp", "y_lp", "y_lower", "y_upper")
-        x0, fit, lo, _hi = self._TW_FIRST
+        x0, fit, lo, hi = self._TW_FIRST
         assert d["x_lp"][0] == x0
         assert d["y_lp"][0] == pytest.approx(fit, rel=1e-12)
-        # A bootstrap band, not Stata's normal-theory band: dash's lower
-        # edge is 25.70 here, Stata's 26.24.
-        assert abs(d["y_lower"][0] - lo) > 0.1
-        assert d["y_lower"][0] < fit < d["y_upper"][0]
+        assert d["y_lower"][0] == pytest.approx(lo, rel=1e-6)
+        assert d["y_upper"][0] == pytest.approx(hi, rel=1e-6)
 
 
 # ===========================================================================

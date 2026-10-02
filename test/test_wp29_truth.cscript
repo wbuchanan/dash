@@ -4297,6 +4297,143 @@ if inlist("`only'", "", "S11") {
 }
 * ==== end S11 ====
 
+// Helpers of block S11 P0.9 (lpolyci's analytic band), defined before it.
+mata:
+// _lb_cmp(): the drawn band in globals lw_x lw_lo lw_hi against Stata's
+// gx gy gse at level lvl: lower/upper = gy -/+ z*gse within
+// frac*max(1,|gy|).  A drawn row Stata gives no se, or one whose drawn band
+// is pinched (lower == upper) where Stata's half-width is round-off (at
+// most 1e-3) or missing, is a D4 row: dash pinches where the pilot fit has
+// no residual degrees of freedom.  Sets lw_ok, lw_why, lw_excl.
+void _lb_cmp(real scalar frac, real scalar lvl, string scalar first)
+{
+    real colvector px, lo, hi, gx, gy, gse, seen
+    real scalar i, j, k, z, dmin, bad, tol, pinch
+    string scalar why, excl
+    px = strtoreal(tokens(st_global("lw_x")))'
+    lo = strtoreal(tokens(st_global("lw_lo")))'
+    hi = strtoreal(tokens(st_global("lw_hi")))'
+    gx = st_data(., "gx")
+    gy = st_data(., "gy")
+    gse = st_data(., "gse")
+    z = invnormal(0.5 * (1 - lvl / 100) + lvl / 100)
+    seen = J(rows(gx), 1, 0)
+    bad = 0
+    why = ""
+    excl = ""
+    for (i = 1; i <= rows(px) & !bad; i++) {
+        dmin = .
+        j = 0
+        for (k = 1; k <= rows(gx); k++) {
+            if (gx[k] < . & (dmin >= . | abs(gx[k] - px[i]) < dmin)) {
+                dmin = abs(gx[k] - px[i])
+                j = k
+            }
+        }
+        if (j == 0 | dmin > 1e-9 * max((1, abs(px[i])))) {
+            bad = 1
+            why = sprintf("drawn x %21.17g is not on Stata's grid", px[i])
+            continue
+        }
+        seen[j] = 1
+        pinch = (lo[i] == hi[i])
+        if (pinch & (gse[j] >= . | z * gse[j] <= 1e-3)) {
+            excl = excl + sprintf(" %g", gx[j])
+            continue
+        }
+        if (gse[j] >= .) {
+            bad = 1
+            why = sprintf("dash draws a band at %g where Stata has no se", gx[j])
+            continue
+        }
+        tol = frac * max((1, abs(gy[j])))
+        if (abs(lo[i] - (gy[j] - z * gse[j])) > tol | abs(hi[i] - (gy[j] + z * gse[j])) > tol) {
+            bad = 1
+            why = sprintf("at x %g dash [%21.17g, %21.17g], Stata [%21.17g, %21.17g]", gx[j], lo[i], hi[i], gy[j] - z * gse[j], gy[j] + z * gse[j])
+        }
+    }
+    for (k = 1; k <= rows(gx) & !bad; k++) {
+        if (gse[k] < . & !seen[k] & !(z * gse[k] <= 1e-3)) {
+            bad = 1
+            why = sprintf("Stata has a band at %g that dash does not draw", gx[k])
+        }
+    }
+    st_global("lw_ok", bad ? "0" : "1")
+    st_global("lw_why", why)
+    st_global("lw_excl", excl)
+}
+end
+
+// _lb_tcase <id> <stub> <dash plot> <lpoly args> <frac> <level> [<first>]
+capture program drop _lb_tcase
+program define _lb_tcase
+    version 16.0
+    args id stub dplot largs frac lvl first
+    if "`first'" == "" local first "."
+    foreach v in gx gy gse {
+        capture drop `v'
+    }
+    gettoken lyx lopts : largs, parse(",")
+    local lopts = subinstr(`"`lopts'"', ",", "", 1)
+    quietly lpoly `lyx', `lopts' ci nograph generate(gx gy) se(gse)
+    dash clear
+    quietly dash `dplot'
+    quietly dash build, saving("`stub'.html") replace nobrowser
+    python: import __main__; __main__._lw_read(r"`stub'.html", "lw", "ci", "`first'")
+    if "${lw_err}" != "" {
+        global lw_ok 0
+        global lw_why "${lw_err}"
+    }
+    else mata: _lb_cmp(`frac', `lvl', "`first'")
+    _w29_expect `id' "(${lw_ok} == 1)" `"`id' `dplot': ${lw_why}"'
+    if "${lw_excl}" != "" display as text `"`id' pinched (D4) at:${lw_excl}"'
+    foreach v in gx gy gse {
+        capture drop `v'
+    }
+end
+
+* ==== S11 P0.9: lpolyci analytic band ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S11") {
+    display as text "S11 P0.9 start `c(current_time)'"
+    local s11d "`w29_work'/s11b"
+    capture mkdir "`s11d'"
+
+    // LB-01: auto degree(1) bwidth(500) pwidth(800): the band is
+    // gy -/+ z*gse of `lpoly ..., ci se()' within 1e-8 x max(1,|gy|).
+    sysuse auto, clear
+    _lb_tcase LB-01 "`s11d'/lb01" "lpolyci mpg weight, degree(1) bwidth(500) pwidth(800) name(lb01)" "mpg weight, degree(1) bwidth(500) pwidth(800)" 1e-8 95
+    _w29_done LB-01 "auto degree(1) bwidth(500) pwidth(800): Stata's analytic band"
+
+    // LB-02: nlsw88 wage ttl_exp [aw=hours] bwidth(2) pwidth(3).
+    sysuse nlsw88, clear
+    _lb_tcase LB-02 "`s11d'/lb02" "lpolyci wage ttl_exp [aw=hours], bwidth(2) pwidth(3) name(lb02)" "wage ttl_exp [aw=hours], bwidth(2) pwidth(3)" 1e-8 95
+    _w29_done LB-02 "nlsw88 [aw=hours] bwidth(2) pwidth(3): Stata's analytic band"
+
+    // LB-03: auto kernel(biweight) degree(1) at the defaults (the pilot
+    // 1.5 x the rule of thumb), within 1e-6 x max(1,|gy|).
+    sysuse auto, clear
+    _lb_tcase LB-03 "`s11d'/lb03" "lpolyci mpg weight, kernel(biweight) degree(1) name(lb03)" "mpg weight, kernel(biweight) degree(1)" 1e-6 95
+    _w29_done LB-03 "auto biweight degree(1) at the default bandwidths: Stata's analytic band"
+
+    // LB-04: by(foreign), the foreign panel, bwidth(400) pwidth(600).
+    quietly summarize weight if foreign == 1
+    local first = r(min)
+    _lb_tcase LB-04 "`s11d'/lb04" "lpolyci mpg weight, bwidth(400) pwidth(600) by(foreign) name(lb04)" "mpg weight if foreign==1, bwidth(400) pwidth(600)" 1e-8 95 `first'
+    _w29_done LB-04 "by(foreign), the foreign panel: Stata's band for lpoly ... if foreign==1"
+
+    // LB-05: set level 90, then bwidth(500) pwidth(800): z = invnormal(.95).
+    set level 90
+    _lb_tcase LB-05 "`s11d'/lb05" "lpolyci mpg weight, bwidth(500) pwidth(800) name(lb05)" "mpg weight, bwidth(500) pwidth(800)" 1e-8 90
+    set level 95
+    _w29_done LB-05 "set level 90: the band is drawn at z = invnormal(.95)"
+
+    capture dash clear
+    macro drop lw_*
+    display as text "S11 P0.9 end `c(current_time)'"
+}
+* ==== end S11 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

@@ -2204,7 +2204,9 @@ _MOVES = [
 
 _MOVED_LAYERS = ["scatter", "line", "lfit", "lfitci", "histogram", "kdensity",
                  "lpoly", "rarea", "pcspike", "function", "connected",
-                 "pcarrow", "pcbarrow"]
+                 "pcarrow", "pcbarrow",
+                 # WP-29 P0.9: lpolyci's analytic band refits after a move.
+                 "lpolyci"]
 
 #: The plot types twoway draws mlabel() on (test_marker_label_parity.py's
 #: measured partition; not imported, since that file imports this one).

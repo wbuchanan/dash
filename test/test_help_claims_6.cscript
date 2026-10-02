@@ -716,13 +716,18 @@ foreach v in 10 99.99 {
     _hc6_tw "lpolyci mpg weight, bwidth(400) level(`v')"
     if r(rc) != 0 local bad = 1
 }
+// WP-29 P0.9: dash refuses lpolyci's level(5) as twoway does, r(198)
+// with twoway's words (it drew a band at 5% before).
 _hc6_dash "dash lpolyci mpg weight, level(5) name(hc6)"
-if r(rc) != 0 local bad = 1
+if r(rc) != 198 local bad = 1
+_hc6_said "level() must be between 10 and 99.99 inclusive"
+if r(n) < 1 local bad = 1
 foreach v in 0 100 {
     _hc6_dash "dash lfitci mpg weight, level(`v') name(hc6)"
     if r(rc) != 198 local bad = 1
 }
-_hc6_tally HC6-24 `bad' "level(): twoway lfitci takes any number, lpolyci 10 to 99.99; dash takes strictly inside 0 and 100"
+if `bad' display as error "HC6-24 FAIL: level() on lfitci or lpolyci is not taken or refused as twoway does"
+_hc6_tally HC6-24 `bad' "level(): twoway lfitci takes any number, lpolyci 10 to 99.99; dash refuses lpolyci's level(5) as twoway does, and lfitci's outside 0 and 100"
 
 _hc6_ss l90 0 lfitci mpg weight, level(90)
 set level 90
@@ -802,7 +807,7 @@ _hc6_tally HC6-31 `bad' "dash names fpfit's estopts() in the note: it does not h
 // nothing for it.  With them dotextend() and droplines(), which the base()
 // entry says dash does not draw.
 local bad = 0
-local pairs `""kdensity mpg|area(2)|area" "kdensity mpg|boundary|boundary" "lfit mpg weight|atobs|atobs" "lfit mpg weight|estopts(noconstant)|estopts" "lfit mpg weight|predopts(residuals)|predopts" "fpfit mpg weight|estcmd(regress)|estcmd" "lpolyci mpg weight|pwidth(500)|pwidth" "lpolyci mpg weight|var(2)|var" "dot mpg weight|dotextend(no)|dotextend" "function y = x|range(0 5) droplines(1 2)|droplines""'
+local pairs `""kdensity mpg|area(2)|area" "kdensity mpg|boundary|boundary" "lfit mpg weight|atobs|atobs" "lfit mpg weight|estopts(noconstant)|estopts" "lfit mpg weight|predopts(residuals)|predopts" "fpfit mpg weight|estcmd(regress)|estcmd" "dot mpg weight|dotextend(no)|dotextend" "function y = x|range(0 5) droplines(1 2)|droplines""'
 foreach p of local pairs {
     local b1 = strpos(`"`p'"', "|")
     local spec = substr(`"`p'"', 1, `b1' - 1)
@@ -823,7 +828,19 @@ foreach p of local pairs {
         local bad = 1
     }
 }
-_hc6_tally HC6-55 `bad' "area() boundary atobs estopts() predopts() estcmd() pwidth() var() dotextend() droplines(): twoway takes them; dash names each in the note"
+_hc6_tally HC6-55 `bad' "area() boundary atobs estopts() predopts() estcmd() dotextend() droplines(): twoway takes them; dash names each in the note"
+
+// HC6-55b (WP-29 P0.9): lpolyci's pwidth() and var() are honoured, as
+// twoway honours them: rc 0 and no note naming either.
+local bad = 0
+_hc6_tw "lpolyci mpg weight, pwidth(500) var(2)"
+if r(rc) != 0 local bad = 1
+_hc6_dash "dash lpolyci mpg weight, pwidth(500) var(2) name(hc6)"
+if r(rc) != 0 local bad = 1
+_hc6_said "unsupported option"
+if r(n) != 0 local bad = 1
+if `bad' display as error "HC6-55b FAIL: lpolyci's pwidth() or var() is refused or named in the note"
+_hc6_tally HC6-55b `bad' "lpolyci's pwidth() and var() are honoured, with no note"
 
 // ================================================================
 // HC6-32 .. 34 -- histogram

@@ -19,8 +19,9 @@ asked for the same smoother and got two different ones — the second clamped
 silently: the curve is drawn, it is just not the curve that was requested,
 and the confidence band is computed around the wrong curve.
 
-The bootstrap resamples must use the same smoother as the point estimate, or
-the band is not a band around the line that is drawn.
+The band must be built around the same smoother as the line that is drawn.
+Since WP-29 P0.9 it is lpoly's analytic band (_lpoly_se: [R] lpoly eq. 4),
+no longer a bootstrap.
 """
 import os
 import sys
@@ -82,8 +83,9 @@ class TestLpolyciUsesTheSameSmootherAsLpoly:
     def test_the_fitted_line_matches_lpoly_for_the_same_options(self, opts):
         """Equal to within grid resolution, which is the one legitimate gap.
 
-        lpolyci evaluates on 100 points and lpoly on 200, for bootstrap
-        speed, so interpolating one onto the other leaves a small residual.
+        lpolyci once evaluated on 100 points and lpoly on 200 (for the
+        bootstrap's speed, before WP-29 P0.9), so interpolating one onto the
+        other left a small residual.
         Measured on this fixture (y-range 21.4): with the bug the two curves
         differed by 1.5 to 5.4; with the same smoother they differ by at most
         0.03. _TOL is 1% of the range — an order of magnitude clear of both.
@@ -157,8 +159,9 @@ class TestTheBandSurroundsTheLineThatIsDrawn:
         y = np.asarray(band["y_lp"], float)
         ok = ~(np.isnan(lo) | np.isnan(hi) | np.isnan(y))
         assert ok.sum() > 10
-        # The whole grid: lpoly's n() defaults to min(N, 50), and with a
-        # seeded bootstrap every one of the 50 points has its band (measured
-        # 24sep2026).  A band missing over most of the grid passed "> 10".
+        # The whole grid: lpoly's n() defaults to min(N, 50), and on this
+        # fixture Stata's analytic band is defined at every one of the 50
+        # points (WP-29 P0.9).  A band missing over most of the grid passed
+        # "> 10".
         assert len(y) == 50 and int(ok.sum()) == 50, (len(y), int(ok.sum()))
         assert np.all(lo[ok] - 1e-9 <= y[ok]) and np.all(y[ok] <= hi[ok] + 1e-9)

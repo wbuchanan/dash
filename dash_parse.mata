@@ -142,6 +142,12 @@
 *!       lpoly, lpolyci or kdensity, read as kernel(<name>): the full
 *!       name into the caller's local _kf_name, unk less it into _kf_rest.
 *!
+*!   _dash_lpolyci_opts(unk, ptype)
+*!       lpolyci's pwidth() and var() taken out of the catch-all by value,
+*!       and twoway's checks on them and on level(), in twoway's order:
+*!       the caller's locals _lpo_pwidth, _lpo_var, _lpo_rest, _lpo_rc,
+*!       _lpo_msg (WP-29 P0.9).  Helpers _dash_lpo_onenum, _dash_lpo_isint.
+*!
 *!   _dash_rep_merge_locals(key, m1, m2, out)
 *!       Two copies of option key, the caller's locals m1 then m2, merged
 *!       as twoway merges them, into the caller's local out.
@@ -5138,6 +5144,165 @@ void _dash_kernel_flag(string scalar unk, string scalar ptype)
     if (name == "") return
     st_local("_kf_name", name)
     st_local("_kf_rest", rest)
+}
+
+// _dash_lpolyci_opts(unk, ptype) -- lpolyci's pwidth(#) and var(#) (WP-29
+// P0.9), read from the catch-all unk by value, and the checks twoway makes
+// on them and on level(), in twoway's order (measured 01oct2026, StataNow
+// 19.5, `twoway lpolyci mpg weight, <opts> nodraw'):
+//   1. var() not one number: r(7) "'<tok>' found where number expected",
+//      or "'<2nd tok>' found where nothing expected";
+//   2. level() not one number (s(level)): r(7), the same words;
+//   then, only when every degree() and n() typed is an integer (else
+//   twoway's syntax refuses that option first, and so does dash's table):
+//   3. level() with an exponent: r(198) "<text> found where number
+//      expected"; outside 10..99.99: r(198) "level() must be between 10
+//      and 99.99 inclusive"; more than two digits after the point as
+//      typed: r(198) "level() can have at most two digits after the
+//      decimal point";
+//   4. pwidth() not a positive number: r(198) "pwidth() must be a
+//      positive number".
+// var() <= 0 is refused later, after the kernel, bwidth and degree rules
+// (_dash_validate_opts), as twoway orders it.  On ptype "lpolyci" only, a
+// word pw..pwidth(...) (minimum pw: p() is pstyle()) or v..var(...)
+// (minimum v) is taken out of unk; every other word stays.  Sets the
+// caller's locals _lpo_pwidth and _lpo_var (the value, %21.0g), _lpo_rest
+// (unk less those words), _lpo_rc (0 or the return code) and _lpo_msg.
+// A value is a number when it is one token and strtoreal() is not
+// missing.  Nothing is expanded; the words are the user's text.
+real scalar _dash_lpo_onenum(string scalar v, real scalar x,
+                             string scalar msg)
+{
+    string rowvector t
+
+    t = tokens(strtrim(v))
+    x = .
+    if (cols(t) == 0) {
+        msg = "'' found where number expected"
+        return(0)
+    }
+    if (cols(t) > 1) {
+        x = strtoreal(t[1])
+        if (x >= .) {
+            msg = "'" + t[1] + "' found where number expected"
+            return(0)
+        }
+        msg = "'" + t[2] + "' found where nothing expected"
+        return(0)
+    }
+    x = strtoreal(t[1])
+    if (x >= .) {
+        msg = "'" + t[1] + "' found where number expected"
+        return(0)
+    }
+    return(1)
+}
+
+real scalar _dash_lpo_isint(string scalar v)
+{
+    real scalar x
+
+    if (strtrim(v) == "") return(1)
+    x = strtoreal(strtrim(v))
+    return(x < . & x == floor(x))
+}
+
+void _dash_lpolyci_opts(string scalar unk, string scalar ptype)
+{
+    string rowvector toks
+    string scalar    rest, w, nm, val, pw, vr, lv, msg, frac
+    real scalar      i, p, x, hasp, hasv, ints
+
+    st_local("_lpo_pwidth", "")
+    st_local("_lpo_var", "")
+    st_local("_lpo_rest", unk)
+    st_local("_lpo_rc", "0")
+    st_local("_lpo_msg", "")
+    if (ptype != "lpolyci") return
+    toks = _dash_rep_toks(unk, 0)
+    rest = ""
+    pw = ""
+    vr = ""
+    hasp = 0
+    hasv = 0
+    for (i = 1; i <= cols(toks); i++) {
+        w = toks[i]
+        p = strpos(w, "(")
+        if (p > 1 & substr(w, strlen(w), 1) == ")") {
+            nm  = substr(w, 1, p - 1)
+            val = substr(w, p + 1, strlen(w) - p - 1)
+            if (strlen(nm) >= 2 & nm == substr("pwidth", 1, strlen(nm))) {
+                pw = val
+                hasp = 1
+                continue
+            }
+            if (strlen(nm) >= 1 & nm == substr("var", 1, strlen(nm))) {
+                vr = val
+                hasv = 1
+                continue
+            }
+        }
+        rest = rest + (rest == "" ? "" : " ") + w
+    }
+    st_local("_lpo_rest", rest)
+    msg = ""
+    // 1. var() must be one number
+    if (hasv) {
+        if (!_dash_lpo_onenum(vr, x, msg)) {
+            st_local("_lpo_rc", "7")
+            st_local("_lpo_msg", msg)
+            return
+        }
+        st_local("_lpo_var", strofreal(x, "%21.0g"))
+    }
+    // 2. level() must be one number
+    lv = strtrim(st_global("s(level)"))
+    if (lv != "") {
+        if (!_dash_lpo_onenum(lv, x, msg)) {
+            st_local("_lpo_rc", "7")
+            st_local("_lpo_msg", msg)
+            return
+        }
+    }
+    ints = _dash_lpo_isint(st_global("s(degree)")) &
+           _dash_lpo_isint(st_global("s(n)"))
+    if (!ints) {
+        // the table refuses the malformed degree()/n() later (D7)
+        if (hasp) {
+            if (_dash_lpo_onenum(pw, x, msg) & x > 0) st_local("_lpo_pwidth", strofreal(x, "%21.0g"))
+        }
+        return
+    }
+    // 3. level(): no exponent, 10..99.99, at most two decimals as typed
+    if (lv != "") {
+        if (ustrregexm(lv, "[eEdD]")) {
+            st_local("_lpo_rc", "198")
+            st_local("_lpo_msg", lv + " found where number expected")
+            return
+        }
+        x = strtoreal(lv)
+        if (!(x >= 10 & x <= 99.99)) {
+            st_local("_lpo_rc", "198")
+            st_local("_lpo_msg", "level() must be between 10 and 99.99 inclusive")
+            return
+        }
+        p = strpos(lv, ".")
+        frac = p ? substr(lv, p + 1, .) : ""
+        if (strlen(frac) > 2) {
+            st_local("_lpo_rc", "198")
+            st_local("_lpo_msg", "level() can have at most two digits after the decimal point")
+            return
+        }
+    }
+    // 4. pwidth() a positive number
+    if (hasp) {
+        if (!_dash_lpo_onenum(pw, x, msg) | !(x > 0)) {
+            st_local("_lpo_rc", "198")
+            st_local("_lpo_msg", "pwidth() must be a positive number")
+            return
+        }
+        st_local("_lpo_pwidth", strofreal(x, "%21.0g"))
+    }
 }
 
 // _dash_rep_split(v, body, sub) -- a merged option's value at its first

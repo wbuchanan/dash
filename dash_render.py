@@ -7600,6 +7600,7 @@ class GlyphMapper:
         lo_col: str = "y_lower",
         hi_col: str = "y_upper",
         line_width: "float | None" = None,
+        band_source: "ColumnDataSource | None" = None,
     ) -> "tuple[Any, Any]":
         """Render a confidence-interval band, its outline and its fit line.
 
@@ -7621,13 +7622,18 @@ class GlyphMapper:
             line_width: The fit line's width in pixels; the plot's
                      ``plot_line_width(idx, "lineplot")`` from the caller,
                      ``linewidth p`` when None.
+            band_source: The band's own source, when it holds other rows
+                     than the line's (lpolyci: a band only where the
+                     standard error is defined, WP-29 P0.9); *source*
+                     when None.
 
         Returns:
             A ``(line_renderer, band_renderer)`` tuple; the outline is
             ``band_renderer._dash_ci_outline``.
         """
         band_r, _outline_r = self._ci_band_glyphs(
-            fig, source, x_col, lo_col, hi_col, options)
+            fig, source if band_source is None else band_source, x_col,
+            lo_col, hi_col, options)
         line_r = fig.line(
             x=x_col, y=y_col, source=source,
             line_color=color,
@@ -7873,6 +7879,9 @@ class GlyphMapper:
         w: "np.ndarray | None" = None,
     ) -> "tuple[np.ndarray, np.ndarray]":
         """Compute a bootstrap confidence interval for a smooth fit.
+
+        Only qfitci's fallback calls it now, when its least squares is
+        singular; lpolyci draws lpoly's analytic band (WP-29 P0.9).
 
         Args:
             x:        Observed x values (NaN-free).
@@ -10912,19 +10921,11 @@ class GlyphMapper:
             x_grid = np.asarray(x_grid, dtype=float)
             n_grid = len(x_grid)
 
-        support, kfn = _KERNELS.get(kernel, _KERNELS["epanechnikov"])
         y_fit = np.empty(n_grid)
         ow = None if w is None else np.asarray(w, dtype=float)
 
         for i, x0 in enumerate(x_grid):
-            z = (x - x0) / h
-            if np.isfinite(support):
-                kw = np.zeros_like(z)
-                inside = np.abs(z) < support
-                if inside.any():
-                    kw[inside] = kfn(z[inside])
-            else:
-                kw = kfn(z)
+            kw = _lpoly_kernel_weights(x, x0, h, kernel)
             if ow is not None:
                 kw = kw * ow
             pos = kw > 0
@@ -11127,62 +11128,87 @@ class GlyphMapper:
         view=None,
         color_idx: int = 0,
     ) -> list:
-        """Add a local polynomial smoother with a bootstrap 95% CI band to *fig*.
+        """Add a local polynomial smoother with lpoly's analytic CI band.
+
+        WP-29 P0.9: the band is [R] lpoly eq. 4, as ``lpoly, ci`` and
+        ``twoway lpolyci`` draw it: smooth +/- invnormal(.5(1-l/100)+l/100)
+        x the standard error ``_lpoly_se`` (a sandwich variance with a
+        degree p+2 pilot fit at ``pwidth()``, default 1.5 times the rule of
+        thumb even when ``bwidth()`` is given, or a constant ``var()``,
+        JSON key ``lpvar``).  It was a 200-resample bootstrap percentile
+        band, 0.85-1.55 times Stata's width and up to 44.7 mpg off at
+        degree(1).  The band is drawn only where the standard error is
+        defined and joins across the rows where it is not, as twoway's
+        rarea does; a row whose pilot has no residual degrees of freedom
+        pinches (D4).  The layer always yields three sources -- band,
+        outline, line -- drawn or empty, so the served refresh, which
+        copies sources by position, refits it.
 
         Args:
             fig:     Bokeh Figure object.
             source:  Shared ColumnDataSource.
             yvar:    Name of the y variable.
             xvar:    Name of the x variable.
-            options: Plot-level options; supports ``bwidth`` and ``degree``.
+            options: Plot-level options: ``bwidth``, ``pwidth``, ``lpvar``,
+                     ``degree``, ``kernel``, ``n``, ``level``.
 
         Returns:
             List with [line_renderer, band_renderer].
         """
         # Masked by the layer's own view: a per-plot `if', a by()
-        # facet panel or a linked graph's qualifier.  Reading the
-        # whole source here computed the statistic from rows the user
-        # had excluded, and said nothing.
+        # facet panel or a linked graph's qualifier.
         x, y, w, wtype = self._layer_units(source, view, options, "lpolyci",
                                              xvar, yvar)
-
         _lpolyci_color = self.scheme.default_color(color_idx, "line")
-        empty_src = ColumnDataSource({
-            "x_lp": [], "y_lp": [], "y_lower": [], "y_upper": []
-        })
-        if len(x) < 3:
-            # The ci style, as a band with rows draws it: an empty
-            # layer's legend key is the band twoway keys.
-            band_r, _ = self._ci_band_glyphs(
-                fig, empty_src, "x_lp", "y_lower", "y_upper", options)
-            line_r = fig.line(x="x_lp", y="y_lp", source=empty_src,
-                              line_color=_lpolyci_color, line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
-                              legend_label=yvar)
-            self._ci_line_restyle(line_r, options)
-            # Two observations: twoway's smooth and band are missing, rc 0,
-            # nothing printed; none or one in a by() panel, the same
-            # (measured 24sep2026).
+        _lw_px = self.scheme.plot_line_width(color_idx, "lineplot")
+
+        def _draw(lx, ly, bx, by, blo, bhi):
+            line_src = ColumnDataSource({"x_lp": list(lx), "y_lp": list(ly)})
+            band_src = ColumnDataSource({"x_lp": list(bx), "y_lp": list(by),
+                                         "y_lower": list(blo),
+                                         "y_upper": list(bhi)})
+            return self._render_ci_band(
+                fig, line_src, "x_lp", "y_lp", _lpolyci_color, yvar,
+                options, line_width=_lw_px, band_source=band_src)
+
+        if len(x) < 2:
+            # None or one observation: twoway draws nothing, rc 0, in a
+            # by() panel (dash.ado refuses it as twoway does elsewhere).
+            # Three empty sources through the same path, so the line keeps
+            # its lcolor()/lpattern().
+            line_r, band_r = _draw([], [], [], [], [], [])
             return self._mark_silent([line_r, band_r])
 
-        # The same resolution map_lpoly uses.  This was left on the pre-S07
-        # code -- bwidth clamped to [0.01, 1.0] as a FRACTION, no kernel
-        # lookup at all -- so `lpoly y x, bwidth(500)' and
-        # `lpolyci y x, bwidth(500)' asked for one smoother and got two, and
-        # kernel() was read by nothing here.  Silently, in both cases: the
-        # curve is drawn, it is simply not the curve that was asked for, and
-        # the band is then computed around the wrong curve.
-        bwidth = _stat_option_float(options, "bwidth", None, "lpoly", lo=0.0)
-        if bwidth is not None and bwidth <= 0.0:
-            warnings.warn(
-                f"dash: lpolyci option bwidth({options.get('bwidth')}) must "
-                f"be positive; deriving it from the data instead.",
-                UserWarning, stacklevel=2,
-            )
-            bwidth = None
+        def _positive(key):
+            # dash.ado writes only positive numbers here; a hand-edited spec
+            # value gets one note (per option and value, so a served filter
+            # move does not repeat it) and the default.
+            raw = options.get(key)
+            if raw is None or str(raw).strip() == "":
+                return None
+            name = "var" if key == "lpvar" else key
+            try:
+                val = float(str(raw).strip())
+            except (TypeError, ValueError):
+                _dash_warn_once(
+                    ("lpolyci", key, str(raw)),
+                    f"dash: lpolyci option {name}({raw}) is not a number; "
+                    f"using the default instead.")
+                return None
+            if not (math.isfinite(val) and val > 0.0):
+                _dash_warn_once(
+                    ("lpolyci", key, str(raw)),
+                    f"dash: lpolyci option {name}({raw}) must be a positive "
+                    f"number; using the default instead.")
+                return None
+            return val
+
+        bwidth = _positive("bwidth")
+        pwidth = _positive("pwidth")
+        lpvar = _positive("lpvar")
 
         degree = int(_stat_option_float(options, "degree", 0.0, "lpoly",
                                         lo=0.0, hi=3.0) or 0.0)
-
         kernel = str(options.get("kernel", "") or "epanechnikov").strip().lower()
         if kernel not in _KERNELS:
             warnings.warn(
@@ -11191,79 +11217,54 @@ class GlyphMapper:
                 UserWarning, stacklevel=2,
             )
             kernel = "epanechnikov"
+        level = _resolve_level(options, self.default_level, "lpolyci")
 
-        # The same grid as lpoly (_lpoly_grid_n: twoway's rule on _N).
         n_grid = self._lpoly_grid_n(options, "lpolyci", len(x))
         lw = _dash_lpoly_weights(w, wtype)
-        # WP-29 P0.7: one bandwidth per layer, from the layer's own rows.
-        bw = bwidth if bwidth is not None else \
-            GlyphMapper._default_lpoly_bwidth(x, y, lw, degree, kernel)
-        if not np.isfinite(bw):
+        # The rule of thumb at degree p, for the bandwidth and the default
+        # pilot alike (r(pwidth) = 1.5 x rot, even with bwidth()).
+        rot = GlyphMapper._default_lpoly_bwidth(x, y, lw, degree, kernel)
+        h = bwidth if bwidth is not None else rot
+        hp = pwidth if pwidth is not None else 1.5 * rot
+
+        def _on(vals, var, axis):
+            return self._on_axis(fig, np.asarray(vals, dtype=float), var, axis)
+
+        if not np.isfinite(h):
             # Stata's r(bwidth) is missing: twoway draws the smooth as y = 0
-            # at every grid point and no band, in silence.
-            band_r, _ = self._ci_band_glyphs(
-                fig, empty_src, "x_lp", "y_lower", "y_upper", options)
+            # at every grid point, and no band.
             xg = np.linspace(float(x.min()), float(x.max()), n_grid)
-            _xd, _ox = self._on_axis(fig, xg, xvar, "x")
-            _yd, _oy = self._on_axis(fig, np.zeros(n_grid), yvar, "y")
-            _xd, _yd = self._drop_off_dates("lpolyci", "point(s)",
-                                            _ox | _oy, _xd, _yd)
-            zero_src = ColumnDataSource({"x_lp": _xd.tolist(),
-                                         "y_lp": _yd.tolist()})
-            line_r = fig.line(x="x_lp", y="y_lp", source=zero_src,
-                              line_color=_lpolyci_color,
-                              line_width=self.scheme.plot_line_width(
-                                  color_idx, "lineplot"),
-                              legend_label=yvar)
-            self._ci_line_restyle(line_r, options)
+            _xd, _ox = _on(xg, xvar, "x")
+            _yd, _oy = _on(np.zeros(n_grid), yvar, "y")
+            _xd, _yd = self._drop_off_dates("lpolyci", "point(s)", _ox | _oy,
+                                            _xd, _yd)
+            line_r, band_r = _draw(_xd.tolist(), _yd.tolist(), [], [], [], [])
             return [line_r, band_r]
-        x_grid, y_fit = self._compute_lpoly_fit(x, y, bwidth=bw,
-                                                 degree=degree, kernel=kernel,
-                                                 n_grid=n_grid, w=lw)
 
-        # Bootstrap CI (200 resamples for speed).  The resamples must use the
-        # same smoother as the point estimate, or the band is not a band
-        # around the line that is drawn.  NOT Stata's band, which is
-        # invnormal x a Mata standard error (lpoly.ado:319-324); recorded as
-        # a follow-up outside WP-18.
-        # Every resample is evaluated on the point estimate's OWN grid.  It
-        # used to rebuild a grid over the resample's range, so the
-        # percentiles mixed different x positions: 124 of 200 resamples on
-        # auto were on another grid and the band's edges moved by up to
-        # 11.3 mpg (the WP-18 review).
-        def _lpoly_fn(xi: "np.ndarray", yi: "np.ndarray", _xg: "np.ndarray",
-                      wi: "np.ndarray | None" = None) -> "np.ndarray":
-            _, yb = self._compute_lpoly_fit(xi, yi, bwidth=bw,
-                                            degree=degree, kernel=kernel,
-                                            w=wi, x_grid=_xg)
-            return yb  # NaN entries are replaced by fallback in _bootstrap_ci
-
-        y_lower, y_upper = GlyphMapper._bootstrap_ci(
-            x, y, x_grid, _lpoly_fn, fallback=y_fit,
-            level=_resolve_level(options, self.default_level),
-            seed=_resolve_seed(options), w=lw,
-        )
-
-        valid = ~np.isnan(y_fit)
-        # WP-29 P0.8: computed in Stata units, drawn where the figure's
-        # axes draw the variables (_on_axis); a point with no date there
-        # is dropped with one note.
-        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x")
-        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y")
-        _yl, _ol = self._on_axis(fig, y_lower[valid], yvar, "y")
-        _yu, _ou = self._on_axis(fig, y_upper[valid], yvar, "y")
-        _xd, _yd, _yl, _yu = self._drop_off_dates(
-            "lpolyci", "point(s)", _ox | _oy | _ol | _ou, _xd, _yd, _yl, _yu)
-        ci_src = ColumnDataSource({
-            "x_lp":    _xd.tolist(),
-            "y_lp":    _yd.tolist(),
-            "y_lower": _yl.tolist(),
-            "y_upper": _yu.tolist(),
-        })
-        line_r, band_r = self._render_ci_band(
-            fig, ci_src, "x_lp", "y_lp", _lpolyci_color, yvar, options,
-            line_width=self.scheme.plot_line_width(color_idx, "lineplot")
-        )
+        x_grid, y_fit = self._compute_lpoly_fit(x, y, bwidth=h, degree=degree,
+                                                kernel=kernel, n_grid=n_grid,
+                                                w=lw)
+        se = _lpoly_se(x, y, x_grid, h, hp, degree, kernel, lw, lpvar)
+        z = _dash_invnormal(0.5 * (1.0 - level / 100.0) + level / 100.0)
+        valid = np.isfinite(y_fit)
+        with np.errstate(all="ignore"):
+            lo = y_fit - z * se
+            hi = y_fit + z * se
+        banded = valid & np.isfinite(se) & np.isfinite(lo) & np.isfinite(hi)
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's axes
+        # draw the variables; a point with no date there is dropped.
+        _xd, _ox = _on(x_grid[valid], xvar, "x")
+        _yd, _oy = _on(y_fit[valid], yvar, "y")
+        _xd, _yd = self._drop_off_dates("lpolyci", "point(s)", _ox | _oy,
+                                        _xd, _yd)
+        _bx, _bo = _on(x_grid[banded], xvar, "x")
+        _by, _b1 = _on(y_fit[banded], yvar, "y")
+        _bl, _b2 = _on(lo[banded], yvar, "y")
+        _bu, _b3 = _on(hi[banded], yvar, "y")
+        _bx, _by, _bl, _bu = self._drop_off_dates(
+            "lpolyci", "point(s)", _bo | _b1 | _b2 | _b3, _bx, _by, _bl, _bu)
+        line_r, band_r = _draw(_xd.tolist(), _yd.tolist(), _bx.tolist(),
+                               _by.tolist(), _bl.tolist(), _bu.tolist())
         # Missing at every grid point: drawn in silence, as lpoly's is.
         if not valid.any():
             self._mark_silent([line_r, band_r])
@@ -14608,32 +14609,42 @@ def _fp_report_unsupported(options: dict, layer: str) -> None:
             )
 
 
-def _resolve_level(options: dict, default: float = _DEFAULT_LEVEL) -> float:
+def _resolve_level(options: dict, default: float = _DEFAULT_LEVEL,
+                   ptype: str = "") -> float:
     """Return the confidence level for a CI layer.
 
     Args:
         options: Translated plot-level options; ``level()`` wins when present.
         default: The session default, from ``c(level)``.
+        ptype:   The plot type.  On ``lpolyci`` the valid range is twoway's,
+                 10 to 99.99 inclusive (WP-29 P0.9; dash.ado refuses the
+                 rest, so only a hand-written spec gets here); elsewhere it
+                 is strictly inside (0, 100).  The band and the legend key
+                 read the level through this one resolver.
 
     Returns:
-        A level strictly inside (0, 100).
+        The level; a value out of range or not a number gives one note
+        (``_dash_warn_once``, per option, type and value) and *default*.
     """
     raw = options.get("level", None)
     if raw is None or str(raw).strip() == "":
         return float(default)
+    lp = (str(ptype) == "lpolyci")
     try:
         val = float(str(raw).strip())
+        ok = math.isfinite(val) and ((10.0 <= val <= 99.99) if lp
+                                     else (0.0 < val < 100.0))
     except (TypeError, ValueError):
-        warnings.warn(
-            f"dash: level({raw}) is not a number; using {default}.",
-            UserWarning, stacklevel=3,
-        )
+        _dash_warn_once(("level", str(ptype), str(raw)),
+                        f"dash: level({raw}) is not a number; using "
+                        f"{default}.")
         return float(default)
-    if not (0.0 < val < 100.0):
-        warnings.warn(
-            f"dash: level({raw}) must be between 0 and 100; using {default}.",
-            UserWarning, stacklevel=3,
-        )
+    if not ok:
+        bounds = ("between 10 and 99.99 inclusive" if lp
+                  else "between 0 and 100")
+        _dash_warn_once(("level", str(ptype), str(raw)),
+                        f"dash: level({raw}) must be {bounds}; using "
+                        f"{default}.")
         return float(default)
     return val
 
@@ -14641,7 +14652,8 @@ def _resolve_level(options: dict, default: float = _DEFAULT_LEVEL) -> float:
 def _resolve_seed(options: dict, default: int = 42) -> int:
     """Return the RNG seed for a resampling layer.
 
-    The seed option seeds jitter and, here, the bootstrap confidence bands,
+    The seed option seeds jitter and, here, qfitci's bootstrap fallback band
+    (lpolyci's band is analytic since WP-29 P0.9),
     so a user who needs a different resample draw can ask for one instead of
     always getting seed 42. Stata spells it ``jitterseed()`` and dash also
     accepts ``jseed()``; :func:`_jitter_seed` reads both.
@@ -15447,6 +15459,146 @@ def _dash_lpoly_weights(w: "np.ndarray | None", wtype: "str | None"
     if wtype == "fw":
         return ww
     return ww * (len(ww) / float(ww.sum()))
+
+#: lpolyci's pinch rule (WP-29 P0.9, D4): a pilot window whose residual
+#: degrees of freedom are at most this fraction of its weight sum has none.
+_LPOLY_DF_TOL = 1e-10
+
+
+def _lpoly_kernel_weights(x, x0, h, kernel) -> "np.ndarray":
+    """lpoly's kernel weights K((x - x0)/h) at one grid point.
+
+    The kernel's support is strict (|z| < support; the gaussian's is
+    infinite).  ``_compute_lpoly_fit`` and ``_lpoly_se`` share it, so the
+    smooth and its standard error weigh a window identically.
+    """
+    support, kfn = _KERNELS.get(kernel, _KERNELS["epanechnikov"])
+    z = (np.asarray(x, dtype=float) - x0) / h
+    if np.isfinite(support):
+        kw = np.zeros_like(z)
+        inside = np.abs(z) < support
+        if inside.any():
+            kw[inside] = kfn(z[inside])
+        return kw
+    return kfn(z)
+
+
+def _lpoly_local_wls(x, y, kw, x0, h, degree):
+    """lpoly's local weighted least squares at x0, on the columns Stata keeps.
+
+    Returns ``(pos, Z, Ainv, beta)``: the rows with positive weight, the
+    design in powers of (x - x0)/h restricted to ``_lpoly_kept_columns`` of
+    the raw window's Gram (Part C; the intercept, the residuals and the
+    trace are invariant to column scaling), ``(Z'KZ)^-1`` and the
+    coefficients.  None when no row has weight, the intercept is not kept,
+    or anything is singular or not finite.
+    """
+    try:
+        with np.errstate(all="ignore"):
+            pos = kw > 0
+            if int(pos.sum()) < 1:
+                return None
+            xp = x[pos]
+            kp = kw[pos]
+            dd = xp - x0
+            X = np.vander(dd, degree + 1, increasing=True)
+            G = (X * kp[:, None]).T @ X
+            if not np.isfinite(G).all():
+                return None
+            K = _lpoly_kept_columns(G)
+            if 0 not in K:
+                return None
+            Z = np.vander(dd / h, degree + 1, increasing=True)[:, K]
+            A = (Z * kp[:, None]).T @ Z
+            Ainv = np.linalg.inv(A)
+            beta = Ainv @ (Z.T @ (kp * y[pos]))
+            if not (np.isfinite(Ainv).all() and np.isfinite(beta).all()):
+                return None
+            return pos, Z, Ainv, beta
+    except (np.linalg.LinAlgError, ValueError):
+        return None
+
+
+def _lpoly_se(x, y, x_grid, h, hp, degree, kernel, w=None,
+              var=None) -> "np.ndarray":
+    """lpoly's standard error of the smooth at each grid point.
+
+    [R] lpoly eq. 4, verified to round-off against ``lpoly, ci se()``
+    (test/fixtures/lpolyci_truth.json): ``se^2 = [(X'WX)^-1 X'W2X
+    (X'WX)^-1]_00 * sigma^2(x0)`` with W = diag(K_h w), W2 = diag(K_h^2 w),
+    and sigma^2 from a local fit of degree p+2 at the pilot bandwidth *hp*:
+    ``sum K_hp w r^2 / (sum K_hp w - tr[(Z'K_hp wZ)^-1 Z' diag(K_hp^2 w) Z])``;
+    ``var`` replaces sigma^2.  NaN where fewer than two observations have a
+    positive main or pilot weight (Stata's se is missing there, under
+    var() too).  A pilot window with no residual degrees of freedom
+    (denominator at most ``_LPOLY_DF_TOL`` of its weight sum) gives se 0:
+    the band pinches, where Stata's value is round-off, often missing
+    (documented divergence D4).  Never raises; never a non-finite se but
+    NaN.
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    x_grid = np.asarray(x_grid, dtype=float)
+    out = np.full(len(x_grid), np.nan)
+    try:
+        h = float(h)
+        hp = float(hp)
+    except (TypeError, ValueError):
+        return out
+    if not (np.isfinite(h) and h > 0 and np.isfinite(hp) and hp > 0):
+        return out
+    ow = np.ones(len(x)) if w is None else np.asarray(w, dtype=float)
+    with np.errstate(all="ignore"):
+        for i, x0 in enumerate(x_grid):
+            # Stata's se is missing where the scaled distance squares past
+            # DBL_MAX (measured on auto at x0 = 2200, bwidth(500): pwidth()
+            # of 2.7e-151 and below give se missing, 2.8e-151 and above the
+            # se; this test trips from 1.97e-151, so a narrow window of
+            # pilot widths still differs).  An overflow, never a value.
+            dmax = float(np.max(np.abs(x - x0))) if len(x) else 0.0
+            zlim = math.sqrt(np.finfo(float).max)
+            if not (dmax / h <= zlim and dmax / hp <= zlim):
+                continue
+            kh = _lpoly_kernel_weights(x, x0, h, kernel)
+            kw = kh * ow
+            if int((kw > 0).sum()) < 2:
+                continue
+            kph = _lpoly_kernel_weights(x, x0, hp, kernel)
+            kpw = kph * ow
+            if int((kpw > 0).sum()) < 2:
+                continue
+            m = _lpoly_local_wls(x, y, kw, x0, h, degree)
+            if m is None:
+                continue
+            pos, Z, Ainv, _b = m
+            B = (Z * (kh[pos] * kw[pos])[:, None]).T @ Z
+            V00 = float((Ainv @ B @ Ainv)[0, 0])
+            if var is not None:
+                s2 = float(var)
+            else:
+                p = _lpoly_local_wls(x, y, kpw, x0, hp, degree + 2)
+                if p is None:
+                    continue
+                ppos, Zs, As, bs = p
+                r = y[ppos] - Zs @ bs
+                num = float(np.sum(kpw[ppos] * r * r))
+                Bs = (Zs * (kph[ppos] * kpw[ppos])[:, None]).T @ Zs
+                tot = float(np.sum(kpw[ppos]))
+                den = tot - float(np.trace(As @ Bs))
+                if not den > _LPOLY_DF_TOL * tot:
+                    out[i] = 0.0
+                    continue
+                s2 = max(num / den, 0.0)
+            se = math.sqrt(max(V00, 0.0) * s2) if np.isfinite(V00 * s2) else np.nan
+            out[i] = se if np.isfinite(se) else np.nan
+    return out
+
+
+def _dash_invnormal(p) -> float:
+    """Stata's invnormal(p): the standard normal quantile.  At .975 it is
+    1.959963984540054, as Stata's."""
+    from statistics import NormalDist
+    return NormalDist().inv_cdf(float(p))
 
 
 def _dash_wls(X: "np.ndarray", y: "np.ndarray",
@@ -26050,7 +26202,7 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
                 # separately, and the band's key carries the level.
                 lvl = _resolve_level(plot.get("options", {}) or {},
                                      _DEFAULT_LEVEL if default_level is None
-                                     else default_level)
+                                     else default_level, ptype)
                 band = [r for r in rends
                         if type(getattr(r, "glyph", None)).__name__
                         in ("VArea", "Band", "Patch")]
@@ -32039,8 +32191,9 @@ class ServerAppBuilder:
                     # range(# #), read the one way for the fitted lines'
                     # grid and for kdensity's span (WP-23).
                     _dash_range_pair,
-                    # lpolyci's band is a bootstrap; without these the served
-                    # branch was a verbatim copy of lpoly and drew no band.
+                    # lpolyci's level and seed readers (its band was a
+                    # bootstrap until WP-29 P0.9; qfitci's fallback and
+                    # jitter still read the seed).
                     _resolve_level, _dash_session_level,
                     _dash_histogram_ymode, _resolve_seed, _jitter_seed,
                     _stata_percentile, _stata_weighted_percentile,
@@ -32061,6 +32214,11 @@ class ServerAppBuilder:
                     _lpoly_rot_constant, _stata_invsym_keep,
                     _lpoly_rot_detail, _lpoly_rot_float,
                     _lpoly_kept_columns,
+                    # WP-29 P0.9: lpolyci's analytic band (eq. 4) -- the
+                    # kernel weights, the local fits on Part C's columns,
+                    # the standard error and Stata's invnormal.
+                    _lpoly_kernel_weights, _lpoly_local_wls, _lpoly_se,
+                    _dash_invnormal,
                     _dash_wls, _dash_fitci_std,
                     _dash_fitci_se, _natural_cubic_spline,
                     # qfit's and qfitci's shared design (the WP-18 review).

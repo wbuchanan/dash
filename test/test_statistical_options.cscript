@@ -198,6 +198,18 @@
 *!           and filter(), where it used to be refused with the ASCII-only
 *!           regex's r(198); negative controls -- a 33-character name and a
 *!           brace -- are still refused.  UN-02 and UN-03 need Python.
+*!   WP-29 P0.9 (lpolyci's pwidth(), var() and level(); twoway asked in
+*!   the same run, its rc and words the needle):
+*!     LB-11 pwidth()/var() honoured: no note, keys pwidth and lpvar
+*!     LB-12 pwidth() not a positive number   r(198)
+*!     LB-13 var(0), var(-1)                  r(198)
+*!     LB-14 var() not a number               r(7)
+*!     LB-15 level() outside 10..99.99        r(198); inside rc 0
+*!     LB-16 level() with 3 decimals          r(198)
+*!     LB-17 level() not a number             r(7) / r(198)
+*!     LB-18 the order of the checks; D6 and D7 pinned
+*!     LB-19 p(800) is pstyle()
+*!     LB-20 pwidth()/var() on lpoly scatter lfitci kdensity: noted (D9)
 *!
 *! Every refusal and note is read back out of a captured log with Stata's
 *! wrapped lines re-joined, as test_option_validation.cscript does.
@@ -871,6 +883,196 @@ if `"`c(python_exec)'"' != "" {
     _so_tally SO-74 `bad' "a weighted immediate render carries the weight column, its unweighted twin does not"
 }
 else display as text "SO-74 SKIP: no Python is linked to this Stata"
+
+// ================================================================
+// WP-29 P0.9: lpolyci's pwidth(), var() and level() (LB-11..LB-20).
+// Each case runs twoway's command under its own log, reads twoway's rc
+// and its last message line, and holds dash's to the same, in the same
+// run.  Values are read by value; nothing is macro-expanded twice.
+// ================================================================
+mata:
+// The last message line of a log: wrapped lines re-joined, command lines
+// (". ") and blank lines skipped.
+real scalar _lb_keep(string scalar l)
+{
+    if (strtrim(l) == "" | substr(l, 1, 2) == ". ") return(0)
+    if (ustrregexm(l, "^\s*(name|log|log type|opened on|closed on):")) return(0)
+    if (ustrregexm(l, "^[\s-]+$")) return(0)
+    return(1)
+}
+
+void _lb_last(string scalar fn)
+{
+    real scalar fh
+    string scalar line, full, last
+    fh = fopen(fn, "r")
+    full = ""
+    last = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (substr(line, 1, 2) == "> ") {
+            full = full + substr(line, 3, .)
+            continue
+        }
+        if (_lb_keep(full)) last = full
+        full = line
+    }
+    if (_lb_keep(full)) last = full
+    fclose(fh)
+    st_local("_lb_msg", strtrim(last))
+}
+end
+
+// _lb_run <tag> <command>: rc in r(rc), the last message in r(msg).
+capture program drop _lb_run
+program define _lb_run, rclass
+    version 16.0
+    gettoken tag 0 : 0
+    local logfile "`c(tmpdir)'dash_lb_`tag'.log"
+    set linesize 200
+    capture log close _lblog
+    capture erase "`logfile'"
+    log using "`logfile'", name(_lblog) text replace
+    capture noisily `macval(0)'
+    local rc = _rc
+    log close _lblog
+    mata: _lb_last(st_local("logfile"))
+    capture erase "`logfile'"
+    return scalar rc = `rc'
+    return local msg `"`macval(_lb_msg)'"'
+end
+
+// _lb_pair <id> <opts> [<if>]: twoway lpolyci mpg weight <if>, <opts>
+// against dash lpolyci mpg weight <if>, <opts>: the same rc, and on a
+// refusal the same words.
+capture program drop _lb_pair
+program define _lb_pair
+    version 16.0
+    args id opts ifx quiet
+    sysuse auto, clear
+    _lb_run tw twoway lpolyci mpg weight `ifx', `opts' nodraw
+    local trc = r(rc)
+    local tmsg `"`r(msg)'"'
+    capture dash clear
+    local nm = "lb" + subinstr(subinstr("`id'", "LB-", "", 1), ".", "", .)
+    _lb_run ds dash lpolyci mpg weight `ifx', `opts' name(`nm')
+    local drc = r(rc)
+    local dmsg `"`r(msg)'"'
+    global lb_bad = 0
+    if "`quiet'" != "" {
+    }
+    else if `trc' != `drc' {
+        display as error `"`id' FAIL: [`opts'] twoway rc `trc', dash rc `drc' (`dmsg')"'
+        global lb_bad = 1
+    }
+    else if `trc' & `"`tmsg'"' != `"`dmsg'"' {
+        display as error `"`id' FAIL: [`opts'] twoway says "`tmsg'", dash says "`dmsg'""'
+        global lb_bad = 1
+    }
+    global lb_trc `trc'
+    global lb_tmsg `"`tmsg'"'
+    global lb_drc `drc'
+    global lb_dmsg `"`dmsg'"'
+    global lb_nm "`nm'"
+end
+
+// _lb_case <id> <what> <opts>...: every option list matches twoway.
+capture program drop _lb_case
+program define _lb_case
+    version 16.0
+    gettoken id 0 : 0
+    gettoken what 0 : 0
+    local bad = 0
+    while `"`0'"' != "" {
+        gettoken o 0 : 0
+        _lb_pair `id' `"`o'"'
+        local bad = `bad' | ${lb_bad}
+    }
+    _so_tally "`id'" `bad' `"`what'"'
+end
+
+// LB-11: honoured, no note naming them, the keys pwidth and lpvar, never
+// a "var" option key.
+local bad = 0
+foreach o in "pwidth(800) var(10)" "pw(800) v(10)" "pwidth(1d3) var(1d1)" "pwidth(1e-320) var(1e-320)" "pwidth(.5e3) var(+10)" {
+    _lb_pair LB-11 `"`o'"'
+    local bad = `bad' | ${lb_bad}
+    if !${lb_bad} {
+        mata: st_local("_j", st_global("dash_json_" + st_global("lb_nm")))
+        if !strpos(`"`macval(_j)'"', `""pwidth":"') | !strpos(`"`macval(_j)'"', `""lpvar":"') | strpos(`"`macval(_j)'"', `""var":"') {
+            display as error `"LB-11 FAIL: [`o'] the spec's keys: `macval(_j)'"'
+            local bad = 1
+        }
+        if strpos(`"${lb_dmsg}"', "pwidth") | strpos(`"${lb_dmsg}"', "var(") {
+            display as error `"LB-11 FAIL: [`o'] dash named it: ${lb_dmsg}"'
+            local bad = 1
+        }
+    }
+}
+_so_tally LB-11 `bad' "pwidth() and var() on lpolyci are honoured as twoway honours them, under the keys pwidth and lpvar"
+
+_lb_case LB-12 "pwidth() of 0, -1, abc, ., 800 900, price: r(198), twoway's words" "pwidth(0)" "pwidth(-1)" "pwidth(abc)" "pwidth(.)" "pwidth(800 900)" "pwidth(price)"
+_lb_case LB-13 "var(0), var(-1): r(198), twoway's words" "var(0)" "var(-1)"
+_lb_case LB-14 "var() of abc, price, ., 10 20: r(7), twoway's words" "var(abc)" "var(price)" "var(.)" "var(10 20)"
+_lb_case LB-15 "level() outside 10..99.99 is r(198); inside is drawn" "level(5)" "level(9.99)" "level(99.995)" "level(100)" "level(0)" "level(-95)" "level(.95)" "level(10)" "level(99.99)" "level(10.0)" "level(95.)" "level(+95)" "level(95.00)"
+_lb_case LB-16 "level() with three decimals: r(198), twoway's words" "level(99.990)" "level(95.000)"
+_lb_case LB-17 "level() not a number: r(7) or r(198), twoway's words" "level(abc)" "level(95 96)" "level(1e1)" "level(9.5d1)"
+
+// LB-18: the order of the checks.  These match twoway exactly ...
+local bad = 0
+foreach o in "level(5) var(abc)" "pwidth(0) var(0)" "level(5) pwidth(0)" "bwidth(0) level(5)" "pwidth(0) degree(-1)" {
+    _lb_pair LB-18 `"`o'"'
+    local bad = `bad' | ${lb_bad}
+}
+_lb_pair LB-18 "pwidth(0)" "if _n<=2"
+local bad = `bad' | ${lb_bad}
+// ... these name the same option in dash's words (D7) ...
+foreach pair in "var(0) bwidth(0)|bwidth()" "var(0) kernel(foo)|kernel" "var(0) degree(-1)|degree()" "level(5) degree(abc)|degree()" "pwidth(0) n(abc)|n()" {
+    gettoken o rest : pair, parse("|")
+    local word = substr(`"`rest'"', 2, .)
+    _lb_pair LB-18 `"`o'"' "" quiet
+    if ${lb_drc} != 198 | !strpos(`"${lb_dmsg}"', `"`word'"') {
+        display as error `"LB-18 FAIL: [`o'] dash rc ${lb_drc} "${lb_dmsg}" does not name `word' (twoway rc ${lb_trc} "${lb_tmsg}")"'
+        local bad = 1
+    }
+    else display as text `"LB-18 D7: [`o'] twoway rc ${lb_trc} "${lb_tmsg}"; dash "${lb_dmsg}""'
+}
+// ... and this one is D6: twoway counts the observations first.
+_lb_pair LB-18 "pwidth(0)" "if _n==1" quiet
+if ${lb_trc} != 2001 | ${lb_drc} != 198 | `"${lb_dmsg}"' != "pwidth() must be a positive number" {
+    display as error `"LB-18 FAIL: D6 twoway rc ${lb_trc}, dash rc ${lb_drc} "${lb_dmsg}""'
+    local bad = 1
+}
+_so_tally LB-18 `bad' "lpolyci's refusals come in twoway's order, apart from D6 and D7"
+
+// LB-19: p(800) is pstyle(), never pwidth().
+sysuse auto, clear
+capture dash clear
+capture noisily dash lpolyci mpg weight, p(800) name(lb19)
+mata: st_local("_j", st_global("dash_json_lb19"))
+local bad = strpos(`"`macval(_j)'"', `""pwidth""') > 0
+if `bad' display as error `"LB-19 FAIL: p(800) became pwidth: `macval(_j)'"'
+_so_tally LB-19 `bad' "p(800) on lpolyci is pstyle(), not pwidth()"
+
+// LB-20: pwidth() and var() on other types: twoway refuses (recorded),
+// dash names each in its note, rc 0 (D9).
+local bad = 0
+foreach t in lpoly scatter lfitci kdensity {
+    local v = cond("`t'" == "kdensity", "mpg", "mpg weight")
+    sysuse auto, clear
+    _lb_run tw twoway `t' `v', pwidth(800) var(2) nodraw
+    display as text `"LB-20 twoway `t': rc `r(rc)' `r(msg)'"'
+    capture dash clear
+    _so_probe LB-20 `"dash `t' `v', pwidth(800) var(2) name(lb20)"' 0 "pwidth"
+    local bad = `bad' | r(bad)
+    _so_count "`c(tmpdir)'dash_so.log" "var("
+    if r(n) == 0 {
+        display as error "LB-20 FAIL: `t': the note does not name var()"
+        local bad = 1
+    }
+}
+_so_tally LB-20 `bad' "pwidth() and var() on lpoly, scatter, lfitci and kdensity are named in the note, rc 0 (D9)"
+capture dash clear
+macro drop lb_*
 
 // ----------------------------------------------------------------
 // Summary
