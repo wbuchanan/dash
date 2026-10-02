@@ -1173,6 +1173,24 @@ class TestTheTabAndFilterLimits:
         assert _named(built, "3 filters", "dash_max_filters")
 
 
+    def test_a_second_build_in_one_session_still_names_the_cap(self,
+                                                                tmp_path):
+        """Stata's Python lives as long as Stata, so a saved build runs
+        in the module a served build used before it.  The served build's
+        filter-cap note must not silence the saved page's: render() parsed
+        the filters, which notes the cap, before it forgot the previous
+        build's notes (WP-29 P0.11 moved the parse first), so the saved
+        build after a served one said nothing (seen under make test,
+        worker gw7)."""
+        spec = _spec([_graph("g1")],
+                     build={"filter": "x, type(range) || y, type(range) || "
+                                      "g, type(range)"},
+                     limits={"filters": 2})
+        _served(tmp_path, spec, _frame())
+        r, _, msgs = _standalone(tmp_path, spec, _frame())
+        assert len(r.filter_widgets) == 2
+        assert _named(msgs, "3 filters", "dash_max_filters"), msgs
+
 class TestTheServedAppDefinesEveryNameItReads:
     """A name the builder forgets to copy is a NameError on the served page
     when a session opens, not when the app is built.  This reads every

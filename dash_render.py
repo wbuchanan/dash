@@ -32619,6 +32619,11 @@ class DashRenderer:
         kpis   = self.master_spec.get("kpis", [])
         build  = self.master_spec.get("build_options", {})
 
+        # The notes of the previous build are forgotten before anything
+        # here can raise one: parsing the filters notes a cap, and a served
+        # build earlier in the same Stata session leaves its notes behind
+        # (one note per (option, value) per render).
+        _dash_reset_notes()
         # ---- Parse build options ----
         # First (WP-29 P0.11): the page plan reads the parsed filters, and
         # the size note counts the rows the page holds.
@@ -32634,8 +32639,8 @@ class DashRenderer:
         # Sub-option reports already made this render, so a by() panel does
         # not repeat its graph's.
         self._reported_subopts = set()
-        # Likewise the style notes: one per (option, value) per render.
-        _dash_reset_notes()
+        # The style notes were reset at the top: one per (option, value)
+        # per render.
         self._fmt_models = {}
 
         # Carried RAW; every site that puts these into HTML escapes them
