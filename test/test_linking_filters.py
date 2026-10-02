@@ -172,8 +172,9 @@ class TestLinkAll:
         # Defined once, called by the saved builder, the server builder,
         # the app's make_document, and _dash_embedded_cells (GAPS2 G3,
         # WP-28 section 08: which graphs link() reaches decides whether a
-        # computed-only graph's rows are counted).
-        assert code.count("_dash_link_names(") == 5
+        # computed-only graph's rows are counted), and _dash_embed_plan
+        # (WP-29 P0.11), which CALLS it -- no copy.  Flipped: 5 -> 6.
+        assert code.count("_dash_link_names(") == 6
 
 
 # ======================================================================

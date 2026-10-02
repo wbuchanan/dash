@@ -1008,10 +1008,11 @@ def _report_dataset_shape(rows, cols, mode, stacklevel=3, extra=0):
         return
     mb = cells * _HTML_BYTES_PER_CELL / 1_000_000.0
     # Not "use an if qualifier": dash exports every observation of the
-    # variables it uses and applies qualifiers itself, so a qualifier shrinks
-    # a saved page without filters (8.4 MB to 1.5 MB, measured on 200,000
-    # rows) and nothing else -- a filter's page and a served app carry every
-    # row, and the renderer holds them all in memory either way.
+    # variables it uses and applies qualifiers itself.  A saved page holds
+    # only the rows its graphs, cards and filters select (WP-29 P0.11; the
+    # saved renderer passes that count), while the served app's file holds
+    # every row (the builder counts them all), and the renderer holds them
+    # all in memory either way -- so the advice is to reduce the data.
     warnings.warn(
         f"dash: {rows:,} observations on {cols} variables is a large "
         f"dataset to embed; this {mode} will be roughly {mb:,.0f} MB and "
@@ -24728,7 +24729,8 @@ def _dash_linked_views(figures, source):
     return out
 
 
-def _dash_refresh_linked(source, frame, views, snapshot=None, pos_of=None):
+def _dash_refresh_linked(source, frame, views, snapshot=None, pos_of=None,
+                         need=None):
     """Write one filter move's rows into a link group's source, once, and
     point every view over it at the rows it owns.
 
@@ -24749,6 +24751,10 @@ def _dash_refresh_linked(source, frame, views, snapshot=None, pos_of=None):
         snapshot: ``{column: values}`` the source held before any move; a
                   column *frame* does not carry is taken from it by row.
         pos_of:   ``{row label: position in snapshot}``.
+        need:     The page plan's ``need`` (WP-29 P0.11): a column written
+                  from *frame* is blanked on every row it does not flag
+                  (``_dash_embed_values``), so a move never sends a cell
+                  the page does not hold.
     """
     labels = list(frame.index)
     old_n = len(next(iter(source.data.values()), [])) if source.data else 0
@@ -24758,7 +24764,11 @@ def _dash_refresh_linked(source, frame, views, snapshot=None, pos_of=None):
         if col == "index":
             new_data[col] = labels
         elif col in frame.columns:
-            new_data[col] = _dash_column_values(frame[col])
+            if need is not None and col in need:
+                new_data[col] = _dash_column_values(
+                    _dash_embed_values(frame[col], need[col]))
+            else:
+                new_data[col] = _dash_column_values(frame[col])
         else:
             if rows is None:
                 at_snap = pos_of or {}
@@ -25492,6 +25502,12 @@ def _dash_header_models(title_text, subtitle_text, css=""):
 #: -- the standalone CDS through _collect_plot_vars, the served one through
 #: _dash_layer_source's extra_cols -- so the mappers can read it.
 _DASH_OPT_VAR_KEYS = ("colorvar", "mlabel", "wexp")
+#: Plot KEYS that name a dataset column: one tuple for the saved column
+#: lists, the served app and the embed plan (WP-29 P0.11).  The served
+#: placeholder listed five of them, so a paired-coordinate layer's columns
+#: were missing from it.
+_DASH_PLOT_VAR_KEYS = ("yvar", "xvar", "var", "yvar1", "yvar2", "y1var",
+                       "x1var", "y2var", "x2var")
 #: The invisible swatch renderers a discrete colorvar() legend is built from.
 _DASH_SWATCH_PREFIX = "_clegend_"
 
@@ -28046,6 +28062,241 @@ def _dash_layer_frame(dataset, frame, if_expr, in_expr, where="", qual=None):
     return out
 
 
+# ---------------------------------------------------------------------------
+# What a page holds (WP-29 P0.11)
+#
+# A saved page used to embed every observation of each drawn variable,
+# the rows if and in exclude included, and a served link() group sent every
+# row of its shared source (GAPS2 I2; twoway keeps only the rows each
+# layer's qualifier selects).  A page now holds a cell (observation x
+# variable) only when some consumer of the page reads that variable on that
+# observation: a layer on its graph's and its own rows (by(, total)'s Total
+# rows included), a card the page recomputes, a filter on the rows of the
+# graphs, link group and cards it applies to, and with csv the download.
+# _dash_embed_plan decides it, once per render and per served document, in
+# both modes; whole-data rules (lowess adjust, lpoly's grid, by() panels,
+# card first values) keep reading the whole frame.
+# ---------------------------------------------------------------------------
+
+def _dash_embed_rows_of(obj, frame, masks):
+    """The rows of *frame* an object's qualifier selects, as a boolean
+    Series indexed like *frame* (WP-29 P0.11): its qualifier column's mask
+    (_dash_qual_mask; an unknown column raises ValueError), else its
+    if_expr/in_expr text through _dash_qualified_frame -- the one
+    translator, its whitelist and no eval -- quietly, since the renderer
+    that draws the object names a qualifier it cannot apply; every row
+    when it has neither, or when *obj* is not a dict."""
+    idx = frame.index
+    if not isinstance(obj, dict):
+        return pd.Series(True, index=idx)
+    q = _dash_qual_mask(obj, masks)
+    if q is not None:
+        return q.reindex(idx, fill_value=False).astype(bool)
+    _if = str(obj.get("if_expr", "") or "").strip()
+    _in = str(obj.get("in_expr", "") or "").strip()
+    if not _if and not _in:
+        return pd.Series(True, index=idx)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        sel = _dash_qualified_frame(frame, _if, _in, copy=False)
+    return pd.Series(idx.isin(sel.index), index=idx)
+
+
+def _dash_embed_plan(spec, frame, masks, link_names, filters, csv=False):
+    """Which cells of *frame* a page holds (WP-29 P0.11): the one rule both
+    render modes run.
+
+    Returns ``{"rows", "need", "graph_rows", "link_rows", "filter_rows"}``,
+    every Series boolean and indexed like *frame*: ``need[column]`` the
+    rows that column is read on -- a non-literal layer's plot, option,
+    hover() and by() columns on its graph's and its own rows (by(,
+    total)'s Total rows ORed in); a brush card's variable on every
+    source's rows; a filter's variable on its reach; a filter-mode card's
+    variable on its own rows when a filter reaches it -- every row of every
+    column under *csv*, which moves no other row set; ``graph_rows`` per
+    graph name the rows its layers draw; ``link_rows`` the link group's;
+    ``filter_rows`` one entry per entry of *filters* (already parsed, with
+    ``varname`` or ``var``; never re-parsed here), the rows of the graphs,
+    link group and cards it applies to; ``rows`` the union of ``need``.
+
+    Raises:
+        ValueError: an object names a qualifier column *masks* lacks.
+    """
+    spec = spec if isinstance(spec, dict) else {}
+    idx = frame.index
+    need = {str(c): pd.Series(False, index=idx) for c in frame.columns}
+    graphs = [g for g in spec.get("graphs", []) or [] if isinstance(g, dict)]
+    names = [str((g.get("graph_options") or {}).get("name", "") or "")
+             for g in graphs]
+    linked = set(_dash_link_names(link_names, names))
+    graph_rows = {}
+    for g, name in zip(graphs, names):
+        go = g.get("graph_options") or {}
+        gq = _dash_embed_rows_of(g, frame, masks)
+        if not g.get("qual_col"):
+            # The served app reads graph_options' qualifier first: OR its
+            # rows in, so the plan never drops a row either mode draws.
+            go_if = str(go.get("if_expr", "") or "").strip()
+            go_in = str(go.get("in_expr", "") or "").strip()
+            if (go_if or go_in) and (
+                    go_if != str(g.get("if_expr", "") or "").strip()
+                    or go_in != str(g.get("in_expr", "") or "").strip()):
+                gq = gq | _dash_embed_rows_of(
+                    {"if_expr": go_if, "in_expr": go_in}, frame, masks)
+        gt = _dash_total_spec(g)
+        gq_t = None
+        tplots = []
+        if gt is not g:
+            gq_t = _dash_embed_rows_of(gt, frame, masks)
+            tplots = gt.get("plots") or []
+        extra = [h for h in str(go.get("hover", "") or "").split()
+                 if h in need]
+        by_raw = str(go.get("by", "") or "").strip()
+        if by_raw:
+            extra += [v for v in _dash_parse_by(by_raw, warn=False)[0].split()
+                      if v in need]
+        grows = pd.Series(False, index=idx)
+        for pi, p in enumerate(g.get("plots") or []):
+            if not isinstance(p, dict):
+                continue
+            if str(p.get("type", "") or "").lower() in _DASH_LITERAL_TYPES:
+                continue
+            r = gq & _dash_embed_rows_of(p, frame, masks)
+            if gq_t is not None and pi < len(tplots):
+                r = r | (gq_t & _dash_embed_rows_of(tplots[pi], frame, masks))
+            pcols = [str(p.get(k) or "") for k in _DASH_PLOT_VAR_KEYS]
+            pcols += _dash_option_columns(p.get("options") or {})
+            for c in pcols + extra:
+                if c in need:
+                    need[c] = need[c] | r
+            grows = grows | r
+        graph_rows[name] = grows
+    link_rows = pd.Series(False, index=idx)
+    members = [n for n in names if n in linked]
+    for n in members:
+        link_rows = link_rows | graph_rows[n]
+    every_graph = pd.Series(False, index=idx)
+    for r in graph_rows.values():
+        every_graph = every_graph | r
+    kpis = [k for k in spec.get("kpis", []) or [] if isinstance(k, dict)]
+    for k in kpis:
+        if str(k.get("update", "filter") or "filter") in ("brush", "both"):
+            kv = str(k.get("var") or k.get("varname") or "")
+            if kv in need:
+                need[kv] = need[kv] | link_rows | every_graph
+    filter_rows = []
+    for f in filters or []:
+        reach = pd.Series(False, index=idx)
+        if not isinstance(f, dict):
+            filter_rows.append(reach)
+            continue
+        fvar = str(f.get("varname") or f.get("var") or "")
+        excl = list(f.get("exclude") or [])
+        if members and _dash_filter_applies("", excl, {}, members=members):
+            reach = reach | link_rows
+        for n in names:
+            if n not in linked and _dash_filter_applies(n, excl, {}):
+                reach = reach | graph_rows[n]
+        for k in kpis:
+            if str(k.get("update", "filter") or "filter") not in (
+                    "filter", "both"):
+                continue
+            if not _dash_filter_applies(str(k.get("name", "") or ""),
+                                        excl, {}):
+                continue
+            kr = _dash_embed_rows_of(k, frame, masks)
+            reach = reach | kr
+            kv = str(k.get("var") or k.get("varname") or "")
+            if kv in need:
+                need[kv] = need[kv] | kr
+        if fvar in need:
+            need[fvar] = need[fvar] | reach
+        filter_rows.append(reach)
+    if csv:
+        need = {c: pd.Series(True, index=idx) for c in need}
+    rows = pd.Series(False, index=idx)
+    for v in need.values():
+        rows = rows | v
+    return {"rows": rows, "need": need, "graph_rows": graph_rows,
+            "link_rows": link_rows, "filter_rows": filter_rows}
+
+
+def _dash_embed_values(series, need):
+    """*series* with every row *need* does not flag blanked as Stata's
+    missing value (WP-29 P0.11): ``NaT`` for a date, ``NaN`` for a number
+    or a bool, ``""`` for a string.  *need* is reindexed to the series
+    (False where absent; None blanks every row); the series itself comes
+    back when every row is needed."""
+    if need is None:
+        keep = np.zeros(len(series), dtype=bool)
+    else:
+        keep = need.reindex(series.index, fill_value=False).to_numpy(
+            dtype=bool)
+    if bool(keep.all()):
+        return series
+    kind = series.dtype.kind
+    if kind == "M":
+        blank = pd.NaT
+    elif kind in "biufc":
+        blank = np.nan
+    else:
+        blank = ""
+    return series.where(keep, blank)
+
+
+def _dash_embed_frame(frame, plan, columns, rows=None):
+    """The rows of *frame* that ``plan["rows"]`` (or *rows*) keeps, the
+    *columns* *frame* holds (order kept, duplicates dropped), each blanked
+    where the plan does not need it (WP-29 P0.11).  *frame*'s index is
+    kept."""
+    keep = plan["rows"] if rows is None else rows
+    sub = frame[keep.reindex(frame.index, fill_value=False).to_numpy(
+        dtype=bool)]
+    cols = []
+    for c in columns:
+        if c in frame.columns and c not in cols:
+            cols.append(c)
+    data = {c: _dash_embed_values(sub[c], plan["need"].get(str(c)))
+            for c in cols}
+    return pd.DataFrame(data, index=sub.index, columns=cols)
+
+
+def _dash_page_index(index, rows):
+    """The served frame's row labels under the page plan (WP-29 P0.11):
+    the rows *rows* keeps are numbered 0..m-1 in the data's order --
+    the saved page's __dash_row__ ranks -- and every other row m..N-1,
+    also in the data's order.  A source holds planned rows only, so no
+    browser receives a label of m or more, and no label shows where an
+    excluded observation was.  The order of the rows is not changed:
+    `in' (iloc) and every label-aligned mask keep their meaning.  The
+    identity when *rows* keeps every row."""
+    keep = rows.reindex(index, fill_value=False).to_numpy(dtype=bool)
+    order = np.concatenate([np.flatnonzero(keep), np.flatnonzero(~keep)])
+    new = np.empty(len(index), dtype=np.int64)
+    new[order] = np.arange(len(index), dtype=np.int64)
+    return pd.Index(new)
+
+
+def _dash_relabel(obj, old, new):
+    """*obj* with every pandas Series in it -- itself, or nested in dicts
+    and lists -- given the labels *new* in place of *old*, row for row
+    (WP-29 P0.11).  Anything else is returned unchanged.
+
+    Raises:
+        ValueError: a Series is not indexed exactly like *old*, so
+            re-pairing it by position would mix rows.
+    """
+    if isinstance(obj, pd.Series):
+        if not obj.index.equals(old):
+            raise ValueError("dash: a row map is not indexed like the data.")
+        return obj.set_axis(new)
+    if isinstance(obj, dict):
+        return {k: _dash_relabel(v, old, new) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_dash_relabel(v, old, new) for v in obj]
+    return obj
+
+
 def _dash_layer_drew_anything(renderers):
     """Did this plot layer put any data on the figure?
 
@@ -28821,9 +29072,7 @@ class DashRenderer:
     """
 
     # Variable key names used in plot specs — shared by _collect_plot_vars and render()
-    _VAR_KEYS: "tuple[str, ...]" = (
-        "yvar", "xvar", "var", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var"
-    )
+    _VAR_KEYS: "tuple[str, ...]" = _DASH_PLOT_VAR_KEYS
     _OPT_VAR_KEYS: "tuple[str, ...]" = _DASH_OPT_VAR_KEYS
 
     @staticmethod
@@ -29299,6 +29548,7 @@ class DashRenderer:
         self,
         varnames: list[str],
         df: "pd.DataFrame | None" = None,
+        rows: "pd.Series | None" = None,
     ) -> ColumnDataSource:
         """Create a ``ColumnDataSource`` for the given variable names.
 
@@ -29306,15 +29556,34 @@ class DashRenderer:
         Missing columns are silently skipped to prevent KeyErrors for derived
         variables.
 
+        With a page plan (``_ensure_embed``, WP-29 P0.11) the source holds
+        only the rows the page holds -- and of those only *rows*, when
+        given (a graph's or the link group's rows) -- and each column is
+        blanked, as Stata's missing value, on every row no consumer reads it
+        on (``_dash_embed_values``).  Without one (a renderer a test built
+        no plan for) every row of the frame is kept, as before.
+
         Args:
             varnames: List of Stata variable names needed by one or more glyphs.
             df:       Optional DataFrame to use instead of ``self.df``.  Pass a
                       pre-filtered slice to implement per-graph if/in filtering.
+            rows:     Optional boolean Series indexed like ``self.df``: the
+                      rows this source may hold, within the plan's.
 
         Returns:
             A new ``ColumnDataSource`` populated with the requested columns.
         """
         frame = df if df is not None else self.df
+        plan = getattr(self, "_embed", None)
+        if plan is not None:
+            keep = plan["rows"] if rows is None else (rows & plan["rows"])
+            frame = frame[keep.reindex(frame.index, fill_value=False)
+                          .to_numpy(dtype=bool)]
+            need = plan["need"]
+            frame = pd.DataFrame(
+                {v: _dash_embed_values(frame[v], need.get(str(v)))
+                 for v in varnames if v in frame.columns},
+                index=frame.index)
         available = [v for v in varnames if v in frame.columns]
         # A date column stays an array.  tolist() made it Timestamps with a
         # NaT for each missing value, and Bokeh writes NaT in a list as a
@@ -29547,32 +29816,84 @@ class DashRenderer:
                 or kpi_def.get("qual_col")):
             return None
         try:
-            return self._row_ids_for(self._apply_graph_filter(kpi_def))
+            return self._row_ids_kept(self._apply_graph_filter(kpi_def))
         except (ValueError, KeyError, TypeError):
             # _apply_graph_filter already warns; a qualifier that cannot be
             # applied must not silently become "every row" in the browser
             # while the initial render used the full frame too.
             return None
 
-    def _row_ids_for(self, frame: "pd.DataFrame") -> "list[int]":
-        """Return each row's position in the primary frame.
+    def _set_embed(self, plan):
+        """Record the page plan (WP-29 P0.11) and number the page's rows.
 
-        Derived sources are slices of ``self.df`` and keep its index, so the
-        index is the identity.  A frame that somehow does not align falls
-        back to its own positions, which is no worse than the positional
-        masking this replaces.
+        The m rows *plan* keeps are ranked 0..m-1 in the data's order:
+        ``_page_labels[rank]`` is the observation's label in ``self.df``
+        and ``_row_pos`` the inverse, so no ``__dash_row__`` shows where an
+        excluded observation was.  S02's join-order ranks are re-indexed to
+        page ranks (``_page_sort_keys``), since ``_dash_join_key`` reads a
+        row id as a position."""
+        self._embed = plan
+        pos = np.flatnonzero(plan["rows"].to_numpy(dtype=bool))
+        self._page_labels = list(self.df.index[pos])
+        self._row_pos = {label: rank
+                         for rank, label in enumerate(self._page_labels)}
+        keys = getattr(self, "sort_keys", None)
+        if isinstance(keys, dict) and keys:
+            self._page_sort_keys = {
+                col: pd.Series(np.asarray(sr.to_numpy(dtype=float))[pos])
+                for col, sr in keys.items()}
+        else:
+            self._page_sort_keys = {}
 
-        Args:
-            frame: The frame this source is being built from.
+    def _ensure_embed(self, graphs, kpis, link_names, filters_cfg):
+        """The page plan (``_dash_embed_plan``), computed once per render
+        (WP-29 P0.11); ``render()`` resets it."""
+        if getattr(self, "_embed", None) is None:
+            spec = dict(getattr(self, "master_spec", None) or {},
+                        graphs=graphs, kpis=kpis)
+            self._set_embed(_dash_embed_plan(
+                spec, self.df, getattr(self, "qual_masks", None),
+                link_names, filters_cfg,
+                _dash_csv_wanted(spec.get("build_options", {}) or {})))
+        return self._embed
 
-        Returns:
-            One integer per row.
-        """
-        try:
+    def _row_rank_map(self):
+        """``{label: row id}``: the page ranks once a plan is set, else
+        positions in ``self.df`` (a renderer a test built no plan for)."""
+        pos = getattr(self, "_row_pos", None)
+        if pos is None:
             pos = {idx: i for i, idx in enumerate(self.df.index)}
-            return [int(pos.get(idx, i)) for i, idx in enumerate(frame.index)]
-        except (AttributeError, TypeError):
-            return list(range(len(frame)))
+        return pos
+
+    def _row_ids_for(self, frame: "pd.DataFrame") -> "list[int]":
+        """Each row's id on the page, aligned with *frame* (WP-29 P0.11).
+
+        The id is the row's rank among the rows the page holds
+        (``_set_embed``); with no plan, its position in ``self.df``.
+        Every frame a source is built from is a slice of ``self.df``
+        restricted to the page's rows, so every label is ranked.  There is
+        no fallback: a row the page does not hold reaching a source is a
+        leak, and is refused.
+
+        Raises:
+            ValueError: a label of *frame* is not a row the page holds.
+        """
+        pos = self._row_rank_map()
+        out = []
+        for idx in frame.index:
+            r = pos.get(idx)
+            if r is None:
+                raise ValueError(
+                    "dash: a row the page does not hold reached a source")
+            out.append(int(r))
+        return out
+
+    def _row_ids_kept(self, frame: "pd.DataFrame") -> "list[int]":
+        """The page ids of the rows of *frame* the page holds, dropping the
+        others (WP-29 P0.11): member ids, qualifier ids and a layer's
+        wanted set, which may name rows the page leaves out."""
+        pos = self._row_rank_map()
+        return [int(pos[idx]) for idx in frame.index if idx in pos]
 
     def _apply_graph_filter(
         self,
@@ -30158,13 +30479,13 @@ class DashRenderer:
                     # the other two shared one -- and outside the filter
                     # callback, which only ever touches the sources it was
                     # given.  Every source carries __dash_row__, the row's
-                    # position in self.df, so the mask is by identity and
-                    # holds however short or reordered the source is.
+                    # rank among the page's rows (WP-29 P0.11), so the mask
+                    # is by identity and holds however short or reordered
+                    # the source is.
                     _ids = list(source.data.get(_ROW_ID_COLUMN, []))
                     if not _ids:
                         raise ValueError("source carries no row identity")
-                    _pos = {idx: i for i, idx in enumerate(self.df.index)}
-                    _wanted = {_pos.get(i, -1) for i in _pdf.index}
+                    _wanted = set(self._row_ids_kept(_pdf))
                     _mask = [bool(r in _wanted) for r in _ids]
                     # Intersect with a view already on this layer -- a facet
                     # panel, or a linked graph's own qualifier -- rather than
@@ -30221,8 +30542,11 @@ class DashRenderer:
             # A joining layer's join key: sort(varlist)'s rank, read by row
             # (_dash_join_key); None draws in the data's order, or x's under
             # sort (GlyphMapper._join_order).
+            # The ranks re-indexed to the page's rows (WP-29 P0.11): a row
+            # id is a rank among them, which _dash_join_key reads as a
+            # position.
             _jo = (_dash_join_key(source_for_plot,
-                                  getattr(self, "sort_keys", None) or {},
+                                  getattr(self, "_page_sort_keys", None) or {},
                                   _dash_sort_col_of(plot, self.master_spec))
                    if ptype.lower() in _DASH_JOIN_TYPES else None)
 
@@ -31108,6 +31432,9 @@ class DashRenderer:
         link_names[:] = _dash_link_names(link_names, all_graph_names)
         # None until a link group builds its source, below.
         self._dash_linked_source = None
+        # WP-29 P0.11: the rows and cells the page holds, once.
+        _plan = self._ensure_embed(graphs, kpis, link_names, filters_cfg)
+        _grows = _plan["graph_rows"]
 
         # ---- 2. Build ColumnDataSources ----
         # A brushed source must carry the column a brush KPI computes from:
@@ -31161,7 +31488,12 @@ class DashRenderer:
                         vname = plot.get("var") or plot.get("yvar", "")
                         if vname and vname not in linked_vars and vname in self.df.columns:
                             linked_vars.append(vname)
-            linked_source = self._make_source(linked_vars)
+            # The link group's rows only (WP-29 P0.11): each graph's and
+            # each layer's if/in together, never every row of the data.
+            self._link_index = self.df.index[
+                _plan["link_rows"].to_numpy(dtype=bool)]
+            linked_source = self._make_source(linked_vars,
+                                              rows=_plan["link_rows"])
             # The link group's one source, so a layer that would draw from a
             # copy of it can draw from it through a view instead
             # (_linked_scatter_view).
@@ -31181,15 +31513,22 @@ class DashRenderer:
                     self.sources[name] = linked_source
                     # Build a CDSView for linked graphs that have qualifiers.
                     _g_fdf = self._apply_graph_filter(g)
-                    if len(_g_fdf) < len(self.df):
-                        _df_idx_set = frozenset(_g_fdf.index)
-                        _bool_mask = [
-                            bool(i in _df_idx_set) for i in self.df.index
-                        ]
+                    # The mask is over the link group's rows, the rows the
+                    # source holds (WP-29 P0.11): sized to self.df it would
+                    # misalign, and a facet or layer mask of the source's
+                    # length would never intersect with it.
+                    _df_idx_set = frozenset(_g_fdf.index)
+                    _bool_mask = [
+                        bool(i in _df_idx_set) for i in self._link_index
+                    ]
+                    if not all(_bool_mask):
                         _qf = BooleanFilter(booleans=_bool_mask)
                         _linked_graph_views[name] = CDSView(filter=_qf)
                         self._register_view_filter(
-                            linked_source, _qf, self._row_ids_for(_g_fdf))
+                            linked_source, _qf,
+                            [int(r) for r, keep in zip(
+                                linked_source.data[_ROW_ID_COLUMN],
+                                _bool_mask) if keep])
                     by_raw_lnk2 = (g.get("graph_options", {}).get("by") or "").strip()
                     if by_raw_lnk2:
                         # The QUALIFIED frame.  This was self.df, so a linked
@@ -31202,7 +31541,8 @@ class DashRenderer:
                             fkey = f"{name}__by__{idx}"
                             if group_df.attrs.get("_dash_total"):
                                 self._facet_total_keys.add(fkey)
-                            mask = [i in group_df.index for i in self.df.index]
+                            _gidx = frozenset(group_df.index)
+                            mask = [i in _gidx for i in self._link_index]
                             facet_entries_lnk.append((fkey, label))
                             facet_masks_lnk.append((label, mask))
                         self._facet_map[name]   = facet_entries_lnk
@@ -31211,7 +31551,8 @@ class DashRenderer:
                     g_vars      = DashRenderer._collect_graph_vars(self.df, g)
                     g_vars += [v for v in brush_kpi_vars if v not in g_vars]
                     filtered_df = self._apply_graph_filter(g)
-                    self.sources[name] = self._make_source(g_vars, df=filtered_df)
+                    self.sources[name] = self._make_source(
+                        g_vars, df=filtered_df, rows=_grows.get(name))
         else:
             for g in graphs:
                 name   = g.get("graph_options", {}).get("name", "")
@@ -31222,7 +31563,8 @@ class DashRenderer:
                         g_vars.append(fv)
                 g_vars += [v for v in brush_kpi_vars if v not in g_vars]
                 filtered_df = self._apply_graph_filter(g)
-                self.sources[name] = self._make_source(g_vars, df=filtered_df)
+                self.sources[name] = self._make_source(
+                    g_vars, df=filtered_df, rows=_grows.get(name))
 
         # ---- 2b. Handle by() faceting on unlinked sources ----
         for g in graphs:
@@ -31258,7 +31600,8 @@ class DashRenderer:
                         fkey = f"{name}__by__{idx}"
                         if group_df.attrs.get("_dash_total"):
                             self._facet_total_keys.add(fkey)
-                        self.sources[fkey] = self._make_source(g_vars, df=group_df)
+                        self.sources[fkey] = self._make_source(
+                            g_vars, df=group_df, rows=_grows.get(name))
                         facet_entries.append((fkey, label))
                     self._facet_map[name] = facet_entries
 
@@ -31288,9 +31631,12 @@ class DashRenderer:
                             # once the callback shortens the shared source
                             # they must be rebuilt, so record which rows
                             # belong to this panel.
+                            _lids = list(
+                                shared_src_render.data[_ROW_ID_COLUMN])
                             self._register_view_filter(
                                 shared_src_render, _pf,
-                                [i for i, keep in enumerate(mask_r) if keep])
+                                [int(_lids[i]) for i, keep in enumerate(mask_r)
+                                 if keep])
                         else:
                             panel_view_r = None
                     else:
@@ -31561,8 +31907,9 @@ class DashRenderer:
         For each filter spec, creates the appropriate Bokeh widget (Select,
         Slider, or RangeSlider) and a CustomJS callback that re-applies all
         active filter conditions on every widget change.  Each widget is
-        judged from ``self.df``, the data the filter filters, never from a
-        graph's source.
+        judged from the rows its targets select (WP-29 P0.11: the graphs,
+        link group and cards it applies to, the plan's ``filter_rows``),
+        read from ``self.df``, never from a graph's source.
 
         Reads:  self.df, self.sources, self.kpi_divs, self.agg_source_registry
         Writes: self.filter_widgets, self.filter_callbacks
@@ -31582,8 +31929,8 @@ class DashRenderer:
         # `source': the link group's, else the first one registered.  It
         # carries the callback and decides nothing about the widget.  Whether
         # a filter gets a widget, and its type, options and range, are the
-        # data's -- self.df, the frame the snapshot below holds and every
-        # callback masks -- because this source is one graph's rows: under
+        # rows its targets select (WP-29 P0.11), read from self.df --
+        # never from this source, which is one graph's rows: under
         # that graph's own if/in, or when it is a by() panel or the graph
         # after one, a subset, and it can be empty.  They were read from it:
         # measured 23sep2026, g1 `if price > 1000000' (no rows) and
@@ -31598,7 +31945,10 @@ class DashRenderer:
         else:
             fsource = next(iter(self.sources.values()), None)
 
-        for fc in filters_cfg:
+        # The rows each filter reaches, aligned with filters_cfg (the plan
+        # was computed from this list; WP-29 P0.11).
+        _frows = (getattr(self, "_embed", None) or {}).get("filter_rows", [])
+        for _fi, fc in enumerate(filters_cfg):
             fvar    = fc.get("varname", "")
             ftype   = fc.get("type", "dropdown")
             excludes = fc.get("exclude", [])
@@ -31626,7 +31976,13 @@ class DashRenderer:
             # variable is drawn as a range; the spec the page's script
             # filters by must say so too, or it would test a slider's
             # [lo, hi] as a category.
+            # The rows its targets select: an observation every if/in
+            # excludes adds no option or bound, and an empty reach draws the
+            # shared builder's empty widget (the dtype is kept).
             _fcol = self.df[fvar]
+            if _fi < len(_frows):
+                _fcol = _fcol[_frows[_fi].reindex(
+                    self.df.index, fill_value=False).to_numpy(dtype=bool)]
             _eff = _dash_filter_effective_type(
                 ftype, fvar, _fcol, self._limits["filter_options"])
             if _eff != ftype:
@@ -31695,17 +32051,20 @@ class DashRenderer:
         # Built when a callback will read it; a dashboard whose filters all
         # failed has none, and the CSV download below builds its own.
         if built_filter_specs:
-            # The WHOLE frame, not the first graph's source.  Under by()
-            # that source is one facet and under a graph-level `if' it is
-            # the qualified rows; the widgets' categories and bounds and the
-            # KPI recompute all read this snapshot.  Measured: by(foreign)
-            # left it with five of ten rows.  Every source is masked by row
-            # identity against it, so the full frame is what the masking
-            # expects.
-            for _col in self.df.columns:
+            # The page's rows (WP-29 P0.11), not the first graph's source.
+            # Under by() that source is one facet and under a graph-level
+            # `if' it is the qualified rows, while the KPI recompute reads
+            # this snapshot.  Measured: by(foreign) left it with five of ten
+            # rows.  Every source is masked by row identity against it.  It
+            # holds the rows the graphs, cards and filters select, each
+            # column blanked where nothing reads it, and every column, so
+            # its shape is the frame's.
+            _snap = _dash_embed_frame(self.df, self._embed,
+                                      list(self.df.columns))
+            for _col in _snap.columns:
                 _orig_data[str(_col)] = [DashRenderer._to_serialisable(v)
-                                         for v in self.df[_col]]
-            _orig_data[_ROW_ID_COLUMN] = list(self._row_ids_for(self.df))
+                                         for v in _snap[_col]]
+            _orig_data[_ROW_ID_COLUMN] = list(self._row_ids_for(_snap))
         _orig_snapshot = ColumnDataSource(_orig_data)
 
         # One snapshot model per graph source, shared by every callback that
@@ -31914,10 +32273,13 @@ class DashRenderer:
         # no filter has no snapshot yet; the download builds it.
         if _dash_csv_wanted(self.master_spec.get("build_options", {})):
             if not _orig_data:
-                for _col in self.df.columns:
+                # Under csv the plan needs every cell (WP-29 P0.11).
+                _snap = _dash_embed_frame(self.df, self._embed,
+                                          list(self.df.columns))
+                for _col in _snap.columns:
                     _orig_data[str(_col)] = [DashRenderer._to_serialisable(v)
-                                             for v in self.df[_col]]
-                _orig_data[_ROW_ID_COLUMN] = list(self._row_ids_for(self.df))
+                                             for v in _snap[_col]]
+                _orig_data[_ROW_ID_COLUMN] = list(self._row_ids_for(_snap))
                 _orig_snapshot = ColumnDataSource(_orig_data)
             filter_row_widgets.append(
                 self._csv_button(_orig_snapshot, _filter_specs))
@@ -32025,9 +32387,14 @@ class DashRenderer:
             getattr(self, "value_labels", {}),
             getattr(self, "value_label_names", {}),
             storage_types=getattr(self, "storage_types", {}))
+        # The page's planned cells (WP-29 P0.11); under csv every cell is
+        # planned, so this is every row, as the download needs.
+        _plan = getattr(self, "_embed", None)
+        _scols = [c for c in meta["strings"] if c in self.df.columns]
+        _tf = (_dash_embed_frame(self.df, _plan, _scols)
+               if _plan is not None else self.df)
         text = ColumnDataSource({
-            c: [_dash_csv_text_value(v) for v in self.df[c]]
-            for c in meta["strings"] if c in self.df.columns})
+            c: [_dash_csv_text_value(v) for v in _tf[c]] for c in _scols})
         btn = Button(label="Download CSV", name="dash_csv_download",
                      width=_DASH_CSV_BUTTON_WIDTH)
         btn.js_on_event("button_click", CustomJS(
@@ -32252,9 +32619,16 @@ class DashRenderer:
         kpis   = self.master_spec.get("kpis", [])
         build  = self.master_spec.get("build_options", {})
 
+        # ---- Parse build options ----
+        # First (WP-29 P0.11): the page plan reads the parsed filters, and
+        # the size note counts the rows the page holds.
+        link_names, filters_cfg = self._parse_link_and_filters(build)
+        self._embed = None
+        self._ensure_embed(graphs, kpis, link_names, filters_cfg)
         # GAPS2 G3: the note reports embedded bytes, under the same
-        # row_cols/extra count __init__ refused on (computed once there).
-        _report_dataset_shape(self.df.shape[0],
+        # row_cols/extra count __init__ refused on (computed once there),
+        # over the rows the page holds.
+        _report_dataset_shape(int(self._embed["rows"].sum()),
                               len(self._embedded_row_cols), "dashboard",
                               extra=self._embedded_extra)
         # Sub-option reports already made this render, so a by() panel does
@@ -32264,8 +32638,6 @@ class DashRenderer:
         _dash_reset_notes()
         self._fmt_models = {}
 
-        # ---- Parse build options ----
-        link_names, filters_cfg = self._parse_link_and_filters(build)
         # Carried RAW; every site that puts these into HTML escapes them
         # itself.  Escaping here as well was a double escape in the
         # Bootstrap path.
@@ -32302,7 +32674,7 @@ class DashRenderer:
         # A layer drawn from a subset of the rows -- a by() panel, a graph or
         # a plot with its own if/in -- carries the rows it counts, so the
         # recount keeps to them; one drawn from every row carries nothing.
-        _n_rows = len(self.df)
+        _n_rows = int(self._embed["rows"].sum())
         for _gname, _fig in self.figures.items():
             _agg_list = []
             for _r in _fig.renderers:
@@ -32538,7 +32910,8 @@ class ServerAppBuilder:
                       # The shared legend, axis, column and swatch tables.
                       "_DASH_CLOCK_SIDE", "_DASH_CLOCK_INSIDE",
                       "_DASH_HIST_YTITLES",
-                      "_DASH_OPT_VAR_KEYS", "_DASH_SWATCH_PREFIX",
+                      "_DASH_OPT_VAR_KEYS", "_DASH_PLOT_VAR_KEYS",
+                      "_DASH_SWATCH_PREFIX",
                       # twoway's weight acceptance per layer, read by
                       # GlyphMapper._layer_weights.
                       "_DASH_WEIGHT_ACCEPTS", "_DASH_WEIGHT_INERT",
@@ -32769,6 +33142,7 @@ class ServerAppBuilder:
                          # A layer's `in' counts the dataset's observations,
                          # not the rows the graph's qualifier left.
                          "_dash_layer_frame",
+                         "_dash_embed_rows_of", "_dash_embed_plan", "_dash_embed_values", "_dash_embed_frame", "_dash_page_index", "_dash_relabel",
                          # The qualifier columns Stata filled: validated,
                          # taken out of the frame, and read as masks.
                          "_dash_qual_cols_named", "_dash_take_qual_columns",
@@ -33614,12 +33988,28 @@ class ServerAppBuilder:
                 _fdf = self._frame()
             except (ValueError, TypeError, KeyError, AttributeError):
                 _fdf = None
+            # The page plan the app will run (WP-29 P0.11): a dropdown's
+            # type is judged on its reach, as the saved page judges it.
+            _eplan = None
             if _fdf is not None:
-                for _fs in filter_specs:
+                try:
+                    _eplan = _dash_embed_plan(
+                        self.spec, _fdf,
+                        getattr(self, "_qual_masks_cache", None),
+                        bo.get("link", "") or "", filter_specs,
+                        _dash_csv_wanted(bo))
+                except ValueError:
+                    _eplan = None
+            if _fdf is not None:
+                for _fi, _fs in enumerate(filter_specs):
                     if (_fs.get("type") == "dropdown"
                             and _fs["var"] in _fdf.columns):
+                        _fcol = _fdf[_fs["var"]]
+                        if _eplan is not None:
+                            _fcol = _fcol[_eplan["filter_rows"][_fi]
+                                          .to_numpy(dtype=bool)]
                         _fs["type"] = _dash_filter_effective_type(
-                            "dropdown", _fs["var"], _fdf[_fs["var"]],
+                            "dropdown", _fs["var"], _fcol,
                             self.limits["filter_options"])
 
         lines: list[str] = []
@@ -34415,11 +34805,31 @@ class ServerAppBuilder:
             "        link_opt, [g.get('graph_options', {}).get('name', '')",
             "                   for g in graphs]))",
             "",
+            "    # The filters, parsed at build time; the page plan reads them.",
+            "    _filter_specs = " + repr(filter_specs),
+            "    # WP-29 P0.11: the rows and cells this document may send --",
+            "    # the saved page's plan, by the one function both modes run.",
+            "    _EMBED = _dash_embed_plan(spec, df, _qual_masks,",
+            "                              sorted(linked_names), _filter_specs,",
+            "                              _dash_csv_wanted(bo))",
+            "    # WP-29 P0.11: the browser receives the saved page's row numbers,",
+            "    # never an observation's own (_dash_page_index).  Every map keyed",
+            "    # by row is relabelled with the frame, row for row.",
+            "    _dash_old_index = df.index",
+            "    df.index = _dash_page_index(_dash_old_index, _EMBED['rows'])",
+            "    _qual_masks = _dash_relabel(_qual_masks, _dash_old_index, df.index)",
+            "    _sort_keys = _dash_relabel(_sort_keys, _dash_old_index, df.index)",
+            "    _EMBED = _dash_relabel(_EMBED, _dash_old_index, df.index)",
+            "    # Each graph's rows (page ranks) and the link group's mask.",
+            "    _EMBED_GROWS = {_g: df.index[_m.to_numpy(dtype=bool)]",
+            "                    for _g, _m in _EMBED['graph_rows'].items()}",
+            "    _EMBED_LINK = _EMBED['link_rows'].to_numpy(dtype=bool)",
+            "",
             "    # ---- Collect all variable names ----",
             "    all_vars = set()",
             "    for g in graphs:",
             "        for p in g.get('plots', []):",
-            "            for k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2', 'y1var', 'x1var', 'y2var', 'x2var'):",
+            "            for k in _DASH_PLOT_VAR_KEYS:",
             "                v = p.get(k, '')",
             "                if v and v in df.columns: all_vars.add(v)",
             "            # colorvar() and mlabel() name columns too, and so does",
@@ -34440,16 +34850,21 @@ class ServerAppBuilder:
             "    # selection on this source cannot be mapped back to rows, and",
             "    # a linked graph's brush would compute over the wrong ones.",
             "    linked_vars = list(all_vars)",
-            "    _shared_data = {v: _dash_column_values(df[v]) if v in df.columns else []",
+            "    # The link group's rows only, each column blanked where the",
+            "    # page does not read it (WP-29 P0.11).",
+            "    _ldf = df[_EMBED_LINK]",
+            "    _shared_data = {v: _dash_column_values(_dash_embed_values(",
+            "                        _ldf[v], _EMBED['need'].get(v)))",
+            "                    if v in df.columns else []",
             "                    for v in linked_vars}",
-            "    _shared_data['index'] = list(df.index)",
+            "    _shared_data['index'] = list(_ldf.index)",
             "    shared_source = ColumnDataSource(_shared_data)",
             "    # A jittered scatter puts its points on it, as on the saved",
             "    # page (GlyphMapper._linked_jitter_columns).",
             "    shared_source._dash_link_source = True",
             "    # Positions in shared_source, by row label, for the CDSView a",
             "    # qualified linked graph needs.",
-            "    _shared_pos = {_lbl: _i for _i, _lbl in enumerate(df.index)}",
+            "    _shared_pos = {_lbl: _i for _i, _lbl in enumerate(_ldf.index)}",
             "",
             "    # ---- Per-graph independent sources (for non-linked) ----",
             "    graph_sources: dict = {}",
@@ -34460,13 +34875,20 @@ class ServerAppBuilder:
             "        else:",
             "            gvars = []",
             "            for p in g.get('plots', []):",
-            "                for k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2'):",
+            "                for k in _DASH_PLOT_VAR_KEYS:",
             "                    v = p.get(k, '')",
             "                    if v and v in df.columns and v not in gvars:",
             "                        gvars.append(v)",
-            "            graph_sources[gname] = [ColumnDataSource(",
-            "                {v: _dash_column_values(df[v]) for v in gvars}",
-            "            ) if gvars else ColumnDataSource({})]",
+            "            # The graph's planned rows, blanked, with their labels so",
+            "            # a move refreshes it by identity (WP-29 P0.11).",
+            "            _pdf = df[df.index.isin(_EMBED_GROWS.get(gname, df.index[0:0]))]",
+            "            _pdata = {v: _dash_column_values(_dash_embed_values(",
+            "                          _pdf[v], _EMBED['need'].get(v)))",
+            "                      for v in gvars}",
+            "            if gvars:",
+            "                _pdata['index'] = list(_pdf.index)",
+            "            graph_sources[gname] = [ColumnDataSource(_pdata)",
+            "                                    if gvars else ColumnDataSource({})]",
             "",
             "    # ---- Aggregated plot ColumnDataSources ----",
             "    # key: (gname, plot_index) → {'source': CDS, 'compute': callable}",
@@ -35161,7 +35583,7 @@ class ServerAppBuilder:
             "            graph_sources.pop(gname, None)",
             "        _gvars = []",
             "        for _pp in g.get('plots', []):",
-            "            for _k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2', 'y1var', 'x1var', 'y2var', 'x2var'):",
+            "            for _k in _DASH_PLOT_VAR_KEYS:",
             "                _v = _pp.get(_k, '')",
             "                if _v and _v in df.columns and _v not in _gvars:",
             "                    _gvars.append(_v)",
@@ -35200,8 +35622,13 @@ class ServerAppBuilder:
             "                linked_names.add(_fname)",
             "                graph_sources[_fname] = [shared_source]",
             "            else:",
-            "                graph_sources[_fname] = [ColumnDataSource(",
-            "                    {_v: _dash_column_values(_gdf[_v]) for _v in _gvars})]",
+            "                _pgdf = _gdf[_gdf.index.isin(",
+            "                    _EMBED_GROWS.get(gname, _gdf.index[0:0]))]",
+            "                _pgdata = {_v: _dash_column_values(_dash_embed_values(",
+            "                               _pgdf[_v], _EMBED['need'].get(_v)))",
+            "                           for _v in _gvars}",
+            "                _pgdata['index'] = list(_pgdf.index)",
+            "                graph_sources[_fname] = [ColumnDataSource(_pgdata)]",
             "            _owner_rows[_fname] = _gdf.index",
             "            _g_pan = g",
             "            if _fi == _t_idx and _g_tot is not g:",
@@ -35305,20 +35732,9 @@ class ServerAppBuilder:
             "",
         ]
 
-        # Build filter specs from parsed filter_specs
-        if filter_specs:
-            lines += [
-                "    _filter_specs = " + repr(filter_specs),
-                "",
-            ]
-        else:
-            lines += [
-                "    _filter_specs = []",
-                "",
-            ]
-
+        # _filter_specs is emitted beside the page plan, above (WP-29 P0.11).
         lines += [
-            "    for fspec in _filter_specs:",
+            "    for _fi, fspec in enumerate(_filter_specs):",
             "        fvar = fspec['var']",
             "        ftype = fspec['type']",
             "        fexcl = fspec.get('exclude', [])",
@@ -35343,7 +35759,8 @@ class ServerAppBuilder:
             "        # The widget itself comes from the builder the saved renderer",
             "        # runs: option values, titles, steps and bounds are one rule.",
             "        widget, _sent = _dash_filter_widget(",
-            "            ftype, fvar, df[fvar], _ftitle, vlabels,",
+            "            ftype, fvar, df[fvar][_EMBED['filter_rows'][_fi].to_numpy(dtype=bool)],",
+            "            _ftitle, vlabels,",
             "            date_kind=_date_vars.get(fvar, ''),",
             "            max_options=_dash_lim['filter_options'],",
             "            fmt=_FORMATS.get(fvar, ''),",
@@ -35387,8 +35804,11 @@ class ServerAppBuilder:
             "    for _bgn, _bsl in graph_sources.items():",
             "        for _bs in (_bsl if isinstance(_bsl, list) else [_bsl]):",
             "            if _bgn in _owner_rows:",
-            "                _brush_rows[id(_bs)] = _owner_rows[_bgn]",
-            "    _brush_rows[id(shared_source)] = df.index",
+            "                # The rows the graph draws (WP-29 P0.11), as the",
+            "                # saved page's source holds them.",
+            "                _brush_rows[id(_bs)] = _owner_rows[_bgn].intersection(",
+            "                    _EMBED_GROWS.get(_facet_to_orig.get(_bgn, _bgn), df.index))",
+            "    _brush_rows[id(shared_source)] = df.index[_EMBED_LINK]",
             "",
             "    # The views over the link group's ONE source, with the rows each",
             "    # owns -- a by() panel's, a qualified graph's or layer's -- read",
@@ -35497,6 +35917,9 @@ class ServerAppBuilder:
             "                    _own_rows = _owner_rows.get(gname)",
             "                    _kept_rows = (_gdf.index if _own_rows is None",
             "                                  else _own_rows.intersection(fdf.index))",
+            "                    # Of them, the rows the graph draws (WP-29 P0.11).",
+            "                    _kept_rows = _kept_rows.intersection(",
+            "                        _EMBED_GROWS.get(_orig_gn_cb, _kept_rows))",
             "                for src in srcs:",
             "                    if _brush_on:",
             "                        _brush_rows[id(src)] = _kept_rows",
@@ -35539,13 +35962,13 @@ class ServerAppBuilder:
             "                # applies to at least one member (GAPS2 E2), not",
             "                # necessarily the same as any one member's own.",
             "                _shared_mask = _mask_for(None, _shared_members)",
-            "                _shared_fdf = _df_ref[_shared_mask]",
+            "                _shared_fdf = _df_ref[_shared_mask & _EMBED_LINK]",
             "                if _brush_on:",
             "                    _brush_rows[id(_shared)] = _shared_fdf.index",
             "                _dash_refresh_linked(",
             "                    _shared, _shared_fdf, _linked_views,",
             "                    snapshot=_orig_src_data.get(id(_shared), {}),",
-            "                    pos_of=_shared_pos)",
+            "                    pos_of=_shared_pos, need=_EMBED['need'])",
             "                _shared.selected.indices = []",
             "            # 3. Recompute aggregated sources",
             "            for key, agg in _agg_srcs.items():",

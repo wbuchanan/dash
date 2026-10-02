@@ -1782,6 +1782,19 @@ CORPUS = [
     # test_emptied_layer_style.py::TestAnEmptiedLayerKeepsItsStyle.
     _case("rspike with its own if that keeps no row",
           [_sc(), plot_for("rspike", if_expr="price > 20000")]),
+    # WP-29 P0.11: the page holds only the rows a consumer reads.
+    _case("two layers with their own qualifiers, range filter (embed rows)",
+          [plot_for("scatter", if_expr="price > 4500"),
+           plot_for("scatter", in_expr="1/3")],
+          bo={"filter": "price, type(range)"}),
+    _case("a linked pair with graph qualifiers (embed rows)",
+          bo={"link": "g1 g2", "filter": "price, type(range)"},
+          graphs=[("g1", [_sc()], None, {"if_expr": "foreign == 1",
+                                         "in_expr": ""}),
+                  ("g2", [_sc()], None, {"if_expr": "price > 10000",
+                                         "in_expr": ""})]),
+    _case("a dropdown under a graph if (embed rows)", [_sc()],
+          bo={"filter": "rep, type(dropdown)"}, if_expr="foreign == 1"),
 ]
 
 
@@ -2377,7 +2390,11 @@ _OWN_QUALIFIER_MOVES = [
 
 
 MOVE_CORPUS = [
-    *[_move_case(f"{t}, {m[0]}", m, [plot_for(t)])
+    # Flipped (WP-29 P0.11): a literal layer reads no row, so its filter
+    # reaches none unless a card it recomputes does; an unqualified
+    # filter-mode card keeps the widget's reach every row.
+    *[_move_case(f"{t}, {m[0]}", m, [plot_for(t)],
+                 kpis=([_kpi()] if t in dr._DASH_LITERAL_TYPES else None))
       for t in _MOVED_LAYERS for m in _MOVES],
     # An arrow's heads follow its shafts, with the layer's own in (BUGS.md,
     # 24sep2026: the heads were one fixed annotation per row).
@@ -2487,6 +2504,16 @@ MOVE_CORPUS = [
                  _EMPTYING_MOVES[0],
                  [plot_for(t, if_expr="foreign == 0")])
       for t in _EMPTIED_LAYERS if t != "lpoly"],
+    # WP-29 P0.11: restricted pages after a move.
+    _move_case("two layers with their own qualifiers (embed rows)", _MOVES[1],
+               [plot_for("scatter", if_expr="price > 4500"),
+                plot_for("scatter", in_expr="1/3")]),
+    _move_case("a linked pair with graph qualifiers (embed rows)", _MOVES[1],
+               bo={"link": "g1 g2"},
+               graphs=[("g1", [_sc()], None, {"if_expr": "foreign == 1",
+                                              "in_expr": ""}),
+                       ("g2", [_sc()], None, {"if_expr": "price > 10000",
+                                              "in_expr": ""})]),
 ]
 
 

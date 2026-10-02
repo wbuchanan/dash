@@ -962,5 +962,7 @@ class TestInternalLinksResolve:
         # is written with a capital -- {help dash##Scheme:...}, to no
         # marker at all -- is no link the scan reads: 59, above the "10"
         # this was, and the dead link passed the check above.
+        # 75 after WP-29 P0.11's two links to Description (the Exporting
+        # sentence and the data limit's paragraph; flipped from 73).
         refs = re.findall(r"dash##[a-z_0-9]+", _help_text())
-        assert len(refs) == 73 and len(set(refs)) == 29
+        assert len(refs) == 75 and len(set(refs)) == 29

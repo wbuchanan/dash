@@ -176,6 +176,21 @@ refused with {cmd:r(110)} before anything is exported; every other Stata
 name, however dash-like it looks, is read as your data.
 
 {pstd}
+{ul:What a saved page holds.}  A saved dashboard holds, for each variable,
+only the observations that some graph, recomputed card or filter selects
+with its {it:if} and {it:in}: the rows a layer draws (its graph's qualifier
+and its own together), the rows a card that follows a filter or the brush
+recomputes over, and the rows a filter acts on.  Nothing of an observation
+every qualifier excludes is written into the page, and the page numbers its
+own rows, so no gap shows where one was; anyone who opens the file can read
+what it holds with View Source.  A card's first value and every fitted line
+and smoother are computed over their own rows and only the result is
+written, so {cmd:lowess, adjust} and {cmd:lpoly}'s grid still read every
+observation in memory, as twoway does, and a {cmd:by()} graph finds its
+panels among every observation its graph's qualifier selects.  With
+{cmd:csv}, the page holds every observation of every variable it uses.
+
+{pstd}
 Two things this rule does not reach: the qualifier, {cmd:by()}-order and
 string-fix columns above are still generated in the data Stata holds in
 memory (dropped again before control returns), so a dataset already at
@@ -1006,9 +1021,11 @@ through.  A value-labelled variable is written as its labels, as
 {pstd}
 {cmd:csv} is off unless asked for, because it lets anyone who opens the
 dashboard download every row of every variable it uses -- including one that
-only a KPI card summarises.  A saved dashboard with filters already contains
-those rows (the filters need them), but a served one sends the browser only
-what it draws.  When served, each click is computed on the server from the
+only a KPI card summarises.  Without {cmd:csv} a saved dashboard holds only
+the observations its graphs, cards and filters select (see
+{help dash##description:Description}); with it the page holds them all, so
+that the download can be written in the browser, but a served one sends the
+browser only what it draws.  When served, each click is computed on the server from the
 same filters, and a session may download twice at once and then once every
 five seconds.  {cmd:dash serve} inherits {cmd:csv} from the preceding
 {cmd:dash build}, as it inherits every dashboard option.
@@ -1131,7 +1148,9 @@ tabs name is drawn below the tabs.
 
 {pstd}
 Graphs in the same link group draw their observations from a single Bokeh
-{cmd:ColumnDataSource}.  Selecting observations in one graph (via
+{cmd:ColumnDataSource}.  That source holds the observations the group's
+graphs draw -- each graph's and each layer's {it:if} and {it:in} together
+-- and no other.  Selecting observations in one graph (via
 box-select or lasso-select) selects them in that source, and every linked
 graph highlights them where it draws them as markers: in its
 {cmd:scatter}, {cmd:connected} and {cmd:dot} layers, and on {cmd:rspike}
@@ -1261,6 +1280,15 @@ is a dropdown.
     A slider at its minimum, like a range at its full extent, restricts
     nothing; once moved, either drops the observations whose value is
     missing (see {help dash##export:Exporting}).
+
+{pmore2}
+    A widget lists the values of, or spans the range of, the observations
+    that the graphs, link group and cards it filters select, after
+    {cmd:exclude()}; an observation every {it:if} or {it:in} excludes adds
+    no option or bound, and the 1,000-value limit of a dropdown counts those
+    observations only.  A filter that reaches no observation -- every graph
+    and card excluded, or graphs that draw no observation -- draws a range
+    or slider greyed out, and a dropdown that lists only All.
 
 {phang2}{cmd:exclude(}{it:namelist}{cmd:)} -- prevent the filter from
     affecting the specified graphs and KPI cards, each a registered name,
@@ -1769,7 +1797,10 @@ specification and data once the application is written, and the application
 once the server answers; only a crash in the seconds before the server
 answers can leave a private copy, which the next dash command removes.  A
 file you name with {cmd:saving()} is written readable only by you (0600) and
-is yours to manage.
+is yours to manage.  A browser receives only the observations the dashboard
+draws or filters, as a saved page holds them, numbered as the saved page
+numbers them, so no row number shows where an excluded observation was; the
+{cmd:.py} file and its data still hold every observation.
 
 
 {marker tempfiles}{...}
@@ -1957,7 +1988,11 @@ Measured, 4,000,000 values made a 95 MB page and took about 2 GB of
 memory to render.  A string value adds its own length to that, and a
 {cmd:strL} is exported whole, so text is held to {cmd:$dash_max_bytes} as
 well: 60 observations of a 1,000,000-byte {cmd:strL} are only 60 values
-but 60,000,000 bytes, and are refused at the default.
+but 60,000,000 bytes, and are refused at the default.  A saved page may
+hold fewer observations than the limit counts: only those its graphs, cards
+and filters select (see {help dash##description:Description}); the size the
+dashboard reports when it is large counts those, and a served app's report
+counts every observation.
 
 {pstd}
 {ul:A served dashboard} has rate limits of its own; see

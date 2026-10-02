@@ -37,7 +37,10 @@ run under node, and Stata's answers measured with the console binary:
   mpg if foreign == 1``.  Clearing alone would not have matched it: the
   served brush callback counted the WHOLE frame when nothing was selected
   (21.5), so a brush cleared on a graph ``if foreign == 1`` read 21.5 where
-  the saved page reads 23.4 even without a move.
+  the saved page reads 23.4 even without a move.  Since WP-29 P0.11 the
+  graph's source holds only the rows its layers draw, so with a layer's
+  own ``in 3/8`` the card after the move reads 25.66667, Stata's
+  ``summarize mpg if foreign == 1 in 3/8``.
 
 The saved page is the specification wherever it is right; where it is not,
 the test says so and holds the served app to Stata alone.
@@ -340,8 +343,10 @@ class TestTheReportedCase:
 
     def test_the_saved_pages_own_script_draws_the_same(self):
         """The saved page itself: its filter script, run under node, keeps
-        the scatter's view on observations 53-60 of the 22 foreign rows it
-        writes into the graph's source (21 drawn before the move)."""
+        the scatter's view on observations 53-60 of the 8 rows its layers
+        draw (21 drawn before the move).  Row ids are the page's ranks
+        (WP-29 P0.11), mapped back to observations through
+        ``r._page_labels``."""
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r, _ = tp._standalone(self._SPEC)
@@ -358,8 +363,12 @@ class TestTheReportedCase:
                    "flt": _encode(flt, models)["__ref__"],
                    "row_id": dr._ROW_ID_COLUMN}
         out = _run_node(payload, _VIEW_RUNNER)
-        assert out["rows"] == 22, out
-        assert out["drawn"] == list(range(53, 61)), out
+        # Flipped (WP-29 P0.11): the source held all 22 foreign rows; it
+        # holds the 8 its layers draw (Stata: count if foreign==1 in 40/60),
+        # numbered by the page's ranks.
+        assert out["rows"] == 8, out
+        assert [r._page_labels[i - 1] + 1 for i in out["drawn"]] == list(
+            range(53, 61)), out
 
 
 # ===========================================================================
@@ -546,11 +555,13 @@ _SELECTIONS = [
               kpis=[tp._kpi(update="both")]),
      0, [0, 1, 2], ("Select", "Foreign"), "23.4"),
     # A layer's own in: the saved page brushes the GRAPH's source, which
-    # holds every row; its view draws 3-8.
+    # holds the rows its layers draw, 3-8 (WP-29 P0.11).  Flipped: 23.4
+    # counted rows the layer never draws; Stata: summarize mpg if
+    # foreign == 1 in 3/8, 25.66667.
     ("update(brush), the layer's own in",
      tp._spec([_sc(in_expr="3/8")], {"filter": _DROPDOWN},
               kpis=[tp._kpi(update="brush")]),
-     0, [0, 1, 2], ("Select", "Foreign"), "23.4"),
+     0, [0, 1, 2], ("Select", "Foreign"), "25.66667"),
     ("update(brush), the card's own if",
      tp._spec([_sc()], {"filter": _DROPDOWN},
               kpis=[tp._kpi(update="brush", if_expr="mpg > 20")]),
@@ -635,23 +646,34 @@ class TestAdversarialFilterMoves:
                      {"filter": _DROPDOWN})
 
     @staticmethod
-    def _rows(doc):
+    def _rows(doc, labels=None):
+        """Each layer's observations: its served ``index`` labels, which
+        are page ranks (WP-29 P0.11), mapped back through the saved page's
+        ``_page_labels``."""
         (fig,) = _figures(doc)
-        return [sorted(int(i) for i in r.data_source.data["index"])
+        return [sorted(int(labels[int(i)]) if labels is not None else int(i)
+                       for i in r.data_source.data["index"])
                 for r in fig.renderers if isinstance(r, GlyphRenderer)]
 
     def _after(self, *values):
         """The layers' rows in a fresh session after the Select is set to
         each of *values* in turn.  Fresh, and few: setting a value runs the
         throttled callback and _fire runs it again, and past the bucket's
-        ten a call waits on a timer a bare Document never runs."""
+        ten a call waits on a timer a bare Document never runs.  (Served
+        labels are page ranks, mapped back through the saved page's
+        ``_page_labels``; WP-29 P0.11.)"""
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            labels = tp._standalone(self._SPEC)[0]._page_labels
         doc, _ = tp._served(self._SPEC)
         (w,) = [x for x in tp._widgets_of(doc) if type(x).__name__ == "Select"]
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             for v in values:
                 tp._fire(w, v)
-        return self._rows(doc)
+        # Flipped (WP-29 P0.11): labels were observation positions; they
+        # are ranks of the planned rows {0, 2, 3, 4, 5, 6, 7, 9}.
+        return self._rows(doc, labels)
 
     def test_no_widget_value_widens_a_layers_own_rows(self):
         """Bypass: every value the Select admits -- its "All" sentinel, a
@@ -682,9 +704,10 @@ class TestAdversarialFilterMoves:
             src.selected.indices = [-1, 0, 5, 10 ** 12, 2 ** 31 - 1]
             _move(doc, "Select", "Foreign")
         assert list(src.selected.indices) == []
-        # Stata: summarize mpg if foreign == 1 -- the graph's rows, as the
-        # saved page's cleared brush counts them.
-        assert _served_cards(doc) == {"k1": "23.4"}
+        # Stata: summarize mpg if foreign == 1 in 3/8 -- the rows the graph
+        # draws, as the saved page's cleared brush counts them.  Flipped
+        # (WP-29 P0.11): 23.4 counted foreign rows outside the layer's in.
+        assert _served_cards(doc) == {"k1": "25.66667"}
 
     def test_a_value_is_data_not_a_qualifier(self, tmp_path):
         """Injection: a Select value written as code, as a qualifier, or as

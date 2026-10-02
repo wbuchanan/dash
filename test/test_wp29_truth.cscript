@@ -22,6 +22,7 @@
 *!        one scale per axis unless rescaled (BSC-01..BSC-07)
 *!   S12  P0.18 emptied layers keyed in twoway's colour and width, saved
 *!        and served (EW-02, EW-03)
+*!   S14  embed rows: what a saved page holds against twoway's sersets and Stata's counts (ER-01..ER-08)
 *!
 *! Usage: via run_all_cscripts.do (registered as its block 68).  One
 *! block alone: set WP29_ONLY=S<NN> in the environment of the driver run
@@ -4580,6 +4581,229 @@ end
     display as text "S12 end `c(current_time)'"
 }
 * ==== end S12 ====
+
+* ==== S14 P0.11: what a saved page holds ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S14") {
+    display as text "S14 start `c(current_time)'"
+    local s14d "`w29_work'/s14"
+    capture mkdir "`s14d'"
+    python:
+import os as _er_os, sys as _er_sys
+from sfi import Macro as _er_M
+_er_sys.path.insert(0, _er_os.path.abspath("."))
+_er_sys.path.insert(0, _er_os.path.abspath(_er_os.path.join("..", "scripts")))
+import embed_truth_check as _er_c
+import svg_truth as _er_svg
+
+
+def _er_page(path):
+    r = _er_c.page_rows(path)
+    _er_c.put("er_rows", r["rows"])
+    _er_c.put("er_views", " ".join(str(v) for v in r["view_counts"]))
+    for col in ("mpg", "price", "weight"):
+        _er_c.put("er_cells_" + col, r["cells"].get(col, 0))
+    _er_c.put("er_panels", "|".join(r["panels"]))
+
+
+def _er_subtitles(path, labels):
+    got = []
+    for t in _er_svg.svg_texts(path):
+        if t["text"] in labels and t["text"] not in got:
+            got.append(t["text"])
+    _er_c.put("er_subs", "|".join(got))
+
+
+def _er_widgets(path):
+    out = []
+    for kind, a, b, labs in _er_c.page_widgets(path):
+        if kind == "Select":
+            out.append("Select:" + ",".join(labs))
+        else:
+            out.append("%s:%g-%g" % (kind, a, b))
+    _er_c.put("er_widgets", " ".join(out))
+
+
+def _er_served(path, lo=None, hi=None):
+    moves = [] if lo is None else [("price", (lo, hi))]
+    before, after = _er_c.served_state(path, moves)
+    _er_c.put("er_shared0", before["shared"])
+    _er_c.put("er_shared1", after["shared"])
+    out = []
+    for kind, a, b, labs in before["widgets"]:
+        if kind == "Select":
+            out.append("Select:" + ",".join(labs))
+        else:
+            out.append("%s:%g-%g" % (kind, a, b))
+    _er_c.put("er_swidgets", " ".join(out))
+
+
+def _er_curve(path):
+    ys = _er_c.page_curve(path)
+    _er_c.put("er_curve_n", len(ys))
+    _er_c.put("er_curve_mean", "%.10g" % (sum(ys) / len(ys) if ys else 0))
+end
+
+    // ------------------------------------------------------------
+    // ER-01: two layers with their own if: the page holds twoway's
+    // union and each view twoway's serset.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture dash clear
+    quietly twoway (scatter mpg weight if foreign) (scatter mpg weight if price>10000), nodraw
+    serset set 0
+    serset
+    local n0 = r(N)
+    serset set 1
+    serset
+    local n1 = r(N)
+    quietly count if foreign | price>10000
+    local nu = r(N)
+    capture noisily dash (scatter mpg weight if foreign) (scatter mpg weight if price>10000), saving("`s14d'/er01.html") replace
+    local rc = _rc
+    python: _er_page(_er_M.getLocal("s14d") + "/er01.html")
+    _w29_expect ER-01 "(`rc' == 0 & ${er_rows} == `nu' & `nu' == 30)" "page rows ${er_rows}, count `nu' (rc `rc')"
+    _w29_expect ER-01 `"("${er_views}" == "`n0' `n1'")"' "views ${er_views}, twoway's sersets `n0' `n1'"
+    _w29_done ER-01 "the page holds the `nu' rows twoway's two sersets (`n0', `n1') hold"
+
+    // ------------------------------------------------------------
+    // ER-02: by() panels are twoway's; the page holds the layers' rows.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture dash clear
+    quietly twoway (scatter mpg weight if foreign==0) (scatter mpg weight if price>15000), by(foreign) name(er02, replace)
+    quietly graph export "`s14d'/er02.svg", name(er02) replace
+    local l0 : label (foreign) 0
+    local l1 : label (foreign) 1
+    python: _er_subtitles(_er_M.getLocal("s14d") + "/er02.svg", {_er_M.getLocal("l0"), _er_M.getLocal("l1")})
+    quietly count if foreign==0 | price>15000
+    local nu = r(N)
+    capture noisily dash (scatter mpg weight if foreign==0) (scatter mpg weight if price>15000), by(foreign) saving("`s14d'/er02.html") replace
+    local rc = _rc
+    python: _er_page(_er_M.getLocal("s14d") + "/er02.html")
+    local okp = 1
+    foreach s in `=subinstr("${er_subs}", "|", " ", .)' {
+        if strpos("${er_panels}", "`s'") == 0 local okp = 0
+    }
+    _w29_expect ER-02 "(`rc' == 0 & ${er_rows} == `nu')" "page rows ${er_rows}, count `nu' (rc `rc')"
+    _w29_expect ER-02 `"(`okp' == 1 & "${er_subs}" == "`l0'|`l1'")"' "panels ${er_panels}, twoway's subtitles ${er_subs}"
+    _w29_done ER-02 "panels ${er_subs} as twoway's; the page holds `nu' rows"
+    capture graph drop er02
+
+    // ------------------------------------------------------------
+    // ER-03: a linked pair holds the union, each variable on its rows.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture dash clear
+    quietly dash scatter mpg weight if foreign, name(g1)
+    quietly dash scatter price weight if price>10000, name(g2)
+    capture noisily dash build, link(g1 g2) saving("`s14d'/er03.html") replace
+    local rc = _rc
+    python: _er_page(_er_M.getLocal("s14d") + "/er03.html")
+    quietly count if foreign
+    local nf = r(N)
+    quietly count if price>10000
+    local np = r(N)
+    _w29_expect ER-03 "(`rc' == 0 & ${er_rows} == 30)" "page rows ${er_rows} (rc `rc')"
+    _w29_expect ER-03 "(${er_cells_mpg} == `nf' & ${er_cells_price} == `np')" "mpg cells ${er_cells_mpg} (count `nf'), price cells ${er_cells_price} (count `np')"
+    _w29_done ER-03 "the link group holds 30 rows: mpg on `nf', price on `np'"
+
+    // ------------------------------------------------------------
+    // ER-04: a card a filter recomputes reads every row.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture dash clear
+    quietly dash scatter mpg weight if foreign, name(g1)
+    quietly dash kpi mean(price), name(k1) title("Price")
+    capture noisily dash build, filter(rep78) saving("`s14d'/er04.html") replace
+    local rc = _rc
+    python: _er_page(_er_M.getLocal("s14d") + "/er04.html")
+    quietly count if foreign
+    local nf = r(N)
+    _w29_expect ER-04 "(`rc' == 0 & ${er_cells_mpg} == `nf' & ${er_cells_price} == _N)" "mpg cells ${er_cells_mpg} (count `nf'), price cells ${er_cells_price} (_N `=_N') (rc `rc')"
+    _w29_done ER-04 "mpg on the graph's `nf' rows, price on all `=_N' the card recomputes"
+
+    // ------------------------------------------------------------
+    // ER-05: each widget spans its reach, saved and served.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture dash clear
+    quietly summarize price if foreign
+    local want_s = "Slider:" + strofreal(r(min), "%9.0g") + "-" + strofreal(r(max), "%9.0g")
+    quietly levelsof rep78 if foreign, local(lv) separate(,)
+    local want_d "Select:All,`lv'"
+    quietly dash scatter mpg weight if foreign, name(g1)
+    capture noisily dash build, filter(price, type(slider)) filter(rep78, type(dropdown)) saving("`s14d'/er05.html") replace
+    local rc = _rc
+    python: _er_widgets(_er_M.getLocal("s14d") + "/er05.html")
+    capture noisily dash build, filter(price, type(slider)) filter(rep78, type(dropdown)) server saving("`s14d'/er05.py") replace nobrowser
+    local rc2 = _rc
+    python: _er_served(_er_M.getLocal("s14d") + "/er05.py")
+    local want "`want_s' `want_d'"
+    _w29_expect ER-05 `"(`rc' == 0 & "${er_widgets}" == "`want'")"' "saved ${er_widgets}, Stata `want' (rc `rc')"
+    _w29_expect ER-05 `"(`rc2' == 0 & "${er_swidgets}" == "`want'")"' "served ${er_swidgets}, Stata `want' (rc `rc2')"
+    _w29_done ER-05 "both modes' widgets are summarize's and levelsof's over the graph's rows"
+
+    // ------------------------------------------------------------
+    // ER-06: csv keeps every row; the graph's rows stay its own.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture dash clear
+    quietly dash scatter mpg weight if foreign, name(g1)
+    capture noisily dash build, csv saving("`s14d'/er06.html") replace
+    local rc = _rc
+    python: _er_page(_er_M.getLocal("s14d") + "/er06.html")
+    quietly count if foreign
+    local nf = r(N)
+    _w29_expect ER-06 "(`rc' == 0 & ${er_rows} == _N & ${er_views} == `nf')" "page rows ${er_rows} (_N `=_N'), graph rows ${er_views} (count `nf') (rc `rc')"
+    _w29_done ER-06 "csv: the page holds all `=_N' rows, the graph draws `nf'"
+
+    // ------------------------------------------------------------
+    // ER-07: the served link group sends its rows, before and after a move.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture dash clear
+    quietly dash scatter mpg weight if foreign, name(g1)
+    quietly dash scatter price weight if price>10000, name(g2)
+    capture noisily dash build, link(g1 g2) filter(price, type(range)) server saving("`s14d'/er07.py") replace nobrowser
+    local rc = _rc
+    python: _er_served(_er_M.getLocal("s14d") + "/er07.py", 5000, 15906)
+    quietly count if (foreign | price>10000) & inrange(price, 5000, 15906)
+    local n1 = r(N)
+    _w29_expect ER-07 "(`rc' == 0 & ${er_shared0} == 30 & ${er_shared1} == `n1')" "shared rows ${er_shared0} then ${er_shared1} (count `n1') (rc `rc')"
+    _w29_done ER-07 "the served group sends 30 rows, `n1' after the move"
+
+    // ------------------------------------------------------------
+    // ER-08 (guard): lowess, adjust still reads every row.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture dash clear
+    serset clear
+    quietly twoway lowess mpg weight if foreign, adjust nodraw
+    serset set 0
+    serset use, clear
+    quietly ds
+    local yv : word 1 of `r(varlist)'
+    quietly summarize `yv'
+    local tw_mean = r(mean)
+    local tw_n = r(N)
+    sysuse auto, clear
+    capture noisily dash lowess mpg weight if foreign, adjust saving("`s14d'/er08.html") replace
+    local rc = _rc
+    python: _er_curve(_er_M.getLocal("s14d") + "/er08.html")
+    _w29_expect ER-08 "(`rc' == 0 & ${er_curve_n} == `tw_n' & abs(${er_curve_mean} - `tw_mean') < 1e-6)" "dash n ${er_curve_n} mean ${er_curve_mean}, twoway n `tw_n' mean `tw_mean' (rc `rc')"
+    _w29_done ER-08 "lowess, adjust's curve is twoway's (mean `: display %9.0g `tw_mean'')"
+
+    capture dash clear
+    local erfiles : dir "`s14d'" files "*"
+    foreach f of local erfiles {
+        capture erase "`s14d'/`f'"
+    }
+    capture rmdir "`s14d'"
+    macro drop er_*
+    display as text "S14 end `c(current_time)'"
+}
+* ==== end S14 ====
 
 * ==== append new blocks above this line ====
 

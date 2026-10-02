@@ -360,7 +360,7 @@ and now matches Stata.
   tab or a carriage return is prefixed with an apostrophe to guard against
   CSV injection. (WP-21)
 
-<!-- WP-29 P0.11 -->
+- A saved page now holds only the observations its graphs, cards and filters select, and numbers its own rows; a served `link()` group sends only its rows. `filter(price, type(range))` under a graph `if price > 4500` spanned 3799-11385 and now 4749-11385, in both modes; a dropdown within its limit on its reach stays a dropdown; a filter that reaches no observation is greyed out (range, slider) or lists only All; a card following the brush counts the rows its graph shows (`update(brush)` on a layer with `in 3/8`, after a move to Foreign, 23.4 -> 25.66667). The served app numbers its rows as the saved page does, so no row number a browser receives shows where an excluded observation was (a layer `if price > 4500` sent `index` 1, 3, 4, 6, 7, 9 and now sends 0-5). With csv the page still holds every row. (WP-29, P0.11)
 
 - The served app had no credential: while `dash serve`, `python app.py` or
   `bokeh serve app.py` ran, any program on the machine, under any local

@@ -383,9 +383,13 @@ class TestAJitteredScatterFollowsAMove:
         after = {int(i): (x, y) for i, x, y in zip(
             src.data[rid], src.data[dr._DASH_JITTER_X],
             src.data[dr._DASH_JITTER_Y])}
-        want = {1, 3, 4, 6, 7, 9}
+        want_positions = {1, 3, 4, 6, 7, 9}
         if qual:
-            want &= set(range(1, 9))          # in 2/9: observations 2..9
+            want_positions &= set(range(1, 9))   # in 2/9: observations 2..9
+        # Flipped (WP-29 P0.11): row ids are the page's ranks, so the
+        # observations are mapped through them (identity when every row is
+        # on the page; the in 2/9 page holds observations 2..9 only).
+        want = {r._row_pos[r.df.index[p]] for p in want_positions}
         assert set(after) == want, sorted(after)
         assert all(after[i] == pytest.approx(before[i]) for i in after)
 

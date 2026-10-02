@@ -1,0 +1,197 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "7f5c8f51ced0dbe37b07fc7ce6a70ca6d7ef96d7",
+  "extracted": " 2 Oct 2026",
+  "source": "scripts/extract_embedded_rows_truth.do",
+  "stata_version": "19.5"
+ },
+ "p1": {
+  "command": "twoway (scatter mpg weight if foreign) (scatter mpg weight if price>10000), nodraw",
+  "layer_obs": [
+   [
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74
+   ],
+   [
+    9,
+    11,
+    12,
+    13,
+    26,
+    27,
+    28,
+    41,
+    64,
+    74
+   ]
+  ],
+  "serset_n": [
+   22,
+   10
+  ],
+  "union_n": 30,
+  "union_obs": [
+   9,
+   11,
+   12,
+   13,
+   26,
+   27,
+   28,
+   41,
+   53,
+   54,
+   55,
+   56,
+   57,
+   58,
+   59,
+   60,
+   61,
+   62,
+   63,
+   64,
+   65,
+   66,
+   67,
+   68,
+   69,
+   70,
+   71,
+   72,
+   73,
+   74
+  ]
+ },
+ "p2": {
+  "command": "twoway scatter rep78 weight if !foreign, nodraw",
+  "count_if": 52,
+  "count_nonmissing": 48,
+  "serset_n": 52
+ },
+ "p3": {
+  "single": {
+   "command": "twoway (scatter mpg weight if foreign==0), by(foreign)",
+   "serset_n": [
+    52
+   ],
+   "subtitles": [
+    "Domestic"
+   ]
+  },
+  "two": {
+   "command": "twoway (scatter mpg weight if foreign==0) (scatter mpg weight if price>15000), by(foreign)",
+   "serset_n": [
+    52,
+    1,
+    0
+   ],
+   "subtitles": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "with_all": {
+   "command": "twoway (scatter mpg weight if foreign==0) (scatter mpg weight), by(foreign)",
+   "serset_n": [
+    52,
+    0,
+    22
+   ],
+   "subtitles": [
+    "Domestic",
+    "Foreign"
+   ]
+  }
+ },
+ "p4": {
+  "command": "sysuse auto; summarize price [if foreign]; levelsof rep78 [if foreign]; summarize mpg if foreign | price > 10000; count if foreign==1 in 40/60",
+  "count_foreign_in_40_60": 8,
+  "mpg_union": {
+   "command": "summarize mpg if foreign | price > 10000",
+   "mean": 22.133333333333333,
+   "text": "22.13333"
+  },
+  "price_all": [
+   3291.0,
+   15906.0
+  ],
+  "price_if_foreign": [
+   3748.0,
+   12990.0
+  ],
+  "rep78_all": [
+   1.0,
+   2.0,
+   3.0,
+   4.0,
+   5.0
+  ],
+  "rep78_if_foreign": [
+   3.0,
+   4.0,
+   5.0
+  ]
+ },
+ "p5": {
+  "command": "the parity frame typed in with input; summarize price if price > 4500; levelsof price if price > 4500",
+  "mpg_all": {
+   "command": "summarize mpg",
+   "mean": 21.5,
+   "text": "21.5"
+  },
+  "mpg_foreign": {
+   "command": "summarize mpg if foreign == 1",
+   "mean": 23.4,
+   "text": "23.4"
+  },
+  "mpg_foreign_in_3_8": {
+   "command": "summarize mpg if foreign == 1 in 3/8",
+   "mean": 25.666666666666668,
+   "text": "25.66667"
+  },
+  "mpg_in_3_8": {
+   "command": "summarize mpg in 3/8",
+   "mean": 22.833333333333332,
+   "text": "22.83333"
+  },
+  "price_gt_4500": [
+   4749.0,
+   11385.0
+  ],
+  "price_levels_gt_4500": [
+   4749.0,
+   4816.0,
+   5189.0,
+   5788.0,
+   10372.0,
+   11385.0
+  ]
+ },
+ "p6": {
+  "command": "twoway lowess mpg weight if foreign, adjust nodraw",
+  "mean": 21.297297297297295,
+  "mean_text": "21.2973"
+ }
+}

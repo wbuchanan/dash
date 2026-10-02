@@ -1704,7 +1704,7 @@ class TestFilterReachesTheRenderedSource:
 
 
 class TestTheFilterReadsTheWholeDataset:
-    """A widget describes the DATA, not the first graph.
+    """A widget describes the rows its targets select, not the first graph.
 
     The saved renderer built every widget, and the snapshot its JavaScript
     filters and recomputes KPIs from, out of the first graph's source.
@@ -1714,6 +1714,12 @@ class TestTheFilterReadsTheWholeDataset:
     the snapshot held five rows, so a KPI recomputed after a move was a
     statistic of half the data.  The served app read the whole frame for
     all three, which is how the parity guard found it.
+
+    WP-29 P0.11: a widget now spans the observations the graphs, link
+    group and cards it filters select -- every panel of a by() graph, so
+    the by() cases below still read every row; under a graph-level `if'
+    only the rows the graph draws (Stata: ``summarize price if price >
+    4500``, 4749 to 11385).
     """
 
     _DF = pd.DataFrame({
@@ -1766,10 +1772,13 @@ class TestTheFilterReadsTheWholeDataset:
         labels = [lab for _, lab in r.filter_widgets[0].options]
         assert labels == ["All", "Domestic", "Foreign"], labels
 
-    def test_a_range_under_a_graph_if_still_spans_every_row(self):
+    def test_a_range_under_a_graph_if_spans_the_rows_the_graph_draws(self):
+        # Flipped (WP-29 P0.11): 3799 was the price of a row the graph's
+        # `if' excludes; Stata's `summarize price if price > 4500' gives
+        # 4749 to 11385.
         r = self._render("price, type(range)", if_expr="price > 4500")
         w = r.filter_widgets[0]
-        assert (w.start, w.end) == (3799.0, 11385.0), (w.start, w.end)
+        assert (w.start, w.end) == (4749.0, 11385.0), (w.start, w.end)
 
     def test_the_snapshot_holds_every_row_under_by(self):
         r = self._render("foreign, type(dropdown)", {"by": "foreign"})
