@@ -3146,9 +3146,17 @@ end
     // ------------------------------------------------------------
     // PF-02: three one-line previews, then dash clear, leave no page of
     // this session: no St<pid>*.html in c(tmpdir), no dash-preview of
-    // this pid; the root and previews/ are 0700.
+    // this pid; the root and previews/ are 0700.  A page an earlier script
+    // of the same session saved under a tempfile name (St<pid>.*.html) is
+    // not a preview: the names already there are listed first and only a
+    // new one counts (under the certification runner such pages failed
+    // this case, 02oct2026).
     // ------------------------------------------------------------
     capture dash clear
+    python:
+_pf_before = set(_n for _n in _pf_os.listdir(_PF_TMP)
+                 if _pf_re.match(r"^St0*%d[.]" % _PF_PID, _n) and _n.endswith(".html"))
+end
     capture noisily {
         dash scatter mpg weight
         dash scatter mpg price
@@ -3161,7 +3169,7 @@ _pf_b = []
 if _pf_M.getLocal("pf02rc") != "0":
     _pf_b.append("the previews or dash clear ended rc " + _pf_M.getLocal("pf02rc"))
 for _n in _pf_os.listdir(_PF_TMP):
-    if _pf_re.match(r"^St0*%d[.]" % _PF_PID, _n) and _n.endswith(".html"):
+    if _pf_re.match(r"^St0*%d[.]" % _PF_PID, _n) and _n.endswith(".html") and _n not in _pf_before:
         _pf_b.append(_n + " remains in c(tmpdir)")
 for _p in _pf_my_pages():
     _pf_b.append(_pf_os.path.basename(_p) + " remains in previews")
