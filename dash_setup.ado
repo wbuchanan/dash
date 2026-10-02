@@ -14,7 +14,7 @@
 *! Usage: dash_setup [, venv(path)]
 *!
 *! Author:  (see dash.sthlp)
-*! Version: 0.1.0  30sep2026
+*! Version: 0.1.0  02oct2026
 
 program define dash_setup, rclass
     version 16.0
