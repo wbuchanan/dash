@@ -78,9 +78,14 @@ import dash_render as dr  # noqa: E402
 # node lookup
 # ---------------------------------------------------------------------------
 
-#: The interpreter's path, resolved once at import: an explicit override
-#: first (a machine without node on PATH, or a pinned build), else PATH.
-NODE = os.environ.get("DASH_NODE") or shutil.which("node")
+def find_node():
+    """The interpreter's path: an explicit ``DASH_NODE`` override first (a
+    machine without node on PATH, or a pinned build), else PATH, else None."""
+    return os.environ.get("DASH_NODE") or shutil.which("node")
+
+
+#: The interpreter's path, resolved once at import by find_node().
+NODE = find_node()
 
 
 def node():

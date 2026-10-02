@@ -23,7 +23,6 @@ S05's ``test_histogram_edge_rule.py`` -- ``run_filter_js_block``, ``NODE``
 (and ``_hist`` from ``test_statistical_helpers``); S12 and S17 --
 ``JsSession``, ``mask_parity``.
 """
-import importlib
 import math
 import os
 import re
@@ -106,16 +105,12 @@ _KPI_SPEC = {
 
 class TestNode:
     def test_node_is_the_override_or_the_path_lookup(self, monkeypatch):
-        original = js_runner.NODE
-        try:
-            monkeypatch.setenv("DASH_NODE", "/x/node")
-            importlib.reload(js_runner)
-            assert js_runner.NODE == "/x/node"
-            monkeypatch.delenv("DASH_NODE", raising=False)
-            importlib.reload(js_runner)
-            assert js_runner.NODE == shutil.which("node")
-        finally:
-            js_runner.NODE = original
+        # find_node() rather than importlib.reload: a reload rebinds every
+        # function, breaking the aliases other test modules imported.
+        monkeypatch.setenv("DASH_NODE", "/x/node")
+        assert js_runner.find_node() == "/x/node"
+        monkeypatch.delenv("DASH_NODE", raising=False)
+        assert js_runner.find_node() == shutil.which("node")
 
     def test_a_missing_node_skips_with_the_override_named(self, monkeypatch):
         monkeypatch.setattr(js_runner, "NODE", None)
@@ -365,6 +360,15 @@ class TestTheMigratedShims:
 
     def test_the_aliases_s05_imports_exist(self):
         import test_statistical_helpers as tsh
+        assert tsh._NODE is js_runner.NODE
+        assert tsh._run_filter_js_block is js_runner.run_filter_js_block
+
+    def test_the_aliases_survive_the_node_lookup_test_run_first(
+            self, monkeypatch):
+        # Regression: TestNode once reloaded js_runner, so a worker that had
+        # imported test_statistical_helpers first held stale aliases.
+        import test_statistical_helpers as tsh
+        TestNode().test_node_is_the_override_or_the_path_lookup(monkeypatch)
         assert tsh._NODE is js_runner.NODE
         assert tsh._run_filter_js_block is js_runner.run_filter_js_block
 
