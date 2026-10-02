@@ -2262,9 +2262,9 @@ options -- see below.
 regression -- the same smoother underlying Stata's {helpb twoway lpoly},
 with the same default kernel ({cmd:epanechnikov}) and the same
 {cmd:degree(0)} default.  At a given {cmd:bwidth()} the curve is Stata's
-at every degree from 0 to 3 -- including where a window holds fewer
-distinct x values than the degree needs, where the degree drops as
-Stata's does.  A grid point at which fewer than two observations have
+at every degree from 0 to 3 -- including where a window's powers of x
+are nearly collinear, where the fit keeps the intercept and the powers
+Stata's {cmd:invsym()} keeps.  A grid point at which fewer than two observations have
 positive kernel weight is left missing, as Stata leaves it, and the line
 joins the points on either side of it, as {cmd:twoway lpoly} draws it; a
 {cmd:bwidth()} too narrow for any window to hold two observations draws
@@ -2281,20 +2281,22 @@ bandwidth in x units, while for {helpb twoway lowess} it is the
 
 {pstd}
 {bf:Default bandwidth.}  With no {cmd:bwidth()}, {cmd:lpoly} and
-{cmd:lpolyci} use a rule of thumb of {cmd:dash}'s own, after Fan and
-Gijbels: 0.65 (s^2/S)^(1/5), where s^2 is the residual variance of a
-global quartic fit of y on x and S the sum over the observations of that
-quartic's squared second derivative; below eight observations it is a
-tenth of the range of x.  Stata computes its rule of thumb in compiled
-Mata ({cmd:_lpoly_work()}, in the library {cmd:lmataado}), which
-{cmd:dash} does not reproduce, so the two agree only approximately:
-measured against {cmd:r(bwidth)}, {cmd:dash}'s default is 9.7% below
-Stata's on {cmd:auto} mpg on weight, 22% below on {cmd:auto} price on mpg
-and on rep78, 17% below on mpg on weight with {cmd:[aweight=price]}, and
-5.7%, 6.8% and 14.2% above on {cmd:sp500} close on volume, {cmd:nlsw88}
-wage on ttl_exp and {cmd:census} death on pop; on the first seven cars of
-{cmd:auto}, 185 against Stata's 77.4.  Specify {cmd:bwidth()} to
-reproduce a Stata smoother exactly.
+{cmd:lpolyci} use {cmd:lpoly}'s rule of thumb as Stata computes it (see
+{it:Methods and formulas} in {helpb lpoly}): a global polynomial of
+degree p+3 in powers of x, where p is the degree and an even degree uses
+the next odd one, with Stata's handling of nearly collinear powers; the
+residual variance as the weighted mean squared residual of that fit; the
+squared (p+1)th derivative of the fit integrated over the central 90% of
+the range of x; and Stata's constant for the kernel.  The bandwidth is
+computed from the rows each layer draws: each {cmd:by()} panel and each
+{cmd:if} or {cmd:in} gets its own, and the served app recomputes it from
+the rows kept after every filter move.  As {cmd:twoway} draws them, an x
+taking only the values 0 and 1, or a constant x, gives a line at 0, and
+too few distinct points draw nothing.  Where y is an exact polynomial of
+x, Stata's bandwidth is the round-off of its arithmetic, and three cases
+are drawn differently: y exactly linear in x at {cmd:degree(0)}; y equal
+to x at {cmd:degree(0)} or {cmd:degree(1)}; and a y as small as 1e-150
+times {cmd:mpg} at {cmd:degree(2)}, which {cmd:dash} draws as a line at 0.
 
 {pstd}
 {cmd:lowess} is Stata's smoother, not a library's: the sample is sorted

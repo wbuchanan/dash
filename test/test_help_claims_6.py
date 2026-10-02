@@ -977,15 +977,6 @@ _STATA_ROT = {
     "nlsw88 wage on ttl_exp": .7440135932182029,
     "auto mpg on weight in 1/7": 77.35273499984294,
 }
-# The help's words for each, rounded as it rounds them.
-_HELP_PCT = {
-    "auto mpg on weight": -9.7, "auto price on mpg": -22.0,
-    "auto price on rep78": -22.0, "auto mpg on weight [aw=price]": -17.0,
-    "sp500 close on volume": 5.7, "nlsw88 wage on ttl_exp": 6.8,
-    "census death on pop": 14.2,
-}
-
-
 def _csv(name, y, x):
     df = pd.read_csv(os.path.join(_DATA, name + ".csv")).dropna()
     return df[x].to_numpy(float), df[y].to_numpy(float)
@@ -1011,43 +1002,58 @@ def _dash_rot():
 
 class TestDefaultBandwidth:
 
-    def test_the_rule_is_the_one_the_help_writes_down(self):
-        """0.65 (s^2 / S)^(1/5): s^2 the residual variance of a global
-        quartic fit (N - 5 degrees of freedom), S the sum over the
-        observations of that quartic's squared second derivative."""
-        x, y = np.asarray(_AUTO_WEIGHT, float), np.asarray(_AUTO_MPG, float)
-        c = np.polyfit(x, y, 4)
-        s2 = np.sum((y - np.polyval(c, x)) ** 2) / (len(x) - 5)
-        S = np.sum(np.polyval(np.polyder(c, 2), x) ** 2)
-        assert dr._LPOLY_ROT_C == 0.65
-        assert dr.GlyphMapper._default_lpoly_bwidth(x, y) == pytest.approx(
-            0.65 * (s2 / S) ** 0.2, rel=1e-10)
+    # WP-29 P0.7 (section 11): these four tests pinned dash's own 0.65
+    # (s^2/S)^(1/5) quartic rule, its gaps to Stata (-9.7% ... +14.2%) and
+    # its range/10 below eight observations.  The default is now Stata's
+    # rule of thumb, so they pin Stata's r(bwidth) instead.
 
-    @pytest.mark.parametrize("case", sorted(_HELP_PCT))
+    def test_the_rule_is_the_one_the_help_writes_down(self):
+        """The rule is Stata's: r(bwidth) on the eight cases at 1e-8 (the
+        first seven cars, a degree-0 rule on 7 points, at 5e-5)."""
+        got = _dash_rot()
+        for case, want in _STATA_ROT.items():
+            tol = 5e-5 if case.endswith("in 1/7") else 1e-8
+            assert abs(got[case] / want - 1) <= tol, (case, got[case], want)
+        assert not hasattr(dr, "_LPOLY_ROT_C")
+
+    @pytest.mark.parametrize("case", sorted(_STATA_ROT))
     def test_the_gap_to_statas_rule_is_the_one_the_help_gives(self, case):
-        got = _dash_rot()[case]
-        pct = 100.0 * (got / _STATA_ROT[case] - 1.0)
-        # -9.7, 5.7, 6.8 and 14.2 to a tenth; -22 and -17 to the unit.
-        tol = 0.05 if _HELP_PCT[case] not in (-22.0, -17.0) else 0.5
-        assert pct == pytest.approx(_HELP_PCT[case], abs=tol), case
+        """No gap: each case is Stata's r(bwidth)."""
+        rel = _dash_rot()[case] / _STATA_ROT[case] - 1.0
+        tol = 5e-5 if case.endswith("in 1/7") else 1e-8
+        assert abs(rel) <= tol, (case, rel)
 
     def test_below_eight_observations_it_is_a_tenth_of_the_range(self):
+        """Below eight observations the rule is still Stata's: on the first
+        seven cars h = 77.35273499984294 (r(ngrid) 10 of 50 points), and on
+        the first two to five cars twoway draws nothing."""
         x, y = np.asarray(_AUTO_WEIGHT, float), np.asarray(_AUTO_MPG, float)
-        for k in range(2, 8):
-            assert dr.GlyphMapper._default_lpoly_bwidth(x[:k], y[:k]) == \
-                pytest.approx(np.ptp(x[:k]) / 10.0)
-        # The help's example: the first seven cars, 185 against 77.4.
-        assert _dash_rot()["auto mpg on weight in 1/7"] == pytest.approx(185)
-        assert round(_STATA_ROT["auto mpg on weight in 1/7"], 1) == 77.4
+        h7 = _dash_rot()["auto mpg on weight in 1/7"]
+        assert abs(h7 / 77.35273499984294 - 1) <= 5e-5
+        _, yf = dr.GlyphMapper._compute_lpoly_fit(x[:7], y[:7], bwidth=h7,
+                                                  n_grid=50)
+        assert int(np.isfinite(yf).sum()) == 10
+        for k in range(2, 6):
+            h = dr.GlyphMapper._default_lpoly_bwidth(x[:k], y[:k])
+            _, yf = dr.GlyphMapper._compute_lpoly_fit(x[:k], y[:k],
+                                                      bwidth=h, n_grid=50)
+            assert not np.isfinite(yf).any(), k
 
     def test_the_help_gives_those_numbers(self):
         sec = _section("smoother_options", "weights")
         flat = " ".join(sec.split())
-        for s in ("9.7% below", "22% below", "17% below", "5.7%, 6.8% and "
-                  "14.2% above", "185 against Stata's 77.4"):
+        for s in ("use {cmd:lpoly}'s rule of thumb as Stata computes it",
+                  "a global polynomial of degree p+3 in powers of x",
+                  "an even degree uses the next odd one",
+                  "integrated over the central 90% of the range of x",
+                  "each {cmd:by()} panel and each {cmd:if} or {cmd:in} gets "
+                  "its own",
+                  "recomputes it from the rows kept after every filter move",
+                  "a constant x, gives a line at 0",
+                  "y exactly linear in x at {cmd:degree(0)}"):
             assert s in flat, s
-        assert "not reproducible from the published documentation" \
-            not in flat
+        for gone in ("9.7% below", "185 against Stata's 77.4", "0.65"):
+            assert gone not in flat, gone
 
 
 # ===========================================================================

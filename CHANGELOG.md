@@ -259,7 +259,7 @@ and now matches Stata.
 
 - `dash function y = 2^3^x, range(0 2) n(3)` drew 2 8 512, now 1 8 64; `2^-1^2` .5, now .25; `0.1*3/0.3` 1.0000000000000002, now 1; `1e16+1-2` 9999999999999998, now 1e16; `normalden(x)`, `ln(x)`, `_pi*x`, `_b[]` and scalars drew nothing, now twoway's points (WP-29, P0.6)
 
-<!-- WP-29 P0.7 -->
+- `dash lpoly mpg weight, kernel(biweight) degree(2)` used a default bandwidth of 63.80 and drew 34 points; it now uses Stata's rule of thumb, 302.45, and draws Stata's 50, for every kernel, degree, weight, by() panel and qualifier; `lpoly mpg weight in 1/7` used 185, now Stata's 77.35; `lpoly mpg foreign` drew a curve between the group means, now a line at 0 as twoway draws it; after a served move to Foreign the bandwidth was 26.88, now Stata's 287.78; and a local window whose powers of x are nearly collinear keeps the columns Stata's invsym keeps (foreign==1 biweight degree(2) was up to 8.857 mpg off Stata's curve) (WP-29, P0.7)
 
 - `dash histogram date, width(30) start(14975)` on sysuse sp500 drew 15 bars
   with every row in the last, after the note that width(30) would need more

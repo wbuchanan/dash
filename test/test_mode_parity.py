@@ -1753,6 +1753,13 @@ CORPUS = [
     _case("by(foreign, yrescale) yscale(range(0)) with every foreign missing",
           [_sc()], go={"by": "foreign, yrescale", "yscale": "range(0)"},
           if_expr="foreign > 5"),
+    # WP-29 P0.7: the default bandwidth by Stata's rule (kernel, degree,
+    # weights reach it) is the same in both modes.
+    _case("lpoly, kernel(biweight) degree(2)",
+          [plot_for("lpoly", {"kernel": "biweight", "degree": "2"})]),
+    _case("lpolyci, kernel(gaussian) degree(3) aweight",
+          [plot_for("lpolyci", {"kernel": "gaussian", "degree": "3",
+                                "weight": "aweight", "wexp": "price"})]),
 ]
 
 
@@ -2419,6 +2426,10 @@ MOVE_CORPUS = [
                [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
                go={"ylabel": "5000 10000, axis(2)", "yscale": "log axis(2)",
                    "yline": "6000, axis(2)", "ytick": "7500, axis(2)"}),
+    # WP-29 P0.7: the served recompute derives Stata's default bandwidth
+    # from the rows the move keeps.
+    _move_case("lpoly biweight degree 2, dropdown", _MOVES[0],
+               [plot_for("lpoly", {"kernel": "biweight", "degree": "2"})]),
 ]
 
 
@@ -2881,7 +2892,9 @@ class TestTheCopiedHelpersBringTheirCallees:
         page raised on every qualifier;
       * `_resolve_seed' gained `_jitter_seed' and the served lpolyci band
         raised on every session;
-      * before either, a copied body referenced `_LPOLY_ROT_C', which is why
+      * before either, a copied body referenced `_LPOLY_ROT_C' (lpoly's
+        old rule-of-thumb constant, replaced in WP-29 P0.7 by
+        `_LPOLY_ROT_GRID' and `_LPOLY_ROT_CONSTANTS'), which is why
         `_supply_missing_constants' exists -- but that pass supplies
         CONSTANTS, not functions.
 

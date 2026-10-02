@@ -4013,6 +4013,290 @@ if inlist("`only'", "", "S10") {
 }
 * ==== end S10 ====
 
+// Helpers of block S11 (lpoly's default bandwidth and lpolyci's band),
+// defined before it: programs and python definitions are not made inside a
+// block's braces.
+//
+// _lw_read <page> <prefix> <kind> <first x>: the lpoly line (kind "line"),
+// or the lpolyci source with a band (kind "ci"), of dash's saved page,
+// whose first drawn x is <first x> (any, when "."), into the globals
+// <prefix>_x and <prefix>_y (and _lo, _hi for "ci") as blank-separated
+// reprs, and <prefix>_n its point count; <prefix>_err names a failure.
+python:
+import json as _lw_json
+import re as _lw_re
+from sfi import Macro as _lw_M
+from bokeh.document import Document as _lw_Doc
+from bokeh.models import ColumnDataSource as _lw_CDS
+
+
+def _lw_read(path, prefix, kind="line", first="."):
+    _lw_M.setGlobal(prefix + "_err", "")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            page = fh.read()
+        srcs = []
+        for blob in _lw_re.findall(r'<script type="application/json" id="[^"]*">\s*(.*?)\s*</script>', page, _lw_re.S):
+            for dd in _lw_json.loads(blob).values():
+                srcs += [dict(m.data) for m in _lw_Doc.from_json(dd).select(dict(type=_lw_CDS))]
+        if kind == "ci":
+            cand = [s for s in srcs if "x_lp" in s and "y_lower" in s]
+        else:
+            cand = [s for s in srcs if "x_lp" in s and "y_lp" in s and "y_lower" not in s]
+        if first != ".":
+            f = float(first)
+            cand = [s for s in cand if len(s["x_lp"]) and abs(float(s["x_lp"][0]) - f) <= 1e-9 * max(1.0, abs(f))]
+        if len(cand) != 1:
+            _lw_M.setGlobal(prefix + "_err", "%d candidate sources" % len(cand))
+            _lw_M.setGlobal(prefix + "_n", "0")
+            return
+        s = cand[0]
+        _lw_M.setGlobal(prefix + "_n", str(len(s["x_lp"])))
+        cols = [("_x", "x_lp"), ("_y", "y_lp")]
+        if kind == "ci":
+            cols += [("_lo", "y_lower"), ("_hi", "y_upper")]
+        for suf, c in cols:
+            _lw_M.setGlobal(prefix + suf, " ".join(repr(float(v)) for v in s.get(c, [])))
+    except Exception as e:  # noqa: BLE001 -- reported as the failure
+        _lw_M.setGlobal(prefix + "_err", "%s %s" % (type(e).__name__, e))
+        _lw_M.setGlobal(prefix + "_n", "0")
+end
+
+python:
+def _lw_dash_h(yv, xv, sel, degree, kernel):
+    """dash's default bandwidth on Stata's sample (rows where *sel* is 1),
+    by the renderer's own rule, into the global lw_hd."""
+    import os as _o
+    import sys as _s
+    root = _o.path.abspath("..")
+    if root not in _s.path:
+        _s.path.insert(0, root)
+    import numpy as _np
+    import dash_render as _dr
+    from sfi import Data as _D
+    def _col(v):
+        return _np.array([r[0] if isinstance(r, list) else r
+                          for r in _D.get(v, selectvar=sel)], dtype=float)
+    x = _col(xv)
+    y = _col(yv)
+    h = _dr.GlyphMapper._default_lpoly_bwidth(x, y, None, int(degree), kernel)
+    _lw_M.setGlobal("lw_hd", repr(float(h)))
+end
+
+mata:
+// _lw_cmp(): the drawn (x, y) in globals lw_x lw_y against Stata's
+// variables gx gy (grid) and, for the sensitivity rule, gy1 (Stata's curve
+// at bwidth*(1+1e-6)).  x maps through (gx - xoff)*xmul.  Sets the globals
+// lw_ok, lw_why and lw_excl (the grid x left out as sensitive).
+void _lw_cmp(real scalar tol, real scalar xoff, real scalar xmul,
+             real scalar sens)
+{
+    real colvector px, py, gx, gy, gy1, ok
+    real scalar i, j, n, bad, dmin
+    string scalar why, excl
+    px = strtoreal(tokens(st_global("lw_x")))'
+    py = strtoreal(tokens(st_global("lw_y")))'
+    gx = st_data(., "gx")
+    gy = st_data(., "gy")
+    gy1 = sens ? st_data(., "gy1") : J(rows(gy), 1, .)
+    ok = (gx :< .) :& (gy :< .)
+    n = sum(ok)
+    bad = 0
+    why = ""
+    excl = ""
+    if (rows(px) != n) {
+        bad = 1
+        why = sprintf("dash drew %g points, Stata %g", rows(px), n)
+    }
+    for (i = 1; i <= rows(px) & !bad; i++) {
+        dmin = .
+        j = 0
+        for (k = 1; k <= rows(gx); k++) {
+            if (ok[k] & (dmin >= . | abs((gx[k] - xoff) * xmul - px[i]) < dmin)) {
+                dmin = abs((gx[k] - xoff) * xmul - px[i])
+                j = k
+            }
+        }
+        if (j == 0 | dmin > 1e-9 * max((1, abs(px[i])))) {
+            bad = 1
+            why = sprintf("drawn x %21.17g is not on Stata's grid", px[i])
+        }
+        else if (sens & abs(gy1[j] - gy[j]) > tol) {
+            excl = excl + sprintf(" %g(moves %g at dash's bandwidth)", gx[j], abs(gy1[j] - gy[j]))
+        }
+        else if (abs(py[i] - gy[j]) > tol) {
+            bad = 1
+            why = sprintf("at x %g dash %21.17g, Stata %21.17g (tol %g)", gx[j], py[i], gy[j], tol)
+        }
+    }
+    st_global("lw_ok", bad ? "0" : "1")
+    st_global("lw_why", why)
+    st_global("lw_excl", excl)
+}
+end
+
+// _lw_case <id> <stub> <dash plot> <lpoly args> <frac> [<sens>] [<xoff> <xmul>] [<first>]
+// Stata: `lpoly <lpoly args>, nograph generate(gx gy)'; dash: <dash plot>
+// on a saved page.  Each drawn y is within <frac> of the range of y of
+// Stata's gy at the same gx.  <sens> 1 (unweighted only; globals lw_deg,
+// lw_ker, lw_tier) leaves out, and names, the grid points whose Stata
+// value moves more than that when Stata's bandwidth moves by dash's actual
+// relative gap (maintainer ruling, 01oct2026).
+capture program drop _lw_case
+program define _lw_case
+    version 16.0
+    args id stub dplot largs frac sens xoff xmul first
+    if "`sens'" == "" local sens 0
+    if "`xoff'" == "" local xoff 0
+    if "`xmul'" == "" local xmul 1
+    if "`first'" == "" local first "."
+    foreach v in gx gy gy1 {
+        capture drop `v'
+    }
+    gettoken lyx lopts : largs, parse(",")
+    local lopts = subinstr(`"`lopts'"', ",", "", 1)
+    quietly lpoly `lyx', `lopts' nograph generate(gx gy)
+    local bw = r(bwidth)
+    gettoken yv0 rest0 : lyx
+    gettoken xv0 rest0 : rest0
+    if `sens' {
+        // The sensitivity rule (maintainer ruling, 01oct2026): Stata's
+        // curve at its bandwidth moved by dash's actual relative gap, i.e.
+        // at dash's bandwidth; the gap must be within the row's tier.
+        tempvar sel
+        local cnd = cond(strpos(`"`rest0'"', "if "), substr(`"`rest0'"', strpos(`"`rest0'"', "if ") + 3, .), "1")
+        quietly gen byte `sel' = (`cnd') & !missing(`yv0', `xv0')
+        python: import __main__; __main__._lw_dash_h("`yv0'", "`xv0'", "`sel'", "${lw_deg}", "${lw_ker}")
+        local gap = abs(${lw_hd} / `bw' - 1)
+        _w29_expect `id' "(`gap' <= ${lw_tier})" "dash's bandwidth ${lw_hd} is `gap' from r(bwidth) `bw'"
+        local bw1 = string(${lw_hd}, "%21.17g")
+        quietly lpoly `lyx', `lopts' nograph bwidth(`bw1') generate(gx1 gy1)
+        drop gx1
+        display as text "`id' bandwidth: dash ${lw_hd}, Stata `bw', gap `gap'"
+    }
+    // y's range over lpoly's sample
+    gettoken yv rest : lyx
+    gettoken xv rest : rest
+    local ifin ""
+    if strpos(`"`rest'"', "if ") local ifin = substr(`"`rest'"', strpos(`"`rest'"', "if "), .)
+    quietly summarize `yv' `ifin'
+    local tol = `frac' * (r(max) - r(min))
+    dash clear
+    quietly dash `dplot'
+    quietly dash build, saving("`stub'.html") replace nobrowser
+    python: import __main__; __main__._lw_read(r"`stub'.html", "lw", "line", "`first'")
+    if "${lw_err}" != "" {
+        global lw_ok 0
+        global lw_why "${lw_err}"
+    }
+    else mata: _lw_cmp(`tol', `xoff', `xmul', `sens')
+    _w29_expect `id' "(${lw_ok} == 1)" `"`id' `dplot': ${lw_why}"'
+    if "${lw_excl}" != "" display as text `"`id' left out as bandwidth-sensitive:${lw_excl}"'
+    foreach v in gx gy gy1 {
+        capture drop `v'
+    }
+end
+
+* ==== S11 P0.7: lpoly default bandwidth ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S11") {
+    display as text "S11 P0.7 start `c(current_time)'"
+    local s11d "`w29_work'/s11"
+    capture mkdir "`s11d'"
+
+    // LW-01: auto mpg weight, 8 kernels x degree 0-3, at the default
+    // bandwidth: the drawn count is r(ngrid) and each drawn y is Stata's
+    // gy within 1e-6 (degree 0/1) or 1e-4 (degree 2/3) of y's range.
+    sysuse auto, clear
+    foreach k in epanechnikov epan2 biweight cosine gaussian parzen rectangle triangle {
+        forvalues d = 0/3 {
+            local f = cond(`d' < 2, 1e-6, 1e-4)
+            _lw_case LW-01 "`s11d'/lw01" "lpoly mpg weight, kernel(`k') degree(`d') name(lw01)" "mpg weight, kernel(`k') degree(`d')" `f'
+        }
+    }
+    _w29_done LW-01 "8 kernels x degree 0-3: dash's default lpoly is Stata's (count and curve)"
+
+    // LW-02: aweights and fweights.
+    foreach w in "aw=price" "fw=rep78" {
+        foreach d in 0 2 {
+            local f = cond(`d' < 2, 1e-6, 1e-4)
+            _lw_case LW-02 "`s11d'/lw02" "lpoly mpg weight [`w'], degree(`d') name(lw02)" "mpg weight [`w'], degree(`d')" `f'
+        }
+    }
+    _w29_done LW-02 "[aw=price] and [fw=rep78] at degree 0 and 2: Stata's default lpoly"
+
+    // LW-03: by(foreign) biweight degree 2: each panel is `lpoly ... if
+    // foreign==k'.  Grid points whose Stata value moves more than the
+    // tolerance when Stata's bandwidth moves by dash's actual relative gap
+    // (itself within the degree-2 tier, 5e-5) are left out and named
+    // (maintainer ruling, 01oct2026: there Stata's round-off decides it).
+    global lw_deg 2
+    global lw_ker biweight
+    global lw_tier 5e-5
+    forvalues g = 0/1 {
+        quietly summarize weight if foreign == `g'
+        local first = r(min)
+        _lw_case LW-03 "`s11d'/lw03" "lpoly mpg weight, kernel(biweight) degree(2) by(foreign) name(lw03)" "mpg weight if foreign==`g', kernel(biweight) degree(2)" 1e-4 1 0 1 `first'
+    }
+    _w29_done LW-03 "by(foreign) biweight degree 2: each panel is lpoly ... if foreign==k"
+
+    // LW-04: uslifeexp le year at degree 0 and 2.
+    sysuse uslifeexp, clear
+    foreach d in 0 2 {
+        local f = cond(`d' < 2, 1e-6, 1e-4)
+        _lw_case LW-04 "`s11d'/lw04" "lpoly le year, degree(`d') name(lw04)" "le year, degree(`d')" `f'
+    }
+    _w29_done LW-04 "uslifeexp le on year at degree 0 and 2: Stata's default lpoly"
+
+    // LW-05: sp500 close on date (%td) at degree 0 and 2.  The bandwidth is
+    // in days (S05, Stata units); dash draws x in epoch ms on its date
+    // axis, so Stata's gx is compared as (gx - td(01jan1970))*86400000.
+    sysuse sp500, clear
+    foreach d in 0 2 {
+        local f = cond(`d' < 2, 1e-6, 1e-4)
+        _lw_case LW-05 "`s11d'/lw05" "lpoly close date, degree(`d') name(lw05)" "close date, degree(`d')" `f' 0 `=td(01jan1970)' 86400000
+    }
+    _w29_done LW-05 "sp500 close on date at degree 0 and 2: Stata's default lpoly, drawn at its dates"
+
+    // LW-06: an x of 0 and 1 draws y = 0 at 50 points from 0 to 1; `in
+    // 1/5' draws nothing.
+    sysuse auto, clear
+    dash clear
+    quietly dash lpoly mpg foreign, name(lw06)
+    quietly dash build, saving("`s11d'/lw06.html") replace nobrowser
+    python: _lw_read(r"`s11d'/lw06.html", "lw")
+    mata: st_global("lw_ok", strofreal(st_global("lw_err") == "" & st_global("lw_n") == "50" & all(strtoreal(tokens(st_global("lw_y"))) :== 0) & strtoreal(tokens(st_global("lw_x")))[1] == 0 & strtoreal(tokens(st_global("lw_x")))[50] == 1))
+    _w29_expect LW-06 "(${lw_ok} == 1)" "lpoly mpg foreign: n ${lw_n}, y ${lw_y} ${lw_err}"
+    dash clear
+    quietly dash lpoly mpg weight in 1/5, name(lw06b)
+    quietly dash build, saving("`s11d'/lw06b.html") replace nobrowser
+    python: _lw_read(r"`s11d'/lw06b.html", "lw")
+    mata: st_global("lw_ok", strofreal(st_global("lw_n") == "0" & st_global("lw_err") == ""))
+    _w29_expect LW-06 "(${lw_ok} == 1)" "lpoly mpg weight in 1/5 drew ${lw_n} points ${lw_err}"
+    _w29_done LW-06 "an x of 0 and 1 draws a line at 0 on 50 points; in 1/5 draws nothing"
+
+    // LW-07: lpolyci's line is lpoly's line (same options, default bandwidth).
+    dash clear
+    quietly dash lpoly mpg weight, kernel(biweight) degree(2) name(lw07a)
+    quietly dash build, saving("`s11d'/lw07a.html") replace nobrowser
+    python: _lw_read(r"`s11d'/lw07a.html", "lwa")
+    dash clear
+    quietly dash lpolyci mpg weight, kernel(biweight) degree(2) name(lw07b)
+    quietly dash build, saving("`s11d'/lw07b.html") replace nobrowser
+    python: _lw_read(r"`s11d'/lw07b.html", "lwb", "ci")
+    mata: st_global("lw_ok", strofreal(st_global("lwa_x") == st_global("lwb_x") & st_global("lwa_y") == st_global("lwb_y") & st_global("lwa_n") == "50" & st_global("lwa_err") + st_global("lwb_err") == ""))
+    _w29_expect LW-07 "(${lw_ok} == 1)" "lpoly n ${lwa_n} vs lpolyci n ${lwb_n} ${lwa_err}${lwb_err}"
+    _w29_done LW-07 "lpolyci's line is lpoly's line at the default bandwidth"
+
+    capture dash clear
+    foreach v in gx gy gy1 {
+        capture drop `v'
+    }
+    macro drop lw_* lwa_* lwb_*
+    display as text "S11 P0.7 end `c(current_time)'"
+}
+* ==== end S11 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

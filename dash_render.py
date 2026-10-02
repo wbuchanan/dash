@@ -231,9 +231,34 @@ _MIN_FIGURE_HEIGHT = 160
 # line extended past the data where Stata's stops at it.
 _FIT_GRID = 100
 
-# Fan-Gijbels rule-of-thumb constant for the default lpoly bandwidth.  Measured
-# against Stata, NOT derived: see GlyphMapper._default_lpoly_bwidth.
-_LPOLY_ROT_C = 0.65
+# lpoly's rule-of-thumb bandwidth (WP-29 P0.7, _lpoly_rot_detail).  Stata
+# computes the kernel constant C_{0,p}(K) of Fan and Gijbels by TRAPEZOID
+# quadrature on a fixed grid per kernel: (half-width, points).
+_LPOLY_ROT_GRID = {"epanechnikov": (math.sqrt(5.0), 101), "gaussian": (5.0, 101),
+                   "cosine": (0.5, 41), "epan2": (1.0, 81), "biweight": (1.0, 81),
+                   "parzen": (1.0, 81), "rectangle": (1.0, 81),
+                   "triangle": (1.0, 81)}
+# repr(_lpoly_rot_constant(k, p)) for p = 1, 3, 5, 7: that quadrature with the
+# kernel's support strict (|z| < support).  p = 5, 7 (degree 4-7) are dormant
+# while degree() is capped at 3 (section 11 SD-7).
+_LPOLY_ROT_CONSTANTS = {
+    ('epanechnikov', 1): 0.7688119451983404, ('epanechnikov', 3): 1.4510983654380067,
+    ('epanechnikov', 5): 2.119707526564211, ('epanechnikov', 7): 2.784928997584904,
+    ('epan2', 1): 1.7193092621259016, ('epan2', 3): 3.245668826171823,
+    ('epan2', 5): 4.74230800612505, ('epan2', 7): 6.232578887244081,
+    ('biweight', 1): 2.0361684221829894, ('biweight', 3): 3.6333572150005558,
+    ('biweight', 5): 5.158207981435779, ('biweight', 7): 6.659696773488038,
+    ('cosine', 1): 4.261325461635762, ('cosine', 3): 7.465910256468045,
+    ('cosine', 5): 10.516178558247534, ('cosine', 7): 13.52565407786959,
+    ('gaussian', 1): 0.7763932398225403, ('gaussian', 3): 1.1605364963657514,
+    ('gaussian', 5): 1.4508015133135794, ('gaussian', 7): 1.7147660572783578,
+    ('parzen', 1): 2.679241025642047, ('parzen', 3): 4.354113262700628,
+    ('parzen', 5): 5.908520000476076, ('parzen', 7): 7.422676088655606,
+    ('rectangle', 1): 1.3681484904911154, ('rectangle', 3): 2.849598716697929,
+    ('rectangle', 5): 4.338920614551152, ('rectangle', 7): 5.832847955090462,
+    ('triangle', 1): 1.8887652986701784, ('triangle', 3): 3.420486711722465,
+    ('triangle', 5): 4.917653569707844, ('triangle', 7): 6.4077843560534875,
+}
 
 
 
@@ -10792,62 +10817,41 @@ class GlyphMapper:
 
     @staticmethod
     def _default_lpoly_bwidth(x: "np.ndarray", y: "np.ndarray",
-                              w: "np.ndarray | None" = None) -> float:
-        """Rule-of-thumb local-polynomial bandwidth, in x's own units.
+                              w: "np.ndarray | None" = None,
+                              degree: int = 0,
+                              kernel: str = "epanechnikov") -> float:
+        """lpoly's default bandwidth: Stata's r(bwidth), in x's own units.
 
-        dash used a fixed 0.5 regardless of the data, which is meaningless
-        once the bandwidth is absolute: 0.5 is a sensible window for a
-        variable measured in units and a vanishing one for a variable
-        measured in thousands.  On ``sysuse auto`` it produced a bandwidth of
-        1540 where Stata's is 70.6 -- a 22-fold oversmooth.
+        Stata's rule of thumb as lpoly computes it (WP-29 P0.7,
+        ``_lpoly_rot_detail``): the Fan-Gijbels constant of the kernel and
+        degree, a global fit of degree pe+3 in raw powers with Stata's
+        invsym column rule, the weighted mean squared residual, and the
+        squared (pe+1)th derivative integrated over the central 90% of x's
+        range.  An even degree uses the next odd one.  dash used to compute
+        0.65*(s^2/S)^(1/5) from a global quartic, ignoring kernel() and
+        degree() (auto biweight degree(2): 63.80 where Stata's is 302.45).
 
-        This is the Fan-Gijbels rule of thumb: fit a global 4th-degree
-        polynomial, take its residual variance and the sum of squared second
-        derivatives at the observations, and scale.
-
-        HONESTY NOTE: this APPROXIMATES Stata's ROT, it does not reproduce it.
-        Stata's `lpoly` estimates the residual variance locally rather than
-        from a global fit, and that part was not reproducible from the
-        published documentation.  Measured against Stata on seven datasets
-        (N from 74 to 2246, x-scales differing by three orders of magnitude)
-        the implied constant ranged over [0.597, 0.720]; _LPOLY_ROT_C is the
-        middle of that range, so the default bandwidth lands within about
-        +/-11% of Stata's.  Users who need Stata's exact smoother should give
-        `bwidth()`, which IS exact.  See test/fixtures/stat_truth.json.
+        Agreement with Stata (test/fixtures/lpoly_rot_truth.json): 1e-7
+        relative at degree 0/1 on centred x, 5e-5 at degree 2/3 or offset x
+        (Stata's own float64 arithmetic on raw powers is inexact there:
+        1.6e-5 on uslifeexp years), 1e-4 on four degree-2 rows of x offset
+        by 1e3-6e4.  Where the global fit is exact, Stata's h is round-off
+        and ``_lpoly_rot_float`` emulates it; documented divergences: D1
+        (y exactly linear in x, degree 0), D2 (y equal to x, degree 0/1),
+        D3 (mpg*1e-150, degree 2).
 
         Args:
-            x, y: Cleaned paired arrays.
-            w:    Observation weights as lpoly sees them (aweights already
-                  normalised to mean 1, fweights raw), or None.  The global
-                  fit is weighted the same way and an fweight replicates
-                  its observation in both sums.  Stata's weighted ROT is
-                  not reproduced exactly either (measured 70.64 unweighted,
-                  57.66 [aw=price], 48.87 [fw=rep78] on auto).
+            x, y:   Cleaned paired arrays (the layer's own rows).
+            w:      Weights as lpoly uses them (aweights mean 1, fweights
+                    raw), or None.
+            degree: The local polynomial degree.
+            kernel: A key of ``_KERNELS``.
 
         Returns:
-            A positive bandwidth in the units of *x*.
+            A positive bandwidth, or NaN where Stata's r(bwidth) is missing
+            or 0 -- the caller then draws a line at 0, as twoway does.
         """
-        x = np.asarray(x, dtype=float)
-        y = np.asarray(y, dtype=float)
-        n = len(x)
-        span = float(np.max(x) - np.min(x)) if n else 0.0
-        fallback = (span / 10.0) if span > 0 else 1.0
-        if n < 8:
-            return fallback
-        try:
-            ww = np.ones(n) if w is None else np.asarray(w, dtype=float)
-            n_eff = float(ww.sum())
-            coeffs = np.polyfit(x, y, 4, w=np.sqrt(ww))
-            resid = y - np.polyval(coeffs, x)
-            sigma2 = float(np.dot(ww, resid * resid)) / max(1.0, n_eff - 5)
-            d2 = np.polyder(np.poly1d(coeffs), 2)
-            denom = float(np.dot(ww, d2(x) ** 2))
-            if not (sigma2 > 0 and denom > 0):
-                return fallback
-            h = _LPOLY_ROT_C * (sigma2 / denom) ** 0.2
-        except (np.linalg.LinAlgError, ValueError, FloatingPointError):
-            return fallback
-        return h if (np.isfinite(h) and h > 0) else fallback
+        return _lpoly_rot_detail(x, y, w, degree, kernel)["h"]
 
     @staticmethod
     def _compute_lpoly_fit(
@@ -10892,7 +10896,8 @@ class GlyphMapper:
         """
         x_min, x_max = x.min(), x.max()
         if bwidth is None or not (bwidth > 0):
-            bwidth = GlyphMapper._default_lpoly_bwidth(x, y, w)
+            bwidth = GlyphMapper._default_lpoly_bwidth(x, y, w, degree,
+                                                       kernel)
         # Stata's bwidth() is an absolute bandwidth in data units.  dash used
         # to clamp it to [0.01, 1.0] and multiply by the x-range, so bwidth(5)
         # on a variable spanning thousands became the whole dataset -- the
@@ -10927,30 +10932,53 @@ class GlyphMapper:
                 y_fit[i] = np.nan
                 continue
             w_sum = kw.sum()
-            # A window whose positive-weight observations take no more
-            # distinct x values than the degree cannot fit it: Stata drops
-            # the top powers and fits the degree they support (the WP-18
-            # review: lpoly price rep78, degree(1) bwidth(.3) on auto is the
-            # group mean wherever the window holds one rep78 value).
-            # numpy's polyfit returned an arbitrary least-norm answer --
-            # 745 off at x = 1.327 -- with an uncaught RankWarning.
-            deg = degree
-            if deg > 0:
-                deg = min(deg, len(np.unique(x[pos])) - 1)
-            if deg == 0:
+            if degree == 0:
                 y_fit[i] = np.dot(kw, y) / w_sum
-            else:
+                continue
+            # Part C (WP-29 P0.7): Stata's local fit inverts the window's raw
+            # design with invsym, intercept first, so a window whose powers
+            # of (x - x0) are nearly collinear keeps the intercept and the
+            # powers invsym keeps (_lpoly_kept_columns).  This replaced a
+            # `min(degree, distinct - 1)' reduction that was right for one
+            # distinct value (lpoly price rep78, degree(1) bwidth(.3): the
+            # group mean) and wrong for two at degree 2: foreign==1
+            # biweight degree(2) at Stata's bw 287.78 keeps {1, d^2}, and
+            # dash was 8.857 mpg off Stata's curve there (now 1.8e-12).
+            # A well-conditioned window keeps np.polyfit, whose answer the
+            # existing pins hold (TestLpolyDegreeAgainstStata, 4.9e-10).
+            xp = x[pos]
+            kp = kw[pos]
+            dd = xp - x0
+            X = np.vander(dd, degree + 1, increasing=True)
+            with np.errstate(all="ignore"):
+                G = (X * kp[:, None]).T @ X
+            if not np.isfinite(G).all():
+                y_fit[i] = np.nan
+                continue
+            K = _lpoly_kept_columns(G)
+            if len(K) == degree + 1:
                 # numpy's `w' multiplies the UNSQUARED residual, so the
                 # local least squares wants sqrt(K*w).  Passing K itself
                 # minimised sum K^2 r^2 and put degree(1) 2.8% off Stata's
                 # curve at Stata's own bandwidth; with sqrt(K) it is exact
                 # to 1.3e-15 (fixture auto:degree1).
                 try:
-                    coeffs = np.polyfit(x[pos], y[pos], deg=deg,
-                                        w=np.sqrt(kw[pos]))
+                    coeffs = np.polyfit(xp, y[pos], deg=degree,
+                                        w=np.sqrt(kp))
                     y_fit[i] = np.polyval(coeffs, x0)
                 except (np.linalg.LinAlgError, ValueError):
                     y_fit[i] = np.dot(kw, y) / w_sum
+            elif 0 not in K:
+                # Only where sum K*w < 1e-19; not measured against Stata.
+                y_fit[i] = np.nan
+            else:
+                g = (X * kp[:, None]).T @ y[pos]
+                try:
+                    with np.errstate(all="ignore"):
+                        b = np.linalg.solve(G[np.ix_(K, K)], g[K])
+                    y_fit[i] = float(b[0]) if np.isfinite(b[0]) else np.nan
+                except np.linalg.LinAlgError:
+                    y_fit[i] = np.nan
 
         return x_grid, y_fit
 
@@ -11003,8 +11031,9 @@ class GlyphMapper:
             source:  Shared ColumnDataSource.
             yvar:    Name of the y variable.
             xvar:    Name of the x variable.
-            options: Plot-level options; supports ``bwidth`` (default 0.5) and
-                     ``degree`` (default 0).
+            options: Plot-level options; supports ``bwidth`` (default:
+                     Stata's rule of thumb, ``_default_lpoly_bwidth``),
+                     ``degree`` (default 0), ``kernel`` and ``n``.
 
         Returns:
             GlyphRenderer for the smoother line.
@@ -11047,10 +11076,22 @@ class GlyphMapper:
 
         # n(): the grid size, by twoway's rule (_lpoly_grid_n).  dash drew
         # 200 points and read n() for nothing.
-        x_grid, y_fit = self._compute_lpoly_fit(
-            x, y, bwidth=bwidth, degree=degree, kernel=kernel,
-            n_grid=self._lpoly_grid_n(options, "lpoly", len(x)),
-            w=_dash_lpoly_weights(w, wtype))
+        n_grid = self._lpoly_grid_n(options, "lpoly", len(x))
+        lw = _dash_lpoly_weights(w, wtype)
+        # WP-29 P0.7: one bandwidth per layer, from the layer's own rows
+        # (per-plot if/in, by() panel, linked qualifier, served filter).
+        bw = bwidth if bwidth is not None else \
+            GlyphMapper._default_lpoly_bwidth(x, y, lw, degree, kernel)
+        if not np.isfinite(bw):
+            # Stata's r(bwidth) is missing or 0 (x of 0 and 1 only, a
+            # constant x, quadcross overflow): twoway draws y = 0 at every
+            # grid point, in silence.
+            x_grid = np.linspace(float(x.min()), float(x.max()), n_grid)
+            y_fit = np.zeros(n_grid)
+        else:
+            x_grid, y_fit = self._compute_lpoly_fit(
+                x, y, bwidth=bw, degree=degree, kernel=kernel,
+                n_grid=n_grid, w=lw)
         valid = ~np.isnan(y_fit)
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
@@ -11154,7 +11195,29 @@ class GlyphMapper:
         # The same grid as lpoly (_lpoly_grid_n: twoway's rule on _N).
         n_grid = self._lpoly_grid_n(options, "lpolyci", len(x))
         lw = _dash_lpoly_weights(w, wtype)
-        x_grid, y_fit = self._compute_lpoly_fit(x, y, bwidth=bwidth,
+        # WP-29 P0.7: one bandwidth per layer, from the layer's own rows.
+        bw = bwidth if bwidth is not None else \
+            GlyphMapper._default_lpoly_bwidth(x, y, lw, degree, kernel)
+        if not np.isfinite(bw):
+            # Stata's r(bwidth) is missing: twoway draws the smooth as y = 0
+            # at every grid point and no band, in silence.
+            band_r, _ = self._ci_band_glyphs(
+                fig, empty_src, "x_lp", "y_lower", "y_upper", options)
+            xg = np.linspace(float(x.min()), float(x.max()), n_grid)
+            _xd, _ox = self._on_axis(fig, xg, xvar, "x")
+            _yd, _oy = self._on_axis(fig, np.zeros(n_grid), yvar, "y")
+            _xd, _yd = self._drop_off_dates("lpolyci", "point(s)",
+                                            _ox | _oy, _xd, _yd)
+            zero_src = ColumnDataSource({"x_lp": _xd.tolist(),
+                                         "y_lp": _yd.tolist()})
+            line_r = fig.line(x="x_lp", y="y_lp", source=zero_src,
+                              line_color=_lpolyci_color,
+                              line_width=self.scheme.plot_line_width(
+                                  color_idx, "lineplot"),
+                              legend_label=yvar)
+            self._ci_line_restyle(line_r, options)
+            return [line_r, band_r]
+        x_grid, y_fit = self._compute_lpoly_fit(x, y, bwidth=bw,
                                                  degree=degree, kernel=kernel,
                                                  n_grid=n_grid, w=lw)
 
@@ -11170,7 +11233,7 @@ class GlyphMapper:
         # 11.3 mpg (the WP-18 review).
         def _lpoly_fn(xi: "np.ndarray", yi: "np.ndarray", _xg: "np.ndarray",
                       wi: "np.ndarray | None" = None) -> "np.ndarray":
-            _, yb = self._compute_lpoly_fit(xi, yi, bwidth=bwidth,
+            _, yb = self._compute_lpoly_fit(xi, yi, bwidth=bw,
                                             degree=degree, kernel=kernel,
                                             w=wi, x_grid=_xg)
             return yb  # NaN entries are replaced by fallback in _bootstrap_ci
@@ -14798,6 +14861,320 @@ _KERNELS: dict = {
                         (4.0 / 3.0) - 8.0 * z * z + 8.0 * np.abs(z) ** 3,
                         (8.0 / 3.0) * (1.0 - np.abs(z)) ** 3)),
 }
+
+
+def _lpoly_rot_constant(kernel: str, pe: int) -> float:
+    """Stata's kernel constant C_{0,pe}(K) for lpoly's rule of thumb.
+
+    Fan and Gijbels' constant, computed as lpoly computes it: by trapezoid
+    quadrature on the grid ``_LPOLY_ROT_GRID`` gives the kernel (half-width
+    and point count), with the kernel's support STRICT -- ``|z| < support``
+    (``_KERNELS['rectangle']`` is 0.5 at |z| = 1, and counting those two
+    points moves C by -1.2687% at p=1 and -1.3620% at p=3, off Stata's
+    r(bwidth)).  With the moments ``mu_j`` of the kernel, ``S = [mu_{i+j}]``
+    and ``e = S^-1 e1``, the equivalent kernel is ``K* = (sum e_j z^j) K``
+    and ``C = [((pe+1)!)^2 int K*^2 / (2(pe+1) (int z^(pe+1) K*)^2)]
+    ^(1/(2pe+3))``.  Every value of ``_LPOLY_ROT_CONSTANTS`` is this
+    function's output; measured against the research prototype to 2.2e-16
+    (section 11 Evidence).  An unknown kernel uses epanechnikov's grid and
+    function.
+    """
+    L, m = _LPOLY_ROT_GRID.get(kernel, _LPOLY_ROT_GRID["epanechnikov"])
+    support, kfn = _KERNELS.get(kernel, _KERNELS["epanechnikov"])
+    pe = int(pe)
+    z = np.linspace(-L, L, m)
+    hq = z[1] - z[0]
+    wq = np.full(m, hq)
+    wq[0] = wq[-1] = hq / 2.0
+    f = np.where(np.abs(z) < support, kfn(z), 0.0)
+    mu = [float(np.sum(wq * z ** j * f)) for j in range(2 * pe + 3)]
+    S = np.array([[mu[i + j] for j in range(pe + 1)] for i in range(pe + 1)])
+    e1 = np.zeros(pe + 1)
+    e1[0] = 1.0
+    e = np.linalg.solve(S, e1)
+    ks = sum(e[j] * z ** j for j in range(pe + 1)) * f
+    num = math.factorial(pe + 1) ** 2 * float(np.sum(wq * ks * ks))
+    den = 2.0 * (pe + 1) * float(np.sum(wq * z ** (pe + 1) * ks)) ** 2
+    return (num / den) ** (1.0 / (2 * pe + 3))
+
+
+def _stata_invsym_keep(G, order=(), rel=1e-9, floor=1e-19) -> list:
+    """The columns Mata's ``invsym(G)`` keeps, decided in exact arithmetic.
+
+    invsym sweeps the column with the largest CURRENT pivot first (ties to
+    the lowest index; measured in Mata 01oct2026: invsym((1,1\\1,1+9.9e-10))
+    keeps column 2, (1e6,1e3\\1e3,1+9.9e-10) keeps column 1, (1,1\\1,1)
+    keeps column 1) and drops a column whose pivot is below ``rel`` (1e-9)
+    of that column's own original diagonal, or below the absolute ``floor``
+    1e-19 (measured: [[1,1],[1,1+e]] keeps both columns at e=1e-9 and one
+    at 9.9e-10, at any scale; invsym(1e-19) is kept and the next double
+    below dropped; diag(1e10, 5e-20) drops column 2).  ``order`` names
+    columns to sweep first, in that order (the local fit sweeps its
+    intercept first).  G's entries are taken as the doubles Stata holds;
+    the tolerances are the exact values of the doubles given.  Returns the
+    kept column indices, sorted.  No assert, no module-level Fraction:
+    the served app copies this function by source.
+    """
+    from fractions import Fraction
+    S = [[Fraction(float(v)) for v in row] for row in G]
+    n = len(S)
+    d0 = [S[i][i] for i in range(n)]
+    relF, floorF = Fraction(float(rel)), Fraction(float(floor))
+    remaining = list(range(n))
+    kept = []
+
+    def sweep(k):
+        piv = S[k][k]
+        remaining.remove(k)
+        if piv > 0 and piv >= relF * d0[k] and piv >= floorF:
+            kept.append(k)
+            for i in remaining:
+                if S[i][k] == 0:
+                    continue
+                q = S[i][k] / piv
+                for j in remaining:
+                    S[i][j] -= q * S[k][j]
+
+    for k in order:
+        if isinstance(k, int) and 0 <= k < n and k in remaining:
+            sweep(k)
+    while remaining:
+        sweep(max(remaining, key=lambda c: (S[c][c], -c)))
+    return sorted(kept)
+
+
+def _lpoly_kept_columns(G) -> list:
+    """The columns of a local lpoly window's Gram that Stata's fit keeps.
+
+    Part C (WP-29 P0.7): lpoly's local fit inverts its window's raw design
+    with invsym, intercept first, so a window whose powers of (x - x0) are
+    nearly collinear keeps the intercept and the powers invsym keeps.  A
+    float sweep (intercept first, then the largest pivot) that finds every
+    pivot at least 1e-6 of its diagonal and 1e-16 keeps every column, and
+    the caller keeps np.polyfit there (933 of 1191 windows on the truth
+    sets; the existing pins do not move).  Otherwise the kept set is
+    ``_stata_invsym_keep(G, order=(0,))``: on foreign==1 biweight degree(2)
+    at bw 287.78 that is {1, d^2} where a two-point window has no d, and
+    the curve equals Stata's to 1.8e-12 where dash was 8.857 mpg off.
+    """
+    A = np.array(G, dtype=float)
+    n = A.shape[0]
+    d0 = np.diag(A).copy()
+    remaining = list(range(n))
+    k = 0
+    with np.errstate(all="ignore"):
+        while remaining:
+            piv = A[k, k]
+            if not (piv >= 1e-6 * d0[k] and piv >= 1e-16):
+                return _stata_invsym_keep(G, order=(0,))
+            remaining.remove(k)
+            for i in remaining:
+                A[i, :] -= A[i, k] / piv * A[k, :]
+            if remaining:
+                k = max(remaining, key=lambda c: (A[c, c], -c))
+    return list(range(n))
+
+
+def _lpoly_rot_float(x, y, w, pe, l, u, C) -> float:
+    """lpoly's rule of thumb in Stata's own float64 arithmetic (SD-2).
+
+    Where the global fit of degree pe+3 is exact (y constant, an exact
+    polynomial in x, or no more points than coefficients), Stata's h is
+    the round-off of its double arithmetic, not a property of the data.
+    This emulates it: raw powers, exactly rounded sums of the Gram,
+    invsym's sweep in float (largest current pivot, ties to the lowest
+    index, a column dropped below 1e-9 of its diagonal or 1e-19), the
+    coefficients, the residual variance and the integral of the squared
+    (pe+1)th derivative over [l, u] in raw x.  NaN when the integral is not
+    positive or h is not finite.  It reproduces Stata's DRAWN outcome on
+    the measured exact-fit rows except D1/D2 (section 11 Evidence).
+    """
+    d = int(pe) + 3
+    X = np.column_stack([x ** k for k in range(d + 1)])
+    G = np.array([[math.fsum(w * X[:, i] * X[:, j]) for j in range(d + 1)]
+                  for i in range(d + 1)])
+    g = np.array([math.fsum(w * X[:, i] * y) for i in range(d + 1)])
+    A = G.copy()
+    d0 = np.diag(G).copy()
+    remaining = list(range(d + 1))
+    while remaining:
+        k = max(remaining, key=lambda c: (A[c, c], -c))
+        piv = A[k, k]
+        remaining.remove(k)
+        if not (piv > 0 and piv >= 1e-9 * d0[k] and piv >= 1e-19):
+            A[k, :] = 0.0
+            A[:, k] = 0.0
+            continue
+        col = A[:, k].copy()
+        row = A[k, :].copy()
+        A -= np.outer(col, row) / piv
+        A[k, :] = row / piv
+        A[:, k] = col / piv
+        A[k, k] = -1.0 / piv
+    b = (-A) @ g
+    r = y - X @ b
+    W = float(np.sum(w))
+    s2 = float(np.sum(w * r * r)) / W
+    P = np.polynomial.polynomial
+    Dc = P.polyder(b, int(pe) + 1)
+    Pi = P.polyint(P.polymul(Dc, Dc))
+    I = float(P.polyval(u, Pi) - P.polyval(l, Pi))
+    if not I > 0:
+        return float("nan")
+    h = C * (s2 * (u - l) / (W * I)) ** (1.0 / (2 * int(pe) + 3))
+    return float(h) if (np.isfinite(h) and h > 0) else float("nan")
+
+
+def _lpoly_rot_detail(x, y, w=None, degree=0, kernel="epanechnikov") -> dict:
+    """lpoly's default bandwidth, r(bwidth), as Stata computes it.
+
+    Returns ``{"h": float, "route": "exact"|"float"|"missing", "kept":
+    list}``.  ``h`` is NaN (route "missing") exactly where Stata's
+    r(bwidth) is missing or 0, and the caller then draws a line at 0, as
+    twoway does.  The rule (lpoly.ado:305-311 and its compiled Mata,
+    reverse-engineered and verified on the fixture's 785 rows):
+    ``h = C(K, pe) * [s2 (u - l) / (W int_l^u m^(pe+1)(x)^2 dx)]
+    ^(1/(2pe+3))`` with pe the degree if odd, else the degree + 1; ``m``
+    the weighted fit of degree pe+3 in RAW powers of x with invsym's
+    columns (``_stata_invsym_keep``); ``s2 = sum w r^2 / W``; ``W = sum w``;
+    ``l, u`` 5% in from each end of x's range; ``C`` from
+    ``_LPOLY_ROT_CONSTANTS``.  NaN where quadcross would overflow
+    (``sum w|x|^k`` for k <= 2(pe+3) or ``sum w|x|^k|y|`` for k <= pe+3
+    beyond DBL_MAX, in logs), where x is constant, where the derivative
+    squared underflows, or where anything is not finite.  An exact global
+    fit (``s2 <= 1e-24 var_w(y)``) takes ``_lpoly_rot_float``.  Never
+    raises, never warns.
+    """
+    nan = float("nan")
+    out = {"h": nan, "route": "missing", "kept": []}
+    try:
+        with np.errstate(all="ignore"):
+            x = np.asarray(x, dtype=float).ravel()
+            y = np.asarray(y, dtype=float).ravel()
+            n = x.size
+            w = (np.ones(n) if w is None
+                 else np.asarray(w, dtype=float).ravel())
+            degree = int(degree)
+            pe = degree if degree % 2 else degree + 1
+            if (n < 2 or y.size != n or w.size != n or degree < 0
+                    or pe > 7):
+                return out
+            if not (np.isfinite(x).all() and np.isfinite(y).all()
+                    and np.isfinite(w).all()):
+                return out
+            d = pe + 3
+            mn = float(x.min())
+            mx = float(x.max())
+            if not mx > mn:
+                return out
+            rng = mx - mn
+            l = mn + 0.05 * rng
+            u = mx - 0.05 * rng
+            # Stata's quadcross overflow, in log10 (review A3).
+            lmax = math.log10(np.finfo(float).max)
+
+            def _lse(v):
+                if v.size == 0:
+                    return -np.inf
+                top = float(np.max(v))
+                return top + math.log10(float(np.sum(10.0 ** (v - top))))
+
+            pw = w > 0
+            lw = np.log10(w[pw])
+            ax = np.abs(x[pw])
+            ay = np.abs(y[pw])
+            nzx = ax > 0
+            nzy = ay > 0
+            both = nzx & nzy
+            lx = np.log10(np.where(nzx, ax, 1.0))
+            ly = np.log10(np.where(nzy, ay, 1.0))
+            if _lse(lw) > lmax:
+                return out
+            for k in range(1, 2 * d + 1):
+                if _lse(lw[nzx] + k * lx[nzx]) > lmax:
+                    return out
+            for k in range(0, d + 1):
+                sel = nzy if k == 0 else both
+                if _lse(lw[sel] + k * lx[sel] + ly[sel]) > lmax:
+                    return out
+            W = float(np.sum(w))
+            ybar = float(np.sum(w * y)) / W
+            vy = float(np.sum(w * (y - ybar) ** 2)) / W
+            ycon = bool(y.max() == y.min())
+            if not np.isfinite(vy) or (vy < np.finfo(float).tiny
+                                       and not ycon):
+                return out
+            from fractions import Fraction
+            c = (mn + mx) / 2.0
+            s = (mx - mn) / 2.0
+            z = (x - c) / s
+            V = np.vander(z, d + 1, increasing=True)
+            Gz = (V * w[:, None]).T @ V
+            gz = (V * w[:, None]).T @ y
+            cF = Fraction(c)
+            sF = Fraction(s)
+            # raw x^k = sum_j comb(k, j) c^(k-j) s^j z^j: X_raw = V T, so
+            # the raw Gram quadcross builds is T' Gz T.
+            T = [[Fraction(math.comb(k, j)) * cF ** (k - j) * sF ** j
+                  if j <= k else Fraction(0) for k in range(d + 1)]
+                 for j in range(d + 1)]
+            GzF = [[Fraction(float(v)) for v in row] for row in Gz]
+            gzF = [Fraction(float(v)) for v in gz]
+            GT = [[sum(GzF[i][m] * T[m][k] for m in range(d + 1))
+                   for k in range(d + 1)] for i in range(d + 1)]
+            G = [[sum(T[m][i] * GT[m][k] for m in range(d + 1))
+                  for k in range(d + 1)] for i in range(d + 1)]
+            g = [sum(T[m][i] * gzF[m] for m in range(d + 1))
+                 for i in range(d + 1)]
+            K = _stata_invsym_keep(G)
+            out["kept"] = K
+            if not K:
+                return out
+            # Gauss-Jordan on Fractions, partial pivoting by |value|.
+            M = [[G[i][j] for j in K] + [g[i]] for i in K]
+            q = len(K)
+            for col in range(q):
+                p = max(range(col, q), key=lambda r: abs(M[r][col]))
+                if M[p][col] == 0:
+                    return out
+                M[col], M[p] = M[p], M[col]
+                pv = M[col][col]
+                M[col] = [v / pv for v in M[col]]
+                for r in range(q):
+                    if r != col and M[r][col] != 0:
+                        fct = M[r][col]
+                        M[r] = [a - fct * b for a, b in zip(M[r], M[col])]
+            bK = [M[i][q] for i in range(q)]
+            a = [sum(T[j][K[t]] * bK[t] for t in range(q))
+                 for j in range(d + 1)]
+            af = np.array([float(v) for v in a])
+            r = y - V @ af
+            s2 = float(np.sum(w * r * r)) / W
+            P = np.polynomial.polynomial
+            D = P.polyder(af, pe + 1) / s ** (pe + 1)
+            Pi = P.polyint(P.polymul(D, D))
+            zl = (l - c) / s
+            zu = (u - c) / s
+            I = s * float(P.polyval(zu, Pi) - P.polyval(zl, Pi))
+            dmax2 = float(np.max(P.polyval(np.linspace(zl, zu, 201), D) ** 2))
+            C = _LPOLY_ROT_CONSTANTS.get((kernel, pe))
+            if C is None:
+                C = _lpoly_rot_constant(kernel, pe)
+            if ycon or s2 <= 1e-24 * vy:
+                h = _lpoly_rot_float(x, y, w, pe, l, u, C)
+                out["route"] = "float"
+                out["h"] = h if (np.isfinite(h) and h > 0) else nan
+                return out
+            if (not (np.isfinite(s2) and np.isfinite(I))
+                    or not dmax2 >= np.finfo(float).tiny or not I > 0):
+                return out
+            h = C * (s2 * (u - l) / (W * I)) ** (1.0 / (2 * pe + 3))
+            if np.isfinite(h) and h > 0:
+                out["h"] = float(h)
+                out["route"] = "exact"
+            return out
+    except (ArithmeticError, ValueError, np.linalg.LinAlgError):
+        return {"h": nan, "route": "missing", "kept": out.get("kept", [])}
 
 # Named in the JavaScript too, so the two implementations cannot drift apart
 # without the test that compares them noticing.  See DASH_KDE_RULE in _FILTER_JS.
@@ -31039,7 +31416,7 @@ class ServerAppBuilder:
                       # _dash_route_axis_titles' axis-number rule (P0.5).
                       "_DASH_AXIS_NUM_RE",
                       "_COLORVAR_LEGEND_NAME", "_KDE_BANDWIDTH_RULE",
-                      "_LPOLY_ROT_C", "_FP_GRID_MAX", "_MAX_MBANDS",
+                      "_FP_GRID_MAX", "_MAX_MBANDS",
                       "_MIN_BAR_WIDTH", "_MAX_EXPR_CHARS", "_FN_EXPR_MAX_NEST",
                       # _IF_EXPR_ALLOWED_NODES is deliberately absent: it is
                       # a frozenset of AST CLASSES, and repr() of a class is
@@ -31677,7 +32054,14 @@ class ServerAppBuilder:
                     # them by name; a helper left behind here is a NameError
                     # on the served page at draw time, not at build time.
                     _dash_weight_spec, _dash_weight_norm,
-                    _dash_lpoly_weights, _dash_wls, _dash_fitci_std,
+                    _dash_lpoly_weights,
+                    # WP-29 P0.7: lpoly's rule-of-thumb bandwidth and the
+                    # local fit's kept columns; the served recompute after
+                    # every filter move calls them.
+                    _lpoly_rot_constant, _stata_invsym_keep,
+                    _lpoly_rot_detail, _lpoly_rot_float,
+                    _lpoly_kept_columns,
+                    _dash_wls, _dash_fitci_std,
                     _dash_fitci_se, _natural_cubic_spline,
                     # qfit's and qfitci's shared design (the WP-18 review).
                     _qfit_design,
@@ -31725,7 +32109,8 @@ class ServerAppBuilder:
         # Whatever module-level CONSTANTS those bodies reference must come
         # with them.  Found by scanning rather than listed, so adding a
         # constant to one of the copied functions cannot leave the generated
-        # app raising NameError at import -- which _LPOLY_ROT_C did.
+        # app raising NameError at import -- which lpoly's old rule-of-thumb
+        # constant (gone since WP-29 P0.7) did.
         import re as _re_const
         _mod = _sys.modules[__name__]
         _names = set()
@@ -34566,7 +34951,8 @@ class ServerAppBuilder:
 
         The app is assembled from many separate blocks of emitted text, and a
         block that uses one of this module's UPPERCASE constants has no way to
-        say so.  Two landed at once -- ``_LPOLY_ROT_C`` and ``_FP_POWERS`` --
+        say so.  Two landed at once -- lpoly's old rule-of-thumb constant (gone
+        since WP-29 P0.7) and ``_FP_POWERS`` --
         each raising ``NameError`` at import of the generated file, which is
         the worst place to find out.
 

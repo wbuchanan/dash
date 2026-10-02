@@ -349,3 +349,48 @@ class TestLocalPolynomial:
             "x_lp", "y_lp")
         assert a is not None and b is not None
         assert not np.allclose(a["y_lp"], b["y_lp"])
+
+
+class TestServedDefaultBandwidth:
+    """WP-29 P0.7: a served filter move recomputes the default lpoly
+    bandwidth by Stata's rule from the rows the move keeps, so the smooth
+    after a move to Foreign is ``lpoly mpg weight if foreign==1``
+    (test/fixtures/lpoly_rot_truth.json, curve bi_d2_f1).  Before the fix
+    the recompute derived 26.88 where Stata's is 287.78, and drew 5 points
+    where Stata draws 50."""
+
+    def _moved(self, tmp_path, plot, df):
+        import test_lpoly_rot as tl
+        spec = tl._spec([plot], bo={"filter": "foreign, type(dropdown)"})
+        doc, _w, _ap = tl._served_doc(tmp_path, spec, df)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            tl._move_to(doc, "Foreign")
+        return tl._lp(tl._doc_sources(doc)), [str(w.message) for w in caught]
+
+    def test_served_default_is_statas(self, tmp_path):
+        import test_lpoly_rot as tl
+        lines, _ = self._moved(
+            tmp_path, tl._plot(kernel="biweight", degree=2), tl._auto_df())
+        drawn = [(x, y) for x, y in lines if len(x)]
+        assert len(drawn) == 1
+        x, y = drawn[0]
+        c = tl._CURVES["bi_d2_f1"]
+        assert len(x) == 50 == tl._finite_count(c), len(x)
+        tl._near(x, y, c["gx"], c["gy"], 1e-4)
+
+    def test_a_served_recompute_reaches_the_floor_and_overflow_paths(
+            self, tmp_path):
+        import test_lpoly_rot as tl
+        # Stata, 01oct2026, `lpoly mpg <x> if foreign==1, degree(2)':
+        # weight*1e-7 and weight*1e25 give r(bwidth) = . (a zero line);
+        # weight*1e22 there gives 4.1305e21 and draws nothing (ngrid 0),
+        # which dash matches, so the overflow case uses 1e25.
+        df = tl._auto_df(("mpg", "weight", "price", "foreign", "rep78",
+                          "wkm7", "wkp25"))
+        for xv in ("wkm7", "wkp25"):
+            lines, _ = self._moved(
+                tmp_path, tl._plot(x=xv, degree=2), df)
+            drawn = [(x, y) for x, y in lines if len(x)]
+            assert len(drawn) == 1, xv
+            assert np.all(drawn[0][1] == 0.0), (xv, drawn[0][1])

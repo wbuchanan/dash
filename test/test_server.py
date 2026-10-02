@@ -3674,9 +3674,11 @@ class TestServerLpolyFpfit:
         satisfies with the curve drawn from no rows (WP-24, measured
         24sep2026).  The served curve must be the saved one, point for
         point: lpoly's default grid is min(N, 50) = 30 equally spaced
-        points from the least x to the greatest, and 21 of them hold at
-        least two observations in their window -- the other 9 are gaps,
-        Stata's null rule (measured).  The saved lpoly is held to Stata's
+        points from the least x to the greatest, and at Stata's default
+        bandwidth on this frame (r(bwidth) 63.42135953323416, WP-29 P0.7)
+        27 of them hold at least two observations in their window --
+        Stata's r(ngrid) is 27; the other 3 are gaps, Stata's null rule.
+        The saved lpoly is held to Stata's
         own in test_statistical_truth.py."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight", "options": {}}],
@@ -3686,7 +3688,9 @@ class TestServerLpolyFpfit:
         served = _panel_curves(doc.roots, "x_lp", "y_lp")
         page, _ = _saved_page(dr_module, auto_df, spec)
         saved = _panel_curves(_page_document(page).roots, "x_lp", "y_lp")
-        assert list(served) == [""] and len(served[""]) == 21, served
+        # WP-29 P0.7: 21 under dash's old 0.65 quartic rule; 27 is Stata's
+        # r(ngrid) (test/fixtures/lpoly_rot_truth.json, server30).
+        assert list(served) == [""] and len(served[""]) == 27, served
         grid = np.linspace(auto_df["weight"].min(), auto_df["weight"].max(), 30)
         assert all(np.isclose(grid, px).any() for px, _py in served[""]), (
             "a served lpoly point is off lpoly's default grid")
