@@ -888,7 +888,14 @@ class TestTheCostIsBounded:
                 mp.map_area(fig, src, "y", "x", {})
             else:
                 mp.map_rline(fig, src, "y", "y2", "x", {})
-        assert time.perf_counter() - t0 < 2.0
+        # 10 s, not 2 s (WP-29 closeout, 02oct2026).  Under Stata's Python
+        # (bokeh 3.8.0) a million rows took 2.04-2.56 s alone (five runs)
+        # and 5.1-6.2 s inside make test, because bokeh 3.8 validates the
+        # 1M-item lists GlyphMapper._carry_cols builds with .tolist()
+        # (profiled: 7.5 of 7.7 s); _join_order itself took 0.1 s.  10 s is
+        # over 1.5 times the worst in-suite time and still fails a
+        # quadratic join order, which a million rows cannot finish in.
+        assert time.perf_counter() - t0 < 10.0
 
 
 # ===========================================================================
