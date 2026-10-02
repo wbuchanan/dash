@@ -1507,13 +1507,15 @@ weight, a zero weight, or one outside the plot's own {cmd:if} or {cmd:in})
 marks nothing, and a graph {cmd:exclude()} protects is never marked.  The
 served app draws every layer again from
 the rows that pass the filter -- each layer from its own rows among them --
-bins, grid and fitted line included.  A plot's own {cmd:if} or {cmd:in}
+bins, grid, fitted line and bar widths included.  A plot's own {cmd:if} or {cmd:in}
 inside a linked {cmd:by()} panel, or inside a linked graph with its own
 {cmd:if} or {cmd:in}, keeps to that panel's or graph's observations after
 every move, in both.  In both, a filter move clears a
 selection brushed on a graph it redraws, and a card that follows the brush
 ({cmd:update(brush)} or {cmd:update(both)}) then counts the rows that graph
-shows.
+shows.  In both, a layer that a filter, a {cmd:by()} panel or its own
+{cmd:if} or {cmd:in} leaves with no observations keeps its colour, width and
+legend key, as twoway draws it.
 
 {pstd}
 {ul:What "reflow" means.}  A {cmd:layout(bs)} grid rearranges itself as the

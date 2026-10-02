@@ -310,7 +310,7 @@ and now matches Stata.
   prefix, one per layer, so a variable called `_cvar_price_bin` is never
   overwritten. (WP-29, P0.16)
 
-<!-- WP-29 P0.18 -->
+- In the served app, after a filter move a bar's and an rbar's width follows the kept rows: dash bar mpg weight served with filter(foreign) drew the Foreign cars' bars 56 wide (the build's spacing), now 168, as the saved page draws them. A computed, bar or range layer left with no observations -- dash (scatter mpg weight) (lowess mpg weight if price >= 10000), or a served layer with its own if that selects nothing -- was drawn in Bokeh's #1f77b4 at width 1, now in its own scheme colour and width with its legend key (#90353b, 1.5 for the second plot under s2color), as twoway keys it (WP-29, P0.18)
 
 - `dash kpi sd(date)` on sysuse sp500 read 9.10e+09; it now reads 105.3335,
   summarize's sd in days. Every KPI statistic of a date but count and

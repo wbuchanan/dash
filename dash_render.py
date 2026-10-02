@@ -9598,8 +9598,10 @@ class GlyphMapper:
             The single VBar GlyphRenderer created.
         """
         if self._is_empty(source, xvar, yvar):
-            empty_src = ColumnDataSource({xvar: [], yvar: []})
-            return fig.vbar(x=xvar, top=yvar, bottom=0, width=0.8, source=empty_src)
+            # No rows: drawn on the styled path below, in the layer's own
+            # colour and key, as twoway keys it (WP-29 P0.18).
+            source = ColumnDataSource({xvar: [], yvar: []})
+            view = None
         # Masked by the layer's own view BEFORE the source is rebuilt.
         # The view's BooleanFilter is sized to the CALLER's source; the
         # source built below is shorter once rows with missing values are
@@ -9646,11 +9648,14 @@ class GlyphMapper:
             # String xvar: use uniform spacing (bar width = 0.8)
             x_vals = list(range(len(df[xvar].unique())))
             _bar_numeric = False
+        # One fallback for the drawn width and the spacing tag (WP-29
+        # P0.18), so the two cannot drift.
+        _bar_fallback = 0.8
         if len(x_vals) >= 2:
             gaps = [x_vals[i+1] - x_vals[i] for i in range(len(x_vals)-1)]
             bar_width = 0.8 * min(gaps)
         else:
-            bar_width = 0.8
+            bar_width = _bar_fallback
 
         # barwidth() / width() options override the auto-computed bar width.
         #
@@ -9704,8 +9709,8 @@ class GlyphMapper:
         if _bar_numeric:
             # The width is the rows' spacing, so a move that changes the
             # rows changes it, as the served app redraws it.
-            self._tag_spacing(clean_source, xvar, 0.8, 0.8, distinct=True,
-                              glyphs=[r.glyph])
+            self._tag_spacing(clean_source, xvar, 0.8, _bar_fallback,
+                              distinct=True, glyphs=[r.glyph])
         if "color" in options:
             try:
                 c = self.tr.translate_mcolor(options["color"])
@@ -10268,6 +10273,23 @@ class GlyphMapper:
             return idx
         return idx[np.argsort(key[idx], kind="stable")]
 
+    def _empty_fit_line(self, fig, xcol, ycol, options, color_idx, yvar,
+                        width_kind="lineplot"):
+        """The line a fitted or smoothed layer draws when it has no drawable
+        rows, in the populated branch's own style (WP-29 P0.18): its scheme
+        colour, its width family (*width_kind*: "" for mspline and mband,
+        "lineplot" for every other fit), its legend key and its line
+        options.  twoway keys such a layer in its p# style; dash drew a
+        bare Bokeh glyph, #1f77b4 at width 1."""
+        r = fig.line(x=xcol, y=ycol,
+                     source=ColumnDataSource({xcol: [], ycol: []}),
+                     line_color=self.scheme.default_color(color_idx, "line"),
+                     line_width=self.scheme.plot_line_width(color_idx,
+                                                            width_kind),
+                     legend_label=yvar)
+        self._apply_line_opts(r, options)
+        return r
+
     def map_lfit(
         self,
         fig: Any,
@@ -10308,9 +10330,9 @@ class GlyphMapper:
         # "insufficient observations", and draws on, rc 0 (measured
         # 24sep2026): _mark_insufficient.
         if len(x) < 2:
-            empty = ColumnDataSource({"x": [], "y": []})
-            r = self._mark_unfit(fig.line(x="x", y="y", source=empty),
-                                 "regress")
+            r = self._mark_unfit(
+                self._empty_fit_line(fig, "x", "y", options, color_idx, yvar),
+                "regress")
             return self._mark_insufficient(r) if len(x) == 1 else r
 
         # numpy's `w' multiplies the UNSQUARED residual, so the regression
@@ -10383,9 +10405,9 @@ class GlyphMapper:
         # fitted: regress omits x or x^2 and draws the other (_qfit_design).
         # dash drew nothing there, and said the layer drew nothing.
         if len(x) < 2:
-            empty = ColumnDataSource({"x": [], "y": []})
-            return self._mark_unfit(fig.line(x="x", y="y", source=empty),
-                                    "regress")
+            return self._mark_unfit(
+                self._empty_fit_line(fig, "x", "y", options, color_idx, yvar),
+                "regress")
 
         # Stata's grid, as map_lfit uses -- see the note there -- except
         # that twoway_qfit_parse.class reads a points count of 3 as lfit's
@@ -10408,8 +10430,8 @@ class GlyphMapper:
         try:
             y_fit = Xg @ _dash_wls(X, y, w, _wt)["beta"]
         except np.linalg.LinAlgError:
-            empty = ColumnDataSource({"x": [], "y": []})
-            return fig.line(x="x", y="y", source=empty)
+            return self._empty_fit_line(fig, "x", "y", options, color_idx,
+                                        yvar)
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
@@ -10711,11 +10733,10 @@ class GlyphMapper:
         # segment and x = 0.1 everywhere (std 2.8e-17) a vertical line,
         # where Stata draws nothing.
         if len(x) < 3 or not (float(np.ptp(x)) >= 1e-30):
-            empty = ColumnDataSource({"x_lw": [], "y_lw": []})
-            _r_empty = fig.line(x="x_lw", y="y_lw", source=empty)
-            # An empty layer is still the user's layer: apply the line
-            # options so lwidth/lcolor/lpattern survive a bail-out.
-            self._apply_line_opts(_r_empty, options)
+            # An empty layer is still the user's layer: its own style and
+            # line options survive a bail-out (WP-29 P0.18).
+            _r_empty = self._empty_fit_line(fig, "x_lw", "y_lw", options,
+                                            color_idx, yvar)
             # Fewer than three observations: twoway draws the missing
             # smooth in silence, rc 0, on one, two or three (measured
             # 24sep2026) -- in a by() panel too.  A constant x keeps
@@ -11147,9 +11168,9 @@ class GlyphMapper:
         # except in a by() panel, where twoway draws nothing in silence, rc
         # 0 (measured 24sep2026).
         if len(x) < 2:
-            empty = ColumnDataSource({"x_lp": [], "y_lp": []})
             return self._mark_silent(
-                fig.line(x="x_lp", y="y_lp", source=empty))
+                self._empty_fit_line(fig, "x_lp", "y_lp", options,
+                                     color_idx, yvar))
 
         bwidth = _stat_option_float(options, "bwidth", None, "lpoly", lo=0.0)
         if bwidth is not None and bwidth <= 0.0:
@@ -11717,11 +11738,10 @@ class GlyphMapper:
         # fit).  dash wanted four.  _fp_prepare refuses one distinct x.
         fit = self._fp_fit(x, y, w, wtype) if len(x) >= 2 else None
         if fit is None:
-            empty = ColumnDataSource({"x_fp": [], "y_fp": []})
-            r = fig.line(x="x_fp", y="y_fp", source=empty)
-            # An empty layer is still the user's layer: style it so
-            # lwidth/lcolor/lpattern survive the bail-out.
-            self._apply_line_opts(r, options)
+            # An empty layer is still the user's layer: its own style and
+            # line options survive the bail-out (WP-29 P0.18).
+            r = self._empty_fit_line(fig, "x_fp", "y_fp", options,
+                                     color_idx, yvar)
             # twoway fpfit on one observation, or on a sample missing
             # values empty: nothing, "(note:  fracpoly could not fit
             # model)", rc 0 (measured 24sep2026).
@@ -11853,6 +11873,34 @@ class GlyphMapper:
         )
         return [line_r, band_r]
 
+    def _histogram_quads(self, fig, source, options, color_idx, yvar):
+        """A histogram's bars over *source* (``top``/``left``/``right``) in
+        its own style: scheme colour, white outline, bar alpha, color(),
+        fill and line options (WP-29 P0.18).  The populated and both empty
+        branches of map_histogram draw through it, so an emptied histogram
+        keeps its colour and key, as twoway keys it."""
+        r = fig.quad(top="top", bottom=0, left="left", right="right",
+                     source=source,
+                     fill_color=self.scheme.default_color(color_idx, "histogram"),
+                     line_color="white",
+                     # `intensity bar' -- a histogram is a bar plot in
+                     # Stata's own scheme vocabulary.
+                     fill_alpha=self._scheme_alpha(
+                         color_idx, "histogram", self.scheme.bar_alpha),
+                     legend_label=yvar)
+        if "color" in options:
+            try:
+                c = self.tr.translate_mcolor(options["color"])
+                r.glyph.fill_color = c
+            except ValueError:
+                # As map_bar: named here because the lcolor() fold that
+                # would name it is skipped when blcolor() is given.
+                _dash_style_note("color", options["color"], "colour")
+        self._apply_fill_opts(r, options)
+        # Quad supports line_width/line_dash/line_color for bin border styling
+        self._apply_line_opts(r, options)
+        return r
+
     def map_histogram(
         self,
         fig: Any,
@@ -11880,22 +11928,21 @@ class GlyphMapper:
         if options is None:
             options = {}
         if self._is_empty(source, yvar):
-            empty_src = ColumnDataSource({"top": [], "left": [], "right": []})
-            return fig.quad(top="top", bottom=0, left="left", right="right",
-                            source=empty_src)
+            return self._histogram_quads(
+                fig, ColumnDataSource({"top": [], "left": [], "right": []}),
+                options, color_idx, yvar)
         # twoway__histogram_gen.ado:6 admits [fw] only; any other type is
         # named by _layer_weights and the bars are counted unweighted.
         arr, w, wtype = self._layer_units(source, view, options,
                                             "histogram", yvar)
         if not len(arr):
-            empty_src = ColumnDataSource({"top": [], "left": [], "right": []})
             # No observation in the sample -- a qualifier, missing values,
             # or a by() panel another plot draws in: twoway draws nothing
             # in silence, rc 0 (measured 24sep2026; on a dataset with no
             # observations dash.ado refuses it, as twoway does).
-            return self._mark_silent(
-                fig.quad(top="top", bottom=0, left="left", right="right",
-                         source=empty_src))
+            return self._mark_silent(self._histogram_quads(
+                fig, ColumnDataSource({"top": [], "left": [], "right": []}),
+                options, color_idx, yvar))
 
         edges, ymode = self._histogram_grid(arr, options, w)
         discrete = bool(str(options.get("discrete", "") or "").strip())
@@ -11928,26 +11975,8 @@ class GlyphMapper:
             "left":  axis_edges[i0:i1],
             "right": axis_edges[i0 + 1:i1 + 1],
         })
-        r = fig.quad(top="top", bottom=0, left="left", right="right",
-                     source=hist_source,
-                     fill_color=self.scheme.default_color(color_idx, "histogram"),
-                     line_color="white",
-                     # `intensity bar' -- a histogram is a bar plot in
-                     # Stata's own scheme vocabulary.
-                     fill_alpha=self._scheme_alpha(
-                         color_idx, "histogram", self.scheme.bar_alpha),
-                     legend_label=yvar)
-        if "color" in options:
-            try:
-                c = self.tr.translate_mcolor(options["color"])
-                r.glyph.fill_color = c
-            except ValueError:
-                # As map_bar: named here because the lcolor() fold that
-                # would name it is skipped when blcolor() is given.
-                _dash_style_note("color", options["color"], "colour")
-        self._apply_fill_opts(r, options)
-        # Quad supports line_width/line_dash/line_color for bin border styling
-        self._apply_line_opts(r, options)
+        r = self._histogram_quads(fig, hist_source, options, color_idx,
+                                  yvar)
         if i1 <= i0:
             # No bar has a date on the axis: nothing for the page to
             # recount.
@@ -12243,8 +12272,7 @@ class GlyphMapper:
         # gaussian_kde can only ever be Gaussian, so it could not express
         # kernel() at all, and Stata's default kernel is epanechnikov.
         if len(arr) < 2 or np.std(arr) == 0.0:
-            empty = ColumnDataSource({"x": [], "y": []})
-            r = fig.line(x="x", y="y", source=empty)
+            r = self._empty_fit_line(fig, "x", "y", options, color_idx, yvar)
             # None or one: dash.ado refuses one as twoway does, r(2001);
             # in a by() panel twoway draws none or one in silence, rc 0
             # (measured 24sep2026).  A constant variable keeps dash's
@@ -12272,8 +12300,8 @@ class GlyphMapper:
                 )
             bw = default_bw
         if bw <= 0.0:
-            empty = ColumnDataSource({"x": [], "y": []})
-            return fig.line(x="x", y="y", source=empty)
+            return self._empty_fit_line(fig, "x", "y", options, color_idx,
+                                        yvar)
 
         n_pts = _stat_option_float(options, "n", 300.0, "kdensity", lo=2.0,
                                    hi=10000.0) or 300.0
@@ -12387,8 +12415,9 @@ class GlyphMapper:
             List with the single VArea GlyphRenderer.
         """
         if self._is_empty(source, xvar, y1var, y2var):
-            empty_src = ColumnDataSource({xvar: [], y1var: [], y2var: []})
-            return [fig.varea(x=xvar, y1=y1var, y2=y2var, source=empty_src)]
+            # No rows: the styled path below (WP-29 P0.18).
+            source = ColumnDataSource({xvar: [], y1var: [], y2var: []})
+            view = None
 
         # Masked and rebuilt in the join order rather than reordered in
         # place, because the source is shared.
@@ -12451,8 +12480,9 @@ class GlyphMapper:
             List with the single VBar GlyphRenderer.
         """
         if self._is_empty(source, xvar, y1var, y2var):
-            empty_src = ColumnDataSource({xvar: [], y1var: [], y2var: []})
-            return [fig.vbar(x=xvar, top=y2var, bottom=y1var, width=0.8, source=empty_src)]
+            # No rows: the styled path below (WP-29 P0.18).
+            source = ColumnDataSource({xvar: [], y1var: [], y2var: []})
+            view = None
         # The width is DERIVED from the data, so it must come from the rows
         # this layer draws.  The source below keeps every row -- so the
         # caller's mask lines up with it and the view is attached as usual --
@@ -12470,10 +12500,12 @@ class GlyphMapper:
         source = (self._subset_source(source, _rb_sel) if _rb_sel is not None
                   else ColumnDataSource(dict(source.data)))
         view = None
-        bar_width = 0.8 * min(
-            (x_vals[i+1] - x_vals[i] for i in range(len(x_vals)-1)),
-            default=0.8,
-        )
+        # One fallback for the drawn width and the spacing tag, 0.64 with
+        # fewer than two x (WP-29 P0.18): the paths cannot drift.
+        _rb_fallback = 0.8 * 0.8
+        bar_width = (0.8 * min(x_vals[i+1] - x_vals[i]
+                               for i in range(len(x_vals)-1))
+                     if len(x_vals) >= 2 else _rb_fallback)
         _rbar_kwargs: dict = dict(x=xvar, bottom=y1var, top=y2var, source=source,
                                    width=bar_width,
                                    fill_color=self.scheme.default_color(color_idx, "bar"),
@@ -12485,7 +12517,7 @@ class GlyphMapper:
         if view is not None:
             _rbar_kwargs["view"] = view
         r = fig.vbar(**_rbar_kwargs)
-        self._tag_spacing(source, xvar, 0.8, 0.64, distinct=True,
+        self._tag_spacing(source, xvar, 0.8, _rb_fallback, distinct=True,
                           glyphs=[r.glyph])
         # color() fills the bar and draws its outline, as map_bar reads it:
         # twoway's rbar with color(red) is filled #FF3333 and stroked
@@ -12554,8 +12586,12 @@ class GlyphMapper:
             List with the single Segment GlyphRenderer.
         """
         if self._is_empty(source, xvar, y1var, y2var):
-            empty_src = ColumnDataSource({xvar: [], y1var: [], y2var: []})
-            return [fig.segment(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=empty_src)]
+            # No rows: the styled path below (WP-29 P0.18).  The caller's
+            # own empty source is kept when it has the columns, so the
+            # axes still range over it as they range over a drawn one.
+            if not all(v in source.data for v in (xvar, y1var, y2var)):
+                source = ColumnDataSource({xvar: [], y1var: [], y2var: []})
+            view = None
         _rseg_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=source,
                                    line_color=self.scheme.default_color(color_idx, "rspike"),
                                    line_width=self.scheme.plot_line_width(color_idx, ""),
@@ -14098,7 +14134,6 @@ class GlyphMapper:
         x_clean, y_clean, _w, _wt = self._layer_units(
             source, view, options, "mspline", xvar, yvar)
 
-        empty = ColumnDataSource({"x_sp": [], "y_sp": []})
         requested = _stat_option_float(options, "bands", None, "mspline",
                                        lo=1.0, hi=float(_MAX_MBANDS))
         n_bands = (int(requested) if requested is not None
@@ -14115,10 +14150,10 @@ class GlyphMapper:
         # twoway draws it (with bands(), or in a by() panel; with neither,
         # dash.ado refuses it as twoway does).
         if len(kx) < 1:
-            r = fig.line(x="x_sp", y="y_sp", source=empty)
-            # An empty layer is still the user's layer: style it so
-            # lwidth/lcolor/lpattern survive the bail-out.
-            self._apply_line_opts(r, options)
+            # An empty layer is still the user's layer: its own style and
+            # width family survive the bail-out (WP-29 P0.18).
+            r = self._empty_fit_line(fig, "x_sp", "y_sp", options,
+                                     color_idx, yvar, width_kind="")
             return self._mark_silent([r])
 
         if len(kx) < 3:
@@ -14237,8 +14272,6 @@ class GlyphMapper:
         x_clean, y_clean, _w, _wt = self._layer_units(
             source, view, options, "mband", xvar, yvar)
 
-        empty = ColumnDataSource({"x_mb": [], "y_mb": []})
-
         # hi= matches the clamp the generated server app applies, so the two
         # modes draw the same number of bands.  Without it, bands(1e9)
         # allocated 8 GB in np.linspace before any drawing happened.
@@ -14252,8 +14285,8 @@ class GlyphMapper:
             # No observation, drawn in silence as twoway draws it (see
             # map_mspline).  An empty layer is still the user's layer:
             # style it so lwidth/lcolor/lpattern survive.
-            r = fig.line(x="x_mb", y="y_mb", source=empty)
-            self._apply_line_opts(r, options)
+            r = self._empty_fit_line(fig, "x_mb", "y_mb", options,
+                                     color_idx, yvar, width_kind="")
             return self._mark_silent([r])
 
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
@@ -24349,6 +24382,24 @@ def _dash_keep_jitter(new_data, snapshot):
     return new_data
 
 
+def _dash_copy_redraw_geometry(live, new):
+    """Give each live glyph whose width is its rows' spacing the width the
+    redraw drew from the kept rows (WP-29 P0.18).  GlyphMapper._tag_spacing
+    lists those glyphs on their source (`_dash_spacing_glyphs`); a served
+    move copied the redraw's data onto the live source and left the
+    build's width, 56 where the kept rows give 168.  A width that is not
+    a finite positive number is left alone, so Bokeh's "Distances must
+    be positive" can never be raised in a session."""
+    for lg, ng in zip(getattr(live, "_dash_spacing_glyphs", None) or (),
+                      getattr(new, "_dash_spacing_glyphs", None) or ()):
+        w = getattr(ng, "width", None)
+        w = getattr(w, "value", w)
+        if isinstance(w, bool) or not isinstance(w, (int, float)):
+            continue
+        if np.isfinite(w) and w > 0:
+            lg.width = float(w)
+
+
 def _dash_facet_cols(gopts, n_panels):
     """cols(#) from by() first, then the by_cols key, then ceil(sqrt(n)) --
     and never more columns than there are panels.
@@ -32336,6 +32387,7 @@ class ServerAppBuilder:
                          "_dash_dim_nonselection",
                          # An unlinked layer's own rows after a move.
                          "_dash_refresh_unlinked", "_dash_keep_jitter",
+                         "_dash_copy_redraw_geometry",
                          "_dash_parse_tabs", "_dash_tab_panels",
                          "_dash_header_fragments", "_dash_header_models",
                          # layout(bs): the saved page's reader of the rows
@@ -34927,6 +34979,10 @@ class ServerAppBuilder:
             "                    # Its rows are new too: a selection on them (a",
             "                    # jittered scatter's) is cleared, as in step 2.",
             "                    _live.selected.indices = []",
+            "                    # A bar's or rbar's width is the kept rows' spacing",
+            "                    # (GlyphMapper._tag_spacing); the redraw's glyph",
+            "                    # holds it, the live one the build's (WP-29 P0.18).",
+            "                    _dash_copy_redraw_geometry(_live, _new)",
             "                if len(_fresh) != len(agg['sources']):",
             "                    warnings.warn(",
             "                        'dash: %s layer %d redrew %d source(s) where %d were '",

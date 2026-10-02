@@ -3323,6 +3323,52 @@ class TestHardeningGuards:
         result = gm.map_rspike(fig, src, "y1", "y2", "x", {})
         assert result is not None
 
+    # --- HARD-2 (WP-29 P0.18): an empty source keeps the scheme style ---
+
+    def _first(self, r):
+        return r[0] if isinstance(r, list) else r
+
+    def _colour(self, r):
+        g = self._first(r).glyph
+        return g.fill_color if "fill_color" in g.properties() \
+            and type(g).__name__ in ("Quad", "VBar", "VArea") \
+            else g.line_color
+
+    def test_histogram_empty_source_keeps_the_scheme_style(self):
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        r = gm.map_histogram(self._fig(), ColumnDataSource({"mpg": []}),
+                             "mpg", {})
+        assert self._colour(r) == gm.scheme.default_color(0, "histogram")
+
+    def test_bar_empty_source_keeps_the_scheme_style(self):
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        r = gm.map_bar(self._fig(), ColumnDataSource({"x": [], "y": []}),
+                       "y", "x", {})
+        assert self._colour(r) == gm.scheme.default_color(0, "bar")
+
+    def test_rbar_empty_source_keeps_the_scheme_style(self):
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        r = gm.map_rbar(self._fig(), ColumnDataSource(
+            {"x": [], "y1": [], "y2": []}), "y1", "y2", "x", {})
+        assert self._colour(r) == gm.scheme.default_color(0, "bar")
+
+    def test_rarea_empty_source_keeps_the_scheme_style(self):
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        r = gm.map_rarea(self._fig(), ColumnDataSource(
+            {"x": [], "y1": [], "y2": []}), "y1", "y2", "x", {})
+        assert self._colour(r) == gm.scheme.default_color(0, "area")
+
+    def test_rspike_empty_source_keeps_the_scheme_style(self):
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        r = gm.map_rspike(self._fig(), ColumnDataSource(
+            {"x": [], "y1": [], "y2": []}), "y1", "y2", "x", {})
+        assert self._colour(r) == gm.scheme.default_color(0, "rspike")
+
     # --- HARD-3: map_bar string xvar ---
 
     def test_bar_string_xvar_no_crash(self):

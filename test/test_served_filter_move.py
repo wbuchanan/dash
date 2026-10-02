@@ -713,3 +713,60 @@ class TestAdversarialFilterMoves:
         assert len(src.data["index"]) == n // 2
         assert src.data[_MLABEL_X][-1] == "%d" % (n - 2)
         assert took < 20, took
+
+
+# ---------------------------------------------------------------------------
+# WP-29 P0.18: a served move copies the redrawn bar width
+# ---------------------------------------------------------------------------
+
+def _spaced(width):
+    from bokeh.models import VBar
+    src = ColumnDataSource({"x": [1.0]})
+    src._dash_spacing_glyphs = [VBar(width=width)]
+    return src
+
+
+class TestTheRedrawGeometry:
+    """``_dash_copy_redraw_geometry(live, new)`` gives each live spacing
+    glyph the width the redraw drew from the kept rows."""
+
+    def test_a_bar_takes_the_redraws_width(self):
+        live, new = _spaced(56.0), _spaced(168.0)
+        dr._dash_copy_redraw_geometry(live, new)
+        assert live._dash_spacing_glyphs[0].width == 168.0
+
+    def test_an_untagged_source_is_left_alone(self):
+        live = _spaced(56.0)
+        dr._dash_copy_redraw_geometry(live, ColumnDataSource({"x": [1.0]}))
+        assert live._dash_spacing_glyphs[0].width == 56.0
+        dr._dash_copy_redraw_geometry(ColumnDataSource({"x": [1.0]}),
+                                      _spaced(168.0))
+
+    @pytest.mark.parametrize("bad", [float("nan"), float("inf"), 0.0, -1.0,
+                                     "text", None],
+                             ids=["nan", "inf", "0", "-1", "text", "None"])
+    def test_a_non_finite_or_non_positive_width_is_ignored(self, bad):
+        from types import SimpleNamespace
+        live = _spaced(56.0)
+        new = SimpleNamespace(_dash_spacing_glyphs=[SimpleNamespace(
+            width=bad)])
+        dr._dash_copy_redraw_geometry(live, new)
+        assert live._dash_spacing_glyphs[0].width == 56.0
+
+    def test_extra_glyphs_are_zipped_to_the_shorter(self):
+        from bokeh.models import VBar
+        live = _spaced(56.0)
+        live._dash_spacing_glyphs.append(VBar(width=10.0))
+        dr._dash_copy_redraw_geometry(live, _spaced(168.0))
+        assert [g.width for g in live._dash_spacing_glyphs] == [168.0, 10.0]
+
+
+class TestTheServedBarAfterAMove:
+
+    @pytest.mark.parametrize("t", ["bar", "rbar"])
+    def test_the_served_width_is_the_kept_rows_spacing(self, t):
+        spec = tp._spec([plot_for(t)], {"filter": "foreign, type(dropdown)"})
+        figs, _ = tp._served_after_move(spec, ("Select", "Foreign"))
+        widths = [g["coords"].get("width") for f in figs for g in f["glyphs"]
+                  if g["type"] == "VBar"]
+        assert widths and all(w == ("value", 168.0) for w in widths), widths

@@ -5,7 +5,7 @@
 *! HE-01 through HE-04
 *! Tests: P2-73 through P2-75, FL-EX-1, FL-CP-1, FL-QT-1, FL-QT-2,
 *!        FL-X1-1, FL-E2-1 and FL-E2-2, QF-01 and QF-02,
-*!        SCU-01, SCU-02 and SCU-03
+*!        SCU-01, SCU-02 and SCU-03, EW-01
 *!
 *! Usage:  do test/test_e2e_filters.cscript
 *!
@@ -585,6 +585,51 @@ capture erase "`scu3a'.html"
 capture erase "`scu3b'.html"
 display "SCU-03 PASS: a page with no filter holds no cue model; with filter(foreign) one caption and one status line"
 dash clear
+restore
+
+// ================================================================
+// EW-01 (WP-29 P0.18): after a served move a bar's width is the kept
+// rows' spacing -- the saved page's after the same move, and the saved
+// page's drawn from the kept rows alone.
+// ================================================================
+preserve
+clear
+input mpg weight foreign price
+22 2930 0 4099
+17 3350 1 4749
+25 2200 0 3799
+30 1800 1 4816
+21 3000 0 5788
+19 3100 1 4453
+14 4080 0 5189
+28 2010 1 10372
+16 3600 0 4082
+23 2650 1 11385
+end
+python:
+import filter_truth_check as ftc
+df, strings = ftc.frame_from_stata(["mpg", "weight", "foreign", "price"])
+spec = ftc.spec_of([ftc.bar_graph("g1", "mpg", "weight")],
+                   [{"varname": "foreign", "type": "dropdown"}])
+_, r = ftc.saved(df, strings, spec, [(0, 1.0)])
+saved_after = ftc.vbar_width(r.figures["g1"])
+_, doc0 = ftc.served(df, strings, spec, [])
+_, doc1 = ftc.served(df, strings, spec, [(0, 1.0)])
+fig_of = lambda d: [m for m in ftc._walk(d) if type(m).__name__ == "figure"][0]
+served_before = ftc.vbar_width(fig_of(doc0))
+served_after = ftc.vbar_width(fig_of(doc1))
+q = ftc.bar_graph("g1", "mpg", "weight")
+q["if_expr"] = "foreign == 1"
+_, rq = ftc.saved(df, strings, ftc.spec_of([q], []), [])
+saved_qual = ftc.vbar_width(rq.figures["g1"])
+print("EW-01 saved after", saved_after, "served after", served_after,
+      "saved qualified", saved_qual, "served before", served_before)
+ftc.put("ew_01", int(saved_after == served_after == saved_qual
+                     and served_after != served_before))
+ftc.put("ew_01w", saved_after)
+end
+assert "${ew_01}" == "1"
+display "EW-01 PASS: after the move to Foreign the served bar is ${ew_01w} wide, as the saved page draws it after the move and from the Foreign rows alone"
 restore
 
 // ----------------------------------------------------------------

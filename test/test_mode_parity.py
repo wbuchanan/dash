@@ -1774,6 +1774,14 @@ CORPUS = [
     _case("lpolyci, kernel(gaussian) degree(3) aweight",
           [plot_for("lpolyci", {"kernel": "gaussian", "degree": "3",
                                 "weight": "aweight", "wexp": "price"})]),
+    # WP-29 P0.18: a layer whose own if keeps no row keeps its style in
+    # both modes (twoway keys it in its p# style).  bar, rbar and rarea
+    # are left out: after the fix they differ only in a warning (the saved
+    # page notes "drew nothing", the served app does not), which this
+    # section does not change; their served style is pinned by
+    # test_emptied_layer_style.py::TestAnEmptiedLayerKeepsItsStyle.
+    _case("rspike with its own if that keeps no row",
+          [_sc(), plot_for("rspike", if_expr="price > 20000")]),
 ]
 
 
@@ -2221,6 +2229,22 @@ _MOVED_LAYERS = ["scatter", "line", "lfit", "lfitci", "histogram", "kdensity",
                  "pcarrow", "pcbarrow",
                  # WP-29 P0.9: lpolyci's analytic band refits after a move.
                  "lpolyci"]
+# WP-29 P0.18: bar and rbar take the kept rows' width after a served move;
+# the other eight agreed already and are guards.
+_MOVED_LAYERS += ["bar", "rbar", "lowess", "qfit", "fpfit", "mband",
+                  "mspline", "lpolyci", "qfitci", "fpfitci"]
+
+#: WP-29 P0.18: moves that leave 2 and 1 rows of _DF.
+_EMPTYING_MOVES = [
+    ("slider to 10000", "price, type(slider)", ("Slider", 10000.0),
+     "price >= 10000"),
+    ("slider to 11385", "price, type(slider)", ("Slider", 11385.0),
+     "price >= 11385"),
+]
+#: WP-29 P0.18: every layer a move can leave with no drawable rows.
+_EMPTIED_LAYERS = ["lowess", "lfit", "qfit", "fpfit", "lpoly", "kdensity",
+                   "mband", "mspline", "histogram", "bar", "rbar", "rarea",
+                   "rspike"]
 
 #: The plot types twoway draws mlabel() on (test_marker_label_parity.py's
 #: measured partition; not imported, since that file imports this one).
@@ -2446,6 +2470,23 @@ MOVE_CORPUS = [
     # from the rows the move keeps.
     _move_case("lpoly biweight degree 2, dropdown", _MOVES[0],
                [plot_for("lpoly", {"kernel": "biweight", "degree": "2"})]),
+    # WP-29 P0.18: a served bar's width is the kept rows' spacing.
+    _move_case("bar under by(rep), dropdown", _MOVES[0], [plot_for("bar")],
+               {"by": "rep"}),
+    _move_case("rbar under by(foreign), range", _MOVES[1],
+               [plot_for("rbar")], {"by": "foreign"}),
+    _move_case("a linked pair with a bar, dropdown", _MOVES[0],
+               graphs=[("g1", [_sc()]), ("g2", [plot_for("bar")])],
+               bo={"link": "g1 g2"}),
+    # WP-29 P0.18: a layer a move leaves with 2, 1 or 0 rows keeps its style.
+    *[_move_case(f"{t} emptied, {m[0]}", m, [plot_for(t)])
+      for t in _EMPTIED_LAYERS for m in _EMPTYING_MOVES],
+    # lpoly is left out: on _DF's five domestic rows it draws nothing
+    # before the move as well, so the move changes nothing to compare.
+    *[_move_case(f"{t} with its own if emptied, slider to 10000",
+                 _EMPTYING_MOVES[0],
+                 [plot_for(t, if_expr="foreign == 0")])
+      for t in _EMPTIED_LAYERS if t != "lpoly"],
 ]
 
 

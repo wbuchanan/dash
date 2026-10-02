@@ -20,6 +20,8 @@
 *!   S10  P0.5 axis(#) routed to the axis it names, against twoway's .Graph
 *!        members, saved and served (AX-11..AX-18); P0.2 by() panels share
 *!        one scale per axis unless rescaled (BSC-01..BSC-07)
+*!   S12  P0.18 emptied layers keyed in twoway's colour and width, saved
+*!        and served (EW-02, EW-03)
 *!
 *! Usage: via run_all_cscripts.do (registered as its block 68).  One
 *! block alone: set WP29_ONLY=S<NN> in the environment of the driver run
@@ -4433,6 +4435,151 @@ if inlist("`only'", "", "S11") {
     display as text "S11 P0.9 end `c(current_time)'"
 }
 * ==== end S11 ====
+
+* ==== S12 P0.18: emptied layers keep their style ====
+local only : env WP29_ONLY
+if inlist("`only'", "", "S12") {
+    display as text "S12 start `c(current_time)'"
+    local s12d "`w29_work'/s12"
+    capture mkdir "`s12d'"
+    global ew_dir "`s12d'"
+    set scheme s2color
+    capture program drop _ew_data
+    program define _ew_data
+        // The ten rows of test_mode_parity._DF (input cannot run in a
+        // program or a block).
+        clear
+        matrix _ew = (22, 2930, 0, 4099 \ 17, 3350, 1, 4749 \ ///
+            25, 2200, 0, 3799 \ 30, 1800, 1, 4816 \ 21, 3000, 0, 5788 \ ///
+            19, 3100, 1, 4453 \ 14, 4080, 0, 5189 \ 28, 2010, 1, 10372 \ ///
+            16, 3600, 0, 4082 \ 23, 2650, 1, 11385)
+        quietly svmat double _ew
+        rename (_ew1 _ew2 _ew3 _ew4) (mpg weight foreign price)
+        matrix drop _ew
+    end
+    python:
+import os as _ew_os, re as _ew_re, warnings as _ew_w
+from sfi import Macro as _ew_M
+
+
+def _ew_styles(path):
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        return {(c.lower(), float(w)) for c, w in _ew_re.findall(
+            r"stroke:(#[0-9A-Fa-f]{6});stroke-width:([0-9.]+)", fh.read())}
+
+
+def _ew_app_doc(sp, dp, app):
+    # The generated app, loaded as KF-03 loads it: its curdoc attach is
+    # replaced, so nothing is served.
+    import dash_render as dr
+    from bokeh.document import Document
+    with _ew_w.catch_warnings():
+        _ew_w.simplefilter("ignore")
+        dr.ServerAppBuilder(sp, dp).build(app)
+        with open(app, encoding="utf-8") as fh:
+            src = fh.read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        ns = dict(__name__="dash_s12_app")
+        exec(compile(src.replace(attach, "pass"), "dash_s12_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    return doc
+
+
+def _ew_second(sp, dp, app):
+    # (saved, served) second-layer first glyph of the graph.
+    import dash_render as dr
+    with _ew_w.catch_warnings():
+        _ew_w.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    a = list(r.figures.values())[0].renderers[1].glyph
+    doc = _ew_app_doc(sp, dp, app)
+    fig = [m for m in doc.models if type(m).__name__ == "figure"][0]
+    b = fig.renderers[1].glyph
+    return a, b
+
+
+def _ew_colour(g):
+    vb = type(g).__name__ in ("VArea", "VBar")
+    return str(g.fill_color if vb else g.line_color).lower()
+
+
+def _ew_check(tag, width_too=0):
+    d = _ew_M.getGlobal("ew_dir")
+    sp, dp = (_ew_os.path.join(d, tag + ".json"),
+              _ew_os.path.join(d, tag + "_d.json"))
+    want = {c for c, _w in _ew_styles(_ew_os.path.join(d, tag + ".svg"))
+            - _ew_styles(_ew_os.path.join(d, "base.svg"))}
+    a, b = _ew_second(sp, dp, _ew_os.path.join(d, tag + ".py"))
+    got = (_ew_colour(a), _ew_colour(b))
+    ok = got[0] in want and got[1] in want
+    why = "twoway %s, saved %s, served %s" % (sorted(want), got[0], got[1])
+    if width_too:
+        pa, pb = _ew_second(_ew_os.path.join(d, "pop.json"),
+                            _ew_os.path.join(d, "pop_d.json"),
+                            _ew_os.path.join(d, "pop.py"))
+        ok = (ok and a.line_width == pa.line_width
+              and b.line_width == pb.line_width)
+        why += "; width saved %s/%s served %s/%s" % (
+            a.line_width, pa.line_width, b.line_width, pb.line_width)
+    print("S12", tag, why)
+    _ew_M.setGlobal("ew_ok", str(int(ok)))
+    _ew_M.setGlobal("ew_why", why)
+end
+
+    // EW-02: each layer its own if leaves with 0 observations is keyed by
+    // dash, saved and served, in the colour twoway keys it.
+    _ew_data
+    capture graph drop _all
+    quietly twoway scatter mpg weight, legend(on) name(ewb, replace)
+    cert_svg_export, name(ewb) file("`s12d'/base.svg")
+    local k = 0
+    foreach t in lfit qfit lowess rarea rbar rspike bar kdensity {
+        local ++k
+        local vars "mpg weight"
+        if inlist("`t'", "rarea", "rbar", "rspike") local vars "mpg price weight"
+        if "`t'" == "kdensity" local vars "mpg"
+        _ew_data
+        quietly twoway (scatter mpg weight) (`t' `vars' if price > 20000), name(ewp, replace)
+        cert_svg_export, name(ewp) file("`s12d'/ew`k'.svg")
+        _w29_expect EW-02 "(r(rc) == 0)" "`t': twoway export rc `r(rc)'"
+        dash clear
+        capture noisily dash (scatter mpg weight) (`t' `vars' if price > 20000), name(zew`k')
+        _w29_expect EW-02 "(_rc == 0)" "`t': dash rc `=_rc'"
+        _dash_serve_spec, specpath("`s12d'/ew`k'.json") datapath("`s12d'/ew`k'_d.json")
+        python: _ew_check("ew`k'")
+        _w29_expect EW-02 "(${ew_ok} == 1)" "`t': ${ew_why}"
+    }
+    _w29_done EW-02 "an emptied lfit, qfit, lowess, rarea, rbar, rspike, bar and kdensity are keyed in twoway's colour, saved and served"
+
+    // EW-03: lowess on two observations (the graph's if): twoway's key,
+    // and the populated lowess's width, in both modes.
+    _ew_data
+    quietly twoway (scatter mpg weight) (lowess mpg weight) if price >= 10000, name(ewp, replace)
+    cert_svg_export, name(ewp) file("`s12d'/ew9.svg")
+    dash clear
+    dash (scatter mpg weight) (lowess mpg weight), name(zew10)
+    _dash_serve_spec, specpath("`s12d'/pop.json") datapath("`s12d'/pop_d.json")
+    dash clear
+    dash (scatter mpg weight) (lowess mpg weight) if price >= 10000, name(zew9)
+    _dash_serve_spec, specpath("`s12d'/ew9.json") datapath("`s12d'/ew9_d.json")
+    python: _ew_check("ew9", 1)
+    _w29_expect EW-03 "(${ew_ok} == 1)" "${ew_why}"
+    _w29_done EW-03 "lowess on two observations keeps twoway's key colour and its own width, saved and served"
+
+    capture graph drop _all
+    capture dash clear
+    local ewfiles : dir "`s12d'" files "*"
+    foreach f of local ewfiles {
+        capture erase "`s12d'/`f'"
+    }
+    capture rmdir "`s12d'"
+    macro drop ew_*
+    display as text "S12 end `c(current_time)'"
+}
+* ==== end S12 ====
 
 * ==== append new blocks above this line ====
 

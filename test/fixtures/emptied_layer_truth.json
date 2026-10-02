@@ -1,0 +1,1069 @@
+{
+ "_meta": {
+  "base_has_no_layer_colour": "held",
+  "born_date": "12 Aug 2026",
+  "dash_commit": "0fa20f996d6b5ee0cf4d7deb872e644940c816c3",
+  "empty_matches_populated": "held",
+  "extracted": " 2 Oct 2026 01:41:42",
+  "source": "scripts/extract_emptied_layer_truth.do",
+  "stata_version": "19.5"
+ },
+ "schemes": {
+  "s1mono": {
+   "base_styles": [
+    [
+     "#000000",
+     5.76
+    ],
+    [
+     "#606060",
+     8.64
+    ],
+    [
+     "#ffffff",
+     5.76
+    ]
+   ],
+   "probes": {
+    "bar": {
+     "populated": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        5.76
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        5.76
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        5.76
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        5.76
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "fpfit": {
+     "populated": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": null,
+      "qualifier": "price > 20000",
+      "rc": 198
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "histogram": {
+     "populated": {
+      "key_styles": [
+       [
+        "#000000",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#000000",
+        8.64
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#000000",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#000000",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "kdensity": {
+     "populated": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": null,
+      "qualifier": "price >= 11385",
+      "rc": 2001
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "lfit": {
+     "populated": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": null,
+      "qualifier": "price >= 11385",
+      "rc": 2001
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "lowess": {
+     "populated": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "lpoly": {
+     "populated": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": null,
+      "qualifier": "price > 20000",
+      "rc": 2000
+     },
+     "rows1": {
+      "key_styles": null,
+      "qualifier": "price >= 11385",
+      "rc": 2001
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "mband": {
+     "populated": {
+      "key_styles": [
+       [
+        "#000000",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": null,
+      "qualifier": "price > 20000",
+      "rc": 198
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#000000",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#000000",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "mspline": {
+     "populated": {
+      "key_styles": [
+       [
+        "#000000",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": null,
+      "qualifier": "price > 20000",
+      "rc": 198
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#000000",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#000000",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "qfit": {
+     "populated": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "rarea": {
+     "populated": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ],
+       [
+        "#a0a0a0",
+        17.28
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ],
+       [
+        "#a0a0a0",
+        17.28
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "rbar": {
+     "populated": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        5.76
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        5.76
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        5.76
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        5.76
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "rspike": {
+     "populated": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#a0a0a0",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    }
+   }
+  },
+  "s2color": {
+   "base_styles": [
+    [
+     "#000000",
+     5.76
+    ],
+    [
+     "#1a476f",
+     8.64
+    ],
+    [
+     "#eaf2f3",
+     5.76
+    ],
+    [
+     "#eaf2f3",
+     8.64
+    ],
+    [
+     "#ffffff",
+     5.76
+    ]
+   ],
+   "probes": {
+    "bar": {
+     "populated": {
+      "key_styles": [
+       [
+        "#90353b",
+        5.76
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#90353b",
+        5.76
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#90353b",
+        5.76
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#90353b",
+        5.76
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "fpfit": {
+     "populated": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": null,
+      "qualifier": "price > 20000",
+      "rc": 198
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "histogram": {
+     "populated": {
+      "key_styles": [
+       [
+        "#d7d29e",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#d7d29e",
+        8.64
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#d7d29e",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#d7d29e",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "kdensity": {
+     "populated": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": null,
+      "qualifier": "price >= 11385",
+      "rc": 2001
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "lfit": {
+     "populated": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": null,
+      "qualifier": "price >= 11385",
+      "rc": 2001
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "lowess": {
+     "populated": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "lpoly": {
+     "populated": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": null,
+      "qualifier": "price > 20000",
+      "rc": 2000
+     },
+     "rows1": {
+      "key_styles": null,
+      "qualifier": "price >= 11385",
+      "rc": 2001
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "mband": {
+     "populated": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": null,
+      "qualifier": "price > 20000",
+      "rc": 198
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "mspline": {
+     "populated": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": null,
+      "qualifier": "price > 20000",
+      "rc": 198
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "qfit": {
+     "populated": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "rarea": {
+     "populated": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ],
+       [
+        "#90353b",
+        17.28
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ],
+       [
+        "#90353b",
+        17.28
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "rbar": {
+     "populated": {
+      "key_styles": [
+       [
+        "#90353b",
+        5.76
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#90353b",
+        5.76
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#90353b",
+        5.76
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#90353b",
+        5.76
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    },
+    "rspike": {
+     "populated": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "rc": 0
+     },
+     "rows0": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price > 20000",
+      "rc": 0
+     },
+     "rows1": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 11385",
+      "rc": 0
+     },
+     "rows2": {
+      "key_styles": [
+       [
+        "#90353b",
+        8.64
+       ]
+      ],
+      "qualifier": "price >= 10000",
+      "rc": 0
+     }
+    }
+   }
+  }
+ }
+}
