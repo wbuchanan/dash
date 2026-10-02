@@ -193,7 +193,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   3. Compute `estcmd()`/`estopts()`/`predopts()` in Stata at registration, and name them on filter moves.
   4. Generate dash.sthlp's unsupported list from `_dash_rep_und_tab`, the pending list and the undeclared type options. Extend test_help_conformance.py to check it in both directions.
   5. Test each option against live twoway in test_twoway_option_parity.cscript, in both modes.
-- **Tracked:** GAPS.md E1 (`connect`, `cmissing`, `recast`, `sort`, `mlabvposition` deferred by WP-27); the others are new.
+- **Tracked:** Partly closed in WP-29 (P0.1, commit b0d170d): sort(varlist) is honoured; open: nofit, fitplot(), ciplot(), atobs, estcmd()/estopts()/predopts(), kdensity area()/boundary, histogram gap(), function droplines() and yvarformat()/xvarformat(), baroffset(), nodropbase, connect(), cmissing(), recast(), mlabvposition(), the tsline t-options and pc headlabel, and the help unsupported list; was: GAPS.md E1 (`connect`, `cmissing`, `recast`, `sort`, `mlabvposition` deferred by WP-27); the others are new.
 
 <a id="a5"></a>
 ### A5. Six twoway plot types and Mata-matrix plots are not drawn (contour, contourline, heatmap, rpcap, rpspike, sunflower; matamatrix())
@@ -303,7 +303,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   2. Replace `_DASH_FIT_TYPES` with a per-type key rule built from the variable labels.
   3. In `_dash_axis_labels`, join range and pc y labels with "/", and draw no y title when the layers' labels differ.
   4. Update the label assertion in test_immediate_dashboards.py (:512-523), and test both modes against the fixture.
-- **Tracked:** new.
+- **Tracked:** Partly closed in WP-29 (P0.3, commit 8d3593e): histogram and kdensity keys and titles name the variable as twoway does; open: the fit, lowess, lpoly and mband keys, the pc and immediate keys, no y title when the layers labels differ, and y1/y2 range titles; was: new.
 
 <a id="a14"></a>
 ### A14. `dot` is drawn as a plain scatter: no dot rows, and dotextend(), ndots() and the d-options are not drawn
@@ -485,7 +485,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   All are on dash's plot pending list (dash.ado:1025-1080) and named. dash.sthlp Unsupported documents that dash draws every plot upright, joins in x order and drops missing values.
 - **Closable:** yes -- Bokeh has hbar/harea/Step glyphs and breaks lines at NaN.
 - **Plan:** 1. `recast()`: re-dispatch the layer to the named type's mapper after checking that type's variables. 2. `cmissing(n)`: insert NaN rows at missing values. 3. `connect()`: map l/L/J/stairstep/stepstair/none to Line or Step glyphs. 4. `sort(varlist)`: stable sort by the varlist before joining. 5. `horizontal`: swap coordinates in the bar/spike/range/dropline mappers (hbar/harea); check each against twoway's SVG in a cscript.
-- **Tracked:** GAPS.md E1 (deferred).
+- **Tracked:** Partly closed in WP-29 (P0.1, commit b0d170d): sort(varlist) sets the join order; open: horizontal/vertical, recast(), connect() and cmissing(n); was: GAPS.md E1 (deferred).
 
 **B13. SMCL markup in graph text (`{bf:}`, `{it:}`, `{sup:}`, `{&beta}`) is drawn literally** -- same gap as D3; see there.
 
@@ -510,7 +510,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   - `yaxis()`/`xaxis()` are validated as int 1..2 (dash.ado:1861), so `yaxis(3)` and `yaxis(1 2)` are refused.
 - **Closable:** yes -- Bokeh supports any number of extra ranges and axes.
 - **Plan:** 1. Route `axis(2)` on each axis option to the existing y2/x2 path, and generalise extra ranges to y2..y9/x2..x9. 2. Accept a `yaxis()`/`xaxis()` numlist: a layer drawn on axis 1 whose axis 2 shares its range object. 3. Keep dash's `*2` options as aliases. 4. pytest in both modes; cscript comparing twoway's `.Graph` axis counts, positions and ticks.
-- **Tracked:** dash.sthlp:2392-2399 (documented limit); REMAINING.md:2459 (`axis(#)` misrouted).
+- **Tracked:** Partly closed in WP-29 (P0.5, commit 3208b2b): axis(2) on the label, title, scale, line and tick options is applied to the second axis; open: axes 3-9 and yaxis(1 2) are refused; was: dash.sthlp:2392-2399 (documented limit); REMAINING.md:2459 (`axis(#)` misrouted).
 
 <a id="b16"></a>
 ### B16. `by()` sub-options other than `cols`/`total`/`missing` are named but not honoured (`rows`, `holes`, `title`, `legend`, rescale, axes...)
@@ -522,7 +522,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   dash.sthlp:1676-1679 documents this.
 - **Closable:** partly -- a Bokeh `Legend` belongs to one figure, so a single `by()` legend must sit on one panel or on a legend-only figure; `compact`/`imargin`/`iscale` can only be approximated with borders and font scaling.
 - **Plan:** 1. `rows(#)` sets cols = ceil(n/rows); `holes()` inserts `None` cells in `gridplot`; `colfirst` reorders the panels. 2. Draw `by(title/subtitle/note/caption)` once above or below the grid via `_dash_textbox`. 3. i*/noi* options set panel axis visibility (default: edge axes only); `yrescale`/`xrescale` unshare the ranges (see B4). 4. `by(, legend())` places the one common legend. 5. pytest in both modes; cscript comparing twoway's `.Graph.graphs[k]` layout and SVG.
-- **Tracked:** GAPS.md E3 (named remainder); dash.sthlp:1676-1679.
+- **Tracked:** Partly closed in WP-29 (P0.2, commit ab53f25): yrescale/xrescale are honoured; open: rows(), holes(), colfirst, compact, iscale(), imargin(), the i*/noi* axis options, noedgelabel, style(), and title()/subtitle()/note()/caption()/legend() inside by(); was: GAPS.md E3 (named remainder); dash.sthlp:1676-1679.
 
 <a id="b17"></a>
 ### B17. `legend()`: Stata's abbreviations and most sub-options are named but not drawn
@@ -601,7 +601,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   - `lstyle()` and `noextend` are named.
 - **Closable:** yes.
 - **Plan:** 1. Expand numlists in dash.ado with `numlist`, shared with the B1 fix. 2. Accept the abbreviations; map `lstyle`/`style` through the scheme's linestyle and addedlinestyle. 3. `axis(2)`: draw the `Span` with `y_range_name` 'y2'. 4. `noextend`: draw a `Segment` within the frame (an approximation, since a `Span` always spans the frame). 5. pytest in both modes; cscript comparing twoway's SVG line positions and styles.
-- **Tracked:** GAPS.md E3 (named remainder).
+- **Tracked:** Partly closed in WP-29 (P0.5, commit 3208b2b): yline(5000, axis(2)) is drawn on the second axis; open: numlist positions, the lc/lp/lw abbreviations, lstyle()/style() and noextend; was: GAPS.md E3 (named remainder).
 
 <a id="b23"></a>
 ### B23. `xscale`/`yscale` sub-options other than `log`/`reverse`/`range` are not drawn
@@ -752,7 +752,7 @@ The statistical layers should draw what twoway draws, with the same estimator, d
   - histogram rebinning from the kept rows' min and max, and the kdensity grid over their range
 
   2. Tag every computed renderer with `_dash_agg_config`/`_dash_agg_rows` so the filter callback re-estimates it. Use a Web Worker when N × window exceeds a threshold. 3. Above a size ceiling, or for an unported type, show a cue while a filter is active (dim the layer and add a legend suffix such as "all rows"), and print a build-time note. 4. Test the JavaScript under node against the Python mappers on the four fixture datasets and filtered subsets (as `TestFilterJavaScript` does, test_statistical_helpers.py:860), and against the Stata fixtures on subsets (qualified_stat_truth.json). Add a test that the cue appears for an unported type.
-- **Tracked:** Deferred (WP-28): out of scope by decision (DISCOVERY Q3), with its duplicate E4; nothing is ported to _FILTER_JS on its account; was: new. dash.sthlp Server Mode documents it ("does not redraw a fitted line"); it is not in BUGS.md or GAPS.md.
+- **Tracked:** Partly closed in WP-29 (P0.17, commit b242b99): a frozen fit, smooth or density on the saved page shows a visible stale cue after a move that removed a row of its estimation sample, cleared when the move is undone; open by decision (WP-29 M3, DISCOVERY Q3): the saved page does not re-estimate them, and nothing is ported to _FILTER_JS; no build-time note is printed (DISCOVERY Q22); was: Deferred (WP-28): out of scope by decision (DISCOVERY Q3), with its duplicate E4; nothing is ported to _FILTER_JS on its account; was: new. dash.sthlp Server Mode documents it ("does not redraw a fitted line"); it is not in BUGS.md or GAPS.md.
 
 **C5. function evaluates only ten Python functions: normalden(), normal(), ln(), _pi, comparisons, cond(), min(), max() and scalars draw nothing, and x^y^z is evaluated right to left** -- same gap as A6; see there.
 
@@ -794,7 +794,7 @@ The statistical layers should draw what twoway draws, with the same estimator, d
   - lpoly `r(bwidth)` for 8 kernels × degree 0-3
 
   2. Add `TestPweightBands`, `TestKernelsAgainstStata` and `TestLpolyDefaultBandwidth` to test_statistical_truth.py, in both modes. 3. Record anything still unmeasurable in stat_truth.json's unverified section.
-- **Tracked:** new.
+- **Tracked:** Partly closed in WP-29 (P0.7, commit 758cf59; P0.9, commit e32be3a): the lpoly default bandwidth for degree 2/3 and every kernel, and the aw/fw lpolyci bands; open: aw/fw qfitci and fpfitci bands, stdf/stdr with [fw=], and six of the eight kernels against Stata; was: new.
 
 **C13. The default lpoly/lpolyci bandwidth for epanechnikov at degree 0/1 approximates Stata's rule of thumb, and misses badly on small samples** -- same gap as A9; see there.
 
@@ -1108,7 +1108,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
   2. Refuse with r(198) in `_dash_validate_value 'format'` any format the page cannot write, naming it.
   3. Add a cert test: the rendered card equals the Stata-side kpi display for each accepted format, in both modes and after a filter move.
   4. Record a fixture of Stata `display` outputs and compare the Python and node output against it: %9.0g, %10.0g, %8.0g, %9.2g, %9,2f, %12.0fc, %9.2e, %td and %tdCCYY-NN-DD applied to 6165.2567, 3.14159, 1e7 and -0.5.
-- **Tracked:** Closed in WP-28, BUGS.md "KPI fmt() accepts formats the card then does not apply, and %w.0g rounds the card to one significant digit", commit ef92806; residual deferred (WP-28): a spread of a date variable is computed in milliseconds (outside E1, E3 and G6); was: new
+- **Tracked:** Closed in WP-28, BUGS.md "KPI fmt() accepts formats the card then does not apply, and %w.0g rounds the card to one significant digit", commit ef92806; residual deferred (WP-28): a spread of a date variable is computed in milliseconds (outside E1, E3 and G6) -- closed in WP-29 (P0.20, commit 529875d); was: new
 
 <a id="e2"></a>
 ### E2. `exclude()` leaves excluded graphs and cards showing rows from a filter state that no longer exists
@@ -1360,7 +1360,7 @@ Served mode runs the registry as a live Bokeh Server app. There are two routes. 
   - dash.sthlp:1470's "a flood cannot flood the log" is false: the served app writes one log line per 4xx response.
 - **Closable:** yes. These are text-only fixes.
 - **Plan:** 1. Point the header comment to `python app.py` and say what `bokeh serve` loses. 2. Update the docstring. 3. Change the message to "Break, or Ctrl+C in a console". 4. Print the bound address, and correct dash.sthlp:1470. 5. Extend test/test_tracking_documents.py (or add a pytest) to check the generated header and message text.
-- **Tracked:** new
+- **Tracked:** Partly closed in WP-29 (P0.13, commit c595259; P0.12a, commit 7f5c8f5): the message names Break for the GUI, and the banner prints the bound address; open: the generated header still names bokeh serve first, the ServerAppBuilder docstring is stale, and dash.sthlp still says a flood cannot flood the log; was: new
 
 **F12. Start-up env-var verification covers only `BOKEH_ALLOW_WS_ORIGIN`; other Bokeh variables break the page silently**: same gap as I1; see there.
 
@@ -1411,7 +1411,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
 - **Gap:** The limits exist so that nothing "can grow without bound" (dash.sthlp:1504-1578). But `_dash_cell_cap` (dash.ado:2735-2754, called at 5920 and 6875) counts `_N` times (variables plus qualifier columns), whatever is drawn. As a result, `dash histogram x` on 5,000,001 obs is r(134) by default, and nothing can be drawn past 20M obs. Probe at 1e6 x 3: the page was 1.4 MB, but the note said "roughly 72 MB". The export was 57.3 MB of JSON, took 1.2 s and peaked at 1.35 GB RSS.
 - **Closable:** partly. Rows that the page must hold (row-drawing layers, filters, link/brush, csv, hover) stay bounded by browser string and heap limits, so only graphs built from computed layers alone can escape the cap.
 - **Plan:** 1. In dash.ado, count only the columns the page embeds. A computed-only graph with no filter, link or csv touching it counts only its drawn output. 2. Export in binary instead of JSON: a tempfile read with `pandas.read_stata`, or sfi arrays read into numpy. 3. Base the size note on what is embedded. 4. Test: a 6M-obs histogram builds, its bins equal `twoway__histogram_gen`'s and the page is under 2 MB; a 6M-obs scatter is still refused.
-- **Tracked:** Closed in WP-28, BUGS.md "The data limit counts exported values, so large histograms, densities and fits are refused although the page would be small", commit 4e23bc0; residual deferred (WP-28): a by()-faceted graph is never treated as computed-only and is counted in full, as it was before this section -- the actual panel count is not known before the export, and multiplying the generic 120,000-cell bound by the by_groups LIMIT (100 by default) would read a two-panel by(foreign) on a plain kdensity or lpoly as 12,000,000, over the default cells limit on any dataset however small, which measurably regressed test/test_help_claims_6.py's by()-faceted lpoly grid before this residual was chosen; the export still writes every observation as JSON (DISCOVERY Q9), row-drawing layers, filters, link(), csv and hover() stay bounded by the limit, and the served app embeds every row; was: new (the refusal is documented at dash.sthlp:1504-1578)
+- **Tracked:** Closed in WP-28, BUGS.md "The data limit counts exported values, so large histograms, densities and fits are refused although the page would be small", commit 4e23bc0; residual deferred (WP-28): a by()-faceted graph is never treated as computed-only and is counted in full, as it was before this section -- the actual panel count is not known before the export, and multiplying the generic 120,000-cell bound by the by_groups LIMIT (100 by default) would read a two-panel by(foreign) on a plain kdensity or lpoly as 12,000,000, over the default cells limit on any dataset however small, which measurably regressed test/test_help_claims_6.py's by()-faceted lpoly grid before this residual was chosen; the export still writes every observation as JSON (DISCOVERY Q9), row-drawing layers, filters, link(), csv and hover() stay bounded by the limit, and the served app embeds every row -- WP-29 (P0.10, commit 735c534): hover()'s own variables count only where a layer can show them or csv is given; the graph itself is still treated as touched; was: new (the refusal is documented at dash.sthlp:1504-1578)
 
 <a id="g4"></a>
 ### G4. Time-series operators (L., F., D., S.) in a plot's varlist are refused; twoway draws them
@@ -1489,7 +1489,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
 - **Gap:** twoway's `xlabel(1/5, valuelabel)` puts value labels at the ticks, and a user expects `hover(foreign)` to show Domestic/Foreign, as `list` and `browse` do. dash draws numbers on axes and in tooltips and names `xlabel(, valuelabel)` only in the note (dash.sthlp:672-679, difference 6). `_dash_build_hover` (dash_render.py:19839) takes no value labels.
 - **Closable:** yes.
 - **Plan:** 1. Read the `valuelabel` sub-option and fill `major_label_overrides` from the axis variable's label set, reusing the explicit tick-label path (dash_render.py:16783-16798). 2. For `hover()`, add a derived text column like the marker-label one. 3. Compare with twoway's SVG for `scatter mpg rep78, xlabel(1/5, valuelabel)` with a label set.
-- **Tracked:** Closed in WP-28, BUGS.md "Value labels are never drawn on axes or in tooltips", commit 429d679; residual deferred (WP-28): on the one-line route a hover()-only variable is not exported (BUGS.md's earlier hover-export entry), so its labels cannot be shown; an x or y variable not named in hover() keeps its number in the tooltip; was: new (documented difference 6)
+- **Tracked:** Closed in WP-28, BUGS.md "Value labels are never drawn on axes or in tooltips", commit 429d679; residual deferred (WP-28): on the one-line route a hover()-only variable is not exported (BUGS.md's earlier hover-export entry), so its labels cannot be shown -- closed in WP-29 (P0.10, commit 735c534), on every route; an x or y variable not named in hover() keeps its number in the tooltip; was: new (documented difference 6)
 
 <a id="g17"></a>
 ### G17. Weight expressions are refused ([aw=price+1]); twoway takes an expression

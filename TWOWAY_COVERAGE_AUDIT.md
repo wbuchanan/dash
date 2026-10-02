@@ -1,6 +1,7 @@
 # `dash` coverage of Stata `twoway`
 
 Audit date: 27 September 2026  
+Rows tagged [WP-29 P0.n, commit …] were marked at WP-29's closeout (02oct2026): the tag says what changed; the untagged text is the audit as written.  
 Scope: current working tree, especially `dash.ado`, `dash_parse.mata`, `dash_render.py`, `dash.sthlp`, and the automated tests. Historical gap and roadmap files were used only as leads because many of their findings have since been fixed.
 
 ## Executive summary
@@ -15,18 +16,18 @@ Scope: current working tree, especially `dash.ado`, `dash_parse.mata`, `dash_ren
 - The live parser currently declares **176 option names**. Tests track **48 known accepted-but-not-generally-honored names**, although some of those are conditionally honored on particular graph types and some are not genuine `twoway` options in the position where `dash` accepts them. The test that pins the older total at 171 is stale relative to the current parser.
 - Unknown option names are normally accepted and reported as ignored. Therefore, “the command runs” is not evidence that an option has been implemented.
 
-The strongest coverage is in ordinary observational graphics, direct styling, titles/axes/legends, facets, tooltips, filtering, dashboard layout, and export. Statistical graphics are substantial: OLS, quadratic and fractional-polynomial fits; confidence bands; LOWESS; local polynomial smoothers; median splines/bands; histograms; and kernel densities are all implemented. Some computations intentionally or necessarily differ from Stata, most notably the default `lpoly` bandwidth and the `lpolyci` confidence interval.
+The strongest coverage is in ordinary observational graphics, direct styling, titles/axes/legends, facets, tooltips, filtering, dashboard layout, and export. Statistical graphics are substantial: OLS, quadratic and fractional-polynomial fits; confidence bands; LOWESS; local polynomial smoothers; median splines/bands; histograms; and kernel densities are all implemented. Some computations intentionally or necessarily differ from Stata, most notably the default `lpoly` bandwidth and the `lpolyci` confidence interval. [WP-29 P0.7, commit 758cf59: corrected -- the default lpoly and lpolyci bandwidth is Stata's rule of thumb per kernel and degree] [WP-29 P0.9, commit e32be3a: corrected -- lpolyci draws Stata's analytic band]
 
 The largest remaining parity gaps are:
 
 1. Surface/grid graphics (`contour`, `contourline`, `heatmap`) and range-point graphics (`rpcap`, `rpspike`).
 2. Horizontal orientation for bars, spikes, droplines, and range bars.
-3. Stata's default dataset-order line connection: `dash` always connects relevant plots in x order.
-4. `cmissing(n)`, `sort(varlist)`, `connect()`, `recast()`, `text()`, and graph-editor `play()` behavior.
+3. Stata's default dataset-order line connection: `dash` always connects relevant plots in x order. [WP-29 P0.1, commit b0d170d: corrected -- line, connected, area, rline, rarea and rconnected join in the data's order unless `sort` or `sort(varlist)` is given, as twoway does; tsline and tsrline join in time order]
+4. `cmissing(n)`, `sort(varlist)`, `connect()`, `recast()`, `text()`, and graph-editor `play()` behavior. [WP-29 P0.1, commit b0d170d: partly closed; open: `cmissing(n)`, `connect()`, `recast()`, `text()` and `play()` (`sort(varlist)` is honoured on the six joining types)]
 5. `colorvar()` outside `scatter`, `connected`, `rconnected`, and `dot` markers.
-6. Statistical controls such as `atobs`, `estcmd()`, `estopts()`, `predopts()`, `kdensity` `area`/`boundary`, and `lpolyci` `pwidth()`/`var()`.
+6. Statistical controls such as `atobs`, `estcmd()`, `estopts()`, `predopts()`, `kdensity` `area`/`boundary`, and `lpolyci` `pwidth()`/`var()`. [WP-29 P0.9, commit e32be3a: partly closed; open: `atobs`, `estcmd()`, `estopts()`, `predopts()`, `kdensity` `area`/`boundary` (`lpolyci` `pwidth()`/`var()` are honoured)]
 7. More than two axes, several advanced axis/title/layout options, and much of Stata's named style-bundle system.
-8. Full standalone-HTML recomputation of fits and smooths after filtering; server mode does recompute them.
+8. Full standalone-HTML recomputation of fits and smooths after filtering; server mode does recompute them. [WP-29 P0.17, commit b242b99: partly closed; open: the saved page still does not recompute them (decision M3); it now marks each frozen layer while a move has removed a row of its estimation sample]
 
 ## How to read the detailed tables
 
@@ -41,8 +42,8 @@ Interaction abbreviations used below:
 | Code | Meaning |
 |---|---|
 | **F** | Dashboard filters affect the graph. Raw observation layers redraw in both modes. |
-| **FS** | A computed layer fully recomputes in the served app but remains fixed in saved HTML. |
-| **FH** | Histogram or density recomputes in both modes, but saved HTML retains the original bins or evaluation grid. |
+| **FS** | A computed layer fully recomputes in the served app but remains fixed in saved HTML. [WP-29 P0.17, commit b242b99: partly closed; open: saved HTML still does not recompute; the layer is now dimmed and keyed (unfiltered) while a move has removed a row of its sample] |
+| **FH** | Histogram or density recomputes in both modes, but saved HTML retains the original bins or evaluation grid. [WP-29 P0.17, commit b242b99: partly closed; open: saved HTML keeps the original bins or grid; the layer is now keyed (bins unfiltered) or (grid unfiltered) while a move has removed a row of its sample] |
 | **B** | Linked brushing is visibly reflected by the layer. This is narrower than merely having box/lasso tools. |
 | **H** | Tooltips show plotted values and `hover(varlist)` can add observation fields. |
 | **HC** | Tooltips show computed or immediate coordinates only; extra `hover()` variables cannot reach the layer. |
@@ -57,9 +58,9 @@ The “supported options” column lists the material, graph-specific options ra
 | Family | Graph type | Core rendering and supported options | Dashboard functionality | Important gaps or differences from `twoway` |
 |---|---|---|---|---|
 | Points/lines/bars | `scatter` | `yvarlist x`; marker color, fill, outline, symbol, size, angle and opacity; `mlabel()` family; `jitter()`/seed; full implemented `colorvar()` family; `xaxis()`/`yaxis()` | **F, B, H, E** | `aweight` does not size markers; only axes 1–2; dash's color mapping is not identical to Stata's; named style bundles largely absent |
-| Points/lines/bars | `line` | `yvarlist x`; line and connecting-line color/pattern/width/opacity | **F, H, E** | Always x-sorted; cannot reproduce default dataset order or `sort(varlist)`; `cmissing(n)` unavailable; `colorvar()` ignored even though Stata can color a line; no visible linked selection |
-| Points/lines/bars | `connected` | Marker plus connecting-line styles; marker labels; jitter; `colorvar()` on markers | **F, B, H, E** | Always x-sorted; `cmissing(n)` unavailable; the connecting line does not reflect selection; `colorvar()` does not color the line |
-| Points/lines/bars | `area` | Filled area and outline; `base()`; fill/line styling; x-sorted path | **F, H, E** | Always x-sorted; default base is 0 rather than the plot-region edge when zero is outside the data; no horizontal orientation; `colorvar()` ignored |
+| Points/lines/bars | `line` | `yvarlist x`; line and connecting-line color/pattern/width/opacity | **F, H, E** | Always x-sorted; cannot reproduce default dataset order or `sort(varlist)`; `cmissing(n)` unavailable; `colorvar()` ignored even though Stata can color a line; no visible linked selection [WP-29 P0.1, commit b0d170d: corrected -- joined in the data's order unless `sort` or `sort(varlist)` is given, as twoway does; `sort(varlist)` is honoured] |
+| Points/lines/bars | `connected` | Marker plus connecting-line styles; marker labels; jitter; `colorvar()` on markers | **F, B, H, E** | Always x-sorted; `cmissing(n)` unavailable; the connecting line does not reflect selection; `colorvar()` does not color the line [WP-29 P0.1, commit b0d170d: corrected -- joined in the data's order unless `sort` or `sort(varlist)` is given, as twoway does] |
+| Points/lines/bars | `area` | Filled area and outline; `base()`; fill/line styling; x-sorted path | **F, H, E** | Always x-sorted; default base is 0 rather than the plot-region edge when zero is outside the data; no horizontal orientation; `colorvar()` ignored [WP-29 P0.1, commit b0d170d: corrected -- joined in the data's order unless `sort` or `sort(varlist)` is given, as twoway does] |
 | Points/lines/bars | `bar` | Fill/outline, `barwidth()`, `base()`, marker labels | **F, H, E** | Upright only; `colorvar()` ignored although Stata can color bars; default base differs; bar-position controls are absent |
 | Points/lines/bars | `spike` | Spike line style, `barwidth()`, `base()` | **F, H, E** | Upright only; default base differs; no visible linked selection; marker-label/color-variable features do not apply |
 | Points/lines/bars | `dropline` | Marker plus drop line; `base()`; jitter; marker labels | **F, H, E** | Upright only; default base differs; no visible linked selection |
@@ -67,14 +68,14 @@ The “supported options” column lists the material, graph-specific options ra
 | Immediate | `scatteri` | Literal `#y #x` points; inline labels and clock positions; marker/label/jitter styling; no dataset required | **HC, E** | Not filterable or row-linkable; `hover(varlist)` and weights unavailable; some malformed/trailing input and numlist-range handling differs from Stata |
 | Immediate | `pci` | Literal `#y1 #x1 #y2 #x2` segments; line styling; no dataset required | **HC, E** | No labels; no row filtering, linking, or added hover fields |
 | Immediate | `pcarrowi` | Literal arrows with optional tail labels/clock positions; line styling; no dataset required | **HC, E** | Arrowhead controls are limited; no row filtering, linking, or added hover fields |
-| Range | `rarea` | `ylow yhigh x`; fill/outline; x-sorted boundaries | **F, H, E** | Always x-sorted; upright only; no `colorvar()` or visible linked selection |
+| Range | `rarea` | `ylow yhigh x`; fill/outline; x-sorted boundaries | **F, H, E** | Always x-sorted; upright only; no `colorvar()` or visible linked selection [WP-29 P0.1, commit b0d170d: corrected -- joined in the data's order unless `sort` or `sort(varlist)` is given, as twoway does] |
 | Range | `rbar` | `ylow yhigh x`; fill/outline and range-bar width | **F, H, E** | Upright only; no visible linked selection; Stata bar geometry/options are only partially reproduced |
 | Range | `rspike` | `ylow yhigh x` segments with line styling | **F, B, H, E** | Upright only; no `colorvar()` |
 | Range | `rcap` | Range spine and caps with line styling | **F, H, E** | Upright only; cap geometry is an approximation; no visible linked selection |
 | Range | `rcapsym` | Caps plus the same marker at both ends; marker/line styling; labels on both ends | **F, H, E** | Jitter is ignored/reported although Stata jitters it; cap/marker geometry differs; no visible linked selection |
 | Range | `rscatter` | Two endpoint markers per observation; marker styles; labels on both ends | **F, H, E** | Jitter and `colorvar()` unavailable; no visible linked selection |
-| Range | `rline` | Two boundary lines and line styles | **F, H, E** | Always x-sorted; `cmissing(n)` and visible linked selection unavailable |
-| Range | `rconnected` | Two connected marker series; marker/line styles; labels; jitter; `colorvar()` on markers | **F, B, H, E** | Always x-sorted; `colorvar()` does not color connecting lines; only markers reflect linked selection |
+| Range | `rline` | Two boundary lines and line styles | **F, H, E** | Always x-sorted; `cmissing(n)` and visible linked selection unavailable [WP-29 P0.1, commit b0d170d: corrected -- joined in the data's order unless `sort` or `sort(varlist)` is given, as twoway does] |
+| Range | `rconnected` | Two connected marker series; marker/line styles; labels; jitter; `colorvar()` on markers | **F, B, H, E** | Always x-sorted; `colorvar()` does not color connecting lines; only markers reflect linked selection [WP-29 P0.1, commit b0d170d: corrected -- joined in the data's order unless `sort` or `sort(varlist)` is given, as twoway does] |
 | Paired coordinates | `pcspike` | `y1 x1 y2 x2` segments; line styling | **F, H, E** | No marker labels or visible linked selection; orientation controls absent |
 | Paired coordinates | `pccapsym` | Segment and endpoint markers; marker/line styles; label at first point | **F, H, E** | `headlabel` and jitter unavailable; no visible linked selection; a missing second point drops the whole observation |
 | Paired coordinates | `pcarrow` | Arrow from first/tail to second/head; line styling; tail label | **F, H, E** | `headlabel` and detailed arrowhead controls such as barb/angle sizing are unavailable; no visible linked selection |
@@ -89,8 +90,8 @@ The “supported options” column lists the material, graph-specific options ra
 | Fits/smoothers | `qfitci` | Quadratic fit plus CI; same controls as `lfitci` | **FS, HC, E** | Same saved-mode, fit-control, and validation differences as `lfitci` |
 | Fits/smoothers | `fpfitci` | Fractional-polynomial fit plus `stdp` CI; `level()`; a/f/p weights; CI styles | **FS, HC, E** | `stdf`/`stdr` refused as in Stata; `estopts()` unavailable; small model-choice differences are documented for date-time x values |
 | Fits/smoothers | `lowess` | `bwidth()`, `mean`, `noweight`, `adjust`, `logit`; line/connecting-line styles | **FS, HC, E** | No weights, matching Stata; some `bwidth()` values are more strictly handled; saved HTML does not recompute |
-| Fits/smoothers | `lpoly` | Kernel local polynomial; `bwidth()`, degree 0–3, `kernel()`, `n()`; a/f weights | **FS, HC, E** | Default bandwidth is an approximation and can differ materially; degree above 3 refused; saved HTML does not recompute; advanced fit controls absent |
-| Fits/smoothers | `lpolyci` | Local polynomial plus bootstrap percentile band; `bwidth()`, degree, kernel, `n()`, `level()`; a/f weights; CI styles | **FS, HC, E** | The interval is explicitly not Stata's interval; default bandwidth differs; `pwidth()` and `var()` unavailable; saved HTML does not recompute |
+| Fits/smoothers | `lpoly` | Kernel local polynomial; `bwidth()`, degree 0–3, `kernel()`, `n()`; a/f weights | **FS, HC, E** | Default bandwidth is an approximation and can differ materially; degree above 3 refused; saved HTML does not recompute; advanced fit controls absent [WP-29 P0.7, commit 758cf59: corrected -- the default bandwidth is Stata's rule of thumb per kernel and degree, as lpoly computes it, in both modes and in served recomputes] |
+| Fits/smoothers | `lpolyci` | Local polynomial plus bootstrap percentile band; `bwidth()`, degree, kernel, `n()`, `level()`; a/f weights; CI styles | **FS, HC, E** | The interval is explicitly not Stata's interval; default bandwidth differs; `pwidth()` and `var()` unavailable; saved HTML does not recompute [WP-29 P0.7, commit 758cf59: corrected -- the default bandwidth is Stata's rule of thumb] [WP-29 P0.9, commit e32be3a: corrected -- the band is Stata's analytic band and `pwidth()` and `var()` are honoured; the bootstrap is gone] |
 | Fits/smoothers | `mspline` | Cross-median natural cubic spline; `bands()`, `n()`; a/f/p weights accepted but inert as in Stata | **FS, HC, E** | `mlabel()` refused as in Stata; saved HTML does not recompute; no visible brushing |
 | Fits/smoothers | `mband` | Cross-median line; `bands()`; `n()` accepted but inert; a/f/p weights accepted but inert | **FS, HC, E** | `mlabel()` refused as in Stata; saved HTML does not recompute; no visible brushing |
 | Distributions | `histogram` | `bin()`/`bins()`, `width()`, `start()`, `discrete`, `density`, `fraction`, `frequency`, `percent`; fweights; fill/outline | **FH, HC, E** | Saved HTML keeps original bin edges; maximum 1,000 bins; `gap()`/horizontal behavior and `colorvar()` unavailable; no linked highlight |
@@ -134,14 +135,14 @@ The following option groups are implemented where the geometry has the correspon
 |---|---|---|
 | Titles and text | `title()`, `subtitle()`, `note()`, `caption()`, `xtitle()`, `ytitle()`; multiline strings; text size/color; prefix/suffix; empty title removal | Alternative edge titles `t1title()` through `r2title()` are ignored; most textbox suboptions are warned and ignored; `text()` annotations absent |
 | Axes | `xlabel()`/`ylabel()` numlists, `#N`, ranges/steps, custom text, `minmax`, `none`; formats, sizes, angles, grid/nogrid, value labels; `xscale()`/`yscale()` log/range/reverse; date/time axes | Minor ticks/labels absent; tick marks outside data do not expand the range; automatic date tick selection is an approximation; only two axes; alternate-axis suboption absent |
-| Secondary axes | Layer `xaxis(2)`/`yaxis(2)`; dash's `xtitle2()`/`ytitle2()`, `xlabel2()`/`ylabel2()`, `xscale2()`/`yscale2()`; title `axis(2)` in part | Stata's `ylabel(..., axis(2))` and `yscale(..., axis(2))` forms are not generally read; axes 3–9 unavailable |
+| Secondary axes | Layer `xaxis(2)`/`yaxis(2)`; dash's `xtitle2()`/`ytitle2()`, `xlabel2()`/`ylabel2()`, `xscale2()`/`yscale2()`; title `axis(2)` in part | Stata's `ylabel(..., axis(2))` and `yscale(..., axis(2))` forms are not generally read; axes 3–9 unavailable [WP-29 P0.5, commit 3208b2b: corrected -- `axis(#)` on the title, label, tick, line and scale options is drawn on the axis it names, in both modes; axes 3-9 remain unavailable] |
 | Reference lines | `xline()`/`yline()` with core line style suboptions and date-aware positions | Unsupported reference-line suboptions warn; no richer annotation system |
 | Legends | on/off, Stata clock `position()`, `ring(0)`, rows/columns, order, size, label replacement | Many legend region/layout suboptions are not implemented; `colorvar()` uses dash's own key behavior |
 | Regions | `plotregion()` color/fcolor/lcolor/lwidth; `graphregion()` color/fcolor; `bgcolor()` and dash `plotbgcolor()` alias | Stata `bgcolor()` paints below the graph region; dash colors the graph region itself; margins not reproduced |
 | Proportions | `xsize()`, `ysize()`, `aspectratio()` as responsive aspect controls | `fxsize()`, `fysize()`, and `scale()` ignored; sizes do not mean fixed browser pixels |
-| Facets | `by(varlist)`, including multiple variables, plus `cols()`, `total`, `missing`; common scales; linked marker selections can cross panels | Other `by()` suboptions such as `rows()`, `holes()`, `compact`, and `yrescale` ignored; panel label punctuation/date rendering can differ; default 100-group cap |
+| Facets | `by(varlist)`, including multiple variables, plus `cols()`, `total`, `missing`; common scales; linked marker selections can cross panels | Other `by()` suboptions such as `rows()`, `holes()`, `compact`, and `yrescale` ignored; panel label punctuation/date rendering can differ; default 100-group cap [WP-29 P0.2, commit ab53f25: corrected -- before this commit panels autoranged independently; by() panels now share one scale per axis, and `yrescale`, `xrescale` and `rescale` are honoured] |
 | Schemes | Session `c(scheme)`, 20 shipped translations, a `.scheme` in the working directory, and theme aliases | Curated translation rather than full Stata scheme execution; margins/tick geometry and unsupported chart families omitted; third-party PLUS schemes are not discovered automatically |
-| Connection behavior | Bare `sort` produces what dash already draws | Relevant lines are always x-sorted even when Stata would connect in data order; `sort(varlist)` ignored; `cmissing(n)` absent |
+| Connection behavior | Bare `sort` produces what dash already draws | Relevant lines are always x-sorted even when Stata would connect in data order; `sort(varlist)` ignored; `cmissing(n)` absent [WP-29 P0.1, commit b0d170d: corrected -- the six joining types connect in the data's order as twoway does; bare `sort` and `sort(varlist)` are honoured; `cmissing(n)` is still absent] |
 | Graph operations | `nodraw` suppresses browser opening; `name()` registers an item for a later dashboard | `name()` is not Stata graph memory; `saving()` on a registered graph does nothing; `recast()`, `play()`, `connect()`, graph-editor recordings and arbitrary `text()` are absent |
 
 ## Dashboard functionality beyond `twoway`
@@ -158,8 +159,8 @@ These capabilities are additions rather than parity with `twoway`.
 | Tooltips | Automatic plotted-variable tooltips; `hover(varlist)` for observation-backed plots; value labels and date formatting | Extra hover fields cannot reach computed or immediate layers |
 | PNG | Toolbar save for every graph/grid/tab/facet | Captures figures only: no KPI content, dashboard title, filters, or tab strip |
 | CSV | Optional download of filter-retained rows and every used variable; ISO dates; value labels; UTF-8 BOM; spreadsheet-formula hardening | Ignores brushed selection and graph/plot `if`/`in`; exposes underlying variables, including variables used only by a KPI; served downloads are rate-limited |
-| Standalone build | One self-contained offline `.html` file with CSP | Larger files embed data needed for client-side interactions; fit/smoother recomputation is partial |
-| Server build/serve | Self-contained `.py`; full filter recomputation; health endpoint; loopback default; origin checking; security headers when run through its own entry point; session and recomputation rate limits | No built-in authentication; generated app embeds all used data and is explicitly a single-user tool unless placed behind real access control; direct `bokeh serve` lacks the wrapper's health endpoint, headers, and rate limits |
+| Standalone build | One self-contained offline `.html` file with CSP | Larger files embed data needed for client-side interactions; fit/smoother recomputation is partial [WP-29 P0.11, commit cbeef4e: corrected -- the page embeds only the rows its graphs, cards, filters and csv read] [WP-29 P0.17, commit b242b99: partly closed; open: fits and smooths are not recomputed; a frozen layer is now marked after a move] |
+| Server build/serve | Self-contained `.py`; full filter recomputation; health endpoint; loopback default; origin checking; security headers when run through its own entry point; session and recomputation rate limits | No built-in authentication; generated app embeds all used data and is explicitly a single-user tool unless placed behind real access control; direct `bokeh serve` lacks the wrapper's health endpoint, headers, and rate limits [WP-29 P0.12a, commit 7f5c8f5: corrected -- a per-launch key, which the app makes itself when it is given none; it is no longer described as a single-user tool] [WP-29 P0.12b, commit fd51038: corrected -- the app, spec and data are written 0600 in a 0700 folder where the location allows] |
 
 ## Accepted-but-not-honored surface
 
@@ -170,7 +171,7 @@ The parser intentionally accepts a broad compatibility surface and reports unsup
 This list requires qualification:
 
 - `pstyle()`, `acolor()`, `alcolor()`, `alwidth()`, and `alpattern()` are removed from the ignored list and honored on CI plots.
-- Bare `sort` is effectively honored on line-like plots because dash always sorts them by x; `sort(varlist)` is not honored.
+- Bare `sort` is effectively honored on line-like plots because dash always sorts them by x; `sort(varlist)` is not honored. [WP-29 P0.1, commit b0d170d: corrected -- bare `sort` and `sort(varlist)` are honoured on the six joining types, which otherwise join in the data's order]
 - `filter()` and `link()` are dashboard build/serve options, not graph-layer options.
 - Several names are options of other Stata graph commands rather than `twoway` options in the accepted position.
 - Completely unknown option names also pass through the catch-all and are reported. A misspelling can therefore look like a deliberately unsupported option.
@@ -180,7 +181,7 @@ This list requires qualification:
 
 The default limits, with hard ceilings in parentheses, are: 5 million embedded cells (20 million), 50 million bytes of text (500 million), 100 registered graphs/KPIs (1,000), 100 plots per graph (1,000), 1,000 dropdown values (100,000), 100 facet groups (1,000), 50 tabs (500), and 20 filters (200).
 
-The server defaults to loopback. Its own launcher supplies a health endpoint, CSP/security headers, origin validation, separate health/session rate limiting, session creation limits, and callback throttling. It has no authentication. Exposing it beyond loopback requires an authenticating reverse proxy, firewall, or tunnel. Standalone pages use a restrictive CSP and make no external network requests, but—like any self-contained interactive artifact—can contain the data needed for their interactions.
+The server defaults to loopback. Its own launcher supplies a health endpoint, CSP/security headers, origin validation, separate health/session rate limiting, session creation limits, and callback throttling. It has no authentication. Exposing it beyond loopback requires an authenticating reverse proxy, firewall, or tunnel. Standalone pages use a restrictive CSP and make no external network requests, but—like any self-contained interactive artifact—can contain the data needed for their interactions. [WP-29 P0.12a, commit 7f5c8f5: corrected -- it requires a per-launch key, which the app makes itself when it is given none] [WP-29 P0.11, commit cbeef4e: corrected -- a standalone page holds only the rows its graphs, cards, filters and csv read]
 
 ## Evidence map
 
