@@ -9,6 +9,7 @@ destinations, so this is not an artefact of how the source was staged::
 
     PLUS/d/dash.ado  dash.sthlp  dash_parse.mata  dash_setup.ado  dash_setup.sthlp
     PLUS/py/dash_render.py                      <- EXTENSION subdirectory
+    PLUS/py/dash_setup_lib.py                   (WP-29 P0.19)
     PLUS/e/economist.scheme
     PLUS/s/s1color s1mono s1rcolor s2color s2gcolor s2mono sj stcolor
           stcolor_alt stgcolor stmono1 stmono2 stsj                (.scheme)

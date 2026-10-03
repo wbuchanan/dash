@@ -1,0 +1,6603 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "caveats": [
+   "twoway prints a broken message and r(133) for a refused value holding a double quote"
+  ],
+  "dash_commit": "c595259a71841fbff3f3ffef88f63d4c9ca91771",
+  "extracted": " 1 Oct 2026",
+  "method": ".Graph members via graph_g.class ParseAndLogAxes (scripts/extract_axis2_truth.do)",
+  "stata_version": "19.5"
+ },
+ "data": {
+  "foreign": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0
+  ],
+  "length": [
+   186.0,
+   173.0,
+   168.0,
+   196.0,
+   222.0,
+   218.0,
+   170.0,
+   200.0,
+   207.0,
+   200.0,
+   221.0,
+   204.0,
+   204.0,
+   163.0,
+   212.0,
+   193.0,
+   200.0,
+   179.0,
+   197.0,
+   163.0,
+   206.0,
+   206.0,
+   220.0,
+   147.0,
+   179.0,
+   233.0,
+   230.0,
+   201.0,
+   169.0,
+   221.0,
+   212.0,
+   198.0,
+   217.0,
+   195.0,
+   220.0,
+   198.0,
+   198.0,
+   218.0,
+   200.0,
+   180.0,
+   206.0,
+   170.0,
+   157.0,
+   165.0,
+   182.0,
+   201.0,
+   214.0,
+   198.0,
+   201.0,
+   199.0,
+   203.0,
+   179.0,
+   189.0,
+   174.0,
+   177.0,
+   170.0,
+   165.0,
+   170.0,
+   184.0,
+   161.0,
+   172.0,
+   149.0,
+   154.0,
+   192.0,
+   142.0,
+   164.0,
+   174.0,
+   165.0,
+   175.0,
+   172.0,
+   155.0,
+   155.0,
+   156.0,
+   193.0
+  ],
+  "mpg": [
+   22.0,
+   17.0,
+   22.0,
+   20.0,
+   15.0,
+   18.0,
+   26.0,
+   20.0,
+   16.0,
+   19.0,
+   14.0,
+   14.0,
+   21.0,
+   29.0,
+   16.0,
+   22.0,
+   22.0,
+   24.0,
+   19.0,
+   30.0,
+   18.0,
+   16.0,
+   17.0,
+   28.0,
+   21.0,
+   12.0,
+   12.0,
+   14.0,
+   22.0,
+   14.0,
+   15.0,
+   18.0,
+   14.0,
+   20.0,
+   21.0,
+   19.0,
+   19.0,
+   18.0,
+   19.0,
+   24.0,
+   16.0,
+   28.0,
+   34.0,
+   25.0,
+   26.0,
+   18.0,
+   18.0,
+   18.0,
+   19.0,
+   19.0,
+   19.0,
+   24.0,
+   17.0,
+   23.0,
+   25.0,
+   23.0,
+   35.0,
+   24.0,
+   21.0,
+   21.0,
+   25.0,
+   28.0,
+   30.0,
+   14.0,
+   26.0,
+   35.0,
+   18.0,
+   31.0,
+   18.0,
+   23.0,
+   41.0,
+   25.0,
+   25.0,
+   17.0
+  ],
+  "price": [
+   4099.0,
+   4749.0,
+   3799.0,
+   4816.0,
+   7827.0,
+   5788.0,
+   4453.0,
+   5189.0,
+   10372.0,
+   4082.0,
+   11385.0,
+   14500.0,
+   15906.0,
+   3299.0,
+   5705.0,
+   4504.0,
+   5104.0,
+   3667.0,
+   3955.0,
+   3984.0,
+   4010.0,
+   5886.0,
+   6342.0,
+   4389.0,
+   4187.0,
+   11497.0,
+   13594.0,
+   13466.0,
+   3829.0,
+   5379.0,
+   6165.0,
+   4516.0,
+   6303.0,
+   3291.0,
+   8814.0,
+   5172.0,
+   4733.0,
+   4890.0,
+   4181.0,
+   4195.0,
+   10371.0,
+   4647.0,
+   4425.0,
+   4482.0,
+   6486.0,
+   4060.0,
+   5798.0,
+   4934.0,
+   5222.0,
+   4723.0,
+   4424.0,
+   4172.0,
+   9690.0,
+   6295.0,
+   9735.0,
+   6229.0,
+   4589.0,
+   5079.0,
+   8129.0,
+   4296.0,
+   5799.0,
+   4499.0,
+   3995.0,
+   12990.0,
+   3895.0,
+   3798.0,
+   5899.0,
+   3748.0,
+   5719.0,
+   7140.0,
+   5397.0,
+   4697.0,
+   6850.0,
+   11995.0
+  ],
+  "weight": [
+   2930.0,
+   3350.0,
+   2640.0,
+   3250.0,
+   4080.0,
+   3670.0,
+   2230.0,
+   3280.0,
+   3880.0,
+   3400.0,
+   4330.0,
+   3900.0,
+   4290.0,
+   2110.0,
+   3690.0,
+   3180.0,
+   3220.0,
+   2750.0,
+   3430.0,
+   2120.0,
+   3600.0,
+   3600.0,
+   3740.0,
+   1800.0,
+   2650.0,
+   4840.0,
+   4720.0,
+   3830.0,
+   2580.0,
+   4060.0,
+   3720.0,
+   3370.0,
+   4130.0,
+   2830.0,
+   4060.0,
+   3310.0,
+   3300.0,
+   3690.0,
+   3370.0,
+   2730.0,
+   4030.0,
+   3260.0,
+   1800.0,
+   2200.0,
+   2520.0,
+   3330.0,
+   3700.0,
+   3470.0,
+   3210.0,
+   3200.0,
+   3420.0,
+   2690.0,
+   2830.0,
+   2070.0,
+   2650.0,
+   2370.0,
+   2020.0,
+   2280.0,
+   2750.0,
+   2130.0,
+   2240.0,
+   1760.0,
+   1980.0,
+   3420.0,
+   1830.0,
+   2050.0,
+   2410.0,
+   2200.0,
+   2670.0,
+   2160.0,
+   2040.0,
+   1930.0,
+   1990.0,
+   3170.0
+  ]
+ },
+ "probes": [
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort)",
+   "error": "",
+   "id": "c1",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.427
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000 10000 15000, axis(2))",
+   "error": "",
+   "id": "c2",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.111
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yscale(log axis(2))",
+   "error": "",
+   "id": "c3",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "log"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.11
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yline(5000, axis(2))",
+   "error": "",
+   "id": "c4",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [
+      {
+       "orientation": "y",
+       "z": 5000.0
+      }
+     ],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.116
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [
+      5000.0,
+      7500.0
+     ],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytick(5000 7500, axis(2))",
+   "error": "",
+   "id": "c5",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.108
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [
+      6000.0,
+      9000.0
+     ],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ymlabel(6000 9000, axis(2))",
+   "error": "",
+   "id": "c6",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.108
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": [
+      6000.0,
+      9000.0
+     ]
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ymtick(6000 9000, axis(2))",
+   "error": "",
+   "id": "c7",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.112
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0,
+      10000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(10 20) ylabel(5000 10000, axis(2))",
+   "error": "",
+   "id": "c8",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.111
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0,
+      10000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000 10000, axis(2)) ylabel(10 20)",
+   "error": "",
+   "id": "c9",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.112
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      6000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000 10000, axis(2)) ylabel(6000, axis(2))",
+   "error": "",
+   "id": "c10",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.113
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yline(5000 10000, axis(2)) yline(20)",
+   "error": "",
+   "id": "c11",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [
+      {
+       "orientation": "y",
+       "z": 20.0
+      }
+     ],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [
+      {
+       "orientation": "y",
+       "z": 5000.0
+      },
+      {
+       "orientation": "y",
+       "z": 10000.0
+      }
+     ],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.112
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yscale(log axis(2)) yscale(reverse)",
+   "error": "",
+   "id": "c12",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 1.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "log"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.108
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      20000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(20000, axis(2))",
+   "error": "",
+   "id": "c13",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 20000.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.107
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [
+      20000.0
+     ],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytick(20000, axis(2))",
+   "error": "",
+   "id": "c14",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 20000.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.108
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yline(30000, axis(2))",
+   "error": "",
+   "id": "c15",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [
+      {
+       "orientation": "y",
+       "z": 30000.0
+      }
+     ],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.108
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0,
+      10000.0
+     ],
+     "majornl": [
+      20000.0
+     ],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000 10000, axis(2) norescale) ytick(20000, axis(2) norescale)",
+   "error": "",
+   "id": "c16",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.109
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, ax(2))",
+   "error": "",
+   "id": "c17",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.11
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axi(2))",
+   "error": "",
+   "id": "c18",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.108
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [
+      5000.0
+     ],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytic(5000, ax(2))",
+   "error": "",
+   "id": "c19",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.111
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yli(5000, ax(2))",
+   "error": "",
+   "id": "c20",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [
+      {
+       "orientation": "y",
+       "z": 5000.0
+      }
+     ],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.111
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ysc(log ax(2))",
+   "error": "",
+   "id": "c21",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "log"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.111
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [
+      6000.0
+     ],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yml(6000, ax(2))",
+   "error": "",
+   "id": "c22",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.11
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": [
+      6000.0
+     ]
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ymt(6000, ax(2))",
+   "error": "",
+   "id": "c23",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.11
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytitle(T, ax(2))",
+   "error": "",
+   "id": "c24",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.116
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis( 2 ))",
+   "error": "",
+   "id": "c25",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.135
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(02))",
+   "error": "",
+   "id": "c26",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.113
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(2.0))",
+   "error": "",
+   "id": "c27",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.112
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(+2))",
+   "error": "",
+   "id": "c28",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.113
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(2e0))",
+   "error": "",
+   "id": "c29",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.111
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(1.0x+1))",
+   "error": "",
+   "id": "c30",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.11
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(2.5))",
+   "error": "",
+   "id": "c31",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 5000.0,
+      "curmin": 12.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.11
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(a))",
+   "error": "",
+   "id": "c32",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 5000.0,
+      "curmin": 12.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.112
+  },
+  {
+   "axes": {},
+   "command": "twoway line price weight, yaxis(2) sort ylabel(5000 10000)",
+   "error": "ylabels(5000 10000) not allowed, yaxis1 does not exist",
+   "id": "c33",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.052
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis())",
+   "error": "",
+   "id": "c34",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 5000.0,
+      "curmin": 12.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.112
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(1.5))",
+   "error": "",
+   "id": "c35",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 5000.0,
+      "curmin": 12.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.109
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(2 1))",
+   "error": "",
+   "id": "c36",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 5000.0,
+      "curmin": 12.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.109
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(#2))",
+   "error": "",
+   "id": "c37",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 5000.0,
+      "curmin": 12.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.114
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(.))",
+   "error": "",
+   "id": "c38",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 5000.0,
+      "curmin": 12.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.115
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(1e300))",
+   "error": "",
+   "id": "c39",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 5000.0,
+      "curmin": 12.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.112
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(2147483648))",
+   "error": "",
+   "id": "c40",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 5000.0,
+      "curmin": 12.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.113
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(-2147483649))",
+   "error": "",
+   "id": "c41",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 5000.0,
+      "curmin": 12.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.109
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(-9999999999))",
+   "error": "",
+   "id": "c42",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 5000.0,
+      "curmin": 12.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.109
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0,
+      10000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabels(5000 10000, axis(2))",
+   "error": "",
+   "id": "c43",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.11
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [
+      5000.0
+     ],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yticks(5000, axis(2))",
+   "error": "",
+   "id": "c44",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.11
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylines(5000, axis(2))",
+   "error": "",
+   "id": "c45",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [
+      {
+       "orientation": "y",
+       "z": 5000.0
+      }
+     ],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.114
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": [
+      5000.0
+     ]
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ymticks(5000, axis(2))",
+   "error": "",
+   "id": "c46",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.114
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [
+      5000.0
+     ],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ymlabels(5000, axis(2))",
+   "error": "",
+   "id": "c47",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.113
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytitle(TT, size(small),)",
+   "error": "",
+   "id": "c48",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.114
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [
+      5000.0
+     ],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytick(5000, axis(2),)",
+   "error": "",
+   "id": "c49",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.114
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      15000.0,
+      5000.0,
+      10000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000 10000, axis(2) add)",
+   "error": "",
+   "id": "c50",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.111
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0,
+      10000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway line price weight, yaxis(2) sort ylabel(5000 10000, axis(2)) yscale(log axis(2))",
+   "error": "",
+   "id": "c51",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "log"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.081
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight, ylabel(5000, axis(2))) (line price weight, yaxis(2) sort)",
+   "error": "",
+   "id": "c52",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.109
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      6000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(2)) ylabel(6000, axis(a))",
+   "error": "",
+   "id": "c53",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 6000.0,
+      "curmin": 12.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 3291.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.109
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis2": {
+     "major": [
+      0.0,
+      5000.0,
+      10000.0,
+      15000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(1))",
+   "error": "",
+   "id": "c54",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 5000.0,
+      "curmin": 12.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 15906.0,
+      "curmin": 0.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "2"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.112
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "xaxis2": {
+     "major": [
+      140.0,
+      160.0,
+      180.0,
+      200.0,
+      220.0,
+      240.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (scatter mpg length, xaxis(2))",
+   "error": "",
+   "id": "x1",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 240.0,
+      "curmin": 140.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "2"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.114
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "xaxis2": {
+     "major": [
+      150.0,
+      200.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (scatter mpg length, xaxis(2)), xlabel(150 200, axis(2))",
+   "error": "",
+   "id": "x2",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 233.0,
+      "curmin": 142.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "2"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.111
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "xaxis2": {
+     "major": [
+      140.0,
+      160.0,
+      180.0,
+      200.0,
+      220.0,
+      240.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (scatter mpg length, xaxis(2)), xscale(log axis(2))",
+   "error": "",
+   "id": "x3",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 240.0,
+      "curmin": 140.0,
+      "reverse": 0.0,
+      "transform": "log"
+     },
+     "xaxis_dexes": [
+      "2"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.11
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "xaxis2": {
+     "major": [
+      140.0,
+      160.0,
+      180.0,
+      200.0,
+      220.0,
+      240.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (scatter mpg length, xaxis(2)), xline(200, axis(2))",
+   "error": "",
+   "id": "x4",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [
+      {
+       "orientation": "x",
+       "z": 200.0
+      }
+     ],
+     "x": {
+      "curmax": 240.0,
+      "curmin": 140.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "2"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.11
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "xaxis2": {
+     "major": [
+      140.0,
+      160.0,
+      180.0,
+      200.0,
+      220.0,
+      240.0
+     ],
+     "majornl": [
+      160.0,
+      180.0
+     ],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (scatter mpg length, xaxis(2)), xtick(160 180, axis(2))",
+   "error": "",
+   "id": "x5",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 240.0,
+      "curmin": 140.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "2"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.111
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "xaxis2": {
+     "major": [
+      140.0,
+      160.0,
+      180.0,
+      200.0,
+      220.0,
+      240.0
+     ],
+     "majornl": [],
+     "minor": [
+      170.0
+     ],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (scatter mpg length, xaxis(2)), xmlabel(170, axis(2))",
+   "error": "",
+   "id": "x6",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 240.0,
+      "curmin": 140.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "2"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.109
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "xaxis2": {
+     "major": [
+      140.0,
+      160.0,
+      180.0,
+      200.0,
+      220.0,
+      240.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": [
+      170.0
+     ]
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (scatter mpg length, xaxis(2)), xmtick(170, axis(2))",
+   "error": "",
+   "id": "x7",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 240.0,
+      "curmin": 140.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "2"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.109
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "xaxis2": {
+     "major": [
+      140.0,
+      160.0,
+      180.0,
+      200.0,
+      220.0,
+      240.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (scatter mpg length, xaxis(2)), xtitle(V, axis(2))",
+   "error": "",
+   "id": "x8",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 240.0,
+      "curmin": 140.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "2"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.108
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "xaxis2": {
+     "major": [
+      140.0,
+      160.0,
+      180.0,
+      200.0,
+      220.0,
+      240.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (scatter mpg length, xaxis(2)), xt(V, ax(2))",
+   "error": "",
+   "id": "x9",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 240.0,
+      "curmin": 140.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "2"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.129
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "xaxis2": {
+     "major": [
+      150.0,
+      200.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (scatter mpg length, xaxis(2)), xlabel(2000 3000) xlabel(150 200, axis(2))",
+   "error": "",
+   "id": "x10",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 4840.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 233.0,
+      "curmin": 142.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "2"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.13
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "xaxis2": {
+     "major": [
+      150.0,
+      200.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (scatter mpg length, xaxis(2)), xlabels(150 200, axis(2))",
+   "error": "",
+   "id": "x11",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [],
+     "x": {
+      "curmax": 233.0,
+      "curmin": 142.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "2"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.108
+  },
+  {
+   "axes": {
+    "xaxis1": {
+     "major": [
+      2000.0,
+      3000.0,
+      4000.0,
+      5000.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "xaxis2": {
+     "major": [
+      140.0,
+      160.0,
+      180.0,
+      200.0,
+      220.0,
+      240.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    },
+    "yaxis1": {
+     "major": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+     ],
+     "majornl": [],
+     "minor": [],
+     "minornl": []
+    }
+   },
+   "command": "twoway (scatter mpg weight) (scatter mpg length, xaxis(2)), xline(200, axis(2)) xline(3000)",
+   "error": "",
+   "id": "x12",
+   "panels": [],
+   "plotregions": [
+    {
+     "index": 1,
+     "lines": [
+      {
+       "orientation": "x",
+       "z": 3000.0
+      }
+     ],
+     "x": {
+      "curmax": 5000.0,
+      "curmin": 1760.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "1"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    },
+    {
+     "index": 2,
+     "lines": [
+      {
+       "orientation": "x",
+       "z": 200.0
+      }
+     ],
+     "x": {
+      "curmax": 240.0,
+      "curmin": 140.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "xaxis_dexes": [
+      "2"
+     ],
+     "y": {
+      "curmax": 41.0,
+      "curmin": 10.0,
+      "reverse": 0.0,
+      "transform": "linear"
+     },
+     "yaxis_dexes": [
+      "1"
+     ]
+    }
+   ],
+   "rc": 0,
+   "seconds": 0.108
+  },
+  {
+   "axes": {},
+   "command": "twoway scatter mpg weight, ylabel(20 30, axis(2))",
+   "error": "ylabels(20 30, axis(2)) not allowed, yaxis2 does not exist",
+   "id": "x101",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.046
+  },
+  {
+   "axes": {},
+   "command": "twoway scatter mpg weight, yscale(log axis(2))",
+   "error": "yscale(log axis(2)) not allowed, yaxis2 does not exist",
+   "id": "x102",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.046
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(1, axis(3)) xscale(log axis(3))",
+   "error": "xscale(log axis(3)) not allowed, xaxis3 does not exist",
+   "id": "x103",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.054
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yline(1, axis(3)) ylabel(1, axis(4))",
+   "error": "ylabels(1, axis(4)) not allowed, yaxis4 does not exist",
+   "id": "x104",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.056
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(3) axis(1))",
+   "error": "ylabels(5000, axis(3) axis(1)) not allowed, yaxis3 does not exist",
+   "id": "x105",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.073
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(1) axis(3))",
+   "error": "option axis() not allowed",
+   "id": "x106",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.06
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, AXIS(3))",
+   "error": "option AXIS() not allowed",
+   "id": "x107",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.056
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytitle(T, AXIS(2))",
+   "error": "option AXIS() not allowed",
+   "id": "x108",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.055
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, Axis(2))",
+   "error": "option Axis() not allowed",
+   "id": "x109",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.056
+  },
+  {
+   "axes": {},
+   "command": "twoway line price weight, yaxis(2) sort ylabel(5000, AXIS(2))",
+   "error": "ylabels(5000, AXIS(2)) not allowed, yaxis1 does not exist",
+   "id": "x110",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.047
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, AXIS(2) axis(3))",
+   "error": "ylabels(5000, AXIS(2) axis(3)) not allowed, yaxis3 does not exist",
+   "id": "x111",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.056
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(2)) yscale(axis(3))",
+   "error": "yscale(axis(3)) not allowed, yaxis3 does not exist",
+   "id": "x112",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.055
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight, ylabel(1, axis(3))) (line price weight, yaxis(2) sort), yscale(log axis(4))",
+   "error": "yscale(log axis(4)) not allowed, yaxis4 does not exist",
+   "id": "x113",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.056
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytitle(T, axis(3)) ylabel(1, AXIS(2))",
+   "error": "option AXIS() not allowed",
+   "id": "x114",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.058
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight, ylabel(1, axis(3))) (line price weight, yaxis(2) sort), ylabel(1, axis(4))",
+   "error": "ylabels(1, axis(3)) not allowed, yaxis3 does not exist",
+   "id": "x115",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.057
+  },
+  {
+   "axes": {},
+   "command": "twoway scatter mpg weight || line price weight, yaxis(2) sort ylabel(1, axis(5)) || , ylabel(1, axis(4))",
+   "error": "ylabels(1, axis(5)) not allowed, yaxis5 does not exist",
+   "id": "x116",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.057
+  },
+  {
+   "axes": {},
+   "command": "twoway scatter mpg weight, yline(20, axis(2))",
+   "error": "ylines(20, axis(2)) not allowed, yaxis2 does not exist",
+   "id": "x117",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.047
+  },
+  {
+   "axes": {},
+   "command": "twoway scatter mpg weight, ytick(20 30, axis(2))",
+   "error": "yticks(20 30, axis(2)) not allowed, yaxis2 does not exist",
+   "id": "x118",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.048
+  },
+  {
+   "axes": {},
+   "command": "twoway scatter mpg weight, ymlabel(20 30, axis(2))",
+   "error": "ymlabels(20 30, axis(2)) not allowed, yaxis2 does not exist",
+   "id": "x119",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.047
+  },
+  {
+   "axes": {},
+   "command": "twoway scatter mpg weight, ymtick(20 30, axis(2))",
+   "error": "ymticks(20 30, axis(2)) not allowed, yaxis2 does not exist",
+   "id": "x120",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.049
+  },
+  {
+   "axes": {},
+   "command": "twoway scatter mpg weight, ytitle(T, axis(2))",
+   "error": "ytitle(T, axis(2)) not allowed, yaxis2 does not exist",
+   "id": "x121",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.048
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(0))",
+   "error": "ylabels(5000, axis(0)) not allowed, yaxis0 does not exist",
+   "id": "x122",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.057
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(-1))",
+   "error": "ylabels(5000, axis(-1)) not allowed, yaxis-1 does not exist",
+   "id": "x123",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.059
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(10))",
+   "error": "ylabels(5000, axis(10)) not allowed, yaxis10 does not exist",
+   "id": "x124",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.057
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), xlabel(2000, axis(2))",
+   "error": "xlabels(2000, axis(2)) not allowed, xaxis2 does not exist",
+   "id": "x125",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.056
+  },
+  {
+   "axes": {},
+   "command": "twoway line price weight, yaxis(2) sort ytitle(T)",
+   "error": "ytitle(T) not allowed, yaxis1 does not exist",
+   "id": "x126",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.046
+  },
+  {
+   "axes": {},
+   "command": "twoway scatter mpg weight, ytitle(\"T\", axis(2))",
+   "error": "ytitle(unknown function T\", axis()",
+   "id": "x127",
+   "panels": [],
+   "plotregions": [],
+   "rc": 133,
+   "seconds": 0.046
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(2147483647))",
+   "error": "ylabels(5000, axis(2147483647)) not allowed, yaxis2147483647 does not exist",
+   "id": "x201",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.056
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(-2147483648))",
+   "error": "ylabels(5000, axis(-2147483648)) not allowed, yaxis-2147483648 does not exist",
+   "id": "x202",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.056
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(1e9))",
+   "error": "ylabels(5000, axis(1e9)) not allowed, yaxis1000000000 does not exist",
+   "id": "x203",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.055
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(-0))",
+   "error": "ylabels(5000, axis(-0)) not allowed, yaxis0 does not exist",
+   "id": "x204",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.055
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(1e1))",
+   "error": "ylabels(5000, axis(1e1)) not allowed, yaxis10 does not exist",
+   "id": "x205",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.056
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yscale(log, axis(2))",
+   "error": "invalid 'axis'",
+   "id": "x206",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.057
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytitle(TT, size(small), axis(2))",
+   "error": "invalid 'axis'",
+   "id": "x207",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.057
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yline(5000, lcolor(red), axis(2))",
+   "error": "invalid 'axis'",
+   "id": "x208",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.058
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, angle(0), axis(2))",
+   "error": "invalid 'axis'",
+   "id": "x209",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.057
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytick(20 30, grid, axis(1))",
+   "error": "invalid 'axis'",
+   "id": "x210",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.057
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytitle(TT, size(small), color(red))",
+   "error": "invalid 'color'",
+   "id": "x211",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.0570000000000001
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yscale(log, range(1 50))",
+   "error": "invalid 'range'",
+   "id": "x212",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.056
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yscale(, log)",
+   "error": "invalid 'log'",
+   "id": "x213",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.056
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yline(20, lcolor(red), lwidth(thick))",
+   "error": "invalid 'lwidth'",
+   "id": "x214",
+   "panels": [],
+   "plotregions": [],
+   "rc": 198,
+   "seconds": 0.055
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), by(foreign) ylabel(5000 10000, axis(2))",
+   "error": "",
+   "id": "gb",
+   "panels": [
+    {
+     "panel": 1,
+     "yaxis2_major": [
+      5000.0,
+      10000.0
+     ]
+    },
+    {
+     "panel": 2,
+     "yaxis2_major": [
+      5000.0,
+      10000.0
+     ]
+    }
+   ],
+   "plotregions": [],
+   "rc": 0,
+   "seconds": 0.261
+  },
+  {
+   "axes": {},
+   "command": "twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(1, axis(2)) ylabel(1, axis(2)) ylabel(1, axis(2)) ylabel(1, axis(2)) ylabel(1, axis(2)) ylabel(1, axis(2)) ylabel(1, axis(2)) yla ... (190063 characters)",
+   "error": "too many options",
+   "id": "r1",
+   "panels": [],
+   "plotregions": [],
+   "rc": 1003,
+   "seconds": 0.052
+  }
+ ]
+}

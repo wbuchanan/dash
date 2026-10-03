@@ -954,7 +954,7 @@ def _move_to_foreign(spec):
 
 class TestAFilterMoveCountsObservations:
     """A served filter move redraws a layer whose source the mapper built --
-    a line sorted along x, a fit -- from the rows the widget leaves.  An
+    a line in its join order, a fit -- from the rows the widget leaves.  An
     ``in`` must still count the dataset's observations there: the redraw
     applied the graph's ``in``, and a layer's own, by position to the
     filtered rows (measured 23sep2026: with in 2/8 and the dropdown on

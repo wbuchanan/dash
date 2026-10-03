@@ -426,13 +426,22 @@ def make_data_json(
     df: pd.DataFrame,
     value_labels: "dict | None" = None,
     value_label_names: "dict | None" = None,
+    variable_labels: "dict | None" = None,
 ) -> dict:
     """Serialise a DataFrame to the StataJSON wrapper dict.
+
+    ``variableLabels`` is written as Stata's exporter writes it: an
+    unlabelled variable's label is ``""``, exactly what
+    ``dash_render._dash_write_stata_data`` writes for it.  This helper used
+    to give every variable a label equal to its name, which hid WP-29 P0.3
+    (unlabelled variables drawn with blank titles, keys and tooltip rows).
 
     Args:
         df:               DataFrame whose columns become variableNames.
         value_labels:     Optional ``{labelset: {code: text}}`` mapping.
         value_label_names: Optional ``{varname: labelset}`` mapping.
+        variable_labels:  Optional ``{varname: label}``; a variable not named
+                          is unlabelled (``""``).
 
     Returns:
         A ``{"StataJSON": {...}}`` dict suitable for writing to a data JSON file.
@@ -448,7 +457,8 @@ def make_data_json(
 
     return {"StataJSON": {
         "variableNames": varnames,
-        "variableLabels": {v: v for v in varnames},
+        "variableLabels": {v: (variable_labels or {}).get(v, "")
+                           for v in varnames},
         "valueLabels": value_labels or {},
         "valueLabelNames": value_label_names or {},
         # BOTH keys: real jsonio emits "variableIsString", while

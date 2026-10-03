@@ -215,8 +215,11 @@ class TestTheDataFileIsTheOneDashAdoWrites:
         m = re.search(r"(?ms)^program define _dash_empty_data\b(.*?)^end\b",
                       ado)
         assert m, "dash.ado has no _dash_empty_data program"
-        w = re.search(r"file write `fh' `\"(.*?)\"'", m.group(1))
-        assert w, "_dash_empty_data writes no compound-quoted text"
+        # Flipped (WP-29 P0.12b): the text is a local the program hands to
+        # dash_render.py's private writer (0600, no link), not a
+        # `file write' of Stata's, which followed the umask.
+        w = re.search(r"local _ed `\"(.*?)\"'", m.group(1))
+        assert w, "_dash_empty_data holds no compound-quoted text"
         assert w.group(1) == _EMPTY_DATA
 
     def test_it_is_json_with_no_variable_and_no_observation(self):

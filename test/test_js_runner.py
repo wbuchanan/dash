@@ -23,7 +23,6 @@ S05's ``test_histogram_edge_rule.py`` -- ``run_filter_js_block``, ``NODE``
 (and ``_hist`` from ``test_statistical_helpers``); S12 and S17 --
 ``JsSession``, ``mask_parity``.
 """
-import importlib
 import math
 import os
 import re
@@ -34,7 +33,8 @@ import warnings
 import numpy as np
 import pandas as pd
 import pytest
-from bokeh.models import BooleanFilter, ColumnDataSource, Div, RangeSlider, Select
+from bokeh.models import (BooleanFilter, ColumnDataSource, Div, RangeSlider,
+                          Select, Slider)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
@@ -105,16 +105,12 @@ _KPI_SPEC = {
 
 class TestNode:
     def test_node_is_the_override_or_the_path_lookup(self, monkeypatch):
-        original = js_runner.NODE
-        try:
-            monkeypatch.setenv("DASH_NODE", "/x/node")
-            importlib.reload(js_runner)
-            assert js_runner.NODE == "/x/node"
-            monkeypatch.delenv("DASH_NODE", raising=False)
-            importlib.reload(js_runner)
-            assert js_runner.NODE == shutil.which("node")
-        finally:
-            js_runner.NODE = original
+        # find_node() rather than importlib.reload: a reload rebinds every
+        # function, breaking the aliases other test modules imported.
+        monkeypatch.setenv("DASH_NODE", "/x/node")
+        assert js_runner.find_node() == "/x/node"
+        monkeypatch.delenv("DASH_NODE", raising=False)
+        assert js_runner.find_node() == shutil.which("node")
 
     def test_a_missing_node_skips_with_the_override_named(self, monkeypatch):
         monkeypatch.setattr(js_runner, "NODE", None)
@@ -223,7 +219,10 @@ class TestASessionCarriesState:
         s.set(w, (4000.0, 5000.0))
         s.run(cb)
         state = s.state()
-        assert set(state) == {"sources", "booleans", "divs", "widths"}
+        # Flipped by WP-29 S12 (P0.17): state() also reports muted,
+        # visible and labels, the stale cue's three write-backs.
+        assert set(state) == {"sources", "booleans", "divs", "widths",
+                              "muted", "visible", "labels"}
         k1 = r.kpi_divs["k1"]
         text = state["divs"].get(k1.id, k1.text)
         assert _card_value(text, "k1") == "5"
@@ -364,6 +363,15 @@ class TestTheMigratedShims:
         assert tsh._NODE is js_runner.NODE
         assert tsh._run_filter_js_block is js_runner.run_filter_js_block
 
+    def test_the_aliases_survive_the_node_lookup_test_run_first(
+            self, monkeypatch):
+        # Regression: TestNode once reloaded js_runner, so a worker that had
+        # imported test_statistical_helpers first held stale aliases.
+        import test_statistical_helpers as tsh
+        TestNode().test_node_is_the_override_or_the_path_lookup(monkeypatch)
+        assert tsh._NODE is js_runner.NODE
+        assert tsh._run_filter_js_block is js_runner.run_filter_js_block
+
 
 # ---------------------------------------------------------------------------
 # E2: the saved page's own multi-move sequence, chained
@@ -427,3 +435,49 @@ class TestASessionMeasuresE2:
 #:   TestNode::test_a_missing_node_skips_with_the_override_named
 #: - drop "NODE as _NODE" from test_statistical_helpers.py's import ->
 #:   TestTheMigratedShims::test_the_aliases_s05_imports_exist
+
+
+@js_runner.requires_node
+class TestTheNewWriteBacks:
+    """WP-29 S12 (P0.17): a run commits a renderer's ``muted``, a Title's
+    and a Div's ``visible`` and a LegendItem's ``label``, each key on its
+    own, so the saved page's stale cue can be measured under node."""
+
+    @staticmethod
+    def _models():
+        from bokeh.models import GlyphRenderer, LegendItem, Line, Title
+        from bokeh.core.properties import value
+        src = ColumnDataSource({"x": [1], "y": [2]})
+        r = GlyphRenderer(glyph=Line(x="x", y="y"), data_source=src)
+        t = Title(text="cue", visible=False)
+        d = Div(text="", visible=False)
+        it = LegendItem(label=value("Fitted values"), renderers=[r])
+        return r, t, d, it
+
+    _CODE = ("r.muted = true; t.visible = true; d.visible = true; "
+             "d.text = 'note'; it.label = {value: 'x'};")
+
+    def test_muted_visible_and_label_round_trip(self):
+        r, t, d, it = self._models()
+        s = js_runner.JsSession([r, t, d, it])
+        s.run_code(self._CODE, {"r": r, "t": t, "d": d, "it": it})
+        assert (r.muted, t.visible, d.visible, d.text) == (True, True, True,
+                                                          "note")
+        assert it.label.value == "x"
+        st = s.state()
+        assert st["muted"][r.id] is True and st["visible"][t.id] is True
+        assert st["labels"][it.id] == "x"
+
+        r2, t2, d2, it2 = self._models()
+        js_runner.JsSession([]).run_code(
+            self._CODE, {"r": r2, "t": t2, "d": d2, "it": it2}, commit=False)
+        assert (r2.muted, t2.visible, d2.visible, d2.text) == (
+            False, False, False, "")
+        assert it2.label.value == "Fitted values"
+
+    def test_a_div_still_commits_its_text_and_a_widget_its_width(self):
+        d = Div(text="a")
+        sl = Slider(start=0, end=10, value=1, step=1, width=100)
+        js_runner.JsSession([]).run_code(
+            "d.text = 'b'; s.width = 250;", {"d": d, "s": sl})
+        assert d.text == "b" and sl.width == 250

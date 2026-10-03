@@ -114,6 +114,29 @@ class TestServeBindsLoopbackByDefault:
         )
 
 
+    def test_the_help_names_the_key_and_its_limits(self):
+        """WP-29 P0.12a: the served dashboard opens only through the link
+        that holds its per-launch key, and the help says so -- who can open
+        it, where the key lives, and what plain HTTP exposes."""
+        with open(os.path.join(_HERE, "..", "dash.sthlp"),
+                  encoding="utf-8") as fh:
+            h = fh.read()
+        i = h.index("{marker server_mode}")
+        j = h.index("{marker examples}", i)
+        sec = re.sub(r"\s+", " ", h[i:j])
+        for needle in ("DASH_SERVE_TOKEN", "?token=", "constant time",
+                       "address bar", "history", "SSH tunnel",
+                       "{cmd:http://127.0.0.1:", "link.html",
+                       "never runs without a key",
+                       "--allow-websocket-origin 127.0.0.1"):
+            assert needle in sec, needle
+        for stale in ("only this machine can reach it",
+                      "There is no password", "single-user tool",
+                      "every session gets a page saying so"):
+            assert stale not in sec, stale
+        assert not re.search(r"localhost[^ ]*\?token=", sec)
+
+
 # ---------------------------------------------------------------------------
 # 2. Colour reaching CSS
 # ---------------------------------------------------------------------------
@@ -365,25 +388,26 @@ class TestTheFunctionExpressionWhitelist:
 
     @staticmethod
     def _draw_with_eval_spy(expr, mapper=None):
-        """Draw *expr* and report ``(eval_was_called, n_points)``.
+        """Draw *expr* and report ``(evaluator_was_called, n_points)``.
 
-        ``eval`` is a module global inside ``map_function``; shadowing
-        ``dr.eval`` records whether execution was reached at all -- the
-        strongest "nothing ran" proof for a payload with no file side effect.
+        Flipped (WP-29 P0.6): map_function holds no eval() any more; a
+        spec without points is parsed by Stata's grammar and only an
+        accepted tree reaches ``_stata_fn_eval``, a module global inside
+        ``map_function``.  Shadowing ``dr._stata_fn_eval`` records whether
+        evaluation was reached at all -- the strongest "nothing ran" proof
+        for a payload with no file side effect.
         """
         from bokeh.plotting import figure
-        import builtins
         calls = []
-        real_eval = builtins.eval
         gm = mapper or dr.GlyphMapper()
-        saved = getattr(dr, "eval", real_eval)
-        dr.eval = lambda *a, **k: (calls.append(1), real_eval(*a, **k))[1]
+        saved = dr._stata_fn_eval
+        dr._stata_fn_eval = lambda t, x: (calls.append(1), saved(t, x))[1]
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 r = gm.map_function(figure(), expr, (0.0, 1.0), 5, {})
         finally:
-            dr.eval = saved
+            dr._stata_fn_eval = saved
         return bool(calls), len(r[0].data_source.data["x_fn"])
 
     @pytest.mark.parametrize("expr", _REFUSED)
@@ -499,7 +523,8 @@ class TestTheFunctionExpressionWhitelist:
 
     @pytest.mark.parametrize("expr", [
         "x", "x^2", "2*x^3 - 1", "sin(x)", "exp(-x) * cos(x)",
-        "log(x + 1)", "sqrt(abs(x))", "2*pi*x", "3.14", "9^9^9^9",
+        # 2*_pi*x: Stata's pi (WP-29 P0.6; `2*pi*x' is r(111) in twoway).
+        "log(x + 1)", "sqrt(abs(x))", "2*_pi*x", "3.14", "9^9^9^9",
     ])
     def test_ordinary_expressions_still_draw(self, expr):
         """The control: a numeric expression must survive the tighter guard.
@@ -988,6 +1013,10 @@ class TestTheGeneratedAppBindsLoopbackAtRuntime:
                 raise AssertionError("the pin started a real server")
 
         mod.Server = _FakeServer
+        # WP-29 P0.12a: a key installed, as dash serve's is, so a call
+        # makes and announces none (test_every_server_gets_the_key_check
+        # clears it to see the key made).
+        mod._DASH_SERVE_TOKEN = "dashTestKey_0123456789abcdefghijklmnopqrstuvwxyz"
         return mod, seen
 
     def test_no_address_binds_loopback(self, tmp_path):
@@ -1009,6 +1038,22 @@ class TestTheGeneratedAppBindsLoopbackAtRuntime:
         assert seen[-1].get("address") == "0.0.0.0", (
             "--address no longer overrides the loopback default"
         )
+
+
+    def test_every_server_gets_the_key_check(self, tmp_path, monkeypatch):
+        """WP-29 P0.12a: every Server the app builds carries Gate A, the
+        per-launch key's provider.  Each call makes and announces a key, so
+        its link folder goes under tmp_path."""
+        import tempfile
+        monkeypatch.delenv("DASH_SERVE_TOKEN", raising=False)
+        monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+        mod, seen = self._app_with_fake_server(tmp_path)
+        mod.Server.stop = lambda self: None
+        for address in (None, "", "0.0.0.0"):
+            mod._DASH_SERVE_TOKEN = None
+            mod._dash_server_app(address=address)
+            assert seen[-1]["auth_provider"].__class__.__name__ == \
+                "_DashTokenAuth", address
 
 
 # ---------------------------------------------------------------------------

@@ -33,6 +33,7 @@ Tests:
 from __future__ import annotations
 
 import ast
+import hashlib
 import base64
 import importlib.util
 import json
@@ -51,6 +52,8 @@ import pytest
 
 _HERE = os.path.dirname(__file__)
 _DASH_DIR = os.path.dirname(_HERE)
+sys.path.insert(0, os.path.abspath(_HERE))
+from serve_token_probe import TEST_TOKEN, token_args  # noqa: E402  (P0.12a)
 
 def _load_dash_render():
     """Import dash_render module from the parent directory."""
@@ -3673,9 +3676,11 @@ class TestServerLpolyFpfit:
         satisfies with the curve drawn from no rows (WP-24, measured
         24sep2026).  The served curve must be the saved one, point for
         point: lpoly's default grid is min(N, 50) = 30 equally spaced
-        points from the least x to the greatest, and 21 of them hold at
-        least two observations in their window -- the other 9 are gaps,
-        Stata's null rule (measured).  The saved lpoly is held to Stata's
+        points from the least x to the greatest, and at Stata's default
+        bandwidth on this frame (r(bwidth) 63.42135953323416, WP-29 P0.7)
+        27 of them hold at least two observations in their window --
+        Stata's r(ngrid) is 27; the other 3 are gaps, Stata's null rule.
+        The saved lpoly is held to Stata's
         own in test_statistical_truth.py."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight", "options": {}}],
@@ -3685,7 +3690,9 @@ class TestServerLpolyFpfit:
         served = _panel_curves(doc.roots, "x_lp", "y_lp")
         page, _ = _saved_page(dr_module, auto_df, spec)
         saved = _panel_curves(_page_document(page).roots, "x_lp", "y_lp")
-        assert list(served) == [""] and len(served[""]) == 21, served
+        # WP-29 P0.7: 21 under dash's old 0.65 quartic rule; 27 is Stata's
+        # r(ngrid) (test/fixtures/lpoly_rot_truth.json, server30).
+        assert list(served) == [""] and len(served[""]) == 27, served
         grid = np.linspace(auto_df["weight"].min(), auto_df["weight"].max(), 30)
         assert all(np.isclose(grid, px).any() for px, _py in served[""]), (
             "a served lpoly point is off lpoly's default grid")
@@ -4298,6 +4305,8 @@ def _load_app_module(dr_module, auto_df, spec_dict):
         app_spec = importlib.util.spec_from_file_location("_rl_app", out_f.name)
         app_mod = importlib.util.module_from_spec(app_spec)
         app_spec.loader.exec_module(app_mod)
+        # WP-29 P0.12a: the key Gate B checks, as _dash_server_app installs.
+        app_mod._DASH_SERVE_TOKEN = TEST_TOKEN
         return app_mod
     finally:
         for _p in (spec_path, data_path, out_f.name):
@@ -4452,6 +4461,8 @@ class TestRateLimiterEnforcement:
                 class request:
                     remote_ip = "10.1.1.1"
                     headers = {}
+                    # WP-29 P0.12a: the session carries the key.
+                    arguments = token_args()
 
             doc._session_context = lambda: _FakeSessionContext
             assert doc.session_context.request.remote_ip == "10.1.1.1"
@@ -4495,6 +4506,8 @@ class TestRateLimiterEnforcement:
             class request:
                 remote_ip = "10.2.2.2"
                 headers = {}
+                # WP-29 P0.12a: the session carries the key.
+                arguments = token_args()
 
         doc._session_context = lambda: _FakeSessionContext
 
@@ -4678,10 +4691,11 @@ def _exec_function_app(dr_module, expr, accepted=None):
     """Build a server app with *expr* as the function expression and run make_document.
 
     Returns the Bokeh Document; raises if make_document raises.  With a
-    list for *accepted*, the app's own ``_floats_only`` -- which its
-    map_function calls only once the AST whitelist has ACCEPTED the
-    expression, right before compiling it -- is wrapped to record each
-    call, so the served validator's verdict is read in the served code
+    list for *accepted*, the app's own ``_stata_fn_eval`` -- which its
+    map_function calls only once ``_stata_fn_parse`` has ACCEPTED the
+    expression (WP-29 P0.6; it wrapped ``_floats_only``, gone with the
+    eval() it guarded) -- is wrapped to record each call, so the served
+    grammar's verdict is read in the served code
     (test_server_function_security.py counts it the same way).
     """
     import pandas as pd, numpy as np, importlib.util, tempfile, os
@@ -4703,12 +4717,12 @@ def _exec_function_app(dr_module, expr, accepted=None):
         app_mod = importlib.util.module_from_spec(app_spec)
         app_spec.loader.exec_module(app_mod)
         if accepted is not None:
-            _real = app_mod._floats_only
+            _real = app_mod._stata_fn_eval
 
-            def _counted(tree):
+            def _counted(tree, x):
                 accepted.append(tree)
-                return _real(tree)
-            app_mod._floats_only = _counted
+                return _real(tree, x)
+            app_mod._stata_fn_eval = _counted
         doc = Document()
         app_mod.make_document(doc)
         return doc
@@ -4755,15 +4769,19 @@ class TestServerFunctionExpressionOperators:
         What must remain true is that the app still validates before it
         evaluates. The seven behavioural cases below check the other half:
         that ordinary arithmetic is permitted.
+
+        Flipped (WP-29 P0.6): the whitelist and eval() are gone; a spec
+        without points is parsed by Stata's grammar (_stata_fn_parse) and
+        only its tree is evaluated (_stata_fn_eval), so those two are what
+        the app must carry, and no eval( or compile( of the text.
         """
         source = _build_function_app(dr_module, "x + 1")
-        assert "_validate_expr_node" in source, (
+        assert "def _stata_fn_parse(" in source, (
             "the generated app evaluates a user-supplied expression with no "
-            "AST whitelist in sight"
+            "grammar in sight"
         )
-        assert "_SAFE_FUNCS" in source and "_SAFE_NAMES" in source, (
-            "the expression validator's name and function whitelists are "
-            "not in the generated app"
+        assert "def _stata_fn_eval(" in source, (
+            "the fallback's evaluator is not in the generated app"
         )
         # And nothing still calls the retired inline validator.
         assert "_val_node(" not in source, (
@@ -4804,11 +4822,17 @@ class TestServerFunctionExpressionOperators:
 
     # BUG-FE-1f: exponentiation (BinOp with Pow)
     def test_function_power_does_not_raise(self, dr_module, auto_df):
-        """BUG-FE-1f: x ** 2 must not raise ValueError in server make_document."""
-        doc = _exec_function_app(dr_module, "x ** 2")
+        """BUG-FE-1f: x ^ 2 must not raise ValueError in server make_document.
+
+        Flipped (WP-29 P0.6): ``x ** 2`` is not Stata's (twoway r(198)) and
+        draws nothing; Stata's power is ``^``, and its values are drawn."""
+        doc = _exec_function_app(dr_module, "x ^ 2")
         assert _count_glyph_renderers(doc) > 0, (
-            "the function layer for 'x ** 2' was not drawn"
+            "the function layer for 'x ^ 2' was not drawn"
         )
+        (_fig, r), = _glyph_layers(doc.roots)
+        xs = _drawn_values(r, "x_fn")
+        assert _drawn_values(r, "y_fn") == [v ** 2 for v in xs]
 
     # BUG-FE-1g: unary negation (UnaryOp with USub)
     def test_function_unary_negation_does_not_raise(self, dr_module, auto_df):
@@ -4820,10 +4844,13 @@ class TestServerFunctionExpressionOperators:
 
     # BUG-FE-1h: complex nested expression
     def test_function_complex_expr_does_not_raise(self, dr_module, auto_df):
-        """BUG-FE-1h: sin(x) + x**2 - 1 must not raise ValueError."""
-        doc = _exec_function_app(dr_module, "sin(x) + x**2 - 1")
+        """BUG-FE-1h: sin(x) + x^2 - 1 must not raise ValueError.
+
+        Flipped (WP-29 P0.6): written with Stata's ``^``; ``**`` is
+        refused as twoway refuses it."""
+        doc = _exec_function_app(dr_module, "sin(x) + x^2 - 1")
         assert _count_glyph_renderers(doc) > 0, (
-            "make_document must add roots for complex expression 'sin(x) + x**2 - 1'"
+            "make_document must add roots for complex expression 'sin(x) + x^2 - 1'"
         )
 
     # Safety: unsafe names must be blocked — generated source must contain _SAFE_NAMES guard
@@ -4835,12 +4862,14 @@ class TestServerFunctionExpressionOperators:
         eval() is never reached with the unsafe code, not that make_document raises.
         Verify the guard exists in the generated source.
         """
+        # Flipped (WP-29 P0.6): the names are now refused by the grammar,
+        # _stata_fn_parse, which takes x and _pi alone.
         source = _build_function_app(dr_module, "x + 1")
-        assert "_SAFE_NAMES" in source, (
-            "generated server source must contain _SAFE_NAMES to block disallowed names"
+        assert "def _stata_fn_parse(" in source, (
+            "generated server source must contain _stata_fn_parse to block disallowed names"
         )
-        assert "Unsafe name" in source, (
-            "generated server source must contain 'Unsafe name' error text for _SAFE_NAMES guard"
+        assert '"unknown name"' in source, (
+            "generated server source must contain the parser's refusal of any other name"
         )
 
     # Safety: unsafe function calls must be blocked — generated source must contain _SAFE_FUNCS guard
@@ -4850,12 +4879,14 @@ class TestServerFunctionExpressionOperators:
         Same rationale as test_function_unsafe_name_guard_in_source: the try/except
         silences the error but the eval() path is never reached for unsafe expressions.
         """
+        # Flipped (WP-29 P0.6): the parser's function-name table and its
+        # refusal of any other call.
         source = _build_function_app(dr_module, "x + 1")
-        assert "_SAFE_FUNCS" in source, (
-            "generated server source must contain _SAFE_FUNCS to block disallowed function calls"
+        assert '"floor", "ceil")' in source, (
+            "generated server source must contain the parser's function-name table"
         )
-        assert "Disallowed function call" in source, (
-            "generated server source must contain 'Disallowed function call' guard text"
+        assert '"unknown function"' in source, (
+            "generated server source must contain the parser's refusal of any other call"
         )
 
     # Safety: unsafe expression silently skipped (dashboard still loads, no line from unsafe expr)
@@ -4868,8 +4899,8 @@ class TestServerFunctionExpressionOperators:
         This asserted only ``doc is not None``, which make_document's return
         guarantees whatever the validator does: with the whitelist call
         deleted from map_function it stayed green (WP-24, measured
-        24sep2026).  The served validator must REFUSE the expression -- it
-        never reaches _floats_only, so it is never compiled or evaluated --
+        24sep2026).  The served grammar must REFUSE the expression -- it
+        never reaches _stata_fn_eval, so it is never evaluated (WP-29 P0.6) --
         and the figure loads with its function layer empty.  The control is
         a plain expression, which the same count sees accepted once and the
         same reader sees drawn at all 20 points.
@@ -5101,10 +5132,13 @@ class TestServerFunctionConstantExpressions:
     """
 
     def test_constant_pi_renders_glyph(self, dr_module, auto_df):
-        """BUG-31-1a: function expression 'pi' must produce a glyph renderer."""
-        doc = _exec_function_app(dr_module, "pi")
+        """BUG-31-1a: function expression '_pi' must produce a glyph renderer.
+
+        Flipped (WP-29 P0.6): Stata's constant is ``_pi``; twoway refuses
+        ``pi`` (r(111))."""
+        doc = _exec_function_app(dr_module, "_pi")
         assert _count_glyph_renderers(doc) > 0, (
-            "function expression 'pi' must produce at least one glyph renderer"
+            "function expression '_pi' must produce at least one glyph renderer"
         )
 
     def test_constant_integer_renders_glyph(self, dr_module, auto_df):
@@ -5343,9 +5377,14 @@ class TestCLIServeFlagsAccepted:
         try:
             # Must not raise -- and what it accepted it acted on: the file
             # (created empty above) now holds Python defining the entry
-            # point bokeh serve calls.
-            assert dr_module.main(spec_path, data_path, out_f.name,
-                                  "server") is None
+            # point bokeh serve calls.  Flipped (WP-29 P0.12b): main()
+            # returns the written app's identity and digest, which the
+            # launcher verifies before it runs the app; it returned None.
+            _written = dr_module.main(spec_path, data_path, out_f.name,
+                                      "server")
+            with open(out_f.name, "rb") as fh:
+                assert _written.sha256 == hashlib.sha256(
+                    fh.read()).hexdigest()
             with open(out_f.name, encoding="utf-8") as fh:
                 tree = ast.parse(fh.read())
             assert "make_document" in {
@@ -5664,6 +5703,8 @@ def _ql_app_ns(dr, tmp_path, spec, df=None):
     with _w.catch_warnings():
         _w.simplefilter("ignore")
         exec(compile(src.replace(attach, "pass"), "_ql_app_ns.py", "exec"), ns)
+    # WP-29 P0.12a: the key Gate B checks, as _dash_server_app installs it.
+    ns["_DASH_SERVE_TOKEN"] = TEST_TOKEN
     return ns
 
 
@@ -7483,8 +7524,9 @@ class TestServerFilterPreservesDerivedColumns:
         # G1 (WP-28): the marker-label column is named under the __dash
         # prefix now (dr._DASH_MLABEL_PREFIX + "foreign").
         ({"mlabel": "foreign"}, "__dash_mlabel_foreign"),
-        ({"colorvar": "foreign", "colordiscrete": "colordiscrete"},
-         "_cvar_foreign_bin"),
+        # WP-29 P0.16: the colour column is named under __dash_cvar, one
+        # per layer; None here is resolved to the Scatter's colour field.
+        ({"colorvar": "foreign", "colordiscrete": "colordiscrete"}, None),
     ], ids=["marker_labels", "colour_bins"])
     def test_a_derived_column_keeps_each_kept_rows_value_after_a_move(
             self, dr_module, auto_df, tmp_path, opts, column):
@@ -7512,6 +7554,11 @@ class TestServerFilterPreservesDerivedColumns:
         labels = ({"origin": {"0": "Domestic", "1": "Foreign"}},
                   {"foreign": "origin"})
         doc, _ = _ql_served(dr_module, tmp_path, spec, auto_df, labels)
+        if column is None:
+            import colour_bins as cb
+            (rend,) = [r for r in cb.colour_renderers(doc)
+                       if type(r.glyph).__name__ == "Scatter"]
+            column = cb.colour_field(rend)
 
         def _layer():
             found = [r.data_source for root in doc.roots
@@ -10755,7 +10802,9 @@ class TestServeUniqueAppPath:
     The fix is dash.ado's, and is certified by running it:
     test_serve_launch.cscript SRV-19 runs dash serve with the renderer
     stubbed to record its arguments, and requires the app file it is
-    handed to be a tempfile of the session.  A test here used to read
+    handed to be app.py in a private run folder of the session,
+    c(tmpdir)dash-<uid>/run-<pid>-<random>/ (WP-29 P0.12b; it was a Stata
+    tempfile of the session).  A test here used to read
     _dash_serve's text for `tempfile ... serve_app'; measured (WP-24), a
     COMMENT in _dash_serve satisfied it, so with the tempfile line deleted
     and the fixed name restored it stayed green.  It was removed for SRV-19.

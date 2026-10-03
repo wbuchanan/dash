@@ -357,5 +357,8 @@ class TestColorvarStrings:
             r = dr.DashRenderer(sp, dp)
             r.render()
         [gsrc] = list(r.sources.values())
-        binned = gsrc.data["_cvar_s_bin"]
-        assert sorted(set(binned)) == ["__missing__", "a", "nan"]
+        # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
+        import colour_bins as cb
+        (rend,) = cb.colour_renderers(r._last_layout_root)
+        binned = cb.colour_values(rend)
+        assert set(binned) == {None, "a", "nan"}

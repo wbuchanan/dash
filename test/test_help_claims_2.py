@@ -77,6 +77,7 @@ sys.path.insert(0, _ROOT)
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from serve_token_probe import FakeStdin  # noqa: E402  (WP-29 P0.12a)
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
@@ -766,13 +767,15 @@ class _FakeProc:
     """Stands in for subprocess.Popen (GAPS2 F1): the real launcher now
     pipes the child's stdout/stderr and reads its exit status
     (_dash_launch_app, TR-09.2), so the fake takes **kw and offers text
-    streams, a returncode and poll()/terminate()/communicate() too."""
+    streams, a returncode and poll()/terminate()/communicate() too, and a
+    stdin the app is handed over on (WP-29 P0.12b)."""
     waited = False
 
     def __init__(self, cmd, **kw):
         type(self).cmd = list(cmd)
         type(self).kw = kw
         self.returncode = 0
+        self.stdin = FakeStdin()
         self.stdout = io.StringIO()
         self.stderr = io.StringIO()
 
@@ -877,10 +880,14 @@ class TestTheCsvButton:
 
 class TestTheCsvCarriesEveryVariableTheDashboardUses:
     """dash.sthlp: the CSV has "every variable the dashboard uses --
-    including one that only a KPI card summarises"; "A saved dashboard with
-    filters already contains those rows (the filters need them), but a
-    served one sends the browser only what it draws."  (HC2-39 is the
-    Stata half: the data dash.ado exports holds the card's variable.)"""
+    including one that only a KPI card summarises"; "Without csv a saved
+    dashboard holds only the observations its graphs, cards and filters
+    select ...; with it the page holds them all, so that the download can
+    be written in the browser, but a served one sends the browser only what
+    it draws."  (HC2-39 is the Stata half: the data dash.ado exports holds
+    the card's variable.)  Flipped (WP-29 P0.11): the docstring quoted "A
+    saved dashboard with filters already contains those rows", which the
+    page no longer does."""
 
     def _spec(self, csv):
         return _filtered_spec([plot_for("scatter")], csv=csv,
@@ -895,12 +902,29 @@ class TestTheCsvCarriesEveryVariableTheDashboardUses:
         cb = _button(doc).js_property_callbacks["change:tags"][0]
         assert "price" in json.loads(cb.args["meta_json"])["columns"]
 
-    def test_a_saved_page_with_filters_holds_every_row_without_csv(
+    def test_a_saved_page_holds_the_rows_its_graphs_cards_and_filters_select(
             self, tmp_path):
+        # The spec is unqualified and its card follows the filter, so every
+        # row is selected (WP-29 P0.11; renamed from
+        # test_a_saved_page_with_filters_holds_every_row_without_csv).
         r, _, _ = _saved(tmp_path, self._spec(""))
         snap = r.filter_callbacks[0].args["orig_source"].data
         for c in _DF.columns:
             assert c in snap and len(snap[c]) == len(_DF), c
+
+    def test_a_graph_if_keeps_its_variables_on_its_rows_only(self, tmp_path):
+        """WP-29 P0.11: under a graph ``if foreign == 1`` and no csv, the
+        snapshot holds mpg on the foreign rows only (the card keeps every
+        row on the page for price)."""
+        spec = self._spec("")
+        spec["graphs"][0]["if_expr"] = "foreign == 1"
+        r, _, _ = _saved(tmp_path, spec)
+        snap = r.filter_callbacks[0].args["orig_source"].data
+        obs = [r._page_labels[int(i)] for i in snap["__dash_row__"]]
+        held = sorted(o for o, v in zip(obs, snap["mpg"])
+                      if v is not None and v == v)
+        assert held == [i for i in range(len(_DF))
+                        if _DF["foreign"].iloc[i] == 1.0], held
 
     def test_a_served_page_sends_only_what_it_draws(self, tmp_path):
         doc, _, _ = _served(tmp_path, self._spec(""))

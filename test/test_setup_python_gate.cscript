@@ -166,13 +166,15 @@ capture program drop _gate16
 // ---- the upgrade line names the linked interpreter (Q27) ----
 // _dash_pip_command builds the `To upgrade:' line dash_setup prints when
 // a package is below its minimum: the interpreter Stata is linked to,
-// never a bare `python'.  Both sides are built in the same session, so
-// this holds whether or not Python is linked here.
-_dash_pip_command "bokeh" "3.8"
-local _pipcmd `"`r(cmd)'"'
-local _want_cmd `"`c(python_exec)' -m pip install 'bokeh>=3.8'"'
-_chk "the pip command is c(python_exec) + pip install" `"`_pipcmd'"' `"`_want_cmd'"'
+// never a bare `python'.  WP-29 P0.19: the line is built by
+// dash_setup_lib.py and quoted for the shell (shlex.join on POSIX), so the
+// expected line is that oracle; the helper runs Python, so this is checked
+// where Python is linked.
 if `"`c(python_exec)'"' != "" {
+    _dash_pip_command "bokeh" "3.8"
+    local _pipcmd `"`r(cmd)'"'
+    python: import shlex, sfi; sfi.Macro.setLocal("_want_cmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8"]))
+    _chk "the pip command is c(python_exec) + pip install, quoted" `"`_pipcmd'"' `"`_want_cmd'"'
     mata: st_local("_haspx", strofreal(strpos(st_local("_pipcmd"), " -m pip install 'bokeh>=3.8'") > 1))
     _chk "the upgrade command names c(python_exec)" "`_haspx'" "1"
 }

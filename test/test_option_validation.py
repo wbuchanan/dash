@@ -77,6 +77,7 @@ base=num  barwidth=pos  level=num,0,100,x
 degree=int,0,3  bwidth=pos,1@lowess  bwidth=pos
 kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle
 n=int,1,300@mspline  n=int,2,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200
+level=num,10,99.99@lpolyci
 colornlevels=int,2,256
 colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds
 colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2
@@ -217,8 +218,10 @@ class TestTheTableIsWellFormed:
                    + _parse_rules(CONTRACT_GRAPH_RULES))
         # 40 since WP-18: mspline's n() is twoway's own 1 to 300 ("n must
         # be between 1 and 300", r(198), measured), so it has a typed token
-        # beside the untyped n=int,2,10000 of the other types.
-        assert len(want) == 40, "the contract text above lost a token"
+        # beside the untyped n=int,2,10000 of the other types.  41 since
+        # WP-29 P0.9: lpolyci's level() is twoway's 10 to 99.99 ("level()
+        # must be between 10 and 99.99 inclusive", r(198), measured).
+        assert len(want) == 41, "the contract text above lost a token"
         missing = sorted(want - parsed)
         assert not missing, f"contract rules absent from dash.ado: {missing}"
 
@@ -1281,7 +1284,10 @@ _DASH_ONLY = {"jseed", "malpha", "lalpha", "falpha", "colornlevels",
               # dash's spellings of xlabel(..., axis(2)): the fixture's
               # xlabel2_1-3/ylabel2_1-3 record twoway's "option xlabel2()
               # not allowed" for every value (30sep2026).
-              "xlabel2", "ylabel2"}
+              "xlabel2", "ylabel2",
+              # WP-29 P0.5: dash's spellings of xtick(..., axis(2)) and
+              # ytick(..., axis(2)); twoway refuses those names outright.
+              "xtick2", "ytick2"}
 # Options whose refusal is dash's own and documented as such (dash.sthlp,
 # "Option values"): twoway accepts every value of these silently.  And
 # scheme, which these tests never saw until _TOKEN read every kind

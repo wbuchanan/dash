@@ -69,13 +69,15 @@ def _spec(expr):
 
 
 class _ValidatorVerdict:
-    """Counts the function() expressions map_function's whitelist ACCEPTED.
+    """Counts the function() expressions map_function's grammar ACCEPTED.
 
-    map_function parses the expression, walks it against the whitelist,
-    and only then hands the tree to ``_floats_only`` and compiles it; a
-    refusal returns an empty layer before ``_floats_only`` is reached.  So a
-    call of ``_floats_only`` is the validator's "accepted", read without
-    evaluating anything it refused.
+    Flipped (WP-29 P0.6): map_function no longer compiles or evals the
+    text.  A spec without points is parsed by Stata's grammar
+    (``_stata_fn_parse``), and only an accepted tree is handed to
+    ``_stata_fn_eval``; a refusal returns an empty layer before it is
+    reached.  So a call of ``_stata_fn_eval`` is the grammar's "accepted",
+    read without evaluating anything it refused.  (It counted calls of
+    ``_floats_only``, which went with the eval() it guarded.)
 
     "Drew nothing" cannot tell the two apart: map_function swallows an
     evaluation error into the same empty layer, and ``_floats_only`` turns
@@ -89,17 +91,17 @@ class _ValidatorVerdict:
         self.real = None
         self.accepted = 0
 
-    def __call__(self, tree):
+    def __call__(self, tree, x):
         self.accepted += 1
-        return self.real(tree)
+        return self.real(tree, x)
 
 
 def _build_and_run(tmp_path, expr, verdict=None):
     """Build the server app for *expr* and execute its make_document.
 
-    With *verdict*, the app's own ``_floats_only`` -- the copy its
+    With *verdict*, the app's own ``_stata_fn_eval`` -- the copy its
     GlyphMapper calls -- is wrapped for the document build, so the served
-    validator's verdict is counted in the served code itself.
+    grammar's verdict is counted in the served code itself.
     """
     tag = next(_SEQ)
     sp = tmp_path / f"s_{tag}.json"
@@ -118,8 +120,8 @@ def _build_and_run(tmp_path, expr, verdict=None):
         warnings.simplefilter("ignore")
         ms.loader.exec_module(mod)
         if verdict is not None:
-            verdict.real = mod._floats_only
-            mod._floats_only = verdict
+            verdict.real = mod._stata_fn_eval
+            mod._stata_fn_eval = verdict
         doc = Document()
         mod.make_document(doc)
     return doc
@@ -134,15 +136,15 @@ def _standalone(tmp_path, expr, verdict=None):
         __import__("pandas").DataFrame({"x": [0.0, 0.5, 1.0],
                                         "yv": [1.0, 2.0, 3.0]}))))
     if verdict is not None:
-        verdict.real = dr._floats_only
-        dr._floats_only = verdict
+        verdict.real = dr._stata_fn_eval
+        dr._stata_fn_eval = verdict
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr.DashRenderer(str(sp), str(dp)).render()
     finally:
         if verdict is not None:
-            dr._floats_only = verdict.real
+            dr._stata_fn_eval = verdict.real
 
 
 class TestAKeywordArgumentCannotExecute:
@@ -214,27 +216,37 @@ class TestAKeywordArgumentCannotExecute:
             _standalone(tmp_path, "sin(x)", verdict)
         assert verdict.accepted == 1, verdict.accepted
 
-    def test_the_emitted_validator_names_keywords(self):
-        """Source-level guard: the branch must exist, not just happen to fail.
+    def test_the_emitted_mapper_cannot_evaluate_python(self, tmp_path):
+        """Source-level guard: no Python evaluation exists to be reached.
 
-        It is checked on ``GlyphMapper.map_function``, which is where the
-        validator now lives and which BOTH modes run. It used to be written
-        as string literals inside ``ServerAppBuilder``, and reading that
-        source for it now finds nothing -- not because the guard went away,
-        but because the served app calls the shared implementation instead of
-        carrying a second copy of it.
+        Flipped and renamed (WP-29 P0.6) from
+        ``test_the_emitted_validator_names_keywords``, which required the
+        AST whitelist's ``node.keywords`` branch.  The whitelist and its
+        eval() are gone: a spec Stata wrote carries the points, and one
+        without is parsed by Stata's grammar, which has no keywords, no
+        attributes and no names but x and _pi.  So the mapper, the parser
+        and the evaluator hold no eval( and no compile(, and the parser is
+        in the app both modes run.
         """
         import inspect
-        src = inspect.getsource(dr.GlyphMapper.map_function)
-        assert "node.keywords" in src, (
-            "the function validator does not inspect node.keywords, so a "
-            "keyword argument's value is never walked"
-        )
-        # And the guard reaches the generated app, not just this module.
-        assert "node.keywords" in inspect.getsource(dr.GlyphMapper), (
-            "map_function's validator is not part of the GlyphMapper source "
-            "the server app copies"
-        )
+        import re
+        pat = re.compile(r"(?<![A-Za-z0-9_.])(eval|compile|exec)\s*\(")
+        for fn in (dr.GlyphMapper.map_function, dr._stata_fn_parse,
+                   dr._stata_fn_eval):
+            assert not pat.search(inspect.getsource(fn)), fn.__name__
+        sp = tmp_path / "s_src.json"
+        dp = tmp_path / "d_src.json"
+        sp.write_text(json.dumps(_spec("x")))
+        dp.write_text(json.dumps(make_data_json(
+            __import__("pandas").DataFrame({"x": [0.0, 1.0],
+                                            "yv": [1.0, 2.0]}))))
+        ap = tmp_path / "a_src.py"
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
+        src = ap.read_text()
+        assert "def _stata_fn_parse(" in src and "def _stata_fn_eval(" in src, (
+            "the grammar is not part of the source the server app runs")
 
 
 class TestOrdinaryFunctionPlotsStillWork:
@@ -242,7 +254,8 @@ class TestOrdinaryFunctionPlotsStillWork:
 
     @pytest.mark.parametrize("expr", [
         "x", "x^2", "sin(x)", "exp(-x) * cos(x)",
-        "log(x + 1)", "sqrt(abs(x))", "2*pi*x",
+        # 2*_pi*x: Stata's pi (WP-29 P0.6; `2*pi*x' is r(111) in twoway).
+        "log(x + 1)", "sqrt(abs(x))", "2*_pi*x",
     ])
     def test_a_plain_expression_still_draws(self, tmp_path, expr):
         doc = _build_and_run(tmp_path, expr)

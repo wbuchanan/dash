@@ -1,7 +1,8 @@
 *! test_parser.cscript  v2.0
 *! Certification script for the dash command parsing (syntax-based, v2.0 architecture).
 *!
-*! Tests: P1A-31 through P1A-84  (rewritten for syntax-based parsing)
+*! Tests: P1A-31 through P1A-84  (rewritten for syntax-based parsing), and
+*!        FX-01 through FX-11 (function evaluated by Stata, WP-29 P0.6)
 *!
 *! In v2.0 parsing is done via Stata's -syntax- command rather than a
 *! hand-rolled Mata parser.  These tests exercise:
@@ -1467,6 +1468,9 @@ display "P1A-76 PASS: no prefix of a plot-type name reaches two rows, and _expan
 // (functions are case-sensitive), a call anywhere in the expression, and
 // the form with no `y ='.  normal(x), which Stata has, twoway draws (rc 0).
 // dash registered every refused one, rc 0, and drew an empty layer.
+// Flipped by WP-29 P0.6: dash now runs twoway's own generator, so its
+// refusal is twoway's one line -- no "unknown function" line after it --
+// and its codes are twoway's, read live, for the long expressions too.
 sysuse auto, clear
 dash clear
 local rs77 = c(rngstate)
@@ -1484,15 +1488,16 @@ foreach e in "y = nosuchfunction(x)" "y = system(x)" "y = Sin(x)" ///
     cert_file_has "`lg77'", needle("error in expression: ")
     assert r(found) == 1
     cert_file_has "`lg77'", needle("unknown function ")
-    assert r(found) == 1
+    assert r(found) == 0
 }
 capture twoway (function y = nosuchfunction(x), range(0 10)) (scatter mpg weight), nodraw
 assert _rc == 133
 _p1a_logrun `"dash (function y = nosuchfunction(x), range(0 10)) (scatter mpg weight), name(p1a77)"'
 assert r(rc) == 133
 assert "${dash_graph_registry}" == ""
-// Nothing was evaluated that could move the random-number state: a known
-// function is put to Stata with 32 arguments, which it refuses at parse.
+// Nothing was evaluated that could move the random-number state: Stata
+// reads the whole expression before it evaluates any of it (the generator
+// alone: y = runiform() + nosuch(x) is r(133), the state unchanged).
 _p1a_logrun `"dash function y = runiform() + rnormal() + nosuch(x), range(0 1) name(p1a77)"'
 assert r(rc) == 133
 assert c(rngstate) == "`rs77'"
@@ -1518,7 +1523,8 @@ assert r(rc) == 133
 cert_file_has "`r(log)'", needle("{bf:BOLD} + {res}")
 assert r(found) == 1
 // Resource exhaustion: 5,000 distinct unknown calls are refused at the
-// first; 5,000 calls of one known function are one question to Stata.
+// first; 5,000 calls of one known function are twoway's answer, read live
+// (r(130), the expression too long, measured).
 local e77 "x"
 local k77 "x"
 forvalues i = 1/5000 {
@@ -1529,24 +1535,23 @@ timer clear 77
 timer on 77
 _p1a_logrun `"dash function y = `e77', range(0 1) name(p1a77)"'
 assert r(rc) == 133
-// The refusal shows the expression's first 197 characters, not 55,000.
+// The refusal shows the first 197 characters of the text after the `=',
+// as typed, not 55,000.
 local lg77 "`r(log)'"
-cert_file_has "`lg77'", needle("f22(x) + f23(...")
+cert_file_has "`lg77'", needle("f22(x) + f23...")
 assert r(found) == 1
 cert_file_has "`lg77'", needle("f4999(x)")
 assert r(found) == 0
+capture twoway function y = `k77', range(0 1) nodraw
+local tw77 = _rc
 _p1a_logrun `"dash function y = `k77', range(0 1) name(p1a77k)"'
-assert r(rc) == 0
+assert r(rc) == `tw77'
 timer off 77
 quietly timer list 77
 assert r(t77) < 10
 capture dash clear
-// The scanner alone: a name directly before `(', outside quotes, not the
-// tail of a number or of a dotted name, each once, at most cap of them.
-mata: st_local("n77", _dash_fn_names(`"sin(x)+ Sin(x) + a.b(x) + 2e(3) + f (x) + "g(x)" + `"h(x)"' + sin(x)"', 100))
-assert "`n77'" == "sin Sin"
-mata: st_local("n77", _dash_fn_names("a(x)+b(x)+c(x)", 2))
-assert "`n77'" == "a b"
+// (The scanner of dash's own pre-check, _dash_fn_names, went with the
+// pre-check: the generator answers.)
 display "P1A-77 PASS: a function layer calling a function Stata does not have is refused, r(133), as twoway refuses it; what twoway draws is registered"
 
 // ================================================================
@@ -1618,33 +1623,35 @@ assert "${dash_graph_registry}" == ""
 // Adversarial (rule 18).  Injection: the expression is echoed as typed,
 // SMCL shown, not obeyed, and a name only reaches -confirm- as a Stata
 // name.  Resource exhaustion: 5,000 terms before the blank are one pass.
+// twoway's code for it, read live (WP-29 P0.6: the generator answers).
+capture twoway function y = {bf:BOLD} + sin (x), range(0 1) nodraw
+local tw78b = _rc
 _p1a_logrun "dash function y = {bf:BOLD} + sin (x), range(0 1) name(p1a78)"
-assert r(rc) == 111
+assert r(rc) == `tw78b' & `tw78b' != 0
 cert_file_has "`r(log)'", needle("{bf:BOLD} + sin (x)")
 assert r(found) == 1
+// Since WP-29 P0.6 the codes for these are twoway's own, read live: the
+// generator answers r(130) for an expression this long (measured).
 local e78 "x"
 forvalues i = 1/5000 {
     local e78 "`e78' + (x)"
 }
 timer clear 78
 timer on 78
+capture twoway function y = `e78' + sin (x), range(0 1) nodraw
+local tw78 = _rc
 _p1a_logrun `"dash function y = `e78' + sin (x), range(0 1) name(p1a78)"'
-assert r(rc) == 111
+assert r(rc) == `tw78' & `tw78' != 0
+capture twoway function y = `e78', range(0 1) nodraw
+local tw78 = _rc
 _p1a_logrun `"dash function y = `e78', range(0 1) name(p1a78k)"'
-assert r(rc) == 0
+assert r(rc) == `tw78'
 timer off 78
 quietly timer list 78
 assert r(t78) < 10
 capture dash clear
-// The scanner alone: the operand's kind, where it begins, its name.
-mata: st_local("s78", _dash_fn_space_call("sin(x) + 2 * (x) + a.b (x)"))
-assert "`s78'" == "O 20"
-mata: st_local("s78", _dash_fn_space_call(`"strlen("f (x)") + g (x)"'))
-assert "`s78'" == "N 19 g"
-mata: st_local("s78", _dash_fn_space_call(`"x + "s" (x)"'))
-assert "`s78'" == "O 5"
-mata: st_local("s78", _dash_fn_space_call("x + (1) - sin(x)"))
-assert "`s78'" == ""
+// (The scanner of dash's own pre-check, _dash_fn_space_call, went with the
+// pre-check: the generator answers; WP-29 P0.6.)
 display "P1A-78 PASS: a name or value written apart from its parenthesis is refused, r(111), r(133) or r(198), as twoway refuses it; what twoway draws is registered"
 
 
@@ -2296,6 +2303,555 @@ restore
 dash clear
 assert "${dash_graph_registry}" == ""
 display "P1A-84 PASS: a by() in any segment, and by()'s Total panel, are answered panel by panel as twoway answers them"
+
+// ================================================================
+// FX-01 .. FX-10 -- a function layer is evaluated by Stata's own
+// generator (WP-29 P0.6, section 04)
+// ================================================================
+// dash evaluated `function' itself, in Python, and lost Stata's grammar:
+// it drew pi*x, x**2 and +x, which twoway refuses, and refused nothing
+// twoway draws in a way twoway would.  It now runs twoway__function_gen,
+// the generator twoway function itself calls, at twoway's point in the
+// command, and stores the points.  Every case below compares with twoway
+// live, in the same session state.
+
+// _fx_errline <log>: the first line of <log> holding "error in
+// expression:", in r(line) (empty when there is none).
+capture program drop _fx_errline
+program define _fx_errline, rclass
+    version 16.0
+    args logf
+    mata: st_local("_fxl", _fx_first_line(st_local("logf"), "error in expression:"))
+    return local line : copy local _fxl
+end
+capture mata: mata drop _fx_first_line()
+mata:
+string scalar _fx_first_line(string scalar path, string scalar needle)
+{
+    real scalar fh
+    string scalar line
+    fh = fopen(path, "r")
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (strpos(line, needle)) {
+            fclose(fh)
+            return(line)
+        }
+    }
+    fclose(fh)
+    return("")
+}
+end
+
+// ================================================================
+// FX-01 -- what twoway refuses, dash refuses with twoway's code and
+//          one "error in expression:" line, registering nothing
+// ================================================================
+sysuse auto, clear
+dash clear
+local fx01_long "x"
+forvalues i = 1/600 {
+    local fx01_long "`fx01_long' + sin(x)"
+}
+foreach e in "pi*x" "e*x" "pi" "e" "PI" "E" "x**2" "x%2" "x//1" "+x" ///
+    "2*+x" "(+x)" "x^" "2^^x" "ｓｉｎ(x)" "2x" "sin(x,1)" "sin (x)" ///
+    "nosuch(x)" "`fx01_long'" {
+    capture twoway function y = `e', range(0 2) nodraw
+    local tw01 = _rc
+    _p1a_logrun `"dash function y = `e', range(0 2) name(fx01)"'
+    local rc01 = r(rc)
+    local lg01 "`r(log)'"
+    if `tw01' == 0 | `rc01' != `tw01' {
+        display as error `"FX-01: function y = `=substr(`"`e'"', 1, 40)': twoway r(`tw01'), dash r(`rc01'); dash should refuse as twoway does"'
+        exit 9
+    }
+    assert "${dash_graph_registry}" == ""
+    cert_log_has "`lg01'", needle("error in expression: ")
+    if r(count) != 1 {
+        display as error `"FX-01: function y = `=substr(`"`e'"', 1, 40)': "error in expression: " appears `r(count)' times; once is twoway's"'
+        exit 9
+    }
+}
+capture twoway (function y = x**2) (scatter mpg weight), nodraw
+local tw01 = _rc
+_p1a_logrun `"dash (function y = x**2) (scatter mpg weight), name(fx01)"'
+assert r(rc) == `tw01' & `tw01' == 198
+assert "${dash_graph_registry}" == ""
+capture twoway scatter mpg weight || function y = pi*x, nodraw
+local tw01 = _rc
+_p1a_logrun `"dash scatter mpg weight || function y = pi*x, name(fx01)"'
+assert r(rc) == `tw01' & `tw01' == 111
+assert "${dash_graph_registry}" == ""
+display "FX-01 PASS: what twoway function refuses is refused with twoway's code and one error line, and nothing is registered"
+
+// ================================================================
+// FX-02 -- the order of the checks is twoway's: plots and by() first,
+//          then the function layers, then the graph options
+// ================================================================
+// twoway checks every plot's variables and options and the by()
+// variables, then evaluates the layers in order, then checks the graph
+// options (measured, section 04 E3).  So a runiform() layer advances the
+// random-number state when a graph option is refused, and not when a
+// plot or the by() variable is.  The pairs are "twoway text" "dash text"
+// "rc": rc 1 compares the return codes, rc 0 the random-number state
+// alone -- dash notes an option it does not know and draws, where twoway
+// refuses it (an existing, documented difference, not this section's).
+sysuse auto, clear
+dash clear
+// xsize(0) is checked when the graph is drawn, so twoway runs without
+// nodraw there, with the graphics off.
+local fx02_gr = c(graphics)
+set graphics off
+local fx02_n 0
+foreach pair in ///
+    `"(function y=runiform()) (scatter nosuch weight), nodraw"' `"(function y=runiform()) (scatter nosuch weight), name(fx02)"' 1 ///
+    `"(function y=runiform()), badopt nodraw"' `"(function y=runiform()), badopt name(fx02)"' 0 ///
+    `"(function y=runiform()), xsize(0)"' `"(function y=runiform()), xsize(0) name(fx02)"' 1 ///
+    `"(function y=x**2) (scatter nosuch weight), nodraw"' `"(function y=x**2) (scatter nosuch weight), name(fx02)"' 1 ///
+    `"(function y=x**2) (scatter mpg weight, badopt), nodraw"' `"(function y=x**2) (scatter mpg weight, badopt), name(fx02)"' 1 ///
+    `"(function y=x**2) (scatter mpg weight), by(nosuchv) nodraw"' `"(function y=x**2) (scatter mpg weight), by(nosuchv) name(fx02)"' 1 ///
+    `"(function y=runiform()) (scatter mpg weight), by(nosuchv) nodraw"' `"(function y=runiform()) (scatter mpg weight), by(nosuchv) name(fx02)"' 1 ///
+    `"function y=nosuch(x), n(0) nodraw"' `"function y=nosuch(x), n(0) name(fx02)"' 1 ///
+    `"function y=runiform(), n(0) nodraw"' `"function y=runiform(), n(0) name(fx02)"' 1 ///
+    `"(function y=runiform(), range(0 2) n(3)) (function y=nosuch(x)), nodraw"' `"(function y=runiform(), range(0 2) n(3)) (function y=nosuch(x)), name(fx02)"' 1 {
+    local ++fx02_n
+    local fx02_`fx02_n' : copy local pair
+}
+forvalues i = 1(3)`fx02_n' {
+    local twc : copy local fx02_`i'
+    local dc  : copy local fx02_`=`i'+1'
+    local cmprc = `fx02_`=`i'+2''
+    set seed 20261001
+    capture twoway `twc'
+    local tw02 = _rc
+    local st02 = c(rngstate)
+    set seed 20261001
+    dash clear
+    _p1a_logrun `"dash `dc'"'
+    local rc02 = r(rc)
+    if (`cmprc' & `rc02' != `tw02') | c(rngstate) != "`st02'" {
+        display as error `"FX-02: `dc': twoway r(`tw02'), dash r(`rc02'); the random-number state `=cond(c(rngstate) == "`st02'", "agrees", "differs")'"'
+        exit 9
+    }
+}
+set graphics `fx02_gr'
+dash clear
+display "FX-02 PASS: plots and by() are checked before a function layer is evaluated, and the graph options after it, as twoway orders them"
+
+// ================================================================
+// FX-03 -- runiform() leaves the random-number state where twoway does
+// ================================================================
+sysuse auto, clear
+dash clear
+set seed 42
+twoway function y = runiform(), nodraw
+local s03 = c(rngstate)
+set seed 42
+dash function y = runiform(), name(fx03)
+assert c(rngstate) == "`s03'"
+dash clear
+display "FX-03 PASS: function y = runiform() advances the random-number state exactly as twoway function does"
+
+// ================================================================
+// FX-04 -- the data are left as twoway leaves them
+// ================================================================
+// With at least n() observations the generator works in the data (no
+// preserve) and twoway marks them changed; with fewer it preserves.  A
+// dataset with observations and no variables ends with none, in both.
+capture program drop _fx04_state
+program define _fx04_state, rclass
+    version 16.0
+    quietly datasignature
+    return local sig "`r(datasignature)'"
+    return scalar N = _N
+    return scalar changed = c(changed)
+    return local sorted : sortedby
+end
+foreach setup in "sysuse auto, clear" "clear" {
+    foreach e in "y = x" "y = nosuch(x)" {
+        // twoway
+        quietly `setup'
+        if "`setup'" == "clear" {
+            quietly set obs 2
+            quietly gen v = _n
+        }
+        capture twoway function `e', n(3) nodraw
+        local tw04 = _rc
+        _fx04_state
+        local t_sig "`r(sig)'"
+        local t_N = r(N)
+        local t_ch = r(changed)
+        local t_so "`r(sorted)'"
+        // dash
+        quietly `setup'
+        if "`setup'" == "clear" {
+            quietly set obs 2
+            quietly gen v = _n
+        }
+        dash clear
+        capture dash function `e', n(3) name(fx04)
+        local rc04 = _rc
+        _fx04_state
+        if `rc04' != `tw04' | "`r(sig)'" != "`t_sig'" | r(N) != `t_N' | ///
+            r(changed) != `t_ch' | "`r(sorted)'" != "`t_so'" {
+            display as error `"FX-04: `setup' / `e': twoway rc `tw04' N `t_N' changed `t_ch' sorted `t_so'; dash rc `rc04' N `r(N)' changed `r(changed)' sorted `r(sorted)'"'
+            exit 9
+        }
+    }
+}
+// A user variable named x is the user's.
+sysuse auto, clear
+gen x = 99
+dash clear
+dash function y = x^2, range(0 2) n(3) name(fx04)
+assert x == 99
+// Observations and no variables: twoway leaves none, and so does dash.
+clear
+set obs 5
+twoway function y = x, nodraw
+assert _N == 0
+clear
+set obs 5
+dash clear
+dash function y = x, name(fx04)
+assert _N == 0
+// A variable named pi is read as twoway reads it.
+sysuse auto, clear
+gen pi = 2
+capture twoway function y = pi*x, nodraw
+assert _rc == 0
+dash clear
+_p1a_logrun "dash function y = pi*x, name(fx04)"
+assert r(rc) == 0
+dash clear
+display "FX-04 PASS: the data, their sort order, c(changed) and a variable named x are left as twoway function leaves them"
+
+// ================================================================
+// FX-05 -- the refusal is echoed as typed, in twoway's one line
+// ================================================================
+sysuse auto, clear
+dash clear
+_p1a_logrun "dash function y = nosuch(x) + {bf:BOLD}, name(fx05)"
+assert r(rc) == 133
+local lg05 "`r(log)'"
+cert_file_has "`lg05'", needle("{bf:BOLD}")
+assert r(found) == 1
+cert_log_has "`lg05'", needle("unknown function")
+assert r(count) == 0
+foreach e in "y = nosuch(x)" "y=nosuch(x)" "nosuch(x)" {
+    _p1a_logrun `"twoway function `e', nodraw"'
+    assert r(rc) == 133
+    _fx_errline "`r(log)'"
+    local tl05 `"`r(line)'"'
+    _p1a_logrun `"dash function `e', name(fx05)"'
+    assert r(rc) == 133
+    _fx_errline "`r(log)'"
+    if `"`r(line)'"' != `"`tl05'"' | `"`tl05'"' == "" {
+        display as error `"FX-05: `e': twoway said [`tl05'], dash said [`r(line)']"'
+        exit 9
+    }
+}
+// Long: the text after = is cut to its first 197 characters, then "...".
+local e05 "x"
+forvalues i = 1/5000 {
+    local e05 "`e05' + f`i'(x)"
+}
+_p1a_logrun `"dash function y = `e05', range(0 1) name(fx05)"'
+assert r(rc) == 133
+local lg05 "`r(log)'"
+local w05 = substr(" `e05'", 1, 197) + "..."
+cert_file_has "`lg05'", needle(`"error in expression: `w05'"')
+assert r(found) == 1
+cert_file_has "`lg05'", needle("f4999(x)")
+assert r(found) == 0
+assert "${dash_graph_registry}" == ""
+display "FX-05 PASS: a refused expression is echoed as typed, in twoway's one line, and a long one is cut to 200 characters"
+
+// ================================================================
+// FX-06 -- hostile: no generator option can be injected; Break is r(1)
+// ================================================================
+sysuse auto, clear
+dash clear
+tempname fx06r fx06o
+mata: st_strscalar(st_local("fx06r"), "y = x, generate(mpg weight, replace)")
+mata: st_strscalar(st_local("fx06o"), "")
+capture noisily _dash_fn_points `fx06r' 0 1 3 1 `fx06o'
+assert _rc == 198
+confirm variable mpg weight
+mata: st_strscalar(st_local("fx06r"), "y = x")
+capture noisily _dash_fn_points `fx06r' 0 1 3 1 `fx06o'
+assert _rc == 0
+mata: st_local("o06", st_strscalar(st_local("fx06o")))
+assert `"`o06'"' == `""1":{"x0":0,"dx":0.5,"y":[0,0.5,1]}"'
+// Break inside the generator: a stub that ends as Break ends, r(1).
+quietly datasignature
+local sig06 "`r(datasignature)'"
+local n06 = _N
+capture program drop twoway__function_gen
+program define twoway__function_gen
+    exit 1
+end
+_p1a_logrun "dash function y = x, name(fx06)"
+local rc06 = r(rc)
+local lg06 "`r(log)'"
+capture program drop twoway__function_gen
+assert `rc06' == 1
+cert_log_has "`lg06'", needle("error in expression")
+assert r(count) == 0
+quietly datasignature
+assert "`r(datasignature)'" == "`sig06'"
+assert _N == `n06'
+assert "${dash_graph_registry}" == ""
+display "FX-06 PASS: a generator option cannot be injected through the expression, and Break ends the command r(1) with the data as they were"
+
+// ================================================================
+// FX-07 -- no point is ever truncated: one graph past c(macrolen), and a
+//          dashboard past dash_max_bytes, are refused r(134)
+// ================================================================
+sysuse auto, clear
+dash clear
+local reg07 "${dash_graph_registry}"
+local l07 "(function y = sin(x)/x, range(-100 100) n(10000))"
+_p1a_logrun `"dash `l07' `l07' `l07' `l07', name(fx07)"'
+assert r(rc) == 134
+local lg07 "`r(log)'"
+cert_file_has "`lg07'", needle("n()")
+assert r(found) == 1
+cert_file_has "`lg07'", needle("`c(macrolen)'")
+assert r(found) == 1
+assert "${dash_graph_registry}" == "`reg07'"
+assert `"${dash_fpts_fx07}"' == ""
+local h07 "`c(tmpdir)'dash_fx07.html"
+capture erase "`h07'"
+_p1a_logrun `"dash `l07' `l07' `l07' `l07', saving("`h07'") replace"'
+assert r(rc) == 0
+capture erase "`h07'"
+_p1a_logrun `"dash function y = sin(x)/x, range(-100 100) n(10000) name(fx07b)"'
+assert r(rc) == 0
+_p1a_logrun `"dash build, saving("`h07'") replace"'
+assert r(rc) == 0
+local a07 "`c(tmpdir)'dash_fx07_app.py"
+capture erase "`a07'"
+_p1a_logrun `"dash build, saving("`a07'") server replace"'
+assert r(rc) == 0
+capture erase "`h07'"
+capture erase "`a07'"
+dash clear
+clear
+dash function y = x, n(300) name(fx07c)
+global dash_max_bytes 1000
+_p1a_logrun `"dash build, saving("`h07'") replace"'
+local rc07 = r(rc)
+local lg07 "`r(log)'"
+macro drop dash_max_bytes
+assert `rc07' == 134
+cert_file_has "`lg07'", needle("characters of function points")
+assert r(found) == 1
+cert_file_has "`lg07'", needle("dash_max_bytes")
+assert r(found) == 1
+capture erase "`h07'"
+dash clear
+display "FX-07 PASS: a graph whose points exceed one macro, and a dashboard whose points exceed dash_max_bytes, are refused r(134) before anything is stored"
+
+// ================================================================
+// FX-08 -- the points live in $dash_fpts_<name>, which goes with its graph
+// ================================================================
+sysuse auto, clear
+dash clear
+dash function y = x, name(fx08)
+assert `"${dash_fpts_fx08}"' != ""
+dash scatter mpg weight, name(fx08, replace)
+assert `"${dash_fpts_fx08}"' == ""
+dash function y = x, name(fx08, replace)
+assert `"${dash_fpts_fx08}"' != ""
+dash kpi mean(price), name(fx08, replace) title("Price")
+assert `"${dash_fpts_fx08}"' == ""
+dash scatter mpg weight, name(fx08s)
+assert `"${dash_fpts_fx08s}"' == ""
+dash function y = x, name(fx08g)
+assert `"${dash_fpts_fx08g}"' != ""
+dash clear
+assert `"${dash_fpts_fx08g}"' == ""
+// Points that are not dash's are skipped at build, with a note.
+dash function y = x, name(fx08g)
+mata: st_global("dash_fpts_fx08g", `"}],"graphs":["')
+local h08 "`c(tmpdir)'dash_fx08.html"
+capture erase "`h08'"
+_p1a_logrun `"dash build, saving("`h08'") replace"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("are not dash's")
+assert r(found) == 1
+capture confirm file "`h08'"
+assert _rc == 0
+capture erase "`h08'"
+dash clear
+display "FX-08 PASS: a function graph's points are stored in its own global, dropped with it, and skipped at build when they are not dash's"
+
+// ================================================================
+// FX-09 -- one expansion, inside the generator; the caller's version
+// ================================================================
+sysuse auto, clear
+dash clear
+global FXG 3
+dash function y = \$FXG*x, range(0 2) n(3) name(fx09)
+macro drop FXG
+assert strpos(`"${dash_fpts_fx09}"', `""y":[0,3,6]"') > 0
+version 17: dash function y = x, name(fx09v)
+assert "`._Gr_Global.callerver'" == "17"
+dash clear
+display "FX-09 PASS: the expression is expanded once, by the generator, under the caller's version"
+
+// ================================================================
+// FX-10 -- the Mata writer: numbers that read back, and the spec tail
+// ================================================================
+mata: st_local("j10", invtokens(_dash_json_number17((0, -0, .5, -.5, 1/3, ., .a, 1e21)')', ","))
+assert "`j10'" == "0,0,0.5,-0.5,0.33333333333333331,null,null,1.00000000000000000e+21"
+preserve
+clear
+quietly set obs 3
+gen double v10 = _n/2
+mata: st_local("p10", _dash_fn_points_json("v10", 3, 0, 1))
+restore
+assert `"`p10'"' == `"{"x0":0,"dx":1,"y":[0.5,1,1.5]}"'
+tempfile t10
+capture erase "`t10'"
+mata: _fx10_fh = fopen(st_local("t10"), "w"); fwrite(_fx10_fh, `"{"a":1"'); fclose(_fx10_fh)
+mata: _dash_fn_spec_tail(st_local("t10"), "", "")
+mata: st_local("f10", invtokens(cat(st_local("t10"))'))
+assert `"`f10'"' == `"{"a":1}"'
+tempname s10
+mata: st_strscalar(st_local("s10"), `"{"1":{"x0":0,"dx":1,"y":[1]}}"')
+capture erase "`t10'"
+mata: _fx10_fh = fopen(st_local("t10"), "w"); fwrite(_fx10_fh, `"{"a":1"'); fclose(_fx10_fh)
+mata: _dash_fn_spec_tail(st_local("t10"), "", st_local("s10"))
+mata: st_local("f10", invtokens(cat(st_local("t10"))'))
+assert `"`f10'"' == `"{"a":1,"function_points":{"":{"1":{"x0":0,"dx":1,"y":[1]}}}}"'
+display "FX-10 PASS: points are written %24.17g with null for missing, and appended to the spec beside the graphs"
+
+// ================================================================
+// FX-11 -- a one-line graph with no function layer: its points scalar is
+// empty, so the tail writes the bare } and says nothing.  Every one-line
+// saving() printed "the function points stored for graph '' are not
+// dash's" before this (548 times in one certification run, 02oct2026).
+// ================================================================
+tempname s11
+mata: st_strscalar(st_local("s11"), "")
+capture erase "`t10'"
+mata: _fx10_fh = fopen(st_local("t10"), "w"); fwrite(_fx10_fh, `"{"a":1"'); fclose(_fx10_fh)
+tempfile lg11
+quietly log using "`lg11'", text replace name(fx11)
+mata: _dash_fn_spec_tail(st_local("t10"), "", st_local("s11"))
+quietly log close fx11
+mata: st_local("f11", invtokens(cat(st_local("t10"))'))
+assert `"`f11'"' == `"{"a":1}"'
+mata: st_local("n11", strofreal(sum(strpos(cat(st_local("lg11")), "are not dash's") :> 0)))
+if `n11' != 0 {
+    display as error "FX-11 FAIL: an empty points scalar printed the not-dash's note `n11' time(s)"
+    exit 9
+}
+display "FX-11 PASS: a graph with no function points writes the bare } and no note"
+
+// ================================================================
+// LB-41..LB-43 (WP-29 P0.9) -- lpolyci's pwidth() and var(): the Mata
+// reader and the JSON key lpvar.  `var' is never an option key:
+// _dash_extract_vars reads every "var": in a plot's JSON as a variable.
+// Each case prints PASS or FAIL and the script goes on; a FAIL ends it
+// with exit 9 below.
+// ================================================================
+global lb_pfail = 0
+local lb41 ""
+capture mata: _dash_extract_vars(`"{"type":"lpolyci","yvar":"mpg","xvar":"weight","options":{"pwidth":"800","lpvar":"10"}}"', "lb41")
+if _rc | "`lb41'" != "mpg weight" {
+    display as error `"LB-41 FAIL: _dash_extract_vars gave "`lb41'" (rc `=_rc')"'
+    global lb_pfail = 1
+}
+else display "LB-41 PASS: _dash_extract_vars on an lpvar spec lists mpg weight"
+
+// LB-42: _dash_lpolyci_opts(unk, ptype) -> _lpo_pwidth _lpo_var _lpo_rest
+// _lpo_rc _lpo_msg.  _lb42 <input> <ptype> <rc> <pwidth> <var> <rest> <msg>
+capture program drop _lb42
+program define _lb42
+    version 16.0
+    args in pt wrc wpw wv wrest wmsg
+    foreach k in _lpo_pwidth _lpo_var _lpo_rest _lpo_rc _lpo_msg {
+        local `k' ""
+    }
+    capture mata: _dash_lpolyci_opts(st_local("in"), st_local("pt"))
+    if _rc {
+        display as error `"LB-42 FAIL: [`in'] _dash_lpolyci_opts rc `=_rc'"'
+        global lb42_bad = 1
+        exit
+    }
+    if "`_lpo_rc'" != "`wrc'" | (`wrc' != 0 & `"`_lpo_msg'"' != `"`wmsg'"') {
+        display as error `"LB-42 FAIL: [`in' on `pt'] rc `_lpo_rc' "`_lpo_msg'", want `wrc' "`wmsg'""'
+        global lb42_bad = 1
+    }
+    else if `wrc' == 0 & (real("`_lpo_pwidth'") != real("`wpw'") | real("`_lpo_var'") != real("`wv'") | strtrim(`"`_lpo_rest'"') != strtrim(`"`wrest'"')) {
+        display as error `"LB-42 FAIL: [`in' on `pt'] pwidth "`_lpo_pwidth'" var "`_lpo_var'" rest "`_lpo_rest'""'
+        global lb42_bad = 1
+    }
+end
+global lb42_bad = 0
+_lb42 "pwidth(800) var(10) msize(2)" lpolyci 0 "800" "10" "msize(2)" ""
+_lb42 "pw(800) v(10)" lpolyci 0 "800" "10" "" ""
+_lb42 "p(800)" lpolyci 0 "" "" "p(800)" ""
+_lb42 "pwidth(1d3) var(1d1)" lpolyci 0 "1000" "10" "" ""
+_lb42 "pwidth(.5e3) var(+10)" lpolyci 0 "500" "10" "" ""
+_lb42 "pwidth(0)" lpolyci 198 "" "" "" "pwidth() must be a positive number"
+_lb42 "pwidth(abc)" lpolyci 198 "" "" "" "pwidth() must be a positive number"
+_lb42 "pwidth(800 900)" lpolyci 198 "" "" "" "pwidth() must be a positive number"
+_lb42 "var(0)" lpolyci 0 "" "0" "" ""
+_lb42 "var(abc)" lpolyci 7 "" "" "" "'abc' found where number expected"
+_lb42 "var(10 20)" lpolyci 7 "" "" "" "'20' found where nothing expected"
+_lb42 "pwidth(800) var(10)" lpoly 0 "" "" "pwidth(800) var(10)" ""
+if ${lb42_bad} global lb_pfail = 1
+else display "LB-42 PASS: _dash_lpolyci_opts reads pwidth() and var() by value, as twoway reads them, on lpolyci only"
+macro drop lb42_bad
+
+// LB-43: the variables dash exports for the plot are mpg and weight --
+// read from the spec dash.ado itself registers -- and the rendered page
+// carries no column named after var()'s value.
+local bad = 0
+sysuse auto, clear
+capture dash clear
+capture noisily dash lpolyci mpg weight, pwidth(800) var(10) name(lb43)
+if _rc {
+    display as error "LB-43 FAIL: rc `=_rc'"
+    local bad = 1
+}
+else {
+    local v43 ""
+    mata: _dash_extract_vars(st_global("dash_json_lb43"), "v43")
+    if "`v43'" != "mpg weight" {
+        display as error `"LB-43 FAIL: _dash_extract_vars gave "`v43'""'
+        local bad = 1
+    }
+}
+if `"`c(python_exec)'"' != "" & !`bad' {
+    local h43 "`c(tmpdir)'dash_lb43.html"
+    capture erase "`h43'"
+    capture noisily dash build, saving("`h43'") replace nobrowser
+    if _rc {
+        display as error "LB-43 FAIL: dash build rc `=_rc'"
+        local bad = 1
+    }
+    else {
+        mata: _p43 = invtokens(cat(st_local("h43"))'); st_local("b43", strofreal(strpos(_p43, char(34) + "10" + char(34) + ":[") > 0))
+        mata: mata drop _p43
+        if `b43' {
+            display as error "LB-43 FAIL: the page carries a column named 10"
+            local bad = 1
+        }
+    }
+    capture erase "`h43'"
+}
+capture dash clear
+if `bad' global lb_pfail = 1
+else display "LB-43 PASS: dash lpolyci mpg weight, pwidth(800) var(10) exports mpg and weight, no column 10"
+if ${lb_pfail} {
+    macro drop lb_pfail
+    exit 9
+}
+macro drop lb_pfail
 
 capture erase "`c(tmpdir)'dash_p1a_run.log"
 

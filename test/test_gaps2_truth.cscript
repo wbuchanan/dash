@@ -777,9 +777,12 @@ with warnings.catch_warnings():
     _page = _r.render()
 _bins = set()
 for _fig in _r.figures.values():
-    for _m in _fig.select({"type": _cvdr.ColumnDataSource}):
-        if "_cvar_rep78_bin" in _m.data:
-            _bins = set(_m.data["_cvar_rep78_bin"])
+    for _rr in [_x for _x in _fig.renderers if getattr(_x, "glyph", None) is not None]:
+        _f = _rr.glyph.fill_color
+        _fld = _f.get("field") if isinstance(_f, dict) else getattr(_f, "field", None)
+        _tr = _f.get("transform") if isinstance(_f, dict) else getattr(_f, "transform", None)
+        if _tr is not None and type(_rr.glyph).__name__ == "Scatter":
+            _bins = set(_rr.data_source.data[_fld])
 Macro.setGlobal("cv_tw_groups", str(len(_fills)))
 Macro.setGlobal("cv_dash_groups", str(len(_bins)))
 end
@@ -1075,15 +1078,14 @@ if inlist("`only'", "", "S14") {
     _gt_done AL-18 "xlabel(1/5): numbers in both"
 
     dash clear
-    // rep78 is plotted, so it is exported: a hover()-only variable is not
-    // exported on the one-line route (BUGS.md, a residual of G16).
-    capture noisily dash scatter mpg rep78, hover(rep78) saving("`d'/al19.html") replace
+    // WP-29 P0.10: rep78 is named only in hover(); it is exported.
+    capture noisily dash scatter mpg weight, hover(rep78) saving("`d'/al19.html") replace
     _gt_expect AL-19 "(_rc == 0)" "dash rc"
     cert_file_has "`d'/al19.html", needle("__dash_hover_rep78")
     _gt_expect AL-19 "(r(found) == 1)" "the tooltip does not read __dash_hover_rep78"
     cert_file_has "`d'/al19.html", needle("Poor")
     _gt_expect AL-19 "(r(found) == 1)" "the page does not carry Poor"
-    _gt_done AL-19 "hover(rep78) shows its value labels"
+    _gt_done AL-19 "hover(rep78), a variable no layer plots, shows its value labels"
 
     graph drop _all
     display as text "S14 end `c(current_time)'"

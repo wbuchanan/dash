@@ -255,6 +255,8 @@ changed: `test_statistical_truth.py::TestMsplineAgainstStata`,
 parity corpus carries `mspline bands(5) n(4)`. The verification tally is
 ROADMAP.md WP-18's.
 
+**Since WP-29 (P0.7, commit 758cf59; P0.9, commit e32be3a).** The `lpoly` and `lpolyci` default bandwidth is Stata's rule of thumb per kernel and degree, as `lpoly` computes it, and no longer the WP-18 approximation quoted above; `lpolyci` draws Stata's analytic band with `pwidth()` and `var()`, and the bootstrap band is gone. The sentence above that both stay as they were no longer holds.
+
 ### A5. Statistical sub-options with no implementation — S3, CLOSED by WP-18
 
 Zero occurrences in `dash_render.py`: `histogram, discrete`;
@@ -958,6 +960,8 @@ was the one whose note misstated the page -- dash already draws what a bare
 sort asks for -- and since the S3 batch a bare sort on the connected types
 is taken without a note; sort(varlist) is still named.
 
+**Since WP-29 (P0.1, commit b0d170d).** `sort` and `sort(varlist)` are honoured on line, connected, area, rline, rarea and rconnected, which otherwise join in the data's order as twoway does; tsline and tsrline join in time order. The remark above that sort(varlist) is still named holds only for the other plot types.
+
 ### E2. Options dropped with *no* report — S2, CLOSED by WP-13
 
 These are not on either pending list, so `_dash_report_ignored` never names
@@ -1288,6 +1292,8 @@ Unsupported section; the rest are not `twoway` options where they were
 written, stay unknown and named in the note, and the help gives
 `twoway`'s own spelling for each.  Tests: `test_twoway_option_parity.py`,
 `test_twoway_option_parity.cscript`.
+
+**Since WP-29 (P0.1, commit b0d170d).** `sort(varlist)` is honoured on line, connected, area, rline, rarea and rconnected; the help's Unsupported section names it, with a bare `sort`, only for the other plot types.
 
 
 These are reported — correct behaviour — but none appears in the help's
@@ -2432,6 +2438,8 @@ containment, origin check or rate limit -- and that is how
 `test_adversarial.cscript`'s P20 section read it.  If dash ever gains
 accounts or an administrative surface, this note is wrong and rule 19
 applies.
+
+**Since WP-29 (P0.12a, commit 7f5c8f5).** The served app now requires a per-launch secret token: without it no session, page, autoload, metadata or row reaches a client, `/health` and BokehJS's static files stay open, and the token is compared in constant time. The app never runs without its token: started without one, it makes its own and writes its link to a file only the user can read; only when no such file can be written anywhere does it print the link, once, after a warning, to the output of whoever started it. The sentence above that dash has no auth model no longer describes the served app. dash still has no accounts, administrators or administrative component, so rule 19 still does not apply; the adversarial reading of "auth bypass" above now also covers getting a session without the token. Guarded by `test/test_serve_token.py::TestTheServedAppRequiresItsToken::test_the_page_without_the_token_is_403`, `test/test_serve_token.py::TestTheSessionGate::test_no_configured_token_makes_one_and_still_refuses`, `test/test_serve_token.py::TestTheLauncherPassesTheToken::test_a_link_that_cannot_be_written_anywhere_is_printed_once_and_served` and `test/test_serve_launch.cscript` TOK-03.
 
 ---
 

@@ -50,6 +50,7 @@ from conftest import make_data_json  # noqa: E402
 from test_mode_parity import (_DF, _LABEL_NAMES, _VALUE_LABELS,  # noqa: E402
                               _arrows_of, _assert_heads_on_shafts, _diff,
                               _explain, _kpi, _layout_tree, _spec)
+from test_mode_parity import _served_after_move  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
 _SEQ = itertools.count()
@@ -70,7 +71,8 @@ _MOVES = [
 
 #: Every plot type that draws one mark per observation.  The fitted and
 #: binned types are recomputed by the script from the rows (agg_sources) or
-#: are the saved page's documented exception (a fitted line is not redrawn,
+#: are the saved page's documented exception (a fitted line is not refitted,
+#: and is marked (WP-29 P0.17),
 #: dash.sthlp "What a filter move redraws"); the literal types draw no data.
 _ROW_TYPES = ["scatter", "line", "tsline", "connected", "area", "bar",
               "spike", "dropline", "dot", "rarea", "rbar", "rspike", "rcap",
@@ -197,6 +199,30 @@ _CORPUS = [
           [plot_for("scatter", {"mlabel": "rep"}, in_expr="3/8")]),
     _case("a labelled connected plot with its own if, range", _MOVES[1],
           [plot_for("connected", {"mlabel": "rep"}, if_expr="mpg > 18")]),
+    # WP-29 P0.15: a layer's own if inside a linked by() panel, or inside a
+    # linked graph with its own if.  The page registered, for the callback
+    # to rebuild the layer's view from, every row the layer's if selects in
+    # the WHOLE dataset, so after a move each panel's layer drew the other
+    # panel's rows too (measured: both panels drew observations
+    # [1, 3, 4, 6, 7, 9] where the oracle draws [4, 6] and [1, 3, 7, 9]).
+    *[_case(f"{t} with its own if under a linked by(), {_MOVES[1][0]}",
+            _MOVES[1],
+            graphs=[("g1", [plot_for("scatter"),
+                            plot_for(t, if_expr="price > 4500")],
+                     {"by": "foreign"}),
+                    ("g2", [plot_for("scatter")])],
+            bo={"link": "g1 g2"})
+      for t in ("scatter", "connected", "dot", "rspike", "rconnected",
+                "line", "area", "bar", "rcap")],
+    *[_case(f"{t} with its own if in a linked graph with its own if, "
+            f"{_MOVES[1][0]}", _MOVES[1],
+            graphs=[("g1", [plot_for("scatter"),
+                            plot_for(t, if_expr="price > 4500")], None,
+                     {"if_expr": "foreign == 1"}),
+                    ("g2", [plot_for("scatter")])],
+            bo={"link": "g1 g2"})
+      for t in ("scatter", "connected", "dot", "rspike", "rconnected",
+                "line", "area", "bar", "rcap")],
 ]
 
 
@@ -311,8 +337,10 @@ def _profile_full(r):
 class TestTheLineFollowsTheMoveAsTwowayDraws:
     """The rows a moved line draws, held to Stata's own count: _DF's
     foreign == 1 observations are 2, 4, 6, 8 and 10 (``count if foreign ==
-    1'), and twoway line draws them along x (``sort'), weight 1800, 2010,
-    2650, 3100, 3350."""
+    1'), and twoway line and connected join them in the data's order,
+    weight 3350, 1800, 3100, 2010, 2650; tsline in time order, 1800, 2010,
+    2650, 3100, 3350.  Flipped (WP-29 P0.1): line and connected were held
+    to x order, which twoway draws only under sort."""
 
     @pytest.mark.parametrize("ptype", ["line", "tsline", "connected"])
     def test_the_line_draws_the_foreign_cars_in_x_order(self, ptype):
@@ -322,7 +350,9 @@ class TestTheLineFollowsTheMoveAsTwowayDraws:
         [fig] = r.figures.values()
         [line] = [g for g in fig.renderers if isinstance(g.glyph, Line)]
         xs = [float(x) for x in line.data_source.data["weight"]]
-        assert xs == [1800.0, 2010.0, 2650.0, 3100.0, 3350.0], xs
+        want = ([1800.0, 2010.0, 2650.0, 3100.0, 3350.0] if ptype == "tsline"
+                else [3350.0, 1800.0, 3100.0, 2010.0, 2650.0])
+        assert xs == want, xs
 
 
 class TestAJitteredScatterFollowsAMove:
@@ -353,9 +383,13 @@ class TestAJitteredScatterFollowsAMove:
         after = {int(i): (x, y) for i, x, y in zip(
             src.data[rid], src.data[dr._DASH_JITTER_X],
             src.data[dr._DASH_JITTER_Y])}
-        want = {1, 3, 4, 6, 7, 9}
+        want_positions = {1, 3, 4, 6, 7, 9}
         if qual:
-            want &= set(range(1, 9))          # in 2/9: observations 2..9
+            want_positions &= set(range(1, 9))   # in 2/9: observations 2..9
+        # Flipped (WP-29 P0.11): row ids are the page's ranks, so the
+        # observations are mapped through them (identity when every row is
+        # on the page; the in 2/9 page holds observations 2..9 only).
+        want = {r._row_pos[r.df.index[p]] for p in want_positions}
         assert set(after) == want, sorted(after)
         assert all(after[i] == pytest.approx(before[i]) for i in after)
 
@@ -508,7 +542,9 @@ class TestTheCopiesAgainstHostileInput:
         [line] = [g for g in r.figures["g1"].renderers
                   if isinstance(g.glyph, Line)]
         xs = [float(x) for x in line.data_source.data[name]]
-        assert xs == [1800.0, 2010.0, 2650.0, 3100.0, 3350.0], xs
+        # Flipped (WP-29 P0.1): the Foreign cars in the data's order, as
+        # twoway joins a line; the name survives either way.
+        assert xs == [3350.0, 1800.0, 3100.0, 2010.0, 2650.0], xs
 
     def test_the_spacing_travels_as_data_not_code(self):
         """The rule reaches the page as a JSON string that the script
@@ -542,13 +578,14 @@ class TestTheCopiesAgainstHostileInput:
 class TestALinesOwnQualifier:
     """``(line mpg weight in 3/8)``: twoway's serset holds observations 3 to
     8, x 2200, 1800, 3000, 3100, 4080, 2010 (measured 24sep2026, BUGS.md),
-    and draws them along x.  The saved page drew 2200, 2650, 2930, 3000,
-    3100, 3350: rows 3 to 8 of a copy sorted by x.  ``if mpg > 18'
-    selects observations 1, 3, 4, 5, 6, 8, 10 (mpg 22, 25, 30, 21, 19, 28,
-    23)."""
+    and joins them in that, the data's, order (WP-29 P0.1; tsline joins in
+    time order).  The saved page drew 2200, 2650, 2930, 3000, 3100, 3350:
+    rows 3 to 8 of a copy sorted by x.  ``if mpg > 18' selects observations
+    1, 3, 4, 5, 6, 8, 10 (mpg 22, 25, 30, 21, 19, 28, 23).  Flipped (WP-29
+    P0.1): line, connected and rconnected were held to x order."""
 
-    _IN_3_8 = [1800.0, 2010.0, 2200.0, 3000.0, 3100.0, 4080.0]
-    _IF = [1800.0, 2010.0, 2200.0, 2650.0, 2930.0, 3000.0, 3100.0]
+    _IN_3_8 = [2200.0, 1800.0, 3000.0, 3100.0, 4080.0, 2010.0]
+    _IF = [2930.0, 2200.0, 1800.0, 3000.0, 3100.0, 2010.0, 2650.0]
 
     def _lines(self, plot):
         with warnings.catch_warnings(record=True) as caught:
@@ -568,6 +605,8 @@ class TestALinesOwnQualifier:
         assert not isinstance(getattr(line.view, "filter", None),
                               BooleanFilter)
         xs = [float(x) for x in line.data_source.data["weight"]]
+        if ptype == "tsline":
+            want = sorted(want)
         assert xs == want, xs
 
     def test_rconnected_draws_both_ends_from_the_same_rows(self):
@@ -1123,3 +1162,170 @@ class TestTheOptionValueOfADate:
     def test_a_number_and_a_string_are_unchanged(self):
         assert dr._dash_option_value(1.0) == 1.0
         assert dr._dash_option_value("2001-12-31") == "2001-12-31"
+
+
+# ---------------------------------------------------------------------------
+# WP-29 P0.15: a linked layer's own if after moves, against the served app
+# ---------------------------------------------------------------------------
+
+def _linked_layer_if_spec(layout):
+    """g1 holds a plain scatter and a scatter with its own ``if price >
+    4500``, under a linked by(foreign) or in a linked graph with its own
+    ``if foreign == 1``; g2 is a plain scatter; a range filter on price."""
+    layer = plot_for("scatter", if_expr="price > 4500")
+    if layout == "by":
+        g1 = ("g1", [plot_for("scatter"), layer], {"by": "foreign"})
+    else:
+        g1 = ("g1", [plot_for("scatter"), layer], None,
+              {"if_expr": "foreign == 1"})
+    return _spec(None, {"filter": "price, type(range)", "link": "g1 g2"},
+                 None, [g1, ("g2", [plot_for("scatter")])], None, "")
+
+
+class TestALinkedLayersOwnIfAcrossMoves:
+    """WP-29 P0.15: a move, a second move and a reset on ONE page each draw
+    what the saved renderer draws of the rows kept; the reset draws the
+    first paint again."""
+
+    @pytest.mark.parametrize("layout", ["by", "graph-if"])
+    def test_every_step_draws_the_kept_rows(self, layout):
+        spec = _linked_layer_if_spec(layout)
+        r = _render(spec)
+        first = _profile(r)
+        ws = [w for w in r.filter_widgets
+              if type(w).__name__ == "RangeSlider"]
+        assert len(ws) == 1
+        w = ws[0]
+        full = (float(w.start), float(w.end))
+        steps = [((4500.0, 11385.0), "price >= 4500 & price <= 11385"),
+                 ((5000.0, 11385.0), "price >= 5000 & price <= 11385"),
+                 (full, None)]
+        for value, rows in steps:
+            _move(r, ("RangeSlider", value))
+            oracle = first if rows is None else _saved_of_rows(spec, rows)
+            _assert_same(f"{layout} after the move to {value}",
+                         _profile(r), oracle)
+
+
+class TestTheSavedPageAgreesWithTheServedApp:
+    """WP-29 P0.15: after a move the saved page draws what the served app
+    draws, figure by figure."""
+
+    @pytest.mark.parametrize("layout", ["by", "graph-if"])
+    def test_a_qualified_layer_in_a_linked_graph(self, layout):
+        spec = _linked_layer_if_spec(layout)
+        action = ("RangeSlider", (4500.0, 11385.0))
+        saved = _saved_after_move(spec, action)
+        served = _served_after_move(spec, action)[0]
+        assert len(saved) == len(served), "figure counts differ"
+        for i, (a, b) in enumerate(zip(saved, served)):
+            diffs = _diff(a["glyphs"], b["glyphs"])
+            assert not diffs, _explain(layout, f"figure {i} glyphs, saved "
+                                               f"against served", diffs)
+
+
+class TestTheTruthCheckHelpers:
+    """WP-29 P0.15: ``filter_truth_check.layer_rows``, which the Stata
+    cases QF-01 and QF-02 read, counts each layer's rows in both modes."""
+
+    def test_layer_rows_reads_both_modes(self):
+        import filter_truth_check as ftc
+        spec = _spec([plot_for("scatter")],
+                     {"filter": "foreign, type(dropdown)"})
+        spec["build_options"]["filters"] = [
+            {"varname": "foreign", "type": "dropdown"}]
+        sp, dp = _write(spec, _DF)
+        assert ftc.layer_rows(sp, dp, [(0, 1.0)]) == {
+            "saved": [[5]], "served": [[5]]}
+
+
+# ---------------------------------------------------------------------------
+# WP-29 P0.16: the colour key is fixed at build and holds through a move
+# ---------------------------------------------------------------------------
+
+def _colour_layouts(opts):
+    """(id, spec kwargs) of the four layouts a colorvar() scatter is
+    drawn in."""
+    lay = plot_for("scatter", dict(opts, colorvar=opts.get("colorvar",
+                                                           "price")))
+    return [
+        ("unlinked", dict(plots=[lay])),
+        ("linked graph if", dict(graphs=[
+            ("g1", [lay], None, {"if_expr": "foreign == 1"}),
+            ("g2", [plot_for("scatter")])], bo={"link": "g1 g2"})),
+        ("linked by()", dict(graphs=[
+            ("g1", [lay], {"by": "foreign"}),
+            ("g2", [plot_for("scatter")])], bo={"link": "g1 g2"})),
+        ("unlinked by()", dict(plots=[lay], go={"by": "foreign"})),
+    ]
+
+
+def _colour_spec(plots=None, go=None, graphs=None, bo=None):
+    return _spec(plots, dict(bo or {}, filter="price, type(range)"), go,
+                 graphs, None, "")
+
+
+_KEY_CASES = [
+    *[pytest.param(_colour_spec(plots=[plot_for(t, {"colorvar": "price",
+                                                     "colorlevels": "3"})]),
+                   id=f"{t} colorlevels(3), unlinked")
+      for t in ("scatter", "connected", "rconnected", "dot")],
+    *[pytest.param(_colour_spec(**kw), id=f"scatter {name}, {lay}")
+      for name, opts in (("colorlevels(3)", {"colorlevels": "3"}),
+                         ("colordiscrete on rep",
+                          {"colorvar": "rep",
+                           "colordiscrete": "colordiscrete"}),
+                         ("colorcuts(4500 9000)",
+                          {"colorcuts": "4500 9000"}))
+      for lay, kw in _colour_layouts(opts)],
+]
+
+_BAR_CASES = [pytest.param(_colour_spec(**kw), id=lay)
+              for lay, kw in _colour_layouts({})]
+
+_RANGE_MOVE = ("RangeSlider", (4500.0, 11385.0))
+
+
+def _after_move_root(spec, mode):
+    """The page's layout root after the range move, in either mode, and
+    before it (a fresh render)."""
+    import colour_bins as cb  # noqa: F401
+    import test_mode_parity as tp
+    if mode == "saved":
+        before = _render(spec)
+        r = _render(spec)
+        _move(r, _RANGE_MOVE)
+        return before._last_layout_root, r._last_layout_root
+    before, _ = tp._served(spec)
+    doc, _ = tp._served(spec)
+    ws = [w for w in tp._widgets_of(doc)
+          if type(w).__name__ == "RangeSlider"]
+    tp._fire(ws[0], _RANGE_MOVE[1])
+    return before, doc
+
+
+class TestTheColourKeyHoldsThroughAMove:
+    """The colours and the key are fixed at build time, in both modes, and
+    a filter move never re-bins or re-ranges them (BR-07.4)."""
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    @pytest.mark.parametrize("spec", _KEY_CASES)
+    def test_every_colour_value_is_a_key_level(self, spec, mode):
+        import colour_bins as cb
+        _before, root = _after_move_root(spec, mode)
+        rends = [r for r in cb.colour_renderers(root)
+                 if hasattr(cb.colour_mapper(r), "factors")]
+        assert rends
+        for r in rends:
+            factors = set(cb.colour_mapper(r).factors)
+            bad = [v for v in cb.drawn_colour_values(r)
+                   if v is not None and v not in factors]
+            assert not bad, (bad, sorted(factors))
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    @pytest.mark.parametrize("spec", _BAR_CASES)
+    def test_the_colour_bar_keeps_its_range(self, spec, mode):
+        import colour_bins as cb
+        before, after = _after_move_root(spec, mode)
+        assert cb.colour_bars(before)
+        assert cb.colour_bars(after) == cb.colour_bars(before)

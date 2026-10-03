@@ -1,6 +1,8 @@
 """Both render modes' rows after a sequence of filter moves, for the Stata
 certification blocks of section 17 (GAPS2 X1, E2): test_gaps2_truth.cscript
-FT-01..FT-06 and test_e2e_filters.cscript FL-X1-1, FL-E2-1, FL-E2-2.
+FT-01..FT-06 and test_e2e_filters.cscript FL-X1-1, FL-E2-1, FL-E2-2, and
+of WP-29 section 07: test_e2e_filters.cscript QF-01, QF-02 (``layer_rows``)
+and test_wp29_truth.cscript CQV-01..CQV-09 (``colour_keys``).
 
 The cscript builds the data in Stata and hands it here through ``sfi``; this
 module renders the saved page (its own filter callbacks run under node through
@@ -169,7 +171,191 @@ def spec_of(graphs, filters, kpis=()):
                               "filters": list(filters)}}
 
 
+def _figure_rows(root):
+    """Rows drawn by each visible glyph renderer, per figure in layout
+    order, as ``test_mode_parity._layout_tree`` profiles count them."""
+    import test_mode_parity as tp
+    figs = []
+    tp._layout_tree(root, figs)
+    return [[g["rows"] for g in f["glyphs"] if g["visible"]] for f in figs]
+
+
+def layer_rows(spec_path, data_path, moves):
+    """WP-29 P0.15 (test_e2e_filters.cscript QF-01, QF-02): the rows each
+    layer draws in both modes after ``moves``, ``[(filter index, value)]``
+    (a value of None meaning "All").
+
+    Returns ``{"saved": [[rows per visible glyph renderer] per figure in
+    layout order], "served": [...]}``.  The saved page runs its own filter
+    callbacks under node; the served app runs its own Python callbacks.
+    The filter order is the spec's ``build_options["filters"]``, or its
+    ``filter`` text as dash.ado writes it.  Nothing
+    here calls Stata.
+    """
+    from bokeh.document import Document
+    with open(spec_path, encoding="utf-8") as fh:
+        spec = json.load(fh)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(spec_path, data_path)
+        r.render()
+    s = js_runner.JsSession(r.filter_callbacks)
+    for fi, value in moves:
+        w, cb = r.filter_widgets[fi], r.filter_callbacks[fi]
+        if value is None:
+            value = (getattr(w, "_dash_sentinel", None)
+                     or (w.start, w.end))
+        s.set(w, value)
+        s.run(cb)
+    saved_rows = _figure_rows(r._last_layout_root)
+
+    tmp = tempfile.mkdtemp(prefix="ft_layer_rows_")
+    app = os.path.join(tmp, "app.py")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(spec_path, data_path).build(app)
+        with open(app, encoding="utf-8") as fh:
+            ns = _load_app(fh.read(), "ftl_%d" % os.getpid())
+        doc = Document()
+        ns["make_document"](doc)
+        widgets = {w._dash_var: w for w in _walk(doc)
+                   if hasattr(w, "_dash_var")}
+        bo = spec["build_options"]
+        # A spec dash.ado writes holds the filter() text, not the list.
+        order = [f.get("varname") for f in (
+            bo.get("filters") or dr._dash_parse_filter_raw(
+                bo.get("filter", "") or "", warn=False))]
+        for fi, value in moves:
+            w = widgets[order[fi]]
+            if value is None:
+                value = (getattr(w, "_dash_sentinel", None)
+                         or (w.start, w.end))
+            w.value = value
+            for key in ("value", "value_throttled"):
+                for cb in list(w._callbacks.get(key, [])):
+                    cb("value", None, value)
+    return {"saved": saved_rows, "served": _figure_rows(doc.roots[0])}
+
+
+def _keys_of(root):
+    import colour_bins as cb
+    out = []
+    for f in cb._figures(root):
+        out.append({
+            "bars": [[float(lo), float(hi)] for lo, hi in cb.colour_bars(f)],
+            "factors": [list(cb.colour_mapper(r).factors)
+                        for r in cb.colour_renderers(f)
+                        if hasattr(cb.colour_mapper(r), "factors")],
+            "drawn": [cb.drawn_colour_values(r)
+                      for r in cb.colour_renderers(f)],
+            "keys": cb.colour_keys(f)})
+    return out
+
+
+def colour_keys(spec_path, data_path):
+    """WP-29 P0.16 (test_wp29_truth.cscript CQV-01..CQV-09): each figure's
+    colour keys in both modes, in layout order.
+
+    Returns ``{"saved": [fig, ...], "served": [fig, ...]}``, each fig
+    ``{"bars": [[low, high], ...], "factors": [[...] per colour-mapped
+    renderer], "drawn": [[the colour value of each drawn row] per
+    colour-mapped renderer], "keys": <ColorBars + Legends named
+    dr._COLORVAR_LEGEND_NAME>}``.  Nothing here calls Stata.
+    """
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(spec_path, data_path)
+        r.render()
+    saved_keys = _keys_of(r._last_layout_root)
+    tmp = tempfile.mkdtemp(prefix="ft_colour_keys_")
+    app = os.path.join(tmp, "app.py")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(spec_path, data_path).build(app)
+        with open(app, encoding="utf-8") as fh:
+            ns = _load_app(fh.read(), "ftk_%d" % os.getpid())
+        doc = Document()
+        ns["make_document"](doc)
+    return {"saved": saved_keys, "served": _keys_of(doc)}
+
+
 def put(name, value):
     """A result into a Stata global, as text."""
     from sfi import Macro
     Macro.setGlobal(name, str(value))
+
+
+# ---------------------------------------------------------------------------
+# WP-29 section 12: test_e2e_filters.cscript SCU-01..SCU-03 (P0.17) and
+# EW-01 (P0.18)
+# ---------------------------------------------------------------------------
+
+def fit_graph(name, y, x, ptype="lfit", options=None, if_expr=""):
+    """A graph of one fitted layer, ``(<ptype> y x)`` (SCU-01, SCU-02)."""
+    return {"plots": [{"type": ptype, "yvar": y, "xvar": x,
+                       "options": dict(options or {}), "if_expr": if_expr}],
+            "graph_options": {"name": name, "title": name},
+            "if_expr": "", "in_expr": ""}
+
+
+def bar_graph(name, y, x, ptype="bar", if_expr=""):
+    """A graph of one bar layer, ``(<ptype> y x)`` (EW-01)."""
+    return {"plots": [{"type": ptype, "yvar": y, "xvar": x, "options": {},
+                       "if_expr": if_expr}],
+            "graph_options": {"name": name, "title": name},
+            "if_expr": "", "in_expr": ""}
+
+
+def stale_state(r):
+    """The saved page's stale cue as the renderer *r* holds it now
+    (SCU-01, SCU-02): caption visibility per marked figure, ``muted`` of
+    every renderer carrying ``_dash_frozen``, every legend label, and the
+    status line's visibility and text."""
+    from bokeh.models import Legend
+    titles, muted, labels = [], [], []
+    for fig in r.figures.values():
+        titles += [t.visible for t in fig.above
+                   if "dash_stale_cue" in (getattr(t, "tags", None) or [])]
+        muted += [x.muted for x in fig.renderers
+                  if hasattr(x, "_dash_frozen")]
+        for side in (fig.center, fig.above, fig.below, fig.left, fig.right):
+            for m in side:
+                if isinstance(m, Legend):
+                    labels += [getattr(i.label, "value", None)
+                               for i in m.items]
+    st = (r.filter_callbacks[0].args.get("stale_status")
+          if r.filter_callbacks else None)
+    return {"titles": titles, "muted": muted, "labels": labels,
+            "status_visible": bool(st.visible) if st is not None else False,
+            "status_text": st.text if st is not None else ""}
+
+
+def served_stale_models(doc):
+    """How many models of the served document carry a ``dash_stale*`` tag
+    (SCU-01: the served app carries no cue)."""
+    return sum(1 for m in doc.models
+               if any(str(t).startswith("dash_stale")
+                      for t in (getattr(m, "tags", None) or [])))
+
+
+def _one_glyph(fig, kind):
+    from bokeh.models import GlyphRenderer
+    rs = [r for r in fig.renderers if isinstance(r, GlyphRenderer)
+          and type(r.glyph).__name__ == kind]
+    assert len(rs) == 1, "%d %s glyphs" % (len(rs), kind)
+    return rs[0]
+
+
+def line_ends(fig):
+    """``(x[0], y[0], x[-1], y[-1])`` of *fig*'s single Line (SCU-01)."""
+    d = _one_glyph(fig, "Line").data_source.data
+    xs = [float(v) for v in d["x"]]
+    ys = [float(v) for v in d["y"]]
+    return xs[0], ys[0], xs[-1], ys[-1]
+
+
+def vbar_width(fig):
+    """The width *fig*'s single VBar draws (EW-01)."""
+    w = _one_glyph(fig, "VBar").glyph.width
+    return float(getattr(w, "value", w))

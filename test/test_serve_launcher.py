@@ -38,6 +38,7 @@ sys.path.insert(0, _ROOT)
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from serve_token_probe import FakeStdin  # noqa: E402  (WP-29 P0.12a)
 from conftest import make_data_json  # noqa: E402
 
 _DF = pd.DataFrame({"mpg": [22.0, 18.0, 25.0],
@@ -51,6 +52,16 @@ _SPEC = {
     "build_options": {"layout": "auto", "registry": "g1", "level": "95",
                       "formats": {}},
 }
+
+
+@pytest.fixture(autouse=True)
+def _an_app_to_read(tmp_path, monkeypatch):
+    """The launcher reads the app it starts through a verified descriptor
+    (WP-29 P0.12b, R-9), so the ``"app.py"`` these fakes are launched with
+    must exist: a stand-in in the test's own folder, made the working
+    folder."""
+    (tmp_path / "app.py").write_text("# a stand-in app\n")
+    monkeypatch.chdir(tmp_path)
 
 
 def _free_port():
@@ -112,18 +123,22 @@ def _fake_popen_class(returncode=0, stdout="", stderr=""):
             _FakeProc.cmd = list(cmd)
             _FakeProc.kw = kw
             self.returncode = returncode
+            self.stdin = FakeStdin()
             self.stdout = io.StringIO(stdout)
             self.stderr = io.StringIO(stderr)
 
         def poll(self):
             return self.returncode
 
-        def wait(self):
+        def wait(self, timeout=None):
             _FakeProc.waited = True
             return self.returncode
 
         def terminate(self):
             _FakeProc.terminated = True
+
+        def kill(self):
+            _FakeProc.killed = True
 
         def communicate(self):
             return ("", "")
@@ -241,6 +256,7 @@ class TestTheLauncherPrintsTheUrlOnceHealthAnswers:
         class _FakeProc:
             def __init__(self, cmd, **kw):
                 _FakeProc.cmd = list(cmd)
+                self.stdin = FakeStdin()
                 self.stdout = io.StringIO("")
                 self.stderr = io.StringIO("")
                 self.returncode = None
@@ -254,7 +270,7 @@ class TestTheLauncherPrintsTheUrlOnceHealthAnswers:
                         self.returncode = 0
                 return self.returncode
 
-            def wait(self):
+            def wait(self, timeout=None):
                 while self.returncode is None:
                     self.poll()
                     time.sleep(0.05)
@@ -262,6 +278,9 @@ class TestTheLauncherPrintsTheUrlOnceHealthAnswers:
 
             def terminate(self):
                 self.returncode = 0
+
+            def kill(self):
+                self.returncode = -9
 
             def communicate(self):
                 return ("", "")
@@ -273,14 +292,21 @@ class TestTheLauncherPrintsTheUrlOnceHealthAnswers:
         finally:
             httpd.shutdown()
         out = capsys.readouterr().out
-        needle = "dash: the server answers at http://localhost:%d/" % port
-        ready_lines = [ln for ln in out.splitlines() if needle in ln]
+        # Flipped (WP-29 P0.12a): 127.0.0.1, never localhost, and the
+        # line after next names the link file that holds the key.
+        needle = "dash: the server answers at http://127.0.0.1:%d/" % port
+        lines = out.splitlines()
+        ready_lines = [ln for ln in lines if needle in ln]
         assert len(ready_lines) == 1, out
+        i = lines.index(ready_lines[0])
+        assert lines[i + 1] == dr._DASH_LINK_SAID, out
+        assert lines[i + 2].endswith("link.html"), out
 
     def test_no_answer_no_ready_line(self, monkeypatch, capsys):
         class _FakeProc:
             def __init__(self, cmd, **kw):
                 _FakeProc.cmd = list(cmd)
+                self.stdin = FakeStdin()
                 self.stdout = io.StringIO("")
                 self.stderr = io.StringIO("")
                 self.returncode = None
@@ -292,7 +318,7 @@ class TestTheLauncherPrintsTheUrlOnceHealthAnswers:
                     self.returncode = 0
                 return self.returncode
 
-            def wait(self):
+            def wait(self, timeout=None):
                 while self.returncode is None:
                     self.poll()
                     time.sleep(0.05)
@@ -300,6 +326,9 @@ class TestTheLauncherPrintsTheUrlOnceHealthAnswers:
 
             def terminate(self):
                 self.returncode = 0
+
+            def kill(self):
+                self.returncode = -9
 
             def communicate(self):
                 return ("", "")

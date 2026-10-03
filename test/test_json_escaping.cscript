@@ -2145,8 +2145,9 @@ assert "`jg_w'" == "000"
 // word, in a segment and after a paren command's comma (twoway refuses the
 // plain label itself, r(100)); by() on a variable that does not exist is
 // twoway's r(111); a name holding a double quote is refused as a name; and
-// a function's expression holding one is stored whole (twoway: r(198)).
-// Measured 24sep2026.
+// a function's expression holding one is refused r(198), as twoway refuses
+// it, and nothing is registered (measured 24sep2026; flipped by WP-29 P0.6
+// from "stored whole, rc 0": Stata's own generator now evaluates it).
 local jg_l47 "`c(tmpdir)'dash_jse47.log"
 _jg_log_on "`jg_l47'"
 capture noisily dash lfit mpg weight [aw=cond(make=="'x",1,2)], name(jg47w)
@@ -2173,17 +2174,16 @@ local jg_k3 = r(count)
 cert_log_has "`jg_l47'", needle("dash: invalid graph name")
 local jg_k4 = r(count)
 capture erase "`jg_l47'"
+capture twoway function y = strlen("'x"), range(0 1) nodraw
+local jg_tw5 = _rc
 capture noisily dash function y = strlen("'x"), range(0 1) name(jg47f)
 local jg_q5 = _rc
-mata: st_global("JG_WANT", "strlen(" + _jg_pq(char(39) + "x") + ")")
-_jg_stored jg47f "plots 0 expr"
-local jg_q6 "`r(ok)'"
 local jg_reg2 "${dash_graph_registry}"
-display as text "  refused: `jg_q1' `jg_q2' `jg_q3' `jg_q4' `jg_q7'  in dash's words: `jg_k1' `jg_k2' `jg_k3' `jg_k4'  function rc: `jg_q5' stored whole: `jg_q6'  registry: [`jg_reg2']"
+display as text "  refused: `jg_q1' `jg_q2' `jg_q3' `jg_q4' `jg_q7'  in dash's words: `jg_k1' `jg_k2' `jg_k3' `jg_k4'  function rc: `jg_q5' (twoway `jg_tw5')  registry: [`jg_reg2']"
 assert `jg_q1' == 198 & `jg_q2' == 198 & `jg_q3' == 198 & `jg_q4' == 111 & `jg_q7' == 198
 assert `jg_k1' == 2 & `jg_k2' == 2 & `jg_k3' == 1 & `jg_k4' == 1
-assert `jg_q5' == 0 & "`jg_q6'" == "1"
-assert "`jg_reg2'" == "jg47f"
+assert `jg_q5' == 198 & `jg_tw5' == 198
+assert "`jg_reg2'" == ""
 display "JSE-47 PASS: a title, qualifier or value that closes its quote is text or meets dash's own check, and names and writes nothing"
 capture dash clear
 

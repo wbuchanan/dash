@@ -56,7 +56,10 @@
 *! for exactly the length of each run, so it can reach pip and install
 *! nothing (WP-24: the helpers alone left the body's wiring untested).
 *!
-*! Tests: HON-01 through HON-30.  HON-19..25 run dash_setup itself with pip
+*! PEP-17..19 (WP-29 P0.19): dash_setup, venv() on real venvs, offline, and
+*! pip's non-ASCII PEP 668 refusal read in Stata's own interpreter.
+*!
+*! Tests: HON-01 through HON-30, PEP-17..19.  HON-19..25 run dash_setup itself with pip
 *! replaced by a recorder, so nothing is installed (see the section header).
 *! HON-26..28 run it in test/setup_sandbox.py's sandbox, for the order of its
 *! steps (packaging before the packages that need it) and for what it leaves
@@ -261,9 +264,12 @@ display "HON-13 PASS: a wholly unparseable version does not abort either"
 // "options not allowed".  Asserting the exact code rather than merely
 // non-zero, so a future `syntax' that accidentally accepts something and
 // fails later for a different reason does not pass this.
+// WP-29 P0.19: dash_setup now declares venv(), so an unknown option is
+// Stata's "option garbage() not allowed", r(198) (T7); an argument stays
+// r(101) (HON-15).
 capture dash_setup , garbage(1)
-assert _rc == 101
-display "HON-14 PASS: an unknown option on dash_setup is r(101)"
+assert _rc == 198
+display "HON-14 PASS: an unknown option on dash_setup is r(198)"
 
 capture dash_setup nonsense
 assert _rc == 101
@@ -413,7 +419,8 @@ capture program drop _hon_reload
 program define _hon_reload
     foreach p in dash_setup _dash_pymin _dash_pyver_ok _dash_pip_command ///
             _dash_pkg_version _dash_setup_summary _dash_setup_gate ///
-            _dash_setup_check_files {
+            _dash_setup_check_files _dash_setup_lib _dash_setup_detect ///
+            _dash_setup_pip _dash_setup_guide _dash_setup_venv {
         capture program drop `p'
     }
     quietly do "../dash_setup.ado"
@@ -440,7 +447,7 @@ program define _hon_run_setup, rclass
     if "`block'" != "" {
         python: import sys; (sys.modules.__setitem__(_hon_b, _hon_saved) if _hon_saved is not None else sys.modules.pop(_hon_b, None))
     }
-    python: import subprocess as _hon_sp, sfi; _hon_sp.run = _hon_real_run; sfi.Macro.setLocal("calls", " | ".join(" ".join(c[1:]) for c in _hon_calls))
+    python: import subprocess as _hon_sp, sfi; _hon_sp.run = _hon_real_run; sfi.Macro.setLocal("calls", " | ".join(("-c <code>" if c[1:2] == ["-c"] else " ".join(c[1:])) for c in _hon_calls))
     return scalar rc = `rc'
     return local log "`lg'"
     return local calls `"`calls'"'
@@ -507,8 +514,8 @@ local h20calls `"`r(calls)'"'
 _hon_reload
 _hon_has "`h20log'" "(below minimum 3.8)" h20below
 // Q27: the upgrade line names the interpreter Stata is linked to, never
-// a bare `python'; built the same way _dash_pip_command builds it.
-local h20wantcmd `"`c(python_exec)' -m pip install 'bokeh>=3.8'"'
+// a bare `python'.  WP-29 P0.19: quoted for the shell (the shlex oracle).
+python: import shlex, sfi; sfi.Macro.setLocal("h20wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8"]))
 _hon_has "`h20log'" `"`h20wantcmd'"' h20cmd
 _hon_has "`h20log'" "bokeh 2.4 (needs 3.8)" h20unmet
 _hon_has "`h20log'" "All dependencies are satisfied" h20ok
@@ -517,7 +524,9 @@ assert `h20below' == 1
 assert `h20cmd' == 1
 assert `h20unmet' == 1
 assert `h20ok' == 0
-assert `"`h20calls'"' == ""
+// WP-29 P0.19: the below verdict inspects the Python (a probe, not an
+// install) to know whether it is managed (N4).
+assert `"`h20calls'"' == "-c <code>"
 display "HON-20 PASS: bokeh 2.4 is reported unmet with the upgrade command, and not upgraded"
 
 // ---- HON-21: packaging unavailable (AC-06.3, TR-06.7) ----
@@ -535,7 +544,8 @@ _hon_has "`h21log'" "bokeh ............. OK" h21k1
 _hon_has "`h21log'" "numpy ............. OK" h21k2
 _hon_has "`h21log'" "pandas ............. OK" h21k3
 assert `h21rc' == 0
-assert `"`h21calls'"' == "-m pip install packaging"
+// WP-29 P0.19: the probe first, then pip with -P and its fixed flags.
+assert `"`h21calls'"' == "-c <code> | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: packaging"
 assert `h21out' == 1
 assert `h21warn' == 1
 assert `h21ok' == 0
@@ -551,7 +561,10 @@ local h22calls `"`r(calls)'"'
 _hon_has "`h22log'" "bokeh (could not install)" h22unmet
 _hon_has "`h22log'" "All dependencies are satisfied" h22ok
 assert `h22rc' == 198
-assert `"`h22calls'"' == "-m pip install bokeh>=3.8 | -m pip install --user bokeh>=3.8"
+// WP-29 P0.19: the probe first (this recorder answers it HONPIPOUT, so
+// detection fails and the run goes on as for an ordinary Python), then pip
+// with -P and its fixed flags, and the --user retry.
+assert `"`h22calls'"' == "-c <code> | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: bokeh>=3.8 | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: --user bokeh>=3.8"
 assert `h22unmet' == 1
 assert `h22ok' == 0
 display "HON-22 PASS: pip is asked for bokeh>=3.0, then again with --user, and the failure is fatal"
@@ -692,8 +705,10 @@ end
 // verified -- none OK -- with one warning.  Measured: an uncaptured version
 // import before the guard stops the run here at a ModuleNotFoundError,
 // before pip is asked for anything.
+// WP-29 P0.19: the linked Python is inspected first, and pip runs it
+// (PYTHON_EXEC, not sys.executable) with -P and its fixed flags.
 global HON_SB_SPEC `"{"block": ["packaging", "packaging.version"]}"'
-global HON_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "packaging"]]"'
+python: import json, sfi; sfi.Macro.setGlobal("HON_SB_EXPECT", json.dumps([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "--disable-pip-version-check", "--no-input", "--only-binary=:all:", "packaging"]]))
 _hon_sb_setup
 local h26rc = r(rc)
 local h26m = r(match)
@@ -726,8 +741,9 @@ display "HON-26 PASS: without packaging, pip is asked for it once, no version is
 // then verified -- OK, not "not verified", which is what a comparison made
 // before packaging was there reports.  The absence below is shown readable
 // by HON-26, where the same line is there.
+// WP-29 P0.19: the probe first; pip runs PYTHON_EXEC with its flags.
 global HON_SB_SPEC `"{"block": ["packaging", "bokeh"], "unblock_on_install": ["packaging", "bokeh"]}"'
-global HON_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "packaging"], ["PYTHON", "-m", "pip", "install", "bokeh>=3.8"]]"'
+python: import json, sfi; _hon_f = ["--disable-pip-version-check", "--no-input", "--only-binary=:all:"]; sfi.Macro.setGlobal("HON_SB_EXPECT", json.dumps([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install"] + _hon_f + ["packaging"], ["PYTHON_EXEC", "-P", "-m", "pip", "install"] + _hon_f + ["bokeh>=3.8"]]))
 _hon_sb_setup
 local h27rc = r(rc)
 local h27m = r(match)
@@ -788,8 +804,9 @@ display "HON-28 PASS: with scipy and statsmodels missing, setup names neither, i
 // test/setup_sandbox.py exactly as PC-16 and PC-21 drive them.
 
 // ---- HON-29: bokeh 3.7.3 is below the 3.8 floor ----
+// WP-29 P0.19: the below verdict inspects the Python first (N4).
 global HON_SB_SPEC `"{"fake": [["bokeh", "3.7.3"]]}"'
-global HON_SB_EXPECT "[]"
+global HON_SB_EXPECT `"[["PYTHON_EXEC", "-c", "<ANY>"]]"'
 _hon_sb_setup
 local h29rc = r(rc)
 local h29m = r(match)
@@ -800,7 +817,7 @@ if `h29m' != 1 {
 assert `h29m' == 1
 assert `h29rc' == 198
 _hon_has "`h29log'" "3.7.3 (below minimum 3.8)" h29below
-local h29wantcmd `"`c(python_exec)' -m pip install 'bokeh>=3.8'"'
+python: import shlex, sfi; sfi.Macro.setLocal("h29wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8"]))
 _hon_has "`h29log'" `"`h29wantcmd'"' h29cmd
 _hon_has "`h29log'" "Unmet:  bokeh 3.7.3 (needs 3.8)" h29unmet
 _hon_has "`h29log'" "All dependencies are satisfied" h29ok
@@ -829,6 +846,135 @@ assert `h30below' == 1
 assert `h30unmet' == 1
 assert `h30ok' == 0
 display "HON-30 PASS: Python 3.12.11 is refused by name, nothing installed"
+
+// ================================================================
+// PEP-17..19 -- dash_setup, venv() with real processes, offline, and
+//               pip's non-ASCII refusal in Stata's own interpreter
+//               (WP-29 P0.19, N1)
+// ================================================================
+// PEP-17/18 build real venvs from c(python_exec) with PIP_NO_INDEX=1, so
+// nothing is downloaded; PIP_NO_INDEX is put back after each.  Each case
+// reports and the run goes on; the ids that failed are listed at the end.
+global PEP_FAILED ""
+capture program drop _pep_fail
+program define _pep_fail
+    args id rc
+    global PEP_FAILED `"$PEP_FAILED `id'"'
+    display as error "`id' FAIL rc `rc'"
+end
+
+// The N1 probe: a child writing pip's PEP 668 bytes (the fixture's), read
+// by run_child, and by plain text=True as the control.
+python:
+def _pep19_probe():
+    import json, locale, subprocess, sys
+    from sfi import Macro, SFIToolkit
+    m = sys.modules["_dash_setup_lib"]
+    with open("fixtures/pip_refusals.json", encoding="utf-8") as fh:
+        hexb = json.load(fh)["externally_managed"]["stderr"].encode("utf-8").hex()
+    exe = SFIToolkit.macroExpand(chr(96) + "c(python_exec)'")
+    fake = [exe, "-c", "import sys; sys.stderr.buffer.write(bytes.fromhex(%r)); sys.exit(1)" % hexb]
+    control = "ok"
+    try:
+        subprocess.run(fake, capture_output=True, text=True)
+    except UnicodeDecodeError:
+        control = "raised"
+    rc, out, err = m.run_child(fake)
+    Macro.setLocal("p19rc", str(rc))
+    Macro.setLocal("p19x", "1" if chr(0xd7) in err and "externally-managed-environment" in err else "0")
+    Macro.setLocal("p19ascii", "1" if "ascii" in locale.getpreferredencoding(False).lower() else "0")
+    Macro.setLocal("p19control", control)
+end
+
+// ---- PEP-17: a venv whose install fails (offline) is left, named ----
+local p17 "`c(tmpdir)'pep17 venv"
+python: import shutil, sfi; shutil.rmtree(sfi.Macro.getLocal("p17"), True)
+python: import os; _pep_pni = os.environ.get("PIP_NO_INDEX"); os.environ["PIP_NO_INDEX"] = "1"
+capture noisily {
+    local lg "`c(tmpdir)'dash_pep17.log"
+    capture erase "`lg'"
+    capture log close _pep17
+    quietly log using "`lg'", text replace name(_pep17)
+    capture noisily dash_setup, venv("`p17'")
+    local rc = _rc
+    mata: st_local("hint", st_global("r(hint_cmd)"))
+    quietly log close _pep17
+    python: import os, stat, sfi; _pep_p = sfi.Macro.getLocal("p17"); _pep_s = os.stat(_pep_p); sfi.Macro.setLocal("ok17", "1" if os.path.isfile(os.path.join(_pep_p, "pyvenv.cfg")) and stat.S_IMODE(_pep_s.st_mode) == 0o755 and _pep_s.st_uid == os.getuid() else "0")
+    _hon_has "`lg'" "No matching distribution" h17nm
+    _hon_has "`lg'" "you may delete it" h17del
+    display as text "  PEP-17: rc `rc', venv `ok17', offline refusal `h17nm', delete note `h17del'"
+    assert `rc' == 198
+    assert "`ok17'" == "1"
+    assert `h17nm' == 1
+    assert `h17del' == 1
+    assert `"`hint'"' == ""
+    display "PEP-17 PASS: a venv whose install fails offline is left in place with a note, no link line, r(198)"
+}
+local pep_rc = _rc
+capture log close _pep17
+python: import os; (os.environ.__setitem__("PIP_NO_INDEX", _pep_pni) if _pep_pni is not None else os.environ.pop("PIP_NO_INDEX", None))
+python: import shutil, sfi; shutil.rmtree(sfi.Macro.getLocal("p17"), True)
+if `pep_rc' _pep_fail PEP-17 `pep_rc'
+
+// ---- PEP-18: a venv that sees the linked Python's packages verifies ----
+local p18 "`c(tmpdir)'pep18 venv"
+python: import shutil, sfi; shutil.rmtree(sfi.Macro.getLocal("p18"), True)
+python: import os; _pep_pni = os.environ.get("PIP_NO_INDEX"); os.environ["PIP_NO_INDEX"] = "1"
+capture noisily {
+    python: import os, subprocess, sysconfig, sfi; _pep_p = sfi.Macro.getLocal("p18"); _pep_e = sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"); _pep_r = subprocess.run([_pep_e, "-m", "venv", _pep_p], capture_output=True); _pep_l = subprocess.run([os.path.join(_pep_p, "bin", "python"), "-c", "import sysconfig; print(sysconfig.get_paths()['purelib'])"], capture_output=True, text=True).stdout.strip(); open(os.path.join(_pep_l, "dash_base.pth"), "w").write(sysconfig.get_paths()["purelib"] + chr(10)); sfi.Macro.setLocal("mk18", str(_pep_r.returncode)); sfi.Macro.setLocal("py18", os.path.join(os.path.realpath(_pep_p), "bin", "python"))
+    assert "`mk18'" == "0"
+    local lg "`c(tmpdir)'dash_pep18.log"
+    capture erase "`lg'"
+    capture log close _pep18
+    quietly log using "`lg'", text replace name(_pep18)
+    capture noisily dash_setup, venv("`p18'")
+    local rc = _rc
+    mata: st_local("hint", st_global("r(hint_cmd)"))
+    mata: st_local("vpy", st_global("r(venv_python)"))
+    local vl "`r(venv_linked)'"
+    quietly log close _pep18
+    _hon_has "`lg'" "Requirement already satisfied" h18sat
+    display as text "  PEP-18: rc `rc', satisfied `h18sat', linked `vl'"
+    assert `rc' == 0
+    assert `h18sat' == 1
+    mata: st_local("vpyok", strofreal(st_local("vpy") == st_local("py18")))
+    mata: st_local("hintok", strofreal(st_local("hint") == "python set exec " + char(34) + st_local("py18") + char(34) + ", permanently"))
+    assert `vpyok' == 1
+    assert `hintok' == 1
+    assert "`vl'" == "0"
+    display "PEP-18 PASS: a venv that sees the packages is verified and its python set exec line returned, rc 0"
+}
+local pep_rc = _rc
+capture log close _pep18
+python: import os; (os.environ.__setitem__("PIP_NO_INDEX", _pep_pni) if _pep_pni is not None else os.environ.pop("PIP_NO_INDEX", None))
+python: import shutil, sfi; shutil.rmtree(sfi.Macro.getLocal("p18"), True)
+if `pep_rc' _pep_fail PEP-18 `pep_rc'
+
+// ---- PEP-19: pip's PEP 668 bytes under Stata's locale (N1) ----
+capture noisily {
+    _dash_setup_lib
+    assert r(ok) == 1
+    python: _pep19_probe()
+    display as text "  PEP-19: rc `p19rc', text holds the bytes `p19x', ASCII locale `p19ascii', control `p19control'"
+    assert "`p19rc'" == "1"
+    assert "`p19x'" == "1"
+    if "`p19ascii'" == "1" {
+        assert "`p19control'" == "raised"
+    }
+    else {
+        display as text "  PEP-19: the locale is not ASCII here, so the control was not exercised"
+    }
+    display "PEP-19 PASS: pip's non-ASCII refusal is read as UTF-8 in Stata's own interpreter"
+}
+if _rc _pep_fail PEP-19 `=_rc'
+local pep_failed `"$PEP_FAILED"'
+macro drop PEP_FAILED
+capture program drop _pep_fail
+if `"`pep_failed'"' != "" {
+    display as error "PEP FAILED: `pep_failed'"
+    exit 9
+}
+
 
 macro drop HON_SB_SPEC HON_SB_EXPECT HON_SB_WHY
 

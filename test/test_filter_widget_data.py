@@ -22,11 +22,13 @@ numeric test refused it; and with no graph at all there was no primary
 source, so every filter was "not in the data".  The served app has always
 judged from its whole frame.
 
-Right before the fix, and held here: the dropdown's options and the range
-and slider bounds were already read from the whole data; a date variable
-passed the numeric test by accident (its empty column stays a datetime64
-array); a first graph whose rows are all missing on the filter variable
-kept a float column; a linked group's source is the whole data.  Each test
+Right before the fix, and held here: a date variable passed the numeric
+test by accident (its empty column stays a datetime64 array); a first graph
+whose rows are all missing on the filter variable kept a float column.
+Since WP-29 P0.11 a widget describes the rows its targets select and a
+linked group's source holds the group's rows; every shape below carries the
+unqualified filter-mode card k1, so each widget's reach is every row and
+the expectations are unchanged.  Each test
 below also fails before the fix: its loop reaches a shape the saved page got
 wrong.
 

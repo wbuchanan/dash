@@ -32,6 +32,7 @@ SVG's ``<line>`` elements), 23sep2026:
   advancing between them.
 """
 import json
+import ast
 import os
 import re
 import subprocess
@@ -1649,8 +1650,12 @@ class TestDashSetupHelpMatchesTheAdo:
         help_ = _flat(_read(_SETUP_HELP))
         assert "it does not refuse to continue" not in help_
         assert "Tornado may be absent" not in help_
-        assert ("An installed package below its minimum is reported, with "
-                "the command that upgrades it, and counted as unmet.") in help_
+        # WP-29 P0.19 (A16): on an externally managed Python the upgrade
+        # line is replaced by the way to set up a private environment.
+        assert ("An installed package below its minimum is reported and "
+                "counted as unmet, with the command that upgrades it or, on "
+                "an externally managed Python, the way to set up a private "
+                "environment instead.") in help_
         assert ("Tornado is installed with Bokeh, which depends on it, so no "
                 "separate installation is needed") in help_
         assert ("one below 3.8 is reported as an unmet requirement -- it is "
@@ -1660,12 +1665,17 @@ class TestDashSetupHelpMatchesTheAdo:
         """Every pip install in dash_setup.ado sits in the branch a failed
         import opens: the nearest `capture' before it is that import, and
         the next line is `if _rc != 0 {'.  There is no SSC install: jsonio,
-        the one Stata package setup installed, is no longer used."""
+        the one Stata package setup installed, is no longer used.
+
+        WP-29 P0.19: pip runs only through dash_setup_lib.py, whose
+        pip_install_argv is its one pip vector; dash_setup.ado calls it as
+        _dash_setup_pip, twice (packaging, then each missing package)."""
         lines = _read(_SETUP_ADO).splitlines()
-        installs = [i for i, ln in enumerate(lines)
-                    if '"pip", "install"' in ln
+        assert not [ln for ln in lines if '"pip", "install"' in ln
                     or "ssc install" in ln.split("//", 1)[0]]
-        assert len(installs) == 3, installs
+        installs = [i for i, ln in enumerate(lines)
+                    if re.match(r"\s*_dash_setup_pip\b", ln)]
+        assert len(installs) == 2, installs
         for i in installs:
             j = i - 1
             while not lines[j].lstrip().startswith("capture "):
@@ -1673,6 +1683,30 @@ class TestDashSetupHelpMatchesTheAdo:
             cap = lines[j].strip()
             assert cap.startswith("capture python: import "), (i + 1, cap)
             assert lines[j + 1].strip() == "if _rc != 0 {", (i + 1, cap)
+        lib = _read(os.path.join(_ROOT, "dash_setup_lib.py"))
+        tree = ast.parse(lib)
+        holders = sorted(n.name for n in ast.walk(tree)
+                         if isinstance(n, ast.FunctionDef)
+                         and '"-m", "pip", "install"' in ast.get_source_segment(lib, n))
+        assert holders == ["pip_install_argv"], holders
+
+    def test_the_help_explains_externally_managed_pythons(self):
+        """WP-29 P0.19: dash_setup.sthlp documents PEP 668, venv(path), the
+        restart and python set exec line, ensurepip, and never recommends
+        --break-system-packages; the sys.executable recipes (wrong under a
+        venv link) and the "either is r(101)" sentence are gone; dash.sthlp
+        links the new section."""
+        help_ = _flat(_read(_SETUP_HELP))
+        for words in ("PEP 668", "{opt venv(path)}", "python set exec",
+                      "permanently", "restart Stata", "ensurepip",
+                      "It never uses {cmd:--break-system-packages}",
+                      "r(7101)", "An option other than {opt venv()} is r(198)"):
+            assert words in help_, words
+        assert "sys.executable" not in help_
+        assert "either is r(101)" not in help_
+        dash_help = _flat(_read(os.path.join(_ROOT, "dash.sthlp")))
+        assert "{help dash_setup##pep668:Externally managed Pythons}" in dash_help
+        assert "{cmd:dash_setup} [{cmd:,} {it:{help dash_setup##options:setup_options}}]" in dash_help
 
     def test_neither_help_says_jsonio_is_installed_or_links_it(self):
         """dash_setup installed jsonio from SSC, and both help files said so

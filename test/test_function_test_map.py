@@ -57,7 +57,7 @@ sys.path.insert(0, _HERE)
 
 import fncov_reach  # noqa: E402
 import fncov_report as fr  # noqa: E402
-from function_test_map import DEAD, FUNCTIONS, TEST_ONLY  # noqa: E402
+from function_test_map import DEAD, FUNCTIONS, SETUP_FUNCTIONS, TEST_ONLY  # noqa: E402
 
 _RENDER = os.path.join(_ROOT, "dash_render.py")
 _NODE = re.compile(r"^test/(test_\w+\.py)::(\w+)(?:::(\w+))?$")
@@ -239,3 +239,38 @@ def test_dead_and_test_only_stay_unreachable(universe):
         "code that runs in either mode now reaches these; give each a "
         "behavioural test, name it in FUNCTIONS, and take it off DEAD or "
         "TEST_ONLY:\n  " + "\n  ".join(revived))
+
+
+def test_every_dash_setup_lib_function_names_its_test():
+    """dash_setup_lib.py (WP-29 P0.19) is held as dash_render.py is: every
+    function and method it defines, by qualified name (<locals> included),
+    is a key of SETUP_FUNCTIONS, and each names a test that exists."""
+    path = os.path.join(_ROOT, "dash_setup_lib.py")
+    with open(path, encoding="utf-8") as fh:
+        tree = ast.parse(fh.read())
+    names = set()
+
+    def walk(node, prefix):
+        for n in ast.iter_child_nodes(node):
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                names.add(prefix + n.name)
+                walk(n, prefix + n.name + ".<locals>.")
+            elif isinstance(n, ast.ClassDef):
+                walk(n, prefix + n.name + ".")
+            else:
+                walk(n, prefix)
+    walk(tree, "")
+    assert len(names) >= 20, sorted(names)
+    assert "stata_venv" in names and "VenvPathError.__init__" in names
+    assert names == set(SETUP_FUNCTIONS), (
+        sorted(names - set(SETUP_FUNCTIONS)), sorted(set(SETUP_FUNCTIONS) - names))
+    bad = []
+    for key, node in sorted(SETUP_FUNCTIONS.items()):
+        m = _NODE.match(node)
+        if not m or not m.group(3):
+            bad.append("%s: %r is not test/test_x.py::Class::test" % (key, node))
+            continue
+        if (m.group(2), m.group(3)) not in _defs_of("test/" + m.group(1)):
+            bad.append("%s: %s does not exist" % (key, node))
+    assert not bad, "\n".join(bad)
+

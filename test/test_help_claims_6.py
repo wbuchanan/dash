@@ -511,7 +511,11 @@ class TestLpolyGrid:
                                 "xvar": "weight",
                                 "options": {"bwidth": "400"}}],
                     layer + "by", graph_options={"by": "foreign"})[mode][0]
-        xs = [d["x_lp"] for d in _data_with(got, "x_lp", "y_lp")
+        # WP-29 P0.9: lpolyci's band has a source of its own beside the
+        # line's (it is drawn only where the standard error is defined), so
+        # the curve is the source without y_lower.
+        lines = [r for r in got if "y_lower" not in r.data_source.data]
+        xs = [d["x_lp"] for d in _data_with(lines, "x_lp", "y_lp")
               if len(d["x_lp"])]
         assert len(xs) == 2, f"{len(xs)} panels drew a curve"
         spans = sorted((len(x), float(x[0]), float(x[-1])) for x in xs)
@@ -637,61 +641,62 @@ class TestLpolyAtEveryDegree:
 
 
 class TestLpolyciBand:
-    """"lpolyci's band is a bootstrap percentile band, not Stata's, every
-    resample evaluated on the drawn line's own grid."  Stata's band is
-    invnormal times a Mata standard error (lpoly.ado:319-324); dash's is
-    GlyphMapper._bootstrap_ci over the point estimate's grid."""
+    """lpolyci's band is Stata's analytic band (WP-29 P0.9, section 11):
+    smooth +/- invnormal x the sandwich standard error with a degree p+2
+    pilot ([R] lpoly eq. 4; lpoly.ado:319-324), computed once by
+    _lpoly_se.  These tests pinned a 200-resample bootstrap percentile band
+    (GlyphMapper._bootstrap_ci) and its distance from Stata's; they now
+    pin that no resample is drawn and that the band is Stata's."""
 
     # twoway lpolyci mpg weight, bwidth(400), serset 0, first row:
     # x 1760, smooth 27.8661240248368, band 26.2413063049316 to
-    # 29.4909420013428 (23sep2026).
+    # 29.4909420013428 (23sep2026; twoway's serset holds floats).
     _TW_FIRST = (1760.0, 27.8661240248368, 26.2413063049316,
                  29.4909420013428)
 
-    def test_every_resample_is_evaluated_on_the_drawn_grid(self,
-                                                           monkeypatch):
+    def test_no_resample_is_drawn(self, monkeypatch):
+        """Flipped (P0.9): the spy saw 201 fits, the point estimate and
+        200 resamples; now one fit, and _bootstrap_ci is never called."""
         from bokeh.models import ColumnDataSource
         from bokeh.plotting import figure
         grids = []
+        boots = []
         real = dr.GlyphMapper._compute_lpoly_fit
 
         def spy(*a, **k):
             grids.append(k.get("x_grid"))
             return real(*a, **k)
+
+        def boot(*a, **k):
+            boots.append(1)
+            raise AssertionError("lpolyci ran a bootstrap")
         monkeypatch.setattr(dr.GlyphMapper, "_compute_lpoly_fit",
                             staticmethod(spy))
+        monkeypatch.setattr(dr.GlyphMapper, "_bootstrap_ci",
+                            staticmethod(boot))
         src = ColumnDataSource({"mpg": list(_AUTO.mpg),
                                 "weight": list(_AUTO.weight)})
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            line, _band = dr.GlyphMapper().map_lpolyci(
+            dr.GlyphMapper().map_lpolyci(
                 figure(), src, "mpg", "weight", {"bwidth": "400"})
-        drawn = np.asarray(line.data_source.data["x_lp"], float)
-        assert grids[0] is None, "the point estimate builds its own grid"
-        resamples = grids[1:]
-        assert len(resamples) >= 100, len(resamples)
-        # Every resample, not a hundred of them: the band is the percentiles
-        # of n_boot rows, and a row no fit filled stays zero and drags the
-        # band down.  Measured 24sep2026: 201 fits, the point estimate and
-        # then _N_BOOT_DEFAULT (200) resamples, each on the drawn grid.
-        assert len(resamples) == dr._N_BOOT_DEFAULT, len(resamples)
-        for g in resamples:
-            np.testing.assert_array_equal(np.asarray(g, float), drawn)
+        assert len(grids) == 1 and grids[0] is None, grids
+        assert boots == []
 
     @pytest.mark.parametrize("mode", _MODES)
-    def test_the_line_is_statas_and_the_band_is_not(self, tmp_path, mode):
+    def test_the_line_and_band_are_statas(self, tmp_path, mode):
+        """Flipped (P0.9): asserted the lower edge more than 0.1 off
+        Stata's (dash's bootstrap gave 25.70 where Stata's is 26.24)."""
         got = _both(tmp_path, [{"type": "lpolyci", "yvar": "mpg",
                                 "xvar": "weight",
                                 "options": {"bwidth": "400"}}],
                     "lpcib")[mode][0]
         d = _one(got, "x_lp", "y_lp", "y_lower", "y_upper")
-        x0, fit, lo, _hi = self._TW_FIRST
+        x0, fit, lo, hi = self._TW_FIRST
         assert d["x_lp"][0] == x0
         assert d["y_lp"][0] == pytest.approx(fit, rel=1e-12)
-        # A bootstrap band, not Stata's normal-theory band: dash's lower
-        # edge is 25.70 here, Stata's 26.24.
-        assert abs(d["y_lower"][0] - lo) > 0.1
-        assert d["y_lower"][0] < fit < d["y_upper"][0]
+        assert d["y_lower"][0] == pytest.approx(lo, rel=1e-6)
+        assert d["y_upper"][0] == pytest.approx(hi, rel=1e-6)
 
 
 # ===========================================================================
@@ -977,15 +982,6 @@ _STATA_ROT = {
     "nlsw88 wage on ttl_exp": .7440135932182029,
     "auto mpg on weight in 1/7": 77.35273499984294,
 }
-# The help's words for each, rounded as it rounds them.
-_HELP_PCT = {
-    "auto mpg on weight": -9.7, "auto price on mpg": -22.0,
-    "auto price on rep78": -22.0, "auto mpg on weight [aw=price]": -17.0,
-    "sp500 close on volume": 5.7, "nlsw88 wage on ttl_exp": 6.8,
-    "census death on pop": 14.2,
-}
-
-
 def _csv(name, y, x):
     df = pd.read_csv(os.path.join(_DATA, name + ".csv")).dropna()
     return df[x].to_numpy(float), df[y].to_numpy(float)
@@ -1011,43 +1007,58 @@ def _dash_rot():
 
 class TestDefaultBandwidth:
 
-    def test_the_rule_is_the_one_the_help_writes_down(self):
-        """0.65 (s^2 / S)^(1/5): s^2 the residual variance of a global
-        quartic fit (N - 5 degrees of freedom), S the sum over the
-        observations of that quartic's squared second derivative."""
-        x, y = np.asarray(_AUTO_WEIGHT, float), np.asarray(_AUTO_MPG, float)
-        c = np.polyfit(x, y, 4)
-        s2 = np.sum((y - np.polyval(c, x)) ** 2) / (len(x) - 5)
-        S = np.sum(np.polyval(np.polyder(c, 2), x) ** 2)
-        assert dr._LPOLY_ROT_C == 0.65
-        assert dr.GlyphMapper._default_lpoly_bwidth(x, y) == pytest.approx(
-            0.65 * (s2 / S) ** 0.2, rel=1e-10)
+    # WP-29 P0.7 (section 11): these four tests pinned dash's own 0.65
+    # (s^2/S)^(1/5) quartic rule, its gaps to Stata (-9.7% ... +14.2%) and
+    # its range/10 below eight observations.  The default is now Stata's
+    # rule of thumb, so they pin Stata's r(bwidth) instead.
 
-    @pytest.mark.parametrize("case", sorted(_HELP_PCT))
+    def test_the_rule_is_the_one_the_help_writes_down(self):
+        """The rule is Stata's: r(bwidth) on the eight cases at 1e-8 (the
+        first seven cars, a degree-0 rule on 7 points, at 5e-5)."""
+        got = _dash_rot()
+        for case, want in _STATA_ROT.items():
+            tol = 5e-5 if case.endswith("in 1/7") else 1e-8
+            assert abs(got[case] / want - 1) <= tol, (case, got[case], want)
+        assert not hasattr(dr, "_LPOLY_ROT_C")
+
+    @pytest.mark.parametrize("case", sorted(_STATA_ROT))
     def test_the_gap_to_statas_rule_is_the_one_the_help_gives(self, case):
-        got = _dash_rot()[case]
-        pct = 100.0 * (got / _STATA_ROT[case] - 1.0)
-        # -9.7, 5.7, 6.8 and 14.2 to a tenth; -22 and -17 to the unit.
-        tol = 0.05 if _HELP_PCT[case] not in (-22.0, -17.0) else 0.5
-        assert pct == pytest.approx(_HELP_PCT[case], abs=tol), case
+        """No gap: each case is Stata's r(bwidth)."""
+        rel = _dash_rot()[case] / _STATA_ROT[case] - 1.0
+        tol = 5e-5 if case.endswith("in 1/7") else 1e-8
+        assert abs(rel) <= tol, (case, rel)
 
     def test_below_eight_observations_it_is_a_tenth_of_the_range(self):
+        """Below eight observations the rule is still Stata's: on the first
+        seven cars h = 77.35273499984294 (r(ngrid) 10 of 50 points), and on
+        the first two to five cars twoway draws nothing."""
         x, y = np.asarray(_AUTO_WEIGHT, float), np.asarray(_AUTO_MPG, float)
-        for k in range(2, 8):
-            assert dr.GlyphMapper._default_lpoly_bwidth(x[:k], y[:k]) == \
-                pytest.approx(np.ptp(x[:k]) / 10.0)
-        # The help's example: the first seven cars, 185 against 77.4.
-        assert _dash_rot()["auto mpg on weight in 1/7"] == pytest.approx(185)
-        assert round(_STATA_ROT["auto mpg on weight in 1/7"], 1) == 77.4
+        h7 = _dash_rot()["auto mpg on weight in 1/7"]
+        assert abs(h7 / 77.35273499984294 - 1) <= 5e-5
+        _, yf = dr.GlyphMapper._compute_lpoly_fit(x[:7], y[:7], bwidth=h7,
+                                                  n_grid=50)
+        assert int(np.isfinite(yf).sum()) == 10
+        for k in range(2, 6):
+            h = dr.GlyphMapper._default_lpoly_bwidth(x[:k], y[:k])
+            _, yf = dr.GlyphMapper._compute_lpoly_fit(x[:k], y[:k],
+                                                      bwidth=h, n_grid=50)
+            assert not np.isfinite(yf).any(), k
 
     def test_the_help_gives_those_numbers(self):
         sec = _section("smoother_options", "weights")
         flat = " ".join(sec.split())
-        for s in ("9.7% below", "22% below", "17% below", "5.7%, 6.8% and "
-                  "14.2% above", "185 against Stata's 77.4"):
+        for s in ("use {cmd:lpoly}'s rule of thumb as Stata computes it",
+                  "a global polynomial of degree p+3 in powers of x",
+                  "an even degree uses the next odd one",
+                  "integrated over the central 90% of the range of x",
+                  "each {cmd:by()} panel and each {cmd:if} or {cmd:in} gets "
+                  "its own",
+                  "recomputes it from the rows kept after every filter move",
+                  "a constant x, gives a line at 0",
+                  "y exactly linear in x at {cmd:degree(0)}"):
             assert s in flat, s
-        assert "not reproducible from the published documentation" \
-            not in flat
+        for gone in ("9.7% below", "185 against Stata's 77.4", "0.65"):
+            assert gone not in flat, gone
 
 
 # ===========================================================================

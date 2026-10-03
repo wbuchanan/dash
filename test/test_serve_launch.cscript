@@ -32,13 +32,27 @@
 *!
 *! Tests: SRV-01 through SRV-20 (SRV-17 to SRV-20, added by ROADMAP WP-24,
 *! drive `dash serve' with a graph registered, against a stub renderer that
-*! starts no server; SRV-19 checks the app file it is handed is a tempfile
-*! of this session, BUG-47; SRV-20, added in WP-24's second round, is the
+*! starts no server; SRV-19 checks the app file it is handed is app.py in
+*! a private run folder of this session, c(tmpdir)dash-<uid>/run-<pid>-*,
+*! with spec.json and data.json beside it and the folder gone after
+*! (BUG-47; WP-29 P0.12b); SRV-20, added in WP-24's second round, is the
 *! serve-side twin of test_render_locate.cscript LOC-17 -- the renderer
 *! path dash serve runs is handed to Python as data, BUG-SEC-1.  SRV-20
 *! runs before SRV-19, which does not restore the real locator.)  SPU-01
 *! to SPU-03 (WP-28 F1), also before SRV-19, drive a real launch against
 *! a held port and the box _dash_serve reads from the launch report.
+*! PF-07 (WP-29 P0.12b), after SPU-02: the r(198) branch leaves no run
+*! folder of this session.
+*! LC-02..LC-04 (WP-29 P0.13 F4), after SPU-03 and before SRV-19: an
+*! interruption the launcher reports ends dash serve with r(1) and no
+*! traceback (LC-02); a real launch stopped by a patched pollstd ends r(1)
+*! with its port freed (LC-03, dash's catch, not Stata's Break key); the
+*! announcement names Break (LC-04).
+*! TOK-01..TOK-04 (WP-29 P0.12a), after LC-04 and before SRV-19: the
+*! served dashboard needs its per-launch key; dash build, server says so
+*! (TOK-01); a real dash serve refuses without the key and serves 74 rows
+*! with it, the link in a 0600 file of a 0700 folder (TOK-02); no log
+*! holds the key (TOK-03); the help names it (TOK-04).
 *!
 *! Usage:  do test/test_serve_launch.cscript
 *! Version: 1.2  24sep2026
@@ -591,6 +605,27 @@ assert `spu02m1' == 1
 assert `spu02m2' == 1
 display "SPU-02 PASS: dash serve turns the launch report's error into r(198) naming the app's status and stderr"
 
+// PF-07 (WP-29 P0.12b) -- the r(198) branch above (_srv_err) removes the
+// command's run folder before it exits: no run-<pid>-* folder of this
+// session is left under c(tmpdir)dash-<uid>, which must exist (dash serve
+// made its folder there).  Uid and pid from Python (c(pid) does not exist).
+global pf07_tmp "`c(tmpdir)'"
+python:
+import os as _pf7_os, re as _pf7_re
+from sfi import Macro as _pf7_M
+_pf7_root = _pf7_os.path.join(_pf7_M.getGlobal("pf07_tmp"), "dash-%d" % _pf7_os.getuid())
+_pf7_re_run = _pf7_re.compile(r"^run-%d-" % _pf7_os.getpid())
+_pf7_left = ([n for n in _pf7_os.listdir(_pf7_root) if _pf7_re_run.match(n)]
+             if _pf7_os.path.isdir(_pf7_root) else None)
+_pf7_M.setGlobal("pf07_root", "1" if _pf7_left is not None else "0")
+_pf7_M.setGlobal("pf07_left", " ".join(_pf7_left or []))
+end
+display as text "  PF-07 root present ${pf07_root}, run folders left [${pf07_left}]"
+assert "${pf07_root}" == "1"
+assert "${pf07_left}" == ""
+macro drop pf07_*
+display "PF-07 PASS: dash serve's r(198) branch leaves no run folder of this session"
+
 // SPU-03 -- the control: the same stub told to write nothing leaves the
 // box empty, so _dash_serve proceeds and returns rc 0.
 file open _spufh3 using "`spustub'/dash_render.py", write text replace
@@ -609,27 +644,369 @@ dash clear
 display "SPU-03 PASS: without a launch report error, dash serve returns rc 0 (the control)"
 
 // ================================================================
-// SRV-19 -- dash serve writes its app to a tempfile of this session
+// LC-02..LC-04 (WP-29 P0.13 F4) -- Break ends dash serve with r(1)
+// ================================================================
+// LC-02: a stub renderer reports an interruption in the launch box, as the
+// real launcher does when Break (sfi's BreakError) or Ctrl+C stops the
+// server; dash serve removes its run folder and ends with r(1) -- --Break--,
+// no traceback, no r(7102).  LC-04 reads the announcement in the same log.
+// LC-03: a real launch, stopped by a patched pollstd that raises BreakError
+// once /health has answered: this tests dash's catch and its error 1, not
+// Stata's own Break key (A11; the manual GUI check is recorded apart).
+// Names are built from c(tmpdir) and the Python pid, with no tempfile or
+// tempname draw (see the SPU note above).
+global lc_tmp "`c(tmpdir)'"
+python:
+import os as _lc_os, re as _lc_re, socket as _lc_sock
+from sfi import Macro as _lc_M
+_lc_pid = _lc_os.getpid()
+_lc_M.setGlobal("lc_pid", str(_lc_pid))
+_lc_root = _lc_os.path.join(_lc_M.getGlobal("lc_tmp"), "dash-%d" % _lc_os.getuid())
+def _lc_runs():
+    if not _lc_os.path.isdir(_lc_root):
+        return ""
+    return " ".join(sorted(n for n in _lc_os.listdir(_lc_root)
+                           if _lc_re.match(r"^run-%d-" % _lc_pid, n)))
+end
+local lcstub "`c(tmpdir)'dash_lc_stub_${lc_pid}"
+capture mkdir "`lcstub'"
+file open _lcfh using "`lcstub'/dash_render.py", write text replace
+file write _lcfh `"_lc_g = globals().get("_dash_launch_report")"' _n
+file write _lcfh `"if _lc_g is not None:"' _n
+file write _lcfh `"    _lc_g["interrupted"] = True"' _n
+file close _lcfh
+adopath ++ "`lcstub'"
+dash clear
+dash scatter mpg weight, name(lc02)
+local lc02lg "`c(tmpdir)'dash_lc_${lc_pid}_02.log"
+capture erase "`lc02lg'"
+quietly log using "`lc02lg'", replace text name(_lc02lf)
+capture noisily dash serve, port(5006) timeout(1) nobrowser
+local lc02rc = _rc
+quietly log close _lc02lf
+adopath - "`lcstub'"
+cert_log_has "`lc02lg'", needle("traceback") lower
+local lc02tb = r(found)
+cert_log_has "`lc02lg'", needle("r(7102)")
+local lc02r7 = r(found)
+cert_log_has "`lc02lg'", needle("press Break (Ctrl+C in console Stata)")
+local lc04brk = r(found)
+cert_log_has "`lc02lg'", needle("Stata is blocked until the server stops (Ctrl+C)")
+local lc04old = r(found)
+capture erase "`lc02lg'"
+python: _lc_M.setGlobal("lc_runs", _lc_runs())
+display as text "  LC-02 rc `lc02rc', traceback `lc02tb', r(7102) `lc02r7', run folders left [${lc_runs}]"
+assert `lc02rc' == 1
+assert `lc02tb' == 0
+assert `lc02r7' == 0
+assert "${lc_runs}" == ""
+display "LC-02 PASS: an interruption the launcher reports ends dash serve with r(1), no traceback, and its run folder removed"
+display as text "  LC-04 Break hint `lc04brk', old Ctrl+C line `lc04old'"
+assert `lc04brk' == 1
+assert `lc04old' == 0
+display "LC-04 PASS: dash serve's announcement names Break (Ctrl+C in console Stata)"
+capture erase "`lcstub'/dash_render.py"
+capture rmdir "`lcstub'"
+
+// LC-03: the real launcher and app; pollstd raises BreakError once a
+// thread has seen /health answer.  The original pollstd is restored after.
+dash clear
+dash scatter mpg weight, name(lc03)
+python:
+import threading as _lc_th, time as _lc_time, urllib.request as _lc_url
+import sfi as _lc_sfi
+_lc_s = _lc_sock.socket()
+_lc_s.bind(("127.0.0.1", 0))
+_lc_port = _lc_s.getsockname()[1]
+_lc_s.close()
+_lc_M.setGlobal("lc_port", str(_lc_port))
+_lc_up = _lc_th.Event()
+def _lc_probe():
+    _end = _lc_time.time() + 120
+    while _lc_time.time() < _end:
+        try:
+            _lc_url.urlopen("http://127.0.0.1:%d/health" % _lc_port, timeout=1)
+            _lc_up.set()
+            return
+        except Exception:
+            _lc_time.sleep(0.2)
+_lc_th.Thread(target=_lc_probe, daemon=True).start()
+_lc_orig = _lc_sfi.SFIToolkit.pollstd
+def _lc_poll():
+    if _lc_up.is_set():
+        raise _lc_sfi.BreakError("LC-03 Break")
+    return _lc_orig()
+_lc_sfi.SFIToolkit.pollstd = _lc_poll
+end
+timer clear 93
+timer on 93
+capture noisily dash serve, port(${lc_port}) timeout(1) nobrowser
+local lc03rc = _rc
+timer off 93
+quietly timer list 93
+local lc03s = r(t93)
+python:
+_lc_sfi.SFIToolkit.pollstd = _lc_orig
+_lc_free = False
+for _i in range(50):
+    _b = _lc_sock.socket()
+    try:
+        _b.setsockopt(_lc_sock.SOL_SOCKET, _lc_sock.SO_REUSEADDR, 1)
+        _b.bind(("127.0.0.1", _lc_port))
+        _lc_free = True
+        break
+    except OSError:
+        _lc_time.sleep(0.2)
+    finally:
+        _b.close()
+_lc_M.setGlobal("lc_free", "1" if _lc_free else "0")
+_lc_M.setGlobal("lc_up", "1" if _lc_up.is_set() else "0")
+_lc_M.setGlobal("lc_runs", _lc_runs())
+end
+display as text "  LC-03 rc `lc03rc' after `lc03s' s, served ${lc_up}, port free ${lc_free}, run folders left [${lc_runs}]"
+assert `lc03rc' == 1
+assert `lc03s' < 40
+assert "${lc_up}" == "1"
+assert "${lc_free}" == "1"
+assert "${lc_runs}" == ""
+display "LC-03 PASS: Break (a patched pollstd) stops a real dash serve with r(1) in `lc03s' s; the port is free and no run folder is left"
+dash clear
+macro drop lc_*
+
+// ================================================================
+// TOK-01..TOK-04 (WP-29 P0.12a) -- the served dashboard needs its key
+// ================================================================
+// TOK-02 follows LC-03's and PF-08's pattern (TD-3): a daemon thread,
+// started in Stata's Python before dash serve blocks, waits for /health,
+// reads the key from the run folder's 0600 link.html, runs
+// serve_token_probe.py with the file's PATH (never the key), and stops the
+// listener whatever happened.  The key stays in Python memory
+// (_tok_state) only, so TOK-03 can look for it in the logs without it ever
+// passing through a Stata macro or a display.  The thread calls no sfi
+// function.  Names are built from c(tmpdir) and the Python pid.
+python:
+import os as _tok_os
+from sfi import Macro as _tok_M
+_tok_M.setLocal("tokpid", str(_tok_os.getpid()))
+end
+local tokdir "`c(tmpdir)'"
+
+// TOK-01: dash build, server writes an app that makes its own key
+sysuse auto, clear
+dash clear
+dash scatter mpg weight, name(tok01)
+local tok01py "`tokdir'dash_tok_`tokpid'_01.py"
+local tok01lg "`tokdir'dash_tok_`tokpid'_01.log"
+capture erase "`tok01lg'"
+quietly log using "`tok01lg'", replace text name(_tok01)
+dash build, saving("`tok01py'") server replace
+quietly log close _tok01
+cert_log_has "`tok01lg'", needle("a new key for each launch")
+local tok01a = r(found)
+cert_file_has "`tok01py'", needle("--token-stdin")
+local tok01b = r(found)
+cert_file_has "`tok01py'", needle("auth_provider=_dash_token_auth(")
+local tok01c = r(found)
+cert_file_has "`tok01py'", needle("_DASH_SERVE_TOKEN = None")
+local tok01d = r(found)
+capture erase "`tok01lg'"
+capture erase "`tok01py'"
+display as text "  TOK-01 access line `tok01a', flag `tok01b', provider `tok01c', global `tok01d'"
+assert `tok01a' == 1
+assert `tok01b' == 1
+assert `tok01c' == 1
+assert `tok01d' == 1
+display "TOK-01 PASS: dash build, server names the per-launch key and writes an app that requires it"
+
+// TOK-02: a real dash serve refuses without the key and serves with it
+dash clear
+dash scatter mpg weight, name(tok02)
+local toktmp "`tokdir'"
+local tokres "`tokdir'dash_tok_`tokpid'_02.txt"
+local toklg "`tokdir'dash_tok_`tokpid'_02.log"
+local toksm "`tokdir'dash_tok_`tokpid'_02.smcl"
+capture erase "`tokres'"
+capture erase "`toklg'"
+capture erase "`toksm'"
+python:
+import glob as _tok_glob, re as _tok_re, signal as _tok_sig
+import socket as _tok_sock, stat as _tok_stat, subprocess as _tok_sp
+import sys as _tok_sys, threading as _tok_th, time as _tok_time
+import urllib.error as _tok_ue, urllib.request as _tok_url
+_tok_s = _tok_sock.socket()
+_tok_s.bind(("127.0.0.1", 0))
+_tok_port = _tok_s.getsockname()[1]
+_tok_s.close()
+_tok_M.setLocal("tokport", str(_tok_port))
+_tok_tmp = _tok_M.getLocal("toktmp")
+_tok_res = _tok_M.getLocal("tokres")
+_tok_probe = _tok_os.path.abspath("serve_token_probe.py")
+_tok_state = {}
+def _tok_status(url):
+    try:
+        with _tok_url.urlopen(url, timeout=5) as r:
+            return r.status
+    except _tok_ue.HTTPError as e:
+        return e.code
+    except Exception as e:
+        return type(e).__name__
+def _tok_run():
+    lines = []
+    try:
+        t0 = _tok_time.time()
+        while _tok_time.time() - t0 < 60:
+            if _tok_status("http://127.0.0.1:%d/health" % _tok_port) == 200:
+                break
+            _tok_time.sleep(0.2)
+        link = None
+        t0 = _tok_time.time()
+        pat = _tok_os.path.join(_tok_tmp, "dash-%d" % _tok_os.getuid(),
+                                "run-%d-*" % _tok_os.getpid(), "link.html")
+        while _tok_time.time() - t0 < 10:
+            found = _tok_glob.glob(pat)
+            if found:
+                link = found[0]
+                break
+            _tok_time.sleep(0.2)
+        if link is None:
+            lines.append("link=missing")
+            lines.append("root_without_key=%s" % _tok_status(
+                "http://127.0.0.1:%d/" % _tok_port))
+        else:
+            lines.append("link=found")
+            lines.append("link_mode=" + oct(_tok_stat.S_IMODE(
+                _tok_os.stat(link).st_mode))[-3:])
+            lines.append("link_dir_mode=" + oct(_tok_stat.S_IMODE(
+                _tok_os.stat(_tok_os.path.dirname(link)).st_mode))[-3:])
+            _tok_state["link"] = link
+            with open(link, encoding="utf-8") as fh:
+                m = _tok_re.search(r"\?token=([A-Za-z0-9_-]{43})", fh.read())
+            _tok_state["token"] = m.group(1) if m else ""
+            r = _tok_sp.run([_tok_sys.executable, _tok_probe, str(_tok_port),
+                             link, _tok_res], timeout=120,
+                            capture_output=True, text=True)
+            if r.stderr:
+                lines.append("probe_stderr=" + r.stderr[-300:].replace(
+                    "\n", " ").replace("\r", " "))
+    except Exception as e:
+        lines.append("thread_error=" + type(e).__name__)
+    finally:
+        try:
+            out = _tok_sp.run(["lsof", "-ti", "tcp:%d" % _tok_port,
+                               "-sTCP:LISTEN"], capture_output=True,
+                              text=True, timeout=10).stdout
+            for pid in out.split():
+                try:
+                    _tok_os.kill(int(pid), _tok_sig.SIGTERM)
+                except (ValueError, OSError):
+                    pass
+        except Exception:
+            pass
+        lines.append("stopped=1")
+        with open(_tok_res, "a", encoding="utf-8") as fh:
+            fh.write("\n".join(lines) + "\n")
+_tok_thread = _tok_th.Thread(target=_tok_run, daemon=True)
+_tok_thread.start()
+end
+quietly log using "`toklg'", replace text name(_tok02t)
+quietly log using "`toksm'", replace smcl name(_tok02s)
+timer clear 93
+timer on 93
+capture noisily dash serve, port(`tokport') timeout(1) nobrowser
+local tok02rc = _rc
+timer off 93
+quietly timer list 93
+local tok02s = r(t93)
+quietly log close _tok02s
+quietly log close _tok02t
+python: _tok_thread.join(60)
+foreach n in link=found link_port=ok health=200 root_without_key=403 near_miss=403 page_with_key=200 pull_without_key=refused pull_with_key_rows=74 link_mode=600 link_dir_mode=700 stopped=1 {
+    cert_file_has "`tokres'", needle("`n'")
+    local tok02_`=strtoname("`n'")' = r(found)
+}
+type "`tokres'"
+display as text "  TOK-02 rc `tok02rc' after `tok02s' s"
+assert `tok02rc' == 0
+assert `tok02s' < 60
+foreach n in link=found link_port=ok health=200 root_without_key=403 near_miss=403 page_with_key=200 pull_without_key=refused pull_with_key_rows=74 link_mode=600 link_dir_mode=700 stopped=1 {
+    assert `tok02_`=strtoname("`n'")'' == 1
+}
+display "TOK-02 PASS: a real dash serve refuses every request without its key and serves 74 rows with it, its link 0600 in a 0700 folder"
+
+// TOK-03: no log holds the key
+python:
+_tok_bad = 0
+_tok_key = _tok_state.get("token", "")
+for _tok_p in (_tok_M.getLocal("toklg"), _tok_M.getLocal("toksm")):
+    with open(_tok_p, encoding="utf-8", errors="replace") as fh:
+        _tok_txt = fh.read().replace("\n> ", "")
+    if (_tok_key and _tok_key in _tok_txt) or \
+            _tok_re.search(r"\?token=[A-Za-z0-9_-]{32,}", _tok_txt):
+        _tok_bad += 1
+_tok_M.setLocal("tok03bad", str(_tok_bad))
+_tok_M.setLocal("tok03len", str(len(_tok_key)))
+_tok_gone = "link" in _tok_state and not _tok_os.path.exists(_tok_state["link"])
+_tok_M.setLocal("tok03gone", "1" if _tok_gone else "0")
+end
+cert_log_has "`toklg'", needle("opens only through its link")
+local tok03a = r(found)
+cert_log_has "`toklg'", needle("link.html")
+local tok03b = r(found)
+display as text "  TOK-03 logs holding the key `tok03bad', key length `tok03len', link removed `tok03gone', said `tok03a' `tok03b'"
+capture erase "`toklg'"
+capture erase "`toksm'"
+capture erase "`tokres'"
+assert `tok03bad' == 0
+assert `tok03len' == 43
+assert `tok03gone' == 1
+assert `tok03a' == 1
+assert `tok03b' == 1
+display "TOK-03 PASS: neither the text log nor the SMCL log holds the key, and the link file is gone once the server stops"
+
+// TOK-04: the help names the key
+cert_file_has "../dash.sthlp", needle("DASH_SERVE_TOKEN")
+local tok04a = r(found)
+cert_file_has "../dash.sthlp", needle("?token=")
+local tok04b = r(found)
+cert_file_has "../dash.sthlp", needle("--token-stdin")
+local tok04c = r(found)
+cert_file_has "../dash.sthlp", needle("only this machine can reach it")
+local tok04d = r(found)
+cert_file_has "../dash.sthlp", needle("There is no password")
+local tok04e = r(found)
+display as text "  TOK-04 `tok04a' `tok04b' `tok04c' stale `tok04d' `tok04e'"
+assert `tok04a' == 1
+assert `tok04b' == 1
+assert `tok04c' == 1
+assert `tok04d' == 0
+assert `tok04e' == 0
+display "TOK-04 PASS: the help names DASH_SERVE_TOKEN, ?token= and --token-stdin, and no longer claims only this machine can reach it"
+dash clear
+
+// ================================================================
+// SRV-19 -- dash serve writes its app into a private run folder of this
+// session, and the folder is gone when the command ends
 // ================================================================
 // BUGS.md BUG-47: dash serve wrote every app to one fixed name,
 // dash_serve_app.py, so two sessions serving at once overwrote each other's
-// file.  test_server.py read _dash_serve's text for `tempfile ...
-// serve_app'; this runs dash serve.  The launch is the renderer's, so the
-// locator is stubbed -- as LOC-09 does -- to hand dash serve a renderer that
-// records the arguments it was run with and returns instead of serving.
-// The app file it was handed must be a tempfile of THIS session: in the
-// temporary directory and named with the session's own tempfile prefix,
-// which is what keeps two sessions' files apart.  (Not "two runs, two
-// names": a session reuses a tempfile's name once the file is released,
-// and one session's runs cannot overlap -- dash serve blocks.)
+// file.  The launch is the renderer's, so the locator is stubbed -- as
+// LOC-09 does -- to hand dash serve a renderer that records the arguments
+// it was run with and returns instead of serving.
+// Flipped (WP-29 P0.12b): the app used to be a Stata tempfile of this
+// session (St<pid>.<n>, 0644, beside the spec and data in c(tmpdir)).  It
+// is now app.py in c(tmpdir)dash-<uid>/run-<pid>-<random>/, a 0700 folder
+// of this session, with spec.json and data.json beside it, and dash
+// removes the folder when the command ends.  Uid and pid come from Python
+// (c(pid) does not exist); c(tmpdir) is compared as spelled.
 // Last in the script: the stub replaces the real locator for good.
-// The stand-in and its record are named from a tempfile too, so two
-// sessions running this script at once cannot write into each other's.
+// The stand-in and its record are named from a tempfile, so two sessions
+// running this script at once cannot write into each other's.
 tempfile s19base
 local s19fake "`s19base'.py"
 global SRV19_FAKE "`s19fake'"
 global SRV19_BASE "`s19base'"
 global SRV19_REC  "`s19base'.argv"
+global SRV19_TMP  "`c(tmpdir)'"
 capture erase "$SRV19_REC"
 tempname s19fh
 quietly file open `s19fh' using "`s19fake'", write replace text
@@ -650,26 +1027,33 @@ assert _rc == 0
 python:
 import json as _s19_json
 import os as _s19_os
+import re as _s19_re
 from sfi import Macro as _s19_M
 with open(_s19_M.getGlobal("SRV19_REC"), encoding="utf-8") as _s19_fh:
     _s19_runs = [_s19_json.loads(_s19_l) for _s19_l in _s19_fh if _s19_l.strip()]
-_s19_outs = [_s19_os.path.normpath(_s19_r[_s19_r.index("--output") + 1]) for _s19_r in _s19_runs]
-_s19_base = _s19_os.path.normpath(_s19_M.getGlobal("SRV19_BASE"))
-_s19_pref = _s19_base.rstrip("0123456789")
-_s19_ok = (len(_s19_outs) == 1 and len(_s19_pref) < len(_s19_base)
-           and _s19_outs[0].startswith(_s19_pref) and _s19_outs[0] != _s19_base)
+_s19_arg = lambda r, k: r[r.index(k) + 1] if k in r else ""
+_s19_outs = [_s19_arg(_s19_r, "--output") for _s19_r in _s19_runs]
+_s19_tmp = _s19_M.getGlobal("SRV19_TMP")
+_s19_pat = (_s19_re.escape(_s19_os.path.join(_s19_tmp, "dash-%d" % _s19_os.getuid()))
+            + _s19_re.escape(_s19_os.sep) + r"run-%d-[A-Za-z0-9_]+" % _s19_os.getpid()
+            + _s19_re.escape(_s19_os.sep) + r"app\.py")
+_s19_ok = len(_s19_outs) == 1 and _s19_re.fullmatch(_s19_pat, _s19_outs[0]) is not None
+if _s19_ok:
+    _s19_dir = _s19_os.path.dirname(_s19_outs[0])
+    _s19_ok = (_s19_arg(_s19_runs[0], "--spec") == _s19_os.path.join(_s19_dir, "spec.json")
+               and _s19_arg(_s19_runs[0], "--data") == _s19_os.path.join(_s19_dir, "data.json")
+               and not _s19_os.path.lexists(_s19_dir))
 _s19_M.setGlobal("SRV19_OUT", _s19_outs[0] if _s19_outs else "")
-_s19_M.setGlobal("SRV19_PREF", _s19_pref)
 _s19_M.setGlobal("SRV19_OK", "1" if _s19_ok else "0")
 end
-display as text "  SRV-19 app file: [$SRV19_OUT]  session prefix: [$SRV19_PREF]"
+display as text "  SRV-19 app file: [$SRV19_OUT]"
 assert "$SRV19_OK" == "1"
 capture erase "$SRV19_REC"
 capture erase "`s19fake'"
 capture program drop _dash_find_render
 dash clear
 macro drop SRV19_*
-display "SRV-19 PASS: dash serve writes its app to a tempfile of this session"
+display "SRV-19 PASS: dash serve writes its app to app.py in a private run folder of this session, spec.json and data.json beside it, and the folder is gone when it returns"
 
 capture program drop _srv_try
 

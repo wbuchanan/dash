@@ -53,6 +53,7 @@ sys.path.insert(0, _HERE)
 from dash_render import ServerAppBuilder
 
 from conftest import make_spec, make_data_json
+from serve_token_probe import TEST_TOKEN
 
 pytestmark = pytest.mark.serve
 
@@ -97,11 +98,27 @@ class _Served:
     ``nobrowser`` option exists to prevent.
     """
 
-    def __init__(self, app_path, extra_args=()):
+    def __init__(self, app_path, extra_args=(), token=TEST_TOKEN,
+                 allow_127=False, ready_path="/app"):
         self.port = _free_port()
         self.app = app_path
         self.proc = None
         self.extra = list(extra_args)
+        # WP-29 P0.12a: the dashboard's key, set in the child's
+        # DASH_SERVE_TOKEN; None leaves it unset and the app makes its own.
+        self.token = token
+        if allow_127:
+            self.extra += ["--allow-websocket-origin",
+                           f"127.0.0.1:{self.port}"]
+        self.ready_path = ready_path
+
+    def _env(self):
+        env = dict(os.environ)
+        if self.token is None:
+            env.pop("DASH_SERVE_TOKEN", None)
+        else:
+            env["DASH_SERVE_TOKEN"] = self.token
+        return env
 
     def __enter__(self):
         self.proc = subprocess.Popen(
@@ -110,7 +127,7 @@ class _Served:
              "--allow-websocket-origin", f"localhost:{self.port}"]
             + self.extra,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-            cwd=os.path.dirname(self.app) or ".")
+            cwd=os.path.dirname(self.app) or ".", env=self._env())
         deadline = time.time() + 60
         while time.time() < deadline:
             if self.proc.poll() is not None:
@@ -118,7 +135,7 @@ class _Served:
                 raise AssertionError(
                     f"bokeh serve exited early:\n{out[:3000]}")
             try:
-                self.get("/app")
+                self.get(self.ready_path)
                 return self
             except Exception:
                 time.sleep(0.4)
@@ -133,8 +150,13 @@ class _Served:
                 self.proc.kill()
         return False
 
-    def url(self, path):
-        return f"http://localhost:{self.port}{path}"
+    def url(self, path, token=True):
+        """The URL of *path*, with the key appended when there is one and
+        *token* is true (WP-29 P0.12a)."""
+        u = f"http://localhost:{self.port}{path}"
+        if token and self.token:
+            u += ("&" if "?" in path else "?") + "token=" + self.token
+        return u
 
     def get(self, path, timeout=10):
         with urllib.request.urlopen(self.url(path), timeout=timeout) as r:
@@ -158,17 +180,20 @@ class _Launched:
     ``--show`` is never passed, so no browser opens.
     """
 
-    def __init__(self, app_path, extra_args=()):
+    def __init__(self, app_path, extra_args=(), token=TEST_TOKEN):
         self.port = _free_port()
         self.app = app_path
         self.proc = None
         self.extra = list(extra_args)
+        self.token = token
+
+    _env = _Served._env
 
     def __enter__(self):
         self.proc = subprocess.Popen(
             [sys.executable, self.app, "--port", str(self.port)] + self.extra,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-            cwd=os.path.dirname(self.app) or ".")
+            cwd=os.path.dirname(self.app) or ".", env=self._env())
         deadline = time.time() + 60
         while time.time() < deadline:
             if self.proc.poll() is not None:
@@ -190,6 +215,8 @@ class _Launched:
 
     def get_from(self, host, path, timeout=10):
         u = f"http://{host}:{self.port}{path}"
+        if self.token:
+            u += ("&" if "?" in path else "?") + "token=" + self.token
         with urllib.request.urlopen(u, timeout=timeout) as r:
             return r.status, r.read().decode("utf-8", "replace")
 
@@ -205,7 +232,8 @@ def _pull(srv):
     a browser would and returns the real document.
     """
     from bokeh.client import pull_session
-    session = pull_session(url=srv.url("/app"))
+    kw = {"arguments": {"token": srv.token}} if srv.token else {}
+    session = pull_session(url=srv.url("/app", token=False), **kw)
     try:
         doc = session.document
         return doc, list(doc.roots)
@@ -395,7 +423,9 @@ class TestTheLauncherOpensNoBrowser:
         with open(app, encoding="utf-8") as fh:
             src = fh.read()
         assert "--show" in src, "there is no way to ask for a browser at all"
-        i = src.index("_server.io_loop.add_callback(_server.show")
+        # Flipped (WP-29 P0.12a): the browser opens the tokenized link
+        # through _dash_open_tokenized, never _server.show.
+        i = src.index("_dash_open_tokenized(_dash_url")
         window = src[max(0, i - 400):i]
         assert "_a.show" in window, (
             "the browser is opened unconditionally; it must be opt-in"

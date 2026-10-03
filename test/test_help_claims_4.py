@@ -55,6 +55,7 @@ from bokeh.model import Model  # noqa: E402
 from bokeh.models import BooleanFilter, ColumnDataSource  # noqa: E402
 from test_adversarial_matrix import _load_app, _write_inputs  # noqa: E402
 from test_filter_exclude import _node  # noqa: E402
+from serve_token_probe import TEST_TOKEN  # noqa: E402  (WP-29 P0.12a)
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "kpi_pctile_truth.json")
 _SEQ = count()
@@ -1308,12 +1309,15 @@ def r_fig():
 # Measured at 4ede074: after `dash scatter mpg weight, name(g1)`,
 # `dash serve, port(5127) timeout(1) nobrowser' stopped with
 #     ValueError: dash_render: --output must end in .py for mode 'server'
-# r(7102), on every launch.  _dash_serve hands the renderer a Stata tempfile
-# on purpose -- a registered name is what Stata erases when the command
+# r(7102), on every launch.  _dash_serve handed the renderer a Stata
+# tempfile then -- a registered name is what Stata erases when the command
 # ends, and the app it names embeds the data -- and the renderer's output
 # check, added later, asked every server-mode path for a .py.  Nothing ran
 # the real handoff: the launch test stops early and the browser test uses a
-# stub renderer.
+# stub renderer.  Since WP-29 P0.12b dash serve hands it app.py in a private
+# run folder, c(tmpdir)dash-<uid>/run-<pid>-<random>/, which dash removes;
+# TestTheOutputPathRule stays, because the extension-less launch rule is
+# kept for command-line users.
 
 class TestTheOutputPathRule:
     """What --output the renderer takes on each route."""
@@ -1364,16 +1368,22 @@ def _free_port():
 @pytest.mark.serve
 class TestTheRealHandoffServes:
     """The renderer run exactly as _dash_serve runs it -- runpy on
-    dash_render.py with the same sys.argv, the output a fresh extension-less
-    tempfile name -- starts a server that answers /health on the port asked
-    for, and a Ctrl+C (SIGINT) stops the launcher and the app it started."""
+    dash_render.py with the same sys.argv, the spec, data and app in a
+    private run folder (WP-29 P0.12b) -- starts a server that answers
+    /health on the port asked for, keeps no copy of the data on disk while
+    it serves (WP-29 P0.13 F2: the spec and data go once the app is
+    written, the app once /health and its banner have arrived), and a
+    Ctrl+C (SIGINT) stops the launcher and the app it started."""
 
     def test_it_serves_and_stops(self, tmp_path, truth):
         import signal
         import urllib.request
         spec = _kpi_spec("price", "none", ["p97.5"], filters=[])
-        sp, dp = _write_inputs(tmp_path, spec, _auto(truth))
-        out = str(tmp_path / "S_86564.000002")
+        _sp, _dp = _write_inputs(tmp_path, spec, _auto(truth))
+        run = dr._dash_run_open(str(tmp_path))
+        sp, dp, out = run["spec"], run["data"], run["app"]
+        os.replace(_sp, sp)
+        os.replace(_dp, dp)
         port = _free_port()
         render = os.path.join(os.path.dirname(_HERE), "dash_render.py")
         argv = ["dash_render.py", "--spec", sp, "--data", dp,
@@ -1403,7 +1413,17 @@ class TestTheRealHandoffServes:
             up = time.time() - t0
             assert status == 200, "no server answered on port %d" % port
             assert json.loads(body).get("status") == "ok", body
-            assert os.path.exists(out), "the app was not written"
+            # Flipped (WP-29 P0.13 F2): the app was required to exist while
+            # it served; now no copy of the data may: within 5 s of the
+            # first /health 200 the app, the spec and the data are gone.
+            left = [out, sp, dp]
+            t_gone = time.time() + 5
+            while time.time() < t_gone:
+                left = [p for p in (out, sp, dp) if os.path.exists(p)]
+                if not left:
+                    break
+                time.sleep(0.1)
+            assert not left, "on disk while serving: %s" % left
         finally:
             proc.send_signal(signal.SIGINT)
             try:
@@ -1487,6 +1507,27 @@ class TestAFitLineOnAFilterMove:
         assert {c: [float(v) for v in after[c]] for c in ("x", "y")} \
             == before
 
+    def test_the_saved_page_marks_its_line(self, tmp_path, truth):
+        """WP-29 P0.17: the line is not refitted, and it is marked -- its
+        renderer muted and its graph's caption shown -- after the move."""
+        from js_runner import JsSession
+        spec = _pair_spec(filters=_AGG_FILTERS, plots2=self._FIT)
+        r = _saved(tmp_path, spec, _auto(truth))
+        src = self._fit_source(r.figures.values())
+        before = {c: [float(v) for v in src.data[c]] for c in ("x", "y")}
+        rend = [rr for f in r.figures.values() for rr in f.renderers
+                if rr.data_source is src]
+        cues = [t for f in r.figures.values() for t in f.above
+                if "dash_stale_cue" in (getattr(t, "tags", None) or [])]
+        assert rend and len(cues) == 1, (
+            f"no Title tagged dash_stale_cue ({len(cues)} found)")
+        r.filter_widgets[0].value = _AGG_MOVE
+        JsSession(r.filter_callbacks).run(r.filter_callbacks[0])
+        assert {c: [float(v) for v in src.data[c]] for c in ("x", "y")} \
+            == before
+        assert all(rr.muted for rr in rend)
+        assert cues[0].visible is True
+
     def test_the_served_app_draws_it_again_from_the_kept_rows(self, tmp_path,
                                                               truth):
         df = _auto(truth)
@@ -1516,7 +1557,8 @@ class TestUnderBokehServe:
     own address and port, no /health, no launcher flags and no session
     limits (dash.sthlp, Server Mode)."""
 
-    def test_the_session_limits_do_not_hold(self, tmp_path, truth):
+    def test_the_session_limits_do_not_hold(self, tmp_path, truth,
+                                            monkeypatch):
         """bokeh serve runs the script afresh, in a new module, for every
         session (bokeh.application.handlers.code.CodeHandler), so the
         module-level limiter starts empty each time.  With one session a
@@ -1544,6 +1586,9 @@ class TestUnderBokehServe:
             launcher.append(refused(doc))
         assert launcher == [False, True, True, True]
 
+        # Flipped (WP-29 P0.12a): bokeh serve's session gate reads
+        # DASH_SERVE_TOKEN; _Req carries the same key.
+        monkeypatch.setenv("DASH_SERVE_TOKEN", TEST_TOKEN)
         handler = CodeHandler(source=src,
                               filename=str(tmp_path / "app_bs.py"))
         served = []
@@ -1610,8 +1655,9 @@ class TestTheLauncherOpensABrowserOnlyWhenAsked:
                 seen.setdefault("callbacks", []).append(
                     getattr(fn, "__name__", ""))
 
-            def call_later(self, delay, fn):
-                seen["later"] = (delay, getattr(fn, "__name__", ""))
+            def call_later(self, delay, fn, *a):
+                seen.setdefault("later", []).append(
+                    (delay, getattr(fn, "__name__", "")) + a)
 
             def start(self):
                 seen["loop_started"] = True
@@ -1634,6 +1680,15 @@ class TestTheLauncherOpensABrowserOnlyWhenAsked:
                 seen["stopped"] = True
 
         monkeypatch.setattr(bss, "Server", _Server)
+        # WP-29 P0.12a: the browser is handed the 127.0.0.1 link through a
+        # 0600 page (BROWSER set: the file route on every platform), never
+        # _server.show; the key is the test's, so no link file is made.
+        import webbrowser
+        monkeypatch.setenv("BROWSER", "x")
+        monkeypatch.setenv("DASH_SERVE_TOKEN", TEST_TOKEN)
+        monkeypatch.setattr(webbrowser, "open",
+                            lambda u, *a, **k: seen.setdefault(
+                                "opened", []).append(u) or True)
         src = _app_source(tmp_path, _pair_spec(), _auto(truth))
         runs = {}
         for argv in (["app.py"], ["app.py", "--show", "--timeout", "1"]):
@@ -1646,9 +1701,16 @@ class TestTheLauncherOpensABrowserOnlyWhenAsked:
         plain, asked = runs[1], runs[4]
         assert plain["started"] and plain["stopped"]
         assert "show" not in plain.get("callbacks", [])
-        assert "later" not in plain
-        assert asked.get("callbacks") == ["show"]
-        assert asked["later"] == (60, "stop")
+        assert "later" not in plain and "opened" not in plain
+        # Flipped (WP-29 P0.12a): no show callback; one browser open of a
+        # file:// page; (60, "stop") among the recorded call_laters; Gate A
+        # on the Server.
+        assert "show" not in asked.get("callbacks", [])
+        assert len(asked["opened"]) == 1 and \
+            asked["opened"][0].startswith("file://")
+        assert (60, "stop") in asked["later"]
+        assert type(asked["kw"]["auth_provider"]).__name__ == \
+            "_DashTokenAuth"
 
 
 @pytest.mark.serve
@@ -1661,9 +1723,12 @@ class TestTheLauncherServes:
         app = _build_app(str(tmp_path))
         with _Launched(app, ["--sessions-per-client", "1"]) as srv:
             # _Launched spent the one session when it waited for the app.
+            # Flipped (WP-29 P0.12a): the page and the pull carry the key,
+            # so the refusal is still the limiter's.
             status, page = srv.get("/")
             assert status == 200
-            session = pull_session(url=srv.url("/"))
+            session = pull_session(url=srv.url("/", token=False),
+                                   arguments={"token": srv.token})
             try:
                 texts = [d.text for d in session.document.select(
                     {"type": Div})]
@@ -1681,13 +1746,18 @@ class TestTheLauncherServes:
         from test_server_serves import _Launched, _build_app
         app = _build_app(str(tmp_path))
         with _Launched(app) as srv:
-            session = pull_session(url=srv.url("/"))
+            session = pull_session(url=srv.url("/", token=False),
+                                   arguments={"token": srv.token})
             try:
                 roots = list(session.document.roots)
                 texts = " ".join(d.text for d in session.document.select(
                     {"type": Div}))
             finally:
                 session.close()
+            # Flipped (WP-29 P0.12a): no Origin plus the key is admitted;
+            # no Origin without the key is refused (403).
+            with pytest.raises(OSError):
+                pull_session(url=srv.url("/", token=False)).close()
         assert roots and "429" not in texts
 
     def test_the_page_has_a_mobile_viewport(self, tmp_path):

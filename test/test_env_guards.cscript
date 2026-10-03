@@ -417,6 +417,27 @@ foreach sfx in ".html" "_i.html" {
     file close `sf17'
     capture erase "`e17out'`sfx'"
 }
+// PF-10 (WP-29 P0.12b): with no Python, no route makes a run folder.  The
+// run-* folders under every c(tmpdir)dash-* folder are listed in Mata (no
+// Python runs) before the routes below and after them; ENV-19's asserts
+// are followed by PF-10's.
+capture mata: mata drop _pf10_runs()
+mata:
+string scalar _pf10_runs()
+{
+    string colvector d, x, r
+    real scalar      i
+    r = J(0, 1, "")
+    d = dir(c("tmpdir"), "dirs", "dash*")
+    for (i = 1; i <= rows(d); i++) {
+        x = dir(c("tmpdir") + d[i], "dirs", "run-*")
+        if (rows(x)) r = r \ ((d[i] + "/") :+ x)
+    }
+    if (rows(r) == 0) return("")
+    return(invtokens(sort(r, 1)'))
+}
+end
+mata: st_local("pf10_before", _pf10_runs())
 capture erase "`env17dir'/ran.txt"
 quietly log using "`lg17'", replace text name(`lf17')
 mata: st_global("S_ADO", char(96) + char(34) + st_local("env17dir") + char(34) + char(39) + ";" + st_local("_env_sado"))
@@ -430,6 +451,7 @@ capture noisily dash scatter mpg weight, saving("`e17out'_i.html") replace
 local e17i = _rc
 mata: st_global("S_ADO", st_local("_env_sado"))
 quietly log close `lf17'
+mata: st_local("pf10_after", _pf10_runs())
 capture dash clear
 capture confirm file "`env17dir'/ran.txt"
 local e17ran = (_rc == 0)
@@ -466,6 +488,10 @@ assert `e17wi' == 0
 assert `e17ran' == 0
 assert `e17said' == 1
 display "ENV-19 PASS: the one-line form stops too; no route ran the renderer"
+display "PF-10: run folders before [`pf10_before'] after [`pf10_after']"
+assert `"`pf10_before'"' == `"`pf10_after'"'
+display "PF-10 PASS: with no Python, dash serve, dash build, the one-line form and dash clear make no run folder"
+capture mata: mata drop _pf10_runs()
 
 
 // ================================================================
@@ -500,19 +526,28 @@ assert `_env_py' >= 3
 // 24sep2026), and still it cannot see WHERE the calls stand: the guard
 // moved below the python: lines it protects, or a third program running
 // python: with no guard, leaves it at 3.  So dash.ado is read program by
-// program.  The programs holding a python: line -- captured or not -- are
-// _dash_do_render, _dash_write_data (24sep2026) and _dash_serve, and in
-// each the guard comes before the first of them.  A new python: site fails
-// the first assert until it is named here, guarded.
+// program.  The programs holding a python: line -- captured or not -- are,
+// in file order: _dash_do_render (the render), _dash_empty_data (its file
+// is written from Python), _dash_write_data (the data, 24sep2026),
+// _dash_xm_load (the module loader they share), _dash_tmp_open,
+// _dash_tmp_preview, _dash_tmp_close and _dash_tmp_clear (dash's private
+// temporary folder), _dash_render_immediate and _dash_prepare_spec (their
+// spec is written from Python) and _dash_serve.  In each the guard comes
+// before the first of them.  A new python: site fails the first assert
+// until it is named here, guarded.
+// Flipped (WP-29 P0.12b): the list was _dash_do_render _dash_write_data
+// _dash_serve; the spec and empty-data writes moved from Stata's `file
+// write' (which follows the umask) to Python's private writer, and the
+// private folder's programs run Python.
 mata: st_local("_env_pyprogs", _env_progs_with("../dash.ado", "python"))
 display "ENV-12: programs running python: `_env_pyprogs'"
-assert "`_env_pyprogs'" == "_dash_do_render _dash_write_data _dash_serve"
+assert "`_env_pyprogs'" == "_dash_do_render _dash_empty_data _dash_write_data _dash_xm_load _dash_tmp_open _dash_tmp_preview _dash_tmp_close _dash_tmp_clear _dash_render_immediate _dash_prepare_spec _dash_serve"
 foreach _env_p of local _env_pyprogs {
     mata: st_local("_env_g", strofreal(_env_first_in("../dash.ado", "`_env_p'", "_dash_require_python")))
     mata: st_local("_env_y", strofreal(_env_first_in("../dash.ado", "`_env_p'", "python")))
     assert `_env_g' > 0 & `_env_g' < `_env_y'
 }
-display "ENV-12 PASS: the Python guard is defined and called at all three python: sites"
+display "ENV-12 PASS: the Python guard is defined and called before every python: site"
 
 mata: st_local("_env_mt", strofreal(_env_code_has("../dash.ado", ///
     "_dash_require_mata")))

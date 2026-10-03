@@ -48,6 +48,9 @@ before a commit, as ``python3 -m pytest test/ -q``.
 
 No gap closes in this module: it is test-only infrastructure for C2, E2,
 E3, G6, X1 (sections 04, 05, 11, 12, 17), not a fix in its own right.
+WP-29 S12 adds a renderer's ``muted``, a Title's or Div's ``visible`` and
+a LegendItem's ``label`` to what a run reads and commits, each key on its
+own, so the saved page's stale cue (P0.17) can be measured under node.
 """
 import json
 import math
@@ -61,8 +64,9 @@ import numpy as np
 import pandas as pd
 import pytest
 from bokeh.model import Model
-from bokeh.models import (BooleanFilter, ColumnDataSource, Div, RangeSlider,
-                          Select, Slider)
+from bokeh.core.properties import value as _bk_value
+from bokeh.models import (BooleanFilter, ColumnDataSource, Div, GlyphRenderer,
+                          LegendItem, RangeSlider, Select, Slider, Title)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
@@ -74,9 +78,14 @@ import dash_render as dr  # noqa: E402
 # node lookup
 # ---------------------------------------------------------------------------
 
-#: The interpreter's path, resolved once at import: an explicit override
-#: first (a machine without node on PATH, or a pinned build), else PATH.
-NODE = os.environ.get("DASH_NODE") or shutil.which("node")
+def find_node():
+    """The interpreter's path: an explicit ``DASH_NODE`` override first (a
+    machine without node on PATH, or a pinned build), else PATH, else None."""
+    return os.environ.get("DASH_NODE") or shutil.which("node")
+
+
+#: The interpreter's path, resolved once at import by find_node().
+NODE = find_node()
 
 
 def node():
@@ -150,12 +159,28 @@ def stand_in(m, models, objs):
         return {"__type__": "BooleanFilter",
                 "booleans": [bool(b) for b in (m.booleans or [])]}
     if isinstance(m, Div):
-        return {"__type__": "Div", "text": m.text}
+        return {"__type__": "Div", "text": m.text, "visible": bool(m.visible)}
+    if isinstance(m, GlyphRenderer):
+        return {"__type__": "GlyphRenderer", "muted": bool(m.muted),
+                "visible": bool(m.visible)}
+    if isinstance(m, Title):
+        return {"__type__": "Title", "visible": bool(m.visible)}
+    if isinstance(m, LegendItem):
+        return {"__type__": "LegendItem",
+                "label": {"value": _label_text(m.label)}}
     props = m.properties()
     return {"__type__": type(m).__name__,
             **{p: encode(getattr(m, p), models, objs)
                for p in ("value", "start", "end", "step", "indices", "width")
                if p in props}}
+
+
+def _label_text(label):
+    """A LegendItem label's text: ``.value`` of a ``Value``, ``"value"``
+    of a dict, else ``None`` (a field label)."""
+    if isinstance(label, dict):
+        return label.get("value")
+    return getattr(label, "value", None)
 
 
 # BokehJS runs a CustomJS body as a strict-mode function whose parameters
@@ -194,8 +219,12 @@ const out = {};
 for (const [id, o] of Object.entries(REG)) {
   if (o.__type__ === "ColumnDataSource") out[id] = {data: o.data};
   else if (o.__type__ === "BooleanFilter") out[id] = {booleans: o.booleans};
-  else if (o.__type__ === "Div") out[id] = {text: o.text};
-  else if ("width" in o) out[id] = {width: o.width};
+  else {
+    const e = {};
+    for (const k of ["text", "width", "visible", "muted", "label"])
+      if (k in o) e[k] = o[k];
+    if (Object.keys(e).length) out[id] = e;
+  }
 }
 process.stdout.write(JSON.stringify(out));
 """
@@ -296,22 +325,35 @@ class JsSession:
                               for c, col in state["data"].items()}
                 elif "booleans" in state:
                     m.booleans = list(state["booleans"])
-                elif "text" in state:
-                    m.text = state["text"]
-                elif "width" in state and isinstance(state["width"],
-                                                      (int, float)):
-                    m.width = state["width"]
+                else:
+                    # Each key commits on its own (WP-29 S12): a Div
+                    # carries text AND visible, a renderer muted AND
+                    # visible.
+                    if "text" in state and isinstance(state["text"], str):
+                        m.text = state["text"]
+                    w = state.get("width")
+                    if (isinstance(w, (int, float))
+                            and not isinstance(w, bool)):
+                        m.width = w
+                    for k in ("visible", "muted"):
+                        if isinstance(state.get(k), bool):
+                            setattr(m, k, state[k])
+                    lab = state.get("label")
+                    if isinstance(lab, dict) and "value" in lab:
+                        m.label = _bk_value(lab["value"])
             self._seen.update(objs)
         self.runs.append(out)
         return out
 
     def state(self):
         """``{"sources": {id: data}, "booleans": {id: list}, "divs": {id:
-        text}, "widths": {id: width}}`` read from Python NOW, over the
+        text}, "widths": {id: width}, "muted": {id: bool}, "visible": {id:
+        bool}, "labels": {id: text}}`` read from Python NOW, over the
         constructor's models and every model a committed run reached."""
         objs = {m.id: m for m in self.models}
         objs.update(self._seen)
-        out = {"sources": {}, "booleans": {}, "divs": {}, "widths": {}}
+        out = {"sources": {}, "booleans": {}, "divs": {}, "widths": {},
+               "muted": {}, "visible": {}, "labels": {}}
         for mid, m in objs.items():
             if isinstance(m, ColumnDataSource):
                 out["sources"][mid] = dict(m.data)
@@ -321,6 +363,12 @@ class JsSession:
                 out["divs"][mid] = m.text
             elif "width" in m.properties():
                 out["widths"][mid] = m.width
+            if isinstance(m, GlyphRenderer):
+                out["muted"][mid] = bool(m.muted)
+            if isinstance(m, (GlyphRenderer, Title, Div)):
+                out["visible"][mid] = bool(m.visible)
+            if isinstance(m, LegendItem):
+                out["labels"][mid] = _label_text(m.label)
         return out
 
     def rows(self, source):

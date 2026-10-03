@@ -299,19 +299,31 @@ class TestTheServedAppHasTheSameBounds:
         to floats before evaluating -- hence the old assertion on
         ``fix_missing_locations``. ``map_function`` reaches the same end
         another way, so the guarantee is asserted by BEHAVIOUR rather than by
-        the spelling of one implementation of it. Every form below returned
-        in well under a second and drew nothing; the sibling test above
-        covers the served app end to end.  Each overflows, and is missing
-        in Stata: it is drawn at each x with every y missing, which draws
-        nothing, as twoway draws nothing for it (it was an empty layer
-        until the overflow was read as Stata's missing value).
+        the spelling of one implementation of it.
+
+        Flipped (WP-29 P0.6): the towers are written in Stata's ``^``, which
+        folds left to right, as twoway folds it (``**`` is refused, r(198)).
+        So ``x^9^9^9`` is ``x^729`` and ``x*9^9^9`` is ``x*387420489^9``:
+        both are finite over (1, 2), and equal twoway's points
+        (test/fixtures/function_expr_truth.json, probes tw02 and tw03;
+        4.44e70 at x = 1.25).  ``9^9^9^9``, ``2^10000000`` and ``2^200000``
+        overflow, are missing in Stata, and are drawn with every y missing,
+        which draws nothing, as twoway draws nothing for them -- each in
+        well under a second.
         """
         from bokeh.plotting import figure as _figure
+        import json as _json
+        import os as _os
         import time as _time
         import warnings as _w
+        import numpy as _np
+        fx = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
+                           "fixtures", "function_expr_truth.json")
+        with open(fx, encoding="utf-8") as fh:
+            truth = dict((p["expr"], p) for p in _json.load(fh)["probes"])
         mapper = dr.GlyphMapper()
-        for expr in ("9**9**9**9", "x**9**9**9", "x*9**9**9",
-                     "2**10000000", "2**200000"):
+
+        def drawn(expr):
             started = _time.time()
             with _w.catch_warnings():
                 _w.simplefilter("ignore")
@@ -323,18 +335,24 @@ class TestTheServedAppHasTheSameBounds:
                 "%r took %.1fs; an integer power bomb reached the evaluator"
                 % (expr, elapsed)
             )
-            ys = [float(v) for v in data.get("y_fn", [])]
-            assert all(v != v for v in ys), (
+            return [float(v) for v in data.get("y_fn", [])]
+
+        for expr in ("9^9^9^9", "2^10000000", "2^200000"):
+            ys = drawn(expr)
+            assert len(ys) == 5 and all(v != v for v in ys), (
                 "%r drew a value; it overflows, and is missing in Stata"
                 % expr
             )
+        for expr in ("x^9^9^9", "x*9^9^9"):
+            ys = drawn(expr)
+            want = [float(v) for v in truth["y = " + expr]["gen_y"]]
+            assert all(_np.isfinite(ys)), (expr, ys)
+            # Each ^ step may differ from Stata's by an ulp, raised to the
+            # next exponent: 1.8e-15 apart at x = 1.25.
+            _np.testing.assert_allclose(ys, want, rtol=1e-13, atol=0)
         # And an ordinary power still works, so the guard is not a blanket ban.
-        with _w.catch_warnings():
-            _w.simplefilter("ignore")
-            ok = mapper.map_function(_figure(), "x**2", (1.0, 2.0), 5, {})
-        ok_r = ok[0] if isinstance(ok, (list, tuple)) else ok
-        assert len(getattr(getattr(ok_r, "data_source", None), "data", {})
-                   .get("x_fn", [])) == 5
+        ys = drawn("x^2")
+        assert ys == [1.0, 1.5625, 2.25, 3.0625, 4.0]
 
     def test_a_power_tower_does_not_hang_the_served_app(self, tmp_path):
         import itertools
@@ -1155,6 +1173,24 @@ class TestTheTabAndFilterLimits:
         assert _named(built, "3 filters", "dash_max_filters")
 
 
+    def test_a_second_build_in_one_session_still_names_the_cap(self,
+                                                                tmp_path):
+        """Stata's Python lives as long as Stata, so a saved build runs
+        in the module a served build used before it.  The served build's
+        filter-cap note must not silence the saved page's: render() parsed
+        the filters, which notes the cap, before it forgot the previous
+        build's notes (WP-29 P0.11 moved the parse first), so the saved
+        build after a served one said nothing (seen under make test,
+        worker gw7)."""
+        spec = _spec([_graph("g1")],
+                     build={"filter": "x, type(range) || y, type(range) || "
+                                      "g, type(range)"},
+                     limits={"filters": 2})
+        _served(tmp_path, spec, _frame())
+        r, _, msgs = _standalone(tmp_path, spec, _frame())
+        assert len(r.filter_widgets) == 2
+        assert _named(msgs, "3 filters", "dash_max_filters"), msgs
+
 class TestTheServedAppDefinesEveryNameItReads:
     """A name the builder forgets to copy is a NameError on the served page
     when a session opens, not when the app is built.  This reads every
@@ -1184,12 +1220,28 @@ class TestTheServedAppDefinesEveryNameItReads:
                 walk(c, p)
 
         walk(top, [])
+        # Extended (WP-29 P0.13 F2, A3): the module level too -- the app's
+        # __main__ calls _dash_watch_parent, and a name read only there
+        # escaped the walk of child scopes.  Dunder names are skipped:
+        # Python 3.14's symtable reports __conditional_annotations__.
+        for sym in top.get_symbols():
+            nm = sym.get_name()
+            if sym.is_referenced() and not sym.is_assigned() and \
+                    not sym.is_imported() and \
+                    not re.match(r"^__\w+__$", nm):
+                used.setdefault(nm, "<module>")
         missing = {n: where for n, where in used.items()
                    if n not in defined and not hasattr(builtins, n)}
         assert not missing, missing
         for name in ("_DASH_LIMITS", "_dash_limits", "_dash_limit_hint",
                      "_dash_by_groups", "_dash_dropdown_values",
-                     "_dash_filter_truncation_note"):
+                     "_dash_filter_truncation_note", "_dash_watch_parent",
+                     # WP-29 P0.12a: the key's gates, opener and self-made
+                     # key, and the globals __main__ and Gate B read.
+                     "_dash_token_auth", "_dash_session_token_ok",
+                     "_dash_open_tokenized", "_dash_announce_key",
+                     "_dash_bokeh_serve_key", "_DASH_TOKEN_RE",
+                     "_DASH_SERVE_TOKEN", "_DASH_LINK_DIR"):
             assert name in defined, name
 
 

@@ -26,7 +26,7 @@
 *!     immediate values' records are written by dash_parse.mata.
 *!
 *! Author:  (see dash.sthlp)
-*! Version: 0.1.0  30sep2026
+*! Version: 0.1.0  02oct2026
 
 // ================================================================
 // Load Mata library (dash_parse.mata)
@@ -137,6 +137,11 @@ program define dash
     // ----------------------------------------------------------------
     // Plot definition  (pass full args including plot-type word)
     // ----------------------------------------------------------------
+    // The caller's version, for a function layer's evaluation: graph.ado
+    // sets ._Gr_Global.callerver to it before every graph, and
+    // twoway__function_gen evaluates under it (_dash_fn_points; WP-29
+    // P0.6).  Read here, where _caller() is the user's.
+    global dash__uv = string(_caller())
     _dash_plot `macval(0)'
 end
 
@@ -231,20 +236,23 @@ program define _dash_require_mata
     // test_program_coverage_map.py now fails a call this list does not name.
     local _needed _dash_check_utf8 _dash_route_axis2 _dash_comma_pos _dash_expand_plottype ///
         _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
+        _dash_extract_hover_vars ///
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
         _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
         _dash_kpi_pctile _json_escape _dash_path_badchar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal ///
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
         _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
+        _dash_sort_reset _dash_sort_scan _dash_sort_export ///
         _dash_immediate _dash_say _dash_spec_types_in _dash_split_segs ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
-        _dash_unbound_cands _dash_fn_names _dash_fn_space_call _dash_rep_scan ///
+        _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed ///
-        _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag ///
+        _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
-        _dash_axis_pieces
+        _dash_axis_pieces ///
+        _dash_axreq_clear _dash_axreq_add _dash_axreq_check
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
     // alone and took the library for whole when it was there, so a library
@@ -394,7 +402,7 @@ end
 program define _dash_do_render
     version 16.0
     syntax, SPEC(string) DATA(string) OUTPUT(string) RENDERPY(string) ///
-            [MODE(string)]
+            [MODE(string) PRIVate]
 
     // The directory the page or the app goes in must exist: refused here,
     // before Python, on every route, with twoway's r(603) (JSE-52).
@@ -423,6 +431,11 @@ program define _dash_do_render
     // Single-line python: statements do not have this issue.
     python: import sys, runpy
     python: sys.argv = ["dash_render.py", "--spec", "`_py_spec'", "--data", "`_py_data'", "--output", "`_py_output'", "--mode", "`_py_mode'"]
+    // private: the one-line form's preview page, written 0600 as a new
+    // file and never through a link (WP-29 P0.14; main(private_output)).
+    if "`private'" != "" {
+        python: _dash_priv_argv = sys.argv.append("--private-output")
+    }
     // Assign the result.  A single-line `python:' ECHOES the value of the
     // expression it evaluates, and run_path returns the executed module's
     // globals dict -- so this line printed the whole of dash_render.py's
@@ -722,6 +735,8 @@ program define _dash_parse_graph_opts, sclass
         PBGC(string)              XLA2(string asis)         XSC2(string asis) ///
         XTI2(string asis)         YLA2(string asis)         YSC2(string asis) ///
         YTI2(string asis) ///
+        ytick2(string asis)       xtick2(string asis)       yline2(string asis) ///
+        xline2(string asis) ///
         ZLABel(string asis)       ZTItle(string asis)       ZSCale(string asis) ///
         * ///
     ]
@@ -831,6 +846,10 @@ program define _dash_parse_graph_opts, sclass
     sreturn local xlabel2      : copy local xlabel2
     sreturn local yscale2      : copy local yscale2
     sreturn local xscale2      : copy local xscale2
+    sreturn local ytick2       : copy local ytick2
+    sreturn local xtick2       : copy local xtick2
+    sreturn local yline2       : copy local yline2
+    sreturn local xline2       : copy local xline2
     sreturn local xsize        : copy local xsize
     sreturn local ysize        : copy local ysize
     sreturn local fxsize       : copy local fxsize
@@ -961,6 +980,8 @@ program define _dash_parse_plot_opts, sclass
         COLV(string)              PBGC(string)              XLA2(string asis) ///
         XSC2(string asis)         XTI2(string asis)         YLA2(string asis) ///
         YSC2(string asis)         YTI2(string asis) ///
+        ytick2(string asis)       xtick2(string asis)       yline2(string asis) ///
+        xline2(string asis) ///
         ZLABel(string asis)       ZTItle(string asis)       ZSCale(string asis) ///
         * ///
     ]
@@ -1076,12 +1097,12 @@ program define _dash_parse_plot_opts, sclass
     if `: length local r2title' local _dash_pending `"`_dash_pending' r2title"'
     if `: length local recast' local _dash_pending `"`_dash_pending' recast"'
     if `: length local scale' local _dash_pending `"`_dash_pending' scale"'
-    // sort(varlist) is named as sort(): the argument form arrives in
-    // `sort1', the name -syntax- gives it, which is Stata's plumbing and not
-    // a name the user wrote.  A bare sort is not named here: dash joins the
-    // points of the connected types in the order of x, which is what sort
-    // asks twoway for, so _dash_fold_typed names it only on the other types,
-    // once the type is known.
+    // sort(varlist) arrives in `sort1', -syntax-'s name for it, and is
+    // returned in s(sort1); it is named here as sort().  _dash_sort_opt
+    // checks it as twoway does once the repeats are reduced, honours it
+    // on line, connected, area, rline, rarea and rconnected and is silent
+    // on tsline and tsrline, taking sort off this list there (WP-29
+    // P0.1); on every other type it stays named.
     if `: length local sort1' local _dash_pending `"`_dash_pending' sort"'
     if `: length local subtitle2' local _dash_pending `"`_dash_pending' subtitle2"'
     if `: length local t1title' local _dash_pending `"`_dash_pending' t1title"'
@@ -1186,6 +1207,7 @@ program define _dash_parse_plot_opts, sclass
     sreturn local horizontal       : copy local horizontal
     sreturn local vertical         : copy local vertical
     sreturn local sort             : copy local sort
+    sreturn local sort1            : copy local sort1
     sreturn local range            : copy local range
     sreturn local colorlist        : copy local colorlist
     sreturn local jitterseed       : copy local jitterseed
@@ -1243,6 +1265,10 @@ program define _dash_parse_plot_opts, sclass
     sreturn local g_xlabel2      : copy local xlabel2
     sreturn local g_yscale2      : copy local yscale2
     sreturn local g_xscale2      : copy local xscale2
+    sreturn local g_ytick2       : copy local ytick2
+    sreturn local g_xtick2       : copy local xtick2
+    sreturn local g_yline2       : copy local yline2
+    sreturn local g_xline2       : copy local xline2
     sreturn local g_xsize        : copy local xsize
     sreturn local g_ysize        : copy local ysize
     sreturn local g_fxsize       : copy local fxsize
@@ -1534,6 +1560,21 @@ program define _dash_fold_bw, sclass
         sreturn local kernel : copy local _kf_name
         sreturn local _unknown : copy local _kf_rest
     }
+    // WP-29 P0.9: lpolyci's pwidth(#) and var(#), taken out of the
+    // catch-all by value (_dash_lpolyci_opts), and twoway's refusals of
+    // them and of level(), with twoway's return codes and words, in its
+    // order.  The JSON key for var() is lpvar: _dash_extract_vars reads
+    // every "var": in a plot's JSON as a variable name.
+    mata: _dash_lpolyci_opts(st_global("s(_unknown)"), st_local("ptype"))
+    if "`_lpo_rc'" != "0" {
+        mata: _dash_say("err", "", st_local("_lpo_msg"), "")
+        exit `_lpo_rc'
+    }
+    if "`ptype'" == "lpolyci" {
+        sreturn local pwidth : copy local _lpo_pwidth
+        sreturn local lpvar : copy local _lpo_var
+        sreturn local _unknown : copy local _lpo_rest
+    }
     // kdensity: width(#) is twoway's own synonym for bwidth(#)
     // (twoway_kdensity_parse.class: Width(real 0) BWidth(real 0), the two
     // together "options width() and bwidth() may not be combined", r(198);
@@ -1760,6 +1801,101 @@ program define _dash_fold_typed, sclass
 end
 
 // ================================================================
+// _dash_sort_names  -- sort()'s names checked as twoway checks them
+//
+// twoway reads sort(varlist) with -syntax-'s namelist
+// (twoway_yxview_parse.class:187), on every plot type: a malformed name
+// is refused with one line naming the first bad character or token --
+// "* invalid name" for sort(x*), "( invalid name" for sort(z(1)) -- and
+// r(198) (measured on all forty types, WP-29 P0.1).  -confirm names- and
+// -syntax, sort(varlist)- answer otherwise.  Called by _dash_sort_opt
+// with the value by value; prints twoway's line itself.
+// ================================================================
+program define _dash_sort_names
+    version 16.0
+    syntax [, SORT1(namelist)]
+end
+
+// ================================================================
+// _dash_sort_opt <ptype>  -- sort(varlist) as twoway reads it
+//
+// Called by _dash_process_segment after _dash_opts_repeats has reduced
+// the list to the copies twoway reads -- of several sort() copies the
+// rightmost one that is not empty -- and after _dash_fold_typed.
+// Measured on StataNow 19.5 (WP-29 P0.1):
+//   * a malformed name is refused on every type (_dash_sort_names);
+//   * on the 23 types that draw a serset, each name must be a variable:
+//     unab's line, or "<word> is invalid variable name" for if, in, using
+//     and with, then "option sort() incorrectly specified", r(198); and
+//     at most ten names, _all counting every variable and two of twoway's
+//     own: "too many variables specified", the same second line, r(198);
+//   * on the other 17 types sort() is not read, rc 0.
+// On line, connected, area, rline, rarea and rconnected it is honoured:
+// s(sortvars) holds the names unab gave, single-spaced, which the plot's
+// JSON carries as "sortvars"; dash.ado makes their rank in Stata at export
+// (_dash_sort_gen).  On those six and on tsline and tsrline (which join in
+// time order whatever is given) sort comes off the pending list
+// _dash_parse_plot_opts named it on; elsewhere it stays named.  The value
+// is read by value and reaches a command line only through macval(); the
+// only echo of the user's text goes through _dash_say.  sclass: it sets
+// s(sortvars) and s(_pending) and touches nothing else in s().
+// ================================================================
+program define _dash_sort_opt, sclass
+    version 16.0
+    args ptype
+    mata: st_local("_so_e", strofreal(strtrim(st_global("s(sort1)")) == ""))
+    if `_so_e' exit
+    mata: st_local("_so_v", st_global("s(sort1)"))
+    capture noisily _dash_sort_names , sort1(`macval(_so_v)')
+    if _rc exit 198
+    local _so_six "line connected area rline rarea rconnected"
+    local _so_ts "tsline tsrline"
+    local _so_ser "scatter line connected area bar spike dropline dot rarea rbar rspike rcap rcapsym rscatter rline rconnected pcspike pcarrow pcbarrow pcscatter pccapsym mband mspline"
+    if `: list ptype in _so_ser' {
+        // Every token is a name now (namelist), so tokens() splits it
+        // whole and each reaches unab as a name.
+        mata: st_local("_so_nt", strofreal(cols(tokens(st_local("_so_v")))))
+        local _so_out ""
+        local _so_cnt = 0
+        forvalues _so_i = 1/`_so_nt' {
+            mata: st_local("_so_t", tokens(st_local("_so_v"))[`_so_i'])
+            if inlist("`_so_t'", "if", "in", "using", "with") {
+                mata: _dash_say("err", "", st_local("_so_t"), " is invalid variable name")
+                display as error "option sort() incorrectly specified"
+                exit 198
+            }
+            if "`_so_t'" == "_all" {
+                unab _so_u : _all
+                local _so_cnt = `_so_cnt' + c(k) + 2
+            }
+            else {
+                capture noisily unab _so_u : `_so_t', max(1)
+                if _rc {
+                    display as error "option sort() incorrectly specified"
+                    exit 198
+                }
+                local ++_so_cnt
+            }
+            local _so_out `_so_out' `_so_u'
+        }
+        if `_so_cnt' > 10 {
+            display as error "too many variables specified"
+            display as error "option sort() incorrectly specified"
+            exit 198
+        }
+        if `: list ptype in _so_six' sreturn local sortvars "`: list retokenize _so_out'"
+    }
+    if `: list ptype in _so_six' | `: list ptype in _so_ts' {
+        mata: st_local("_so_p", st_global("s(_pending)"))
+        local _so_rm "sort"
+        if `: list _so_rm in _so_p' {
+            local _so_k : list _so_p - _so_rm
+            sreturn local _pending `"`_so_k'"'
+        }
+    }
+end
+
+// ================================================================
 // _dash_check_legend  -- legend(top), legend(bottom), legend(left) and
 //                        legend(right), refused as twoway refuses them.
 //
@@ -1900,6 +2036,7 @@ program define _dash_option_rules
         degree=int,0,3  bwidth=pos,1@lowess  bwidth=pos ///
         kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle ///
         n=int,1,300@mspline  n=int,2,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
+        level=num,10,99.99@lpolyci ///
         colornlevels=int,2,256  colorlevels=int ///
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
         colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2 ///
@@ -1947,7 +2084,8 @@ program define _dash_option_rules
         xsize=style,1,100  ysize=style,1,100  aspectratio=num,0  hover=varlist  by=byvarlist ///
         scheme=scheme ///
         xlabel=axislist  ylabel=axislist  xlabel2=axislist  ylabel2=axislist ///
-        xtick=axislist  ytick=axislist  xmtick=axislist  ymtick=axislist ///
+        xtick=axislist  ytick=axislist  xtick2=axislist  ytick2=axislist ///
+        xmtick=axislist  ymtick=axislist ///
         xmlabel=axislist  ymlabel=axislist
     // Flag applicability (WP-18): flag[|flag...]@type[|type...].  A flag
     // written on a type outside its list is refused as twoway refuses it,
@@ -2584,6 +2722,19 @@ program define _dash_validate_opts, sclass
         }
     }
 
+    // WP-29 P0.9: lpolyci's var() <= 0, after the kernel, bwidth and
+    // degree rules above, as twoway orders it (measured: var(0) bwidth(0)
+    // names bwidth(), var(0) kernel(foo) the kernel).
+    if "`ptype'" == "lpolyci" {
+        mata: st_local("_lpv", st_global("s(lpvar)"))
+        if `: length local _lpv' {
+            if !(real("`_lpv'") > 0) {
+                display as error "var() must be a positive number"
+                exit 198
+            }
+        }
+    }
+
     // legend(top), (bottom), (left) and (right) inside this segment:
     // refused as twoway refuses them, even where an after-comma legend()
     // outranks this one (WP-23).  _dash_plot checks the value it writes.
@@ -2841,7 +2992,9 @@ end
 //
 // <extra> (GAPS2 G3) is the drawn output of computed-only graphs
 // (histogram, kdensity, a fit or a smoother) that no filter, link(), csv
-// or hover() reaches: those graphs' rows are never in <nvars>, so a
+// or hover() reaches; hover()'s own variables are counted only for a
+// graph one of whose layers can show them (WP-29 P0.10): those graphs'
+// rows are never in <nvars>, so a
 // saved page can hold more observations than the cells limit alone would
 // allow.  <nvars> of 0 means every graph is computed-only and untouched
 // -- nothing row-shaped is embedded at all.  <served> of 1 says every
@@ -3001,6 +3154,7 @@ program define _dash_plot_opts_to_json, rclass
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///
                    acolor alcolor alwidth alpattern ///
+                   pwidth lpvar ///
                    weight wexp {
         // Read by value and measured, never copied or compared in quotes: a
         // copy through them expanded a macro in the value again --
@@ -3519,6 +3673,10 @@ program define _dash_process_segment, rclass
     else if `: list ptype in _pt_literal' {
         _dash_parse_varpart_any `macval(varpart)'
         if "`ptype'" == "function" {
+            // The text as typed, `y =' and all, for the generator
+            // (_dash_fn_points evaluates it after every plot is read; WP-29
+            // P0.6).
+            mata: st_local("_fn_raw", strtrim(st_global("s(vals)")))
             // Remove optional "y=" prefix, in Mata: an expression holding "'
             // -- strlen("'x") -- ended the compound quotes it was cut in
             // (test_json_escaping.cscript JSE-47).
@@ -3540,9 +3698,9 @@ program define _dash_process_segment, rclass
                 display as error "nothing found where expression expected"
                 exit 111
             }
-            // A function Stata does not have is refused as twoway refuses
-            // it, before anything is registered.
-            _dash_fn_refuse `"`macval(expr)'"'
+            // Whatever else twoway refuses in the expression, it refuses
+            // when it evaluates it: _dash_plot hands the text to the
+            // generator once every plot and by() are checked.
         }
         else {
             mata: st_local("vals", st_global("s(vals)"))
@@ -3913,14 +4071,22 @@ program define _dash_process_segment, rclass
 
     sreturn clear
     local _rp_gund_out ""
+    local _fn_rtyped ""
+    local _fn_rnorm ""
+    local _fn_nval ""
     // A weight-only segment goes through the parser and the validation
     // too, so the weight keys are in s() for the JSON writer and the flag
     // rules run on every segment; the parser takes an empty option list.
     if `: length local opts_raw' | `"`_seg_weight'"' != "" {
-        // ytitle(, axis(2)) -> ytitle2() before the repeat merge folds
-        // copies of ytitle into one (WP-28 B3, _dash_route_axis2).
+        // axis(2) on an axis option -> ytitle2(), ylabel2(), ytick2(),
+        // yline2(), yscale2() (x too) before the repeat merge folds copies
+        // of one option into one (WP-28 B3, WP-29 P0.5, _dash_route_axis2).
+        // The raw text is kept for _dash_plot's axis check, which refuses
+        // what twoway refuses once every layer's axis is known.
+        local _opts_pre : copy local opts_raw
         mata: st_local("opts_raw", _dash_route_axis2(st_local("opts_raw")))
         _dash_parse_plot_opts , `macval(opts_raw)'
+        c_local _seg_axreq_raw : copy local _opts_pre
         // An option it declares whose value -syntax- could not bind:
         // refused as twoway refuses it, not named as unsupported.
         _dash_refuse_unbound _dash_parse_plot_opts `"`macval(opts_raw)'"'
@@ -3936,6 +4102,9 @@ program define _dash_process_segment, rclass
         // An option given more than once: read as twoway reads it -- the
         // last copy, the copies merged, or refused (_dash_opts_repeats).
         _dash_opts_repeats _dash_parse_plot_opts `ptype' `"`macval(opts_raw)'"'
+        // function's range() as typed, before validation normalises it
+        // through numlist, which keeps 13 digits (WP-29 P0.6, S4-D5).
+        if "`ptype'" == "function" mata: st_local("_fn_rtyped", st_global("s(range)"))
         // lowess's logit, or its off form, on another plot type: refused
         // naming the word as typed, as twoway names it -- scatter mpg
         // weight, lo is "option lo not allowed", r(198) -- where the flag
@@ -3954,11 +4123,18 @@ program define _dash_process_segment, rclass
             _dash_seg_weight_s "`_seg_weight'" "`_seg_wexp'"
         }
         _dash_validate_opts "`ptype'"
+        if "`ptype'" == "function" {
+            mata: st_local("_fn_rnorm", st_global("s(range)"))
+            mata: st_local("_fn_nval", st_global("s(n)"))
+        }
         // colorvar() and its companions, and jitter(), on a plot type dash
         // does not draw them on: named in the note -- after the validation
         // above, so a bad value is refused first, as twoway refuses it
         // (WP-23).
         _dash_fold_typed "`ptype'"
+        // sort(varlist): checked as twoway checks it, after the repeats
+        // are reduced, and honoured on the six joining types (WP-29 P0.1).
+        _dash_sort_opt "`ptype'"
         // twoway__histogram_gen.ado:102-107: a start() above the variable's
         // minimum over the plot's sample is r(198), discrete or not.  dash
         // drew it, the observations below start() silently left out of
@@ -4080,6 +4256,14 @@ program define _dash_process_segment, rclass
     // command and refuses a second (_dash_refuse_second_name).
     mata: st_local("_seg_named", strofreal(st_global("s(g_name)") != ""))
     c_local _seg_named_out `_seg_named'
+    // The axes this segment's layers are drawn on (yaxis(), xaxis(); 1 when
+    // not given), for _dash_plot's axis check (WP-29 P0.5).
+    mata: st_local("_seg_ya", st_global("s(yaxis)"))
+    mata: st_local("_seg_xa", st_global("s(xaxis)"))
+    local _seg_ya = cond(real("`_seg_ya'") < ., real("`_seg_ya'"), 1)
+    local _seg_xa = cond(real("`_seg_xa'") < ., real("`_seg_xa'"), 1)
+    c_local _seg_yaxis_out `_seg_ya'
+    c_local _seg_xaxis_out `_seg_xa'
 
     // Hand the graph-level options found in this segment to _dash_plot as
     // _sg_* locals (they live in its frame, not here -- c_local propagates
@@ -4090,7 +4274,8 @@ program define _dash_process_segment, rclass
     foreach gkey in title subtitle note caption name saving xtitle ytitle xlabel ///
             ylabel xline yline legend by xscale yscale aspectratio scheme ///
             plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-            xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+            xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xsize ysize fxsize fysize ///
             scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
             t2title b1title b2title l1title l2title r1title r2title title2 ///
             subtitle2 zlabel ztitle zscale nodraw play replace {
@@ -4143,6 +4328,15 @@ program define _dash_process_segment, rclass
 
     // Options JSON
     _dash_plot_opts_to_json _opts_json
+    // sort(varlist) on a joining type: the names unab gave
+    // (_dash_sort_opt), which dash.ado ranks at export (_dash_sort_gen).
+    // A plot without it writes nothing new.
+    mata: st_local("_jsv", st_global("s(sortvars)"))
+    local _jsvf ""
+    if "`_jsv'" != "" {
+        _dash_json_str "`_jsv'" _jsv2
+        local _jsvf `","sortvars":"`_jsv2'""'
+    }
 
     // if/in, in compound quotes.  In plain quotes a qualifier holding a
     // double quote was split at it: -args- in _dash_json_str took the text
@@ -4167,12 +4361,12 @@ program define _dash_process_segment, rclass
             _dash_json_str "`xvar'"   _jxv
             local vfields `""yvar":"`_jyv'","xvar":"`_jxv'""'
             if `_yi' > 1 local seg_json `"`seg_json',"'
-            local seg_json `"`seg_json'{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"}"'
+            local seg_json `"`seg_json'{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
         }
     }
     else {
         local _nyv = 1
-        local seg_json `"{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"}"'
+        local seg_json `"{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
     }
 
     c_local `plottype_out' "`ptype'"
@@ -4193,6 +4387,37 @@ program define _dash_process_segment, rclass
     local _seg_wv ""
     if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' local _seg_wv `_seg_wexp'
     c_local _seg_wvar_out `_seg_wv'
+    // A function layer's text and the generator's range() and n(): the
+    // typed range when it is two plain numbers (numlist keeps 13 digits,
+    // the generator all 17), else the validated one, else twoway's 0 1;
+    // n() or twoway's 300 (WP-29 P0.6).
+    if "`ptype'" == "function" {
+        local _fn_lo 0
+        local _fn_hi 1
+        local _fn_ok 0
+        if `: word count `_fn_rtyped'' == 2 {
+            local _fn_a : word 1 of `_fn_rtyped'
+            local _fn_b : word 2 of `_fn_rtyped'
+            capture confirm number `_fn_a'
+            local _fn_ok = !_rc
+            capture confirm number `_fn_b'
+            local _fn_ok = `_fn_ok' & !_rc
+            if `_fn_ok' {
+                local _fn_lo `_fn_a'
+                local _fn_hi `_fn_b'
+            }
+        }
+        if !`_fn_ok' & `: word count `_fn_rnorm'' == 2 {
+            local _fn_lo : word 1 of `_fn_rnorm'
+            local _fn_hi : word 2 of `_fn_rnorm'
+        }
+        local _fn_n 300
+        if "`_fn_nval'" != "" local _fn_n `_fn_nval'
+        c_local _seg_fnraw_out : copy local _fn_raw
+        c_local _seg_fnlo_out `_fn_lo'
+        c_local _seg_fnhi_out `_fn_hi'
+        c_local _seg_fnn_out `_fn_n'
+    }
 end
 
 
@@ -4276,11 +4501,19 @@ end
 program define _dash_empty_data
     version 16.0
     args path
-    tempname fh
-    // quietly: `write replace' notes a file that is not there yet.
-    quietly file open `fh' using `"`path'"', write text replace
-    file write `fh' `"{"values":[],"variableIsString":{},"variableNames":[],"variableLabels":{},"valueLabelNames":{},"valueLabels":{},"numberOfRecords":0,"numberOfVariables":0}"' _n
-    file close `fh'
+    // Written from Python, 0600 and never through a link, a FIFO or another
+    // account's file (WP-29 P0.12b): Stata's `file write' wrote it with the
+    // umask (0644, measured D7) and followed a link at the name (D9).  The
+    // text crosses by value (Macro.getLocal), with its trailing newline
+    // (P1A-75 reads one line, then r(eof); A8).  No error branch: an
+    // anti-hijack refusal or an OSError ends the python: line, r(7102).
+    _dash_require_python
+    _dash_xm_load
+    local _ed `"{"values":[],"variableIsString":{},"variableNames":[],"variableLabels":{},"valueLabelNames":{},"valueLabels":{},"numberOfRecords":0,"numberOfVariables":0}"'
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_ed = _dash_xm._dash_tmp_write_text(_dash_M.getLocal("path"), _dash_M.getLocal("_ed") + chr(10))
 end
 
 
@@ -4312,11 +4545,37 @@ program define _dash_write_data
     unab _dw_vars : `_dw_vars'
     local _dw_vars : list uniq _dw_vars
     _dash_require_python
-    // The dash_render.py installed beside dash.ado first: the one the
-    // package ships.  A renderer found earlier on the ado-path -- a
-    // stand-in a test puts there to watch what it is handed -- replaces
-    // the render, never the export (test_json_escaping.cscript runs
-    // such a stand-in).  Then the ado-path, as the render looks.
+    _dash_xm_load
+    local _dw_err ""
+    // One statement per line: a python: block inside a program fails to
+    // load from the ado-path (see _dash_do_render).  Each program binds
+    // sys, _dash_M and _dash_xm in its own python: lines.
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_M.setLocal("_dw_err", _dash_xm._dash_write_stata_data(_dash_M.getLocal("_dw_path"), _dash_M.getLocal("_dw_vars")))
+    if `: length local _dw_err' {
+        mata: _dash_say("err", st_local("_dw_err"), "", "")
+        exit 198
+    }
+end
+
+
+// ================================================================
+// _dash_xm_load  -- load dash_render.py as _dash_render_export, once
+// ================================================================
+// Moved verbatim out of _dash_write_data (WP-29 P0.12b), which still calls
+// it, so the private-file programs below load the same module the same
+// way.  The dash_render.py installed beside dash.ado first: the one the
+// package ships.  A renderer found earlier on the ado-path -- a stand-in a
+// test puts there to watch what it is handed -- replaces the render, never
+// the export (test_json_escaping.cscript runs such a stand-in).  Then the
+// ado-path, as the render looks.  The module is kept in sys.modules, keyed
+// by its realpath, size and time, so a second command costs nothing to
+// load.  The guard first: no python: line runs before it (A7, ENV-12).
+program define _dash_xm_load
+    version 16.0
+    _dash_require_python
     local _dw_py ""
     capture findfile dash.ado
     if _rc == 0 {
@@ -4329,7 +4588,6 @@ program define _dash_write_data
         _dash_find_render
         local _dw_py `"`r(fn)'"'
     }
-    local _dw_err ""
     // One statement per line: a python: block inside a program fails to
     // load from the ado-path (see _dash_do_render).
     python: import sys, os, importlib.util
@@ -4348,11 +4606,132 @@ program define _dash_write_data
     python: _dash_xr = _dash_ok or _dash_xs.loader.exec_module(_dash_xm)
     python: _dash_xm._dash_export_key = _dash_key
     python: sys.modules["_dash_render_export"] = _dash_xm
-    python: _dash_M.setLocal("_dw_err", _dash_xm._dash_write_stata_data(_dash_M.getLocal("_dw_path"), _dash_M.getLocal("_dw_vars")))
-    if `: length local _dw_err' {
-        mata: _dash_say("err", st_local("_dw_err"), "", "")
-        exit 198
+end
+
+
+// ================================================================
+// _dash_tmp_open, _dash_tmp_preview, _dash_tmp_close, _dash_tmp_clear
+// -- dash's private temporary folder (WP-29 P0.12b, P0.14)
+// ================================================================
+// Measured at 7421d3d (section 08, D1-D9): every temporary copy of the data
+// -- the spec and data files of each render, dash serve's application and
+// the one-line preview -- was a Stata tempfile written with the umask
+// (0644; 0664 under umask 002) in c(tmpdir), a link at its name was
+// followed, and the preview was never deleted.  These programs put every
+// copy in c(tmpdir)dash-<uid>/run-<pid>-<random>/ (0700, files 0600),
+// remove it when the command ends, and keep the previews in .../previews/
+// under unique names, five a session (dash_render.py's _dash_run_open,
+// _dash_run_close, _dash_preview_path, _dash_tmp_clear).  A location that
+// cannot be private is never refused: the command prints ONE note naming
+// it and the remedy, and goes on (section 08 R-8, ratified 01oct2026).
+// Only an operating-system failure to make the folder at all ends r(603),
+// Stata's own code for a file it cannot create.  Each program calls
+// _dash_require_python before its first python: line (A7); every python:
+// line is an import, an assignment or a setLocal (A11); every path and
+// text crosses by value through Macro.getLocal/setLocal.  Callers read
+// r() on the very next line (A12).
+
+// _dash_tmp_open: opens the command's run folder; returns r(rundir),
+// r(spec), r(data), r(app), and r(noted) "1" when it printed the note.
+program define _dash_tmp_open, rclass
+    version 16.0
+    _dash_require_python
+    _dash_xm_load
+    local _to_tmp `"`c(tmpdir)'"'
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_to = _dash_xm._dash_run_open(_dash_M.getLocal("_to_tmp"))
+    python: _dash_M.setLocal("_to_err", _dash_to["err"])
+    python: _dash_M.setLocal("_to_note", _dash_to["note"])
+    python: _dash_M.setLocal("_to_dir", _dash_to["rundir"])
+    python: _dash_M.setLocal("_to_spec", _dash_to["spec"])
+    python: _dash_M.setLocal("_to_data", _dash_to["data"])
+    python: _dash_M.setLocal("_to_app", _dash_to["app"])
+    local _to_noted ""
+    // The privacy class (R-8): printed, never an error.
+    if `: length local _to_note' {
+        mata: _dash_say("txt", "", st_local("_to_note"), "")
+        local _to_noted "1"
     }
+    // The operating-system class, never a privacy refusal: the folder could
+    // not be made at all (c(tmpdir) missing, read-only or full), where
+    // Stata's own `file open' gives 603 (measured, §3a S1).
+    if `: length local _to_err' {
+        mata: _dash_say("err", "", st_local("_to_err"), "")
+        exit 603
+    }
+    return local rundir `"`_to_dir'"'
+    return local spec   `"`_to_spec'"'
+    return local data   `"`_to_data'"'
+    return local app    `"`_to_app'"'
+    return local noted  "`_to_noted'"
+end
+
+// _dash_tmp_preview, opened() [noted()]: names the one-line preview page in
+// previews/ (0600 once written: main(private_output)); returns r(path).
+// Its note is printed only when _dash_tmp_open printed none for this
+// command (noted() is not "1"): one note per command.
+program define _dash_tmp_preview, rclass
+    version 16.0
+    syntax, OPENED(string) [NOTED(string)]
+    _dash_require_python
+    _dash_xm_load
+    local _tp_tmp `"`c(tmpdir)'"'
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_tp = _dash_xm._dash_preview_path(_dash_M.getLocal("_tp_tmp"), _dash_M.getLocal("opened"))
+    python: _dash_M.setLocal("_tp_err", _dash_tp["err"])
+    python: _dash_M.setLocal("_tp_note", _dash_tp["note"])
+    python: _dash_M.setLocal("_tp_path", _dash_tp["path"])
+    if "`noted'" != "1" {
+        if `: length local _tp_note' {
+            mata: _dash_say("txt", "", st_local("_tp_note"), "")
+        }
+    }
+    // The operating-system class, as in _dash_tmp_open.
+    if `: length local _tp_err' {
+        mata: _dash_say("err", "", st_local("_tp_err"), "")
+        exit 603
+    }
+    return local path `"`_tp_path'"'
+end
+
+// _dash_tmp_close, dir(): removes the run folder _dash_tmp_open made.  A
+// path that is not one is named and left; it never changes the return
+// code.  A folder an error leaves behind is swept by the next command.
+program define _dash_tmp_close
+    version 16.0
+    syntax, DIR(string)
+    _dash_require_python
+    _dash_xm_load
+    local _tc_tmp `"`c(tmpdir)'"'
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_tc = _dash_xm._dash_run_close(_dash_M.getLocal("dir"), _dash_M.getLocal("_tc_tmp"))
+    python: _dash_M.setLocal("_tc_err", _dash_tc)
+    if `: length local _tc_err' {
+        mata: _dash_say("txt", "", st_local("_tc_err"), "")
+    }
+end
+
+// _dash_tmp_clear: dash clear's pruning -- this session's previews (but a
+// page a browser was asked to open in the last minute) and stale run
+// folders, in dash-<uid> and every fallback root.  With no dash* folder in
+// c(tmpdir), Mata says so and no Python runs (A15).
+program define _dash_tmp_clear
+    version 16.0
+    _dash_require_python
+    mata: st_local("_tcl_has", strofreal(rows(dir(c("tmpdir"), "dirs", "dash*")) > 0))
+    if "`_tcl_has'" != "1" exit
+    _dash_xm_load
+    local _tcl_tmp `"`c(tmpdir)'"'
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_tcl = _dash_xm._dash_tmp_clear(_dash_M.getLocal("_tcl_tmp"))
 end
 
 
@@ -4398,7 +4777,7 @@ program define _dash_qual_gen
     capture unab _dq_clash : __dash*
     if _rc == 0 {
         local _dq_first : word 1 of `_dq_clash'
-        display as error "`cmdname': variable `_dq_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "`cmdname': variable `_dq_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its row identity __dash_row__ and its marker-label and jitter columns)."
         display as error "      Rename it first, for example: rename `_dq_first' newname"
         exit 110
     }
@@ -4506,6 +4885,63 @@ program define _dash_qual_gen_by, sortpreserve
             exit `rc'
         }
     }
+end
+
+// ================================================================
+// _dash_sort_gen <cmdname>  -- sort(varlist)'s rank columns, made in Stata
+//
+// twoway joins line, connected, area, rline, rarea and rconnected in the
+// order -sort varlist- gives (strings byte by byte, . before .a before
+// .b), which the data writer cannot carry: it writes every missing value
+// as null.  So for each distinct varlist the table holds
+// (_dash_sort_scan, _dash_sort_export) one double column __dashs<k> is
+// made here, the rank of each row under -sort varlist obs-: ties keep the
+// data's order.  The caller exports the columns with its variables and
+// drops them at once, whether or not the export succeeded; the names come
+// back in the caller's local _dash_sort_vars.  The sort variables
+// themselves are never exported.  sortpreserve gives the data its order
+// back.  Run after _dash_qual_gen, which has refused any variable already
+// named __dash* (rc 110); the check is made again for __dashs*.  A sort()
+// variable that is gone -- dropped or renamed since its graph was
+// registered -- is refused in twoway's words, r(198), with nothing left
+// behind (WP-29 P0.1).  Every name was checked to be a Stata name by
+// _dash_sort_scan before it reaches the sort command.
+// ================================================================
+program define _dash_sort_gen, sortpreserve
+    version 16.0
+    args cmdname
+    local _ds_n = 0
+    mata: _dash_sort_export()
+    if `_ds_n' == 0 {
+        c_local _dash_sort_vars ""
+        exit
+    }
+    capture unab _ds_clash : __dashs*
+    if _rc == 0 {
+        local _ds_first : word 1 of `_ds_clash'
+        display as error "`cmdname': variable `_ds_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "      Rename it first, for example: rename `_ds_first' newname"
+        exit 110
+    }
+    tempvar _ds_obs
+    quietly generate double `_ds_obs' = _n
+    local made ""
+    forvalues k = 1/`_ds_n' {
+        foreach _ds_nm of local _ds_v`k' {
+            capture confirm variable `_ds_nm', exact
+            if _rc {
+                if "`made'" != "" drop `made'
+                mata: _dash_say("err", "variable ", st_local("_ds_nm"), " not found")
+                display as error "option sort() incorrectly specified"
+                display as error "      `cmdname': the variable was dropped or renamed after the graph was registered."
+                exit 198
+            }
+        }
+        sort `_ds_v`k'' `_ds_obs'
+        quietly generate double __dashs`k' = _n
+        local made `made' __dashs`k'
+    }
+    c_local _dash_sort_vars "`made'"
 end
 
 // ================================================================
@@ -4619,12 +5055,19 @@ program define _dash_plot
     // leaves to the renderer (P1A-80).  Set below, once that comma's
     // options are read.
     global dash__g_by ""
+    // The axis options recorded for twoway's axis check (WP-29 P0.5):
+    // emptied for this command, filled per segment, checked and emptied
+    // again after the options after the comma are merged.
+    mata: _dash_axreq_clear()
+    local _g_ys ""
+    local _g_xs ""
 
     // ---- Initialise graph-level option accumulators ----
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
           ylabel xline yline legend by xscale yscale aspectratio scheme ///
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-          xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+          xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xsize ysize fxsize fysize ///
           scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 zlabel ztitle zscale nodraw play replace {
@@ -4637,6 +5080,7 @@ program define _dash_plot
     // command -- after the comma, in any plot group or || segment.
     local _gund_acc ""
     local _rp_gund_out ""
+    local _gopts_axraw : copy local gopts_raw
     if `: length local gopts_raw' {
         mata: st_local("gopts_raw", _dash_route_axis2(st_local("gopts_raw")))
         _dash_parse_graph_opts , `macval(gopts_raw)'
@@ -4656,7 +5100,8 @@ program define _dash_plot
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-              xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+              xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xsize ysize fxsize fysize ///
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
@@ -4728,6 +5173,8 @@ program define _dash_plot
     // the comma, is "option scheme() not allowed", r(198) (measured
     // 24sep2026 for each; name() has its own check, above and below).
     local _g_unique "saving scheme aspectratio xsize ysize scale fxsize fysize nodraw play"
+    // The function layers, collected for evaluation after the loop.
+    local _fn_m 0
     foreach gk of local _g_unique {
         local _gseen_`gk' = `: length local _gafter_`gk'' > 0
     }
@@ -4743,16 +5190,31 @@ program define _dash_plot
         local _seg_bands_out   0
         local _seg_vars_out    ""
         local _seg_wvar_out    ""
+        local _seg_fnraw_out   ""
+        local _seg_fnlo_out    ""
+        local _seg_fnhi_out    ""
+        local _seg_fnn_out     ""
+        local _seg_axreq_raw   ""
+        local _seg_yaxis_out   1
+        local _seg_xaxis_out   1
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-              xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+              xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xsize ysize fxsize fysize ///
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
             local _sg_`gk' ""
         }
         _dash_process_segment `"`macval(seg)'"' _pt_k _json_k `n_segs'
+        // This segment's axis options, as typed, and its layers' axes, for
+        // twoway's axis check after the loop (WP-29 P0.5).
+        mata: _dash_axreq_add(st_local("_seg_axreq_raw"), `k')
+        local _g_ys `_g_ys' `_seg_yaxis_out'
+        local _g_ys : list uniq _g_ys
+        local _g_xs `_g_xs' `_seg_xaxis_out'
+        local _g_xs : list uniq _g_xs
         // Kept for the by() answer below, by value.
         local _byq_pt_`k' `_pt_k'
         local _byq_if_`k' : copy local _seg_if_out
@@ -4778,6 +5240,16 @@ program define _dash_plot
         }
 
         local _dash_nplots = `_dash_nplots' + `_seg_nplots_out'
+        // A function layer: its place in the plots array (from 1), its
+        // text, range() and n(), for _dash_fn_points below (WP-29 P0.6).
+        if "`_pt_k'" == "function" {
+            local ++_fn_m
+            local _fn_k_`_fn_m' `_dash_nplots'
+            local _fn_raw_`_fn_m' : copy local _seg_fnraw_out
+            local _fn_lo_`_fn_m' : copy local _seg_fnlo_out
+            local _fn_hi_`_fn_m' : copy local _seg_fnhi_out
+            local _fn_n_`_fn_m' : copy local _seg_fnn_out
+        }
         if `_dash_nplots' > `_dash_plot_lim' {
             // The graph's total is known only once its last segment is in.
             if `k' == `n_segs' {
@@ -4800,7 +5272,8 @@ program define _dash_plot
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-              xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+              xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xsize ysize fxsize fysize ///
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
@@ -4831,7 +5304,8 @@ program define _dash_plot
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-              xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+              xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xsize ysize fxsize fysize ///
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
@@ -4840,15 +5314,57 @@ program define _dash_plot
         }
     }
 
+    // ---- axis(#) as twoway checks it (WP-29 P0.5) ----
+    // twoway's ParseAndLogAxes refuses an axis option whose axis(#) names
+    // an axis no layer is drawn on, an axis() in capitals or given twice,
+    // and a second comma, r(198), side by side, family by family, the
+    // segments before the options after the comma.  The options after the
+    // comma are read last, as segment n_segs+1.
+    mata: _dash_axreq_add(st_local("_gopts_axraw"), `n_segs' + 1)
+    mata: st_local("_axrc", strofreal(_dash_axreq_check(st_local("_g_ys"), st_local("_g_xs"))))
+    if `_axrc' exit 198
+
     // ---- Validate the graph-level values (WP-15) ----
     // After the restore above, so the value checked is the one that will
     // be written, and before the report below, so a refused value is never
     // half-reported.  The rules live in _dash_option_rules; a normalised
     // value (an expanded variable name) is written back to its g_ local.
+    //
+    // twoway's order (WP-29 P0.6, measured): every plot's variables and
+    // options and the by() variables are checked, then each function
+    // layer is evaluated, in order, then the graph options are checked.
+    // So by() is validated alone first, the layers are evaluated
+    // (_dash_fn_points, which advances the random-number state as twoway
+    // does), and the other graph rules follow.  A pre-check of every layer
+    // would refuse (function y=runiform()) (function y=nosuch(x)) before
+    // the first layer draws, where twoway has drawn it.
     _dash_option_rules
     foreach _vrule of local _dash_rules_graph {
         local _veq   = strpos("`_vrule'", "=")
         local _vopt  = substr("`_vrule'", 1, `_veq' - 1)
+        if "`_vopt'" != "by" continue
+        local _vspec = substr("`_vrule'", `_veq' + 1, .)
+        local _vval : copy local g_`_vopt'
+        if !`: length local _vval' continue
+        _dash_validate_value "dash" "`_vopt'" "`_vspec'" `"`macval(_vval)'"' ""
+        local g_`_vopt' : copy local _dash_vnorm
+    }
+    // Each function layer's points, as one JSON object keyed by the
+    // layer's place, held in a string scalar -- never a macro, which a
+    // dashboard of 10,000-point layers would overflow (_dash_register_graph
+    // checks it against c(macrolen)).
+    tempname _fp_sc _fx_raw
+    mata: st_strscalar(st_local("_fp_sc"), "")
+    forvalues _m = 1/`_fn_m' {
+        mata: st_strscalar(st_local("_fx_raw"), st_local("_fn_raw_`_m'"))
+        _dash_fn_points `_fx_raw' `_fn_lo_`_m'' `_fn_hi_`_m'' `_fn_n_`_m'' `_fn_k_`_m'' `_fp_sc'
+    }
+    mata: st_strscalar(st_local("_fp_sc"), (st_strscalar(st_local("_fp_sc")) == "" ? "" : "{" + st_strscalar(st_local("_fp_sc")) + "}"))
+    macro drop dash__uv
+    foreach _vrule of local _dash_rules_graph {
+        local _veq   = strpos("`_vrule'", "=")
+        local _vopt  = substr("`_vrule'", 1, `_veq' - 1)
+        if "`_vopt'" == "by" continue
         local _vspec = substr("`_vrule'", `_veq' + 1, .)
         local _vval : copy local g_`_vopt'
         if !`: length local _vval' continue
@@ -5086,7 +5602,8 @@ program define _dash_plot
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
           ylabel xline yline legend by xscale yscale aspectratio scheme ///
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-          xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+          xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xsize ysize fxsize fysize ///
           scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 zlabel ztitle zscale nodraw play replace {
@@ -5159,10 +5676,10 @@ program define _dash_plot
         mata: st_strscalar(st_local("_rg_name"), st_local("graph_name"))
         mata: st_strscalar(st_local("_rg_json"), st_local("graph_json"))
         mata: st_strscalar(st_local("_rg_spec"), st_local("0"))
-        _dash_register_graph `_rg_name' `_rg_json' `_rg_spec'
+        _dash_register_graph `_rg_name' `_rg_json' `_rg_spec' `_fp_sc'
     }
     else {
-        _dash_render_immediate `"`graph_json'"'
+        _dash_render_immediate `"`graph_json'"' `_fp_sc'
     }
 end
 
@@ -5418,82 +5935,87 @@ end
 
 
 // ================================================================
-// _dash_fn_refuse  -- a function layer calling a function Stata lacks
+// _dash_fn_points raw_sc lo hi n k obj_sc  -- evaluate one function layer
+//                                            with twoway's own generator
 // ================================================================
-// twoway refuses `twoway function y = nosuchfunction(x)' -- "error in
-// expression: nosuchfunction(x)", r(133) -- and so it refuses any call of a
-// name that is no Stata function (system(x), Sin(x), mpg(x)), wherever it
-// stands in the expression (measured 24sep2026).  dash registered the
-// layer, rc 0, and the renderer drew it empty with a note.
+// dash evaluated `function' itself, in Python, and lost Stata's grammar: ^
+// was folded right to left (2^3^x drew 512 where twoway draws 64), / and
+// * and - and + were grouped Python's way, and pi, e, x**2 and +x were
+// drawn where twoway refuses them (WP-29 P0.6).  It now runs
+// twoway__function_gen -- the generator twoway function itself calls --
+// as twoway calls it, and keeps the points.
 //
-// Called as _dash_fn_refuse `"<expression>"', read by value
-// (_dash_text_args).  Each name written directly before
-// a `(' (_dash_fn_names, at most 100 of them) is put to Stata as a call with
-// 32 arguments of 1, under capture: Stata answers r(133), "unknown
-// function", only for a name that is no function, and checks a known
-// function's arguments before it runs it, so none is evaluated -- the
-// random-number state is unchanged (measured: runiform() and rnormal()
-// with 32 arguments are r(198), c(rngstate) the same) -- save the pure
-// ones that take any number (max(), inlist()).  The name is a Stata name
-// (_dash_fn_names checks it), so it is safe on the command line, and the
-// expression is echoed only through _dash_say, at most 200 characters of
-// it.  A function Stata has but
-// the renderer does not draw -- normal(x) -- is not refused here: twoway
-// draws it, and the renderer's own check reports the layer it leaves empty.
+// raw_sc is a string scalar holding the layer's text as typed (`y =' and
+// all); lo, hi and n are the generator's range() and n(); k is the layer's
+// place in the graph's plots (from 1); obj_sc is a string scalar the
+// points are appended to, as "<k>":{"x0":..,"dx":..,"y":[..]}, comma
+// separated (_dash_fn_points_json).
 //
-// An operand written with blanks before a `(' (_dash_fn_space_call) is
-// refused too: Stata never reads sin (x) as a call.  twoway refuses
-// `function y = sin (x)' -- "error in expression:  sin (x)", r(111), sin
-// looked for as a variable -- and r(198) when the name is one the data has
-// (mpg, or mp for it), x, _n, _N or _pi, or the operand is a number, a
-// string or a closing parenthesis; with tabs alone between the name and
-// the `(' it is r(133), an unknown function (measured 24sep2026).  Stata
-// reports whichever it meets first: nosuch(x) + sin (x) is r(133), sin (x)
-// + nosuch(x) r(111), so only the calls written before the operand are
-// asked about first.  dash drew sin (x) as sin(x), rc 0.  2 * (x) and x +
-// (1) have an operator before the `(' and are drawn.  The name put to
-// -confirm- is a Stata name (_dash_fn_space_call reads only letters,
-// digits and _), and the expression is echoed only through _dash_say.
-program define _dash_fn_refuse
+//   * A top-level comma in the text would reach the generator's own option
+//     list -- y = x, generate(mpg weight, replace) -- so it is refused
+//     before the command line is built, r(198), as twoway refuses the
+//     expression (section 04 A7).
+//   * ._Gr_Global.callerver is set to the user's version ($dash__uv, set
+//     at dash's entry), as graph.ado sets it before every graph: the
+//     generator evaluates under it, so runiform() draws the user's
+//     version's numbers (section 04 S4-D6, M6).
+//   * Like twoway (twoway_function_parse.class), the data are preserved
+//     only when they hold fewer than n observations, where the generator
+//     adds some; otherwise it works in them, through tempvars, and the
+//     data are marked changed as twoway marks them (K1-K4).  Observations
+//     without a variable end as twoway ends them: none.
+//   * The text reaches the command line only through macval(): the one
+//     expansion it gets is the generator's own, as under twoway (M11).
+//   * A refusal is echoed in twoway's one line, "error in expression: "
+//     and the text after the `=' as typed (at most 200 characters), through
+//     _dash_say so SMCL in it is shown, not obeyed, and ends with the
+//     generator's code.  Break (r(1)) ends the command at once, unechoed.
+program define _dash_fn_points
     version 16.0
-    mata: _dash_text_args(0, 0, 0)
-    mata: st_local("_fn_sp", _dash_fn_space_call(st_local("_dash_txt")))
-    local _fn_upto : copy local _dash_txt
-    if `: length local _fn_sp' {
-        local _fn_pos : word 2 of `_fn_sp'
-        mata: st_local("_fn_upto", substr(st_local("_dash_txt"), 1, `_fn_pos' - 1))
+    args raw_sc lo hi n k obj_sc
+    mata: st_local("_fx_raw", st_strscalar(st_local("raw_sc")))
+    mata: st_local("_fx_echo", (ustrregexm(st_local("_fx_raw"), ///
+        "^([A-Za-z_][A-Za-z0-9_]*)?[ \t]*=") ? ///
+        substr(st_local("_fx_raw"), strlen(ustrregexs(0)) + 1, .) : st_local("_fx_raw")))
+    mata: st_local("_fx_echo", (ustrlen(st_local("_fx_echo")) > 200 ? ///
+        usubstr(st_local("_fx_echo"), 1, 197) + "..." : st_local("_fx_echo")))
+    mata: _dash_comma_pos(st_local("_fx_raw"), "_fx_cpos")
+    // A "' with no `" open before it ends a compound quote that was never
+    // opened: twoway's own parse of its command refuses it, r(198), before
+    // the generator is reached (y = strlen("'x"); the generator alone
+    // takes it; measured, test_json_escaping.cscript JSE-47).  A balanced
+    // compound string, strlen(`"ab"'), is drawn (Q1).
+    mata: st_local("_fx_cq", strofreal(_dash_fn_stray_close(st_local("_fx_raw"))))
+    if `_fx_cq' local _fx_cpos 1
+    if `_fx_cpos' != 0 {
+        mata: _dash_say("err", "error in expression: ", st_local("_fx_echo"), "")
+        exit 198
     }
-    mata: st_local("_fn_names", _dash_fn_names(st_local("_fn_upto"), 100))
-    local _fn_args "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1"
-    foreach _fn of local _fn_names {
-        capture local _fn_z = `_fn'(`_fn_args')
-        if _rc == 133 {
-            // twoway's words; an expression of more than 200 characters
-            // is shown in its first 197, so a refusal is never a page long.
-            mata: _dash_say("err", "error in expression: ", ///
-                (ustrlen(st_local("_dash_txt")) > 200 ? ///
-                usubstr(st_local("_dash_txt"), 1, 197) + "..." : st_local("_dash_txt")), "")
-            mata: _dash_say("err", "      unknown function ", st_local("_fn"), "()")
-            exit 133
-        }
+    local uv : copy global dash__uv
+    if "`uv'" == "" local uv = string(c(version))
+    if "`._Gr_Global.isa'" == "" {
+        ._Gr_Global = .global_g.new
     }
-    if !`: length local _fn_sp' exit
-    local _fn_kind : word 1 of `_fn_sp'
-    local _fn_nm : word 3 of `_fn_sp'
-    mata: _dash_say("err", "error in expression: ", ///
-            (ustrlen(st_local("_dash_txt")) > 200 ? ///
-            usubstr(st_local("_dash_txt"), 1, 197) + "..." : st_local("_dash_txt")), "")
-    if "`_fn_kind'" == "T" {
-        display as error "      unknown function `_fn_nm'<tab>()"
-        exit 133
+    ._Gr_Global.callerver = "`uv'"
+    // Data with observations and no variable hold nothing to keep: twoway
+    // leaves none there (its tempvars go, and _N with them; measured,
+    // section 04 A5), so they are not preserved.
+    if _N < `n' & c(k) > 0 {
+        preserve
     }
-    local _fn_rc 198
-    if "`_fn_kind'" == "N" {
-        capture confirm variable `_fn_nm'
-        if _rc & !inlist("`_fn_nm'", "x", "_n", "_N", "_pi") local _fn_rc 111
+    tempvar fy fx
+    capture twoway__function_gen `macval(_fx_raw)', range(`lo' `hi') x(x) n(`n') generate(`fy' `fx')
+    local rc = _rc
+    if `rc' == 1 exit 1
+    if `rc' {
+        mata: _dash_say("err", "error in expression: ", st_local("_fx_echo"), "")
+        exit `rc'
     }
-    display as error "      A name or value and a parenthesis written apart are two operands to Stata, not a call."
-    exit `_fn_rc'
+    mata: st_strscalar(st_local("obj_sc"), st_strscalar(st_local("obj_sc")) + ///
+        (st_strscalar(st_local("obj_sc")) == "" ? "" : ",") + ///
+        char(34) + st_local("k") + char(34) + ":" + ///
+        _dash_fn_points_json(st_local("fy"), strtoreal(st_local("n")), ///
+        st_numscalar("r(min)"), st_numscalar("r(delta)")))
 end
 
 // ================================================================
@@ -5739,7 +6261,7 @@ end
 // 24sep2026; test_json_escaping.cscript JSE-45, JSE-47).
 program define _dash_register_graph
     version 16.0
-    args name_sc json_sc spec_sc
+    args name_sc json_sc spec_sc fp_sc
     mata: st_local("name", st_strscalar(st_local("name_sc")))
     mata: st_local("json_spec", st_strscalar(st_local("json_sc")))
     mata: st_local("raw_spec", st_strscalar(st_local("spec_sc")))
@@ -5851,6 +6373,20 @@ program define _dash_register_graph
         exit(198)
     }
 
+    // A function graph's points are kept in one global, which holds
+    // c(macrolen) characters; st_global() past that truncates in silence
+    // (WP-29 P0.6, section 04 E6).  Refused before anything is stored.
+    local _fp_len 0
+    if "`fp_sc'" != "" {
+        mata: st_local("_fp_len", strofreal(strlen(st_strscalar(st_local("fp_sc")))))
+    }
+    if `_fp_len' > c(macrolen) {
+        _dash_count_fmt _fp_len_s `_fp_len'
+        display as error "dash: graph '`name'' holds `_fp_len_s' characters of function points, more than the `c(macrolen)' one Stata macro holds."
+        display as error "      Use a smaller n(), put the function layers in separate graphs, or raise c(macrolen) with set maxvar."
+        exit 134
+    }
+
     // WP-19: the registry holds at most `graphs' graphs and KPI cards.  A
     // NEW name past the limit is refused here, before any global is set or
     // retired; a name already registered is a replace and never counts.
@@ -5867,6 +6403,14 @@ program define _dash_register_graph
     // was expanded again, and an =exp in it evaluated (JSE-67).
     mata: st_global("dash_spec_" + st_local("name"), st_local("raw_spec"))
     mata: st_global("dash_json_" + st_local("name"), st_local("json_spec"))
+    // The graph's function points (WP-29 P0.6), or none: a graph that
+    // replaced a function graph keeps no points of it.
+    if `_fp_len' {
+        mata: st_global("dash_fpts_" + st_local("name"), st_strscalar(st_local("fp_sc")))
+    }
+    else {
+        capture macro drop dash_fpts_`name'
+    }
 
     // Update registry
     if `already' == 0 {
@@ -5888,8 +6432,9 @@ end
 program define _dash_render_immediate
     version 16.0
     // The graph JSON alone; the command, handed over as well, was read by
-    // nothing (see _dash_plot).
-    args json_spec
+    // nothing (see _dash_plot).  fp_sc is the string scalar holding the
+    // graph's function points (WP-29 P0.6), "" when it has none.
+    args json_spec fp_sc
 
     // ---- Extract saving() path from JSON ----
     local saving_path ""
@@ -5953,13 +6498,19 @@ program define _dash_render_immediate
         _dash_saving_clobber `"`saving_path'"' "`replace'" "dash"
     }
     else {
-        tempfile saving_path_tmp
-        local saving_path = "`saving_path_tmp'.html"
+        // No saving(): the preview page.  It is named once the data are
+        // exported (_dash_tmp_preview, below), in c(tmpdir)dash-<uid>/
+        // previews/, 0600, under a name no other preview has (WP-29 P0.14).
+        // It was a Stata tempfile plus .html, a name Stata never registered:
+        // never deleted, 0644, and each preview overwrote the last (D1-D3).
+        local _dash_preview 1
         local open_browser = 1
     }
 
-    if !regexm(lower("`saving_path'"), "\.html$") {
-        local saving_path = "`saving_path'.html"
+    if "`_dash_preview'" != "1" {
+        if !regexm(lower("`saving_path'"), "\.html$") {
+            local saving_path = "`saving_path'.html"
+        }
     }
 
     // ---- The qualifiers, evaluated in Stata ----
@@ -5998,6 +6549,37 @@ program define _dash_render_immediate
             if !`: list _qv in needed_vars' local needed_vars "`needed_vars' `_qv'"
         }
     }
+    // WP-29 P0.10: every variable hover() names is exported -- it was
+    // not, so a variable named only there was left out of the tooltip
+    // with rc 0 and no note.  Read and checked in Mata
+    // (_dash_extract_hover_vars) before it reaches any command.  It is
+    // COUNTED (_cap_vars: the cells and bytes limits) only when a layer
+    // of this graph can show it: a graph made only of computed or
+    // literal layers draws no observation, and the page holds none of
+    // its rows (design review A1).
+    local _hvars ""
+    local _hv_bad ""
+    local _hv_why ""
+    mata: _dash_extract_hover_vars(st_local("json_spec"), "_hvars", "_hv_bad", "_hv_why")
+    if "`_hv_why'" == "name" {
+        mata: _dash_say("err", "dash: hover() must name variables (got: ", st_local("_hv_bad"), ")")
+        exit 198
+    }
+    if "`_hv_why'" == "var" {
+        mata: _dash_say("err", "dash: hover(): variable ", st_local("_hv_bad"), " not found")
+        exit 111
+    }
+    local _cap_vars `needed_vars'
+    if "`_hvars'" != "" {
+        _dash_plottype_families
+        local _hv_show = 1
+        mata: st_local("_hv_show", strofreal(!_dash_spec_types_in( ///
+            st_local("json_spec"), st_local("_pt_univar") + " " + ///
+            st_local("_pt_onefit") + " " + st_local("_pt_literal"))))
+        if `_hv_show' local _cap_vars : list _cap_vars | _hvars
+        local needed_vars : list needed_vars | _hvars
+    }
+    local _cap_vars = strtrim("`_cap_vars'")
     local needed_vars = strtrim("`needed_vars'")
 
     // The literal family -- scatteri, pci, pcarrowi and function -- takes
@@ -6035,7 +6617,8 @@ program define _dash_render_immediate
     }
 
     // ---- Write the data file (_dash_write_data) ----
-    tempfile data_json_path spec_json_path
+    // Into this command's private run folder (_dash_tmp_open, below, once
+    // every limit has been checked), not Stata tempfiles (WP-29 P0.12b).
 
     // Always export ALL rows for the needed variables.  Do NOT pre-filter with
     // if/in qualifiers here: multiple plots in the same graph can have different
@@ -6058,9 +6641,32 @@ program define _dash_render_immediate
     // so a refusal leaves the user's data exactly as it was.
     _dash_limits_json
     local _dash_lim_json `"`r(json)'"'
-    local _dash_nvars : word count `needed_vars'
+    local _dash_nvars : word count `_cap_vars'
     // Each qualifier column is embedded with the data, and counted.
     mata: _dash_qual_export()
+    // sort(varlist)'s join-order columns (WP-29 P0.1): each distinct
+    // "sortvars" list the plots carry, checked again to be names
+    // (_dash_sort_scan; the registry is a global a do-file can set), one
+    // rank column each, embedded with the data and counted.
+    local _ds_bad ""
+    mata: _dash_sort_reset()
+    mata: _dash_sort_scan(st_local("json_spec"))
+    mata: st_local("_ds_isbad", strofreal(st_local("_ds_bad") != ""))
+    if `_ds_isbad' {
+        display as error "option sort() incorrectly specified"
+        display as error "      dash: a sort() list in the registered graph is not Stata names."
+        exit 198
+    }
+    local _ds_n = 0
+    mata: _dash_sort_export()
+    local _ds_json ""
+    forvalues _dsk = 1/`_ds_n' {
+        _dash_json_str "`_ds_v`_dsk''" _ds_vj
+        local _ds_sep ""
+        if `_dsk' > 1 local _ds_sep ","
+        local _ds_json `"`_ds_json'`_ds_sep'"`_ds_vj'":"__dashs`_dsk'""'
+    }
+    if `_ds_n' > 0 local _ds_json `","sort_cols":{`_ds_json'}"'
     // GAPS2 G3: the one-line route draws a single graph and never takes
     // a server option (_dash_plot's own syntax has none), so the reduced
     // accounting always applies -- unless the graph names no variable at
@@ -6081,13 +6687,23 @@ program define _dash_render_immediate
         _dash_cell_cap 0 "" `_ri_gc'
     }
     else {
-        _dash_cell_cap `=`_dash_nvars' + `_dq_n''
+        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n''
     }
-    _dash_byte_cap `needed_vars'
+    _dash_byte_cap `_cap_vars'
 
     // Collect display formats.  Each travels in the spec's formats map;
     // the data file carries every number as stored, whatever its format.
     _dash_formats_json "`needed_vars'" _dash_fmt_json _dash_date_vars
+
+    // ---- The private run folder (WP-29 P0.12b) ----
+    // After every refusal above, so a refused command makes no folder.  r()
+    // is read on the very next lines (A12); r(noted) says whether the
+    // command's one note was printed.
+    _dash_tmp_open
+    local _dash_run      `"`r(rundir)'"'
+    local spec_json_path `"`r(spec)'"'
+    local data_json_path `"`r(data)'"'
+    local _dash_noted    `"`r(noted)'"'
     local _dash_jrc = 0
     if `_varfree' {
         _dash_empty_data "`data_json_path'"
@@ -6101,11 +6717,20 @@ program define _dash_render_immediate
         // it "(e)" rather than __dashq1, and the renderer refused the
         // spec (measured 24sep2026; test_qualifier_in_stata.cscript QS-15).
         local _dash_qual_vars ""
-        if `_dq_n' > 0 {
+        local _dash_sort_vars ""
+        if `_dq_n' + `_ds_n' > 0 {
             tempname _dash_eh
             _estimates hold `_dash_eh', restore nullok
         }
         _dash_qual_gen "dash"
+        // The join-order columns after the qualifier columns; a sort()
+        // variable gone since registration drops what was made.
+        capture noisily _dash_sort_gen "dash"
+        if _rc {
+            local _ds_rc = _rc
+            if "`_dash_qual_vars'" != "" capture drop `_dash_qual_vars'
+            exit `_ds_rc'
+        }
         // Captured, so the qualifier columns are dropped when the export
         // fails too.  The writer reads each stored value whatever its
         // display format, so no format is touched (until 24sep2026 jsonio
@@ -6113,17 +6738,21 @@ program define _dash_render_immediate
         // export left it so: test_program_coverage.cscript PC-11).  Its
         // message is still shown and its code returned; no value is
         // expanded on the way (test_string_values.cscript).
-        capture noisily _dash_write_data "`data_json_path'" `needed_vars' `_dash_qual_vars'
+        capture noisily _dash_write_data "`data_json_path'" `needed_vars' `_dash_qual_vars' `_dash_sort_vars'
         local _dash_jrc = _rc
-        if "`_dash_qual_vars'" != "" {
-            capture drop `_dash_qual_vars'
+        if "`_dash_qual_vars'`_dash_sort_vars'" != "" {
+            capture drop `_dash_qual_vars' `_dash_sort_vars'
         }
     }
-    if `_dash_jrc' exit `_dash_jrc'
+    if `_dash_jrc' {
+        _dash_tmp_close, dir(`"`_dash_run'"')
+        exit `_dash_jrc'
+    }
 
     // The file itself is the witness that the export ran.
     capture confirm file "`data_json_path'"
     if _rc != 0 {
+        _dash_tmp_close, dir(`"`_dash_run'"')
         display as error "dash: the data could not be written. " ///
             "Check that all variables exist and the data is loaded."
         exit(198)
@@ -6135,34 +6764,58 @@ program define _dash_render_immediate
     local _dash_lvl = c(level)
     local _dash_sess_scheme = c(scheme)
     _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
-    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'}}"'
+    // The final } is written by _dash_fn_spec_tail, after the function
+    // points (WP-29 P0.6).
+    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'}"'
 
-    tempname fh
-    // quietly: `write replace' notes a missing file, and this path is a
-    // fresh tempfile, so the note fired on every successful render.
-    quietly file open `fh' using "`spec_json_path'", write replace text
-    file write `fh' `"`master_json'"'
-    file close `fh'
+    // Written from Python, 0600 and never through a link (WP-29 P0.12b):
+    // Stata's `file write' wrote it with the umask (D4) and expanded a macro
+    // reference inside the value a second time (A9).  By value, with no
+    // newline added.  No error branch: a refusal or an OSError ends the
+    // python: line, r(7102), and the folder it leaves is swept later.
+    _dash_require_python
+    _dash_xm_load
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_wsp = _dash_xm._dash_tmp_write_text(_dash_M.getLocal("spec_json_path"), _dash_M.getLocal("master_json"))
+    mata: _dash_fn_spec_tail(st_local("spec_json_path"), "", st_local("fp_sc"))
 
     // ---- Locate dash_render.py ----
     _dash_find_render
     local render_py `"`r(fn)'"'
 
+    // ---- Name the preview page (WP-29 P0.14) ----
+    // The browser decision first: whether a browser will be asked to open
+    // the page is part of its name (b or q), which the pruning reads.  One
+    // decision, in a program a certification script can call without
+    // launching anything: saving() given, $dash_nobrowser set, or the
+    // graph's own nodraw each keep the window shut.  nodraw is honoured
+    // here, and is therefore NOT on either _dash_pending list.
+    local _dash_priv ""
+    if "`_dash_preview'" == "1" {
+        _dash_browser_wanted, spec(`"`json_spec'"')
+        local open_browser = r(open)
+        _dash_tmp_preview, opened(`open_browser') noted(`_dash_noted')
+        local saving_path `"`r(path)'"'
+        local _dash_priv "private"
+    }
+
     // ---- Invoke Python renderer via helper ----
     // (python:...end must be in a dedicated program; see _dash_do_render)
     _dash_do_render, spec("`spec_json_path'") data("`data_json_path'") ///
-        output("`saving_path'") renderpy("`render_py'")
+        output("`saving_path'") renderpy("`render_py'") `_dash_priv'
+    _dash_tmp_close, dir(`"`_dash_run'"')
 
     // ---- Open in browser if no explicit saving() ----
     // The same suppression as `dash build'.  This path sets open_browser
     // only when no saving() was given, but a do-file run in batch still does
-    // not want a browser window.
-    // One decision, in a program a certification script can call without
-    // launching anything: saving() given, $dash_nobrowser set, or the
-    // graph's own nodraw each keep the window shut.  nodraw is honoured
-    // here, and is therefore NOT on either _dash_pending list: the note
-    // used to say "ignoring unsupported option(s): nodraw()" for an option
-    // this line had just applied.
+    // not want a browser window.  The decision was made above, where the
+    // preview page was named, and is read again here, beside the opener
+    // (_dash_browser_wanted is pure, so both reads agree), so the opener
+    // never runs without a decision next to it (test_packaging.py).  The
+    // note used to say "ignoring unsupported option(s): nodraw()" for an
+    // option this decision had just applied.
     if "`open_browser'" == "1" {
         _dash_browser_wanted, spec(`"`json_spec'"')
         local open_browser = r(open)
@@ -6206,7 +6859,7 @@ program define _dash_clear
     // survived indefinitely.  A prefix sweep has neither problem and needs
     // no maintenance when a new per-graph global is added.
     //
-    // These four prefixes are dash's own namespace.  A user global that
+    // These five prefixes are dash's own namespace.  A user global that
     // happens to start with one of them is not distinguishable from dash's
     // and is cleared too; that is what `dash clear' means.
     //
@@ -6219,10 +6872,15 @@ program define _dash_clear
     capture macro drop dash_json_*
     capture macro drop dash_opts_*
     capture macro drop dash_kpi_*
+    capture macro drop dash_fpts_*
 
     capture macro drop dash_graph_registry
     // Leading-underscore globals, if any command ever sets one.
     capture macro drop _dash_*
+
+    // The session's preview pages and stale run folders (WP-29 P0.14):
+    // captured, so dash clear still clears the registry with no Python.
+    capture _dash_tmp_clear
 
     display as text "dash: registry cleared."
 end
@@ -6593,9 +7251,9 @@ end
 //
 // which produced a served dashboard with no filter and no message.
 //
-// The caller owns the tempfiles: a `tempfile' macro is erased when the
-// program that declared it ends, so specpath() and datapath() come in
-// from the caller rather than being created here.
+// The caller owns the paths: specpath() and datapath() come in from the
+// caller rather than being created here -- _dash_build's private run
+// folder (WP-29 P0.12b), or a test seam's own files.
 //
 // The option list below is the full build surface.  It is repeated in
 // `_dash_build' and `_dash_serve' because each of those also has
@@ -6860,8 +7518,12 @@ program define _dash_prepare_spec, rclass
     // all_vars (which the export still uses unchanged, per DISCOVERY
     // Q9: the JSON export is not shrunk).  _pt_univar/_pt_onefit name the
     // computed-only types; by_groups is the LIMIT, not any graph's actual
-    // group count, which is not known before the export.
+    // group count, which is not known before the export.  WP-29 P0.10:
+    // hover()'s variables are always in all_vars, and in row_vars only
+    // for a graph one of whose layers can show them (or under csv);
+    // _hv_hide holds the others, which a served app still counts.
     local row_vars ""
+    local _hv_hide ""
     local comp_cells = 0
     _dash_plottype_families
     _dash_limit, name(by_groups)
@@ -6972,6 +7634,43 @@ program define _dash_prepare_spec, rclass
                 }
             }
 
+            // WP-29 P0.10: every variable hover() names is exported -- a
+            // variable named only there was left out with rc 0 and no
+            // note.  Read and checked in Mata from the registry (ordinary
+            // globals a user can edit) before it reaches any command; a
+            // name no longer in memory is refused as a dropped plotted
+            // variable is.  Counted on the saved page only when a layer
+            // of this graph can show it, or csv puts it in the download
+            // (design review A1).
+            local _hv_k ""
+            local _hv_bad ""
+            local _hv_why ""
+            mata: _dash_extract_hover_vars(st_local("_qg_`k'"), "_hv_k", "_hv_bad", "_hv_why")
+            if "`_hv_why'" == "name" {
+                mata: _dash_say("err", "`cmdname': registry entry '" + ///
+                    st_local("gname") + "' holds a hover() value that is " + ///
+                    "not a list of variable names (got: ", st_local("_hv_bad"), ///
+                    "). Run dash clear and register it again.")
+                exit 198
+            }
+            if "`_hv_why'" == "var" {
+                mata: _dash_say("err", "`cmdname': graph '" + ///
+                    st_local("gname") + "': hover(): variable ", ///
+                    st_local("_hv_bad"), " not found")
+                exit 111
+            }
+            local _hv_show_`k' = 1
+            if "`_hv_k'" != "" & "`csv'" == "" {
+                mata: st_local("_hv_show_`k'", strofreal(!_dash_spec_types_in( ///
+                    st_local("_qg_`k'"), "`_pt_univar' `_pt_onefit' `_pt_literal'")))
+            }
+            if `_hv_show_`k'' {
+                local all_vars : list all_vars | _hv_k
+            }
+            else {
+                local _hv_hide : list _hv_hide | _hv_k
+            }
+
             // GAPS2 G3: does this graph draw only its own computed
             // output (_dash_computed_cells, on the rewritten graph so a
             // qualifier's text is never scanned), and does nothing else
@@ -7002,6 +7701,9 @@ program define _dash_prepare_spec, rclass
                 foreach v of local _gqc_`k' {
                     if !`: list v in row_vars' local row_vars "`row_vars' `v'"
                 }
+                // hover() makes a graph touched (_dash_graph_touched), so
+                // this branch is the only one a non-empty _hv_k reaches.
+                if `_hv_show_`k'' local row_vars : list row_vars | _hv_k
             }
         }
     }
@@ -7048,6 +7750,13 @@ program define _dash_prepare_spec, rclass
     local all_vars = strtrim("`all_vars'")
     local row_vars = strtrim("`row_vars'")
 
+    // WP-29 P0.10 (review A1): the saved page's text count leaves out
+    // the hover() variables no layer of their graph can show; a served
+    // app embeds every exported column, so it counts them.
+    local _byte_vars "`all_vars'"
+    local all_vars : list all_vars | _hv_hide
+    local all_vars = strtrim("`all_vars'")
+
     // No variable to export: every graph must draw from its own values --
     // scatteri, pci, pcarrowi and function alone, which twoway draws with
     // no data in memory -- and the data file then holds no variable
@@ -7091,8 +7800,11 @@ program define _dash_prepare_spec, rclass
     // As on the immediate route: every dash_max_* global the session has
     // set is validated and carried to the renderer as build_options.limits,
     // and what is about to be embedded -- every observation of every
-    // variable in all_vars -- is held to the cells limit, and the text in
-    // its string variables to the bytes limit.  All come before the file
+    // variable in all_vars on a served app; on a saved page what row_vars,
+    // comp_cells and _byte_vars count, which leave out what no filter,
+    // link(), csv or hover() reaches and hover()'s variables that no layer
+    // of their graph can show (WP-29 P0.10) -- is held to the cells limit,
+    // and the text in its string variables to the bytes limit.  All come before the file
     // is written, so a refusal leaves the data as it was, and before `dash
     // build' records its dash_opts_* globals.
     _dash_limits_json
@@ -7100,6 +7812,33 @@ program define _dash_prepare_spec, rclass
     local _dash_nvars : word count `all_vars'
     // Each qualifier column is embedded with the data, and counted.
     mata: _dash_qual_export()
+    // sort(varlist)'s join-order columns (WP-29 P0.1): each distinct
+    // "sortvars" list the plots carry, checked again to be names
+    // (_dash_sort_scan; the registry is a global a do-file can set), one
+    // rank column each, embedded with the data and counted.
+    local _ds_bad ""
+    mata: _dash_sort_reset()
+    forvalues k = 1/`ntok_reg' {
+        local gname : word `k' of `registry'
+        if "${dash_kpi_`gname'}" == "1" continue
+        mata: _dash_sort_scan(st_local("_qg_`k'"))
+    }
+    mata: st_local("_ds_isbad", strofreal(st_local("_ds_bad") != ""))
+    if `_ds_isbad' {
+        display as error "option sort() incorrectly specified"
+        display as error "      `cmdname': a sort() list in the registered graph is not Stata names."
+        exit 198
+    }
+    local _ds_n = 0
+    mata: _dash_sort_export()
+    local _ds_json ""
+    forvalues _dsk = 1/`_ds_n' {
+        _dash_json_str "`_ds_v`_dsk''" _ds_vj
+        local _ds_sep ""
+        if `_dsk' > 1 local _ds_sep ","
+        local _ds_json `"`_ds_json'`_ds_sep'"`_ds_vj'":"__dashs`_dsk'""'
+    }
+    if `_ds_n' > 0 local _ds_json `","sort_cols":{`_ds_json'}"'
     // GAPS2 G3: the server route -- dash build, server (the SERVER
     // option here) or dash serve (which never passes its own server
     // option: `cmdname' alone decides it, checked above at "ignoring
@@ -7107,12 +7846,13 @@ program define _dash_prepare_spec, rclass
     // observation of every variable and says so; the saved route counts
     // only what the page will hold.
     if "`server'" != "" | "`cmdname'" == "dash serve" {
-        _dash_cell_cap `=`_dash_nvars' + `_dq_n'' "" 0 1
+        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n'' "" 0 1
+        _dash_byte_cap `all_vars'
     }
     else {
         _dash_cell_cap `: word count `row_vars'' "" `comp_cells'
+        _dash_byte_cap `_byte_vars'
     }
-    _dash_byte_cap `all_vars'
 
     // Collect display formats, as on the immediate route.
     _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars
@@ -7125,16 +7865,24 @@ program define _dash_prepare_spec, rclass
         // exported with the data, dropped the moment the file is written, the
         // estimates in memory held meanwhile (QS-15).
         local _dash_qual_vars ""
-        if `_dq_n' > 0 {
+        local _dash_sort_vars ""
+        if `_dq_n' + `_ds_n' > 0 {
             tempname _dash_eh
             _estimates hold `_dash_eh', restore nullok
         }
         _dash_qual_gen "`cmdname'"
+        // The join-order columns, as on the immediate route.
+        capture noisily _dash_sort_gen "`cmdname'"
+        if _rc {
+            local _ds_rc = _rc
+            if "`_dash_qual_vars'" != "" capture drop `_dash_qual_vars'
+            exit `_ds_rc'
+        }
         // Captured for the same reason as on the immediate route.
-        capture noisily _dash_write_data "`datapath'" `all_vars' `_dash_qual_vars'
+        capture noisily _dash_write_data "`datapath'" `all_vars' `_dash_qual_vars' `_dash_sort_vars'
         local _dash_jrc = _rc
-        if "`_dash_qual_vars'" != "" {
-            capture drop `_dash_qual_vars'
+        if "`_dash_qual_vars'`_dash_sort_vars'" != "" {
+            capture drop `_dash_qual_vars' `_dash_sort_vars'
         }
     }
     if `_dash_jrc' exit `_dash_jrc'
@@ -7173,6 +7921,7 @@ program define _dash_prepare_spec, rclass
         // (_dash_qual_rewrite, above), joined by value.
         mata: st_local("graphs_json", st_local("graphs_json") + st_local("_qg_`k'"))
         local n_graphs = `n_graphs' + 1
+        local _fp_names `_fp_names' `gname'
     }
 
     // assemble KPIs JSON
@@ -7278,14 +8027,39 @@ program define _dash_prepare_spec, rclass
     // uses -- a served dashboard otherwise sends the browser only what it
     // plots.  A flag, so only "1" or "0" reaches the spec.
     local _csv_flag = cond("`csv'" != "", "1", "0")
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'}}"'
+    // The function points of the graphs drawn, written beside them by
+    // _dash_fn_spec_tail, count against the bytes the dashboard embeds
+    // (WP-29 P0.6): refused here, before the file is written.
+    local _fp_bytes 0
+    foreach _fpn of local _fp_names {
+        local _fp_l : strlen global dash_fpts_`_fpn'
+        local _fp_bytes = `_fp_bytes' + `_fp_l'
+    }
+    _dash_limit, name(bytes)
+    if `_fp_bytes' > r(value) {
+        _dash_count_fmt _fp_bytes_s `_fp_bytes'
+        _dash_count_fmt _fp_lim_s   `r(value)'
+        _dash_count_fmt _fp_ceil_s  `r(ceiling)'
+        display as error "dash: this dashboard would embed `_fp_bytes_s' characters of function points, more than the `_fp_lim_s' dash embeds."
+        display as error "      Use a smaller n(), or set global dash_max_bytes to a higher value (at most `_fp_ceil_s')."
+        exit 134
+    }
+    // The final } is written by _dash_fn_spec_tail, after the function
+    // points (WP-29 P0.6).
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'}"'
 
-    tempname fh
-    // quietly: see the note at the other spec writer -- `write replace'
-    // reports a missing file, and this path is always a fresh tempfile.
-    quietly file open `fh' using "`specpath'", write replace text
-    file write `fh' `"`master_json'"'
-    file close `fh'
+    // Written from Python, 0600 and never through a link (WP-29 P0.12b;
+    // see _dash_render_immediate's spec writer).  Callers hand the path:
+    // _dash_build and _dash_serve their run folder's spec.json, a test seam
+    // its own file; so this opens no run and prints no note.  No error
+    // branch: a refusal or an OSError ends the python: line, r(7102).
+    _dash_require_python
+    _dash_xm_load
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_wsp = _dash_xm._dash_tmp_write_text(_dash_M.getLocal("specpath"), _dash_M.getLocal("master_json"))
+    mata: _dash_fn_spec_tail(st_local("specpath"), st_local("_fp_names"), "")
 
     return local layout          `"`layout'"'
     return local filterposition  `"`filterposition'"'
@@ -7384,15 +8158,19 @@ program define _dash_build
     // ---- validate, collect, serialize and assemble ----
     //
     // Shared with `dash serve', which used to do all of this itself with
-    // the build options hardcoded to blanks.  The tempfiles are declared
-    // here because a `tempfile' macro is erased when the program that
-    // declares it ends.
+    // the build options hardcoded to blanks.  The spec and data go in this
+    // command's private run folder (WP-29 P0.12b), opened here and removed
+    // after the render; r() is read on the very next lines (A12).  It
+    // prints the command's one note, if any location is not private.
     //
     // `0' is the command's own option string with the filter() groups
     // already removed by _dash_extract_filters, so it is forwarded as
     // written rather than reassembled option by option -- reassembling
     // would expand the user's title() and label() text a second time.
-    tempfile data_json_path master_json_path
+    _dash_tmp_open
+    local _dash_run        `"`r(rundir)'"'
+    local master_json_path `"`r(spec)'"'
+    local data_json_path   `"`r(data)'"'
 
     // -syntax- leaves `0' as it found it, which means it still carries the
     // leading comma.  Forwarding it after options of our own produced two
@@ -7445,6 +8223,7 @@ program define _dash_build
     // (python:...end must be in a dedicated program; see _dash_do_render)
     _dash_do_render, spec("`master_json_path'") data("`data_json_path'") ///
         output("`saving'") renderpy("`render_py'") mode("`render_mode'")
+    _dash_tmp_close, dir(`"`_dash_run'"')
 
     if "`server'" != "" {
         mata: _dash_say("txt", "dash build: server app written to ", st_local("saving"), "")
@@ -7455,6 +8234,8 @@ program define _dash_build
         // app serves itself.  Running it directly also honours --port and
         // the websocket origins, and opens no browser unless asked.
         mata: _dash_say("txt", "  To launch: python " + char(34), st_local("saving"), char(34))
+        // WP-29 P0.12a: the served dashboard opens only through its key.
+        display as text `"  Access:    the app makes a new key for each launch unless DASH_SERVE_TOKEN gives one, writes the link that holds it to a file only you can read, and prints that file's path; only that link opens the dashboard"'
         display as text `"  Options:   --port N  --show  --timeout MINUTES  (--help lists them all)"'
         display as text `"  Limits:    --sessions-per-client N  --new-clients-per-minute N  --sessions-per-minute N"'
     }
@@ -7484,9 +8265,9 @@ end
 // test_serve_options.cscript calls this directly and reads the master
 // JSON it writes.
 //
-// The caller owns the two paths: a `tempfile' macro is erased when the
-// program that declares it ends, so a file created here would be gone
-// before `_dash_serve' could launch anything from it.
+// The caller owns the two paths: _dash_serve hands those of its private
+// run folder (WP-29 P0.12b), which outlives this program, so the app can
+// be built from them.
 // ================================================================
 program define _dash_serve_spec, rclass
     version 16.0
@@ -7595,7 +8376,16 @@ program define _dash_serve
     // them went straight to Python.
     mata: _dash_check_utf8(strtrim(st_local("0")))
 
-    tempfile data_json_path master_json_path
+    // The private run folder (WP-29 P0.12b): spec, data and the app go in
+    // c(tmpdir)dash-<uid>/run-<pid>-<random>/ (0700, files 0600), removed
+    // when the command ends.  Opened before _dash_serve_spec, whose rclass
+    // results would clobber r() (A12).  The command's one note, if any
+    // location is not private, prints here, before the announcement.
+    _dash_tmp_open
+    local _dash_run        `"`r(rundir)'"'
+    local master_json_path `"`r(spec)'"'
+    local data_json_path   `"`r(data)'"'
+    local serve_app_path   `"`r(app)'"'
 
     // `0' still carries the leading comma -syntax- left on it, so forwarding
     // it after options of our own put TWO commas on one line and everything
@@ -7635,21 +8425,14 @@ program define _dash_serve
     _dash_find_render
     local render_py `"`r(fn)'"'
 
-    // Temp path for the generated Bokeh Server app.
-    //
-    // Use the tempfile macro DIRECTLY.  It used to be `_serve_app_base'.py',
-    // a name Stata never registered, so Stata dutifully erased the
-    // extension-less file it had registered -- which nothing ever wrote --
-    // and left the .py behind for good.  Each one embeds the whole dataset
-    // in decodable base64: measured on this machine, 142 orphans totalling
-    // 18 MB, the newest decoding to 74 observations of mpg, weight and
-    // foreign, in a directory any local user can read.
-    //
-    // No .py suffix is needed because the app is launched as
-    // `python <path>', which does not care about the extension.  If that
-    // ever reverts to `bokeh serve', which dispatches on the extension, the
-    // suffix has to come back -- and so does an explicit erase.
-    tempfile serve_app_path
+    // The generated Bokeh Server app is app.py in the private run folder
+    // opened above (WP-29 P0.12b): written 0600 by the renderer, which
+    // erases the spec and data once it is written (they are embedded in
+    // it), and removed with the folder when the command ends.  It used to
+    // be a Stata tempfile, 0644 under umask 022 and 0664 under 002 (D5,
+    // U2) -- and before that an unregistered .py that Stata never erased
+    // (142 orphans, 18 MB, measured).  The launcher starts it from the
+    // bytes it verified, never by name (R-9).
 
     // Escape paths for safe Python string literal interpolation (see _dash_do_render).
     _dash_json_str `"`master_json_path'"' _py_master
@@ -7657,8 +8440,10 @@ program define _dash_serve
     _dash_json_str `"`serve_app_path'"'   _py_serve
     _dash_json_str `"`render_py'"'        _py_render
 
+    // Break, not Ctrl+C: Ctrl+C is only console Stata's Break key, and GUI
+    // users were told to press it (WP-29 P0.13 F4, F9c).
     display as text "dash serve: starting Bokeh Server on port `port_int'." ///
-        "  Stata is blocked until the server stops (Ctrl+C)."
+        "  Stata waits while it runs; press Break (Ctrl+C in console Stata) to stop it."
 
     // Single-line python: calls to avoid ado-path IndentationError (see _dash_do_render).
     python: import sys, runpy
@@ -7688,8 +8473,15 @@ program define _dash_serve
     python: _dash_serve_ns = runpy.run_path("`_py_render'", init_globals={"_dash_launch_report": _dash_srv_rep}, run_name="__main__")
     python: from sfi import Macro as _dash_srv_M
     python: _dash_srv_M.setLocal("_srv_err", str(_dash_srv_rep.get("error", ""))[:4096])
+    // WP-29 P0.13 F4: Break (or Ctrl+C) stopped the server; the launcher
+    // put "interrupted" in the box rather than raise, so it ends here as
+    // any command interrupted by Break does: --Break--, r(1).
+    python: _dash_srv_M.setLocal("_srv_brk", "1" if _dash_srv_rep.get("interrupted") else "")
     if `: length local _srv_err' {
+        _dash_tmp_close, dir(`"`_dash_run'"')
         mata: _dash_say("err", "dash serve: ", st_local("_srv_err"), "")
         exit 198
     }
+    _dash_tmp_close, dir(`"`_dash_run'"')
+    if "`_srv_brk'" == "1" error 1
 end

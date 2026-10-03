@@ -64,7 +64,8 @@ from unittest import mock
 import pandas as pd
 import pytest
 from bokeh.document import Document
-from bokeh.models import (Arrow, Band, BoxAnnotation, ColumnDataSource, Div,
+from bokeh.models import (Arrow, Band, BoxAnnotation, ColorBar,
+                          ColumnDataSource, Div,
                           GridBox, GridPlot, HoverTool,
                           Label, LabelSet, Legend, RangeSlider, Select,
                           Slider, Span, TabPanel, Tabs, ToolProxy, Widget)
@@ -362,6 +363,9 @@ def _glyph_profile(fig):
         entry["on_link_source"] = bool(
             getattr(getattr(r, "data_source", None), "_dash_link_source",
                    False))
+        # WP-29 P0.17: a saved page mutes a frozen layer while it is
+        # stale; the served app refits and never mutes one.
+        entry["muted"] = bool(getattr(r, "muted", False))
         for attr in _STYLE:
             if not hasattr(g, attr):
                 continue
@@ -374,6 +378,19 @@ def _glyph_profile(fig):
                 entry[attr] = _spec_of(v)
         data, idx = _drawn(r)
         entry["rows"] = len(idx) if idx is not None else None
+        # WP-29 P0.16: a colour-mapped glyph is compared on its colours --
+        # the mapper and the colour value of every drawn row -- not on the
+        # name of the derived column it reads, which each mode numbers on
+        # its own source (__dash_cvar<k>_<var>).
+        _cs = _colour_of(g, data, idx)
+        if _cs is not None:
+            entry["colour"] = _cs
+            for attr in ("fill_color", "line_color"):
+                sp = entry.get(attr)
+                if (isinstance(sp, tuple) and sp[0] == "field"
+                        and (str(sp[1]).startswith(_CVAR_PREFIX)
+                             or str(sp[1]).startswith("_cvar_"))):
+                    entry[attr] = ("field", "<colour bins>")
         coords = {}
         if data is not None:
             for attr in _COORDS:
@@ -400,6 +417,38 @@ def _glyph_profile(fig):
         entry["coords"] = coords
         prof.append(entry)
     return prof
+
+
+#: The derived colour column's prefix (WP-29 P0.16); "_cvar_" before it.
+_CVAR_PREFIX = getattr(dr, "_DASH_CVAR_PREFIX", "__dash_cvar")
+
+
+def _colour_of(g, data, idx):
+    """A glyph's colour mapping, as plain data: the mapper's type, factors,
+    palette, range and nan_color, and the colour value of each drawn row
+    (None kept as None).  None for a glyph with no colour mapper."""
+    v = getattr(g, "fill_color", None)
+    tr = v.get("transform") if isinstance(v, dict) else getattr(
+        v, "transform", None)
+    field = v.get("field") if isinstance(v, dict) else getattr(
+        v, "field", None)
+    if tr is None or not isinstance(field, str):
+        return None
+    col = list((data or {}).get(field, []))
+    vals = []
+    for i in (idx or []):
+        x = col[i] if i < len(col) else None
+        if isinstance(x, float):
+            x = None if math.isnan(x) else _num(x)
+        vals.append(x)
+    factors = getattr(tr, "factors", None)
+    return {"mapper": type(tr).__name__,
+            "factors": list(factors) if factors is not None else None,
+            "palette": list(getattr(tr, "palette", []) or []),
+            "low": _num(getattr(tr, "low", None)),
+            "high": _num(getattr(tr, "high", None)),
+            "nan_color": str(getattr(tr, "nan_color", "")),
+            "values": vals}
 
 
 def _label_of(item):
@@ -480,7 +529,9 @@ def _annotations(fig):
         elif isinstance(r, Span):
             out.append({"kind": "Span", "dimension": r.dimension,
                         "location": _num(r.location), "color": r.line_color,
-                        "width": r.line_width, "dash": list(r.line_dash or [])})
+                        "width": r.line_width, "dash": list(r.line_dash or []),
+                        # WP-29 P0.5: the range the line is drawn on.
+                        "range_names": (r.x_range_name, r.y_range_name)})
         elif isinstance(r, Legend):
             out.append({"kind": "Legend",
                         "items": [(_label_of(i),
@@ -497,6 +548,14 @@ def _annotations(fig):
                         "click_policy": r.click_policy,
                         "background": r.background_fill_color,
                         "border": r.border_line_color})
+        elif isinstance(r, ColorBar):
+            # WP-29 P0.16: the colour bar's title, mapper and range.
+            m = r.color_mapper
+            out.append({"kind": "ColorBar", "title": r.title,
+                        "mapper": type(m).__name__,
+                        "low": _num(getattr(m, "low", None)),
+                        "high": _num(getattr(m, "high", None)),
+                        "side": panel.get(id(r))})
         elif isinstance(r, BoxAnnotation):
             out.append({"kind": "BoxAnnotation",
                         "left": _num(r.left), "right": _num(r.right),
@@ -617,6 +676,13 @@ def _axes(fig):
                 "ticks": ([_num(float(t)) for t in a.ticker.ticks]
                           if hasattr(a.ticker, "ticks") else None),
                 "visible": a.visible,
+                # WP-29 P0.5: which range the axis reads, and the tick-only
+                # positions ytick()/ytick(..., axis(2)) put on it.
+                "range_names": (a.x_range_name, a.y_range_name),
+                "tick_extra": (sorted(_num(float(v)) for v in
+                                      (a.ticker.args or {}).get("extra", []))
+                               if type(a.ticker).__name__ == "CustomJSTicker"
+                               else None),
                 "label_font": a.axis_label_text_font_size,
                 "tick_font": a.major_label_text_font_size,
                 "orientation": (ori if isinstance(ori, str)
@@ -784,6 +850,15 @@ def _widget_profile(w):
     return e
 
 
+def _is_stale_status(m):
+    """The saved page's hidden note that it does not refit (WP-29 P0.17):
+    the standalone half of the allowance below, never a served model."""
+    if isinstance(m, Div) and "dash_stale_status" in (m.tags or []):
+        _allowed("aggregate layers recompute live")
+        return True
+    return False
+
+
 def _layout_tree(m, figures):
     """The document as nested plain data.
 
@@ -807,7 +882,8 @@ def _layout_tree(m, figures):
         # as much as the position is.
         return ("at", m[1], m[2], m[3], m[4], _layout_tree(m[0], figures))
     if isinstance(m, (list, tuple)):
-        return [_layout_tree(x, figures) for x in m]
+        return [_layout_tree(x, figures) for x in m
+                if not _is_stale_status(x)]
     if m is None:
         return None
     tn = type(m).__name__
@@ -921,7 +997,8 @@ def _bs_markup_page(r, page, figures, embedded):
         nxt = body.find(_BS_SECTION_ROW, at)
         chunk = body[at:nxt if nxt >= 0 else len(body)]
         widgets = [("Widget", _widget_profile(embedded[rid]))
-                  for rid in _ROOT_ID_RE.findall(chunk) if rid in embedded]
+                  for rid in _ROOT_ID_RE.findall(chunk) if rid in embedded
+                  and not _is_stale_status(embedded[rid])]
         parts.append((at, ("Row", widgets)))
 
     at = body.find(_BS_TABS_CELL_START)
@@ -1348,6 +1425,30 @@ CORPUS = [
           [_sc(colorvar="price")], None, {"zlabel": "1 2 3 4 5"}),
     _case("colorvar() zscale(log)", [_sc(colorvar="price")], None,
           {"zscale": "log"}),
+    # WP-29 P0.16: the key is drawn from the layer's own rows -- its own
+    # if, a linked graph's if and each linked by() panel -- in both modes.
+    _case("colorvar() with a layer's own if",
+          [plot_for("scatter", {"colorvar": "price"},
+                    if_expr="foreign == 1"),
+           plot_for("scatter", if_expr="foreign == 0")]),
+    _case("colorvar() colordiscrete with a layer's own if",
+          [plot_for("scatter", {"colorvar": "rep",
+                                "colordiscrete": "colordiscrete"},
+                    if_expr="foreign == 1"),
+           plot_for("scatter", if_expr="foreign == 0")]),
+    _case("colorvar() colorlevels(3) with a layer's own if",
+          [plot_for("scatter", {"colorvar": "price", "colorlevels": "3"},
+                    if_expr="foreign == 1"),
+           plot_for("scatter", if_expr="foreign == 0")]),
+    _case("colorvar() on a linked graph with its own if",
+          bo={"link": "g1 g2"},
+          graphs=[("g1", [_sc(colorvar="price")], None,
+                   {"if_expr": "foreign == 1"}),
+                  ("g2", [_sc()])]),
+    _case("colorvar() under a linked by()", bo={"link": "g1 g2"},
+          graphs=[("g1", [_sc(colorvar="price", colorlevels="3")],
+                   {"by": "foreign"}),
+                  ("g2", [_sc()])]),
     # WP-28 E14: a served rspike or rconnected in a link group used to
     # draw a private source every time, so a selection on the group never
     # reached it; TestRangeLayersInALinkGroup reads on_link_source here.
@@ -1615,6 +1716,85 @@ CORPUS = [
           kpis=[_kpi(fmt="%9.1f"),
                 _kpi(name="k2", stat="count", update="brush",
                      update_graph="g2")]),
+    # ---- WP-29 P0.4: title options that give only sub-options -------------
+    _case("ytitle(, size(large)) keeps the default", [_sc()],
+          go={"ytitle": ", size(large)"}),
+    _case("xtitle(, color(red)) and ytitle(A,,)", [_sc()],
+          go={"xtitle": ", color(red)", "ytitle": "A,,"}),
+    _case("a second axis titled by default and by ytitle2(, size(large))",
+          [_sc(), plot_for("line", {"yaxis": "2"}, yvar="price")],
+          go={"ytitle2": ", size(large)"}),
+    # WP-29 P0.1: the joining types under sort, both modes joining in x
+    # order (bare, each joins in the data's order: the cases above).
+    *[_case(f"{t}, sort", [plot_for(t, {"sort": "sort"})])
+      for t in ("line", "connected", "area", "rline", "rarea", "rconnected")],
+    # ---- function points Stata computed (WP-29 P0.6) -------------------------
+    # The expression is twoway's 2^3^x, which a renderer evaluating it
+    # would draw as 2 8 512; the stored points, 1 8 64, are drawn instead.
+    _case("function with stored points",
+          [plot_for("function", {"range": "0 2", "n": "3"},
+                    expr="2^3^x",
+                    points={"x0": 0, "dx": 1, "y": [1, 8, 64]})]),
+    _case("function points under by()",
+          [plot_for("function", {"range": "0 2", "n": "3"},
+                    expr="2^3^x",
+                    points={"x0": 0, "dx": 1, "y": [1, 8, 64]})],
+          None, {"by": "foreign"}),
+    # ---- axis(#) routed to the axis it names (WP-29 P0.5) ----------------
+    _case("ylabel/yscale/yline/ytick axis(2) routed",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
+          go={"ylabel": "5000 10000, axis(2)", "yscale": "log axis(2)",
+              "yline": "6000, axis(2)", "ytick": "7500, axis(2)"}),
+    _case("xlabel/xscale/xline/xtick axis(2) routed",
+          [_sc(), plot_for("scatter", {"xaxis": "2"}, xvar="price")],
+          go={"xlabel": "5000 10000, axis(2)", "xscale": "log axis(2)",
+              "xline": "6000, axis(2)", "xtick": "7500, axis(2)"}),
+    _case("axis(2) under by()",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
+          go={"by": "foreign", "ylabel": "5000 10000, axis(2)",
+              "yline": "6000, axis(2)", "ytick": "7500, axis(2)"}),
+    _case("ylabel2 with no second-axis layer", [_sc()],
+          go={"ylabel2": "5"}),
+    # ---- by() shared scales and rescale (WP-29 P0.2) -----------------------
+    _case("by(foreign, yrescale)", [_sc()], go={"by": "foreign, yrescale"}),
+    _case("by(foreign) with yaxis(2)",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
+          go={"by": "foreign"}),
+    _case("by(foreign, rescale) ylabel(#5)", [_sc()],
+          go={"by": "foreign, rescale", "ylabel": "#5"}),
+    _case("by(foreign, yrescale) yscale(range(0))", [_sc()],
+          go={"by": "foreign, yrescale", "yscale": "range(0)"}),
+    _case("by(foreign, yrescale) yscale(range(0)) with every foreign missing",
+          [_sc()], go={"by": "foreign, yrescale", "yscale": "range(0)"},
+          if_expr="foreign > 5"),
+    # WP-29 P0.7: the default bandwidth by Stata's rule (kernel, degree,
+    # weights reach it) is the same in both modes.
+    _case("lpoly, kernel(biweight) degree(2)",
+          [plot_for("lpoly", {"kernel": "biweight", "degree": "2"})]),
+    _case("lpolyci, kernel(gaussian) degree(3) aweight",
+          [plot_for("lpolyci", {"kernel": "gaussian", "degree": "3",
+                                "weight": "aweight", "wexp": "price"})]),
+    # WP-29 P0.18: a layer whose own if keeps no row keeps its style in
+    # both modes (twoway keys it in its p# style).  bar, rbar and rarea
+    # are left out: after the fix they differ only in a warning (the saved
+    # page notes "drew nothing", the served app does not), which this
+    # section does not change; their served style is pinned by
+    # test_emptied_layer_style.py::TestAnEmptiedLayerKeepsItsStyle.
+    _case("rspike with its own if that keeps no row",
+          [_sc(), plot_for("rspike", if_expr="price > 20000")]),
+    # WP-29 P0.11: the page holds only the rows a consumer reads.
+    _case("two layers with their own qualifiers, range filter (embed rows)",
+          [plot_for("scatter", if_expr="price > 4500"),
+           plot_for("scatter", in_expr="1/3")],
+          bo={"filter": "price, type(range)"}),
+    _case("a linked pair with graph qualifiers (embed rows)",
+          bo={"link": "g1 g2", "filter": "price, type(range)"},
+          graphs=[("g1", [_sc()], None, {"if_expr": "foreign == 1",
+                                         "in_expr": ""}),
+                  ("g2", [_sc()], None, {"if_expr": "price > 10000",
+                                         "in_expr": ""})]),
+    _case("a dropdown under a graph if (embed rows)", [_sc()],
+          bo={"filter": "rep, type(dropdown)"}, if_expr="foreign == 1"),
 ]
 
 
@@ -1647,6 +1827,12 @@ DATE_CORPUS = [
           [plot_for("scatter", yvar="mpg", xvar="when")],
           {"formats": {"when": "%tc"}}),
     _case("hover() of a date", [_sc()], _W, go={"hover": "when"}),
+    # WP-29 P0.10: a variable named only in hover(), and one the data
+    # does not hold.
+    _case("hover() of a variable no layer plots, a dropdown filter",
+          [_sc()], {"filter": "foreign, type(dropdown)"}, {"hover": "rep"}),
+    _case("hover() naming a variable not in the data", [_sc()], None,
+          {"hover": "rep nosuch"}),
     _case("mlabel() of a date",
           [plot_for("scatter", {"mlabel": "when"}, yvar="mpg",
                     xvar="when")], _W),
@@ -1666,6 +1852,28 @@ DATE_CORPUS = [
           [plot_for("line", yvar="mpg", xvar="when")], _W,
           go={"xline": "15342", "xlabel": "15340 15345 \"mid\" 15349",
               "xscale": "range(15339 15350)"}),
+    # WP-29 P0.8 (section 05): computed layers of a date in its units.
+    _case("a histogram of a date, width() and start() in days",
+          [plot_for("histogram", {"width": "3", "start": "15340"},
+                    var="when")], _W),
+    _case("a kdensity of a monthly date",
+          [plot_for("kdensity", {"bwidth": "1"}, var="when")],
+          {"formats": {"when": "%tm"}}),
+    _case("an lpoly over a date, bwidth() in days",
+          [plot_for("scatter", yvar="mpg", xvar="when"),
+           plot_for("lpoly", {"bwidth": "3"}, yvar="mpg", xvar="when")], _W),
+    # D05-1 struck (01oct2026): a lone fit keeps the date axis.
+    _case("a lone lfit over a date keeps the date axis",
+          [plot_for("lfit", yvar="mpg", xvar="when")], _W),
+    # D05-4's mixed axis (section 05 Evidence 8).
+    _case("a date fit on an axis shared with a number",
+          [plot_for("scatter", yvar="mpg", xvar="weight"),
+           plot_for("lfit", yvar="mpg", xvar="when")], _W),
+    # WP-29 P0.20 (section 05): KPI statistics of a date in its units.
+    _case("spreads and a sum of a date", [_sc()], _W,
+          kpis=[_kpi(stat="sd", var="when"),
+                _kpi(name="k2", stat="iqr", var="when"),
+                _kpi(name="k3", stat="sum", var="when")]),
     # WP-28 B2: the extent after the layers, the same in both modes.
     _case("yscale(range(100))", [_sc()], None, {"yscale": "range(100)"}),
     _case("yscale(r(0 100) rev)", [_sc()], None, {"yscale": "r(0 100) rev"}),
@@ -1709,6 +1917,17 @@ _MUST_WARN = {
         "dash: filter(price, type(bogus)): type() must be one of",
     "yscale(range(abc))":
         "dash: yscale(range()) ignores abc, which is not a number",
+    "hover() naming a variable not in the data":
+        "dash: hover() of graph 'g1' names variable(s) not in the data -- "
+        "'nosuch'",
+    # WP-29 P0.2: raised at build time in both modes.
+    "by(foreign, yrescale) yscale(range(0))":
+        "dash: graph 'g1': by(, yrescale) draws each panel on its own y "
+        "scale; yscale(range()) is not applied, as in twoway.",
+    # WP-29 P0.5: raised at build time in both modes.
+    "ylabel2 with no second-axis layer":
+        "dash: graph 'g1': ylabel2() (ylabel(..., axis(2))) is not drawn: "
+        "no layer is on yaxis(2).",
 }
 
 #: The filter types that build a widget (dash.sthlp); a filter() group of
@@ -2020,7 +2239,25 @@ _MOVES = [
 
 _MOVED_LAYERS = ["scatter", "line", "lfit", "lfitci", "histogram", "kdensity",
                  "lpoly", "rarea", "pcspike", "function", "connected",
-                 "pcarrow", "pcbarrow"]
+                 "pcarrow", "pcbarrow",
+                 # WP-29 P0.9: lpolyci's analytic band refits after a move.
+                 "lpolyci"]
+# WP-29 P0.18: bar and rbar take the kept rows' width after a served move;
+# the other eight agreed already and are guards.
+_MOVED_LAYERS += ["bar", "rbar", "lowess", "qfit", "fpfit", "mband",
+                  "mspline", "lpolyci", "qfitci", "fpfitci"]
+
+#: WP-29 P0.18: moves that leave 2 and 1 rows of _DF.
+_EMPTYING_MOVES = [
+    ("slider to 10000", "price, type(slider)", ("Slider", 10000.0),
+     "price >= 10000"),
+    ("slider to 11385", "price, type(slider)", ("Slider", 11385.0),
+     "price >= 11385"),
+]
+#: WP-29 P0.18: every layer a move can leave with no drawable rows.
+_EMPTIED_LAYERS = ["lowess", "lfit", "qfit", "fpfit", "lpoly", "kdensity",
+                   "mband", "mspline", "histogram", "bar", "rbar", "rarea",
+                   "rspike"]
 
 #: The plot types twoway draws mlabel() on (test_marker_label_parity.py's
 #: measured partition; not imported, since that file imports this one).
@@ -2153,7 +2390,11 @@ _OWN_QUALIFIER_MOVES = [
 
 
 MOVE_CORPUS = [
-    *[_move_case(f"{t}, {m[0]}", m, [plot_for(t)])
+    # Flipped (WP-29 P0.11): a literal layer reads no row, so its filter
+    # reaches none unless a card it recomputes does; an unqualified
+    # filter-mode card keeps the widget's reach every row.
+    *[_move_case(f"{t}, {m[0]}", m, [plot_for(t)],
+                 kpis=([_kpi()] if t in dr._DASH_LITERAL_TYPES else None))
       for t in _MOVED_LAYERS for m in _MOVES],
     # An arrow's heads follow its shafts, with the layer's own in (BUGS.md,
     # 24sep2026: the heads were one fixed annotation per row).
@@ -2211,6 +2452,68 @@ MOVE_CORPUS = [
     *[_move_case(e["name"], e["move"], e["plots"], e["go"],
                  graphs=e["graphs"], if_expr=e["if_expr"])
       for e in _OWN_QUALIFIER_MOVES if e["parity"]],
+    # A function layer's stored points are fixed by Stata: a move leaves
+    # them where they are, in both modes (WP-29 P0.6).
+    _move_case("function with stored points, dropdown", _MOVES[0],
+               [_sc(), plot_for("function", {"range": "0 2", "n": "3"},
+                                expr="2^3^x",
+                                points={"x0": 0, "dx": 1,
+                                        "y": [1, 8, 64]})]),
+    # WP-29 P0.15: a layer's own if inside a linked by() panel, or inside a
+    # linked graph with its own if.  The served app recomputes each layer
+    # from its own frame (guards; the saved page is
+    # test_saved_filter_layers.py's).
+    _move_case("a layer's own if under a linked by(), range", _MOVES[1],
+               graphs=[("g1", [_sc(), plot_for("scatter",
+                                               if_expr="price > 4500")],
+                        {"by": "foreign"}), ("g2", [_sc()])],
+               bo={"link": "g1 g2"}),
+    _move_case("a layer's own if in a linked graph with its own if, range",
+               _MOVES[1],
+               graphs=[("g1", [_sc(), plot_for("scatter",
+                                               if_expr="price > 4500")],
+                        None, {"if_expr": "foreign == 1"}),
+                       ("g2", [_sc()])],
+               bo={"link": "g1 g2"}),
+    # WP-29 P0.2: the panels keep one shared scale after a move.
+    _move_case("by(foreign) shared scale, price slider", _MOVES[1], [_sc()],
+               go={"by": "foreign"}),
+    # WP-29 P0.5: the routed options stay on the second axis after a move.
+    _move_case("yaxis(2) with axis(2) options, dropdown", _MOVES[0],
+               [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
+               go={"ylabel": "5000 10000, axis(2)", "yscale": "log axis(2)",
+                   "yline": "6000, axis(2)", "ytick": "7500, axis(2)"}),
+    # WP-29 P0.7: the served recompute derives Stata's default bandwidth
+    # from the rows the move keeps.
+    _move_case("lpoly biweight degree 2, dropdown", _MOVES[0],
+               [plot_for("lpoly", {"kernel": "biweight", "degree": "2"})]),
+    # WP-29 P0.18: a served bar's width is the kept rows' spacing.
+    _move_case("bar under by(rep), dropdown", _MOVES[0], [plot_for("bar")],
+               {"by": "rep"}),
+    _move_case("rbar under by(foreign), range", _MOVES[1],
+               [plot_for("rbar")], {"by": "foreign"}),
+    _move_case("a linked pair with a bar, dropdown", _MOVES[0],
+               graphs=[("g1", [_sc()]), ("g2", [plot_for("bar")])],
+               bo={"link": "g1 g2"}),
+    # WP-29 P0.18: a layer a move leaves with 2, 1 or 0 rows keeps its style.
+    *[_move_case(f"{t} emptied, {m[0]}", m, [plot_for(t)])
+      for t in _EMPTIED_LAYERS for m in _EMPTYING_MOVES],
+    # lpoly is left out: on _DF's five domestic rows it draws nothing
+    # before the move as well, so the move changes nothing to compare.
+    *[_move_case(f"{t} with its own if emptied, slider to 10000",
+                 _EMPTYING_MOVES[0],
+                 [plot_for(t, if_expr="foreign == 0")])
+      for t in _EMPTIED_LAYERS if t != "lpoly"],
+    # WP-29 P0.11: restricted pages after a move.
+    _move_case("two layers with their own qualifiers (embed rows)", _MOVES[1],
+               [plot_for("scatter", if_expr="price > 4500"),
+                plot_for("scatter", in_expr="1/3")]),
+    _move_case("a linked pair with graph qualifiers (embed rows)", _MOVES[1],
+               bo={"link": "g1 g2"},
+               graphs=[("g1", [_sc()], None, {"if_expr": "foreign == 1",
+                                              "in_expr": ""}),
+                       ("g2", [_sc()], None, {"if_expr": "price > 10000",
+                                              "in_expr": ""})]),
 ]
 
 
@@ -2673,7 +2976,9 @@ class TestTheCopiedHelpersBringTheirCallees:
         page raised on every qualifier;
       * `_resolve_seed' gained `_jitter_seed' and the served lpolyci band
         raised on every session;
-      * before either, a copied body referenced `_LPOLY_ROT_C', which is why
+      * before either, a copied body referenced `_LPOLY_ROT_C' (lpoly's
+        old rule-of-thumb constant, replaced in WP-29 P0.7 by
+        `_LPOLY_ROT_GRID' and `_LPOLY_ROT_CONSTANTS'), which is why
         `_supply_missing_constants' exists -- but that pass supplies
         CONSTANTS, not functions.
 
@@ -3133,14 +3438,75 @@ class TestHoverReachesEveryLayerOrIsReported:
     @pytest.mark.parametrize("mode", ("saved", "served"))
     def test_a_huge_hover_list_is_one_note(self, mode):
         """Resource exhaustion: thousands of names are one note per layer,
-        and none of them is echoed."""
+        and none of them is echoed.  Since WP-29 P0.10 the names the data
+        does not hold get their own note, one per graph, naming three and
+        counting the rest."""
         names = " ".join(["rep"] + [f"v{i}" for i in range(5000)])
         spec = _spec([plot_for("line"), plot_for("lfit")], None,
                      {"hover": names})
         figs, caught = _figures_in(mode, spec)
         notes = _hover_notes(caught)
-        assert len(notes) == 1 and "v4999" not in notes[0], notes
+        unreached = [n for n in notes if "does not reach" in n]
+        missing = [n for n in notes if "not in the data" in n]
+        assert len(unreached) == 1, notes
+        assert missing == [
+            "dash: hover() of graph 'g1' names variable(s) not in the data "
+            "-- 'v0', 'v1', 'v2' and 4,997 more; the tooltip leaves them "
+            "out."], missing
+        assert len(notes) == 2, notes
+        assert all("v4999" not in n for n in notes), notes
         _assert_rows_align(figs[0])
+
+    # ---- WP-29 P0.10: a hover() name the data does not hold -------------
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_a_hover_variable_not_in_the_data_is_named(self, mode):
+        spec = _spec([_sc()], None, {"hover": "rep nosuch"})
+        figs, caught = _figures_in(mode, spec)
+        assert [n for n in caught if "not in the data" in n] == [
+            "dash: hover() of graph 'g1' names variable(s) not in the data "
+            "-- 'nosuch'; the tooltip leaves them out."]
+        assert _tools_showing(figs[0], "rep")
+        _assert_rows_align(figs[0])
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_missing_hover_names_are_one_bounded_note(self, mode):
+        names = " ".join(["rep"] + [f"v{i}" for i in range(5000)])
+        spec = _spec([_sc()], None, {"hover": names})
+        _figs, caught = _figures_in(mode, spec)
+        missing = [n for n in caught if "not in the data" in n]
+        assert missing == [
+            "dash: hover() of graph 'g1' names variable(s) not in the data "
+            "-- 'v0', 'v1', 'v2' and 4,997 more; the tooltip leaves them "
+            "out."], missing
+        assert "'v4999'" not in missing[0]
+        assert len(missing[0]) <= 400
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_a_hostile_absent_hover_name_is_shown_bounded(self, mode):
+        bad = "x" * 50000 + chr(27) + "<script>" + "y" * 50000
+        spec = _spec([_sc()], None, {"hover": bad})
+        figs, caught = _figures_in(mode, spec)
+        missing = [n for n in caught if "not in the data" in n]
+        assert len(missing) == 1, [n[:200] for n in missing]
+        note = missing[0]
+        assert "\n" not in note and chr(27) not in note
+        assert len(note) <= 400
+        m = re.search(r" -- ('.*?'); the tooltip", note)
+        assert m is not None and len(m.group(1)) <= 82, note
+        for f in figs:
+            for t in f.tools:
+                if isinstance(t, HoverTool) and isinstance(t.tooltips, list):
+                    assert all("<script>" not in fld and "{safe}" not in fld
+                               for _lab, fld in t.tooltips), t.tooltips
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_by_panels_name_a_missing_variable_once(self, mode):
+        spec = _spec([_sc()], None, {"hover": "rep nosuch", "by": "foreign"})
+        figs, caught = _figures_in(mode, spec)
+        assert len(figs) >= 2
+        assert len([n for n in caught if "not in the data" in n]) == 1, \
+            caught
 
     @pytest.mark.parametrize("mode", ("saved", "served"))
     def test_a_hostile_graph_name_is_quoted_not_obeyed(self, mode):
@@ -3212,7 +3578,9 @@ class TestALinkedByGraphsLinesOnASavedBuild:
     Bokeh's E-1024 error on every saved build" (measured 24sep2026 with
     Bokeh 3.9.0): each panel's Line got a CDSView with a BooleanFilter,
     which Bokeh refuses on a connected glyph.  The pin: no E-1024, and
-    each panel's line holds its own panel's observations, in x order."""
+    each panel's line holds its own panel's observations, in the data's
+    order within its group, as twoway joins each by() panel (WP-29 P0.1;
+    this pinned x order until then, which was wrong)."""
 
     _SPEC = staticmethod(lambda: _spec(
         build_options={"link": "g1 g2"},
@@ -3281,10 +3649,108 @@ class TestALinkedByGraphsLinesOnASavedBuild:
             for ln in lines:
                 data = ln.data_source.data
                 xs = [float(data["weight"][i]) for i in _view_rows(ln)]
-                assert xs == sorted(xs), ("not drawn along x", xs)
                 groups |= {float(_DF.loc[_DF["weight"] == x, "foreign"]
                                  .iloc[0]) for x in xs}
+                # Flipped (WP-29 P0.1): _DF's weights of the panel's group
+                # in the data's order, where this held xs == sorted(xs).
+                grp = float(_DF.loc[_DF["weight"] == xs[0], "foreign"].iloc[0])
+                assert xs == [float(w) for w in
+                              _DF.loc[_DF["foreign"] == grp, "weight"]], (
+                    "not joined in the data's order", xs)
                 assert len(xs) == 5, xs
             assert len(groups) == 1, groups
             panels.append(groups.pop())
         assert sorted(panels) == [0.0, 1.0], panels
+
+
+# ---------------------------------------------------------------------------
+# WP-29 P0.2: a by() graph's panels share range objects the same way in
+# both modes.
+# ---------------------------------------------------------------------------
+_BY_CASES = [c for c in CORPUS
+             if any(str((g.get("graph_options") or {}).get("by") or "").strip()
+                    for g in c.values[1]["graphs"])]
+
+
+def _partition(figs, attr):
+    """Which panels share a range object, as sorted groups of titles."""
+    groups = {}
+    for f in sorted(figs, key=lambda f: str(f.title.text if f.title else "")):
+        groups.setdefault(id(getattr(f, attr)), []).append(
+            str(f.title.text if f.title else ""))
+    return sorted(groups.values())
+
+
+class TestByPanelsShareInBothModes:
+    @pytest.mark.parametrize("name,spec", _BY_CASES)
+    def test_the_sharing_partition_agrees(self, name, spec):
+        from bokeh.plotting import figure as _Fig
+        r, _ = _standalone(spec)
+        saved = [f for f in r.figures.values() if isinstance(f, _Fig)]
+        doc, _ = _served(spec)
+        served = [m for root in doc.roots for m in root.references()
+                  if isinstance(m, _Fig)]
+        for attr in ("x_range", "y_range"):
+            assert _partition(saved, attr) == _partition(served, attr), attr
+
+
+class TestTheServedAppHasNoStaleCue:
+    """WP-29 P0.17: the served app refits every layer after a move and
+    carries no cue model and no muted renderer (decision M3)."""
+
+    @pytest.mark.parametrize("t,filt,move,go", [
+        ("lfit", "foreign, type(dropdown)", ("Select", "Foreign"), None),
+        ("histogram", "price, type(range)",
+         ("RangeSlider", (4500.0, 11385.0)), {"by": "foreign"}),
+        ("lfitci", "price, type(slider)", ("Slider", 4500.0), None),
+    ], ids=["lfit dropdown", "histogram by() range", "lfitci slider"])
+    def test_no_model_tagged_dash_stale(self, t, filt, move, go):
+        from test_server_layer_defects import plot_for
+        spec = _spec([_sc(), plot_for(t)], {"filter": filt}, go)
+        doc, _ = _served(spec)
+        kind, want = move
+        w = [x for x in _widgets_of(doc) if type(x).__name__ == kind][0]
+        if isinstance(w, Select):
+            want = [v for v, lab in w.options if lab == want][0]
+        _fire(w, want)
+        tagged = [m for m in doc.models
+                  if any(str(tg).startswith("dash_stale")
+                         for tg in (getattr(m, "tags", None) or []))]
+        assert tagged == []
+        assert not any(getattr(m, "muted", False) for m in doc.models
+                       if type(m).__name__ == "GlyphRenderer")
+
+
+class TestTheGlyphProfile:
+
+    def test_it_records_muted(self):
+        from bokeh.plotting import figure
+        fig = figure()
+        a = fig.line([1, 2], [1, 2])
+        fig.line([1, 2], [2, 1])
+        a.muted = True
+        prof = _glyph_profile(fig)
+        assert [e["muted"] for e in prof] == [True, False]
+
+
+class TestTheStaleStatusSkip:
+    """D12-1: only the saved page's status Div tagged dash_stale_status is
+    skipped, through the existing allowance."""
+
+    def test_only_a_div_tagged_dash_stale_status_is_skipped(self):
+        keep = Div(text="x", tags=["other"])
+        skip = Div(text="", tags=["dash_stale_status"])
+        figs = []
+        assert _layout_tree([keep, skip], figs) == [("Div", ("text", "x"))]
+        assert _is_stale_status(skip) and not _is_stale_status(keep)
+
+    def test_a_saved_page_with_a_fit_and_a_filter_compares_equal_to_its_served_twin(
+            self):
+        from test_server_layer_defects import plot_for
+        spec = _spec([_sc(), plot_for("lfit")],
+                     {"filter": "foreign, type(dropdown)"})
+        r, _ = _standalone(spec)
+        assert any(_is_stale_status(m)
+                   for m in r._last_layout_root.references())
+        pair = _render_pair("lfit with a dropdown", spec)
+        assert pair["std"]["tree"] == pair["srv"]["tree"]

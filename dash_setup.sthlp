@@ -1,8 +1,10 @@
 {smcl}
-{* *! version 0.1.0  30sep2026}{...}
+{* *! version 0.1.0  02oct2026}{...}
 {viewerjumpto "Syntax"      "dash_setup##syntax"}{...}
 {viewerjumpto "Description" "dash_setup##description"}{...}
+{viewerjumpto "Options" "dash_setup##options"}{...}
 {viewerjumpto "Dependencies" "dash_setup##dependencies"}{...}
+{viewerjumpto "Externally managed Pythons" "dash_setup##pep668"}{...}
 {viewerjumpto "Troubleshooting" "dash_setup##troubleshooting"}{...}
 {vieweralsosee "dash" "help dash"}{...}
 
@@ -16,10 +18,11 @@
 {title:Syntax}
 
 {p 8 17 2}
-{cmd:dash_setup}
+{cmd:dash_setup} [{cmd:,} {opt venv(path)}]
 
 {pstd}
-It takes no arguments and no options; either is r(101).
+An option other than {opt venv()} is r(198), and an argument is r(101).
+{cmd:venv()} with nothing in it is the same as no option.
 
 
 {marker description}
@@ -47,20 +50,73 @@ present but older than {cmd:dash} needs is reported, not upgraded.
     versions are compared approximately and the run ends with a warning.
 
 {phang2}3.  The required Python packages.  Each missing one is installed
-    with {cmd:pip}, asking for at least its minimum version, and once more
-    with {cmd:--user} if that fails; a package that still cannot be
-    imported stops the run, r(198).  An installed package below its
-    minimum is reported, with the command that upgrades it, and counted as
-    unmet.
+    with {cmd:pip}, asking for at least its minimum version.  If that fails
+    for any reason but the two below, it is tried once more with
+    {cmd:--user}, except in a virtual environment or where the user site is
+    disabled, and a package installed there is found in the same run.  A
+    package that still cannot be imported stops the run, r(198).  An
+    installed package below its minimum is reported and counted as unmet,
+    with the command that upgrades it or, on an externally managed Python,
+    the way to set up a private environment instead.
 
 {phang2}4.  {cmd:dash}'s own files: {cmd:dash_render.py} must be found, and
     the renderer must be able to read a shipped scheme.
+
+{pstd}
+Before it runs {cmd:pip} for the first time, {cmd:dash_setup} inspects the
+linked Python once, in a separate process: whether it is externally
+managed, whether it has {cmd:pip}, and whether it is a virtual environment.
+On an externally managed Python, or one without {cmd:pip}, no {cmd:pip}
+command is run at all; see
+{help dash_setup##pep668:Externally managed Pythons} and
+{help dash_setup##troubleshooting:No pip}.
+
+{pstd}
+{cmd:pip} is always run as {cmd:c(python_exec)} {cmd:-m pip}, never as a
+bare {cmd:python} or {cmd:pip}; from a new private directory, not Stata's
+working directory; without Stata's {cmd:PYTHONPATH}; in Python's safe-path
+mode (3.11 and later); from wheels only, so no package's build script runs;
+without prompting; and with a time limit of 30 minutes per command.  Your
+own {cmd:pip} settings -- an index, a proxy -- still apply.
 
 {pstd}
 The run ends with a summary.  It says {cmd:dash_setup complete} only when
 every requirement is met, with the number of warnings if there were any;
 otherwise it names what is unmet and exits with r(198), so a do-file that
 runs {cmd:dash_setup} stops there.
+
+
+{marker options}
+{title:Options}
+
+{phang}
+{opt venv(path)} sets up a Python virtual environment at {it:path} holding
+the packages {cmd:dash} needs, for a Python that refuses {cmd:pip}
+installs.  {it:path} may be relative to the working directory and may start
+with {cmd:~}.  {cmd:dash_setup} creates the environment with the linked
+Python's {cmd:venv} module, or reuses one already at {it:path}; installs
+packaging, bokeh, numpy and pandas at their minimums into it; checks their
+versions, and that {cmd:dash}'s schemes can be read, inside it; and prints
+the command that links Stata to it, such as
+
+{phang2}{cmd:python set exec "/path/to/venv/bin/python", permanently}
+
+{pmore}
+On Windows the interpreter is {it:path}{cmd:\Scripts\python.exe}.  Stata
+reads this setting only when it first starts Python, so restart Stata and
+type the line before anything else uses Python -- otherwise it is r(7101),
+which a {cmd:profile.do} that runs Python also causes -- then run
+{cmd:dash_setup} again.  {cmd:dash_setup} never changes the setting itself.
+
+{pmore}
+A {it:path} that exists must be an empty directory or a virtual environment,
+owned by you and writable by no one else.  A {it:path} that is a symbolic
+link, or that holds a double quote, a backtick, a dollar sign or a control
+character, is refused before anything runs, r(198); so is a linked Python
+below 3.13, or a reused environment whose Python is.  Missing directories
+above {it:path} inside your home directory are created, readable by you
+alone.  If a step fails, {cmd:dash_setup} names it and leaves the
+environment in place; you may delete it.
 
 
 {marker dependencies}
@@ -98,18 +154,21 @@ written); nothing older is tested.  bokeh before 3.6 lacks
 {cmd:pandas} is required by {cmd:dash} itself: bokeh 3.9 no longer
 installs it.  A package below its minimum is not upgraded for you;
 {cmd:dash_setup} prints the {cmd:pip} command for the Python Stata is
-linked to and stops.
+linked to, or on an externally managed Python the way to set up a private
+environment, and stops.
 
 {pstd}Missing packages are installed automatically.  If automatic
 installation fails (e.g., in a restricted network environment), install
-manually -- the command {cmd:dash_setup} prints names the Python Stata is
-linked to, {cmd:c(python_exec)}, not necessarily {cmd:sys.executable}
-below if you run this outside Stata:
+manually.  The command {cmd:dash_setup} prints names the Python Stata is
+linked to, {cmd:c(python_exec)}, quoted for your system; in a terminal it
+reads like this, with that path in place of {it:/path/to/python3}:
 
-{phang2}{cmd:python: import subprocess, sys}
+{phang2}{cmd:"/path/to/python3" -m pip install "bokeh>=3.8" "numpy>=2.3" "pandas>=2.3"}
 
-{phang2}{cmd:python: subprocess.run([sys.executable, "-m", "pip", "install",}
-{cmd:"bokeh>=3.8", "numpy>=2.3", "pandas>=2.3"])}
+{pstd}The double quotes matter: without them a shell reads {cmd:>} as a
+redirection, installs bokeh unpinned and writes a file named {cmd:=3.8}.
+The line runs as written in a macOS or Linux shell and in Windows Command
+Prompt; in PowerShell, put {cmd:&} and a space before it.
 
 {pstd}{ul:Stata packages}
 
@@ -128,6 +187,29 @@ reported as an unmet requirement -- it is not upgraded for you -- and the
 run ends with r(198).
 
 
+{marker pep668}
+{title:Externally managed Pythons}
+
+{pstd}
+Some Pythons are marked as managed by the operating system -- Homebrew's,
+and the system Python of Debian 12, Ubuntu 23.04, Arch Linux and later
+releases -- under PEP 668: a file named {cmd:EXTERNALLY-MANAGED} beside the
+standard library.  They refuse {cmd:pip} installs, with or without
+{cmd:--user}.  On such a Python {cmd:dash_setup} runs no {cmd:pip} command:
+it says why, names the Python, and ends with r(198) when a required
+package is missing or below its minimum (a missing {cmd:packaging} alone is
+a warning).  It never uses {cmd:--break-system-packages} or {cmd:sudo}, and
+a {cmd:pip} setting that turns that protection off is overridden.  Set up a
+private environment instead, which leaves the managed Python as it is:
+
+{phang2}{cmd:dash_setup, venv("~/.dash/venv")}
+
+{pstd}
+then restart Stata, type the {cmd:python set exec} line that command
+prints, and run {cmd:dash_setup} again.  On Windows, {cmd:dash_setup}
+suggests {cmd:%LOCALAPPDATA%\dash\venv}.
+
+
 {marker troubleshooting}
 {title:Troubleshooting}
 
@@ -139,24 +221,30 @@ run ends with r(198).
 
 {pstd}See {helpb python} for full instructions.
 
+{pstd}{ul:No pip}
+
+{phang2}A Python without {cmd:pip} is not asked to run it.  Where the
+Python has its standard {cmd:ensurepip} module, {cmd:dash_setup} prints the
+command that installs {cmd:pip}:
+
+{phang2}{cmd:"/path/to/python3" -m ensurepip --upgrade}
+
+{phang2}Debian and Ubuntu remove {cmd:ensurepip}; there, install the
+{cmd:python3-pip} and {cmd:python3-venv} packages with the system's
+package manager, or use {opt venv()}.
+
 {pstd}{ul:pip install fails}
 
 {phang2}In restricted environments (no internet, corporate proxy), install
 packages using your organization's package mirror or a pre-downloaded wheel:
 
-{phang2}{cmd:python: import subprocess, sys}
-
-{phang2}{cmd:python: subprocess.run([sys.executable, "-m", "pip", "install",}
-{cmd:"--index-url", "https://your.mirror/simple", "bokeh"])}
+{phang2}{cmd:"/path/to/python3" -m pip install --index-url https://your.mirror/simple "bokeh>=3.8"}
 
 {pstd}{ul:Package version below minimum}
 
-{phang2}Upgrade a specific package:
+{phang2}Upgrade a specific package, unless the Python is externally managed (see above):
 
-{phang2}{cmd:python: import subprocess, sys}
-
-{phang2}{cmd:python: subprocess.run([sys.executable, "-m", "pip", "install",}
-{cmd:"--upgrade", "bokeh"])}
+{phang2}{cmd:"/path/to/python3" -m pip install --upgrade "bokeh>=3.8"}
 
 
 {title:Also see}

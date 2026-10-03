@@ -21,7 +21,7 @@ linked graph showed, and it never rebuilt the IndexFilter each panel or
 qualified graph draws through: its positions still counted rows of the
 unfiltered source, so a view drew rows it does not own or pointed past the
 source's end (BokehJS ignores such an index and logs it).  A layer drawn
-from a copy of the shared source -- a line sorted along x, a jittered
+from a copy of the shared source -- a line in its join order, a jittered
 scatter -- is redrawn from the filtered rows on every move and kept the
 view too.
 
@@ -527,7 +527,7 @@ def _points(r):
 
 class TestALayerRedrawnFromACopyOfTheSharedSource:
     """A linked, qualified line is drawn from a copy of the shared source,
-    sorted along x, and a jittered scatter from a copy carrying the jitter.
+    in its join order, and a jittered scatter from a copy carrying the jitter.
     A move redraws the copy from the layer's own filtered rows; the view it
     was built with counted rows of the unfiltered copy."""
 

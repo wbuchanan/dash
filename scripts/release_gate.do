@@ -59,7 +59,7 @@ display "GATE install rc=`rc'"
 mata: st_global("S_ADO", "BASE;SITE;PLUS")
 
 // Each of these must resolve inside the scratch PLUS.
-foreach f in dash.ado dash_setup.ado dash_parse.mata dash_render.py {
+foreach f in dash.ado dash_setup.ado dash_parse.mata dash_render.py dash_setup_lib.py {
     capture findfile `f'
     local frc = _rc
     local ffn `"`r(fn)'"'

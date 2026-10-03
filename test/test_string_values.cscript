@@ -146,8 +146,10 @@ def _sv_modes():
             ("saved", r.variable_labels, r.value_labels, r.value_label_names),
             ("served", meta["var_labels"], meta["val_labels"], meta["val_label_names"])):
         for v in names:
-            if vlab.get(v, "") != vl[v]:
-                _sv_bad(mode + " variable label of " + v)
+            # twoway's rule (WP-29 P0.3): an unlabelled variable is named
+            # by its name, in both modes; a label is kept as Stata holds it.
+            if vlab.get(v, "") != (vl[v] or v):
+                _sv_bad(mode + " variable label of " + v + ": " + ascii(vlab.get(v, "")) + " where twoway reads " + ascii(vl[v] or v))
             if v in lab:
                 if vnames.get(v) != _sv_VL.getVarValueLabel(v):
                     _sv_bad(mode + " label name of " + v)

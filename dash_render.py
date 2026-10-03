@@ -61,13 +61,20 @@ Version: 1.0.0  25mar2026
 from __future__ import annotations
 
 import argparse
+import collections
 import datetime as _dt
+import errno
+import hashlib
 import html
 import json
 import math
 import os
 import re
 import secrets
+import shutil
+import stat
+import tempfile
+import time
 import warnings
 from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Context, Decimal
 from typing import Any
@@ -92,6 +99,7 @@ from bokeh.models import (
     HoverTool,
     IndexFilter,
     InlineStyleSheet,
+    Legend as _BkLegend,
     LassoSelectTool,
     NormalHead,
     OpenHead,
@@ -103,6 +111,7 @@ from bokeh.models import (
     Span,
     TabPanel,
     Tabs,
+    Title as _BkTitle,
     WheelZoomTool,
 )
 from bokeh.plotting import figure as bokeh_figure
@@ -224,9 +233,34 @@ _MIN_FIGURE_HEIGHT = 160
 # line extended past the data where Stata's stops at it.
 _FIT_GRID = 100
 
-# Fan-Gijbels rule-of-thumb constant for the default lpoly bandwidth.  Measured
-# against Stata, NOT derived: see GlyphMapper._default_lpoly_bwidth.
-_LPOLY_ROT_C = 0.65
+# lpoly's rule-of-thumb bandwidth (WP-29 P0.7, _lpoly_rot_detail).  Stata
+# computes the kernel constant C_{0,p}(K) of Fan and Gijbels by TRAPEZOID
+# quadrature on a fixed grid per kernel: (half-width, points).
+_LPOLY_ROT_GRID = {"epanechnikov": (math.sqrt(5.0), 101), "gaussian": (5.0, 101),
+                   "cosine": (0.5, 41), "epan2": (1.0, 81), "biweight": (1.0, 81),
+                   "parzen": (1.0, 81), "rectangle": (1.0, 81),
+                   "triangle": (1.0, 81)}
+# repr(_lpoly_rot_constant(k, p)) for p = 1, 3, 5, 7: that quadrature with the
+# kernel's support strict (|z| < support).  p = 5, 7 (degree 4-7) are dormant
+# while degree() is capped at 3 (section 11 SD-7).
+_LPOLY_ROT_CONSTANTS = {
+    ('epanechnikov', 1): 0.7688119451983404, ('epanechnikov', 3): 1.4510983654380067,
+    ('epanechnikov', 5): 2.119707526564211, ('epanechnikov', 7): 2.784928997584904,
+    ('epan2', 1): 1.7193092621259016, ('epan2', 3): 3.245668826171823,
+    ('epan2', 5): 4.74230800612505, ('epan2', 7): 6.232578887244081,
+    ('biweight', 1): 2.0361684221829894, ('biweight', 3): 3.6333572150005558,
+    ('biweight', 5): 5.158207981435779, ('biweight', 7): 6.659696773488038,
+    ('cosine', 1): 4.261325461635762, ('cosine', 3): 7.465910256468045,
+    ('cosine', 5): 10.516178558247534, ('cosine', 7): 13.52565407786959,
+    ('gaussian', 1): 0.7763932398225403, ('gaussian', 3): 1.1605364963657514,
+    ('gaussian', 5): 1.4508015133135794, ('gaussian', 7): 1.7147660572783578,
+    ('parzen', 1): 2.679241025642047, ('parzen', 3): 4.354113262700628,
+    ('parzen', 5): 5.908520000476076, ('parzen', 7): 7.422676088655606,
+    ('rectangle', 1): 1.3681484904911154, ('rectangle', 3): 2.849598716697929,
+    ('rectangle', 5): 4.338920614551152, ('rectangle', 7): 5.832847955090462,
+    ('triangle', 1): 1.8887652986701784, ('triangle', 3): 3.420486711722465,
+    ('triangle', 5): 4.917653569707844, ('triangle', 7): 6.4077843560534875,
+}
 
 
 
@@ -498,6 +532,90 @@ def _dash_float_values(col, coerce: bool = False) -> "np.ndarray":
     return arr.astype(float, copy=False)
 
 
+def _dash_date_units(column, kind):
+    """A date column (datetimes, or epoch milliseconds) in its Stata units.
+
+    twoway computes every layer from a date in the variable's own units --
+    days for ``%td`` (the time of day kept as a fraction), milliseconds
+    after 01jan1960 for ``%tc``/``%tC``, and period numbers for ``%tw``,
+    ``%tm``, ``%tq``, ``%th`` and ``%ty`` -- where dash holds the column in
+    epoch milliseconds, the unit its axis is drawn in (WP-29 P0.8).  A
+    period kind is read by ``_dash_period_values``, exact at period starts.
+    Any other *kind* leaves the milliseconds unchanged.  A missing value, or
+    one outside Stata's dates (01jan0100 to 31dec9999), is NaN.  Measured
+    round trip: %td 14977.5 -> 978436800000 ms -> 14977.5.  Never raises.
+
+    Returns:
+        A float64 array.
+    """
+    ms = _dash_float_values(column, coerce=True)
+    lo = _STATA_MS_MIN + _STATA_EPOCH_UNIX_MS
+    hi = _STATA_MS_MAX + _STATA_EPOCH_UNIX_MS
+    with np.errstate(all="ignore"):
+        ok = np.isfinite(ms) & (ms >= lo) & (ms <= hi)
+        if kind == "td":
+            out = (ms - _STATA_EPOCH_UNIX_MS) / 86_400_000.0
+        elif kind in ("tc", "tC"):
+            out = ms - _STATA_EPOCH_UNIX_MS
+        elif kind in ("tw", "tm", "tq", "th", "ty"):
+            out = _dash_period_values(ms, kind)
+        else:
+            return ms
+    out = np.asarray(out, dtype=float).copy()
+    out[~ok] = np.nan
+    return out
+
+
+def _dash_units_to_axis(values, kind):
+    """Stata values of a date *kind* (fractions allowed) as epoch ms.
+
+    The inverse of :func:`_dash_date_units`, for the positions a computed
+    layer draws on a date axis: ``%td`` days times 86,400,000 after
+    01jan1960, ``%tc``/``%tC`` milliseconds after 01jan1960, and a period
+    kind placed at its period's start, a fraction of a period linearly
+    between that start and the next (``%tm`` 492.5 is 2001-01-16 12:00).
+    NaN where the value is missing, not a number, or outside Stata's dates,
+    and for an unknown kind.  Every warning raised inside is silenced, and
+    nothing raises.
+
+    Returns:
+        A float64 array.
+    """
+    try:
+        v = np.asarray(values, dtype=float)
+    except (TypeError, ValueError):
+        v = np.asarray(pd.to_numeric(pd.Series(list(values), dtype=object),
+                                     errors="coerce"), dtype=float)
+    v = np.atleast_1d(v).astype(float)
+    E = float(_STATA_EPOCH_UNIX_MS)
+    out = np.full(v.shape, np.nan)
+    with warnings.catch_warnings(), np.errstate(all="ignore"):
+        warnings.simplefilter("ignore")
+        fin = np.isfinite(v)
+        if kind == "td":
+            out = v * 86_400_000.0 + E
+        elif kind in ("tc", "tC"):
+            out = v + E
+        elif kind in ("tw", "tm", "tq", "th", "ty") and fin.any():
+            # Bound the period numbers first: one far past Stata's range
+            # must not reach the calendar arithmetic.
+            sane = fin & (np.abs(v) < 1e7)
+            f = np.where(sane, np.floor(v), 0.0)
+            a = _dash_float_values(_stata_dates_to_datetime(
+                pd.Series(f, dtype="float64"), kind), coerce=True)
+            b = _dash_float_values(_stata_dates_to_datetime(
+                pd.Series(f + 1.0, dtype="float64"), kind), coerce=True)
+            out = np.where(v == f, a, a + (v - f) * (b - a))
+            out = np.where(sane, out, np.nan)
+        else:
+            return out
+        out = np.asarray(out, dtype=float)
+        bad = ~(np.isfinite(out) & fin
+                & (out >= _STATA_MS_MIN + E) & (out <= _STATA_MS_MAX + E))
+        out[bad] = np.nan
+    return out
+
+
 def _dash_read_data_json(text):
     """Parse the data file, each number as Stata holds it.
 
@@ -673,19 +791,44 @@ def _dash_figure_date_kind(plots, key, fallback, date_vars):
     Every layer must agree: a date series and a numeric one cannot share a
     date axis, and picking the first plot's answer would misplace the
     other.  The saved renderer's rule, in both modes.
+
+    A univariate layer (histogram, kdensity) draws its variable on x, as
+    twoway does, so its ``var`` counts on the ``"xvar"`` key and nothing on
+    ``"yvar"`` (WP-29 P0.8; ``horizontal`` is not read here yet, P1.9).
+    Where twoway's first-plot rule labels the axis with the variable's
+    numbers -- an ``lfit``, ``qfit``, ``lfitci``, ``qfitci``, ``kdensity``,
+    ``lpoly`` or ``lpolyci`` first, measured in WP-29 S05 Evidence §6 --
+    dash keeps its date axis: a documented divergence, ratified 01oct2026.
     """
     if not date_vars:
         return None
     kinds = set()
     for plot in plots or []:
-        name = plot.get(key, "") or (
-            plot.get("var", "") if key == "yvar" else "") or fallback
+        if str(plot.get("type", "")).lower() in _DASH_UNIVARIATE_TYPES:
+            if key != "xvar":
+                continue
+            name = plot.get("var", "") or fallback
+        else:
+            name = plot.get(key, "") or fallback
         if not name:
             continue
         kinds.add(date_vars.get(name))
     if not kinds or len(kinds) > 1 or None in kinds:
         return None
     return kinds.pop()
+
+
+def _dash_axis_vars(plots):
+    """``(xv, yv)``: the variables a figure's axes are named and formatted
+    by, read from its first layer.  A univariate first layer (histogram,
+    kdensity) draws its variable on x and its density on y, so its ``var``
+    is the x variable and y has none (WP-29 P0.8): the tick formatter, the
+    log notes and the axis options read ``''`` for a histogram's x before.
+    """
+    p0 = (plots or [{}])[0] or {}
+    if str(p0.get("type", "")).lower() in _DASH_UNIVARIATE_TYPES:
+        return (p0.get("var", "") or p0.get("xvar", "") or "", "")
+    return (p0.get("xvar", "") or "", p0.get("yvar", "") or "")
 
 
 def _dash_mark_date_axes(fig, x_kind, y_kind):
@@ -768,28 +911,46 @@ def _dash_widget_number(v):
         return math.nan
 
 
-def _dash_kpi_column(col, stat, varname):
-    """A KPI column as a statistic is taken of it, in both render modes: a
-    datetime column as epoch milliseconds -- the representation Bokeh
-    itself uses -- so min, max, mean and the percentiles all work, and a
-    card formats the answer back into a date.  ``sum`` of dates is named.
+def _dash_kpi_column(col, stat, varname, kind=None):
+    """A KPI column as a statistic is taken of it, in both render modes.
+
+    A date column is read in its Stata values -- days for ``%td``, ms after
+    01jan1960 for ``%tc``, periods for the others, the *kind* -- as
+    ``summarize`` takes every statistic of it (WP-29 P0.20): sd(date) on
+    sysuse sp500 is 105.3335 days, where the epoch milliseconds dash read
+    gave 9.10e+09.  A date-valued result (mean, min, max, a percentile) is
+    then itself a Stata date the card writes in its picture.  ``count`` and
+    ``dcount`` are unit-free and keep the milliseconds.  A date column with
+    no Stata date kind is refused: no unit can be chosen for it.  ``sum``
+    of dates is named, with its units.
     """
     if not pd.api.types.is_datetime64_any_dtype(col):
         return col
-    if str(stat).lower().strip() == "sum":
-        # 01jan1970, the epoch the milliseconds count from (the page's
-        # callback sums the same numbers); this said 01jan1960.
+    s = str(stat).lower().strip()
+    if s in ("count", "dcount"):
+        # As floats, which hold every millisecond of Stata's range exactly
+        # (under 2**53): an int64 sum wrapped silently past 9.2e18, about
+        # 36,000 dates in 9999 (24sep2026).
+        return (col.dropna().astype("datetime64[ms]").astype("int64")
+                .astype("float64"))
+    if kind not in _STATA_DATE_KINDS:
+        raise ValueError(f"_dash_kpi_column: {varname!r} is a date column "
+                         f"with no Stata date kind")
+    if s == "sum":
+        units = {"td": "days since 01jan1960",
+                 "tc": "milliseconds since 01jan1960",
+                 "tC": "milliseconds since 01jan1960",
+                 "tw": "weeks since 1960w1", "tm": "months since 1960m1",
+                 "tq": "quarters since 1960q1",
+                 "th": "half-years since 1960h1", "ty": "years"}[kind]
         warnings.warn(
             f"dash: sum({varname}) adds up dates, which has no meaning. "
-            f"The result is shown as a number of milliseconds since "
-            f"01jan1970.",
+            f"The result is the sum of its Stata values ({units}), as "
+            f"summarize reports it.",
             UserWarning,
         )
-    # As floats, which hold every millisecond of Stata's range exactly
-    # (under 2**53): an int64 sum wrapped silently past 9.2e18, about
-    # 36,000 dates in 9999 (24sep2026).
-    return (col.dropna().astype("datetime64[ms]").astype("int64")
-            .astype("float64"))
+    u = _dash_date_units(col.dropna(), kind)
+    return pd.Series(u[~np.isnan(u)], dtype="float64")
 
 
 # ---------------------------------------------------------------------------
@@ -847,10 +1008,11 @@ def _report_dataset_shape(rows, cols, mode, stacklevel=3, extra=0):
         return
     mb = cells * _HTML_BYTES_PER_CELL / 1_000_000.0
     # Not "use an if qualifier": dash exports every observation of the
-    # variables it uses and applies qualifiers itself, so a qualifier shrinks
-    # a saved page without filters (8.4 MB to 1.5 MB, measured on 200,000
-    # rows) and nothing else -- a filter's page and a served app carry every
-    # row, and the renderer holds them all in memory either way.
+    # variables it uses and applies qualifiers itself.  A saved page holds
+    # only the rows its graphs, cards and filters select (WP-29 P0.11; the
+    # saved renderer passes that count), while the served app's file holds
+    # every row (the builder counts them all), and the renderer holds them
+    # all in memory either way -- so the advice is to reduce the data.
     warnings.warn(
         f"dash: {rows:,} observations on {cols} variables is a large "
         f"dataset to embed; this {mode} will be roughly {mb:,.0f} MB and "
@@ -922,6 +1084,65 @@ _DASH_COMPUTED_ONLY_TYPES = frozenset({
     "lfit", "qfit", "lfitci", "qfitci", "fpfit", "fpfitci",
     "mspline", "mband", "lowess", "lpoly", "lpolyci",
 })
+
+# ---- The saved page's stale cue (WP-29 P0.17, decision M3) ----
+# A saved page does not refit a computed layer after a filter move; while
+# the filters that reach it have removed a row of its estimation sample it
+# is marked instead.  Each constant below is part of that cue (M3: a
+# visible cue, no JavaScript estimator).  Saved-page only: the served app
+# refits and reads none of them.
+#: WP-29 P0.17 (M3): a marked layer draws at this share of its own alphas.
+_DASH_STALE_ALPHA = 0.3
+#: WP-29 P0.17 (M3): what a marked layer's legend key gains, by kind.
+_DASH_STALE_SUFFIX = {"fit": " (unfiltered)", "bins": " (bins unfiltered)",
+                      "grid": " (grid unfiltered)"}
+#: WP-29 P0.17 (M3): the caption a marked layer's graph shows.
+_DASH_STALE_CUE_TEXT = "Marked layers were computed before the filter"
+#: WP-29 P0.17 (M3): the filter area's status line, a fixed text (no user
+#: text is ever spliced in); #3d2f00 on #fff4ce is about 11.9:1.
+_DASH_STALE_STATUS_HTML = (
+    '<p role="status" aria-live="polite" aria-atomic="true" '
+    'style="margin:0;padding:2px 6px;background:#fff4ce;color:#3d2f00;'
+    'font-size:12px">Layers marked (unfiltered), (bins unfiltered) or '
+    '(grid unfiltered) were computed before the filter was applied, and a '
+    'saved page does not recompute them; dash serve does.</p>')
+
+
+def _dash_stale_kind(ptype, options):
+    """The stale cue's kind for a layer (WP-29 P0.17): ``"fit"``,
+    ``"bins"`` (histogram), ``"grid"`` (kdensity), or None for a layer a
+    saved page redraws or never computes -- and for a kdensity drawn over
+    ``range()``, whose grid is the user's and twoway's."""
+    t = str(ptype or "").lower()
+    if t not in _DASH_COMPUTED_ONLY_TYPES:
+        return None
+    if t == "histogram":
+        return "bins"
+    if t == "kdensity":
+        with warnings.catch_warnings():
+            # The mapper has already named a range() it cannot read.
+            warnings.simplefilter("ignore")
+            rng = _dash_range_pair(options or {}, "kdensity", "")
+        return None if rng is not None else "grid"
+    return "fit"
+
+
+def _dash_stale_glyph(glyph):
+    """A copy of *glyph* at ``_DASH_STALE_ALPHA`` of each of its alphas
+    (WP-29 P0.17): a number is scaled (0 stays 0), anything else -- a
+    field, a spec, None -- becomes the constant.  Colour, width and dash
+    stay as cloned."""
+    g = glyph.clone()
+    props = g.properties()
+    for a in ("line_alpha", "fill_alpha", "hatch_alpha"):
+        if a not in props:
+            continue
+        v = getattr(g, a)
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            setattr(g, a, v * _DASH_STALE_ALPHA)
+        else:
+            setattr(g, a, _DASH_STALE_ALPHA)
+    return g
 
 #: One bound on every computed layer above except a histogram and a
 #: lowess, which are counted exactly (see _dash_graph_computed_cells):
@@ -1174,7 +1395,9 @@ def _dash_embedded_cells(spec, rows, columns, limits):
     (_DASH_COMPUTED_ONLY_TYPES) that no filter, link(), csv or hover()
     reaches draws its own bounded output (``extra``) and its variables are
     not counted as ``row_cols``; every other graph, every KPI and every
-    filter variable counts its columns.  ``rows`` and ``columns`` are
+    filter variable counts its columns.  hover()'s own variables count
+    where a layer of their graph can show them (``_dash_hover_shown``,
+    WP-29 P0.10, design review A1); under csv every column counts.  ``rows`` and ``columns`` are
     plain numbers/names -- no frame is built here, which is how the
     renderer calls this with ``self.df.shape[0]`` and
     ``list(self.df.columns)``.
@@ -1228,6 +1451,11 @@ def _dash_embedded_cells(spec, rows, columns, limits):
             _add(name)
         for qc in _dash_graph_qual_cols(g):
             _add(qc)
+        # WP-29 P0.10: hover()'s variables are exported; the saved page
+        # holds them where a layer of this graph can show them.
+        if _dash_hover_shown(g):
+            for name in hover.split():
+                _add(name)
 
     for k in kpis:
         _add(k.get("var"))
@@ -1238,6 +1466,64 @@ def _dash_embedded_cells(spec, rows, columns, limits):
         _add(f.get("varname"))
 
     return row_cols, extra
+
+
+def _dash_hover_shown(g):
+    """Whether some layer of graph dict *g* can show hover()'s variables
+    (WP-29 P0.10, design review A1): True when *g* has no plot dicts, or
+    some plot whose type -- read exactly, as dash_parse.mata's
+    _dash_spec_types_in and _dash_graph_computed_cells read it -- is not
+    a computed-only or literal type (``_DASH_COMPUTED_ONLY_TYPES |
+    _DASH_LITERAL_TYPES``, dash.ado's _pt_univar, _pt_onefit and
+    _pt_literal).  Such a graph draws no observation, so the saved page
+    holds none of hover()'s rows for it."""
+    hidden = _DASH_COMPUTED_ONLY_TYPES | _DASH_LITERAL_TYPES
+    plots = [p for p in (g or {}).get("plots") or [] if isinstance(p, dict)]
+    if not plots:
+        return True
+    return any(str(p.get("type", "")) not in hidden for p in plots)
+
+
+def _dash_hover_unembedded(spec):
+    """The names only an unshowing hover() gives (WP-29 P0.10): the
+    hover() variables of graphs no layer of which can show them
+    (``_dash_hover_shown``), less every name the saved page holds for
+    another reason -- a plot's variable or option column, a by()
+    variable, a showing graph's hover(), a KPI's variable or a filter's.
+    Empty under csv, which puts every column in the download.  The Python
+    mirror of dash.ado's _hv_hide less _byte_vars: the saved bytes
+    re-check leaves these out, as Stata's count does."""
+    spec = spec or {}
+    build = spec.get("build_options", {}) or {}
+    if _dash_csv_wanted(build):
+        return set()
+    hidden, other = set(), set()
+    for g in spec.get("graphs", []) or []:
+        if not isinstance(g, dict):
+            continue
+        go = g.get("graph_options") or {}
+        names = str(go.get("hover") or "").split()
+        if _dash_hover_shown(g):
+            other.update(names)
+        else:
+            hidden.update(names)
+        for p in g.get("plots") or []:
+            if not isinstance(p, dict):
+                continue
+            for key in DashRenderer._VAR_KEYS:
+                v = p.get(key)
+                if v:
+                    other.add(v)
+            other.update(_dash_option_columns(p.get("options") or {}))
+        other.update(_dash_parse_by(str(go.get("by") or "").strip(),
+                                    warn=False)[0].split())
+    for k in spec.get("kpis", []) or []:
+        if isinstance(k, dict) and k.get("var"):
+            other.add(k.get("var"))
+    for f in _dash_parse_filter_raw(build.get("filter", ""), warn=False):
+        if f.get("varname"):
+            other.add(f.get("varname"))
+    return hidden - other
 
 
 def _dash_text_bytes(df, string_vars):
@@ -1479,18 +1765,794 @@ def _dash_write_stata_data(path, varnames, sfi=None):
     # chunks and took three times as long over 100,000 observations.
     text = json.dumps(doc, ensure_ascii=False, allow_nan=False,
                       separators=(",", ":"))
-    with open(path, "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(text)
+    # 0600, never through a link, a FIFO or another account's file (WP-29
+    # P0.12b; _dash_private_write).  Nothing is caught: a refusal or an
+    # OSError leaves the python: line as an exception, r(7102).
+    _dash_private_write(path, text)
+    return ""
+
+
+# ===========================================================================
+# Private temporary files (WP-29 P0.12b, P0.14; section 08)
+# ===========================================================================
+#
+# Measured at 7421d3d (section 08, Evidence §2): every temporary copy of the
+# user's data -- the spec and data files of each render, `dash serve''s
+# application (which embeds every observation in base64) and the one-line
+# form's preview page -- was written with the user's umask (0644; 0664 under
+# umask 002, D4-D7, U2) at a predictable Stata tempfile name directly in
+# c(tmpdir); a symbolic link at such a name was followed (D9), a
+# pre-created 0666 file kept its mode (D8), and the preview was never
+# deleted (D1-D3).
+#
+# Each condition the helpers below meet falls into one of three classes,
+# never mixed (section 08 R-8, ratified 01oct2026):
+#
+# * privacy shortfall -- a c(tmpdir) other accounts can change, a planted
+#   dash-<uid>, a folder or file the disk will not keep private: dash
+#   PROCEEDS, still creating every file 0600 where it can, and the command
+#   prints one `dash: note:' naming the location and the remedy;
+# * anti-hijack -- a symbolic link, a FIFO or device, a file with other hard
+#   links, another account's file at the target name, a name that appears
+#   mid-write, or an app that is not the one dash wrote: REFUSED with
+#   _DashUnsafePath, which ends the command r(7102) (M4a);
+# * operating system -- the folder cannot be made at all: an OSError, which
+#   dash.ado reports as r(603), Stata's own code there (§3a S1).
+
+#: Previews a session keeps (P0.14, R-6): the newest five.
+_DASH_PREVIEW_KEEP = 5
+#: A page a browser was asked to open is kept this long (seconds), so the
+#: browser can still read it after `open'/`xdg-open' returns (R-6).
+_DASH_PREVIEW_GRACE_S = 60
+#: Another session's page, or (on Windows only) a run folder, older than
+#: this is stale (seconds).
+_DASH_STALE_AGE_S = 86400
+#: Every session's previews together are bounded by this many pages.
+_DASH_PREVIEW_CEILING = 25
+#: A run folder: run-<pid>-<mkdtemp's random part>.
+_DASH_RUN_RE = re.compile(r"^run-(\d+)-[A-Za-z0-9_]+$")
+#: A preview page: its time, the session's pid, 8 random hex digits, and b
+#: (a browser was asked to open it) or q (it was not).
+_DASH_PREVIEW_RE = re.compile(
+    r"^dash-preview-\d{8}-\d{6}-(\d+)-[0-9a-f]{8}-([bq])\.html$")
+#: A fallback root, formatted with re.escape(_dash_root_name()): tempfile's
+#: own 8-character alphabet (measured, §3a R1).
+_DASH_FALLBACK_FMT = r"^%s-[a-z0-9_]{8}$"
+
+#: The note's sentences (R-8).  (a): c(tmpdir) itself.
+_DASH_NOTE_BASE = (
+    "Stata's temporary directory %s can be changed by other accounts (%s), "
+    "so another account could move or replace the folders that hold dash's "
+    "copies of your data, though not read them.  To keep them private, run "
+    "chmod go-w on it, or start Stata with STATATMP set to a folder only you "
+    "can write.")
+#: (b): a dash-<uid> (or previews/) dash will not use.
+_DASH_NOTE_PLANTED = (
+    "%s is not yours to use (%s), so dash left it alone and kept its copies "
+    "of your data in %s, which only you can open.  Remove %s to stop this "
+    "note.")
+#: (c): a folder dash chose that the disk will not keep private.
+_DASH_NOTE_LOOSE = (
+    "%s could not be made private (%s), so other accounts may read the "
+    "copies of your data dash keeps there.  To keep them private, start "
+    "Stata with STATATMP set to a folder on a disk that keeps permissions.")
+#: (d): a file outside every folder dash chose (the .py of dash build,
+#: server), printed by the renderer.
+_DASH_NOTE_FILE = (
+    "dash: note: %s could not be made private (its permissions stay 0o%03o "
+    "after dash set them to 0600); it holds every observation of the "
+    "dashboard's variables, so keep it where other accounts cannot read it.")
+#: The anti-hijack refusal of a write (TR-08.3).
+_DASH_WRITE_REFUSAL = (
+    "dash: refused to write %s (%s); dash never writes through a link, into "
+    "a pipe or device, or over another account's file.")
+#: The anti-hijack refusal of a launch (TR-08.8a).
+_DASH_RUN_REFUSAL = (
+    "dash: refused to run %s (%s); dash runs only the application it wrote.")
+#: The open's errno that the writer refuses as anti-hijack, and why.
+_DASH_ERRNO_WHY = {errno.ELOOP: "it is a link", errno.ENXIO: "it is a pipe",
+                   errno.EEXIST: "it appeared while dash was writing it"}
+
+
+class _DashUnsafePath(Exception):
+    """An anti-hijack refusal (section 08 R-8): a symbolic link, a FIFO or
+    device, a file with other hard links, another account's file or folder
+    at the target name, a name that appeared mid-write, or an application
+    that is not the one dash wrote.
+
+    Raised ONLY for those, never for privacy: a location that cannot be
+    private proceeds with a note (ratified 01oct2026).  Out of a `python:'
+    line it ends the command r(7102), the message the traceback's last line
+    (measured, M4a); it is never turned into a SystemExit, which Stata
+    reports as rc 0 (M4b).  ``why`` holds the reason in brackets.
+    """
+
+    why = ""
+
+
+#: What ``ServerAppBuilder.build(private=True)`` and ``main()`` return for a
+#: server app (round 2, R-9): the writer's ``os.stat_result`` (``st``) and
+#: the SHA-256 of the UTF-8 bytes written (``sha256``), which the launcher
+#: checks the file it opens against before it hands the bytes to Python.
+_DashWrittenApp = collections.namedtuple("_DashWrittenApp", ["st", "sha256"])
+
+
+def _dash_root_name():
+    """The private root's name: ``dash-<uid>``, or ``dash`` where there is
+    no ``os.getuid`` (Windows, A13), whose TEMP is the user's own."""
+    if hasattr(os, "getuid"):
+        return "dash-%d" % os.getuid()
+    return "dash"
+
+
+def _dash_mode_private(st):
+    """True when *st* (a stat result) gives no group or other account any
+    permission; always True on Windows, which keeps no POSIX modes.  The
+    privacy class (R-8): a False here is noted, never refused."""
+    if os.name == "nt":
+        return True
+    return stat.S_IMODE(st.st_mode) & 0o077 == 0
+
+
+def _dash_private_msg(exc, path):
+    """The user-facing text for a write of *path* that failed or was
+    refused (TR-08.3).
+
+    *exc* is a reason (str), a ``_DashUnsafePath`` or an ``OSError``.  A
+    reason, and an ELOOP, ENXIO or EEXIST from the open (a link, a pipe, a
+    name that appeared mid-write), give the anti-hijack refusal; any other
+    OSError gives ``dash: <path> could not be written: <strerror>.`` (the
+    operating-system class)."""
+    if isinstance(exc, _DashUnsafePath):
+        return str(exc)
+    if isinstance(exc, str):
+        return _DASH_WRITE_REFUSAL % (path, exc)
+    why = _DASH_ERRNO_WHY.get(getattr(exc, "errno", None))
+    if why is not None:
+        return _DASH_WRITE_REFUSAL % (path, why)
+    return "dash: %s could not be written: %s." % (
+        path, getattr(exc, "strerror", None) or exc)
+
+
+def _dash_private_dir_ok(path):
+    """Check, and tighten to 0700, a folder dash chose; return ``""`` or the
+    privacy reason it stays loose (R-8 (c)).
+
+    Anti-hijack (raises ``_DashUnsafePath``, ``why`` set): *path* is a
+    symbolic link, not a folder, or another account's.  The open never
+    follows a link (``O_NOFOLLOW``; macOS gives ENOTDIR for a link to a
+    folder, not ELOOP, so the cause is read with ``lstat``, §3a R2), and
+    every check after it is on the open descriptor.  Privacy (returned,
+    never raised): ``fchmod(0o700)`` failed, or the disk kept group or
+    other bits after it (measured: a umask-002 STATATMP folder is 0775,
+    A14; P6 tightened a loose root of the user's to 0700).  Any other
+    OSError (the folder is missing) propagates: the operating-system
+    class."""
+    why = ""
+    fd = None
+    if os.name == "nt":
+        if not os.path.lexists(path):
+            why = "it is missing"
+        elif os.path.islink(path):
+            why = "it is a link"
+        elif not os.path.isdir(path):
+            why = "it is not a folder"
+    else:
+        try:
+            fd = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+                         | getattr(os, "O_NOFOLLOW", 0)
+                         | getattr(os, "O_CLOEXEC", 0))
+        except OSError as exc:
+            if exc.errno not in (errno.ELOOP, errno.ENOTDIR, errno.EMLINK):
+                raise
+            why = ("it is a link" if stat.S_ISLNK(os.lstat(path).st_mode)
+                   else "it is not a folder")
+    loose = ""
+    if fd is not None:
+        try:
+            st = os.fstat(fd)
+            _uid = getattr(os, "getuid", None)
+            if not stat.S_ISDIR(st.st_mode):
+                why = "it is not a folder"
+            elif _uid is not None and st.st_uid != _uid():
+                why = "it belongs to another account"
+            elif stat.S_IMODE(st.st_mode) != 0o700:
+                try:
+                    if getattr(os, "fchmod", None) is None:
+                        raise OSError(errno.ENOTSUP, "not supported here")
+                    os.fchmod(fd, 0o700)
+                    st = os.fstat(fd)
+                    if stat.S_IMODE(st.st_mode) & 0o077:
+                        loose = ("its permissions stay 0o%03o after dash set "
+                                 "them to 0700" % stat.S_IMODE(st.st_mode))
+                except OSError as exc:
+                    loose = "its permissions could not be set: %s" % (
+                        exc.strerror or exc)
+        finally:
+            os.close(fd)
+    if why:
+        refusal = _DashUnsafePath(_dash_private_msg(why, path))
+        refusal.why = why
+        raise refusal
+    return loose
+
+
+def _dash_fallback_root(tmpdir, create=True):
+    """The fallback root ``dash-<uid>-<8 chars>`` beside a ``dash-<uid>``
+    dash will not use (TR-08.2a, R-8 (b), ratified 01oct2026).
+
+    An existing one is reused only when ``lstat`` shows a folder, not a
+    link, of this account and of mode exactly 0700 (measured, §3a R5: a
+    0755 one beside it is skipped).  Otherwise, with *create*, a new one is
+    made by ``tempfile.mkdtemp`` -- O_EXCL semantics, mode 0700 and an
+    unguessable name, so it cannot be planted (§3a R3) -- and spelled from
+    *tmpdir* (A2: only mkdtemp's basename is used).  Returns None when
+    there is none and *create* is False."""
+    pat = re.compile(_DASH_FALLBACK_FMT % re.escape(_dash_root_name()))
+    _uid = getattr(os, "getuid", None)
+    for name in sorted(os.listdir(tmpdir)):
+        if not pat.match(name):
+            continue
+        p = os.path.join(tmpdir, name)
+        try:
+            lst = os.lstat(p)
+        except OSError:
+            continue
+        if not stat.S_ISDIR(lst.st_mode):
+            continue
+        if os.name != "nt" and (
+                (_uid is not None and lst.st_uid != _uid())
+                or stat.S_IMODE(lst.st_mode) != 0o700):
+            continue
+        return p
+    if not create:
+        return None
+    mk = tempfile.mkdtemp(prefix=_dash_root_name() + "-", dir=tmpdir)
+    return os.path.join(tmpdir, os.path.basename(mk))
+
+
+def _dash_own_root(path, tmpdir=None):
+    """True when *path* is one of this account's private roots: named
+    ``dash-<uid>`` or a fallback's name, a folder (not a link, by
+    ``lstat``) owned by this account, and -- with *tmpdir* -- directly in
+    *tmpdir* as spelled (A2).  The sweep, the close, ``dash clear`` and the
+    erase rule recognise a root only through this.  Never raises."""
+    try:
+        name = os.path.basename(path)
+        pat = re.compile(_DASH_FALLBACK_FMT % re.escape(_dash_root_name()))
+        if name != _dash_root_name() and not pat.match(name):
+            return False
+        lst = os.lstat(path)
+        if not stat.S_ISDIR(lst.st_mode):
+            return False
+        _uid = getattr(os, "getuid", None)
+        if os.name != "nt" and _uid is not None and lst.st_uid != _uid():
+            return False
+        if tmpdir is not None and os.path.dirname(path) != os.path.dirname(
+                os.path.join(tmpdir, "x")):
+            return False
+        return True
+    except OSError:
+        return False
+
+
+def _dash_private_root(tmpdir, create=True):
+    """``(root, note)``: the folder dash keeps its copies in under *tmpdir*,
+    and the note sentences (R-8 (a)-(c)) for the locations that are not
+    private, without the ``dash: note: `` prefix (``""`` when there are
+    none).
+
+    The root is ``<tmpdir>dash-<uid>``, spelled from *tmpdir* as given --
+    never through realpath, which breaks the prefix (measured, A2) --
+    created 0700 (P1; never ``os.umask``, which Stata's process shares).
+    Privacy, never refused (ratified 01oct2026): a *tmpdir* other accounts
+    can write without a sticky bit (P8, A14) or that belongs to another
+    account adds sentence (a); a root the disk keeps loose adds (c).
+    Anti-hijack: a ``dash-<uid>`` that is a link, not a folder or another
+    account's is left alone -- never used or followed (P7) -- and the
+    fallback root is used instead, with sentence (b).  Raises only OSError
+    (the operating-system class: *tmpdir* missing, not a folder,
+    read-only).  Without *create*, returns ``(None, "")`` when there is no
+    root."""
+    notes = []
+    if os.name != "nt":
+        bst = os.stat(tmpdir)
+        if not stat.S_ISDIR(bst.st_mode):
+            raise NotADirectoryError(errno.ENOTDIR,
+                                     os.strerror(errno.ENOTDIR), tmpdir)
+        _uid = getattr(os, "getuid", None)
+        why = ""
+        if _uid is not None and bst.st_uid not in (0, _uid()):
+            why = "it belongs to another account"
+        elif bst.st_mode & 0o022 and not bst.st_mode & stat.S_ISVTX:
+            why = "other accounts can write to it and it has no sticky bit"
+        if why:
+            notes.append(_DASH_NOTE_BASE % (tmpdir, why))
+    root = os.path.join(tmpdir, _dash_root_name())
+    if create:
+        try:
+            os.mkdir(root, 0o700)
+        except FileExistsError:
+            pass
+    elif not os.path.lexists(root):
+        return (None, "")
+    try:
+        why = _dash_private_dir_ok(root)
+    except _DashUnsafePath as exc:
+        fb = _dash_fallback_root(tmpdir, create=create)
+        if fb is None:
+            return (None, "")
+        notes.append(_DASH_NOTE_PLANTED % (root, exc.why, fb, root))
+        root = fb
+    else:
+        if why:
+            notes.append(_DASH_NOTE_LOOSE % (root, why))
+    return (root, "  ".join(notes))
+
+
+def _dash_private_write(path, text, exclusive=False):
+    """Write *text* (UTF-8) to *path* readable and writable by this account
+    only, and return ``os.fstat`` of the file as written.
+
+    Measured at 7421d3d: every copy followed the umask (D4-D7: 0644; 0664
+    under umask 002, U2), a pre-created 0666 file kept its mode (D8), and a
+    link at the name was followed (D9).  Here the file is created 0600
+    (whatever the umask: P2, P3) and ``fchmod``ed to 0600.
+
+    Anti-hijack (``_DashUnsafePath``, r(7102)): ``O_NOFOLLOW`` refuses a
+    link (ELOOP, P4); ``O_NONBLOCK`` makes a FIFO with no reader fail at
+    once (ENXIO) instead of blocking (measured, A3); the open descriptor
+    must be a regular file of this account with no other link (P5); with
+    *exclusive*, a name that appeared mid-write (EEXIST).  Privacy (R-8
+    (d)): a failed ``fchmod`` is ignored -- a fresh file is 0600 anyway
+    (§3a R7) -- and the caller reads the returned mode.  Any other OSError
+    (the operating-system class) propagates.  ``O_NOFOLLOW``,
+    ``O_CLOEXEC``, ``O_NONBLOCK``, ``fchmod`` and ``getuid`` are read with
+    ``getattr`` (Windows, A13)."""
+    flags = (os.O_WRONLY | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+             | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NONBLOCK", 0)
+             | getattr(os, "O_BINARY", 0) | (os.O_EXCL if exclusive else 0))
+    try:
+        fd = os.open(path, flags, 0o600)
+    except OSError as exc:
+        if exc.errno in _DASH_ERRNO_WHY:
+            refusal = _DashUnsafePath(_dash_private_msg(exc, path))
+            refusal.why = _DASH_ERRNO_WHY[exc.errno]
+            raise refusal from None
+        raise
+    try:
+        st = os.fstat(fd)
+        _uid = getattr(os, "getuid", None)
+        why = ""
+        if not stat.S_ISREG(st.st_mode):
+            why = "it is not a regular file"
+        elif _uid is not None and st.st_uid != _uid():
+            why = "it belongs to another account"
+        elif st.st_nlink != 1:
+            why = "it has other links"
+        if why:
+            refusal = _DashUnsafePath(_dash_private_msg(why, path))
+            refusal.why = why
+            raise refusal
+        if getattr(os, "O_NONBLOCK", 0):
+            try:
+                import fcntl
+                fcntl.fcntl(fd, fcntl.F_SETFL,
+                            fcntl.fcntl(fd, fcntl.F_GETFL) & ~os.O_NONBLOCK)
+            except ImportError:
+                pass
+        os.ftruncate(fd, 0)
+        _fchmod = getattr(os, "fchmod", None)
+        if _fchmod is not None:
+            try:
+                _fchmod(fd, 0o600)
+            except OSError:
+                pass
+        data = text.encode("utf-8")
+    except BaseException:
+        os.close(fd)
+        raise
+    with os.fdopen(fd, "wb") as fh:
+        fh.write(data)
+        fh.flush()
+        st = os.fstat(fh.fileno())
+    return st
+
+
+def _dash_pid_alive(pid):
+    """Whether process *pid* may still be running, for the sweep.
+
+    Only ProcessLookupError means dead: ``os.kill(pid, 0)`` raises
+    PermissionError for another account's live process (measured, A4), so
+    any other OSError means alive.  A pid below 1 is never signalled
+    (``kill(0, ...)`` signals the group), and on Windows ``os.kill`` is
+    never called (it sends CTRL_C_EVENT or terminates): both count as
+    alive."""
+    if pid < 1 or os.name == "nt":
+        return True
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except OSError:
+        return True
+    return True
+
+
+def _dash_run_sweep(root, now=None):
+    """Remove the run folders left in *root* by an error, Break or crash;
+    return how many.
+
+    A run folder goes when its pid is this process (no dash command of this
+    Stata can be running: Stata is single-threaded and ``dash serve``
+    blocks), or, on POSIX, when its pid is dead.  A live pid's folder is
+    never removed by age on POSIX (a long ``dash serve``, A5); on Windows,
+    where liveness is never probed, a folder older than a day goes.  A link
+    or non-folder at a run name is unlinked, never followed; a folder goes
+    through ``shutil.rmtree``, which does not follow links.  Every OSError
+    is ignored: the sweep never fails a render."""
+    now = time.time() if now is None else now
+    try:
+        names = os.listdir(root)
+    except OSError:
+        return 0
+    removed = 0
+    for name in names:
+        m = _DASH_RUN_RE.match(name)
+        if not m:
+            continue
+        path = os.path.join(root, name)
+        try:
+            pid = int(m.group(1))
+            lst = os.lstat(path)
+            if pid == os.getpid():
+                drop = True
+            elif os.name == "nt":
+                drop = now - lst.st_mtime > _DASH_STALE_AGE_S
+            else:
+                drop = not _dash_pid_alive(pid)
+            if not drop:
+                continue
+            if stat.S_ISDIR(lst.st_mode):
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                os.unlink(path)
+            removed += 1
+        except OSError:
+            continue
+    return removed
+
+
+def _dash_run_open(tmpdir):
+    """Open a private run folder for one command; the dict dash.ado reads.
+
+    ``{"rundir", "spec", "data", "app", "err", "note"}``: the folder
+    ``<tmpdir>dash-<uid>/run-<pid>-<random>/`` (0700, made by
+    ``tempfile.mkdtemp`` and spelled from *tmpdir*, A2) and the three paths
+    in it; ``note`` the R-8 note with its ``dash: note: `` prefix, or
+    ``""``.  The root's stale runs are swept first.  An OSError (the
+    operating-system class) gives every path ``""`` and ``err`` the reason,
+    which dash.ado ends with r(603).  A ``_DashUnsafePath`` from the fresh
+    folder's own check (anti-hijack) is not caught: r(7102)."""
+    out = {"rundir": "", "spec": "", "data": "", "app": "", "err": "",
+           "note": ""}
+    note = ""
+    try:
+        root, note = _dash_private_root(tmpdir)
+        _dash_run_sweep(root)
+        mk = tempfile.mkdtemp(prefix="run-%d-" % os.getpid(), dir=root)
+        rundir = os.path.join(root, os.path.basename(mk))
+        why = _dash_private_dir_ok(rundir)
+        if why and "could not be made private" not in note:
+            note = "  ".join(x for x in (note, _DASH_NOTE_LOOSE
+                                         % (rundir, why)) if x)
+    except OSError as exc:
+        out["err"] = ("dash: dash could not make its temporary folder in "
+                      "%s: %s." % (tmpdir, getattr(exc, "strerror", None)
+                                   or exc))
+        out["note"] = ("dash: note: " + note) if note else ""
+        return out
+    out.update(rundir=rundir, spec=os.path.join(rundir, "spec.json"),
+               data=os.path.join(rundir, "data.json"),
+               app=os.path.join(rundir, "app.py"),
+               note=("dash: note: " + note) if note else "")
+    return out
+
+
+def _dash_run_close(rundir, tmpdir):
+    """Remove a run folder ``_dash_run_open`` made; ``""`` or a note.
+
+    Only a ``run-<pid>-*`` folder directly in one of this account's roots
+    in *tmpdir* (``_dash_own_root``) is removed; anything else is left and
+    named.  A folder already gone is not an error.  A link at the name is
+    unlinked, not followed.  An emptied fallback root is removed too
+    (``rmdir``, so a root still holding a preview stays)."""
+    if rundir == "":
+        return ""
+    root = os.path.dirname(rundir)
+    if not _dash_own_root(root, tmpdir) or not _DASH_RUN_RE.match(
+            os.path.basename(rundir)):
+        return "dash: %s is not a dash run folder; nothing was removed." \
+            % rundir
+    if not os.path.lexists(rundir):
+        return ""
+    try:
+        if os.path.islink(rundir):
+            os.unlink(rundir)
+        else:
+            shutil.rmtree(rundir, ignore_errors=True)
+    except OSError:
+        pass
+    if os.path.basename(root) != _dash_root_name():
+        try:
+            os.rmdir(root)
+        except OSError:
+            pass
+    return ""
+
+
+def _dash_erase_quietly(path):
+    """Unlink *path*, ignoring every OSError: a link is removed, never its
+    target, and a folder is never removed."""
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
+
+
+def _dash_private_run_of(output_path):
+    """The run folder *output_path* sits in, when it is ``app.py`` in one of
+    dash's own private run folders; else None (A10, R-1).
+
+    The only rule by which dash erases inputs (``main()``) or the app (the
+    launcher): the folder is ``run-<pid>-*`` directly in a root
+    ``_dash_own_root`` accepts (``dash-<uid>`` or a fallback), and both are
+    folders of this account with no group or other bits.  A command-line
+    user's files never qualify.  On a disk that keeps no permissions the
+    mode clause fails, so nothing is erased early (R-8 residual).  Reads
+    only the filesystem, so it holds under ``runpy.run_path``."""
+    if os.path.basename(output_path) != "app.py":
+        return None
+    rundir = os.path.dirname(output_path)
+    if not _DASH_RUN_RE.match(os.path.basename(rundir)):
+        return None
+    root = os.path.dirname(rundir)
+    if not _dash_own_root(root):
+        return None
+    _uid = getattr(os, "getuid", None)
+    try:
+        for p in (root, rundir):
+            lst = os.lstat(p)
+            if not stat.S_ISDIR(lst.st_mode):
+                return None
+            if os.name != "nt" and (
+                    (_uid is not None and lst.st_uid != _uid())
+                    or stat.S_IMODE(lst.st_mode) & 0o077):
+                return None
+    except OSError:
+        return None
+    return rundir
+
+
+def _dash_private_clear_name(path):
+    """Make room for an exclusive create at a path the user named (R-7).
+
+    Anti-hijack (``_DashUnsafePath``): a symbolic link (the link and its
+    target are both left), anything that is not a regular file, or another
+    account's file at *path* is refused.  This account's regular file is
+    unlinked, so a ``replace`` creates a new file and a reader holding the
+    old one open never sees the new data; a name planted after the unlink
+    makes the following ``O_EXCL`` create fail (EEXIST), never a write
+    through it.  ``lstat`` only: a link is never followed (at 7421d3d
+    ``open(output_path, "w")`` followed it).  The folder's mode is never
+    looked at: a folder the user names is never refused (ratified)."""
+    if not os.path.lexists(path):
+        return None
+    st = os.lstat(path)
+    why = ""
+    _uid = getattr(os, "getuid", None)
+    if stat.S_ISLNK(st.st_mode):
+        why = "it is a link"
+    elif not stat.S_ISREG(st.st_mode):
+        why = "it is not a regular file"
+    elif os.name != "nt" and _uid is not None and st.st_uid != _uid():
+        why = "it belongs to another account"
+    if why:
+        refusal = _DashUnsafePath(_dash_private_msg(why, path))
+        refusal.why = why
+        raise refusal
+    os.unlink(path)
+    return None
+
+
+def _dash_chosen_path(path):
+    """True when *path* is in a folder dash chose -- a run folder or
+    ``previews/`` directly in ``dash-<uid>`` or a fallback root -- so the
+    renderer prints no R-8 (d) note for it (its folder's sentence covers
+    it).  Pure: names only, no filesystem."""
+    parent = os.path.basename(os.path.dirname(path))
+    grand = os.path.basename(os.path.dirname(os.path.dirname(path)))
+    if not (_DASH_RUN_RE.match(parent) or parent == "previews"):
+        return False
+    return grand == _dash_root_name() or bool(re.match(
+        _DASH_FALLBACK_FMT % re.escape(_dash_root_name()), grand))
+
+
+def _dash_prune_previews(prev, trigger, now=None):
+    """Prune the one-line previews in *prev*; return how many went (P0.14).
+
+    Measured at 7421d3d: the preview was never deleted and a second
+    overwrote the first (D1, D2; GAPS2 X3 counted 66).  Only names
+    ``_DASH_PREVIEW_RE`` matches whose ``lstat`` is a regular file are
+    touched; a link is never followed.  This session's pages: on a
+    ``"preview"`` the newest four are kept (five once the new page is
+    written) and of the rest a page a browser was asked to open in the last
+    minute; on ``"clear"`` only such a young opened page stays.  Another
+    session's page goes only when it is a day old or, on POSIX, its pid is
+    dead (A6).  Then all sessions together are cut to 25 pages, oldest
+    first, a young opened page excepted."""
+    now = time.time() if now is None else now
+    try:
+        names = os.listdir(prev)
+    except OSError:
+        return 0
+    me = os.getpid()
+    entries = []
+    for name in names:
+        m = _DASH_PREVIEW_RE.match(name)
+        if not m:
+            continue
+        p = os.path.join(prev, name)
+        try:
+            lst = os.lstat(p)
+        except OSError:
+            continue
+        if stat.S_ISREG(lst.st_mode):
+            entries.append((lst.st_mtime, name, p, int(m.group(1)),
+                            m.group(2)))
+    drop = set()
+    mine = sorted((e for e in entries if e[3] == me), reverse=True)
+    if trigger == "preview":
+        for e in mine[_DASH_PREVIEW_KEEP - 1:]:
+            if e[4] == "q" or now - e[0] >= _DASH_PREVIEW_GRACE_S:
+                drop.add(e[2])
+    else:
+        for e in mine:
+            if not (e[4] == "b" and now - e[0] < _DASH_PREVIEW_GRACE_S):
+                drop.add(e[2])
+    for e in entries:
+        if e[3] != me and (now - e[0] > _DASH_STALE_AGE_S or (
+                os.name != "nt" and not _dash_pid_alive(e[3]))):
+            drop.add(e[2])
+    left = sorted(e for e in entries if e[2] not in drop)
+    excess = len(left) - _DASH_PREVIEW_CEILING
+    for e in left:
+        if excess <= 0:
+            break
+        if e[4] == "b" and now - e[0] < _DASH_PREVIEW_GRACE_S:
+            continue
+        drop.add(e[2])
+        excess -= 1
+    removed = 0
+    for p in drop:
+        try:
+            os.unlink(p)
+            removed += 1
+        except OSError:
+            pass
+    return removed
+
+
+def _dash_preview_path(tmpdir, opened):
+    """Name the one-line preview page; ``{"path", "err", "note"}`` (P0.14).
+
+    The page goes in ``<root>/previews/`` (0700) under a unique name --
+    time, pid, 8 random hex digits, and ``b`` when a browser is to be asked
+    to open it (*opened* ``"1"``) else ``q`` -- so a preview never
+    overwrites another (D1).  The session's older pages are pruned first.
+    The file is not created here: ``main(private_output=True)`` creates it
+    0600 with ``O_EXCL``.  A ``previews`` planted inside the root (which
+    needs a root others can write) is left alone and the fallback root used
+    (R-8 (b)); a second planted one is refused (anti-hijack).  ``err`` and
+    ``note`` are built as ``_dash_run_open`` builds them."""
+    out = {"path": "", "err": "", "note": ""}
+    note = ""
+    try:
+        root, note = _dash_private_root(tmpdir)
+        for attempt in (0, 1):
+            prev = os.path.join(root, "previews")
+            try:
+                os.mkdir(prev, 0o700)
+            except FileExistsError:
+                pass
+            try:
+                why = _dash_private_dir_ok(prev)
+            except _DashUnsafePath as exc:
+                if attempt:
+                    raise
+                root = _dash_fallback_root(tmpdir)
+                note = "  ".join(x for x in (note, _DASH_NOTE_PLANTED % (
+                    prev, exc.why, root, prev)) if x)
+                continue
+            if why and "could not be made private" not in note:
+                note = "  ".join(x for x in (note, _DASH_NOTE_LOOSE
+                                             % (prev, why)) if x)
+            break
+        _dash_prune_previews(prev, "preview")
+    except OSError as exc:
+        out["err"] = ("dash: dash could not make its temporary folder in "
+                      "%s: %s." % (tmpdir, getattr(exc, "strerror", None)
+                                   or exc))
+        out["note"] = ("dash: note: " + note) if note else ""
+        return out
+    name = "dash-preview-%s-%d-%s-%s.html" % (
+        time.strftime("%Y%m%d-%H%M%S"), os.getpid(), secrets.token_hex(4),
+        "b" if str(opened).strip() == "1" else "q")
+    out.update(path=os.path.join(prev, name),
+               note=("dash: note: " + note) if note else "")
+    return out
+
+
+def _dash_tmp_write_text(path, text):
+    """dash.ado's spec and empty-data writer: *text* to *path* through
+    ``_dash_private_write`` (0600, no link, FIFO or foreign file), returning
+    ``""``.
+
+    It replaces Stata's ``file write``, which resets the mode to the umask
+    (T2, T3) and expands a macro reference found inside the value a second
+    time (A9: "R1 identical: False").  A refusal (anti-hijack) or an
+    OSError is raised, never returned as text (ratified 01oct2026), so the
+    ``python:`` line ends r(7102) with the message last (M4a)."""
+    _dash_private_write(path, text)
+    return ""
+
+
+def _dash_tmp_clear(tmpdir):
+    """``dash clear``'s pruning: in each of this account's roots in
+    *tmpdir* -- ``dash-<uid>`` and every fallback root, each accepted by
+    ``_dash_own_root`` -- sweep the stale runs and remove the session's
+    previews but a young opened one (R-6); then remove an emptied fallback
+    root.  Never creates a root; a planted ``previews`` is skipped, never
+    followed.  Returns ``""``."""
+    pat = re.compile(_DASH_FALLBACK_FMT % re.escape(_dash_root_name()))
+    try:
+        names = sorted(os.listdir(tmpdir))
+    except OSError:
+        return ""
+    for name in names:
+        if name != _dash_root_name() and not pat.match(name):
+            continue
+        root = os.path.join(tmpdir, name)
+        if not _dash_own_root(root, tmpdir):
+            continue
+        _dash_run_sweep(root)
+        prev = os.path.join(root, "previews")
+        if os.path.lexists(prev):
+            try:
+                _dash_private_dir_ok(prev)
+            except (_DashUnsafePath, OSError):
+                pass
+            else:
+                _dash_prune_previews(prev, "clear")
+        if name != _dash_root_name():
+            for d in (prev, root):
+                try:
+                    os.rmdir(d)
+                except OSError:
+                    pass
     return ""
 
 
 #: The functions dash.ado calls by name on this module, loaded as
-#: ``_dash_render_export`` (its program _dash_write_data), rather than
-#: through ``main()``.  Named here so the call graph of the dead-code audit
+#: ``_dash_render_export`` (its programs _dash_write_data and _dash_xm_load,
+#: and the _dash_tmp_* programs of WP-29 P0.12b), rather than through
+#: ``main()``.  Named here so the call graph of the dead-code audit
 #: (scripts/fncov/fncov_reach.py), whose roots are this module's own code,
 #: counts them as run; test_string_value_export.py holds this tuple and
 #: dash.ado's calls to the same names.
-_DASH_ADO_ENTRY_POINTS = (_dash_write_stata_data,)
+_DASH_ADO_ENTRY_POINTS = (_dash_write_stata_data, _dash_run_open,
+                          _dash_run_close, _dash_preview_path,
+                          _dash_tmp_write_text, _dash_tmp_clear)
 
 
 #: The blanks a layout() may carry: the six ASCII ones.  str.strip(),
@@ -1740,22 +2802,95 @@ def _dash_named_once(graphs, kpis):
 
 
 #: A lone second axis's options, and the first axis's they become.
-_DASH_LONE_AXIS_OPTIONS = {"y": ("ytitle", "ylabel", "yscale"),
-                           "x": ("xtitle", "xlabel", "xscale")}
+_DASH_LONE_AXIS_OPTIONS = {"y": ("ytitle", "ylabel", "yscale", "ytick",
+                                 "yline"),
+                           "x": ("xtitle", "xlabel", "xscale", "xtick",
+                                 "xline")}
+
+#: dash's second-axis options: what an axis(2) copy of ytitle(), ylabel(),
+#: yscale(), ytick() and yline() (x too) is written as (WP-29 P0.5).
+_DASH_AXIS2_KEYS = {"y": ("ytitle2", "ylabel2", "yscale2", "ytick2", "yline2"),
+                    "x": ("xtitle2", "xlabel2", "xscale2", "xtick2", "xline2")}
+
+#: A number as twoway's ``axis(integer)`` reads it: an optional sign, digits
+#: with an optional point, or a point and digits, and an optional exponent.
+_DASH_AXIS_NUM_RE = re.compile(r"[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?")
+
+
+def _dash_axis_number(arg):
+    """The axis ``axis(arg)`` names, as twoway's ``_axisnum`` reads it
+    (``syntax [, AXis(integer 1)]``, WP-29 P0.5): *arg* when it is a whole
+    number within Stata's integer bounds, -2147483648 .. 2147483647, else
+    1 -- a blank, a word, a fraction, a missing value or a number past the
+    bounds is axis 1, silently (measured: ``axis(2.5)``, ``axis(a)``,
+    ``axis(1e300)`` and ``axis(2147483648)``).  The twin of dash_parse.mata's
+    ``_dash_axis_num`` for a spec that did not come through dash.ado, so it
+    reads decimal forms only (``inf``, ``nan``, ``1_0`` and Stata's hex
+    ``1.0x+1`` are 1 here; dash.ado routes the hex form before any spec
+    exists).  Never raises; returns an ``int``."""
+    s = str(arg if arg is not None else "").strip()
+    if len(s) > 400 or not _DASH_AXIS_NUM_RE.fullmatch(s):
+        return 1
+    try:
+        v = float(s)
+    except (ValueError, OverflowError):
+        return 1
+    if not math.isfinite(v) or v != math.floor(v) \
+            or not -2147483648 <= v <= 2147483647:
+        return 1
+    return int(v)
+
+
+def _dash_axis_word(tok):
+    """``(is an axis word, typed in lower case, its argument)`` of one
+    sub-option word: ``ax``, ``axi`` or ``axis`` then ``(``, as twoway's
+    ``AXis()`` declaration admits; a word in capitals (``AXIS(2)``) is an
+    axis word twoway refuses, ``(True, False, ...)``."""
+    if "(" not in tok:
+        return False, False, ""
+    name = tok.split("(", 1)[0].strip()
+    low = name.lower()
+    if not 2 <= len(low) <= 4 or not "axis".startswith(low):
+        return False, False, ""
+    arg = tok[tok.index("(") + 1:]
+    if arg.endswith(")"):
+        arg = arg[:-1]
+    return True, name == low, arg
+
+
+def _dash_axis_words(toks):
+    """``(axis, place)`` the sub-option words *toks* name: the first axis
+    word typed in lower case gives the axis (``_dash_axis_number``) and its
+    place; ``(1, None)`` with none.  ``(None, None)`` when twoway refuses
+    the words -- a second axis word, or one in capitals -- so the caller
+    leaves the option as typed (dash.ado's check refuses it)."""
+    axis, place = 1, None
+    for i, t in enumerate(toks):
+        is_ax, lower, arg = _dash_axis_word(t)
+        if not is_ax:
+            continue
+        if not lower or place is not None:
+            return None, None
+        axis, place = _dash_axis_number(arg), i
+    return axis, place
 
 
 def _dash_route_axis_titles(spec):
     """The spec with ytitle(..., axis(2))/xtitle(..., axis(2)) moved to
-    ytitle2()/xtitle2() and an axis(1) token dropped (WP-28 B3).
+    ytitle2()/xtitle2() and an axis(1) word dropped (WP-28 B3).
 
     dash.ado routes these in Mata before its repeat merge
     (_dash_route_axis2); this is the renderer's own twin for a spec that
-    did not come through it.  The raw value is kept with its other
-    sub-options.  An explicit ytitle2() already present wins and the
-    routed copy is dropped with a note.  Both loaders call this BEFORE
-    _dash_lone_second_axes, so a lone axis(2) graph's routed title becomes
-    its one axis's title.  Returns a new dict; a spec of the wrong shape is
-    returned as it came.
+    did not come through it.  The axis is read from the first axis word
+    typed in lower case (``ax``, ``axi`` or ``axis``, WP-29 P0.5) by
+    twoway's number rule (``_dash_axis_number``): axis 1 drops the word,
+    axis 2 routes, any other axis -- and a second axis word or one in
+    capitals, which twoway refuses -- leaves the title as it is.  The raw
+    value is kept with its other sub-options.  An explicit ytitle2()
+    already present wins and the routed copy is dropped with a note.  Both
+    loaders call this BEFORE _dash_lone_second_axes, so a lone axis(2)
+    graph's routed title becomes its one axis's title.  Returns a new
+    dict; a spec of the wrong shape is returned as it came.
     """
     if not isinstance(spec, dict) or not isinstance(spec.get("graphs"), list):
         return spec
@@ -1771,15 +2906,17 @@ def _dash_route_axis_titles(spec):
             raw = new_go.get(f"{side}title")
             if not isinstance(raw, str):
                 continue
-            ax = str(_parse_textbox_opt(raw)[1].get("axis", "")).strip()
-            if ax not in ("1", "2"):
-                continue
             cut = _textbox_split_point(raw)
+            if cut < 0:
+                continue
             head, tail = raw[:cut].rstrip(), raw[cut + 1:]
-            rest = [t for t in _dash_by_tokens(tail.strip())
-                    if _dash_subopt_name(t) != "axis"]
+            toks = _dash_by_tokens(tail.strip())
+            ax, place = _dash_axis_words(toks)
+            if place is None or ax not in (1, 2):
+                continue
+            rest = [t for i, t in enumerate(toks) if i != place]
             value = head + (", " + " ".join(rest) if rest else "")
-            if ax == "1":
+            if ax == 1:
                 new_go[f"{side}title"] = value
             else:
                 new_go.pop(f"{side}title")
@@ -1799,6 +2936,179 @@ def _dash_route_axis_titles(spec):
         return spec
     out = dict(spec)
     out["graphs"] = graphs
+    return out
+
+
+def _dash_route_line_copies(raw):
+    """``(first, second, changed)``: the copies of one yline()/xline()
+    value on each axis, joined ``", "`` as dash.ado joins copies.
+
+    dash.ado joins a repeated yline() with a comma between the copies
+    (_dash_rep_merge, "X"); after a comma a position starts the next copy
+    (as ``_dash_refline_instances`` reads them).  Each copy is routed on its
+    own: axis(1) drops the word, axis(2) moves the copy, any other axis or
+    a refused axis word leaves it as typed on the first axis.
+    """
+    copies = []
+    for seg in _dash_by_tokens_commas(str(raw)):
+        toks = _dash_by_tokens(seg.strip())
+        starts = False
+        if toks:
+            try:
+                float(toks[0])
+                starts = True
+            except ValueError:
+                starts = False
+        if starts or not copies:
+            copies.append([seg.strip()])
+        else:
+            copies[-1].append(seg.strip())
+    first, second, changed = [], [], False
+    for parts in copies:
+        subs = _dash_by_tokens(" ".join(parts[1:]))
+        ax, place = _dash_axis_words(subs)
+        text = ", ".join(parts)
+        if place is not None and ax in (1, 2):
+            rest = [t for i, t in enumerate(subs) if i != place]
+            text = parts[0] + (", " + " ".join(rest) if rest else "")
+            changed = True
+            if ax == 2:
+                second.append(text)
+                continue
+        first.append(text)
+    return ", ".join(first), ", ".join(second), changed
+
+
+def _dash_route_axis_options(spec):
+    """The spec with ylabel(), ytick(), yscale() and yline() (x too) moved to
+    the axis their ``axis(#)`` names (WP-29 P0.5).
+
+    dash.ado routes every axis option in Mata before its repeat merge
+    (_dash_route_axis2); this is the renderer's twin for a spec that did
+    not come through it, as ``_dash_route_axis_titles`` is for the titles.
+    The axis is the first axis word typed in lower case (``ax``, ``axi``,
+    ``axis``), read by twoway's number rule (``_dash_axis_number``):
+    axis 1 drops the word, axis 2 writes the option as ylabel2(), ytick2(),
+    yscale2() or yline2() with its other words, and any other axis -- or a
+    second axis word, or one in capitals, which twoway refuses -- leaves it
+    as typed.  A label's or tick's words are read after the comma that
+    starts its sub-options (``_dash_axis_head_split``), so a label holding
+    "axis(2)" is text; a scale's are all its words; a line's copies are
+    routed one by one (``_dash_route_line_copies``).  An explicit second
+    key already given wins over a routed label, tick or scale, with a note
+    (as ytitle2() does); routed line copies join it.  Pure and linear:
+    returns a new dict, never modifies the caller's, and returns a spec of
+    the wrong shape as it came.  Both loaders call it between
+    ``_dash_route_axis_titles`` and ``_dash_lone_second_axes``.
+    """
+    if not isinstance(spec, dict) or not isinstance(spec.get("graphs"), list):
+        return spec
+    changed = False
+    graphs = []
+    for g in spec["graphs"]:
+        go = g.get("graph_options") if isinstance(g, dict) else None
+        if not isinstance(go, dict):
+            graphs.append(g)
+            continue
+        new_go = dict(go)
+        name = str(go.get("name", ""))
+        for side in ("y", "x"):
+            for fam in ("label", "tick", "scale"):
+                key = side + fam
+                raw = new_go.get(key)
+                if not isinstance(raw, str):
+                    continue
+                if fam == "scale":
+                    head, toks = "", _dash_by_tokens(raw.strip())
+                else:
+                    head, tail = _dash_axis_head_split(raw)
+                    if not tail:
+                        continue
+                    parts = _dash_by_tokens_commas(tail[1:])
+                    if any(p.strip() for p in parts[1:]):
+                        continue        # a second comma: twoway refuses it
+                    toks = _dash_by_tokens(parts[0].strip())
+                ax, place = _dash_axis_words(toks)
+                if place is None or ax not in (1, 2):
+                    continue
+                rest = " ".join(t for i, t in enumerate(toks) if i != place)
+                value = rest if fam == "scale" else (
+                    head.rstrip() + (", " + rest if rest else ""))
+                if ax == 1:
+                    new_go[key] = value
+                else:
+                    new_go.pop(key)
+                    if isinstance(new_go.get(key + "2"), str) \
+                            and new_go[key + "2"].strip():
+                        _dash_warn_once(
+                            ("route", name, key),
+                            "dash: %s(..., axis(2)) and %s2() both given; "
+                            "%s2() is drawn" % (key, key, key))
+                    else:
+                        new_go[key + "2"] = value
+            key = side + "line"
+            raw = new_go.get(key)
+            if isinstance(raw, str) and raw.strip():
+                first, second, moved = _dash_route_line_copies(raw)
+                if moved:
+                    if first:
+                        new_go[key] = first
+                    else:
+                        new_go.pop(key)
+                    if second:
+                        had = new_go.get(key + "2")
+                        new_go[key + "2"] = (
+                            had + ", " + second
+                            if isinstance(had, str) and had.strip()
+                            else second)
+        if new_go != go:
+            g = dict(g)
+            g["graph_options"] = new_go
+            changed = True
+        graphs.append(g)
+    if not changed:
+        return spec
+    out = dict(spec)
+    out["graphs"] = graphs
+    return out
+
+
+def _dash_unused_second_axis_notes(graph):
+    """``[(key, text)]``: one note per second-axis option of *graph* that no
+    layer can use (WP-29 P0.5, SD-3).
+
+    ytitle2(), ylabel2(), yscale2(), ytick2() and yline2() -- and the
+    routed ``ytitle(..., axis(2))`` forms they hold -- style the axis a
+    ``yaxis(2)`` layer draws on; with no such layer there is nothing to
+    style (twoway refuses the axis(2) forms, r(198), which dash.ado does;
+    dash's own *2 spellings are accepted and named here).  Pure, decided
+    from the spec alone, so both modes raise it at build time: the saved
+    renderer as it builds its figures, the served app's builder in
+    ``ServerAppBuilder._plan_graph_notes``.  The key is
+    ``("axis2-unused", graph name, option)`` for ``_dash_warn_once``.
+    """
+    if not isinstance(graph, dict):
+        return []
+    go = graph.get("graph_options")
+    if not isinstance(go, dict):
+        return []
+    plots = graph.get("plots")
+    plots = plots if isinstance(plots, list) else []
+    name = str(go.get("name", "") or "")
+    out = []
+    for d in ("y", "x"):
+        if any(isinstance(p, dict) and isinstance(p.get("options"), dict)
+               and str(p["options"].get(d + "axis", "1")).strip() == "2"
+               for p in plots):
+            continue
+        for key in _DASH_AXIS2_KEYS[d]:
+            v = go.get(key)
+            if isinstance(v, str) and v.strip():
+                out.append((
+                    ("axis2-unused", name, key),
+                    "dash: graph '%s': %s() (%s(..., axis(2))) is not drawn: "
+                    "no layer is on %saxis(2)."
+                    % (_dash_display(name), key, key[:-1], d)))
     return out
 
 
@@ -1858,7 +3168,15 @@ def _dash_lone_second_axes(spec):
                     second = go.pop(first + "2", None)
                     # A raw "" is deliberately moved (it is not blank):
                     # ytitle2("") on a lone graph removes the one title.
-                    if isinstance(second, str) and second.strip():
+                    if not (isinstance(second, str) and second.strip()):
+                        continue
+                    had = go.get(first)
+                    if first.endswith("line") and isinstance(had, str) \
+                            and had.strip():
+                        # Each copy of yline() is a line of its own
+                        # (WP-29 A8): the one axis draws both.
+                        go[first] = had + ", " + second
+                    else:
                         go[first] = second
             g["graph_options"] = go
         graphs.append(g)
@@ -1866,6 +3184,66 @@ def _dash_lone_second_axes(spec):
     if not changed:
         return spec
     out = dict(spec)
+    out["graphs"] = graphs
+    return out
+
+
+def _dash_attach_function_points(spec):
+    """The spec with each function layer's stored points on its plot.
+
+    Stata writes a function layer's points beside the graphs, as the
+    top-level member ``"function_points"``: ``{<graph name>: {<k>: points}}``
+    with k the layer's place in the graph's plots, from 1 (WP-29 P0.6;
+    dash.ado's _dash_fn_spec_tail).  Both renderers call this first, before
+    the spec is capped or embedded, so a plot carries ``"points"`` and
+    ``GlyphMapper.map_function`` draws them; the served app embeds plots
+    that already hold them.
+
+    A graph is named by ``graph_options.name``, else ``name``, else ""
+    (the one-line form's graph); only the first graph of a name takes a
+    table.  A key that is not 1-4 ASCII digits, a place past the plots, a
+    plot that is not a function, and a table that is not a dict are
+    ignored.  The points themselves are checked where they are drawn
+    (``_dash_function_points``).  The input is never mutated; the copy has
+    no ``"function_points"``.
+    """
+    if not isinstance(spec, dict):
+        return spec
+    out = dict(spec)
+    fp = out.pop("function_points", None)
+    graphs = out.get("graphs")
+    if not isinstance(fp, dict) or not isinstance(graphs, list):
+        return out
+    graphs = list(graphs)
+    seen = set()
+    for gi, g in enumerate(graphs):
+        if not isinstance(g, dict):
+            continue
+        go = g.get("graph_options")
+        name = str((go.get("name") if isinstance(go, dict) else None)
+                   or g.get("name") or "")
+        if name in seen:
+            continue
+        seen.add(name)
+        table = fp.get(name)
+        plots = g.get("plots")
+        if not isinstance(table, dict) or not isinstance(plots, list):
+            continue
+        plots = list(plots)
+        changed = False
+        for key, val in table.items():
+            if not isinstance(key, str) or not re.fullmatch(r"[0-9]{1,4}", key):
+                continue
+            k = int(key)
+            if not 1 <= k <= len(plots):
+                continue
+            p = plots[k - 1]
+            if not isinstance(p, dict) or str(p.get("type", "")).lower() != "function":
+                continue
+            plots[k - 1] = dict(p, points=val)
+            changed = True
+        if changed:
+            graphs[gi] = dict(g, plots=plots)
     out["graphs"] = graphs
     return out
 
@@ -2211,6 +3589,9 @@ _DASH_MLABEL_X = "__dash_mlabel_x"
 _DASH_MLABEL_Y = "__dash_mlabel_y"
 _DASH_JITTER_X = "__dash_xjit"
 _DASH_JITTER_Y = "__dash_yjit"
+# The colour bins of colorvar(), one column per layer: __dash_cvar<k>_<var>
+# (_dash_colorvar_field; WP-29 P0.16).
+_DASH_CVAR_PREFIX = "__dash_cvar"
 _DASH_LABEL_SUFFIX = "_label"
 # Marks the Legend that a discrete colorvar() builds, so the plot-legend
 # rebuild can leave it alone.  A colour key is not a series key: Stata
@@ -2516,6 +3897,552 @@ def _dash_harden_origin_check() -> bool:
     return True
 
 
+# ---------------------------------------------------------------------------
+# The served dashboard's key (WP-29 P0.12a)
+# ---------------------------------------------------------------------------
+# Measured at 7421d3d: `python app.py', `bokeh serve app.py' and `dash
+# serve' served every session to any client on the machine -- a second
+# local client with no credential and no Origin pulled every row of mpg
+# through bokeh.client.  Every launch now has a 256-bit key; Gate A
+# (_dash_token_auth, a Bokeh AuthProvider) refuses every page, autoload,
+# metadata and websocket request without it, and Gate B
+# (_dash_session_token_ok, in make_document) every session, before the
+# limiter and before the data is decoded.  The app never runs without a key
+# (ratified 01oct2026): started with none, it makes one, writes its link to
+# a 0600 link.html in a fresh 0700 folder, and prints only that file's
+# path; when no file can be written anywhere it prints the link once after
+# a warning and keeps serving (round 2).  These are copied into the app;
+# each reads its module constants in its body, so the copy order does not
+# matter, and imports tornado and bokeh lazily (`import dash_render' loads
+# no tornado).
+
+#: P0.12a: the query parameter that carries the key (threat: none; its name).
+_DASH_TOKEN_ARG = "token"
+#: P0.12a: the variable an operator chooses the key with; it is popped from
+#: the environment at start so no child inherits it.
+_DASH_TOKEN_ENV = "DASH_SERVE_TOKEN"
+#: P0.12a: the key's form -- 32 to 128 of A-Z a-z 0-9 _ -; anything else
+#: (homoglyphs, NUL, padding, an overlong value) is refused before use.
+_DASH_TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{32,128}")
+#: P0.12a: the most bytes the app reads for the --token-stdin line, so a
+#: pipe that never sends a newline cannot grow memory.
+_DASH_TOKEN_LINE_MAX = 256
+#: P0.12a: Gate A's constant 403 reason; nothing from the request is
+#: reflected.
+_DASH_TOKEN_REFUSAL = ("Forbidden: this dashboard opens only through the "
+                       "link that holds its key")
+#: P0.12a: Gate B's constant refusal page (no request data, no path, no key).
+_DASH_TOKEN_REFUSED_HTML = (
+    '<h2 style="font-family:sans-serif;color:#c00">403 Forbidden</h2>'
+    '<p style="font-family:sans-serif">This dashboard opens only through '
+    'the link that holds its key.  When it was started without a key, it '
+    'made one, wrote the link to a file named link.html that only the '
+    'account that started it can read, and printed that file\'s path where '
+    'it was started: open that file.  To choose the key instead, set '
+    'DASH_SERVE_TOKEN to 32 to 128 of the characters A-Z a-z 0-9 _ - before '
+    'starting it, and open its address followed by ?token= and that '
+    'value.</p>')
+#: P0.12a: the longest Sec-WebSocket-Protocol header decoded before the
+#: client is authenticated (a decompression bomb before auth).
+_DASH_WS_PROTOCOL_MAX = 16384
+#: P0.12a: the most a session JWT's zlib member may inflate to before it is
+#: refused unread.
+_DASH_JWT_PAYLOAD_MAX = 262144
+#: P0.12a: a URL's query string, which a log line must never carry (the
+#: key travels in ?token=).
+_DASH_QUERY_RE = re.compile(r"(?<=\S)\?[^\s?#]*=[^\s#]*")
+#: P0.12a: seconds the browser's 0600 redirect page lives (A8).
+_DASH_REDIRECT_TTL_S = 60
+#: P0.12a (ratified 01oct2026, K-4): the sys.modules name of the bokeh serve
+#: process's own key, which every session's fresh module reads.
+_DASH_KEY_HOLDER = "_dash_serve_key"
+#: P0.12a (K-3): the line before a printed link-file path; the launcher's
+#: ready line 2 too.  It never holds the key.
+_DASH_LINK_SAID = ("dash: the dashboard opens only through its link, which "
+                   "holds a key made for this run; the link is in this file, "
+                   "which only you can read:")
+#: P0.12a (K-5): plain bokeh serve admits only localhost, so the
+#: 127.0.0.1 link's websocket is refused unless the operator widens it.
+_DASH_BS_ORIGIN_HINT = ("dash: under bokeh serve the link's page stays blank "
+                        "unless the server was started with "
+                        "--allow-websocket-origin 127.0.0.1:%d (Bokeh admits "
+                        "only localhost by default).")
+#: P0.12a (round 2, K-9): the warning before the one printed link, when no
+#: folder takes the link file.  %s is an exception's type name only.
+_DASH_LINK_UNWRITTEN = ("dash: WARNING -- the dashboard's link could not be "
+                        "written to a file (%s), so it is printed on the next "
+                        "line, this once; it holds the dashboard's key, which "
+                        "is now in this output and in any log of it, and "
+                        "anyone who can read them can open the dashboard "
+                        "while this server runs.")
+
+
+def _dash_new_token():
+    """A new key (WP-29 P0.12a): ``secrets.token_urlsafe(32)``, 43
+    characters, 256 bits.  Threat: a guessable key."""
+    import secrets
+    return secrets.token_urlsafe(32)
+
+
+def _dash_token_valid(value):
+    """True when *value* has the key's form (WP-29 P0.12a): 32 to 128 of
+    A-Z a-z 0-9 _ -.  Bytes are decoded as ASCII first.  Threat: a doubled,
+    overlong, homoglyph or NUL key reaching a comparison."""
+    if isinstance(value, (bytes, bytearray)):
+        try:
+            value = bytes(value).decode("ascii")
+        except UnicodeDecodeError:
+            return False
+    return isinstance(value, str) and len(value) <= 128 and \
+        _DASH_TOKEN_RE.fullmatch(value) is not None
+
+
+def _dash_token_matches(given, expected):
+    """True when *given* is the key *expected* (WP-29 P0.12a), compared in
+    constant time.  Both must have the key's form.  Threat: timing."""
+    import hmac
+    if not (_dash_token_valid(given) and _dash_token_valid(expected)):
+        return False
+    if isinstance(given, (bytes, bytearray)):
+        given = bytes(given).decode("ascii")
+    return hmac.compare_digest(given.encode("ascii"),
+                               expected.encode("ascii"))
+
+
+def _dash_one_value(values):
+    """Exactly one value (WP-29 P0.12a): a list or tuple of one element
+    gives it, any other list or tuple None, anything else itself.  Threat:
+    ``?token=x&token=T`` read as T."""
+    if isinstance(values, (list, tuple)):
+        return values[0] if len(values) == 1 else None
+    return values
+
+
+def _dash_env_token(environ=None):
+    """``DASH_SERVE_TOKEN`` when it has the key's form, else None (WP-29
+    P0.12a).  Threat: a weak operator key used as given."""
+    if environ is None:
+        environ = os.environ
+    v = environ.get(_DASH_TOKEN_ENV)
+    return v if _dash_token_valid(v) else None
+
+
+def _dash_ws_payload(protocol):
+    """The payload of a browser websocket's session JWT, read from its
+    ``Sec-WebSocket-Protocol`` header (``bokeh, <jwt>``), or None (WP-29
+    P0.12a).  Bokeh's own decoder inflates the JWT's zlib member without a
+    bound, and this runs before the client is authenticated, so the header
+    and the inflated size are bounded first.  Never raises.  Threat: a
+    decompression bomb before auth."""
+    import base64
+    import json
+    import zlib
+    try:
+        if not isinstance(protocol, str) or \
+                len(protocol) > _DASH_WS_PROTOCOL_MAX:
+            return None
+        parts = [p.strip() for p in protocol.split(",")]
+        if len(parts) != 2 or parts[0] != "bokeh" or not parts[1]:
+            return None
+        jwt = parts[1]
+        s = jwt.split(".")[0]
+        head = json.loads(base64.urlsafe_b64decode(s + "=" * (-len(s) % 4)))
+        if not isinstance(head, dict):
+            return None
+        if "__bk__zlib_" in head:
+            m = head["__bk__zlib_"]
+            raw = base64.urlsafe_b64decode(m + "=" * (-len(m) % 4))
+            d = zlib.decompressobj()
+            d.decompress(raw, _DASH_JWT_PAYLOAD_MAX)
+            if d.unconsumed_tail:
+                return None
+        from bokeh.util.token import get_token_payload
+        return get_token_payload(jwt)
+    except Exception:
+        return None
+
+
+def _dash_request_token(handler):
+    """The key a request carries, or None (WP-29 P0.12a): its ``?token=``
+    (the page, /autoload.js, /metadata, bokeh.client's /ws), else the
+    ``arguments`` of the browser websocket's session JWT, which carry the
+    page's own ``?token=``.  Threat: a request without the key."""
+    try:
+        req = getattr(handler, "request", None)
+        args = getattr(req, "arguments", None) or {}
+        if _DASH_TOKEN_ARG in args:
+            return _dash_one_value(args[_DASH_TOKEN_ARG])
+        payload = _dash_ws_payload(
+            req.headers.get("Sec-WebSocket-Protocol", ""))
+        return _dash_one_value(((payload or {}).get("arguments") or {})
+                               .get(_DASH_TOKEN_ARG))
+    except Exception:
+        return None
+
+
+def _dash_token_auth(expected):
+    """Gate A (WP-29 P0.12a): a Bokeh ``AuthProvider`` that admits a
+    request only with the key *expected*, and refuses every other with a
+    constant 403 in ``prepare``, before any handler body and before the
+    websocket upgrade.  Built here so tornado is imported only when a
+    Server is.  Threat: another account reading the data over loopback."""
+    from bokeh.server.auth_provider import AuthProvider
+    from tornado.web import HTTPError
+    if not _dash_token_valid(expected):
+        raise ValueError("dash: the served app was given no valid key")
+
+    async def _admit(handler):
+        if _dash_token_matches(_dash_request_token(handler), expected):
+            return "dash"
+        raise HTTPError(403, reason=_DASH_TOKEN_REFUSAL)
+
+    def _refuse(handler):
+        raise HTTPError(403, reason=_DASH_TOKEN_REFUSAL)
+
+    class _DashTokenAuth(AuthProvider):
+        @property
+        def get_user_async(self):
+            return _admit
+
+        @property
+        def get_login_url(self):
+            return _refuse
+
+    return _DashTokenAuth()
+
+
+def _dash_session_token_ok(doc, expected):
+    """Gate B (WP-29 P0.12a): True when *doc*'s session was asked for with
+    the key *expected*.  A document with no session context is an
+    in-process build with no network path, and is admitted; a context
+    without a request, or a key of None, fails closed.  Threat: a session
+    without the key, under bokeh serve the only gate."""
+    ctx = getattr(doc, "session_context", None)
+    if ctx is None:
+        return True
+    req = getattr(ctx, "request", None)
+    if req is None:
+        return False
+    args = getattr(req, "arguments", None)
+    if not isinstance(args, dict):
+        return False
+    return _dash_token_matches(_dash_one_value(args.get(_DASH_TOKEN_ARG)),
+                               expected)
+
+
+def _dash_redact_query(text, secret=None):
+    """*text* with every URL query replaced by ``?<query redacted>``, and
+    *secret* by ``<key>`` (WP-29 P0.12a).  Threat: the key in a log."""
+    out = _DASH_QUERY_RE.sub("?<query redacted>", text)
+    if secret:
+        out = out.replace(secret, "<key>")
+    return out
+
+
+def _dash_redact_access_record(record):
+    """A logging filter (WP-29 P0.12a): rewrites the record's message and
+    its str arguments through ``_dash_redact_query``.  Always True, so no
+    record is dropped.  Threat: Tornado logs a 403 with its raw URI."""
+    try:
+        if isinstance(record.msg, str):
+            record.msg = _dash_redact_query(record.msg)
+        if isinstance(record.args, tuple):
+            record.args = tuple(_dash_redact_query(a) if isinstance(a, str)
+                                else a for a in record.args)
+        elif isinstance(record.args, dict):
+            record.args = {k: (_dash_redact_query(v) if isinstance(v, str)
+                               else v) for k, v in record.args.items()}
+    except Exception:
+        pass
+    return True
+
+
+def _dash_install_access_log_redaction():
+    """Put ``_dash_redact_access_record`` on Tornado's three loggers, once
+    (WP-29 P0.12a); returns how many were added.  bokeh serve runs the app
+    afresh for every session, so a filter already marked is never added
+    again.  Threat: filters piling up per session (exhaustion)."""
+    import logging
+    _dash_redact_access_record._dash_redacts_queries = True
+    added = 0
+    for name in ("tornado.access", "tornado.general", "tornado.application"):
+        lg = logging.getLogger(name)
+        if any(getattr(f, "_dash_redacts_queries", False)
+               for f in lg.filters):
+            continue
+        lg.addFilter(_dash_redact_access_record)
+        added += 1
+    return added
+
+
+def _dash_tokenized_url(port, token, address=None, path="/"):
+    """The dashboard's link, ``http://<host>:<port><path>?token=<key>``
+    (WP-29 P0.12a).  Loopback is always 127.0.0.1, never localhost, which
+    another account can answer on ::1 (A1); ``::`` and ``::1`` are
+    ``[::1]`` (TD-1).  ValueError for a bad port, key, path or address.
+    Threat: the link reaching an IPv6 squatter."""
+    import ipaddress
+    import urllib.parse
+    try:
+        port = _dash_port_value(port)
+    except Exception:
+        raise ValueError("dash: not a port from 1024 to 65535")
+    if not isinstance(path, str) or not path.startswith("/"):
+        raise ValueError("dash: not an app path")
+    qpath = urllib.parse.quote(path, safe="/")
+    if not _dash_token_valid(token):
+        raise ValueError("dash: not a valid key")
+    if address in (None, "", "0.0.0.0", "127.0.0.1", "localhost"):
+        host = "127.0.0.1"
+    elif address in ("::", "::1"):
+        host = "[::1]"
+    elif not isinstance(address, str) or "%" in address:
+        raise ValueError("dash: no link can name this address")
+    else:
+        try:
+            ip = ipaddress.ip_address(address)
+            host = ("[%s]" % ip.compressed) if ip.version == 6 else \
+                ip.compressed
+        except ValueError:
+            if not re.fullmatch(
+                    r"[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?",
+                    address):
+                raise ValueError("dash: no link can name this address")
+            host = address
+    return "http://%s:%d%s?%s=%s" % (host, port, qpath, _DASH_TOKEN_ARG,
+                                     token)
+
+
+def _dash_redirect_page(url):
+    """A page that forwards to *url* and sends no referrer (WP-29 P0.12a);
+    the link file and the browser's redirect page.  Threat: markup in the
+    link."""
+    import html as _html
+    e = _html.escape(url, quote=True)
+    return ('<!doctype html><html><head><meta charset="utf-8">'
+            '<meta name="referrer" content="no-referrer">'
+            '<meta http-equiv="refresh" content="0;url=' + e + '">'
+            '<title>dash</title></head><body><p><a href="' + e + '">' + e +
+            '</a></p></body></html>')
+
+
+def _dash_open_tokenized(url, platform=None, environ=None, opener=None,
+                         osa=None, out=None):
+    """Open the dashboard's link without putting it on any command line
+    (WP-29 P0.12a): on macOS with no ``BROWSER``, through osascript's
+    standard input; otherwise through a 0600 redirect page in a fresh 0700
+    folder, whose folder is returned for removal.  A page that cannot be
+    written (round 2, K-9) opens nothing and prints one key-free line; it
+    never falls back to the URL itself.  Threat: the key in argv, ``ps``
+    or /proc."""
+    import os
+    import pathlib
+    import sys
+    import webbrowser
+    if platform is None:
+        platform = sys.platform
+    if environ is None:
+        environ = os.environ
+    if out is None:
+        out = sys.stdout
+    if platform == "darwin" and not environ.get("BROWSER") and (
+            osa is not None or hasattr(webbrowser, "MacOSXOSAScript")):
+        (osa or webbrowser.MacOSXOSAScript("default").open)(url)
+        return None
+    try:
+        d, p = _dash_private_page(_dash_redirect_page(url), "dash-open-",
+                                  "open.html", out=out)
+    except OSError as e:
+        print("dash: the browser was not opened: its page could not be "
+              "written (" + type(e).__name__ + "); open the dashboard's "
+              "link instead.", file=out, flush=True)
+        return None
+    (opener or webbrowser.open)(pathlib.Path(p).as_uri())
+    return d
+
+
+def _dash_read_token_line(fd, limit=None):
+    """One key line from descriptor *fd*, read a byte at a time so nothing
+    after its newline is consumed (the parent watch reads the rest), or
+    None (WP-29 P0.12a).  At most *limit* bytes; one trailing CR is
+    dropped.  Threat: an endless line growing memory."""
+    import os
+    if limit is None:
+        limit = _DASH_TOKEN_LINE_MAX
+    buf = b""
+    while True:
+        b = os.read(fd, 1)
+        if not b:
+            return None
+        if b == b"\n":
+            break
+        buf += b
+        if len(buf) > limit:
+            return None
+    try:
+        s = buf.decode("ascii")
+    except UnicodeDecodeError:
+        return None
+    return s[:-1] if s.endswith("\r") else s
+
+
+def _dash_private_page(text, prefix, name, out=None):
+    """Write *text* to *name*, 0600, in a fresh 0700 ``mkdtemp`` folder,
+    and return ``(folder, path)`` (WP-29 P0.12a, ratified 01oct2026).
+    The one writer of every page holding the key: the self-made key's
+    link.html, the browser's open.html and the launcher's fallback.
+    Anti-hijack (kept): ``O_EXCL|O_NOFOLLOW``, and the open file must be a
+    regular file of this account.  Privacy (K-8, answer 2): a disk that
+    will not keep 0600 even after ``fchmod`` is noted on one line naming
+    the file, never refused.  Any failure removes the folder and raises.
+    Threat: the key at rest readable by another account."""
+    import errno
+    import os
+    import shutil
+    import stat
+    import sys
+    import tempfile
+    if out is None:
+        out = sys.stdout
+    d = tempfile.mkdtemp(prefix=prefix)
+    p = os.path.join(d, name)
+    try:
+        fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                      | getattr(os, "O_NOFOLLOW", 0)
+                      | getattr(os, "O_CLOEXEC", 0), 0o600)
+        try:
+            st = os.fstat(fd)
+            _uid = getattr(os, "geteuid", None)
+            if not stat.S_ISREG(st.st_mode) or (
+                    _uid is not None and st.st_uid != _uid()):
+                raise OSError(errno.EPERM,
+                              "not a regular file of this account")
+            loose = False
+            if st.st_mode & 0o077:
+                if hasattr(os, "fchmod"):
+                    try:
+                        os.fchmod(fd, 0o600)
+                    except OSError:
+                        pass
+                loose = bool(os.fstat(fd).st_mode & 0o077)
+        except BaseException:
+            os.close(fd)
+            raise
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        if loose:
+            print("dash: note: " + p + " holds the dashboard's link, but "
+                  "its disk keeps no file permissions, so other accounts of "
+                  "this machine may read it; set TMPDIR to a folder on a "
+                  "disk that keeps them.", file=out, flush=True)
+    except BaseException:
+        shutil.rmtree(d, True)
+        raise
+    return d, p
+
+
+def _dash_announce_key(url, out=None, hint=None):
+    """Write the link *url* to a private link.html and print that file's
+    path, never the key; return the folder (WP-29 P0.12a, ratified
+    01oct2026, K-3).  When no file can be written (round 2, K-9), print
+    ``_DASH_LINK_UNWRITTEN`` and then the link itself, once, and return
+    None: the caller serves on.  *hint* follows either.  Threat: a
+    self-made key nobody can use, or one printed into a log."""
+    import sys
+    if out is None:
+        out = sys.stdout
+    try:
+        d, p = _dash_private_page(_dash_redirect_page(url), "dash-link-",
+                                  "link.html", out=out)
+    except OSError as e:
+        print(_DASH_LINK_UNWRITTEN % type(e).__name__, file=out, flush=True)
+        print(url, file=out, flush=True)
+        if hint:
+            print(hint, file=out, flush=True)
+        return None
+    print(_DASH_LINK_SAID, file=out, flush=True)
+    print(p, file=out, flush=True)
+    if hint:
+        print(hint, file=out, flush=True)
+    return d
+
+
+def _dash_process_key():
+    """The bokeh serve process's own key holder (WP-29 P0.12a, ratified
+    01oct2026, K-4): a module at ``sys.modules[_DASH_KEY_HOLDER]`` with
+    ``key``, ``linked`` (app paths announced) and ``warned``.  bokeh serve
+    runs the app in a fresh module per session; ``sys.modules`` persists,
+    so every session reads one key.  A malformed holder is replaced.
+    Threat: a key per session (unusable) or none (open)."""
+    import sys
+    import types
+    h = sys.modules.get(_DASH_KEY_HOLDER)
+    if isinstance(h, types.ModuleType) and \
+            _dash_token_valid(getattr(h, "key", None)) and \
+            isinstance(getattr(h, "linked", None), set):
+        return h
+    h = types.ModuleType(_DASH_KEY_HOLDER)
+    h.key = _dash_new_token()
+    h.linked = set()
+    h.warned = False
+    sys.modules[_DASH_KEY_HOLDER] = h
+    return h
+
+
+def _dash_bokeh_serve_key(doc, out=None):
+    """The key Gate B uses under bokeh serve when neither the app's global
+    nor ``DASH_SERVE_TOKEN`` gives one, or None (WP-29 P0.12a, ratified
+    01oct2026, K-1, K-4, K-9).  The process makes one key; the first page
+    request of each app path writes its link (host and port from the
+    server side of the connection, never the Host header) and prints the
+    file's path, or, when no file can be written, the link once.  A set but
+    invalid variable fails closed with one warning.  Never raises.  Threat:
+    a bokeh serve app served with no key."""
+    import atexit
+    import os
+    import shutil
+    try:
+        ctx = getattr(doc, "session_context", None)
+        if ctx is None:
+            return None
+        h = _dash_process_key()
+        if os.environ.get(_DASH_TOKEN_ENV) is not None:
+            if not h.warned:
+                h.warned = True
+                print("dash: " + _DASH_TOKEN_ENV + " is set but is not 32 to "
+                      "128 of A-Z a-z 0-9 _ -; its value is not shown, and "
+                      "every session is refused.", file=out, flush=True)
+            return None
+        try:
+            app_path = ctx.server_context.application_context.url
+            local = ctx.request.connection.stream.socket.getsockname()
+        except Exception:
+            return h.key
+        if app_path in h.linked:
+            return h.key
+        h.linked.add(app_path)
+        try:
+            if not (isinstance(local, tuple) and len(local) >= 2 and
+                    isinstance(local[1], int)):
+                raise ValueError("no address")
+            host = "127.0.0.1" if local[0] in (
+                "127.0.0.1", "::1", "::ffff:127.0.0.1") else local[0]
+            port = local[1]
+            url = _dash_tokenized_url(port, h.key, host, path=app_path)
+        except ValueError:
+            print("dash: the dashboard's key was made but no link can name "
+                  "this server's address; set " + _DASH_TOKEN_ENV +
+                  " and restart to choose the key.", file=out, flush=True)
+            return h.key
+        d = _dash_announce_key(url, out=out,
+                               hint=_DASH_BS_ORIGIN_HINT % port)
+        if d:
+            atexit.register(shutil.rmtree, d, True)
+        return h.key
+    except Exception:
+        return None
+
+
 # The viewport <meta> both pages declare (WP-28 E14): without it a mobile
 # browser lays the page out at its 980px default and zooms the whole thing
 # out to fit, so every breakpoint below 980px is unreachable on a phone and
@@ -2723,7 +4650,7 @@ _TEXTBOX_SUBOPTS = (
     ("bexpand", "bex"),
     ("placement", "place"), ("position", "pos"),
     ("ring", "ring"), ("span", "span"),
-    ("prefix", "prefix"), ("suffix", "suffix"), ("axis", "axis"),
+    ("prefix", "prefix"), ("suffix", "suffix"), ("axis", "ax"),
 )
 
 
@@ -2748,7 +4675,16 @@ def _textbox_canon(name: str) -> "str | None":
 # ``title("T", bogus(1))`` kept its comma as text; twoway's own rule does
 # not look the word up at all -- it just splits, and _textbox_canon is
 # what decides afterwards whether the word means anything dash reads.
-_TEXTBOX_SUBOPT_RE = re.compile(r",\s*(?=[A-Za-z_])")
+#
+# WP-29 P0.4 (u04 A4): the first comma outside strings and parentheses that
+# is followed, after blanks, by a name, another comma, or the end opens the
+# sub-options; empty slots are ignored.  Measured in twoway (StataNow 19.5,
+# text_truth.json): ytitle(A,,) draws A (r6), ytitle(A, ,) draws A (r10),
+# ytitle(A, size(large),) draws A at large (r18), and ytitle(,) keeps the
+# default title -- dash drew "A,,", "A, ," and a literal ",".  A comma
+# followed by a digit or a quote stays text ('"a", 2 more', '"a", "b"').
+# The lookahead is one character, so the scan stays linear.
+_TEXTBOX_SUBOPT_RE = re.compile(r",\s*(?=[A-Za-z_,]|\Z)")
 
 
 def _textbox_string_end(text: str, i: int) -> "tuple[int, int, int]":
@@ -2991,6 +4927,22 @@ def _parse_textbox_opt(raw: str) -> "tuple[str, dict]":
             if nm in ("span", "box", "nobox", "bexpand", "prefix", "suffix"):
                 opts[nm] = nm
     return text, opts
+
+
+def _textbox_has_text(raw) -> bool:
+    """Whether a textbox option's TEXT part is given (WP-29 P0.4).
+
+    The text is everything before the sub-option comma
+    (:func:`_textbox_split_point`).  A typed ``""`` is given (it removes a
+    title); ``', size(large)'``, ``','`` and ``',,'`` are not, so the
+    default title is kept and only styled -- as twoway's
+    ``_gs_parse_and_log_axtitle.ado`` replaces the text only when it is not
+    empty.  dash used to test the whole raw value, sub-options included,
+    so every sub-option-only title deleted the default.
+    """
+    s = str(raw or "")
+    cut = _textbox_split_point(s)
+    return bool((s[:cut] if cut >= 0 else s).strip())
 
 
 #: Stata's anglestyles: the anglestyle-*.style files it installs under
@@ -5472,13 +7424,21 @@ class SchemeParser:
             fig.title.text_font_size = self.heading_font_size
 
         for axis in list(fig.xaxis) + list(fig.yaxis):
-            axis.axis_line_color = self.axis_line_color
-            axis.axis_line_width = self.axis_line_width
-            axis.axis_label_text_font_size = self.axis_title_font_size
-            axis.major_label_text_font_size = self.tick_label_font_size
-            # The axis_title and tick_label boxes' colours.
-            axis.axis_label_text_color = self.axis_title_color
-            axis.major_label_text_color = self.tick_label_color
+            self.apply_to_axis(axis)
+
+    def apply_to_axis(self, axis: Any) -> None:
+        """The scheme's axis style on one axis: its line, its title's and
+        its tick labels' sizes and colours.  :meth:`apply_to_figure` runs
+        it on the primary axes; ``_dash_add_secondary_axes`` on a second
+        axis as it is built, so that axis is styled from the scheme, never
+        copied from the primary (WP-29 P0.4)."""
+        axis.axis_line_color = self.axis_line_color
+        axis.axis_line_width = self.axis_line_width
+        axis.axis_label_text_font_size = self.axis_title_font_size
+        axis.major_label_text_font_size = self.tick_label_font_size
+        # The axis_title and tick_label boxes' colours.
+        axis.axis_label_text_color = self.axis_title_color
+        axis.major_label_text_color = self.tick_label_color
 
     def css_block(self) -> str:
         """Return the scheme's CSS rules for the dashboard outer chrome.
@@ -5564,37 +7524,17 @@ def _apply_jitter(
 # The smallest bar width dash will pass to Bokeh.  Bokeh raises
 # "Distances must be positive!" on anything at or below zero, and that
 # exception is not confined to the bar -- it loses the whole dashboard.
-# The longest function() expression dash will validate.  _validate_expr_node
-# recurses once per AST node, so a machine-generated expression of tens of
-# thousands of terms raised RecursionError -- which is not a SyntaxError or a
-# ValueError, so it escaped the guard and lost the whole dashboard.
+# The longest function() expression the points-free fallback will parse
+# (_stata_fn_parse).  A spec Stata wrote carries the layer's points and is
+# never parsed; a spec written by hand with a longer expression draws the
+# layer empty with a note.
 _MAX_EXPR_CHARS = 5000
 
-
-def _floats_only(tree: "_ast.AST") -> "_ast.AST":
-    """Make every numeric literal in *tree* a float.
-
-    Stata evaluates in double precision, so ``9^9^9^9`` overflows to missing.
-    Python's integer power is exact and unbounded, so the same expression
-    computed a number with billions of digits: measured past 20 seconds with
-    the GIL held throughout, which means Stata's Break key cannot recover it
-    and the process must be killed.
-
-    Turning the constants into floats gives Python the same arithmetic Stata
-    has -- ``9.0 ** 9.0 ** 9.0`` is ``inf`` immediately -- so an expression
-    that overflows draws nothing instead of never returning.
-
-    Args:
-        tree: A parsed, already-validated expression tree.
-
-    Returns:
-        The same tree, with integer constants replaced by floats.
-    """
-    for node in _ast.walk(tree):
-        if isinstance(node, _ast.Constant) and isinstance(node.value, int) \
-                and not isinstance(node.value, bool):
-            node.value = float(node.value)
-    return _ast.fix_missing_locations(tree)
+# The deepest nesting of parentheses (and calls) _stata_fn_parse takes:
+# twoway draws 40 nested parentheses and refuses 50 (measured, WP-29
+# section 04 E3), and the parser recurses only there, so the stack it can
+# use is bounded whatever the expression.
+_FN_EXPR_MAX_NEST = 40
 
 
 # A confidence band's look is the scheme's ci style, not a constant:
@@ -5826,8 +7766,15 @@ def _dash_colorvar_cuts(col_vals, cuts, levels, minmax):
 
 
 def _dash_colorvar_bins(col_vals, cuts, discrete, label_of,
-                        closed_ends=False, number_text=None):
-    """Bin colorvar values into label groups (GAPS2 X2).
+                        closed_ends=False, number_text=None, bin_values=None):
+    """Bin colorvar values into label groups (GAPS2 X2; WP-29 P0.16).
+
+    *col_vals* is the DOMAIN: the layer's colour rows, the observations
+    twoway draws the key from (``_dash_colorvar_domain``).  The labels,
+    the closed-end bounds and *has_missing* come from the domain only.
+    *bin_values* are the rows to bin -- the source's whole column, which
+    may hold rows outside the domain (another panel's, another layer's);
+    None bins the domain itself.
 
     Interval mode (*discrete* False -- colorcuts()/colorlevels() without
     colordiscrete, colorvar_options.sthlp:111-116): bins are
@@ -5836,50 +7783,61 @@ def _dash_colorvar_bins(col_vals, cuts, discrete, label_of,
     colorcuts()'s own labelling, open at both ends, unaffected by
     *closed_ends* whenever the caller passed explicit cuts (BR-16.1,
     BR-16.2); *closed_ends* (True only for colorlevels()/colornlevels()
-    with no explicit colorcuts() and no colorvarminmax, the pre-existing
-    _assign_nlev behaviour this helper replaces) labels the two outer
-    bins with the column's own minimum and maximum instead of ``≤``/``>``,
-    since colorlevels() divides the whole data range and never leaves an
-    open tail the way an arbitrary colorcuts() numlist can.
+    with no explicit colorcuts() and no colorvarminmax) labels the two
+    outer bins with the domain's own minimum and maximum instead of
+    ``≤``/``>``, since colorlevels() divides the whole data range and
+    never leaves an open tail the way an arbitrary colorcuts() numlist can.
 
     Discrete mode (*discrete* True -- colordiscrete with colorcuts()/
     colorlevels(), :119-121, :131-134): "the values in numlist will be the
     levels. Any values that are not included in these levels will be
     grouped with missing values and displayed in gray" -- each value is
-    its own label when it equals a cut exactly, else ``"__missing__"``.
+    its own label when it equals a cut exactly, else None.
 
-    NaN is always ``"__missing__"``.  Returns ``(labels, binned,
-    has_missing)``; ``labels`` is ``[]`` when *cuts* is empty, and every
-    value bins to ``"__missing__"`` (no level exists to put it in) --
-    ``_dash_colorvar_cuts`` returns ``[]`` only when *col_vals* has no
-    finite value, so *binned* still carries one entry per row.
+    A binned entry is None -- drawn in the mapper's ``nan_color``, never
+    a factor -- for a missing value, for a value below the domain's finite
+    minimum or above its maximum (never clamped into an end bin), and in
+    discrete mode for a value equal to no cut.  *has_missing* is: in
+    interval mode, any domain NaN; in discrete mode, any domain value NaN
+    or equal to no cut; with empty *cuts*, True when the domain has a row.
+    Returns ``(labels, binned, has_missing)``; ``labels`` is ``[]`` when
+    *cuts* is empty, and then every row bins to None.
 
     *number_text* writes an interval boundary (WP-28 S12, GAPS2 E3/G6:
     the variable's display format, ``4,000`` under %8.0gc); Python's
     ``:g`` when None, and whenever the format would give two boundaries
     one text -- a label is a bin's identity, so two bins never share one.
     """
+    dom = np.asarray(col_vals, dtype=float)
+    rows = dom if bin_values is None else np.asarray(bin_values, dtype=float)
+    finite = dom[~np.isnan(dom)]
+    if len(finite):
+        _lo_v, _hi_v = float(np.min(finite)), float(np.max(finite))
+    else:
+        _lo_v = _hi_v = None
+
+    def _outside(v: float) -> bool:
+        return np.isnan(v) or _lo_v is None or v < _lo_v or v > _hi_v
+
     if not cuts:
-        binned = ["__missing__" for _ in col_vals]
-        return [], binned, bool(len(binned))
+        return [], [None for _ in rows], bool(len(dom))
 
     if discrete:
         labels = [label_of(c) for c in cuts]
 
-        def _assign(v: float) -> str:
-            if np.isnan(v):
-                return "__missing__"
+        def _assign(v: float) -> "str | None":
+            if _outside(v):
+                return None
             for c, lab in zip(cuts, labels):
                 if float(v) == c:
                     return lab
-            return "__missing__"
+            return None
 
-        binned = [_assign(v) for v in col_vals]
+        binned = [_assign(v) for v in rows]
+        has_missing = bool(np.isnan(dom).any()) or any(
+            not any(float(v) == c for c in cuts) for v in finite)
     else:
         n_bins = len(cuts) + 1
-        if closed_ends:
-            _lo_v = float(np.nanmin(col_vals))
-            _hi_v = float(np.nanmax(col_vals))
 
         def _interval_labels(nt):
             out = []
@@ -5902,15 +7860,15 @@ def _dash_colorvar_bins(col_vals, cuts, discrete, label_of,
         if len(set(labels)) < len(labels):
             labels = _interval_labels(lambda v: f"{v:g}")
 
-        def _assign(v: float) -> str:
-            if np.isnan(v):
-                return "__missing__"
+        def _assign(v: float) -> "str | None":
+            if _outside(v):
+                return None
             idx = int(np.searchsorted(cuts, v, side="left"))
             return labels[min(idx, n_bins - 1)]
 
-        binned = [_assign(v) for v in col_vals]
+        binned = [_assign(v) for v in rows]
+        has_missing = bool(np.isnan(dom).any())
 
-    has_missing = any(b == "__missing__" for b in binned)
     return labels, binned, has_missing
 
 
@@ -6015,6 +7973,10 @@ class GlyphMapper:
         # needs, the same pair every other graph-option reader takes.
         self.z_options: dict[str, str] = {}
         self.z_context: tuple = (None, "")
+        # WP-29 P0.16: the colour rows of the layer being drawn
+        # (_dash_colorvar_domain), or None for every row of its source.
+        # Callers set it per layer and reset it in a finally.
+        self.colorvar_domain = None
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -6246,6 +8208,7 @@ class GlyphMapper:
         lo_col: str = "y_lower",
         hi_col: str = "y_upper",
         line_width: "float | None" = None,
+        band_source: "ColumnDataSource | None" = None,
     ) -> "tuple[Any, Any]":
         """Render a confidence-interval band, its outline and its fit line.
 
@@ -6267,13 +8230,18 @@ class GlyphMapper:
             line_width: The fit line's width in pixels; the plot's
                      ``plot_line_width(idx, "lineplot")`` from the caller,
                      ``linewidth p`` when None.
+            band_source: The band's own source, when it holds other rows
+                     than the line's (lpolyci: a band only where the
+                     standard error is defined, WP-29 P0.9); *source*
+                     when None.
 
         Returns:
             A ``(line_renderer, band_renderer)`` tuple; the outline is
             ``band_renderer._dash_ci_outline``.
         """
         band_r, _outline_r = self._ci_band_glyphs(
-            fig, source, x_col, lo_col, hi_col, options)
+            fig, source if band_source is None else band_source, x_col,
+            lo_col, hi_col, options)
         line_r = fig.line(
             x=x_col, y=y_col, source=source,
             line_color=color,
@@ -6519,6 +8487,9 @@ class GlyphMapper:
         w: "np.ndarray | None" = None,
     ) -> "tuple[np.ndarray, np.ndarray]":
         """Compute a bootstrap confidence interval for a smooth fit.
+
+        Only qfitci's fallback calls it now, when its least squares is
+        singular; lpolyci draws lpoly's analytic band (WP-29 P0.9).
 
         Args:
             x:        Observed x values (NaN-free).
@@ -6919,8 +8890,25 @@ class GlyphMapper:
         renderer: Any,
         source: "ColumnDataSource",
         options: dict[str, str],
+        add_key: bool = True,
     ) -> None:
         """Map a CDS variable's values to glyph fill/line color.
+
+        WP-29 P0.16: the colour bar's range, the cuts of colorcuts()/
+        colorlevels(), the colordiscrete levels, a string variable's
+        categories and whether a "(missing)" entry exists are computed from
+        ``self.colorvar_domain`` -- the layer's colour rows, the
+        observations twoway draws the key from (its own if/in, its graph's
+        and its by() panel's, rows with a missing x or y included), which
+        the figure builder sets for each layer and resets after it -- and
+        from every row of *source* when it is None.  An empty domain draws
+        no key.  Each row is coloured from its own value: a row that is
+        missing, outside the domain's range or not one of its levels is
+        None, drawn in the mapper's ``nan_color`` (``colormissing()``),
+        never a factor.  Derived bins go in a column of this layer's own,
+        ``_dash_colorvar_field``'s ``__dash_cvar<k>_<var>``.  *add_key*
+        False builds the same mapper but adds no key: rconnected's second
+        end, which twoway colours from the one key it draws.
 
         Supports Stata 18 colorvar_options:
             colorvar(varname)   — variable whose values drive the color mapping
@@ -6945,6 +8933,13 @@ class GlyphMapper:
         # unsafely -- no brace, quote, blank, $ or backtick passes
         # isidentifier() either.
         if not _dash_is_stata_name(varname):
+            return
+
+        # WP-29 P0.16: the layer's colour rows, or None for every row.  A
+        # layer whose rows are empty draws no key (twoway stops with
+        # r(3001) from _calc_levels()).
+        dom = self.colorvar_domain
+        if dom is not None and len(dom) == 0:
             return
 
         from bokeh.models import (
@@ -6978,7 +8973,7 @@ class GlyphMapper:
         # Stata label metadata, populated by DashRenderer after _load_data().
         # Used to render value labels on legend entries and to display the
         # variable label as the legend/colorbar title.
-        var_display = self.variable_labels.get(varname, "") or varname
+        var_display = _dash_var_label(self.variable_labels, varname)
         vlabels     = _dash_value_labels_for(varname, self.value_labels,
                                              self.value_label_names)
 
@@ -7054,18 +9049,39 @@ class GlyphMapper:
             is_numeric = False
             col_vals = None
 
+        # WP-29 P0.16: the key's values -- the domain read as numbers.
+        dom_vals = col_vals
+        if is_numeric and dom is not None:
+            try:
+                dom_vals = _dash_float_values(dom)
+            except (ValueError, TypeError):
+                warnings.warn(
+                    f"dash: colorvar({varname}): the colour key's "
+                    f"observations could not be read; the key is drawn "
+                    f"from every row.", UserWarning)
+                dom_vals = col_vals
+        # Every colour row missing: no level, every row in colormissing().
+        dom_all_missing = bool(is_numeric and np.all(np.isnan(dom_vals)))
+
         needs_binning = cuts is not None or nlevels is not None
-        use_discrete  = force_discrete or not is_numeric or needs_binning
+        use_discrete  = (force_discrete or not is_numeric or needs_binning
+                         or dom_all_missing)
 
         # ------------------------------------------------------------------
         # DISCRETE path — CategoricalColorMapper
         # ------------------------------------------------------------------
         if use_discrete:
-            color_field = varname  # overridden for derived bin columns
+            # A column of this layer's own under the reserved prefix: a
+            # second colorvar layer on the same source, or a user variable
+            # named like dash's old derived column, never shares it.
+            color_field = _dash_colorvar_field(source.data, varname)
+            if color_field is None:
+                return
 
-            if is_numeric and (force_discrete or needs_binning):
-                color_field = f"_cvar_{varname}_bin"
-
+            if is_numeric and dom_all_missing:
+                labels, has_missing = [], True
+                source.data[color_field] = [None for _ in col_vals]
+            elif is_numeric and (force_discrete or needs_binning):
                 if cuts is not None or nlevels is not None:
                     # colorcuts()/colorlevels() (Stata's colorvar_options.
                     # sthlp:95-140, GAPS2 X2): the cut arithmetic and the
@@ -7076,7 +9092,7 @@ class GlyphMapper:
                     # other value joins missing in gray (BR-16.1); without
                     # it the cuts are interval boundaries, as they always
                     # were.
-                    eff_cuts = _dash_colorvar_cuts(col_vals, cuts, nlevels,
+                    eff_cuts = _dash_colorvar_cuts(dom_vals, cuts, nlevels,
                                                    minmax)
                     # colorlevels()/colornlevels() with no explicit
                     # colorcuts() and no colorvarminmax divides the whole
@@ -7087,14 +9103,15 @@ class GlyphMapper:
                     # TestColorLevelsPutEachPointInItsLabelledBin).
                     _closed = cuts is None and not minmax
                     labels, binned, has_missing = _dash_colorvar_bins(
-                        col_vals, eff_cuts, force_discrete, _vlookup,
-                        closed_ends=_closed, number_text=_num_text)
+                        dom_vals, eff_cuts, force_discrete, _vlookup,
+                        closed_ends=_closed, number_text=_num_text,
+                        bin_values=col_vals)
 
                 else:
                     # colordiscrete: each distinct numeric value → its own category.
                     # Resolve the Stata value label for each level so the legend
                     # shows e.g. "Domestic"/"Foreign" instead of "0"/"1".
-                    non_nan = [v for v in col_vals if not np.isnan(v)]
+                    non_nan = [v for v in dom_vals if not np.isnan(v)]
                     unique_sorted = sorted(set(non_nan))
                     val_label = {v: _vlookup(v) for v in unique_sorted}
                     if len(set(val_label.values())) < len(val_label):
@@ -7103,14 +9120,14 @@ class GlyphMapper:
                         _num_text = (lambda v: f"{v:g}")
                         val_label = {v: _vlookup(v) for v in unique_sorted}
                     labels = [val_label[v] for v in unique_sorted]
+                    # A row outside the domain's levels is None too.
                     binned = [
-                        "__missing__" if np.isnan(v) else val_label[v]
+                        None if np.isnan(v) else val_label.get(v)
                         for v in col_vals
                     ]
+                    has_missing = bool(np.isnan(dom_vals).any())
 
-                has_missing = any(b == "__missing__" for b in binned)
                 source.data[color_field] = binned
-                factors = labels + (["__missing__"] if has_missing else [])
 
             else:
                 # A string variable: one level per DISTINCT value.  This
@@ -7121,22 +9138,27 @@ class GlyphMapper:
                 # numeric bins do, and an empty string, Stata's missing
                 # string, takes colormissing() under "(missing)", as a
                 # missing number does.
-                color_field = f"_cvar_{varname}_bin"
                 # GAPS2 X1/E2's sibling fix: the text 'nan' is a category,
                 # not missing (only None and Stata's own "" are).
-                strs = ["" if v is None
-                        or (isinstance(v, float) and math.isnan(v))
-                        else str(v) for v in raw_col]
-                labels = sorted({s for s in strs if s != ""})
-                binned = ["__missing__" if s == "" else s for s in strs]
-                has_missing = "" in strs
+                def _strs(col):
+                    return ["" if v is None
+                            or (isinstance(v, float) and math.isnan(v))
+                            else str(v) for v in col]
+                strs = _strs(raw_col)
+                strs_dom = strs if dom is None else _strs(dom)
+                labels = sorted({s for s in strs_dom if s != ""})
+                _levels_set = set(labels)
+                binned = [s if s in _levels_set else None for s in strs]
+                has_missing = "" in strs_dom
                 source.data[color_field] = binned
-                factors = labels + (["__missing__"] if has_missing else [])
 
-            if not factors:
+            # The factors are the levels only: missing is the mapper's
+            # nan_color, so no value or label text can be "missing".
+            factors = labels
+            if not labels and not has_missing:
                 return
 
-            non_missing_factors = [f for f in factors if f != "__missing__"]
+            non_missing_factors = list(labels)
             # With no explicit palette(), the discrete colours are the
             # scheme's own p1-p15 cycle -- the same colours the scheme gives
             # overlaid series.  Bokeh's Category10 was used unconditionally,
@@ -7152,10 +9174,10 @@ class GlyphMapper:
             while len(pal_list) < len(non_missing_factors):
                 pal_list += pal_list
             pal_colors = pal_list[:len(non_missing_factors)]
-            if "__missing__" in factors:
-                pal_colors = pal_colors + [missing_color]
 
-            mapper     = CategoricalColorMapper(factors=factors, palette=pal_colors)
+            mapper     = CategoricalColorMapper(factors=factors,
+                                                palette=pal_colors,
+                                                nan_color=missing_color)
             color_spec = {"field": color_field, "transform": mapper}
             glyph      = renderer.glyph
             try:
@@ -7170,15 +9192,16 @@ class GlyphMapper:
             # identify the colored categories by name. Dummy invisible
             # renderers carry the per-factor color into the legend item.
             legend_items = []
-            for factor, color in zip(non_missing_factors,
-                                     pal_colors[:len(non_missing_factors)]):
+            for factor, color in (zip(non_missing_factors, pal_colors)
+                                  if add_key else ()):
                 _r = fig.scatter(
                     x=[float("nan")], y=[float("nan")],
                     color=color, size=0,
                     visible=False, name=f"{_DASH_SWATCH_PREFIX}{factor}",
                 )
                 legend_items.append(LegendItem(label=factor, renderers=[_r]))
-            if "__missing__" in factors:
+            if has_missing and add_key:
+                # A model name, never a factor.
                 _rm = fig.scatter(
                     x=[float("nan")], y=[float("nan")],
                     color=missing_color, size=0,
@@ -7198,14 +9221,15 @@ class GlyphMapper:
             # a Legend (no ticks, no mapper range) and are named once.
             _dash_apply_z_options(fig, _legend, mapper, self.z_options,
                                  *self.z_context)
-            fig.add_layout(_legend, "right")
+            if add_key:
+                fig.add_layout(_legend, "right")
 
         # ------------------------------------------------------------------
         # CONTINUOUS path — LinearColorMapper
         # ------------------------------------------------------------------
         else:
-            lo = float(np.nanmin(col_vals))
-            hi = float(np.nanmax(col_vals))
+            lo = float(np.nanmin(dom_vals))
+            hi = float(np.nanmax(dom_vals))
             if lo == hi:
                 hi = lo + 1.0
             pal_name = self._PALETTE_MAP.get(palette_key or "viridis", "Viridis256")
@@ -7246,7 +9270,7 @@ class GlyphMapper:
             except (AttributeError, ValueError):
                 pass
 
-            if _cbar is not None:
+            if _cbar is not None and add_key:
                 fig.add_layout(_cbar, "right")
 
         # ------------------------------------------------------------------
@@ -7726,6 +9750,7 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
+        colorvar_key: bool = True,
     ) -> "GlyphRenderer":
         """Add a scatter glyph to *fig*.
 
@@ -7735,6 +9760,8 @@ class GlyphMapper:
             yvar:    Name of the y-axis variable (CDS column).
             xvar:    Name of the x-axis variable (CDS column).
             options: Translated plot-level options dict.
+            colorvar_key: Add colorvar()'s key (False for a second marker
+                     set coloured from the same key, rconnected's).
 
         Returns:
             The single GlyphRenderer created.
@@ -7819,7 +9846,8 @@ class GlyphMapper:
         r = fig.scatter(**_scatter_kwargs)
         self._apply_marker_opts(r, options)
         # colorvar: map a variable's values to fill/line color via a color mapper
-        self._apply_colorvar(fig, r, plot_source, options)
+        self._apply_colorvar(fig, r, plot_source, options,
+                             add_key=colorvar_key)
         # mlabel uses original column names (not jittered) for readable labels
         # A LabelSet takes no view, so under one -- a layer's own if/in, a
         # linked by() panel -- the labels are drawn from a copy of the rows
@@ -7860,11 +9888,16 @@ class GlyphMapper:
         color_idx: int = 0,
         connected: bool = False,
         line_kind: "str | None" = None,
+        order=None,
+        by_x: bool = False,
     ) -> "GlyphRenderer":
         """Add a line glyph to *fig*.
 
-        Data is sorted by the x variable before rendering to match Stata
-        behaviour (Stata's twoway line auto-sorts by x).
+        The points are joined as twoway joins them (``_join_order``): in
+        the data's order, in the order of x under ``sort``, in the order of
+        *order* -- the rank Stata made for ``sort(varlist)`` -- when one is
+        given, and in time order when *by_x* (tsline).  twoway does not
+        sort a line by x unless asked to (WP-29 P0.1).
 
         Args:
             connected: True when this line is the connecting line of a
@@ -7874,6 +9907,8 @@ class GlyphMapper:
                        "lineplot" for a line plot, "" for a connected
                        plot's line (the default by *connected*), and ""
                        for rconnected, whose colour is a line's.
+            order:     One join key per row of *source*, or None.
+            by_x:      Join in the order of x whatever else is given.
 
         Args:
             fig:     Bokeh Figure object.
@@ -7885,7 +9920,7 @@ class GlyphMapper:
         Returns:
             The single GlyphRenderer created.
         """
-        # Drop NaN and sort by x for correct line rendering.  No marker-label
+        # Drop NaN and put the rows in their join order.  No marker-label
         # column rides along: twoway draws no mlabel() on a line (below).
         _cols = {xvar: source.data[xvar], yvar: source.data[yvar]}
         df = pd.DataFrame(_cols)
@@ -7900,10 +9935,13 @@ class GlyphMapper:
         if _line_sel is not None:
             df = df[_line_sel]
             view = None
-        # The sort is stable, so the rows a saved-page filter move keeps
-        # (by their row id, carried below) are in the order a sort of them
-        # alone gives (_collect_derived_sources).
-        df = df.dropna(subset=[xvar, yvar]).sort_values(xvar, kind="stable")
+        # twoway's join order (_join_order).  It is stable, so the rows a
+        # saved-page filter move keeps (by their row id, carried below) are
+        # in the order the same rule gives them alone
+        # (_collect_derived_sources).
+        df = df.dropna(subset=[xvar, yvar])
+        df = df.loc[self._join_order(source, df.index.to_numpy(), xvar,
+                                     options, order, by_x)]
         # Each point is an observation, so the caller's other columns --
         # the variables hover() names -- ride along in the same order
         # (df's index is the row's position in *source*).
@@ -7959,8 +9997,11 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
+        order=None,
     ) -> list:
         """Add connected (line + scatter) glyphs to *fig*.
+
+        The line joins its points as map_line does; *order* is its join key.
 
         Args:
             fig:     Bokeh Figure object.
@@ -7979,7 +10020,7 @@ class GlyphMapper:
         opts_no_label = {k: v for k, v in options.items() if k != "mlabel"}
         renderers = [
             self.map_line(fig, source, yvar, xvar, opts_no_label, view=view,
-                          color_idx=color_idx, connected=True),
+                          color_idx=color_idx, connected=True, order=order),
             self.map_scatter(fig, source, yvar, xvar, options, view=view,
                              color_idx=color_idx),
         ]
@@ -7994,8 +10035,14 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
+        order=None,
     ) -> "GlyphRenderer":
         """Add an area glyph (filled between y=0 and y=yvar) to *fig*.
+
+        The outline joins its points as twoway's area does: in the data's
+        order unless ``sort`` or *order* (``sort(varlist)``'s rank) says
+        otherwise (``_join_order``), so on unsorted data the polygon crosses
+        itself exactly where twoway's does.
 
         Args:
             fig:     Bokeh Figure object.
@@ -8013,22 +10060,11 @@ class GlyphMapper:
         # have nothing left to filter.
         # The row positions as well, so the caller's other columns -- the
         # variables hover() names -- can ride along with each point.
-        _area_idx = self._masked_index(source, view, xvar, yvar)
-        x_arr, y_arr = self._masked(source, view, xvar, yvar)
-
-        # Bokeh's varea joins its points in the order it is given them, and
-        # Stata's twoway area draws along x -- so unsorted rows produce a
-        # self-intersecting polygon, silently, with every point present and
-        # correct.  map_line and map_connected have always sorted; this did
-        # not.  Measured on x = [3, 1, 2]: map_line gave [1, 2, 3] and
-        # map_area gave [3, 1, 2].  Found while comparing the two render
-        # modes, where the generated server app's own area branch sorts and
-        # this one did not.
-        if len(x_arr):
-            _order = np.argsort(x_arr, kind="stable")
-            x_arr = x_arr[_order]
-            y_arr = y_arr[_order]
-            _area_idx = _area_idx[_order]
+        _area_idx = self._join_order(
+            source, self._masked_index(source, view, xvar, yvar), xvar,
+            options, order)
+        x_arr = _dash_float_values(source.data[xvar])[_area_idx]
+        y_arr = _dash_float_values(source.data[yvar])[_area_idx]
         # The row identity, for the border line's copy: the saved page's
         # filter callback keeps a move's rows of each copy by it.
         _area_ids = None
@@ -8109,8 +10145,10 @@ class GlyphMapper:
             The single VBar GlyphRenderer created.
         """
         if self._is_empty(source, xvar, yvar):
-            empty_src = ColumnDataSource({xvar: [], yvar: []})
-            return fig.vbar(x=xvar, top=yvar, bottom=0, width=0.8, source=empty_src)
+            # No rows: drawn on the styled path below, in the layer's own
+            # colour and key, as twoway keys it (WP-29 P0.18).
+            source = ColumnDataSource({xvar: [], yvar: []})
+            view = None
         # Masked by the layer's own view BEFORE the source is rebuilt.
         # The view's BooleanFilter is sized to the CALLER's source; the
         # source built below is shorter once rows with missing values are
@@ -8157,11 +10195,14 @@ class GlyphMapper:
             # String xvar: use uniform spacing (bar width = 0.8)
             x_vals = list(range(len(df[xvar].unique())))
             _bar_numeric = False
+        # One fallback for the drawn width and the spacing tag (WP-29
+        # P0.18), so the two cannot drift.
+        _bar_fallback = 0.8
         if len(x_vals) >= 2:
             gaps = [x_vals[i+1] - x_vals[i] for i in range(len(x_vals)-1)]
             bar_width = 0.8 * min(gaps)
         else:
-            bar_width = 0.8
+            bar_width = _bar_fallback
 
         # barwidth() / width() options override the auto-computed bar width.
         #
@@ -8215,8 +10256,8 @@ class GlyphMapper:
         if _bar_numeric:
             # The width is the rows' spacing, so a move that changes the
             # rows changes it, as the served app redraws it.
-            self._tag_spacing(clean_source, xvar, 0.8, 0.8, distinct=True,
-                              glyphs=[r.glyph])
+            self._tag_spacing(clean_source, xvar, 0.8, _bar_fallback,
+                              distinct=True, glyphs=[r.glyph])
         if "color" in options:
             try:
                 c = self.tr.translate_mcolor(options["color"])
@@ -8408,7 +10449,8 @@ class GlyphMapper:
         return [int(r) for r in rid]
 
     @staticmethod
-    def _masked(source: ColumnDataSource, view, *varnames: str) -> tuple:
+    def _masked(source: ColumnDataSource, view, *varnames: str,
+                units=None) -> tuple:
         """Float arrays for *varnames*, restricted to the rows *view* selects.
 
         Rows where any of the named columns is NaN are dropped together, so
@@ -8419,8 +10461,18 @@ class GlyphMapper:
             One float array per name in *varnames*, in order; a date in
             epoch milliseconds, the unit its axis is drawn in, and a
             missing date NaN, so it is dropped with the others (24sep2026).
+            With *units* (``{name: Stata date kind}``, keyword only) each
+            named date column is read in its Stata units instead -- days,
+            ms after 01jan1960 or periods, as twoway computes from it --
+            BEFORE the joint NaN mask, so a value that has no Stata date
+            drops its whole row and no estimator sees a NaN (WP-29 P0.8).
         """
         cols = [_dash_float_values(source.data[v]) for v in varnames]
+        if units:
+            for _i, _v in enumerate(varnames):
+                _k = units.get(_v)
+                if _k in _STATA_DATE_KINDS:
+                    cols[_i] = _dash_date_units(cols[_i], _k)
         n = len(cols[0]) if cols else 0
 
         sel = GlyphMapper._view_mask(view, n)
@@ -8433,8 +10485,44 @@ class GlyphMapper:
         return tuple(c[finite] for c in cols)
 
     @staticmethod
+    def _layer_weight_column(source: ColumnDataSource, options,
+                             layer: str) -> tuple:
+        """``(wtype, wexp, why)``: whether ``_layer_weights`` applies a
+        layer's weight, decided without a warning (WP-29 P0.17, so the
+        saved page's stale cue reads the same sample).  *why* is
+        ``"none"`` (no clause), ``"missing"``, ``"not-numeric"``,
+        ``"refused"``, ``"inert"``, or None when the weight is applied."""
+        wtype, wexp = _dash_weight_spec(options)
+        if wtype is None:
+            return wtype, wexp, "none"
+        if wexp not in source.data:
+            return wtype, wexp, "missing"
+        try:
+            _dash_float_values(source.data[wexp])
+        except (TypeError, ValueError):
+            return wtype, wexp, "not-numeric"
+        if wtype not in _DASH_WEIGHT_ACCEPTS.get(layer, ()):
+            return wtype, wexp, "refused"
+        if layer in _DASH_WEIGHT_INERT:
+            return wtype, wexp, "inert"
+        return wtype, wexp, None
+
+    @staticmethod
+    def _layer_weight_values_state(w, wtype, layer: str) -> "str | None":
+        """``"negative"`` when a weight is negative on a layer that then
+        draws nothing, else ``"nonint"`` for a non-integer fweight, else
+        None -- the order ``_layer_weights`` checks them in (WP-29
+        P0.17)."""
+        w = np.asarray(w, dtype=float)
+        if (w < 0).any() and layer not in _DASH_WEIGHT_NEG_EXCLUDED:
+            return "negative"
+        if wtype == "fw" and np.any(w != np.floor(w)):
+            return "nonint"
+        return None
+
+    @staticmethod
     def _layer_weights(source: ColumnDataSource, view, options, layer: str,
-                       *varnames: str) -> tuple:
+                       *varnames: str, units=None) -> tuple:
         """``_masked`` plus the layer's weight: ``(cols..., w, wtype)``.
 
         The weight clause of a plot -- ``[aweight=price]`` -- reaches the
@@ -8458,21 +10546,26 @@ class GlyphMapper:
             One float array per name in *varnames*, then ``w`` (raw values,
             not yet normalised -- each estimator normalises as its Stata
             counterpart does) and ``wtype`` in {"aw", "fw", "pw", "iw"}.
+            *units* is passed to every ``_masked`` call: a date column it
+            names -- the weight included -- is read in its Stata units, so
+            the negative and non-integer checks see the Stata value, as
+            ``marksample`` does (WP-29 P0.8, D05-2).
         """
-        wtype, wexp = _dash_weight_spec(options)
-        if wtype is None:
-            return (*GlyphMapper._masked(source, view, *varnames), None, None)
+        wtype, wexp, why = GlyphMapper._layer_weight_column(
+            source, options, layer)
+        if why == "none":
+            return (*GlyphMapper._masked(source, view, *varnames,
+                                          units=units), None, None)
         wname = _DASH_WEIGHT_NAMES.get(wtype, wtype)
         clause = f"[{wname}={wexp}]"
-        if wexp not in source.data:
+        if why == "missing":
             _dash_warn_once(
                 ("weight-missing", layer, wexp),
                 f"dash: {layer} {clause}: the data carries no variable "
                 f"{wexp!r}, so the layer is drawn unweighted.")
-            return (*GlyphMapper._masked(source, view, *varnames), None, None)
-        try:
-            _dash_float_values(source.data[wexp])
-        except (TypeError, ValueError):
+            return (*GlyphMapper._masked(source, view, *varnames,
+                                          units=units), None, None)
+        if why == "not-numeric":
             # dash.ado refuses a string weight as twoway does (r(109)
             # "type mismatch"); a hand-written spec could still reach here,
             # and the float conversion in _masked took the render down.
@@ -8480,8 +10573,9 @@ class GlyphMapper:
                 ("weight-not-numeric", layer, wexp),
                 f"dash: {layer} {clause}: {wexp!r} is not numeric (twoway: "
                 f"type mismatch, r(109)); the layer is drawn unweighted.")
-            return (*GlyphMapper._masked(source, view, *varnames), None, None)
-        if wtype not in _DASH_WEIGHT_ACCEPTS.get(layer, ()):
+            return (*GlyphMapper._masked(source, view, *varnames,
+                                          units=units), None, None)
+        if why == "refused":
             if layer == "lowess":
                 why = "weights not allowed"
             else:
@@ -8490,22 +10584,26 @@ class GlyphMapper:
                 ("weight-refused", layer, wtype),
                 f"dash: {layer} {clause}: twoway {layer} refuses it "
                 f"({why}, r(101)); the layer is drawn unweighted.")
-            return (*GlyphMapper._masked(source, view, *varnames), None, None)
-        if layer in _DASH_WEIGHT_INERT:
+            return (*GlyphMapper._masked(source, view, *varnames,
+                                          units=units), None, None)
+        if why == "inert":
             _dash_warn_once(
                 ("weight-inert", layer, wtype),
                 f"dash: {layer} {clause}: twoway {layer} accepts the weight "
                 f"and does not use it (measured: the curve equals the "
                 f"unweighted one), so neither does dash.")
-            return (*GlyphMapper._masked(source, view, *varnames), None, None)
-        cols = GlyphMapper._masked(source, view, *varnames, wexp)
+            return (*GlyphMapper._masked(source, view, *varnames,
+                                          units=units), None, None)
+        cols = GlyphMapper._masked(source, view, *varnames, wexp,
+                                   units=units)
         w = cols[-1]
         nothing = tuple(c[:0] for c in cols)
         # A weight's VALUES, as twoway treats them on this layer.  dash.ado
         # refuses the commands twoway refuses; what reaches here is
         # twoway's own "accepted, draws nothing", or a hand-written spec.
+        state = GlyphMapper._layer_weight_values_state(w, wtype, layer)
         neg = w < 0
-        if neg.any() and layer not in _DASH_WEIGHT_NEG_EXCLUDED:
+        if state == "negative":
             why = ("fracpoly cannot fit it, and twoway draws nothing"
                    if layer in ("fpfit", "fpfitci")
                    else "twoway refuses it, negative weights encountered, "
@@ -8515,7 +10613,7 @@ class GlyphMapper:
                 f"dash: {layer} {clause}: {int(neg.sum())} negative "
                 f"weight(s) -- {why}; dash draws nothing for this layer.")
             return (*nothing[:-1], nothing[-1], wtype)
-        if wtype == "fw" and np.any(w != np.floor(w)):
+        if state == "nonint":
             why = ("regress and fracpoly cannot use non-integer frequency "
                    "weights, and twoway draws nothing"
                    if layer in _DASH_FW_NONINT_NOTHING
@@ -8536,6 +10634,60 @@ class GlyphMapper:
             cols = tuple(c[pos] for c in cols)
             w = cols[-1]
         return (*cols[:-1], w, wtype)
+
+    def _layer_units(self, source: ColumnDataSource, view, options,
+                     layer: str, *varnames: str) -> tuple:
+        """``_layer_weights`` with every date variable -- the weight
+        included -- read in its Stata units, as twoway computes a layer
+        (WP-29 P0.8): ``units`` is this mapper's ``date_vars``."""
+        return self._layer_weights(source, view, options, layer, *varnames,
+                                   units=dict(self.date_vars or {}) or None)
+
+    def _on_axis(self, fig, values, var, axis):
+        """``(drawn, off)``: a computed layer's output *values* (Stata units
+        of *var*) as the positions *fig*'s *axis* draws them.
+
+        A variable that is no date is drawn as it is.  On a figure whose
+        axes were marked (``_dash_mark_date_axes``) the axis decides: a
+        date axis takes its kind's epoch milliseconds; a numeric axis --
+        a date sharing it with a non-date or another date kind -- the Stata
+        values themselves, as twoway draws ``(scatter close obs)(lfit close
+        date)``.  An unmarked figure (a mapper used on its own) converts by
+        the variable's kind.  *off* marks a finite value that has no date
+        on the axis (outside 01jan0100 to 31dec9999); it is NaN in *drawn*.
+        """
+        vals = np.asarray(values, dtype=float)
+        kind = (self.date_vars or {}).get(var)
+        none = np.zeros(vals.shape, dtype=bool)
+        if kind not in _STATA_DATE_KINDS:
+            return vals, none
+        if getattr(fig, "_dash_date_kinds", None) is not None:
+            kind = _dash_axis_date_kind(fig, axis)
+            if not kind:
+                return vals, none
+        drawn = _dash_units_to_axis(vals, kind)
+        with np.errstate(invalid="ignore"):
+            off = np.isfinite(vals) & ~np.isfinite(drawn)
+        return drawn, off
+
+    def _drop_off_dates(self, layer, what, off, *arrays):
+        """*arrays* without the rows *off* marks, naming how many once.
+
+        A computed bar or point that lands outside Stata's dates is not
+        drawn, and one note per layer says how many (WP-29 P0.8, A1): it
+        would otherwise reach the page as NaN, which the page's JSON cannot
+        parse.  *what* is ``"bar(s)"`` or ``"point(s)"``.
+        """
+        off = np.asarray(off, dtype=bool)
+        n = int(off.sum())
+        if not n:
+            return arrays
+        _dash_warn_once(
+            ("off-dates", layer, what),
+            f"dash: {layer}: {n:,} {what} outside Stata's dates "
+            f"(01jan0100 to 31dec9999) not drawn.")
+        keep = ~off
+        return tuple(np.asarray(a)[keep] for a in arrays)
 
     @staticmethod
     def _mark_unfit(renderers, command: str):
@@ -8627,16 +10779,63 @@ class GlyphMapper:
         return idx
 
     @staticmethod
-    def _masked_order(source: ColumnDataSource, view, xvar: str, *others: str):
-        """Row indices selecting the drawn rows, in x order.
+    def _join_order(source: ColumnDataSource, idx, xvar: str, options,
+                    order=None, by_x: bool = False):
+        """The drawn rows *idx* (positions in ``source.data``) in the order
+        twoway joins them -- the one rule every joining layer uses.
 
-        ``_masked_index`` sorted by *xvar*.
+        twoway joins line, connected, area, rline, rarea and rconnected in
+        the data's order; ``sort`` joins them in the order of x, and
+        ``sort(varlist)`` in the order Stata's ``sort varlist`` gives,
+        winning over ``sort``; tsline and tsrline join in time order
+        whatever they are given (measured, WP-29 P0.1;
+        test/fixtures/join_order_truth.json).  In that precedence:
+
+        1. *by_x*: the order of x (a date in epoch milliseconds);
+        2. *order*, one key per row of *source* (the rank dash.ado made
+           for ``sort(varlist)``, ``_dash_join_key``);
+        3. ``sort`` in *options*: the order of x;
+        4. otherwise *idx* as given, the data's order.
+
+        Every sort is stable, so rows whose keys tie keep the data's order
+        (twoway's is random).
+
+        Raises:
+            ValueError: *order* does not hold one key per row of *source*.
         """
-        idx = GlyphMapper._masked_index(source, view, xvar, *others)
-        if len(idx):
-            xs = _dash_float_values(source.data[xvar])[idx]
-            idx = idx[np.argsort(xs, kind="stable")]
-        return idx
+        idx = np.asarray(idx, dtype=np.int64)
+        key = None
+        if order is not None:
+            key = np.asarray(order, dtype=float)
+            if key.ndim != 1 or len(key) != len(source.data[xvar]):
+                raise ValueError(
+                    "dash: a join key holds %d values for %d rows."
+                    % (key.size, len(source.data[xvar])))
+        if not len(idx):
+            return idx
+        if by_x or (key is None and
+                    (options or {}).get("sort") == "sort"):
+            key = _dash_float_values(source.data[xvar])
+        if key is None:
+            return idx
+        return idx[np.argsort(key[idx], kind="stable")]
+
+    def _empty_fit_line(self, fig, xcol, ycol, options, color_idx, yvar,
+                        width_kind="lineplot"):
+        """The line a fitted or smoothed layer draws when it has no drawable
+        rows, in the populated branch's own style (WP-29 P0.18): its scheme
+        colour, its width family (*width_kind*: "" for mspline and mband,
+        "lineplot" for every other fit), its legend key and its line
+        options.  twoway keys such a layer in its p# style; dash drew a
+        bare Bokeh glyph, #1f77b4 at width 1."""
+        r = fig.line(x=xcol, y=ycol,
+                     source=ColumnDataSource({xcol: [], ycol: []}),
+                     line_color=self.scheme.default_color(color_idx, "line"),
+                     line_width=self.scheme.plot_line_width(color_idx,
+                                                            width_kind),
+                     legend_label=yvar)
+        self._apply_line_opts(r, options)
+        return r
 
     def map_lfit(
         self,
@@ -8666,7 +10865,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, _wt = self._layer_weights(source, view, options, "lfit",
+        x, y, w, _wt = self._layer_units(source, view, options, "lfit",
                                            xvar, yvar)
 
         # Need at least 2 points to fit a line.  With none, twoway lfit
@@ -8678,9 +10877,9 @@ class GlyphMapper:
         # "insufficient observations", and draws on, rc 0 (measured
         # 24sep2026): _mark_insufficient.
         if len(x) < 2:
-            empty = ColumnDataSource({"x": [], "y": []})
-            r = self._mark_unfit(fig.line(x="x", y="y", source=empty),
-                                 "regress")
+            r = self._mark_unfit(
+                self._empty_fit_line(fig, "x", "y", options, color_idx, yvar),
+                "regress")
             return self._mark_insufficient(r) if len(x) == 1 else r
 
         # numpy's `w' multiplies the UNSQUARED residual, so the regression
@@ -8703,6 +10902,13 @@ class GlyphMapper:
         # observation reaches, which twoway does not do.
         x_fit = _fit_grid(x, options, "lfit")
         y_fit = np.polyval(coeffs, x_fit)
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x")
+        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y")
+        x_fit, y_fit = self._drop_off_dates("lfit", "point(s)", _ox | _oy,
+                                            x_fit, y_fit)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
         r = fig.line(x="x", y="y", source=fit_source,
@@ -8738,7 +10944,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, _wt = self._layer_weights(source, view, options, "qfit",
+        x, y, w, _wt = self._layer_units(source, view, options, "qfit",
                                            xvar, yvar)
 
         # With none or one, twoway qfit draws nothing and notes that regress
@@ -8746,9 +10952,9 @@ class GlyphMapper:
         # fitted: regress omits x or x^2 and draws the other (_qfit_design).
         # dash drew nothing there, and said the layer drew nothing.
         if len(x) < 2:
-            empty = ColumnDataSource({"x": [], "y": []})
-            return self._mark_unfit(fig.line(x="x", y="y", source=empty),
-                                    "regress")
+            return self._mark_unfit(
+                self._empty_fit_line(fig, "x", "y", options, color_idx, yvar),
+                "regress")
 
         # Stata's grid, as map_lfit uses -- see the note there -- except
         # that twoway_qfit_parse.class reads a points count of 3 as lfit's
@@ -8771,8 +10977,15 @@ class GlyphMapper:
         try:
             y_fit = Xg @ _dash_wls(X, y, w, _wt)["beta"]
         except np.linalg.LinAlgError:
-            empty = ColumnDataSource({"x": [], "y": []})
-            return fig.line(x="x", y="y", source=empty)
+            return self._empty_fit_line(fig, "x", "y", options, color_idx,
+                                        yvar)
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x")
+        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y")
+        x_fit, y_fit = self._drop_off_dates("qfit", "point(s)", _ox | _oy,
+                                            x_fit, y_fit)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
         r = fig.line(x="x", y="y", source=fit_source,
@@ -8808,7 +11021,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, wtype = self._layer_weights(source, view, options, "lfitci",
+        x, y, w, wtype = self._layer_units(source, view, options, "lfitci",
                                              xvar, yvar)
         n = len(x)
 
@@ -8864,6 +11077,17 @@ class GlyphMapper:
 
         y_lower = y_fit - t_crit * se_band
         y_upper = y_fit + t_crit * se_band
+
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x")
+        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y")
+        y_lower, _ol = self._on_axis(fig, y_lower, yvar, "y")
+        y_upper, _ou = self._on_axis(fig, y_upper, yvar, "y")
+        x_fit, y_fit, y_lower, y_upper = self._drop_off_dates(
+            "lfitci", "point(s)", _ox | _oy | _ol | _ou,
+            x_fit, y_fit, y_lower, y_upper)
 
         ci_source = ColumnDataSource({
             "x_fit": x_fit, "y_fit": y_fit,
@@ -8928,7 +11152,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, wtype = self._layer_weights(source, view, options, "qfitci",
+        x, y, w, wtype = self._layer_units(source, view, options, "qfitci",
                                              xvar, yvar)
 
         # Two points are fitted, as qfit fits them (_qfit_design), the band
@@ -8981,6 +11205,17 @@ class GlyphMapper:
                 x, y, x_fit, lambda xi, yi, xg: np.polyval(np.polyfit(xi, yi, 2), xg),
                 fallback=y_fit, level=_lvl, seed=_resolve_seed(options),
             )
+
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x")
+        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y")
+        y_lower, _ol = self._on_axis(fig, y_lower, yvar, "y")
+        y_upper, _ou = self._on_axis(fig, y_upper, yvar, "y")
+        x_fit, y_fit, y_lower, y_upper = self._drop_off_dates(
+            "qfitci", "point(s)", _ox | _oy | _ol | _ou,
+            x_fit, y_fit, y_lower, y_upper)
 
         ci_source = ColumnDataSource({
             "x_fit": x_fit, "y_fit": y_fit,
@@ -9037,7 +11272,7 @@ class GlyphMapper:
         # had excluded, and said nothing.  lowess takes no weight in Stata
         # (lowess.ado:9, twoway_lowess_parse.class:35: r(101) for every
         # type); _layer_weights names one and draws the layer without it.
-        x, y, _w, _wt = self._layer_weights(source, view, options, "lowess",
+        x, y, _w, _wt = self._layer_units(source, view, options, "lowess",
                                             xvar, yvar)
 
         # lowess.ado:89 smooths only when r(N) >= 3 and the range of x is at
@@ -9045,11 +11280,10 @@ class GlyphMapper:
         # segment and x = 0.1 everywhere (std 2.8e-17) a vertical line,
         # where Stata draws nothing.
         if len(x) < 3 or not (float(np.ptp(x)) >= 1e-30):
-            empty = ColumnDataSource({"x_lw": [], "y_lw": []})
-            _r_empty = fig.line(x="x_lw", y="y_lw", source=empty)
-            # An empty layer is still the user's layer: apply the line
-            # options so lwidth/lcolor/lpattern survive a bail-out.
-            self._apply_line_opts(_r_empty, options)
+            # An empty layer is still the user's layer: its own style and
+            # line options survive a bail-out (WP-29 P0.18).
+            _r_empty = self._empty_fit_line(fig, "x_lw", "y_lw", options,
+                                            color_idx, yvar)
             # Fewer than three observations: twoway draws the missing
             # smooth in silence, rc 0, on one, two or three (measured
             # 24sep2026) -- in a by() panel too.  A constant x keeps
@@ -9080,7 +11314,12 @@ class GlyphMapper:
         if str(options.get("adjust", "") or "").strip():
             y_all = None
             if self.dataset is not None and yvar in getattr(self.dataset, "columns", ()):
-                y_all = _dash_float_values(self.dataset[yvar])
+                # In y's Stata units when y is a date, as the smooth is
+                # (WP-29 P0.8).
+                _yk = (self.date_vars or {}).get(yvar)
+                y_all = (_dash_date_units(self.dataset[yvar], _yk)
+                         if _yk in _STATA_DATE_KINDS
+                         else _dash_float_values(self.dataset[yvar]))
             if y_all is None or not np.isfinite(y_all).any():
                 y_all = y
             _ms = float(np.nanmean(y_lw)) if np.isfinite(y_lw).any() else np.nan
@@ -9105,6 +11344,13 @@ class GlyphMapper:
         # on either side, as twoway's cmissing(y) default does.
         _keep = np.isfinite(y_lw)
         x_lw, y_lw = x_lw[_keep], y_lw[_keep]
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        x_lw, _ox = self._on_axis(fig, x_lw, xvar, "x")
+        y_lw, _oy = self._on_axis(fig, y_lw, yvar, "y")
+        x_lw, y_lw = self._drop_off_dates("lowess", "point(s)", _ox | _oy,
+                                          x_lw, y_lw)
 
         lw_source = ColumnDataSource({
             "x_lw": x_lw,
@@ -9245,62 +11491,41 @@ class GlyphMapper:
 
     @staticmethod
     def _default_lpoly_bwidth(x: "np.ndarray", y: "np.ndarray",
-                              w: "np.ndarray | None" = None) -> float:
-        """Rule-of-thumb local-polynomial bandwidth, in x's own units.
+                              w: "np.ndarray | None" = None,
+                              degree: int = 0,
+                              kernel: str = "epanechnikov") -> float:
+        """lpoly's default bandwidth: Stata's r(bwidth), in x's own units.
 
-        dash used a fixed 0.5 regardless of the data, which is meaningless
-        once the bandwidth is absolute: 0.5 is a sensible window for a
-        variable measured in units and a vanishing one for a variable
-        measured in thousands.  On ``sysuse auto`` it produced a bandwidth of
-        1540 where Stata's is 70.6 -- a 22-fold oversmooth.
+        Stata's rule of thumb as lpoly computes it (WP-29 P0.7,
+        ``_lpoly_rot_detail``): the Fan-Gijbels constant of the kernel and
+        degree, a global fit of degree pe+3 in raw powers with Stata's
+        invsym column rule, the weighted mean squared residual, and the
+        squared (pe+1)th derivative integrated over the central 90% of x's
+        range.  An even degree uses the next odd one.  dash used to compute
+        0.65*(s^2/S)^(1/5) from a global quartic, ignoring kernel() and
+        degree() (auto biweight degree(2): 63.80 where Stata's is 302.45).
 
-        This is the Fan-Gijbels rule of thumb: fit a global 4th-degree
-        polynomial, take its residual variance and the sum of squared second
-        derivatives at the observations, and scale.
-
-        HONESTY NOTE: this APPROXIMATES Stata's ROT, it does not reproduce it.
-        Stata's `lpoly` estimates the residual variance locally rather than
-        from a global fit, and that part was not reproducible from the
-        published documentation.  Measured against Stata on seven datasets
-        (N from 74 to 2246, x-scales differing by three orders of magnitude)
-        the implied constant ranged over [0.597, 0.720]; _LPOLY_ROT_C is the
-        middle of that range, so the default bandwidth lands within about
-        +/-11% of Stata's.  Users who need Stata's exact smoother should give
-        `bwidth()`, which IS exact.  See test/fixtures/stat_truth.json.
+        Agreement with Stata (test/fixtures/lpoly_rot_truth.json): 1e-7
+        relative at degree 0/1 on centred x, 5e-5 at degree 2/3 or offset x
+        (Stata's own float64 arithmetic on raw powers is inexact there:
+        1.6e-5 on uslifeexp years), 1e-4 on four degree-2 rows of x offset
+        by 1e3-6e4.  Where the global fit is exact, Stata's h is round-off
+        and ``_lpoly_rot_float`` emulates it; documented divergences: D1
+        (y exactly linear in x, degree 0), D2 (y equal to x, degree 0/1),
+        D3 (mpg*1e-150, degree 2).
 
         Args:
-            x, y: Cleaned paired arrays.
-            w:    Observation weights as lpoly sees them (aweights already
-                  normalised to mean 1, fweights raw), or None.  The global
-                  fit is weighted the same way and an fweight replicates
-                  its observation in both sums.  Stata's weighted ROT is
-                  not reproduced exactly either (measured 70.64 unweighted,
-                  57.66 [aw=price], 48.87 [fw=rep78] on auto).
+            x, y:   Cleaned paired arrays (the layer's own rows).
+            w:      Weights as lpoly uses them (aweights mean 1, fweights
+                    raw), or None.
+            degree: The local polynomial degree.
+            kernel: A key of ``_KERNELS``.
 
         Returns:
-            A positive bandwidth in the units of *x*.
+            A positive bandwidth, or NaN where Stata's r(bwidth) is missing
+            or 0 -- the caller then draws a line at 0, as twoway does.
         """
-        x = np.asarray(x, dtype=float)
-        y = np.asarray(y, dtype=float)
-        n = len(x)
-        span = float(np.max(x) - np.min(x)) if n else 0.0
-        fallback = (span / 10.0) if span > 0 else 1.0
-        if n < 8:
-            return fallback
-        try:
-            ww = np.ones(n) if w is None else np.asarray(w, dtype=float)
-            n_eff = float(ww.sum())
-            coeffs = np.polyfit(x, y, 4, w=np.sqrt(ww))
-            resid = y - np.polyval(coeffs, x)
-            sigma2 = float(np.dot(ww, resid * resid)) / max(1.0, n_eff - 5)
-            d2 = np.polyder(np.poly1d(coeffs), 2)
-            denom = float(np.dot(ww, d2(x) ** 2))
-            if not (sigma2 > 0 and denom > 0):
-                return fallback
-            h = _LPOLY_ROT_C * (sigma2 / denom) ** 0.2
-        except (np.linalg.LinAlgError, ValueError, FloatingPointError):
-            return fallback
-        return h if (np.isfinite(h) and h > 0) else fallback
+        return _lpoly_rot_detail(x, y, w, degree, kernel)["h"]
 
     @staticmethod
     def _compute_lpoly_fit(
@@ -9345,7 +11570,8 @@ class GlyphMapper:
         """
         x_min, x_max = x.min(), x.max()
         if bwidth is None or not (bwidth > 0):
-            bwidth = GlyphMapper._default_lpoly_bwidth(x, y, w)
+            bwidth = GlyphMapper._default_lpoly_bwidth(x, y, w, degree,
+                                                       kernel)
         # Stata's bwidth() is an absolute bandwidth in data units.  dash used
         # to clamp it to [0.01, 1.0] and multiply by the x-range, so bwidth(5)
         # on a variable spanning thousands became the whole dataset -- the
@@ -9360,19 +11586,11 @@ class GlyphMapper:
             x_grid = np.asarray(x_grid, dtype=float)
             n_grid = len(x_grid)
 
-        support, kfn = _KERNELS.get(kernel, _KERNELS["epanechnikov"])
         y_fit = np.empty(n_grid)
         ow = None if w is None else np.asarray(w, dtype=float)
 
         for i, x0 in enumerate(x_grid):
-            z = (x - x0) / h
-            if np.isfinite(support):
-                kw = np.zeros_like(z)
-                inside = np.abs(z) < support
-                if inside.any():
-                    kw[inside] = kfn(z[inside])
-            else:
-                kw = kfn(z)
+            kw = _lpoly_kernel_weights(x, x0, h, kernel)
             if ow is not None:
                 kw = kw * ow
             pos = kw > 0
@@ -9380,30 +11598,53 @@ class GlyphMapper:
                 y_fit[i] = np.nan
                 continue
             w_sum = kw.sum()
-            # A window whose positive-weight observations take no more
-            # distinct x values than the degree cannot fit it: Stata drops
-            # the top powers and fits the degree they support (the WP-18
-            # review: lpoly price rep78, degree(1) bwidth(.3) on auto is the
-            # group mean wherever the window holds one rep78 value).
-            # numpy's polyfit returned an arbitrary least-norm answer --
-            # 745 off at x = 1.327 -- with an uncaught RankWarning.
-            deg = degree
-            if deg > 0:
-                deg = min(deg, len(np.unique(x[pos])) - 1)
-            if deg == 0:
+            if degree == 0:
                 y_fit[i] = np.dot(kw, y) / w_sum
-            else:
+                continue
+            # Part C (WP-29 P0.7): Stata's local fit inverts the window's raw
+            # design with invsym, intercept first, so a window whose powers
+            # of (x - x0) are nearly collinear keeps the intercept and the
+            # powers invsym keeps (_lpoly_kept_columns).  This replaced a
+            # `min(degree, distinct - 1)' reduction that was right for one
+            # distinct value (lpoly price rep78, degree(1) bwidth(.3): the
+            # group mean) and wrong for two at degree 2: foreign==1
+            # biweight degree(2) at Stata's bw 287.78 keeps {1, d^2}, and
+            # dash was 8.857 mpg off Stata's curve there (now 1.8e-12).
+            # A well-conditioned window keeps np.polyfit, whose answer the
+            # existing pins hold (TestLpolyDegreeAgainstStata, 4.9e-10).
+            xp = x[pos]
+            kp = kw[pos]
+            dd = xp - x0
+            X = np.vander(dd, degree + 1, increasing=True)
+            with np.errstate(all="ignore"):
+                G = (X * kp[:, None]).T @ X
+            if not np.isfinite(G).all():
+                y_fit[i] = np.nan
+                continue
+            K = _lpoly_kept_columns(G)
+            if len(K) == degree + 1:
                 # numpy's `w' multiplies the UNSQUARED residual, so the
                 # local least squares wants sqrt(K*w).  Passing K itself
                 # minimised sum K^2 r^2 and put degree(1) 2.8% off Stata's
                 # curve at Stata's own bandwidth; with sqrt(K) it is exact
                 # to 1.3e-15 (fixture auto:degree1).
                 try:
-                    coeffs = np.polyfit(x[pos], y[pos], deg=deg,
-                                        w=np.sqrt(kw[pos]))
+                    coeffs = np.polyfit(xp, y[pos], deg=degree,
+                                        w=np.sqrt(kp))
                     y_fit[i] = np.polyval(coeffs, x0)
                 except (np.linalg.LinAlgError, ValueError):
                     y_fit[i] = np.dot(kw, y) / w_sum
+            elif 0 not in K:
+                # Only where sum K*w < 1e-19; not measured against Stata.
+                y_fit[i] = np.nan
+            else:
+                g = (X * kp[:, None]).T @ y[pos]
+                try:
+                    with np.errstate(all="ignore"):
+                        b = np.linalg.solve(G[np.ix_(K, K)], g[K])
+                    y_fit[i] = float(b[0]) if np.isfinite(b[0]) else np.nan
+                except np.linalg.LinAlgError:
+                    y_fit[i] = np.nan
 
         return x_grid, y_fit
 
@@ -9456,8 +11697,9 @@ class GlyphMapper:
             source:  Shared ColumnDataSource.
             yvar:    Name of the y variable.
             xvar:    Name of the x variable.
-            options: Plot-level options; supports ``bwidth`` (default 0.5) and
-                     ``degree`` (default 0).
+            options: Plot-level options; supports ``bwidth`` (default:
+                     Stata's rule of thumb, ``_default_lpoly_bwidth``),
+                     ``degree`` (default 0), ``kernel`` and ``n``.
 
         Returns:
             GlyphRenderer for the smoother line.
@@ -9466,16 +11708,16 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, wtype = self._layer_weights(source, view, options, "lpoly",
+        x, y, w, wtype = self._layer_units(source, view, options, "lpoly",
                                              xvar, yvar)
 
         # None or one: dash.ado refuses as twoway does, r(2000)/r(2001),
         # except in a by() panel, where twoway draws nothing in silence, rc
         # 0 (measured 24sep2026).
         if len(x) < 2:
-            empty = ColumnDataSource({"x_lp": [], "y_lp": []})
             return self._mark_silent(
-                fig.line(x="x_lp", y="y_lp", source=empty))
+                self._empty_fit_line(fig, "x_lp", "y_lp", options,
+                                     color_idx, yvar))
 
         bwidth = _stat_option_float(options, "bwidth", None, "lpoly", lo=0.0)
         if bwidth is not None and bwidth <= 0.0:
@@ -9500,14 +11742,33 @@ class GlyphMapper:
 
         # n(): the grid size, by twoway's rule (_lpoly_grid_n).  dash drew
         # 200 points and read n() for nothing.
-        x_grid, y_fit = self._compute_lpoly_fit(
-            x, y, bwidth=bwidth, degree=degree, kernel=kernel,
-            n_grid=self._lpoly_grid_n(options, "lpoly", len(x)),
-            w=_dash_lpoly_weights(w, wtype))
+        n_grid = self._lpoly_grid_n(options, "lpoly", len(x))
+        lw = _dash_lpoly_weights(w, wtype)
+        # WP-29 P0.7: one bandwidth per layer, from the layer's own rows
+        # (per-plot if/in, by() panel, linked qualifier, served filter).
+        bw = bwidth if bwidth is not None else \
+            GlyphMapper._default_lpoly_bwidth(x, y, lw, degree, kernel)
+        if not np.isfinite(bw):
+            # Stata's r(bwidth) is missing or 0 (x of 0 and 1 only, a
+            # constant x, quadcross overflow): twoway draws y = 0 at every
+            # grid point, in silence.
+            x_grid = np.linspace(float(x.min()), float(x.max()), n_grid)
+            y_fit = np.zeros(n_grid)
+        else:
+            x_grid, y_fit = self._compute_lpoly_fit(
+                x, y, bwidth=bw, degree=degree, kernel=kernel,
+                n_grid=n_grid, w=lw)
         valid = ~np.isnan(y_fit)
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x")
+        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y")
+        _xd, _yd = self._drop_off_dates("lpoly", "point(s)", _ox | _oy,
+                                        _xd, _yd)
         lp_src = ColumnDataSource({
-            "x_lp": x_grid[valid].tolist(),
-            "y_lp": y_fit[valid].tolist(),
+            "x_lp": _xd.tolist(),
+            "y_lp": _yd.tolist(),
         })
         r = fig.line(x="x_lp", y="y_lp", source=lp_src,
                      line_color=self.scheme.default_color(color_idx, "line"),
@@ -9532,62 +11793,87 @@ class GlyphMapper:
         view=None,
         color_idx: int = 0,
     ) -> list:
-        """Add a local polynomial smoother with a bootstrap 95% CI band to *fig*.
+        """Add a local polynomial smoother with lpoly's analytic CI band.
+
+        WP-29 P0.9: the band is [R] lpoly eq. 4, as ``lpoly, ci`` and
+        ``twoway lpolyci`` draw it: smooth +/- invnormal(.5(1-l/100)+l/100)
+        x the standard error ``_lpoly_se`` (a sandwich variance with a
+        degree p+2 pilot fit at ``pwidth()``, default 1.5 times the rule of
+        thumb even when ``bwidth()`` is given, or a constant ``var()``,
+        JSON key ``lpvar``).  It was a 200-resample bootstrap percentile
+        band, 0.85-1.55 times Stata's width and up to 44.7 mpg off at
+        degree(1).  The band is drawn only where the standard error is
+        defined and joins across the rows where it is not, as twoway's
+        rarea does; a row whose pilot has no residual degrees of freedom
+        pinches (D4).  The layer always yields three sources -- band,
+        outline, line -- drawn or empty, so the served refresh, which
+        copies sources by position, refits it.
 
         Args:
             fig:     Bokeh Figure object.
             source:  Shared ColumnDataSource.
             yvar:    Name of the y variable.
             xvar:    Name of the x variable.
-            options: Plot-level options; supports ``bwidth`` and ``degree``.
+            options: Plot-level options: ``bwidth``, ``pwidth``, ``lpvar``,
+                     ``degree``, ``kernel``, ``n``, ``level``.
 
         Returns:
             List with [line_renderer, band_renderer].
         """
         # Masked by the layer's own view: a per-plot `if', a by()
-        # facet panel or a linked graph's qualifier.  Reading the
-        # whole source here computed the statistic from rows the user
-        # had excluded, and said nothing.
-        x, y, w, wtype = self._layer_weights(source, view, options, "lpolyci",
+        # facet panel or a linked graph's qualifier.
+        x, y, w, wtype = self._layer_units(source, view, options, "lpolyci",
                                              xvar, yvar)
-
         _lpolyci_color = self.scheme.default_color(color_idx, "line")
-        empty_src = ColumnDataSource({
-            "x_lp": [], "y_lp": [], "y_lower": [], "y_upper": []
-        })
-        if len(x) < 3:
-            # The ci style, as a band with rows draws it: an empty
-            # layer's legend key is the band twoway keys.
-            band_r, _ = self._ci_band_glyphs(
-                fig, empty_src, "x_lp", "y_lower", "y_upper", options)
-            line_r = fig.line(x="x_lp", y="y_lp", source=empty_src,
-                              line_color=_lpolyci_color, line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
-                              legend_label=yvar)
-            self._ci_line_restyle(line_r, options)
-            # Two observations: twoway's smooth and band are missing, rc 0,
-            # nothing printed; none or one in a by() panel, the same
-            # (measured 24sep2026).
+        _lw_px = self.scheme.plot_line_width(color_idx, "lineplot")
+
+        def _draw(lx, ly, bx, by, blo, bhi):
+            line_src = ColumnDataSource({"x_lp": list(lx), "y_lp": list(ly)})
+            band_src = ColumnDataSource({"x_lp": list(bx), "y_lp": list(by),
+                                         "y_lower": list(blo),
+                                         "y_upper": list(bhi)})
+            return self._render_ci_band(
+                fig, line_src, "x_lp", "y_lp", _lpolyci_color, yvar,
+                options, line_width=_lw_px, band_source=band_src)
+
+        if len(x) < 2:
+            # None or one observation: twoway draws nothing, rc 0, in a
+            # by() panel (dash.ado refuses it as twoway does elsewhere).
+            # Three empty sources through the same path, so the line keeps
+            # its lcolor()/lpattern().
+            line_r, band_r = _draw([], [], [], [], [], [])
             return self._mark_silent([line_r, band_r])
 
-        # The same resolution map_lpoly uses.  This was left on the pre-S07
-        # code -- bwidth clamped to [0.01, 1.0] as a FRACTION, no kernel
-        # lookup at all -- so `lpoly y x, bwidth(500)' and
-        # `lpolyci y x, bwidth(500)' asked for one smoother and got two, and
-        # kernel() was read by nothing here.  Silently, in both cases: the
-        # curve is drawn, it is simply not the curve that was asked for, and
-        # the band is then computed around the wrong curve.
-        bwidth = _stat_option_float(options, "bwidth", None, "lpoly", lo=0.0)
-        if bwidth is not None and bwidth <= 0.0:
-            warnings.warn(
-                f"dash: lpolyci option bwidth({options.get('bwidth')}) must "
-                f"be positive; deriving it from the data instead.",
-                UserWarning, stacklevel=2,
-            )
-            bwidth = None
+        def _positive(key):
+            # dash.ado writes only positive numbers here; a hand-edited spec
+            # value gets one note (per option and value, so a served filter
+            # move does not repeat it) and the default.
+            raw = options.get(key)
+            if raw is None or str(raw).strip() == "":
+                return None
+            name = "var" if key == "lpvar" else key
+            try:
+                val = float(str(raw).strip())
+            except (TypeError, ValueError):
+                _dash_warn_once(
+                    ("lpolyci", key, str(raw)),
+                    f"dash: lpolyci option {name}({raw}) is not a number; "
+                    f"using the default instead.")
+                return None
+            if not (math.isfinite(val) and val > 0.0):
+                _dash_warn_once(
+                    ("lpolyci", key, str(raw)),
+                    f"dash: lpolyci option {name}({raw}) must be a positive "
+                    f"number; using the default instead.")
+                return None
+            return val
+
+        bwidth = _positive("bwidth")
+        pwidth = _positive("pwidth")
+        lpvar = _positive("lpvar")
 
         degree = int(_stat_option_float(options, "degree", 0.0, "lpoly",
                                         lo=0.0, hi=3.0) or 0.0)
-
         kernel = str(options.get("kernel", "") or "epanechnikov").strip().lower()
         if kernel not in _KERNELS:
             warnings.warn(
@@ -9596,48 +11882,54 @@ class GlyphMapper:
                 UserWarning, stacklevel=2,
             )
             kernel = "epanechnikov"
+        level = _resolve_level(options, self.default_level, "lpolyci")
 
-        # The same grid as lpoly (_lpoly_grid_n: twoway's rule on _N).
         n_grid = self._lpoly_grid_n(options, "lpolyci", len(x))
         lw = _dash_lpoly_weights(w, wtype)
-        x_grid, y_fit = self._compute_lpoly_fit(x, y, bwidth=bwidth,
-                                                 degree=degree, kernel=kernel,
-                                                 n_grid=n_grid, w=lw)
+        # The rule of thumb at degree p, for the bandwidth and the default
+        # pilot alike (r(pwidth) = 1.5 x rot, even with bwidth()).
+        rot = GlyphMapper._default_lpoly_bwidth(x, y, lw, degree, kernel)
+        h = bwidth if bwidth is not None else rot
+        hp = pwidth if pwidth is not None else 1.5 * rot
 
-        # Bootstrap CI (200 resamples for speed).  The resamples must use the
-        # same smoother as the point estimate, or the band is not a band
-        # around the line that is drawn.  NOT Stata's band, which is
-        # invnormal x a Mata standard error (lpoly.ado:319-324); recorded as
-        # a follow-up outside WP-18.
-        # Every resample is evaluated on the point estimate's OWN grid.  It
-        # used to rebuild a grid over the resample's range, so the
-        # percentiles mixed different x positions: 124 of 200 resamples on
-        # auto were on another grid and the band's edges moved by up to
-        # 11.3 mpg (the WP-18 review).
-        def _lpoly_fn(xi: "np.ndarray", yi: "np.ndarray", _xg: "np.ndarray",
-                      wi: "np.ndarray | None" = None) -> "np.ndarray":
-            _, yb = self._compute_lpoly_fit(xi, yi, bwidth=bwidth,
-                                            degree=degree, kernel=kernel,
-                                            w=wi, x_grid=_xg)
-            return yb  # NaN entries are replaced by fallback in _bootstrap_ci
+        def _on(vals, var, axis):
+            return self._on_axis(fig, np.asarray(vals, dtype=float), var, axis)
 
-        y_lower, y_upper = GlyphMapper._bootstrap_ci(
-            x, y, x_grid, _lpoly_fn, fallback=y_fit,
-            level=_resolve_level(options, self.default_level),
-            seed=_resolve_seed(options), w=lw,
-        )
+        if not np.isfinite(h):
+            # Stata's r(bwidth) is missing: twoway draws the smooth as y = 0
+            # at every grid point, and no band.
+            xg = np.linspace(float(x.min()), float(x.max()), n_grid)
+            _xd, _ox = _on(xg, xvar, "x")
+            _yd, _oy = _on(np.zeros(n_grid), yvar, "y")
+            _xd, _yd = self._drop_off_dates("lpolyci", "point(s)", _ox | _oy,
+                                            _xd, _yd)
+            line_r, band_r = _draw(_xd.tolist(), _yd.tolist(), [], [], [], [])
+            return [line_r, band_r]
 
-        valid = ~np.isnan(y_fit)
-        ci_src = ColumnDataSource({
-            "x_lp":    x_grid[valid].tolist(),
-            "y_lp":    y_fit[valid].tolist(),
-            "y_lower": y_lower[valid].tolist(),
-            "y_upper": y_upper[valid].tolist(),
-        })
-        line_r, band_r = self._render_ci_band(
-            fig, ci_src, "x_lp", "y_lp", _lpolyci_color, yvar, options,
-            line_width=self.scheme.plot_line_width(color_idx, "lineplot")
-        )
+        x_grid, y_fit = self._compute_lpoly_fit(x, y, bwidth=h, degree=degree,
+                                                kernel=kernel, n_grid=n_grid,
+                                                w=lw)
+        se = _lpoly_se(x, y, x_grid, h, hp, degree, kernel, lw, lpvar)
+        z = _dash_invnormal(0.5 * (1.0 - level / 100.0) + level / 100.0)
+        valid = np.isfinite(y_fit)
+        with np.errstate(all="ignore"):
+            lo = y_fit - z * se
+            hi = y_fit + z * se
+        banded = valid & np.isfinite(se) & np.isfinite(lo) & np.isfinite(hi)
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's axes
+        # draw the variables; a point with no date there is dropped.
+        _xd, _ox = _on(x_grid[valid], xvar, "x")
+        _yd, _oy = _on(y_fit[valid], yvar, "y")
+        _xd, _yd = self._drop_off_dates("lpolyci", "point(s)", _ox | _oy,
+                                        _xd, _yd)
+        _bx, _bo = _on(x_grid[banded], xvar, "x")
+        _by, _b1 = _on(y_fit[banded], yvar, "y")
+        _bl, _b2 = _on(lo[banded], yvar, "y")
+        _bu, _b3 = _on(hi[banded], yvar, "y")
+        _bx, _by, _bl, _bu = self._drop_off_dates(
+            "lpolyci", "point(s)", _bo | _b1 | _b2 | _b3, _bx, _by, _bl, _bu)
+        line_r, band_r = _draw(_xd.tolist(), _yd.tolist(), _bx.tolist(),
+                               _by.tolist(), _bl.tolist(), _bu.tolist())
         # Missing at every grid point: drawn in silence, as lpoly's is.
         if not valid.any():
             self._mark_silent([line_r, band_r])
@@ -9984,7 +12276,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, wtype = self._layer_weights(source, view, options, "fpfit",
+        x, y, w, wtype = self._layer_units(source, view, options, "fpfit",
                                              xvar, yvar)
 
         _fp_report_unsupported(options, "fpfit")
@@ -9993,11 +12285,10 @@ class GlyphMapper:
         # fit).  dash wanted four.  _fp_prepare refuses one distinct x.
         fit = self._fp_fit(x, y, w, wtype) if len(x) >= 2 else None
         if fit is None:
-            empty = ColumnDataSource({"x_fp": [], "y_fp": []})
-            r = fig.line(x="x_fp", y="y_fp", source=empty)
-            # An empty layer is still the user's layer: style it so
-            # lwidth/lcolor/lpattern survive the bail-out.
-            self._apply_line_opts(r, options)
+            # An empty layer is still the user's layer: its own style and
+            # line options survive the bail-out (WP-29 P0.18).
+            r = self._empty_fit_line(fig, "x_fp", "y_fp", options,
+                                     color_idx, yvar)
             # twoway fpfit on one observation, or on a sample missing
             # values empty: nothing, "(note:  fracpoly could not fit
             # model)", rc 0 (measured 24sep2026).
@@ -10007,14 +12298,23 @@ class GlyphMapper:
 
         x_grid = _fp_grid(x)
         if w is not None:
-            x_all, y_all = self._masked(source, view, xvar, yvar)
+            x_all, y_all = self._masked(
+                source, view, xvar, yvar,
+                units=dict(self.date_vars or {}) or None)
             x_grid = self._fp_plot_grid(x_all, y_all, x, y)
         y_fit = self._predict_fp2(x_grid, fit)
 
         valid = ~np.isnan(y_fit)
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x")
+        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y")
+        _xd, _yd = self._drop_off_dates("fpfit", "point(s)", _ox | _oy,
+                                        _xd, _yd)
         fp_src = ColumnDataSource({
-            "x_fp": x_grid[valid].tolist(),
-            "y_fp": y_fit[valid].tolist(),
+            "x_fp": _xd.tolist(),
+            "y_fp": _yd.tolist(),
         })
         r = fig.line(x="x_fp", y="y_fp", source=fp_src,
                      line_color=self.scheme.default_color(color_idx, "line"),
@@ -10053,7 +12353,7 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y, w, wtype = self._layer_weights(source, view, options, "fpfitci",
+        x, y, w, wtype = self._layer_units(source, view, options, "fpfitci",
                                              xvar, yvar)
 
         _fpfitci_color = self.scheme.default_color(color_idx, "line")
@@ -10077,7 +12377,9 @@ class GlyphMapper:
 
         x_grid = _fp_grid(x)
         if w is not None:
-            x_all, y_all = self._masked(source, view, xvar, yvar)
+            x_all, y_all = self._masked(
+                source, view, xvar, yvar,
+                units=dict(self.date_vars or {}) or None)
             x_grid = self._fp_plot_grid(x_all, y_all, x, y)
         y_fit = self._predict_fp2(x_grid, fit)
 
@@ -10097,17 +12399,54 @@ class GlyphMapper:
         y_lower = y_fit - t_crit * se_fit
         y_upper = y_fit + t_crit * se_fit
 
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x")
+        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y")
+        _yl, _ol = self._on_axis(fig, y_lower[valid], yvar, "y")
+        _yu, _ou = self._on_axis(fig, y_upper[valid], yvar, "y")
+        _xd, _yd, _yl, _yu = self._drop_off_dates(
+            "fpfitci", "point(s)", _ox | _oy | _ol | _ou, _xd, _yd, _yl, _yu)
         ci_src = ColumnDataSource({
-            "x_fp":    x_grid[valid].tolist(),
-            "y_fp":    y_fit[valid].tolist(),
-            "y_lower": y_lower[valid].tolist(),
-            "y_upper": y_upper[valid].tolist(),
+            "x_fp":    _xd.tolist(),
+            "y_fp":    _yd.tolist(),
+            "y_lower": _yl.tolist(),
+            "y_upper": _yu.tolist(),
         })
         line_r, band_r = self._render_ci_band(
             fig, ci_src, "x_fp", "y_fp", _fpfitci_color, yvar, options,
             line_width=self.scheme.plot_line_width(color_idx, "lineplot")
         )
         return [line_r, band_r]
+
+    def _histogram_quads(self, fig, source, options, color_idx, yvar):
+        """A histogram's bars over *source* (``top``/``left``/``right``) in
+        its own style: scheme colour, white outline, bar alpha, color(),
+        fill and line options (WP-29 P0.18).  The populated and both empty
+        branches of map_histogram draw through it, so an emptied histogram
+        keeps its colour and key, as twoway keys it."""
+        r = fig.quad(top="top", bottom=0, left="left", right="right",
+                     source=source,
+                     fill_color=self.scheme.default_color(color_idx, "histogram"),
+                     line_color="white",
+                     # `intensity bar' -- a histogram is a bar plot in
+                     # Stata's own scheme vocabulary.
+                     fill_alpha=self._scheme_alpha(
+                         color_idx, "histogram", self.scheme.bar_alpha),
+                     legend_label=yvar)
+        if "color" in options:
+            try:
+                c = self.tr.translate_mcolor(options["color"])
+                r.glyph.fill_color = c
+            except ValueError:
+                # As map_bar: named here because the lcolor() fold that
+                # would name it is skipped when blcolor() is given.
+                _dash_style_note("color", options["color"], "colour")
+        self._apply_fill_opts(r, options)
+        # Quad supports line_width/line_dash/line_color for bin border styling
+        self._apply_line_opts(r, options)
+        return r
 
     def map_histogram(
         self,
@@ -10136,22 +12475,21 @@ class GlyphMapper:
         if options is None:
             options = {}
         if self._is_empty(source, yvar):
-            empty_src = ColumnDataSource({"top": [], "left": [], "right": []})
-            return fig.quad(top="top", bottom=0, left="left", right="right",
-                            source=empty_src)
+            return self._histogram_quads(
+                fig, ColumnDataSource({"top": [], "left": [], "right": []}),
+                options, color_idx, yvar)
         # twoway__histogram_gen.ado:6 admits [fw] only; any other type is
         # named by _layer_weights and the bars are counted unweighted.
-        arr, w, wtype = self._layer_weights(source, view, options,
+        arr, w, wtype = self._layer_units(source, view, options,
                                             "histogram", yvar)
         if not len(arr):
-            empty_src = ColumnDataSource({"top": [], "left": [], "right": []})
             # No observation in the sample -- a qualifier, missing values,
             # or a by() panel another plot draws in: twoway draws nothing
             # in silence, rc 0 (measured 24sep2026; on a dataset with no
             # observations dash.ado refuses it, as twoway does).
-            return self._mark_silent(
-                fig.quad(top="top", bottom=0, left="left", right="right",
-                         source=empty_src))
+            return self._mark_silent(self._histogram_quads(
+                fig, ColumnDataSource({"top": [], "left": [], "right": []}),
+                options, color_idx, yvar))
 
         edges, ymode = self._histogram_grid(arr, options, w)
         discrete = bool(str(options.get("discrete", "") or "").strip())
@@ -10167,37 +12505,36 @@ class GlyphMapper:
         counts = self._histogram_counts(arr, w, start, h, nb)
         tops = _histogram_heights(counts, edges, ymode)
 
+        # WP-29 P0.8: the grid, the counts and the heights are in the
+        # variable's Stata units, as twoway__histogram_gen computes them;
+        # the edges are drawn where the figure's x axis draws the variable.
+        # A bar with an edge outside Stata's dates is not drawn (one note):
+        # the edges are monotone, so only the ends can leave the range and
+        # the bars kept are one contiguous run [i0, i1).
+        axis_edges, off_e = self._on_axis(fig, edges, yvar, "x")
+        bar_off = off_e[:-1] | off_e[1:]
+        self._drop_off_dates("histogram", "bar(s)", bar_off)
+        _kept = np.flatnonzero(~bar_off)
+        i0 = int(_kept[0]) if _kept.size else 0
+        i1 = int(_kept[-1]) + 1 if _kept.size else 0
         hist_source = ColumnDataSource({
-            "top":   tops,
-            "left":  edges[:-1],
-            "right": edges[1:],
+            "top":   tops[i0:i1],
+            "left":  axis_edges[i0:i1],
+            "right": axis_edges[i0 + 1:i1 + 1],
         })
-        r = fig.quad(top="top", bottom=0, left="left", right="right",
-                     source=hist_source,
-                     fill_color=self.scheme.default_color(color_idx, "histogram"),
-                     line_color="white",
-                     # `intensity bar' -- a histogram is a bar plot in
-                     # Stata's own scheme vocabulary.
-                     fill_alpha=self._scheme_alpha(
-                         color_idx, "histogram", self.scheme.bar_alpha),
-                     legend_label=yvar)
-        if "color" in options:
-            try:
-                c = self.tr.translate_mcolor(options["color"])
-                r.glyph.fill_color = c
-            except ValueError:
-                # As map_bar: named here because the lcolor() fold that
-                # would name it is skipped when blcolor() is given.
-                _dash_style_note("color", options["color"], "colour")
-        self._apply_fill_opts(r, options)
-        # Quad supports line_width/line_dash/line_color for bin border styling
-        self._apply_line_opts(r, options)
+        r = self._histogram_quads(fig, hist_source, options, color_idx,
+                                  yvar)
+        if i1 <= i0:
+            # No bar has a date on the axis: nothing for the page to
+            # recount.
+            return r
         # Tag renderer so DashRenderer can wire filter-callback recomputation.
         r._dash_agg_source = hist_source
         r._dash_agg_config = {
             "type":      "histogram",
             "varname":   yvar,
-            "bin_edges": edges.tolist(),
+            # The drawn edges of the kept bars (axis units).
+            "bin_edges": axis_edges[i0:i1 + 1].tolist(),
             # The y-axis family must be recomputed under a filter too: a
             # density histogram of a filtered subset has to renormalise to the
             # surviving rows, or the curve silently stops integrating to 1.
@@ -10219,6 +12556,22 @@ class GlyphMapper:
             "width":     h,
             "bin":       nb,
         }
+        # WP-29 P0.8: a date variable (and a date weight) is recounted in
+        # its Stata units: the page converts each value with
+        # dash_stata_value_of(v, datekind), counts on the full unit grid
+        # (start, width, bin) and draws the kept run from bar bin_first,
+        # each density divided by its unit width.  Kind strings come from
+        # _STATA_DATE_KINDS only, and every number is finite.
+        _hk = (self.date_vars or {}).get(yvar)
+        if _hk in _STATA_DATE_KINDS:
+            r._dash_agg_config["datekind"] = _hk
+            r._dash_agg_config["unit_edges"] = edges[i0:i1 + 1].tolist()
+            r._dash_agg_config["bin_first"] = int(i0)
+        _wk = (self.date_vars or {}).get(
+            str(options.get("wexp", "")).strip()) if wtype is not None \
+            else None
+        if _wk in _STATA_DATE_KINDS:
+            r._dash_agg_config["wdatekind"] = _wk
         # The rows these bars count; DashRenderer hands them to the recount
         # when they are a subset of the data.
         r._dash_agg_rows = self._agg_member_ids(source, view)
@@ -10459,15 +12812,14 @@ class GlyphMapper:
             options["bwidth"] = options["width"]
         # twoway__kdensity_gen.ado:7 admits [fw aw]; pw/iw are named by
         # _layer_weights and the density is estimated unweighted.
-        arr, w, wtype = self._layer_weights(source, view, options,
+        arr, w, wtype = self._layer_units(source, view, options,
                                             "kdensity", yvar)
 
         # Stata's kernels are implemented directly (see _KERNELS): scipy's
         # gaussian_kde can only ever be Gaussian, so it could not express
         # kernel() at all, and Stata's default kernel is epanechnikov.
         if len(arr) < 2 or np.std(arr) == 0.0:
-            empty = ColumnDataSource({"x": [], "y": []})
-            r = fig.line(x="x", y="y", source=empty)
+            r = self._empty_fit_line(fig, "x", "y", options, color_idx, yvar)
             # None or one: dash.ado refuses one as twoway does, r(2001);
             # in a by() panel twoway draws none or one in silence, rc 0
             # (measured 24sep2026).  A constant variable keeps dash's
@@ -10495,8 +12847,8 @@ class GlyphMapper:
                 )
             bw = default_bw
         if bw <= 0.0:
-            empty = ColumnDataSource({"x": [], "y": []})
-            return fig.line(x="x", y="y", source=empty)
+            return self._empty_fit_line(fig, "x", "y", options, color_idx,
+                                        yvar)
 
         n_pts = _stat_option_float(options, "n", 300.0, "kdensity", lo=2.0,
                                    hi=10000.0) or 300.0
@@ -10522,7 +12874,15 @@ class GlyphMapper:
                               int(n_pts))
         density = _kde_curve(arr, x_range, bw, kernel, w)
 
-        kd_source = ColumnDataSource({"x": x_range, "y": density})
+        # WP-29 P0.8: the grid, range() and the bandwidth are in the
+        # variable's Stata units; the curve is drawn where the figure's x
+        # axis draws the variable, a point with no date there dropped with
+        # one note.
+        x_draw, _off = self._on_axis(fig, x_range, yvar, "x")
+        x_draw, x_range, density = self._drop_off_dates(
+            "kdensity", "point(s)", _off, x_draw, x_range, density)
+
+        kd_source = ColumnDataSource({"x": x_draw, "y": density})
         r = fig.line(x="x", y="y", source=kd_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
@@ -10538,7 +12898,8 @@ class GlyphMapper:
         r._dash_agg_config = {
             "type":      "kdensity",
             "varname":   yvar,
-            "x_grid":    x_range.tolist(),
+            # The drawn grid (axis units).
+            "x_grid":    x_draw.tolist(),
             "kernel":    kernel,
             "bw_rule":   _KDE_BANDWIDTH_RULE,
             "bw_fixed":  (float(bw)
@@ -10549,6 +12910,18 @@ class GlyphMapper:
                           if wtype is not None else None),
             "wtype":     wtype,
         }
+        # WP-29 P0.8: a date variable is re-estimated in its Stata units at
+        # x_eval, the unit grid of the points drawn at x_grid; see
+        # map_histogram.
+        _kk = (self.date_vars or {}).get(yvar)
+        if _kk in _STATA_DATE_KINDS:
+            r._dash_agg_config["datekind"] = _kk
+            r._dash_agg_config["x_eval"] = x_range.tolist()
+        _wk = (self.date_vars or {}).get(
+            str(options.get("wexp", "")).strip()) if wtype is not None \
+            else None
+        if _wk in _STATA_DATE_KINDS:
+            r._dash_agg_config["wdatekind"] = _wk
         # The rows this curve is estimated from; see map_histogram.
         r._dash_agg_rows = self._agg_member_ids(source, view)
         return r
@@ -10567,8 +12940,15 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
+        order=None,
     ) -> list:
         """Add a range area glyph (filled between y1 and y2) to *fig*.
+
+        The band joins its rows as twoway's rarea does: in the data's order
+        unless ``sort`` or *order* (``sort(varlist)``'s rank) says otherwise
+        (``_join_order``).  One VArea is twoway's polygon where both bounds
+        are present; a row missing one bound is left out of both (twoway
+        keeps the other bound's point there; WP-29 residual O1).
 
         Args:
             fig:    Bokeh Figure object.
@@ -10582,13 +12962,15 @@ class GlyphMapper:
             List with the single VArea GlyphRenderer.
         """
         if self._is_empty(source, xvar, y1var, y2var):
-            empty_src = ColumnDataSource({xvar: [], y1var: [], y2var: []})
-            return [fig.varea(x=xvar, y1=y1var, y2=y2var, source=empty_src)]
+            # No rows: the styled path below (WP-29 P0.18).
+            source = ColumnDataSource({xvar: [], y1var: [], y2var: []})
+            view = None
 
-        # Sorted for the same reason as map_rline above: a varea joined in
-        # dataset order is a band with no relation to the data.  Masked and
-        # rebuilt rather than sorted in place, because the source is shared.
-        _ord = self._masked_order(source, view, xvar, y1var, y2var)
+        # Masked and rebuilt in the join order rather than reordered in
+        # place, because the source is shared.
+        _ord = self._join_order(
+            source, self._masked_index(source, view, xvar, y1var, y2var),
+            xvar, options, order)
         _cols = {
             v: _dash_float_values(source.data[v])[_ord]
             for v in (xvar, y1var, y2var)
@@ -10645,8 +13027,9 @@ class GlyphMapper:
             List with the single VBar GlyphRenderer.
         """
         if self._is_empty(source, xvar, y1var, y2var):
-            empty_src = ColumnDataSource({xvar: [], y1var: [], y2var: []})
-            return [fig.vbar(x=xvar, top=y2var, bottom=y1var, width=0.8, source=empty_src)]
+            # No rows: the styled path below (WP-29 P0.18).
+            source = ColumnDataSource({xvar: [], y1var: [], y2var: []})
+            view = None
         # The width is DERIVED from the data, so it must come from the rows
         # this layer draws.  The source below keeps every row -- so the
         # caller's mask lines up with it and the view is attached as usual --
@@ -10664,10 +13047,12 @@ class GlyphMapper:
         source = (self._subset_source(source, _rb_sel) if _rb_sel is not None
                   else ColumnDataSource(dict(source.data)))
         view = None
-        bar_width = 0.8 * min(
-            (x_vals[i+1] - x_vals[i] for i in range(len(x_vals)-1)),
-            default=0.8,
-        )
+        # One fallback for the drawn width and the spacing tag, 0.64 with
+        # fewer than two x (WP-29 P0.18): the paths cannot drift.
+        _rb_fallback = 0.8 * 0.8
+        bar_width = (0.8 * min(x_vals[i+1] - x_vals[i]
+                               for i in range(len(x_vals)-1))
+                     if len(x_vals) >= 2 else _rb_fallback)
         _rbar_kwargs: dict = dict(x=xvar, bottom=y1var, top=y2var, source=source,
                                    width=bar_width,
                                    fill_color=self.scheme.default_color(color_idx, "bar"),
@@ -10679,7 +13064,7 @@ class GlyphMapper:
         if view is not None:
             _rbar_kwargs["view"] = view
         r = fig.vbar(**_rbar_kwargs)
-        self._tag_spacing(source, xvar, 0.8, 0.64, distinct=True,
+        self._tag_spacing(source, xvar, 0.8, _rb_fallback, distinct=True,
                           glyphs=[r.glyph])
         # color() fills the bar and draws its outline, as map_bar reads it:
         # twoway's rbar with color(red) is filled #FF3333 and stroked
@@ -10748,8 +13133,12 @@ class GlyphMapper:
             List with the single Segment GlyphRenderer.
         """
         if self._is_empty(source, xvar, y1var, y2var):
-            empty_src = ColumnDataSource({xvar: [], y1var: [], y2var: []})
-            return [fig.segment(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=empty_src)]
+            # No rows: the styled path below (WP-29 P0.18).  The caller's
+            # own empty source is kept when it has the columns, so the
+            # axes still range over it as they range over a drawn one.
+            if not all(v in source.data for v in (xvar, y1var, y2var)):
+                source = ColumnDataSource({xvar: [], y1var: [], y2var: []})
+            view = None
         _rseg_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=source,
                                    line_color=self.scheme.default_color(color_idx, "rspike"),
                                    line_width=self.scheme.plot_line_width(color_idx, ""),
@@ -10855,8 +13244,16 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
+        order=None,
+        by_x: bool = False,
     ) -> list:
         """Add two connected range lines (lower and upper boundaries) to *fig*.
+
+        Each bound is drawn through the rows where it and x are present, as
+        twoway draws each path of rline, and joined in twoway's order
+        (``_join_order``; *by_x* for tsrline).  The two bounds are two
+        sources, both built whether or not either has a row: the served
+        redraw pairs a layer's sources with a fresh draw's by position.
 
         Args:
             fig:    Bokeh Figure object.
@@ -10869,33 +13266,37 @@ class GlyphMapper:
         Returns:
             List with [lower_line_renderer, upper_line_renderer].
         """
-        # Bokeh joins a line's points in the order it is given them and
-        # Stata's twoway rline draws along x, so unsorted rows make both
-        # boundaries cross themselves.  The rows cannot be sorted in the
-        # SHARED source -- other layers draw from it, and a view over it is
-        # an IndexFilter in the original row order -- so the mask is applied
-        # here and a sorted source built from the result, exactly as
-        # map_area does.  That is also why no view is passed on below: these
-        # rows are already the selected ones.
-        _ord = self._masked_order(source, view, xvar, y1var, y2var)
-        _cols = {
-            v: _dash_float_values(source.data[v])[_ord]
-            for v in (xvar, y1var, y2var)
-        }
-        # The caller's other columns -- the variables hover() names --
-        # ride along in the same order: each point is an observation.
-        source = ColumnDataSource(self._carry_cols(source, _cols, _ord))
+        # The rows cannot be reordered in the SHARED source -- other layers
+        # draw from it, and a view over it is an IndexFilter in the original
+        # row order -- so the mask is applied here and a source built from
+        # the result for each bound, in its join order, as map_area does.
+        # That is also why no view is passed on below: these rows are
+        # already the selected ones.  Each bound keeps its own rows: twoway
+        # leaves a row out of the bound that is missing there only (WP-29
+        # P0.1; dash left it out of both).
+        _xs = _dash_float_values(source.data[xvar])
+        _bound_src = {}
+        for _yv in (y1var, y2var):
+            _ord = self._join_order(
+                source, self._masked_index(source, view, xvar, _yv), xvar,
+                options, order, by_x)
+            # The caller's other columns -- the variables hover() names --
+            # ride along in the same order: each point is an observation.
+            _bound_src[_yv] = ColumnDataSource(self._carry_cols(
+                source, {xvar: _xs[_ord],
+                         _yv: _dash_float_values(source.data[_yv])[_ord]},
+                _ord))
         view = None
 
         # Both boundaries in the layer's own colour: one plot, one pstyle.
         # Measured in Stata 19.5 under s2color, `twoway rline' draws both
         # paths in p1's #1A476F, and after a scatter both in p2's #90353B;
         # the upper one used to take the NEXT series' colour (WP-23).
-        _rl1_kwargs: dict = dict(x=xvar, y=y1var, source=source,
+        _rl1_kwargs: dict = dict(x=xvar, y=y1var, source=_bound_src[y1var],
                                   line_color=self.scheme.default_color(color_idx, "line"),
                                   line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                                   legend_label=y1var)
-        _rl2_kwargs: dict = dict(x=xvar, y=y2var, source=source,
+        _rl2_kwargs: dict = dict(x=xvar, y=y2var, source=_bound_src[y2var],
                                   line_color=self.scheme.default_color(color_idx, "line"),
                                   line_width=self.scheme.plot_line_width(color_idx, "lineplot"))
         if view is not None:
@@ -10919,8 +13320,12 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
+        order=None,
     ) -> list:
         """Add range connected (lines + scatter) glyphs for two boundaries.
+
+        Each bound's line joins its own rows as map_line does; *order* is
+        their join key.
 
         Args:
             fig:    Bokeh Figure object.
@@ -10947,11 +13352,14 @@ class GlyphMapper:
             # Its lines take linestyle p#'s width, not p#lineplot's
             # (measured: `linewidth plineplot' leaves them at p1's).
             self.map_line(fig, source, y1var, xvar, options, view=view,
-                          color_idx=color_idx, line_kind=""),
+                          color_idx=color_idx, line_kind="", order=order),
             self.map_scatter(fig, source, y1var, xvar, options, view=view, color_idx=color_idx),
             self.map_line(fig, source, y2var, xvar, options, view=view,
-                          color_idx=color_idx, line_kind=""),
-            self.map_scatter(fig, source, y2var, xvar, options, view=view, color_idx=color_idx),
+                          color_idx=color_idx, line_kind="", order=order),
+            # twoway draws ONE colorvar() key for rconnected (measured:
+            # "Price" once, E-16.2); the second end is coloured from it.
+            self.map_scatter(fig, source, y2var, xvar, options, view=view,
+                             color_idx=color_idx, colorvar_key=False),
         ]
 
     def map_dot(
@@ -12069,8 +14477,9 @@ class GlyphMapper:
     ) -> list:
         """Add a time-series line glyph to *fig*.
 
-        Delegates directly to ``map_line``.  Provided as a named alias so
-        Stata's ``twoway tsline`` syntax is explicitly supported.
+        Drawn by ``map_line`` in time order, whatever option is given:
+        twoway's tsline marks sort and sort() "ignored" and sorts on the
+        time variable (twoway_tsline_parse.class:21-32).
 
         Args:
             fig:     Bokeh Figure object.
@@ -12082,7 +14491,8 @@ class GlyphMapper:
         Returns:
             The result of ``map_line``.
         """
-        return self.map_line(fig, source, yvar, xvar, options, view=view, color_idx=color_idx)
+        return self.map_line(fig, source, yvar, xvar, options, view=view,
+                             color_idx=color_idx, by_x=True)
 
     def map_tsrline(
         self,
@@ -12097,8 +14507,9 @@ class GlyphMapper:
     ) -> list:
         """Add time-series range lines to *fig*.
 
-        Delegates directly to ``map_rline``.  Provided as a named alias so
-        Stata's ``twoway tsrline`` syntax is explicitly supported.
+        Drawn by ``map_rline`` in time order, whatever option is given:
+        twoway's tsrline marks sort and sort() "ignored" and sorts on the
+        time variable (twoway_tsline_parse.class:21-32).
 
         Args:
             fig:    Bokeh Figure object.
@@ -12111,7 +14522,8 @@ class GlyphMapper:
         Returns:
             The result of ``map_rline``.
         """
-        return self.map_rline(fig, source, y1var, y2var, xvar, options, view=view, color_idx=color_idx)
+        return self.map_rline(fig, source, y1var, y2var, xvar, options,
+                              view=view, color_idx=color_idx, by_x=True)
 
     def map_rscatter(
         self,
@@ -12266,10 +14678,9 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x_clean, y_clean, _w, _wt = self._layer_weights(
+        x_clean, y_clean, _w, _wt = self._layer_units(
             source, view, options, "mspline", xvar, yvar)
 
-        empty = ColumnDataSource({"x_sp": [], "y_sp": []})
         requested = _stat_option_float(options, "bands", None, "mspline",
                                        lo=1.0, hi=float(_MAX_MBANDS))
         n_bands = (int(requested) if requested is not None
@@ -12286,10 +14697,10 @@ class GlyphMapper:
         # twoway draws it (with bands(), or in a by() panel; with neither,
         # dash.ado refuses it as twoway does).
         if len(kx) < 1:
-            r = fig.line(x="x_sp", y="y_sp", source=empty)
-            # An empty layer is still the user's layer: style it so
-            # lwidth/lcolor/lpattern survive the bail-out.
-            self._apply_line_opts(r, options)
+            # An empty layer is still the user's layer: its own style and
+            # width family survive the bail-out (WP-29 P0.18).
+            r = self._empty_fit_line(fig, "x_sp", "y_sp", options,
+                                     color_idx, yvar, width_kind="")
             return self._mark_silent([r])
 
         if len(kx) < 3:
@@ -12303,6 +14714,13 @@ class GlyphMapper:
                  for i in range(len(kx) - 1)] + [kx[-1:]])
             y_grid = _natural_cubic_spline(kx, ky, x_grid)
 
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        x_grid, _ox = self._on_axis(fig, x_grid, xvar, "x")
+        y_grid, _oy = self._on_axis(fig, y_grid, yvar, "y")
+        x_grid, y_grid = self._drop_off_dates("mspline", "point(s)",
+                                              _ox | _oy, x_grid, y_grid)
         ms_source = ColumnDataSource({"x_sp": x_grid, "y_sp": y_grid})
         r = fig.line(x="x_sp", y="y_sp", source=ms_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
@@ -12398,10 +14816,8 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x_clean, y_clean, _w, _wt = self._layer_weights(
+        x_clean, y_clean, _w, _wt = self._layer_units(
             source, view, options, "mband", xvar, yvar)
-
-        empty = ColumnDataSource({"x_mb": [], "y_mb": []})
 
         # hi= matches the clamp the generated server app applies, so the two
         # modes draw the same number of bands.  Without it, bands(1e9)
@@ -12416,10 +14832,17 @@ class GlyphMapper:
             # No observation, drawn in silence as twoway draws it (see
             # map_mspline).  An empty layer is still the user's layer:
             # style it so lwidth/lcolor/lpattern survive.
-            r = fig.line(x="x_mb", y="y_mb", source=empty)
-            self._apply_line_opts(r, options)
+            r = self._empty_fit_line(fig, "x_mb", "y_mb", options,
+                                     color_idx, yvar, width_kind="")
             return self._mark_silent([r])
 
+        # WP-29 P0.8: computed in Stata units, drawn where the figure's
+        # axes draw the variables (_on_axis); a point with no date there
+        # is dropped with one note.
+        x_mids, _ox = self._on_axis(fig, x_mids, xvar, "x")
+        y_meds, _oy = self._on_axis(fig, y_meds, yvar, "y")
+        x_mids, y_meds = self._drop_off_dates("mband", "point(s)",
+                                              _ox | _oy, x_mids, y_meds)
         mb_source = ColumnDataSource({"x_mb": x_mids, "y_mb": y_meds})
         r = fig.line(x="x_mb", y="y_mb", source=mb_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
@@ -12436,24 +14859,35 @@ class GlyphMapper:
         n_points: int = 300,
         options: dict = {},
         color_idx: int = 0,
+        points: Any = None,
     ) -> list:
-        """Add a mathematical function curve to *fig*.
+        """Add a twoway function curve to *fig*.
 
-        Evaluates a user-supplied expression string over a uniform grid and
-        renders the result as a line.  The expression is validated against an
-        AST whitelist before any evaluation; raw ``eval()`` on unvalidated
-        strings is never performed.
+        A spec ``dash`` wrote carries the layer's *points*: Stata evaluated
+        the expression at registration with twoway's own generator
+        (twoway__function_gen, WP-29 P0.6), and the points are drawn as
+        they are -- the expression is never parsed or evaluated here.  A
+        points object that is not valid (``_dash_function_points``) draws
+        the layer empty, and the caller notes it.
 
-        Security: Only a restricted set of AST node types and function names
-        is permitted.  ``__builtins__`` is removed from the evaluation
-        namespace to prevent access to Python built-ins.
+        A spec without points (written by hand) is drawn by a small
+        interpreter of Stata's grammar (``_stata_fn_parse``,
+        ``_stata_fn_eval``): ``x``, ``_pi``, numbers and Stata's missing
+        values, ``+ - * / ^`` with Stata's precedence (``^`` folds left to
+        right and a sign after it takes one operand; ``/`` binds tighter
+        than ``*``, ``-`` than ``+``), and the functions ``sin``, ``cos``,
+        ``tan``, ``exp``, ``log``, ``log10``, ``sqrt``, ``abs``, ``floor``
+        and ``ceil``.  A missing value propagates as in Stata.  Anything
+        else -- ``pi``, ``e``, ``**``, a leading ``+``, any other name --
+        draws the layer empty.  No text reaches ``eval`` or ``compile``.
+        The grid is twoway's: ``x = lo + dx*(i-1)``, ``dx = (hi-lo)/(n-1)``.
 
         Args:
             fig:      Bokeh Figure object.
-            expr:     Mathematical expression string using variable ``x`` and
-                      the safe function names listed below.
-            x_range:  ``(x_lo, x_hi)`` tuple defining the evaluation domain.
-            n_points: Number of grid points.  Stata's default is 300.
+            expr:     The expression as the user typed it (the legend's
+                      text, and the fallback's input).
+            x_range:  ``(x_lo, x_hi)`` for the fallback's grid.
+            n_points: The fallback's number of grid points (twoway's 300).
             options:  Translated plot-level options dict.
             color_idx: The layer's place in the graph, which picks its
                       colour from the scheme's p1..p15 cycle as every other
@@ -12461,171 +14895,56 @@ class GlyphMapper:
                       a function drawn second is p2's #90353B, third p3's
                       #55752F.  This mapper used to take p1 whatever its
                       place (WP-23; test_help_claims_8.py).
-
-        Permitted names in expressions:
-            Variables: ``x``, ``pi``, ``e``
-            Functions: ``sin``, ``cos``, ``tan``, ``exp``, ``log``,
-                       ``log10``, ``sqrt``, ``abs``, ``floor``, ``ceil``
+            points:   The stored points object
+                      ``{"x0": .., "dx": .., "y": [..]}``, or None.
 
         Returns:
-            List with the single line GlyphRenderer, or an empty renderer
-            if validation or evaluation fails.
+            List with the single line GlyphRenderer; its source is empty
+            when the points or the expression cannot be drawn.
         """
-        import ast as _ast
-
-        _SAFE_NAMES: frozenset = frozenset({"x", "pi", "e"})
-        _SAFE_FUNCS: frozenset = frozenset({
-            "sin", "cos", "tan", "exp", "log", "log10",
-            "sqrt", "abs", "floor", "ceil",
-        })
-
-        def _validate_expr_node(node: _ast.AST) -> None:
-            """Recursively validate that *node* contains only safe AST constructs."""
-            if isinstance(node, _ast.Expression):
-                _validate_expr_node(node.body)
-            elif isinstance(node, _ast.Constant):
-                # Only REAL numeric literals.  The docstring promises "numeric
-                # literals are always safe", and _floats_only -- the coercion
-                # that turns 9^9^9^9 into inf instead of an exact bignum -- acts
-                # on int and float alone.  So anything else here reaches eval():
-                # a str/bytes constant is a resource vector (`'%50000000d' % 1`
-                # allocates 50 MB, `'a'*n` a long string), and a power tower of
-                # bool constants -- `(True+True)**(True+True+True)**...` -- is
-                # computed EXACTLY, because _floats_only deliberately skips bool,
-                # holding the GIL past 15 s (measured) the same way the int tower
-                # used to.  Reject bool, str, bytes, complex, None and Ellipsis;
-                # accept int and float, which _floats_only then makes float.
-                if isinstance(node.value, bool) or not isinstance(
-                        node.value, (int, float)):
-                    raise ValueError(
-                        "Only real numeric literals are allowed in function "
-                        f"expressions, not {type(node.value).__name__}."
-                    )
-            elif isinstance(node, _ast.Name):
-                if node.id not in _SAFE_NAMES:
-                    raise ValueError(
-                        f"Unsafe name in function expression: {node.id!r}. "
-                        f"Allowed names: {sorted(_SAFE_NAMES)}"
-                    )
-            elif isinstance(node, (_ast.BinOp, _ast.UnaryOp)):
-                # iter_child_nodes on BinOp yields (left, op, right) where op
-                # is an operator node (Add, Sub, Mult, etc.).  Operator nodes
-                # carry no dangerous payload; skip them explicitly so the
-                # else-branch does not reject them.
-                _OP_NODES = (
-                    _ast.Add, _ast.Sub, _ast.Mult, _ast.Div, _ast.FloorDiv,
-                    _ast.Mod, _ast.Pow, _ast.UAdd, _ast.USub, _ast.BitXor,
-                    _ast.BitOr, _ast.BitAnd,
-                )
-                for child in _ast.iter_child_nodes(node):
-                    if isinstance(child, _OP_NODES):
-                        continue  # safe: pure operator, no state
-                    _validate_expr_node(child)
-            elif isinstance(node, _ast.Call):
-                if (
-                    not isinstance(node.func, _ast.Name)
-                    or node.func.id not in _SAFE_FUNCS
-                ):
-                    raise ValueError(
-                        f"Disallowed function call in expression. "
-                        f"Allowed functions: {sorted(_SAFE_FUNCS)}"
-                    )
-                for arg in node.args:
-                    _validate_expr_node(arg)
-                if node.keywords:
-                    raise ValueError("Keyword arguments are not allowed in function expressions.")
-            else:
-                raise ValueError(
-                    f"Disallowed AST node type in expression: {type(node).__name__}"
-                )
-
+        text = str(expr)
         empty_source = ColumnDataSource({"x_fn": [], "y_fn": []})
 
-        expr = _stata_expr_to_python(expr)
-
-        if len(expr) > _MAX_EXPR_CHARS:
-            warnings.warn(
-                f"dash: function expression is {len(expr)} characters, over "
-                f"the {_MAX_EXPR_CHARS} limit; the layer is drawn empty. "
-                f"Validating it is recursive, one frame per term, so a long "
-                f"expression exhausts the stack.",
-                UserWarning, stacklevel=2,
-            )
+        def _empty():
             return [fig.line(x="x_fn", y="y_fn", source=empty_source,
                              line_color=self.scheme.default_color(color_idx, "line"),
                              line_width=self.scheme.plot_line_width(color_idx, "lineplot"))]
 
-        try:
-            tree = _ast.parse(expr, mode="eval")
-            _validate_expr_node(tree)
-            tree = _floats_only(tree)
-            code = compile(tree, "<function>", "eval")
-        # RecursionError is neither a SyntaxError nor a ValueError, so a deep
-        # expression escaped this guard and took the whole dashboard with it.
-        except (SyntaxError, ValueError, RecursionError, MemoryError):
-            return [fig.line(x="x_fn", y="y_fn", source=empty_source,
-                             line_color=self.scheme.default_color(color_idx, "line"),
-                             line_width=self.scheme.plot_line_width(color_idx, "lineplot"))]
-
-        x_lo, x_hi = float(x_range[0]), float(x_range[1])
-        x_arr = np.linspace(x_lo, x_hi, int(n_points))
-
-        ns: dict = {
-            "x":      x_arr,
-            "pi":     math.pi,
-            "e":      math.e,
-            "sin":    np.sin,
-            "cos":    np.cos,
-            "tan":    np.tan,
-            "exp":    np.exp,
-            "log":    np.log,
-            "log10":  np.log10,
-            "sqrt":   np.sqrt,
-            "abs":    np.abs,
-            "floor":  np.floor,
-            "ceil":   np.ceil,
-        }
-
-        try:
-            # __builtins__ blocked: prevents access to Python built-ins from
-            # the evaluated code.  The AST whitelist ensures no harmful nodes
-            # reached compile(); this is defence-in-depth.
-            #
-            # With numpy's floating-point warnings off.  Outside a
-            # function's domain -- the square root of a negative number, the
-            # log of 0 -- numpy warns, and a warning raised inside this
-            # eval() looked __import__ up in the empty builtins: the
-            # KeyError failed the whole layer, so `function y = sqrt(x),
-            # range(-1 1)' drew nothing where twoway draws the curve from 0
-            # to 1, and was reported empty (measured 24sep2026;
-            # test_immediate_dashboards.py).
-            with np.errstate(all="ignore"):
-                y_arr = eval(code, {"__builtins__": {}}, ns)  # noqa: S307 (intentional safe eval)
-                y_arr = np.asarray(y_arr, dtype=float)
-            # Broadcast scalar results (e.g. "pi", "e", "3.14") to match x_arr length
+        if points is not None:
+            got = _dash_function_points(points)
+            if got is None:
+                return _empty()
+            x_arr, y_arr = got
+        else:
+            if len(text) > _MAX_EXPR_CHARS:
+                warnings.warn(
+                    f"dash: function expression is {len(text)} characters, "
+                    f"over the {_MAX_EXPR_CHARS} limit; the layer is drawn "
+                    f"empty.",
+                    UserWarning, stacklevel=2,
+                )
+                return _empty()
+            try:
+                tree = _stata_fn_parse(text)
+            except ValueError:
+                return _empty()
+            x_lo, x_hi = float(x_range[0]), float(x_range[1])
+            n = int(n_points)
+            dx = (x_hi - x_lo) / (n - 1)
+            x_arr = x_lo + dx * np.arange(n, dtype=float)
+            try:
+                y_arr = np.asarray(_stata_fn_eval(tree, x_arr), dtype=float)
+            except (ValueError, MemoryError, FloatingPointError):
+                return _empty()
+            # Broadcast a scalar result to the grid.
             if y_arr.ndim == 0:
                 y_arr = np.full(len(x_arr), float(y_arr))
-        except (ZeroDivisionError, OverflowError):
-            # Python's own float arithmetic raises where Stata's gives a
-            # missing value: `function y = 1/0' and `y = 10^400' are
-            # missing everywhere, and twoway draws them as nothing, in
-            # silence.
-            y_arr = np.full(len(x_arr), np.nan)
-        except Exception:
-            return [fig.line(x="x_fn", y="y_fn", source=empty_source,
-                             line_color=self.scheme.default_color(color_idx, "line"),
-                             line_width=self.scheme.plot_line_width(color_idx, "lineplot"))]
-
-        # A value Stata cannot hold is missing there, and twoway draws it
-        # as a gap: numpy's inf and nan -- x/0, exp(1000*x), log(0) -- are
-        # drawn as the same gaps, never as numbers.
-        y_arr = np.where(np.isfinite(y_arr), y_arr, np.nan)
 
         fn_source = ColumnDataSource({"x_fn": x_arr, "y_fn": y_arr})
         r = fig.line(x="x_fn", y="y_fn", source=fn_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
-                     legend_label=expr[:40])
+                     legend_label=text[:40])
         self._apply_line_opts(r, options)
         return [r]
 
@@ -12967,32 +15286,42 @@ def _fp_report_unsupported(options: dict, layer: str) -> None:
             )
 
 
-def _resolve_level(options: dict, default: float = _DEFAULT_LEVEL) -> float:
+def _resolve_level(options: dict, default: float = _DEFAULT_LEVEL,
+                   ptype: str = "") -> float:
     """Return the confidence level for a CI layer.
 
     Args:
         options: Translated plot-level options; ``level()`` wins when present.
         default: The session default, from ``c(level)``.
+        ptype:   The plot type.  On ``lpolyci`` the valid range is twoway's,
+                 10 to 99.99 inclusive (WP-29 P0.9; dash.ado refuses the
+                 rest, so only a hand-written spec gets here); elsewhere it
+                 is strictly inside (0, 100).  The band and the legend key
+                 read the level through this one resolver.
 
     Returns:
-        A level strictly inside (0, 100).
+        The level; a value out of range or not a number gives one note
+        (``_dash_warn_once``, per option, type and value) and *default*.
     """
     raw = options.get("level", None)
     if raw is None or str(raw).strip() == "":
         return float(default)
+    lp = (str(ptype) == "lpolyci")
     try:
         val = float(str(raw).strip())
+        ok = math.isfinite(val) and ((10.0 <= val <= 99.99) if lp
+                                     else (0.0 < val < 100.0))
     except (TypeError, ValueError):
-        warnings.warn(
-            f"dash: level({raw}) is not a number; using {default}.",
-            UserWarning, stacklevel=3,
-        )
+        _dash_warn_once(("level", str(ptype), str(raw)),
+                        f"dash: level({raw}) is not a number; using "
+                        f"{default}.")
         return float(default)
-    if not (0.0 < val < 100.0):
-        warnings.warn(
-            f"dash: level({raw}) must be between 0 and 100; using {default}.",
-            UserWarning, stacklevel=3,
-        )
+    if not ok:
+        bounds = ("between 10 and 99.99 inclusive" if lp
+                  else "between 0 and 100")
+        _dash_warn_once(("level", str(ptype), str(raw)),
+                        f"dash: level({raw}) must be {bounds}; using "
+                        f"{default}.")
         return float(default)
     return val
 
@@ -13000,7 +15329,8 @@ def _resolve_level(options: dict, default: float = _DEFAULT_LEVEL) -> float:
 def _resolve_seed(options: dict, default: int = 42) -> int:
     """Return the RNG seed for a resampling layer.
 
-    The seed option seeds jitter and, here, the bootstrap confidence bands,
+    The seed option seeds jitter and, here, qfitci's bootstrap fallback band
+    (lpolyci's band is analytic since WP-29 P0.9),
     so a user who needs a different resample draw can ask for one instead of
     always getting seed 42. Stata spells it ``jitterseed()`` and dash also
     accepts ``jseed()``; :func:`_jitter_seed` reads both.
@@ -13220,6 +15550,320 @@ _KERNELS: dict = {
                         (4.0 / 3.0) - 8.0 * z * z + 8.0 * np.abs(z) ** 3,
                         (8.0 / 3.0) * (1.0 - np.abs(z)) ** 3)),
 }
+
+
+def _lpoly_rot_constant(kernel: str, pe: int) -> float:
+    """Stata's kernel constant C_{0,pe}(K) for lpoly's rule of thumb.
+
+    Fan and Gijbels' constant, computed as lpoly computes it: by trapezoid
+    quadrature on the grid ``_LPOLY_ROT_GRID`` gives the kernel (half-width
+    and point count), with the kernel's support STRICT -- ``|z| < support``
+    (``_KERNELS['rectangle']`` is 0.5 at |z| = 1, and counting those two
+    points moves C by -1.2687% at p=1 and -1.3620% at p=3, off Stata's
+    r(bwidth)).  With the moments ``mu_j`` of the kernel, ``S = [mu_{i+j}]``
+    and ``e = S^-1 e1``, the equivalent kernel is ``K* = (sum e_j z^j) K``
+    and ``C = [((pe+1)!)^2 int K*^2 / (2(pe+1) (int z^(pe+1) K*)^2)]
+    ^(1/(2pe+3))``.  Every value of ``_LPOLY_ROT_CONSTANTS`` is this
+    function's output; measured against the research prototype to 2.2e-16
+    (section 11 Evidence).  An unknown kernel uses epanechnikov's grid and
+    function.
+    """
+    L, m = _LPOLY_ROT_GRID.get(kernel, _LPOLY_ROT_GRID["epanechnikov"])
+    support, kfn = _KERNELS.get(kernel, _KERNELS["epanechnikov"])
+    pe = int(pe)
+    z = np.linspace(-L, L, m)
+    hq = z[1] - z[0]
+    wq = np.full(m, hq)
+    wq[0] = wq[-1] = hq / 2.0
+    f = np.where(np.abs(z) < support, kfn(z), 0.0)
+    mu = [float(np.sum(wq * z ** j * f)) for j in range(2 * pe + 3)]
+    S = np.array([[mu[i + j] for j in range(pe + 1)] for i in range(pe + 1)])
+    e1 = np.zeros(pe + 1)
+    e1[0] = 1.0
+    e = np.linalg.solve(S, e1)
+    ks = sum(e[j] * z ** j for j in range(pe + 1)) * f
+    num = math.factorial(pe + 1) ** 2 * float(np.sum(wq * ks * ks))
+    den = 2.0 * (pe + 1) * float(np.sum(wq * z ** (pe + 1) * ks)) ** 2
+    return (num / den) ** (1.0 / (2 * pe + 3))
+
+
+def _stata_invsym_keep(G, order=(), rel=1e-9, floor=1e-19) -> list:
+    """The columns Mata's ``invsym(G)`` keeps, decided in exact arithmetic.
+
+    invsym sweeps the column with the largest CURRENT pivot first (ties to
+    the lowest index; measured in Mata 01oct2026: invsym((1,1\\1,1+9.9e-10))
+    keeps column 2, (1e6,1e3\\1e3,1+9.9e-10) keeps column 1, (1,1\\1,1)
+    keeps column 1) and drops a column whose pivot is below ``rel`` (1e-9)
+    of that column's own original diagonal, or below the absolute ``floor``
+    1e-19 (measured: [[1,1],[1,1+e]] keeps both columns at e=1e-9 and one
+    at 9.9e-10, at any scale; invsym(1e-19) is kept and the next double
+    below dropped; diag(1e10, 5e-20) drops column 2).  ``order`` names
+    columns to sweep first, in that order (the local fit sweeps its
+    intercept first).  G's entries are taken as the doubles Stata holds;
+    the tolerances are the exact values of the doubles given.  Returns the
+    kept column indices, sorted.  No assert, no module-level Fraction:
+    the served app copies this function by source.
+    """
+    from fractions import Fraction
+    S = [[Fraction(float(v)) for v in row] for row in G]
+    n = len(S)
+    d0 = [S[i][i] for i in range(n)]
+    relF, floorF = Fraction(float(rel)), Fraction(float(floor))
+    remaining = list(range(n))
+    kept = []
+
+    def sweep(k):
+        piv = S[k][k]
+        remaining.remove(k)
+        if piv > 0 and piv >= relF * d0[k] and piv >= floorF:
+            kept.append(k)
+            for i in remaining:
+                if S[i][k] == 0:
+                    continue
+                q = S[i][k] / piv
+                for j in remaining:
+                    S[i][j] -= q * S[k][j]
+
+    for k in order:
+        if isinstance(k, int) and 0 <= k < n and k in remaining:
+            sweep(k)
+    while remaining:
+        sweep(max(remaining, key=lambda c: (S[c][c], -c)))
+    return sorted(kept)
+
+
+def _lpoly_kept_columns(G) -> list:
+    """The columns of a local lpoly window's Gram that Stata's fit keeps.
+
+    Part C (WP-29 P0.7): lpoly's local fit inverts its window's raw design
+    with invsym, intercept first, so a window whose powers of (x - x0) are
+    nearly collinear keeps the intercept and the powers invsym keeps.  A
+    float sweep (intercept first, then the largest pivot) that finds every
+    pivot at least 1e-6 of its diagonal and 1e-16 keeps every column, and
+    the caller keeps np.polyfit there (933 of 1191 windows on the truth
+    sets; the existing pins do not move).  Otherwise the kept set is
+    ``_stata_invsym_keep(G, order=(0,))``: on foreign==1 biweight degree(2)
+    at bw 287.78 that is {1, d^2} where a two-point window has no d, and
+    the curve equals Stata's to 1.8e-12 where dash was 8.857 mpg off.
+    """
+    A = np.array(G, dtype=float)
+    n = A.shape[0]
+    d0 = np.diag(A).copy()
+    remaining = list(range(n))
+    k = 0
+    with np.errstate(all="ignore"):
+        while remaining:
+            piv = A[k, k]
+            if not (piv >= 1e-6 * d0[k] and piv >= 1e-16):
+                return _stata_invsym_keep(G, order=(0,))
+            remaining.remove(k)
+            for i in remaining:
+                A[i, :] -= A[i, k] / piv * A[k, :]
+            if remaining:
+                k = max(remaining, key=lambda c: (A[c, c], -c))
+    return list(range(n))
+
+
+def _lpoly_rot_float(x, y, w, pe, l, u, C) -> float:
+    """lpoly's rule of thumb in Stata's own float64 arithmetic (SD-2).
+
+    Where the global fit of degree pe+3 is exact (y constant, an exact
+    polynomial in x, or no more points than coefficients), Stata's h is
+    the round-off of its double arithmetic, not a property of the data.
+    This emulates it: raw powers, exactly rounded sums of the Gram,
+    invsym's sweep in float (largest current pivot, ties to the lowest
+    index, a column dropped below 1e-9 of its diagonal or 1e-19), the
+    coefficients, the residual variance and the integral of the squared
+    (pe+1)th derivative over [l, u] in raw x.  NaN when the integral is not
+    positive or h is not finite.  It reproduces Stata's DRAWN outcome on
+    the measured exact-fit rows except D1/D2 (section 11 Evidence).
+    """
+    d = int(pe) + 3
+    X = np.column_stack([x ** k for k in range(d + 1)])
+    G = np.array([[math.fsum(w * X[:, i] * X[:, j]) for j in range(d + 1)]
+                  for i in range(d + 1)])
+    g = np.array([math.fsum(w * X[:, i] * y) for i in range(d + 1)])
+    A = G.copy()
+    d0 = np.diag(G).copy()
+    remaining = list(range(d + 1))
+    while remaining:
+        k = max(remaining, key=lambda c: (A[c, c], -c))
+        piv = A[k, k]
+        remaining.remove(k)
+        if not (piv > 0 and piv >= 1e-9 * d0[k] and piv >= 1e-19):
+            A[k, :] = 0.0
+            A[:, k] = 0.0
+            continue
+        col = A[:, k].copy()
+        row = A[k, :].copy()
+        A -= np.outer(col, row) / piv
+        A[k, :] = row / piv
+        A[:, k] = col / piv
+        A[k, k] = -1.0 / piv
+    b = (-A) @ g
+    r = y - X @ b
+    W = float(np.sum(w))
+    s2 = float(np.sum(w * r * r)) / W
+    P = np.polynomial.polynomial
+    Dc = P.polyder(b, int(pe) + 1)
+    Pi = P.polyint(P.polymul(Dc, Dc))
+    I = float(P.polyval(u, Pi) - P.polyval(l, Pi))
+    if not I > 0:
+        return float("nan")
+    h = C * (s2 * (u - l) / (W * I)) ** (1.0 / (2 * int(pe) + 3))
+    return float(h) if (np.isfinite(h) and h > 0) else float("nan")
+
+
+def _lpoly_rot_detail(x, y, w=None, degree=0, kernel="epanechnikov") -> dict:
+    """lpoly's default bandwidth, r(bwidth), as Stata computes it.
+
+    Returns ``{"h": float, "route": "exact"|"float"|"missing", "kept":
+    list}``.  ``h`` is NaN (route "missing") exactly where Stata's
+    r(bwidth) is missing or 0, and the caller then draws a line at 0, as
+    twoway does.  The rule (lpoly.ado:305-311 and its compiled Mata,
+    reverse-engineered and verified on the fixture's 785 rows):
+    ``h = C(K, pe) * [s2 (u - l) / (W int_l^u m^(pe+1)(x)^2 dx)]
+    ^(1/(2pe+3))`` with pe the degree if odd, else the degree + 1; ``m``
+    the weighted fit of degree pe+3 in RAW powers of x with invsym's
+    columns (``_stata_invsym_keep``); ``s2 = sum w r^2 / W``; ``W = sum w``;
+    ``l, u`` 5% in from each end of x's range; ``C`` from
+    ``_LPOLY_ROT_CONSTANTS``.  NaN where quadcross would overflow
+    (``sum w|x|^k`` for k <= 2(pe+3) or ``sum w|x|^k|y|`` for k <= pe+3
+    beyond DBL_MAX, in logs), where x is constant, where the derivative
+    squared underflows, or where anything is not finite.  An exact global
+    fit (``s2 <= 1e-24 var_w(y)``) takes ``_lpoly_rot_float``.  Never
+    raises, never warns.
+    """
+    nan = float("nan")
+    out = {"h": nan, "route": "missing", "kept": []}
+    try:
+        with np.errstate(all="ignore"):
+            x = np.asarray(x, dtype=float).ravel()
+            y = np.asarray(y, dtype=float).ravel()
+            n = x.size
+            w = (np.ones(n) if w is None
+                 else np.asarray(w, dtype=float).ravel())
+            degree = int(degree)
+            pe = degree if degree % 2 else degree + 1
+            if (n < 2 or y.size != n or w.size != n or degree < 0
+                    or pe > 7):
+                return out
+            if not (np.isfinite(x).all() and np.isfinite(y).all()
+                    and np.isfinite(w).all()):
+                return out
+            d = pe + 3
+            mn = float(x.min())
+            mx = float(x.max())
+            if not mx > mn:
+                return out
+            rng = mx - mn
+            l = mn + 0.05 * rng
+            u = mx - 0.05 * rng
+            # Stata's quadcross overflow, in log10 (review A3).
+            lmax = math.log10(np.finfo(float).max)
+
+            def _lse(v):
+                if v.size == 0:
+                    return -np.inf
+                top = float(np.max(v))
+                return top + math.log10(float(np.sum(10.0 ** (v - top))))
+
+            pw = w > 0
+            lw = np.log10(w[pw])
+            ax = np.abs(x[pw])
+            ay = np.abs(y[pw])
+            nzx = ax > 0
+            nzy = ay > 0
+            both = nzx & nzy
+            lx = np.log10(np.where(nzx, ax, 1.0))
+            ly = np.log10(np.where(nzy, ay, 1.0))
+            if _lse(lw) > lmax:
+                return out
+            for k in range(1, 2 * d + 1):
+                if _lse(lw[nzx] + k * lx[nzx]) > lmax:
+                    return out
+            for k in range(0, d + 1):
+                sel = nzy if k == 0 else both
+                if _lse(lw[sel] + k * lx[sel] + ly[sel]) > lmax:
+                    return out
+            W = float(np.sum(w))
+            ybar = float(np.sum(w * y)) / W
+            vy = float(np.sum(w * (y - ybar) ** 2)) / W
+            ycon = bool(y.max() == y.min())
+            if not np.isfinite(vy) or (vy < np.finfo(float).tiny
+                                       and not ycon):
+                return out
+            from fractions import Fraction
+            c = (mn + mx) / 2.0
+            s = (mx - mn) / 2.0
+            z = (x - c) / s
+            V = np.vander(z, d + 1, increasing=True)
+            Gz = (V * w[:, None]).T @ V
+            gz = (V * w[:, None]).T @ y
+            cF = Fraction(c)
+            sF = Fraction(s)
+            # raw x^k = sum_j comb(k, j) c^(k-j) s^j z^j: X_raw = V T, so
+            # the raw Gram quadcross builds is T' Gz T.
+            T = [[Fraction(math.comb(k, j)) * cF ** (k - j) * sF ** j
+                  if j <= k else Fraction(0) for k in range(d + 1)]
+                 for j in range(d + 1)]
+            GzF = [[Fraction(float(v)) for v in row] for row in Gz]
+            gzF = [Fraction(float(v)) for v in gz]
+            GT = [[sum(GzF[i][m] * T[m][k] for m in range(d + 1))
+                   for k in range(d + 1)] for i in range(d + 1)]
+            G = [[sum(T[m][i] * GT[m][k] for m in range(d + 1))
+                  for k in range(d + 1)] for i in range(d + 1)]
+            g = [sum(T[m][i] * gzF[m] for m in range(d + 1))
+                 for i in range(d + 1)]
+            K = _stata_invsym_keep(G)
+            out["kept"] = K
+            if not K:
+                return out
+            # Gauss-Jordan on Fractions, partial pivoting by |value|.
+            M = [[G[i][j] for j in K] + [g[i]] for i in K]
+            q = len(K)
+            for col in range(q):
+                p = max(range(col, q), key=lambda r: abs(M[r][col]))
+                if M[p][col] == 0:
+                    return out
+                M[col], M[p] = M[p], M[col]
+                pv = M[col][col]
+                M[col] = [v / pv for v in M[col]]
+                for r in range(q):
+                    if r != col and M[r][col] != 0:
+                        fct = M[r][col]
+                        M[r] = [a - fct * b for a, b in zip(M[r], M[col])]
+            bK = [M[i][q] for i in range(q)]
+            a = [sum(T[j][K[t]] * bK[t] for t in range(q))
+                 for j in range(d + 1)]
+            af = np.array([float(v) for v in a])
+            r = y - V @ af
+            s2 = float(np.sum(w * r * r)) / W
+            P = np.polynomial.polynomial
+            D = P.polyder(af, pe + 1) / s ** (pe + 1)
+            Pi = P.polyint(P.polymul(D, D))
+            zl = (l - c) / s
+            zu = (u - c) / s
+            I = s * float(P.polyval(zu, Pi) - P.polyval(zl, Pi))
+            dmax2 = float(np.max(P.polyval(np.linspace(zl, zu, 201), D) ** 2))
+            C = _LPOLY_ROT_CONSTANTS.get((kernel, pe))
+            if C is None:
+                C = _lpoly_rot_constant(kernel, pe)
+            if ycon or s2 <= 1e-24 * vy:
+                h = _lpoly_rot_float(x, y, w, pe, l, u, C)
+                out["route"] = "float"
+                out["h"] = h if (np.isfinite(h) and h > 0) else nan
+                return out
+            if (not (np.isfinite(s2) and np.isfinite(I))
+                    or not dmax2 >= np.finfo(float).tiny or not I > 0):
+                return out
+            h = C * (s2 * (u - l) / (W * I)) ** (1.0 / (2 * pe + 3))
+            if np.isfinite(h) and h > 0:
+                out["h"] = float(h)
+                out["route"] = "exact"
+            return out
+    except (ArithmeticError, ValueError, np.linalg.LinAlgError):
+        return {"h": nan, "route": "missing", "kept": out.get("kept", [])}
 
 # Named in the JavaScript too, so the two implementations cannot drift apart
 # without the test that compares them noticing.  See DASH_KDE_RULE in _FILTER_JS.
@@ -13493,6 +16137,146 @@ def _dash_lpoly_weights(w: "np.ndarray | None", wtype: "str | None"
         return ww
     return ww * (len(ww) / float(ww.sum()))
 
+#: lpolyci's pinch rule (WP-29 P0.9, D4): a pilot window whose residual
+#: degrees of freedom are at most this fraction of its weight sum has none.
+_LPOLY_DF_TOL = 1e-10
+
+
+def _lpoly_kernel_weights(x, x0, h, kernel) -> "np.ndarray":
+    """lpoly's kernel weights K((x - x0)/h) at one grid point.
+
+    The kernel's support is strict (|z| < support; the gaussian's is
+    infinite).  ``_compute_lpoly_fit`` and ``_lpoly_se`` share it, so the
+    smooth and its standard error weigh a window identically.
+    """
+    support, kfn = _KERNELS.get(kernel, _KERNELS["epanechnikov"])
+    z = (np.asarray(x, dtype=float) - x0) / h
+    if np.isfinite(support):
+        kw = np.zeros_like(z)
+        inside = np.abs(z) < support
+        if inside.any():
+            kw[inside] = kfn(z[inside])
+        return kw
+    return kfn(z)
+
+
+def _lpoly_local_wls(x, y, kw, x0, h, degree):
+    """lpoly's local weighted least squares at x0, on the columns Stata keeps.
+
+    Returns ``(pos, Z, Ainv, beta)``: the rows with positive weight, the
+    design in powers of (x - x0)/h restricted to ``_lpoly_kept_columns`` of
+    the raw window's Gram (Part C; the intercept, the residuals and the
+    trace are invariant to column scaling), ``(Z'KZ)^-1`` and the
+    coefficients.  None when no row has weight, the intercept is not kept,
+    or anything is singular or not finite.
+    """
+    try:
+        with np.errstate(all="ignore"):
+            pos = kw > 0
+            if int(pos.sum()) < 1:
+                return None
+            xp = x[pos]
+            kp = kw[pos]
+            dd = xp - x0
+            X = np.vander(dd, degree + 1, increasing=True)
+            G = (X * kp[:, None]).T @ X
+            if not np.isfinite(G).all():
+                return None
+            K = _lpoly_kept_columns(G)
+            if 0 not in K:
+                return None
+            Z = np.vander(dd / h, degree + 1, increasing=True)[:, K]
+            A = (Z * kp[:, None]).T @ Z
+            Ainv = np.linalg.inv(A)
+            beta = Ainv @ (Z.T @ (kp * y[pos]))
+            if not (np.isfinite(Ainv).all() and np.isfinite(beta).all()):
+                return None
+            return pos, Z, Ainv, beta
+    except (np.linalg.LinAlgError, ValueError):
+        return None
+
+
+def _lpoly_se(x, y, x_grid, h, hp, degree, kernel, w=None,
+              var=None) -> "np.ndarray":
+    """lpoly's standard error of the smooth at each grid point.
+
+    [R] lpoly eq. 4, verified to round-off against ``lpoly, ci se()``
+    (test/fixtures/lpolyci_truth.json): ``se^2 = [(X'WX)^-1 X'W2X
+    (X'WX)^-1]_00 * sigma^2(x0)`` with W = diag(K_h w), W2 = diag(K_h^2 w),
+    and sigma^2 from a local fit of degree p+2 at the pilot bandwidth *hp*:
+    ``sum K_hp w r^2 / (sum K_hp w - tr[(Z'K_hp wZ)^-1 Z' diag(K_hp^2 w) Z])``;
+    ``var`` replaces sigma^2.  NaN where fewer than two observations have a
+    positive main or pilot weight (Stata's se is missing there, under
+    var() too).  A pilot window with no residual degrees of freedom
+    (denominator at most ``_LPOLY_DF_TOL`` of its weight sum) gives se 0:
+    the band pinches, where Stata's value is round-off, often missing
+    (documented divergence D4).  Never raises; never a non-finite se but
+    NaN.
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    x_grid = np.asarray(x_grid, dtype=float)
+    out = np.full(len(x_grid), np.nan)
+    try:
+        h = float(h)
+        hp = float(hp)
+    except (TypeError, ValueError):
+        return out
+    if not (np.isfinite(h) and h > 0 and np.isfinite(hp) and hp > 0):
+        return out
+    ow = np.ones(len(x)) if w is None else np.asarray(w, dtype=float)
+    with np.errstate(all="ignore"):
+        for i, x0 in enumerate(x_grid):
+            # Stata's se is missing where the scaled distance squares past
+            # DBL_MAX (measured on auto at x0 = 2200, bwidth(500): pwidth()
+            # of 2.7e-151 and below give se missing, 2.8e-151 and above the
+            # se; this test trips from 1.97e-151, so a narrow window of
+            # pilot widths still differs).  An overflow, never a value.
+            dmax = float(np.max(np.abs(x - x0))) if len(x) else 0.0
+            zlim = math.sqrt(np.finfo(float).max)
+            if not (dmax / h <= zlim and dmax / hp <= zlim):
+                continue
+            kh = _lpoly_kernel_weights(x, x0, h, kernel)
+            kw = kh * ow
+            if int((kw > 0).sum()) < 2:
+                continue
+            kph = _lpoly_kernel_weights(x, x0, hp, kernel)
+            kpw = kph * ow
+            if int((kpw > 0).sum()) < 2:
+                continue
+            m = _lpoly_local_wls(x, y, kw, x0, h, degree)
+            if m is None:
+                continue
+            pos, Z, Ainv, _b = m
+            B = (Z * (kh[pos] * kw[pos])[:, None]).T @ Z
+            V00 = float((Ainv @ B @ Ainv)[0, 0])
+            if var is not None:
+                s2 = float(var)
+            else:
+                p = _lpoly_local_wls(x, y, kpw, x0, hp, degree + 2)
+                if p is None:
+                    continue
+                ppos, Zs, As, bs = p
+                r = y[ppos] - Zs @ bs
+                num = float(np.sum(kpw[ppos] * r * r))
+                Bs = (Zs * (kph[ppos] * kpw[ppos])[:, None]).T @ Zs
+                tot = float(np.sum(kpw[ppos]))
+                den = tot - float(np.trace(As @ Bs))
+                if not den > _LPOLY_DF_TOL * tot:
+                    out[i] = 0.0
+                    continue
+                s2 = max(num / den, 0.0)
+            se = math.sqrt(max(V00, 0.0) * s2) if np.isfinite(V00 * s2) else np.nan
+            out[i] = se if np.isfinite(se) else np.nan
+    return out
+
+
+def _dash_invnormal(p) -> float:
+    """Stata's invnormal(p): the standard normal quantile.  At .975 it is
+    1.959963984540054, as Stata's."""
+    from statistics import NormalDist
+    return NormalDist().inv_cdf(float(p))
+
 
 def _dash_wls(X: "np.ndarray", y: "np.ndarray",
               w: "np.ndarray | None" = None,
@@ -13747,40 +16531,6 @@ def _natural_cubic_spline(kx: "np.ndarray", ky: "np.ndarray",
     u = xg - x0
     return (m0 * t ** 3 / (6.0 * hh) + m1 * u ** 3 / (6.0 * hh)
             + (y0 / hh - m0 * hh / 6.0) * t + (y1 / hh - m1 * hh / 6.0) * u)
-
-
-def _stata_expr_to_python(expr: str) -> str:
-    """Rewrite Stata's arithmetic operators into their Python spellings.
-
-    Stata writes exponentiation as ``^``.  Python reads ``^`` as a bitwise
-    XOR, which is a legal operator node, so ``x^2`` passes the AST whitelist
-    unchanged and only fails at evaluation time with a TypeError on the float
-    array -- drawing an empty line instead of a parabola.
-
-    Only the operator is rewritten, and only outside string literals.  The
-    caller validates the REWRITTEN expression, so this adds nothing to what
-    the whitelist permits.
-
-    Args:
-        expr: A Stata expression, e.g. ``"x^2"`` or ``"2*x^3 - 1"``.
-
-    Returns:
-        The equivalent Python expression, e.g. ``"x**2"``.
-    """
-    out: list[str] = []
-    quote = ""
-    for ch in expr:
-        if quote:
-            out.append(ch)
-            if ch == quote:
-                quote = ""
-            continue
-        if ch in ("'", '"'):
-            quote = ch
-            out.append(ch)
-            continue
-        out.append("**" if ch == "^" else ch)
-    return "".join(out)
 
 
 _LITERAL_MARK = "\x01"
@@ -15967,12 +18717,12 @@ for (const vf of (view_filters || [])) {
     vf.filter.change.emit();
 }
 
-// A layer that draws from a copy its mapper built -- a line sorted by x, an
+// A layer that draws from a copy its mapper built -- a line in its join order, an
 // area, a bar, a spike, a range or paired-coordinate layer, a scatter
 // without its missing values, a layer's own marker labels -- holds its rows
 // in the order it draws them, each with its row identity.  The move keeps
 // the rows of that copy that survived every filter, in that order, so a
-// line stays sorted and an area stays a polygon along x.  These copies were
+// line and an area keep their join order (WP-29 P0.1).  These copies were
 // in no list this script wrote, so each of those layers stayed as it was
 // drawn while the scatter beside it followed the move (BUGS.md, measured
 // 24sep2026 under node).  `typeof' because an older caller passes no such
@@ -16102,8 +18852,12 @@ function dash_apply_kpis(data_obj, kpi_config, kpi_divs, ROW_ID) {
         // for those).  isNaN() dropped EVERY string, so count(make) read 0
         // from the first filter move on.
         const _cnt = (k.stat === 'count' || k.stat === 'dcount');
-        const vals = src_col.filter(v => v !== null && v !== undefined &&
+        const _vals0 = src_col.filter(v => v !== null && v !== undefined &&
             (typeof v === 'string' ? (_cnt && v !== '') : !isNaN(v)));
+        // WP-29 P0.20: a date in its Stata values, as summarize takes every
+        // statistic but count and dcount; a value with no Stata date is
+        // dropped (after the null test: Number(null) is 0).
+        const vals = k.unitkind ? _vals0.map(v => dash_stata_value_of(v, k.unitkind)).filter(v => v !== null) : _vals0;
 
         // Stata's answers on few rows: the count, distinct count and sum of
         // no rows are 0 and every other statistic is missing, and sd, var,
@@ -16173,9 +18927,8 @@ function dash_apply_kpis(data_obj, kpi_config, kpi_divs, ROW_ID) {
             // A missing statistic, as Stata displays one.
             text = '.';
         } else if (k.datekind) {
-            // Epoch milliseconds back to the Stata date, then its picture.
-            const sv = dash_stata_value_of(result, k.datekind);
-            text = sv === null ? '.' : dash_fmt_text(sv, k.fmt);
+            // Already a Stata date (WP-29 P0.20): written in its picture.
+            text = dash_fmt_text(result, k.fmt);
         } else {
             // Stata's display of the effective format (WP-28, GAPS2 E1):
             // the text _dash_format_kpi_value wrote as the page opened.
@@ -16341,33 +19094,58 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         const wcol = _pick(_ac_data[ac.wvar]);
         vals = []; wts = [];
         for (let i = 0; i < raw_col.length; i++) {
-            const v = raw_col[i], w = wcol[i];
+            let v = raw_col[i], w = wcol[i];
             if (v === null || v === undefined || isNaN(v)) continue;
-            if (w === null || w === undefined || isNaN(w) || !(w > 0)) continue;
+            if (w === null || w === undefined || isNaN(w)) continue;
+            // WP-29 P0.8: a date (and a date weight) in its Stata units,
+            // as the Python mapper reads it; a value with no Stata date is
+            // dropped with its row.  After the null tests: Number(null) is
+            // 0, a 1960 date.
+            if (ac.datekind) {
+                v = dash_stata_value_of(v, ac.datekind);
+                if (v === null) continue;
+            }
+            if (ac.wdatekind) {
+                w = dash_stata_value_of(w, ac.wdatekind);
+                if (w === null) continue;
+            }
+            if (!(w > 0)) continue;
             vals.push(v); wts.push(w);
         }
     } else {
         vals = raw_col.filter(v => v !== null && v !== undefined && !isNaN(v));
+        if (ac.datekind) {
+            vals = vals.map(v => dash_stata_value_of(v, ac.datekind))
+                       .filter(v => v !== null);
+        }
     }
 
     if (ac.type === 'histogram') {
         const edges = ac.bin_edges;
         const n_bins = edges.length - 1;
+        // WP-29 P0.8: a date is counted on the full unit grid (ac.bin bars
+        // from ac.start) and the kept run of bars from ac.bin_first is
+        // drawn; densities divide by the bar's width in units.  A config
+        // without these fields counts and draws bin_edges as before.
+        const uedges = ac.unit_edges || edges;
+        const first = ac.bin_first || 0;
+        const n_grid = ac.bin || n_bins;
         // Bar HEIGHTS must be rescaled for the surviving rows -- a density
         // histogram of a filtered subset still has to integrate to 1.  The
         // bin BOUNDARIES deliberately stay put: a grid that moves as you drag
         // a filter is far more confusing than one that does not, and with
         // start()/width() now explicit the grid is the user's choice.
-        const dash_scale = function (counts) {
+        const dash_scale = function (all_counts) {
             let total = 0;
-            for (const c of counts) total += c;
+            for (const c of all_counts) total += c;
+            const counts = all_counts.slice(first, first + n_bins);
             if (total <= 0) return counts;
             const mode = ac.ymode || 'density';
             if (mode === 'frequency') return counts;
             if (mode === 'fraction')  return counts.map(c => c / total);
             if (mode === 'percent')   return counts.map(c => 100 * c / total);
             return counts.map((c, i) => {
-                const w = edges[i + 1] - edges[i];
+                const w = uedges[i + 1] - uedges[i];
                 return c / (total * (w || 1));
             });
         };
@@ -16382,7 +19160,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             src.change.emit();
             continue;
         }
-        const counts = new Array(n_bins).fill(0);
+        const counts = new Array(n_grid).fill(0);
         // twoway__histogram_gen.ado:200-203, as the Python count
         // (GlyphMapper._histogram_counts, WP-28 C2): every value is bar
         // floor((v - start)/width), an index below 0 folded into bar 0
@@ -16401,7 +19179,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
                 const wv = wts ? wts[vi] : 1;
                 let b = Math.floor((v - ac.start) / ac.width);
                 if (b < 0) b = 0;
-                if (b > n_bins - 1) b = n_bins - 1;
+                if (b > n_grid - 1) b = n_grid - 1;
                 counts[b] += wv;
             }
         }
@@ -16481,7 +19259,9 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         }
         const kfn = dash_kernel(ac.kernel || 'epanechnikov');
         const xs = ac.x_grid;
-        const ys = xs.map(x => {
+        // WP-29 P0.8: evaluated at the unit grid, drawn at x_grid.
+        const xe = ac.x_eval || xs;
+        const ys = xe.map(x => {
             let s = 0;
             if (wv) {
                 for (let i = 0; i < n; i++) s += wv[i] * kfn((x - vals[i]) / h);
@@ -16492,6 +19272,81 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         });
         src.data = { x: xs, y: ys };
         src.change.emit();
+    }
+}
+// ---- Marks on the layers a saved page does not recompute (WP-29 P0.17) ----
+// A fit or smooth, a histogram's bins and a density's grid are computed
+// when the page is built.  A layer is marked while the filters that apply
+// to it (c.use) remove a row of its estimation sample: a row of its own
+// (c.members; every row when -1) whose variables are finite numbers and,
+// when weighted, whose weight is finite and -- under c.wrule "positive"
+// -- above zero: the rows GlyphMapper._layer_weights fits from.  Labels
+// arrive as JSON data and are drawn as canvas text; the status note is a
+// module constant.  Last, outside every loop above.
+if (typeof stale_configs_json !== "undefined") {
+    const _stl_cfgs = JSON.parse(stale_configs_json);
+    const _stl_text = (typeof stale_text_json !== "undefined")
+        ? JSON.parse(stale_text_json) : {};
+    const _stl_rends = (typeof stale_renderers !== "undefined" && stale_renderers) ? stale_renderers : [];
+    const _stl_titles = (typeof stale_titles !== "undefined" && stale_titles) ? stale_titles : [];
+    const _stl_items = (typeof stale_legend_items !== "undefined" && stale_legend_items) ? stale_legend_items : [];
+    const _stl_members = (typeof stale_members !== "undefined" && stale_members) ? stale_members : [];
+    const _stl_fin = (v) => typeof v === "number" && Number.isFinite(v);
+    const _stl_col = (name) =>
+        Object.prototype.hasOwnProperty.call(orig, name) ? orig[name] : null;
+    const _stl_ids = orig[ROW_ID] || null;
+    const _stl_sets = {};
+    const _stl_title_on = _stl_titles.map(() => false);
+    const _stl_item_text = _stl_items.map(() => null);
+    const _stl_item_suffix = _stl_items.map(() => null);
+    let _stl_any = false;
+    for (let ci = 0; ci < _stl_cfgs.length; ci++) {
+        const c = _stl_cfgs[ci];
+        const keep = dash_mask_for(c.use);
+        let mset = null;
+        if (c.members >= 0) {
+            if (!(c.members in _stl_sets)) {
+                const ms = _stl_members[c.members];
+                _stl_sets[c.members] = new Set((ms && ms.data && ms.data.id) || []);
+            }
+            mset = _stl_sets[c.members];
+        }
+        const vcols = (c.vars || []).map(_stl_col);
+        const wcol = c.wvar ? _stl_col(c.wvar) : null;
+        let stale = false;
+        for (let i = 0; i < n_rows && !stale; i++) {
+            if (keep[i]) continue;
+            if (mset !== null && !(_stl_ids && mset.has(_stl_ids[i]))) continue;
+            let used = true;
+            for (const col of vcols) {
+                if (col !== null && !_stl_fin(col[i])) { used = false; break; }
+            }
+            if (used && wcol !== null) {
+                const w = wcol[i];
+                used = _stl_fin(w) && (c.wrule === "any" || w > 0);
+            }
+            stale = used;
+        }
+        for (const r of (_stl_rends[ci] || [])) { r.muted = stale; }
+        if (stale) {
+            _stl_any = true;
+            if (c.title >= 0 && c.title < _stl_title_on.length) _stl_title_on[c.title] = true;
+        }
+        for (const [k, text] of (c.items || [])) {
+            if (!(k >= 0 && k < _stl_items.length)) continue;
+            _stl_item_text[k] = text;
+            if (stale) _stl_item_suffix[k] = c.suffix || "";
+        }
+    }
+    for (let k = 0; k < _stl_items.length; k++) {
+        if (_stl_item_text[k] === null) continue;
+        _stl_items[k].label = {value: _stl_item_suffix[k] === null
+            ? _stl_item_text[k] : _stl_item_text[k] + _stl_item_suffix[k]};
+    }
+    for (let t = 0; t < _stl_titles.length; t++) _stl_titles[t].visible = _stl_title_on[t];
+    if (typeof stale_status !== "undefined" && stale_status) {
+        stale_status.visible = _stl_any;
+        stale_status.text = _stl_any ? String(_stl_text.status_html || "") : "";
     }
 }
 """).replace("__DASH_ROW_ID__", json.dumps(_ROW_ID_COLUMN))
@@ -17002,7 +19857,20 @@ _DASH_BY_SUPPORTED = {
     "cols": ("c", "co", "col", "cols"),
     "missing": ("miss", "missi", "missin", "missing"),
     "total": ("tot", "tota", "total"),
+    # twoway's rescale sub-options (bygraph_g.class:268-269: NORescale
+    # Rescale NOXRescale NOYRescale XRescale YRescale), every spelling from
+    # the minimum to the full name (WP-29 P0.2).
+    "rescale": ('r', 're', 'res', 'resc', 'resca', 'rescal', 'rescale'),
+    "norescale": ('nor', 'nore', 'nores', 'noresc', 'noresca', 'norescal', 'norescale'),
+    "xrescale": ('xr', 'xre', 'xres', 'xresc', 'xresca', 'xrescal', 'xrescale'),
+    "yrescale": ('yr', 'yre', 'yres', 'yresc', 'yresca', 'yrescal', 'yrescale'),
+    "noxrescale": ('noxr', 'noxre', 'noxres', 'noxresc', 'noxresca', 'noxrescal', 'noxrescale'),
+    "noyrescale": ('noyr', 'noyre', 'noyres', 'noyresc', 'noyresca', 'noyrescal', 'noyrescale'),
 }
+
+#: The keys of _DASH_BY_SUPPORTED that are rescale words, taken bare.
+_DASH_BY_RESCALE_KEYS = ("rescale", "norescale", "xrescale", "yrescale",
+                         "noxrescale", "noyrescale")
 
 
 def _dash_by_tokens(subopts):
@@ -17128,6 +19996,19 @@ def _dash_parse_by(by_raw, warn=True):
             by_total = True
         elif name in _DASH_BY_SUPPORTED["missing"] and "(" not in tok:
             by_missing = True
+        elif "(" not in tok and any(name in _DASH_BY_SUPPORTED[k]
+                                    for k in _DASH_BY_RESCALE_KEYS):
+            # yrescale, xrescale, rescale and their no forms: honoured by
+            # _dash_by_rescale (WP-29 P0.2), never named.
+            pass
+        elif name == "style" and arg.strip() in ("rescale", "combine"):
+            # style(rescale|combine): its separate scales are drawn
+            # (_dash_by_rescale); the rest of the style is not.
+            if warn:
+                warnings.warn(
+                    "dash: by() sub-option style(%s): only its separate "
+                    "scales are drawn; the rest of the style is not "
+                    "implemented." % arg.strip(), UserWarning, stacklevel=2)
         else:
             unsupported.append(tok)
     if unsupported and warn:
@@ -17139,6 +20020,88 @@ def _dash_parse_by(by_raw, warn=True):
             UserWarning, stacklevel=2,
         )
     return varlist, by_cols, by_total, by_missing, unsupported
+
+
+def _dash_by_rescale(by_raw):
+    """The letters (``"x"``, ``"y"``) a by() graph draws on each panel's own
+    scale, as twoway decides them (bygraph_g.class:292-385, WP-29 P0.2).
+
+    ``rescale`` rescales both axes and, failing it, ``norescale`` neither;
+    ``xrescale``/``yrescale`` and ``noxrescale``/``noyrescale`` decide one
+    axis, a yes winning over a no; with neither, the last ``style()``
+    decides -- exactly ``style(rescale)`` or ``style(combine)`` rescales
+    both, any other style (``style(resc)``, ``style(compact)``) neither.
+    ``compact`` never matters.  Only the text after the first comma is
+    read, through the quote-aware ``_dash_by_tokens``, so ``title("yrescale")``
+    is text; a word in capitals is read as its lower-case spelling (twoway
+    refuses it; a by() validation item).  Never raises on any input and is
+    linear.  Returns a frozenset.
+    """
+    try:
+        text = by_raw if isinstance(by_raw, str) else str(by_raw)
+    except Exception:  # noqa: BLE001 -- any object at all
+        return frozenset()
+    _, comma, subs = text.partition(",")
+    if not comma:
+        return frozenset()
+    yes, no, base = set(), set(), False
+    for tok in _dash_by_tokens(subs.strip()):
+        name = tok.split("(", 1)[0].strip().lower()
+        if "(" in tok:
+            if name == "style":
+                arg = tok[tok.index("(") + 1:]
+                arg = arg[:-1] if arg.endswith(")") else arg
+                base = arg.strip() in ("rescale", "combine")
+            continue
+        if name in _DASH_BY_SUPPORTED["rescale"]:
+            yes |= {"x", "y"}
+        elif name in _DASH_BY_SUPPORTED["norescale"]:
+            no |= {"x", "y"}
+        elif name in _DASH_BY_SUPPORTED["xrescale"]:
+            yes.add("x")
+        elif name in _DASH_BY_SUPPORTED["yrescale"]:
+            yes.add("y")
+        elif name in _DASH_BY_SUPPORTED["noxrescale"]:
+            no.add("x")
+        elif name in _DASH_BY_SUPPORTED["noyrescale"]:
+            no.add("y")
+    return frozenset(d for d in ("x", "y")
+                     if d in yes or (d not in no and base))
+
+
+def _dash_by_range_notes(graph):
+    """``[(key, text)]``: one note per rescaled axis of a by() graph whose
+    range() is not applied (WP-29 P0.2, SD-8).
+
+    twoway draws a rescaled axis of each panel over that panel's own data
+    and does not apply ``yscale(range())`` there (axis(2)'s included);
+    dash does the same and says so once, decided from the spec alone so
+    both modes raise it at build time (the saved renderer's figure loop,
+    ``ServerAppBuilder._plan_graph_notes``).  The key is ``("by-range",
+    graph name, letter)``.
+    """
+    if not isinstance(graph, dict):
+        return []
+    go = graph.get("graph_options")
+    if not isinstance(go, dict):
+        return []
+    by = str(go.get("by") or "").strip()
+    if not by or not _dash_parse_by(by, warn=False)[0]:
+        return []
+    name = str(go.get("name", "") or "")
+    out = []
+    resc = _dash_by_rescale(by)
+    for d in ("y", "x"):
+        if d not in resc:
+            continue
+        if any(_DASH_SCALE_RANGE_RE.search(str(go.get(k) or ""))
+               for k in (d + "scale", d + "scale2")):
+            out.append((("by-range", name, d),
+                        "dash: graph '%s': by(, %srescale) draws each panel "
+                        "on its own %s scale; %sscale(range()) is not "
+                        "applied, as in twoway."
+                        % (_dash_display(name), d, d, d)))
+    return out
 
 
 def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
@@ -18721,29 +21684,24 @@ def _dash_axis_labels(plots, graph_opts, var_labels, seen=None, key=""):
             x_default = "x"
             y_default = ("kdensity %s" % var) if var else ""
         else:
-            x_default = vl.get(var, var)
+            x_default = _dash_var_label(vl, var)
             y_default = _DASH_HIST_YTITLES[
                 _dash_histogram_ymode(p0.get("options"))]
     else:
         xvar, yvar = p0.get("xvar", ""), p0.get("yvar", "")
-        x_default, y_default = vl.get(xvar, xvar), vl.get(yvar, yvar)
+        # The label when it is not "", else the name (WP-29 P0.3).
+        x_default = _dash_var_label(vl, xvar)
+        y_default = _dash_var_label(vl, yvar)
     # The text, split from its sub-options: xtitle("Weight", size(large))
     # used to title the axis "Weight, size(large)".  size() and color()
     # are applied by _dash_style_axis_titles; the rest is named.
     def _label(opt, default):
-        raw = go.get(opt, "")
-        text, opts = _dash_textbox(raw, opt, seen, key)
-        # Given with empty text (xtitle("")) removes the title; only an
-        # ABSENT option takes twoway's default (WP-28 B6).  The spec keeps
-        # the typed quotes, so "" given is a non-blank raw value.
-        given = bool(str(raw or "").strip())
-        # A lone suffix/prefix adds its lines after/before the default, as
-        # twoway draws ytitle("extra", suffix) (WP-28 B3).
-        if "suffix" in opts:
-            return default + ("\n" + text if text else "")
-        if "prefix" in opts:
-            return (text + "\n" if text else "") + default
-        return text if given else default
+        # A typed "" removes the title (WP-28 B6); an option that gives only
+        # sub-options -- ytitle(, size(large)), ytitle(,) -- keeps the
+        # default and is styled by them, as twoway draws it (WP-29 P0.4);
+        # suffix/prefix add lines to the default (WP-28 B3).
+        return _dash_textbox_or_default(go.get(opt, ""), opt, default,
+                                        seen, key)[0]
 
     return _label("xtitle", x_default), _label("ytitle", y_default)
 
@@ -20074,7 +23032,7 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
 
 
 def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
-                             key=""):
+                             key="", var_labels=None, scheme=None):
     """Build ``extra_y_ranges['y2']`` / ``extra_x_ranges['x2']`` and their axes.
 
     A layer with yaxis(2) or xaxis(2) asks for a second axis whose range is
@@ -20097,6 +23055,17 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
     BEFORE it (WP-28 Notes "Renderer order"); styling the axis where it is
     built is what makes that order not matter.
 
+    The axis is titled by default as twoway titles it (WP-29 P0.4): through
+    ``_dash_axis_labels`` over the layers on that axis, so its first
+    layer's label (or name), ``Density`` for a histogram, ``kdensity
+    <name>`` for a kdensity (b0, r8).  Sub-options alone style that
+    default (``ytitle(, axis(2) size(large))``, b1), ``suffix`` adds to it
+    (r13) and a typed ``""`` removes it (r12).  Under ``by()`` twoway draws
+    no axis-2 title (r7), so there is no default there.  *scheme* styles
+    the axis as it is built (``SchemeParser.apply_to_axis``), before its
+    own size()/color(); it is never copied from the primary axis, which
+    the saved renderer has styled by now and the served app has not.
+
     Returns ``(has_y2, has_x2)``.
     """
     from bokeh.models import LinearAxis, LogAxis, Range1d
@@ -20114,10 +23083,20 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
         n = name[0]
         toks = _dash_by_tokens(str(graph_opts.get(f"{n}scale2", "") or ""))
         is_log = "log" in [_dash_subopt_name(t) for t in toks]
-        text, opts = _dash_textbox(graph_opts.get(f"{n}title2", ""),
-                                   f"{n}title2", seen, key)
+        if str(graph_opts.get("by", "") or "").strip():
+            dflt = ""
+        else:
+            own = [p for p in plots
+                   if str(p.get("options", {}).get(axis_key, "1")).strip()
+                   == "2"]
+            dflt = _dash_axis_labels(own, {}, var_labels)[
+                0 if n == "x" else 1]
+        text, opts = _dash_textbox_or_default(
+            graph_opts.get(f"{n}title2", ""), f"{n}title2", dflt, seen, key)
         ax = (LogAxis if is_log else LinearAxis)(
             **{kw: name}, axis_label=text)
+        if scheme is not None:
+            scheme.apply_to_axis(ax)
         px = _textbox_size(opts, None)
         if px is not None:
             ax.axis_label_text_font_size = f"{px:g}px"
@@ -20245,6 +23224,10 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
             f"{n}scale2", [t for t, nm in zip(toks, names)
                            if nm not in _DASH_SCALE2_SUBOPTS], seen, key)
         want = _parse_scale_range(scale_raw, f"{n}scale2")
+        if n in (getattr(fig, "_dash_rescaled", None) or ()):
+            # A by() panel on its own scale: range() is not applied, as in
+            # twoway (WP-29 P0.2).
+            want = []
         is_log = isinstance(ax, LogAxis)
 
         # The label positions are read before the range is set: unless
@@ -20252,6 +23235,13 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
         raw = str(graph_opts.get(f"{n}label2", "") or "")
         spec = (_dash_parse_axis_spec(raw)
                 if raw.strip() and ax is not None else None)
+        # ytick(..., axis(2)) -- dash's ytick2() (WP-29 P0.5): its positions
+        # widen the axis as a label's do, unless norescale (twoway measured:
+        # ytick(20000, axis(2)) runs yaxis2 to 20000); the first axis is
+        # never touched by them.
+        tick_raw = str(graph_opts.get(f"{n}tick2", "") or "")
+        tspec = (_dash_parse_axis_spec(tick_raw)
+                 if tick_raw.strip() and ax is not None else None)
 
         # WP-28 B2: the hull of what the layers drew, every range() value
         # and the label positions -- range() widens only, as yscale()'s
@@ -20262,6 +23252,9 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
         if spec is not None and not spec.get("norescale") \
                 and spec.get("mode") in ("explicit", "count"):
             vals += [float(t) for t in spec.get("ticks") or []]
+        if tspec is not None and tspec.get("mode") == "explicit" \
+                and not tspec.get("norescale"):
+            vals += [float(t) for t in tspec.get("ticks") or []]
         vals = [v for v in vals if math.isfinite(v)]
         if is_log:
             vals = [v for v in vals if v > 0]
@@ -20270,35 +23263,54 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                                      "log" if is_log else None,
                                      "reverse" in names)
             rng.start, rng.end = float(new.start), float(new.end)
+            # The hull before padding, for a by() graph's one shared second
+            # axis (_dash_share_by_scales, WP-29 P0.2).
+            hulls = getattr(fig, "_dash_secondary_hulls", None) or {}
+            hulls[name] = (min(vals), max(vals), "log" if is_log else None,
+                           "reverse" in names)
+            fig._dash_secondary_hulls = hulls
         elif "reverse" in names:
             rng.start, rng.end = rng.end, rng.start
 
-        if spec is None:
-            continue
-        _dash_report_suboptions(f"{n}label2", spec.get("unsupported", []),
-                                seen, key)
-        grids = []
-        if spec.get("grid"):
-            g = Grid(dimension=dim, axis=ax, grid_line_color=None,
-                     **{kw: name})
-            fig.add_layout(g, "center")
-            grids.append(g)
-        # G16 (WP-28 S14): ylabel2(, valuelabel)/xlabel2(, valuelabel) map
-        # through the first layer that put a plot on this second axis --
-        # its y variable (or its range's yvar1) for y2, its x for x2, as
-        # the primary axis maps through xvar/yvar.
-        var2 = ""
-        for _p in plots:
-            if str((_p.get("options") or {}).get(axis_key, "1")).strip() != "2":
-                continue
-            if axis_key == "yaxis":
-                var2 = _p.get("yvar") or _p.get("yvar1") or ""
-            else:
-                var2 = _p.get("xvar") or ""
-            break
-        vlabels2 = _dash_value_labels_for(var2, value_labels, value_label_names)
-        _dash_apply_axis_spec(ax, grids, spec, col_vals or None, "",
-                              grid_color, vlabels2, fmt_cache=fmt_cache)
+        if spec is not None:
+            _dash_report_suboptions(f"{n}label2", spec.get("unsupported", []),
+                                    seen, key)
+            grids = []
+            if spec.get("grid"):
+                g = Grid(dimension=dim, axis=ax, grid_line_color=None,
+                         **{kw: name})
+                fig.add_layout(g, "center")
+                grids.append(g)
+            # G16 (WP-28 S14): ylabel2(, valuelabel)/xlabel2(, valuelabel)
+            # map through the first layer that put a plot on this second
+            # axis -- its y variable (or its range's yvar1) for y2, its x
+            # for x2, as the primary axis maps through xvar/yvar.
+            var2 = ""
+            for _p in plots:
+                if str((_p.get("options") or {}).get(axis_key, "1")
+                       ).strip() != "2":
+                    continue
+                if axis_key == "yaxis":
+                    var2 = _p.get("yvar") or _p.get("yvar1") or ""
+                else:
+                    var2 = _p.get("xvar") or ""
+                break
+            vlabels2 = _dash_value_labels_for(var2, value_labels,
+                                              value_label_names)
+            _dash_apply_axis_spec(ax, grids, spec, col_vals or None, "",
+                                  grid_color, vlabels2, fmt_cache=fmt_cache)
+        if tspec is not None:
+            # After the labels, so its CustomJSTicker keeps their ticks as
+            # its labelled ones; whether or not ylabel2() is given.
+            tgrids = []
+            if tspec.get("grid"):
+                g = Grid(dimension=dim, axis=ax, grid_line_color=None,
+                         **{kw: name})
+                fig.add_layout(g, "center")
+                tgrids.append(g)
+            _dash_apply_tick_option([ax], tgrids, tick_raw, f"{n}tick2",
+                                    col_vals or None, seen, key, grid_color,
+                                    date_kind=None)
 
 
 def _dash_keep_primary_ranges(fig):
@@ -20659,7 +23671,7 @@ def _dash_axis_hull(fig, e):
     return min(vals), max(vals)
 
 
-def _dash_hull_ranges(fig, entries, common=None):
+def _dash_hull_ranges(fig, entries, common=None, made=None):
     """Give each of *fig*'s own axes with a hull a padded Range1d over it.
 
     *entries* are :func:`_dash_count_axes` entries (``every_axis=True``).
@@ -20697,7 +23709,12 @@ def _dash_hull_ranges(fig, entries, common=None):
                      or {}).get(letter))
                or _dash_range_reversed(getattr(fig, attr)))
         kind = es[0].get("kind")
-        new = _dash_padded_range(lo, hi, kind, rev)
+        if made is not None and common is not None and hkey in made:
+            new = made[hkey]
+        else:
+            new = _dash_padded_range(lo, hi, kind, rev)
+            if made is not None and common is not None:
+                made[hkey] = new
         setattr(fig, attr, new)
         for e in es:
             e["rng"] = new
@@ -20755,7 +23772,7 @@ def _dash_finish_count_ticks(fig):
     _dash_hull_ranges(fig, entries)
 
 
-def _dash_common_count_ticks(figs):
+def _dash_common_count_ticks(figs, letters=("x", "y")):
     """Tick a by() graph's panels on one scale, and give them one extent,
     as twoway does.
 
@@ -20768,12 +23785,16 @@ def _dash_common_count_ticks(figs):
     draws nothing takes the same ticks.  Then (WP-28 B2) every axis with
     a hull in any panel spans one hull, the union of every panel's hull
     and data (`by(foreign) yscale(range(0))': both panels 0 to 41).
-    Called in both modes once every panel of the graph is drawn.
+    Called in both modes once every panel of the graph is drawn, through
+    :func:`_dash_share_by_scales`.  *letters* are the axes the panels share
+    (a rescaled one is ticked and hulled per panel, WP-29 P0.2); every
+    shared hull is one range object (``made``).
     """
     groups: dict = {}
     for f in figs or ():
         for e in getattr(f, "_dash_count_entries", None) or ():
-            groups.setdefault(e["key"], []).append(e)
+            if e.get("letter") in letters:
+                groups.setdefault(e["key"], []).append(e)
     for es in groups.values():
         los = [e.get("tick_lo", e["lo"]) for e in es
                if e.get("tick_lo", e["lo"]) is not None]
@@ -20787,7 +23808,8 @@ def _dash_common_count_ticks(figs):
     panels: dict = {}
     for f in figs or ():
         for e in getattr(f, "_dash_hull_axes", None) or ():
-            if e.get("name", "default") != "default":
+            if e.get("name", "default") != "default" \
+                    or e.get("letter") not in letters:
                 continue
             per = panels.setdefault(("default", e["letter"]), {})
             per.setdefault(id(f), (f, []))[1].append(e)
@@ -20805,8 +23827,87 @@ def _dash_common_count_ticks(figs):
             continue
         lo = min([h[0] for h in hulls] + data)
         hi = max([h[1] for h in hulls] + data)
+        made: dict = {}
         for f, es in per.values():
-            _dash_hull_ranges(f, es, common={hkey: (lo, hi)})
+            _dash_hull_ranges(f, es, common={hkey: (lo, hi)}, made=made)
+
+
+def _dash_share_repoint(figs, letter, name, rng):
+    """Point every count and hull entry of *letter* on range *name* at *rng*."""
+    for f in figs:
+        for attr in ("_dash_count_entries", "_dash_hull_axes"):
+            for e in getattr(f, attr, None) or ():
+                if e.get("letter") == letter \
+                        and e.get("name", "default") == name:
+                    e["rng"] = rng
+
+
+def _dash_share_by_scales(figs, rescale=frozenset()):
+    """Draw a by() graph's panels on one scale per axis, as twoway does
+    (bygraph_g.class axis_allrange; WP-29 P0.2).
+
+    For each axis the graph does not rescale (*rescale*, from
+    ``_dash_by_rescale``): when every panel's range is a DataRange1d, ONE
+    DataRange1d replaces them, its renderers the union of the panels' (a
+    panel that left its range to every renderer contributes its own
+    first-axis layers; all of them doing so keeps BokehJS's "auto"), so
+    BokehJS spans the union of what every panel draws, before and after
+    any filter move; on the second axis (``y2``/``x2``), one Range1d over
+    the union of the panels' hulls (``fig._dash_secondary_hulls``).  Then
+    the shared axes are ticked and hulled over every panel
+    (:func:`_dash_common_count_ticks`).  The order is the design: the
+    ranges are shared first, so the ``#N`` start and end land on the
+    shared object.  Sharing never crosses graphs: it is called once per
+    by() graph with that graph's panels.  Called in both modes.
+    """
+    from bokeh.models import DataRange1d
+    figs = [f for f in (figs or ()) if f is not None]
+    if len(figs) < 2:
+        return
+    rescale = frozenset(rescale or ())
+    letters = tuple(d for d in ("x", "y") if d not in rescale)
+    for letter in letters:
+        attr = letter + "_range"
+        rngs = [getattr(f, attr) for f in figs]
+        if all(isinstance(r, DataRange1d) for r in rngs) \
+                and len({id(r) for r in rngs}) > 1:
+            kw = {k: v for k, v in rngs[0].properties_with_values(
+                include_defaults=False).items()
+                if k not in ("renderers", "start", "end", "id", "name")}
+            shared = DataRange1d(**kw)
+            shared.flipped = any(bool(r.flipped) for r in rngs)
+            lists = [list(r.renderers) if isinstance(r.renderers, list)
+                     else [] for r in rngs]
+            if any(lists):
+                rname = letter + "_range_name"
+                seen, union = set(), []
+                for f, lst in zip(figs, lists):
+                    if not lst:
+                        lst = [r for r in f.renderers
+                               if getattr(r, rname, "default") == "default"
+                               and not _dash_is_swatch(r)]
+                    for r in lst:
+                        if id(r) not in seen:
+                            seen.add(id(r))
+                            union.append(r)
+                shared.renderers = union
+            for f in figs:
+                setattr(f, attr, shared)
+            _dash_share_repoint(figs, letter, "default", shared)
+        name = letter + "2"
+        extra = "extra_%s_ranges" % letter
+        if all(name in getattr(f, extra) for f in figs):
+            hulls = [(getattr(f, "_dash_secondary_hulls", None) or {}).get(name)
+                     for f in figs]
+            hulls = [h for h in hulls if h is not None]
+            if hulls:
+                new = _dash_padded_range(min(h[0] for h in hulls),
+                                         max(h[1] for h in hulls),
+                                         hulls[0][2], hulls[0][3])
+                for f in figs:
+                    setattr(f, extra, {**getattr(f, extra), name: new})
+                _dash_share_repoint(figs, letter, name, new)
+    _dash_common_count_ticks(figs, letters=letters)
 
 
 def _dash_limit_ranges_to_primary(fig, source):
@@ -21628,7 +24729,8 @@ def _dash_linked_views(figures, source):
     return out
 
 
-def _dash_refresh_linked(source, frame, views, snapshot=None, pos_of=None):
+def _dash_refresh_linked(source, frame, views, snapshot=None, pos_of=None,
+                         need=None):
     """Write one filter move's rows into a link group's source, once, and
     point every view over it at the rows it owns.
 
@@ -21649,6 +24751,10 @@ def _dash_refresh_linked(source, frame, views, snapshot=None, pos_of=None):
         snapshot: ``{column: values}`` the source held before any move; a
                   column *frame* does not carry is taken from it by row.
         pos_of:   ``{row label: position in snapshot}``.
+        need:     The page plan's ``need`` (WP-29 P0.11): a column written
+                  from *frame* is blanked on every row it does not flag
+                  (``_dash_embed_values``), so a move never sends a cell
+                  the page does not hold.
     """
     labels = list(frame.index)
     old_n = len(next(iter(source.data.values()), [])) if source.data else 0
@@ -21658,7 +24764,11 @@ def _dash_refresh_linked(source, frame, views, snapshot=None, pos_of=None):
         if col == "index":
             new_data[col] = labels
         elif col in frame.columns:
-            new_data[col] = _dash_column_values(frame[col])
+            if need is not None and col in need:
+                new_data[col] = _dash_column_values(
+                    _dash_embed_values(frame[col], need[col]))
+            else:
+                new_data[col] = _dash_column_values(frame[col])
         else:
             if rows is None:
                 at_snap = pos_of or {}
@@ -21686,7 +24796,7 @@ def _dash_own_redrawn_views(figures, redrawn_ids):
     of its own, and return those filters by source.
 
     A linked layer's mapper can draw from a copy of the shared source -- a
-    line sorted along x, connected's line, a jittered scatter, dropline's
+    line in its join order, connected's line, a jittered scatter, dropline's
     segments -- and keep the view it was handed.  A filter move redraws the
     copy from the layer's own filtered rows, which are exactly the rows to
     draw, so after one its view selects every row.  The view is often the
@@ -21826,6 +24936,24 @@ def _dash_keep_jitter(new_data, snapshot):
             orig[pos[lab]] if lab in pos and pos[lab] < len(orig) else v
             for lab, v in zip(labels, fresh)]
     return new_data
+
+
+def _dash_copy_redraw_geometry(live, new):
+    """Give each live glyph whose width is its rows' spacing the width the
+    redraw drew from the kept rows (WP-29 P0.18).  GlyphMapper._tag_spacing
+    lists those glyphs on their source (`_dash_spacing_glyphs`); a served
+    move copied the redraw's data onto the live source and left the
+    build's width, 56 where the kept rows give 168.  A width that is not
+    a finite positive number is left alone, so Bokeh's "Distances must
+    be positive" can never be raised in a session."""
+    for lg, ng in zip(getattr(live, "_dash_spacing_glyphs", None) or (),
+                      getattr(new, "_dash_spacing_glyphs", None) or ()):
+        w = getattr(ng, "width", None)
+        w = getattr(w, "value", w)
+        if isinstance(w, bool) or not isinstance(w, (int, float)):
+            continue
+        if np.isfinite(w) and w > 0:
+            lg.width = float(w)
 
 
 def _dash_facet_cols(gopts, n_panels):
@@ -22374,6 +25502,12 @@ def _dash_header_models(title_text, subtitle_text, css=""):
 #: -- the standalone CDS through _collect_plot_vars, the served one through
 #: _dash_layer_source's extra_cols -- so the mappers can read it.
 _DASH_OPT_VAR_KEYS = ("colorvar", "mlabel", "wexp")
+#: Plot KEYS that name a dataset column: one tuple for the saved column
+#: lists, the served app and the embed plan (WP-29 P0.11).  The served
+#: placeholder listed five of them, so a paired-coordinate layer's columns
+#: were missing from it.
+_DASH_PLOT_VAR_KEYS = ("yvar", "xvar", "var", "yvar1", "yvar2", "y1var",
+                       "x1var", "y2var", "x2var")
 #: The invisible swatch renderers a discrete colorvar() legend is built from.
 _DASH_SWATCH_PREFIX = "_clegend_"
 
@@ -22412,6 +25546,83 @@ def _dash_option_columns(options, columns=None):
     return out
 
 
+def _dash_colorvar_domain(columns, options, mask=None, where=""):
+    """The colour rows of a colorvar() layer: the values its key is drawn
+    from (WP-29 P0.16).
+
+    twoway draws a colorvar() key from the observations the plot draws --
+    its own if/in, the graph's if/in and, under by(), its panel -- and
+    counts an observation whose y or x is missing (measured in StataNow
+    19.5, test/fixtures/colorvar_qualifier_truth.json).  The saved page
+    passes the layer's source columns and the view's row mask; the served
+    app passes the layer's frame before any missing x or y is dropped.
+
+    A numeric or date column is read through ``_dash_float_values`` on the
+    column object itself (a served date column is datetime64, which a list
+    of Timestamps would refuse), so a date comes back in epoch
+    milliseconds.  A column that cannot be read as numbers (a string
+    variable) comes back as a list.
+
+    Args:
+        columns: A DataFrame or a ColumnDataSource ``.data`` dict.
+        options: The layer's options; ``colorvar`` names the variable.
+        mask:    A boolean flag per row, or None for every row.
+        where:   Names the layer in the one warning this can give.
+
+    Returns:
+        A float array or a list, or None when there is no colorvar, its
+        name is not a Stata name, the column is absent, or *mask* does not
+        align with it (that case warns: the key is then drawn from every
+        row).
+    """
+    var = str((options or {}).get("colorvar", "") or "").strip()
+    if not var or not _dash_is_stata_name(var):
+        return None
+    try:
+        col = columns[var]
+    except (KeyError, TypeError, IndexError):
+        return None
+    sel = None
+    if mask is not None:
+        sel = np.asarray(mask, dtype=bool)
+        if sel.shape != (len(col),):
+            warnings.warn(
+                f"dash: {where or 'a layer'}: its colour key could not be "
+                f"restricted to its observations ({sel.size} flags for "
+                f"{len(col)} rows); the key is drawn from every row.",
+                UserWarning, stacklevel=2)
+            return None
+    try:
+        vals = _dash_float_values(col)
+    except (ValueError, TypeError):
+        vals = col.tolist() if hasattr(col, "tolist") else list(col)
+        if sel is None:
+            return vals
+        return [v for v, keep in zip(vals, sel) if keep]
+    return vals if sel is None else vals[sel]
+
+
+def _dash_colorvar_field(data, varname):
+    """A name for a colorvar() layer's colour bins that no column holds
+    (WP-29 P0.16).
+
+    The first ``f"{_DASH_CVAR_PREFIX}{k}_{varname}"`` for k = 1, 2, ...
+    that is not a key of *data*, so two colorvar layers on one source each
+    keep their own bins, and no user variable can be overwritten: the
+    loader refuses a variable under the reserved ``__dash`` prefix.
+
+    Returns None when *varname* is not a Stata name.
+    """
+    if not _dash_is_stata_name(varname):
+        return None
+    keys = set(data.keys()) if hasattr(data, "keys") else set(data)
+    for k in range(1, len(keys) + 2):
+        name = f"{_DASH_CVAR_PREFIX}{k}_{varname}"
+        if name not in keys:
+            return name
+    return None
+
+
 def _dash_value_labels_for(var, value_labels, value_label_names):
     """The value labels of *var*, ``{code: text}``, or ``{}`` (TR-14.6,
     WP-28 S14 -- the one copy of the lookup ``GlyphMapper._mlabel_value_labels``
@@ -22444,6 +25655,70 @@ def _dash_value_labels_for(var, value_labels, value_label_names):
     if not vlabels:
         vlabels = value_labels.get(var, {})
     return vlabels if isinstance(vlabels, dict) else {}
+
+
+def _dash_var_label(var_labels, name, default=""):
+    """The text twoway draws for variable *name*: its label when the label
+    is not ``""``, otherwise the name (WP-29 P0.3).
+
+    Measured in Stata 19 by SVG export (test/fixtures/unlabelled_truth.json,
+    scripts/extract_unlabelled_truth.do): an unlabelled variable -- which
+    Stata's exporter writes with the label ``""`` -- is drawn by its name as
+    axis title, legend key and colour-key title.  A label of blanks is NOT
+    empty and is drawn as given (E.svg), so the label is never stripped.
+
+    Total: *default* when *name* is ``None`` or ``""``; ``str(name)`` for a
+    name that is not text; the name when *var_labels* is not a mapping or
+    holds a non-text label.  It raises nothing.
+
+    Security: the result goes only to sinks that already carry arbitrary
+    label text (canvas axis titles and keys, BokehJS tooltip text nodes);
+    a name replacing an empty label adds no new sink.
+    """
+    if name is None or name == "":
+        return default
+    if not isinstance(name, str):
+        return str(name)
+    lab = (var_labels if isinstance(var_labels, dict) else {}).get(name)
+    if isinstance(lab, str) and lab != "":
+        return lab
+    return name
+
+
+def _dash_clean_var_labels(raw):
+    """``variableLabels`` as both renderers keep it: text keyed by name.
+
+    A label that is ``""`` (an unlabelled variable, as Stata's exporter
+    writes it) or not text becomes the name, so any ``.get(v, v)`` reads
+    twoway's rule (:func:`_dash_var_label`); a mapping that is not a dict
+    is ``{}``, and a key that is not non-empty text is dropped.  Every
+    variable keeps its key, so membership still tells the dataset's
+    variables from computed columns.  A malformed map used to abort the
+    build (a list: ``'list' object has no attribute 'get'``; an int, dict
+    or null label: a Bokeh validation error) -- WP-29 P0.3.
+    """
+    if not isinstance(raw, dict):
+        return {}
+    return {k: (v if isinstance(v, str) and v != "" else k)
+            for k, v in raw.items() if isinstance(k, str) and k}
+
+
+def _dash_filter_base_title(label, var_labels, name):
+    """A filter widget's title before :func:`_dash_filter_title` adds its
+    inequality: ``label()``, else the variable's label, else the name.
+
+    A text of blanks counts as absent here (the saved page's documented
+    chain), unlike :func:`_dash_var_label`, which draws a label of blanks
+    as given.  Not ``_dash_filter_label``: that name is the ``filter()``
+    option parser.  The served app used to pass the raw ``""`` label of an
+    unlabelled variable, which titled its widget ``""`` (WP-29 P0.3).
+    Security: a Select title is a text node and a slider title still passes
+    ``_dash_inert_tex`` in ``_dash_filter_title``.
+    """
+    vl = var_labels if isinstance(var_labels, dict) else {}
+    return (str(label or "").strip()
+            or str(vl.get(name, "") or "").strip()
+            or str(name))
 
 
 def _dash_attach_labels(mapper, variable_labels=None, value_labels=None,
@@ -22586,6 +25861,11 @@ def _dash_textbox(raw, option, seen=None, key=""):
         # axis(#) is honoured only as axis(1)/axis(2) on an axis title.
         bad = []
         for t in _dash_by_tokens(tail.strip()):
+            # An empty slot -- ytitle(A,,), ytitle(A, ,) -- is ignored, as
+            # twoway ignores it, and never named (WP-29 P0.4; it also kept
+            # a comma-only value from echoing itself back at its own length).
+            if not t.strip(", "):
+                continue
             nm = _textbox_canon(_dash_subopt_name(t))
             if nm == "axis":
                 arg = t[t.find("(") + 1:t.rfind(")")].strip() \
@@ -22598,6 +25878,28 @@ def _dash_textbox(raw, option, seen=None, key=""):
             bad.append(t)
         _dash_report_suboptions(option, bad, seen, key)
     return text, opts
+
+
+def _dash_textbox_or_default(raw, option, default, seen=None, key=""):
+    """``(text, sub-options)`` of a title option that has a DEFAULT text.
+
+    twoway keeps the default title when the option gives no text and only
+    styles it (``_gs_parse_and_log_axtitle.ado:25-31``): ``ytitle(,
+    size(large))`` is the default at large, ``ytitle(,)`` the default, and
+    only a typed ``""`` removes the title.  ``suffix``/``prefix`` add the
+    text after/before the default, and ``ytitle("", suffix)`` keeps it
+    (r5).  dash used to take "given" over the whole raw value, so every
+    sub-option-only title deleted the default in both modes (WP-29 P0.4).
+
+    The text is canvas text or a DOM text node exactly as before; the
+    default is the label already drawn.  No new sink.
+    """
+    text, opts = _dash_textbox(raw, option, seen, key)
+    if "suffix" in opts:
+        return "\n".join(p for p in (default, text) if p), opts
+    if "prefix" in opts:
+        return "\n".join(p for p in (text, default) if p), opts
+    return (text if _textbox_has_text(raw) else default), opts
 
 
 def _dash_figure_title(fig, graph_opts, seen=None, key=""):
@@ -22746,7 +26048,8 @@ def _dash_scale_spec(raw, option="", seen=None, key=""):
             "hi": max(vals) if vals else None}
 
 
-def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar):
+def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar,
+                             rescale=frozenset()):
     """Record xscale(range())/yscale(range()) and reverse on the figure.
 
     twoway decides an axis's extent once its layers are drawn: the hull of
@@ -22764,6 +26067,11 @@ def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar):
 
     *frame*, *xvar* and *yvar* are no longer read; both call sites pass
     them, and the signature is kept for them.
+
+    *rescale* holds the letters a by() panel draws on its own scale
+    (``_dash_by_rescale``, WP-29 P0.2): twoway does not apply range() on
+    such an axis, so its values are dropped; reverse is kept.  The set is
+    recorded as ``fig._dash_rescaled``.
     """
     from bokeh.models import DataRange1d
     vals, rev = {}, {}
@@ -22788,8 +26096,11 @@ def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar):
         rev[axis] = bool(spec.get("reverse"))
         if rev[axis] and isinstance(getattr(fig, attr), DataRange1d):
             getattr(fig, attr).flipped = True
+    for letter in frozenset(rescale or ()):
+        vals[letter] = []
     fig._dash_scale_values = vals
     fig._dash_scale_reverse = rev
+    fig._dash_rescaled = frozenset(rescale or ())
 
 
 def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key):
@@ -22817,9 +26128,11 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key):
 
     ztitle_raw = zopts.get("ztitle", "")
     if ztitle_raw:
-        text, topts = _dash_textbox(ztitle_raw, "ztitle", seen, key)
-        # An empty text removes the title, as _dash_figure_title's pattern
-        # does for the graph title -- ztitle("") is a deliberate blank.
+        # ztitle("") removes the title; ztitle(, size(large)) keeps the
+        # colour variable's label and styles it, as twoway draws it
+        # (f1-f3; WP-29 P0.4).
+        text, topts = _dash_textbox_or_default(
+            ztitle_raw, "ztitle", key_obj.title or "", seen, key)
         key_obj.title = text
         px = _textbox_size(topts, None)
         colour = _textbox_color(topts, None)
@@ -22923,6 +26236,17 @@ def _dash_reference_lines(fig, graph_opts, seen=None, key="", scheme=None):
     for opt, dim in (("xline", "height"), ("yline", "width")):
         raw = (graph_opts or {}).get(opt, "")
         bad = []
+        # yline(#, axis(2)) -- dash's yline2() -- on the second axis's
+        # range (WP-29 P0.5), only where the figure has one: an unused
+        # second-axis option is named at build time
+        # (_dash_unused_second_axis_notes).  A line never widens an axis.
+        raw2 = (graph_opts or {}).get(opt + "2", "")
+        rname = "y2" if opt == "yline" else "x2"
+        extra = fig.extra_y_ranges if opt == "yline" else fig.extra_x_ranges
+        if isinstance(raw2, str) and raw2.strip() and rname in extra:
+            for values, style in _dash_refline_instances(raw2, bad):
+                _dash_refline_draw(fig, opt, dim, values, style, scheme,
+                                   Span, range_name=rname)
         if not raw:
             # The legacy list form, xline_values/yline_values: positions
             # only, no sub-options.  dash.ado never writes it; the saved
@@ -23000,9 +26324,13 @@ def _dash_by_tokens_commas(raw):
     return out
 
 
-def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span):
+def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
+                       range_name="default"):
     """One copy of xline()/yline(): a Span at each position, in the
-    scheme's `xyline' style unless its sub-options say otherwise."""
+    scheme's `xyline' style unless its sub-options say otherwise, on the
+    range *range_name* -- ``"y2"``/``"x2"`` for a yline(#, axis(2)) copy
+    (WP-29 P0.5), whose numbers are read as they stand (a second axis is
+    never a date axis)."""
     if scheme is not None:
         kw = {"line_color": scheme.xyline_color,
               "line_dash": list(scheme.xyline_dash),
@@ -23026,7 +26354,8 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span):
             except (ValueError, TypeError):
                 _dash_style_note(f"{opt}({sub})", style[sub], what,
                                  "the default")
-    kind = _dash_axis_date_kind(fig, "x" if opt == "xline" else "y")
+    kind = (_dash_axis_date_kind(fig, "x" if opt == "xline" else "y")
+            if range_name == "default" else None)
     if kind:
         # A number given for a date axis is a date in the variable's
         # unit, as twoway reads it: xline(14979) on a %td axis is
@@ -23036,6 +26365,8 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span):
             opt, [_fmt_num(v) for v, p in zip(values, pos) if p is None],
             kind)
         values = [p for p in pos if p is not None]
+    if range_name != "default":
+        kw["y_range_name" if dim == "width" else "x_range_name"] = range_name
     for v in values:
         fig.add_layout(Span(location=v, dimension=dim, **kw))
 
@@ -23453,6 +26784,22 @@ def _dash_kpi_date_valued(stat):
     return s in _DASH_DATE_VALUED_STATS or _dash_kpi_pctile(s) is not None
 
 
+def _dash_kpi_unit_kind(stat, kind):
+    """The Stata date kind a KPI statistic of a date is taken in, or ``""``.
+
+    Every statistic but ``count`` and ``dcount`` is taken of the date's
+    Stata values (WP-29 P0.20); the page's ``dash_apply_kpis`` converts each
+    value with ``dash_stata_value_of(v, unitkind)``.  A kind outside
+    ``_STATA_DATE_KINDS`` is ``""``, so nothing unvalidated reaches the
+    page.
+    """
+    k = str(kind or "")
+    if k in _STATA_DATE_KINDS and str(stat).lower().strip() not in (
+            "count", "dcount"):
+        return k
+    return ""
+
+
 def _dash_effective_kpi_fmt(kpi, varname, formats=None, stat="",
                             date_vars=None):
     """The format a KPI card is actually displayed with (WP-28, GAPS2 E1).
@@ -23495,10 +26842,10 @@ def _dash_format_kpi_value(value, fmt_str, varname="", stat="",
     *fmt_str*, trimmed (``_dash_fmt_text``), the text
     ``test/fixtures/format_truth.json``'s ``kpi`` block records.
 
-    A date-valued statistic of a date variable reaches here as epoch
-    milliseconds and is converted back to its Stata value first
-    (``_dash_stata_value_of``); a missing statistic, or a date beyond
-    Stata's range, is ``.``.  The saved card, the served card and the
+    A date-valued statistic of a date variable reaches here as its Stata
+    value -- every statistic of a date is taken in its Stata units (WP-29
+    P0.20) -- and is written in the date's picture; a missing statistic is
+    ``.``.  The saved card, the served card and the
     page's ``dash_apply_kpis`` (through ``dash_fmt_text``) write the same
     text.  Python's ``format()`` wrote ``fmt(%10.0g)`` of 6165.2567 as
     ``6e+03`` until WP-28 (GAPS2 E1).
@@ -23525,8 +26872,7 @@ def _dash_format_kpi_value(value, fmt_str, varname="", stat="",
         return "."
     kind = (date_vars or {}).get(varname)
     if kind and _dash_kpi_date_valued(stat):
-        sv = _dash_stata_value_of(v, kind)
-        return "." if sv is None else _dash_fmt_text(sv, fmt)
+        return _dash_fmt_text(v, fmt)
     return _dash_fmt_text(v, fmt, storage)
 
 
@@ -23596,9 +26942,19 @@ def _dash_legend_key(plot, var_labels=None):
     ptype = str(plot.get("type", "")).lower()
     if ptype in _DASH_FIT_TYPES or ptype in _DASH_CI_TYPES:
         return "Fitted values"
+    # twoway keys a histogram by its y-scale word and a kdensity layer
+    # "kdensity <name>" -- the NAME, even when the variable is labelled
+    # (HK.svg, KD2.svg, KDLAB.svg; WP-29 P0.3).
+    if ptype == "histogram":
+        return _DASH_HIST_YTITLES[_dash_histogram_ymode(plot.get("options"))]
+    if ptype == "kdensity":
+        v = plot.get("var", "") or plot.get("yvar", "")
+        return ("kdensity %s" % v) if v else ptype
     yvar = (plot.get("yvar", "") or plot.get("var", "")
             or plot.get("yvar1", ""))
-    return (var_labels.get(yvar, yvar) or ptype) if yvar else ptype
+    # The label when it is not "", else the name: an unlabelled variable
+    # used to be keyed by the plot type (WP-29 P0.3).
+    return _dash_var_label(var_labels, yvar) if yvar else ptype
 
 
 def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
@@ -23631,7 +26987,7 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
                 # separately, and the band's key carries the level.
                 lvl = _resolve_level(plot.get("options", {}) or {},
                                      _DEFAULT_LEVEL if default_level is None
-                                     else default_level)
+                                     else default_level, ptype)
                 band = [r for r in rends
                         if type(getattr(r, "glyph", None)).__name__
                         in ("VArea", "Band", "Patch")]
@@ -23901,7 +27257,7 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
         _flds, _fmts = [], {}
         for _c in _wanted:
             _row, _fmt_pair = _dash_hover_row(
-                _c, var_labels.get(_c, _c), formats.get(_c, ""),
+                _c, _dash_var_label(var_labels, _c), formats.get(_c, ""),
                 date_vars.get(_c, ""), storage_types.get(_c, ""),
                 fmt_cache, text_col=_text_cols.get(_c))
             _flds.append(_row)
@@ -23988,11 +27344,18 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
 
         def _named(col, fallback):
             """A column that is one of the dataset's variables is labelled
-            as the variable; a computed one takes *fallback*."""
-            return var_labels[col] if col in var_labels else fallback
+            as the variable; a computed one takes *fallback*.  A computed
+            source's generic x/y/y1/y2 column is named after a dataset
+            variable of that name only when the layer plots it: kdensity z
+            or lfit y2 y1 used to name their rows after unrelated x and y
+            (WP-29 P0.3)."""
+            if col in var_labels and (col not in ("x", "y", "y1", "y2")
+                                      or col in (xvar, y1var, y2var)):
+                return _dash_var_label(var_labels, col)
+            return fallback
 
-        _x_label = var_labels.get(xvar, xvar or "x")
-        _y_label = var_labels.get(y1var, y1var or "y")
+        _x_label = _dash_var_label(var_labels, xvar, "x")
+        _y_label = _dash_var_label(var_labels, y1var, "y")
 
         def _bins(rd, data):
             if not ("top" in data and "left" in data):
@@ -24002,7 +27365,7 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
             # carried its variable under the `var' key, which is the key
             # dash.ado writes for every histogram.
             _bin_var = y1var or univar
-            _bin_label = var_labels.get(_bin_var, _bin_var or "value")
+            _bin_label = _dash_var_label(var_labels, _bin_var, "value")
             _p = _tooltip_precision(data.get("left", []))
             # Quad hit-testing wants the cursor exactly on the bar; vline
             # fires anywhere within the bin's x-range.
@@ -24024,8 +27387,10 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
             if not all(c in data for c in ("x", "y1", "y2")):
                 return None
             return ([_cell(_x_label, "x", data),
-                     _cell(var_labels.get(y1var, y1var or "y1"), "y1", data),
-                     _cell(var_labels.get(y2var, y2var or "y2"), "y2", data)],
+                     _cell(_dash_var_label(var_labels, y1var, "y1"), "y1",
+                           data),
+                     _cell(_dash_var_label(var_labels, y2var, "y2"), "y2",
+                           data)],
                     "mouse")
 
         def _segment(rd, data):
@@ -24232,8 +27597,8 @@ def _dash_if_type_problem(expr, frame):
 # ---------------------------------------------------------------------------
 
 #: The prefix reserved for every column dash makes (G1, WP-28): the
-#: qualifier columns, the row identity, the marker-label and jitter
-#: columns.  Data already holding a variable named with it are refused
+#: qualifier columns, the join-order columns __dashs<k> (WP-29 P0.1), the
+#: row identity, the marker-label and jitter columns.  Data already holding a variable named with it are refused
 #: (rc 110) unless the spec names it as a qualifier column (below).
 _DASH_RESERVED_PREFIX = "__dash"
 #: The prefix dash.ado reserves for its qualifier columns; it refuses data
@@ -24241,6 +27606,15 @@ _DASH_RESERVED_PREFIX = "__dash"
 _DASH_QUAL_PREFIX = "__dashq"
 #: A qualifier column's whole name, as dash.ado writes it.
 _DASH_QUAL_NAME_RE = re.compile(r"__dashq[1-9][0-9]{0,4}\Z")
+#: The prefix of the join-order columns dash.ado writes for sort(varlist):
+#: one rank per distinct varlist, made by Stata's own sort (WP-29 P0.1).
+_DASH_SORT_PREFIX = "__dashs"
+#: A join-order column's whole name, as dash.ado writes it.
+_DASH_SORT_NAME_RE = re.compile(r"__dashs[1-9][0-9]{0,4}\Z")
+#: The plot types twoway joins in the data's order, x order under sort and
+#: sort(varlist)'s order: the types a join key is handed to.
+_DASH_JOIN_TYPES = frozenset({"line", "connected", "area", "rline", "rarea",
+                              "rconnected"})
 
 
 def _dash_qual_cols_named(spec):
@@ -24291,7 +27665,10 @@ def _dash_take_qual_columns(df, spec):
     not only the qualifier columns) that the spec does not name is refused
     as well -- dash.ado refuses data that hold one -- so a user's variable
     can never be read as a qualifier, overwritten by a column dash makes
-    up, nor a qualifier shown as a variable.
+    up, nor a qualifier shown as a variable.  The join-order columns
+    ``__dashs<k>`` are taken out before this runs
+    (``_dash_take_sort_columns``); one the spec does not name is refused
+    here like any other reserved column.
 
     Raises:
         ValueError: A name, a missing column or a value dash would not
@@ -24339,6 +27716,167 @@ def _dash_qual_mask(obj, masks):
         raise ValueError("dash: the qualifier column %s is not in the data."
                          % str(name)[:40])
     return m
+
+
+# ---------------------------------------------------------------------------
+# The join-order columns (WP-29 P0.1)
+#
+# twoway joins line, connected, area, rline, rarea and rconnected in the
+# order sort(varlist) gives -- Stata's own sort, strings byte by byte and
+# missing values . < .a < .b, which the data writer cannot carry (it writes
+# every missing value as null).  dash.ado therefore makes the order in
+# Stata: one rank column __dashs<k> per distinct varlist (_dash_sort_gen,
+# `sort varlist obs'), named in build_options.sort_cols as
+# {"<varlist>": "__dashs<k>"}, each plot naming its varlist in "sortvars".
+# Both renderers take the columns out of the frame the moment the data are
+# loaded, before the qualifier columns, so no source, tooltip, filter, CSV
+# download or page holds one; the sort variables themselves are never
+# exported.  Every value is validated, and a layer reads its key by row.
+# ---------------------------------------------------------------------------
+
+def _dash_sort_cols_named(spec):
+    """build_options.sort_cols of *spec*, validated: ``{varlist: column}``.
+
+    Each column is a name dash.ado writes (``__dashs<k>``), named once; each
+    varlist is one to 120,000 Stata names, one blank apart; and every plot
+    that names a varlist in "sortvars" names one of the map.
+
+    Raises:
+        ValueError: anything dash.ado would not have written.
+    """
+    bo = (spec or {}).get("build_options") if isinstance(spec, dict) else {}
+    cols = (bo or {}).get("sort_cols", {}) if isinstance(bo, dict) else {}
+    if cols in (None, ""):
+        cols = {}
+    if not isinstance(cols, dict):
+        raise ValueError(
+            "dash: the spec's sort_cols is not a map of sort() lists to the "
+            "%s<k> columns dash writes." % _DASH_SORT_PREFIX)
+    out = {}
+    for key, col in cols.items():
+        if (not isinstance(col, str) or not _DASH_SORT_NAME_RE.match(col)
+                or col in out.values()):
+            raise ValueError(
+                "dash: the spec names %r as a join-order column; dash writes "
+                "only %s<k>, one per sort() list." % (str(col)[:40],
+                                                     _DASH_SORT_PREFIX))
+        toks = key.split(" ") if isinstance(key, str) else []
+        if (not toks or len(toks) > 120000
+                or not all(_dash_is_stata_name(t) for t in toks)):
+            raise ValueError(
+                "dash: the spec names %r as the sort() list of a %s<k> "
+                "column; dash writes Stata names, one blank apart."
+                % (str(key)[:40], _DASH_SORT_PREFIX))
+        out[key] = col
+    for g in ((spec or {}).get("graphs") or []):
+        if not isinstance(g, dict):
+            continue
+        for p in (g.get("plots") or []):
+            if not isinstance(p, dict):
+                continue
+            sv = p.get("sortvars", "")
+            if sv in (None, ""):
+                continue
+            if not isinstance(sv, str) or sv not in out:
+                raise ValueError(
+                    "dash: a plot names the sort() list %r, which has no %s<k> "
+                    "column in the spec." % (str(sv)[:40], _DASH_SORT_PREFIX))
+    return out
+
+
+def _dash_take_sort_columns(df, spec):
+    """Take dash.ado's join-order columns out of *df*.
+
+    Returns ``(frame, keys)``: *df* without the columns the spec names, and
+    ``{column: float Series indexed like df}``.  Each column must be in the
+    data and hold distinct whole numbers from 1 to 2**53 -- Stata's rank of
+    each row; not necessarily 1..N, so a subset of the rows keeps its keys.
+    Run before ``_dash_take_qual_columns``, which refuses any reserved
+    column the spec does not name as a qualifier.
+
+    Raises:
+        ValueError: a name, a missing column or a value dash would not
+            write.
+    """
+    names = _dash_sort_cols_named(spec)
+    cols = [str(c) for c in df.columns]
+    keys = {}
+    for col in names.values():
+        if col not in cols:
+            raise ValueError(
+                "dash: the spec names the join-order column %s, which is not "
+                "in the data." % col)
+        vals = pd.to_numeric(df[col], errors="coerce").to_numpy(
+            dtype=float, na_value=np.nan)
+        if (not bool(np.isfinite(vals).all())
+                or bool((vals != np.floor(vals)).any())
+                or bool((vals < 1).any()) or bool((vals > 2.0 ** 53).any())
+                or len(np.unique(vals)) != len(vals)):
+            raise ValueError(
+                "dash: the join-order column %s holds a value that is not a "
+                "distinct whole number from 1 to 2^53." % col)
+        keys[col] = pd.Series(vals, index=df.index)
+    if keys:
+        df = df.drop(columns=list(keys))
+    return df, keys
+
+
+def _dash_sort_col_of(plot, spec):
+    """The join-order column of *plot*'s "sortvars", or "" for none.
+
+    Raises:
+        ValueError: the plot names a list the spec maps to no column.
+    """
+    sv = plot.get("sortvars", "") if isinstance(plot, dict) else ""
+    if sv in (None, ""):
+        return ""
+    names = _dash_sort_cols_named(spec)
+    if not isinstance(sv, str) or sv not in names:
+        raise ValueError(
+            "dash: a plot names the sort() list %r, which has no %s<k> "
+            "column in the spec." % (str(sv)[:40], _DASH_SORT_PREFIX))
+    return names[sv]
+
+
+def _dash_join_key(source, sort_keys, col):
+    """One join key per row of *source*, read from the column *col* of
+    *sort_keys*; None when *col* is empty.
+
+    A saved source carries each row's position in the renderer's frame
+    (``__dash_row__``); a served one its frame label (``index``).  Ids are
+    bounds-checked, and a label the keys lack is refused.
+
+    Raises:
+        ValueError: no such column, no row identity, or an id that is not
+            a row.
+    """
+    if not col:
+        return None
+    rank = (sort_keys or {}).get(col)
+    if rank is None:
+        raise ValueError("dash: the join-order column %s is not in the data."
+                         % str(col)[:40])
+    data = getattr(source, "data", None) or {}
+    if _ROW_ID_COLUMN in data:
+        try:
+            ids = np.asarray(data[_ROW_ID_COLUMN], dtype=float)
+        except (TypeError, ValueError):
+            raise ValueError("dash: a layer's row ids are not numbers.")
+        if ids.size and (not bool(np.isfinite(ids).all())
+                         or bool((ids != np.floor(ids)).any())
+                         or bool((ids < 0).any())
+                         or bool((ids >= len(rank)).any())):
+            raise ValueError("dash: a layer's row id is not a row of the "
+                             "data.")
+        return rank.to_numpy(dtype=float)[ids.astype(np.int64)]
+    if "index" in data:
+        key = rank.reindex(list(data["index"])).to_numpy(dtype=float)
+        if bool(np.isnan(key).any()):
+            raise ValueError("dash: a layer's row label is not a row of the "
+                             "data.")
+        return key
+    raise ValueError("dash: a layer's source carries no row identity to read "
+                     "its join key by.")
 
 
 def _dash_total_spec(g):
@@ -24524,6 +28062,241 @@ def _dash_layer_frame(dataset, frame, if_expr, in_expr, where="", qual=None):
     return out
 
 
+# ---------------------------------------------------------------------------
+# What a page holds (WP-29 P0.11)
+#
+# A saved page used to embed every observation of each drawn variable,
+# the rows if and in exclude included, and a served link() group sent every
+# row of its shared source (GAPS2 I2; twoway keeps only the rows each
+# layer's qualifier selects).  A page now holds a cell (observation x
+# variable) only when some consumer of the page reads that variable on that
+# observation: a layer on its graph's and its own rows (by(, total)'s Total
+# rows included), a card the page recomputes, a filter on the rows of the
+# graphs, link group and cards it applies to, and with csv the download.
+# _dash_embed_plan decides it, once per render and per served document, in
+# both modes; whole-data rules (lowess adjust, lpoly's grid, by() panels,
+# card first values) keep reading the whole frame.
+# ---------------------------------------------------------------------------
+
+def _dash_embed_rows_of(obj, frame, masks):
+    """The rows of *frame* an object's qualifier selects, as a boolean
+    Series indexed like *frame* (WP-29 P0.11): its qualifier column's mask
+    (_dash_qual_mask; an unknown column raises ValueError), else its
+    if_expr/in_expr text through _dash_qualified_frame -- the one
+    translator, its whitelist and no eval -- quietly, since the renderer
+    that draws the object names a qualifier it cannot apply; every row
+    when it has neither, or when *obj* is not a dict."""
+    idx = frame.index
+    if not isinstance(obj, dict):
+        return pd.Series(True, index=idx)
+    q = _dash_qual_mask(obj, masks)
+    if q is not None:
+        return q.reindex(idx, fill_value=False).astype(bool)
+    _if = str(obj.get("if_expr", "") or "").strip()
+    _in = str(obj.get("in_expr", "") or "").strip()
+    if not _if and not _in:
+        return pd.Series(True, index=idx)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        sel = _dash_qualified_frame(frame, _if, _in, copy=False)
+    return pd.Series(idx.isin(sel.index), index=idx)
+
+
+def _dash_embed_plan(spec, frame, masks, link_names, filters, csv=False):
+    """Which cells of *frame* a page holds (WP-29 P0.11): the one rule both
+    render modes run.
+
+    Returns ``{"rows", "need", "graph_rows", "link_rows", "filter_rows"}``,
+    every Series boolean and indexed like *frame*: ``need[column]`` the
+    rows that column is read on -- a non-literal layer's plot, option,
+    hover() and by() columns on its graph's and its own rows (by(,
+    total)'s Total rows ORed in); a brush card's variable on every
+    source's rows; a filter's variable on its reach; a filter-mode card's
+    variable on its own rows when a filter reaches it -- every row of every
+    column under *csv*, which moves no other row set; ``graph_rows`` per
+    graph name the rows its layers draw; ``link_rows`` the link group's;
+    ``filter_rows`` one entry per entry of *filters* (already parsed, with
+    ``varname`` or ``var``; never re-parsed here), the rows of the graphs,
+    link group and cards it applies to; ``rows`` the union of ``need``.
+
+    Raises:
+        ValueError: an object names a qualifier column *masks* lacks.
+    """
+    spec = spec if isinstance(spec, dict) else {}
+    idx = frame.index
+    need = {str(c): pd.Series(False, index=idx) for c in frame.columns}
+    graphs = [g for g in spec.get("graphs", []) or [] if isinstance(g, dict)]
+    names = [str((g.get("graph_options") or {}).get("name", "") or "")
+             for g in graphs]
+    linked = set(_dash_link_names(link_names, names))
+    graph_rows = {}
+    for g, name in zip(graphs, names):
+        go = g.get("graph_options") or {}
+        gq = _dash_embed_rows_of(g, frame, masks)
+        if not g.get("qual_col"):
+            # The served app reads graph_options' qualifier first: OR its
+            # rows in, so the plan never drops a row either mode draws.
+            go_if = str(go.get("if_expr", "") or "").strip()
+            go_in = str(go.get("in_expr", "") or "").strip()
+            if (go_if or go_in) and (
+                    go_if != str(g.get("if_expr", "") or "").strip()
+                    or go_in != str(g.get("in_expr", "") or "").strip()):
+                gq = gq | _dash_embed_rows_of(
+                    {"if_expr": go_if, "in_expr": go_in}, frame, masks)
+        gt = _dash_total_spec(g)
+        gq_t = None
+        tplots = []
+        if gt is not g:
+            gq_t = _dash_embed_rows_of(gt, frame, masks)
+            tplots = gt.get("plots") or []
+        extra = [h for h in str(go.get("hover", "") or "").split()
+                 if h in need]
+        by_raw = str(go.get("by", "") or "").strip()
+        if by_raw:
+            extra += [v for v in _dash_parse_by(by_raw, warn=False)[0].split()
+                      if v in need]
+        grows = pd.Series(False, index=idx)
+        for pi, p in enumerate(g.get("plots") or []):
+            if not isinstance(p, dict):
+                continue
+            if str(p.get("type", "") or "").lower() in _DASH_LITERAL_TYPES:
+                continue
+            r = gq & _dash_embed_rows_of(p, frame, masks)
+            if gq_t is not None and pi < len(tplots):
+                r = r | (gq_t & _dash_embed_rows_of(tplots[pi], frame, masks))
+            pcols = [str(p.get(k) or "") for k in _DASH_PLOT_VAR_KEYS]
+            pcols += _dash_option_columns(p.get("options") or {})
+            for c in pcols + extra:
+                if c in need:
+                    need[c] = need[c] | r
+            grows = grows | r
+        graph_rows[name] = grows
+    link_rows = pd.Series(False, index=idx)
+    members = [n for n in names if n in linked]
+    for n in members:
+        link_rows = link_rows | graph_rows[n]
+    every_graph = pd.Series(False, index=idx)
+    for r in graph_rows.values():
+        every_graph = every_graph | r
+    kpis = [k for k in spec.get("kpis", []) or [] if isinstance(k, dict)]
+    for k in kpis:
+        if str(k.get("update", "filter") or "filter") in ("brush", "both"):
+            kv = str(k.get("var") or k.get("varname") or "")
+            if kv in need:
+                need[kv] = need[kv] | link_rows | every_graph
+    filter_rows = []
+    for f in filters or []:
+        reach = pd.Series(False, index=idx)
+        if not isinstance(f, dict):
+            filter_rows.append(reach)
+            continue
+        fvar = str(f.get("varname") or f.get("var") or "")
+        excl = list(f.get("exclude") or [])
+        if members and _dash_filter_applies("", excl, {}, members=members):
+            reach = reach | link_rows
+        for n in names:
+            if n not in linked and _dash_filter_applies(n, excl, {}):
+                reach = reach | graph_rows[n]
+        for k in kpis:
+            if str(k.get("update", "filter") or "filter") not in (
+                    "filter", "both"):
+                continue
+            if not _dash_filter_applies(str(k.get("name", "") or ""),
+                                        excl, {}):
+                continue
+            kr = _dash_embed_rows_of(k, frame, masks)
+            reach = reach | kr
+            kv = str(k.get("var") or k.get("varname") or "")
+            if kv in need:
+                need[kv] = need[kv] | kr
+        if fvar in need:
+            need[fvar] = need[fvar] | reach
+        filter_rows.append(reach)
+    if csv:
+        need = {c: pd.Series(True, index=idx) for c in need}
+    rows = pd.Series(False, index=idx)
+    for v in need.values():
+        rows = rows | v
+    return {"rows": rows, "need": need, "graph_rows": graph_rows,
+            "link_rows": link_rows, "filter_rows": filter_rows}
+
+
+def _dash_embed_values(series, need):
+    """*series* with every row *need* does not flag blanked as Stata's
+    missing value (WP-29 P0.11): ``NaT`` for a date, ``NaN`` for a number
+    or a bool, ``""`` for a string.  *need* is reindexed to the series
+    (False where absent; None blanks every row); the series itself comes
+    back when every row is needed."""
+    if need is None:
+        keep = np.zeros(len(series), dtype=bool)
+    else:
+        keep = need.reindex(series.index, fill_value=False).to_numpy(
+            dtype=bool)
+    if bool(keep.all()):
+        return series
+    kind = series.dtype.kind
+    if kind == "M":
+        blank = pd.NaT
+    elif kind in "biufc":
+        blank = np.nan
+    else:
+        blank = ""
+    return series.where(keep, blank)
+
+
+def _dash_embed_frame(frame, plan, columns, rows=None):
+    """The rows of *frame* that ``plan["rows"]`` (or *rows*) keeps, the
+    *columns* *frame* holds (order kept, duplicates dropped), each blanked
+    where the plan does not need it (WP-29 P0.11).  *frame*'s index is
+    kept."""
+    keep = plan["rows"] if rows is None else rows
+    sub = frame[keep.reindex(frame.index, fill_value=False).to_numpy(
+        dtype=bool)]
+    cols = []
+    for c in columns:
+        if c in frame.columns and c not in cols:
+            cols.append(c)
+    data = {c: _dash_embed_values(sub[c], plan["need"].get(str(c)))
+            for c in cols}
+    return pd.DataFrame(data, index=sub.index, columns=cols)
+
+
+def _dash_page_index(index, rows):
+    """The served frame's row labels under the page plan (WP-29 P0.11):
+    the rows *rows* keeps are numbered 0..m-1 in the data's order --
+    the saved page's __dash_row__ ranks -- and every other row m..N-1,
+    also in the data's order.  A source holds planned rows only, so no
+    browser receives a label of m or more, and no label shows where an
+    excluded observation was.  The order of the rows is not changed:
+    `in' (iloc) and every label-aligned mask keep their meaning.  The
+    identity when *rows* keeps every row."""
+    keep = rows.reindex(index, fill_value=False).to_numpy(dtype=bool)
+    order = np.concatenate([np.flatnonzero(keep), np.flatnonzero(~keep)])
+    new = np.empty(len(index), dtype=np.int64)
+    new[order] = np.arange(len(index), dtype=np.int64)
+    return pd.Index(new)
+
+
+def _dash_relabel(obj, old, new):
+    """*obj* with every pandas Series in it -- itself, or nested in dicts
+    and lists -- given the labels *new* in place of *old*, row for row
+    (WP-29 P0.11).  Anything else is returned unchanged.
+
+    Raises:
+        ValueError: a Series is not indexed exactly like *old*, so
+            re-pairing it by position would mix rows.
+    """
+    if isinstance(obj, pd.Series):
+        if not obj.index.equals(old):
+            raise ValueError("dash: a row map is not indexed like the data.")
+        return obj.set_axis(new)
+    if isinstance(obj, dict):
+        return {k: _dash_relabel(v, old, new) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_dash_relabel(v, old, new) for v in obj]
+    return obj
+
+
 def _dash_layer_drew_anything(renderers):
     """Did this plot layer put any data on the figure?
 
@@ -24684,6 +28457,47 @@ def _dash_note_hover_unreached(gname, plots, hover_extra):
             stacklevel=3)
 
 
+def _dash_note_hover_missing(gname, hover_extra, columns):
+    """Name the hover() variables a graph names that the data does not
+    hold, once per graph per render, in both modes (WP-29 P0.10).
+
+    dash.ado exports every variable hover() names and refuses one that is
+    not in memory, so from Stata this cannot fire; a spec handed to a
+    renderer another way could name one, and both renderers used to drop
+    it from the tooltip in silence.  At most three names are shown, each
+    through ``_dash_display`` (printable, at most 80 characters), and the
+    rest counted, so the note is one bounded line whatever the spec holds.
+
+    The served app copies this function by source.
+
+    Args:
+        gname:       The graph's name, "" for none.
+        hover_extra: The names hover() gives, as a list.
+        columns:     The data's column names.
+    """
+    if not hover_extra:
+        return
+    have = set(columns or ())
+    missing, seen = [], set()
+    for n in hover_extra:
+        if n in have or n in seen:
+            continue
+        seen.add(n)
+        missing.append(n)
+    if not missing:
+        return
+    where = (f"hover() of graph {_dash_display(gname)!r}" if gname
+             else "hover()")
+    shown = ", ".join(repr(_dash_display(n)) for n in missing[:3])
+    if len(missing) > 3:
+        shown += f" and {len(missing) - 3:,} more"
+    _dash_warn_once(
+        ("hover-missing", str(gname)),
+        f"dash: {where} names variable(s) not in the data -- {shown}; "
+        f"the tooltip leaves them out.",
+        stacklevel=3)
+
+
 def _dash_glyph_dispatch(mapper):
     """The one mapping from plot-type name to GlyphMapper method.
 
@@ -24818,6 +28632,307 @@ def _dash_function_args(options):
     return (x_lo, x_hi), n_pts
 
 
+def _dash_function_points(points, n_cap=10000):
+    """``(x, y)`` arrays of a stored function points object, or None.
+
+    *points* is what Stata wrote for a function layer (WP-29 P0.6):
+    ``{"x0": <r(min)>, "dx": <r(delta)>, "y": [<y1>, ..., <yn>]}``, each y
+    a number or null (missing).  x is rebuilt as the generator built it,
+    ``x0 + dx*(i-1)`` -- bit for bit twoway's (measured on ten ranges, n
+    from 3 to 10000; ``np.linspace`` is not twoway's rule).
+
+    The object is checked before anything is converted, so a spec written
+    by hand cannot make this allocate or loop without bound: a dict; x0 and
+    dx real numbers, not booleans; y a list of 1..*n_cap* entries (counted
+    first), each None or a real number, not a boolean.  The conversion is
+    guarded, and a non-finite x0, dx, x or y -- NaN, Infinity, ``1e400``,
+    an integer such as ``10**400`` -- refuses the whole object: Stata never
+    writes one (a missing value is null).
+
+    Returns:
+        ``(x, y)`` float arrays, y NaN where Stata had a missing value; or
+        None when *points* is not such an object.
+    """
+    if not isinstance(points, dict):
+        return None
+    x0, dx, y = points.get("x0"), points.get("dx"), points.get("y")
+
+    def _real(v):
+        return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+    if not (_real(x0) and _real(dx)):
+        return None
+    if not isinstance(y, list) or not 1 <= len(y) <= n_cap:
+        return None
+    for v in y:
+        if v is not None and not _real(v):
+            return None
+    try:
+        fx0 = float(x0)
+        fdx = float(dx)
+        vals = []
+        for v in y:
+            if v is None:
+                vals.append(np.nan)
+                continue
+            f = float(v)
+            if not math.isfinite(f):
+                return None
+            vals.append(f)
+    except (OverflowError, TypeError, ValueError):
+        return None
+    if not (math.isfinite(fx0) and math.isfinite(fdx)):
+        return None
+    with np.errstate(all="ignore"):
+        x = fx0 + fdx * np.arange(len(vals), dtype=float)
+    if not np.isfinite(x).all():
+        return None
+    return x, np.array(vals, dtype=float)
+
+
+def _stata_fn_parse(text):
+    """Parse a twoway function expression by Stata's grammar, for a spec
+    without stored points (WP-29 P0.6).
+
+    The grammar is the one measured in twoway (section 04 E1):
+
+        sum  := diff ('+' diff)*        diff := prod ('-' prod)*
+        prod := quot ('*' quot)*        quot := neg ('/' neg)*
+        neg  := '-'* pow                pow  := atom ('^' expo)*
+        expo := ('-' | '+')* atom
+        atom := NUMBER | MISSING | 'x' | '_pi' | FUNC '(' sum ')'
+              | '(' sum ')'
+
+    so ``2^3^x`` is ``(2^3)^x``, ``2^-1^2`` is ``(2^-1)^2``, ``-x^2`` is
+    ``-(x^2)``, ``0.1*3/0.3`` is ``0.1*(3/0.3)`` and ``1e16+1-2`` is
+    ``1e16+(1-2)``.  Tokens are ASCII only; blanks and tabs separate them.
+    A NUMBER is ``digits[.digits][e[+-]digits]``, ``.digits[...]`` or
+    ``digits.``; MISSING is ``.`` or ``.a``-``.z``; the bare names are
+    ``x`` and ``_pi``; FUNC is one of ten names written directly before
+    its ``(``.  Everything else is refused, as twoway refuses ``pi``,
+    ``e``, ``**``, ``%``, ``//``, ``+x``, ``x^``, ``2x``, ``sin (x)`` and
+    ``sin(x,1)`` -- and as this fallback refuses what it does not know.
+
+    Chains are folded in loops, into n-ary nodes, and the parser recurses
+    only into a parenthesis or a call, at most ``_FN_EXPR_MAX_NEST`` deep,
+    so no expression can exhaust the stack.  Self-contained: the served app
+    copies it verbatim.
+
+    Returns:
+        A tree of tuples: ``("c", value)``, ``("x",)``, ``("neg", node)``,
+        ``("fold", op, [nodes])``, ``("pow", base, [(odd, node), ...])``
+        (odd: the exponent's sign is minus) and ``("call", name, node)``.
+
+    Raises:
+        ValueError: the text is not an expression this grammar takes.
+    """
+    funcs = ("sin", "cos", "tan", "exp", "log", "log10", "sqrt", "abs",
+             "floor", "ceil")
+    if not isinstance(text, str) or not text.isascii():
+        raise ValueError("function expressions are ASCII")
+    toks = []
+    i, n = 0, len(text)
+    namech = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789"
+    while i < n:
+        ch = text[i]
+        if ch in " \t":
+            i += 1
+            continue
+        if ch.isdigit() or (ch == "." and i + 1 < n and text[i + 1].isdigit()):
+            j = i
+            while j < n and text[j].isdigit():
+                j += 1
+            if j < n and text[j] == ".":
+                j += 1
+                while j < n and text[j].isdigit():
+                    j += 1
+            if j < n and text[j] in "eE":
+                k = j + 1
+                if k < n and text[k] in "+-":
+                    k += 1
+                if not (k < n and text[k].isdigit()):
+                    raise ValueError("malformed number")
+                while k < n and text[k].isdigit():
+                    k += 1
+                j = k
+            if j < n and (text[j] in namech or text[j] == "."):
+                raise ValueError("malformed number")
+            toks.append(("c", float(text[i:j])))
+            i = j
+            continue
+        if ch == ".":
+            j = i + 1
+            if j < n and text[j] in "abcdefghijklmnopqrstuvwxyz":
+                j += 1
+            if j < n and (text[j] in namech or text[j] == "."):
+                raise ValueError("malformed missing value")
+            toks.append(("c", float("nan")))
+            i = j
+            continue
+        if ch in namech:
+            j = i
+            while j < n and text[j] in namech:
+                j += 1
+            name = text[i:j]
+            if j < n and text[j] == "(":
+                if name not in funcs:
+                    raise ValueError("unknown function")
+                toks.append(("f", name))
+                i = j + 1
+                continue
+            if name == "x":
+                toks.append(("x",))
+            elif name == "_pi":
+                toks.append(("c", math.pi))
+            else:
+                raise ValueError("unknown name")
+            i = j
+            continue
+        if ch in "+-*/^()":
+            toks.append(("o", ch))
+            i += 1
+            continue
+        raise ValueError("character not in the grammar")
+
+    pos = [0]
+    depth = [0]
+
+    def peek():
+        return toks[pos[0]] if pos[0] < len(toks) else None
+
+    def is_op(t, c):
+        return t is not None and t[0] == "o" and t[1] == c
+
+    def fold(op, nodes):
+        return nodes[0] if len(nodes) == 1 else ("fold", op, nodes)
+
+    def atom():
+        t = peek()
+        if t is None:
+            raise ValueError("expression ends early")
+        if t[0] in ("c", "x"):
+            pos[0] += 1
+            return t
+        if t[0] == "f" or is_op(t, "("):
+            depth[0] += 1
+            if depth[0] > _FN_EXPR_MAX_NEST:
+                raise ValueError("nested too deeply")
+            pos[0] += 1
+            inner = level_sum()
+            if not is_op(peek(), ")"):
+                raise ValueError("unbalanced parenthesis")
+            pos[0] += 1
+            depth[0] -= 1
+            return ("call", t[1], inner) if t[0] == "f" else inner
+        raise ValueError("operand expected")
+
+    def level_pow():
+        base = atom()
+        exps = []
+        while is_op(peek(), "^"):
+            pos[0] += 1
+            odd = False
+            while is_op(peek(), "-") or is_op(peek(), "+"):
+                if is_op(peek(), "-"):
+                    odd = not odd
+                pos[0] += 1
+            exps.append((odd, atom()))
+        return ("pow", base, exps) if exps else base
+
+    def level_neg():
+        odd = False
+        while is_op(peek(), "-"):
+            odd = not odd
+            pos[0] += 1
+        node = level_pow()
+        return ("neg", node) if odd else node
+
+    def chain(op, lower):
+        nodes = [lower()]
+        while is_op(peek(), op):
+            pos[0] += 1
+            nodes.append(lower())
+        return fold(op, nodes)
+
+    def level_quot():
+        return chain("/", level_neg)
+
+    def level_prod():
+        return chain("*", level_quot)
+
+    def level_diff():
+        return chain("-", level_prod)
+
+    def level_sum():
+        return chain("+", level_diff)
+
+    if not toks:
+        raise ValueError("expression required")
+    tree = level_sum()
+    if pos[0] != len(toks):
+        raise ValueError("unexpected text after the expression")
+    return tree
+
+
+def _stata_fn_eval(tree, x):
+    """Evaluate a ``_stata_fn_parse`` tree over the grid *x* with Stata's
+    missing-value rules (WP-29 P0.6).
+
+    Stata has no infinity: any operation whose result it cannot hold is
+    missing, and a missing value stays missing through every later
+    operation.  numpy heals some of them -- ``1/inf`` is 0, ``exp(-inf)``
+    is 0, ``inf**0`` and ``1**nan`` are 1 -- so every intermediate value
+    that is not finite is made NaN, and ``^`` with a NaN on either side is
+    NaN: ``x^.``, ``(0^-1)^0+x``, ``1/(1/0)+x`` and ``exp(-exp(1000))+x``
+    are missing at every x, as in twoway (section 04 E5).  ``^`` is folded
+    left to right, each exponent's sign applied to it alone.
+
+    Self-contained (numpy only): the served app copies it verbatim.
+
+    Returns:
+        A float array the shape of *x*, NaN where Stata has a missing value.
+    """
+    xs = np.asarray(x, dtype=float)
+    table = {"sin": np.sin, "cos": np.cos, "tan": np.tan, "exp": np.exp,
+             "log": np.log, "log10": np.log10, "sqrt": np.sqrt,
+             "abs": np.abs, "floor": np.floor, "ceil": np.ceil}
+    ops = {"+": np.add, "-": np.subtract, "*": np.multiply,
+           "/": np.divide}
+
+    def m(v):
+        return np.where(np.isfinite(v), v, np.nan)
+
+    def ev(node):
+        kind = node[0]
+        if kind == "c":
+            return m(np.full(xs.shape, node[1], dtype=float))
+        if kind == "x":
+            return xs.copy()
+        if kind == "neg":
+            return -ev(node[1])
+        if kind == "fold":
+            f = ops[node[1]]
+            acc = ev(node[2][0])
+            for sub in node[2][1:]:
+                acc = m(f(acc, ev(sub)))
+            return acc
+        if kind == "pow":
+            a = ev(node[1])
+            for odd, sub in node[2]:
+                b = ev(sub)
+                if odd:
+                    b = -b
+                a = np.where(np.isnan(a) | np.isnan(b), np.nan,
+                             m(np.power(a, b)))
+            return a
+        if kind == "call":
+            return m(table[node[1]](ev(node[2])))
+        raise ValueError("not a function expression tree")
+
+    with np.errstate(all="ignore"):
+        return ev(tree)
+
+
 def _dash_note_no_second_y(plot_type):
     """Say that a range layer names no second y variable, in both modes.
 
@@ -24838,8 +28953,14 @@ def _dash_note_no_second_y(plot_type):
 
 
 def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
-                    y2var="", view=None, color_idx=0):
-    """Dispatch one plot layer to the GlyphMapper method that draws it."""
+                    y2var="", view=None, color_idx=0, order=None):
+    """Dispatch one plot layer to the GlyphMapper method that draws it.
+
+    *order* is the layer's join key (``_dash_join_key``), one value per row
+    of *source*; it reaches the mapper of a joining type only
+    (``_DASH_JOIN_TYPES``).  tsline and tsrline join in time order and take
+    none.
+    """
     dispatch, range_dispatch = _dash_glyph_dispatch(mapper)
     pt = (plot_type or "").lower()
 
@@ -24850,6 +28971,8 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
             return None
 
     # Range plots take (fig, source, y1var, y2var, xvar, options).
+    _jkw = ({"order": order}
+            if pt in _DASH_JOIN_TYPES and order is not None else {})
     rfn = range_dispatch.get(pt)
     if rfn is not None and not y2var:
         # A range type with no second y variable fell through to "no glyph
@@ -24859,7 +28982,7 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
         return None
     if rfn is not None:
         return rfn(fig, source, yvar, y2var, xvar, options,
-                   view=view, color_idx=color_idx)
+                   view=view, color_idx=color_idx, **_jkw)
 
     fn = dispatch.get(pt)
     if fn is None:
@@ -24876,7 +28999,8 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
     # histogram and kdensity are univariate -- no xvar positional argument.
     if pt in _DASH_UNIVARIATE_TYPES:
         return fn(fig, source, yvar, options, view=view, color_idx=color_idx)
-    return fn(fig, source, yvar, xvar, options, view=view, color_idx=color_idx)
+    return fn(fig, source, yvar, xvar, options, view=view, color_idx=color_idx,
+              **_jkw)
 
 
 def _dash_add_pc_glyph(mapper, fig, source, plot_type, y1var, x1var, y2var,
@@ -24948,9 +29072,7 @@ class DashRenderer:
     """
 
     # Variable key names used in plot specs — shared by _collect_plot_vars and render()
-    _VAR_KEYS: "tuple[str, ...]" = (
-        "yvar", "xvar", "var", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var"
-    )
+    _VAR_KEYS: "tuple[str, ...]" = _DASH_PLOT_VAR_KEYS
     _OPT_VAR_KEYS: "tuple[str, ...]" = _DASH_OPT_VAR_KEYS
 
     @staticmethod
@@ -25015,6 +29137,9 @@ class DashRenderer:
         # The resource limits (WP-19): the defaults, moved by any global the
         # user set, and the spec held to the graph and plot limits before
         # anything is built from it.
+        # Each function layer's stored points onto its plot (WP-29 P0.6),
+        # before anything is capped or drawn.
+        self.master_spec = _dash_attach_function_points(self.master_spec)
         self.limits: dict = _dash_limits(
             self.master_spec.get("build_options", {}))
         self.master_spec = _dash_cap_spec(self.master_spec, self.limits)
@@ -25022,6 +29147,7 @@ class DashRenderer:
         # alone, as the first, as twoway does (BUGS.md, S3).
         # ytitle(, axis(2)) routed to ytitle2() first (WP-28 B3).
         self.master_spec = _dash_route_axis_titles(self.master_spec)
+        self.master_spec = _dash_route_axis_options(self.master_spec)
         self.master_spec = _dash_lone_second_axes(self.master_spec)
 
         self.translator = OptionTranslator()
@@ -25105,9 +29231,14 @@ class DashRenderer:
         _dash_refuse_oversized(self.df.shape[0], len(self._embedded_row_cols),
                                self.limits, "dashboard",
                                extra=self._embedded_extra)
-        _dash_refuse_overbytes(self.df, self.string_vars, self.limits,
-                               "dashboard",
-                               getattr(self, "_data_file_bytes", None))
+        # WP-29 P0.10 (review A1(b)): a hover() string no layer of its
+        # graph can show is exported but not counted, as dash.ado's
+        # _byte_vars leaves it out.
+        _dash_refuse_overbytes(
+            self.df,
+            set(self.string_vars) - _dash_hover_unembedded(self.master_spec),
+            self.limits, "dashboard",
+            getattr(self, "_data_file_bytes", None))
         # A string plot variable is refused here too (GAPS2 G2): dash.ado
         # refuses it before export, and this is for a spec that reached
         # the renderer another way.
@@ -25157,7 +29288,10 @@ class DashRenderer:
                                         {k for k, v in _ts.items() if v})
 
         # Variable labels
-        self.variable_labels = stata_json.get("variableLabels", {})
+        # Cleaned to text keyed by name: an unlabelled variable's "" label
+        # becomes its name, as twoway draws it (WP-29 P0.3).
+        self.variable_labels = _dash_clean_var_labels(
+            stata_json.get("variableLabels", {}))
 
         # Value labels — stored as {labelset: {str(code): display_text}}
         self.value_labels = stata_json.get("valueLabels", {})
@@ -25194,9 +29328,15 @@ class DashRenderer:
         # The qualifier columns dash.ado exported, validated and taken out
         # of the frame as masks: no source, tooltip, filter or download ever
         # holds one (_dash_take_qual_columns).
+        # The join-order columns first (_dash_take_sort_columns): the
+        # qualifier take-out refuses any reserved column it does not name.
+        # self.sort_keys is indexed like self.df; anything that later
+        # changes self.df's rows must rebuild it.
+        self.df, self.sort_keys = _dash_take_sort_columns(
+            self.df, self.master_spec)
         self.df, self.qual_masks = _dash_take_qual_columns(
             self.df, self.master_spec)
-        for _qc in list(self.qual_masks):
+        for _qc in list(self.qual_masks) + list(self.sort_keys):
             self.variable_labels.pop(_qc, None)
             self.value_label_names.pop(_qc, None)
             self.string_vars.discard(_qc)
@@ -25232,9 +29372,10 @@ class DashRenderer:
                     ) -> "pd.Series":
         """Coerce a KPI column to something the statistic can be taken of.
 
-        A datetime column becomes epoch milliseconds -- the representation
-        Bokeh itself uses -- so min, max, mean and the percentiles all work;
-        :meth:`_format_kpi_value` turns the answer back into a date.
+        A datetime column becomes its Stata values, in the kind
+        ``date_vars`` records (WP-29 P0.20), as ``summarize`` takes every
+        statistic of it; :meth:`_format_kpi_value` writes a date-valued
+        answer in the date's picture.
 
         Args:
             col:     The raw column.
@@ -25244,7 +29385,9 @@ class DashRenderer:
         Returns:
             A numeric Series.
         """
-        return _dash_kpi_column(col, stat, varname)
+        return _dash_kpi_column(
+            col, stat, varname,
+            (getattr(self, "date_vars", {}) or {}).get(varname))
 
     @staticmethod
     def _kpi_statistic(col: "pd.Series", stat: str) -> float:
@@ -25405,6 +29548,7 @@ class DashRenderer:
         self,
         varnames: list[str],
         df: "pd.DataFrame | None" = None,
+        rows: "pd.Series | None" = None,
     ) -> ColumnDataSource:
         """Create a ``ColumnDataSource`` for the given variable names.
 
@@ -25412,15 +29556,34 @@ class DashRenderer:
         Missing columns are silently skipped to prevent KeyErrors for derived
         variables.
 
+        With a page plan (``_ensure_embed``, WP-29 P0.11) the source holds
+        only the rows the page holds -- and of those only *rows*, when
+        given (a graph's or the link group's rows) -- and each column is
+        blanked, as Stata's missing value, on every row no consumer reads it
+        on (``_dash_embed_values``).  Without one (a renderer a test built
+        no plan for) every row of the frame is kept, as before.
+
         Args:
             varnames: List of Stata variable names needed by one or more glyphs.
             df:       Optional DataFrame to use instead of ``self.df``.  Pass a
                       pre-filtered slice to implement per-graph if/in filtering.
+            rows:     Optional boolean Series indexed like ``self.df``: the
+                      rows this source may hold, within the plan's.
 
         Returns:
             A new ``ColumnDataSource`` populated with the requested columns.
         """
         frame = df if df is not None else self.df
+        plan = getattr(self, "_embed", None)
+        if plan is not None:
+            keep = plan["rows"] if rows is None else (rows & plan["rows"])
+            frame = frame[keep.reindex(frame.index, fill_value=False)
+                          .to_numpy(dtype=bool)]
+            need = plan["need"]
+            frame = pd.DataFrame(
+                {v: _dash_embed_values(frame[v], need.get(str(v)))
+                 for v in varnames if v in frame.columns},
+                index=frame.index)
         available = [v for v in varnames if v in frame.columns]
         # A date column stays an array.  tolist() made it Timestamps with a
         # NaT for each missing value, and Bokeh writes NaT in a list as a
@@ -25437,11 +29600,70 @@ class DashRenderer:
         data_dict[_ROW_ID_COLUMN] = self._row_ids_for(frame)
         return ColumnDataSource(data=data_dict)
 
+    def _frozen_layer_tag(self, ptype, options, source, view, varnames):
+        """The stale cue's tag for one frozen layer (WP-29 P0.17), or None.
+
+        ``{"type", "kind", "vars", "wvar", "wrule"}`` plus ``member_ids``
+        when the layer is drawn from a strict subset of the rows (render()
+        step 3b's rule, so ``[]`` is kept).  The sample is the one
+        ``GlyphMapper._layer_weights`` fits from: ``wrule`` "positive"
+        counts a row whose weight is finite and above zero; "any" (the
+        build drew nothing because of a weight state) any finite weight.
+        A layer whose columns cannot be read drew nothing to mark: None.
+        """
+        kind = _dash_stale_kind(ptype, options)
+        if kind is None:
+            return None
+        try:
+            wtype, wexp, why = GlyphMapper._layer_weight_column(
+                source, options, ptype)
+            if why is None:
+                units = dict(getattr(self.mapper, "date_vars", None)
+                             or {}) or None
+                cols = GlyphMapper._masked(source, view, *varnames, wexp,
+                                           units=units)
+                state = GlyphMapper._layer_weight_values_state(
+                    cols[-1], wtype, ptype)
+                wvar, wrule = wexp, ("any" if state else "positive")
+            else:
+                GlyphMapper._masked(source, view, *varnames)
+                wvar = wrule = None
+            rows = GlyphMapper._agg_member_ids(source, view)
+        except (KeyError, TypeError, ValueError):
+            return None
+        tag = {"type": ptype, "kind": kind,
+               "vars": [str(v) for v in varnames],
+               "wvar": wvar, "wrule": wrule}
+        if rows is not None and len(rows) < len(self.df):
+            tag["member_ids"] = rows
+        return tag
+
+    def _collect_frozen_layers(self) -> dict:
+        """``{fig_key: [(tag, [renderers])]}``: each figure's frozen layers,
+        grouped by the identity of their tag, in renderer order (WP-29
+        P0.17).  A figure with none is absent."""
+        out: dict = {}
+        for key, fig in self.figures.items():
+            groups: list = []
+            for r in fig.renderers:
+                tag = getattr(r, "_dash_frozen", None)
+                if tag is None:
+                    continue
+                for g in groups:
+                    if g[0] is tag:
+                        g[1].append(r)
+                        break
+                else:
+                    groups.append((tag, [r]))
+            if groups:
+                out[key] = groups
+        return out
+
     def _collect_derived_sources(self) -> dict:
         """The sources a figure draws rows from that are no graph's source.
 
         A mapper that must reorder, drop or reshape its rows draws from a
-        copy it builds: a line sorted by x, an area, a bar or a spike, a
+        copy it builds: a line in its join order, an area, a bar or a spike, a
         range or paired-coordinate layer, a scatter without its missing
         values, a layer's own marker labels.  Each copy carries every row's
         identity (``__dash_row__``), and the saved page's filter callback
@@ -25594,32 +29816,84 @@ class DashRenderer:
                 or kpi_def.get("qual_col")):
             return None
         try:
-            return self._row_ids_for(self._apply_graph_filter(kpi_def))
+            return self._row_ids_kept(self._apply_graph_filter(kpi_def))
         except (ValueError, KeyError, TypeError):
             # _apply_graph_filter already warns; a qualifier that cannot be
             # applied must not silently become "every row" in the browser
             # while the initial render used the full frame too.
             return None
 
-    def _row_ids_for(self, frame: "pd.DataFrame") -> "list[int]":
-        """Return each row's position in the primary frame.
+    def _set_embed(self, plan):
+        """Record the page plan (WP-29 P0.11) and number the page's rows.
 
-        Derived sources are slices of ``self.df`` and keep its index, so the
-        index is the identity.  A frame that somehow does not align falls
-        back to its own positions, which is no worse than the positional
-        masking this replaces.
+        The m rows *plan* keeps are ranked 0..m-1 in the data's order:
+        ``_page_labels[rank]`` is the observation's label in ``self.df``
+        and ``_row_pos`` the inverse, so no ``__dash_row__`` shows where an
+        excluded observation was.  S02's join-order ranks are re-indexed to
+        page ranks (``_page_sort_keys``), since ``_dash_join_key`` reads a
+        row id as a position."""
+        self._embed = plan
+        pos = np.flatnonzero(plan["rows"].to_numpy(dtype=bool))
+        self._page_labels = list(self.df.index[pos])
+        self._row_pos = {label: rank
+                         for rank, label in enumerate(self._page_labels)}
+        keys = getattr(self, "sort_keys", None)
+        if isinstance(keys, dict) and keys:
+            self._page_sort_keys = {
+                col: pd.Series(np.asarray(sr.to_numpy(dtype=float))[pos])
+                for col, sr in keys.items()}
+        else:
+            self._page_sort_keys = {}
 
-        Args:
-            frame: The frame this source is being built from.
+    def _ensure_embed(self, graphs, kpis, link_names, filters_cfg):
+        """The page plan (``_dash_embed_plan``), computed once per render
+        (WP-29 P0.11); ``render()`` resets it."""
+        if getattr(self, "_embed", None) is None:
+            spec = dict(getattr(self, "master_spec", None) or {},
+                        graphs=graphs, kpis=kpis)
+            self._set_embed(_dash_embed_plan(
+                spec, self.df, getattr(self, "qual_masks", None),
+                link_names, filters_cfg,
+                _dash_csv_wanted(spec.get("build_options", {}) or {})))
+        return self._embed
 
-        Returns:
-            One integer per row.
-        """
-        try:
+    def _row_rank_map(self):
+        """``{label: row id}``: the page ranks once a plan is set, else
+        positions in ``self.df`` (a renderer a test built no plan for)."""
+        pos = getattr(self, "_row_pos", None)
+        if pos is None:
             pos = {idx: i for i, idx in enumerate(self.df.index)}
-            return [int(pos.get(idx, i)) for i, idx in enumerate(frame.index)]
-        except (AttributeError, TypeError):
-            return list(range(len(frame)))
+        return pos
+
+    def _row_ids_for(self, frame: "pd.DataFrame") -> "list[int]":
+        """Each row's id on the page, aligned with *frame* (WP-29 P0.11).
+
+        The id is the row's rank among the rows the page holds
+        (``_set_embed``); with no plan, its position in ``self.df``.
+        Every frame a source is built from is a slice of ``self.df``
+        restricted to the page's rows, so every label is ranked.  There is
+        no fallback: a row the page does not hold reaching a source is a
+        leak, and is refused.
+
+        Raises:
+            ValueError: a label of *frame* is not a row the page holds.
+        """
+        pos = self._row_rank_map()
+        out = []
+        for idx in frame.index:
+            r = pos.get(idx)
+            if r is None:
+                raise ValueError(
+                    "dash: a row the page does not hold reached a source")
+            out.append(int(r))
+        return out
+
+    def _row_ids_kept(self, frame: "pd.DataFrame") -> "list[int]":
+        """The page ids of the rows of *frame* the page holds, dropping the
+        others (WP-29 P0.11): member ids, qualifier ids and a layer's
+        wanted set, which may name rows the page leaves out."""
+        pos = self._row_rank_map()
+        return [int(pos[idx]) for idx in frame.index if idx in pos]
 
     def _apply_graph_filter(
         self,
@@ -25886,6 +30160,7 @@ class DashRenderer:
         graph_spec: dict,
         source: ColumnDataSource,
         facet_view: "Optional[Any]" = None,
+        rescale: frozenset = frozenset(),
     ) -> Any:
         """Build and return a fully-configured Bokeh Figure for one graph spec.
 
@@ -25912,24 +30187,38 @@ class DashRenderer:
                 _gscheme, f"graph {graph_opts.get('name', '') or '(unnamed)'}")
             self.mapper.scheme = self.scheme
             try:
-                return self._make_figure_body(graph_spec, source, facet_view)
+                return self._make_figure_body(graph_spec, source, facet_view,
+                                              rescale)
             finally:
                 self.scheme, self.mapper.scheme = _saved_scheme, _saved_mapper
-        return self._make_figure_body(graph_spec, source, facet_view)
+                # WP-29 P0.16: no figure, render or exception inherits a
+                # layer's colour rows.
+                self.mapper.colorvar_domain = None
+        try:
+            return self._make_figure_body(graph_spec, source, facet_view,
+                                          rescale)
+        finally:
+            self.mapper.colorvar_domain = None
 
     def _make_figure_body(
         self,
         graph_spec: dict,
         source: ColumnDataSource,
         facet_view: "Optional[Any]" = None,
+        rescale: frozenset = frozenset(),
     ) -> Any:
-        """The body of :meth:`_make_figure`, run under the graph's scheme."""
+        """The body of :meth:`_make_figure`, run under the graph's scheme.
+        *rescale*: the letters a by() panel draws on its own scale
+        (``_dash_by_rescale``)."""
         graph_opts = graph_spec.get("graph_options", {})
         plots = graph_spec.get("plots", [])
 
         # Determine axis variables from the first plot layer
         xvar = plots[0].get("xvar", "") if plots else ""
         yvar = plots[0].get("yvar", "") if plots else ""
+        # The variables the axes are drawn, named and formatted by: a
+        # univariate first layer's variable is on x (WP-29 P0.8).
+        _xa, _ya = _dash_axis_vars(plots)
 
         # xtitle()/ytitle() first, else Stata's own default, through the
         # helper the generated app runs as well.  Canvas text, NOT html:
@@ -25990,20 +30279,20 @@ class DashRenderer:
         # Axis type is decided ONCE, before the single bokeh_figure() call.
         # Commit c3941de fixed a bug caused by re-creating a figure to change
         # its axis type; do not reintroduce it.
-        _x_date = self._figure_date_kind(plots, "xvar", xvar)
-        _y_date = self._figure_date_kind(plots, "yvar", yvar)
+        _x_date = self._figure_date_kind(plots, "xvar", _xa)
+        _y_date = self._figure_date_kind(plots, "yvar", _ya)
 
         if _x_date and _xs_log:
             warnings.warn(
                 f"dash: xscale(log) is meaningless for the date variable "
-                f"'{xvar}'; drawing a date axis instead.",
+                f"'{_xa}'; drawing a date axis instead.",
                 UserWarning,
             )
             _xs_log = False
         if _y_date and _ys_log:
             warnings.warn(
                 f"dash: yscale(log) is meaningless for the date variable "
-                f"'{yvar}'; drawing a date axis instead.",
+                f"'{_ya}'; drawing a date axis instead.",
                 UserWarning,
             )
             _ys_log = False
@@ -26025,8 +30314,8 @@ class DashRenderer:
         # Each tick in the axis variable's own date format, as twoway
         # labels it (%tm's 2001m1, GAPS2 E3).  An explicit xlabel()/
         # ylabel() tick list still wins -- it is applied later.
-        for _axis, _kind, _avar in ((fig.xaxis, _x_date, xvar),
-                                    (fig.yaxis, _y_date, yvar)):
+        for _axis, _kind, _avar in ((fig.xaxis, _x_date, _xa),
+                                    (fig.yaxis, _y_date, _ya)):
             if _kind:
                 _axis.formatter = _dash_date_axis_formatter(
                     _dash_date_fmt(getattr(self, "formats", {}).get(_avar),
@@ -26095,13 +30384,13 @@ class DashRenderer:
         # the full frame spanned data the graph does not show.
         _has_y2, _has_x2 = _dash_add_secondary_axes(
             fig, plots, graph_opts, _source_frame(source, self.df),
-            _seen, _gkey)
+            _seen, _gkey, self.variable_labels, self.scheme)
 
         # xscale(range())/yscale(range()) and reverse, through the helper
         # the generated app runs as well: it read xrange/yrange keys
         # dash.ado never writes, so a served range() was dropped.
         _dash_apply_scale_ranges(fig, _xsc, _ysc, _source_frame(source, self.df),
-                                 xvar, yvar)
+                                 xvar, yvar, rescale=rescale)
 
         # xline()/yline(), through the helper the generated app runs as well.
         _dash_reference_lines(fig, graph_opts, _seen, _gkey, self.scheme)
@@ -26113,7 +30402,7 @@ class DashRenderer:
         # xlabel()/ylabel(), xtick()/ytick(): Stata's full grammar, through
         # the helper the generated app runs as well.  Its own parser read a
         # bare numlist and angle() and nothing else.
-        _dash_apply_axis_options(fig, graph_opts, xvar, yvar,
+        _dash_apply_axis_options(fig, graph_opts, _xa, _ya,
                                  _source_frame(source, self.df),
                                  getattr(self, "numeric_formats", {}),
                                  _seen, _gkey,
@@ -26190,13 +30479,13 @@ class DashRenderer:
                     # the other two shared one -- and outside the filter
                     # callback, which only ever touches the sources it was
                     # given.  Every source carries __dash_row__, the row's
-                    # position in self.df, so the mask is by identity and
-                    # holds however short or reordered the source is.
+                    # rank among the page's rows (WP-29 P0.11), so the mask
+                    # is by identity and holds however short or reordered
+                    # the source is.
                     _ids = list(source.data.get(_ROW_ID_COLUMN, []))
                     if not _ids:
                         raise ValueError("source carries no row identity")
-                    _pos = {idx: i for i, idx in enumerate(self.df.index)}
-                    _wanted = {_pos.get(i, -1) for i in _pdf.index}
+                    _wanted = set(self._row_ids_kept(_pdf))
                     _mask = [bool(r in _wanted) for r in _ids]
                     # Intersect with a view already on this layer -- a facet
                     # panel, or a linked graph's own qualifier -- rather than
@@ -26209,14 +30498,36 @@ class DashRenderer:
                                  for a, b in zip(_prev_bools, _mask)]
                     _pf = BooleanFilter(booleans=_mask)
                     _plot_view = CDSView(filter=_pf)
+                    # WP-29 P0.15: register the source's row ids the mask
+                    # keeps -- the layer's qualifier AND the panel's or
+                    # linked graph's view -- never every row the layer's
+                    # qualifier selects in the whole dataset, or the filter
+                    # callback rebuilds the view with the other panel's rows.
                     self._register_view_filter(
-                        source, _pf, self._row_ids_for(_pdf))
+                        source, _pf,
+                        [int(r) for r, keep in zip(_ids, _mask) if keep])
                 except Exception as _pexc:          # never lose the layer
                     warnings.warn(
                         f"dash: per-plot qualifier on layer {pi + 1} could not "
                         f"be applied ({_pexc}); the layer is drawn unfiltered.",
                         stacklevel=2,
                     )
+
+            # WP-29 P0.16: the layer's colour rows -- the rows its view
+            # selects (its own if/in AND its panel's or linked graph's),
+            # read before map_scatter's missing x/y mask, since twoway
+            # counts a row whose y or x is missing.  Set for every layer,
+            # so none inherits another's; _make_figure resets it.
+            _cv_mask = None
+            if _plot_view is not None and str(
+                    popts.get("colorvar") or "").strip():
+                _cv_mask = self.mapper._view_mask(
+                    _plot_view,
+                    len(next(iter(source_for_plot.data.values()), [])))
+            self.mapper.colorvar_domain = _dash_colorvar_domain(
+                source_for_plot.data, popts, _cv_mask,
+                where=f"graph {graph_opts.get('name', '') or '(unnamed)'} "
+                      f"plot {pi + 1}")
 
             # Snapshot renderer list so new glyphs can be identified -- and
             # the annotations, so a yaxis(2) layer's labels and arrowheads
@@ -26225,6 +30536,19 @@ class DashRenderer:
             _c_before = len(fig.center)
             if pi == 0:
                 _plot_renderers: list = []
+            # The variables a frozen layer is computed from (WP-29 P0.17).
+            _frozen_vars = None
+
+            # A joining layer's join key: sort(varlist)'s rank, read by row
+            # (_dash_join_key); None draws in the data's order, or x's under
+            # sort (GlyphMapper._join_order).
+            # The ranks re-indexed to the page's rows (WP-29 P0.11): a row
+            # id is a rank among them, which _dash_join_key reads as a
+            # position.
+            _jo = (_dash_join_key(source_for_plot,
+                                  getattr(self, "_page_sort_keys", None) or {},
+                                  _dash_sort_col_of(plot, self.master_spec))
+                   if ptype.lower() in _DASH_JOIN_TYPES else None)
 
             if ptype.lower() == "scatteri":
                 # An immediate list, one record per point -- [y, x] or
@@ -26254,10 +30578,12 @@ class DashRenderer:
                 py1var = plot.get("yvar1", "")
                 py2var = plot.get("yvar2", "")
                 self._add_glyph(fig, source_for_plot, ptype, py1var, pxvar, popts,
-                                y2var=py2var, view=_plot_view, color_idx=_pstyle_idx[pi])
+                                y2var=py2var, view=_plot_view, color_idx=_pstyle_idx[pi],
+                                order=_jo)
             elif ptype.lower() in _UNIVARIATE_TYPES:
                 pyvar = (plot.get("yvar", "") or plot.get("var", "")
                          or yvar)
+                _frozen_vars = [pyvar]
                 self._add_glyph(fig, source_for_plot, ptype, pyvar, pxvar, popts,
                                 view=_plot_view, color_idx=_pstyle_idx[pi])
             elif ptype.lower() == "function":
@@ -26267,18 +30593,35 @@ class DashRenderer:
                 # (twoway_function.sthlp: "If range() is not specified,
                 # range(0 1) is assumed.")
                 _fn_range, _fn_n = _dash_function_args(popts)
+                # The points Stata computed, when the spec carries them
+                # (WP-29 P0.6); the expression is then never evaluated.
                 self.mapper.map_function(fig, pexpr, _fn_range, _fn_n, popts,
-                                         color_idx=_pstyle_idx[pi])
+                                         color_idx=_pstyle_idx[pi],
+                                         points=plot.get("points"))
             else:
                 pyvar = plot.get("yvar", yvar)
+                _frozen_vars = [pyvar, pxvar]
                 if ptype.lower() == "scatter":
                     _plot_view = self._linked_scatter_view(
                         source_for_plot, pyvar, pxvar, popts, _plot_view)
                 self._add_glyph(fig, source_for_plot, ptype, pyvar, pxvar, popts,
-                                view=_plot_view, color_idx=_pstyle_idx[pi])
+                                view=_plot_view, color_idx=_pstyle_idx[pi],
+                                order=_jo)
 
             _layer_renderers = list(fig.renderers[_r_before:])
             _plot_renderers.append((plot, _layer_renderers))
+            # A layer the saved page computes at build and does not refit
+            # carries ONE tag on every renderer: its kind, variables,
+            # weight rule and member rows (WP-29 P0.17).  Private to the
+            # Python object; never serialised.
+            if _frozen_vars and ptype.lower() in _DASH_COMPUTED_ONLY_TYPES:
+                _ftag = self._frozen_layer_tag(ptype.lower(), popts,
+                                               source_for_plot, _plot_view,
+                                               _frozen_vars)
+                if _ftag is not None:
+                    for _fr in _layer_renderers:
+                        if not _dash_is_swatch(_fr):
+                            _fr._dash_frozen = _ftag
 
             # A layer that drew nothing used to say nothing: `pci' and
             # `pcscatter' each produced a titled, axed, empty plot region
@@ -26368,6 +30711,11 @@ class DashRenderer:
         _dash_note_hover_unreached(
             graph_opts.get("name", "") or graph_spec.get("name", ""),
             plots, _hover_extra_str.split() if _hover_extra_str else [])
+        # And a hover() name the data does not hold (WP-29 P0.10).
+        _dash_note_hover_missing(
+            graph_opts.get("name", "") or graph_spec.get("name", ""),
+            _hover_extra_str.split() if _hover_extra_str else [],
+            list(self.df.columns))
 
         return fig
 
@@ -26382,6 +30730,7 @@ class DashRenderer:
         y2var: str = "",
         view=None,
         color_idx: int = 0,
+        order=None,
     ) -> None:
         """Dispatch a single plot layer to the correct GlyphMapper method.
 
@@ -26395,9 +30744,11 @@ class DashRenderer:
             y2var:      Second y variable for range plot types (empty for
                         non-range plots).
             color_idx:  Zero-based plot index for scheme color cycling.
+            order:      The layer's join key (``_dash_join_key``), or None.
         """
         _dash_add_glyph(self.mapper, fig, source, plot_type, yvar, xvar,
-                        options, y2var=y2var, view=view, color_idx=color_idx)
+                        options, y2var=y2var, view=view, color_idx=color_idx,
+                        order=order)
 
     def _add_pc_glyph(
         self,
@@ -27081,6 +31432,9 @@ class DashRenderer:
         link_names[:] = _dash_link_names(link_names, all_graph_names)
         # None until a link group builds its source, below.
         self._dash_linked_source = None
+        # WP-29 P0.11: the rows and cells the page holds, once.
+        _plan = self._ensure_embed(graphs, kpis, link_names, filters_cfg)
+        _grows = _plan["graph_rows"]
 
         # ---- 2. Build ColumnDataSources ----
         # A brushed source must carry the column a brush KPI computes from:
@@ -27134,7 +31488,12 @@ class DashRenderer:
                         vname = plot.get("var") or plot.get("yvar", "")
                         if vname and vname not in linked_vars and vname in self.df.columns:
                             linked_vars.append(vname)
-            linked_source = self._make_source(linked_vars)
+            # The link group's rows only (WP-29 P0.11): each graph's and
+            # each layer's if/in together, never every row of the data.
+            self._link_index = self.df.index[
+                _plan["link_rows"].to_numpy(dtype=bool)]
+            linked_source = self._make_source(linked_vars,
+                                              rows=_plan["link_rows"])
             # The link group's one source, so a layer that would draw from a
             # copy of it can draw from it through a view instead
             # (_linked_scatter_view).
@@ -27154,15 +31513,22 @@ class DashRenderer:
                     self.sources[name] = linked_source
                     # Build a CDSView for linked graphs that have qualifiers.
                     _g_fdf = self._apply_graph_filter(g)
-                    if len(_g_fdf) < len(self.df):
-                        _df_idx_set = frozenset(_g_fdf.index)
-                        _bool_mask = [
-                            bool(i in _df_idx_set) for i in self.df.index
-                        ]
+                    # The mask is over the link group's rows, the rows the
+                    # source holds (WP-29 P0.11): sized to self.df it would
+                    # misalign, and a facet or layer mask of the source's
+                    # length would never intersect with it.
+                    _df_idx_set = frozenset(_g_fdf.index)
+                    _bool_mask = [
+                        bool(i in _df_idx_set) for i in self._link_index
+                    ]
+                    if not all(_bool_mask):
                         _qf = BooleanFilter(booleans=_bool_mask)
                         _linked_graph_views[name] = CDSView(filter=_qf)
                         self._register_view_filter(
-                            linked_source, _qf, self._row_ids_for(_g_fdf))
+                            linked_source, _qf,
+                            [int(r) for r, keep in zip(
+                                linked_source.data[_ROW_ID_COLUMN],
+                                _bool_mask) if keep])
                     by_raw_lnk2 = (g.get("graph_options", {}).get("by") or "").strip()
                     if by_raw_lnk2:
                         # The QUALIFIED frame.  This was self.df, so a linked
@@ -27175,7 +31541,8 @@ class DashRenderer:
                             fkey = f"{name}__by__{idx}"
                             if group_df.attrs.get("_dash_total"):
                                 self._facet_total_keys.add(fkey)
-                            mask = [i in group_df.index for i in self.df.index]
+                            _gidx = frozenset(group_df.index)
+                            mask = [i in _gidx for i in self._link_index]
                             facet_entries_lnk.append((fkey, label))
                             facet_masks_lnk.append((label, mask))
                         self._facet_map[name]   = facet_entries_lnk
@@ -27184,7 +31551,8 @@ class DashRenderer:
                     g_vars      = DashRenderer._collect_graph_vars(self.df, g)
                     g_vars += [v for v in brush_kpi_vars if v not in g_vars]
                     filtered_df = self._apply_graph_filter(g)
-                    self.sources[name] = self._make_source(g_vars, df=filtered_df)
+                    self.sources[name] = self._make_source(
+                        g_vars, df=filtered_df, rows=_grows.get(name))
         else:
             for g in graphs:
                 name   = g.get("graph_options", {}).get("name", "")
@@ -27195,7 +31563,8 @@ class DashRenderer:
                         g_vars.append(fv)
                 g_vars += [v for v in brush_kpi_vars if v not in g_vars]
                 filtered_df = self._apply_graph_filter(g)
-                self.sources[name] = self._make_source(g_vars, df=filtered_df)
+                self.sources[name] = self._make_source(
+                    g_vars, df=filtered_df, rows=_grows.get(name))
 
         # ---- 2b. Handle by() faceting on unlinked sources ----
         for g in graphs:
@@ -27231,13 +31600,23 @@ class DashRenderer:
                         fkey = f"{name}__by__{idx}"
                         if group_df.attrs.get("_dash_total"):
                             self._facet_total_keys.add(fkey)
-                        self.sources[fkey] = self._make_source(g_vars, df=group_df)
+                        self.sources[fkey] = self._make_source(
+                            g_vars, df=group_df, rows=_grows.get(name))
                         facet_entries.append((fkey, label))
                     self._facet_map[name] = facet_entries
 
         # ---- 3. Build figures ----
         for g in graphs:
             name = g.get("graph_options", {}).get("name", "")
+            # The letters a by() graph's panels draw on their own scales
+            # (WP-29 P0.2); empty for any other graph.
+            _brs = _dash_by_rescale(
+                str(g.get("graph_options", {}).get("by", "") or ""))
+            # Notes decided from the spec alone, raised here and, for the
+            # served app, at build time (ServerAppBuilder._plan_graph_notes).
+            for _nk, _nt in (_dash_unused_second_axis_notes(g)
+                             + _dash_by_range_notes(g)):
+                _dash_warn_once(_nk, _nt)
             if name in self._facet_map:
                 shared_src_render = self.sources.get(name)
                 masks_render      = self._facet_masks.get(name, [])
@@ -27252,9 +31631,12 @@ class DashRenderer:
                             # once the callback shortens the shared source
                             # they must be rebuilt, so record which rows
                             # belong to this panel.
+                            _lids = list(
+                                shared_src_render.data[_ROW_ID_COLUMN])
                             self._register_view_filter(
                                 shared_src_render, _pf,
-                                [i for i, keep in enumerate(mask_r) if keep])
+                                [int(_lids[i]) for i, keep in enumerate(mask_r)
+                                 if keep])
                         else:
                             panel_view_r = None
                     else:
@@ -27268,7 +31650,8 @@ class DashRenderer:
                         g_panel = (_dash_total_spec(g)
                                    if fkey in self._facet_total_keys else g)
                         fig = self._make_figure(g_panel, src,
-                                                facet_view=panel_view_r)
+                                                facet_view=panel_view_r,
+                                                rescale=_brs)
                         orig_title = fig.title.text if fig.title else ""
                         fig.title.text = f"{orig_title} — {label}" if orig_title else label
                         if name in link_names:
@@ -27278,12 +31661,14 @@ class DashRenderer:
                         raise RuntimeError(
                             f"dash_render: failed to build facet figure '{fkey}': {exc}"
                         ) from exc
-                # twoway ticks a by() graph's panels on one scale, over all
-                # their data (_dash_common_count_ticks); the served app runs
-                # the same helper.
-                _dash_common_count_ticks(
+                # twoway draws a by() graph's panels on one scale per axis,
+                # over all their data, unless rescaled; one range object is
+                # shared, then the panels are ticked on it
+                # (_dash_share_by_scales); the served app runs the same
+                # helper.
+                _dash_share_by_scales(
                     [self.figures[fk] for fk, _ in self._facet_map[name]
-                     if fk in self.figures])
+                     if fk in self.figures], _brs)
             else:
                 src = self.sources.get(name)
                 if src is None:
@@ -27293,7 +31678,8 @@ class DashRenderer:
                 _qual_view = _linked_graph_views.get(name) \
                     if "_linked_graph_views" in dir() else None
                 try:
-                    _fig = self._make_figure(g, src, facet_view=_qual_view)
+                    _fig = self._make_figure(g, src, facet_view=_qual_view,
+                                             rescale=_brs)
                     if name in link_names:
                         _dash_dim_nonselection(_fig)
                     self.figures[name] = _fig
@@ -27405,6 +31791,12 @@ class DashRenderer:
                 if _dash_kpi_date_valued(kstat)
                 else ""
             ),
+            # The Stata date kind every value is converted to before the
+            # statistic is taken, "" for a count or a non-date (WP-29
+            # P0.20).  Data only: a kind from _STATA_DATE_KINDS, JSON
+            # encoded, never interpolated into code.
+            "unitkind": _dash_kpi_unit_kind(
+                kstat, (getattr(self, "date_vars", {}) or {}).get(kvar, "")),
             # HTML-escaped to prevent DOM XSS when the callback rebuilds
             # kpi_div.text by string concatenation.
             "title": html.escape(kdef.get("title", "") or ""),
@@ -27515,8 +31907,9 @@ class DashRenderer:
         For each filter spec, creates the appropriate Bokeh widget (Select,
         Slider, or RangeSlider) and a CustomJS callback that re-applies all
         active filter conditions on every widget change.  Each widget is
-        judged from ``self.df``, the data the filter filters, never from a
-        graph's source.
+        judged from the rows its targets select (WP-29 P0.11: the graphs,
+        link group and cards it applies to, the plan's ``filter_rows``),
+        read from ``self.df``, never from a graph's source.
 
         Reads:  self.df, self.sources, self.kpi_divs, self.agg_source_registry
         Writes: self.filter_widgets, self.filter_callbacks
@@ -27536,8 +31929,8 @@ class DashRenderer:
         # `source': the link group's, else the first one registered.  It
         # carries the callback and decides nothing about the widget.  Whether
         # a filter gets a widget, and its type, options and range, are the
-        # data's -- self.df, the frame the snapshot below holds and every
-        # callback masks -- because this source is one graph's rows: under
+        # rows its targets select (WP-29 P0.11), read from self.df --
+        # never from this source, which is one graph's rows: under
         # that graph's own if/in, or when it is a by() panel or the graph
         # after one, a subset, and it can be empty.  They were read from it:
         # measured 23sep2026, g1 `if price > 1000000' (no rows) and
@@ -27552,7 +31945,10 @@ class DashRenderer:
         else:
             fsource = next(iter(self.sources.values()), None)
 
-        for fc in filters_cfg:
+        # The rows each filter reaches, aligned with filters_cfg (the plan
+        # was computed from this list; WP-29 P0.11).
+        _frows = (getattr(self, "_embed", None) or {}).get("filter_rows", [])
+        for _fi, fc in enumerate(filters_cfg):
             fvar    = fc.get("varname", "")
             ftype   = fc.get("type", "dropdown")
             excludes = fc.get("exclude", [])
@@ -27574,14 +31970,19 @@ class DashRenderer:
             #   1. explicit label() option from the filter spec
             #   2. Stata variable label (e.g. "Repair record 1978")
             #   3. variable name (final fallback)
-            flabel = (fc.get("label") or "").strip() \
-                     or self.variable_labels.get(fvar, "").strip() \
-                     or fvar
+            flabel = _dash_filter_base_title(fc.get("label"),
+                                             self.variable_labels, fvar)
             # A dropdown over the option limit on a numeric or date
             # variable is drawn as a range; the spec the page's script
             # filters by must say so too, or it would test a slider's
             # [lo, hi] as a category.
+            # The rows its targets select: an observation every if/in
+            # excludes adds no option or bound, and an empty reach draws the
+            # shared builder's empty widget (the dtype is kept).
             _fcol = self.df[fvar]
+            if _fi < len(_frows):
+                _fcol = _fcol[_frows[_fi].reindex(
+                    self.df.index, fill_value=False).to_numpy(dtype=bool)]
             _eff = _dash_filter_effective_type(
                 ftype, fvar, _fcol, self._limits["filter_options"])
             if _eff != ftype:
@@ -27650,17 +32051,20 @@ class DashRenderer:
         # Built when a callback will read it; a dashboard whose filters all
         # failed has none, and the CSV download below builds its own.
         if built_filter_specs:
-            # The WHOLE frame, not the first graph's source.  Under by()
-            # that source is one facet and under a graph-level `if' it is
-            # the qualified rows; the widgets' categories and bounds and the
-            # KPI recompute all read this snapshot.  Measured: by(foreign)
-            # left it with five of ten rows.  Every source is masked by row
-            # identity against it, so the full frame is what the masking
-            # expects.
-            for _col in self.df.columns:
+            # The page's rows (WP-29 P0.11), not the first graph's source.
+            # Under by() that source is one facet and under a graph-level
+            # `if' it is the qualified rows, while the KPI recompute reads
+            # this snapshot.  Measured: by(foreign) left it with five of ten
+            # rows.  Every source is masked by row identity against it.  It
+            # holds the rows the graphs, cards and filters select, each
+            # column blanked where nothing reads it, and every column, so
+            # its shape is the frame's.
+            _snap = _dash_embed_frame(self.df, self._embed,
+                                      list(self.df.columns))
+            for _col in _snap.columns:
                 _orig_data[str(_col)] = [DashRenderer._to_serialisable(v)
-                                         for v in self.df[_col]]
-            _orig_data[_ROW_ID_COLUMN] = list(self._row_ids_for(self.df))
+                                         for v in _snap[_col]]
+            _orig_data[_ROW_ID_COLUMN] = list(self._row_ids_for(_snap))
         _orig_snapshot = ColumnDataSource(_orig_data)
 
         # One snapshot model per graph source, shared by every callback that
@@ -27831,6 +32235,12 @@ class DashRenderer:
             _kpi_config_all.append(_cfg)
             _kpi_divs_all.append(_kdiv)
 
+        # The saved page's stale cue (WP-29 P0.17): one set of models and
+        # lists, shared by every callback; None when no frozen layer is
+        # reached by a filter, and then nothing is added.
+        _stale_args = (self._stale_cue_args(_use_for, filter_row_widgets)
+                       if self.filter_callbacks else None)
+
         # Every callback gets the SAME target lists: "use" is a property of
         # the target and the whole filter set, never of which widget moved
         # (GAPS2 E2).
@@ -27853,6 +32263,9 @@ class DashRenderer:
             _cb.args["derived_use_json"]  = _der_use_json_all
             _cb.args["derived_spacing_json"] = _der_spacing_json_all
             _cb.args["derived_spacing_glyphs"] = _der_spacing_glyphs_all
+            if _stale_args:
+                for _k, _v in _stale_args.items():
+                    _cb.args[_k] = _v
 
         # The CSV download (WP-21), when the build asked for it: the
         # snapshot the filter callbacks read, masked the way they mask it,
@@ -27860,15 +32273,102 @@ class DashRenderer:
         # no filter has no snapshot yet; the download builds it.
         if _dash_csv_wanted(self.master_spec.get("build_options", {})):
             if not _orig_data:
-                for _col in self.df.columns:
+                # Under csv the plan needs every cell (WP-29 P0.11).
+                _snap = _dash_embed_frame(self.df, self._embed,
+                                          list(self.df.columns))
+                for _col in _snap.columns:
                     _orig_data[str(_col)] = [DashRenderer._to_serialisable(v)
-                                             for v in self.df[_col]]
-                _orig_data[_ROW_ID_COLUMN] = list(self._row_ids_for(self.df))
+                                             for v in _snap[_col]]
+                _orig_data[_ROW_ID_COLUMN] = list(self._row_ids_for(_snap))
                 _orig_snapshot = ColumnDataSource(_orig_data)
             filter_row_widgets.append(
                 self._csv_button(_orig_snapshot, _filter_specs))
 
         return filter_row_widgets
+
+    def _stale_cue_args(self, use_for, filter_row_widgets):
+        """The saved page's stale-cue models and callback args (WP-29
+        P0.17, decision M3), or None when no figure a filter reaches holds
+        a frozen layer.
+
+        Per marked figure, one hidden caption Title at index 0 of
+        ``fig.above`` (nearest the frame); per frozen layer, its renderers'
+        rebuilt muted glyph, its legend items, and its config; one shared
+        ``ColumnDataSource({"id": ...})`` per distinct member set, so ids
+        never travel in the per-callback JSON; one hidden status Div,
+        appended to *filter_row_widgets* before the CSV button.  Labels
+        travel as data; the caption and status are module constants.
+        """
+        legends = []
+        for fig in self.figures.values():
+            for side in (fig.center, fig.above, fig.below, fig.left,
+                         fig.right):
+                legends.extend(m for m in side
+                               if isinstance(m, _BkLegend))
+        configs, rend_lists, titles, items, members = [], [], [], [], []
+        item_index: dict = {}
+        member_index: dict = {}
+        for fig_key, entries in getattr(self, "frozen_layer_registry",
+                                        {}).items():
+            use = use_for(fig_key)
+            if not use:
+                continue  # an excluded graph gets nothing
+            fig = self.figures[fig_key]
+            cue = _BkTitle(text=_DASH_STALE_CUE_TEXT, visible=False,
+                           tags=["dash_stale_cue"], text_font_size="9pt",
+                           text_font_style="normal", text_color="#3d2f00",
+                           background_fill_color="#fff4ce",
+                           border_line_color="#8a6d00", align="left")
+            fig.above = [cue] + list(fig.above)
+            titles.append(cue)
+            t_idx = len(titles) - 1
+            for tag, rends in entries:
+                ids = {id(r) for r in rends}
+                for r in rends:
+                    r.muted_glyph = _dash_stale_glyph(r.glyph)
+                    r.muted = False
+                its = []
+                for leg in legends:
+                    for it in leg.items:
+                        if not any(id(x) in ids for x in it.renderers):
+                            continue
+                        lab = it.label
+                        if isinstance(lab, dict):
+                            text = lab.get("value")
+                        else:
+                            text = getattr(lab, "value", None)
+                        if not isinstance(text, str):
+                            continue  # a field label
+                        if id(it) not in item_index:
+                            items.append(it)
+                            item_index[id(it)] = len(items) - 1
+                        its.append([item_index[id(it)], text])
+                m_idx = -1
+                if "member_ids" in tag:
+                    key = tuple(int(i) for i in tag["member_ids"])
+                    if key not in member_index:
+                        members.append(ColumnDataSource(
+                            {"id": list(key)}, tags=["dash_stale_members"]))
+                        member_index[key] = len(members) - 1
+                    m_idx = member_index[key]
+                configs.append({"use": use, "vars": tag["vars"],
+                                "wvar": tag["wvar"], "wrule": tag["wrule"],
+                                "members": m_idx, "title": t_idx,
+                                "items": its,
+                                "suffix": _DASH_STALE_SUFFIX[tag["kind"]]})
+                rend_lists.append(list(rends))
+        if not configs:
+            return None
+        # disable_math: the note is fixed HTML, never maths (test_label_sinks).
+        status = Div(text="", visible=False, tags=["dash_stale_status"],
+                     sizing_mode="stretch_width", disable_math=True)
+        filter_row_widgets.append(status)
+        return {"stale_configs_json": json.dumps(configs, allow_nan=False),
+                "stale_members": members, "stale_renderers": rend_lists,
+                "stale_titles": titles, "stale_legend_items": items,
+                "stale_status": status,
+                "stale_text_json": json.dumps(
+                    {"status_html": _DASH_STALE_STATUS_HTML})}
 
     def _csv_button(self, snapshot, filter_specs):
         """The saved page's Download CSV button (WP-21).
@@ -27887,9 +32387,14 @@ class DashRenderer:
             getattr(self, "value_labels", {}),
             getattr(self, "value_label_names", {}),
             storage_types=getattr(self, "storage_types", {}))
+        # The page's planned cells (WP-29 P0.11); under csv every cell is
+        # planned, so this is every row, as the download needs.
+        _plan = getattr(self, "_embed", None)
+        _scols = [c for c in meta["strings"] if c in self.df.columns]
+        _tf = (_dash_embed_frame(self.df, _plan, _scols)
+               if _plan is not None else self.df)
         text = ColumnDataSource({
-            c: [_dash_csv_text_value(v) for v in self.df[c]]
-            for c in meta["strings"] if c in self.df.columns})
+            c: [_dash_csv_text_value(v) for v in _tf[c]] for c in _scols})
         btn = Button(label="Download CSV", name="dash_csv_download",
                      width=_DASH_CSV_BUTTON_WIDTH)
         btn.js_on_event("button_click", CustomJS(
@@ -28114,20 +32619,30 @@ class DashRenderer:
         kpis   = self.master_spec.get("kpis", [])
         build  = self.master_spec.get("build_options", {})
 
+        # The notes of the previous build are forgotten before anything
+        # here can raise one: parsing the filters notes a cap, and a served
+        # build earlier in the same Stata session leaves its notes behind
+        # (one note per (option, value) per render).
+        _dash_reset_notes()
+        # ---- Parse build options ----
+        # First (WP-29 P0.11): the page plan reads the parsed filters, and
+        # the size note counts the rows the page holds.
+        link_names, filters_cfg = self._parse_link_and_filters(build)
+        self._embed = None
+        self._ensure_embed(graphs, kpis, link_names, filters_cfg)
         # GAPS2 G3: the note reports embedded bytes, under the same
-        # row_cols/extra count __init__ refused on (computed once there).
-        _report_dataset_shape(self.df.shape[0],
+        # row_cols/extra count __init__ refused on (computed once there),
+        # over the rows the page holds.
+        _report_dataset_shape(int(self._embed["rows"].sum()),
                               len(self._embedded_row_cols), "dashboard",
                               extra=self._embedded_extra)
         # Sub-option reports already made this render, so a by() panel does
         # not repeat its graph's.
         self._reported_subopts = set()
-        # Likewise the style notes: one per (option, value) per render.
-        _dash_reset_notes()
+        # The style notes were reset at the top: one per (option, value)
+        # per render.
         self._fmt_models = {}
 
-        # ---- Parse build options ----
-        link_names, filters_cfg = self._parse_link_and_filters(build)
         # Carried RAW; every site that puts these into HTML escapes them
         # itself.  Escaping here as well was a double escape in the
         # Bootstrap path.
@@ -28164,7 +32679,7 @@ class DashRenderer:
         # A layer drawn from a subset of the rows -- a by() panel, a graph or
         # a plot with its own if/in -- carries the rows it counts, so the
         # recount keeps to them; one drawn from every row carries nothing.
-        _n_rows = len(self.df)
+        _n_rows = int(self._embed["rows"].sum())
         for _gname, _fig in self.figures.items():
             _agg_list = []
             for _r in _fig.renderers:
@@ -28181,6 +32696,9 @@ class DashRenderer:
 
         # ---- 3c. The copies of rows the mappers built ----
         self.derived_source_registry = self._collect_derived_sources()
+
+        # ---- 3d. The layers a saved page does not refit (WP-29 P0.17) ----
+        self.frozen_layer_registry = self._collect_frozen_layers()
 
         # ---- 4. Build KPI Divs ----
         self._build_kpi_html(kpis)
@@ -28274,6 +32792,9 @@ class ServerAppBuilder:
         """
         with open(spec_path, "r", encoding="utf-8") as f:
             self.spec: dict = json.load(f)
+        # Each function layer's stored points onto its plot (WP-29 P0.6),
+        # before the spec is capped and embedded: the app draws them.
+        self.spec = _dash_attach_function_points(self.spec)
 
         with open(data_path, "r", encoding="utf-8") as f:
             self._raw_data_str: str = f.read()
@@ -28285,6 +32806,7 @@ class ServerAppBuilder:
         # A lone second axis drawn as the first, as the saved renderer
         # draws it (_dash_lone_second_axes), before the spec is embedded.
         self.spec = _dash_route_axis_titles(self.spec)
+        self.spec = _dash_route_axis_options(self.spec)
         self.spec = _dash_lone_second_axes(self.spec)
         # The data parsed, and as the saved renderer loads it -- each made
         # only if a build-time check needs it (see _data and _frame), and
@@ -28360,9 +32882,11 @@ class ServerAppBuilder:
         # by _shared_stat_lines and are not modules the app imports.
         _already = set(self._shared_stat_lines())
         for _name in ("_TEXTBOX_SUBOPTS", "_TEXTBOX_SUBOPT_RE",
+                      # _dash_route_axis_titles' axis-number rule (P0.5).
+                      "_DASH_AXIS_NUM_RE",
                       "_COLORVAR_LEGEND_NAME", "_KDE_BANDWIDTH_RULE",
-                      "_LPOLY_ROT_C", "_FP_GRID_MAX", "_MAX_MBANDS",
-                      "_MIN_BAR_WIDTH", "_MAX_EXPR_CHARS",
+                      "_FP_GRID_MAX", "_MAX_MBANDS",
+                      "_MIN_BAR_WIDTH", "_MAX_EXPR_CHARS", "_FN_EXPR_MAX_NEST",
                       # _IF_EXPR_ALLOWED_NODES is deliberately absent: it is
                       # a frozenset of AST CLASSES, and repr() of a class is
                       # not source. It is written out by name below.
@@ -28381,6 +32905,7 @@ class ServerAppBuilder:
                       "_DASH_PC_ROW_COLUMN", "_DASH_MLABEL_PREFIX",
                       "_DASH_MLABEL_VALUES", "_DASH_MLABEL_X",
                       "_DASH_MLABEL_Y", "_DASH_JITTER_X", "_DASH_JITTER_Y",
+                      "_DASH_CVAR_PREFIX",
                       "_DASH_LABEL_SUFFIX",
                       # The plot-type categories.  The app used to carry its
                       # own copies inside an if/elif chain, which is how the
@@ -28390,7 +32915,8 @@ class ServerAppBuilder:
                       # The shared legend, axis, column and swatch tables.
                       "_DASH_CLOCK_SIDE", "_DASH_CLOCK_INSIDE",
                       "_DASH_HIST_YTITLES",
-                      "_DASH_OPT_VAR_KEYS", "_DASH_SWATCH_PREFIX",
+                      "_DASH_OPT_VAR_KEYS", "_DASH_PLOT_VAR_KEYS",
+                      "_DASH_SWATCH_PREFIX",
                       # twoway's weight acceptance per layer, read by
                       # GlyphMapper._layer_weights.
                       "_DASH_WEIGHT_ACCEPTS", "_DASH_WEIGHT_INERT",
@@ -28428,6 +32954,18 @@ class ServerAppBuilder:
                       # declare (WP-28 E14), read by the same template.
                       "_DASH_CSP_SERVED", "_DASH_SECURITY_HEADERS",
                       "_DASH_VIEWPORT_META",
+                      # The served dashboard's key (WP-29 P0.12a): its
+                      # form, its refusals, the JWT and line bounds, the
+                      # log redaction, the redirect's life, the bokeh serve
+                      # holder, and the lines that name the link file, the
+                      # bokeh serve origin flag and the once-only print.
+                      "_DASH_TOKEN_ARG", "_DASH_TOKEN_ENV", "_DASH_TOKEN_RE",
+                      "_DASH_TOKEN_LINE_MAX", "_DASH_TOKEN_REFUSAL",
+                      "_DASH_TOKEN_REFUSED_HTML", "_DASH_WS_PROTOCOL_MAX",
+                      "_DASH_JWT_PAYLOAD_MAX", "_DASH_QUERY_RE",
+                      "_DASH_REDIRECT_TTL_S", "_DASH_KEY_HOLDER",
+                      "_DASH_LINK_SAID", "_DASH_BS_ORIGIN_HINT",
+                      "_DASH_LINK_UNWRITTEN",
                       # SchemeParser._parse_file's include bound; the app
                       # is handed properties and never parses a file, but
                       # the method's source travels with the class.
@@ -28439,6 +32977,10 @@ class ServerAppBuilder:
                       # prefix reserved for every column dash makes (G1).
                       "_DASH_RESERVED_PREFIX",
                       "_DASH_QUAL_PREFIX", "_DASH_QUAL_NAME_RE",
+                      # The join-order columns and the joining types
+                      # (WP-29 P0.1).
+                      "_DASH_SORT_PREFIX", "_DASH_SORT_NAME_RE",
+                      "_DASH_JOIN_TYPES",
                       # _dash_parse_axis_spec's tick bound (WP-20).
                       "_MAX_AXIS_TICKS",
                       # WP-28 S14 (B1): _dash_parse_axis_spec's leading
@@ -28533,6 +33075,7 @@ class ServerAppBuilder:
             _l.split("(")[0][4:] for _l in _already if _l.startswith("def ")
         }
         for _fn_name in ("_parse_textbox_opt", "_textbox_split_point",
+                         "_textbox_has_text",
                          # The strings of a text, read as Stata reads
                          # them: the lines and the sub-option comma.
                          "_textbox_lines", "_textbox_string_end",
@@ -28544,6 +33087,10 @@ class ServerAppBuilder:
                          # milliseconds (24sep2026): GlyphMapper's masks
                          # and the axis helpers call it.
                          "_dash_float_values",
+                         # sort(varlist)'s join key (WP-29 P0.1): the load
+                         # takes the rank columns out, each layer reads its.
+                         "_dash_join_key", "_dash_sort_col_of",
+                         "_dash_sort_cols_named", "_dash_take_sort_columns",
                          # One column reader for both modes' loaders, and
                          # the date axes it makes possible (WP-27): the
                          # axis kind, its tick formatter, a number given
@@ -28559,7 +33106,7 @@ class ServerAppBuilder:
                          "_dash_note_not_dates", "_dash_date_axis_spec",
                          "_fmt_num",
                          "_dash_kpi_column", "_dash_widget_number",
-                         "_with_color_alias", "_jitter_seed", "_floats_only",
+                         "_with_color_alias", "_jitter_seed",
                          # _dash_build_hover's own callees. A copied
                          # function whose callee stays behind is a NameError
                          # on the served page, not here.
@@ -28573,6 +33120,11 @@ class ServerAppBuilder:
                          # added to one is added to both.
                          "_dash_layer_source", "_dash_range_source",
                          "_dash_pc_source", "_dash_function_args",
+                         # A function layer's stored points, and the
+                         # points-free fallback's parser and evaluator
+                         # (WP-29 P0.6).
+                         "_dash_function_points",
+                         "_stata_fn_parse", "_stata_fn_eval",
                          # The p# each layer draws in (a ci fit is two).
                          "_dash_plot_style_indices",
                          "_dash_glyph_dispatch",
@@ -28595,6 +33147,7 @@ class ServerAppBuilder:
                          # A layer's `in' counts the dataset's observations,
                          # not the rows the graph's qualifier left.
                          "_dash_layer_frame",
+                         "_dash_embed_rows_of", "_dash_embed_plan", "_dash_embed_values", "_dash_embed_frame", "_dash_page_index", "_dash_relabel",
                          # The qualifier columns Stata filled: validated,
                          # taken out of the frame, and read as masks.
                          "_dash_qual_cols_named", "_dash_take_qual_columns",
@@ -28611,12 +33164,17 @@ class ServerAppBuilder:
                          "_dash_fmt_model_args", "_dash_fmt_tick_formatter",
                          "_dash_fmt_hover", "_dash_date_fmt",
                          "_dash_date_axis_formatter", "_dash_period_values",
+                         # Stata units for computed layers (WP-29 P0.8)
+                         "_dash_date_units", "_dash_units_to_axis",
+                         "_dash_axis_vars",
                          "_dash_hover_layer_vars",
                          "_dash_build_hover",
                          # ... and the note for a layer it cannot reach.
                          "_dash_note_hover_unreached",
                          # Stata's legend keying rules.
                          "_dash_legend_key", "_dash_legend_entries",
+                         # twoway's label-or-name rule (WP-29 P0.3).
+                         "_dash_var_label", "_dash_clean_var_labels",
                          "_dash_legend_keys", "_dash_parse_legend_order",
                          # layout(name:row,col), one parser for one spec,
                          # and layout(rows cols), one reading of the grid.
@@ -28627,6 +33185,8 @@ class ServerAppBuilder:
                          "_dash_csv_wanted", "_dash_json_value",
                          "_dash_csv_text_value", "_dash_csv_meta",
                          "_dash_csv_payload", "_dash_frame_filter_mask",
+                         # hover() names absent from the data (WP-29 P0.10).
+                         "_dash_note_hover_missing",
                          "_stata_dates_to_datetime",
                          # The KPI card's format resolution and rendering,
                          # and the percentile reader _kpi_statistic and the
@@ -28634,8 +33194,10 @@ class ServerAppBuilder:
                          "_dash_effective_kpi_fmt",
                          "_dash_format_kpi_value",
                          "_dash_kpi_pctile", "_dash_kpi_date_valued",
+                         "_dash_kpi_unit_kind",
                          # by(): one parser, one panel-label rule.
                          "_dash_by_tokens", "_dash_parse_by",
+                         "_dash_by_rescale",
                          "_dash_facet_label", "_dash_stata_date_text",
                          # The Stata display-format writer (WP-28 S04).
                          "_dash_fmt_parse", "_dash_fmt_kind",
@@ -28706,6 +33268,7 @@ class ServerAppBuilder:
                          "_dash_ts_daily",
                          "_dash_count_axes", "_dash_place_count_ticks",
                          "_dash_common_count_ticks",
+                         "_dash_share_by_scales", "_dash_share_repoint",
                          # The filter widgets and the rows they select.
                          "_whole_number_step", "_is_clock_kind",
                          "_date_slider_step_days", "_clock_slider_step_ms",
@@ -28713,7 +33276,9 @@ class ServerAppBuilder:
                          # _dash_filter_title neutralises TeX in the title;
                          # _dash_inert_tex is its callee and must travel too.
                          "_dash_inert_tex",
-                         "_dash_filter_title", "_dash_finite_column",
+                         "_dash_filter_title",
+                         "_dash_filter_base_title",
+                         "_dash_finite_column",
                          "_dash_filter_widget", "_dash_dropdown_mask",
                          # The token bucket make_document wraps every filter
                          # and brush callback in.
@@ -28723,6 +33288,11 @@ class ServerAppBuilder:
                          # (WP-20).
                          "_dash_csp_meta", "_dash_served_template",
                          "_dash_server_transforms",
+                         # The served dashboard's key (WP-29 P0.12a): made,
+                         # checked, compared in constant time, and named in
+                         # a 127.0.0.1 link.
+                         "_dash_new_token", "_dash_token_valid",
+                         "_dash_token_matches", "_dash_tokenized_url",
                          # The websocket origin check made exact under a
                          # Bokeh whose matcher is not (bokeh 3.8).
                          "_dash_strict_match_host",
@@ -28759,6 +33329,7 @@ class ServerAppBuilder:
                          "_dash_dim_nonselection",
                          # An unlinked layer's own rows after a move.
                          "_dash_refresh_unlinked", "_dash_keep_jitter",
+                         "_dash_copy_redraw_geometry",
                          "_dash_parse_tabs", "_dash_tab_panels",
                          "_dash_header_fragments", "_dash_header_models",
                          # layout(bs): the saved page's reader of the rows
@@ -28794,13 +33365,20 @@ class ServerAppBuilder:
                          # (GAPS2 X2): the cut arithmetic, the binning and
                          # the colour-key applier -- one text, both modes.
                          "_dash_colorvar_cuts", "_dash_colorvar_bins",
+                         "_dash_colorvar_domain", "_dash_colorvar_field",
                          "_dash_apply_z_options",
                          "_dash_subopt_name",
                          "_dash_legend_unsupported", "_dash_textbox",
+                         "_dash_textbox_or_default",
                          "_textbox_canon", "_dash_route_axis_titles",
                          "_dash_figure_title", "_dash_style_axis_titles",
                          "_dash_text_annotations", "_dash_scale_spec",
-                         "_dash_apply_scale_ranges", "_dash_reference_lines",
+                         "_dash_apply_scale_ranges",
+                         # the copied _dash_route_axis_titles reads the
+                         # axis word as twoway does (WP-29 P0.5)
+                         "_dash_axis_number", "_dash_axis_word",
+                         "_dash_axis_words",
+                         "_dash_reference_lines",
                          "_dash_refline_instances", "_dash_by_tokens_commas",
                          "_dash_refline_draw",
                          "_dash_display",
@@ -28826,7 +33404,25 @@ class ServerAppBuilder:
                          # and __main__ share this with the launcher and
                          # main() (GAPS2 F1), so the range is refused the
                          # same way everywhere a port is read.
-                         "_dash_port_value"):
+                         "_dash_port_value",
+                         # WP-29 P0.13 F2: the app stops when the program
+                         # that started it ends (--parent-watch).
+                         "_dash_watch_parent",
+                         # WP-29 P0.12a: the two gates and what they read,
+                         # the log redaction, the opener and the key line
+                         # (_dash_one_value .. _dash_read_token_line); the
+                         # self-made key's private page, announcement,
+                         # process holder and bokeh serve key (ratified
+                         # 01oct2026).
+                         "_dash_one_value", "_dash_env_token",
+                         "_dash_ws_payload", "_dash_request_token",
+                         "_dash_token_auth", "_dash_session_token_ok",
+                         "_dash_redact_query", "_dash_redact_access_record",
+                         "_dash_install_access_log_redaction",
+                         "_dash_redirect_page", "_dash_open_tokenized",
+                         "_dash_read_token_line", "_dash_private_page",
+                         "_dash_announce_key", "_dash_process_key",
+                         "_dash_bokeh_serve_key"):
             if _fn_name in _emitted_names:
                 continue
             _fn = getattr(_mod, _fn_name, None)
@@ -28947,8 +33543,9 @@ class ServerAppBuilder:
                     # range(# #), read the one way for the fitted lines'
                     # grid and for kdensity's span (WP-23).
                     _dash_range_pair,
-                    # lpolyci's band is a bootstrap; without these the served
-                    # branch was a verbatim copy of lpoly and drew no band.
+                    # lpolyci's level and seed readers (its band was a
+                    # bootstrap until WP-29 P0.9; qfitci's fallback and
+                    # jitter still read the seed).
                     _resolve_level, _dash_session_level,
                     _dash_histogram_ymode, _resolve_seed, _jitter_seed,
                     _stata_percentile, _stata_weighted_percentile,
@@ -28962,7 +33559,19 @@ class ServerAppBuilder:
                     # them by name; a helper left behind here is a NameError
                     # on the served page at draw time, not at build time.
                     _dash_weight_spec, _dash_weight_norm,
-                    _dash_lpoly_weights, _dash_wls, _dash_fitci_std,
+                    _dash_lpoly_weights,
+                    # WP-29 P0.7: lpoly's rule-of-thumb bandwidth and the
+                    # local fit's kept columns; the served recompute after
+                    # every filter move calls them.
+                    _lpoly_rot_constant, _stata_invsym_keep,
+                    _lpoly_rot_detail, _lpoly_rot_float,
+                    _lpoly_kept_columns,
+                    # WP-29 P0.9: lpolyci's analytic band (eq. 4) -- the
+                    # kernel weights, the local fits on Part C's columns,
+                    # the standard error and Stata's invnormal.
+                    _lpoly_kernel_weights, _lpoly_local_wls, _lpoly_se,
+                    _dash_invnormal,
+                    _dash_wls, _dash_fitci_std,
                     _dash_fitci_se, _natural_cubic_spline,
                     # qfit's and qfitci's shared design (the WP-18 review).
                     _qfit_design,
@@ -28978,7 +33587,7 @@ class ServerAppBuilder:
                     # Stata's logical operators (24sep2026).
                     _mask_string_literals, _unmask_string_literals,
                     _stata_logic_to_pandas,
-                    _stata_if_to_pandas, _stata_expr_to_python):
+                    _stata_if_to_pandas):
             out += _textwrap.dedent(
                 _inspect.getsource(_fn)).rstrip("\n").split("\n")
             out += ["", ""]
@@ -29010,7 +33619,8 @@ class ServerAppBuilder:
         # Whatever module-level CONSTANTS those bodies reference must come
         # with them.  Found by scanning rather than listed, so adding a
         # constant to one of the copied functions cannot leave the generated
-        # app raising NameError at import -- which _LPOLY_ROT_C did.
+        # app raising NameError at import -- which lpoly's old rule-of-thumb
+        # constant (gone since WP-29 P0.7) did.
         import re as _re_const
         _mod = _sys.modules[__name__]
         _names = set()
@@ -29085,12 +33695,29 @@ class ServerAppBuilder:
             "_STORAGE_TYPES = {}",
         ]
 
-    def build(self, output_path: str, port: int = 5006) -> None:
+    def build(self, output_path: str, port: int = 5006,
+              private: bool = False) -> "_DashWrittenApp | None":
         """Generate the Bokeh Server app file and write it to *output_path*.
 
         Args:
             output_path: Destination path for the generated ``.py`` file.
             port:        Port number to embed in the ``__main__`` launch block.
+            private:     Write the app 0600, as a new file, never through a
+                         link (WP-29 P0.12b, M4, R-7).  The app embeds every
+                         observation, so ``main()`` passes it on every server
+                         route.  Once the source is complete -- so a refused
+                         port leaves an existing file untouched -- this
+                         account's file at the name is removed
+                         (``_dash_private_clear_name``, which refuses a link,
+                         a non-regular or another account's file) and the
+                         app created with ``O_EXCL`` (``_dash_private_write``).
+                         Off by default for the tests that call ``build``
+                         directly.
+
+        Returns:
+            With *private*, the ``_DashWrittenApp`` (the file's
+            ``os.stat_result`` and the SHA-256 of its bytes) the launcher
+            verifies before it runs the app; otherwise None.
         """
         # A build is a render of its own: the notes an earlier render in
         # this process made must not silence this one's (the saved renderer
@@ -29173,14 +33800,21 @@ class ServerAppBuilder:
             # see, so they are told here, at build time, as the saved
             # renderer tells them at render time.
             self._plan_by_groups()
+            self._plan_graph_notes()
             source = self._generate_app_source(port)
         finally:
             # The parsed data is the size of the dataset again; the file
             # being written needs none of it.
             self._data_cache = None
             self._frame_cache = None
+        if private:
+            _dash_private_clear_name(output_path)
+            st = _dash_private_write(output_path, source, exclusive=True)
+            return _DashWrittenApp(
+                st, hashlib.sha256(source.encode("utf-8")).hexdigest())
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(source)
+        return None
 
     def _frame(self) -> "pd.DataFrame":
         """The dataset as the saved renderer loads it, for build-time plans.
@@ -29205,6 +33839,18 @@ class ServerAppBuilder:
         if getattr(self, "_data_cache", None) is None:
             self._data_cache = _dash_read_data_json(self._raw_data_str)
         return self._data_cache
+
+    def _plan_graph_notes(self) -> None:
+        """Raise, at build time, the notes a graph's spec alone decides --
+        a second-axis option no layer can use
+        (``_dash_unused_second_axis_notes``, WP-29 P0.5) -- as the saved
+        renderer raises them when it renders.  The app never repeats them:
+        a session's output never reaches the Stata log of the user who
+        built it (HC5-08).  The frame is never loaded."""
+        for g in self.spec.get("graphs", []) or []:
+            for key, text in (_dash_unused_second_axis_notes(g)
+                              + _dash_by_range_notes(g)):
+                _dash_warn_once(key, text)
 
     def _plan_by_groups(self) -> None:
         """Say, at build time, which by() graphs are over the group limit,
@@ -29347,12 +33993,28 @@ class ServerAppBuilder:
                 _fdf = self._frame()
             except (ValueError, TypeError, KeyError, AttributeError):
                 _fdf = None
+            # The page plan the app will run (WP-29 P0.11): a dropdown's
+            # type is judged on its reach, as the saved page judges it.
+            _eplan = None
             if _fdf is not None:
-                for _fs in filter_specs:
+                try:
+                    _eplan = _dash_embed_plan(
+                        self.spec, _fdf,
+                        getattr(self, "_qual_masks_cache", None),
+                        bo.get("link", "") or "", filter_specs,
+                        _dash_csv_wanted(bo))
+                except ValueError:
+                    _eplan = None
+            if _fdf is not None:
+                for _fi, _fs in enumerate(filter_specs):
                     if (_fs.get("type") == "dropdown"
                             and _fs["var"] in _fdf.columns):
+                        _fcol = _fdf[_fs["var"]]
+                        if _eplan is not None:
+                            _fcol = _fcol[_eplan["filter_rows"][_fi]
+                                          .to_numpy(dtype=bool)]
                         _fs["type"] = _dash_filter_effective_type(
-                            "dropdown", _fs["var"], _fdf[_fs["var"]],
+                            "dropdown", _fs["var"], _fcol,
                             self.limits["filter_options"])
 
         lines: list[str] = []
@@ -29694,6 +34356,14 @@ class ServerAppBuilder:
             "# True, only when a proxy you control rewrites the header.",
             "_TRUST_FORWARDED_FOR = False",
             "",
+            "# The dashboard's key (WP-29 P0.12a): the one _dash_server_app",
+            "# installed, which make_document's Gate B reads, else the",
+            "# environment's, else (under bokeh serve) the process's own",
+            "# (_dash_bokeh_serve_key, ratified 01oct2026); and the folder of",
+            "# the link file the app wrote for a key it made itself (K-2).",
+            "_DASH_SERVE_TOKEN = None",
+            "_DASH_LINK_DIR = None",
+            "",
             "",
             "def _client_ip_from_request(req):",
             "    '''Return the bucket key for rate-limiting.",
@@ -29805,6 +34475,19 @@ class ServerAppBuilder:
             "                   help='Open a browser window once the server is up.')",
             "    p.add_argument('--timeout', type=int, default=0,",
             "                   help='Shut down after N minutes (0 = never).')",
+            "    p.add_argument('--parent-watch', action='store_true',",
+            "                   dest='parent_watch',",
+            "                   help='Stop when standard input reaches end of '",
+            "                        'file.  dash serve passes this so the '",
+            "                        'server ends with the Stata session that '",
+            "                        'started it; started by hand, the server '",
+            "                        'stops on Ctrl+D.')",
+            "    p.add_argument('--token-stdin', action='store_true',",
+            "                   dest='token_stdin',",
+            "                   help='Read the dashboard key as one line on '",
+            "                        'standard input instead of making one.  '",
+            "                        'dash serve passes this; it never puts '",
+            "                        'the key on a command line.')",
             "    p.add_argument('--sessions-per-client', type=_dash_limit_value,",
             "                   default=_RATE_LIMIT_RPM, metavar='N',",
             "                   help='Dashboard sessions one client may open per '",
@@ -29840,6 +34523,35 @@ class ServerAppBuilder:
             "    _LIMITER = _SESSION_LIMITER",
             "    return _SESSION_LIMITER",
             "",
+            "",
+            "def _dash_resolve_token(args, fd=None, environ=None):",
+            "    \"\"\"The key the operator supplied, or None (WP-29 P0.12a): the",
+            "    --token-stdin line (dash serve), else DASH_SERVE_TOKEN.  The",
+            "    variable is popped either way, so no child inherits it.  A",
+            "    supplied key of any other form is a ValueError naming where it",
+            "    came from, never its value.  It makes no key: _dash_server_app",
+            "    makes, installs and announces one when none is supplied",
+            "    (ratified 01oct2026).\"\"\"",
+            "    if environ is None:",
+            "        environ = os.environ",
+            "    env = environ.pop(_DASH_TOKEN_ENV, None)",
+            "    if getattr(args, 'token_stdin', False):",
+            "        if fd is None:",
+            "            import sys",
+            "            try:",
+            "                fd = sys.stdin.fileno()",
+            "            except (AttributeError, OSError, ValueError):",
+            "                raise ValueError('dash: --token-stdin was given but there is no standard input to read the key from')",
+            "        tok = _dash_read_token_line(fd)",
+            "        if not _dash_token_valid(tok):",
+            "            raise ValueError('dash: the key on standard input is not 32 to 128 of A-Z a-z 0-9 _ -')",
+            "        return tok",
+            "    if env is not None:",
+            "        if not _dash_token_valid(env):",
+            "            raise ValueError('dash: ' + _DASH_TOKEN_ENV + ' is set but is not 32 to 128 of A-Z a-z 0-9 _ -; its value is not shown')",
+            "        return env",
+            "    return None",
+            "",
         ]
 
         # ----------------------------------------------------------------
@@ -29871,7 +34583,7 @@ class ServerAppBuilder:
             "    data_json = data_json.get('StataJSON', data_json)",
             "    values = data_json.get('values', [])",
             "    var_names = data_json.get('variableNames', [])",
-            "    var_labels = data_json.get('variableLabels', {})",
+            "    var_labels = _dash_clean_var_labels(data_json.get('variableLabels', {}))",
             "    val_label_names = data_json.get('valueLabelNames', {})",
             "    val_labels = data_json.get('valueLabels', {})",
             "    # jsonio emits 'variableIsString'.  This asked for",
@@ -29915,8 +34627,11 @@ class ServerAppBuilder:
             "    # The qualifier columns dash.ado exported: validated and taken",
             "    # out of the frame as masks, as the saved renderer takes them,",
             "    # so no source, tooltip, filter or download holds one.",
+            "    # The join-order columns too, first (_dash_take_sort_columns):",
+            "    # the qualifier take-out refuses a reserved column it does not name.",
+            "    df, sort_keys = _dash_take_sort_columns(df, spec)",
             "    df, qual_masks = _dash_take_qual_columns(df, spec)",
-            "    for _qc in qual_masks:",
+            "    for _qc in list(qual_masks) + list(sort_keys):",
             "        for _qm in (var_labels, val_label_names, type_is_str):",
             "            if isinstance(_qm, dict):",
             "                _qm.pop(_qc, None)",
@@ -29925,7 +34640,7 @@ class ServerAppBuilder:
             "    _st = data_json.get('storageTypes', {})",
             "    storage_types = ({str(k): str(v) for k, v in _st.items()}",
             "                     if isinstance(_st, dict) else {})",
-            "    for _qc in qual_masks:",
+            "    for _qc in list(qual_masks) + list(sort_keys):",
             "        storage_types.pop(_qc, None)",
             "    meta = {",
             "        'var_labels': var_labels,",
@@ -29934,6 +34649,7 @@ class ServerAppBuilder:
             "        'type_is_str': type_is_str,",
             "        'date_vars': date_vars,",
             "        'qual_masks': qual_masks,",
+            "        'sort_keys': sort_keys,",
             "        'storage_types': storage_types,",
             "    }",
             "    return spec, df, meta",
@@ -29949,7 +34665,7 @@ class ServerAppBuilder:
             # nothing in it -- rscatter and pcscatter are drawn, and
             # redrawn after a filter move, by GlyphMapper.map_rscatter and
             # map_pcscatter.
-            "def _compute_kpi(df, stat, varname):",
+            "def _compute_kpi(df, stat, varname, date_vars=None):",
             '    """Compute a KPI statistic from df[varname]. Returns float.',
             "",
             "    Delegates to _kpi_statistic, which is the standalone",
@@ -29961,8 +34677,10 @@ class ServerAppBuilder:
             "    try:",
             "        series = (df[varname].dropna() if varname in df.columns",
             "                  else pd.Series([], dtype=float))",
-            "        # A date as epoch milliseconds, the saved card's rule.",
-            "        series = _dash_kpi_column(series, stat, varname)",
+            "        # A date in its Stata values, the saved card's rule (WP-29",
+            "        # P0.20).",
+            "        series = _dash_kpi_column(series, stat, varname,",
+            "                                  (date_vars or {}).get(varname))",
             "        return float(_kpi_statistic(series, stat))",
             "    except Exception:",
             "        return float('nan')",
@@ -30007,6 +34725,14 @@ class ServerAppBuilder:
             "    # The previous document's style notes, forgotten: one note per",
             "    # (option, value) per render, as DashRenderer.render() does.",
             "    _dash_reset_notes()",
+            "    # ---- The dashboard's key (WP-29 P0.12a) ----",
+            "    # Before the limiter, so a client without the key spends no",
+            "    # session budget, and before the data is decoded.  With no key",
+            "    # installed and none in the environment (bokeh serve), the",
+            "    # process makes its own (ratified 01oct2026): never no key.",
+            "    if not _dash_session_token_ok(doc, _DASH_SERVE_TOKEN or _dash_env_token() or _dash_bokeh_serve_key(doc)):",
+            "        doc.add_root(Div(text=_DASH_TOKEN_REFUSED_HTML))",
+            "        return",
             "    # ---- Rate-limit enforcement at session creation ----",
             "    # The bucket key comes from the shared helper: the peer's",
             "    # remote_ip, which the client cannot forge.  X-Forwarded-For is",
@@ -30030,6 +34756,8 @@ class ServerAppBuilder:
             "    # qualifier of a spec it wrote selects its rows with one, and",
             "    # none is translated (_dash_qualified_frame's qual).",
             "    _qual_masks = meta['qual_masks']",
+            "    # sort(varlist)'s ranks, by frame label (_dash_join_key).",
+            "    _sort_keys = meta['sort_keys']",
             "    graphs = spec.get('graphs', [])",
             "    kpi_defs = spec.get('kpis', [])",
             "    bo = spec.get('build_options', {})",
@@ -30082,11 +34810,31 @@ class ServerAppBuilder:
             "        link_opt, [g.get('graph_options', {}).get('name', '')",
             "                   for g in graphs]))",
             "",
+            "    # The filters, parsed at build time; the page plan reads them.",
+            "    _filter_specs = " + repr(filter_specs),
+            "    # WP-29 P0.11: the rows and cells this document may send --",
+            "    # the saved page's plan, by the one function both modes run.",
+            "    _EMBED = _dash_embed_plan(spec, df, _qual_masks,",
+            "                              sorted(linked_names), _filter_specs,",
+            "                              _dash_csv_wanted(bo))",
+            "    # WP-29 P0.11: the browser receives the saved page's row numbers,",
+            "    # never an observation's own (_dash_page_index).  Every map keyed",
+            "    # by row is relabelled with the frame, row for row.",
+            "    _dash_old_index = df.index",
+            "    df.index = _dash_page_index(_dash_old_index, _EMBED['rows'])",
+            "    _qual_masks = _dash_relabel(_qual_masks, _dash_old_index, df.index)",
+            "    _sort_keys = _dash_relabel(_sort_keys, _dash_old_index, df.index)",
+            "    _EMBED = _dash_relabel(_EMBED, _dash_old_index, df.index)",
+            "    # Each graph's rows (page ranks) and the link group's mask.",
+            "    _EMBED_GROWS = {_g: df.index[_m.to_numpy(dtype=bool)]",
+            "                    for _g, _m in _EMBED['graph_rows'].items()}",
+            "    _EMBED_LINK = _EMBED['link_rows'].to_numpy(dtype=bool)",
+            "",
             "    # ---- Collect all variable names ----",
             "    all_vars = set()",
             "    for g in graphs:",
             "        for p in g.get('plots', []):",
-            "            for k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2', 'y1var', 'x1var', 'y2var', 'x2var'):",
+            "            for k in _DASH_PLOT_VAR_KEYS:",
             "                v = p.get(k, '')",
             "                if v and v in df.columns: all_vars.add(v)",
             "            # colorvar() and mlabel() name columns too, and so does",
@@ -30107,16 +34855,21 @@ class ServerAppBuilder:
             "    # selection on this source cannot be mapped back to rows, and",
             "    # a linked graph's brush would compute over the wrong ones.",
             "    linked_vars = list(all_vars)",
-            "    _shared_data = {v: _dash_column_values(df[v]) if v in df.columns else []",
+            "    # The link group's rows only, each column blanked where the",
+            "    # page does not read it (WP-29 P0.11).",
+            "    _ldf = df[_EMBED_LINK]",
+            "    _shared_data = {v: _dash_column_values(_dash_embed_values(",
+            "                        _ldf[v], _EMBED['need'].get(v)))",
+            "                    if v in df.columns else []",
             "                    for v in linked_vars}",
-            "    _shared_data['index'] = list(df.index)",
+            "    _shared_data['index'] = list(_ldf.index)",
             "    shared_source = ColumnDataSource(_shared_data)",
             "    # A jittered scatter puts its points on it, as on the saved",
             "    # page (GlyphMapper._linked_jitter_columns).",
             "    shared_source._dash_link_source = True",
             "    # Positions in shared_source, by row label, for the CDSView a",
             "    # qualified linked graph needs.",
-            "    _shared_pos = {_lbl: _i for _i, _lbl in enumerate(df.index)}",
+            "    _shared_pos = {_lbl: _i for _i, _lbl in enumerate(_ldf.index)}",
             "",
             "    # ---- Per-graph independent sources (for non-linked) ----",
             "    graph_sources: dict = {}",
@@ -30127,13 +34880,20 @@ class ServerAppBuilder:
             "        else:",
             "            gvars = []",
             "            for p in g.get('plots', []):",
-            "                for k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2'):",
+            "                for k in _DASH_PLOT_VAR_KEYS:",
             "                    v = p.get(k, '')",
             "                    if v and v in df.columns and v not in gvars:",
             "                        gvars.append(v)",
-            "            graph_sources[gname] = [ColumnDataSource(",
-            "                {v: _dash_column_values(df[v]) for v in gvars}",
-            "            ) if gvars else ColumnDataSource({})]",
+            "            # The graph's planned rows, blanked, with their labels so",
+            "            # a move refreshes it by identity (WP-29 P0.11).",
+            "            _pdf = df[df.index.isin(_EMBED_GROWS.get(gname, df.index[0:0]))]",
+            "            _pdata = {v: _dash_column_values(_dash_embed_values(",
+            "                          _pdf[v], _EMBED['need'].get(v)))",
+            "                      for v in gvars}",
+            "            if gvars:",
+            "                _pdata['index'] = list(_pdf.index)",
+            "            graph_sources[gname] = [ColumnDataSource(_pdata)",
+            "                                    if gvars else ColumnDataSource({})]",
             "",
             "    # ---- Aggregated plot ColumnDataSources ----",
             "    # key: (gname, plot_index) → {'source': CDS, 'compute': callable}",
@@ -30160,7 +34920,7 @@ class ServerAppBuilder:
             "    _reported_subopts = set()",
             "",
             "    def _dash_draw_layer(fig, g_df, plot, pi, gname, _ln, _shared, _fallback,",
-            "                         sidx=None):",
+            "                         sidx=None, cv_domain=None):",
             '        """Draw one layer of one figure; return (layer_source, [drawn sources]).',
 
             "        The one place a plot type is dispatched to its mapper,",
@@ -30179,56 +34939,71 @@ class ServerAppBuilder:
             "        _before = len(fig.renderers)",
             "        _before_c = len(fig.center)",
             "        _ly_src = None",
-            "        if ptype == 'scatteri':",
-            "            _DASH_MAPPER.map_scatteri(fig, plot.get('values', []), opts, color_idx=_sidx)",
-            "        elif ptype == 'pci':",
-            "            _DASH_MAPPER.map_pci_literal(fig, plot.get('values', []), opts, color_idx=_sidx)",
-            "        elif ptype == 'pcarrowi':",
-            "            _DASH_MAPPER.map_pcarrowi(fig, plot.get('values', []), opts, color_idx=_sidx)",
-            "        elif ptype == 'function':",
-            "            _fn_range, _fn_n = _dash_function_args(opts)",
-            "            _DASH_MAPPER.map_function(fig, plot.get('expr', ''), _fn_range, _fn_n, opts,",
-            "                                      color_idx=_sidx)",
-            "        elif ptype in _DASH_PC_TYPES:",
-            "            # The mlabel() column rides along, as the saved page's",
-            "            # source carries it (pccapsym labels its first point).",
-            "            _ly_src, _ok = _dash_pc_source(",
-            "                g_df, plot.get('y1var', ''), plot.get('x1var', ''),",
-            "                plot.get('y2var', ''), plot.get('x2var', ''),",
-            "                _dash_mlabel_names(opts)[0], extra_cols=_hv)",
-            "            if _ok:",
-            "                _dash_add_pc_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype,",
-            "                    plot.get('y1var', ''), plot.get('x1var', ''),",
+            "        # WP-29 P0.16: the layer's colour rows, the frame before",
+            "        # any missing x or y is dropped (twoway counts those rows);",
+            "        # a redraw hands in the build's.  Reset after the layer.",
+            "        _DASH_MAPPER.colorvar_domain = (",
+            "            cv_domain if cv_domain is not None",
+            "            else _dash_colorvar_domain(g_df, opts))",
+            "        try:",
+            "            if ptype == 'scatteri':",
+            "                _DASH_MAPPER.map_scatteri(fig, plot.get('values', []), opts, color_idx=_sidx)",
+            "            elif ptype == 'pci':",
+            "                _DASH_MAPPER.map_pci_literal(fig, plot.get('values', []), opts, color_idx=_sidx)",
+            "            elif ptype == 'pcarrowi':",
+            "                _DASH_MAPPER.map_pcarrowi(fig, plot.get('values', []), opts, color_idx=_sidx)",
+            "            elif ptype == 'function':",
+            "                _fn_range, _fn_n = _dash_function_args(opts)",
+            "                _DASH_MAPPER.map_function(fig, plot.get('expr', ''), _fn_range, _fn_n, opts,",
+            "                                          color_idx=_sidx, points=plot.get('points'))",
+            "            elif ptype in _DASH_PC_TYPES:",
+            "                # The mlabel() column rides along, as the saved page's",
+            "                # source carries it (pccapsym labels its first point).",
+            "                _ly_src, _ok = _dash_pc_source(",
+            "                    g_df, plot.get('y1var', ''), plot.get('x1var', ''),",
             "                    plot.get('y2var', ''), plot.get('x2var', ''),",
-            "                    opts, color_idx=_sidx)",
-            "        elif ptype in _DASH_RANGE_TYPES:",
-            "            y1var = plot.get('yvar1', '') or plot.get('yvar', '') or plot.get('y1var', '')",
-            "            y2var = plot.get('yvar2', '') or plot.get('y2var', '')",
-            "            if not y2var:",
-            "                # The saved page's words (_dash_add_glyph).",
-            "                _dash_note_no_second_y(ptype)",
-            "            _ly_src, _ly_view, _ok = _dash_range_source(",
-            "                g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
-            "                extra_cols=_hv + _dash_option_columns(opts, df.columns),",
-            "                df=df, gname=gname, linked_names=_ln,",
-            "                shared_source=_shared, shared_pos=_shared_pos)",
-            "            if _ok:",
-            "                # WP-28 E14: a linked rspike/rconnected draws _shared",
-            "                # through _ly_view, as an ordinary linked layer does",
-            "                # (_dash_layer_source), so a selection reaches it too.",
-            "                _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
-            "                    opts, y2var=y2var, view=_ly_view, color_idx=_sidx)",
-            "        else:",
-            "            _ly_src, _ly_view = _dash_layer_source(",
-            "                g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                gname, _ln, _shared, _shared_pos, _fallback,",
-            "                extra_cols=_hv + _dash_option_columns(opts, df.columns))",
-            "            if _ly_src is not None:",
-            "                _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=_sidx)",
+            "                    _dash_mlabel_names(opts)[0], extra_cols=_hv)",
+            "                if _ok:",
+            "                    _dash_add_pc_glyph(",
+            "                        _DASH_MAPPER, fig, _ly_src, ptype,",
+            "                        plot.get('y1var', ''), plot.get('x1var', ''),",
+            "                        plot.get('y2var', ''), plot.get('x2var', ''),",
+            "                        opts, color_idx=_sidx)",
+            "            elif ptype in _DASH_RANGE_TYPES:",
+            "                y1var = plot.get('yvar1', '') or plot.get('yvar', '') or plot.get('y1var', '')",
+            "                y2var = plot.get('yvar2', '') or plot.get('y2var', '')",
+            "                if not y2var:",
+            "                    # The saved page's words (_dash_add_glyph).",
+            "                    _dash_note_no_second_y(ptype)",
+            "                _ly_src, _ly_view, _ok = _dash_range_source(",
+            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
+            "                    extra_cols=_hv + _dash_option_columns(opts, df.columns),",
+            "                    df=df, gname=gname, linked_names=_ln,",
+            "                    shared_source=_shared, shared_pos=_shared_pos)",
+            "                # A joining layer's join key, read by frame label.",
+            "                _jo = (_dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
+            "                       if ptype in _DASH_JOIN_TYPES and _ok else None)",
+            "                if _ok:",
+            "                    # WP-28 E14: a linked rspike/rconnected draws _shared",
+            "                    # through _ly_view, as an ordinary linked layer does",
+            "                    # (_dash_layer_source), so a selection reaches it too.",
+            "                    _dash_add_glyph(",
+            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
+            "                        opts, y2var=y2var, view=_ly_view, color_idx=_sidx,",
+            "                        order=_jo)",
+            "            else:",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                    gname, _ln, _shared, _shared_pos, _fallback,",
+            "                    extra_cols=_hv + _dash_option_columns(opts, df.columns))",
+            "                _jo = (_dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
+            "                       if ptype in _DASH_JOIN_TYPES and _ly_src is not None else None)",
+            "                if _ly_src is not None:",
+            "                    _dash_add_glyph(",
+            "                        _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                        view=_ly_view, color_idx=_sidx, order=_jo)",
+            "        finally:",
+            "            _DASH_MAPPER.colorvar_domain = None",
             "        # A yaxis(2)/xaxis(2) layer draws on the secondary range, its",
             "        # marker labels and arrowheads with it.",
             "        _dash_assign_axis_ranges(fig, fig.renderers[_before:], opts,",
@@ -30261,7 +35036,7 @@ class ServerAppBuilder:
             "                        if _c and _c in df.columns]",
             "        return []",
             "",
-            "    def _dash_redraw_for(g, plot, pi, gname):",
+            "    def _dash_redraw_for(g, plot, pi, gname, cv_domain=None):",
             '        """A closure that redraws one layer from a frame the callback hands it.',
 
             "        The frame arrives filtered and, for a by() panel, masked to",
@@ -30285,6 +35060,17 @@ class ServerAppBuilder:
             "        # qualifier reaches, as in twoway and the live figure.",
             "        _p_lit = (str(plot.get('type', '') or '').lower()",
             "                  in _DASH_LITERAL_TYPES)",
+            "        # WP-29 P0.16: the build's colour rows, so a redrawn copy",
+            "        # keeps the key's bins (BR-07.4), never the moved frame's.",
+            "        _cv_dom = cv_domain",
+            "        # The live figure's axis kinds, by the same calls it made",
+            "        # (WP-29 P0.8): a date layer on a mixed numeric axis redraws",
+            "        # in Stata units, one on a date axis at its dates.",
+            "        _rax = _dash_axis_vars(g.get('plots', []))",
+            "        _rkinds = (_dash_figure_date_kind(g.get('plots', []), 'xvar',",
+            "                                          _rax[0], _date_vars),",
+            "                   _dash_figure_date_kind(g.get('plots', []), 'yvar',",
+            "                                          _rax[1], _date_vars))",
             "        def _redraw(frame):",
             "            # The graph's qualifier, then the layer's own where it",
             "            # differs -- the same two steps the live figure took.",
@@ -30299,12 +35085,15 @@ class ServerAppBuilder:
             "                                        'graph %r plot %d' % (gname, pi + 1),",
             "                                        qual=_p_q)",
             "            _tfig = bokeh_figure()",
+            "            _dash_mark_date_axes(_tfig, *_rkinds)",
             "            _ly, _srcs = _dash_draw_layer(_tfig, _fr, plot, pi, gname,",
-            "                                          set(), None, None, sidx=_sidx)",
+            "                                          set(), None, None, sidx=_sidx,",
+            "                                          cv_domain=_cv_dom)",
             "            return [_s for _s in _srcs if _s is not _ly]",
             "        return _redraw",
             "",
-            "    def _dash_figure_for(g, gname, g_df, _fac_label=None):",
+            "    def _dash_figure_for(g, gname, g_df, _fac_label=None,",
+            "                         _rescale=frozenset()):",
             '        """Build one figure: a graph, or one by() panel of it.',
 
             "        This is the body of what used to be the per-graph loop.",
@@ -30340,6 +35129,9 @@ class ServerAppBuilder:
             "        _pstyle_idx = _dash_plot_style_indices(plots)",
             "        xv = plots[0].get('xvar', '') if plots else ''",
             "        yv = plots[0].get('yvar', '') if plots else ''",
+            "        # The axes' variables: a univariate first layer's is on x",
+            "        # (WP-29 P0.8), as the saved renderer reads them.",
+            "        _xa, _ya = _dash_axis_vars(plots)",
             "        # Canvas text, through the helper the saved renderer runs:",
             "        # this used to html.escape the user's title and to title a",
             "        # histogram's y axis with the variable, where the saved",
@@ -30376,20 +35168,20 @@ class ServerAppBuilder:
             "        # A date axis, by the saved renderer's rule and in its words:",
             "        # every layer's x (or y) a date variable of one kind.  The",
             "        # served figure used to draw every date on a numeric axis.",
-            "        _x_date = _dash_figure_date_kind(plots, 'xvar', xv, _date_vars)",
-            "        _y_date = _dash_figure_date_kind(plots, 'yvar', yv, _date_vars)",
+            "        _x_date = _dash_figure_date_kind(plots, 'xvar', _xa, _date_vars)",
+            "        _y_date = _dash_figure_date_kind(plots, 'yvar', _ya, _date_vars)",
             "        _xs_log, _ys_log = _xsc['log'], _ysc['log']",
             "        if _x_date and _xs_log:",
             "            warnings.warn(",
             "                f\"dash: xscale(log) is meaningless for the date variable \"",
-            "                f\"'{xv}'; drawing a date axis instead.\",",
+            "                f\"'{_xa}'; drawing a date axis instead.\",",
             "                UserWarning,",
             "            )",
             "            _xs_log = False",
             "        if _y_date and _ys_log:",
             "            warnings.warn(",
             "                f\"dash: yscale(log) is meaningless for the date variable \"",
-            "                f\"'{yv}'; drawing a date axis instead.\",",
+            "                f\"'{_ya}'; drawing a date axis instead.\",",
             "                UserWarning,",
             "            )",
             "            _ys_log = False",
@@ -30399,8 +35191,8 @@ class ServerAppBuilder:
             "        elif _ys_log: _fig_kw['y_axis_type'] = 'log'",
             "        fig = bokeh_figure(**_fig_kw)",
             "        _dash_mark_date_axes(fig, _x_date, _y_date)",
-            "        for _axis, _kind, _avar in ((fig.xaxis, _x_date, xv),",
-            "                                    (fig.yaxis, _y_date, yv)):",
+            "        for _axis, _kind, _avar in ((fig.xaxis, _x_date, _xa),",
+            "                                    (fig.yaxis, _y_date, _ya)):",
             "            if _kind:",
             "                _axis.formatter = _dash_date_axis_formatter(",
             "                    _dash_date_fmt(_FORMATS.get(_avar), _kind), '',",
@@ -30412,7 +35204,8 @@ class ServerAppBuilder:
             "        # yaxis(2)/xaxis(2): the second axis, from the rows this",
             "        # figure draws.  There used to be none when served.",
             "        _dash_add_secondary_axes(fig, plots, go, g_df,",
-            "                                 _reported_subopts, gname)",
+            "                                 _reported_subopts, gname,",
+            "                                 var_labels, _DASH_SCHEME)",
             "        # title(), xtitle()/ytitle() sub-options, after the scheme so",
             "        # the user's size() and color() win; the rest named.",
             "        _dash_figure_title(fig, go, _reported_subopts, gname)",
@@ -30461,7 +35254,8 @@ class ServerAppBuilder:
             "            if _gr_bg:",
             "                _c = _dash_graph_color('graphregion(color)', _gr_bg)",
             "                if _c: fig.border_fill_color = _c",
-            "        _dash_apply_scale_ranges(fig, _xsc, _ysc, g_df, xv, yv)",
+            "        _dash_apply_scale_ranges(fig, _xsc, _ysc, g_df, xv, yv,",
+            "                                 rescale=_rescale)",
             "        # note(), caption(), subtitle(): the helper the saved renderer",
             "        # runs, at the scheme's text-box sizes and colours.",
             "        _dash_text_annotations(fig, go, _reported_subopts, gname, _DASH_SCHEME)",
@@ -30471,7 +35265,7 @@ class ServerAppBuilder:
             "        # through the helper the saved renderer runs.  A 14-line",
             "        # parser here read a bare numlist and angle() and nothing",
             "        # else, so xlabel(2000(1000)4000) was ignored when served.",
-            "        _dash_apply_axis_options(fig, go, xv, yv, g_df, _num_formats,",
+            "        _dash_apply_axis_options(fig, go, _xa, _ya, g_df, _num_formats,",
             "                                 _reported_subopts, gname,",
             "                                 grid_color=_DASH_SCHEME.grid_color,",
             "                                 value_labels=val_labels,",
@@ -30574,7 +35368,7 @@ class ServerAppBuilder:
             "                graph_sources[gname].append(_rs)",
             "            if _r_srcs and any(_rs is not _ly_src for _rs in _r_srcs):",
             "                # A source the mapper BUILT -- a fitted line, a histogram,",
-            "                # a line sorted along x -- cannot be refreshed by swapping",
+            "                # a line in its join order -- cannot be refreshed by swapping",
             "                # its columns for the filtered rows: the columns are not",
             "                # dataset columns, or are not in dataset order.  Measured",
             "                # after one filter move: a served lfit was ten points of",
@@ -30585,7 +35379,10 @@ class ServerAppBuilder:
             "                agg_sources[(gname, pi)] = {",
             "                    'type': ptype,",
             "                    'sources': [_rs for _rs in _r_srcs if _rs is not _ly_src],",
-            "                    'redraw': _dash_redraw_for(g, plot, pi, gname),",
+            "                    'redraw': _dash_redraw_for(",
+            "                        g, plot, pi, gname,",
+            "                        cv_domain=_dash_colorvar_domain(",
+            "                            g_df, plot.get('options', {}))),",
             "                }",
             "                for _rs in agg_sources[(gname, pi)]['sources']:",
             "                    _redrawn_ids.add(id(_rs))",
@@ -30707,6 +35504,11 @@ class ServerAppBuilder:
             "        _dash_note_hover_unreached(",
             "            go.get('name', '') or g.get('name', '') or gname, plots,",
             "            _hv.split() if _hv else [])",
+            "        # hover() names the data does not hold, once per graph, in the",
+            "        # saved renderer's words (WP-29 P0.10).",
+            "        _dash_note_hover_missing(",
+            "            go.get('name', '') or g.get('name', '') or gname,",
+            "            _hv.split() if _hv else [], list(df.columns))",
             '',
             "        if _fac_label is not None:",
             "            # The panel title is the figure's OWN title text -- the",
@@ -30753,6 +35555,8 @@ class ServerAppBuilder:
             "        # session does not repeat it.",
             "        _bv, _bcols, _btotal, _bmissing, _ = _dash_parse_by(",
             "            (go.get('by') or '').strip(), warn=False)",
+            "        # The letters the panels draw on their own scales (P0.2).",
+            "        _brs = _dash_by_rescale((go.get('by') or '').strip())",
             "        by_vars = [v for v in _bv.split() if v in df.columns]",
             "        if not by_vars:",
             "            figures[gname] = _dash_figure_for(g, gname, g_df)",
@@ -30777,13 +35581,14 @@ class ServerAppBuilder:
             "        if work_df.empty and (_g_tot is g or _t_df.empty):",
             "            # Every by() value is missing: one empty panel, as saved.",
             "            _owner_rows[gname] = work_df.index",
-            "            figures[gname] = _dash_figure_for(g, gname, work_df)",
+            "            figures[gname] = _dash_figure_for(g, gname, work_df,",
+            "                                              _rescale=_brs)",
             "            continue",
             "        if gname not in linked_names:",
             "            graph_sources.pop(gname, None)",
             "        _gvars = []",
             "        for _pp in g.get('plots', []):",
-            "            for _k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2', 'y1var', 'x1var', 'y2var', 'x2var'):",
+            "            for _k in _DASH_PLOT_VAR_KEYS:",
             "                _v = _pp.get(_k, '')",
             "                if _v and _v in df.columns and _v not in _gvars:",
             "                    _gvars.append(_v)",
@@ -30822,8 +35627,13 @@ class ServerAppBuilder:
             "                linked_names.add(_fname)",
             "                graph_sources[_fname] = [shared_source]",
             "            else:",
-            "                graph_sources[_fname] = [ColumnDataSource(",
-            "                    {_v: _dash_column_values(_gdf[_v]) for _v in _gvars})]",
+            "                _pgdf = _gdf[_gdf.index.isin(",
+            "                    _EMBED_GROWS.get(gname, _gdf.index[0:0]))]",
+            "                _pgdata = {_v: _dash_column_values(_dash_embed_values(",
+            "                               _pgdf[_v], _EMBED['need'].get(_v)))",
+            "                           for _v in _gvars}",
+            "                _pgdata['index'] = list(_pgdf.index)",
+            "                graph_sources[_fname] = [ColumnDataSource(_pgdata)]",
             "            _owner_rows[_fname] = _gdf.index",
             "            _g_pan = g",
             "            if _fi == _t_idx and _g_tot is not g:",
@@ -30834,14 +35644,14 @@ class ServerAppBuilder:
             "                    'if_expr': _g_if, 'in_expr': _g_in,",
             "                    'qual_col': str(_g_tot.get('qual_col') or '')}",
             "            figures[_fname] = _dash_figure_for(",
-            "                _g_pan, _fname, _gdf, _fac_label=_label)",
+            "                _g_pan, _fname, _gdf, _fac_label=_label, _rescale=_brs)",
             "            _entries.append((_fname, _label))",
             "            _facet_group_vals[_fname] = (by_vars, _key)",
             "        _facet_map[gname] = _entries",
-            "        # twoway ticks a by() graph's panels on one scale, over",
-            "        # all their data, as the saved figure's are.",
-            "        _dash_common_count_ticks([figures[_f] for _f, _ in _entries",
-            "                                  if _f in figures])",
+            "        # twoway draws a by() graph's panels on one scale per",
+            "        # axis unless rescaled, as the saved figure's are.",
+            "        _dash_share_by_scales([figures[_f] for _f, _ in _entries",
+            "                               if _f in figures], _brs)",
             "",
             "    # ---- Persist per-graph qualifier metadata for filter callbacks ----",
             "    # Graph-level if_expr/in_expr are applied during initial rendering",
@@ -30902,7 +35712,7 @@ class ServerAppBuilder:
             "                or (kpi.get('in_expr') or '').strip()",
             "                or kpi.get('qual_col')):",
             "            _kpi_qual_rows[kname] = _k_df.index",
-            "        val = _compute_kpi(_k_df, kstat, kvar)",
+            "        val = _compute_kpi(_k_df, kstat, kvar, _date_vars)",
             "        disp = _format_kpi(val, kfmt, kvar, kstat, _date_vars)",
             "        div_html = _dash_kpi_card(ktitle, disp, ksub, kcolor, kbg, kname)",
             "        # disable_math: the card is escaped HTML, not maths; a",
@@ -30927,20 +35737,9 @@ class ServerAppBuilder:
             "",
         ]
 
-        # Build filter specs from parsed filter_specs
-        if filter_specs:
-            lines += [
-                "    _filter_specs = " + repr(filter_specs),
-                "",
-            ]
-        else:
-            lines += [
-                "    _filter_specs = []",
-                "",
-            ]
-
+        # _filter_specs is emitted beside the page plan, above (WP-29 P0.11).
         lines += [
-            "    for fspec in _filter_specs:",
+            "    for _fi, fspec in enumerate(_filter_specs):",
             "        fvar = fspec['var']",
             "        ftype = fspec['type']",
             "        fexcl = fspec.get('exclude', [])",
@@ -30950,8 +35749,10 @@ class ServerAppBuilder:
             "        # file read only the last two, so",
             "        # filter(rep78, label(\"Repair record\")) showed up",
             "        # titled `rep78'.",
-            "        _ftitle = _dash_filter_title(fspec.get('label', ''),",
-            "                                     var_labels.get(fvar, fvar), ftype)",
+            "        _ftitle = _dash_filter_title(",
+            "            _dash_filter_base_title(fspec.get('label', ''),",
+            "                                    var_labels, fvar),",
+            "            fvar, ftype)",
             "        if fvar not in df.columns:",
             "            _dash_warn_filter_missing(fvar)",
             "            continue",
@@ -30963,7 +35764,8 @@ class ServerAppBuilder:
             "        # The widget itself comes from the builder the saved renderer",
             "        # runs: option values, titles, steps and bounds are one rule.",
             "        widget, _sent = _dash_filter_widget(",
-            "            ftype, fvar, df[fvar], _ftitle, vlabels,",
+            "            ftype, fvar, df[fvar][_EMBED['filter_rows'][_fi].to_numpy(dtype=bool)],",
+            "            _ftitle, vlabels,",
             "            date_kind=_date_vars.get(fvar, ''),",
             "            max_options=_dash_lim['filter_options'],",
             "            fmt=_FORMATS.get(fvar, ''),",
@@ -31007,15 +35809,18 @@ class ServerAppBuilder:
             "    for _bgn, _bsl in graph_sources.items():",
             "        for _bs in (_bsl if isinstance(_bsl, list) else [_bsl]):",
             "            if _bgn in _owner_rows:",
-            "                _brush_rows[id(_bs)] = _owner_rows[_bgn]",
-            "    _brush_rows[id(shared_source)] = df.index",
+            "                # The rows the graph draws (WP-29 P0.11), as the",
+            "                # saved page's source holds them.",
+            "                _brush_rows[id(_bs)] = _owner_rows[_bgn].intersection(",
+            "                    _EMBED_GROWS.get(_facet_to_orig.get(_bgn, _bgn), df.index))",
+            "    _brush_rows[id(shared_source)] = df.index[_EMBED_LINK]",
             "",
             "    # The views over the link group's ONE source, with the rows each",
             "    # owns -- a by() panel's, a qualified graph's or layer's -- read",
             "    # now, while the source holds every row.  A move writes the",
             "    # source once and recounts each view (_dash_refresh_linked).",
             "    _linked_views = _dash_linked_views(figures.values(), shared_source)",
-            "    # A linked layer drawn from a COPY of that source (a sorted line,",
+            "    # A linked layer drawn from a COPY of that source (a line in its join order,",
             "    # a jittered scatter) keeps its view; the redraw a move triggers",
             "    # is that layer's own rows, so the view then selects them all.",
             "    _redrawn_views = _dash_own_redrawn_views(figures.values(), _redrawn_ids)",
@@ -31117,6 +35922,9 @@ class ServerAppBuilder:
             "                    _own_rows = _owner_rows.get(gname)",
             "                    _kept_rows = (_gdf.index if _own_rows is None",
             "                                  else _own_rows.intersection(fdf.index))",
+            "                    # Of them, the rows the graph draws (WP-29 P0.11).",
+            "                    _kept_rows = _kept_rows.intersection(",
+            "                        _EMBED_GROWS.get(_orig_gn_cb, _kept_rows))",
             "                for src in srcs:",
             "                    if _brush_on:",
             "                        _brush_rows[id(src)] = _kept_rows",
@@ -31159,13 +35967,13 @@ class ServerAppBuilder:
             "                # applies to at least one member (GAPS2 E2), not",
             "                # necessarily the same as any one member's own.",
             "                _shared_mask = _mask_for(None, _shared_members)",
-            "                _shared_fdf = _df_ref[_shared_mask]",
+            "                _shared_fdf = _df_ref[_shared_mask & _EMBED_LINK]",
             "                if _brush_on:",
             "                    _brush_rows[id(_shared)] = _shared_fdf.index",
             "                _dash_refresh_linked(",
             "                    _shared, _shared_fdf, _linked_views,",
             "                    snapshot=_orig_src_data.get(id(_shared), {}),",
-            "                    pos_of=_shared_pos)",
+            "                    pos_of=_shared_pos, need=_EMBED['need'])",
             "                _shared.selected.indices = []",
             "            # 3. Recompute aggregated sources",
             "            for key, agg in _agg_srcs.items():",
@@ -31228,6 +36036,10 @@ class ServerAppBuilder:
             "                    # Its rows are new too: a selection on them (a",
             "                    # jittered scatter's) is cleared, as in step 2.",
             "                    _live.selected.indices = []",
+            "                    # A bar's or rbar's width is the kept rows' spacing",
+            "                    # (GlyphMapper._tag_spacing); the redraw's glyph",
+            "                    # holds it, the live one the build's (WP-29 P0.18).",
+            "                    _dash_copy_redraw_geometry(_live, _new)",
             "                if len(_fresh) != len(agg['sources']):",
             "                    warnings.warn(",
             "                        'dash: %s layer %d redrew %d source(s) where %d were '",
@@ -31250,7 +36062,7 @@ class ServerAppBuilder:
             "                _k_rows = _kpi_qual_rows.get(kname)",
             "                _k_fdf = (_k_all if _k_rows is None",
             "                          else _k_all[_k_all.index.isin(_k_rows)])",
-            "                val = _compute_kpi(_k_fdf, kpi.get('stat', 'mean'), kpi.get('var', ''))",
+            "                val = _compute_kpi(_k_fdf, kpi.get('stat', 'mean'), kpi.get('var', ''), _date_vars)",
             "                disp = _format_kpi(val, kpi.get('fmt', ''),",
             "                                   kpi.get('var', ''),",
             "                                   kpi.get('stat', 'mean'), _date_vars)",
@@ -31332,7 +36144,7 @@ class ServerAppBuilder:
             "                _k_rows = _kpi_qual_rows.get(kname)",
             "                _k_sel = (sel_df if _k_rows is None",
             "                          else sel_df[sel_df.index.isin(_k_rows)])",
-            "                val = _compute_kpi(_k_sel, kpi.get('stat', 'mean'), kpi.get('var', ''))",
+            "                val = _compute_kpi(_k_sel, kpi.get('stat', 'mean'), kpi.get('var', ''), _date_vars)",
             "                disp = _format_kpi(val, kpi.get('fmt', ''),",
             "                                   kpi.get('var', ''),",
             "                                   kpi.get('stat', 'mean'), _date_vars)",
@@ -31592,11 +36404,16 @@ class ServerAppBuilder:
             "# builds its own Server and is unaffected.",
             "_port = %d" % port,
             "",
+            "# WP-29 P0.12a: Tornado's logs never carry a query string (the",
+            "# key travels in ?token=).  Idempotent; under bokeh serve, which",
+            "# runs this module afresh per session, the only hook there is.",
+            "_dash_install_access_log_redaction()",
+            "",
             "if __name__ != '__main__':",
             "    make_document(curdoc())",
             "",
             "",
-            "def _dash_server_app(port=None, address=None, origins=None):",
+            "def _dash_server_app(port=None, address=None, origins=None, token=None):",
             "    \"\"\"Build the Server used by the `python app.py` launcher.",
             "",
             "    allow_websocket_origin used to be the single literal",
@@ -31604,8 +36421,23 @@ class ServerAppBuilder:
             "    another machine got a blank page with no way to widen it.",
             "    Both spellings of loopback are accepted by default and",
             "    --allow-websocket-origin adds more.",
+            "",
+            "    WP-29 P0.12a: every Server it builds has Gate A, the key's",
+            "    AuthProvider, and the key it uses is the global",
+            "    _DASH_SERVE_TOKEN, the one Gate B reads (A5).  With no key",
+            "    given, installed or in the environment, it makes one, installs",
+            "    it for both gates and announces its link file before any",
+            "    session (ratified 01oct2026); when no file can be written it",
+            "    prints the link once after a warning and serves on (round 2,",
+            "    K-9).  An address no link can name stops the Server and",
+            "    raises RuntimeError.",
             "    \"\"\"",
             "    _p = int(port or _port)",
+            "    global _DASH_SERVE_TOKEN, _DASH_LINK_DIR",
+            "    if token is not None and not _dash_token_valid(token):",
+            "        raise ValueError('dash: the key given to _dash_server_app is not 32 to 128 of A-Z a-z 0-9 _ -')",
+            "    _dash_made = not (token or _DASH_SERVE_TOKEN or _dash_env_token())",
+            "    _DASH_SERVE_TOKEN = token or _DASH_SERVE_TOKEN or _dash_env_token() or _dash_new_token()",
             "    _origins = [f'localhost:{_p}', f'127.0.0.1:{_p}']",
             "    for _o in (origins or []):",
             "        if _o and _o not in _origins:",
@@ -31647,14 +36479,23 @@ class ServerAppBuilder:
             "              'only begins with an allowed host; dash checks '",
             "              'each websocket origin label for label instead.',",
             "              flush=True)",
-            "    return Server(",
+            "    _dash_srv = Server(",
             "        {'/': Application(FunctionHandler(make_document))},",
             "        port=_p,",
             "        allow_websocket_origin=_origins,",
             "        num_procs=1,",
             "        extra_patterns=[('/health', _HealthHandler)],",
+            "        auth_provider=_dash_token_auth(_DASH_SERVE_TOKEN),",
             "        **_kw",
             "    )",
+            "    if _dash_made:",
+            "        try:",
+            "            _dash_link_url = _dash_tokenized_url(_p, _DASH_SERVE_TOKEN, address)",
+            "        except ValueError:",
+            "            _dash_srv.stop()",
+            "            raise RuntimeError('dash: the dashboard\\'s key was made but no link can name the address ' + repr(address) + '; set DASH_SERVE_TOKEN or pass --token-stdin to choose the key')",
+            "        _DASH_LINK_DIR = _dash_announce_key(_dash_link_url)",
+            "    return _dash_srv",
             "",
             "",
             "if __name__ == '__main__':",
@@ -31680,6 +36521,15 @@ class ServerAppBuilder:
             "        _port = _dash_port_value(_a.port)",
             "    except _argparse.ArgumentTypeError as _e:",
             "        _p.error(str(_e))",
+            "    # WP-29 P0.12a: the key, before any server exists -- the",
+            "    # --token-stdin line (dash serve), else DASH_SERVE_TOKEN, else",
+            "    # none, and _dash_server_app makes one.  A supplied key of any",
+            "    # other form stops the app (exit status 2) without its value.",
+            "    _dash_install_access_log_redaction()",
+            "    try:",
+            "        _DASH_SERVE_TOKEN = _dash_resolve_token(_a)",
+            "    except ValueError as _e:",
+            "        _p.error(str(_e))",
             "    # BOKEH_ALLOW_WS_ORIGIN, when set, REPLACES the websocket",
             "    # origins this launcher admits: Bokeh's handler reads it at",
             "    # every handshake and uses it instead of the list passed to",
@@ -31699,34 +36549,67 @@ class ServerAppBuilder:
             "              '--allow-websocket-origin): ' + _dash_env_origins,",
             "              flush=True)",
             "        if any('*' in _o for _o in _dash_env_origins.split(',')):",
-            "            print('dash: WARNING -- it holds *, so any web site '",
-            "                  'can open a session with this dashboard and read '",
-            "                  'what it draws.  Unset BOKEH_ALLOW_WS_ORIGIN to '",
-            "                  'admit only this app\\'s list.', flush=True)",
-            "    _server = _dash_server_app(port=_port, address=_a.address,",
-            "                               origins=_a.origins)",
+            "            print('dash: WARNING -- it holds *, so the websocket '",
+            "                  'origin check admits every web site; only the '",
+            "                  'dashboard\\'s key, in its link, still keeps other '",
+            "                  'pages out.  Unset BOKEH_ALLOW_WS_ORIGIN to admit '",
+            "                  'only this app\\'s list.', flush=True)",
+            "    try:",
+            "        _server = _dash_server_app(port=_port, address=_a.address,",
+            "                                   origins=_a.origins,",
+            "                                   token=_DASH_SERVE_TOKEN)",
+            "    except RuntimeError as _e:",
+            "        _p.error(str(_e))",
+            "    # WP-29 P0.13 F2: under dash serve, stop with the Stata that",
+            "    # started this server, however it ends (_dash_watch_parent).",
+            "    if _a.parent_watch:",
+            "        _dash_watch_parent(_server.io_loop)",
             "    _server.start()",
             "    # A browser opens only when asked.  It used to open",
             "    # unconditionally, so every scripted or batch run took over the",
             "    # user's screen.",
+            "    # WP-29 P0.12a: it opens the 127.0.0.1 link with the key, never",
+            "    # on a command line; its 0600 redirect page is removed after a",
+            "    # minute and at stop.",
+            "    import shutil as _shutil",
+            "    _dash_url = _dash_tokenized_url(_port, _DASH_SERVE_TOKEN, _a.address)",
+            "    _dash_base = _dash_url.split('?', 1)[0]",
+            "    _dash_open_dir = None",
             "    if _a.show:",
-            "        _server.io_loop.add_callback(_server.show, '/')",
+            "        _dash_open_dir = _dash_open_tokenized(_dash_url)",
+            "        if _dash_open_dir:",
+            "            _server.io_loop.call_later(_DASH_REDIRECT_TTL_S, _shutil.rmtree, _dash_open_dir, True)",
             "    if _a.timeout > 0:",
             "        _server.io_loop.call_later(_a.timeout * 60,",
             "                                   _server.io_loop.stop)",
-            "    print(f'Bokeh Server running at http://localhost:{_port}/')",
-            "    print(f'Health check:  http://localhost:{_port}/health')",
+            "    # Flushed: the launcher erases the app file only once this",
+            "    # banner and /health have both reached it (WP-29 P0.13 F2).",
+            "    # WP-29 P0.12a: the address without the key; a key the app made",
+            "    # has its link in the file _dash_server_app named.",
+            "    print(f'Bokeh Server running at {_dash_base} -- the dashboard opens only through the link that holds its key.', flush=True)",
+            "    print(f'Health check:  {_dash_base}health', flush=True)",
             "    print(f'Session limits per minute: {_a.sessions_per_client} per '",
             "          f'client, {_a.new_clients_per_minute} new clients, '",
-            "          f'{_a.sessions_per_minute} in all.')",
-            "    print('Press Ctrl+C to stop.')",
-            f"    try:",
-            f"        _server.io_loop.start()",
-            f"    except KeyboardInterrupt:",
-            f"        pass",
-            f"    finally:",
-            f"        _server.stop()",
-            f"        print('Server stopped.')",
+            "          f'{_a.sessions_per_minute} in all.', flush=True)",
+            "    print('Stops when the program that started it ends.'",
+            "          if _a.parent_watch else 'Press Ctrl+C to stop.',",
+            "          flush=True)",
+            "    # WP-29 P0.13 F4: interrupted under dash serve, exit 130, which",
+            "    # the launcher reads as Break (r(1)), not as a timeout.",
+            "    _dash_int = False",
+            "    try:",
+            "        _server.io_loop.start()",
+            "    except KeyboardInterrupt:",
+            "        _dash_int = True",
+            "    finally:",
+            "        _server.stop()",
+            "        if _dash_open_dir:",
+            "            _shutil.rmtree(_dash_open_dir, True)",
+            "        if _DASH_LINK_DIR:",
+            "            _shutil.rmtree(_DASH_LINK_DIR, True)",
+            "        print('Server stopped.', flush=True)",
+            "    if _dash_int and _a.parent_watch:",
+            "        raise SystemExit(130)",
         ]
 
         lines = self._supply_missing_constants(lines)
@@ -31738,7 +36621,8 @@ class ServerAppBuilder:
 
         The app is assembled from many separate blocks of emitted text, and a
         block that uses one of this module's UPPERCASE constants has no way to
-        say so.  Two landed at once -- ``_LPOLY_ROT_C`` and ``_FP_POWERS`` --
+        say so.  Two landed at once -- lpoly's old rule-of-thumb constant (gone
+        since WP-29 P0.7) and ``_FP_POWERS`` --
         each raising ``NameError`` at import of the generated file, which is
         the worst place to find out.
 
@@ -31803,16 +36687,17 @@ def _validate_output_path(output_path: str, mode: str,
     the renderer directly.
 
     *launch* is the ``--launch`` route, ``dash serve``'s, which writes the
-    app, runs it with ``python <path>`` and waits.  ``dash serve`` hands it
-    a Stata tempfile -- ``S_86564.000002``, no ``.py`` -- on purpose: a
-    registered name is what Stata erases when the command ends, on success,
-    error or Break, and the app embeds the data (an unregistered ``.py``
-    beside it once left 142 of them behind).  So on that route a name with
-    no ``.py`` is taken when no file of that name exists yet: the route can
-    still never overwrite a file that is not a ``.py``.  Measured at
-    4ede074, requiring ``.py`` on every server path stopped every
-    ``dash serve`` with this function's ValueError, r(7102).  ``dash build,
-    server`` -- a file the user keeps -- still needs the ``.py``.
+    app, runs it (from the bytes it verified, ``_dash_launch_app``) and
+    waits.  Since WP-29 P0.12b ``dash serve`` hands it
+    ``<c(tmpdir)>dash-<uid>/run-<pid>-<random>/app.py``, in a private run
+    folder dash removes when the command ends.  It used to hand a Stata
+    tempfile -- ``S_86564.000002``, no ``.py`` -- so a command-line user
+    may still name one: on that route a name with no ``.py`` is taken when
+    no file of that name exists yet, so the route can never overwrite a
+    file that is not a ``.py`` (measured at 4ede074, requiring ``.py`` on
+    every server path stopped every ``dash serve`` with this function's
+    ValueError, r(7102)).  ``dash build, server`` -- a file the user keeps
+    -- still needs the ``.py``.
 
     Returns the path unchanged, so it can be used inline.
     """
@@ -31885,6 +36770,56 @@ def _dash_port_value(value):
     return n
 
 
+def _dash_watch_parent(io_loop, fd=None, grace=5.0, _exit=None):
+    """Stop the served app when the program that started it ends (WP-29
+    P0.13 F2).
+
+    Measured at 7421d3d: a SIGKILL or SIGTERM of Stata left the app
+    answering /health with ppid 1, holding its port, beside the data (t3,
+    t4).  ``dash serve`` starts the app with a pipe on its stdin
+    (``--parent-watch``) that only Stata's process holds; the OS closes it
+    however Stata ends.  A daemon thread reads that pipe (fd 0, after the
+    app's own frame, which the bootstrap consumed exactly) and discards
+    every byte; at end of file it asks the loop to stop through Tornado's
+    one thread-safe call, ``add_callback``, and starts a daemon timer that
+    exits the process after *grace* seconds, a backstop for a loop stuck in
+    a recompute (the u12 p6 prototype: /health stopped within one 0.1 s
+    poll after a SIGKILL of the parent, and a graceful close gave rc 0
+    after 0.08 s).  With no stdin it prints one line and returns None.
+    Copied into the generated app (R-3)."""
+    import os
+    import sys
+    import threading
+
+    if fd is None:
+        try:
+            if sys.stdin is None:
+                raise ValueError("no standard input")
+            fd = sys.stdin.fileno()
+        except (AttributeError, ValueError, OSError):
+            print("dash: no standard input to watch; the server will not "
+                  "stop with the program that started it.", flush=True)
+            return None
+
+    def _watch():
+        while True:
+            try:
+                b = os.read(fd, 4096)
+            except OSError:
+                break
+            if not b:
+                break
+        io_loop.add_callback(io_loop.stop)
+        t = threading.Timer(grace, _exit or os._exit, (0,))
+        t.daemon = True
+        t.start()
+
+    th = threading.Thread(target=_watch, name="dash-parent-watch",
+                          daemon=True)
+    th.start()
+    return th
+
+
 def main(
     master_spec_path: str,
     data_json_path: str,
@@ -31892,7 +36827,8 @@ def main(
     mode: str = "standalone",
     port: int = 5006,
     launch: bool = False,
-) -> None:
+    private_output: bool = False,
+) -> "_DashWrittenApp | None":
     """Build the dashboard and write it to *output_path*.
 
     Dispatches to ``DashRenderer`` (standalone HTML) or ``ServerAppBuilder``
@@ -31906,9 +36842,27 @@ def main(
         port:             Port to embed in the generated server app.  Ignored
                           for standalone.  ``build_options["port"]`` still
                           wins, because that is what dash.ado writes.
-        launch:           The ``--launch`` route (``dash serve``), whose
-                          output is a Stata tempfile; see
+        launch:           The ``--launch`` route (``dash serve``); see
                           :func:`_validate_output_path`.
+        private_output:   Write the standalone page readable by this
+                          account only (0600), as a new file, never through
+                          a link: the one-line form's preview (WP-29 P0.14).
+                          A page the user names keeps the umask, as twoway's
+                          ``saving()`` does.
+
+    Every server app is written 0600 where the disk allows, as a new file,
+    and never through a link (WP-29 P0.12b, M4; an anti-hijack refusal is
+    a ``_DashUnsafePath``, never caught here, r(7102) under Stata).  On the
+    launch route the spec and data are erased once the app (which embeds
+    them) is written -- only inside dash's own private run folder
+    (``_dash_private_run_of``); a command-line user's files never are.  A
+    user-named ``.py`` the disk will not keep at 0600 is written and noted
+    once (R-8 (d)).
+
+    Returns:
+        In server mode the written app's ``_DashWrittenApp`` (its
+        ``os.stat_result`` and SHA-256), which the launcher verifies before
+        it hands the bytes to Python; None in standalone mode.
 
     Raises:
         ValueError: If *mode* is not a recognised value.
@@ -31924,6 +36878,7 @@ def main(
         )
 
     _validate_output_path(output_path, mode, launch=launch)
+    run = _dash_private_run_of(output_path) if launch else None
 
     if mode == "server":
         # --port used to stop here: this call passed three arguments and no
@@ -31933,18 +36888,352 @@ def main(
         # server' followed by `python app.py' -- the documented non-blocking
         # route -- served on 5006 regardless.
         builder = ServerAppBuilder(master_spec_path, data_json_path)
-        builder.build(output_path, port=_dash_port_value(port))
+        written = builder.build(output_path, port=_dash_port_value(port),
+                                private=True)
+        # The app embeds the spec and data (_SPEC_B64, _DATA_B64), so dash
+        # serve's copies of them go now -- only inside dash's own run
+        # folder (R-1).
+        if run is not None and \
+                os.path.dirname(master_spec_path) == run and \
+                os.path.dirname(data_json_path) == run and \
+                os.path.basename(master_spec_path) == "spec.json" and \
+                os.path.basename(data_json_path) == "data.json":
+            _dash_erase_quietly(master_spec_path)
+            _dash_erase_quietly(data_json_path)
+        if not _dash_mode_private(written.st) and \
+                not _dash_chosen_path(output_path):
+            print(_DASH_NOTE_FILE % (output_path,
+                                     stat.S_IMODE(written.st.st_mode)),
+                  flush=True)
+        return written
+    renderer = DashRenderer(master_spec_path, data_json_path)
+    html_content = renderer.render()
+    if private_output:
+        _dash_private_write(output_path, html_content, exclusive=True)
     else:
-        renderer = DashRenderer(master_spec_path, data_json_path)
-        html_content = renderer.render()
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(html_content)
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Launch from the open file (WP-29 P0.12b, section 08 R-9; ratified
+# 01oct2026, round 2, answer B).  Launcher-only: none of these is copied
+# into the generated app (R-3).
+#
+# Measured (section 08, §3b): `python app.py' ran an app.py swapped in
+# after dash had written it (A: rc 3, "EVIL RAN"), and imported a
+# linecache.py planted beside it (C); `python -c' imports one planted in the
+# working folder at start-up (F).  So dash never starts its app by name: it
+# reads the app.py main() wrote through a descriptor it opened and checked,
+# and hands those bytes to `python -P -c _DASH_BOOT' on the child's stdin.
+# The child never opens a path, and -P keeps both folders off sys.path
+# (B, D, F with -P, G).  An anti-hijack guard (R-8): every refusal is a
+# _DashUnsafePath, r(7102).
+# ---------------------------------------------------------------------------
+
+#: The bootstrap ``python -P -c`` runs (R-9 item 2): it reads one frame,
+#: ``DASHAPP1 <n> <sha256>`` and a newline, then exactly *n* bytes, from
+#: fd 0 with ``os.read`` only (so whatever follows the frame -- S13's key
+#: line, F2's watch -- is left on stdin, §3b 3), checks the length and the
+#: SHA-256 (a short or damaged frame exits 1 and runs nothing, §3b 5, 5b),
+#: and runs the text as ``__main__`` compiled under the app's own name, so
+#: tracebacks, ``__file__``, argv and exit statuses are those of ``python
+#: app.py`` (§3b 1-3).  It holds no double quote and no backslash, so
+#: Windows' list2cmdline only wraps it in quotes, and no secret (argv is
+#: visible through ``ps``).
+_DASH_BOOT = "\n".join([
+    "import sys",
+    "if not getattr(sys.flags, 'safe_path', False) and sys.path[:1] == ['']:",
+    "    del sys.path[0]",
+    "def _dash_boot():",
+    "    import os, hashlib, linecache, types, builtins",
+    "    bad = 'dash: the app was not handed over on standard input'",
+    "    nl = bytes([10])",
+    "    head = b''",
+    "    while not head.endswith(nl):",
+    "        if len(head) >= 128:",
+    "            raise SystemExit(bad)",
+    "        c = os.read(0, 1)",
+    "        if not c:",
+    "            raise SystemExit(bad)",
+    "        head += c",
+    "    try:",
+    "        tag, n, digest = head.decode('ascii').split()",
+    "    except ValueError:",
+    "        raise SystemExit(bad)",
+    "    if tag != 'DASHAPP1' or not n.isdigit() or len(digest) != 64 or "
+    "digest.strip('0123456789abcdef'):",
+    "        raise SystemExit(bad)",
+    "    left = int(n)",
+    "    parts = []",
+    "    while left > 0:",
+    "        b = os.read(0, min(left, 1048576))",
+    "        if not b:",
+    "            raise SystemExit(bad)",
+    "        parts.append(b)",
+    "        left -= len(b)",
+    "    data = b''.join(parts)",
+    "    del parts",
+    "    if hashlib.sha256(data).hexdigest() != digest:",
+    "        raise SystemExit('dash: the app handed over on standard input "
+    "was damaged')",
+    "    app = sys.argv[1]",
+    "    src = data.decode('utf-8')",
+    "    code = compile(src, app, 'exec', dont_inherit=True)",
+    "    linecache.cache[app] = (len(src), None, src.splitlines(True), app)",
+    "    mod = types.ModuleType('__main__')",
+    "    mod.__file__ = app",
+    "    mod.__builtins__ = builtins",
+    "    old = sys.modules.get('__main__')",
+    "    sys.modules['__main__'] = mod",
+    "    sys.argv = sys.argv[1:]",
+    "    del data, src",
+    "    exec(code, mod.__dict__)",
+    "    return old",
+    "_dash_boot()",
+    ""])
+assert '"' not in _DASH_BOOT and "\\" not in _DASH_BOOT
+
+
+def _dash_read_verified_app(app_path, expect=None):
+    """The bytes of the app ``main()`` wrote, read through a descriptor
+    opened and checked here; the launcher hands exactly these to Python.
+
+    Anti-hijack (``_DashUnsafePath``, ``dash: refused to run <path> (<why>);
+    dash runs only the application it wrote.``): a link (``O_NOFOLLOW``; on
+    Windows, which has none, an ``lstat`` link or reparse point is refused
+    first and a swap after it is caught by the checks below), anything but a
+    regular file (a FIFO opened ``O_NONBLOCK`` does not block, A3), another
+    account's file, and -- with *expect*, the ``_DashWrittenApp`` main()
+    returned -- another ``(st_dev, st_ino)`` (a renamed and replaced folder,
+    measured §3a R9), another size, or other bytes (SHA-256).  Every check
+    after the open is on the descriptor, and the path is never read twice
+    (§3b B).  An OSError from the open or the read (the file is gone) is
+    the launch-failure class and propagates.  ``O_NOFOLLOW``,
+    ``O_NONBLOCK``, ``O_CLOEXEC`` and ``os.getuid`` are read with
+    ``getattr`` (Windows, A13)."""
+    why = ""
+    if os.name == "nt":
+        lst = os.lstat(app_path)
+        if stat.S_ISLNK(lst.st_mode) or (
+                getattr(lst, "st_file_attributes", 0)
+                & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)):
+            why = "it is a link"
+    fd = None
+    if not why:
+        try:
+            fd = os.open(app_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+                         | getattr(os, "O_NONBLOCK", 0)
+                         | getattr(os, "O_CLOEXEC", 0)
+                         | getattr(os, "O_BINARY", 0))
+        except OSError as exc:
+            if exc.errno == errno.ELOOP:
+                why = "it is a link"
+            elif exc.errno in (errno.ENOTDIR, errno.EMLINK):
+                try:
+                    if stat.S_ISLNK(os.lstat(app_path).st_mode):
+                        why = "it is a link"
+                except OSError:
+                    pass
+            if not why:
+                raise
+    data = b""
+    if fd is not None:
+        try:
+            st = os.fstat(fd)
+            _uid = getattr(os, "getuid", None)
+            if not stat.S_ISREG(st.st_mode):
+                why = "it is not a regular file"
+            elif _uid is not None and st.st_uid != _uid():
+                why = "it belongs to another account"
+            elif expect is not None and (st.st_dev, st.st_ino) != (
+                    expect.st.st_dev, expect.st.st_ino):
+                why = "it was replaced after dash wrote it"
+            elif expect is not None and st.st_size != expect.st.st_size:
+                why = "it changed after dash wrote it"
+            else:
+                parts = []
+                left = st.st_size
+                while left > 0:
+                    b = os.read(fd, min(left, 1 << 20))
+                    if not b:
+                        break
+                    parts.append(b)
+                    left -= len(b)
+                if left > 0 or os.read(fd, 1):
+                    why = "it changed after dash wrote it"
+                data = b"".join(parts)
+        finally:
+            os.close(fd)
+    if not why and expect is not None and \
+            hashlib.sha256(data).hexdigest() != expect.sha256:
+        why = "it changed after dash wrote it"
+    if why:
+        refusal = _DashUnsafePath(_DASH_RUN_REFUSAL % (app_path, why))
+        refusal.why = why
+        raise refusal
+    return data
+
+
+def _dash_app_frame(data):
+    """One ``DASHAPP1 <n> <sha256>`` header line and the *n* bytes of
+    *data*: what ``_DASH_BOOT`` reads from stdin.  Pure."""
+    return ("DASHAPP1 %d %s\n" % (len(data), hashlib.sha256(data).hexdigest())
+            ).encode("ascii") + data
+
+
+def _dash_child_stdin(proc):
+    """The binary writer of the child's stdin.  The launcher's Popen is
+    ``text=True`` (its pump threads read text), so this is the text
+    wrapper's ``buffer``: the frame never passes through the locale
+    encoding or Windows' newline translation, either of which would break
+    it.  A fake child's stdin with no ``buffer`` is used as it is."""
+    return getattr(proc.stdin, "buffer", proc.stdin)
+
+
+def _dash_hand_over(proc, frame):
+    """Write the app's *frame* to the child's stdin and flush it; never
+    close the pipe (the child reads it after the frame).  A child that
+    exited first gives BrokenPipeError, which the launcher reports
+    (Stata's Python ignores SIGPIPE, §3b ST2, ST4)."""
+    raw = _dash_child_stdin(proc)
+    raw.write(frame)
+    raw.flush()
+
+
+class _DashServeInterrupted(Exception):
+    """``dash serve`` was stopped by Break (WP-29 P0.13 F4): Stata's
+    BreakError seen by the launcher's poll, Ctrl+C (KeyboardInterrupt), or
+    the app's own exit 130 / -SIGINT.  ``__main__`` puts it in the launch
+    report box, which dash.ado ends with ``error 1``, r(1); without a box
+    it exits 130.  Deliberately NOT a RuntimeError: ``__main__`` maps
+    RuntimeError to the r(198) of a failed launch (A2).  Launcher-only."""
+
+
+def _dash_stata_poller(sfi=None):
+    """``(pollstd, (BreakError,))`` inside Stata, else ``(None, ())``.
+
+    Measured at 7421d3d (p7): the launcher never called
+    ``sfi.SFIToolkit.pollstd()``, so Break in GUI Stata could not stop
+    ``dash serve`` (GAPS2 F4, H2).  Polling Stata's interface is what lets a
+    pending Break be raised, as ``sfi.BreakError``.  Outside Stata (the
+    renderer's command line) there is no sfi, and KeyboardInterrupt alone
+    stops the launcher.  *sfi* is a stand-in module for tests."""
+    if sfi is None:
+        try:
+            import sfi as _sfi
+        except ImportError:
+            return (None, ())
+        sfi = _sfi
+    poll = getattr(getattr(sfi, "SFIToolkit", None), "pollstd", None)
+    brk = getattr(sfi, "BreakError", None)
+    if poll is None or brk is None:
+        return (None, ())
+    return (poll, (brk,))
+
+
+def _dash_stop_child(proc, grace=5.0, interrupts=(KeyboardInterrupt,)):
+    """Stop the served child (WP-29 P0.13 F4): close its stdin, which its
+    ``--parent-watch`` reads to end of file and stops cleanly on (0.08 s
+    measured, u12 p6); wait *grace* seconds; then ``terminate`` and wait
+    again; then ``kill``.  A second Break or Ctrl+C during the stop (one of
+    *interrupts*) goes straight to ``kill`` (A4).  It never polls Stata
+    while it stops.  Launcher-only."""
+    import subprocess
+    try:
+        proc.stdin.close()
+    except (OSError, ValueError, AttributeError):
+        pass
+    try:
+        try:
+            proc.wait(timeout=grace)
+            return
+        except subprocess.TimeoutExpired:
+            proc.terminate()
+        proc.wait(timeout=grace)
+    except (subprocess.TimeoutExpired,) + tuple(interrupts):
+        try:
+            proc.kill()
+        except OSError:
+            pass
+        proc.wait()
+
+
+def _dash_write_link(link_dir, url):
+    """Write the dashboard's link *url* where only this account can read
+    it, and return ``(path, folder_made_or_None)`` (WP-29 P0.12a; launcher
+    only, never copied into the app).
+
+    In the run folder (*link_dir*, Q-2): ``link.html`` through
+    ``_dash_private_write(..., exclusive=True)`` (anti-hijack: no link,
+    FIFO or other account's file at the name), then checked with ``lstat``
+    -- a regular file of this account with no group or other permission
+    bits.  A write that is refused or fails (round 2) goes straight to a
+    fresh 0700 ``dash-link-*`` folder of the system temp directory,
+    through ``_dash_private_page``; so does a file that fails the check
+    (K-8), which is erased first.  Without a run folder (a command-line
+    ``--launch``), that fresh folder is the only one.  A disk that keeps no
+    permissions anywhere gets the file anyway, with ``_dash_private_page``'s
+    one note (K-8, answer 2): no location is refused for privacy.  When
+    the fresh folder fails too, this prints nothing and raises, and the
+    launcher prints the link once (K-9).  Threat: the key at rest readable
+    by another account."""
+    page = _dash_redirect_page(url)
+    if link_dir is not None:
+        path = os.path.join(link_dir, "link.html")
+        wrote = False
+        try:
+            _dash_private_write(path, page, exclusive=True)
+            wrote = True
+        except (_DashUnsafePath, OSError):
+            pass
+        if wrote:
+            try:
+                st = os.lstat(path)
+                _uid = getattr(os, "geteuid", None)
+                if stat.S_ISREG(st.st_mode) and \
+                        (_uid is None or st.st_uid == _uid()) and \
+                        st.st_mode & 0o077 == 0:
+                    return path, None
+            except OSError:
+                pass
+            _dash_erase_quietly(path)
+    d, p = _dash_private_page(page, "dash-link-", "link.html")
+    return p, d
 
 
 def _dash_launch_app(app_path, port, timeout, no_browser, *,
-                      ready_seconds=30.0, prebind=True):
+                      ready_seconds=30.0, prebind=True, expect=None,
+                      erase_app_when_ready=False, link_dir=None):
     """Run the generated Bokeh Server app as a subprocess and block until
     it answers ``/health`` or fails, forwarding its own output as it runs.
+
+    WP-29 P0.12b (R-9): the child runs the bytes this process read through
+    a descriptor it opened and verified (``_dash_read_verified_app``;
+    *expect* is the ``_DashWrittenApp`` main() returned), handed to
+    ``python -P -c _DASH_BOOT <app_path>`` as one frame on its stdin
+    (``_dash_hand_over``) -- never the path, so an app.py or folder swapped
+    in after the check never runs, and -P keeps the app's folder and the
+    working folder off ``sys.path``.  A refusal is ``_DashUnsafePath``
+    (r(7102)); an app that cannot be read, or a child that cannot take it,
+    is a launch failure (RuntimeError).
+
+    WP-29 P0.13 F2: the child always gets ``--parent-watch``, and the stdin
+    pipe stays open while it serves, held only by this process (Popen's
+    pipes are not inheritable), so the app stops when Stata ends, however
+    it ends.  The child stays in Stata's process group (A5a).  With
+    *erase_app_when_ready* (``__main__`` passes it only for dash's own
+    private run folder, ``_dash_private_run_of``), the app file is erased
+    once /health answers AND the app's own flushed banner has been read
+    (A6), so no copy of the data stays on disk while it serves.
+
+    WP-29 P0.13 F4: inside Stata it calls sfi's ``pollstd`` before the
+    prebind, on every pass of its wait and once after, outside every broad
+    except (A1); Break or Ctrl+C there stops the child
+    (``_dash_stop_child``: close stdin, terminate, kill) and raises
+    ``_DashServeInterrupted``, as does the app's own exit 130 or -SIGINT.
+    The messages name Break inside Stata and Ctrl+C outside it.
 
     GAPS2 F1: the old inline launch started the app with
     ``Popen(cmd).wait()`` and never read ``returncode``, so a port already
@@ -31960,6 +37249,17 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     ``stdout=PIPE, stderr=PIPE`` and no reader hangs once a pipe fills.
     Only the main thread ever prints: a thread that prints under Stata's
     embedded Python is not guaranteed to reach the Results window.
+
+    WP-29 P0.12a: each launch makes a new key (``_dash_new_token``) and
+    hands it to the app as one line on the same stdin pipe, after the app
+    text (``--token-stdin``; the pipe stays open, it is the parent watch),
+    never in argv.  Once the server answers, the link that holds it is
+    written to a 0600 ``link.html`` in *link_dir* (``_dash_write_link``)
+    and only that file's path is printed; when no folder takes the file,
+    the link is printed once after ``_DASH_LINK_UNWRITTEN`` and the server
+    keeps serving (round 2, K-9).  Every forwarded line and the stderr tail
+    are redacted (``_dash_redact_query``), and the link file is removed at
+    stop.  A 429 from ``/health`` counts as answering.
     """
     import collections
     import queue
@@ -31969,9 +37269,26 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     import sys
     import threading
     import time
+    import urllib.error
     import urllib.request
 
     port = _dash_port_value(port)
+    # WP-29 P0.12a: this launch's key, handed over stdin, never argv.
+    token = _dash_new_token()
+    _link_path = _link_tmp = None
+
+    # WP-29 P0.13 F4: inside Stata, the launcher polls Stata's interface,
+    # so Break (the GUI's button, Command+. or console Ctrl+C) is seen
+    # while it waits -- it never was (p7: 0 pollstd calls).
+    poll, brk = _dash_stata_poller()
+    interrupts = (KeyboardInterrupt,) + brk
+    if poll is not None:
+        try:
+            poll()
+        except interrupts:
+            print("dash: stopped by Break; no server was started.",
+                  flush=True)
+            raise _DashServeInterrupted("no server was started")
 
     if prebind:
         # The measured case (F1.5): a holder on 127.0.0.1 refuses a second
@@ -31989,14 +37306,28 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
                 "no server started on port %d: the port is in use" % port)
         _s.close()
 
-    _cmd = [sys.executable, app_path, "--port", str(port)]
+    try:
+        _data = _dash_read_verified_app(app_path, expect)
+    except OSError as exc:
+        raise RuntimeError(
+            "no server started on port %d: the app could not be read (%s)"
+            % (port, exc.strerror or exc))
+    _frame = _dash_app_frame(_data)
+    del _data
+
+    _cmd = [sys.executable, "-P", "-c", _DASH_BOOT, app_path, "--port",
+            str(port)]
     if not no_browser:
         _cmd.append("--show")
     if timeout > 0:
         _cmd += ["--timeout", str(timeout)]
+    _cmd.append("--parent-watch")
+    # WP-29 P0.12a: the key follows the app text on stdin (L-4).
+    _cmd.append("--token-stdin")
 
     try:
-        proc = subprocess.Popen(_cmd, stdout=subprocess.PIPE,
+        proc = subprocess.Popen(_cmd, stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, text=True,
                                 errors="replace")
     except FileNotFoundError:
@@ -32023,73 +37354,184 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     _t_err = threading.Thread(target=_pump,
                               args=(proc.stderr, _err_dq.append),
                               daemon=True)
-    _t_out.start()
-    _t_err.start()
-
     def _clean(text):
         return "".join(c for c in text if c.isprintable() or c == "\n")
 
     _forwarded = 0
+    _banner = False
 
     def _drain_stdout():
-        nonlocal _forwarded
+        nonlocal _forwarded, _banner
         while True:
             try:
                 line = _out_q.get_nowait()
             except queue.Empty:
                 break
+            # Before the cap: the banner counts even when not shown.
+            if "Bokeh Server running at" in line:
+                _banner = True
             if _forwarded >= 200:
                 continue  # still drained, never printed (F-14)
-            _line = _clean(line).rstrip("\n")[:500]
+            # WP-29 P0.12a: no forwarded line carries a query or the key.
+            _line = _dash_redact_query(_clean(line), token).rstrip("\n")[:500]
             print(_line, flush=True)
             _forwarded += 1
             if _forwarded == 200:
                 print("dash: (further app output not shown)", flush=True)
 
+    # Inside Stata the messages name Break, Ctrl+C being only console
+    # Stata's Break key (F9c); outside it they keep Ctrl+C.
+    if poll is not None:
+        _stop_hint = "press Break (Ctrl+C in console Stata) to stop."
+        _wait_hint = "(press Break, or Ctrl+C in console Stata, to stop it)."
+    else:
+        _stop_hint = "press Ctrl+C to stop."
+        _wait_hint = "(Ctrl+C stops it)."
+
     _ready = False
+    _erased = False
     _no_answer_shown = False
-    _stopped_by_launcher = False
+    _interrupted = False
+    _handover_exc = None
     _t0 = time.monotonic()
     _next_health = _t0
 
+    # From Popen to the final wait, one try/finally (A4): whatever ends this
+    # -- Break, Ctrl+C, an error -- the child is stopped.  The pumps start
+    # first, then the app is handed over (a child that writes while it reads
+    # cannot fill a pipe), then the wait.  poll() runs outside every broad
+    # except: sfi's BreakError is an Exception, and the /health probe's
+    # `except Exception' would swallow it (A1).
     try:
-        while proc.poll() is None:
+        _t_out.start()
+        _t_err.start()
+        try:
+            _dash_hand_over(proc, _frame)
+        except (OSError, ValueError, AttributeError) as exc:
+            _handover_exc = exc
+            if proc.poll() is None:
+                try:
+                    proc.kill()
+                except OSError:
+                    pass
+        del _frame
+        # WP-29 P0.12a: the key line, after the app text, on the same pipe,
+        # as bytes through the binary writer (L-1..L-3); the pipe stays
+        # open (TD-4).  A child that cannot take it is stopped (finally).
+        if _handover_exc is None:
+            try:
+                _raw = _dash_child_stdin(proc)
+                _raw.write((token + "\n").encode("ascii"))
+                _raw.flush()
+            except (AttributeError, OSError, ValueError):
+                raise RuntimeError("no server started on port %d: the "
+                                   "dashboard's key could not be handed to "
+                                   "the app" % port)
+        while _handover_exc is None and proc.poll() is None:
+            if poll is not None:
+                poll()
             _drain_stdout()
             _now = time.monotonic()
             if not _ready and _now >= _next_health:
                 _next_health = _now + 0.25
+                _answers = False
                 try:
                     urllib.request.urlopen(
                         "http://127.0.0.1:%d/health" % port, timeout=1.0)
+                    _answers = True
+                except urllib.error.HTTPError as _e:
+                    # A /health flood answering 429 is still the server
+                    # answering (A6); any other code is not (a squatter).
+                    _answers = _e.code == 429
+                except Exception:
+                    pass
+                if _answers:
                     _ready = True
                     print(
-                        "dash: the server answers at http://localhost:%d/ "
-                        "(health check http://localhost:%d/health); press "
-                        "Ctrl+C to stop." % (port, port), flush=True)
-                except Exception:
+                        "dash: the server answers at http://127.0.0.1:%d/ "
+                        "(health check http://127.0.0.1:%d/health); %s"
+                        % (port, port, _stop_hint), flush=True)
+                    # WP-29 P0.12a: the link goes to a file only this
+                    # account can read, and only its path is printed.
+                    _url = _dash_tokenized_url(port, token)
+                    try:
+                        _link_path, _link_tmp = _dash_write_link(link_dir,
+                                                                 _url)
+                    except (_DashUnsafePath, OSError) as _lexc:
+                        # Round 2, K-9: no folder took it.  The link is
+                        # printed once, after the warning, and the server
+                        # keeps serving.
+                        _link_path = _link_tmp = None
+                        print(_DASH_LINK_UNWRITTEN % type(_lexc).__name__,
+                              flush=True)
+                        print(_url, flush=True)
+                    else:
+                        print(_DASH_LINK_SAID, flush=True)
+                        print(_link_path, flush=True)
+                    del _url
+                else:
                     if not _no_answer_shown and \
                             _now - _t0 > ready_seconds:
                         print(
                             "dash: no answer from http://127.0.0.1:%d/"
                             "health after %d s; still waiting for the app "
-                            "(Ctrl+C stops it)."
-                            % (port, int(ready_seconds)), flush=True)
+                            "%s" % (port, int(ready_seconds), _wait_hint),
+                            flush=True)
                         _no_answer_shown = True
+            if erase_app_when_ready and _ready and _banner and not _erased:
+                # The child never opens app.py (it runs the bytes handed
+                # over, R-9); the rule is kept as A6 states it.
+                _dash_erase_quietly(app_path)
+                _erased = True
             time.sleep(0.25)
-    except KeyboardInterrupt:
-        proc.terminate()
-        _stopped_by_launcher = True
+        # A Break pending when the child exited on its own.
+        if _handover_exc is None and poll is not None:
+            poll()
+    except interrupts:
+        _dash_stop_child(proc, interrupts=interrupts)
+        _interrupted = True
+    finally:
+        try:
+            if proc.poll() is None:
+                _dash_stop_child(proc, interrupts=interrupts)
+        finally:
+            # WP-29 P0.12a: the link file goes when the server stops.
+            if _link_path is not None:
+                _dash_erase_quietly(_link_path)
+            if _link_tmp is not None and os.path.isdir(_link_tmp):
+                shutil.rmtree(_link_tmp, ignore_errors=True)
 
     proc.wait()
+    try:
+        proc.stdin.close()
+    except (OSError, ValueError, AttributeError):
+        pass
     _t_out.join(1)
     _t_err.join(1)
     _drain_stdout()
 
-    if _stopped_by_launcher or proc.returncode in (
-            0, -signal.SIGINT, -signal.SIGTERM):
+    if _handover_exc is not None:
+        _reason = ("no server started on port %d: the app could not be "
+                   "handed to Python (%s)" % (port, _handover_exc))
+        _tail = _dash_redact_query(_clean("".join(_err_dq)), token)
+        _budget = 4096 - len(_reason) - 1
+        if _tail and len(_tail) > _budget > 0:
+            _tail = _tail[-_budget:]
+        raise RuntimeError((_reason + ("\n" + _tail if _tail else ""))[:4096])
+
+    # Interrupted: by this launcher (Break, Ctrl+C), or the app's own
+    # KeyboardInterrupt (it exits 130 under --parent-watch; -SIGINT when it
+    # dies of the signal; A5b).  A timeout() expiry is 0 or -SIGTERM.
+    if _interrupted or proc.returncode in (130, -signal.SIGINT):
+        _said = ("dash: stopped by Break; the server has stopped."
+                 if poll is not None else
+                 "dash_render: interrupted; the server has stopped.")
+        print(_said, flush=True)
+        raise _DashServeInterrupted(_said)
+    if proc.returncode in (0, -signal.SIGTERM):
         return
 
-    _tail = _clean("".join(_err_dq))
+    _tail = _dash_redact_query(_clean("".join(_err_dq)), token)
     if any(s in _tail for s in
           ("Address already in use", "EADDRINUSE", "already in use")):
         _reason = "no server started on port %d: the port is in use" % port
@@ -32152,16 +37594,49 @@ if __name__ == "__main__":
         help=(
             "After writing a server app, start it and wait. Off by default: "
             "writing a file must not start a server as a side effect. "
-            "`dash serve' passes this; `dash build, server' does not."
+            "`dash serve' passes this; `dash build, server' does not.  "
+            "The app needs a key made for each launch; the launcher writes "
+            "the link that holds it to a file only you can read and prints "
+            "the file's path; if no file can be written, it prints a "
+            "warning and the link itself, once."
         ),
+    )
+    parser.add_argument(
+        "--private-output",
+        dest="private_output",
+        action="store_true",
+        default=False,
+        help="Write the output readable by this account only (0600) and "
+             "never through a link.  dash.ado passes this for the one-line "
+             "form's preview page.",
     )
     args = parser.parse_args()
 
     # Build the output file (HTML or server app .py).  --launch is passed
     # through: `dash serve' names its app with a Stata tempfile, which has
     # no .py (_validate_output_path).
-    main(args.spec, args.data, args.output, args.mode, args.port,
-         launch=args.mode == "server" and args.launch)
+    # _written: the app's identity and digest, which the launch verifies
+    # before it hands the bytes to Python (WP-29 P0.12b, R-9).
+    #
+    # WP-29 P0.13 F4: on the launch route, a Ctrl+C (or Break) while the app
+    # is built is an interruption, not a traceback: it lands in the box
+    # dash.ado reads (which ends with r(1)), or the command line exits 130.
+    import sys as _sys
+    _report = globals().get("_dash_launch_report")
+    _launching = args.mode == "server" and args.launch
+    try:
+        _written = main(args.spec, args.data, args.output, args.mode,
+                        args.port, launch=_launching,
+                        private_output=args.private_output)
+    except KeyboardInterrupt:
+        if not _launching:
+            raise
+        if _report is None:
+            print("dash_render: interrupted; nothing was served.",
+                  file=_sys.stderr, flush=True)
+            raise SystemExit(130)
+        _report["interrupted"] = True
+        _launching = False
 
     # When mode is 'server' AND the caller asked for it, launch the app.
     #
@@ -32171,8 +37646,7 @@ if __name__ == "__main__":
     # `display' lines that follow it in dash.ado never printed, and killing
     # Stata left the server orphaned.  Writing a file must not start a
     # server as a side effect, so launching is opt-in.
-    if args.mode == "server" and args.launch:
-        import sys as _sys
+    if _launching:
 
         # Run the generated app AS A SCRIPT, not through `bokeh serve'.
         #
@@ -32193,10 +37667,20 @@ if __name__ == "__main__":
         # exception under Stata's embedded Python (r(7102) plus a
         # traceback) -- dash.ado's _dash_serve does (TR-09.4); a bare
         # command line does not, so it prints and exits 1 instead.
-        _report = globals().get("_dash_launch_report")
         try:
+            # The app file is erased once it serves only inside dash's own
+            # private run folder (R-1); a command-line user's file never.
+            _erase = _dash_private_run_of(args.output) is not None
             _dash_launch_app(args.output, args.port, args.timeout,
-                             args.no_browser)
+                             args.no_browser, expect=_written,
+                             link_dir=_dash_private_run_of(args.output),
+                             erase_app_when_ready=_erase)
+        except _DashServeInterrupted:
+            # Before RuntimeError: an interruption is r(1), not the r(198)
+            # of a failed launch (A2).
+            if _report is None:
+                raise SystemExit(130)
+            _report["interrupted"] = True
         except RuntimeError as _exc:
             if _report is None:
                 print("dash_render: error -- " + str(_exc),

@@ -11,8 +11,10 @@ test/fixtures/natscale_axes_truth.json:
   panels' data -- `twoway scatter mpg weight, by(foreign) ylabel(#5)' draws
   10(10)40 on both panels, whose own data run 12-34 and 14-41, and both
   panels' scales run 12 to 41 (`.Graph.graphs[k].yaxis1').  by(, yrescale)
-  gives each panel its own; dash does not implement yrescale (it names it
-  as ignored), so its panels take the common scale.
+  gives each panel its own, and dash honours it (WP-29 P0.2): its panels
+  then tick per panel, 10(5)35 and 15(5)40, as
+  test_by_scales.py::TestRescaleGivesEachPanelItsOwn::test_count_ticks_are_per_panel
+  pins.
 * yscale(log): the tickset's .trans is 0 -- #N on a log axis is linear
   natscale over the data (154 of 157 random ranges agree with dash's
   natscale model, the three misses being the model's own), drawn where a

@@ -48,7 +48,9 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PKG_FILE = os.path.join(REPO_ROOT, "dash.pkg")
 
 #: Sources that are shipped and therefore may reference other shipped files.
-SHIPPED_SOURCES = ("dash.ado", "dash_setup.ado", "dash_render.py")
+#: dash_setup_lib.py runs dash_setup's pip and venv steps (WP-29 P0.19).
+SHIPPED_SOURCES = ("dash.ado", "dash_setup.ado", "dash_render.py",
+                   "dash_setup_lib.py")
 
 #: Directories that hold development-only material, never installed content.
 EXCLUDED_DIRS = frozenset({
@@ -306,9 +308,11 @@ def _referenced_repo_files() -> set[str]:
 #: were required only because comments name them -- measured 24sep2026,
 #: every mention of dash.sthlp and dash_setup.sthlp in the shipped sources
 #: is a comment -- so a manifest that dropped one would pass the day those
-#: comments were reworded.
+#: comments were reworded.  dash_setup_lib.py, which dash_setup cannot run
+#: pip without (WP-29 P0.19), is required the same way.
 _PACKAGE_FILES = ("dash.ado", "dash_setup.ado", "dash.sthlp",
-                  "dash_setup.sthlp", "dash_parse.mata", "dash_render.py")
+                  "dash_setup.sthlp", "dash_parse.mata", "dash_render.py",
+                  "dash_setup_lib.py")
 
 
 def _findfile_targets() -> set[str]:
@@ -426,7 +430,7 @@ def test_pkg_manifest_lists_every_runtime_file():
 _ROOT_ALSO = frozenset({
     "dash.pkg", "stata.toc", ".gitignore", "Makefile", "pyproject.toml",
     "AGENTS.md", "BUGS.md", "CHANGELOG.md", "CLAUDE.md", "GAPS.md",
-    "GAPS2.md", "REMAINING.md", "ROADMAP.md",
+    "GAPS2.md", "REMAINING.md", "ROADMAP.md", "TWOWAY_COVERAGE_AUDIT.md",
 })
 
 

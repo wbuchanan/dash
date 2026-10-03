@@ -47,9 +47,12 @@ _DF = pd.DataFrame({
 _N_FOREIGN = int((_DF["foreign"] == 1).sum())
 
 
-def _render(tmp_path, link, plots, second_graph=True, graph_if=""):
-    graphs = [{"name": "g1", "graph_options": {"name": "g1"},
-               "options": {}, "plots": plots}]
+def _render(tmp_path, link, plots, second_graph=True, graph_if="", df=None,
+            go=None):
+    df = _DF if df is None else df
+    gopts = dict(go or {}, name="g1")
+    graphs = [{"name": "g1", "graph_options": gopts,
+               "options": dict(gopts), "plots": plots}]
     if graph_if:
         graphs[0]["if_expr"] = graph_if
     if second_graph:
@@ -58,8 +61,10 @@ def _render(tmp_path, link, plots, second_graph=True, graph_if=""):
                        "plots": [{"type": "scatter", "yvar": "mpg",
                                   "xvar": "weight", "options": {}}]})
     names = " ".join(g["name"] for g in graphs)
-    spec = tmp_path / f"spec_{abs(hash((link, json.dumps(plots), graph_if)))}.json"
-    data = tmp_path / "data.json"
+    tag = abs(hash((link, json.dumps(plots), graph_if, json.dumps(go),
+                    df is _DF)))
+    spec = tmp_path / f"spec_{tag}.json"
+    data = tmp_path / f"data_{tag}.json"
     spec.write_text(json.dumps({
         "graphs": graphs, "kpis": [],
         "build_options": {"layout": "auto", "link": link, "filter": "",
@@ -67,7 +72,7 @@ def _render(tmp_path, link, plots, second_graph=True, graph_if=""):
                           "title": "", "subtitle": "", "registry": names,
                           "tabs": "", "filter_position": "top",
                           "level": "95", "formats": {}}}))
-    data.write_text(json.dumps(make_data_json(_DF)))
+    data.write_text(json.dumps(make_data_json(df)))
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(str(spec), str(data))
@@ -161,3 +166,85 @@ class TestItComposesWithAGraphLevelQualifier:
             f"expected the intersection ({expected} rows), got "
             f"{_visible(rends[0])}"
         )
+
+
+def _true_rows(src, flt):
+    """The source's row ids where the filter keeps the row."""
+    return [int(i) for i, b in zip(src.data[dr._ROW_ID_COLUMN],
+                                   flt.booleans) if b]
+
+
+_LAYER_IF = {"type": "scatter", "yvar": "mpg", "xvar": "weight",
+             "options": {}, "if_expr": "weight < 3000"}
+
+
+def _with_missing_y():
+    df = _DF.copy()
+    df.loc[2, "mpg"] = np.nan
+    return df
+
+
+_REGISTERED_CASES = [
+    pytest.param(dict(link="_all", plots=[_PLAIN, dict(_LAYER_IF)],
+                      go={"by": "foreign"}),
+                 id="linked by() with a layer if"),
+    pytest.param(dict(link="_all", plots=[_PLAIN, dict(_LAYER_IF)],
+                      graph_if="foreign==1"),
+                 id="linked graph if with a layer if"),
+    pytest.param(dict(link="_all", plots=[_PLAIN], df=_with_missing_y()),
+                 id="linked scatter with a missing y"),
+    pytest.param(dict(link="_all",
+                      plots=[{"type": "scatter", "yvar": "mpg",
+                              "xvar": "weight",
+                              "options": {"jitter": "5",
+                                          "jitterseed": "1"}}],
+                      df=_with_missing_y()),
+                 id="linked jittered scatter"),
+]
+
+
+class TestTheRegisteredRowsAreTheViewsOwn:
+    """WP-29 P0.15: every view the filter callback rebuilds is registered
+    with exactly the source's row ids its filter keeps.  A layer's own if
+    under a linked by() panel or linked graph if registered every row its
+    if selects in the WHOLE dataset, so after a move each panel's layer
+    drew the other panel's rows too."""
+
+    @pytest.mark.parametrize("kw", _REGISTERED_CASES)
+    def test_every_registered_view_names_exactly_its_true_rows(
+            self, tmp_path, kw):
+        r = _render(tmp_path, **kw)
+        registered = getattr(r, "_view_filters", [])
+        assert registered, "no view was registered"
+        for src, flt, ids in registered:
+            assert sorted(ids) == _true_rows(src, flt), (
+                f"registered {sorted(ids)}, the view keeps "
+                f"{_true_rows(src, flt)}")
+
+    def test_a_linked_graph_if_and_a_layer_if_register_their_intersection(
+            self, tmp_path):
+        want = sorted(int(i) for i in _DF.index[
+            (_DF.foreign == 1) & (_DF.weight < 3000)])
+        r = _render(tmp_path, "_all", [dict(_LAYER_IF)],
+                    graph_if="foreign==1")
+        entries = [(s, f, ids) for s, f, ids in r._view_filters
+                   if _true_rows(s, f) == want]
+        assert entries, f"no registered view keeps {want}"
+        for _s, _f, ids in entries:
+            assert sorted(ids) == want, (
+                f"registered {sorted(ids)}, wanted {want}")
+
+    def test_a_linked_by_panel_layer_registers_only_its_panels_rows(
+            self, tmp_path):
+        r = _render(tmp_path, "_all", [_PLAIN, dict(_LAYER_IF)],
+                    go={"by": "foreign"})
+        for g in (0.0, 1.0):
+            want = sorted(int(i) for i in _DF.index[
+                (_DF.foreign == g) & (_DF.weight < 3000)])
+            entries = [(s, f, ids) for s, f, ids in r._view_filters
+                       if _true_rows(s, f) == want]
+            assert entries, f"no registered view keeps panel {g}'s {want}"
+            for _s, _f, ids in entries:
+                assert sorted(ids) == want, (
+                    f"panel foreign=={g:g}: registered {sorted(ids)}, "
+                    f"wanted {want}")

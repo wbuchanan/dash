@@ -395,19 +395,13 @@ class TestLpolyAgainstStata:
         assert examined == 4, f"examined {examined} lpoly bwidth(5) probes"
         assert compared >= 1, "no lpoly bwidth(5) probe had finite overlap"
 
-    def test_default_bandwidth_is_within_the_documented_tolerance(
-        self, truth, datasets
-    ):
-        """dash's ROT approximates Stata's; the gap is bounded and recorded.
+    def test_default_bandwidth_is_statas(self, truth, datasets):
+        """dash's default lpoly bandwidth is Stata's r(bwidth).
 
-        Stata computes its rule-of-thumb in compiled Mata and it is not
-        reproducible from the published documentation, so dash uses the
-        Fan-Gijbels ROT with a constant measured against Stata.  That is an
-        approximation and it is labelled as one in
-        GlyphMapper._default_lpoly_bwidth — this test pins how good it has to
-        be, so the claim in the docstring cannot quietly stop being true.
+        WP-29 P0.7 (section 11) flipped this from "within 20%": the rule of
+        thumb is now Stata's as lpoly computes it (_lpoly_rot_detail), so
+        each of the four datasets' `<ds>:default' r(bwidth) is held at 1e-8.
         """
-        worst = 0.0
         report = []
         for name, (y, x) in datasets.items():
             rec = _rec(truth, "lpoly", f"{name}:default")
@@ -415,16 +409,11 @@ class TestLpolyAgainstStata:
             want = float(rec["bwidth"])
             got = GlyphMapper._default_lpoly_bwidth(x, y)
             err = abs(got - want) / want
-            report.append(f"{name}: dash {got:.6g} vs Stata {want:.6g} "
-                          f"({err:+.1%})")
-            worst = max(worst, err)
+            report.append((name, got, want, err))
         # One row per dataset, all four present: `assert report' (non-empty)
         # passed on a single dataset (24sep2026).
-        assert len(report) == 4, (len(report), report)
-        assert worst <= 0.20, (
-            "the default lpoly bandwidth drifted further from Stata than the "
-            "documented tolerance:\n  " + "\n  ".join(report)
-        )
+        assert len(report) == 4, report
+        assert all(r[3] <= 1e-8 for r in report), report
 
 
 def _lpoly_at(x, y, x0, h, degree, kernel):

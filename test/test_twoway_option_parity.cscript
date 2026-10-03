@@ -44,8 +44,10 @@
 *!          (twoway accepts mlabformat(abc) with no note).
 *!   TP-06  the declared-but-not-honoured ones are named in the note by
 *!          their full names, however they were abbreviated, in comma mode
-*!          and after the paren-mode comma: sort(varlist), mlabvposition(),
-*!          mlabtextstyle(), xoverhangs, yoverhangs.
+*!          and after the paren-mode comma: sort(varlist) where dash does
+*!          not join (scatter), mlabvposition(), mlabtextstyle(),
+*!          xoverhangs, yoverhangs; sort sort(varlist) on line is honoured,
+*!          silent and written as "sortvars" (WP-29 P0.1).
 *!   TP-07  what twoway itself refuses stays UNKNOWN and is named as typed:
 *!          xreverse yreverse xalternate yalternate xcommon ycommon
 *!          lockaspect zoom() altaxis ddensity addplot() margin() region()
@@ -102,6 +104,27 @@
 *!          spelling, and any spelling on another type, twoway refuses and
 *!          dash does not read as a kernel; a hostile value beside the flag
 *!          never run; 200 unknown words then a flag answered quickly.
+*!   JO-21..27  sort() as twoway checks it (WP-29 S02): a malformed name
+*!          refused on all forty types, a name that is no usable variable on
+*!          the 23 serset types, each in twoway's words and r(198); the 17
+*!          other types take it; repeats read as twoway reads them; silent
+*!          on the six joining types and tsline/tsrline, named elsewhere.
+*!   AX-01  _dash_route_axis2 rewrites each family's axis(2) form to dash's
+*!          second-axis key, drops axis(1), renames twoway's plurals and
+*!          leaves every refused form, and hostile text, as typed (P0.5).
+*!   AX-02  _dash_axis_num: twoway's axis number (a whole number within
+*!          its integer bounds, else 1).
+*!   AX-03  every axis(#) form twoway refuses dash refuses, r(198), with
+*!          twoway's message (an axis no layer uses, AXIS(), a second
+*!          axis(), axis-1 options on a lone yaxis(2) graph).
+*!   AX-04  the first refusal is twoway's: side, family, position, the
+*!          segments before the options after the comma.
+*!   AX-05  a second comma is refused, invalid '<word>', r(198); a trailing
+*!          empty comma is accepted.
+*!   AX-06  every spelling twoway accepts (ax, axi, 02, 2.0, a, 1e300, hex,
+*!          plot groups, by(), the plurals) dash accepts.
+*!   AX-07  the stored spec keeps each axis's copy through the repeat merge.
+*!   AX-08  10,000 copies end r(1003) quickly and leave nothing behind.
 *!
 *! TP-01 to TP-08 render nothing: every dash probe registers with name(),
 *! and the spec is read back out of the registry, as in
@@ -449,8 +472,10 @@ else display as text "TP-05 PASS: mlabformat() recorded, abbreviated mlabf(), an
 // id | dash command | twoway command | the name the note must carry
 local n6 = 0
 local ++n6
-local c6_`n6' `"dash line mpg weight, sort(mpg) name(zqtp)"'
-local t6_`n6' `"twoway line mpg weight, sort(mpg) nodraw"'
+// Flipped (WP-29 P0.1): sort(varlist) is honoured on line, so the row
+// that pins its note is on scatter, where dash still does not join.
+local c6_`n6' `"dash scatter mpg weight, sort(mpg) name(zqtp)"'
+local t6_`n6' `"twoway scatter mpg weight, sort(mpg) nodraw"'
 local w6_`n6' "sort()"
 local ++n6
 local c6_`n6' `"dash scatter mpg weight, mlabel(make) mlabv(pos) name(zqtp)"'
@@ -492,46 +517,35 @@ forvalues i = 1/`n6' {
     }
     else display as text `"TP-06 PASS: `w6_`i'' named in the note"'
 }
-// sort(varlist) is reported as sort() once, beside the flag, and carried
-// nowhere in the spec.
+// Flipped (WP-29 P0.1): sort sort(mpg) on line was named sort() once
+// and carried nowhere, which was wrong: twoway joins the line in mpg's
+// order (sort(varlist) wins over sort).  It is honoured now: rc 0, no
+// note, the spec carries "sortvars" and never sort1, -syntax-'s internal
+// name, which no note names either.
 _ztp_run `"dash line mpg weight, sort sort(mpg) name(zqtp)"' "`logfile'"
 local drc = r(rc)
+local dnote = r(note)
 _ztp_has zqtp sort1
-if r(found) != 0 | `drc' != 0 {
-    display as error "TP-06 FAIL: sort sort(mpg) wrote a sort1 key or failed"
-    local nfail = `nfail' + 1
-    local faillist "`faillist' TP-06(sort1)"
-}
+local h1 = r(found)
+mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", "mpg")))
 _ztp_logged "`logfile'" "sort1"
-if r(found) != 0 {
-    display as error "TP-06 FAIL: the note names sort1, Stata's internal name, not sort()"
+local n1 = r(found)
+if `drc' != 0 | `dnote' != 0 | `h1' != 0 | `hv' != 1 | `n1' != 0 {
+    display as error "TP-06 FAIL: sort sort(mpg) on line -- rc `drc', note `dnote', sort1 key `h1', sortvars mpg `hv', sort1 in the log `n1'"
     local nfail = `nfail' + 1
-    local faillist "`faillist' TP-06(sort1-note)"
+    local faillist "`faillist' TP-06(sort-honoured)"
 }
-// ... and it IS reported.  The two checks above pass just as well when
-// sort(mpg) is dropped in silence, so the note must name sort() -- on one
-// line, the note's, and once in the whole log (measured 24sep2026: "dash:
-// ignoring unsupported option(s): sort()", 44 characters, under the 79
-// columns cscript sets, so the count cannot be split by a wrap).
-cert_log_has "`logfile'", needle("ignoring unsupported option(s): sort()")
-local nsort = r(count)
-cert_file_count "`logfile'", needle("sort()")
-local msort = r(count)
-if `nsort' != 1 | `msort' != 1 {
-    display as error "TP-06 FAIL: sort sort(mpg) is not reported as sort() once: `nsort' note line(s) name it, sort() is written `msort' time(s)"
-    local nfail = `nfail' + 1
-    local faillist "`faillist' TP-06(sort-named)"
-}
-else display as text "TP-06 PASS: sort sort(mpg) is named sort(), once, in the note"
+else display as text "TP-06 PASS: sort sort(mpg) on line is honoured in silence and written as sortvars, never sort1"
 
 // TP-06b -- a bare sort on a connected type is what dash draws, so it is not
 // named (BUGS.md, S3).  twoway accepts sort on every type below (measured
-// again here); with it twoway joins the points in the order of x, which is
-// the order dash always joins line, connected, area, tsline and the range
-// line and area types in.  `dash line price weight, sort' said "ignoring
-// unsupported option(s): sort()" for the picture it had drawn.  On a type
-// dash does not join -- scatter, bar -- sort is still named, and so is
-// sort(varlist) on a connected type, which dash does not honour.
+// again here); with it twoway joins the points in the order of x, as dash
+// joins line, connected, area and the range line and area types under it
+// (tsline and tsrline join in time order whatever is given).  `dash line
+// price weight, sort' said "ignoring unsupported option(s): sort()" for the
+// picture it had drawn.  On a type dash does not join -- scatter, bar --
+// sort is still named.  Flipped (WP-29 P0.1): sort(varlist) on a connected
+// type is honoured now, so it is not named either (the last loop below).
 quietly tsset t
 foreach tt in line connected area tsline rline rarea rconnected tsrline {
     local v `v_`tt''
@@ -553,7 +567,7 @@ if r(rc) != 0 | r(note) != 0 {
     local nfail = `nfail' + 1
     local faillist "`faillist' TP-06b(paren)"
 }
-foreach c in "scatter mpg weight, sort" "bar mpg weight, sort" "line mpg weight, sort(price)" "(line mpg weight, sort(price)) (scatter mpg weight)" {
+foreach c in "scatter mpg weight, sort" "bar mpg weight, sort" {
     local sep ""
     if !strpos("`c'", ",") | substr("`c'", 1, 1) == "(" local sep ","
     capture graph drop _all
@@ -568,7 +582,263 @@ foreach c in "scatter mpg weight, sort" "bar mpg weight, sort" "line mpg weight,
         local faillist "`faillist' TP-06b(`c')"
     }
 }
-display as text "TP-06b: a bare sort on a connected type is not named; on scatter and bar, and as sort(varlist), it is"
+foreach c in "line mpg weight, sort(price)" "(line mpg weight, sort(price)) (scatter mpg weight)" {
+    local sep ""
+    if !strpos("`c'", ",") | substr("`c'", 1, 1) == "(" local sep ","
+    capture graph drop _all
+    capture twoway `c'`sep' nodraw
+    local tw_rc = _rc
+    _ztp_run `"dash `c'`sep' name(zqtp)"' "`logfile'"
+    local drc = r(rc)
+    local dnote = r(note)
+    if `tw_rc' != 0 | `drc' != 0 | `dnote' != 0 {
+        display as error "TP-06b FAIL: dash `c' -- twoway r(`tw_rc'), dash rc `drc', note `dnote' (want none)"
+        local nfail = `nfail' + 1
+        local faillist "`faillist' TP-06b(`c')"
+    }
+}
+display as text "TP-06b: a bare sort, and sort(varlist), on a connected type are not named; a bare sort on scatter and bar is"
+
+// ----------------------------------------------------------------
+// JO -- sort() as twoway checks it (WP-29 S02)
+// ----------------------------------------------------------------
+// twoway checks sort()'s names with -syntax-'s namelist on every plot
+// type (twoway_yxview_parse.class:187), so a malformed name is refused
+// on all forty, r(198), with one line naming the first bad character or
+// token.  On the 23 types that draw a serset, serset create then reads
+// the names as variables: one that is not a usable variable is refused
+// with Stata's varlist line and "option sort() incorrectly specified",
+// r(198), and so are more than ten names (_all counting the variables in
+// memory and two of twoway's own).  On the other 17 types sort() is not
+// read.  dash used to accept every sort() with a note.  Every expectation
+// is asked of twoway in the same run.
+local jologtw "`c(tmpdir)'dash_jo_twoway.log"
+capture program drop _zjo_tw
+program define _zjo_tw, rclass
+    args cmdtext logpath
+    capture log close _zjotw
+    capture erase "`logpath'"
+    log using "`logpath'", name(_zjotw) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _zjotw
+    return scalar rc = `rc'
+end
+// twoway and dash given one plot type, varlist and option: r(ok) is 1
+// when both return `wrc' and both logs carry each wanted line.
+capture program drop _zjo_pair
+program define _zjo_pair, rclass
+    args t v o ltw ld wrc l1 l2
+    local sep ","
+    if strpos(`"`v'"', ",") local sep ""
+    capture graph drop _all
+    _zjo_tw `"twoway `t' `v'`sep' `o' nodraw"' "`ltw'"
+    local trc = r(rc)
+    capture graph drop _all
+    _ztp_run `"dash `t' `v'`sep' `o' name(zqtp)"' "`ld'"
+    local drc = r(rc)
+    local dnote = r(note)
+    local ok = (`trc' == `wrc' & `drc' == `wrc')
+    local miss ""
+    foreach l in l1 l2 {
+        if `"``l''"' == "" continue
+        foreach f in ltw ld {
+            cert_log_has "``f''", needle(`"``l''"')
+            if r(found) < 1 {
+                local ok = 0
+                local miss "`miss' `f'"
+            }
+        }
+    }
+    return scalar ok = `ok'
+    return scalar note = `dnote'
+    return local why "twoway r(`trc'), dash r(`drc'), a wanted line missing from:`miss'"
+end
+local v_pccapsym "mpg weight turn length"
+local v_pcarrowi "20 3000 30 4000"
+local jo_all "`types' pccapsym pcarrowi"
+local jo_ser "scatter line connected area bar spike dropline dot rarea rbar rspike rcap rcapsym rscatter rline rconnected pcspike pcarrow pcbarrow pcscatter pccapsym mband mspline"
+local jo_oth "lfit lfitci qfit qfitci fpfit fpfitci lowess lpoly lpolyci function tsline tsrline histogram kdensity scatteri pci pcarrowi"
+local jo_six "line connected area rline rarea rconnected"
+
+// JO-21: a malformed name, on all forty types.
+local bad = 0
+foreach tt of local jo_all {
+    local v `v_`tt''
+    local k = 0
+    foreach o in "x*" "z+" "L.x" "-zz" "1x" "z, stable" "z(1)" {
+        local ++k
+        local w : word `k' of "*" "+" "L.x" "-" "1x" "," "("
+        _zjo_pair `tt' `"`v'"' `"sort(`o')"' "`jologtw'" "`logfile'" 198 `"`w' invalid name"'
+        if !r(ok) {
+            display as error `"JO-21 FAIL: `tt', sort(`o') -- `r(why)'"'
+            local bad = 1
+        }
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' JO-21"
+}
+else display as text "JO-21 PASS: a malformed name in sort() is refused r(198) in twoway's words on all forty types"
+
+// JO-22: a name that is no usable variable, on the 23 serset types.
+generate zz = mod(_n, 5)
+generate zb = mod(_n, 3)
+local bad = 0
+foreach tt of local jo_ser {
+    local v `v_`tt''
+    foreach o in nosuch z _N int in if using with _b "zz nosuch" {
+        local w "variable `o' not found"
+        if "`o'" == "z" local w "z ambiguous abbreviation"
+        if "`o'" == "int" local w "int not allowed"
+        if inlist("`o'", "in", "if", "using", "with") local w "`o' is invalid variable name"
+        if "`o'" == "zz nosuch" local w "variable nosuch not found"
+        _zjo_pair `tt' `"`v'"' `"sort(`o')"' "`jologtw'" "`logfile'" 198 `"`w'"' "option sort() incorrectly specified"
+        if !r(ok) {
+            display as error `"JO-22 FAIL: `tt', sort(`o') -- `r(why)'"'
+            local bad = 1
+        }
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' JO-22"
+}
+else display as text "JO-22 PASS: a name that is no usable variable is refused r(198) in twoway's two lines on the 23 serset types"
+
+// JO-23: the 17 other types take sort(nosuch); dash names it in the
+// note, except on tsline and tsrline, which join in time order.
+local bad = 0
+foreach tt of local jo_oth {
+    local v `v_`tt''
+    _zjo_pair `tt' `"`v'"' "sort(nosuch)" "`jologtw'" "`logfile'" 0
+    local ok = r(ok)
+    local note = r(note)
+    local why `"`r(why)'"'
+    cert_log_has "`logfile'", needle("sort()")
+    local named = r(found)
+    if inlist("`tt'", "tsline", "tsrline") local want = (`note' == 0 & `named' == 0)
+    else local want = (`note' == 1 & `named' >= 1)
+    if !`ok' | !`want' {
+        display as error `"JO-23 FAIL: `tt', sort(nosuch) -- `why', note `note', sort() named `named'"'
+        local bad = 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' JO-23"
+}
+else display as text "JO-23 PASS: the 17 types twoway does not sort take sort(nosuch); named except on tsline and tsrline"
+
+// JO-24: an abbreviation is unabbreviated, and _all where twoway takes it.
+local bad = 0
+drop zb
+_zjo_pair line "mpg weight" "sort(z)" "`jologtw'" "`logfile'" 0
+mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", "zz")))
+if !r(ok) | !`hv' {
+    display as error "JO-24 FAIL: sort(z) with zz alone -- `r(why)', sortvars zz `hv'"
+    local bad = 1
+}
+preserve
+keep mpg weight zz
+_zjo_pair line "mpg weight" "sort(_all)" "`jologtw'" "`logfile'" 0
+mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", "mpg weight zz")))
+if !r(ok) | !`hv' {
+    display as error "JO-24 FAIL: sort(_all) over three variables -- `r(why)', sortvars `hv'"
+    local bad = 1
+}
+restore
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' JO-24"
+}
+else display as text "JO-24 PASS: sort(z) is written as zz and sort(_all) as every variable, where twoway takes them"
+
+// JO-25: repeated copies, as twoway reads them: the rightmost non-empty
+// copy is checked and used.
+generate z = -_n
+local bad = 0
+local k = 0
+foreach o in "sort(x*) sort(z)" "sort(z) sort(x*)" "sort(nosuch) sort(z)" "sort(z) sort(nosuch)" "sort(zz) sort()" "sort() sort(zz)" "sort()" {
+    local ++k
+    local wrc : word `k' of 0 198 0 198 0 0 0
+    local w1 : word `k' of "" "* invalid name" "" "variable nosuch not found" "" "" ""
+    local sv : word `k' of "z" "" "z" "" "zz" "zz" ""
+    _zjo_pair line "mpg weight" `"`o'"' "`jologtw'" "`logfile'" `wrc' `"`w1'"'
+    local ok = r(ok)
+    local why `"`r(why)'"'
+    local note = r(note)
+    if "`sv'" != "" mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", st_local("sv"))))
+    else {
+        _ztp_has zqtp sortvars
+        local hv = (r(found) == 0)
+    }
+    if `wrc' != 0 local hv = 1
+    if !`ok' | !`hv' | (`wrc' == 0 & `note' != 0) {
+        display as error `"JO-25 FAIL: line, `o' -- `why', sortvars `hv', note `note'"'
+        local bad = 1
+    }
+}
+quietly tsset t
+_zjo_pair tsline "mpg" "sort(x*)" "`jologtw'" "`logfile'" 198 "* invalid name"
+if !r(ok) {
+    display as error `"JO-25 FAIL: tsline, sort(x*) -- `r(why)'"'
+    local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' JO-25"
+}
+else display as text "JO-25 PASS: of repeated sort() copies the rightmost non-empty one is checked and used, as twoway does"
+
+// JO-26: the note.  Silent on the six joining types and on tsline and
+// tsrline; sort() named once on scatter, bar and lfit.
+local bad = 0
+foreach tt of local jo_six {
+    local v `v_`tt''
+    foreach o in "sort" "sort(z)" "sort sort(z)" {
+        _ztp_run `"dash `tt' `v', `o' name(zqtp)"' "`logfile'"
+        if r(rc) != 0 | r(note) != 0 {
+            display as error "JO-26 FAIL: `tt', `o' -- rc `r(rc)', note `r(note)' (want none)"
+            local bad = 1
+        }
+    }
+}
+foreach tt in tsline tsrline {
+    _ztp_run `"dash `tt' `v_`tt'', sort(mpg) name(zqtp)"' "`logfile'"
+    if r(rc) != 0 | r(note) != 0 {
+        display as error "JO-26 FAIL: `tt', sort(mpg) -- rc `r(rc)', note `r(note)' (want none)"
+        local bad = 1
+    }
+}
+foreach tt in scatter bar lfit {
+    _ztp_run `"dash `tt' mpg weight, sort(z) name(zqtp)"' "`logfile'"
+    local drc = r(rc)
+    cert_log_has "`logfile'", needle("ignoring unsupported option(s): sort()")
+    if `drc' != 0 | r(count) != 1 {
+        display as error "JO-26 FAIL: `tt', sort(z) -- rc `drc', `r(count)' note line(s) naming sort() (want 1)"
+        local bad = 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' JO-26"
+}
+else display as text "JO-26 PASS: sort and sort() are silent where dash honours them and named once where it does not"
+
+// JO-27: a name given twice.
+_zjo_pair line "mpg weight" "sort(z z)" "`jologtw'" "`logfile'" 0
+mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", "z z")))
+if !r(ok) | !`hv' {
+    display as error "JO-27 FAIL: sort(z z) -- `r(why)', sortvars z z `hv'"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' JO-27"
+}
+else display as text "JO-27 PASS: sort(z z) is taken, as twoway takes it"
+drop z zz
+capture erase "`jologtw'"
+capture dash clear
 
 // ----------------------------------------------------------------
 // TP-07 -- what twoway refuses stays unknown, named as typed.
@@ -2224,6 +2494,412 @@ if `bad16' {
     local faillist "`faillist' TP-16"
 }
 else display as text "TP-16 PASS: a kernel written as an option of its own is kernel(<name>) on lpoly, lpolyci and kdensity, where twoway reads it so, and nowhere else"
+
+// ----------------------------------------------------------------
+// AX -- axis(#) routed to the axis it names (WP-29 S10, P0.5)
+// ----------------------------------------------------------------
+// twoway's ParseAndLogAxes (graph_g.class:1300-1422) routes ytitle(),
+// ylabel(), ymlabel(), ytick(), ymtick(), yline() and yscale() (x too) to
+// the axis axis(#) names, and refuses an axis no layer uses, AXIS(), a
+// second axis() and a second comma, r(198), in its own order: side (X
+// before Y), then family (SCale Labels MLabels TICks MTicks Title LInes),
+// then where it was typed, every plot segment before the options after
+// the comma.  dash drew every one on the first axis.  Each case asks
+// twoway in the same run.  test/fixtures/axis2_truth.json holds the same
+// measurements (scripts/extract_axis2_truth.do).
+local saved_ls = c(linesize)
+set linesize 255
+
+capture mata: mata drop _zax_first_line()
+mata:
+// The first non-blank line of a text log (a command run inside a program
+// under capture noisily prints no echo, so it is the error line).
+string scalar _zax_first_line(string scalar path)
+{
+    real scalar   fh
+    string scalar ln
+    fh = _fopen(path, "r")
+    if (fh < 0) return("")
+    while ((ln = fget(fh)) != J(0, 0, "")) {
+        if (strtrim(ln) != "") {
+            fclose(fh)
+            return(strtrim(ln))
+        }
+    }
+    fclose(fh)
+    return("")
+}
+end
+
+// twoway under its own quiet log: r(rc), and r(err) its first error line.
+capture program drop _zax_tw
+program define _zax_tw, rclass
+    args cmdtext logpath
+    capture log close _zaxlog
+    capture erase "`logpath'"
+    capture graph drop _all
+    quietly log using "`logpath'", name(_zaxlog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    quietly log close _zaxlog
+    capture graph drop _all
+    mata: st_local("err", _zax_first_line(st_local("logpath")))
+    return local err `"`macval(err)'"'
+    return scalar rc = `rc'
+end
+
+local twlog "`c(tmpdir)'dash_ax_twoway.log"
+local B "(scatter mpg weight) (line price weight, yaxis(2) sort)"
+local L "line price weight, yaxis(2) sort"
+
+// ---- AX-01 (direct): _dash_route_axis2 rewrites each family ----------
+local bad01 = 0
+local n = 0
+local ++n
+local in`n'  `"ylabel(5000 10000, axis(2)) ylabel(10 20)"'
+local out`n' `"ylabel2(5000 10000) ylabel(10 20)"'
+local ++n
+local in`n'  `"yscale(log ax(2))"'
+local out`n' `"yscale2(log)"'
+local ++n
+local in`n'  `"yline(5000, axis(2) lcolor(red))"'
+local out`n' `"yline2(5000, lcolor(red))"'
+local ++n
+local in`n'  `"ytitle(T, ax(2))"'
+local out`n' `"ytitle2(T)"'
+local ++n
+local in`n'  `"xt(V, axis(2))"'
+local out`n' `"xtitle2(V)"'
+local ++n
+local in`n'  `"ylabels(5000)"'
+local out`n' `"ylabel(5000)"'
+local ++n
+local in`n'  `"ytick(5000, axis(2),)"'
+local out`n' `"ytick2(5000)"'
+local ++n
+local in`n'  `"yticks(1, axis(1))"'
+local out`n' `"ytick(1)"'
+// byte for byte
+foreach w in `"ymlabel(1, axis(2))"' `"ylabel(5000, AXIS(2))"' `"ylabel(5000, axis(2) axis(1))"' `"ylabel(5000, angle(0), axis(2))"' `"ylabel(1, axis(3))"' {
+    local ++n
+    local in`n'  `"`w'"'
+    local out`n' `"`w'"'
+}
+forvalues i = 1/`n' {
+    capture mata: st_local("got", _dash_route_axis2(st_local("in`i'")))
+    if _rc {
+        display as error "AX-01 FAIL _dash_route_axis2 r(" _rc ")"
+        local bad01 = 1
+        continue
+    }
+    mata: st_local("eq", strofreal(st_local("got") == st_local("out`i'")))
+    if !`eq' {
+        mata: _dash_say("err", "AX-01 FAIL got ", st_local("got"), " for " + st_local("in`i'"))
+        local bad01 = 1
+    }
+}
+// hostile text: a $, a backtick and a quoted "axis(2)" come back as typed;
+// a routed body is kept byte for byte.
+mata: st_local("h1", "ylabel(1 " + char(34) + char(36) + "x" + char(96) + "y'" + char(34) + ")")
+mata: st_local("h2", "ylabel(1 " + char(34) + "axis(2)" + char(34) + ")")
+mata: st_local("h3", "ylabel(1 " + char(34) + char(36) + "x" + char(34) + ", axis(2))")
+mata: st_local("w3", "ylabel2(1 " + char(34) + char(36) + "x" + char(34) + ")")
+foreach h in h1 h2 h3 {
+    local want "`h'"
+    if "`h'" == "h3" local want "w3"
+    capture mata: st_local("got", _dash_route_axis2(st_local("`h'")))
+    if _rc {
+        local bad01 = 1
+        continue
+    }
+    mata: st_local("eq", strofreal(st_local("got") == st_local("`want'")))
+    if !`eq' {
+        mata: _dash_say("err", "AX-01 FAIL hostile ", st_local("got"), "")
+        local bad01 = 1
+    }
+}
+if `bad01' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-01"
+}
+else display as text "AX-01 PASS: _dash_route_axis2 routes every family's axis(2), drops axis(1), renames plurals and leaves the refused forms as typed"
+
+// ---- AX-02 (direct): _dash_axis_num, twoway's integer rule ------------
+local bad02 = 0
+local cases `"2=2 02=2 2.0=2 +2=2 2e0=2 1.0x+1=2 a=1 2.5=1 #2=1 .=1 1e300=1 2147483648=1 -2147483649=1 2147483647=2147483647 -2147483648=-2147483648 1e9=1000000000 -0=0 1e1=10"'
+foreach c of local cases {
+    gettoken a rest : c, parse("=")
+    local want = substr("`rest'", 2, .)
+    local got ""
+    capture mata: st_local("got", strofreal(_dash_axis_num(st_local("a")), "%11.0f"))
+    if _rc | strtrim("`got'") != "`want'" {
+        display as error "AX-02 FAIL _dash_axis_num(`a') = `got' (r(" _rc "), want `want')"
+        local bad02 = 1
+    }
+}
+foreach a in " 2 " "" "2 1" {
+    local want = cond("`a'" == " 2 ", "2", "1")
+    local got ""
+    capture mata: st_local("got", strofreal(_dash_axis_num(st_local("a")), "%11.0f"))
+    if _rc | strtrim("`got'") != "`want'" {
+        display as error "AX-02 FAIL _dash_axis_num('`a'') = `got' (want `want')"
+        local bad02 = 1
+    }
+}
+if `bad02' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-02"
+}
+else display as text "AX-02 PASS: the axis number is a whole number within twoway's integer bounds, else 1"
+
+// ---- AX-03 (refusal parity): twoway r(198), dash r(198), same message -
+local bad03 = 0
+local n = 0
+foreach c in ///
+    `"scatter mpg weight, ylabel(20 30, axis(2))"' ///
+    `"scatter mpg weight, yscale(log axis(2))"' ///
+    `"scatter mpg weight, yline(20, axis(2))"' ///
+    `"scatter mpg weight, ytick(20 30, axis(2))"' ///
+    `"scatter mpg weight, ymlabel(20 30, axis(2))"' ///
+    `"scatter mpg weight, ymtick(20 30, axis(2))"' ///
+    `"scatter mpg weight, ytitle(T, axis(2))"' ///
+    `"scatter mpg weight, xlabel(2000, axis(2))"' ///
+    `"`B', ylabel(5000, axis(3))"' ///
+    `"`B', ylabel(5000, axis(0))"' ///
+    `"`B', ylabel(5000, axis(-1))"' ///
+    `"`B', ylabel(5000, axis(10))"' ///
+    `"`B', ylabel(5000, axis(3) axis(1))"' ///
+    `"`B', ylabel(5000, axis(1) axis(3))"' ///
+    `"`B', ylabel(5000, AXIS(3))"' ///
+    `"`B', ytitle(T, AXIS(2))"' ///
+    `"`B', yscale(log AXIS(2))"' ///
+    `"`B', yline(5000, AXIS(2))"' ///
+    `"`B', ylabel(5000, Axis(2))"' ///
+    `"`B', xlabel(2000, axis(2))"' ///
+    `"`L' ylabel(5000 10000)"' ///
+    `"`L' ytitle(T)"' ///
+    `"`B', ylabel(5000, axis(2147483647))"' ///
+    `"`B', ylabel(5000, axis(-2147483648))"' ///
+    `"`B', ylabel(5000, axis(1e9))"' ///
+    `"`B', ylabel(5000, axis(-0))"' ///
+    `"`B', ylabel(5000, axis(1e1))"' {
+    local ++n
+    _zax_tw `"twoway `c'"' "`twlog'"
+    local tw = r(rc)
+    local err `"`r(err)'"'
+    _ztp_run `"dash `c'"' "`logfile'"
+    local rc = r(rc)
+    cert_log_has "`logfile'", needle(`"`macval(err)'"')
+    local hit = r(count)
+    if `tw' != 198 | `rc' != 198 | `hit' != 1 {
+        display as error `"AX-03 FAIL (`n') `c': twoway r(`tw') dash r(`rc'), twoway's line found `hit' time(s): `macval(err)'"'
+        local bad03 = 1
+    }
+}
+// SD-2: a quoted value breaks twoway's own message (r(133)); dash refuses
+// it, r(198), with the message intact.
+_zax_tw `"twoway scatter mpg weight, ytitle("T", axis(2))"' "`twlog'"
+local tw = r(rc)
+_ztp_run `"dash scatter mpg weight, ytitle("T", axis(2))"' "`logfile'"
+local rc = r(rc)
+cert_log_has "`logfile'", needle(`"ytitle("T", axis(2)) not allowed, yaxis2 does not exist"')
+if `tw' == 0 | `rc' != 198 | !r(found) {
+    display as error "AX-03 FAIL quoted ytitle: twoway r(`tw') dash r(`rc'), message found " r(found)
+    local bad03 = 1
+}
+if `bad03' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-03"
+}
+else display as text "AX-03 PASS: every form twoway refuses for axis(#) dash refuses, r(198), in twoway's words"
+
+// ---- AX-04 (order): the first refusal is twoway's ---------------------
+local bad04 = 0
+local n = 0
+foreach c in ///
+    `"`B', ylabel(1, axis(3)) xscale(log axis(3))"' ///
+    `"`B', yline(1, axis(3)) ylabel(1, axis(4))"' ///
+    `"`B', ylabel(5000, axis(3) axis(1))"' ///
+    `"`B', ylabel(5000, AXIS(2) axis(3))"' ///
+    `"`B', ylabel(5000, axis(2)) yscale(axis(3))"' ///
+    `"(scatter mpg weight, ylabel(1, axis(3))) (line price weight, yaxis(2) sort), yscale(log axis(4))"' ///
+    `"`B', ytitle(T, axis(3)) ylabel(1, AXIS(2))"' ///
+    `"(scatter mpg weight, ylabel(1, axis(3))) (line price weight, yaxis(2) sort), ylabel(1, axis(4))"' ///
+    `"scatter mpg weight, ylabel(1, axis(4)) || line price weight, yaxis(2) sort ylabel(1, axis(5))"' ///
+    `"`L' ylabel(5000, AXIS(2))"' {
+    local ++n
+    _zax_tw `"twoway `c'"' "`twlog'"
+    local tw = r(rc)
+    local err `"`r(err)'"'
+    _ztp_run `"dash `c'"' "`logfile'"
+    local rc = r(rc)
+    cert_log_has "`logfile'", needle(`"`macval(err)'"')
+    local hit = r(count)
+    cert_log_has "`logfile'", needle("not allowed")
+    local all = r(count)
+    if `tw' != 198 | `rc' != 198 | `hit' != 1 | `all' != 1 {
+        display as error `"AX-04 FAIL (`n') `c': twoway r(`tw') dash r(`rc'), twoway's line `hit', refusals `all': `macval(err)'"'
+        local bad04 = 1
+    }
+}
+if `bad04' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-04"
+}
+else display as text "AX-04 PASS: dash names the refusal twoway names first: side, family, then position, segments before the options after the comma"
+
+// ---- AX-05 (double comma) ---------------------------------------------
+local bad05 = 0
+foreach c in ///
+    `"`B', yscale(log, axis(2))"' ///
+    `"`B', ytitle(TT, size(small), axis(2))"' ///
+    `"`B', yline(5000, lcolor(red), axis(2))"' ///
+    `"`B', ylabel(5000, angle(0), axis(2))"' ///
+    `"`B', ytick(20 30, grid, axis(1))"' ///
+    `"`B', ytitle(TT, size(small), color(red))"' ///
+    `"`B', yscale(log, range(1 50))"' ///
+    `"`B', yscale(, log)"' ///
+    `"`B', yline(20, lcolor(red), lwidth(thick))"' {
+    _zax_tw `"twoway `c'"' "`twlog'"
+    local tw = r(rc)
+    local err `"`r(err)'"'
+    _ztp_run `"dash `c'"' "`logfile'"
+    local rc = r(rc)
+    cert_log_has "`logfile'", needle(`"`macval(err)'"')
+    if `tw' != 198 | `rc' != 198 | !r(found) | substr(`"`macval(err)'"', 1, 9) != "invalid '" {
+        display as error `"AX-05 FAIL `c': twoway r(`tw') dash r(`rc'): `macval(err)'"'
+        local bad05 = 1
+    }
+}
+foreach c in `"`B', ytitle(TT, size(small),) name(zax5)"' `"`B', ytick(5000, axis(2),) name(zax5)"' {
+    _zax_tw `"twoway `c'"' "`twlog'"
+    local tw = r(rc)
+    _ztp_run `"dash `c'"' "`logfile'"
+    local rc = r(rc)
+    if `tw' | `rc' {
+        display as error `"AX-05 FAIL `c': twoway r(`tw') dash r(`rc')"'
+        local bad05 = 1
+    }
+}
+mata: st_local("ok", strofreal(_ztp_hasval("zax5", "ytick2", "5000")))
+if !`ok' {
+    display as error "AX-05 FAIL ytick(5000, axis(2),) is not stored as ytick2 5000"
+    local bad05 = 1
+}
+capture dash clear
+if `bad05' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-05"
+}
+else display as text "AX-05 PASS: a second comma is refused as twoway refuses it, and a trailing empty one is not"
+
+// ---- AX-06 (accepted parity) ------------------------------------------
+local bad06 = 0
+foreach c in ///
+    `"`B', ylabel(5000, ax(2))"' ///
+    `"`B', ylabel(5000, axi(2))"' ///
+    `"`B', ylabel(5000, axis(02))"' ///
+    `"`B', ylabel(5000, axis(2.0))"' ///
+    `"`B', ylabel(5000, axis(a))"' ///
+    `"`B', ylabel(5000, axis(1e300))"' ///
+    `"`B', ylabel(5000, axis(1.0x+1))"' ///
+    `"(scatter mpg weight, ylabel(5000, axis(2))) (line price weight, yaxis(2) sort)"' ///
+    `"`B', by(foreign) ylabel(5000 10000, axis(2))"' ///
+    `"`B', ylabels(5000 10000, axis(2))"' ///
+    `"`B', yticks(5000, axis(2))"' ///
+    `"`B', ylines(5000, axis(2))"' ///
+    `"`B', ymticks(5000, axis(2))"' ///
+    `"`B', ytic(5000, ax(2)) yli(5000, ax(2)) ysc(log ax(2)) yml(6000, ax(2)) ymt(6000, ax(2)) ytitle(T, ax(2))"' {
+    _zax_tw `"twoway `c'"' "`twlog'"
+    local tw = r(rc)
+    _ztp_run `"dash `c'"' "`logfile'"
+    local rc = r(rc)
+    if `tw' | `rc' {
+        display as error `"AX-06 FAIL `c': twoway r(`tw') dash r(`rc')"'
+        local bad06 = 1
+    }
+}
+if `bad06' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-06"
+}
+else display as text "AX-06 PASS: every spelling twoway accepts for axis(#), its plurals included, dash accepts"
+
+// ---- AX-07 (the spec after the merge) ---------------------------------
+local bad07 = 0
+local n = 0
+foreach c in ///
+    `"`B', ylabel(10 20) ylabel(5000 10000, axis(2)) name(zax7)"' ///
+    `"`B', ylabel(5000 10000, axis(2)) ylabel(10 20) name(zax7)"' {
+    local ++n
+    _ztp_run `"dash `c'"' "`logfile'"
+    local rc = r(rc)
+    mata: st_local("a", strofreal(_ztp_hasval("zax7", "ylabel", "10 20")))
+    mata: st_local("b", strofreal(_ztp_hasval("zax7", "ylabel2", "5000 10000")))
+    if `rc' | !`a' | !`b' {
+        display as error `"AX-07 FAIL `c': r(`rc'), ylabel 10 20 `a', ylabel2 5000 10000 `b'"'
+        local bad07 = 1
+    }
+}
+_ztp_run `"dash `B', yscale(log axis(2)) yscale(reverse) name(zax7)"' "`logfile'"
+local rc = r(rc)
+mata: st_local("a", strofreal(_ztp_hasval("zax7", "yscale", "reverse")))
+mata: st_local("b", strofreal(_ztp_hasval("zax7", "yscale2", "log")))
+if r(rc) | !`a' | !`b' {
+    display as error "AX-07 FAIL yscale: r(`rc'), yscale reverse `a', yscale2 log `b'"
+    local bad07 = 1
+}
+_ztp_run `"dash `B', yline(5000, axis(2)) yline(20) name(zax7)"' "`logfile'"
+local rc = r(rc)
+mata: st_local("a", strofreal(_ztp_hasval("zax7", "yline", "20")))
+mata: st_local("b", strofreal(_ztp_hasval("zax7", "yline2", "5000")))
+if `rc' | !`a' | !`b' {
+    display as error "AX-07 FAIL yline: r(`rc'), yline 20 `a', yline2 5000 `b'"
+    local bad07 = 1
+}
+_ztp_run `"dash `B', ylabels(5000) name(zax7)"' "`logfile'"
+local rc = r(rc)
+mata: st_local("a", strofreal(_ztp_hasval("zax7", "ylabel", "5000")))
+if `rc' | !`a' {
+    display as error "AX-07 FAIL ylabels(5000): r(`rc'), ylabel 5000 `a'"
+    local bad07 = 1
+}
+capture dash clear
+if `bad07' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-07"
+}
+else display as text "AX-07 PASS: each axis keeps its own copy through the repeat merge"
+
+// ---- AX-08 (exhaustion) ------------------------------------------------
+local bad08 = 0
+local many ""
+forvalues i = 1/10000 {
+    local many "`many' ylabel(1, axis(2))"
+}
+_zax_tw `"twoway `B',`many'"' "`twlog'"
+local tw = r(rc)
+timer clear 18
+timer on 18
+_ztp_run `"dash `B',`many'"' "`logfile'"
+local rc = r(rc)
+timer off 18
+quietly timer list 18
+local t18 = r(t18)
+capture mata: st_local("rows", strofreal(rows(_dash_axreq)))
+if _rc local rows "(no _dash_axreq)"
+if `tw' != 1003 | `rc' != 1003 | `t18' >= 10 | "`rows'" != "0" {
+    display as error "AX-08 FAIL 10000 copies: twoway r(`tw'), dash r(`rc'), `t18' s, _dash_axreq rows `rows'"
+    local bad08 = 1
+}
+capture dash clear
+if `bad08' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AX-08"
+}
+else display as text "AX-08 PASS: 10,000 copies of an axis(2) option end r(1003) as in twoway, quickly, keeping nothing"
+capture erase "`twlog'"
+set linesize `saved_ls'
 
 // ----------------------------------------------------------------
 // Summary

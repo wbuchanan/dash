@@ -15,14 +15,16 @@ input surface exist and pass."  This file holds
 
 What the three categories mean here
 -----------------------------------
-dash has no authentication model (GAPS.md L10): it is a Stata command, and
-the app ``dash serve`` runs is a single-user tool with no login.  So for each
-surface "auth bypass" (``"bypass"`` below) is an attempt to get past THAT
-surface's own guard -- its validation, escaping, path containment, origin
-check or rate limit -- using the encodings and obfuscations CLAUDE.md rule 16
-names: malformed or overlong UTF-8, NUL bytes, homoglyphs, SMCL markup, macro
-characters, mixed case and abbreviation, doubled or mismatched quotes and
-``///`` continuations.  "Injection" is code or markup reaching an
+dash has no accounts and no login (GAPS.md L10).  It has one credential:
+the per-launch key of the app ``dash serve`` runs (WP-29 P0.12a), without
+which the served dashboard answers nothing.  So for each surface "auth
+bypass" (``"bypass"`` below) is an attempt to get past THAT surface's own
+guard -- its validation, escaping, path containment, origin check, rate
+limit or, for the served app, its key -- using the encodings and
+obfuscations CLAUDE.md rule 16 names: malformed or overlong UTF-8, NUL
+bytes, homoglyphs, SMCL markup, macro characters, mixed case and
+abbreviation, doubled or mismatched quotes and ``///`` continuations.
+"Injection" is code or markup reaching an
 interpreter -- HTML, JavaScript, CSS, JSON, Python, Stata, SMCL, a shell.
 "Exhaustion" is an input that could make dash use unbounded time, memory or
 stack.
@@ -32,11 +34,12 @@ Standing note: CLAUDE.md rule 19 does not apply, by design
 Rule 19 asks that administrators' identities be verified before they reach
 administrative components.  dash has no administrators, no accounts and no
 administrative components: every dashboard is built by the Stata user who
-runs the command, and the served app binds loopback by default and offers no
-privileged route (``/health`` reports liveness and nothing else).  Rule 19 is
-therefore not applicable -- by design, not by omission (GAPS.md L10;
-``test_security_surface.py`` checks that the help does not claim an access
-control dash has not got).  If dash ever gains accounts or an administrative
+runs the command, and the served app binds loopback by default, admits only
+holders of its per-launch key -- a credential of the dashboard, not of an
+account -- and offers no privileged route (``/health`` reports liveness and
+nothing else).  Rule 19 is therefore not applicable -- by design, not by
+omission (GAPS.md L10; ``test_security_surface.py`` checks what the help
+claims of the access control).  If dash ever gains accounts or an administrative
 surface, this note is wrong and rule 19 applies.
 """
 import argparse
@@ -73,6 +76,7 @@ sys.path.insert(0, _ROOT)
 sys.path.insert(0, _HERE)
 
 import dash_render as dr
+from serve_token_probe import TEST_TOKEN, token_args  # noqa: E402
 from conftest import make_data_json, make_spec
 
 
@@ -898,6 +902,29 @@ SURFACES = {
             "test/test_help_claims_2.py::TestTheServedDownloadRate::test_the_bucket_with_a_clock",
         ],
     },
+    # The served dashboard's per-launch key (WP-29 P0.12a): getting a page,
+    # a session or a row without it, markup reflected from a refused
+    # request, and a keyless client spending time, memory or keys.
+    "served_session_token": {
+        "bypass": [
+            "test/test_serve_token.py::TestTheServedAppRequiresItsToken::test_a_wrong_or_doubled_token_is_403",
+            "test/test_serve_token.py::TestTheServedAppRequiresItsToken::test_a_forged_session_jwt_is_refused",
+            "test/test_serve_token.py::TestTheTokenHelpers::test_invalid_shapes_are_refused",
+            "test/test_serve_token.py::TestTheSessionGate::test_no_configured_token_makes_one_and_still_refuses",
+            "test_serve_launch.cscript:TOK-02",
+        ],
+        "injection": [
+            "test/test_serve_token.py::TestTheServedAppRequiresItsToken::test_a_refusal_carries_the_headers_and_reflects_nothing",
+            "test/test_serve_token.py::TestTheSessionGate::test_the_refusal_names_no_request_data",
+            "test/test_serve_token.py::TestTheTokenHelpers::test_the_redirect_page_escapes_and_sends_no_referrer",
+        ],
+        "exhaustion": [
+            "test/test_serve_token.py::TestTheServedAppRequiresItsToken::test_unauthenticated_requests_do_not_spend_the_session_budget",
+            "test/test_serve_token.py::TestTheTokenHelpers::test_a_jwt_that_inflates_is_refused_quickly",
+            "test/test_serve_token.py::TestTheTokenHelpers::test_the_token_line_is_bounded",
+            "test/test_serve_token.py::TestTheTokenHelpers::test_the_bokeh_serve_key_announces_once_from_a_page_request",
+        ],
+    },
 }
 
 _CATEGORIES = ("bypass", "injection", "exhaustion")
@@ -913,6 +940,7 @@ _REQUIRED_SURFACES = frozenset({
     "renderer_spec_and_data_json", "served_health_endpoint",
     "served_session_creation", "served_widget_model_changes",
     "served_app_cli_flags", "csv_download", "qualifier_columns",
+    "served_session_token",
 })
 
 _PYTEST_ID = re.compile(r"^test/test_\w+\.py::(?:\w+::)?test_\w+$")
@@ -1108,6 +1136,8 @@ def _load_app(src, tag):
         warnings.simplefilter("ignore")
         exec(compile(src.replace(_CURDOC_ATTACH, "pass"),
                      "dash_matrix_app_%s.py" % tag, "exec"), ns)
+    # WP-29 P0.12a: the key Gate B checks, as _dash_server_app installs it.
+    ns["_DASH_SERVE_TOKEN"] = TEST_TOKEN
     return ns
 
 
@@ -1124,9 +1154,11 @@ def served_app(tmp_path_factory):
 
 
 class _Req:
-    def __init__(self, remote_ip="10.0.0.1", **headers):
+    def __init__(self, remote_ip="10.0.0.1", arguments=None, **headers):
         self.remote_ip = remote_ip
         self.headers = headers
+        # WP-29 P0.12a: a session request carries the dashboard's key.
+        self.arguments = token_args() if arguments is None else arguments
 
 
 class _SessionDoc(Document):
@@ -1377,10 +1409,16 @@ class TestFunctionExpressionEncodings:
             result = gm.map_function(fig, expr, (0, 1), 10, {})
         assert len(result[0].data_source.data["x_fn"]) == 0
 
-    def test_a_folded_spelling_of_an_allowed_function_still_draws(self, gm,
-                                                                   fig):
-        # NFKC folds \uff53\uff49\uff4e to sin, which is allowed: harmless.
+    def test_a_folded_spelling_is_refused_as_twoway_refuses_it(self, gm,
+                                                               fig):
+        # Flipped and renamed (WP-29 P0.6) from
+        # test_a_folded_spelling_of_an_allowed_function_still_draws: Python
+        # folded \uff53\uff49\uff4e to sin (NFKC) and drew it, but Stata
+        # does not fold names -- `twoway function y = \uff53\uff49\uff4e(x)'
+        # is r(133), an unknown function -- and the fallback takes ASCII only.
         result = gm.map_function(fig, "\uff53\uff49\uff4e(x)", (0, 1), 10, {})
+        assert len(result[0].data_source.data["x_fn"]) == 0
+        result = gm.map_function(fig, "sin(x)", (0, 1), 10, {})
         assert len(result[0].data_source.data["x_fn"]) == 10
 
 
@@ -2312,7 +2350,14 @@ class _LiveApp:
         self.port = _free_port()
         env = {k: v for k, v in os.environ.items()
                if k != "BOKEH_ALLOW_WS_ORIGIN"}
-        env.update({k: v.format(port=self.port) for k, v in self.env.items()})
+        # WP-29 P0.12a: the app runs with the shared test key unless *env*
+        # maps DASH_SERVE_TOKEN to None, which removes it.
+        env["DASH_SERVE_TOKEN"] = TEST_TOKEN
+        for k, v in self.env.items():
+            if v is None:
+                env.pop(k, None)
+            else:
+                env[k] = v.format(port=self.port)
         try:
             self._log = open(self._log_path, "w", encoding="utf-8")
             self.proc = subprocess.Popen(
@@ -2362,7 +2407,7 @@ class _LiveApp:
         with open(self._log_path, encoding="utf-8", errors="replace") as fh:
             return fh.read()[-3000:]
 
-    def session(self, origin):
+    def session(self, origin, jwt=None):
         """``(status, first message type)`` for a browser's websocket
         handshake sent with *origin* -- the page fetched for its session
         token, then ``/ws`` asked to upgrade with the Bokeh subprotocol and
@@ -2370,11 +2415,15 @@ class _LiveApp:
         a refusal is its status and None.  Measured 24sep2026 on this app:
         an origin it allows is answered 101 and then the server's ACK, one
         it does not is answered 403 before any upgrade."""
-        with urllib.request.urlopen("http://127.0.0.1:%d/" % self.port,
-                                    timeout=10) as r:
-            page = r.read().decode("utf-8", "replace")
-        token = re.search(r'"token":\s*"([^"]+)"', page)
-        assert token, "the served page carries no session token"
+        if jwt is None:
+            # WP-29 P0.12a: the keyed page gives the session JWT.
+            with urllib.request.urlopen(
+                    "http://127.0.0.1:%d/?token=%s" % (self.port, TEST_TOKEN),
+                    timeout=10) as r:
+                page = r.read().decode("utf-8", "replace")
+            m = re.search(r'"token":\s*"([^"]+)"', page)
+            assert m, "the served page carries no session token"
+            jwt = m.group(1)
         key = base64.b64encode(os.urandom(16)).decode("ascii")
         request = ("GET /ws HTTP/1.1\r\n"
                    "Host: 127.0.0.1:%d\r\n"
@@ -2383,8 +2432,7 @@ class _LiveApp:
                    "Sec-WebSocket-Key: %s\r\n"
                    "Sec-WebSocket-Version: 13\r\n"
                    "Sec-WebSocket-Protocol: bokeh, %s\r\n"
-                   "Origin: %s\r\n\r\n") % (self.port, key, token.group(1),
-                                            origin)
+                   "Origin: %s\r\n\r\n") % (self.port, key, jwt, origin)
         with socket.create_connection(("127.0.0.1", self.port),
                                       timeout=10) as s:
             s.sendall(request.encode("utf-8"))
@@ -2569,7 +2617,10 @@ class TestSessionOrigin:
             assert app.session("http://attacker.example") == (101, "ACK")
             said = _launcher_said(app)
         assert "dash: BOKEH_ALLOW_WS_ORIGIN" in said, said
-        assert "any web site can open a session" in said, said
+        # Flipped (WP-29 P0.12a): the origin check admits every site, but
+        # the dashboard's key still keeps their pages out.
+        assert "the websocket origin check admits every web site" in said, \
+            said
 
     def test_the_refusal_page_carries_no_request_data(self, fresh_limiters,
                                                       monkeypatch):

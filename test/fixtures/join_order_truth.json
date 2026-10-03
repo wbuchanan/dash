@@ -1,0 +1,1574 @@
+{
+  "_meta": {
+    "born_date": "12 Aug 2026",
+    "dash_commit": "e77651efb92a528076f3732f30691afe35fc3f57",
+    "extracted": " 1 Oct 2026",
+    "stata_version": "19.5"
+  },
+  "by": [
+    {
+      "command": "twoway line y x, by(g)  nodraw",
+      "id": "J9-line-by-none",
+      "option": "by(g) ",
+      "panels": [
+        [
+          1,
+          3,
+          6,
+          8
+        ],
+        [
+          2,
+          4,
+          7
+        ]
+      ],
+      "type": "line"
+    },
+    {
+      "command": "twoway line y x, by(g) sort nodraw",
+      "id": "J9-line-by-sort",
+      "option": "by(g) sort",
+      "panels": [
+        [
+          3,
+          1,
+          6,
+          8
+        ],
+        [
+          2,
+          4,
+          7
+        ]
+      ],
+      "type": "line"
+    },
+    {
+      "command": "twoway line y x, by(g, total)  nodraw",
+      "id": "J9-line-total-none",
+      "option": "by(g, total) ",
+      "panels": [
+        [
+          1,
+          3,
+          6,
+          8
+        ],
+        [
+          2,
+          4,
+          7
+        ],
+        [
+          1,
+          2,
+          3,
+          4,
+          6,
+          7,
+          8
+        ]
+      ],
+      "type": "line"
+    },
+    {
+      "command": "twoway line y x, by(g, total) sort nodraw",
+      "id": "J9-line-total-sort",
+      "option": "by(g, total) sort",
+      "panels": [
+        [
+          3,
+          1,
+          6,
+          8
+        ],
+        [
+          2,
+          4,
+          7
+        ],
+        [
+          2,
+          4,
+          3,
+          1,
+          6,
+          8,
+          7
+        ]
+      ],
+      "type": "line"
+    },
+    {
+      "command": "twoway line y x, by(g, total missing)  nodraw",
+      "id": "J9-line-totalmissing-none",
+      "option": "by(g, total missing) ",
+      "panels": [
+        [
+          1,
+          3,
+          6,
+          8
+        ],
+        [
+          2,
+          4,
+          7
+        ],
+        [
+          5
+        ],
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ]
+      ],
+      "type": "line"
+    },
+    {
+      "command": "twoway line y x, by(g, total missing) sort nodraw",
+      "id": "J9-line-totalmissing-sort",
+      "option": "by(g, total missing) sort",
+      "panels": [
+        [
+          3,
+          1,
+          6,
+          8
+        ],
+        [
+          2,
+          4,
+          7
+        ],
+        [
+          5
+        ],
+        [
+          2,
+          4,
+          3,
+          1,
+          6,
+          8,
+          7,
+          5
+        ]
+      ],
+      "type": "line"
+    },
+    {
+      "command": "twoway rline y y2 x, by(g)  nodraw",
+      "id": "J9-rline-by-none",
+      "option": "by(g) ",
+      "panels": [
+        [
+          1,
+          3,
+          6,
+          8
+        ],
+        [
+          2,
+          4,
+          7
+        ]
+      ],
+      "type": "rline"
+    },
+    {
+      "command": "twoway rline y y2 x, by(g) sort nodraw",
+      "id": "J9-rline-by-sort",
+      "option": "by(g) sort",
+      "panels": [
+        [
+          3,
+          1,
+          6,
+          8
+        ],
+        [
+          2,
+          4,
+          7
+        ]
+      ],
+      "type": "rline"
+    },
+    {
+      "command": "twoway rline y y2 x, by(g, total)  nodraw",
+      "id": "J9-rline-total-none",
+      "option": "by(g, total) ",
+      "panels": [
+        [
+          1,
+          3,
+          6,
+          8
+        ],
+        [
+          2,
+          4,
+          7
+        ],
+        [
+          1,
+          2,
+          3,
+          4,
+          6,
+          7,
+          8
+        ]
+      ],
+      "type": "rline"
+    },
+    {
+      "command": "twoway rline y y2 x, by(g, total) sort nodraw",
+      "id": "J9-rline-total-sort",
+      "option": "by(g, total) sort",
+      "panels": [
+        [
+          3,
+          1,
+          6,
+          8
+        ],
+        [
+          2,
+          4,
+          7
+        ],
+        [
+          2,
+          4,
+          3,
+          1,
+          6,
+          8,
+          7
+        ]
+      ],
+      "type": "rline"
+    },
+    {
+      "command": "twoway rline y y2 x, by(g, total missing)  nodraw",
+      "id": "J9-rline-totalmissing-none",
+      "option": "by(g, total missing) ",
+      "panels": [
+        [
+          1,
+          3,
+          6,
+          8
+        ],
+        [
+          2,
+          4,
+          7
+        ],
+        [
+          5
+        ],
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ]
+      ],
+      "type": "rline"
+    },
+    {
+      "command": "twoway rline y y2 x, by(g, total missing) sort nodraw",
+      "id": "J9-rline-totalmissing-sort",
+      "option": "by(g, total missing) sort",
+      "panels": [
+        [
+          3,
+          1,
+          6,
+          8
+        ],
+        [
+          2,
+          4,
+          7
+        ],
+        [
+          5
+        ],
+        [
+          2,
+          4,
+          3,
+          1,
+          6,
+          8,
+          7,
+          5
+        ]
+      ],
+      "type": "rline"
+    }
+  ],
+  "missing": [
+    {
+      "command": "twoway line y x,  xscale(range(0 8)) xlabel(0(2)8)",
+      "id": "J8a-line-none",
+      "option": "",
+      "paths": [
+        [
+          2,
+          5,
+          6,
+          1,
+          7
+        ]
+      ],
+      "type": "line"
+    },
+    {
+      "command": "twoway line y x, sort xscale(range(0 8)) xlabel(0(2)8)",
+      "id": "J8a-line-sort",
+      "option": "sort",
+      "paths": [
+        [
+          1,
+          2,
+          5,
+          6,
+          7
+        ]
+      ],
+      "type": "line"
+    },
+    {
+      "command": "twoway connected y x,  xscale(range(0 8)) xlabel(0(2)8)",
+      "id": "J8a-connected-none",
+      "option": "",
+      "paths": [
+        [
+          2,
+          5,
+          6,
+          1,
+          7
+        ]
+      ],
+      "type": "connected"
+    },
+    {
+      "command": "twoway connected y x, sort xscale(range(0 8)) xlabel(0(2)8)",
+      "id": "J8a-connected-sort",
+      "option": "sort",
+      "paths": [
+        [
+          1,
+          2,
+          5,
+          6,
+          7
+        ]
+      ],
+      "type": "connected"
+    },
+    {
+      "command": "twoway area y x,  xscale(range(0 8)) xlabel(0(2)8)",
+      "id": "J8a-area-none",
+      "option": "",
+      "paths": [
+        [
+          2,
+          2,
+          5,
+          6,
+          1,
+          7,
+          7,
+          2,
+          2
+        ]
+      ],
+      "type": "area"
+    },
+    {
+      "command": "twoway area y x, sort xscale(range(0 8)) xlabel(0(2)8)",
+      "id": "J8a-area-sort",
+      "option": "sort",
+      "paths": [
+        [
+          1,
+          1,
+          2,
+          5,
+          6,
+          7,
+          7,
+          1,
+          1
+        ]
+      ],
+      "type": "area"
+    },
+    {
+      "command": "twoway rline y y2a x,  xscale(range(0 8)) xlabel(0(2)8)",
+      "id": "J8a-rline-none",
+      "option": "",
+      "paths": [
+        [
+          2,
+          5,
+          6,
+          1,
+          7
+        ],
+        [
+          2,
+          3,
+          6,
+          1,
+          7
+        ]
+      ],
+      "type": "rline"
+    },
+    {
+      "command": "twoway rline y y2a x, sort xscale(range(0 8)) xlabel(0(2)8)",
+      "id": "J8a-rline-sort",
+      "option": "sort",
+      "paths": [
+        [
+          1,
+          2,
+          5,
+          6,
+          7
+        ],
+        [
+          1,
+          2,
+          3,
+          6,
+          7
+        ]
+      ],
+      "type": "rline"
+    },
+    {
+      "command": "twoway rconnected y y2a x,  xscale(range(0 8)) xlabel(0(2)8)",
+      "id": "J8a-rconnected-none",
+      "option": "",
+      "paths": [
+        [
+          2,
+          5,
+          6,
+          1,
+          7
+        ],
+        [
+          2,
+          3,
+          6,
+          1,
+          7
+        ]
+      ],
+      "type": "rconnected"
+    },
+    {
+      "command": "twoway rconnected y y2a x, sort xscale(range(0 8)) xlabel(0(2)8)",
+      "id": "J8a-rconnected-sort",
+      "option": "sort",
+      "paths": [
+        [
+          1,
+          2,
+          5,
+          6,
+          7
+        ],
+        [
+          1,
+          2,
+          3,
+          6,
+          7
+        ]
+      ],
+      "type": "rconnected"
+    },
+    {
+      "command": "twoway rarea y y2a x,  xscale(range(0 8)) xlabel(0(2)8)",
+      "id": "J8a-rarea-none",
+      "option": "",
+      "paths": [
+        [
+          2,
+          2,
+          5,
+          6,
+          1,
+          7,
+          7,
+          1,
+          6,
+          3,
+          2,
+          2
+        ]
+      ],
+      "type": "rarea"
+    },
+    {
+      "command": "twoway rarea y y2a x, sort xscale(range(0 8)) xlabel(0(2)8)",
+      "id": "J8a-rarea-sort",
+      "option": "sort",
+      "paths": [
+        [
+          1,
+          1,
+          2,
+          5,
+          6,
+          7,
+          7,
+          6,
+          3,
+          2,
+          1,
+          1
+        ]
+      ],
+      "type": "rarea"
+    },
+    {
+      "command": "twoway rarea y y2b x,  xscale(range(0 8)) xlabel(0(2)8)",
+      "id": "J8b-rarea-none",
+      "option": "",
+      "paths": [
+        [
+          2,
+          2,
+          5,
+          6,
+          1,
+          7,
+          7,
+          1,
+          6,
+          5,
+          2,
+          2
+        ]
+      ],
+      "type": "rarea"
+    },
+    {
+      "command": "twoway rarea y y2b x, sort xscale(range(0 8)) xlabel(0(2)8)",
+      "id": "J8b-rarea-sort",
+      "option": "sort",
+      "paths": [
+        [
+          1,
+          1,
+          2,
+          5,
+          6,
+          7,
+          7,
+          6,
+          5,
+          2,
+          1,
+          1
+        ]
+      ],
+      "type": "rarea"
+    }
+  ],
+  "orders": [
+    {
+      "command": "twoway line y x,  nodraw",
+      "id": "J1-line",
+      "obs": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "option": "",
+      "type": "line"
+    },
+    {
+      "command": "twoway connected y x,  nodraw",
+      "id": "J1-connected",
+      "obs": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "option": "",
+      "type": "connected"
+    },
+    {
+      "command": "twoway area y x,  nodraw",
+      "id": "J1-area",
+      "obs": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "option": "",
+      "type": "area"
+    },
+    {
+      "command": "twoway rline y y2 x,  nodraw",
+      "id": "J1-rline",
+      "obs": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "option": "",
+      "type": "rline"
+    },
+    {
+      "command": "twoway rarea y y2 x,  nodraw",
+      "id": "J1-rarea",
+      "obs": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "option": "",
+      "type": "rarea"
+    },
+    {
+      "command": "twoway rconnected y y2 x,  nodraw",
+      "id": "J1-rconnected",
+      "obs": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "option": "",
+      "type": "rconnected"
+    },
+    {
+      "command": "twoway line y x, sort nodraw",
+      "id": "J2-line",
+      "obs": [
+        2,
+        4,
+        3,
+        1,
+        6,
+        8,
+        7,
+        5
+      ],
+      "option": "sort",
+      "type": "line"
+    },
+    {
+      "command": "twoway connected y x, sort nodraw",
+      "id": "J2-connected",
+      "obs": [
+        2,
+        4,
+        3,
+        1,
+        6,
+        8,
+        7,
+        5
+      ],
+      "option": "sort",
+      "type": "connected"
+    },
+    {
+      "command": "twoway area y x, sort nodraw",
+      "id": "J2-area",
+      "obs": [
+        2,
+        4,
+        3,
+        1,
+        6,
+        8,
+        7,
+        5
+      ],
+      "option": "sort",
+      "type": "area"
+    },
+    {
+      "command": "twoway rline y y2 x, sort nodraw",
+      "id": "J2-rline",
+      "obs": [
+        2,
+        4,
+        3,
+        1,
+        6,
+        8,
+        7,
+        5
+      ],
+      "option": "sort",
+      "type": "rline"
+    },
+    {
+      "command": "twoway rarea y y2 x, sort nodraw",
+      "id": "J2-rarea",
+      "obs": [
+        2,
+        4,
+        3,
+        1,
+        6,
+        8,
+        7,
+        5
+      ],
+      "option": "sort",
+      "type": "rarea"
+    },
+    {
+      "command": "twoway rconnected y y2 x, sort nodraw",
+      "id": "J2-rconnected",
+      "obs": [
+        2,
+        4,
+        3,
+        1,
+        6,
+        8,
+        7,
+        5
+      ],
+      "option": "sort",
+      "type": "rconnected"
+    },
+    {
+      "command": "twoway line y x, sort(z) nodraw",
+      "id": "J3-line",
+      "obs": [
+        3,
+        5,
+        1,
+        8,
+        7,
+        6,
+        4,
+        2
+      ],
+      "option": "sort(z)",
+      "type": "line"
+    },
+    {
+      "command": "twoway connected y x, sort(z) nodraw",
+      "id": "J3-connected",
+      "obs": [
+        3,
+        5,
+        1,
+        8,
+        7,
+        6,
+        4,
+        2
+      ],
+      "option": "sort(z)",
+      "type": "connected"
+    },
+    {
+      "command": "twoway area y x, sort(z) nodraw",
+      "id": "J3-area",
+      "obs": [
+        3,
+        5,
+        1,
+        8,
+        7,
+        6,
+        4,
+        2
+      ],
+      "option": "sort(z)",
+      "type": "area"
+    },
+    {
+      "command": "twoway rline y y2 x, sort(z) nodraw",
+      "id": "J3-rline",
+      "obs": [
+        3,
+        5,
+        1,
+        8,
+        7,
+        6,
+        4,
+        2
+      ],
+      "option": "sort(z)",
+      "type": "rline"
+    },
+    {
+      "command": "twoway rarea y y2 x, sort(z) nodraw",
+      "id": "J3-rarea",
+      "obs": [
+        3,
+        5,
+        1,
+        8,
+        7,
+        6,
+        4,
+        2
+      ],
+      "option": "sort(z)",
+      "type": "rarea"
+    },
+    {
+      "command": "twoway rconnected y y2 x, sort(z) nodraw",
+      "id": "J3-rconnected",
+      "obs": [
+        3,
+        5,
+        1,
+        8,
+        7,
+        6,
+        4,
+        2
+      ],
+      "option": "sort(z)",
+      "type": "rconnected"
+    },
+    {
+      "command": "twoway line y x, sort(s) nodraw",
+      "id": "J4-line",
+      "obs": [
+        4,
+        6,
+        2,
+        7,
+        5,
+        3,
+        1,
+        8
+      ],
+      "option": "sort(s)",
+      "type": "line"
+    },
+    {
+      "command": "twoway connected y x, sort(s) nodraw",
+      "id": "J4-connected",
+      "obs": [
+        4,
+        6,
+        2,
+        7,
+        5,
+        3,
+        1,
+        8
+      ],
+      "option": "sort(s)",
+      "type": "connected"
+    },
+    {
+      "command": "twoway area y x, sort(s) nodraw",
+      "id": "J4-area",
+      "obs": [
+        4,
+        6,
+        2,
+        7,
+        5,
+        3,
+        1,
+        8
+      ],
+      "option": "sort(s)",
+      "type": "area"
+    },
+    {
+      "command": "twoway rline y y2 x, sort(s) nodraw",
+      "id": "J4-rline",
+      "obs": [
+        4,
+        6,
+        2,
+        7,
+        5,
+        3,
+        1,
+        8
+      ],
+      "option": "sort(s)",
+      "type": "rline"
+    },
+    {
+      "command": "twoway rarea y y2 x, sort(s) nodraw",
+      "id": "J4-rarea",
+      "obs": [
+        4,
+        6,
+        2,
+        7,
+        5,
+        3,
+        1,
+        8
+      ],
+      "option": "sort(s)",
+      "type": "rarea"
+    },
+    {
+      "command": "twoway rconnected y y2 x, sort(s) nodraw",
+      "id": "J4-rconnected",
+      "obs": [
+        4,
+        6,
+        2,
+        7,
+        5,
+        3,
+        1,
+        8
+      ],
+      "option": "sort(s)",
+      "type": "rconnected"
+    },
+    {
+      "command": "twoway line y x, sort(zz x) nodraw",
+      "id": "J5-line",
+      "obs": [
+        2,
+        4,
+        7,
+        5,
+        3,
+        1,
+        6,
+        8
+      ],
+      "option": "sort(zz x)",
+      "type": "line"
+    },
+    {
+      "command": "twoway connected y x, sort(zz x) nodraw",
+      "id": "J5-connected",
+      "obs": [
+        2,
+        4,
+        7,
+        5,
+        3,
+        1,
+        6,
+        8
+      ],
+      "option": "sort(zz x)",
+      "type": "connected"
+    },
+    {
+      "command": "twoway area y x, sort(zz x) nodraw",
+      "id": "J5-area",
+      "obs": [
+        2,
+        4,
+        7,
+        5,
+        3,
+        1,
+        6,
+        8
+      ],
+      "option": "sort(zz x)",
+      "type": "area"
+    },
+    {
+      "command": "twoway rline y y2 x, sort(zz x) nodraw",
+      "id": "J5-rline",
+      "obs": [
+        2,
+        4,
+        7,
+        5,
+        3,
+        1,
+        6,
+        8
+      ],
+      "option": "sort(zz x)",
+      "type": "rline"
+    },
+    {
+      "command": "twoway rarea y y2 x, sort(zz x) nodraw",
+      "id": "J5-rarea",
+      "obs": [
+        2,
+        4,
+        7,
+        5,
+        3,
+        1,
+        6,
+        8
+      ],
+      "option": "sort(zz x)",
+      "type": "rarea"
+    },
+    {
+      "command": "twoway rconnected y y2 x, sort(zz x) nodraw",
+      "id": "J5-rconnected",
+      "obs": [
+        2,
+        4,
+        7,
+        5,
+        3,
+        1,
+        6,
+        8
+      ],
+      "option": "sort(zz x)",
+      "type": "rconnected"
+    },
+    {
+      "command": "twoway line y x, sort sort(z) nodraw",
+      "id": "J6-line",
+      "obs": [
+        3,
+        5,
+        1,
+        8,
+        7,
+        6,
+        4,
+        2
+      ],
+      "option": "sort sort(z)",
+      "type": "line"
+    },
+    {
+      "command": "twoway connected y x, sort sort(z) nodraw",
+      "id": "J6-connected",
+      "obs": [
+        3,
+        5,
+        1,
+        8,
+        7,
+        6,
+        4,
+        2
+      ],
+      "option": "sort sort(z)",
+      "type": "connected"
+    },
+    {
+      "command": "twoway area y x, sort sort(z) nodraw",
+      "id": "J6-area",
+      "obs": [
+        3,
+        5,
+        1,
+        8,
+        7,
+        6,
+        4,
+        2
+      ],
+      "option": "sort sort(z)",
+      "type": "area"
+    },
+    {
+      "command": "twoway rline y y2 x, sort sort(z) nodraw",
+      "id": "J6-rline",
+      "obs": [
+        3,
+        5,
+        1,
+        8,
+        7,
+        6,
+        4,
+        2
+      ],
+      "option": "sort sort(z)",
+      "type": "rline"
+    },
+    {
+      "command": "twoway rarea y y2 x, sort sort(z) nodraw",
+      "id": "J6-rarea",
+      "obs": [
+        3,
+        5,
+        1,
+        8,
+        7,
+        6,
+        4,
+        2
+      ],
+      "option": "sort sort(z)",
+      "type": "rarea"
+    },
+    {
+      "command": "twoway rconnected y y2 x, sort sort(z) nodraw",
+      "id": "J6-rconnected",
+      "obs": [
+        3,
+        5,
+        1,
+        8,
+        7,
+        6,
+        4,
+        2
+      ],
+      "option": "sort sort(z)",
+      "type": "rconnected"
+    },
+    {
+      "command": "twoway line y x, sort(z) sort(x) nodraw",
+      "id": "J7-line",
+      "obs": [
+        2,
+        4,
+        3,
+        1,
+        6,
+        8,
+        7,
+        5
+      ],
+      "option": "sort(z) sort(x)",
+      "type": "line"
+    },
+    {
+      "command": "twoway connected y x, sort(z) sort(x) nodraw",
+      "id": "J7-connected",
+      "obs": [
+        2,
+        4,
+        3,
+        1,
+        6,
+        8,
+        7,
+        5
+      ],
+      "option": "sort(z) sort(x)",
+      "type": "connected"
+    },
+    {
+      "command": "twoway area y x, sort(z) sort(x) nodraw",
+      "id": "J7-area",
+      "obs": [
+        2,
+        4,
+        3,
+        1,
+        6,
+        8,
+        7,
+        5
+      ],
+      "option": "sort(z) sort(x)",
+      "type": "area"
+    },
+    {
+      "command": "twoway rline y y2 x, sort(z) sort(x) nodraw",
+      "id": "J7-rline",
+      "obs": [
+        2,
+        4,
+        3,
+        1,
+        6,
+        8,
+        7,
+        5
+      ],
+      "option": "sort(z) sort(x)",
+      "type": "rline"
+    },
+    {
+      "command": "twoway rarea y y2 x, sort(z) sort(x) nodraw",
+      "id": "J7-rarea",
+      "obs": [
+        2,
+        4,
+        3,
+        1,
+        6,
+        8,
+        7,
+        5
+      ],
+      "option": "sort(z) sort(x)",
+      "type": "rarea"
+    },
+    {
+      "command": "twoway rconnected y y2 x, sort(z) sort(x) nodraw",
+      "id": "J7-rconnected",
+      "obs": [
+        2,
+        4,
+        3,
+        1,
+        6,
+        8,
+        7,
+        5
+      ],
+      "option": "sort(z) sort(x)",
+      "type": "rconnected"
+    },
+    {
+      "command": "twoway line y x in 2/6, nodraw",
+      "id": "J10-in-line",
+      "obs": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "option": "in 2/6",
+      "type": "line"
+    },
+    {
+      "command": "twoway connected y x in 2/6, nodraw",
+      "id": "J10-in-connected",
+      "obs": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "option": "in 2/6",
+      "type": "connected"
+    },
+    {
+      "command": "twoway area y x in 2/6, nodraw",
+      "id": "J10-in-area",
+      "obs": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "option": "in 2/6",
+      "type": "area"
+    },
+    {
+      "command": "twoway rline y y2 x in 2/6, nodraw",
+      "id": "J10-in-rline",
+      "obs": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "option": "in 2/6",
+      "type": "rline"
+    },
+    {
+      "command": "twoway rarea y y2 x in 2/6, nodraw",
+      "id": "J10-in-rarea",
+      "obs": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "option": "in 2/6",
+      "type": "rarea"
+    },
+    {
+      "command": "twoway rconnected y y2 x in 2/6, nodraw",
+      "id": "J10-in-rconnected",
+      "obs": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "option": "in 2/6",
+      "type": "rconnected"
+    },
+    {
+      "command": "twoway line y x if g==1, nodraw",
+      "id": "J10-if-line",
+      "obs": [
+        1,
+        3,
+        6,
+        8
+      ],
+      "option": "if g==1",
+      "type": "line"
+    },
+    {
+      "command": "twoway connected y x if g==1, nodraw",
+      "id": "J10-if-connected",
+      "obs": [
+        1,
+        3,
+        6,
+        8
+      ],
+      "option": "if g==1",
+      "type": "connected"
+    },
+    {
+      "command": "twoway area y x if g==1, nodraw",
+      "id": "J10-if-area",
+      "obs": [
+        1,
+        3,
+        6,
+        8
+      ],
+      "option": "if g==1",
+      "type": "area"
+    },
+    {
+      "command": "twoway rline y y2 x if g==1, nodraw",
+      "id": "J10-if-rline",
+      "obs": [
+        1,
+        3,
+        6,
+        8
+      ],
+      "option": "if g==1",
+      "type": "rline"
+    },
+    {
+      "command": "twoway rarea y y2 x if g==1, nodraw",
+      "id": "J10-if-rarea",
+      "obs": [
+        1,
+        3,
+        6,
+        8
+      ],
+      "option": "if g==1",
+      "type": "rarea"
+    },
+    {
+      "command": "twoway rconnected y y2 x if g==1, nodraw",
+      "id": "J10-if-rconnected",
+      "obs": [
+        1,
+        3,
+        6,
+        8
+      ],
+      "option": "if g==1",
+      "type": "rconnected"
+    },
+    {
+      "command": "twoway tsline y,  nodraw",
+      "id": "J11-tsline-none",
+      "obs": [
+        3,
+        5,
+        1,
+        7,
+        8,
+        4,
+        6,
+        2
+      ],
+      "option": "",
+      "type": "tsline"
+    },
+    {
+      "command": "twoway tsline y, sort nodraw",
+      "id": "J11-tsline-sort",
+      "obs": [
+        3,
+        5,
+        1,
+        7,
+        8,
+        4,
+        6,
+        2
+      ],
+      "option": "sort",
+      "type": "tsline"
+    },
+    {
+      "command": "twoway tsline y, sort(y) nodraw",
+      "id": "J11-tsline-sorty",
+      "obs": [
+        3,
+        5,
+        1,
+        7,
+        8,
+        4,
+        6,
+        2
+      ],
+      "option": "sort(y)",
+      "type": "tsline"
+    },
+    {
+      "command": "twoway tsrline y y2,  nodraw",
+      "id": "J11-tsrline-none",
+      "obs": [
+        3,
+        5,
+        1,
+        7,
+        8,
+        4,
+        6,
+        2
+      ],
+      "option": "",
+      "type": "tsrline"
+    },
+    {
+      "command": "twoway tsrline y y2, sort nodraw",
+      "id": "J11-tsrline-sort",
+      "obs": [
+        3,
+        5,
+        1,
+        7,
+        8,
+        4,
+        6,
+        2
+      ],
+      "option": "sort",
+      "type": "tsrline"
+    },
+    {
+      "command": "twoway tsrline y y2, sort(y) nodraw",
+      "id": "J11-tsrline-sorty",
+      "obs": [
+        3,
+        5,
+        1,
+        7,
+        8,
+        4,
+        6,
+        2
+      ],
+      "option": "sort(y)",
+      "type": "tsrline"
+    }
+  ],
+  "ranks": {
+    "keyw": [
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+    ],
+    "s": [
+      7,
+      3,
+      6,
+      1,
+      5,
+      2,
+      4,
+      8
+    ],
+    "x": [
+      4,
+      1,
+      3,
+      2,
+      8,
+      5,
+      7,
+      6
+    ],
+    "z": [
+      3,
+      8,
+      1,
+      7,
+      2,
+      6,
+      5,
+      4
+    ],
+    "zz x": [
+      6,
+      1,
+      5,
+      2,
+      4,
+      7,
+      3,
+      8
+    ]
+  }
+}

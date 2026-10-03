@@ -123,7 +123,7 @@ Not implemented, by family:
 
 - **S06 (3):** `horizontal` `sort` `vertical`
   — note `sort` is reported "unsupported" although dash sorts by default; if
-  that is a no-op it should say so, not imply the plot is wrong.
+  that is a no-op it should say so, not imply the plot is wrong. [WP-29 P0.1, commit b0d170d: partly closed; open: `horizontal`, `vertical`]
 - **S07 (13):** `adjust` `area` `atobs` `ciplot` `discrete` `estcmd` `estopts`
   `fitplot` `logit` `mean` `nofit` `noweight` `predopts`
 - **S09 axes/text (26):** `b1title` `b2title` `droplines` `l1title` `l2title`
@@ -302,7 +302,7 @@ Sources: ① measured this session; ② deep-audit agent; ③ CHANGELOG (self-re
 | 03 | Scheme translation | 5 | 3 done, 2 partial ② | `color foreground`; all 14 inert once installed ① |
 | 04 | Abbreviations | 5 | 4 done, 1 partial ② | narrow |
 | 05 | Option surface | 6 | **05-04 not done** ① | 92 options declared nowhere |
-| 06 | Varlist / plot-spec | 7 | 2 done, 5 partial ② | `horizontal` `sort` `vertical` ①; positional plot-options across an expanded varlist; **no S06 entry in CHANGELOG** ② |
+| 06 | Varlist / plot-spec | 7 | 2 done, 5 partial ② | `horizontal` `sort` `vertical` ①; positional plot-options across an expanded varlist; **no S06 entry in CHANGELOG** ② [WP-29 P0.1, commit b0d170d: partly closed; open: `horizontal`, `vertical`, positional plot-options across an expanded varlist, no S06 entry in CHANGELOG] |
 | 07 | Statistical defaults | 6 | done ③, 13 options open ① | see §2 |
 | 08 | Formats, dates, labels | 6 | 2 done, 4 partial ② | `xvarformat` `yvarformat` `xvarlabel` `yvarlabel` ①; `test_formats.cscript` absent ② |
 | 09 | Axes, legend, titles | 7 | 1 done, 6 partial ②, **73 options open** ① | see §2 — largest single family; none of S09 reached `ServerAppBuilder` |
@@ -1222,7 +1222,7 @@ halves of the tuple are the same raw string.
   _dash_extract_vars (keys vector at :545-551 lists
   yvar/xvar/var/yvar1/yvar2/y1var/x1var/y2var/x2var/mlabel/colorvar — no
   "hover"); consumer dash.ado:2159 `mata: _dash_extract_vars(...)`; downstream
-  re`
+  re` [WP-29 P0.10, commit 735c534: closed]
 - **[func · server · M]** ServerAppBuilder ignores graph_options["hover"]
   entirely — add the extra-tooltip handling that DashRenderer has at
   dash_render.py:10197-10261 to the emitted app source.     *Where:*
@@ -1859,7 +1859,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   JS).     *Where:* `dash_render.py:9981-9992 (DashRenderer._make_figure_body
   per-plot block), dash_render.py:8509-8524 (_register_view_filter),
   dash_render.py:7163-7170 (_FILTER_JS view rebuild), dash_render.py:11892
-  (_c`
+  (_c` [WP-29 P0.15, commit 3cff164: closed]
 - **[func · both · M]** Mask the mlabel LabelSet for a qualified layer.
   `_apply_mlabel_opts` (dash_render.py:3301) attaches a Bokeh `LabelSet`,
   which has NO `view` property, so a per-plot `if`/`in` never reaches it and
@@ -1875,7 +1875,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   all.     *Where:* `dash_render.py:3301-3400 (_apply_mlabel_opts),
   dash_render.py:3482 (map_scatter call),
   dash_render.py:3556/3589/3657/3762/3814/4955/5000/5038,
-  dash_render.py:14454+ (emitted-app LabelSet lines)`
+  dash_render.py:14454+ (emitted-app LabelSet lines)` [WP-29 P0.16, commit 85dc7d2: partly closed; open: the mlabel LabelSet is still not masked for a qualified layer]
 - **[func · standalone · M]** Make the per-plot view and the glyph's actual
   source agree when a layer builds a private source. With `jitter()`,
   `map_scatter` draws from the copy returned by `_build_jitter_source`
@@ -1961,7 +1961,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   types abort the ENTIRE dashboard build the moment a date variable is on an
   axis.     *Where:* `dash_render.py:964-995 (`_extract_finite`, which already
   has the `allow_datetime=True` branch that only `build_slider:7731` and
-  `build_range:7809` pass); the 21 mappers that do not: `map_area:3614`, ``
+  `build_range:7809` pass); the 21 mappers that do not: `map_area:3614`, `` [WP-29 P0.8, commit cd210ea: closed]
 - **[func · standalone · M]** Make `_figure_date_kind` read every variable-key
   shape `dash.ado` actually emits. It reads only `xvar`, `yvar` and `var`, so
   three whole plot families are invisible to the date decision, and for one
@@ -1976,7 +1976,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   `y1var`/`x1var`/`y2var`/`x2var` and get no datetime axis on either axis.
   *Where:* `dash_render.py:9268-9298 (`DashRenderer._figure_date_kind`); its
   two call sites dash_render.py:9559-9560 in `_make_figure_body`;
-  dash_render.py:10415-10421 (`_add_glyph`, where the histogram/kdensity `
+  dash_render.py:10415-10421 (`_add_glyph`, where the histogram/kdensity ` [WP-29 P0.8, commit cd210ea: partly closed; open: (b) the range types' yvar1/yvar2 and (c) the pc types' coordinates get no date axis (REM-08-04-C3b, C3c; DROPIN P1.23)]
 - **[func · standalone · S]** Partition plots by their `options.yaxis` /
   `options.xaxis` before `_figure_date_kind` demands agreement. Today a single
   secondary-axis layer POISONS the primary axis: a graph whose primary y is a
@@ -2086,7 +2086,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   for those types so the axis label is right too.     *Where:*
   `dash_render.py:9268-9298 (`_figure_date_kind`), specifically the `name =
   ...` expression at :9288-9290; dash_render.py:9506-9507 (`xvar`/`yvar`
-  derivation in `_make_figure_body`); dash.ado:1142-1144 (`
+  derivation in `_make_figure_body`); dash.ado:1142-1144 (` [WP-29 P0.8, commit cd210ea: closed]
 - **[deli · dash.ado · S]** Add a Stata certification script covering the
   section's own `<verify>` clause end to end. Task 08-04's verify is "sp500
   renders calendar dates on the x-axis", and nothing in `test/` exercises it
@@ -2153,7 +2153,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   empty-string fallback (which also fixes the blank axis title it produces on
   the same build).     *Where:* `dash_render.py:9300
   `DashRenderer._axis_label`; dash_render.py:10233 in
-  `_make_figure._hover_row`; dash_render.py:10282, 10295 (fallback tooltips)`
+  `_make_figure._hover_row`; dash_render.py:10282, 10295 (fallback tooltips)` [WP-29 P0.3, commit 8d3593e: closed]
 - **[deli · standalone · S]** Strengthen
   `test_a_date_dropdown_shows_dates_not_epoch_numbers` — it passes against the
   broken dropdown and so certifies nothing. It reads only the LABEL half of
@@ -2191,7 +2191,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   lands at 1970.     *Where:* `dash_render.py:964 `_extract_finite` (the
   `allow_datetime` switch) and its two format-blind callers at :4666
   `map_histogram`, :4830 `map_kdensity`; the float-cast pairs at :3614
-  `map_area`, :3787 `map`
+  `map_area`, :3787 `map` [WP-29 P0.8, commit cd210ea: closed]
 - **[func · standalone · M]** Stop `colorvar(datevar)` from destroying the
   shared date column. `_apply_colorvar` decides numeric-ness with
   `np.array(raw_col, dtype=float)` inside a try/except; a datetime64 column
@@ -2453,7 +2453,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   satisfy. `off` is a two-line implementation (`axis_obj.visible = False`).
   *Where:* `dash_render.py:805 `_report_unhandled_scale_opts` (extend the
   token list); dash_render.py:9747-9773 (apply `off`); server side has neither
-  (see the auditor's server range item)`
+  (see the auditor's server range item)` [WP-29 P0.5, commit 3208b2b: partly closed; open: `off`, `noline`, `titlegap()`, `lcolor()`/`lwidth()`/`lpattern()` still pass through (DROPIN P1.18)]
 - **[func · both · S]** axis_label sub-options outside the implemented five
   are silently dropped, and `axis(#)` is actively misrouted: `xlabel(1000
   2000, axis(2))` applies the ticks to the PRIMARY x axis instead of the
@@ -2463,7 +2463,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   `notick`, `add`, `custom` and `angle(stacked)` vanish with no report.
   *Where:* `dash_render.py:9305 `_parse_axis_spec` (the sub-option strip
   regex, ~:9344-9350); dash_render.py:904 `_parse_axis_angle`; route `axis(2)`
-  to the secondary-axis code at dash_render.py:9699/:9734 or rep`
+  to the secondary-axis code at dash_render.py:9699/:9734 or rep` [WP-29 P0.5, commit 3208b2b: partly closed; open: `valuelabel`, `alternate`, `notick`, `add`, `custom` and `angle(stacked)` (DROPIN P1.18, P2.20)]
 - **[func · standalone · S]** The `grid` sub-option paints a hardcoded
   `#e5e5e5` instead of the scheme's gridline colour, which the renderer
   already computes as `self.grid_color` and applies everywhere else
@@ -2552,7 +2552,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   *Where:* `test/ (new cscript, e.g. test_hover.cscript, following
   test/test_e2e_single.cscript's shape) and a pytest beside
   test/test_axis_options.py; target symbol dash_parse.mata:537
-  `_dash_extract_vars` keys `
+  `_dash_extract_vars` keys ` [WP-29 P0.10, commit 735c534: closed]
 - **[func · standalone · M]** The secondary-axis range still ignores every
   CDSView-based restriction, so the very defect 09-07 names survives on first
   render in three shapes: (a) a LINKED dashboard's graph-level `if` qualifier,
@@ -3028,7 +3028,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   its initial values when a filter widget moves.     *Where:* `dash_render.py:
   emitted chain at 15604-15640; emitted _compute_* string literals at
   13192-13700; the collapse targets are GlyphMapper.map_* (3407-6065) and its
-  grid helpers (_histogram_grid, _fit_grid`
+  grid helpers (_histogram_grid, _fit_grid` [WP-29 P0.18, commit 2d52fbe: partly closed; open: the emitted atype chain and its hand-written _compute_* functions remain a second implementation covering 14 of 38 plot types; only the bar/rbar redraw widths and an emptied layer's style were fixed]
 - **[func · server · S]** Server facet titles drop Stata VALUE LABELS, not
   merely %fmt/%t* formats. The auditor's facet-label item says the emitted
   builder 'consults value labels only', which implies value labels work; they

@@ -470,8 +470,9 @@ display "QL-14 PASS: each layer draws the rows its own qualifier selects"
 // left, drew rowid 5 to 20; and the second and third drew nothing.  QL-14
 // holds only `if' qualifiers, so it stayed green under that cut, and so
 // did test_server.py's TestImmediateRenderQualifierHandling, which builds
-// its spec by hand.  Each layer's source must carry every observation,
-// 3 x 74.
+// its spec by hand.  Each layer must still draw exactly its own range
+// (asserted below); since WP-29 P0.11 its source carries the union of the
+// rows the layers draw (3 x 52), where it carried every observation.
 quietly levelsof rowid in 3/20, local(w15a)
 local w15a : list retokenize w15a
 quietly levelsof rowid in 41/60, local(w15b)
@@ -496,7 +497,12 @@ assert "$QL_PAGE_NLAYERS" == "3"
 assert "$QL_PAGE_LAYER1" == "`w15a'"
 assert "$QL_PAGE_LAYER2" == "`w15b'"
 assert "$QL_PAGE_LAYER3" == "`w15c'"
-assert "$QL_PAGE_CARRIED" == "`=3 * _N'"
+// Each layer's source carries the rows the graph's layers draw, their
+// union, not every observation (WP-29 P0.11: a page holds a row only if a
+// layer, a card, a filter or csv reads it); it was 3 x _N before.
+quietly count if inrange(_n, 3, 20) | inrange(_n, 41, 60) | _n >= _N - 14
+local n15u = r(N)
+assert "$QL_PAGE_CARRIED" == "`=3 * `n15u''"
 capture erase "`p15'.html"
 capture dash clear
 display "QL-15 PASS: each layer draws the observations its own in range selects, from an export of every observation"

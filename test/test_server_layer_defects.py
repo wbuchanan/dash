@@ -1018,8 +1018,23 @@ class TestTheLegendKeyRule:
     def test_a_data_layer_falls_back_to_the_variable_name(self):
         assert dr._dash_legend_key({"type": "scatter", "yvar": "mpg"}) == "mpg"
 
-    def test_a_univariate_layer_uses_its_var_key(self):
-        assert dr._dash_legend_key({"type": "histogram", "var": "mpg"}) == "mpg"
+    def test_a_univariate_layer_uses_twoways_key(self):
+        """WP-29 P0.3 (flipped): twoway keys a histogram by its y-scale word
+        and a kdensity layer ``kdensity <name>``, by the NAME even when the
+        variable is labelled (HK.svg, KDLAB.svg) -- never by the variable."""
+        assert dr._dash_legend_key({"type": "histogram", "var": "mpg"}) == \
+               "Density"
+        assert dr._dash_legend_key({"type": "histogram", "var": "mpg",
+                                    "options": {"percent": "percent"}}) == \
+               "Percent"
+        assert dr._dash_legend_key({"type": "kdensity", "var": "mpg"},
+                                   {"mpg": "Mileage (mpg)"}) == "kdensity mpg"
+
+    def test_an_empty_label_falls_back_to_the_name(self):
+        """WP-29 P0.3: Stata's exporter writes "" for an unlabelled variable;
+        twoway keys it by its name, never by the plot type."""
+        assert dr._dash_legend_key({"type": "scatter", "yvar": "mpg"},
+                                   {"mpg": ""}) == "mpg"
 
     def test_a_range_layer_uses_its_first_boundary(self):
         assert dr._dash_legend_key({"type": "rbar", "yvar1": "lo"}) == "lo"
@@ -1098,17 +1113,19 @@ class TestTheKpiFormatHelpers:
         assert dr._dash_format_kpi_value(1.0, "%notaformat")
 
     # WP-28 section 11 (GAPS2 E1): the date_formatter parameter is retired;
-    # a date-valued statistic (epoch milliseconds) is written in its
-    # effective %t picture by _dash_fmt_text, as Stata displays it.
-    _MS_02JAN2002 = (15342 - 3653) * 86_400_000.0
+    # a date-valued statistic (its Stata value since WP-29 P0.20) is
+    # written in its effective %t picture by _dash_fmt_text, as Stata
+    # displays it.
 
     def test_a_date_valued_statistic_is_shown_as_a_date(self):
+        # WP-29 P0.20 (section 05): the statistic is the Stata value,
+        # 15342 (02jan2002); it was epoch milliseconds.
         got = dr._dash_format_kpi_value(
-            self._MS_02JAN2002, "%td", "date", "max",
+            15342.0, "%td", "date", "max",
             date_vars={"date": "td"})
         assert got == "02jan2002"
         got = dr._dash_format_kpi_value(
-            self._MS_02JAN2002, "%tdCCYY-NN-DD", "date", "max",
+            15342.0, "%tdCCYY-NN-DD", "date", "max",
             date_vars={"date": "td"})
         assert got == "2002-01-02"
 
@@ -1171,13 +1188,22 @@ class TestTheMaskedIndex:
         idx = dr.GlyphMapper._masked_index(self._src(), None, "x")
         assert list(idx) == [0, 2, 3]
 
-    def test_masked_order_is_the_same_rows_sorted_by_x(self):
-        idx = dr.GlyphMapper._masked_order(self._src(), None, "x", "y")
+    # Flipped (WP-29 P0.1): _masked_order, the drawn rows in x order, is
+    # gone -- twoway joins in the data's order unless sort is given -- and
+    # these two hold _join_order under sort to what it pinned.
+    def test_join_order_under_sort_is_the_same_rows_sorted_by_x(self):
+        src = self._src()
+        idx = dr.GlyphMapper._join_order(
+            src, dr.GlyphMapper._masked_index(src, None, "x", "y"), "x",
+            {"sort": "sort"})
         assert list(idx) == [2, 0]
 
-    def test_the_two_select_the_same_set(self):
-        a = set(dr.GlyphMapper._masked_index(self._src(), None, "x", "y"))
-        b = set(dr.GlyphMapper._masked_order(self._src(), None, "x", "y"))
+    def test_join_order_selects_the_masked_rows(self):
+        src = self._src()
+        a = set(dr.GlyphMapper._masked_index(src, None, "x", "y"))
+        b = set(dr.GlyphMapper._join_order(
+            src, dr.GlyphMapper._masked_index(src, None, "x", "y"), "x",
+            {"sort": "sort"}))
         assert a == b
 
 

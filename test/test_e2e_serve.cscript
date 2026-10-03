@@ -286,16 +286,24 @@ try:
     _p482s.loader.exec_module(_p482m)
     _p482kw = {}
     _p482m.Server = lambda *a, **k: _p482kw.update(k)
+    # WP-29 P0.12a: a key installed, as dash serve's is, so no link file
+    # is made; the Server must carry Gate A, the key's provider.
+    _p482m._DASH_SERVE_TOKEN = "dashTestKey_0123456789abcdefghijklmnopqrstuvwxyz"
     _p482m._dash_server_app(port=5006)
     sfi.Macro.setGlobal("ZSRV_WSO", repr(_p482kw.get("allow_websocket_origin")))
+    sfi.Macro.setGlobal("ZSRV_AUTH", type(_p482kw.get("auth_provider")).__name__)
     del _p482s, _p482m, _p482kw
 except Exception as _p482e:
     sfi.Macro.setGlobal("ZSRV_WSO", "error: " + repr(_p482e))
+    sfi.Macro.setGlobal("ZSRV_AUTH", "error")
 end
 local p482wso `"$ZSRV_WSO"'
-macro drop ZSRV_WSO
+local p482auth `"$ZSRV_AUTH"'
+macro drop ZSRV_WSO ZSRV_AUTH
 display `"P4-82: the launcher hands Server allow_websocket_origin=`p482wso'"'
 assert `"`p482wso'"' == `"['localhost:5006', '127.0.0.1:5006']"'
+display `"P4-82: the launcher hands Server auth_provider of type `p482auth'"'
+assert "`p482auth'" == "_DashTokenAuth"
 display "P4-82 PASS: generated .py contains 'allow_websocket_origin'"
 
 dash clear

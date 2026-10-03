@@ -137,7 +137,10 @@ PLOT_VALUES = {
     "recast": ("line", "area", "scatter"),
     "scale": ("1.5", "0.5", "scatter"),
     "scheme": ("economist", "s1mono", "scatter"),
-    "sort": ("sort", "", "line"),
+    # Flipped (WP-29 P0.1): sort is honoured on line now -- twoway joins a
+    # line in x order under it -- so the inert case is on scatter, where it
+    # is still named and draws nothing.
+    "sort": ("sort", "", "scatter"),
     "start": ("8", "11", "histogram"),
     "subtitle2": ("S2", "SS", "scatter"),
     "t1title": ("t1", "tA", "scatter"),
@@ -540,6 +543,16 @@ LIVE_VALUES = {
     "ylabel": ({}, {}, "scatter", ("ylabel", "10(10)30", "15 25")),
     "ylabel2": ({"yaxis": "2"}, {"yaxis": "2"}, "scatter",
                 ("ylabel2", "15 25", "18 28")),
+    # WP-29 P0.5: dash's own spellings of ytick(..., axis(2)) and
+    # yline(..., axis(2)) (and the x forms), drawn on the second axis.
+    "ytick2": ({"yaxis": "2"}, {"yaxis": "2"}, "scatter",
+               ("ytick2", "15 25", "18 28")),
+    "yline2": ({"yaxis": "2"}, {"yaxis": "2"}, "scatter",
+               ("yline2", "20", "25")),
+    "xtick2": ({"xaxis": "2"}, {"xaxis": "2"}, "scatter",
+               ("xtick2", "2000 3000", "2500 3500")),
+    "xline2": ({"xaxis": "2"}, {"xaxis": "2"}, "scatter",
+               ("xline2", "3000", "3500")),
     "yline": ({}, {}, "scatter", ("yline", "20", "25")),
     "yscale": ({}, {}, "scatter", ("yscale", "log", "reverse")),
     "yscale2": ({"yaxis": "2"}, {"yaxis": "2"}, "scatter",
@@ -589,8 +602,10 @@ class TestEveryDeclaredOptionIsClassified:
         # WP-27).  The `>= 130'/`>= 60' floors let a
         # syntax block shrink by twenty options -- silently un-classifying
         # them -- and still pass.
-        assert len(_declared_plot()) == 165, len(_declared_plot())
-        assert len(_declared_graph()) == 68, len(_declared_graph())
+        # Flipped (WP-29 P0.5): 169 and 72, with ytick2(), xtick2(),
+        # yline2() and xline2() declared in both blocks.
+        assert len(_declared_plot()) == 169, len(_declared_plot())
+        assert len(_declared_graph()) == 72, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):
         """Pending, alias, route, or live -- a declared option with no

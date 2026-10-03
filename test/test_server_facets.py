@@ -509,7 +509,9 @@ class TestAnUnimplementedBySuboptionIsNamed:
         ("foreign, rows(2) compact", ["rows(2)", "compact"]),
         ("foreign, holes(1 3) iscale(*.8)", ["holes(1 3)", "iscale(*.8)"]),
         ("foreign, title(\"By origin\")", ["title(\"By origin\")"]),
-        ("foreign, norescale noixlabel", ["norescale", "noixlabel"]),
+        # Flipped (WP-29 P0.2): norescale is twoway's default and is
+        # honoured, so only noixlabel is named.
+        ("foreign, norescale noixlabel", ["noixlabel"]),
         ("foreign, cols(2) total colfirst", ["colfirst"]),
     ])
     def test_each_unimplemented_sub_option_is_named(self, by_raw, names):

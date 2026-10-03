@@ -700,17 +700,22 @@ _HALF_GAP = 15 * 86400000.0     # a cap or a bar reaches half a gap past
 _RANGE = {"rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
           "rcapsym", "rscatter", "tsrline"}
 _PC = {"pcspike", "pcarrow", "pcbarrow", "pcscatter", "pccapsym"}
-# lpoly and lpolyci draw nothing from these twelve rows as plain numbers
-# too (measured 24sep2026, before and after); every other type that reads
-# a date column is here.
+# WP-29 P0.8 (section 05): every type that reads a date column is here.
+# lpoly and lpolyci were left out because they drew nothing on these twelve
+# 30-day rows, with the default bandwidth and with any bwidth() read in
+# milliseconds; with bwidth(60) read in days (_plot_for) they draw, at the
+# dates on the date axis.  Their default bandwidth on these rows is section
+# 11's to measure, so this pins only the explicit one (A10).
 _COMPUTED = sorted(
     t for t in dr._dash_plot_type_names()
-    if t not in ("scatteri", "pci", "pcarrowi", "function", "lpoly",
-                 "lpolyci"))
+    if t not in ("scatteri", "pci", "pcarrowi", "function"))
 
 
 def _plot_for(ptype, options=None):
     o = dict(options or {})
+    if ptype in ("lpoly", "lpolyci"):
+        # WP-29 P0.8 (section 05): sixty days, read in the date's units.
+        o.setdefault("bwidth", "60")
     if ptype in ("histogram", "kdensity"):
         return {"type": ptype, "var": "date", "options": o}
     if ptype in _RANGE:
@@ -982,16 +987,18 @@ class TestTheDateHelpers:
     def test_a_kpi_sum_of_dates_neither_wraps_nor_names_the_wrong_epoch(
             self):
         """40,000 dates in 9999 sum past int64's 9.2e18; as int64 the sum
-        wrapped silently.  The milliseconds count from 01jan1970."""
+        wrapped silently.  WP-29 P0.20 (section 05): the sum is of the
+        Stata values, days since 01jan1960, as summarize reports it (it
+        was epoch milliseconds since 01jan1970), and still never wraps."""
         col = pd.Series(np.full(40_000, np.datetime64("9999-12-31", "ms")))
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            vals = dr.DashRenderer._kpi_column(None, col, "sum", "date")
+            vals = dr._dash_kpi_column(col, "sum", "date", "td")
         total = dr.DashRenderer._kpi_statistic(vals, "sum")
-        assert total == pytest.approx(40_000 * _MS[4], rel=1e-12)
-        assert any("milliseconds since 01jan1970" in str(w.message)
+        assert total == pytest.approx(40_000 * 2936549.0, rel=1e-12)
+        assert any("days since 01jan1960" in str(w.message)
                    for w in caught)
-        assert dr.DashRenderer._kpi_statistic(vals, "max") == _MS[4]
+        assert dr.DashRenderer._kpi_statistic(vals, "max") == 2936549.0
 
     def test_a_date_that_arrives_as_text_is_held_in_milliseconds(
             self, tmp_path):
@@ -1022,9 +1029,61 @@ class TestTheDateHelpers:
             "const out = {};\n"
             "for (const kind of ['td', 'ty', 'tm', 'tc']) {\n"
             "  const k = {datekind: kind, fmt: '%' + kind};\n"
-            "  const result = -59011459200000;\n"
+            # WP-29 P0.20 (section 05): the statistic reaches the card as
+            # its Stata value, 01jan0100 in each kind; it was epoch ms.
+            "  const result = {td: -679350, ty: 100, tm: -22320,"
+            " tc: -58695840000000}[kind];\n"
             + body +
             "  out[kind] = text;\n}\n"
             "process.stdout.write(JSON.stringify(out));\n")
         assert got == {"td": "01jan0100", "ty": "0100", "tm": "0100m1",
                        "tc": "01jan0100 00:00:00"}
+
+
+# ---------------------------------------------------------------------------
+# WP-29 P0.16: a date colorvar() under a layer's own if
+# ---------------------------------------------------------------------------
+
+def _ms_of(td):
+    """A %td day as the page holds it: epoch milliseconds."""
+    return (td - 3653.0) * 86400000.0
+
+
+class TestADateColorvarUnderALayersIf:
+    """The colour key of a %td colorvar() is drawn from the layer's own
+    rows, in epoch milliseconds, in both modes -- a served frame's date
+    column is datetime64, which the domain reads on the column itself."""
+
+    _PLOT = {"type": "scatter", "yvar": "lo", "xvar": "hi",
+             "options": {"colorvar": "date"}, "if_expr": "lo >= 6"}
+
+    def _root(self, tmp_path, mode, extra=None):
+        plot = dict(self._PLOT,
+                    options=dict(self._PLOT["options"], **(extra or {})))
+        spec = _spec([plot])
+        if mode == "saved":
+            r, _w = _saved(tmp_path, spec, _spread_frame())
+            return r._last_layout_root
+        doc, _w = _served(tmp_path, spec, _spread_frame())
+        return doc
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    def test_the_key_spans_the_layers_dates(self, tmp_path, mode):
+        import colour_bins as cb
+        bars = cb.colour_bars(self._root(tmp_path, mode))
+        assert bars == [(_ms_of(_SPREAD[6]), _ms_of(_SPREAD[11]))]
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    def test_colorlevels_cut_the_layers_dates(self, tmp_path, mode):
+        import colour_bins as cb
+        root = self._root(tmp_path, mode, {"colorlevels": "3"})
+        (rend,) = cb.colour_renderers(root)
+        bounds = sorted({b for lo_hi in cb.interval_bounds(
+            cb.colour_mapper(rend).factors) for b in lo_hi if b is not None})
+        lo, hi = _ms_of(_SPREAD[6]), _ms_of(_SPREAD[11])
+        want = [lo + k * (hi - lo) / 3 for k in (1, 2)]
+        assert len(bounds) == 4
+        # The key writes a date's milliseconds with :g (six digits).
+        for got, w in zip(bounds[1:3], want):
+            assert abs(got - w) <= 5e6, (bounds, want)
+        assert abs(bounds[0] - lo) <= 5e6 and abs(bounds[-1] - hi) <= 5e6

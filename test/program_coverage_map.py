@@ -112,6 +112,11 @@ COVERAGE = {
         # e2e: colorvar() and jitter() named in the note per type.
         "_dash_fold_typed": ("test_help_claims_7.cscript:HC7-02",
                              "test_help_claims_7.cscript:HC7-03"),
+        # e2e: sort() refused, named or silent as twoway, on every type
+        # (WP-29 P0.1).
+        "_dash_sort_opt": ("test_twoway_option_parity.cscript:JO-21",
+                           "test_twoway_option_parity.cscript:JO-22"),
+        "_dash_sort_names": ("test_twoway_option_parity.cscript:JO-21",),
         # e2e: legend(top) and the rest refused, labels accepted.
         "_dash_check_legend": ("test_help_claims_7.cscript:HC7-01",),
         "_dash_shipped_schemes": ("test_custom_scheme.cscript:CS-12",),
@@ -159,7 +164,8 @@ COVERAGE = {
                                "test_program_coverage.cscript:PC-03",
                                "test_program_coverage.cscript:PC-04"),
         "_dash_empty_data": ("test_parser.cscript:P1A-75",
-                             "test_parser.cscript:P1A-72"),
+                             "test_parser.cscript:P1A-72",
+                             "test_wp29_truth.cscript:PF-05"),
         # direct: every string value, label and number reaches both
         # renderers byte for byte; text that is not UTF-8 is read through
         # ustrfix() and noted; a binary strL is refused, naming the
@@ -169,6 +175,15 @@ COVERAGE = {
                              "test_string_values.cscript:SV-06",
                              "test_string_values.cscript:SV-07",
                              "test_string_values.cscript:SV-09"),
+        # WP-29 P0.12b, P0.14 (section 08), direct: the module loader the
+        # private-file programs share; the run folder, its close, the
+        # preview's name and dash clear's pruning.
+        "_dash_xm_load": ("test_wp29_truth.cscript:PF-05",),
+        "_dash_tmp_open": ("test_wp29_truth.cscript:PF-06",),
+        "_dash_tmp_preview": ("test_wp29_truth.cscript:PF-04",),
+        "_dash_tmp_close": ("test_wp29_truth.cscript:PF-06",
+                            "test_serve_launch.cscript:PF-07"),
+        "_dash_tmp_clear": ("test_wp29_truth.cscript:PF-02",),
         # direct: each distinct qualifier's column holds Stata's answer, a
         # reserved name is refused, a qualifier the data no longer answer
         # is refused with Stata's error, nothing is left in the data.
@@ -201,6 +216,10 @@ COVERAGE = {
         "_dash_qual_gen_by": ("test_qualifier_in_stata.cscript:QS-16",
                               "test_qualifier_in_stata.cscript:QS-19",
                               "test_qualifier_in_stata.cscript:QS-21"),
+        # e2e: sort(varlist)'s rank columns, against twoway's serset;
+        # a dropped variable refused, and a __dashs variable (WP-29 P0.1).
+        "_dash_sort_gen": ("test_wp29_truth.cscript:JO-09",
+                           "test_adversarial.cscript:JO-33"),
         "_dash_registry_nodraw": ("test_nodraw_honoured.cscript:ND-05",),
         "_dash_dashboard_browser": ("test_serve_browser.cscript:SB-01",
                                     "test_serve_browser.cscript:SB-03",
@@ -224,10 +243,12 @@ COVERAGE = {
         # an undeclared option not.
         "_dash_refuse_unbound": ("test_adversarial.cscript:P20-18",
                                  "test_adversarial.cscript:P20-18b"),
-        # e2e: a function Stata does not have refused, r(133); what twoway
-        # draws registered, and the random-number state untouched.
-        "_dash_fn_refuse": ("test_parser.cscript:P1A-77",
-                            "test_parser.cscript:P1A-78"),
+        # e2e: each function layer evaluated by twoway__function_gen:
+        # twoway's refusals and codes, its order of checks and its
+        # random-number state (FX-01..FX-06); the stored points equal
+        # twoway's serset (FX-20).
+        "_dash_fn_points": ("test_parser.cscript:FX-01",
+                            "test_wp29_truth.cscript:FX-20"),
         # e2e: each repeated option registered as the command twoway
         # draws the same (SVG compared in the run); a unique one refused.
         "_dash_opts_repeats": ("test_twoway_option_parity.cscript:TP-14",),
@@ -254,8 +275,11 @@ COVERAGE = {
         "_dash_prepare_spec": ("test_json_escaping.cscript:JSE-15",
                                "test_program_coverage.cscript:PC-10",
                                "test_program_coverage.cscript:PC-13"),
+        # e2e: TOK-01, dash build, server names the per-launch key and
+        # writes an app that requires it (WP-29 P0.12a).
         "_dash_build": ("test_render_locate.cscript:LOC-08",
-                        "test_e2e_single.cscript:P1C-18c"),
+                        "test_e2e_single.cscript:P1C-18c",
+                        "test_serve_launch.cscript:TOK-01"),
         "_dash_serve_spec": ("test_serve_launch.cscript:SRV-01",
                              "test_export.cscript:EXP-04",
                              "test_adversarial.cscript:P20-14"),
@@ -267,7 +291,10 @@ COVERAGE = {
         "_dash_serve": ("test_help_claims_4.cscript:HC4-19",
                         "test_serve_browser.cscript:SB-02",
                         "test_serve_launch.cscript:SRV-20",
-                        "test_serve_launch.cscript:SPU-01"),
+                        "test_serve_launch.cscript:SPU-01",
+                        # e2e: TOK-02, a real dash serve refuses without its
+                        # key and serves with it (WP-29 P0.12a).
+                        "test_serve_launch.cscript:TOK-02"),
     },
     "dash_setup.ado": {
         # e2e: every branch this machine can reach, installing nothing.
@@ -275,12 +302,15 @@ COVERAGE = {
                        "test_program_coverage.cscript:PC-16",
                        "test_program_coverage.cscript:PC-19",
                        "test_program_coverage.cscript:PC-23",
-                       "test_setup_honesty.cscript:HON-14"),
+                       "test_setup_honesty.cscript:HON-14",
+                       "test_program_coverage.cscript:PEP-08"),
         "_dash_pymin": ("test_setup_python_gate.cscript",
                         "test_program_coverage.cscript:PC-16"),
         "_dash_pyver_ok": ("test_setup_python_gate.cscript",
                            "test_setup_honesty.cscript:HON-08"),
-        "_dash_pip_command": ("test_setup_python_gate.cscript",),
+        "_dash_pip_command": ("test_setup_python_gate.cscript",
+                              "test_program_coverage.cscript:PC-19",
+                              "test_program_coverage.cscript:PC-21"),
         "_dash_pkg_version": ("test_setup_version_gate.cscript:SVG-02",
                               "test_setup_injection.cscript:INJ-11",
                               "test_program_coverage.cscript:PC-22"),
@@ -293,6 +323,18 @@ COVERAGE = {
         "_dash_setup_check_files": ("test_setup_honesty.cscript:HON-17",
                                     "test_program_coverage.cscript:PC-25",
                                     "test_program_coverage.cscript:PC-26"),
+        # WP-29 P0.19: dash_setup_lib.py's Stata side.
+        "_dash_setup_lib": ("test_program_coverage.cscript:PEP-16",
+                            "test_program_coverage.cscript:PEP-01"),
+        "_dash_setup_detect": ("test_program_coverage.cscript:PEP-04",
+                               "test_program_coverage.cscript:PEP-01"),
+        "_dash_setup_pip": ("test_program_coverage.cscript:PEP-07",
+                            "test_program_coverage.cscript:PEP-06",
+                            "test_program_coverage.cscript:PC-18"),
+        "_dash_setup_guide": ("test_program_coverage.cscript:PEP-01",
+                              "test_program_coverage.cscript:PEP-04"),
+        "_dash_setup_venv": ("test_program_coverage.cscript:PEP-08",
+                             "test_setup_honesty.cscript:PEP-18"),
     },
     "dash_parse.mata": {
         # e2e: through _dash_json_str_args; direct in PC-28.
@@ -355,6 +397,7 @@ COVERAGE = {
         "_dash_imm_decimal": ("test_parser.cscript:P1A-67",),
         "_dash_json_number": ("test_parser.cscript:P1A-67",
                               "test_parser.cscript:P1A-58"),
+        "_dash_json_number17": ("test_parser.cscript:FX-10",),
         "_dash_imm_number": ("test_parser.cscript:P1A-67",),
         "_dash_imm_clock": ("test_parser.cscript:P1A-67",),
         "_dash_imm_echo": ("test_parser.cscript:P1A-67",),
@@ -381,6 +424,8 @@ COVERAGE = {
                            "test_json_escaping.cscript:JSE-13"),
         "_dash_extract_qual_vars": ("test_json_escaping.cscript:JSE-12",
                                     "test_json_escaping.cscript:JSE-30"),
+        "_dash_extract_hover_vars": ("test_adversarial.cscript:HX-20",
+                                     "test_wp29_truth.cscript:HX-01"),
         "_dash_extract_filters": ("test_parser_integrity.cscript:P1B-19",
                                   "test_parser_integrity.cscript:P1B-20"),
         "_dash_is_blank": ("test_program_coverage.cscript:PC-12",
@@ -427,6 +472,11 @@ COVERAGE = {
                              "test_qualifier_in_stata.cscript:QS-20"),
         "_dash_qual_orders": ("test_qualifier_in_stata.cscript:QS-16",
                               "test_qualifier_in_stata.cscript:QS-21"),
+        # e2e: the join-order table each sort(varlist) list is ranked from,
+        # against twoway's serset (WP-29 P0.1).
+        "_dash_sort_reset": ("test_wp29_truth.cscript:JO-01",),
+        "_dash_sort_scan": ("test_wp29_truth.cscript:JO-01",),
+        "_dash_sort_export": ("test_wp29_truth.cscript:JO-01",),
         "_dash_qual_skipws": ("test_qualifier_in_stata.cscript:QS-09",),
         "_dash_qual_rewrite": ("test_qualifier_in_stata.cscript:QS-05",
                                "test_qualifier_in_stata.cscript:QS-09",
@@ -450,7 +500,8 @@ COVERAGE = {
                                     "test_registry_collision.cscript:REG-39"),
         "_dash_kpi_fields": ("test_registry_collision.cscript:REG-26",),
         "_dash_item_globals": ("test_registry_collision.cscript:REG-26",
-                               "test_registry_collision.cscript:REG-20"),
+                               "test_registry_collision.cscript:REG-20",
+                               "test_parser.cscript:FX-08"),
         "_dash_option_names": ("test_parser_integrity.cscript:P1B-24",
                                "test_parser_integrity.cscript:P1B-25"),
         # e2e: a second name() refused, text that looks like one not.
@@ -461,9 +512,15 @@ COVERAGE = {
         "_dash_seg_by": ("test_parser.cscript:P1A-84",),
         "_dash_unbound_cands": ("test_adversarial.cscript:P20-18",
                                 "test_adversarial.cscript:P20-18b"),
-        "_dash_fn_names": ("test_parser.cscript:P1A-77",),
-        # direct: the scanner's verdicts; e2e: twoway's return codes.
-        "_dash_fn_space_call": ("test_parser.cscript:P1A-78",),
+        # direct: the points object, the spec tail and its character check
+        # (FX-10); e2e: a hand-set table skipped with a note (FX-08).
+        "_dash_fn_points_json": ("test_parser.cscript:FX-10",),
+        "_dash_fn_spec_tail": ("test_parser.cscript:FX-10",
+                               "test_parser.cscript:FX-08"),
+        # e2e: y = strlen("'x") refused r(198) as twoway refuses it.
+        "_dash_fn_stray_close": ("test_json_escaping.cscript:JSE-47",),
+        "_dash_fn_points_ok": ("test_parser.cscript:FX-08",
+                               "test_parser.cscript:FX-10"),
         # e2e: TP-14 compares the spec of each repeated option with the
         # spec of the command twoway draws the same; every row runs these.
         "_dash_rep_toks": ("test_twoway_option_parity.cscript:TP-14",),
@@ -490,8 +547,30 @@ COVERAGE = {
         "_dash_rep_und_scan": ("test_twoway_option_parity.cscript:TP-14",),
         "_dash_rep_und_cross": ("test_twoway_option_parity.cscript:TP-14",),
         # WP-28 B3: e2e, the stored spec of a routed and a two-copy title.
-        "_dash_route_axis2": ("test_gaps2_truth.cscript:TBG-03",
+        # WP-29 P0.5: direct, every family's axis(2) rewrite and the forms
+        # left as typed (AX-01).
+        "_dash_route_axis2": ("test_twoway_option_parity.cscript:AX-01",
+                              "test_wp29_truth.cscript:AX-11",
+                              "test_gaps2_truth.cscript:TBG-03",
                               "test_gaps2_truth.cscript:TBG-02"),
+        # WP-29 P0.5: the route's and the axis check's own helpers -- the
+        # family table, one axis option read, the word after a second comma.
+        "_dash_ax_parse": ("test_twoway_option_parity.cscript:AX-01",
+                           "test_twoway_option_parity.cscript:AX-03"),
+        "_dash_ax_word": ("test_twoway_option_parity.cscript:AX-05",),
+        "_dash_axfam": ("test_twoway_option_parity.cscript:AX-01",
+                        "test_twoway_option_parity.cscript:AX-04"),
+        # WP-29 P0.5: direct, twoway's axis number rule.
+        "_dash_axis_num": ("test_twoway_option_parity.cscript:AX-02",),
+        # WP-29 P0.5: e2e, twoway's refusals and their order; the record
+        # emptied after 10,000 copies (AX-08).
+        "_dash_axreq_add": ("test_twoway_option_parity.cscript:AX-03",
+                            "test_twoway_option_parity.cscript:AX-04"),
+        "_dash_axreq_check": ("test_twoway_option_parity.cscript:AX-03",
+                              "test_twoway_option_parity.cscript:AX-04"),
+        "_dash_axreq_clear": ("test_twoway_option_parity.cscript:AX-03",
+                              "test_twoway_option_parity.cscript:AX-04",
+                              "test_twoway_option_parity.cscript:AX-08"),
         # direct and e2e: TP-15 calls each on its own, and holds dash's
         # answer to log, an upper-case option, a plot option after the
         # comma and two kernels to twoway's, asked in the run.
@@ -502,6 +581,10 @@ COVERAGE = {
         # direct and e2e: TP-16 calls it on its own, and holds the kernel a
         # flag registers to twoway's serset of kernel(<name>), in the run.
         "_dash_kernel_flag": ("test_twoway_option_parity.cscript:TP-16",),
+        # WP-29 P0.9: lpolyci's pwidth() and var(), and their helpers.
+        "_dash_lpo_isint": ("test_statistical_options.cscript:LB-18",),
+        "_dash_lpo_onenum": ("test_statistical_options.cscript:LB-14",),
+        "_dash_lpolyci_opts": ("test_statistical_options.cscript:LB-11",),
         "_dash_spec_types_in": ("test_parser.cscript:P1A-75",
                                 "test_parser.cscript:P1A-74"),
         # GAPS2 G3 (WP-28 section 08): e2e through _dash_prepare_spec and

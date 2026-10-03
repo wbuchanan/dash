@@ -207,6 +207,89 @@ class TestTheCount:
         assert row_cols2 == ["fv"]
 
 
+    # -- WP-29 P0.10: hover()'s own variables (review A1) ------------------
+
+    def test_a_hover_only_variable_counts_on_a_graph_that_shows_it(self):
+        """A variable named only in hover() is embedded, so a scatter
+        that can show it counts it (base: ``(['y', 'x'], 0)``)."""
+        spec = _master([_graph("g1", [_plot("scatter", yvar="y", xvar="x")],
+                               {"hover": "z"})])
+        assert dr._dash_embedded_cells(spec, 100, ["x", "y", "z"],
+                                       _LIMITS) == (["y", "x", "z"], 0)
+
+    def test_a_hover_variable_on_a_mixed_graph_counts(self):
+        spec = _master([_graph(
+            "g1", [_plot("scatter", yvar="y", xvar="x"),
+                   _plot("lfit", yvar="y", xvar="x")], {"hover": "z"})])
+        row_cols, _extra = dr._dash_embedded_cells(
+            spec, 100, ["x", "y", "z"], _LIMITS)
+        assert row_cols == ["y", "x", "z"]
+
+    def test_a_hover_variable_on_a_computed_only_graph_does_not_count(self):
+        """A1: no layer of a lone histogram can show hover()'s variable."""
+        spec = _master([_graph("g1", [_plot("histogram", var="x")],
+                               {"hover": "z"})])
+        assert dr._dash_embedded_cells(spec, 100, ["x", "z"],
+                                       _LIMITS) == (["x"], 0)
+
+    def test_a_hover_variable_on_a_literal_only_graph_does_not_count(self):
+        for ptype in ("scatteri", "function"):
+            spec = _master([_graph("g1", [_plot(ptype)], {"hover": "z"})])
+            assert dr._dash_embedded_cells(spec, 100, ["z"],
+                                           _LIMITS) == ([], 0), ptype
+
+    def test_a_hover_name_not_in_the_columns_is_not_counted(self):
+        spec = _master([_graph("g1", [_plot("scatter", yvar="y", xvar="x")],
+                               {"hover": "nosuch"})])
+        row_cols, _extra = dr._dash_embedded_cells(
+            spec, 100, ["x", "y"], _LIMITS)
+        assert "nosuch" not in row_cols
+
+    def test_csv_counts_a_hover_variable_whatever_the_graph(self):
+        spec = _master([_graph("g1", [_plot("histogram", var="x")],
+                               {"hover": "z"})], csv=True)
+        row_cols, _extra = dr._dash_embedded_cells(
+            spec, 100, ["x", "y", "z"], _LIMITS)
+        assert sorted(row_cols) == ["x", "y", "z"]
+
+
+class TestTheHoverColumns:
+    """WP-29 P0.10 (review A1): which graphs can show hover()'s
+    variables, and which names only an unshowing hover() gives."""
+
+    def test_which_graphs_can_show_hover(self):
+        def g(*types):
+            return _graph("g1", [_plot(t) for t in types])
+        assert dr._dash_hover_shown(g("scatter")) is True
+        assert dr._dash_hover_shown(g("histogram")) is False
+        assert dr._dash_hover_shown(g("scatteri")) is False
+        assert dr._dash_hover_shown(g("function")) is False
+        assert dr._dash_hover_shown(g("scatter", "lfit")) is True
+        assert dr._dash_hover_shown(g("lfit", "kdensity")) is False
+        assert dr._dash_hover_shown(g()) is True
+        # Exact match, as Mata's _dash_spec_types_in matches it.
+        assert dr._dash_hover_shown(
+            _graph("g1", [{"type": "Histogram"}])) is True
+
+    def test_the_names_only_an_unshowing_hover_gives(self):
+        def hist(name="g1", hover="make", var="price"):
+            return _graph(name, [_plot("histogram", var=var)],
+                          {"hover": hover})
+        un = dr._dash_hover_unembedded
+        assert un(_master([hist()])) == {"make"}
+        assert un(_master([hist()], csv=True)) == set()
+        assert un(_master([hist()], kpis=[_kpi("k1", "make")])) == set()
+        assert un(_master([hist(), _graph(
+            "g2", [_plot("scatter", yvar="mpg", xvar="weight")],
+            {"hover": "make"})])) == set()
+        assert un(_master([hist()],
+                          filter="make, type(dropdown)")) == set()
+        assert un(_master([hist(hover="price")])) == set()
+        assert un(_master([_graph(
+            "g1", [_plot("scatter", yvar="mpg", xvar="weight")],
+            {"hover": "make"})])) == set()
+
+
 class TestTheRefusalAndTheNote:
 
     def test_the_message_names_the_computed_values(self):
@@ -307,6 +390,31 @@ class TestTheTwoLanguagesAgree:
             r"_dash_computed_plot_cells\(\)\s*\{\s*return\((\d+)\)", mata)
         assert m is not None, "_dash_computed_plot_cells() not found"
         assert int(m.group(1)) == dr._DASH_COMPUTED_PLOT_CELLS
+
+    def test_the_types_hover_cannot_reach_agree(self):
+        """WP-29 P0.10 (review A1): the types whose layers cannot show a
+        hover() variable are one rule -- dash.ado's _pt_univar, _pt_onefit
+        and _pt_literal (read by _dash_spec_types_in on both routes), the
+        renderer's _DASH_COMPUTED_ONLY_TYPES | _DASH_LITERAL_TYPES
+        (_dash_hover_shown), and _dash_note_hover_unreached's literal
+        tables."""
+        import inspect
+        import re
+        with open(os.path.join(_ROOT, "dash.ado"), encoding="utf-8") as fh:
+            ado = fh.read()
+        words = set()
+        for fam in ("_pt_univar", "_pt_onefit", "_pt_literal"):
+            m = re.search(r'c_local ' + fam + r'\s+"([^"]*)"', ado)
+            assert m is not None, fam
+            words |= set(m.group(1).split())
+        python = dr._DASH_COMPUTED_ONLY_TYPES | dr._DASH_LITERAL_TYPES
+        assert words == set(python)
+        src = inspect.getsource(dr._dash_note_hover_unreached)
+        start = src.index("computed = frozenset({")
+        lit = src.index("literal = frozenset({", start)
+        end = src.index("})", lit)
+        note = set(re.findall(r'"([a-z]+)"', src[start:end]))
+        assert note == words
 
     def test_the_constant_bounds_every_computed_layer(self):
         """Re-derives the bound from dash.ado's own option caps

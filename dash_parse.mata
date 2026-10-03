@@ -77,20 +77,27 @@
 *!       takes (gau is gaussian, ep and epan epanechnikov); any other
 *!       word as given, for the kernel rule to refuse.
 *!
-*!   _dash_fn_names(expr, cap)
-*!       The names a function expression calls -- each name written
-*!       directly before a `(' outside quotes, once, at most cap -- for
-*!       dash.ado to ask Stata whether each is a function.
+*!   _dash_fn_points_json(yvar, n, x0, dx)
+*!       A function layer's points as the JSON object
+*!       {"x0":..,"dx":..,"y":[..]}: x0 and dx the generator's r(min) and
+*!       r(delta), y the first n values of yvar, each %24.17g, a missing
+*!       value null.
 *!
 *!   _dash_unbound_cands(raw, cap)
 *!       The options of a parser's catch-all whose value -syntax- may not
 *!       have bound, into the caller's locals _ru_n, _ru_tok<i>, _ru_nm<i>
 *!       and _ru_rc<i> (twoway's code for each, r(109) or r(198)).
 *!
-*!   _dash_fn_space_call(expr)
-*!       The first operand of a function expression written with blanks
-*!       before a `(' -- "N <pos> <name>", "T <pos> <name>" (tabs alone)
-*!       or "O <pos>" -- or "", for dash.ado to refuse as twoway does.
+*!   _dash_fn_stray_close(s)
+*!       1 when s holds a compound-quote close "' with no open before it,
+*!       which twoway's parse refuses in a function expression, r(198).
+*!
+*!   _dash_fn_spec_tail(path, names, sc)
+*!       Closes the spec file at path, whose last "}" was left off, with
+*!       ,"function_points":{..}} -- the string scalar sc's points as the
+*!       one-line graph's, or each named graph's $dash_fpts_<name> -- or a
+*!       bare "}" when there are none; points that are not dash's are
+*!       skipped with a note.
 *!
 *!   _dash_rep_scan(opts, unk, cap)
 *!       Whether an option list may give an option twice, and its distinct
@@ -135,6 +142,12 @@
 *!       lpoly, lpolyci or kdensity, read as kernel(<name>): the full
 *!       name into the caller's local _kf_name, unk less it into _kf_rest.
 *!
+*!   _dash_lpolyci_opts(unk, ptype)
+*!       lpolyci's pwidth() and var() taken out of the catch-all by value,
+*!       and twoway's checks on them and on level(), in twoway's order:
+*!       the caller's locals _lpo_pwidth, _lpo_var, _lpo_rest, _lpo_rc,
+*!       _lpo_msg (WP-29 P0.9).  Helpers _dash_lpo_onenum, _dash_lpo_isint.
+*!
 *!   _dash_rep_merge_locals(key, m1, m2, out)
 *!       Two copies of option key, the caller's locals m1 then m2, merged
 *!       as twoway merges them, into the caller's local out.
@@ -157,6 +170,11 @@
 *!   _dash_extract_vars(json_str, out_macro)
 *!       The variables the plots of a spec name, blank-separated, into
 *!       out_macro.
+*!
+*!   _dash_extract_hover_vars(json_str, out_macro, bad_macro, why_macro)
+*!       The variables a graph's hover() names, each once and checked, into
+*!       out_macro; the first word that is not one into bad_macro, with
+*!       why_macro "name" or "var" (WP-29 P0.10).
 *!
 *!   _dash_extract_qual_vars(json_str, out_macro)
 *!       The names a spec's "by" and "if_expr" hold, each once, into
@@ -185,6 +203,16 @@
 *!       The distinct by() orders of that table, into the caller's locals
 *!       _dq_nord and _dq_ord_j.
 *!
+*!   _dash_sort_reset()
+*!       Empty the join-order table (sort(varlist)'s rank columns).
+*!
+*!   _dash_sort_scan(json)
+*!       Every "sortvars" value of json into that table, once each; the
+*!       caller's _ds_bad set to the first value that is not names.
+*!
+*!   _dash_sort_export()
+*!       The table into the caller's locals _ds_n and _ds_v<k>.
+*!
 *!   _dash_extract_filters(filter_out, cmd_out)
 *!       Every filter() in the caller's `0': the groups, joined with
 *!       " || ", into the local filter_out, and `0' without them into
@@ -207,8 +235,9 @@
 *!
 *!   _dash_item_globals(name, out_macro)
 *!       The globals one registry item owns that Stata holds, by exact name:
-*!       dash_json_<name>, dash_spec_<name>, dash_kpi_<name> and
-*!       dash_kpi_<name>__<field> for each field _dash_kpi_fields() lists.
+*!       dash_json_<name>, dash_spec_<name>, dash_fpts_<name>,
+*!       dash_kpi_<name> and dash_kpi_<name>__<field> for each field
+*!       _dash_kpi_fields() lists.
 *!
 *!   _dash_option_names(in_macro, out_macro)
 *!       The option names in the option text held by the local in_macro,
@@ -243,15 +272,35 @@
 *!       blank-separated (GAPS2 G3).
 *!
 *!   _dash_route_axis2(opts)
-*!       opts with ytitle(..., axis(2))/xtitle(..., axis(2)) rewritten as
-*!       ytitle2()/xtitle2() and an axis(1) word dropped (WP-28 B3).
+*!       opts with each x/y title, label, tick, line and scale option's
+*!       axis(2) rewritten as ytitle2()/ylabel2()/ytick2()/yline2()/
+*!       yscale2() (x too), an axis(1) word dropped and twoway's plurals
+*!       renamed; every form twoway refuses is left as typed (WP-28 B3,
+*!       WP-29 P0.5).  _dash_axfam(), _dash_ax_parse(), _dash_ax_word()
+*!       and _dash_axis_num() (the axis number axis(arg) names, as twoway
+*!       reads it: a whole number within -2147483648..2147483647, else 1)
+*!       are its internal helpers, shared with _dash_axreq_add.
+*!
+*!   _dash_axreq_clear()
+*!       Empties the external _dash_axreq, the axis options recorded for
+*!       the command being parsed (WP-29 P0.5).
+*!
+*!   _dash_axreq_add(opts, seg)
+*!       Records each axis option of the raw option text opts of plot
+*!       segment seg (the options after the comma are segment n_segs+1).
+*!
+*!   _dash_axreq_check(ys, xs)
+*!       Refuses, r(198) with twoway's message and in twoway's order, the
+*!       first recorded axis option twoway refuses -- a second comma, an
+*!       axis no layer uses (ys, xs: the layers' axes), an axis word in
+*!       capitals or given twice -- and clears the record; 0 otherwise.
 *!
 *!   _dash_axis_pieces(s)
 *!       An axis-label option's value split into strings, bare runs and
 *!       its sub-option tail, into the caller's locals _ap_n, _ap_tag<i>
 *!       and _ap_txt<i> (WP-28 S14, GAPS2 B1).
 *!
-*! Version: 0.1.0  30sep2026
+*! Version: 0.1.0  02oct2026
 
 // ============================================================
 // Compile into memory
@@ -1426,6 +1475,38 @@ string scalar _dash_json_number(real scalar v)
     return(s)
 }
 
+// _dash_json_number17(v) -- each value of v as a JSON number that reads
+// back to the same double, or null for a missing value (WP-29 P0.6).
+//
+// A function layer's points are drawn as Stata computed them, so every
+// digit must survive the trip.  %21.0g does not: in exponent form it keeps
+// 15 digits, and 3.3333333333333e-301, -6.66666666666667e-08 and
+// -1.46666666666667e+70 read back as other doubles (measured, section 04
+// E7).  %24.17g reads back exactly.  It writes .5 and -.5, which JSON does
+// not allow, so the zero is put back; 0 is 0 however it was signed; . and
+// .a-.z are null (twoway draws a missing value as a gap).
+string colvector _dash_json_number17(real colvector v)
+{
+    string colvector s
+    real scalar      i
+
+    s = J(rows(v), 1, "")
+    for (i = 1; i <= rows(v); i++) {
+        if (v[i] >= .) {
+            s[i] = "null"
+            continue
+        }
+        if (v[i] == 0) {
+            s[i] = "0"
+            continue
+        }
+        s[i] = strtrim(strofreal(v[i], "%24.17g"))
+        if (substr(s[i], 1, 1) == ".")       s[i] = "0" + s[i]
+        else if (substr(s[i], 1, 2) == "-.") s[i] = "-0" + substr(s[i], 2, .)
+    }
+    return(s)
+}
+
 // One coordinate, as twoway reads it -- numlist with missingok, then
 // stored as a float: a JSON number; "null" for a missing value (. or .a to
 // .z, a number past a double's range, or one past a float's); or "" when it
@@ -2188,6 +2269,64 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
     }
 
     st_local(out_macro, strtrim(varlist))
+}
+
+
+// ============================================================
+// 6a. hover() VARIABLE EXTRACTOR (WP-29 P0.10; used by
+//     _dash_prepare_spec and _dash_render_immediate)
+//     _dash_extract_hover_vars(json_str, out_macro, bad_macro, why_macro)
+//
+// The variables a graph's hover() names, each once, in the order first
+// written, blank-separated, into the caller's local out_macro.  hover()
+// is read the way _dash_graph_touched reads it -- _dash_json_get_str: the
+// first "hover":" key, its escapes decoded; a title holding that text
+// carries its quotes escaped and never matches -- and split as the
+// renderer splits it (_dash_blank_words).  Each word must be a Stata name
+// (_dash_is_varname) and the exact name of a variable in memory
+// (_st_varindex with no abbreviation: dash.ado stored the full names at
+// registration, OV-110).  The first word that is not stops the read:
+// bad_macro gets it, at most 80 characters (the first 77 and "..."),
+// why_macro "name" (not a Stata name) or "var" (no such variable), and
+// out_macro stays empty.  No word is ever run as code.
+// _dash_extract_vars is not used: it reads a raw value as ONE name and
+// decodes and checks nothing.
+// ============================================================
+void _dash_extract_hover_vars(string scalar json_str,
+                              string scalar out_macro,
+                              string scalar bad_macro,
+                              string scalar why_macro)
+{
+    string rowvector words
+    string scalar    w, out
+    real scalar      i
+    transmorphic     seen
+
+    st_local(out_macro, "")
+    st_local(bad_macro, "")
+    st_local(why_macro, "")
+    _dash_json_get_str(json_str, "hover", "_dehv_raw")
+    words = _dash_blank_words(st_local("_dehv_raw"))
+    st_local("_dehv_raw", "")
+    seen = asarray_create()
+    out  = ""
+    for (i = 1; i <= cols(words); i++) {
+        w = words[i]
+        if (asarray_contains(seen, w)) continue
+        if (!_dash_is_varname(w)) {
+            st_local(bad_macro, ustrlen(w) > 80 ? usubstr(w, 1, 77) + "..." : w)
+            st_local(why_macro, "name")
+            return
+        }
+        if (_st_varindex(w, 0) >= .) {
+            st_local(bad_macro, w)
+            st_local(why_macro, "var")
+            return
+        }
+        asarray(seen, w, 1)
+        out = out + (out == "" ? "" : " ") + w
+    }
+    st_local(out_macro, out)
 }
 
 
@@ -3156,6 +3295,77 @@ void _dash_qual_orders()
 }
 
 
+// ------------------------------------------------------------
+// The join-order table (WP-29 P0.1).  Each distinct "sortvars" value a
+// dashboard's plots carry -- the names _dash_sort_opt took from
+// sort(varlist) on a joining type -- gets one rank column __dashs<k>,
+// made in Stata by _dash_sort_gen.  The values are read back from the
+// registry's JSON, which a do-file can set by hand, so every token is
+// checked to be a name again before any reaches a sort command.
+// ------------------------------------------------------------
+
+// _dash_sort_reset() -- empty the table.
+void _dash_sort_reset()
+{
+    external string colvector _dash_sort_list
+
+    _dash_sort_list = J(0, 1, "")
+}
+
+// _dash_sort_scan(json) -- add every "sortvars" value of json to the
+// table, each once, in the order first met (read as _dash_qual_cols_in
+// reads its keys: the value up to the next double quote).  Sets the
+// caller's local _ds_bad to the first value holding a token that is not a
+// Stata name, and leaves it alone otherwise.
+void _dash_sort_scan(string scalar json)
+{
+    external string colvector _dash_sort_list
+    string scalar    needle, tail, val
+    string rowvector t
+    real scalar      pos, vstart, vend, i, ok
+
+    if (rows(_dash_sort_list) == 0 & cols(_dash_sort_list) == 0) {
+        _dash_sort_list = J(0, 1, "")
+    }
+    needle = char(34) + "sortvars" + char(34) + ":" + char(34)
+    tail   = json
+    pos    = strpos(tail, needle)
+    while (pos) {
+        vstart = pos + strlen(needle)
+        vend   = strpos(substr(tail, vstart, .), char(34))
+        if (!vend) break
+        val = substr(tail, vstart, vend - 1)
+        t   = tokens(val)
+        ok  = (cols(t) > 0 & val == invtokens(t))
+        for (i = 1; i <= cols(t) & ok; i++) ok = st_isname(t[i])
+        if (!ok) {
+            if (st_local("_ds_bad") == "") st_local("_ds_bad", val)
+        }
+        else if (!anyof(_dash_sort_list, val)) {
+            _dash_sort_list = _dash_sort_list \ val
+        }
+        tail = substr(tail, vstart + vend, .)
+        pos  = strpos(tail, needle)
+    }
+}
+
+// _dash_sort_export() -- the table into the caller's locals: _ds_n, and
+// _ds_v<k>, the names of column __dashs<k>.
+void _dash_sort_export()
+{
+    external string colvector _dash_sort_list
+    real scalar k
+
+    if (rows(_dash_sort_list) == 0 & cols(_dash_sort_list) == 0) {
+        _dash_sort_list = J(0, 1, "")
+    }
+    st_local("_ds_n", strofreal(rows(_dash_sort_list)))
+    for (k = 1; k <= rows(_dash_sort_list); k++) {
+        st_local("_ds_v" + strofreal(k), _dash_sort_list[k])
+    }
+}
+
+
 // ============================================================
 // 7.  FILTER EXTRACTION
 //     _dash_extract_filters(filter_out, cmd_out)
@@ -3813,9 +4023,11 @@ string rowvector _dash_kpi_fields()
 // as the KPI, so the graph the user just registered would vanish.
 //
 // An item's globals are these EXACT names and no others: a graph's
-// dash_json_<name> and dash_spec_<name>, and a KPI's marker dash_kpi_<name>
-// and its fields dash_kpi_<name>__<field> (_dash_kpi_fields).  Only the
-// ones Stata holds are returned; an empty field is no global at all.
+// dash_json_<name> and dash_spec_<name>, a function graph's points
+// dash_fpts_<name> (WP-29 P0.6: replacing or dropping the graph drops its
+// points with it), and a KPI's marker dash_kpi_<name> and its fields
+// dash_kpi_<name>__<field> (_dash_kpi_fields).  Only the ones Stata holds
+// are returned; an empty field is no global at all.
 //
 // No prefix is safe.  `macro drop dash_kpi_g1*' also takes g10's globals,
 // and g1 and g10 may be registered at once.  This matched dash_kpi_<name>_*
@@ -3842,7 +4054,8 @@ void _dash_item_globals(string scalar nm, string scalar out_macro)
     real scalar      i, j
 
     fld = _dash_kpi_fields()
-    own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_kpi_" + nm)
+    own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_fpts_" + nm,
+           "dash_kpi_" + nm)
     for (j = 1; j <= length(fld); j++) {
         own = own, "dash_kpi_" + nm + "__" + fld[j]
     }
@@ -3941,57 +4154,124 @@ string scalar _dash_seg_by(string scalar seg)
     return(out)
 }
 
-// _dash_fn_names(expr, cap) -- the names a function expression calls.
-//
-// Every name written directly before a `(' -- as Stata reads a function
-// call, with no space between -- outside double and compound quotes, and
-// not the tail of a number or of another name, each once, at most cap of
-// them, space-separated.  dash.ado asks Stata whether each is a function
-// (_dash_fn_refuse); twoway refuses an expression calling one Stata does
-// not have, "error in expression", r(133).  Every name returned is a Stata
-// name of at most 32 characters, so it may be put on a command line.
-// Linear in the length of expr.
-string scalar _dash_fn_names(string scalar expr, real scalar cap)
+// _dash_fn_points_json(yvar, n, x0, dx) -- a function layer's points, as
+// twoway__function_gen made them, as one JSON object (WP-29 P0.6):
+// {"x0":<x0>,"dx":<dx>,"y":[<y1>,...,<yn>]}.  x0 and dx are the
+// generator's r(min) and r(delta), so x is x0 + dx*(i-1) exactly as the
+// generator built it (the renderers rebuild it so, bit for bit; section 04
+// E7); y is the first n values of yvar in the generator's order, missing
+// as null.  Every number is _dash_json_number17's, so the object holds no
+// character but digits, . + - e E, the letters of null, x0, dx and y, and
+// " : , { } [ ] -- _dash_fn_spec_tail checks exactly that.
+string scalar _dash_fn_points_json(string scalar yvar, real scalar n,
+                                   real scalar x0, real scalar dx)
 {
-    string scalar out, nm, prev
-    real scalar   i, j, n, k, in_dq, in_cq, nxt, c
+    string scalar q
+    string colvector y
 
-    n     = strlen(expr)
-    out   = " "
-    k     = 0
-    in_dq = 0
-    in_cq = 0
-    i     = 1
-    while (i <= n & k < cap) {
-        nxt = _dash_quote_step(expr, n, i, in_dq, in_cq)
-        if (nxt) {
-            i = nxt
-            continue
+    q = char(34)
+    y = _dash_json_number17(st_data((1, n), yvar))
+    return("{" + q + "x0" + q + ":" + _dash_json_number17(x0) + "," +
+           q + "dx" + q + ":" + _dash_json_number17(dx) + "," +
+           q + "y" + q + ":[" + invtokens(y', ",") + "]}")
+}
+
+// _dash_fn_stray_close(s) -- 1 when s holds a compound-quote close "'
+// with no compound open `" before it (counted as a depth), else 0.  twoway's
+// parse of its own command line refuses such a function expression, r(198)
+// -- y = strlen("'x") -- before twoway__function_gen sees it, and the
+// generator alone would take it (WP-29 P0.6, measured); dash refuses it at
+// the same point.
+real scalar _dash_fn_stray_close(string scalar s)
+{
+    real scalar i, n, depth
+    string scalar two
+
+    n = strlen(s)
+    depth = 0
+    for (i = 1; i < n; i++) {
+        two = substr(s, i, 2)
+        if (two == char(96) + char(34)) {
+            depth++
+            i++
         }
-        c = ascii(substr(expr, i, 1))
-        if ((c >= 65 & c <= 90) | (c >= 97 & c <= 122) | c == 95) {
-            prev = (i > 1 ? substr(expr, i - 1, 1) : " ")
-            j = i
-            while (j <= n) {
-                c = ascii(substr(expr, j, 1))
-                if (!((c >= 65 & c <= 90) | (c >= 97 & c <= 122) |
-                      (c >= 48 & c <= 57) | c == 95)) break
-                j++
-            }
-            nm = substr(expr, i, j - i)
-            if (j <= n & substr(expr, j, 1) == "(" & strlen(nm) <= 32 &
-                !(prev == "." | (ascii(prev) >= 48 & ascii(prev) <= 57))) {
-                if (!strpos(out, " " + nm + " ")) {
-                    out = out + nm + " "
-                    k++
-                }
-            }
-            i = j
-            continue
+        else if (two == char(34) + char(39)) {
+            if (depth == 0) return(1)
+            depth--
+            i++
         }
-        i++
     }
-    return(strtrim(out))
+    return(0)
+}
+
+// _dash_fn_points_ok(txt) -- 1 when txt is a points table dash wrote: it
+// begins with {, ends with }, and every byte is one of 0-9 . + - e E n u l
+// x d y " : , { } [ ] (an ascii() lookup).  A global the user set by hand
+// to anything else -- }],"graphs":[ among them -- cannot reach the spec.
+real scalar _dash_fn_points_ok(string scalar txt)
+{
+    real rowvector ok, b
+    string scalar  allowed
+
+    if (strlen(txt) < 2) return(0)
+    if (substr(txt, 1, 1) != "{" | substr(txt, strlen(txt), 1) != "}") return(0)
+    allowed = "0123456789.+-eEnulxdy" + char(34) + ":,{}[]"
+    ok = J(1, 256, 0)
+    b  = ascii(allowed)
+    ok[b :+ 1] = J(1, cols(b), 1)
+    b = ascii(txt)
+    return(all(ok[b :+ 1]))
+}
+
+// _dash_fn_spec_tail(path, names, sc) -- close the spec file at path with
+// the function points beside the graphs (WP-29 P0.6).
+//
+// The writers leave the spec's last } off and call this after closing the
+// file, so the points -- up to c(macrolen) characters a graph -- never
+// travel through a macro concatenation (a local past c(macrolen) is an
+// uncapturable r(920), and st_global() past it truncates in silence;
+// section 04 E6).  With sc != "", the string scalar sc holds the one-line
+// graph's table and is the single entry, keyed "" (the graph has no name).
+// Otherwise there is one entry "<name>":$dash_fpts_<name> for each word of
+// names whose global is not empty.  An entry that is not dash's
+// (_dash_fn_points_ok) is skipped with a note; the renderers then draw that
+// layer from its expression.  Appends ,"function_points":{<entries>}} or,
+// with no entry, the bare }.
+void _dash_fn_spec_tail(string scalar path, string scalar names,
+                        string scalar sc)
+{
+    string rowvector nm
+    string scalar    q, out, txt
+    real scalar      i, fh
+
+    q   = char(34)
+    out = ""
+    if (sc != "") {
+        txt = st_strscalar(sc)
+        // An empty table is a graph with no function layer: nothing to
+        // write and nothing to say (it noted every one-line saving()).
+        if (txt == "") {}
+        else if (_dash_fn_points_ok(txt)) out = q + q + ":" + txt
+        else _dash_say("txt", "dash: the function points stored for graph '",
+                       "", "' are not dash's; that layer is drawn from its expression.")
+    }
+    else {
+        nm = tokens(names)
+        for (i = 1; i <= cols(nm); i++) {
+            txt = st_global("dash_fpts_" + nm[i])
+            if (txt == "") continue
+            if (!_dash_fn_points_ok(txt)) {
+                _dash_say("txt", "dash: the function points stored for graph '",
+                          nm[i], "' are not dash's; that layer is drawn from its expression.")
+                continue
+            }
+            out = out + (out == "" ? "" : ",") + q + nm[i] + q + ":" + txt
+        }
+    }
+    fh = fopen(path, "a")
+    if (out == "") fwrite(fh, "}")
+    else fwrite(fh, "," + q + "function_points" + q + ":{" + out + "}}")
+    fclose(fh)
 }
 
 // _dash_unbound_cands(raw, cap) -- the options of a parser's catch-all whose
@@ -4307,7 +4587,13 @@ void _dash_rep_scan(string scalar opts, real scalar unk, real scalar cap)
             }
         }
         if (k) {
-            last[k] = toks[i]
+            // twoway reads sort(varlist) as the rightmost copy that is not
+            // empty (_parse combop ..., rightmost skips an empty one:
+            // sort(zz) sort() and sort() sort(zz) both sort on zz,
+            // measured, WP-29 P0.1 M4), so an empty sort() does not
+            // displace a copy with names as the word the parser reads.
+            if (!(nm == "sort(" & strtrim(_dash_rep_value(toks[i])) == "" &
+                  strtrim(_dash_rep_value(last[k])) != "")) last[k] = toks[i]
             go = 1
             continue
         }
@@ -4385,11 +4671,12 @@ string scalar _dash_rep_cat(string scalar key)
                "b2title", "l1title", "l2title", "r1title", "r2title",
                "title2", "subtitle2", "ztitle"), k)) return("T")
     if (anyof(("xlabel", "ylabel", "xlabel2", "ylabel2", "xtick", "ytick",
-               "xmtick", "ymtick", "xmlabel", "ymlabel", "zlabel"), k)) return("L")
+               "xtick2", "ytick2", "xmtick", "ymtick", "xmlabel", "ymlabel",
+               "zlabel"), k)) return("L")
     if (anyof(("legend", "graphregion", "plotregion"), k)) return("I")
     if (anyof(("xscale", "yscale", "xscale2", "yscale2", "zscale"), k)) return("S")
     if (k == "by") return("B")
-    if (k == "xline" | k == "yline") return("X")
+    if (anyof(("xline", "yline", "xline2", "yline2"), k)) return("X")
     if (k == "text") return("A")
     return("R")
 }
@@ -4862,6 +5149,165 @@ void _dash_kernel_flag(string scalar unk, string scalar ptype)
     st_local("_kf_rest", rest)
 }
 
+// _dash_lpolyci_opts(unk, ptype) -- lpolyci's pwidth(#) and var(#) (WP-29
+// P0.9), read from the catch-all unk by value, and the checks twoway makes
+// on them and on level(), in twoway's order (measured 01oct2026, StataNow
+// 19.5, `twoway lpolyci mpg weight, <opts> nodraw'):
+//   1. var() not one number: r(7) "'<tok>' found where number expected",
+//      or "'<2nd tok>' found where nothing expected";
+//   2. level() not one number (s(level)): r(7), the same words;
+//   then, only when every degree() and n() typed is an integer (else
+//   twoway's syntax refuses that option first, and so does dash's table):
+//   3. level() with an exponent: r(198) "<text> found where number
+//      expected"; outside 10..99.99: r(198) "level() must be between 10
+//      and 99.99 inclusive"; more than two digits after the point as
+//      typed: r(198) "level() can have at most two digits after the
+//      decimal point";
+//   4. pwidth() not a positive number: r(198) "pwidth() must be a
+//      positive number".
+// var() <= 0 is refused later, after the kernel, bwidth and degree rules
+// (_dash_validate_opts), as twoway orders it.  On ptype "lpolyci" only, a
+// word pw..pwidth(...) (minimum pw: p() is pstyle()) or v..var(...)
+// (minimum v) is taken out of unk; every other word stays.  Sets the
+// caller's locals _lpo_pwidth and _lpo_var (the value, %21.0g), _lpo_rest
+// (unk less those words), _lpo_rc (0 or the return code) and _lpo_msg.
+// A value is a number when it is one token and strtoreal() is not
+// missing.  Nothing is expanded; the words are the user's text.
+real scalar _dash_lpo_onenum(string scalar v, real scalar x,
+                             string scalar msg)
+{
+    string rowvector t
+
+    t = tokens(strtrim(v))
+    x = .
+    if (cols(t) == 0) {
+        msg = "'' found where number expected"
+        return(0)
+    }
+    if (cols(t) > 1) {
+        x = strtoreal(t[1])
+        if (x >= .) {
+            msg = "'" + t[1] + "' found where number expected"
+            return(0)
+        }
+        msg = "'" + t[2] + "' found where nothing expected"
+        return(0)
+    }
+    x = strtoreal(t[1])
+    if (x >= .) {
+        msg = "'" + t[1] + "' found where number expected"
+        return(0)
+    }
+    return(1)
+}
+
+real scalar _dash_lpo_isint(string scalar v)
+{
+    real scalar x
+
+    if (strtrim(v) == "") return(1)
+    x = strtoreal(strtrim(v))
+    return(x < . & x == floor(x))
+}
+
+void _dash_lpolyci_opts(string scalar unk, string scalar ptype)
+{
+    string rowvector toks
+    string scalar    rest, w, nm, val, pw, vr, lv, msg, frac
+    real scalar      i, p, x, hasp, hasv, ints
+
+    st_local("_lpo_pwidth", "")
+    st_local("_lpo_var", "")
+    st_local("_lpo_rest", unk)
+    st_local("_lpo_rc", "0")
+    st_local("_lpo_msg", "")
+    if (ptype != "lpolyci") return
+    toks = _dash_rep_toks(unk, 0)
+    rest = ""
+    pw = ""
+    vr = ""
+    hasp = 0
+    hasv = 0
+    for (i = 1; i <= cols(toks); i++) {
+        w = toks[i]
+        p = strpos(w, "(")
+        if (p > 1 & substr(w, strlen(w), 1) == ")") {
+            nm  = substr(w, 1, p - 1)
+            val = substr(w, p + 1, strlen(w) - p - 1)
+            if (strlen(nm) >= 2 & nm == substr("pwidth", 1, strlen(nm))) {
+                pw = val
+                hasp = 1
+                continue
+            }
+            if (strlen(nm) >= 1 & nm == substr("var", 1, strlen(nm))) {
+                vr = val
+                hasv = 1
+                continue
+            }
+        }
+        rest = rest + (rest == "" ? "" : " ") + w
+    }
+    st_local("_lpo_rest", rest)
+    msg = ""
+    // 1. var() must be one number
+    if (hasv) {
+        if (!_dash_lpo_onenum(vr, x, msg)) {
+            st_local("_lpo_rc", "7")
+            st_local("_lpo_msg", msg)
+            return
+        }
+        st_local("_lpo_var", strofreal(x, "%21.0g"))
+    }
+    // 2. level() must be one number
+    lv = strtrim(st_global("s(level)"))
+    if (lv != "") {
+        if (!_dash_lpo_onenum(lv, x, msg)) {
+            st_local("_lpo_rc", "7")
+            st_local("_lpo_msg", msg)
+            return
+        }
+    }
+    ints = _dash_lpo_isint(st_global("s(degree)")) &
+           _dash_lpo_isint(st_global("s(n)"))
+    if (!ints) {
+        // the table refuses the malformed degree()/n() later (D7)
+        if (hasp) {
+            if (_dash_lpo_onenum(pw, x, msg) & x > 0) st_local("_lpo_pwidth", strofreal(x, "%21.0g"))
+        }
+        return
+    }
+    // 3. level(): no exponent, 10..99.99, at most two decimals as typed
+    if (lv != "") {
+        if (ustrregexm(lv, "[eEdD]")) {
+            st_local("_lpo_rc", "198")
+            st_local("_lpo_msg", lv + " found where number expected")
+            return
+        }
+        x = strtoreal(lv)
+        if (!(x >= 10 & x <= 99.99)) {
+            st_local("_lpo_rc", "198")
+            st_local("_lpo_msg", "level() must be between 10 and 99.99 inclusive")
+            return
+        }
+        p = strpos(lv, ".")
+        frac = p ? substr(lv, p + 1, .) : ""
+        if (strlen(frac) > 2) {
+            st_local("_lpo_rc", "198")
+            st_local("_lpo_msg", "level() can have at most two digits after the decimal point")
+            return
+        }
+    }
+    // 4. pwidth() a positive number
+    if (hasp) {
+        if (!_dash_lpo_onenum(pw, x, msg) | !(x > 0)) {
+            st_local("_lpo_rc", "198")
+            st_local("_lpo_msg", "pwidth() must be a positive number")
+            return
+        }
+        st_local("_lpo_pwidth", strofreal(x, "%21.0g"))
+    }
+}
+
 // _dash_rep_split(v, body, sub) -- a merged option's value at its first
 // comma outside quotes and parentheses: the text or list before it, and
 // the sub-options after.  Returns 1 when there is a comma.
@@ -4881,63 +5327,306 @@ real scalar _dash_rep_split(string scalar v, string scalar body,
     return(1)
 }
 
-// _dash_route_axis2(opts) -- the option list with ytitle(..., axis(2)) and
-// xtitle(..., axis(2)) rewritten as ytitle2(...)/xtitle2(...), and an
-// axis(1) word dropped (WP-28 B3).  It runs before -syntax- and before
-// _dash_rep_reduce, whose merge would otherwise fold ytitle("a")
-// ytitle("b", axis(2)) into one ytitle.  Only a word whose own name is a
-// prefix of ytitle or xtitle, three characters or more (yti .. ytitle;
-// never yti2), is touched; every other word, and every body, is returned
-// byte for byte, so a title holding "axis(2)", a quote, $ or a backtick
-// is kept as typed.  No regex (regexm follows the caller's version).
+// _dash_axis_num(arg) -- the axis number twoway's _axisnum reads from
+// axis(arg) (WP-29 P0.5): syntax [, AXis(integer 1)], so a whole number
+// within Stata's integer bounds, -2147483648 .. 2147483647, and 1 for
+// anything else -- a blank, a word, a fraction, a missing value, a number
+// past the bounds (measured: axis(2.5), axis(a), axis(1e300) and
+// axis(2147483648) all give axis 1, silently; axis(02), axis(2.0),
+// axis(+2), axis(2e0) and axis(1.0x+1) give axis 2).
+real scalar _dash_axis_num(string scalar arg)
+{
+    real scalar v
+
+    v = strtoreal(strtrim(arg))
+    if (v < . & v == floor(v) & v >= -2147483648 & v <= 2147483647) return(v)
+    return(1)
+}
+
+// _dash_axfam() -- twoway's axis option families (graph_g.class
+// ParseAndLogAxes, optnames SCale Labels MLabels TICks MTicks Title LInes),
+// one row each: the family, twoway's full name after the side letter, dash's
+// name, the minimum length of the whole option name (side letter included),
+// twoway's order of the family, and the name an axis(2) copy is written as
+// ("" when dash does not route that family).  Read by _dash_ax_parse.
+string matrix _dash_axfam()
+{
+    return(("title",  "title",   "title",  "2", "6", "title2" \
+            "label",  "labels",  "label",  "2", "2", "label2" \
+            "mlabel", "mlabels", "mlabel", "3", "3", ""       \
+            "tick",   "ticks",   "tick",   "4", "4", "tick2"  \
+            "mtick",  "mticks",  "mtick",  "3", "5", ""       \
+            "line",   "lines",   "line",   "3", "7", "line2"  \
+            "scale",  "scale",   "scale",  "3", "1", "scale2"))
+}
+
+// _dash_ax_word(s) -- the first blank-delimited word of s, cut at its
+// first "(": the word twoway names in "invalid '<word>'".
+string scalar _dash_ax_word(string scalar s)
+{
+    string scalar t
+    real scalar   p
+
+    t = strltrim(subinstr(s, char(9), " "))
+    p = strpos(t, " ")
+    if (p) t = substr(t, 1, p - 1)
+    p = strpos(t, "(")
+    if (p) t = substr(t, 1, p - 1)
+    return(t)
+}
+
+// _dash_ax_parse(tok, fam, d, r, v, body, words, dcw, nax, n, badw, axpos)
+// -- 1 when the option word tok is one of twoway's axis options (an x or y
+// option of a family of _dash_axfam(), its name typed in lower case, at
+// least the family's minimum long and a prefix of twoway's full name),
+// else 0.  Sets, by reference: d the side letter; r the family's row; v
+// the value as typed; body the text before the first comma (not for a
+// scale); words the sub-option words the axis words are read from (after
+// the first comma, or every word of a scale); dcw the word after a second
+// comma ("" when none -- a comma followed by blanks only is no second
+// comma); nax the lower-case axis words; n the axis the first of them
+// names (1 when none); badw the first axis word in capitals or second
+// lower-case one, as typed, cut at "("; axpos the first axis word's place
+// in words.  An axis word is ax, axi or axis, then "(".  No regex.
+real scalar _dash_ax_parse(string scalar tok, string matrix fam,
+                           string scalar d, real scalar r, string scalar v,
+                           string scalar body, string rowvector words,
+                           string scalar dcw, real scalar nax,
+                           real scalar n, string scalar badw,
+                           real scalar axpos)
+{
+    string scalar nm, full, sub, b2, s2, w, an, la, arg
+    real scalar   i, j, p, mn
+
+    if (!strpos(tok, "(")) return(0)
+    nm = _dash_rep_optname(tok)
+    if (nm == "" | nm != strlower(nm)) return(0)
+    d = substr(nm, 1, 1)
+    if (d != "x" & d != "y") return(0)
+    r = 0
+    for (i = 1; i <= rows(fam); i++) {
+        full = d + fam[i, 2]
+        mn   = strtoreal(fam[i, 4])
+        if (strlen(nm) >= mn & strlen(nm) <= strlen(full) &
+            substr(full, 1, strlen(nm)) == nm) {
+            r = i
+            break
+        }
+    }
+    if (!r) return(0)
+    v    = _dash_rep_value(tok)
+    dcw  = ""
+    body = ""
+    sub  = ""
+    if (fam[r, 1] == "scale") {
+        // A scale's value is read after a comma twoway puts in front of
+        // it, so any comma in it is a second one; a trailing one is not.
+        if (_dash_rep_split(v, b2, s2)) {
+            if (strtrim(s2) != "") dcw = _dash_ax_word(s2)
+            sub = b2
+        }
+        else sub = v
+    }
+    else if (_dash_rep_split(v, body, sub)) {
+        if (_dash_rep_split(sub, b2, s2)) {
+            if (strtrim(s2) != "") dcw = _dash_ax_word(s2)
+            sub = b2
+        }
+    }
+    words = _dash_rep_toks(sub, 0)
+    n     = 1
+    nax   = 0
+    badw  = ""
+    axpos = 0
+    for (j = 1; j <= cols(words); j++) {
+        w = words[j]
+        p = strpos(w, "(")
+        if (!p) continue
+        an = substr(w, 1, p - 1)
+        la = strlower(an)
+        if (strlen(la) < 2 | strlen(la) > 4) continue
+        if (substr("axis", 1, strlen(la)) != la) continue
+        if (an != la) {
+            if (badw == "") badw = an
+            continue
+        }
+        nax++
+        if (nax == 1) {
+            arg = substr(w, p + 1, .)
+            if (substr(arg, strlen(arg), 1) == ")") arg = substr(arg, 1, strlen(arg) - 1)
+            n     = _dash_axis_num(arg)
+            axpos = j
+        }
+        else if (badw == "") badw = an
+    }
+    return(1)
+}
+
+// _dash_route_axis2(opts) -- the option list with each axis option's
+// axis(#) applied, as twoway's ParseAndLogAxes applies it (WP-29 P0.5;
+// WP-28 B3 did the titles).  It runs before -syntax- and before
+// _dash_rep_reduce, whose merge would otherwise fold ylabel(10 20)
+// ylabel(5000 10000, axis(2)) into one ylabel and lose the first axis's
+// list.  For each x or y title, label, mlabel, tick, mtick, line and scale
+// option (_dash_axfam: twoway's spellings and plurals, typed in lower
+// case):
+//   axis(1), or a number that is no whole number within twoway's bounds:
+//       the axis word is dropped; a plural is written as dash's name
+//       (ylabels(5000) is ylabel(5000), as twoway reads it);
+//   axis(2): written as dash's second-axis option -- ytitle2(), ylabel2(),
+//       ytick2(), yline2(), yscale2() -- the axis word dropped and the
+//       other words kept, each body byte for byte;
+//   any other axis, an mlabel or mtick on axis 2, a second axis word, an
+//       axis word in capitals and a second comma: left as typed, for
+//       _dash_axreq_check to refuse in twoway's words (or, for ymlabel()
+//       and ymtick() on axis 2, for the note).
+// Every other word, and every body, is returned byte for byte, so text
+// holding "axis(2)", a quote, $ or a backtick is kept as typed.  No regex
+// (regexm follows the caller's version).
 string scalar _dash_route_axis2(string scalar opts)
 {
-    string rowvector toks, sub_w
-    string scalar    out, tok, nm, body, sub, w, arg, rest
-    real scalar      i, j, route, any
+    string rowvector toks, words
+    string matrix    fam
+    string scalar    out, tok, d, v, body, dcw, badw, rest, dn
+    real scalar      i, j, r, nax, n, axpos, any, scale
 
     toks = _dash_rep_toks(opts, 0)
     if (cols(toks) == 0) return(opts)
-    out  = ""
-    any  = 0
+    fam = _dash_axfam()
+    out = ""
+    any = 0
     for (i = 1; i <= cols(toks); i++) {
         tok = toks[i]
-        nm  = strlower(_dash_rep_optname(tok))
-        if (strlen(nm) >= 3 & strlen(nm) <= 6 & strpos(tok, "(") &
-            (substr("ytitle", 1, strlen(nm)) == nm |
-             substr("xtitle", 1, strlen(nm)) == nm)) {
-            if (_dash_rep_split(_dash_rep_value(tok), body, sub)) {
-                sub_w = _dash_rep_toks(sub, 1)
-                rest  = ""
-                route = 0
-                for (j = 1; j <= cols(sub_w); j++) {
-                    w   = strlower(strtrim(sub_w[j]))
-                    arg = ""
-                    if (strlen(w) > 6 & substr(w, 1, 5) == "axis(" &
-                        substr(w, strlen(w), 1) == ")") {
-                        arg = strtrim(substr(w, 6, strlen(w) - 6))
-                    }
-                    if (arg == "1" | arg == "2") {
-                        route = strtoreal(arg)
-                        continue
-                    }
-                    rest = rest + (rest == "" ? "" : " ") + sub_w[j]
-                }
-                if (route) {
+        if (!_dash_ax_parse(tok, fam, d, r, v, body, words, dcw, nax, n,
+                            badw, axpos)) continue
+        if (dcw != "" | badw != "") continue
+        scale = (fam[r, 1] == "scale")
+        rest  = ""
+        for (j = 1; j <= cols(words); j++) {
+            if (j == axpos) continue
+            rest = rest + (rest == "" ? "" : " ") + words[j]
+        }
+        if (n == 1) {
+            dn = d + fam[r, 3]
+            if (!nax) {
+                // No axis word: only a plural is renamed, its value as typed.
+                if (_dash_rep_optname(tok) == d + fam[r, 2] & fam[r, 2] != fam[r, 3]) {
+                    toks[i] = dn + "(" + v + ")"
                     any = 1
-                    tok = substr(nm, 1, 1) + "title" +
-                          (route == 2 ? "2" : "") + "(" + body +
-                          (rest == "" ? "" : ", " + rest) + ")"
                 }
+                continue
             }
         }
-        toks[i] = tok
+        else if (n == 2 & fam[r, 6] != "") dn = d + fam[r, 6]
+        else continue
+        toks[i] = dn + "(" + (scale ? rest :
+                  body + (rest == "" ? "" : ", " + rest)) + ")"
+        any = 1
     }
     // Nothing routed: the list exactly as typed, spacing and all (and no
     // join, which the 10,000-copy exhaustion case TP-14e times).
     if (!any) return(opts)
     for (i = 1; i <= cols(toks); i++) out = out + (i > 1 ? " " : "") + toks[i]
     return(out)
+}
+
+// _dash_axreq_clear(), _dash_axreq_add(opts, seg) and
+// _dash_axreq_check(ys, xs) -- twoway's refusals of an axis option
+// (WP-29 P0.5).  _dash_axreq_add records, from the RAW option text of plot
+// segment seg (the options after the top-level comma are segment n_segs+1,
+// read after every segment, as twoway reads them), one row per axis option
+// in the external string matrix _dash_axreq: side (1 x, 2 y), twoway's
+// family order (scale 1 .. lines 7), seg, the word's place, the axis
+// number, the name twoway's message uses (ylabels, ytitle, yscale ...),
+// the value as typed, the word after a second comma and the first axis
+// word in capitals or second lower-case one.  dash's own ytitle2() ...
+// are no axis option of twoway's and are not recorded.  _dash_axreq_check
+// orders the rows as twoway does -- side, family, segment, place -- and
+// refuses the first that fails, testing in twoway's order: a second comma
+// ("invalid '<word>'"), an axis no layer uses ("ylabels(...) not allowed,
+// yaxis3 does not exist"; ys and xs are the layers' axes), then a bad axis
+// word ("option AXIS() not allowed").  Each message goes through
+// _dash_say, so the user's text is shown as typed.  The matrix is cleared
+// at the start of every graph command and after the check, so no typed
+// text is kept.  Linear: one pass over the words into a block sized by
+// their count.
+void _dash_axreq_clear()
+{
+    external string matrix _dash_axreq
+
+    _dash_axreq = J(0, 9, "")
+}
+
+void _dash_axreq_add(string scalar opts, real scalar seg)
+{
+    external string matrix _dash_axreq
+    string rowvector toks, words
+    string matrix    fam, blk
+    string scalar    d, v, body, dcw, badw
+    real scalar      i, k, r, nax, n, axpos
+
+    toks = _dash_rep_toks(opts, 0)
+    if (cols(toks) == 0) return
+    fam = _dash_axfam()
+    blk = J(cols(toks), 9, "")
+    k   = 0
+    for (i = 1; i <= cols(toks); i++) {
+        if (!_dash_ax_parse(toks[i], fam, d, r, v, body, words, dcw, nax, n,
+                            badw, axpos)) continue
+        k++
+        blk[k, .] = ((d == "x" ? "1" : "2"), fam[r, 5], strofreal(seg),
+                     strofreal(i), strofreal(n, "%21.0f"), d + fam[r, 2], v,
+                     dcw, badw)
+    }
+    if (!k) return
+    blk = blk[|1, 1 \ k, 9|]
+    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 9) _dash_axreq = blk
+    else _dash_axreq = _dash_axreq \ blk
+}
+
+real scalar _dash_axreq_check(string scalar ys, string scalar xs)
+{
+    external string matrix _dash_axreq
+    string matrix    a
+    string scalar    d
+    real rowvector   yset, xset, set
+    real colvector   o
+    real scalar      i, n
+
+    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 9) {
+        _dash_axreq_clear()
+        return(0)
+    }
+    a    = _dash_axreq
+    yset = strtoreal(tokens(ys))
+    xset = strtoreal(tokens(xs))
+    if (cols(yset) == 0) yset = 1
+    if (cols(xset) == 0) xset = 1
+    o = order(strtoreal(a[., (1, 2, 3, 4)]), (1, 2, 3, 4))
+    for (i = 1; i <= rows(o); i++) {
+        d = (a[o[i], 1] == "1" ? "x" : "y")
+        if (a[o[i], 8] != "") {
+            _dash_say("err", "invalid '", a[o[i], 8], "'")
+            _dash_axreq_clear()
+            return(198)
+        }
+        n   = strtoreal(a[o[i], 5])
+        set = (d == "x" ? xset : yset)
+        if (!anyof(set, n)) {
+            _dash_say("err", a[o[i], 6] + "(", a[o[i], 7],
+                      ") not allowed, " + d + "axis" +
+                      strtrim(strofreal(n, "%11.0f")) + " does not exist")
+            _dash_axreq_clear()
+            return(198)
+        }
+        if (a[o[i], 9] != "") {
+            _dash_say("err", "option ", a[o[i], 9], "() not allowed")
+            _dash_axreq_clear()
+            return(198)
+        }
+    }
+    _dash_axreq_clear()
+    return(0)
 }
 
 // _dash_rep_subkey(tok, cat) -- which sub-option a word sets, for keeping
@@ -5133,7 +5822,12 @@ string scalar _dash_rep_reduce(string scalar opts, string scalar ptype)
             return(opts)
         }
         cnt[k]     = cnt[k] + 1
-        lastpos[k] = i
+        // sort(varlist): the rightmost copy that is not empty stands, as
+        // twoway reads it (WP-29 P0.1 M4); an empty copy is left out with
+        // the others.
+        if (!(keys[i] == "sort1" & strtrim(_dash_rep_value(toks[i])) == "")) {
+            lastpos[k] = i
+        }
         val[k]     = _dash_rep_merge(keys[i], val[k], _dash_rep_value(toks[i]))
     }
     nk  = 0
@@ -5156,115 +5850,6 @@ string scalar _dash_rep_reduce(string scalar opts, string scalar ptype)
         out = out + " " + toks[i]
     }
     return(strtrim(out))
-}
-
-// _dash_fn_space_call(expr) -- the first operand of a function expression
-// written with blanks before a `(', as `sin (x)' or `2 (x)', outside
-// double and compound quotes; "" when there is none.
-//
-// Stata never reads a name and a parenthesis apart as a call: `twoway
-// function y = sin (x)' is "error in expression", r(111) -- sin is looked
-// for as a variable and not found -- where sin(x) is drawn; and a name the
-// data does have (mpg, or mp for it), x, _n, _N and _pi, or a number, a
-// string or a closing parenthesis before the blanks, are r(198).  With
-// tabs alone between a name and its `(' it is r(133), an unknown function
-// (measured 24sep2026).  2 * (x) and x + (1) have an operator before the
-// `(' and are drawn.  Returns "N <pos> <name>" for a name (not the tail of
-// a number or of a dotted name) and blanks holding a space, "T <pos>
-// <name>" for a name and tabs alone, "O <pos>" for any other operand, pos
-// being where the operand begins, so the caller can ask which of this and
-// an unknown function Stata meets first.  Linear in the length of expr.
-string scalar _dash_fn_space_call(string scalar expr)
-{
-    string scalar ch
-    real scalar   i, j, n, in_dq, in_cq, nxt, c, c0, lastkind, lastpos
-    real scalar   lastend, blank, qstart
-
-    n        = strlen(expr)
-    in_dq    = 0
-    in_cq    = 0
-    lastkind = 0
-    lastpos  = 0
-    lastend  = 0
-    blank    = 0
-    qstart   = 0
-    i        = 1
-    while (i <= n) {
-        if (!in_dq & !in_cq) qstart = i
-        nxt = _dash_quote_step(expr, n, i, in_dq, in_cq)
-        if (nxt) {
-            // A closed string is an operand; it began where the quote
-            // opened (qstart holds the position before it opened).
-            if (!in_dq & !in_cq) {
-                lastkind = 3
-                blank    = 0
-            }
-            else if (lastkind != 4) {
-                lastpos  = qstart
-                lastkind = 4
-            }
-            i = nxt
-            continue
-        }
-        ch = substr(expr, i, 1)
-        c  = ascii(ch)
-        if (ch == " ") {
-            if (lastkind) blank = 1
-            i++
-            continue
-        }
-        if (ch == char(9)) {
-            if (lastkind & !blank) blank = 2
-            i++
-            continue
-        }
-        if (ch == "(") {
-            if (lastkind & blank) {
-                if (lastkind == 1) {
-                    return((blank == 1 ? "N " : "T ") + strofreal(lastpos) + " " +
-                           substr(expr, lastpos, lastend - lastpos + 1))
-                }
-                return("O " + strofreal(lastpos))
-            }
-            lastkind = 0
-            blank    = 0
-            i++
-            continue
-        }
-        if ((c >= 65 & c <= 90) | (c >= 97 & c <= 122) | c == 95 |
-            (c >= 48 & c <= 57) | c == 46) {
-            c0 = c
-            j  = i
-            while (j <= n) {
-                c = ascii(substr(expr, j, 1))
-                if (!((c >= 65 & c <= 90) | (c >= 97 & c <= 122) |
-                      (c >= 48 & c <= 57) | c == 95 | c == 46)) break
-                j++
-            }
-            // A name begins with a letter or _ and holds no dot; anything
-            // else here (2, 1.5, 1e5, a.b) is some other operand.
-            if (((c0 >= 65 & c0 <= 90) | (c0 >= 97 & c0 <= 122) | c0 == 95) &
-                !strpos(substr(expr, i, j - i), ".")) lastkind = 1
-            else lastkind = 3
-            lastpos = i
-            lastend = j - 1
-            blank   = 0
-            i = j
-            continue
-        }
-        if (ch == ")") {
-            lastkind = 3
-            lastpos  = i
-            blank    = 0
-            i++
-            continue
-        }
-        // An operator, a comma or anything else: no operand before a `('.
-        lastkind = 0
-        blank    = 0
-        i++
-    }
-    return("")
 }
 
 // _dash_spec_types_in(s, allowed) -- 1 when the graph spec s names a plot

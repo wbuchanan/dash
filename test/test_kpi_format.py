@@ -192,9 +192,9 @@ class TestFirstPaint:
         if row["value"] != ".":
             got = saved[0]._compute_kpi_stat_on_df(
                 saved[0].df, row["stat"], row["var"])
-            if row["var"] in _DATE_KIND and dr._dash_kpi_date_valued(
-                    row["stat"]):
-                got = dr._dash_stata_value_of(got, _DATE_KIND[row["var"]])
+            # WP-29 P0.20 (section 05): every statistic of a date is
+            # taken of its Stata values, so it is compared with Stata's
+            # directly; it was epoch milliseconds, converted here.
             assert got == pytest.approx(float(row["value"]), rel=1e-9)
         assert saved_cards[_NAMES[rid]] == _expected(row)
 

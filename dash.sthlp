@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.1.0  30sep2026}{...}
+{* *! version 0.1.0  02oct2026}{...}
 {viewerjumpto "Syntax"            "dash##syntax"}{...}
 {viewerjumpto "Description"       "dash##description"}{...}
 {viewerjumpto "Plot types"        "dash##plottypes"}{...}
@@ -12,6 +12,7 @@
 {viewerjumpto "Filters"           "dash##filters"}{...}
 {viewerjumpto "KPI Cards"         "dash##kpi"}{...}
 {viewerjumpto "Server Mode"       "dash##server_mode"}{...}
+{viewerjumpto "Temporary files"   "dash##tempfiles"}{...}
 {viewerjumpto "Resource limits"   "dash##limits"}{...}
 {viewerjumpto "Examples"          "dash##examples"}{...}
 {viewerjumpto "Dependencies"      "dash##dependencies"}{...}
@@ -94,7 +95,7 @@
 {cmd:server}
 [{it:other_build_options}]
 
-{pstd}{ul:Launch Bokeh Server (blocking -- press Ctrl+C to stop)}{p_end}
+{pstd}{ul:Launch Bokeh Server (blocking -- press Break to stop)}{p_end}
 
 {p 8 17 2}
 {cmd:dash serve}
@@ -112,7 +113,7 @@
 {pstd}{ul:Setup}{p_end}
 
 {p 8 17 2}
-{cmd:dash_setup}
+{cmd:dash_setup} [{cmd:,} {it:{help dash_setup##options:setup_options}}]
 
 {pstd}
 where {it:plot_specs} = {cmd:(}{it:plottype varlist} {ifin} {weight} [{cmd:,} {it:options}]{cmd:)}
@@ -168,10 +169,26 @@ build with Stata's own message.  Each distinct qualifier travels to the
 dashboard as a column of 0s and 1s (named {cmd:__dashq}{it:#}); no
 tooltip, filter or download shows it.  Names beginning with {cmd:__dash} are
 reserved for every column dash makes -- the qualifier columns
-{cmd:__dashq}{it:#}, the row identity {cmd:__dash_row__}, and its
+{cmd:__dashq}{it:#}, the join-order columns {cmd:__dashs}{it:#}, the row
+identity {cmd:__dash_row__}, and its
 marker-label and jitter columns -- and data holding such a variable are
 refused with {cmd:r(110)} before anything is exported; every other Stata
 name, however dash-like it looks, is read as your data.
+
+{pstd}
+{ul:What a saved page holds.}  A saved dashboard holds, for each variable,
+only the observations that some graph, recomputed card or filter selects
+with its {it:if} and {it:in}: the rows a layer draws (its graph's qualifier
+and its own together), the rows a card that follows a filter or the brush
+recomputes over, and the rows a filter acts on.  Nothing of an observation
+every qualifier excludes is written into the page, and the page numbers its
+own rows, so no gap shows where one was; anyone who opens the file can read
+what it holds with View Source.  A card's first value and every fitted line
+and smoother are computed over their own rows and only the result is
+written, so {cmd:lowess, adjust} and {cmd:lpoly}'s grid still read every
+observation in memory, as twoway does, and a {cmd:by()} graph finds its
+panels among every observation its graph's qualifier selects.  With
+{cmd:csv}, the page holds every observation of every variable it uses.
 
 {pstd}
 Two things this rule does not reach: the qualifier, {cmd:by()}-order and
@@ -256,6 +273,30 @@ one-variable plot of a type that takes a {it:y} and an {it:x} is "too few
 variables specified", r(102).
 
 {pstd}
+{ul:Join order.}  {cmd:line}, {cmd:connected}, {cmd:area}, {cmd:rline},
+{cmd:rarea} and {cmd:rconnected} join their points in the order of the
+data, as {cmd:twoway} does.  {cmd:sort} joins them in the order of {it:x},
+and {cmd:sort(}{it:varlist}{cmd:)} in the order of {it:varlist}, whether or
+not {cmd:sort} is also given; of several copies the last one that is not
+empty counts.  Points whose keys tie keep the order of the data
+({cmd:twoway}'s order among them changes from one run to the next).
+Strings sort byte by byte, and {cmd:.} before {cmd:.a} before {cmd:.b}, as
+Stata's {cmd:sort} sorts them.  {cmd:tsline} and {cmd:tsrline} join in time
+order and ignore both.  On data not sorted by {it:x} an area follows the
+data and crosses itself where {cmd:twoway}'s does; add {cmd:sort} for a
+picture along {it:x}.  Each bound of {cmd:rline} and {cmd:tsrline} keeps
+its own missing values: it is drawn through the observations where that
+bound is present, as {cmd:twoway} draws it ({cmd:rarea} leaves out an
+observation missing either bound).  A malformed name in {cmd:sort()} is
+refused on every plot type -- {cmd:sort(x*)} is "* invalid name",
+r(198) -- and a name that is no usable variable on the plot types that
+draw observations: {cmd:sort(nosuch)} on {cmd:line} is "variable nosuch not
+found" and "option sort() incorrectly specified", r(198), in {cmd:twoway}'s
+words, and so are more than ten names.  The {cmd:sort()} variables are
+never written to the dashboard: their order travels as a rank column,
+{cmd:__dashs}{it:#}, that no tooltip, filter or download shows.
+
+{pstd}
 With {cmd:by()} {cmd:twoway} answers panel by panel, and so does
 {cmd:dash}.  A graph with no panel -- no observation its qualifier
 selects, or every {cmd:by()} value missing -- is "nothing to graph",
@@ -336,15 +377,45 @@ nothing and says nothing, as {cmd:twoway} does.
 
 {pstd}
 {ul:Functions.}  {cmd:function} draws {it:y} = {it:f}({it:x}) over
-{cmd:range()}.  A value that is missing in Stata -- outside the function's
-domain, such as the square root of a negative number, or too large to
-hold, such as {cmd:1/0} -- is drawn as a gap, as {cmd:twoway} draws it:
-{cmd:sqrt(x)} over {cmd:range(-1 1)} is drawn from 0 to 1, and an
-expression missing everywhere draws nothing, in silence.  An expression
-{cmd:dash} does not evaluate draws nothing, and a note names its layer.
-With no expression, {cmd:function} is refused as {cmd:twoway}
-refuses it: {cmd:expression required}, {cmd:r(100)}, or after {it:y}
-{cmd:=}, {cmd:nothing found where expression expected}, {cmd:r(111)}.
+{cmd:range()}.  Stata evaluates the expression when the graph is
+registered, with the generator {cmd:twoway function} itself uses, over
+{cmd:twoway}'s points ({cmd:range()} and {cmd:n()}), under your
+{cmd:version}, and after every plot's variables and options and the
+{cmd:by()} variables are checked, before the graph's other options, as
+{cmd:twoway} orders it.  So {cmd:twoway}'s grammar applies: {cmd:^} is
+read from left to right ({cmd:2^3^x} is 1 8 64 at x = 0 1 2), a sign
+after {cmd:^} takes one operand, {cmd:/} binds tighter than {cmd:*} and
+{cmd:-} tighter than {cmd:+}, Stata's constant is {cmd:_pi}, and every
+Stata function, estimate ({cmd:_b[]}), scalar and variable may be used.
+What {cmd:twoway} refuses is refused with its code and its one line,
+{cmd:error in expression:} and the text after the {cmd:=}:
+{cmd:pi*x} and {cmd:e*x} are {cmd:r(111)}, {cmd:x**2}, {cmd:x%2}, a
+leading {cmd:+} and {cmd:2x} {cmd:r(198)}, an unknown or full-width
+function name {cmd:r(133)}, and an expression too long for Stata
+{cmd:r(130)}.  A value that is missing in Stata -- outside the
+function's domain, such as the square root of a negative number, or too
+large to hold, such as {cmd:1/0} -- is drawn as a gap, as {cmd:twoway}
+draws it: {cmd:sqrt(x)} over {cmd:range(-1 1)} is drawn from 0 to 1, and
+an expression missing everywhere draws nothing, in silence.  With no
+expression, {cmd:function} is refused as {cmd:twoway} refuses it:
+{cmd:expression required}, {cmd:r(100)}, or after {it:y} {cmd:=},
+{cmd:nothing found where expression expected}, {cmd:r(111)}.
+
+{pstd}
+The points are fixed when the graph is registered, as {cmd:twoway}'s
+drawing is fixed when its command runs: a later change to the data or to
+the estimates does not move them, and neither does a filter on the page,
+saved or served.  Evaluating has {cmd:twoway}'s side effects:
+{cmd:runiform()} advances the random-number stream as {cmd:twoway} does,
+and data holding at least {cmd:n()} observations are marked changed
+({cmd:c(changed)}).  Under {cmd:by()}, {cmd:dash} evaluates the expression
+once and draws it in every panel, where {cmd:twoway} evaluates it once per
+panel; only random draws differ.  A dashboard spec written by hand without
+the points is drawn by {cmd:dash} itself, with the same operators and
+missing values, {cmd:x}, {cmd:_pi} and ten functions -- {cmd:sin},
+{cmd:cos}, {cmd:tan}, {cmd:exp}, {cmd:log}, {cmd:log10}, {cmd:sqrt},
+{cmd:abs}, {cmd:floor} and {cmd:ceil}; anything else draws that layer
+empty, and a note names it.
 
 {pstd}
 {ul:Graphs that need no data.}  A graph whose plots are all
@@ -421,7 +492,8 @@ named in a note and drawn around -- because it is what would be drawn.
     underscore and holds only letters, digits and underscores: at most 22
     characters for a graph and 18 for a KPI card.  {cmd:dash} keeps each
     item in Stata globals named after it: a graph in
-    {cmd:$dash_json_}{it:name} and {cmd:$dash_spec_}{it:name}, a KPI card
+    {cmd:$dash_json_}{it:name} and {cmd:$dash_spec_}{it:name} (and a
+    {cmd:function} graph's points in {cmd:$dash_fpts_}{it:name}), a KPI card
     in {cmd:$dash_kpi_}{it:name} and in one global for each of its fields,
     {cmd:$dash_kpi_}{it:name}{cmd:__}{it:field}, a field being at most three
     letters (the card's statistic is {cmd:$dash_kpi_}{it:name}{cmd:__sta}).
@@ -471,7 +543,10 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:mc(red) mcolor(blue)} draw blue, an option written after the
     top-level comma beats one written inside a segment, and among segments
     the last one to name it wins -- including when the last one gives an
-    empty text, {cmd:title("")}, which clears it.  {cmd:title()} and the
+    empty text, {cmd:title("")}, which clears it.  Of
+    {cmd:sort(}{it:varlist}{cmd:)} the last copy that is not empty counts,
+    as in {cmd:twoway}: {cmd:sort(z) sort()} joins in the order of z.
+    {cmd:title()} and the
     other titles, the axis labels and ticks, {cmd:legend()},
     {cmd:xscale()}/{cmd:yscale()}, {cmd:by()}, the regions and
     {cmd:xline()}/{cmd:yline()} merge their copies:
@@ -550,8 +625,8 @@ named in a note and drawn around -- because it is what would be drawn.
     spellings, from its minimum abbreviation to its full name:
     {cmd:c(red)} is {cmd:color(red)} and {cmd:si(large)} is
     {cmd:size(large)}.  {cmd:size()}, {cmd:color()}, {cmd:prefix},
-    {cmd:suffix} and, on an axis title, {cmd:axis(1)}/{cmd:axis(2)} are
-    applied; every other sub-option, and any word that is not a textbox
+    {cmd:suffix} and, on an axis title, {cmd:axis(1)}/{cmd:axis(2)}
+    (minimum {cmd:ax()}, in lower case) are applied; every other sub-option, and any word that is not a textbox
     sub-option ({cmd:colour()}, {cmd:style()}), is named, never drawn as
     text.  A lone {cmd:suffix} on an axis title adds its lines after the
     default title, {cmd:prefix} before it.
@@ -560,6 +635,15 @@ named in a note and drawn around -- because it is what would be drawn.
     removes that title, as in {cmd:twoway}; an option not given at all
     keeps the default (the variable's label, {cmd:Density},
     {cmd:kdensity} {it:var}).
+    An axis title given only sub-options -- {cmd:xtitle(, size(large))},
+    {cmd:ytitle(, color(red))}, {cmd:ytitle(, axis(2) size(large))},
+    {cmd:ztitle(, size(large))} -- keeps the default title and applies
+    them, as in {cmd:twoway}; only empty quotes remove a title, and
+    {cmd:ytitle("", suffix)} keeps it.  The first comma outside quotes and
+    parentheses that is followed by a sub-option name, another comma or
+    nothing opens the sub-options, and empty slots are ignored:
+    {cmd:ytitle(A,)} and {cmd:ytitle(A,,)} are {cmd:ytitle(A)}, and
+    {cmd:ytitle(,)} keeps the default.
     A weight, {cmd:[aweight=}{it:varname}{cmd:]}, {cmd:[fweight=]} or
     {cmd:[pweight=]}, is honoured on the statistical layers that take it
     in {cmd:twoway} and refused, as {cmd:twoway} refuses it, where they do
@@ -588,7 +672,8 @@ named in a note and drawn around -- because it is what would be drawn.
 
 {phang2}    The bounds checked in Stata.  Numbers: {cmd:jitter()} 0 to 100;
     {cmd:malpha()}, {cmd:lalpha()} and {cmd:falpha()} 0 to 100;
-    {cmd:level()} strictly between 0 and 100; {cmd:aspectratio()} 0 or
+    {cmd:level()} strictly between 0 and 100 (on {cmd:lpolyci}, 10 to
+    99.99, as {cmd:twoway}); {cmd:aspectratio()} 0 or
     more; {cmd:base()} any number; {cmd:start()} any number, except that
     on {cmd:histogram} a {cmd:start()} above the variable's minimum is
     refused in {cmd:twoway}'s own words,
@@ -626,7 +711,9 @@ named in a note and drawn around -- because it is what would be drawn.
     Variables: {cmd:mlabel()} and {cmd:colorvar()} name one, {cmd:hover()}
     one or more, and {cmd:by()} one or more before its comma; each is
     expanded as {cmd:twoway} expands it, so {cmd:by(for)} means
-    {cmd:by(foreign)}; a variable that does not exist is r(111), and a
+    {cmd:by(foreign)}; a variable that does not exist is r(111) ({cmd:dash build}
+    and {cmd:dash serve} also give r(111) for a {cmd:hover()} variable
+    dropped after the graph was registered), and a
     time-series expression such as {cmd:mlabel(L.mpg)} is refused, as
     {cmd:twoway} refuses it.  {cmd:xsize()},
     {cmd:ysize()}, {cmd:aspectratio()}, {cmd:hover()} and {cmd:by()} are
@@ -641,7 +728,7 @@ named in a note and drawn around -- because it is what would be drawn.
     10000 (on {cmd:mspline}, 1 to 300 is {cmd:twoway}'s own bound), and
     the {cmd:lowess} {cmd:bwidth()} fraction.  The others carry
     no second sentence: {cmd:jitter()} 0 to 100, {cmd:level()} strictly
-    inside 0 and 100, {cmd:barwidth()} positive, {cmd:aspectratio()} 0 or
+    inside 0 and 100 (on {cmd:lpolyci}, {cmd:twoway}'s words), {cmd:barwidth()} positive, {cmd:aspectratio()} 0 or
     more, {cmd:jitterseed()} 0 or more, and the {cmd:kdensity}
     {cmd:bwidth()} positive ({cmd:kdensity} itself accepts
     {cmd:bwidth(0)}).  {cmd:malpha()}, {cmd:lalpha()}, {cmd:falpha()},
@@ -702,8 +789,9 @@ named in a note and drawn around -- because it is what would be drawn.
     the triplet {cmd:255 0 0}.
 
 {phang2}6.  {ul:Variable and value labels used automatically.}
-    {cmd:dash} reads variable labels (for axis titles and the titles of
-    filter widgets) and value labels (for filter dropdowns, the titles of
+    {cmd:dash} reads variable labels (they title the axes, key the legend,
+    name the tooltip rows and the colour key, and title filter widgets)
+    and value labels (for filter dropdowns, the titles of
     {cmd:by()} panels, marker labels, the legend of a discrete
     {cmd:colorvar()} and the CSV download) without any additional options.
     An axis is labelled with numbers, as in {cmd:twoway}, unless its
@@ -714,7 +802,13 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:by()} panel -- and an explicit {cmd:"}{it:text}{cmd:"} for the
     same tick wins, as in {cmd:twoway}.  A hover tooltip shows the value
     label of a {cmd:hover()} variable, as {cmd:list} and {cmd:browse} do,
-    before and after any filter move.
+    before and after any filter move.  A variable with no label is
+    named by its name there, as {cmd:twoway} names it; a label of blanks
+    is drawn as given, except on a filter widget, which then shows the
+    name.
+    A {cmd:histogram} layer is keyed {cmd:Density}, {cmd:Percent},
+    {cmd:Frequency} or {cmd:Fraction}, and a {cmd:kdensity} layer
+    {cmd:kdensity} {it:varname}, as in {cmd:twoway}.
 
 
 {marker subcommands}
@@ -748,14 +842,17 @@ See {help dash##dashboard_options:Dashboard Options}.
 
 {pstd}
 Launches a Bokeh Server serving the current registry as a live dashboard.
-The server runs in the foreground; Stata is blocked until you press
-Ctrl+C or the optional {cmd:timeout()} expires.  When a filter moves, the
+The server runs in the foreground: Stata waits until you press Break
+(Ctrl+C in console Stata), the optional {cmd:timeout()} expires, or Stata
+itself exits.  When a filter moves, the
 server recomputes, from the rows the filters leave, every layer computed
 from the data -- a histogram's bins as well as its bars, a fitted or
 smoothed line, a kernel density curve -- and every KPI card that follows
 the filters.  A saved dashboard recomputes those cards, its kernel density
 curves and its histogram bar heights in the browser, and keeps its other
 computed layers, and its histogram bins, as they were built; see
+{help dash##server_mode:Server Mode}.  The dashboard opens only through a
+link holding a key made for each launch; see
 {help dash##server_mode:Server Mode}.
 
 {pstd}
@@ -774,7 +871,7 @@ computed layers, and its histogram bins, as they were built; see
     keeps every {cmd:dash} window shut for the session; see
     {help dash##nobrowser_global:The global dash_nobrowser}{p_end}
 {synopt:{cmd:timeout(}{it:#}{cmd:)}}stop the server after {it:#} minutes,
-    at most nine digits; 0 means run until Ctrl+C (default){p_end}
+    at most nine digits; 0 means run until Break (default){p_end}
 {synoptline}
 
 {pstd}
@@ -807,10 +904,12 @@ discards the remembered options along with the registry.
 Empties the registry: every graph and KPI card goes, and so do the options
 remembered from the last {cmd:dash build} -- the globals
 {cmd:$dash_graph_registry}, {cmd:$dash_json_*}, {cmd:$dash_spec_*},
-{cmd:$dash_kpi_*} and {cmd:$dash_opts_*}.  Settings stay:
+{cmd:$dash_fpts_*}, {cmd:$dash_kpi_*} and {cmd:$dash_opts_*}.  Settings stay:
 {cmd:$dash_nobrowser} and the {cmd:$dash_max_*} limits remain until you drop
-them (see {help dash##limits:Resource limits}).  Run this before starting a
-new dashboard definition.
+them (see {help dash##limits:Resource limits}).  It also removes this
+session's preview pages, but one a browser was asked to open in the last
+minute (see {help dash##tempfiles:Temporary files and privacy}).  Run this
+before starting a new dashboard definition.
 
 
 {marker dashboard_options}
@@ -864,8 +963,10 @@ The following options are available on {cmd:dash build}.
 {cmd:global dash_nobrowser 1} -- it keeps every {cmd:dash} window shut for
 the rest of the session, as {cmd:nobrowser} does for one command:
 {cmd:dash build} writes its file and opens nothing; the one-line form with
-neither {cmd:saving()} nor {cmd:name()} writes its dashboard to a temporary
-file, says where, and opens nothing; and {cmd:dash serve} starts its server
+neither {cmd:saving()} nor {cmd:name()} writes its dashboard to a page in
+{cmd:c(tmpdir)}{cmd:dash-}{it:uid}{cmd:/previews/} (see
+{help dash##tempfiles:Temporary files and privacy}), says where, and opens
+nothing; and {cmd:dash serve} starts its server
 without opening a browser.  Only whether it holds a value counts, so
 {cmd:global dash_nobrowser 0} keeps windows shut too.  {cmd:dash clear}
 leaves it set; {cmd:macro drop dash_nobrowser} lets windows open again.
@@ -920,9 +1021,11 @@ through.  A value-labelled variable is written as its labels, as
 {pstd}
 {cmd:csv} is off unless asked for, because it lets anyone who opens the
 dashboard download every row of every variable it uses -- including one that
-only a KPI card summarises.  A saved dashboard with filters already contains
-those rows (the filters need them), but a served one sends the browser only
-what it draws.  When served, each click is computed on the server from the
+only a KPI card summarises.  Without {cmd:csv} a saved dashboard holds only
+the observations its graphs, cards and filters select (see
+{help dash##description:Description}); with it the page holds them all, so
+that the download can be written in the browser, but a served one sends the
+browser only what it draws.  When served, each click is computed on the server from the
 same filters, and a session may download twice at once and then once every
 five seconds.  {cmd:dash serve} inherits {cmd:csv} from the preceding
 {cmd:dash build}, as it inherits every dashboard option.
@@ -1045,7 +1148,9 @@ tabs name is drawn below the tabs.
 
 {pstd}
 Graphs in the same link group draw their observations from a single Bokeh
-{cmd:ColumnDataSource}.  Selecting observations in one graph (via
+{cmd:ColumnDataSource}.  That source holds the observations the group's
+graphs draw -- each graph's and each layer's {it:if} and {it:in} together
+-- and no other.  Selecting observations in one graph (via
 box-select or lasso-select) selects them in that source, and every linked
 graph highlights them where it draws them as markers: in its
 {cmd:scatter}, {cmd:connected} and {cmd:dot} layers, and on {cmd:rspike}
@@ -1176,6 +1281,15 @@ is a dropdown.
     nothing; once moved, either drops the observations whose value is
     missing (see {help dash##export:Exporting}).
 
+{pmore2}
+    A widget lists the values of, or spans the range of, the observations
+    that the graphs, link group and cards it filters select, after
+    {cmd:exclude()}; an observation every {it:if} or {it:in} excludes adds
+    no option or bound, and the 1,000-value limit of a dropdown counts those
+    observations only.  A filter that reaches no observation -- every graph
+    and card excluded, or graphs that draw no observation -- draws a range
+    or slider greyed out, and a dropdown that lists only All.
+
 {phang2}{cmd:exclude(}{it:namelist}{cmd:)} -- prevent the filter from
     affecting the specified graphs and KPI cards, each a registered name,
     whatever moves.  Each graph, card, and link group is redrawn on every
@@ -1302,6 +1416,12 @@ format if given, else in the variable's own {cmd:%t} picture, as
 {cmd:display} writes them ({cmd:%td} gives {cmd:02jan2001}).  A count, a
 distinct count, a spread, a sum or the skewness of a date variable is a
 number, shown in {cmd:%9.0g} unless {cmd:fmt()} says otherwise.
+Each statistic is taken of the variable's Stata values, as
+{cmd:summarize} takes it: {cmd:sd()} of a {cmd:%td} variable is in days
+(105.3335 for {cmd:date} in {cmd:sysuse sp500}), {cmd:var()} in days
+squared, {cmd:iqr()} in days, {cmd:cv()} is the sd over the mean day
+number, and {cmd:sum()} adds up the day numbers, which a note says has no
+meaning; the mean of 2001m1 and 2001m3 is 2001m2.
 
 {pstd}
 {ul:Options:}
@@ -1364,8 +1484,9 @@ panel.  For a statistic of each group, register a card per group:
 
 {pstd}
 {cmd:dash serve} runs the dashboard as a Bokeh Server application: it writes
-the application to a Stata temporary file, runs it with Python and waits
-until the server stops.  {cmd:dash build, server} writes the same
+the application into a private temporary folder (see
+{help dash##tempfiles:Temporary files and privacy}), runs it with Python and
+waits until the server stops.  {cmd:dash build, server} writes the same
 application to the file {cmd:saving()} names and returns without starting
 it.  The saved page and the served app differ as follows:
 
@@ -1376,9 +1497,9 @@ it.  The saved page and the served app differ as follows:
 {col 5}Filter widgets{col 38}JavaScript{col 59}Python callbacks
 {col 5}KPI recomputation on filter{col 38}Yes{col 59}Yes
 {col 5}Brush/lasso KPI update{col 38}Yes{col 59}Yes
-{col 5}Histogram recompute on filter{col 38}bar heights{col 59}heights and bins
-{col 5}Kernel density on filter{col 38}on the same grid{col 59}grid recomputed
-{col 5}Fit-line recompute on filter{col 38}No{col 59}Yes
+{col 5}Histogram recompute on filter{col 38}heights; bins marked{col 59}heights and bins
+{col 5}Kernel density on filter{col 38}same grid, marked{col 59}grid recomputed
+{col 5}Fit-line recompute on filter{col 38}No; marked{col 59}Yes
 {col 5}A slider recomputes{col 38}at every step{col 59}when released
 {col 5}Dates{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as PNG{col 38}Yes{col 59}Yes
@@ -1387,6 +1508,7 @@ it.  The saved page and the served app differ as follows:
 {col 7}{cmd:filterposition()}
 {col 5}Bootstrap {cmd:layout(bs)}{col 38}reflows{col 59}reflows
 {col 5}Health endpoint{col 38}n/a{col 59}{cmd:/health}
+{col 5}Who can open it{col 38}who has the file{col 59}who has its link
 {col 5}Deployment{col 38}email, open file{col 59}{cmd:python app.py}
 {col 5}{hline 72}
 
@@ -1394,19 +1516,37 @@ it.  The saved page and the served app differ as follows:
 {ul:What a filter move redraws.}  The saved page draws every layer that
 plots observations -- scatter, line, area, bar, spike, dropline, the range
 and paired-coordinate plots, and their marker labels -- from the rows that
-pass the filter, each from its own rows among them, a line still along x
+pass the filter, each from its own rows among them, a line still in its join order
 and a bar's or cap's width taken from the spacing of the rows kept.  It
 recounts a histogram's
 bars, and re-estimates a density on its grid, from the rows that pass the
 filter -- for a {cmd:by()} panel, or a graph or plot with its own {cmd:if}
 or {cmd:in}, from its own rows among them -- and keeps the bin edges and the
 grid chosen when the dashboard was built, so neither moves as you filter; it
-does not redraw a fitted line.  The served app draws every layer again from
+does not refit a fitted or smoothed line ({cmd:lfit}, {cmd:qfit},
+{cmd:lfitci}, {cmd:qfitci}, {cmd:fpfit}, {cmd:fpfitci}, {cmd:lowess},
+{cmd:lpoly}, {cmd:lpolyci}, {cmd:mband}, {cmd:mspline}).  When a move
+removes observations such a line, a histogram's bins or a density's grid was
+computed from, the page marks the layer: it is dimmed, its legend key reads
+"(unfiltered)", "(bins unfiltered)" or "(grid unfiltered)", the graph shows
+"Marked layers were computed before the filter", and a note under the
+filters says the same in text a screen reader reads.  A density drawn over
+{cmd:range()} keeps the grid you gave and is not marked.  The marks go when
+the filters again keep every observation the layer was computed from; a move
+that removes only observations the layer never used (a missing y, x or
+weight, a zero weight, or one outside the plot's own {cmd:if} or {cmd:in})
+marks nothing, and a graph {cmd:exclude()} protects is never marked.  The
+served app draws every layer again from
 the rows that pass the filter -- each layer from its own rows among them --
-bins, grid and fitted line included.  In both, a filter move clears a
+bins, grid, fitted line and bar widths included.  A plot's own {cmd:if} or {cmd:in}
+inside a linked {cmd:by()} panel, or inside a linked graph with its own
+{cmd:if} or {cmd:in}, keeps to that panel's or graph's observations after
+every move, in both.  In both, a filter move clears a
 selection brushed on a graph it redraws, and a card that follows the brush
 ({cmd:update(brush)} or {cmd:update(both)}) then counts the rows that graph
-shows.
+shows.  In both, a layer that a filter, a {cmd:by()} panel or its own
+{cmd:if} or {cmd:in} leaves with no observations keeps its colour, width and
+legend key, as twoway draws it.
 
 {pstd}
 {ul:What "reflow" means.}  A {cmd:layout(bs)} grid rearranges itself as the
@@ -1419,13 +1559,32 @@ for its columns.  See {help dash##layout:Layout}.
 
 {pstd}
 {ul:Blocking behavior.}  {cmd:dash serve} blocks Stata until the server
-stops: {cmd:timeout(}{it:#}{cmd:)} stops it after {it:#} minutes, and
-Ctrl+C in the Stata console stops it at once.  Either way the command
-returns and Stata erases its temporary copy of the application.
+stops.  {cmd:timeout(}{it:#}{cmd:)} stops it after {it:#} minutes, and the
+command returns 0.  Break -- the Break button or menu item, or Ctrl+C in
+console Stata -- stops it at once, and the command ends with r(1), as any
+command interrupted by Break does.  If Stata exits, crashes or is killed,
+the server stops by itself within a few seconds and frees its port
+(measured on macOS; Linux and Windows have not been measured).  dash then
+removes its temporary folder; see
+{help dash##tempfiles:Temporary files and privacy}.
 
 {pstd}
-{cmd:dash serve} prints the server's address once it answers
-{cmd:/health}.  If no server starts -- the port is in use, or the app
+{cmd:dash serve} makes a new key for each launch.  Once the server answers
+{cmd:/health} it prints the server's address and the path of a file,
+readable only by you, holding the dashboard's link --
+{cmd:http://127.0.0.1:}{it:port}{cmd:/?token=}{it:key} -- and, unless
+{cmd:nobrowser}, {cmd:$dash_nobrowser} or a {cmd:nodraw} graph says not to,
+opens that link in your browser.  The key itself is never printed, so no
+Stata log holds it, with one exception: if no such file can be written
+anywhere, {cmd:dash serve} prints a warning line and then the link itself,
+once, and keeps serving.  The key is then in Results and in any log you have
+open, so treat that log like the link.  Open the file, or copy the link from
+it, to reach the dashboard again while the server runs; it is removed when
+the server stops.  On a disk that keeps no file permissions the file is
+written anyway, and a line beginning {cmd:dash: note:} names it.
+
+{pstd}
+If no server starts -- the port is in use, or the app
 stops before it answers -- {cmd:dash serve} says why and returns r(198)
 instead of blocking.
 
@@ -1433,7 +1592,12 @@ instead of blocking.
 {ul:Running the generated .py file independently.}
 {cmd:dash build, saving(app.py) server} writes a self-contained server app
 that embeds, base64-encoded, every observation of the variables the
-dashboard uses.  Run it outside Stata with:
+dashboard uses.  dash writes it readable only by you (0600); see
+{help dash##tempfiles:Temporary files and privacy}.  When you run the file
+yourself, with {cmd:python} or {cmd:bokeh serve}, Python opens it by its name
+and imports modules from the folder that holds it, so keep it in a folder
+only you can write.  {cmd:dash serve} does not run its own copy that way: it
+hands Python the text it wrote and checked.  Run it outside Stata with:
 
 {phang2}{cmd:python app.py}{p_end}
 
@@ -1445,6 +1609,25 @@ the rate limits {cmd:--sessions-per-client} {it:N},
 {cmd:--new-clients-per-minute} {it:N} and {cmd:--sessions-per-minute}
 {it:N} described below.  No browser window opens unless {cmd:--show} is
 given, so the app is usable from a script or a batch job.
+
+{pstd}
+The app never runs without a key, and only a link holding it opens the
+dashboard: {cmd:http://127.0.0.1:}{it:N}{cmd:/?token=}{it:key}.  Unless you
+choose the key, each start makes a new one, writes that link to a file named
+{cmd:link.html}, readable only by you, in a new folder only you can open,
+and prints the file's path on a line of its own before the server starts;
+the key itself is never printed.  Open the file, or copy the link from it;
+the folder is removed when the app stops.  On a disk that keeps no file
+permissions the file is written anyway, and a line beginning
+{cmd:dash: note:} names it; set {cmd:TMPDIR} to a folder on a disk that
+keeps them.  If no such file can be written at all, the app
+prints a warning line and then the link itself, once, and keeps serving; the
+key is then in that output and in any log of it.  To choose the key, set the
+environment variable {cmd:DASH_SERVE_TOKEN} to 32 to 128 of the characters
+A-Z, a-z, 0-9, _ and -, or pass {cmd:--token-stdin} and write it as one line
+on standard input; the app then writes no link file.  A value of any other
+form stops the app at once (exit status 2), naming the variable but not the
+value.
 
 {pstd}
 {cmd:--port} outside 1024 to 65535 is refused (exit status 2), not moved
@@ -1459,21 +1642,47 @@ every session starts a new count), and the app's flags above are not read.
 {cmd:bokeh serve} takes its own {cmd:--port}, {cmd:--address} and
 {cmd:--allow-websocket-origin}, and listens on every interface unless it is
 given {cmd:--address}.
+Under {cmd:bokeh serve} the app still never runs without a key.  Start it as
+{cmd:bokeh serve app.py --allow-websocket-origin 127.0.0.1:5006}: Bokeh
+otherwise admits only {cmd:localhost}, and the link's page stays blank.
+With {cmd:DASH_SERVE_TOKEN} set as above, open
+{cmd:http://127.0.0.1:5006/app?token=}{it:key}.  Without it, the app makes
+one key for the server when the first session is asked for, and at the first
+page request writes
+{cmd:http://127.0.0.1:}{it:port}{cmd:/app?token=}{it:key} to a
+{cmd:link.html} only you can read and prints that file's path (if no such
+file can be written, it prints a warning line and then the link itself, once
+for each app); the folder is removed when {cmd:bokeh serve} stops.  Every
+session without the key gets a page saying where the link is and naming
+{cmd:DASH_SERVE_TOKEN}.  {cmd:bokeh serve --show} opens the address without
+the key, so it shows that page and makes the link: open the file it names.
+The link names no {cmd:--prefix}, and a session asked for only through
+{cmd:bokeh.client} leaves the link to the first page request.
 
 {pstd}
 {ul:Security.}  Run as {cmd:python app.py}, or by {cmd:dash serve}, the app
-binds the loopback interface, so by default only this machine can reach it.
+binds the loopback interface, so by default only programs on this machine
+can reach it, and of those only one holding the dashboard's link opens it:
+every page, session, {cmd:/autoload.js} and {cmd:/metadata} request without
+the link's key is refused (403) before any data is read.  The key is new at
+every launch, is compared in constant time, and travels only in the link's
+{cmd:?token=}; {cmd:/health} and BokehJS's own files under {cmd:/static}
+stay open and hold no data.
 {cmd:--address} {it:addr} opens it deliberately
 -- {cmd:--address 0.0.0.0} listens on every interface -- and
 {cmd:--allow-websocket-origin} {it:host:port} then admits the {cmd:Origin}
-values a browser will send from there.
+values a browser will send from there.  The files {cmd:dash serve} writes are
+readable only by you wherever your disk keeps permissions, and dash notes any
+location where they are not; see
+{help dash##tempfiles:Temporary files and privacy}.
 
 {pstd}
 Understand what that second option is, before relying on it.  The
 {cmd:Origin} allow-list filters a header the {it:client} supplies, so it
 stops a page on another website from driving your dashboard in your browser.
 It is not an access control: a client that is not a browser can omit the
-header or forge an accepted one.  There is no password.
+header or forge an accepted one.  The dashboard's key is the access control: a client without it gets nothing,
+whatever {cmd:Origin} it sends.
 
 {pstd}
 An origin is admitted only when its host matches an allowed one label for
@@ -1489,15 +1698,25 @@ Bokeh's environment variable {cmd:BOKEH_ALLOW_WS_ORIGIN}, when it is set,
 replaces that allow-list: Bokeh admits the origins it names {it:instead of}
 {cmd:localhost}, {cmd:127.0.0.1} and {cmd:--allow-websocket-origin}.  The
 app says so when it starts, naming them, and warns when the variable holds
-{cmd:*}, which lets any website open a session with your dashboard.  Unset
-it to have the app's own list apply.
+{cmd:*}: the origin check then admits every website, and only the
+dashboard's key keeps another site's page out.  Unset it to have the app's
+own list apply.
 
 {pstd}
-So the generated app is a single-user tool.  It embeds every observation of
-the variables the dashboard uses, and anything that can reach the port can
-read them.  If you open it beyond loopback, put it behind something that
-authenticates -- an SSH tunnel, a reverse proxy, a firewall rule -- and
-treat the port as public otherwise.
+The generated app embeds every observation of the variables the dashboard
+uses, and anyone who holds its link can read them.  The key is in the link,
+so it is wherever the link is: the browser's address bar and history, the
+file {cmd:dash serve}, {cmd:python app.py} or {cmd:bokeh serve} names, the
+output and any log where one of them printed it because no file could be
+written, and anything you paste it into.  Treat the link as a password while
+the server runs; a new launch makes a new key, and the old link stops
+working.  The key travels in plain HTTP: on loopback that stays on this
+machine, but with {cmd:--address} beyond loopback anyone who can watch the
+network can read it, so reach such a server through an SSH tunnel or a
+reverse proxy that adds TLS.  The browser is handed the link without it
+appearing on any command line: on macOS through {cmd:osascript}'s standard
+input, elsewhere (or when {cmd:BROWSER} is set) through a page only you can
+read that forwards to it.  Linux and Windows have not been tested.
 
 {pstd}
 Within the file, data values are base64-encoded so that no data content can
@@ -1573,9 +1792,97 @@ the content together.
 {pstd}
 The generated app embeds every observation of the variables the dashboard
 uses, base64-encoded.  Treat the {cmd:.py} file as you would the data:
-{cmd:dash serve} writes its copy to a Stata temporary file that Stata erases
-when the command ends, and a file you name with {cmd:saving()} is yours to
-manage.
+{cmd:dash serve} writes its copy into a folder only you can open, erases the
+specification and data once the application is written, and the application
+once the server answers; only a crash in the seconds before the server
+answers can leave a private copy, which the next dash command removes.  A
+file you name with {cmd:saving()} is written readable only by you (0600) and
+is yours to manage.  A browser receives only the observations the dashboard
+draws or filters, as a saved page holds them, numbered as the saved page
+numbers them, so no row number shows where an excluded observation was; the
+{cmd:.py} file and its data still hold every observation.
+
+
+{marker tempfiles}{...}
+{title:Temporary files and privacy}
+
+{pstd}
+{ul:Run folders.}  Each render's specification and data go into a folder
+{cmd:c(tmpdir)}{cmd:dash-}{it:uid}{cmd:/run-}{it:pid}{cmd:-}{it:random},
+which only you can open (0700), in files only you can read (0600).  dash
+removes the folder when the command ends.  A folder left by an error,
+Break, a crash or a killed Stata is removed by the next dash command of that
+session, or by any session once that Stata has ended (on Windows, after a
+day).
+
+{pstd}
+{ul:dash serve.}  {cmd:dash serve} writes its application there and erases
+the specification and data once the application is written, and the
+application once the server answers, so no copy of the data stays on disk
+while the server runs; only a crash in the seconds before the server answers
+can leave a private copy, which the next dash command removes.
+
+{pstd}
+{ul:Previews.}  The one-line form's pages go to
+{cmd:c(tmpdir)}{cmd:dash-}{it:uid}{cmd:/previews/} under unique names,
+readable only by you.  The newest five of a session are kept, and
+{cmd:dash clear} removes the session's pages except one a browser was asked
+to open in the last minute.
+
+{pstd}
+{ul:When a location is not private.}  dash never stops a command for
+privacy.  If {cmd:c(tmpdir)} can be changed by other accounts (others can
+write to it and it has no sticky bit, as a {cmd:STATATMP} folder made under
+umask 002 has, or it belongs to another account), if a {cmd:dash-}{it:uid}
+there is a link, not a folder or another account's, or if your disk will not
+keep a folder private, dash goes on: it writes each file readable only by
+you wherever the disk allows and prints one note per command, beginning
+{cmd:dash: note:}, that names the location and the remedy -- {cmd:chmod go-w}
+on the folder, or starting Stata with {cmd:STATATMP} set to a folder only you
+can write.  A {cmd:dash-}{it:uid} dash cannot use is left alone: dash keeps
+its copies in a folder {cmd:dash-}{it:uid}{cmd:-}{it:xxxxxxxx} beside it that
+only you can open, and the note names both.  Under {cmd:quietly} the note is
+not shown, like dash's other notes.  Only {cmd:c(tmpdir)} itself is checked,
+not the folders above it.  In a {cmd:c(tmpdir)} others can write without a
+sticky bit, another account could move dash's folders, though not read the
+files in them.  It cannot change what {cmd:dash serve} runs: dash does not
+start its application by name, but opens the file it wrote, checks that it
+is that file with the same contents, and hands the text to Python itself, so
+a file swapped in afterwards is never run, and no module beside it or in your
+working folder is imported (measured on macOS; Linux and Windows have not
+been measured).  Such an account could still replace the specification or
+data between their writing and their reading, or keep the server from
+starting.
+
+{pstd}
+{ul:A guard against planted names.}  This guard does not depend on privacy.
+dash never writes through a symbolic link, into a pipe or device, over a
+file with other hard links or over another account's file, and never runs an
+application other than the one it wrote; in each case it stops with
+r(7102) and names the path.  If dash cannot create its folder at all
+({cmd:c(tmpdir)} missing, read-only or full), it stops with r(603), as
+Stata's own file commands do.
+
+{pstd}
+{ul:Named files.}  A page you name with {cmd:saving()} is written with your
+umask, as twoway's {cmd:saving()} and {cmd:graph export} write theirs
+(usually 0644); it embeds the data.  The server app that {cmd:dash build}
+writes with {cmd:server} to the {cmd:.py} file you name in {cmd:saving()}
+also embeds every observation, so it is written readable only by you (0600),
+whatever your umask.  If your disk does not keep that permission, dash still writes the
+file and prints a note naming it.  {cmd:replace} writes a new file rather
+than rewriting the old one.  As a guard against a planted name, dash
+refuses, r(7102), a symbolic link or another account's file at that name,
+and never writes to a link's target.  The folder you name keeps its own
+permissions: dash neither refuses nor notes a folder of yours that others
+can read, so choose one other accounts cannot list if the file's name is
+itself private.
+
+{pstd}
+{ul:Stata's own files and Windows.}  Stata's own temporary files (a
+{cmd:preserve} larger than {cmd:max_preservemem}, for instance) follow your
+umask.  On Windows, privacy rests on your per-user TEMP folder, which has not
+been tested.
 
 
 {marker limits}
@@ -1594,8 +1901,9 @@ that moves it for the rest of the session:
 {synoptline}
 {synopt:{cmd:$dash_max_cells}}values the saved page embeds: for a graph
     that draws rows, or that a {cmd:filter()}, {cmd:link()}, {cmd:csv} or
-    {cmd:hover()} reaches, its variables and qualifier columns times the
-    observations; for a graph made only of computed layers ({cmd:histogram},
+    {cmd:hover()} reaches, its variables -- the ones its layers plot and
+    the ones {cmd:hover()} names when one of its layers can show them --
+    and qualifier columns times the observations; for a graph made only of computed layers ({cmd:histogram},
     {cmd:kdensity}, a fit or a smoother) that nothing else reaches, the
     values its layers draw, not one row per observation; KPI cards and
     {cmd:filter()} variables always count.  A served app embeds every
@@ -1606,8 +1914,11 @@ that moves it for the rest of the session:
     of every string value, {cmd:strL} values included, of the string
     variables a dashboard uses, as Stata stores them; default 50,000,000,
     at most 500,000,000.  Over it the dashboard is refused with
-    {cmd:r(134)} before anything is exported.  Numbers are counted by
-    {cmd:$dash_max_cells} alone.{p_end}
+    {cmd:r(134)} before anything is exported.  On the saved page a string
+    variable {cmd:hover()} names counts under the same rule as for
+    {cmd:$dash_max_cells} (when a layer of its graph can show it, or
+    {cmd:csv} is given); a served app counts every string variable it
+    exports.  Numbers are counted by {cmd:$dash_max_cells} alone.{p_end}
 {synopt:{cmd:$dash_max_graphs}}graphs and KPI cards in the registry; default
     100, at most 1,000.  A new name past it is refused with
     {cmd:r(134)}.  It also bounds the cells of a {cmd:layout()} grid, which
@@ -1649,7 +1960,12 @@ counted like a variable -- but the {cmd:$dash_max_cells} limit itself
 counts only what the saved page will actually embed.  A graph drawn from
 rows -- or touched by a {cmd:filter()} that does not exclude it, a
 {cmd:link()}, {cmd:csv}, or {cmd:hover()} -- counts its variables and
-qualifier columns times the observations, as before.  A graph made only
+qualifier columns times the observations, as before; the variables
+{cmd:hover()} names are among its counted variables when a layer of the
+graph can show them.  A graph made only of computed layers, or of
+{cmd:scatteri}, {cmd:pci}, {cmd:pcarrowi} or {cmd:function}, exports its
+{cmd:hover()} variables but does not count them unless {cmd:csv} is
+given.  A graph made only
 of computed layers ({cmd:histogram}, {cmd:kdensity}, {cmd:lfit} and the
 other fits and smoothers) that nothing else reaches draws its own bounded
 output instead: a histogram's bars (four values a bin, the observations
@@ -1672,7 +1988,11 @@ Measured, 4,000,000 values made a 95 MB page and took about 2 GB of
 memory to render.  A string value adds its own length to that, and a
 {cmd:strL} is exported whole, so text is held to {cmd:$dash_max_bytes} as
 well: 60 observations of a 1,000,000-byte {cmd:strL} are only 60 values
-but 60,000,000 bytes, and are refused at the default.
+but 60,000,000 bytes, and are refused at the default.  A saved page may
+hold fewer observations than the limit counts: only those its graphs, cards
+and filters select (see {help dash##description:Description}); the size the
+dashboard reports when it is large counts those, and a served app's report
+counts every observation.
 
 {pstd}
 {ul:A served dashboard} has rate limits of its own; see
@@ -1716,7 +2036,7 @@ but 60,000,000 bytes, and are refused at the default.
 {phang2}{cmd:. sysuse auto, clear}{p_end}
 {phang2}{cmd:. dash scatter mpg weight if foreign == 1, saving(foreign.html)}{p_end}
 
-{pstd}{ul:Live Bokeh Server (blocking — Ctrl+C to stop)}{p_end}
+{pstd}{ul:Live Bokeh Server (blocking — Break to stop)}{p_end}
 {phang2}{cmd:. sysuse auto, clear}{p_end}
 {phang2}{cmd:. dash scatter mpg weight, name(s1) title("MPG vs Weight")}{p_end}
 {phang2}{cmd:. dash kpi mean(mpg), title("Avg MPG") name(k1) fmt(%9.1f) update(filter)}{p_end}
@@ -1749,7 +2069,27 @@ Observations with a missing {cmd:by()} value are left out unless
     observations{p_end}
 {synopt:{opt by(varlist, missing)}}include a panel, titled "Missing", of
     the observations with a missing value{p_end}
+{synopt:{opt by(varlist, yrescale|xrescale|rescale)}}draw each panel on its
+    own y scale, x scale or both; abbreviations {cmd:yr}, {cmd:xr} and
+    {cmd:r}, and {cmd:noyrescale}, {cmd:noxrescale} and {cmd:norescale}
+    ({cmd:noyr}, {cmd:noxr}, {cmd:nor}) to keep one scale; when both are
+    given, the rescale wins, as in {cmd:twoway}{p_end}
+{synopt:{opt by(varlist, style(rescale))}}and style(combine): only
+    their separate scales are drawn, with a note{p_end}
 {synoptline}
+
+{pstd}
+As in {cmd:twoway}, a {cmd:by()} graph's panels share one scale per axis --
+y, x and a second axis -- spanning every panel's data, the Total panel's
+too, and they keep sharing it after a filter move.  Panning or zooming one
+panel moves the others, and, as in any Bokeh plot, stops that axis
+following later filter moves.  With {cmd:yrescale}, {cmd:xrescale} or
+{cmd:rescale} each panel is drawn and ticked ({cmd:#}{it:N}) over its own
+data on that axis; there {cmd:yscale(range())} and {cmd:xscale(range())},
+those of the second axis included, are not applied, as in {cmd:twoway},
+and a note says so; labels and ticks still widen each panel, and reverse
+and log are kept.  {cmd:twoway} draws only the outer axes of shared panels,
+where {cmd:dash} draws every panel's.
 
 {pstd}
 The Total panel draws the observations of every group, as {cmd:twoway}'s
@@ -1777,8 +2117,8 @@ One graph draws at most 100 groups by default, a panel each, and its Total
 panel one more: over that, the first 100 groups in sort order are drawn and
 a note names the limit and the global that raises it (see
 {help dash##limits:Resource limits}).
-{cmd:cols()}, {cmd:total} and {cmd:missing} are the {cmd:by()} sub-options
-{cmd:dash} implements.  Any other sub-option of Stata's {cmd:by()} -- for
+{cmd:cols()}, {cmd:total}, {cmd:missing} and the rescale forms above are
+the {cmd:by()} sub-options {cmd:dash} implements.  Any other sub-option of Stata's {cmd:by()} -- for
 example {cmd:rows()}, {cmd:holes()} or {cmd:compact} -- is accepted, named
 in a warning, and ignored.
 {cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group
@@ -1906,15 +2246,18 @@ it, its default and its bounds -- {cmd:twoway}'s, measured against
 changes an estimate is honoured or refused; the few {cmd:dash} cannot
 compute -- {cmd:area()} and {cmd:boundary} on {cmd:kdensity}, a kernel
 written as an option of its own (a bare {cmd:gaussian}), {cmd:atobs},
-{cmd:estcmd()}, {cmd:estopts()} and {cmd:predopts()} on the fits,
-{cmd:pwidth()} and {cmd:var()} on {cmd:lpolyci} -- are named in the note
-as ignored.  {cmd:fpfit} and {cmd:fpfitci} take none of the smoothing
+{cmd:estcmd()}, {cmd:estopts()} and {cmd:predopts()} on the fits --
+are named in the note as ignored.  {cmd:pwidth()} and {cmd:var()} are
+honoured on {cmd:lpolyci}; on {cmd:lpoly}, {cmd:scatter}, {cmd:lfitci},
+{cmd:kdensity} and the other types, where {cmd:twoway} refuses them with
+r(198), {cmd:dash} names them in the note and draws the layer.  {cmd:fpfit} and {cmd:fpfitci} take none of the smoothing
 options -- see below.
 
 {synoptset 20}{...}
 {synopt:{opt bwidth(#)}}the bandwidth of {cmd:lpoly}, {cmd:lpolyci},
     {cmd:kdensity} and {cmd:lowess}.  On the first three it is the
-    half-width of the smoothing kernel, in the units of x, as
+    half-width of the smoothing kernel, in the units of x, days for a
+    {cmd:%td} x and months for a {cmd:%tm} one, as
     {helpb twoway lpoly} defines it; with no {cmd:bwidth()} it is
     computed from the data, by {cmd:twoway}'s own rule on {cmd:kdensity}
     and by the rule of thumb under {it:Default bandwidth} below on
@@ -1931,6 +2274,20 @@ options -- see below.
     reads {cmd:bw()} as {cmd:barwidth()}, a synonym of its own
     ({cmd:twoway} refuses {cmd:bw()} there), and on any other plot type
     names it in the note{p_end}
+{synopt:{opt pwidth(#)}}{cmd:lpolyci}: the pilot bandwidth of the
+    band's variance estimate, in the units of x; by default 1.5 times the
+    rule of thumb under {it:Default bandwidth}, even when {cmd:bwidth()}
+    is given, as Stata's {cmd:r(pwidth)}.  A positive number; anything
+    else is refused in {cmd:twoway}'s words, r(198).  {cmd:pw()} is its
+    shortest spelling ({cmd:p()} is {cmd:pstyle()}, as in {cmd:twoway}).
+    {cmd:pwidth(+800)} is read as 800, where {cmd:twoway} says
+    {cmd:expression invalid}, r(3000){p_end}
+{synopt:{opt var(#)}}{cmd:lpolyci}: a constant residual variance for the
+    band, in place of the pilot fit's; the pilot window must still hold
+    two observations, as in Stata, or that point has no band.  A positive
+    number: zero or less is r(198), and a value that is not one number
+    r(7), each in {cmd:twoway}'s words.  {cmd:v()} is its shortest
+    spelling{p_end}
 {synopt:{opt degree(#)}}{cmd:lpoly} and {cmd:lpolyci}: the degree of the
     local polynomial -- 0, the Nadaraya-Watson kernel estimator (the
     default); 1, local linear; 2, local quadratic; 3, local cubic.
@@ -1970,7 +2327,10 @@ options -- see below.
     {cmd:regress} omits x, so every point is at that x and the mean of
     {it:yvar}, as {cmd:twoway lfit} draws it, and the band of
     {cmd:lfitci} and {cmd:qfitci} is the mean's.  {cmd:function}: 300 by
-    default, over {cmd:range()}.  On these types {cmd:dash} takes 2 to 10000;
+    default, over {cmd:range()}; one graph's {cmd:function} points must fit
+    in one Stata macro, {cmd:c(macrolen)} characters (645,200 by default,
+    about 21 a point; {cmd:set maxvar} raises it), or the graph is refused
+    with {cmd:r(134)}.  On these types {cmd:dash} takes 2 to 10000;
     {cmd:twoway} takes any whole number from 1 up, with no upper bound
     ({cmd:lpoly} reads 1 as 50).  {cmd:mspline}: the number of points
     drawn between each pair of adjacent knots, default 10, 1 to 300, as in
@@ -2038,9 +2398,9 @@ options -- see below.
 regression -- the same smoother underlying Stata's {helpb twoway lpoly},
 with the same default kernel ({cmd:epanechnikov}) and the same
 {cmd:degree(0)} default.  At a given {cmd:bwidth()} the curve is Stata's
-at every degree from 0 to 3 -- including where a window holds fewer
-distinct x values than the degree needs, where the degree drops as
-Stata's does.  A grid point at which fewer than two observations have
+at every degree from 0 to 3 -- including where a window's powers of x
+are nearly collinear, where the fit keeps the intercept and the powers
+Stata's {cmd:invsym()} keeps.  A grid point at which fewer than two observations have
 positive kernel weight is left missing, as Stata leaves it, and the line
 joins the points on either side of it, as {cmd:twoway lpoly} draws it; a
 {cmd:bwidth()} too narrow for any window to hold two observations draws
@@ -2057,20 +2417,22 @@ bandwidth in x units, while for {helpb twoway lowess} it is the
 
 {pstd}
 {bf:Default bandwidth.}  With no {cmd:bwidth()}, {cmd:lpoly} and
-{cmd:lpolyci} use a rule of thumb of {cmd:dash}'s own, after Fan and
-Gijbels: 0.65 (s^2/S)^(1/5), where s^2 is the residual variance of a
-global quartic fit of y on x and S the sum over the observations of that
-quartic's squared second derivative; below eight observations it is a
-tenth of the range of x.  Stata computes its rule of thumb in compiled
-Mata ({cmd:_lpoly_work()}, in the library {cmd:lmataado}), which
-{cmd:dash} does not reproduce, so the two agree only approximately:
-measured against {cmd:r(bwidth)}, {cmd:dash}'s default is 9.7% below
-Stata's on {cmd:auto} mpg on weight, 22% below on {cmd:auto} price on mpg
-and on rep78, 17% below on mpg on weight with {cmd:[aweight=price]}, and
-5.7%, 6.8% and 14.2% above on {cmd:sp500} close on volume, {cmd:nlsw88}
-wage on ttl_exp and {cmd:census} death on pop; on the first seven cars of
-{cmd:auto}, 185 against Stata's 77.4.  Specify {cmd:bwidth()} to
-reproduce a Stata smoother exactly.
+{cmd:lpolyci} use {cmd:lpoly}'s rule of thumb as Stata computes it (see
+{it:Methods and formulas} in {helpb lpoly}): a global polynomial of
+degree p+3 in powers of x, where p is the degree and an even degree uses
+the next odd one, with Stata's handling of nearly collinear powers; the
+residual variance as the weighted mean squared residual of that fit; the
+squared (p+1)th derivative of the fit integrated over the central 90% of
+the range of x; and Stata's constant for the kernel.  The bandwidth is
+computed from the rows each layer draws: each {cmd:by()} panel and each
+{cmd:if} or {cmd:in} gets its own, and the served app recomputes it from
+the rows kept after every filter move.  As {cmd:twoway} draws them, an x
+taking only the values 0 and 1, or a constant x, gives a line at 0, and
+too few distinct points draw nothing.  Where y is an exact polynomial of
+x, Stata's bandwidth is the round-off of its arithmetic, and three cases
+are drawn differently: y exactly linear in x at {cmd:degree(0)}; y equal
+to x at {cmd:degree(0)} or {cmd:degree(1)}; and a y as small as 1e-150
+times {cmd:mpg} at {cmd:degree(2)}, which {cmd:dash} draws as a line at 0.
 
 {pstd}
 {cmd:lowess} is Stata's smoother, not a library's: the sample is sorted
@@ -2166,11 +2528,12 @@ to the maximum of the plot's sample, or over {cmd:range()}, as
 {cmd:fpfitci}, {cmd:lpolyci}, {cmd:lfitci} and {cmd:qfitci} draw a
 confidence band at {cmd:level()}, defaulting to the session's
 {cmd:c(level)} -- so {cmd:set level 90} is honoured, as {cmd:twoway}
-honours it.  {cmd:level(}{it:#}{cmd:)} must be a number strictly between
-0 and 100 and is refused otherwise, with r(198); {cmd:twoway}'s
-{cmd:lfitci}, {cmd:qfitci} and {cmd:fpfitci} take any number, and its
-{cmd:lpolyci} only 10 to 99.99 (so {cmd:dash} draws an {cmd:lpolyci}
-band at {cmd:level(5)}, which {cmd:twoway} refuses, r(198)).
+honours it.  On {cmd:lfitci}, {cmd:qfitci} and {cmd:fpfitci},
+{cmd:level(}{it:#}{cmd:)} must be a number strictly between 0 and 100
+and is refused otherwise, with r(198); {cmd:twoway} takes any number
+there.  On {cmd:lpolyci} it is {cmd:twoway}'s rule: 10 to 99.99, with at
+most two digits after the decimal point as typed, each refused r(198) in
+{cmd:twoway}'s words, and a value that is not one number r(7).
 {cmd:lfitci} and {cmd:qfitci} build the band on {cmd:stdp}, {cmd:stdf} or
 {cmd:stdr}, {it:t} times that standard error with the same {it:t} for all
 three; with an {cmd:aweight}, {cmd:stdf} and {cmd:stdr} are refused as
@@ -2178,8 +2541,17 @@ three; with an {cmd:aweight}, {cmd:stdf} and {cmd:stdr} are refused as
 r(135)), and with a {cmd:pweight} likewise (r(198)).  An {it:x} with two
 values fits the line ({cmd:qfit} and {cmd:qfitci} omit x^2, as
 {cmd:regress} does), and three observations draw the quadratic fit with
-no band.  {cmd:lpolyci}'s band is a bootstrap percentile band, not
-Stata's, every resample evaluated on the drawn line's own grid.  The
+no band.  {cmd:lpolyci}'s band is {cmd:lpoly}'s analytic band
+({helpb lpoly}, Methods and formulas): the smooth plus and minus
+invnormal times its standard error, a sandwich variance with a pilot
+local fit of degree p+2 at {cmd:pwidth()}, or {cmd:var()}.  At given
+bandwidths it is Stata's; at the default bandwidths it is as exact as the
+rule of thumb.  A grid point whose pilot window has no residual degrees of
+freedom is drawn with zero width; Stata's value there is round-off, often
+missing.  The band is drawn where its standard error is defined and joins
+across the points where it is not, as {cmd:twoway lpolyci} draws it.  The
+saved page keeps the band computed when it was built; the served app
+refits it after every filter move.  The
 bound of every checked option is listed under
 {help dash##validation:Option values}.
 
@@ -2500,7 +2872,8 @@ of it fitted to 12,000 of Stata's answers, which agrees exactly with 98% of
 {cmd:%ty} ranges and with 52% to 66% of the others, and where it differs
 it picks another calendar step or end tick.  A {cmd:by()} graph's panels
 are ticked on one scale, over all the panels' data, as {cmd:twoway} ticks
-them; {cmd:by(, yrescale)} is not implemented.
+them; with {cmd:by(, yrescale)} each panel is ticked over its own data,
+as {cmd:twoway} ticks it.
 
 {pstd}
 A date axis's ticks are written in the axis variable's display format, as
@@ -2520,6 +2893,24 @@ in both render modes.  A number that is no date Stata shows (outside
 01jan0100 to 31dec9999) is named in a note and not drawn.
 
 {pstd}
+{ul:Computed layers of a date.}  The 13 computed types -- {cmd:histogram},
+{cmd:kdensity}, {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci},
+{cmd:lowess}, {cmd:lpoly}, {cmd:lpolyci}, {cmd:mspline}, {cmd:mband},
+{cmd:fpfit} and {cmd:fpfitci} -- compute from a date in its own units, as
+{cmd:twoway} does.  {cmd:width()}, {cmd:start()}, {cmd:bin()},
+{cmd:bwidth()}, {cmd:range()} and {cmd:n()} read days for {cmd:%td},
+milliseconds after 01jan1960 for {cmd:%tc}, and weeks, months, quarters,
+half-years or years for the others.  A density is per day (per month for
+{cmd:%tm}), so {cmd:dash histogram date, width(7)} draws week-wide bars.
+A histogram's or kdensity's variable is on the x axis.  An axis shows
+dates whenever every layer's variable on it is a date of one kind, and a
+date layer that shares an axis with a plain number is drawn at its Stata
+values, as {cmd:twoway} draws it.  A bar or point computed outside
+01jan0100 to 31dec9999 is not drawn, and a note says how many.
+{it:Difference from twoway:} twoway labels the axis with the variable's numbers (15000, 15100, ...) when the first layer is {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci}, {cmd:kdensity}, {cmd:lpoly} or {cmd:lpolyci}; dash keeps its date axis there and draws those layers at the dates their values denote.
+So {cmd:dash kdensity date} has a date axis where {cmd:twoway kdensity date} shows 15000 to 15400, and a {cmd:range()} that reaches before 01jan0100 loses those points, with a note, where twoway draws them.
+
+{pstd}
 {ul:Ticks without labels.}  {cmd:xtick()} and {cmd:ytick()} add ticks
 without labels beside whatever labels the axis has, its default ones or
 those {cmd:xlabel()} and {cmd:ylabel()} ask for.  They take a numlist or
@@ -2528,6 +2919,9 @@ sub-option {cmd:grid}, which draws gridlines at the ticks; another
 sub-option is named in a warning.  Bokeh labels one set of ticks per axis,
 so these are drawn as its minor ticks, at the major ticks' length; Bokeh's
 own minor ticks, which Stata does not draw, are not drawn on that axis.
+With {cmd:axis(2)} the ticks are on the second axis's scale, and they
+widen that axis, as a label does, unless {cmd:norescale} is given; a line,
+{cmd:yline(}{it:#}{cmd:, axis(2))}, never widens an axis.
 
 {pstd}
 {it:Examples:}
@@ -2543,23 +2937,44 @@ right-hand y axis scaled to what the layers on that axis draw, or
 with it, and the left or bottom axis spans only the layers drawn on it.
 Both are plot-level options, given inside the layer's parentheses.  Either
 takes 1 or 2 only: {cmd:dash} draws two axes where {cmd:twoway} allows
-nine, and any other value is refused.  {cmd:xlabel()}, {cmd:ylabel()},
-{cmd:xtick()} and {cmd:ytick()} style the bottom and left axes only; the
-second axes take the options below, which are {cmd:dash}'s own, as are
-their synonyms: {cmd:twoway} refuses all twelve, r(198), and writes
-{cmd:ytitle(}{it:text}{cmd:, axis(2))} and the like.  {cmd:dash} reads
-{cmd:ytitle(, axis(2))} and {cmd:xtitle(, axis(2))} as the second axis's
-title too; {cmd:ylabel(, axis(2))} and {cmd:yscale(, axis(2))} are still
-named, not read.
+nine, and any other value is refused.
+
+{pstd}
+As in {cmd:twoway}, the sub-option {cmd:axis(2)} puts {cmd:ytitle()},
+{cmd:ylabel()}, {cmd:ytick()}, {cmd:yline()} and {cmd:yscale()} -- and the
+x forms -- on the second axis, and {cmd:axis(1)}, or no {cmd:axis()}, on the
+first: {cmd:ylabel(5000 10000, axis(2))} labels the right-hand axis,
+{cmd:yscale(log axis(2))} makes it a log axis, {cmd:yline(5000, axis(2))}
+is drawn on its scale and {cmd:ytick(7500, axis(2))} ticks it, in the saved
+page and the served app, before and after any filter move.  Each axis keeps
+its own copy: {cmd:ylabel(10 20) ylabel(5000 10000, axis(2))} labels both.
+{cmd:twoway}'s spellings are read -- its abbreviations ({cmd:yl},
+{cmd:ytic}, {cmd:yli}, {cmd:ysc}, {cmd:yt}), its plurals
+({cmd:ylabels()}, {cmd:yticks()}, {cmd:ylines()}) and the sub-option's own
+minimum, {cmd:ax(2)} -- written in lower case.  The axis number is read as
+{cmd:twoway} reads it: a number that is not a whole number within
+{cmd:twoway}'s integer range ({cmd:axis(2.5)}, {cmd:axis(a)},
+{cmd:axis(1e300)}) means axis 1.  An {cmd:axis()} naming an axis no layer
+is drawn on, an {cmd:axis()} given twice, {cmd:AXIS()} in capitals and a
+second comma ({cmd:ylabel(5000, angle(0), axis(2))}) are refused, r(198),
+with {cmd:twoway}'s message, in the order {cmd:twoway} checks them.
+{cmd:ymlabel()} and {cmd:ymtick()} are checked the same way but are drawn
+on neither axis (named in a warning).  {cmd:add} on a label routed to the
+second axis ({cmd:ylabel(5000, axis(2) add)}) is named, not applied.  The
+second axes also take the options below, which are {cmd:dash}'s own
+spellings of the {cmd:axis(2)} forms, as are their synonyms:
+{cmd:twoway} refuses all sixteen, r(198).  Given on a graph with no layer
+on that second axis, they are named in a warning when the dashboard is
+built, saved or served.
 
 {pstd}
 When every layer of a graph is on {opt yaxis(2)}, {cmd:dash} draws one y
-axis, on the left, as {cmd:twoway} does; {cmd:ytitle2()}, {cmd:ylabel2()}
-and {cmd:yscale2()} style it, and where one is given it takes the place of
-{cmd:ytitle()}, {cmd:ylabel()} or {cmd:yscale()}, which {cmd:twoway} refuses
-on such a graph.  When every layer is on {opt xaxis(2)}, the one x axis is
-drawn at the bottom, styled the same way by {cmd:xtitle2()},
-{cmd:xlabel2()} and {cmd:xscale2()}.
+axis, on the left, as {cmd:twoway} does; the {cmd:axis(2)} forms --
+{cmd:ytitle2()}, {cmd:ylabel2()}, {cmd:yscale2()}, {cmd:ytick2()} and
+{cmd:yline2()} -- style it, and the first axis's options are refused,
+r(198), with {cmd:twoway}'s message ({cmd:ylabels(5000 10000) not allowed,}
+{cmd:yaxis1 does not exist}).  When every layer is on {opt xaxis(2)}, the
+one x axis is drawn at the bottom, styled the same way by the x forms.
 
 {synoptset 38}{...}
 {synopt:{opt ytitle2(tinfo)}}title for the right-hand y axis, in the
@@ -2576,14 +2991,28 @@ drawn at the bottom, styled the same way by {cmd:xtitle2()},
     {cmd:xlabel()} takes.  Synonym: {cmd:xla2()}{p_end}
 {synopt:{opt xscale2(log)}}log scale on the top x axis.
     Synonym: {cmd:xsc2()}{p_end}
+{synopt:{opt ytick2(rule)}}ticks without labels on the right-hand y axis,
+    in the grammar {cmd:ytick()} takes; twoway writes it with the
+    sub-option axis(2).  No abbreviation.{p_end}
+{synopt:{opt xtick2(rule)}}ticks without labels on the top x axis.  No
+    abbreviation.{p_end}
+{synopt:{opt yline2(linelist)}}lines at the right-hand y axis's values, as
+    {cmd:yline()} draws them; twoway writes it with the sub-option
+    axis(2).  No abbreviation.{p_end}
+{synopt:{opt xline2(linelist)}}lines at the top x axis's values.  No
+    abbreviation.{p_end}
 {synoptline}
 
 {pstd}
 {cmd:ytitle2()} and {cmd:xtitle2()} are read the same way every other
 text option is: each quoted string is its own line, {cmd:size()} and
 {cmd:color()} are applied, and any other sub-option is named once.  An
-empty string ({cmd:ytitle2("")}) removes the title; an absent option
-draws no title either.
+empty string ({cmd:ytitle2("")}) removes the title; without one, the
+second axis is titled as {cmd:twoway} titles it -- by the label (or
+name) of its first layer's variable, {cmd:Density} or {cmd:kdensity}
+{it:varname} for those layers -- in the scheme's axis style, and
+sub-options alone style that title; under {cmd:by()} it has no default
+title, as in {cmd:twoway}.
 
 {pstd}
 {cmd:ylabel2()} and {cmd:xlabel2()} read their rule and sub-options with
@@ -2608,7 +3037,8 @@ the second axis unless {cmd:norescale} is given.
 plots -- its x and y, a range's two ends, a paired-coordinate layer's
 x1, y1, x2 and y2 -- so in {cmd:(scatter mpg weight) (scatter price weight)}
 a point of the second layer shows {cmd:weight} and {cmd:price}, not
-{cmd:mpg}.  {cmd:hover(}{it:varlist}{cmd:)} adds the variables' values
+{cmd:mpg}.  Each row is named by the variable's label, or by its name
+when it has none.  {cmd:hover(}{it:varlist}{cmd:)} adds the variables' values
 to the tooltip of every layer whose marks are observations --
 {cmd:scatter}, {cmd:connected}, {cmd:line}, {cmd:tsline}, {cmd:area},
 {cmd:dot}, {cmd:dropline}, {cmd:bar}, {cmd:spike}, every range type
@@ -2630,6 +3060,16 @@ layer in a note, once.  A variable's value is written in its display
 format, as Stata's {cmd:display} writes it -- {cmd:4,099} under
 {cmd:%8.0gc}, {cmd:12345.67} under {cmd:%10.0g}, a date in its picture,
 a {cmd:%tc} or {cmd:%tC} date with its time -- in both render modes.
+Every variable {cmd:hover()} names is exported with the data, whether or
+not a layer plots it, so its value is in the tooltip of the saved
+dashboard and the served app, before and after a filter move; its values
+are part of the saved page's source, like the variables the layers draw.
+It counts toward {cmd:$dash_max_cells}, and a string one also toward
+{cmd:$dash_max_bytes}, on the saved page when a layer of its graph can
+show it or {cmd:csv} is given, and always in a served app (see
+{help dash##limits:Resource limits}).  {cmd:dash build} and
+{cmd:dash serve} refuse a {cmd:hover()} variable no longer in memory with
+r(111), as they refuse a dropped plotted variable.
 
 
 {marker colorvar}
@@ -2692,11 +3132,34 @@ variable, one colour and one key entry per value, an empty string drawn in
 {cmd:colormissing()}'s colour.
 
 {pstd}
+{ul:Which observations set the colours.}  The colours, the colour bar's
+range, the cuts of {cmd:colorcuts()} and {cmd:colorlevels()}, the levels of
+{cmd:colordiscrete} and a string variable's categories ({cmd:dash}'s own;
+{cmd:twoway} stops with r(7)) come from the observations the plot draws, as
+{cmd:twoway} takes them: those its own {cmd:if} and {cmd:in}, the graph's
+{cmd:if} and {cmd:in} and, under {cmd:by()}, its panel select.  An
+observation whose y or x is missing counts too.  So in {cmd:sysuse auto}, a
+scatter of {cmd:mpg} on {cmd:weight} with its own {cmd:if foreign==1} and
+{cmd:colorvar(price)}, drawn beside a scatter of the domestic cars, spans
+3,748 to 12,990, the prices of the foreign cars.  Under {cmd:by()}
+each panel colours its own observations, as {cmd:twoway} does; {cmd:dash}
+draws each panel's key, where {cmd:twoway} draws none unless
+{cmd:by(, clegend(on))} asks for the first panel's, and its note names
+{cmd:clegend()}.  A filter move keeps the colours and the key chosen when
+the dashboard was built, in both the saved page and the served app.
+{cmd:rconnected} draws one key for both ends.  A plot whose {cmd:if}
+selects no observation draws no key ({cmd:twoway} stops with r(3001)), and
+one whose observations are all missing on the variable draws a
+"(missing)" entry where {cmd:twoway} draws the key's title alone.
+
+{pstd}
 The colour key's own axis options, {cmd:ztitle()}, {cmd:zlabel()} and
 {cmd:zscale()}, are taken as graph options and drawn on the key: the title on
 either key; ticks, {cmd:#}{it:N}, {cmd:none} and {cmd:minmax}, and
 {cmd:range()} (widening only), {cmd:log} and {cmd:reverse}, on the colour bar.
 On a discrete key {cmd:zlabel()} and {cmd:zscale()} are named in the note.
+{cmd:ztitle()} given only sub-options styles the key's default title, the
+colour variable's label; {cmd:suffix} and {cmd:prefix} add lines to it.
 
 {pstd}
 {it:Example:}
@@ -2887,7 +3350,9 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     in the scheme's {cmd:color xyline}, {cmd:linepattern xyline} and
     {cmd:linewidth xyline}, as {cmd:twoway} draws them: cranberry and solid
     under {cmd:s2color}, black and dashed under {cmd:stcolor}.  Their
-    {cmd:lcolor()}, {cmd:lpattern()} and {cmd:lwidth()} still win.{p_end}
+    {cmd:lcolor()}, {cmd:lpattern()} and {cmd:lwidth()} still win.
+    A line given the sub-option axis(2) is drawn at that value of the
+    second axis; no line widens an axis.{p_end}
 
 {phang2}{ul:Series.}  The colour, symbol and line-pattern cycles
     ({cmd:p1} to {cmd:p15}), the line width ({cmd:linewidth p}, and
@@ -3227,18 +3692,14 @@ disagree in either direction.
     {cmd:twoway} plot's: {cmd:twoway} refuses both, r(198).
 
 {phang2}{ul:Connection order.}
-    {opt sort(varlist)}, and {opt sort} on the other plot types --
-    {cmd:dash} always joins the points of {cmd:line}, {cmd:connected},
-    {cmd:area}, {cmd:tsline} and the range line and area plots
-    ({cmd:rline}, {cmd:rarea}, {cmd:rconnected}, {cmd:tsrline}) in the order
-    of x, which is the picture {cmd:twoway} draws with {cmd:sort}; without
-    it {cmd:twoway} joins them in the order of the data.  So a bare
-    {cmd:sort} on those plots is what {cmd:dash} draws, and is not named in
-    the note; on any other plot type it is named.
-    {cmd:sort(}{it:varlist}{cmd:)}, which joins them in the order of other
-    variables, is not honoured: they are still joined in the order of x, and
-    it is named on every plot type.  Where {it:varlist} has ties,
-    {cmd:twoway}'s own order among them changes from one run to the next.
+    {opt sort} and {opt sort(varlist)} on every plot type other than
+    {cmd:line}, {cmd:connected}, {cmd:area}, {cmd:rline}, {cmd:rarea},
+    {cmd:rconnected}, {cmd:tsline} and {cmd:tsrline} -- {cmd:dash} joins no
+    points there, and names them in the note.  On the first six they are
+    honoured, and {cmd:tsline} and {cmd:tsrline} join in time order, as
+    {cmd:twoway} does, so none of the eight names them (see
+    {ul:Join order} under the plot types).  A malformed {cmd:sort()} is
+    refused on every type, as {cmd:twoway} refuses it.
 
 {phang2}{ul:Marker-label placement and text style.}
     {opt mlabvposition(varname)} -- a layer's labels all sit at the one
@@ -3344,6 +3805,14 @@ and link yourself:
     label; {cmd:unicode translate} converts such text first.  A binary strL
     is refused, r(198), naming the variable.  {helpb dash_setup} neither
     checks nor installs it.
+
+{pstd}
+On a Python that the operating system manages (PEP 668: Homebrew's, and
+recent Debian, Ubuntu and Arch Linux system Pythons), {cmd:dash_setup}
+installs nothing and says so; {cmd:dash_setup, venv(}{it:path}{cmd:)} sets
+up a private environment instead and prints the {cmd:python set exec} line
+that links Stata to it.  See
+{help dash_setup##pep668:Externally managed Pythons}.
 
 
 {marker author}

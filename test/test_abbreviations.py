@@ -598,10 +598,15 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # _dash_dashboard_browser, _dash_kpi, _dash_prepare_spec, _dash_build,
     # _dash_serve_spec, _dash_open_page, the one browser opener, since
     # WP-24, and _dash_by_panels, since the S3 batch's by() answers).  ">= 6" let four of them drop out of every whole-file scan
-    # below -- a `program' written without `define' does.
+    # below -- a `program' written without `define' does.  Flipped to 13
+    # (WP-29 P0.1): _dash_sort_names declares SORT1(namelist), the check
+    # twoway makes of sort()'s names; 15 since WP-29 P0.12b, P0.14:
+    # _dash_tmp_preview and _dash_tmp_close, the private temporary
+    # folder's programs, take opened()/noted() and dir().
     with_syntax = sorted(p for p, b in _bodies().items() if _syntax_options(b))
     assert len(with_syntax) >= 6
-    assert len(with_syntax) == 12, with_syntax
+    assert len(with_syntax) == 15, with_syntax
+    assert {"_dash_tmp_preview", "_dash_tmp_close"} <= set(with_syntax)
     assert "_dash_open_page" in with_syntax, with_syntax
     # The comment lines the duplicate-block scan reads, per parser: 108
     # in the plot parser and 71 in the graph parser (measured 24sep2026,
@@ -686,3 +691,56 @@ def test_no_declaration_is_shadowed_by_an_earlier_one():
     assert not bad, (
         "declared options -syntax- never binds by their own name:\n  "
         + "\n  ".join(bad))
+
+
+# ============================================================
+# WP-29 P0.5: the axis route's spellings are twoway's, and the seven
+# graph-key lists of dash.ado carry the four new second-axis keys.
+# ============================================================
+class TestTheAxisRouteKnowsDashsSpellings:
+    """dash_parse.mata's ``_dash_axfam`` is twoway's ParseAndLogAxes table
+    (graph_g.class:1300-1422): optnames SCale Labels MLabels TICks MTicks
+    Title LInes, so the whole option names' minimums -- the side letter
+    included -- are xt/yt 2, xl 2, xml 3, xtic 4, xmt 3, xli 3, xsc 3, and
+    the full names are twoway's plurals."""
+
+    _ROW = re.compile(r'"(\w+)",\s*"(\w+)",\s*"(\w+)",\s*"(\d)",\s*"(\d)",'
+                      r'\s*"(\w*)"')
+
+    def _table(self):
+        src = _read(MATA_PATH)
+        m = re.search(r"^string matrix _dash_axfam\(\)\s*\{(.*?)^\}", src,
+                      re.S | re.M)
+        assert m, "dash_parse.mata defines no _dash_axfam()"
+        return {r[0]: r[1:] for r in self._ROW.findall(m.group(1))}
+
+    def test_mata_family_minimums_match_twoway(self):
+        t = self._table()
+        assert list(t) == ["title", "label", "mlabel", "tick", "mtick",
+                           "line", "scale"]
+        assert [int(t[f][2]) for f in t] == [2, 2, 3, 4, 3, 3, 3]
+        assert {f: t[f][0] for f in t} == {
+            "title": "title", "label": "labels", "mlabel": "mlabels",
+            "tick": "ticks", "mtick": "mticks", "line": "lines",
+            "scale": "scale"}
+        # twoway's family order: SCale Labels MLabels TICks MTicks Title LInes
+        assert {f: int(t[f][3]) for f in t} == {
+            "scale": 1, "label": 2, "mlabel": 3, "tick": 4, "mtick": 5,
+            "title": 6, "line": 7}
+        # dash draws title, label, tick, line and scale on axis 2
+        assert {f: t[f][4] for f in t} == {
+            "title": "title2", "label": "label2", "mlabel": "",
+            "tick": "tick2", "mtick": "", "line": "line2",
+            "scale": "scale2"}
+
+    def test_the_seven_graph_key_lists_agree(self):
+        src = _read(ADO_PATH)
+        lists = []
+        for m in re.finditer(r"foreach (?:gk|gkey) in ((?:[^{]|\n)*?)\{",
+                             src):
+            words = m.group(1).replace("///", " ").split()
+            lists.append(tuple(words))
+        assert len(lists) == 7, len(lists)
+        assert len(set(lists)) == 1, set(lists)
+        for key in ("ytick2", "xtick2", "yline2", "xline2"):
+            assert key in lists[0], key

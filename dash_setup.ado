@@ -6,21 +6,23 @@
 *!     is checked against the minimum)
 *!   - Python packages: bokeh, numpy, pandas (all required; no plot type
 *!                      needs scipy or statsmodels, see section 3)
-*!   - dash's own files: dash_render.py and the shipped schemes
+*!   - dash's own files: dash_render.py, dash_setup_lib.py (which runs
+*!     every pip and venv step; WP-29 P0.19) and the shipped schemes
 *!   (No Stata package: dash writes its data from Python and has not used
 *!   jsonio since 24sep2026, so it neither checks nor installs it.)
 *!
-*! Usage: dash_setup
+*! Usage: dash_setup [, venv(path)]
 *!
 *! Author:  (see dash.sthlp)
-*! Version: 0.1.0  30sep2026
+*! Version: 0.1.0  02oct2026
 
-program define dash_setup
+program define dash_setup, rclass
     version 16.0
-    // dash_setup.sthlp's Syntax section is the bare command, and there was
+    // dash_setup.sthlp's Syntax section was the bare command, and there was
     // no `syntax' line at all -- so `dash_setup, garbage(1)' ran the whole
-    // setup and ignored the option in silence.
-    syntax
+    // setup and ignored the option in silence.  It now takes venv(path)
+    // (WP-29 P0.19), so another option is r(198) and an argument r(101).
+    syntax [, VENV(string)]
 
     // Everything that went wrong, counted rather than merely displayed.
     // The summary below branches on these; it used to say "All dependencies
@@ -32,6 +34,20 @@ program define dash_setup
     local n_warn 0
     local fail_items ""
     local warn_items ""
+
+    // Minimum version requirements stored as locals, here so that venv()
+    // can install them too.
+    //
+    // The stata baseline of test/conftest.py, measured 25sep2026: Python
+    // 3.13.9, bokeh 3.8.0, numpy 2.3.5, pandas 2.3.3 -- the versions both
+    // test suites run under; nothing older is tested (GAPS2 K2).  Every
+    // render imports CustomJSTicker, present only from bokeh 3.6.0, so an
+    // installed bokeh 3.0-3.5 used to pass this check and then fail every
+    // dash command with r(7102); pandas is declared here because bokeh
+    // 3.9 no longer installs it as a dependency.
+    local min_bokeh       "3.8"
+    local min_numpy       "2.3"
+    local min_pandas      "2.3"
 
     // ----------------------------------------------------------------
     // 1. Check Python availability
@@ -93,6 +109,112 @@ program define dash_setup
         display as text "  Python ............. {res}OK{txt} (version `pyver'; could not be compared to `c_pymin')"
     }
 
+    // WP-29 P0.19.  What the linked Python is, asked once, in a child
+    // process (dash_setup_lib.py), before the first pip command: on an
+    // externally managed (PEP 668) Python, or one without pip, no pip
+    // command runs at all.  Until then it is treated as an ordinary
+    // Python; a detection that fails leaves it so.
+    local det_done 0
+    local det_managed 0
+    local det_pip 1
+    local det_ensurepip 1
+    local det_user 1
+    local det_version "`pyver'"
+    local hint_cmd ""
+    local guide_shown 0
+
+    // ----------------------------------------------------------------
+    // venv(path): a private environment for a Python that refuses pip
+    // installs (WP-29 P0.19).  Everything is decided before a process
+    // starts: a linked Python below the minimum, then the path.
+    // ----------------------------------------------------------------
+    if `"`venv'"' != "" {
+        if `pyok' == 0 {
+            display as error "  venv() ............ not started: Python `pyver' is below `c_pymin'."
+            local n_fail = `n_fail' + 1
+            local fail_items `"`fail_items' venv() (Python `pyver' needs `c_pymin')"'
+            _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+                items(`"`fail_items'`warn_items'"')
+        }
+        _dash_setup_lib
+        if r(ok) != 1 {
+            local n_fail = `n_fail' + 1
+            local fail_items `"`fail_items' dash's own files (dash_setup_lib.py)"'
+            _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+                items(`"`fail_items'`warn_items'"')
+        }
+        // The path is read by the helper with getLocal and held there for
+        // _dash_setup_venv: it never passes through Stata's parser again.
+        local venv_ok "0"
+        python: import sys; sys.modules["_dash_setup_lib"].stata_venv_check()
+        if "`venv_ok'" != "1" {
+            local n_fail = `n_fail' + 1
+            local fail_items `"`fail_items' venv() (path refused)"'
+            _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+                items(`"`fail_items'`warn_items'"')
+        }
+        _dash_setup_venv "`c_pymin'" "`min_bokeh'" "`min_numpy'" "`min_pandas'"
+        local v_step "`r(step)'"
+        local v_linked "`r(linked)'"
+        local v_py `"`r(venv_python)'"'
+        local v_base `"`r(python)'"'
+        local hint_cmd `"`r(link_cmd)'"'
+        return local python `"`v_base'"'
+        return local hint_cmd `"`hint_cmd'"'
+        if "`v_step'" != "" {
+            local n_fail = `n_fail' + 1
+            local fail_items `"`fail_items' venv() (`v_step' failed)"'
+            _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+                items(`"`fail_items'`warn_items'"')
+        }
+        return local venv_python `"`v_py'"'
+        return local venv_linked "`v_linked'"
+        if "`v_linked'" != "1" {
+            _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+                items(`"`fail_items'`warn_items'"') venvready
+            exit
+        }
+        python: import importlib; importlib.invalidate_caches()
+    }
+
+    // Is anything missing?  Only then is the linked Python inspected
+    // before step 2 (a run with everything present starts no process).
+    local _need 0
+    foreach m in packaging bokeh numpy pandas {
+        capture python: import `m'
+        if _rc != 0 local _need 1
+    }
+    if `_need' {
+        // -- ensure detection (also before the below verdict) --
+        if `det_done' == 0 {
+            _dash_setup_detect
+            local d_lib "`r(lib)'"
+            local d_ok "`r(ok)'"
+            local d_py `"`r(python)'"'
+            local d_managed "`r(managed)'"
+            local d_pip "`r(pip)'"
+            local d_ensurepip "`r(ensurepip)'"
+            local d_user "`r(user)'"
+            local d_version "`r(version)'"
+            if "`d_lib'" != "1" {
+                local n_fail = `n_fail' + 1
+                local fail_items `"`fail_items' dash's own files (dash_setup_lib.py)"'
+                _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+                    items(`"`fail_items'`warn_items'"')
+            }
+            local det_done 1
+            return local python `"`d_py'"'
+            if "`d_ok'" == "1" {
+                local det_managed "`d_managed'"
+                local det_pip "`d_pip'"
+                local det_ensurepip "`d_ensurepip'"
+                local det_user "`d_user'"
+                local det_version "`d_version'"
+                return local externally_managed "`det_managed'"
+            }
+        }
+    }
+
     // ----------------------------------------------------------------
     // 2. Ensure `packaging` is available before version comparisons
     // ----------------------------------------------------------------
@@ -100,29 +222,48 @@ program define dash_setup
     // it FIRST so the loop never hits ModuleNotFoundError mid-run.
     capture python: import packaging
     if _rc != 0 {
-        display as text "  packaging .......... {res}missing{txt} — installing via pip..."
-        // Its output was discarded, so a failure here gave no reason at
-        // all.  The package loop below already prints pip's tail; this site
-        // was the one that did not.
-        python: ///
-            import subprocess, sys; ///
-            r = subprocess.run( ///
-                [sys.executable, "-m", "pip", "install", "packaging"], ///
-                capture_output=True, text=True ///
-            ); ///
-            print(r.stdout[-500:] if r.stdout else ""); ///
-            print(r.stderr[-200:] if r.stderr else "")
-        // Mark whether packaging is now available
-        capture python: import packaging
-        if _rc != 0 {
-            display as text "  packaging .......... {err}could not install{txt} — " ///
-                "versions will be compared approximately"
+        if "`det_managed'" == "1" {
+            display as text "  packaging .......... {err}not installed{txt} — this Python is externally managed"
+            if `guide_shown' == 0 {
+                _dash_setup_guide managed "`det_ensurepip'" "`det_managed'"
+                local hint_cmd `"`r(cmd)'"'
+                return local hint_cmd `"`hint_cmd'"'
+                local guide_shown 1
+            }
+            local pkg_has_packaging 0
+            local n_warn = `n_warn' + 1
+            local warn_items `"`warn_items' packaging (version checks approximate)"'
+        }
+        else if "`det_pip'" == "0" {
+            display as text "  packaging .......... {err}not installed{txt} — this Python has no pip"
+            _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'"
+            local hint_cmd `"`r(cmd)'"'
+            return local hint_cmd `"`hint_cmd'"'
+            local guide_shown 1
             local pkg_has_packaging 0
             local n_warn = `n_warn' + 1
             local warn_items `"`warn_items' packaging (version checks approximate)"'
         }
         else {
-            local pkg_has_packaging 1
+            display as text "  packaging .......... {res}missing{txt} — installing via pip..."
+            // pip runs through dash_setup_lib.py (the linked interpreter, a
+            // private directory, -P, no inherited PYTHONPATH), and its
+            // output is shown: a failure here used to give no reason.  No
+            // --user retry for packaging.
+            _dash_setup_pip "packaging" 0 "`det_version'"
+            python: import importlib; importlib.invalidate_caches()
+            // Mark whether packaging is now available
+            capture python: import packaging
+            if _rc != 0 {
+                display as text "  packaging .......... {err}could not install{txt} — " ///
+                    "versions will be compared approximately"
+                local pkg_has_packaging 0
+                local n_warn = `n_warn' + 1
+                local warn_items `"`warn_items' packaging (version checks approximate)"'
+            }
+            else {
+                local pkg_has_packaging 1
+            }
         }
     }
     else {
@@ -132,8 +273,6 @@ program define dash_setup
     // ----------------------------------------------------------------
     // 3. Check and install required Python packages
     // ----------------------------------------------------------------
-    // Minimum version requirements stored as locals.
-    //
     // bokeh, numpy and pandas are required -- dash_render.py imports them
     // at module scope, so without them nothing renders at all -- and they
     // are all dash needs.  scipy and statsmodels were OPTIONAL, one plot
@@ -141,68 +280,83 @@ program define dash_setup
     // statsmodels for lowess), until every estimator became numpy code:
     // kdensity in S07, the rest in WP-18, which measured each against
     // Stata's own plotted points.  Nothing imports either any more, so
-    // setup neither installs nor checks them.
+    // setup neither installs nor checks them.  Their minimums are set at
+    // the top of this program.
     local pkg_list "bokeh numpy pandas"
-    // The stata baseline of test/conftest.py, measured 25sep2026: Python
-    // 3.13.9, bokeh 3.8.0, numpy 2.3.5, pandas 2.3.3 -- the versions both
-    // test suites run under; nothing older is tested (GAPS2 K2).  Every
-    // render imports CustomJSTicker, present only from bokeh 3.6.0, so an
-    // installed bokeh 3.0-3.5 used to pass this check and then fail every
-    // dash command with r(7102); pandas is declared here because bokeh
-    // 3.9 no longer installs it as a dependency.
-    local min_bokeh       "3.8"
-    local min_numpy       "2.3"
-    local min_pandas      "2.3"
 
     foreach pkg of local pkg_list {
         // Try importing the package; if it fails, pip-install it
         capture python: import `pkg'
         if _rc != 0 {
-            display as text "  `pkg' ............. {res}missing{txt} — installing via pip..."
-            // The minimum reaches pip.  It was declared just above and only
+            // The minimum reaches pip.  It was declared at the top and only
             // ever used AFTER the install, to grumble at what pip had
             // chosen; the command itself was a bare name, so a fresh
             // install could land below the minimum dash requires and then
             // be reported as being below it.
-            local _spec "`pkg'"
-            if "`min_`pkg''" != "" local _spec "`pkg'>=`min_`pkg''"
-            python: ///
-                import subprocess, sys; ///
-                r = subprocess.run( ///
-                    [sys.executable, "-m", "pip", "install", "`_spec'"], ///
-                    capture_output=True, text=True ///
-                ); ///
-                print(r.stdout[-500:] if r.stdout else ""); ///
-                print(r.stderr[-200:] if r.stderr else "")
-            // A system Python the user cannot write to is the ordinary
-            // reason this fails, and --user is the ordinary answer.  Tried
-            // only when the import still fails, so a successful install
-            // never triggers a second pip run.
-            capture python: import `pkg'
-            if _rc != 0 {
-                display as text "      retrying with --user..."
-                python: ///
-                    import subprocess, sys; ///
-                    r = subprocess.run( ///
-                        [sys.executable, "-m", "pip", "install", "--user", "`_spec'"], ///
-                        capture_output=True, text=True ///
-                    ); ///
-                    print(r.stdout[-500:] if r.stdout else ""); ///
-                    print(r.stderr[-200:] if r.stderr else "")
+            local _spec "`pkg'>=`min_`pkg''"
+            if "`det_managed'" == "1" | "`det_pip'" == "0" {
+                display as text "  `pkg' ............. {err}missing{txt}"
+                if `guide_shown' == 0 {
+                    if "`det_managed'" == "1" {
+                        _dash_setup_guide managed "`det_ensurepip'" "`det_managed'"
+                    }
+                    else {
+                        _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'"
+                    }
+                    local hint_cmd `"`r(cmd)'"'
+                    return local hint_cmd `"`hint_cmd'"'
+                    local guide_shown 1
+                }
+                local n_fail = `n_fail' + 1
+                if "`det_managed'" == "1" {
+                    local fail_items `"`fail_items' `pkg' (externally managed Python)"'
+                }
+                else {
+                    local fail_items `"`fail_items' `pkg' (no pip)"'
+                }
+                _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+                    items(`"`fail_items'`warn_items'"')
             }
+            display as text "  `pkg' ............. {res}missing{txt} — installing via pip..."
+            // A system Python the user cannot write to is the ordinary
+            // reason this fails, and --user is the ordinary answer: tried
+            // once by the helper, after an ordinary failure only, and never
+            // in a venv, on a managed Python, or where the user site is
+            // disabled.  A package --user installed is put on sys.path.
+            local _user = ("`det_user'" == "1" & "`det_managed'" != "1")
+            _dash_setup_pip "`_spec'" `_user' "`det_version'"
+            local _outcome "`r(outcome)'"
+            if "`_outcome'" == "externally-managed" & `guide_shown' == 0 {
+                _dash_setup_guide managed "`det_ensurepip'" "`det_managed'"
+                local hint_cmd `"`r(cmd)'"'
+                return local hint_cmd `"`hint_cmd'"'
+                local guide_shown 1
+            }
+            if "`_outcome'" == "no-pip" {
+                _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'"
+                local hint_cmd `"`r(cmd)'"'
+                return local hint_cmd `"`hint_cmd'"'
+            }
+            python: import importlib; importlib.invalidate_caches()
             // Re-check after install
             capture python: import `pkg'
             if _rc != 0 {
-                display as error "  Failed to install `pkg'. Please install manually:"
-                display as error "    python -m pip install `_spec'"
+                if inlist("`_outcome'", "externally-managed", "no-pip") {
+                    local fail_items `"`fail_items' `pkg' (`_outcome')"'
+                }
+                else {
+                    display as error "  Failed to install `pkg'. Please install manually:"
+                    _dash_pip_command "`pkg'" "`min_`pkg''" manual
+                    local hint_cmd `"`r(cmd)'"'
+                    return local hint_cmd `"`hint_cmd'"'
+                    local fail_items `"`fail_items' `pkg' (could not install)"'
+                }
                 // Still fatal -- nothing renders without bokeh, numpy and
                 // pandas -- but routed through the summary so the exit code
                 // and the message come from one place.
                 local n_fail = `n_fail' + 1
-                local fail_items `"`fail_items' `pkg' (could not install)"'
                 _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
                     items(`"`fail_items'`warn_items'"')
-                exit 198
             }
         }
 
@@ -225,11 +379,52 @@ program define dash_setup
         else if "`verdict'" == "below" {
             display as text "  `pkg' ............. {res}`pkgver'{txt}" ///
                 " {err}(below minimum `minver'){txt}"
-            // The Python Stata is linked to (Q27), never the bare word
-            // `python': installing with a different interpreter would
-            // upgrade the wrong Python.
-            _dash_pip_command "`pkg'" "`minver'"
-            display as text "      To upgrade: `r(cmd)'"
+            // -- ensure detection: is this Python managed? --
+            if `det_done' == 0 {
+                _dash_setup_detect
+                local d_lib "`r(lib)'"
+                local d_ok "`r(ok)'"
+                local d_py `"`r(python)'"'
+                local d_managed "`r(managed)'"
+                local d_pip "`r(pip)'"
+                local d_ensurepip "`r(ensurepip)'"
+                local d_user "`r(user)'"
+                local d_version "`r(version)'"
+                if "`d_lib'" != "1" {
+                    local n_fail = `n_fail' + 1
+                    local fail_items `"`fail_items' dash's own files (dash_setup_lib.py)"'
+                    _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+                        items(`"`fail_items'`warn_items'"')
+                }
+                local det_done 1
+                return local python `"`d_py'"'
+                if "`d_ok'" == "1" {
+                    local det_managed "`d_managed'"
+                    local det_pip "`d_pip'"
+                    local det_ensurepip "`d_ensurepip'"
+                    local det_user "`d_user'"
+                    local det_version "`d_version'"
+                    return local externally_managed "`det_managed'"
+                }
+            }
+            // An upgrade line pip would refuse is not printed on a managed
+            // Python (N4): the private-environment guidance is, once.
+            if "`det_managed'" == "1" {
+                if `guide_shown' == 0 {
+                    _dash_setup_guide managed "`det_ensurepip'" "`det_managed'"
+                    local hint_cmd `"`r(cmd)'"'
+                    return local hint_cmd `"`hint_cmd'"'
+                    local guide_shown 1
+                }
+            }
+            else {
+                // The Python Stata is linked to (Q27), quoted for the
+                // shell; the helper prints "To upgrade: <line>" as plain
+                // text.
+                _dash_pip_command "`pkg'" "`minver'" upgrade
+                local hint_cmd `"`r(cmd)'"'
+                return local hint_cmd `"`hint_cmd'"'
+            }
             // Reported as unmet rather than upgraded behind the user's
             // back: this package is already importable, so something else
             // in their environment may depend on the version they have.
@@ -264,6 +459,7 @@ program define dash_setup
     // ----------------------------------------------------------------
     // 5. Summary
     // ----------------------------------------------------------------
+    return local hint_cmd `"`hint_cmd'"'
     _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
         items(`"`fail_items'`warn_items'"')
 
@@ -390,21 +586,35 @@ end
 // ================================================================
 // _dash_pip_command  — the pip install line dash_setup prints (Q27)
 //
-// The interpreter named is the one Stata is linked to (c(python_exec)),
-// never the bare word `python': installing with a different interpreter
-// than the one Stata runs against would upgrade the wrong Python, and a
-// bare `python' could be Python 2 or an unrelated environment.  Called
-// only from the `below' branch, after Python-not-linked has already
-// exited the run (line 58), so c(python_exec) is never empty here.
+// The interpreter named is the one Stata is linked to (c(python_exec),
+// resolved), never the bare word `python': installing with a different
+// interpreter than the one Stata runs against would upgrade the wrong
+// Python, and a bare `python' could be Python 2 or an unrelated
+// environment.  The line is quoted for the shell by
+// dash_setup_lib.stata_shell_line (WP-29 P0.19): printed bare, a shell read
+// `bokeh>=3.8' as `bokeh' and a redirection into a file named =3.8; and
+// cmd.exe ignores single quotes, so on Windows it is double-quoted.
 //
 // Syntax:
-//   _dash_pip_command pkg minver
-//   -> r(cmd): "<c(python_exec)> -m pip install '<pkg>>=<minver>'"
+//   _dash_pip_command pkg minver [how]
+//   how: "" (print nothing), upgrade ("To upgrade: <line>"), manual
+//   -> r(cmd) the line ("" when the helper is not reachable), r(note) what
+//      to add in PowerShell
 // ================================================================
 program define _dash_pip_command, rclass
     version 16.0
-    args pkg minver
-    return local cmd `"`c(python_exec)' -m pip install '`pkg'>=`minver''"'
+    args pkg minver how
+    _dash_setup_lib
+    if r(ok) != 1 {
+        return local cmd ""
+        exit
+    }
+    local spec "`pkg'>=`minver'"
+    local pip_cmd ""
+    local pip_note ""
+    python: import sys; sys.modules["_dash_setup_lib"].stata_shell_line()
+    return local cmd `"`pip_cmd'"'
+    return local note `"`pip_note'"'
 end
 
 program define _dash_pkg_version
@@ -453,11 +663,15 @@ end
 // be tested at all without pip-installing into the user's environment.
 //
 // Syntax:
-//   _dash_setup_summary , FAILures(int) WARNings(int) [ITEMS(string)]
+//   _dash_setup_summary , FAILures(int) WARNings(int) [ITEMS(string)
+//       VENVready]
+// venvready (WP-29 P0.19): dash_setup, venv() built an environment Stata
+// is not linked to yet, so dash cannot be used until Stata is restarted
+// and linked to it; with no failure that is what the banner says.
 // ================================================================
 program define _dash_setup_summary
     version 16.0
-    syntax , FAILures(integer) WARNings(integer) [ITEMS(string)]
+    syntax , FAILures(integer) WARNings(integer) [ITEMS(string) VENVready]
 
     display as text "{hline 60}"
 
@@ -473,6 +687,12 @@ program define _dash_setup_summary
         // rather than carrying on to use a dash that cannot work.  198 is
         // what the other failing branches of this command already use.
         exit 198
+    }
+
+    if "`venvready'" != "" {
+        display as text "{res}dash_setup complete{txt} for the environment named above."
+        display as text "Restart Stata, link it with the python set exec line above, and run {cmd:dash_setup} again."
+        exit
     }
 
     if `warnings' > 0 {
@@ -663,4 +883,144 @@ program define _dash_setup_check_files, rclass
     }
 
     return scalar failures = `nfail'
+end
+
+
+// ================================================================
+// _dash_setup_lib  — load dash_setup_lib.py (WP-29 P0.19)
+// ================================================================
+// dash_setup's pip and venv steps run in dash_setup_lib.py, shipped beside
+// dash_render.py.  It is found the way _dash_setup_check_files finds the
+// renderer -- findfile, else beside dash_setup.ado -- made absolute, and
+// loaded once per path as sys.modules["_dash_setup_lib"], with no bytecode
+// written.  findfile searches the working directory first (Stata's own
+// rule; residual R4).
+//
+// Returns r(ok): 1 loaded, 0 not found or not loadable (each named).
+// ================================================================
+program define _dash_setup_lib, rclass
+    version 16.0
+    local lib ""
+    capture findfile dash_setup_lib.py
+    if _rc == 0 {
+        local lib `"`r(fn)'"'
+    }
+    else {
+        capture findfile dash_setup.ado
+        if _rc == 0 {
+            local _ado `"`r(fn)'"'
+            local _beside = substr(`"`_ado'"', 1, ///
+                strlen(`"`_ado'"') - strlen("dash_setup.ado")) + "dash_setup_lib.py"
+            capture confirm file `"`_beside'"'
+            if _rc == 0 local lib `"`_beside'"'
+        }
+    }
+    if `"`lib'"' == "" {
+        display as error "  dash_setup_lib.py .. {err}not found{txt}"
+        display as error "    dash_setup needs it to run pip. Reinstall dash, or put its directory on the ado-path."
+        return scalar ok = 0
+        exit
+    }
+    mata: st_local("lib", pathresolve(pwd(), st_local("lib")))
+    python: import sys, sfi; sfi.Macro.setLocal("_dwb", "1" if sys.dont_write_bytecode else "0"); sys.dont_write_bytecode = True
+    capture python: import importlib.util as _dsl_iu, sys, sfi; _dsl_p = sfi.Macro.getLocal("lib"); _dsl_m = sys.modules.get("_dash_setup_lib"); _dsl_new = _dsl_m is None or getattr(_dsl_m, "__file__", None) != _dsl_p; _dsl_s = _dsl_iu.spec_from_file_location("_dash_setup_lib", _dsl_p) if _dsl_new else None; _dsl_m = _dsl_iu.module_from_spec(_dsl_s) if _dsl_new else _dsl_m; (_dsl_s.loader.exec_module(_dsl_m) if _dsl_new else None); sys.modules["_dash_setup_lib"] = _dsl_m
+    local _lrc = _rc
+    python: import sys, sfi; sys.dont_write_bytecode = sfi.Macro.getLocal("_dwb") == "1"
+    if `_lrc' != 0 {
+        display as error "  dash_setup_lib.py .. {err}could not be loaded{txt}"
+        return scalar ok = 0
+        exit
+    }
+    return scalar ok = 1
+end
+
+
+// ================================================================
+// _dash_setup_detect  — what the linked Python is (WP-29 P0.19)
+// ================================================================
+// Inspected in a child process (dash_setup_lib.stata_detect): externally
+// managed (PEP 668), with pip, with ensurepip, in a venv, its user site
+// usable, its version.  r(lib) is "0" when the helper could not be loaded;
+// r(ok) "1" when the child answered.
+// ================================================================
+program define _dash_setup_detect, rclass
+    version 16.0
+    _dash_setup_lib
+    if r(ok) != 1 {
+        return local lib "0"
+        exit
+    }
+    local det_ok "0"
+    python: import sys; sys.modules["_dash_setup_lib"].stata_detect()
+    return local lib "1"
+    return local ok "`det_ok'"
+    return local managed "`det_managed'"
+    return local in_venv "`det_in_venv'"
+    return local pip "`det_pip'"
+    return local ensurepip "`det_ensurepip'"
+    return local user "`det_user'"
+    return local version "`det_version'"
+    return local python `"`det_python'"'
+end
+
+
+// ================================================================
+// _dash_setup_pip  — one pip install, through the helper (WP-29 P0.19)
+// ================================================================
+// Syntax: _dash_setup_pip spec user ver
+//   spec  the requirement (a name and minimum from this file's constants)
+//   user  1 allows one --user retry after an ordinary failure
+//   ver   the linked Python's version (decides -P)
+// Returns r(outcome) (ok, externally-managed, no-pip, user-unavailable,
+// timeout, missing-interpreter, other) and r(user_tried).
+// ================================================================
+program define _dash_setup_pip, rclass
+    version 16.0
+    args spec user ver
+    local pip_outcome "other"
+    local pip_user "0"
+    python: import sys; sys.modules["_dash_setup_lib"].stata_pip()
+    return local outcome "`pip_outcome'"
+    return local user_tried "`pip_user'"
+end
+
+
+// ================================================================
+// _dash_setup_guide  — the way forward on a managed or pip-less Python
+// ================================================================
+// Syntax: _dash_setup_guide kind ensurepip managed
+//   kind  managed (PEP 668: suggest venv()) or nopip (ensurepip, or the
+//         distribution's packages)
+// Printed by the helper as plain text.  Returns r(cmd), the command it
+// suggests ("" when it suggests none).  WP-29 P0.19.
+// ================================================================
+program define _dash_setup_guide, rclass
+    version 16.0
+    args kind ensurepip managed
+    local guide_cmd ""
+    python: import sys; sys.modules["_dash_setup_lib"].stata_guide()
+    return local cmd `"`guide_cmd'"'
+end
+
+
+// ================================================================
+// _dash_setup_venv  — create or reuse, install into and verify the venv
+//                     stata_venv_check held (WP-29 P0.19)
+// ================================================================
+// Syntax: _dash_setup_venv pymin minb minn minp
+// Returns r(step) ("" on success, else the step that failed: internal,
+// create, inspect, python, pip, verify), r(linked) ("1" when Stata is
+// already linked to it), r(venv_python), r(link_cmd) (the python set exec
+// line) and r(python) (the linked interpreter).
+// ================================================================
+program define _dash_setup_venv, rclass
+    version 16.0
+    args pymin minb minn minp
+    local venv_step "internal"
+    python: import sys; sys.modules["_dash_setup_lib"].stata_venv()
+    return local step "`venv_step'"
+    return local linked "`venv_linked'"
+    return local venv_python `"`venv_python'"'
+    return local link_cmd `"`venv_cmd'"'
+    return local python `"`venv_base'"'
 end
