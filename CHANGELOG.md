@@ -735,7 +735,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.28a -->
 
-<!-- WP-30 P1.35 -->
+- On a Stata older than 19, dash and dash_setup stop before doing anything else with "dash requires Stata 19 or later; this is Stata 18.5" (the running release) and r(9). Stata 16-18.5 used to run dash untested, and Stata 14-15 stopped with Stata's own "cannot run version 16.0 programs". A do-file that sets version 16 or 17 on Stata 19 is unaffected. (WP-30, P1.35)
 
 ### Removed
 
@@ -798,7 +798,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.33 -->
 
-<!-- WP-30 P1.35 -->
+- Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64, and measured on MP only. Every dash and dash_setup program declared version 16.0, which implied Stata 16 support that was never tested; all 91 now declare version 19. (WP-30, P1.35)
 
 ### Fixed in WP-30
 

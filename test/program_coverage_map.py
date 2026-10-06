@@ -297,6 +297,15 @@ COVERAGE = {
                         "test_serve_launch.cscript:TOK-02"),
         # WP-30 S02 (P1.34): Portable runners (P1.34 under M4)
         # WP-30 S03 (P1.35): Stata 19 floor declared and enforced (P1.35 under M2)
+        # ENV-25: below the floor (comparator stubbed) the refusal names the
+        # floor and the running release, r(9) (direct); ENV-28: every dash
+        # route of both modes is refused first (e2e).
+        "_dash_require_stata": ("test_env_guards.cscript:ENV-25",
+                                "test_env_guards.cscript:ENV-28"),
+        # ENV-24: the comparator's table, by value (direct); ENV-26: the
+        # guard passes silently through it at or above the floor (direct).
+        "_dash_stata_ok": ("test_env_guards.cscript:ENV-24",
+                           "test_env_guards.cscript:ENV-26"),
         # WP-30 S04 (P1.29): CSP without 'unsafe-inline'; safe Windows opener (P1.29, M11)
         # WP-30 S05 (P1.33): Measured Python floor (P1.33, M3/M10)
         # WP-30 S06 (P1.26a): One note channel (P1.26 part a)
@@ -392,6 +401,15 @@ COVERAGE = {
         "_dash_setup_venv": ("test_program_coverage.cscript:PEP-08",
                              "test_setup_honesty.cscript:PEP-18"),
         # WP-30 S03 (P1.35): Stata 19 floor declared and enforced (P1.35 under M2)
+        # ENV-29: passes silently at or above the floor and refuses dash_setup
+        # first below it (direct); PC-15: a full dash_setup reports the
+        # Stata OK line (e2e).
+        "_dash_setup_stata": ("test_env_guards.cscript:ENV-29",
+                              "test_program_coverage.cscript:PC-15"),
+        # ENV-29: r(statamin) is "19" (direct); PC-15: a full dash_setup
+        # passes the guard that reads it (e2e).
+        "_dash_statamin": ("test_env_guards.cscript:ENV-29",
+                           "test_program_coverage.cscript:PC-15"),
         # WP-30 S05 (P1.33): Measured Python floor (P1.33, M3/M10)
         # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
         # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)

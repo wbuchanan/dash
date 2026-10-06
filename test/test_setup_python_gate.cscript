@@ -107,31 +107,32 @@ _chk "dash_setup.sthlp states the same minimum (`pymin')" "`found'" "1"
 // production, while all of the cases above passed.  The comparator now
 // decides once and returns after the loop.
 //
-// These cases call it the way dash_setup does.
-capture program drop _gate16
-program define _gate16, rclass
-    version 16.0
+// These cases call it the way dash_setup does: at version 19, which
+// dash_setup declares since WP-30 (P1.35; it was 16.0).
+capture program drop _gate19
+program define _gate19, rclass
+    version 19
     args got want
     _dash_pyver_ok "`got'" "`want'"
     return scalar ok = r(ok)
 end
 
-_gate16 "3.8.0"  "3.8"
-_chk "v16: 3.8.0 >= 3.8"   "`r(ok)'" "1"
-_gate16 "3.7.9"  "3.8"
-_chk "v16: 3.7.9 < 3.8"    "`r(ok)'" "0"
-_gate16 "2.7.18" "3.8"
-_chk "v16: 2.7.18 < 3.8"   "`r(ok)'" "0"
-_gate16 "3.10.0" "3.9"
-_chk "v16: 3.10.0 >= 3.9"  "`r(ok)'" "1"
-_gate16 "3.9"    "3.10"
-_chk "v16: 3.9 < 3.10"     "`r(ok)'" "0"
-_gate16 ""       "3.8"
-_chk "v16: empty is unknown"  "`r(ok)'" "-1"
-_gate16 "abc"    "3.8"
-_chk "v16: non-numeric is unknown" "`r(ok)'" "-1"
+_gate19 "3.8.0"  "3.8"
+_chk "v19: 3.8.0 >= 3.8"   "`r(ok)'" "1"
+_gate19 "3.7.9"  "3.8"
+_chk "v19: 3.7.9 < 3.8"    "`r(ok)'" "0"
+_gate19 "2.7.18" "3.8"
+_chk "v19: 2.7.18 < 3.8"   "`r(ok)'" "0"
+_gate19 "3.10.0" "3.9"
+_chk "v19: 3.10.0 >= 3.9"  "`r(ok)'" "1"
+_gate19 "3.9"    "3.10"
+_chk "v19: 3.9 < 3.10"     "`r(ok)'" "0"
+_gate19 ""       "3.8"
+_chk "v19: empty is unknown"  "`r(ok)'" "-1"
+_gate19 "abc"    "3.8"
+_chk "v19: non-numeric is unknown" "`r(ok)'" "-1"
 
-capture program drop _gate16
+capture program drop _gate19
 
 // ---- the floor is 3.13, not 3.8 (WP-28 K2) ----
 // dash_setup.ado's _dash_pymin now returns "3.13": bokeh 3.8 needs Python
@@ -150,6 +151,7 @@ _chk "3.12.11 < 3.13" "`r(ok)'" "0"
 _dash_pyver_ok "3.10.10" "3.13"
 _chk "3.10.10 < 3.13" "`r(ok)'" "0"
 
+// A caller at version 16 is still supported on Stata 19 (WP-30 P1.35).
 capture program drop _gate16
 program define _gate16, rclass
     version 16.0

@@ -119,7 +119,7 @@ HELPER = '''
 //                         dash accepted but did not honour
 // ================================================================
 program define _dash_report_ignored
-    version 16.0
+    version 19
     args raw
 
     // `raw' mixes bare option names (pending, from the declared set) with the

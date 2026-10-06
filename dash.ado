@@ -82,7 +82,11 @@ if `"`_dash_matalib'"' != "" {
 }
 
 program define dash
-    version 16.0
+    // WP-30 P1.35: the Stata floor first, before `version', so an older
+    // Stata is refused in dash's words; then the Mata guard, the dependency
+    // guard, the prefix strip, the rclass dispatch (A154).
+    _dash_require_stata
+    version 19
 
     // Every subcommand parses through Mata, so this is the one place that
     // covers all of them.  Without it a broken or missing dash_parse.mata
@@ -187,7 +191,7 @@ end
 //   _dash_python_ok "<value of c(python_exec)>"   -> r(ok) 0 or 1
 // ================================================================
 program define _dash_python_ok, rclass
-    version 16.0
+    version 19
     args probe
     local probe = strtrim(`"`probe'"')
     return scalar ok = cond(`"`probe'"' == "", 0, 1)
@@ -204,13 +208,60 @@ end
 // message.
 // ================================================================
 program define _dash_require_python
-    version 16.0
+    version 19
     _dash_python_ok `"`c(python_exec)'"'
     if r(ok) != 1 {
         display as error "dash: Python is required but is not available to Stata."
         display as error "      Run {cmd:dash_setup} first, or link Stata to " ///
             "Python 3.13+: {help python}"
         exit 198
+    }
+end
+
+
+// ================================================================
+// _dash_stata_ok  — is a Stata release at or above a floor?
+// ================================================================
+// Pure, so that a certification script reaches the refusal on a Stata that
+// passes: test_env_guards.cscript drives it by value and stubs it.  Both
+// values are read by value in Mata (strtoreal), so text such as "19 | 1"
+// is never evaluated; anything unreadable answers 0.  It is written for the
+// Stata it refuses: `version 13' and nothing Stata 13 lacks
+// (test_version_floor.py::TestTheStataFloor).
+//
+// Syntax:
+//   _dash_stata_ok "<release>" "<floor>"   -> r(ok) 0 or 1, r(shown) "%9.1f"
+// ================================================================
+program define _dash_stata_ok, rclass
+    version 13
+    args have want
+    mata: st_local("h", strofreal(strtoreal(st_local("have"))))
+    mata: st_local("w", strofreal(strtoreal(st_local("want"))))
+    local shown : display %9.1f `h'
+    local shown `shown'
+    return local shown "`shown'"
+    return scalar ok = cond(missing(`h') | missing(`w'), 0, `h' >= `w')
+end
+
+
+// ================================================================
+// _dash_require_stata  — refuse a Stata below dash's floor, in dash's words
+// ================================================================
+// The first statement of `dash', before its `version 19': without it an
+// older Stata stops at that line with Stata's own "cannot run version 19.0
+// programs", naming neither dash nor what it needs.  r(9) is the code Stata
+// itself gives (test_wp30_truth.cscript SF-01).  dash_setup.ado's
+// _dash_statamin holds the same number, because a program defined in one
+// ado-file cannot be called from another; test_version_floor.py pins the
+// two equal, and equal to every program's `version' line (WP-30 P1.35).
+// ================================================================
+program define _dash_require_stata
+    version 13
+    local floor 19
+    _dash_stata_ok "`c(stata_version)'" "`floor'"
+    if r(ok) != 1 {
+        display as error "dash requires Stata `floor' or later; this is Stata `r(shown)'"
+        exit 9
     }
 end
 
@@ -227,7 +278,7 @@ end
 // WP-24, test_env_guards.cscript ENV-23, test_mata_library_guard.cscript.)
 // ================================================================
 program define _dash_require_mata
-    version 16.0
+    version 19
 
     // Every Mata function dash.ado calls, named once.  Checking a single
     // one would pass a library that compiled half way.  _dash_path_badchar
@@ -369,7 +420,7 @@ end
 //   -> r(fn), or rc 601 with a message naming what to do.
 // ================================================================
 program define _dash_find_render, rclass
-    version 16.0
+    version 19
 
     capture findfile dash_render.py
     if _rc == 0 {
@@ -400,7 +451,7 @@ end
 
 
 program define _dash_do_render
-    version 16.0
+    version 19
     syntax, SPEC(string) DATA(string) OUTPUT(string) RENDERPY(string) ///
             [MODE(string) PRIVate]
 
@@ -451,7 +502,7 @@ end
 // _dash_validate_path  — check saving() path is safe
 // ================================================================
 program define _dash_validate_path
-    version 16.0
+    version 19
     args fpath ext
 
     // The expected extension, so the server branch can share every other
@@ -579,7 +630,7 @@ end
 // Usage:  _dash_saving_dir `"<path _dash_validate_path has passed>"'
 // ================================================================
 program define _dash_saving_dir
-    version 16.0
+    version 19
     args fpath
 
     mata: st_local("_sd_dir", ustrregexm(st_local("fpath"), ///
@@ -616,7 +667,7 @@ end
 // Usage:  _dash_saving_clobber `"<path>"' "<replace or empty>" "<cmd name>"
 // ================================================================
 program define _dash_saving_clobber
-    version 16.0
+    version 19
     args fpath replace cmdname
 
     mata: st_local("_sc_dir", strofreal(direxists(st_local("fpath"))))
@@ -641,7 +692,7 @@ end
 // After: local _escaped contains the JSON-safe string (no surrounding quotes)
 // ================================================================
 program define _dash_json_str
-    version 16.0
+    version 19
 
     // JSON forbids EVERY unescaped byte below 0x20 inside a string, not just
     // the three that have short forms.  This escaped backslash, quote, TAB,
@@ -680,7 +731,7 @@ end
 // After the call all parsed values are in s() macros.
 // ================================================================
 program define _dash_parse_graph_opts, sclass
-    version 16.0
+    version 19
     // Accept all standard graph-level options.
     // NOTE: this list and _dash_parse_plot_opts's were first written by
     // scripts/regen_option_surface.py from test/fixtures/abbrev_truth.json,
@@ -895,7 +946,7 @@ end
 // After the call all parsed values are in s() macros.
 // ================================================================
 program define _dash_parse_plot_opts, sclass
-    version 16.0
+    version 19
     // NOTE: edited by hand, like _dash_parse_graph_opts's list; the NOTE
     // there says why scripts/regen_option_surface.py must not be run over
     // it, and how the capitalised minimums are chosen.
@@ -1308,7 +1359,7 @@ end
 // Sets s(varlist), s(if_clause), s(in_clause)
 // ================================================================
 program define _dash_parse_varpart_std, sclass
-    version 16.0
+    version 19
     // numeric (GAPS2 G2): twoway's own y/x parser declares `varlist(min=2
     // numeric ts default=none)' (twoway_yxview_parse.class); a string
     // variable here is refused by this line, before any other check runs,
@@ -1343,7 +1394,7 @@ end
 // _dash_parse_varpart_1v   — exactly 1 variable
 // ================================================================
 program define _dash_parse_varpart_1v, sclass
-    version 16.0
+    version 19
     // varname(numeric) (GAPS2 G2): twoway's own declaration for the
     // univariate family (histogram.ado, kdensity.ado); varname sets
     // `varlist' too (one word), so the sreturns below stand unchanged.
@@ -1380,7 +1431,7 @@ end
 // names the time variable (test_parser.cscript P1A-78).
 // ================================================================
 program define _dash_parse_varpart_3v, sclass
-    version 16.0
+    version 19
     // numeric (GAPS2 G2): see _dash_parse_varpart_std; the range family
     // (rarea, rbar, rspike, rcap, rline, rconnected, rcapsym, rscatter,
     // tsrline) refuses a string variable the same way, with the same
@@ -1413,7 +1464,7 @@ end
 // variables specified" (test_parser.cscript P1A-78).
 // ================================================================
 program define _dash_parse_varpart_4v, sclass
-    version 16.0
+    version 19
     // numeric (GAPS2 G2): see _dash_parse_varpart_std; the pc family
     // (pcspike, pcarrow, pcbarrow, pcscatter, pccapsym) refuses a string
     // variable the same way (test_adversarial.cscript SV-01..SV-87).
@@ -1442,7 +1493,7 @@ end
 // Used for scatteri (literal numbers), pci, function
 // ================================================================
 program define _dash_parse_varpart_any, sclass
-    version 16.0
+    version 19
     // equalok: twoway function's documented form is `function y = exp`.  Without
     // it Stata rejects the "=" with r(101) "=exp not allowed", which made the
     // `y=` stripper further down unreachable and the canonical form unusable.
@@ -1506,7 +1557,7 @@ end
 // blank after it.
 // ================================================================
 program define _dash_graph_qualifier
-    version 16.0
+    version 19
     syntax [if] [in]
     // The keyword comes off in Mata, by value, and the result goes back by
     // `: copy local'.  In compound quotes inside regexr() a qualifier
@@ -1543,7 +1594,7 @@ end
 // before the early exit for a segment with no bw().
 // ================================================================
 program define _dash_fold_bw, sclass
-    version 16.0
+    version 19
     args ptype
     _dash_fold_cl "`ptype'"
     _dash_fold_mlab "`ptype'"
@@ -1652,7 +1703,7 @@ end
 // clwidth()'s rule fires exactly where twoway evaluates the width.
 // ================================================================
 program define _dash_fold_cl, sclass
-    version 16.0
+    version 19
     args ptype
     local cl_types "line connected lfit qfit fpfit lpoly lowess mspline mband kdensity function tsline lfitci qfitci lpolyci fpfitci"
     if `: list ptype in cl_types' exit
@@ -1689,7 +1740,7 @@ end
 // in it cannot become a macro reference.
 // ================================================================
 program define _dash_fold_mlab, sclass
-    version 16.0
+    version 19
     args ptype
     // By value: read as `"`s(mlabel)'"', mlabel("\`x'") was expanded to
     // nothing, so on histogram it was not dropped and the value rules
@@ -1747,7 +1798,7 @@ end
 // _dash_report_ignored, and touches nothing else in s().
 // ================================================================
 program define _dash_fold_typed, sclass
-    version 16.0
+    version 19
     args ptype
     local named ""
     local cv_types "scatter connected rconnected dot"
@@ -1812,7 +1863,7 @@ end
 // with the value by value; prints twoway's line itself.
 // ================================================================
 program define _dash_sort_names
-    version 16.0
+    version 19
     syntax [, SORT1(namelist)]
 end
 
@@ -1841,7 +1892,7 @@ end
 // s(sortvars) and s(_pending) and touches nothing else in s().
 // ================================================================
 program define _dash_sort_opt, sclass
-    version 16.0
+    version 19
     args ptype
     mata: st_local("_so_e", strofreal(strtrim(st_global("s(sort1)")) == ""))
     if `_so_e' exit
@@ -1920,7 +1971,7 @@ end
 // Not sclass: it is called from _dash_validate_opts and must not touch s().
 // ================================================================
 program define _dash_check_legend
-    version 16.0
+    version 19
     // The argument is read by value (_dash_text_args), and neither the text
     // nor a token is put inside quotes in a test: -args- and the tests cut
     // legend(label(1 "'90s") top) at its "', and the top beside it, which
@@ -1965,7 +2016,7 @@ end
 // working directory.
 // ================================================================
 program define _dash_shipped_schemes
-    version 16.0
+    version 19
     c_local _dash_schemes "economist s1color s1manual s1mono s1rcolor s2color s2color8 s2gcolor s2gmanual s2manual s2mono sj stcolor stcolor_alt stgcolor stgcolor_alt stmono1 stmono2 stsj sttrans"
     c_local _dash_themes  "default clean mono dark economist sj"
 end
@@ -2023,7 +2074,7 @@ end
 // test/test_option_validation.cscript exercises every token against Stata.
 // ================================================================
 program define _dash_option_rules
-    version 16.0
+    version 19
     // Plot rules: validated once per segment, after _dash_fold_bw, from s().
     local plot ///
         msize=style  mlabsize=style  mlabgap=style ///
@@ -2123,7 +2174,7 @@ end
 // options {}).
 // ----------------------------------------------------------------
 program define _dash_validate_value, rclass
-    version 16.0
+    version 19
     // The arguments are read by value (_dash_text_args): prefix, opt, spec
     // and ptype are dash's own words and the value the user's text, which
     // -args- cut at a "' in it -- by(foreign, title(`"'90s bc"')) stopped
@@ -2535,7 +2586,7 @@ end
 // Returns r(norm).
 // ----------------------------------------------------------------
 program define _dash_axis_expand, rclass
-    version 16.0
+    version 19
     mata: _dash_text_args(0, 0, 0)
     local value : copy local _dash_txt
     mata: _dash_axis_pieces(st_local("value"))
@@ -2575,7 +2626,7 @@ end
 // clears s() can never again empty the segment's options in silence.
 // ----------------------------------------------------------------
 program define _dash_validate_opts, sclass
-    version 16.0
+    version 19
     args ptype
     _dash_option_rules
 
@@ -2768,7 +2819,7 @@ end
 // filter_options, by_groups, tabs and filters.
 // ================================================================
 program define _dash_limit_table
-    version 16.0
+    version 19
     local rows ///
         cells=5000000,20000000 ///
         bytes=50000000,500000000 ///
@@ -2790,7 +2841,7 @@ end
 // variables can reach that.
 // ----------------------------------------------------------------
 program define _dash_count_fmt
-    version 16.0
+    version 19
     gettoken out 0 : 0
     local s : display %30.0fc `0'
     local s = strtrim("`s'")
@@ -2820,7 +2871,7 @@ end
 // measured, regexm("12" + char(10), "^[0-9]+$") is 1.
 // ----------------------------------------------------------------
 program define _dash_limit, rclass
-    version 16.0
+    version 19
     syntax , NAME(string)
 
     _dash_limit_table
@@ -2904,7 +2955,7 @@ end
 // renderer keeps its own default for it.
 // ----------------------------------------------------------------
 program define _dash_limits_json, rclass
-    version 16.0
+    version 19
     _dash_limit_table
     local json ""
     local n = 0
@@ -2931,7 +2982,7 @@ end
 // (<already> 0).  A name already registered is a replace and never counts.
 // ----------------------------------------------------------------
 program define _dash_graph_cap
-    version 16.0
+    version 19
     args already
     _dash_limit, name(graphs)
     local lim  = r(value)
@@ -2961,7 +3012,7 @@ end
 // still to come.
 // ----------------------------------------------------------------
 program define _dash_plot_cap_refuse
-    version 16.0
+    version 19
     args lim ceil n
     _dash_count_fmt _lim_s  `lim'
     _dash_count_fmt _ceil_s `ceil'
@@ -3004,7 +3055,7 @@ end
 // before <extra> and <served> existed.
 // ----------------------------------------------------------------
 program define _dash_cell_cap
-    version 16.0
+    version 19
     args nvars nobs extra served
     if "`nobs'"  == "" local nobs  = _N
     if "`extra'" == "" local extra = 0
@@ -3063,7 +3114,7 @@ end
 // written, so a refusal leaves the data in memory as it was.
 // ----------------------------------------------------------------
 program define _dash_byte_cap
-    version 16.0
+    version 19
     _dash_limit, name(bytes)
     local lim  = r(value)
     local ceil = r(ceiling)
@@ -3129,7 +3180,7 @@ end
 // Sets c_local `out_macro' to the JSON string.
 // ================================================================
 program define _dash_plot_opts_to_json, rclass
-    version 16.0
+    version 19
     args out_macro
 
     local parts ""
@@ -3181,7 +3232,7 @@ end
 // the rest of s() survives the call as it survives _dash_fold_bw.
 // ================================================================
 program define _dash_seg_weight_s, sclass
-    version 16.0
+    version 19
     args wtype wvar
     sreturn local weight `"`wtype'"'
     sreturn local wexp   `"`wvar'"'
@@ -3210,7 +3261,7 @@ end
 //   _pt_ts       x from tsset when it is not given  tsline tsrline
 // ================================================================
 program define _dash_plottype_families
-    version 16.0
+    version 19
     c_local _pt_univar  "histogram kdensity"
     c_local _pt_range   "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
     c_local _pt_pc      "pcspike pcarrow pcbarrow pcscatter pccapsym"
@@ -3237,7 +3288,7 @@ end
 // quotes or on a command line.
 // ================================================================
 program define _dash_by_parts
-    version 16.0
+    version 19
     args V
     local len = strlen(scalar(`V'))
     local depth = 0
@@ -3289,7 +3340,7 @@ end
 // changed.
 // ================================================================
 program define _dash_qual_mark, sortpreserve
-    version 16.0
+    version 19
     gettoken target 0 : 0
     gettoken value 0 : 0
     gettoken sif 0 : 0
@@ -3338,7 +3389,7 @@ end
 // (_dash_qual_mark); the Total panel is drawn when tpanel() selects a row.
 // ================================================================
 program define _dash_by_panels, rclass sortpreserve
-    version 16.0
+    version 19
     syntax varlist(min=1), PANEL(varname) [MISSing TOTal CHECK(varlist) ///
         RULES(string) TPANEL(varname) TCHECK(varlist)]
     tempvar p tp anyp grp dec deck cnt first
@@ -3452,7 +3503,7 @@ end
 //   - Caller's g_* locals are updated if graph-level opts were found.
 // ================================================================
 program define _dash_process_segment, rclass
-    version 16.0
+    version 19
     // The segment is read by value (_dash_text_args in dash_parse.mata): its
     // text, less the quotes around it, then the two output names and the
     // optional count.  -args- read it inside the compound quotes it was
@@ -3493,7 +3544,8 @@ program define _dash_process_segment, rclass
         // a data model no dash plot has.  They were answered "unrecognised
         // plot type", as if twoway had no such type; they are named for
         // what they are now, with what to use instead (WP-22 TR-22.1).
-        // heatmap, rpcap and rpspike, twoway plot types in StataNow 19.5,
+        // heatmap, rpcap and rpspike, twoway plot types since Stata 19
+        // (whatsnew18to19), so the advice holds on every Stata dash runs on,
         // are refused the same way, each with its own reason (BR-22.1).
         // _pt_nodraw is one of those five names or "": never user text.
         mata: st_local("_pt_nodraw", _dash_undrawn_plottype(st_local("plottype")))
@@ -4437,7 +4489,7 @@ end
 // values only, so the formats still travel here.
 // ================================================================
 program define _dash_formats_json
-    version 16.0
+    version 19
     args varlist_in out_macro datevars_macro
 
     local parts ""
@@ -4499,7 +4551,7 @@ end
 // of the first variable in memory, which no layer read, and with no data
 // in memory was refused too (test_parser.cscript P1A-72).
 program define _dash_empty_data
-    version 16.0
+    version 19
     args path
     // Written from Python, 0600 and never through a link, a FIFO or another
     // account's file (WP-29 P0.12b): Stata's `file write' wrote it with the
@@ -4539,7 +4591,7 @@ end
 // once and kept, keyed by its path, size and time, so a second export in a
 // session costs nothing to load.
 program define _dash_write_data
-    version 16.0
+    version 19
     gettoken _dw_path _dw_vars : 0
     // As Stata stores them, once each -- what jsonio's varlist gave.
     unab _dw_vars : `_dw_vars'
@@ -4574,7 +4626,7 @@ end
 // by its realpath, size and time, so a second command costs nothing to
 // load.  The guard first: no python: line runs before it (A7, ENV-12).
 program define _dash_xm_load
-    version 16.0
+    version 19
     _dash_require_python
     local _dw_py ""
     capture findfile dash.ado
@@ -4634,7 +4686,7 @@ end
 // _dash_tmp_open: opens the command's run folder; returns r(rundir),
 // r(spec), r(data), r(app), and r(noted) "1" when it printed the note.
 program define _dash_tmp_open, rclass
-    version 16.0
+    version 19
     _dash_require_python
     _dash_xm_load
     local _to_tmp `"`c(tmpdir)'"'
@@ -4673,7 +4725,7 @@ end
 // Its note is printed only when _dash_tmp_open printed none for this
 // command (noted() is not "1"): one note per command.
 program define _dash_tmp_preview, rclass
-    version 16.0
+    version 19
     syntax, OPENED(string) [NOTED(string)]
     _dash_require_python
     _dash_xm_load
@@ -4702,7 +4754,7 @@ end
 // path that is not one is named and left; it never changes the return
 // code.  A folder an error leaves behind is swept by the next command.
 program define _dash_tmp_close
-    version 16.0
+    version 19
     syntax, DIR(string)
     _dash_require_python
     _dash_xm_load
@@ -4722,7 +4774,7 @@ end
 // folders, in dash-<uid> and every fallback root.  With no dash* folder in
 // c(tmpdir), Mata says so and no Python runs (A15).
 program define _dash_tmp_clear
-    version 16.0
+    version 19
     _dash_require_python
     mata: st_local("_tcl_has", strofreal(rows(dir(c("tmpdir"), "dirs", "dash*")) > 0))
     if "`_tcl_has'" != "1" exit
@@ -4771,7 +4823,7 @@ end
 // variables (_dash_qual_gen_by, below; _dash_qual_rewrite).
 // ================================================================
 program define _dash_qual_gen
-    version 16.0
+    version 19
     args cmdname
 
     capture unab _dq_clash : __dash*
@@ -4846,7 +4898,7 @@ end
 // in _dash_qual_gen, and each column is evaluated once.
 // ================================================================
 program define _dash_qual_gen_by, sortpreserve
-    version 16.0
+    version 19
     gettoken cmdname order : 0
     local order : list retokenize order
     local _dq_n = 0
@@ -4908,7 +4960,7 @@ end
 // _dash_sort_scan before it reaches the sort command.
 // ================================================================
 program define _dash_sort_gen, sortpreserve
-    version 16.0
+    version 19
     args cmdname
     local _ds_n = 0
     mata: _dash_sort_export()
@@ -4949,7 +5001,7 @@ end
 //                         dash accepted but did not honour
 // ================================================================
 program define _dash_report_ignored
-    version 16.0
+    version 19
     // Read by value (_dash_text_args): the unmatched options are the user's
     // text, and -args- cut foo("'x") bar(1) at its "', so bar() went
     // unnamed (test_json_escaping.cscript JSE-46).
@@ -4999,7 +5051,7 @@ end
 // _dash_plot  — parse and route a plot definition (v2.0)
 // ================================================================
 program define _dash_plot
-    version 16.0
+    version 19
 
     // ---- UTF-8 safety check ----
     // The command is read by value, here and at every command's gate: put
@@ -5694,7 +5746,7 @@ end
 // serialises as an empty string, which must NOT suppress.
 // ================================================================
 program define _dash_browser_wanted, rclass
-    version 16.0
+    version 19
     syntax , SPEC(string asis) [SAVing(string)]
     local open = 1
     if `"`saving'"' != "" local open = 0
@@ -5711,7 +5763,7 @@ end
 // graph_options were never read for it.  r(nodraw) is 1 when one is.
 // ================================================================
 program define _dash_registry_nodraw, rclass
-    version 16.0
+    version 19
     local hit = 0
     foreach _rn in ${dash_graph_registry} {
         if strpos(`"${dash_json_`_rn'}"', `""nodraw":"nodraw""') > 0 local hit = 1
@@ -5737,7 +5789,7 @@ end
 // build' shut, did not keep `dash serve' shut either.
 // ================================================================
 program define _dash_dashboard_browser, rclass
-    version 16.0
+    version 19
     syntax [, NOBRowser]
     _dash_registry_nodraw
     local open = ("`nobrowser'" == "" & "${dash_nobrowser}" == "" ///
@@ -5779,7 +5831,7 @@ end
 // cleared; these refusals hold the program to itself.
 // ================================================================
 program define _dash_open_page, rclass
-    version 16.0
+    version 19
     syntax , PATH(string) [OS(string) DRYrun]
 
     // A Mac is a Mac whichever binary runs.  The console binary reports
@@ -5850,7 +5902,7 @@ end
 // _dash_kpi_fields in dash_parse.mata.
 // ================================================================
 program define _dash_drop_item
-    version 16.0
+    version 19
     args name
 
     mata: _dash_item_globals("`name'", "_dash_item_kill")
@@ -5897,7 +5949,7 @@ end
 // both (test_caller_version.cscript CV-02).
 // ================================================================
 program define _dash_name_split
-    version 16.0
+    version 19
     args raw name_macro flag_macro
 
     local _nm = strtrim(`"`raw'"')
@@ -5927,7 +5979,7 @@ end
 // in twoway's words, before anything is registered or dropped.  The words
 // hold no user text.
 program define _dash_refuse_second_name
-    version 16.0
+    version 19
     display as error "option name() not allowed"
     display as error "      A graph takes one name(); this command gives it more than once, which twoway refuses as well."
     exit 198
@@ -5971,7 +6023,7 @@ end
 //     _dash_say so SMCL in it is shown, not obeyed, and ends with the
 //     generator's code.  Break (r(1)) ends the command at once, unechoed.
 program define _dash_fn_points
-    version 16.0
+    version 19
     args raw_sc lo hi n k obj_sc
     mata: st_local("_fx_raw", st_strscalar(st_local("raw_sc")))
     mata: st_local("_fx_echo", (ustrregexm(st_local("_fx_raw"), ///
@@ -6047,7 +6099,7 @@ end
 // macval(); the name is a Stata name (_dash_unbound_cands checks it), and
 // the message is printed through _dash_say.
 program define _dash_refuse_unbound
-    version 16.0
+    version 19
     mata: _dash_text_args(1, 0, 0)
     local parser : copy local _dash_a1
     local opts : copy local _dash_txt
@@ -6108,7 +6160,7 @@ end
 // and reaches a command line only through macval(); the refusal names an
 // option by a Stata name.
 program define _dash_opts_repeats
-    version 16.0
+    version 19
     mata: _dash_text_args(2, 0, 0)
     local parser : copy local _dash_a1
     local ptype : copy local _dash_a2
@@ -6155,7 +6207,7 @@ end
 // typed, "()" after it when it took a value (_dash_rep_reduce,
 // _dash_rep_und_scan); it is echoed as text.
 program define _dash_refuse_repeat
-    version 16.0
+    version 19
     args nm
     mata: _dash_say("err", "option ", st_local("nm"), " not allowed")
     display as error "      twoway takes this option once; this command gives it more than once."
@@ -6167,7 +6219,7 @@ end
 // lpoly, lpolyci or kdensity (_dash_kernel_clash), refused in twoway's
 // words, which differ on kdensity, with its code, r(198).
 program define _dash_refuse_kernel
-    version 16.0
+    version 19
     args kind ptype
     if "`kind'" == "one" {
         display as error "only one kernel may be specified"
@@ -6209,7 +6261,7 @@ end
 // as before.  The option text is read by value (_dash_text_args); the
 // refusal names an option by a Stata name, echoed as text.
 program define _dash_refuse_foreign
-    version 16.0
+    version 19
     mata: _dash_text_args(2, 0, 0)
     local parser : copy local _dash_a1
     local ptype : copy local _dash_a2
@@ -6260,7 +6312,7 @@ end
 // stored as the one word x and the command cut at the quote (measured
 // 24sep2026; test_json_escaping.cscript JSE-45, JSE-47).
 program define _dash_register_graph
-    version 16.0
+    version 19
     args name_sc json_sc spec_sc fp_sc
     mata: st_local("name", st_strscalar(st_local("name_sc")))
     mata: st_local("json_spec", st_strscalar(st_local("json_sc")))
@@ -6430,7 +6482,7 @@ end
 // _dash_render_immediate  — single-graph render path
 // ================================================================
 program define _dash_render_immediate
-    version 16.0
+    version 19
     // The graph JSON alone; the command, handed over as well, was read by
     // nothing (see _dash_plot).  fp_sc is the string scalar holding the
     // graph's function points (WP-29 P0.6), "" when it has none.
@@ -6836,7 +6888,7 @@ end
 // _dash_clear  — reset global registry
 // ================================================================
 program define _dash_clear
-    version 16.0
+    version 19
 
     // Sweep dash's whole global namespace, not an enumerated list.
     //
@@ -6890,7 +6942,7 @@ end
 // _dash_kpi  — KPI subcommand
 // ================================================================
 program define _dash_kpi
-    version 16.0
+    version 19
 
     // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
     // leaves Stata.  The gate was applied at exactly one entry point --
@@ -7261,7 +7313,7 @@ end
 // agree, so they cannot drift again the way these two did.
 // ================================================================
 program define _dash_prepare_spec, rclass
-    version 16.0
+    version 19
 
     // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
     // leaves Stata.  The gate was applied at exactly one entry point --
@@ -8070,7 +8122,7 @@ end
 
 
 program define _dash_build
-    version 16.0
+    version 19
 
     // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
     // leaves Stata.  The gate was applied at exactly one entry point --
@@ -8270,7 +8322,7 @@ end
 // be built from them.
 // ================================================================
 program define _dash_serve_spec, rclass
-    version 16.0
+    version 19
 
     // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
     // leaves Stata.  The gate was applied at exactly one entry point --
@@ -8367,7 +8419,7 @@ end
 // _dash_serve  — launch Bokeh Server for live interactive mode
 // ================================================================
 program define _dash_serve
-    version 16.0
+    version 19
 
     // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
     // leaves Stata.  The gate was applied at exactly one entry point --

@@ -297,10 +297,95 @@ if inlist("`only'", "", "S02") {
 }
 * ==== end S02 ====
 
+// S03 helper: a program at a version no Stata runs.  It is stored and never
+// runs: SF-01 measures the code Stata gives when it is called.  Its
+// `version 99' is the measurement, so it is the one helper of this script
+// that does not declare version 19.
+capture program drop _s03_future
+program define _s03_future
+    version 99
+end
+
 * ==== S03 P1.35: Stata 19 floor declared and enforced ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S03") {
     display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // SF-01: Stata's own return code for a version it cannot run.
+    // dash's refusal uses the same code (test_env_guards.cscript
+    // ENV-25, ENV-28, ENV-29).
+    // ------------------------------------------------------------
+    capture _s03_future
+    local sf01 = _rc
+    _w30_expect SF-01 "(`sf01' == 9)" "a program at version 99 gave rc `sf01', not 9"
+    _w30_done SF-01 "Stata refuses a version it cannot run with rc `sf01', the code dash's floor uses"
+
+    // ------------------------------------------------------------
+    // SF-02: with no caller version recorded, _dash_fn_points falls back
+    // to dash's own level, now 19; the points are those of a caller at 16.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture program list _dash_fn_points
+    local sf02ld = _rc
+    _w30_expect SF-02 "(`sf02ld' == 0)" "dash.ado is not loaded by do"
+    if `sf02ld' == 0 {
+        tempname sf02r sf02a sf02b
+        foreach e in "y = runiform()" "y = normalden(x)" {
+            mata: st_strscalar(st_local("sf02r"), st_local("e"))
+            mata: st_strscalar(st_local("sf02a"), "")
+            mata: st_strscalar(st_local("sf02b"), "")
+            set seed 20261003
+            global dash__uv 16
+            capture noisily _dash_fn_points `sf02r' -2 2 5 1 `sf02a'
+            local sf02rca = _rc
+            set seed 20261003
+            macro drop dash__uv
+            capture noisily _dash_fn_points `sf02r' -2 2 5 1 `sf02b'
+            local sf02rcb = _rc
+            local sf02cv "`._Gr_Global.callerver'"
+            local sf02cvok = ("`sf02cv'" == "19")
+            mata: st_local("sf02same", strofreal(st_strscalar(st_local("sf02a")) == st_strscalar(st_local("sf02b"))))
+            _w30_expect SF-02 "(`sf02rca' == 0 & `sf02rcb' == 0)" "`e': rc `sf02rca' at 16, rc `sf02rcb' at the fallback"
+            _w30_expect SF-02 "(`sf02same' == 1)" "`e': the points at 16 and at the fallback differ"
+            _w30_expect SF-02 "(`sf02cvok' == 1)" "`e': the fallback's callerver is `sf02cv', not 19"
+        }
+    }
+    _w30_done SF-02 "the callerver fallback reads 19 and the points equal a version 16 caller's, seeded runiform() and normalden(x)"
+
+    // ------------------------------------------------------------
+    // SF-03: a caller at version 16 keeps its own version (guard).
+    // ------------------------------------------------------------
+    capture dash clear
+    capture noisily version 16: dash function y = normalden(x), range(-2 2) n(5) name(sf03)
+    local sf03rc = _rc
+    local sf03cv "`._Gr_Global.callerver'"
+    local sf03cvok = ("`sf03cv'" == "16")
+    mata: st_local("sf03pts", strofreal(strpos(st_global("dash_fpts_sf03"), "0.053990966513188049,0.24197072451914334,0.39894228040143265") > 0))
+    _w30_expect SF-03 "(`sf03rc' == 0)" "version 16: dash function gave rc `sf03rc'"
+    _w30_expect SF-03 "(`sf03cvok' == 1)" "the function layer ran at callerver `sf03cv', not 16"
+    _w30_expect SF-03 "(`sf03pts' == 1)" "the normalden points were not the measured ones"
+    _w30_done SF-03 "a version 16 caller's function layer is evaluated at 16, with the measured points"
+    capture dash clear
+
+    // ------------------------------------------------------------
+    // SF-04: the certifying Stata is at or above the floor, and dash's
+    // guard and comparator say so.
+    // ------------------------------------------------------------
+    local sf04v = (c(stata_version) >= 19)
+    capture noisily _dash_require_stata
+    local sf04g = _rc
+    capture _dash_stata_ok "`c(stata_version)'" "19"
+    local sf04c = _rc
+    local sf04ok = r(ok)
+    if `sf04c' != 0 local sf04ok = .
+    _w30_expect SF-04 "(`sf04v' == 1)" "this Stata, `c(stata_version)', is below the floor"
+    _w30_expect SF-04 "(`sf04g' == 0)" "_dash_require_stata gave rc `sf04g'"
+    _w30_expect SF-04 "(`sf04c' == 0)" "_dash_stata_ok gave rc `sf04c'"
+    _w30_expect SF-04 "(`sf04ok' == 1)" "_dash_stata_ok answered `sf04ok' for this Stata"
+    display as text "SF-04: certified on Stata `c(stata_version)' `c(edition_real)'"
+    _w30_done SF-04 "the certifying Stata is at or above the floor and dash's guard passes it"
+
     display as text "S03 end " c(current_date) " " c(current_time)
 }
 * ==== end S03 ====

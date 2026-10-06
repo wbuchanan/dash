@@ -122,6 +122,15 @@ environment in place; you may delete it.
 {marker dependencies}
 {title:Dependencies}
 
+{pstd}{ul:Stata}
+
+{phang2}Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64.
+Measured on MP only: Stata 19.0, Stata/BE and Stata/SE are admitted but
+have not been run.  {cmd:dash_setup} checks this before anything else and
+reports {cmd:Stata .............. OK} with the release; on an older Stata
+it stops at once with "dash requires Stata 19 or later; this is Stata
+{it:#}", r(9), and checks and installs nothing.
+
 {pstd}{ul:Python}
 
 {phang2}Python 3.13 or later must be installed and linked to Stata.

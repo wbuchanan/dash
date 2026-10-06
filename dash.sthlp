@@ -3784,6 +3784,14 @@ Run {helpb dash_setup} once before using {cmd:dash}.  It checks everything
 below and installs what it can -- the Python packages; a Python you install
 and link yourself:
 
+{phang2}{ul:Stata} -- Stata 19 or later; tested on StataNow 19.5 (MP), macOS
+    arm64.  Measured on MP only: Stata 19.0, Stata/BE and Stata/SE are
+    admitted but have not been run.  On an older Stata, {cmd:dash} and
+    {helpb dash_setup} stop before doing anything else with "dash requires
+    Stata 19 or later; this is Stata {it:#}", r(9).  The floor is the Stata
+    you run, not the version a do-file sets: a do-file that begins
+    {cmd:version 16} still runs {cmd:dash} on Stata 19.
+
 {phang2}{ul:Python 3.13+} -- linked to Stata; see {helpb python}.
 
 {phang2}{ul:Python packages, required} -- bokeh>=3.8, numpy>=2.3,

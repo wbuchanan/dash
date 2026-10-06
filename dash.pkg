@@ -14,6 +14,8 @@ d internet connection.  -dash serve- runs the dashboard on a Bokeh
 d Server instead, and -dash build- with the server option writes such
 d an app for you to launch.
 d
+d Requires: Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64.
+d Measured on MP only; Stata 19.0, Stata/BE and Stata/SE have not been run.
 d Requires: Python 3.13+, bokeh>=3.8, numpy>=2.3, pandas>=2.3.
 d
 d Run -dash_setup- once after installation: it checks the

@@ -681,7 +681,8 @@ local match = r(match)
 assert `rc' == 0
 assert `match' == 1
 assert `"$PC_SSC_CALLS"' == ""
-foreach p in "Python ............. OK (version" "bokeh ............. OK (version" ///
+foreach p in "Stata .............. OK (version" ///
+    "Python ............. OK (version" "bokeh ............. OK (version" ///
     "numpy ............. OK (version" "pandas ............. OK (version" ///
     "dash_render.py ..... OK" "schemes ............ OK" ///
     "dash_setup complete. All dependencies are satisfied." {

@@ -2,7 +2,8 @@
 *! Certification script: dash behaves the same whatever version its CALLER
 *! has set.
 *!
-*! dash's programs declare `version 16.0', but some of Stata's behaviour is
+*! dash's programs declare their own version (19 since WP-30), but some of
+*! Stata's behaviour is
 *! resolved by the user version, c(userversion), which only the caller's own
 *! `version' statement sets.  regexm() is one such behaviour: from Stata 18
 *! it runs an engine that knows bounded repetition, and under a user version
@@ -11,8 +12,9 @@
 *!
 *!     ^[a-zA-Z_][a-zA-Z0-9_]{0,31}$
 *!
-*! so a do-file that begins `version 16' -- dash's own minimum, and the first
-*! line of many do-files -- could not name anything:
+*! so a do-file that begins `version 16' -- once dash's declared minimum,
+*! still a supported caller on Stata 19, and the first line of many
+*! do-files -- could not name anything:
 *!
 *!     version 16
 *!     dash scatter mpg weight, name(g1)   -> "invalid graph name 'g1'", r(198)

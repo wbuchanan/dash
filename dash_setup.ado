@@ -17,7 +17,10 @@
 *! Version: 0.1.0  02oct2026
 
 program define dash_setup, rclass
-    version 16.0
+    // WP-30 P1.35: the Stata floor first, before `version', so an older
+    // Stata is refused in dash's words and nothing is checked or installed.
+    _dash_setup_stata
+    version 19
     // dash_setup.sthlp's Syntax section was the bare command, and there was
     // no `syntax' line at all -- so `dash_setup, garbage(1)' ran the whole
     // setup and ignored the option in silence.  It now takes venv(path)
@@ -62,6 +65,7 @@ program define dash_setup, rclass
 
     display as text _newline "{txt}dash_setup: checking dependencies..."
     display as text "{hline 60}"
+    display as text "  Stata .............. {res}OK{txt} (version `c(stata_version)')"
 
     // Availability is CONFIGURATION, so it is read from configuration.
     // `capture python query' ran Python to ask whether Python was there,
@@ -499,8 +503,38 @@ program define _dash_pymin, rclass
     return local pymin "3.13"
 end
 
+program define _dash_statamin, rclass
+    /*
+        The oldest Stata release dash runs on, named once.
+
+        returns r(statamin): "19".
+
+        _dash_setup_stata refuses below it.  dash.ado's
+        _dash_require_stata holds the same number (a program defined in
+        one ado-file cannot be called from another), and
+        test/test_version_floor.py pins the two, every program's
+        `version' line, dash.pkg and both help files equal.  No `version'
+        line: it runs on the Stata it refuses.
+    */
+    return local statamin "19"
+end
+
+program define _dash_setup_stata
+    version 13
+    _dash_statamin
+    local floor "`r(statamin)'"
+    local h = c(stata_version)
+    local w = real("`floor'")
+    if missing(`w') | `h' < `w' {
+        local shown : display %9.1f `h'
+        local shown `shown'
+        display as error "dash requires Stata `floor' or later; this is Stata `shown'"
+        exit 9
+    }
+end
+
 program define _dash_pyver_ok, rclass
-    version 16.0
+    version 19
     /*
         Is a dotted version string at or above a minimum?
 
@@ -518,9 +552,10 @@ program define _dash_pyver_ok, rclass
 
         THE ANSWER IS DECIDED ONCE AND RETURNED AFTER THE LOOP.  Written the
         obvious way -- `return scalar ok = 0' followed by `exit' inside the
-        forvalues -- neither took effect under `version 16.0', which is the
-        version dash_setup declares and therefore the version this runs
-        under in production.  Measured, with the loop body tracing itself:
+        forvalues -- neither took effect under language level 16, which
+        dash_setup declared until WP-30 raised it to 19, and therefore the
+        level this ran under in production.  Measured, with the loop body
+        tracing itself:
         at i=1 for "2.4" against "3.0" it computed gnum=2, wnum=3, did not
         take either branch, and carried on to i=2; every input then fell
         through to the final `ok = 1'.  So the comparator answered "at or
@@ -602,7 +637,7 @@ end
 //      to add in PowerShell
 // ================================================================
 program define _dash_pip_command, rclass
-    version 16.0
+    version 19
     args pkg minver how
     _dash_setup_lib
     if r(ok) != 1 {
@@ -618,7 +653,7 @@ program define _dash_pip_command, rclass
 end
 
 program define _dash_pkg_version
-    version 16.0
+    version 19
     args pkg outmac
 
     // The name is READ inside Python with sfi.Macro.getLocal (below), so it
@@ -670,7 +705,7 @@ end
 // and linked to it; with no failure that is what the banner says.
 // ================================================================
 program define _dash_setup_summary
-    version 16.0
+    version 19
     syntax , FAILures(integer) WARNings(integer) [ITEMS(string) VENVready]
 
     display as text "{hline 60}"
@@ -745,7 +780,7 @@ end
 //   _dash_setup_gate pkg got want has_packaging
 // ================================================================
 program define _dash_setup_gate, rclass
-    version 16.0
+    version 19
     args pkg got want haspkg
 
     if `"`got'"' == "" | `"`got'"' == "unknown" {
@@ -812,7 +847,7 @@ end
 // Returns r(failures), the number of things that are missing.
 // ================================================================
 program define _dash_setup_check_files, rclass
-    version 16.0
+    version 19
 
     local nfail 0
 
@@ -899,7 +934,7 @@ end
 // Returns r(ok): 1 loaded, 0 not found or not loadable (each named).
 // ================================================================
 program define _dash_setup_lib, rclass
-    version 16.0
+    version 19
     local lib ""
     capture findfile dash_setup_lib.py
     if _rc == 0 {
@@ -944,7 +979,7 @@ end
 // r(ok) "1" when the child answered.
 // ================================================================
 program define _dash_setup_detect, rclass
-    version 16.0
+    version 19
     _dash_setup_lib
     if r(ok) != 1 {
         return local lib "0"
@@ -975,7 +1010,7 @@ end
 // timeout, missing-interpreter, other) and r(user_tried).
 // ================================================================
 program define _dash_setup_pip, rclass
-    version 16.0
+    version 19
     args spec user ver
     local pip_outcome "other"
     local pip_user "0"
@@ -995,7 +1030,7 @@ end
 // suggests ("" when it suggests none).  WP-29 P0.19.
 // ================================================================
 program define _dash_setup_guide, rclass
-    version 16.0
+    version 19
     args kind ensurepip managed
     local guide_cmd ""
     python: import sys; sys.modules["_dash_setup_lib"].stata_guide()
@@ -1014,7 +1049,7 @@ end
 // line) and r(python) (the linked interpreter).
 // ================================================================
 program define _dash_setup_venv, rclass
-    version 16.0
+    version 19
     args pymin minb minn minp
     local venv_step "internal"
     python: import sys; sys.modules["_dash_setup_lib"].stata_venv()

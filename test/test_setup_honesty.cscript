@@ -420,7 +420,8 @@ program define _hon_reload
     foreach p in dash_setup _dash_pymin _dash_pyver_ok _dash_pip_command ///
             _dash_pkg_version _dash_setup_summary _dash_setup_gate ///
             _dash_setup_check_files _dash_setup_lib _dash_setup_detect ///
-            _dash_setup_pip _dash_setup_guide _dash_setup_venv {
+            _dash_setup_pip _dash_setup_guide _dash_setup_venv ///
+            _dash_statamin _dash_setup_stata {
         capture program drop `p'
     }
     quietly do "../dash_setup.ado"

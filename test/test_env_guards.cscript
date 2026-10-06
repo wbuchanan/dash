@@ -76,12 +76,15 @@
 *! and the guard is driven by redefining it, which is what
 *! test_render_locate.cscript does for the renderer locator.
 *!
-*! Tests: ENV-01 through ENV-23.  ENV-17..19 run the three routes with no
+*! Tests: ENV-01 through ENV-29.  ENV-17..19 run the three routes with no
 *! Python; ENV-20..21 cut the ado-path through $S_ADO so the Mata guard cannot
 *! repair, and restore it before asserting; ENV-22 runs the guard over a
 *! library file that is found but does not load completely; ENV-23a/b leave
 *! part of the library in memory, which is repaired from the file where one
-*! is found and refused by name where none is.
+*! is found and refused by name where none is.  ENV-24..29 (WP-30 P1.35)
+*! drive the Stata floor: the by-value comparator, the refusal reached
+*! through a stub, the silent pass, a version 16 caller in both modes, every
+*! route refused below the floor, and dash_setup's own guard.
 *!
 *! Usage:  do test/test_env_guards.cscript
 *! Version: 1.0  22sep2026
@@ -471,7 +474,7 @@ capture erase "`lg17'"
 // exercised the shipped one before it was stubbed.
 capture program drop _dash_python_ok
 program define _dash_python_ok, rclass
-    version 16.0
+    version 19
     args probe
     local probe = strtrim(`"`probe'"')
     return scalar ok = cond(`"`probe'"' == "", 0, 1)
@@ -814,6 +817,267 @@ display "ENV-23a PASS: a library in memory only in part is repaired from the fil
 assert `e23brc' == 198
 assert `e23bnamed' == 1
 display "ENV-23b PASS: a library in memory only in part, with nothing to repair it from, is refused by name, r(198), not r(3499) at the first call"
+
+// ================================================================
+// ENV-24..ENV-29 (WP-30 P1.35): the Stata floor.  `dash' and `dash_setup'
+// refuse a Stata below 19 as their first act, in dash's words, with r(9):
+// Stata's own code for a version it cannot run.  The refusal cannot be
+// reached on the Stata this runs on, so the comparator is driven by value
+// and stubbed; each stub is defined before its log is opened and the
+// shipped body is restated after it (re-`do'ing an ado-file over programs
+// in memory is r(110)).  r() and _rc are copied before any log search,
+// which clobbers r().
+// ================================================================
+
+// ENV-24: the comparator's table, every value passed as text.
+capture program drop _env24_row
+program define _env24_row
+    version 19
+    args have want ok shown
+    _dash_stata_ok `"`have'"' `"`want'"'
+    local gok = r(ok)
+    local gshown `"`r(shown)'"'
+    if `gok' != `ok' | `"`gshown'"' != `"`shown'"' {
+        display as error `"ENV-24: [`have'] against [`want'] gave ok `gok' shown [`gshown'], not `ok' [`shown']"'
+        global env24_bad = ${env24_bad} + 1
+    }
+end
+global env24_bad 0
+_env24_row "19.5"   "19" 1 "19.5"
+_env24_row "19"     "19" 1 "19.0"
+_env24_row "20"     "19" 1 "20.0"
+_env24_row "18.5"   "19" 0 "18.5"
+_env24_row "17"     "19" 0 "17.0"
+_env24_row "15.1"   "19" 0 "15.1"
+_env24_row ""       "19" 0 "."
+_env24_row "abc"    "19" 0 "."
+_env24_row "19 | 1" "19" 0 "."
+_env24_row "19.5"   ""   0 "19.5"
+local e24bad = ${env24_bad}
+macro drop env24_bad
+capture program drop _env24_row
+assert `e24bad' == 0
+display "ENV-24 PASS: the floor comparator answers by value, 1 at or above, 0 below or unreadable"
+
+// ENV-25: the refusal's words and code, below the floor (stubbed).
+capture program drop _dash_stata_ok
+program define _dash_stata_ok, rclass
+    version 13
+    return local shown "18.5"
+    return scalar ok = 0
+end
+local lg25 "`c(tmpdir)'dash_env25.log"
+capture erase "`lg25'"
+quietly log using "`lg25'", replace text name(_e2x)
+capture noisily _dash_require_stata
+local e25rc1 = _rc
+quietly log close _e2x
+capture program drop _dash_stata_ok
+program define _dash_stata_ok, rclass
+    version 13
+    return local shown "17.0"
+    return scalar ok = 0
+end
+local lg25b "`c(tmpdir)'dash_env25b.log"
+capture erase "`lg25b'"
+quietly log using "`lg25b'", replace text name(_e2x)
+capture noisily _dash_require_stata
+local e25rc2 = _rc
+quietly log close _e2x
+// The shipped comparator back (dash.ado, TR-03.1), restated verbatim.
+capture program drop _dash_stata_ok
+program define _dash_stata_ok, rclass
+    version 13
+    args have want
+    mata: st_local("h", strofreal(strtoreal(st_local("have"))))
+    mata: st_local("w", strofreal(strtoreal(st_local("want"))))
+    local shown : display %9.1f `h'
+    local shown `shown'
+    return local shown "`shown'"
+    return scalar ok = cond(missing(`h') | missing(`w'), 0, `h' >= `w')
+end
+cert_file_has "`lg25'", needle("dash requires Stata 19 or later; this is Stata 18.5")
+local e25said1 = r(found)
+cert_file_has "`lg25b'", needle("dash requires Stata 19 or later; this is Stata 17.0")
+local e25said2 = r(found)
+capture erase "`lg25'"
+capture erase "`lg25b'"
+assert `e25rc1' == 9
+assert `e25said1' == 1
+assert `e25rc2' == 9
+assert `e25said2' == 1
+display "ENV-25 PASS: below the floor dash refuses in its own words, naming the floor and the running release, r(9)"
+
+// ENV-26: at or above the floor the check is silent, whatever version
+// the caller sets.
+local lg26 "`c(tmpdir)'dash_env26.log"
+capture erase "`lg26'"
+quietly log using "`lg26'", replace text name(_e2x)
+capture noisily _dash_require_stata
+local e26a = _rc
+capture noisily version 16: _dash_require_stata
+local e26b = _rc
+capture noisily version 13: _dash_require_stata
+local e26c = _rc
+quietly log close _e2x
+cert_file_has "`lg26'", needle("dash requires")
+local e26said = r(found)
+capture erase "`lg26'"
+assert `e26a' == 0
+assert `e26b' == 0
+assert `e26c' == 0
+assert `e26said' == 0
+display "ENV-26 PASS: on a Stata at or above the floor the check passes silently, under version 16 and 13 callers too"
+
+// ENV-27: a do-file at version 16 still builds the saved page and the
+// served app.
+quietly sysuse auto, clear
+capture dash clear
+local f27 "`c(tmpdir)'dash_env27"
+capture erase "`f27'_v16.html"
+capture erase "`f27'_v16.py"
+capture noisily version 16: dash scatter mpg weight, saving("`f27'_v16.html") replace
+local e27a = _rc
+capture confirm file "`f27'_v16.html"
+local e27af = (_rc == 0)
+capture dash clear
+capture noisily version 16: dash scatter mpg weight, name(e27)
+local e27r = _rc
+capture noisily version 16: dash build, saving("`f27'_v16.py") server replace
+local e27b = _rc
+capture confirm file "`f27'_v16.py"
+local e27bf = (_rc == 0)
+capture dash clear
+capture erase "`f27'_v16.html"
+capture erase "`f27'_v16.py"
+assert `e27a' == 0
+assert `e27af' == 1
+assert `e27r' == 0
+assert `e27b' == 0
+assert `e27bf' == 1
+display "ENV-27 PASS: a version 16 caller builds the saved page and the served app on this Stata"
+
+// ENV-28: below the floor (stubbed) every route of both modes is refused
+// before anything is registered, written or served.
+quietly sysuse auto, clear
+capture dash clear
+local f28 "`c(tmpdir)'dash_env28"
+capture erase "`f28'i.html"
+capture erase "`f28'.html"
+capture erase "`f28'.py"
+capture program drop _dash_stata_ok
+program define _dash_stata_ok, rclass
+    version 13
+    return local shown "18.5"
+    return scalar ok = 0
+end
+local lg28 "`c(tmpdir)'dash_env28.log"
+capture erase "`lg28'"
+quietly log using "`lg28'", replace text name(_e2x)
+capture noisily dash scatter mpg weight, saving("`f28'i.html") replace
+local e28_1 = _rc
+capture noisily dash scatter mpg weight, name(e28)
+local e28_2 = _rc
+capture noisily dash kpi mean(mpg), name(k28)
+local e28_3 = _rc
+capture noisily dash build, saving("`f28'.html") replace nobrowser
+local e28_4 = _rc
+capture noisily dash build, saving("`f28'.py") server replace
+local e28_5 = _rc
+capture noisily dash serve, port(5098) timeout(1) nobrowser
+local e28_6 = _rc
+capture noisily dash clear
+local e28_7 = _rc
+quietly log close _e2x
+local reg28 "${dash_graph_registry}"
+local e28files = 0
+foreach x in "`f28'i.html" "`f28'.html" "`f28'.py" {
+    capture confirm file "`x'"
+    if _rc == 0 local e28files = `e28files' + 1
+}
+// The shipped comparator back (dash.ado, TR-03.1), restated verbatim.
+capture program drop _dash_stata_ok
+program define _dash_stata_ok, rclass
+    version 13
+    args have want
+    mata: st_local("h", strofreal(strtoreal(st_local("have"))))
+    mata: st_local("w", strofreal(strtoreal(st_local("want"))))
+    local shown : display %9.1f `h'
+    local shown `shown'
+    return local shown "`shown'"
+    return scalar ok = cond(missing(`h') | missing(`w'), 0, `h' >= `w')
+end
+cert_log_has "`lg28'", needle("dash requires Stata 19 or later; this is Stata 18.5")
+local e28n = r(count)
+cert_file_has "`lg28'", needle("starting Bokeh Server")
+local e28srv = r(found)
+capture erase "`lg28'"
+capture erase "`f28'i.html"
+capture erase "`f28'.html"
+capture erase "`f28'.py"
+capture dash clear
+forvalues i = 1/7 {
+    assert `e28_`i'' == 9
+}
+assert `"`reg28'"' == ""
+assert `e28files' == 0
+assert `e28n' == 7
+assert `e28srv' == 0
+display "ENV-28 PASS: below the floor every dash route, saved and served, stops first with r(9) and registers, writes and serves nothing"
+
+// ENV-29: dash_setup's own guard, from its own named constant.
+quietly do "../dash_setup.ado"
+_dash_statamin
+local e29a = (`"`r(statamin)'"' == "19")
+local lg29 "`c(tmpdir)'dash_env29.log"
+capture erase "`lg29'"
+quietly log using "`lg29'", replace text name(_e2x)
+capture noisily _dash_setup_stata
+local e29b = _rc
+quietly log close _e2x
+cert_file_has "`lg29'", needle("dash requires")
+local e29bsaid = r(found)
+capture program drop _dash_statamin
+program define _dash_statamin, rclass
+    return local statamin "99"
+end
+local lg29c "`c(tmpdir)'dash_env29c.log"
+capture erase "`lg29c'"
+quietly log using "`lg29c'", replace text name(_e2x)
+capture noisily dash_setup
+local e29c = _rc
+quietly log close _e2x
+// The shipped constant back (dash_setup.ado, TR-03.4), restated verbatim.
+capture program drop _dash_statamin
+program define _dash_statamin, rclass
+    /*
+        The oldest Stata release dash runs on, named once.
+
+        returns r(statamin): "19".
+
+        _dash_setup_stata refuses below it.  dash.ado's
+        _dash_require_stata holds the same number (a program defined in
+        one ado-file cannot be called from another), and
+        test/test_version_floor.py pins the two, every program's
+        `version' line, dash.pkg and both help files equal.  No `version'
+        line: it runs on the Stata it refuses.
+    */
+    return local statamin "19"
+end
+local want29 = "dash requires Stata 99 or later; this is Stata " + strtrim(string(c(stata_version), "%9.1f"))
+cert_file_has "`lg29c'", needle("`want29'")
+local e29csaid = r(found)
+cert_file_has "`lg29c'", needle("checking dependencies")
+local e29cran = r(found)
+capture erase "`lg29'"
+capture erase "`lg29c'"
+assert `e29a' == 1
+assert `e29b' == 0
+assert `e29bsaid' == 0
+assert `e29c' == 9
+assert `e29csaid' == 1
+assert `e29cran' == 0
+display "ENV-29 PASS: dash_setup names the floor once, passes silently at or above it, and below it stops first with r(9), checking nothing"
 
 display ""
 display "All environment guard tests PASSED."
