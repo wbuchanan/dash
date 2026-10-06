@@ -7,11 +7,15 @@
 # certification suite through the console binary.  Any failure or unexpected
 # skip makes it fail.  `make hooks' has `git push' run it first.
 #
-# Stata is run only through the console binary, in batch (CLAUDE.md rule 22).
+# Stata is run only through the console binary, in batch, started by scripts/stata_batch.sh.
 
 PYTHON      ?= python3
-STATA       ?= /usr/local/bin/stata-mp
+STATA_BIN   ?= /usr/local/bin/stata-mp
 PYTEST_ARGS ?= -q -p no:cacheprovider
+
+ifeq ($(origin STATA),command line)
+$(error STATA was renamed STATA_BIN (WP-30); run make $(MAKECMDGOALS) STATA_BIN=$(STATA))
+endif
 
 .PHONY: help check test test-dev cert gate release hooks
 
@@ -23,14 +27,15 @@ help:
 	@echo "make gate      net install, then every example and scheme from the install"
 	@echo "make release   make check, then make gate"
 	@echo "make hooks     have 'git push' run 'make check' first"
+	@echo "STATA_BIN=<path> names the console Stata (default /usr/local/bin/stata-mp); STATA_ARCH=auto|none|arm64|x86_64"
 
 check: test test-dev cert
 
 # Stata's Python is read from Stata itself each time: STATA_PYTHON overrides.
 test:
-	@py="$${STATA_PYTHON:-$$(STATA='$(STATA)' sh scripts/stata_python_exec.sh)}"; \
+	@py="$${STATA_PYTHON:-$$(STATA_BIN='$(STATA_BIN)' sh scripts/stata_python_exec.sh)}"; \
 	if [ -z "$$py" ]; then \
-	    echo "make test: could not read c(python_exec) from $(STATA)"; exit 1; \
+	    echo "make test: could not read c(python_exec) from $(STATA_BIN)"; exit 1; \
 	fi; \
 	echo "pytest under Stata's Python: $$py"; \
 	DASH_STRICT=1 DASH_BASELINE=stata "$$py" -m pytest test/ $(PYTEST_ARGS)
@@ -40,10 +45,10 @@ test-dev:
 	@DASH_STRICT=1 DASH_BASELINE=dev $(PYTHON) -m pytest test/ $(PYTEST_ARGS)
 
 cert:
-	@STATA='$(STATA)' PYTHON='$(PYTHON)' sh scripts/run_cert_suite.sh
+	@STATA_BIN='$(STATA_BIN)' PYTHON='$(PYTHON)' sh scripts/run_cert_suite.sh
 
 gate:
-	@STATA='$(STATA)' PYTHON='$(PYTHON)' sh scripts/run_release_gate.sh
+	@STATA_BIN='$(STATA_BIN)' PYTHON='$(PYTHON)' sh scripts/run_release_gate.sh
 
 release: check gate
 

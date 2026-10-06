@@ -5,11 +5,11 @@
 # its source (scripts/release_gate.do); then judge the run from its logs with
 # scripts/release_verdict.py.  Stata is run as CLAUDE.md rule 22 requires --
 # the console binary, in batch -- with its own STATATMP, which must end in
-# "/" and must not be the directory the batch log is written to.  STATA names
-# the console binary and PYTHON the interpreter the verdict runs under.
+# "/" and must not be the directory the batch log is written to.  STATA_BIN
+# names the console binary (scripts/stata_batch.sh) and PYTHON the
+# interpreter the verdict runs under.
 set -u
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-STATA="${STATA:-/usr/local/bin/stata-mp}"
 PYTHON="${PYTHON:-python3}"
 dir="$(mktemp -d "${TMPDIR:-/tmp}/dash_release.XXXXXX")" || exit 1
 mkdir -p "$dir/tmp" "$dir/src" "$dir/work"
@@ -31,7 +31,7 @@ else
 fi
 
 echo "release gate: running in $dir"
-(cd "$dir" && STATATMP="$dir/tmp/" arch -arm64 "$STATA" -b do \
+(cd "$dir" && STATATMP="$dir/tmp/" sh "$REPO/scripts/stata_batch.sh" -b do \
     "$REPO/scripts/release_gate.do" "$dir/src" "$dir/work" "$REPO/examples" \
     >/dev/null 2>&1)
 # Stata's batch mode names its log after the command line's last word, not
@@ -39,7 +39,7 @@ echo "release gate: running in $dir"
 log="$(ls -t "$dir"/*.log 2>/dev/null | head -1)"
 # WP-29 P0.19: the venv-linked sessions, from $dir/work so the second links by a relative path.
 for phase in venvmake venvuse; do
-    (cd "$dir/work" && PIP_NO_INDEX=1 STATATMP="$dir/tmp/" arch -arm64 "$STATA" -b do \
+    (cd "$dir/work" && PIP_NO_INDEX=1 STATATMP="$dir/tmp/" sh "$REPO/scripts/stata_batch.sh" -b do \
         "$REPO/scripts/release_gate_venv.do" "$dir/work" "$dir/work/plus/" plus "$phase" >/dev/null 2>&1)
     # Batch mode names the log after the command line's text past its last
     # /, here " plus <phase>.log": moved to the name the verdict reads.

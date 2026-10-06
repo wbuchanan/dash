@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-"""S05 wiring: accept every option, and report by name the ones dash ignores.
+"""RETIRED (WP-30 P1.34): historical, do not run.
+
+S05 wiring: accept every option, and report by name the ones dash ignores.
 
 Run AFTER regen_option_surface.py (which adds Stata's catch-all `*` to both
 syntax blocks).  Idempotent-ish: always run it on a freshly generated dash.ado.
 """
-import json
+import sys
 
-REPO = "/Users/billy/Desktop/Programs/StataPrograms/d/dash"
+sys.exit("scripts/wire_option_reporting.py is retired (WP-30 P1.34): historical, do not run; add an option in dash.ado's five option-surface places by hand")
+
+import json
+import os
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 inv = json.load(open("/tmp/dash-wf/b2/option_inventory.json"))
 PENDING, GRAPH, PLOT = inv["pending"], set(inv["graph"]), set(inv["plot"])
 

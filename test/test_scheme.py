@@ -14,7 +14,9 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dash_render import SchemeParser, _apply_jitter, _compute_secondary_range
+from conftest import stata_base
 
 
 # ============================================================
@@ -529,9 +531,11 @@ class TestSecurity:
 
     def test_real_stata_scheme_via_cwd_copy(self):
         """Parser handles full Stata scheme format when copied to CWD."""
-        stata_path = "/Applications/Stata 15/ado/base/s/scheme-s2color.scheme"
+        # The configured Stata tree (DASH_STATA_BASE, WP-30 P1.34), where
+        # s2color's p1 is the same navy.
+        stata_path = os.path.join(stata_base(), "s", "scheme-s2color.scheme")
         if not os.path.isfile(stata_path):
-            pytest.skip("Stata 15 not installed")
+            pytest.skip("Stata's scheme-s2color.scheme is not under DASH_STATA_BASE")
         import shutil
         cwd_copy = os.path.join(os.getcwd(), "stata_s2color_test.scheme")
         shutil.copy(stata_path, cwd_copy)

@@ -825,7 +825,7 @@ requirement changes sit in their own lists.
 
 <!-- WP-30 P1.31b -->
 
-<!-- WP-30 P1.34 -->
+- The certification, release and test runners no longer hard-code the maintainer's checkout or arch -arm64. make cert tests the tree it is run in (DASH_REPO, else the current directory when it is a dash tree, else r(601)): it tested the main checkout, so a broken worktree or copy could pass. Stata is started by scripts/stata_batch.sh, which takes the binary from STATA_BIN (the Make variable STATA is now STATA_BIN) and chooses the arm64 slice from the machine and the binary. scripts/regen_option_surface.py and scripts/wire_option_reporting.py are retired and refuse to run. (WP-30, P1.34)
 
 ### Fixed in WP-29
 

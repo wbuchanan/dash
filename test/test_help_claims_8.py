@@ -54,7 +54,7 @@ from bokeh.models import Plot                                    # noqa: E402
 from bokeh.models.tickers import (BasicTicker, CustomJSTicker,   # noqa: E402
                                   FixedTicker)
 
-from conftest import make_spec                                   # noqa: E402
+from conftest import make_spec, stata_base                       # noqa: E402
 from test_adversarial_matrix import (_app_source, _load_app,     # noqa: E402
                                      _session, _write_inputs)
 
@@ -555,7 +555,8 @@ class TestNoLayerNeedsScipyOrStatsmodels:
 # 3. Stata scheme support
 # ===========================================================================
 
-_STATA_BASE = "/Applications/StataNow/ado/base"
+#: Stata's base ado tree: DASH_STATA_BASE, else StataNow's (WP-30 P1.34).
+_STATA_BASE = stata_base()
 
 
 def _stata_file(rel):

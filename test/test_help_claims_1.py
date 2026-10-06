@@ -66,16 +66,17 @@ import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_abbreviations import _program_body, _syntax_options  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import stata_base, stata_plus  # noqa: E402
 
 _HELP = os.path.join(_ROOT, "dash.sthlp")
 _ADO = os.path.join(_ROOT, "dash.ado")
 _MATA = os.path.join(_ROOT, "dash_parse.mata")
 
 #: Stata's own directories, where the help files a "see also" link names
-#: live: the base ado tree, one directory per first letter, and PLUS.
-_STATA_BASE = "/Applications/StataNow/ado/base"
-_STATA_PLUS = os.path.expanduser(
-    "~/Library/Application Support/Stata/ado/plus")
+#: live: the base ado tree, one directory per first letter, and PLUS
+#: (DASH_STATA_BASE and DASH_STATA_PLUS, WP-30 P1.34).
+_STATA_BASE = stata_base()
+_STATA_PLUS = stata_plus()
 _TWOWAY_CLASS = os.path.join(_STATA_BASE, "t", "twowaygraph_g.class")
 
 

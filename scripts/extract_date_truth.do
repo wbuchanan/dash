@@ -5,13 +5,14 @@
 *!
 *! Output: test/fixtures/date_truth.json
 *!
-*! Run with (Stata must be forced to its arm64 slice, and must be launched
-*! from a scratch directory because batch mode writes its .log to the process
-*! working directory):
+*! Run with (the slot wrapper starts Stata from a scratch directory, because
+*! batch mode writes its .log to the process working directory):
 *!
-*!   mkdir -p /tmp/dash-s08 && cd /tmp/dash-s08 && \
-*!   arch -arm64 /usr/local/bin/stata-mp -b do \
-*!     /Users/billy/Desktop/Programs/StataPrograms/d/dash/scripts/extract_date_truth.do
+*!   DASH_REPO=<repo> <repo>/scripts/stata_slot.sh <scratch> <repo>/scripts/extract_date_truth.do
+*!
+*! Section D calls jsonio under capture: set STATAJSON_DIR to jsonio's
+*! directory to reproduce the committed fixture's JSONIO rows (without it
+*! they record rc 199).
 *!
 *! ---------------------------------------------------------------------------
 *! METHOD
@@ -61,14 +62,45 @@
 
 clear all
 set more off
-adopath ++ "/Users/billy/Desktop/Programs/Java/StataJSON"
-adopath ++ "/Users/billy/Desktop/Programs/StataPrograms/d/dash"
+local sj : environment STATAJSON_DIR
+mata: st_local("_zr_bad", strofreal(any(strpos(st_local("sj"), (char(34), char(36), char(39), char(96), char(10), char(13))))))
+if `_zr_bad' {
+    display as error "extract_date_truth.do: STATAJSON_DIR may not hold a double quote, dollar sign, single quote, backtick or line break"
+    exit 198
+}
+if `"`sj'"' != "" adopath ++ `"`sj'"'
+* Root (WP-30 P1.34): DASH_REPO, else the current directory when it is a
+* dash tree; never another checkout.
+local repo : environment DASH_REPO
+if `"`macval(repo)'"' == "" local repo `"`c(pwd)'"'
+mata: st_local("_zr_bad", strofreal(any(strpos(st_local("repo"), (char(34), char(36), char(39), char(96), char(10), char(13))))))
+if `_zr_bad' {
+    display as error "extract_date_truth.do: DASH_REPO may not hold a double quote, dollar sign, single quote, backtick or line break"
+    exit 198
+}
+while strlen(`"`repo'"') > 1 & inlist(substr(`"`repo'"', -1, 1), "/", char(92)) {
+    local repo = substr(`"`repo'"', 1, strlen(`"`repo'"') - 1)
+}
+capture confirm file `"`repo'/dash.ado"'
+local _zr_rc = _rc
+capture confirm file `"`repo'/test/run_all_cscripts.do"'
+if `_zr_rc' | _rc {
+    local _zr_show = substr(`"`repo'"', 1, 200)
+    display as error `"extract_date_truth.do: `_zr_show' is not a dash tree; set DASH_REPO to the repository root"'
+    exit 601
+}
+adopath ++ "`repo'/"
 
-global ZQ_REPO "/Users/billy/Desktop/Programs/StataPrograms/d/dash"
+global ZQ_REPO "`repo'"
 global ZQ_OUT  "${ZQ_REPO}/test/fixtures/date_truth.json"
-global ZQ_JSONIO_ADO "/Users/billy/Desktop/Programs/Java/StataJSON/jsonio.ado"
-global ZQ_JSONIO_JAR "/Users/billy/Desktop/Programs/Java/StataJSON/target/jsonio-jar-with-dependencies.jar"
-global ZQ_JSONIO_SRC "/Users/billy/Desktop/Programs/Java/StataJSON/src/main/java/org/paces/Stata/JSON"
+global ZQ_JSONIO_ADO ""
+global ZQ_JSONIO_JAR ""
+global ZQ_JSONIO_SRC ""
+if `"`sj'"' != "" {
+    global ZQ_JSONIO_ADO "`sj'/jsonio.ado"
+    global ZQ_JSONIO_JAR "`sj'/target/jsonio-jar-with-dependencies.jar"
+    global ZQ_JSONIO_SRC "`sj'/src/main/java/org/paces/Stata/JSON"
+}
 
 local scratch "`c(tmpdir)'/dash_date_probe"
 capture mkdir "`scratch'"

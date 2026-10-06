@@ -218,7 +218,9 @@ class TestTheGateIsWiredUp:
         with open(os.path.join(ROOT, "scripts", "run_release_gate.sh"),
                   encoding="utf-8") as fh:
             sh = fh.read()
-        assert 'arch -arm64 "$STATA" -b do' in sh
+        # WP-30 P1.34: both Stata starts go through the wrapper.
+        assert sh.count('sh "$REPO/scripts/stata_batch.sh" -b do') == 2
+        assert '"$STATA"' not in sh
         assert 'STATATMP="$dir/tmp/"' in sh
         assert "StataMP.app" not in sh and "open -a" not in sh
         assert "scripts/release_verdict.py" in sh
@@ -351,7 +353,8 @@ class TestTheVenvSessions:
         assert "for phase in venvmake venvuse" in sh
         assert "PIP_NO_INDEX=1" in sh
         assert "release_gate_venv.do" in sh
-        assert 'arch -arm64 "$STATA" -b do' in sh
+        assert ('PIP_NO_INDEX=1 STATATMP="$dir/tmp/" sh '
+                '"$REPO/scripts/stata_batch.sh" -b do') in sh
         assert '"$dir/work/venvmake.log" "$dir/work/venvuse.log"' in sh
 
     def test_the_runner_reads_the_log_stata_names_for_each_phase(self):

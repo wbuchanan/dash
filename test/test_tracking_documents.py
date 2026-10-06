@@ -1602,7 +1602,6 @@ WP30_OPEN = {
     "P1.31b": "One reader's filter-move recompute blocks the served event loop for every other reader",
     "P1.32": "A missing numpy, pandas or bokeh or an old Python fails with a bare ModuleNotFoundError or SyntaxError, and dash_setup's first Python call is uncaptured",
     "P1.33": "The Python floor of 3.13 turns away 3.11 and 3.12 users, and dash_setup reports failure although dash may render",
-    "P1.34": "The certification runners hard-code arch -arm64 and the maintainer's paths, so they run on no other machine",
     "P1.35": "dash declares Stata 16.0, but only StataNow 19.5 has ever run it or made its truth fixtures",
 }
 

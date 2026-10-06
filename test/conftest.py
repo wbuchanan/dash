@@ -254,6 +254,20 @@ def _strict() -> bool:
     return os.environ.get("DASH_STRICT", "") == "1"
 
 
+STATA_BASE_DEFAULT = "/Applications/StataNow/ado/base"
+STATA_PLUS_DEFAULT = "~/Library/Application Support/Stata/ado/plus"
+
+
+def stata_base():
+    """Stata's base ado tree: DASH_STATA_BASE, else StataNow's (WP-30 P1.34)."""
+    return os.environ.get("DASH_STATA_BASE") or STATA_BASE_DEFAULT
+
+
+def stata_plus():
+    """Stata's PLUS tree: DASH_STATA_PLUS, else the macOS default."""
+    return os.path.expanduser(os.environ.get("DASH_STATA_PLUS") or STATA_PLUS_DEFAULT)
+
+
 def _drift_problem(actual: dict, requested: str = "") -> str:
     """Why *actual* fails its baseline, or "" when it does not."""
     name = _baseline_name(actual, requested)

@@ -10,8 +10,7 @@
 *!
 *! Run through the slot wrapper (CLAUDE.md rule 10):
 *!
-*!   DASH_REPO=<tree> scripts/stata_slot.sh <scratch> \
-*!     <tree>/scripts/extract_colorvar_qualifier_truth.do
+*!   DASH_REPO=<repo> <repo>/scripts/stata_slot.sh <scratch> <repo>/scripts/extract_colorvar_qualifier_truth.do
 *!
 *! METHOD.  scripts/svg_truth.py is the one SVG reader.  Per probe this
 *! records the twoway command, its rc, the observations its qualifier
@@ -27,10 +26,27 @@ clear all
 set more off
 set linesize 200
 
-global ZQ_REPO "/Users/billy/Desktop/Programs/StataPrograms/d/dash"
-* DASH_REPO in the environment points the run at another tree (a worktree).
-local zq_env : env DASH_REPO
-if `"`zq_env'"' != "" global ZQ_REPO `"`zq_env'"'
+* Root (WP-30 P1.34): DASH_REPO, else the current directory when it is a
+* dash tree; never another checkout.
+local repo : environment DASH_REPO
+if `"`macval(repo)'"' == "" local repo `"`c(pwd)'"'
+mata: st_local("_zr_bad", strofreal(any(strpos(st_local("repo"), (char(34), char(36), char(39), char(96), char(10), char(13))))))
+if `_zr_bad' {
+    display as error "extract_colorvar_qualifier_truth.do: DASH_REPO may not hold a double quote, dollar sign, single quote, backtick or line break"
+    exit 198
+}
+while strlen(`"`repo'"') > 1 & inlist(substr(`"`repo'"', -1, 1), "/", char(92)) {
+    local repo = substr(`"`repo'"', 1, strlen(`"`repo'"') - 1)
+}
+capture confirm file `"`repo'/dash.ado"'
+local _zr_rc = _rc
+capture confirm file `"`repo'/test/run_all_cscripts.do"'
+if `_zr_rc' | _rc {
+    local _zr_show = substr(`"`repo'"', 1, 200)
+    display as error `"extract_colorvar_qualifier_truth.do: `_zr_show' is not a dash tree; set DASH_REPO to the repository root"'
+    exit 601
+}
+global ZQ_REPO "`repo'"
 global ZQ_OUT  "${ZQ_REPO}/test/fixtures/colorvar_qualifier_truth.json"
 
 adopath ++ "${ZQ_REPO}"

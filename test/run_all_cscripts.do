@@ -1,16 +1,18 @@
 *! run_all_cscripts.do
 *! Master test runner for dash certification scripts.
-*! Run from the dash/ directory:
-*!   arch -arm64 /usr/local/bin/stata-mp -b do test/run_all_cscripts.do
+*! Run it with `make cert', or from the dash/ directory:
+*!   sh scripts/stata_batch.sh -b do test/run_all_cscripts.do
+*! The tree under test is DASH_REPO, else the current directory; either
+*! must be a dash tree (dash.ado and test/run_all_cscripts.do), or the run
+*! stops with r(601).
 *!
-*! On Apple silicon, run Stata through `arch -arm64'.  Stata and the
-*! configured Python are both universal/native, but a long run of this file
-*! was observed launching the x86_64 slice, and the arm64 libpython then
-*! cannot be loaded:
+*! On Apple silicon, scripts/stata_batch.sh starts Stata's arm64 slice.  A
+*! long run of this file was observed launching the x86_64 slice, and the
+*! arm64 libpython then cannot be loaded:
 *!     dlopen(.../libpython3.13.dylib): incompatible architecture
 *!       (have 'arm64', need 'x86_64')
 *! Every Python-dependent script then fails for a reason that has nothing to
-*! do with dash.  Forcing the slice makes the run reproducible.
+*! do with dash.  Choosing the slice makes the run reproducible.
 
 // ----------------------------------------------------------------
 // Setup
@@ -18,14 +20,34 @@
 clear all
 set more off
 
-// Add dash ado files to the path
-adopath ++ "/Users/billy/Desktop/Programs/StataPrograms/d/dash/"
-
-// Root project directory (all cd calls return here)
-local dashdir "/Users/billy/Desktop/Programs/StataPrograms/d/dash"
+// ---- root: begin (WP-30 P1.34) ----
+local dashdir : environment DASH_REPO
+if `"`macval(dashdir)'"' == "" local dashdir `"`c(pwd)'"'
+mata: st_local("_dash_bad", strofreal(any(strpos(st_local("dashdir"), (char(34), char(36), char(39), char(96), char(10), char(13))))))
+if `_dash_bad' {
+    display as error "run_all_cscripts.do: DASH_REPO may not hold a double quote, dollar sign, single quote, backtick or line break"
+    exit 198
+}
+while strlen(`"`dashdir'"') > 1 & inlist(substr(`"`dashdir'"', -1, 1), "/", char(92)) {
+    local dashdir = substr(`"`dashdir'"', 1, strlen(`"`dashdir'"') - 1)
+}
+capture confirm file `"`dashdir'/dash.ado"'
+local _dash_rc = _rc
+capture confirm file `"`dashdir'/test/run_all_cscripts.do"'
+if `_dash_rc' | _rc {
+    local _dash_show = substr(`"`dashdir'"', 1, 200)
+    display as error `"run_all_cscripts.do: `_dash_show' is not a dash tree (it needs dash.ado and test/run_all_cscripts.do); set DASH_REPO to the tree to test"'
+    exit 601
+}
+adopath ++ "`dashdir'/"
 local testdir "`dashdir'/test"
-
 cd "`dashdir'"
+quietly findfile dash.ado
+if `"`r(fn)'"' != `"`dashdir'/dash.ado"' {
+    display as error `"run_all_cscripts.do: dash.ado resolves to `r(fn)', not `dashdir'/dash.ado"'
+    exit 9
+}
+// ---- root: end ----
 
 display as text ""
 display as text "============================================================"

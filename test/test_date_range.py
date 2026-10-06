@@ -33,7 +33,7 @@ pandas 3.0.1, numpy 2.4.3, bokeh 3.9.0):
   refuses past 2262, and the card showed the bare number.
 
 Every expected date is Stata's, measured with the console binary
-(``arch -arm64 stata-mp -b``) and cited beside it.  Epoch milliseconds are
+(the console binary, ``stata-mp -b``) and cited beside it.  Epoch milliseconds are
 days after 01jan1970 times 86,400,000; 01jan1960, Stata's day 0, is
 -3,653 days (so %td 14977 is (14977 - 3653) * 86400000 = 978393600000).
 """

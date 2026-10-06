@@ -199,13 +199,20 @@ class TestMakeCheckIsWired:
         assert "test/run_all_cscripts.do" in script
 
     @pytest.mark.parametrize("name", ["run_cert_suite.sh",
-                                      "stata_python_exec.sh"])
+                                      "stata_python_exec.sh",
+                                      "stata_slot.sh",
+                                      "run_release_gate.sh"])
     def test_stata_runs_only_through_the_console_binary(self, name):
+        # WP-30 P1.34: every runner starts Stata through the one wrapper,
+        # which names the console binary (STATA_BIN) and picks the slice.
         script = _read("scripts", name)
-        assert re.search(r'arch -arm64 "\$STATA" -b do', script), name
-        assert 'STATA="${STATA:-/usr/local/bin/stata-mp}"' in script
+        assert 'sh "$REPO/scripts/stata_batch.sh" -b do' in script, name
+        assert 'REPO="$(cd "$(dirname "$0")/.." && pwd)"' in script, name
         assert 'STATATMP="$dir/tmp/"' in script
+        assert '"$STATA"' not in script
         assert "StataMP.app" not in script and "open -a" not in script
+        assert "STATA_BIN:-/usr/local/bin/stata-mp" in _read(
+            "scripts", "stata_batch.sh")
 
     def test_the_hook_runs_make_check_and_is_executable(self):
         path = os.path.join(_ROOT, "scripts", "git-hooks", "pre-push")

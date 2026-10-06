@@ -111,10 +111,188 @@ if inlist("`only'", "", "S01") {
 }
 * ==== end S01 ====
 
+// ----------------------------------------------------------------
+// S02 helpers (WP-30 P1.34): the runner's root block, read from
+// run_all_cscripts.do between its markers and run as a do-file.
+// ----------------------------------------------------------------
+capture mata: mata drop _s02_root_lines()
+capture mata: mata drop _s02_trim()
+mata:
+// Copies the lines strictly between "// ---- root: begin" and
+// "// ---- root: end" of src to dst; returns their count (0 when either
+// marker is missing, and then nothing is written).
+real scalar _s02_root_lines(string scalar src, string scalar dst)
+{
+    string colvector L
+    real scalar i, b, e, fh
+    L = cat(src)
+    b = 0
+    e = 0
+    for (i = 1; i <= rows(L); i++) {
+        if (b == 0 & strpos(L[i], "// ---- root: begin") == 1) b = i
+        else if (b > 0 & e == 0 & strpos(L[i], "// ---- root: end") == 1) e = i
+    }
+    if (b == 0 | e <= b + 1) return(0)
+    fh = fopen(dst, "w")
+    for (i = b + 1; i < e; i++) fput(fh, L[i])
+    fclose(fh)
+    return(e - b - 1)
+}
+// s without its trailing slashes (one character kept).
+string scalar _s02_trim(string scalar s)
+{
+    while (strlen(s) > 1 & substr(s, -1, 1) == "/") s = substr(s, 1, strlen(s) - 1)
+    return(s)
+}
+end
+
+capture program drop _s02_realdir
+program define _s02_realdir, rclass
+    version 19
+    args dir
+    local here `"`c(pwd)'"'
+    quietly cd `"`dir'"'
+    return local dir `"`c(pwd)'"'
+    quietly cd `"`here'"'
+end
+
+capture program drop _s02_run_root
+program define _s02_run_root, rclass
+    version 19
+    args block cwd
+    local ado0 `"$S_ADO"'
+    local pwd0 `"`c(pwd)'"'
+    if `"`cwd'"' != "" quietly cd `"`cwd'"'
+    // quietly: a refused root's error and r() lines stay out of the log;
+    // the rc is what each case checks.
+    capture quietly do `"`block'"'
+    local rc = _rc
+    local pwd `"`c(pwd)'"'
+    local fn ""
+    if `rc' == 0 {
+        capture quietly findfile dash.ado
+        if _rc == 0 local fn `"`r(fn)'"'
+    }
+    global S_ADO `"`macval(ado0)'"'
+    quietly cd `"`pwd0'"'
+    return scalar rc = `rc'
+    return local pwd `"`pwd'"'
+    return local fn `"`fn'"'
+end
+
+// One RR case: the root block run with DASH_REPO as the caller set it,
+// from cwd; rc must be wrc and, when want is given, the run must have
+// cd'd to want and found want/dash.ado.  ok is RR-01's flag: without the
+// block, the case fails without running.
+capture program drop _s02_case
+program define _s02_case
+    version 19
+    args id ok blk cwd wrc want msg
+    _w30_expect `id' "`ok'" "RR-01 failed, so the root block was not run"
+    if `ok' {
+        _s02_run_root `"`blk'"' `"`cwd'"'
+        local rc = r(rc)
+        local pwd `"`r(pwd)'"'
+        local fn `"`r(fn)'"'
+        _w30_expect `id' "`rc' == `wrc'" "rc `rc', expected `wrc'"
+        if `"`want'"' != "" {
+            local same = (`"`pwd'"' == `"`want'"')
+            _w30_expect `id' "`same'" "r(pwd) is `pwd', expected `want'"
+            local same = (`"`fn'"' == `"`want'/dash.ado"')
+            _w30_expect `id' "`same'" "dash.ado resolves to `fn', expected `want'/dash.ado"
+        }
+    }
+    _w30_done `id' `"`msg'"'
+end
+
 * ==== S02 P1.34: Portable runners ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S02") {
     display as text "S02 start " c(current_date) " " c(current_time)
+    local s02_env0 : environment DASH_REPO
+
+    // tree: the directory the driver cd'd to, less its /test.
+    local s02_here `"`c(pwd)'"'
+    local s02_intest = (substr(`"`s02_here'"', -5, 5) == "/test")
+    local s02_tree = substr(`"`s02_here'"', 1, strlen(`"`s02_here'"') - 5)
+
+    // scr: two trees of the RR cases, under this run's own directory.
+    local s02_scr "`w30_work'/s02_rr"
+    capture mkdir "`s02_scr'"
+    capture mkdir "`s02_scr'/notree"
+    capture mkdir "`s02_scr'/my tree"
+    capture mkdir "`s02_scr'/my tree/test"
+    tempname s02_fh
+    file open `s02_fh' using "`s02_scr'/my tree/dash.ado", write text replace
+    file close `s02_fh'
+    file open `s02_fh' using "`s02_scr'/my tree/test/run_all_cscripts.do", write text replace
+    file close `s02_fh'
+    _s02_realdir "`s02_scr'"
+    local s02_scr `"`r(dir)'"'
+
+    // ------------------------------------------------------------
+    // RR-01: the runner's root block is there, reads DASH_REPO and
+    // names no home directory; the paths this block hands it are clean.
+    // ------------------------------------------------------------
+    local s02_blk "`w30_work'/s02_root.do"
+    mata: st_local("s02_n", strofreal(_s02_root_lines("run_all_cscripts.do", st_local("s02_blk"))))
+    local s02_hasenv 0
+    local s02_home 0
+    if `s02_n' > 0 {
+        mata: st_local("s02_hasenv", strofreal(strpos(invtokens(cat(st_local("s02_blk"))', char(10)), ": environment DASH_REPO") > 0))
+        mata: st_local("s02_home", strofreal(strpos(invtokens(cat(st_local("s02_blk"))', char(10)), "/" + "Users/") + strpos(invtokens(cat(st_local("s02_blk"))', char(10)), "/" + "home/") > 0))
+    }
+    mata: st_local("s02_badpath", strofreal(any(strpos(st_local("s02_tree") + c("tmpdir") + st_local("s02_scr"), (char(34), char(36), char(39), char(96), char(10), char(13))))))
+    _w30_expect RR-01 "`s02_n' >= 10" "the root block between run_all_cscripts.do's markers has `s02_n' lines"
+    _w30_expect RR-01 "`s02_hasenv'" "the root block does not read : environment DASH_REPO"
+    _w30_expect RR-01 "!`s02_home'" "the root block names a home directory"
+    _w30_expect RR-01 "!`s02_badpath'" "the tree, c(tmpdir) or the scratch directory holds a quote, dollar sign, backtick or line break"
+    _w30_done RR-01 "the runner's root block was read (`s02_n' lines)"
+    local s02_ok = (`s02_n' >= 10) & `s02_hasenv' & !`s02_home' & !`s02_badpath'
+
+    // ------------------------------------------------------------
+    // RR-02: the run tests the tree it was handed.
+    // ------------------------------------------------------------
+    mata: st_local("s02_named", strofreal(_s02_trim(st_local("s02_env0")) == "" | _s02_trim(st_local("s02_env0")) == st_local("s02_tree")))
+    _w30_expect RR-02 "`s02_intest'" "the driver did not cd to <tree>/test (c(pwd) is `s02_here')"
+    _w30_expect RR-02 "`s02_named'" "DASH_REPO does not name the tree under test, `s02_tree'"
+    _w30_done RR-02 "the run tests the tree it was handed, `s02_tree'"
+
+    // ------------------------------------------------------------
+    // RR-03..RR-14: the root block under each DASH_REPO and directory.
+    // ------------------------------------------------------------
+    python: import os; from sfi import Macro; os.environ["DASH_REPO"] = Macro.getLocal("s02_tree")
+    _s02_case RR-03 `s02_ok' "`s02_blk'" "" 0 "`s02_tree'" "DASH_REPO=<tree> from test/: the tree is tested"
+    python: import os; from sfi import Macro; os.environ["DASH_REPO"] = Macro.getLocal("s02_tree") + "/"
+    _s02_case RR-04 `s02_ok' "`s02_blk'" "" 0 "`s02_tree'" "DASH_REPO=<tree>/ from test/: the trailing slash is dropped"
+    python: import os; os.environ.pop("DASH_REPO", None)
+    _s02_case RR-05 `s02_ok' "`s02_blk'" "`s02_tree'" 0 "`s02_tree'" "DASH_REPO unset from <tree>: the current directory is tested"
+    _s02_case RR-06 `s02_ok' "`s02_blk'" "`s02_scr'/notree" 601 "" "DASH_REPO unset from a directory that is no dash tree: r(601)"
+    python: import os; from sfi import Macro; os.environ["DASH_REPO"] = Macro.getLocal("s02_scr") + "/co" + chr(36) + "py"
+    _s02_case RR-07 `s02_ok' "`s02_blk'" "" 198 "" "a dollar sign in DASH_REPO: r(198)"
+    python: import os; from sfi import Macro; os.environ["DASH_REPO"] = Macro.getLocal("s02_scr") + "/co" + chr(96) + "py"
+    _s02_case RR-08 `s02_ok' "`s02_blk'" "" 198 "" "a backtick in DASH_REPO: r(198)"
+    python: import os; from sfi import Macro; os.environ["DASH_REPO"] = Macro.getLocal("s02_scr") + "/co" + chr(34) + "py"
+    _s02_case RR-09 `s02_ok' "`s02_blk'" "" 198 "" "a double quote in DASH_REPO: r(198)"
+    python: import os; from sfi import Macro; os.environ["DASH_REPO"] = Macro.getLocal("s02_scr") + "/co" + chr(39) + "py"
+    _s02_case RR-10 `s02_ok' "`s02_blk'" "" 198 "" "a single quote in DASH_REPO: r(198)"
+    python: import os; from sfi import Macro; os.environ["DASH_REPO"] = Macro.getLocal("s02_scr") + "/co" + chr(10) + "py"
+    _s02_case RR-11 `s02_ok' "`s02_blk'" "" 198 "" "a line feed in DASH_REPO: r(198)"
+    python: import os; from sfi import Macro; os.environ["DASH_REPO"] = Macro.getLocal("s02_scr") + "/co" + chr(13) + "py"
+    _s02_case RR-12 `s02_ok' "`s02_blk'" "" 198 "" "a carriage return in DASH_REPO: r(198)"
+    python: import os; from sfi import Macro; os.environ["DASH_REPO"] = Macro.getLocal("s02_scr") + "/notree"
+    _s02_case RR-13 `s02_ok' "`s02_blk'" "" 601 "" "DASH_REPO naming a directory that is no dash tree: r(601)"
+    python: import os; from sfi import Macro; os.environ["DASH_REPO"] = Macro.getLocal("s02_scr") + "/my tree"
+    _s02_case RR-14 `s02_ok' "`s02_blk'" "" 0 "`s02_scr'/my tree" "DASH_REPO naming a tree with a space: that tree is tested"
+
+    capture erase "`s02_scr'/my tree/test/run_all_cscripts.do"
+    capture erase "`s02_scr'/my tree/dash.ado"
+    capture rmdir "`s02_scr'/my tree/test"
+    capture rmdir "`s02_scr'/my tree"
+    capture rmdir "`s02_scr'/notree"
+    capture rmdir "`s02_scr'"
+    capture erase "`s02_blk'"
+    python: import os; from sfi import Macro; v = Macro.getLocal("s02_env0"); os.environ.pop("DASH_REPO", None) if v == "" else os.environ.__setitem__("DASH_REPO", v)
     display as text "S02 end " c(current_date) " " c(current_time)
 }
 * ==== end S02 ====

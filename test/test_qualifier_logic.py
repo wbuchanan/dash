@@ -28,7 +28,7 @@ binds tighter than any other operator, so ``!foreign == 1`` is
 ``(!foreign) == 1``; and ``!`` on a string is a type mismatch, r(109).
 
 The oracle for every case is Stata itself, measured 24sep2026 with
-``arch -arm64 /usr/local/bin/stata-mp -b do`` on the twelve observations of
+the console binary, ``stata-mp -b do``, on the twelve observations of
 ``_LG_ROWS`` (entered with ``input``): each case's rows are Stata's
 ``levelsof id if <qualifier>``, and a refused case's return code is
 ``capture count if <qualifier>``'s.  The x the scatter draws is ``id``, so

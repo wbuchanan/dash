@@ -13,8 +13,7 @@
 *! wrapper directly -- CLAUDE.md rule 10, sections/BRIEF.md "Stata
 *! invocation"):
 *!
-*!   scripts/stata_slot.sh /tmp/dash-s02 \
-*!     /Users/billy/Desktop/Programs/StataPrograms/d/dash/scripts/extract_svg_truth_smoke.do
+*!   DASH_REPO=<repo> <repo>/scripts/stata_slot.sh <scratch> <repo>/scripts/extract_svg_truth_smoke.do
 *!
 *! ---------------------------------------------------------------------------
 *! TWO TRAPS, found the hard way and worth keeping (scripts/extract_axis_
@@ -38,11 +37,27 @@ set graphics off
 set more off
 set linesize 200
 
-* <repo> is the root of the tree under test (sections/index.md step 1): the
-* main checkout, as scripts/extract_axis_truth.do hardcodes; a section
-* agent developing in its own worktree points this at that worktree while
-* it runs there, and restores this line before committing.
-global ZS_REPO "/Users/billy/Desktop/Programs/StataPrograms/d/dash"
+* Root (WP-30 P1.34): DASH_REPO, else the current directory when it is a
+* dash tree; never another checkout.
+local repo : environment DASH_REPO
+if `"`macval(repo)'"' == "" local repo `"`c(pwd)'"'
+mata: st_local("_zr_bad", strofreal(any(strpos(st_local("repo"), (char(34), char(36), char(39), char(96), char(10), char(13))))))
+if `_zr_bad' {
+    display as error "extract_svg_truth_smoke.do: DASH_REPO may not hold a double quote, dollar sign, single quote, backtick or line break"
+    exit 198
+}
+while strlen(`"`repo'"') > 1 & inlist(substr(`"`repo'"', -1, 1), "/", char(92)) {
+    local repo = substr(`"`repo'"', 1, strlen(`"`repo'"') - 1)
+}
+capture confirm file `"`repo'/dash.ado"'
+local _zr_rc = _rc
+capture confirm file `"`repo'/test/run_all_cscripts.do"'
+if `_zr_rc' | _rc {
+    local _zr_show = substr(`"`repo'"', 1, 200)
+    display as error `"extract_svg_truth_smoke.do: `_zr_show' is not a dash tree; set DASH_REPO to the repository root"'
+    exit 601
+}
+global ZS_REPO "`repo'"
 global ZS_OUT  "${ZS_REPO}/test/fixtures/svg_truth_smoke.json"
 global ZS_SVG  "${ZS_REPO}/test/fixtures/svg_truth_smoke.svg"
 
