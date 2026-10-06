@@ -1,0 +1,1504 @@
+{
+  "sections": [
+    {
+      "num": 1,
+      "slug": "tracking-foundation",
+      "items": [],
+      "part": "",
+      "name": "Tracking foundation",
+      "scope": "Changes no shipped file. Opens one BUGS.md entry per fix section (sections 2-57), each with the DROPIN text, its source ids, a one-sentence fix naming its section and 'Resolution: Not fixed because WP-30 section NN has not landed'; a section that lands as two commits cites its one entry in both. The entries for P1.23, P1.15 and P1.11 map ids that have no literal anchor by content: the REM-08-04 ids against REMAINING.md:1935-2110 (section S35) and the REM-08-05 ids against :2111-2290 (section S17), DROPIN's GAPS2-B16-a..e letters to B16's parts (S28/S48/S53), and GAPS2-D3-a..e to D3's TeX half (S9) and SMCL half (S29); an id whose bullet belongs to the other part moves with it. Adds WP30_OPEN keyed by those entries, plus a TestWp30Tracking form test, to test/test_tracking_documents.py. Creates test/test_wp30_truth.cscript in test_wp29_truth's form (python_exec skip, WP30_ONLY=S<NN> block gating, 'S<NN> start/end' timing lines) with one labelled stub block per section in section order, registers it as block // 69. of test/run_all_cscripts.do and updates test/test_cscript_hygiene.py's registry pins. Places one comment anchor per section in test/function_test_map.py and test/program_coverage_map.py, and the WP-30 CHANGELOG markers: 'Results that change' (M1), 'Changed behaviour (may need your do-files changed)' (M5, M11), 'Requirements' (M2, M3, M9), 'Security' and a new 'Fixed in WP-30'.",
+      "effort": "S",
+      "risk": "green",
+      "depends_on": [],
+      "notes": "Rules every later section follows: twoway comparisons go in its own stub block of test_wp30_truth.cscript; refusal, message and return-code checks join the existing cscript for their area (WP-29 rule R1); no section registers another runner block; shared files (CHANGELOG.md, BUGS.md, dash.sthlp, the maps) are edited only inside the section's own anchor or entry so parallel merges stay in distinct hunks; every new module helper the served app calls is added to ServerAppBuilder._glyph_layer_lines' copy list (a missing name is skipped silently and fails only on the served page). Sn means section n throughout this manifest."
+    },
+    {
+      "num": 2,
+      "slug": "portable-runners",
+      "items": [
+        34
+      ],
+      "part": "",
+      "name": "Portable runners (P1.34 under M4)",
+      "scope": "Runner portability only (M4). One Stata-invocation rule: STATA_BIN overrides, else /usr/local/bin/stata-mp; an arch prefix only when the binary needs one, decided from the binary's own architecture so the rule is right under Rosetta, where uname -m is wrong (sub-claim 9); it never selects the 14-18.5 binaries (M2). Used by scripts/stata_slot.sh, run_cert_suite.sh, run_release_gate.sh, stata_python_exec.sh, the Makefile, the test/run_all_cscripts.do header, scripts/measure_stata_coverage.py, every scripts/extract_*_truth.do that hard-codes them (15 at HEAD), test/fixtures/twoway_corpus.do and the two py generators regen_option_surface.py and wire_option_reporting.py (REPO from __file__; both refuse a missing /tmp inventory instead of rewriting dash.ado). _STATA_BASE/_STATA_PLUS in test_help_claims_1.py and test_help_claims_8.py take an environment override (sub-claim 8); `make cert` run in a worktree tests that worktree (sub-claim 6); a guard test fails on any `arch -arm64` literal or maintainer path under scripts/, test/ or the Makefile; the pins asserting the literal command (test_cert_verdict, test_release_verdict/gate, test_measure_stata_coverage) are flipped with the reason. Closes GAPS2-K1-a, GAPS2-K1-b.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        1
+      ],
+      "notes": "Lands before any section copies an extractor (about 22 are planned), so all copy the path-free form. On this Mac the effective command is unchanged (console binary, -b mode), so the project's console-only Stata rule and the block-stata-gui hook still hold and are not edited. wire_option_reporting.py is also edited by S3 (its emitted version line): same batch, different lines, merge S2 first."
+    },
+    {
+      "num": 3,
+      "slug": "stata-19-floor",
+      "items": [
+        35
+      ],
+      "part": "",
+      "name": "Stata 19 floor declared and enforced (P1.35 under M2)",
+      "scope": "Under M2. One floor constant (_dash_statamin beside _dash_pymin) and a pure _dash_stata_ok; a guard program that declares no version above 13, called as the first statement of dash and dash_setup, refuses Stata below 19 with 'dash requires Stata 19 or later; this is Stata X.Y' and r(9) (dash_setup adds its 'Stata ... OK' summary line). Every `version 16.0` statement (79 in dash.ado, 12 in dash_setup.ado) and the generators that emit one (wire_option_reporting.py, gen_string_varlists_cscript.py) become `version 19`. dash.pkg, dash.sthlp and dash_setup.sthlp Dependencies ('Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64'), CHANGELOG Requirements and Changed behaviour. test_version_floor.py pins: each program's first statement is `version 19` (guard and constants exempt), the guard precedes it, the guard declares no version above 13, every declaration agrees. program_coverage_map entries; floor cases in its truth-cscript block and ENV cases in test_env_guards.cscript; test_caller_version and test_setup_python_gate keep one caller-at-version-16 case (CV-01..11 stay: a version-16 do-file is still a supported caller). A full cert run follows the sweep (BUGS.md:568: the language level changes behaviour), with a pin that the callerver fallback (dash.ado:5995) leaves function points unchanged. Closes GAPS2-H-intro-stataver, GAPS2-J8-e, and GAPS2-K3-d by declaration.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        1
+      ],
+      "notes": "Only /usr/local/bin/stata-mp (19.5) is ever run; the guard's refusal is tested as a pure function. Guard order at the top of dash for later sections: Stata guard (S3), Mata guard, S25's dependency guard, S12's prefix strip, S22's rclass dispatch. Every later section writes `version 19` in new programs. The heatmap/rpcap advice and Break-below-18.5 findings are moot at this floor and are recorded so in the BUGS entry."
+    },
+    {
+      "num": 4,
+      "slug": "csp-and-opener",
+      "items": [
+        29
+      ],
+      "part": "",
+      "name": "CSP without 'unsafe-inline'; safe Windows opener (P1.29, M11)",
+      "scope": "All of P1.29. Saved page: script-src lists the sha256 hash of every inline script and drops 'unsafe-inline'; served page: a per-document nonce through _dash_served_template (one doc.template line in the generated make_document); 'unsafe-eval' and style-src 'unsafe-inline' are kept because BokehJS needs them (measured); _dash_csp_meta's body unchanged. A headless-Chrome test of both modes: an injected inline script or handler is blocked and the page still renders, filters and exports (I12-c). The help states the real protection (I12-a, I12-b). Windows opener (M11): _dash_open_page builds no command and runs nothing when the path holds a cmd metacharacter (% ! ^ & | < > ;); the page is still written, its path printed, r(opened)=0 and r(why) returned with rc 0; tested as a pure function and dry run (M4) (I14-c). The help's saving() synopt states the character rule as it stands at this commit and the Windows written-not-opened rule (I14-d). The shared truth fixture scripts/extract_saving_chars_truth.do -> test/fixtures/saving_chars_truth.json (twoway's rc and literal file for %PATH%, !, %%, ^, &, ;, |, <, >, a '..' segment), in S2's form, which S12 reuses. Closes GAPS2-I12-a, I12-b, I12-c, GAPS2-I14-c, I14-d.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        2
+      ],
+      "notes": "Lands before S12 so no commit opens a path holding ; & | < > through cmd.exe once S12 accepts them. _assemble_layout and _render_bootstrap_html are CRITICAL: warn. S12 updates the character-rule paragraph to its final form; this section allocates the SB/PV test ids first (the two research notes collided on SB-21..24 and PV-28). S35's CustomJSTransform, S54's Save-as-SVG action and S41's template guard must run under these policies. CHANGELOG Security."
+    },
+    {
+      "num": 5,
+      "slug": "python-floor",
+      "items": [
+        33
+      ],
+      "part": "",
+      "name": "Measured Python floor (P1.33, M3/M10)",
+      "scope": "All of P1.33. Commit A, no product change: both pytest suites run under Python 3.11 and 3.12 in scratch virtual environments (wheels and an arm64 3.11 downloaded only into scratch, M10; the local /usr/local/bin python3.10 and 3.11 are x86_64-only), scripts/floor_matrix.sh and a make target written to S2's no-hard-coded-path rule, the Stata venv-link leg, conftest _BASELINES and the harness pins to 3.13 fixed, test/requirements-dev.txt and test/requirements-stata.txt with the matrix pins. Commit B: the declared floor becomes the lowest version that passes (_dash_pymin, the _dash_require_python message, dash.pkg Requires, dash.sthlp and dash_setup.sthlp Dependencies, CHANGELOG Requirements), with any 3.13-only code given a fallback or guard and the served launcher's '-P' flag (3.11+) checked against the floor; dash_setup's verdict stops sending users round the Homebrew-3.12 advice loop. Closes GAPS2-H4g and the research's new sub-claims (the advice loop, the harness pins).",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        2,
+        3
+      ],
+      "notes": "The floor is whatever the matrix passes, never assumed. S25 reads the floor constant; S41 extends the requirements files rather than recreating them. Shares dash.pkg and the Dependencies paragraphs with S3 (other lines; S3 landed in batch 1). Ratification row 25 (06oct2026, CHANGED: \"Manual only\"): the floor is measured once in WP-30 by S05; the release gate gains no floor-Python leg (no gate-leg task or test, scripts/run_release_gate.sh and scripts/release_verdict.py untouched); the manual re-measure procedure is written in scripts/floor_matrix.sh's header and `make test-floor` is run by hand, not by `make gate`."
+    },
+    {
+      "num": 6,
+      "slug": "note-channel",
+      "items": [
+        26
+      ],
+      "part": "a",
+      "name": "One note channel (P1.26 part a)",
+      "scope": "X4 and the ado-note finding m7. In dash_render.py: _dash_smcl_escape, _dash_emit_note (errprintln {txt}, SMCL-escaped, no internal path or source line) and _dash_note_scope wrapped around main() in __main__, so a session warnings filter of 'ignore' or 'error' neither hides nor escalates a dash note (no more r(7102)), other warnings are untouched and repeated notes are de-duplicated. In dash.ado: a Mata _dash_note used at the 11 txt note sites (_dash_process_segment, _dash_render_immediate, _dash_build, _dash_report_ignored, the _dash_tmp_* programs), shown under quietly and hidden by capture as twoway's notes are; _dash_say itself unchanged. Help near dash.sthlp:594-604; test_note_channel.py and NC-01..06 (the cscript cases join the existing log-clean script); the 29 'UserWarning' needles in test_custom_scheme, test_render_log_clean, test_render_locate and test_json_escaping migrated to count note text. Closes GAPS2-X4-a, X4-b, X4-c, X4-d, GAPS2-I-sum-logging.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        1
+      ],
+      "notes": "_dash_warn_once, _dash_style_note and _dash_reset_notes (CRITICAL) are not edited. Every later note (S29, S30, S36, S26, S35, S34, S23, S41 and the rest) goes through this channel. Merges last in its batch so it can migrate any needle a partner adds. S4's Windows not-opened line is printed by _dash_open_page as its other lines are; it is not one of the 11 note sites."
+    },
+    {
+      "num": 7,
+      "slug": "ship-26-schemes",
+      "items": [
+        25
+      ],
+      "part": "a",
+      "name": "Ship the six StataCorp schemes (P1.25 part a)",
+      "scope": "Sub-claim b and the six-scheme half of c. meta, stcolor_meta, stcolor_mv, stcoloralias, stgcolor_meta and stgcolor_mv added to scripts/extract_scheme_truth.py SCHEMES; six dash-<name>.scheme files written and test/fixtures/scheme_truth.json regenerated; the one list grown from 20 to 26 in _dash_shipped_schemes (dash.ado), SchemeParser._BUILTIN_NAMES, test_scheme_fidelity.EXPECTED_SCHEMES, dash.pkg and dash.sthlp; a Stata truth step for the six in its truth-cscript block; stcoloralias drawn as stcolor and documented (zyx2rule unread). Closes the six-schemes-refused sub-claim of P1.25 (no own source id) and the inherited-c(scheme)-is-one-of-the-six part of GAPS2-X5-c.",
+      "effort": "M",
+      "risk": "green",
+      "depends_on": [
+        1
+      ],
+      "notes": "First scheme regenerator: every later regeneration (S15, S21, S24, S30, S33, S36, S47, S50, S53, S56) covers 26 files, one regenerator per batch, merged last in its batch. The lookup half is S34."
+    },
+    {
+      "num": 8,
+      "slug": "size-units-markers-text",
+      "items": [
+        12
+      ],
+      "part": "a",
+      "name": "Stata size units for markers, text and gaps (P1.12 part a, M1)",
+      "scope": "M1 units. resolve_size(value, kind, default) in OptionTranslator: numbers and keywords in Stata's relative units of min(W,H)/100, #pt/#in/#cm/#rs, *# relative, the full keyword ladder (vtiny .. ehuge, vhuge) with the D1 per-class anchors, and one *# multiplier parser that S30 reuses. Applied to msize, textbox size() (_textbox_size), labsize, mlabsize, legend size(), title/subtitle/axis-title sizes, zlabel sizes, and mlabgap measured from the marker edge (a glyph-radius argument at the 11 _apply_mlabel_opts call sites: map_scatter, map_bar, map_dropline, map_rcapsym, map_pcscatter, map_pcarrow, map_pcbarrow and the rest); the D2 fallback; explicit msize/mcolor/mlwidth reach the nonselection and muted glyphs (N1); dash.ado _dash_validate_value/_dash_option_rules accept the new forms; the CHANGELOG.md:522 msize(abc) note corrected (N2); CHANGELOG Results that change. Closes GAPS2-D2-a, D2-b, D2-d, D2-e for the marker, text and gap kinds, and GAPS2-B9.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        1
+      ],
+      "notes": "translate_msize, _textbox_size, _mlabel_gap_px, _apply_marker_opts and _apply_mlabel_opts are CRITICAL: warn; empty-option identity test. Foundation for S13 (line kind), S14 (caps), S15 (tick and title sizes), S21 and S47 (margins), S33 and S37 (marker labels), S48 (iscale), S31 (tlength/titlegap), S56 (text size()). Ratification row 27 (06oct2026, CHANGED: \"Fix in WP-30\"): N1 is in scope and fixed here (the styled properties reach the nonselection and muted glyphs, keeping dash's nonselection alpha, in both modes) under entry P1.12a with failing-first tests; P2.49 is not filed."
+    },
+    {
+      "num": 9,
+      "slug": "tex-inert",
+      "items": [
+        11
+      ],
+      "part": "a",
+      "name": "TeX delimiters inert on every canvas sink (P1.11 part a)",
+      "scope": "The TeX half of GAPS2-D3 (D3-e in DROPIN's lettering) and GAPS2-J5. A new document pass _dash_finish_graph_text, called once at the end of DashRenderer._build_sources_and_figures and once in the generated make_document (after the facet titles and by-scale sharing, before the filter widgets), applying only the existing _dash_inert_tex to every canvas text sink (Title, Label, axis labels, tick-label overrides and formatter maps, legend items and title, ColorBar title and labels), tagging each model it rewrites so a second call is a no-op. TeX pairs are drawn literally as twoway draws them, the saved page stops shipping MathJax (about 1.3 MB instead of 3.1 MB), and user text never reaches MathJax's TeX parser (\\href and \\style payloads). TestTextSinks' TeX rows in test_label_sinks.py flipped with the reason; the pass and its helpers on the served copy list. CHANGELOG Security and Results that change (TeX drawn as typed). Closes GAPS2-D3-e, GAPS2-J5.",
+      "effort": "S",
+      "risk": "yellow",
+      "depends_on": [
+        1
+      ],
+      "notes": "Must run before _stale_cue_args captures legend text (order dependency, not an edit). S29 extends this same pass function, so S29 never edits _build_sources_and_figures or _generate_app_source. Sinks created later (S28, S19, S56) are covered because the pass runs last."
+    },
+    {
+      "num": 10,
+      "slug": "suboption-abbreviations",
+      "items": [
+        19
+      ],
+      "part": "",
+      "name": "Sub-option abbreviations (P1.19)",
+      "scope": "All of P1.19. A shared _dash_subopt_canon with tables for legend (c, r, lab, posi, ...: _dash_legend_parts/_arg/_unsupported, _dash_apply_legend), axis labels and ticks (labs, glc, ang, for, g, nog, val, plus the labc/tl/tp/nolab/noli/titleg entries S31 needs: _dash_parse_axis_spec, _parse_axis_angle, _dash_apply_tick_option, _dash_apply_z_options), xline/yline (lc, lp, lw, plus lst/noex/la/st for S39/S50: _dash_refline_instances) and textboxes (_TEXTBOX_SUBOPTS: s() is size, N5). Names match lower case only; capitalised sub-options are refused as twoway refuses them (N6, D1, M5). Mata _dash_rep_subkey merges repeated copies by canonical name and the last copy wins (N2, N3); rows() beats cols() (N7); quoted label text is never read as a sub-option (N4). Both modes and after a filter move; a truth fixture from a new extractor in S2's form; the helper and tables on the served copy list; CHANGELOG Changed behaviour for the capitalised forms. Closes GAPS2-B17-a, GAPS2-B21-d, REM-09-02-LABSIZE-ABBREV, GAPS2-B22-b.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        2
+      ],
+      "notes": "_dash_parse_axis_spec and _parse_axis_angle are CRITICAL: warn. Owns the tables S18, S53, S31, S38 and S39 extend (S38 adds the region table). Cannot share a batch with S8 (both edit _dash_apply_legend and _dash_apply_z_options). Index amendment (review 06oct2026): the title and axis-title refusals (TR-10.6a) are S10's; xline/yline capitals are refused by S39. S10 edits one 3-line hunk of _dash_plot, beside S12's (an A139 exception pending ratification row 31)."
+    },
+    {
+      "num": 11,
+      "slug": "stylelists",
+      "items": [
+        1
+      ],
+      "part": "a",
+      "name": "Stylelists of style options across an expanded varlist (P1.1 part a)",
+      "scope": "Sub-claims a-g and i. Style options declared asis so quotes survive, with empty asis quotes normalised before the _dash_pending, _dash_fold_typed, _dash_fold_bw and _dash_fold_mlab emptiness tests and in _dash_opts_repeats/_dash_rep_reduce; a Mata splitter (_dash_stylelist_pick/_dash_stylelist_bad) and one options JSON per expanded series in _dash_process_segment's assembly block; the . = .. ... shorthands; padding with '.' so a lone value or short list styles only the leading series (D1, M1); quoted and compound elements kept whole ('hsv 240 1 1', *.5, navy*.5%50); single-y types take the first element; a misplaced '..' refused r(198) with twoway's words (M5); a used whitespace-only quoted element (\" \") refused r(198) with dash's own words, 'dash: <opt>() element <j> is blank; use . for the default (got: <value>)' (Q-11.1, ratified 06oct2026; unused elements and empty \"\" elements, read as '.', are accepted); unquoted RGB read as three elements (D2); the help Stylelists paragraph; test_abbreviations.py:619-620's count pin flipped; a stylelist truth fixture from a new extractor in S2's form. CHANGELOG Results that change (a lone value now styles only the first y) and Changed behaviour (misplaced '..', used blank quoted element). Closes REM-S06-c, GAPS2-D8-a, D8-b, D8-c, D8-d, D8-e for style options.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        2
+      ],
+      "notes": "dash.ado and Mata only; the renderer's _apply_marker_opts and _dash_style_note (CRITICAL) are not edited. Foundation for S20, S40, S32 and S37, which join its list of per-y options."
+    },
+    {
+      "num": 12,
+      "slug": "command-form",
+      "items": [
+        27
+      ],
+      "part": "",
+      "name": "Drop-in command form and saving() grammar (P1.27, M5/M11)",
+      "scope": "All of P1.27. set graphics off and batch mode open no browser and print the path, through _dash_browser_wanted/_dash_dashboard_browser and a test-seam global (CRIT-04); a twoway, tw, two or graph twoway prefix is accepted (CRIT-02); one _dash_saving_parse shared by the one-line form and dash build, HTML and server (asis, replace, the default name, extension handling; unknown sub-options refused as twoway refuses them, M5) (CRIT-03); dash build, saving(f, replace) accepted (CRIT-09). Under M11 saving() accepts '..' and ; & | < > (I14-a, I14-b) and keeps refusing a double quote, backquote, $, control characters and a leading '-', with the control-character rule aligned with Python's _validate_output_path (which keeps refusing '..' only for the private app path). The served 'To launch: python \"<path>\"' line is printed single-quoted on Mac/Unix (p1-29 critic 2; moved here because this section owns _dash_build's saving block). P2-80 and PV-04/05/14 flipped with the reason, never deleted; the help's saving() character-rule paragraph updated to the final rule; S4's saving-chars fixture reused. Closes CRIT-04, CRIT-02, CRIT-03, CRIT-09, GAPS2-I14-a, GAPS2-I14-b.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        3,
+        4
+      ],
+      "notes": "After S4, whose opener already declines cmd metacharacters on Windows. The prefix strip sits after S3's guard. It edits the --show path of _dash_launch_app (S23 and S46 edit the same function in later batches). CHANGELOG Changed behaviour for newly refused saving() sub-options. S22 puts its image-extension rule inside _dash_saving_parse."
+    },
+    {
+      "num": 13,
+      "slug": "size-units-lines",
+      "items": [
+        12
+      ],
+      "part": "b",
+      "name": "Stata line-width ladder (P1.12 part b, M1)",
+      "scope": "The line kind of S8's resolver. Stata's lwidth ladder replaces _LWIDTH_MAP (D3), with vvvthin and none, and numbers, #pt and *# read in Stata units, at every line site: lwidth/mlwidth/clwidth/alwidth (_apply_line_opts, _apply_marker_opts' mlwidth, _ci_band_style), region lwidth (_extract_region_lwidth), colour-key and zlabel lines (_dash_apply_z_options), xline lwidth (_dash_refline_draw) and SchemeParser._lwidth; unit-aware r(198) bounds in dash.ado _dash_validate_value/_dash_option_rules; negative unit and multiplier forms refused as twoway refuses them (M5). CHANGELOG Results that change and Changed behaviour. Closes GAPS2-D2-c and the line-width parts of GAPS2-D2-a, D2-b and D2-e; GAPS2-D2 recorded closed.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        8
+      ],
+      "notes": "_apply_line_opts is CRITICAL (about 40 impacted): warn; empty-option identity test. Consumed by S32, S31, S38 and S39."
+    },
+    {
+      "num": 14,
+      "slug": "bar-widths-caps",
+      "items": [
+        17
+      ],
+      "part": "a",
+      "name": "Bar widths and range caps (P1.17 part a)",
+      "scope": "Sub-claims a, b, d, e. bar and rbar default to one x-unit, in the variable's units on a date axis (D1, M1); rbar honours barwidth(); rcap's cap length from msize() through S8's resolve_size, defaulting to the scheme's p# symbolsize; rcapsym draws no caps and sizes its end markers from the scheme, not the fixed size=7; barwidth() on a date axis in Stata units (WP-29 S05 note). The WP-29 P0.18 spacing machinery is removed (_tag_spacing, the _FILTER_JS spacing writer and its _build_filter_widgets JSON, the spacing use of _dash_copy_redraw_geometry) and widths stay invariant under filter moves in both modes. CHANGELOG Results that change (every bar dashboard). Closes GAPS2-A3-a, A3-b, A3-d, A3-e, AUDIT-44 and the WP-29 S05/S12 bar-width notes.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        8
+      ],
+      "notes": "Precedes S21 (the hull and JS port read one-x-unit widths), S27 and S49. _build_filter_widgets is CRITICAL: warn. _make_figure_body is not edited. Deletes _dash_copy_redraw_geometry (and its copy-list name) and the _FILTER_JS spacing writer (register P1.17.3/A61, D-14b): batch 5's one _generate_app_source editor, deletion only. Its new rcap barwidth() refusal is a Changed behaviour line (S01's P1.17a row carries both lists)."
+    },
+    {
+      "num": 15,
+      "slug": "scheme-chrome",
+      "items": [
+        2
+      ],
+      "part": "a",
+      "name": "Scheme chrome: titles, ticks, grid, economist axes (P1.2 part a, M1)",
+      "scope": "Sub-claims a-h (approach parts A-D, F). The extractor carries anglestyle horizontal/vertical_tick, linepattern major/minor_grid, color tick/minortick, linewidth tick, gsize tick, tickposition, axisstyle line and tick flags, yesno alt axes, heading/subheading/body justification, clockdir positions, system naturally_white and the p#bar/p#area intensity chains; the 26 scheme files and scheme_truth.json regenerated; bounded SchemeParser attributes with _FALLBACK_PROPS. apply_to_figure/apply_to_axis: a centred, unbolded title (economist left), upright axis titles, tick length, side, colour and width from the scheme in Stata units (S8's resolver; widths through the existing line translator), the vertical_tick angle (s2color's vertical y labels), stcolor's dashed grid, s1rcolor's visible ticks, economist's axis sides, lines and ticks (axis-2 side in _dash_add_secondary_axes/_dash_finish_secondary_axes); subtitle, note and caption as Title models placed by clock through a new _dash_textbox_place (clocks 2-4 and 8-10 never use side Titles). Help Series/Grids/Text; CHANGELOG Results that change for every default dashboard; test_server.py:4001 (vertical labels) flipped. Closes GAPS2-D17-a, D17-b, D17-c, D17-d, REM-11-04-A1-ALIGN, GAPS2-B29, GAPS2-D16-a, D16-c, D16-d, GAPS2-D12-a, D12-b, D12-c, GAPS2-B25-c.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        7,
+        8
+      ],
+      "notes": "_make_figure_body is not edited. Owns naturally_white and the p#bar/p#area chains that S16 and S30 consume. Regenerates last in its batch. S29 later sets font style only when SMCL asks, so these defaults stand. Index amendment: the minor-tick removal ('no Bokeh minor ticks') and its flips are S21's (register P1.2.7; P1.3a). S15 moves the directive-count pin and the help's '80 to 140' sentence in its own commit (R10)."
+    },
+    {
+      "num": 16,
+      "slug": "opaque-intensity",
+      "items": [
+        2
+      ],
+      "part": "b",
+      "name": "Intensity as an opaque blend (P1.2 part b, M1)",
+      "scope": "Sub-claims i-j (approach part E). scatter, connected, dot and rconnected markers opaque unless %NN, sttrans or malpha() (no default alpha 0.8; map_rconnected's two map_scatter calls included); bar, area and histogram fills blend the p#bar/p#area intensity opaquely, user colours included, through one _blend_intensity; fintensity() an opaque blend in _apply_fill_opts and the CI band (f>1 darkens with the measured clamp, naturally_white 0 gives c*f, negatives read as 0, never refused); nonselection glyphs recoloured; the SchemeParser._intensity clamp lifted for the bar/area chains; ROADMAP.md:2051 corrected; served copy lists. CHANGELOG Results that change. Closes GAPS2-D11-a, GAPS2-D11-b.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        15
+      ],
+      "notes": "_scheme_alpha, _apply_fill_opts, _blend_intensity and _ci_band_style are HIGH: warn. Precedes S24 (_scheme_alpha), S30 (one blend serves fintensity, scheme intensity and colour*#) and S43."
+    },
+    {
+      "num": 17,
+      "slug": "date-text-keys-tooltips",
+      "items": [
+        23
+      ],
+      "part": "b",
+      "name": "Date and format text in keys and tooltips (P1.23 part b)",
+      "scope": "Sub-claims 6-8 (research decision 2 a and the side finding). A date colorvar key, its ticks and the colorcuts()/colorlevels boundaries read in Stata units (converted to ms before binning; _apply_colorvar, _dash_colorvar_cuts, _dash_colorvar_bins) and zlabel ticks likewise, with zlabel(, format(%t*)) honoured (twoway shows Stata numbers unless that option is given); numeric key text in twoway's comma general format; fallback tooltips (histogram, fits, kdensity) in the variable's display format (_dash_build_hover); the histogram tooltip names its measure (Density, Frequency, Fraction or Percent) instead of 'Count' (map_histogram's tag); both modes and after a filter move; the test_date_range colour-scale rows and test_server_layer_defects histogram_gets_the_bin_tooltip flipped with the reason. Closes the REM-08-05 ids: REM-08-05-M1, C7c, C10, M2 (confirmed against REMAINING.md:2111-2290 by content in the BUGS entry).",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        1
+      ],
+      "notes": "Independent of S35 (research). _apply_colorvar and _dash_apply_z_options are HIGH; the colorvar callers are map_scatter, map_connected, map_dot and map_rconnected (not edited)."
+    },
+    {
+      "num": 18,
+      "slug": "axis-format-fallbacks",
+      "items": [
+        5
+      ],
+      "part": "",
+      "name": "Axis format fallbacks (P1.5)",
+      "scope": "All of P1.5. Default ticks in twoway's axis format through a per-type, per-axis _dash_axis_tick_formats helper: the axis variable's display format, the %g/%gc fallback, second axes, range and pc first layers, the text-label formatter, and the narrow explicit-digit %g writer fixed (sub-claims a, b, e); xlabel(, format(%td...)) honoured with its picture and a numeric format() on a date axis writes the stored value (c, d); format() forms twoway refuses refused (M5), %s/%x handled as twoway does; the help's log example corrected; both modes, including the served template and after a filter move. Closes REM-09-02-FMT-a, REM-09-02-FMT-b, GAPS2-G10-a, G10-b, G10-c, REM-09-02-DATE-FORMAT, REM-08-04-C6a, REM-08-04-C6b, GAPS2-B8-b.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        8,
+        10
+      ],
+      "notes": "Lands a batch before S21, whose FixedTicker reuses the new helper (the research's 'P1.5 first'). Must not format a date y2 (S35's). Tests include for(%td) through S10's table. _make_figure_body is CRITICAL: warn."
+    },
+    {
+      "num": 19,
+      "slug": "keys-and-titles",
+      "items": [
+        16
+      ],
+      "part": "",
+      "name": "Legend keys and default axis titles (P1.16)",
+      "scope": "All of P1.16, as two commits. Keys: lowess, lpoly, mband, mspline and function keyed in twoway's text; the pc family and scatteri/pci keys (_dash_layer_series, _dash_legend_key(s), map_scatteri, _DASH_FIT_KEYS, the dash.ado yname in _dash_process_segment's function branch); function names Unicode-aware. Titles: _dash_axis_default_titles applies twoway's measured first-equals-last rule per axis (no title when the layers' labels differ: a25, k9), range types get a y title, yaxis(2) is titled by its own layers' variables (_dash_axis_labels, _dash_add_secondary_axes). Text is built raw (S29 translates once at the sink). The histogram and kdensity keys are recorded closed by WP-29 P0.3. CHANGELOG Results that change. Closes GAPS2-A13-a..f, GAPS2-C10-a..d and the WP-29 S03/S10 notes.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        2
+      ],
+      "notes": "_dash_axis_labels is HIGH. Owns the key and title helpers that S42 (operator labels), S45 (recast keeps the original label), S49 (horizontal swap) and S53 (titles once under by()) extend. Twoway's key-merge, histogram-only and first-used-axis gaps are filed as P2 (D2 a)."
+    },
+    {
+      "num": 20,
+      "slug": "per-series-values",
+      "items": [
+        1
+      ],
+      "part": "b",
+      "name": "Per-series value lists (P1.1 part b)",
+      "scope": "Sub-claim h. mlabel(varlist) positional per series ('.' allowed; '..' refused r(198) and '=' r(101) with twoway's words; extra variables checked r(111)); jitter(), base(), barwidth() and mlabposition() checked per element after the shorthands resolve, so jitter(2 ..) and base(10 =) draw; extra elements as twoway treats them; rbar barwidth lists and lowess bwidth lists stay refused as twoway refuses them; HC2-18b and its test_help_claims_2.py mirror flipped; help :740-742 and :3233. Closes the per-series value-list sub-claim of REM-S06-c and GAPS2-D8; GAPS2-D8 recorded closed.",
+      "effort": "S",
+      "risk": "yellow",
+      "depends_on": [
+        11
+      ],
+      "notes": "Stata only: _dash_option_rules, _dash_validate_value, _dash_fold_mlab and _dash_fold_bw. The renderer's barwidth path is S14's."
+    },
+    {
+      "num": 21,
+      "slug": "natscale-axes",
+      "items": [
+        3
+      ],
+      "part": "a",
+      "name": "natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)",
+      "scope": "GAPS2-B25-a for numeric, log and %tc default axes and for y2/x2 without label2: an implicit #N from the scheme's numticks through a new _dash_default_ticker (a FixedTicker, so no minor ticks; _dash_count_ticker's signature unchanged). GAPS2-B25-b: every drawn layer in the hull, fits included (WP-29 c15: _dash_limit_ranges_to_primary/_dash_keep_primary_ranges stop dropping them), plus twoway's plot-region margin as a per-side frame fraction computed at build (D1 b) through a shared _dash_plot_margin; the #N margin; by() panels share one Range1d over the union hull (replacing WP-29 P0.2's shared DataRange1d). A re-finish after every filter move in both modes (D2 a): served _dash_refinish_axes called from _on_filter_change, saved _DASH_AXIS_FINISH_JS (a natscale port, no BokehJS view internals) run at the end of _FILTER_JS with per-figure plans in the build_dropdown/build_slider/build_range CustomJS args, y2/x2 included; natscale on zoom (D3 a). Default bar/area/spike/dropline bases kept out of the tick input and hull until S27 (D7 a); raw-SIF date layers kept out of date hulls until S35; reference lines and annotations stay non-renderers (the hull reads GlyphRenderers only). numticks_g and margin plotregion keys for the 26 schemes (regenerated); the 100-panel per-move time bound (test_by_scales_chrome) met; help 'Axis labels' and the demo pages regenerated; CHANGELOG Results that change. Closes GAPS2-B25-a for non-date axes, GAPS2-B25-b, and the WP-29 S10 c15 note.",
+      "effort": "L",
+      "risk": "red",
+      "depends_on": [
+        8,
+        15,
+        18
+      ],
+      "notes": "Five CRITICAL symbols (_make_figure_body, _dash_padded_range, _dash_common_count_ticks, _dash_share_by_scales, build_dropdown): warn before each. Must not merge without its after-move re-finish. Served copy list gains _dash_default_ticker, _dash_plot_margin and _dash_refinish_axes. Its finishers are extended later by S27, S35, S44, S47, S50 and S52, one per batch; its call sites cover dates, so S44 never edits _generate_app_source. Merges last in its batch."
+    },
+    {
+      "num": 22,
+      "slug": "export-result",
+      "items": [
+        28
+      ],
+      "part": "a",
+      "name": "r(filename) and the stale-graph note (P1.28 part a, M8)",
+      "scope": "M8 part 1. dash becomes rclass and returns r(filename) (never the served key), with no internal r() leaking from any subcommand (pinned); one note per command, through S6's channel, when a Stata graph in memory is what graph export would write; saving() with an image extension (.png/.svg/.pdf and the rest) writes .html with a note, inside S12's _dash_saving_parse; help Stored results and Exporting text, including that printing prints the active tab. Closes GAPS2-J7-c and the r(601)/stale-graph part of GAPS2-J7-a; documents GAPS2-J7-b.",
+      "effort": "S",
+      "risk": "yellow",
+      "depends_on": [
+        6,
+        12
+      ],
+      "notes": "The rclass dispatch sits after S3's guard and S12's prefix strip; S25 later inserts its guard before the prefix strip. The test suite checks every subcommand's r() is unchanged apart from the addition."
+    },
+    {
+      "num": 23,
+      "slug": "served-notes",
+      "items": [
+        26
+      ],
+      "part": "b",
+      "name": "Served notes reach Stata (P1.26 part b, M6)",
+      "scope": "F5a, F5b and the WP-29 S12 note. A build-time trial of the generated app (_DASH_TRIAL; one make_document under catch_warnings, one render's cost) so dash build, server and dash serve print the saved build's option and empty-layer notes; a process-wide note hook in the app; _dash_launch_app relays the child's stderr and notes (redacted, bounded, de-duplicated against the build's with said=, separate budgets). Under M6 a layer whose own if/in keeps no row is silent in both modes, as in twoway (D1 a; one argument on _make_figure_body). NC-07/08 and the parity corpus with the restored own-if entries. Closes GAPS2-F5a, GAPS2-F5b and the S12 empty-layer note; records GAPS2-F5c closed at HEAD.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        6
+      ],
+      "notes": "_make_figure_body is CRITICAL: warn before the one-argument edit. Reuses S6's emitter. S26 and S46 build on the relay and the empty-layer note path."
+    },
+    {
+      "num": 24,
+      "slug": "scheme-reach",
+      "items": [
+        4
+      ],
+      "part": "a",
+      "name": "Scheme opacity, histogram style and symbols reach every layer (P1.4 part a)",
+      "scope": "Sub-claims a-f, h and i. sttrans opacity passed at construction to fits, spikes, ranges, pc and immediates through default_alpha (about 30 mappers, including the map_bar/map_rcap/rspike/spike/dropline/rarea construction sites; _ci_line_restyle keeps the last word; the CI band fill unchanged); rarea follows area's alpha rule; histogram colour, intensity, line colour and width from new scheme keys (extractor, 26 files, _FALLBACK_PROPS), which also colours the empty histogram key (WP-29 S12/P0.18 residual); scheme hollow and sm* p# symbols drawn hollow and at 0.707 (surviving msize()) through symbol_traits; the p# symbol cycle reaches scatteri, rscatter, pcscatter, dropline and rcapsym; markers read p#markfill/p#markline, not p#mark (side h); msymbol(Oh) malpha() stays hollow (side i). TestTheSchemeOpacityStopsWhereTheHelpSays, test_80_to_140_directives and TestMarkColourIsForMarkers flipped with dash.sthlp:3363-3365. CHANGELOG Results that change (histogram style, rarea opacity). Closes GAPS2-D18-a, D18-b, D18-c, D18-d, AUDIT-76, GAPS2-D19-a, D19-b, GAPS2-D5-g, D5-h, REM-11-04-B13-RAREA.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        7,
+        16
+      ],
+      "notes": "_apply_marker_opts and _empty_fit_line are CRITICAL: warn; _apply_line_opts is not edited (alphas at construction). The served SchemeParser state comes from _props alone. Regenerates last in its batch. S33 extends its fixture."
+    },
+    {
+      "num": 25,
+      "slug": "render-guards",
+      "items": [
+        32
+      ],
+      "part": "",
+      "name": "Render-time dependency guards (P1.32)",
+      "scope": "All of P1.32. A named guard in dash_render.py's import block and the generated app's header (_dash_dep_fail; _DASH_MIN_PYTHON from S5's floor), so a missing numpy, pandas or bokeh or an older Python gives one message naming dash_setup instead of ModuleNotFoundError or SyntaxError (H6a, H6b, H6d); dash.ado _dash_require_deps (packages and version through native python:, availability probed with c(python_exec), never by running Python) called after S3's Stata guard in dash, and in _dash_xm_load and _dash_do_render; dash_setup's first Python call captured, retried and summarised with the architecture hint (H6c); the new guards join the ENV ordinal list. Closes GAPS2-H6a, H6b, H6c, H6d.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        3,
+        5
+      ],
+      "notes": "Its guard sits before S12's prefix strip and S22's rclass dispatch. _dash_launch_app is read only. S41's run-time bokeh version note is this guard's tail."
+    },
+    {
+      "num": 26,
+      "slug": "function-disposition",
+      "items": [
+        22
+      ],
+      "part": "",
+      "name": "function: closed by disposition (P1.22 under M12)",
+      "scope": "M12. The ten-function points-free fallback stays; any other function it meets draws nothing and gives one 'needs Stata's points' note naming the function and the remedy, in both modes (a map_function fallback mark read by S23's _dash_note_empty_layer, through S6's channel); help (dash.sthlp:413-418) states the rule; P1.22 recorded closed by WP-29 P0.6 plus this note. No extractor and no change to the _stata_fn_parse/_stata_fn_eval grammar. Closes GAPS2-A6-a, A6-b, GAPS2-C5-a, C5-b, C5-c, C5-d, C5-e, C5-f, AUDIT-53 by disposition.",
+      "effort": "S",
+      "risk": "green",
+      "depends_on": [
+        6,
+        23
+      ],
+      "notes": "After S23 so the served note reaches Stata. Kept apart from S24, S40, S45, S35 and S49, which also edit map_function. Any new helper goes on the served copy list (HIGH _glyph_layer_lines: warn)."
+    },
+    {
+      "num": 27,
+      "slug": "default-bar-base",
+      "items": [
+        17
+      ],
+      "part": "b",
+      "name": "twoway's default base and axis extent (P1.17 part b)",
+      "scope": "Sub-claims c and f. twoway's default base for bar, area, spike and dropline as an auto-base column clamped into the finished scale by _dash_finish_auto_bases, hooked at the end of _dash_finish_count_ticks and into S21's served _dash_refinish_axes and saved _DASH_AXIS_FINISH_JS after every move; auto bases kept out of the hull and an explicit base() kept in it, so a 0 outside the data no longer extends the axis; on a date axis the default base is 01jan1960 through _dash_units_to_axis (the default-base half of P1.23's 'base 0 is 1970'). CHANGELOG Results that change. Closes GAPS2-A3-c, A3-f, AUDIT-42.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        14,
+        21
+      ],
+      "notes": "Not _make_figure_body. This and S21's D7 a are one decision. S35 adds the explicit base(#) in date units."
+    },
+    {
+      "num": 28,
+      "slug": "by-panel-text",
+      "items": [
+        15
+      ],
+      "part": "a",
+      "name": "by() panel labels and overall text (P1.15 part a)",
+      "scope": "Sub-claims c, d and d2. Panel labels drawn as a separate centred panel title instead of an appended suffix (_dash_facet_label, DashRenderer._facet_label), composite labels joined with ', ', '(missing)' panels, a string \"\" group counted as missing in group panels and in Total (three sites); the subtitle()/title() merge rules; by(, title subtitle note caption) drawn once over the array; the 'Graphs by <label>' note built with _dash_var_label (WP-29 S03) and suppressed by by(, note(\"\")); both modes (_build_sources_and_figures and the template's by() titles); a find-panel-by-label test helper replaces title-text probes in the flipped tests; new canvas sinks registered in test_label_sinks.py; help :2070, :2096. Closes GAPS2-B31-a, B31-b, B31-d and the title/subtitle/note/caption-inside-by() part of GAPS2-B16.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        15,
+        19
+      ],
+      "notes": "_build_sources_and_figures is CRITICAL: warn. Uses S15's centring and weight. S29's pass covers its new sinks."
+    },
+    {
+      "num": 29,
+      "slug": "smcl-graph-text",
+      "items": [
+        11
+      ],
+      "part": "b",
+      "name": "SMCL in graph text (P1.11 part b)",
+      "scope": "The SMCL half of GAPS2-D3 (D3-a..d), GAPS2-J2 and GAPS2-B13. _dash_graph_text: an iterative, linear-time scanner of Stata's graph-text grammar ({bf:}, {it:}, {sup:}/{sub:}, {&name} symbols, {c #}, {c name}, {stSans}/{stSerif}/{stMono}/{stSymbol}, {fontface}) with tables from a Stata SVG truth fixture (graph_text_truth.json; scripts/svg_truth.py not edited, a sibling reader added); output in Unicode with whole-string style and font set only when SMCL asks, and one inline-markup note per graph and sink kind through S6's channel when a run cannot be expressed (D1); every result passes _dash_inert_tex last. Mirrors twoway for `{c 0}` (a text holding it is drawn empty) and C0/C1 control codes (kept as characters), carried escaped at every sink (`\\uXXXX` in JSON/JS, HTML-escaped where HTML is written), per A34 as ratified 06oct2026 (row 8). Applied by extending S9's _dash_finish_graph_text at every canvas sink (titles, axis titles, tick labels, legend keys, panel labels, ColorBar) and to the derived mlabel column in _apply_mlabel_opts/_mlabel_column_kind, in both modes and after a filter move; dash-only DOM sinks per D3; help 'Text in graphs'; decisions D1-D4. Closes GAPS2-D3-a, D3-b, D3-c, D3-d, GAPS2-J2, GAPS2-B13.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        6,
+        9,
+        15
+      ],
+      "notes": "Edits neither _build_sources_and_figures nor _generate_app_source (S9's call sites). _apply_mlabel_opts and _mlabel_column_kind are CRITICAL: warn. The translator is not idempotent, so sinks take raw text once (S19, S28 and S56 build raw text). Hostile-input tests (100,000 '{', deep nesting) must finish well under a second."
+    },
+    {
+      "num": 30,
+      "slug": "colour-grammar",
+      "items": [
+        13
+      ],
+      "part": "a",
+      "name": "Stata colour grammar (P1.13 part a)",
+      "scope": "Sub-claims a, c, d, e and the #000000 fallback. One (hex, alpha) reader OptionTranslator.stata_colour behind translate_mcolor/parse_color_alpha: colour*# with the f>1 clamp and naturally_white through S16's blend, CMYK, HSV, quoted forms with intensity, % and * in either order, invalid multipliers ignored, bg/fg/background/foreground from the scheme (new SchemeParser.foreground_color); every form read in scheme files (SchemeParser._color/_color_alpha) and the extractor (_apply_intensity's f>1 rule, ColorResolver; shipped files regenerated); an unreadable scheme value drawn #000000 per key where twoway does; an unknown option colour drawn black with twoway's note and wrong case refused where twoway refuses (D1, M5); case-sensitive names, scheme files included; the dash-only British spellings (grey, dimgrey, bluishgrey, ltbluishgrey) per D3; reuses S8's *# multiplier parser; test_options.py:284-299 and test_security_surface's unreadable-background expectation flipped (its hex and one-rule assertions kept); help; CHANGELOG Changed behaviour for newly refused forms. Closes GAPS2-D7-a, D7-c, D7-d, D7-e and the #000000 part of P1.13.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        8,
+        16,
+        24
+      ],
+      "notes": "translate_mcolor is CRITICAL (26 impacted): warn. After S24 so 'color p1mark bogus' cannot turn markers black (critic D7). The per-site %# opacity and bare %#/*# work (D5 a) is S43's, so this section edits no applier or mapper. Foundation for S33, S34 (third-party scheme colours), S31, S38, S39 and S43. Regenerates last in its batch."
+    },
+    {
+      "num": 31,
+      "slug": "axis-look",
+      "items": [
+        18
+      ],
+      "part": "a",
+      "name": "Axis look sub-options (P1.18 part a, M5/M6)",
+      "scope": "Sub-claims 0-7 and D-3. nolabels/labels, noticks, labcolor, tlength, tposition, anglestyle names (rvertical, stacked, ...) matched case-sensitively and bounded (angle(400) and angle(Vertical) refused, M5; an unknown angle sets 0 explicitly over S15's vertical labels), xscale/yscale off/on, noline/line, axis line colour, width and pattern, alt and titlegap, in both modes and on second axes; sizes through S8/S13's resolver, colours through S30's reader; under by() the ignored scale(off), nolabels, noticks and titlegap are silent (M6); sub-options read from parsed sub-options, never from label text (D-3); the xtick minor-tick copy runs after _dash_apply_axis_spec so noticks and tlength do not leak. CHANGELOG Changed behaviour (angle refusals). Closes GAPS2-B21-c, B21-e, REM-09-02-NOLABELS-NOTICKS, REM-09-02-SCALE-OFF, REM-09-02-SCALE-LINE, REM-09-02-SCALE-TITLEGAP, GAPS2-B23-b, B23-c, B23-d, B23-e, B23-f, REM-09-02-LABEL-ANGLE, GAPS2-D9-a, REM-09-02-LABEL-LABCOLOR, REM-09-02-LABEL-TICKGEOM, AUDIT-28.",
+      "effort": "L",
+      "risk": "yellow",
+      "depends_on": [
+        8,
+        10,
+        13,
+        15,
+        30
+      ],
+      "notes": "_dash_parse_axis_spec, _parse_axis_angle and _dash_scale_spec are CRITICAL: warn. Precedes S43 (its labcolor and axis-line sites get bare *# there), S52 and S53. add is S52's."
+    },
+    {
+      "num": 32,
+      "slug": "named-styles-p",
+      "items": [
+        14
+      ],
+      "part": "a",
+      "name": "Named styles p1-p15 (P1.14 part a)",
+      "scope": "Sub-claims a-e. pstyle (and its p() alias, first copy wins, applied last), lstyle, clstyle, mstyle, mlstyle, astyle, alstyle, bstyle and blstyle with p1-p15 on every type in both modes, in twoway's factor order (explicit options win; D2). SchemeParser.style_bundle applied where each glyph is built, in place of the default colour/size/width reads, so the ten mappers that read color() before the appliers (map_area, map_bar, _histogram_quads, map_rarea, map_rbar, map_dropline, map_rcapsym, map_scatteri, map_pcarrow, map_pcbarrow) keep twoway's order (critic 2); the pstyle index through _dash_plot_style_indices for scatteri, pci, pcarrowi and function in both modes (critic 3); declarations, serialisation and per-y lists through S11's splitter; the plan made a GlyphMapper method so the served copy list cannot drop it; an empty-plan identity test over the example corpus; truth fixture; the pending tests flipped; dash.sthlp:2282 corrected. Closes REM-§2-S09-lstyle, REM-§2-S09-mstyle, REM-§2-S09-areastyle, REM-S09-73-namedstyles, REM-05-04-S09-g, GAPS2-B11-a, B11-b, GAPS2-D6 and AUDIT-29/AUDIT-30 for the p# names.",
+      "effort": "L",
+      "risk": "yellow",
+      "depends_on": [
+        8,
+        11,
+        13,
+        24
+      ],
+      "notes": "_apply_marker_opts and _apply_line_opts are CRITICAL: warn. Foundation for S36 (more names), S38 (region style()), S39 (xline lstyle()) and S43 (a named style's base colour)."
+    },
+    {
+      "num": 33,
+      "slug": "label-key-chrome",
+      "items": [
+        4
+      ],
+      "part": "b",
+      "name": "Marker-label and colour-key chrome; unread directives retained (P1.4 part b)",
+      "scope": "Sub-claims g, i (ColorBar) and the unread-directive claim. Marker-label default size and colour from p#label/plabel in Stata text units through S8 (the served 9px and saved 10px defaults unified); ColorBar chrome (title, labels, ticks) from the scheme; unread user-scheme directives retained in the parsed scheme and not noted (ratification row 4, 06oct2026: every directive kept for later versions, guard tests since retention holds at c96facd); the 'color label' example closed by measurement; extractor plabel keys and the 26 files regenerated. Closes REM-11-04-B1, REM-S11-e2, REM-11-04-C11, GAPS2-D10-a, GAPS2-D10-b.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        6,
+        8,
+        24,
+        30
+      ],
+      "notes": "_apply_mlabel_opts is CRITICAL: warn. Extends S24's fixture. S37 builds mlabtextstyle() on these defaults; S34's ado-path schemes keep their directives the same way, silently. Regenerates last in its batch."
+    },
+    {
+      "num": 34,
+      "slug": "scheme-lookup",
+      "items": [
+        25
+      ],
+      "part": "b",
+      "name": "Stata's scheme lookup along the ado-path (P1.25 part b, M7)",
+      "scope": "Sub-claims a, c, d, e, f, g under M7. scheme(NAME) and an inherited c(scheme) resolved along the whole ado-path (BASE, SITE, PLUS, PERSONAL, OLDPLACE, added directories, cwd) under scheme-NAME.scheme then NAME.scheme (_dash_scheme_dirs written as build_options.scheme_dirs; a findfile gate in _dash_validate_value), with the shipped StataCorp names first as on twoway's path (f); #include on the same walk; guards: name token, per-directory realpath containment, regular file only, _MAX_SCHEME_BYTES; scheme files parsed as data, never executed; third-party colour forms read through S30's grammar and unread directives named through S33's read-recording; the refusal lists the 26 names and the themes; the help's remedy corrected (g). Tests cover symlinks, oversized files, traversal names and hostile directives. CHANGELOG Results that change (a working-directory s2color.scheme no longer overrides). Closes REM-§3-e, REM-§3-f, GAPS2-X5-a, GAPS2-X5-c, GAPS2-X5-d.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        6,
+        7,
+        30,
+        33
+      ],
+      "notes": "A security surface. SchemeParser._resolve_path, resolve_or_fallback and _include are HIGH, DashRenderer._scheme_for is CRITICAL: warn. The served app keeps receiving properties, never paths. It does not regenerate the shipped files."
+    },
+    {
+      "num": 35,
+      "slug": "dates-on-every-axis",
+      "items": [
+        23
+      ],
+      "part": "a",
+      "name": "Date positions on every axis (P1.23 part a)",
+      "scope": "Sub-claims 1-5, 3c and 4b. The date-axis decision reads range and pc keys and is made per axis (_dash_figure_date_kind, _dash_axis_vars, _dash_axis_date_kind): range and pc plots with a date y (or a pc date x) get a date axis; an axis(2) layer keeps the primary date axis; y2/x2 date axes are DatetimeAxis with axis(2) options, #N ticks and ranges in date units (_dash_count_axes reads the y2/x2 kind); _on_axis routes through the axis's own kind; scatteri, pci and pcarrowi coordinates and function range() placed in date units, a literal outside 0100-9999 drawn at its number as twoway draws it, with no note (A77 ratified 06oct2026, row 12); only one past the browser's dates (|ms| > 8.64e15) left out with one note; a raw date layer beside a numeric layer on one axis drawn in Stata units through a CustomJSTransform (critic decision 3 a) with its Python twin feeding _dash_secondary_values, the hulls and the by() common ticks, and build-time date labels (D1 a); xlabel(minmax) on a mixed axis; an explicit base(#) read in date units; both modes (a post-draw pass in _build_sources_and_figures and the generated make_document) and after a filter move. Closes the REM-08-04 ids: REM-08-04-C7, C7b, C3b, C3c, C4, B2b, B7a, B4 (confirmed against REMAINING.md:1935-2110 by content in the BUGS entry), and the WP-29 S04/S05 date notes.",
+      "effort": "L",
+      "risk": "yellow",
+      "depends_on": [
+        21,
+        27
+      ],
+      "notes": "_dash_axis_date_kind, GlyphMapper._on_axis, _make_figure_body, _build_sources_and_figures and _dash_common_count_ticks are CRITICAL: warn. Relies on 'unsafe-eval', which S4 keeps; one headless-Chrome check that the transformed range renders under the shipped CSP. Foundation for S44, S51, S49 and S56. Ratification row 12 (06oct2026, CHANGED: \"Draw it anyway\"): the date conversion of such literals uses ms arithmetic (no pandas Timestamp, datetime or Date.UTC), bounded at |ms| <= 8.64e15; an axis that reaches past Stata's dates gets natscale ticks over its Stata numbers, labelled as Stata's display writes them."
+    },
+    {
+      "num": 36,
+      "slug": "named-styles-other",
+      "items": [
+        14
+      ],
+      "part": "b",
+      "name": "Other style names (P1.14 part b)",
+      "scope": "Sub-claim f. A curated table of Stata-known non-p style names (ci, ci2, histogram, foreground, background, grid, major_grid, minor_grid, refline, none, and the p#line/bar/area/other/mark/box/dot/arrow suffixes) from extended scheme transcriptions (extractor, 26 files, _FALLBACK_PROPS); pstyle(ci)/ci2 on non-CI types; an unknown name takes twoway's default attributes with twoway's note through S6's channel (D3); dstyle() and dlstyle() declared and serialised, drawing them left to P2.9. Completes GAPS2-B11-c, GAPS2-D6 and AUDIT-30 for the non-p names; P1.14's shared ids recorded closed.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        32
+      ],
+      "notes": "Edits SchemeParser.style_bundle, its name table, the extractor and generated files, and also GlyphMapper._STYLE_FACTORS (the pstyle/p rows), _style_plan (note-only calls for dstyle/dlstyle/bmlinestyle), _style_restyle (retirement), _ci_pstyle, _ci_band_style and _ci_line_restyle (HIGH), dash.ado's plot declarations, sreturn and JSON key list, and Mata _dash_stylelist_keys; none is a batch-12 partner's symbol. The appliers and the per-y lists are S32's. S39 and S38 call style_bundle without editing it. Moves the plot-pending and declared-plot pins (+3 each) and the directive-count pin (R10). Regenerates last in its batch. D-36c (57 Stata-known names outside the table, named not drawn) is ratification row 39."
+    },
+    {
+      "num": 37,
+      "slug": "mlabel-vposition-textstyle",
+      "items": [
+        24
+      ],
+      "part": "",
+      "name": "mlabvposition() and mlabtextstyle() (P1.24)",
+      "scope": "All of P1.24, as two commits. mlabvposition(varname) serialised (_dash_plot_opts_to_json, a new _dash_fold_mlabv), validated (Mata _dash_extract_vars) and drawn per row through LabelSet fields in both modes and after saved and served filter moves; one varname applies to every y and is never split; a repeated mlabvposition() and the types twoway refuses it on refused with twoway's codes (M5); per-row offsets stay physical under S49's transpose. mlabtextstyle() is a per-y style list (S11's splitter) resolved from scheme textbox styles on S33's marker-label defaults. A guard test that every declared plot option reaches the spec or the pending list. Closes REM-§2-S09-mlabvpos, REM-S09-73-mlabpos, REM-05-04-S09-r, GAPS2-A4-p, GAPS2-B27-c, AUDIT-33, REM-05-04-B6.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        8,
+        11,
+        33
+      ],
+      "notes": "_apply_mlabel_opts and _dash_option_columns are CRITICAL: warn. Label sources of map_bar, map_dropline and map_pcscatter are edited. Decrements the pending-list count in test_unsupported_report_is_true.py and keeps test_help_claims_8's Unsupported equality pin; later sections that change the pending list (S36, S45, S49, S51, S56) adjust the same pins in their own lines; S40 leaves its pending lines. S37 declares no option, so the declared-plot pin does not move. Commit 2 regenerates the scheme files (the text box keys) and moves the directive-count pin; it still merges first in batch 13 (A152)."
+    },
+    {
+      "num": 38,
+      "slug": "region-styling",
+      "items": [
+        20
+      ],
+      "part": "a",
+      "name": "plotregion()/graphregion() styling (P1.20 part a)",
+      "scope": "Sub-claims b-k except margins. Region sub-options take abbreviations (fc, lc, c, lw, lp, ls, sty, col, fcol, mar) through a region table in S10's _dash_subopt_canon; color() sets fill and outline; 'none' paints nothing; %NN opacity through S30's reader; style(none)/lstyle(none) and other area-style names through S32's style_bundle; lpattern(); the graph outline via border_line_*; widths through S13's ladder; repeated copies merged by canonical name in Mata (_dash_rep_subkey/_dash_rep_merge) so margins accumulate for S47; forms twoway refuses refused (M5) and valid ones dash cannot draw named in one note; the _extract_region_* readers replaced; both modes (saved block and the template's region block); any CSS path emits only computed numbers and colours that pass _sanitize_css_color, with an adversarial test; help. Closes GAPS2-B18-b, B18-c, B18-d, B18-e, B18-f and the styling half of AUDIT-66.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        10,
+        13,
+        30,
+        32
+      ],
+      "notes": "_make_figure_body is CRITICAL: warn. The deliberate bgcolor difference (dash.sthlp:2717-2721) stays documented. by()'s overall regions are a residual."
+    },
+    {
+      "num": 39,
+      "slug": "refline-positions-styles",
+      "items": [
+        21
+      ],
+      "part": "a",
+      "name": "xline/yline positions, refusals and lstyle (P1.21 part a)",
+      "scope": "Sub-claims a, b, d, AUDIT-64 and the new ones. Numlist positions (2000(500)3000, a/b) expanded in dash.ado (a new _dash_line_expand) with a renderer fallback, duplicates dropped, a per-copy ceiling and Spans added in bulk; twoway's refusals in twoway's order (invalid positions, more than 2,500 per copy, unknown, short or repeated sub-options; Mata _dash_axreq_check; M5); abbreviations through S10's refline table; lstyle() through S32's style_bundle; lalign() accepted silently; lines stay non-glyph renderers so S21's hull ignores them; both modes and after a move. Closes GAPS2-B22-a, the lstyle part of GAPS2-B22-d, AUDIT-64.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        10,
+        13,
+        30,
+        32
+      ],
+      "notes": "_dash_expand_numlist (CRITICAL) is called, not edited. S51's tline folds onto these rules (written as explicit numbers). extend/noextend and style() are S50's."
+    },
+    {
+      "num": 40,
+      "slug": "connect-cmissing",
+      "items": [
+        8
+      ],
+      "part": "a",
+      "name": "connect() and cmissing() (P1.8 part a)",
+      "scope": "Sub-claims a-d, f and h. connect() (l, L, J, stairstep, stepstair, i/none) and cmissing() honoured on scatter, the line family (map_line, map_connected, map_rline, map_rconnected, map_tsline, map_tsrline, map_scatteri) and the fits through _dash_join_glyph (map_lfit, qfit, lowess, lpoly, fpfit, mspline, mband, kdensity, function and the CI fit lines), per the measured truth: scatter c(l) draws the line, J/stairstep/stepstair draw as Step, L breaks where x drops, cmissing(n) breaks at missing values in both modes and after saved and served moves (NaN break rows; _FILTER_JS and _build_filter_widgets' derived breaks), function's default bridging fixed (1d); per-y lists through S11's splitter; the cmissings() spelling accepted; an unknown connect name drawn direct with twoway's note; forms twoway refuses refused (M5); a new extract_connect_truth.do in S2's form; test_unsupported_report_is_true.py:95/99/137 and HC8-02 flipped with the reason. Closes REM-§2-S06-connect, REM-S05-04-connect, GAPS2-A4-l, A4-m, GAPS2-B12-c, B12-d, GAPS2-G15-a, and AUDIT-09/AUDIT-11 for connect and cmissing.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        2,
+        11
+      ],
+      "notes": "_make_figure_body (scatter routing, _linked_scatter_view) and _build_filter_widgets are CRITICAL: warn. _join_order and _collect_derived_sources are read only. Step glyphs have no hit test: hover on stairsteps is a residual. Moves the declared-plot pin (+1, CMISSINGS) but not the plot-pending pin; flips test_unsupported_report_is_true.py:95/99 and HC8-02's cmissing, connect and sort, while :137 (recast) is S45's (Q-40.1)."
+    },
+    {
+      "num": 41,
+      "slug": "bokeh-window",
+      "items": [
+        30
+      ],
+      "part": "",
+      "name": "Verified bokeh window; internals fail closed (P1.30, M9/M10)",
+      "scope": "All of P1.30 as two commits. Window: one declared range bokeh>=3.8,<3.10, raised to <3.11 only if bokeh 3.10 is verified here in a scratch venv (M10); dash_setup installs inside it and its gate reports 'outside the verified range'; a run-time bokeh.__version__ check in both modes, as the tail of S25's guard: above the window a note through S6's channel and the run continues, below the floor a refusal (M9); the text-sink XSS checks tied to every version in the window (VERIFIED_BOKEH). Internals fail closed: a template CSP guard that counts S4's hash and nonce blocks, a named error for a missing match_host, token and AuthProvider launch errors, and an internals list (match_host, templates.FILE, the BokehJS calls S21 and S35 use) that S54 extends; S5's requirements files extended, not recreated. Closes GAPS2-H4b, H4c, H4d, H4e, GAPS2-I7-a, I7-b, GAPS2-K5-a, K5-b, K5-c.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        4,
+        5,
+        6,
+        25
+      ],
+      "notes": "Downloads only into scratch venvs (M10). Edits main, the launcher part of _generate_app_source, _dash_served_template, _dash_harden_origin_check, _dash_token_auth, dash_setup_lib.py and the dash_setup gate and pip command. S54 and S46 verify their Bokeh APIs across this window."
+    },
+    {
+      "num": 42,
+      "slug": "ts-operators",
+      "items": [
+        7
+      ],
+      "part": "",
+      "name": "Time-series operators in plot varlists (P1.7)",
+      "scope": "All of P1.7, as two commits. L., F., D. and S. and their combinations, including L(1/2).x, accepted in plot varlists for every type twoway allows them on (measured; the lfit family included), parsed by the _dash_parse_varpart_* parsers, materialised by a Mata rewrite (_dash_ts_gen) as __dasht columns under tsset, taken in by the renderer (_dash_take_qual_columns, _load_data) and drawn in both routes and both modes and after filter moves, labelled as twoway labels them through S19's helper (titles and keys read 'D.close', never __dasht); no tsset, a string or a factor variable refused with twoway's codes and words, by() with an operated variable r(5) and a bare sort r(198) (M5); the CSV header and note display names show the expression (_dash_csv_meta); help documents operators. Closes GAPS2-G4-a, G4-b, G4-c.",
+      "effort": "L",
+      "risk": "yellow",
+      "depends_on": [
+        2,
+        19
+      ],
+      "notes": "_dash_csv_meta is CRITICAL: warn. [aw=L.x] stays refused (GAPS2-G17 is P2.14); the shared evaluated-column helper is left for P2.14. Its export-block edits in _dash_render_immediate and _dash_prepare_spec are separate paragraphs from S12's and S34's. Edits test_help_claims_1.py after S2 rewrote its constants."
+    },
+    {
+      "num": 43,
+      "slug": "bare-intensity",
+      "items": [
+        13
+      ],
+      "part": "b",
+      "name": "Default colour and opacity at every colour site (P1.13 part b)",
+      "scope": "Sub-claim b and decision D5 a. A bare *# and a bare %# at every site take the site's pre-intensity base colour, composed with the object's intensity blend (S16) and the named style's base colour (S32): markers (p#markfill/p#markline), lines, fills (p#bar/p#area), CI bands, marker labels (from the marker colour), titles, subtitles, notes, captions and axis titles (_textbox_color), labcolor and axis lines (S31's sites), graph and plot regions (_dash_graph_color, S38's sites), the KPI (_resolve_kpi_color), xline/yline (_dash_refline_draw, from the xyline colour) and colormissing; %# opacity kept at every direct translate_mcolor site (_apply_mlabel_opts, map_bar/map_rbar color/bfcolor/blcolor, map_area/map_rarea, _histogram_quads, map_dropline, map_rcapsym, map_scatteri, map_pcarrow/map_pcbarrow). Closes GAPS2-D7-b; GAPS2-D7 recorded closed.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        16,
+        30,
+        31,
+        32,
+        38,
+        39
+      ],
+      "notes": "_apply_marker_opts, _apply_line_opts, _apply_mlabel_opts, _textbox_color and _resolve_kpi_color are CRITICAL: warn. ServerAppBuilder._shared_stat_lines is not edited. S56 colours text() through _textbox_color, so it inherits this rule."
+    },
+    {
+      "num": 44,
+      "slug": "natscale-date-axes",
+      "items": [
+        3
+      ],
+      "part": "b",
+      "name": "tsnatscale on %td-%ty default axes (P1.3 part b, M1)",
+      "scope": "GAPS2-B25-a for %td, %tw, %tm, %tq, %th and %ty default axes. Default ticks from the fitted tsnatscale model (D5) in both modes at build, in the served re-finish and in the saved re-finish through a JS port of the model (about 350 lines of calendar arithmetic) inside S21's _DASH_AXIS_FINISH_JS, with parity over the fixture's 12,000 answers and the floors pinned; date hulls read S35's Stata-unit positions. CHANGELOG Results that change. Closes GAPS2-B25-a for date axes and the open BUGS.md:2523 tsnatscale entry.",
+      "effort": "L",
+      "risk": "red",
+      "depends_on": [
+        21,
+        35
+      ],
+      "notes": "Extends S21's helpers and JS only on the date path; S21's call sites cover dates, so it does not edit _generate_app_source. No BokehJS view internals. Merges last in its batch. S52's add then unions with this ticker too."
+    },
+    {
+      "num": 45,
+      "slug": "recast",
+      "items": [
+        8
+      ],
+      "part": "b",
+      "name": "recast() (P1.8 part b)",
+      "scope": "Sub-claims e and g. A new _dash_recast_opt in dash.ado reads recast(), recastas() and type(), runs after the option parse and repeat reduction and before _dash_fold_bw/_dash_validate_opts/_dash_fold_typed, canonicalises the target and rewrites base and range types to it, with twoway's out-of-group fallbacks and notes (a yx type falls back to scatter, a range type to rspike, a range type cast to a yx name draws its first bound, dot ignores recast; D1 a); recast() on lfitci, qfitci, lpolyci and fpfitci refused r(198) with 'recastas() option not allowed' (M5); per-y lists through S11's splitter. Derived types (fits, kdensity, function, histogram) keep their type and end in a new draw-as helper when options.recast is set, judged on the new type (scheme chains from S24); the key keeps the original series label (S19); recast(bar) calls map_bar's one-x-unit width rule (S14); the JS recompute and the stale cue still cover a recast layer. HC8-02 split with a 'Flipped:' line; test_abbreviations.cscript extended for recastas and type. Closes GAPS2-A4-n, GAPS2-B12-b, and AUDIT-12 with AUDIT-09/AUDIT-11 and GAPS2-G15-a recorded closed together with S40.",
+      "effort": "L",
+      "risk": "yellow",
+      "depends_on": [
+        19,
+        24,
+        40
+      ],
+      "notes": "Edits the ten derived mappers' tails, _dash_glyph_dispatch and the dash.ado plot syntax, pending list and folds. Lands before S49 so horizontal's type refusal reads the recast-resolved type (p1-09 critic 9)."
+    },
+    {
+      "num": 46,
+      "slug": "served-limits",
+      "items": [
+        31
+      ],
+      "part": "a",
+      "name": "Served session capacity and memory (P1.31 part a)",
+      "scope": "Sub-claims a-c. The dataset decoded once per app process, not per session (G14-d); a --max-sessions cap (default 20, D1) with a busy page, set from dash serve maxsessions() and dash build, server; an idle lifetime for unused and idle sessions (D2) with explicit Bokeh unused-session lifetimes; per-session RSS growth at most 80 MB at 200k rows x 3 (ratification row 22; 60.7 MB today meets it, so the RSS test is a regression guard); an estimator memo (64 MB per-process LRU, unchanged) and a warm-up that prints a 'preparing the dashboard (N rows, ...)' line before a long warm-up so it is not read as a failure; the flags on the __main__ argparse and _dash_launch_app; busy and idle pages under S4's CSP; help Limits. Closes GAPS2-F3a, F3b, F3c, GAPS2-I4-a, I4-b, GAPS2-G14-d.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        4,
+        23,
+        25,
+        41
+      ],
+      "notes": "_dash_limits (CRITICAL) is not edited. The Bokeh session APIs (unused-session kwargs, on_session_destroyed) are verified across S41's window. S57 moves recomputes off the event loop later. Ratification row 22 (06oct2026, CHANGED: \"allow 80MB RAM for 200k rows\"): the bound is 80 MB, not 40 MB; the shared move snapshot planned only to reach 40 MB is dropped, so _orig_src_data stays per session (P2.41)."
+    },
+    {
+      "num": 47,
+      "slug": "region-margins",
+      "items": [
+        20
+      ],
+      "part": "b",
+      "name": "Plot-region margin and inner box (P1.20 part b)",
+      "scope": "Sub-claim a. plotregion(margin()) through S21's _dash_plot_margin and range padding (_dash_padded_range, _dash_apply_scale_ranges; margins accumulated by S38's merge; D4 a); the plotregion i* inner box drawn as a BoxAnnotation in data units at the finished range, updated by S21's re-finish after a move (critic option c); graphregion(margin()) and the graphregion i* options named, not drawn (D2 a, D3 a); scheme margin keys (extractor and 26 files). Closes GAPS2-B18-a and the margin half of AUDIT-66.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        8,
+        21,
+        38
+      ],
+      "notes": "_dash_padded_range is CRITICAL: warn; _make_figure_body (CRITICAL) is edited only if 47-08 finds it must. Moves the single-y page digest (the axis plan's margin becomes a pair). Its hook into S21's finishers is the only finisher edit in its batch. S50's noextend reads this margin model. Regenerates last in its batch."
+    },
+    {
+      "num": 48,
+      "slug": "by-grid-size",
+      "items": [
+        15
+      ],
+      "part": "b",
+      "name": "by() grid and size (P1.15 part b)",
+      "scope": "Sub-claims e and h and the grid part of a. rows/cols/holes/colfirst positions; by() argument errors refused with twoway's codes and words (rows() with cols(), out of range, capitals, a repeated style(), YRESCALE and two style() from the WP-29 S10 note; D4, M5); cols() beyond the panel count honoured up to the by_groups limit with a note beyond (D6); iscale, imargin and compact in Stata units over S8 (D2 a); the whole array sized by xsize/ysize (D1 a) and the layout(bs) facet ratio. CHANGELOG Changed behaviour (refusals) and Results that change (array size, iscale). Closes the rows/holes/colfirst/compact/iscale/imargin part of GAPS2-B16 and REM-10-03.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        8,
+        28
+      ],
+      "notes": "_dash_parse_by, _dash_by_groups and _dash_reflow are CRITICAL: warn."
+    },
+    {
+      "num": 49,
+      "slug": "horizontal-draw",
+      "items": [
+        9
+      ],
+      "part": "a",
+      "name": "horizontal drawn (P1.9 part a, M5)",
+      "scope": "Sub-claims a-e. horizontal drawn on every type twoway turns (bar, rbar, spike, rspike, rcap, rcapsym, dropline, area, rarea, histogram, kdensity and function, the WP-29 S04/S05 cases) through one transposition helper in both build loops (swatches and keys skipped), each construction site taking S24's alpha; axis variables, titles, date kinds and y2 swapped (_dash_axis_labels, _dash_figure_date_kind, _dash_axis_vars, _compute_secondary_range); rcap caps perpendicular; 'horizontal vertical' together refused (D1 a) and horizontal or vertical on the types twoway refuses them for refused, judged on S45's recast-resolved type (M5); 'vertical' accepted silently; the pending list and notes stop naming them; help orientation paragraph; a truth fixture including mixed orientation with a date axis. Closes the drawing part of REM-§2-S06-horizontal, REM-S06-a, GAPS2-A7, GAPS2-B12-a, AUDIT-15 and the WP-29 S04/S05 horizontal notes.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        14,
+        18,
+        19,
+        21,
+        24,
+        35,
+        45
+      ],
+      "notes": "_make_figure_body is CRITICAL: warn. S21's hull reads transposed glyphs (HBar half-heights). The after-move parity is S55's, two batches later; until then the BUGS entry stays open."
+    },
+    {
+      "num": 50,
+      "slug": "refline-extent",
+      "items": [
+        21
+      ],
+      "part": "b",
+      "name": "xline/yline extend, noextend and style() (P1.21 part b)",
+      "scope": "Sub-claim c and style(). extend/noextend and style() with the scheme's yesno xyline_extend keys (extractor and 26 files), drawn as an Arrow over the axis hull and excluded from the hull, re-finished after filter moves through S21's _dash_refinish_axes and _DASH_AXIS_FINISH_JS (never _FILTER_JS); under margin(zero) noextend equals extend (S47's model). Closes GAPS2-B22-e and the style() part of GAPS2-B22-d.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        21,
+        39,
+        47
+      ],
+      "notes": "_dash_range_hull is read only. Regenerates last in its batch."
+    },
+    {
+      "num": 51,
+      "slug": "tsline-time-options",
+      "items": [
+        6
+      ],
+      "part": "",
+      "name": "tsline time-axis options (P1.6)",
+      "scope": "All of P1.6, as two commits. tlabel, ttick, tmlabel, tmtick, ttitle, tscale and tline declared for every twoway graph and folded onto x axis 1 with the base-format rule (D1), with Stata-unit date literals through a gated converter; date literals in x-options refused where twoway's x axis is numeric (M5); tmlabel/tmtick folded and still pending; tline written as explicit numbers onto S39's rules; then the axis(2) t*2 keys and routing, side t in _dash_axreq (X/T/Y order and messages), the format() state machine (D3) and the %-t quirk (D2); help's full list; stale rejected_options.json rows updated. Closes REM-§2-S09-tlabel, -ttick, -tline, -ttitle, REM-S09-73-tsaxis-a, -b, REM-05-04-S09-a, -b, GAPS2-A4-q, GAPS2-B14-a, B14-b, B14-c, REM-15-03-E5.",
+      "effort": "L",
+      "risk": "yellow",
+      "depends_on": [
+        10,
+        18,
+        35
+      ],
+      "notes": "Stata and Mata only (_dash_parse_graph_opts, the plot syntax and pending list, _dash_process_segment's tsline branch, _dash_plot, Mata _dash_rep_cat/_subs, _dash_ax_parse/_dash_route_axis2/_dash_axreq_*); it edits neither _dash_parse_axis_spec nor _dash_date_axis_spec. Hard after S35 for mixed axes (p1-06 critic C1). A folded tlabel makes the axis non-default for S21's ticker. S56 reuses the literal converter for ttext()."
+    },
+    {
+      "num": 52,
+      "slug": "axis-add",
+      "items": [
+        18
+      ],
+      "part": "b",
+      "name": "The add sub-option (P1.18 part b)",
+      "scope": "Sub-claims 8-11. add unions with S21's and S44's default tickers and survives their re-finish after a move; an axis(2)-routed add is drawn (WP-29 S05/S10 note); the Mata _dash_rep_merge keeps a repeated add (D-1); dash.ado keeps a(b)c rules for the renderer (_dash_axis_expand, D-2), which also fixes norescale on a lone rule through Stata; noticks/nolabels from S31 respected. Closes REM-09-02-LABEL-ADD, GAPS2-B21-f and the WP-29 axis(2) add note.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        21,
+        31,
+        44
+      ],
+      "notes": "The only finisher editor in its batch. A folded tlabel(..., add) from S51 (same batch, merged first) inherits this rule; the tlabel(..., add) cross case is S51's TA-02 fold pin plus this section's drawing of xlabel(492, add) (AD-22), since this worktree is cut without S51; G8 runs both on the merged tree."
+    },
+    {
+      "num": 53,
+      "slug": "by-axes-keys",
+      "items": [
+        15
+      ],
+      "part": "c",
+      "name": "Shared axes and keys under by() (P1.15 part c)",
+      "scope": "Sub-claims b, f, g and the axes/legend part of a. Shared panels show outer axes and edge labels only, with the i*/noi* options and noedgelabel; axis titles drawn once and no axis-2 title per panel (WP-29 S10); one legend with by(, legend()) including at(), ilegends and the scheme's by_legend_position (scheme by_* keys: extractor and 26 files), read through S10's legend table; one colour key only under by(, clegend(on)), showing the first panel's mapping (WP-29 S07, D8 a); narrow-screen stacking (D3 a); twoway's filled box behind each by() panel label (S28's Q-28.1, ratification row 36: the box's scheme keys through S53's regeneration, drawn behind S28's dash_by_label Title in both modes); the grid toolbar merge kept; under by() the forms twoway ignores are silent (M6, S31). Closes the i*/noi* axes, noedgelabel and legend()-inside-by() part of GAPS2-B16, GAPS2-B26-d, GAPS2-B31-c, AUDIT-71, AUDIT-72 and the WP-29 axis-2-title and clegend notes.",
+      "effort": "L",
+      "risk": "yellow",
+      "depends_on": [
+        10,
+        15,
+        19,
+        21,
+        31,
+        48
+      ],
+      "notes": "_build_sources_and_figures and _dash_reflow are CRITICAL: warn. Regenerates last in its batch. Ratification row 36 (06oct2026, CHANGED: \"Add to S53\"): the panel label's filled box is S53's; S58 files no P2 row for it."
+    },
+    {
+      "num": 54,
+      "slug": "save-as-svg",
+      "items": [
+        28
+      ],
+      "part": "b",
+      "name": "Client-side Save as SVG (P1.28 part b, M8)",
+      "scope": "M8 part 2. One 'Save as SVG' CustomAction on every grid toolbar in both modes (_DASH_SVG_SAVE_JS attached through _dash_name_save, an additive edit; the filename from _dash_save_filename), running under S4's hashed and nonced CSP and covered by its browser test; the BokehJS calls it uses (Bokeh.index.find_one, View.export('svg'), to_blob) added to S41's internals list and version check; the help toolbar row. No output_backend(svg), which was measured to break the grid's PNG save. Closes GAPS2-E10b.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        4,
+        22,
+        41
+      ],
+      "notes": "_dash_name_save is CRITICAL (11 impacted): warn. Edits the toolbar helper and the copy list only; _generate_app_source is not edited."
+    },
+    {
+      "num": 55,
+      "slug": "horizontal-after-move",
+      "items": [
+        9
+      ],
+      "part": "b",
+      "name": "horizontal after a filter move (P1.9 part b)",
+      "scope": "Interaction parity. Transposed layers keep their geometry after saved and served moves (the _FILTER_JS height branch and the served _dash_copy_redraw_geometry are cancelled by IR-13 / S14 D-14b, which deletes the redraw machinery), hover fields and hline follow the orientation (_dash_build_hover), by() and yaxis(2) hold after a move; filter-move and parity-corpus tests. Completes REM-§2-S06-horizontal, REM-S06-a, GAPS2-A7, GAPS2-B12-a and AUDIT-15 in both modes.",
+      "effort": "M",
+      "risk": "yellow",
+      "depends_on": [
+        49
+      ],
+      "notes": "Edits _dash_build_hover only (both modes through the copy list); the _FILTER_JS height branch, _build_filter_widgets and _dash_copy_redraw_geometry are cancelled by IR-13 / S14 D-14b. Never edits S21's _dash_axis_plan (55-04 is a guard check that stops and reports). Security: no filter callback can reach a glyph."
+    },
+    {
+      "num": 56,
+      "slug": "added-text",
+      "items": [
+        10
+      ],
+      "part": "",
+      "name": "text() and ttext() annotations (P1.10)",
+      "scope": "All of P1.10, as two commits. text(): parsed, with malformed points, missing axis pairs and unknown sub-options refused r(198) as twoway refuses them (M5); the category-A merge fix so repeated copies keep their own sub-options (Mata _dash_rep_merge/_dash_rep_cat); drawn as Labels in both modes through a new _dash_added_text (one call in _make_figure_body, one generated call in make_document): placement, orientation, size through S8's resolver, colour through _textbox_color (S43's bare *#), box, axis 2, numeric and date axes in Stata units (S35), by() panels with iscale (S48), filter moves; raw text handed once to S29's sink; labels kept out of the hull; scheme text_option defaults (extractor and 26 files); regen_option_surface.py updated. ttext(): declared, with date literals converted by S51's converter under the first-plot or xlabel format rule and twoway's date refusals. Help; the pending-list count decremented. Closes REM-§2-S09-text, REM-S09-73-text, GAPS2-B20-a, AUDIT-13, REM-§2-S09-ttext, GAPS2-B20-b.",
+      "effort": "L",
+      "risk": "yellow",
+      "depends_on": [
+        2,
+        8,
+        10,
+        15,
+        29,
+        30,
+        35,
+        43,
+        48,
+        51
+      ],
+      "notes": "A new extractor copies extract_text_truth.do in S2's form; new sinks registered in test_label_sinks.py. Regenerates last in its batch."
+    },
+    {
+      "num": 57,
+      "slug": "served-worker",
+      "items": [
+        31
+      ],
+      "part": "b",
+      "name": "Served recompute off the event loop (P1.31 part b)",
+      "scope": "Sub-claim d. Filter-move recomputes run on a worker thread with a generation counter; results are applied on the next tick (add_next_tick_callback) and stale ones dropped, so one session's 27.7 s lowess at N=100k no longer blocks the loop for the others; a thread-safety audit of the final served move path (_dash_redraw_for, _on_filter_change and the _dash_event_throttle call sites) after S21, S44, S27, S35, S45, S55, S47, S50 and S52; latency measured at N=100k. Closes GAPS2-F3d, GAPS2-C-intro-served-cost; records the lpolyci part closed by WP-29 P0.9.",
+      "effort": "L",
+      "risk": "red",
+      "depends_on": [
+        27,
+        35,
+        44,
+        45,
+        46,
+        47,
+        50,
+        52,
+        55
+      ],
+      "notes": "Edits only the move path inside _generate_app_source; the throttle and _dash_limits are not edited. Bokeh's thread-safety rules verified across S41's window."
+    },
+    {
+      "num": 58,
+      "slug": "closeout",
+      "items": [],
+      "part": "",
+      "name": "Closeout",
+      "scope": "Tracking documents: every WP-30 BUGS.md entry resolved with its commit and WP30_OPEN emptied; GAPS2 'Tracked' lines, REMAINING, ROADMAP and DROPIN-REMAINING's P1 rows marked closed with commits; this manifest's residuals filed as P2/P3 items or in the deferred platform package; TWOWAY_COVERAGE_AUDIT tags and stale rejected_options.json rows; CHANGELOG consolidated (Results that change, Changed behaviour, Requirements: Stata 19, the measured Python floor, the bokeh window; Security; Fixed in WP-30). make test, make test-dev, make cert and make gate, each once and serialised; release measurements: saved page size with and without MathJax, render times, served memory and latency under the session cap, cert duration and per-block times from test_wp30_truth.cscript. gitnexus detect-changes (scope compare against main) and a re-index.",
+      "effort": "M",
+      "risk": "green",
+      "depends_on": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57
+      ],
+      "notes": "Alone in the last batch, in the main checkout. Confirms S2's path guard and S3's version pin still hold, and that no commit message, BUGS, CHANGELOG or help text names a tool or vendor."
+    }
+  ],
+  "batches": [
+    {
+      "n": 0,
+      "sections": [
+        1
+      ],
+      "merge_order": [
+        1
+      ],
+      "theme": "Tracking foundation",
+      "rationale": "Every later gate needs its BUGS.md entry, its WP30_OPEN key, its CHANGELOG marker and its own stub block in the truth cscript. P1.34 need not join it: no batch-1 section writes an extractor."
+    },
+    {
+      "n": 1,
+      "sections": [
+        2,
+        3
+      ],
+      "merge_order": [
+        2,
+        3
+      ],
+      "theme": "Platform floor: portable runners and the Stata 19 floor",
+      "rationale": "S3's sweep rewrites the version line of all 91 ado programs, so its only safe partner is S2, which edits no ado program. S2 lands before any of the roughly 22 new extractors are copied. The digest's P1.34/P1.35 conflict was P1.35b's runner half, which M2 removed; S3's floor cases go in its truth-cscript block, so the run_all_cscripts.do header is S2's alone."
+    },
+    {
+      "n": 2,
+      "sections": [
+        4,
+        5,
+        6
+      ],
+      "merge_order": [
+        4,
+        5,
+        6
+      ],
+      "theme": "Hardening I: a CSP without 'unsafe-inline' and a safe Windows opener, the measured Python floor, notes through Stata's channel",
+      "rationale": "Security and install items first (project rule 1: security first). S4 must precede S12 (M11: the opener declines cmd metacharacters before saving() accepts ; & | < >). No shared program: S4 takes the page assembly, the served template and _dash_open_page; S5 dash_setup's floor, conftest and the floor script; S6 __main__ and the 11 txt note sites (_dash_process_segment, _dash_render_immediate, _dash_build, _dash_report_ignored, _dash_tmp_*). The served launch line in _dash_build moves to S12 so S4 does not touch _dash_build. S6 merges last because it migrates the UserWarning needles. Shared files, not programs: S5 and S6 both edit scripts/release_verdict.py and test/test_release_verdict.py (different functions and classes); S4 and S6 each add one name to _dash_require_mata's _needed data list (A139's recorded exception)."
+    },
+    {
+      "n": 3,
+      "sections": [
+        7,
+        8,
+        9
+      ],
+      "merge_order": [
+        7,
+        8,
+        9
+      ],
+      "theme": "What every graph is drawn from: the 26 StataCorp schemes, Stata size units, TeX drawn as typed",
+      "rationale": "S7 is the first scheme regenerator, so every later regeneration covers 26 files. S8's resolver is consumed by about fifteen later sections. S9 makes TeX inert on every canvas sink (a security fix: user text never reaches MathJax's TeX parser) and creates the one document pass S29 later extends. Disjoint: S7 edits only lists and generated files, S8 OptionTranslator, the appliers and the text-size helpers, S9 one call in _build_sources_and_figures and one generated line in make_document. S8 cannot sit with S10 (both edit _dash_apply_legend and _dash_apply_z_options)."
+    },
+    {
+      "n": 4,
+      "sections": [
+        10,
+        11,
+        12
+      ],
+      "merge_order": [
+        10,
+        11,
+        12
+      ],
+      "theme": "twoway's input grammar: sub-option abbreviations, stylelists, the drop-in command form and saving()",
+      "rationale": "Three parsers later sections extend: S10's tables (S18, S53, S31, S38, S39), S11's splitter (S20, S40, S32, S37), S12's _dash_saving_parse (S22). Different programs: S10 the renderer sub-option readers and Mata _dash_rep_subkey; S11 _dash_parse_plot_opts, _dash_plot_opts_to_json, _dash_process_segment and the folds; S12 the dash dispatcher, the browser deciders, the saving blocks, _dash_validate_path and _dash_launch_app's --show path. S12 sits after S3's guard and S4's opener. Exception (A139, ratification row 31): _dash_plot is edited by S10 (one hunk) and S12, and _dash_require_mata's _needed by all three, in disjoint hunks applied with git apply -3."
+    },
+    {
+      "n": 5,
+      "sections": [
+        13,
+        14,
+        15
+      ],
+      "merge_order": [
+        13,
+        14,
+        15
+      ],
+      "theme": "Default look I: line widths, bar widths and caps, scheme chrome",
+      "rationale": "Consumers of S8's resolver. S15 reads scheme tick widths through the existing line translator, so S13's ladder applies on merge without a declared dependency; S15 merges last because it regenerates the 26 scheme files. S14 lands before S21 so the hull and the saved JS port read one-x-unit widths, not the spacing machinery S14 removes."
+    },
+    {
+      "n": 6,
+      "sections": [
+        16,
+        17,
+        18
+      ],
+      "merge_order": [
+        16,
+        17,
+        18
+      ],
+      "theme": "Default look II and display formats: intensity as an opaque blend, date and format text in keys and tooltips, axis label formats",
+      "rationale": "S16 needs S15's naturally_white and p#bar/p#area chains. S18 lands a batch before S21 (they share the default-axis path; the research's 'P1.5 first' is kept without serialising a batch). S17 is independent of S35 and edits only the colour key, hover and histogram tag. One _generate_app_source editor (S18)."
+    },
+    {
+      "n": 7,
+      "sections": [
+        19,
+        20,
+        21
+      ],
+      "merge_order": [
+        19,
+        20,
+        21
+      ],
+      "theme": "Default axes and series text: natscale ticker and twoway margin, legend keys and default titles, per-series value lists",
+      "rationale": "S21 (red) lands as soon as S15 and S18 have, with two light partners that touch no axis function: S19 (key and title helpers) and S20 (Stata-only value checks). S19 must precede S42, S45, S49, S28 and S53. S21 merges last. Exception (A139, recorded by the review): S19 and S20 edit dash.ado's _dash_process_segment in disjoint hunks; S19 lands first."
+    },
+    {
+      "n": 8,
+      "sections": [
+        22,
+        23,
+        24
+      ],
+      "merge_order": [
+        22,
+        23,
+        24
+      ],
+      "theme": "Scheme keys on every layer; served notes and r(filename) reach Stata",
+      "rationale": "S24 needs S16's alpha rule and S7's 26 files, and precedes S30, S32 and S45. S23 and S22 are what Stata hears back. Disjoint: S22 the dash dispatcher and the ends of _dash_render_immediate/_dash_build; S23 the template trial, _dash_launch_app relay and one _make_figure_body argument; S24 the mappers, _scheme_alpha and a regeneration (merged last)."
+    },
+    {
+      "n": 9,
+      "sections": [
+        25,
+        26,
+        27
+      ],
+      "merge_order": [
+        25,
+        26,
+        27
+      ],
+      "theme": "twoway's default bar base; failing clearly: render-time dependency guards and the function needs-points note",
+      "rationale": "S27 needs S21's finishers and precedes S35. S25 needs S5's floor; S26 needs S23's empty-layer note path. S26 is kept apart from S24, S40, S45, S35 and S49, which also edit map_function. S27 merges last (finisher hook)."
+    },
+    {
+      "n": 10,
+      "sections": [
+        28,
+        29,
+        30
+      ],
+      "merge_order": [
+        28,
+        29,
+        30
+      ],
+      "theme": "Colour grammar and graph text: by() panel labels and overall text, SMCL in graph text, Stata's colour grammar",
+      "rationale": "S29 extends S9's pass and edits neither _build_sources_and_figures nor _generate_app_source, so it runs beside S28, the batch's template editor; S29 merges after S28 so its pass tests see S28's new sinks. S30 edits the colour reader, SchemeParser colour methods and the extractor only (the per-site %# work is S43's), so it does not touch _apply_mlabel_opts; it regenerates last."
+    },
+    {
+      "n": 11,
+      "sections": [
+        31,
+        32,
+        33
+      ],
+      "merge_order": [
+        31,
+        32,
+        33
+      ],
+      "theme": "Styles from the scheme and the axis look: axis look sub-options, named styles p1-p15, marker-label and colour-key text styles",
+      "rationale": "All three need S30. S31 takes the axis parse/apply functions; S32 the appliers, the ten colour-reading mappers and the plot syntax; S33 _apply_mlabel_opts, _apply_colorvar and the label/ColorBar SchemeParser members, regenerating last. S31 precedes S43 and S53. Exception (A139, ratification row 37): S33 adds color_idx= to the _apply_mlabel_opts call line in seven mappers S32 edits."
+    },
+    {
+      "n": 12,
+      "sections": [
+        34,
+        35,
+        36
+      ],
+      "merge_order": [
+        34,
+        35,
+        36
+      ],
+      "theme": "Resolved as Stata resolves it: scheme lookup along the ado-path, date positions on every axis, other style names",
+      "rationale": "S34 needs S30's grammar (and lands on S33's regenerated files); S35 needs S27; S36 extends S32's style_bundle and the GlyphMapper style plan and ci methods (no partner's symbol). S34 does not regenerate scheme files (S36 does, last). S35 is the batch's template and _make_figure_body editor. Exception (R12, ratification row 38): S34 makes four one-line _generate_app_source edits beside S35's template hunks."
+    },
+    {
+      "n": 13,
+      "sections": [
+        37,
+        38
+      ],
+      "merge_order": [
+        37,
+        38
+      ],
+      "theme": "Region styling and marker-label placement: mlabvposition() and mlabtextstyle(), plotregion()/graphregion() styling",
+      "rationale": "S37 needs S33's marker-label defaults; S38 needs S10's table, S13's widths, S30's colours and S32's style names. A third section would collide: every remaining ready section edits _dash_parse_plot_opts, _make_figure_body, _generate_app_source or a mapper one of these two edits. S37 regenerates the scheme files in its second commit and still merges first (the S7-style exception, A152): S38 touches no extractor, scheme file or scheme_truth.json."
+    },
+    {
+      "n": 14,
+      "sections": [
+        39,
+        40,
+        41
+      ],
+      "merge_order": [
+        39,
+        40,
+        41
+      ],
+      "theme": "Lines: xline/yline positions and lstyle, connect() and cmissing(); the verified bokeh window",
+      "rationale": "S39 needs S32's style_bundle and S10's refline table; S40 needs S11's splitter; S41 needs S25, S4, S5 and S6. S41 is the batch's template editor; S40 edits _FILTER_JS and _make_figure_body, which neither partner touches."
+    },
+    {
+      "n": 15,
+      "sections": [
+        42,
+        43,
+        44
+      ],
+      "merge_order": [
+        42,
+        43,
+        44
+      ],
+      "theme": "Time series and colour sites: time-series operators, bare *# at every colour site, tsnatscale date axes",
+      "rationale": "S44 (red) needs S35 and merges last; it extends S21's helpers and JS only (S21's call sites cover dates), so S42 stays the batch's one template editor. S43 needs S30, S32, S31, S38 and S39 so it reaches every colour site once."
+    },
+    {
+      "n": 16,
+      "sections": [
+        45,
+        46,
+        47
+      ],
+      "merge_order": [
+        45,
+        46,
+        47
+      ],
+      "theme": "recast(), served session limits, plot-region margins",
+      "rationale": "S45 needs S40, S24 and S19 and precedes S49; S46 needs S41; S47 needs S38 and S21's margin and precedes S50. S47 is the only remaining regenerator and _make_figure_body editor that fits beside a template editor; it regenerates last."
+    },
+    {
+      "n": 17,
+      "sections": [
+        48,
+        49,
+        50
+      ],
+      "merge_order": [
+        48,
+        49,
+        50
+      ],
+      "theme": "horizontal drawn, by() grid and size, reference-line extent",
+      "rationale": "S49 needs S45 (type refusal on the recast type), S35 and S14; S48 needs S28; S50 needs S47 and S39. S50 edits _DASH_AXIS_FINISH_JS and _dash_refinish_axes, never _FILTER_JS; it regenerates last."
+    },
+    {
+      "n": 18,
+      "sections": [
+        51,
+        52,
+        53
+      ],
+      "merge_order": [
+        51,
+        52,
+        53
+      ],
+      "theme": "Axis options: tsline time-axis options, add, shared axes and keys under by()",
+      "rationale": "S51 needs S35; S52 needs S44 and S31; S53 needs S48 and S31. S51 is Stata and Mata only; S52 edits the tick option, the finishers and the Mata merge; S53 the by() legend and axes and a regeneration (last)."
+    },
+    {
+      "n": 19,
+      "sections": [
+        54,
+        55,
+        56
+      ],
+      "merge_order": [
+        54,
+        55,
+        56
+      ],
+      "theme": "Last drawing pieces: Save as SVG, horizontal after a filter move, text() and ttext()",
+      "rationale": "S54 needs S41 and S22; S55 needs S49; S56 needs S51, S29, S43 and S35. S55 edits only the hover builder (the redraw work is cancelled by IR-13 / S14 D-14b), so S56 stays the batch's template, _make_figure_body and scheme editor (last)."
+    },
+    {
+      "n": 20,
+      "sections": [
+        57
+      ],
+      "merge_order": [
+        57
+      ],
+      "theme": "Served recompute off the event loop",
+      "rationale": "Red, and it restructures the served move path every earlier served section edited (S21, S44, S27, S35, S45, S55, S47, S50, S52), so it runs alone and last among the fixes."
+    },
+    {
+      "n": 21,
+      "sections": [
+        58
+      ],
+      "merge_order": [
+        58
+      ],
+      "theme": "Closeout",
+      "rationale": "Alone, after every fix section."
+    }
+  ],
+  "residuals": [
+    {
+      "item": 34,
+      "what": "Measuring dash on Linux, Windows, Intel Mac and GUI Stata (GAPS2-H-intro-platforms, GAPS2-H-intro-gui, sub-claims 0-3) and WP-29's S08/S09/S13 paths there (private files, lifecycle, served key, PEP 668), including the batch/graphics-off browser rule under Windows /e and GUI Stata, cmd.exe's expansion of % and !, and the served worker thread and session lifetimes off macOS.",
+      "why": "M4 defers platform measurement to a later package; WP-30 makes the runners portable (S2) and tests Windows rules as pure functions."
+    },
+    {
+      "item": 35,
+      "what": "P1.35b: certifying Stata 16-18.5 (version-parametrised runners, version-keyed truth fixtures, a Break fallback below 18.5, version-dependent heatmap/rpcap advice), and any measurement of Stata 19.0 (non-Now) or BE/SE.",
+      "why": "M2 sets the floor at 19 and forbids running the 14-18.5 binaries; 19.0 is declared, not measured (the GAPS2-K3-d single-release caveat stays in the help)."
+    },
+    {
+      "item": 28,
+      "what": "A Chrome-driven `dash export` (the scripted part of GAPS2-J7-a), PNG size and resolution control (GAPS2-E10c), output_backend(svg), and a print stylesheet that lays out inactive tabs (GAPS2-J7-b beyond documentation).",
+      "why": "M8 limits WP-30 to r(filename), the stale-graph note, the docs and a client-side Save as SVG; export waits for the platform package, the print stylesheet sits with P3.11, and an svg backend was measured to break the grid's PNG save."
+    },
+    {
+      "item": 30,
+      "what": "Hash-pinned installs (WP-29 OQ7), dev-dependency declarations beyond the floor-matrix pins (GAPS2-K5-d: xdist, node, Chrome), and the <3.11 ceiling unless bokeh 3.10 is verified inside S41.",
+      "why": "OQ7 is outside M9, DROPIN assigns K5-d to P3.9, and M9 raises the ceiling only after verification."
+    },
+    {
+      "item": 29,
+      "what": "script-src keeps 'unsafe-eval' and style-src keeps 'unsafe-inline'; the launcher's HTTP header policy cannot carry the per-page nonce, so the meta policy decides.",
+      "why": "BokehJS needs eval and inline styles (measured); the remaining gap is documented, not closable without Bokeh changes."
+    },
+    {
+      "item": 22,
+      "what": "Extending the points-free function fallback beyond its ten functions (normalden, cond, scalar(), _b[] and the rest when no Stata points exist): research option B.",
+      "why": "M12 closes P1.22 by disposition (WP-29 P0.6 plus S26's note); option B is a candidate P2 item."
+    },
+    {
+      "item": 8,
+      "what": "area/rarea cmissing(n), rarea connect(J), cmissing(n) at missing points generated by lowess/fpfit/lpoly/mband/mspline, histogram recast to range targets, and hover on stairstep glyphs.",
+      "why": "The research files them as P2 residuals of P1.8 (decision D3, critic C3); they need geometry beyond the measured P1.8 scope."
+    },
+    {
+      "item": 14,
+      "what": "Drawing dstyle()/dlstyle() and the outline half of astyle/alstyle/lstyle/pstyle on area and rarea; a general resolver for all 161 Stata style files.",
+      "why": "dstyle needs P2.9's dot rows and area outlines need P2.12 (p1-14 critic 4); the general resolver is XL. S32/S36 plumb, serialise and still name them."
+    },
+    {
+      "item": 16,
+      "what": "twoway's key-merge rule, histogram-only graphs without a legend, and first-used-axis placement.",
+      "why": "New measured gaps outside P1.16's text; filed as P2 per decision D2 (a)."
+    },
+    {
+      "item": 4,
+      "what": "User msymbol(sm*) and the lower-case shorthands drawn small.",
+      "why": "Owned by P2.11 (decision 6 a); S24 applies the sm* factor to scheme symbols only."
+    },
+    {
+      "item": 25,
+      "what": "stcoloralias's zyx2rule (drawn as stcolor).",
+      "why": "The directive is unread by dash (DISCOVERY Q5/X2); S7 documents it."
+    },
+    {
+      "item": 15,
+      "what": "by(, graphregion() plotregion()) overall regions and by(..., regions); twoway's split of quoted value labels into lines (D7).",
+      "why": "Outside P1.15's DROPIN text (found by the P1.20 critic); D7 recommends not copying the split."
+    },
+    {
+      "item": 20,
+      "what": "An exact graphregion(margin()) outer margin and the graphregion i* options (named, not drawn); twoway's bgcolor() painting under the graph region.",
+      "why": "Research D2/D3 option a for the first (an exact outer margin is filed as P2); the second is a documented deliberate difference (dash.sthlp:2717-2721)."
+    },
+    {
+      "item": 6,
+      "what": "Drawing tmlabel()/tmtick() minor ticks.",
+      "why": "Folded and still pending until P2.2 draws minor ticks."
+    },
+    {
+      "item": 3,
+      "what": "Full agreement with twoway's date tick choice: the fitted tsnatscale model matches 52-66% of %td-%th ranges (98% of %ty).",
+      "why": "D5 adopts the fitted model; StataCorp's rule is not published."
+    },
+    {
+      "item": 23,
+      "what": "Xlabel(minmax) over all layers (twoway uses the first layer).",
+      "why": "The first is a ratified, documented difference (p1-23 critic decision 4); the second is P2.20."
+    },
+    {
+      "item": 33,
+      "what": "Python 3.10 and older, and any version above the floor that the matrix does not pass.",
+      "why": "M3 measures 3.11 and 3.12 only; the local 3.10 is x86_64-only and dash's own package floors start at 3.11."
+    },
+    {
+      "item": 11,
+      "what": "Exact inline style runs and raised superscripts/subscripts (a TeX route through MathJax).",
+      "why": "Decision D1 chooses Unicode plus one note, which keeps saved pages about 1.8 MB smaller and the scheme font."
+    },
+    {
+      "item": 2,
+      "what": "GAPS2-D16-b (xmtick), D16-e (legend key size) and D17-e (just()/position() on titles).",
+      "why": "Not P1.2 sources: DROPIN assigns them to P2.2, P2.5 and P2.4."
+    },
+    {
+      "item": 7,
+      "what": "Weight expressions with time-series operators ([aw=L.x]) and a shared evaluated-column helper.",
+      "why": "GAPS2-G17 is P2.14; S42 keeps [aw=L.x] refused."
+    },
+    {
+      "item": 1,
+      "what": "The refuse-versus-note sweep of the rest of the option surface.",
+      "why": "M5 applies 'refuse like twoway' only in the areas WP-30 touches; the sweep is P2.21."
+    },
+    {
+      "item": 24,
+      "what": "mlabstyle().",
+      "why": "P2.12's, not in P1.24's text."
+    }
+  ],
+  "rationale": "Scored with a symbol-level model built from the three candidates' models, the digest and every research note's critic additions, then checked by script (sizes, item counts, edges, shared functions, at most one _generate_app_source, _make_figure_body, scheme-regeneration and axis-finisher editor per batch). Part labels below (3a, 17b, ...) are P1 item parts; Sn is a final section number.\n\nCandidate 1 (dependency): the best edge set (P1.17a before 3a, then 17b, 23a, 3b; 13a after 4a; P1.25 split so the 26 schemes land before every regeneration) and the most precise scopes, 22 batches. Faults: under the critics' symbol lists four batches share a function (P1.32/23a and 31a/9a in _generate_app_source, 20b/18a in _make_figure_body, P1.6/9a in _dash_parse_plot_opts' pending list); P1.27 accepts ; & | < > in batch 3 while P1.29's opener lands in batch 7 (an M11 gap); about seven batches carry three unrelated topics.\nCandidate 2 (parallel): good merge hygiene (per-section anchors, two-commit sections), 21 batches. Faults: 2a/P1.5 share _dash_finish_secondary_axes, P1.16/14a map_scatteri, 17b/P1.24 map_bar and map_dropline, 15c/13b _apply_colorvar; P1.27 before P1.29; P1.25 whole in batch 3, so third-party scheme colours wait for the colour grammar.\nCandidate 3 (value): security-forward order (P1.29 before P1.27, TeX inert early) and clear themes, but keeping P1.9, 17, 18, 20 and 21 whole forces collisions: P1.9/4a share nine mappers, P1.9/15 and P1.29/P1.32 _generate_app_source, P1.27/26b _dash_launch_app, 12a/2b map_bar, 12a/1b _dash_validate_value, P1.7/8a _dash_process_segment, P1.17/P1.20 _dash_refinish_axes, and two regenerators in one batch (14b/21b).\nAll three missed critic findings that add edits: 14a's ten colour-reading mappers, 8b's derived-mapper tails, 12a's 11 _apply_mlabel_opts call sites, 9a's pending-list entry, 8a's _make_figure_body routing and the direct %# colour sites.\n\nSynthesis: candidate 1's sections, edges and scopes; candidate 3's security order (S4 CSP and opener in batch 2, before S12 widens saving(); S9 TeX inert in batch 3) and its P1.11 a/b split; candidate 2's per-section anchors in the foundation and its two-commit structure for P1.6, P1.7, P1.10, P1.16, P1.24, P1.30 and P1.33. Reassigned: the served launch line to S12 (it owns _dash_build), the D5 %# sites from 13a (S30) to 13b (S43), per-y named-style lists to 14a (S32), the default 01jan1960 base to 17b (S27), and 11b's wiring to S9's pass so S29 edits neither _build_sources_and_figures nor _generate_app_source. Added edges: 18b after 3b (add unions with the date ticker), 13b after 18a (one owner of bare *# at the new axis colour sites), 9a after 8b (type refusal on the recast type).\n\nResult: 58 sections (56 fix sections; every P1.1-P1.35 covered; 20 items split, each L/XL or, for P1.17 and P1.25, forced apart by dependencies; P1.34 and P1.35 shrunk per M4 and M2, P1.22 a disposition per M12), 22 batches, at most 3 sections and 3 items each, no two sections in a batch editing the same function, every dependency in an earlier batch, so no batch is serialised. Each batch has at most one of the 17 _generate_app_source editors, one scheme regenerator (merged last) and one axis-finisher editor. Red sections (S21, S44, S57) sit one per batch with lighter partners; S57 is alone. Batch 13 holds two sections because every other ready section collides with one of them. Batches 8-17 and 19 still pair two or three topics: with 17 template editors in 20 fix batches and the long scheme and date chains, those pairings are forced; their themes name each topic."
+}
