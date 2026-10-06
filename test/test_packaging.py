@@ -431,6 +431,7 @@ _ROOT_ALSO = frozenset({
     "dash.pkg", "stata.toc", ".gitignore", "Makefile", "pyproject.toml",
     "AGENTS.md", "BUGS.md", "CHANGELOG.md", "CLAUDE.md", "GAPS.md",
     "GAPS2.md", "REMAINING.md", "ROADMAP.md", "TWOWAY_COVERAGE_AUDIT.md",
+    "PhilSchummSuggestion.md",
 })
 
 
