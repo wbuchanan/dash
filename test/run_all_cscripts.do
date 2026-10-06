@@ -1769,6 +1769,35 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 69. test_wp30_truth.cscript (WP-30: the one certification script for
+// every twoway/Stata-value comparison the drop-in P1 package needs; one
+// block per section, S01's scaffold and one block for each of S02-S57,
+// above its "append new blocks above this line" marker --
+// .ultraplan/wp30/index.md A142)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_wp30_truth.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_wp30_truth.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_wp30_truth.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_wp30_truth.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_wp30_truth.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'

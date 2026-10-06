@@ -1348,3 +1348,35 @@ class TestTheServedAppCarriesEveryName:
             elif isinstance(node, (ast.Import, ast.ImportFrom)):
                 defined |= {(a.asname or a.name).split(".")[0] for a in node.names}
         assert not sorted(wanted - defined), sorted(wanted - defined)
+
+    def test_every_listed_name_exists(self):
+        # WP-30 A149: _glyph_layer_lines copies each listed constant and
+        # function through getattr(_mod, _name, None) and SKIPS a name
+        # dash_render.py does not define, so a misspelt, renamed or deleted
+        # entry fails only on the served page.  Every name in both copy
+        # lists must be defined, and listed once.
+        import ast
+        import inspect
+        import textwrap
+        tree = ast.parse(textwrap.dedent(
+            inspect.getsource(dr.ServerAppBuilder._glyph_layer_lines)))
+        lists = {}
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.For)
+                    and isinstance(node.target, ast.Name)
+                    and isinstance(node.iter, ast.Tuple)
+                    and all(isinstance(e, ast.Constant)
+                            and isinstance(e.value, str)
+                            for e in node.iter.elts)):
+                lists.setdefault(node.target.id, []).extend(
+                    e.value for e in node.iter.elts)
+        # The constants (_name) and the functions (_fn_name): 145 and 312
+        # at c96facd.  A walk that finds nothing must not pass as a check.
+        assert sorted(lists) == ["_fn_name", "_name"], sorted(lists)
+        assert len(lists["_name"]) >= 140, len(lists["_name"])
+        assert len(lists["_fn_name"]) >= 300, len(lists["_fn_name"])
+        for kind, names in sorted(lists.items()):
+            missing = sorted(n for n in set(names) if not hasattr(dr, n))
+            assert not missing, (kind, missing)
+            twice = sorted(n for n in set(names) if names.count(n) > 1)
+            assert not twice, (kind, twice)

@@ -43,6 +43,14 @@ file holds, mechanically:
    "(WP-29, <id>)", and a closed entry's Resolution holds "(WP-29, <id>)".
    WP-29's closeout left WP29_OPEN empty; test_no_wp29_entry_remains_open
    keeps every P0 entry closed with no marker left.
+9. WP-30's P1 entries (.ultraplan/wp30/index.md A144) are open in BUGS.md
+   in the form "Not fixed because WP-30 section NN has not landed. Graded
+   S1|S2|S3 (WP-30): ...", NN being the section WP30_SECTION names, and
+   listed in WP30_OPEN, which alone (with WP29_OPEN) exempts them from the
+   release guard, with a "<!-- WP-30 <id> -->" marker in each CHANGELOG
+   list WP30_LISTS names, until their section lands; then the key is gone,
+   no marker is left, each of those lists holds a line ending
+   "(WP-30, <id>)", and a closed entry's Resolution holds "(WP-30, <id>)".
 
 Run against the documents of 4ede074, before WP-23 changed them, 11 of
 these 24 tests failed, each where the documents were wrong: 26 closed
@@ -511,9 +519,11 @@ class TestNoOpenEntryBlocksARelease:
 
     def test_no_open_entry_is_s1_or_s2(self, bugs):
         entries, _p = bugs
-        # WP-29's P0 entries stay open, S1 or S2, until their sections land
-        # (WP29_OPEN); TestWp29Tracking holds each one to its WP-29 form.
-        allowed = set(WP29_OPEN.values())
+        # WP-29's P0 entries stayed open, S1 or S2, until their sections
+        # landed (WP29_OPEN, empty since its closeout); WP-30's P1 entries
+        # do the same until theirs land (WP30_OPEN), and TestWp30Tracking
+        # holds each one to its WP-30 form.
+        allowed = set(WP29_OPEN.values()) | set(WP30_OPEN.values())
         bad = ["line %d: %s %s" % (e["line"], g, e["title"][:90])
                for e in entries if not e["closed"]
                and e["title"] not in allowed
@@ -1523,3 +1533,429 @@ class TestWp29Tracking:
                 for e in entries if not e["closed"]
                 and _WP29_OPEN_FORM.match(e["fields"].get("Resolution", ""))]
         assert not bad, "\n".join(bad)
+
+
+# ===========================================================================
+# WP-30's P1 entries (item 9 of the module docstring)
+# ===========================================================================
+
+#: WP-30 (.ultraplan/wp30/index.md, decision A144): the BUGS.md entries the
+#: tracking foundation (S01) opened, one per fix section (S02-S57), by id,
+#: with their exact titles, one key per line in entry order.  Each stays open
+#: until its section lands; that section's closing commit closes the entry in
+#: place and deletes its own key line here.  test_no_open_entry_is_s1_or_s2
+#: skips exactly these titles (and WP29_OPEN's), and TestWp30Tracking fails
+#: on a key whose entry is missing, closed or not in the WP-30 open form, so
+#: the allowance cannot outlive its reason.  The closeout (S58.1) leaves it {}.
+WP30_OPEN = {
+    "P1.1a": "A style list over several y variables, such as mcolor(red blue), is given whole to every series and refused, where twoway gives each series its own element",
+    "P1.1b": "Per-series value lists such as mlabel(make rep78), jitter(2 3), base(10 20) and barwidth(1 2) are refused r(198), where twoway applies them series by series",
+    "P1.2a": "The default chrome differs from every scheme: a bold left-aligned title, italic axis titles, Bokeh's minor ticks and tick geometry, and the schemes' tick angles, grid patterns, tick colours and economist axes missing",
+    "P1.2b": "Markers are drawn at alpha 0.8, and fintensity() and the schemes' bar and area intensities are applied as transparency, where Stata blends them opaquely",
+    "P1.3a": "Default numeric axes use Bokeh's ticker and 10 percent padding, not twoway's natscale ticks and plot-region margin, and fit lines are left out of the axis range",
+    "P1.3b": "Default %td to %ty date axes keep Bokeh's DatetimeTicker, not twoway's tsnatscale ticks",
+    "P1.4a": "The scheme's opacity, histogram colour, intensity and width, and its hollow and sm symbols do not reach fits, spikes, ranges, immediates, histograms or rarea",
+    "P1.4b": "Marker-label size and colour are fixed, the colour key has no scheme chrome, and unread user-scheme directives are ignored silently",
+    "P1.5": "Default tick labels ignore the variable's display format, xlabel(, format(%td)) is ignored silently, and a numeric format() on a date axis writes epoch milliseconds",
+    "P1.6": "The tsline time-axis options tlabel, ttick, tmlabel, tmtick, ttitle, tscale and tline are undeclared and only named in the note",
+    "P1.7": "Time-series operators in plot varlists, such as line D.close date and lfit y L.x, are refused r(101)",
+    "P1.8a": "connect() and cmissing() are not honoured: scatter y x, c(l) draws no line, stairsteps and connect(L) cannot be drawn, and cmissing(n) never breaks a line",
+    "P1.8b": "recast() is not honoured, and recast() on lfitci, qfitci, lpolyci and fpfitci is accepted where twoway refuses it",
+    "P1.9a": "horizontal is not drawn on any plot type, and vertical is named as unsupported",
+    "P1.9b": "The filter-move redraws of both modes write vertical geometry only, so a horizontal layer cannot keep its orientation after a move",
+    "P1.10": "text() and ttext() annotations are not drawn",
+    "P1.11a": "TeX delimiters in titles, labels and keys are typeset as mathematics through MathJax where twoway draws them as typed, and the saved page carries the TeX engine",
+    "P1.11b": "SMCL in graph text, such as {bf:}, {it:}, {sup:}, {&beta} and {c #}, is drawn literally",
+    "P1.12a": "Marker, text and gap sizes are read as pixels on a private ladder, and #pt, *# and vhuge are refused, where twoway reads Stata's relative size units",
+    "P1.12b": "Line widths use a private ladder without vvvthin or none and read numbers as pixels, and negative widths twoway refuses are accepted",
+    "P1.13a": "Stata colour forms such as navy*.5, CMYK, HSV, bg and fg are refused, and an unknown colour is drawn in the scheme's default where twoway draws it black with a note",
+    "P1.13b": "A bare *# or %# colour, such as mcolor(*.5), is refused or loses the site's default colour, where twoway adjusts that default",
+    "P1.14a": "pstyle() works only on the four CI fits, and lstyle, mstyle, mlstyle, astyle, alstyle, bstyle and their siblings are not read",
+    "P1.14b": "Style names other than p1-p15, such as ci, histogram, refline and p1bar, are not read by pstyle() and the other style options",
+    "P1.15a": "by() panel labels are appended to the graph title, there is no Graphs by note, composite and missing panels are titled differently, and by(, title()) is ignored",
+    "P1.15b": "by() rows, holes, colfirst, compact, iscale and imargin are named and ignored, bad by() arguments are accepted, and faceted graphs miss the automatic layout",
+    "P1.15c": "Under by() every panel draws a legend and repeats both axes, and by(, legend()) and the i* axis options are named and ignored",
+    "P1.16": "Legend keys and default axis titles do not follow twoway: fits are keyed Fitted values, pc and immediate types by their type name, the y title follows the first layer, and range types get none",
+    "P1.17a": "bar and rbar default to 0.8 of the smallest x gap, rbar ignores barwidth() without a note, rcap caps ignore msize(), and rcapsym draws caps twoway does not",
+    "P1.17b": "bar, area, spike and dropline draw from 0 rather than twoway's default base, and a 0 outside the data extends the axis to it",
+    "P1.18a": "The axis look sub-options nolabels, noticks, off, noline, line colour, width and pattern, alt, titlegap, labcolor, tlength and tposition are not honoured, and anglestyle names are dropped silently",
+    "P1.18b": "The add sub-option replaces the default ticks instead of adding to them, and an axis(2) add is named and not drawn",
+    "P1.19": "Sub-option abbreviations such as legend(c(2) posi(6)), ylabel(, labs(small)) and xline(5, lc(red)) are not recognised",
+    "P1.20a": "plotregion() and graphregion() styling sub-options such as style(none), lcolor(), lwidth(), fc() and lc() are dropped with no note",
+    "P1.20b": "plotregion(margin()) and graphregion(margin()) have no effect and no note, and the plot region's inner box is not drawn",
+    "P1.21a": "xline() and yline() numlists such as xline(2000(500)3000) draw nothing, and lstyle() and lalign() are only named",
+    "P1.21b": "xline() and yline() noextend, extend and style() are only named, so every line spans the whole frame",
+    "P1.22": "The points-free function fallback knows ten functions and draws any other in silence",
+    "P1.23a": "Dates on range, pc, immediate and second axes are drawn at raw or millisecond positions, and a date layer beside a numeric one is drawn in epoch milliseconds",
+    "P1.23b": "A date colour key shows epoch milliseconds, fallback tooltips ignore display formats, and the histogram tooltip always says Count",
+    "P1.24": "mlabvposition(varname) and mlabtextstyle() are declared and pending but never serialised or drawn",
+    "P1.25a": "Six StataCorp schemes, among them meta and stcolor_mv, are refused r(198) where twoway draws them",
+    "P1.25b": "scheme(NAME) is looked for in two places only, never along Stata's ado-path or under Stata's scheme-NAME.scheme file name, and its refusal does not list the valid names",
+    "P1.26a": "Notes print as raw Python warnings with internal paths, a warnings filter of ignore hides them, and one of error turns a note into r(7102)",
+    "P1.26b": "dash build, server and dash serve report no option or empty-layer notes, and the served child's stderr never reaches Stata",
+    "P1.27": "The drop-in command form fails: a twoway prefix is refused, saving(name, asis) writes a file named after the whole argument, dash build, saving(f, replace) is refused, and batch mode opens a browser",
+    "P1.28a": "dash returns no r(filename), and graph export after dash fails r(601) or silently exports an earlier Stata graph",
+    "P1.28b": "Neither mode offers a vector export: the toolbar saves only a PNG at the screen's resolution",
+    "P1.29": "Both content security policies allow inline scripts, and percent and exclamation signs in a saving path reach the Windows shell",
+    "P1.30": "The bokeh dependency has no ceiling or run-time version check, and the Bokeh internals dash's security relies on are not checked",
+    "P1.31a": "The served app has no session cap or idle lifetime and decodes the whole dataset again for every session",
+    "P1.31b": "One reader's filter-move recompute blocks the served event loop for every other reader",
+    "P1.32": "A missing numpy, pandas or bokeh or an old Python fails with a bare ModuleNotFoundError or SyntaxError, and dash_setup's first Python call is uncaptured",
+    "P1.33": "The Python floor of 3.13 turns away 3.11 and 3.12 users, and dash_setup reports failure although dash may render",
+    "P1.34": "The certification runners hard-code arch -arm64 and the maintainer's paths, so they run on no other machine",
+    "P1.35": "dash declares Stata 16.0, but only StataNow 19.5 has ever run it or made its truth fixtures",
+}
+
+#: Every WP-30 entry, permanently, and the CHANGELOG.md lists of the current
+#: release its line belongs in (index.md "P1 coverage").  S01 put one
+#: ``<!-- WP-30 <id> -->`` marker in each; the closing commit replaces each
+#: marker in place with a line ending ``(WP-30, <id>)``.  A section that
+#: needs another list edits its own row and its own markers in the same
+#: commit (index.md R4).
+WP30_LISTS = {
+    "P1.1a": ("Results that change", "Changed behaviour"),
+    "P1.1b": ("Changed behaviour", "Fixed in WP-30"),
+    "P1.2a": ("Results that change",),
+    "P1.2b": ("Results that change",),
+    "P1.3a": ("Results that change",),
+    "P1.3b": ("Results that change",),
+    "P1.4a": ("Results that change",),
+    "P1.4b": ("Results that change",),
+    "P1.5": ("Results that change", "Changed behaviour"),
+    "P1.6": ("New", "Changed behaviour"),
+    "P1.7": ("New", "Changed behaviour"),
+    "P1.8a": ("Results that change", "Changed behaviour"),
+    "P1.8b": ("Results that change", "Changed behaviour"),
+    "P1.9a": ("Results that change", "Changed behaviour"),
+    "P1.9b": ("Fixed in WP-30",),
+    "P1.10": ("New", "Changed behaviour"),
+    "P1.11a": ("Security", "Results that change"),
+    "P1.11b": ("Results that change",),
+    "P1.12a": ("Results that change", "Changed behaviour"),
+    "P1.12b": ("Results that change", "Changed behaviour"),
+    "P1.13a": ("Results that change", "Changed behaviour"),
+    "P1.13b": ("Results that change",),
+    "P1.14a": ("Results that change",),
+    "P1.14b": ("Results that change",),
+    "P1.15a": ("Results that change",),
+    "P1.15b": ("Results that change", "Changed behaviour"),
+    "P1.15c": ("Results that change",),
+    "P1.16": ("Results that change",),
+    "P1.17a": ("Results that change", "Changed behaviour"),
+    "P1.17b": ("Results that change",),
+    "P1.18a": ("Results that change", "Changed behaviour"),
+    "P1.18b": ("Results that change",),
+    "P1.19": ("Changed behaviour", "Fixed in WP-30"),
+    "P1.20a": ("Results that change", "Changed behaviour"),
+    "P1.20b": ("Results that change",),
+    "P1.21a": ("Results that change", "Changed behaviour"),
+    "P1.21b": ("Results that change",),
+    "P1.22": ("Fixed in WP-30",),
+    "P1.23a": ("Results that change",),
+    "P1.23b": ("Results that change",),
+    "P1.24": ("Fixed in WP-30", "Changed behaviour"),
+    "P1.25a": ("New",),
+    "P1.25b": ("Results that change", "Security"),
+    "P1.26a": ("Changed behaviour", "Fixed in WP-30"),
+    "P1.26b": ("Changed behaviour", "Fixed in WP-30"),
+    "P1.27": ("Changed behaviour", "Fixed in WP-30"),
+    "P1.28a": ("New", "Changed behaviour"),
+    "P1.28b": ("New",),
+    "P1.29": ("Security",),
+    "P1.30": ("Requirements", "Security"),
+    "P1.31a": ("New", "Security"),
+    "P1.31b": ("Fixed in WP-30",),
+    "P1.32": ("Requirements",),
+    "P1.33": ("Requirements",),
+    "P1.34": ("Fixed in WP-30",),
+    "P1.35": ("Requirements", "Changed behaviour"),
+}
+
+#: The section that closes each entry (index.md "Section manifest"); an open
+#: entry's Resolution names it.  Permanent.
+WP30_SECTION = {
+    "P1.1a": 11,
+    "P1.1b": 20,
+    "P1.2a": 15,
+    "P1.2b": 16,
+    "P1.3a": 21,
+    "P1.3b": 44,
+    "P1.4a": 24,
+    "P1.4b": 33,
+    "P1.5": 18,
+    "P1.6": 51,
+    "P1.7": 42,
+    "P1.8a": 40,
+    "P1.8b": 45,
+    "P1.9a": 49,
+    "P1.9b": 55,
+    "P1.10": 56,
+    "P1.11a": 9,
+    "P1.11b": 29,
+    "P1.12a": 8,
+    "P1.12b": 13,
+    "P1.13a": 30,
+    "P1.13b": 43,
+    "P1.14a": 32,
+    "P1.14b": 36,
+    "P1.15a": 28,
+    "P1.15b": 48,
+    "P1.15c": 53,
+    "P1.16": 19,
+    "P1.17a": 14,
+    "P1.17b": 27,
+    "P1.18a": 31,
+    "P1.18b": 52,
+    "P1.19": 10,
+    "P1.20a": 38,
+    "P1.20b": 47,
+    "P1.21a": 39,
+    "P1.21b": 50,
+    "P1.22": 26,
+    "P1.23a": 35,
+    "P1.23b": 17,
+    "P1.24": 37,
+    "P1.25a": 7,
+    "P1.25b": 34,
+    "P1.26a": 6,
+    "P1.26b": 23,
+    "P1.27": 12,
+    "P1.28a": 22,
+    "P1.28b": 54,
+    "P1.29": 4,
+    "P1.30": 41,
+    "P1.31a": 46,
+    "P1.31b": 57,
+    "P1.32": 25,
+    "P1.33": 5,
+    "P1.34": 2,
+    "P1.35": 3,
+}
+
+#: The 56 ids, in entry order.
+WP30_ALL = tuple(WP30_LISTS)
+
+_WP30_MARKER = re.compile(r"<!-- WP-30 (P1\.\d{1,2}[abc]?) -->")
+_WP30_OPEN_FORM = re.compile(
+    r"^  - Resolution: Not fixed because WP-30 section (\d{2}) has not landed\."
+    r" Graded S[1-3] \(WP-30\): \S")
+
+
+def _wp30_markers(text):
+    """The ids of every ``<!-- WP-30 <id> -->`` marker in *text*, in order,
+    repeats kept."""
+    return _WP30_MARKER.findall(text)
+
+
+def _wp30_open_problems(open_map, entries):
+    """What is wrong with the allowance *open_map* ({id: title}) against the
+    BUGS.md *entries*: an id WP-30 lacks, a title with a double quote or
+    shared by two ids, a title no entry or two entries carry, an entry that
+    is closed (the allowance is stale), one not in the WP-30 open form, or
+    one whose Resolution names another section than WP30_SECTION's."""
+    bad = []
+    unknown = sorted(set(open_map) - set(WP30_ALL))
+    if unknown:
+        bad.append("ids WP-30 does not have: %s" % unknown)
+    titles = list(open_map.values())
+    if len(set(titles)) != len(titles):
+        bad.append("two ids share one title")
+    for pid, title in open_map.items():
+        if '"' in title:
+            bad.append("%s: the title holds a double quote" % pid)
+        match = [e for e in entries if e["title"] == title]
+        if len(match) != 1:
+            bad.append("%s: %d BUGS.md entries are titled %r"
+                       % (pid, len(match), title))
+            continue
+        e = match[0]
+        if e["closed"]:
+            bad.append("%s: %r is closed; delete its WP30_OPEN key"
+                       % (pid, title))
+            continue
+        form = _WP30_OPEN_FORM.match(e["fields"].get("Resolution", ""))
+        if not form:
+            bad.append("%s: %r's Resolution is not 'Not fixed because WP-30 "
+                       "section NN has not landed. Graded S1|S2|S3 (WP-30): "
+                       "...'" % (pid, title))
+        elif int(form.group(1)) != WP30_SECTION.get(pid):
+            bad.append("%s: its Resolution names section %s, not %s"
+                       % (pid, form.group(1), WP30_SECTION.get(pid)))
+    return bad
+
+
+def _wp30_marker_problems(open_ids, markers):
+    """A marker naming no WP-30 id, and an open id with no marker left."""
+    bad = ["a marker names %s, which WP-30 does not have" % m
+           for m in sorted(set(markers) - set(WP30_ALL))]
+    bad += ["%s is open and CHANGELOG.md holds no marker for it" % pid
+            for pid in WP30_ALL if pid in open_ids and pid not in markers]
+    return bad
+
+
+def _wp30_closure_problems(open_ids, markers, entries):
+    """A closed id (in WP30_ALL, not open) whose marker is still in the
+    CHANGELOG, or whose (WP-30, <id>) no closed entry's Resolution holds."""
+    bad = []
+    for pid in WP30_ALL:
+        if pid in open_ids:
+            continue
+        if pid in markers:
+            bad.append("%s is closed and CHANGELOG.md still holds its "
+                       "marker" % pid)
+        tag = "(WP-30, %s)" % pid
+        if not [e for e in entries if e["closed"]
+                and tag in e["fields"].get("Resolution", "")]:
+            bad.append("%s is closed and no closed BUGS.md entry's "
+                       "Resolution holds %s" % (pid, tag))
+    return bad
+
+
+def _wp30_list_problems(lists_map, changelog):
+    """Each id's marker or its (WP-30, <id>) line must sit in every list
+    *lists_map* names for it, and neither its marker nor such a line
+    anywhere else (a section that needs another list widens its own row
+    first, index.md R4)."""
+    lists = _changelog_lists(changelog)
+    bad = []
+    names = sorted({n for ls in lists_map.values() for n in ls})
+    bodies = {n: _changelog_list(lists, n) for n in names}
+    for n in names:
+        if bodies[n] is None:
+            bad.append("CHANGELOG.md has no single '### %s' list" % n)
+    for pid, wanted in lists_map.items():
+        mark, line = "<!-- WP-30 %s -->" % pid, "(WP-30, %s)" % pid
+        for n in wanted:
+            body = bodies.get(n)
+            if body is not None and mark not in body and line not in body:
+                bad.append("%s: '### %s' holds neither its marker nor a line "
+                           "ending %s" % (pid, n, line))
+        for h, body in lists.items():
+            if any(h == n or h.startswith(n + " (") for n in wanted):
+                continue
+            if mark in body:
+                bad.append("%s: its marker sits under '### %s'" % (pid, h))
+            if line in body:
+                bad.append("%s: a line ending %s sits under '### %s'"
+                           % (pid, line, h))
+    return bad
+
+
+class TestWp30Tracking:
+    """WP-30's 56 P1 entries (index.md A144): open in BUGS.md, naming their
+    section, with a marker in each CHANGELOG list they belong to until their
+    section lands, then closed with no marker left and a Resolution naming
+    (WP-30, <id>)."""
+
+    def test_every_allowed_title_is_an_open_entry(self, bugs):
+        entries, _p = bugs
+        bad = _wp30_open_problems(WP30_OPEN, entries)
+        assert not bad, "\n".join(bad)
+
+    def test_an_open_p1_keeps_its_marker(self):
+        bad = _wp30_marker_problems(
+            set(WP30_OPEN), _wp30_markers(_read("CHANGELOG.md")))
+        assert not bad, "\n".join(bad)
+
+    def test_a_closed_p1_has_no_marker_and_a_resolution(self, bugs):
+        entries, _p = bugs
+        bad = _wp30_closure_problems(
+            set(WP30_OPEN), set(_wp30_markers(_read("CHANGELOG.md"))),
+            entries)
+        assert not bad, "\n".join(bad)
+
+    def test_each_p1_sits_in_its_changelog_lists(self):
+        assert WP30_ALL == tuple(WP30_LISTS) and len(WP30_ALL) == 56
+        assert tuple(WP30_SECTION) == WP30_ALL
+        assert sorted(WP30_SECTION.values()) == list(range(2, 58))
+        bad = _wp30_list_problems(WP30_LISTS, _read("CHANGELOG.md"))
+        assert not bad, "\n".join(bad)
+
+    def test_the_marker_reader(self):
+        text = ("# Changelog\n\n## 1.0, 01jan2027\n\nintro\n\n"
+                "### Results that change\n\n- a line. (WP-30, P1.2a)\n"
+                "<!-- WP-30 P1.1a -->\n\n"
+                "### Changed behaviour (may need your do-files changed)\n\n"
+                "<!-- WP-30 P1.1a -->\n<!-- WP-30 P1.15c -->\n\n"
+                "### Fixed in WP-30\n\n<!-- WP-30 P1.19 -->\n\n"
+                "## 0.9, 01jan2026\n\n### Results that change\n\n"
+                "<!-- WP-30 P1.99 -->\n")
+        assert _wp30_markers(text) == ["P1.1a", "P1.1a", "P1.15c", "P1.19",
+                                       "P1.99"]
+        assert _wp30_markers("<!-- WP-29 P0.1 --> <!-- WP-30 P1.1a-->"
+                             " <!-- WP-30 P1.1d -->") == []
+        lists = _changelog_lists(text)
+        assert list(lists) == [
+            "Results that change",
+            "Changed behaviour (may need your do-files changed)",
+            "Fixed in WP-30"]
+        assert "P1.99" not in "".join(lists.values())
+        assert _changelog_list(lists, "Changed behaviour").startswith(
+            "\n\n<!-- WP-30 P1.1a -->")
+        assert _changelog_list(lists, "Security") is None
+
+    def test_the_wp30_problem_readers(self):
+        def entry(title, closed, res):
+            return {"title": title, "closed": closed,
+                    "fields": {"Resolution": "  - Resolution: " + res}}
+        open_form = ("Not fixed because WP-30 section 11 has not landed. "
+                     "Graded S2 (WP-30): wrong style.")
+        good = [entry("T1", False, open_form),
+                entry("T2", True, "Fixed 01nov2026 (WP-30, P1.2a). Done.")]
+        assert _wp30_open_problems({"P1.1a": "T1"}, good) == []
+        for open_map, entries, says in (
+                ({"P1.1a": "T2"}, good, "is closed"),
+                ({"P1.1a": "T9"}, good, "0 BUGS.md entries"),
+                ({"P1.1a": "T1"}, good + [entry("T1", False, open_form)],
+                 "2 BUGS.md entries"),
+                ({"P1.1a": "T1"},
+                 [entry("T1", False, "Not fixed because x. Graded S3 "
+                        "(WP-27): y.")], "not 'Not fixed because WP-30"),
+                ({"P1.1a": "T1"},
+                 [entry("T1", False, open_form.replace("11", "12"))],
+                 "names section 12, not 11"),
+                ({"P1.99": "T1"}, good, "does not have"),
+                ({"P1.1a": 'a "q"'}, [entry('a "q"', False, open_form)],
+                 "double quote"),
+                ({"P1.1a": "T1", "P1.1b": "T1"}, good, "share one title")):
+            bad = _wp30_open_problems(open_map, entries)
+            assert any(says in b for b in bad), (says, bad)
+
+        assert _wp30_marker_problems({"P1.1a"}, ["P1.1a"]) == []
+        assert _wp30_marker_problems({"P1.1a"}, []) == [
+            "P1.1a is open and CHANGELOG.md holds no marker for it"]
+        assert _wp30_marker_problems(set(), ["P1.1"]) == [
+            "a marker names P1.1, which WP-30 does not have"]
+
+        others = set(WP30_ALL) - {"P1.2a"}
+        assert _wp30_closure_problems(others, others, good) == []
+        assert _wp30_closure_problems(others, others | {"P1.2a"}, good) == [
+            "P1.2a is closed and CHANGELOG.md still holds its marker"]
+        assert _wp30_closure_problems(others, others, good[:1]) == [
+            "P1.2a is closed and no closed BUGS.md entry's Resolution "
+            "holds (WP-30, P1.2a)"]
+        # (WP-30, P1.1a) is not read inside (WP-30, P1.11a) or (WP-30, P1.1b)
+        near = [entry("T3", True, "Fixed (WP-30, P1.11a). (WP-30, P1.1b).")]
+        assert _wp30_closure_problems(set(WP30_ALL) - {"P1.1a"}, set(),
+                                      near) == [
+            "P1.1a is closed and no closed BUGS.md entry's Resolution "
+            "holds (WP-30, P1.1a)"]
+
+        log = ("## 1.0\n\n### Results that change\n\n<!-- WP-30 P1.1a -->\n"
+               "### Changed behaviour (may need your do-files changed)\n\n"
+               "- a line. (WP-30, P1.1a)\n### Security\n\n"
+               "<!-- WP-30 P1.29 -->\n")
+        rules = {"P1.1a": ("Results that change", "Changed behaviour"),
+                 "P1.29": ("Security",)}
+        assert _wp30_list_problems(rules, log) == []
+        assert _wp30_list_problems(
+            {"P1.1a": ("Results that change", "Changed behaviour"),
+             "P1.29": ("Results that change",)}, log) == [
+            "P1.29: '### Results that change' holds neither its marker nor "
+            "a line ending (WP-30, P1.29)",
+            "P1.29: its marker sits under '### Security'"]
+        # a closing line in a list its row does not name (R4 not followed)
+        assert _wp30_list_problems(rules, log + "- x. (WP-30, P1.1a)\n") == [
+            "P1.1a: a line ending (WP-30, P1.1a) sits under '### Security'"]
+        assert _wp30_list_problems({"P1.19": ("Fixed in WP-30",)}, log) == [
+            "CHANGELOG.md has no single '### Fixed in WP-30' list"]

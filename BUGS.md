@@ -2848,3 +2848,339 @@
   - Description: DROPIN-REMAINING.md P0.20, verified at 357c368: KPI `sd`, `var`, `iqr`, `cv` and `sum` of a date are computed in epoch ms. `sd` is 86,400,000 times Stata's value on a %td variable. Sources: GAPS2-E1-residual.
   - Suggested fix: WP-29 section 05 (date computations in Stata units): compute KPI sd, var, iqr, cv and sum of a date in its Stata units, in both modes and after every move.
   - Resolution: Fixed 01oct2026 (WP-29, P0.20). A KPI statistic of a date variable other than count and dcount is taken of its Stata values in _dash_kpi_column (kind from date_vars; refused without one), in the saved renderer, the served _compute_kpi (all three callers pass _date_vars) and the page's dash_apply_kpis (config unitkind, converted with dash_stata_value_of, null dropped); date-valued results are written directly in their picture; the sum note names the units. Pinned by test/test_date_units.py::TestKpiOfADate::test_first_paint, test/test_date_units.py::TestKpiOfADate::test_after_a_move, test/test_date_units.py::TestKpiOfADate::test_after_a_brush, test/test_date_units.py::TestTheKpiConfig::test_unitkind_reaches_every_statistic_but_counts, test/test_wp29_truth.cscript KD-01; fixture test/fixtures/date_units_truth.json.
+
+- [ ] Title: A style list over several y variables, such as mcolor(red blue), is given whole to every series and refused, where twoway gives each series its own element
+  - File Names and Line Numbers: dash.ado at c96facd: _dash_parse_plot_opts (897; MColor(string) at 925 drops the quotes), _dash_plot_opts_to_json (3131), _dash_process_segment (3454; one options JSON for every series in its assembly block, about 4330-4370); dash_render.py at c96facd: GlyphMapper._apply_marker_opts (8622), GlyphMapper._apply_line_opts (8540)
+  - Description: DROPIN-REMAINING.md:66 P1.1, the style-option part, re-verified at c96facd: `scatter mpg turn weight, mcolor(red blue) msymbol(O T)` gives every y the whole list. The renderer then refuses "red blue" and draws scheme defaults, with a misleading note. The same holds for line style lists, the `.`/`=` shorthands, and a single-y list (where `twoway` uses the first element). Also measured: a lone value or a short list styles every series where twoway styles only the leading ones, quoted elements lose their quotes, and `mcolor(red .. blue)` is accepted where twoway refuses it r(198). Sources: REM-S06-c, GAPS2-D8-a, GAPS2-D8-b, GAPS2-D8-c, GAPS2-D8-d, GAPS2-D8-e (the style options).
+  - Suggested fix: WP-30 section 11 (Stylelists of style options across an expanded varlist): split each style option's list across the expanded series as twoway does, with the `.`, `=`, `..` and `...` shorthands, quoted elements kept whole and the first element on single-y types, refusing a misplaced `..` with twoway's code and words.
+  - Resolution: Not fixed because WP-30 section 11 has not landed. Graded S2 (WP-30): a common multi-y do-file draws every series in the scheme's defaults, under a note that blames the colour.
+
+- [ ] Title: Per-series value lists such as mlabel(make rep78), jitter(2 3), base(10 20) and barwidth(1 2) are refused r(198), where twoway applies them series by series
+  - File Names and Line Numbers: dash.ado at c96facd: _dash_option_rules (2025; the per-option list rules, about 2032-2042), _dash_validate_value (2125), _dash_fold_mlab (1691)
+  - Description: DROPIN-REMAINING.md:66 P1.1, the per-series value-list part (research sub-claim h), re-verified at c96facd: `mlabel(make rep78)` is refused r(198) (mlabel() must name one variable), and `jitter(2 3)`, `base(10 20)` and `barwidth(1 2)` are refused r(198), where twoway accepts each and applies it by series: series 1 labelled by make and series 2 by rep78, bottoms at 10 and 20. Sources: REM-S06-c, GAPS2-D8 (the per-series value lists).
+  - Suggested fix: WP-30 section 20 (Per-series value lists): read mlabel(varlist), jitter(), base(), barwidth() and mlabposition() positionally per series after the shorthands resolve, refusing what twoway refuses in its words.
+  - Resolution: Not fixed because WP-30 section 20 has not landed. Graded S2 (WP-30): twoway's per-series forms are refused.
+
+- [ ] Title: The default chrome differs from every scheme: a bold left-aligned title, italic axis titles, Bokeh's minor ticks and tick geometry, and the schemes' tick angles, grid patterns, tick colours and economist axes missing
+  - File Names and Line Numbers: dash_render.py at c96facd: SchemeParser.apply_to_figure (7376), SchemeParser.apply_to_axis (7429), _dash_figure_title (25905), _dash_style_axis_titles (25929), _dash_text_annotations (25969), _dash_add_secondary_axes (23034); scripts/extract_scheme_truth.py
+  - Description: DROPIN-REMAINING.md:67-76 P1.2, the chrome part, re-verified at c96facd: the title is bold and left-aligned (Stata centres it and does not bold it); axis titles are italic; subtitle, note and caption sit at x=0; Bokeh minor ticks are drawn and tick geometry is Bokeh's; s2color's vertical y tick labels are missing, as is stcolor's dashed grid; s1rcolor's ticks are invisible (black on black), and economist's y axis is wrong. Sources: GAPS2-D17-a, GAPS2-D17-b, GAPS2-D17-c, GAPS2-D17-d, REM-11-04-A1-ALIGN, GAPS2-B29, GAPS2-D16-a, GAPS2-D16-c, GAPS2-D16-d, GAPS2-D12-a, GAPS2-D12-b, GAPS2-D12-c, GAPS2-B25-c.
+  - Suggested fix: WP-30 section 15 (Scheme chrome: titles, ticks, grid, economist axes): draw each scheme's title, axis-title, tick, grid and axis chrome from the scheme's own keys in Stata units, in both modes (maintainer decision M1).
+  - Resolution: Not fixed because WP-30 section 15 has not landed. Graded S3 (WP-30): fidelity: every graph's chrome differs from its scheme's, and no value is misread.
+
+- [ ] Title: Markers are drawn at alpha 0.8, and fintensity() and the schemes' bar and area intensities are applied as transparency, where Stata blends them opaquely
+  - File Names and Line Numbers: dash_render.py at c96facd: SchemeParser.default_alpha (7222), SchemeParser._intensity (6577), GlyphMapper._scheme_alpha (9727), GlyphMapper._blend_intensity (8293), GlyphMapper._apply_fill_opts (8807), GlyphMapper._ci_band_style (8307)
+  - Description: DROPIN-REMAINING.md:67-76 P1.2, the opacity part, re-verified at c96facd: markers are drawn at alpha 0.8, and `fintensity()` is applied as alpha; so are the schemes' p#bar and p#area intensities. Sources: GAPS2-D11-a, GAPS2-D11-b.
+  - Suggested fix: WP-30 section 16 (Intensity as an opaque blend): draw markers opaque unless an opacity is asked for, and blend every intensity into an opaque colour, in both modes (maintainer decision M1).
+  - Resolution: Not fixed because WP-30 section 16 has not landed. Graded S3 (WP-30): fidelity: colours are paler and see-through where Stata's are solid, and no value is misread.
+
+- [ ] Title: Default numeric axes use Bokeh's ticker and 10 percent padding, not twoway's natscale ticks and plot-region margin, and fit lines are left out of the axis range
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_count_ticker (22176), _dash_padded_range (23489), _dash_finish_count_ticks (23732), _dash_keep_primary_ranges (23316), _dash_limit_ranges_to_primary (23913), _dash_share_by_scales (23845), _FILTER_JS (18562)
+  - Description: DROPIN-REMAINING.md:77 P1.3, the non-date part, re-verified at c96facd: every default axis gets BasicTicker and 10% padding (5% a side), where twoway uses natscale ticks over the hull of the data and its ticks plus a plot-region margin. twoway's (by) common scale includes fit lines and dash's does not (WP-29 S10 note), and after a filter move the default axes follow Bokeh's autorange. Sources: GAPS2-B25-a (numeric, log and %tc axes), GAPS2-B25-b.
+  - Suggested fix: WP-30 section 21 (natscale ticker and twoway margin on non-date axes): draw default numeric, log and %tc axes with natscale ticks over every drawn layer plus twoway's plot-region margin, re-finished after every filter move in both modes (maintainer decision M1).
+  - Resolution: Not fixed because WP-30 section 21 has not landed. Graded S3 (WP-30): fidelity: tick positions and padding differ, and every value is drawn where it belongs.
+
+- [ ] Title: Default %td to %ty date axes keep Bokeh's DatetimeTicker, not twoway's tsnatscale ticks
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_tsnatscale_ticks (22491), _dash_count_ticker (22176), _FILTER_JS (18562); BUGS.md:2523 (the open WP-27 entry on the fitted model)
+  - Description: DROPIN-REMAINING.md:77 P1.3, the date part, re-verified at c96facd: every default %td, %tw, %tm, %tq, %th and %ty axis gets Bokeh's DatetimeTicker, where twoway draws tsnatscale ticks; dash's fitted tsnatscale model serves only #N ticks today. Sources: GAPS2-B25-a (date axes).
+  - Suggested fix: WP-30 section 44 (tsnatscale on %td-%ty default axes): draw default date axes with the fitted tsnatscale model at build and after every filter move in both modes, through a JavaScript port pinned to the model's 12,000 measured answers (maintainer decision M1).
+  - Resolution: Not fixed because WP-30 section 44 has not landed. Graded S3 (WP-30): fidelity: tick positions differ, and every value is drawn where it belongs.
+
+- [ ] Title: The scheme's opacity, histogram colour, intensity and width, and its hollow and sm symbols do not reach fits, spikes, ranges, immediates, histograms or rarea
+  - File Names and Line Numbers: dash_render.py at c96facd: GlyphMapper._scheme_alpha (9727), GlyphMapper._histogram_quads (12423), GlyphMapper.map_rarea (12933), GlyphMapper._empty_fit_line (10823), GlyphMapper._apply_marker_opts (8622), SchemeParser._symbol (6797), OptionTranslator.translate_msymbol (5516)
+  - Description: DROPIN-REMAINING.md:78-87 P1.4, the layer part, re-verified at c96facd: sttrans opacity is missing on fits, spikes, ranges, immediates and bands; histograms ignore the scheme's histogram colour, intensity and line width (and the empty histogram key colour, the WP-29 S12 residual); hollow and sm* p# symbols are drawn filled and full size; rarea is drawn at alpha 0.5. Also measured: the p# symbol cycle does not reach scatteri, rscatter, pcscatter, dropline or rcapsym; markers read p#mark where twoway reads p#markfill and p#markline; msymbol(Oh) with malpha() refills a hollow marker. Sources: GAPS2-D18-a, GAPS2-D18-b, GAPS2-D18-c, GAPS2-D18-d, AUDIT-76, GAPS2-D19-a, GAPS2-D19-b, GAPS2-D5-g, GAPS2-D5-h, REM-11-04-B13-RAREA.
+  - Suggested fix: WP-30 section 24 (Scheme opacity, histogram style and symbols reach every layer): carry the scheme's opacity, histogram keys and symbol traits to every layer type at construction, in both modes.
+  - Resolution: Not fixed because WP-30 section 24 has not landed. Graded S3 (WP-30): fidelity: layers are drawn in another opacity, style or symbol than their scheme's.
+
+- [ ] Title: Marker-label size and colour are fixed, the colour key has no scheme chrome, and unread user-scheme directives are ignored silently
+  - File Names and Line Numbers: dash_render.py at c96facd: GlyphMapper._apply_mlabel_opts (9302), GlyphMapper._apply_colorvar (8887), SchemeParser._parse_lines (6318), SchemeParser._include (6389)
+  - Description: DROPIN-REMAINING.md:78-87 P1.4, the chrome part, re-verified at c96facd: marker-label size and colour are fixed at 10px #444444 (9px in the served app); the ColorBar has no chrome; unconsumed user-scheme directives are ignored silently. Sources: REM-11-04-B1, REM-S11-e2, REM-11-04-C11, GAPS2-D10-a, GAPS2-D10-b.
+  - Suggested fix: WP-30 section 33 (Marker-label and colour-key chrome; unread directives retained): take marker-label and colour-key chrome from the scheme in Stata units, in both modes, and keep every user-scheme directive in the parsed scheme for later versions, with no note (ratification row 4).
+  - Resolution: Not fixed because WP-30 section 33 has not landed. Graded S3 (WP-30): fidelity: label and key chrome differ from the scheme's, and a user scheme's unread keys pass unmentioned.
+
+- [ ] Title: Default tick labels ignore the variable's display format, xlabel(, format(%td)) is ignored silently, and a numeric format() on a date axis writes epoch milliseconds
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_apply_axis_options (22997), _dash_apply_axis_spec (22714), _dash_finish_secondary_axes (23172), _dash_fmt (21063), DashRenderer._make_figure_body (30203); dash.sthlp: the log example under Axis and Display Options
+  - Description: DROPIN-REMAINING.md:88-95 P1.5, re-verified at c96facd: default ticks ignore the variable's display format (weight %9.0fc gives 2000, not 2,000); %g/%gc formats are never used as the fallback; `xlabel(, format(%td…))` is silently ignored; a numeric `format()` on a date axis writes epoch ms; the help's log example promises commas that dash does not write. Sources: REM-09-02-FMT-a, REM-09-02-FMT-b, GAPS2-G10-a, GAPS2-G10-b, REM-09-02-DATE-FORMAT, REM-08-04-C6b, GAPS2-B8-b, REM-08-04-C6a, GAPS2-G10-c.
+  - Suggested fix: WP-30 section 18 (Axis format fallbacks): write default ticks in twoway's axis format, honour format() on date and numeric axes, and refuse the format() forms twoway refuses, in both modes and after a filter move.
+  - Resolution: Not fixed because WP-30 section 18 has not landed. Graded S1 (WP-30): silently wrong text: tick labels in epoch milliseconds, and a format() the user gave dropped without a note.
+
+- [ ] Title: The tsline time-axis options tlabel, ttick, tmlabel, tmtick, ttitle, tscale and tline are undeclared and only named in the note
+  - File Names and Line Numbers: dash.ado at c96facd: _dash_parse_graph_opts (682), _dash_parse_plot_opts (897), _dash_axis_expand (2537); dash_parse.mata at c96facd: _dash_route_axis2 (5486)
+  - Description: DROPIN-REMAINING.md:96 P1.6, re-verified at c96facd: `tlabel`, `ttick`, `tmlabel`, `tmtick`, `ttitle`, `tscale` and `tline` are undeclared and only named in the note. They need folding onto the x equivalents, with date-literal expansion. Sources: REM-§2-S09-tlabel, REM-§2-S09-ttick, REM-§2-S09-tline, REM-§2-S09-ttitle, REM-S09-73-tsaxis-a, REM-S09-73-tsaxis-b, REM-05-04-S09-a, REM-05-04-S09-b, GAPS2-A4-q, GAPS2-B14-a, GAPS2-B14-b, GAPS2-B14-c, REM-15-03-E5.
+  - Suggested fix: WP-30 section 51 (tsline time-axis options): declare the t* options for every twoway graph and fold them onto x axis 1 with Stata-unit date literals, refusing date literals where twoway's x axis is numeric.
+  - Resolution: Not fixed because WP-30 section 51 has not landed. Graded S2 (WP-30): accepted twoway options are named and not drawn.
+
+- [ ] Title: Time-series operators in plot varlists, such as line D.close date and lfit y L.x, are refused r(101)
+  - File Names and Line Numbers: dash.ado at c96facd: _dash_parse_varpart_std (1310), _dash_parse_varpart_any (1444), _dash_process_segment (3454); dash_render.py at c96facd: _dash_take_qual_columns (27657), DashRenderer._load_data (29266)
+  - Description: DROPIN-REMAINING.md:97 P1.7, re-verified at c96facd: time-series operators in plot varlists are refused r(101). This covers `line D.close date`, `tsline D.gdp` and `lfit y L.x`, and the help does not document it. Sources: GAPS2-G4-a, GAPS2-G4-b, GAPS2-G4-c.
+  - Suggested fix: WP-30 section 42 (Time-series operators in plot varlists): accept the L., F., D. and S. operators wherever twoway does, materialised under tsset and labelled as twoway labels them, refusing what twoway refuses in its words.
+  - Resolution: Not fixed because WP-30 section 42 has not landed. Graded S2 (WP-30): a common time-series form is refused.
+
+- [ ] Title: connect() and cmissing() are not honoured: scatter y x, c(l) draws no line, stairsteps and connect(L) cannot be drawn, and cmissing(n) never breaks a line
+  - File Names and Line Numbers: dash_render.py at c96facd: GlyphMapper.map_scatter (9744), GlyphMapper.map_line (9880), GlyphMapper.map_connected (9991), GlyphMapper.map_tsline (14468), _FILTER_JS (18562); dash.ado at c96facd: _dash_parse_plot_opts (897)
+  - Description: DROPIN-REMAINING.md:98 P1.8, the connect() and cmissing() part, re-verified at c96facd: `scatter y x, c(l)` draws no line, stairsteps and `connect(L)` panel lines are impossible, and missing values are always bridged. (WP-29 note: P0.1 made the six joining types join in the data's order; connect() on scatter and cmissing() stay here.) Sources: REM-§2-S06-connect, REM-S05-04-connect, GAPS2-A4-l, GAPS2-A4-m, GAPS2-B12-c, GAPS2-B12-d, GAPS2-G15-a, AUDIT-09, AUDIT-11.
+  - Suggested fix: WP-30 section 40 (connect() and cmissing()): draw every connect() style and cmissing(n) breaks on scatter, the line family and the fits as twoway draws them, in both modes and after a filter move.
+  - Resolution: Not fixed because WP-30 section 40 has not landed. Graded S2 (WP-30): accepted twoway options are named and not drawn.
+
+- [ ] Title: recast() is not honoured, and recast() on lfitci, qfitci, lpolyci and fpfitci is accepted where twoway refuses it
+  - File Names and Line Numbers: dash.ado at c96facd: _dash_parse_plot_opts (897), _dash_fold_bw (1545), _dash_fold_typed (1749); dash_render.py at c96facd: _dash_glyph_dispatch (28501)
+  - Description: DROPIN-REMAINING.md:98 P1.8, the recast() part, re-verified at c96facd: `recast()` is not honoured. Also measured: dash accepts recast() on the ci types, which twoway refuses, and the spellings recastas() and type() are not declared. Sources: GAPS2-A4-n, GAPS2-B12-b, AUDIT-12 (with AUDIT-09, AUDIT-11 and GAPS2-G15-a, shared with connect()).
+  - Suggested fix: WP-30 section 45 (recast()): draw a recast layer as its new type with twoway's fallbacks, and refuse recast() on the ci types with twoway's code and words.
+  - Resolution: Not fixed because WP-30 section 45 has not landed. Graded S2 (WP-30): an accepted twoway option is named and not drawn.
+
+- [ ] Title: horizontal is not drawn on any plot type, and vertical is named as unsupported
+  - File Names and Line Numbers: dash_render.py at c96facd: GlyphMapper.map_bar (10122), GlyphMapper.map_rcap (13153), GlyphMapper.map_dropline (13398), _dash_axis_labels (21665), _dash_figure_date_kind (788), _compute_secondary_range (7684)
+  - Description: DROPIN-REMAINING.md:99 P1.9, the drawing part, re-verified at c96facd: `horizontal` is not drawn on any type; it is common on bar, rcap, rspike and dropline. It is named in the note, `vertical` (twoway's default) is named as unsupported, and the help says every plot is drawn upright. (WP-29 note: horizontal on function and on computed layers on a date axis stays here.) Sources: REM-§2-S06-horizontal, REM-S06-a, GAPS2-A7, GAPS2-B12-a, AUDIT-15 (the drawing).
+  - Suggested fix: WP-30 section 49 (horizontal drawn): draw horizontal on every type twoway turns, with the axes and titles swapped, and refuse it where twoway refuses it, in both modes.
+  - Resolution: Not fixed because WP-30 section 49 has not landed. Graded S2 (WP-30): an accepted twoway option is named and not drawn.
+
+- [ ] Title: The filter-move redraws of both modes write vertical geometry only, so a horizontal layer cannot keep its orientation after a move
+  - File Names and Line Numbers: dash_render.py at c96facd: _FILTER_JS (18562), _dash_copy_redraw_geometry (24941), _dash_build_hover (27118), ServerAppBuilder._generate_app_source (33915; the generated _dash_redraw_for at 35039)
+  - Description: DROPIN-REMAINING.md:99 P1.9, the after-a-move part, re-verified at c96facd: `horizontal` is not drawn on any type, and the saved page's redraw and the served app's geometry copy write widths and vertical tooltip fields only, so a turned bar or range would be redrawn upright after a filter move. Sources: REM-§2-S06-horizontal, REM-S06-a, GAPS2-A7, GAPS2-B12-a, AUDIT-15 (after a move).
+  - Suggested fix: WP-30 section 55 (horizontal after a filter move): keep a turned layer's geometry, tooltip and reference lines after saved and served filter moves, through a fixed branch that never reads a property name from page data.
+  - Resolution: Not fixed because WP-30 section 55 has not landed. Graded S2 (WP-30): an accepted twoway option would be lost at the first filter move.
+
+- [ ] Title: text() and ttext() annotations are not drawn
+  - File Names and Line Numbers: dash.ado at c96facd: _dash_parse_graph_opts (682; TEXT(string asis) at 726), _dash_parse_plot_opts (897; 971); dash_parse.mata at c96facd: _dash_rep_merge (5715); dash_render.py at c96facd: _dash_text_annotations (25969), DashRenderer._make_figure_body (30203)
+  - Description: DROPIN-REMAINING.md:100 P1.10, re-verified at c96facd: `text()` and `ttext()` annotations are not drawn. Sources: REM-§2-S09-text, REM-S09-73-text, GAPS2-B20-a, AUDIT-13, REM-§2-S09-ttext, GAPS2-B20-b.
+  - Suggested fix: WP-30 section 56 (text() and ttext() annotations): parse and draw text() and ttext() where twoway puts them, with size, colour, box and orientation, on every by() panel and after a move, refusing malformed points as twoway does.
+  - Resolution: Not fixed because WP-30 section 56 has not landed. Graded S2 (WP-30): accepted twoway options are named and not drawn.
+
+- [ ] Title: TeX delimiters in titles, labels and keys are typeset as mathematics through MathJax where twoway draws them as typed, and the saved page carries the TeX engine
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_inert_tex (24012), DashRenderer._build_sources_and_figures (31389), ServerAppBuilder._generate_app_source (33915)
+  - Description: DROPIN-REMAINING.md:101 P1.11, the TeX part, re-verified at c96facd: `$$…$$` in a title triggers MathJax, which grows the page from 1.3 MB to 3.1 MB; `_dash_inert_tex` breaks the delimiters only in widget titles, so user text in canvas titles, labels, ticks and keys reaches MathJax's TeX parser. Sources: GAPS2-D3-e (the TeX delimiters), GAPS2-J5.
+  - Suggested fix: WP-30 section 09 (TeX delimiters inert on every canvas sink): make TeX delimiters inert on every canvas text sink in one document pass in both modes, so TeX pairs are drawn as typed and the saved page no longer ships MathJax.
+  - Resolution: Not fixed because WP-30 section 09 has not landed. Graded S2 (WP-30): typed text is drawn as mathematics, and user text reaches a TeX parser.
+
+- [ ] Title: SMCL in graph text, such as {bf:}, {it:}, {sup:}, {&beta} and {c #}, is drawn literally
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_inert_tex (24012), GlyphMapper._apply_mlabel_opts (9302), GlyphMapper._mlabel_column_kind (9607); dash.sthlp (no paragraph on graph text)
+  - Description: DROPIN-REMAINING.md:101 P1.11, the SMCL part, re-verified at c96facd: `{bf:}`, `{it:}`, `{sup:}`, `{&beta}` and `{c #}` are drawn literally, as are the font tags `{stSerif:}` and `{fontface}`, in both modes, and the help does not document graph-text markup. Sources: GAPS2-D3-a, GAPS2-D3-b, GAPS2-D3-c, GAPS2-D3-d, GAPS2-J2, GAPS2-B13.
+  - Suggested fix: WP-30 section 29 (SMCL in graph text): translate Stata's graph-text grammar to Unicode and whole-string style at every canvas sink and in marker labels with a linear-time scanner, noting once what cannot be drawn, in both modes.
+  - Resolution: Not fixed because WP-30 section 29 has not landed. Graded S2 (WP-30): the markup is drawn as visible braces.
+
+- [ ] Title: Marker, text and gap sizes are read as pixels on a private ladder, and #pt, *# and vhuge are refused, where twoway reads Stata's relative size units
+  - File Names and Line Numbers: dash_render.py at c96facd: OptionTranslator (5098; its size translators), _textbox_size (4819), GlyphMapper._apply_marker_opts (8622), GlyphMapper._apply_mlabel_opts (9302; mlabgap); dash.ado at c96facd: _dash_validate_value (2125), _dash_option_rules (2025); CHANGELOG.md:521-522 (the msize(abc) note)
+  - Description: DROPIN-REMAINING.md:102 P1.12, the marker, text and gap part, re-verified at c96facd: numbers are read as pixels and keywords use a private pixel ladder: `msize(medium)` gives 11px against a default of 8. `#pt`, `*#` and `vhuge` are refused, and `mlabgap` is read as px. Also measured: text size(large) is smaller than the scheme's default, and an explicit msize or mcolor does not reach the nonselection and muted glyphs. Sources: GAPS2-D2-a, GAPS2-D2-b, GAPS2-D2-d, GAPS2-D2-e (marker, text and gap sizes), GAPS2-B9.
+  - Suggested fix: WP-30 section 08 (Stata size units for markers, text and gaps): read every marker, text and gap size in Stata's relative units with #pt, *# and the full keyword ladder, in both modes (maintainer decision M1).
+  - Resolution: Not fixed because WP-30 section 08 has not landed. Graded S2 (WP-30): twoway's size forms are refused, and every size keyword is drawn at another size.
+
+- [ ] Title: Line widths use a private ladder without vvvthin or none and read numbers as pixels, and negative widths twoway refuses are accepted
+  - File Names and Line Numbers: dash_render.py at c96facd: OptionTranslator._LWIDTH_MAP (5324), GlyphMapper._apply_line_opts (8540), SchemeParser._lwidth (6625), _extract_region_lwidth (5065), _dash_refline_draw (26327); dash.ado at c96facd: _dash_validate_value (2125)
+  - Description: DROPIN-REMAINING.md:102 P1.12, the line-width part, re-verified at c96facd: numbers are read as pixels (`lwidth(.3)` is 0.3px) and keywords use a private ladder whose ratios are not Stata's; `vvvthin` is missing, as is `none`; `#pt` and `*#` are refused; negative unit and multiplier forms are accepted where twoway refuses them. Sources: GAPS2-D2-c, GAPS2-D2-a, GAPS2-D2-b, GAPS2-D2-e (line widths).
+  - Suggested fix: WP-30 section 13 (Stata line-width ladder): replace the private width map with Stata's lwidth ladder in Stata units at every line site, refusing the forms twoway refuses (maintainer decisions M1 and M5).
+  - Resolution: Not fixed because WP-30 section 13 has not landed. Graded S2 (WP-30): twoway's width forms are refused, and every width keyword is drawn at another width.
+
+- [ ] Title: Stata colour forms such as navy*.5, CMYK, HSV, bg and fg are refused, and an unknown colour is drawn in the scheme's default where twoway draws it black with a note
+  - File Names and Line Numbers: dash_render.py at c96facd: OptionTranslator.parse_color_alpha (5379), OptionTranslator.translate_mcolor (5445), SchemeParser._color (6466); scripts/extract_scheme_truth.py
+  - Description: DROPIN-REMAINING.md:103 P1.13, the grammar part, re-verified at c96facd: `navy*.5`, CMYK, HSV and bg/fg are refused. An unreadable scheme colour falls back to #000000 (twoway does the same for some keys). Also measured: an unknown option colour is drawn in the scheme's default where twoway draws it black with a note, colour names are lower-cased where twoway is case-sensitive, and dash accepts forms twoway refuses. Sources: GAPS2-D7-a, GAPS2-D7-c, GAPS2-D7-d, GAPS2-D7-e.
+  - Suggested fix: WP-30 section 30 (Stata colour grammar): read Stata's whole colour grammar in options and scheme files through one reader, drawing an unknown colour black with twoway's note and refusing what twoway refuses (maintainer decision M5).
+  - Resolution: Not fixed because WP-30 section 30 has not landed. Graded S2 (WP-30): twoway's colour forms are refused.
+
+- [ ] Title: A bare *# or %# colour, such as mcolor(*.5), is refused or loses the site's default colour, where twoway adjusts that default
+  - File Names and Line Numbers: dash_render.py at c96facd: OptionTranslator.translate_mcolor (5445), _textbox_color (4839), _resolve_kpi_color (17054), _dash_graph_color (15407), _dash_refline_draw (26327)
+  - Description: DROPIN-REMAINING.md:103 P1.13, the default-colour part, re-verified at c96facd: `*.5` (the default colour at an adjusted intensity) is refused, and a bare %# does not keep the site's default colour, at every colour site: markers, lines, fills, bands, marker labels, text, axes, regions, the KPI and reference lines. Sources: GAPS2-D7-b.
+  - Suggested fix: WP-30 section 43 (Default colour and opacity at every colour site): give a bare *# and %# the site's own default colour at every colour site, composed with the intensity blend and the named style, in both modes.
+  - Resolution: Not fixed because WP-30 section 43 has not landed. Graded S2 (WP-30): a twoway colour form is refused.
+
+- [ ] Title: pstyle() works only on the four CI fits, and lstyle, mstyle, mlstyle, astyle, alstyle, bstyle and their siblings are not read
+  - File Names and Line Numbers: dash.ado at c96facd: _dash_parse_plot_opts (897), _dash_plot_opts_to_json (3131); dash_render.py at c96facd: _dash_plot_style_indices (26709), GlyphMapper._ci_band_style (8307), SchemeParser (5646)
+  - Description: DROPIN-REMAINING.md:104 P1.14, the p1-p15 part, re-verified at c96facd: `pstyle()` works only on the four CI fits. `lstyle`, `mstyle`, `mlstyle`, `astyle`, `alstyle`, `bstyle` and `dstyle` are not read; nor are twoway's `p()` spelling, `blstyle()` and `clstyle()`. Sources: REM-§2-S09-lstyle, REM-§2-S09-mstyle, REM-§2-S09-areastyle, REM-S09-73-namedstyles, REM-05-04-S09-g, GAPS2-B11-a, GAPS2-B11-b, GAPS2-D6, AUDIT-29, AUDIT-30 (the p# names).
+  - Suggested fix: WP-30 section 32 (Named styles p1-p15): apply pstyle and the other named-style options with p1-p15 on every type in both modes, in twoway's order, with explicit options winning.
+  - Resolution: Not fixed because WP-30 section 32 has not landed. Graded S2 (WP-30): accepted twoway options are named and not drawn.
+
+- [ ] Title: Style names other than p1-p15, such as ci, histogram, refline and p1bar, are not read by pstyle() and the other style options
+  - File Names and Line Numbers: dash_render.py at c96facd: SchemeParser (5646), OptionTranslator (5098); scripts/extract_scheme_truth.py
+  - Description: DROPIN-REMAINING.md:104 P1.14, the other-names part, re-verified at c96facd: the named-style options read no Stata style name outside p1-p15 (ci, ci2, histogram, foreground, background, grid, refline, none, and the p#line, p#bar, p#area and p#mark suffixes), an unknown name is not noted as twoway notes it, and `dstyle()` is not declared. Sources: GAPS2-B11-c, GAPS2-D6, AUDIT-30 (the other names).
+  - Suggested fix: WP-30 section 36 (Other style names): read every Stata named-style name the shipped style files define through the style bundle, noting an unknown name as twoway does.
+  - Resolution: Not fixed because WP-30 section 36 has not landed. Graded S2 (WP-30): accepted twoway style names are named and not drawn.
+
+- [ ] Title: by() panel labels are appended to the graph title, there is no Graphs by note, composite and missing panels are titled differently, and by(, title()) is ignored
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_facet_label (20107), DashRenderer._facet_label (30049), _dash_by_groups (3436), DashRenderer._build_sources_and_figures (31389), ServerAppBuilder._generate_app_source (33915)
+  - Description: DROPIN-REMAINING.md:105-112 P1.15, the panel-text part, re-verified at c96facd: panel labels are appended to the graph title, and there is no "Graphs by" note; composite and missing panels are titled differently from twoway; `title`, `subtitle`, `note` and `caption` inside `by()` are named in the note and ignored. Also measured: a string by() variable's empty group is drawn as an untitled panel where twoway leaves it out. Sources: GAPS2-B16-b (title, subtitle, note and caption inside by()), GAPS2-B31-a, GAPS2-B31-b, GAPS2-B31-d.
+  - Suggested fix: WP-30 section 28 (by() panel labels and overall text): title each panel apart from the graph title, draw by()'s own title, note and caption once over the array with the Graphs by note, and title composite and missing panels as twoway does, in both modes.
+  - Resolution: Not fixed because WP-30 section 28 has not landed. Graded S2 (WP-30): accepted by() sub-options are named and not drawn, and panel titles differ.
+
+- [ ] Title: by() rows, holes, colfirst, compact, iscale and imargin are named and ignored, bad by() arguments are accepted, and faceted graphs miss the automatic layout
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_parse_by (19941), _dash_by_groups (3436), _dash_reflow (24465), _dash_auto_bs_layout (25115)
+  - Description: DROPIN-REMAINING.md:105-112 P1.15, the grid and size part, re-verified at c96facd: `rows`, `holes`, `colfirst` and `compact` (with `iscale` and `imargin`) are named in the note and ignored; facet aspect ratios miss the automatic layout. (WP-29 note: `YRESCALE` and two `style()` are accepted where twoway refuses them.) Sources: GAPS2-B16-a (rows, holes and colfirst), GAPS2-B16-e (compact, iscale and imargin), REM-10-03.
+  - Suggested fix: WP-30 section 48 (by() grid and size): lay out by() panels with rows(), cols(), holes() and colfirst, size the array and its spacing in Stata units, and refuse bad by() arguments with twoway's codes and words.
+  - Resolution: Not fixed because WP-30 section 48 has not landed. Graded S2 (WP-30): accepted by() sub-options are named and not drawn.
+
+- [ ] Title: Under by() every panel draws a legend and repeats both axes, and by(, legend()) and the i* axis options are named and ignored
+  - File Names and Line Numbers: dash_render.py at c96facd: DashRenderer._build_sources_and_figures (31389), _dash_reflow (24465), _dash_share_by_scales (23845), _dash_apply_legend (21400), GlyphMapper._apply_colorvar (8887)
+  - Description: DROPIN-REMAINING.md:105-112 P1.15, the axes and legend part, re-verified at c96facd: every panel draws a legend and repeats both axes; `legend()` and the `i*` axes inside `by()` are named in the note and ignored. (WP-29 notes: dash draws an explicit axis-2 title on every panel where twoway draws none, and a colour key on every panel where twoway draws one only under by(, clegend(on)).) Sources: GAPS2-B16-c (the i*/noi* axes and noedgelabel), GAPS2-B16-d (legend() inside by()), GAPS2-B26-d, GAPS2-B31-c, AUDIT-71, AUDIT-72.
+  - Suggested fix: WP-30 section 53 (Shared axes and keys under by()): show outer axes and edge labels only, one legend and at most one colour key, honouring the i* options and by(, legend()), in both modes.
+  - Resolution: Not fixed because WP-30 section 53 has not landed. Graded S2 (WP-30): accepted by() sub-options are named and not drawn.
+
+- [ ] Title: Legend keys and default axis titles do not follow twoway: fits are keyed Fitted values, pc and immediate types by their type name, the y title follows the first layer, and range types get none
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_legend_key (26925), _dash_legend_keys (26960), _dash_axis_labels (21665), _dash_add_secondary_axes (23034), GlyphMapper.map_scatteri (13627); dash.ado at c96facd: _dash_process_segment (3454; the function branch's y name)
+  - Description: DROPIN-REMAINING.md:113-120 P1.16, re-verified at c96facd: lowess, lpoly, mband, mspline and function are all keyed "Fitted values"; the pc family and scatteri/pci are keyed by the type name; the y title comes from the first layer even when the layers' labels differ; range types get no y title. (WP-29 P0.3 closed the histogram and kdensity keys; dash draws no default title on yaxis(2) where twoway titles it by its layers' variables.) Sources: GAPS2-A13-a, GAPS2-A13-b, GAPS2-A13-c, GAPS2-A13-d, GAPS2-A13-e, GAPS2-A13-f, GAPS2-C10-a, GAPS2-C10-b, GAPS2-C10-c, GAPS2-C10-d.
+  - Suggested fix: WP-30 section 19 (Legend keys and default axis titles): key every layer and choose default axis titles by twoway's text and its first-equals-last rule, including range types and yaxis(2), in both modes.
+  - Resolution: Not fixed because WP-30 section 19 has not landed. Graded S1 (WP-30): silently misleading text: an axis titled for one variable while its layers show others.
+
+- [ ] Title: bar and rbar default to 0.8 of the smallest x gap, rbar ignores barwidth() without a note, rcap caps ignore msize(), and rcapsym draws caps twoway does not
+  - File Names and Line Numbers: dash_render.py at c96facd: GlyphMapper.map_bar (10122), GlyphMapper.map_rbar (13005), GlyphMapper.map_rcap (13153), GlyphMapper.map_rcapsym (13512), GlyphMapper._tag_spacing (10293), _dash_copy_redraw_geometry (24941)
+  - Description: DROPIN-REMAINING.md:121-128 P1.17, the width and cap part, re-verified at c96facd: bar and rbar default to 0.8× the smallest x gap, not 1 x-unit; rbar ignores `barwidth()` with no note; rcap cap width ignores `msize()`, and rcapsym draws caps twoway does not. (WP-29 notes: barwidth() on a date axis is read in ms; P0.18 fixed the served redraw widths only.) Sources: GAPS2-A3-a, GAPS2-A3-b, GAPS2-A3-d, GAPS2-A3-e, AUDIT-44.
+  - Suggested fix: WP-30 section 14 (Bar widths and range caps): draw bars one x-unit wide, honour rbar barwidth(), size rcap caps from msize() and draw rcapsym without caps, unchanged by filter moves in both modes.
+  - Resolution: Not fixed because WP-30 section 14 has not landed. Graded S1 (WP-30): a user's rbar barwidth() is dropped without a note.
+
+- [ ] Title: bar, area, spike and dropline draw from 0 rather than twoway's default base, and a 0 outside the data extends the axis to it
+  - File Names and Line Numbers: dash_render.py at c96facd: GlyphMapper.map_bar (10122), GlyphMapper.map_area (10029), GlyphMapper.map_spike (10311), GlyphMapper.map_dropline (13398), _dash_finish_count_ticks (23732), _dash_units_to_axis (569)
+  - Description: DROPIN-REMAINING.md:121-128 P1.17, the base part, re-verified at c96facd: bar's base is 0, not twoway's rule; when 0 is outside the data, area, bar, spike and dropline draw from 0 and extend the axis to it. On a date axis that default base is 01jan1970, not 01jan1960 (the default-base half of P1.23's base bullet). Sources: GAPS2-A3-c, GAPS2-A3-f, AUDIT-42.
+  - Suggested fix: WP-30 section 27 (twoway's default base and axis extent): draw bar, area, spike and dropline from twoway's default base clamped into the finished scale, keeping a default base out of the axis range, in both modes and after every move.
+  - Resolution: Not fixed because WP-30 section 27 has not landed. Graded S1 (WP-30): silently different bars: every length is drawn from another base, and the axis is stretched to 0.
+
+- [ ] Title: The axis look sub-options nolabels, noticks, off, noline, line colour, width and pattern, alt, titlegap, labcolor, tlength and tposition are not honoured, and anglestyle names are dropped silently
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_parse_axis_spec (22602), _parse_axis_angle (4998), _DASH_ANGLESTYLES (4953), _dash_apply_tick_option (22882), _dash_apply_axis_spec (22714)
+  - Description: DROPIN-REMAINING.md:129 P1.18, the look part, re-verified at c96facd: `nolabels`, `noticks`, `xscale(off)`, `noline`, axis line colour, width and pattern, `alt` and `titlegap` are not honoured; `angle(rvertical)`, `angle(stacked)` and other anglestyle names are dropped silently; `labcolor`, `tlength` and `tposition` are not honoured. Also measured: `angle(Vertical)` and `angle(400)` are accepted, and sub-options are read from label text. Sources: GAPS2-B21-c, REM-09-02-NOLABELS-NOTICKS, REM-09-02-SCALE-OFF, REM-09-02-SCALE-LINE, REM-09-02-SCALE-TITLEGAP, GAPS2-B23-b, GAPS2-B23-c, GAPS2-B23-d, GAPS2-B23-e, GAPS2-B23-f, REM-09-02-LABEL-ANGLE, GAPS2-D9-a, REM-09-02-LABEL-LABCOLOR, REM-09-02-LABEL-TICKGEOM, GAPS2-B21-e, AUDIT-28.
+  - Suggested fix: WP-30 section 31 (Axis look sub-options): honour each axis look sub-option and every anglestyle name on both axes in both modes, refusing what twoway refuses and staying silent under by() where twoway is (maintainer decisions M5 and M6).
+  - Resolution: Not fixed because WP-30 section 31 has not landed. Graded S2 (WP-30): accepted axis sub-options are named and not drawn.
+
+- [ ] Title: The add sub-option replaces the default ticks instead of adding to them, and an axis(2) add is named and not drawn
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_apply_tick_option (22882), _dash_count_ticker (22176); dash.ado at c96facd: _dash_axis_expand (2537); dash_parse.mata at c96facd: _dash_rep_merge (5715)
+  - Description: DROPIN-REMAINING.md:129 P1.18, the add part, re-verified at c96facd: `add` is not honoured; it replaces the default ticks instead of adding to them. (WP-29 note: add on an axis(2)-routed label is named, not drawn.) Also measured: a repeated add is lost in the Mata merge, and dash.ado expands an a(b)c rule before the renderer, losing what add needs. Sources: REM-09-02-LABEL-ADD, GAPS2-B21-f.
+  - Suggested fix: WP-30 section 52 (The add sub-option): add a rule's ticks to the default ticks, keep them through every re-finish after a move, and draw an axis(2) add, in both modes.
+  - Resolution: Not fixed because WP-30 section 52 has not landed. Graded S1 (WP-30): silently wrong ticks: the axis loses its default labels.
+
+- [ ] Title: Sub-option abbreviations such as legend(c(2) posi(6)), ylabel(, labs(small)) and xline(5, lc(red)) are not recognised
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_legend_parts (21252), _dash_apply_legend (21400), _dash_parse_axis_spec (22602), _dash_refline_instances (26268), _TEXTBOX_SUBOPTS (4639), _dash_apply_z_options (26106)
+  - Description: DROPIN-REMAINING.md:130 P1.19, re-verified at c96facd: sub-option abbreviations are not recognised. This covers legend `c()`, `r()`, `lab()` and `posi()`; axis `labs()`, `glc()` and similar; and xline's `lc()`, `lp()` and `lw()`. Sources: GAPS2-B17-a, GAPS2-B21-d, REM-09-02-LABSIZE-ABBREV, GAPS2-B22-b.
+  - Suggested fix: WP-30 section 10 (Sub-option abbreviations): read legend, axis, reference-line and textbox sub-options by twoway's abbreviations through shared tables in both modes, refusing a capitalised sub-option as twoway does (maintainer decision M5).
+  - Resolution: Not fixed because WP-30 section 10 has not landed. Graded S2 (WP-30): twoway's abbreviations are not read.
+
+- [ ] Title: plotregion() and graphregion() styling sub-options such as style(none), lcolor(), lwidth(), fc() and lc() are dropped with no note
+  - File Names and Line Numbers: dash_render.py at c96facd: _extract_region_color (5048), _extract_region_lcolor (5058), _extract_region_lwidth (5065), _dash_graph_color (15407); dash.sthlp:2717-2721 (Region Styling Options)
+  - Description: DROPIN-REMAINING.md:131 P1.20, the styling part, re-verified at c96facd: `style(none)`, graphregion `lcolor`/`lwidth`, the `i*` options and the abbreviations `fc()`/`lc()` have no effect, and nothing is reported. Also measured: color() sets only the fill where twoway sets fill and outline, colour none paints black, %NN opacity, lpattern() and lstyle(none) are dropped, and repeated copies are not merged. Sources: GAPS2-B18-b, GAPS2-B18-c, GAPS2-B18-d, GAPS2-B18-e, GAPS2-B18-f, AUDIT-66 (styling).
+  - Suggested fix: WP-30 section 38 (plotregion()/graphregion() styling): read every region sub-option and its abbreviations, draw what twoway draws with twoway's bgcolor() semantics and name the rest in one note, refusing what twoway refuses, in both modes.
+  - Resolution: Not fixed because WP-30 section 38 has not landed. Graded S1 (WP-30): options the user gave are dropped without a note.
+
+- [ ] Title: plotregion(margin()) and graphregion(margin()) have no effect and no note, and the plot region's inner box is not drawn
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_padded_range (23489), _dash_apply_scale_ranges (26051); scripts/extract_scheme_truth.py
+  - Description: DROPIN-REMAINING.md:131 P1.20, the margin part, re-verified at c96facd: `margin()` has no effect, and nothing is reported, in plotregion() and graphregion() alike. Sources: GAPS2-B18-a, AUDIT-66 (margins).
+  - Suggested fix: WP-30 section 47 (Plot-region margin and inner box): honour plotregion(margin()) through twoway's plot-region margin and draw the inner box, naming graphregion margins, in both modes and after every move.
+  - Resolution: Not fixed because WP-30 section 47 has not landed. Graded S1 (WP-30): an option the user gave is dropped without a note.
+
+- [ ] Title: xline() and yline() numlists such as xline(2000(500)3000) draw nothing, and lstyle() and lalign() are only named
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_reference_lines (26224), _dash_refline_instances (26268), _dash_refline_draw (26327); dash.ado at c96facd: _dash_parse_graph_opts (682)
+  - Description: DROPIN-REMAINING.md:132 P1.21, the positions and lstyle part, re-verified at c96facd: numlists such as `xline(2000(500)3000)` draw nothing (the note names them); `lstyle` and `lalign` are only named. Also measured: dash accepts positions twoway refuses, keeps duplicate lines, and adds lines one at a time. Sources: GAPS2-B22-a, GAPS2-B22-d (lstyle), AUDIT-64.
+  - Suggested fix: WP-30 section 39 (xline/yline positions, refusals and lstyle): expand numlist positions, refuse in twoway's order what twoway refuses, and draw lstyle() through the style bundle, in both modes.
+  - Resolution: Not fixed because WP-30 section 39 has not landed. Graded S2 (WP-30): accepted twoway positions are named and not drawn.
+
+- [ ] Title: xline() and yline() noextend, extend and style() are only named, so every line spans the whole frame
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_refline_draw (26327), _dash_reference_lines (26224); scripts/extract_scheme_truth.py
+  - Description: DROPIN-REMAINING.md:132 P1.21, the extent part, re-verified at c96facd: `noextend` is only named, as is `style()`, so every line spans the frame where twoway insets it by the plot-region margin. Sources: GAPS2-B22-e, GAPS2-B22-d (style()).
+  - Suggested fix: WP-30 section 50 (xline/yline extend, noextend and style()): draw extend, noextend and style() with the scheme's extend keys over the axis hull, re-finished after every move in both modes.
+  - Resolution: Not fixed because WP-30 section 50 has not landed. Graded S2 (WP-30): accepted sub-options are named and not drawn.
+
+- [ ] Title: The points-free function fallback knows ten functions and draws any other in silence
+  - File Names and Line Numbers: dash_render.py at c96facd: GlyphMapper.map_function (14854), _stata_fn_eval (28877), _dash_note_empty_layer (28349); dash.sthlp:413-418
+  - Description: DROPIN-REMAINING.md:133 P1.22, re-verified at c96facd: `function` evaluates only 10 functions; `normalden`, `normal`, `ln`, `_pi`, `c(pi)`, comparisons, `cond`, `min`, `max`, `round`, `int`, `scalar()` and `_b[]` all draw nothing. (WP-29 note: P0.6 evaluates every function layer of a Stata-built spec with Stata's own generator, which closes these sources there; the points-free fallback still knows ten functions.) Sources: GAPS2-A6-a, GAPS2-A6-b, GAPS2-C5-a, GAPS2-C5-b, GAPS2-C5-c, GAPS2-C5-d, GAPS2-C5-e, GAPS2-C5-f, AUDIT-53.
+  - Suggested fix: WP-30 section 26 (function: closed by disposition): keep the ten-function fallback and give any other function it meets one note naming the function and the remedy, in both modes (maintainer decision M12).
+  - Resolution: Not fixed because WP-30 section 26 has not landed. Graded S3 (WP-30): only a spec built outside Stata reaches the fallback, and it draws nothing in silence.
+
+- [ ] Title: Dates on range, pc, immediate and second axes are drawn at raw or millisecond positions, and a date layer beside a numeric one is drawn in epoch milliseconds
+  - File Names and Line Numbers: dash_render.py at c96facd: _dash_figure_date_kind (788), _dash_axis_vars (821), _dash_axis_date_kind (841), GlyphMapper._on_axis (10646), GlyphMapper.map_scatteri (13627), GlyphMapper.map_function (14854), _dash_secondary_values (23117), _dash_count_axes (23345)
+  - Description: DROPIN-REMAINING.md:134-144 P1.23, the positions part, re-verified at c96facd: scatteri/pci/pcarrowi coordinates and `function range()` are drawn at raw SIF values (1970); range and pc plots with date y get no date axis; a layer on `yaxis(2)`/`xaxis(2)` turns the primary date axis numeric, and the secondary date axis shows epoch ms; a date layer beside a numeric layer on one axis is drawn at epoch ms with no warning (and xlabel(minmax) there reads epoch ms, WP-29 S04/S05 note); base 0 is 1970, not 1960. Sources, matched by content to REMAINING.md:1935-2110 (section 08-04): REM-08-04-C7, REM-08-04-C7b, REM-08-04-C3b, REM-08-04-C3c, REM-08-04-C4, REM-08-04-B2b, REM-08-04-B7a, REM-08-04-B4.
+  - Suggested fix: WP-30 section 35 (Date positions on every axis): place every date in Stata units on the axis it is drawn on, primary or secondary, for range, pc and immediate types and mixed axes, in both modes and after a filter move.
+  - Resolution: Not fixed because WP-30 section 35 has not landed. Graded S1 (WP-30): silently wrong positions: dates drawn near 1970 or in milliseconds.
+
+- [ ] Title: A date colour key shows epoch milliseconds, fallback tooltips ignore display formats, and the histogram tooltip always says Count
+  - File Names and Line Numbers: dash_render.py at c96facd: GlyphMapper._apply_colorvar (8887), _dash_colorvar_cuts (7724), _dash_colorvar_bins (7768), _dash_apply_z_options (26106), _dash_build_hover (27118), GlyphMapper.map_histogram (12451)
+  - Description: DROPIN-REMAINING.md:134-144 P1.23, the text part, re-verified at c96facd: a date `colorvar` key shows ms (colorcuts() on a date are read as ms too); fallback tooltips ignore formats; the histogram tooltip always says "Count". Sources, matched by content to REMAINING.md:2111-2290 (section 08-05): REM-08-05-M1, REM-08-05-C7c, REM-08-05-C10, REM-08-05-M2.
+  - Suggested fix: WP-30 section 17 (Date and format text in keys and tooltips): read a date colour key, its ticks and cuts in Stata units, show fallback tooltips in the variable's display format, and name the histogram's measure, in both modes and after a filter move.
+  - Resolution: Not fixed because WP-30 section 17 has not landed. Graded S1 (WP-30): silently wrong numbers in keys and tooltips.
+
+- [ ] Title: mlabvposition(varname) and mlabtextstyle() are declared and pending but never serialised or drawn
+  - File Names and Line Numbers: dash.ado at c96facd: _dash_parse_plot_opts (897; MLABVposition at 957, the pending entry at 1079), _dash_plot_opts_to_json (3131); dash_parse.mata at c96facd: _dash_extract_vars (2229); dash_render.py at c96facd: GlyphMapper._apply_mlabel_opts (9302)
+  - Description: DROPIN-REMAINING.md:145 P1.24, re-verified at c96facd: `mlabvposition(varname)` is not drawn. It and `mlabtextstyle` are declared and pending but never serialised, and no test checks that declared options reach the spec. Sources: REM-§2-S09-mlabvpos, REM-S09-73-mlabpos, REM-05-04-S09-r, GAPS2-A4-p, GAPS2-B27-c, AUDIT-33, REM-05-04-B6.
+  - Suggested fix: WP-30 section 37 (mlabvposition() and mlabtextstyle()): serialise and draw mlabvposition(varname) per row and mlabtextstyle() from the scheme's textbox styles, refusing what twoway refuses, in both modes and after filter moves.
+  - Resolution: Not fixed because WP-30 section 37 has not landed. Graded S2 (WP-30): accepted twoway options are named and not drawn.
+
+- [ ] Title: Six StataCorp schemes, among them meta and stcolor_mv, are refused r(198) where twoway draws them
+  - File Names and Line Numbers: dash.ado at c96facd: _dash_shipped_schemes (1967); dash_render.py at c96facd: SchemeParser._BUILTIN_NAMES (5704); scripts/extract_scheme_truth.py; dash.pkg
+  - Description: DROPIN-REMAINING.md:146 P1.25, the shipped-schemes part, re-verified at c96facd: six StataCorp schemes, including meta and stcolor_mv, are refused r(198) where twoway draws them, and an inherited `c(scheme)` naming one of them is drawn as s2color. Sources: GAPS2-X5-c (the six-scheme part; the refusal has no source id of its own).
+  - Suggested fix: WP-30 section 07 (Ship the six StataCorp schemes): ship meta, stcolor_meta, stcolor_mv, stcoloralias, stgcolor_meta and stgcolor_mv, transcribed from Stata 19.5 as the other twenty are.
+  - Resolution: Not fixed because WP-30 section 07 has not landed. Graded S2 (WP-30): schemes twoway draws are refused.
+
+- [ ] Title: scheme(NAME) is looked for in two places only, never along Stata's ado-path or under Stata's scheme-NAME.scheme file name, and its refusal does not list the valid names
+  - File Names and Line Numbers: dash.ado at c96facd: _dash_validate_value (2125; the scheme check), _dash_shipped_schemes (1967); dash_render.py at c96facd: SchemeParser.resolve_or_fallback (5844), SchemeParser._include (6389), SchemeParser._parse_file (6198)
+  - Description: DROPIN-REMAINING.md:146 P1.25, the lookup part, re-verified at c96facd: `scheme(NAME)` never tries Stata's own `scheme-NAME.scheme` file name. An inherited `c(scheme)` that Stata found is drawn as s2color. `#include` has the same limits. The error message does not list the valid names. Also measured: a working-directory file overrides a StataCorp name, the reverse of twoway, and the help's remedy fails. Sources: REM-§3-f, GAPS2-X5-a, GAPS2-X5-c, GAPS2-X5-d, REM-§3-e.
+  - Suggested fix: WP-30 section 34 (Stata's scheme lookup along the ado-path): resolve scheme(NAME), an inherited c(scheme) and #include along Stata's whole ado-path under both file names, with name, containment, regular-file and size guards, parsing scheme files as data and never running them (maintainer decision M7).
+  - Resolution: Not fixed because WP-30 section 34 has not landed. Graded S2 (WP-30): schemes Stata finds are refused or drawn as s2color.
+
+- [ ] Title: Notes print as raw Python warnings with internal paths, a warnings filter of ignore hides them, and one of error turns a note into r(7102)
+  - File Names and Line Numbers: dash_render.py at c96facd: main (36823), _dash_warn_once (15363); dash.ado at c96facd: _dash_process_segment (3454), _dash_report_ignored (4951), _dash_render_immediate (6432), _dash_build (8072); dash_parse.mata at c96facd: _dash_say (676)
+  - Description: DROPIN-REMAINING.md:147-153 P1.26, the channel part, re-verified at c96facd: notes print as raw UserWarnings with internal paths; a session `warnings` filter of "ignore" silences them; one of "error" turns a note into r(7102). Also measured: dash.ado's own notes are hidden by quietly while the renderer's survive it. Sources: GAPS2-X4-a, GAPS2-X4-b, GAPS2-X4-c, GAPS2-X4-d, GAPS2-I-sum-logging.
+  - Suggested fix: WP-30 section 06 (One note channel): print every note through one SMCL-escaped channel in twoway's (note: ...) form, unaffected by the session's warnings filters, shown under quietly and hidden by capture as twoway's notes are.
+  - Resolution: Not fixed because WP-30 section 06 has not landed. Graded S2 (WP-30): notes fail visibly: raw warnings, hidden notes and a note turned into an error.
+
+- [ ] Title: dash build, server and dash serve report no option or empty-layer notes, and the served child's stderr never reaches Stata
+  - File Names and Line Numbers: dash_render.py at c96facd: ServerAppBuilder._generate_app_source (33915), _dash_launch_app (37206), _dash_note_empty_layer (28349), DashRenderer._make_figure_body (30203)
+  - Description: DROPIN-REMAINING.md:147-153 P1.26, the served part, re-verified at c96facd: `dash build, server` reports no option or empty-layer notes; the served child's stderr never reaches Stata. (WP-29 note: the served app prints no empty-layer note where the saved page notes "drew nothing"; under maintainer decision M6 a layer whose own if/in keeps no row is silent in both modes, as in twoway.) Sources: GAPS2-F5a, GAPS2-F5b, GAPS2-F5c (closed at c96facd).
+  - Suggested fix: WP-30 section 23 (Served notes reach Stata): run a trial render at build for dash build, server, relay the served child's notes redacted and bounded, and keep an empty own-if layer silent in both modes (maintainer decision M6).
+  - Resolution: Not fixed because WP-30 section 23 has not landed. Graded S2 (WP-30): the served route drops the notes the saved route prints.
+
+- [ ] Title: The drop-in command form fails: a twoway prefix is refused, saving(name, asis) writes a file named after the whole argument, dash build, saving(f, replace) is refused, and batch mode opens a browser
+  - File Names and Line Numbers: dash.ado at c96facd: dash (84), _dash_browser_wanted (5696), _dash_dashboard_browser (5739), _dash_open_page (5781), _dash_build (8072); dash_render.py at c96facd: _validate_output_path (36678)
+  - Description: DROPIN-REMAINING.md:154-161 P1.27, re-verified at c96facd: `set graphics off` and batch mode still open a browser; a `twoway`/`tw`/`graph twoway` prefix is refused; `saving(n, asis)` writes a file literally named "n, asis.html"; `dash build, saving(f, replace)` is refused; `..` and `&` in a saving path are refused where twoway accepts them. Sources: CRIT-04, CRIT-02, CRIT-03, CRIT-09, GAPS2-I14-a, GAPS2-I14-b.
+  - Suggested fix: WP-30 section 12 (Drop-in command form and saving() grammar): accept the twoway prefixes and one saving() grammar on every route, open no browser in batch mode or under set graphics off, and accept the path characters twoway accepts while keeping the sink checks (maintainer decisions M5 and M11).
+  - Resolution: Not fixed because WP-30 section 12 has not landed. Graded S2 (WP-30): twoway's command forms are refused or misread.
+
+- [ ] Title: dash returns no r(filename), and graph export after dash fails r(601) or silently exports an earlier Stata graph
+  - File Names and Line Numbers: dash.ado at c96facd: dash (84; not rclass), _dash_render_immediate (6432), _dash_build (8072)
+  - Description: DROPIN-REMAINING.md:162 P1.28, the Stata part, re-verified at c96facd: `graph export` after dash fails r(601), or silently exports a stale earlier graph. There is no `r(filename)`. Also measured: saving(x.png) silently writes x.png.html. Sources: GAPS2-J7-a, GAPS2-J7-c, GAPS2-J7-b (documented); GAPS2-E10c (a scripted export) waits for the deferred platform package (maintainer decision M8).
+  - Suggested fix: WP-30 section 22 (r(filename) and the stale-graph note): make dash rclass with r(filename), note once when graph export would write an older Stata graph, and document what graph export can and cannot do after dash (maintainer decision M8).
+  - Resolution: Not fixed because WP-30 section 22 has not landed. Graded S2 (WP-30): a twoway companion fails or exports the wrong graph.
+
+- [ ] Title: Neither mode offers a vector export: the toolbar saves only a PNG at the screen's resolution
+  - File Names and Line Numbers: dash_render.py at c96facd: _DASH_FIGURE_TOOLS (24418), _dash_save_filename (24431), _dash_name_save (24445)
+  - Description: DROPIN-REMAINING.md:162 P1.28, the SVG part, re-verified at c96facd: there is no SVG backend; figures are canvas or webgl only, and the only image is the toolbar's PNG at device-pixel resolution. Sources: GAPS2-E10b.
+  - Suggested fix: WP-30 section 54 (Client-side Save as SVG): add one Save as SVG toolbar action to every dashboard in both modes, running under the page's hashed or nonced policy (maintainer decision M8).
+  - Resolution: Not fixed because WP-30 section 54 has not landed. Graded S3 (WP-30): a missing export format; the PNG save works.
+
+- [ ] Title: Both content security policies allow inline scripts, and percent and exclamation signs in a saving path reach the Windows shell
+  - File Names and Line Numbers: dash_render.py at c96facd: _DASH_CSP_SERVED (3699), _dash_csp_meta (3722), _dash_served_template (3756), _render_bootstrap_html (30857); dash.ado at c96facd: _dash_open_page (5781)
+  - Description: DROPIN-REMAINING.md:163 P1.29, re-verified at c96facd: both CSPs keep `unsafe-inline`; they need hashes or a nonce, plus a browser test. `%` and `!` in saving paths reach Windows `start` via cmd.exe; whether they expand there is unmeasured on Windows. The help does not state saving()'s character rule. Sources: GAPS2-I12-a, GAPS2-I12-b, GAPS2-I12-c, GAPS2-I14-c, GAPS2-I14-d.
+  - Suggested fix: WP-30 section 04 (CSP without 'unsafe-inline'; safe Windows opener): hash every inline script of the saved page and nonce the served one, prove the policy in a browser in both modes, and open no path holding a cmd metacharacter on Windows (maintainer decision M11).
+  - Resolution: Not fixed because WP-30 section 04 has not landed. Graded S2 (WP-30): an injected inline script is not blocked by the policy, and user path text reaches cmd.exe.
+
+- [ ] Title: The bokeh dependency has no ceiling or run-time version check, and the Bokeh internals dash's security relies on are not checked
+  - File Names and Line Numbers: dash_setup.ado at c96facd: dash_setup (19; its package list at 285); dash_render.py at c96facd: _dash_strict_match_host (3836), _dash_served_template (3756)
+  - Description: DROPIN-REMAINING.md:164 P1.30, re-verified at c96facd: there is no bokeh ceiling and no run-time `bokeh.__version__` check. The text-sink XSS safety is verified only on 3.8 and 3.9. The setup gate never reports "outside the verified range". dash also depends on Bokeh internals (`match_host`, `templates.FILE`). (WP-29 note: dash_setup does no hash-pinned installs.) Sources: GAPS2-H4b, GAPS2-H4c, GAPS2-H4d, GAPS2-H4e, GAPS2-I7-a, GAPS2-I7-b, GAPS2-K5-a, GAPS2-K5-b, GAPS2-K5-c.
+  - Suggested fix: WP-30 section 41 (Verified bokeh window; internals fail closed): install and check bokeh inside one verified window, note above it and refuse below it at run time, and refuse to serve when the Bokeh internals dash relies on change (maintainer decisions M9 and M10).
+  - Resolution: Not fixed because WP-30 section 41 has not landed. Graded S2 (WP-30): an unverified Bokeh release is installed and run with no word.
+
+- [ ] Title: The served app has no session cap or idle lifetime and decodes the whole dataset again for every session
+  - File Names and Line Numbers: dash_render.py at c96facd: main (36823; its argparse flags), ServerAppBuilder._generate_app_source (33915), _dash_launch_app (37206); dash.ado at c96facd: _dash_serve (8369)
+  - Description: DROPIN-REMAINING.md:165 P1.31, the capacity part, re-verified at c96facd: there is no concurrent-session cap and no unused-session lifetime. Each session re-decodes the whole dataset. Sources: GAPS2-F3a, GAPS2-F3b, GAPS2-F3c, GAPS2-I4-a, GAPS2-I4-b, GAPS2-G14-d.
+  - Suggested fix: WP-30 section 46 (Served session capacity and memory): decode the data once per process, cap concurrent sessions with a busy page and close idle sessions, set from dash serve and dash build, server.
+  - Resolution: Not fixed because WP-30 section 46 has not landed. Graded S2 (WP-30): a served app can be exhausted by open sessions.
+
+- [ ] Title: One reader's filter-move recompute blocks the served event loop for every other reader
+  - File Names and Line Numbers: dash_render.py at c96facd: ServerAppBuilder._generate_app_source (33915; the generated _dash_redraw_for at 35039 and _on_filter_change at 35854), _dash_event_throttle (24330)
+  - Description: DROPIN-REMAINING.md:165 P1.31, the recompute part, re-verified at c96facd: one event loop is blocked by recomputes: lowess takes 27.7 s at N=100k (lpolyci's 8.7 s was closed by WP-29 P0.9). Sources: GAPS2-F3d, GAPS2-C-intro-served-cost.
+  - Suggested fix: WP-30 section 57 (Served recompute off the event loop): run filter-move recomputes on a worker thread, apply results on the next tick and drop stale ones, after a thread-safety audit of the final served move path.
+  - Resolution: Not fixed because WP-30 section 57 has not landed. Graded S2 (WP-30): one slow recompute freezes every session.
+
+- [ ] Title: A missing numpy, pandas or bokeh or an old Python fails with a bare ModuleNotFoundError or SyntaxError, and dash_setup's first Python call is uncaptured
+  - File Names and Line Numbers: dash_render.py at c96facd: the import block (82-118); dash.ado at c96facd: _dash_require_python (206), _dash_do_render (402), _dash_xm_load (4576); dash_setup.ado at c96facd: dash_setup (19; its first python: call at 92)
+  - Description: DROPIN-REMAINING.md:166 P1.32, re-verified at c96facd: a missing numpy, pandas or bokeh gives a bare ModuleNotFoundError. An old Python gives a SyntaxError. `dash_setup`'s first Python call is uncaptured. Sources: GAPS2-H6a, GAPS2-H6b, GAPS2-H6c, GAPS2-H6d.
+  - Suggested fix: WP-30 section 25 (Render-time dependency guards): guard the renderer's imports and the generated app's header with one message naming dash_setup, check the packages from Stata before rendering, and capture dash_setup's first Python call.
+  - Resolution: Not fixed because WP-30 section 25 has not landed. Graded S2 (WP-30): a missing dependency fails with an internal error.
+
+- [ ] Title: The Python floor of 3.13 turns away 3.11 and 3.12 users, and dash_setup reports failure although dash may render
+  - File Names and Line Numbers: dash_setup.ado at c96facd: _dash_pymin (489), _dash_setup_summary (672); dash.ado at c96facd: _dash_require_python (206); dash.pkg (Requires)
+  - Description: DROPIN-REMAINING.md:167 P1.33, re-verified at c96facd: the Python floor of 3.13 excludes 3.11/3.12 users. Setup reports failure although dash may still render. Sources: GAPS2-H4g.
+  - Suggested fix: WP-30 section 05 (Measured Python floor): run both test suites under Python 3.11 and 3.12 in scratch environments and lower the declared floor to the lowest version that passes (maintainer decisions M3 and M10).
+  - Resolution: Not fixed because WP-30 section 05 has not landed. Graded S2 (WP-30): a supported Python is turned away.
+
+- [ ] Title: The certification runners hard-code arch -arm64 and the maintainer's paths, so they run on no other machine
+  - File Names and Line Numbers: scripts/stata_slot.sh:10, scripts/run_cert_suite.sh:17, scripts/run_release_gate.sh:34 and 42, scripts/stata_python_exec.sh:17, test/run_all_cscripts.do:4-6, scripts/regen_option_surface.py:17, scripts/wire_option_reporting.py:9, and the extractors under scripts/ that repeat them
+  - Description: DROPIN-REMAINING.md:168 P1.34, re-verified at c96facd: Windows, Linux, Intel Mac and GUI Stata are untested. `arch -arm64` and the maintainer's path are hard-coded in the runners. Whether anything actually breaks is unclear. Under maintainer decision M4 WP-30 makes the runners portable only, and measuring other platforms moves to a later package. Sources: GAPS2-K1-a, GAPS2-K1-b; GAPS2-H-intro-platforms and GAPS2-H-intro-gui (deferred).
+  - Suggested fix: WP-30 section 02 (Portable runners): give every runner and extractor one Stata-invocation rule with no hard-coded architecture prefix or maintainer path, choosing the prefix from the binary itself (maintainer decision M4).
+  - Resolution: Not fixed because WP-30 section 02 has not landed. Graded S3 (WP-30): test runners only; no user's output changes.
+
+- [ ] Title: dash declares Stata 16.0, but only StataNow 19.5 has ever run it or made its truth fixtures
+  - File Names and Line Numbers: dash.ado at c96facd: dash (84-85) and the other version 16.0 statements (79 in the file); dash_setup.ado at c96facd: its 12 version 16.0 statements, _dash_pymin (489); dash.pkg; scripts/wire_option_reporting.py
+  - Description: DROPIN-REMAINING.md:169 P1.35, re-verified at c96facd: `version 16.0` is declared, but only StataNow 19.5 is ever run. Every truth fixture is also 19.5-only. Sources: GAPS2-H-intro-stataver, GAPS2-J8-e, GAPS2-K3-d.
+  - Suggested fix: WP-30 section 03 (Stata 19 floor declared and enforced): declare version 19 in every program and refuse an older Stata with one clear message (maintainer decision M2).
+  - Resolution: Not fixed because WP-30 section 03 has not landed. Graded S2 (WP-30): a Stata 16 to 18.5 user meets an unmeasured failure instead of a clear refusal.

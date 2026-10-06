@@ -312,6 +312,76 @@ and now matches Stata.
 - The mean of a %tm variable holding 2001m1 and 2001m3 read 2001m1; it now
   reads 2001m2. (WP-29, P0.20)
 
+**WP-30 (drop-in P1, 03oct2026)**
+
+<!-- WP-30 P1.1a -->
+
+<!-- WP-30 P1.2a -->
+
+<!-- WP-30 P1.2b -->
+
+<!-- WP-30 P1.3a -->
+
+<!-- WP-30 P1.3b -->
+
+<!-- WP-30 P1.4a -->
+
+<!-- WP-30 P1.4b -->
+
+<!-- WP-30 P1.5 -->
+
+<!-- WP-30 P1.8a -->
+
+<!-- WP-30 P1.8b -->
+
+<!-- WP-30 P1.9a -->
+
+<!-- WP-30 P1.11a -->
+
+<!-- WP-30 P1.11b -->
+
+<!-- WP-30 P1.12a -->
+
+<!-- WP-30 P1.12b -->
+
+<!-- WP-30 P1.13a -->
+
+<!-- WP-30 P1.13b -->
+
+<!-- WP-30 P1.14a -->
+
+<!-- WP-30 P1.14b -->
+
+<!-- WP-30 P1.15a -->
+
+<!-- WP-30 P1.15b -->
+
+<!-- WP-30 P1.15c -->
+
+<!-- WP-30 P1.16 -->
+
+<!-- WP-30 P1.17a -->
+
+<!-- WP-30 P1.17b -->
+
+<!-- WP-30 P1.18a -->
+
+<!-- WP-30 P1.18b -->
+
+<!-- WP-30 P1.20a -->
+
+<!-- WP-30 P1.20b -->
+
+<!-- WP-30 P1.21a -->
+
+<!-- WP-30 P1.21b -->
+
+<!-- WP-30 P1.23a -->
+
+<!-- WP-30 P1.23b -->
+
+<!-- WP-30 P1.25b -->
+
 ### Security
 
 - Saved and served pages carry a `default-src 'none'` Content Security
@@ -408,6 +478,16 @@ and now matches Stata.
   was asked to open in the last minute, and the path printed under
   $dash_nobrowser moves there. (WP-29, P0.14)
 
+<!-- WP-30 P1.11a -->
+
+<!-- WP-30 P1.25b -->
+
+<!-- WP-30 P1.29 -->
+
+<!-- WP-30 P1.30 -->
+
+<!-- WP-30 P1.31a -->
+
 ### New
 
 - Six more schemes, twenty in all: s1manual, s2manual, s2gmanual, s2color8,
@@ -448,6 +528,20 @@ and now matches Stata.
 - `dash serve` inherits the preceding `dash build`'s options (WP-03). A KPI
   percentile may be any `pNN` strictly between 0 and 100, and the twoway
   abbreviations `mbands` and `fn` are accepted (WP-23).
+
+<!-- WP-30 P1.6 -->
+
+<!-- WP-30 P1.7 -->
+
+<!-- WP-30 P1.10 -->
+
+<!-- WP-30 P1.25a -->
+
+<!-- WP-30 P1.28a -->
+
+<!-- WP-30 P1.28b -->
+
+<!-- WP-30 P1.31a -->
 
 ### Fixed
 
@@ -595,6 +689,54 @@ and now matches Stata.
   anywhere, the server is no longer stopped: the link is printed once, after
   a warning line, and the dashboard keeps serving. (WP-29, P0.12a)
 
+<!-- WP-30 P1.1a -->
+
+<!-- WP-30 P1.1b -->
+
+<!-- WP-30 P1.5 -->
+
+<!-- WP-30 P1.6 -->
+
+<!-- WP-30 P1.7 -->
+
+<!-- WP-30 P1.8a -->
+
+<!-- WP-30 P1.8b -->
+
+<!-- WP-30 P1.9a -->
+
+<!-- WP-30 P1.10 -->
+
+<!-- WP-30 P1.12a -->
+
+<!-- WP-30 P1.12b -->
+
+<!-- WP-30 P1.13a -->
+
+<!-- WP-30 P1.15b -->
+
+<!-- WP-30 P1.17a -->
+
+<!-- WP-30 P1.18a -->
+
+<!-- WP-30 P1.19 -->
+
+<!-- WP-30 P1.20a -->
+
+<!-- WP-30 P1.21a -->
+
+<!-- WP-30 P1.24 -->
+
+<!-- WP-30 P1.26a -->
+
+<!-- WP-30 P1.26b -->
+
+<!-- WP-30 P1.27 -->
+
+<!-- WP-30 P1.28a -->
+
+<!-- WP-30 P1.35 -->
+
 ### Removed
 
 - `dash_setup` no longer installs or checks scipy or statsmodels. No
@@ -649,6 +791,41 @@ and now matches Stata.
   `--user` installs is found in the same run. (WP-29, P0.19)
 - `dash_setup, garbage(1)` is r(198), was r(101), because the command now
   takes an option. (WP-29, P0.19)
+
+<!-- WP-30 P1.30 -->
+
+<!-- WP-30 P1.32 -->
+
+<!-- WP-30 P1.33 -->
+
+<!-- WP-30 P1.35 -->
+
+### Fixed in WP-30
+
+Failures the drop-in re-audit of 30sep2026 ranked P1 that WP-30 fixed
+without changing a drawn result; the results that changed are the WP-30
+group under Results that change, and the security, behaviour, new and
+requirement changes sit in their own lists.
+
+<!-- WP-30 P1.1b -->
+
+<!-- WP-30 P1.9b -->
+
+<!-- WP-30 P1.19 -->
+
+<!-- WP-30 P1.22 -->
+
+<!-- WP-30 P1.24 -->
+
+<!-- WP-30 P1.26a -->
+
+<!-- WP-30 P1.26b -->
+
+<!-- WP-30 P1.27 -->
+
+<!-- WP-30 P1.31b -->
+
+<!-- WP-30 P1.34 -->
 
 ### Fixed in WP-29
 
