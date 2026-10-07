@@ -1585,6 +1585,85 @@ if inlist("`only'", "", "S08") {
 local only : env WP30_ONLY
 if inlist("`only'", "", "S09") {
     display as text "S09 start " c(current_date) " " c(current_time)
+
+    // TX-01 (guard, the truth): twoway draws each TeX pair as typed.
+    sysuse auto, clear
+    quietly twoway scatter mpg weight, title("\(y\)") subtitle("\[z\]") ///
+        note("\$\$ x \$\$") xtitle("\(a\) w") xlabel(2000 "\(t\)" 3000) ///
+        legend(on label(1 "\(k\)")) name(s09tx, replace)
+    cert_svg_export, name(s09tx) file("`w30_work'/s09tx.svg")
+    local s09_rc = r(rc)
+    local s09_svg "`r(file)'"
+    _w30_expect TX-01 "(`s09_rc' == 0)" "graph export rc `s09_rc'"
+    foreach t in "\(y\)" "\[z\]" "\$\$ x \$\$" "\(a\) w" "\(t\)" "\(k\)" {
+        cert_svg_has_text, file("`s09_svg'") text(`"`t'"')
+        local s09_f = r(found)
+        _w30_expect TX-01 "(`s09_f' == 1)" `"twoway did not draw `t' as typed"'
+    }
+    _w30_done TX-01 "twoway draws each TeX pair as typed"
+
+    // TX-02: the same options in dash: the saved page ships no MathJax.
+    quietly dash scatter mpg weight, title("\(y\)") subtitle("\[z\]") ///
+        note("\$\$ x \$\$") xtitle("\(a\) w") xlabel(2000 "\(t\)" 3000) ///
+        legend(on label(1 "\(k\)")) saving("`w30_work'/s09tx.html", replace)
+    cert_file_has "`w30_work'/s09tx.html", needle("bokeh-mathjax")
+    local s09_mj = r(found)
+    _w30_expect TX-02 "(`s09_mj' == 0)" "the saved page ships bokeh-mathjax"
+    _w30_done TX-02 "a saved page with TeX pairs ships no MathJax"
+
+    // TX-03: the title is the typed text with its delimiters broken (the
+    // page JSON writes U+2060 as \u2060 and a backslash as \\).
+    cert_file_has "`w30_work'/s09tx.html", needle("\\\u2060(y\\\u2060)")
+    local s09_in = r(found)
+    cert_file_has "`w30_work'/s09tx.html", needle(`""text":"\\(y\\)""')
+    local s09_raw = r(found)
+    _w30_expect TX-03 "(`s09_in' == 1 & `s09_raw' == 0)" ///
+        "title keeps a live pair (inert `s09_in', raw `s09_raw')"
+    _w30_done TX-03 "the title is the typed text with its delimiters broken"
+
+    // TX-04: the TeX page is the size of the same page in plain words.
+    quietly dash scatter mpg weight, title("y") subtitle("z") note("x") ///
+        xtitle("a w") xlabel(2000 "t" 3000) legend(on label(1 "k")) ///
+        saving("`w30_work'/s09plain.html", replace)
+    checksum "`w30_work'/s09tx.html"
+    local s09_n1 = r(filelen)
+    checksum "`w30_work'/s09plain.html"
+    local s09_n0 = r(filelen)
+    display as text "S09 sizes: TeX page `s09_n1' bytes, plain page `s09_n0' bytes"
+    _w30_expect TX-04 "(abs(`s09_n1' - `s09_n0') < 2000)" ///
+        "TeX page `s09_n1' bytes against plain `s09_n0'"
+    _w30_done TX-04 "the TeX page is the plain page's size"
+
+    // TX-05: labels reach the canvas as typed (variable labels as axis
+    // titles, a value label as a by() panel title).  No $name form: twoway
+    // macro-expands those inside labels (E6), which is not TeX.
+    sysuse auto, clear
+    label variable mpg "\$\$ m \$\$"
+    label variable weight "\(w\) lbs"
+    label define s09o 0 "\(d\)" 1 "Foreign", replace
+    label values foreign s09o
+    quietly twoway scatter mpg weight, by(foreign) name(s09lb, replace)
+    cert_svg_export, name(s09lb) file("`w30_work'/s09lb.svg")
+    local s09_svg "`r(file)'"
+    foreach t in "\$\$ m \$\$" "\(w\) lbs" "\(d\)" {
+        cert_svg_has_text, file("`s09_svg'") text(`"`t'"')
+        local s09_f = r(found)
+        _w30_expect TX-05 "(`s09_f' == 1)" `"twoway did not draw the label `t' as typed"'
+    }
+    quietly dash scatter mpg weight, by(foreign) saving("`w30_work'/s09lb.html", replace)
+    cert_file_has "`w30_work'/s09lb.html", needle("bokeh-mathjax")
+    local s09_mj = r(found)
+    cert_file_has "`w30_work'/s09lb.html", needle("\\\u2060(d\\\u2060)")
+    local s09_in = r(found)
+    _w30_expect TX-05 "(`s09_mj' == 0 & `s09_in' == 1)" ///
+        "labels: bokeh-mathjax `s09_mj', inert panel title `s09_in'"
+    _w30_done TX-05 "labels are drawn as typed and ship no MathJax"
+
+    foreach f in s09tx.svg s09tx.html s09plain.html s09lb.svg s09lb.html {
+        capture erase "`w30_work'/`f'"
+    }
+    capture graph drop s09tx s09lb
+
     display as text "S09 end " c(current_date) " " c(current_time)
 }
 * ==== end S09 ====

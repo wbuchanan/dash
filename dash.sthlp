@@ -1759,6 +1759,10 @@ Within the file, data values are base64-encoded so that no data content can
 affect the Python source's syntax, and every user-supplied string reaches
 the page as a Bokeh model property or as escaped text inside the markup dash
 writes, never as markup of its own.
+Text drawn on a graph -- a title, subtitle, note, caption, axis title,
+tick label, legend key, {cmd:by()} panel title or colour key -- is never
+handed to a TeX engine: {cmd:$$}, {cmd:\(} and {cmd:\[} in it are drawn
+as typed, as {cmd:twoway} draws them, in a saved page and a served one.
 
 {pstd}
 The page carries a Content-Security-Policy in both modes, and the policy

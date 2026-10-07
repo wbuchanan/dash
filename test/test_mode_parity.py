@@ -1817,6 +1817,11 @@ CORPUS = [
           [_sc(mlabel="foreign", mlabposition="2"),
            plot_for("bar", {"mlabel": "foreign"})]),
     _case("S08 msize(HUGE) noted", [_sc(msize="HUGE")]),
+    _case("TeX pairs in every canvas text (WP-30 P1.11a)",
+          [_sc(), plot_for("lfit")],
+          go={"title": '"\\(y\\)"', "subtitle": '"\\[z\\]"',
+              "xtitle": '"$$x$$"', "xlabel": '3000 "\\(t\\)" 4000',
+              "legend": 'label(2 "\\(f\\)")'}),
 ]
 
 

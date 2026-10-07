@@ -1248,7 +1248,12 @@ class TestAdversarialLegendAxesRegions:
             fig = _render(mode, _TWO, {"legend": 'label(1 "%s")' % text})[0]
             assert _legend_state(fig) == _legend_state(base), mode
             assert fig.legend[0].ncols == base.legend[0].ncols
-            assert fig.legend[0].items[0].label.value == text
+            # Flipped (WP-30 P1.11a): twoway draws a TeX pair as typed, so
+            # the key carries the text with each delimiter broken by U+2060.
+            from bokeh.embed.util import contains_tex_string
+            lab = fig.legend[0].items[0].label.value
+            assert lab.replace(dr._DASH_WORD_JOINER, "") == text
+            assert not contains_tex_string(lab)
 
     def test_a_ten_thousand_word_legend_is_read_in_bounded_time(self):
         """Exhaustion: the sub-option reader is linear."""

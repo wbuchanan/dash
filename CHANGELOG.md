@@ -336,7 +336,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.9a -->
 
-<!-- WP-30 P1.11a -->
+- TeX in graph text is drawn as typed, as twoway draws it: `dash scatter mpg weight, title("\(y\)") subtitle("\[z\]") note("\$\$ x \$\$")` drew typeset maths and wrote a 3,087,832-byte page carrying MathJax; it now draws the text as typed and the page is 1,302,025 bytes, against 1,301,893 for the same page in plain words. (WP-30, P1.11a)
 
 <!-- WP-30 P1.11b -->
 
@@ -482,7 +482,7 @@ and now matches Stata.
   was asked to open in the last minute, and the path printed under
   $dash_nobrowser moves there. (WP-29, P0.14)
 
-<!-- WP-30 P1.11a -->
+- Text drawn on a graph no longer reaches a TeX engine. A `$$…$$`, `\(…\)` or `\[…\]` pair in a title, subtitle, note, caption, axis title, tick label, legend key, by() panel title or colour key was typeset by MathJax, whose html package makes `\href{javascript:…}` a live link and `\style{…}` a style attribute; every delimiter in that text is now broken by an invisible word joiner, in the saved page and the served app, before and after a filter move. (WP-30, P1.11a)
 
 <!-- WP-30 P1.25b -->
 

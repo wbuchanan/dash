@@ -88,8 +88,9 @@ Why each classification holds (bundled BokehJS, bokeh/server/static/js)
   as a text child; only an ``HTML`` model would be rendered as markup.
 * ``TabsView``: ``div({class: [...]}, tab.title)``.
 * ``Title``, ``Label``, ``LabelSet``, ``ColorBar`` and axis and tick labels
-  are drawn on the canvas.  A TeX string among them is rendered by MathJax
-  to an SVG that is drawn as an image, which runs nothing.
+  are drawn on the canvas.  A TeX string among them would be rendered by
+  MathJax to an SVG drawn as an image, which runs nothing; dash's own
+  canvas text never reaches MathJax (WP-30 P1.11a, below).
 * ``Div.text`` is ``innerHTML`` (``MarkupView``), after ``process_tex``
   unless ``disable_math`` is set.
 
@@ -115,6 +116,13 @@ slider title, Div, axis label or text annotation holds a TeX pair
 (``bokeh.embed.bundle._model_requires_mathjax``), so the hostile label
 switched MathJax on by itself.  Filter titles now pass through
 ``_dash_inert_tex``, and every Div dash builds sets ``disable_math``.
+
+Canvas text followed (WP-30 P1.11a): twoway draws a TeX pair in a title,
+label, axis title, tick label, legend or colour key as typed, while
+BokehJS typeset it with MathJax and a saved page shipped MathJax for it.
+``_dash_finish_graph_text`` now finishes every canvas sink
+(``_DASH_GRAPH_TEXT_SINKS``) with ``_dash_inert_tex`` in both modes, last
+in each, so a saved page no longer ships MathJax for them.
 """
 from __future__ import annotations
 
@@ -648,6 +656,15 @@ SINKS = (
 )
 
 
+def _finished(c):
+    """Whether carrier *c* sits on a property the canvas-text pass finishes
+    (``dr._DASH_GRAPH_TEXT_SINKS``, WP-30 P1.11a)."""
+    for cls, prop, _how in dr._DASH_GRAPH_TEXT_SINKS:
+        if isinstance(c.model, getattr(bokeh.models, cls)) and c.prop == prop:
+            return True
+    return False
+
+
 def _matching(b, sink):
     t = tag(sink.tag)
     return [c for c in b.carriers
@@ -737,11 +754,20 @@ class TestTextSinks:
 
     @pytest.mark.parametrize("sink,mode,pid", _cases({"text"}))
     def test_it_carries_the_raw_text(self, built, sink, mode, pid):
+        """Flipped (WP-30 P1.11a): a TeX pair in canvas text was typeset by
+        MathJax where twoway draws it as typed; every canvas sink now
+        carries the typed text with each delimiter broken by a WORD JOINER,
+        which the reader does not see."""
         b = built(mode, pid)
         want = b.expected[sink.tag]
         found = _matching(b, sink)
         assert found, f"{sink.sid}: not reached ({mode}, {pid})"
         for c in found:
+            if pid in TEX_PAYLOADS and _finished(c):
+                assert not _TEX_DELIM_RE.search(c.text), (sink.sid, c.text)
+                assert not contains_tex_string(c.text), (sink.sid, c.text)
+                assert want in c.text.replace(WJ, ""), (sink.sid, c.text)
+                continue
             assert want in c.text, (
                 f"{sink.sid} ({mode}): {c.kind}.{c.prop} = {c.text!r}; "
                 f"expected the raw {want!r}.  BokehJS renders it as "
@@ -750,6 +776,10 @@ class TestTextSinks:
     @pytest.mark.parametrize("sink,mode,pid", _cases({"json-text"}))
     def test_a_tick_label_map_carries_the_raw_text(self, built, sink, mode,
                                                    pid):
+        """Flipped (WP-30 P1.11a): a TeX pair in canvas text was typeset by
+        MathJax where twoway draws it as typed; every canvas sink now
+        carries the typed text with each delimiter broken by a WORD JOINER,
+        which the reader does not see."""
         b = built(mode, pid)
         want = b.expected[sink.tag]
         found = _matching(b, sink)
@@ -757,6 +787,13 @@ class TestTextSinks:
         for c in found:
             vals = [v for v in _json_strings(json.loads(c.text))
                     if tag(sink.tag) in v]
+            if pid in TEX_PAYLOADS and _finished(c):
+                assert vals, (sink.sid, c.text)
+                for v in vals:
+                    assert not _TEX_DELIM_RE.search(v), (sink.sid, v)
+                    assert not contains_tex_string(v), (sink.sid, v)
+                    assert want in v.replace(WJ, ""), (sink.sid, v)
+                continue
             assert vals and all(want in v for v in vals), (
                 f"{sink.sid} ({mode}): the formatter's map holds {vals!r}; "
                 f"a tick label is canvas text, so it must be the raw {want!r}")
@@ -1053,6 +1090,32 @@ class TestTeX:
         for s in sliders:
             assert not contains_tex_string(s.title or ""), (
                 f"{mode}: {type(s).__name__}.title {s.title!r} holds TeX")
+
+
+    @pytest.mark.parametrize("pid", list(TEX_PAYLOADS))
+    @pytest.mark.parametrize("mode", MODES)
+    def test_no_canvas_sink_holds_tex(self, built, mode, pid):
+        """Every canvas text sink is finished by ``_dash_finish_graph_text``
+        in both modes (WP-30 P1.11a): no delimiter pair is left for BokehJS
+        to typeset, and no model makes Bokeh load MathJax."""
+        from bokeh.embed.bundle import _model_requires_mathjax
+        b = built(mode, pid)
+        fin = [c for c in b.carriers if _finished(c)]
+        assert len(fin) >= 40, f"{mode}: only {len(fin)} canvas carriers"
+        for c in fin:
+            texts = (list(_json_strings(json.loads(c.text)))
+                     if c.prop == "args" else [c.text])
+            for t in texts:
+                assert not _TEX_DELIM_RE.search(t), (mode, c.kind, c.prop, t)
+                assert not contains_tex_string(t), (mode, c.kind, c.prop, t)
+        bad = [type(m).__name__ for m in b.models
+               if _model_requires_mathjax(m)]
+        assert not bad, f"{mode}: {bad} would load MathJax"
+
+    @pytest.mark.parametrize("pid", list(TEX_PAYLOADS))
+    def test_the_saved_page_ships_no_mathjax(self, built, pid):
+        page = built("standalone", pid).html
+        assert page and "bokeh-mathjax" not in page
 
 
 class TestInertTex:

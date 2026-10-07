@@ -24937,6 +24937,215 @@ def _dash_inert_tex(text):
     return s
 
 
+#: Every canvas text sink the document pass finishes (WP-30 P1.11a), as
+#: (Bokeh class, property, how the property holds its text).  twoway draws
+#: graph text as typed.  BokehJS 3.8-3.9 typesets a TeX delimiter pair with
+#: MathJax in a Title or Label (TextAnnotationView), an axis label or tick
+#: override (AxisView), and the Title and axis a ColorBar draws itself.  A
+#: Legend's entries and title are DOM text and a tick formatter's map comes
+#: back as plain text; they are finished too, so all of a graph's text
+#: follows one rule.
+_DASH_GRAPH_TEXT_SINKS = (
+    ("Title", "text", "text"),
+    ("Label", "text", "text"),
+    ("Axis", "axis_label", "text"),
+    ("Axis", "major_label_overrides", "map"),
+    ("ColorBar", "title", "text"),
+    ("ColorBar", "major_label_overrides", "map"),
+    ("Legend", "title", "text"),
+    ("LegendItem", "label", "value"),
+    ("CustomJSTickFormatter", "args", "labels"),
+)
+
+#: The attribute the pass sets on each sink model it has finished: a plain
+#: Python attribute, never a Bokeh property, so it is not written into the
+#: page and a page whose text holds no TeX pair is unchanged.
+_DASH_GRAPH_TEXT_DONE = "_dash_graph_text"
+
+
+def _dash_graph_text_models(fig):
+    """The models of *fig* that can hold canvas text, in a fixed order.
+
+    The figure's title, then, for each side list (``above``, ``below``,
+    ``left``, ``right``, ``center``), every model in it, followed by its
+    ``formatter`` when that is a model (an axis's; a ColorBar's default
+    ``"auto"`` is a string) and, for a Legend, each of its items.
+
+    It reads only those lists and never calls ``references()``, which
+    visits every value of every column: on a 100-panel by() graph of 20,000
+    rows a ``references()`` walk took 7.08 s per pass, this one 0.067 s.
+    """
+    from bokeh.model import Model
+    from bokeh.models import Legend
+
+    out = []
+    title = getattr(fig, "title", None)
+    if isinstance(title, Model):
+        out.append(title)
+    for side in ("above", "below", "left", "right", "center"):
+        for m in getattr(fig, side, None) or []:
+            if not isinstance(m, Model):
+                continue
+            out.append(m)
+            fmt = getattr(m, "formatter", None)
+            if isinstance(fmt, Model):
+                out.append(fmt)
+            if isinstance(m, Legend):
+                for it in m.items:
+                    if isinstance(it, Model):
+                        out.append(it)
+    return out
+
+
+def _dash_graph_text_props(model):
+    """``(property, how)`` for each ``_DASH_GRAPH_TEXT_SINKS`` row *model*
+    is an instance of, or ``()``.
+
+    A ``CustomJSTickFormatter`` is a sink only when its ``args`` is exactly
+    the tick-label map ``_dash_apply_axis_spec`` writes (one ``labels`` key
+    holding a JSON string); the display-format formatter, whose ``args``
+    carry ``fmt``, ``kind`` and ``storage``, holds no user text.  Class
+    names come only from the constant table, never from the document.
+    """
+    import bokeh.models as _bm
+
+    out = []
+    for cls_name, prop, how in _DASH_GRAPH_TEXT_SINKS:
+        cls = getattr(_bm, cls_name, None)
+        if cls is None or not isinstance(model, cls):
+            continue
+        if how == "labels":
+            args = getattr(model, prop, None) or {}
+            if (set(args) != {"labels"}
+                    or not isinstance(args["labels"], str)):
+                continue
+        out.append((prop, how))
+    return tuple(out)
+
+
+def _dash_finish_text_value(value, how):
+    """``(new, changed)``: *value* with every TeX delimiter pair broken by
+    ``_dash_inert_tex``, read as *how* says the property holds its text.
+
+    * ``"text"``: a string; anything else is returned unchanged.
+    * ``"map"``: a tick-override mapping; keys and non-string values kept.
+    * ``"value"``: a LegendItem label's fixed text (a ``Value``, a dict
+      without ``"field"``, or a string), returned as ``{"value": new}``; a
+      field label names a column and is returned unchanged.
+    * ``"labels"``: a ``CustomJSTickFormatter``'s ``args`` whose
+      ``labels`` is the JSON tick-label map; a malformed map is left alone.
+
+    *value* is never mutated, and ``changed`` is False whenever the text
+    held no delimiter, so the caller writes nothing and a page without a
+    TeX pair is byte-identical.
+    """
+    if how == "text":
+        if isinstance(value, str):
+            new = _dash_inert_tex(value)
+            return new, new != value
+        return value, False
+    if how == "map":
+        if not value:
+            return value, False
+        old = dict(value)
+        new = {}
+        for k, v in old.items():
+            new[k] = _dash_inert_tex(v) if isinstance(v, str) else v
+        return new, new != old
+    if how == "value":
+        text = None
+        if isinstance(value, str):
+            text = value
+        elif isinstance(value, dict):
+            if "field" not in value and isinstance(value.get("value"), str):
+                text = value["value"]
+        elif isinstance(getattr(value, "value", None), str):
+            text = value.value
+        if text is None:
+            return value, False
+        new = _dash_inert_tex(text)
+        if new == text:
+            return value, False
+        return {"value": new}, True
+    if how == "labels":
+        if not value:
+            return value, False
+        args = dict(value)
+        raw = args.get("labels")
+        if not isinstance(raw, str):
+            return value, False
+        try:
+            labels = json.loads(raw)
+        except (TypeError, ValueError):
+            return value, False
+        if not isinstance(labels, dict):
+            return value, False
+        for v in labels.values():
+            if not isinstance(v, str):
+                return value, False
+        new_map = {}
+        changed = False
+        for k, v in labels.items():
+            new_map[k] = _dash_inert_tex(v)
+            if new_map[k] != v:
+                changed = True
+        if not changed:
+            return value, False
+        args["labels"] = json.dumps(new_map)
+        return args, True
+    return value, False
+
+
+def _dash_finish_graph_text(figures):
+    """Draw every TeX delimiter pair in canvas text as typed (WP-30 P1.11a).
+
+    *figures* maps each graph's or by() panel's key to its figure (the
+    saved renderer's ``self.figures``; the served ``figures``).  Every model
+    of ``_dash_graph_text_models`` that is a ``_DASH_GRAPH_TEXT_SINKS`` sink
+    has each of its text properties passed through ``_dash_inert_tex`` and
+    is marked with ``_DASH_GRAPH_TEXT_DONE``, so a second call, or a model
+    shared by two figures, is not visited again.  Returns the number of
+    models with at least one property rewritten.
+
+    twoway draws ``$$..$$``, ``\\(..\\)`` and ``\\[..\\]`` in a title, note,
+    axis title, tick label, legend key or value label exactly as typed;
+    BokehJS would typeset them with MathJax, and a saved page would ship
+    MathJax for them.  The pass runs last in each mode: after every figure,
+    by() panel title (a pair can exist only after the panel join) and
+    shared by() scale is built, and, on a saved page, before
+    ``_stale_cue_args`` copies the legend text its filter script writes
+    back.  A sink created after the pass must be finished and marked by its
+    creator, or carry constant text (the stale-cue caption).
+
+    The key is unused here; it is how a later extension finds a panel's
+    graph (``<name>__by__<i>``).  It never touches glyph renderer names,
+    colour-mapper factors, sources, LabelSet, HoverTool, widgets or Divs,
+    and prints nothing (twoway prints nothing for this text).
+    """
+    seen = set()
+    n = 0
+    for _key, fig in list(figures.items()):
+        for model in _dash_graph_text_models(fig):
+            if id(model) in seen:
+                continue
+            seen.add(id(model))
+            if getattr(model, _DASH_GRAPH_TEXT_DONE, False):
+                continue
+            props = _dash_graph_text_props(model)
+            if not props:
+                continue
+            setattr(model, _DASH_GRAPH_TEXT_DONE, True)
+            rewrote = False
+            for prop, how in props:
+                new, diff = _dash_finish_text_value(getattr(model, prop), how)
+                if diff:
+                    setattr(model, prop, new)
+                    rewrote = True
+            if rewrote:
+                n += 1
+    return n
+
+
 def _dash_filter_title(label, fallback, ftype):
     """A widget's title: the resolved label, plus the documented inequality
     on a threshold slider (dash.sthlp: "varname >= slider value").
@@ -32639,6 +32848,12 @@ class DashRenderer:
                         f"dash_render: failed to build figure '{name}': {exc}"
                     ) from exc
 
+        # ---- 3e. Every canvas text drawn as typed (WP-30 P1.11a) ----
+        # Last: every figure, by() panel title and shared by() scale is
+        # built, and _build_filter_widgets (_stale_cue_args) has not yet
+        # copied the legend text the saved filter script writes back.
+        _dash_finish_graph_text(self.figures)
+
 
 
     def _build_kpi_html(self, kpis: list) -> None:
@@ -34277,6 +34492,9 @@ class ServerAppBuilder:
                          # _dash_filter_title neutralises TeX in the title;
                          # _dash_inert_tex is its callee and must travel too.
                          "_dash_inert_tex",
+                         # The canvas-text pass (WP-30 P1.11a) and its helpers.
+                         "_dash_finish_graph_text", "_dash_graph_text_models",
+                         "_dash_graph_text_props", "_dash_finish_text_value",
                          "_dash_filter_title",
                          "_dash_filter_base_title",
                          "_dash_finite_column",
@@ -36655,6 +36873,11 @@ class ServerAppBuilder:
             "        # axis unless rescaled, as the saved figure's are.",
             "        _dash_share_by_scales([figures[_f] for _f, _ in _entries",
             "                               if _f in figures], _brs)",
+            "",
+            "    # Every canvas text drawn as typed (WP-30 P1.11a): last, once",
+            "    # every figure, by() panel title and shared scale is built,",
+            "    # as the saved renderer's _build_sources_and_figures ends.",
+            "    _dash_finish_graph_text(figures)",
             "",
             "    # ---- Persist per-graph qualifier metadata for filter callbacks ----",
             "    # Graph-level if_expr/in_expr are applied during initial rendering",
