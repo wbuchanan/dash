@@ -517,15 +517,60 @@ assert strpos(`"`r(fn)'"', "_hc4_stub") == 0
 // the renderer's output check asked every server path for one.  Nothing
 // ran the real handoff.  Here the real renderer runs; a thread started in
 // Stata's Python beforehand asks /health on the port given until it
-// answers, while `dash serve' blocks.  timeout(1) ends the run after a
-// minute, so this case takes about 62 seconds.
+// answers, while `dash serve' blocks.  timeout(1) ends the run.
+//
+// On a minute of eight seconds (WP-30 test performance, B3): this case
+// waited out a real minute, 62 s of every certification run.  The command
+// the launcher starts the app with -- python -P -c <boot> app.py ...
+// --timeout 1 -- gets, ahead of the boot, lines that shorten the app's own
+// timeout timer (tornado's call_later of its io_loop's stop) from 60 s to
+// 8 s.  Nothing else changes: dash serve, the renderer, the launcher, the
+// app, its timeout() plumbing and its exit status are the real ones, and
+// the timer that ends the run is the app's own.  Only a Popen call that
+// carries dash's boot is touched, and the patch comes off right after the
+// command, whatever the command did.  A timeout() that never fires used to
+// block the run for good; a watchdog now stops the app after 45 s, and
+// HC4-19 fails on the time instead.
 dash clear
 dash scatter mpg weight, name(g1)
 dash kpi p97.5(price), name(k1) title("P")
 global hc4_tmpdir "`c(tmpdir)'"
 python:
 import json, os, socket, threading, time, urllib.request
+import subprocess as _hc4_sp
 from sfi import Macro
+_hc4_clock = chr(10).join([
+    "import tornado.ioloop as _hc4_t",
+    "_hc4_cl = _hc4_t.IOLoop.call_later",
+    "def _hc4_fast(self, delay, callback, *a, **k):",
+    "    if getattr(callback, '__name__', '') == 'stop' and delay >= 60:",
+    "        delay = delay * 8.0 / 60.0",
+    "    return _hc4_cl(self, delay, callback, *a, **k)",
+    "_hc4_t.IOLoop.call_later = _hc4_fast",
+])
+_hc4_popen_init = _hc4_sp.Popen.__init__
+_hc4_scaled = []
+_hc4_procs = []
+def _hc4_init(self, args, *a, **k):
+    _hit = isinstance(args, list) and len(args) > 3
+    _hit = _hit and list(args[1:3]) == ["-P", "-c"] and "DASHAPP1" in str(args[3])
+    if _hit:
+        args = list(args[:3]) + [_hc4_clock + chr(10) + args[3]] + list(args[4:])
+        _hc4_scaled.append([str(_x) for _x in args[4:]])
+    _r = _hc4_popen_init(self, args, *a, **k)
+    if _hit:
+        _hc4_procs.append(self)
+    return _r
+_hc4_sp.Popen.__init__ = _hc4_init
+_hc4_done = threading.Event()
+def _hc4_watchdog():
+    if not _hc4_done.wait(45):
+        for _p in _hc4_procs:
+            try:
+                _p.terminate()
+            except OSError:
+                pass
+threading.Thread(target=_hc4_watchdog, daemon=True).start()
 _hc4_s = socket.socket()
 _hc4_s.bind(("127.0.0.1", 0))
 _hc4_port = _hc4_s.getsockname()[1]
@@ -611,9 +656,18 @@ timer on 91
 capture noisily dash serve, port(${hc4_port}) timeout(1) nobrowser
 local hc419rc = _rc
 timer off 91
+python: _hc4_done.set()
+python: _hc4_sp.Popen.__init__ = _hc4_popen_init
 quietly timer list 91
 local hc419s = r(t91)
 python:
+# The one launch the clock was shortened for: dash serve's app, with the
+# port asked for and timeout(1) on its command line.
+_hc4_flag = lambda a, k: a[a.index(k) + 1] if k in a[:-1] else ""
+_hc4_one = len(_hc4_scaled) == 1 and \
+    _hc4_flag(_hc4_scaled[0], "--port") == str(_hc4_port) and \
+    _hc4_flag(_hc4_scaled[0], "--timeout") == "1"
+Macro.setGlobal("hc4_scaled", "1" if _hc4_one else repr(_hc4_scaled)[:200])
 _hc4_thread.join(5)
 Macro.setGlobal("hc4_status", str(_hc4_seen["status"]))
 Macro.setGlobal("hc4_ok", "1" if '"status": "ok"' in _hc4_seen["body"] else "0")
@@ -663,9 +717,14 @@ Macro.setGlobal("pf08_inputs", _pf8["inputs"])
 Macro.setGlobal("lc01_left", _pf8["lc01"])
 Macro.setGlobal("lc01_link", _pf8["lc01link"])
 end
+// The app's own timer ended the run: not before its minute of 8 s, and
+// well before a real minute -- the shortened clock reached the one launch,
+// with timeout(1) on its command line.
+display as text "  HC4-19 launches on the 8-second minute: ${hc4_scaled}"
+assert "${hc4_scaled}" == "1"
 assert `hc419rc' == 0
-assert `hc419s' >= 50
-display "HC4-19 PASS: dash serve ran the real app and returned rc 0 when timeout(1) ended it, after `hc419s' s"
+assert `hc419s' >= 8 & `hc419s' < 45
+display "HC4-19 PASS: dash serve ran the real app and returned rc 0 when timeout(1) ended it, after `hc419s' s on a minute of 8 s"
 assert "${hc4_status}" == "200"
 assert ${hc4_ok} == 1
 display "HC4-20 PASS: while dash serve blocked, /health on port ${hc4_port} answered 200 {status: ok}"
