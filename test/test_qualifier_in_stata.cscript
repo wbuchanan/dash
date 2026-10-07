@@ -361,6 +361,9 @@ forvalues j = 1/`nq' {
 
     // The immediate route.
     tempfile p
+    // Stata reuses tempfile names across scripts in one session, and an
+    // earlier script's leftover <name>.html would refuse saving() below.
+    capture erase "`p'.html"
     global QS_PAGE "`p'.html"
     _qs_run `"dash scatter mpg rowid `q`j'', saving("`p'.html")"'
     local rc = r(rc)
@@ -413,6 +416,9 @@ forvalues k = 1/3 {
 }
 twoway (scatter mpg rowid in 1/10) (scatter mpg rowid if foreign) (scatter mpg rowid in 30/40 if mpg > 20) in 5/50 if rep78 > 3, nodraw
 tempfile p
+// Stata reuses tempfile names across scripts in one session, and an
+// earlier script's leftover <name>.html would refuse saving() below.
+capture erase "`p'.html"
 global QS_PAGE "`p'.html"
 _qs_run `"`cmd2', saving("`p'.html")"'
 assert r(rc) == 0
@@ -470,6 +476,9 @@ display "QS-03 PASS: a KPI's qualifier gives Stata's value in both modes"
 quietly levelsof rowid if rep78 > 3, local(want4)
 local want4 : list retokenize want4
 tempfile p
+// Stata reuses tempfile names across scripts in one session, and an
+// earlier script's leftover <name>.html would refuse saving() below.
+capture erase "`p'.html"
 global QS_PAGE "`p'.html"
 _qs_run `"dash scatter mpg rowid if rep78 > 3, by(foreign) saving("`p'.html")"'
 assert r(rc) == 0
@@ -539,6 +548,9 @@ display "QS-05 PASS: each distinct qualifier is one 0/1 column holding Stata's a
 // ----------------------------------------------------------------
 gen byte __dashq1 = 1
 tempfile p
+// Stata reuses tempfile names across scripts in one session, and an
+// earlier script's leftover <name>.html would refuse saving() below.
+capture erase "`p'.html"
 _qs_run `"dash scatter mpg rowid if rep78 > 3, saving("`p'.html")"'
 local rc6a = r(rc)
 cert_log_has "`r(log)'", needle("reserved")
@@ -634,6 +646,9 @@ local k0 = c(k)
 quietly save "`c(tmpdir)'qs07.dta", replace
 local ch0 = c(changed)
 tempfile p
+// Stata reuses tempfile names across scripts in one session, and an
+// earlier script's leftover <name>.html would refuse saving() below.
+capture erase "`p'.html"
 _qs_run `"dash scatter mpg rowid if rep78 > 3 in 3/60, saving("`p'.html")"'
 assert r(rc) == 0
 local sb1 : sortedby
@@ -659,6 +674,9 @@ gen tmpv = 1
 dash scatter mpg rowid if tmpv == 1, name(qs08)
 drop tmpv
 tempfile p
+// Stata reuses tempfile names across scripts in one session, and an
+// earlier script's leftover <name>.html would refuse saving() below.
+capture erase "`p'.html"
 _qs_run `"dash build, saving("`p'.html") replace nobrowser"'
 local rc8 = r(rc)
 display as text "  QS-08 build rc `rc8'"
@@ -712,6 +730,9 @@ forvalues j = 1/5 {
 // mpg, rowid and five qualifier columns: 74 x 7 = 518 values.
 global dash_max_cells 500
 tempfile p
+// Stata reuses tempfile names across scripts in one session, and an
+// earlier script's leftover <name>.html would refuse saving() below.
+capture erase "`p'.html"
 _qs_run `"dash build, saving("`p'.html") replace nobrowser"'
 local rc10 = r(rc)
 cert_log_has "`r(log)'", needle("518 values")
@@ -734,6 +755,9 @@ display "QS-10 PASS: qualifier columns count against the embedded-data limit"
 quietly count if d > td(15jan2001) & d <= td(20feb2001)
 local n11 = r(N)
 tempfile p
+// Stata reuses tempfile names across scripts in one session, and an
+// earlier script's leftover <name>.html would refuse saving() below.
+capture erase "`p'.html"
 global QS_PAGE "`p'.html"
 _qs_run `"dash scatter mpg rowid if d > td(15jan2001) & d <= td(20feb2001), saving("`p'.html")"'
 assert r(rc) == 0
@@ -753,6 +777,9 @@ capture dash clear
 dash scatter mpg rowid if rep78 > 3, name(qs12a) hover(mpg rowid)
 dash kpi mean(mpg) if foreign, title("M") name(qs12k)
 tempfile p
+// Stata reuses tempfile names across scripts in one session, and an
+// earlier script's leftover <name>.html would refuse saving() below.
+capture erase "`p'.html"
 global QS_PAGE "`p'.html"
 _qs_run `"dash build, saving("`p'.html") replace nobrowser csv filter(foreign, type(dropdown)) filter(price, type(range))"'
 assert r(rc) == 0
@@ -775,6 +802,9 @@ gen double x = runiform()
 gen double y = runiform()
 gen double z = runiform()
 tempfile p
+// Stata reuses tempfile names across scripts in one session, and an
+// earlier script's leftover <name>.html would refuse saving() below.
+capture erase "`p'.html"
 timer clear 1
 timer clear 2
 timer on 1
@@ -825,6 +855,9 @@ local b15 = _b[weight]
 quietly levelsof rowid if foreign == 1, local(want15)
 local want15 : list retokenize want15
 tempfile p
+// Stata reuses tempfile names across scripts in one session, and an
+// earlier script's leftover <name>.html would refuse saving() below.
+capture erase "`p'.html"
 global QS_PAGE "`p'.html"
 _qs_run `"dash scatter mpg rowid if foreign == 1, saving("`p'.html")"'
 assert r(rc) == 0
@@ -907,6 +940,9 @@ program define _qs_by_case, rclass
     }
     // The immediate route.
     tempfile p
+    // Stata reuses tempfile names across scripts in one session, and an
+    // earlier script's leftover <name>.html would refuse saving() below.
+    capture erase "`p'.html"
     global QS_PAGE "`p'.html"
     capture dash clear
     capture noisily `dashcmd' saving("`p'.html")
@@ -1041,6 +1077,9 @@ quietly save "`c(tmpdir)'qs19.dta", replace
 local ch0 = c(changed)
 mata: _qs19_o = st_data(., "rowid")
 tempfile p
+// Stata reuses tempfile names across scripts in one session, and an
+// earlier script's leftover <name>.html would refuse saving() below.
+capture erase "`p'.html"
 _qs_run `"dash (scatter mpg rowid if _n < 10) (line mpg rowid) in 5/70, by(foreign rep78, total) saving("`p'.html")"'
 assert r(rc) == 0
 capture dash clear
@@ -1127,6 +1166,9 @@ gen double x = runiform()
 gen double y = runiform()
 gen int g = ceil(10 * runiform())
 tempfile p
+// Stata reuses tempfile names across scripts in one session, and an
+// earlier script's leftover <name>.html would refuse saving() below.
+capture erase "`p'.html"
 timer clear 1
 timer clear 2
 timer on 1
