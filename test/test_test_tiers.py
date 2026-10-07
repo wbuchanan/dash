@@ -115,3 +115,60 @@ class TestTheMakefileRunsIt:
         assert release and "test-release" in release[0].split()
         phony = [ln for ln in mk.splitlines() if ln.startswith(".PHONY:")]
         assert phony and "test-release" in phony[0].split()
+
+
+class TestTheBatchTier:
+    """test_mode_parity.py runs at batch ends and at release (make test-all,
+    make test-batch, make release), not in the default whole-suite run."""
+
+    @pytest.mark.parametrize("args", [[], ["test/"], [_ROOT]])
+    def test_the_whole_suite_leaves_it_out(self, args):
+        assert not C._runs_tier("batch", args, _ROOT)
+
+    def test_a_file_or_a_node_id_keeps_it(self):
+        assert C._runs_tier("batch", ["test/test_mode_parity.py"], _ROOT)
+
+    def test_the_batch_and_release_tiers_keep_it(self):
+        assert C._runs_tier("batch", ["test/"], _ROOT, tier="batch")
+        assert C._runs_tier("batch", ["test/"], _ROOT, tier="release")
+
+    def test_the_batch_tier_does_not_keep_the_release_tier(self):
+        assert not C._runs_tier("release", ["test/"], _ROOT, tier="batch")
+
+    def test_a_mark_expression_naming_it_keeps_it(self):
+        assert C._runs_tier("batch", ["test/"], _ROOT, markexpr="batch")
+        assert not C._runs_tier("batch", ["test/"], _ROOT,
+                                markexpr="batches")
+
+    def test_a_whole_suite_run_drops_it(self, monkeypatch):
+        monkeypatch.delenv(C.TIER_ENV, raising=False)
+
+        class _B:
+            def __init__(self, name, batch):
+                self.name, self.batch = name, batch
+
+            def get_closest_marker(self, name):
+                return object() if (name == "batch" and self.batch) else None
+        items = [_B("a", False), _B("p", True)]
+        reported = []
+        C._deselect_tier(_config(["test/"], reported), items, "batch")
+        assert [i.name for i in items] == ["a"]
+        assert [i.name for i in reported] == ["p"]
+
+    def test_the_parity_file_carries_the_mark(self):
+        with open(os.path.join(_HERE, "test_mode_parity.py"),
+                  encoding="utf-8") as fh:
+            assert "\npytestmark = pytest.mark.batch\n" in fh.read()
+
+    def test_the_mark_is_registered(self, request):
+        lines = request.config.getini("markers")
+        assert [ln for ln in lines if ln.startswith("batch:")]
+
+    def test_the_makefile_runs_it_at_batch_ends_and_release(self):
+        with open(os.path.join(_ROOT, "Makefile"), encoding="utf-8") as fh:
+            mk = fh.read()
+        recipe = mk.split("\ntest-batch:", 1)[1].split("\n\n", 1)[0]
+        assert "DASH_TEST_TIER=batch" in recipe
+        assert "-m pytest test/ -m batch" in recipe
+        release = [ln for ln in mk.splitlines() if ln.startswith("release:")]
+        assert release and "test-batch" in release[0].split()

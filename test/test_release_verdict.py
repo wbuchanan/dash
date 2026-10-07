@@ -225,9 +225,10 @@ class TestTheGateIsWiredUp:
         with open(os.path.join(ROOT, "Makefile"), encoding="utf-8") as fh:
             mk = fh.read()
         assert re.search(r"^gate:\n\t.*scripts/run_release_gate\.sh", mk, re.M)
-        # The release tier (test performance D) runs between check and the
+        # The batch tier and the release tier run between check and the
         # gate: everything a whole-suite run leaves out is run before release.
-        assert re.search(r"^release: check test-release gate$", mk, re.M)
+        assert re.search(r"^release: check test-batch test-release gate$", mk,
+                         re.M)
 
     def test_the_runner_uses_the_console_binary_in_batch(self):
         with open(os.path.join(ROOT, "scripts", "run_release_gate.sh"),

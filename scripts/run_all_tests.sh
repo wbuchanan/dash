@@ -1,6 +1,7 @@
 #!/bin/sh
-# Run the whole default test suite -- pytest, then the certification
-# scripts -- never using more than DASH_MAX_WORKERS (8) workers at once:
+# Run the batch-end test suite -- pytest with its batch tier
+# (test_mode_parity.py), then the certification scripts -- never using
+# more than DASH_MAX_WORKERS (8) workers at once:
 # PYTEST_WORKERS pytest workers (default 8), then DASH_CERT_SESSIONS Stata
 # sessions (default 3).  They run one after the other: run side by side
 # (measured 07oct2026, 6 + 2 workers) pytest's serve tests and the
@@ -28,7 +29,7 @@ if [ "$pw" -gt "$max" ] || [ "$cs" -gt "$max" ]; then
     echo "run_all_tests: $pw pytest workers or $cs Stata sessions exceed $max workers"
     exit 2
 fi
-pytest_cmd="DASH_STRICT=1 DASH_BASELINE=dev FULL_SUITE_RERUN=1 $PYTHON -m pytest test/ -q -p no:cacheprovider -n $pw"
+pytest_cmd="DASH_STRICT=1 DASH_BASELINE=dev DASH_TEST_TIER=batch FULL_SUITE_RERUN=1 $PYTHON -m pytest test/ -q -p no:cacheprovider -n $pw"
 cert_cmd="DASH_CERT_SESSIONS=$cs sh scripts/run_cert_suite.sh"
 if [ "${DRY_RUN:-}" = 1 ]; then
     echo "pytest: $pytest_cmd"
@@ -39,7 +40,7 @@ out="$(mktemp -d "${TMPDIR:-/tmp}/dash_all_tests.XXXXXX")" || exit 1
 cd "$REPO" || exit 2
 start=$(date +%s)
 t0=$(date +%s)
-DASH_STRICT=1 DASH_BASELINE=dev FULL_SUITE_RERUN=1 "$PYTHON" -m pytest test/ -q -p no:cacheprovider -n "$pw" > "$out/pytest.log" 2>&1
+DASH_STRICT=1 DASH_BASELINE=dev DASH_TEST_TIER=batch FULL_SUITE_RERUN=1 "$PYTHON" -m pytest test/ -q -p no:cacheprovider -n "$pw" > "$out/pytest.log" 2>&1
 echo "rc=$? wall=$(( $(date +%s) - t0 ))" > "$out/pytest.rc"
 t0=$(date +%s)
 DASH_CERT_SESSIONS="$cs" PYTHON="$PYTHON" sh scripts/run_cert_suite.sh > "$out/cert.log" 2>&1

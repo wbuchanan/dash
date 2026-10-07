@@ -22,6 +22,8 @@ class TestTheWorkerBudget:
         assert r.returncode == 0, r.stdout + r.stderr
         assert "-n 8" in r.stdout
         assert "DASH_CERT_SESSIONS=3" in r.stdout
+        # The batch-end suite keeps the batch tier (test_mode_parity.py).
+        assert "DASH_TEST_TIER=batch" in r.stdout
 
     def test_more_than_eight_pytest_workers_is_refused_and_runs_nothing(self):
         r = _dry(PYTEST_WORKERS="9")

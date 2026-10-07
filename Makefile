@@ -19,14 +19,15 @@ ifeq ($(origin STATA),command line)
 $(error STATA was renamed STATA_BIN (WP-30); run make $(MAKECMDGOALS) STATA_BIN=$(STATA))
 endif
 
-.PHONY: help check test test-dev test-release test-all test-floor cert gate release hooks
+.PHONY: help check test test-dev test-batch test-release test-all test-floor cert gate release hooks
 
 help:
 	@echo "make check     make test, make test-dev and make cert, in that order"
 	@echo "make test      pytest under Stata's Python, strict"
 	@echo "make test-dev  pytest under the development interpreter ($(PYTHON)), strict"
 	@echo "make test-release  the release tier, the tests marked release, which make test and make test-dev leave out"
-	@echo "make test-all  the whole default suite, pytest then the certification scripts, never more than 8 workers at once (PYTEST_WORKERS, default 8; DASH_CERT_SESSIONS, default 3)"
+	@echo "make test-batch  the batch tier (test_mode_parity.py), which make test and make test-dev leave out"
+	@echo "make test-all  the batch-end suite: pytest with the batch tier, then the certification scripts, never more than 8 workers at once (PYTEST_WORKERS, default 8; DASH_CERT_SESSIONS, default 3)"
 	@echo "make test-floor  one floor-matrix leg, run by hand (not part of make gate): FLOOR_VENV=<dir> FLOOR_BASELINE=<name>"
 	@echo "make cert      the certification suite, through the console binary, as DASH_CERT_SESSIONS (default 3, 1 to 4) sessions side by side; DASH_CERT_REMEASURE=1 asks twoway again (release)"
 	@echo "make gate      net install, then every example and scheme from the install"
@@ -57,9 +58,16 @@ test-release:
 	@echo "pytest's release tier under the development interpreter: $(PYTHON)"
 	@DASH_STRICT=1 DASH_BASELINE=dev DASH_TEST_TIER=release $(PYTHON) -m pytest test/ -m release $(PYTEST_ARGS)
 
-# The whole default suite in one command: pytest under the development
-# interpreter, then the certification scripts, never on more than
-# eight workers at once (scripts/run_all_tests.sh refuses more).
+# The batch tier: test_mode_parity.py, which a run of the whole suite
+# leaves out (test/conftest.py).  make test-all and make release run it.
+test-batch:
+	@echo "pytest's batch tier under the development interpreter: $(PYTHON)"
+	@DASH_STRICT=1 DASH_BASELINE=dev DASH_TEST_TIER=batch $(PYTHON) -m pytest test/ -m batch $(PYTEST_ARGS)
+
+# The batch-end suite in one command: pytest under the development
+# interpreter with the batch tier, then the certification scripts, never
+# on more than eight workers at once (scripts/run_all_tests.sh refuses
+# more).  Run at the end of every batch of work and before a release.
 test-all:
 	@PYTHON='$(PYTHON)' STATA_BIN='$(STATA_BIN)' sh scripts/run_all_tests.sh
 
@@ -79,7 +87,7 @@ cert:
 gate:
 	@STATA_BIN='$(STATA_BIN)' PYTHON='$(PYTHON)' sh scripts/run_release_gate.sh
 
-release: check test-release gate
+release: check test-batch test-release gate
 
 hooks:
 	git config core.hooksPath scripts/git-hooks

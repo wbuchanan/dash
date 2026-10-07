@@ -63,6 +63,10 @@ from unittest import mock
 
 import pandas as pd
 import pytest
+
+# Run at batch ends and at release (make test-all, make test-batch), not in
+# the default run of the whole suite (test/conftest.py, the batch tier).
+pytestmark = pytest.mark.batch
 from bokeh.document import Document
 from bokeh.models import (Arrow, Band, BoxAnnotation, ColorBar,
                           ColumnDataSource, Div,
