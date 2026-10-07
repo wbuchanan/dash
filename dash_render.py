@@ -33280,6 +33280,51 @@ class DashRenderer:
 # ServerAppBuilder — generates a standalone Bokeh Server app .py file
 # ===========================================================================
 
+#: The source text of each object ServerAppBuilder copies into an app,
+#: keyed by ``id(obj)``: ``(obj, stamp, text)``, where *stamp* is the
+#: ``(path, st_mtime_ns, st_size)`` of the file the text was read from
+#: (``_dash_source_of``).
+_DASH_SOURCE_CACHE: dict = {}
+
+
+def _dash_source_of(obj) -> str:
+    """``inspect.getsource(obj)``, read once per object and file version.
+
+    ``ServerAppBuilder`` copies about 410 functions, three classes and a
+    slice of this module's own text into every app it writes, and reading
+    them through ``inspect.getsource`` -- which tokenizes the file to find
+    each block -- was two thirds of a build: 0.11 of 0.166 s, measured
+    07oct2026, paid by every ``dash build, server`` and ``dash serve``.
+
+    The text is read again whenever it could differ.  An entry holds the
+    object itself, so its id cannot pass to another object while the entry
+    lives; a function a test replaces, or one a reload of this module
+    defines, is a new object and is read anew (a reload also empties this
+    cache, which is rebound with the module).  The stamp is the file's
+    path, size and modification time -- what ``linecache``, and so
+    ``inspect``, checks -- so a file edited on disk is read again too, as
+    ``inspect.getsource`` itself would read it.  An object whose file cannot
+    be found is not cached: ``inspect.getsource`` answers, or raises, as it
+    always did.
+    """
+    import inspect as _inspect
+
+    try:
+        path = _inspect.getsourcefile(obj)
+        st = os.stat(path) if path else None
+    except (OSError, TypeError):
+        st = None
+    if st is None:
+        return _inspect.getsource(obj)
+    stamp = (path, st.st_mtime_ns, st.st_size)
+    hit = _DASH_SOURCE_CACHE.get(id(obj))
+    if hit is not None and hit[0] is obj and hit[1] == stamp:
+        return hit[2]
+    text = _inspect.getsource(obj)
+    _DASH_SOURCE_CACHE[id(obj)] = (obj, stamp, text)
+    return text
+
+
 class ServerAppBuilder:
     """Generates a self-contained Bokeh Server application Python source file.
 
@@ -33376,7 +33421,6 @@ class ServerAppBuilder:
         Returns:
             The lines to write, in dependency order.
         """
-        import inspect as _inspect
         import sys as _sys
         import textwrap as _textwrap
 
@@ -33957,12 +34001,12 @@ class ServerAppBuilder:
             if _fn is None:
                 continue
             out += _textwrap.dedent(
-                _inspect.getsource(_fn)).rstrip("\n").split("\n")
+                _dash_source_of(_fn)).rstrip("\n").split("\n")
             out += ["", ""]
 
         # The three classes, in dependency order.
         for _cls in (OptionTranslator, SchemeParser, GlyphMapper):
-            out += _inspect.getsource(_cls).rstrip("\n").split("\n")
+            out += _dash_source_of(_cls).rstrip("\n").split("\n")
             out += ["", ""]
 
         # The scheme, as a property dict rather than a file. SchemeParser
@@ -34032,7 +34076,6 @@ class ServerAppBuilder:
         * the lfitci band was 0.0015 wide where standalone's is 1.39, and
           did not move with ``level()``.
         """
-        import inspect as _inspect
         import sys as _sys
         import textwrap as _textwrap
 
@@ -34047,7 +34090,7 @@ class ServerAppBuilder:
 
         # _KERNELS is a module-level dict of lambdas, so repr() cannot carry
         # it; the assignment's own source is sliced out of the file instead.
-        _src_lines = _inspect.getsource(_sys.modules[__name__]).splitlines()
+        _src_lines = _dash_source_of(_sys.modules[__name__]).splitlines()
         _start = next(i for i, l in enumerate(_src_lines)
                       if l.startswith("_KERNELS: dict = {"))
         _end = next(i for i in range(_start, len(_src_lines))
@@ -34117,7 +34160,7 @@ class ServerAppBuilder:
                     _stata_logic_to_pandas,
                     _stata_if_to_pandas):
             out += _textwrap.dedent(
-                _inspect.getsource(_fn)).rstrip("\n").split("\n")
+                _dash_source_of(_fn)).rstrip("\n").split("\n")
             out += ["", ""]
 
         # Four of them are staticmethods on a class.  Their bodies reference
@@ -34137,7 +34180,7 @@ class ServerAppBuilder:
                     GlyphMapper._bootstrap_ci,
                     DashRenderer._kpi_statistic):
             _lines = _textwrap.dedent(
-                _inspect.getsource(_sm)).rstrip("\n").split("\n")
+                _dash_source_of(_sm)).rstrip("\n").split("\n")
             while _lines and _lines[0].strip().startswith("@"):
                 _lines = _lines[1:]
             _lines = [_l.replace("GlyphMapper._", "_")

@@ -641,6 +641,7 @@ FUNCTIONS = {
  '_dash_served_template': 'test/test_csp.py::TestTheServedTemplate::test_it_is_bokehs_page_plus_the_two_metas',
  '_dash_server_transforms': 'test/test_csp.py::TestTheHeaderTransform::test_tornados_own_transforms_are_kept',
  '_dash_server_transforms.<locals>._DashSecurityHeaders.transform_first_chunk': 'test/test_csp.py::TestTheHeaderTransform::test_it_leaves_the_status_and_later_chunks_alone',
+ '_dash_source_of': 'test/test_helper_source_cache.py::TestItIsReadOnce::test_a_second_read_does_not_ask_inspect',
  # WP-29 P0.12a: the served dashboard's key.
  '_dash_announce_key': 'test/test_serve_token.py::TestTheTokenHelpers::test_the_announcement_names_the_file_never_the_key',
  '_dash_bokeh_serve_key': 'test/test_serve_token.py::TestTheTokenHelpers::test_the_bokeh_serve_key_announces_once_from_a_page_request',
