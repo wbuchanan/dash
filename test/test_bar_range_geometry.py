@@ -113,6 +113,10 @@ def _figs(mode, tmp_path, spec, df):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         mod = load_app(ap, "_bg_app_%d" % _N[0])
+    # The import's own render fills the global document; clear it so a
+    # loop of builds stays as fast as one.
+    from bokeh.io import curdoc
+    curdoc().clear()
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -211,24 +215,31 @@ class TestTheFixture:
 @pytest.mark.parametrize("mode", _MODES)
 class TestBarIsOneXUnit:
 
-    @pytest.mark.parametrize("t", ["bar", "rbar"])
-    @pytest.mark.parametrize("case", ["s1", "s01", "s5", "su"])
-    def test_the_width_is_twoways(self, mode, t, case, tmp_path):
-        key = "%s_%s" % (t, case)
-        want = _T["widths"].get(key, _T["widths"]["bar_" + case])["bar_size"]
-        figs, _ = _figs(mode, tmp_path, _spec([_bar(t)]), _frame(_X[case]))
-        assert _width_value(_vbar(figs)) == pytest.approx(want, abs=1e-9)
+    def test_the_width_is_twoways(self, mode, tmp_path):
+        bad = []
+        for t in ("bar", "rbar"):
+            for case in ("s1", "s01", "s5", "su"):
+                key = "%s_%s" % (t, case)
+                want = _T["widths"].get(
+                    key, _T["widths"]["bar_" + case])["bar_size"]
+                figs, _ = _figs(mode, tmp_path, _spec([_bar(t)]),
+                                _frame(_X[case]))
+                got = _width_value(_vbar(figs))
+                if got != pytest.approx(want, abs=1e-9):
+                    bad.append((key, got, want))
+        assert not bad, bad
 
 
 @pytest.mark.parametrize("mode", _MODES)
 class TestRbarReadsBarwidth:
 
-    @pytest.mark.parametrize("key", ["barwidth", "width"])
-    def test_the_option_is_drawn(self, mode, key, tmp_path):
+    def test_the_option_is_drawn(self, mode, tmp_path):
         want = _T["widths"]["rbar_bw03"]["bar_size"]
-        figs, _ = _figs(mode, tmp_path, _spec([_bar("rbar", **{key: ".3"})]),
-                        _frame(_X["s1"]))
-        assert _width_value(_vbar(figs)) == pytest.approx(want)
+        for key in ("barwidth", "width"):
+            figs, _ = _figs(mode, tmp_path,
+                            _spec([_bar("rbar", **{key: ".3"})]),
+                            _frame(_X["s1"]))
+            assert _width_value(_vbar(figs)) == pytest.approx(want), key
 
     def test_no_note(self, mode, tmp_path):
         _, notes = _figs(mode, tmp_path,
@@ -298,10 +309,13 @@ class TestBarwidthOnADateAxis:
         assert _width_value(_vbar(figs)) == pytest.approx(1.0)
 
     @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("kind,base", [("tw", 2080.0), ("tm", 720.0),
-                                           ("tq", 160.0), ("th", 80.0),
-                                           ("ty", 2000.0)])
-    def test_a_period_bar_spans_its_period(self, mode, kind, base, tmp_path):
+    def test_a_period_bar_spans_its_period(self, mode, tmp_path):
+        for kind, base in (("tw", 2080.0), ("tm", 720.0), ("tq", 160.0),
+                           ("th", 80.0), ("ty", 2000.0)):
+            self._one_period(mode, kind, base, tmp_path)
+
+    @staticmethod
+    def _one_period(mode, kind, base, tmp_path):
         df = _frame([base + k for k in range(5)])
         figs, _ = _figs(mode, tmp_path,
                         _spec([_bar("bar")], {"x": "%" + kind}), df)
@@ -357,21 +371,21 @@ class TestBarwidthOnADateAxis:
 
 class TestTheWidthHoldsAcrossAMove:
 
-    @pytest.mark.parametrize("t", ["bar", "rbar"])
-    def test_saved(self, t):
-        r = tsfl._render(tp._spec([plot_for(t)], {"filter": _DROPDOWN}))
-        [bar] = _glyphs(r.figures.values(), "VBar")
-        assert _width_value(bar) == pytest.approx(1.0)
-        tsfl._move(r, tsfl._MOVES[0][2])
-        assert _width_value(bar) == pytest.approx(1.0)
+    def test_saved(self):
+        for t in ("bar", "rbar"):
+            r = tsfl._render(tp._spec([plot_for(t)], {"filter": _DROPDOWN}))
+            [bar] = _glyphs(r.figures.values(), "VBar")
+            assert _width_value(bar) == pytest.approx(1.0), t
+            tsfl._move(r, tsfl._MOVES[0][2])
+            assert _width_value(bar) == pytest.approx(1.0), t
 
-    @pytest.mark.parametrize("t", ["bar", "rbar"])
-    def test_served(self, t):
-        spec = tp._spec([plot_for(t)], {"filter": _DROPDOWN})
-        figs, _ = tp._served_after_move(spec, ("Select", "Foreign"))
-        widths = [g["coords"].get("width") for f in figs
-                  for g in f["glyphs"] if g["type"] == "VBar"]
-        assert widths == [("value", 1.0)], widths
+    def test_served(self):
+        for t in ("bar", "rbar"):
+            spec = tp._spec([plot_for(t)], {"filter": _DROPDOWN})
+            figs, _ = tp._served_after_move(spec, ("Select", "Foreign"))
+            widths = [g["coords"].get("width") for f in figs
+                      for g in f["glyphs"] if g["type"] == "VBar"]
+            assert widths == [("value", 1.0)], (t, widths)
 
     def test_a_period_bar_after_a_saved_move(self):
         df = tp._DF.assign(m=[720.0 + k for k in range(10)])
@@ -392,7 +406,9 @@ class TestTheWidthHoldsAcrossAMove:
 # Caps
 # ---------------------------------------------------------------------------
 
-_MSIZES = ["tiny", "small", "medium", "large", "vlarge", "2", "*2"]
+# One of each form resolve_size reads: a keyword, a number, a multiplier
+# (the keyword ladder itself is test_size_units.py's).
+_MSIZES = ["small", "2", "*2"]
 
 
 class TestRcapCapsAreScreenUnits:
@@ -410,26 +426,25 @@ class TestRcapCapsAreScreenUnits:
             assert c.glyph.line_cap == "round"
 
     @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("m", _MSIZES)
-    def test_the_cap_is_a_marker_of_its_msize(self, mode, m, tmp_path):
-        figs, _ = _figs(mode, tmp_path, _spec([_bar("rcap", msize=m)]),
-                        _frame(_X["s1"]))
-        want = _scatter_size(mode, tmp_path, m)
-        for c in _caps(figs):
-            assert float(c.glyph.size) == pytest.approx(want)
-        assert len(_caps(figs)) == 2
+    def test_the_cap_is_a_marker_of_its_msize(self, mode, tmp_path):
+        for m in _MSIZES:
+            figs, _ = _figs(mode, tmp_path, _spec([_bar("rcap", msize=m)]),
+                            _frame(_X["s1"]))
+            want = _scatter_size(mode, tmp_path, m)
+            for c in _caps(figs):
+                assert float(c.glyph.size) == pytest.approx(want), m
+            assert len(_caps(figs)) == 2, m
 
     @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("scheme", ["s2color", "stcolor"])
-    def test_the_default_is_the_schemes_symbol_size(self, mode, scheme,
-                                                    tmp_path):
-        spec = _spec([_bar("rcap")])
-        spec["graphs"][0]["graph_options"]["scheme"] = scheme
-        figs, _ = _figs(mode, tmp_path, spec, _frame(_X["s1"]))
-        want = dr.SchemeParser(scheme).default_marker_size(0)
-        caps = _caps(figs)
-        assert caps and all(float(c.glyph.size) == pytest.approx(want)
-                            for c in caps)
+    def test_the_default_is_the_schemes_symbol_size(self, mode, tmp_path):
+        for scheme in ("s2color", "stcolor"):
+            spec = _spec([_bar("rcap")])
+            spec["graphs"][0]["graph_options"]["scheme"] = scheme
+            figs, _ = _figs(mode, tmp_path, spec, _frame(_X["s1"]))
+            want = dr.SchemeParser(scheme).default_marker_size(0)
+            caps = _caps(figs)
+            assert caps and all(float(c.glyph.size) == pytest.approx(want)
+                                for c in caps), scheme
 
     def test_the_cap_does_not_follow_the_x_spacing(self, tmp_path):
         sizes = []
@@ -546,8 +561,12 @@ class TestTheSpacingMachineryIsGone:
 class TestTheTooltipsAreUnchanged:
 
     @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("t", ["bar", "rbar", "rcap", "rcapsym"])
-    def test_the_fields(self, mode, t, tmp_path):
+    def test_the_fields(self, mode, tmp_path):
+        for t in ("bar", "rbar", "rcap", "rcapsym"):
+            self._one_type(mode, t, tmp_path)
+
+    @staticmethod
+    def _one_type(mode, t, tmp_path):
         spec = tp._spec([plot_for(t)])
         figs, _ = _figs(mode, tmp_path, spec, tp._DF)
         hovers = [h for f in figs for h in f.tools

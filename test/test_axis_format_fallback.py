@@ -165,7 +165,7 @@ _NF = {"weight": "%8.0gc", "price": "%8.0gc", "mpg": "%8.0g",
 
 class TestTheHelper:
 
-    @pytest.mark.parametrize("plot,x,y", [
+    _LAYERS = [
         (_p("scatter", yvar="mpg", xvar="weight"), "%8.0gc", "%8.0g"),
         (_p("line", yvar="price", xvar="weight"), "%8.0gc", "%8.0gc"),
         (_p("rarea", yvar1="price", yvar2="mpg", xvar="weight"),
@@ -185,11 +185,13 @@ class TestTheHelper:
         (_p("mband", yvar="price", xvar="weight"), "%8.0gc", "%8.0gc"),
         (_p("histogram", var="price"), "%8.0gc", "%6.4g"),
         (_p("scatter", yvar="mpg", xvar="nofmt"), "%9.0g", "%8.0g"),
-    ])
-    def test_each_layer_type(self, plot, x, y):
+        ]
+
+    def test_each_layer_type(self):
         f = dr._dash_layer_tick_format
-        assert f(plot, "x", _NF, {}) == (x, False)
-        assert f(plot, "y", _NF, {}) == (y, False)
+        for plot, x, y in self._LAYERS:
+            assert f(plot, "x", _NF, {}) == (x, False), plot
+            assert f(plot, "y", _NF, {}) == (y, False), plot
 
     def test_varformat_wins(self):
         p = _p("lfit", yvar="mpg", xvar="weight",
@@ -209,7 +211,7 @@ class TestTheHelper:
             "x": ("", False), "y": ("", False), "x2": ("", False),
             "y2": ("", False)}
 
-    @pytest.mark.parametrize("plots,want", [
+    _SEVERAL = [
         # m01, m02: the first layer's first y.
         ([_p("scatter", yvar="mpg", xvar="weight"),
           _p("scatter", yvar="price", xvar="weight")], {"y": "%8.0g"}),
@@ -253,10 +255,12 @@ class TestTheHelper:
           _p("scatter", yvar="mpg", xvar="weight")], {"y": "%8.0g"}),
         ([None, "x", _p("scatter", yvar="mpg", xvar="weight")],
          {"x": "%8.0gc"}),
-    ])
-    def test_the_several_layer_rule(self, plots, want):
-        got = dr._dash_axis_tick_formats(plots, _NF, {})
-        assert {k: got[k][0] for k in want} == want, got
+        ]
+
+    def test_the_several_layer_rule(self):
+        for n, (plots, want) in enumerate(self._SEVERAL):
+            got = dr._dash_axis_tick_formats(plots, _NF, {})
+            assert {k: got[k][0] for k in want} == want, (n, got)
 
 
 # ---------------------------------------------------------------------------
@@ -266,7 +270,7 @@ class TestTheHelper:
 @pytest.mark.parametrize("mode", MODES)
 class TestDefaultTicks:
 
-    @pytest.mark.parametrize("fmt,var,vals,want", [
+    _FORMATS = [
         ("%8.0gc", "weight", [2000, 3000, 4000, 5000],
          ["2,000", "3,000", "4,000", "5,000"]),
         ("%9.0fc", "weight", [2000, 3000], ["2,000", "3,000"]),
@@ -276,13 +280,14 @@ class TestDefaultTicks:
         ("%9.2e", "price", [5000], ["5.00e+03"]),
         ("%9,2f", "gear_ratio", [2.5], ["2,50"]),
         ("%-9.0fc", "weight", [2000], ["2,000"]),
-    ])
-    def test_each_display_format_reaches_a_default_axis(
-            self, mode, fmt, var, vals, want):
-        b = _built(mode, [_sc("mpg", var)], formats=_fmts(**{var: fmt}))
-        (fig,) = _figs(b)
-        assert _fmt_of(fig, "x") == fmt
-        assert _texts(fig, "x", vals) == want
+        ]
+
+    def test_each_display_format_reaches_a_default_axis(self, mode):
+        for fmt, var, vals, want in self._FORMATS:
+            b = _built(mode, [_sc("mpg", var)], formats=_fmts(**{var: fmt}))
+            (fig,) = _figs(b)
+            assert _fmt_of(fig, "x") == fmt
+            assert _texts(fig, "x", vals) == want, fmt
 
     def test_a_rule_or_list_keeps_the_fallback(self, mode):
         for go, side, vals, want in (
@@ -715,14 +720,51 @@ def _compared():
     return sorted(_CASE_SPECS)
 
 
+class _Mismatch(Exception):
+    """One fixture row that differs; collected, never swallowed: the
+    loop that catches it fails naming every such row."""
+
+
+def _expect(ok, why):
+    if not ok:
+        raise _Mismatch(why)
+
+
+def _mismatches(ids, check):
+    """``"id: why"`` for each id whose ``check(id)`` raised _Mismatch."""
+    bad = []
+    for i in ids:
+        try:
+            check(i)
+        except _Mismatch as e:
+            bad.append("%s: %s" % (i, str(e).splitlines()[0] if str(e)
+                                   else "differs"))
+    return bad
+
+
 @pytest.mark.parametrize("mode", MODES)
-@pytest.mark.parametrize("cid", _compared())
 class TestAgainstTwoway:
 
-    def test_the_axis_text(self, mode, cid):
+    def test_the_axis_text(self, mode):
+        """Every compared case; the failing case ids are listed together."""
+        from bokeh.io import curdoc
+        cids = _compared()
+        assert cids, FIXTURE
         fx = _fixture()
+
+        def check(cid):
+            try:
+                self._one(mode, cid, fx)
+            finally:
+                curdoc().clear()
+        bad = _mismatches(cids, check)
+        assert not bad, "%d of %d cases differ:\n%s" % (
+            len(bad), len(cids), "\n".join(bad))
+
+    @staticmethod
+    def _one(mode, cid, fx):
         case = fx["cases"][cid]
-        assert case["rc"] == 0, case
+        _expect(case["rc"] == 0, case)
         plots, go, over, axes = _CASE_SPECS[cid]
         fmts = _fmts(**over)
         b = _built(mode, plots, formats=fmts, **go)
@@ -730,9 +772,9 @@ class TestAgainstTwoway:
         src = fx["cases"].get(case["values_from"] or cid)
         for side in axes:
             want = case[side]
-            assert want, (cid, side)
+            _expect(want, (cid, side))
             fm = _writer(fig, side)
-            assert fm is not None, (cid, side, _axis(fig, side).formatter)
+            _expect(fm is not None, (cid, side, _axis(fig, side).formatter))
             comma = "," in fm.args["fmt"].split(".")[0][1:]
             values = [_twoway_number(t, comma) for t in src[side]]
             pairs = [(v, t) for v, t in zip(values, want) if v is not None]
@@ -740,6 +782,6 @@ class TestAgainstTwoway:
                 labels = json.loads(fm.args["labels"])
                 pairs = [(v, t) for v, t in pairs
                          if str(float(v)) not in labels]
-            assert pairs, (cid, side)
+            _expect(pairs, (cid, side))
             got = [dr._dash_fmt_text(v, fm.args["fmt"]) for v, _ in pairs]
-            assert got == [t for _, t in pairs], (cid, side, fm.args["fmt"])
+            _expect(got == [t for _, t in pairs], (cid, side, fm.args["fmt"]))

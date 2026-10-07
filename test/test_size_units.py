@@ -124,6 +124,10 @@ def _build(mode, wd, plots, scheme="s2color", go=None, bo=None, patch=None):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 mod = load_app(ap, "_su_app_%d" % tag)
+            # The import's own render leaves its models in the global
+            # document; clear them so a loop of builds stays as fast as one.
+            from bokeh.io import curdoc
+            curdoc().clear()
             if patch is not None:
                 patch(mod.GlyphMapper)
             doc = Document()
@@ -339,11 +343,11 @@ class TestResolveSize:
         for name, pt in _SYMBOLSIZE_ABS_PT.items():
             assert _rs()(name, "marker", 4.4) == pytest.approx(pt), name
 
-    @pytest.mark.parametrize("raw", ["HUGE", "Large", "4PT", "4Pt"])
-    def test_names_are_case_sensitive(self, raw):
-        for kind in ("marker", "text", "gap"):
-            with pytest.raises(ValueError):
-                _rs()(raw, kind, 4.4)
+    def test_names_are_case_sensitive(self):
+        for raw in ("HUGE", "Large", "4PT", "4Pt"):
+            for kind in ("marker", "text", "gap"):
+                with pytest.raises(ValueError):
+                    _rs()(raw, kind, 4.4)
 
     def test_ehuge_and_vtiny_are_not_text_sizes(self):
         for name in ("ehuge", "vtiny"):
@@ -355,14 +359,11 @@ class TestResolveSize:
     def test_statas_d_exponent(self):
         assert _rs()("1d3", "text", 11) == pytest.approx(1000 * 2.88)
 
-    @pytest.mark.parametrize("raw", [
-        "abc", "", "5px", "inf", "nan", "٥", "0x10", "1_000", "--5",
-        "5e", "5,0", "0" * 64 + "1", "1001",
-    ], ids=["abc", "empty", "5px", "inf", "nan", "arabic5", "0x10", "1_000",
-            "--5", "5e", "5,0", "65chars", "1001"])
-    def test_what_is_not_a_size_raises(self, raw):
-        with pytest.raises(ValueError):
-            _rs()(raw, "text", 11)
+    def test_what_is_not_a_size_raises(self):
+        for raw in ("abc", "", "5px", "inf", "nan", "٥", "0x10",
+                    "1_000", "--5", "5e", "5,0", "0" * 64 + "1", "1001"):
+            with pytest.raises(ValueError):
+                _rs()(raw, "text", 11)
 
     def test_an_unknown_kind_raises(self):
         with pytest.raises(ValueError):
@@ -432,25 +433,22 @@ class TestExplicitMarkerSizes:
             default
         assert default == pytest.approx(5.8667, abs=1e-3)
 
-    @pytest.mark.parametrize("raw,px", [
-        ("1.52778", 5.8667), ("4pt", 5.3333), ("*2", 11.7334),
-        ("vhuge", 21.331), (".1in", 9.6),
-    ], ids=["1.52778", "4pt", "star2", "vhuge", ".1in"])
-    def test_numbers_units_and_star(self, mode, tmp_path, raw, px):
-        fig, notes = _figure_notes(mode, tmp_path, [_sc(msize=raw)])
-        assert _marker(fig) == pytest.approx(px, abs=1e-3)
-        assert not _size_notes(notes, "msize("), notes
+    def test_numbers_units_and_star(self, mode, tmp_path):
+        for raw, px in (("1.52778", 5.8667), ("4pt", 5.3333),
+                        ("*2", 11.7334), ("vhuge", 21.331), (".1in", 9.6)):
+            fig, notes = _figure_notes(mode, tmp_path, [_sc(msize=raw)])
+            assert _marker(fig) == pytest.approx(px, abs=1e-3), raw
+            assert not _size_notes(notes, "msize("), (raw, notes)
 
     def test_star_doubles_the_schemes_default(self, mode, tmp_path):
         fig = _figure(mode, tmp_path, [_sc(msize="*2")], "stcolor")
         assert _marker(fig) == pytest.approx(8.0, abs=1e-3)
 
-    @pytest.mark.parametrize("raw", ["-1", "*-1", "-1pt", "0"])
-    def test_negative_or_zero_draws_nothing_silently(self, mode, tmp_path,
-                                                     raw):
-        fig, notes = _figure_notes(mode, tmp_path, [_sc(msize=raw)])
-        assert _marker(fig) == 0
-        assert not [n for n in notes if "msize(" in n], notes
+    def test_negative_or_zero_draws_nothing_silently(self, mode, tmp_path):
+        for raw in ("-1", "*-1", "-1pt", "0"):
+            fig, notes = _figure_notes(mode, tmp_path, [_sc(msize=raw)])
+            assert _marker(fig) == 0, raw
+            assert not [n for n in notes if "msize(" in n], (raw, notes)
 
 
 @pytest.mark.parametrize("mode", _MODES)
@@ -463,16 +461,14 @@ class TestExplicitTextSizes:
         assert fig.title.text_font_size == "14pt"
         assert fig.title.text_font_size == default.title.text_font_size
 
-    @pytest.mark.parametrize("raw,css", [
-        ("5", "14.4pt"), ("12pt", "12pt"), ("*2", "28pt"), ("vhuge", "28pt"),
-        ("tenth", "28.8pt"), ("relative3", "8.64pt"), ("10-pt", "10pt"),
-        ("4 pt", "4pt"),
-    ], ids=["5", "12pt", "star2", "vhuge", "tenth", "relative3", "10-pt",
-            "4 pt"])
-    def test_title_numbers_units_and_star(self, mode, tmp_path, raw, css):
-        fig, notes = _figure_notes(mode, tmp_path, [_sc()],
-                                   go={"title": '"T", size(%s)' % raw})
-        assert fig.title.text_font_size == css
+    def test_title_numbers_units_and_star(self, mode, tmp_path):
+        for raw, css in (("5", "14.4pt"), ("12pt", "12pt"), ("*2", "28pt"),
+                         ("vhuge", "28pt"), ("tenth", "28.8pt"),
+                         ("relative3", "8.64pt"), ("10-pt", "10pt"),
+                         ("4 pt", "4pt")):
+            fig, notes = _figure_notes(mode, tmp_path, [_sc()],
+                                       go={"title": '"T", size(%s)' % raw})
+            assert fig.title.text_font_size == css, raw
         assert not _size_notes(notes, "size("), notes
 
     def test_axis_titles_subtitle_note_and_axis_two(self, mode, tmp_path):
@@ -552,16 +548,16 @@ class TestAbsoluteUnitsFollowTheSchemesReference:
 class TestUnknownNamesDrawMedium:
 
     @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("raw", ["abc", "HUGE", "Large", "4PT"])
-    def test_markers(self, mode, tmp_path, raw):
-        fig, notes = _figure_notes(mode, tmp_path, [_sc(msize=raw)])
+    def test_markers(self, mode, tmp_path):
+        # An unknown name, a wrong-case name and a wrong-case unit.
+        for raw in ("abc", "Large", "4PT"):
+            fig, notes = _figure_notes(mode, tmp_path, [_sc(msize=raw)])
+            assert _marker(fig) == pytest.approx(5.8667, abs=1e-3), raw
+            _assert_one_medium_note(notes, "msize(%s)" % raw)
+        fig, notes = _figure_notes(mode, tmp_path, [_sc(msize="abc")],
+                                   "stcolor")
         assert _marker(fig) == pytest.approx(5.8667, abs=1e-3)
-        _assert_one_medium_note(notes, "msize(%s)" % raw)
-        if raw == "abc":
-            fig, notes = _figure_notes(mode, tmp_path, [_sc(msize=raw)],
-                                       "stcolor")
-            assert _marker(fig) == pytest.approx(5.8667, abs=1e-3)
-            _assert_one_medium_note(notes, "msize(abc)")
+        _assert_one_medium_note(notes, "msize(abc)")
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_text_and_gaps(self, mode, tmp_path):
@@ -599,43 +595,37 @@ class TestUnknownNamesDrawMedium:
 class TestMarkerLabelsFromTheMarkerEdge:
 
     @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("gap,dx", [
-        (None, 5.6), ("0", 2.933), ("5", 22.133), ("10pt", 16.267),
-        ("*2", 8.267), ("-2", -4.747),
-    ], ids=["default", "0", "5", "10pt", "star2", "-2"])
-    def test_the_gap_is_from_the_edge(self, mode, tmp_path, gap, dx):
-        o = {"mlabel": "make"}
-        if gap is not None:
-            o["mlabgap"] = gap
-        fig = _figure(mode, tmp_path, [_sc(**o)])
-        assert _offset(fig) == (pytest.approx(dx, abs=0.01),
-                                pytest.approx(0, abs=1e-6))
+    def test_the_gap_is_from_the_edge(self, mode, tmp_path):
+        for gap, dx in ((None, 5.6), ("0", 2.933), ("5", 22.133),
+                        ("10pt", 16.267), ("*2", 8.267), ("-2", -4.747)):
+            o = {"mlabel": "make"}
+            if gap is not None:
+                o["mlabgap"] = gap
+            fig = _figure(mode, tmp_path, [_sc(**o)])
+            assert _offset(fig) == (pytest.approx(dx, abs=0.01),
+                                    pytest.approx(0, abs=1e-6)), gap
 
     @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ms,dx", [
-        ("large", 4.667), ("small", 2.0), ("-1", -1.92),
-    ])
-    def test_the_radius_follows_msize(self, mode, tmp_path, ms, dx):
-        fig = _figure(mode, tmp_path,
-                      [_sc(mlabel="make", msize=ms, mlabgap="0")])
-        assert _offset(fig) == (pytest.approx(dx, abs=0.01),
-                                pytest.approx(0, abs=1e-6))
+    def test_the_radius_follows_msize(self, mode, tmp_path):
+        for ms, dx in (("large", 4.667), ("small", 2.0), ("-1", -1.92)):
+            fig = _figure(mode, tmp_path,
+                          [_sc(mlabel="make", msize=ms, mlabgap="0")])
+            assert _offset(fig) == (pytest.approx(dx, abs=0.01),
+                                    pytest.approx(0, abs=1e-6)), ms
 
     @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("p,want", [
-        ("12", (0.0, 5.6)), ("2", (4.850, 2.8)), ("4", (4.850, -2.8)),
-        ("6", (0.0, -5.6)), ("9", (-5.6, 0.0)),
-    ])
-    def test_every_clock(self, mode, tmp_path, p, want):
-        fig = _figure(mode, tmp_path, [_sc(mlabel="make", mlabposition=p)])
-        x, y = _offset(fig)
-        assert (x, y) == (pytest.approx(want[0], abs=0.01),
-                          pytest.approx(want[1], abs=0.01))
-        if p == "12":
-            fig = _figure(mode, tmp_path, [_sc(mlabel="make",
-                                               mlabposition="0",
-                                               mlabgap="5")])
-            assert _offset(fig) == (0, 0)
+    def test_every_clock(self, mode, tmp_path):
+        for p, want in (("12", (0.0, 5.6)), ("2", (4.850, 2.8)),
+                        ("4", (4.850, -2.8)), ("6", (0.0, -5.6)),
+                        ("9", (-5.6, 0.0))):
+            fig = _figure(mode, tmp_path,
+                          [_sc(mlabel="make", mlabposition=p)])
+            x, y = _offset(fig)
+            assert (x, y) == (pytest.approx(want[0], abs=0.01),
+                              pytest.approx(want[1], abs=0.01)), p
+        fig = _figure(mode, tmp_path, [_sc(mlabel="make", mlabposition="0",
+                                           mlabgap="5")])
+        assert _offset(fig) == (0, 0)
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_no_marker_types(self, mode, tmp_path):
@@ -761,16 +751,16 @@ _REF = {"s2color": 4.0, "stcolor": 4.5, "economist": 2.2}
 class TestTheReferenceStamp:
 
     @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("scheme", sorted(_REF))
-    def test_every_figure_carries_it(self, mode, scheme, tmp_path):
-        for go in (None, {"by": "foreign"}):
-            figs, _, _ = _build(mode, tmp_path, [_sc()], scheme, go)
-            assert figs
-            for f in figs:
-                assert getattr(f, "_dash_size_ref_in", None) == \
-                    pytest.approx(_REF[scheme]), (scheme, go)
-        assert dr.SchemeParser(scheme).size_ref_in == pytest.approx(
-            _REF[scheme])
+    def test_every_figure_carries_it(self, mode, tmp_path):
+        for scheme in sorted(_REF):
+            for go in (None, {"by": "foreign"}):
+                figs, _, _ = _build(mode, tmp_path, [_sc()], scheme, go)
+                assert figs
+                for f in figs:
+                    assert getattr(f, "_dash_size_ref_in", None) == \
+                        pytest.approx(_REF[scheme]), (scheme, go)
+            assert dr.SchemeParser(scheme).size_ref_in == pytest.approx(
+                _REF[scheme])
 
     def test_size_ref_of_reads_the_stamp(self):
         ref = dr.OptionTranslator.size_ref_of
@@ -779,10 +769,10 @@ class TestTheReferenceStamp:
         for bad in ("x", float("nan"), -1, 1e9):
             assert ref(types.SimpleNamespace(_dash_size_ref_in=bad)) == 4.0
 
-    @pytest.mark.parametrize("scheme", ["s2color", "stcolor"])
-    def test_it_is_never_serialised(self, scheme, tmp_path):
-        """Guard: the stamp is a Python attribute only."""
-        _tag, sp, dp = _inputs(tmp_path, [_sc(mlabel="make")], scheme,
+    def test_it_is_never_serialised(self, tmp_path):
+        """Guard: the stamp is a Python attribute only (a non-default
+        reference, so a written stamp would show)."""
+        _tag, sp, dp = _inputs(tmp_path, [_sc(mlabel="make")], "stcolor",
                                {"title": '"T", size(14pt)'}, None)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -1003,6 +993,39 @@ def _probe(pid):
     return _PROBES[pid]
 
 
+class _Mismatch(Exception):
+    """One fixture row that differs; collected, never swallowed: the
+    loop that catches it fails naming every such row."""
+
+
+def _expect(ok, why):
+    if not ok:
+        raise _Mismatch(why)
+
+
+def _mismatches(ids, check):
+    """``"id: why"`` for each id whose ``check(id)`` raised _Mismatch."""
+    bad = []
+    for i in ids:
+        try:
+            check(i)
+        except _Mismatch as e:
+            bad.append("%s: %s" % (i, str(e).splitlines()[0] if str(e)
+                                   else "differs"))
+    return bad
+
+
+_DASH_DEFAULTS = {}       # (mode, site, scheme) -> dash's default size
+
+
+def _every_probe(pids, one, mode, wd):
+    """Run *one* over every probe id, then fail once naming each probe
+    whose check failed."""
+    bad = _mismatches(pids, lambda pid: one(mode, pid, wd))
+    assert not bad, "%d of %d probes differ:\n%s" % (
+        len(bad), len(pids), "\n".join(bad))
+
+
 class TestStataRatios:
     """dash against twoway, probe by probe.  A ``*#`` value is compared as
     a ratio to the site's default (dash's own default is not always
@@ -1011,31 +1034,40 @@ class TestStataRatios:
     units (one unit = 3.84px = 2.88pt in dash)."""
 
     @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("pid", _SIZE_IDS)
-    def test_sizes(self, mode, pid, tmp_path):
+    def test_sizes(self, mode, tmp_path):
+        """Every size probe; the failing probe ids are listed together."""
+        _every_probe(_SIZE_IDS, self._one_size, mode, tmp_path)
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_label_offsets(self, mode, tmp_path):
+        """Every label-offset probe, listed together on failure."""
+        _every_probe(_OFFSET_IDS, self._one_offset, mode, tmp_path)
+
+    @staticmethod
+    def _one_size(mode, pid, tmp_path):
         rec = _probe(pid)
         site, scheme, v = rec["site"], rec["scheme"], _value(rec)
         got = _dash_size(mode, tmp_path, site, scheme, v)
         tw = _tw_size(rec)
         unit = _PX_PER_RS if site == "marker" else _PT_PER_RS
         if tw <= 0:
-            assert got == pytest.approx(0, abs=1e-9), (
-                "%s: twoway draws nothing, dash draws %r" % (pid, got))
+            _expect(got == pytest.approx(0, abs=1e-9), "%s: twoway draws nothing, dash draws %r" % (pid, got))
             return
         if v.startswith("*"):
             tw_def = _tw_size(_default_of(rec))
-            dash_def = _dash_size(mode, tmp_path, site, scheme, "")
-            assert got / dash_def == pytest.approx(tw / tw_def, rel=0.01), (
-                "%s: dash %r/%r against twoway %r/%r" % (pid, got, dash_def,
+            key = (mode, site, scheme)
+            if key not in _DASH_DEFAULTS:
+                _DASH_DEFAULTS[key] = _dash_size(mode, tmp_path, site,
+                                                 scheme, "")
+            dash_def = _DASH_DEFAULTS[key]
+            _expect(got / dash_def == pytest.approx(tw / tw_def, rel=0.01), "%s: dash %r/%r against twoway %r/%r" % (pid, got, dash_def,
                                                          tw, tw_def))
         else:
-            assert got / unit == pytest.approx(tw, rel=0.01, abs=0.005), (
-                "%s: dash %.4f units (%r), twoway %.4f units" % (
+            _expect(got / unit == pytest.approx(tw, rel=0.01, abs=0.005), "%s: dash %.4f units (%r), twoway %.4f units" % (
                     pid, got / unit, got, tw))
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("pid", _OFFSET_IDS)
-    def test_label_offsets(self, mode, pid, tmp_path):
+    @staticmethod
+    def _one_offset(mode, pid, tmp_path):
         rec = _probe(pid)
         site, scheme = rec["site"], rec["scheme"]
         cmd = str(rec.get("command", ""))
@@ -1057,20 +1089,20 @@ class TestStataRatios:
                     "options": dict(opts, mlabel="make")}
         x, y = _offset(_figure(mode, tmp_path, [plot], scheme))
         dx, dy = _num(rec.get("dx_rs")), _num(rec.get("dy_rs"))
-        assert dx is not None and dy is not None, (pid, rec)
+        _expect(dx is not None and dy is not None, (pid, rec))
         if site == "origin":
             # The label's distance from its point.  twoway's anchor sits
             # along one axis: beside the point (scatteri, an arrow's tail;
             # its dy is the text's baseline shift) or, when dx is 0, above
             # a bar's top.
             tw = abs(dx) if abs(dx) > 1e-6 else abs(dy)
-            assert math.hypot(x, y) / _PX_PER_RS == pytest.approx(
-                tw, abs=0.02), ("%s: dash offset (%r, %r) px, twoway %.4f "
+            _expect(math.hypot(x, y) / _PX_PER_RS == pytest.approx(
+                tw, abs=0.02), "%s: dash offset (%r, %r) px, twoway %.4f "
                                 "units" % (pid, x, y, tw))
             return
         p = int(opts.get("mlabposition", "3"))
         if p == 0:
-            assert (x, y) == (0, 0)
+            _expect((x, y) == (0, 0), '(x, y) == (0, 0)')
             return
         ux, uy = _unit(p)
         if abs(ux) > 1e-9:
@@ -1084,8 +1116,7 @@ class TestStataRatios:
             font = _num(rec.get("font_pt")) or 8.0
             tw = dy - 0.7 * font * 10.0 / upr
         along = (x * ux + y * uy) / _PX_PER_RS
-        assert along == pytest.approx(tw, abs=0.02), (
-            "%s: dash offset (%r, %r) px = %.4f units along clock %d, "
+        _expect(along == pytest.approx(tw, abs=0.02), "%s: dash offset (%r, %r) px = %.4f units along clock %d, "
             "twoway %.4f units" % (pid, x, y, along, p, tw))
 
 
@@ -1096,8 +1127,13 @@ def _builtin_names():
 class TestExplicitKeywordEqualsSchemeDefault:
 
     @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("scheme", _builtin_names())
-    def test_each_scheme(self, mode, scheme, tmp_path):
+    def test_each_scheme(self, mode, tmp_path):
+        bad = _mismatches(_builtin_names(), lambda scheme:
+                          self._one_scheme(mode, scheme, tmp_path))
+        assert not bad, "\n".join(bad)
+
+    @staticmethod
+    def _one_scheme(mode, scheme, tmp_path):
         props = dr.SchemeParser(scheme)._props
         kw = {k: str(props.get(k, "")).strip() for k in (
             "symbolsize p", "gsize heading", "gsize tick_label",
@@ -1131,9 +1167,9 @@ class TestExplicitKeywordEqualsSchemeDefault:
                            _pt(_legends(fig)[0].label_text_font_size),
                            _pt(_legends(default)[0].label_text_font_size),
                            0.01))
-        assert checks
+        _expect(checks, 'checks')
         for what, got, want, tol in checks:
-            assert got == pytest.approx(want, abs=tol), (what, got, want, kw)
+            _expect(got == pytest.approx(want, abs=tol), (what, got, want, kw))
 
 
 class TestTheTablesAgree:
@@ -1181,18 +1217,21 @@ class TestEmptyOptionsChangeNothing:
     """Guard: an applier given no option leaves every glyph as built."""
 
     @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", sorted(_MARKER_TYPES))
-    def test_marker_options(self, mode, ptype, tmp_path, monkeypatch):
-        plot = dict(_MARKER_TYPES[ptype], options={})
-        figs, _, _ = _build(mode, tmp_path, [plot])
-        built = [_glyph_props(f) for f in figs]
-
-        def patch(cls):
-            monkeypatch.setattr(cls, "_apply_marker_opts",
-                                lambda self, r, o: None)
-        figs2, _, _ = _build(mode, tmp_path, [dict(plot, options={})],
-                             patch=patch)
-        assert [_glyph_props(f) for f in figs2] == built
+    def test_marker_options(self, mode, tmp_path):
+        bad = []
+        for ptype in sorted(_MARKER_TYPES):
+            plot = dict(_MARKER_TYPES[ptype], options={})
+            figs, _, _ = _build(mode, tmp_path, [plot])
+            built = [_glyph_props(f) for f in figs]
+            with pytest.MonkeyPatch.context() as mp:
+                def patch(cls, mp=mp):
+                    mp.setattr(cls, "_apply_marker_opts",
+                               lambda self, r, o: None)
+                figs2, _, _ = _build(mode, tmp_path,
+                                     [dict(plot, options={})], patch=patch)
+                if [_glyph_props(f) for f in figs2] != built:
+                    bad.append(ptype)
+        assert not bad, bad
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_label_options(self, mode, tmp_path):

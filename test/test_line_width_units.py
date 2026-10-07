@@ -159,9 +159,9 @@ _LADDER = {"none": 0.0, "vvvthin": 0.4, "vvthin": 0.4, "vthin": 0.576,
 
 
 class TestTheLadderIsStatas:
-    @pytest.mark.parametrize("kw", sorted(_LADDER))
-    def test_each_keyword_is_its_stata_units(self, kw):
-        assert T.translate_lwidth(kw) == pytest.approx(_LADDER[kw])
+    def test_each_keyword_is_its_stata_units(self):
+        for kw in sorted(_LADDER):
+            assert T.translate_lwidth(kw) == pytest.approx(_LADDER[kw]), kw
 
     def test_ratios_to_medium_are_statas(self):
         lad = _truth()["ladder"]
@@ -291,16 +291,16 @@ class TestNamesAreCaseSensitive:
 
 
 class TestTheDefaultLine:
-    @pytest.mark.parametrize("name", sorted(dr.SchemeParser._BUILTIN_NAMES))
-    def test_each_shipped_scheme_draws_statas_default(self, name):
-        sp = dr.SchemeParser(name)
-        raw = sp._props.get("linewidth p", "medium").strip()
+    def test_each_shipped_scheme_draws_statas_default(self):
         lad = _truth()["ladder"]
-        units = (lad[raw]["setting"] if raw in lad else float(raw))
-        assert sp.default_line_width == pytest.approx(
-            T.line_px(units * 2.88))
-        if name == "s2color":
-            assert sp.default_line_width == pytest.approx(1.152)
+        for name in sorted(dr.SchemeParser._BUILTIN_NAMES):
+            sp = dr.SchemeParser(name)
+            raw = sp._props.get("linewidth p", "medium").strip()
+            units = (lad[raw]["setting"] if raw in lad else float(raw))
+            assert sp.default_line_width == pytest.approx(
+                T.line_px(units * 2.88)), name
+        assert dr.SchemeParser("s2color").default_line_width == \
+            pytest.approx(1.152)
 
 
 class TestEveryLineSiteBothModes:
@@ -409,18 +409,17 @@ class TestAfterAFilterMove:
 
 
 class TestHostileWidths:
-    @pytest.mark.parametrize("value", [
-        "x" * 1_000_000, "<script>", "*1e308", "nan", "inf", "1e400pt",
-        "*" + "9" * 500, "-0"], ids=lambda v: v[:12])
-    def test_never_raises_out_and_is_linear(self, value):
-        t0 = time.perf_counter()
-        try:
-            w = T.translate_lwidth(value)
-        except ValueError:
-            w = None
-        assert time.perf_counter() - t0 < 0.1
-        if w is not None:
-            assert math.isfinite(w) and w >= 0
+    def test_never_raises_out_and_is_linear(self):
+        for value in ("x" * 1_000_000, "<script>", "*1e308", "nan", "inf",
+                      "1e400pt", "*" + "9" * 500, "-0"):
+            t0 = time.perf_counter()
+            try:
+                w = T.translate_lwidth(value)
+            except ValueError:
+                w = None
+            assert time.perf_counter() - t0 < 0.1, value[:12]
+            if w is not None:
+                assert math.isfinite(w) and w >= 0, value[:12]
 
 
 class TestNothingSerialisesAWidthAsText:

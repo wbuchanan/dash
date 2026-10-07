@@ -108,13 +108,13 @@ def _sink_texts(m):
 
 class TestFinishTextValue:
 
-    @pytest.mark.parametrize("t", ["\\(x\\)", "\\[x\\]", "$$x$$",
-                                   "a $$ b", "\\) and \\(", "$$$"])
-    def test_text_kind_breaks_every_delimiter(self, t):
-        new, changed = dr._dash_finish_text_value(t, "text")
-        assert changed is True
-        assert not _live(new)
-        assert new.replace(WJ, "") == t
+    def test_text_kind_breaks_every_delimiter(self):
+        for t in ("\\(x\\)", "\\[x\\]", "$$x$$", "a $$ b", "\\) and \\(",
+                  "$$$"):
+            new, changed = dr._dash_finish_text_value(t, "text")
+            assert changed is True, t
+            assert not _live(new), t
+            assert new.replace(WJ, "") == t
 
     def test_text_without_tex_is_unchanged_and_reported_so(self):
         assert dr._dash_finish_text_value("Price $", "text") == (
@@ -152,12 +152,12 @@ class TestFinishTextValue:
             {"2000.0": dr._dash_inert_tex("$$a$$"), "3000.0": "b"})
         assert json.loads(args["labels"])["2000.0"] == "$$a$$"
 
-    @pytest.mark.parametrize("args", [
-        {"labels": "{bad"}, {"labels": json.dumps(["\\(x\\)"])},
-        {"labels": json.dumps({"a": 1, "b": "\\(x\\)"})}, {"x": "\\(y\\)"},
-        {"labels": 5}])
-    def test_a_malformed_label_map_is_left_alone(self, args):
-        assert dr._dash_finish_text_value(args, "labels") == (args, False)
+    def test_a_malformed_label_map_is_left_alone(self):
+        for args in ({"labels": "{bad"}, {"labels": json.dumps(["\\(x\\)"])},
+                     {"labels": json.dumps({"a": 1, "b": "\\(x\\)"})},
+                     {"x": "\\(y\\)"}, {"labels": 5}):
+            assert dr._dash_finish_text_value(args, "labels") == (
+                args, False), args
 
 
 # ---------------------------------------------------------------------------

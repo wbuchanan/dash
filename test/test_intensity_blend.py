@@ -125,13 +125,13 @@ class TestTheFintensityParser:
                 assert got[k] == pytest.approx(v), (k, got[k])
         assert not [w for w in caught if "fintensity(" in str(w.message)]
 
-    @pytest.mark.parametrize("raw", ["abc", "inten150", "inten55", "INTEN50",
-                                     "Full", ".a", "()", "x" * 200])
-    def test_an_unknown_name_is_full_with_one_note(self, raw):
-        d = _drawn([plot_for("bar", {"fcolor": "navy", "fintensity": raw})],
-                   "standalone")
-        assert _fill(d, "VBar")[0] == "#1a476f"
-        assert len(_notes(d)) == 1, d.warnings
+    def test_an_unknown_name_is_full_with_one_note(self):
+        for raw in ("abc", "inten150", "inten55", "INTEN50", "Full", ".a",
+                    "()", "x" * 200):
+            d = _drawn([plot_for("bar", {"fcolor": "navy",
+                                         "fintensity": raw})], "standalone")
+            assert _fill(d, "VBar")[0] == "#1a476f", raw
+            assert len(_notes(d)) == 1, (raw, d.warnings)
 
 
 class TestTheSchemeChains:
@@ -150,16 +150,15 @@ class TestTheSchemeChains:
 
 @pytest.mark.parametrize("mode", MODES)
 class TestMarkersAreOpaque:
-    @pytest.mark.parametrize("scheme", ["s2color", "stcolor", "s1rcolor",
-                                        "economist"])
-    def test_default_markers(self, mode, scheme):
+    def test_default_markers(self, mode):
         plots = [plot_for(p) for p in ("scatter", "connected", "dot",
                                        "rconnected")]
-        d = _drawn(plots, mode, scheme)
-        sc = _of(d, "Scatter")
-        assert len(sc) >= 5, len(sc)
-        assert [(r.glyph.fill_alpha, r.glyph.line_alpha) for r in sc] == \
-            [(1.0, 1.0)] * len(sc)
+        for scheme in ("s2color", "stcolor", "s1rcolor", "economist"):
+            d = _drawn(plots, mode, scheme)
+            sc = _of(d, "Scatter")
+            assert len(sc) >= 5, (scheme, len(sc))
+            assert [(r.glyph.fill_alpha, r.glyph.line_alpha)
+                    for r in sc] == [(1.0, 1.0)] * len(sc), scheme
 
     def test_a_declared_or_asked_opacity_still_wins(self, mode):
         """Guard: sttrans's %20, %NN and malpha() set the opacity."""
@@ -282,21 +281,21 @@ class TestCiBandIntensity:
 
 @pytest.mark.parametrize("mode", MODES)
 class TestBrushedFillsKeepTheBlend:
-    @pytest.mark.parametrize("p, opts, cls, want", [
-        ("bar", {"fcolor": "navy", "fintensity": "50"}, "VBar", "#8da3b7"),
-        ("bar", {"fcolor": "yellow"}, "VBar", "#ffff33"),
-        ("area", {"fcolor": "yellow"}, "VArea", "#ffff33"),
-        ("histogram", {"fcolor": "red"}, "Quad", "#ff0000"),
-        ("rbar", {"color": "red"}, "VBar", "#ff3333"),
-    ], ids=["bar-fi50", "bar-yellow", "area-yellow", "hist-red", "rbar-red"])
-    def test_the_nonselection_copy_has_the_drawn_colour(self, mode, p, opts,
-                                                        cls, want):
-        r = _of(_drawn([plot_for(p, opts)], mode), cls)[0]
-        assert str(r.glyph.fill_color).lower() == want
-        for attr in ("nonselection_glyph", "muted_glyph"):
-            copy = getattr(r, attr)
-            assert str(copy.fill_color).lower() == want, (attr, copy.fill_color)
-        assert r.nonselection_glyph.fill_alpha != r.glyph.fill_alpha
+    def test_the_nonselection_copy_has_the_drawn_colour(self, mode):
+        for p, opts, cls, want in (
+                ("bar", {"fcolor": "navy", "fintensity": "50"}, "VBar",
+                 "#8da3b7"),
+                ("bar", {"fcolor": "yellow"}, "VBar", "#ffff33"),
+                ("area", {"fcolor": "yellow"}, "VArea", "#ffff33"),
+                ("histogram", {"fcolor": "red"}, "Quad", "#ff0000"),
+                ("rbar", {"color": "red"}, "VBar", "#ff3333")):
+            r = _of(_drawn([plot_for(p, opts)], mode), cls)[0]
+            assert str(r.glyph.fill_color).lower() == want, p
+            for attr in ("nonselection_glyph", "muted_glyph"):
+                copy = getattr(r, attr)
+                assert str(copy.fill_color).lower() == want, (
+                    p, attr, copy.fill_color)
+            assert r.nonselection_glyph.fill_alpha != r.glyph.fill_alpha, p
 
 
 class TestAfterAFilterMove:
@@ -478,10 +477,48 @@ class TestTheFixture:
             assert _PROBES[k]["notes"] == [], k
 
 
+class _Mismatch(Exception):
+    """One fixture row that differs; collected, never swallowed: the
+    loop that catches it fails naming every such row."""
+
+
+def _expect(ok, why):
+    if not ok:
+        raise _Mismatch(why)
+
+
+def _mismatches(ids, check):
+    """``"id: why"`` for each id whose ``check(id)`` raised _Mismatch."""
+    bad = []
+    for i in ids:
+        try:
+            check(i)
+        except _Mismatch as e:
+            bad.append("%s: %s" % (i, str(e).splitlines()[0] if str(e)
+                                   else "differs"))
+    return bad
+
+
 @pytest.mark.parametrize("mode", MODES)
-@pytest.mark.parametrize("pid", _probe_ids())
 class TestStataFills:
-    def test_each_probe(self, pid, mode, tmp_path, monkeypatch):
+    def test_each_probe(self, mode, tmp_path):
+        """Every probe; the failing probe ids are listed together."""
+        from bokeh.io import curdoc
+        pids = _probe_ids()
+        assert pids, _FIXTURE_PATH
+
+        def check(pid):
+            try:
+                with pytest.MonkeyPatch.context() as mp:
+                    self._one(pid, mode, tmp_path, mp)
+            finally:
+                curdoc().clear()
+        bad = _mismatches(pids, check)
+        assert not bad, "%d of %d probes differ:\n%s" % (
+            len(bad), len(pids), "\n".join(bad))
+
+    @staticmethod
+    def _one(pid, mode, tmp_path, monkeypatch):
         pr = _PROBES[pid]
         scheme = pr["scheme"]
         if scheme in ("s16up", "s16dn"):
@@ -494,15 +531,15 @@ class TestStataFills:
         d = _drawn(plots, mode, scheme)
         cls = _KIND_GLYPH[plots[0]["type"]]
         rs = _of(d, cls)
-        assert rs, (pid, [type(r.glyph).__name__ for r in _renderers(d)])
+        _expect(rs, (pid, [type(r.glyph).__name__ for r in _renderers(d)]))
         if pr.get("fills") and len(pr["fills"]) > 1:
             got = [str(r.glyph.fill_color).lower() for r in rs]
-            assert got == [c.lower() for c in pr["fills"]], (pid, got)
+            _expect(got == [c.lower() for c in pr["fills"]], (pid, got))
             return
         g = rs[0].glyph
-        assert str(g.fill_color).lower() == pr["fill"].lower(), pid
+        _expect(str(g.fill_color).lower() == pr["fill"].lower(), pid)
         want_a = 1.0 if pr.get("opacity") is None else float(pr["opacity"])
         if cls != "VArea" or plots[0]["type"] != "rarea":
-            assert g.fill_alpha == pytest.approx(want_a), pid
+            _expect(g.fill_alpha == pytest.approx(want_a), pid)
         if pr.get("stroke"):
-            assert str(g.line_color).lower() == pr["stroke"].lower(), pid
+            _expect(str(g.line_color).lower() == pr["stroke"].lower(), pid)

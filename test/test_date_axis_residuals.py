@@ -471,14 +471,12 @@ class TestFallbackTooltipsUseDisplayFormats:
 class TestHistogramTooltipNamesItsMeasure:
 
     @pytest.mark.parametrize("mode", MODES)
-    @pytest.mark.parametrize("measure", ["density", "frequency", "fraction",
-                                         "percent"])
-    def test_the_height_row_is_the_y_titles_word(self, tmp_path, measure,
-                                                 mode):
-        o = {} if measure == "density" else {measure: measure}
-        root, _w, _o = _build(tmp_path, mode, [_hist(o)], _KEY)
-        tips, _f = _tool(root)
-        assert tips[1] == (measure.capitalize(), "@{top}")
+    def test_the_height_row_is_the_y_titles_word(self, tmp_path, mode):
+        for measure in ("density", "frequency", "fraction", "percent"):
+            o = {} if measure == "density" else {measure: measure}
+            root, _w, _o = _build(tmp_path, mode, [_hist(o)], _KEY)
+            tips, _f = _tool(root)
+            assert tips[1] == (measure.capitalize(), "@{top}"), measure
 
     def test_an_untagged_quad_is_density(self):
         fig = figure()
@@ -591,14 +589,14 @@ _PLAIN_DIGESTS = {
 class TestANonKeyFigureIsUnchanged:
 
     @pytest.mark.parametrize("mode", MODES)
-    @pytest.mark.parametrize("case", ["plain", "yaxis2"])
-    def test_a_plain_scatter_builds_the_same_models(self, tmp_path, mode,
-                                                    case):
-        o = {} if case == "plain" else {"yaxis": "2"}
-        plot = {"type": "scatter", "yvar": "lo", "xvar": "hi", "options": o}
-        root, _w, _o = _build(tmp_path, mode, [plot], _KEY)
-        model = root.roots[0] if mode == "served" else root
-        assert _digest(model) == _PLAIN_DIGESTS[(mode, case)]
+    def test_a_plain_scatter_builds_the_same_models(self, tmp_path, mode):
+        for case in ("plain", "yaxis2"):
+            o = {} if case == "plain" else {"yaxis": "2"}
+            plot = {"type": "scatter", "yvar": "lo", "xvar": "hi",
+                    "options": o}
+            root, _w, _o = _build(tmp_path, mode, [plot], _KEY)
+            model = root.roots[0] if mode == "served" else root
+            assert _digest(model) == _PLAIN_DIGESTS[(mode, case)], case
 
 
 # ===========================================================================
@@ -653,6 +651,28 @@ def _inner_bounds(factors):
     return texts
 
 
+class _Mismatch(Exception):
+    """One fixture row that differs; collected, never swallowed: the
+    loop that catches it fails naming every such row."""
+
+
+def _expect(ok, why):
+    if not ok:
+        raise _Mismatch(why)
+
+
+def _mismatches(ids, check):
+    """``"id: why"`` for each id whose ``check(id)`` raised _Mismatch."""
+    bad = []
+    for i in ids:
+        try:
+            check(i)
+        except _Mismatch as e:
+            bad.append("%s: %s" % (i, str(e).splitlines()[0] if str(e)
+                                   else "differs"))
+    return bad
+
+
 class TestTheKeyTextTruth:
 
     def test_the_fixture_is_stamped(self):
@@ -670,10 +690,19 @@ class TestTheKeyTextTruth:
         assert "," in disp["123456.25"]["%9.0gc"]
 
     @pytest.mark.parametrize("mode", MODES)
-    @pytest.mark.parametrize("pid", sorted(_PROBE_OPTS))
-    def test_every_probe_keys_as_twoway(self, tmp_path, pid, mode):
-        p = _truth()["probes"][pid]
-        assert p["rc"] == 0
+    def test_every_probe_keys_as_twoway(self, tmp_path, mode):
+        """Every probe; the failing probe ids are listed together."""
+        truth = _truth()
+        pids = sorted(_PROBE_OPTS)
+        bad = _mismatches(pids, lambda pid:
+                          self._one_probe(tmp_path, pid, mode, truth))
+        assert not bad, "%d of %d probes differ:\n%s" % (
+            len(bad), len(pids), "\n".join(bad))
+
+    @staticmethod
+    def _one_probe(tmp_path, pid, mode, truth):
+        p = truth["probes"][pid]
+        _expect(p["rc"] == 0, 'p["rc"] == 0')
         var = p["var"]
         n = len(p["data"])
         df = pd.DataFrame({var: [np.nan if v is None else v
@@ -687,7 +716,7 @@ class TestTheKeyTextTruth:
             got = _inner_bounds(_factors(root))
         else:
             got = _bar_texts(root)
-        assert got == p["key_texts"]
+        _expect(got == p["key_texts"], (got, p["key_texts"]))
 
     def test_the_histogram_measures_are_twoways_titles(self):
         probes = _truth()["probes"]
