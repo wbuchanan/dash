@@ -122,14 +122,16 @@ display as text "ND-03 PASS: paren mode does not name nodraw either"
 // ----------------------------------------------------------------
 // ND-04 -- the launch decision, through _dash_browser_wanted.  The global
 // is dropped inside this block and restored on every path.
+// WP-30 P1.27: the suite runs in batch, where no window opens now, so each
+// call passes display(on) to keep testing its own reason.
 // ----------------------------------------------------------------
 macro drop dash_nobrowser
 capture noisily {
-    _dash_browser_wanted, spec(`"{"plots":[],"graph_options":{"nodraw":"nodraw"}}"')
+    _dash_browser_wanted, spec(`"{"plots":[],"graph_options":{"nodraw":"nodraw"}}"') display(on)
     assert r(open) == 0
-    _dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"')
+    _dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"') display(on)
     assert r(open) == 1
-    _dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"') saving("x.html")
+    _dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"') saving("x.html") display(on)
     assert r(open) == 0
 }
 local rc4 = _rc
@@ -138,7 +140,7 @@ if `rc4' != 0 {
     display as error "ND-04 FAIL: the launch decision does not honour nodraw/saving()/the global as documented (rc=`rc4')"
     exit `rc4'
 }
-_dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"')
+_dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"') display(on)
 assert r(open) == 0
 display as text "ND-04 PASS: nodraw, saving() and \$dash_nobrowser each keep the window shut"
 

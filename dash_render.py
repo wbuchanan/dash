@@ -38261,7 +38261,11 @@ def _validate_output_path(output_path: str, mode: str,
     reaches ``main()`` with nothing checked at all. The checks mirror
     ``_dash_validate_path`` so the two routes agree about what is
     acceptable; a path that Stata refuses must not be writable by invoking
-    the renderer directly.
+    the renderer directly.  A written page or app may sit anywhere the
+    user's ``saving()`` names, as twoway's may (WP-30 P1.27, M11); only
+    ``dash serve``'s private app path (``--launch``) refuses a ``..``
+    segment.  The leading ``-`` and control-character checks hold on every
+    route and match ``_dash_path_badchar``.
 
     *launch* is the ``--launch`` route, ``dash serve``'s, which writes the
     app, runs it (from the bytes it verified, ``_dash_launch_app``) and
@@ -38283,13 +38287,15 @@ def _validate_output_path(output_path: str, mode: str,
 
     path = output_path
 
-    # A `..` SEGMENT, not the two characters anywhere: `my..report.html` is
-    # an ordinary file name and is accepted, as it is on the Stata side.
+    # A written page or app may sit anywhere the user's saving() names, as
+    # twoway's may, `..` segment and all (WP-30 P1.27, M11).  Only `dash
+    # serve`'s private app path (`--launch`) refuses a `..` SEGMENT; the two
+    # characters elsewhere (`my..report.py`) are an ordinary name.
     parts = re.split(r"[/\\]", path)
-    if any(p == ".." for p in parts):
+    if launch and any(p == ".." for p in parts):
         raise ValueError(
-            "dash_render: --output may not contain a '..' path segment "
-            "(path traversal not allowed): %r" % (output_path,)
+            "dash_render: --output for --launch may not contain a '..' "
+            "path segment: %r" % (output_path,)
         )
 
     base = parts[-1] if parts else path

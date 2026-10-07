@@ -629,9 +629,10 @@ class TestTheParsersFoundSomething:
         # yline2, xline2); 337 with P0.2's two by() rescale rows; 339 with
         # P0.9's pwidth() and var() rows; 340 with WP-30 P1.35's {ul:Stata}
         # Dependencies paragraph (the Stata 19 floor); 346 with WP-30
-        # P1.25a's six scheme rows (meta ... stgcolor_mv).
-        assert len(defs) == 346, (  # 340 -> 346: P1.25a the six scheme rows
-            f"{len(defs)} definition entries cut out of dash.sthlp, 346 "
+        # P1.25a's six scheme rows (meta ... stgcolor_mv); 347 with WP-30
+        # P1.27's {ul:Batch and set graphics off.} paragraph.
+        assert len(defs) == 347, (  # 346 -> 347: P1.27 the batch paragraph
+            f"{len(defs)} definition entries cut out of dash.sthlp, 347 "
             f"measured 07oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

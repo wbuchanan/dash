@@ -2228,6 +2228,69 @@ if inlist("`only'", "", "S11") {
 local only : env WP30_ONLY
 if inlist("`only'", "", "S12") {
     display as text "S12 start " c(current_date) " " c(current_time)
+    // twoway's answers, measured on StataNow 19.5 in batch (WP-30 P1.27,
+    // section E11): every head below gives rc 0 in twoway.
+    qui sysuse auto, clear
+    quietly dash clear
+    quietly dash scatter mpg weight, name(cf0)
+    local cfi = 0
+    foreach h in "twoway" "tw" "two" "graph twoway" "gr tw" "graph tw" "gr twoway" "gr two" "gr twow" "gr twowa" {
+        local ++cfi
+        quietly dash `h' scatter mpg weight, name(cf`cfi')
+        mata: st_local("_cfa", subinstr(st_global("dash_json_cf0"), char(34) + "cf0" + char(34), char(34) + "cf`cfi'" + char(34)))
+        mata: assert(st_local("_cfa") == st_global("dash_json_cf`cfi'"))
+    }
+    local 0 "tw scatter mpg weight"
+    mata: _dash_strip_prefix()
+    assert "`_pf_kind'" == "strip"
+    assert `"`0'"' == " scatter mpg weight"
+    quietly dash twoway (scatter mpg weight) (lfit mpg weight), name(cfpa)
+    quietly dash (scatter mpg weight) (lfit mpg weight), name(cfpb)
+    quietly dash twoway(scatter mpg weight), name(cfpc)
+    quietly dash gr tw scatter mpg weight || lfit mpg weight, name(cfpd)
+    _w30_done "CF-01" "every prefix twoway takes is read off once and draws the unprefixed graph"
+
+    // CF-02 -- the spellings Stata refuses, r(199), in its words.
+    foreach h in twow twowa gra grap TWOWAY Twoway {
+        local _cfh = cond("`h'" == "gra", "gra two", cond("`h'" == "grap", "grap tw", "`h'"))
+        capture dash `_cfh' scatter mpg weight
+        assert _rc == 199
+    }
+    capture noisily dash twow scatter mpg weight
+    assert _rc == 199
+    _w30_done "CF-02" "twow, twowa, gra, grap and capitalised prefixes are refused r(199)"
+
+    // CF-03 -- a second prefix word, r(198), "<word> is not a twoway plot type".
+    foreach h in "two two" "tw twoway" "twoway tw" "twoway twoway" "graph twoway twoway" "twoway graph" "gr tw tw" {
+        capture dash `h' scatter mpg weight
+        assert _rc == 198
+    }
+    local 0 "two two scatter mpg weight"
+    mata: _dash_strip_prefix()
+    assert "`_pf_kind'" == "twice" & "`_pf_word'" == "two"
+    _w30_done "CF-03" "a second prefix word is refused r(198) in twoway's words"
+
+    // CF-04 (guard) -- a prefix never makes a subcommand; graph <word> keeps dash's refusal.
+    local _cfreg "${dash_graph_registry}"
+    capture dash twoway build, saving(x.html)
+    assert _rc == 198
+    capture dash tw kpi mean(mpg), name(k)
+    assert _rc == 198
+    capture dash two clear
+    assert _rc == 198
+    assert "${dash_graph_registry}" == "`_cfreg'"
+    capture dash graph scatter mpg weight
+    assert _rc == 198
+    _w30_done "CF-04" "a prefix never routes to a subcommand"
+
+    // CF-07 -- the saved one-line page of a prefixed command.
+    local cf7 "`w30_work'/cf7.html"
+    capture erase "`cf7'"
+    dash twoway scatter mpg weight, saving("`cf7'")
+    confirm file "`cf7'"
+    capture erase "`cf7'"
+    _w30_done "CF-07" "dash twoway ..., saving() writes and announces the page"
+    quietly dash clear
     display as text "S12 end " c(current_date) " " c(current_time)
 }
 * ==== end S12 ====

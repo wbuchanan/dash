@@ -95,6 +95,28 @@ program define dash
     // partial compile, as rc 0 and "graph registered".
     _dash_require_mata
 
+    // WP-30 P1.27: twoway, tw, two or graph twoway (gr, and tw to twoway
+    // after it) may precede the plots, as in twoway, and is read off once;
+    // twow, twowa, gra, grap and a capitalised prefix word are refused
+    // r(199), as Stata refuses them, and a second prefix word r(198), in
+    // twoway's words.  Read by value in Mata; the rest goes to the plot
+    // route only, so `dash twoway build' is not a build (twoway refuses
+    // `twoway build' as a plot type too).
+    mata: _dash_strip_prefix()
+    if "`_pf_kind'" == "unrec" {
+        mata: _dash_say("err", "command ", st_local("_pf_word"), " is unrecognized")
+        exit 199
+    }
+    if "`_pf_kind'" == "twice" {
+        mata: _dash_say("err", "", st_local("_pf_word"), " is not a twoway plot type")
+        exit 198
+    }
+    if "`_pf_kind'" == "strip" {
+        global dash__uv = string(_caller())
+        _dash_plot `macval(0)'
+        exit
+    }
+
     // ----------------------------------------------------------------
     // Subcommand routing
     // ----------------------------------------------------------------
@@ -306,6 +328,7 @@ program define _dash_require_mata
         _dash_axis_pieces ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe
+        _dash_strip_prefix _dash_seg_saving _dash_saving_parse _dash_launch_quote _dash_launch_warn
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
     // alone and took the library for whole when it was there, so a library
@@ -518,8 +541,9 @@ program define _dash_validate_path
     // The expected extension, so the server branch can share every other
     // check.  It used to hardcode .html, so server mode skipped the
     // validator entirely and tested only the suffix -- a .py saving() path
-    // therefore got no traversal check, no shell-metacharacter check and no
-    // quote check at all.
+    // therefore got no quote check at all.  The checks: the characters
+    // _dash_path_badchar refuses (a double quote, backquote, $ and every
+    // control character), a leading `-', the suffix (WP-30 P1.27, M11).
     if "`ext'" == "" local ext "html"
 
     // FIRST, before anything expands the path inside an expression.
@@ -534,7 +558,7 @@ program define _dash_validate_path
     // its contents are a value and cannot be parsed as code.
     mata: st_local("_pv_bad", strofreal(_dash_path_badchar(st_local("fpath"))))
     if `_pv_bad' != 0 {
-        display as error "dash: saving() path contains disallowed characters (shell metacharacters not permitted)."
+        display as error "dash: saving() path contains disallowed characters: a double quote, a backquote, $ or a control character."
         exit(198)
     }
 
@@ -556,14 +580,10 @@ program define _dash_validate_path
         local fpath `"`_home'/`=substr(`"`fpath'"', 3, .)'"'
     }
 
-    // Path traversal is a `..' SEGMENT, not the two characters appearing
-    // anywhere.  The old rule was `regexm("\.\.")', which rejected the
-    // perfectly ordinary my..report.html -- measured, r(198) -- while
-    // catching nothing the segment rule does not.
-    if regexm(`"`fpath'"', "(^|[/\\])\.\.($|[/\\])") {
-        display as error "dash: saving() path may not contain a '..' path segment (path traversal not allowed)."
-        exit(198)
-    }
+    // A `..' segment is accepted (WP-30 P1.27, M11): saving() is the user's
+    // own command, an absolute path was always accepted, and twoway's
+    // saving() writes ../up.gph (measured).  dash serve's private app path
+    // keeps its `..' check (dash_render.py's _validate_output_path).
 
     // A leading `-' on the file name makes the shell read the path as a
     // flag: `open -e.html' opens the argument in TextEdit rather than
@@ -581,28 +601,17 @@ program define _dash_validate_path
         mata: _dash_say("err", "dash: saving() path must end in .`ext' (got: ", st_local("fpath"), ")")
         exit(198)
     }
-    // Reject shell metacharacters to prevent command injection via shell open/start/xdg-open.
-    // Printable metacharacters checked via regexm character class.
-    // Chars that Stata would misinterpret during macro expansion (backtick=96, dollar=36)
-    // and control characters (tab=9, newline=10, CR=13) checked via strpos+char() to
-    // avoid the "too few quotes" crash that occurs when a compound-quoted macro value
-    // contains a backtick.
-    // Parentheses are NOT rejected: the one shell call site, _dash_open_page,
-    // quotes the path (in single quotes on a Mac and Unix, double on
-    // Windows), inside which ( and ) are literal, and rejecting them broke
-    // every Windows path under "Program Files (x86)".
-    // The characters that genuinely matter inside double quotes are handled
-    // below; the rest are kept as defence in depth since paths rarely contain
-    // them.
-    if regexm("`fpath'", `"[;&|<>]"') {
-        display as error "dash: saving() path contains disallowed characters (shell metacharacters not permitted)."
-        exit(198)
-    }
+    // ; & | < > are accepted (WP-30 P1.27, M11), as twoway's saving()
+    // accepts them: the opener single-quotes the path on a Mac and Unix,
+    // inside which nothing is special, and declines cmd's metacharacters on
+    // Windows (_dash_open_page, _dash_cmd_metachar).  Parentheses were
+    // never refused (every Windows path under "Program Files (x86)").
+    // The quote and control loop below is defence in depth behind the scan.
     // 34 = double quote, which would terminate the quoted argument at the
     // shell call site; it was previously not checked at all.
     foreach _cnum of numlist 96 36 34 9 10 13 {
         if strpos("`fpath'", char(`_cnum')) > 0 {
-            display as error "dash: saving() path contains disallowed characters (shell metacharacters not permitted)."
+            display as error "dash: saving() path contains disallowed characters: a double quote, a backquote, $ or a control character."
             exit(198)
         }
     }
@@ -5741,6 +5750,30 @@ program define _dash_plot
         }
     }
 
+    // ---- saving() as typed, and its grammar (WP-30 P1.27) ----
+    // The parsers' SAVing(string) drops every pair of quotes, so
+    // saving("n, replace") arrived as saving(n, replace) and wrote n.html
+    // with replace applied, and saving(n1, asis) wrote "n1, asis.html"
+    // (measured).  The text is read again as typed from the list that gave
+    // it -- the after-comma list first, else the one segment that gives it
+    // (_g_unique refuses a second) -- and put to the one grammar here, so a
+    // saving() twoway refuses is refused before anything is registered or
+    // written, on the named route too.
+    mata: st_local("_sv_typed", _dash_seg_saving("," + st_local("_gopts_axraw")))
+    if !`: length local _sv_typed' {
+        forvalues k = 1/`n_segs' {
+            if !`: length local _sv_typed' {
+                mata: st_local("_sv_typed", _dash_seg_saving(st_local("_seg_`k'")))
+            }
+        }
+    }
+    if `: length local _sv_typed' local g_saving : copy local _sv_typed
+    local _sv_replace ""
+    local _sv_comma ""
+    if `: length local g_saving' {
+        mata: _dash_saving_parse(st_local("g_saving"), "html")
+    }
+
     // ---- Report unsupported options, once, naming every one ----
     // dash accepts every twoway option so a pasted command never aborts; an
     // option it cannot honour is named here instead of vanishing.  One note
@@ -5762,8 +5795,11 @@ program define _dash_plot
     // value.
     if `: length local g_replace' {
         if `: length local g_saving' & !`: length local g_name' {
-            mata: st_local("g_saving", st_local("g_saving") + ///
-                (ustrregexm(st_local("g_saving"), ",[ \t]*replace[ \t]*$") ? "" : ", replace"))
+            // Read by the grammar above: replace already given adds
+            // nothing; else " replace" after a comma, ", replace" without.
+            mata: st_local("g_saving", st_local("g_saving") +             ///
+                (st_local("_sv_replace") != "" ? "" :                       ///
+                (st_local("_sv_comma") == "1" ? " replace" : ", replace")))
         }
         else {
             mata: st_local("_dash_ignored_acc", st_local("_dash_ignored_acc") + " replace")
@@ -5888,21 +5924,54 @@ end
 
 
 // ================================================================
+// _dash_display_on given mode graphics seam  -- may dash open a window?
+//
+// twoway builds its graph and displays nothing in batch (c(mode) batch)
+// and after `set graphics off' (measured, StataNow 19.5), so dash opens no
+// window there (WP-30 P1.27, A88); interactive Stata, the console
+// included, opens one (A89).  A pure function of its arguments, which are
+// compared by value in Mata: given is a display() option, "", on or off
+// (anything else r(198)), and decides when given; else seam, the value of
+// an undocumented test global, decides when it is exactly on or off; else
+// r(on) is 0 in batch or with graphics off, 1 otherwise.
+// ================================================================
+program define _dash_display_on, rclass
+    version 19
+    args given mode graphics seam
+    mata: st_local("_do_g", st_local("given"))
+    mata: st_local("_do_ok", strofreal(anyof(("", "on", "off"), st_local("given"))))
+    if "`_do_ok'" != "1" {
+        display as error "dash: display() is on or off."
+        exit 198
+    }
+    mata: st_local("_do_on", ///
+        st_local("given") != "" ? strofreal(st_local("given") == "on") : ///
+        (anyof(("on", "off"), st_local("seam")) ? strofreal(st_local("seam") == "on") : ///
+        strofreal(!(st_local("mode") == "batch" | st_local("graphics") == "off"))))
+    return scalar on = `_do_on'
+end
+
+// ================================================================
 // _dash_browser_wanted  — should this render open a browser window?
 //
 // r(open) is 1 only when no saving() was given, $dash_nobrowser is empty,
-// and the spec does not carry Stata's own nodraw.  nodraw means "build it
+// the spec does not carry Stata's own nodraw, and _dash_display_on allows a
+// window (not batch, graphics not off; WP-30 P1.27).  nodraw means "build it
 // but do not display it", and opening a window is displaying it; it is a
 // flag, so its serialised value is the word itself, and an unset flag
 // serialises as an empty string, which must NOT suppress.
 // ================================================================
 program define _dash_browser_wanted, rclass
     version 19
-    syntax , SPEC(string asis) [SAVing(string)]
+    syntax , SPEC(string asis) [SAVing(string) DISPlay(string)]
     local open = 1
     if `"`saving'"' != "" local open = 0
     if "${dash_nobrowser}" != "" local open = 0
     if strpos(`"`spec'"', `""nodraw":"nodraw""') > 0 local open = 0
+    // No window in batch or with graphics off (WP-30 P1.27): _dash_display_on.
+    mata: st_local("_bw_seam", st_global("dash__display"))
+    _dash_display_on `"`display'"' "`c(mode)'" "`c(graphics)'" `"`macval(_bw_seam)'"'
+    if r(on) == 0 local open = 0
     return scalar open = `open'
 end
 
@@ -5928,8 +5997,9 @@ end
 //
 // The one rule `dash build' and `dash serve' decide by.  r(open) is 1
 // unless the command's own nobrowser option was given, $dash_nobrowser is
-// set (an empty global is an unset one), or a registered graph carries
-// Stata's nodraw.  r(flag) is what `dash serve' hands the launcher:
+// set (an empty global is an unset one), a registered graph carries
+// Stata's nodraw, or _dash_display_on refuses a window (batch, or graphics
+// off; WP-30 P1.27).  r(flag) is what `dash serve' hands the launcher:
 // "--no-browser" when r(open) is 0, else empty.
 //
 // `dash serve' used to decide from its nobrowser option alone, so the
@@ -5941,10 +6011,15 @@ end
 // ================================================================
 program define _dash_dashboard_browser, rclass
     version 19
-    syntax [, NOBRowser]
+    syntax [, NOBRowser DISPlay(string)]
     _dash_registry_nodraw
+    // r(nodraw) is copied before _dash_display_on, an rclass call, runs.
+    local _db_nd = r(nodraw)
+    // No window in batch or with graphics off (WP-30 P1.27): _dash_display_on.
+    mata: st_local("_db_seam", st_global("dash__display"))
+    _dash_display_on `"`display'"' "`c(mode)'" "`c(graphics)'" `"`macval(_db_seam)'"'
     local open = ("`nobrowser'" == "" & "${dash_nobrowser}" == "" ///
-                  & r(nodraw) == 0)
+                  & `_db_nd' == 0 & r(on) == 1)
     return scalar open = `open'
     if `open' return local flag ""
     else      return local flag "--no-browser"
@@ -6703,24 +6778,16 @@ program define _dash_render_immediate
         // it was expanded again here, so saving("\$D/x.html") wrote the page
         // where $D pointed (measured 24sep2026; test_json_escaping.cscript
         // JSE-68).
-        tempname P
-        local replace ""
-        mata: st_strscalar(st_local("P"), strtrim(st_local("saving_path")))
-        if regexm(scalar(`P'), "^(.+)[ \t]*,[ \t]*replace[ \t]*$") {
-            scalar `P' = strtrim(regexs(1))
-            local replace = "replace"
-        }
-        // The .gph note is shown only once the path is validated, and
-        // through _dash_say: it was displayed first, inside plain quotes,
-        // so a double quote in the name ended the string and what followed
-        // ran as display directives, and a brace drew SMCL.
-        local _gph = 0
-        if regexm(lower(scalar(`P')), "\.gph$") {
-            scalar `P' = substr(scalar(`P'), 1, strlen(scalar(`P')) - 4)
-            local _gph = 1
-        }
-        if !regexm(lower(scalar(`P')), "\.html$") scalar `P' = scalar(`P') + ".html"
-        mata: st_local("saving_path", st_strscalar(st_local("P")))
+        // WP-30 P1.27: one grammar, twoway's (_dash_saving_parse), shared
+        // with dash build.  Only a trailing ", replace" was read here, so
+        // saving(n1, asis) wrote "n1, asis.html" and saving(n4, bogus)
+        // "n4, bogus.html" (measured).  The text is the one _dash_plot read
+        // as typed, read by value.
+        local _sv_gph ""
+        mata: _dash_saving_parse(st_local("saving_path"), "html")
+        local replace : copy local _sv_replace
+        local saving_path : copy local _sv_file
+        local _gph = ("`_sv_gph'" == "1")
         _dash_validate_path `"`macval(saving_path)'"'
         local saving_path `"`_dash_vpath'"'   // `~/' expanded, if it was there
         if `_gph' {
@@ -7048,8 +7115,8 @@ program define _dash_render_immediate
 
     // ---- Open in browser if no explicit saving() ----
     // The same suppression as `dash build'.  This path sets open_browser
-    // only when no saving() was given, but a do-file run in batch still does
-    // not want a browser window.  The decision was made above, where the
+    // only when no saving() was given, and the decision also reads batch
+    // mode and set graphics off (_dash_display_on, WP-30 P1.27).  The decision was made above, where the
     // preview page was named, and is read again here, beside the opener
     // (_dash_browser_wanted is pure, so both reads agree), so the opener
     // never runs without a decision next to it (test_packaging.py).  The
@@ -7067,6 +7134,11 @@ program define _dash_render_immediate
     else {
         // Shown as written: braces are legal in a file name (P20-07).
         mata: _dash_say("txt", "dash: dashboard saved to ", st_local("saving_path"), "")
+        // A preview not opened (batch, graphics off, nodraw, the global) is
+        // pruned by later previews; say so (WP-30 P1.27).
+        if "`_dash_preview'" == "1" {
+            display as text "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+        }
     }
 end
 
@@ -8333,7 +8405,7 @@ program define _dash_build
     local 0      : copy local _cmd_nofilter
 
     syntax [, ///
-        SAVing(string)          ///
+        SAVing(string asis)     ///
         TItle(string)           ///
         SUBtitle(string)        ///
         LAYout(string)          ///
@@ -8365,23 +8437,29 @@ program define _dash_build
         display as error "dash build: saving() is required."
         exit(198)
     }
-    if "`server'" != "" {
-        // The same validator, asked for .py.  This branch used to check the
-        // extension and nothing else, so a server-mode path skipped the
-        // traversal, metacharacter and quote checks entirely.  It also kept
-        // the old traversal rule, a '..' anywhere, in front of it: so
-        // saving("my..report.py") server was refused, r(198), where
-        // saving("my..report.html") builds.  The validator's rule, a '..'
-        // path segment, is the one rule now (PV-20; ROADMAP AC-08.4).
-        // The path goes to the validator as written, through macval(): a
-        // saving(\$m/x.html) was read again for macros and written wherever
-        // $m pointed, where the validator refuses a $ (JSE-58).
-        _dash_validate_path `"`macval(saving)'"' "py"
-        local saving `"`_dash_vpath'"'
-    }
-    else {
-        _dash_validate_path `"`macval(saving)'"' "html"
-        local saving `"`_dash_vpath'"'
+    // WP-30 P1.27: one grammar, twoway's, shared with the one-line form
+    // (_dash_saving_parse), read from the text as typed (SAVing(string
+    // asis): syntax's string form drops every pair of quotes).  The whole
+    // text, ", replace" and all, was validated as the path, so
+    // saving(b1.html, replace) was refused "must end in .html (got:
+    // b1.html, replace)" and saving(b2) was refused where the one-line form
+    // writes b2.html (measured).  .html (.py with server) is appended and a
+    // .gph suffix replaced, as on the one-line form; asis is accepted and
+    // has no effect.
+    local _sv_ext = cond("`server'" != "", "py", "html")
+    mata: _dash_saving_parse(st_local("saving"), st_local("_sv_ext"))
+    if "`_sv_replace'" != "" local replace "replace"
+    local saving : copy local _sv_file
+    // The one validator for both branches; the server branch used to check
+    // the extension and nothing else (PV-20; ROADMAP AC-08.4).  The path
+    // goes to it as written, through macval(): a saving(\$m/x.html) was
+    // read again for macros and written wherever $m pointed, where the
+    // validator refuses a $ (JSE-58).
+    _dash_validate_path `"`macval(saving)'"' "`_sv_ext'"
+    local saving `"`_dash_vpath'"'
+    if "`_sv_gph'" == "1" {
+        local _sv_what = cond("`server'" != "", "a server app", "HTML")
+        mata: _dash_say("txt", "dash build: saving() writes " + st_local("_sv_what") + ", not a Stata .gph; using ", st_local("saving"), "")
     }
     // Before the file is looked for: a directory that does not exist is
     // not a file that "already exists" (JSE-52).
@@ -8470,7 +8548,13 @@ program define _dash_build
         // the /health endpoint project rule 17 asks for exists only when the
         // app serves itself.  Running it directly also honours --port and
         // the websocket origins, and opens no browser unless asked.
-        mata: _dash_say("txt", "  To launch: python " + char(34), st_local("saving"), char(34))
+        // Single-quoted on a Mac and Unix, so a pasted line runs the file it
+        // names (double quotes left ! to history expansion); on Windows the
+        // line says when cmd.exe would expand % or ! (WP-30 P1.27).
+        local _lh_os = cond("`c(os)'" == "Windows", "Windows", "Unix")
+        mata: _dash_say("txt", "  To launch: python ", _dash_launch_quote(st_local("saving"), st_local("_lh_os")), "")
+        mata: st_local("_lh_w", _dash_launch_warn(st_local("saving"), st_local("_lh_os")))
+        if `: length local _lh_w' mata: _dash_say("txt", "", st_local("_lh_w"), "")
         // WP-29 P0.12a: the served dashboard opens only through its key.
         display as text `"  Access:    the app makes a new key for each launch unless DASH_SERVE_TOKEN gives one, writes the link that holds it to a file only you can read, and prints that file's path; only that link opens the dashboard"'
         display as text `"  Options:   --port N  --show  --timeout MINUTES  (--help lists them all)"'

@@ -2900,8 +2900,10 @@ class TestRendererOutputPath:
     """``_validate_output_path`` mirrors dash.ado's saving() check for a
     renderer invoked directly.  It had no test."""
 
+    # WP-30 P1.27 (M11): "../x.html", "a/../x.html" and "a\\..\\x.html" moved
+    # to test_ordinary_paths_pass -- twoway's saving() writes a `..` segment.
     @pytest.mark.parametrize("path", [
-        "../x.html", "a/../x.html", "a\\..\\x.html", "a/..", "..",
+        "a/..", "..",
         "-x.html", "d/-x.html", "x.html\n", "x\x00.html", "x\r.html",
         "x\x1b[31m.html", "x\x7f.html", "x.htm", "x.html.py", "",
         "   ", "x.HTML.exe",
@@ -2918,13 +2920,17 @@ class TestRendererOutputPath:
     @pytest.mark.parametrize("path", ["out.html", "dir/out.html",
                                       "my..report.html", "a-b.html",
                                       "OUT.HTML", "C:\\dir\\out.html",
-                                      "\u2025\u2215x.html"])
+                                      "\u2025\u2215x.html",
+                                      "../x.html", "a/../x.html",
+                                      "a\\..\\x.html"])
     def test_ordinary_paths_pass(self, path):
         assert dr._validate_output_path(path, "standalone") == path
 
     def test_a_megabyte_path_is_judged_in_linear_time(self):
         long_ok = "a/" * 500000 + "x.html"
-        long_bad = "a/" * 500000 + "../x.html"
+        # WP-30 P1.27 (M11): a `..` segment is accepted now; a control
+        # character is still refused.
+        long_bad = "a/" * 500000 + "x\x01.html"
         t0 = time.monotonic()
         assert dr._validate_output_path(long_ok, "standalone") == long_ok
         with pytest.raises(ValueError):
@@ -2935,10 +2941,29 @@ class TestRendererOutputPath:
         sp, dp = _write_inputs(tmp_path, make_spec([dict(_SCATTER)]))
         sub = tmp_path / "sub"
         sub.mkdir()
-        target = str(sub / ".." / "escaped.html")
+        # WP-30 P1.27 (M11): a `..` segment is written now (see below); a
+        # leading `-` is still refused before anything is written.
+        target = str(sub / "-escaped.html")
         with pytest.raises(ValueError):
             dr.main(sp, dp, target)
-        assert not (tmp_path / "escaped.html").exists()
+        assert not (sub / "-escaped.html").exists()
+        assert not (tmp_path / "-escaped.html").exists()
+
+    def test_a_parent_segment_is_written_where_twoway_writes(self, tmp_path):
+        """WP-30 P1.27 (M11): twoway's saving() writes ../up.gph; the
+        renderer writes a `..` segment where it points."""
+        sp, dp = _write_inputs(tmp_path, make_spec([dict(_SCATTER)]))
+        sub = tmp_path / "sub"
+        sub.mkdir()
+        dr.main(sp, dp, str(sub / ".." / "escaped.html"))
+        assert (tmp_path / "escaped.html").exists()
+
+    def test_the_launch_route_keeps_refusing_a_parent_segment(self):
+        """dash serve's private app path (--launch) still refuses `..`."""
+        with pytest.raises(ValueError):
+            dr._validate_output_path("a/../app.py", "server", launch=True)
+        assert dr._validate_output_path("a/../app.py", "server",
+                                        launch=False) == "a/../app.py"
 
     def test_the_launcher_runs_the_app_without_a_shell(self):
         """``--launch`` starts the generated app with an argv list; no call

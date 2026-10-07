@@ -578,6 +578,14 @@ class TestNoUnsuppressableBrowserWindow:
                     or "_dash_registry_nodraw" in body), (
                 f"{name} does not read nodraw")
         assert "`nobrowser'" in self._program_body("_dash_dashboard_browser")
+        # WP-30 P1.27: both also read batch mode and set graphics off,
+        # through _dash_display_on.
+        for name in self._DECIDERS:
+            body = self._program_body(name)
+            for needle in ("_dash_display_on", "c(mode)", "c(graphics)"):
+                assert needle in body, f"{name} does not read {needle}"
+        disp = self._program_body("_dash_display_on")
+        assert '"batch"' in disp and '"off"' in disp
 
     def _declared_options(self, name):
         """Every option token program *name*'s first ``syntax [, ///``

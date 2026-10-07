@@ -48,7 +48,7 @@
 
 {p 8 17 2}
 {cmd:dash} {it:plot_specs} {ifin} [{cmd:,} {it:graph_options}
-{cmdab:sav:ing}{cmd:(}{it:filepath} [{cmd:, replace}]{cmd:)}
+{cmdab:sav:ing}{cmd:(}{it:filepath} [{cmd:,} {cmd:replace} {cmd:asis}]{cmd:)}
 {cmd:replace}]
 
 {pstd}{ul:Named graph (accumulate for multi-graph dashboard)}{p_end}
@@ -73,7 +73,7 @@
 
 {p 8 17 2}
 {cmd:dash build} {cmd:,}
-{cmdab:sav:ing}{cmd:(}{it:filepath}{cmd:)}
+{cmdab:sav:ing}{cmd:(}{it:filepath} [{cmd:,} {cmd:replace} {cmd:asis}]{cmd:)}
 [{cmdab:ti:tle}{cmd:(}{it:string}{cmd:)}
 {cmdab:sub:title}{cmd:(}{it:string}{cmd:)}
 {cmdab:lay:out}{cmd:(}{it:layout_spec}{cmd:)}
@@ -91,7 +91,7 @@
 
 {p 8 17 2}
 {cmd:dash build} {cmd:,}
-{cmdab:sav:ing}{cmd:(}{it:filepath.py}{cmd:)}
+{cmdab:sav:ing}{cmd:(}{it:filepath.py} [{cmd:,} {cmd:replace}]{cmd:)}
 {cmd:server}
 [{it:other_build_options}]
 
@@ -127,6 +127,20 @@ to the plot it is written in.  A {it:weight} belongs to a plot, too:
 {cmd:[aweight=}{it:varname}{cmd:]}, {cmd:[fweight=}{it:varname}{cmd:]} or
 {cmd:[pweight=}{it:varname}{cmd:]}, one variable rather than an expression
 on the layers that honour it; see {help dash##weights:Weights}.
+
+{pstd}
+As in {cmd:twoway}, the {it:plot_specs} may be preceded by {cmd:twoway},
+{cmd:tw} or {cmd:two}, or by {cmd:graph twoway} ({cmd:gr} for {cmd:graph},
+and {cmd:tw} to {cmd:twoway} after it), so a command copied from a do-file
+runs as it is: {cmd:dash twoway (scatter mpg weight) (lfit mpg weight)}
+draws what {cmd:dash (scatter mpg weight) (lfit mpg weight)} draws, saved
+or served.  One is read: a second, as in
+{cmd:dash twoway twoway scatter mpg weight}, is refused as {cmd:twoway}
+refuses it, "twoway is not a twoway plot type", {cmd:r(198)};
+{cmd:twow}, {cmd:twowa}, {cmd:gra} and {cmd:grap} are refused with
+{cmd:r(199)}, "command twow is unrecognized", as Stata refuses them.
+{cmd:dash twoway} with nothing after it is refused; {cmd:twoway} draws an
+empty graph.
 
 
 {marker description}
@@ -468,6 +482,14 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:twoway} refuses it, on the one-line form and {cmd:dash build}
     alike.  {cmd:replace} with no {cmd:saving()}, or on a named graph,
     has nothing to replace and is named in the note.
+    {cmd:saving()}'s sub-options are {cmd:twoway}'s, {cmd:replace} and
+    {cmd:asis}, in full, in lower case and once each, on the one-line form
+    and {cmd:dash build} alike; {cmd:asis} is accepted and changes nothing,
+    since a saved page is always fixed.  Any other word is refused as
+    {cmd:twoway} refuses it, "option bogus not allowed", {cmd:r(198)}, and
+    so is a name holding a blank that is not in quotes: write
+    {cmd:saving("my file.html")}.  A comma inside the quotes belongs to the
+    name, and {cmd:saving(, replace)} writes {cmd:Graph.html}.
 
 {phang2}    {ul:Graphs and KPI cards share one namespace.}  A name holds one
     item, whichever kind it is, so {cmd:dash kpi} cannot quietly take a name
@@ -920,7 +942,7 @@ See {help dash##kpi:KPI Cards} for details.
 Assembles all registered graphs and KPI cards into a dashboard.
 With no {cmd:server} option, writes a self-contained standalone HTML file.
 With {cmd:server}, writes a Bokeh Server {cmd:.py} application file instead
-(requires {cmd:.py} extension on {cmd:saving()}).
+({cmd:.py} is appended to a {cmd:saving()} name that does not end in it).
 See {help dash##dashboard_options:Dashboard Options}.
 
 {dlgtab:dash serve}
@@ -1006,9 +1028,11 @@ The following options are available on {cmd:dash build}.
 {synoptset 24 tabbed}
 {synopthdr}
 {synoptline}
-{synopt:{cmdab:sav:ing}{cmd:(}{it:filepath}{cmd:)}}required; path to
-    the output HTML file, which must end in {cmd:.html}; see
-    {help dash##saving_chars:Characters in saving()}{p_end}
+{synopt:{cmdab:sav:ing}{cmd:(}{it:filepath}{cmd:)}}required; the file to
+    write: {cmd:.html} is appended to a name that does not end in it and a
+    {cmd:.gph} suffix is replaced, as on the one-line form;
+    {cmd:saving(}{it:filepath}{cmd:, replace)} overwrites and {cmd:asis} is
+    accepted; see {help dash##saving_chars:Characters in saving()}{p_end}
 {synopt:{cmdab:ti:tle}{cmd:(}{it:string}{cmd:)}}dashboard page title{p_end}
 {synopt:{cmdab:sub:title}{cmd:(}{it:string}{cmd:)}}dashboard subtitle{p_end}
 {synopt:{cmdab:lay:out}{cmd:(}{it:spec}{cmd:)}}grid layout; see
@@ -1030,33 +1054,40 @@ The following options are available on {cmd:dash build}.
     ({cmd:default}, {cmd:clean}, {cmd:mono}, {cmd:dark}, {cmd:economist},
     {cmd:sj}); {cmd:scheme()} wins if both are given{p_end}
 {synopt:{cmd:server}}write a self-contained Bokeh Server {cmd:.py} app
-    instead of a standalone HTML file; saving() path must end in
-    {cmd:.py}; does not block or open a browser; see
+    instead of a standalone HTML file; {cmd:.py} is appended to a
+    {cmd:saving()} name that does not end in it; does not block or open a browser; see
     {help dash##saving_chars:Characters in saving()}{p_end}
 {synopt:{cmdab:nobr:owser}}write the dashboard but do not open it in a
     browser.  Stata's own {cmd:nodraw} on the graph has the same effect, and
     setting the global {cmd:$dash_nobrowser} to any non-empty value suppresses
     the window for a whole session -- for {cmd:dash build}, the one-line
-    form and {cmd:dash serve} alike -- useful in batch, where one window per
-    {cmd:dash build} is rarely wanted; see
+    form and {cmd:dash serve} alike; in batch and after
+    {cmd:set graphics off} no window opens anyway; see
     {help dash##nobrowser_global:The global dash_nobrowser}{p_end}
 {synopt:{cmd:replace}}overwrite output file if it already exists{p_end}
 {synoptline}
 
 {marker saving_chars}
 {pstd}
-{ul:Characters in saving().}  A {cmd:saving()} path may not hold a double
-quote, a backquote, {cmd:$}, {cmd:;}, {cmd:&}, {cmd:|}, {cmd:<}, {cmd:>} or
-a control character such as a tab or a line break, may not have a {cmd:..}
-segment, and its file name may not begin with {cmd:-}: such a path is
-refused, r(198), and nothing is written.  Other characters, {cmd:%}, {cmd:!}
+{ul:Characters in saving().}  A {cmd:saving()} path may hold what a file
+name on your system may hold, as {cmd:twoway}'s {cmd:saving()} may: a
+{cmd:..} segment, and {cmd:;} {cmd:&} {cmd:|} {cmd:<} {cmd:>} among the
+rest.  Five things are refused, {cmd:r(198)}: a double quote, a backquote
+and a dollar sign, which Stata reads as macro text; a control character,
+such as a tab or a line break; and a file name starting with {cmd:-}, which
+a command would read as an option.  Other characters, {cmd:%}, {cmd:!}
 and {cmd:^} among them, are written as typed, as {cmd:twoway}'s
-{cmd:saving()} writes them.  On Windows, dash does not open a page whose
+{cmd:saving()} writes them.  On a Mac and on Unix the page is opened with
+its path in single quotes, where nothing in it is special, and the
+{cmd:To launch:} line of {cmd:dash build, server} quotes it the same way.
+On Windows, dash does not open a page whose
 path holds {cmd:%}, {cmd:!}, {cmd:^}, {cmd:&}, {cmd:|}, {cmd:<}, {cmd:>} or
 {cmd:;}, because Windows' command shell, through which the page would be
 opened, reads them as instructions: the page is written, dash prints its
 path, and you open it yourself.  This includes the one-line form's preview
-page when the name of your user folder holds such a character.
+page when the name of your user folder holds such a character.  On
+Windows the {cmd:To launch:} line keeps double quotes and says so when the
+path holds {cmd:%} or {cmd:!}, which cmd.exe expands in a pasted line.
 
 {marker nobrowser_global}
 {pstd}
@@ -1073,9 +1104,17 @@ without opening a browser.  Only whether it holds a value counts, so
 leaves it set; {cmd:macro drop dash_nobrowser} lets windows open again.
 The one-line form has no {cmd:nobrowser} option: written there, it is named
 in the note and the window opens; the global, the graph's {cmd:nodraw} or
-{cmd:saving()} keeps that window shut.  The global is meant for do-files
-run in batch and for test suites, where one window per dashboard is rarely
-wanted.
+{cmd:saving()} keeps that window shut.  The global is meant for
+interactive sessions and test suites that should open no window.
+
+{pstd}
+{ul:Batch and set graphics off.}  As {cmd:twoway} displays no graph in
+batch ({cmd:c(mode)} is {cmd:batch}) or after {cmd:set graphics off},
+{cmd:dash} opens no window there, whatever is set: {cmd:dash build} and the
+one-line form write the page and print where it is, a one-line preview
+says it is temporary, and {cmd:dash serve} starts its server without a
+browser.  Interactive Stata, the console included, opens the window as
+before.
 
 
 {marker export}

@@ -320,6 +320,7 @@ COVERAGE = {
                                   "test_varlist_expansion.cscript:SL-19",
                                   "test_varlist_expansion.cscript:SL-24"),
         # WP-30 S12 (P1.27): Drop-in command form and saving() grammar (P1.27, M5/M11)
+        "_dash_display_on": ("test_serve_browser.cscript:SB-31", "test_serve_browser.cscript:SB-32"),
         # WP-30 S13 (P1.12b): Stata line-width ladder (P1.12 part b, M1)
         # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
         # WP-30 S15 (P1.2a): Scheme chrome: titles, ticks, grid, economist axes (P1.2 part a, M1)
@@ -721,6 +722,13 @@ COVERAGE = {
         "_dash_stylelist_pick": ("test_varlist_expansion.cscript:SL-03",),
         "_dash_stylelist_probe": ("test_varlist_expansion.cscript:SL-10",),
         # WP-30 S12 (P1.27): Drop-in command form and saving() grammar (P1.27, M5/M11)
+        "_dash_launch_quote": ("test_serve_browser.cscript:SB-37",),
+        "_dash_launch_warn": ("test_serve_browser.cscript:SB-37",),
+        "_dash_saving_opt_toks": ("test_path_validation.cscript:PV-36",),
+        "_dash_saving_parse": ("test_path_validation.cscript:PV-36", "test_path_validation.cscript:PV-37"),
+        "_dash_saving_split": ("test_path_validation.cscript:PV-35",),
+        "_dash_seg_saving": ("test_path_validation.cscript:PV-37",),
+        "_dash_strip_prefix": ("test_wp30_truth.cscript:CF-01", "test_wp30_truth.cscript:CF-03"),
         # WP-30 S13 (P1.12b): Stata line-width ladder (P1.12 part b, M1)
         # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
         # WP-30 S15 (P1.2a): Scheme chrome: titles, ticks, grid, economist axes (P1.2 part a, M1)

@@ -86,6 +86,8 @@
 *!           shut; it has no nobrowser option
 *!   HC2-35  dash clear leaves $dash_nobrowser in force
 *!   HC2-36  dash build, server opens nothing
+*!   CF-21   in batch, with the test seam dropped, no route opens a window
+*!   CF-22   a hostile path reaches the stub opener as one argument
 *!   (dash serve's routes are test_serve_browser.cscript SB-07..SB-10.)
 *! Exporting:
 *!   HC2-37  what export delimited writes, which the help compares the CSV
@@ -670,7 +672,11 @@ quietly dash clear
 _hc2_expect "HC2-23a" 198 `"dash build, saving("`hc2f'_23.html") replace"' "no graphs registered"
 quietly dash scatter mpg weight, name(b1)
 _hc2_expect "HC2-23b" 198 `"dash build, replace"' "saving() is required"
-_hc2_expect "HC2-23c" 198 `"dash build, saving("`hc2f'_23.html") server replace"'
+// WP-30 P1.27: .py is appended to a server saving() name that does not end
+// in it, as .html is on the HTML route (it was refused, r(198)).
+capture erase "`hc2f'_23.html.py"
+_hc2_expect "HC2-23c" 0 `"dash build, saving("`hc2f'_23.html") server replace"' "server app written to"
+capture erase "`hc2f'_23.html.py"
 local hc2py "`hc2f'_23.py"
 capture erase "`hc2py'"
 _hc2_expect "HC2-23d" 0 `"dash build, saving("`hc2py'") server"' "server app written to"
@@ -828,6 +834,10 @@ else {
 
     if `hc2_guard' {
         macro drop dash_nobrowser
+        // WP-30 P1.27: this script runs in batch, where dash opens no
+        // window now; the undocumented test seam lets these controls reach
+        // the stub opener, which is first on PATH.  Dropped after the block.
+        global dash__display on
         capture noisily {
             quietly dash clear
             quietly dash scatter mpg weight, name(w1)
@@ -915,9 +925,41 @@ else {
             local rc36 = r(rc)
             _hc2_b_opened "`stubdir'"
             _hc2_ok "HC2-36" `=`rc36' == 0 & r(n) == 0' "with server the build writes its app and opens nothing"
+
+            // CF-21 -- WP-30 P1.27: the seam dropped, real batch: neither
+            // dash build nor the one-line preview opens a window.
+            macro drop dash__display
+            quietly dash clear
+            quietly dash scatter mpg weight, name(cf21)
+            capture erase "`stubdir'/open.log"
+            _hc2_b_build "`bo'" ""
+            local rc21a = r(rc)
+            _hc2_b_plot ""
+            local rc21b = r(rc)
+            _hc2_b_opened "`stubdir'"
+            _hc2_ok "CF-21" `=`rc21a' == 0 & `rc21b' == 0 & r(n) == 0' "in batch dash build and the one-line preview open no window"
+            global dash__display on
+
+            // CF-22 (G9) -- the seam on: a path holding ; reaches the stub
+            // opener as one argument, and nothing it names runs.
+            mata: st_local("cf22p", st_local("stubdir") + "/a;touch PWNED;b.html")
+            capture erase "`stubdir'/open.log"
+            _hc2_b_build "`cf22p'" ""
+            local rc22 = r(rc)
+            _hc2_b_opened "`stubdir'"
+            local cf22first `"`r(first)'"'
+            mata: st_local("cf22ok", strofreal(anyof(("open " + st_local("cf22p"), "xdg-open " + st_local("cf22p")), st_local("cf22first"))))
+            capture confirm file "PWNED"
+            local cf22a = _rc
+            capture confirm file "`stubdir'/PWNED"
+            local cf22b = _rc
+            _hc2_ok "CF-22" `=`rc22' == 0 & `cf22ok' == 1 & `cf22a' != 0 & `cf22b' != 0' "a path holding ; reaches the opener whole and runs nothing"
+            capture erase "`cf22p'"
+            quietly dash clear
         }
         local rc_b = _rc
         global dash_nobrowser 1
+        capture macro drop dash__display
         if `rc_b' {
             _hc2_ok "HC2-3x" 0 "the browser section stopped with rc `rc_b'"
         }

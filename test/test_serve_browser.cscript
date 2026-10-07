@@ -30,7 +30,7 @@
 *! run and runs nothing -- so Windows's command, which runs only where Stata
 *! reports Windows, is checked here on any machine (SB-13..20).
 *!
-*! Tests: SB-01 through SB-30
+*! Tests: SB-01 through SB-38
 *!
 *! Usage:  do test/test_serve_browser.cscript
 *! Version: 1.1  24sep2026
@@ -70,33 +70,36 @@ capture macro drop dash_nobrowser
 // r(open) is 1 unless the command's own nobrowser option was given,
 // $dash_nobrowser is set, or a registered graph carries nodraw; r(flag) is
 // what `dash serve' hands the launcher.
+//
+// WP-30 P1.27: the suite runs in batch, where no window opens now, so each
+// of SB-01..05 passes display(on) to keep testing its own reason.
 dash clear
 dash scatter mpg weight, name(sb1)
 
-_dash_dashboard_browser
+_dash_dashboard_browser, display(on)
 assert r(open) == 1
 assert "`r(flag)'" == ""
 display "SB-01 PASS: with nothing said, the window opens and no flag is passed"
 
-_dash_dashboard_browser, nobrowser
+_dash_dashboard_browser, nobrowser display(on)
 assert r(open) == 0
 assert "`r(flag)'" == "--no-browser"
 display "SB-02 PASS: the nobrowser option keeps it shut"
 
 global dash_nobrowser 1
-_dash_dashboard_browser
+_dash_dashboard_browser, display(on)
 assert r(open) == 0
 assert "`r(flag)'" == "--no-browser"
 display "SB-03 PASS: \$dash_nobrowser keeps it shut"
 
 // An empty global is an unset global, as it is for `dash build'.
 global dash_nobrowser ""
-_dash_dashboard_browser
+_dash_dashboard_browser, display(on)
 assert r(open) == 1
 display "SB-04 PASS: an empty \$dash_nobrowser does not"
 
 dash scatter mpg weight, name(sb2) nodraw
-_dash_dashboard_browser
+_dash_dashboard_browser, display(on)
 assert r(open) == 0
 assert "`r(flag)'" == "--no-browser"
 display "SB-05 PASS: a registered graph's nodraw keeps it shut"
@@ -138,6 +141,11 @@ capture noisily {
     _dash_find_render
     assert strpos(`"`r(fn)'"', "_serve_stub") > 0
     display "SB-06 PASS: dash serve resolves the stub renderer, not the real one"
+    // WP-30 P1.27: in batch dash serve always passes --no-browser now; the
+    // undocumented test seam lets SB-07..11 test each reason against the
+    // stub renderer, which can open nothing.  Dropped below (SB-36, and
+    // the restore after the block).
+    global dash__display on
 
     // SB-07 -- THE DEFECT: the global set, no option.
     dash clear
@@ -186,8 +194,21 @@ capture noisily {
     cert_file_has "`argvf'", needle(`""--timeout", "1""')
     assert r(found) == 1
     display "SB-11 PASS: port() and timeout() reach the launch unchanged"
+
+    // SB-36 -- WP-30 P1.27: the seam dropped, in real batch, dash serve
+    // hands --no-browser to the launcher with nothing said.
+    capture macro drop dash__display
+    macro drop dash_nobrowser
+    dash clear
+    dash scatter mpg weight, name(sv4)
+    _sb_serve "`argvf'"
+    assert r(rc) == 0 & r(launched) == 1
+    cert_file_has "`argvf'", needle("--no-browser")
+    assert r(found) == 1
+    display "SB-36 PASS: in batch dash serve starts without a browser"
 }
 local rc_sb = _rc
+capture macro drop dash__display
 
 // Restore, whatever happened above: the stub off the ado-path and off the
 // disk, and the suite's setting back.
@@ -711,6 +732,126 @@ if "`sb_fail'" != "" {
     display as error "test_serve_browser: these WP-30 P1.29 cases failed:`sb_fail'"
 }
 assert "`sb_fail'" == ""
+
+// ================================================================
+// SB-31..35, SB-37, SB-38 -- WP-30 P1.27: no window in batch or after set
+// graphics off; the To launch: line quoted for the shell
+// ================================================================
+// SB-31 -- _dash_display_on, a pure function of its four arguments.
+_dash_display_on "" "interactive" "on" ""
+assert r(on) == 1
+_dash_display_on "" "batch" "on" ""
+assert r(on) == 0
+_dash_display_on "" "interactive" "off" ""
+assert r(on) == 0
+_dash_display_on "" "batch" "off" ""
+assert r(on) == 0
+_dash_display_on "on" "batch" "off" ""
+assert r(on) == 1
+_dash_display_on "off" "interactive" "on" ""
+assert r(on) == 0
+_dash_display_on "" "batch" "on" "on"
+assert r(on) == 1
+_dash_display_on "" "interactive" "on" "off"
+assert r(on) == 0
+_dash_display_on "" "batch" "on" "yes"
+assert r(on) == 0
+capture _dash_display_on "bogus" "batch" "on" ""
+assert _rc == 198
+display "SB-31 PASS: _dash_display_on decides by display(), the seam, batch and graphics"
+
+// SB-32 -- the seam unset, in real batch: the dashboard opens nothing.
+capture macro drop dash__display
+global dash_nobrowser ""
+dash clear
+dash scatter mpg weight, name(sb32)
+_dash_dashboard_browser
+local _o = r(open)
+local _f `"`r(flag)'"'
+assert c(mode) == "batch"
+assert `_o' == 0
+assert `"`_f'"' == "--no-browser"
+display "SB-32 PASS: in batch dash build and dash serve open no window"
+
+// SB-33 -- and the one-line form wants none.
+_dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"')
+assert r(open) == 0
+display "SB-33 PASS: in batch the one-line form opens no window"
+
+// SB-34 -- set graphics off, read from c(graphics).
+set graphics off
+_dash_display_on "" "interactive" "`c(graphics)'" ""
+local _o = r(on)
+set graphics on
+assert `_o' == 0
+_dash_display_on "" "interactive" "`c(graphics)'" ""
+assert r(on) == 1
+assert c(graphics) == "on"
+display "SB-34 PASS: set graphics off keeps the window shut"
+
+// SB-35 -- display() on both deciders; nodraw read before display().
+_dash_dashboard_browser, display(on)
+assert r(open) == 1
+_dash_dashboard_browser, display(off)
+assert r(open) == 0
+capture _dash_dashboard_browser, display(bogus)
+assert _rc == 198
+_dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"') display(on)
+assert r(open) == 1
+_dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"') display(off)
+assert r(open) == 0
+capture _dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"') display(bogus)
+assert _rc == 198
+dash scatter mpg weight, name(sb35) nodraw
+_dash_dashboard_browser, display(on)
+assert r(open) == 0
+assert "`r(flag)'" == "--no-browser"
+dash clear
+global dash_nobrowser 1
+display "SB-35 PASS: display() decides on both deciders, and nodraw still keeps it shut"
+
+// SB-37 -- the To launch: line's quoting.
+mata: st_local("_q", _dash_launch_quote("/tmp/a b;c&d|e<f>g!h" + char(39) + "i.py", "Unix"))
+mata: st_local("_qx", char(39) + "/tmp/a b;c&d|e<f>g!h" + char(39) + char(92) + char(39) + char(39) + "i.py" + char(39))
+mata: assert(st_local("_q") == st_local("_qx"))
+mata: assert(_dash_launch_quote("/tmp/x.py", "MacOSX") == char(39) + "/tmp/x.py" + char(39))
+mata: assert(_dash_launch_quote("C:\x.py", "Windows") == char(34) + "C:\x.py" + char(34))
+mata: assert(strpos(_dash_launch_warn("C:\50%.py", "Windows"), "cmd.exe") > 0)
+mata: assert(strpos(_dash_launch_warn("C:\a!b.py", "Windows"), "cmd.exe") > 0)
+mata: assert(_dash_launch_warn("C:\ab.py", "Windows") == "")
+mata: assert(_dash_launch_warn("/tmp/a!b.py", "Unix") == "")
+display "SB-37 PASS: the launch line is single-quoted on Mac and Unix, and Windows names % and !"
+
+// SB-38 (G9) -- the Unix line, pasted into /bin/sh, names the path whole.
+tempfile sb38b
+local sb38d "`sb38b'_sb38"
+mkdir "`sb38d'"
+local _sb38ok = 0
+capture noisily {
+    mata: st_local("_p", st_local("sb38d") + "/a;touch PWNED;b" + char(39) + "c&d|e<f>g!h.py")
+    mata: st_local("_ql", _dash_launch_quote(st_local("_p"), "Unix"))
+    tempname sh
+    file open `sh' using "`sb38d'/run.sh", write text replace
+    mata: st_local("_line", "printf '%s\n' " + st_local("_ql"))
+    file write `sh' `"`macval(_line)'"' _n
+    file close `sh'
+    shell cd "`sb38d'" && /bin/sh "`sb38d'/run.sh" > "`sb38d'/out.txt"
+    tempname fo
+    file open `fo' using "`sb38d'/out.txt", read text
+    file read `fo' _got
+    file close `fo'
+    mata: assert(st_local("_got") == st_local("_p"))
+    capture confirm file "`sb38d'/PWNED"
+    assert _rc != 0
+    capture confirm file "PWNED"
+    assert _rc != 0
+    local _sb38ok = 1
+}
+capture erase "`sb38d'/run.sh"
+capture erase "`sb38d'/out.txt"
+capture rmdir "`sb38d'"
+assert `_sb38ok' == 1
+display "SB-38 PASS: a hostile path pasted into sh is one argument and runs nothing"
 
 display ""
 display "All serve-browser tests PASSED."

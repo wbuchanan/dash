@@ -847,6 +847,55 @@ def _code_only(src):
     return "\n".join(out)
 
 
+def _display_seam_problems(src):
+    """WP-30 P1.27: the undocumented test seam ``$dash__display`` may be set
+    only after a stub is first on PATH (``os.environ["PATH"] =``) or the
+    ado-path (``adopath ++`` naming a stub folder), and must be dropped
+    after it is set.  Returns the problems found, as text."""
+    out = []
+    lines = src.splitlines()
+    stub_seen = False
+    set_at = None
+    for n, line in enumerate(lines, 1):
+        code = line.split("//", 1)[0]
+        if 'os.environ["PATH"] =' in code or (
+                "adopath ++" in code and "stub" in code):
+            stub_seen = True
+        if re.match(r"\s*global\s+dash__display\s+\S", code):
+            if not stub_seen:
+                out.append(f"line {n}: sets the seam with no stub first")
+            if set_at is None:
+                set_at = n
+    if set_at is not None and not any(
+            re.search(r"macro\s+drop\s+dash__display", l.split("//", 1)[0])
+            for l in lines[set_at:]):
+        out.append(f"line {set_at}: sets the seam and never drops it")
+    return out
+
+
+class TestTheDisplaySeamIsFenced:
+    """The seam reaches no sink a user's session does not: only behind a
+    stub, and always dropped (WP-30 P1.27)."""
+
+    def test_the_detector_reads_the_seam(self):
+        assert _display_seam_problems("global dash__display on\n")
+        ok = ('python: os.environ["PATH"] = x\n'
+              "global dash__display on\nmacro drop dash__display\n")
+        assert _display_seam_problems(ok) == []
+        undropped = 'adopath ++ "`stubdir\'"\nglobal dash__display on\n'
+        assert _display_seam_problems(undropped)
+
+    def test_no_script_sets_the_seam_without_a_stub_and_a_drop(self):
+        bad = {}
+        for path in sorted(glob.glob(os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "*.cscript"))):
+            with open(path, encoding="utf-8") as fh:
+                probs = _display_seam_problems(fh.read())
+            if probs:
+                bad[os.path.basename(path)] = probs
+        assert bad == {}
+
+
 class TestJsonioIsNotADependency:
 
     def test_the_guard_reader_finds_the_old_guard(self):

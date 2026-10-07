@@ -40,9 +40,28 @@
 *!       argument that is all digits is taken as one more.
 *!
 *!   _dash_path_badchar(path)
-*!       The byte value of the first shell-hazardous character in path --
-*!       the double quote, backtick, dollar sign, semicolon, &, |, <, >,
-*!       tab, LF or CR -- or 0.
+*!       The byte value of the first character saving() refuses in path --
+*!       the double quote, backtick, dollar sign or a control character
+*!       (1-31, 127) -- or 0.
+*!
+*!   _dash_strip_prefix()
+*!       Reads twoway, tw, two or graph twoway off the front of the
+*!       caller's `0' (WP-30 P1.27); sets _pf_kind and _pf_word.
+*!
+*!   _dash_saving_parse(s, ext)
+*!       saving()'s one grammar, as twoway reads it; refuses r(198) or sets
+*!       _sv_file, _sv_replace, _sv_asis, _sv_gph and _sv_comma.  Its
+*!       internal helper is _dash_saving_split().
+*!
+*!   _dash_seg_saving(seg)
+*!       The value of the last saving() an option list gives, as typed.
+*!
+*!   _dash_launch_quote(path, os)
+*!       path quoted for the To launch: line: single quotes on a Mac and
+*!       Unix, double quotes on Windows.
+*!
+*!   _dash_launch_warn(path, os)
+*!       On Windows, the line naming % and ! in path; else "".
 *!
 *!   _dash_cmd_metachar(path)
 *!       The byte value of the first character Windows' command shell
@@ -647,7 +666,7 @@ real scalar _is_utf8(string scalar s) {
 // ============================================================
 // _dash_path_badchar(path)
 //
-// Returns the byte value of the first shell-hazardous character in
+// Returns the byte value of the first character saving() refuses in
 // `path', or 0 if there is none.
 //
 // This lives in Mata because the caller cannot do it in Stata.
@@ -660,10 +679,15 @@ real scalar _is_utf8(string scalar s) {
 // string read through st_local() is a value, not macro text, so
 // nothing the path contains can be parsed as code.
 //
-// Bytes rejected: " ` $ ; & | < > and TAB/LF/CR.  Scanning bytes
-// rather than characters is deliberate: these are shell metacharacters,
-// and a multibyte sequence that happens to contain one of these bytes
-// is still dangerous at the shell.  Parentheses are NOT rejected --
+// Bytes rejected: the double quote, backquote and dollar sign, which
+// Stata would read as macro text (or which end the quoted argument), and
+// every control character (1-31, 127), as dash_render.py's
+// _validate_output_path refuses them.  ; & | < > and a .. segment are
+// accepted, as twoway's saving() accepts them (WP-30 P1.27, M11): the
+// opener single-quotes the path on a Mac and Unix, and declines cmd's
+// metacharacters on Windows (_dash_cmd_metachar).  Scanning bytes
+// rather than characters is deliberate: no byte of a multibyte UTF-8
+// character is below 128.  Parentheses are NOT rejected --
 // every call site quotes the path, inside which they are literal, and
 // rejecting them broke every Windows path under "Program Files (x86)".
 // ============================================================
@@ -671,7 +695,7 @@ real scalar _dash_path_badchar(string scalar path) {
     real scalar      i, c, n
     real rowvector   bad
 
-    bad = (34, 96, 36, 59, 38, 124, 60, 62, 9, 10, 13)
+    bad = (34, 96, 36, (1..31), 127)
     n   = strlen(path)
     for (i = 1; i <= n; i++) {
         c = ascii(substr(path, i, 1))
@@ -711,6 +735,274 @@ real scalar _dash_cmd_metachar(string scalar path) {
         if (anyof(bad, c)) return(c)
     }
     return(0)
+}
+
+// ============================================================
+// twoway's command form (WP-30 P1.27)
+//
+// _dash_strip_prefix, _dash_saving_split, _dash_saving_parse,
+// _dash_seg_saving, _dash_launch_quote and _dash_launch_warn.  Every one
+// reads its text by value (st_local, never macro text) and is linear in
+// the length of what it reads.
+// ============================================================
+
+// _dash_strip_prefix() -- reads twoway's own command words off the front
+// of the caller's `0'.  twoway takes `twoway', `tw' and `two', and
+// `graph'/`gr' followed by `tw' to `twoway' (measured, StataNow 19.5);
+// Stata refuses `twow', `twowa', `gra', `grap' and a capitalised spelling
+// with r(199), "command twow is unrecognized", and a second prefix word
+// with r(198), "two is not a twoway plot type".  Sets the caller's locals
+// _pf_kind ("", "strip", "unrec" or "twice") and _pf_word; on "strip" the
+// rest of the command is written back to `0'.  Only whole words from a
+// closed list match; the one regex is anchored at the start.
+void _dash_strip_prefix()
+{
+    string scalar    s, w1, w2, rest, t, kind, word
+    string rowvector nine
+
+    nine = ("twoway", "tw", "two", "twow", "twowa", "graph", "gr", "gra", "grap")
+    s    = st_local("0")
+    kind = ""
+    word = ""
+    rest = ""
+    w1   = (ustrregexm(s, "^[a-zA-Z][a-zA-Z0-9_]*") ? ustrregexs(0) : "")
+    if (anyof(("twoway", "tw", "two"), w1)) {
+        kind = "strip"
+        rest = substr(s, strlen(w1) + 1, .)
+    }
+    else if (anyof(("graph", "gr"), w1)) {
+        t  = substr(s, strlen(w1) + 1, .)
+        w2 = (ustrregexm(t, "^[ \t]+([a-zA-Z][a-zA-Z0-9_]*)") ? ustrregexs(1) : "")
+        if (anyof(("tw", "two", "twow", "twowa", "twoway"), w2)) {
+            kind = "strip"
+            rest = substr(t, strpos(t, w2) + strlen(w2), .)
+        }
+    }
+    else if (anyof(("twow", "twowa", "gra", "grap"), w1) |
+             (w1 != strlower(w1) & anyof(nine, strlower(w1)))) {
+        kind = "unrec"
+        word = w1
+    }
+    if (kind == "strip") {
+        t = (ustrregexm(rest, "^[ \t]*([a-zA-Z][a-zA-Z0-9_]*)") ? ustrregexs(1) : "")
+        if (anyof(nine, t)) {
+            kind = "twice"
+            word = t
+        }
+        else st_local("0", rest)
+    }
+    st_local("_pf_kind", kind)
+    st_local("_pf_word", word)
+}
+
+// _dash_saving_opt_toks(o) -- the words of saving()'s option text, with
+// each comma outside quotes and parentheses as a token of its own.
+// Linear in the length of o.
+string rowvector _dash_saving_opt_toks(string scalar o)
+{
+    string rowvector out
+    string scalar    ch
+    real scalar      i, n, depth, in_dq, in_cq, nxt, start, k
+
+    n     = strlen(o)
+    out   = J(1, 16, "")
+    k     = 0
+    depth = 0
+    in_dq = 0
+    in_cq = 0
+    start = 0
+    i     = 1
+    while (i <= n) {
+        nxt = _dash_quote_step(o, n, i, in_dq, in_cq)
+        if (nxt) {
+            if (!start) start = i
+            i = nxt
+            continue
+        }
+        ch = substr(o, i, 1)
+        if (depth == 0 & (ch == " " | ch == char(9) | ch == ",")) {
+            if (start) {
+                if (k == cols(out)) out = out, J(1, cols(out), "")
+                out[++k] = substr(o, start, i - start)
+                start = 0
+            }
+            if (ch == ",") {
+                if (k == cols(out)) out = out, J(1, cols(out), "")
+                out[++k] = ","
+            }
+            i++
+            continue
+        }
+        if (ch == "(") depth++
+        else if (ch == ")" & depth > 0) depth--
+        if (!start) start = i
+        i++
+    }
+    if (start) {
+        if (k == cols(out)) out = out, J(1, cols(out), "")
+        out[++k] = substr(o, start, n - start + 1)
+    }
+    return(k ? out[|1 \ k|] : J(1, 0, ""))
+}
+
+// _dash_saving_split(s) -- saving()'s text, as typed, read as twoway reads
+// it (gr_save.ado: syntax anything [, REPLACE ASIS]).  Returns (file,
+// replace, asis, comma, err): replace, asis and comma are "0"/"1", err ""
+// or twoway's own words (measured, StataNow 19.5; the fixture
+// twoway_command_form_truth.json holds them).  The name is the text before
+// the first comma outside quotes and parentheses, less one enclosing pair
+// of quotes; an empty name is twoway's Graph; a name of two words is
+// refused "invalid syntax,  <rest> not allowed".  replace and asis are
+// full lower-case words, once each.  Internal to _dash_saving_parse.
+// Linear in the length of s.
+string rowvector _dash_saving_split(string scalar s)
+{
+    string rowvector t, o
+    string scalar    f, err, w, nm
+    real scalar      p, n, i, j, rep, asis, k
+
+    err  = ""
+    rep  = 0
+    asis = 0
+    p    = _first_comma_pos(s)
+    f    = strtrim(p ? substr(s, 1, p - 1) : s)
+
+    // The name.
+    if (f == "") f = "Graph"
+    else {
+        t = _dash_rep_toks(f, 0)
+        n = cols(t)
+        if (n > 1) {
+            err = "invalid syntax,  " + invtokens(t[|2 \ n|], " ") + " not allowed"
+        }
+        else if (n == 1) {
+            w = t[1]
+            k = strlen(w)
+            if (k >= 2 & substr(w, 1, 1) == char(34) & substr(w, k, 1) == char(34)) {
+                f = substr(w, 2, k - 2)
+            }
+            else if (k >= 4 & substr(w, 1, 2) == char(96) + char(34) &
+                     substr(w, k - 1, 2) == char(34) + char(39)) {
+                f = substr(w, 3, k - 4)
+            }
+            if (f == "") f = "Graph"
+        }
+    }
+
+    // The sub-options, left to right; the first problem is the error.
+    if (p & err == "") {
+        o = _dash_saving_opt_toks(substr(s, p + 1, .))
+        n = cols(o)
+        for (i = 1; i <= n & err == ""; i++) {
+            w = o[i]
+            if (w == ",") {
+                for (j = i + 1; j <= n; j++) if (o[j] != ",") break
+                if (j <= n) err = "invalid '" + o[j] + "'"
+                break
+            }
+            if (w == "replace" | w == "asis") {
+                if ((w == "replace" & rep) | (w == "asis" & asis)) {
+                    err = "option " + w + " not allowed"
+                }
+                else if (w == "replace") rep = 1
+                else asis = 1
+                continue
+            }
+            nm = _dash_rep_optname(w)
+            if (nm != "" & strpos(w, "(")) {
+                if (nm == "replace" | nm == "asis") {
+                    err = "option " + nm + "() incorrectly specified"
+                }
+                else err = "option " + nm + "() not allowed"
+                continue
+            }
+            err = "option " + w + " not allowed"
+        }
+    }
+    return((f, strofreal(rep), strofreal(asis), strofreal(p > 0), err))
+}
+
+// _dash_saving_parse(s, ext) -- the one saving() grammar of the one-line
+// form and dash build (HTML, ext "html", and server, ext "py").  Refuses,
+// r(198), what twoway refuses, in twoway's words; else sets the caller's
+// locals _sv_file (the name: a .gph suffix replaced, "." + ext appended
+// unless it ends so), _sv_replace ("replace"/""), _sv_asis ("asis"/"";
+// accepted, no effect), _sv_gph ("1" when .gph was replaced) and
+// _sv_comma ("1" when the text has a comma).  Helper:
+// _dash_saving_split().  Linear in the length of s.
+void _dash_saving_parse(string scalar s, string scalar ext)
+{
+    string rowvector r
+    string scalar    f, gph
+
+    r = _dash_saving_split(s)
+    if (r[5] != "") {
+        _dash_say("err", "", r[5], "")
+        exit(198)
+    }
+    f   = r[1]
+    gph = ""
+    if (strlen(f) >= 4 & strlower(substr(f, strlen(f) - 3, 4)) == ".gph") {
+        f   = substr(f, 1, strlen(f) - 4)
+        gph = "1"
+    }
+    if (strlen(f) < strlen(ext) + 1 |
+        strlower(substr(f, strlen(f) - strlen(ext), .)) != "." + strlower(ext)) {
+        f = f + "." + ext
+    }
+    st_local("_sv_file", f)
+    st_local("_sv_replace", r[2] == "1" ? "replace" : "")
+    st_local("_sv_asis", r[3] == "1" ? "asis" : "")
+    st_local("_sv_gph", gph)
+    st_local("_sv_comma", r[4] == "1" ? "1" : "")
+}
+
+// _dash_seg_saving(seg) -- the value of the last saving() a segment or an
+// after-comma list gives, exactly as typed, or "".  syntax's
+// SAVing(string) drops every pair of quotes, so saving("n, replace") and
+// saving(n, replace) arrive alike (measured); this reads the option words
+// as _dash_seg_by does.  sav to saving, lower case (SAVING() is the
+// parsers' refusal).  saving() gives "", which twoway treats as absent.
+// Linear in the length of seg.
+string scalar _dash_seg_saving(string scalar seg)
+{
+    string rowvector toks
+    string scalar    v, out
+    real scalar      pos, j
+
+    pos = _first_comma_pos(seg)
+    if (pos == 0) return("")
+    toks = _dash_rep_toks(substr(seg, pos + 1, .), 0)
+    out  = ""
+    for (j = 1; j <= cols(toks); j++) {
+        if (!anyof(("sav", "savi", "savin", "saving"), _dash_rep_optname(toks[j]))) continue
+        if (!strpos(toks[j], "(")) continue
+        v = _dash_rep_value(toks[j])
+        if (v != "") out = v
+    }
+    return(out)
+}
+
+// _dash_launch_quote(path, os) -- path quoted for the To launch: line of
+// dash build, server.  On a Mac and Unix it is single-quoted, with ' written
+// '\'' as _dash_open_page writes it, so nothing in it is special to sh,
+// bash or zsh (double quotes left ! to history expansion, measured).  On
+// Windows it keeps double quotes (_dash_launch_warn says what cmd.exe
+// still expands).  Linear in the length of path.
+string scalar _dash_launch_quote(string scalar path, string scalar os)
+{
+    if (os == "Windows") return(char(34) + path + char(34))
+    return(char(39) + subinstr(path, char(39),
+           char(39) + char(92) + char(39) + char(39), .) + char(39))
+}
+
+// _dash_launch_warn(path, os) -- on Windows, a line saying that cmd.exe
+// expands % and ! in a pasted line when the path holds either; else "".
+string scalar _dash_launch_warn(string scalar path, string scalar os)
+{
+    if (os != "Windows") return("")
+    if (!strpos(path, "%") & !strpos(path, "!")) return("")
+    return("  Windows:   cmd.exe expands % and ! in this path when the line is pasted; run the app from a folder whose path has neither")
 }
 
 void _dash_check_utf8(string scalar s) {

@@ -748,7 +748,9 @@ and now matches Stata.
 
 <!-- WP-30 P1.26b -->
 
-<!-- WP-30 P1.27 -->
+- In batch (c(mode) batch) and after `set graphics off`, dash opens no browser window, as twoway displays no graph there: `dash build` and the one-line form write the page and print where it is, a one-line preview adds that it is temporary and that saving() keeps a page, and `dash serve` starts without a browser. A do-file run with `stata -b` used to open one tab per dashboard. Interactive Stata, the console included, still opens the window. (WP-30, P1.27)
+- saving() is read as twoway reads it, on the one-line form and on `dash build`: a sub-option other than replace and asis, written in full, in lower case and once each, is refused with twoway's "option bogus not allowed", r(198), and an unquoted name holding a blank with "invalid syntax,  file.html not allowed", r(198). `saving(n, bogus)` used to write a file named "n, bogus.html" and `saving(my file.html)` wrote "my file.html"; put such a name in quotes. (WP-30, P1.27)
+- `twow`, `twowa`, `gra` and `grap` (and a capitalised TWOWAY or Graph) in front of the plots are refused with r(199), "command twow is unrecognized", as Stata refuses them; they gave r(198), "unrecognised plot type". A second prefix, `dash twoway twoway scatter mpg weight`, says "twoway is not a twoway plot type", r(198). (WP-30, P1.27)
 
 <!-- WP-30 P1.28a -->
 
@@ -846,7 +848,9 @@ requirement changes sit in their own lists.
 
 <!-- WP-30 P1.26b -->
 
-<!-- WP-30 P1.27 -->
+- `twoway`, `tw`, `two` and `graph twoway` may precede the plots, as in twoway: `dash twoway (scatter mpg weight) (lfit mpg weight)` was refused, r(198), "unrecognised plot type 'twoway'". (WP-30, P1.27)
+- One saving() grammar serves the one-line form and `dash build` (HTML and server): `saving(f, asis)` wrote a file named "f, asis.html", `saving("n, replace")` wrote n.html with replace applied, and `dash build, saving(f, replace)` and `dash build, saving(f)` were refused, r(198). Now replace and asis are read as twoway reads them, a comma inside quotes stays in the name, `saving(, replace)` writes Graph.html, and `dash build` appends .html (.py with server) and replaces .gph as the one-line form does. (WP-30, P1.27)
+- saving() accepts a `..` segment and ; & | < > in a path, as twoway does (`saving("../out/d.html")` and `saving("R&D.html")` were refused, r(198)); a double quote, backquote, $, any control character and a leading - are still refused, and dash serve's private app path still refuses `..`. The "To launch:" line of `dash build, server` puts the path in single quotes on a Mac and Unix, so a pasted line runs the file it names. (WP-30, P1.27)
 
 <!-- WP-30 P1.31b -->
 
