@@ -261,8 +261,13 @@ class TestZOptions:
 
         r2, _doc2, _sw2, _rw2 = _both(go={"zlabel": "#3"}, plots=plots)
         bar2 = _colorbar(list(r2.figures.values())[0])
-        assert isinstance(bar2.ticker, BasicTicker)
-        assert bar2.ticker.desired_num_ticks == 3
+        # WP-30 P1.23b: zlabel(#3) as Bokeh's BasicTicker was wrong
+        # because twoway places #N key ticks by its natscale rule (15,000
+        # 15,200 15,400 for sp500's dates).
+        assert isinstance(bar2.ticker, FixedTicker)
+        assert list(bar2.ticker.ticks) == [5000.0, 10000.0, 15000.0]
+        assert [bar2.major_label_overrides[t] for t in bar2.ticker.ticks] \
+            == ["5,000", "10,000", "15,000"]
 
         r3, _doc3, _sw3, _rw3 = _both(go={"zlabel": "none"}, plots=plots)
         bar3 = _colorbar(list(r3.figures.values())[0])
@@ -321,8 +326,13 @@ class TestZOptions:
         assert any("alt" in w for w in std_w2)
 
         _r3, _d3, std_w3, _sw3 = _both(
-            go={"zlabel": "1(1)5, format(%9.2f)"}, plots=plots)
-        assert any("format(%9.2f)" in w for w in std_w3)
+            go={"zlabel": "4000(4000)12000, format(%9.2f)"}, plots=plots)
+        # WP-30 P1.23b: naming format(%9.2f) was wrong because twoway
+        # writes the key in it (0.00 5000.00 ...).
+        assert not any("format(%9.2f)" in w for w in std_w3)
+        bar3 = _colorbar(list(_r3.figures.values())[0])
+        assert [bar3.major_label_overrides[t] for t in bar3.ticker.ticks] \
+            == ["4000.00", "8000.00", "12000.00"]
 
     def test_ztitle_suboptions_keep_the_key_title(self):
         """WP-29 P0.4: ztitle() with only sub-options keeps the colour

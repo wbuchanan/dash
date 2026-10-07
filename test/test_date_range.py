@@ -1056,7 +1056,7 @@ def _ms_of(td):
 
 class TestADateColorvarUnderALayersIf:
     """The colour key of a %td colorvar() is drawn from the layer's own
-    rows, in epoch milliseconds, in both modes -- a served frame's date
+    rows, its mapper in epoch milliseconds, its text in Stata days, in both modes -- a served frame's date
     column is datetime64, which the domain reads on the column itself."""
 
     _PLOT = {"type": "scatter", "yvar": "lo", "xvar": "hi",
@@ -1085,10 +1085,12 @@ class TestADateColorvarUnderALayersIf:
         (rend,) = cb.colour_renderers(root)
         bounds = sorted({b for lo_hi in cb.interval_bounds(
             cb.colour_mapper(rend).factors) for b in lo_hi if b is not None})
-        lo, hi = _ms_of(_SPREAD[6]), _ms_of(_SPREAD[11])
+        lo, hi = _SPREAD[6], _SPREAD[11]
         want = [lo + k * (hi - lo) / 3 for k in (1, 2)]
         assert len(bounds) == 4
-        # The key writes a date's milliseconds with :g (six digits).
+        # WP-30 P1.23b: bounds in epoch milliseconds were wrong because
+        # twoway cuts and writes a date key in its Stata days (15,098
+        # 15,219), in %8.0gc.
         for got, w in zip(bounds[1:3], want):
-            assert abs(got - w) <= 5e6, (bounds, want)
-        assert abs(bounds[0] - lo) <= 5e6 and abs(bounds[-1] - hi) <= 5e6
+            assert abs(got - w) <= 0.5, (bounds, want)
+        assert abs(bounds[0] - lo) <= 0.5 and abs(bounds[-1] - hi) <= 0.5

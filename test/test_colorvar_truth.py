@@ -296,7 +296,10 @@ class TestTheKeyIsDrawnFromTheLayersRows:
         (rend,) = cb.colour_renderers(root)
         b = _bounds(rend)
         assert b[0] == 3748.0 and b[-1] == 12990.0, b
-        assert abs(b[1] - 6828.667) < 0.01 and abs(b[2] - 9909.333) < 0.01
+        # WP-30 P1.23b: a bound read from a :g label was wrong because the
+        # key is twoway's %8.0gc, 6,828.7 and 9,909.3, which the fixture's
+        # key_texts hold.
+        assert b[1:3] == [6828.7, 9909.3], b
         keys = _key_numbers(p["key_texts"])
         assert [round(x, 1) for x in b[1:3]] == [6828.7, 9909.3]
         assert {6828.7, 9909.3} <= set(keys), keys

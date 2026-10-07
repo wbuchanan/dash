@@ -382,7 +382,10 @@ class TestBothModesNameAnUnlabelledVariable:
         p = _first(mode, tmp_path, _one([_plot("lfit", yvar="y2", xvar="y1")]))
         assert p["hover"] == [["y1", "y2"]]
         p = _first(mode, tmp_path, _one([_plot("kdensity", var="z")]))
-        assert p["hover"] == [["x", "y"]]
+        # WP-30 P1.23b: kdensity z's rows x and y were wrong because they
+        # are z's values and its density; the rule that no unrelated
+        # variable is named still holds.
+        assert p["hover"] == [["z", "Density"]]
 
     @pytest.mark.parametrize("mode", MODES)
     def test_a_range_tooltip_names_both_ends(self, mode, tmp_path):

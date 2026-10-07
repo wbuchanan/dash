@@ -854,6 +854,14 @@ FUNCTIONS = {
  # WP-30 S16 (P1.2b): Intensity as an opaque blend (P1.2 part b, M1)
  'GlyphMapper._fintensity_value': 'test/test_intensity_blend.py::TestTheFintensityParser::test_numbers_names_and_missing',
  # WP-30 S17 (P1.23b): Date and format text in keys and tooltips (P1.23 part b)
+ 'GlyphMapper.map_histogram.<locals>._tag': 'test/test_date_axis_residuals.py::TestHistogramTooltipNamesItsMeasure::test_an_emptied_histogram_is_tagged_too',
+ '_dash_apply_z_options.<locals>._to_axis': 'test/test_date_axis_residuals.py::TestZlabelOnAColourKey::test_zscale_range_is_read_in_stata_units',
+ '_dash_build_hover.<locals>._layer_of': 'test/test_date_axis_residuals.py::TestFallbackTooltipsUseDisplayFormats::test_a_kdensity_names_its_variable_and_density',
+ '_dash_build_hover.<locals>._var_of': 'test/test_date_axis_residuals.py::TestFallbackTooltipsUseDisplayFormats::test_a_fit_on_a_date_axis_writes_dates',
+ '_dash_fallback_format': 'test/test_date_axis_residuals.py::TestTheKeyHelpers::test_the_fallback_format_rule',
+ '_dash_hist_measure': 'test/test_date_axis_residuals.py::TestTheKeyHelpers::test_the_measure_word_reads_the_tag',
+ '_dash_key_format': 'test/test_date_axis_residuals.py::TestTheKeyHelpers::test_the_key_format_rule',
+ '_dash_key_ticks': 'test/test_date_axis_residuals.py::TestTheKeyHelpers::test_key_ticks_positions_and_text',
  # WP-30 S18 (P1.5): Axis format fallbacks (P1.5)
  # WP-30 S19 (P1.16): Legend keys and default axis titles (P1.16)
  # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)

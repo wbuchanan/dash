@@ -21,6 +21,7 @@
 *! Blocks filled so far (case ids):
 *!   S07  P1.25a the six StataCorp schemes against twoway (SX-01..SX-08)
 *!   S15  P1.2a scheme chrome against twoway (LK-01..LK-07)
+*!   S17  P1.23b colour-key text and computed tooltips against twoway (DK-01..DK-09)
 
 cscript "WP-30 truth: twoway comparisons" adodir ".."
 
@@ -3852,10 +3853,400 @@ if inlist("`only'", "", "S16") {
 }
 * ==== end S16 ====
 
+// ----------------------------------------------------------------
+// S17 helpers (python at the top level, where braces are safe).  Every
+// argument crosses through sfi.Macro.getGlobal and every answer goes
+// back through Macro.setGlobal; no macro text is pasted into Python.
+//   _s17_svg()   S17_SVG -> S17_TW, twoway's key texts joined by "|"
+//                (the texts right of the plot region less the last, the
+//                key's title), and S17_YT, a histogram's y title word
+//   _s17_page()  S17_PAGE, a saved page -> S17_D, the ColorBar's
+//                override texts in tick order, else the colorvar
+//                Legend's inner bounds, else a discrete key's labels;
+//                S17_H, the HoverTool's second row label; S17_HF, its
+//                first formatter's fmt,kind; S17_L0, the quad's left[0]
+//   _s17_app()   S17_APP, a served app.py, and S17_MOVE -> S17_S and
+//                S17_SH (the same summaries), S17_FIRED, S17_SAME_AFTER
+//   _s17_twin()  S17_L0 -> S17_TWIN, dash's own text of that %td bin
+// ----------------------------------------------------------------
+python:
+import html as _s17_html
+import json as _s17_json
+import os as _s17_os
+import re as _s17_re
+import sys as _s17_sys
+import warnings as _s17_w
+from sfi import Macro as _s17_M
+
+_s17_repo = _s17_os.path.abspath("..")
+for _s17_p in (_s17_os.path.join(_s17_repo, "scripts"), _s17_repo):
+    if _s17_p not in _s17_sys.path:
+        _s17_sys.path.insert(0, _s17_p)
+import svg_truth as _s17_st
+
+_S17_YT = ("Density", "Frequency", "Fraction", "Percent")
+
+
+def _s17_set(name, val):
+    _s17_M.setGlobal(name, str(val))
+
+
+def _s17_svg():
+    path = _s17_M.getGlobal("S17_SVG")
+    pr = _s17_st.svg_plotregion(path) or {}
+    texts = _s17_st.svg_texts(path)
+    right = [t["text"] for t in texts
+             if pr and t.get("x") is not None and t["x"] > pr["right"]]
+    _s17_set("S17_TW", "|".join(right[:-1]))
+    yt = [t["text"] for t in texts if t["text"] in _S17_YT]
+    _s17_set("S17_YT", yt[0] if yt else "")
+
+
+def _s17_bounds(labels):
+    out = []
+    for f in labels:
+        for part in str(f).lstrip("≤>").split("–"):
+            if part not in out:
+                out.append(part)
+    if labels and not str(labels[0]).startswith("≤"):
+        out = out[1:-1]
+    return out
+
+
+def _s17_summary(bars, legends, tools, quads):
+    """bars: [(ticks, {tick: text})]; legends: [labels]; tools:
+    [(tooltips, [(fmt, kind)])]; quads: [left list]."""
+    if bars and bars[0][0] is not None:
+        ticks, ov = bars[0]
+        d = "|".join(str(ov.get(float(t), "?")) for t in ticks)
+    elif legends:
+        labs = legends[0]
+        b = _s17_bounds(labs)
+        d = "|".join(b) if any("–" in str(x) or str(x)[:1] in ("≤", ">")
+                               for x in labs) else "|".join(map(str, labs))
+    else:
+        d = "none"
+    h, hf = "none", "none"
+    if tools:
+        tips, fmts = tools[0]
+        if len(tips) > 1:
+            h = str(tips[1][0])
+        if fmts:
+            hf = "%s,%s" % fmts[0]
+    l0 = quads[0][0] if quads and len(quads[0]) else ""
+    return d, h, hf, l0
+
+
+def _s17_dec(v):
+    if isinstance(v, dict):
+        if v.get("type") == "ndarray":
+            arr = v.get("array")
+            if isinstance(arr, dict) and arr.get("type") == "bytes":
+                import base64
+                import numpy as _np
+                import gzip
+                raw = base64.b64decode(arr["data"])
+                if raw[:2] == b"\x1f\x8b":
+                    raw = gzip.decompress(raw)
+                return _np.frombuffer(raw, dtype=v["dtype"]).tolist()
+            return list(arr or [])
+        if v.get("type") == "value":
+            return v.get("value")
+        if v.get("type") == "map":
+            return {(_s17_dec(k) if not isinstance(k, str) else k): _s17_dec(x)
+                    for k, x in v.get("entries", [])}
+    return v
+
+
+def _s17_page():
+    try:
+        with open(_s17_M.getGlobal("S17_PAGE"), encoding="utf-8") as fh:
+            page = fh.read()
+    except OSError:
+        page = ""
+    objs, stack = {}, []
+    for blob in _s17_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s17_re.S):
+        try:
+            stack.append(_s17_json.loads(_s17_html.unescape(blob)))
+        except ValueError:
+            pass
+    while stack:
+        v = stack.pop(0)
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                objs.setdefault(v["id"], v)
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+
+    def att(o):
+        return o.get("attributes", {}) or {}
+
+    def ref(v):
+        if isinstance(v, dict) and "id" in v:
+            return objs.get(v["id"], v)
+        return v
+
+    bars, legends, tools, quads = [], [], [], []
+    for o in objs.values():
+        a = att(o)
+        if o["name"] == "ColorBar":
+            t = ref(a.get("ticker"))
+            ticks = None
+            if isinstance(t, dict) and t.get("name") == "FixedTicker":
+                ticks = _s17_dec(att(t).get("ticks", []))
+            ov = _s17_dec(a.get("major_label_overrides", {})) or {}
+            ov = {float(k): x for k, x in ov.items()}
+            bars.append((ticks, ov))
+        elif o["name"] == "Legend" and a.get("name") == "_dash_clegend":
+            labs = []
+            for it in a.get("items", []):
+                it = ref(it)
+                lab = _s17_dec(att(it).get("label"))
+                labs.append(lab.get("value") if isinstance(lab, dict) else lab)
+            legends.append(labs)
+        elif o["name"] == "HoverTool":
+            tips = _s17_dec(a.get("tooltips", []))
+            fm = _s17_dec(a.get("formatters", {})) or {}
+            fl = []
+            for _k, m in fm.items():
+                ma = att(ref(m))
+                args = _s17_dec(ma.get("args", {})) or {}
+                fl.append((args.get("fmt"), args.get("kind")))
+            tools.append((tips, fl))
+        elif o["name"] == "ColumnDataSource":
+            data = _s17_dec(a.get("data", {})) or {}
+            if "left" in data and "top" in data:
+                quads.append([float(x) for x in _s17_dec(data["left"])])
+    d, h, hf, l0 = _s17_summary(bars, legends, tools, quads)
+    _s17_set("S17_D", d)
+    _s17_set("S17_H", h)
+    _s17_set("S17_HF", hf)
+    _s17_set("S17_L0", l0)
+
+
+def _s17_doc_summary(doc):
+    from bokeh.models import (ColorBar, ColumnDataSource, FixedTicker,
+                              HoverTool, Legend)
+    import dash_render as _dr
+    bars = [(list(c.ticker.ticks) if isinstance(c.ticker, FixedTicker)
+             else None, {float(k): v for k, v in
+                         dict(c.major_label_overrides).items()})
+            for c in doc.select(dict(type=ColorBar))]
+    legends = []
+    for lg in doc.select(dict(type=Legend)):
+        if str(lg.name or "") == _dr._COLORVAR_LEGEND_NAME:
+            legends.append([getattr(it.label, "value", it.label)
+                            if not isinstance(it.label, dict)
+                            else it.label.get("value") for it in lg.items])
+    tools = [(list(t.tooltips), [(m.args.get("fmt"), m.args.get("kind"))
+                                 for m in dict(t.formatters or {}).values()
+                                 if hasattr(m, "args")])
+             for t in doc.select(dict(type=HoverTool))]
+    quads = [list(map(float, s.data["left"]))
+             for s in doc.select(dict(type=ColumnDataSource))
+             if "left" in s.data and "top" in s.data]
+    d, h, _hf, _l0 = _s17_summary(bars, legends, tools, quads)
+    return d, h
+
+
+def _s17_app():
+    from bokeh.document import Document
+    from bokeh.models import Select
+    with open(_s17_M.getGlobal("S17_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s17_app")
+    with _s17_w.catch_warnings():
+        _s17_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s17_app.py", "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    import bokeh.models as _bm
+    figs = list(doc.select(dict(type=_bm.Plot)))
+    before = sorted(_s17_fig_summary(fig) for fig in figs)
+    _s17_set("S17_S", ";".join(b[0] for b in before))
+    _s17_set("S17_SH", ";".join(b[1] for b in before))
+    var = _s17_M.getGlobal("S17_MOVE")
+    sel = [s for s in doc.select(dict(type=Select))
+           if getattr(s, "_dash_var", None) == var]
+    fired = 0
+    if len(sel) == 1 and len(sel[0].options) > 1:
+        old = sel[0].value
+        opt = sel[0].options[1]
+        new = opt[0] if isinstance(opt, (list, tuple)) else opt
+        sel[0].value = new
+        with _s17_w.catch_warnings():
+            _s17_w.simplefilter("ignore")
+            for cb in sel[0]._callbacks.get("value", []):
+                cb("value", old, new)
+                fired += 1
+    _s17_set("S17_FIRED", fired)
+    after = sorted(_s17_fig_summary(fig) for fig in figs)
+    _s17_set("S17_SAME_AFTER", int(after == before))
+
+
+def _s17_fig_summary(fig):
+    class _One:
+        def __init__(self, f):
+            self.f = f
+
+        def select(self, sel):
+            return list(self.f.select(sel))
+    return _s17_doc_summary(_One(fig))
+
+
+def _s17_twin():
+    import dash_render as _dr
+    l0 = float(_s17_M.getGlobal("S17_L0") or "nan")
+    _s17_set("S17_TWIN", _dr._dash_fmt_text(
+        _dr._dash_stata_value_of(l0, "td"), "%td"))
+end
+
+capture program drop _s17_key
+program define _s17_key
+    // Twoway's command in S17_TWC, dash's in S17_DC (no saving()); the
+    // page at `work'/`id'.html.  Leaves S17_TW and S17_D.
+    version 19
+    args id work
+    capture graph drop s17tw
+    quietly ${S17_TWC} name(s17tw, replace)
+    quietly graph export "`work'/`id'.svg", name(s17tw) replace
+    capture graph drop s17tw
+    global S17_SVG "`work'/`id'.svg"
+    python: __import__("__main__")._s17_svg()
+    capture erase "`work'/`id'.html"
+    quietly ${S17_DC} saving("`work'/`id'.html", replace)
+    global S17_PAGE "`work'/`id'.html"
+    python: __import__("__main__")._s17_page()
+    capture erase "`work'/`id'.svg"
+    capture erase "`work'/`id'.html"
+    capture dash clear
+end
+
 * ==== S17 P1.23b: Date and format text in keys and tooltips ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S17") {
     display as text "S17 start " c(current_date) " " c(current_time)
+    // DK-01..DK-03: a date colour key, its levels and its cuts.
+    sysuse sp500, clear
+    local i = 0
+    foreach o in "" "colorlevels(3)" "colorcuts(15100 15200)" {
+        local ++i
+        global S17_TWC "twoway scatter close open, colorvar(date) `o'"
+        global S17_DC  "dash scatter close open, colorvar(date) `o'"
+        _s17_key dk0`i' "`w30_work'"
+        local s17_d`i' "${S17_D}"
+        if `i' == 1 local s17_w "15,000|15,100|15,200|15,300|15,400"
+        if `i' == 2 local s17_w "15,098|15,219"
+        if `i' == 3 local s17_w "15,100|15,200"
+        _w30_expect DK-0`i' `"("${S17_TW}" == "`s17_w'")"' "twoway keys ${S17_TW}"
+        _w30_expect DK-0`i' `"("${S17_D}" == "`s17_w'")"' "dash keys ${S17_D}"
+        _w30_done DK-0`i' "colorvar(date) `o' keys `s17_w' in both"
+    }
+
+    // DK-04: zlabel(, format(%td)), zlabel(#3), zlabel(minmax).
+    local j = 0
+    foreach z in "zlabel(, format(%td))" "zlabel(#3)" "zlabel(minmax)" {
+        local ++j
+        global S17_TWC "twoway scatter close open, colorvar(date) `z'"
+        global S17_DC  "dash scatter close open, colorvar(date) `z'"
+        _s17_key dk04_`j' "`w30_work'"
+        if `j' == 1 local s17_w "25jan2001|05may2001|13aug2001|21nov2001|01mar2002"
+        if `j' == 2 local s17_w "15,000|15,200|15,400"
+        if `j' == 3 local s17_w "14,977|15,340"
+        _w30_expect DK-04 `"("${S17_TW}" == "`s17_w'")"' "twoway `z' keys ${S17_TW}"
+        _w30_expect DK-04 `"("${S17_D}" == "`s17_w'")"' "dash `z' keys ${S17_D}"
+    }
+    _w30_done DK-04 "zlabel() format(%td), #3 and minmax key as twoway's"
+
+    // DK-05: a %tm colour variable keys in months.
+    quietly gen m = mofd(date)
+    format m %tm
+    global S17_TWC "twoway scatter close open, colorvar(m)"
+    global S17_DC  "dash scatter close open, colorvar(m)"
+    _s17_key dk05 "`w30_work'"
+    _w30_expect DK-05 `"("${S17_TW}" == "490|495|500|505")"' "twoway keys ${S17_TW}"
+    _w30_expect DK-05 `"("${S17_D}" == "490|495|500|505")"' "dash keys ${S17_D}"
+    _w30_done DK-05 "colorvar(m) keys 490|495|500|505 in both"
+
+    // DK-06: a %9.0g price keys %8.0gc, its bar and its cuts.
+    sysuse auto, clear
+    format price %9.0g
+    local k = 0
+    foreach o in "" "colorcuts(5000 9000)" {
+        local ++k
+        global S17_TWC "twoway scatter mpg weight, colorvar(price) `o'"
+        global S17_DC  "dash scatter mpg weight, colorvar(price) `o'"
+        _s17_key dk06_`k' "`w30_work'"
+        if `k' == 1 local s17_w "0|5,000|10,000|15,000"
+        if `k' == 2 local s17_w "5,000|9,000"
+        _w30_expect DK-06 `"("${S17_TW}" == "`s17_w'")"' "twoway keys ${S17_TW}"
+        _w30_expect DK-06 `"("${S17_D}" == "`s17_w'")"' "dash keys ${S17_D}"
+    }
+    _w30_done DK-06 "a %9.0g price keys 0|5,000|10,000|15,000 and 5,000|9,000 in both"
+
+    // DK-07: the served app keys as the saved page, before and after a move.
+    sysuse sp500, clear
+    quietly gen byte up = close > open
+    capture dash clear
+    quietly dash scatter close open, colorvar(date) name(dk07a)
+    quietly dash scatter close open, colorvar(date) colorlevels(3) name(dk07b)
+    capture erase "`w30_work'/dk07.py"
+    quietly dash build, server saving("`w30_work'/dk07.py", replace) nobrowser filter(up, type(dropdown))
+    global S17_APP "`w30_work'/dk07.py"
+    global S17_MOVE "up"
+    python: __import__("__main__")._s17_app()
+    local s17_both = cond("`s17_d1'" < "`s17_d2'", "`s17_d1';`s17_d2'", "`s17_d2';`s17_d1'")
+    _w30_expect DK-07 `"("${S17_S}" == "`s17_both'")"' "served keys ${S17_S}"
+    _w30_expect DK-07 `"(${S17_FIRED} >= 1)"' "no callback fired"
+    _w30_expect DK-07 `"(${S17_SAME_AFTER} == 1)"' "the served keys changed after the move"
+    _w30_done DK-07 "the served keys equal the saved ones, before and after a move"
+    capture erase "`w30_work'/dk07.py"
+    capture dash clear
+
+    // DK-08: the histogram's height row is named as twoway titles its axis.
+    local s17_l0 ""
+    foreach h in "" "frequency" "fraction" "percent" {
+        local c = cond("`h'" == "", ",", ", `h'")
+        capture graph drop s17tw
+        quietly twoway histogram date `c' name(s17tw, replace)
+        quietly graph export "`w30_work'/dk08.svg", name(s17tw) replace
+        capture graph drop s17tw
+        global S17_SVG "`w30_work'/dk08.svg"
+        python: __import__("__main__")._s17_svg()
+        local c2 = cond("`h'" == "", ",", ", `h'")
+        quietly dash histogram date `c2' saving("`w30_work'/dk08.html", replace)
+        global S17_PAGE "`w30_work'/dk08.html"
+        python: __import__("__main__")._s17_page()
+        _w30_expect DK-08 `"("${S17_H}" == "${S17_YT}" & "${S17_YT}" != "")"' "histogram `h': dash ${S17_H}, twoway ${S17_YT}"
+        if "`h'" == "" {
+            local s17_hf "${S17_HF}"
+            local s17_l0 "${S17_L0}"
+        }
+        if "`h'" == "frequency" {
+            capture dash clear
+            quietly dash histogram date, frequency name(dk08f)
+            quietly dash build, server saving("`w30_work'/dk08.py", replace) nobrowser
+            global S17_APP "`w30_work'/dk08.py"
+            global S17_MOVE "none"
+            python: __import__("__main__")._s17_app()
+            _w30_expect DK-08 `"("${S17_SH}" == "Frequency")"' "served frequency row ${S17_SH}"
+            capture erase "`w30_work'/dk08.py"
+        }
+        capture erase "`w30_work'/dk08.svg"
+        capture erase "`w30_work'/dk08.html"
+        capture dash clear
+    }
+    _w30_done DK-08 "Density, Frequency, Fraction and Percent name the height row as twoway titles the axis"
+
+    // DK-09: the bins are written as the %td dates twoway shows.
+    local s = string(14977, "%td")
+    global S17_L0 "`s17_l0'"
+    python: __import__("__main__")._s17_twin()
+    _w30_expect DK-09 `"("`s17_hf'" == "%td,td")"' "formatter `s17_hf'"
+    _w30_expect DK-09 `"("${S17_TWIN}" == "`s'")"' "first bin ${S17_TWIN}, Stata `s'"
+    _w30_done DK-09 "a date histogram's bins are written %td (02jan2001) as Stata displays them"
     display as text "S17 end " c(current_date) " " c(current_time)
 }
 * ==== end S17 ====

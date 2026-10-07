@@ -386,7 +386,9 @@ and now matches Stata.
 
 <!-- WP-30 P1.23a -->
 
-<!-- WP-30 P1.23b -->
+- dash scatter close open, colorvar(date): a date colour key's ticks, its colorcuts()/colorlevels() bounds, its colordiscrete levels and its zlabel() ticks are read and written in the variable's Stata units, as twoway writes them -- 15,000 ... 15,400, where dash wrote epoch milliseconds (9.78394e+11) -- and colorcuts(15100 15200) now cuts at those days instead of collapsing to the minimum; zlabel(, format(%td)) writes dates. (WP-30, P1.23b)
+- Every numeric colour key is written in twoway's %8.0gc whatever the variable's display format (price at %9.0g keys ≤5,000, not ≤5000), and the colour bar is ticked at twoway's key ticks (0, 5,000, 10,000, 15,000) where Bokeh chose its own; zlabel(#N) places ticks by twoway's rule and zlabel(, format()) is honoured on every key. (WP-30, P1.23b)
+- Tooltips of histogram, the fits and smooths and kdensity write values in the variable's display format (a date histogram's bins read 02jan2001, not 978393600000); a kdensity's rows are its variable and Density, not x and y; and a histogram's height row is named Density, Frequency, Fraction or Percent, as its y axis is titled, not Count. (WP-30, P1.23b)
 
 <!-- WP-30 P1.25b -->
 

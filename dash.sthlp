@@ -2941,7 +2941,7 @@ the plot specification).
 {synopt:{cmdab:xsc:ale(log)}}display the x axis on a log scale{p_end}
 {synopt:{cmdab:ysc:ale(log)}}display the y axis on a log scale{p_end}
 {synopt:{cmdab:zti:tle(}{it:string}{cmd:)}}title of the colour key; see {cmd:colorvar()}{p_end}
-{synopt:{cmdab:zlab:el(}{it:#}[{it:#} ...]{cmd:)}}colour-bar tick positions; see {cmd:colorvar()}{p_end}
+{synopt:{cmdab:zlab:el(}{it:#}[{it:#} ...][{cmd:, format(}{it:%fmt}{cmd:)}]{cmd:)}}colour-key ticks and number format; see {cmd:colorvar()}{p_end}
 {synopt:{cmdab:zsc:ale(}{it:range() log reverse}{cmd:)}}colour-bar range, scale and direction; see {cmd:colorvar()}{p_end}
 {synopt:{cmdab:xli:ne(}{it:#}[{it:#} ...]{cmd:)}}draw vertical reference lines at x = {it:#}{p_end}
 {synopt:{cmdab:yli:ne(}{it:#}[{it:#} ...]{cmd:)}}draw horizontal reference lines at y = {it:#}{p_end}
@@ -3259,8 +3259,11 @@ observations -- {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci},
 {cmd:function} -- and an immediate layer's ({cmd:scatteri}, {cmd:pci},
 {cmd:pcarrowi}) are typed in the command, so {cmd:hover()} cannot reach
 them: their tooltips, where they have one, show only what the layer draws,
-x and y or a histogram's bin and count, and {cmd:dash} names each such
-layer in a note, once.  A variable's value is written in its display
+x and y, a {cmd:kdensity}'s x and {cmd:Density}, or a histogram's bin and
+its height, named as its y axis is titled ({cmd:Density},
+{cmd:Frequency}, {cmd:Fraction} or {cmd:Percent}), and {cmd:dash} names each such
+layer in a note, once.  A variable's value -- a computed layer's bins and
+points too -- is written in its display
 format, as Stata's {cmd:display} writes it -- {cmd:4,099} under
 {cmd:%8.0gc}, {cmd:12345.67} under {cmd:%10.0g}, a date in its picture,
 a {cmd:%tc} or {cmd:%tC} date with its time -- in both render modes.
@@ -3362,7 +3365,20 @@ The colour key's own axis options, {cmd:ztitle()}, {cmd:zlabel()} and
 either key; ticks, {cmd:#}{it:N}, {cmd:none} and {cmd:minmax}, and
 {cmd:range()} (widening only), {cmd:log} and {cmd:reverse}, on the colour bar.
 {cmd:zlabel(, labsize())} is drawn on the colour bar's labels.
-On a discrete key {cmd:zlabel()} and {cmd:zscale()} are named in the note.
+The key's numbers are {it:varname}'s values in its own units, written as
+{cmd:twoway} writes its colour key: in {cmd:%8.0gc} whatever {it:varname}'s
+display format ({cmd:5,000} for a {cmd:%9.0g} {cmd:price}), or in
+{cmd:zlabel(, format())}'s format -- on the colour bar, in a binned key's
+bounds and in a discrete key's levels.  The colour bar is ticked where
+{cmd:twoway} ticks its key, by the rule of {cmd:#5} over the plotted values,
+and {cmd:#}{it:N}, {cmd:minmax}, a list of values, {cmd:colorcuts()},
+{cmd:colorlevels()} and {cmd:range()} are read in the same units.  So a date
+variable keys {cmd:15,000} ... {cmd:15,400} and {cmd:colorcuts(15100 15200)}
+cuts at those days, as in {cmd:twoway}; {cmd:zlabel(, format(%td))} writes
+the dates.  A format {cmd:twoway} accepts that {cmd:dash} cannot write
+({cmd:%12s}, {cmd:%21x}) is drawn as {cmd:%9.0g} and named in the note.
+On a discrete key {cmd:zlabel()}'s ticks and {cmd:zscale()} are named in the
+note.
 {cmd:ztitle()} given only sub-options styles the key's default title, the
 colour variable's label; {cmd:suffix} and {cmd:prefix} add lines to it.
 

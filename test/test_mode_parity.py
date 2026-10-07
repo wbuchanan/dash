@@ -1922,6 +1922,13 @@ CORPUS = [
           [plot_for("histogram", {"fcolor": "navy", "fintensity": "50"})]),
     _case("lfitci, fintensity(150)",
           [plot_for("lfitci", {"fintensity": "150"})]),
+    # WP-30 P1.23b: colour-key text and computed tooltips
+    _case("colorvar() colorcuts() keyed %8.0gc",
+          [_sc(colorvar="price", colorcuts="5000 9000")]),
+    _case("colorvar() zlabel(, format(%9.2f))", [_sc(colorvar="price")],
+          go={"zlabel": ", format(%9.2f)"}),
+    _case("histogram, frequency tooltip",
+          [plot_for("histogram", {"frequency": "frequency"})]),
 ]
 
 
@@ -2680,6 +2687,12 @@ MOVE_CORPUS = [
     _move_case("scheme chrome: economist, dropdown", _MOVES[0], [_sc()],
                {"title": "T", "note": "N", "caption": "C"},
                bo={"scheme": "economist"}),
+    # WP-30 P1.23b: colour-key text and computed tooltips
+    # colorcuts(), not the manifest's colorlevels(): the standalone side
+    # of a move is rebuilt on the moved rows, whose levels differ by
+    # design (the served key keeps the build's levels, as before).
+    _move_case("colorvar() colorcuts(), dropdown", _MOVES[0],
+               [_sc(colorvar="price", colorcuts="5000 9000")]),
 ]
 
 

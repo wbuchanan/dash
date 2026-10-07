@@ -1269,7 +1269,10 @@ class TestTheHoverBuilder:
                                           "right": [1.0]}))
         dr._dash_build_hover(fig, "", "", "", [], univar="mpg")
         t = [x for x in fig.tools if isinstance(x, HoverTool)][0]
-        assert t.tooltips[0][0] == "mpg" and t.tooltips[1][0] == "Count"
+        # WP-30 P1.23b: 'Count' was wrong because a histogram's height is
+        # the measure its y axis is titled with; an untagged bar is
+        # Density, twoway's default.
+        assert t.tooltips[0][0] == "mpg" and t.tooltips[1][0] == "Density"
         assert t.mode == "vline"
 
     def test_a_density_curve_gets_the_generic_tooltip(self):

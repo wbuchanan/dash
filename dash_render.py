@@ -8760,8 +8760,9 @@ def _dash_colorvar_bins(col_vals, cuts, discrete, label_of,
     Returns ``(labels, binned, has_missing)``; ``labels`` is ``[]`` when
     *cuts* is empty, and then every row bins to None.
 
-    *number_text* writes an interval boundary (WP-28 S12, GAPS2 E3/G6:
-    the variable's display format, ``4,000`` under %8.0gc); Python's
+    *number_text* writes an interval boundary: the caller's writer,
+    twoway's %8.0gc or zlabel()'s format(), of a value in the variable's
+    Stata units (WP-30 P1.23b); Python's
     ``:g`` when None, and whenever the format would give two boundaries
     one text -- a label is a bin's identity, so two bins never share one.
     """
@@ -8827,6 +8828,107 @@ def _dash_colorvar_bins(col_vals, cuts, discrete, label_of,
         has_missing = bool(np.isnan(dom).any())
 
     return labels, binned, has_missing
+
+
+def _dash_key_format(zopts):
+    """The colour key's number format, as ``(fmt, unwritable)`` (WP-30
+    P1.23b).
+
+    twoway writes its colour key in ``%8.0gc`` whatever the variable's
+    display format (measured 03oct2026, StataNow 19.5: 15000 keys
+    ``15,000``, so not %7.0gc; 123456.25 keys ``123456``, so not %9.0gc),
+    or in ``zlabel(, format())``'s format.  A format of at most 60
+    characters that the page can write is returned as given (one pair of
+    enclosing double quotes stripped); one it cannot write (``%12s``,
+    ``%21x``, ``%16H``) gives ``%9.0g`` and the format, cut at 60
+    characters, for the caller to name once.
+    """
+    raw = str((zopts or {}).get("zlabel", "") or "")
+    if not raw.strip():
+        return "%8.0gc", None
+    fmt = _dash_parse_axis_spec(raw).get("format") or ""
+    fmt = str(fmt).strip()
+    if len(fmt) >= 2 and fmt[0] == '"' and fmt[-1] == '"':
+        fmt = fmt[1:-1].strip()
+    if not fmt:
+        return "%8.0gc", None
+    if len(fmt) <= 60 and _dash_fmt_refusal(fmt) is None:
+        return fmt, None
+    return "%9.0g", fmt[:60]
+
+
+def _dash_key_ticks(units, kind, fmt, labels=None):
+    """Colour-key ticks given in the variable's Stata units, as
+    ``(positions, overrides)`` for a FixedTicker and its
+    ``major_label_overrides`` (WP-30 P1.23b).
+
+    A date *kind* (one of ``_STATA_DATE_KINDS``) places each tick at
+    ``_dash_units_to_axis``'s epoch milliseconds, where the colour column
+    and its mapper are; any other kind places it at the value.  A tick
+    with no finite position (a date past 9999) is dropped.  The text is
+    the user's ``zlabel()`` label for that value (*labels*, keyed as
+    ``_dash_parse_axis_spec`` keys them, ``'15000.0'``), else the value in
+    *fmt*.  Positions are sorted and unique, and the overrides are keyed
+    by the very same floats, which BokehJS needs to match them.
+    """
+    labels = labels or {}
+    out = {}
+    for u in units or ():
+        try:
+            u = float(u)
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(u):
+            continue
+        if kind in _STATA_DATE_KINDS:
+            pos = float(_dash_units_to_axis([u], kind)[0])
+        else:
+            pos = u
+        if not math.isfinite(pos) or pos in out:
+            continue
+        key = str(float(u))
+        out[pos] = (str(labels[key]) if key in labels
+                    else _dash_fmt_text(u, fmt))
+    positions = sorted(out)
+    return positions, {p: out[p] for p in positions}
+
+
+def _dash_hist_measure(renderer):
+    """A histogram's height row name: the word twoway titles its y axis
+    with, read from the ``dash_hist_<mode>`` tag ``map_histogram`` puts on
+    its bars; ``Density``, twoway's default, for an untagged bar (WP-30
+    P1.23b; measured: Density, Frequency, Fraction, Percent)."""
+    for t in list(getattr(renderer, "tags", None) or []):
+        if isinstance(t, str) and t.startswith("dash_hist_"):
+            mode = t[len("dash_hist_"):]
+            if mode in _DASH_HIST_YTITLES:
+                return _DASH_HIST_YTITLES[mode]
+    return "Density"
+
+
+def _dash_fallback_format(var, axis_kind, formats, date_vars, cache):
+    """The ``CustomJSHover`` a computed layer's tooltip writes *var*'s
+    values with, or None (WP-30 P1.23b).
+
+    A date variable is written in its date format: from epoch
+    milliseconds when the figure draws it on its own date axis
+    (*axis_kind* equal to its kind), else from the Stata value.  A
+    variable with a numeric display format (``f``, ``g`` or ``e``) is
+    written in it.  Anything else, and a name that is not a Stata name,
+    keeps the tooltip's own precision.  The column is computed in double,
+    so no storage type applies.
+    """
+    if not var or not _dash_is_stata_name(var):
+        return None
+    formats = formats or {}
+    kind = (date_vars or {}).get(var)
+    if kind in _STATA_DATE_KINDS:
+        return _dash_fmt_hover(_dash_date_fmt(formats.get(var, ""), kind),
+                               kind if axis_kind == kind else "", "", cache)
+    fmt = formats.get(var)
+    if fmt and _dash_fmt_kind(fmt) in ("f", "g", "e"):
+        return _dash_fmt_hover(fmt, "", "", cache)
+    return None
 
 
 # ===========================================================================
@@ -10079,16 +10181,15 @@ class GlyphMapper:
         vlabels     = _dash_value_labels_for(varname, self.value_labels,
                                              self.value_label_names)
 
-        # A number in the key is the variable's display text (WP-28 S12,
-        # GAPS2 E3/G6): 4,099 under %8.0gc.  A date's column holds epoch
-        # milliseconds, which its format cannot write, so it keeps :g.
-        _cv_fmt = (getattr(self, "formats", {}) or {}).get(varname, "")
-        _cv_st = (getattr(self, "storage_types", {}) or {}).get(varname)
-        _num_text = (
-            (lambda v: _dash_fmt_text(v, _cv_fmt, _cv_st))
-            if _dash_fmt_kind(_cv_fmt) in ("f", "g", "e")
-            and not (getattr(self, "date_vars", {}) or {}).get(varname)
-            else (lambda v: f"{v:g}"))
+        # WP-30 P1.23b: a number in the key is written as twoway writes
+        # its colour key -- %8.0gc whatever the variable's display format
+        # (5,000 for a %9.0g price), or zlabel()'s format() -- of a value
+        # in the variable's Stata units (a date's days, not the column's
+        # epoch milliseconds).
+        _cv_kind = (getattr(self, "date_vars", {}) or {}).get(varname)
+        _cv_kind = _cv_kind if _cv_kind in _STATA_DATE_KINDS else ""
+        _key_fmt, _key_bad = _dash_key_format(self.z_options)
+        _num_text = (lambda v: _dash_fmt_text(v, _key_fmt))
 
         def _vlookup(v: float) -> str:
             """Return the Stata value label for v if defined, else the
@@ -10164,6 +10265,14 @@ class GlyphMapper:
                 dom_vals = col_vals
         # Every colour row missing: no level, every row in colormissing().
         dom_all_missing = bool(is_numeric and np.all(np.isnan(dom_vals)))
+        # WP-30 P1.23b: the key's cuts, bins, levels and ticks are read in
+        # the variable's Stata units; the colour column and its mapper keep
+        # the column's own (epoch milliseconds for a date).
+        if is_numeric and _cv_kind:
+            col_units = _dash_date_units(col_vals, _cv_kind)
+            dom_units = _dash_date_units(dom_vals, _cv_kind)
+        else:
+            col_units, dom_units = col_vals, dom_vals
 
         needs_binning = cuts is not None or nlevels is not None
         use_discrete  = (force_discrete or not is_numeric or needs_binning
@@ -10194,7 +10303,8 @@ class GlyphMapper:
                     # other value joins missing in gray (BR-16.1); without
                     # it the cuts are interval boundaries, as they always
                     # were.
-                    eff_cuts = _dash_colorvar_cuts(dom_vals, cuts, nlevels,
+                    # WP-30 P1.23b: in the variable's Stata units.
+                    eff_cuts = _dash_colorvar_cuts(dom_units, cuts, nlevels,
                                                    minmax)
                     # colorlevels()/colornlevels() with no explicit
                     # colorcuts() and no colorvarminmax divides the whole
@@ -10205,15 +10315,16 @@ class GlyphMapper:
                     # TestColorLevelsPutEachPointInItsLabelledBin).
                     _closed = cuts is None and not minmax
                     labels, binned, has_missing = _dash_colorvar_bins(
-                        dom_vals, eff_cuts, force_discrete, _vlookup,
+                        dom_units, eff_cuts, force_discrete, _vlookup,
                         closed_ends=_closed, number_text=_num_text,
-                        bin_values=col_vals)
+                        bin_values=col_units)
 
                 else:
                     # colordiscrete: each distinct numeric value → its own category.
                     # Resolve the Stata value label for each level so the legend
                     # shows e.g. "Domestic"/"Foreign" instead of "0"/"1".
-                    non_nan = [v for v in dom_vals if not np.isnan(v)]
+                    # WP-30 P1.23b: the levels in Stata units.
+                    non_nan = [v for v in dom_units if not np.isnan(v)]
                     unique_sorted = sorted(set(non_nan))
                     val_label = {v: _vlookup(v) for v in unique_sorted}
                     if len(set(val_label.values())) < len(val_label):
@@ -10225,9 +10336,9 @@ class GlyphMapper:
                     # A row outside the domain's levels is None too.
                     binned = [
                         None if np.isnan(v) else val_label.get(v)
-                        for v in col_vals
+                        for v in col_units
                     ]
-                    has_missing = bool(np.isnan(dom_vals).any())
+                    has_missing = bool(np.isnan(dom_units).any())
 
                 source.data[color_field] = binned
 
@@ -10350,18 +10461,30 @@ class GlyphMapper:
                 _cbar = None
 
             if _cbar is not None:
-                # colorvarminmax alone (no cuts/levels, GAPS2 X2 BR-16.4):
-                # the minimum and maximum join the bar's own ticks, unless
-                # zlabel() sets the ticker below, which wins because it
-                # runs after this.
-                if minmax:
-                    _mm_ticks = sorted(
-                        {lo, hi} | set(_dash_axis_count_ticks(lo, hi, 5, "")
-                                       or ()))
-                    _cbar.ticker = FixedTicker(ticks=_mm_ticks)
+                # WP-30 P1.23b: the bar is ticked where twoway ticks its
+                # key -- natscale #5 over the plotted values, in the
+                # variable's Stata units (kind None: a plain number line,
+                # never the date-axis rule) -- and written in _key_fmt.
+                # colorvarminmax alone (no cuts/levels, GAPS2 X2 BR-16.4)
+                # adds the minimum and maximum.  zlabel() sets the ticker
+                # below, which wins because it runs after this.
+                _fin = np.asarray(dom_units, dtype=float)
+                _fin = _fin[np.isfinite(_fin)]
+                _units = None
+                if _fin.size:
+                    _lo_s, _hi_s = float(_fin.min()), float(_fin.max())
+                    _units = (_lo_s, _hi_s)
+                    _kt = list(_dash_axis_count_ticks(_lo_s, _hi_s, 5, None)
+                               or [_lo_s])
+                    if minmax:
+                        _kt = sorted(set(_kt) | {_lo_s, _hi_s})
+                    _pos, _ovr = _dash_key_ticks(_kt, _cv_kind, _key_fmt)
+                    _cbar.ticker = FixedTicker(ticks=_pos)
+                    _cbar.major_label_overrides = _ovr
                 mapper = _dash_apply_z_options(fig, _cbar, mapper,
                                                self.z_options,
-                                               *self.z_context)
+                                               *self.z_context,
+                                               kind=_cv_kind, units=_units)
                 _cbar.color_mapper = mapper
 
             color_spec = {"field": varname, "transform": mapper}
@@ -13625,10 +13748,18 @@ class GlyphMapper:
         """
         if options is None:
             options = {}
+        # WP-30 P1.23b: the bars carry their measure, so the tooltip names
+        # the height as the y axis is titled (Density, Frequency, ...).
+        _hm = "dash_hist_" + _dash_histogram_ymode(options)
+
+        def _tag(rd):
+            rd.tags = list(rd.tags or []) + [_hm]
+            return rd
+
         if self._is_empty(source, yvar):
-            return self._histogram_quads(
+            return _tag(self._histogram_quads(
                 fig, ColumnDataSource({"top": [], "left": [], "right": []}),
-                options, color_idx, yvar)
+                options, color_idx, yvar))
         # twoway__histogram_gen.ado:6 admits [fw] only; any other type is
         # named by _layer_weights and the bars are counted unweighted.
         arr, w, wtype = self._layer_units(source, view, options,
@@ -13638,9 +13769,9 @@ class GlyphMapper:
             # or a by() panel another plot draws in: twoway draws nothing
             # in silence, rc 0 (measured 24sep2026; on a dataset with no
             # observations dash.ado refuses it, as twoway does).
-            return self._mark_silent(self._histogram_quads(
+            return self._mark_silent(_tag(self._histogram_quads(
                 fig, ColumnDataSource({"top": [], "left": [], "right": []}),
-                options, color_idx, yvar))
+                options, color_idx, yvar)))
 
         edges, ymode = self._histogram_grid(arr, options, w)
         discrete = bool(str(options.get("discrete", "") or "").strip())
@@ -13673,8 +13804,8 @@ class GlyphMapper:
             "left":  axis_edges[i0:i1],
             "right": axis_edges[i0 + 1:i1 + 1],
         })
-        r = self._histogram_quads(fig, hist_source, options, color_idx,
-                                  yvar)
+        r = _tag(self._histogram_quads(fig, hist_source, options, color_idx,
+                                       yvar))
         if i1 <= i0:
             # No bar has a date on the axis: nothing for the page to
             # recount.
@@ -27971,7 +28102,8 @@ def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar,
     fig._dash_rescaled = frozenset(rescale or ())
 
 
-def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key):
+def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key,
+                          kind="", units=None):
     """Draw zlabel()/ztitle()/zscale() -- the colour key's own axis
     options -- on the Legend or ColorBar :meth:`GlyphMapper._apply_colorvar`
     built (GAPS2 X2).
@@ -27988,6 +28120,16 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key):
     positive lower bound swaps in a :class:`LogColorMapper`, which the
     caller must then use for both the key and the glyph's own
     ``fill_color``/``line_color`` transform so the two never diverge.
+
+    WP-30 P1.23b: *units* is the colour bar's ``(lo, hi)`` in the
+    variable's Stata units and *kind* its date kind ("" for a number).
+    Given, zlabel()'s ticks (#N by twoway's natscale rule over the
+    plotted values, minmax, a list) and zscale(range()) are read in those
+    units and placed where the mapper draws them (``_dash_key_ticks``),
+    and each tick is written in zlabel()'s format() or twoway's %8.0gc; a
+    format the page cannot write draws %9.0g and is named once.  On a
+    discrete key a zlabel() holding only a writable format() is silent,
+    since the caller wrote the key's labels in it.
     """
     from bokeh.models import FixedTicker, LogColorMapper, Legend
 
@@ -28011,19 +28153,35 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key):
             key_obj.title_text_color = colour
 
     zlabel_raw = zopts.get("zlabel", "")
+    _kfmt, _kbad = _dash_key_format(zopts)
     if zlabel_raw:
         if is_discrete:
-            _dash_report_suboptions("zlabel", [zlabel_raw], seen, key)
+            # WP-30 P1.23b: a zlabel() whose only content is a writable
+            # format() was drawn in the key's labels; anything else has
+            # nothing to draw on a Legend and is named whole.
+            _dspec = _dash_parse_axis_spec(zlabel_raw)
+            _fmt_only = (_dspec.get("mode") == "default"
+                         and not _dspec.get("ticks")
+                         and not _dspec.get("labels")
+                         and not _dspec.get("unsupported")
+                         and not _dspec.get("labsize")
+                         and not _dspec.get("angle")
+                         and not _dspec.get("grid")
+                         and _kbad is None)
+            if not _fmt_only:
+                _dash_report_suboptions("zlabel", [zlabel_raw], seen, key)
         else:
             spec = _dash_parse_axis_spec(zlabel_raw)
-            # format()/labsize()/angle()/grid are honoured on an ordinary
-            # axis (_dash_parse_axis_spec keeps them out of "unsupported"
-            # for that reason) but the colour bar's ticker applies none of
-            # them, so they are named here instead.
+            # labsize() is drawn below; angle()/grid are honoured on an
+            # ordinary axis (_dash_parse_axis_spec keeps them out of
+            # "unsupported" for that reason) but the colour bar applies
+            # neither, so they are named here instead.  format() is drawn
+            # (WP-30 P1.23b), and named only when the page cannot write
+            # it.
             _bad = list(spec.get("unsupported", []))
             _typed = spec.get("typed", {})
-            if "format" in _typed:
-                _bad.append(_typed["format"])  # named as typed (A64)
+            if _kbad is not None:
+                _bad.append(f"format({_kbad})")
             # labsize() is drawn on the colour bar's tick labels, in
             # Stata's text units (WP-30 P1.12a, Evidence E5).
             if spec.get("labsize"):
@@ -28046,15 +28204,27 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key):
                 if _sub in _typed:
                     _bad.append(_typed[_sub])
             _dash_report_suboptions("zlabel", _bad, seen, key)
+            _ticks = None
             if spec["mode"] == "none":
                 key_obj.ticker = FixedTicker(ticks=[])
-            elif spec["mode"] == "minmax":
-                lo = getattr(out_mapper, "low", None)
-                hi = getattr(out_mapper, "high", None)
-                if lo is not None and hi is not None:
-                    key_obj.ticker = FixedTicker(ticks=[float(lo), float(hi)])
-            elif spec["mode"] == "count":
-                key_obj.ticker = _dash_count_ticker(spec["count"])
+                key_obj.major_label_overrides = {}
+            elif units is not None:
+                # WP-30 P1.23b: ticks in the variable's Stata units.
+                _ulo, _uhi = units
+                if spec["mode"] == "minmax":
+                    _ticks = [_ulo, _uhi]
+                elif spec["mode"] == "count":
+                    _ticks = sorted(
+                        set(_dash_axis_count_ticks(_ulo, _uhi,
+                                                   spec["count"], None)
+                            or []) | set(spec["ticks"] or []))
+                elif spec["mode"] == "explicit" and spec["ticks"]:
+                    _ticks = list(spec["ticks"])
+                if _ticks is not None:
+                    _pos, _ovr = _dash_key_ticks(_ticks, kind, _kfmt,
+                                                 spec["labels"])
+                    key_obj.ticker = FixedTicker(ticks=_pos)
+                    key_obj.major_label_overrides = _ovr
             elif spec["mode"] == "explicit" and spec["ticks"]:
                 key_obj.ticker = FixedTicker(ticks=spec["ticks"])
                 if spec["labels"]:
@@ -28068,6 +28238,15 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key):
         else:
             zspec = _dash_scale_spec(zscale_raw, "zscale", seen, key)
             lo, hi = zspec.get("lo"), zspec.get("hi")
+            if kind in _STATA_DATE_KINDS:
+                # WP-30 P1.23b: range() is in the variable's Stata units;
+                # the mapper is in the column's epoch milliseconds.
+                def _to_axis(v):
+                    if v is None:
+                        return None
+                    p = float(_dash_units_to_axis([v], kind)[0])
+                    return p if math.isfinite(p) else None
+                lo, hi = _to_axis(lo), _to_axis(hi)
             cur_lo = getattr(out_mapper, "low", None)
             cur_hi = getattr(out_mapper, "high", None)
             # range() widens only (D §3): a narrower bound is ignored.
@@ -29238,9 +29417,32 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
                 return v
             return None
 
-        def _cell(label, col, data):
+        # WP-30 P1.23b: the formatters of the shape being tried; cleared
+        # before each attempt, so a shape that misses leaves none.
+        _fb_fmts = {}
+
+        def _layer_of(rd):
+            """The plot spec of the layer whose renderers hold *rd*."""
+            for _spec, _rends in (layers or []):
+                if any(x is rd for x in (_rends or [])):
+                    return _spec or {}
+            return {}
+
+        def _cell(label, col, data, var="", axis="x"):
+            """A row writing *col*, in *var*'s display format when it has
+            one (a date as a date; WP-30 P1.23b), else in the column's
+            own precision."""
+            _h = _dash_fallback_format(var, _dash_axis_date_kind(fig, axis),
+                                       formats, date_vars, fmt_cache)
+            if _h is not None:
+                _fb_fmts[f"@{{{col}}}"] = _h
+                return (label, f"@{{{col}}}{{custom}}")
             _p = _tooltip_precision(data.get(col, []))
             return (label, f"@{{{col}}}{{{_p}}}")
+
+        def _var_of(col, fallback):
+            """*col* when it is a variable with a format, else *fallback*."""
+            return col if (col in formats or col in date_vars) else fallback
 
         def _named(col, fallback):
             """A column that is one of the dataset's variables is labelled
@@ -29264,13 +29466,16 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
             # named after it.  It used to read "value" whenever the plot
             # carried its variable under the `var' key, which is the key
             # dash.ado writes for every histogram.
-            _bin_var = y1var or univar
+            _bin_var = _layer_of(rd).get("var") or y1var or univar
             _bin_label = _dash_var_label(var_labels, _bin_var, "value")
-            _p = _tooltip_precision(data.get("left", []))
+            # WP-30 P1.23b: the edges in the variable's display format,
+            # the height named as the y axis is titled.
+            _lft = _cell(_bin_label, "left", data, _bin_var, "x")[1]
+            _rgt = _cell(_bin_label, "right", data, _bin_var, "x")[1]
             # Quad hit-testing wants the cursor exactly on the bar; vline
             # fires anywhere within the bin's x-range.
-            return ([(_bin_label, f"@{{left}}{{{_p}}} to @{{right}}{{{_p}}}"),
-                     ("Count", "@{top}")], "vline")
+            return ([(_bin_label, f"{_lft} to {_rgt}"),
+                     (_dash_hist_measure(rd), "@{top}")], "vline")
 
         def _point_or_line(rd, data):
             fx = _drawn_field(rd.glyph, "x", data)
@@ -29280,17 +29485,29 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
                     fx, fy = "x", "y"
                 else:
                     return None
-            return ([_cell(_named(fx, _x_label), fx, data),
-                     _cell(_named(fy, _y_label), fy, data)], "mouse")
+            _ly = _layer_of(rd)
+            if (_ly.get("type") == "kdensity"
+                    or (not _ly and univar and not xvar)):
+                # WP-30 P1.23b: a density's x is its variable, its y the
+                # density.
+                _dv = _ly.get("var") or univar
+                return ([_cell(_dash_var_label(var_labels, _dv, "x"), fx,
+                               data, _dv, "x"),
+                         _cell("Density", fy, data)], "mouse")
+            _xv = _var_of(fx, _ly.get("xvar") or xvar)
+            _yv = _var_of(fy, _ly.get("yvar") or y1var)
+            return ([_cell(_named(fx, _x_label), fx, data, _xv, "x"),
+                     _cell(_named(fy, _y_label), fy, data, _yv, "y")],
+                    "mouse")
 
         def _range(rd, data):
             if not all(c in data for c in ("x", "y1", "y2")):
                 return None
-            return ([_cell(_x_label, "x", data),
+            return ([_cell(_x_label, "x", data, xvar, "x"),
                      _cell(_dash_var_label(var_labels, y1var, "y1"), "y1",
-                           data),
+                           data, y1var, "y"),
                      _cell(_dash_var_label(var_labels, y2var, "y2"), "y2",
-                           data)],
+                           data, y2var, "y")],
                     "mouse")
 
         def _segment(rd, data):
@@ -29298,8 +29515,10 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
                     (("y0", "y1"), ("x0", "x1"), ("y1", "y2"), ("x1", "x2"))]
             if not all(col for col, _role in ends):
                 return None
-            return ([_cell(_named(col, role), col, data)
-                     for col, role in ends], "mouse")
+            return ([_cell(_named(col, role), col, data,
+                           _var_of(col, ""), ax)
+                     for (col, role), ax in zip(ends, ("y", "x", "y", "x"))],
+                    "mouse")
 
         def _band(rd, data):
             fx = _drawn_field(rd.glyph, "x", data)
@@ -29307,14 +29526,18 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
             f2 = _drawn_field(rd.glyph, "y2", data)
             if not (fx and f1 and f2):
                 return None
-            return ([_cell(_named(fx, _x_label), fx, data),
-                     _cell(_named(f1, "y1"), f1, data),
-                     _cell(_named(f2, "y2"), f2, data)], "mouse")
+            _ly = _layer_of(rd)
+            _yv = _ly.get("yvar") or y1var
+            return ([_cell(_named(fx, _x_label), fx, data,
+                           _ly.get("xvar") or xvar, "x"),
+                     _cell(_named(f1, "y1"), f1, data, _yv, "y"),
+                     _cell(_named(f2, "y2"), f2, data, _yv, "y")], "mouse")
 
         for _shape in (_bins, _point_or_line, _range, _segment, _band):
             _hit = None
             for _rd in _rest:
                 _data = getattr(_rd.data_source, "data", {}) or {}
+                _fb_fmts.clear()
                 _found = _shape(_rd, _data)
                 if _found:
                     _hit = (_rd, _found)
@@ -29322,6 +29545,7 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
             if _hit:
                 _rd, (_fb_fields, _fb_mode) = _hit
                 fig.add_tools(HoverTool(tooltips=_fb_fields,
+                                        formatters=dict(_fb_fmts),
                                         renderers=[_rd], mode=_fb_mode))
                 break
 
@@ -35358,6 +35582,10 @@ class ServerAppBuilder:
                          # the colour-key applier -- one text, both modes.
                          "_dash_colorvar_cuts", "_dash_colorvar_bins",
                          "_dash_colorvar_domain", "_dash_colorvar_field",
+                         # WP-30 P1.23b: the colour key's units and
+                         # text, the computed tooltips' formats.
+                         "_dash_key_format", "_dash_key_ticks",
+                         "_dash_hist_measure", "_dash_fallback_format",
                          "_dash_apply_z_options",
                          "_dash_subopt_name",
                          "_dash_subopt_canon", "_dash_subopt_resolve",
