@@ -321,7 +321,9 @@ string scalar _sb_help_bad(string scalar fn)
     miss = ""
     for (b = 32; b <= 126; b++) {
         if (_dash_cmd_metachar(char(b)) != b & _dash_path_badchar(char(b)) != b) continue
-        nm = (b == 34 ? "double quote" : (b == 96 ? "backquote" : "{cmd:" + char(b) + "}"))
+        // S12's help (WP-30 P1.27) names $ in words, as it names " and `.
+        nm = (b == 34 ? "double quote" : (b == 96 ? "backquote" :
+             (b == 36 ? "dollar sign" : "{cmd:" + char(b) + "}")))
         if (!strpos(par, nm)) miss = miss + " " + nm
     }
     if (!strpos(par, "{cmd:..}")) miss = miss + " {cmd:..}"
