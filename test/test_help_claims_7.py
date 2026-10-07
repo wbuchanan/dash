@@ -49,6 +49,23 @@ from test_server_layer_defects import plot_for  # noqa: E402
 _MODES = ("saved", "served")
 _TYPES = sorted(dr._dash_plot_type_names())
 
+#: The plot types whose SERVED half a per-type sweep keeps (WP-30 test
+#: performance E), one per family: point, line, area/range, bar,
+#: fit/smooth, pc.  The saved half keeps every type.  The served app draws
+#: through the same GlyphMapper text (copied by inspect.getsource), and
+#: test_mode_parity's corpus compares every dispatched type in both modes;
+#: TestTheSecondAxisFitsTheLayer keeps both halves whole.
+_SERVED_TYPES = ("scatter", "line", "rarea", "bar", "lfitci", "pccapsym")
+
+
+def _types_by_mode(types, served=_SERVED_TYPES):
+    """``(ptype, mode)`` parameters: every type saved, and the types in
+    *served* served too; the ids are the ones the two stacked decorators
+    gave (``scatter-saved``)."""
+    return ([pytest.param(t, "saved", id=f"{t}-saved") for t in types]
+            + [pytest.param(t, "served", id=f"{t}-served")
+               for t in types if t in served])
+
 
 # ---------------------------------------------------------------------------
 # Rendering in one mode or the other
@@ -211,13 +228,33 @@ _REGION = [
 ]
 
 
+#: The rows whose SERVED half TestRegionColours keeps (WP-30 test
+#: performance E): each option, each colour notation and a width once.  The
+#: saved half keeps every row; both modes read the options through the same
+#: _extract_region_color, _extract_region_lcolor and _extract_region_lwidth.
+_REGION_SERVED = ("plotregion(color(navy))", 'plotregion(lcolor("255 0 0"))',
+                  "plotregion(lwidth(thick))", "graphregion(color(#1a476f))",
+                  "bgcolor(255 0 0)", "plotbgcolor(maroon)")
+
+
+def _region_by_mode():
+    """``(opt, value, attr, want, mode)``: every row saved, the
+    ``_REGION_SERVED`` rows served, with the ids the stacked decorators
+    gave."""
+    out = []
+    for mode in _MODES:
+        for o, v, a, w in _REGION:
+            rid = f"{o}({v})"
+            if mode == "saved" or rid in _REGION_SERVED:
+                out.append(pytest.param(o, v, a, w, mode, id=f"{rid}-{mode}"))
+    return out
+
+
 class TestRegionColours:
     """dash.sthlp, Region Styling Options: each option sets the Bokeh
     property the help names, from a colour in each notation it names."""
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("opt,value,attr,want", _REGION,
-                             ids=[f"{o}({v})" for o, v, _, _ in _REGION])
+    @pytest.mark.parametrize("opt,value,attr,want,mode", _region_by_mode())
     def test_the_option_sets_the_property(self, mode, opt, value, attr, want):
         fig, caught = _render(mode, [plot_for("scatter")], {opt: value})
         got = getattr(fig, attr)
@@ -432,8 +469,7 @@ def _colour_mapped(fig):
 
 class TestWhereColorvarIsDrawn:
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", _TYPES)
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(_TYPES))
     def test_a_continuous_colorvar(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype, {"colorvar": "price"})])
         got = _colour_mapped(fig)
@@ -442,8 +478,7 @@ class TestWhereColorvarIsDrawn:
         else:
             assert got == {"field": False, "bar": False, "key": False}, got
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", _TYPES)
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(_TYPES))
     def test_a_discrete_colorvar(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype, {"colorvar": "foreign",
                                                  "colordiscrete": "1"})])
@@ -630,8 +665,7 @@ def _coords(fig, only=None):
 
 class TestJitter:
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", _TYPES)
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(_TYPES))
     def test_the_types_jitter_moves(self, mode, ptype):
         base, _ = _render(mode, [plot_for(ptype)])
         moved, _ = _render(mode, [plot_for(ptype, {"jitter": "20",
@@ -650,8 +684,7 @@ class TestJitter:
 
 class TestMsangle:
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", _TYPES)
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(_TYPES))
     def test_the_types_msangle_turns(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype, {"msangle": "45"})])
         angles = {round(float(r.glyph.angle), 9) for r in _glyphs(fig)
@@ -693,8 +726,7 @@ def _alphas(fig, markers):
 class TestAlphaOptions:
     """malpha() is the markers' opacity and nothing else's."""
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", _TYPES)
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(_TYPES))
     def test_malpha_is_the_markers_opacity(self, mode, ptype):
         base, _ = _render(mode, [plot_for(ptype)])
         fig, _ = _render(mode, [plot_for(ptype, {"malpha": "30"})])
@@ -725,26 +757,24 @@ class TestColorColoursTheWholeLayer:
     band on lfitci (SVG, 23sep2026).  dash left a range area and a range
     bar's fill at the scheme's colour and every confidence band grey."""
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", ["rarea", "rbar", "area", "bar",
-                                       "histogram"])
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(
+        ["rarea", "rbar", "area", "bar", "histogram"]))
     def test_the_fill_is_the_colour(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype, {"color": "red"})])
         fills = [str(r.glyph.fill_color).lower() for r in _glyphs(fig)
                  if hasattr(r.glyph, "fill_color")]
         assert fills and set(fills) == {"#ff0000"}, (ptype, fills)
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", ["lfitci", "qfitci", "lpolyci",
-                                       "fpfitci"])
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(
+        ["lfitci", "qfitci", "lpolyci", "fpfitci"]))
     def test_the_confidence_band_is_the_colour(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype, {"color": "red"})])
         got = _colours(fig)
         assert got.get("VArea") == {"#ff0000"}, got
         assert got.get("Line") == {"#ff0000"}, got
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", sorted(_MARKER_TYPES))
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(
+        sorted(_MARKER_TYPES)))
     def test_markers_and_lines_alike(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype, {"color": "red"})])
         got = _colours(fig)
@@ -800,8 +830,7 @@ def _hover_rows(fig):
 
 class TestHover:
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", _TYPES)
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(_TYPES))
     def test_the_types_whose_tooltip_shows_the_variable(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype)], {"hover": "rep"})
         assert ("rep" in _hover_rows(fig)) == (ptype in _HOVER_TYPES), (
@@ -1331,3 +1360,20 @@ class TestAdversarialLegendAxesRegions:
                      and "is not a recognised colour" in w]
             assert len(notes) == 1, caught
             assert len(notes[0]) < 1000, len(notes[0])
+
+
+class TestTheServedHalvesAreRepresentative:
+    """Guards the pruning (WP-30 E): every served representative is a real
+    type or row, and every pruned sweep still serves at least one."""
+
+    def test_the_representatives_exist(self):
+        assert set(_SERVED_TYPES) < set(_TYPES) and len(_SERVED_TYPES) == 6
+        rows = {f"{o}({v})" for o, v, _, _ in _REGION}
+        assert set(_REGION_SERVED) < rows and len(_REGION_SERVED) == 6
+
+    @pytest.mark.parametrize("types", [
+        _TYPES, ["rarea", "rbar", "area", "bar", "histogram"],
+        ["lfitci", "qfitci", "lpolyci", "fpfitci"], sorted(_MARKER_TYPES)],
+        ids=["all", "fill", "band", "markers"])
+    def test_every_pruned_sweep_still_serves(self, types):
+        assert [p for p in _types_by_mode(types) if p.values[1] == "served"]

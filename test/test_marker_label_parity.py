@@ -128,12 +128,13 @@ def _write(spec, df, value_labels, label_names):
 
 
 def _both(plots, df=_DF, value_labels=None, label_names=None, formats=None,
-          go=None):
+          go=None, served=True):
     """(saved figure, served figure, saved warnings, served warnings).
 
     By default ``foreign`` carries the label set ``origin`` keyed by the
     label set's name; real jsonio keys valueLabels by the VARIABLE's name,
-    which ``value_labels=`` can say instead.
+    which ``value_labels=`` can say instead.  ``served=False`` renders the
+    saved page alone: the served figure and warnings are then None.
     """
     if value_labels is None:
         value_labels = {"origin": dict(_ORIGIN)}
@@ -147,6 +148,8 @@ def _both(plots, df=_DF, value_labels=None, label_names=None, formats=None,
         r = dr.DashRenderer(sp, dp)
         r.render()
     std_w = sorted(str(w.message) for w in caught)
+    if not served:
+        return list(r.figures.values())[0], None, std_w, None
 
     tag, sp, dp = _write(spec, df, value_labels, label_names)
     ap = os.path.join(_TMP, f"app_{tag}.py")
@@ -327,19 +330,38 @@ class TestTheApplierLeavesTheOutlineToTheMarkerOptions:
         assert g.line_color == "#1a476f"
 
 
+#: The marker types whose served half the line-option sweep keeps (WP-30
+#: test performance E): point, line, range, spike, pc and immediate.  The
+#: saved half keeps all nine; the served app draws markers through the same
+#: GlyphMapper text, and test_mode_parity's corpus compares every type.
+_LINE_OPTION_SERVED = ("scatter", "connected", "rcapsym", "dropline",
+                       "pcscatter", "scatteri")
+
+
 @pytest.mark.parametrize("ptype", _MARKER_TYPES)
 @pytest.mark.parametrize("options", [
     {"lcolor": "red"}, {"lwidth": "vthick"}, {"lcolor": "red%50"},
     {"lalpha": "30"},
 ], ids=["lcolor", "lwidth", "lcolor%", "lalpha"])
 def test_the_line_options_leave_every_marker_alone(ptype, options):
-    """In both modes, the markers are the ones drawn with no option."""
-    b_std, b_srv, _, _ = _both([plot_for(ptype)])
-    std, srv, std_w, srv_w = _both([plot_for(ptype, options)])
-    assert std_w == srv_w
-    for base, fig in ((b_std, std), (b_srv, srv)):
+    """The markers are the ones drawn with no option: saved for every
+    marker type, served as well for ``_LINE_OPTION_SERVED``."""
+    served = ptype in _LINE_OPTION_SERVED
+    b_std, b_srv, _, _ = _both([plot_for(ptype)], served=served)
+    std, srv, std_w, srv_w = _both([plot_for(ptype, options)], served=served)
+    pairs = [(b_std, std)]
+    if served:
+        assert std_w == srv_w
+        pairs.append((b_srv, srv))
+    for base, fig in pairs:
         assert _markers(base), ptype
         assert _markers(fig) == _markers(base), (ptype, options)
+
+
+def test_the_line_option_sweep_serves_a_type_of_each_family():
+    """Guards the pruning: every served representative is a marker type."""
+    assert set(_LINE_OPTION_SERVED) < set(_MARKER_TYPES)
+    assert len(_LINE_OPTION_SERVED) == 6
 
 
 @pytest.mark.parametrize("ptype,kind", [

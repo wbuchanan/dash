@@ -187,10 +187,20 @@ def by_spec(ptype, by="foreign", options=None, **graph_extra):
 # AC-11.1 -- every plot type under by(), model for model
 # ===========================================================================
 
-class TestEveryTypeFacetsTheSameWayInBothModes:
-    """The sweep GAPS.md D4 should have been: all 38 types, not 18."""
+#: The plot types the by() sweep compares served as well as saved (WP-30
+#: test performance E), one per family: point, line, area/range, bar,
+#: fit/smooth, pc.  Every type is still drawn saved (test_every_panel_draws);
+#: the served app facets through the same code, test_mode_parity's corpus
+#: has 23 by() entries, and the classes below compare by() in both modes.
+_SERVED_TYPES = ("scatter", "line", "rarea", "bar", "lfitci", "pccapsym")
 
-    @pytest.mark.parametrize("ptype", ALL_TYPES)
+
+class TestEveryTypeFacetsTheSameWayInBothModes:
+    """The sweep GAPS.md D4 should have been: every type, not 18 -- saved
+    for every type, compared with the served app for ``_SERVED_TYPES``."""
+
+    @pytest.mark.parametrize("ptype", [t for t in ALL_TYPES
+                                       if t in _SERVED_TYPES])
     def test_the_panels_agree(self, tmp_path, ptype):
         spec = by_spec(ptype)
         std = profiles_std(tmp_path, spec)
@@ -200,15 +210,22 @@ class TestEveryTypeFacetsTheSameWayInBothModes:
             % (ptype, std, srv)
         )
 
-    @pytest.mark.parametrize("ptype", ALL_TYPES)
-    def test_every_panel_draws(self, tmp_path, ptype):
-        """Stated positively: no served panel is an empty plot region."""
-        figs, _, warns = served(tmp_path, by_spec(ptype))
+    @pytest.mark.parametrize("ptype,mode", [
+        *[(t, "saved") for t in ALL_TYPES],
+        *[(t, "served") for t in ALL_TYPES if t in _SERVED_TYPES]])
+    def test_every_panel_draws(self, tmp_path, ptype, mode):
+        """Stated positively: no panel is an empty plot region -- saved for
+        every type, served for ``_SERVED_TYPES``."""
+        if mode == "saved":
+            figs, warns = standalone(tmp_path, by_spec(ptype))
+            figs = list(figs.values())
+        else:
+            figs, _, warns = served(tmp_path, by_spec(ptype))
         assert len(figs) == 2, "by(foreign) should give two panels"
         for f in figs:
             assert any(getattr(r, "glyph", None) is not None
                        for r in f.renderers), (
-                "%s: served panel %r has no glyph" % (ptype, f.title.text))
+                "%s: %s panel %r has no glyph" % (ptype, mode, f.title.text))
         assert not [w for w in warns if "no glyph mapper" in w], warns
 
     def test_the_no_glyph_mapper_needle_is_live(self, tmp_path):
