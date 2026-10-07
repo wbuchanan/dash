@@ -1071,7 +1071,8 @@ _sl_tally SL-18 `ok' "a misplaced .. is refused in twoway's words"
 // SL-19 used elements are held to the rule
 local ok 1
 _sl_run dash line mpg turn weight, lwidth(thick 20000) name(sl19a), log(`sl_log')
-mata: st_local("_o", strofreal(st_global("sl_line") == "dash: lwidth() must be a name or a number between 0 and 10000 (got: 20000)"))
+// P1.12b: twoway's gm_linewidth line comes first; dash's own line reads so.
+mata: st_local("_o", strofreal(st_global("sl_line") == "dash: lwidth() must be a line width from 0 to 10000 Stata units (got: 20000)"))
 if $sl_rc != 198 | !`_o' local ok 0
 capture noisily dash line mpg weight, lwidth(thick 20000) name(sl19b)
 if _rc local ok 0

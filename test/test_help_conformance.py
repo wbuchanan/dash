@@ -521,9 +521,10 @@ class TestTheParsersFoundSomething:
         # (S16, GAPS2 X2): colorlevels(), colorvarminmax, zlabel(),
         # ztitle() and zscale() (measured 30sep2026).  147 since WP-29
         # P0.5 documented ytick2(), xtick2(), yline2() and xline2().  149
-        # since WP-29 P0.9 documented lpolyci's pwidth() and var().
-        assert len(found) == 149, (
-            f"{len(found)} options parsed out of dash.sthlp, 149 measured "
+        # since WP-29 P0.9 documented lpolyci's pwidth() and var().  150
+        # since WP-30 batch 5's help names yaxis() as an option.
+        assert len(found) == 150, (
+            f"{len(found)} options parsed out of dash.sthlp, 150 measured "
             f"01oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
