@@ -99,10 +99,24 @@ if "`c(python_exec)'" == "" {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_tokenizer.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_tokenizer.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_tokenizer.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_tokenizer.cscript"
+    capture noisily profiler report
+}
 // A script that dies mid-scan leaves its `file open' handle open; clear all
 // does not close file handles, and the next script's file open then fails for
 // a reason that has nothing to do with what it is testing.
@@ -126,10 +140,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_parser.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_parser.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_parser.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_parser.cscript"
+    capture noisily profiler report
+}
 // A script that dies mid-scan leaves its `file open' handle open; clear all
 // does not close file handles, and the next script's file open then fails for
 // a reason that has nothing to do with what it is testing.
@@ -153,10 +181,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_e2e_single.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_e2e_single.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_e2e_single.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_e2e_single.cscript"
+    capture noisily profiler report
+}
 // A script that dies mid-scan leaves its `file open' handle open; clear all
 // does not close file handles, and the next script's file open then fails for
 // a reason that has nothing to do with what it is testing.
@@ -180,10 +222,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_e2e_multi.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_e2e_multi.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_e2e_multi.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_e2e_multi.cscript"
+    capture noisily profiler report
+}
 // A script that dies mid-scan leaves its `file open' handle open; clear all
 // does not close file handles, and the next script's file open then fails for
 // a reason that has nothing to do with what it is testing.
@@ -207,10 +263,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_e2e_filters.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_e2e_filters.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_e2e_filters.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_e2e_filters.cscript"
+    capture noisily profiler report
+}
 // A script that dies mid-scan leaves its `file open' handle open; clear all
 // does not close file handles, and the next script's file open then fails for
 // a reason that has nothing to do with what it is testing.
@@ -234,10 +304,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_e2e_kpi.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_e2e_kpi.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_e2e_kpi.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_e2e_kpi.cscript"
+    capture noisily profiler report
+}
 // A script that dies mid-scan leaves its `file open' handle open; clear all
 // does not close file handles, and the next script's file open then fails for
 // a reason that has nothing to do with what it is testing.
@@ -262,10 +346,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_ado_loads.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_ado_loads.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_ado_loads.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_ado_loads.cscript"
+    capture noisily profiler report
+}
 // A script that dies mid-scan leaves its `file open' handle open; clear all
 // does not close file handles, and the next script's file open then fails for
 // a reason that has nothing to do with what it is testing.
@@ -314,10 +412,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_adversarial.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_adversarial.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_adversarial.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_adversarial.cscript"
+    capture noisily profiler report
+}
 // A script that dies mid-scan leaves its `file open' handle open; clear all
 // does not close file handles, and the next script's file open then fails for
 // a reason that has nothing to do with what it is testing.
@@ -344,10 +456,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_e2e_serve.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_e2e_serve.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_e2e_serve.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_e2e_serve.cscript"
+    capture noisily profiler report
+}
 // A script that dies mid-scan leaves its `file open' handle open; clear all
 // does not close file handles, and the next script's file open then fails for
 // a reason that has nothing to do with what it is testing.
@@ -372,10 +498,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_abbreviations.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_abbreviations.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_abbreviations.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_abbreviations.cscript"
+    capture noisily profiler report
+}
 // A script that dies mid-scan leaves its `file open' handle open; clear all
 // does not close file handles, and the next script's file open then fails for
 // a reason that has nothing to do with what it is testing.
@@ -400,10 +540,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_option_surface.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_option_surface.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_option_surface.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_option_surface.cscript"
+    capture noisily profiler report
+}
 // A script that dies mid-scan leaves its `file open' handle open; clear all
 // does not close file handles, and the next script's file open then fails for
 // a reason that has nothing to do with what it is testing.
@@ -428,10 +582,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_varlist_expansion.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_varlist_expansion.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_varlist_expansion.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_varlist_expansion.cscript"
+    capture noisily profiler report
+}
 // A script that dies mid-scan leaves its `file open' handle open; clear all
 // does not close file handles, and the next script's file open then fails for
 // a reason that has nothing to do with what it is testing.
@@ -455,10 +623,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_path_validation.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_path_validation.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_path_validation.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_path_validation.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 cd "`dashdir'"
 if `rc' == 222 {
@@ -479,10 +661,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_setup_version_gate.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_setup_version_gate.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_setup_version_gate.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_setup_version_gate.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 cd "`dashdir'"
 if `rc' == 222 {
@@ -503,10 +699,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_clear_registry.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_clear_registry.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_clear_registry.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_clear_registry.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 cd "`dashdir'"
 if `rc' == 222 {
@@ -527,10 +737,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_filter_label.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_filter_label.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_filter_label.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_filter_label.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 cd "`dashdir'"
 if `rc' == 222 {
@@ -551,10 +775,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_server_build.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_server_build.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_server_build.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_server_build.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 cd "`dashdir'"
 if `rc' == 222 {
@@ -576,10 +814,24 @@ else {
 // Runs last: it is the slowest script, and it is the end-to-end gate.
 display as text "[ RUN ] test_examples_run.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_examples_run.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_examples_run.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_examples_run.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 cd "`dashdir'"
 if `rc' == 222 {
@@ -600,10 +852,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_serve_options.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_serve_options.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_serve_options.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_serve_options.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 cd "`dashdir'"
 if `rc' == 222 {
@@ -624,10 +890,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_render_log_clean.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_render_log_clean.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_render_log_clean.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_render_log_clean.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _dashlog
 cd "`dashdir'"
@@ -649,10 +929,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_option_report_paren.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_option_report_paren.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_option_report_paren.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_option_report_paren.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _optlog
 capture program drop _dash_note_for
@@ -675,10 +969,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_setup_python_gate.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_setup_python_gate.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_setup_python_gate.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_setup_python_gate.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture program drop _chk
 cd "`dashdir'"
@@ -700,10 +1008,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_conformance.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_conformance.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_conformance.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_conformance.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _cflog
 cd "`dashdir'"
@@ -725,10 +1047,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_parser_integrity.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_parser_integrity.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_parser_integrity.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_parser_integrity.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 cd "`dashdir'"
 if `rc' == 222 {
@@ -749,10 +1085,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_textbox_multiline.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_textbox_multiline.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_textbox_multiline.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_textbox_multiline.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 cd "`dashdir'"
 if `rc' == 222 {
@@ -773,10 +1123,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_serve_launch.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_serve_launch.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_serve_launch.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_serve_launch.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -798,10 +1162,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_registry_collision.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_registry_collision.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_registry_collision.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_registry_collision.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -823,10 +1201,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_graph_option_scope.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_graph_option_scope.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_graph_option_scope.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_graph_option_scope.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -848,10 +1240,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_render_locate.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_render_locate.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_render_locate.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_render_locate.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -873,10 +1279,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_theme_escaping.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_theme_escaping.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_theme_escaping.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_theme_escaping.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -898,10 +1318,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_setup_honesty.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_setup_honesty.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_setup_honesty.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_setup_honesty.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -923,10 +1357,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_env_guards.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_env_guards.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_env_guards.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_env_guards.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -948,10 +1396,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_utf8_validation.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_utf8_validation.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_utf8_validation.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_utf8_validation.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -973,10 +1435,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_json_escaping.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_json_escaping.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_json_escaping.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_json_escaping.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -998,10 +1474,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_by_suboptions.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_by_suboptions.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_by_suboptions.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_by_suboptions.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1023,10 +1513,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_nodraw_honoured.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_nodraw_honoured.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_nodraw_honoured.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_nodraw_honoured.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1048,10 +1552,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_alias_semantics.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_alias_semantics.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_alias_semantics.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_alias_semantics.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1073,10 +1591,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_suboption_reporting.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_suboption_reporting.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_suboption_reporting.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_suboption_reporting.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1098,10 +1630,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_option_validation.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_option_validation.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_option_validation.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_option_validation.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1123,10 +1669,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_custom_scheme.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_custom_scheme.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_custom_scheme.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_custom_scheme.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1148,10 +1708,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_statistical_options.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_statistical_options.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_statistical_options.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_statistical_options.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1173,10 +1747,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_caller_version.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_caller_version.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_caller_version.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_caller_version.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1198,10 +1786,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_resource_limits.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_resource_limits.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_resource_limits.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_resource_limits.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1223,10 +1825,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_serve_browser.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_serve_browser.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_serve_browser.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_serve_browser.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1248,10 +1864,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_setup_injection.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_setup_injection.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_setup_injection.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_setup_injection.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1273,10 +1903,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_echo_text.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_echo_text.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_echo_text.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_echo_text.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1298,10 +1942,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_export.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_export.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_export.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_export.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1323,10 +1981,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_twoway_option_parity.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_twoway_option_parity.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_twoway_option_parity.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_twoway_option_parity.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1348,10 +2020,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_help_claims_1.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_help_claims_1.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_help_claims_1.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_help_claims_1.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1373,10 +2059,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_help_claims_2.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_help_claims_2.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_help_claims_2.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_help_claims_2.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1398,10 +2098,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_help_claims_3.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_help_claims_3.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_help_claims_3.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_help_claims_3.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1423,10 +2137,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_help_claims_4.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_help_claims_4.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_help_claims_4.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_help_claims_4.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1448,10 +2176,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_help_claims_5.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_help_claims_5.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_help_claims_5.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_help_claims_5.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1473,10 +2215,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_help_claims_6.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_help_claims_6.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_help_claims_6.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_help_claims_6.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1498,10 +2254,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_help_claims_7.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_help_claims_7.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_help_claims_7.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_help_claims_7.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1523,10 +2293,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_help_claims_8.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_help_claims_8.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_help_claims_8.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_help_claims_8.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1548,10 +2332,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_help_examples.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_help_examples.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_help_examples.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_help_examples.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1573,10 +2371,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_bug_regressions.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_bug_regressions.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_bug_regressions.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_bug_regressions.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1598,10 +2410,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_program_coverage.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_program_coverage.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_program_coverage.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_program_coverage.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 capture program drop ssc
@@ -1627,10 +2453,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_qualifier_literals.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_qualifier_literals.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_qualifier_literals.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_qualifier_literals.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1652,10 +2492,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_mata_library_guard.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_mata_library_guard.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_mata_library_guard.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_mata_library_guard.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1677,10 +2531,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_qualifier_in_stata.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_qualifier_in_stata.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_qualifier_in_stata.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_qualifier_in_stata.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1702,10 +2570,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_string_values.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_string_values.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_string_values.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_string_values.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1727,10 +2609,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_ci_band_options.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_ci_band_options.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_ci_band_options.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_ci_band_options.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1755,10 +2651,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_gaps2_truth.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_gaps2_truth.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_gaps2_truth.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_gaps2_truth.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1783,10 +2693,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_wp29_truth.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_wp29_truth.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_wp29_truth.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_wp29_truth.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"
@@ -1812,10 +2736,24 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_wp30_truth.cscript"
 cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
 capture noisily {
     do "test_wp30_truth.cscript"
 }
 local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_wp30_truth.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_wp30_truth.cscript"
+    capture noisily profiler report
+}
 capture file close _all
 capture log close _all
 cd "`dashdir'"

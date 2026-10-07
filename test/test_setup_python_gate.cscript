@@ -22,6 +22,15 @@
 *! be driven through every case from any interpreter.
 
 cscript "dash_setup python version gate" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 adopath ++ ".."
 qui do "../dash_setup.ado"

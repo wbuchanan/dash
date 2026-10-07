@@ -48,6 +48,15 @@
 *! (24sep2026; the note form since WP-30 P1.26a).
 
 cscript "render log clean" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 
 // See test_cscript_hygiene.py: do NOT probe Python by running it.

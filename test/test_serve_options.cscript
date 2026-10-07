@@ -31,6 +31,15 @@
 *! broken.
 
 cscript "dash serve options" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 
 // _dash_serve_spec is internal to dash.ado; loading the file defines it.

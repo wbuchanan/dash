@@ -28,6 +28,15 @@
 *! hardening did not do what its comment claimed.
 
 cscript "dash saving() path validation" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // Load the Mata helpers explicitly.  `cscript ... adodir ".."' does not put
 // the package directory on the ado-path -- measured, `findfile

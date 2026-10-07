@@ -34,6 +34,15 @@ cscript "dash varlist expansion and plot-spec correctness" adodir ".."
 // state: leftover data, globals, tsset settings or loaded programs from an
 // earlier script otherwise leak in and change what this one measures.
 clear all
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // ----------------------------------------------------------------
 // Dependency guards
