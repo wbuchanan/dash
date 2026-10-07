@@ -345,7 +345,9 @@ class TestTheHtmlIsNotTheDocument:
         with _Served(app) as srv:
             _, page = srv.get("/app")
             blocks = [m.group(1) for m in _re.finditer(
-                r'<script type="application/json"[^>]*>\s*(.*?)\s*</script>',
+                # any attribute order: the served page puts its CSP nonce
+                # first (WP-30 P1.29)
+                r'<script\b[^>]*\btype="application/json"[^>]*>\s*(.*?)\s*</script>',
                 page, re.S)]
             assert blocks, "no JSON block in the page at all"
             assert any(b.strip() == "{}" for b in blocks), (

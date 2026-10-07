@@ -525,7 +525,9 @@ class TestTabsHoldFacetedGraphs:
 # ======================================================================
 
 def _normalise(html_text):
-    """Strip Bokeh's per-render ids so two documents can be compared."""
+    """Strip Bokeh's per-render ids, and the CSP's script hashes that are
+    computed over them (WP-30 P1.29), so two documents can be compared."""
+    html_text = re.sub(r"'sha256-[A-Za-z0-9+/]{43}='", "'HASH'", html_text)
     out = re.sub(
         r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
         "U", html_text)

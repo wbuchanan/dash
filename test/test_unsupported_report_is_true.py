@@ -194,7 +194,13 @@ FLAGS = {"colordiscrete", "coloruseplegend", "density", "fraction",
          "logit"}
 
 
+# The CSP lists a sha256 of every inline script, and those scripts carry
+# Bokeh's per-render ids: the hashes differ whenever the ids do (WP-30 P1.29).
+_CSP_HASH = re.compile(r"'sha256-[A-Za-z0-9+/]{43}='")
+
+
 def _norm(html: str) -> str:
+    html = _CSP_HASH.sub("'HASH'", html)
     return hashlib.sha256(
         _PID.sub("PID", _UUID.sub("UUID", html)).encode()).hexdigest()
 

@@ -2121,6 +2121,8 @@ class TestARepeatedLayoutNameIsPlacedOnce:
         once, _ = _render(once_dir, _two_graph_spec("bs: g1=6 g2=6"))
 
         def _ids_aside(text):
+            # The CSP's script hashes are computed over the ids (P1.29).
+            text = re.sub(r"'sha256-[A-Za-z0-9+/]{43}='", "'HASH'", text)
             text = re.sub(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-"
                           r"[0-9a-f]{12}", "UUID", text)
             return re.sub(r"\bp\d{4,}\b", "PID", text)
