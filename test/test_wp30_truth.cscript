@@ -4591,10 +4591,317 @@ if inlist("`only'", "", "S18") {
 }
 * ==== end S18 ====
 
+// S19's helpers (WP-30 P1.16), outside every gate, where a python block
+// may hold braces: a copy of WP-29 S03's readers (test_wp29_truth.cscript)
+// re-prefixed _s19_, with one summary of keys and titles:
+//   _s19_page()        S19_K (each visible series legend's labels sorted and
+//                      joined by "|", legends joined by ";") and S19_T
+//                      ("y1=..|y2=..|x1=..|x2=..", the distinct non-empty
+//                      axis titles per side) of the saved page S19_PAGE
+//   _s19_app()         the same, S19_SK and S19_ST, of the served app
+//                      S19_APP; with S19_MOVE set, fires its RangeSlider and
+//                      sets S19_FIRED and S19_SAME
+//   _s19_twoway_keys() S19_TK: twoway's keys, S19_BARE minus S19_OFF, numbers
+//                      dropped, sorted and joined by "|"
+//   _s19_case          one probe: twoway, the saved page and the served app
+//                      against twoway's measured value
+python:
+import collections as _s19_col, json as _s19_json, re as _s19_re, html as _s19_html
+import warnings as _s19_w
+import __main__ as _s19_main
+from sfi import Macro as _s19_M
+
+_S19_AXES = ("LinearAxis", "LogAxis", "DatetimeAxis", "CategoricalAxis")
+_S19_WIDGETS = ("Select", "RangeSlider", "Slider", "DateRangeSlider", "DateSlider")
+
+
+def _s19_val(v):
+    if isinstance(v, dict):
+        return v.get("value")
+    inner = getattr(v, "value", None)
+    return v if inner is None else inner
+
+
+def _s19_models(path):
+    try:
+        with open(path, encoding="utf-8") as fh:
+            page = fh.read()
+    except OSError:
+        return []
+    objs, stack = {}, []
+    for blob in _s19_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s19_re.S):
+        try:
+            stack.append(_s19_json.loads(_s19_html.unescape(blob)))
+        except ValueError:
+            pass
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                objs.setdefault(v["id"], v)
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    return list(objs.values())
+
+
+class _S19Saved:
+    """A saved page's model, read as the served one is."""
+
+    def __init__(self, obj):
+        self.kind = obj["name"]
+        self.attrs = obj.get("attributes", {}) or {}
+        self._defaults = None
+
+    def get(self, attr):
+        if attr in self.attrs:
+            return _s19_val(self.attrs[attr])
+        if self._defaults is None:
+            import bokeh.models as _bm
+            try:
+                self._defaults = getattr(_bm, self.kind)()
+            except Exception:
+                self._defaults = False
+        return _s19_val(getattr(self._defaults, attr, None)) if self._defaults else None
+
+
+class _S19Served:
+    def __init__(self, model):
+        self.kind = type(model).__name__
+        self.model = model
+
+    def get(self, attr):
+        return _s19_val(getattr(self.model, attr, None))
+
+
+_S19_SIDES = (("left", "y1"), ("right", "y2"), ("below", "x1"), ("above", "x2"))
+
+
+def _s19_summary(models, by_id):
+    sides = dict((k, set()) for _a, k in _S19_SIDES)
+    keys = set()
+    for m in models:
+        if m.kind in ("Figure", "Plot"):
+            for attr, k in _S19_SIDES:
+                for ref in (m.get(attr) or []):
+                    a = by_id(ref)
+                    if a is not None and a.kind in _S19_AXES:
+                        lab = a.get("axis_label")
+                        if lab not in (None, ""):
+                            sides[k].add(str(lab))
+        elif (m.kind == "Legend" and m.get("name") != "_dash_clegend"
+              and m.get("visible") is not False):
+            one = []
+            for it in (m.get("items") or []):
+                item = by_id(it)
+                if item is not None:
+                    lab = item.get("label")
+                    one.append("" if lab is None else str(lab))
+            keys.add("|".join(sorted(one)))
+    return dict(K=";".join(sorted(keys)),
+                T="|".join("%s=%s" % (k, ";".join(sorted(sides[k])))
+                           for _a, k in _S19_SIDES))
+
+
+def _s19_set(prefix, summ):
+    for k, v in summ.items():
+        _s19_M.setGlobal(prefix + k, v)
+
+
+def _s19_page():
+    objs = _s19_models(_s19_M.getGlobal("S19_PAGE"))
+    by = dict((o["id"], _S19Saved(o)) for o in objs)
+    models = [by[o["id"]] for o in objs]
+
+    def by_id(ref):
+        rid = ref.get("id") if isinstance(ref, dict) else getattr(ref, "id", None)
+        return by.get(rid)
+    _s19_set("S19_", _s19_summary(models, by_id))
+
+
+def _s19_doc_summary(doc):
+    from bokeh.model import Model
+    seen = dict()
+    for root in doc.roots:
+        for m in root.references():
+            seen[m.id] = m
+    wrapped = [_S19Served(m) for m in seen.values()]
+
+    def by_id(ref):
+        return _S19Served(ref) if ref is not None else None
+    return _s19_summary(wrapped, by_id)
+
+
+def _s19_app():
+    from bokeh.document import Document
+    from bokeh.models import RangeSlider
+    with open(_s19_M.getGlobal("S19_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s19_app")
+    with _s19_w.catch_warnings():
+        _s19_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s19_app.py", "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    before = _s19_doc_summary(doc)
+    _s19_set("S19_S", before)
+    var = _s19_M.getGlobal("S19_MOVE")
+    sl = [s for s in doc.select(dict(type=RangeSlider)) if getattr(s, "_dash_var", None) == var]
+    fired = 0
+    if len(sl) == 1:
+        old = sl[0].value
+        lo, hi = old
+        new = (lo + (hi - lo) / 4.0, hi)
+        sl[0].value = new
+        with _s19_w.catch_warnings():
+            _s19_w.simplefilter("ignore")
+            for attr in ("value", "value_throttled"):
+                for cb in sl[0]._callbacks.get(attr, []):
+                    cb(attr, old, new)
+                    fired += 1
+    _s19_M.setGlobal("S19_FIRED", str(fired))
+    _s19_M.setGlobal("S19_SAME", str(int(_s19_doc_summary(doc) == before)))
+
+
+def _s19_lines(path):
+    with open(path, encoding="utf-8") as fh:
+        return [_s19_json.loads(s) for s in fh if s.strip()]
+
+
+def _s19_twoway_keys():
+    bare = _s19_lines(_s19_M.getGlobal("S19_BARE"))
+    off = _s19_lines(_s19_M.getGlobal("S19_OFF"))
+    left = _s19_col.Counter(e["text"] for e in bare) - _s19_col.Counter(e["text"] for e in off)
+    seen, out = _s19_col.Counter(), []
+    for e in bare:
+        if seen[e["text"]] < left.get(e["text"], 0):
+            seen[e["text"]] += 1
+            try:
+                float(e["text"].replace(",", "").replace("\u2212", "-"))
+                continue
+            except ValueError:
+                pass
+            out.append(e["text"])
+    _s19_M.setGlobal("S19_TK", "|".join(sorted(out)))
+
+
+_s19_main._s19_page = _s19_page
+_s19_main._s19_app = _s19_app
+_s19_main._s19_twoway_keys = _s19_twoway_keys
+end
+
+capture program drop _s19_case
+program define _s19_case
+    version 19
+    // id; what = keys | titles | keys-move | titles-move; body; options
+    // ("" for none); want = twoway's measured value, keys sorted and joined
+    // by "|", titles "y1=..|y2=..|x1=..|x2=..".
+    args id what body opts want
+    local d "${S19_WORK}"
+    quietly twoway `body', `opts' name(Graph, replace)
+    local t1 ""
+    local t2 ""
+    local t3 ""
+    local t4 ""
+    capture local t1 `"`.Graph.yaxis1.title.text[1]'"'
+    capture local t3 `"`.Graph.xaxis1.title.text[1]'"'
+    capture local t2 `"`.Graph.yaxis2.title.text[1]'"'
+    capture local t4 `"`.Graph.xaxis2.title.text[1]'"'
+    // A by() graph draws its shared titles as its l1title and b1title.
+    if strpos(`"`opts'"', "by(") {
+        capture local t1 `"`.Graph.l1title.text[1]'"'
+        capture local t3 `"`.Graph.b1title.text[1]'"'
+    }
+    global S19_TWT `"y1=`t1'|y2=`t2'|x1=`t3'|x2=`t4'"'
+    global S19_TK ""
+    if strpos("`what'", "keys") {
+        cert_svg_export, name(Graph) file("`d'/`id'_bare.svg")
+        cert_svg_texts, file("`d'/`id'_bare.svg")
+        global S19_BARE "`r(list)'"
+        quietly twoway `body', `opts' legend(off) name(s19o, replace)
+        cert_svg_export, name(s19o) file("`d'/`id'_off.svg")
+        cert_svg_texts, file("`d'/`id'_off.svg")
+        global S19_OFF "`r(list)'"
+        python: __import__("__main__")._s19_twoway_keys()
+    }
+    local f ""
+    if strpos("`what'", "move") local f "filter(weight, type(range))"
+    capture dash clear
+    capture noisily dash `body', `opts' name(s19g)
+    _w30_expect `id' "(_rc == 0)" "dash rc `_rc'"
+    capture noisily dash build, saving("`d'/s19g.html") replace nobrowser `f'
+    _w30_expect `id' "(_rc == 0)" "dash build rc `_rc'"
+    capture noisily dash build, server saving("`d'/s19g_app.py") replace nobrowser `f'
+    _w30_expect `id' "(_rc == 0)" "dash build, server rc `_rc'"
+    global S19_PAGE "`d'/s19g.html"
+    global S19_APP "`d'/s19g_app.py"
+    global S19_MOVE = cond("`f'" == "", "", "weight")
+    python: __import__("__main__")._s19_page()
+    python: __import__("__main__")._s19_app()
+    if strpos("`what'", "keys") {
+        local a : copy global S19_TK
+        local b : copy global S19_K
+        local c : copy global S19_SK
+    }
+    else {
+        local a : copy global S19_TWT
+        local b : copy global S19_T
+        local c : copy global S19_ST
+    }
+    local ok = (`"`a'"' == `"`want'"') & (`"`b'"' == `"`want'"') & (`"`c'"' == `"`want'"')
+    display as text `"  `id' twoway [`a'] saved [`b'] served [`c']"'
+    _w30_expect `id' "(`ok' == 1)" `"twoway `a', saved `b', served `c', want `want'"'
+    if "`f'" != "" {
+        _w30_expect `id' "(${S19_FIRED} > 0 & ${S19_SAME} == 1)" "served move fired ${S19_FIRED}, same ${S19_SAME}"
+    }
+    foreach x in `id'_bare.svg `id'_off.svg s19g.html s19g_app.py {
+        capture erase "`d'/`x'"
+    }
+    capture erase "${S19_BARE}"
+    capture erase "${S19_OFF}"
+    capture graph drop Graph s19o
+end
+
 * ==== S19 P1.16: Legend keys and default axis titles ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S19") {
     display as text "S19 start " c(current_date) " " c(current_time)
+    global S19_WORK "`w30_work'"
+    sysuse auto, clear
+
+    // KT-01: the fits are keyed in twoway's text (F01, F03, F30, F15).
+    _s19_case KT-01 keys "(scatter mpg weight) (lowess mpg weight)" "" "Mileage (mpg)|lowess mpg weight"
+    _s19_case KT-01 keys "(scatter mpg weight) (lpoly mpg weight)" "" "Mileage (mpg)|lpoly smooth: Mileage (mpg)"
+    _s19_case KT-01 keys "(mband mpg weight) (mspline mpg weight)" "" "Median bands|Median spline"
+    _s19_case KT-01 keys "(scatter mpg weight) (fpfit mpg weight)" "" "Mileage (mpg)|Predicted mpg"
+    _w30_done KT-01 "lowess, lpoly, mband, mspline and fpfit keyed in twoway's text in both modes"
+
+    // KT-02: a function is keyed by its own name (N01, N02, F28), and the
+    // spec dash.ado registers carries it.
+    _s19_case KT-02 keys "(function _y = x, range(0 1))" "legend(on)" "_y"
+    _s19_case KT-02 keys "(function ü = x, range(0 1))" "legend(on)" "ü"
+    _s19_case KT-02 keys "(scatter mpg weight) (function z=x/100, range(2000 5000))" "" "Mileage (mpg)|z"
+    mata: st_local("s19_yn", strofreal(strpos(st_global("dash_json_s19g"), char(34) + "expr" + char(34) + ":" + char(34) + "x/100" + char(34) + "," + char(34) + "yname" + char(34) + ":" + char(34) + "z" + char(34)) > 0))
+    _w30_expect KT-02 "(`s19_yn' == 1)" "the registered spec does not carry expr x/100 and yname z"
+    _w30_done KT-02 "a function layer is keyed by the name before its =, in both modes"
+
+    // KT-03: range and pc layers join both variables (R04, P01).
+    _s19_case KT-03 keys "(rcap mpg turn weight)" "legend(on)" "Mileage (mpg)/Turn circle (ft.)"
+    _s19_case KT-03 keys "(pcspike mpg weight turn length)" "legend(on)" "Mileage (mpg)/Turn circle (ft.)"
+    _w30_done KT-03 "rcap and pcspike keyed L(y1)/L(y2) in both modes"
+
+    // KT-04: scatteri and pci (I01, I05).
+    _s19_case KT-04 keys "(scatteri 20 3000 25 3500)" "legend(on)" "y"
+    _s19_case KT-04 keys "(scatter mpg weight) (pci 20 3000 25 3500)" "" "Mileage (mpg)|y/yb"
+    _w30_done KT-04 "scatteri keyed y and pci y/yb in both modes"
+
+    // KT-05: the served keys survive a filter move.
+    _s19_case KT-05 keys-move "(scatter mpg weight) (lowess mpg weight)" "" "Mileage (mpg)|lowess mpg weight"
+    _w30_done KT-05 "the served app keeps twoway's keys after a filter move"
+
+    capture dash clear
+    macro drop S19_*
     display as text "S19 end " c(current_date) " " c(current_time)
 }
 * ==== end S19 ====

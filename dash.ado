@@ -3992,10 +3992,15 @@ program define _dash_process_segment, rclass
             // (_dash_fn_points evaluates it after every plot is read; WP-29
             // P0.6).
             mata: st_local("_fn_raw", strtrim(st_global("s(vals)")))
-            // Remove optional "y=" prefix, in Mata: an expression holding "'
-            // -- strlen("'x") -- ended the compound quotes it was cut in
-            // (test_json_escaping.cscript JSE-47).
-            mata: st_local("vals", regexr(strtrim(st_global("s(vals)")), "^[a-zA-Z][a-zA-Z0-9_]*[ ]*=[ ]*", ""))
+            // The y name twoway keys and titles the layer by: the first
+            // token when it is a Stata name followed by `=' (twoway__function_gen's
+            // confirm name), any Unicode letter or `_' first, at most 32
+            // characters; "" otherwise, read in Mata by value.
+            mata: st_local("_fn_yname", (ustrregexm(strtrim(st_global("s(vals)")), "^([\p{L}_][\p{L}\p{N}_]{0,31})[ ]*=") ? ustrregexs(1) : ""))
+            // Remove that "name =" prefix, by the same pattern, in Mata: an
+            // expression holding "' -- strlen("'x") -- ended the compound
+            // quotes it was cut in (test_json_escaping.cscript JSE-47).
+            mata: st_local("vals", ustrregexra(strtrim(st_global("s(vals)")), "^[\p{L}_][\p{L}\p{N}_]{0,31}[ ]*=[ ]*", ""))
             local expr : copy local vals
             // No expression is refused in twoway's words: "expression
             // required", r(100), and after a `y =', "nothing found where
@@ -4637,7 +4642,8 @@ program define _dash_process_segment, rclass
     }
     else if "`ptype'" == "function" {
         _dash_json_str `"`macval(expr)'"' _jex
-        local vfields `""expr":"`_jex'""'
+        _dash_json_str "`_fn_yname'" _jyn
+        local vfields `""expr":"`_jex'","yname":"`_jyn'""'
     }
     else if `: list ptype in _pt_imm' {
         // scatteri, pci and pcarrowi: read and checked with the varlist

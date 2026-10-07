@@ -1943,6 +1943,9 @@ CORPUS = [
           {"xlabel": ", format(%tdDD/NN/CCYY)"}),
     _case("S18 unwritable format noted", [_sc()], None,
           {"ylabel": ", format(%12s)"}),
+    _case("Fit, range, pc and scatteri keys (WP-30 P1.16)",
+          [_sc(), plot_for("lowess"), plot_for("lpolyci"), plot_for("rcap"),
+           plot_for("pcspike"), plot_for("scatteri")]),
 ]
 
 

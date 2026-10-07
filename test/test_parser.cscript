@@ -3001,6 +3001,30 @@ if ${lb_pfail} {
 }
 macro drop lb_pfail
 
+// ================================================================
+// KT-12 (WP-30 P1.16) -- a function's y name is any Stata name, as in
+// twoway (twoway__function_gen's confirm name): `function _y =' and
+// `function ü =' are refused "nothing found where expression expected",
+// r(111), as twoway refuses them, and nothing is registered; the spec
+// carries the name beside the expression.  dash said "error in
+// expression: ", r(111) (measured at 41d6e10).
+// ================================================================
+sysuse auto, clear
+dash clear
+foreach form in "function _y =, name(kt12)" "function ü = , range(0 1)" {
+    _p1a_logrun `"dash `form'"'
+    local rckt = r(rc)
+    cert_file_has "`r(log)'", needle("nothing found where expression expected")
+    if `rckt' != 111 | !r(found) {
+        display as error `"KT-12 FAIL: dash `form' gave rc `rckt'"'
+        exit 9
+    }
+}
+assert "${dash_graph_registry}" == ""
+_dash_process_segment "function _y = x^2, range(0 2)" _ptk12 _jsk12
+assert strpos(`"`_jsk12'"', `""expr":"x^2","yname":"_y""') > 0
+display "KT-12 PASS: function _y = and function ü = are refused r(111) in twoway's words; the spec carries yname"
+
 // twoway's answers: a question the fixture could not answer, or (with
 // DASH_CERT_REMEASURE=1) an answer twoway no longer gives, fails the run.
 cert_truth_close

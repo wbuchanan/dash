@@ -514,7 +514,10 @@ class TestPciIsDrawnAsPcspike:
 
     def test_it_has_a_legend_key_as_twoway_gives_it(self, tmp_path, mode):
         """``twoway (scatteri 5 5) (pci 0 0 1 1)`` draws a legend of two
-        keys, as with pcspike; dash drew none."""
+        keys, as with pcspike; dash drew none.
+
+        Flipped (WP-30 P1.16): ["scatteri", "pci"] was wrong because twoway
+        keys them "y" and "y/yb" (series_label_truth.json I01, I02)."""
         figs, _ = _draw(mode, tmp_path, _spec([_pair("pci")]), _DF)
         labels = []
         for f in figs:
@@ -523,7 +526,7 @@ class TestPciIsDrawnAsPcspike:
                     lab = it.label
                     labels.append(lab.get("value") if isinstance(lab, dict)
                                   else getattr(lab, "value", lab))
-        assert labels == ["scatteri", "pci"]
+        assert labels == ["y", "y/yb"]
 
     @pytest.mark.parametrize("opt", [{"lcolor": "maroon"},
                                      {"color": "maroon"}])

@@ -556,7 +556,7 @@ FUNCTIONS = {
  '_dash_layout_order': 'test/test_resource_limits.py::TestTheGraphAndPlotLimits::test_graphs_and_kpis_past_the_limit_are_dropped_in_registry_order',
  '_dash_legend_arg': 'test/test_help_claims_7.py::TestTheNewHelpers::test_dash_legend_arg',
  '_dash_legend_entries': 'test/test_server_layer_defects.py::TestTheLegendKeyRule::test_a_layer_that_drew_nothing_gets_no_key',
- '_dash_legend_key': 'test/test_server_layer_defects.py::TestTheLegendKeyRule::test_a_ci_layer_is_keyed_fitted_values_on_its_own',
+ '_dash_legend_key': 'test/test_series_labels.py::TestTheLegendKeys::test_the_key_is_the_last_series_y_label',
  '_dash_legend_keys': 'test/test_legend_order.py::TestKeysAreNumberedByPlot::test_numbers_unit',
  '_dash_legend_parts': 'test/test_help_claims_7.py::TestTheNewHelpers::test_dash_legend_parts',
  '_dash_legend_unsupported': 'test/test_help_claims_5.py::TestTheSubOptionSplitterReadsStataQuotes::test_legend_names_what_follows_an_apostrophe',
@@ -870,6 +870,11 @@ FUNCTIONS = {
  '_dash_layer_tick_format': 'test/test_axis_format_fallback.py::TestTheHelper::test_each_layer_type',
  '_dash_varformat_writable': 'test/test_axis_format_fallback.py::TestVarformat::test_read_as_twoway_reads_it',
  # WP-30 S19 (P1.16): Legend keys and default axis titles (P1.16)
+ '_dash_layer_series': 'test/test_series_labels.py::TestTheSeriesRule::test_each_type_gives_twoways_series',
+ '_dash_function_yname': 'test/test_series_labels.py::TestTheSeriesRule::test_a_function_is_named_as_twoway_names_it',
+ '_dash_layer_series.<locals>.L': 'test/test_series_labels.py::TestTheSeriesRule::test_each_type_gives_twoways_series',
+ '_dash_layer_series.<locals>.name': 'test/test_series_labels.py::TestTheSeriesRule::test_names_and_labels_as_twoway_uses_them',
+ '_dash_layer_series.<locals>.pair': 'test/test_series_labels.py::TestTheSeriesRule::test_equal_or_missing_boundaries_give_one_label',
  # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)
  # WP-30 S21 (P1.3a): natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)
  # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)

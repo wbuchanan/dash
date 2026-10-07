@@ -15099,7 +15099,8 @@ class GlyphMapper:
                         marker=marker, size=size,
                         fill_color=color, line_color=color,
                         line_width=self.scheme.plot_line_width(color_idx,
-                                                               "mark"))
+                                                               "mark"),
+                        legend_label="y")
         # mcolor(), msize() and msymbol() are resolved above; msangle() and
         # malpha() are read only here, and dash.sthlp lists scatteri as
         # taking msangle().
@@ -23128,8 +23129,8 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     _dash_report_suboptions("legend", _dash_legend_unsupported(legend_opt),
                             seen, key)
     if not fig.legend:
-        # The mapper made none (scatteri, lowess): twoway draws none.  pci
-        # makes one now, as pcspike does (map_pci_literal).
+        # The mapper made none (a layer that drew nothing): there is
+        # nothing to key.
         return
 
     # A discrete colorvar() builds its colour key as a Legend too.  It is
@@ -29187,9 +29188,8 @@ def _dash_pc_source(g_df, y1var, x1var, y2var, x2var, label_var="",
     return ColumnDataSource(g_df[keep].dropna(subset=cols)), True
 
 
-#: Plot types whose legend key Stata writes as "Fitted values" rather than as
-#: the y variable.  Measured: ``twoway (scatter mpg weight) (lfit mpg weight)``
-#: has keys ["Mileage (mpg)", "Fitted values"].
+#: The computed fit types: layers whose y series is computed, not a
+#: variable.  Their keys and titles come from ``_dash_layer_series``.
 _DASH_FIT_TYPES = frozenset({
     "lfit", "qfit", "fpfit", "lpoly", "lowess", "mband", "mspline",
     "function",
@@ -29198,6 +29198,14 @@ _DASH_FIT_TYPES = frozenset({
 #: Plot types that produce TWO keys from one layer: the band and the line.
 #: Measured: ``twoway lfitci mpg weight`` has keys ["95% CI", "Fitted values"].
 _DASH_CI_TYPES = frozenset({"lfitci", "qfitci", "lpolyci", "fpfitci"})
+
+#: The fixed line text twoway gives a fit (twoway__lfit_serset.ado and the
+#: mband/mspline parsers; test/fixtures/series_label_truth.json).  fpfit,
+#: lowess, lpoly and function texts are built from the layer's variables
+#: by _dash_layer_series.
+_DASH_FIT_KEYS = {"lfit": "Fitted values", "qfit": "Fitted values",
+                  "lfitci": "Fitted values", "qfitci": "Fitted values",
+                  "mband": "Median bands", "mspline": "Median spline"}
 
 
 def _dash_plot_style_indices(plots):
@@ -29416,14 +29424,101 @@ def _dash_placement_map(layout_opt, valid_names=None):
     return raw
 
 
-def _dash_legend_key(plot, var_labels=None):
-    """The legend key Stata writes for one plot layer.
+def _dash_function_yname(name):
+    """*name* when it is a Stata name twoway keys a function by (1-32
+    characters, a letter or ``_`` first, then letters, digits or ``_``),
+    else ``"y"`` -- twoway__function_gen's ``confirm name`` (WP-30 P1.16)."""
+    if (isinstance(name, str) and 1 <= len(name) <= 32
+            and (name[0] == "_" or name[0].isalpha())
+            and all(c == "_" or c.isalnum() for c in name[1:])):
+        return name
+    return "y"
 
-    Stata labels a data series with the variable LABEL, not its name, and a
-    computed layer with "Fitted values".  The generated server app wrote the
-    y-variable name for EVERY layer, so a served ``lfitci`` was keyed "mpg"
-    where the saved dashboard keys it "95% CI" and "Fitted values" -- there
-    was no way to tell the band from the points.
+
+def _dash_layer_series(plot, var_labels=None, default_level=None):
+    """``[(y_label, x_label), ...]``: one pair per series twoway draws for
+    *plot* -- two for a ci fit, its band first -- in twoway's own text
+    (WP-30 P1.16; test/fixtures/series_label_truth.json, measured by
+    scripts/extract_series_label_truth.do).
+
+    A data layer is ``(L(y), L(x))`` with ``L`` the variable's label, or its
+    name when it has none (:func:`_dash_var_label`); a range layer joins its
+    boundaries ``L(y1)/L(y2)`` (one label when they are the same) and a pc
+    layer both its y and its x pairs; scatteri is ``("y", "x")``, pci and
+    pcarrowi ``("y/yb", "x/xb")``; a function its Stata name before ``=``,
+    else ``y``, over ``x``; lowess ``lowess <y name> <x name>``, fpfit
+    ``Predicted <y name>``, lpoly ``lpoly smooth: L(y)`` over ``lpoly
+    smoothing grid``, lfit and qfit ``Fitted values``, mband ``Median
+    bands`` and mspline ``Median spline``; a ci band ``<level>% CI``;
+    histogram its scale word and kdensity ``kdensity <name>`` over ``x``.
+
+    The text is raw: never escaped or translated (the sink finishes it).
+    Total: a plot that is not a dict gives ``[("", "")]``; options or
+    labels that are not dicts count as empty.
+    """
+    if not isinstance(plot, dict):
+        return [("", "")]
+    vl = var_labels if isinstance(var_labels, dict) else {}
+    opts = plot.get("options")
+    opts = opts if isinstance(opts, dict) else {}
+    ptype = str(plot.get("type", "") or "").strip().lower()
+
+    def L(name):
+        return _dash_var_label(vl, name) if name not in (None, "") else ""
+
+    def name(key):
+        v = plot.get(key, "")
+        return "" if v in (None, "") else str(v)
+
+    def pair(a, b):
+        la, lb = L(plot.get(a)), L(plot.get(b))
+        if not lb or lb == la:
+            return la
+        if not la:
+            return lb
+        return la + "/" + lb
+
+    if ptype in _DASH_UNIVARIATE_TYPES:
+        var = plot.get("var", "") or plot.get("yvar", "")
+        if ptype == "kdensity":
+            return [(("kdensity %s" % var) if var else "kdensity", "x")]
+        return [(_DASH_HIST_YTITLES[_dash_histogram_ymode(opts)], L(var))]
+    if ptype in _DASH_RANGE_TYPES:
+        return [(pair("yvar1", "yvar2"), L(plot.get("xvar")))]
+    if ptype in _DASH_PC_TYPES:
+        return [(pair("y1var", "y2var"), pair("x1var", "x2var"))]
+    if ptype == "scatteri":
+        return [("y", "x")]
+    if ptype in ("pci", "pcarrowi"):
+        return [("y/yb", "x/xb")]
+    if ptype == "function":
+        return [(_dash_function_yname(plot.get("yname")), "x")]
+    if ptype in _DASH_FIT_TYPES or ptype in _DASH_CI_TYPES:
+        yv, xv = name("yvar"), name("xvar")
+        if ptype == "lowess":
+            line = " ".join(["lowess"] + [n for n in (yv, xv) if n])
+        elif ptype in ("fpfit", "fpfitci"):
+            line = ("Predicted " + yv) if yv else "Predicted"
+        elif ptype in ("lpoly", "lpolyci"):
+            ly = L(yv)
+            line = ("lpoly smooth: " + ly) if ly else "lpoly smooth:"
+        else:
+            line = _DASH_FIT_KEYS.get(ptype, "Fitted values")
+        x = ("lpoly smoothing grid" if ptype in ("lpoly", "lpolyci")
+             else L(xv))
+        if ptype in _DASH_CI_TYPES:
+            lvl = _resolve_level(opts, _DEFAULT_LEVEL if default_level is None
+                                 else default_level, ptype)
+            return [(f"{lvl:g}% CI", x), (line, x)]
+        return [(line, x)]
+    return [(L(plot.get("yvar")), L(plot.get("xvar")))]
+
+
+def _dash_legend_key(plot, var_labels=None):
+    """The legend key twoway writes for one plot layer: the y label of the
+    last series it draws (:func:`_dash_layer_series`) -- twoway's per-type
+    text, the line's for a ci fit.  A layer with no text (a hand-written
+    spec with no variable) is keyed by its type.
 
     Args:
         plot:       One plot spec.
@@ -29432,23 +29527,11 @@ def _dash_legend_key(plot, var_labels=None):
     Returns:
         The key text.
     """
-    var_labels = var_labels or {}
-    ptype = str(plot.get("type", "")).lower()
-    if ptype in _DASH_FIT_TYPES or ptype in _DASH_CI_TYPES:
-        return "Fitted values"
-    # twoway keys a histogram by its y-scale word and a kdensity layer
-    # "kdensity <name>" -- the NAME, even when the variable is labelled
-    # (HK.svg, KD2.svg, KDLAB.svg; WP-29 P0.3).
-    if ptype == "histogram":
-        return _DASH_HIST_YTITLES[_dash_histogram_ymode(plot.get("options"))]
-    if ptype == "kdensity":
-        v = plot.get("var", "") or plot.get("yvar", "")
-        return ("kdensity %s" % v) if v else ptype
-    yvar = (plot.get("yvar", "") or plot.get("var", "")
-            or plot.get("yvar1", ""))
-    # The label when it is not "", else the name: an unlabelled variable
-    # used to be keyed by the plot type (WP-29 P0.3).
-    return _dash_var_label(var_labels, yvar) if yvar else ptype
+    series = _dash_layer_series(plot, var_labels)
+    text = series[-1][0] if series else ""
+    ptype = (str(plot.get("type", "")).lower() if isinstance(plot, dict)
+             else "")
+    return text or ptype
 
 
 def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
@@ -29456,7 +29539,7 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
     layers, numbered as twoway numbers its plots.
 
     ``n`` starts at 1.  A ci layer (``_DASH_CI_TYPES``) is two plots, its
-    band ``n`` ("``lvl``% CI") and its line ``n + 1`` ("Fitted values"), as
+    band ``n`` ("``lvl``% CI") and its line ``n + 1`` (the fit's own text), as
     ``_dash_plot_style_indices`` numbers them; any other layer is plot
     ``n``.  A layer whose renderers are empty or all swatches has no key but
     still consumes its number, so ``order()`` names the same key twoway's
@@ -29479,17 +29562,15 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
             if rends:
                 # The band is added alongside the line; Stata keys them
                 # separately, and the band's key carries the level.
-                lvl = _resolve_level(plot.get("options", {}) or {},
-                                     _DEFAULT_LEVEL if default_level is None
-                                     else default_level, ptype)
+                ser = _dash_layer_series(plot, var_labels, default_level)
                 band = [r for r in rends
                         if type(getattr(r, "glyph", None)).__name__
                         in ("VArea", "Band", "Patch")]
                 line = [r for r in rends if r not in band]
                 if band:
-                    out.append((n, f"{lvl:g}% CI", band))
+                    out.append((n, ser[0][0], band))
                 if line:
-                    out.append((n + 1, "Fitted values", line))
+                    out.append((n + 1, ser[-1][0], line))
             n += 2
             continue
         if rends:
@@ -35518,6 +35599,7 @@ class ServerAppBuilder:
                       "_IF_EXPR_SAFE_NAMES",
                       # _dash_legend_entries' own type tables.
                       "_DASH_FIT_TYPES", "_DASH_CI_TYPES",
+                      "_DASH_FIT_KEYS",
                       "_DASH_DATE_VALUED_STATS",
                       # _dash_parse_by's own tables; the regex is written
                       # out as re.compile(pattern, flags) below.
@@ -35806,6 +35888,7 @@ class ServerAppBuilder:
                          "_dash_note_hover_unreached",
                          # Stata's legend keying rules.
                          "_dash_legend_key", "_dash_legend_entries",
+                         "_dash_layer_series", "_dash_function_yname",
                          # twoway's label-or-name rule (WP-29 P0.3).
                          "_dash_var_label", "_dash_clean_var_labels",
                          "_dash_legend_keys", "_dash_parse_legend_order",
