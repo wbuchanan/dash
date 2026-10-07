@@ -327,7 +327,7 @@ program define _dash_require_mata
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
         _dash_axis_pieces ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
-        _dash_subreq_check _dash_subreq_accept _dash_so_unsafe
+        _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
         _dash_strip_prefix _dash_seg_saving _dash_saving_parse _dash_launch_quote _dash_launch_warn
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
