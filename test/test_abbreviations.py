@@ -602,10 +602,13 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # (WP-29 P0.1): _dash_sort_names declares SORT1(namelist), the check
     # twoway makes of sort()'s names; 15 since WP-29 P0.12b, P0.14:
     # _dash_tmp_preview and _dash_tmp_close, the private temporary
-    # folder's programs, take opened()/noted() and dir().
+    # folder's programs, take opened()/noted() and dir().  16 at WP-30
+    # batch 4, whose list includes _dash_browser_wanted (P1.27) and
+    # _dash_stylelist_bind, the probe that binds a quoted stylelist value.
     with_syntax = sorted(p for p, b in _bodies().items() if _syntax_options(b))
     assert len(with_syntax) >= 6
-    assert len(with_syntax) == 15, with_syntax
+    assert len(with_syntax) == 16, with_syntax
+    assert {"_dash_browser_wanted", "_dash_stylelist_bind"} <= set(with_syntax)
     assert {"_dash_tmp_preview", "_dash_tmp_close"} <= set(with_syntax)
     assert "_dash_open_page" in with_syntax, with_syntax
     # The comment lines the duplicate-block scan reads, per parser: 108
