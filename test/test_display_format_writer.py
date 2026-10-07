@@ -356,3 +356,78 @@ class TestJavaScriptTwin:
                   " dash_fmt(1.5, %s)]));" % json.dumps("%1" + "0" * 5000 + ".2f"))
         assert time.time() - t0 < 5
         assert all(len(g) <= 64 for g in got)
+
+
+# ---------------------------------------------------------------------------
+# WP-30 P1.5.7: narrow explicit-digit g, e and f formats.  Measured
+# 03oct2026 (StataNow 19.5): over 3,234 display rows the writer differed
+# from Stata on 457 g, 440 e and 46 f rows.  The rows below are Stata's
+# own text; format_truth.json's narrow_formats holds the full grid.
+# ---------------------------------------------------------------------------
+
+_NARROW_ROWS = [
+    (0.0001, "%6.4g", " 1.0e-04"),
+    (12345, "%6.2e", " 1.2e+04"),
+    (1.23, "%10.1g", "       1.2"),
+    (0.123, "%3.1g", " .12"),
+    (0.00001, "%12.2g", "      .00001"),
+    (999.96, "%10.3g", "   1.0e+03"),
+    (1234567, "%3.1f", " 1.2e+06"),
+    (0.000123, "%7.4g", " .00012"),
+    (0, "%3.2g", "   0"),
+    (0.000012345, "%10.4g", " .00001234"),
+]
+
+
+def _narrow_rows(fx):
+    out = []
+    for fmt, rec in fx.get("narrow_formats", {}).items():
+        for v in rec["values"]:
+            if v["rc"] == 0:
+                out.append((fmt, v["value"], v["display"]))
+    return out
+
+
+class TestNarrowExplicitDigits:
+
+    def test_the_measured_rows_in_python(self):
+        wrong = [(v, f, dr._dash_fmt(v, f), want) for v, f, want in _NARROW_ROWS
+                 if dr._dash_fmt(v, f) != want]
+        assert not wrong, wrong
+
+    @requires_node
+    def test_the_measured_rows_under_node(self):
+        rows = [[v, f, w] for v, f, w in _NARROW_ROWS]
+        out = _js("var rows = %s; var bad = [];"
+                  "rows.forEach(function (r) {"
+                  " var g = dash_fmt(r[0], r[1]);"
+                  " if (g !== r[2]) bad.push([r[0], r[1], g, r[2]]); });"
+                  "process.stdout.write(JSON.stringify(bad));" % json.dumps(rows))
+        assert not out, out
+
+    def test_sci_decimals_keep_their_floor(self):
+        assert dr._dash_sci_decimals(6, 2, 2) == 1
+        assert dr._dash_sci_decimals(6, 2, 4, sig_digits=True) == 1
+        assert dr._dash_sci_decimals(9, 3, 4, sig_digits=True) == 1
+        assert dr._dash_sci_decimals(12, 2, 0) == 5
+
+
+class TestNarrowFixture:
+
+    def test_every_row_in_python(self):
+        rows = _narrow_rows(_fixture())
+        assert len(rows) >= 5600
+        wrong = [(f, r, dr._dash_fmt(_val(r), f), want) for f, r, want in rows
+                 if dr._dash_fmt(_val(r), f) != want]
+        assert not wrong, (len(wrong), wrong[:20])
+
+    @requires_node
+    def test_every_row_under_node(self):
+        rows = [[f, r, w] for f, r, w in _narrow_rows(_fixture())]
+        assert len(rows) >= 5600
+        out = _js("var rows = %s; var bad = [];"
+                  "rows.forEach(function (r) {"
+                  " var g = dash_fmt(Number(r[1]), r[0]);"
+                  " if (g !== r[2]) bad.push([r[0], r[1], g, r[2]]); });"
+                  "process.stdout.write(JSON.stringify(bad));" % json.dumps(rows))
+        assert not out, out[:2000]

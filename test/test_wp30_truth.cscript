@@ -4251,10 +4251,342 @@ if inlist("`only'", "", "S17") {
 }
 * ==== end S17 ====
 
+// S18's helpers (WP-30 P1.5), outside every gate, where a python block
+// may hold braces.  Readers in the form of WP-29 S03's _s03_models /
+// _S03Saved / _S03Served:
+//   _s18_page()  S18_X S18_Y S18_Y2: "<fmt>|<kind>" of the first figure's
+//                axis writer on the saved page S18_PAGE, or "-"
+//   _s18_app()   the same of the served app S18_APP; with S18_MOVE set,
+//                first fires the RangeSlider over it to its upper quarter
+//   _s18_twoway() S18_TX S18_TY S18_TY2: twoway's labels in S18_SVG ("|")
+//   _s18_text()  S18_SAME: 1 when dash's writer S18_FK ("<fmt>|<kind>")
+//                writes every label S18_TW at the values S18_TV hold
+python:
+import json as _s18_json, re as _s18_re, html as _s18_html, sys as _s18_sys
+import warnings as _s18_w
+from sfi import Macro as _s18_M
+
+
+def _s18_objs(path):
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    objs, stack = {}, []
+    for blob in _s18_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s18_re.S):
+        try:
+            stack.append(_s18_json.loads(_s18_html.unescape(blob)))
+        except ValueError:
+            pass
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                objs.setdefault(v["id"], v)
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    return objs
+
+
+def _s18_map(v):
+    if isinstance(v, dict) and v.get("type") == "map":
+        return {k: x for k, x in v.get("entries", [])}
+    return v if isinstance(v, dict) else {}
+
+
+def _s18_side(axes, rattr, second):
+    for a in axes:
+        rn = a("rn")
+        if (rn == second) if second else (rn in (None, "default")):
+            return a("fk")
+    return "-"
+
+
+def _s18_set(prefix, sides):
+    for k, v in sides.items():
+        _s18_M.setGlobal(prefix + k, v)
+
+
+def _s18_saved_sides(path):
+    objs = _s18_objs(path)
+
+    def obj(v):
+        if isinstance(v, dict) and "attributes" not in v and "id" in v:
+            return objs.get(v["id"], {})
+        return v or {}
+
+    figs = [o for o in objs.values() if o["name"] == "Figure"]
+    figs.sort(key=lambda o: o["id"])
+    if not figs:
+        return {"X": "-", "Y": "-", "Y2": "-"}
+    at = figs[0].get("attributes", {})
+
+    def wrap(ax, rattr):
+        ax = obj(ax)
+        aa = ax.get("attributes", {}) or {}
+        fm = obj(aa.get("formatter"))
+        args = _s18_map((fm.get("attributes", {}) or {}).get("args"))
+        fk = ("%s|%s" % (args["fmt"], args.get("kind", ""))) if "fmt" in args else "-"
+        return lambda what: aa.get(rattr) if what == "rn" else fk
+
+    def axes(lst):
+        return [a for a in lst if obj(a).get("name", "").endswith("Axis")]
+
+    xs = [wrap(a, "x_range_name") for a in axes(at.get("below", []) + at.get("above", []))]
+    ys = [wrap(a, "y_range_name") for a in axes(at.get("left", []) + at.get("right", []))]
+    return {"X": _s18_side(xs, "x", ""), "Y": _s18_side(ys, "y", ""),
+            "Y2": _s18_side(ys, "y", "y2")}
+
+
+def _s18_doc_sides(doc):
+    from bokeh.plotting import figure as _fig
+    figs = [m for r in doc.roots for m in r.references() if isinstance(m, _fig)]
+    figs.sort(key=lambda f: f.id)
+    if not figs:
+        return {"X": "-", "Y": "-", "Y2": "-"}
+    f = figs[0]
+
+    def wrap(ax, rattr):
+        args = getattr(ax.formatter, "args", None) or {}
+        fk = ("%s|%s" % (args["fmt"], args.get("kind", ""))) if "fmt" in args else "-"
+        return lambda what: getattr(ax, rattr, None) if what == "rn" else fk
+
+    from bokeh.models import Axis as _ax
+    xs = [wrap(a, "x_range_name") for a in list(f.below) + list(f.above)
+          if isinstance(a, _ax)]
+    ys = [wrap(a, "y_range_name") for a in list(f.left) + list(f.right)
+          if isinstance(a, _ax)]
+    return {"X": _s18_side(xs, "x", ""), "Y": _s18_side(ys, "y", ""),
+            "Y2": _s18_side(ys, "y", "y2")}
+
+
+def _s18_page():
+    _s18_set("S18_", _s18_saved_sides(_s18_M.getGlobal("S18_PAGE")))
+
+
+def _s18_app():
+    from bokeh.document import Document
+    from bokeh.models import RangeSlider
+    with open(_s18_M.getGlobal("S18_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s18_app")
+    exec(compile(src.replace(attach, "pass"), "dash_s18_app.py", "exec"), ns)
+    with _s18_w.catch_warnings():
+        _s18_w.simplefilter("ignore")
+        doc = Document()
+        ns["make_document"](doc)
+    var = _s18_M.getGlobal("S18_MOVE")
+    fired = 0
+    if var:
+        sl = [s for s in doc.select(dict(type=RangeSlider))
+              if getattr(s, "_dash_var", None) == var]
+        if len(sl) == 1:
+            old = sl[0].value
+            lo, hi = old
+            new = (lo + (hi - lo) / 4.0, hi)
+            sl[0].value = new
+            with _s18_w.catch_warnings():
+                _s18_w.simplefilter("ignore")
+                for attr in ("value", "value_throttled"):
+                    for cb in sl[0]._callbacks.get(attr, []):
+                        cb(attr, old, new)
+                        fired += 1
+    _s18_M.setGlobal("S18_FIRED", str(fired))
+    _s18_set("S18_S", _s18_doc_sides(doc))
+
+
+def _s18_twoway():
+    _s18_sys.path.insert(0, _s18_M.getGlobal("cert_svg_scripts"))
+    import svg_truth
+    path = _s18_M.getGlobal("S18_SVG")
+    doc = svg_truth.svg_document(path)
+    for ax, g in (("x", "S18_TX"), ("y", "S18_TY")):
+        r = svg_truth.svg_axis_reading(path, ax, doc=doc)
+        _s18_M.setGlobal(g, "|".join(str(t) for t in (r.get("labels") or [])))
+    pr = doc["plotregion"]
+    cand = [t for t in doc["texts"] if pr and t["x"] is not None
+            and t["x"] > pr["right"]]
+    if cand:
+        near = min(c["x"] for c in cand)
+        row = sorted([c for c in cand if abs(c["x"] - near) < 2.5],
+                     key=lambda t: -t["y"])
+        _s18_M.setGlobal("S18_TY2", "|".join(c["text"] for c in row))
+    else:
+        _s18_M.setGlobal("S18_TY2", "")
+
+
+def _s18_text():
+    import os as _s18_os
+    _s18_sys.path.insert(0, _s18_os.path.dirname(_s18_M.getGlobal("cert_svg_scripts")))
+    import dash_render as _dr
+    fmt, _, kind = _s18_M.getGlobal("S18_FK").partition("|")
+    want = [t for t in _s18_M.getGlobal("S18_TW").split("|") if t]
+    vals = [t for t in _s18_M.getGlobal("S18_TV").split("|") if t]
+    same = int(bool(want) and len(want) == len(vals))
+    for w, v in zip(want, vals):
+        try:
+            num = float(v.replace(",", ""))
+        except ValueError:
+            same = 0
+            break
+        if _dr._dash_fmt_text(num, fmt) != w:
+            same = 0
+    _s18_M.setGlobal("S18_SAME", str(same))
+end
+
 * ==== S18 P1.5: Axis format fallbacks ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S18") {
     display as text "S18 start " c(current_date) " " c(current_time)
+    local d "`w30_work'"
+    // AF-20..AF-26 and AF-29: twoway's labels, then dash's writer on the
+    // same axis, saved and served (WP-30 P1.5; measured 03oct2026).
+    foreach c in 20 21 22 23 24 25 26 29 {
+        local data auto
+        local filt ""
+        local move ""
+        if `c' == 20 local cmd "scatter mpg weight"
+        if `c' == 29 {
+            local cmd "scatter mpg weight"
+            local filt "filter(weight, type(range))"
+            local move "weight"
+        }
+        if `c' == 21 local cmd "histogram price"
+        if `c' == 22 local cmd "(lfit price weight) (scatter price weight)"
+        if `c' == 23 {
+            local data sp500
+            local cmd "line close date, xlabel(, format(%9.0fc))"
+        }
+        if `c' == 24 {
+            local data sp500
+            local cmd "line close date, xlabel(, format(%tdDD/NN/CCYY))"
+        }
+        if `c' == 25 local cmd "(scatter mpg weight) (scatter price weight, yaxis(2)),"
+        if `c' == 26 local cmd "scatter mpg weight, xvarformat(%9.2f) yvarformat(%9.1f)"
+        sysuse `data', clear
+        capture dash clear
+        capture graph drop _all
+        capture noisily twoway `cmd'
+        _w30_expect AF-`c' "(_rc == 0)" "twoway rc `_rc'"
+        cert_svg_export, file("`d'/af`c'.svg")
+        global S18_SVG "`d'/af`c'.svg"
+        python: _s18_twoway()
+        if `c' == 24 {
+            // The day numbers twoway labels at, from the numeric twin.
+            capture noisily twoway line close date, xlabel(, format(%9.0f))
+            cert_svg_export, file("`d'/af24v.svg")
+            global S18_SVG "`d'/af24v.svg"
+            local s18_tx "$S18_TX"
+            python: _s18_twoway()
+            global S18_TV "$S18_TX"
+            global S18_TX "`s18_tx'"
+        }
+        local tw_x "$S18_TX"
+        local tw_y "$S18_TY"
+        local tw_y2 "$S18_TY2"
+        if strpos("`cmd'", ",") capture noisily dash `cmd' name(af`c')
+        else capture noisily dash `cmd', name(af`c')
+        _w30_expect AF-`c' "(_rc == 0)" "dash rc `_rc'"
+        capture erase "`d'/af`c'.html"
+        capture erase "`d'/af`c'_app.py"
+        capture noisily dash build, saving("`d'/af`c'.html") replace nobrowser `filt'
+        _w30_expect AF-`c' "(_rc == 0)" "saved build rc `_rc'"
+        capture noisily dash build, saving("`d'/af`c'_app.py") server replace `filt'
+        _w30_expect AF-`c' "(_rc == 0)" "served build rc `_rc'"
+        global S18_PAGE "`d'/af`c'.html"
+        global S18_APP "`d'/af`c'_app.py"
+        global S18_MOVE "`move'"
+        python: _s18_page()
+        python: _s18_app()
+        display as text `"  AF-`c' twoway x [`tw_x'] y [`tw_y'] y2 [`tw_y2']"'
+        display as text `"  AF-`c' saved [$S18_X][$S18_Y][$S18_Y2] served [$S18_SX][$S18_SY][$S18_SY2] fired $S18_FIRED"'
+        _w30_expect AF-`c' `"("$S18_X" == "$S18_SX" & "$S18_Y" == "$S18_SY" & "$S18_Y2" == "$S18_SY2")"' "saved and served differ"
+        local side ""
+        local want ""
+        if inlist(`c', 20, 29) {
+            local side X
+            local want "%8.0gc|"
+            local tw "`tw_x'"
+            _w30_expect AF-`c' `"("`tw_x'" == "2,000|3,000|4,000|5,000")"' "twoway x `tw_x'"
+        }
+        if `c' == 21 {
+            local side Y
+            local want "%6.4g|"
+            local tw "`tw_y'"
+            _w30_expect AF-`c' `"(strpos("|`tw_y'|", "|1.0e-04|") > 0)"' "twoway y `tw_y'"
+        }
+        if `c' == 22 {
+            local side X
+            local want "%9.0g|"
+            local tw "`tw_x'"
+            _w30_expect AF-`c' `"("$S18_Y" == "%9.0g|")"' "dash y $S18_Y"
+        }
+        if `c' == 23 {
+            local side X
+            local want "%9.0fc|td"
+            local tw "`tw_x'"
+            _w30_expect AF-`c' `"(substr("`tw_x'", 1, 6) == "14,976")"' "twoway x `tw_x'"
+        }
+        if `c' == 24 {
+            local side X
+            local want "%tdDD/NN/CCYY|td"
+            local tw "`tw_x'"
+            _w30_expect AF-`c' `"(substr("`tw_x'", 1, 10) == "01/01/2001")"' "twoway x `tw_x'"
+        }
+        if `c' == 25 {
+            local side Y2
+            local want "%8.0gc|"
+            local tw "`tw_y2'"
+            _w30_expect AF-`c' `"(strpos("|`tw_y2'|", "|5,000|") > 0)"' "twoway y2 `tw_y2'"
+        }
+        if `c' == 26 {
+            local side X
+            local want "%9.2f|"
+            local tw "`tw_x'"
+            _w30_expect AF-`c' `"("$S18_Y" == "%9.1f|")"' "dash y $S18_Y"
+        }
+        _w30_expect AF-`c' `"("${S18_`side'}" == "`want'" & "${S18_S`side'}" == "`want'")"' "dash `side' ${S18_`side'} / ${S18_S`side'}, want `want'"
+        global S18_FK "`want'"
+        global S18_TW "`tw'"
+        if `c' != 24 global S18_TV "`tw'"
+        python: _s18_text()
+        _w30_expect AF-`c' "($S18_SAME == 1)" "dash's writer does not write twoway's `tw'"
+        if `c' == 29 {
+            _w30_expect AF-`c' "($S18_FIRED >= 1)" "the slider callback did not fire"
+        }
+        _w30_done AF-`c' "`cmd': `side' `want' writes `tw'"
+        capture dash clear
+    }
+    // AF-27, AF-28: twoway's refusal and dash's, rc and words.
+    sysuse auto, clear
+    foreach c in 27 28 {
+        if `c' == 27 {
+            local tcmd "twoway scatter mpg weight, xlabel(, format(bogus))"
+            local dcmd "dash scatter mpg weight, xlabel(, format(bogus)) name(af27)"
+            local needle "invalid format, bogus"
+        }
+        else {
+            local tcmd "twoway (scatter mpg weight) (scatter mpg length), xvarformat(%9.2f)"
+            local dcmd "dash (scatter mpg weight) (scatter mpg length), xvarformat(%9.2f) name(af28)"
+            local needle "option xvarformat() not allowed"
+        }
+        capture log close s18l
+        log using "`d'/af`c't.log", text replace name(s18l)
+        capture noisily `tcmd'
+        local trc = _rc
+        log close s18l
+        capture dash clear
+        log using "`d'/af`c'd.log", text replace name(s18l)
+        capture noisily `dcmd'
+        local drc = _rc
+        log close s18l
+        _w30_expect AF-`c' "(`trc' == 198 & `drc' == 198)" "rc twoway `trc' dash `drc'"
+        cert_log_has "`d'/af`c't.log", needle("`needle'")
+        _w30_expect AF-`c' "(r(found) == 1)" "twoway's log lacks `needle'"
+        cert_log_has "`d'/af`c'd.log", needle("`needle'")
+        _w30_expect AF-`c' "(r(found) == 1)" "dash's log lacks `needle'"
+        _w30_done AF-`c' "twoway and dash both refuse, r(198) `needle'"
+    }
     display as text "S18 end " c(current_date) " " c(current_time)
 }
 * ==== end S18 ====

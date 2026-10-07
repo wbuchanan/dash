@@ -522,9 +522,10 @@ class TestTheParsersFoundSomething:
         # ztitle() and zscale() (measured 30sep2026).  147 since WP-29
         # P0.5 documented ytick2(), xtick2(), yline2() and xline2().  149
         # since WP-29 P0.9 documented lpolyci's pwidth() and var().  150
-        # since WP-30 batch 5's help names yaxis() as an option.
-        assert len(found) == 150, (
-            f"{len(found)} options parsed out of dash.sthlp, 150 measured "
+        # since WP-30 batch 5's help names yaxis() as an option.  152 since
+        # WP-30 P1.5 documented xvarformat() and yvarformat().
+        assert len(found) == 152, (
+            f"{len(found)} options parsed out of dash.sthlp, 152 measured "
             f"01oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -587,8 +588,9 @@ class TestTheParsersFoundSomething:
         # since the S3 batch declared the four fitarea options.  176 since
         # WP-28 batch 2 (S16) declared colorlevels, colorvarminmax, zlabel,
         # ztitle and zscale (measured 30sep2026).  180 since WP-29 P0.5
-        # declared ytick2, xtick2, yline2 and xline2.
-        assert len(_ado_declarations()) == 180
+        # declared ytick2, xtick2, yline2 and xline2.  182 since WP-30 P1.5
+        # declared xvarformat and yvarformat.
+        assert len(_ado_declarations()) == 182
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -631,9 +633,10 @@ class TestTheParsersFoundSomething:
         # P0.9's pwidth() and var() rows; 340 with WP-30 P1.35's {ul:Stata}
         # Dependencies paragraph (the Stata 19 floor); 346 with WP-30
         # P1.25a's six scheme rows (meta ... stgcolor_mv); 347 with WP-30
-        # P1.27's {ul:Batch and set graphics off.} paragraph.
-        assert len(defs) == 347, (  # 346 -> 347: P1.27 the batch paragraph
-            f"{len(defs)} definition entries cut out of dash.sthlp, 347 "
+        # P1.27's {ul:Batch and set graphics off.} paragraph; 348 with WP-30
+        # P1.5's xvarformat()/yvarformat() entry.
+        assert len(defs) == 348, (  # 347 -> 348: P1.5 the varformat entry
+            f"{len(defs)} definition entries cut out of dash.sthlp, 348 "
             f"measured 07oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

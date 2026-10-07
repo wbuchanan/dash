@@ -373,6 +373,15 @@
 *!       its sub-option tail, into the caller's locals _ap_n, _ap_tag<i>
 *!       and _ap_txt<i> (WP-28 S14, GAPS2 B1).
 *!
+*!   _dash_imm_echo(s)
+*!       s cut at 80 characters with "..." for a one-line echo (WP-30
+*!       P1.5: dash.ado's format() refusal).
+*!
+*!   _dash_axis_fmts(s)
+*!       The format() arguments of an axis-label option's tail, gated, into
+*!       the caller's locals _af_n, _af_raw<i>, _af_nw<i>, _af_w<i>_<j> and
+*!       _af_ok<i> (WP-30 P1.5).
+*!
 *! Version: 0.1.0  02oct2026
 
 // ============================================================
@@ -5117,6 +5126,116 @@ string scalar _dash_axis_run_tag(string scalar run)
 {
     if (strpos(run, char(96)) | strpos(run, "$") | strpos(run, char(39))) return("H")
     return("B")
+}
+
+// _dash_axis_fmts(s) -- the format() arguments of an axis-label option's
+// sub-option tail, for dash.ado's refusal of a format twoway refuses
+// (WP-30 P1.5, M5).  The tail is cut by _dash_axis_pieces' boundary rule;
+// its top-level tokens name(arg), outside quotes and parentheses, are read
+// when name is lower-case letters, 3 to 6 long, and a prefix of format
+// (capitals, fo() and f() are S10's refusals).  Sets the caller's locals
+// _af_n (at most 20) and, for each i, _af_raw<i> (the argument as typed,
+// trimmed, for the echo), _af_nw<i> (its words once one enclosing pair of
+// plain or compound quotes is removed, at most 20), _af_w<i>_<j>, and
+// _af_ok<i> (0 when a word fails the gate ^%[A-Za-z0-9_.,:!/+-]+$ or is
+// longer than 60 characters, or there are more than 20 words): a word
+// reaches confirm format only after the gate.  Linear in strlen(s); never
+// calls _stata().
+void _dash_axis_fmts(string scalar s)
+{
+    string scalar    tail, ch, nm, arg, inner
+    string rowvector w
+    real scalar      n, i, k, in_dq, in_cq, nxt, depth, nstart, astart
+    real scalar      cnt, ok, j, nw
+
+    n = strlen(s)
+    tail = ""
+    in_dq = 0
+    in_cq = 0
+    i = 1
+    while (i <= n) {
+        nxt = _dash_quote_step(s, n, i, in_dq, in_cq)
+        if (nxt) {
+            i = nxt
+            continue
+        }
+        if (substr(s, i, 1) == ",") {
+            k = i + 1
+            while (k <= n & (substr(s, k, 1) == " " | substr(s, k, 1) == char(9))) k++
+            if (k <= n) {
+                ch = substr(s, k, 1)
+                if (_dash_ascii_in(ch, 65, 90) | _dash_ascii_in(ch, 97, 122) | ch == "_") {
+                    tail = substr(s, i + 1, .)
+                    break
+                }
+            }
+        }
+        i++
+    }
+
+    cnt = 0
+    n = strlen(tail)
+    in_dq = 0
+    in_cq = 0
+    depth = 0
+    nstart = 0
+    astart = 0
+    nm = ""
+    i = 1
+    while (i <= n) {
+        nxt = _dash_quote_step(tail, n, i, in_dq, in_cq)
+        if (nxt) {
+            nstart = 0
+            i = nxt
+            continue
+        }
+        ch = substr(tail, i, 1)
+        if (depth == 0) {
+            if (_dash_ascii_in(ch, 65, 90) | _dash_ascii_in(ch, 97, 122) |
+                _dash_ascii_in(ch, 48, 57) | ch == "_") {
+                if (!nstart) nstart = i
+            }
+            else if (ch == "(") {
+                nm = (nstart ? substr(tail, nstart, i - nstart) : "")
+                depth = 1
+                astart = i + 1
+                nstart = 0
+            }
+            else nstart = 0
+        }
+        else if (ch == "(") depth++
+        else if (ch == ")") {
+            depth--
+            if (depth == 0 & cnt < 20 & strlen(nm) >= 3 & strlen(nm) <= 6 &
+                regexm(nm, "^[a-z]+$") & substr("format", 1, strlen(nm)) == nm) {
+                cnt++
+                arg = strtrim(substr(tail, astart, i - astart))
+                inner = arg
+                if (strlen(inner) >= 2 & substr(inner, 1, 1) == char(34) &
+                    substr(inner, -1, 1) == char(34)) {
+                    inner = substr(inner, 2, strlen(inner) - 2)
+                }
+                else if (strlen(inner) >= 4 &
+                         substr(inner, 1, 2) == char(96) + char(34) &
+                         substr(inner, -2, 2) == char(34) + char(39)) {
+                    inner = substr(inner, 3, strlen(inner) - 4)
+                }
+                w = tokens(inner, " ")
+                nw = cols(w)
+                ok = (nw <= 20)
+                if (nw > 20) nw = 20
+                for (j = 1; j <= nw; j++) {
+                    if (strlen(w[j]) > 60 | !regexm(w[j], "^%[A-Za-z0-9_.,:!/+-]+$")) ok = 0
+                    st_local("_af_w" + strofreal(cnt) + "_" + strofreal(j), w[j])
+                }
+                st_local("_af_raw" + strofreal(cnt), arg)
+                st_local("_af_nw" + strofreal(cnt), strofreal(ok ? nw : 0))
+                st_local("_af_ok" + strofreal(cnt), strofreal(ok))
+            }
+        }
+        i++
+    }
+    st_local("_af_n", strofreal(cnt))
 }
 
 // _dash_rep_optname(tok) -- the name an option word was typed with, or ""

@@ -993,6 +993,96 @@ _ov_case LN-14 `"dash scatter mpg weight, msize(*-1) name(ln14b)"' 0 ""
 _ov_case LN-14 `"dash scatter mpg weight, mlabgap(-2pt) name(ln14c)"' 0 ""
 
 // ----------------------------------------------------------------
+// AF-01 .. AF-18 (WP-30 S18, P1.5; M5): a format() word twoway refuses is
+// refused in its words, r(198) "invalid format, <the argument>", on every
+// axis-label option and on zlabel() (AF-14..AF-18, S17's measurement);
+// every word twoway accepts registers.  xvarformat()/yvarformat() are read
+// in a plot and refused after the plot groups' comma as twoway refuses
+// them.  Measured 03oct2026 (StataNow 19.5).  _af_case judges rc; a
+// refusal must hold the needle and no "unsupported option" line, an
+// acceptance neither "invalid format" nor "not allowed", and the spec
+// needle when one is given.
+// ----------------------------------------------------------------
+capture program drop _af_case
+program define _af_case
+    version 19
+    args id cmdtext expected needle specneedle
+    local logfile "`c(tmpdir)'dash_af.log"
+    set linesize 255
+    capture log close _aflog
+    capture erase "`logfile'"
+    capture dash clear
+    log using "`logfile'", name(_aflog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _aflog
+    local bad = 0
+    if `rc' != `expected' {
+        display as error `"`id' FAIL: expected rc `expected', got rc `rc': `macval(cmdtext)'"'
+        local bad = 1
+    }
+    if `expected' != 0 {
+        _ov_count "`logfile'" `"`macval(needle)'"'
+        if r(n) == 0 {
+            display as error `"`id' FAIL: the refusal does not say `macval(needle)'"'
+            local bad = 1
+        }
+        _ov_count "`logfile'" "unsupported option"
+        if r(n) > 0 {
+            display as error `"`id' FAIL: reported as an unsupported option: `r(line)'"'
+            local bad = 1
+        }
+    }
+    else {
+        foreach nd in "invalid format" "not allowed" {
+            _ov_count "`logfile'" "`nd'"
+            if r(n) > 0 {
+                display as error `"`id' FAIL: an accepted value was refused: `r(line)'"'
+                local bad = 1
+            }
+        }
+        if `"`macval(specneedle)'"' != "" & `bad' == 0 {
+            local nm = "af" + subinstr("`id'", "AF-", "", 1)
+            _ov_has "`nm'" `"`macval(specneedle)'"'
+            if r(found) != 1 {
+                display as error `"`id' FAIL: the registered spec does not carry `macval(specneedle)'"'
+                local bad = 1
+            }
+        }
+    }
+    if `bad' {
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} `id'"
+    }
+    else {
+        display as text `"`id' PASS: rc `rc' -- `macval(cmdtext)'"'
+    }
+end
+_af_case AF-01 `"dash scatter mpg weight, xlabel(, format(bogus)) name(af01)"' 198 "invalid format, bogus"
+_af_case AF-02 `"dash scatter mpg weight, ylabel(, format(%9.999999999f)) name(af02)"' 198 "invalid format, %9.999999999f"
+_af_case AF-03 `"dash scatter mpg weight, xlabel(, format(%9.2f bogus)) name(af03)"' 198 "invalid format, %9.2f bogus"
+_af_case AF-04 `"dash scatter mpg weight, xtick(, format(%tdbogus)) name(af04)"' 198 "invalid format, %tdbogus"
+_af_case AF-05 `"dash (scatter mpg weight) (scatter price weight, yaxis(2)), ylabel(, axis(2) format(%2046.0f)) name(af05)"' 198 "invalid format, %2046.0f"
+_af_case AF-06 `"dash scatter mpg weight, xlabel(, format(%12s)) ylabel(, for(%9.1f)) name(af06)"' 0 ""
+_af_case AF-07 `"dash scatter mpg weight, xlabel(, format(%21x)) ylabel(, format("%9.2f")) name(af07)"' 0 ""
+_af_case AF-08 `"dash scatter mpg weight, xlabel(, format()) ylabel(, format(%9.2f %9.1f)) name(af08)"' 0 ""
+_af_case AF-09 `"dash scatter mpg weight, xlabel(, format(%9.2f;display 1)) name(af09)"' 198 "invalid format, %9.2f;display 1"
+_af_case AF-10 `"dash (scatter mpg weight) (scatter mpg length), xvarformat(%9.2f) name(af10)"' 198 "option xvarformat() not allowed"
+_af_case AF-11 `"dash scatter mpg weight, xvarformat(%9.2f) yvarformat(%9.1f) name(af11)"' 0 "" `""xvarformat":"%9.2f""'
+_af_case AF-12 `"dash scatter mpg weight, xvarformat(bogus) name(af12)"' 0 "" `""xvarformat":"bogus""'
+_af_case AF-13 `"dash scatter mpg weight, by(foreign) xlabel(, format(bogus)) name(af13)"' 198 "invalid format, bogus"
+_af_case AF-14 `"dash scatter mpg weight, colorvar(price) zlabel(, format(bogus)) name(af14)"' 198 "invalid format, bogus"
+_af_case AF-15 `"dash scatter mpg weight, colorvar(price) zlabel(, format(%9.2x)) name(af15)"' 198 "invalid format, %9.2x"
+_af_case AF-16 `"dash scatter mpg weight, colorvar(price) zlabel(, format(%tdbogus)) name(af16)"' 198 "invalid format, %tdbogus"
+_af_case AF-17 `"dash scatter mpg weight, colorvar(price) zlabel(, format(%12s)) name(af17a)"' 0 ""
+_af_case AF-17 `"dash scatter mpg weight, colorvar(price) zlabel(, format(%21x)) name(af17b)"' 0 ""
+_af_case AF-17 `"dash scatter mpg weight, colorvar(price) zlabel(, format("%9.2f")) name(af17c)"' 0 ""
+_af_case AF-17 `"dash scatter mpg weight, colorvar(price) zlabel(, format()) name(af17d)"' 0 ""
+_af_case AF-17 `"dash scatter mpg weight, colorvar(price) zlabel(, format(%td) labsize(small)) name(af17e)"' 0 ""
+_af_case AF-18 `"twoway scatter mpg weight, colorvar(price) zlabel(, format(bogus))"' 198 "invalid format, bogus"
+_af_case AF-18 `"dash scatter mpg weight, colorvar(price) zlabel(, format(bogus)) name(af18)"' 198 "invalid format, bogus"
+
+// ----------------------------------------------------------------
 // CV-nn: the corpus arbiter.  Every line of the conformance corpus must
 // register with rc 0 and no refusal: the table accepts every value the
 // documented corpus writes.  Read with `file read' as

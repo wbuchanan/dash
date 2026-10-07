@@ -3102,4 +3102,9 @@ class TestGraphTextBounds:
         (block,) = _page_blocks(page)
         assert block.count(_htmllib.escape(title, quote=False)) == 1
         assert block.count(_htmllib.escape(note, quote=False)) == 1
-        assert "&amp;lt;" not in block
+        # Flipped (WP-30 P1.5): "no &amp;lt; on the page" was wrong once
+        # every numeric axis carries Stata's writer, because the writer's
+        # own dash_html_escape replace chain spells it; the title's
+        # escaping is judged on the page without that chain.
+        assert "&amp;lt;" not in re.sub(
+            r'\.replace\(/[^/]{1,12}/g, \\*"&[^"\\]{1,16}\\*"\)', "", block)

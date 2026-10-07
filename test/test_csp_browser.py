@@ -582,17 +582,20 @@ class TestTheMethodSeesWhatItClaims:
             assert p.violations() == [], p.violations()
 
     def test_without_unsafe_eval_a_move_is_blocked_and_seen(self):
+        """Flipped (WP-30 P1.5): "the page paints, then a move is blocked"
+        was wrong once every numeric axis carries Stata's writer, because
+        that writer is a CustomJSTickFormatter compiled at first paint:
+        without 'unsafe-eval' the paint itself is blocked, and the eval
+        violation is seen."""
         def no_eval(old):
             return re.sub(r" 'unsafe-eval'", "", old, count=1)
         path = _copy_with_policy("auto", no_eval)
-        with _CspProbe(_url(path)) as p:
+        with _CspProbe(_url(path),
+                       ready="document.readyState === 'complete'") as p:
             assert "'unsafe-eval'" not in _directives(
                 p._eval("document.querySelector('meta[http-equiv]')"
                         ".content"))["script-src"]
-            before = p.read(_VIEWS_JS)
-            p.in_task(_MOVE_SELECT_JS)
             time.sleep(1.0)
-            assert p.read(_VIEWS_JS) == before, "the move ran without eval"
             assert any(v.startswith("script-src") and v.endswith(" eval")
                        for v in p.violations()), p.violations()
 

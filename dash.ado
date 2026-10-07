@@ -325,7 +325,7 @@ program define _dash_require_mata
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
-        _dash_axis_pieces ///
+        _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
         _dash_strip_prefix _dash_seg_saving _dash_saving_parse _dash_launch_quote _dash_launch_warn
@@ -980,6 +980,9 @@ program define _dash_parse_plot_opts, sclass
     // MLABVposition are twoway_yxview_parse.class's declarations, and
     // SORT SORT1() is the pair -syntax- (and that class file) uses for an
     // option written bare, sort, or with an argument, sort(varlist).
+    // XVARFormat() and YVARFormat() (WP-30 P1.5): twoway reads a layer's
+    // x/yvarformat(); the minimum is xvarf (measured 03oct2026: xvar() and
+    // xva() are refused, xvarf() and xvarfo() read).
     // XOVERHANGs and YOVERHANGs are advanced_options.sthlp's xoverhangs and
     // yoverhangs; twoway's measured minimum is xoverhang and yoverhang.
     // The text options are string asis, as in _dash_parse_graph_opts (see
@@ -1026,6 +1029,7 @@ program define _dash_parse_plot_opts, sclass
         CLWidth(string asis)      MLABANGle(string asis)    MLABFormat(string asis) ///
         MLABTextstyle(string)     MLABVposition(string)     XOVERHANGs ///
         YOVERHANGs ///
+        XVARFormat(string)        YVARFormat(string) ///
         JITTERSEED(string)        TItle(string asis)        SUBtitle(string asis) ///
         NOTE(string asis)         CAPtion(string asis)      NAMe(string) ///
         SAVing(string)            XTitle(string asis)       YTitle(string asis) ///
@@ -1298,6 +1302,8 @@ program define _dash_parse_plot_opts, sclass
     sreturn local clwidth          : copy local clwidth
     sreturn local mlabangle        : copy local mlabangle
     sreturn local mlabformat       : copy local mlabformat
+    sreturn local xvarformat       : copy local xvarformat
+    sreturn local yvarformat       : copy local yvarformat
     // The seven statistical sub-options (WP-18): declared with twoway's own
     // minimum abbreviations (twoway_histogram_parse.class DISCrete;
     // twoway_lfitci_parse.class STDP STDF STDR, none abbreviable;
@@ -2310,7 +2316,8 @@ program define _dash_option_rules
         xlabel=axislist  ylabel=axislist  xlabel2=axislist  ylabel2=axislist ///
         xtick=axislist  ytick=axislist  xtick2=axislist  ytick2=axislist ///
         xmtick=axislist  ymtick=axislist ///
-        xmlabel=axislist  ymlabel=axislist
+        xmlabel=axislist  ymlabel=axislist ///
+        zlabel=keyformat
     // Flag applicability (WP-18): flag[|flag...]@type[|type...].  A flag
     // written on a type outside its list is refused as twoway refuses it,
     // r(198) "option <flag> not allowed" (measured 23sep2026: scatter
@@ -2586,6 +2593,48 @@ program define _dash_validate_value, rclass
         // renderer names or bounds it.
         _dash_axis_expand `"`macval(value)'"'
         mata: st_local("norm", st_global("r(norm)"))
+        // A format() word twoway refuses is refused in its words (WP-30
+        // P1.5, M5; measured 03oct2026: xlabel(, format(bogus)) and every
+        // axis-label option, r(198) "invalid format, <the argument>").
+        // A word reaches confirm format only after Mata's gate.
+        mata: _dash_axis_fmts(st_local("value"))
+        forvalues _i = 1/`_af_n' {
+            local _af_bad = !`_af_ok`_i''
+            forvalues _j = 1/`_af_nw`_i'' {
+                if `_af_bad' continue, break
+                capture confirm format `_af_w`_i'_`_j''
+                if _rc local _af_bad 1
+            }
+            if `_af_bad' {
+                mata: _dash_say("err", "invalid format, ", _dash_imm_echo(st_local("_af_raw`_i'")), "")
+                exit 198
+            }
+        }
+    }
+    else if "`kind'" == "keyformat" {
+        // zlabel() (WP-30 P1.5, S17's P1.23b): the value goes on as
+        // written; only its format() is judged, as the axis-label options'
+        // is.  Measured (section 17 E2): zlabel(, format(bogus|%9.2x|
+        // %tdbogus)) r(198) "invalid format, <f>"; %12s, %21x, "%9.2f"
+        // and format() are accepted.
+        local norm `"`macval(value)'"'
+        // A format() word twoway refuses is refused in its words (WP-30
+        // P1.5, M5; measured 03oct2026: xlabel(, format(bogus)) and every
+        // axis-label option, r(198) "invalid format, <the argument>").
+        // A word reaches confirm format only after Mata's gate.
+        mata: _dash_axis_fmts(st_local("value"))
+        forvalues _i = 1/`_af_n' {
+            local _af_bad = !`_af_ok`_i''
+            forvalues _j = 1/`_af_nw`_i'' {
+                if `_af_bad' continue, break
+                capture confirm format `_af_w`_i'_`_j''
+                if _rc local _af_bad 1
+            }
+            if `_af_bad' {
+                mata: _dash_say("err", "invalid format, ", _dash_imm_echo(st_local("_af_raw`_i'")), "")
+                exit 198
+            }
+        }
     }
     else if inlist("`kind'", "var", "varlist", "byvarlist") {
         local head `"`macval(value)'"'
@@ -3414,6 +3463,7 @@ program define _dash_plot_opts_to_json, rclass
                    blabel horizontal vertical sort range colorlist jitterseed ///
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///
+                   xvarformat yvarformat ///
                    acolor alcolor alwidth alpattern ///
                    pwidth lpvar ///
                    weight wexp {

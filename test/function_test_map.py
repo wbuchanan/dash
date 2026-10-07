@@ -863,6 +863,12 @@ FUNCTIONS = {
  '_dash_key_format': 'test/test_date_axis_residuals.py::TestTheKeyHelpers::test_the_key_format_rule',
  '_dash_key_ticks': 'test/test_date_axis_residuals.py::TestTheKeyHelpers::test_key_ticks_positions_and_text',
  # WP-30 S18 (P1.5): Axis format fallbacks (P1.5)
+ '_dash_axis_format_text': 'test/test_axis_format_fallback.py::TestFormatText::test_the_word_read',
+ '_dash_axis_tick_formats': 'test/test_axis_format_fallback.py::TestTheHelper::test_the_several_layer_rule',
+ '_dash_fmt_label_tick_formatter': 'test/test_axis_format_fallback.py::TestLabelsAndFormat::test_unlabelled_ticks_beside_text_labels_use_the_format',
+ '_dash_g_text_explicit': 'test/test_display_format_writer.py::TestNarrowExplicitDigits::test_the_measured_rows_in_python',
+ '_dash_layer_tick_format': 'test/test_axis_format_fallback.py::TestTheHelper::test_each_layer_type',
+ '_dash_varformat_writable': 'test/test_axis_format_fallback.py::TestVarformat::test_read_as_twoway_reads_it',
  # WP-30 S19 (P1.16): Legend keys and default axis titles (P1.16)
  # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)
  # WP-30 S21 (P1.3a): natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)

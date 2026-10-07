@@ -115,6 +115,44 @@ foreach f of local nfmts {
 display as text "probed numeric display formats"
 
 * ===========================================================================
+* A2. Narrow explicit-digit formats (WP-30 P1.5.7): %w.dg (w 3-12, 16, 20;
+*     d 1-6), %w.de (w 3-12, d 1-6), %w.df (w 3-12, d 0-4), %w.dgc
+*     (w 6-12, d 1-4) and three flagged forms, each value as a double.
+* ===========================================================================
+local afmts ""
+foreach w of numlist 3/12 16 20 {
+    forvalues d = 1/6 {
+        if `d' < `w' local afmts `"`afmts' "%`w'.`d'g""'
+    }
+}
+forvalues w = 3/12 {
+    forvalues d = 1/6 {
+        if `d' < `w' local afmts `"`afmts' "%`w'.`d'e""'
+    }
+    forvalues d = 0/4 {
+        if `d' < `w' local afmts `"`afmts' "%`w'.`d'f""'
+    }
+}
+forvalues w = 6/12 {
+    forvalues d = 1/4 {
+        local afmts `"`afmts' "%`w'.`d'gc""'
+    }
+}
+local afmts `"`afmts' "%-6.4g" "%06.4g" "%9,2g""'
+
+local avals "0.00001 0.000012345 0.0000099 0.0001 0.000123 0.00123 0.0123 0.123 1.23 12.3 123 1234.5 12345 123456 1234567 0.0000029394 0.00000123 0.000099999 0.00099951 99999 999.96 9999.6 0.5 0 -0.000123 -1.23 -12345 -999.96 1e-100 1e100"
+
+foreach f of local afmts {
+    foreach v of local avals {
+        capture local d : display "<" `f' (`v') ">"
+        local rc = _rc
+        if `rc' != 0 local d "<>"
+        file write `rec' `"NARW|`f'|`v'|double|`rc'|`d'|display `f' (`v')"' _n
+    }
+}
+display as text "probed narrow explicit-digit formats"
+
+* ===========================================================================
 * B. Date display formats: the eight kinds, one left-aligned variant, and
 *    thirteen custom pictures exercising every code family, every value.
 * ===========================================================================
@@ -240,6 +278,7 @@ def unwrap(s):
 
 meta = {}
 numeric_formats, date_formats, confirm, kpi = {}, {}, {}, []
+narrow_formats = {}
 
 with open(REC, encoding="utf-8", errors="replace") as fh:
     for line in fh:
@@ -255,6 +294,14 @@ with open(REC, encoding="utf-8", errors="replace") as fh:
             cmd = "|".join(f[6:])
             numeric_formats.setdefault(fmt, {"values": []})
             numeric_formats[fmt]["values"].append({
+                "value": value, "storage": storage, "rc": rc,
+                "display": unwrap(disp), "display_cmd": cmd,
+            })
+        elif t == "NARW":
+            fmt, value, storage, rc, disp = f[1], f[2], f[3], int(f[4]), f[5]
+            cmd = "|".join(f[6:])
+            narrow_formats.setdefault(fmt, {"values": []})
+            narrow_formats[fmt]["values"].append({
                 "value": value, "storage": storage, "rc": rc,
                 "display": unwrap(disp), "display_cmd": cmd,
             })
@@ -278,6 +325,8 @@ with open(REC, encoding="utf-8", errors="replace") as fh:
 
 for k in numeric_formats:
     numeric_formats[k]["value_count"] = len(numeric_formats[k]["values"])
+for k in narrow_formats:
+    narrow_formats[k]["value_count"] = len(narrow_formats[k]["values"])
 for k in date_formats:
     date_formats[k]["value_count"] = len(date_formats[k]["values"])
 
@@ -290,6 +339,7 @@ doc = {
         "script": "scripts/extract_format_truth.do",
     },
     "numeric_formats": numeric_formats,
+    "narrow_formats": narrow_formats,
     "date_formats": date_formats,
     "confirm": confirm,
     "kpi": kpi,

@@ -3078,11 +3078,41 @@ them; with {cmd:by(, yrescale)} each panel is ticked over its own data,
 as {cmd:twoway} ticks it.
 
 {pstd}
-A date axis's ticks are written in the axis variable's display format, as
-{cmd:twoway} writes them: a {cmd:%tm} axis reads {cmd:2001m1 2001m4}, a
-{cmd:%td} axis {cmd:02jan2001}, a custom picture as written.  An explicit
-{cmd:format()} of any numeric display format ({cmd:%f}, {cmd:%g},
-{cmd:%e}) writes the ticks as Stata's {cmd:display} does.
+A numeric axis's ticks are written in the display format {cmd:twoway}
+labels that axis with: the format of the variable its first layer draws
+there, so a scatter of {cmd:mpg} on {cmd:weight} in {cmd:auto} labels
+{cmd:weight}, whose format is {cmd:%8.0gc}, {cmd:2,000 3,000 4,000 5,000}.
+A range plot's axis takes its first y variable's format and a
+paired-coordinate plot's its first pair's; a layer's {cmd:xvarformat()}
+or {cmd:yvarformat()} replaces its variable's.  {cmd:scatteri},
+{cmd:pci}, {cmd:pcarrowi}, {cmd:function}, {cmd:kdensity} and the fits
+({cmd:lfit}, {cmd:qfit}, {cmd:lpoly} and their {cmd:ci} forms) are
+written in {cmd:%9.0g}, a histogram's heights in {cmd:%6.4g}
+({cmd:1.0e-04}), and {cmd:lowess} and {cmd:fpfit} in their x variable's
+format and {cmd:%9.0g} on y.  With several layers each axis takes the
+first layer drawn on it, and the x axis the first layer of the y axis
+whose first layer comes last, as {cmd:twoway} does.  A date axis's ticks
+are written in the axis variable's display format: a {cmd:%tm} axis
+reads {cmd:2001m1 2001m4}, a {cmd:%td} axis {cmd:02jan2001}, a custom
+picture as written.
+
+{pstd}
+{cmd:format()} writes the axis's stored value in any display format, as
+{cmd:twoway} does: on {cmd:sp500}'s {cmd:%td} axis {cmd:format(%9.0fc)}
+writes the day numbers {cmd:14,976 15,066}, {cmd:format(%tdDD/NN/CCYY)}
+writes {cmd:01/01/2001}, and {cmd:format(%td)} on a numeric axis writes
+its numbers as dates.  Ticks beside text labels are written in the same
+format.  A format {cmd:twoway} refuses, here or in the colour key's
+{cmd:zlabel()}, is refused in its words, {cmd:invalid format, bogus},
+r(198).  A string, hexadecimal or byte-dump
+format ({cmd:%12s}, {cmd:%21x}, {cmd:%16H}), which {cmd:twoway} accepts,
+is written in {cmd:%9.0g} with a note, since {cmd:twoway}'s text can
+differ.
+
+{phang}{opt xvarformat(fmt)} and {opt yvarformat(fmt)}, inside a plot,
+replace that layer's x or y variable's display format for the axis it
+labels, as {cmd:twoway} reads them; written after the plot groups' comma
+they are refused, {cmd:option xvarformat() not allowed}, r(198).
 
 {pstd}
 On a date axis a number is a date in the variable's own units, as
@@ -3228,7 +3258,9 @@ in a warning.  {cmd:yscale2()} and {cmd:xscale2()} take {cmd:log},
 {cmd:reverse} ({cmd:rev}) and {cmd:range(}{it:numlist}{cmd:)} ({cmd:r()}),
 which widens the second axis only, as {cmd:yscale(range())} does, and
 name anything else; {cmd:ylabel2()} and {cmd:xlabel2()} positions widen
-the second axis unless {cmd:norescale} is given.
+the second axis unless {cmd:norescale} is given.  With or without them, a
+second axis's ticks are written in the format of the first layer on it,
+as {cmd:twoway} writes them.
 
 {pstd}
 {it:Example:}

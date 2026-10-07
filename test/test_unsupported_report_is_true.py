@@ -464,6 +464,10 @@ LIVE_VALUES = {
                   "scatter", {}),
     "mlabformat": ({"mlabel": "price", "mlabformat": "%9.1f"},
                    {"mlabel": "price", "mlabformat": "%9.2f"}, "scatter", {}),
+    "xvarformat": ({"xvarformat": "%9.2f"}, {"xvarformat": "%9.1f"},
+                   "scatter", {}),
+    "yvarformat": ({"yvarformat": "%9.2f"}, {"yvarformat": "%9.1f"},
+                   "scatter", {}),
     "level": ({"level": "80"}, {"level": "99"}, "lfitci", {}),
     "lpattern": ({"lpattern": "dash"}, {"lpattern": "dot"}, "line", {}),
     "lwidth": ({"lwidth": "vthin"}, {"lwidth": "vthick"}, "line", {}),
@@ -610,7 +614,8 @@ class TestEveryDeclaredOptionIsClassified:
         # them -- and still pass.
         # Flipped (WP-29 P0.5): 169 and 72, with ytick2(), xtick2(),
         # yline2() and xline2() declared in both blocks.
-        assert len(_declared_plot()) == 169, len(_declared_plot())
+        # 169 -> 171: P1.5 xvarformat() and yvarformat() declared
+        assert len(_declared_plot()) == 171, len(_declared_plot())
         assert len(_declared_graph()) == 72, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):

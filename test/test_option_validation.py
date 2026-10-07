@@ -60,7 +60,10 @@ _END = "// END option-validation table (WP-15)"
 # axislist since WP-28 S14 (GAPS2 B1): the axis-label and tick options,
 # expanded by Stata's numlist and never refused.
 KINDS = {"num", "int", "pos", "style", "istyle", "enum", "numlist", "var",
-         "varlist", "byvarlist", "format", "scheme", "axislist"}
+         "varlist", "byvarlist", "format", "scheme", "axislist",
+         # WP-30 P1.5 (S17's P1.23b): zlabel()'s format() is judged as the
+         # axis-label options' is.
+         "keyformat"}
 
 #: The contract's table, token for token (DESIGN.md section 2).  The test
 #: asserts the table in dash.ado carries every one of these; it may carry
@@ -390,6 +393,9 @@ class TestTheNewProgramsKeepTheirConstraints:
     _MATA_ALLOWED = frozenset({
         "_dash_say", "_dash_text_args", "st_local", "st_global",
         "st_strscalar", "strofreal", "strtrim", "strpos", "char",
+        # WP-30 P1.5: _dash_axis_fmts reads format() words by value and
+        # tests their characters; _dash_imm_echo cuts an echo at 80.
+        "_dash_axis_fmts", "_dash_imm_echo",
     })
 
     @staticmethod
@@ -1307,6 +1313,11 @@ _DASH_ONLY = {"jseed", "malpha", "lalpha", "falpha", "colornlevels",
 # the name -- its own rule, documented in "Option values" and in "Stata
 # scheme support" (a dashboard is a file you look at later).
 _DELIBERATE = {"jitterseed", "xaxis", "scheme"}
+# Options whose twoway probe is measured live beside dash's rule rather than
+# in the oracle fixture: zlabel()'s format() (WP-30 P1.5, S17's P1.23b),
+# twoway's "invalid format, bogus" r(198) next to dash's in
+# test_option_validation.cscript AF-18 and the section-17 measurement.
+_PROBED_LIVE = {"zlabel"}
 
 
 def _fixture():
@@ -1333,7 +1344,7 @@ class TestTheOracleFixtureIsInStep:
         cannot be added with nothing behind it."""
         probed = {p["option"] for p in _fixture()["twoway"]}
         for opt, _kind, _ps, _ts in _parse_rules(_BLOCK):
-            if opt not in _DASH_ONLY:
+            if opt not in _DASH_ONLY | _PROBED_LIVE:
                 assert opt in probed, f"{opt}: no twoway probe behind its rule"
 
     @_needs_table
@@ -1364,7 +1375,8 @@ class TestTheOracleFixtureIsInStep:
         test_option_validation.cscript."""
         fx = _fixture()
         for opt, kind, _ps, _ts in _parse_rules(_BLOCK):
-            if kind in ("style", "istyle") or opt in _DASH_ONLY | _DELIBERATE:
+            if (kind in ("style", "istyle")
+                    or opt in _DASH_ONLY | _DELIBERATE | _PROBED_LIVE):
                 continue
             rejected = [p for p in fx["twoway"]
                         if p["option"] == opt and p["rc"] != 0]

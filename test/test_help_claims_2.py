@@ -601,13 +601,19 @@ class TestLabelsUsedAutomatically:
             assert sorted(items) == ["Domestic", "Foreign"], items
 
     def test_an_axis_is_labelled_with_numbers(self, tmp_path):
+        """Flipped (WP-30 P1.5): BasicTickFormatter was wrong because
+        twoway writes the axis in the variable's display format; the
+        formatter is Stata's writer, and it writes 0 and 1."""
         spec = _spec([plot_for("scatter", xvar="foreign")])
         r, _, _, doc, _, _ = _both(tmp_path, spec)
         for fig in (_saved_figure(r), _served_figure(doc)):
             ax = fig.xaxis[0]
             assert not dict(ax.major_label_overrides), ax.major_label_overrides
             assert type(ax.ticker).__name__ == "BasicTicker", ax.ticker
-            assert type(ax.formatter).__name__ == "BasicTickFormatter"
+            assert type(ax.formatter).__name__ == "CustomJSTickFormatter"
+            fmt = ax.formatter.args["fmt"]
+            assert "labels" not in ax.formatter.args
+            assert [dr._dash_fmt_text(v, fmt) for v in (0, 1)] == ["0", "1"]
 
     def test_a_hover_tooltip_shows_the_label(self, tmp_path):
         """GAPS2 G16 (WP-28 S14): a hover() variable with value labels shows

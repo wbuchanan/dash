@@ -1929,6 +1929,19 @@ CORPUS = [
           go={"zlabel": ", format(%9.2f)"}),
     _case("histogram, frequency tooltip",
           [plot_for("histogram", {"frequency": "frequency"})]),
+    # WP-30 P1.5: axis ticks in twoway's display formats
+    _case("S18 default axis formats", [_sc()],
+          {"formats": {"weight": "%8.0gc", "mpg": "%9.2f"}}),
+    _case("S18 histogram height", [plot_for("histogram")]),
+    _case("S18 second axis fallback", [_sc(), _sc(yaxis="2")],
+          {"formats": {"weight": "%8.0gc", "mpg": "%9.2f"}}),
+    _case("S18 xvarformat and labels", [_sc(xvarformat="%9.2f")], None,
+          {"xlabel": '2000 "two" 3000'}),
+    _case("S18 date format() picture",
+          [plot_for("line", yvar="mpg", xvar="when")], {"formats": {"when": "%td"}},
+          {"xlabel": ", format(%tdDD/NN/CCYY)"}),
+    _case("S18 unwritable format noted", [_sc()], None,
+          {"ylabel": ", format(%12s)"}),
 ]
 
 

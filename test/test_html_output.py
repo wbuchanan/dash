@@ -1017,12 +1017,17 @@ class TestGraphOptionsInHtml:
             "ylabel() must embed FixedTicker (with ticks) in model JSON"
 
     def test_xlabel_labeled_ticks_in_html(self):
-        """xlabel() with labeled ticks must embed CustomJSTickFormatter in model JSON."""
+        """xlabel() with labeled ticks must embed CustomJSTickFormatter in model JSON.
+
+        Flipped (WP-30 P1.5): "exactly one CustomJSTickFormatter" was wrong
+        once every numeric axis carries Stata's writer, because the y axis
+        now has one too; the x axis's is the one holding the labels."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["xlabel"] = '1 "Low" 10 "Mid" 20 "High"'
         html = _render_to_html(spec, data)
         models = _page_models(html)
-        fmts = models.get("CustomJSTickFormatter", [])
+        fmts = [f for f in models.get("CustomJSTickFormatter", [])
+                if "labels" in dict(f["args"]["entries"])]
         assert len(fmts) == 1, \
             "xlabel labeled ticks must produce CustomJSTickFormatter in model JSON"
         labels = json.loads(dict(fmts[0]["args"]["entries"])["labels"])

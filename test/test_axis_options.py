@@ -16,6 +16,7 @@ keys.**  One key, no legend, no matter what else is passed;
 ``legend(on)`` forces one.
 """
 import json
+import re
 import math
 import os
 import sys
@@ -604,10 +605,17 @@ class TestDashboardTitleEscaping:
         return html_text, dr
 
     def _header_html(self, layout, title, subtitle=""):
-        """The header markup as the browser will see it, for either layout."""
+        """The header markup as the browser will see it, for either layout.
+
+        Flipped (WP-30 P1.5): the whole Bootstrap page was the evidence,
+        which was wrong once every numeric axis carries Stata's writer,
+        because the writer's own dash_html_escape replace chain spells
+        ``&amp;amp;``; that chain is removed before the page is read."""
         html_text, dr = self._render(layout, title, subtitle)
         if layout == "bs":
-            return html_text
+            return re.sub(
+                r'\.replace\(/[^/]{1,12}/g, \\*"&[^"\\]{1,16}\\*"\)', "",
+                html_text)
         from bokeh.models import Div
         parts = []
         for model in dr._last_layout_root.select({"type": Div}):

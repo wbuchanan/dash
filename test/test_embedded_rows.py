@@ -227,9 +227,19 @@ def _page_docs(page):
     scripts of ``file_html``, and the ``docs_json`` literal of the
     layout(bs) page's ``components``."""
     out = []
-    for body in _JSON_SCRIPT.findall(page) + _DOCS_JSON.findall(page):
+    for body in _JSON_SCRIPT.findall(page):
         try:
             out.append(json.loads(body))
+        except ValueError:
+            continue
+    # Flipped (WP-30 P1.5): docs_json read as plain JSON was wrong once
+    # every numeric axis carries Stata's writer, because it is a JavaScript
+    # string literal and the writer's code holds escaped quotes; the
+    # literal is unescaped first.
+    for body in _DOCS_JSON.findall(page):
+        try:
+            out.append(json.loads(body.encode("latin-1", "backslashreplace")
+                                   .decode("unicode_escape")))
         except ValueError:
             continue
     return out

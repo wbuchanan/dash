@@ -835,6 +835,125 @@ def _dash_axis_vars(plots):
     return (p0.get("xvar", "") or "", p0.get("yvar", "") or "")
 
 
+def _dash_axis_format_text(raw, first=False):
+    """The format word a ``format()``, ``xvarformat()`` or
+    ``yvarformat()`` argument names, or ``""`` (WP-30 P1.5, TR-18.3).
+
+    Measured (StataNow 19.5, 03oct2026): twoway reads ``format("%9.2f")``
+    and ``format(\x60"%9.1f"')`` as the quoted word, ``format(%9.2f
+    %9.1f)`` as its LAST word and ``xvarformat(%9.2f %9.1f)`` as its
+    FIRST (*first*).  A word is cut to 61 characters, so a longer one
+    still fails ``_dash_fmt_parse`` and is written in ``%9.0g``.  Never
+    raises."""
+    if not isinstance(raw, str):
+        return ""
+    text = raw.strip()
+    if len(text) >= 2 and text[0] == '"' and text[-1] == '"':
+        text = text[1:-1].strip()
+    elif (len(text) >= 4 and text.startswith("\x60\"")
+          and text.endswith("\"'")):
+        text = text[2:-2].strip()
+    words = text.split()
+    if not words:
+        return ""
+    return (words[0] if first else words[-1])[:61]
+
+
+def _dash_layer_tick_format(plot, dim, numeric_formats, date_vars):
+    """``(fmt, by_option)``: the display format twoway labels the *dim*
+    (``"x"`` or ``"y"``) axis with when *plot* is the layer that axis
+    takes its format from (WP-30 P1.5, TR-18.4).
+
+    twoway writes an axis in its first view's serset column format
+    (axis.class, plotregion.class ``dimformat``), measured 03oct2026: a
+    layer's own ``xvarformat()``/``yvarformat()`` wins (*by_option*
+    True); literal layers, the fits and kdensity are ``%9.0g``; a
+    histogram's height is ``%6.4g``; lowess and fpfit write y in
+    ``%9.0g``; a range layer's y is ``yvar1``'s and a pc layer's axes
+    ``y1var``/``x1var``'s; every other layer its own variables'.  A date
+    variable gives ``""`` (its axis keeps its date writer; the ratified
+    lfit-on-a-date-x divergence), and so does a ``%9.0g``/``%6.4g`` row
+    whose source variable on *dim* is a date."""
+    if not isinstance(plot, dict):
+        return ("", False)
+    opts = plot.get("options") or {}
+    if isinstance(opts, dict):
+        own = _dash_axis_format_text(opts.get(dim + "varformat"), first=True)
+        if own:
+            return (own, True)
+    numeric_formats = numeric_formats or {}
+    date_vars = date_vars or {}
+    # A variable's own format ("" for a date), and a fixed format that a
+    # date source variable voids.
+    _of = (lambda name: "%9.0g" if not name else
+           ("" if name in date_vars else
+            (numeric_formats.get(name) or "%9.0g")))
+    _fixed = (lambda fmt, name: "" if name and name in date_vars else fmt)
+
+    ptype = str(plot.get("type", "")).lower()
+    xv = plot.get("xvar", "") or ""
+    yv = plot.get("yvar", "") or ""
+    if ptype in _DASH_LITERAL_TYPES:
+        return ("%9.0g", False)
+    if ptype in ("lfit", "qfit", "lfitci", "qfitci", "lpoly", "lpolyci"):
+        return (_fixed("%9.0g", xv if dim == "x" else yv), False)
+    if ptype == "kdensity":
+        v = plot.get("var", "") or xv
+        return (_fixed("%9.0g", v), False)
+    if ptype == "histogram":
+        v = plot.get("var", "") or xv
+        return ((_of(v) if dim == "x" else _fixed("%6.4g", v)), False)
+    if ptype in ("lowess", "fpfit", "fpfitci"):
+        return ((_of(xv) if dim == "x" else _fixed("%9.0g", yv)), False)
+    if ptype in _DASH_RANGE_TYPES:
+        if dim == "x":
+            return (_of(xv), False)
+        return (_of(plot.get("yvar1", "") or yv), False)
+    if ptype in _DASH_PC_TYPES:
+        return (_of(plot.get(dim + "1var", "") or ""), False)
+    return (_of(xv if dim == "x" else yv), False)
+
+
+def _dash_axis_tick_formats(plots, numeric_formats, date_vars=None):
+    """``{"x": (fmt, by_option), "y": ..., "x2": ..., "y2": ...}``: the
+    display format each axis is labelled in (WP-30 P1.5, TR-18.5).
+
+    twoway's several-layer rule, measured 03oct2026: of the layers on an
+    axis, grouped by the axis they use in the other dimension, the axis
+    takes the first layer of the group whose first layer comes last
+    (``(scatter mpg length) (scatter mpg weight, yaxis(2))`` labels x in
+    weight's format).  With one axis in the other dimension that is the
+    first layer.  An axis no layer draws on gives ``("", False)``.  Pure;
+    S21, S49 and S51 reuse it."""
+    layers = []
+    for i, p in enumerate(plots or []):
+        if not isinstance(p, dict):
+            continue
+        opts = p.get("options") or {}
+        if not isinstance(opts, dict):
+            opts = {}
+        xa = "2" if str(opts.get("xaxis", "1")).strip() == "2" else "1"
+        ya = "2" if str(opts.get("yaxis", "1")).strip() == "2" else "1"
+        layers.append((i, p, xa, ya))
+    out = {}
+    for dim, other in (("x", "y"), ("y", "x")):
+        for n in ("1", "2"):
+            on = [(i, p, xa if dim == "x" else ya, ya if dim == "x" else xa)
+                  for i, p, xa, ya in layers
+                  if (xa if dim == "x" else ya) == n]
+            key = dim if n == "1" else dim + "2"
+            if not on:
+                out[key] = ("", False)
+                continue
+            firsts = {}
+            for i, p, _mine, oth in on:
+                firsts.setdefault(oth, (i, p))
+            _i, chosen = max(firsts.values(), key=lambda t: t[0])
+            out[key] = _dash_layer_tick_format(chosen, dim, numeric_formats,
+                                               date_vars)
+    return out
+
+
 def _dash_mark_date_axes(fig, x_kind, y_kind):
     """Remember on *fig* the Stata date kind of each of its axes, so the
     axis options -- xline(), xscale(range()), xlabel(), xtick() -- read a
@@ -19071,8 +19190,10 @@ function dash_fmt_sci_decimals(width, expDigits, dec, sigDigits) {
     if (dec === 0) {
         return Math.max(base, floor_);
     }
-    var cap = sigDigits ? dec - 1 : dec;
-    return Math.max(Math.min(cap, base), 0);
+    // WP-30 P1.5.7: the floor holds with an explicit dec, and g reads a
+    // digit count below 2 as 2 (%6.2e of 12345 is 1.2e+04).
+    var cap = sigDigits ? Math.max(dec, 2) - 1 : dec;
+    return Math.max(Math.min(cap, base), floor_);
 }
 
 function dash_fmt_sci_text(a, exp, decimals, halfEven) {
@@ -19100,7 +19221,7 @@ function dash_fmt_f_sci_fallback(a, width, dec) {
     var exp = Math.floor(Math.log10(a));
     var expDigits = Math.abs(exp) >= 100 ? 3 : 2;
     var decimals = dash_fmt_sci_decimals(width, expDigits, dec, false);
-    return dash_fmt_sci_text(a, exp, decimals, true);
+    return dash_fmt_sci_text(a, exp, decimals, false);
 }
 
 function dash_fmt_f_text(a, dec, width, group, signlen) {
@@ -19123,9 +19244,76 @@ function dash_fmt_f_text(a, dec, width, group, signlen) {
     return dash_fmt_f_sci_fallback(a, width, dec);
 }
 
+function dash_fmt_g_text_explicit(a, dec, width, group, signlen) {
+    // _dash_g_text_explicit (WP-30 P1.5.7)
+    if (a === 0) {
+        return "0";
+    }
+    var ed = dash_fmt_exact_decimal(a);
+    var exp;
+    if (ed.int !== "0") {
+        exp = ed.int.length - 1;
+    } else {
+        var nz = 0;
+        while (nz < ed.frac.length && ed.frac.charAt(nz) === "0") {
+            nz++;
+        }
+        exp = -(nz + 1);
+    }
+    var expDigits = Math.abs(exp) >= 100 ? 3 : 2;
+    var p = Math.max(dec, 2);
+    var pu = Math.max(width, 4) - 2;
+    var sciDec = dash_fmt_sci_decimals(width, expDigits, dec, true);
+    var text, r;
+    if (a >= 1) {
+        var nInt = exp + 1;
+        if (nInt > pu) {
+            return dash_fmt_sci_text(a, exp, sciDec, false);
+        }
+        var top = Math.max(p, nInt);
+        var decimals = Math.min(top - nInt, pu - nInt);
+        r = dash_fmt_round_digits(ed, decimals, false);
+        var nInt2 = r.int === "0" ? 0 : r.int.length;
+        if (nInt2 > nInt && (nInt2 > top || nInt2 > pu)) {
+            var ed2 = Math.abs(nInt2 - 1) >= 100 ? 3 : 2;
+            return dash_fmt_sci_text(a, exp, ed2 === 2 ? 1 : 0, false);
+        }
+        text = dash_fmt_decimal_text(r, decimals);
+        if (text.indexOf(".") !== -1) {
+            text = text.replace(/0+$/, "").replace(/[.]$/, "");
+        }
+        if (group && nInt2 < pu) {
+            var parts = text.split(".");
+            var grouped = dash_fmt_group_thousands(parts[0])
+                + (parts.length > 1 ? "." + parts[1] : "");
+            if (grouped.length + signlen <= width) {
+                text = grouped;
+            }
+        }
+        return text;
+    }
+    var lz = -exp - 1;
+    var fs = Math.min(p, pu - lz);
+    if (exp < -5 || fs < 1 + sciDec) {
+        return dash_fmt_sci_text(a, exp, sciDec, false);
+    }
+    r = dash_fmt_round_digits(ed, lz + fs, false);
+    text = dash_fmt_decimal_text(r, lz + fs);
+    if (text.indexOf(".") !== -1) {
+        text = text.replace(/0+$/, "").replace(/[.]$/, "");
+    }
+    if (text.slice(0, 2) === "0.") {
+        text = text.slice(1);
+    }
+    return text || "0";
+}
+
 function dash_fmt_g_text(a, dec, width, group, signlen) {
     // _dash_g_text
     signlen = signlen || 0;
+    if (dec > 0) {
+        return dash_fmt_g_text_explicit(a, dec, width, group, signlen);
+    }
     var exp = a === 0 ? 0 : Math.floor(Math.log10(a));
     var intDigits = a === 0 ? 1 : Math.max(exp + 1, 0);
     var pUpper = width - 2;
@@ -19232,6 +19420,12 @@ function dash_fmt_number(parsed, value) {
     }
     var body = sign + text;
     var padWidth = text.indexOf("e") !== -1 ? Math.max(width, 8) : width;
+    if (kind === "g" && dec > 0 && text.indexOf("e") === -1) {
+        padWidth = Math.max(width, 4);
+    }
+    if (left) {
+        padWidth = (kind === "g" && dec > 0) ? Math.max(width, 4) : width;
+    }
     if (zero && kind === "f" && text.indexOf("e") === -1 && body.length < width) {
         body = sign + "0".repeat(width - body.length) + text;
         return left ? body : body.padStart(width, " ");
@@ -21757,13 +21951,20 @@ def _dash_sci_decimals(width, exp_digits, dec, sig_digits=False):
     DIGITS, one of which is the mantissa's leading integer digit, so the
     cap is ``dec - 1`` (``sig_digits=True``: 5.23e+10 becomes ``5,2e+10``,
     one decimal, not two).
+
+    The floor holds with an explicit *dec* too, and ``g`` reads a digit
+    count below 2 as 2 (WP-30 P1.5.7; measured 03oct2026 over
+    ``format_truth.json``'s ``narrow_formats``): ``%6.2e`` of 12345 is
+    ``1.2e+04``, ``%3.1f`` of 1234567 is ``1.2e+06`` and ``%6.4g`` of
+    .0001 is ``1.0e-04`` -- one decimal at a width whose baseline is
+    below it, never the bare ``1.e+04``.
     """
     base = width - (7 if exp_digits == 2 else 8)
     floor = 1 if exp_digits == 2 else 0
     if dec == 0:
         return max(base, floor)
-    cap = (dec - 1) if sig_digits else dec
-    return max(min(cap, base), 0)
+    cap = (max(dec, 2) - 1) if sig_digits else dec
+    return max(min(cap, base), floor)
 
 
 def _dash_fmt_number(parsed, value):
@@ -21797,6 +21998,14 @@ def _dash_fmt_number(parsed, value):
     # " 1.2e+08" (one leading space, width 8), not the unpadded 7
     # characters width 1 alone would give.
     pad_width = max(width, 8) if "e" in text else width
+    if kind == "g" and dec > 0 and "e" not in text:
+        # WP-30 P1.5.7: an explicit-digit g's fixed text sits in at least
+        # four columns (%3.1g of .123 is " .12", %3.2g of 0 is "   0").
+        pad_width = max(width, 4)
+    if left:
+        # Left-aligned text is padded to the width only, never to the
+        # scientific floor (measured: %-6.4g of .00001 is "1.0e-05").
+        pad_width = max(width, 4) if kind == "g" and dec > 0 else width
     if zero and kind == "f" and "e" not in text and len(body) < width:
         # The 0 flag is honoured only with f (format.sthlp:84-88): zeros
         # are inserted between the sign and the digits, never before it,
@@ -21840,11 +22049,13 @@ def _dash_f_sci_fallback(a, width, dec):
     since ``f``'s *dec* is decimal PLACES, not significant digits) --
     measured: ``%1.0f`` of 123456789 is ``1.2e+08`` (dec 0, width-driven,
     one decimal); ``%12.2fc`` of 52313712223 is ``5.23e+10`` (dec 2, its
-    own two decimals, not the width-driven five)."""
+    own two decimals, not the width-driven five).  Its mantissa rounds
+    ties away from zero, as ``e`` does (WP-30 P1.5.7, measured:
+    ``%10.4f`` of -12345 is ``-1.235e+04``)."""
     exp = math.floor(math.log10(a))
     exp_digits = 3 if abs(exp) >= 100 else 2
     decimals = _dash_sci_decimals(width, exp_digits, dec)
-    return _dash_sci_text(a, exp, decimals, half_even=True)
+    return _dash_sci_text(a, exp, decimals, half_even=False)
 
 
 def _dash_f_text(a, dec, width, group, signlen=0):
@@ -21871,6 +22082,63 @@ def _dash_f_text(a, dec, width, group, signlen=0):
     return _dash_f_sci_fallback(a, width, dec)
 
 
+def _dash_g_text_explicit(a, dec, width, group, signlen=0):
+    """``_dash_g_text``'s explicit-digit path (``dec > 0``; WP-30
+    P1.5.7): the rule its docstring states, measured over
+    ``format_truth.json``'s ``narrow_formats``.  Rounds the exact binary
+    value half away from zero (``%10.4g`` of 0.000012345 is
+    ``.00001234``)."""
+    if a == 0:
+        return "0"
+    exp = math.floor(math.log10(a))
+    # log10 can land one off at an exact power of ten's neighbour.
+    if Decimal(a) < Decimal(10) ** exp:
+        exp -= 1
+    elif Decimal(a) >= Decimal(10) ** (exp + 1):
+        exp += 1
+    exp_digits = 3 if abs(exp) >= 100 else 2
+    p = max(dec, 2)
+    pu = max(width, 4) - 2
+
+    sci_dec = _dash_sci_decimals(width, exp_digits, dec, sig_digits=True)
+    if a >= 1:
+        n_int = exp + 1
+        if n_int > pu:
+            return _dash_sci_text(a, exp, sci_dec)
+        top = max(p, n_int)
+        decimals = min(top - n_int, pu - n_int)
+        r = _dash_stata_round(a, decimals, half_even=False)
+        n_int2 = _dash_int_digit_count(float(r))
+        if n_int2 > n_int and (n_int2 > top or n_int2 > pu):
+            exp_carry = n_int2 - 1
+            ed2 = 3 if abs(exp_carry) >= 100 else 2
+            return _dash_sci_text(a, exp, 1 if ed2 == 2 else 0)
+        text = _dash_decimal_text(r, decimals)
+        if "." in text:
+            text = text.rstrip("0").rstrip(".")
+        if group and _dash_int_digit_count(float(r)) < pu:
+            # Grouped only when the digits leave the width budget a
+            # column (measured: %7.1gc of 12345 is 12345, %8.1gc of
+            # -12345 is -12,345, %10.1gc of 1234567 is 1,234,567).
+            intpart, _, frac = text.partition(".")
+            grouped = (_dash_group_thousands(intpart)
+                       + (("." + frac) if frac else ""))
+            if len(grouped) + signlen <= width:
+                text = grouped
+        return text
+    lz = -exp - 1
+    fs = min(p, pu - lz)
+    if exp < -5 or fs < 1 + sci_dec:
+        return _dash_sci_text(a, exp, sci_dec)
+    r = _dash_stata_round(a, lz + fs, half_even=False)
+    text = _dash_decimal_text(r, lz + fs)
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    if text.startswith("0."):
+        text = text[1:]
+    return text or "0"
+
+
 def _dash_g_text(a, dec, width, group, signlen=0):
     """The ``g``/``gc`` text for positive *a* (TR-04.2): Stata's own
     default format.  ``dec == 0`` is "Stata chooses" (format.sthlp:
@@ -21892,7 +22160,22 @@ def _dash_g_text(a, dec, width, group, signlen=0):
     stays fixed).  An explicit *dec* instead uses the plain, width-
     independent ``%g`` threshold, exponent under -4 (measured:
     0.0000029394 goes scientific under ``%12,2gc``, 0.000123456 does
-    not, at the SAME width)."""
+    not, at the SAME width).
+
+    An explicit *dec* follows Stata's measured rule instead (WP-30
+    P1.5.7; every row of ``format_truth.json``'s ``narrow_formats``):
+    ``P = max(dec, 2)`` digits, an effective width ``we = max(width, 4)``
+    and ``pu = we - 2``.  At or above 1, with ``I`` integer digits,
+    scientific when ``I > pu``, else ``min(max(P, I) - I, pu - I)``
+    decimals, and a rounding carry past ``max(P, I)`` or ``pu`` digits
+    goes scientific with the floor's decimals (``%10.3g`` of 999.96 is
+    ``1.0e+03``).  Below 1, ``fs = min(P, pu - leading zeros)`` digits,
+    scientific when the exponent is under -5 or ``fs`` falls short of
+    scientific's own digits (``%6.4g`` of .0001 is ``1.0e-04``,
+    ``%12.2g`` of .00001 is ``.00001``, ``%10.1g`` of 1.23 is ``1.2``).
+    Zero writes ``0``."""
+    if dec > 0:
+        return _dash_g_text_explicit(a, dec, width, group, signlen)
     exp = 0 if a == 0 else math.floor(math.log10(a))
     # Zero has no digits of its own; treated as needing exactly one (as
     # if it were any other single-digit number) so the same narrow-width
@@ -22514,6 +22797,37 @@ def _dash_fmt_tick_formatter(fmt, kind, storage, cache):
         return cache[key]
     model = CustomJSTickFormatter(
         args=args, code=_DASH_FMT_JS + _DASH_FMT_MODEL_JS % ("tick", "tick"))
+    if cache is not None:
+        cache[key] = model
+    return model
+
+
+def _dash_fmt_label_tick_formatter(labels, fmt, kind, storage, cache):
+    """A ``CustomJSTickFormatter`` that writes a tick holding a text
+    label as that label and every other tick as Stata's ``display`` text
+    under *fmt* (WP-30 P1.5, TR-18.6; measured: twoway's ``xlabel(2000
+    "two" 3000 4000)`` on weight ``%8.0gc`` reads ``two 3,000 4,000``).
+    *labels* is the JSON text of the tick-to-label map; it, the format,
+    the date *kind* and the *storage* type travel in ``args``, never in
+    ``code``.  One model per ``(labels, fmt, kind, storage)`` in
+    *cache*."""
+    from bokeh.models import CustomJSTickFormatter
+    args = _dash_fmt_model_args(fmt, kind, storage)
+    args["labels"] = str(labels)
+    key = ("label", args["labels"], args["fmt"], args["kind"],
+           args["storage"])
+    if cache is not None and key in cache:
+        return cache[key]
+    code = (_DASH_FMT_JS
+            + "var _dash_m = JSON.parse(labels); "
+              "var _dash_k = String(tick); "
+              "var _dash_h = Object.prototype.hasOwnProperty; "
+              "if (!_dash_h.call(_dash_m, _dash_k) && Number.isInteger(tick)) "
+              "{ _dash_k = _dash_k + '.0'; } "
+              "if (_dash_h.call(_dash_m, _dash_k)) "
+              "{ return _dash_m[_dash_k]; }\n"
+            + _DASH_FMT_MODEL_JS % ("tick", "tick"))
+    model = CustomJSTickFormatter(args=args, code=code)
     if cache is not None:
         cache[key] = model
     return model
@@ -24128,7 +24442,8 @@ def _dash_parse_axis_spec(raw):
 
 def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                           fmt_fallback="", grid_color=None,
-                          value_labels=None, fmt_cache=None, ref_in=4.0):
+                          value_labels=None, fmt_cache=None, ref_in=4.0,
+                          date_kind=None, option="axis"):
     """Apply a parsed ``axis_label`` spec to one axis.
 
     Args:
@@ -24153,11 +24468,19 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                       override, unless an explicit ``"text"`` names that
                       same tick, which wins.
         fmt_cache:    The document's formatter models (WP-28 S12).
+        date_kind:    The axis's Stata date kind (``td``, ``tm`` ...), or
+                      None for a numeric axis: a ``format()`` on a date
+                      axis writes the axis's stored Stata value, as
+                      twoway does (WP-30 P1.5: ``format(%9.0fc)`` on
+                      sp500's ``%td`` axis writes ``14,976``).
+        option:       The option's name for the note an unwritable
+                      format gets (``xlabel``, ``ylabel2`` ...).
     """
     from bokeh.models.tickers import FixedTicker, BasicTicker
     from bokeh.models.formatters import CustomJSTickFormatter
 
     mode = spec["mode"]
+    label_json = None
 
     # WP-28 B2: the positions this spec asks the axis to span, read by the
     # hull after the layers (_dash_axis_hull) -- an explicit list, or the
@@ -24224,30 +24547,53 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
             # source.  The overrides carry the same raw text and BokehJS
             # lets them win on any tick they match.
             _labels = {str(k): str(v) for k, v in overrides.items()}
-            axis_obj.formatter = CustomJSTickFormatter(
-                args={"labels": json.dumps(_labels)},
-                code="const m = JSON.parse(labels); "
-                     "return m[String(tick)] || String(tick);")
+            label_json = json.dumps(_labels)
             axis_obj.major_label_overrides = overrides
     else:
         if overrides:
             axis_obj.major_label_overrides = overrides
 
-    fmt = spec["format"] or fmt_fallback
+    # WP-30 P1.5: every tick is written in the axis's display format --
+    # format()'s word, else the format twoway takes from the layers
+    # (fmt_fallback) -- beside any text labels, as twoway writes them.
+    typed = _dash_axis_format_text(spec["format"]) if spec["format"] else ""
+    fmt = typed or fmt_fallback
     if fmt:
-        # Stata's display text at each tick (GAPS2 E3, G6): an explicit
-        # format() of any numeric kind, and -- as before -- a variable's
-        # own %f format; a %g variable's default ticks are GAPS2 G10's.
         _fk = _dash_fmt_kind(fmt) if fmt.isascii() else None
-        if _fk in ("f", "g", "e") and (spec["format"] or _fk == "f"):
+        if _fk not in ("f", "g", "e", "t"):
+            # Accepted by twoway (dash.ado refuses what it refuses), but
+            # not a format the writer writes exactly: %9.0g, one note.
+            if typed:
+                shown = fmt[:80] + ("..." if len(fmt) > 80 else "")
+                _dash_warn_once(
+                    ("axis-format", option, fmt[:80]),
+                    f"dash: {option}() format({shown}) is written in "
+                    f"%9.0g on the dashboard; twoway's text can differ.")
+            fmt = "%9.0g"
+        kind = date_kind or ""
+        if label_json is not None:
+            axis_obj.formatter = _dash_fmt_label_tick_formatter(
+                label_json, fmt, kind, "", fmt_cache)
+        else:
             axis_obj.formatter = _dash_fmt_tick_formatter(
-                fmt, "", "", fmt_cache)
-        elif spec["format"] and _stata_date_kind(fmt) is None:
-            warnings.warn(
-                f"dash: axis format({spec['format']}) is not a numeric "
-                f"display format dash reproduces; the ticks are "
-                f"unformatted.", UserWarning,
-            )
+                fmt, kind, "", fmt_cache)
+    elif label_json is not None:
+        _cur = axis_obj
+        if isinstance(_cur, (list, tuple)):
+            _cur = _cur[0] if len(_cur) else None
+        _cur = getattr(_cur, "formatter", None)
+        _cargs = getattr(_cur, "args", None) or {}
+        if isinstance(_cur, CustomJSTickFormatter) and "fmt" in _cargs:
+            # The axis already carries a writer (a date axis's): the
+            # unlabelled ticks keep it.
+            axis_obj.formatter = _dash_fmt_label_tick_formatter(
+                label_json, _cargs.get("fmt"), _cargs.get("kind", ""),
+                _cargs.get("storage", ""), fmt_cache)
+        else:
+            axis_obj.formatter = CustomJSTickFormatter(
+                args={"labels": label_json},
+                code="const m = JSON.parse(labels); "
+                     "return m[String(tick)] || String(tick);")
 
     if spec["labsize"]:
         # Stata's text units, per axis (WP-30 P1.12a): *# multiplies the
@@ -24417,10 +24763,28 @@ def _fmt_num(v):
     return f"{f:.15g}"
 
 
+def _dash_varformat_writable(fmt, by_option, dim):
+    """*fmt*, or ``%9.0g`` with one note when it came from a layer's
+    ``xvarformat()``/``yvarformat()`` (*by_option*) and is no format the
+    writer writes exactly (WP-30 P1.5: twoway accepts any text there)."""
+    if not fmt or not by_option:
+        return fmt
+    _fk = _dash_fmt_kind(fmt) if fmt.isascii() else None
+    if _fk in ("f", "g", "e", "t"):
+        return fmt
+    shown = fmt[:80] + ("..." if len(fmt) > 80 else "")
+    _dash_warn_once(
+        ("axis-format", f"{dim}varformat", fmt[:80]),
+        f"dash: {dim}varformat({shown}) is written in %9.0g on the "
+        f"dashboard; twoway's text can differ.")
+    return "%9.0g"
+
+
 def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
                              numeric_formats, seen=None, key="",
                              grid_color=None, value_labels=None,
-                             value_label_names=None, fmt_cache=None):
+                             value_label_names=None, fmt_cache=None,
+                             plots=None, date_vars=None):
     """xlabel()/ylabel(), then xtick()/ytick() beside them, on the figure's
     own axes -- not a yaxis(2)/xaxis(2) axis, which ylabel2()/xlabel2()
     label; the sub-options the grammar does not honour are named.
@@ -24428,8 +24792,18 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
     modes pass their scheme's.  *value_labels*/*value_label_names* are the
     dataset's, for ``valuelabel`` (G16, WP-28 S14): x options map through
     *xvar*'s set, y options through *yvar*'s (the first y variable's, as
-    twoway does)."""
+    twoway does).
+
+    With *plots* (both renderers pass them; WP-30 P1.5) every axis is
+    written in the format twoway labels it with
+    (:func:`_dash_axis_tick_formats`), with or without ``xlabel()``; a
+    date axis keeps its date writer unless a layer's ``xvarformat()``/
+    ``yvarformat()`` or a ``format()`` names one.  Without them (a direct
+    caller) the variable's own format is the fallback, as before."""
     cols = getattr(frame, "columns", [])
+    fmts = (None if plots is None else
+            _dash_axis_tick_formats(plots, numeric_formats or {},
+                                    date_vars or {}))
     for ax_key, tick_key, axes, grids, var, rattr in (
             ("xlabel", "xtick", fig.xaxis, fig.xgrid, xvar, "x_range_name"),
             ("ylabel", "ytick", fig.yaxis, fig.ygrid, yvar, "y_range_name")):
@@ -24439,6 +24813,13 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
         kind = _dash_axis_date_kind(fig, ax_key[0])
         vlabels = _dash_value_labels_for(var, value_labels, value_label_names)
         raw = graph_opts.get(ax_key, "")
+        if fmts is None:
+            fb = (numeric_formats or {}).get(var, "")
+        else:
+            fb, by_opt = fmts[ax_key[0]]
+            if kind and not by_opt:
+                fb = ""
+            fb = _dash_varformat_writable(fb, by_opt, ax_key[0])
         if raw:
             spec = _dash_parse_axis_spec(raw)
             _dash_report_suboptions(ax_key, spec.get("unsupported", []),
@@ -24446,9 +24827,16 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
             if kind:
                 spec = _dash_date_axis_spec(spec, kind, ax_key)
             _dash_apply_axis_spec(axis_obj, grid_obj, spec,
-                                  col, (numeric_formats or {}).get(var, ""),
+                                  col, fb,
                                   grid_color, vlabels, fmt_cache=fmt_cache,
-                                  ref_in=OptionTranslator.size_ref_of(fig))
+                                  ref_in=OptionTranslator.size_ref_of(fig),
+                                  date_kind=kind, option=ax_key)
+        elif fb and fmts is not None:
+            _dash_apply_axis_spec(axis_obj, grid_obj,
+                                  _dash_parse_axis_spec(""), col, fb,
+                                  grid_color, vlabels, fmt_cache=fmt_cache,
+                                  ref_in=OptionTranslator.size_ref_of(fig),
+                                  date_kind=kind, option=ax_key)
         traw = graph_opts.get(tick_key, "")
         if traw:
             _dash_apply_tick_option(axis_obj, grid_obj, traw, tick_key, col,
@@ -24604,7 +24992,8 @@ def _dash_secondary_values(fig, range_attr, name):
 def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                                 grid_color=None, plots=None,
                                 value_labels=None, value_label_names=None,
-                                fmt_cache=None):
+                                fmt_cache=None, numeric_formats=None,
+                                date_vars=None):
     """Fit the second axes to what their layers drew, then label them.
 
     Called once every layer is drawn, in both modes.  Two claims of
@@ -24634,9 +25023,17 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
     range() value and the ylabel2()/xlabel2() positions (unless
     ``norescale``), padded by :func:`_dash_padded_range` -- range() only
     ever widens (WP-28 B2).
+
+    With *numeric_formats* (both renderers pass them; WP-30 P1.5) a
+    second axis is written in the format of the layer twoway takes it
+    from (:func:`_dash_axis_tick_formats`), with or without
+    ``ylabel2()``/``xlabel2()``; a date variable there gives none (S35's).
     """
     from bokeh.models import Grid, LinearAxis, LogAxis
     plots = plots or []
+    fmts2 = (None if numeric_formats is None else
+             _dash_axis_tick_formats(plots, numeric_formats,
+                                     date_vars or {}))
     for rng_attr, name, sides, kw, dim, axis_key in (
             ("extra_y_ranges", "y2", ("left", "right"), "y_range_name", 1,
              "yaxis"),
@@ -24733,9 +25130,23 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                 break
             vlabels2 = _dash_value_labels_for(var2, value_labels,
                                               value_label_names)
-            _dash_apply_axis_spec(ax, grids, spec, col_vals or None, "",
+            fb2 = ""
+            if fmts2 is not None:
+                fb2, _by2 = fmts2[name]
+                fb2 = _dash_varformat_writable(fb2, _by2, n)
+            _dash_apply_axis_spec(ax, grids, spec, col_vals or None, fb2,
                                   grid_color, vlabels2, fmt_cache=fmt_cache,
-                                  ref_in=OptionTranslator.size_ref_of(fig))
+                                  ref_in=OptionTranslator.size_ref_of(fig),
+                                  option=f"{n}label2")
+        elif fmts2 is not None and ax is not None:
+            fb2, _by2 = fmts2[name]
+            fb2 = _dash_varformat_writable(fb2, _by2, n)
+            if fb2:
+                _dash_apply_axis_spec(ax, [], _dash_parse_axis_spec(""),
+                                      None, fb2, grid_color, None,
+                                      fmt_cache=fmt_cache,
+                                      ref_in=OptionTranslator.size_ref_of(fig),
+                                      option=f"{n}label2")
         if tspec is not None:
             # After the labels, so its CustomJSTicker keeps their ticks as
             # its labelled ones; whether or not ylabel2() is given.
@@ -25548,7 +25959,9 @@ def _dash_graph_text_props(model):
     A ``CustomJSTickFormatter`` is a sink only when its ``args`` is exactly
     the tick-label map ``_dash_apply_axis_spec`` writes (one ``labels`` key
     holding a JSON string); the display-format formatter, whose ``args``
-    carry ``fmt``, ``kind`` and ``storage``, holds no user text.  Class
+    carry ``fmt``, ``kind`` and ``storage``, holds no user text.  WP-30
+    P1.5's labels-plus-format formatter (``labels`` beside ``fmt``,
+    ``kind`` and ``storage``) is a sink too, for its ``labels``.  Class
     names come only from the constant table, never from the document.
     """
     import bokeh.models as _bm
@@ -25560,7 +25973,9 @@ def _dash_graph_text_props(model):
             continue
         if how == "labels":
             args = getattr(model, prop, None) or {}
-            if (set(args) != {"labels"}
+            if ("labels" not in args
+                    or not set(args) - {"labels"} <= {"fmt", "kind",
+                                                      "storage"}
                     or not isinstance(args["labels"], str)):
                 continue
         out.append((prop, how))
@@ -32561,7 +32976,9 @@ class DashRenderer:
                                  grid_color=self.scheme.grid_color,
                                  value_labels=self.value_labels,
                                  value_label_names=self.value_label_names,
-                                 fmt_cache=getattr(self, "_fmt_models", None))
+                                 fmt_cache=getattr(self, "_fmt_models", None),
+                                 plots=plots,
+                                 date_vars=getattr(self, "date_vars", {}) or {})
 
         # Plot categories that use non-standard JSON variable keys.  Defined
         # at module level so the generated server app shares them rather than
@@ -32815,7 +33232,11 @@ class DashRenderer:
                                     value_labels=self.value_labels,
                                     value_label_names=self.value_label_names,
                                     fmt_cache=getattr(self, "_fmt_models",
-                                                      None))
+                                                      None),
+                                    numeric_formats=getattr(
+                                        self, "numeric_formats", {}) or {},
+                                    date_vars=getattr(self, "date_vars",
+                                                      {}) or {})
 
         # ---- Legend: Stata's keys, and Stata's rule for showing one ----
         self._rebuild_legend(fig, locals().get("_plot_renderers", []),
@@ -35423,6 +35844,13 @@ class ServerAppBuilder:
                          "_dash_fmt_tokenize_picture", "_dash_fmt_date",
                          "_dash_fmt_picture_width", "_dash_stata_value_of",
                          "_dash_fmt", "_dash_fmt_text",
+                         # Explicit-digit g and axis formats from the
+                         # plots (WP-30 P1.5, P1.5.7).
+                         "_dash_g_text_explicit",
+                         "_dash_axis_format_text", "_dash_layer_tick_format",
+                         "_dash_axis_tick_formats",
+                         "_dash_fmt_label_tick_formatter",
+                         "_dash_varformat_writable",
                          # _dash_plot_type_names is NOT copied: the parity
                          # guards read it from dash_render.py, and nothing
                          # in the app called its copy (WP-26, 24sep2026).
@@ -37493,6 +37921,7 @@ class ServerAppBuilder:
             "                                 grid_color=_DASH_SCHEME.grid_color,",
             "                                 value_labels=val_labels,",
             "                                 value_label_names=val_label_names,",
+            "                                 plots=plots, date_vars=_date_vars,",
             "                                 fmt_cache=_fmt_cache)",
             "",
             '        # Legend boundaries.  NOT ONE of the 44 glyph calls in this loop',
@@ -37642,6 +38071,7 @@ class ServerAppBuilder:
             "                                    plots=plots,",
             "                                    value_labels=val_labels,",
             "                                    value_label_names=val_label_names,",
+            "                                    numeric_formats=_num_formats, date_vars=_date_vars,",
             "                                    fmt_cache=_fmt_cache)",
             "        # The autoranges over the graph's own source only, as the",
             "        # saved figure's are (WP-28 B2).",

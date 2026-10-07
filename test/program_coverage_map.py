@@ -739,6 +739,7 @@ COVERAGE = {
         # WP-30 S16 (P1.2b): Intensity as an opaque blend (P1.2 part b, M1)
         # WP-30 S17 (P1.23b): Date and format text in keys and tooltips (P1.23 part b)
         # WP-30 S18 (P1.5): Axis format fallbacks (P1.5)
+        "_dash_axis_fmts": ("test_option_validation.cscript:AF-01", "test_option_validation.cscript:AF-06"),
         # WP-30 S19 (P1.16): Legend keys and default axis titles (P1.16)
         # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)
         # WP-30 S21 (P1.3a): natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)

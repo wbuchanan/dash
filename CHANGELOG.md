@@ -332,7 +332,10 @@ and now matches Stata.
 
 <!-- WP-30 P1.4b -->
 
-<!-- WP-30 P1.5 -->
+- Axis ticks are written in the display format twoway labels the axis with: `dash scatter mpg weight` wrote Bokeh's 2000 3000 4000 5000 and now writes weight's `%8.0gc` 2,000 3,000 4,000 5,000; a histogram's heights read 1.0e-04 (`%6.4g`), a fit or `scatteri` axis `%9.0g`, a second axis its first layer's format, with or without `ylabel2()`, and `xvarformat()`/`yvarformat()` are read. Every numeric axis of every dashboard changes from Bokeh's text to Stata's, and each distinct format adds one formatter, about 33 KB, to the page. (WP-30, P1.5)
+- `format()` on a date axis writes the stored value as twoway does: `dash line close date, xlabel(, format(%9.0fc))` wrote epoch milliseconds (9.47e+11) and now writes 14,976; `xlabel(, format(%tdDD/NN/CCYY))` was dropped without a note and now writes 01/01/2001; `xlabel(, format(%td))` on a numeric axis was ignored and now writes dates; `xlabel(, format(%12s))` drew unformatted ticks and now draws `%9.0g`, with a note. (WP-30, P1.5)
+- Narrow display formats with an explicit digit count write what Stata's `display` writes: `%6.4g` of .0001 wrote .0001 and now writes 1.0e-04, `%6.2e` of 12345 wrote 1.e+04 and now 1.2e+04, and `%10.1g` of 1.23 wrote 1 and now 1.2, on axis ticks, kpi `fmt()`, `mlabformat()`, tooltips and slider values. (WP-30, P1.5)
+
 
 <!-- WP-30 P1.8a -->
 
@@ -716,7 +719,9 @@ and now matches Stata.
 
 <!-- WP-30 P1.1b -->
 
-<!-- WP-30 P1.5 -->
+- A `format()` in `xlabel()`, `ylabel()`, `xtick()`, `ytick()`, their minor and `axis(2)` forms, or in the colour key's `zlabel()`, that twoway refuses is refused in its words, `invalid format, <fmt>`, r(198), such as `format(bogus)`, `format(%9.9f)` or `format(%2046.0f)`; dash named it in a note and drew unformatted ticks or the key. (WP-30, P1.5)
+- `xvarformat()` and `yvarformat()` written after the plot groups' comma are refused as twoway refuses them, `option xvarformat() not allowed`, r(198); dash named them in its note and drew the graph. Inside a plot they are now honoured. (WP-30, P1.5)
+
 
 <!-- WP-30 P1.6 -->
 

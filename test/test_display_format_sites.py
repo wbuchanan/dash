@@ -25,6 +25,7 @@ import os
 import re
 import sys
 import tempfile
+import time
 import warnings
 from collections import namedtuple
 
@@ -511,8 +512,11 @@ class TestNumericAxis:
 
     @pytest.mark.parametrize("mode", MODES)
     def test_format_suboption_is_written_by_the_formatter(self, mode):
+        """Flipped (WP-30 P1.5): the %12s graph getting no writer was wrong
+        because twoway accepts %12s; it is drawn in %9.0g with the note."""
         cases = {"%9.0fc": "4,099", "%9.2e": "4.10e+03",
-                 "%9.3g": dr._dash_fmt_text(4099, "%9.3g")}
+                 "%9.3g": dr._dash_fmt_text(4099, "%9.3g"),
+                 "%9.0g": "4099"}
         graphs = [_graph(f"g{i}", [_scatter("price", "mpg")],
                          ylabel=f", format({f})")
                   for i, f in enumerate(cases)]
@@ -531,14 +535,22 @@ class TestNumericAxis:
         del figs
 
     def test_an_absurd_width_is_bounded_and_named(self):
+        """Flipped (WP-30 P1.5): "no writer" was wrong because one rule
+        holds for a format the writer cannot write (P1.5.8): %9.0g with
+        one note; dash.ado refuses this word before it gets here."""
         spec = dr._dash_parse_axis_spec(", format(%9.999999999f)")
         from bokeh.plotting import figure
         fig = figure()
+        dr._dash_reset_notes()
+        t0 = time.monotonic()
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             dr._dash_apply_axis_spec(fig.yaxis, fig.ygrid, spec)
+        assert time.monotonic() - t0 < 1
         assert any("format(" in str(w.message) for w in caught)
-        assert not isinstance(fig.yaxis[0].formatter, CustomJSTickFormatter)
+        fm = fig.yaxis[0].formatter
+        assert isinstance(fm, CustomJSTickFormatter)
+        assert fm.args["fmt"] == "%9.0g"
 
 
 # ---------------------------------------------------------------------------

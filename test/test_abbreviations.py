@@ -626,8 +626,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
                           if ln.strip().startswith("//"))
                 for prog, body in bodies.items()}
     # 108 -> 114: P1.1a explains the asis style options and their
-    # normalisation.
-    assert comments == {"_dash_parse_plot_opts": 114,
+    # normalisation.  114 -> 117: P1.5 names xvarformat()'s measured
+    # minimum.
+    assert comments == {"_dash_parse_plot_opts": 117,
                         "_dash_parse_graph_opts": 71}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --
