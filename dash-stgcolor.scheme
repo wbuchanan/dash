@@ -348,6 +348,46 @@ color ci2_arealine  #f7f4e4
 linewidth ci2_area      medium
 
 * ---------------------------------------------------------------------------
+* Added 07oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor -> stgcolor); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* The chrome (WP-30 P1.2a): tick-label angles, grid patterns, the
+* tick's colour, width, length and side, each axis role's style,
+* the alt-axis switches, the text boxes' justification and clock
+* positions, and system naturally_white.  Effective values, read
+* through style/ticksetstyle-*, gridstyle-*, tickstyle-major,
+* axisstyle-* and textboxstyle-* as the plot-region group's are.
+anglestyle horizontal_tick     horizontal
+anglestyle vertical_tick       horizontal
+linepattern major_grid          dash
+linepattern minor_grid          dot
+color tick                #000000
+color minortick           #000000
+linewidth tick                thin
+gsize tick                tiny
+tickposition axis_tick           outside
+axisstyle horizontal_default  horizontal_default
+axisstyle vertical_default    vertical_default
+axisstyle horizontal_nogrid   horizontal_nogrid
+axisstyle vertical_nogrid     vertical_nogrid
+yesno alt_xaxes           no
+yesno alt_yaxes           no
+horizontal heading             center
+horizontal subheading          center
+horizontal body                center
+horizontal small_body          center
+clockdir title_position      12
+clockdir subtitle_position   12
+clockdir note_position       7
+clockdir caption_position    7
+system naturally_white     1
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -441,5 +481,29 @@ linewidth ci2_area      medium
 * provenance: linewidth plotregion -- transcribed from scheme-s2color.scheme:1225 `linewidth plotregion thin'
 * provenance: linepattern plotregion -- transcribed from scheme-s2color.scheme:584 `linepattern plotregion solid'
 * provenance: textboxstyle note -- transcribed from scheme-s2color.scheme:1320 `textboxstyle note small_body'
+* provenance: anglestyle horizontal_tick -- transcribed from scheme-s2color.scheme:1964 `anglestyle horizontal_tick horizontal'
+* provenance: anglestyle vertical_tick -- transcribed from scheme-stcolor.scheme:32 `anglestyle vertical_tick horizontal'
+* provenance: linepattern major_grid -- transcribed from scheme-stcolor.scheme:31 `linepattern major_grid dash'
+* provenance: linepattern minor_grid -- transcribed from scheme-s2color.scheme:566 `linepattern minor_grid dot'
+* provenance: color tick -- transcribed from scheme-s2color.scheme:349 `color tick black'
+* provenance: color minortick -- transcribed from scheme-s2color.scheme:350 `color minortick black'
+* provenance: linewidth tick -- transcribed from scheme-s2color.scheme:1206 `linewidth tick thin'
+* provenance: gsize tick -- transcribed from scheme-s2color.scheme:153 `gsize tick tiny'
+* provenance: tickposition axis_tick -- transcribed from scheme-s2color.scheme:1892 `tickposition axis_tick outside'
+* provenance: axisstyle horizontal_default -- transcribed from scheme-s2color.scheme:1821 `axisstyle horizontal_default horizontal_default'
+* provenance: axisstyle vertical_default -- transcribed from scheme-s2color.scheme:1822 `axisstyle vertical_default vertical_default'
+* provenance: axisstyle horizontal_nogrid -- transcribed from scheme-s2color.scheme:1823 `axisstyle horizontal_nogrid horizontal_nogrid'
+* provenance: axisstyle vertical_nogrid -- transcribed from scheme-s2color.scheme:1824 `axisstyle vertical_nogrid vertical_nogrid'
+* provenance: yesno alt_xaxes -- transcribed from scheme-s2color.scheme:2167 `yesno alt_xaxes no'
+* provenance: yesno alt_yaxes -- transcribed from scheme-s2color.scheme:2168 `yesno alt_yaxes no'
+* provenance: horizontal heading -- transcribed from scheme-s2color.scheme:1775 `horizontal heading center'
+* provenance: horizontal subheading -- transcribed from scheme-s2color.scheme:1776 `horizontal subheading center'
+* provenance: horizontal body -- transcribed from scheme-s2color.scheme:1779 `horizontal body center'
+* provenance: horizontal small_body -- transcribed from scheme-s2color.scheme:1780 `horizontal small_body center'
+* provenance: clockdir title_position -- transcribed from scheme-s2color.scheme:1920 `clockdir title_position 12'
+* provenance: clockdir subtitle_position -- transcribed from scheme-s2color.scheme:1921 `clockdir subtitle_position 12'
+* provenance: clockdir note_position -- transcribed from scheme-s2color.scheme:1923 `clockdir note_position 7'
+* provenance: clockdir caption_position -- transcribed from scheme-s2color.scheme:1922 `clockdir caption_position 7'
+* provenance: system naturally_white -- transcribed from scheme-s2color.scheme:28 `system naturally_white 1'
 * END provenance (WP-17)
 * ---------------------------------------------------------------------------

@@ -1549,7 +1549,6 @@ class TestWp29Tracking:
 #: the allowance cannot outlive its reason.  The closeout (S58.1) leaves it {}.
 WP30_OPEN = {
     "P1.1b": "Per-series value lists such as mlabel(make rep78), jitter(2 3), base(10 20) and barwidth(1 2) are refused r(198), where twoway applies them series by series",
-    "P1.2a": "The default chrome differs from every scheme: a bold left-aligned title, italic axis titles, Bokeh's minor ticks and tick geometry, and the schemes' tick angles, grid patterns, tick colours and economist axes missing",
     "P1.2b": "Markers are drawn at alpha 0.8, and fintensity() and the schemes' bar and area intensities are applied as transparency, where Stata blends them opaquely",
     "P1.3a": "Default numeric axes use Bokeh's ticker and 10 percent padding, not twoway's natscale ticks and plot-region margin, and fit lines are left out of the axis range",
     "P1.3b": "Default %td to %ty date axes keep Bokeh's DatetimeTicker, not twoway's tsnatscale ticks",

@@ -863,8 +863,11 @@ class TestTheTitlePlacement:
                            "legend": "position(12)"}))
         f = r.figures["g1"]
         _one_cue(r)
+        # Flipped (WP-30 P1.2a): the subtitle was a Label, which was wrong
+        # because twoway places it by the scheme's clock; S15 draws it as a
+        # side-panel Title, still outside the legend.
         assert [type(m).__name__ for m in f.above] == ["Title", "Legend",
-                                                       "Label"]
+                                                       "Title"]
         assert f.above[0].tags == ["dash_stale_cue"]
 
     def test_no_marked_figure_has_its_toolbar_above(self):

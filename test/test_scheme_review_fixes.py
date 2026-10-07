@@ -546,7 +546,8 @@ class TestHostileSchemeValues:
             assert any(key in m for m in msgs), (key, msgs)
         assert sp.legend_position is None
         assert sp.legend_rows == 0
-        assert sp.grid_line_width == pytest.approx(0.8)
+        assert sp.grid_line_width == pytest.approx(
+            dr.OptionTranslator.translate_lwidth("thin"))  # WP-30 P1.2a: the default is the medium/thin rung on Stata's ladder (S13 D-13g)
 
     def test_a_negative_legend_cols_is_refused(self, tmp_path, monkeypatch):
         sp, msgs = self._parse(tmp_path, monkeypatch,
@@ -555,10 +556,13 @@ class TestHostileSchemeValues:
         assert sp.legend_cols is None
 
     @pytest.mark.parametrize("key, attr, default", [
-        ("linewidth p", "default_line_width", 1.5),
-        # Flipped (WP-30 P1.12b): the thin rung is .2 x 3.84 = 0.768 px.
-        ("linewidth minor_grid", "minor_grid_line_width", 0.768),
-        ("linewidth axisline", "axis_line_width", 0.768),
+        ("linewidth p", "default_line_width",
+         dr.OptionTranslator.translate_lwidth("medium")),  # WP-30 P1.2a: the default is the medium/thin rung on Stata's ladder (S13 D-13g)
+        # P1.12b and P1.2a: the thin rung on Stata's ladder.
+        ("linewidth minor_grid", "minor_grid_line_width",
+         dr.OptionTranslator.translate_lwidth("thin")),
+        ("linewidth axisline", "axis_line_width",
+         dr.OptionTranslator.translate_lwidth("thin")),
     ])
     def test_every_negative_linewidth_is_refused(self, key, attr, default,
                                                  tmp_path, monkeypatch):
@@ -586,7 +590,8 @@ class TestHostileSchemeValues:
         grids = list(fig.xgrid) + list(fig.ygrid)
         assert len(grids) == 2, grids
         for grid in grids:
-            assert grid.grid_line_width == pytest.approx(0.8)
+            assert grid.grid_line_width == pytest.approx(
+                dr.OptionTranslator.translate_lwidth("thin"))  # WP-30 P1.2a: the default is the medium/thin rung on Stata's ladder (S13 D-13g)
 
 
 # ---------------------------------------------------------------------------

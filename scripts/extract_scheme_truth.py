@@ -540,6 +540,11 @@ def unit_ladders(r: SchemeResolver) -> dict:
 # style/axisstyle-<name>.style then names the `yesno' key that is read --
 # `set draw_major_grid scheme draw_major_hgrid' -- or gives a literal yes/no.
 AXIS_ROLES = {"x": "horizontal_default", "y": "vertical_default"}
+# A second axis (yaxis(2), xaxis(2)) is built with the _nogrid roles
+# (t/twowaygraph_g.class adds axis 2 in the nogrid style): economist's
+# measured y2 has a line and ticks (WP-30 P1.2a, E8), which `vertical_nogrid'
+# gives and `vertical_default' (no line under economist) would not.
+AXIS2_ROLES = {"x": "horizontal_nogrid", "y": "vertical_nogrid"}
 
 
 def axis_grid_switches(r: SchemeResolver, axis: str) -> dict:
@@ -594,6 +599,56 @@ def resolve_linepattern(r: SchemeResolver, token: str | None):
     if st and "pattern" in st:
         dash = [float(x) for x in st["pattern"].split()]
     return {"name": tok, "dash": dash}
+
+
+def resolve_anglestyle(r: SchemeResolver, token: str | None):
+    """anglestyle token -> {name, degrees}.
+
+    A name is read from ``style/anglestyle-<name>.style``'s ``set val``
+    (anglestyle-vertical.style: ``set val 90``); a bare number is degrees.
+    """
+    if token is None:
+        return None
+    tok = token.strip().strip('"')
+    lit = _as_number(tok)
+    if lit is not None:
+        return {"name": tok, "degrees": float(lit)}
+    st = r.style("anglestyle", tok.lower()) or {}
+    v = _as_number(st.get("val", ""))
+    return {"name": tok, "degrees": float(v) if v is not None else None}
+
+
+def axis_style_flags(r: SchemeResolver, role_key: str) -> dict:
+    """Whether the axisstyle *role_key* resolves to draws its line and ticks.
+
+    ``axisstyle <role_key>`` names a style; ``style/axisstyle-<name>.style``
+    gives ``set linestyle`` (``none``: no line) and ``set majorstyle scheme
+    <tickset>``.  ``ticksetstyle <tickset>`` names
+    ``style/ticksetstyle-<name>.style``, whose ``set tickstyle scheme <ts>``
+    goes through ``tickstyle <ts>`` to ``style/tickstyle-<name>.style``'s
+    ``set show_ticks`` (axisstyle-vertical_nolinetick.style ->
+    ticksetstyle-major_vert_notickbig.style -> tickstyle-major_notickbig
+    .style: ``show_ticks no``).
+    """
+    tok = r.get("axisstyle", role_key, class_default=False)
+    name = (tok if tok is not None else role_key).strip().strip('"')
+    st = r.style("axisstyle", name.lower()) or {}
+    line = (st.get("linestyle") or "").strip().lower() != "none"
+    ticks = True
+    major = (st.get("majorstyle") or "").split()
+    if len(major) == 2 and major[0] == "scheme":
+        tset = r.get("ticksetstyle", major[1], class_default=False)
+        tset = (tset if tset is not None else major[1]).strip().strip('"')
+        tst = r.style("ticksetstyle", tset.lower()) or {}
+        tsref = (tst.get("tickstyle") or "").split()
+        if len(tsref) == 2 and tsref[0] == "scheme":
+            ts = r.get("tickstyle", tsref[1], class_default=False)
+            ts = (ts if ts is not None else tsref[1]).strip().strip('"')
+            tick = r.style("tickstyle", ts.lower()) or {}
+            ticks = (tick.get("show_ticks") or "yes").strip().lower() != "no"
+    return {"role": role_key, "axisstyle": name, "declared": tok is not None,
+            "line": line, "ticks": ticks,
+            "style_file": f"style/axisstyle-{name.lower()}.style"}
 
 
 # --------------------------------------------------------------------------- #
@@ -1072,6 +1127,114 @@ def extract(stata_base: str, scheme: str) -> dict:
             "note_box_fill_color": fill,
         }
 
+    # The chrome (WP-30 P1.2a): tick-label angles, grid patterns, the tick's
+    # colour, width, length and side, each axis role's line and tick flags,
+    # the alt_xaxes/alt_yaxes switches, the text boxes' justification and
+    # clock positions, `system naturally_white', and the p#bar/p#area
+    # intensity chains.  Each key is the scheme key Stata's style file names
+    # (style/tickstyle-major.style: `set length scheme tick', `set position
+    # scheme axis_tick', `set linestyle scheme tick'; style/ticksetstyle-
+    # major_vert_default.style: `set tickangle scheme vertical_tick';
+    # style/gridstyle-major.style: `set linestyle scheme major_grid').
+    def chrome_one(out_key, cls, key, conv, default=None, rule=None):
+        tok, s_, prov = getsrc(cls, [key], class_default=False)
+        if tok is None and default is not None:
+            tok = default
+            s_ = None
+            prov = {"kind": "inferred", "directive": f"{cls} {key}",
+                    "value": default, "file": None, "line": None,
+                    "rule": rule or (f"`{cls} {key}' is not set anywhere in "
+                                     f"the #include chain; Stata's default "
+                                     f"`{default}'")}
+        sources[out_key] = s_
+        provenance[out_key] = prov
+        return conv(tok) if tok is not None else None
+
+    def chrome_truth():
+        tok_name = lambda t: t.strip().strip('"')
+        res = {
+            "tick_angle_x": chrome_one("tick_angle_x", "anglestyle",
+                                       "horizontal_tick",
+                                       lambda t: resolve_anglestyle(r, t),
+                                       "horizontal"),
+            "tick_angle_y": chrome_one("tick_angle_y", "anglestyle",
+                                       "vertical_tick",
+                                       lambda t: resolve_anglestyle(r, t),
+                                       "horizontal"),
+            "major_grid_pattern": chrome_one(
+                "major_grid_pattern", "linepattern", "major_grid",
+                lambda t: resolve_linepattern(r, t), "solid"),
+            "minor_grid_pattern": chrome_one(
+                "minor_grid_pattern", "linepattern", "minor_grid",
+                lambda t: resolve_linepattern(r, t), "solid"),
+            "tick_color": chrome_one(
+                "tick_color", "color", "tick",
+                lambda t: None if tok_name(t).lower() == "none"
+                else c.resolve(t)),
+            "minortick_color": chrome_one(
+                "minortick_color", "color", "minortick",
+                lambda t: None if tok_name(t).lower() == "none"
+                else c.resolve(t)),
+            "tick_line_width": chrome_one("tick_line_width", "linewidth",
+                                          "tick",
+                                          lambda t: resolve_linewidth(r, t)),
+            "tick_length": chrome_one("tick_length", "gsize", "tick",
+                                      lambda t: resolve_sized(r, "gsize", t)),
+            "tick_position": chrome_one("tick_position", "tickposition",
+                                        "axis_tick", tok_name, "outside"),
+        }
+        styles = {}
+        for which, roles in (("", AXIS_ROLES), ("2", AXIS2_ROLES)):
+            for axis, role in roles.items():
+                f = axis_style_flags(r, role)
+                key = f"axis_style_{axis}{which}"
+                tok, s_, prov = getsrc("axisstyle", [role], class_default=False)
+                if tok is None:
+                    prov = {"kind": "inferred",
+                            "directive": f"axisstyle {role}", "value": role,
+                            "file": None, "line": None,
+                            "rule": f"`axisstyle {role}' is not set; the "
+                                    f"style of the same name"}
+                sources[key] = s_
+                provenance[key] = prov
+                styles[axis + which] = f
+        res["axis_styles"] = styles
+        res["alt_axes"] = {
+            a: chrome_one(f"alt_{a}axes", "yesno", f"alt_{a}axes",
+                          lambda t: tok_name(t).lower() == "yes", "no")
+            for a in ("x", "y")}
+        res["justification"] = {
+            k: chrome_one(f"justification_{k}", "horizontal", k, tok_name,
+                          "center")
+            for k in ("heading", "subheading", "body", "small_body")}
+        res["text_positions"] = {
+            k: chrome_one(f"text_position_{k}", "clockdir", f"{k}_position",
+                          lambda t: int(_as_number(tok_name(t)) or 0), d)
+            for k, d in (("title", "12"), ("subtitle", "12"),
+                         ("note", "7"), ("caption", "7"))}
+        res["naturally_white"] = chrome_one(
+            "naturally_white", "system", "naturally_white",
+            lambda t: int(_as_number(tok_name(t)) or 0), "1")
+        for stub in ("bar", "area"):
+            vals, srcs, provs = [], [], []
+            for i in range(1, N_PLOTS + 1):
+                tok, s_, prov = p_chain("intensity", i, stub)
+                vals.append(resolve_intensity(r, tok))
+                srcs.append(s_)
+                provs.append(prov)
+            sources[f"p_{stub}_intensity"] = srcs
+            provenance[f"p_{stub}_intensity"] = provs
+            res[f"p_{stub}_intensity"] = vals
+        # The bare `symbolsize' class default: twoway's size for an msize()
+        # name it does not know (S08; large in economist, medium in s2color).
+        res["symbolsize_default"] = scalar(
+            "symbolsize_default", "symbolsize", [""],
+            lambda t: resolve_sized(r, "symbolsize", t), class_default=True,
+            required=False)
+        if sources.get("symbolsize_default"):
+            sources["symbolsize_default"] = "symbolsize"
+        return res
+
     out = {
         # Stata's own `label "..."' for the scheme.
         "label": r.label,
@@ -1277,6 +1440,7 @@ def extract(stata_base: str, scheme: str) -> dict:
     out.update(xyline_truth())
     out.update(plotregion_line_truth())
     out.update(note_truth())
+    out.update(chrome_truth())
     out.update(opacities)
 
     out["sources"] = sources
@@ -1644,6 +1808,82 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         "reads for its size, text colour and, where it draws a box, fill.",
     ], note_items)
 
+    # --- the chrome (WP-30 P1.2a) ------------------------------------------ #
+    # Effective values of the keys Stata's chrome styles read:
+    # style/ticksetstyle-major_*_default.style (`set tickangle scheme
+    # horizontal_tick|vertical_tick'), style/gridstyle-major|minor.style
+    # (`linestyle major_grid|minor_grid'), style/tickstyle-major.style
+    # (`set length scheme tick', `set position scheme axis_tick', `set
+    # linestyle scheme tick'), style/axisstyle-<name>.style (line and tick
+    # flags), style/textboxstyle-heading|subheading|body|small_body.style
+    # (`set horizontal scheme <name>'), and twoway's clockdir positions.
+    if e.get("tick_angle_x") is not None:
+        def nm(k):
+            return name_of(e.get(k))
+        cl = []
+        for k, fk in (("horizontal_tick", "tick_angle_x"),
+                      ("vertical_tick", "tick_angle_y")):
+            cl.append(("anglestyle", k, nm(fk), (fk, None)))
+        cl += [
+            ("linepattern", "major_grid", nm("major_grid_pattern"),
+             ("major_grid_pattern", None)),
+            ("linepattern", "minor_grid", nm("minor_grid_pattern"),
+             ("minor_grid_pattern", None)),
+            ("color", "tick", e.get("tick_color") or "none",
+             ("tick_color", None)),
+            ("color", "minortick", e.get("minortick_color") or "none",
+             ("minortick_color", None)),
+            ("linewidth", "tick", nm("tick_line_width"),
+             ("tick_line_width", None)),
+            ("gsize", "tick", nm("tick_length"), ("tick_length", None)),
+            ("tickposition", "axis_tick", e.get("tick_position"),
+             ("tick_position", None)),
+        ]
+        styles = e.get("axis_styles") or {}
+        for ax in ("x", "y", "x2", "y2"):
+            f = styles.get(ax)
+            if f:
+                cl.append(("axisstyle", f["role"], f["axisstyle"],
+                           (f"axis_style_{ax}", None)))
+        for a in ("x", "y"):
+            v = (e.get("alt_axes") or {}).get(a)
+            if v is not None:
+                cl.append(("yesno", f"alt_{a}axes", bool(v),
+                           (f"alt_{a}axes", None)))
+        for k in ("heading", "subheading", "body", "small_body"):
+            cl.append(("horizontal", k, (e.get("justification") or {}).get(k),
+                       (f"justification_{k}", None)))
+        for k in ("title", "subtitle", "note", "caption"):
+            cl.append(("clockdir", f"{k}_position",
+                       (e.get("text_positions") or {}).get(k),
+                       (f"text_position_{k}", None)))
+        cl.append(("system", "naturally_white", e.get("naturally_white"),
+                   ("naturally_white", None)))
+        # p#bar/pbar/p#area/parea only where Stata's chain declares them
+        # (none of the 26 does; each resolves to `intensity p').
+        for stub in ("bar", "area"):
+            provs = (e.get("provenance") or {}).get(f"p_{stub}_intensity") or []
+            vals = e.get(f"p_{stub}_intensity") or []
+            for i, (pv, v) in enumerate(zip(provs, vals), 1):
+                d = ((pv or {}).get("directive") or "").split()
+                if (len(d) == 2 and d[1] in (f"p{i}{stub}", f"p{stub}")
+                        and (pv or {}).get("kind") == "transcribed"):
+                    cl.append(("intensity", d[1], name_of(v),
+                               (f"p_{stub}_intensity", i)))
+        group(["The chrome (WP-30 P1.2a): tick-label angles, grid patterns, the",
+               "tick's colour, width, length and side, each axis role's style,",
+               "the alt-axis switches, the text boxes' justification and clock",
+               "positions, and system naturally_white.  Effective values, read",
+               "through style/ticksetstyle-*, gridstyle-*, tickstyle-major,",
+               "axisstyle-* and textboxstyle-* as the plot-region group's are."],
+              cl)
+    group(["twoway's size for an msize() name it does not know: the bare",
+           "symbolsize class default.  Checked where a file carries it, never",
+           "appended."], [
+        ("symbolsize", "", name_of(e.get("symbolsize_default")),
+         ("symbolsize_default", None)),
+    ], optional=True)
+
     # A directive an earlier group already carries is not carried twice
     # (note()'s small_body box is `gsize small_body' above).
     seen: set = set()
@@ -1661,6 +1901,10 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
     return out_groups
 
 
+#: Classes whose bare two-token class default a translation carries.
+_BARE_CLASSES = frozenset({"symbolsize"})
+
+
 def _file_directives(lines: list[str]) -> dict:
     """``(class, key) -> (line index, value)`` for every directive line."""
     out = {}
@@ -1670,6 +1914,10 @@ def _file_directives(lines: list[str]) -> dict:
                 or line.startswith("label")):
             continue
         tokens = line.split()
+        if len(tokens) == 2 and tokens[0].lower() in _BARE_CLASSES:
+            # A bare class default (`symbolsize large').
+            out[(tokens[0].lower(), "")] = (i, tokens[1])
+            continue
         if len(tokens) < 3:
             continue
         out[(tokens[0].lower(), tokens[1].lower())] = (i, " ".join(tokens[2:]))
@@ -1801,12 +2049,13 @@ def provenance_block(name: str, e: dict, groups, present: dict) -> "list[str] | 
             # that key was transcribed, not inferred.
             if (isinstance(entry, dict) and entry.get("kind") == "inferred"
                     and (entry.get("directive") or "").lower()
-                    == f"{cls} {key}".lower()):
+                    == (f"{cls} {key}" if key else cls).lower()):
                 entry = dict(entry, kind="transcribed")
             text = _provenance_text(entry)
             if text is None:
                 continue
-            lines.append(f"* provenance: {cls} {key} -- {text}")
+            spelled = f"{cls} {key}" if key else cls
+            lines.append(f"* provenance: {spelled} -- {text}")
     if not lines:
         return None
     return [
@@ -2152,10 +2401,8 @@ def main(argv=None) -> int:
                 "linewidth": {
                     "unit": "relative size (help linewidthstyle)",
                     "dash_rule": (
-                        "a numeric linewidth is px = value * 5.0 (medium .30 "
-                        "anchored at dash's 1.5px); keywords still go through "
-                        "OptionTranslator._LWIDTH_MAP, whose ratios are not "
-                        "this ladder's -- recorded as a follow-up"),
+                        "a linewidth keyword or number is Stata units, "
+                        "px = max(units x 2.88, 0.3) x 4/3 (WP-30 P1.12b)"),
                     "ladder": ladders["linewidth"],
                 },
             },

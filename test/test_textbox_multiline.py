@@ -79,13 +79,18 @@ def _render(tmp_path, graph_options):
 
 
 def _labels(renderer):
-    """Every Label the figure carries, as a list of their text."""
-    from bokeh.models import Label
+    """Every text box the figure carries -- a Label, or a side-panel Title
+    other than the figure's own title -- as a list of their text.
+    Flipped (WP-30 P1.2a): Labels only was wrong because twoway places
+    subtitle(), note() and caption() by the scheme's clock, which S15
+    draws as side-panel Titles."""
+    from bokeh.models import Label, Title
     out = []
     for fig in renderer.figures.values():
         for panel in ("above", "below", "left", "right", "center"):
             for item in getattr(fig, panel, []):
-                if isinstance(item, Label):
+                if isinstance(item, Label) or (
+                        isinstance(item, Title) and item is not fig.title):
                     out.append(item.text)
     return out
 
@@ -238,24 +243,21 @@ class TestMultilineReachesTheDocument:
         drawn a caption.  A model-only assertion cannot see this, so assert
         the property that makes it drawable.
         """
-        from bokeh.models import Label
+        # Flipped (WP-30 P1.2a): both are Title rows of fig.below, note
+        # first; a Title has no screen offset to clip it out of its row.
+        from bokeh.models import Title
         r = _render(tmp_path, {"note": '"N"', "caption": '"C"'})
-        seen = {}
         for fig in r.figures.values():
-            for item in fig.below:
-                if isinstance(item, Label):
-                    seen[item.text] = item.y
-        assert seen.get("N") is not None and seen.get("C") is not None, seen
-        assert seen["C"] >= 0, (
-            "a negative screen y clips the caption out of its row: %r" % seen
-        )
+            rows = [i.text for i in fig.below if isinstance(i, Title)]
+            assert rows == ["N", "C"], rows
 
     def test_the_caption_is_added_after_the_note(self, tmp_path):
         """Stata puts the note at ring(4) and the caption at ring(5)."""
-        from bokeh.models import Label
+        # Flipped (WP-30 P1.2a): the rows are Titles.
+        from bokeh.models import Title
         r = _render(tmp_path, {"note": '"N"', "caption": '"C"'})
         for fig in r.figures.values():
-            order = [i.text for i in fig.below if isinstance(i, Label)]
+            order = [i.text for i in fig.below if isinstance(i, Title)]
             if "N" in order and "C" in order:
                 assert order.index("N") < order.index("C"), order
 
@@ -523,11 +525,14 @@ _CURDOC_ATTACH = "if __name__ != '__main__':\n    make_document(curdoc())"
 
 def _drawn(fig):
     """The text one figure draws: its title (and the title's colour and
-    size), its Labels' text, and its axis titles."""
-    from bokeh.models import Label
+    size), its text boxes' text (Labels, and side-panel Titles since WP-30
+    P1.2a), and its axis titles."""
+    from bokeh.models import Label, Title
     labels = [m.text for side in ("above", "below", "left", "right",
                                   "center")
-              for m in getattr(fig, side) if isinstance(m, Label)]
+              for m in getattr(fig, side)
+              if isinstance(m, Label) or (isinstance(m, Title)
+                                          and m is not fig.title)]
     title = fig.title
     return {
         "title": None if title is None else title.text,
@@ -696,7 +701,10 @@ class TestTextboxAdversarial:
         for got in (saved, served):
             assert got["title"] == payload
             assert got["labels"] == [payload]
-        assert _page_titles(page) == [payload]
+        # Flipped (WP-30 P1.2a): [payload] was wrong because the note is
+        # now a side-panel Title too, so the page holds the title and the
+        # note, each the payload as typed.
+        assert _page_titles(page) == [payload, payload]
         assert not sentinel.exists()
 
     def test_long_runs_of_quotes_and_apostrophes_are_read_in_bounded_time(

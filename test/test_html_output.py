@@ -1450,8 +1450,10 @@ class TestAdversarialPlotOptions:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["note"] = "<script>alert('xss')</script>"
         html = _render_to_html(spec, data)
-        # The note is a Label -- canvas text -- and live markup nowhere.
-        _assert_drawn_as_text(html, "<script>alert('xss')</script>", "Label")
+        # The note is a Title -- canvas text -- and live markup nowhere.
+        # Flipped (WP-30 P1.2a): "Label" was wrong because twoway places
+        # note() by the scheme's clock, which S15 draws as a side-panel Title.
+        _assert_drawn_as_text(html, "<script>alert('xss')</script>", "Title")
 
 
 # ================================================================

@@ -1021,22 +1021,24 @@ class TestTheShippedFiles:
 
     @pytest.mark.parametrize("name", sorted(dr.SchemeParser._BUILTIN_NAMES))
     def test_80_to_140_directives(self, name):
-        """80 to 140 directives: 79 or 80 for the colour schemes, 109 to 111
-        for the monochrome ones, whose chains declare a connecting-line
-        colour or pattern, a line-plot cycle and their marker symbols, 118
-        for s1manual, which declares symbolsize p1..p9, and 138 for
-        s2gmanual, which declares every p#line and p#lineplot key -- each
-        eleven more (economist twelve) since the S3 batch carried a ci
-        band's keys.  (About 135 and 165 before the S3 batch, when every
-        p#stub cycle and every marker symbol was written out resolved; the
-        batch also added the reference line's, the plot region border's and
-        note()'s text box's keys.)"""
+        """100 to 170 directives: 104 or 105 for the colour schemes (108
+        for economist), 134 to 136 for the monochrome ones, whose chains
+        declare a connecting-line colour or pattern, a line-plot cycle and
+        their marker symbols, 143 for s1manual, which declares symbolsize
+        p1..p9, and 163 for s2gmanual, which declares every p#line and
+        p#lineplot key -- each twenty-four more since WP-30 P1.2a carried
+        the scheme's chrome keys (tick-label angles, grid patterns, the
+        tick's colour, width, length and side, the axis styles, the
+        alt-axis switches, the text boxes' justification and clock
+        positions and system naturally_white).  The node keeps its name.
+        Flipped: 80 <= n <= 140 was wrong because S15 (P1.2a) carries the
+        scheme's chrome keys, measured 104 to 163."""
         n = sum(1 for k, _v in _directives(os.path.join(_SCHEMES,
                                                         "dash-" + name + ".scheme"))
                 if not k.startswith(("sequence", "label")))
-        assert 80 <= n <= 140, (name, n)
+        assert 100 <= n <= 170, (name, n)
         help_text = _read(_HELP)
-        assert re.search(r"80\s+to\s+140\s+directives", help_text)
+        assert re.search(r"100\s+to\s+170\s+directives", help_text)
 
     def test_the_s2mono_family_is_what_includes_s2mono(self):
         for name in _S2MONO_FAMILY:
@@ -1111,15 +1113,15 @@ class TestTheShippedFiles:
         assert list(spans[0].line_dash) == []
 
     def test_no_directive_for_what_dash_does_not_draw(self):
-        """graph bar/box/pie/dot/matrix styling, margins, tick geometry."""
+        """graph bar/box/pie/dot/matrix styling, margins."""
         keys = set()
         for name in dr.SchemeParser._BUILTIN_NAMES:
             keys |= {k for k, _v in _directives(
                 os.path.join(_SCHEMES, "dash-" + name + ".scheme"))}
         bad = sorted(k for k in keys if re.search(
-            r"(?<!text)box|pie|\bdot|matrix|margin|barlabel|barstyle|bar_|"
-            r"tick(?!_label)", k))
-        assert not bad, bad
+            r"(?<!text)box|pie|\bdot|matrix|margin|barlabel|barstyle|bar_",
+            k))
+        assert not bad, bad  # P1.2a: the scheme's tick keys are carried and drawn
 
 
 class TestAnInstalledTreeLooksOnlyForItsOwnTwenty:

@@ -1937,9 +1937,12 @@ _jg_build "`jg_p46'.html"
 local jg_rb = r(rc)
 local jg_rows "`r(rows)'"
 local jg_dr ""
+* Flipped (WP-30 P1.2a): subtitle(), note() and caption() were Labels,
+* which was wrong because twoway places them by the scheme's clock; S15
+* draws them as side-panel Titles in both modes.
 foreach jg_v in sp sc np nc cp cc {
     mata: st_global("JG_WANT", char(39) + "90s " + st_local("jg_v"))
-    _jg_drawn Label
+    _jg_drawn Title
     local jg_dr "`jg_dr'`r(n)'"
 }
 foreach jg_v in lp lq lc {
@@ -3320,21 +3323,28 @@ def _jr_page_check():
         page = fh.read()
     blocks = _jr_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _jr_re.S)
     titles, labels, style = [], [], []
+    title, want = _jr_wanted()
     stack = [_jr_json.loads(_jr_html.unescape(b)) for b in blocks]
     while stack:
         v = stack.pop()
         if isinstance(v, dict):
             if v.get("type") == "object" and v.get("name") in ("Title", "Label"):
                 a = v.get("attributes", {})
+                # Flipped (WP-30 P1.2a): subtitle(), note() and caption()
+                # are side-panel Titles now; one Title reading the title's
+                # text is the graph's title, every other text a box.
                 if v["name"] == "Title":
-                    titles.append(a.get("text"))
-                    style.append(repr(a.get("text_color")) + repr(a.get("text_font_size")))
+                    titles.append((a.get("text"), repr(a.get("text_color")) + repr(a.get("text_font_size"))))
                 else:
                     labels.append(a.get("text"))
             stack.extend(v.values())
         elif isinstance(v, list):
             stack.extend(v)
-    title, want = _jr_wanted()
+    hit = [i for i, (t, _st) in enumerate(titles) if t == title]
+    if hit:
+        style.append(titles[hit[0]][1])
+    labels.extend(t for i, (t, _st) in enumerate(titles) if not hit or i != hit[0])
+    titles = [title] if hit else [t for t, _st in titles]
     ok = len(blocks) == 1 and titles == [title] and sorted(labels) == want
     _jr_M.setGlobal("JR_OK", "1" if ok else "0")
     _jr_M.setGlobal("JR_STYLE", _jr_hash.sha1(ascii(style).encode()).hexdigest()[:12])
@@ -3563,7 +3573,8 @@ foreach jg_x in "s" "n" "c" {
     if "`jg_x'" == "s" mata: st_global("JG_WANT", "s" + char(36) + "J6_G " + char(96) + "=1+1" + char(39))
     if "`jg_x'" == "n" mata: st_global("JG_WANT", "n" + char(96) + "jgnone" + char(39) + " " + char(36) + "J6_G")
     if "`jg_x'" == "c" mata: st_global("JG_WANT", "c" + char(36) + "J6_G")
-    _jg_drawn Label
+    * Flipped (WP-30 P1.2a): the subtitle, note and caption are Titles.
+    _jg_drawn Title
     local jg_dr "`jg_dr'`r(n)'"
 }
 mata: st_global("JG_WANT", "l" + char(36) + "J6_G")

@@ -358,6 +358,46 @@ linewidth ci2_area      medium
 linewidth pother  thick
 
 * ---------------------------------------------------------------------------
+* Added 07oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> economist); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* The chrome (WP-30 P1.2a): tick-label angles, grid patterns, the
+* tick's colour, width, length and side, each axis role's style,
+* the alt-axis switches, the text boxes' justification and clock
+* positions, and system naturally_white.  Effective values, read
+* through style/ticksetstyle-*, gridstyle-*, tickstyle-major,
+* axisstyle-* and textboxstyle-* as the plot-region group's are.
+anglestyle horizontal_tick     horizontal
+anglestyle vertical_tick       horizontal
+linepattern major_grid          solid
+linepattern minor_grid          dot
+color tick                #000000
+color minortick           #000000
+linewidth tick                thin
+gsize tick                tiny
+tickposition axis_tick           inside
+axisstyle horizontal_default  horizontal_default
+axisstyle vertical_default    vertical_nolinetick
+axisstyle horizontal_nogrid   horizontal_nogrid
+axisstyle vertical_nogrid     vertical_nogrid
+yesno alt_xaxes           no
+yesno alt_yaxes           yes
+horizontal heading             left
+horizontal subheading          left
+horizontal body                left
+horizontal small_body          center
+clockdir title_position      11
+clockdir subtitle_position   11
+clockdir note_position       1
+clockdir caption_position    7
+system naturally_white     1
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -454,5 +494,30 @@ linewidth pother  thick
 * provenance: gsize reverse_big -- transcribed from scheme-economist.scheme:46 `gsize reverse_big medlarge'
 * provenance: color reverse_big_text -- transcribed from scheme-economist.scheme:130 `color reverse_big_text white'
 * provenance: color reverse_big -- transcribed from scheme-economist.scheme:128 `color reverse_big emidblue'
+* provenance: anglestyle horizontal_tick -- transcribed from scheme-s2color.scheme:1964 `anglestyle horizontal_tick horizontal'
+* provenance: anglestyle vertical_tick -- transcribed from scheme-economist.scheme:308 `anglestyle vertical_tick horizontal'
+* provenance: linepattern major_grid -- transcribed from scheme-s2color.scheme:565 `linepattern major_grid solid'
+* provenance: linepattern minor_grid -- transcribed from scheme-s2color.scheme:566 `linepattern minor_grid dot'
+* provenance: color tick -- transcribed from scheme-s2color.scheme:349 `color tick black'
+* provenance: color minortick -- transcribed from scheme-s2color.scheme:350 `color minortick black'
+* provenance: linewidth tick -- transcribed from scheme-s2color.scheme:1206 `linewidth tick thin'
+* provenance: gsize tick -- transcribed from scheme-economist.scheme:38 `gsize tick tiny'
+* provenance: tickposition axis_tick -- transcribed from scheme-economist.scheme:299 `tickposition axis_tick inside'
+* provenance: axisstyle horizontal_default -- transcribed from scheme-economist.scheme:275 `axisstyle horizontal_default horizontal_default'
+* provenance: axisstyle vertical_default -- transcribed from scheme-economist.scheme:276 `axisstyle vertical_default vertical_nolinetick'
+* provenance: axisstyle horizontal_nogrid -- transcribed from scheme-economist.scheme:277 `axisstyle horizontal_nogrid horizontal_nogrid'
+* provenance: axisstyle vertical_nogrid -- transcribed from scheme-economist.scheme:278 `axisstyle vertical_nogrid vertical_nogrid'
+* provenance: yesno alt_xaxes -- transcribed from scheme-economist.scheme:386 `yesno alt_xaxes no'
+* provenance: yesno alt_yaxes -- transcribed from scheme-economist.scheme:387 `yesno alt_yaxes yes'
+* provenance: horizontal heading -- transcribed from scheme-economist.scheme:264 `horizontal heading left'
+* provenance: horizontal subheading -- transcribed from scheme-economist.scheme:265 `horizontal subheading left'
+* provenance: horizontal body -- transcribed from scheme-economist.scheme:268 `horizontal body left'
+* provenance: horizontal small_body -- transcribed from scheme-s2color.scheme:1780 `horizontal small_body center'
+* provenance: clockdir title_position -- transcribed from scheme-economist.scheme:311 `clockdir title_position 11'
+* provenance: clockdir subtitle_position -- transcribed from scheme-economist.scheme:312 `clockdir subtitle_position 11'
+* provenance: clockdir note_position -- transcribed from scheme-economist.scheme:314 `clockdir note_position 1'
+* provenance: clockdir caption_position -- transcribed from scheme-economist.scheme:313 `clockdir caption_position 7'
+* provenance: system naturally_white -- transcribed from scheme-s2color.scheme:28 `system naturally_white 1'
+* provenance: symbolsize -- transcribed from scheme-economist.scheme:80 `symbolsize large'
 * END provenance (WP-17)
 * ---------------------------------------------------------------------------

@@ -341,7 +341,7 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               glyphs, an inserted "line_width":1.5 (s2color's linewidth
 #               p); nothing else.  Intended.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "12cea7d0035c309a10c9e871588662ba62ea8f27d777cff81cffc45529d9744d"  # 634f532a -> 12cea7d0: P1.12b every default line, outline, grid and axis width moves to Stata's units
+    "150011f29c72b7f90f8683c8f1637c8fdf1b58380e1511d24a4064303d224b83"  # 634f532a -> 12cea7d0 (P1.12b line widths) -> 150011f2 (P1.2a scheme chrome, merged batch 5)
 )
 
 

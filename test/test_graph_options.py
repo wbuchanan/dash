@@ -184,22 +184,27 @@ class TestAspectRatio:
 class TestNote:
     def test_note_creates_label(self):
         """P6-04: note option creates a Label annotation on the figure."""
-        from bokeh.models import Label
+        # Flipped (WP-30 P1.2a): a Label was wrong because twoway places
+        # the box by the scheme's clock, which S15 draws as a side-panel Title.
+        from bokeh.models import Title
         fig = _get_figure({"note": "This is a note"})
-        labels = [r for r in fig.below if isinstance(r, Label)]
+        labels = [r for r in fig.below if isinstance(r, Title) and r is not fig.title]
         assert len(labels) >= 1, "Expected at least one Label in fig.below"
         assert any("This is a note" in lbl.text for lbl in labels)
 
     def test_note_is_canvas_text_not_html(self):
         """P6-04: a Label is drawn on the canvas, so its text stays literal.
+        Flipped (WP-30 P1.2a): a Label was wrong because twoway places
+        the box by the scheme's clock, which S15 draws as a side-panel Title.
+
 
         Escaping it turned note("R&D") into "R&amp;D" on screen.  Nothing
         executable reaches the document -- Bokeh escapes the model text again
         when it serialises it -- and that is asserted in test_axis_options.py.
         """
-        from bokeh.models import Label
+        from bokeh.models import Title
         fig = _get_figure({"note": "<script>bad()</script>"})
-        labels = [r for r in fig.below if isinstance(r, Label)]
+        labels = [r for r in fig.below if isinstance(r, Title) and r is not fig.title]
         assert labels, "note() drew no label"
         assert any(lbl.text == "<script>bad()</script>" for lbl in labels)
 
@@ -210,16 +215,20 @@ class TestNote:
 class TestCaption:
     def test_caption_creates_label(self):
         """P6-05: caption option creates a Label annotation on the figure."""
-        from bokeh.models import Label
+        # Flipped (WP-30 P1.2a): a Label was wrong because twoway places
+        # the box by the scheme's clock, which S15 draws as a side-panel Title.
+        from bokeh.models import Title
         fig = _get_figure({"caption": "Figure 1: Scatter"})
-        labels = [r for r in fig.below if isinstance(r, Label)]
+        labels = [r for r in fig.below if isinstance(r, Title) and r is not fig.title]
         assert any("Figure 1: Scatter" in lbl.text for lbl in labels)
 
     def test_both_note_and_caption(self):
         """P6-05: both note and caption can coexist."""
-        from bokeh.models import Label
+        # Flipped (WP-30 P1.2a): a Label was wrong because twoway places
+        # the box by the scheme's clock, which S15 draws as a side-panel Title.
+        from bokeh.models import Title
         fig = _get_figure({"note": "Note text", "caption": "Caption text"})
-        labels = [r for r in fig.below if isinstance(r, Label)]
+        labels = [r for r in fig.below if isinstance(r, Title) and r is not fig.title]
         assert len(labels) >= 2
         # Two labels of any text passed: a caption drawn with the note's
         # text, say.  Measured 24sep2026: exactly these two, below.
@@ -306,25 +315,31 @@ class TestXlineYline:
 class TestSubtitle:
     def test_subtitle_creates_label_above(self):
         """P6-08: subtitle option creates a Label annotation in fig.above."""
-        from bokeh.models import Label
+        # Flipped (WP-30 P1.2a): a Label was wrong because twoway places
+        # the box by the scheme's clock, which S15 draws as a side-panel Title.
+        from bokeh.models import Title
         fig = _get_figure({"subtitle": "My subtitle"})
-        labels = [r for r in fig.above if isinstance(r, Label)]
+        labels = [r for r in fig.above if isinstance(r, Title) and r is not fig.title]
         assert len(labels) >= 1
         assert any("My subtitle" in lbl.text for lbl in labels)
 
     def test_subtitle_is_canvas_text_not_html(self):
         """P6-08: canvas text stays literal -- see test_note_is_canvas_text."""
-        from bokeh.models import Label
+        # Flipped (WP-30 P1.2a): a Label was wrong because twoway places
+        # the box by the scheme's clock, which S15 draws as a side-panel Title.
+        from bokeh.models import Title
         fig = _get_figure({"subtitle": "<script>xss()</script>"})
-        labels = [r for r in fig.above if isinstance(r, Label)]
+        labels = [r for r in fig.above if isinstance(r, Title) and r is not fig.title]
         assert labels, "subtitle() drew no label"
         assert any(lbl.text == "<script>xss()</script>" for lbl in labels)
 
     def test_no_subtitle_no_label(self):
         """P6-08: without subtitle option, no Label appears in fig.above."""
-        from bokeh.models import Label
+        # Flipped (WP-30 P1.2a): a Label was wrong because twoway places
+        # the box by the scheme's clock, which S15 draws as a side-panel Title.
+        from bokeh.models import Title
         fig = _get_figure({})
-        labels = [r for r in fig.above if isinstance(r, Label)]
+        labels = [r for r in fig.above if isinstance(r, Title) and r is not fig.title]
         assert len(labels) == 0
 
 

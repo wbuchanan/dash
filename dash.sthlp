@@ -3027,7 +3027,13 @@ Any of those may be followed by a comma and the sub-options
 {cmd:valuelabel} (the axis variable's value labels at the ticks), and
 {cmd:norescale}, under {cmd:twoway}'s spellings in lower case
 ({cmd:ylabel(, for(%9.1f) labs(large) ang(0) nog)}, {cmd:ylabel(, g)},
-{cmd:xlabel(0 1, val)}; {cmd:ylabel(, grid nogrid)} draws the grid, as {cmd:twoway} does); a spelling
+{cmd:xlabel(0 1, val)}; {cmd:ylabel(, grid nogrid)} draws the grid, as {cmd:twoway} does).
+Without {cmd:angle()} the labels take the scheme's
+{cmd:anglestyle horizontal_tick} and {cmd:anglestyle vertical_tick}: the y labels are
+vertical under {cmd:s2color}, {cmd:s2mono}, {cmd:s2gcolor}, {cmd:s1color},
+{cmd:s1mono}, {cmd:s1rcolor}, {cmd:sj}, {cmd:s2manual}, {cmd:s1manual},
+{cmd:s2gmanual} and {cmd:s2color8}, and {cmd:angle(0)} or
+{cmd:angle(horizontal)} keeps them level.  A spelling
 {cmd:twoway} refuses is refused, and quoted label text is text, never a
 sub-option ({cmd:ylabel(10 "labsize(large)" 20)} labels 10 with that
 text).  As in {cmd:twoway}, label and tick positions widen the
@@ -3111,7 +3117,8 @@ those {cmd:xlabel()} and {cmd:ylabel()} ask for.  They take a numlist or
 {it:a}{cmd:(}{it:b}{cmd:)}{it:c}, {cmd:#}{it:N} or {cmd:minmax}, and the
 sub-option {cmd:grid}, which draws gridlines at the ticks; another
 sub-option is named in a warning.  Bokeh labels one set of ticks per axis,
-so these are drawn as its minor ticks, at the major ticks' length; Bokeh's
+so these are drawn as its minor ticks, at the major ticks' length, colour
+and width, which are the scheme's; Bokeh's
 own minor ticks, which Stata does not draw, are not drawn on that axis.
 With {cmd:axis(2)} the ticks are on the second axis's scale, and they
 widen that axis, as a label does, unless {cmd:norescale} is given; a line,
@@ -3628,9 +3635,20 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     shipped scheme does.  So {cmd:s1color}, {cmd:s1mono}, {cmd:s1rcolor}
     and {cmd:stmono1} draw no grid at all, as in Stata.  A grid that
     {cmd:xlabel(, grid)} or {cmd:ylabel(, grid)} turns on is drawn in the
-    scheme's grid colour.  Tick geometry is not the scheme's (see below):
-    an axis whose labels Bokeh places, as it does by default, also carries
-    Bokeh's minor ticks, which Stata draws only when {cmd:xmtick()},
+    scheme's grid colour and in its {cmd:linepattern major_grid}
+    ({cmd:linepattern minor_grid} for a minor grid): the {cmd:st*} schemes
+    that dash their grid ({cmd:stcolor} among them) draw it dashed, and
+    {cmd:xlabel(, grid)} keeps the dashes.  Ticks are the scheme's:
+    {cmd:gsize tick} long in Stata units ({cmd:tiny}, about 5 pixels at
+    the 4-inch reference, in whole pixels), on the side
+    {cmd:tickposition axis_tick} gives, in {cmd:color tick} at
+    {cmd:linewidth tick}.  An axis whose {cmd:axisstyle} draws no line or
+    no ticks draws none, and {cmd:yesno alt_yaxes} puts the y axis on the
+    right: under {cmd:economist} the y axis is on the right with neither
+    line nor ticks, its x ticks point inward, and a {cmd:yaxis(2)} axis
+    is on the left with its line and ticks.  An axis whose labels Bokeh
+    places, as it does by default, also carries Bokeh's minor ticks, in
+    {cmd:color minortick}, which Stata draws only when {cmd:xmtick()},
     {cmd:xmlabel()} or their {it:y} twins ask for them.{p_end}
 
 {phang2}{ul:Text.}  Each piece of text takes the size and colour of the
@@ -3645,7 +3663,21 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     {cmd:key_label}.  The dashboard's own title and subtitle use
     {cmd:heading} and {cmd:subheading}.  Under {cmd:s1rcolor} every one of
     them is white on black; under {cmd:economist} the title is drawn
-    larger than the subtitle, as its {cmd:gsize heading 6.0} asks.{p_end}
+    larger than the subtitle, as its {cmd:gsize heading 6.0} asks.  No
+    title is bold and axis titles are upright.  The title, subtitle, note
+    and caption are placed by the scheme's {cmd:clockdir title_position},
+    {cmd:subtitle_position}, {cmd:note_position} and
+    {cmd:caption_position} and the justification of their boxes
+    ({cmd:horizontal heading}, {cmd:subheading}, {cmd:small_body} and
+    {cmd:body}): under {cmd:s2color} the title and subtitle are centred
+    above the plot and the note and caption at the left below it, the note
+    nearer the plot; under {cmd:economist} the title, subtitle and caption
+    are at the left and the note sits in its box in the title's band, at
+    the top right.  Clock positions 2 to 4 and 8 to 10, which only a scheme
+    of your own can ask for, are drawn on the nearer of the top and
+    bottom.  The files also carry {cmd:system naturally_white} and the
+    {cmd:intensity p}{it:#}{cmd:bar}/{cmd:p}{it:#}{cmd:area} chains as
+    Stata resolves them.{p_end}
 
 {phang2}{ul:Legend.}  Its background and border ({cmd:color legend},
     {cmd:color legend_line}), its text ({cmd:key_label}) and, when the
@@ -3789,7 +3821,7 @@ Colours may be Stata colour names or {cmd:#rrggbb}.
 {pstd}
 {ul:What the shipped files are.}  Each is a translation in {cmd:dash}'s
 own format, not a copy of StataCorp's file and not a drop-in Stata
-scheme: 80 to 140 directives (more for the monochrome schemes, whose
+scheme: 100 to 170 directives (more for the monochrome schemes, whose
 chains declare connecting-line and line-plot keys and a symbol cycle) where Stata's
 {cmd:scheme-s2color.scheme}
 has 2060, the {cmd:#include} chain flattened into the file, every colour
@@ -3807,7 +3839,7 @@ out: each file carries only the keys
 Stata's own chain declares, and {cmd:dash} follows the
 {cmd:p}{it:#}{it:stub} fallback itself, as Stata does.  Most of the
 directives {cmd:dash} does not carry govern what it does not draw: the styling of {cmd:graph bar}, {cmd:box}, {cmd:pie},
-{cmd:dot} and {cmd:matrix} charts, margins and tick geometry.  Some govern
+{cmd:dot} and {cmd:matrix} charts, and margins.  Some govern
 what it draws in its own way, so those can look different from Stata's.
 A confidence band's keys are carried -- {cmd:color ci_area},
 {cmd:ci_arealine} and {cmd:ci_line}, {cmd:intensity ci_area},

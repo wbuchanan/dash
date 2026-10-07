@@ -287,14 +287,22 @@ def _v(x):
 
 
 def _labels(fig, side):
-    return [l for l in getattr(fig, side) if isinstance(l, Label)]
+    """The text boxes of a side panel: side-panel Titles (WP-30 P1.2a),
+    not the figure's own title, plus any Label there."""
+    from bokeh.models import Title
+    return [l for l in getattr(fig, side)
+            if isinstance(l, Label) or (isinstance(l, Title)
+                                        and l is not fig.title)]
 
 
 def _label(fig, text):
-    """The one Label carrying *text* (the subtitle sits above, the note and
-    the caption below)."""
-    hits = [l for side in ("above", "below") for l in _labels(fig, side)
-            if l.text == text]
+    """The one text box carrying *text*: a side-panel Title, or the Label
+    economist's note is drawn as in the title's band (fig.center).
+    Flipped (WP-30 P1.2a): it read Labels only, which were wrong because
+    twoway places the boxes by the scheme's clock and S15 draws them as
+    Title rows in both modes."""
+    hits = [l for side in ("above", "below", "center")
+            for l in _labels(fig, side) if l.text == text]
     assert len(hits) == 1, f"{len(hits)} Labels read {text!r}"
     return hits[0]
 

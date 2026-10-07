@@ -71,8 +71,9 @@ from bokeh.document import Document
 from bokeh.models import (Arrow, Band, BoxAnnotation, ColorBar,
                           ColumnDataSource, Div,
                           GridBox, GridPlot, HoverTool,
-                          Label, LabelSet, Legend, RangeSlider, Select,
-                          Slider, Span, TabPanel, Tabs, ToolProxy, Widget)
+                          Label, LabelSet, Legend, Node, RangeSlider, Select,
+                          Slider, Span, TabPanel, Tabs, Title, ToolProxy,
+                          Widget)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
@@ -523,11 +524,33 @@ def _annotations(fig):
         elif isinstance(r, Label):
             # Position too: the served caption sat at y = -12, where the
             # saved renderer's own comment says a Label is clipped and
-            # never drawn, and this profile did not look.
+            # never drawn, and this profile did not look.  WP-30 P1.2a: a
+            # Label pinned to the title by Node coordinates (economist's
+            # in-band note) records its target, symbol and anchor.
+            def _coord(v):
+                if isinstance(v, Node):
+                    return ("node", type(v.target).__name__, v.symbol,
+                            v.offset)
+                return _num(float(v))
             out.append({"kind": "Label", "text": r.text,
                         "font": r.text_font_size, "color": r.text_color,
-                        "x": _num(float(r.x)), "y": _num(float(r.y)),
-                        "x_units": r.x_units, "y_units": r.y_units})
+                        "x": _coord(r.x), "y": _coord(r.y),
+                        "x_units": r.x_units, "y_units": r.y_units,
+                        "anchor": str(r.anchor),
+                        "background": r.background_fill_color,
+                        "index": (fig.center.index(r)
+                                  if r in fig.center else None)})
+        elif isinstance(r, Title) and r is not fig.title \
+                and "dash_stale_cue" not in (r.tags or []):
+            # WP-30 P1.2a: subtitle(), note() and caption() are side-panel
+            # Titles placed by the scheme's clock and justification.
+            out.append({"kind": "Title", "text": r.text,
+                        "font": r.text_font_size, "color": r.text_color,
+                        "align": r.align, "font_style": r.text_font_style,
+                        "side": panel.get(id(r)),
+                        "background": r.background_fill_color,
+                        "rank": [x for x in getattr(fig, panel.get(id(r)))
+                                 if isinstance(x, Title)].index(r)})
         elif isinstance(r, Span):
             out.append({"kind": "Span", "dimension": r.dimension,
                         "location": _num(r.location), "color": r.line_color,
@@ -688,7 +711,17 @@ def _axes(fig):
                 "label_font": a.axis_label_text_font_size,
                 "tick_font": a.major_label_text_font_size,
                 "orientation": (ori if isinstance(ori, str)
-                                else _num(float(ori)))}
+                                else _num(float(ori))),
+                # WP-30 P1.2a: the scheme's axis chrome and panel.
+                "label_style": a.axis_label_text_font_style,
+                "tick_in": a.major_tick_in, "tick_out": a.major_tick_out,
+                "tick_color": a.major_tick_line_color,
+                "tick_width": _num(float(a.major_tick_line_width)),
+                "line_color": a.axis_line_color,
+                "minor_tick_color": a.minor_tick_line_color,
+                "panel": next((side for side in ("left", "right", "above",
+                                                 "below")
+                               if a in getattr(fig, side)), None)}
 
     def rng(r):
         e = {"type": type(r).__name__}
@@ -759,6 +792,11 @@ def _chrome(fig):
         "title_font": t.text_font_size if t else "",
         "title_color": t.text_color if t else "",
         "title_style": t.text_font_style if t else "",
+        # WP-30 P1.2a: the title's alignment and side, the grid patterns.
+        "title_align": t.align if t else "",
+        "title_location": fig.title_location,
+        "xgrid_dash": [list(g.grid_line_dash) for g in fig.xgrid],
+        "ygrid_dash": [list(g.grid_line_dash) for g in fig.ygrid],
         "width": fig.width, "height": fig.height,
         "aspect_ratio": (_num(float(ar)) if isinstance(ar, (int, float))
                          else ar),
@@ -1858,6 +1896,18 @@ CORPUS = [
     _case("rcapsym", [plot_for("rcapsym")]),
     _case("bar on a %tm x", [plot_for("bar", xvar="when")],
           {"formats": {"when": "%tm"}}),
+    # WP-30 P1.2a: scheme chrome -- economist's in-band note (placed at
+    # fig.center[0], before the yline's Span in both modes), its right-hand
+    # y axis and left-hand axis 2; stcolor's dashed grid; s1rcolor's ticks.
+    _case("scheme chrome: economist titles, note and axis 2",
+          [_sc(), plot_for("line", yvar="price", xvar="weight",
+                           options={"yaxis": "2"})], {"scheme": "economist"},
+          {"title": "T", "subtitle": "S", "note": "N", "caption": "C",
+           "yline": "20", "ylabel2": "5000 10000"}),
+    _case("scheme chrome: stcolor grid and xlabel grid", [_sc()],
+          {"scheme": "stcolor"}, {"xlabel": ", grid"}),
+    _case("scheme chrome: s1rcolor ticks", [_sc()], {"scheme": "s1rcolor"},
+          {"title": "T", "note": "N"}),
 ]
 
 
@@ -2612,6 +2662,10 @@ MOVE_CORPUS = [
     _move_case("bar on a %tm x, range", _MOVES[1],
                [plot_for("bar", xvar="when")],
                bo={"formats": {"when": "%tm"}}),
+    # WP-30 P1.2a: scheme chrome -- economist's chrome after a move.
+    _move_case("scheme chrome: economist, dropdown", _MOVES[0], [_sc()],
+               {"title": "T", "note": "N", "caption": "C"},
+               bo={"scheme": "economist"}),
 ]
 
 
@@ -3263,9 +3317,17 @@ class TestTheYLabelAngleEntry:
                 "horizontal"], (side, axes["x"])
 
     def test_the_control_reads_horizontal_without_the_option(self):
+        """Flipped (WP-30 P1.2a): the bare scatter, under the default
+        s2color, takes the scheme's ``anglestyle vertical_tick vertical``,
+        so its y labels read upwards as twoway draws them (register
+        P1.2.1); the control is now the x axis, which stays horizontal.
+        TestTickLabelAngle (test_scheme_chrome.py) pins the explicit
+        horizontal case."""
         for side, axes in self._axes("scatter").items():
             assert [a["orientation"] for a in axes["y"]] == [
-                "horizontal"], (side, axes["y"])
+                _num(math.pi / 2)], (side, axes["y"])
+            assert [a["orientation"] for a in axes["x"]] == [
+                "horizontal"], (side, axes["x"])
 
 
 

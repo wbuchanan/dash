@@ -1424,3 +1424,78 @@ def test_a_shipped_file_carries_each_directive_once(name):
                 dup.append(key)
             seen.add(key)
     assert not dup, (name, dup)
+
+
+# --- WP-30 P1.2a: the chrome keys ------------------------------------------ #
+
+#: The fixture keys the chrome group adds (extract_scheme_truth.chrome_truth).
+_CHROME_KEYS = ("tick_angle_x", "tick_angle_y", "major_grid_pattern",
+                "minor_grid_pattern", "tick_color", "minortick_color",
+                "tick_line_width", "tick_length", "tick_position",
+                "axis_styles", "alt_axes", "justification", "text_positions",
+                "naturally_white", "p_bar_intensity", "p_area_intensity")
+
+
+@pytest.mark.parametrize("name", SCHEME_NAMES)
+def test_the_chrome_keys_are_resolved(name):
+    t = truth_for(name)
+    for k in _CHROME_KEYS:
+        assert t.get(k) is not None, (name, k)
+    assert len(t["p_bar_intensity"]) == 15 and len(t["p_area_intensity"]) == 15
+
+
+def test_the_chrome_anchors():
+    """twoway's measured chrome (03oct2026): s2color's vertical y labels and
+    black outside ticks, stcolor's dashed grid, s1rcolor's white ticks,
+    economist's right-hand y axis with no line or ticks and inside ticks."""
+    s2 = truth_for("s2color")
+    assert s2["tick_angle_y"]["degrees"] == 90.0
+    assert s2["tick_position"] == "outside" and s2["tick_color"] == "#000000"
+    assert s2["tick_length"]["name"] == "tiny"
+    assert s2["text_positions"] == {"title": 12, "subtitle": 12, "note": 7,
+                                    "caption": 7}
+    assert truth_for("stcolor")["major_grid_pattern"]["name"] == "dash"
+    assert truth_for("s1rcolor")["tick_color"] == "#ffffff"
+    assert truth_for("s1rcolor")["naturally_white"] == 0
+    e = truth_for("economist")
+    assert e["tick_position"] == "inside"
+    assert e["alt_axes"] == {"x": False, "y": True}
+    assert (e["axis_styles"]["y"]["line"], e["axis_styles"]["y"]["ticks"]) \
+        == (False, False)
+    assert e["text_positions"]["note"] == 1
+    assert e["justification"]["heading"] == "left"
+
+
+def test_resolve_anglestyle_reads_the_style_file():
+    mod = _extractor()
+    r = mod.SchemeResolver(mod.DEFAULT_STATA_BASE)
+    r.load("s2color")
+    assert mod.resolve_anglestyle(r, "vertical") == {"name": "vertical",
+                                                     "degrees": 90.0}
+    assert mod.resolve_anglestyle(r, "45")["degrees"] == 45.0
+
+
+_AXISSTYLES = [f"{d}_{k}" for d in ("horizontal", "vertical")
+               for k in ("default", "nogrid", "withgrid", "noline", "notick",
+                         "nolinetick")]
+
+
+def test_axis_style_flags_for_every_axisstyle_file():
+    mod = _extractor()
+    r = mod.SchemeResolver(mod.DEFAULT_STATA_BASE)
+    r.load("s2color")
+    for name in _AXISSTYLES:
+        f = mod.axis_style_flags(r, name)
+        assert f["axisstyle"] == name
+        kind = name.split("_", 1)[1]
+        assert f["line"] == (kind not in ("noline", "nolinetick")), name
+        assert f["ticks"] == (kind not in ("notick", "nolinetick")), name
+
+
+def test_the_parser_axisstyle_table_is_statas():
+    mod = _extractor()
+    r = mod.SchemeResolver(mod.DEFAULT_STATA_BASE)
+    r.load("s2color")
+    want = {n: (mod.axis_style_flags(r, n)["line"],
+                mod.axis_style_flags(r, n)["ticks"]) for n in _AXISSTYLES}
+    assert SchemeParser._AXISSTYLE_FLAGS == want

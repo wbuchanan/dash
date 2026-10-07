@@ -3074,7 +3074,7 @@ class TestGraphTextBounds:
 
     def test_a_long_title_is_drawn_once_in_bounded_time(self, tmp_path):
         """A 200,000-character title and note are each drawn once, as
-        written: the title by the figure's Title, the note by one Label.
+        written: the title by the figure's Title, the note by a side-panel Title.
 
         This used to check that "<i>x</i><i>x</i>" was not on the page --
         it never is, since the page HTML-escapes the document it embeds --
@@ -3091,10 +3091,14 @@ class TestGraphTextBounds:
         page, _msgs = _render(tmp_path, spec)
         assert time.monotonic() - t0 < 30
         doc = _page_document(page)
-        assert [t.text for t in doc.select({"type": Title})] == [title]
-        assert [lb.text for lb in doc.select({"type": Label})] == [note]
+        # Flipped (WP-30 P1.2a): the note was one Label, which was wrong
+        # because twoway places note() by the scheme's clock; S15 draws it
+        # as a side-panel Title, so the Titles are [title, note].
+        assert sorted(t.text for t in doc.select({"type": Title})) == sorted(
+            [title, note])
+        assert [lb.text for lb in doc.select({"type": Label})] == []
         assert _holding(doc, title) == [("Title", "text")]
-        assert _holding(doc, note) == [("Label", "text")]
+        assert _holding(doc, note) == [("Title", "text")]
         (block,) = _page_blocks(page)
         assert block.count(_htmllib.escape(title, quote=False)) == 1
         assert block.count(_htmllib.escape(note, quote=False)) == 1

@@ -6340,6 +6340,28 @@ class SchemeParser:
         "stgcolor_mv",
     })
 
+    #: Stata's twelve x/y axisstyles: (draws its line, draws its ticks).
+    #: style/axisstyle-<name>.style's `set linestyle' (`none': no line) and
+    #: its majorstyle's tickstyle `show_ticks' (WP-30 P1.2a): *_default,
+    #: *_nogrid and *_withgrid draw both; *_noline (linestyle none) draws
+    #: ticks only; *_notick (ticksetstyle major_*_notick -> tickstyle
+    #: major_notick) the line only; *_nolinetick neither (tickstyle
+    #: major_notickbig: `length zero', `show_ticks no').
+    _AXISSTYLE_FLAGS: "dict[str, tuple[bool, bool]]" = {
+        "horizontal_default": (True, True),
+        "horizontal_nogrid": (True, True),
+        "horizontal_withgrid": (True, True),
+        "horizontal_noline": (False, True),
+        "horizontal_notick": (True, False),
+        "horizontal_nolinetick": (False, False),
+        "vertical_default": (True, True),
+        "vertical_nogrid": (True, True),
+        "vertical_withgrid": (True, True),
+        "vertical_noline": (False, True),
+        "vertical_notick": (True, False),
+        "vertical_nolinetick": (False, False),
+    }
+
     # Last-resort properties for when NO scheme file can be resolved at all —
     # e.g. an install whose scheme files did not ship.  Mirrors s2color so the
     # output stays recognisable.  Without this, the fallback path re-ran the
@@ -6447,6 +6469,35 @@ class SchemeParser:
         "color ci2_area":         "#e5daa5",
         "color ci2_arealine":     "#e5daa5",
         "linewidth ci2_area":     "medium",
+        # The chrome (WP-30 P1.2a), at scheme-s2color.scheme's values:
+        # anglestyle :1964-1965, linepattern :565-566, color tick :349-350,
+        # linewidth tick :1206, gsize tick :153, tickposition :1892,
+        # axisstyle :1821-1824, yesno alt_* :2167-2168, horizontal
+        # :1775-1780, clockdir :1920-1923, system naturally_white :28.
+        "anglestyle horizontal_tick": "horizontal",
+        "anglestyle vertical_tick": "vertical",
+        "linepattern major_grid": "solid",
+        "linepattern minor_grid": "dot",
+        "color tick": "black",
+        "color minortick": "black",
+        "linewidth tick": "thin",
+        "gsize tick": "tiny",
+        "tickposition axis_tick": "outside",
+        "axisstyle horizontal_default": "horizontal_default",
+        "axisstyle vertical_default": "vertical_default",
+        "axisstyle horizontal_nogrid": "horizontal_nogrid",
+        "axisstyle vertical_nogrid": "vertical_nogrid",
+        "yesno alt_xaxes": "no",
+        "yesno alt_yaxes": "no",
+        "horizontal heading": "center",
+        "horizontal subheading": "center",
+        "horizontal body": "center",
+        "horizontal small_body": "center",
+        "clockdir title_position": "12",
+        "clockdir subtitle_position": "12",
+        "clockdir note_position": "7",
+        "clockdir caption_position": "7",
+        "system naturally_white": "1",
     }
 
     @classmethod
@@ -7346,6 +7397,83 @@ class SchemeParser:
         )
         return default
 
+    @staticmethod
+    def _shown(raw: str) -> str:
+        """A scheme value as a note may echo it: quoted when it is shaped
+        like a Stata style name, else a fixed phrase (a user file's text
+        never reaches a warning as markup)."""
+        return (f"'{raw}'" if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,31}",
+                                           raw)
+                else "(a value that is no Stata style name)")
+
+    def _choice(self, key: str, allowed: "tuple[str, ...]", default: str,
+                what: str) -> str:
+        """The scheme's value of *key* when it is one of *allowed*; else
+        *default*, with one note when the key is present (WP-30 P1.2a).
+        Stata's style names are case-sensitive, so ``Vertical`` is no name.
+        """
+        raw = self._props.get(key, "").strip()
+        if not raw:
+            return default
+        if raw in allowed:
+            return raw
+        warnings.warn(
+            f"dash scheme: {what} {self._shown(raw)} (from '{key}') is not "
+            f"one dash knows; falling back to {default}.",
+            UserWarning,
+            stacklevel=3,
+        )
+        return default
+
+    def _angle(self, key: str, default_deg: float) -> float:
+        """An anglestyle key in degrees (``_dash_anglestyle_degrees``):
+        a name of Stata's anglestyles or a number from -360 to 360; else
+        *default_deg* with one note."""
+        raw = self._props.get(key, "").strip()
+        if not raw:
+            return default_deg
+        deg = _dash_anglestyle_degrees(raw)
+        if deg is not None:
+            return deg
+        warnings.warn(
+            f"dash scheme: anglestyle {self._shown(raw)} (from '{key}') is "
+            f"not an angle dash knows; falling back to {default_deg:g} "
+            "degrees.",
+            UserWarning,
+            stacklevel=3,
+        )
+        return default_deg
+
+    #: The longest tick a scheme may ask for, in Bokeh pixels.
+    _TICK_MAX_PX: float = 100.0
+
+    def _tick_length_px(self) -> float:
+        """``gsize tick`` in Bokeh pixels: a Stata size (tiny is 1.3888
+        units, 4pt, 5.33px at the 4-inch reference) through
+        ``OptionTranslator.resolve_size``.  Absent is 4pt; a value dash
+        cannot read or outside 0..100px is 4pt with one note."""
+        default = 4.0 * OptionTranslator.PX_PER_PT
+        raw = self._props.get("gsize tick", "").strip()
+        if not raw:
+            return default
+        try:
+            px = OptionTranslator.resolve_size(
+                raw, "gap", 4.0, getattr(self, "size_ref_in", 4.0)
+            ) * OptionTranslator.PX_PER_PT
+        except ValueError:
+            px = None
+        if px is not None and math.isfinite(px) and \
+                0 <= px <= self._TICK_MAX_PX:
+            return px
+        warnings.warn(
+            f"dash scheme: tick length {self._shown(raw)} (from 'gsize "
+            f"tick') is not a size from 0 to {self._TICK_MAX_PX:g}px; "
+            "falling back to 4pt.",
+            UserWarning,
+            stacklevel=3,
+        )
+        return default
+
     #: The widest line a scheme may ask for, in Bokeh pixels.  Stata's
     #: widest keyword, vvvthick, is 4.2 units (6.6px on dash's ladder, 21px
     #: as a bare number); the bound refuses only the absurd (`linewidth
@@ -7563,11 +7691,13 @@ class SchemeParser:
         self.p_lineplot_alphas: "list[float | None]" = [a for _, a in _plp]
 
         # Default line/grid widths
-        self.default_line_width: float = self._lwidth("linewidth p", 1.5)
+        self.default_line_width: float = self._lwidth(
+            "linewidth p", OptionTranslator.translate_lwidth("medium"))
         # ...and per plot, through Stata's chains (plot_line_width); the
         # widths each declared key resolves to, so a bad one warns once.
         self._plot_lwidth_memo: dict = {}
-        self.grid_line_width: float = self._lwidth("linewidth major_grid", 0.8)
+        self.grid_line_width: float = self._lwidth(
+            "linewidth major_grid", OptionTranslator.translate_lwidth("thin"))
         # `linewidth minor_grid' is `thin' in every shipped scheme.
         self.minor_grid_line_width: float = self._lwidth(
             "linewidth minor_grid", OptionTranslator.translate_lwidth("thin"))
@@ -7698,6 +7828,74 @@ class SchemeParser:
         self.draw_minor_hgrid: bool = self._yesno("yesno draw_minor_hgrid", False)
         self.draw_minor_vgrid: bool = self._yesno("yesno draw_minor_vgrid", False)
 
+        # The chrome (WP-30 P1.2a), each key as Stata's style files read it
+        # (measured in twoway 03oct2026: s2color's y labels rotate -90 and
+        # its ticks are 1.388 units, outside, black, .2 wide; stcolor's
+        # grid is dashed; s1rcolor's ticks white; economist's y axis on the
+        # right with no line or ticks, its x ticks inside).
+        # Tick-label angles (ticksetstyle-major_*_default.style: `set
+        # tickangle scheme horizontal_tick|vertical_tick').
+        self.tick_angle_x: float = self._angle(
+            "anglestyle horizontal_tick", 0.0)
+        self.tick_angle_y: float = self._angle(
+            "anglestyle vertical_tick", 0.0)
+        # Grid patterns (gridstyle-major|minor.style -> linestyle).
+        self.major_grid_dash: list = self._lpattern("linepattern major_grid")
+        self.minor_grid_dash: list = self._lpattern("linepattern minor_grid")
+        # The tick's colour, width, length and side (tickstyle-major.style).
+        self.tick_color: "str | None" = self._line_color(
+            "color tick", "#000000")
+        self.minortick_color: "str | None" = self._line_color(
+            "color minortick", self.tick_color or "#000000")
+        self.tick_line_width: float = self._bounded_lwidth(
+            "linewidth tick", self.axis_line_width)
+        self.tick_length_px: float = self._tick_length_px()
+        self.tick_position: str = self._choice(
+            "tickposition axis_tick", ("outside", "inside", "crossing"),
+            "outside", "tick position")
+        # Each axis role's style: twoway's axis 1 is *_default, axis 2
+        # *_nogrid (t/twowaygraph_g.class).
+        _h = tuple(k for k in self._AXISSTYLE_FLAGS if k.startswith("h"))
+        _v = tuple(k for k in self._AXISSTYLE_FLAGS if k.startswith("v"))
+        self.axis_styles: dict = {
+            ("x", 1): self._choice("axisstyle horizontal_default", _h,
+                                   "horizontal_default", "axisstyle"),
+            ("y", 1): self._choice("axisstyle vertical_default", _v,
+                                   "vertical_default", "axisstyle"),
+            ("x", 2): self._choice("axisstyle horizontal_nogrid", _h,
+                                   "horizontal_nogrid", "axisstyle"),
+            ("y", 2): self._choice("axisstyle vertical_nogrid", _v,
+                                   "vertical_nogrid", "axisstyle"),
+        }
+        self.alt_xaxes: bool = self._yesno("yesno alt_xaxes", False)
+        self.alt_yaxes: bool = self._yesno("yesno alt_yaxes", False)
+        # The text boxes' justification (textboxstyle-<name>.style: `set
+        # horizontal scheme <name>') and twoway's clock positions.
+        self.text_just: dict = {
+            k: self._choice(f"horizontal {k}", ("left", "center", "right"),
+                            "center", "justification")
+            for k in ("heading", "subheading", "body", "small_body")}
+        self.text_clock: dict = {
+            k: self._bounded_int(f"clockdir {k}_position", d, 0, 12,
+                                 "clock position")
+            for k, d in (("title", 12), ("subtitle", 12), ("note", 7),
+                         ("caption", 7))}
+        # Parsed for S16 (P1.2b): whether the scheme's background is white,
+        # and the p#bar / p#area intensity chains (p#stub -> pstub -> p#
+        # -> p, as _first_present walks every p# cycle).
+        self.naturally_white: bool = bool(self._bounded_int(
+            "system naturally_white", 1, 0, 1, "naturally_white"))
+        self.p_bar_intensity: "list[float]" = [
+            self._intensity(self._first_present(
+                (f"intensity p{i}bar", "intensity pbar", f"intensity p{i}",
+                 "intensity p")) or "intensity p", self.fill_alpha)
+            for i in range(1, 16)]
+        self.p_area_intensity: "list[float]" = [
+            self._intensity(self._first_present(
+                (f"intensity p{i}area", "intensity parea", f"intensity p{i}",
+                 "intensity p")) or "intensity p", self.fill_alpha)
+            for i in range(1, 16)]
+
         # Default marker size for the p cycle, and legend placement.
         # Parsed only; consumers land in sections 10 and 11.
         self.symbolsize: str = self._props.get("symbolsize p", "").strip()
@@ -7824,6 +8022,24 @@ class SchemeParser:
     _MARKER_PLOT_TYPES: frozenset = frozenset({
         "scatter", "scatteri", "dot", "dropline", "rscatter", "pcscatter",
     })
+
+    def axis_flags(self, which: str, number: int = 1) -> "tuple[bool, bool]":
+        """(draws its line, draws its ticks) for axis *number* of *which*
+        (``"x"`` or ``"y"``), from its axisstyle (WP-30 P1.2a)."""
+        name = self.axis_styles.get((which, 2 if number == 2 else 1))
+        return self._AXISSTYLE_FLAGS.get(name, (True, True))
+
+    def axis_side(self, which: str, number: int = 1) -> str:
+        """The panel axis *number* of *which* sits in: y1 on the left (the
+        right under `yesno alt_yaxes yes', economist), y2 opposite it; x1
+        below (above under alt_xaxes), x2 opposite (WP-30 P1.2a)."""
+        if which == "y":
+            alt = self.alt_yaxes
+            first, other = ("right", "left") if alt else ("left", "right")
+        else:
+            alt = self.alt_xaxes
+            first, other = ("above", "below") if alt else ("below", "above")
+        return other if number == 2 else first
 
     def _cycle_for(self, plot_type: str) -> str:
         """Which p# colour cycle *plot_type* reads: ``"lineplot"``,
@@ -8071,6 +8287,11 @@ class SchemeParser:
                 grid.minor_grid_line_color = (self.minor_grid_color
                                               if draw_minor else None)
                 grid.minor_grid_line_width = self.minor_grid_line_width
+                # `linepattern major_grid|minor_grid' (stcolor dashes its
+                # grid, measured as 2-unit dashes in twoway), set whether
+                # or not the grid is drawn so xlabel(, grid) shows it.
+                grid.grid_line_dash = list(self.major_grid_dash)
+                grid.minor_grid_line_dash = list(self.minor_grid_dash)
 
         # The figure title is Stata's heading box: `color heading' and
         # `gsize heading'.  Both were parsed and reached only the dashboard
@@ -8080,16 +8301,51 @@ class SchemeParser:
         if fig.title is not None:
             fig.title.text_color = self.title_color
             fig.title.text_font_size = self.heading_font_size
+            # The heading box is not bold, and twoway places it by `clockdir
+            # title_position' and `horizontal heading' (WP-30 P1.2a;
+            # measured: s2color's title text-anchor middle at the plot
+            # region's centre, economist's start at its left).
+            fig.title.text_font_style = "normal"
+            side, align = _dash_textbox_place(self.text_clock["title"],
+                                              self.text_just["heading"])
+            fig.title.align = align
+            if side != "above":
+                fig.title_location = side
 
-        for axis in list(fig.xaxis) + list(fig.yaxis):
-            self.apply_to_axis(axis)
+        for axis in list(fig.xaxis):
+            self.apply_to_axis(axis, "x", 1)
+        for axis in list(fig.yaxis):
+            self.apply_to_axis(axis, "y", 1)
 
-    def apply_to_axis(self, axis: Any) -> None:
+        # `yesno alt_yaxes|alt_xaxes': economist's y axis is on the right
+        # (measured: its y labels right of the plot).  Only the primary
+        # axes exist here in both modes.
+        from bokeh.models import Axis
+        if self.axis_side("y", 1) == "right":
+            moved = [a for a in fig.left if isinstance(a, Axis)]
+            if moved:
+                fig.left = [a for a in fig.left if a not in moved]
+                fig.right = moved + list(fig.right)
+        if self.axis_side("x", 1) == "above":
+            moved = [a for a in fig.below if isinstance(a, Axis)]
+            if moved:
+                fig.below = [a for a in fig.below if a not in moved]
+                fig.above = moved + list(fig.above)
+
+    def apply_to_axis(self, axis: Any, which: "str | None" = None,
+                      number: int = 1) -> None:
         """The scheme's axis style on one axis: its line, its title's and
         its tick labels' sizes and colours.  :meth:`apply_to_figure` runs
         it on the primary axes; ``_dash_add_secondary_axes`` on a second
         axis as it is built, so that axis is styled from the scheme, never
-        copied from the primary (WP-29 P0.4)."""
+        copied from the primary (WP-29 P0.4).
+
+        WP-30 P1.2a: also the axis title's upright style, the ticks'
+        colour, width, length and side (``color tick``, ``linewidth
+        tick``, ``gsize tick``, ``tickposition axis_tick``) and the minor
+        ticks' colour; with *which* (``"x"`` or ``"y"``) and *number*, the
+        tick-label angle (``anglestyle horizontal_tick|vertical_tick``)
+        and the axisstyle's line and tick flags."""
         axis.axis_line_color = self.axis_line_color
         axis.axis_line_width = self.axis_line_width
         axis.axis_label_text_font_size = self.axis_title_font_size
@@ -8097,6 +8353,34 @@ class SchemeParser:
         # The axis_title and tick_label boxes' colours.
         axis.axis_label_text_color = self.axis_title_color
         axis.major_label_text_color = self.tick_label_color
+        # Stata's axis titles are upright (Bokeh's default is italic).
+        axis.axis_label_text_font_style = "normal"
+        # tickstyle-major.style: 1.388 units (`gsize tick tiny'), outside,
+        # in `color tick' at `linewidth tick' (measured in twoway).
+        # Bokeh's tick lengths are whole pixels (Int properties), so the
+        # length is rounded: tiny's 5.33px draws 5px.
+        length = int(round(self.tick_length_px))
+        axis.major_tick_line_color = self.tick_color
+        axis.major_tick_line_width = self.tick_line_width
+        if self.tick_position == "inside":
+            axis.major_tick_in, axis.major_tick_out = length, 0
+        elif self.tick_position == "crossing":
+            axis.major_tick_in = axis.major_tick_out = int(round(length / 2.0))
+        else:
+            axis.major_tick_in, axis.major_tick_out = 0, length
+        axis.minor_tick_line_color = self.minortick_color
+        if which not in ("x", "y"):
+            return
+        angle = self.tick_angle_x if which == "x" else self.tick_angle_y
+        axis.major_label_orientation = (
+            "horizontal" if angle == 0 else math.radians(angle))
+        line, ticks = self.axis_flags(which, number)
+        if not line:
+            axis.axis_line_color = None
+        if not ticks:
+            axis.major_tick_line_color = None
+            axis.major_tick_in = axis.major_tick_out = 0
+            axis.minor_tick_line_color = None
 
     def css_block(self) -> str:
         """Return the scheme's CSS rules for the dashboard outer chrome.
@@ -24017,7 +24301,12 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
         ax = (LogAxis if is_log else LinearAxis)(
             **{kw: name}, axis_label=text)
         if scheme is not None:
-            scheme.apply_to_axis(ax)
+            # The second axis's own style (axisstyle *_nogrid) and side:
+            # under economist axis 1 of y is on the right, so axis 2 is on
+            # the left with its line and ticks (WP-30 P1.2a, measured in
+            # twoway: y2 labels left of the plot, ticks 1.388 units).
+            scheme.apply_to_axis(ax, n, 2)
+            side = scheme.axis_side(n, 2)
         px = _textbox_size(
             opts, ax.axis_label_text_font_size,
             (getattr(scheme, "size_ref_in", 4.0) if scheme is not None
@@ -24129,13 +24418,17 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
     """
     from bokeh.models import Grid, LinearAxis, LogAxis
     plots = plots or []
-    for rng_attr, name, side, kw, dim, axis_key in (
-            ("extra_y_ranges", "y2", "right", "y_range_name", 1, "yaxis"),
-            ("extra_x_ranges", "x2", "above", "x_range_name", 0, "xaxis")):
+    for rng_attr, name, sides, kw, dim, axis_key in (
+            ("extra_y_ranges", "y2", ("left", "right"), "y_range_name", 1,
+             "yaxis"),
+            ("extra_x_ranges", "x2", ("below", "above"), "x_range_name", 0,
+             "xaxis")):
         rng = getattr(fig, rng_attr).get(name)
         if rng is None:
             continue
-        axes = [a for a in getattr(fig, side)
+        # Either side: the scheme puts axis 2 on the left under economist
+        # (WP-30 P1.2a), so ylabel2()/yscale2() search both.
+        axes = [a for side in sides for a in getattr(fig, side)
                 if isinstance(a, (LinearAxis, LogAxis))
                 and getattr(a, kw, None) == name]
         ax = axes[0] if axes else None
@@ -27364,20 +27657,61 @@ def _dash_style_axis_titles(fig, graph_opts, seen=None, key=""):
 
 
 #: Where the note, the caption and the subtitle sit, and their defaults.
-#: Measured in Stata: the note is ring(4) and the caption ring(5), so the
-#: caption sits BELOW the note, and the note is the smaller of the two.
-#: add_layout(..., "below") gives each Label a row of its own.  y = 2.0
-#: for both: a negative screen offset was clipped and no dashboard ever
-#: drew a caption.
+def _dash_textbox_place(clock, just) -> "tuple[str, str]":
+    """(side, align) of a text box at Stata clock position *clock* with
+    justification *just* (WP-30 P1.2a).
+
+    =========  ==================
+    clock      (side, align)
+    =========  ==================
+    11, 10     ("above", "left")
+    12, 0      ("above", J)
+    1, 2       ("above", "right")
+    3, 4, 5    ("below", "right")
+    6          ("below", J)
+    7, 8, 9    ("below", "left")
+    =========  ==================
+
+    J is *just* when it is ``"left"``, ``"center"`` or ``"right"``, else
+    ``"center"``.  A clock that is not an ``int`` (a ``bool`` included) or
+    lies outside 0..12 is ``("above", "center")``.  The side is never
+    ``"left"`` or ``"right"``: BokehJS draws a Title in a left or right
+    panel turned on its side (TitleView._get_position), so a box twoway
+    draws beside the plot (clocks 2-4 and 8-10, which only a user scheme
+    asks for) is drawn on the nearer horizontal side.  title(, position())
+    (P2.4) may reuse this table.
+    """
+    j = just if just in ("left", "center", "right") else "center"
+    if isinstance(clock, bool) or not isinstance(clock, int) \
+            or not 0 <= clock <= 12:
+        return ("above", "center")
+    table = {
+        11: ("above", "left"), 10: ("above", "left"),
+        12: ("above", j), 0: ("above", j),
+        1: ("above", "right"), 2: ("above", "right"),
+        3: ("below", "right"), 4: ("below", "right"), 5: ("below", "right"),
+        6: ("below", j),
+        7: ("below", "left"), 8: ("below", "left"), 9: ("below", "left"),
+    }
+    return table[clock]
+
+
+#: Defaults for a caller with no scheme: s2color's clocks (subtitle 12, note
+#: and caption 7) and centred justification.  Measured in Stata: the note is
+#: ring(4) and the caption ring(5), so the caption sits BELOW the note, and
+#: the note is the smaller of the two.
 _DASH_TEXTBOX_DEFAULTS = {
-    "note":     {"size": 11.0, "color": "#555555", "y": 2.0, "side": "below"},
-    "caption":  {"size": 12.0, "color": "#555555", "y": 2.0, "side": "below"},
-    "subtitle": {"size": 13.0, "color": "#444444", "y": 0.0, "side": "above"},
+    "note":     {"size": 11.0, "color": "#555555", "clock": 7,
+                 "just": "center"},
+    "caption":  {"size": 12.0, "color": "#555555", "clock": 7,
+                 "just": "center"},
+    "subtitle": {"size": 13.0, "color": "#444444", "clock": 12,
+                 "just": "center"},
 }
 
 
 def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None):
-    """note(), caption() and subtitle() as Labels, in both modes.
+    """note(), caption() and subtitle() as side-panel Titles, in both modes.
 
     The generated app carried its own copy of this loop, with its own
     size and colour helpers; one text now, with the unimplemented
@@ -27393,8 +27727,19 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None):
     strings.  ``_DASH_TEXTBOX_DEFAULTS`` were literal px and #555555 under
     every scheme; they remain the defaults for a caller with no scheme.
     An explicit size() or color() sub-option still wins.
+
+    Placement (WP-30 P1.2a): each box goes where the scheme's ``clockdir
+    <box>_position`` and its text box's ``horizontal`` put it
+    (:func:`_dash_textbox_place`), as a Title row of that side panel.  The
+    loop order (note, caption, subtitle) keeps the note nearer the plot
+    than the caption, as twoway's rings do.  A box at 1 or 11 o'clock whose
+    title sits in the opposite corner is drawn in the title's band, as
+    twoway draws economist's note (register P1.2.6): a Label pinned by
+    Node coordinates to the title's top corner.  That Label goes to
+    ``fig.center[0]``, because the reference lines' Spans are added before
+    the text boxes when saved and after them when served.
     """
-    from bokeh.models import Label
+    from bokeh.models import Label, Node, Title
     for ann_key in ("note", "caption", "subtitle"):
         raw = (graph_opts or {}).get(ann_key, "")
         if not raw:
@@ -27410,8 +27755,14 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None):
                 "caption": (scheme.body_font_size, scheme.body_color),
                 "note": (scheme.note_text_font_size, scheme.note_text_color),
             }[ann_key]
+            clock = scheme.text_clock.get(ann_key, d["clock"])
+            just = scheme.text_just.get(
+                {"subtitle": "subheading", "note": "small_body",
+                 "caption": "body"}[ann_key], d["just"])
         else:
             size_default, color_default = f"{d['size']:g}px", d["color"]
+            clock, just = d["clock"], d["just"]
+        side, align = _dash_textbox_place(clock, just)
         # note()'s box is filled where the scheme's `textboxstyle note'
         # draws one (economist's reverse_big: emidblue).
         fill = (scheme.note_box_fill_color
@@ -27422,12 +27773,29 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None):
                            OptionTranslator.size_ref_of(fig),
                            f"{ann_key}(size)")
         colour = _textbox_color(opts, None)
-        fig.add_layout(Label(
-            x=0, y=d["y"], x_units="screen", y_units="screen", text=text,
-            text_font_size=(px if px is not None else size_default),
-            text_color=colour if colour is not None else color_default,
-            background_fill_color=fill,
-        ), d["side"])
+        size = px if px is not None else size_default
+        color = colour if colour is not None else color_default
+        title = getattr(fig, "title", None)
+        in_band = (side == "above" and clock in (1, 11)
+                   and title is not None
+                   and str(getattr(title, "text", "") or "").strip()
+                   and getattr(fig, "title_location", "above") == "above"
+                   and getattr(title, "align", None)
+                   == ("left" if clock == 1 else "right"))
+        if in_band:
+            fig.center = [Label(
+                x=Node(target=title, symbol=align),
+                y=Node(target=title, symbol="top"),
+                anchor="top_" + align, text=text,
+                text_font_size=size, text_color=color,
+                background_fill_color=fill,
+            )] + list(fig.center)
+        else:
+            fig.add_layout(Title(
+                text=text, align=align, text_font_style="normal",
+                text_font_size=size, text_color=color,
+                background_fill_color=fill,
+            ), side)
 
 
 #: xscale()/yscale() sub-options dash honours.
@@ -34908,6 +35276,7 @@ class ServerAppBuilder:
                          "_dash_subopt_arg",
                          "_dash_legend_unsupported", "_dash_textbox",
                          "_dash_textbox_or_default",
+                         "_dash_textbox_place",
                          "_textbox_canon", "_dash_route_axis_titles",
                          "_dash_figure_title", "_dash_style_axis_titles",
                          "_dash_text_annotations", "_dash_scale_spec",

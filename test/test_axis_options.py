@@ -530,20 +530,18 @@ class TestTitleTextFidelity:
         caption was invisible.  Assert the two properties that actually
         decide the outcome instead: separate rows, and a drawable offset.
         """
+        # Flipped (WP-30 P1.2a): Labels with a y offset were wrong because
+        # twoway places the boxes by the scheme's clock, which S15 draws as
+        # side-panel Titles -- each its own row, with no offset to clip.
+        from bokeh.models import Title
         fig, _ = _fig_with_gopts(
             _SCATTER, {"note": "the note", "caption": "the caption"})
-        labels = [r for r in list(fig.below) + list(fig.center)
-                  if hasattr(r, "text") and hasattr(r, "y")]
-        found = {str(r.text): r for r in labels}
+        rows = [r for r in fig.below if isinstance(r, Title)]
+        found = {str(r.text): r for r in rows}
         assert "the note" in found and "the caption" in found, list(found)
         assert found["the note"] is not found["the caption"], (
-            "note and caption must be separate Labels in separate rows"
+            "note and caption must be separate Titles in separate rows"
         )
-        for key in ("the note", "the caption"):
-            assert found[key].y >= 0, (
-                "%s is at y=%r, outside its own row, where it is clipped"
-                % (key, found[key].y)
-            )
 
     def test_the_caption_sits_below_the_note(self, truth):
         """Measured in Stata: note is ring(4), caption ring(5).
@@ -557,8 +555,9 @@ class TestTitleTextFidelity:
         """
         fig, _ = _fig_with_gopts(
             _SCATTER, {"note": "the note", "caption": "the caption"})
-        below = [str(r.text) for r in fig.below
-                 if hasattr(r, "text") and hasattr(r, "y")]
+        # Flipped (WP-30 P1.2a): the boxes are side-panel Titles (no y).
+        from bokeh.models import Title
+        below = [str(r.text) for r in fig.below if isinstance(r, Title)]
         assert "the note" in below and "the caption" in below, below
         assert below.index("the note") < below.index("the caption"), below
 

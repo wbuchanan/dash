@@ -3922,7 +3922,8 @@ class TestServerAxisAngle:
         twoway's angle(45) turns the labels 45 degrees counter-clockwise;
         Bokeh's major_label_orientation is that angle in radians, and the
         saved page draws pi/4 (test_graph_options.py's TestAxisLabelAngle).
-        The y axis, asked nothing, keeps its labels level: the control."""
+        The y axis, asked nothing, takes s2color's vertical_tick anglestyle
+        (pi/2, WP-30 P1.2a): the control."""
         import math
         import tempfile, importlib.util
         from bokeh.document import Document
@@ -3946,8 +3947,11 @@ class TestServerAxisAngle:
             assert xaxis.major_label_orientation == pytest.approx(math.pi / 4), (
                 f"angle(45) served as {xaxis.major_label_orientation!r}")
             assert list(xaxis.ticker.ticks) == [0.0, 20.0, 40.0], xaxis.ticker
-            assert yaxis.major_label_orientation == "horizontal", (
-                yaxis.major_label_orientation)
+            # Flipped (WP-30 P1.2a): "horizontal" was wrong because twoway
+            # draws s2color's y labels vertical (anglestyle vertical_tick
+            # vertical, register P1.2.1), and S15 draws them so served.
+            assert yaxis.major_label_orientation == pytest.approx(
+                math.pi / 2), yaxis.major_label_orientation
         finally:
             import os
             for p in (spec_path, data_path, out_f.name):

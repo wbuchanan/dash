@@ -844,6 +844,13 @@ FUNCTIONS = {
  # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
  'GlyphMapper._bar_extent': 'test/test_bar_range_geometry.py::TestTheBarExtent::test_each_kind',
  # WP-30 S15 (P1.2a): Scheme chrome: titles, ticks, grid, economist axes (P1.2 part a, M1)
+ 'SchemeParser._angle': 'test/test_scheme_chrome.py::TestHostileChromeKeys::test_an_unknown_name_falls_back_once',
+ 'SchemeParser._choice': 'test/test_scheme_chrome.py::TestHostileChromeKeys::test_an_unknown_name_falls_back_once',
+ 'SchemeParser._shown': 'test/test_scheme_chrome.py::TestHostileChromeKeys::test_an_unknown_name_falls_back_once',
+ 'SchemeParser._tick_length_px': 'test/test_scheme_chrome.py::TestTheChromeKeysAreRead::test_the_tick_length_is_gsize_tick_in_stata_units',
+ 'SchemeParser.axis_flags': 'test/test_scheme_chrome.py::TestTheChromeKeysAreRead::test_axisstyle_names_map_to_line_and_tick_flags',
+ 'SchemeParser.axis_side': 'test/test_scheme_chrome.py::TestTheChromeKeysAreRead::test_axis_side_reads_the_alt_keys',
+ '_dash_textbox_place': 'test/test_scheme_chrome.py::TestTextboxPlace::test_every_clock',
  # WP-30 S16 (P1.2b): Intensity as an opaque blend (P1.2 part b, M1)
  # WP-30 S17 (P1.23b): Date and format text in keys and tooltips (P1.23 part b)
  # WP-30 S18 (P1.5): Axis format fallbacks (P1.5)

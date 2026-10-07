@@ -207,7 +207,11 @@ def _axis2(fig):
 
 
 def _label_text(fig, text):
-    hits = [m for m in _of_type(fig, "Label") if m.text == text]
+    # Flipped (WP-30 P1.2a): Labels only was wrong because twoway places
+    # subtitle(), note() and caption() by the scheme's clock, which S15
+    # draws as side-panel Titles (the figure's own title excluded).
+    hits = [m for m in _of_type(fig, "Label") + _of_type(fig, "Title")
+            if m.text == text and m is not fig.title]
     assert len(hits) == 1, hits
     return hits[0]
 

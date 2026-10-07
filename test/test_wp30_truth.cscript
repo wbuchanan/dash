@@ -20,6 +20,7 @@
 *!
 *! Blocks filled so far (case ids):
 *!   S07  P1.25a the six StataCorp schemes against twoway (SX-01..SX-08)
+*!   S15  P1.2a scheme chrome against twoway (LK-01..LK-07)
 
 cscript "WP-30 truth: twoway comparisons" adodir ".."
 
@@ -3213,10 +3214,322 @@ if inlist("`only'", "", "S14") {
 }
 * ==== end S14 ====
 
+// S15 helpers: each figure's chrome as one summary string,
+// ttl;sub;nte;cap;axst;yrot;yside;xtick;ytick;yline;ygrid;y2side;y2tick;
+// y2line;xgrid, from twoway's SVG (scripts/svg_chrome.py), dash's saved page
+// (its embedded document) and dash's served app (make_document), the last
+// also after a filter move.  Every argument crosses through sfi.Macro.
+python:
+import json as _s15_json
+import html as _s15_html
+import math as _s15_math
+import os as _s15_os
+import re as _s15_re
+import sys as _s15_sys
+import warnings as _s15_w
+from sfi import Macro as _s15_M
+
+_S15_FIELDS = ("ttl", "sub", "nte", "cap", "axst", "yrot", "yside", "xtick",
+               "ytick", "yline", "ygrid", "y2side", "y2tick", "y2line",
+               "xgrid")
+
+
+def _s15_join(d):
+    return ";".join(str(d.get(k, "-")) for k in _S15_FIELDS)
+
+
+def _s15_tick_tw(t):
+    if not t or not t.get("n"):
+        return "none"
+    return "%s/%d/%s" % (t["position"], int(round(t["length_rs"] * 3.84)),
+                         t["color"])
+
+
+def _s15_tw():
+    _s15_sys.path.insert(0, _s15_os.path.join(_s15_M.getGlobal("S15_REPO"),
+                                              "scripts"))
+    import svg_chrome as sc
+    path = _s15_M.getGlobal("S15_SVG")
+    reg = sc.svg_region(path)
+    d = {}
+    for k, t in (("ttl", "TTL"), ("sub", "SUB"), ("nte", "NTE"),
+                 ("cap", "CAP")):
+        p = sc.svg_text_place(path, t, reg)
+        if p:
+            d[k] = "%s/%s/%s" % (p["side"], p["align"],
+                                 "normal" if p["weight"] == "normal"
+                                 and p["style"] == "normal" else "styled")
+    p = sc.svg_text_place(path, "XTL", reg)
+    if p:
+        d["axst"] = ("normal" if p["style"] == "normal"
+                     and p["weight"] == "normal" else "styled")
+    sides = sc.svg_label_side(path, "y", reg)
+    roles = {}
+    if len(sides) == 2:
+        for side in sides:
+            labs = [t for t in sc._labels(path, "y", reg)
+                    if sc._label_side_of(t, "y", reg) == side]
+            big = max(abs(float(t["text"].replace(",", ""))) for t in labs)
+            roles["y2" if big >= 1000 else "y"] = side
+    elif sides:
+        roles["y"] = sides[0]
+    for role, side in roles.items():
+        d[role + "side"] = side
+        d[role + "tick"] = _s15_tick_tw(sc.svg_ticks(path, side, reg))
+        d[role + "line"] = int(sc.svg_axis_line(path, side, reg))
+        if role == "y":
+            d["yrot"] = sc.svg_label_rotation(path, "y", reg, side)
+    d["xtick"] = _s15_tick_tw(sc.svg_ticks(path, "bottom", reg))
+    for ax in ("x", "y"):
+        g = sc.svg_grid(path, ax, reg)
+        d[ax + "grid"] = ("%d/%d" % (g["drawn"], g["dashed"]) if g["drawn"]
+                          else "0/-")
+    _s15_M.setGlobal("S15_TW", _s15_join(d))
+
+
+def _s15_fig(fig):
+    from bokeh.models import Axis, Label, Title
+    d = {}
+    if fig.title is not None and str(fig.title.text or "").strip():
+        d["ttl"] = "%s/%s/%s" % (fig.title_location or "above",
+                                 fig.title.align, fig.title.text_font_style)
+    for side in ("above", "below"):
+        for r in getattr(fig, side):
+            if (isinstance(r, Title) and r is not fig.title
+                    and r.text in ("SUB", "NTE", "CAP")):
+                d[r.text.lower()] = "%s/%s/%s" % (
+                    side, r.align, r.text_font_style)
+    for r in fig.center:
+        if isinstance(r, Label) and r.text in ("SUB", "NTE", "CAP"):
+            d[r.text.lower()] = "above/%s/normal" % str(r.anchor).split("_")[-1]
+    xs = [a for a in fig.below if isinstance(a, Axis)]
+    if xs:
+        d["axst"] = xs[0].axis_label_text_font_style
+    def tick(a):
+        if (a.major_tick_line_color is None
+                or (a.major_tick_in, a.major_tick_out) == (0, 0)):
+            return "none"
+        if a.major_tick_in and a.major_tick_out:
+            pos, n = "crossing", a.major_tick_in + a.major_tick_out
+        elif a.major_tick_in:
+            pos, n = "inside", a.major_tick_in
+        else:
+            pos, n = "outside", a.major_tick_out
+        return "%s/%d/%s" % (pos, n, str(a.major_tick_line_color).lower())
+    for side in ("left", "right"):
+        for a in getattr(fig, side):
+            if not isinstance(a, Axis):
+                continue
+            role = "y" if a.y_range_name == "default" else "y2"
+            d[role + "side"] = side
+            d[role + "tick"] = tick(a)
+            d[role + "line"] = int(a.axis_line_color is not None)
+            if role == "y":
+                o = a.major_label_orientation
+                d["yrot"] = (0 if o in ("horizontal", 0)
+                             else int(round(_s15_math.degrees(o))) % 360)
+    if xs:
+        d["xtick"] = tick(xs[0])
+    for ax, grids in (("x", fig.xgrid), ("y", fig.ygrid)):
+        g = grids[0]
+        d[ax + "grid"] = ("1/%d" % bool(list(g.grid_line_dash))
+                          if g.grid_line_color is not None else "0/-")
+    return _s15_join(d)
+
+
+def _s15_figs(doc):
+    from bokeh.plotting import figure
+    return [f for root in doc.roots for f in root.select({"type": figure})]
+
+
+def _s15_page():
+    from bokeh.document import Document
+    with open(_s15_M.getGlobal("S15_PAGE"), encoding="utf-8") as fh:
+        page = fh.read()
+    out = ""
+    for blob in _s15_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s15_re.S):
+        try:
+            docs = _s15_json.loads(_s15_html.unescape(blob))
+        except ValueError:
+            continue
+        for dj in (docs.values() if isinstance(docs, dict) else []):
+            if not isinstance(dj, dict) or "roots" not in dj:
+                continue
+            with _s15_w.catch_warnings():
+                _s15_w.simplefilter("ignore")
+                doc = Document.from_json(dj)
+            figs = _s15_figs(doc)
+            if figs:
+                out = _s15_fig(figs[0])
+                break
+        if out:
+            break
+    _s15_M.setGlobal("S15_D", out)
+
+
+def _s15_app():
+    from bokeh.document import Document
+    from bokeh.models import Select
+    with open(_s15_M.getGlobal("S15_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s15_app")
+    with _s15_w.catch_warnings():
+        _s15_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s15_app.py", "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    figs = _s15_figs(doc)
+    before = _s15_fig(figs[0]) if figs else ""
+    _s15_M.setGlobal("S15_S", before)
+    want = _s15_M.getGlobal("S15_MOVE")
+    same = "0"
+    sels = [m for root in doc.roots for m in root.select({"type": Select})
+            if getattr(m, "_dash_var", None) == want]
+    if sels and figs:
+        w = sels[0]
+        opts = [o[0] if isinstance(o, (list, tuple)) else o for o in w.options]
+        if len(opts) > 1:
+            w.value = opts[1]
+            for key in ("value", "value_throttled"):
+                for cb in list(w._callbacks.get(key, [])):
+                    cb("value", None, opts[1])
+            same = "1" if _s15_fig(_s15_figs(doc)[0]) == before else "0"
+    _s15_M.setGlobal("S15_SAME_AFTER", same)
+
+
+def _s15_pick(which, idx):
+    vals = _s15_M.getGlobal(which).split(";")
+    names = _s15_M.getGlobal("S15_PICK").split()
+    out = []
+    for n in names:
+        i = _S15_FIELDS.index(n)
+        out.append(vals[i] if i < len(vals) else "?")
+    _s15_M.setGlobal("S15_P" + idx, ";".join(out))
+end
+
+// _s15_case tag scheme dashopts twopts [y2]: twoway, dash saved and dash
+// served (filter foreign, dropdown) for one probe; sets S15_TW, S15_D,
+// S15_S, S15_SAME_AFTER and S15_RC.
+capture program drop _s15_case
+program define _s15_case
+    version 19
+    args tag scheme y2 work
+    local opts `"${S15_OPTS}"'
+    local sent `"plotregion(lcolor("1 2 3") lstyle(foreground))"'
+    quietly sysuse auto, clear
+    local svg "`work'/lk_`tag'.svg"
+    local page "`work'/lk_`tag'.html"
+    local app "`work'/lk_`tag'.py"
+    if "`y2'" == "y2" {
+        local tw `"(scatter mpg weight) (scatter price weight, yaxis(2))"'
+    }
+    else local tw `"scatter mpg weight"'
+    capture graph drop g
+    capture noisily twoway `tw', `opts' `sent' scheme(`scheme') name(g, replace)
+    local trc = _rc
+    if !`trc' quietly graph export "`svg'", replace name(g)
+    capture dash clear
+    if "`y2'" == "y2" {
+        capture noisily dash (scatter mpg weight) (scatter price weight, yaxis(2)), `opts' scheme(`scheme') saving("`page'", replace)
+    }
+    else capture noisily dash scatter mpg weight, `opts' scheme(`scheme') saving("`page'", replace)
+    local drc = _rc
+    capture dash clear
+    if "`y2'" == "y2" {
+        capture noisily dash (scatter mpg weight) (scatter price weight, yaxis(2)), `opts' scheme(`scheme') name(g1)
+    }
+    else capture noisily dash scatter mpg weight, `opts' scheme(`scheme') name(g1)
+    local drc = `drc' + _rc
+    capture noisily dash build, server saving("`app'") replace nobrowser filter(foreign, type(dropdown))
+    local drc = `drc' + _rc
+    global S15_TW ""
+    global S15_D ""
+    global S15_S ""
+    global S15_SAME_AFTER "0"
+    global S15_SVG "`svg'"
+    global S15_PAGE "`page'"
+    global S15_APP "`app'"
+    global S15_MOVE "foreign"
+    if !`trc' capture noisily python: __import__("__main__")._s15_tw()
+    if !`drc' capture noisily python: __import__("__main__")._s15_page()
+    if !`drc' capture noisily python: __import__("__main__")._s15_app()
+    global S15_RC = `trc' + `drc'
+    capture dash clear
+    capture erase "`svg'"
+    capture erase "`page'"
+    capture erase "`app'"
+    capture graph drop g
+end
+
+// _s15_same id fields: the named fields equal in twoway, saved and served.
+capture program drop _s15_same
+program define _s15_same
+    version 19
+    args id fields
+    global S15_PICK "`fields'"
+    python: __import__("__main__")._s15_pick("S15_TW", "T")
+    python: __import__("__main__")._s15_pick("S15_D", "D")
+    python: __import__("__main__")._s15_pick("S15_S", "S")
+    _w30_expect `id' "(${S15_RC} == 0)" "rc ${S15_RC}"
+    _w30_expect `id' `"("${S15_PT}" == "${S15_PD}" & "${S15_PT}" == "${S15_PS}")"' `"[`fields'] twoway ${S15_PT} saved ${S15_PD} served ${S15_PS}"'
+end
+
 * ==== S15 P1.2a: Scheme chrome: titles, ticks, grid, economist axes ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S15") {
     display as text "S15 start " c(current_date) " " c(current_time)
+    global S15_REPO "`c(pwd)'/.."
+    local s15_full `"title("TTL") subtitle("SUB") note("NTE") caption("CAP") xtitle("XTL") ytitle("YTL")"'
+
+    // LK-01/LK-02/LK-04/LK-07: the full scatter under each scheme.
+    local s15_after ""
+    foreach s in s2color stcolor economist s1rcolor sj {
+        global S15_OPTS `"`s15_full'"'
+        _s15_case f_`s' `s' "" "`w30_work'"
+        if inlist("`s'", "s2color", "stcolor", "economist") {
+            _s15_same LK-01 "ttl sub nte cap axst"
+            _w30_expect LK-01 "(${S15_SAME_AFTER} == 1)" "`s': the served chrome changed after a move"
+        }
+        _s15_same LK-02 "yrot"
+        if inlist("`s'", "s2color", "s1rcolor", "stcolor", "economist") {
+            _s15_same LK-04 "xtick ytick"
+        }
+        if inlist("`s'", "s2color", "economist") local s15_after "`s15_after'${S15_SAME_AFTER}"
+    }
+    _w30_done LK-01 "title, subtitle, note, caption and axis-title style as twoway draws them under s2color, stcolor and economist, saved and served"
+    _w30_done LK-02 "the y labels' angle as twoway draws it under s2color, s1rcolor, sj, stcolor and economist"
+
+    // LK-03: an explicit horizontal angle wins.
+    global S15_OPTS `"ylabel(, angle(horizontal))"'
+    _s15_case yh s2color "" "`w30_work'"
+    _s15_same LK-03 "yrot"
+    _w30_expect LK-03 `"("${S15_PT}" == "0")"' "twoway's y labels are level: ${S15_PT}"
+    _w30_done LK-03 "ylabel(, angle(horizontal)) keeps s2color's y labels level in both modes"
+    _w30_done LK-04 "tick side, length and colour as twoway draws them under s2color, s1rcolor, stcolor and economist"
+
+    // LK-05: the grid pattern, with and without xlabel(, grid).
+    foreach s in stcolor s2color {
+        global S15_OPTS `"xlabel(, grid)"'
+        _s15_case xg_`s' `s' "" "`w30_work'"
+        _s15_same LK-05 "xgrid ygrid"
+    }
+    global S15_OPTS ""
+    _s15_case pl_stcolor stcolor "" "`w30_work'"
+    _s15_same LK-05 "ygrid"
+    _w30_done LK-05 "the grid's pattern (stcolor dashed, s2color solid), xlabel(, grid) included, in both modes"
+
+    // LK-06: the axis sides with a yaxis(2) layer.
+    foreach s in economist s2color {
+        global S15_OPTS `"title("TTL")"'
+        _s15_case y2_`s' `s' y2 "`w30_work'"
+        _s15_same LK-06 "yside yline ytick y2side y2tick y2line"
+    }
+    _w30_done LK-06 "economist's y axis right with no line or ticks and its axis 2 left with both; s2color's axis 2 right"
+
+    // LK-07: the served chrome after the move, economist and s2color.
+    _w30_expect LK-07 `"("`s15_after'" == "11")"' "after the move: `s15_after'"
+    _w30_done LK-07 "the served chrome of economist and s2color is unchanged after a filter move"
     display as text "S15 end " c(current_date) " " c(current_time)
 }
 * ==== end S15 ====

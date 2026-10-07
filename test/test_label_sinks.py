@@ -37,7 +37,8 @@ canvas or appended as a DOM text node.
 input                                  model.property                    rendered as
 =====================================  ================================  ===========================
 title()                                Title.text                        canvas text
-subtitle() note() caption()            Label.text                        canvas text
+subtitle() note() caption()            Title.text (Label.text for        canvas text
+                                       economist's note)
 xtitle() ytitle() ytitle2(), and the   Axis.axis_label                   canvas text
 default: the variable label
 xlabel(# "text")                       Axis.major_label_overrides, and   canvas text
@@ -582,9 +583,12 @@ class Sink:
 SINKS = (
     # Canvas text.
     Sink("graph_title", "gtitle", ("Title",), "text", "text"),
-    Sink("graph_subtitle", "gsub", ("Label",), "text", "text"),
-    Sink("graph_note", "gnote", ("Label",), "text", "text"),
-    Sink("graph_caption", "gcap", ("Label",), "text", "text"),
+    # Flipped (WP-30 P1.2a): ("Label",) was wrong because twoway places
+    # the boxes by the scheme's clock, which S15 draws as side-panel Titles
+    # (economist's note a Label in the title's band).
+    Sink("graph_subtitle", "gsub", ("Title",), "text", "text"),
+    Sink("graph_note", "gnote", ("Title", "Label"), "text", "text"),
+    Sink("graph_caption", "gcap", ("Title",), "text", "text"),
     Sink("xtitle", "xtitle", ("LinearAxis",), "axis_label", "text"),
     Sink("ytitle", "ytitle", ("LinearAxis",), "axis_label", "text"),
     Sink("ytitle2", "ytitle2", ("LinearAxis",), "axis_label", "text"),

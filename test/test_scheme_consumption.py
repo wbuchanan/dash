@@ -716,9 +716,15 @@ def _spans(fig):
 
 
 def _labels(fig, text):
-    from bokeh.models import Label
+    """The text boxes reading *text*: a Label (economist's in-band note) or
+    a side-panel Title.  Flipped (WP-30 P1.2a): Labels only was wrong
+    because twoway places the boxes by the scheme's clock, which S15 draws
+    as side-panel Titles."""
+    from bokeh.models import Label, Title
     return [m for side in ("below", "above", "center", "left", "right")
-            for m in getattr(fig, side) if isinstance(m, Label)
+            for m in getattr(fig, side)
+            if (isinstance(m, Label) or (isinstance(m, Title)
+                                         and m is not fig.title))
             and m.text == text]
 
 
