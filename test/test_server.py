@@ -2983,7 +2983,8 @@ class TestServerAreaOptions:
     """area plot in server mode must apply fcolor/fintensity."""
 
     def test_area_fcolor_applied(self, dr_module, auto_df):
-        """area with fcolor(red) must use the resolved hex for fill_color."""
+        """area with fcolor(red) is filled red at the area's intensity,
+        #ff3333 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "area", "yvar": "mpg", "xvar": "weight",
                        "options": {"fcolor": "#ff0000"}}],
@@ -2991,20 +2992,22 @@ class TestServerAreaOptions:
         }])
         _, renderers = _exec_doc(dr_module, auto_df, spec, "_tar_fc")
         fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
-        assert "#ff0000" in fill_colors, \
-            f"area fcolor '#ff0000' must appear in fill_color; got {fill_colors}"
+        assert "#ff3333" in fill_colors, \
+            f"area fcolor '#ff0000' must fill #ff3333; got {fill_colors}"
 
-    def test_area_fintensity_sets_alpha(self, dr_module, auto_df):
-        """area with fintensity(50) must set fill_alpha ≈ 0.5."""
+    def test_area_fintensity_blends_the_colour(self, dr_module, auto_df):
+        """area with fintensity(50) is navy at 50, #8da3b7, opaque: an
+        intensity is a colour, never an alpha (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "area", "yvar": "mpg", "xvar": "weight",
                        "options": {"fintensity": "50"}}],
             "graph_options": {"name": "g1"},
         }])
         _, renderers = _exec_doc(dr_module, auto_df, spec, "_tar_fi")
+        fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
+        assert "#8da3b7" in fill_colors, fill_colors
         alphas = [getattr(r.glyph, 'fill_alpha', None) for r in renderers]
-        assert any(abs(a - 0.5) < 0.01 for a in alphas if a is not None), \
-            f"area fintensity(50) must set fill_alpha≈0.5; got {alphas}"
+        assert all(a == 1.0 for a in alphas if a is not None), alphas
 
 
 class TestServerHistogramOptions:
@@ -3047,7 +3050,8 @@ class TestServerRareaOptions:
     # the served glyph's fill_color and fails under that break.
 
     def test_rarea_fcolor_applied_functional(self, dr_module):
-        """rarea with fcolor(#ff0000) must set fill_color in rendered doc."""
+        """rarea with fcolor(#ff0000) is filled at rarea's intensity,
+        #ff3333 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         rdf = _range_data()
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rarea", "yvar1": "lo", "yvar2": "hi", "xvar": "x",
@@ -3056,7 +3060,7 @@ class TestServerRareaOptions:
         }])
         _, renderers = _exec_doc(dr_module, rdf, spec, "_tra_fc2")
         fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
-        assert "#ff0000" in fill_colors, \
+        assert "#ff3333" in fill_colors, \
             f"rarea fcolor must appear in fill_color; got {fill_colors}"
 
 
@@ -3064,7 +3068,8 @@ class TestServerRbarOptions:
     """rbar in server mode must apply bfcolor, blcolor, lwidth."""
 
     def test_rbar_bfcolor_applied(self, dr_module):
-        """rbar with bfcolor(#ff0000) must set fill_color."""
+        """rbar with bfcolor(#ff0000) is filled at rbar's intensity,
+        #ff3333 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         rdf = _range_data()
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rbar", "yvar1": "lo", "yvar2": "hi", "xvar": "x",
@@ -3073,7 +3078,7 @@ class TestServerRbarOptions:
         }])
         _, renderers = _exec_doc(dr_module, rdf, spec, "_trb_bfc")
         fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
-        assert "#ff0000" in fill_colors, \
+        assert "#ff3333" in fill_colors, \
             f"rbar bfcolor must appear in fill_color; got {fill_colors}"
 
     def test_rbar_lwidth_applied(self, dr_module):

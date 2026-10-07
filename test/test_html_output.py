@@ -1087,12 +1087,13 @@ class TestPlotOptionsInHtml:
         assert "#ff00ff" in html, "lcolor(magenta) should produce #ff00ff in Bokeh JSON"
 
     def test_fcolor_maroon_appears_in_area_html(self):
-        """fcolor(maroon) produces #90353b in area HTML Bokeh JSON."""
+        """fcolor(maroon) is filled at the area's intensity: #a65d62 in the
+        area HTML Bokeh JSON (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         spec, data = _single_graph_spec(
             "area", {"yvar": "y", "xvar": "x"}, options={"fcolor": "maroon"}
         )
         html = _render_to_html(spec, data)
-        assert "#90353b" in html, "fcolor(maroon) should produce #90353b in Bokeh JSON"
+        assert "#a65d62" in html, "fcolor(maroon) should produce #a65d62 in Bokeh JSON"
 
     def test_fcolor_in_bar_html(self):
         """fcolor(forest_green) in bar produces Stata's #55752f in HTML.
@@ -1100,13 +1101,14 @@ class TestPlotOptionsInHtml:
         This asserted #538d22, which is not a colour Stata has.  Stata's
         own style/color-forest_green.style sets rgb "85 117 47" = #55752f;
         52 of the 92 named colours disagreed with their style files the same
-        way.  See test_color_fidelity.py.
+        way.  See test_color_fidelity.py.  The bar fills it at its intensity,
+        inten80: #779159 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
         """
         spec, data = _single_graph_spec(
             "bar", {"yvar": "y", "xvar": "x"}, options={"fcolor": "forest_green"}
         )
         html = _render_to_html(spec, data)
-        assert "#55752f" in html, "fcolor(forest_green) should produce #55752f"
+        assert "#779159" in html, "fcolor(forest_green) should fill #779159"
 
     def test_combined_mcolor_and_lcolor_in_scatter_html(self):
         """mcolor() and lcolor() together on a scatter: the markers are
@@ -1318,7 +1320,8 @@ class TestColorRenderingAllPlotTypes:
     def test_rbar_fcolor_in_html(self):
         html = self._html("rbar",
                           {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}, "fcolor")
-        assert self._HEX in html, "rbar fcolor(magenta) must embed #ff00ff in model JSON"
+        # Filled at rbar's intensity, inten80 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
+        assert "#ff33ff" in html, "rbar fcolor(magenta) must embed #ff33ff in model JSON"
 
     def test_histogram_fcolor_in_html(self):
         html = self._html("histogram", {"var": "y"}, "fcolor")
@@ -1335,7 +1338,8 @@ class TestColorRenderingAllPlotTypes:
     def test_rarea_fcolor_in_html(self):
         html = self._html("rarea",
                           {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}, "fcolor")
-        assert self._HEX in html, "rarea fcolor(magenta) must embed #ff00ff in model JSON"
+        # Filled at rarea's intensity, inten80 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
+        assert "#ff33ff" in html, "rarea fcolor(magenta) must embed #ff33ff in model JSON"
 
 
 # ================================================================
@@ -1862,9 +1866,10 @@ class TestOutputBackendAndVisualMarkers:
         )
         html = _render_to_html(spec, data)
         band = _only_layer(html, "VArea")
-        # The band's own fill: the scheme's first series colour at the 0.5
-        # alpha map_rarea gives it (the renderer's value, pinned here).
-        assert _values(band, "fill_color") == ["#1a476f"] * 20
+        # The band's own fill: the scheme's first series colour at its
+        # p1area intensity, #486c8c (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3), at the 0.5 alpha map_rarea gives
+        # it (section 24's; the renderer's value, pinned here).
+        assert _values(band, "fill_color") == ["#486c8c"] * 20
         assert _values(band, "fill_alpha") == [0.5] * 20
 
 
@@ -2064,15 +2069,16 @@ class TestNewOptionHtml:
         assert _values(band, "y2") == [float(i) for i in range(1, 21)]
 
     def test_bfcolor_bar_fill_in_html(self):
-        """bar with bfcolor(red) must embed #ff0000 as fill_color in Bokeh JSON."""
+        """bar with bfcolor(red) embeds red at the bar's intensity, #ff3333,
+        as fill_color in Bokeh JSON (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         spec, data = _single_graph_spec(
             "bar",
             extra_keys={"yvar": "y", "xvar": "x"},
             options={"bfcolor": "red"},
         )
         html = _render_to_html(spec, data)
-        assert "#ff0000" in html, \
-            "bfcolor(red) must embed #ff0000 as fill_color in bar glyph model"
+        assert "#ff3333" in html, \
+            "bfcolor(red) must embed #ff3333 as fill_color in bar glyph model"
 
     def test_blcolor_bar_line_in_html(self):
         """bar with blcolor(magenta) must embed #ff00ff as line_color in

@@ -4534,6 +4534,15 @@ def _ew_check(tag, width_too=0):
             - _ew_styles(_ew_os.path.join(d, "base.svg"))}
     a, b = _ew_second(sp, dp, _ew_os.path.join(d, tag + ".py"))
     got = (_ew_colour(a), _ew_colour(b))
+    if type(a).__name__ in ("VArea", "VBar"):
+        # A fill is the key's stroke colour at the layer's (p2's) bar or
+        # area intensity, as twoway fills it (WP-30 P1.2b).
+        import dash_render as dr
+        sch = dr.SchemeParser("s2color")
+        f = (sch.p_area_intensity if type(a).__name__ == "VArea"
+             else sch.p_bar_intensity)[1]
+        want = {dr.GlyphMapper._blend_intensity(c, f, sch.naturally_white)
+                for c in want}
     ok = got[0] in want and got[1] in want
     why = "twoway %s, saved %s, served %s" % (sorted(want), got[0], got[1])
     if width_too:

@@ -761,10 +761,14 @@ class TestColorColoursTheWholeLayer:
     @pytest.mark.parametrize("ptype,mode", _types_by_mode(
         ["rarea", "rbar", "area", "bar", "histogram"]))
     def test_the_fill_is_the_colour(self, mode, ptype):
+        """The fill is color()'s colour at the layer's intensity: twoway's
+        rbar, color(red) fills #FF3333 (p#bar or p#area at inten80); a
+        histogram is at full intensity until section 24 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         fig, _ = _render(mode, [plot_for(ptype, {"color": "red"})])
         fills = [str(r.glyph.fill_color).lower() for r in _glyphs(fig)
                  if hasattr(r.glyph, "fill_color")]
-        assert fills and set(fills) == {"#ff0000"}, (ptype, fills)
+        want = "#ff0000" if ptype == "histogram" else "#ff3333"
+        assert fills and set(fills) == {want}, (ptype, fills)
 
     @pytest.mark.parametrize("ptype,mode", _types_by_mode(
         ["lfitci", "qfitci", "lpolyci", "fpfitci"]))
@@ -785,8 +789,9 @@ class TestColorColoursTheWholeLayer:
     def test_a_specific_colour_option_wins(self, mode):
         fig, _ = _render(mode, [plot_for("rbar", {"color": "red",
                                                   "fcolor": "navy"})])
+        # fcolor()'s navy at rbar's intensity, inten80 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
         assert {str(r.glyph.fill_color).lower() for r in _glyphs(fig)} == {
-            "#1a476f"}
+            "#486c8c"}
 
 
 class TestMarkerIsMsymbol:

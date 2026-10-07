@@ -892,34 +892,44 @@ class TestMapScatteri:
 # ================================================================
 class TestFillOptions:
     def test_map_area_fcolor(self, fig, std_cds):
-        """fcolor option sets fill_color on VArea glyph."""
+        """fcolor() is filled at the area's intensity, inten80: twoway's
+        area fcolor(yellow) is #FFFF33, so red is #ff3333 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         r = gm.map_area(fig, std_cds, "y", "x", {"fcolor": "red"})
-        assert r.glyph.fill_color == "#ff0000"
+        assert r.glyph.fill_color == "#ff3333"
 
     def test_map_area_fintensity(self, fig, std_cds):
-        """fintensity option sets fill_alpha on VArea glyph."""
+        """fintensity() is a colour, never an alpha: navy at 50 is the
+        opaque #8da3b7 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "50"})
-        assert abs(r.glyph.fill_alpha - 0.5) < 0.01
+        assert r.glyph.fill_color == "#8da3b7"
+        assert r.glyph.fill_alpha == 1.0
 
     def test_map_area_fintensity_inten_keyword(self, fig, std_cds):
-        """fintensity 'inten75' keyword sets fill_alpha to 0.75."""
+        """inten75 is no Stata intensity style (twoway notes inten55 and
+        draws full intensity), so it draws navy at full with one note
+        (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
-        r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "inten75"})
-        assert abs(r.glyph.fill_alpha - 0.75) < 0.01
+        with pytest.warns(UserWarning) as rec:
+            r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "inten75"})
+        assert r.glyph.fill_color == "#1a476f"
+        assert len([w for w in rec
+                    if "fintensity(inten75)" in str(w.message)]) == 1
 
     def test_map_bar_fcolor(self, fig, std_cds):
-        """fcolor option sets fill_color on VBar glyph."""
+        """fcolor() is filled at the bar's intensity: magenta at inten80
+        is #ff33ff (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         r = gm.map_bar(fig, std_cds, "y", "x", {"fcolor": "magenta"})
-        assert r.glyph.fill_color == "#ff00ff"
+        assert r.glyph.fill_color == "#ff33ff"
 
     def test_map_bar_fintensity(self, fig, std_cds):
-        """fintensity option sets fill_alpha on VBar glyph."""
+        """fintensity(80) is navy at inten80, #486c8c, opaque (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         r = gm.map_bar(fig, std_cds, "y", "x", {"fintensity": "80"})
-        assert abs(r.glyph.fill_alpha - 0.8) < 0.01
+        assert r.glyph.fill_color == "#486c8c"
+        assert r.glyph.fill_alpha == 1.0
 
     def test_map_histogram_fcolor(self, fig, std_cds):
         """fcolor option sets fill_color on histogram Quad glyph."""
@@ -928,56 +938,59 @@ class TestFillOptions:
         assert r.glyph.fill_color == "#ff0000"
 
     def test_map_histogram_fintensity(self, fig, std_cds):
-        """fintensity option sets fill_alpha on histogram Quad glyph."""
+        """fintensity(40) is navy at 40, #a3b5c5, opaque (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         r = gm.map_histogram(fig, std_cds, "y", {"fintensity": "40"})
-        assert abs(r.glyph.fill_alpha - 0.4) < 0.01
+        assert r.glyph.fill_color == "#a3b5c5"
+        assert r.glyph.fill_alpha == 1.0
 
     def test_map_rarea_fcolor(self, fig, range_cds):
-        """fcolor option sets fill_color on rarea VArea glyph."""
+        """fcolor() is filled at rarea's intensity: #ff33ff (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         result = gm.map_rarea(fig, range_cds, "lo", "hi", "xvar", {"fcolor": "magenta"})
         r = result[0] if isinstance(result, list) else result
-        assert r.glyph.fill_color == "#ff00ff"
+        assert r.glyph.fill_color == "#ff33ff"
 
     def test_map_rarea_fintensity(self, fig, range_cds):
-        """fintensity option sets fill_alpha on rarea VArea glyph."""
+        """fintensity(30) is navy at 30, #bac8d4; rarea's own 0.5 opacity
+        is section 24's (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         result = gm.map_rarea(fig, range_cds, "lo", "hi", "xvar", {"fintensity": "30"})
         r = result[0] if isinstance(result, list) else result
-        assert abs(r.glyph.fill_alpha - 0.3) < 0.01
+        assert r.glyph.fill_color == "#bac8d4"
+        assert r.glyph.fill_alpha == 0.5
 
     def test_map_rbar_fcolor(self, fig, range_cds):
-        """fcolor option sets fill_color on rbar VBar glyph."""
+        """fcolor() is filled at rbar's intensity: twoway's rbar,
+        color(red) fills #FF3333 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         result = gm.map_rbar(fig, range_cds, "lo", "hi", "xvar", {"fcolor": "red"})
         r = result[0] if isinstance(result, list) else result
-        assert r.glyph.fill_color == "#ff0000"
+        assert r.glyph.fill_color == "#ff3333"
 
     def test_map_rbar_fintensity(self, fig, range_cds):
-        """fintensity option sets fill_alpha on rbar VBar glyph."""
+        """fintensity(60) is navy at 60, #7691a9, opaque (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         result = gm.map_rbar(fig, range_cds, "lo", "hi", "xvar", {"fintensity": "60"})
         r = result[0] if isinstance(result, list) else result
-        assert abs(r.glyph.fill_alpha - 0.6) < 0.01
+        assert r.glyph.fill_color == "#7691a9"
+        assert r.glyph.fill_alpha == 1.0
 
     def test_fintensity_clamped_max(self, fig, std_cds):
-        """fintensity values > 100 are clamped to 1.0.
-
-        Exactly 1.0: "<= 1.0" passed any alpha at all below it -- 150 read
-        modulo 100 as 0.5, say."""
+        """fintensity() above 100 darkens, as twoway draws it: navy at 150
+        is #112f4a, opaque (it was clamped to full) (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "150"})
+        assert r.glyph.fill_color == "#112f4a"
         assert r.glyph.fill_alpha == 1.0
 
     def test_fintensity_clamped_min(self, fig, std_cds):
-        """fintensity values < 0 are clamped to 0.0.
-
-        Exactly 0.0: ">= 0.0" passed any alpha at all above it -- -10 read
-        as its magnitude, 0.1, say."""
+        """fintensity() below 0 is 0, which twoway draws white, opaque (it
+        was an invisible alpha 0) (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "-10"})
-        assert r.glyph.fill_alpha == 0.0
+        assert r.glyph.fill_color == "#ffffff"
+        assert r.glyph.fill_alpha == 1.0
 
     def test_fcolor_invalid_ignored(self, fig, std_cds):
         """Invalid fcolor value does not raise; fill_color unchanged."""
@@ -1473,10 +1486,11 @@ class TestMapRarea:
         assert isinstance(result[0].glyph, VArea)
 
     def test_rarea_fcolor_applied(self, fig, std_cds_small, gm):
-        """fcolor option applied to rarea VArea fill."""
+        """fcolor() is filled at rarea's intensity: magenta at inten80 is
+        #ff33ff (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         result = gm.map_rarea(fig, std_cds_small, "lo", "hi", "x",
                               {"fcolor": "magenta"})
-        assert result[0].glyph.fill_color == "#ff00ff"
+        assert result[0].glyph.fill_color == "#ff33ff"
 
 
 class TestMapRbar:
@@ -1494,10 +1508,11 @@ class TestMapRbar:
         assert isinstance(result[0].glyph, VBar)
 
     def test_rbar_fcolor_applied(self, fig, std_cds_small, gm):
-        """fcolor option applied to rbar fill."""
+        """fcolor() is filled at rbar's intensity: maroon at inten80 is
+        #a65d62 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         result = gm.map_rbar(fig, std_cds_small, "lo", "hi", "x",
                              {"fcolor": "maroon"})
-        assert result[0].glyph.fill_color == "#90353b"
+        assert result[0].glyph.fill_color == "#a65d62"
 
 
 class TestMapRspike:
@@ -2141,9 +2156,10 @@ class TestBarOptions:
         assert r.glyph.bottom == 0, "default bar bottom must be 0"
 
     def test_bfcolor_sets_fill(self, fig, cds, gm):
-        """bfcolor(red) must set bar fill_color to #ff0000."""
+        """bfcolor(red) fills the bar red at its intensity, #ff3333
+        (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         r = gm.map_bar(fig, cds, "mpg", "weight", {"bfcolor": "red"})
-        assert r.glyph.fill_color == "#ff0000", \
+        assert r.glyph.fill_color == "#ff3333", \
             "bfcolor must set bar fill_color"
 
     def test_blcolor_sets_line(self, fig, cds, gm):
@@ -2153,10 +2169,11 @@ class TestBarOptions:
             "blcolor must set bar line_color"
 
     def test_blcolor_bfcolor_independent(self, fig, cds, gm):
-        """blcolor and bfcolor must be settable independently."""
+        """blcolor and bfcolor are independent: the fill is blended at the
+        bar's intensity, the outline is not (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         r = gm.map_bar(fig, cds, "mpg", "weight",
                        {"bfcolor": "red", "blcolor": "magenta"})
-        assert r.glyph.fill_color == "#ff0000"
+        assert r.glyph.fill_color == "#ff3333"
         assert r.glyph.line_color == "#ff00ff"
 
 
@@ -3381,21 +3398,30 @@ class TestHardeningGuards:
         gm = self._make_gm()
         r = gm.map_bar(self._fig(), ColumnDataSource({"x": [], "y": []}),
                        "y", "x", {})
-        assert self._colour(r) == gm.scheme.default_color(0, "bar")
+        # The fill is the scheme colour at its p1bar intensity (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
+        assert self._colour(r) == GlyphMapper._blend_intensity(
+            gm.scheme.default_color(0, "bar"), gm.scheme.p_bar_intensity[0],
+            gm.scheme.naturally_white)
 
     def test_rbar_empty_source_keeps_the_scheme_style(self):
         from bokeh.models import ColumnDataSource
         gm = self._make_gm()
         r = gm.map_rbar(self._fig(), ColumnDataSource(
             {"x": [], "y1": [], "y2": []}), "y1", "y2", "x", {})
-        assert self._colour(r) == gm.scheme.default_color(0, "bar")
+        # The fill is the scheme colour at its p1bar intensity (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
+        assert self._colour(r) == GlyphMapper._blend_intensity(
+            gm.scheme.default_color(0, "bar"), gm.scheme.p_bar_intensity[0],
+            gm.scheme.naturally_white)
 
     def test_rarea_empty_source_keeps_the_scheme_style(self):
         from bokeh.models import ColumnDataSource
         gm = self._make_gm()
         r = gm.map_rarea(self._fig(), ColumnDataSource(
             {"x": [], "y1": [], "y2": []}), "y1", "y2", "x", {})
-        assert self._colour(r) == gm.scheme.default_color(0, "area")
+        # The fill is the scheme colour at its p1area intensity (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
+        assert self._colour(r) == GlyphMapper._blend_intensity(
+            gm.scheme.default_color(0, "area"),
+            gm.scheme.p_area_intensity[0], gm.scheme.naturally_white)
 
     def test_rspike_empty_source_keeps_the_scheme_style(self):
         from bokeh.models import ColumnDataSource

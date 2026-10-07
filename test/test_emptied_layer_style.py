@@ -127,6 +127,17 @@ class TestTheKeyIsTwoways:
         # line_alpha 0); a line's is its stroke.
         c = (g.fill_color if type(g).__name__ in ("VArea", "VBar")
              else g.line_color)
+        if type(g).__name__ in ("VArea", "VBar"):
+            # The fixture records the key's stroke, the unblended colour;
+            # the fill is that colour at the layer's (p2's) bar or area
+            # intensity (WP-30 P1.2b; twoway's SVG, plan section 16
+            # Evidence E3).
+            sp = dr.SchemeParser(scheme)
+            f = (sp.p_area_intensity if t == "rarea"
+                 else sp.p_bar_intensity)[1]
+            colours = {dr.GlyphMapper._blend_intensity(x, f,
+                                                       sp.naturally_white)
+                       for x in colours}
         assert str(c).lower() in colours, (scheme, t, c, colours)
 
 

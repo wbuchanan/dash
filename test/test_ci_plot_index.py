@@ -241,7 +241,13 @@ class TestBothModes:
         fig = _figure(mode, wd, plots, case["scheme"])
         sp = SchemeParser(case["scheme"])
         for glyph in sorted({g for t in types for g, _ in _DRAWS[t]}):
-            expect = [_hex(sp.default_color(i, cyc))
+            # A VArea's fill is the p# colour at the p#area intensity
+            # (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3);
+            # the plot index rule pinned here is unchanged.
+            expect = [_hex(sp.default_color(i, cyc)) if g != "VArea"
+                      else _hex(dr.GlyphMapper._blend_intensity(
+                          sp.default_color(i, cyc),
+                          sp.p_area_intensity[i % 15], sp.naturally_white))
                       for t, i in zip(types, want)
                       for g, cyc in _DRAWS[t] if g == glyph]
             got = _drawn(fig, glyph)

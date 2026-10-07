@@ -6642,6 +6642,10 @@ class SchemeParser:
         "inten30":  0.30, "inten40":  0.40, "inten50":  0.50,
         "inten60":  0.60, "inten70":  0.70, "inten80":  0.80,
         "inten90":  0.90, "inten100": 1.0,  "full":     1.0,
+        # Stata's other two intensity styles (/Applications/StataNow/ado/
+        # base/style/intensity-inten200.style and intensity-max.style,
+        # `set val 200' and `set val 999999'): exactly 14 names.
+        "inten200": 2.0,  "max":      9999.99,
     }
 
     def __init__(self, scheme_name: str = "s2color") -> None:
@@ -7244,14 +7248,24 @@ class SchemeParser:
             return default
         return f"{pt:.3f}".rstrip("0").rstrip(".") + "pt"
 
-    def _intensity(self, key: str, default: float = 0.8) -> float:
+    def _intensity(self, key: str, default: float = 0.8,
+                   clamp: bool = True) -> float:
+        """The intensity *key* declares, as a fraction of full (``inten80``
+        is 0.8), or *default*.  With *clamp* the value is held to [0, 1];
+        without it a value above full is kept (``inten200`` is 2.0, as
+        twoway draws the p#bar and p#area chains, WP-30 P1.2b) and a
+        negative one is read as 0."""
         raw = self._props.get(key, "").strip().lower()
         if raw in self._INTENSITY:
-            return self._INTENSITY[raw]
+            v = self._INTENSITY[raw]
+            return min(1.0, v) if clamp else v
         try:
-            return max(0.0, min(1.0, float(raw) / 100.0))
+            v = float(raw) / 100.0
         except (ValueError, TypeError):
             return default
+        if not math.isfinite(v):
+            return default
+        return max(0.0, min(1.0, v)) if clamp else max(0.0, v)
 
     def _lpattern(self, key: str) -> list:
         """Translate a scheme line pattern, degrading loudly rather than raising.
@@ -7710,10 +7724,11 @@ class SchemeParser:
         self.axis_line_width: float = self._lwidth(
             "linewidth axisline", OptionTranslator.translate_lwidth("thin"))
 
-        # Fill intensities
+        # `intensity p', the root of the p#bar and p#area chains below and
+        # of p_other_band_styles.  `intensity bar' and `intensity area' are
+        # graph bar's keys, which twoway's bar and area ignore (measured,
+        # WP-30 P1.2b), so they are no longer read (register P1.2.8).
         self.fill_alpha: float = self._intensity("intensity p", 0.8)
-        self.bar_alpha: float = self._intensity("intensity bar", 0.8)
-        self.area_alpha: float = self._intensity("intensity area", 0.8)
 
         # Font sizes.  `gsize text' is parsed into _props and carried by
         # every shipped file, but it has no attribute: Stata's
@@ -7888,12 +7903,14 @@ class SchemeParser:
         self.p_bar_intensity: "list[float]" = [
             self._intensity(self._first_present(
                 (f"intensity p{i}bar", "intensity pbar", f"intensity p{i}",
-                 "intensity p")) or "intensity p", self.fill_alpha)
+                 "intensity p")) or "intensity p", self.fill_alpha,
+                clamp=False)
             for i in range(1, 16)]
         self.p_area_intensity: "list[float]" = [
             self._intensity(self._first_present(
                 (f"intensity p{i}area", "intensity parea", f"intensity p{i}",
-                 "intensity p")) or "intensity p", self.fill_alpha)
+                 "intensity p")) or "intensity p", self.fill_alpha,
+                clamp=False)
             for i in range(1, 16)]
 
         # Default marker size for the p cycle, and legend placement.
@@ -8097,13 +8114,11 @@ class SchemeParser:
         returns for *index* and *plot_type*, or None when it declares none.
 
         sttrans declares every p# colour at %20, and Stata draws it as
-        fill-opacity and stroke-opacity 0.20: a real opacity, where
-        `intensity p inten80' is a lightening that dash only approximates
-        as alpha.  A declared opacity therefore wins over ``fill_alpha``,
-        ``bar_alpha`` and ``area_alpha`` at every mapper site that draws a
-        scheme alpha (``GlyphMapper._scheme_alpha``), and sets a line's
-        alpha, which no intensity reaches; a user colour with its own %NN
-        still wins over both.
+        fill-opacity and stroke-opacity 0.20: a real opacity.  An intensity
+        is a colour (``GlyphMapper._blend_intensity``), never an opacity,
+        so a declared opacity is the only scheme opacity: it is what
+        ``GlyphMapper._scheme_alpha`` draws, and it sets a line's alpha;
+        a user colour with its own %NN still wins over it.
         """
         idx = index % 15
         cycle = self._cycle_for(plot_type)
@@ -9232,19 +9247,71 @@ class GlyphMapper:
         return "p", 0
 
     @staticmethod
-    def _blend_intensity(hexval: str, f: float) -> str:
-        """*hexval* at intensity *f* (0-1), as Stata draws it: each channel
-        blended towards white, ``255 - (255 - c) * f``, rounded half up.
-        twoway's SVG draws red at fintensity(50) as #FF8080."""
-        h = str(hexval).lstrip("#")
+    def _blend_intensity(hexval: str, f: float,
+                         naturally_white: Any = True) -> str:
+        """*hexval* (``#rrggbb``) at intensity *f* (1 is full), as twoway
+        draws it, an opaque colour (WP-30 P1.2b, measured 03oct2026).
+
+        For each channel c, rounded half up (``floor(x + 0.5)``): under
+        ``naturally_white 1`` f <= 1 gives ``255 - (255 - c) * f`` and
+        f > 1 gives ``c / f``; under ``naturally_white 0`` (s1rcolor)
+        ``c * f``, held to 255.  Then Stata's clamp: when a channel that
+        was non-zero came out 0, every channel is ``c / m`` instead, m the
+        smallest non-zero channel of *hexval*.  A negative f is 0 and a
+        non-finite one 1.  Measured: navy at .5 ``#8da3b7``, at 1.5
+        ``#112f4a``, at 60 and above ``#010304``; under s1rcolor at .5
+        ``#0d2438``.  Navy at exactly 52 (twoway ``#010304``, this rule
+        ``#010102``) is P1.13's UNCLEAR and pinned nowhere.  Any input that
+        is not ``#rrggbb`` is returned unchanged; nothing raises.
+        """
+        h = str(hexval)
+        if not re.fullmatch(r"#?[0-9a-fA-F]{6}", h):
+            return h
+        h = h.lstrip("#")
+        rgb = [int(h[k:k + 2], 16) for k in (0, 2, 4)]
         try:
-            rgb = [int(h[k:k + 2], 16) for k in (0, 2, 4)]
-        except ValueError:
-            return str(hexval)
-        f = max(0.0, min(1.0, float(f)))
-        return "#%02x%02x%02x" % tuple(
-            max(0, min(255, int(math.floor(255.0 - (255.0 - c) * f + 0.5))))
-            for c in rgb)
+            f = float(f)
+        except (TypeError, ValueError):
+            f = 1.0
+        if not math.isfinite(f):
+            f = 1.0
+        f = max(0.0, f)
+        if not naturally_white:
+            raw = [c * f for c in rgb]
+        elif f <= 1.0:
+            raw = [255.0 - (255.0 - c) * f for c in rgb]
+        else:
+            raw = [c / f for c in rgb]
+        out = [max(0, min(255, int(math.floor(x + 0.5)))) for x in raw]
+        if any(c > 0 and o == 0 for c, o in zip(rgb, out)):
+            m = min(c for c in rgb if c > 0)
+            out = [max(0, min(255, int(math.floor(c / m + 0.5))))
+                   for c in rgb]
+        return "#%02x%02x%02x" % tuple(out)
+
+    @staticmethod
+    def _fintensity_value(raw: Any) -> "float | None":
+        """``fintensity()`` as twoway reads it, a fraction of full, or None
+        for the layer's own intensity (``.`` or empty, silently).
+
+        Stata's 14 intensity names (``SchemeParser._INTENSITY``, exact
+        case) keep their value, above full too; a number is read by
+        ``OptionTranslator.stata_number`` and divided by 100, a negative
+        one read as 0.  Anything else (``abc``, ``inten55``, ``Full``,
+        ``.a``) draws full intensity with one note, as twoway's "not found
+        in class intensity" does.  Never refused, never raises.
+        """
+        v = str(raw).strip()
+        if v in ("", "."):
+            return None
+        if v in SchemeParser._INTENSITY:
+            return SchemeParser._INTENSITY[v]
+        n = OptionTranslator.stata_number(v)
+        if n is not None:
+            return max(0.0, n / 100.0)
+        _dash_style_note("fintensity", raw, "fill intensity",
+                         using="full intensity")
+        return 1.0
 
     def _ci_band_style(self, options: "dict[str, str]") -> dict:
         """The band's resolved look: the scheme's ci style (or the one
@@ -9315,16 +9382,10 @@ class GlyphMapper:
             except ValueError:
                 _dash_style_note(key, val, "line pattern")
         if "fintensity" in options:
-            try:
-                v = str(options["fintensity"]).strip()
-                pct = float(v[5:] if v.startswith("inten") else v) / 100.0
-                if not math.isfinite(pct):
-                    raise ValueError(v)
-            except (TypeError, ValueError):
-                _dash_style_note("fintensity", options["fintensity"],
-                                 "fill intensity")
-            else:
-                st["intensity"] = max(0.0, min(1.0, pct))
+            # twoway's reading and rule, unbounded above (WP-30 P1.2b).
+            f = self._fintensity_value(options["fintensity"])
+            if f is not None:
+                st["intensity"] = f
         for key in ("falpha", "fa"):
             if key in options:
                 fa = _stat_option_float(options, key, None, "fill",
@@ -9356,7 +9417,8 @@ class GlyphMapper:
         _fa = st.get("fill_alpha")
         band_r = fig.varea(
             x=x_col, y1=lo_col, y2=hi_col, source=source,
-            fill_color=self._blend_intensity(fill, st.get("intensity", 1.0)),
+            fill_color=self._blend_intensity(
+                fill, st.get("intensity", 1.0), self.scheme.naturally_white),
             fill_alpha=(0.0 if st["fill_none"]
                         else 1.0 if _fa is None else float(_fa)),
         )
@@ -9772,18 +9834,30 @@ class GlyphMapper:
                     if hasattr(glyph, "angle_units"):
                         glyph.angle_units = "rad"
 
-    def _apply_fill_opts(self, renderer: Any, options: dict[str, str]) -> None:
-        """Apply fcolor/fintensity options to a filled glyph renderer.
+    def _apply_fill_opts(self, renderer: Any, options: dict[str, str],
+                         base: Any = None, intensity: float = 1.0) -> None:
+        """Apply fcolor/falpha/fintensity to a filled glyph renderer.
 
-        Supports Stata's ``color%alpha`` notation on ``fcolor``
-        (e.g. ``fcolor(red%60)``).
+        In this order: (1) ``fcolor(none)`` draws no fill; any other
+        ``fcolor()`` replaces *base* and, with its own ``%NN``, sets the
+        opacity; (2) ``falpha()``/``fa()`` set the opacity; (3)
+        ``fintensity()`` replaces *intensity*; (4) when *base* is
+        ``#rrggbb`` the fill is *base* blended at that intensity
+        (``_blend_intensity``), written on the glyph and its nonselection
+        copy (alpha untouched), before the brushed-copy sync runs.  An
+        intensity is a colour, never an opacity (WP-30 P1.2b).
 
         Args:
-            renderer: A Bokeh GlyphRenderer whose glyph has fill_color /
-                      fill_alpha attributes (VArea, VBar, Quad, etc.).
-            options:  Translated per-plot options dict.
+            renderer:  A Bokeh GlyphRenderer whose glyph has fill_color /
+                       fill_alpha attributes (VArea, VBar, Quad, etc.).
+            options:   Translated per-plot options dict.
+            base:      The unblended colour the caller resolved (the
+                       scheme's, color() or bfcolor()); never read back
+                       from the glyph, which is drawn blended.
+            intensity: The layer's intensity (1 is full).
         """
         glyph = renderer.glyph
+        _user_fill = False
         if "fcolor" in options:
             if str(options["fcolor"]).strip().lower() == "none":
                 # Stata's fcolor(none) is TRANSPARENT.  It resolved to
@@ -9795,7 +9869,8 @@ class GlyphMapper:
                     color, alpha = self.tr.parse_color_alpha(
                         options["fcolor"], "fcolor")
                     if color:
-                        glyph.fill_color = color
+                        base = color
+                        _user_fill = True
                     if alpha is not None and hasattr(glyph, "fill_alpha"):
                         glyph.fill_alpha = alpha
                 except AttributeError:
@@ -9809,23 +9884,19 @@ class GlyphMapper:
                 if _fa is not None and hasattr(glyph, "fill_alpha"):
                     glyph.fill_alpha = _fa / 100.0
                 break
+        f = intensity
         if "fintensity" in options:
-            try:
-                val = str(options["fintensity"]).strip()
-                # Stata fintensity: 0-100 (percentage) or keywords inten0-inten100
-                if val.startswith("inten"):
-                    pct = float(val[5:]) / 100.0
-                else:
-                    pct = float(val) / 100.0
-                if not math.isfinite(pct):
-                    raise ValueError(val)
-            except (TypeError, ValueError):
-                _dash_style_note("fintensity", options["fintensity"],
-                                 "fill intensity")
-            else:
-                pct = max(0.0, min(1.0, pct))
-                if hasattr(glyph, "fill_alpha"):
-                    glyph.fill_alpha = pct
+            _fv = self._fintensity_value(options["fintensity"])
+            if _fv is not None:
+                f = _fv
+        if isinstance(base, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", base):
+            c = self._blend_intensity(base, f, self.scheme.naturally_white)
+            glyph.fill_color = c
+            ns = getattr(renderer, "nonselection_glyph", None)
+            if ns is not None and hasattr(ns, "fill_color"):
+                ns.fill_color = c
+        elif _user_fill:
+            glyph.fill_color = base
 
     # Supported palette names → Bokeh palette identifiers
     _PALETTE_MAP: "dict[str, str]" = {
@@ -10781,22 +10852,20 @@ class GlyphMapper:
     # Phase 1A plot types
     # ------------------------------------------------------------------
 
-    def _scheme_alpha(self, color_idx: int, plot_type: str,
-                      intensity_alpha: float) -> float:
-        """The alpha the scheme draws the plot at *color_idx* with.
+    def _scheme_alpha(self, color_idx: int, plot_type: str) -> float:
+        """The opacity the scheme draws the plot at *color_idx* with: the
+        opacity its colour declares, else 1.
 
-        Stata's intensity (``intensity p inten80``) is a lightening towards
-        the background, which dash approximates as alpha; a colour's own
-        ``%NN`` suffix IS an opacity.  sttrans declares every p# colour at
-        %20, and Stata's SVG export draws fill-opacity and stroke-opacity
-        0.20 (measured 22sep2026), where dash drew the intensity's 0.8 like
-        every other scheme.  When the scheme declares an opacity it is the
-        real value and wins over the approximation.  A user mcolor(),
-        fcolor() or lcolor() with its own %NN still wins over both: the
-        option appliers run after the glyph is drawn.
+        An intensity is a colour, never an alpha (M1, GAPS2 D11, WP-30
+        P1.2b): twoway draws markers and fills opaque, a fill blended at
+        its intensity (``_blend_intensity``).  sttrans declares every p#
+        colour at %20 and Stata's SVG draws fill-opacity and
+        stroke-opacity 0.20 (measured 22sep2026).  A user mcolor(),
+        fcolor() or lcolor() with its own %NN, or malpha(), still wins:
+        the option appliers run after the glyph is drawn.
         """
         declared = self.scheme.default_alpha(color_idx, plot_type)
-        return intensity_alpha if declared is None else declared
+        return 1.0 if declared is None else declared
 
     def map_scatter(
         self,
@@ -10890,8 +10959,9 @@ class GlyphMapper:
             line_color=_default_color,
             # Fill AND outline: Stata's SVG carries fill-opacity and
             # stroke-opacity alike, 0.20 under sttrans.
-            alpha=self._scheme_alpha(color_idx, "scatter",
-                                     self.scheme.fill_alpha),
+            # Opaque, as twoway draws a marker, unless the scheme declares
+            # an opacity; %NN and malpha() set one below (WP-30 P1.2b).
+            alpha=self._scheme_alpha(color_idx, "scatter"),
             # The outline: `linewidth p#mark' -> pmark -> p# -> p, as Stata
             # draws every marker's (markerstyle-p#.style); it was Bokeh's
             # 1px under every scheme.  mlwidth() still wins, below.
@@ -11142,30 +11212,31 @@ class GlyphMapper:
         # _y1_col = baseline, yvar = upper boundary
         area_source = ColumnDataSource(self._carry_cols(
             source, {xvar: x_arr, _y1_col: y1_base, yvar: y_arr}, _area_idx))
-        r = fig.varea(x=xvar, y1=_y1_col, y2=yvar, source=area_source,
-                      fill_color=self.scheme.default_color(color_idx, "area"),
-                      # `intensity area' was parsed and never read, so an
-                      # area was half-transparent whatever the scheme said.
-                      fill_alpha=self._scheme_alpha(
-                          color_idx, "area", self.scheme.area_alpha),
-                      legend_label=yvar)
-
+        # The fill is the resolved colour at the p#area intensity, opaque,
+        # as twoway draws it (WP-30 P1.2b).
+        _fill_base = self.scheme.default_color(color_idx, "area")
+        _f = self.scheme.p_area_intensity[color_idx % 15]
         # Honour fill color option.  An unknown name was dropped in silence
         # here, and nothing downstream reads color() for an area.
         if "color" in options:
             try:
-                r.glyph.fill_color = self.tr.translate_mcolor(options["color"])
+                _fill_base = self.tr.translate_mcolor(options["color"])
             except ValueError:
                 _dash_style_note("color", options["color"], "colour")
+        r = fig.varea(x=xvar, y1=_y1_col, y2=yvar, source=area_source,
+                      fill_color=self._blend_intensity(
+                          _fill_base, _f, self.scheme.naturally_white),
+                      fill_alpha=self._scheme_alpha(color_idx, "area"),
+                      legend_label=yvar)
 
-        self._apply_fill_opts(r, options)
+        self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
 
         # Add an optional border line on top of the area when line options are given.
         # VArea has no native border; a separate Line renderer is required.
         _LINE_KEYS = ("lcolor", "lwidth", "lpattern")
         if any(k in options for k in _LINE_KEYS):
-            # Default border color = same as fill color
-            border_color = r.glyph.fill_color or "#aec7e8"
+            # Default border color = the fill's resolved colour, unblended
+            border_color = _fill_base or "#aec7e8"
             _border_data = {xvar: x_arr, yvar: y_arr}
             if _area_ids is not None and _ROW_ID_COLUMN not in _border_data:
                 _border_data[_ROW_ID_COLUMN] = _area_ids
@@ -11277,15 +11348,18 @@ class GlyphMapper:
                 pass
 
         _bar_default_color = self.scheme.default_color(color_idx, "bar")
+        # The fill is the resolved colour at the p#bar intensity, opaque,
+        # as twoway draws it; the outline keeps the colour (WP-30 P1.2b).
+        _fill_base = _bar_default_color
+        _f = self.scheme.p_bar_intensity[color_idx % 15]
         _vbar_kwargs: dict = dict(
             x=x_field, top=yvar, bottom=base_val, source=clean_source,
             width=width_spec,
-            fill_color=_bar_default_color,
+            fill_color=self._blend_intensity(
+                _fill_base, _f, self.scheme.naturally_white),
             line_color=_bar_default_color,
             legend_label=yvar,
-            # `intensity bar' was parsed and never read.
-            fill_alpha=self._scheme_alpha(color_idx, "bar",
-                                          self.scheme.bar_alpha),
+            fill_alpha=self._scheme_alpha(color_idx, "bar"),
         )
         # The outline takes the colour's declared opacity too: Stata's SVG
         # draws a sttrans bar with stroke-opacity 0.20 beside its
@@ -11304,7 +11378,7 @@ class GlyphMapper:
         if "color" in options:
             try:
                 c = self.tr.translate_mcolor(options["color"])
-                r.glyph.fill_color = c
+                _fill_base = c
                 r.glyph.line_color = c
             except ValueError:
                 # _apply_line_opts names color() too, when it folds it onto
@@ -11315,7 +11389,7 @@ class GlyphMapper:
         # An unknown name is noted, as every other colour option's is.
         if "bfcolor" in options:
             try:
-                r.glyph.fill_color = self.tr.translate_mcolor(options["bfcolor"])
+                _fill_base = self.tr.translate_mcolor(options["bfcolor"])
             except ValueError:
                 _dash_style_note("bfcolor", options["bfcolor"], "colour")
         if "blcolor" in options:
@@ -11323,7 +11397,7 @@ class GlyphMapper:
                 r.glyph.line_color = self.tr.translate_mcolor(options["blcolor"])
             except ValueError:
                 _dash_style_note("blcolor", options["blcolor"], "colour")
-        self._apply_fill_opts(r, options)
+        self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # VBar supports line_width/line_dash/line_color natively; lcolor/lwidth/lpattern
         # are applied after bfcolor/blcolor so blcolor retains priority for line color.
         self._apply_line_opts(r, options)
@@ -13501,24 +13575,26 @@ class GlyphMapper:
         fill and line options (WP-29 P0.18).  The populated and both empty
         branches of map_histogram draw through it, so an emptied histogram
         keeps its colour and key, as twoway keys it."""
-        r = fig.quad(top="top", bottom=0, left="left", right="right",
-                     source=source,
-                     fill_color=self.scheme.default_color(color_idx, "histogram"),
-                     line_color="white",
-                     # `intensity bar' -- a histogram is a bar plot in
-                     # Stata's own scheme vocabulary.
-                     fill_alpha=self._scheme_alpha(
-                         color_idx, "histogram", self.scheme.bar_alpha),
-                     legend_label=yvar)
+        # Full intensity, opaque: twoway reads `intensity histogram' (full
+        # in the s2color family), never the p#bar chain; section 24 reads
+        # the histogram's own style (WP-30 P1.2b, D-16a).
+        _fill_base = self.scheme.default_color(color_idx, "histogram")
+        _f = 1.0
         if "color" in options:
             try:
-                c = self.tr.translate_mcolor(options["color"])
-                r.glyph.fill_color = c
+                _fill_base = self.tr.translate_mcolor(options["color"])
             except ValueError:
                 # As map_bar: named here because the lcolor() fold that
                 # would name it is skipped when blcolor() is given.
                 _dash_style_note("color", options["color"], "colour")
-        self._apply_fill_opts(r, options)
+        r = fig.quad(top="top", bottom=0, left="left", right="right",
+                     source=source,
+                     fill_color=self._blend_intensity(
+                         _fill_base, _f, self.scheme.naturally_white),
+                     line_color="white",
+                     fill_alpha=self._scheme_alpha(color_idx, "histogram"),
+                     legend_label=yvar)
+        self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # Quad supports line_width/line_dash/line_color for bin border styling
         self._apply_line_opts(r, options)
         return r
@@ -14055,25 +14131,31 @@ class GlyphMapper:
         source = ColumnDataSource(self._carry_cols(source, _cols, _ord))
         view = None
 
-        _varea_kwargs: dict = dict(x=xvar, y1=y1var, y2=y2var, source=source,
-                                    fill_color=self.scheme.default_color(color_idx, "area"),
-                                    fill_alpha=0.5,
-                                    legend_label=y1var)
-        if view is not None:
-            _varea_kwargs["view"] = view
-        r = fig.varea(**_varea_kwargs)
+        # The fill is the resolved colour at the p#area intensity (WP-30
+        # P1.2b); its 0.5 opacity is section 24's.
+        _fill_base = self.scheme.default_color(color_idx, "area")
+        _f = self.scheme.p_area_intensity[color_idx % 15]
         # color() is the band's colour, as on area: twoway's rarea with
         # color(red) is filled #FF3333 and stroked #FF0000 (SVG, 23sep2026),
         # and dash drew the scheme's colour -- nothing read color() here.
         # fcolor(), the specific option, still wins in _apply_fill_opts.
         if "color" in options and "fcolor" not in options:
             try:
-                r.glyph.fill_color = self.tr.translate_mcolor(options["color"])
+                _fill_base = self.tr.translate_mcolor(options["color"])
             except ValueError:
                 _dash_style_note("color", options["color"], "colour")
             except AttributeError:
                 pass
-        self._apply_fill_opts(r, options)
+        _varea_kwargs: dict = dict(x=xvar, y1=y1var, y2=y2var, source=source,
+                                    fill_color=self._blend_intensity(
+                                        _fill_base, _f,
+                                        self.scheme.naturally_white),
+                                    fill_alpha=0.5,
+                                    legend_label=y1var)
+        if view is not None:
+            _varea_kwargs["view"] = view
+        r = fig.varea(**_varea_kwargs)
+        self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # No marker labels: twoway draws none on rarea (measured).
         return [r]
 
@@ -14127,9 +14209,15 @@ class GlyphMapper:
             xvar, source.data[xvar], bar_width)
         if _rb_ext:
             source.data.update(_rb_ext)
+        # The fill is the resolved colour at the p#bar intensity, opaque,
+        # as twoway draws it; the outline keeps the colour (WP-30 P1.2b).
+        _fill_base = self.scheme.default_color(color_idx, "bar")
+        _f = self.scheme.p_bar_intensity[color_idx % 15]
         _rbar_kwargs: dict = dict(x=x_field, bottom=y1var, top=y2var, source=source,
                                    width=width_spec,
-                                   fill_color=self.scheme.default_color(color_idx, "bar"),
+                                   fill_color=self._blend_intensity(
+                                       _fill_base, _f,
+                                       self.scheme.naturally_white),
                                    line_alpha=0,
                                    legend_label=y1var)
         _rbar_lw = self.scheme.plot_line_width(color_idx, "bar")
@@ -14145,7 +14233,7 @@ class GlyphMapper:
         if "color" in options:
             try:
                 c = self.tr.translate_mcolor(options["color"])
-                r.glyph.fill_color = c
+                _fill_base = c
                 r.glyph.line_color = c
             except ValueError:
                 _dash_style_note("color", options["color"], "colour")
@@ -14162,7 +14250,7 @@ class GlyphMapper:
         # moment rbar started going through the mapper.
         if "bfcolor" in options:
             try:
-                r.glyph.fill_color = self.tr.translate_mcolor(options["bfcolor"])
+                _fill_base = self.tr.translate_mcolor(options["bfcolor"])
             except ValueError:
                 _dash_style_note("bfcolor", options["bfcolor"], "colour")
             except AttributeError:
@@ -14174,7 +14262,7 @@ class GlyphMapper:
                 _dash_style_note("blcolor", options["blcolor"], "colour")
             except AttributeError:
                 pass
-        self._apply_fill_opts(r, options)
+        self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # After bfcolor/blcolor, so blcolor keeps priority for the line.
         self._apply_line_opts(r, options)
         # No marker labels: twoway draws none on rbar (measured).

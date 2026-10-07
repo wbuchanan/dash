@@ -1908,6 +1908,20 @@ CORPUS = [
           {"scheme": "stcolor"}, {"xlabel": ", grid"}),
     _case("scheme chrome: s1rcolor ticks", [_sc()], {"scheme": "s1rcolor"},
           {"title": "T", "note": "N"}),
+    # WP-30 P1.2b: intensity drawn as an opaque blend, markers opaque.
+    _case("bar, fintensity(150)", [plot_for("bar", {"fintensity": "150"})]),
+    _case("area, s1rcolor, fintensity(50)",
+          [plot_for("area", {"fcolor": "navy", "fintensity": "50"})],
+          {"scheme": "s1rcolor"}),
+    _case("rconnected, sttrans", [plot_for("rconnected")],
+          {"scheme": "sttrans"}),
+    _case("rbar and rarea, color(red)",
+          [plot_for("rbar", {"color": "red"}),
+           plot_for("rarea", {"color": "red"})]),
+    _case("histogram, fcolor(navy) fintensity(50)",
+          [plot_for("histogram", {"fcolor": "navy", "fintensity": "50"})]),
+    _case("lfitci, fintensity(150)",
+          [plot_for("lfitci", {"fintensity": "150"})]),
 ]
 
 

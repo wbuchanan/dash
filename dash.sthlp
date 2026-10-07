@@ -747,8 +747,9 @@ named in a note and drawn around -- because it is what would be drawn.
     one that {cmd:twoway} would have swallowed in silence.  A style name
     that {cmd:dash} does not recognise (a colour, a marker symbol, a size,
     a line width, a line pattern, an angle, a clock position or a fill
-    intensity) is reported once per render and the scheme's default drawn,
-    as {cmd:twoway} does with its own "named style not found" note.  A
+    intensity) is reported once per render and the scheme's default drawn
+    (for a fill intensity, full intensity), as {cmd:twoway} does with its
+    own "named style not found" note.  A
     refusal is one line naming the option and the value, printed before
     any Python runs, with r(198), or r(111) for a variable that does not
     exist:
@@ -2770,7 +2771,8 @@ band takes {cmd:twoway}'s fitarea options:{p_end}
     {cmd:acolor()}{p_end}
 {p2col:{cmdab:lc:olor(}{it:color}{cmd:)}}the outline and the line{p_end}
 {p2col:{cmdab:fi:ntensity(}{it:#}{cmd:)}}the fill's intensity, drawn as
-    {cmd:twoway} draws it, the colour blended towards white{p_end}
+    {cmd:twoway} draws it: the colour blended towards white below 100,
+    darker above it, and towards black under {cmd:s1rcolor}{p_end}
 {p2col:{cmdab:alw:idth(}{it:lw}{cmd:)}}the outline's width; wins over
     {cmd:lwidth()}, which sets the line's too; 0 to 10000, refused
     outside, r(198), as {cmd:twoway} refuses it; a bare number is read as
@@ -3488,6 +3490,24 @@ too, so {cmd:mcolor(red%50)} and {cmd:mcolor(red) malpha(50)} are the same
 thing.
 
 {pstd}
+Markers are drawn opaque, as {cmd:twoway} draws them, unless a colour's
+{cmd:%}{it:NN}, a scheme's declared opacity ({cmd:sttrans}'s {cmd:%20}) or
+{cmd:malpha()} asks for one.  A {cmd:bar}, {cmd:rbar}, {cmd:area} or
+{cmd:rarea} fill is its colour at the layer's intensity (the scheme's
+{cmd:intensity p}{it:#}{cmd:bar} or {cmd:intensity p}{it:#}{cmd:area},
+{cmd:inten80} in the shipped schemes), opaque, so {cmd:s2color}'s bar is
+#486C8C and {cmd:fcolor(yellow)} fills #FFFF33.  {cmd:fintensity()}
+replaces that intensity and is drawn as {cmd:twoway} draws it: blended
+towards white below 100 and darker above it ({cmd:fintensity(150)} divides
+each channel by 1.5); towards black under {cmd:s1rcolor}, whose scheme is
+not naturally white; 0 and negative values draw white (almost black under
+{cmd:s1rcolor}); {cmd:fintensity(.)} draws the layer's own intensity.
+{cmd:inten0} to {cmd:inten100}, {cmd:inten200}, {cmd:full} and {cmd:max}
+are the names; any other name draws full intensity with a note, and no
+value is refused.  A histogram is filled at full intensity.  A brushed-away
+fill is dimmed in its own colour.
+
+{pstd}
 The line options {cmd:lcolor()}, {cmd:lwidth()} and {cmd:lalpha()} style a
 layer's lines -- a connecting line, a drop, a spike -- and never its
 markers, as in {cmd:twoway}: a marker's outline is {cmd:mlcolor()} and
@@ -3617,8 +3637,8 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     plot), the fill intensities, and a colour
     opacity the scheme declares ({cmd:sttrans}'s {cmd:%20}), which is
     carried into the scatter, connected, line, bar, area and histogram
-    layers in both modes and wins over the alpha {cmd:dash} otherwise
-    derives from the intensities; the range, spike, fit, band, density,
+    layers in both modes and sets the opacity of the opaque colours its
+    intensities give; the range, spike, fit, band, density,
     function and immediate layers take the colour but not yet its opacity;
     your own {cmd:mcolor(}{it:x}{cmd:%}{it:NN}{cmd:)} or {cmd:malpha()}
     still wins over both.  Plots are numbered as {cmd:twoway} numbers

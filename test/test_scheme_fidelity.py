@@ -233,6 +233,12 @@ ALPHA_SCALARS = {
     "area_alpha": ["intensity area", "intensity"],
 }
 
+#: Graph bar's intensity keys, which twoway's bar and area ignore (measured,
+#: WP-30 P1.2b): SchemeParser no longer parses them into an attribute, so
+#: the file's transcription is checked through the declared directive,
+#: read by SchemeParser._intensity, instead.
+RETIRED_INTENSITY = {"bar_alpha", "area_alpha"}
+
 #: fixture key -> directive chain; fixture value is {"name", "value", ...}
 STYLE_NAME_SCALARS = {
     "default_line_width": ["linewidth p"],
@@ -476,7 +482,12 @@ def evaluate_scheme(name):
         if expected is None:
             continue
         supplied = declared(sp, chain) is not None
-        actual = attr(sp, prop)
+        if prop in RETIRED_INTENSITY:
+            key = next((k for k in chain if declared(sp, [k]) is not None),
+                       None)
+            actual = sp._intensity(key) if key is not None else MISSING
+        else:
+            actual = attr(sp, prop)
         faithful = (
             supplied
             and isinstance(actual, (int, float))

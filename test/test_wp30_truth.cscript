@@ -3534,10 +3534,320 @@ if inlist("`only'", "", "S15") {
 }
 * ==== end S15 ====
 
+// S16 (P1.2b) helpers: twoway's dominant fill of a probe's kind, read from
+// its SVG through scripts/svg_truth.py, and every glyph renderer's
+// Type:fill_color:line_color:fill_alpha:line_alpha of dash's saved page
+// (its embedded document) and served app (make_document), the last also
+// after a filter move.  Every argument crosses through sfi.Macro.
+python:
+import collections as _s16_col
+import json as _s16_json
+import html as _s16_html
+import os as _s16_os
+import re as _s16_re
+import sys as _s16_sys
+import warnings as _s16_w
+from sfi import Macro as _s16_M
+
+_S16_ATTR = _s16_re.compile(r'([\w:-]+)="([^"]*)"')
+
+
+def _s16_style(a):
+    out = {}
+    for part in a.get("style", "").split(";"):
+        k, _, v = part.partition(":")
+        if k.strip():
+            out[k.strip().lower()] = v.strip()
+    return out
+
+
+def _s16_svg():
+    """S16_TW: `#RRGGBB|opacity|stroke' of the dominant fill of S16_KIND."""
+    _s16_sys.path.insert(0, _s16_os.path.join(_s16_M.getGlobal("S16_REPO"), "scripts"))
+    from svg_truth import svg_document
+    path = _s16_M.getGlobal("S16_SVG")
+    kind = _s16_M.getGlobal("S16_KIND")
+    doc = svg_document(path)
+    with open(path, encoding="utf-8") as fh:
+        txt = fh.read()
+    items, strokes = [], []
+    if kind == "marker":
+        circ = [c for c in doc["circles"]
+                if c.get("fill") and c["fill"] != "none" and c.get("r")]
+        rmax = max(c["r"] for c in circ) if circ else 0
+        items = [(c["fill"], c.get("fill_opacity")) for c in circ
+                 if c["r"] == rmax]
+    elif kind == "rect":
+        cw = doc["canvas"]["w"]
+        for m in _s16_re.finditer(r"<rect\b([^>]*)>", txt):
+            a = dict(_S16_ATTR.findall(m.group(1)))
+            st = _s16_style(a)
+            try:
+                w = float(a.get("width", "0"))
+            except ValueError:
+                w = 0.0
+            if not 0 < w < cw / 3.0:
+                continue
+            fill = (st.get("fill") or "").lower()
+            stroke = (st.get("stroke") or "").lower()
+            if stroke and stroke != "none":
+                strokes.append(stroke)
+            if fill and fill != "none":
+                op = st.get("fill-opacity")
+                items.append((fill, float(op) if op else None))
+    else:
+        items = [(p["fill"], p.get("fill_opacity")) for p in doc["paths"]
+                 if p.get("fill") and p["fill"] != "none"]
+        for m in _s16_re.finditer(r"<use\b([^>]*)>", txt):
+            st = _s16_style(dict(_S16_ATTR.findall(m.group(1))))
+            fill = (st.get("fill") or "").lower()
+            if fill and fill != "none":
+                op = st.get("fill-opacity")
+                items.append((fill, float(op) if op else None))
+    c = _s16_col.Counter(items)
+    if not c:
+        _s16_M.setGlobal("S16_TW", "")
+        return
+    (f, o), _n = c.most_common(1)[0]
+    s = _s16_col.Counter(strokes).most_common(1)[0][0] if strokes else ""
+    _s16_M.setGlobal("S16_TW", "%s|%s|%s" % (f, 1.0 if o is None else o, s))
+
+
+def _s16_v(g, attr):
+    """A glyph property's plain value (a page read back from JSON holds
+    value(...) specs)."""
+    v = getattr(g, attr, "")
+    v = getattr(v, "value", v)
+    return str(v).lower()
+
+
+def _s16_fills(doc):
+    from bokeh.models import GlyphRenderer
+    out = []
+    for r in doc.select({"type": GlyphRenderer}):
+        g = r.glyph
+        out.append("%s:%s:%s:%s:%s" % (
+            type(g).__name__, _s16_v(g, "fill_color"),
+            _s16_v(g, "line_color"), _s16_v(g, "fill_alpha"),
+            _s16_v(g, "line_alpha")))
+    return ";".join(out)
+
+
+def _s16_page():
+    from bokeh.document import Document
+    with open(_s16_M.getGlobal("S16_PAGE"), encoding="utf-8") as fh:
+        page = fh.read()
+    out = ""
+    for blob in _s16_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s16_re.S):
+        try:
+            docs = _s16_json.loads(_s16_html.unescape(blob))
+        except ValueError:
+            continue
+        for dj in (docs.values() if isinstance(docs, dict) else []):
+            if not isinstance(dj, dict) or "roots" not in dj:
+                continue
+            with _s16_w.catch_warnings():
+                _s16_w.simplefilter("ignore")
+                doc = Document.from_json(dj)
+            out = _s16_fills(doc)
+            break
+        if out:
+            break
+    _s16_M.setGlobal("S16_FILLS_D", out)
+
+
+def _s16_app():
+    from bokeh.document import Document
+    from bokeh.models import Select
+    with open(_s16_M.getGlobal("S16_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s16_app")
+    with _s16_w.catch_warnings():
+        _s16_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s16_app.py", "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    before = _s16_fills(doc)
+    _s16_M.setGlobal("S16_FILLS_S", before)
+    same = "0"
+    sels = [m for root in doc.roots for m in root.select({"type": Select})
+            if getattr(m, "_dash_var", None) == "foreign"]
+    if sels:
+        w = sels[0]
+        opts = [o[0] if isinstance(o, (list, tuple)) else o for o in w.options]
+        if len(opts) > 1:
+            w.value = opts[1]
+            for key in ("value", "value_throttled"):
+                for cb in list(w._callbacks.get(key, [])):
+                    cb("value", None, opts[1])
+            same = "1" if _s16_fills(doc) == before else "0"
+    _s16_M.setGlobal("S16_SAME_AFTER", same)
+
+
+def _s16_cmp():
+    """S16_OK = 1 when twoway's fill (and opacity, and the stroke when
+    S16_STROKE is 1) equals the first S16_GLYPH of both modes; for
+    markers every Scatter is opaque.  S16_MSG says what was compared."""
+    tw = _s16_M.getGlobal("S16_TW").split("|")
+    glyph = _s16_M.getGlobal("S16_GLYPH")
+    ok, msg = True, ["twoway " + "|".join(tw)]
+    for mode in ("D", "S"):
+        ents = [e.split(":") for e in _s16_M.getGlobal("S16_FILLS_" + mode).split(";") if e]
+        mine = [e for e in ents if e[0] == glyph]
+        msg.append(mode + " " + (":".join(mine[0]) if mine else "none"))
+        if not mine or len(tw) < 3:
+            ok = False
+            continue
+        if glyph == "Scatter":
+            ok = ok and all(float(e[3]) == float(tw[1]) and
+                            float(e[4]) == float(tw[1]) for e in mine)
+            ok = ok and mine[0][1] == tw[0]
+            continue
+        ok = ok and mine[0][1] == tw[0]
+        if _s16_M.getGlobal("S16_ALPHA") == "1":
+            ok = ok and abs(float(mine[0][3]) - float(tw[1])) < 1e-9
+        if _s16_M.getGlobal("S16_STROKE") == "1":
+            ok = ok and mine[0][2] == tw[2]
+    _s16_M.setGlobal("S16_OK", "1" if ok else "0")
+    _s16_M.setGlobal("S16_MSG", "; ".join(msg)[:240])
+end
+
+// _s16_case tag scheme kind glyph "twoway command" "dash options": twoway
+// and dash (saved, served with a foreign dropdown filter) on one command;
+// sets S16_OK, S16_MSG, S16_SAME_AFTER, S16_RC and S16_NOTE (1 when
+// twoway's log holds "not found in class intensity" and dash's log names
+// fintensity()).
+capture program drop _s16_case
+program define _s16_case
+    version 19
+    args tag scheme kind glyph cmd dopts work
+    quietly sysuse auto, clear
+    quietly generate lo = mpg - 3
+    quietly generate hi = mpg + 3
+    sort weight
+    local svg "`work'/ob_`tag'.svg"
+    local page "`work'/ob_`tag'.html"
+    local app "`work'/ob_`tag'.py"
+    local tlog "`work'/ob_`tag'_t.log"
+    local dlog "`work'/ob_`tag'_d.log"
+    local c = cond(strpos(`"`cmd'"', ","), " ", ", ")
+    capture graph drop g
+    quietly log using "`tlog'", text replace name(s16t)
+    capture noisily twoway `cmd' `c' lcolor(none) scheme(`scheme') name(g, replace)
+    local trc = _rc
+    quietly log close s16t
+    if "`tag'" == "rbr" {
+        capture noisily twoway `cmd' `c' scheme(`scheme') name(g, replace)
+        local trc = _rc
+    }
+    if !`trc' quietly graph export "`svg'", replace name(g)
+    local dc = cond(strpos(`"`cmd'"', ","), " ", ", ")
+    capture dash clear
+    quietly log using "`dlog'", text replace name(s16d)
+    capture noisily dash `cmd' `dc' scheme(`scheme') saving("`page'", replace)
+    local drc = _rc
+    quietly log close s16d
+    capture dash clear
+    capture noisily dash `cmd' `dc' scheme(`scheme') name(g1)
+    local drc = `drc' + _rc
+    capture noisily dash build, server saving("`app'") replace nobrowser filter(foreign, type(dropdown))
+    local drc = `drc' + _rc
+    foreach g in S16_TW S16_FILLS_D S16_FILLS_S S16_MSG {
+        global `g' ""
+    }
+    global S16_SAME_AFTER "0"
+    global S16_OK "0"
+    global S16_SVG "`svg'"
+    global S16_PAGE "`page'"
+    global S16_APP "`app'"
+    global S16_KIND "`kind'"
+    global S16_GLYPH "`glyph'"
+    if !`trc' capture noisily python: __import__("__main__")._s16_svg()
+    if !`drc' capture noisily python: __import__("__main__")._s16_page()
+    if !`drc' capture noisily python: __import__("__main__")._s16_app()
+    if !`trc' & !`drc' capture noisily python: __import__("__main__")._s16_cmp()
+    global S16_RC = `trc' + `drc'
+    global S16_NOTE 0
+    capture cert_log_has "`tlog'", needle("not found in class intensity")
+    local tn = cond(_rc, 0, r(found))
+    capture cert_log_has "`dlog'", needle("fintensity(abc)")
+    local dn = cond(_rc, 0, r(found))
+    global S16_NOTE = `tn' & `dn'
+    capture dash clear
+    foreach f in svg page app tlog dlog {
+        capture erase "``f''"
+    }
+    capture graph drop g
+end
+
 * ==== S16 P1.2b: Intensity as an opaque blend ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S16") {
     display as text "S16 start " c(current_date) " " c(current_time)
+    global S16_REPO "`c(pwd)'/.."
+    global S16_ALPHA "1"
+    global S16_STROKE "0"
+    local s16_after ""
+
+    // OB-10: markers opaque, both modes.
+    foreach c in "scatter mpg weight" "connected mpg weight" "rconnected lo hi weight" {
+        _s16_case mk s2color marker Scatter "`c'" "" "`w30_work'"
+        _w30_expect OB-10 "(${S16_RC} == 0 & ${S16_OK} == 1)" `"`c': ${S16_MSG}"'
+        if "`c'" == "scatter mpg weight" local s16_after "`s16_after'${S16_SAME_AFTER}"
+    }
+    _w30_done OB-10 "scatter, connected and rconnected markers are opaque, as twoway draws them, saved and served"
+
+    // OB-11: the default bar under s2color and s1rcolor.
+    foreach s in s2color s1rcolor {
+        _s16_case br `s' rect VBar "bar mpg rep78 if rep78<." "" "`w30_work'"
+        _w30_expect OB-11 "(${S16_RC} == 0 & ${S16_OK} == 1)" `"`s': ${S16_MSG}"'
+        if "`s'" == "s2color" local s16_after "`s16_after'${S16_SAME_AFTER}"
+    }
+    _w30_done OB-11 "the default bar is filled as twoway fills it under s2color (#486C8C) and s1rcolor (#CCCC00), opaque"
+
+    // OB-12: fintensity() as twoway draws it.
+    foreach v in 50 150 0 {
+        _s16_case fi s2color rect VBar "bar mpg rep78 if rep78<., fcolor(navy) fintensity(`v')" "" "`w30_work'"
+        _w30_expect OB-12 "(${S16_RC} == 0 & ${S16_OK} == 1)" `"fintensity(`v'): ${S16_MSG}"'
+        if "`v'" == "50" local s16_after "`s16_after'${S16_SAME_AFTER}"
+    }
+    _s16_case fi s1rcolor rect VBar "bar mpg rep78 if rep78<., fcolor(navy) fintensity(50)" "" "`w30_work'"
+    _w30_expect OB-12 "(${S16_RC} == 0 & ${S16_OK} == 1)" `"s1rcolor fintensity(50): ${S16_MSG}"'
+    _w30_done OB-12 "fcolor(navy) fintensity(50, 150, 0) under s2color and fintensity(50) under s1rcolor are twoway's colours"
+
+    // OB-13: area, rarea (fill colour only) and rbar color(red).
+    _s16_case ar s2color path VArea "area mpg weight" "" "`w30_work'"
+    _w30_expect OB-13 "(${S16_RC} == 0 & ${S16_OK} == 1)" `"area: ${S16_MSG}"'
+    global S16_ALPHA "0"
+    _s16_case ra s2color path VArea "rarea lo hi weight" "" "`w30_work'"
+    _w30_expect OB-13 "(${S16_RC} == 0 & ${S16_OK} == 1)" `"rarea: ${S16_MSG}"'
+    global S16_ALPHA "1"
+    global S16_STROKE "1"
+    _s16_case rbr s2color rect VBar "rbar lo hi rep78 if rep78<., color(red)" "" "`w30_work'"
+    _w30_expect OB-13 "(${S16_RC} == 0 & ${S16_OK} == 1)" `"rbar color(red): ${S16_MSG}"'
+    global S16_STROKE "0"
+    _w30_done OB-13 "area and rarea fill #486C8C, rbar color(red) fills #FF3333 and strokes #FF0000, in both modes"
+
+    // OB-14: the band's intensity.
+    _s16_case bd s2color path VArea "lfitci mpg weight, fintensity(150)" "" "`w30_work'"
+    _w30_expect OB-14 "(${S16_RC} == 0 & ${S16_OK} == 1)" `"${S16_MSG}"'
+    _w30_done OB-14 "lfitci, fintensity(150) draws its band #808080, as twoway does"
+
+    // OB-15: sttrans's declared opacity beside the blend.
+    _s16_case tr sttrans rect VBar "bar mpg rep78 if rep78<." "" "`w30_work'"
+    _w30_expect OB-15 "(${S16_RC} == 0 & ${S16_OK} == 1)" `"${S16_MSG}"'
+    _w30_done OB-15 "a sttrans bar is #486C8C at 0.20 in twoway and both modes"
+
+    // OB-16: an unknown intensity name: twoway's note, dash's note, full.
+    _s16_case ab s2color rect VBar "bar mpg rep78 if rep78<., fcolor(navy) fintensity(abc)" "" "`w30_work'"
+    _w30_expect OB-16 "(${S16_RC} == 0 & ${S16_OK} == 1)" `"${S16_MSG}"'
+    _w30_expect OB-16 "(${S16_NOTE} == 1)" "the two notes"
+    _w30_done OB-16 "fintensity(abc) is noted by twoway and dash and drawn at full intensity, #1A476F"
+
+    // OB-17: the served app after a filter move.
+    _w30_expect OB-17 `"("`s16_after'" == "111")"' "after the move: `s16_after'"
+    _w30_done OB-17 "the served scatter, bar and fintensity(50) bar redraw the same colours after a filter move"
     display as text "S16 end " c(current_date) " " c(current_time)
 }
 * ==== end S16 ====

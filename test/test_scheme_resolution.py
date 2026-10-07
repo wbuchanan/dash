@@ -548,19 +548,20 @@ ALPHA_LISTS = {
 #: Glyph class -> (fill_alpha, line_alpha) every shipped scheme other than
 #: sttrans drew on 22sep2026, captured before this change (scratchpad
 #: wp17/B2/capture.py, both modes agreed): the intensity-derived values.
-#: A Line has no fill and a VArea no line.  Only s1rcolor's `intensity bar'
-#: differs from full.
+#: A Line has no fill and a VArea no line.  Since WP-30 P1.2b markers are
+#: opaque, as twoway draws them (they were 0.8, the scheme's `intensity p'
+#: read as an alpha), and an intensity is a colour, never an alpha, so
+#: s1rcolor's bar and histogram (0.8 from graph bar's `intensity bar') are
+#: opaque too: no scheme is an exception (twoway's SVG, plan section 16
+#: Evidence E3).
 PINNED_ALPHAS = {
-    "Scatter": (0.8, 0.8),
+    "Scatter": (1.0, 1.0),
     "Line":    (None, 1.0),
     "VBar":    (1.0, 1.0),
     "VArea":   (1.0, None),
     "Quad":    (1.0, 1.0),
 }
-PINNED_EXCEPTIONS = {
-    ("s1rcolor", "VBar"): (0.8, 1.0),
-    ("s1rcolor", "Quad"): (0.8, 1.0),
-}
+PINNED_EXCEPTIONS = {}
 
 #: The five plot types whose mapper site reads a scheme alpha, one graph
 #: each, told apart afterwards by the glyph class they draw.
@@ -738,7 +739,10 @@ class TestSttransIsDrawnTranslucent:
 
     def test_a_user_fcolor_with_its_own_alpha_wins_on_a_bar(self, mode):
         g = _one_plot("bar", {"fcolor": "red%60"}, mode)[0]
-        assert g.fill_color == "#ff0000"
+        # Red at the bar's intensity, inten80, keeping its own %60
+        # (twoway: fcolor(navy%50) is #486C8C at 0.50; WP-30 P1.2b, plan
+        # section 16 Evidence E3).
+        assert g.fill_color == "#ff3333"
         assert g.fill_alpha == pytest.approx(0.6)
 
     def test_a_user_lcolor_with_its_own_alpha_wins_on_a_line(self, mode):

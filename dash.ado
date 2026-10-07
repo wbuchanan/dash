@@ -2219,7 +2219,8 @@ end
 // p1/p2 bounds; pos: a number > 0, p1 an inclusive ceiling; style: a name
 // passes untouched, a number must lie in [p1,p2] where bounds are given
 // (mlabposition and fintensity have none: twoway accepts 13, 2.5, 150 and
-// -5 with a note or silently, and the renderer notes and defaults), and a
+// -5 with a note or silently, and the renderer notes 13 and draws 150 and
+// -5 as twoway draws them), and a
 // token that looks numeric but overflows real() (1e400) is refused, not
 // passed as a name; istyle: a name, or an integer in [p1,p2] (no token
 // uses it today); enum: one of the |-separated words, case-insensitive,

@@ -186,7 +186,7 @@ FUNCTIONS = {
  'GlyphMapper._predict_fp2': 'test/test_statistical_helpers.py::TestFpFitAndPrediction::test_the_prediction_is_the_design_times_beta_on_raw_x',
  'GlyphMapper._render_ci_band': 'test/test_lpolyci_options.py::TestLpolyciUsesTheSameSmootherAsLpoly::test_an_absolute_bandwidth_is_not_clamped_to_one',
  'GlyphMapper._ci_pstyle': 'test/test_ci_band_style.py::TestTheBandAgainstStata::test_pstyle_overrides_the_plot_index',
- 'GlyphMapper._blend_intensity': 'test/test_ci_band_style.py::TestTheSchemeKeys::test_a_user_schemes_ci_keys_are_read',
+ 'GlyphMapper._blend_intensity': 'test/test_intensity_blend.py::TestTheBlend::test_above_full_divides_and_clamps',
  'GlyphMapper._ci_band_style': 'test/test_ci_band_style.py::TestTheBandAgainstStata::test_each_measured_case',
  'GlyphMapper._ci_band_style.<locals>._col': 'test/test_ci_band_style.py::TestTheBandAgainstStata::test_each_measured_case',
  'GlyphMapper._ci_band_glyphs': 'test/test_ci_band_style.py::TestTheOutline::test_it_is_a_closed_path_round_the_band',
@@ -195,7 +195,7 @@ FUNCTIONS = {
  'GlyphMapper._histogram_quads': 'test/test_emptied_layer_style.py::TestTheHistogramQuads::test_the_empty_and_populated_quads_share_a_style',
  'SchemeParser._band_color': 'test/test_ci_band_style.py::TestTheSchemeKeys::test_a_user_schemes_ci_keys_are_read',
  'SchemeParser._band_lwidth': 'test/test_ci_band_style.py::TestTheSchemeKeys::test_a_user_schemes_other_keys_are_read',
- 'GlyphMapper._scheme_alpha': 'test/test_computed_layer_rows.py::TestAQualifierReachesTheComputation::test_an_all_true_mask_matches_no_view',
+ 'GlyphMapper._scheme_alpha': 'test/test_intensity_blend.py::TestMarkersAreOpaque::test_default_markers',
  'GlyphMapper._stata_lowess': 'test/test_statistical_helpers.py::TestStataLowess::test_a_single_observation_and_a_constant_x',
  'GlyphMapper._subset_source': 'test/test_saved_filter_layers.py::TestTheSubsetSource::test_rows_columns_and_order',
  'GlyphMapper._view_mask': 'test/test_computed_layer_rows.py::TestTheMaskHelperDegradesSafely::test_a_boolean_filter_yields_its_mask',
@@ -852,6 +852,7 @@ FUNCTIONS = {
  'SchemeParser.axis_side': 'test/test_scheme_chrome.py::TestTheChromeKeysAreRead::test_axis_side_reads_the_alt_keys',
  '_dash_textbox_place': 'test/test_scheme_chrome.py::TestTextboxPlace::test_every_clock',
  # WP-30 S16 (P1.2b): Intensity as an opaque blend (P1.2 part b, M1)
+ 'GlyphMapper._fintensity_value': 'test/test_intensity_blend.py::TestTheFintensityParser::test_numbers_names_and_missing',
  # WP-30 S17 (P1.23b): Date and format text in keys and tooltips (P1.23 part b)
  # WP-30 S18 (P1.5): Axis format fallbacks (P1.5)
  # WP-30 S19 (P1.16): Legend keys and default axis titles (P1.16)

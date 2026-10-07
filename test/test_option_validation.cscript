@@ -46,7 +46,7 @@
 *!   OV-18  mlabposition(2.5)         rc 0
 *!   OV-19  fintensity(50)            rc 0
 *!   OV-20  fintensity(inten50)       rc 0   (a name)
-*!   OV-21  fintensity(150)           rc 0   (unbounded: the renderer notes it)
+*!   OV-21  fintensity(150)           rc 0   (drawn darker, as twoway draws it)
 *! Numeric kinds -- a word is refused, a number must sit in the range:
 *!   OV-22  jitter(5)                 rc 0
 *!   OV-23  jitter(abc)               rc 198 naming jitter()

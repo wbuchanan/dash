@@ -786,8 +786,13 @@ class TestTheSchemeOpacityStopsWhereTheHelpSays:
             assert ("#c0c0c0", 1.0) in trans and ("#c0c0c0", 1.0) in plain
             trans = [s for s in trans if s[0] != "#c0c0c0"]
             plain = [s for s in plain if s[0] != "#c0c0c0"]
-        assert trans and {c for c, _a in trans} == {"#cc6677"}, trans
-        assert plain and {c for c, _a in plain} == {"#90353b"}, plain
+        # rarea's fill is p2 at its p2area intensity, inten80 (WP-30 P1.2b;
+        # twoway's SVG, plan section 16 Evidence E3); the alphas are
+        # section 24's.
+        want_t, want_p = (("#d68592", "#a65d62") if ptype == "rarea"
+                          else ("#cc6677", "#90353b"))
+        assert trans and {c for c, _a in trans} == {want_t}, trans
+        assert plain and {c for c, _a in plain} == {want_p}, plain
         assert [a for _c, a in trans] == [a for _c, a in plain]
 
     def test_malpha_wins_over_the_declared_opacity(self, tmp_path, mode):

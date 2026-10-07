@@ -196,6 +196,23 @@ def test_marker_colour_is_what_stata_drew(name, i):
 
 @pytest.mark.parametrize("name", SCHEMES)
 @pytest.mark.parametrize("i", SERIES)
+def test_marker_opacity_is_what_stata_drew(name, i):
+    """twoway draws these markers opaque (GAPS2 D11 plan step 3, WP-30
+    P1.2b): the PNG record holds the unblended hexes, and dash drew each
+    marker at alpha 0.8, the scheme's `intensity p' read as an opacity."""
+    from bokeh.models import ColumnDataSource
+    from bokeh.plotting import figure
+    import dash_render as _dr
+    src = ColumnDataSource({"x": [1.0, 2.0, 3.0], "y": [3.0, 1.0, 2.0]})
+    r = _dr.GlyphMapper(scheme=_parser(name)).map_scatter(
+        figure(), src, "y", "x", {}, color_idx=i)
+    r = r[0] if isinstance(r, (list, tuple)) else r
+    assert (r.glyph.fill_alpha, r.glyph.line_alpha) == (1.0, 1.0), (
+        name, i, r.glyph.fill_alpha, r.glyph.line_alpha)
+
+
+@pytest.mark.parametrize("name", SCHEMES)
+@pytest.mark.parametrize("i", SERIES)
 def test_line_plot_colour_is_what_stata_drew(name, i):
     want = _scheme(name)["lines_twoway_line"][f"p{i + 1}"]["color"]
     got = _parser(name).default_color(i, "line")

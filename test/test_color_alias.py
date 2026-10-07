@@ -111,7 +111,9 @@ class TestColorReachesTheCommonPlotTypes:
     def test_bar_still_honours_color(self, gm, src):
         r = gm.map_bar(figure(), src, "mpg", "weight", {"color": _ALIAS})
         glyph = r.glyph if not isinstance(r, list) else r[0].glyph
-        assert glyph.fill_color == _hex(_ALIAS)
+        # Orange (#ff7f00) filled at the bar's intensity, inten80 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
+        assert glyph.fill_color == "#ff9933"
+        assert glyph.line_color == _hex(_ALIAS)
 
     @pytest.mark.parametrize("mapper,prop,kind", [
         ("map_scatter", "fill_color", "scatter"),

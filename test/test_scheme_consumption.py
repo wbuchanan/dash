@@ -542,12 +542,13 @@ class TestNoParsedKeyIsDiscarded:
 
     def test_a_schemes_area_intensity_and_minor_grid_reach_both_modes(
             self, tmp_path, monkeypatch):
-        """`intensity area' and `color minor_grid' reach the figure, in both
-        modes.  They were checked only by counting `.area_alpha' and
-        `.minor_grid_color' in dash_render.py's text (below), because no
-        shipped scheme can show either: every one says `intensity area
-        full', which is Bokeh's own default, and none draws a minor grid.
-        So a scheme written here says otherwise (WP-24)."""
+        """`color minor_grid' reaches the figure, in both modes, and
+        `intensity area' -- graph bar's key, which twoway's area ignores
+        (measured: a scheme with `intensity area inten40' draws the area
+        #486C8C, opaque) -- changes nothing: the area is s2color's p1 at its
+        p1area intensity, #486c8c, at 1.0 (WP-30 P1.2b; twoway's SVG, plan
+        section 16 Evidence E3).  No shipped scheme draws a minor grid, so
+        a scheme written here says otherwise (WP-24)."""
         import warnings
         from bokeh.document import Document
         from bokeh.models import GlyphRenderer, Plot
@@ -586,14 +587,16 @@ class TestNoParsedKeyIsDiscarded:
             areas = [r.glyph for r in fig.renderers
                      if isinstance(r, GlyphRenderer)
                      and type(r.glyph).__name__ == "VArea"]
-            assert [a.fill_alpha for a in areas] == [0.4], (mode, areas)
+            assert [a.fill_alpha for a in areas] == [1.0], (mode, areas)
+            assert [str(a.fill_color).lower() for a in areas] == \
+                ["#486c8c"], (mode, areas)
             # draw_minor_hgrid is the HORIZONTAL axis's grid: the x grid.
             assert [str(g.minor_grid_line_color) for g in fig.xgrid] == \
                 ["#ff0000"], (mode, [g.minor_grid_line_color for g in fig.xgrid])
             assert [g.minor_grid_line_color for g in fig.ygrid] == [None], mode
 
     @pytest.mark.parametrize("attr", [
-        "fill_alpha", "bar_alpha", "area_alpha", "minor_grid_color",
+        "fill_alpha", "minor_grid_color",
         "title_color", "heading_font_size",
         # The S3 batch's keys: the reference line's, the plot region
         # border's and note()'s text box.
@@ -652,6 +655,20 @@ class TestNoParsedKeyIsDiscarded:
         boxes = _SCHEME_TRUTH_META()["textbox_styles"]
         assert all(v.get("size") != "gsize text" for v in boxes.values()
                    if isinstance(v, dict)), boxes
+
+    @pytest.mark.parametrize("attr", ["bar_alpha", "area_alpha"])
+    def test_graph_bars_intensity_keys_are_retired_because_twoway_ignores_them(
+            self, attr):
+        """`intensity bar' and `intensity area' are graph bar's keys.
+        twoway's bar and area ignore them: measured (StataNow 19.5, SVG,
+        03oct2026), a scheme of `#include s2color', `intensity bar inten40'
+        and `intensity area inten40' draws its bar and area #486C8C, s2color's
+        own, while `intensity p1bar inten40' and `intensity p1area inten40'
+        draw both #A3B5C5 (plan section 16 Evidence E3, register P1.2.8).
+        So SchemeParser no longer offers bar_alpha or area_alpha, as
+        `gsize text' was retired (WP-30 P1.2b)."""
+        assert not hasattr(SchemeParser("s2color"), attr)
+        assert _scheme_attr_reads(attr) == []
 
 
 # ======================================================================

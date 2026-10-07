@@ -223,9 +223,15 @@ class TestIntensitiesAndFonts:
         sp = SchemeParser("s2color")
         assert 0.0 <= sp.fill_alpha <= 1.0
 
-    def test_bar_alpha_is_float_between_0_and_1(self):
+    def test_the_bar_intensity_chain_is_unclamped(self):
+        """bar_alpha (graph bar's `intensity bar', which twoway's bar
+        ignores) is retired; the bar reads the p#bar chain, unclamped above
+        full (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         sp = SchemeParser("s2color")
-        assert 0.0 <= sp.bar_alpha <= 1.0
+        assert len(sp.p_bar_intensity) == 15
+        assert all(v >= 0.0 for v in sp.p_bar_intensity)
+        assert abs(sp.p_bar_intensity[0] - 0.8) < 0.01
+        assert not hasattr(sp, "bar_alpha")
 
     def test_s2color_fill_alpha_is_0_8(self):
         sp = SchemeParser("s2color")

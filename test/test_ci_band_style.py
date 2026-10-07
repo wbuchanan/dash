@@ -99,12 +99,20 @@ def _opts(text):
     return {k.lower(): v for k, v in re.findall(r"(\w+)\(([^()]*)\)", text)}
 
 
-def _blend(hexval, f):
+#: The schemes whose `system naturally_white' is 0: twoway multiplies an
+#: intensity towards black there (scheme-s1rcolor.scheme; SVG, s1rcolor
+#: lfitci fintensity(50) #282828, test/fixtures/intensity_truth.json).
+_NOT_WHITE = {"s1rcolor"}
+
+
+def _blend(hexval, f, white=True):
+    """twoway's blend at f <= 1: towards white, or (``white`` False,
+    naturally_white 0) multiplied towards black (WP-30 P1.2b)."""
     h = hexval.lstrip("#")
     out = []
     for i in (0, 2, 4):
         c = int(h[i:i + 2], 16)
-        v = 255.0 - (255.0 - c) * f
+        v = 255.0 - (255.0 - c) * f if white else c * f
         out.append(int(Decimal(repr(v)).quantize(Decimal("1"),
                                                  rounding=ROUND_HALF_UP)))
     return "#%02x%02x%02x" % tuple(out)
@@ -143,7 +151,7 @@ def _draw(ptype, scheme, opts, idx=0):
     return fig
 
 
-def _check(fig, want, var):
+def _check(fig, want, var, scheme=""):
     k = _parts(fig.renderers)
     band, outline, line = k["VArea"][0].glyph, k["Patch"][0].glyph, \
         k["Line"][0].glyph
@@ -151,7 +159,8 @@ def _check(fig, want, var):
         assert band.fill_alpha == 0.0
     else:
         assert _hex(band.fill_color) == _blend(
-            want["fill_rgb"], want["fill_intensity"] / 100.0), (
+            want["fill_rgb"], want["fill_intensity"] / 100.0,
+            scheme not in _NOT_WHITE), (
             band.fill_color, want)
         assert band.fill_alpha == pytest.approx(want["fill_opacity"] / 100.0)
     if var in _NO_OUTLINE or want["outline_width"] == 0:
@@ -185,7 +194,7 @@ class TestTheBandAgainstStata:
         want = _T["cases"][scheme][var]
         opts = _opts(_T["options"][var])
         for ptype in want["types"]:
-            _check(_draw(ptype, scheme, opts), want, var)
+            _check(_draw(ptype, scheme, opts), want, var, scheme)
 
     def test_the_fixture_covers_every_scheme_and_type(self):
         """ci_band_style_truth.json has no generator and covers the twenty
