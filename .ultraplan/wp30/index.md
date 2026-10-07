@@ -719,6 +719,10 @@ For batch k, whose base is `<scratch>/batch-<k>-base.txt`:
 - **20.0 expected HIGH/CRITICAL:** `_generate_app_source` (HIGH; only the move path). S57 does not edit `_dash_event_throttle` or `_dash_limits`.
 - **20.2 extra:** S57 audits the final move path for thread safety, verifies Bokeh's thread rules across S41's window, and measures latency at N=100k under the session cap (A113).
 
+## Test-writing rule (maintainer, 07oct2026; binding on every remaining section)
+
+No duplicative tests. Each section adds one test per distinct behaviour or code branch, in each mode where the modes differ. Measured data -- fixture rows, probes, schemes, sizes -- is checked by ONE test per (fixture, mode) that loops over every row and reports every mismatch, never by one parametrized test per row. Parametrize over schemes or values only where they take different branches of the code. Before adding a test, grep for one with the same inputs and assertion. Where a section file's test plan says otherwise, this rule wins. A commit that only removes tests needs no full-suite run; only the rewritten files are run.
+
 ## How to execute
 
 0. **Before any section runs, the orchestrator does seven things in the main checkout on `wp30-p1`.** Step 0g comes first, because 0a's G0 run and 0b use the queue; 0a then comes before everything else that commits. Step 0c waits for 0b. Steps 0d-0f use no CPU.
