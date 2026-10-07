@@ -544,24 +544,38 @@ class TestCreateVenv:
 
 
 MINS = {"python": "3.13", "packaging": "", "bokeh": "3.8", "numpy": "2.3", "pandas": "2.3"}
+# WP-30 P1.33: the Python minimum is dash_setup.ado's own floor, never a copy.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from test_version_floor import _setup_ado_floor  # noqa: E402
+MINS = dict(MINS, python=_setup_ado_floor()[0])
 
 
 class TestVerifyIn:
 
     def test_a_bare_venv_reports_each_missing_package(self, lib, tmp_path):
+        """Under any interpreter: the Python minimum is the running one's
+        major.minor (WP-30 P1.33, D-05d), so the packages are reached."""
         vpy = _bare_venv(tmp_path / "bare")
-        got = lib.verify_in(vpy, RENDER, MINS, sys.version_info)
+        mins = dict(MINS, python="%d.%d" % sys.version_info[:2])
+        got = lib.verify_in(vpy, RENDER, mins, sys.version_info)
         assert got["ok"] is False
         assert got["packages"] == {"packaging": "", "bokeh": "", "numpy": "", "pandas": ""}
 
     def test_a_venv_seeing_the_packages_passes_versions_and_schemes(self, lib, tmp_path):
+        """The pass path of the packages and schemes, under any interpreter:
+        the Python minimum is the running one's major.minor (WP-30 P1.33,
+        D-05d); the floor has its own tests."""
         vpy = _bare_venv(tmp_path / "seeing")
         with open(os.path.join(_purelib(vpy), "dash_base.pth"), "w") as fh:
             fh.write(_purelib(sys.executable) + "\n")
-        got = lib.verify_in(vpy, RENDER, MINS, sys.version_info)
+        mins = dict(MINS, python="%d.%d" % sys.version_info[:2])
+        got = lib.verify_in(vpy, RENDER, mins, sys.version_info)
         assert got["ok"] is True, got
         assert got["schemes"] is True
         assert all(got["packages"][n] for n in ("packaging", "bokeh", "numpy", "pandas"))
+
+    def test_the_python_minimum_is_dash_setups_floor(self):
+        assert MINS["python"] == _setup_ado_floor()[0]
 
     def test_a_venv_below_the_python_floor_is_refused(self, lib):
         got = lib.verify_in(sys.executable, RENDER, dict(MINS, python="99.0"), sys.version_info)

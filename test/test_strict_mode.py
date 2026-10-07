@@ -27,7 +27,8 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 class TestTheBaselines:
 
     def test_each_interpreter_has_one(self):
-        assert set(C._BASELINES) == {"stata", "dev"}
+        assert set(C._BASELINES) == {"stata", "dev", "py311", "py311-dev",
+                                     "py312", "py312-dev"}
         for env in C._BASELINES.values():
             assert set(env) == {"python", "bokeh", "pandas", "numpy", "scipy"}
 
@@ -42,6 +43,32 @@ class TestTheBaselines:
         assert C._baseline_name({"python": "3.14"}) == "dev"
         assert C._baseline_name({"python": "3.9"}) == "dev"
         assert C._baseline_name({"python": "3.14"}, "stata") == "stata"
+        # WP-30 P1.33: the floor matrix's stacks, the full match first.
+        assert C._baseline_name({"python": "3.11"}) == "py311"
+        assert C._baseline_name({"python": "3.12"}) == "py312"
+        assert C._baseline_name(dict(C._BASELINES["py311-dev"])) == "py311-dev"
+        assert C._baseline_name(dict(C._BASELINES["py312"])) == "py312"
+
+    def test_each_older_python_runs_both_pin_sets(self):
+        """WP-30 P1.33: every Python of the floor matrix carries the stata
+        pins (py3NN) and the dev pins (py3NN-dev), and is older than the
+        stata baseline's."""
+        def pins(env):
+            return {k: v for k, v in env.items() if k != "python"}
+
+        def vt(v):
+            return tuple(int(x) for x in v.split("."))
+
+        older = [k for k in C._BASELINES
+                 if k.startswith("py3") and not k.endswith("-dev")]
+        assert older, "no py3NN baseline"
+        for name in older:
+            dev = C._BASELINES[name + "-dev"]
+            assert pins(C._BASELINES[name]) == pins(C._BASELINES["stata"])
+            assert pins(dev) == pins(C._BASELINES["dev"])
+            assert dev["python"] == C._BASELINES[name]["python"]
+            assert vt(C._BASELINES[name]["python"]) < vt(
+                C._BASELINES["stata"]["python"])
 
     def test_a_drift_names_each_pin_missed(self):
         base = {"python": "3.13", "bokeh": "3.8"}

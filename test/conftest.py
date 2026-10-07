@@ -206,12 +206,27 @@ def _clear_bokeh_curdoc():
 # machine is legitimately on another build -- but never silent.  In strict
 # mode (DASH_STRICT=1, which `make check' sets) it stops the run before any
 # test, and any skip turns the run red at its end: a skip is not a pass.
+#
+# WP-30 P1.33: py311, py311-dev, py312 and py312-dev are the floor matrix's
+# stacks (scripts/floor_matrix.sh, make test-floor): the stata pins and the
+# dev pins on an older Python, each held by test/requirements-stata.txt or
+# test/requirements-dev.txt.  Every entry is a stack both suites pass under,
+# and the lowest entry's Python is the declared floor, dash_setup's
+# _dash_pymin (test/test_version_floor.py).
 
 _BASELINES = {
     "stata": {"python": "3.13", "bokeh": "3.8", "pandas": "2.3",
               "numpy": "2.3", "scipy": "1.16"},
     "dev": {"python": "3.14", "bokeh": "3.9", "pandas": "3.0",
             "numpy": "2.4", "scipy": "1.17"},
+    "py311": {"python": "3.11", "bokeh": "3.8", "pandas": "2.3",
+              "numpy": "2.3", "scipy": "1.16"},
+    "py311-dev": {"python": "3.11", "bokeh": "3.9", "pandas": "3.0",
+                  "numpy": "2.4", "scipy": "1.17"},
+    "py312": {"python": "3.12", "bokeh": "3.8", "pandas": "2.3",
+              "numpy": "2.3", "scipy": "1.16"},
+    "py312-dev": {"python": "3.12", "bokeh": "3.9", "pandas": "3.0",
+                  "numpy": "2.4", "scipy": "1.17"},
 }
 
 
@@ -235,10 +250,17 @@ def _running_env() -> dict:
 
 
 def _baseline_name(actual: dict, requested: str = "") -> str:
-    """The baseline to hold *actual* to: *requested* (DASH_BASELINE) when
-    given, else the one whose Python matches, else "dev"."""
+    """The baseline to hold *actual* to, in three steps: *requested*
+    (DASH_BASELINE) when given; else the first baseline *actual* matches in
+    every pin; else the first whose Python matches; else "dev".  The full
+    match comes first because an older Python has two baselines (py311 and
+    py311-dev, WP-30 P1.33), and the first by Python alone is wrong for the
+    second's stack."""
     if requested:
         return requested
+    for name, env in _BASELINES.items():
+        if not _env_drift(actual, env):
+            return name
     for name, env in _BASELINES.items():
         if env["python"] == actual.get("python"):
             return name

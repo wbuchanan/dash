@@ -359,6 +359,19 @@ class TestTheVenvSessions:
         use = do[do.index('if "`phase\'" == "venvuse" {'):]
         assert use.index("python set exec") < use.index("python:")
 
+    def test_the_use_phase_reports_its_python(self):
+        """WP-30 P1.33: the venv-linked session says which Python ran, so
+        the floor matrix's Stata leg (scripts/floor_stata_leg.do) shows
+        the interpreter it measured."""
+        with open(os.path.join(ROOT, "scripts", "release_gate_venv.do"),
+                  encoding="utf-8") as fh:
+            do = fh.read()
+        use = do[do.index('if "`phase\'" == "venvuse" {'):]
+        use = use[:use.index("\n}\n")]
+        assert "GATE venv-python" in use
+        assert use.index('display "GATE venv-link rc=') < use.index(
+            "GATE venv-python")
+
     def test_the_runner_runs_both_phases_offline(self):
         with open(os.path.join(ROOT, "scripts", "run_release_gate.sh"),
                   encoding="utf-8") as fh:

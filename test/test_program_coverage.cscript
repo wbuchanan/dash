@@ -697,33 +697,38 @@ display "PC-15 PASS: with every dependency present dash_setup reports each OK, e
 // ================================================================
 // PC-16 -- Python below the minimum is counted, and the run goes on
 // ================================================================
+// The minimum is read from _dash_pymin, never copied (WP-30 P1.33).
+_dash_pymin
+local pymin "`r(pymin)'"
 global PC_SB_SPEC `"{"pyversion": "3.7.9 (dash test sandbox)"}"'
 _pc_setup
 local rc = r(rc)
 local match = r(match)
 assert `rc' == 198
 assert `match' == 1
-foreach p in "version 3.7.9 is below the minimum 3.13." ///
+foreach p in "version 3.7.9 is below the minimum `pymin'." ///
     "bokeh ............. OK (version" "dash_render.py ..... OK" ///
     "dash_setup did not complete: 1 unmet requirement(s)." ///
-    "Unmet:  Python 3.7.9 (needs 3.13)" {
+    "Unmet:  Python 3.7.9 (needs `pymin')" {
     _pc_said "`p'"
     assert r(found) == 1
 }
 _pc_said "All dependencies are satisfied"
 assert r(found) == 0
-display "PC-16 PASS: Python 3.7.9 is reported below 3.13, every other check still runs, and the run fails naming it"
+display "PC-16 PASS: Python 3.7.9 is reported below the minimum, every other check still runs, and the run fails naming it"
 
 
 // ================================================================
 // PC-17 -- a Python version that cannot be read is not a failure
 // ================================================================
+_dash_pymin
+local pymin "`r(pymin)'"
 global PC_SB_SPEC `"{"pyversion": "abc (dash test sandbox)"}"'
 _pc_setup
 local rc = r(rc)
 assert `rc' == 0
 assert r(match) == 1
-_pc_said "OK (version abc; could not be compared to 3.13)"
+_pc_said "OK (version abc; could not be compared to `pymin')"
 assert r(found) == 1
 display "PC-17 PASS: an unreadable Python version is reported as such and does not fail the run"
 
@@ -1149,25 +1154,29 @@ python: import shutil, os, sfi; _pep_t = sfi.Macro.getLocal("pep_tmp"); [shutil.
 
 // ---- PEP-13: venv() on a linked Python below the floor starts nothing ----
 capture noisily {
-    global PC_SB_SPEC `"{"pyversion": "3.12.11 (dash test sandbox)"}"'
+    _dash_pymin
+    local pymin "`r(pymin)'"
+    global PC_SB_SPEC `"{"pyversion": "3.10.10 (dash test sandbox)"}"'
     global PC_SB_EXPECT "[]"
     mata: st_global("PC_SB_CMD", "dash_setup, venv(" + char(34) + st_local("pep_tmp") + "pep13" + char(34) + ")")
     _pc_setup
     local rc = r(rc)
     _pep_match `r(match)'
     assert `rc' == 198
-    _pc_said "venv() ............ not started: Python 3.12.11 is below 3.13."
+    _pc_said "venv() ............ not started: Python 3.10.10 is below `pymin'."
     assert r(found) == 1
     capture confirm file "`pep_tmp'pep13/pyvenv.cfg"
     assert _rc != 0
-    display "PEP-13 PASS: venv() on Python 3.12.11 starts no process, r(198)"
+    display "PEP-13 PASS: venv() on a Python below the minimum starts no process, r(198)"
 }
 if _rc _pep_fail PEP-13 `=_rc'
 
 // ---- PEP-14: a reused venv whose Python is below the floor ----
 capture noisily {
     python: import os, sfi; _pep_a = os.path.join(os.path.realpath(sfi.Macro.getLocal("pep_tmp")), "pep14"); os.makedirs(os.path.join(_pep_a, "bin"), exist_ok=True); open(os.path.join(_pep_a, "pyvenv.cfg"), "w").close(); open(os.path.join(_pep_a, "bin", "python"), "w").close(); os.chmod(os.path.join(_pep_a, "bin", "python"), 0o755); os.chmod(os.path.join(_pep_a, "bin"), 0o755); os.chmod(_pep_a, 0o755)
-    global PC_SB_SPEC `"{"venv_env": {"version": [3, 12, 1]}}"'
+    _dash_pymin
+    local pymin "`r(pymin)'"
+    global PC_SB_SPEC `"{"venv_env": {"version": [3, 10, 1]}}"'
     python: _pep_vec([[os.path.join(_pep_a, "bin", "python"), "-c", "<ANY>"]])
     mata: st_global("PC_SB_CMD", "dash_setup, venv(" + char(34) + st_local("pep_tmp") + "pep14" + char(34) + ")")
     _pc_setup
@@ -1176,9 +1185,9 @@ capture noisily {
     python: import shutil; shutil.rmtree(_pep_a, True)
     _pep_match `m'
     assert `rc' == 198
-    _pc_said "The environment's Python 3.12.1 is below 3.13."
+    _pc_said "The environment's Python 3.10.1 is below `pymin'."
     assert r(found) == 1
-    display "PEP-14 PASS: a reused venv on Python 3.12.1 is refused before pip runs, r(198)"
+    display "PEP-14 PASS: a reused venv on a Python below the minimum is refused before pip runs, r(198)"
 }
 if _rc _pep_fail PEP-14 `=_rc'
 

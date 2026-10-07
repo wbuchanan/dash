@@ -32,6 +32,8 @@ if "`phase'" == "venvuse" {
     capture noisily python set exec "gatevenv/bin/python"
     local lrc = _rc
     display "GATE venv-link rc=`lrc'"
+    capture noisily python: import sys, sfi; sfi.Macro.setLocal("gv_ver", "%d.%d.%d" % tuple(sys.version_info[:3]))
+    display "GATE venv-python rc=`=_rc' ver=`gv_ver'"
 }
 else {
     quietly cd "`work'"

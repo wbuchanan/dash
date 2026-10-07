@@ -1,0 +1,10 @@
+# The dev pins (WP-30 P1.33): the stack of the dev, py311-dev and py312-dev
+# baselines in test/conftest.py, installed by scripts/floor_matrix.sh.
+# One exact name==version per line; S41 extends it with the bokeh window.
+bokeh==3.9.0
+numpy==2.4.3
+pandas==3.0.1
+scipy==1.17.1
+packaging==26.3
+pytest==9.0.2
+pytest-xdist==3.8.0

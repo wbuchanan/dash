@@ -49,6 +49,19 @@ if `"`r(fn)'"' != `"`dashdir'/dash.ado"' {
 }
 // ---- root: end ----
 
+// WP-30 P1.33: link this session, and only this session, to another
+// interpreter (the floor certification run).  Unset, nothing changes.
+local _dash_pyx : environment DASH_PYTHON_EXEC
+if `"`macval(_dash_pyx)'"' != "" {
+    mata: st_local("_dash_pyx_bad", strofreal(any(strpos(st_local("_dash_pyx"), (char(34), char(36), char(96)))) | any(ascii(st_local("_dash_pyx")) :< 32)))
+    if `_dash_pyx_bad' {
+        display as error "DASH_PYTHON_EXEC holds a quote, backquote, dollar sign or control character"
+        exit 198
+    }
+    python set exec `"`_dash_pyx'"'
+    display as text "  Python linked for this run only: `_dash_pyx'"
+}
+
 display as text ""
 display as text "============================================================"
 display as text "  dash certification script runner"

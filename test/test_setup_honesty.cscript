@@ -8,10 +8,10 @@
 *! and FOUR branches reached it after reporting a failure:
 *!
 *!   1. Python below the minimum.  The branch displays "version X is below
-*!      the minimum 3.13" and "bokeh and pandas will not install or import
-*!      reliably" -- and there is no `exit'.  Every `exit' in the file was on
-*!      another branch (no Python at all, a required pip install that failed,
-*!      and the two jsonio ones).
+*!      the minimum" (the one _dash_pymin returns) and "bokeh and pandas
+*!      will not install or import reliably" -- and there is no `exit'.
+*!      Every `exit' in the file was on another branch (no Python at all, a
+*!      required pip install that failed, and the two jsonio ones).
 *!   2. A required package present but BELOW its minimum.  The gate prints
 *!      "(below minimum 3.8)" and carries on.
 *!   3. An optional package that could not be installed -- `continue'.
@@ -795,7 +795,8 @@ foreach p in "scipy" "statsmodels" {
 display "HON-28 PASS: with scipy and statsmodels missing, setup names neither, installs nothing, and succeeds"
 
 // ================================================================
-// HON-29..30 -- the floor is 3.13/3.8, and refuses without installing
+// HON-29..30 -- the floor (the minimum _dash_pymin returns, and bokeh 3.8)
+// refuses without installing
 // (WP-28 K2, Q27)
 // ================================================================
 // A below-floor bokeh, and a below-floor Python, are refused by NAME --
@@ -828,8 +829,11 @@ assert `h29unmet' == 1
 assert `h29ok' == 0
 display "HON-29 PASS: bokeh 3.7.3 is refused by name, the pip line names c(python_exec), nothing installed"
 
-// ---- HON-30: Python 3.12.11 is below the 3.13 floor ----
-global HON_SB_SPEC `"{"pyversion": "3.12.11 (dash test sandbox)"}"'
+// ---- HON-30: Python 3.10.10 is below the floor ----
+// The floor is read from _dash_pymin, never copied (WP-30 P1.33).
+_dash_pymin
+local pymin "`r(pymin)'"
+global HON_SB_SPEC `"{"pyversion": "3.10.10 (dash test sandbox)"}"'
 global HON_SB_EXPECT "[]"
 _hon_sb_setup
 local h30rc = r(rc)
@@ -840,13 +844,13 @@ if `h30m' != 1 {
 }
 assert `h30m' == 1
 assert `h30rc' == 198
-_hon_has "`h30log'" "version 3.12.11 is below the minimum 3.13." h30below
-_hon_has "`h30log'" "Unmet:  Python 3.12.11 (needs 3.13)" h30unmet
+_hon_has "`h30log'" "version 3.10.10 is below the minimum `pymin'." h30below
+_hon_has "`h30log'" "Unmet:  Python 3.10.10 (needs `pymin')" h30unmet
 _hon_has "`h30log'" "All dependencies are satisfied" h30ok
 assert `h30below' == 1
 assert `h30unmet' == 1
 assert `h30ok' == 0
-display "HON-30 PASS: Python 3.12.11 is refused by name, nothing installed"
+display "HON-30 PASS: a Python below the floor is refused by name, nothing installed"
 
 // ================================================================
 // PEP-17..19 -- dash_setup, venv() with real processes, offline, and

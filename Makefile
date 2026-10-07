@@ -17,12 +17,13 @@ ifeq ($(origin STATA),command line)
 $(error STATA was renamed STATA_BIN (WP-30); run make $(MAKECMDGOALS) STATA_BIN=$(STATA))
 endif
 
-.PHONY: help check test test-dev cert gate release hooks
+.PHONY: help check test test-dev test-floor cert gate release hooks
 
 help:
 	@echo "make check     make test, make test-dev and make cert, in that order"
 	@echo "make test      pytest under Stata's Python, strict"
 	@echo "make test-dev  pytest under the development interpreter ($(PYTHON)), strict"
+	@echo "make test-floor  one floor-matrix leg, run by hand (not part of make gate): FLOOR_VENV=<dir> FLOOR_BASELINE=<name>"
 	@echo "make cert      the certification suite, through the console binary"
 	@echo "make gate      net install, then every example and scheme from the install"
 	@echo "make release   make check, then make gate"
@@ -43,6 +44,16 @@ test:
 test-dev:
 	@echo "pytest under the development interpreter: $(PYTHON)"
 	@DASH_STRICT=1 DASH_BASELINE=dev $(PYTHON) -m pytest test/ $(PYTEST_ARGS)
+
+# WP-30 P1.33: one leg of the Python floor matrix, run by hand; make gate
+# never runs it.  FLOOR_VENV is a venv directory scripts/floor_matrix.sh make
+# prepared, FLOOR_BASELINE the test/conftest.py baseline it is held to.
+test-floor:
+	@if [ -z "$(FLOOR_VENV)" ] || [ -z "$(FLOOR_BASELINE)" ]; then \
+	    echo "make test-floor: set FLOOR_VENV (prepared by scripts/floor_matrix.sh make) and FLOOR_BASELINE (e.g. py311)"; \
+	    exit 2; \
+	fi; \
+	PYTEST_ARGS='$(PYTEST_ARGS)' sh scripts/floor_matrix.sh run "$(FLOOR_VENV)" "$(FLOOR_BASELINE)"
 
 cert:
 	@STATA_BIN='$(STATA_BIN)' PYTHON='$(PYTHON)' sh scripts/run_cert_suite.sh
