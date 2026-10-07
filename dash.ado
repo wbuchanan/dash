@@ -1894,6 +1894,25 @@ program define _dash_stylelist_check
     version 19
     args ptype nser
     mata: st_local("_sl_keys", _dash_stylelist_keys())
+    // A value twoway's string cannot bind is refused first, as
+    // _dash_refuse_unbound refuses it on the other options: these keys are
+    // string asis, which binds msize(x"' _dup(3) "INJ" `") where twoway
+    // refuses it, "type mismatch", r(109) (test_adversarial P20-18b).  Only
+    // a value holding a double quote can fail to bind.  Read by value; the
+    // value reaches the probe's command line only through macval().
+    foreach key of local _sl_keys {
+        mata: st_local("_sl_v", st_global("s(" + st_local("key") + ")"))
+        mata: st_local("_sl_q", strofreal(strpos(st_local("_sl_v"), char(34)) > 0))
+        if !`_sl_q' continue
+        capture _dash_stylelist_bind , v(`macval(_sl_v)')
+        if !_rc continue
+        if _rc == 1 exit 1
+        mata: st_local("_sl_rc", strpos(st_local("_sl_v"), char(34) + char(39)) ? "109" : "198")
+        local why = cond(`_sl_rc' == 109, "type mismatch", "parentheses do not balance")
+        mata: _dash_say("err", "dash: option ", st_local("key"), ///
+            "() has a value Stata cannot read, as twoway reads it: " + st_local("why") + ".")
+        exit `_sl_rc'
+    }
     foreach key of local _sl_keys {
         mata: st_local("_sl_bad", strofreal(_dash_stylelist_bad(st_global("s(" + st_local("key") + ")"))))
         if `_sl_bad' {
@@ -1939,6 +1958,13 @@ program define _dash_stylelist_check
             _dash_validate_value "dash" "`o'" "`spec'" `"`macval(e)'"' "`ptype'"
         }
     }
+end
+
+// _dash_stylelist_bind , v(<value>) -- rc 0 when -syntax-'s string binds
+// <value>, as twoway's declaration of a style option binds it.
+program define _dash_stylelist_bind
+    version 19
+    syntax , V(string)
 end
 
 // ================================================================

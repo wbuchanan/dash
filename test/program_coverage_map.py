@@ -318,7 +318,10 @@ COVERAGE = {
         # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)
         "_dash_stylelist_check": ("test_varlist_expansion.cscript:SL-18",
                                   "test_varlist_expansion.cscript:SL-19",
-                                  "test_varlist_expansion.cscript:SL-24"),
+                                  "test_varlist_expansion.cscript:SL-24",
+                                  "test_adversarial.cscript:P20-18b"),
+        # Batch-4 fix: a stylelist value twoway's string cannot bind is refused
+        "_dash_stylelist_bind": ("test_adversarial.cscript:P20-18b",),
         # WP-30 S12 (P1.27): Drop-in command form and saving() grammar (P1.27, M5/M11)
         "_dash_display_on": ("test_serve_browser.cscript:SB-31", "test_serve_browser.cscript:SB-32"),
         # WP-30 S13 (P1.12b): Stata line-width ladder (P1.12 part b, M1)
