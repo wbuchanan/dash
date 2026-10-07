@@ -1892,10 +1892,334 @@ if inlist("`only'", "", "S10") {
 }
 * ==== end S10 ====
 
+// S11 (WP-30 P1.1a) helpers.  Each sets a global to the per-series list
+// "colour/kind" of one drawing, figures joined by " ; ":
+//   _s11_svg()   S11_TW  from the live twoway SVG S11_SVG: marker fills
+//                in document order (74 auto rows a series), or line
+//                strokes (kind solid/dashed: more <line> than <path>)
+//   _s11_page()  S11_PG  from the saved page S11_PAGE's Bokeh document
+//   _s11_app()   S11_AP  from the served app S11_APP, executed unserved
+// S11_LINES is 1 for a line case.
+python:
+import json as _s11_json, re as _s11_re, html as _s11_html, os as _s11_os, sys as _s11_sys
+import warnings as _s11_w
+from sfi import Macro as _s11_M
+
+_S11_CHROME = ("#000000", "#ffffff", "#eaf2f3")
+_S11_KIND = {"circle": "circle", "polygon": "triangle"}
+
+
+def _s11_lines():
+    return _s11_M.getGlobal("S11_LINES") == "1"
+
+
+def _s11_svg():
+    _s11_sys.path.insert(0, _s11_os.path.join(_s11_M.getGlobal("S11_REPO"), "scripts"))
+    import svg_truth
+    with open(_s11_M.getGlobal("S11_SVG"), encoding="utf-8", errors="replace") as fh:
+        txt = fh.read()
+    marks, strokes = [], []
+    for m in _s11_re.finditer(r"<(circle|path|polygon|line)\b([^>]*)>", txt):
+        kind = m.group(1)
+        a = svg_truth._attrs(m.group(2))
+        st = svg_truth._style_of(a)
+        fill = (st.get("fill", a.get("fill")) or "").lower()
+        stroke = (st.get("stroke", a.get("stroke")) or "").lower()
+        if kind != "line" and fill and fill != "none":
+            if marks and marks[-1][0] == fill and marks[-1][2] == kind:
+                marks[-1][1] += 1
+            else:
+                marks.append([fill, 1, kind])
+        elif kind in ("line", "path") and stroke and stroke != "none":
+            nl, npth = (1, 0) if kind == "line" else (0, 1)
+            if strokes and strokes[-1][0] == stroke:
+                strokes[-1][1] += nl
+                strokes[-1][2] += npth
+            else:
+                strokes.append([stroke, nl, npth])
+    out = []
+    if _s11_lines():
+        out = ["%s/%s" % (c, "dashed" if nl > npth else "solid")
+               for c, nl, npth in strokes if npth >= 1 and c not in _S11_CHROME]
+    else:
+        per = int(_s11_M.getGlobal("S11_PER") or "74")
+        for c, n, k in marks:
+            if n < 2 and per > 1:
+                continue
+            out.extend(["%s/%s" % (c, _S11_KIND.get(k, k))] * max(1, n // per))
+    _s11_M.setGlobal("S11_TW", " ".join(out[:int(_s11_M.getGlobal("S11_N"))]))
+
+
+def _s11_fmt(items):
+    out = []
+    for name, get in items:
+        if name == "Scatter" and not _s11_lines():
+            out.append("%s/%s" % (str(get("fill_color")).lower(), get("marker") or "circle"))
+        elif name == "Line" and _s11_lines():
+            out.append("%s/%s" % (str(get("line_color")).lower(), "dashed" if get("line_dash") else "solid"))
+    return " ".join(out)
+
+
+def _s11_val(v):
+    if isinstance(v, dict) and v.get("type") == "value":
+        return v.get("value")
+    return v
+
+
+def _s11_page():
+    with open(_s11_M.getGlobal("S11_PAGE"), encoding="utf-8") as fh:
+        page = fh.read()
+    objs, stack = {}, []
+    for blob in _s11_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s11_re.S):
+        try:
+            stack.append(_s11_json.loads(_s11_html.unescape(blob)))
+        except ValueError:
+            pass
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                if "attributes" in v or v["id"] not in objs:
+                    objs[v["id"]] = v
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+
+    def ref(v):
+        return objs.get(v.get("id")) if isinstance(v, dict) else None
+    figs = []
+    for o in objs.values():
+        rs = (o.get("attributes") or {}).get("renderers")
+        if o["name"] != "Figure" or not isinstance(rs, list):
+            continue
+        items = []
+        for r in rs:
+            r = ref(r)
+            if not r or r["name"] != "GlyphRenderer":
+                continue
+            g = ref((r.get("attributes") or {}).get("glyph"))
+            if not g:
+                continue
+            at = g.get("attributes") or {}
+            items.append((g["name"], lambda k, at=at: _s11_val(at.get(k))))
+        s = _s11_fmt(items)
+        if s:
+            figs.append(s)
+    _s11_M.setGlobal("S11_PG", " ; ".join(sorted(figs)))
+
+
+def _s11_app():
+    from bokeh.document import Document
+    from bokeh.models import GlyphRenderer, Plot
+    with open(_s11_M.getGlobal("S11_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s11_app")
+    with _s11_w.catch_warnings():
+        _s11_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s11_app.py", "exec"), ns)
+    doc = Document()
+    ns["make_document"](doc)
+    figs = []
+    for root in doc.roots:
+        for p in root.references():
+            if not isinstance(p, Plot):
+                continue
+            items = [(type(r.glyph).__name__, lambda k, g=r.glyph: getattr(g, k, None))
+                     for r in p.renderers if isinstance(r, GlyphRenderer)]
+            s = _s11_fmt(items)
+            if s:
+                figs.append(s)
+    _s11_M.setGlobal("S11_AP", " ; ".join(sorted(figs)))
+end
+
+// _s11_case id data n lines cmd: twoway <cmd> against dash's saved page
+// and served app.  Sets $S11_OK (1 when both modes draw twoway's list),
+// $S11_WHY and $S11_NOTE (1 when a dash build printed "not a recognised").
+capture program drop _s11_case
+program define _s11_case
+    version 19
+    args id data n lines work cmd
+    if "`data'" == "sp500" {
+        quietly sysuse sp500, clear
+        quietly tsset date
+    }
+    else quietly sysuse auto, clear
+    global S11_N "`n'"
+    global S11_LINES "`lines'"
+    global S11_PER = cond("`id'" == "T32", "1", "74")
+    local svg "`work'/s11_`id'.svg"
+    local page "`work'/s11_`id'.html"
+    local app "`work'/s11_`id'.py"
+    local sep = cond(strpos(`"`macval(cmd)'"', ","), " ", ", ")
+    capture graph drop g
+    capture noisily twoway `macval(cmd)'`sep'name(g, replace)
+    local trc = _rc
+    if !`trc' quietly graph export "`svg'", replace name(g)
+    capture dash clear
+    capture log close s11n
+    quietly log using "`work'/s11_`id'.log", text replace name(s11n)
+    capture noisily dash `macval(cmd)'`sep'saving("`page'", replace)
+    local drc = _rc
+    capture dash clear
+    capture noisily dash `macval(cmd)'`sep'name(g1)
+    local drc = `drc' + _rc
+    capture noisily dash build, server saving("`app'") replace nobrowser
+    local drc = `drc' + _rc
+    quietly log close s11n
+    global S11_TW ""
+    global S11_PG ""
+    global S11_AP ""
+    global S11_SVG "`svg'"
+    global S11_PAGE "`page'"
+    global S11_APP "`app'"
+    if !`trc' capture noisily python: __import__("__main__")._s11_svg()
+    if !`drc' capture noisily python: __import__("__main__")._s11_page()
+    if !`drc' capture noisily python: __import__("__main__")._s11_app()
+    cert_log_has "`work'/s11_`id'.log", needle("not a recognised")
+    global S11_NOTE = (r(count) > 0)
+    global S11_OK = (`trc' == 0 & `drc' == 0 & `"${S11_TW}"' != "" & `"${S11_PG}"' == `"${S11_TW}"' & `"${S11_AP}"' == `"${S11_TW}"')
+    global S11_WHY `"`id': twoway rc `trc' [${S11_TW}]; dash rc `drc' saved [${S11_PG}] served [${S11_AP}]"'
+    capture dash clear
+    capture erase "`svg'"
+    capture erase "`page'"
+    capture erase "`app'"
+    capture erase "`work'/s11_`id'.log"
+    capture graph drop g
+end
+
+// _s11_refuse id cmd: twoway's and dash's rc and first error line.
+capture program drop _s11_refuse
+program define _s11_refuse
+    version 19
+    args id work cmd
+    quietly sysuse auto, clear
+    foreach who in twoway dash {
+        capture log close s11r
+        quietly log using "`work'/s11r_`who'.log", text replace name(s11r)
+        capture noisily `who' `macval(cmd)'
+        global S11_RC_`who' = _rc
+        quietly log close s11r
+        mata: st_global("S11_ERR_`who'", _s11_err(st_local("work") + "/s11r_`who'.log"))
+        capture erase "`work'/s11r_`who'.log"
+    }
+    capture dash clear
+end
+mata:
+string scalar _s11_err(string scalar path)
+{
+    real scalar   fh
+    string scalar ln
+    fh = fopen(path, "r")
+    while ((ln = fget(fh)) != J(0, 0, "")) {
+        ln = strtrim(ln)
+        if (ln == "" | substr(ln, 1, 6) == "(note:" | substr(ln, 1, 5) == "name:" | substr(ln, 1, 4) == "log:" | substr(ln, 1, 9) == "log type:" | substr(ln, 1, 10) == "opened on:" | substr(ln, 1, 10) == "closed on:" | substr(ln, 1, 3) == "---") continue
+        fclose(fh)
+        return(ln)
+    }
+    fclose(fh)
+    return("")
+}
+end
+
 * ==== S11 P1.1a: Stylelists of style options across an expanded varlist ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S11") {
     display as text "S11 start " c(current_date) " " c(current_time)
+    local s11_scheme "`c(scheme)'"
+    set scheme s2color
+    local s11_repo : environment DASH_REPO
+    if `"`s11_repo'"' == "" local s11_repo ".."
+    global S11_REPO `"`s11_repo'"'
+    local two "scatter mpg turn weight"
+    local three "scatter mpg turn trunk weight"
+    local s11_anynote 0
+
+    // SL-30..SL-35: id data n lines command, both modes against twoway.
+    local c30_1 `"T01 auto 2 0 `two', mcolor(red blue) msymbol(O T)"'
+    local c31_1 `"T02 auto 2 0 `two', mcolor(red)"'
+    local c31_2 `"T03 auto 3 0 `three', mcolor(red blue)"'
+    local c31_3 `"T04 auto 2 0 `two', mcolor(red blue green)"'
+    local c32_1 `"T05 auto 2 0 `two', mcolor(. blue)"'
+    local c32_2 `"T06 auto 3 0 `three', mcolor(red = blue)"'
+    local c32_3 `"T07 auto 3 0 `three', mcolor(red ..)"'
+    local c32_4 `"T08 auto 3 0 `three', mcolor(red ...)"'
+    local c32_5 `"T12 auto 2 0 `two', mcolor(= blue)"'
+    local c32_6 `"T13 auto 3 0 `three', mcolor(red..)"'
+    local c32_7 `"T15 auto 3 0 `three', mcolor(. ..)"'
+    local c32_8 `"T16 auto 3 0 `three', mcolor(red . =)"'
+    local c32_9 `"T17 auto 3 0 `three', mcolor(red = = blue)"'
+    local c32_10 `"T18 auto 3 0 `three', mcolor(..)"'
+    local c33_1 `"T11 auto 2 0 `two', mcolor("255 0 0" "0 0 255")"'
+    local c33_2 `"T20 auto 2 0 `two', mcolor(`"red"' blue)"'
+    local c33_3 `"T21 auto 2 0 `two', mcolor("" blue)"'
+    local c33_4 `"T22 auto 2 0 `two', mcolor(red `""')"'
+    local c34_1 `"T10 auto 2 1 line mpg turn weight, sort lpattern(solid dash) lcolor(red blue)"'
+    local c34_2 `"W30 auto 2 1 connected mpg turn weight, sort lcolor(red) clcolor(. blue)"'
+    local c34_3 `"W36 auto 3 1 line mpg turn trunk weight, sort lcolor(red) lpattern(. dash)"'
+    local c34_4 `"U40 sp500 2 1 tsline open close, lcolor(red blue) lpattern(solid dash)"'
+    local c35_1 `"T09 auto 1 0 scatter mpg weight, mcolor(red blue)"'
+    local c35_2 `"T19 auto 1 0 scatter mpg weight, msymbol(T O)"'
+    local c35_3 `"T26 auto 1 1 lfit mpg weight, lcolor(red blue)"'
+    local c35_4 `"T32 auto 1 0 scatteri 20 3000 25 4000, mcolor(red blue)"'
+    local c35_5 `"T33 auto 1 1 function y=x, range(0 1) lcolor(red blue)"'
+    local s11_what30 "T01: each y's colour and marker equal twoway's in both modes"
+    local s11_what31 "T02-T04: padding with . and extras ignored, as twoway draws them"
+    local s11_what32 "the . = .. ... shorthands draw twoway's colours in both modes"
+    local s11_what33 "quoted, compound-quoted and empty elements draw twoway's colours"
+    local s11_what34 "line colours and dashes per series equal twoway's (line, connected, tsline)"
+    local s11_what35 "a single-y type draws twoway's first element"
+    forvalues k = 30/35 {
+        local j 1
+        while `"`macval(c`k'_`j')'"' != "" {
+            gettoken id rest : c`k'_`j'
+            gettoken data rest : rest
+            gettoken n rest : rest
+            gettoken lines rest : rest
+            local rest = strtrim(`"`macval(rest)'"')
+            _s11_case `id' `data' `n' `lines' "`w30_work'" `"`macval(rest)'"'
+            _w30_expect SL-`k' "${S11_OK}" `"${S11_WHY}"'
+            if ${S11_NOTE} local s11_anynote 1
+            local ++j
+        }
+        _w30_done SL-`k' "`s11_what`k''"
+    }
+
+    // SL-36: by() panels, each drawn red then blue in both modes.
+    _s11_case BY auto 2 0 "`w30_work'" `"`two', mcolor(red blue) by(foreign)"'
+    local s11_want "#ff0000/circle #0000ff/circle ; #ff0000/circle #0000ff/circle"
+    _w30_expect SL-36 `"("${S11_PG}" == "`s11_want'" & "${S11_AP}" == "`s11_want'")"' `"${S11_WHY}"'
+    _w30_expect SL-36 `"(strpos("${S11_TW}", "#ff0000/circle #0000ff/circle") == 1)"' `"${S11_WHY}"'
+    if ${S11_NOTE} local s11_anynote 1
+    _w30_done SL-36 "every by() panel draws each series' element, saved and served"
+
+    // SL-37: none of the builds above printed a not-recognised note.
+    _w30_expect SL-37 "(`s11_anynote' == 0)" "a build printed a not a recognised note"
+    _w30_done SL-37 "no build of SL-30..SL-36 printed a not-recognised note"
+
+    // SL-38: the refusals' rc and first error line equal twoway's.
+    local r_1 `"`two', mcolor(red .. blue)"'
+    local r_2 `"`two', mc(red .. blue)"'
+    local r_3 `"scatter mpg weight, mcolor(red .. blue)"'
+    local r_4 `"`two', msymbol(O .. T)"'
+    local r_5 `"`two', mcolor(red .. ..)"'
+    local r_6 `"`two', mcolor(red.. ..)"'
+    local r_7 `"`two', mcolor(.. red)"'
+    local r_8 `"`two', mcolor("red" .. "blue")"'
+    local r_9 `"`two', mcolor(red ..) mcolor(blue .. green)"'
+    forvalues i = 1/9 {
+        _s11_refuse R0`i' "`w30_work'" `"`macval(r_`i')' nodraw"'
+        _w30_expect SL-38 `"(${S11_RC_twoway} == 198 & ${S11_RC_dash} == 198)"' `"R0`i': rc twoway ${S11_RC_twoway}, dash ${S11_RC_dash}"'
+        mata: st_local("s11_same", strofreal(st_global("S11_ERR_twoway") == st_global("S11_ERR_dash")))
+        _w30_expect SL-38 "`s11_same'" `"R0`i': twoway [${S11_ERR_twoway}] dash [${S11_ERR_dash}]"'
+    }
+    _s11_refuse R16 "`w30_work'" `"`two', mcolor(  red   ..   blue  ) nodraw"'
+    mata: st_local("s11_same", strofreal(substr(st_global("S11_ERR_twoway"), strpos(st_global("S11_ERR_twoway"), "):"), .) == substr(st_global("S11_ERR_dash"), strpos(st_global("S11_ERR_dash"), "):"), .)))
+    _w30_expect SL-38 `"(${S11_RC_twoway} == 198 & ${S11_RC_dash} == 198 & `s11_same')"' `"R16: twoway ${S11_RC_twoway} [${S11_ERR_twoway}] dash ${S11_RC_dash} [${S11_ERR_dash}]"'
+    _w30_done SL-38 "a misplaced .. is refused with twoway's rc and words"
+
+    set scheme `s11_scheme'
+    capture graph drop g
     display as text "S11 end " c(current_date) " " c(current_time)
 }
 * ==== end S11 ====

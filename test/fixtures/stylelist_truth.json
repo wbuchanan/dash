@@ -1,0 +1,3079 @@
+{
+  "_meta": {
+    "born_date": "12 Aug 2026",
+    "dash_commit": "a899f2671f22eecb9f992d6c26480382657da4e0",
+    "extracted": " 7 Oct 2026",
+    "stata_version": "19.5"
+  },
+  "cases": {
+    "BY": {
+      "cmd": "scatter mpg turn weight, mcolor(red blue) by(foreign) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          3
+        ],
+        [
+          "#d9e6eb",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          52,
+          {
+            "circle": 52
+          }
+        ],
+        [
+          "#0000ff",
+          52,
+          {
+            "circle": 52
+          }
+        ],
+        [
+          "#ff0000",
+          22,
+          {
+            "circle": 22
+          }
+        ],
+        [
+          "#0000ff",
+          22,
+          {
+            "circle": 22
+          }
+        ],
+        [
+          "#ff0000",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#0000ff",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#0000ff": [
+          "22.36",
+          "26.35"
+        ],
+        "#ff0000": [
+          "22.36",
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          10,
+          0
+        ],
+        [
+          "#000000",
+          16,
+          0
+        ]
+      ]
+    },
+    "CTRL3": {
+      "cmd": "scatter mpg turn trunk weight, name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#1a476f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#90353b",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#55752f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#1a476f",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#90353b",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#55752f",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#1a476f": [
+          "26.35"
+        ],
+        "#55752f": [
+          "26.35"
+        ],
+        "#90353b": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ]
+      ]
+    },
+    "G01": {
+      "cmd": "scatter mpg turn trunk weight, mcolor(red=blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#1a476f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#90353b",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#55752f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#1a476f",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#90353b",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#55752f",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#1a476f": [
+          "26.35"
+        ],
+        "#55752f": [
+          "26.35"
+        ],
+        "#90353b": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ]
+      ]
+    },
+    "G02": {
+      "cmd": "scatter mpg turn trunk weight, mcolor(red= blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#1a476f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#0000ff",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#55752f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#1a476f",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#0000ff",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#55752f",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#0000ff": [
+          "26.35"
+        ],
+        "#1a476f": [
+          "26.35"
+        ],
+        "#55752f": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ]
+      ]
+    },
+    "G03": {
+      "cmd": "scatter mpg turn weight, mcolor((red) blue) name(g, replace)",
+      "message": "option(s) ( red ) not allowed",
+      "notes": [],
+      "rc": 198
+    },
+    "P16": {
+      "cmd": "scatter mpg turn weight, mcolor(red .. blue) mcolor(green) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#008000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#90353b",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#008000",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#90353b",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#008000": [
+          "26.35"
+        ],
+        "#90353b": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "PN": {
+      "cmd": "(scatter mpg turn weight, mcolor(red blue)) (scatter price weight), name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#0000ff",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#55752f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#ff0000",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#0000ff",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#55752f",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#0000ff": [
+          "26.35"
+        ],
+        "#55752f": [
+          "26.35"
+        ],
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          4,
+          0
+        ],
+        [
+          "#000000",
+          10,
+          0
+        ]
+      ]
+    },
+    "R01": {
+      "cmd": "scatter mpg turn weight, mcolor(red .. blue) name(g, replace)",
+      "message": "mcolor(red .. blue):  invalid syntax",
+      "notes": [],
+      "rc": 198
+    },
+    "R02": {
+      "cmd": "scatter mpg turn weight, mc(red .. blue) name(g, replace)",
+      "message": "mcolor(red .. blue):  invalid syntax",
+      "notes": [],
+      "rc": 198
+    },
+    "R03": {
+      "cmd": "scatter mpg weight, mcolor(red .. blue) name(g, replace)",
+      "message": "mcolor(red .. blue):  invalid syntax",
+      "notes": [],
+      "rc": 198
+    },
+    "R04": {
+      "cmd": "scatter mpg turn weight, msymbol(O .. T) name(g, replace)",
+      "message": "msymbol(O .. T):  invalid syntax",
+      "notes": [],
+      "rc": 198
+    },
+    "R05": {
+      "cmd": "scatter mpg turn weight, mcolor(red .. ..) name(g, replace)",
+      "message": "mcolor(red .. ..):  invalid syntax",
+      "notes": [],
+      "rc": 198
+    },
+    "R06": {
+      "cmd": "scatter mpg turn weight, mcolor(red.. ..) name(g, replace)",
+      "message": "mcolor(red.. ..):  invalid syntax",
+      "notes": [],
+      "rc": 198
+    },
+    "R07": {
+      "cmd": "scatter mpg turn weight, mcolor(.. red) name(g, replace)",
+      "message": "mcolor(.. red):  invalid syntax",
+      "notes": [],
+      "rc": 198
+    },
+    "R08": {
+      "cmd": "scatter mpg turn weight, mcolor(\"red\" .. \"blue\") name(g, replace)",
+      "message": "mcolor(\"red\" .. \"blue\"):  invalid syntax",
+      "notes": [],
+      "rc": 198
+    },
+    "R09": {
+      "cmd": "scatter mpg turn weight, mcolor(red ..) mcolor(blue .. green) name(g, replace)",
+      "message": "mcolor(blue .. green):  invalid syntax",
+      "notes": [],
+      "rc": 198
+    },
+    "R10": {
+      "cmd": "line mpg turn weight, lwidth(thick 20000) name(g, replace)",
+      "message": "gm_linewidth must be between 0.000 and  1.0e+04",
+      "notes": [],
+      "rc": 198
+    },
+    "R11": {
+      "cmd": "line mpg weight, lwidth(thick 20000) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          1
+        ]
+      ],
+      "markers": [],
+      "message": "",
+      "notes": [],
+      "radii": {},
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          4,
+          0
+        ],
+        [
+          "#1a476f",
+          0,
+          1
+        ],
+        [
+          "#000000",
+          10,
+          0
+        ]
+      ]
+    },
+    "R12": {
+      "cmd": "scatter mpg turn weight, msangle(0 500) name(g, replace)",
+      "message": "symbolangle must be between -360.000 and 360.000",
+      "notes": [],
+      "rc": 198
+    },
+    "R13": {
+      "cmd": "scatter mpg weight, msangle(0 500) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          1
+        ]
+      ],
+      "markers": [
+        [
+          "#1a476f",
+          74,
+          {
+            "circle": 74
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#1a476f": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          4,
+          0
+        ],
+        [
+          "#000000",
+          10,
+          0
+        ]
+      ]
+    },
+    "R14": {
+      "cmd": "scatter mpg turn weight, mcolor(red \" \") name(g, replace)",
+      "message": "option(s) marker(fillcolor(`')  linestyle(color(`'))) not allowed",
+      "notes": [],
+      "rc": 198
+    },
+    "R15": {
+      "cmd": "scatter mpg weight, mcolor(red \" \") name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          1
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          74,
+          {
+            "circle": 74
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          4,
+          0
+        ],
+        [
+          "#000000",
+          10,
+          0
+        ]
+      ]
+    },
+    "R16": {
+      "cmd": "scatter mpg turn weight, mcolor(  red   ..   blue  ) name(g, replace)",
+      "message": "mcolor( red ..  blue ):  invalid syntax",
+      "notes": [],
+      "rc": 198
+    },
+    "T01": {
+      "cmd": "scatter mpg turn weight, mcolor(red blue) msymbol(O T) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#0000ff",
+          74,
+          {
+            "polygon": 74
+          }
+        ],
+        [
+          "#ff0000",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#0000ff",
+          1,
+          {
+            "polygon": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "T02": {
+      "cmd": "scatter mpg turn weight, mcolor(red) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#90353b",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#ff0000",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#90353b",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#90353b": [
+          "26.35"
+        ],
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "T03": {
+      "cmd": "scatter mpg turn trunk weight, mcolor(red blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#0000ff",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#55752f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#ff0000",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#0000ff",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#55752f",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#0000ff": [
+          "26.35"
+        ],
+        "#55752f": [
+          "26.35"
+        ],
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ]
+      ]
+    },
+    "T04": {
+      "cmd": "scatter mpg turn weight, mcolor(red blue green) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#0000ff",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#ff0000",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#0000ff",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#0000ff": [
+          "26.35"
+        ],
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "T05": {
+      "cmd": "scatter mpg turn weight, mcolor(. blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#1a476f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#0000ff",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#1a476f",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#0000ff",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#0000ff": [
+          "26.35"
+        ],
+        "#1a476f": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "T06": {
+      "cmd": "scatter mpg turn trunk weight, mcolor(red = blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          148,
+          {
+            "circle": 148
+          }
+        ],
+        [
+          "#0000ff",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#ff0000",
+          2,
+          {
+            "circle": 2
+          }
+        ],
+        [
+          "#0000ff",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#0000ff": [
+          "26.35"
+        ],
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ]
+      ]
+    },
+    "T07": {
+      "cmd": "scatter mpg turn trunk weight, mcolor(red ..) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          225,
+          {
+            "circle": 225
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ]
+      ]
+    },
+    "T08": {
+      "cmd": "scatter mpg turn trunk weight, mcolor(red ...) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          225,
+          {
+            "circle": 225
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ]
+      ]
+    },
+    "T09": {
+      "cmd": "scatter mpg weight, mcolor(red blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          1
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          74,
+          {
+            "circle": 74
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          4,
+          0
+        ],
+        [
+          "#000000",
+          10,
+          0
+        ]
+      ]
+    },
+    "T10": {
+      "cmd": "line mpg turn weight, sort lpattern(solid dash) lcolor(red blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [],
+      "message": "",
+      "notes": [],
+      "radii": {},
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#ff0000",
+          0,
+          1
+        ],
+        [
+          "#0000ff",
+          169,
+          1
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ],
+        [
+          "#ff0000",
+          1,
+          0
+        ],
+        [
+          "#0000ff",
+          5,
+          0
+        ]
+      ]
+    },
+    "T11": {
+      "cmd": "scatter mpg turn weight, mcolor(\"255 0 0\" \"0 0 255\") name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#0000ff",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#ff0000",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#0000ff",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#0000ff": [
+          "26.35"
+        ],
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "T12": {
+      "cmd": "scatter mpg turn weight, mcolor(= blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#1a476f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#0000ff",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#1a476f",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#0000ff",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#0000ff": [
+          "26.35"
+        ],
+        "#1a476f": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "T13": {
+      "cmd": "scatter mpg turn trunk weight, mcolor(red..) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          225,
+          {
+            "circle": 225
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ]
+      ]
+    },
+    "T14": {
+      "cmd": "scatter mpg turn trunk weight, mcolor(red....) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#000000",
+          225,
+          {
+            "circle": 225
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [
+        "(note:  named style red. not found in class color, default attributes used)",
+        "(note:  named style red. not found in class color, default attributes used)",
+        "(note:  named style red. not found in class color, default attributes used)",
+        "(note:  named style red. not found in class color, default attributes used)",
+        "(note:  named style red. not found in class color, default attributes used)",
+        "(note:  named style red. not found in class color, default attributes used)"
+      ],
+      "radii": {
+        "#000000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ]
+      ]
+    },
+    "T15": {
+      "cmd": "scatter mpg turn trunk weight, mcolor(. ..) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#1a476f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#90353b",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#55752f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#1a476f",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#90353b",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#55752f",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#1a476f": [
+          "26.35"
+        ],
+        "#55752f": [
+          "26.35"
+        ],
+        "#90353b": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ]
+      ]
+    },
+    "T16": {
+      "cmd": "scatter mpg turn trunk weight, mcolor(red . =) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#90353b",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#55752f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#ff0000",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#90353b",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#55752f",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#55752f": [
+          "26.35"
+        ],
+        "#90353b": [
+          "26.35"
+        ],
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ]
+      ]
+    },
+    "T17": {
+      "cmd": "scatter mpg turn trunk weight, mcolor(red = = blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          225,
+          {
+            "circle": 225
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ]
+      ]
+    },
+    "T18": {
+      "cmd": "scatter mpg turn trunk weight, mcolor(..) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#1a476f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#90353b",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#55752f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#1a476f",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#90353b",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#55752f",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#1a476f": [
+          "26.35"
+        ],
+        "#55752f": [
+          "26.35"
+        ],
+        "#90353b": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ]
+      ]
+    },
+    "T19": {
+      "cmd": "scatter mpg weight, msymbol(T O) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          1
+        ]
+      ],
+      "markers": [
+        [
+          "#1a476f",
+          74,
+          {
+            "polygon": 74
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {},
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          4,
+          0
+        ],
+        [
+          "#000000",
+          10,
+          0
+        ]
+      ]
+    },
+    "T20": {
+      "cmd": "scatter mpg turn weight, mcolor(`\"red\"' blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#0000ff",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#ff0000",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#0000ff",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#0000ff": [
+          "26.35"
+        ],
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "T21": {
+      "cmd": "scatter mpg turn weight, mcolor(\"\" blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#1a476f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#0000ff",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#1a476f",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#0000ff",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#0000ff": [
+          "26.35"
+        ],
+        "#1a476f": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "T22": {
+      "cmd": "scatter mpg turn weight, mcolor(red `\"\"') name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#90353b",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#ff0000",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#90353b",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#90353b": [
+          "26.35"
+        ],
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "T23": {
+      "cmd": "scatter mpg turn weight, mcolor(red) mcolor(\"\") name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#1a476f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#90353b",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#1a476f",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#90353b",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#1a476f": [
+          "26.35"
+        ],
+        "#90353b": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "T24": {
+      "cmd": "scatter mpg turn weight, mcolor(red \"..\") name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#000000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#ff0000",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#000000",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [
+        "(note:  named style .. not found in class color, default attributes used)",
+        "(note:  named style .. not found in class color, default attributes used)"
+      ],
+      "radii": {
+        "#000000": [
+          "26.35"
+        ],
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "T25": {
+      "cmd": "scatter mpg turn weight, mcolor(navy*.5 red%50) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#8da3b7",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#ff0000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#8da3b7",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#ff0000",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#8da3b7": [
+          "26.35"
+        ],
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "T26": {
+      "cmd": "lfit mpg weight, lcolor(red blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          1
+        ]
+      ],
+      "markers": [],
+      "message": "",
+      "notes": [],
+      "radii": {},
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#ff0000",
+          0,
+          1
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "T27": {
+      "cmd": "area mpg weight, sort color(red blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          1
+        ]
+      ],
+      "markers": [],
+      "message": "",
+      "notes": [],
+      "radii": {},
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          4,
+          0
+        ],
+        [
+          "#000000",
+          10,
+          0
+        ]
+      ]
+    },
+    "T28": {
+      "cmd": "rcap mpg turn weight, lcolor(red blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          1
+        ]
+      ],
+      "markers": [],
+      "message": "",
+      "notes": [],
+      "radii": {},
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#ff0000",
+          222,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "T29": {
+      "cmd": "lfitci mpg weight, lcolor(red green) fcolor(green red) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ],
+        [
+          "#008000",
+          1
+        ]
+      ],
+      "markers": [],
+      "message": "",
+      "notes": [],
+      "radii": {},
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#ff0000",
+          0,
+          1
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ],
+        [
+          "#ff0000",
+          1,
+          0
+        ]
+      ]
+    },
+    "T30": {
+      "cmd": "lfitci mpg weight, acolor(red blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ],
+        [
+          "#ff0000",
+          1
+        ]
+      ],
+      "markers": [],
+      "message": "",
+      "notes": [],
+      "radii": {},
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#1a476f",
+          0,
+          1
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ],
+        [
+          "#1a476f",
+          1,
+          0
+        ]
+      ]
+    },
+    "T31": {
+      "cmd": "histogram mpg, color(red blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          1
+        ],
+        [
+          "#ff0000",
+          8
+        ]
+      ],
+      "markers": [],
+      "message": "",
+      "notes": [],
+      "radii": {},
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          14,
+          0
+        ]
+      ]
+    },
+    "T32": {
+      "cmd": "scatteri 20 3000 25 4000, mcolor(red blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          1
+        ]
+      ],
+      "markers": [
+        [
+          "#ff0000",
+          2,
+          {
+            "circle": 2
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#ff0000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#000000",
+          14,
+          0
+        ]
+      ]
+    },
+    "T33": {
+      "cmd": "function y=x, range(0 1) lcolor(red blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          1
+        ]
+      ],
+      "markers": [],
+      "message": "",
+      "notes": [],
+      "radii": {},
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#ff0000",
+          0,
+          1
+        ],
+        [
+          "#000000",
+          14,
+          0
+        ]
+      ]
+    },
+    "T34": {
+      "cmd": "bar mpg turn weight, bfcolor(red blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ],
+        [
+          "#ff3333",
+          75
+        ],
+        [
+          "#3333ff",
+          75
+        ]
+      ],
+      "markers": [],
+      "message": "",
+      "notes": [],
+      "radii": {},
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "U19": {
+      "cmd": "scatter mpg turn weight, mcolor(red) mcolor(blue green) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#0000ff",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#008000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#0000ff",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#008000",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#0000ff": [
+          "26.35"
+        ],
+        "#008000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "U20": {
+      "cmd": "scatter mpg turn weight, mcolor(red blue) mfcolor(green) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#008000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#0000ff",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#008000",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#0000ff",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#0000ff": [
+          "26.35"
+        ],
+        "#008000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "U21": {
+      "cmd": "scatter mpg turn weight, msize(large) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#1a476f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#90353b",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#1a476f",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#90353b",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#1a476f": [
+          "39.34"
+        ],
+        "#90353b": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "U40": {
+      "cmd": "tsline open close, lcolor(red blue) lpattern(solid dash) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [],
+      "message": "",
+      "notes": [],
+      "radii": {},
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#ff0000",
+          0,
+          1
+        ],
+        [
+          "#0000ff",
+          333,
+          1
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ],
+        [
+          "#ff0000",
+          1,
+          0
+        ],
+        [
+          "#0000ff",
+          5,
+          0
+        ]
+      ]
+    },
+    "W21": {
+      "cmd": "scatter mpg turn weight, mcolor(red blue) mcolor(green) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#008000",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#90353b",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#008000",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#90353b",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#008000": [
+          "26.35"
+        ],
+        "#90353b": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    },
+    "W30": {
+      "cmd": "connected mpg turn weight, sort lcolor(red) clcolor(. blue) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#1a476f",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#90353b",
+          74,
+          {
+            "circle": 74
+          }
+        ],
+        [
+          "#1a476f",
+          1,
+          {
+            "circle": 1
+          }
+        ],
+        [
+          "#90353b",
+          1,
+          {
+            "circle": 1
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [],
+      "radii": {
+        "#1a476f": [
+          "26.35"
+        ],
+        "#90353b": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#ff0000",
+          0,
+          1
+        ],
+        [
+          "#0000ff",
+          0,
+          1
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ],
+        [
+          "#ff0000",
+          1,
+          0
+        ],
+        [
+          "#0000ff",
+          1,
+          0
+        ]
+      ]
+    },
+    "W36": {
+      "cmd": "line mpg turn trunk weight, sort lcolor(red) lpattern(. dash) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [],
+      "message": "",
+      "notes": [],
+      "radii": {},
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          6,
+          0
+        ],
+        [
+          "#ff0000",
+          0,
+          1
+        ],
+        [
+          "#90353b",
+          149,
+          1
+        ],
+        [
+          "#55752f",
+          0,
+          1
+        ],
+        [
+          "#000000",
+          12,
+          0
+        ],
+        [
+          "#ff0000",
+          1,
+          0
+        ],
+        [
+          "#90353b",
+          5,
+          0
+        ],
+        [
+          "#55752f",
+          1,
+          0
+        ]
+      ]
+    },
+    "Y01": {
+      "cmd": "scatter mpg turn weight, mcolor(255 0 0) name(g, replace)",
+      "fills": [
+        [
+          "#eaf2f3",
+          2
+        ],
+        [
+          "#ffffff",
+          2
+        ]
+      ],
+      "markers": [
+        [
+          "#000000",
+          150,
+          {
+            "circle": 150
+          }
+        ]
+      ],
+      "message": "",
+      "notes": [
+        "(note:  named style 255 not found in class color, default attributes used)",
+        "(note:  named style 255 not found in class color, default attributes used)",
+        "(note:  named style 0 not found in class color, default attributes used)",
+        "(note:  named style 0 not found in class color, default attributes used)"
+      ],
+      "radii": {
+        "#000000": [
+          "26.35"
+        ]
+      },
+      "rc": 0,
+      "strokes": [
+        [
+          "#eaf2f3",
+          5,
+          0
+        ],
+        [
+          "#000000",
+          11,
+          0
+        ]
+      ]
+    }
+  },
+  "scheme": "s2color"
+}

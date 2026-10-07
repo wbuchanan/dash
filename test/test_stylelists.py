@@ -50,51 +50,84 @@ _NOT_YET = ("mlabel", "jitter", "base", "barwidth", "pstyle", "mstyle",
             "malpha", "lalpha", "falpha", "jseed", "mlabwidth", "mlpattern",
             "marker")
 
-# s2color's p1, p2 and p3.
-P1, P2, P3 = "#1a476f", "#90353b", "#55752f"
-RED, BLUE = "#ff0000", "#0000ff"
+_FIX = os.path.join(_HERE, "fixtures", "stylelist_truth.json")
+_CHROME = ("#000000", "#ffffff", "#eaf2f3")
+_AUTO_N = 74   # rows of sysuse auto each marker series draws
 
-# case id -> (ptype, per-series option dicts): the objects dash.ado writes
-# (test_varlist_expansion.cscript SL-12..SL-17), and twoway's per-series
-# reading, (colour, marker) or (colour, dashed).  The y variables are the
-# parity data's mpg, price and rep.
+# case id -> (ptype, the per-series option dicts dash.ado writes for the
+# fixture's command; test_varlist_expansion.cscript SL-12..SL-17 pin them).
+# twoway's reading of each case is the fixture's record, never written here.
 _SERIES = {
     "T01": ("scatter", [{"mcolor": "red", "msymbol": "O"},
-                        {"mcolor": "blue", "msymbol": "T"}],
-            [(RED, "circle"), (BLUE, "triangle")]),
-    "T02": ("scatter", [{"mcolor": "red"}, {}], [(RED, None), (P2, None)]),
-    "T03": ("scatter", [{"mcolor": "red"}, {"mcolor": "blue"}, {}],
-            [(RED, None), (BLUE, None), (P3, None)]),
-    "T04": ("scatter", [{"mcolor": "red"}, {"mcolor": "blue"}],
-            [(RED, None), (BLUE, None)]),
-    "T05": ("scatter", [{}, {"mcolor": "blue"}], [(P1, None), (BLUE, None)]),
+                        {"mcolor": "blue", "msymbol": "T"}]),
+    "T02": ("scatter", [{"mcolor": "red"}, {}]),
+    "T03": ("scatter", [{"mcolor": "red"}, {"mcolor": "blue"}, {}]),
+    "T04": ("scatter", [{"mcolor": "red"}, {"mcolor": "blue"}]),
+    "T05": ("scatter", [{}, {"mcolor": "blue"}]),
     "T06": ("scatter", [{"mcolor": "red"}, {"mcolor": "red"},
-                        {"mcolor": "blue"}],
-            [(RED, None), (RED, None), (BLUE, None)]),
-    "T07": ("scatter", [{"mcolor": "red"}] * 3, [(RED, None)] * 3),
-    "T08": ("scatter", [{"mcolor": "red"}] * 3, [(RED, None)] * 3),
-    "T12": ("scatter", [{}, {"mcolor": "blue"}], [(P1, None), (BLUE, None)]),
-    "T13": ("scatter", [{"mcolor": "red"}] * 3, [(RED, None)] * 3),
-    "T15": ("scatter", [{}, {}, {}], [(P1, None), (P2, None), (P3, None)]),
-    "T16": ("scatter", [{"mcolor": "red"}, {}, {}],
-            [(RED, None), (P2, None), (P3, None)]),
-    "T17": ("scatter", [{"mcolor": "red"}] * 3, [(RED, None)] * 3),
-    "T18": ("scatter", [{}, {}, {}], [(P1, None), (P2, None), (P3, None)]),
-    "T11": ("scatter", [{"mcolor": "255 0 0"}, {"mcolor": "0 0 255"}],
-            [(RED, None), (BLUE, None)]),
-    "T20": ("scatter", [{"mcolor": "red"}, {"mcolor": "blue"}],
-            [(RED, None), (BLUE, None)]),
-    "T21": ("scatter", [{}, {"mcolor": "blue"}], [(P1, None), (BLUE, None)]),
-    "T22": ("scatter", [{"mcolor": "red"}, {}], [(RED, None), (P2, None)]),
+                        {"mcolor": "blue"}]),
+    "T07": ("scatter", [{"mcolor": "red"}] * 3),
+    "T08": ("scatter", [{"mcolor": "red"}] * 3),
+    "T12": ("scatter", [{}, {"mcolor": "blue"}]),
+    "T13": ("scatter", [{"mcolor": "red"}] * 3),
+    "T15": ("scatter", [{}, {}, {}]),
+    "T16": ("scatter", [{"mcolor": "red"}, {}, {}]),
+    "T17": ("scatter", [{"mcolor": "red"}] * 3),
+    "T18": ("scatter", [{}, {}, {}]),
+    "T11": ("scatter", [{"mcolor": "255 0 0"}, {"mcolor": "0 0 255"}]),
+    "T20": ("scatter", [{"mcolor": "red"}, {"mcolor": "blue"}]),
+    "T21": ("scatter", [{}, {"mcolor": "blue"}]),
+    "T22": ("scatter", [{"mcolor": "red"}, {}]),
     "T10": ("line", [{"lcolor": "red", "lpattern": "solid", "sort": "sort"},
-                     {"lcolor": "blue", "lpattern": "dash", "sort": "sort"}],
-            [(RED, False), (BLUE, True)]),
+                     {"lcolor": "blue", "lpattern": "dash", "sort": "sort"}]),
+    "W30": ("connected", [{"lcolor": "red", "sort": "sort"},
+                          {"clcolor": "blue", "sort": "sort"}]),
     "W36": ("line", [{"lcolor": "red", "sort": "sort"},
-                     {"lpattern": "dash", "sort": "sort"}, {"sort": "sort"}],
-            [(RED, False), (P2, True), (P3, False)]),
-    "T09": ("scatter", [{"mcolor": "red"}], [(RED, None)]),
-    "T19": ("scatter", [{"msymbol": "T"}], [(P1, "triangle")]),
+                     {"lpattern": "dash", "sort": "sort"}, {"sort": "sort"}]),
+    "U40": ("line", [{"lcolor": "red", "lpattern": "solid"},
+                     {"lcolor": "blue", "lpattern": "dash"}]),
+    "T09": ("scatter", [{"mcolor": "red"}]),
+    "T19": ("scatter", [{"msymbol": "T"}]),
+    "T26": ("lfit", [{"lcolor": "red"}]),
+    "T32": ("scatteri", [{"mcolor": "red"}]),
+    "T33": ("function", [{"lcolor": "red"}]),
 }
+_KIND = {"circle": "circle", "polygon": "triangle"}
+_FIXTURE_IDS = (
+    "CTRL3 T01 T02 T03 T04 T05 T06 T07 T08 T12 T13 T14 T15 T16 T17 T18 "
+    "T11 T20 T21 T22 T23 T24 T25 Y01 U20 U21 U19 W21 P16 BY PN T10 W30 W36 "
+    "U40 T09 T19 T26 T27 T28 T29 T30 T31 T32 T33 T34 R01 R02 R03 R04 R05 "
+    "R06 R07 R08 R09 R10 R11 R12 R13 R14 R15 R16 G01 G02 G03").split()
+
+
+def _fixture():
+    """The twoway truth, read when a test asks (a missing file fails the
+    tests that need it and lets the rest collect)."""
+    import json
+    with open(_FIX, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _twoway(case):
+    """twoway's per-series reading of *case*: (colour, marker kind) for a
+    marker case, (colour, dashed) for a line case, in drawing order."""
+    rec = _fixture()["cases"][case]
+    ptype, objs = _SERIES[case]
+    n = len(objs)
+    out = []
+    if rec.get("markers"):
+        per = _AUTO_N if ptype == "scatter" else 1
+        for colour, cnt, kinds in rec["markers"]:
+            if ptype == "scatter" and cnt < 2:
+                continue
+            kind = _KIND.get(max(kinds, key=kinds.get))
+            out.extend([(colour, kind)] * max(1, cnt // per))
+        if ptype != "scatter" or not out:
+            out = out[:1]
+    if not out or ptype in ("line", "connected", "lfit", "function"):
+        out = [(colour, nl > npath) for colour, nl, npath in rec["strokes"]
+               if npath >= 1 and colour not in _CHROME]
+    return out[:n]
 _YVARS = ("mpg", "price", "rep")
 
 
@@ -104,7 +137,7 @@ def _read(path):
 
 
 def _plots(case):
-    ptype, objs, _ = _SERIES[case]
+    ptype, objs = _SERIES[case]
     return [plot_for(ptype, dict(o), yvar=_YVARS[i])
             for i, o in enumerate(objs)]
 
@@ -143,17 +176,50 @@ def _both(case, **kw):
 
 
 def _check(case):
-    want = _SERIES[case][2]
+    want = _twoway(case)
+    assert len(want) == len(_SERIES[case][1]), (case, want)
+    lines = isinstance(want[0][1], bool)
     for mode, (figs, _w) in _both(case).items():
         assert len(figs) == 1, (case, mode, figs)
-        got = _series(figs[0])
-        assert len(got) == len(want), (case, mode, got)
+        got = [g for g in _series(figs[0]) if (g[2] is None) != lines]
+        assert len(got) == len(want), (case, mode, got, want)
         for (gc, gm, gd), (wc, wk) in zip(got, want):
             assert gc == wc, (case, mode, got, want)
-            if isinstance(wk, str):
-                assert gm == wk, (case, mode, got, want)
-            elif isinstance(wk, bool):
+            if lines:
                 assert gd is wk, (case, mode, got, want)
+            elif wk is not None:
+                assert gm == wk, (case, mode, got, want)
+
+
+class TestTheFixture:
+    def test_meta_is_stamped(self):
+        meta = _fixture()["_meta"]
+        assert sorted(meta) == ["born_date", "dash_commit", "extracted",
+                                "stata_version"]
+        assert meta["stata_version"].startswith("19.")
+
+    def test_every_case_is_recorded(self):
+        assert sorted(_fixture()["cases"]) == sorted(_FIXTURE_IDS)
+
+    def test_twoway_styles_each_y_with_its_element(self):
+        m = _fixture()["cases"]["T01"]["markers"]
+        assert m[0][0] == "#ff0000" and "circle" in m[0][2]
+        assert m[1][0] == "#0000ff" and "polygon" in m[1][2]
+
+    def test_a_lone_value_styles_the_first_y_only(self):
+        m = _fixture()["cases"]["T02"]["markers"]
+        assert [m[0][0], m[1][0]] == ["#ff0000", "#90353b"]
+
+    def test_a_misplaced_dotdot_is_refused_by_its_full_name(self):
+        c = _fixture()["cases"]
+        for k in ("R01", "R02"):
+            assert c[k]["rc"] == 198
+            assert c[k]["message"] == "mcolor(red .. blue):  invalid syntax"
+
+    def test_twoway_refuses_a_used_blank_element_only(self):
+        c = _fixture()["cases"]
+        assert c["R14"]["rc"] == 198
+        assert c["R15"]["rc"] == 0
 
 
 class TestTheParserKeepsQuotes:
@@ -270,11 +336,11 @@ class TestBothModesDrawTwowaysSeries:
             _check(c)
 
     def test_line_lists(self):
-        for c in ("T10", "W36"):
+        for c in ("T10", "W30", "W36", "U40"):
             _check(c)
 
     def test_single_y_takes_the_first(self):
-        for c in ("T09", "T19"):
+        for c in ("T09", "T19", "T26", "T32", "T33"):
             _check(c)
 
     def test_no_unrecognised_note(self):
@@ -299,8 +365,8 @@ class TestAfterAFilterMove:
                     if isinstance(r, GlyphRenderer)]
         n0 = rows()
         sfm._move(doc, "RangeSlider", (2500.0, 4000.0))
-        assert _series(figs[0]) == before == [(RED, "circle", None),
-                                              (BLUE, "triangle", None)]
+        want = [(c, k, None) for c, k in _twoway("T01")]
+        assert _series(figs[0]) == before == want
         assert rows() != n0
 
     def test_saved_page_writes_no_glyph_style(self):
@@ -323,9 +389,9 @@ class TestByPanels:
         for mode, (figs, _w) in both.items():
             panels = [f for f in figs if _series(f)]
             assert len(panels) >= 2, (mode, panels)
+            want = [(c, k, None) for c, k in _twoway("T01")]
             for f in panels:
-                assert _series(f) == [(RED, "circle", None),
-                                      (BLUE, "triangle", None)], mode
+                assert _series(f) == want, mode
 
 
 class TestTheHelpSaysSo:
