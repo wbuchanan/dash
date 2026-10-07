@@ -2012,7 +2012,7 @@ end
 // ================================================================
 // The one list of what dash can draw by name.
 //
-// `_dash_schemes' are the twenty scheme translations the package ships as
+// `_dash_schemes' are the twenty-six scheme translations the package ships as
 // dash-<name>.scheme -- dash_render.py's SchemeParser._BUILTIN_NAMES is the same
 // list, and test/test_scheme_resolution.py holds the two together --
 // and `_dash_themes' are the theme() aliases the renderer maps onto them.
@@ -2025,7 +2025,7 @@ end
 // ================================================================
 program define _dash_shipped_schemes
     version 19
-    c_local _dash_schemes "economist s1color s1manual s1mono s1rcolor s2color s2color8 s2gcolor s2gmanual s2manual s2mono sj stcolor stcolor_alt stgcolor stgcolor_alt stmono1 stmono2 stsj sttrans"
+    c_local _dash_schemes "economist s1color s1manual s1mono s1rcolor s2color s2color8 s2gcolor s2gmanual s2manual s2mono sj stcolor stcolor_alt stgcolor stgcolor_alt stmono1 stmono2 stsj sttrans meta stcolor_meta stcolor_mv stcoloralias stgcolor_meta stgcolor_mv"
     c_local _dash_themes  "default clean mono dark economist sj"
 end
 // END shipped schemes (WP-17)

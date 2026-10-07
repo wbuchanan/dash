@@ -6,8 +6,9 @@ WHAT THIS FILE IS
 Section 03 of the plan translates Stata's 14 shipped graph schemes into dash
 ``.scheme`` files; section 11 makes ``dash_render`` consume them; WP-17 adds
 the six user-selectable StataCorp schemes that were still missing (s2manual,
-s1manual, s2gmanual, s2color8, sttrans, stgcolor_alt), making twenty.  This
-file is
+s1manual, s2gmanual, s2color8, sttrans, stgcolor_alt), making twenty; WP-30
+P1.25a adds StataCorp's six internal schemes (meta, stcolor_meta, stcolor_mv,
+stcoloralias, stgcolor_meta, stgcolor_mv), making twenty-six.  This file is
 the *test-first* half of that work (project rule 8): every assertion below is
 driven by ``test/fixtures/scheme_truth.json``, the ground truth another agent
 extracted from Stata's own ``scheme-*.scheme`` and ``style/*.style`` files with
@@ -113,15 +114,16 @@ ALPHA_TOL = 1e-6
 #: Tolerance for graph size in inches.
 SIZE_TOL = 1e-9
 
-#: The 20 user-selectable schemes Stata ships and dash must translate.  The
-#: internal ones (meta, stcolor_meta, stgcolor_meta, stcolor_mv, stgcolor_mv,
-#: stcoloralias) are deliberately not here.
+#: The 26 schemes Stata ships in BASE/s, every one of which dash translates.
 EXPECTED_SCHEMES = (
     "stcolor", "stcolor_alt", "stgcolor", "stmono1", "stmono2", "stsj",
     "s2color", "s2mono", "s2gcolor", "s1color", "s1mono", "s1rcolor",
     "economist", "sj",
     # WP-17: the six that were missing.
     "s2manual", "s1manual", "s2gmanual", "s2color8", "sttrans", "stgcolor_alt",
+    # WP-30 P1.25a: StataCorp's six internal schemes
+    "meta", "stcolor_meta", "stcolor_mv", "stcoloralias", "stgcolor_meta",
+    "stgcolor_mv",
 )
 
 #: The six WP-17 added, kept apart so their tests can name them.
@@ -586,7 +588,7 @@ def coverage(checks):
 # ===========================================================================
 
 def test_fixture_is_present_and_complete():
-    """The ground-truth fixture exists and covers exactly the 20 schemes."""
+    """The ground-truth fixture exists and covers exactly the 26 schemes."""
     assert _FIXTURE_ERROR is None, (
         f"cannot read {FIXTURE_PATH}: {_FIXTURE_ERROR}"
     )
@@ -655,12 +657,12 @@ def test_scheme_parser_exposes_props():
 
 
 # ===========================================================================
-# 1. All 20 schemes resolve, with no silent fallback
+# 1. All 26 schemes resolve, with no silent fallback
 # ===========================================================================
 
 @pytest.mark.parametrize("name", SCHEME_NAMES)
 def test_scheme_resolves(name):
-    """Every one of Stata's 20 schemes is a real, parseable dash scheme.
+    """Every one of Stata's 26 schemes is a real, parseable dash scheme.
 
     "Without falling back" means three things: the file dash-<name>.scheme exists, the
     parser does not raise, and no ``#include`` in the chain was silently skipped
@@ -1064,7 +1066,7 @@ def test_extractor_schemes_list_is_the_twenty():
     assert sorted(mod.SCHEMES) == sorted(EXPECTED_SCHEMES), (
         f"extractor SCHEMES {sorted(mod.SCHEMES)} != {sorted(EXPECTED_SCHEMES)}"
     )
-    assert len(mod.SCHEMES) == 20
+    assert len(mod.SCHEMES) == 26  # 20 -> 26: P1.25a ships the six StataCorp schemes
 
 
 def test_extractor_reads_a_directive_value_as_stata_does(tmp_path):

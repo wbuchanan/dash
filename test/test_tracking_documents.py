@@ -1589,7 +1589,6 @@ WP30_OPEN = {
     "P1.23a": "Dates on range, pc, immediate and second axes are drawn at raw or millisecond positions, and a date layer beside a numeric one is drawn in epoch milliseconds",
     "P1.23b": "A date colour key shows epoch milliseconds, fallback tooltips ignore display formats, and the histogram tooltip always says Count",
     "P1.24": "mlabvposition(varname) and mlabtextstyle() are declared and pending but never serialised or drawn",
-    "P1.25a": "Six StataCorp schemes, among them meta and stcolor_mv, are refused r(198) where twoway draws them",
     "P1.25b": "scheme(NAME) is looked for in two places only, never along Stata's ado-path or under Stata's scheme-NAME.scheme file name, and its refusal does not list the valid names",
     "P1.26b": "dash build, server and dash serve report no option or empty-layer notes, and the served child's stderr never reaches Stata",
     "P1.27": "The drop-in command form fails: a twoway prefix is refused, saving(name, asis) writes a file named after the whole argument, dash build, saving(f, replace) is refused, and batch mode opens a browser",

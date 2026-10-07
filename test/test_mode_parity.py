@@ -1797,6 +1797,13 @@ CORPUS = [
                                          "in_expr": ""})]),
     _case("a dropdown under a graph if (embed rows)", [_sc()],
           bo={"filter": "rep, type(dropdown)"}, if_expr="foreign == 1"),
+    # WP-30 P1.25a: StataCorp's six internal schemes
+    *[_case(f"scatter with yline, {s}", [_sc()], {"scheme": s},
+            {"yline": "20"})
+      for s in ("meta", "stcolor_meta", "stcolor_mv", "stcoloralias",
+                "stgcolor_meta", "stgcolor_mv")],
+    _case("scatter, session scheme stcolor_meta", [_sc()],
+          {"session_scheme": "stcolor_meta"}),
 ]
 
 
@@ -2531,6 +2538,11 @@ MOVE_CORPUS = [
                                               "in_expr": ""}),
                        ("g2", [_sc()], None, {"if_expr": "price > 10000",
                                               "in_expr": ""})]),
+    # WP-30 P1.25a: StataCorp's six internal schemes
+    _move_case("scatter with yline under stcolor_meta, dropdown", _MOVES[0],
+               [_sc()], {"yline": "20"}, bo={"scheme": "stcolor_meta"}),
+    _move_case("scatter with yline under stgcolor_mv, dropdown", _MOVES[0],
+               [_sc()], {"yline": "20"}, bo={"scheme": "stgcolor_mv"}),
 ]
 
 

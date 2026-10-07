@@ -1949,18 +1949,26 @@ def _drop_undeclared_stubs(lines: list[str], groups) -> list[str]:
 
 # --------------------------------------------------------------------------- #
 
-# The twenty user-selectable schemes StataCorp ships.  The internal ones
-# (meta, stcolor_meta, stgcolor_meta, stcolor_mv, stgcolor_mv, stcoloralias)
-# are deliberately not translated.  SchemeParser._BUILTIN_NAMES,
-# test_scheme_fidelity.EXPECTED_SCHEMES and dash.ado's _dash_shipped_schemes
-# must list exactly these; test_scheme_resolution.py checks all four agree.
+# The twenty-six schemes StataCorp ships in BASE/s, every one of them.
+# SchemeParser._BUILTIN_NAMES, test_scheme_fidelity.EXPECTED_SCHEMES and
+# dash.ado's _dash_shipped_schemes must list exactly these;
+# test_scheme_resolution.py checks all four agree.  The order is
+# append-only: scheme_truth.json's key order follows it.
 SCHEMES = [
     "stcolor", "stcolor_alt", "stgcolor", "stmono1", "stmono2", "stsj",
     "s2color", "s2mono", "s2gcolor", "s1color", "s1mono", "s1rcolor",
     "economist", "sj",
     # WP-17: the six that were missing.
     "s2manual", "s1manual", "s2gmanual", "s2color8", "sttrans", "stgcolor_alt",
+    # WP-30 P1.25a: StataCorp's six internal schemes, measured in twoway
+    "meta", "stcolor_meta", "stcolor_mv", "stcoloralias", "stgcolor_meta",
+    "stgcolor_mv",
 ]
+
+# A scheme name is a plain token.  --schemes names reach os.path.join as
+# "dash-<name>.scheme", so anything else (a "/" or "..") could write
+# outside --schemes-dir; Stata's 26 names all match.
+_SCHEME_TOKEN_RE = re.compile(r"^[a-z0-9_]{1,32}$")
 
 
 def main(argv=None) -> int:
@@ -1975,6 +1983,12 @@ def main(argv=None) -> int:
     ap.add_argument("--no-scheme-files", action="store_true",
                     help="write the fixture only; leave dash-*.scheme alone")
     args = ap.parse_args(argv)
+    for name in args.schemes:
+        if not _SCHEME_TOKEN_RE.match(name):
+            sys.stderr.write(
+                "error: --schemes takes scheme names (a-z, 0-9, _; at most "
+                f"32), got: {repr(name)[:80]}\n")
+            return 2
 
     base = args.stata_base
     if not os.path.isdir(os.path.join(base, "s")):

@@ -9,7 +9,12 @@ outline, whatever the scheme said.
 Stata's truth, measured 24sep2026 with StataNow 19.5 (batch) from the graph
 object -- .Graph.plotregion1.plot1.style.area, the band, and plot2's line --
 for each of the four ci types under each of the twenty shipped schemes, and
-kept in test/fixtures/ci_band_style_truth.json:
+kept in test/fixtures/ci_band_style_truth.json (below).
+ci_band_style_truth.json has no generator and covers the twenty schemes
+measured 24sep2026; StataCorp's six internal schemes are certified against
+twoway's graph object by test_wp30_truth.cscript SX-06 and
+test_twenty_six_schemes.py::TestTheSixDrawWhatTwowayDraws::test_the_ci_band_is_statas.
+The fixture's truth:
 
 * The band is areastyle ci (style/areastyle-ci.style): its fill is
   ``color ci_area`` at ``intensity ci_area``, its outline ``color
@@ -181,6 +186,11 @@ class TestTheBandAgainstStata:
             _check(_draw(ptype, scheme, opts), want, var)
 
     def test_the_fixture_covers_every_scheme_and_type(self):
+        """ci_band_style_truth.json has no generator and covers the twenty
+        schemes measured 24sep2026; StataCorp's six internal schemes are
+        certified against twoway's graph object by test_wp30_truth.cscript
+        SX-06 and test_twenty_six_schemes.py::TestTheSixDrawWhatTwowayDraws
+        ::test_the_ci_band_is_statas."""
         assert len(_SCHEMES) == 20
         for s in _SCHEMES:
             for v in ("def", "p3", "color", "fcolor", "acolor", "alcolor"):

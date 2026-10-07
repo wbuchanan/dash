@@ -52,13 +52,17 @@ from conftest import load_app  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
-#: The twenty StataCorp schemes dash ships as translations (DESIGN §2): the
-#: fourteen of WP-16 plus the six user-selectable ones that were missing.
+#: The twenty-six StataCorp schemes dash ships as translations (DESIGN §2):
+#: the fourteen of WP-16, the six user-selectable ones that were missing,
+#: plus StataCorp's six internal schemes (WP-30 P1.25a).
 SHIPPED = (
     "economist", "s1color", "s1manual", "s1mono", "s1rcolor",
     "s2color", "s2color8", "s2gcolor", "s2gmanual", "s2manual", "s2mono",
     "sj", "stcolor", "stcolor_alt", "stgcolor", "stgcolor_alt",
     "stmono1", "stmono2", "stsj", "sttrans",
+    # WP-30 P1.25a: StataCorp's six internal schemes
+    "meta", "stcolor_meta", "stcolor_mv", "stcoloralias", "stgcolor_meta",
+    "stgcolor_mv",
 )
 THEMES = ("clean", "dark", "default", "economist", "mono", "sj")
 MODES = ("standalone", "served")
@@ -442,7 +446,7 @@ class TestTheShippedListIsOneList:
     def test_the_parser_ships_the_twenty(self):
         assert set(dr.SchemeParser._BUILTIN_NAMES) == set(SHIPPED), (
             sorted(set(dr.SchemeParser._BUILTIN_NAMES) ^ set(SHIPPED)))
-        assert len(SHIPPED) == 20
+        assert len(SHIPPED) == 26  # 20 -> 26: P1.25a ships the six StataCorp schemes
 
     def test_the_extractor_agrees(self):
         assert set(_extractor_schemes()) == set(SHIPPED)

@@ -1430,7 +1430,7 @@ class TestFunctionExpressionEncodings:
 class TestSchemeIncludes:
     """``#include`` inside a .scheme file.
 
-    None of the twenty shipped schemes has an ``#include`` line, and the one
+    None of the twenty-six shipped schemes has an ``#include`` line, and the one
     earlier cycle test wrote its files without changing directory, so its
     include never resolved and the cycle guard was never reached.  These
     run in the working directory, where dash reads custom schemes.

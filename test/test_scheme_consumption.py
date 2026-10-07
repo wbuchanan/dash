@@ -1475,6 +1475,11 @@ class TestAChildPHashReachesWhatStatasChainReaches:
 
     So Stata's chain p#stub -> pstub -> p# -> p decides, per scheme; the
     kept values are the scheme's own (#000000, or #606060 in s2gmanual).
+
+    Measured 03oct2026 over StataCorp's six internal schemes (WP-30 S07,
+    test_wp30_truth.cscript SX-05): every one follows the not-kept rows:
+    red markers, bars, connected and line, dashed; both symbols diamond;
+    both sizes 4.8611 (huge).
     """
 
     _SCHEMES = sorted(SchemeParser._BUILTIN_NAMES)
@@ -1499,7 +1504,7 @@ class TestAChildPHashReachesWhatStatasChainReaches:
         return SchemeParser(name)
 
     def test_the_twenty_are_the_ones_measured(self):
-        assert len(self._SCHEMES) == 20
+        assert len(self._SCHEMES) == 26  # 20 -> 26: P1.25a ships the six StataCorp schemes
         kept = (set(self._CONNECT_COLOUR_KEPT) | self._CONNECT_PATTERN_KEPT
                 | set(self._LINEPLOT_KEPT))
         assert kept <= set(self._SCHEMES)
@@ -1709,7 +1714,12 @@ class TestAChildSymbolReachesWhatStatasChainReaches:
 
     The shipped files wrote the fallback out, `symbol p1 circle' ..
     `symbol p15 circle', keys Stata's s2color does not write, so a bare
-    `symbol p diamond' reached no plot in the eleven."""
+    `symbol p diamond' reached no plot in the eleven.
+
+    Measured 03oct2026 over StataCorp's six internal schemes (WP-30 S07,
+    test_wp30_truth.cscript SX-05): every one follows the not-kept rows:
+    red markers, bars, connected and line, dashed; both symbols diamond;
+    both sizes 4.8611 (huge)."""
 
     _SCHEMES = sorted(SchemeParser._BUILTIN_NAMES)
     _DECLARE_P_HASH = {"stmono1", "stmono2", "stsj", "s2mono", "s1mono",
@@ -1728,7 +1738,7 @@ class TestAChildSymbolReachesWhatStatasChainReaches:
         return SchemeParser(name)
 
     def test_the_nine_are_a_subset_of_the_twenty(self):
-        assert len(self._SCHEMES) == 20
+        assert len(self._SCHEMES) == 26  # 20 -> 26: P1.25a ships the six StataCorp schemes
         assert self._DECLARE_P_HASH <= set(self._SCHEMES)
 
     @pytest.mark.parametrize("scheme", _SCHEMES)
@@ -1800,13 +1810,18 @@ class TestAChildSymbolsizeReachesWhatStatasChainReaches:
 
     Measured 24sep2026 (S3 batch), `twoway scatter y1 y2 x' and
     `.Graph.plotregion1.plot<k>.style.marker.size.setting': under
-    `symbolsize p huge' both plots are 4.8611 (huge) in nineteen schemes,
+    `symbolsize p huge' both plots are 4.8611 (huge) in twenty-five schemes,
     and in s1manual both stay 2.2 -- scheme-s1manual.scheme:51-59 declares
     `symbolsize p1'..`symbolsize p9' 2.2, which a bare `p' does not reach.
     Under `symbolsize p1 huge' plot 1 is 4.8611 and plot 2 the scheme's
     own in all twenty.  dash read only `symbolsize p', one size for every
     plot: `symbolsize p1 huge' changed nothing, and under s1manual
-    `symbolsize p huge' drew huge markers where Stata draws 2.2."""
+    `symbolsize p huge' drew huge markers where Stata draws 2.2.
+
+    Measured 03oct2026 over StataCorp's six internal schemes (WP-30 S07,
+    test_wp30_truth.cscript SX-05): every one follows the not-kept rows:
+    red markers, bars, connected and line, dashed; both symbols diamond;
+    both sizes 4.8611 (huge)."""
 
     _SCHEMES = sorted(SchemeParser._BUILTIN_NAMES)
 

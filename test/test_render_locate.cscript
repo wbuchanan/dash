@@ -391,7 +391,8 @@ assert `loc13moved' == 1
 assert `loc13back' == 1
 assert `loc13sado' == 1
 assert `loc13rc' == 0
-assert `loc13nsch' == 20
+// 20 -> 26: P1.25a ships the six StataCorp schemes
+assert `loc13nsch' == 26
 assert "`loc13miss'" == ""
 assert `loc13py' == 1
 assert `loc13d' == 0

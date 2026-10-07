@@ -346,11 +346,11 @@ def test_the_repo_has_no_schemes_directory():
 
 
 def test_the_root_holds_exactly_the_twenty_dash_files_the_manifest_ships():
-    """WP-28: ``f dash-<name>.scheme`` for each of the twenty, and no other
+    """WP-28: ``f dash-<name>.scheme`` for each of the twenty-six, and no other
     ``dash-*.scheme`` in the root."""
     declared = sorted(d for d in parse_pkg_files()
                       if re.fullmatch(r"dash-[a-z0-9_]+\.scheme", d))
-    assert len(declared) == 20, declared
+    assert len(declared) == 26, declared  # 20 -> 26: P1.25a ships the six StataCorp schemes
     assert _shipped_scheme_files() == declared
     assert not [d for d in parse_pkg_files()
                 if d.endswith(".scheme") and d not in declared]

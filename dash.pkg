@@ -53,3 +53,9 @@ f dash-stmono1.scheme
 f dash-stmono2.scheme
 f dash-stsj.scheme
 f dash-sttrans.scheme
+f dash-meta.scheme
+f dash-stcolor_meta.scheme
+f dash-stcolor_mv.scheme
+f dash-stcoloralias.scheme
+f dash-stgcolor_meta.scheme
+f dash-stgcolor_mv.scheme

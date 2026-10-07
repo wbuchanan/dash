@@ -48,8 +48,8 @@
 *!          one note line, it mentions the session, page is s2color
 *!          (#1e2d53 present)
 *!   CS-11  set scheme s2color8, build: rc 0 and NO warning (s2color8 ships)
-*!   CS-12  every one of the twenty shipped names on dash build, scheme():
-*!          rc 0 and no warning; the list holds twenty
+*!   CS-12  every one of the twenty-six shipped names on dash build, scheme():
+*!          rc 0 and no warning; the list holds twenty-six
 *!   CS-13  _dash_serve_spec ..., scheme(nosuchthing) rc 198 naming
 *!          scheme(); theme(nosuchtheme) rc 198 naming theme()
 *!   CS-14  dash build, scheme(s2color.scheme) -- a shipped name written
@@ -492,7 +492,7 @@ capture noisily _dash_shipped_schemes
 local lrc = _rc
 _cs_expect CS-12 "(`lrc' == 0)" "_dash_shipped_schemes rc `lrc' (expected 0)"
 local nsh : word count `_dash_schemes'
-_cs_expect CS-12 "(`nsh' == 20)" "the shipped list holds `nsh' names (expected 20): `_dash_schemes'"
+_cs_expect CS-12 "(`nsh' == 26)" "the shipped list holds `nsh' names (expected 26): `_dash_schemes'"
 local nrun = 0
 foreach nm of local _dash_schemes {
     capture erase "c.html"

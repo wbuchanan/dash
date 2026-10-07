@@ -6082,11 +6082,11 @@ class SchemeParser:
         if os.path.basename(_PKG_DIR) == "py" else None
     )
 
-    # The twenty translated StataCorp schemes dash ships.  Each is a
+    # The twenty-six translated StataCorp schemes dash ships.  Each is a
     # faithful translation of the same-named Stata scheme, generated from
     # test/fixtures/scheme_truth.json by scripts/extract_scheme_truth.py.
     # scheme()/theme() names one of these, a theme alias, or a .scheme file
-    # in the working directory (WP-17).  The same twenty are listed by the
+    # in the working directory (WP-17).  The same twenty-six are listed by the
     # extractor's SCHEMES and by dash.ado's _dash_shipped_schemes;
     # test_scheme_resolution.py holds the copies equal.
     _BUILTIN_NAMES: frozenset[str] = frozenset({
@@ -6100,6 +6100,9 @@ class SchemeParser:
         "s2manual", "s1manual", "s2gmanual",
         # journal styles
         "economist", "sj",
+        # StataCorp's internal schemes (WP-30 P1.25a); stcoloralias draws as stcolor
+        "meta", "stcolor_meta", "stcolor_mv", "stcoloralias", "stgcolor_meta",
+        "stgcolor_mv",
     })
 
     # Last-resort properties for when NO scheme file can be resolved at all —
@@ -6392,7 +6395,7 @@ class SchemeParser:
 
     @classmethod
     def _shipped_base(cls, name: str) -> "str | None":
-        """*name* as one of the twenty shipped names, bare or with
+        """*name* as one of the twenty-six shipped names, bare or with
         ``.scheme`` in any case, or None."""
         base = (name or "").strip()
         if os.sep in base or "/" in base:
@@ -6406,9 +6409,9 @@ class SchemeParser:
     def _installed_letter_dir(cls, name: str) -> "str | None":
         """The install directory that would hold *name*, or None.
 
-        Returns a directory ONLY for one of the twenty names dash ships, and
+        Returns a directory ONLY for one of the twenty-six names dash ships, and
         only on an installed tree.  That is the whole of the narrowing: the
-        join's second component is one of twenty literals matching
+        join's second component is one of twenty-six literals matching
         ``^[a-z][a-z0-9_]*$``, so no caller string can steer it out of
         _PLUS_ROOT, and a letter directory is never offered for a name dash
         does not ship.  The letter directories are SHARED -- every package

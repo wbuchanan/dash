@@ -993,13 +993,13 @@ class TestWhatAnIncludeResolvesTo:
         wd = tmp_path / "wd"
         wd.mkdir()
         sch, w = self._parse(
-            wd, "#include stcolor_meta\ncolor p1 #445566\n", monkeypatch)
+            wd, "#include w26nosuch\ncolor p1 #445566\n", monkeypatch)
         s2 = dr.SchemeParser("s2color")
         assert sch.p_colors[0].lower() == "#445566"
         assert sch.p_colors[1:] == s2.p_colors[1:]
         assert sch.background_color == s2.background_color
         assert (sch.graphsize_x, sch.graphsize_y) == (5.5, 4.0)
-        assert any("(note: scheme stcolor_meta not found, using s2color)"
+        assert any("(note: scheme w26nosuch not found, using s2color)"
                    in m for m in w), w
         help_text = re.sub(r"\s+", " ", _read(_HELP))
         assert "skipped in silence" not in help_text
@@ -1123,8 +1123,8 @@ class TestTheShippedFiles:
 
 
 class TestAnInstalledTreeLooksOnlyForItsOwnTwenty:
-    """test_installed_layout.py stages fourteen of the twenty; this stages
-    all twenty where `net install` files them, plants a third-party scheme
+    """test_installed_layout.py stages fourteen of the twenty-six; this
+    stages all twenty-six where `net install` files them, plants a third-party scheme
     beside them, and asks for each."""
 
     def test_all_twenty_and_nothing_else(self, tmp_path, monkeypatch):
@@ -1135,7 +1135,7 @@ class TestAnInstalledTreeLooksOnlyForItsOwnTwenty:
         shutil.copy2(os.path.join(_ROOT, "dash_render.py"),
                      str(root / "py" / "dash_render.py"))
         names = sorted(dr.SchemeParser._BUILTIN_NAMES)
-        assert len(names) == 20
+        assert len(names) == 26  # 20 -> 26: P1.25a ships the six StataCorp schemes
         for name in names:
             (root / "d").mkdir(exist_ok=True)
             shutil.copy2(os.path.join(_SCHEMES, "dash-" + name + ".scheme"),

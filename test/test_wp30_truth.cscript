@@ -17,6 +17,9 @@
 *! (index.md "The cscript driver"); a block with no case yet then ends
 *! "no case ran" and r(9).  Each block prints "S<NN> start" and
 *! "S<NN> end" with the date and time, so the closeout can time it.
+*!
+*! Blocks filled so far (case ids):
+*!   S07  P1.25a the six StataCorp schemes against twoway (SX-01..SX-08)
 
 cscript "WP-30 truth: twoway comparisons" adodir ".."
 
@@ -559,10 +562,657 @@ if inlist("`only'", "", "S06") {
 }
 * ==== end S06 ====
 
+// ----------------------------------------------------------------
+// S07 helpers (python at the top level, where braces are safe).  Every
+// argument crosses through sfi.Macro.getGlobal and every answer goes
+// back through Macro.setGlobal; no macro text is pasted into Python.
+//   _s07_svg()   S07_SVG (with yline(20)) and S07_SVG0 (without) ->
+//                S07_TW = bg;marker;ylc;segs;w;h;tick
+//   _s07_page()  S07_PAGE, a saved page -> S07_D =
+//                border;plot;fill;span;dash;aspect;tick, and S07_PAL, the
+//                first colour mapper's palette;low;high
+//   _s07_app()   S07_APP, a served app.py, and S07_MOVE -> S07_S (the
+//                same summary), S07_FIRED, S07_SAME_AFTER
+//   _s07_child() S07_CHILD and S07_KIND (red, sp or zp) -> S07_DC, S07_DOK
+//                and S07_DCW (count of "not found, using s2color")
+//   _s07_ci()    S07_SCH -> S07_DCI = fill;outline;fit, or "error"
+//   _s07_rgb()   S07_GOB ("r g b [%a]") -> S07_HEX = #rrggbb
+// ----------------------------------------------------------------
+python:
+import collections as _s07_col
+import html as _s07_html
+import json as _s07_json
+import os as _s07_os
+import re as _s07_re
+import sys as _s07_sys
+import warnings as _s07_w
+from sfi import Macro as _s07_M
+
+_s07_repo = _s07_os.path.abspath("..")
+for _s07_p in (_s07_os.path.join(_s07_repo, "scripts"), _s07_repo):
+    if _s07_p not in _s07_sys.path:
+        _s07_sys.path.insert(0, _s07_p)
+import svg_truth as _s07_st
+
+_S07_PLOTS = ("Figure", "figure", "Plot")
+
+
+def _s07_set(name, val):
+    _s07_M.setGlobal(name, str(val))
+
+
+def _s07_svg():
+    path = _s07_M.getGlobal("S07_SVG")
+    path0 = _s07_M.getGlobal("S07_SVG0")
+    doc = _s07_st.svg_document(path)
+    bg = doc["rects"][0]["fill"] if doc["rects"] else ""
+    fills = _s07_st.svg_marker_fills(path)
+    marker = max(fills, key=lambda c: fills[c]["n"]) if fills else ""
+    seen = set()
+    if path0:
+        d0 = _s07_st.svg_document(path0)
+        for g in _s07_st.line_groups(d0["hlines"], "y1"):
+            seen.add((g["px"], g["stroke"], g["width"]))
+    new = [g for g in _s07_st.line_groups(doc["hlines"], "y1")
+           if (g["px"], g["stroke"], g["width"]) not in seen]
+    ylc = new[0]["stroke"] if len(new) == 1 else "n%d" % len(new)
+    segs = new[0]["n_segments"] if len(new) == 1 else 0
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        txt = fh.read()
+    tag = _s07_re.search(r"<svg [^>]*>", txt)
+    tag = tag.group(0) if tag else ""
+    mw = _s07_re.search(r'width="([0-9.]+)in"', tag)
+    mh = _s07_re.search(r'height="([0-9.]+)in"', tag)
+    w = mw.group(1) if mw else "0"
+    h = mh.group(1) if mh else "0"
+    sizes = _s07_col.Counter(t["size"] for t in doc["texts"] if t["size"])
+    tick = sizes.most_common(1)[0][0] if sizes else 0
+    _s07_set("S07_TW", ";".join(str(x) for x in
+                                (bg or "none", marker or "none", ylc, segs,
+                                 w, h, tick)))
+    _s07_set("S07_FILLS", " ".join(sorted(fills)) or "none")
+
+
+def _s07_models(path):
+    try:
+        with open(path, encoding="utf-8") as fh:
+            page = fh.read()
+    except OSError:
+        return []
+    objs, stack = {}, []
+    for blob in _s07_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s07_re.S):
+        try:
+            stack.append(_s07_json.loads(_s07_html.unescape(blob)))
+        except ValueError:
+            pass
+    out = []
+    while stack:
+        v = stack.pop(0)
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                if v["id"] not in objs:
+                    objs[v["id"]] = v
+                    out.append(v)
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    return out
+
+
+_S07_DEF = {}
+
+
+def _s07_val(v):
+    if isinstance(v, dict):
+        if v.get("type") == "value" or "value" in v:
+            return v.get("value")
+        if "field" in v:
+            return "field:" + str(v["field"])
+    inner = getattr(v, "value", None)
+    if inner is not None and not isinstance(v, (str, list, tuple)):
+        return inner
+    return v
+
+
+def _s07_saved_first(objs):
+    def first(kinds, attr):
+        for o in objs:
+            if o.get("name") not in kinds:
+                continue
+            a = o.get("attributes", {}) or {}
+            if attr in a:
+                return _s07_val(a[attr])
+            k = o["name"]
+            if k not in _S07_DEF:
+                import bokeh.models as _bm
+                try:
+                    if k in ("Figure", "figure"):
+                        from bokeh.plotting import figure as _s07_fig
+                        _S07_DEF[k] = _s07_fig()
+                    else:
+                        _S07_DEF[k] = getattr(_bm, k)()
+                except Exception:
+                    _S07_DEF[k] = None
+            d = _S07_DEF[k]
+            return _s07_val(getattr(d, attr, None)) if d is not None else None
+        return None
+    return first
+
+
+def _s07_served_first(doc):
+    from bokeh.model import Model
+    models = list(doc.select(dict(type=Model)))
+    def first(kinds, attr):
+        for m in models:
+            if type(m).__name__ in kinds:
+                return _s07_val(getattr(m, attr, None))
+        return None
+    return first
+
+
+def _s07_fmt(first):
+    def col(v):
+        return str(v).lower() if v is not None else "none"
+    dash = first(("Span",), "line_dash")
+    if dash in (None, "solid") or (isinstance(dash, (list, tuple)) and not dash):
+        dash = "solid"
+    elif isinstance(dash, (list, tuple)):
+        dash = " ".join(str(int(x)) for x in dash)
+    asp = first(_S07_PLOTS, "aspect_ratio")
+    asp = "%.4f" % float(asp) if asp is not None else "none"
+    return ";".join([
+        col(first(_S07_PLOTS, "border_fill_color")),
+        col(first(_S07_PLOTS, "background_fill_color")),
+        col(first(("Scatter",), "fill_color")),
+        col(first(("Span",), "line_color")),
+        str(dash), asp,
+        str(first(("LinearAxis",), "major_label_text_font_size"))])
+
+
+def _s07_page():
+    objs = _s07_models(_s07_M.getGlobal("S07_PAGE"))
+    _s07_set("S07_D", _s07_fmt(_s07_saved_first(objs)) if objs else "none")
+    pal = "none"
+    for o in objs:
+        if str(o.get("name", "")).endswith("ColorMapper"):
+            a = o.get("attributes", {}) or {}
+            p = a.get("palette")
+            if isinstance(p, dict):
+                p = p.get("value") or p.get("entries")
+            pal = "%s;%s;%s" % (" ".join(str(x).lower() for x in (p or [])),
+                                a.get("low"), a.get("high"))
+            break
+    _s07_set("S07_PAL", pal)
+
+
+def _s07_app():
+    from bokeh.document import Document
+    from bokeh.models import Select
+    with open(_s07_M.getGlobal("S07_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s07_app")
+    with _s07_w.catch_warnings():
+        _s07_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s07_app.py", "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    before = _s07_fmt(_s07_served_first(doc))
+    _s07_set("S07_S", before)
+    var = _s07_M.getGlobal("S07_MOVE")
+    sel = [s for s in doc.select(dict(type=Select))
+           if getattr(s, "_dash_var", None) == var]
+    fired = 0
+    if len(sel) == 1 and len(sel[0].options) > 1:
+        old = sel[0].value
+        opt = sel[0].options[1]
+        new = opt[0] if isinstance(opt, (list, tuple)) else opt
+        sel[0].value = new
+        with _s07_w.catch_warnings():
+            _s07_w.simplefilter("ignore")
+            for cb in sel[0]._callbacks.get("value", []):
+                cb("value", old, new)
+                fired += 1
+    _s07_set("S07_FIRED", fired)
+    _s07_set("S07_SAME_AFTER", int(_s07_fmt(_s07_served_first(doc)) == before))
+
+
+def _s07_child():
+    import dash_render as _dr
+    name = _s07_M.getGlobal("S07_CHILD")
+    kind = _s07_M.getGlobal("S07_KIND")
+    with _s07_w.catch_warnings(record=True) as caught:
+        _s07_w.simplefilter("always")
+        try:
+            s = _dr.SchemeParser(name)
+        except Exception as e:
+            _s07_set("S07_DC", "error " + type(e).__name__)
+            _s07_set("S07_DOK", 0)
+            _s07_set("S07_DCW", -1)
+            return
+    _s07_set("S07_DCW", sum(1 for w in caught
+                            if "not found, using s2color" in str(w.message)))
+    T = _dr.OptionTranslator
+    if kind == "red":
+        cols = [str(s.default_color(0, k)).lower()
+                for k in ("scatter", "bar", "connected", "line")]
+        pats = [list(s.default_connect_pattern(0)), list(s.default_line_pattern(0))]
+        want = list(T.translate_lpattern("dash"))
+        ok = all(c == "#ff0000" for c in cols) and all(p == want for p in pats)
+        desc = "%s %s" % (cols, pats)
+    elif kind == "sp":
+        syms = list(s.p_symbols[0:2])
+        ok = syms == [T.translate_msymbol("diamond")] * 2
+        desc = str(syms)
+    else:
+        sizes = [s.default_marker_size(0), s.default_marker_size(1)]
+        want = s._markersize_px("huge")
+        ok = all(abs(x - want) < 1e-9 for x in sizes)
+        desc = "%s want %s" % (sizes, want)
+    _s07_set("S07_DC", desc.replace('"', "'"))
+    _s07_set("S07_DOK", int(ok))
+
+
+def _s07_ci():
+    import numpy as _np
+    import pandas as _pd
+    import dash_render as _dr
+    from bokeh.models import ColumnDataSource
+    from bokeh.plotting import figure
+    name = _s07_M.getGlobal("S07_SCH")
+    try:
+        with _s07_w.catch_warnings():
+            _s07_w.simplefilter("ignore")
+            gm = _dr.GlyphMapper(scheme=_dr.SchemeParser(name))
+            n = 40
+            df = _pd.DataFrame(dict(
+                x=_np.linspace(1.0, 40.0, n),
+                y=_np.sin(_np.linspace(0, 3, n)) * 10 + 20 + _np.linspace(0, 5, n)))
+            fig = figure()
+            gm.map_lfitci(fig, ColumnDataSource(df), "y", "x", dict(), color_idx=0)
+    except Exception:
+        _s07_set("S07_DCI", "error")
+        return
+    kinds = _s07_col.defaultdict(list)
+    for r in fig.renderers:
+        g = getattr(r, "glyph", None)
+        if g is not None:
+            kinds[type(g).__name__].append(g)
+    try:
+        out = (str(kinds["VArea"][0].fill_color).lower(),
+               str(kinds["Patch"][0].line_color).lower(),
+               str(kinds["Line"][0].line_color).lower())
+    except IndexError:
+        _s07_set("S07_DCI", "error")
+        return
+    _s07_set("S07_DCI", ";".join(out))
+
+
+def _s07_rgb():
+    parts = _s07_M.getGlobal("S07_GOB").split()
+    try:
+        _s07_set("S07_HEX", "#%02x%02x%02x" % tuple(int(float(p)) for p in parts[:3]))
+    except (ValueError, TypeError):
+        _s07_set("S07_HEX", "none")
+end
+
+capture program drop _s07_gob
+program define _s07_gob
+    version 19
+    args path
+    local v "`.Graph.`path''"
+    global S07_GOB `"`v'"'
+end
+
+capture program drop _s07_hex
+program define _s07_hex
+    version 19
+    args path
+    _s07_gob `path'
+    python: __import__("__main__")._s07_rgb()
+end
+
 * ==== S07 P1.25a: Ship the six StataCorp schemes ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S07") {
     display as text "S07 start " c(current_date) " " c(current_time)
+    // The six StataCorp schemes dash did not ship, against twoway's own
+    // drawing in the same run.  Every page, app, SVG and log goes under
+    // `w30_work'; only SX-05's and SX-08's child scheme files sit in the
+    // working directory (twoway's findfile and dash's lookup read there),
+    // each checked absent before it is written and erased in its case.
+    local s07_six "meta stcolor_meta stcolor_mv stcoloralias stgcolor_meta stgcolor_mv"
+    local s07_entry "`c(scheme)'"
+    local s07_nk1 "is not a known theme or scheme"
+    local s07_nk2 "not found, using s2color"
+    capture log close sxk
+    capture dash clear
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // SX-01: the refusal is gone on every entry point.
+    // ------------------------------------------------------------
+    foreach S of local s07_six {
+        capture twoway scatter mpg weight, scheme(`S') nodraw
+        local s07_rc = _rc
+        _w30_expect SX-01 "(`s07_rc' == 0)" "twoway scheme(`S') rc `s07_rc'"
+    }
+    log using "`w30_work'/sx1.log", text replace name(sxk)
+    foreach S in `s07_six' META meta.scheme {
+        capture dash clear
+        capture noisily dash scatter mpg weight, scheme(`S') name(sx1)
+        local s07_r1 = _rc
+        capture noisily dash build, scheme(`S') saving("`w30_work'/sx1.html") replace nobrowser
+        local s07_r2 = _rc
+        tempfile s07_mj s07_dj
+        capture noisily _dash_serve_spec, specpath("`s07_mj'") datapath("`s07_dj'") scheme(`S')
+        local s07_r3 = _rc
+        _w30_expect SX-01 "(`s07_r1' == 0 & `s07_r2' == 0 & `s07_r3' == 0)" "scheme(`S'): dash rc `s07_r1', build rc `s07_r2', serve spec rc `s07_r3'"
+    }
+    capture dash clear
+    log close sxk
+    cert_log_has "`w30_work'/sx1.log", needle("`s07_nk1'")
+    local s07_n1 = r(count)
+    cert_log_has "`w30_work'/sx1.log", needle("`s07_nk2'")
+    local s07_n2 = r(count)
+    _w30_expect SX-01 "(`s07_n1' == 0 & `s07_n2' == 0)" "the log holds `s07_n1' unknown-scheme and `s07_n2' not-found notes"
+    _w30_done SX-01 "the six are accepted by twoway, dash, dash build and the serve spec, rc 0 and no note"
+
+    // ------------------------------------------------------------
+    // SX-02: drawn as twoway, saved page; SX-03: served, and after a
+    // dropdown move.  Controls s2color (first, for meta's tick ratio)
+    // and stcolor run the same way.
+    // ------------------------------------------------------------
+    log using "`w30_work'/sx2.log", text replace name(sxk)
+    local s07_all3 = 1
+    foreach S in s2color stcolor `s07_six' {
+        sysuse auto, clear
+        capture dash clear
+        local s07_svg  "`w30_work'/sx2_`S'.svg"
+        local s07_svg0 "`w30_work'/sx2_`S'_0.svg"
+        twoway scatter mpg weight, yline(20) scheme(`S') name(sx2tw, replace)
+        graph export "`s07_svg'", name(sx2tw) replace
+        twoway scatter mpg weight, scheme(`S') name(sx2tw, replace)
+        graph export "`s07_svg0'", name(sx2tw) replace
+        global S07_SVG  "`s07_svg'"
+        global S07_SVG0 "`s07_svg0'"
+        python: __import__("__main__")._s07_svg()
+        tokenize "${S07_TW}", parse(";")
+        local tw_bg "`1'"
+        local tw_mk "`3'"
+        local tw_yl "`5'"
+        local tw_sg "`7'"
+        local tw_w  "`9'"
+        local tw_h  "`11'"
+        local tw_tk "`13'"
+        local s07_page "`w30_work'/sx2_`S'.html"
+        capture noisily dash scatter mpg weight, yline(20) scheme(`S') saving("`s07_page'", replace)
+        local s07_rc = _rc
+        global S07_PAGE "`s07_page'"
+        python: __import__("__main__")._s07_page()
+        local s07_d2 "${S07_D}"
+        tokenize "${S07_D}", parse(";")
+        local d_bd "`1'"
+        local d_fl "`5'"
+        local d_sp "`7'"
+        local d_ds "`9'"
+        local d_as "`11'"
+        local d_tk = real(subinstr("`13'", "pt", "", .))
+        local s07_twtick_`S' = `tw_tk'
+        local s07_dtick_`S'  = `d_tk'
+        local s07_ok = (`s07_rc' == 0 & "`tw_bg'" == "`d_bd'" & "`tw_mk'" == "`d_fl'" & "`tw_yl'" == "`d_sp'")
+        local s07_ok = `s07_ok' & ((`tw_sg' == 1) == ("`d_ds'" == "solid"))
+        capture local s07_ok = `s07_ok' & (abs(`tw_w'/`tw_h' - `d_as') < 0.0005)
+        if _rc local s07_ok = 0
+        _w30_expect SX-02 "`s07_ok'" "`S': rc `s07_rc', twoway ${S07_TW}; dash `s07_d2'"
+        if "`S'" == "meta" {
+            local s07_rt = `s07_twtick_meta'/`s07_twtick_s2color'
+            local s07_rd = `s07_dtick_meta'/`s07_dtick_s2color'
+            _w30_expect SX-02 "(abs(`s07_rt' - `s07_rd') < 0.01)" "meta's tick ratio: twoway `s07_rt', dash `s07_rd'"
+        }
+
+        // SX-03 on the same graph, served.
+        capture dash clear
+        capture quietly dash scatter mpg weight, yline(20) scheme(`S') name(g1)
+        local s07_app "`w30_work'/sx3_`S'.py"
+        capture noisily dash build, server saving("`s07_app'") replace nobrowser filter(foreign, type(dropdown))
+        local s07_rc3 = _rc
+        global S07_S ""
+        global S07_FIRED 0
+        global S07_SAME_AFTER 0
+        global S07_APP "`s07_app'"
+        global S07_MOVE "foreign"
+        if `s07_rc3' == 0 capture noisily python: __import__("__main__")._s07_app()
+        local s07_ok3 = (`s07_rc3' == 0 & "${S07_S}" == "`s07_d2'" & ${S07_FIRED} == 1 & ${S07_SAME_AFTER} == 1)
+        if !`s07_ok3' {
+            display as error "SX-03 FAIL: `S': build rc `s07_rc3', served ${S07_S} vs saved `s07_d2', fired ${S07_FIRED}, same after ${S07_SAME_AFTER}"
+            local s07_all3 = 0
+        }
+        capture dash clear
+        capture erase "`s07_svg'"
+        capture erase "`s07_svg0'"
+        capture erase "`s07_page'"
+        capture erase "`s07_app'"
+    }
+    log close sxk
+    cert_log_has "`w30_work'/sx2.log", needle("`s07_nk1'")
+    local s07_n1 = r(count)
+    _w30_expect SX-02 "(`s07_n1' == 0)" "the log holds `s07_n1' unknown-scheme notes"
+    _w30_done SX-02 "background, first series, yline colour and solidity, proportions and meta's tick ratio are twoway's"
+    _w30_expect SX-03 "`s07_all3'" "a served summary differed (the SX-03 FAIL lines above)"
+    _w30_done SX-03 "the served app draws the saved page's summary, and a dropdown move leaves it unchanged"
+
+    // ------------------------------------------------------------
+    // SX-04: the inherited c(scheme).
+    // ------------------------------------------------------------
+    log using "`w30_work'/sx4.log", text replace name(sxk)
+    foreach S of local s07_six {
+        sysuse auto, clear
+        capture dash clear
+        set scheme `S'
+        local s07_svg "`w30_work'/sx4_`S'.svg"
+        twoway scatter mpg weight, yline(20) name(sx4tw, replace)
+        graph export "`s07_svg'", name(sx4tw) replace
+        twoway scatter mpg weight, name(sx4tw, replace)
+        graph export "`w30_work'/sx4_`S'_0.svg", name(sx4tw) replace
+        global S07_SVG  "`s07_svg'"
+        global S07_SVG0 "`w30_work'/sx4_`S'_0.svg"
+        python: __import__("__main__")._s07_svg()
+        tokenize "${S07_TW}", parse(";")
+        local tw_bg "`1'"
+        local tw_mk "`3'"
+        local tw_yl "`5'"
+        local tw_sg "`7'"
+        local tw_w  "`9'"
+        local tw_h  "`11'"
+        local s07_page "`w30_work'/sx4_`S'.html"
+        capture noisily dash scatter mpg weight, yline(20) saving("`s07_page'", replace)
+        local s07_rc = _rc
+        set scheme `s07_entry'
+        global S07_PAGE "`s07_page'"
+        python: __import__("__main__")._s07_page()
+        tokenize "${S07_D}", parse(";")
+        local s07_ok = (`s07_rc' == 0 & "`tw_bg'" == "`1'" & "`tw_mk'" == "`5'" & "`tw_yl'" == "`7'")
+        local s07_ok = `s07_ok' & ((`tw_sg' == 1) == ("`9'" == "solid"))
+        capture local s07_ok = `s07_ok' & (abs(`tw_w'/`tw_h' - `11') < 0.0005)
+        if _rc local s07_ok = 0
+        _w30_expect SX-04 "`s07_ok'" "set scheme `S': rc `s07_rc', twoway ${S07_TW}; dash ${S07_D}"
+        capture erase "`s07_svg'"
+        capture erase "`w30_work'/sx4_`S'_0.svg"
+        capture erase "`s07_page'"
+    }
+    set scheme `s07_entry'
+    log close sxk
+    cert_log_has "`w30_work'/sx4.log", needle("`s07_nk1'")
+    local s07_n1 = r(count)
+    _w30_expect SX-04 "(`s07_n1' == 0)" "the log holds `s07_n1' unknown-scheme notes"
+    _w30_done SX-04 "an inherited c(scheme) that is one of the six is drawn as twoway draws it, with no note"
+
+    // ------------------------------------------------------------
+    // SX-05: the S3 batch's child-scheme tables over the six.
+    // ------------------------------------------------------------
+    foreach S of local s07_six {
+        foreach k in red sp zp {
+            local f1 "scheme-sx5`k'_`S'.scheme"
+            local f2 "sx5`k'_`S'.scheme"
+            capture confirm new file "`f1'"
+            local s07_c1 = _rc
+            capture confirm new file "`f2'"
+            local s07_c2 = _rc
+            _w30_expect SX-05 "(`s07_c1' == 0 & `s07_c2' == 0)" "`f1' or `f2' already exists in the working directory; not overwritten"
+            if `s07_c1' | `s07_c2' continue
+            foreach f in "`f1'" "`f2'" {
+                tempname s07_fh
+                file open `s07_fh' using "`f'", write text
+                file write `s07_fh' "#include `S'" _n
+                if "`k'" == "red" file write `s07_fh' "color p1 red" _n "linepattern p1 dash" _n
+                if "`k'" == "sp"  file write `s07_fh' "symbol p diamond" _n
+                if "`k'" == "zp"  file write `s07_fh' "symbolsize p huge" _n
+                file close `s07_fh'
+            }
+            clear
+            quietly set obs 11
+            quietly generate x = _n
+            quietly generate y1 = x
+            quietly generate y2 = x + 1
+            local s07_sch "sx5`k'_`S'"
+            if "`k'" == "red" {
+                twoway scatter y1 x, scheme(`s07_sch') nodraw
+                _s07_gob plotregion1.plot1.style.marker.fillcolor.rgb
+                local g1 "${S07_GOB}"
+                twoway bar y1 x, scheme(`s07_sch') nodraw
+                _s07_gob plotregion1.plot1.style.area.shadestyle.color.rgb
+                local g2 "${S07_GOB}"
+                twoway connected y1 x, scheme(`s07_sch') nodraw
+                _s07_gob plotregion1.plot1.style.line.color.rgb
+                local g3 "${S07_GOB}"
+                _s07_gob plotregion1.plot1.style.line.pattern.setting
+                local g4 "${S07_GOB}"
+                twoway line y1 x, scheme(`s07_sch') nodraw
+                _s07_gob plotregion1.plot1.style.line.color.rgb
+                local g5 "${S07_GOB}"
+                _s07_gob plotregion1.plot1.style.line.pattern.setting
+                local g6 "${S07_GOB}"
+                local s07_tw = ("`g1'" == "255 0 0" & "`g2'" == "255 0 0" & "`g3'" == "255 0 0" & "`g4'" == "dash" & "`g5'" == "255 0 0" & "`g6'" == "dash")
+                local s07_twd "`g1'|`g2'|`g3'|`g4'|`g5'|`g6'"
+            }
+            else {
+                twoway scatter y1 y2 x, scheme(`s07_sch') nodraw
+                local s07_m = cond("`k'" == "sp", "symbol", "size")
+                _s07_gob plotregion1.plot1.style.marker.`s07_m'.setting
+                local g1 "${S07_GOB}"
+                _s07_gob plotregion1.plot2.style.marker.`s07_m'.setting
+                local g2 "${S07_GOB}"
+                local s07_want = cond("`k'" == "sp", "diamond", "4.8611")
+                local s07_tw = ("`g1'" == "`s07_want'" & "`g2'" == "`s07_want'")
+                local s07_twd "`g1'|`g2'"
+            }
+            global S07_CHILD "`s07_sch'"
+            global S07_KIND "`k'"
+            global S07_DC ""
+            global S07_DOK 0
+            global S07_DCW -1
+            capture noisily python: __import__("__main__")._s07_child()
+            _w30_expect SX-05 "(`s07_tw' == 1)" "`s07_sch': twoway drew `s07_twd'"
+            _w30_expect SX-05 "(${S07_DOK} == 1 & ${S07_DCW} == 0)" "`s07_sch': dash ${S07_DC}, ${S07_DCW} not-found notes"
+            capture erase "`f1'"
+            capture erase "`f2'"
+        }
+    }
+    _w30_done SX-05 "color p1, linepattern p1, symbol p and symbolsize p in a child of each of the six reach what twoway's chain reaches"
+
+    // ------------------------------------------------------------
+    // SX-06: the ci band.
+    // ------------------------------------------------------------
+    foreach S of local s07_six {
+        sysuse auto, clear
+        twoway lfitci mpg weight, scheme(`S') nodraw
+        _s07_hex plotregion1.plot1.style.area.shadestyle.color.rgb
+        local h1 "${S07_HEX}"
+        _s07_hex plotregion1.plot1.style.area.linestyle.color.rgb
+        local h2 "${S07_HEX}"
+        _s07_hex plotregion1.plot2.style.line.color.rgb
+        local h3 "${S07_HEX}"
+        global S07_SCH "`S'"
+        global S07_DCI "error"
+        capture noisily python: __import__("__main__")._s07_ci()
+        _w30_expect SX-06 `""`h1';`h2';`h3'" == "${S07_DCI}""' "`S': twoway `h1';`h2';`h3', dash ${S07_DCI}"
+    }
+    _w30_done SX-06 "lfitci's band fill, band outline and fit line are twoway's under each of the six"
+
+    // ------------------------------------------------------------
+    // SX-07: stcoloralias is stcolor.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    foreach S in stcolor stcoloralias {
+        twoway scatter mpg weight, colorvar(price) scheme(`S') name(sx7tw, replace)
+        graph export "`w30_work'/sx7_`S'.svg", name(sx7tw) replace
+        global S07_SVG "`w30_work'/sx7_`S'.svg"
+        global S07_SVG0 ""
+        python: __import__("__main__")._s07_svg()
+        local s07_fills_`S' "${S07_FILLS}"
+        capture dash clear
+        capture noisily dash scatter mpg weight, colorvar(price) scheme(`S') saving("`w30_work'/sx7_`S'.html", replace)
+        local s07_rc7_`S' = _rc
+        global S07_PAGE "`w30_work'/sx7_`S'.html"
+        python: __import__("__main__")._s07_page()
+        local s07_d7_`S' "${S07_D}|${S07_PAL}"
+        capture erase "`w30_work'/sx7_`S'.svg"
+        capture erase "`w30_work'/sx7_`S'.html"
+    }
+    _w30_expect SX-07 `""`s07_fills_stcolor'" == "`s07_fills_stcoloralias'""' "twoway's colorvar fills differ: `s07_fills_stcolor' / `s07_fills_stcoloralias'"
+    _w30_expect SX-07 "(`s07_rc7_stcolor' == 0 & `s07_rc7_stcoloralias' == 0)" "dash rc `s07_rc7_stcolor' / `s07_rc7_stcoloralias'"
+    _w30_expect SX-07 `""`s07_d7_stcolor'" == "`s07_d7_stcoloralias'""' "dash differs: `s07_d7_stcolor' / `s07_d7_stcoloralias'"
+    _w30_done SX-07 "stcoloralias draws what stcolor draws, in twoway's colorvar() scatter and in dash's page"
+
+    // ------------------------------------------------------------
+    // SX-08: an #include of one of the six in a scheme file of yours.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture confirm new file "sx8.scheme"
+    local s07_c8 = _rc
+    _w30_expect SX-08 "(`s07_c8' == 0)" "sx8.scheme already exists in the working directory; not overwritten"
+    if `s07_c8' == 0 {
+        tempname s07_fh
+        file open `s07_fh' using "sx8.scheme", write text
+        file write `s07_fh' "#include stcolor_meta" _n "color background red" _n
+        file close `s07_fh'
+        twoway scatter mpg weight, yline(20) scheme(sx8) name(sx8tw, replace)
+        graph export "`w30_work'/sx8.svg", name(sx8tw) replace
+        twoway scatter mpg weight, scheme(sx8) name(sx8tw, replace)
+        graph export "`w30_work'/sx8_0.svg", name(sx8tw) replace
+        global S07_SVG "`w30_work'/sx8.svg"
+        global S07_SVG0 "`w30_work'/sx8_0.svg"
+        python: __import__("__main__")._s07_svg()
+        tokenize "${S07_TW}", parse(";")
+        local s07_tw8 = ("`1'" == "#ff0000" & "`3'" == "#1a85ff" & "`5'" == "#c10534" & "`7'" == "1")
+        log using "`w30_work'/sx8.log", text replace name(sxk)
+        capture dash clear
+        capture noisily dash scatter mpg weight, yline(20) scheme(sx8) saving("`w30_work'/sx8.html", replace)
+        local s07_rc8 = _rc
+        log close sxk
+        global S07_PAGE "`w30_work'/sx8.html"
+        python: __import__("__main__")._s07_page()
+        tokenize "${S07_D}", parse(";")
+        local s07_d8 = (`s07_rc8' == 0 & "`1'" == "#ff0000" & "`5'" == "#1a85ff" & "`7'" == "#c10534" & "`9'" == "solid")
+        cert_log_has "`w30_work'/sx8.log", needle("`s07_nk2'")
+        local s07_n8 = r(count)
+        _w30_expect SX-08 "(`s07_tw8' == 1)" "twoway drew ${S07_TW}"
+        _w30_expect SX-08 "(`s07_d8' == 1 & `s07_n8' == 0)" "dash rc `s07_rc8' drew ${S07_D}, `s07_n8' not-found notes"
+        capture erase "sx8.scheme"
+        capture erase "`w30_work'/sx8.svg"
+        capture erase "`w30_work'/sx8_0.svg"
+        capture erase "`w30_work'/sx8.html"
+    }
+    _w30_done SX-08 "#include stcolor_meta in a scheme file of yours resolves as twoway resolves it, with no note"
+
+    foreach k in 1 2 4 8 {
+        capture erase "`w30_work'/sx`k'.log"
+    }
+    capture erase "`w30_work'/sx1.html"
+    capture graph drop sx2tw sx4tw sx7tw sx8tw
+    capture dash clear
+    sysuse auto, clear
     display as text "S07 end " c(current_date) " " c(current_time)
 }
 * ==== end S07 ====

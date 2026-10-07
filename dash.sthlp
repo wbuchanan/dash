@@ -3345,7 +3345,7 @@ own {cmd:c(scheme)}, so a dashboard has the look of every other graph you
 draw without your asking.
 
 {pstd}
-{cmd:dash} ships faithful translations of twenty StataCorp schemes:
+{cmd:dash} ships faithful translations of twenty-six StataCorp schemes:
 
 {synoptset 16}{...}
 {synopt:{cmd:stcolor}}Stata's default as of Stata 18{p_end}
@@ -3377,6 +3377,20 @@ draw without your asking.
 {synopt:{cmd:s1rcolor}}light on a dark background{p_end}
 {synopt:{cmd:economist}}{p_end}
 {synopt:{cmd:sj}}{p_end}
+{synopt:{cmd:meta}}{cmd:s2color} with smaller text (8-point tick labels
+    where {cmd:s2color} has 10), thinner plot lines, a one-column legend at
+    4 o'clock, and grids on both axes{p_end}
+{synopt:{cmd:stcolor_meta}}{cmd:stcolor} with a solid cranberry
+    {cmd:xline()}/{cmd:yline()}{p_end}
+{synopt:{cmd:stcolor_mv}}{cmd:stcolor_alt} with solid reference lines{p_end}
+{synopt:{cmd:stcoloralias}}{cmd:stcolor} with
+    {cmd:zyx2rule colorvar hue}, a directive {cmd:dash} does not read: it
+    is drawn as {cmd:stcolor}, which is also what {cmd:twoway} draws for a
+    {cmd:colorvar()} scatter under it{p_end}
+{synopt:{cmd:stgcolor_meta}}{cmd:stcolor_meta} at 3.987 by 2.392
+    inches{p_end}
+{synopt:{cmd:stgcolor_mv}}{cmd:stgcolor_alt} with solid reference
+    lines{p_end}
 {synoptline}
 
 {pstd}
@@ -3537,8 +3551,8 @@ when a scheme is not found, and the same as {cmd:set scheme}, which is
 r(111): a dashboard is a file you look at later, so {cmd:dash} will not
 save one in a scheme you did not ask for.  The session's own
 {cmd:c(scheme)}, inherited when you name none, is the one exception.
-When {cmd:dash} cannot translate it -- a third-party scheme, or one of
-StataCorp's internal ones such as {cmd:stcolor_meta} -- it says so once,
+When {cmd:dash} cannot translate it -- a third-party scheme -- it says
+so once,
 {cmd:dash: 'X' is not a known theme or scheme; it was inherited from the session (c(scheme)) because no scheme() or theme() was given ...; using s2color},
 and draws {cmd:s2color}; never an error, so a session set to a scheme
 {cmd:dash} does not know still builds.
@@ -3546,17 +3560,16 @@ and draws {cmd:s2color}; never an error, so a session set to a scheme
 {pstd}
 {ul:What a scheme file of yours may include.}  StataCorp's schemes are
 written as edits on top of an {cmd:#include}d parent, and {cmd:dash}
-resolves that chain once, when it extracts its twenty translations, so
+resolves that chain once, when it extracts its twenty-six translations, so
 each shipped file already carries every directive it needs with every
 colour written as hex.  A file of yours is read the same way: an
 {cmd:#include} is resolved as {cmd:scheme()} itself is -- a {cmd:.scheme}
-file of that name in the working directory first, then one of the twenty
-translations {cmd:dash} ships -- never Stata's own
+file of that name in the working directory first, then one of the
+twenty-six translations {cmd:dash} ships -- never Stata's own
 {cmd:scheme-}{it:name}{cmd:.scheme}.  As in Stata, an {cmd:#include}
 takes effect where it stands: the lines after it override the included
 scheme, and the included scheme overrides the lines before it.  An
-{cmd:#include} that resolves to neither (one of StataCorp's internal
-schemes, such as {cmd:stcolor_meta}, a third-party scheme, or a path
+{cmd:#include} that resolves to neither (a third-party scheme, or a path
 outside the working directory) is read as {cmd:#include s2color}, as
 Stata reads a scheme it cannot find, and {cmd:dash} says so in Stata's
 words, {cmd:(note: scheme} {it:name} {cmd:not found, using s2color)}.
@@ -3618,12 +3631,12 @@ these files (see below).
 
 {pstd}
 {ul:Where the shipped schemes live after an install.}  {cmd:dash} ships
-its twenty schemes as {cmd:dash-}{it:name}{cmd:.scheme} files beside
+its twenty-six schemes as {cmd:dash-}{it:name}{cmd:.scheme} files beside
 {cmd:dash.ado}, and {cmd:net install} files each by its first letter, so
-all twenty land in {cmd:PLUS/d/} -- {cmd:PLUS/d/dash-s2color.scheme},
+all twenty-six land in {cmd:PLUS/d/} -- {cmd:PLUS/d/dash-s2color.scheme},
 {cmd:PLUS/d/dash-economist.scheme} and so on -- while
 {cmd:dash_render.py} goes to {cmd:PLUS/py/}.  {cmd:dash} looks there for
-its own twenty names and for nothing else, so {cmd:scheme()} works the
+its own twenty-six names and for nothing else, so {cmd:scheme()} works the
 same from an installed copy as from a source checkout, and any other
 package's file in the same directory stays unread.  You still name them
 as before: {cmd:scheme(s2color)} or {cmd:scheme(s2color.scheme)}.  A

@@ -548,7 +548,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.10 -->
 
-<!-- WP-30 P1.25a -->
+- Six more StataCorp schemes, twenty-six in all: meta, stcolor_meta, stcolor_mv, stcoloralias, stgcolor_meta and stgcolor_mv. scheme(meta) and the others were refused r(198), and a session set to one of them (set scheme stcolor_meta) was drawn as s2color with a warning; each is now drawn as twoway draws it in both modes (stcolor_meta's solid #c10534 yline(), stgcolor_meta's 3.987 x 2.392 proportions, meta's 8-point tick labels and legend at 4 o'clock), and an #include of one of them in a scheme file of yours resolves. stcoloralias is drawn as stcolor: its zyx2rule colorvar is not read, and twoway draws a colorvar() scatter the same under both. (WP-30, P1.25a)
 
 <!-- WP-30 P1.28a -->
 

@@ -71,7 +71,7 @@ they run in the dev layout where the installed lookup is inert.
 ``TestTheInstalledLookupDoesNotWidenWhatElseIsReadable`` closes exactly that.
 
 Tests: INST-01 through INST-18.  INST-01..02 run over every scheme dash.pkg
-ships (twenty since WP-17), not only the fourteen measured; INST-18 holds
+ships (twenty since WP-17, twenty-six since WP-30 P1.25a), not only the fourteen measured; INST-18 holds
 the help text B3 was closed by.
 """
 from __future__ import annotations
