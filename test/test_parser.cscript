@@ -12,6 +12,14 @@
 *!   - _dash_process_segment : full segment parse to JSON fragment
 *!   - End-to-end via dash command (no jsonio/render required)
 *!
+*! twoway's answers are measured once and replayed (WP-30 test performance,
+*! B2; cert_truth.do): P1A-77..84 and FX-01..05 hold dash to twoway's
+*! return codes, its words and the state it leaves, which a certification
+*! run reads from test/fixtures/parser_twoway_truth.json;
+*! scripts/extract_twoway_oracle_truth.do writes it by running this script
+*! with twoway asked, and DASH_CERT_REMEASURE=1 asks twoway in the run again
+*! and fails on any answer that is no longer the fixture's (the release run).
+*!
 *! Usage:  do test/test_parser.cscript
 *! Version: 2.0  27mar2026
 
@@ -32,6 +40,14 @@ if "`_cert_prof'" != "" {
 qui sysuse auto, clear
 do "../dash_parse.mata"
 do "../dash.ado"
+
+// twoway's answers (WP-30 test performance, B2): every question below is
+// asked of twoway in a run with DASH_CERT_REMEASURE set, and read from
+// fixtures/parser_twoway_truth.json otherwise (cert_truth.do).  Each is
+// keyed by its case and the data in memory (cert_truth_ctx).
+do "cert_truth.do"
+cert_truth_init parser_twoway
+python: _dct = __import__("sys").modules["_dash_cert_truth"]
 
 // ================================================================
 // P1A-31 — _dash_parse_varpart_std parses yvar xvar correctly
@@ -240,21 +256,39 @@ display "P1A-48 PASS: _dash_extract_vars includes colorvar variable"
 do "cert_helpers.do"
 
 // Run one command under a log of its own, at a linesize that keeps each
-// message on one line, and hand back its rc and the log.
+// message on one line, and hand back its rc and the log.  A twoway
+// command's answer -- its rc and the words it logs -- is asked here in a
+// live run and read back otherwise (cert_truth.do), the same words in the
+// same log either way; every other command (dash's) runs.
 capture program drop _p1a_logrun
 program define _p1a_logrun, rclass
     version 16.0
     args cmdtext
     local logfile "`c(tmpdir)'dash_p1a_run.log"
-    local ls = c(linesize)
-    set linesize 255
-    capture log close _p1alog
-    capture erase "`logfile'"
-    quietly log using "`logfile'", name(_p1alog) text replace
-    capture noisily `cmdtext'
-    local rc = _rc
-    quietly log close _p1alog
-    set linesize `ls'
+    mata: st_local("_ct_tw", strofreal(substr(st_local("cmdtext"), 1, 7) == "twoway "))
+    local _ct_l 1
+    if `_ct_tw' {
+        python: _dct = __import__("sys").modules["_dash_cert_truth"]
+        python: _dct.flag("_ct_l")
+    }
+    if `_ct_l' {
+        local ls = c(linesize)
+        set linesize 255
+        capture log close _p1alog
+        capture erase "`logfile'"
+        quietly log using "`logfile'", name(_p1alog) text replace
+        capture noisily `cmdtext'
+        local rc = _rc
+        quietly log close _p1alog
+        set linesize `ls'
+        if `_ct_tw' {
+            python: _dct.log_put("cmdtext", "rc", "logfile")
+        }
+    }
+    else {
+        python: _dct.log_get("cmdtext", "logfile", "rc")
+        if "`rc'" == "" local rc 9
+    }
     return scalar rc  = `rc'
     return local  log "`logfile'"
 end
@@ -1471,21 +1505,23 @@ display "P1A-76 PASS: no prefix of a plot-type name reaches two rows, and _expan
 // P1A-77 -- a function layer calling a function Stata does not have is
 //           refused as twoway refuses it (BUGS.md, S3)
 // ================================================================
-// Measured 24sep2026 with the console binary, and again below on every
-// run: `twoway function y = nosuchfunction(x), range(0 10) nodraw' is
+// Measured 24sep2026 with the console binary, and again below, twoway's
+// own codes (asked of twoway once and replayed: cert_truth.do):
+// `twoway function y = nosuchfunction(x), range(0 10) nodraw' is
 // "error in expression: nosuchfunction(x)", r(133); so is system(x), Sin(x)
 // (functions are case-sensitive), a call anywhere in the expression, and
 // the form with no `y ='.  normal(x), which Stata has, twoway draws (rc 0).
 // dash registered every refused one, rc 0, and drew an empty layer.
 // Flipped by WP-29 P0.6: dash now runs twoway's own generator, so its
 // refusal is twoway's one line -- no "unknown function" line after it --
-// and its codes are twoway's, read live, for the long expressions too.
+// and its codes are twoway's, for the long expressions too.
 sysuse auto, clear
 dash clear
+cert_truth_ctx "P1A-77"
 local rs77 = c(rngstate)
 foreach e in "y = nosuchfunction(x)" "y = system(x)" "y = Sin(x)" ///
     "y = x*nosuch(x) + 2" "nosuchfunction(x)" "y = sin(x) + mpg(x)" {
-    capture twoway function `e', range(0 10) nodraw
+    capture cert_tw twoway function `e', range(0 10) nodraw
     local tw77 = _rc
     _p1a_logrun `"dash function `e', range(0 10) name(p1a77)"'
     local rc77 = r(rc)
@@ -1499,7 +1535,7 @@ foreach e in "y = nosuchfunction(x)" "y = system(x)" "y = Sin(x)" ///
     cert_file_has "`lg77'", needle("unknown function ")
     assert r(found) == 0
 }
-capture twoway (function y = nosuchfunction(x), range(0 10)) (scatter mpg weight), nodraw
+capture cert_tw twoway (function y = nosuchfunction(x), range(0 10)) (scatter mpg weight), nodraw
 assert _rc == 133
 _p1a_logrun `"dash (function y = nosuchfunction(x), range(0 10)) (scatter mpg weight), name(p1a77)"'
 assert r(rc) == 133
@@ -1514,7 +1550,7 @@ assert c(rngstate) == "`rs77'"
 // not the renderer draws them, and a name inside a string.
 foreach e in "y = x^2" "y = sin(x) + sqrt(abs(x))" "y = normal(x)" ///
     "y = max(x, 1) + inlist(x, 1, 2)" `"y = strlen("nosuch(x)") + x"' {
-    capture twoway function `e', range(0 10) nodraw
+    capture cert_tw twoway function `e', range(0 10) nodraw
     local tw77 = _rc
     capture dash clear
     _p1a_logrun `"dash function `e', range(0 10) name(p1a77ok)"'
@@ -1532,8 +1568,8 @@ assert r(rc) == 133
 cert_file_has "`r(log)'", needle("{bf:BOLD} + {res}")
 assert r(found) == 1
 // Resource exhaustion: 5,000 distinct unknown calls are refused at the
-// first; 5,000 calls of one known function are twoway's answer, read live
-// (r(130), the expression too long, measured).
+// first; 5,000 calls of one known function are twoway's answer (r(130),
+// the expression too long, measured; replayed, cert_truth.do).
 local e77 "x"
 local k77 "x"
 forvalues i = 1/5000 {
@@ -1551,7 +1587,7 @@ cert_file_has "`lg77'", needle("f22(x) + f23...")
 assert r(found) == 1
 cert_file_has "`lg77'", needle("f4999(x)")
 assert r(found) == 0
-capture twoway function y = `k77', range(0 1) nodraw
+capture cert_tw twoway function y = `k77', range(0 1) nodraw
 local tw77 = _rc
 _p1a_logrun `"dash function y = `k77', range(0 1) name(p1a77k)"'
 assert r(rc) == `tw77'
@@ -1568,7 +1604,8 @@ display "P1A-77 PASS: a function layer calling a function Stata does not have is
 //           refused as twoway refuses it (BUGS.md, S3)
 // ================================================================
 // Stata never reads sin (x) as a call.  Measured 24sep2026 with the console
-// binary, and again below on every run: `twoway function y = sin (x)' is
+// binary, and again below (twoway's codes, asked of twoway once and
+// replayed: cert_truth.do): `twoway function y = sin (x)' is
 // "error in expression:  sin (x)", r(111) -- sin looked for as a variable
 // -- and so is any name the data does not have (abs, max, c, nosuch, X),
 // anywhere in the expression and without `y ='; a name the data has (mpg,
@@ -1578,12 +1615,13 @@ display "P1A-77 PASS: a function layer calling a function Stata does not have is
 // drawn by both.
 sysuse auto, clear
 dash clear
+cert_truth_ctx "P1A-78"
 foreach e in "y = sin (x)" "sin (x)" "y = x*sin (x)" "y = abs (x) + 1" ///
     "y = sin  (x)" "y = max (x, 1)" "y = sin(x) + cos (x)" "y = c (pi)*x" ///
     "y = mpg (x)" "y = mp (x)" "y = x (x)" "y = _pi (x)" "y = _n (x)" ///
     "y = 2 (x)" "y = 1.5 (x)" "y = sin(x) (x)" "y = (x) (x)" "y = nosuch (x)" ///
     "y = X (x)" "y = sin ( x )" "y = nosuch(x) + sin (x)" "y = sin (x) + nosuch(x)" {
-    capture twoway function `e', range(0 10) nodraw
+    capture cert_tw twoway function `e', range(0 10) nodraw
     local tw78 = _rc
     _p1a_logrun `"dash function `e', range(0 10) name(p1a78)"'
     local rc78 = r(rc)
@@ -1598,12 +1636,12 @@ foreach e in "y = sin (x)" "sin (x)" "y = x*sin (x)" "y = abs (x) + 1" ///
 // Tabs alone between the name and its `(' are r(133) in twoway, an
 // unknown function; a tab and a space r(111).
 local e78 = "y = sin" + char(9) + "(x)"
-capture twoway function `e78', range(0 10) nodraw
+capture cert_tw twoway function `e78', range(0 10) nodraw
 assert _rc == 133
 _p1a_logrun `"dash function `e78', range(0 10) name(p1a78)"'
 assert r(rc) == 133
 local e78 = "y = sin" + char(9) + " (x)"
-capture twoway function `e78', range(0 10) nodraw
+capture cert_tw twoway function `e78', range(0 10) nodraw
 assert _rc == 111
 _p1a_logrun `"dash function `e78', range(0 10) name(p1a78)"'
 assert r(rc) == 111
@@ -1611,7 +1649,7 @@ assert r(rc) == 111
 foreach e in "y = sin(x)" "y = 2 * (x)" "y = x + (1)" "y = -(x)" "y = x^(2)" ///
     "y = sin( x )" "y = x > (1)" "y = x/(1+x)" "y = sin((x))" ///
     `"y = strlen("a (b") + x"' "y = 3*(x) + (1)" {
-    capture twoway function `e', range(0 10) nodraw
+    capture cert_tw twoway function `e', range(0 10) nodraw
     local tw78 = _rc
     capture dash clear
     _p1a_logrun `"dash function `e', range(0 10) name(p1a78ok)"'
@@ -1622,7 +1660,7 @@ foreach e in "y = sin(x)" "y = 2 * (x)" "y = x + (1)" "y = -(x)" "y = x^(2)" ///
 }
 capture dash clear
 // In a plot group and after ||, as twoway.
-capture twoway (function y = sin (x), range(0 10)) (scatter mpg weight), nodraw
+capture cert_tw twoway (function y = sin (x), range(0 10)) (scatter mpg weight), nodraw
 assert _rc == 111
 _p1a_logrun `"dash (function y = sin (x), range(0 10)) (scatter mpg weight), name(p1a78)"'
 assert r(rc) == 111
@@ -1632,26 +1670,28 @@ assert "${dash_graph_registry}" == ""
 // Adversarial (rule 18).  Injection: the expression is echoed as typed,
 // SMCL shown, not obeyed, and a name only reaches -confirm- as a Stata
 // name.  Resource exhaustion: 5,000 terms before the blank are one pass.
-// twoway's code for it, read live (WP-29 P0.6: the generator answers).
-capture twoway function y = {bf:BOLD} + sin (x), range(0 1) nodraw
+// twoway's code for it (WP-29 P0.6: the generator answers; replayed,
+// cert_truth.do).
+capture cert_tw twoway function y = {bf:BOLD} + sin (x), range(0 1) nodraw
 local tw78b = _rc
 _p1a_logrun "dash function y = {bf:BOLD} + sin (x), range(0 1) name(p1a78)"
 assert r(rc) == `tw78b' & `tw78b' != 0
 cert_file_has "`r(log)'", needle("{bf:BOLD} + sin (x)")
 assert r(found) == 1
-// Since WP-29 P0.6 the codes for these are twoway's own, read live: the
-// generator answers r(130) for an expression this long (measured).
+// Since WP-29 P0.6 the codes for these are twoway's own (replayed,
+// cert_truth.do): the generator answers r(130) for an expression this long
+// (measured).
 local e78 "x"
 forvalues i = 1/5000 {
     local e78 "`e78' + (x)"
 }
 timer clear 78
 timer on 78
-capture twoway function y = `e78' + sin (x), range(0 1) nodraw
+capture cert_tw twoway function y = `e78' + sin (x), range(0 1) nodraw
 local tw78 = _rc
 _p1a_logrun `"dash function y = `e78' + sin (x), range(0 1) name(p1a78)"'
 assert r(rc) == `tw78' & `tw78' != 0
-capture twoway function y = `e78', range(0 1) nodraw
+capture cert_tw twoway function y = `e78', range(0 1) nodraw
 local tw78 = _rc
 _p1a_logrun `"dash function y = `e78', range(0 1) name(p1a78k)"'
 assert r(rc) == `tw78'
@@ -1667,7 +1707,8 @@ display "P1A-78 PASS: a name or value written apart from its parenthesis is refu
 // ----------------------------------------------------------------
 // P1A-79..81 share one check: the same command through twoway and
 // dash, each logged; the codes must agree, and each needle must be in
-// BOTH logs, so the words are twoway's own, measured on every run.
+// BOTH logs, so the words are twoway's own -- measured once and replayed
+// (cert_truth.do), dash's on every run.
 // ----------------------------------------------------------------
 capture program drop _p1a_vs_tw
 program define _p1a_vs_tw
@@ -1677,20 +1718,32 @@ program define _p1a_vs_tw
     // nodraw is added to the twoway command after its comma, or with one.
     if strpos(`"`twcmd'"', ",") local twcmd `"`twcmd' nodraw"'
     else                        local twcmd `"`twcmd', nodraw"'
-    graph drop _all
     // Logged here rather than by _p1a_logrun: twoway fpfit's refusal of a
     // third variable leaves SMCL in paragraph mode, and its words stay
-    // unwritten until a {p_end}, after the log has closed.
+    // unwritten until a {p_end}, after the log has closed.  twoway's
+    // answer -- its rc and its log -- is asked here in a live run and read
+    // back otherwise (cert_truth.do), the same words in the same log
+    // either way.
     local twlog "`c(tmpdir)'dash_p1a_tw.log"
-    local ls = c(linesize)
-    set linesize 255
-    capture log close _p1atw
-    quietly log using "`twlog'", name(_p1atw) text replace
-    capture noisily `twcmd'
-    local twrc = _rc
-    display as text "{p_end}"
-    quietly log close _p1atw
-    set linesize `ls'
+    python: _dct = __import__("sys").modules["_dash_cert_truth"]
+    python: _dct.flag("_ct_l")
+    if `_ct_l' {
+        graph drop _all
+        local ls = c(linesize)
+        set linesize 255
+        capture log close _p1atw
+        quietly log using "`twlog'", name(_p1atw) text replace
+        capture noisily `twcmd'
+        local twrc = _rc
+        display as text "{p_end}"
+        quietly log close _p1atw
+        set linesize `ls'
+        python: _dct.log_put("twcmd", "twrc", "twlog")
+    }
+    else {
+        python: _dct.log_get("twcmd", "twlog", "twrc")
+        if "`twrc'" == "" local twrc 9
+    }
     _p1a_logrun `"`dcmd'"'
     local drc = r(rc)
     local dlog "`r(log)'"
@@ -1728,6 +1781,7 @@ sysuse auto, clear
 dash clear
 quietly generate t81 = _n
 quietly tsset t81
+cert_truth_ctx "P1A-81 tsset t81"
 local V78 "mpg weight price length turn"
 foreach t in rarea rbar rcap rcapsym rconnected rline rscatter rspike tsrline ///
     pcspike pccapsym pcarrow pcbarrow pcscatter {
@@ -1766,6 +1820,7 @@ foreach form in "rscatter mpg weight price, name(p1a78a)" ///
 capture dash clear
 // Untsset, tsrline asks for tsset first, whatever the count, as twoway.
 quietly tsset, clear
+cert_truth_ctx "P1A-81 not tsset"
 foreach vl in "mpg" "mpg weight price" {
     _p1a_vs_tw P1A-81 "twoway tsrline `vl'" "dash tsrline `vl', name(p1a81)"
 }
@@ -1806,6 +1861,7 @@ display "P1A-81 PASS: a range or pc type given too few or too many variables is 
 // that take several y variables are unchanged.
 sysuse auto, clear
 dash clear
+cert_truth_ctx "P1A-79"
 foreach t in lfit qfit lfitci qfitci fpfit fpfitci mspline mband lowess lpoly lpolyci {
     foreach vl in "mpg weight price" "mpg weight price length turn" {
         local msg "too many variables specified: `vl'"
@@ -1876,8 +1932,11 @@ program define _p1a80d
     capture dash clear
 end
 // ---- no observation in the sample, by the qualifier
+// (twoway's answers are keyed by the data in memory: a cert_truth_ctx
+// after each change to it.)
 sysuse auto, clear
 dash clear
+cert_truth_ctx "P1A-80 auto"
 foreach q in "if price < 0" "in 1/5 if price > 100000" {
     _p1a80 "lpoly mpg weight"   "`q'" "" "no observations"
     _p1a80 "lpolyci mpg weight" "`q'" "" "no observations"
@@ -1911,22 +1970,27 @@ _p1a_vs_tw "P1A-80 graph qualifier" "twoway (lfit mpg weight) (scatter mpg weigh
 assert "${dash_graph_registry}" == ""
 // ---- the sample emptied by weights, and by missing values
 generate w80 = cond(_n == 1, 1, .)
+cert_truth_ctx "P1A-80 w80 1 then missing"
 _p1a80 "lpoly mpg weight [aw=w80]" "" "" "insufficient observations"
 _p1a80 "kdensity mpg [aw=w80]"     "" "" "insufficient observations"
 quietly replace w80 = cond(_n == 1, 1, 0)
+cert_truth_ctx "P1A-80 w80 1 then 0"
 _p1a80 "lfit mpg weight [fw=w80]"  "" "" "`nreg'" "insufficient observations"
 _p1a80 "lpoly mpg weight [fw=w80]" "" "" "insufficient observations"
 quietly replace w80 = 0
+cert_truth_ctx "P1A-80 w80 0"
 _p1a80 "lpoly mpg weight [fw=w80]" "" "" "no observations"
 foreach p in "fpfit mpg weight [fw=w80]" "lfit mpg weight [fw=w80]" "histogram mpg [fw=w80]" {
     _p1a80d "`p'" ""
 }
 quietly replace mpg = . if _n > 1
+cert_truth_ctx "P1A-80 mpg in 1 only"
 _p1a80 "lfit mpg weight" "" "" "`nreg'" "insufficient observations"
 _p1a80 "kdensity mpg"    "" "" "insufficient observations"
 // by(): twoway draws the panels, rc 0, and so does dash.
 _p1a80d "lfit mpg weight" "" "by(foreign)"
 quietly replace mpg = .
+cert_truth_ctx "P1A-80 mpg missing"
 _p1a80 "lpoly mpg weight" "" "" "no observations"
 foreach p in "fpfit mpg weight" "mband mpg weight" "histogram mpg" "lfit mpg weight" {
     _p1a80d "`p'" ""
@@ -1934,6 +1998,7 @@ foreach p in "fpfit mpg weight" "mband mpg weight" "histogram mpg" "lfit mpg wei
 // ---- no observations at all
 sysuse auto, clear
 quietly drop in 1/l
+cert_truth_ctx "P1A-80 no observations"
 _p1a80 "histogram mpg"      "" ""       "`oor'"
 _p1a80 "histogram mpg"      "" "bin(5)" "`oor'"
 _p1a80 "histogram mpg"      "if price < 0" "discrete" "`oor'"
@@ -1999,6 +2064,7 @@ display "P1A-80 PASS: a statistical plot whose sample twoway cannot draw is refu
 // by run (_p1a_vs_tw).
 sysuse auto, clear
 dash clear
+cert_truth_ctx "P1A-82"
 local few "too few variables specified"
 foreach t in scatter line connected area bar spike dropline dot lfit qfit ///
     lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband {
@@ -2047,6 +2113,7 @@ display "P1A-82 PASS: a two-variable type given one variable is refused, r(102),
 sysuse auto, clear
 dash clear
 generate byte one83 = make == "Audi 5000"
+cert_truth_ctx "P1A-83 one83"
 local T83 "lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband"
 local ntg "nothing to graph"
 // ---- no panel at all
@@ -2076,10 +2143,12 @@ _p1a_vs_tw "P1A-83 fpfit first" "twoway (fpfit mpg weight if foreign==0) (lpoly 
 // A weight not above zero leaves the row out of the sample.
 generate w83 = cond(foreign, 0, 1)
 quietly replace w83 = 1 if one83
+cert_truth_ctx "P1A-83 w83"
 _p1a_vs_tw "P1A-83 weighted" "twoway (scatter mpg weight) (lpoly mpg weight [aw=w83]), by(foreign)" "dash (scatter mpg weight) (lpoly mpg weight [aw=w83]), by(foreign) name(p1a83)"
 dash clear
 drop w83
 generate byte bm83 = .
+cert_truth_ctx "P1A-83 bm83"
 _p1a_vs_tw "P1A-83 by() missing" "twoway lfit mpg weight, by(bm83)" "dash lfit mpg weight, by(bm83) name(p1a83)" "`ntg'"
 _p1a_vs_tw "P1A-83 by(, missing)" "twoway lfit mpg weight, by(bm83, missing)" "dash lfit mpg weight, by(bm83, missing) name(p1a83)"
 dash clear
@@ -2117,6 +2186,7 @@ foreach t of local T83 {
 }
 preserve
 quietly replace mpg = . if foreign
+cert_truth_ctx "P1A-83 mpg missing if foreign"
 foreach t in fpfit mspline mband lpoly {
     _p1a_vs_tw "P1A-83 `t' missing" "twoway (scatter weight length) (`t' mpg weight), by(foreign)" "dash (scatter weight length) (`t' mpg weight), by(foreign) name(p1a83)"
     dash clear
@@ -2205,6 +2275,7 @@ display "P1A-83 PASS: a by() graph with no panel, or a panel twoway refuses, is 
 //   twoway draws the Total panel, rc 0.
 sysuse auto, clear
 dash clear
+cert_truth_ctx "P1A-84 auto"
 local ntg "nothing to graph"
 local ins "insufficient observations"
 local nfit "(note:  fracpoly could not fit model)"
@@ -2244,8 +2315,10 @@ quietly {
     generate foreign = .
     generate mpg = .
 }
+cert_truth_ctx "P1A-84 no observations"
 _p1a_vs_tw "P1A-84 || histogram empty" "twoway histogram mpg || scatter mpg foreign, by(foreign)" "dash histogram mpg || scatter mpg foreign, by(foreign) name(p1a84)" "`ntg'"
 restore
+cert_truth_ctx "P1A-84 auto, total"
 assert "${dash_graph_registry}" == ""
 // ---- (b) by(, total)
 foreach t in lfit lfitci lpoly lpolyci {
@@ -2274,6 +2347,7 @@ generate g84 = foreign
 quietly replace g84 = . in 1/5
 generate byte m84 = _n <= 5
 generate byte one84 = _n == 60
+cert_truth_ctx "P1A-84 g84"
 _p1a_vs_tw "P1A-84 total missing lfit" "twoway lfit mpg weight if m84 | one84, by(g84, total)" "dash lfit mpg weight if m84 | one84, by(g84, total) name(p1a84)" "`ins'" "`ntg'"
 _p1a_vs_tw "P1A-84 total missing lpoly" "twoway (scatter mpg weight) (lpoly mpg weight if m84 | one84), by(g84, total)" "dash (scatter mpg weight) (lpoly mpg weight if m84 | one84), by(g84, total) name(p1a84)" "`ntg'"
 _p1a_vs_tw "P1A-84 total missing lpoly missing" "twoway (scatter mpg weight) (lpoly mpg weight if m84 | one84), by(g84, total missing)" "dash (scatter mpg weight) (lpoly mpg weight if m84 | one84), by(g84, total missing) name(p1a84)"
@@ -2321,8 +2395,10 @@ display "P1A-84 PASS: a by() in any segment, and by()'s Total panel, are answere
 // it drew pi*x, x**2 and +x, which twoway refuses, and refused nothing
 // twoway draws in a way twoway would.  It now runs twoway__function_gen,
 // the generator twoway function itself calls, at twoway's point in the
-// command, and stores the points.  Every case below compares with twoway
-// live, in the same session state.
+// command, and stores the points.  Every case below compares with twoway's
+// answer in the same session state: its return code, its words, the
+// random-number state and the data it leaves, measured once and replayed
+// (cert_truth.do).
 
 // _fx_errline <log>: the first line of <log> holding "error in
 // expression:", in r(line) (empty when there is none).
@@ -2357,6 +2433,7 @@ end
 // ================================================================
 sysuse auto, clear
 dash clear
+cert_truth_ctx "FX-01"
 local fx01_long "x"
 forvalues i = 1/600 {
     local fx01_long "`fx01_long' + sin(x)"
@@ -2364,7 +2441,7 @@ forvalues i = 1/600 {
 foreach e in "pi*x" "e*x" "pi" "e" "PI" "E" "x**2" "x%2" "x//1" "+x" ///
     "2*+x" "(+x)" "x^" "2^^x" "ｓｉｎ(x)" "2x" "sin(x,1)" "sin (x)" ///
     "nosuch(x)" "`fx01_long'" {
-    capture twoway function y = `e', range(0 2) nodraw
+    capture cert_tw twoway function y = `e', range(0 2) nodraw
     local tw01 = _rc
     _p1a_logrun `"dash function y = `e', range(0 2) name(fx01)"'
     local rc01 = r(rc)
@@ -2380,12 +2457,12 @@ foreach e in "pi*x" "e*x" "pi" "e" "PI" "E" "x**2" "x%2" "x//1" "+x" ///
         exit 9
     }
 }
-capture twoway (function y = x**2) (scatter mpg weight), nodraw
+capture cert_tw twoway (function y = x**2) (scatter mpg weight), nodraw
 local tw01 = _rc
 _p1a_logrun `"dash (function y = x**2) (scatter mpg weight), name(fx01)"'
 assert r(rc) == `tw01' & `tw01' == 198
 assert "${dash_graph_registry}" == ""
-capture twoway scatter mpg weight || function y = pi*x, nodraw
+capture cert_tw twoway scatter mpg weight || function y = pi*x, nodraw
 local tw01 = _rc
 _p1a_logrun `"dash scatter mpg weight || function y = pi*x, name(fx01)"'
 assert r(rc) == `tw01' & `tw01' == 111
@@ -2406,6 +2483,7 @@ display "FX-01 PASS: what twoway function refuses is refused with twoway's code 
 // refuses it (an existing, documented difference, not this section's).
 sysuse auto, clear
 dash clear
+cert_truth_ctx "FX-02"
 // xsize(0) is checked when the graph is drawn, so twoway runs without
 // nodraw there, with the graphics off.
 local fx02_gr = c(graphics)
@@ -2425,14 +2503,27 @@ foreach pair in ///
     local ++fx02_n
     local fx02_`fx02_n' : copy local pair
 }
+// twoway's code and the random-number state it leaves: asked in a live
+// run, read back otherwise (cert_truth.do).
+python: _dct.flag("_ct_l")
 forvalues i = 1(3)`fx02_n' {
     local twc : copy local fx02_`i'
     local dc  : copy local fx02_`=`i'+1'
     local cmprc = `fx02_`=`i'+2''
+    local _ct_q `"twoway `twc'"'
     set seed 20261001
-    capture twoway `twc'
-    local tw02 = _rc
-    local st02 = c(rngstate)
+    if `_ct_l' {
+        capture twoway `twc'
+        local tw02 = _rc
+        local st02 = c(rngstate)
+        python: _dct.rc_put("_ct_q", "tw02")
+        python: _dct.val_put("rngstate", "_ct_q", "st02")
+    }
+    else {
+        python: _dct.rc_get("_ct_q", "tw02")
+        python: _dct.val_get("rngstate", "_ct_q", "st02")
+        if "`tw02'" == "" local tw02 9
+    }
     set seed 20261001
     dash clear
     _p1a_logrun `"dash `dc'"'
@@ -2451,9 +2542,21 @@ display "FX-02 PASS: plots and by() are checked before a function layer is evalu
 // ================================================================
 sysuse auto, clear
 dash clear
+cert_truth_ctx "FX-03"
+// The state twoway leaves: asked in a live run, read back otherwise
+// (cert_truth.do).
+local _ct_q "twoway function y = runiform(), nodraw"
+python: _dct.flag("_ct_l")
 set seed 42
-twoway function y = runiform(), nodraw
-local s03 = c(rngstate)
+if `_ct_l' {
+    twoway function y = runiform(), nodraw
+    local s03 = c(rngstate)
+    python: _dct.val_put("rngstate", "_ct_q", "s03")
+}
+else {
+    python: _dct.val_get("rngstate", "_ct_q", "s03")
+    if "`s03'" == "" local s03 "."
+}
 set seed 42
 dash function y = runiform(), name(fx03)
 assert c(rngstate) == "`s03'"
@@ -2475,21 +2578,42 @@ program define _fx04_state, rclass
     return scalar changed = c(changed)
     return local sorted : sortedby
 end
+python: _dct.flag("_ct_l")
 foreach setup in "sysuse auto, clear" "clear" {
+    cert_truth_ctx "FX-04 `setup'"
     foreach e in "y = x" "y = nosuch(x)" {
-        // twoway
+        // twoway: its code and the state it leaves, asked in a live run
+        // and read back otherwise (cert_truth.do)
         quietly `setup'
         if "`setup'" == "clear" {
             quietly set obs 2
             quietly gen v = _n
         }
-        capture twoway function `e', n(3) nodraw
-        local tw04 = _rc
-        _fx04_state
-        local t_sig "`r(sig)'"
-        local t_N = r(N)
-        local t_ch = r(changed)
-        local t_so "`r(sorted)'"
+        local _ct_q "twoway function `e', n(3) nodraw"
+        if `_ct_l' {
+            capture twoway function `e', n(3) nodraw
+            local tw04 = _rc
+            _fx04_state
+            local t_sig "`r(sig)'"
+            local t_N = r(N)
+            local t_ch = r(changed)
+            local t_so "`r(sorted)'"
+            python: _dct.rc_put("_ct_q", "tw04")
+            python: _dct.val_put("datasignature", "_ct_q", "t_sig")
+            python: _dct.val_put("_N", "_ct_q", "t_N")
+            python: _dct.val_put("c(changed)", "_ct_q", "t_ch")
+            python: _dct.val_put("sortedby", "_ct_q", "t_so")
+        }
+        else {
+            python: _dct.rc_get("_ct_q", "tw04")
+            python: _dct.val_get("datasignature", "_ct_q", "t_sig")
+            python: _dct.val_get("_N", "_ct_q", "t_N")
+            python: _dct.val_get("c(changed)", "_ct_q", "t_ch")
+            python: _dct.val_get("sortedby", "_ct_q", "t_so")
+            if "`tw04'" == "" local tw04 9
+            if "`t_N'" == "" local t_N .
+            if "`t_ch'" == "" local t_ch .
+        }
         // dash
         quietly `setup'
         if "`setup'" == "clear" {
@@ -2514,10 +2638,21 @@ dash clear
 dash function y = x^2, range(0 2) n(3) name(fx04)
 assert x == 99
 // Observations and no variables: twoway leaves none, and so does dash.
+// (twoway's count is asked in a live run, read back otherwise.)
 clear
 set obs 5
-twoway function y = x, nodraw
-assert _N == 0
+cert_truth_ctx "FX-04 observations, no variables"
+local _ct_q "twoway function y = x, nodraw"
+if `_ct_l' {
+    twoway function y = x, nodraw
+    local n04 = _N
+    python: _dct.val_put("_N", "_ct_q", "n04")
+}
+else {
+    python: _dct.val_get("_N", "_ct_q", "n04")
+    if "`n04'" == "" local n04 .
+}
+assert `n04' == 0
 clear
 set obs 5
 dash clear
@@ -2526,7 +2661,8 @@ assert _N == 0
 // A variable named pi is read as twoway reads it.
 sysuse auto, clear
 gen pi = 2
-capture twoway function y = pi*x, nodraw
+cert_truth_ctx "FX-04 pi"
+capture cert_tw twoway function y = pi*x, nodraw
 assert _rc == 0
 dash clear
 _p1a_logrun "dash function y = pi*x, name(fx04)"
@@ -2539,6 +2675,7 @@ display "FX-04 PASS: the data, their sort order, c(changed) and a variable named
 // ================================================================
 sysuse auto, clear
 dash clear
+cert_truth_ctx "FX-05"
 _p1a_logrun "dash function y = nosuch(x) + {bf:BOLD}, name(fx05)"
 assert r(rc) == 133
 local lg05 "`r(log)'"
@@ -2546,6 +2683,8 @@ cert_file_has "`lg05'", needle("{bf:BOLD}")
 assert r(found) == 1
 cert_log_has "`lg05'", needle("unknown function")
 assert r(count) == 0
+// twoway's line is its logged answer (asked in a live run, read back
+// otherwise: _p1a_logrun, cert_truth.do).
 foreach e in "y = nosuch(x)" "y=nosuch(x)" "nosuch(x)" {
     _p1a_logrun `"twoway function `e', nodraw"'
     assert r(rc) == 133
@@ -2861,6 +3000,14 @@ if ${lb_pfail} {
     exit 9
 }
 macro drop lb_pfail
+
+// twoway's answers: a question the fixture could not answer, or (with
+// DASH_CERT_REMEASURE=1) an answer twoway no longer gives, fails the run.
+cert_truth_close
+if r(problems) > 0 {
+    display as error "TRUTH FAIL: twoway's answers (fixtures/parser_twoway_truth.json): `r(problems)' problem(s)"
+    exit 9
+}
 
 capture erase "`c(tmpdir)'dash_p1a_run.log"
 

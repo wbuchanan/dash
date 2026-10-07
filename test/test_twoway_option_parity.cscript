@@ -2,9 +2,20 @@
 *! Certification script: the twoway options GAPS.md F3 listed as landing in
 *! the note as UNKNOWN -- ROADMAP WP-22 TR-22.3 and AC-22.2.
 *!
-*! Every expectation below is measured against twoway in the same run, the
-*! way test_alias_semantics.cscript measures bw(): twoway is asked first, and
-*! dash must do what twoway did.  The measurements behind the design (the
+*! Every expectation below is measured against twoway, the way
+*! test_alias_semantics.cscript measures bw(): twoway is asked first, and
+*! dash must do what twoway did.
+*!
+*! twoway's answers are measured once and replayed (WP-30 test performance,
+*! B2; cert_truth.do): a certification run reads them from
+*! test/fixtures/twoway_option_parity_truth.json, which
+*! scripts/extract_twoway_oracle_truth.do writes by running this script
+*! with twoway asked; DASH_CERT_REMEASURE=1 asks twoway in the run again and
+*! fails on any answer that is no longer the fixture's (the release run).
+*! Where a comment below says twoway is asked in the run, it is asked in
+*! the run that measures its answers.
+*!
+*! The measurements behind the design (the
 *! pictures twoway draws, exported to SVG and compared) are recorded in the
 *! WP-22 work notes; the oracles used here are the cheap ones that decide the
 *! same questions:
@@ -153,6 +164,17 @@ quietly do "cert_svg.do"
 qui do "../dash_parse.mata"
 qui do "../dash.ado"
 
+// twoway's answers (WP-30 test performance, B2): every question below is
+// asked of twoway in a run with DASH_CERT_REMEASURE set, and read from
+// fixtures/twoway_option_parity_truth.json otherwise (cert_truth.do).  Each
+// case group names its questions with cert_truth_ctx, so one command asked
+// with other data in memory is another question.  `_ct_l' is 1 when this
+// run asks twoway, else 0.
+do "cert_truth.do"
+cert_truth_init twoway_option_parity
+python: _dct = __import__("sys").modules["_dash_cert_truth"]
+python: _dct.flag("_ct_l")
+
 // cscript drops every global; cert_helpers.do set it again, and so does this.
 global dash_nobrowser 1
 
@@ -203,16 +225,34 @@ end
 // "absent" -- an absence check that could not see what it looked for
 // (changed with TP-13, 24sep2026; every TP case passes either way on this
 // tree, where no note here reaches the column).
+// A twoway command's answer -- its rc and the words its log holds -- is
+// asked of twoway in a live run and read back otherwise (cert_truth.do),
+// the same words in the same log either way; a dash command always runs.
 capture program drop _ztp_run
 program define _ztp_run, rclass
     args cmdtext logpath
     capture log close _ztplog
     capture erase "`logpath'"
     capture dash clear
-    log using "`logpath'", name(_ztplog) text replace
-    capture noisily `cmdtext'
-    local rc = _rc
-    log close _ztplog
+    mata: st_local("_ct_tw", strofreal(substr(st_local("cmdtext"), 1, 7) == "twoway "))
+    local _ct_l 1
+    if `_ct_tw' {
+        python: _dct = __import__("sys").modules["_dash_cert_truth"]
+        python: _dct.flag("_ct_l")
+    }
+    if `_ct_l' {
+        log using "`logpath'", name(_ztplog) text replace
+        capture noisily `cmdtext'
+        local rc = _rc
+        log close _ztplog
+        if `_ct_tw' {
+            python: _dct.log_put("cmdtext", "rc", "logpath")
+        }
+    }
+    else {
+        python: _dct.log_get("cmdtext", "logpath", "rc")
+        if "`rc'" == "" local rc 9
+    }
     cert_log_has "`logpath'", needle("ignoring unsupported")
     return scalar note = r(found)
     return scalar rc   = `rc'
@@ -254,6 +294,7 @@ local v_pci       "20 3000 30 4000"
 // ----------------------------------------------------------------
 // TP-01 -- the cl triple, per plot type.
 // ----------------------------------------------------------------
+cert_truth_ctx "TP-01"
 foreach tt of local types {
     local v `v_`tt''
     // twoway: does this type draw the connecting line?  clwidth(-1) is
@@ -261,7 +302,7 @@ foreach tt of local types {
     local sep ","
     if strpos("`v'", ",") local sep ""
     capture graph drop _all
-    capture twoway `tt' `v'`sep' clwidth(-1)
+    capture cert_tw twoway `tt' `v'`sep' clwidth(-1)
     local tw_rc = _rc
     capture graph drop _all
     local draws = (`tw_rc' == 198)
@@ -325,7 +366,8 @@ quietly tsset, clear
 // TP-02 -- twoway's own minimum abbreviations.
 // ----------------------------------------------------------------
 local bad = 0
-capture twoway line mpg weight, clc(red) clp(dash) clw(thick) nodraw
+cert_truth_ctx "TP-02"
+capture cert_tw twoway line mpg weight, clc(red) clp(dash) clw(thick) nodraw
 if _rc {
     display as error "TP-02 FAIL: the twoway oracle rejects clc() clp() clw(), r(`=_rc')"
     local bad = 1
@@ -342,7 +384,7 @@ foreach k in clcolor clpattern clwidth {
         local bad = 1
     }
 }
-capture twoway line mpg weight, cl(red) nodraw
+capture cert_tw twoway line mpg weight, cl(red) nodraw
 local tw_rc = _rc
 _ztp_run `"dash line mpg weight, cl(red) name(zqtp)"' "`logfile'"
 local drc = r(rc)
@@ -386,7 +428,8 @@ else display as text "TP-03 PASS: lcolor() and clcolor() both recorded; the rend
 // TP-04 -- mlabangle().
 // ----------------------------------------------------------------
 local bad = 0
-capture twoway scatter mpg weight, mlabel(make) mlabang(45) nodraw
+cert_truth_ctx "TP-04"
+capture cert_tw twoway scatter mpg weight, mlabel(make) mlabang(45) nodraw
 if _rc {
     display as error "TP-04 FAIL: the twoway oracle rejects mlabang(45), r(`=_rc')"
     local bad = 1
@@ -404,7 +447,7 @@ if r(note) != 0 {
     local bad = 1
 }
 capture graph drop _all
-capture twoway scatter mpg weight, mlabel(make) mlabangle(abc)
+capture cert_tw twoway scatter mpg weight, mlabel(make) mlabangle(abc)
 local tw_rc = _rc
 capture graph drop _all
 _ztp_run `"dash scatter mpg weight, mlabel(make) mlabangle(abc) name(zqtp)"' "`logfile'"
@@ -414,11 +457,12 @@ if `tw_rc' != 0 | r(rc) != 0 {
 }
 // mlabangle(400), per type: refused where twoway draws marker labels.
 quietly tsset t
+cert_truth_ctx "TP-04 tsset"
 local lab_types "scatter connected bar dot dropline rcapsym rconnected rscatter pcarrow pcbarrow pcscatter pccapsym line area spike rcap rarea rline histogram lfitci tsline"
 foreach tt of local lab_types {
     local v `v_`tt''
     capture graph drop _all
-    capture twoway `tt' `v', mlabel(make) mlabangle(400)
+    capture cert_tw twoway `tt' `v', mlabel(make) mlabangle(400)
     local tw_rc = _rc
     capture graph drop _all
     _ztp_run `"dash (`tt' `v', mlabel(make) mlabangle(400)), name(zqtp)"' "`logfile'"
@@ -437,7 +481,7 @@ foreach tt of local lab_types {
 }
 // scatteri labels its points from the literal list.
 capture graph drop _all
-capture twoway scatteri 20 3000 "A" 30 4000 "B", mlabangle(400)
+capture cert_tw twoway scatteri 20 3000 "A" 30 4000 "B", mlabangle(400)
 local tw_rc = _rc
 capture graph drop _all
 _ztp_run `"dash (scatteri 20 3000 "A" 30 4000 "B", mlabangle(400)), name(zqtp)"' "`logfile'"
@@ -456,14 +500,15 @@ else display as text "TP-04 PASS: mlabangle() recorded, a name passed on, 400 re
 // TP-05 -- mlabformat().
 // ----------------------------------------------------------------
 local bad = 0
-capture twoway scatter mpg weight, mlabel(mpg) mlabf(%9.2f) nodraw
+cert_truth_ctx "TP-05"
+capture cert_tw twoway scatter mpg weight, mlabel(mpg) mlabf(%9.2f) nodraw
 if _rc local bad = 1
 _ztp_run `"dash scatter mpg weight, mlabel(mpg) mlabf(%9.2f) name(zqtp)"' "`logfile'"
 if r(rc) != 0 | r(note) != 0 local bad = 1
 _ztp_has zqtp mlabformat
 if r(found) != 1 local bad = 1
 capture graph drop _all
-capture twoway scatter mpg weight, mlabel(mpg) mlabformat(abc)
+capture cert_tw twoway scatter mpg weight, mlabel(mpg) mlabformat(abc)
 local tw_rc = _rc
 capture graph drop _all
 _ztp_run `"dash scatter mpg weight, mlabel(mpg) mlabformat(abc) name(zqtp)"' "`logfile'"
@@ -510,8 +555,9 @@ local ++n6
 local c6_`n6' `"dash (scatter mpg weight) (line mpg weight), yoverhangs name(zqtp)"'
 local t6_`n6' `"twoway (scatter mpg weight) (line mpg weight), yoverhangs nodraw"'
 local w6_`n6' "yoverhangs()"
+cert_truth_ctx "TP-06"
 forvalues i = 1/`n6' {
-    capture `t6_`i''
+    capture cert_tw `t6_`i''
     local tw_rc = _rc
     _ztp_run `"`c6_`i''"' "`logfile'"
     local drc = r(rc)
@@ -556,10 +602,11 @@ else display as text "TP-06 PASS: sort sort(mpg) on line is honoured in silence 
 // sort is still named.  Flipped (WP-29 P0.1): sort(varlist) on a connected
 // type is honoured now, so it is not named either (the last loop below).
 quietly tsset t
+cert_truth_ctx "TP-06b"
 foreach tt in line connected area tsline rline rarea rconnected tsrline {
     local v `v_`tt''
     capture graph drop _all
-    capture twoway `tt' `v', sort nodraw
+    capture cert_tw twoway `tt' `v', sort nodraw
     local tw_rc = _rc
     _ztp_run `"dash `tt' `v', sort name(zqtp)"' "`logfile'"
     local drc = r(rc)
@@ -580,7 +627,7 @@ foreach c in "scatter mpg weight, sort" "bar mpg weight, sort" {
     local sep ""
     if !strpos("`c'", ",") | substr("`c'", 1, 1) == "(" local sep ","
     capture graph drop _all
-    capture twoway `c'`sep' nodraw
+    capture cert_tw twoway `c'`sep' nodraw
     local tw_rc = _rc
     _ztp_run `"dash `c'`sep' name(zqtp)"' "`logfile'"
     local drc = r(rc)
@@ -595,7 +642,7 @@ foreach c in "line mpg weight, sort(price)" "(line mpg weight, sort(price)) (sca
     local sep ""
     if !strpos("`c'", ",") | substr("`c'", 1, 1) == "(" local sep ","
     capture graph drop _all
-    capture twoway `c'`sep' nodraw
+    capture cert_tw twoway `c'`sep' nodraw
     local tw_rc = _rc
     _ztp_run `"dash `c'`sep' name(zqtp)"' "`logfile'"
     local drc = r(rc)
@@ -622,15 +669,27 @@ display as text "TP-06b: a bare sort, and sort(varlist), on a connected type are
 // read.  dash used to accept every sort() with a note.  Every expectation
 // is asked of twoway in the same run.
 local jologtw "`c(tmpdir)'dash_jo_twoway.log"
+// twoway's answer -- its rc and the words its log holds -- asked here in a
+// live run and read back otherwise (cert_truth.do), the same words in the
+// same log either way.
 capture program drop _zjo_tw
 program define _zjo_tw, rclass
     args cmdtext logpath
     capture log close _zjotw
     capture erase "`logpath'"
-    log using "`logpath'", name(_zjotw) text replace
-    capture noisily `cmdtext'
-    local rc = _rc
-    log close _zjotw
+    python: _dct = __import__("sys").modules["_dash_cert_truth"]
+    python: _dct.flag("_ct_l")
+    if `_ct_l' {
+        log using "`logpath'", name(_zjotw) text replace
+        capture noisily `cmdtext'
+        local rc = _rc
+        log close _zjotw
+        python: _dct.log_put("cmdtext", "rc", "logpath")
+    }
+    else {
+        python: _dct.log_get("cmdtext", "logpath", "rc")
+        if "`rc'" == "" local rc 9
+    }
     return scalar rc = `rc'
 end
 // twoway and dash given one plot type, varlist and option: r(ok) is 1
@@ -672,6 +731,7 @@ local jo_six "line connected area rline rarea rconnected"
 
 // JO-21: a malformed name, on all forty types.
 local bad = 0
+cert_truth_ctx "JO-21"
 foreach tt of local jo_all {
     local v `v_`tt''
     local k = 0
@@ -695,6 +755,7 @@ else display as text "JO-21 PASS: a malformed name in sort() is refused r(198) i
 generate zz = mod(_n, 5)
 generate zb = mod(_n, 3)
 local bad = 0
+cert_truth_ctx "JO-22"
 foreach tt of local jo_ser {
     local v `v_`tt''
     foreach o in nosuch z _N int in if using with _b "zz nosuch" {
@@ -719,6 +780,7 @@ else display as text "JO-22 PASS: a name that is no usable variable is refused r
 // JO-23: the 17 other types take sort(nosuch); dash names it in the
 // note, except on tsline and tsrline, which join in time order.
 local bad = 0
+cert_truth_ctx "JO-23"
 foreach tt of local jo_oth {
     local v `v_`tt''
     _zjo_pair `tt' `"`v'"' "sort(nosuch)" "`jologtw'" "`logfile'" 0
@@ -743,6 +805,7 @@ else display as text "JO-23 PASS: the 17 types twoway does not sort take sort(no
 // JO-24: an abbreviation is unabbreviated, and _all where twoway takes it.
 local bad = 0
 drop zb
+cert_truth_ctx "JO-24"
 _zjo_pair line "mpg weight" "sort(z)" "`jologtw'" "`logfile'" 0
 mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", "zz")))
 if !r(ok) | !`hv' {
@@ -751,6 +814,7 @@ if !r(ok) | !`hv' {
 }
 preserve
 keep mpg weight zz
+cert_truth_ctx "JO-24 three variables"
 _zjo_pair line "mpg weight" "sort(_all)" "`jologtw'" "`logfile'" 0
 mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", "mpg weight zz")))
 if !r(ok) | !`hv' {
@@ -769,6 +833,7 @@ else display as text "JO-24 PASS: sort(z) is written as zz and sort(_all) as eve
 generate z = -_n
 local bad = 0
 local k = 0
+cert_truth_ctx "JO-25"
 foreach o in "sort(x*) sort(z)" "sort(z) sort(x*)" "sort(nosuch) sort(z)" "sort(z) sort(nosuch)" "sort(zz) sort()" "sort() sort(zz)" "sort()" {
     local ++k
     local wrc : word `k' of 0 198 0 198 0 0 0
@@ -837,6 +902,7 @@ if `bad' {
 else display as text "JO-26 PASS: sort and sort() are silent where dash honours them and named once where it does not"
 
 // JO-27: a name given twice.
+cert_truth_ctx "JO-27"
 _zjo_pair line "mpg weight" "sort(z z)" "`jologtw'" "`logfile'" 0
 mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", "z z")))
 if !r(ok) | !`hv' {
@@ -852,11 +918,12 @@ capture dash clear
 // ----------------------------------------------------------------
 // TP-07 -- what twoway refuses stays unknown, named as typed.
 // ----------------------------------------------------------------
+cert_truth_ctx "TP-07"
 foreach o in xreverse yreverse xalternate yalternate xcommon ycommon lockaspect "zoom(2)" altaxis ddensity "addplot(line mpg weight)" "margin(zero)" "region(fcolor(red))" "bargap(10)" {
     local nm = "`o'"
     local pp = strpos("`o'", "(")
     if `pp' local nm = substr("`o'", 1, `pp' - 1)
-    capture twoway scatter mpg weight, `o' nodraw
+    capture cert_tw twoway scatter mpg weight, `o' nodraw
     local tw_rc = _rc
     _ztp_run `"dash scatter mpg weight, `o' name(zqtp)"' "`logfile'"
     local drc = r(rc)
@@ -960,13 +1027,14 @@ local mtypes "`types' pccapsym"
 local _ztp_imm "scatteri pci"
 local mtypes : list mtypes - _ztp_imm
 quietly tsset t
+cert_truth_ctx "TP-08"
 foreach tt of local mtypes {
     local v `v_`tt''
     local sep ","
     if strpos("`v'", ",") local sep ""
     foreach lab in make nosuchvar {
         capture graph drop _all
-        capture twoway `tt' `v'`sep' mlabel(`lab')
+        capture cert_tw twoway `tt' `v'`sep' mlabel(`lab')
         local tw_rc = _rc
         capture graph drop _all
         _ztp_run `"dash (`tt' `v'`sep' mlabel(`lab')), name(zqtp)"' "`logfile'"
@@ -1012,22 +1080,36 @@ local bad = 0
 local _ztp_ref "mspline mband"
 local dtypes : list mtypes - _ztp_ref
 quietly tsset t
+cert_truth_ctx "TP-09"
 foreach tt of local dtypes {
     local v `v_`tt''
     local sep ","
     if strpos("`v'", ",") local sep ""
-    capture erase "`svgfile'"
-    capture graph drop _all
-    capture twoway `tt' `v'`sep' mlabel(zq)
-    local tw_rc = _rc
-    if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
-    capture graph drop _all
-    // WP-28 S02: cert_svg_has_text, through scripts/svg_truth.py, in place
-    // of the raw byte search; guarded because it exits 603 on a missing
-    // file where the old mata _ztp_count returned -1 (twoway itself
-    // failed to draw for this plot type, so no SVG exists to open).
-    capture cert_svg_has_text, file("`svgfile'") text("ZQLAB1")
-    local tw_n = cond(_rc == 0, r(count), -1)
+    // twoway's rc, and how many times its SVG holds the first label: asked
+    // in a live run, read back otherwise (cert_truth.do).
+    local _ct_q "twoway `tt' `v'`sep' mlabel(zq)"
+    if `_ct_l' {
+        capture erase "`svgfile'"
+        capture graph drop _all
+        capture twoway `tt' `v'`sep' mlabel(zq)
+        local tw_rc = _rc
+        if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
+        capture graph drop _all
+        // WP-28 S02: cert_svg_has_text, through scripts/svg_truth.py, in place
+        // of the raw byte search; guarded because it exits 603 on a missing
+        // file where the old mata _ztp_count returned -1 (twoway itself
+        // failed to draw for this plot type, so no SVG exists to open).
+        capture cert_svg_has_text, file("`svgfile'") text("ZQLAB1")
+        local tw_n = cond(_rc == 0, r(count), -1)
+        local _ct_a "`tw_rc' `tw_n'"
+        python: _dct.val_put("rc and svg count of ZQLAB1", "_ct_q", "_ct_a")
+    }
+    else {
+        python: _dct.val_get("rc and svg count of ZQLAB1", "_ct_q", "_ct_a")
+        if "`_ct_a'" == "" local _ct_a "9 -1"
+        local tw_rc : word 1 of `_ct_a'
+        local tw_n  : word 2 of `_ct_a'
+    }
     if `tw_rc' != 0 | `tw_n' < 0 {
         display as error "TP-09 FAIL `tt': the twoway oracle failed, r(`tw_rc')"
         local bad = 1
@@ -1071,19 +1153,34 @@ label define zqorigin 0 "ZQDOM" 1 "ZQFOR"
 capture drop zqf
 generate zqf = foreign
 label values zqf zqorigin
+cert_truth_ctx "TP-10"
 foreach spec in "scatter mpg weight" "rscatter lo hi weight" "pccapsym mpg weight turn length" {
     gettoken tt : spec
-    capture erase "`svgfile'"
-    capture graph drop _all
-    capture twoway `spec', mlabel(zqf)
-    local tw_rc = _rc
-    if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
-    capture graph drop _all
-    // WP-28 S02: cert_svg_has_text (guarded as TP-09's is).
-    capture cert_svg_has_text, file("`svgfile'") text("ZQFOR")
-    local tw_n = cond(_rc == 0, r(count), -1)
-    capture cert_svg_has_text, file("`svgfile'") text("ZQDOM")
-    local tw_m = cond(_rc == 0, r(count), -1)
+    // twoway's rc, and how many times its SVG holds each value label:
+    // asked in a live run, read back otherwise (cert_truth.do).
+    local _ct_q "twoway `spec', mlabel(zqf)"
+    if `_ct_l' {
+        capture erase "`svgfile'"
+        capture graph drop _all
+        capture twoway `spec', mlabel(zqf)
+        local tw_rc = _rc
+        if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
+        capture graph drop _all
+        // WP-28 S02: cert_svg_has_text (guarded as TP-09's is).
+        capture cert_svg_has_text, file("`svgfile'") text("ZQFOR")
+        local tw_n = cond(_rc == 0, r(count), -1)
+        capture cert_svg_has_text, file("`svgfile'") text("ZQDOM")
+        local tw_m = cond(_rc == 0, r(count), -1)
+        local _ct_a "`tw_rc' `tw_n' `tw_m'"
+        python: _dct.val_put("rc and svg counts of ZQFOR ZQDOM", "_ct_q", "_ct_a")
+    }
+    else {
+        python: _dct.val_get("rc and svg counts of ZQFOR ZQDOM", "_ct_q", "_ct_a")
+        if "`_ct_a'" == "" local _ct_a "9 -1 -1"
+        local tw_rc : word 1 of `_ct_a'
+        local tw_n  : word 2 of `_ct_a'
+        local tw_m  : word 3 of `_ct_a'
+    }
     capture erase "`htmlfile'"
     _ztp_run `"dash `spec', mlabel(zqf) saving("`htmlfile'")"' "`logfile'"
     local drc = r(rc)
@@ -1115,17 +1212,31 @@ else display as text "TP-10 PASS: a value-labelled variable is labelled with its
 // is drawn.  The saved dashboard must draw no red line either.
 // ----------------------------------------------------------------
 local bad = 0
+cert_truth_ctx "TP-11"
 foreach spec in "scatter mpg weight" "dot mpg weight" "rscatter lo hi weight" "pcscatter mpg weight turn length" {
     gettoken tt : spec
     foreach o in lcolor mlcolor {
-        capture erase "`svgfile'"
-        capture graph drop _all
-        capture twoway `spec', `o'(red)
-        local tw_rc = _rc
-        if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
-        capture graph drop _all
-        _ztp_count "`svgfile'" "stroke:#FF0000"
-        local tw_n = r(n)
+        // twoway's rc, and how many red strokes its SVG holds: asked in a
+        // live run, read back otherwise (cert_truth.do).
+        local _ct_q "twoway `spec', `o'(red)"
+        if `_ct_l' {
+            capture erase "`svgfile'"
+            capture graph drop _all
+            capture twoway `spec', `o'(red)
+            local tw_rc = _rc
+            if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
+            capture graph drop _all
+            _ztp_count "`svgfile'" "stroke:#FF0000"
+            local tw_n = r(n)
+            local _ct_a "`tw_rc' `tw_n'"
+            python: _dct.val_put("rc and svg count of stroke:#FF0000", "_ct_q", "_ct_a")
+        }
+        else {
+            python: _dct.val_get("rc and svg count of stroke:#FF0000", "_ct_q", "_ct_a")
+            if "`_ct_a'" == "" local _ct_a "9 -1"
+            local tw_rc : word 1 of `_ct_a'
+            local tw_n  : word 2 of `_ct_a'
+        }
         capture erase "`htmlfile'"
         _ztp_run `"dash `spec', `o'(red) saving("`htmlfile'")"' "`logfile'"
         local drc = r(rc)
@@ -1174,9 +1285,10 @@ local _ztp_long ""
 forvalues i = 1/400 {
     local _ztp_long "`_ztp_long' make"
 }
+cert_truth_ctx "TP-12"
 foreach v in "mak" "make make" `"`_ztp_long'"' {
     capture graph drop _all
-    capture twoway mspline mpg weight, mlabel(`v')
+    capture cert_tw twoway mspline mpg weight, mlabel(`v')
     local tw_rc = _rc
     capture graph drop _all
     _ztp_run `"dash mspline mpg weight, mlabel(`v') name(zqtp)"' "`logfile'"
@@ -1233,6 +1345,7 @@ local bad = 0
 // names its full name.  The minimum is run first, on the same command:
 // the control that shows the key and the note can be seen.
 local n13 = 0
+cert_truth_ctx "TP-13a"
 foreach row in "mlabang(45) mlaban(45) key mlabangle" ///
                "sort(mpg) sor(mpg) note sort()" ///
                "xoverhang xoverhan note xoverhangs()" ///
@@ -1249,9 +1362,9 @@ foreach row in "mlabang(45) mlaban(45) key mlabangle" ///
     local pp = strpos("`sh'", "(")
     if `pp' local shn = substr("`sh'", 1, `pp' - 1)
     local shn "`shn'()"
-    capture twoway scatter mpg weight, mlabel(make) `mn' nodraw
+    capture cert_tw twoway scatter mpg weight, mlabel(make) `mn' nodraw
     local tw_mn = _rc
-    capture twoway scatter mpg weight, mlabel(make) `sh' nodraw
+    capture cert_tw twoway scatter mpg weight, mlabel(make) `sh' nodraw
     local tw_sh = _rc
     if `tw_mn' != 0 | `tw_sh' != 198 {
         display as error "TP-13a FAIL `mn'/`sh': the twoway oracle gives r(`tw_mn') for the minimum and r(`tw_sh') for the shorter spelling, not rc 0 and r(198)"
@@ -1305,7 +1418,7 @@ if `c1' != 0 | `c1k' != 1 | `c2' != 0 | `c2t' != 1 | `c2v' != 1 {
     display as error "TP-13a FAIL: the mlab controls -- mlabf(%9.2f) rc `c1' key `c1k'; mlabt() mlabv() rc `c2', named `c2t' `c2v'"
     local bad = 1
 }
-capture twoway scatter mpg weight, mlab(pos) nodraw
+capture cert_tw twoway scatter mpg weight, mlab(pos) nodraw
 local tw_p = _rc
 _ztp_run `"dash scatter mpg weight, mlab(pos) name(zqtp)"' "`logfile'"
 local drc = r(rc)
@@ -1317,7 +1430,7 @@ if `tw_p' != 0 | `drc' != 0 | `dnote' != 0 | `_zv' != 1 | `fk' != 0 {
     display as error "TP-13a FAIL mlab(pos): twoway r(`tw_p'); dash rc `drc', a note `dnote', mlabel=pos `_zv', mlabformat key `fk'"
     local bad = 1
 }
-capture twoway scatter mpg weight, mlab(heading) nodraw
+capture cert_tw twoway scatter mpg weight, mlab(heading) nodraw
 local tw_h = _rc
 _ztp_run `"dash scatter mpg weight, mlab(heading) name(zqtp)"' "`logfile'"
 local drc = r(rc)
@@ -1336,6 +1449,7 @@ else display as text "TP-13a mlab(): read as mlabel(), as twoway reads it -- nev
 // xoverhan and yoverhan are refused by twoway, r(198), and named as typed
 // by dash (measured 24sep2026).
 local n13b = 0
+cert_truth_ctx "TP-13b"
 foreach row in "xoverhang xoverhangs() 0" "yoverhang yoverhangs() 0" ///
                "xoverhan xoverhangs() 198" "yoverhan yoverhangs() 198" {
     local ++n13b
@@ -1343,7 +1457,7 @@ foreach row in "xoverhang xoverhangs() 0" "yoverhang yoverhangs() 0" ///
     local o "`1'"
     local full "`2'"
     local want "`3'"
-    capture twoway (scatter mpg weight) (line mpg weight), `o' nodraw
+    capture cert_tw twoway (scatter mpg weight) (line mpg weight), `o' nodraw
     local tw_rc = _rc
     _ztp_run `"dash (scatter mpg weight) (line mpg weight), `o' name(zqtp)"' "`logfile'"
     local drc = r(rc)
@@ -1375,11 +1489,12 @@ assert `n13b' == 4
 // ask, the bound is checked when drawn).  dash's rc must be twoway's, a
 // refusal must name the option, and the two options must agree.
 local n13c = 0
+cert_truth_ctx "TP-13c"
 foreach v in -0.001 0 10000 10000.001 {
     foreach o in clwidth lwidth {
         local ++n13c
         capture graph drop _all
-        capture twoway line mpg weight, `o'(`v')
+        capture cert_tw twoway line mpg weight, `o'(`v')
         local tw_`o' = _rc
         capture graph drop _all
         _ztp_run `"dash (line mpg weight, `o'(`v')), name(zqtp)"' "`logfile'"
@@ -1491,18 +1606,36 @@ local r33 `"(scatter mpg weight, title(INSIDE)) (line mpg weight), title(AFTER)"
 local e33 `"(scatter mpg weight) (line mpg weight), title(AFTER)"'
 local n14 33
 local bad = 0
+cert_truth_ctx "TP-14a"
 forvalues k = 1/`n14' {
     foreach w in r e {
-        capture graph drop _all
-        capture twoway ``w'`k''
-        if _rc {
-            display as error "TP-14a FAIL row `k': twoway refused the `w' command, r(`=_rc')"
+        // twoway's rc and its SVG export's checksum: asked in a live run,
+        // read back otherwise (cert_truth.do).
+        local _ct_q `"twoway ``w'`k''"'
+        if `_ct_l' {
+            capture graph drop _all
+            capture twoway ``w'`k''
+            local _ct_rc = _rc
+            local _ct_ck ""
+            if !`_ct_rc' {
+                quietly graph export "`c(tmpdir)'dash_tp14_`w'.svg", replace
+                quietly checksum "`c(tmpdir)'dash_tp14_`w'.svg"
+                local _ct_ck = r(checksum)
+            }
+            local _ct_a "`_ct_rc' `_ct_ck'"
+            python: _dct.val_put("rc and svg checksum", "_ct_q", "_ct_a")
+        }
+        else {
+            python: _dct.val_get("rc and svg checksum", "_ct_q", "_ct_a")
+            if "`_ct_a'" == "" local _ct_a 9
+        }
+        local _ct_rc : word 1 of `_ct_a'
+        if `_ct_rc' {
+            display as error "TP-14a FAIL row `k': twoway refused the `w' command, r(`_ct_rc')"
             local bad = 1
             continue
         }
-        quietly graph export "`c(tmpdir)'dash_tp14_`w'.svg", replace
-        quietly checksum "`c(tmpdir)'dash_tp14_`w'.svg"
-        local ck_`w' = r(checksum)
+        local ck_`w' : word 2 of `_ct_a'
         _ztp_run `"dash ``w'`k'' name(zq14)"' "`logfile'"
         local rc_`w' = r(rc)
         local note_`w' = r(note)
@@ -1556,9 +1689,10 @@ local u11 `"scatter mpg weight, xsize(3) || scatter price weight, xsize(4)"'
 local m11 "option xsize() not allowed"
 local u12 `"scatter mpg weight, yaxis(1) yaxis(1)"'
 local m12 "option yaxis() not allowed"
+cert_truth_ctx "TP-14b"
 forvalues k = 1/12 {
     capture graph drop _all
-    capture noisily twoway `u`k'' nodraw
+    capture noisily cert_tw twoway `u`k'' nodraw
     local tw = _rc
     _ztp_run `"dash `u`k'' name(zq14u)"' "`logfile'"
     local rc = r(rc)
@@ -1574,7 +1708,7 @@ forvalues k = 1/12 {
 // twoway, which takes them together in either order (rc 0, measured
 // 24sep2026): not a unique option given twice.
 foreach o in "sort(mpg) sort" "sort sort(mpg)" {
-    capture twoway line mpg weight, `o' nodraw
+    capture cert_tw twoway line mpg weight, `o' nodraw
     local tw = _rc
     _ztp_run `"dash line mpg weight, `o' name(zq14s)"' "`logfile'"
     if `tw' | r(rc) {
@@ -1639,13 +1773,14 @@ if `rc' | `note' | !`ok' {
 // repeat is stored as text, its macro characters escaped, never run; a copy whose value Stata cannot
 // bind is refused with twoway's code as before (P20-18b), and a copy that
 // only looks like another option inside a title() is text.
+cert_truth_ctx "TP-14e"
 local many ""
 forvalues i = 1/10000 {
     local many "`many' mcolor(blue)"
 }
 timer clear 14
 timer on 14
-capture twoway scatter mpg weight, `many' nodraw
+capture cert_tw twoway scatter mpg weight, `many' nodraw
 local tw = _rc
 _ztp_run `"dash scatter mpg weight, name(zq14x) `many'"' "`logfile'"
 local rc = r(rc)
@@ -1662,7 +1797,7 @@ forvalues i = 1/127 {
 local many "`many' mcolor(blue)"
 timer clear 14
 timer on 14
-capture twoway scatter mpg weight, `many' nodraw
+capture cert_tw twoway scatter mpg weight, `many' nodraw
 local tw = _rc
 _ztp_run `"dash scatter mpg weight, `many' name(zq14x)"' "`logfile'"
 local rc = r(rc)
@@ -1697,7 +1832,7 @@ if `rc' | `note' | !`ok' {
 }
 // A copy Stata cannot bind: refused as twoway refuses it, no directive run.
 local brk = "x" + char(34) + char(39) + " _dup(3) " + char(34) + "INJ" + char(34) + " " + char(96) + char(34)
-capture twoway scatter mpg weight, jitter(1) jitter(`brk') nodraw
+capture cert_tw twoway scatter mpg weight, jitter(1) jitter(`brk') nodraw
 local tw = _rc
 capture dash clear
 quietly log using "`logfile'", name(_ztplog) text replace
@@ -1827,6 +1962,7 @@ local n14f 40
 capture drop _t14f
 generate _t14f = _n
 quietly tsset _t14f
+cert_truth_ctx "TP-14f"
 forvalues k = 1/`n14f' {
     capture graph drop _all
     _ztp_run `"twoway `f`k'' nodraw"' "`logfile'"
@@ -1869,7 +2005,7 @@ forvalues k = 1/`n14f' {
 // never echoed, expanded or run, and nothing is registered.
 local hv = "{bf:B} " + char(36) + "S_ADO " + char(96) + "c(pwd)" + char(39) + " _dup(3) " + char(96) + char(34) + "INJ" + char(34) + char(39)
 capture graph drop _all
-capture twoway scatter mpg weight, colorotherlabel(`"`macval(hv)'"') colorotherlabel(`"`macval(hv)'"') nodraw
+capture cert_tw twoway scatter mpg weight, colorotherlabel(`"`macval(hv)'"') colorotherlabel(`"`macval(hv)'"') nodraw
 local tw = _rc
 capture dash clear
 capture log close _ztplog
@@ -1937,7 +2073,7 @@ forvalues i = 1/250 {
 }
 timer clear 14
 timer on 14
-capture twoway bar mpg weight, `many' nodropbase nodropbase nodraw
+capture cert_tw twoway bar mpg weight, `many' nodropbase nodropbase nodraw
 local tw = _rc
 _ztp_run `"dash bar mpg weight, `many' nodropbase nodropbase name(zq14f)"' "`logfile'"
 local rc = r(rc)
@@ -1955,7 +2091,7 @@ forvalues i = 1/10000 {
 }
 timer clear 14
 timer on 14
-capture twoway lfit mpg weight, `many' nodraw
+capture cert_tw twoway lfit mpg weight, `many' nodraw
 local tw = _rc
 _ztp_run `"dash lfit mpg weight, name(zq14f) `many'"' "`logfile'"
 local rc = r(rc)
@@ -2002,18 +2138,31 @@ else display as text "TP-14 PASS: a repeated option draws what twoway draws -- t
 local bad15 = 0
 capture drop zb
 generate byte zb = mpg > 20
-// twoway's serset: the smooth of the plain lowess and of its logit.
+cert_truth_ctx "TP-15"
+// twoway's serset: the smooth of the plain lowess and of its logit (its
+// mean asked in a live run, read back otherwise: cert_truth.do).
 foreach k in plain lo {
-    capture graph drop _all
-    if "`k'" == "plain" quietly twoway lowess zb weight
-    else quietly twoway lowess zb weight, lo
-    preserve
-    quietly serset use, clear
-    quietly ds
-    local _sv : word 1 of `r(varlist)'
-    quietly summarize `_sv'
-    local m15_`k' = r(mean)
-    restore
+    if "`k'" == "plain" local _ct_q "twoway lowess zb weight"
+    else local _ct_q "twoway lowess zb weight, lo"
+    if `_ct_l' {
+        capture graph drop _all
+        if "`k'" == "plain" quietly twoway lowess zb weight
+        else quietly twoway lowess zb weight, lo
+        preserve
+        quietly serset use, clear
+        quietly ds
+        local _sv : word 1 of `r(varlist)'
+        quietly summarize `_sv'
+        local m15_`k' = r(mean)
+        restore
+        local _ct_v "`m15_`k''"
+        python: _dct.val_put("serset mean", "_ct_q", "_ct_v")
+    }
+    else {
+        python: _dct.val_get("serset mean", "_ct_q", "_ct_v")
+        if "`_ct_v'" == "" local _ct_v .
+        local m15_`k' `_ct_v'
+    }
 }
 if abs(`m15_plain' - `m15_lo') < 1e-6 {
     display as error "TP-15a FAIL: the twoway oracle draws lowess zb weight, lo as the plain curve"
@@ -2023,6 +2172,7 @@ if abs(`m15_plain' - `m15_lo') < 1e-6 {
 // words and serset asked here, dash's rc, words and spec held to them.
 local sp15 "lo log logi logit logg loggi logging nolo nolog nologi nologit nologg nologging LOG LOGIT Lo"
 local fm15 "c p a"
+cert_truth_ctx "TP-15a"
 foreach tt in lowess scatter line lfit {
     foreach s of local sp15 {
         foreach f of local fm15 {
@@ -2040,15 +2190,26 @@ foreach tt in lowess scatter line lfit {
             }
             local twlogit 0
             if !`tw' & "`tt'" == "lowess" {
-                capture graph drop _all
-                quietly twoway `cmd'
-                preserve
-                quietly serset use, clear
-                quietly ds
-                local _sv : word 1 of `r(varlist)'
-                quietly summarize `_sv'
-                local twlogit = abs(r(mean) - `m15_lo') < 1e-6
-                restore
+                // the serset's mean: asked in a live run, read back
+                // otherwise (cert_truth.do)
+                local _ct_q "twoway `cmd'"
+                if `_ct_l' {
+                    capture graph drop _all
+                    quietly twoway `cmd'
+                    preserve
+                    quietly serset use, clear
+                    quietly ds
+                    local _sv : word 1 of `r(varlist)'
+                    quietly summarize `_sv'
+                    local _ct_v = r(mean)
+                    restore
+                    python: _dct.val_put("serset mean", "_ct_q", "_ct_v")
+                }
+                else {
+                    python: _dct.val_get("serset mean", "_ct_q", "_ct_v")
+                    if "`_ct_v'" == "" local _ct_v .
+                }
+                local twlogit = abs(`_ct_v' - `m15_lo') < 1e-6
             }
             _ztp_run `"dash `cmd' name(zq15)"' "`logfile'"
             local rc = r(rc)
@@ -2073,7 +2234,7 @@ foreach tt in lowess scatter line lfit {
 // Both routes: the command drawn at once answers each lowess spelling as
 // the registered one does.
 foreach s of local sp15 {
-    capture twoway lowess zb weight, `s' nodraw
+    capture cert_tw twoway lowess zb weight, `s' nodraw
     local tw = _rc
     capture erase "`c(tmpdir)'dash_tp15_imm.html"
     _ztp_run `"dash lowess zb weight, `s' saving("`c(tmpdir)'dash_tp15_imm.html", replace)"' "`logfile'"
@@ -2094,6 +2255,7 @@ capture erase "`c(tmpdir)'dash_tp15_imm.html"
 // words g<k> (asked in the run); dash must answer the same and register
 // nothing, or draw it where twoway does.
 local k = 0
+cert_truth_ctx "TP-15b"
 foreach r in ///
     `"(lfit mpg weight), atobs~198~option atobs not allowed"' ///
     `"(lfit mpg weight), ato~198~option ato not allowed"' ///
@@ -2254,6 +2416,7 @@ if !`_k_ok' {
 }
 // lowess's logit given as lo and as its off form is one option given
 // twice, as twoway reads it.
+cert_truth_ctx "TP-15 lowess"
 foreach r in "lo nolo|nolo" "nologit lo|nologit" "logit logi|logi" {
     gettoken o15 w15 : r, parse("|")
     local w15 = substr("`w15'", 2, .)
@@ -2278,6 +2441,7 @@ foreach r in "lo nolo|nolo" "nologit lo|nologit" "logit logi|logi" {
 // does not take after the comma, or in comma mode, then the word that
 // refuses them, are answered as twoway answers them, quickly.
 local hv = "{bf:B} " + char(36) + "S_ADO " + char(96) + "c(pwd)" + char(39) + " _dup(3) " + char(96) + char(34) + "INJ" + char(34) + char(39)
+cert_truth_ctx "TP-15e"
 foreach form in u a k {
     if "`form'" == "u" {
         local pre "scatter mpg weight, MCOLOR("
@@ -2295,7 +2459,7 @@ foreach form in u a k {
         local want "kernel(): old syntax may not be combined with new syntax"
     }
     capture graph drop _all
-    capture twoway `pre'`"`macval(hv)'"'`post' nodraw
+    capture cert_tw twoway `pre'`"`macval(hv)'"'`post' nodraw
     local tw = _rc
     capture dash clear
     capture log close _ztplog
@@ -2323,7 +2487,7 @@ foreach form in a c {
     else local cmd15 "lfit mpg weight,`many' ATOBS"
     timer clear 15
     timer on 15
-    capture twoway `cmd15' nodraw
+    capture cert_tw twoway `cmd15' nodraw
     local tw = _rc
     _ztp_run `"dash `cmd15' name(zq15)"' "`logfile'"
     local rc = r(rc)
@@ -2369,6 +2533,7 @@ program define _ztp_sersum, rclass
     restore
     return scalar s = `s'
 end
+cert_truth_ctx "TP-16"
 foreach t16 in lpoly lpolyci kdensity {
     local v16 "mpg weight"
     if "`t16'" == "kdensity" local v16 "mpg"
@@ -2379,17 +2544,42 @@ foreach t16 in lpoly lpolyci kdensity {
         tri|triangle triangle|triangle {
         gettoken f16 k16 : r, parse("|")
         local k16 = substr("`k16'", 2, .)
-        capture graph drop _all
-        quietly twoway `t16' `v16', kernel(`k16')
-        _ztp_sersum
-        local ref16 = r(s)
-        capture graph drop _all
-        capture quietly twoway `t16' `v16', `f16'
-        local tw = _rc
+        // twoway's serset of kernel(<name>), and its rc and serset for the
+        // flag: asked in a live run, read back otherwise (cert_truth.do).
+        local _ct_q "twoway `t16' `v16', kernel(`k16')"
+        if `_ct_l' {
+            capture graph drop _all
+            quietly twoway `t16' `v16', kernel(`k16')
+            _ztp_sersum
+            local ref16 = r(s)
+            python: _dct.val_put("serset sum", "_ct_q", "ref16")
+        }
+        else {
+            python: _dct.val_get("serset sum", "_ct_q", "ref16")
+            if "`ref16'" == "" local ref16 .
+        }
+        local _ct_q "twoway `t16' `v16', `f16'"
+        if `_ct_l' {
+            capture graph drop _all
+            capture quietly twoway `t16' `v16', `f16'
+            local tw = _rc
+            local s16 .
+            if !`tw' {
+                _ztp_sersum
+                local s16 = r(s)
+            }
+            local _ct_a "`tw' `s16'"
+            python: _dct.val_put("rc and serset sum", "_ct_q", "_ct_a")
+        }
+        else {
+            python: _dct.val_get("rc and serset sum", "_ct_q", "_ct_a")
+            if "`_ct_a'" == "" local _ct_a "9 ."
+            local tw  : word 1 of `_ct_a'
+            local s16 : word 2 of `_ct_a'
+        }
         local same16 0
         if !`tw' {
-            _ztp_sersum
-            local same16 = reldif(r(s), `ref16') < 1e-9
+            local same16 = reldif(`s16', `ref16') < 1e-9
         }
         if `tw' | !`same16' {
             display as error "TP-16 FAIL: twoway `t16' `v16', `f16' gave r(`tw'), the serset of kernel(`k16') `same16', not as measured"
@@ -2412,7 +2602,7 @@ foreach c16 in "(lpoly mpg weight, gau) (kdensity mpg, par), name(zq16)" ///
     "lpolyci mpg weight, tri || lpoly price weight, cos name(zq16)" {
     capture graph drop _all
     local tc16 : subinstr local c16 "name(zq16)" "nodraw"
-    capture quietly twoway `tc16'
+    capture quietly cert_tw twoway `tc16'
     local tw = _rc
     _ztp_run `"dash `c16'"' "`logfile'"
     local rc = r(rc)
@@ -2435,7 +2625,7 @@ foreach c16 in "lpoly mpg weight, ga" "kdensity mpg, co" "lpolyci mpg weight, e"
     "lpoly mpg weight, b" "scatter mpg weight, gaussian" "lowess mpg weight, gau" ///
     "lfit mpg weight, epan2" "line mpg weight, tri" {
     capture graph drop _all
-    capture quietly twoway `c16' nodraw
+    capture quietly cert_tw twoway `c16' nodraw
     local tw = _rc
     _ztp_run `"dash `c16' name(zq16)"' "`logfile'"
     local rc = r(rc)
@@ -2541,16 +2731,28 @@ string scalar _zax_first_line(string scalar path)
 end
 
 // twoway under its own quiet log: r(rc), and r(err) its first error line.
+// twoway's answer -- its rc and the words its log holds -- is asked here
+// in a live run and read back otherwise (cert_truth.do), the same words in
+// the same log either way.
 capture program drop _zax_tw
 program define _zax_tw, rclass
     args cmdtext logpath
     capture log close _zaxlog
     capture erase "`logpath'"
     capture graph drop _all
-    quietly log using "`logpath'", name(_zaxlog) text replace
-    capture noisily `cmdtext'
-    local rc = _rc
-    quietly log close _zaxlog
+    python: _dct = __import__("sys").modules["_dash_cert_truth"]
+    python: _dct.flag("_ct_l")
+    if `_ct_l' {
+        quietly log using "`logpath'", name(_zaxlog) text replace
+        capture noisily `cmdtext'
+        local rc = _rc
+        quietly log close _zaxlog
+        python: _dct.log_put("cmdtext", "rc", "logpath")
+    }
+    else {
+        python: _dct.log_get("cmdtext", "logpath", "rc")
+        if "`rc'" == "" local rc 9
+    }
     capture graph drop _all
     mata: st_local("err", _zax_first_line(st_local("logpath")))
     return local err `"`macval(err)'"'
@@ -2664,6 +2866,7 @@ else display as text "AX-02 PASS: the axis number is a whole number within twowa
 // ---- AX-03 (refusal parity): twoway r(198), dash r(198), same message -
 local bad03 = 0
 local n = 0
+cert_truth_ctx "AX-03"
 foreach c in ///
     `"scatter mpg weight, ylabel(20 30, axis(2))"' ///
     `"scatter mpg weight, yscale(log axis(2))"' ///
@@ -2725,6 +2928,7 @@ else display as text "AX-03 PASS: every form twoway refuses for axis(#) dash ref
 // ---- AX-04 (order): the first refusal is twoway's ---------------------
 local bad04 = 0
 local n = 0
+cert_truth_ctx "AX-04"
 foreach c in ///
     `"`B', ylabel(1, axis(3)) xscale(log axis(3))"' ///
     `"`B', yline(1, axis(3)) ylabel(1, axis(4))"' ///
@@ -2759,6 +2963,7 @@ else display as text "AX-04 PASS: dash names the refusal twoway names first: sid
 
 // ---- AX-05 (double comma) ---------------------------------------------
 local bad05 = 0
+cert_truth_ctx "AX-05"
 foreach c in ///
     `"`B', yscale(log, axis(2))"' ///
     `"`B', ytitle(TT, size(small), axis(2))"' ///
@@ -2804,6 +3009,7 @@ else display as text "AX-05 PASS: a second comma is refused as twoway refuses it
 
 // ---- AX-06 (accepted parity) ------------------------------------------
 local bad06 = 0
+cert_truth_ctx "AX-06"
 foreach c in ///
     `"`B', ylabel(5000, ax(2))"' ///
     `"`B', ylabel(5000, axi(2))"' ///
@@ -2882,6 +3088,7 @@ else display as text "AX-07 PASS: each axis keeps its own copy through the repea
 
 // ---- AX-08 (exhaustion) ------------------------------------------------
 local bad08 = 0
+cert_truth_ctx "AX-08"
 local many ""
 forvalues i = 1/10000 {
     local many "`many' ylabel(1, axis(2))"
@@ -2913,6 +3120,13 @@ set linesize `saved_ls'
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
+// twoway's answers: a question the fixture could not answer, or (with
+// DASH_CERT_REMEASURE=1) an answer twoway no longer gives, fails the run.
+cert_truth_close
+if r(problems) > 0 {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TRUTH"
+}
 capture dash clear
 capture erase "`logfile'"
 display as text ""

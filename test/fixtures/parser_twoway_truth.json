@@ -1,0 +1,2682 @@
+{
+ "_meta": {
+  "answers": 755,
+  "born_date": "12 Aug 2026",
+  "dash_commit": "77d24f86e20c6ef41b599531ba26d73b54dadb1e",
+  "extracted": " 7 Oct 2026",
+  "method": "each answer asked of twoway in a run of the script with DASH_CERT_REMEASURE=record, by scripts/extract_twoway_oracle_truth.do (test/cert_truth.py)",
+  "script": "test_parser.cscript",
+  "stata_version": "19.5"
+ },
+ "answers": {
+  "log|FX-05|twoway function nosuch(x), nodraw": {
+   "log": "error in expression: nosuch(x)\n",
+   "rc": 133
+  },
+  "log|FX-05|twoway function y = nosuch(x), nodraw": {
+   "log": "error in expression:  nosuch(x)\n",
+   "rc": 133
+  },
+  "log|FX-05|twoway function y=nosuch(x), nodraw": {
+   "log": "error in expression: nosuch(x)\n",
+   "rc": 133
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (fpfit mpg weight price length turn), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (fpfit mpg weight price), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (fpfitci mpg weight price length turn), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (fpfitci mpg weight price), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (lfit mpg weight price length turn), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (lfit mpg weight price), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (lfitci mpg weight price length turn), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (lfitci mpg weight price), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (lowess mpg weight price length turn), name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (lowess mpg weight price), name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (lpoly mpg weight price length turn), name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (lpoly mpg weight price), name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (lpolyci mpg weight price length turn), name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (lpolyci mpg weight price), name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (mband mpg weight price length turn), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (mband mpg weight price), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (mspline mpg weight price length turn), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (mspline mpg weight price), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (qfit mpg weight price length turn), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (qfit mpg weight price), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (qfitci mpg weight price length turn), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway (scatter mpg weight) (qfitci mpg weight price), name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway area mpg weight price length, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-79|twoway bar mpg weight price length, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-79|twoway connected mpg weight price length, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-79|twoway dot mpg weight price length, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-79|twoway dropline mpg weight price length, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-79|twoway fpfit mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway fpfit mpg weight price length turn, nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway fpfit mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway fpfit mpg weight price, nodraw": {
+   "log": "too many variables specified: mpg weight price\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway fpfitci mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway fpfitci mpg weight price length turn, nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway fpfitci mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway fpfitci mpg weight price, nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lfit mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lfit mpg weight price length turn, nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lfit mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lfit mpg weight price, nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lfitci mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lfitci mpg weight price length turn, nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lfitci mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lfitci mpg weight price, nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway line mpg weight price length, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-79|twoway lowess mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lowess mpg weight price length turn, nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lowess mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lowess mpg weight price, nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lpoly mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lpoly mpg weight price length turn, nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lpoly mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lpoly mpg weight price, nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lpolyci mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lpolyci mpg weight price length turn, nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lpolyci mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway lpolyci mpg weight price, nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway mband mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway mband mpg weight price length turn, nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway mband mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway mband mpg weight price, nodraw": {
+   "log": "too many variables specified: mpg weight price\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway mspline mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway mspline mpg weight price length turn, nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway mspline mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway mspline mpg weight price, nodraw": {
+   "log": "too many variables specified: mpg weight price\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway qfit mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway qfit mpg weight price length turn, nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway qfit mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway qfit mpg weight price, nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway qfitci mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway qfitci mpg weight price length turn, nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway qfitci mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway qfitci mpg weight price, nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight price length, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-79|twoway scatter mpg weight || fpfit mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || fpfit mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || fpfitci mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || fpfitci mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || lfit mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || lfit mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || lfitci mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || lfitci mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || lowess mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || lowess mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || lpoly mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || lpoly mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || lpolyci mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || lpolyci mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || mband mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || mband mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || mspline mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || mspline mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || qfit mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || qfit mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || qfitci mpg weight price length turn, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway scatter mpg weight || qfitci mpg weight price, name(p1a79) nodraw": {
+   "log": "too many variables specified: mpg weight price\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-79|twoway spike mpg weight price length, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway (fpfit mpg weight ) if price < 0, nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway (fpfit mpg weight ) in 1/5 if price > 100000, nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway (fpfitci mpg weight ) if price < 0, nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway (fpfitci mpg weight ) in 1/5 if price > 100000, nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway (kdensity mpg ) if _n == 1, nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway (kdensity mpg ) in 1, nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway (lfit mpg weight ) if _n == 1, nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway (lfit mpg weight ) in 1, nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway (lfit mpg weight if _n==1) (lpoly mpg weight if _n<=2), nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway (lfit mpg weight) (scatter mpg weight) if _n==1, nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway (lfitci mpg weight ) if _n == 1, nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway (lfitci mpg weight ) in 1, nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway (lpoly mpg weight ) if _n == 1, nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway (lpoly mpg weight ) if price < 0, nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 auto|twoway (lpoly mpg weight ) in 1, nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway (lpoly mpg weight ) in 1/5 if price > 100000, nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 auto|twoway (lpolyci mpg weight ) if _n == 1, nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway (lpolyci mpg weight ) if price < 0, nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 auto|twoway (lpolyci mpg weight ) in 1, nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway (lpolyci mpg weight ) in 1/5 if price > 100000, nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 auto|twoway (mband mpg weight ) if price < 0, nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway (mband mpg weight ) in 1/5 if price > 100000, nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway (mband mpg weight, n(20)) if price < 0, nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway (mband mpg weight, n(20)) in 1/5 if price > 100000, nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway (mspline mpg weight ) if price < 0, nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway (mspline mpg weight ) in 1/5 if price > 100000, nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway fpfit mpg weight if _n == 1 , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway fpfit mpg weight if price < 0 , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway fpfit mpg weight in 1 , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway fpfit mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway fpfitci mpg weight if price < 0 , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway fpfitci mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway histogram mpg if _n == 1 , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway histogram mpg if price < 0 , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway histogram mpg if price < 0, bin(5) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway histogram mpg in 1 , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway histogram mpg in 1/5 if price > 100000 , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway histogram mpg in 1/5 if price > 100000, bin(5) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway kdensity mpg if _n == 1 , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway kdensity mpg if price < 0 , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway kdensity mpg in 1 , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway kdensity mpg in 1/5 if price > 100000 , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway lfit mpg weight if _n == 1 , nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway lfit mpg weight if price < 0 , nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway lfit mpg weight in 1 , nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway lfit mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway lfitci mpg weight if _n == 1 , nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway lfitci mpg weight in 1 , nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway lowess mpg weight if _n == 1 , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway lowess mpg weight if price < 0 , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway lowess mpg weight in 1 , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway lowess mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway lpoly mpg weight if _n == 1 , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway lpoly mpg weight if price < 0 , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 auto|twoway lpoly mpg weight in 1 , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway lpoly mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 auto|twoway lpolyci mpg weight if _n == 1 , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway lpolyci mpg weight if price < 0 , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 auto|twoway lpolyci mpg weight in 1 , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway lpolyci mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 auto|twoway mband mpg weight if _n == 1 , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway mband mpg weight if price < 0 , nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway mband mpg weight if price < 0, n(20) nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway mband mpg weight in 1 , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway mband mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway mband mpg weight in 1/5 if price > 100000, n(20) nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway mspline mpg weight if _n == 1 , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway mspline mpg weight if price < 0 , nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway mspline mpg weight if price < 0, bands(5) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway mspline mpg weight in 1 , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway mspline mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway mspline mpg weight in 1/5 if price > 100000, bands(5) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway qfit mpg weight if _n == 1 , nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway qfit mpg weight in 1 , nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway qfitci mpg weight if price < 0 , nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway qfitci mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || fpfit mpg weight if price < 0 , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || fpfit mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || fpfitci mpg weight if price < 0 , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || fpfitci mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || kdensity mpg if _n == 1 , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || kdensity mpg in 1 , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || lfit mpg weight if _n == 1 , nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || lfit mpg weight in 1 , nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || lfitci mpg weight if _n == 1 , nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || lfitci mpg weight in 1 , nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || lpoly mpg weight if _n == 1 , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || lpoly mpg weight if price < 0 , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || lpoly mpg weight in 1 , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || lpoly mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || lpolyci mpg weight if _n == 1 , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || lpolyci mpg weight if price < 0 , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || lpolyci mpg weight in 1 , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || lpolyci mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || mband mpg weight if price < 0 , nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || mband mpg weight if price < 0, n(20) nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || mband mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || mband mpg weight in 1/5 if price > 100000, n(20) nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || mspline mpg weight if price < 0 , nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 auto|twoway scatter mpg weight || mspline mpg weight in 1/5 if price > 100000 , nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 mpg in 1 only|twoway (kdensity mpg ) , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 mpg in 1 only|twoway (lfit mpg weight ) , nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 mpg in 1 only|twoway kdensity mpg  , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 mpg in 1 only|twoway lfit mpg weight  , nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 mpg in 1 only|twoway lfit mpg weight , by(foreign) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 mpg in 1 only|twoway scatter mpg weight || kdensity mpg  , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 mpg in 1 only|twoway scatter mpg weight || lfit mpg weight  , nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 mpg missing|twoway (lpoly mpg weight ) , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 mpg missing|twoway fpfit mpg weight  , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 mpg missing|twoway histogram mpg  , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 mpg missing|twoway lfit mpg weight  , nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 mpg missing|twoway lpoly mpg weight  , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 mpg missing|twoway mband mpg weight  , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 mpg missing|twoway scatter mpg weight || lpoly mpg weight  , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 no observations|twoway (fpfitci mpg weight ) , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 no observations|twoway (histogram mpg ) , nodraw": {
+   "log": "observation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 no observations|twoway (histogram mpg, bin(5)) , nodraw": {
+   "log": "observation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 no observations|twoway (histogram mpg, discrete) if price < 0, nodraw": {
+   "log": "observation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 no observations|twoway (lpoly mpg weight ) , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 no observations|twoway (mband mpg weight ) , nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 no observations|twoway fpfitci mpg weight  , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 no observations|twoway histogram mpg  , nodraw": {
+   "log": "observation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 no observations|twoway histogram mpg , bin(5) nodraw": {
+   "log": "observation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 no observations|twoway histogram mpg if price < 0, discrete nodraw": {
+   "log": "observation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 no observations|twoway kdensity mpg  , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 no observations|twoway lfit mpg weight  , nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 no observations|twoway lowess mpg weight  , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 no observations|twoway lpoly mpg weight  , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 no observations|twoway mband mpg weight  , nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 no observations|twoway mspline mpg weight , bands(5) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 no observations|twoway qfit mpg weight  , nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 no observations|twoway scatter mpg weight || fpfitci mpg weight  , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 no observations|twoway scatter mpg weight || histogram mpg  , nodraw": {
+   "log": "observation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 no observations|twoway scatter mpg weight || histogram mpg , bin(5) nodraw": {
+   "log": "observation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 no observations|twoway scatter mpg weight || histogram mpg if price < 0, discrete nodraw": {
+   "log": "observation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 no observations|twoway scatter mpg weight || lpoly mpg weight  , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 no observations|twoway scatter mpg weight || mband mpg weight  , nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-80 w80 0|twoway (lpoly mpg weight [fw=w80] ) , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 w80 0|twoway fpfit mpg weight [fw=w80]  , nodraw": {
+   "log": "(note:  fracpoly could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 w80 0|twoway histogram mpg [fw=w80]  , nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 w80 0|twoway lfit mpg weight [fw=w80]  , nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-80 w80 0|twoway lpoly mpg weight [fw=w80]  , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 w80 0|twoway scatter mpg weight || lpoly mpg weight [fw=w80]  , nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-80 w80 1 then 0|twoway (lfit mpg weight [fw=w80] ) , nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 w80 1 then 0|twoway (lpoly mpg weight [fw=w80] ) , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 w80 1 then 0|twoway lfit mpg weight [fw=w80]  , nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 w80 1 then 0|twoway lpoly mpg weight [fw=w80]  , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 w80 1 then 0|twoway scatter mpg weight || lfit mpg weight [fw=w80]  , nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 w80 1 then 0|twoway scatter mpg weight || lpoly mpg weight [fw=w80]  , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 w80 1 then missing|twoway (kdensity mpg [aw=w80] ) , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 w80 1 then missing|twoway (lpoly mpg weight [aw=w80] ) , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 w80 1 then missing|twoway kdensity mpg [aw=w80]  , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 w80 1 then missing|twoway lpoly mpg weight [aw=w80]  , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 w80 1 then missing|twoway scatter mpg weight || kdensity mpg [aw=w80]  , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-80 w80 1 then missing|twoway scatter mpg weight || lpoly mpg weight [aw=w80]  , nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-81 not tsset|twoway tsrline mpg weight price, nodraw": {
+   "log": "time variable not set, use tsset varname ...\n{p_end}\n",
+   "rc": 111
+  },
+  "log|P1A-81 not tsset|twoway tsrline mpg, nodraw": {
+   "log": "time variable not set, use tsset varname ...\n{p_end}\n",
+   "rc": 111
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcarrow mpg weight price length turn), name(p1a81) nodraw": {
+   "log": "pcarrow requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcarrow mpg weight price), name(p1a81) nodraw": {
+   "log": "pcarrow requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcarrow mpg weight), name(p1a81) nodraw": {
+   "log": "pcarrow requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcarrow mpg), name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcbarrow mpg weight price length turn), name(p1a81) nodraw": {
+   "log": "pcbarrow requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcbarrow mpg weight price), name(p1a81) nodraw": {
+   "log": "pcbarrow requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcbarrow mpg weight), name(p1a81) nodraw": {
+   "log": "pcbarrow requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcbarrow mpg), name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pccapsym mpg weight price length turn), name(p1a81) nodraw": {
+   "log": "pccapsym requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pccapsym mpg weight price), name(p1a81) nodraw": {
+   "log": "pccapsym requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pccapsym mpg weight), name(p1a81) nodraw": {
+   "log": "pccapsym requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pccapsym mpg), name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcscatter mpg weight price length turn), name(p1a81) nodraw": {
+   "log": "pcscatter requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcscatter mpg weight price), name(p1a81) nodraw": {
+   "log": "pcscatter requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcscatter mpg weight), name(p1a81) nodraw": {
+   "log": "pcscatter requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcscatter mpg), name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcspike mpg weight price length turn), name(p1a81) nodraw": {
+   "log": "pcspike requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcspike mpg weight price), name(p1a81) nodraw": {
+   "log": "pcspike requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcspike mpg weight), name(p1a81) nodraw": {
+   "log": "pcspike requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (pcspike mpg), name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rarea mpg weight price length turn), name(p1a81) nodraw": {
+   "log": "rarea requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rarea mpg weight price length), name(p1a81) nodraw": {
+   "log": "rarea requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rarea mpg weight), name(p1a81) nodraw": {
+   "log": "rarea requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rarea mpg), name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rbar mpg weight price length turn), name(p1a81) nodraw": {
+   "log": "rbar requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rbar mpg weight price length), name(p1a81) nodraw": {
+   "log": "rbar requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rbar mpg weight), name(p1a81) nodraw": {
+   "log": "rbar requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rbar mpg), name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rcap mpg weight price length turn), name(p1a81) nodraw": {
+   "log": "rcap requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rcap mpg weight price length), name(p1a81) nodraw": {
+   "log": "rcap requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rcap mpg weight), name(p1a81) nodraw": {
+   "log": "rcap requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rcap mpg), name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rcapsym mpg weight price length turn), name(p1a81) nodraw": {
+   "log": "rcapsym requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rcapsym mpg weight price length), name(p1a81) nodraw": {
+   "log": "rcapsym requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rcapsym mpg weight), name(p1a81) nodraw": {
+   "log": "rcapsym requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rcapsym mpg), name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rconnected mpg weight price length turn), name(p1a81) nodraw": {
+   "log": "rconnected requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rconnected mpg weight price length), name(p1a81) nodraw": {
+   "log": "rconnected requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rconnected mpg weight), name(p1a81) nodraw": {
+   "log": "rconnected requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rconnected mpg), name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rline mpg weight price length turn), name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rline mpg weight price length), name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rline mpg weight), name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rline mpg), name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rscatter mpg weight price length turn), name(p1a81) nodraw": {
+   "log": "rscatter requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rscatter mpg weight price length), name(p1a81) nodraw": {
+   "log": "rscatter requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rscatter mpg weight), name(p1a81) nodraw": {
+   "log": "rscatter requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rscatter mpg), name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rspike mpg weight price length turn), name(p1a81) nodraw": {
+   "log": "rspike requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rspike mpg weight price length), name(p1a81) nodraw": {
+   "log": "rspike requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rspike mpg weight), name(p1a81) nodraw": {
+   "log": "rspike requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (rspike mpg), name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (tsrline mpg weight price length turn), name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length turn t81\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (tsrline mpg weight price length), name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length t81\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (tsrline mpg weight price), name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price t81\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway (scatter mpg weight) (tsrline mpg), name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg t81\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcarrow mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "pcarrow requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway pcarrow mpg weight price length turn, nodraw": {
+   "log": "pcarrow requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway pcarrow mpg weight price, name(p1a81) nodraw": {
+   "log": "pcarrow requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcarrow mpg weight price, nodraw": {
+   "log": "pcarrow requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcarrow mpg weight, name(p1a81) nodraw": {
+   "log": "pcarrow requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcarrow mpg weight, nodraw": {
+   "log": "pcarrow requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcarrow mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcarrow mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcbarrow mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "pcbarrow requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway pcbarrow mpg weight price length turn, nodraw": {
+   "log": "pcbarrow requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway pcbarrow mpg weight price, name(p1a81) nodraw": {
+   "log": "pcbarrow requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcbarrow mpg weight price, nodraw": {
+   "log": "pcbarrow requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcbarrow mpg weight, name(p1a81) nodraw": {
+   "log": "pcbarrow requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcbarrow mpg weight, nodraw": {
+   "log": "pcbarrow requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcbarrow mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcbarrow mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pccapsym mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "pccapsym requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway pccapsym mpg weight price length turn, nodraw": {
+   "log": "pccapsym requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway pccapsym mpg weight price, name(p1a81) nodraw": {
+   "log": "pccapsym requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pccapsym mpg weight price, nodraw": {
+   "log": "pccapsym requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pccapsym mpg weight, name(p1a81) nodraw": {
+   "log": "pccapsym requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pccapsym mpg weight, nodraw": {
+   "log": "pccapsym requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pccapsym mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pccapsym mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcscatter mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "pcscatter requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway pcscatter mpg weight price length turn, nodraw": {
+   "log": "pcscatter requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway pcscatter mpg weight price, name(p1a81) nodraw": {
+   "log": "pcscatter requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcscatter mpg weight price, nodraw": {
+   "log": "pcscatter requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcscatter mpg weight, name(p1a81) nodraw": {
+   "log": "pcscatter requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcscatter mpg weight, nodraw": {
+   "log": "pcscatter requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcscatter mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcscatter mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcspike mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "pcspike requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway pcspike mpg weight price length turn, nodraw": {
+   "log": "pcspike requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway pcspike mpg weight price, name(p1a81) nodraw": {
+   "log": "pcspike requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcspike mpg weight price, nodraw": {
+   "log": "pcspike requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcspike mpg weight, name(p1a81) nodraw": {
+   "log": "pcspike requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcspike mpg weight, nodraw": {
+   "log": "pcspike requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcspike mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway pcspike mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rarea mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rarea requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rarea mpg weight price length turn, nodraw": {
+   "log": "rarea requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rarea mpg weight price length, name(p1a81) nodraw": {
+   "log": "rarea requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rarea mpg weight price length, nodraw": {
+   "log": "rarea requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rarea mpg weight, name(p1a81) nodraw": {
+   "log": "rarea requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rarea mpg weight, nodraw": {
+   "log": "rarea requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rarea mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rarea mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rbar mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rbar requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rbar mpg weight price length turn, nodraw": {
+   "log": "rbar requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rbar mpg weight price length, name(p1a81) nodraw": {
+   "log": "rbar requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rbar mpg weight price length, nodraw": {
+   "log": "rbar requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rbar mpg weight, name(p1a81) nodraw": {
+   "log": "rbar requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rbar mpg weight, nodraw": {
+   "log": "rbar requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rbar mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rbar mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rcap mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rcap requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rcap mpg weight price length turn, nodraw": {
+   "log": "rcap requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rcap mpg weight price length, name(p1a81) nodraw": {
+   "log": "rcap requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rcap mpg weight price length, nodraw": {
+   "log": "rcap requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rcap mpg weight, name(p1a81) nodraw": {
+   "log": "rcap requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rcap mpg weight, nodraw": {
+   "log": "rcap requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rcap mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rcap mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rcapsym mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rcapsym requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rcapsym mpg weight price length turn, nodraw": {
+   "log": "rcapsym requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rcapsym mpg weight price length, name(p1a81) nodraw": {
+   "log": "rcapsym requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rcapsym mpg weight price length, nodraw": {
+   "log": "rcapsym requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rcapsym mpg weight, name(p1a81) nodraw": {
+   "log": "rcapsym requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rcapsym mpg weight, nodraw": {
+   "log": "rcapsym requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rcapsym mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rcapsym mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rconnected mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rconnected requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rconnected mpg weight price length turn, nodraw": {
+   "log": "rconnected requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rconnected mpg weight price length, name(p1a81) nodraw": {
+   "log": "rconnected requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rconnected mpg weight price length, nodraw": {
+   "log": "rconnected requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rconnected mpg weight, name(p1a81) nodraw": {
+   "log": "rconnected requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rconnected mpg weight, nodraw": {
+   "log": "rconnected requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rconnected mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rconnected mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rline mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rline mpg weight price length turn, nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rline mpg weight price length, name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rline mpg weight price length, nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rline mpg weight, name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rline mpg weight, nodraw": {
+   "log": "rline requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rline mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rline mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rscatter mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rscatter requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rscatter mpg weight price length turn, nodraw": {
+   "log": "rscatter requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rscatter mpg weight price length, name(p1a81) nodraw": {
+   "log": "rscatter requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rscatter mpg weight price length, nodraw": {
+   "log": "rscatter requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rscatter mpg weight, name(p1a81) nodraw": {
+   "log": "rscatter requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rscatter mpg weight, nodraw": {
+   "log": "rscatter requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rscatter mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rscatter mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rspike mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rspike requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rspike mpg weight price length turn, nodraw": {
+   "log": "rspike requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rspike mpg weight price length, name(p1a81) nodraw": {
+   "log": "rspike requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rspike mpg weight price length, nodraw": {
+   "log": "rspike requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway rspike mpg weight, name(p1a81) nodraw": {
+   "log": "rspike requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rspike mpg weight, nodraw": {
+   "log": "rspike requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rspike mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway rspike mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcarrow mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "pcarrow requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcarrow mpg weight price, name(p1a81) nodraw": {
+   "log": "pcarrow requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcarrow mpg weight, name(p1a81) nodraw": {
+   "log": "pcarrow requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcarrow mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcbarrow mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "pcbarrow requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcbarrow mpg weight price, name(p1a81) nodraw": {
+   "log": "pcbarrow requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcbarrow mpg weight, name(p1a81) nodraw": {
+   "log": "pcbarrow requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcbarrow mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pccapsym mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "pccapsym requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pccapsym mpg weight price, name(p1a81) nodraw": {
+   "log": "pccapsym requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pccapsym mpg weight, name(p1a81) nodraw": {
+   "log": "pccapsym requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pccapsym mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcscatter mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "pcscatter requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcscatter mpg weight price, name(p1a81) nodraw": {
+   "log": "pcscatter requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcscatter mpg weight, name(p1a81) nodraw": {
+   "log": "pcscatter requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcscatter mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcspike mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "pcspike requires 4 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcspike mpg weight price, name(p1a81) nodraw": {
+   "log": "pcspike requires 4 variables: mpg weight price\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcspike mpg weight, name(p1a81) nodraw": {
+   "log": "pcspike requires 4 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || pcspike mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rarea mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rarea requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rarea mpg weight price length, name(p1a81) nodraw": {
+   "log": "rarea requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rarea mpg weight, name(p1a81) nodraw": {
+   "log": "rarea requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rarea mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rbar mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rbar requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rbar mpg weight price length, name(p1a81) nodraw": {
+   "log": "rbar requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rbar mpg weight, name(p1a81) nodraw": {
+   "log": "rbar requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rbar mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rcap mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rcap requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rcap mpg weight price length, name(p1a81) nodraw": {
+   "log": "rcap requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rcap mpg weight, name(p1a81) nodraw": {
+   "log": "rcap requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rcap mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rcapsym mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rcapsym requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rcapsym mpg weight price length, name(p1a81) nodraw": {
+   "log": "rcapsym requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rcapsym mpg weight, name(p1a81) nodraw": {
+   "log": "rcapsym requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rcapsym mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rconnected mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rconnected requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rconnected mpg weight price length, name(p1a81) nodraw": {
+   "log": "rconnected requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rconnected mpg weight, name(p1a81) nodraw": {
+   "log": "rconnected requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rconnected mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rline mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rline mpg weight price length, name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rline mpg weight, name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rline mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rscatter mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rscatter requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rscatter mpg weight price length, name(p1a81) nodraw": {
+   "log": "rscatter requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rscatter mpg weight, name(p1a81) nodraw": {
+   "log": "rscatter requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rscatter mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rspike mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rspike requires 3 variables: mpg weight price length turn\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rspike mpg weight price length, name(p1a81) nodraw": {
+   "log": "rspike requires 3 variables: mpg weight price length\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rspike mpg weight, name(p1a81) nodraw": {
+   "log": "rspike requires 3 variables: mpg weight\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || rspike mpg, name(p1a81) nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || tsrline mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length turn t81\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || tsrline mpg weight price length, name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length t81\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || tsrline mpg weight price, name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price t81\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway scatter mpg weight || tsrline mpg, name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg t81\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway tsrline mpg weight price length turn, name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length turn t81\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway tsrline mpg weight price length turn, nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length turn t81\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway tsrline mpg weight price length, name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length t81\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway tsrline mpg weight price length, nodraw": {
+   "log": "rline requires 3 variables: mpg weight price length t81\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway tsrline mpg weight price, name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg weight price t81\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway tsrline mpg weight price, nodraw": {
+   "log": "rline requires 3 variables: mpg weight price t81\n{p_end}\n",
+   "rc": 103
+  },
+  "log|P1A-81 tsset t81|twoway tsrline mpg, name(p1a81) nodraw": {
+   "log": "rline requires 3 variables: mpg t81\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-81 tsset t81|twoway tsrline mpg, nodraw": {
+   "log": "rline requires 3 variables: mpg t81\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (area price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (bar price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (connected price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (dot price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (dropline price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (fpfit price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (fpfitci price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (lfit price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (lfitci price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (line price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (lowess price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (lpoly price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (lpolyci price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (mband price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (mspline price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (qfit price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (qfitci price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (scatter price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway (scatter mpg weight) (spike price if foreign), nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway area mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway bar mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway connected mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway dot mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway dropline mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway fpfit mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway fpfitci mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway histogram mpg, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-82|twoway kdensity mpg, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-82|twoway lfit mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway lfitci mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway line mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway lowess mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway lpoly mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway lpolyci mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway mband mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway mspline mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway qfit mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway qfitci mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || area price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || bar price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || connected price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || dot price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || dropline price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || fpfit price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || fpfitci price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || lfit price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || lfitci price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || line price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || lowess price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || lpoly price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || lpolyci price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || mband price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || mspline price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || qfit price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || qfitci price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || scatter price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg weight || spike price, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway scatter mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-82|twoway spike mpg, nodraw": {
+   "log": "too few variables specified\n{p_end}\n",
+   "rc": 102
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (fpfit mpg weight if foreign==0 | one83), by(foreign) nodraw": {
+   "log": "(note:  fracpoly could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (fpfit mpg weight if foreign==0), by(foreign) nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (fpfit mpg weight in 1/10), by(foreign) nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (fpfitci mpg weight if foreign==0 | one83), by(foreign) nodraw": {
+   "log": "(note:  fracpoly could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (fpfitci mpg weight if foreign==0), by(foreign) nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (histogram mpg if foreign==0), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (kdensity mpg if foreign==0), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (lfit mpg weight if foreign==0 | one83), by(foreign) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (lfit mpg weight if foreign==0), by(foreign) nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (lfitci mpg weight if foreign==0 | one83), by(foreign) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (lfitci mpg weight if foreign==0), by(foreign) nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (lowess mpg weight if foreign==0 | one83), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (lowess mpg weight if foreign==0), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (lpoly mpg weight if foreign==0 | one83), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (lpoly mpg weight if foreign==0), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (lpolyci mpg weight if foreign==0 | one83), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (lpolyci mpg weight if foreign==0), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (mband mpg weight if !foreign, bands(5)), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (mband mpg weight if foreign==0 | one83), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (mband mpg weight if foreign==0), by(foreign) nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (mspline mpg weight if !foreign, bands(5)), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (mspline mpg weight if foreign==0 | one83), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (mspline mpg weight if foreign==0), by(foreign) nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (qfit mpg weight if foreign==0 | one83), by(foreign) nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (qfit mpg weight if foreign==0), by(foreign) nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (qfitci mpg weight if foreign==0 | one83), by(foreign) nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway (scatter mpg weight) (qfitci mpg weight if foreign==0), by(foreign) nodraw": {
+   "log": "(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway fpfit mpg weight if foreign==0, by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway lfit mpg weight, by(bm83) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 bm83|twoway lfit mpg weight, by(bm83, miss) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway lfit mpg weight, by(bm83, missing) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 bm83|twoway scatter mpg weight || mband mpg weight if !foreign, by(foreign) nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 mpg missing if foreign|twoway (scatter weight length) (fpfit mpg weight), by(foreign) nodraw": {
+   "log": "(note:  fracpoly could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 mpg missing if foreign|twoway (scatter weight length) (lpoly mpg weight), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 mpg missing if foreign|twoway (scatter weight length) (mband mpg weight), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 mpg missing if foreign|twoway (scatter weight length) (mspline mpg weight), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 one83|twoway (fpfit mpg weight if foreign==0) (lpoly mpg weight if foreign==0), by(foreign) nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway (lpoly mpg weight if foreign==0) (fpfit mpg weight if foreign==0), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 one83|twoway (scatter mpg weight if mpg > 1000) (lpoly mpg weight if mpg > 1000), by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway (scatter mpg weight) (lfit mpg weight if mpg > 1000), by(foreign) nodraw": {
+   "log": "(note:  regress could not fit model)\n(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 one83|twoway (scatter mpg weight) (lfit mpg weight) if mpg > 1000, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway (scatter mpg weight) (lpolyci mpg weight if _n == 1 | _n == 60), by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway fpfit mpg weight if mpg > 1000, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway fpfitci mpg weight if mpg > 1000, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway histogram mpg in 1/5 if price > 100000, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway kdensity mpg if _n == 1 | _n == 60, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway kdensity mpg in 1/5 if price > 100000, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway lfit mpg weight if _n == 1 | _n == 60, by(foreign) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n(note:  regress could not fit model)\ninsufficient observations\nnothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway lfit mpg weight if mpg > 1000, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway lfitci mpg weight if mpg > 1000, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway lowess mpg weight if mpg > 1000, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway lpoly mpg weight if mpg > 1000, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway lpolyci mpg weight if mpg > 1000, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway mband mpg weight if mpg > 1000, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway mspline mpg weight if mpg > 1000, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway qfit mpg weight if mpg > 1000, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway qfitci mpg weight if mpg > 1000, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-83 one83|twoway scatter mpg weight if mpg > 1000 || lfit mpg weight if mpg > 1000, by(foreign) nodraw": {
+   "log": "(note:  regress could not fit model)\n(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-83 w83|twoway (scatter mpg weight) (lpoly mpg weight [aw=w83]), by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto, total|twoway (scatter mpg weight) (fpfit mpg weight if foreign==0), by(foreign, total) nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto, total|twoway (scatter mpg weight) (lpoly mpg weight if _n==1), by(foreign, total) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto, total|twoway kdensity mpg if _n==1 | _n==60, by(foreign, total) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto, total|twoway kdensity mpg if _n==1, by(foreign, total) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto, total|twoway lfit mpg weight if _n==1 | _n==60, by(foreign, title(\"total\")) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n(note:  regress could not fit model)\ninsufficient observations\nnothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto, total|twoway lfit mpg weight if _n==1 | _n==60, by(foreign, tot) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto, total|twoway lfit mpg weight if _n==1 | _n==60, by(foreign, total) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto, total|twoway lfit mpg weight if _n==1 || scatter mpg weight, by(foreign, total) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n(note:  regress could not fit model)\n(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto, total|twoway lfit mpg weight if _n==1, by(foreign, total) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n(note:  regress could not fit model)\ninsufficient observations\nnothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto, total|twoway lfit mpg weight if mpg > 1000, by(foreign, total) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto, total|twoway lfitci mpg weight if _n==1 | _n==60, by(foreign, total) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto, total|twoway lfitci mpg weight if _n==1, by(foreign, total) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n(note:  regress could not fit model)\ninsufficient observations\nnothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto, total|twoway lpoly mpg weight if _n==1 | _n==60, by(foreign, total) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto, total|twoway lpoly mpg weight if _n==1 || lpoly mpg weight, by(foreign, total) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto, total|twoway lpoly mpg weight if _n==1, by(foreign, total) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto, total|twoway lpolyci mpg weight if _n==1 | _n==60, by(foreign, total) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto, total|twoway lpolyci mpg weight if _n==1, by(foreign, total) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto|twoway (kdensity mpg if _n==1) (scatter mpg weight, by(foreign)), nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto|twoway (kdensity mpg if _n==1) (scatter mpg weight, note(\"x, by(foreign)\")), nodraw": {
+   "log": "insufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-84 auto|twoway (lfit mpg weight if _n==1) (scatter mpg weight, by(foreign)), nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto|twoway (lpoly mpg weight if mpg > 1000) (scatter mpg weight, by(foreign)), nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto|twoway fpfit mpg weight if mpg > 1000 || scatter mpg weight, by(foreign) nodraw": {
+   "log": "(note:  fracpoly could not fit model)\nobservation numbers out of range\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto|twoway kdensity mpg if _n==1 || scatter mpg weight, by(foreign) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto|twoway lfit mpg weight if _n==1 || scatter mpg weight, by(foreign) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto|twoway lfit mpg weight if _n==1 || scatter mpg weight, title(by(foreign)) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n{p_end}\n",
+   "rc": 2001
+  },
+  "log|P1A-84 auto|twoway lfitci mpg weight if _n==1 || scatter mpg weight, by(foreign) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto|twoway lpoly mpg weight if _n==1 || scatter mpg weight, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto|twoway lpoly mpg weight if _n==1 || scatter mpg weight, by(foreign) || line mpg weight, nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto|twoway lpoly mpg weight if make == \", by(foreign)\" || scatter mpg weight, nodraw": {
+   "log": "no observations\n{p_end}\n",
+   "rc": 2000
+  },
+  "log|P1A-84 auto|twoway lpoly mpg weight if mpg > 1000 || scatter mpg weight, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto|twoway lpolyci mpg weight if mpg > 1000 || scatter mpg weight, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto|twoway mband mpg weight if mpg > 1000 || scatter mpg weight, by(foreign) nodraw": {
+   "log": "bands must be between 1 and 200\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 auto|twoway scatter mpg weight, by(foreign) || kdensity mpg if _n==1, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto|twoway scatter mpg weight, by(foreign) || lfit mpg weight if _n==1, nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n(note:  regress could not fit model)\n{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 auto|twoway scatter mpg weight, by(foreign) || lpoly mpg weight if mpg > 1000, nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 g84|twoway (scatter mpg weight) (lpoly mpg weight if m84 | one84), by(g84, total missing) nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-84 g84|twoway (scatter mpg weight) (lpoly mpg weight if m84 | one84), by(g84, total) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 g84|twoway lfit mpg weight if m84 | one84, by(g84, total) nodraw": {
+   "log": "(note:  regress could not fit model)\ninsufficient observations\n(note:  regress could not fit model)\ninsufficient observations\nnothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 g84|twoway scatter mpg weight if m84, by(g84, total) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-84 no observations|twoway histogram mpg || scatter mpg foreign, by(foreign) nodraw": {
+   "log": "nothing to graph\n{p_end}\n",
+   "rc": 198
+  },
+  "rc|FX-01|twoway (function y = x**2) (scatter mpg weight), nodraw": 198,
+  "rc|FX-01|twoway function y = (+x), range(0 2) nodraw": 198,
+  "rc|FX-01|twoway function y = +x, range(0 2) nodraw": 198,
+  "rc|FX-01|twoway function y = 2*+x, range(0 2) nodraw": 198,
+  "rc|FX-01|twoway function y = 2^^x, range(0 2) nodraw": 198,
+  "rc|FX-01|twoway function y = 2x, range(0 2) nodraw": 198,
+  "rc|FX-01|twoway function y = E, range(0 2) nodraw": 111,
+  "rc|FX-01|twoway function y = PI, range(0 2) nodraw": 111,
+  "rc|FX-01|twoway function y = e*x, range(0 2) nodraw": 111,
+  "rc|FX-01|twoway function y = e, range(0 2) nodraw": 111,
+  "rc|FX-01|twoway function y = nosuch(x), range(0 2) nodraw": 133,
+  "rc|FX-01|twoway function y = pi*x, range(0 2) nodraw": 111,
+  "rc|FX-01|twoway function y = pi, range(0 2) nodraw": 111,
+  "rc|FX-01|twoway function y = sin (x), range(0 2) nodraw": 111,
+  "rc|FX-01|twoway function y = sin(x,1), range(0 2) nodraw": 198,
+  "rc|FX-01|twoway function y = x + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x...[5449 characters, sha256 2eb6eabb8e5174e0649bc4e240dc827e141615b88c3227091ce6b3e9940ae7bf]": 130,
+  "rc|FX-01|twoway function y = x%2, range(0 2) nodraw": 198,
+  "rc|FX-01|twoway function y = x**2, range(0 2) nodraw": 198,
+  "rc|FX-01|twoway function y = x//1, range(0 2) nodraw": 198,
+  "rc|FX-01|twoway function y = x^, range(0 2) nodraw": 111,
+  "rc|FX-01|twoway function y = \uff53\uff49\uff4e(x), range(0 2) nodraw": 133,
+  "rc|FX-01|twoway scatter mpg weight || function y = pi*x, nodraw": 111,
+  "rc|FX-02|twoway (function y=runiform()) (scatter mpg weight), by(nosuchv) nodraw": 111,
+  "rc|FX-02|twoway (function y=runiform()) (scatter nosuch weight), nodraw": 111,
+  "rc|FX-02|twoway (function y=runiform()), badopt nodraw": 198,
+  "rc|FX-02|twoway (function y=runiform()), xsize(0)": 198,
+  "rc|FX-02|twoway (function y=runiform(), range(0 2) n(3)) (function y=nosuch(x)), nodraw": 133,
+  "rc|FX-02|twoway (function y=x**2) (scatter mpg weight), by(nosuchv) nodraw": 111,
+  "rc|FX-02|twoway (function y=x**2) (scatter mpg weight, badopt), nodraw": 198,
+  "rc|FX-02|twoway (function y=x**2) (scatter nosuch weight), nodraw": 111,
+  "rc|FX-02|twoway function y=nosuch(x), n(0) nodraw": 198,
+  "rc|FX-02|twoway function y=runiform(), n(0) nodraw": 198,
+  "rc|FX-04 clear|twoway function y = nosuch(x), n(3) nodraw": 133,
+  "rc|FX-04 clear|twoway function y = x, n(3) nodraw": 0,
+  "rc|FX-04 pi|twoway function y = pi*x, nodraw": 0,
+  "rc|FX-04 sysuse auto, clear|twoway function y = nosuch(x), n(3) nodraw": 133,
+  "rc|FX-04 sysuse auto, clear|twoway function y = x, n(3) nodraw": 0,
+  "rc|P1A-77|twoway (function y = nosuchfunction(x), range(0 10)) (scatter mpg weight), nodraw": 133,
+  "rc|P1A-77|twoway function nosuchfunction(x), range(0 10) nodraw": 133,
+  "rc|P1A-77|twoway function y = Sin(x), range(0 10) nodraw": 133,
+  "rc|P1A-77|twoway function y = max(x, 1) + inlist(x, 1, 2), range(0 10) nodraw": 0,
+  "rc|P1A-77|twoway function y = normal(x), range(0 10) nodraw": 0,
+  "rc|P1A-77|twoway function y = nosuchfunction(x), range(0 10) nodraw": 133,
+  "rc|P1A-77|twoway function y = sin(x) + mpg(x), range(0 10) nodraw": 133,
+  "rc|P1A-77|twoway function y = sin(x) + sqrt(abs(x)), range(0 10) nodraw": 0,
+  "rc|P1A-77|twoway function y = strlen(\"nosuch(x)\") + x, range(0 10) nodraw": 0,
+  "rc|P1A-77|twoway function y = system(x), range(0 10) nodraw": 133,
+  "rc|P1A-77|twoway function y = x + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(x) + sin(...[45050 characters, sha256 3cbe309e11c6842afa71eb0ae0e82792ff1ec63a7fc2a3ef7b78823fcfcb423e]": 130,
+  "rc|P1A-77|twoway function y = x*nosuch(x) + 2, range(0 10) nodraw": 133,
+  "rc|P1A-77|twoway function y = x^2, range(0 10) nodraw": 0,
+  "rc|P1A-78|twoway (function y = sin (x), range(0 10)) (scatter mpg weight), nodraw": 111,
+  "rc|P1A-78|twoway function sin (x), range(0 10) nodraw": 111,
+  "rc|P1A-78|twoway function y = (x) (x), range(0 10) nodraw": 198,
+  "rc|P1A-78|twoway function y = -(x), range(0 10) nodraw": 0,
+  "rc|P1A-78|twoway function y = 1.5 (x), range(0 10) nodraw": 198,
+  "rc|P1A-78|twoway function y = 2 (x), range(0 10) nodraw": 198,
+  "rc|P1A-78|twoway function y = 2 * (x), range(0 10) nodraw": 0,
+  "rc|P1A-78|twoway function y = 3*(x) + (1), range(0 10) nodraw": 0,
+  "rc|P1A-78|twoway function y = X (x), range(0 10) nodraw": 111,
+  "rc|P1A-78|twoway function y = _n (x), range(0 10) nodraw": 198,
+  "rc|P1A-78|twoway function y = _pi (x), range(0 10) nodraw": 198,
+  "rc|P1A-78|twoway function y = abs (x) + 1, range(0 10) nodraw": 111,
+  "rc|P1A-78|twoway function y = c (pi)*x, range(0 10) nodraw": 111,
+  "rc|P1A-78|twoway function y = max (x, 1), range(0 10) nodraw": 111,
+  "rc|P1A-78|twoway function y = mp (x), range(0 10) nodraw": 198,
+  "rc|P1A-78|twoway function y = mpg (x), range(0 10) nodraw": 198,
+  "rc|P1A-78|twoway function y = nosuch (x), range(0 10) nodraw": 111,
+  "rc|P1A-78|twoway function y = nosuch(x) + sin (x), range(0 10) nodraw": 133,
+  "rc|P1A-78|twoway function y = sin\t (x), range(0 10) nodraw": 111,
+  "rc|P1A-78|twoway function y = sin\t(x), range(0 10) nodraw": 133,
+  "rc|P1A-78|twoway function y = sin  (x), range(0 10) nodraw": 111,
+  "rc|P1A-78|twoway function y = sin ( x ), range(0 10) nodraw": 111,
+  "rc|P1A-78|twoway function y = sin (x) + nosuch(x), range(0 10) nodraw": 111,
+  "rc|P1A-78|twoway function y = sin (x), range(0 10) nodraw": 111,
+  "rc|P1A-78|twoway function y = sin( x ), range(0 10) nodraw": 0,
+  "rc|P1A-78|twoway function y = sin((x)), range(0 10) nodraw": 0,
+  "rc|P1A-78|twoway function y = sin(x) (x), range(0 10) nodraw": 198,
+  "rc|P1A-78|twoway function y = sin(x) + cos (x), range(0 10) nodraw": 111,
+  "rc|P1A-78|twoway function y = sin(x), range(0 10) nodraw": 0,
+  "rc|P1A-78|twoway function y = strlen(\"a (b\") + x, range(0 10) nodraw": 0,
+  "rc|P1A-78|twoway function y = x (x), range(0 10) nodraw": 198,
+  "rc|P1A-78|twoway function y = x + (1), range(0 10) nodraw": 0,
+  "rc|P1A-78|twoway function y = x + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) ...[30050 characters, sha256 c3299ed7d4c6a3dfb5e43c3a3d91fe74e8ea5d9f87754c99e38979a33a902f0a]": 130,
+  "rc|P1A-78|twoway function y = x + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) + (x) ...[30060 characters, sha256 8199c317fb50fcb4c35a9fc9120e2ece64449d54921119f60a05aed81a4cf520]": 130,
+  "rc|P1A-78|twoway function y = x > (1), range(0 10) nodraw": 0,
+  "rc|P1A-78|twoway function y = x*sin (x), range(0 10) nodraw": 111,
+  "rc|P1A-78|twoway function y = x/(1+x), range(0 10) nodraw": 0,
+  "rc|P1A-78|twoway function y = x^(2), range(0 10) nodraw": 0,
+  "rc|P1A-78|twoway function y = {bf:BOLD} + sin (x), range(0 1) nodraw": 198,
+  "val:_N|FX-04 clear|twoway function y = nosuch(x), n(3) nodraw": "2",
+  "val:_N|FX-04 clear|twoway function y = x, n(3) nodraw": "2",
+  "val:_N|FX-04 observations, no variables|twoway function y = x, nodraw": "0",
+  "val:_N|FX-04 sysuse auto, clear|twoway function y = nosuch(x), n(3) nodraw": "74",
+  "val:_N|FX-04 sysuse auto, clear|twoway function y = x, n(3) nodraw": "74",
+  "val:c(changed)|FX-04 clear|twoway function y = nosuch(x), n(3) nodraw": "1",
+  "val:c(changed)|FX-04 clear|twoway function y = x, n(3) nodraw": "1",
+  "val:c(changed)|FX-04 sysuse auto, clear|twoway function y = nosuch(x), n(3) nodraw": "1",
+  "val:c(changed)|FX-04 sysuse auto, clear|twoway function y = x, n(3) nodraw": "1",
+  "val:datasignature|FX-04 clear|twoway function y = nosuch(x), n(3) nodraw": "2:1(33563):2724323076:2492419067",
+  "val:datasignature|FX-04 clear|twoway function y = x, n(3) nodraw": "2:1(33563):2724323076:2492419067",
+  "val:datasignature|FX-04 sysuse auto, clear|twoway function y = nosuch(x), n(3) nodraw": "74:13(74352):1227080708:3093502750",
+  "val:datasignature|FX-04 sysuse auto, clear|twoway function y = x, n(3) nodraw": "74:12(71728):3831085005:1395876116",
+  "val:rngstate|FX-02|twoway (function y=runiform()) (scatter mpg weight), by(nosuchv) nodraw": "XAA0000000001352889ccb030a7d9311716068de15e334d79b3930d35b26d2d317acb48fc9c07543a1ce725d7ca1aae9878a132984591ecd2a5257eb85a5254e0629f892df645460f42bceb0d35cf216e496e695e99743e9839ce15211bb51c89e3dd562fa2bdca5c6c57a3b17e810850906ae4e47ebed3188be82b9f5a8499c651e2c5c37c5e248a7a74c45f36318b5e56bff2568595efbe5dbb6eee9e4be097c6a7aecdb246d8e9885ef3d052f54e83579881ea150b02c034af40115134449395ee22f979f028daa3f15d2f623ac3ce398ad5eccdb77c064cb3c6bef49b53cdd1cad17d0650a5db3354b8912947d4578d09dfab147c3dd7ba54551bf84c2631d116f6c301137cf1b0c1897b44544ccc1106d075470936cd4ce5420342dbb6ca7f54b8ab0cf7c11bf0343fa53e29137882fbf3a9439cdead0057b7fa33a1b7e6ae7f17a995e09f5debcfc5c08caccc984bc5595765e16a7cd29517dc8225489fe8d5a0ba40204b324e7615e7871dfd0ab63dd99c415e4eab598c1e1693c1a245d4ecc563d4b7b970ce008c47fdcddf873ae6becd3001228b64882379990d2d9a4e77ae12264ecbd3903ca5f5c1272e1fb26fc7beef0f6ee0809cd77989aef275e44b026a8aeff9d3a650dfdf11e31d0d948d0c4cf279914e6b6f0d923d438ddfb046cb8f60ffee21596ed4b6fba79e84b5a2b384b0c7769fe21498efe8768a3a9feddf6079bbec2f337f72e389eadd1bb111045f9b570a2e32bb1753ea14ceed0dd73762ebbdb51ce75ad9e99eb2df3059e0d3895b6d6f27be463e52139e41bf8047f967c131a4a8f51fad1e792fc6bf2df3a7c8589ff7ee3346bf8363ffaeaebb440c5fa884a4fcfe14ea1e631eedfa205575a228938ad7ee8e617b4172a286529c4df6e7b3c34c603e8ec97b09430b8b972e431adf69fcc1dba1ea8fdb852b9a111964897316913934ec6685df2fce5a05269528c527ec2824ccaf59c9745b5f9ba2c5458513310bdb67838c1ff015eeef953f61d7056e03de41c6af8386565b2d157b6424aad5d4ef1313f8967fc2a168d9f9fa364d94d8863fb36916c7d184a25accd4dd0f4eee8aae9fe87333f3ddaca650d92ae87f95cdbc4b33f90d56ee3dc716eb5968db0d4537d91216aaf4ae1665e254294ad429ffc628060944a29c8252eed58848775bd5748e65cabf220e7fbba71d230e6fb3e992cf5d2d8cf0b54f38cf760f1e9a6a5f860cb77b433a3c4de2568b063680274439b8f6ff45611df60ffa301faaf65c3544e483fa9170243f84aec6272692c6b04dc81539d60741d33309ed7638843b73e0c061661f064d6474541191cfcfd2810ab22a5370358eefbb0aa60fc5de14f83c2328065873843190f7b1506f4835b49890981b3afccc8eab04d758aea2b2ae937dba29d7e96d76a3bcf6495d1a010acc4e983743927f50985a513478c1d341d5c70b489b406b61ab4a1ebdf0e924e76e9991958b5704306997f224bdc5bfc70d5d8666a08418111c74ed93779e4570c657a7ddb40da81303a80d6aca3e3d25b2793f6fee3442813cbd6fdb35ee24aa53782e2dbdb73920686bff51967aeb98b865bd4d3530dcc827b5114ecdb994f81ae683c21e891a7059dc547cee80f59c6664d1c5e9b775c0770978d85c497dd553f441ff046db99c43fcf61b789046410d82d7cb5718899ff932b09aa2c87e129547d1703ec26362b90423651648ff790aa9a8b6f6d73f3fb738e44d41988056a08168e1af4f1b09e4dd7c6630ce2ea67fb343d5a310b331dc8de2b5f6bebbdc76553aebd54c7e7b56622de63175995dd03cae9180145947416dec14d33c1a5795925d73a9f662d8ab894771ba6d0b38d2e7424f84230d61bf9bb3ca2e9cefaba98175a891a87df9ee256eaa1c9ffbc4507b96d5bc274129139e505af6a544b126b8d2b9ebc99fa8a051f69bd85445bf762a12d8290a281ff98ed5bdb3a010b5a5448f5e4b137fa6d2e96f459e70a989a794d22e45a3c05c0fba26966507cc7447278bf4f212bcfc843fcc29da0eed78040fd5e142b28beb7cb66d919dd8f8f36669e8b57aa9d616b0f930d5c9862984e3f2f8cfd7ecee2791cd579cd9ba3662e5b0b5ff14863954f2e02bc3c960940518d8e4c408e5eee1559dbd5b277d9469ff71518a21fd4a1eb5de05d548bbef035b7bf8e91f9ac478bf5c32ec697136b90bb1e216b6306e11fc2f689ee817c09519cd1be5546d85838e5c0f05c03a81902731c6521046ce18429cec44b7a6a40279eacfdd67a79d0349231081c05a63f1aa39763b460132d5c8f2e6636a8569b1daf60e709b0a6fb911b4e522dde8f731221bf58a2c7ee0916c28a5b5236e30bc7a531d65ff2d9b15da28b87b86ebb755e17c622b2a38fe04b949fd691d86a7ad58823513308530df0adc6bcfb538a015153cefc4d2d27e577fe6221ad182fe68d440f4993b88ac89dc89a660f5da43ec7b79a956529d485f6b4b8df934dc0b5f23a96f1145a49fd13b24454dde52a4f38ac81aaa48613a51296b2c59215ee53b2b9daf23a4caf5945776b3e14038f39fa4fc0324ce9240d8603910ab48747eed171ea0f6477ddefb83914b9fa2c3bf4044e2608b22acf34e6a050f29be7572632c814f52adb3206f64b609c29adcb799a358e886a516e9df595fdeac2a9d3b610b2fdf89146bc5ddd5e9a123212e62c072e8e26d4c46fca2ba0d52140bfcc34a1dab4fe0d42dde180432e3aed8b225e0009346e800ac7454760911d2f05adf345821ac1c8a1bfb67351139553f71159ecedc6135e3cd7bde7067adff67263d7c7ca293bb307bdfd0f193d8f52ee9009a2911c6e196738275cc0e3a843ece7c00a595b8b23b4ff6f544d0635346193c1f53ab23cf83b212c8a02eebcbf73c2aabfffd99b12aeb36ce0896dac47e2526784ba7e2b922e3843493dbedc269fa655070820378a21fc6d8dc2d3b35165001da2cd0d58fc70f61171f8b8512a953421fc13685557b61a34c50a24b73ff07b1ace24976a214aafb81c39ed12d6095d15cef3810bc1d04245d3540e2dbb1168f455db297c0f76a05547be3958d699fc4f8e2b5fabb7cd1b2b0881e1978fcac2fae5c8396300597fce56e0f401638baba7b496642a6479a9a10c6fd06c08013552f6a4de8dc939208ee02b4025a0aa480b3ff2724bfbae9203765948d364cda142f8dfbbf8956429f471212bbe9c1980faea01d46c99cad93b792d5ab3c0a729bacc586e1dbbd0d04eadec8aac62f452e8c6c6d4be8d17d0a871b2c4bff81f38a26d436f47fd0480b3c9353eefdc12013e5801729b8eb117c805e4e6801eb1579574b4c0efa91ccc69fd89792a40ab92347180c28b3eeeaf62f77b5a63d52d795fa4d990d963bd15cef35319725acefdf24bbd1cb55704ed9b55b820c0c288453021667404be8726ce3354934517bb22c44c516c6597ea474b1fc835d02f1f4c38b71c1394d48c620be8b369119dfb32ef8b17a77ded153f10f3f3ce7b74ad0c0de7a3eedd575f2f70001000001380807",
+  "val:rngstate|FX-02|twoway (function y=runiform()) (scatter nosuch weight), nodraw": "XAA0000000001352889ccb030a7d9311716068de15e334d79b3930d35b26d2d317acb48fc9c07543a1ce725d7ca1aae9878a132984591ecd2a5257eb85a5254e0629f892df645460f42bceb0d35cf216e496e695e99743e9839ce15211bb51c89e3dd562fa2bdca5c6c57a3b17e810850906ae4e47ebed3188be82b9f5a8499c651e2c5c37c5e248a7a74c45f36318b5e56bff2568595efbe5dbb6eee9e4be097c6a7aecdb246d8e9885ef3d052f54e83579881ea150b02c034af40115134449395ee22f979f028daa3f15d2f623ac3ce398ad5eccdb77c064cb3c6bef49b53cdd1cad17d0650a5db3354b8912947d4578d09dfab147c3dd7ba54551bf84c2631d116f6c301137cf1b0c1897b44544ccc1106d075470936cd4ce5420342dbb6ca7f54b8ab0cf7c11bf0343fa53e29137882fbf3a9439cdead0057b7fa33a1b7e6ae7f17a995e09f5debcfc5c08caccc984bc5595765e16a7cd29517dc8225489fe8d5a0ba40204b324e7615e7871dfd0ab63dd99c415e4eab598c1e1693c1a245d4ecc563d4b7b970ce008c47fdcddf873ae6becd3001228b64882379990d2d9a4e77ae12264ecbd3903ca5f5c1272e1fb26fc7beef0f6ee0809cd77989aef275e44b026a8aeff9d3a650dfdf11e31d0d948d0c4cf279914e6b6f0d923d438ddfb046cb8f60ffee21596ed4b6fba79e84b5a2b384b0c7769fe21498efe8768a3a9feddf6079bbec2f337f72e389eadd1bb111045f9b570a2e32bb1753ea14ceed0dd73762ebbdb51ce75ad9e99eb2df3059e0d3895b6d6f27be463e52139e41bf8047f967c131a4a8f51fad1e792fc6bf2df3a7c8589ff7ee3346bf8363ffaeaebb440c5fa884a4fcfe14ea1e631eedfa205575a228938ad7ee8e617b4172a286529c4df6e7b3c34c603e8ec97b09430b8b972e431adf69fcc1dba1ea8fdb852b9a111964897316913934ec6685df2fce5a05269528c527ec2824ccaf59c9745b5f9ba2c5458513310bdb67838c1ff015eeef953f61d7056e03de41c6af8386565b2d157b6424aad5d4ef1313f8967fc2a168d9f9fa364d94d8863fb36916c7d184a25accd4dd0f4eee8aae9fe87333f3ddaca650d92ae87f95cdbc4b33f90d56ee3dc716eb5968db0d4537d91216aaf4ae1665e254294ad429ffc628060944a29c8252eed58848775bd5748e65cabf220e7fbba71d230e6fb3e992cf5d2d8cf0b54f38cf760f1e9a6a5f860cb77b433a3c4de2568b063680274439b8f6ff45611df60ffa301faaf65c3544e483fa9170243f84aec6272692c6b04dc81539d60741d33309ed7638843b73e0c061661f064d6474541191cfcfd2810ab22a5370358eefbb0aa60fc5de14f83c2328065873843190f7b1506f4835b49890981b3afccc8eab04d758aea2b2ae937dba29d7e96d76a3bcf6495d1a010acc4e983743927f50985a513478c1d341d5c70b489b406b61ab4a1ebdf0e924e76e9991958b5704306997f224bdc5bfc70d5d8666a08418111c74ed93779e4570c657a7ddb40da81303a80d6aca3e3d25b2793f6fee3442813cbd6fdb35ee24aa53782e2dbdb73920686bff51967aeb98b865bd4d3530dcc827b5114ecdb994f81ae683c21e891a7059dc547cee80f59c6664d1c5e9b775c0770978d85c497dd553f441ff046db99c43fcf61b789046410d82d7cb5718899ff932b09aa2c87e129547d1703ec26362b90423651648ff790aa9a8b6f6d73f3fb738e44d41988056a08168e1af4f1b09e4dd7c6630ce2ea67fb343d5a310b331dc8de2b5f6bebbdc76553aebd54c7e7b56622de63175995dd03cae9180145947416dec14d33c1a5795925d73a9f662d8ab894771ba6d0b38d2e7424f84230d61bf9bb3ca2e9cefaba98175a891a87df9ee256eaa1c9ffbc4507b96d5bc274129139e505af6a544b126b8d2b9ebc99fa8a051f69bd85445bf762a12d8290a281ff98ed5bdb3a010b5a5448f5e4b137fa6d2e96f459e70a989a794d22e45a3c05c0fba26966507cc7447278bf4f212bcfc843fcc29da0eed78040fd5e142b28beb7cb66d919dd8f8f36669e8b57aa9d616b0f930d5c9862984e3f2f8cfd7ecee2791cd579cd9ba3662e5b0b5ff14863954f2e02bc3c960940518d8e4c408e5eee1559dbd5b277d9469ff71518a21fd4a1eb5de05d548bbef035b7bf8e91f9ac478bf5c32ec697136b90bb1e216b6306e11fc2f689ee817c09519cd1be5546d85838e5c0f05c03a81902731c6521046ce18429cec44b7a6a40279eacfdd67a79d0349231081c05a63f1aa39763b460132d5c8f2e6636a8569b1daf60e709b0a6fb911b4e522dde8f731221bf58a2c7ee0916c28a5b5236e30bc7a531d65ff2d9b15da28b87b86ebb755e17c622b2a38fe04b949fd691d86a7ad58823513308530df0adc6bcfb538a015153cefc4d2d27e577fe6221ad182fe68d440f4993b88ac89dc89a660f5da43ec7b79a956529d485f6b4b8df934dc0b5f23a96f1145a49fd13b24454dde52a4f38ac81aaa48613a51296b2c59215ee53b2b9daf23a4caf5945776b3e14038f39fa4fc0324ce9240d8603910ab48747eed171ea0f6477ddefb83914b9fa2c3bf4044e2608b22acf34e6a050f29be7572632c814f52adb3206f64b609c29adcb799a358e886a516e9df595fdeac2a9d3b610b2fdf89146bc5ddd5e9a123212e62c072e8e26d4c46fca2ba0d52140bfcc34a1dab4fe0d42dde180432e3aed8b225e0009346e800ac7454760911d2f05adf345821ac1c8a1bfb67351139553f71159ecedc6135e3cd7bde7067adff67263d7c7ca293bb307bdfd0f193d8f52ee9009a2911c6e196738275cc0e3a843ece7c00a595b8b23b4ff6f544d0635346193c1f53ab23cf83b212c8a02eebcbf73c2aabfffd99b12aeb36ce0896dac47e2526784ba7e2b922e3843493dbedc269fa655070820378a21fc6d8dc2d3b35165001da2cd0d58fc70f61171f8b8512a953421fc13685557b61a34c50a24b73ff07b1ace24976a214aafb81c39ed12d6095d15cef3810bc1d04245d3540e2dbb1168f455db297c0f76a05547be3958d699fc4f8e2b5fabb7cd1b2b0881e1978fcac2fae5c8396300597fce56e0f401638baba7b496642a6479a9a10c6fd06c08013552f6a4de8dc939208ee02b4025a0aa480b3ff2724bfbae9203765948d364cda142f8dfbbf8956429f471212bbe9c1980faea01d46c99cad93b792d5ab3c0a729bacc586e1dbbd0d04eadec8aac62f452e8c6c6d4be8d17d0a871b2c4bff81f38a26d436f47fd0480b3c9353eefdc12013e5801729b8eb117c805e4e6801eb1579574b4c0efa91ccc69fd89792a40ab92347180c28b3eeeaf62f77b5a63d52d795fa4d990d963bd15cef35319725acefdf24bbd1cb55704ed9b55b820c0c288453021667404be8726ce3354934517bb22c44c516c6597ea474b1fc835d02f1f4c38b71c1394d48c620be8b369119dfb32ef8b17a77ded153f10f3f3ce7b74ad0c0de7a3eedd575f2f70001000001380807",
+  "val:rngstate|FX-02|twoway (function y=runiform()), badopt nodraw": "XAA09e4dd7c4aa845a57525c44aa563b583329a7d4d8360260695f0cfe3e87f51701ef21c63eb6639a59b40b811301064e217d821cefdf94c2b452ace70510af1c3226d70e6ff4cc3c6d3a50e821cfd76f8e3895ba5f9c6c1f7cca311f87674864b974532bfea98b7b35a83cc7323b3b2eda9638335b1dc5f85c533777fd6f98ca2d9c2b048831dfb6e30166ad37bb8ccef4000a5975843ebf3e81233c07d2767bb4007e0ecd65f28eba6de7cfb6bc4c3daa54d2076a52157ef96e54079e58066043e972c2a5dddf01800aa9864fafcb1ad1b142f51f55227f91f8759c8744e5da6c6da28e95f45b406aebfba6c71c90733967c778713acbb3748cf3d49f6aafee1ea8beef1c0891f7565dc6546c0938348573fc8445f9a01421b5e70f0f1c170b234e98b8381c107ae1944a967e770cc44054688933cb2826127d223a14f9f87729b7594f8e1e8420cf2fb2d5d95e153ece122f7bdd7647575daacdf874235dfe97292c1cc4a4923ff8c717656db26ebd81da5ed3021117889b7a5323fe09ab955a3aa430c058546f4b19cd5f0b00a4fddca4ed27d244b25d07533a7392d499728aabb21b6a6b461e9a228a9fde2485ddb2239f7cfecffd1451b8ac0a6dcd6d12d21387cb81893006d303502e7469e3bec998cfa12ee73d77897919aabd243db3bc1184ec8e078d94d5fbe1b897a80c75d6d8724a4b2d6dee553356107e2c293389c8694eba53c483a609ad8abfac0b3866cbb64d26edf3dcb1b030eb51df4f6a08fb0b5032928df20164769605513592ae43eb21e6e60e73309b9ba50557adfd34e9ee5aa95cd320157c3fec6d0da932e37521a3d49138d0b631b23d14970d28c6c6c2adb66c8886269598e7edb68d8d745de671dbbcb9f9ede93e5481f44b0d9247dcbf7c1ed0117cb4e24388fc68c4c9642c82c4ee3bbaf18a072ff3da11789aa36bf16bb9c1bee506b980d0247dbcaaf95172d630486634764abb083ef2d1819a76bb31d085028ece98f309e6eb513a5fde1d33d9a43d1f1ee3f36e7b6a7917df8b5455d3ede840bf52b6fe016b1b3e49d6f25fe4d01c2d936c8724f11d4f591e3070a54c12e7bf0f0b5160e2969d5a317f80fefc0b24bcc8fe1e08a51c67dd643a59e40a2467d3c667e4a0ce998cbc53a67f0c0dc7468b2aadcbb1460c1c075baac8727366b628fc8aa6b004331f6520391ef0ab631b2aee5b77b084842543083ec3e2f08ce5c85005f847f063859dfa3e654653baed68efe950dedc1d1d5fac463c910282dc3464d4a516f8e4d47f7f578db6e3c0cc6a87939c7d28d31f188e008399700050bc112d5ca339b365b82b234119144b6e8eed9da8337e778f692b38a1315148378b255188c27162769080e86de4d1d6d33752605a4f0c4c3511c555933678749df51b4f6a332727dc9b93625ac848b0ac29fe9b3a93a0c3b9fda5c50c9e4ea21d38e4afec35764d901874770a476cfd9196a70a573a085f632f2ea0353f57f07225ae8acd2480cabc18f95163d115bf55eabb5727d23d34efc351287e84a363a32f7592bb61571e66e75c27f857e53d70cb7609f437b3ce85a8feca26d0290214d0b443ef61488363c4b646f2e9c5d931833428516c12a88cf621bb0e7ae3e2d8cdf8a8cf91038738e606269eadaccab6668bf9d6086543a4f1816d815ddb627816443d7ad942fc04b4b02755fd3888c1b37390d8b56a5fbb63ad5dbda2bc2c158c4342ea3b8719fb1a5e6cfcf2efb6ea4f52a7e59a66d95e0b814dc98c91fd415931872b1d6fef3372a743bbcf68a80394ec98a243201f255965b422f8ac02a60b5a8a6467a79faef34789738c42db71adbe2680440b1deaffb3adb1ff1e8cba97ace1279908c21666654f92684e80c202c75be180a1cd05f5eb04f522920bdfa38abf1b84ec8e04f08e82347044fa2a328a2444c3273bf698d9298b3ef097e7a6fad7fda25611ce7fafe0da71e007ba507c2fedd768e4606136e945b417df90be20db69260f6403c8b4afd65df585eb119c4bce6980b789bf5d75c96c41ab0b43ca89f8e32325dd16eaa74672fef7312d3360266b7cc875bcd82547138ae4271ecce43103fa5da2830b6fe764540e1c279bde513174e4eabc0f29ee4228d6d8267500934ad003d822795069ada8affe79aa3a702b20334ac3bb36481754ecacc18e9149b914474df3919268a77e99a567b57fb5040eb8c922689ec163a246d270d75a48afe675745a0e5d9ba7e6c561292bf4764606e0cbbcbb1e0e0cd9ce9d8384fec6bb2a0df001c017cb87cb278107a7241de7849e2087c4c552594aeda2a5c73c1ad0802a24f96c6080fa15d1aa06da2aac3f7d82030570f5abefd2deecd4917ef29f6ed31e928d4e393f96acd3a847811cd413e0b972364d846910b42f5669943fde144a7bcf60994270c1abe479d1b04dc1f2b1a44eaa7bdd9ece51d1bded654a9a39c33952969607799ff9041900ab289f73ee4d406315e77c4f8839c4f0b0c1c5c2f9ad40426f6f0fbfb0d56d7c405e2d802403b12266fcf919ca3b3bed0c8ed4cd55cbaae150947bc07ae13466bc451c0dee5ec22aef922eeee8cee944a1ecc366deb18ff91bdc225e4c29b433952e11dafe8354b59285ccf9e51f2edcda183d343af65c76e5343d1ff0d0327402666e037e7adfed30b422c012d1cfbcbb3d75e561b7df8a83cfcf84598d1cd9b69d49ec2f001fb6bb9bf8bf60d01c06722f07c4d9b31a3970e5c9704d05982668d4943f1199e869e00617a2b443c43c7f0bc1d971470236506150e0dbc850b8b3e5cf1632d66a7c2e9c929c0fa8235cb7a261a81c5338ce5a6c98e863803942240910d0eb3cbab0500170ddc8980f0a27fca678a654bd9b5903e48016b42c32634716faa5868b213b2eb983733e669998086eed68a58a23e2c9d9c4d05aa3b8d6010dc32251b6ff34171db67648112f2843033ae001f8b6fe8282433afebc3f3df11c11cebf58e0e46a62cd367643fe2ab9c6f9fa2684c89d82b5d57e2426d8ddeec121782d4ba25aca18e26afd1dd38b903ab30dfe96c6db7f0a721a02d8ad7e08c1439fe13a2ddf9f34abe6dd20861e06de68379a5daf63b1d09467d16b9f79b483cfb25abe0048db306374e353af3c4f7ee30372a006df85d2354a437629323509dc191116b540332785a3d4f084b6531695410c3178680b0a94632643d2d212c678aee714cd736cea9426ef36c189f3aa007f9a5dc8e1a71db115f9b3c126603439254a5878567068117b9a71cde9a77b7cc5204791aef4247d5c8b20ddd065db455c71c2b5b2e1f1643b28c309b4f787ce2753b35ed58b1431b316f29c7561e805fad22c000e9a45b6754369dca57b8e347441f5cdfb5fd97407bb6fb6626caba9ae6c9a0834776ade0130978d50b463f4a284e3acfa8ecff38925069b4aec0aee9e359698c7c8ff10975bbf32333943c3123c313fc34f1752cef0b7281ed17da4a2221d0922fc82dcc7149b86c939863d4f7d1177b3ee66d278e362f150e75ea5faedb00010000012c4064",
+  "val:rngstate|FX-02|twoway (function y=runiform()), xsize(0)": "XAA09e4dd7c4aa845a57525c44aa563b583329a7d4d8360260695f0cfe3e87f51701ef21c63eb6639a59b40b811301064e217d821cefdf94c2b452ace70510af1c3226d70e6ff4cc3c6d3a50e821cfd76f8e3895ba5f9c6c1f7cca311f87674864b974532bfea98b7b35a83cc7323b3b2eda9638335b1dc5f85c533777fd6f98ca2d9c2b048831dfb6e30166ad37bb8ccef4000a5975843ebf3e81233c07d2767bb4007e0ecd65f28eba6de7cfb6bc4c3daa54d2076a52157ef96e54079e58066043e972c2a5dddf01800aa9864fafcb1ad1b142f51f55227f91f8759c8744e5da6c6da28e95f45b406aebfba6c71c90733967c778713acbb3748cf3d49f6aafee1ea8beef1c0891f7565dc6546c0938348573fc8445f9a01421b5e70f0f1c170b234e98b8381c107ae1944a967e770cc44054688933cb2826127d223a14f9f87729b7594f8e1e8420cf2fb2d5d95e153ece122f7bdd7647575daacdf874235dfe97292c1cc4a4923ff8c717656db26ebd81da5ed3021117889b7a5323fe09ab955a3aa430c058546f4b19cd5f0b00a4fddca4ed27d244b25d07533a7392d499728aabb21b6a6b461e9a228a9fde2485ddb2239f7cfecffd1451b8ac0a6dcd6d12d21387cb81893006d303502e7469e3bec998cfa12ee73d77897919aabd243db3bc1184ec8e078d94d5fbe1b897a80c75d6d8724a4b2d6dee553356107e2c293389c8694eba53c483a609ad8abfac0b3866cbb64d26edf3dcb1b030eb51df4f6a08fb0b5032928df20164769605513592ae43eb21e6e60e73309b9ba50557adfd34e9ee5aa95cd320157c3fec6d0da932e37521a3d49138d0b631b23d14970d28c6c6c2adb66c8886269598e7edb68d8d745de671dbbcb9f9ede93e5481f44b0d9247dcbf7c1ed0117cb4e24388fc68c4c9642c82c4ee3bbaf18a072ff3da11789aa36bf16bb9c1bee506b980d0247dbcaaf95172d630486634764abb083ef2d1819a76bb31d085028ece98f309e6eb513a5fde1d33d9a43d1f1ee3f36e7b6a7917df8b5455d3ede840bf52b6fe016b1b3e49d6f25fe4d01c2d936c8724f11d4f591e3070a54c12e7bf0f0b5160e2969d5a317f80fefc0b24bcc8fe1e08a51c67dd643a59e40a2467d3c667e4a0ce998cbc53a67f0c0dc7468b2aadcbb1460c1c075baac8727366b628fc8aa6b004331f6520391ef0ab631b2aee5b77b084842543083ec3e2f08ce5c85005f847f063859dfa3e654653baed68efe950dedc1d1d5fac463c910282dc3464d4a516f8e4d47f7f578db6e3c0cc6a87939c7d28d31f188e008399700050bc112d5ca339b365b82b234119144b6e8eed9da8337e778f692b38a1315148378b255188c27162769080e86de4d1d6d33752605a4f0c4c3511c555933678749df51b4f6a332727dc9b93625ac848b0ac29fe9b3a93a0c3b9fda5c50c9e4ea21d38e4afec35764d901874770a476cfd9196a70a573a085f632f2ea0353f57f07225ae8acd2480cabc18f95163d115bf55eabb5727d23d34efc351287e84a363a32f7592bb61571e66e75c27f857e53d70cb7609f437b3ce85a8feca26d0290214d0b443ef61488363c4b646f2e9c5d931833428516c12a88cf621bb0e7ae3e2d8cdf8a8cf91038738e606269eadaccab6668bf9d6086543a4f1816d815ddb627816443d7ad942fc04b4b02755fd3888c1b37390d8b56a5fbb63ad5dbda2bc2c158c4342ea3b8719fb1a5e6cfcf2efb6ea4f52a7e59a66d95e0b814dc98c91fd415931872b1d6fef3372a743bbcf68a80394ec98a243201f255965b422f8ac02a60b5a8a6467a79faef34789738c42db71adbe2680440b1deaffb3adb1ff1e8cba97ace1279908c21666654f92684e80c202c75be180a1cd05f5eb04f522920bdfa38abf1b84ec8e04f08e82347044fa2a328a2444c3273bf698d9298b3ef097e7a6fad7fda25611ce7fafe0da71e007ba507c2fedd768e4606136e945b417df90be20db69260f6403c8b4afd65df585eb119c4bce6980b789bf5d75c96c41ab0b43ca89f8e32325dd16eaa74672fef7312d3360266b7cc875bcd82547138ae4271ecce43103fa5da2830b6fe764540e1c279bde513174e4eabc0f29ee4228d6d8267500934ad003d822795069ada8affe79aa3a702b20334ac3bb36481754ecacc18e9149b914474df3919268a77e99a567b57fb5040eb8c922689ec163a246d270d75a48afe675745a0e5d9ba7e6c561292bf4764606e0cbbcbb1e0e0cd9ce9d8384fec6bb2a0df001c017cb87cb278107a7241de7849e2087c4c552594aeda2a5c73c1ad0802a24f96c6080fa15d1aa06da2aac3f7d82030570f5abefd2deecd4917ef29f6ed31e928d4e393f96acd3a847811cd413e0b972364d846910b42f5669943fde144a7bcf60994270c1abe479d1b04dc1f2b1a44eaa7bdd9ece51d1bded654a9a39c33952969607799ff9041900ab289f73ee4d406315e77c4f8839c4f0b0c1c5c2f9ad40426f6f0fbfb0d56d7c405e2d802403b12266fcf919ca3b3bed0c8ed4cd55cbaae150947bc07ae13466bc451c0dee5ec22aef922eeee8cee944a1ecc366deb18ff91bdc225e4c29b433952e11dafe8354b59285ccf9e51f2edcda183d343af65c76e5343d1ff0d0327402666e037e7adfed30b422c012d1cfbcbb3d75e561b7df8a83cfcf84598d1cd9b69d49ec2f001fb6bb9bf8bf60d01c06722f07c4d9b31a3970e5c9704d05982668d4943f1199e869e00617a2b443c43c7f0bc1d971470236506150e0dbc850b8b3e5cf1632d66a7c2e9c929c0fa8235cb7a261a81c5338ce5a6c98e863803942240910d0eb3cbab0500170ddc8980f0a27fca678a654bd9b5903e48016b42c32634716faa5868b213b2eb983733e669998086eed68a58a23e2c9d9c4d05aa3b8d6010dc32251b6ff34171db67648112f2843033ae001f8b6fe8282433afebc3f3df11c11cebf58e0e46a62cd367643fe2ab9c6f9fa2684c89d82b5d57e2426d8ddeec121782d4ba25aca18e26afd1dd38b903ab30dfe96c6db7f0a721a02d8ad7e08c1439fe13a2ddf9f34abe6dd20861e06de68379a5daf63b1d09467d16b9f79b483cfb25abe0048db306374e353af3c4f7ee30372a006df85d2354a437629323509dc191116b540332785a3d4f084b6531695410c3178680b0a94632643d2d212c678aee714cd736cea9426ef36c189f3aa007f9a5dc8e1a71db115f9b3c126603439254a5878567068117b9a71cde9a77b7cc5204791aef4247d5c8b20ddd065db455c71c2b5b2e1f1643b28c309b4f787ce2753b35ed58b1431b316f29c7561e805fad22c000e9a45b6754369dca57b8e347441f5cdfb5fd97407bb6fb6626caba9ae6c9a0834776ade0130978d50b463f4a284e3acfa8ecff38925069b4aec0aee9e359698c7c8ff10975bbf32333943c3123c313fc34f1752cef0b7281ed17da4a2221d0922fc82dcc7149b86c939863d4f7d1177b3ee66d278e362f150e75ea5faedb00010000012c4064",
+  "val:rngstate|FX-02|twoway (function y=runiform(), range(0 2) n(3)) (function y=nosuch(x)), nodraw": "XAA09e4dd7c4aa845a57525c44aa563b583329a7d4d8360260695f0cfe3e87f51701ef21c63eb6639a59b40b811301064e217d821cefdf94c2b452ace70510af1c3226d70e6ff4cc3c6d3a50e821cfd76f8e3895ba5f9c6c1f7cca311f87674864b974532bfea98b7b35a83cc7323b3b2eda9638335b1dc5f85c533777fd6f98ca2d9c2b048831dfb6e30166ad37bb8ccef4000a5975843ebf3e81233c07d2767bb4007e0ecd65f28eba6de7cfb6bc4c3daa54d2076a52157ef96e54079e58066043e972c2a5dddf01800aa9864fafcb1ad1b142f51f55227f91f8759c8744e5da6c6da28e95f45b406aebfba6c71c90733967c778713acbb3748cf3d49f6aafee1ea8beef1c0891f7565dc6546c0938348573fc8445f9a01421b5e70f0f1c170b234e98b8381c107ae1944a967e770cc44054688933cb2826127d223a14f9f87729b7594f8e1e8420cf2fb2d5d95e153ece122f7bdd7647575daacdf874235dfe97292c1cc4a4923ff8c717656db26ebd81da5ed3021117889b7a5323fe09ab955a3aa430c058546f4b19cd5f0b00a4fddca4ed27d244b25d07533a7392d499728aabb21b6a6b461e9a228a9fde2485ddb2239f7cfecffd1451b8ac0a6dcd6d12d21387cb81893006d303502e7469e3bec998cfa12ee73d77897919aabd243db3bc1184ec8e078d94d5fbe1b897a80c75d6d8724a4b2d6dee553356107e2c293389c8694eba53c483a609ad8abfac0b3866cbb64d26edf3dcb1b030eb51df4f6a08fb0b5032928df20164769605513592ae43eb21e6e60e73309b9ba50557adfd34e9ee5aa95cd320157c3fec6d0da932e37521a3d49138d0b631b23d14970d28c6c6c2adb66c8886269598e7edb68d8d745de671dbbcb9f9ede93e5481f44b0d9247dcbf7c1ed0117cb4e24388fc68c4c9642c82c4ee3bbaf18a072ff3da11789aa36bf16bb9c1bee506b980d0247dbcaaf95172d630486634764abb083ef2d1819a76bb31d085028ece98f309e6eb513a5fde1d33d9a43d1f1ee3f36e7b6a7917df8b5455d3ede840bf52b6fe016b1b3e49d6f25fe4d01c2d936c8724f11d4f591e3070a54c12e7bf0f0b5160e2969d5a317f80fefc0b24bcc8fe1e08a51c67dd643a59e40a2467d3c667e4a0ce998cbc53a67f0c0dc7468b2aadcbb1460c1c075baac8727366b628fc8aa6b004331f6520391ef0ab631b2aee5b77b084842543083ec3e2f08ce5c85005f847f063859dfa3e654653baed68efe950dedc1d1d5fac463c910282dc3464d4a516f8e4d47f7f578db6e3c0cc6a87939c7d28d31f188e008399700050bc112d5ca339b365b82b234119144b6e8eed9da8337e778f692b38a1315148378b255188c27162769080e86de4d1d6d33752605a4f0c4c3511c555933678749df51b4f6a332727dc9b93625ac848b0ac29fe9b3a93a0c3b9fda5c50c9e4ea21d38e4afec35764d901874770a476cfd9196a70a573a085f632f2ea0353f57f07225ae8acd2480cabc18f95163d115bf55eabb5727d23d34efc351287e84a363a32f7592bb61571e66e75c27f857e53d70cb7609f437b3ce85a8feca26d0290214d0b443ef61488363c4b646f2e9c5d931833428516c12a88cf621bb0e7ae3e2d8cdf8a8cf91038738e606269eadaccab6668bf9d6086543a4f1816d815ddb627816443d7ad942fc04b4b02755fd3888c1b37390d8b56a5fbb63ad5dbda2bc2c158c4342ea3b8719fb1a5e6cfcf2efb6ea4f52a7e59a66d95e0b814dc98c91fd415931872b1d6fef3372a743bbcf68a80394ec98a243201f255965b422f8ac02a60b5a8a6467a79faef34789738c42db71adbe2680440b1deaffb3adb1ff1e8cba97ace1279908c21666654f92684e80c202c75be180a1cd05f5eb04f522920bdfa38abf1b84ec8e04f08e82347044fa2a328a2444c3273bf698d9298b3ef097e7a6fad7fda25611ce7fafe0da71e007ba507c2fedd768e4606136e945b417df90be20db69260f6403c8b4afd65df585eb119c4bce6980b789bf5d75c96c41ab0b43ca89f8e32325dd16eaa74672fef7312d3360266b7cc875bcd82547138ae4271ecce43103fa5da2830b6fe764540e1c279bde513174e4eabc0f29ee4228d6d8267500934ad003d822795069ada8affe79aa3a702b20334ac3bb36481754ecacc18e9149b914474df3919268a77e99a567b57fb5040eb8c922689ec163a246d270d75a48afe675745a0e5d9ba7e6c561292bf4764606e0cbbcbb1e0e0cd9ce9d8384fec6bb2a0df001c017cb87cb278107a7241de7849e2087c4c552594aeda2a5c73c1ad0802a24f96c6080fa15d1aa06da2aac3f7d82030570f5abefd2deecd4917ef29f6ed31e928d4e393f96acd3a847811cd413e0b972364d846910b42f5669943fde144a7bcf60994270c1abe479d1b04dc1f2b1a44eaa7bdd9ece51d1bded654a9a39c33952969607799ff9041900ab289f73ee4d406315e77c4f8839c4f0b0c1c5c2f9ad40426f6f0fbfb0d56d7c405e2d802403b12266fcf919ca3b3bed0c8ed4cd55cbaae150947bc07ae13466bc451c0dee5ec22aef922eeee8cee944a1ecc366deb18ff91bdc225e4c29b433952e11dafe8354b59285ccf9e51f2edcda183d343af65c76e5343d1ff0d0327402666e037e7adfed30b422c012d1cfbcbb3d75e561b7df8a83cfcf84598d1cd9b69d49ec2f001fb6bb9bf8bf60d01c06722f07c4d9b31a3970e5c9704d05982668d4943f1199e869e00617a2b443c43c7f0bc1d971470236506150e0dbc850b8b3e5cf1632d66a7c2e9c929c0fa8235cb7a261a81c5338ce5a6c98e863803942240910d0eb3cbab0500170ddc8980f0a27fca678a654bd9b5903e48016b42c32634716faa5868b213b2eb983733e669998086eed68a58a23e2c9d9c4d05aa3b8d6010dc32251b6ff34171db67648112f2843033ae001f8b6fe8282433afebc3f3df11c11cebf58e0e46a62cd367643fe2ab9c6f9fa2684c89d82b5d57e2426d8ddeec121782d4ba25aca18e26afd1dd38b903ab30dfe96c6db7f0a721a02d8ad7e08c1439fe13a2ddf9f34abe6dd20861e06de68379a5daf63b1d09467d16b9f79b483cfb25abe0048db306374e353af3c4f7ee30372a006df85d2354a437629323509dc191116b540332785a3d4f084b6531695410c3178680b0a94632643d2d212c678aee714cd736cea9426ef36c189f3aa007f9a5dc8e1a71db115f9b3c126603439254a5878567068117b9a71cde9a77b7cc5204791aef4247d5c8b20ddd065db455c71c2b5b2e1f1643b28c309b4f787ce2753b35ed58b1431b316f29c7561e805fad22c000e9a45b6754369dca57b8e347441f5cdfb5fd97407bb6fb6626caba9ae6c9a0834776ade0130978d50b463f4a284e3acfa8ecff38925069b4aec0aee9e359698c7c8ff10975bbf32333943c3123c313fc34f1752cef0b7281ed17da4a2221d0922fc82dcc7149b86c939863d4f7d1177b3ee66d278e362f150e75ea5faedb0001000000033c35",
+  "val:rngstate|FX-02|twoway (function y=x**2) (scatter mpg weight), by(nosuchv) nodraw": "XAA0000000001352889ccb030a7d9311716068de15e334d79b3930d35b26d2d317acb48fc9c07543a1ce725d7ca1aae9878a132984591ecd2a5257eb85a5254e0629f892df645460f42bceb0d35cf216e496e695e99743e9839ce15211bb51c89e3dd562fa2bdca5c6c57a3b17e810850906ae4e47ebed3188be82b9f5a8499c651e2c5c37c5e248a7a74c45f36318b5e56bff2568595efbe5dbb6eee9e4be097c6a7aecdb246d8e9885ef3d052f54e83579881ea150b02c034af40115134449395ee22f979f028daa3f15d2f623ac3ce398ad5eccdb77c064cb3c6bef49b53cdd1cad17d0650a5db3354b8912947d4578d09dfab147c3dd7ba54551bf84c2631d116f6c301137cf1b0c1897b44544ccc1106d075470936cd4ce5420342dbb6ca7f54b8ab0cf7c11bf0343fa53e29137882fbf3a9439cdead0057b7fa33a1b7e6ae7f17a995e09f5debcfc5c08caccc984bc5595765e16a7cd29517dc8225489fe8d5a0ba40204b324e7615e7871dfd0ab63dd99c415e4eab598c1e1693c1a245d4ecc563d4b7b970ce008c47fdcddf873ae6becd3001228b64882379990d2d9a4e77ae12264ecbd3903ca5f5c1272e1fb26fc7beef0f6ee0809cd77989aef275e44b026a8aeff9d3a650dfdf11e31d0d948d0c4cf279914e6b6f0d923d438ddfb046cb8f60ffee21596ed4b6fba79e84b5a2b384b0c7769fe21498efe8768a3a9feddf6079bbec2f337f72e389eadd1bb111045f9b570a2e32bb1753ea14ceed0dd73762ebbdb51ce75ad9e99eb2df3059e0d3895b6d6f27be463e52139e41bf8047f967c131a4a8f51fad1e792fc6bf2df3a7c8589ff7ee3346bf8363ffaeaebb440c5fa884a4fcfe14ea1e631eedfa205575a228938ad7ee8e617b4172a286529c4df6e7b3c34c603e8ec97b09430b8b972e431adf69fcc1dba1ea8fdb852b9a111964897316913934ec6685df2fce5a05269528c527ec2824ccaf59c9745b5f9ba2c5458513310bdb67838c1ff015eeef953f61d7056e03de41c6af8386565b2d157b6424aad5d4ef1313f8967fc2a168d9f9fa364d94d8863fb36916c7d184a25accd4dd0f4eee8aae9fe87333f3ddaca650d92ae87f95cdbc4b33f90d56ee3dc716eb5968db0d4537d91216aaf4ae1665e254294ad429ffc628060944a29c8252eed58848775bd5748e65cabf220e7fbba71d230e6fb3e992cf5d2d8cf0b54f38cf760f1e9a6a5f860cb77b433a3c4de2568b063680274439b8f6ff45611df60ffa301faaf65c3544e483fa9170243f84aec6272692c6b04dc81539d60741d33309ed7638843b73e0c061661f064d6474541191cfcfd2810ab22a5370358eefbb0aa60fc5de14f83c2328065873843190f7b1506f4835b49890981b3afccc8eab04d758aea2b2ae937dba29d7e96d76a3bcf6495d1a010acc4e983743927f50985a513478c1d341d5c70b489b406b61ab4a1ebdf0e924e76e9991958b5704306997f224bdc5bfc70d5d8666a08418111c74ed93779e4570c657a7ddb40da81303a80d6aca3e3d25b2793f6fee3442813cbd6fdb35ee24aa53782e2dbdb73920686bff51967aeb98b865bd4d3530dcc827b5114ecdb994f81ae683c21e891a7059dc547cee80f59c6664d1c5e9b775c0770978d85c497dd553f441ff046db99c43fcf61b789046410d82d7cb5718899ff932b09aa2c87e129547d1703ec26362b90423651648ff790aa9a8b6f6d73f3fb738e44d41988056a08168e1af4f1b09e4dd7c6630ce2ea67fb343d5a310b331dc8de2b5f6bebbdc76553aebd54c7e7b56622de63175995dd03cae9180145947416dec14d33c1a5795925d73a9f662d8ab894771ba6d0b38d2e7424f84230d61bf9bb3ca2e9cefaba98175a891a87df9ee256eaa1c9ffbc4507b96d5bc274129139e505af6a544b126b8d2b9ebc99fa8a051f69bd85445bf762a12d8290a281ff98ed5bdb3a010b5a5448f5e4b137fa6d2e96f459e70a989a794d22e45a3c05c0fba26966507cc7447278bf4f212bcfc843fcc29da0eed78040fd5e142b28beb7cb66d919dd8f8f36669e8b57aa9d616b0f930d5c9862984e3f2f8cfd7ecee2791cd579cd9ba3662e5b0b5ff14863954f2e02bc3c960940518d8e4c408e5eee1559dbd5b277d9469ff71518a21fd4a1eb5de05d548bbef035b7bf8e91f9ac478bf5c32ec697136b90bb1e216b6306e11fc2f689ee817c09519cd1be5546d85838e5c0f05c03a81902731c6521046ce18429cec44b7a6a40279eacfdd67a79d0349231081c05a63f1aa39763b460132d5c8f2e6636a8569b1daf60e709b0a6fb911b4e522dde8f731221bf58a2c7ee0916c28a5b5236e30bc7a531d65ff2d9b15da28b87b86ebb755e17c622b2a38fe04b949fd691d86a7ad58823513308530df0adc6bcfb538a015153cefc4d2d27e577fe6221ad182fe68d440f4993b88ac89dc89a660f5da43ec7b79a956529d485f6b4b8df934dc0b5f23a96f1145a49fd13b24454dde52a4f38ac81aaa48613a51296b2c59215ee53b2b9daf23a4caf5945776b3e14038f39fa4fc0324ce9240d8603910ab48747eed171ea0f6477ddefb83914b9fa2c3bf4044e2608b22acf34e6a050f29be7572632c814f52adb3206f64b609c29adcb799a358e886a516e9df595fdeac2a9d3b610b2fdf89146bc5ddd5e9a123212e62c072e8e26d4c46fca2ba0d52140bfcc34a1dab4fe0d42dde180432e3aed8b225e0009346e800ac7454760911d2f05adf345821ac1c8a1bfb67351139553f71159ecedc6135e3cd7bde7067adff67263d7c7ca293bb307bdfd0f193d8f52ee9009a2911c6e196738275cc0e3a843ece7c00a595b8b23b4ff6f544d0635346193c1f53ab23cf83b212c8a02eebcbf73c2aabfffd99b12aeb36ce0896dac47e2526784ba7e2b922e3843493dbedc269fa655070820378a21fc6d8dc2d3b35165001da2cd0d58fc70f61171f8b8512a953421fc13685557b61a34c50a24b73ff07b1ace24976a214aafb81c39ed12d6095d15cef3810bc1d04245d3540e2dbb1168f455db297c0f76a05547be3958d699fc4f8e2b5fabb7cd1b2b0881e1978fcac2fae5c8396300597fce56e0f401638baba7b496642a6479a9a10c6fd06c08013552f6a4de8dc939208ee02b4025a0aa480b3ff2724bfbae9203765948d364cda142f8dfbbf8956429f471212bbe9c1980faea01d46c99cad93b792d5ab3c0a729bacc586e1dbbd0d04eadec8aac62f452e8c6c6d4be8d17d0a871b2c4bff81f38a26d436f47fd0480b3c9353eefdc12013e5801729b8eb117c805e4e6801eb1579574b4c0efa91ccc69fd89792a40ab92347180c28b3eeeaf62f77b5a63d52d795fa4d990d963bd15cef35319725acefdf24bbd1cb55704ed9b55b820c0c288453021667404be8726ce3354934517bb22c44c516c6597ea474b1fc835d02f1f4c38b71c1394d48c620be8b369119dfb32ef8b17a77ded153f10f3f3ce7b74ad0c0de7a3eedd575f2f70001000001380807",
+  "val:rngstate|FX-02|twoway (function y=x**2) (scatter mpg weight, badopt), nodraw": "XAA0000000001352889ccb030a7d9311716068de15e334d79b3930d35b26d2d317acb48fc9c07543a1ce725d7ca1aae9878a132984591ecd2a5257eb85a5254e0629f892df645460f42bceb0d35cf216e496e695e99743e9839ce15211bb51c89e3dd562fa2bdca5c6c57a3b17e810850906ae4e47ebed3188be82b9f5a8499c651e2c5c37c5e248a7a74c45f36318b5e56bff2568595efbe5dbb6eee9e4be097c6a7aecdb246d8e9885ef3d052f54e83579881ea150b02c034af40115134449395ee22f979f028daa3f15d2f623ac3ce398ad5eccdb77c064cb3c6bef49b53cdd1cad17d0650a5db3354b8912947d4578d09dfab147c3dd7ba54551bf84c2631d116f6c301137cf1b0c1897b44544ccc1106d075470936cd4ce5420342dbb6ca7f54b8ab0cf7c11bf0343fa53e29137882fbf3a9439cdead0057b7fa33a1b7e6ae7f17a995e09f5debcfc5c08caccc984bc5595765e16a7cd29517dc8225489fe8d5a0ba40204b324e7615e7871dfd0ab63dd99c415e4eab598c1e1693c1a245d4ecc563d4b7b970ce008c47fdcddf873ae6becd3001228b64882379990d2d9a4e77ae12264ecbd3903ca5f5c1272e1fb26fc7beef0f6ee0809cd77989aef275e44b026a8aeff9d3a650dfdf11e31d0d948d0c4cf279914e6b6f0d923d438ddfb046cb8f60ffee21596ed4b6fba79e84b5a2b384b0c7769fe21498efe8768a3a9feddf6079bbec2f337f72e389eadd1bb111045f9b570a2e32bb1753ea14ceed0dd73762ebbdb51ce75ad9e99eb2df3059e0d3895b6d6f27be463e52139e41bf8047f967c131a4a8f51fad1e792fc6bf2df3a7c8589ff7ee3346bf8363ffaeaebb440c5fa884a4fcfe14ea1e631eedfa205575a228938ad7ee8e617b4172a286529c4df6e7b3c34c603e8ec97b09430b8b972e431adf69fcc1dba1ea8fdb852b9a111964897316913934ec6685df2fce5a05269528c527ec2824ccaf59c9745b5f9ba2c5458513310bdb67838c1ff015eeef953f61d7056e03de41c6af8386565b2d157b6424aad5d4ef1313f8967fc2a168d9f9fa364d94d8863fb36916c7d184a25accd4dd0f4eee8aae9fe87333f3ddaca650d92ae87f95cdbc4b33f90d56ee3dc716eb5968db0d4537d91216aaf4ae1665e254294ad429ffc628060944a29c8252eed58848775bd5748e65cabf220e7fbba71d230e6fb3e992cf5d2d8cf0b54f38cf760f1e9a6a5f860cb77b433a3c4de2568b063680274439b8f6ff45611df60ffa301faaf65c3544e483fa9170243f84aec6272692c6b04dc81539d60741d33309ed7638843b73e0c061661f064d6474541191cfcfd2810ab22a5370358eefbb0aa60fc5de14f83c2328065873843190f7b1506f4835b49890981b3afccc8eab04d758aea2b2ae937dba29d7e96d76a3bcf6495d1a010acc4e983743927f50985a513478c1d341d5c70b489b406b61ab4a1ebdf0e924e76e9991958b5704306997f224bdc5bfc70d5d8666a08418111c74ed93779e4570c657a7ddb40da81303a80d6aca3e3d25b2793f6fee3442813cbd6fdb35ee24aa53782e2dbdb73920686bff51967aeb98b865bd4d3530dcc827b5114ecdb994f81ae683c21e891a7059dc547cee80f59c6664d1c5e9b775c0770978d85c497dd553f441ff046db99c43fcf61b789046410d82d7cb5718899ff932b09aa2c87e129547d1703ec26362b90423651648ff790aa9a8b6f6d73f3fb738e44d41988056a08168e1af4f1b09e4dd7c6630ce2ea67fb343d5a310b331dc8de2b5f6bebbdc76553aebd54c7e7b56622de63175995dd03cae9180145947416dec14d33c1a5795925d73a9f662d8ab894771ba6d0b38d2e7424f84230d61bf9bb3ca2e9cefaba98175a891a87df9ee256eaa1c9ffbc4507b96d5bc274129139e505af6a544b126b8d2b9ebc99fa8a051f69bd85445bf762a12d8290a281ff98ed5bdb3a010b5a5448f5e4b137fa6d2e96f459e70a989a794d22e45a3c05c0fba26966507cc7447278bf4f212bcfc843fcc29da0eed78040fd5e142b28beb7cb66d919dd8f8f36669e8b57aa9d616b0f930d5c9862984e3f2f8cfd7ecee2791cd579cd9ba3662e5b0b5ff14863954f2e02bc3c960940518d8e4c408e5eee1559dbd5b277d9469ff71518a21fd4a1eb5de05d548bbef035b7bf8e91f9ac478bf5c32ec697136b90bb1e216b6306e11fc2f689ee817c09519cd1be5546d85838e5c0f05c03a81902731c6521046ce18429cec44b7a6a40279eacfdd67a79d0349231081c05a63f1aa39763b460132d5c8f2e6636a8569b1daf60e709b0a6fb911b4e522dde8f731221bf58a2c7ee0916c28a5b5236e30bc7a531d65ff2d9b15da28b87b86ebb755e17c622b2a38fe04b949fd691d86a7ad58823513308530df0adc6bcfb538a015153cefc4d2d27e577fe6221ad182fe68d440f4993b88ac89dc89a660f5da43ec7b79a956529d485f6b4b8df934dc0b5f23a96f1145a49fd13b24454dde52a4f38ac81aaa48613a51296b2c59215ee53b2b9daf23a4caf5945776b3e14038f39fa4fc0324ce9240d8603910ab48747eed171ea0f6477ddefb83914b9fa2c3bf4044e2608b22acf34e6a050f29be7572632c814f52adb3206f64b609c29adcb799a358e886a516e9df595fdeac2a9d3b610b2fdf89146bc5ddd5e9a123212e62c072e8e26d4c46fca2ba0d52140bfcc34a1dab4fe0d42dde180432e3aed8b225e0009346e800ac7454760911d2f05adf345821ac1c8a1bfb67351139553f71159ecedc6135e3cd7bde7067adff67263d7c7ca293bb307bdfd0f193d8f52ee9009a2911c6e196738275cc0e3a843ece7c00a595b8b23b4ff6f544d0635346193c1f53ab23cf83b212c8a02eebcbf73c2aabfffd99b12aeb36ce0896dac47e2526784ba7e2b922e3843493dbedc269fa655070820378a21fc6d8dc2d3b35165001da2cd0d58fc70f61171f8b8512a953421fc13685557b61a34c50a24b73ff07b1ace24976a214aafb81c39ed12d6095d15cef3810bc1d04245d3540e2dbb1168f455db297c0f76a05547be3958d699fc4f8e2b5fabb7cd1b2b0881e1978fcac2fae5c8396300597fce56e0f401638baba7b496642a6479a9a10c6fd06c08013552f6a4de8dc939208ee02b4025a0aa480b3ff2724bfbae9203765948d364cda142f8dfbbf8956429f471212bbe9c1980faea01d46c99cad93b792d5ab3c0a729bacc586e1dbbd0d04eadec8aac62f452e8c6c6d4be8d17d0a871b2c4bff81f38a26d436f47fd0480b3c9353eefdc12013e5801729b8eb117c805e4e6801eb1579574b4c0efa91ccc69fd89792a40ab92347180c28b3eeeaf62f77b5a63d52d795fa4d990d963bd15cef35319725acefdf24bbd1cb55704ed9b55b820c0c288453021667404be8726ce3354934517bb22c44c516c6597ea474b1fc835d02f1f4c38b71c1394d48c620be8b369119dfb32ef8b17a77ded153f10f3f3ce7b74ad0c0de7a3eedd575f2f70001000001380807",
+  "val:rngstate|FX-02|twoway (function y=x**2) (scatter nosuch weight), nodraw": "XAA0000000001352889ccb030a7d9311716068de15e334d79b3930d35b26d2d317acb48fc9c07543a1ce725d7ca1aae9878a132984591ecd2a5257eb85a5254e0629f892df645460f42bceb0d35cf216e496e695e99743e9839ce15211bb51c89e3dd562fa2bdca5c6c57a3b17e810850906ae4e47ebed3188be82b9f5a8499c651e2c5c37c5e248a7a74c45f36318b5e56bff2568595efbe5dbb6eee9e4be097c6a7aecdb246d8e9885ef3d052f54e83579881ea150b02c034af40115134449395ee22f979f028daa3f15d2f623ac3ce398ad5eccdb77c064cb3c6bef49b53cdd1cad17d0650a5db3354b8912947d4578d09dfab147c3dd7ba54551bf84c2631d116f6c301137cf1b0c1897b44544ccc1106d075470936cd4ce5420342dbb6ca7f54b8ab0cf7c11bf0343fa53e29137882fbf3a9439cdead0057b7fa33a1b7e6ae7f17a995e09f5debcfc5c08caccc984bc5595765e16a7cd29517dc8225489fe8d5a0ba40204b324e7615e7871dfd0ab63dd99c415e4eab598c1e1693c1a245d4ecc563d4b7b970ce008c47fdcddf873ae6becd3001228b64882379990d2d9a4e77ae12264ecbd3903ca5f5c1272e1fb26fc7beef0f6ee0809cd77989aef275e44b026a8aeff9d3a650dfdf11e31d0d948d0c4cf279914e6b6f0d923d438ddfb046cb8f60ffee21596ed4b6fba79e84b5a2b384b0c7769fe21498efe8768a3a9feddf6079bbec2f337f72e389eadd1bb111045f9b570a2e32bb1753ea14ceed0dd73762ebbdb51ce75ad9e99eb2df3059e0d3895b6d6f27be463e52139e41bf8047f967c131a4a8f51fad1e792fc6bf2df3a7c8589ff7ee3346bf8363ffaeaebb440c5fa884a4fcfe14ea1e631eedfa205575a228938ad7ee8e617b4172a286529c4df6e7b3c34c603e8ec97b09430b8b972e431adf69fcc1dba1ea8fdb852b9a111964897316913934ec6685df2fce5a05269528c527ec2824ccaf59c9745b5f9ba2c5458513310bdb67838c1ff015eeef953f61d7056e03de41c6af8386565b2d157b6424aad5d4ef1313f8967fc2a168d9f9fa364d94d8863fb36916c7d184a25accd4dd0f4eee8aae9fe87333f3ddaca650d92ae87f95cdbc4b33f90d56ee3dc716eb5968db0d4537d91216aaf4ae1665e254294ad429ffc628060944a29c8252eed58848775bd5748e65cabf220e7fbba71d230e6fb3e992cf5d2d8cf0b54f38cf760f1e9a6a5f860cb77b433a3c4de2568b063680274439b8f6ff45611df60ffa301faaf65c3544e483fa9170243f84aec6272692c6b04dc81539d60741d33309ed7638843b73e0c061661f064d6474541191cfcfd2810ab22a5370358eefbb0aa60fc5de14f83c2328065873843190f7b1506f4835b49890981b3afccc8eab04d758aea2b2ae937dba29d7e96d76a3bcf6495d1a010acc4e983743927f50985a513478c1d341d5c70b489b406b61ab4a1ebdf0e924e76e9991958b5704306997f224bdc5bfc70d5d8666a08418111c74ed93779e4570c657a7ddb40da81303a80d6aca3e3d25b2793f6fee3442813cbd6fdb35ee24aa53782e2dbdb73920686bff51967aeb98b865bd4d3530dcc827b5114ecdb994f81ae683c21e891a7059dc547cee80f59c6664d1c5e9b775c0770978d85c497dd553f441ff046db99c43fcf61b789046410d82d7cb5718899ff932b09aa2c87e129547d1703ec26362b90423651648ff790aa9a8b6f6d73f3fb738e44d41988056a08168e1af4f1b09e4dd7c6630ce2ea67fb343d5a310b331dc8de2b5f6bebbdc76553aebd54c7e7b56622de63175995dd03cae9180145947416dec14d33c1a5795925d73a9f662d8ab894771ba6d0b38d2e7424f84230d61bf9bb3ca2e9cefaba98175a891a87df9ee256eaa1c9ffbc4507b96d5bc274129139e505af6a544b126b8d2b9ebc99fa8a051f69bd85445bf762a12d8290a281ff98ed5bdb3a010b5a5448f5e4b137fa6d2e96f459e70a989a794d22e45a3c05c0fba26966507cc7447278bf4f212bcfc843fcc29da0eed78040fd5e142b28beb7cb66d919dd8f8f36669e8b57aa9d616b0f930d5c9862984e3f2f8cfd7ecee2791cd579cd9ba3662e5b0b5ff14863954f2e02bc3c960940518d8e4c408e5eee1559dbd5b277d9469ff71518a21fd4a1eb5de05d548bbef035b7bf8e91f9ac478bf5c32ec697136b90bb1e216b6306e11fc2f689ee817c09519cd1be5546d85838e5c0f05c03a81902731c6521046ce18429cec44b7a6a40279eacfdd67a79d0349231081c05a63f1aa39763b460132d5c8f2e6636a8569b1daf60e709b0a6fb911b4e522dde8f731221bf58a2c7ee0916c28a5b5236e30bc7a531d65ff2d9b15da28b87b86ebb755e17c622b2a38fe04b949fd691d86a7ad58823513308530df0adc6bcfb538a015153cefc4d2d27e577fe6221ad182fe68d440f4993b88ac89dc89a660f5da43ec7b79a956529d485f6b4b8df934dc0b5f23a96f1145a49fd13b24454dde52a4f38ac81aaa48613a51296b2c59215ee53b2b9daf23a4caf5945776b3e14038f39fa4fc0324ce9240d8603910ab48747eed171ea0f6477ddefb83914b9fa2c3bf4044e2608b22acf34e6a050f29be7572632c814f52adb3206f64b609c29adcb799a358e886a516e9df595fdeac2a9d3b610b2fdf89146bc5ddd5e9a123212e62c072e8e26d4c46fca2ba0d52140bfcc34a1dab4fe0d42dde180432e3aed8b225e0009346e800ac7454760911d2f05adf345821ac1c8a1bfb67351139553f71159ecedc6135e3cd7bde7067adff67263d7c7ca293bb307bdfd0f193d8f52ee9009a2911c6e196738275cc0e3a843ece7c00a595b8b23b4ff6f544d0635346193c1f53ab23cf83b212c8a02eebcbf73c2aabfffd99b12aeb36ce0896dac47e2526784ba7e2b922e3843493dbedc269fa655070820378a21fc6d8dc2d3b35165001da2cd0d58fc70f61171f8b8512a953421fc13685557b61a34c50a24b73ff07b1ace24976a214aafb81c39ed12d6095d15cef3810bc1d04245d3540e2dbb1168f455db297c0f76a05547be3958d699fc4f8e2b5fabb7cd1b2b0881e1978fcac2fae5c8396300597fce56e0f401638baba7b496642a6479a9a10c6fd06c08013552f6a4de8dc939208ee02b4025a0aa480b3ff2724bfbae9203765948d364cda142f8dfbbf8956429f471212bbe9c1980faea01d46c99cad93b792d5ab3c0a729bacc586e1dbbd0d04eadec8aac62f452e8c6c6d4be8d17d0a871b2c4bff81f38a26d436f47fd0480b3c9353eefdc12013e5801729b8eb117c805e4e6801eb1579574b4c0efa91ccc69fd89792a40ab92347180c28b3eeeaf62f77b5a63d52d795fa4d990d963bd15cef35319725acefdf24bbd1cb55704ed9b55b820c0c288453021667404be8726ce3354934517bb22c44c516c6597ea474b1fc835d02f1f4c38b71c1394d48c620be8b369119dfb32ef8b17a77ded153f10f3f3ce7b74ad0c0de7a3eedd575f2f70001000001380807",
+  "val:rngstate|FX-02|twoway function y=nosuch(x), n(0) nodraw": "XAA0000000001352889ccb030a7d9311716068de15e334d79b3930d35b26d2d317acb48fc9c07543a1ce725d7ca1aae9878a132984591ecd2a5257eb85a5254e0629f892df645460f42bceb0d35cf216e496e695e99743e9839ce15211bb51c89e3dd562fa2bdca5c6c57a3b17e810850906ae4e47ebed3188be82b9f5a8499c651e2c5c37c5e248a7a74c45f36318b5e56bff2568595efbe5dbb6eee9e4be097c6a7aecdb246d8e9885ef3d052f54e83579881ea150b02c034af40115134449395ee22f979f028daa3f15d2f623ac3ce398ad5eccdb77c064cb3c6bef49b53cdd1cad17d0650a5db3354b8912947d4578d09dfab147c3dd7ba54551bf84c2631d116f6c301137cf1b0c1897b44544ccc1106d075470936cd4ce5420342dbb6ca7f54b8ab0cf7c11bf0343fa53e29137882fbf3a9439cdead0057b7fa33a1b7e6ae7f17a995e09f5debcfc5c08caccc984bc5595765e16a7cd29517dc8225489fe8d5a0ba40204b324e7615e7871dfd0ab63dd99c415e4eab598c1e1693c1a245d4ecc563d4b7b970ce008c47fdcddf873ae6becd3001228b64882379990d2d9a4e77ae12264ecbd3903ca5f5c1272e1fb26fc7beef0f6ee0809cd77989aef275e44b026a8aeff9d3a650dfdf11e31d0d948d0c4cf279914e6b6f0d923d438ddfb046cb8f60ffee21596ed4b6fba79e84b5a2b384b0c7769fe21498efe8768a3a9feddf6079bbec2f337f72e389eadd1bb111045f9b570a2e32bb1753ea14ceed0dd73762ebbdb51ce75ad9e99eb2df3059e0d3895b6d6f27be463e52139e41bf8047f967c131a4a8f51fad1e792fc6bf2df3a7c8589ff7ee3346bf8363ffaeaebb440c5fa884a4fcfe14ea1e631eedfa205575a228938ad7ee8e617b4172a286529c4df6e7b3c34c603e8ec97b09430b8b972e431adf69fcc1dba1ea8fdb852b9a111964897316913934ec6685df2fce5a05269528c527ec2824ccaf59c9745b5f9ba2c5458513310bdb67838c1ff015eeef953f61d7056e03de41c6af8386565b2d157b6424aad5d4ef1313f8967fc2a168d9f9fa364d94d8863fb36916c7d184a25accd4dd0f4eee8aae9fe87333f3ddaca650d92ae87f95cdbc4b33f90d56ee3dc716eb5968db0d4537d91216aaf4ae1665e254294ad429ffc628060944a29c8252eed58848775bd5748e65cabf220e7fbba71d230e6fb3e992cf5d2d8cf0b54f38cf760f1e9a6a5f860cb77b433a3c4de2568b063680274439b8f6ff45611df60ffa301faaf65c3544e483fa9170243f84aec6272692c6b04dc81539d60741d33309ed7638843b73e0c061661f064d6474541191cfcfd2810ab22a5370358eefbb0aa60fc5de14f83c2328065873843190f7b1506f4835b49890981b3afccc8eab04d758aea2b2ae937dba29d7e96d76a3bcf6495d1a010acc4e983743927f50985a513478c1d341d5c70b489b406b61ab4a1ebdf0e924e76e9991958b5704306997f224bdc5bfc70d5d8666a08418111c74ed93779e4570c657a7ddb40da81303a80d6aca3e3d25b2793f6fee3442813cbd6fdb35ee24aa53782e2dbdb73920686bff51967aeb98b865bd4d3530dcc827b5114ecdb994f81ae683c21e891a7059dc547cee80f59c6664d1c5e9b775c0770978d85c497dd553f441ff046db99c43fcf61b789046410d82d7cb5718899ff932b09aa2c87e129547d1703ec26362b90423651648ff790aa9a8b6f6d73f3fb738e44d41988056a08168e1af4f1b09e4dd7c6630ce2ea67fb343d5a310b331dc8de2b5f6bebbdc76553aebd54c7e7b56622de63175995dd03cae9180145947416dec14d33c1a5795925d73a9f662d8ab894771ba6d0b38d2e7424f84230d61bf9bb3ca2e9cefaba98175a891a87df9ee256eaa1c9ffbc4507b96d5bc274129139e505af6a544b126b8d2b9ebc99fa8a051f69bd85445bf762a12d8290a281ff98ed5bdb3a010b5a5448f5e4b137fa6d2e96f459e70a989a794d22e45a3c05c0fba26966507cc7447278bf4f212bcfc843fcc29da0eed78040fd5e142b28beb7cb66d919dd8f8f36669e8b57aa9d616b0f930d5c9862984e3f2f8cfd7ecee2791cd579cd9ba3662e5b0b5ff14863954f2e02bc3c960940518d8e4c408e5eee1559dbd5b277d9469ff71518a21fd4a1eb5de05d548bbef035b7bf8e91f9ac478bf5c32ec697136b90bb1e216b6306e11fc2f689ee817c09519cd1be5546d85838e5c0f05c03a81902731c6521046ce18429cec44b7a6a40279eacfdd67a79d0349231081c05a63f1aa39763b460132d5c8f2e6636a8569b1daf60e709b0a6fb911b4e522dde8f731221bf58a2c7ee0916c28a5b5236e30bc7a531d65ff2d9b15da28b87b86ebb755e17c622b2a38fe04b949fd691d86a7ad58823513308530df0adc6bcfb538a015153cefc4d2d27e577fe6221ad182fe68d440f4993b88ac89dc89a660f5da43ec7b79a956529d485f6b4b8df934dc0b5f23a96f1145a49fd13b24454dde52a4f38ac81aaa48613a51296b2c59215ee53b2b9daf23a4caf5945776b3e14038f39fa4fc0324ce9240d8603910ab48747eed171ea0f6477ddefb83914b9fa2c3bf4044e2608b22acf34e6a050f29be7572632c814f52adb3206f64b609c29adcb799a358e886a516e9df595fdeac2a9d3b610b2fdf89146bc5ddd5e9a123212e62c072e8e26d4c46fca2ba0d52140bfcc34a1dab4fe0d42dde180432e3aed8b225e0009346e800ac7454760911d2f05adf345821ac1c8a1bfb67351139553f71159ecedc6135e3cd7bde7067adff67263d7c7ca293bb307bdfd0f193d8f52ee9009a2911c6e196738275cc0e3a843ece7c00a595b8b23b4ff6f544d0635346193c1f53ab23cf83b212c8a02eebcbf73c2aabfffd99b12aeb36ce0896dac47e2526784ba7e2b922e3843493dbedc269fa655070820378a21fc6d8dc2d3b35165001da2cd0d58fc70f61171f8b8512a953421fc13685557b61a34c50a24b73ff07b1ace24976a214aafb81c39ed12d6095d15cef3810bc1d04245d3540e2dbb1168f455db297c0f76a05547be3958d699fc4f8e2b5fabb7cd1b2b0881e1978fcac2fae5c8396300597fce56e0f401638baba7b496642a6479a9a10c6fd06c08013552f6a4de8dc939208ee02b4025a0aa480b3ff2724bfbae9203765948d364cda142f8dfbbf8956429f471212bbe9c1980faea01d46c99cad93b792d5ab3c0a729bacc586e1dbbd0d04eadec8aac62f452e8c6c6d4be8d17d0a871b2c4bff81f38a26d436f47fd0480b3c9353eefdc12013e5801729b8eb117c805e4e6801eb1579574b4c0efa91ccc69fd89792a40ab92347180c28b3eeeaf62f77b5a63d52d795fa4d990d963bd15cef35319725acefdf24bbd1cb55704ed9b55b820c0c288453021667404be8726ce3354934517bb22c44c516c6597ea474b1fc835d02f1f4c38b71c1394d48c620be8b369119dfb32ef8b17a77ded153f10f3f3ce7b74ad0c0de7a3eedd575f2f70001000001380807",
+  "val:rngstate|FX-02|twoway function y=runiform(), n(0) nodraw": "XAA0000000001352889ccb030a7d9311716068de15e334d79b3930d35b26d2d317acb48fc9c07543a1ce725d7ca1aae9878a132984591ecd2a5257eb85a5254e0629f892df645460f42bceb0d35cf216e496e695e99743e9839ce15211bb51c89e3dd562fa2bdca5c6c57a3b17e810850906ae4e47ebed3188be82b9f5a8499c651e2c5c37c5e248a7a74c45f36318b5e56bff2568595efbe5dbb6eee9e4be097c6a7aecdb246d8e9885ef3d052f54e83579881ea150b02c034af40115134449395ee22f979f028daa3f15d2f623ac3ce398ad5eccdb77c064cb3c6bef49b53cdd1cad17d0650a5db3354b8912947d4578d09dfab147c3dd7ba54551bf84c2631d116f6c301137cf1b0c1897b44544ccc1106d075470936cd4ce5420342dbb6ca7f54b8ab0cf7c11bf0343fa53e29137882fbf3a9439cdead0057b7fa33a1b7e6ae7f17a995e09f5debcfc5c08caccc984bc5595765e16a7cd29517dc8225489fe8d5a0ba40204b324e7615e7871dfd0ab63dd99c415e4eab598c1e1693c1a245d4ecc563d4b7b970ce008c47fdcddf873ae6becd3001228b64882379990d2d9a4e77ae12264ecbd3903ca5f5c1272e1fb26fc7beef0f6ee0809cd77989aef275e44b026a8aeff9d3a650dfdf11e31d0d948d0c4cf279914e6b6f0d923d438ddfb046cb8f60ffee21596ed4b6fba79e84b5a2b384b0c7769fe21498efe8768a3a9feddf6079bbec2f337f72e389eadd1bb111045f9b570a2e32bb1753ea14ceed0dd73762ebbdb51ce75ad9e99eb2df3059e0d3895b6d6f27be463e52139e41bf8047f967c131a4a8f51fad1e792fc6bf2df3a7c8589ff7ee3346bf8363ffaeaebb440c5fa884a4fcfe14ea1e631eedfa205575a228938ad7ee8e617b4172a286529c4df6e7b3c34c603e8ec97b09430b8b972e431adf69fcc1dba1ea8fdb852b9a111964897316913934ec6685df2fce5a05269528c527ec2824ccaf59c9745b5f9ba2c5458513310bdb67838c1ff015eeef953f61d7056e03de41c6af8386565b2d157b6424aad5d4ef1313f8967fc2a168d9f9fa364d94d8863fb36916c7d184a25accd4dd0f4eee8aae9fe87333f3ddaca650d92ae87f95cdbc4b33f90d56ee3dc716eb5968db0d4537d91216aaf4ae1665e254294ad429ffc628060944a29c8252eed58848775bd5748e65cabf220e7fbba71d230e6fb3e992cf5d2d8cf0b54f38cf760f1e9a6a5f860cb77b433a3c4de2568b063680274439b8f6ff45611df60ffa301faaf65c3544e483fa9170243f84aec6272692c6b04dc81539d60741d33309ed7638843b73e0c061661f064d6474541191cfcfd2810ab22a5370358eefbb0aa60fc5de14f83c2328065873843190f7b1506f4835b49890981b3afccc8eab04d758aea2b2ae937dba29d7e96d76a3bcf6495d1a010acc4e983743927f50985a513478c1d341d5c70b489b406b61ab4a1ebdf0e924e76e9991958b5704306997f224bdc5bfc70d5d8666a08418111c74ed93779e4570c657a7ddb40da81303a80d6aca3e3d25b2793f6fee3442813cbd6fdb35ee24aa53782e2dbdb73920686bff51967aeb98b865bd4d3530dcc827b5114ecdb994f81ae683c21e891a7059dc547cee80f59c6664d1c5e9b775c0770978d85c497dd553f441ff046db99c43fcf61b789046410d82d7cb5718899ff932b09aa2c87e129547d1703ec26362b90423651648ff790aa9a8b6f6d73f3fb738e44d41988056a08168e1af4f1b09e4dd7c6630ce2ea67fb343d5a310b331dc8de2b5f6bebbdc76553aebd54c7e7b56622de63175995dd03cae9180145947416dec14d33c1a5795925d73a9f662d8ab894771ba6d0b38d2e7424f84230d61bf9bb3ca2e9cefaba98175a891a87df9ee256eaa1c9ffbc4507b96d5bc274129139e505af6a544b126b8d2b9ebc99fa8a051f69bd85445bf762a12d8290a281ff98ed5bdb3a010b5a5448f5e4b137fa6d2e96f459e70a989a794d22e45a3c05c0fba26966507cc7447278bf4f212bcfc843fcc29da0eed78040fd5e142b28beb7cb66d919dd8f8f36669e8b57aa9d616b0f930d5c9862984e3f2f8cfd7ecee2791cd579cd9ba3662e5b0b5ff14863954f2e02bc3c960940518d8e4c408e5eee1559dbd5b277d9469ff71518a21fd4a1eb5de05d548bbef035b7bf8e91f9ac478bf5c32ec697136b90bb1e216b6306e11fc2f689ee817c09519cd1be5546d85838e5c0f05c03a81902731c6521046ce18429cec44b7a6a40279eacfdd67a79d0349231081c05a63f1aa39763b460132d5c8f2e6636a8569b1daf60e709b0a6fb911b4e522dde8f731221bf58a2c7ee0916c28a5b5236e30bc7a531d65ff2d9b15da28b87b86ebb755e17c622b2a38fe04b949fd691d86a7ad58823513308530df0adc6bcfb538a015153cefc4d2d27e577fe6221ad182fe68d440f4993b88ac89dc89a660f5da43ec7b79a956529d485f6b4b8df934dc0b5f23a96f1145a49fd13b24454dde52a4f38ac81aaa48613a51296b2c59215ee53b2b9daf23a4caf5945776b3e14038f39fa4fc0324ce9240d8603910ab48747eed171ea0f6477ddefb83914b9fa2c3bf4044e2608b22acf34e6a050f29be7572632c814f52adb3206f64b609c29adcb799a358e886a516e9df595fdeac2a9d3b610b2fdf89146bc5ddd5e9a123212e62c072e8e26d4c46fca2ba0d52140bfcc34a1dab4fe0d42dde180432e3aed8b225e0009346e800ac7454760911d2f05adf345821ac1c8a1bfb67351139553f71159ecedc6135e3cd7bde7067adff67263d7c7ca293bb307bdfd0f193d8f52ee9009a2911c6e196738275cc0e3a843ece7c00a595b8b23b4ff6f544d0635346193c1f53ab23cf83b212c8a02eebcbf73c2aabfffd99b12aeb36ce0896dac47e2526784ba7e2b922e3843493dbedc269fa655070820378a21fc6d8dc2d3b35165001da2cd0d58fc70f61171f8b8512a953421fc13685557b61a34c50a24b73ff07b1ace24976a214aafb81c39ed12d6095d15cef3810bc1d04245d3540e2dbb1168f455db297c0f76a05547be3958d699fc4f8e2b5fabb7cd1b2b0881e1978fcac2fae5c8396300597fce56e0f401638baba7b496642a6479a9a10c6fd06c08013552f6a4de8dc939208ee02b4025a0aa480b3ff2724bfbae9203765948d364cda142f8dfbbf8956429f471212bbe9c1980faea01d46c99cad93b792d5ab3c0a729bacc586e1dbbd0d04eadec8aac62f452e8c6c6d4be8d17d0a871b2c4bff81f38a26d436f47fd0480b3c9353eefdc12013e5801729b8eb117c805e4e6801eb1579574b4c0efa91ccc69fd89792a40ab92347180c28b3eeeaf62f77b5a63d52d795fa4d990d963bd15cef35319725acefdf24bbd1cb55704ed9b55b820c0c288453021667404be8726ce3354934517bb22c44c516c6597ea474b1fc835d02f1f4c38b71c1394d48c620be8b369119dfb32ef8b17a77ded153f10f3f3ce7b74ad0c0de7a3eedd575f2f70001000001380807",
+  "val:rngstate|FX-03|twoway function y = runiform(), nodraw": "XAA0ea48d22ba7b89f8e4e7b6ba5c866509090fc2b38b327f8c30272a8b872bdb4213bd2bffb5e9ab94a7515b7305fa1cf70a9592b1bc4053c4a8e3500fd68857e6e07b7d3543e27e254e4cc776118f116844de9d3babcf1b6e9605470d9c206630004c1557b4b97c73906f505631ee1d2de52a1a4af8c3758002fe60f180da2d0589721f5e5e5ff63baab8ecc320ad81e6c6cd33921da0875878aba6543416540e183674effb031242142e34b943492925638c4ee051b6cba995fdcf97610f6d4d21f4b59f7a04be65cd2d7b902de2a0e0734c1527eac78728d71b85213cdb40d35956e2f3e6f8b4124dd940e34f7c15ef6642306229573a5330372c8db80d30286c7f80a5d59844fe193a2498b87913aeb240baba2760bcc3a3201db77f7f8ff7390bf09d8ee725ac56b59b9a9d4b094f8f3580c7ef3610227004bfb29488c74cbae833805f215597d23831ac3770a84a84515fed9945ec390c73f33471bbfd3ad9c58860335fa554ec76f09345a152362e2c40be2b484538707a40ef744966ba7b34c19beba53b660e0b9b66d2f3c119e409d51e98bf5b8ddbe1aeb155efd62679a1b8e0fc5e50eddbe98b4cadabf5775d49a4d4f756ba37b35729d0712f87f74404c8077dd6b857cb6d1ac2cbf76de95548b51910bc1e902a88846da80f8da33559f87a308ee27bd3a950a1c4bf5bff87f74dc0c2b4aae024339afbf6d407357a63aafb56e067ebd89b7371deeb2ba9f01844c2108eeba12bd50ff5ecda53bf677c01249134b0ffcd5cbbdbea1d01a4ce631b59f1923be7a654d5d40465fab5774516927a657e9411f187d9a897e05bf136125a1c18e3f582e52702797c5226cb0e4da8dab18cc6e33b2c38bf35c6b2949a44154fe8f2367ca237a5b2242873370041aa335a8d45c90a9c75687d0bc8d3d17e56e9da0aaa34eb8b3474975a32f5f21a32dc69c6fba50615588086a693aa4b1e22bc5d6a20346c823115fc91de455cb753c0c787f039f7965228bee1dac2678586a3f62b75dae10107789abcc0ae4dafe503fe80d7323c2d5df216c23a8a95d8777a7a9c72b08ce105c9161ed5a2cdf8ded6970cae223f482a80b401a01c7103ea40d29efae8d0cd3bab3bc0728dde148906fab080f1c95368822a49e9a82da014f73b31c830c76a546c2baa1e5c0234730a33dc3d89302b01bea964c287b0a32ed73269993450dce5250a0f1ad6898a67ae36b8fccee4bb91eda8f0eb8184a0e3a45e577185df8f1a3afc86650c9c001016cc42c3ffcef2be5b7fb263f18b4ddf514964d74923f3b0d62aef4e7a7bf32c7bae2300ecf3f4759e684da9bc35fcd2838989c26af3401c305438c8c62a7841fdc631db8f730e330ed539ee386ff5d9b0c2e4c50c2fba1d4d400e38d65a4f10ca281fad7f98b2b2cbc7b1e2023285ab3aec28599f5d1bc27345172192a632ae49278ee643ee6aba160929080ca4b3d71aefef00e328c55a155a4275d38d27985e00102839dbe723c5804a845d9cc8cf8474861f68f3b1f8a96a834d24855d70fcf72bfdb5cb0e419d517a565e91899fb3fcee6cc12e9d0eee51b7961e8d50b93e9664349985e396556a969962109d032d6a13af47b23a817da2537b40e45792119a37a8212abfcdea0627769983ce102cb5c6d028a33656a3e3b8df4e5dc2d4d31afce36a120e91edfce38da26371fdedf6d573a24b894bbc62b3b8953b3ea996af32a14614c405cad68b9ef4c645e2571998495c17932cabdcda67e67593440d3a009a89c8ee3cd97cbb98e5e0b9b8a906e9fa82e19de34ad51d72dae3564ab22c3335cc2cc45d3ea7edd1a3411c49386577d2d7c061e55be0b01e5446ec0aa358a926a228fa96e761bcb90f334880f828af811e469ad52ea561344be3c93dfc533f148ec4946fa67eef5d9c8550cae21319494034cf8ecdd87a7b3410f237f01f0cae537670707f7727e94f5836d7cff84b741505fde5453d9bc27ee2843cae66ebba9375a443f7be884b257b11e040c662d71a7efb20a1ed79b2aef040fb27e090b4726ba1493aaf85c02c8910f76db420325b688806da1a5cbeceb309a5ce72d96b6e522b65f34ff842d7af709b098bb97c997579809d750703604ca58f9a2d72f11b34c54d6b1fe1ac94a2fb7273fcf493ae70657d8297e98744f90503305cf5784409b824f24be8eab65a9329055a54dba50080c1680f3935a11101bf8891b1dec5bdca58c2a5f072778fb32d22523cb8b218b85c68605b91cea4708df1aeb9c1a42a30b97612205fd046d04910fae87c894518eaee44a96bf5620311d51152b167b814808ca43d639ef63bf141257d1049b6debc0865a358b3593ef90783c9c27abb2004b5ad70531f11b084e39d39eb2f5286d8cbce8fb246f42c1d123f976a16a591a7ec33a58ddf1d1194127ece4dc4d9b25ea885fd192f7a2abc4ee692e10b8cd50311633254d956e431c974122be77b259c47db6f5a6aee45d48dc349780266ad57a5036feffdbe36751428e3682fc1451cd452117ad29d8ca9d9eed1073b5e7485f630d29a9c9ec313c559aa4166224e0ba88bd03f77e9ec54073d9be450b3308411af840b57bc2321de43a89f2d1e1cf7865a75de16c2fda494b34c6b0fe8064c5da4f37780077fc8aaaba5fe7b3f645d5eee8eed1d06f94c03d2e6961ac934db35e7f3d6c044409d6a410bd3ed38453034edc9fd7017afe027a4fc34527f476f7763f9907e2c394f1d327f0143a7baa996176711b60896b8e4710aa91461e32a196392b1b3a28be908ddb4c192df83b813a4628d55731cd096085ee609ae13ad5b598b4fb5d9e21a01be28d720fb474abdf55b29fdd2d627519ad7373fb9debf99d980c4f72b6069be8d5d5358a2051877a604cd86deffeeb796e2b5f039336c4381f73b47b63729adf710b9d2c6850a0f1a2a0a1eca25ef56f309580532672b9a1920f15aa5988955e155720546bb9c4b5770c4a923c7ec61c263b213435f4fc2d294fc4fe858e9b3d6e9c07925a13f3d8ace4dca6f7934f986c46c9f9b01e65a508b61068ad6c3cd7bfe30b3b1dd3ed1a9cc66f32d955de60e299c454d328b48d262f0ae75ea5cf01824d22dfb8af56c0fe34f767d899d3300b877b71ac0fe9c21ae420a584e611961599b4b31f31274456507614f2bc0b69d1ddb8728b6e0d0ae54e24bb7da6f8e7564b51ee52fb21de15768d5149729ed87ee940a8851f3d0f028ce2461e14d22c0a6f4618c41e28b7297960951b0daa11c5abed76466a5656abc20c05df69a515cdbec508c5e3f61c65c69d2240083f00ea70748103fe3bdf281ec91a7ce862e53817824ac473cb750000995976e391384488fbae494405af19b6617b946b6f039247d8cdd63cd6ca877d19a41defd2428ad719720932f3ccaa102cd248b8edef6f44ae9a712f040e92b5b07ba655367fc55c8603ab7479983f1a51125551e7130c53bc27441b1106aa202ec8b20e4ecf791b1d3d3fd402aa4c876238301982d46533b7f1d2d3876e11e9b00010000012c3da9",
+  "val:sortedby|FX-04 clear|twoway function y = nosuch(x), n(3) nodraw": "",
+  "val:sortedby|FX-04 clear|twoway function y = x, n(3) nodraw": "",
+  "val:sortedby|FX-04 sysuse auto, clear|twoway function y = nosuch(x), n(3) nodraw": "foreign",
+  "val:sortedby|FX-04 sysuse auto, clear|twoway function y = x, n(3) nodraw": "foreign"
+ }
+}

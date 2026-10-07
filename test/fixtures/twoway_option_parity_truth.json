@@ -1,0 +1,3760 @@
+{
+ "_meta": {
+  "answers": 1287,
+  "born_date": "12 Aug 2026",
+  "dash_commit": "77d24f86e20c6ef41b599531ba26d73b54dadb1e",
+  "extracted": " 7 Oct 2026",
+  "method": "each answer asked of twoway in a run of the script with DASH_CERT_REMEASURE=record, by scripts/extract_twoway_oracle_truth.do (test/cert_truth.py)",
+  "script": "test_twoway_option_parity.cscript",
+  "stata_version": "19.5"
+ },
+ "answers": {
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), xlabel(2000, axis(2))": {
+   "log": "xlabels(2000, axis(2)) not allowed, xaxis2 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, AXIS(3))": {
+   "log": "option AXIS() not allowed\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, Axis(2))": {
+   "log": "option Axis() not allowed\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(-0))": {
+   "log": "ylabels(5000, axis(-0)) not allowed, yaxis0 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(-1))": {
+   "log": "ylabels(5000, axis(-1)) not allowed, yaxis-1 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(-2147483648))": {
+   "log": "ylabels(5000, axis(-2147483648)) not allowed, yaxis-2147483648 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(0))": {
+   "log": "ylabels(5000, axis(0)) not allowed, yaxis0 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(1) axis(3))": {
+   "log": "option axis() not allowed\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(10))": {
+   "log": "ylabels(5000, axis(10)) not allowed, yaxis10 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(1e1))": {
+   "log": "ylabels(5000, axis(1e1)) not allowed, yaxis10 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(1e9))": {
+   "log": "ylabels(5000, axis(1e9)) not allowed, yaxis1000000000 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(2147483647))": {
+   "log": "ylabels(5000, axis(2147483647)) not allowed, yaxis2147483647 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(3) axis(1))": {
+   "log": "ylabels(5000, axis(3) axis(1)) not allowed, yaxis3 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(3))": {
+   "log": "ylabels(5000, axis(3)) not allowed, yaxis3 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yline(5000, AXIS(2))": {
+   "log": "option AXIS() not allowed\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yscale(log AXIS(2))": {
+   "log": "option AXIS() not allowed\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytitle(T, AXIS(2))": {
+   "log": "option AXIS() not allowed\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway line price weight, yaxis(2) sort ylabel(5000 10000)": {
+   "log": "ylabels(5000 10000) not allowed, yaxis1 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway line price weight, yaxis(2) sort ytitle(T)": {
+   "log": "ytitle(T) not allowed, yaxis1 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway scatter mpg weight, xlabel(2000, axis(2))": {
+   "log": "xlabels(2000, axis(2)) not allowed, xaxis2 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway scatter mpg weight, ylabel(20 30, axis(2))": {
+   "log": "ylabels(20 30, axis(2)) not allowed, yaxis2 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway scatter mpg weight, yline(20, axis(2))": {
+   "log": "ylines(20, axis(2)) not allowed, yaxis2 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway scatter mpg weight, ymlabel(20 30, axis(2))": {
+   "log": "ymlabels(20 30, axis(2)) not allowed, yaxis2 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway scatter mpg weight, ymtick(20 30, axis(2))": {
+   "log": "ymticks(20 30, axis(2)) not allowed, yaxis2 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway scatter mpg weight, yscale(log axis(2))": {
+   "log": "yscale(log axis(2)) not allowed, yaxis2 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway scatter mpg weight, ytick(20 30, axis(2))": {
+   "log": "yticks(20 30, axis(2)) not allowed, yaxis2 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-03|twoway scatter mpg weight, ytitle(\"T\", axis(2))": {
+   "log": "ytitle(unknown function T\", axis()\n",
+   "rc": 133
+  },
+  "log|AX-03|twoway scatter mpg weight, ytitle(T, axis(2))": {
+   "log": "ytitle(T, axis(2)) not allowed, yaxis2 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-04|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(1, axis(3)) xscale(log axis(3))": {
+   "log": "xscale(log axis(3)) not allowed, xaxis3 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-04|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, AXIS(2) axis(3))": {
+   "log": "ylabels(5000, AXIS(2) axis(3)) not allowed, yaxis3 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-04|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(2)) yscale(axis(3))": {
+   "log": "yscale(axis(3)) not allowed, yaxis3 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-04|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(3) axis(1))": {
+   "log": "ylabels(5000, axis(3) axis(1)) not allowed, yaxis3 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-04|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yline(1, axis(3)) ylabel(1, axis(4))": {
+   "log": "ylabels(1, axis(4)) not allowed, yaxis4 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-04|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytitle(T, axis(3)) ylabel(1, AXIS(2))": {
+   "log": "option AXIS() not allowed\n",
+   "rc": 198
+  },
+  "log|AX-04|twoway (scatter mpg weight, ylabel(1, axis(3))) (line price weight, yaxis(2) sort), ylabel(1, axis(4))": {
+   "log": "ylabels(1, axis(3)) not allowed, yaxis3 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-04|twoway (scatter mpg weight, ylabel(1, axis(3))) (line price weight, yaxis(2) sort), yscale(log axis(4))": {
+   "log": "yscale(log axis(4)) not allowed, yaxis4 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-04|twoway line price weight, yaxis(2) sort ylabel(5000, AXIS(2))": {
+   "log": "ylabels(5000, AXIS(2)) not allowed, yaxis1 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-04|twoway scatter mpg weight, ylabel(1, axis(4)) || line price weight, yaxis(2) sort ylabel(1, axis(5))": {
+   "log": "ylabels(1, axis(4)) not allowed, yaxis4 does not exist\n",
+   "rc": 198
+  },
+  "log|AX-05|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, angle(0), axis(2))": {
+   "log": "invalid 'axis' \n",
+   "rc": 198
+  },
+  "log|AX-05|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yline(20, lcolor(red), lwidth(thick))": {
+   "log": "invalid 'lwidth' \n",
+   "rc": 198
+  },
+  "log|AX-05|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yline(5000, lcolor(red), axis(2))": {
+   "log": "invalid 'axis' \n",
+   "rc": 198
+  },
+  "log|AX-05|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yscale(, log)": {
+   "log": "invalid 'log' \n",
+   "rc": 198
+  },
+  "log|AX-05|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yscale(log, axis(2))": {
+   "log": "invalid 'axis' \n",
+   "rc": 198
+  },
+  "log|AX-05|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yscale(log, range(1 50))": {
+   "log": "invalid 'range' \n",
+   "rc": 198
+  },
+  "log|AX-05|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytick(20 30, grid, axis(1))": {
+   "log": "invalid 'axis' \n",
+   "rc": 198
+  },
+  "log|AX-05|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytick(5000, axis(2),) name(zax5)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-05|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytitle(TT, size(small), axis(2))": {
+   "log": "invalid 'axis' \n",
+   "rc": 198
+  },
+  "log|AX-05|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytitle(TT, size(small), color(red))": {
+   "log": "invalid 'color' \n",
+   "rc": 198
+  },
+  "log|AX-05|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytitle(TT, size(small),) name(zax5)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-06|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), by(foreign) ylabel(5000 10000, axis(2))": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-06|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, ax(2))": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-06|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axi(2))": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-06|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(02))": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-06|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(1.0x+1))": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-06|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(1e300))": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-06|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(2.0))": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-06|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(5000, axis(a))": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-06|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabels(5000 10000, axis(2))": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-06|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylines(5000, axis(2))": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-06|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ymticks(5000, axis(2))": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-06|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ytic(5000, ax(2)) yli(5000, ax(2)) ysc(log ax(2)) yml(6000, ax(2)) ymt(6000, ax(2)) ytitle(T, ax(2))": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-06|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), yticks(5000, axis(2))": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-06|twoway (scatter mpg weight, ylabel(5000, axis(2))) (line price weight, yaxis(2) sort)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|AX-08|twoway (scatter mpg weight) (line price weight, yaxis(2) sort), ylabel(1, axis(2)) ylabel(1, axis(2)) ylabel(1, axis(2)) ylabel(1, axis(2)) ylabel(1, axis(2)) ylabel(1, axis(2)) ylabel(1, ax...[190073 characters, sha256 87956cb79c772b79d40a7b0e926fd71544806dd4253ce40b3bf682012a60e509]": {
+   "log": "too many options\n",
+   "rc": 1003
+  },
+  "log|JO-21|twoway area mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway area mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway area mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway area mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway area mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway area mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway area mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway bar mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway bar mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway bar mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway bar mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway bar mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway bar mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway bar mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway connected mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway connected mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway connected mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway connected mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway connected mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway connected mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway connected mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway dot mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway dot mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway dot mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway dot mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway dot mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway dot mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway dot mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway dropline mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway dropline mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway dropline mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway dropline mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway dropline mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway dropline mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway dropline mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway fpfit mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway fpfit mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway fpfit mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway fpfit mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway fpfit mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway fpfit mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway fpfit mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway fpfitci mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway fpfitci mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway fpfitci mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway fpfitci mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway fpfitci mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway fpfitci mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway fpfitci mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway function y=x, range(0 1) sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway function y=x, range(0 1) sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway function y=x, range(0 1) sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway function y=x, range(0 1) sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway function y=x, range(0 1) sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway function y=x, range(0 1) sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway function y=x, range(0 1) sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway histogram mpg, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway histogram mpg, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway histogram mpg, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway histogram mpg, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway histogram mpg, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway histogram mpg, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway histogram mpg, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway kdensity mpg, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway kdensity mpg, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway kdensity mpg, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway kdensity mpg, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway kdensity mpg, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway kdensity mpg, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway kdensity mpg, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lfit mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lfit mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lfit mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lfit mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lfit mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lfit mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lfit mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lfitci mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lfitci mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lfitci mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lfitci mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lfitci mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lfitci mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lfitci mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway line mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway line mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway line mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway line mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway line mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway line mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway line mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lowess mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lowess mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lowess mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lowess mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lowess mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lowess mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lowess mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lpoly mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lpoly mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lpoly mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lpoly mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lpoly mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lpoly mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lpoly mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lpolyci mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lpolyci mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lpolyci mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lpolyci mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lpolyci mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lpolyci mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway lpolyci mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway mband mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway mband mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway mband mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway mband mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway mband mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway mband mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway mband mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway mspline mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway mspline mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway mspline mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway mspline mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway mspline mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway mspline mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway mspline mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcarrow mpg weight turn length, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcarrow mpg weight turn length, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcarrow mpg weight turn length, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcarrow mpg weight turn length, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcarrow mpg weight turn length, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcarrow mpg weight turn length, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcarrow mpg weight turn length, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcarrowi 20 3000 30 4000, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcarrowi 20 3000 30 4000, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcarrowi 20 3000 30 4000, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcarrowi 20 3000 30 4000, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcarrowi 20 3000 30 4000, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcarrowi 20 3000 30 4000, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcarrowi 20 3000 30 4000, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcbarrow mpg weight turn length, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcbarrow mpg weight turn length, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcbarrow mpg weight turn length, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcbarrow mpg weight turn length, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcbarrow mpg weight turn length, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcbarrow mpg weight turn length, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcbarrow mpg weight turn length, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pccapsym mpg weight turn length, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pccapsym mpg weight turn length, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pccapsym mpg weight turn length, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pccapsym mpg weight turn length, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pccapsym mpg weight turn length, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pccapsym mpg weight turn length, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pccapsym mpg weight turn length, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pci 20 3000 30 4000, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pci 20 3000 30 4000, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pci 20 3000 30 4000, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pci 20 3000 30 4000, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pci 20 3000 30 4000, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pci 20 3000 30 4000, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pci 20 3000 30 4000, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcscatter mpg weight turn length, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcscatter mpg weight turn length, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcscatter mpg weight turn length, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcscatter mpg weight turn length, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcscatter mpg weight turn length, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcscatter mpg weight turn length, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcscatter mpg weight turn length, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcspike mpg weight turn length, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcspike mpg weight turn length, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcspike mpg weight turn length, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcspike mpg weight turn length, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcspike mpg weight turn length, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcspike mpg weight turn length, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway pcspike mpg weight turn length, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway qfit mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway qfit mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway qfit mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway qfit mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway qfit mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway qfit mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway qfit mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway qfitci mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway qfitci mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway qfitci mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway qfitci mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway qfitci mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway qfitci mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway qfitci mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rarea lo hi weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rarea lo hi weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rarea lo hi weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rarea lo hi weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rarea lo hi weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rarea lo hi weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rarea lo hi weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rbar lo hi weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rbar lo hi weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rbar lo hi weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rbar lo hi weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rbar lo hi weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rbar lo hi weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rbar lo hi weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rcap lo hi weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rcap lo hi weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rcap lo hi weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rcap lo hi weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rcap lo hi weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rcap lo hi weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rcap lo hi weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rcapsym lo hi weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rcapsym lo hi weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rcapsym lo hi weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rcapsym lo hi weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rcapsym lo hi weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rcapsym lo hi weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rcapsym lo hi weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rconnected lo hi weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rconnected lo hi weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rconnected lo hi weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rconnected lo hi weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rconnected lo hi weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rconnected lo hi weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rconnected lo hi weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rline lo hi weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rline lo hi weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rline lo hi weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rline lo hi weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rline lo hi weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rline lo hi weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rline lo hi weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rscatter lo hi weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rscatter lo hi weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rscatter lo hi weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rscatter lo hi weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rscatter lo hi weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rscatter lo hi weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rscatter lo hi weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rspike lo hi weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rspike lo hi weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rspike lo hi weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rspike lo hi weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rspike lo hi weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rspike lo hi weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway rspike lo hi weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway scatter mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway scatter mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway scatter mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway scatter mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway scatter mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway scatter mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway scatter mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway scatteri 20 3000 30 4000, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway scatteri 20 3000 30 4000, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway scatteri 20 3000 30 4000, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway scatteri 20 3000 30 4000, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway scatteri 20 3000 30 4000, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway scatteri 20 3000 30 4000, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway scatteri 20 3000 30 4000, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway spike mpg weight, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway spike mpg weight, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway spike mpg weight, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway spike mpg weight, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway spike mpg weight, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway spike mpg weight, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway spike mpg weight, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway tsline mpg, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway tsline mpg, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway tsline mpg, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway tsline mpg, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway tsline mpg, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway tsline mpg, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway tsline mpg, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway tsrline lo hi, sort(-zz) nodraw": {
+   "log": "- invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway tsrline lo hi, sort(1x) nodraw": {
+   "log": "1x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway tsrline lo hi, sort(L.x) nodraw": {
+   "log": "L.x invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway tsrline lo hi, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway tsrline lo hi, sort(z(1)) nodraw": {
+   "log": "( invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway tsrline lo hi, sort(z+) nodraw": {
+   "log": "+ invalid name\n",
+   "rc": 198
+  },
+  "log|JO-21|twoway tsrline lo hi, sort(z, stable) nodraw": {
+   "log": ", invalid name\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway area mpg weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway area mpg weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway area mpg weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway area mpg weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway area mpg weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway area mpg weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway area mpg weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway area mpg weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway area mpg weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway area mpg weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway bar mpg weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway bar mpg weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway bar mpg weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway bar mpg weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway bar mpg weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway bar mpg weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway bar mpg weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway bar mpg weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway bar mpg weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway bar mpg weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway connected mpg weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway connected mpg weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway connected mpg weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway connected mpg weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway connected mpg weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway connected mpg weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway connected mpg weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway connected mpg weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway connected mpg weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway connected mpg weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dot mpg weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dot mpg weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dot mpg weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dot mpg weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dot mpg weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dot mpg weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dot mpg weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dot mpg weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dot mpg weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dot mpg weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dropline mpg weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dropline mpg weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dropline mpg weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dropline mpg weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dropline mpg weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dropline mpg weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dropline mpg weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dropline mpg weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dropline mpg weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway dropline mpg weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway line mpg weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway line mpg weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway line mpg weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway line mpg weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway line mpg weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway line mpg weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway line mpg weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway line mpg weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway line mpg weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway line mpg weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mband mpg weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mband mpg weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mband mpg weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mband mpg weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mband mpg weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mband mpg weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mband mpg weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mband mpg weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mband mpg weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mband mpg weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mspline mpg weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mspline mpg weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mspline mpg weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mspline mpg weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mspline mpg weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mspline mpg weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mspline mpg weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mspline mpg weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mspline mpg weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway mspline mpg weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcarrow mpg weight turn length, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcarrow mpg weight turn length, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcarrow mpg weight turn length, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcarrow mpg weight turn length, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcarrow mpg weight turn length, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcarrow mpg weight turn length, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcarrow mpg weight turn length, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcarrow mpg weight turn length, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcarrow mpg weight turn length, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcarrow mpg weight turn length, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcbarrow mpg weight turn length, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcbarrow mpg weight turn length, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcbarrow mpg weight turn length, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcbarrow mpg weight turn length, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcbarrow mpg weight turn length, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcbarrow mpg weight turn length, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcbarrow mpg weight turn length, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcbarrow mpg weight turn length, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcbarrow mpg weight turn length, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcbarrow mpg weight turn length, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pccapsym mpg weight turn length, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pccapsym mpg weight turn length, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pccapsym mpg weight turn length, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pccapsym mpg weight turn length, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pccapsym mpg weight turn length, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pccapsym mpg weight turn length, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pccapsym mpg weight turn length, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pccapsym mpg weight turn length, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pccapsym mpg weight turn length, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pccapsym mpg weight turn length, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcscatter mpg weight turn length, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcscatter mpg weight turn length, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcscatter mpg weight turn length, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcscatter mpg weight turn length, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcscatter mpg weight turn length, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcscatter mpg weight turn length, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcscatter mpg weight turn length, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcscatter mpg weight turn length, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcscatter mpg weight turn length, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcscatter mpg weight turn length, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcspike mpg weight turn length, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcspike mpg weight turn length, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcspike mpg weight turn length, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcspike mpg weight turn length, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcspike mpg weight turn length, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcspike mpg weight turn length, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcspike mpg weight turn length, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcspike mpg weight turn length, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcspike mpg weight turn length, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway pcspike mpg weight turn length, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rarea lo hi weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rarea lo hi weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rarea lo hi weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rarea lo hi weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rarea lo hi weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rarea lo hi weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rarea lo hi weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rarea lo hi weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rarea lo hi weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rarea lo hi weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rbar lo hi weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rbar lo hi weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rbar lo hi weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rbar lo hi weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rbar lo hi weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rbar lo hi weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rbar lo hi weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rbar lo hi weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rbar lo hi weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rbar lo hi weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcap lo hi weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcap lo hi weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcap lo hi weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcap lo hi weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcap lo hi weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcap lo hi weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcap lo hi weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcap lo hi weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcap lo hi weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcap lo hi weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcapsym lo hi weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcapsym lo hi weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcapsym lo hi weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcapsym lo hi weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcapsym lo hi weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcapsym lo hi weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcapsym lo hi weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcapsym lo hi weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcapsym lo hi weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rcapsym lo hi weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rconnected lo hi weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rconnected lo hi weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rconnected lo hi weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rconnected lo hi weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rconnected lo hi weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rconnected lo hi weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rconnected lo hi weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rconnected lo hi weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rconnected lo hi weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rconnected lo hi weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rline lo hi weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rline lo hi weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rline lo hi weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rline lo hi weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rline lo hi weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rline lo hi weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rline lo hi weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rline lo hi weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rline lo hi weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rline lo hi weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rscatter lo hi weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rscatter lo hi weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rscatter lo hi weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rscatter lo hi weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rscatter lo hi weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rscatter lo hi weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rscatter lo hi weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rscatter lo hi weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rscatter lo hi weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rscatter lo hi weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rspike lo hi weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rspike lo hi weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rspike lo hi weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rspike lo hi weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rspike lo hi weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rspike lo hi weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rspike lo hi weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rspike lo hi weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rspike lo hi weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway rspike lo hi weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway scatter mpg weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway scatter mpg weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway scatter mpg weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway scatter mpg weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway scatter mpg weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway scatter mpg weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway scatter mpg weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway scatter mpg weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway scatter mpg weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway scatter mpg weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway spike mpg weight, sort(_N) nodraw": {
+   "log": "variable _N not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway spike mpg weight, sort(_b) nodraw": {
+   "log": "variable _b not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway spike mpg weight, sort(if) nodraw": {
+   "log": "if is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway spike mpg weight, sort(in) nodraw": {
+   "log": "in is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway spike mpg weight, sort(int) nodraw": {
+   "log": "int not allowed\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway spike mpg weight, sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway spike mpg weight, sort(using) nodraw": {
+   "log": "using is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway spike mpg weight, sort(with) nodraw": {
+   "log": "with is invalid variable name\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway spike mpg weight, sort(z) nodraw": {
+   "log": "z ambiguous abbreviation\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-22|twoway spike mpg weight, sort(zz nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-23|twoway fpfit mpg weight, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway fpfitci mpg weight, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway function y=x, range(0 1) sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway histogram mpg, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway kdensity mpg, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway lfit mpg weight, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway lfitci mpg weight, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway lowess mpg weight, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway lpoly mpg weight, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway lpolyci mpg weight, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway pcarrowi 20 3000 30 4000, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway pci 20 3000 30 4000, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway qfit mpg weight, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway qfitci mpg weight, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway scatteri 20 3000 30 4000, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway tsline mpg, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-23|twoway tsrline lo hi, sort(nosuch) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-24 three variables|twoway line mpg weight, sort(_all) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-24|twoway line mpg weight, sort(z) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-25|twoway line mpg weight, sort() nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-25|twoway line mpg weight, sort() sort(zz) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-25|twoway line mpg weight, sort(nosuch) sort(z) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-25|twoway line mpg weight, sort(x*) sort(z) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-25|twoway line mpg weight, sort(z) sort(nosuch) nodraw": {
+   "log": "variable nosuch not found\noption sort() incorrectly specified\n",
+   "rc": 198
+  },
+  "log|JO-25|twoway line mpg weight, sort(z) sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-25|twoway line mpg weight, sort(zz) sort() nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|JO-25|twoway tsline mpg, sort(x*) nodraw": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|JO-27|twoway line mpg weight, sort(z z) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-14f|twoway (lfit mpg weight, atobs) (lfit price weight, atobs), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-14f|twoway (scatter mpg weight), clegend(red) clegend(red) nodraw": {
+   "log": "option clegend() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway (scatter mpg weight, below) (line mpg weight, below), title(T) nodraw": {
+   "log": "option below not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway (scatter mpg weight, colorstart(red)) (scatter price weight, colorstart(red)), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-14f|twoway (scatter mpg weight, notitling) (scatter price weight, notitling), title(T) nodraw": {
+   "log": "option notitling not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway (scatter mpg weight, plegend(red)), plegend(red) nodraw": {
+   "log": "option plegend() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway bar mpg weight, baroffset(1) baroffset(2) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-14f|twoway histogram mpg, mwidth mwidth nodraw": {
+   "log": "option mwidth not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway kdensity mpg, boundary boundary nodraw": {
+   "log": "option boundary not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway kdensity mpg, epan2 epan2 nodraw": {
+   "log": "option epan2 not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway kdensity mpg, gaussian gaussian nodraw": {
+   "log": "option gaussian not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway lfit mpg weight, ato atobs nodraw": {
+   "log": "option atobs not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway lfit mpg weight, atobs atobs nodraw": {
+   "log": "option atobs not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway lfit mpg weight, atobs mcolor(red) atobs nodraw": {
+   "log": "option atobs not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway lfitci mpg weight, nofit fit nodraw": {
+   "log": "option nofit not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway lfitci mpg weight, nofit nofit nodraw": {
+   "log": "option nofit not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway lfitci mpg weight, nofit || lfitci price weight, nofit nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-14f|twoway line mpg weight, dropbase nodropbase nodraw": {
+   "log": "option nodropbase not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway lowess mpg weight, log logging nodraw": {
+   "log": "option logging not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway lowess mpg weight, w weight nodraw": {
+   "log": "option weight not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway lpolyci mpg weight, fit nofit nodraw": {
+   "log": "option nofit not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway lpolyci mpg weight, var(1) v(2) nodraw": {
+   "log": "option v() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway mspline mpg weight, noback noback nodraw": {
+   "log": "option noback not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway pcarrowi 20 3000 30 4000, headlabel headlabel nodraw": {
+   "log": "option headlabel not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway pcspike mpg weight turn length, headlabel headlabel nodraw": {
+   "log": "option headlabel not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway qfit mpg weight, xlog xlog nodraw": {
+   "log": "option xlog not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway qfitci mpg weight, atobs ato nodraw": {
+   "log": "option ato not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway rbar lo hi weight, baroffset(1) baroffset(2) nodraw": {
+   "log": "option baroffset() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway scatter mpg weight, clegend(red) clegend(blue) nodraw": {
+   "log": "option clegend() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway scatter mpg weight, clegend(red) plegend(red) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-14f|twoway scatter mpg weight, colorstart(red) colorst(blue) nodraw": {
+   "log": "option colorst() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway scatter mpg weight, colorvarminmax colorvarminmax nodraw": {
+   "log": "option colorvarminmax not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway scatter mpg weight, log log nodraw": {
+   "log": "option log not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway scatter mpg weight, nodropb dropb nodraw": {
+   "log": "option nodropb not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway scatter mpg weight, nodropbase nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-14f|twoway scatter mpg weight, nodropbase nodropbase nodraw": {
+   "log": "option nodropbase not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway scatter mpg weight, nologging logging nodraw": {
+   "log": "option nologging not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway scatter mpg weight, pcycle(2) || scatter price weight, pcycle(2) nodraw": {
+   "log": "option pcycle() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway scatter mpg weight, titling notitling nodraw": {
+   "log": "option notitling not allowed\n",
+   "rc": 198
+  },
+  "log|TP-14f|twoway tsline mpg, onepanel onepanel nodraw": {
+   "log": "option onepanel not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15 lowess|twoway lowess mpg weight, lo nolo nodraw": {
+   "log": "option nolo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15 lowess|twoway lowess mpg weight, logit logi nodraw": {
+   "log": "option logi not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15 lowess|twoway lowess mpg weight, nologit lo nodraw": {
+   "log": "option nologit not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway (lowess zb weight), LOG nodraw": {
+   "log": "option LOG not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway (lowess zb weight), LOGIT nodraw": {
+   "log": "option LOGIT not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway (lowess zb weight), Lo nodraw": {
+   "log": "option Lo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway (lowess zb weight), lo nodraw": {
+   "log": "option lo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway (lowess zb weight), log nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight), logg nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight), loggi nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight), logging nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight), logi nodraw": {
+   "log": "option logi not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway (lowess zb weight), logit nodraw": {
+   "log": "option logit not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway (lowess zb weight), nolo nodraw": {
+   "log": "option nolo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway (lowess zb weight), nolog nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight), nologg nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight), nologging nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight), nologi nodraw": {
+   "log": "option nologi not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway (lowess zb weight), nologit nodraw": {
+   "log": "option nologit not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway (lowess zb weight, LOG), title(T) nodraw": {
+   "log": "option LOG not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway (lowess zb weight, LOGIT), title(T) nodraw": {
+   "log": "option LOGIT not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway (lowess zb weight, Lo), title(T) nodraw": {
+   "log": "option Lo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway (lowess zb weight, lo), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight, log), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight, logg), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight, loggi), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight, logging), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight, logi), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight, logit), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight, nolo), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight, nolog), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight, nologg), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight, nologging), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight, nologi), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway (lowess zb weight, nologit), title(T) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lfit zb weight, LOG nodraw": {
+   "log": "option LOG not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway lfit zb weight, LOGIT nodraw": {
+   "log": "option LOGIT not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway lfit zb weight, Lo nodraw": {
+   "log": "option Lo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway lfit zb weight, lo nodraw": {
+   "log": "option lo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway lfit zb weight, log nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lfit zb weight, logg nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lfit zb weight, loggi nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lfit zb weight, logging nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lfit zb weight, logi nodraw": {
+   "log": "option logi not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway lfit zb weight, logit nodraw": {
+   "log": "option logit not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway lfit zb weight, nolo nodraw": {
+   "log": "option nolo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway lfit zb weight, nolog nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lfit zb weight, nologg nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lfit zb weight, nologging nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lfit zb weight, nologi nodraw": {
+   "log": "option nologi not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway lfit zb weight, nologit nodraw": {
+   "log": "option nologit not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway line zb weight, LOG nodraw": {
+   "log": "option LOG not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway line zb weight, LOGIT nodraw": {
+   "log": "option LOGIT not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway line zb weight, Lo nodraw": {
+   "log": "option Lo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway line zb weight, lo nodraw": {
+   "log": "option lo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway line zb weight, log nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway line zb weight, logg nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway line zb weight, loggi nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway line zb weight, logging nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway line zb weight, logi nodraw": {
+   "log": "option logi not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway line zb weight, logit nodraw": {
+   "log": "option logit not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway line zb weight, nolo nodraw": {
+   "log": "option nolo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway line zb weight, nolog nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway line zb weight, nologg nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway line zb weight, nologging nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway line zb weight, nologi nodraw": {
+   "log": "option nologi not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway line zb weight, nologit nodraw": {
+   "log": "option nologit not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway lowess zb weight, LOG nodraw": {
+   "log": "option LOG not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway lowess zb weight, LOGIT nodraw": {
+   "log": "option LOGIT not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway lowess zb weight, Lo nodraw": {
+   "log": "option Lo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway lowess zb weight, lo nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lowess zb weight, log nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lowess zb weight, logg nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lowess zb weight, loggi nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lowess zb weight, logging nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lowess zb weight, logi nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lowess zb weight, logit nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lowess zb weight, nolo nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lowess zb weight, nolog nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lowess zb weight, nologg nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lowess zb weight, nologging nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lowess zb weight, nologi nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway lowess zb weight, nologit nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway scatter zb weight, LOG nodraw": {
+   "log": "option LOG not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway scatter zb weight, LOGIT nodraw": {
+   "log": "option LOGIT not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway scatter zb weight, Lo nodraw": {
+   "log": "option Lo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway scatter zb weight, lo nodraw": {
+   "log": "option lo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway scatter zb weight, log nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway scatter zb weight, logg nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway scatter zb weight, loggi nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway scatter zb weight, logging nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway scatter zb weight, logi nodraw": {
+   "log": "option logi not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway scatter zb weight, logit nodraw": {
+   "log": "option logit not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway scatter zb weight, nolo nodraw": {
+   "log": "option nolo not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway scatter zb weight, nolog nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway scatter zb weight, nologg nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway scatter zb weight, nologging nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15a|twoway scatter zb weight, nologi nodraw": {
+   "log": "option nologi not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15a|twoway scatter zb weight, nologit nodraw": {
+   "log": "option nologit not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (histogram mpg), bin(5) nodraw": {
+   "log": "option bin() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (kdensity mpg), gaussian nodraw": {
+   "log": "option gaussian not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lfit mpg weight) (scatter mpg weight), atobs mcolor(red) nodraw": {
+   "log": "option atobs not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lfit mpg weight) (scatter mpg weight), mcolor(red) atobs nodraw": {
+   "log": "option mcolor() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lfit mpg weight) (scatter mpg weight), title(x) atobs nodraw": {
+   "log": "option atobs not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lfit mpg weight), MC(red) atobs nodraw": {
+   "log": "option MC() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lfit mpg weight), TITLE(x) nodraw": {
+   "log": "option TITLE() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lfit mpg weight), ato nodraw": {
+   "log": "option ato not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lfit mpg weight), atobs bogus nodraw": {
+   "log": "option atobs not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lfit mpg weight), atobs nodraw": {
+   "log": "option atobs not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lfit mpg weight), below nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15b|twoway (lfit mpg weight), bogus atobs nodraw": {
+   "log": "option bogus not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lfit mpg weight), clegend(red) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15b|twoway (lfit mpg weight), log nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15b|twoway (lfit mpg weight), logging nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15b|twoway (lfit mpg weight), mc(red) nodraw": {
+   "log": "option mc() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lfit mpg weight), mcolor(red) nodraw": {
+   "log": "option mcolor() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lfit mpg weight), title(A) title(B) title(C) atobs nodraw": {
+   "log": "option atobs not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lfit mpg weight), title(A) title(B) title(C) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15b|twoway (lfit mpg weight), title(x) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15b|twoway (lfit mpg weight), xoverhangs nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15b|twoway (lfit mpg weight), xsize(4) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15b|twoway (lfit mpg weight, MCOLOR(red)), title(T) nodraw": {
+   "log": "option MCOLOR() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lfitci mpg weight), nofit nodraw": {
+   "log": "option nofit not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (line mpg weight), sort nodraw": {
+   "log": "option sort not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (line mpg weight), sort(mpg) nodraw": {
+   "log": "option sort() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lowess mpg weight), logit nodraw": {
+   "log": "option logit not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lowess mpg weight), mean nodraw": {
+   "log": "option mean not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lpoly mpg weight), bwidth(1) nodraw": {
+   "log": "option bwidth() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (lpoly mpg weight), kernel(gaussian) nodraw": {
+   "log": "option kernel() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (scatter mpg weight), colorstart(red) nodraw": {
+   "log": "option colorstart() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (scatter mpg weight), mlabvposition(pos) nodraw": {
+   "log": "option mlabvposition() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (scatter mpg weight), msymbol(O) nodraw": {
+   "log": "option msymbol() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway (scatter mpg weight), nodropbase nodraw": {
+   "log": "option nodropbase not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway kdensity mpg, gaussian epan2 nodraw": {
+   "log": "only one kernel may be specified\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway kdensity mpg, gaussian kernel(epan2) nodraw": {
+   "log": "option kernel(): old syntax may not be combined with new syntax\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway kdensity mpg, kernel(gaussian) gaussian nodraw": {
+   "log": "option kernel(): old syntax may not be combined with new syntax\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway kdensity mpg, kernel(gaussian) kernel(gaussian) nodraw": {
+   "log": "option kernel() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway kdensity mpg, parzen rectangle nodraw": {
+   "log": "only one kernel may be specified\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lfit mpg weight || scatter mpg weight, TITLE(x) nodraw": {
+   "log": "option TITLE() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lfit mpg weight, ATOBS MCOLOR(red) nodraw": {
+   "log": "option ATOBS not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lfit mpg weight, ATOBS atobs nodraw": {
+   "log": "option ATOBS not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lfit mpg weight, ATOBS bogus nodraw": {
+   "log": "option ATOBS not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lfit mpg weight, ATOBS nodraw": {
+   "log": "option ATOBS not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lfit mpg weight, Atobs nodraw": {
+   "log": "option Atobs not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lfit mpg weight, TITLE(x) || scatter mpg weight nodraw": {
+   "log": "option TITLE() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lfit mpg weight, bogus ATOBS nodraw": {
+   "log": "option bogus not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lfit mpg weight, xreverse ATOBS nodraw": {
+   "log": "option xreverse not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, N(5) nodraw": {
+   "log": "option N() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, biweight gaussian nodraw": {
+   "log": "only one kernel may be specified\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, bwidth(1) bwidth(2) gaussian epan2 nodraw": {
+   "log": "option bwidth() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, ep epan2 nodraw": {
+   "log": "only one kernel may be specified\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, gau k(gaussian) nodraw": {
+   "log": "kernel(): old syntax may not be combined with new syntax\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, gaussian GAUSSIAN nodraw": {
+   "log": "option GAUSSIAN not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, gaussian epan2 ATOBS nodraw": {
+   "log": "option ATOBS not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, gaussian epan2 gaussian nodraw": {
+   "log": "option gaussian not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, gaussian epan2 kernel(gaussian) nodraw": {
+   "log": "kernel(): old syntax may not be combined with new syntax\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, gaussian epan2 mcolor(bogus) nodraw": {
+   "log": "only one kernel may be specified\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, gaussian epan2 nodraw": {
+   "log": "only one kernel may be specified\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, gaussian kernel(bogus) nodraw": {
+   "log": "kernel(): old syntax may not be combined with new syntax\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, gaussian kernel(epan2) nodraw": {
+   "log": "kernel(): old syntax may not be combined with new syntax\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, gaussian || lpoly mpg weight, epan2 nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15b|twoway lpoly mpg weight, kernel(epan2) gaussian nodraw": {
+   "log": "kernel(): old syntax may not be combined with new syntax\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, kernel(gau) kernel(epan2) nodraw": {
+   "log": "option kernel() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpoly mpg weight, kernel(gaussian) || lpoly price weight, kernel(epan2) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TP-15b|twoway lpolyci mpg weight, gaussian cosine nodraw": {
+   "log": "only one kernel may be specified\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway lpolyci mpg weight, kernel(epan2) triangle nodraw": {
+   "log": "kernel(): old syntax may not be combined with new syntax\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway scatter mpg weight, HOVER(x) nodraw": {
+   "log": "option HOVER() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway scatter mpg weight, LINK(g) nodraw": {
+   "log": "option LINK() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway scatter mpg weight, LOGGING nodraw": {
+   "log": "option LOGGING not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway scatter mpg weight, MC(red) nodraw": {
+   "log": "option MC() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway scatter mpg weight, MCOLOR(red) mcolor(blue) nodraw": {
+   "log": "option MCOLOR() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway scatter mpg weight, MCOLOR(red) nodraw": {
+   "log": "option MCOLOR() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway scatter mpg weight, NODRAW nodraw": {
+   "log": "option NODRAW not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway scatter mpg weight, SORT nodraw": {
+   "log": "option SORT not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway scatter mpg weight, TITLE(x) nodraw": {
+   "log": "option TITLE() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway scatter mpg weight, Title(x) nodraw": {
+   "log": "option Title() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway scatter mpg weight, mColor(red) nodraw": {
+   "log": "option mColor() not allowed\n",
+   "rc": 198
+  },
+  "log|TP-15b|twoway scatter mpg weight, mcolor(blue) MCOLOR(red) nodraw": {
+   "log": "option MCOLOR() not allowed\n",
+   "rc": 198
+  },
+  "rc|TP-01|twoway area mpg weight, clwidth(-1)": 0,
+  "rc|TP-01|twoway bar mpg weight, clwidth(-1)": 0,
+  "rc|TP-01|twoway connected mpg weight, clwidth(-1)": 198,
+  "rc|TP-01|twoway dot mpg weight, clwidth(-1)": 0,
+  "rc|TP-01|twoway dropline mpg weight, clwidth(-1)": 0,
+  "rc|TP-01|twoway fpfit mpg weight, clwidth(-1)": 198,
+  "rc|TP-01|twoway fpfitci mpg weight, clwidth(-1)": 198,
+  "rc|TP-01|twoway function y=x, range(0 1) clwidth(-1)": 198,
+  "rc|TP-01|twoway histogram mpg, clwidth(-1)": 0,
+  "rc|TP-01|twoway kdensity mpg, clwidth(-1)": 198,
+  "rc|TP-01|twoway lfit mpg weight, clwidth(-1)": 198,
+  "rc|TP-01|twoway lfitci mpg weight, clwidth(-1)": 198,
+  "rc|TP-01|twoway line mpg weight, clwidth(-1)": 198,
+  "rc|TP-01|twoway lowess mpg weight, clwidth(-1)": 198,
+  "rc|TP-01|twoway lpoly mpg weight, clwidth(-1)": 198,
+  "rc|TP-01|twoway lpolyci mpg weight, clwidth(-1)": 198,
+  "rc|TP-01|twoway mband mpg weight, clwidth(-1)": 198,
+  "rc|TP-01|twoway mspline mpg weight, clwidth(-1)": 198,
+  "rc|TP-01|twoway pcarrow mpg weight turn length, clwidth(-1)": 0,
+  "rc|TP-01|twoway pcbarrow mpg weight turn length, clwidth(-1)": 0,
+  "rc|TP-01|twoway pci 20 3000 30 4000, clwidth(-1)": 0,
+  "rc|TP-01|twoway pcscatter mpg weight turn length, clwidth(-1)": 0,
+  "rc|TP-01|twoway pcspike mpg weight turn length, clwidth(-1)": 0,
+  "rc|TP-01|twoway qfit mpg weight, clwidth(-1)": 198,
+  "rc|TP-01|twoway qfitci mpg weight, clwidth(-1)": 198,
+  "rc|TP-01|twoway rarea lo hi weight, clwidth(-1)": 0,
+  "rc|TP-01|twoway rbar lo hi weight, clwidth(-1)": 0,
+  "rc|TP-01|twoway rcap lo hi weight, clwidth(-1)": 0,
+  "rc|TP-01|twoway rcapsym lo hi weight, clwidth(-1)": 0,
+  "rc|TP-01|twoway rconnected lo hi weight, clwidth(-1)": 0,
+  "rc|TP-01|twoway rline lo hi weight, clwidth(-1)": 0,
+  "rc|TP-01|twoway rscatter lo hi weight, clwidth(-1)": 0,
+  "rc|TP-01|twoway rspike lo hi weight, clwidth(-1)": 0,
+  "rc|TP-01|twoway scatter mpg weight, clwidth(-1)": 0,
+  "rc|TP-01|twoway scatteri 20 3000 30 4000, clwidth(-1)": 0,
+  "rc|TP-01|twoway spike mpg weight, clwidth(-1)": 0,
+  "rc|TP-01|twoway tsline mpg, clwidth(-1)": 198,
+  "rc|TP-01|twoway tsrline lo hi, clwidth(-1)": 0,
+  "rc|TP-02|twoway line mpg weight, cl(red) nodraw": 198,
+  "rc|TP-02|twoway line mpg weight, clc(red) clp(dash) clw(thick) nodraw": 0,
+  "rc|TP-04 tsset|twoway area mpg weight, mlabel(make) mlabangle(400)": 0,
+  "rc|TP-04 tsset|twoway bar mpg weight, mlabel(make) mlabangle(400)": 198,
+  "rc|TP-04 tsset|twoway connected mpg weight, mlabel(make) mlabangle(400)": 198,
+  "rc|TP-04 tsset|twoway dot mpg weight, mlabel(make) mlabangle(400)": 198,
+  "rc|TP-04 tsset|twoway dropline mpg weight, mlabel(make) mlabangle(400)": 198,
+  "rc|TP-04 tsset|twoway histogram mpg, mlabel(make) mlabangle(400)": 0,
+  "rc|TP-04 tsset|twoway lfitci mpg weight, mlabel(make) mlabangle(400)": 0,
+  "rc|TP-04 tsset|twoway line mpg weight, mlabel(make) mlabangle(400)": 0,
+  "rc|TP-04 tsset|twoway pcarrow mpg weight turn length, mlabel(make) mlabangle(400)": 0,
+  "rc|TP-04 tsset|twoway pcbarrow mpg weight turn length, mlabel(make) mlabangle(400)": 0,
+  "rc|TP-04 tsset|twoway pccapsym mpg weight turn length, mlabel(make) mlabangle(400)": 198,
+  "rc|TP-04 tsset|twoway pcscatter mpg weight turn length, mlabel(make) mlabangle(400)": 198,
+  "rc|TP-04 tsset|twoway rarea lo hi weight, mlabel(make) mlabangle(400)": 0,
+  "rc|TP-04 tsset|twoway rcap lo hi weight, mlabel(make) mlabangle(400)": 0,
+  "rc|TP-04 tsset|twoway rcapsym lo hi weight, mlabel(make) mlabangle(400)": 198,
+  "rc|TP-04 tsset|twoway rconnected lo hi weight, mlabel(make) mlabangle(400)": 198,
+  "rc|TP-04 tsset|twoway rline lo hi weight, mlabel(make) mlabangle(400)": 0,
+  "rc|TP-04 tsset|twoway rscatter lo hi weight, mlabel(make) mlabangle(400)": 198,
+  "rc|TP-04 tsset|twoway scatter mpg weight, mlabel(make) mlabangle(400)": 198,
+  "rc|TP-04 tsset|twoway scatteri 20 3000 \"A\" 30 4000 \"B\", mlabangle(400)": 198,
+  "rc|TP-04 tsset|twoway spike mpg weight, mlabel(make) mlabangle(400)": 0,
+  "rc|TP-04 tsset|twoway tsline mpg, mlabel(make) mlabangle(400)": 0,
+  "rc|TP-04|twoway scatter mpg weight, mlabel(make) mlabang(45) nodraw": 0,
+  "rc|TP-04|twoway scatter mpg weight, mlabel(make) mlabangle(abc)": 0,
+  "rc|TP-05|twoway scatter mpg weight, mlabel(mpg) mlabf(%9.2f) nodraw": 0,
+  "rc|TP-05|twoway scatter mpg weight, mlabel(mpg) mlabformat(abc)": 0,
+  "rc|TP-06b|twoway (line mpg weight, sort(price)) (scatter mpg weight), nodraw": 0,
+  "rc|TP-06b|twoway area mpg weight, sort nodraw": 0,
+  "rc|TP-06b|twoway bar mpg weight, sort nodraw": 0,
+  "rc|TP-06b|twoway connected mpg weight, sort nodraw": 0,
+  "rc|TP-06b|twoway line mpg weight, sort nodraw": 0,
+  "rc|TP-06b|twoway line mpg weight, sort(price) nodraw": 0,
+  "rc|TP-06b|twoway rarea lo hi weight, sort nodraw": 0,
+  "rc|TP-06b|twoway rconnected lo hi weight, sort nodraw": 0,
+  "rc|TP-06b|twoway rline lo hi weight, sort nodraw": 0,
+  "rc|TP-06b|twoway scatter mpg weight, sort nodraw": 0,
+  "rc|TP-06b|twoway tsline mpg, sort nodraw": 0,
+  "rc|TP-06b|twoway tsrline lo hi, sort nodraw": 0,
+  "rc|TP-06|twoway (scatter mpg weight) (line mpg weight), xoverhang nodraw": 0,
+  "rc|TP-06|twoway (scatter mpg weight) (line mpg weight), yoverhangs nodraw": 0,
+  "rc|TP-06|twoway scatter mpg weight, mlabel(make) mlabt(heading) nodraw": 0,
+  "rc|TP-06|twoway scatter mpg weight, mlabel(make) mlabv(pos) nodraw": 0,
+  "rc|TP-06|twoway scatter mpg weight, sort(mpg) nodraw": 0,
+  "rc|TP-06|twoway scatter mpg weight, xoverhang nodraw": 0,
+  "rc|TP-06|twoway scatter mpg weight, yoverhang nodraw": 0,
+  "rc|TP-07|twoway scatter mpg weight, addplot(line mpg weight) nodraw": 198,
+  "rc|TP-07|twoway scatter mpg weight, altaxis nodraw": 198,
+  "rc|TP-07|twoway scatter mpg weight, bargap(10) nodraw": 198,
+  "rc|TP-07|twoway scatter mpg weight, ddensity nodraw": 198,
+  "rc|TP-07|twoway scatter mpg weight, lockaspect nodraw": 198,
+  "rc|TP-07|twoway scatter mpg weight, margin(zero) nodraw": 198,
+  "rc|TP-07|twoway scatter mpg weight, region(fcolor(red)) nodraw": 198,
+  "rc|TP-07|twoway scatter mpg weight, xalternate nodraw": 198,
+  "rc|TP-07|twoway scatter mpg weight, xcommon nodraw": 198,
+  "rc|TP-07|twoway scatter mpg weight, xreverse nodraw": 198,
+  "rc|TP-07|twoway scatter mpg weight, yalternate nodraw": 198,
+  "rc|TP-07|twoway scatter mpg weight, ycommon nodraw": 198,
+  "rc|TP-07|twoway scatter mpg weight, yreverse nodraw": 198,
+  "rc|TP-07|twoway scatter mpg weight, zoom(2) nodraw": 198,
+  "rc|TP-08|twoway area mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway area mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway bar mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway bar mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway connected mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway connected mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway dot mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway dot mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway dropline mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway dropline mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway fpfit mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway fpfit mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway fpfitci mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway fpfitci mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway function y=x, range(0 1) mlabel(make)": 0,
+  "rc|TP-08|twoway function y=x, range(0 1) mlabel(nosuchvar)": 0,
+  "rc|TP-08|twoway histogram mpg, mlabel(make)": 0,
+  "rc|TP-08|twoway histogram mpg, mlabel(nosuchvar)": 0,
+  "rc|TP-08|twoway kdensity mpg, mlabel(make)": 0,
+  "rc|TP-08|twoway kdensity mpg, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway lfit mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway lfit mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway lfitci mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway lfitci mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway line mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway line mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway lowess mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway lowess mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway lpoly mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway lpoly mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway lpolyci mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway lpolyci mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway mband mpg weight, mlabel(make)": 103,
+  "rc|TP-08|twoway mband mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway mspline mpg weight, mlabel(make)": 103,
+  "rc|TP-08|twoway mspline mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway pcarrow mpg weight turn length, mlabel(make)": 0,
+  "rc|TP-08|twoway pcarrow mpg weight turn length, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway pcbarrow mpg weight turn length, mlabel(make)": 0,
+  "rc|TP-08|twoway pcbarrow mpg weight turn length, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway pccapsym mpg weight turn length, mlabel(make)": 0,
+  "rc|TP-08|twoway pccapsym mpg weight turn length, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway pcscatter mpg weight turn length, mlabel(make)": 0,
+  "rc|TP-08|twoway pcscatter mpg weight turn length, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway pcspike mpg weight turn length, mlabel(make)": 0,
+  "rc|TP-08|twoway pcspike mpg weight turn length, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway qfit mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway qfit mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway qfitci mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway qfitci mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway rarea lo hi weight, mlabel(make)": 0,
+  "rc|TP-08|twoway rarea lo hi weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway rbar lo hi weight, mlabel(make)": 0,
+  "rc|TP-08|twoway rbar lo hi weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway rcap lo hi weight, mlabel(make)": 0,
+  "rc|TP-08|twoway rcap lo hi weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway rcapsym lo hi weight, mlabel(make)": 0,
+  "rc|TP-08|twoway rcapsym lo hi weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway rconnected lo hi weight, mlabel(make)": 0,
+  "rc|TP-08|twoway rconnected lo hi weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway rline lo hi weight, mlabel(make)": 0,
+  "rc|TP-08|twoway rline lo hi weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway rscatter lo hi weight, mlabel(make)": 0,
+  "rc|TP-08|twoway rscatter lo hi weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway rspike lo hi weight, mlabel(make)": 0,
+  "rc|TP-08|twoway rspike lo hi weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway scatter mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway scatter mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway spike mpg weight, mlabel(make)": 0,
+  "rc|TP-08|twoway spike mpg weight, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway tsline mpg, mlabel(make)": 0,
+  "rc|TP-08|twoway tsline mpg, mlabel(nosuchvar)": 111,
+  "rc|TP-08|twoway tsrline lo hi, mlabel(make)": 0,
+  "rc|TP-08|twoway tsrline lo hi, mlabel(nosuchvar)": 111,
+  "rc|TP-12|twoway mspline mpg weight, mlabel( make make make make make make make make make make make make make make make make make make make make make make make make make make make make make make make m...[2044 characters, sha256 37c21b0ca74e2d7f41f0214f29f4735da8eafe6425e91c2cc59bb94ae8e36feb]": 103,
+  "rc|TP-12|twoway mspline mpg weight, mlabel(mak)": 103,
+  "rc|TP-12|twoway mspline mpg weight, mlabel(make make)": 103,
+  "rc|TP-13a|twoway scatter mpg weight, mlab(heading) nodraw": 111,
+  "rc|TP-13a|twoway scatter mpg weight, mlab(pos) nodraw": 0,
+  "rc|TP-13a|twoway scatter mpg weight, mlabel(make) mlaban(45) nodraw": 198,
+  "rc|TP-13a|twoway scatter mpg weight, mlabel(make) mlabang(45) nodraw": 0,
+  "rc|TP-13a|twoway scatter mpg weight, mlabel(make) sor(mpg) nodraw": 198,
+  "rc|TP-13a|twoway scatter mpg weight, mlabel(make) sort(mpg) nodraw": 0,
+  "rc|TP-13a|twoway scatter mpg weight, mlabel(make) xoverhan nodraw": 198,
+  "rc|TP-13a|twoway scatter mpg weight, mlabel(make) xoverhang nodraw": 0,
+  "rc|TP-13a|twoway scatter mpg weight, mlabel(make) yoverhan nodraw": 198,
+  "rc|TP-13a|twoway scatter mpg weight, mlabel(make) yoverhang nodraw": 0,
+  "rc|TP-13b|twoway (scatter mpg weight) (line mpg weight), xoverhan nodraw": 198,
+  "rc|TP-13b|twoway (scatter mpg weight) (line mpg weight), xoverhang nodraw": 0,
+  "rc|TP-13b|twoway (scatter mpg weight) (line mpg weight), yoverhan nodraw": 198,
+  "rc|TP-13b|twoway (scatter mpg weight) (line mpg weight), yoverhang nodraw": 0,
+  "rc|TP-13c|twoway line mpg weight, clwidth(-0.001)": 198,
+  "rc|TP-13c|twoway line mpg weight, clwidth(0)": 0,
+  "rc|TP-13c|twoway line mpg weight, clwidth(10000)": 0,
+  "rc|TP-13c|twoway line mpg weight, clwidth(10000.001)": 198,
+  "rc|TP-13c|twoway line mpg weight, lwidth(-0.001)": 198,
+  "rc|TP-13c|twoway line mpg weight, lwidth(0)": 0,
+  "rc|TP-13c|twoway line mpg weight, lwidth(10000)": 0,
+  "rc|TP-13c|twoway line mpg weight, lwidth(10000.001)": 198,
+  "rc|TP-14b|twoway (scatter mpg weight, scheme(s1mono)), scheme(s2color) nodraw": 198,
+  "rc|TP-14b|twoway (scatter mpg weight, xsize(3)) (scatter price weight, xsize(4)), title(T) nodraw": 198,
+  "rc|TP-14b|twoway histogram mpg, percent percent nodraw": 198,
+  "rc|TP-14b|twoway kdensity mpg, bwidth(1) bwid(2) nodraw": 198,
+  "rc|TP-14b|twoway line mpg weight, sort sort nodraw": 198,
+  "rc|TP-14b|twoway line mpg weight, sort sort(mpg) nodraw": 0,
+  "rc|TP-14b|twoway line mpg weight, sort(mpg) sort nodraw": 0,
+  "rc|TP-14b|twoway lpoly mpg weight, n(50) n(60) nodraw": 198,
+  "rc|TP-14b|twoway scatter mpg weight, aspectratio(1) aspectratio(0.5) nodraw": 198,
+  "rc|TP-14b|twoway scatter mpg weight, sch(s1mono) scheme(s2color) nodraw": 198,
+  "rc|TP-14b|twoway scatter mpg weight, scheme(s1mono) scheme(s2color) nodraw": 198,
+  "rc|TP-14b|twoway scatter mpg weight, xsize(3) xsize(4) nodraw": 198,
+  "rc|TP-14b|twoway scatter mpg weight, xsize(3) || scatter price weight, xsize(4) nodraw": 198,
+  "rc|TP-14b|twoway scatter mpg weight, yaxis(1) yaxis(1) nodraw": 198,
+  "rc|TP-14e|twoway scatter mpg weight,  mcolor(blue) mcolor(blue) mcolor(blue) mcolor(blue) mcolor(blue) mcolor(blue) mcolor(blue) mcolor(blue) mcolor(blue) mcolor(blue) mcolor(blue) mcolor(blue) mcolor...[130044 characters, sha256 30c718aa2586aeaea5ccc08ac44fe16609c71cf87f9de7663e92b74d0c167e58]": 1003,
+  "rc|TP-14e|twoway scatter mpg weight,  mcolor(red) title(T1) mcolor(red) title(T2) mcolor(red) title(T3) mcolor(red) title(T4) mcolor(red) title(T5) mcolor(red) title(T6) mcolor(red) title(T7) mcolor(r...[2997 characters, sha256 52d95649eb13e8aaf110eca9f8b9f648b85797e4e6d9032bc4efd48a503620bc]": 0,
+  "rc|TP-14e|twoway scatter mpg weight, jitter(1) jitter(x\"' _dup(3) \"INJ\" `\") nodraw": 109,
+  "rc|TP-14f|twoway bar mpg weight,  baroffset(1) baroffset(1) baroffset(1) baroffset(1) baroffset(1) baroffset(1) baroffset(1) baroffset(1) baroffset(1) baroffset(1) baroffset(1) baroffset(1) baroffset(...[3312 characters, sha256 52a6cdc8706e97635764b02511ea5e1e06ce7cb2f0509db436ddab32887372c7]": 198,
+  "rc|TP-14f|twoway lfit mpg weight,  atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs atobs ato...[60041 characters, sha256 ca845503e68b5039ebf9eb5fdfdc4e349fcff8c5d60a0c6cf39f54432cd2a343]": 1003,
+  "rc|TP-14f|twoway scatter mpg weight, colorotherlabel(`\"{bf:B} $S_ADO `c(pwd)' _dup(3) `\"INJ\"'\"') colorotherlabel(`\"{bf:B} $S_ADO `c(pwd)' _dup(3) `\"INJ\"'\"') nodraw": 198,
+  "rc|TP-15a|twoway lowess zb weight, LOG nodraw": 198,
+  "rc|TP-15a|twoway lowess zb weight, LOGIT nodraw": 198,
+  "rc|TP-15a|twoway lowess zb weight, Lo nodraw": 198,
+  "rc|TP-15a|twoway lowess zb weight, lo nodraw": 0,
+  "rc|TP-15a|twoway lowess zb weight, log nodraw": 0,
+  "rc|TP-15a|twoway lowess zb weight, logg nodraw": 0,
+  "rc|TP-15a|twoway lowess zb weight, loggi nodraw": 0,
+  "rc|TP-15a|twoway lowess zb weight, logging nodraw": 0,
+  "rc|TP-15a|twoway lowess zb weight, logi nodraw": 0,
+  "rc|TP-15a|twoway lowess zb weight, logit nodraw": 0,
+  "rc|TP-15a|twoway lowess zb weight, nolo nodraw": 0,
+  "rc|TP-15a|twoway lowess zb weight, nolog nodraw": 0,
+  "rc|TP-15a|twoway lowess zb weight, nologg nodraw": 0,
+  "rc|TP-15a|twoway lowess zb weight, nologging nodraw": 0,
+  "rc|TP-15a|twoway lowess zb weight, nologi nodraw": 0,
+  "rc|TP-15a|twoway lowess zb weight, nologit nodraw": 0,
+  "rc|TP-15e|twoway (lfit mpg weight), zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbo...[1648 characters, sha256 ff60b2a8610ae11e4dc4374cf322896be45b68e1ffcfb5994f6f0e2d4524ee22]": 198,
+  "rc|TP-15e|twoway (scatter mpg weight), mcolor(`\"{bf:B} $S_ADO `c(pwd)' _dup(3) `\"INJ\"'\"') nodraw": 198,
+  "rc|TP-15e|twoway lfit mpg weight, zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogus zqbogu...[1646 characters, sha256 568c6075bd3c889fbaebae054002aabf7693f29b57f9a33b67cd1d7dbe3d98d7]": 198,
+  "rc|TP-15e|twoway lpoly mpg weight, gaussian kernel(`\"{bf:B} $S_ADO `c(pwd)' _dup(3) `\"INJ\"'\"') nodraw": 198,
+  "rc|TP-15e|twoway scatter mpg weight, MCOLOR(`\"{bf:B} $S_ADO `c(pwd)' _dup(3) `\"INJ\"'\"') nodraw": 198,
+  "rc|TP-16|twoway (lpoly mpg weight, gau) (kdensity mpg, par), nodraw": 0,
+  "rc|TP-16|twoway kdensity mpg, co nodraw": 198,
+  "rc|TP-16|twoway lfit mpg weight, epan2 nodraw": 198,
+  "rc|TP-16|twoway line mpg weight, tri nodraw": 198,
+  "rc|TP-16|twoway lowess mpg weight, gau nodraw": 198,
+  "rc|TP-16|twoway lpoly mpg weight, b nodraw": 198,
+  "rc|TP-16|twoway lpoly mpg weight, ga nodraw": 198,
+  "rc|TP-16|twoway lpolyci mpg weight, e nodraw": 198,
+  "rc|TP-16|twoway lpolyci mpg weight, tri || lpoly price weight, cos nodraw": 0,
+  "rc|TP-16|twoway scatter mpg weight, gaussian nodraw": 198,
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, bi": "0 9635.701104011516",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, biweight": "0 9635.701104011516",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, cos": "0 9635.735712467804",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, cosine": "0 9635.735712467804",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, ep": "0 9635.504386233328",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, epan": "0 9635.504386233328",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, epan2": "0 9635.695462841302",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, epanechnikov": "0 9635.504386233328",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, gau": "0 9635.515603395685",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, gaus": "0 9635.515603395685",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, gaussian": "0 9635.515603395685",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, par": "0 9635.713196440111",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, parzen": "0 9635.713196440111",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, rec": "0 9635.696780269564",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, rectangle": "0 9635.696780269564",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, tri": "0 9635.700537302268",
+  "val:rc and serset sum|TP-16|twoway kdensity mpg, triangle": "0 9635.700537302268",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, bi": "0 172399.2698026108",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, biweight": "0 172399.2698026108",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, cos": "0 172424.6567107941",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, cosine": "0 172424.6567107941",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, ep": "0 172384.4344907653",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, epan": "0 172384.4344907653",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, epan2": "0 172384.4349028461",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, epanechnikov": "0 172384.4344907653",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, gau": "0 172438.7495320392",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, gaus": "0 172438.7495320392",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, gaussian": "0 172438.7495320392",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, par": "0 172425.6947864064",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, parzen": "0 172425.6947864064",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, rec": "0 172347.8687548518",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, rectangle": "0 172347.8687548518",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, tri": "0 172398.7652670752",
+  "val:rc and serset sum|TP-16|twoway lpoly mpg weight, triangle": "0 172398.7652670752",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, bi": "0 174313.8279555899",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, biweight": "0 174313.8279555899",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, cos": "0 174372.6565462318",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, cosine": "0 174372.6565462318",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, ep": "0 174301.5285827116",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, epan": "0 174301.5285827116",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, epan2": "0 174301.5292756551",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, epanechnikov": "0 174301.5285827116",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, gau": "0 174492.9636806852",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, gaus": "0 174492.9636806852",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, gaussian": "0 174492.9636806852",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, par": "0 174403.5177607427",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, parzen": "0 174403.5177607427",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, rec": "0 174061.0374386129",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, rectangle": "0 174061.0374386129",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, tri": "0 174290.6611672485",
+  "val:rc and serset sum|TP-16|twoway lpolyci mpg weight, triangle": "0 174290.6611672485",
+  "val:rc and svg checksum|TP-14a|twoway (scatter mpg weight) (line mpg weight), title(AFTER)": "0 12310645",
+  "val:rc and svg checksum|TP-14a|twoway (scatter mpg weight) (scatter price weight), legend(cols(1)) legend(rows(1))": "0 849800181",
+  "val:rc and svg checksum|TP-14a|twoway (scatter mpg weight) (scatter price weight), legend(label(1 \"A\") label(2 \"B\"))": "0 3898868662",
+  "val:rc and svg checksum|TP-14a|twoway (scatter mpg weight) (scatter price weight), legend(label(1 \"A\")) legend(label(2 \"B\"))": "0 3898868662",
+  "val:rc and svg checksum|TP-14a|twoway (scatter mpg weight) (scatter price weight), legend(off) legend(on)": "0 849800181",
+  "val:rc and svg checksum|TP-14a|twoway (scatter mpg weight) (scatter price weight), legend(on)": "0 849800181",
+  "val:rc and svg checksum|TP-14a|twoway (scatter mpg weight) (scatter price weight), legend(rows(1))": "0 849800181",
+  "val:rc and svg checksum|TP-14a|twoway (scatter mpg weight), title(A, color(red))": "0 466627351",
+  "val:rc and svg checksum|TP-14a|twoway (scatter mpg weight, legend(label(1 \"A\"))) (scatter price weight), legend(label(2 \"B\"))": "0 3898868662",
+  "val:rc and svg checksum|TP-14a|twoway (scatter mpg weight, mcolor(blue)), title(T)": "0 3429741985",
+  "val:rc and svg checksum|TP-14a|twoway (scatter mpg weight, mcolor(red) mcolor(blue)), title(T)": "0 3429741985",
+  "val:rc and svg checksum|TP-14a|twoway (scatter mpg weight, title(A)), title(, color(red))": "0 466627351",
+  "val:rc and svg checksum|TP-14a|twoway (scatter mpg weight, title(INSIDE)) (line mpg weight), title(AFTER)": "0 12310645",
+  "val:rc and svg checksum|TP-14a|twoway line mpg weight, lcolor(blue)": "0 2162753386",
+  "val:rc and svg checksum|TP-14a|twoway line mpg weight, lcolor(red) lcolor(blue)": "0 2162753386",
+  "val:rc and svg checksum|TP-14a|twoway line mpg weight, lwidth(thin) lwidth(vthick)": "0 4130310489",
+  "val:rc and svg checksum|TP-14a|twoway line mpg weight, lwidth(vthick)": "0 4130310489",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight || scatter price weight, title(B)": "0 520158650",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, by(foreign) by(, cols(1))": "0 1180931651",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, by(foreign, cols(1))": "0 1180931651",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, graphregion(color(red) margin(zero))": "0 3838614518",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, graphregion(color(red)) graphregion(margin(zero))": "0 3838614518",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, jitter(1) jitter(8)": "0 1692089623",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, jitter(8)": "0 1692089623",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, mc(blue)": "0 2427593219",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, mc(red) mcolor(blue)": "0 2427593219",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, mcolor(blue)": "0 2427593219",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, mcolor(bogus) mcolor(red)": "0 1153616758",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, mcolor(red)": "0 1153616758",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, mcolor(red) mc(blue)": "0 2427593219",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, mcolor(red) mcolor(blue)": "0 2427593219",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, mlabel(make)": "0 953588859",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, mlabel(make) mlabel(rep78)": "0 2351553682",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, mlabel(nosuchvar) mlabel(make)": "0 953588859",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, mlabel(rep78)": "0 2351553682",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, msize(huge)": "0 1776291419",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, msize(small) msize(huge)": "0 1776291419",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, msymbol(O) msymbol(T)": "0 3764276344",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, msymbol(T)": "0 3764276344",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, ti(A) title(B)": "0 2022957944",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, title(A B)": "0 458206371",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, title(A) title(, color(red))": "0 466627351",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, title(A) title(B)": "0 2022957944",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, title(A) title(B, suffix)": "0 458206371",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, title(A) || scatter price weight, title(B)": "0 520158650",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, title(A, color(red))": "0 466627351",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, title(A, color(red)) title(B)": "0 2629389375",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, title(A, color(red)) title(B, color(blue))": "0 913484354",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, title(B)": "0 2022957944",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, title(B, color(blue))": "0 913484354",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, title(B, color(red))": "0 2629389375",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, xla(2000 3000) xlabel(4000 5000)": "0 946188074",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, xlabel(2000 3000 4000)": "0 361750052",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, xlabel(2000 3000) xlabel(, angle(45))": "0 312678302",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, xlabel(2000 3000) xlabel(4000 5000)": "0 946188074",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, xlabel(2000 3000) xlabel(4000, add)": "0 361750052",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, xlabel(2000 3000, angle(45))": "0 312678302",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, xlabel(4000 5000)": "0 946188074",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, xscale(log range(1000 6000))": "0 1313666052",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, xscale(log) xscale(range(1000 6000))": "0 1313666052",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, xtitle(A) xtitle(B)": "0 3884731143",
+  "val:rc and svg checksum|TP-14a|twoway scatter mpg weight, xtitle(B)": "0 3884731143",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway area mpg weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway bar mpg weight, mlabel(zq)": "0 1",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway connected mpg weight, mlabel(zq)": "0 1",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway dot mpg weight, mlabel(zq)": "0 1",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway dropline mpg weight, mlabel(zq)": "0 1",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway fpfit mpg weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway fpfitci mpg weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway function y=x, range(0 1) mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway histogram mpg, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway kdensity mpg, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway lfit mpg weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway lfitci mpg weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway line mpg weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway lowess mpg weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway lpoly mpg weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway lpolyci mpg weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway pcarrow mpg weight turn length, mlabel(zq)": "0 1",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway pcbarrow mpg weight turn length, mlabel(zq)": "0 1",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway pccapsym mpg weight turn length, mlabel(zq)": "0 1",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway pcscatter mpg weight turn length, mlabel(zq)": "0 1",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway pcspike mpg weight turn length, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway qfit mpg weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway qfitci mpg weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway rarea lo hi weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway rbar lo hi weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway rcap lo hi weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway rcapsym lo hi weight, mlabel(zq)": "0 2",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway rconnected lo hi weight, mlabel(zq)": "0 2",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway rline lo hi weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway rscatter lo hi weight, mlabel(zq)": "0 2",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway rspike lo hi weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway scatter mpg weight, mlabel(zq)": "0 1",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway spike mpg weight, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway tsline mpg, mlabel(zq)": "0 0",
+  "val:rc and svg count of ZQLAB1|TP-09|twoway tsrline lo hi, mlabel(zq)": "0 0",
+  "val:rc and svg count of stroke:#FF0000|TP-11|twoway dot mpg weight, lcolor(red)": "0 0",
+  "val:rc and svg count of stroke:#FF0000|TP-11|twoway dot mpg weight, mlcolor(red)": "0 74",
+  "val:rc and svg count of stroke:#FF0000|TP-11|twoway pcscatter mpg weight turn length, lcolor(red)": "0 0",
+  "val:rc and svg count of stroke:#FF0000|TP-11|twoway pcscatter mpg weight turn length, mlcolor(red)": "0 148",
+  "val:rc and svg count of stroke:#FF0000|TP-11|twoway rscatter lo hi weight, lcolor(red)": "0 0",
+  "val:rc and svg count of stroke:#FF0000|TP-11|twoway rscatter lo hi weight, mlcolor(red)": "0 148",
+  "val:rc and svg count of stroke:#FF0000|TP-11|twoway scatter mpg weight, lcolor(red)": "0 0",
+  "val:rc and svg count of stroke:#FF0000|TP-11|twoway scatter mpg weight, mlcolor(red)": "0 74",
+  "val:rc and svg counts of ZQFOR ZQDOM|TP-10|twoway pccapsym mpg weight turn length, mlabel(zqf)": "0 22 52",
+  "val:rc and svg counts of ZQFOR ZQDOM|TP-10|twoway rscatter lo hi weight, mlabel(zqf)": "0 44 104",
+  "val:rc and svg counts of ZQFOR ZQDOM|TP-10|twoway scatter mpg weight, mlabel(zqf)": "0 22 52",
+  "val:serset mean|TP-15a|twoway (lowess zb weight), log": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight), logg": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight), loggi": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight), logging": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight), nolog": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight), nologg": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight), nologging": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight, lo), title(T)": ".448180732868345",
+  "val:serset mean|TP-15a|twoway (lowess zb weight, log), title(T)": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight, logg), title(T)": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight, loggi), title(T)": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight, logging), title(T)": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight, logi), title(T)": ".448180732868345",
+  "val:serset mean|TP-15a|twoway (lowess zb weight, logit), title(T)": ".448180732868345",
+  "val:serset mean|TP-15a|twoway (lowess zb weight, nolo), title(T)": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight, nolog), title(T)": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight, nologg), title(T)": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight, nologging), title(T)": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight, nologi), title(T)": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway (lowess zb weight, nologit), title(T)": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway lowess zb weight, lo": ".448180732868345",
+  "val:serset mean|TP-15a|twoway lowess zb weight, log": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway lowess zb weight, logg": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway lowess zb weight, loggi": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway lowess zb weight, logging": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway lowess zb weight, logi": ".448180732868345",
+  "val:serset mean|TP-15a|twoway lowess zb weight, logit": ".448180732868345",
+  "val:serset mean|TP-15a|twoway lowess zb weight, nolo": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway lowess zb weight, nolog": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway lowess zb weight, nologg": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway lowess zb weight, nologging": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway lowess zb weight, nologi": ".5142937030177449",
+  "val:serset mean|TP-15a|twoway lowess zb weight, nologit": ".5142937030177449",
+  "val:serset mean|TP-15|twoway lowess zb weight": ".5142937030177449",
+  "val:serset mean|TP-15|twoway lowess zb weight, lo": ".448180732868345",
+  "val:serset sum|TP-16|twoway kdensity mpg, kernel(biweight)": "9635.701104011516",
+  "val:serset sum|TP-16|twoway kdensity mpg, kernel(cosine)": "9635.735712467804",
+  "val:serset sum|TP-16|twoway kdensity mpg, kernel(epan2)": "9635.695462841302",
+  "val:serset sum|TP-16|twoway kdensity mpg, kernel(epanechnikov)": "9635.504386233328",
+  "val:serset sum|TP-16|twoway kdensity mpg, kernel(gaussian)": "9635.515603395685",
+  "val:serset sum|TP-16|twoway kdensity mpg, kernel(parzen)": "9635.713196440111",
+  "val:serset sum|TP-16|twoway kdensity mpg, kernel(rectangle)": "9635.696780269564",
+  "val:serset sum|TP-16|twoway kdensity mpg, kernel(triangle)": "9635.700537302268",
+  "val:serset sum|TP-16|twoway lpoly mpg weight, kernel(biweight)": "172399.2698026108",
+  "val:serset sum|TP-16|twoway lpoly mpg weight, kernel(cosine)": "172424.6567107941",
+  "val:serset sum|TP-16|twoway lpoly mpg weight, kernel(epan2)": "172384.4349028461",
+  "val:serset sum|TP-16|twoway lpoly mpg weight, kernel(epanechnikov)": "172384.4344907653",
+  "val:serset sum|TP-16|twoway lpoly mpg weight, kernel(gaussian)": "172438.7495320392",
+  "val:serset sum|TP-16|twoway lpoly mpg weight, kernel(parzen)": "172425.6947864064",
+  "val:serset sum|TP-16|twoway lpoly mpg weight, kernel(rectangle)": "172347.8687548518",
+  "val:serset sum|TP-16|twoway lpoly mpg weight, kernel(triangle)": "172398.7652670752",
+  "val:serset sum|TP-16|twoway lpolyci mpg weight, kernel(biweight)": "174313.8279555899",
+  "val:serset sum|TP-16|twoway lpolyci mpg weight, kernel(cosine)": "174372.6565462318",
+  "val:serset sum|TP-16|twoway lpolyci mpg weight, kernel(epan2)": "174301.5292756551",
+  "val:serset sum|TP-16|twoway lpolyci mpg weight, kernel(epanechnikov)": "174301.5285827116",
+  "val:serset sum|TP-16|twoway lpolyci mpg weight, kernel(gaussian)": "174492.9636806852",
+  "val:serset sum|TP-16|twoway lpolyci mpg weight, kernel(parzen)": "174403.5177607427",
+  "val:serset sum|TP-16|twoway lpolyci mpg weight, kernel(rectangle)": "174061.0374386129",
+  "val:serset sum|TP-16|twoway lpolyci mpg weight, kernel(triangle)": "174290.6611672485"
+ }
+}
