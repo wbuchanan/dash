@@ -2065,6 +2065,21 @@ class TestTheTwoModesAgree(_Agree):
     pass
 
 
+@pytest.mark.parametrize("name", ["scatter"])
+def test_an_entrys_comparisons_share_one_group(request, name):
+    """Every comparison of an entry carries the entry's xdist group: the
+    mark always, and on a ``--dist loadgroup`` worker the group in its node
+    id as well, which is what xdist schedules by.  The mark alone was there
+    all along and grouped nothing (WP-30 test performance A1,
+    test_xdist_groups.py)."""
+    mark = request.node.get_closest_marker("xdist_group")
+    assert mark is not None and mark.kwargs == {"name": "parity:" + name}
+    if (getattr(request.config, "workerinput", None) is not None
+            and request.config.getvalue("loadgroup")):
+        assert request.node.nodeid.endswith("@parity:" + name), (
+            request.node.nodeid)
+
+
 class TestRangeLayersInALinkGroup:
     """WP-28 E14: a served rspike or rconnected in a link group draws the
     group's shared source, as the saved page does, so a selection on the

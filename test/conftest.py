@@ -150,6 +150,7 @@ def pytest_sessionfinish(session, exitstatus):
 
 
 
+@pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(items):
     """Keep every comparison of one parity corpus entry on one xdist worker.
 
@@ -159,6 +160,11 @@ def pytest_collection_modifyitems(items):
     ``--dist loadgroup`` (pyproject.toml) a group runs on a single worker,
     so an entry renders once.  A test module cannot implement this hook;
     only a conftest can.
+
+    ``tryfirst``: an xdist worker reads the ``xdist_group`` marks in its own
+    implementation of this hook, which pluggy called first because xdist
+    registers it after this conftest is loaded -- so until 07oct2026 no
+    mark was there to read and nothing was grouped (test_xdist_groups.py).
     """
     for item in items:
         if not item.nodeid.startswith("test/test_mode_parity.py"):
