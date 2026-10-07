@@ -639,8 +639,10 @@ _hc2_expect "HC2-21e" 0 `"twoway scatter mpg weight, msymbol(bogus)"' "named sty
 _hc2_expect "HC2-21f" 0 `"twoway scatter mpg weight, title(T, size(bogus))"' "named style bogus not found in class gsize"
 _hc2_dash   "HC2-21g" 0 `"dash scatter mpg weight, title(T, size(bogus)) name(hc)"'
 _hc2_expect "HC2-21h" 198 `"twoway scatter mpg weight, legend(garbage)"' "option garbage not allowed"
-_hc2_dash   "HC2-21i" 0 `"dash scatter mpg weight, legend(garbage) name(hc)"'
-_hc2_reg    "HC2-21j" hc `""legend":"garbage""'
+_hc2_dash   "HC2-21i" 198 `"dash scatter mpg weight, legend(garbage) name(hc)"' "option garbage not allowed"
+// Refused as twoway refuses it (WP-30 P1.19): no graph hc is registered.
+mata: st_local("_hit", strofreal(st_global("dash_json_hc") == ""))
+_hc2_ok     "HC2-21j" `_hit' "no graph hc is registered"
 _hc2_expect "HC2-21k" 198 `"twoway scatter mpg weight, xscale(bogus)"' "option bogus not allowed"
 _hc2_dash   "HC2-21l" 0 `"dash scatter mpg weight, xscale(bogus) name(hc)"'
 graph drop _all

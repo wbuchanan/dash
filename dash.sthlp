@@ -635,16 +635,44 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:filter()} that {cmd:dash} does not implement is named in a
     note, as {cmd:by()}'s are:
     {cmd:(note: dash: legend() sub-option(s) not implemented and ignored: span stack)}.
+    A sub-option of {cmd:legend()}, of the axis labels and ticks
+    ({cmd:xlabel()}, {cmd:ylabel()}, {cmd:xtick()}, {cmd:ytick()},
+    {cmd:xmlabel()}, {cmd:ymlabel()}, {cmd:xmtick()}, {cmd:ymtick()},
+    {cmd:zlabel()}), of {cmd:xline()}/{cmd:yline()} and of a textbox is
+    read as {cmd:twoway}'s own parsers read it: in lower case only, from
+    its minimum abbreviation to its full name, in the order
+    {cmd:twoway} tries them, so {cmd:legend(c(2) r(1) lab(1 "A") posi(6) s(small))},
+    {cmd:ylabel(, labs(small) ang(0) for(%9.1f) nog)} and
+    {cmd:xline(5, lc(red) lp(dash) lw(thick))} draw as their full names,
+    and a second {cmd:c()} after {cmd:cols()} is {cmd:color()}.  Quoted
+    label text is never read as a sub-option.  In {cmd:legend()}, the
+    axis labels and ticks and the titles, what {cmd:twoway} refuses is
+    refused with its return code and words: a sub-option in capitals
+    ({cmd:legend(OFF)}: {cmd:option OFF not allowed}, r(198)), a spelling
+    {cmd:twoway} does not accept ({cmd:ylabel(, a(45))}), one given twice
+    in one option ({cmd:legend(c(2) cols(1))}), the wrong form
+    ({cmd:ylabel(, labs)}: {cmd:option labs incorrectly specified}), a
+    bad {cmd:cols()}, {cmd:rows()} or {cmd:holes()}
+    ({cmd:legend(c(red))}: {cmd:cols() invalid -- invalid number},
+    r(121)), a {cmd:label()} key that is no positive integer, and
+    {cmd:ytitle("Y", prefix suffix)}.  {cmd:legend(position(13))}, a
+    non-numeric {cmd:ring()} and a non-integer {cmd:order()} word draw the
+    default with {cmd:twoway}'s note.  {cmd:rows()} wins over
+    {cmd:cols()}, and in one copy a word wins over its {cmd:no} form
+    ({cmd:on} over {cmd:off}, {cmd:grid} over {cmd:nogrid}).  Repeated
+    copies merge sub-option by sub-option under the full name, the last
+    copy winning, so {cmd:legend(lab(1 "A")) legend(lab(2 "B"))} keeps
+    both labels.
     A textbox sub-option -- of {cmd:title()}, {cmd:subtitle()},
     {cmd:note()}, {cmd:caption()}, {cmd:xtitle()}/{cmd:ytitle()} and
     {cmd:xtitle2()}/{cmd:ytitle2()} -- is read under any of Stata's
     spellings, from its minimum abbreviation to its full name:
-    {cmd:c(red)} is {cmd:color(red)} and {cmd:si(large)} is
-    {cmd:size(large)}.  {cmd:size()}, {cmd:color()}, {cmd:prefix},
+    {cmd:c(red)} is {cmd:color(red)}, {cmd:s(large)} is
+    {cmd:size(large)}, {cmd:a()} is {cmd:alignment()}, {cmd:lst()} is
+    {cmd:lstyle()}, {cmd:b} is {cmd:box} and {cmd:nob} is {cmd:nobox}.  {cmd:size()}, {cmd:color()}, {cmd:prefix},
     {cmd:suffix} and, on an axis title, {cmd:axis(1)}/{cmd:axis(2)}
-    (minimum {cmd:ax()}, in lower case) are applied; every other sub-option, and any word that is not a textbox
-    sub-option ({cmd:colour()}, {cmd:style()}), is named, never drawn as
-    text.  A lone {cmd:suffix} on an axis title adds its lines after the
+    (minimum {cmd:ax()}, in lower case) are applied; every other
+    sub-option is named, never drawn as text.  A lone {cmd:suffix} on an axis title adds its lines after the
     default title, {cmd:prefix} before it.
     An axis title given with empty text -- {cmd:xtitle("")},
     {cmd:ytitle("")}, {cmd:ytitle("", axis(2))} or {cmd:ytitle2("")} --
@@ -799,10 +827,12 @@ named in a note and drawn around -- because it is what would be drawn.
 {phang2}    Colours, {cmd:msymbol()}, {cmd:lpattern()} and the sub-options of
     the structured options are not checked in Stata.  An unknown style
     inside one ({cmd:title(T, size(bogus))}) gets a note and the default
-    in {cmd:twoway} and in {cmd:dash} alike; an unknown sub-option word,
-    which {cmd:twoway} refuses ({cmd:legend(garbage)},
-    {cmd:xscale(bogus)}: r(198)), {cmd:dash} names in its sub-option note
-    and draws without.  A colour written with commas,
+    in {cmd:twoway} and in {cmd:dash} alike.  An unknown sub-option word
+    of {cmd:legend()} is refused as {cmd:twoway} refuses it
+    ({cmd:legend(garbage)}: {cmd:option garbage not allowed}, r(198));
+    one of {cmd:xscale()}, which {cmd:twoway} refuses too
+    ({cmd:xscale(bogus)}), {cmd:dash} names in its sub-option note and
+    draws without.  A colour written with commas,
     {cmd:mcolor(255,0,0)}, which {cmd:twoway} refuses, {cmd:dash} reads as
     the triplet {cmd:255 0 0}.
 

@@ -1822,6 +1822,19 @@ CORPUS = [
           go={"title": '"\\(y\\)"', "subtitle": '"\\[z\\]"',
               "xtitle": '"$$x$$"', "xlabel": '3000 "\\(t\\)" 4000',
               "legend": 'label(2 "\\(f\\)")'}),
+    # WP-30 P1.19: twoway's sub-option spellings, read alike in both modes.
+    _case("legend abbreviations", [_sc(), plot_for("lfit")],
+          go={"legend": 'c(1) lab(1 "XX") posi(9) s(large) lastlab(2 "ZZ")'}),
+    _case("legend rows beat cols", [_sc(), plot_for("lfit")],
+          go={"legend": "cols(3) rows(1)"}),
+    _case("legend on beats off", [_sc()], go={"legend": "on off"}),
+    _case("axis label abbreviations", [_sc()],
+          go={"ylabel": ", labs(large) ang(45) for(%9.1f) nog"}),
+    _case("quoted axis label text", [_sc()],
+          go={"ylabel": '10 "labsize(large)" 20'}),
+    _case("xline abbreviations", [_sc()],
+          go={"xline": "3000, lc(red) lp(dash) lw(thick)"}),
+    _case("title s() is size", [_sc()], go={"title": '"T", s(small)'}),
 ]
 
 

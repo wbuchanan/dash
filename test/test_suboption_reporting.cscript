@@ -29,6 +29,18 @@
 *!          group vanished with rc 0.
 *!   SR-08  filter(price, type(bogus)) is named, with the accepted types.
 *!   SR-09  a command whose sub-options are all honoured emits no warning.
+*!   SA-01  legend(c() r() lab() posi() s() lastlab()) draws, no note
+*!          (WP-30 P1.19: twoway's sub-option spellings).
+*!   SA-02  ylabel(, labs() ang() for() nog g ...) draws, no note.
+*!   SA-03  xline(, lc() lp() lw()) draws, no note.
+*!   SA-04  legend(lab(1 ..)) legend(lab(2 ..)) keeps both labels.
+*!   SA-05  legend() refusals: twoway's rc and first line.
+*!   SA-06  axis-label, tick and zlabel() refusals.
+*!   SA-07  the first refusal is the one twoway gives.
+*!   SA-08  position(13), ring(x), order(1 x): twoway's note, once.
+*!   SA-09  xline(, LCOLOR()) is drawn and named (guard; S39 refuses).
+*!   SA-10  127 legend() copies draw; a 3,000-word legend() is refused.
+*!   SA-15  title and axis-title refusals.
 *!
 *! Every render is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_by_suboptions.cscript does.
@@ -325,6 +337,276 @@ if r(n) != 0 {
     local faillist "`faillist' SR-09"
 }
 else display as text "SR-09 PASS: honoured sub-options draw no warning"
+
+// ----------------------------------------------------------------
+// SA-01 .. SA-10, SA-15 (WP-30 P1.19): twoway's sub-option spellings are
+// read, and what twoway refuses is refused with its rc and words.
+// ----------------------------------------------------------------
+// _sa_expect id want needle cmd: one command's rc is `want' and, when
+// `needle' is given, its log holds that line; `nonote' (a local of the
+// caller, passed as the 5th argument) names an option whose sub-option
+// warning must not appear.
+capture program drop _sa_expect
+program define _sa_expect, rclass
+    version 16.0
+    args id want needle cmdtext nonote
+    _sr_render `"`macval(cmdtext)'"'
+    local rc = r(rc)
+    local lg `"`r(logfile)'"'
+    local bad = 0
+    if "`want'" != "." & `rc' != `want' {
+        display as error `"`id' FAIL: rc `rc', expected `want': `macval(cmdtext)'"'
+        local bad = 1
+    }
+    if `"`macval(needle)'"' != "" {
+        _sr_count "`lg'" `"`macval(needle)'"'
+        if r(n) < 1 {
+            display as error `"`id' FAIL: the log lacks `macval(needle)': `macval(cmdtext)'"'
+            local bad = 1
+        }
+    }
+    if "`nonote'" != "" {
+        _sr_count "`lg'" "`nonote'() sub-option"
+        if r(n) != 0 {
+            display as error `"`id' FAIL: `nonote'() was named: `r(line)'"'
+            local bad = 1
+        }
+    }
+    return scalar bad = `bad'
+    return local logfile "`lg'"
+end
+
+local _sab "dash (scatter mpg weight) (lfit mpg weight),"
+
+// SA-01: legend spellings draw with no legend note.
+_sa_expect SA-01 0 "" `"`_sab' legend(c(1) r(1) lab(1 "A") posi(6) s(small) lastlab(2 "Z"))"' legend
+if r(bad) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-01"
+}
+else display as text "SA-01 PASS: legend(c() r() lab() posi() s() lastlab()) draws with no note"
+
+// SA-02: axis-label spellings draw with no note.
+_sa_expect SA-02 0 "" `"`_sab' ylabel(, labs(small) ang(0) for(%9.1f) nog)"' ylabel
+local b = r(bad)
+_sa_expect SA-02 0 "" `"`_sab' ylabel(, g labsi(large) form(%9.0f))"' ylabel
+if `b' | r(bad) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-02"
+}
+else display as text "SA-02 PASS: ylabel(, labs() ang() for() nog g) draws with no note"
+
+// SA-03: xline spellings draw with no note.
+_sa_expect SA-03 0 "" `"`_sab' xline(3000, lc(red) lp(dash) lw(thick))"' xline
+if r(bad) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-03"
+}
+else display as text "SA-03 PASS: xline(, lc() lp() lw()) draws with no note"
+
+// SA-04: legend copies merge under full names: both labels are kept.
+_sr_render `"`_sab' legend(lab(1 "AAKEY")) legend(lab(2 "BBKEY"))"'
+local rc = r(rc)
+local html "`r(html)'"
+local na = 0
+local nb = 0
+capture confirm file "`html'"
+if !_rc {
+    _sr_count "`html'" "AAKEY"
+    local na = r(n)
+    _sr_count "`html'" "BBKEY"
+    local nb = r(n)
+}
+if `rc' | !`na' | !`nb' {
+    display as error "SA-04 FAIL: rc `rc', AAKEY in page `na', BBKEY in page `nb'"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-04"
+}
+else display as text "SA-04 PASS: legend(lab(1)) legend(lab(2)) keeps both labels"
+
+// SA-05: legend refusals, twoway's rc and first line (measured 03oct2026).
+local b = 0
+foreach row in ///
+    `"198|option po() not allowed|legend(po(9))"' ///
+    `"198|option OFF not allowed|legend(OFF)"' ///
+    `"198|option Cols() not allowed|legend(Cols(1))"' ///
+    `"198|option cols() not allowed|legend(c(2) cols(1))"' ///
+    `"198|option s() not allowed|legend(size(large) s(small))"' ///
+    `"198|option on not allowed|legend(on on)"' ///
+    `"198|option r() not allowed|legend(rows(1) r(2))"' ///
+    `"198|option cols not allowed|legend(cols)"' ///
+    `"198|option garbage not allowed|legend(garbage)"' ///
+    `"198|option xoffset() not allowed|legend(xoffset(x))"' ///
+    `"121|cols() invalid -- invalid number|legend(c(red))"' ///
+    `"125|cols() invalid -- invalid number, outside of allowed range|legend(cols(0))"' ///
+    `"126|cols() invalid -- invalid number, noninteger value|legend(cols(1.5))"' ///
+    `"123|cols() invalid -- single number required|legend(cols(1 2))"' ///
+    `"127|cols() invalid -- invalid number, missing not allowed|legend(cols(.))"' ///
+    `"121|rows() invalid -- invalid number|legend(rows(x))"' ///
+    `"125|holes() invalid -- invalid numlist has elements outside of allowed range|legend(holes(0))"' ///
+    `"123|holes() invalid -- invalid numlist has too many elements|legend(holes(1/301))"' ///
+    `"198|x not an integer in option label()|legend(label(x "A"))"' ///
+    `"198|A not an integer in option label()|legend(label("A"))"' ///
+    `"198|legend.labels[0] invalid name|legend(label(0 "A"))"' ///
+    `"198|legend.labels[-1] invalid name|legend(label(-1 "A"))"' ///
+    `"198|legend.labels[0] invalid name|legend(lastlabel(0 "A"))"' ///
+    `"0||legend(cols(1) c(red))"' ///
+    `"0||legend(cols(2/2))"' ///
+    `"0||legend(label(+1 "A"))"' ///
+    `"0||legend(ring(-1))"' {
+    gettoken w rest : row, parse("|")
+    gettoken bar rest : rest, parse("|")
+    gettoken nd rest : rest, parse("|")
+    if `"`nd'"' == "|" {
+        local nd ""
+    }
+    else gettoken bar rest : rest, parse("|")
+    _sa_expect SA-05 `w' `"`nd'"' `"`_sab' `rest'"'
+    if r(bad) local b = 1
+}
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-05"
+}
+else display as text "SA-05 PASS: legend() refuses what twoway refuses, with its rc and words"
+
+// SA-06: axis-label refusals.
+local b = 0
+foreach row in ///
+    `"198|option lab() not allowed|ylabel(, lab(large))"' ///
+    `"198|option LABS() not allowed|ylabel(, LABS(large))"' ///
+    `"198|option a() not allowed|ylabel(, a(0))"' ///
+    `"198|option nola not allowed|ylabel(, nola)"' ///
+    `"198|option labs incorrectly specified|ylabel(, labs)"' ///
+    `"198|option nog() incorrectly specified|ylabel(, nog(1))"' ///
+    `"198|option ang() not allowed|ylabel(, angle(45) ang(0))"' ///
+    `"198|option labs not allowed|ylabel(, labs(large) labs)"' ///
+    `"198|option bogus not allowed|ylabel(, labs(large) bogus)"' ///
+    `"198|option a() not allowed|ytick(, a(45))"' ///
+    `"198|option a() not allowed|ymlabel(, a(45))"' ///
+    `"198|option labelminlen() incorrectly specified|ylabel(, labelminlen(x))"' ///
+    `"0||ylabel(, nogr nogrid)"' ///
+    `"0||ylabel(, grid nogrid)"' ///
+    `"0||ytick(, labs(large))"' {
+    gettoken w rest : row, parse("|")
+    gettoken bar rest : rest, parse("|")
+    gettoken nd rest : rest, parse("|")
+    if `"`nd'"' == "|" {
+        local nd ""
+    }
+    else gettoken bar rest : rest, parse("|")
+    _sa_expect SA-06 `w' `"`nd'"' `"`_sab' `rest'"'
+    if r(bad) local b = 1
+}
+_sa_expect SA-06 198 "option a() not allowed" `"dash scatter mpg weight, colorvar(price) zlabel(, a(45))"'
+if r(bad) local b = 1
+_sa_expect SA-06 0 "" `"dash scatter mpg weight, colorvar(price) zlabel(, labs(large))"'
+if r(bad) local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-06"
+}
+else display as text "SA-06 PASS: the axis labels and ticks refuse what twoway refuses"
+
+// SA-07: refusal order, as twoway's.
+local b = 0
+foreach row in ///
+    `"option po() not allowed|legend(po(9)) ylabel(, a(45))"' ///
+    `"option po() not allowed|ylabel(, a(45)) legend(po(9))"' ///
+    `"option a() not allowed|xlabel(, a(45)) ylabel(, axis(3))"' ///
+    `"option f() not allowed|ytick(, a(45)) ylabel(, f(1))"' ///
+    `"option a() not allowed|ylabel(, f(1)) xtick(, a(45))"' ///
+    `"cols() invalid -- invalid number|legend(c(red) po(9))"' ///
+    `"x not an integer in option label()|legend(po(9) label(x "A"))"' ///
+    `"cols() invalid -- invalid number|legend(label(x "A") cols(red))"' ///
+    `"rows() invalid -- invalid number|legend(cols(x) rows(y))"' ///
+    `"ylabels(, axis(3) a(45)) not allowed, yaxis3 does not exist|ylabel(, axis(3) a(45))"' {
+    gettoken nd rest : row, parse("|")
+    gettoken bar rest : rest, parse("|")
+    _sa_expect SA-07 . `"`nd'"' `"`_sab' `rest'"'
+    _sr_count "`r(logfile)'" `"`macval(nd)'"'
+    if r(n) < 1 local b = 1
+}
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-07"
+}
+else display as text "SA-07 PASS: the first refusal is twoway's"
+
+// SA-08: twoway's notes, once each; a copy replaced is silent.
+local b = 0
+_sa_expect SA-08 0 "named style 13 not found in class clockdir" `"`_sab' legend(pos(13))"'
+_sr_count "`r(logfile)'" "named style 13 not found in class clockdir"
+if r(n) != 1 local b = 1
+_sa_expect SA-08 0 "named style x not found in class gridringstyle" `"`_sab' legend(ring(x))"'
+if r(bad) local b = 1
+_sa_expect SA-08 0 "x not an integer, option order() ignored" `"`_sab' legend(order(1 x))"'
+if r(bad) local b = 1
+_sa_expect SA-08 0 "" `"`_sab' legend(pos(x)) legend(pos(3))"'
+_sr_count "`r(logfile)'" "class clockdir"
+if r(n) != 0 local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-08"
+}
+else display as text "SA-08 PASS: position(13), ring(x) and order(1 x) print twoway's note once"
+
+// SA-09 (guard): xline(3000, LCOLOR(red)) is drawn and named (S39 refuses).
+_sa_expect SA-09 0 "LCOLOR(red)" `"`_sab' xline(3000, LCOLOR(red))"'
+if r(bad) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-09"
+}
+else display as text "SA-09 PASS: xline(, LCOLOR()) is drawn and named"
+
+// SA-10: 127 legend() copies merge; a 3,000-word legend ending in po(9)
+// is refused.
+local many ""
+forvalues i = 1/127 {
+    local many `"`many' legend(c(2) lab(1 "A"))"'
+}
+_sa_expect SA-10 0 "" `"`_sab' `many'"'
+local b = r(bad)
+local long ""
+forvalues i = 1/3000 {
+    local long `"`long' lab(1 "A")"'
+}
+_sa_expect SA-10 198 "option po() not allowed" `"`_sab' legend(`long' po(9))"'
+if `b' | r(bad) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-10"
+}
+else display as text "SA-10 PASS: 127 legend() copies draw; a 3,000-word legend() is refused"
+
+// SA-15: titles and axis titles (TR-10.6a).
+local b = 0
+foreach row in ///
+    `"198|option SIZE() not allowed|title("T", SIZE(small))"' ///
+    `"198|option ls() not allowed|title("T", ls(x))"' ///
+    `"198|option s() not allowed|title("T", size(small) s(large))"' ///
+    `"198|option SIZE() not allowed|title("A") title(, SIZE(small))"' ///
+    `"198|option SIZE() not allowed|note("N", SIZE(small))"' ///
+    `"198|option SIZE() not allowed|ytitle(, SIZE(small))"' ///
+    `"198|option s() not allowed|ytitle(, size(small) s(large))"' ///
+    `"198|options prefix and suffix may not be combined|ytitle("Y", prefix suffix)"' ///
+    `"0||title("T", s(small))"' ///
+    `"0||title("T", nob)"' ///
+    `"0||ytitle(, s(small))"' {
+    gettoken w rest : row, parse("|")
+    gettoken bar rest : rest, parse("|")
+    gettoken nd rest : rest, parse("|")
+    if `"`nd'"' == "|" {
+        local nd ""
+    }
+    else gettoken bar rest : rest, parse("|")
+    _sa_expect SA-15 `w' `"`nd'"' `"`_sab' `rest'"'
+    if r(bad) local b = 1
+}
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-15"
+}
+else display as text "SA-15 PASS: the titles refuse what twoway refuses"
 
 // ----------------------------------------------------------------
 // Summary

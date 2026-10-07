@@ -303,7 +303,8 @@ program define _dash_require_mata
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
         _dash_axis_pieces ///
-        _dash_axreq_clear _dash_axreq_add _dash_axreq_check
+        _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
+        _dash_subreq_check _dash_subreq_accept _dash_so_unsafe
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
     // alone and took the library for whole when it was there, so a library
@@ -1952,6 +1953,61 @@ program define _dash_sort_opt, sclass
             sreturn local _pending `"`_so_k'"'
         }
     }
+end
+
+// ================================================================
+// _dash_subopt_check kind -- twoway's refusals of the sub-options of
+// legend() (kind legend), zlabel() (zlabel) and the titles (title), WP-30
+// P1.19.  Mata's _dash_subreq_check reads the recorded options with
+// twoway's own tables and refuses what twoway refuses, r(198), in its
+// words; a cols()/rows()/holes() value it hands back (-1) is put to
+// -numlist- as twoway's ParseLogOpts declares it -- integer >0, one
+// number (or at most 300 for holes()) -- and a failure is refused with
+// twoway's return code and words, "cols() invalid -- invalid number".  A
+// value holding a backtick, $, a quote, a backslash or a control byte is
+// never put to -numlist- (r(121)).  Each pass accepts one value, so the
+// loop ends.  Messages go through _dash_say, never through a macro.
+// ================================================================
+program define _dash_subopt_check
+    version 19
+    args kind
+    local _so_rc -1
+    while `_so_rc' == -1 {
+        mata: st_local("_so_rc", strofreal(_dash_subreq_check(st_local("kind"))))
+        if `_so_rc' != -1 continue, break
+        mata: st_local("_so_bad", strofreal(_dash_so_unsafe(st_local("_so_value"))))
+        local _nlrc 121
+        if !`_so_bad' {
+            if "`_so_kind'" == "N1" {
+                capture numlist `"`macval(_so_value)'"', integer range(>0) min(0) max(1)
+            }
+            else {
+                capture numlist `"`macval(_so_value)'"', integer range(>0) max(300)
+            }
+            local _nlrc = _rc
+        }
+        if `_nlrc' {
+            local _t "invalid numlist"
+            if "`_so_kind'" == "N1" {
+                if `_nlrc' == 121 local _t "invalid number"
+                if `_nlrc' == 123 local _t "single number required"
+                if `_nlrc' == 125 local _t "invalid number, outside of allowed range"
+                if `_nlrc' == 126 local _t "invalid number, noninteger value"
+                if `_nlrc' == 127 local _t "invalid number, missing not allowed"
+            }
+            else {
+                if `_nlrc' == 123 local _t "invalid numlist has too many elements"
+                if `_nlrc' == 125 local _t "invalid numlist has elements outside of allowed range"
+                if `_nlrc' == 126 local _t "invalid numlist has noninteger elements"
+                if `_nlrc' == 127 local _t "invalid numlist has missing values"
+            }
+            mata: _dash_say("err", st_local("_so_name"), "", "() invalid -- " + st_local("_t"))
+            mata: _dash_axreq_clear()
+            exit `_nlrc'
+        }
+        mata: _dash_subreq_accept()
+    }
+    if `_so_rc' exit `_so_rc'
 end
 
 // ================================================================
@@ -5381,8 +5437,11 @@ program define _dash_plot
     // segments before the options after the comma.  The options after the
     // comma are read last, as segment n_segs+1.
     mata: _dash_axreq_add(st_local("_gopts_axraw"), `n_segs' + 1)
+    _dash_subopt_check legend
     mata: st_local("_axrc", strofreal(_dash_axreq_check(st_local("_g_ys"), st_local("_g_xs"))))
     if `_axrc' exit 198
+    _dash_subopt_check zlabel
+    _dash_subopt_check title
 
     // ---- Validate the graph-level values (WP-15) ----
     // After the restore above, so the value checked is the one that will

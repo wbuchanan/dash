@@ -1171,9 +1171,12 @@ class TestTheNewHelpers:
     def test_dash_legend_parts(self):
         words, calls = dr._dash_legend_parts(
             'OFF pos(6) label(1 "on top") order(2 1)')
-        assert words == {"off"}
-        assert calls == [("pos", "6"), ("label", '1 "on top"'),
-                         ("order", "2 1")]
+        # Names are twoway's (WP-30 P1.19): capitals are unread, and each
+        # call is (full name, argument, name as typed).
+        assert words == set()
+        assert calls == [("position", "6", "pos"),
+                         ("label", '1 "on top"', "label"),
+                         ("order", "2 1", "order")]
         assert dr._dash_legend_parts("") == (set(), [])
 
     def test_dash_legend_arg(self):

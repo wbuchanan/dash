@@ -5017,9 +5017,12 @@ def _dash_scale_name(tok):
     return n
 
 
-#: Stata's textbox sub-option table (WP-28 B3), transcribed from
-#: textbox_options.sthlp:41-77, title_options.sthlp:56-66 and
-#: axis_title_options.sthlp:54-63: (full name, minimum abbreviation).
+#: Stata's textbox sub-option table (WP-28 B3, corrected WP-30 P1.19):
+#: (full name, minimum abbreviation), the minimums the capitalised prefixes
+#: of StataNow 19.5's parsers -- _fr_tbstyle_parse_and_log.ado :11-24,
+#: _fr_sztextbox_parse_and_log.ado :10-11, _fr_title_parse_and_log.ado
+#: :17-18 and _gs_parse_and_log_axtitle.ado :15 (``s`` is ``size``, ``a``
+#: ``alignment``, ``lst`` ``lstyle``, ``b`` ``box``, ``nob`` ``nobox``).
 #: ``colour`` and ``style`` are NOT in this table -- twoway refuses
 #: ``title("T", colour(red))`` outright, r(198), and ``style()`` belongs to
 #: ``legend()``/region options, not a textbox (the textbox word is
@@ -5027,18 +5030,22 @@ def _dash_scale_name(tok):
 _TEXTBOX_SUBOPTS = (
     ("tstyle", "tsty"), ("bcolor", "bc"),
     ("orientation", "orient"), ("fcolor", "fc"),
-    ("size", "si"), ("lstyle", "ls"),
+    ("size", "s"), ("lstyle", "lst"),
     ("color", "c"), ("lpattern", "lp"),
     ("justification", "j"), ("lwidth", "lw"),
-    ("alignment", "al"), ("lcolor", "lc"),
+    ("alignment", "a"), ("lcolor", "lc"),
     ("margin", "m"), ("lalign", "la"),
     ("linegap", "linegap"), ("width", "width"), ("height", "height"),
     ("bmargin", "bm"),
-    ("box", "box"), ("nobox", "nobox"),
+    ("box", "b"), ("nobox", "nob"),
     ("bexpand", "bex"),
     ("placement", "place"), ("position", "pos"),
     ("ring", "ring"), ("span", "span"),
     ("prefix", "prefix"), ("suffix", "suffix"), ("axis", "ax"),
+    ("angle", "angle"), ("bfcolor", "bfc"), ("blstyle", "blst"),
+    ("blwidth", "blw"), ("blcolor", "blc"), ("blpattern", "blp"),
+    ("blalign", "bla"), ("nobexpand", "nobex"), ("astextbox", "ast"),
+    ("noastextbox", "noast"), ("nospan", "nospan"),
 )
 
 
@@ -5049,7 +5056,9 @@ def _textbox_canon(name: str) -> "str | None":
     at all -- ``colour``, ``style``, a misspelling, or too short to be any
     one of them unambiguously.
     """
-    nm = str(name or "").lower()
+    nm = str(name or "")
+    if nm != nm.lower():  # twoway matches lower case only (WP-30 P1.19)
+        return None
     for full, minimum in _TEXTBOX_SUBOPTS:
         if len(nm) >= len(minimum) and full.startswith(nm):
             return full
@@ -5311,7 +5320,9 @@ def _parse_textbox_opt(raw: str) -> "tuple[str, dict]":
     scan = tail[:tail.rfind(")") + 1]
     for m2 in re.finditer(r"\b([A-Za-z_]+)\s*\(([^)]*)\)", scan):
         # Stored under the full name (WP-28 B3): c(red) is color(red).
-        opts[_textbox_canon(m2.group(1)) or m2.group(1).lower()] = \
+        # A capitalised name is no name (WP-30 P1.19): kept as typed, so
+        # SIZE(small) is never read as size().
+        opts[_textbox_canon(m2.group(1)) or m2.group(1)] = \
             m2.group(2).strip()
     for tok in _dash_by_tokens(tail.strip()):
         if "(" not in tok:
@@ -22117,22 +22128,28 @@ def _dash_legend_parts(legend_opt):
     """``(words, calls)``: legend()'s bare words and its ``name(arg)``
     sub-options, read as sub-options and never out of quoted text.
 
-    ``words`` is the set of bare words, lower-cased; ``calls`` is the list
-    of ``(name, argument)`` pairs, the name lower-cased, in the order
-    written.
+    The tokens are named as twoway names them (WP-30 P1.19): one copy
+    resolved with ``_DASH_LEGEND_SUBOPT_TABLE``, so ``c(2)`` is ``cols``,
+    ``posi(6)`` ``position`` and a capitalised ``OFF`` nothing.  ``words``
+    is the set of full names of the bare words; ``calls`` is the list of
+    ``(full, argument, typed_name)`` triples in the order written.  A token
+    with no name is left out (``_dash_legend_unsupported`` names it).
     _dash_apply_legend searched the raw text with regular expressions, so
     a label's own words were read as sub-options: legend(label(1 "Turned
     off")) hid the legend, label(1 "on") forced one onto a one-key graph,
     and label(1 "left"), label(2 "pos(3)") and label(1 "ring(0)") moved it.
     """
     words, calls = set(), []
-    for tok in _dash_by_tokens(str(legend_opt or "").strip()):
-        name = _dash_subopt_name(tok)
+    toks = _dash_by_tokens(str(legend_opt or "").strip())
+    names, _ = _dash_subopt_resolve([toks], _DASH_LEGEND_SUBOPT_TABLE)
+    for tok, name in zip(toks, names[0] if names else []):
+        if name is None:
+            continue
         if "(" in tok:
             arg = tok.split("(", 1)[1]
             arg = arg[:-1] if arg.endswith(")") else arg
-            calls.append((name, arg))
-        elif name:
+            calls.append((name, arg, tok.split("(", 1)[0].strip()))
+        else:
             words.add(name)
     return words, calls
 
@@ -22141,7 +22158,7 @@ def _dash_legend_arg(calls, names, pattern=None):
     """The argument of the FIRST sub-option in *calls* named one of
     *names* -- the one the old whole-text search found -- or None; with
     *pattern*, the match of an argument that matches it whole."""
-    for name, arg in calls:
+    for name, arg, *_ in calls:
         if name in names:
             if pattern is None:
                 return arg.strip()
@@ -22164,10 +22181,12 @@ def _dash_parse_legend_order(arg):
     key number (an ``int`` of at most six digits, as
     ``_DASH_LEGEND_LABEL_RE`` bounds a label's) or ``"-"`` for a text-only
     row, and *lines* the strings that followed it, each a line (a compound
-    string keeps what it holds; a bare word is a line).  An empty string
-    ends that entry's lines, as it ends a textbox's, so ``- ""`` has none
-    and draws nothing.  A longer number starts nothing and closes the
-    entry before it.  One linear pass, no regex over the whole text.
+    string keeps what it holds).  An empty string ends that entry's lines,
+    as it ends a textbox's, so ``- ""`` has none and draws nothing.  A
+    longer number, or a negative one, starts nothing and closes the entry
+    before it; ``+1`` is key 1; any other bare word voids the whole
+    order(), returning ``[]``, as twoway ignores it.  One linear pass, no
+    regex over the whole text.
     """
     text = str(arg or "")
     out, cur, closed = [], None, False
@@ -22190,14 +22209,17 @@ def _dash_parse_legend_order(arg):
             i += 1
             continue
         word, i = m.group(), m.end()
-        if word == "-" or (word.isdigit() and word.isascii()
-                           and len(word) <= 6):
+        digits = word[1:] if word[:1] in "+-" else word
+        is_num = bool(digits) and digits.isdigit() and digits.isascii()
+        if word == "-" or (is_num and word[0] != "-" and len(digits) <= 6):
             cur, closed = [], False
-            out.append(("-" if word == "-" else int(word), cur))
-        elif word.isdigit():
-            cur = None
-        elif cur is not None and not closed:
-            cur.append(word)
+            out.append(("-" if word == "-" else int(digits), cur))
+        elif is_num:
+            cur = None  # a key that never exists: -2, or 7+ digits
+        else:
+            # twoway: "x not an integer, option order() ignored" -- the
+            # whole order() is ignored (WP-30 P1.19; Stata prints the note).
+            return []
     return out
 
 
@@ -22344,14 +22366,14 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         if keys:
             n_keys = len(keys)
             texts = {n: [t] for n, t, _ in keys}
-            for _name, _arg in _calls:
+            for _name, _arg, *_ in _calls:
                 if _name != "label":
                     continue
                 lm = _DASH_LEGEND_LABEL_RE.fullmatch(_arg)
                 if lm and int(lm.group(1)) in texts:
                     texts[int(lm.group(1))] = _textbox_lines(lm.group(2))
             _order = None
-            for _name, _arg in _calls:
+            for _name, _arg, *_ in _calls:
                 if _name == "order":
                     _order = _arg
             entries = _dash_parse_legend_order(_order)
@@ -22373,7 +22395,7 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                                 renderers=[]))
                     elif k in items_by_n:
                         seq.append(items_by_n[k])
-            for _name, _arg in _calls:
+            for _name, _arg, *_ in _calls:
                 if _name != "lastlabel":
                     continue
                 lm = _DASH_LEGEND_LABEL_RE.fullmatch(_arg)
@@ -22411,7 +22433,9 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     #    right are not placements: twoway refuses them, and so does
     #    dash.ado; one in a spec is named above, as a sub-option dash does
     #    not implement.
-    m_pos = _dash_legend_arg(_calls, ("position", "pos"), r"(\d+)")
+    # twoway's clockdir names are 0..12 as written: 13, 06 and 3.0 draw
+    # the default (Stata prints twoway's note).
+    m_pos = _dash_legend_arg(_calls, ("position",), r"([0-9]|1[0-2])")
     m_ring = _dash_legend_arg(_calls, ("ring",), r"(\d+)")
     inside = bool(m_ring) and m_ring.group(1) == "0"
     if legend is not None:
@@ -22465,24 +22489,38 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     #    "auto": the scheme's ncols (2 under s2color, 3 under economist)
     #    used to survive a user rows(1), and Bokeh then laid out ncols=2,
     #    nrows=1 and wrapped the third key onto a second row.
-    m_cols = _dash_legend_arg(_calls, ("cols",), r"(\d+)")
-    m_rows = _dash_legend_arg(_calls, ("rows",), r"(\d+)")
+    #    rows() wins over cols() as twoway's does (WP-30 P1.19); each is a
+    #    numlist of one positive integer (cols(2/2), cols(+2)).
+    def _one_count(name):
+        arg = _dash_legend_arg(_calls, (name,))
+        if arg is None:
+            return None
+        try:
+            vals, too_many, bad = _dash_expand_numlist(arg.split(), limit=2)
+        except (ValueError, TypeError, OverflowError):
+            return None  # twoway refuses it; dash.ado does (Stata side)
+        if (not too_many and not bad and len(vals) == 1
+                and math.isfinite(vals[0]) and float(vals[0]) == int(vals[0])
+                and int(vals[0]) > 0):
+            return int(vals[0])
+        return None
+
+    n_cols, n_rows = _one_count("cols"), _one_count("rows")
     for lg in fig.legend:
         try:
-            if m_cols:
-                lg.ncols = int(m_cols.group(1))
-            if m_rows:
-                lg.nrows = int(m_rows.group(1))
-            if m_cols and not m_rows:
-                lg.nrows = "auto"
-            elif m_rows and not m_cols:
+            if n_rows is not None:
+                lg.nrows = n_rows
                 lg.ncols = "auto"
+            elif n_cols is not None:
+                lg.ncols = n_cols
+                lg.nrows = "auto"
         except (ValueError, AttributeError):
             pass
 
     # 7. size() on every legend, including a colour key: the user asked
     #    for a legend text size, not a plot-legend text size.
     m_size = _dash_legend_arg(_calls, ("size",), r"([^)]+?)")
+    _size_typed = next((t for n, _a, t in _calls if n == "size"), "size")
     if m_size:
         # Stata's text units per legend (WP-30 P1.12a): *# multiplies each
         # legend's own size; an unknown name draws medium on every legend,
@@ -22506,7 +22544,8 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
             except (ValueError, TypeError):
                 _bad = True
         if _bad:
-            _dash_style_note("legend(size)", m_size.group(1), "size",
+            _dash_style_note("legend(%s)" % _size_typed, m_size.group(1),
+                             "size",
                              "medium")
 
     # 8. Stata's rule governs the SERIES key; `off' is a bare word, so
@@ -22516,7 +22555,7 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     #    (axis_truth.json c_order1, text_truth.json l_order_beats_label)
     #    and no legend for order(1 - "Only") on a one-key graph (l_one_dash).
     forced_on = "on" in _words
-    turned_off = "off" in _words
+    turned_off = "off" in _words and "on" not in _words  # on wins
     if n_keys is None:
         n_keys = len(legend.items) if legend is not None else 0
     show = not (turned_off or (n_keys < 2 and not forced_on))
@@ -23512,32 +23551,38 @@ def _dash_parse_axis_spec(raw):
     # compound-quoted label, which used to end the split early
     # (`xlabel(1 "a, b" 2 "c")`).
     head, tail = _dash_axis_head_split(text)
+    # The tail's tokens are named as twoway's tickset parser names them
+    # (WP-30 P1.19): lower case only, from each minimum (labs, ang, for,
+    # g, nog, val) to the full name.  Values are read from those tokens
+    # alone -- never by a search over the whole text, which read a quoted
+    # label such as "labsize(large)" as a sub-option.  Within the copy the
+    # positive word wins (grid over nogrid), as twoway's code order has it.
+    out["typed"] = {}
     if tail:
-        for _tok in _dash_by_tokens(tail.lstrip(",").strip()):
-            _nm = _dash_subopt_name(_tok)
-            if _nm and len(_nm) >= 3 and "valuelabel".startswith(_nm):
-                out["valuelabel"] = True
-                continue
-            # WP-28 B2: norescale draws the positions without widening
-            # the axis (axis_label_options.sthlp:344-350); the exact word,
-            # which the grammar gives no abbreviation.
-            if _nm == "norescale":
-                out["norescale"] = True
-                continue
-            if _nm not in ("format", "labsize", "angle", "grid", "nogrid"):
+        _toks = _dash_by_tokens(tail.lstrip(",").strip())
+        _names, _ = _dash_subopt_resolve([_toks],
+                                         _DASH_AXLABEL_SUBOPT_TABLE)
+        _seen = set()
+        for _tok, _nm in zip(_toks, _names[0] if _names else []):
+            if _nm not in _DASH_AXLABEL_HONOURED:
                 out["unsupported"].append(_tok)
-
-    out["angle"] = _parse_axis_angle(text)
-    m = re.search(r"\bformat\s*\(\s*([^)]+?)\s*\)", text, re.I)
-    if m:
-        out["format"] = m.group(1).strip()
-    m = re.search(r"\blabsize\s*\(\s*([^)]+?)\s*\)", text, re.I)
-    if m:
-        out["labsize"] = m.group(1).strip()
-    if re.search(r"\bnogrid\b", text, re.I):
-        out["grid"] = False
-    elif re.search(r"\bgrid\b", text, re.I):
-        out["grid"] = True
+                continue
+            _seen.add(_nm)
+            out["typed"][_nm] = _tok
+            _arg = (_dash_subopt_arg(_tok) if "(" in _tok else "")
+            if _nm == "format":
+                out["format"] = _arg
+            elif _nm == "labsize":
+                out["labsize"] = _arg
+            elif _nm == "angle":
+                out["angle"] = _parse_axis_angle("angle(" + _arg + ")")
+            elif _nm == "norescale":
+                out["norescale"] = True
+        if "grid" in _seen:
+            out["grid"] = True
+        elif "nogrid" in _seen:
+            out["grid"] = False
+        out["valuelabel"] = "valuelabels" in _seen
 
     head = head.strip()
 
@@ -23727,8 +23772,10 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                     T.css_to_pt(_ax.major_label_text_font_size)
                     or T.size_medium_pt("text"), ref_in))
             except (ValueError, TypeError):
-                _dash_style_note("labsize", spec["labsize"], "size",
-                                 "medium")
+                _dash_style_note(
+                    spec.get("typed", {}).get("labsize", "labsize")
+                    .split("(", 1)[0].strip(), spec["labsize"], "size",
+                    "medium")
                 _ax.major_label_text_font_size = T.css_pt(
                     T.size_medium_pt("text"))
     if spec["angle"] is not None:
@@ -23791,11 +23838,10 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
     text = str(raw or "")
     spec = _dash_parse_axis_spec(text)
     bad = list(spec.get("unsupported", []))
-    _m_tail = re.search(r",\s*(?=[A-Za-z_])", text)
-    if _m_tail:
-        for _tok in _dash_by_tokens(text[_m_tail.end():].strip()):
-            if _dash_subopt_name(_tok) in ("format", "labsize", "angle"):
-                bad.append(_tok)
+    # A tick draws no label: its format/labsize/angle are named as typed.
+    for _sub in ("format", "labsize", "angle"):
+        if _sub in spec.get("typed", {}):
+            bad.append(spec["typed"][_sub])
     _dash_report_suboptions(option, bad, seen, key)
     if date_kind:
         # On a date axis the positions are dates in the variable's unit
@@ -26921,22 +26967,312 @@ def _dash_subopt_name(tok):
     return tok.split("(", 1)[0].strip().lower()
 
 
+# ==== twoway's sub-option tables (WP-30 P1.19) ===========================
+# Each row is (full, minimum, stage, kind, star, check): *stage* the parse
+# order, *kind* "w" a word, "a" an argument taken once per stage, "r" a
+# repeatable argument; *star* whether that stage's syntax has ``*`` (passes
+# what it does not take on); *check* "" or "N1"/"NL" (a numlist) or "R"/"I"
+# (a real/integer literal).  The minimum is the capitalised prefix in
+# StataNow 19.5's ado/base parsers; a name matches in lower case only.
+
+#: _fr_tbstyle_parse_and_log.ado (1.0.2) :11-24, declaration order:
+#: (full, minimum, kind, check).
+_DASH_TBSTYLE_ROWS = (
+    ("tstyle", "tsty", "a", ""), ("angle", "angle", "a", ""),
+    ("size", "s", "a", ""), ("color", "c", "a", ""),
+    ("justification", "j", "a", ""), ("alignment", "a", "a", ""),
+    ("margin", "m", "a", ""), ("linegap", "linegap", "a", ""),
+    ("nobox", "nob", "w", ""), ("box", "b", "w", ""),
+    ("bmargin", "bm", "a", ""), ("placement", "place", "a", ""),
+    ("bfcolor", "bfc", "a", ""), ("fcolor", "fc", "a", ""),
+    ("bcolor", "bc", "a", ""), ("blstyle", "blst", "a", ""),
+    ("blwidth", "blw", "a", ""), ("blcolor", "blc", "a", ""),
+    ("blpattern", "blp", "a", ""), ("blalign", "bla", "a", ""),
+    ("lstyle", "lst", "a", ""), ("lwidth", "lw", "a", ""),
+    ("lcolor", "lc", "a", ""), ("lpattern", "lp", "a", ""),
+    ("lalign", "la", "a", ""), ("orientation", "orient", "a", ""),
+)
+
+
+def _dash_so_stage(stage, star, rows):
+    """Rows ``(full, minimum, kind[, check])`` as table rows of *stage*."""
+    return tuple((r[0], r[1], stage, r[2], star, r[3] if len(r) > 3 else "")
+                 for r in rows)
+
+
+#: legend(): _fr_legend_parse_and_log.ado (1.0.5) :20-23 (stage 1),
+#: :136 region (2), ParseLogOpts :197-212 (3), _fr_tbstyle (4, :221), the
+#: titles of graph_g.class:282-301 (5), LABel :350/:365 (6), LASTLABel
+#: :374/:389 (7); every stage passes its rest on, FAKE (:159) names it.
+_DASH_LEGEND_SUBOPT_TABLE = (
+    _dash_so_stage(1, True, (
+        ("position", "pos", "a"), ("ring", "ring", "a"),
+        ("style", "sty", "a"), ("order", "order", "a"),
+        ("showindex", "showindex", "w"), ("nospan", "nospan", "w"),
+        ("span", "span", "w")))
+    + _dash_so_stage(2, True, (("region", "reg", "r"),))
+    + _dash_so_stage(3, True, (
+        ("nodrawview", "nodrawv", "w"), ("drawview", "drawv", "w"),
+        ("all", "all", "w"), ("styleonly", "styleonly", "w"),
+        ("holes", "hol", "a", "NL"), ("textwidth", "textw", "a"),
+        ("xoffset", "xoffset", "a", "R"), ("yoffset", "yoffset", "a", "R"),
+        ("style", "sty", "a"), ("rows", "r", "a", "N1"),
+        ("nocolfirst", "nocolf", "w"), ("colfirst", "colf", "w"),
+        ("cols", "c", "a", "N1"), ("notextfirst", "notextf", "w"),
+        ("textfirst", "textf", "w"), ("nostacked", "nostac", "w"),
+        ("stacked", "stac", "w"), ("rowgap", "rowg", "a"),
+        ("colgap", "colg", "a"), ("keygap", "keyg", "a"),
+        ("symplacement", "symp", "a"), ("symxsize", "symx", "a"),
+        ("symysize", "symy", "a"), ("noforcesize", "noforces", "w"),
+        ("forcesize", "forces", "w"), ("bmargin", "bm", "a"),
+        ("bplacement", "bplace", "a"), ("nobexpand", "nobex", "w"),
+        ("bexpand", "bex", "w"), ("width", "width", "a"),
+        ("height", "height", "a"), ("nodraw", "nodraw", "w"),
+        ("draw", "draw", "w"), ("on", "on", "w"), ("off", "off", "w")))
+    + _dash_so_stage(4, True, _DASH_TBSTYLE_ROWS)
+    # R1title..B2title: the digit is part of the minimum -- twoway refuses
+    # legend(rows(1) r(2)) with "option r() not allowed" (measured).
+    + _dash_so_stage(5, True, (
+        ("r1title", "r1", "r"), ("r2title", "r2", "r"),
+        ("l1title", "l1", "r"), ("l2title", "l2", "r"),
+        ("t1title", "t1", "r"), ("t2title", "t2", "r"),
+        ("b1title", "b1", "r"), ("b2title", "b2", "r"),
+        ("note", "note", "r"), ("caption", "cap", "r"),
+        ("subtitle", "sub", "r"), ("title", "t", "r")))
+    + _dash_so_stage(6, True, (("label", "lab", "r"),))
+    + _dash_so_stage(7, True, (("lastlabel", "lastlab", "r"),)))
+
+#: The axis label and tick options: _gs_parse_and_log_tickset.ado (1.1.1)
+#: :18 (stage 1, starred) and Options :265-283 (stage 2, no ``*``).
+#: labelminlen and labelkeepleadingzero are lower case there: no
+#: abbreviation.
+_DASH_AXLABEL_SUBOPT_TABLE = (
+    _dash_so_stage(1, True, (
+        ("add", "add", "w"), ("custom", "custom", "w"),
+        ("norescale", "norescale", "w")))
+    + _dash_so_stage(2, False, (
+        ("noticks", "notick", "w"), ("ticks", "tick", "w"),
+        ("nolabels", "nolab", "w"), ("labels", "labels", "w"),
+        ("noshowlabels", "noshowlab", "w"), ("showlabels", "showlab", "w"),
+        ("novaluelabels", "noval", "w"), ("valuelabels", "val", "w"),
+        ("angle", "ang", "a"), ("alternate", "alt", "w"),
+        ("altgap", "altgap", "a"), ("style", "sty", "a"),
+        ("tstyle", "tsty", "a"), ("tlength", "tl", "a"),
+        ("tposition", "tp", "a"), ("labgap", "labgap", "a"),
+        ("tlstyle", "tlsty", "a"), ("tlwidth", "tlw", "a"),
+        ("tlcolor", "tlc", "a"), ("tlpattern", "tlp", "a"),
+        ("labstyle", "labsty", "a"), ("labsize", "labs", "a"),
+        ("labcolor", "labc", "a"), ("labjustification", "labj", "a"),
+        ("labalignment", "laba", "a"), ("nopgmgrid", "nopgmgrid", "w"),
+        ("pgmgrid", "pgmgrid", "w"), ("nogrid", "nog", "w"),
+        ("grid", "g", "w"), ("gstyle", "gs", "a"),
+        ("nogextend", "nogex", "w"), ("gextend", "gex", "w"),
+        ("nogmin", "nogmin", "w"), ("gmin", "gmin", "w"),
+        ("nogmax", "nogmax", "w"), ("gmax", "gmax", "w"),
+        ("glstyle", "gls", "a"), ("glwidth", "glw", "a"),
+        ("glcolor", "glc", "a"), ("glpattern", "glp", "a"),
+        ("format", "for", "a"), ("axis", "ax", "a"),
+        ("labelminlen", "labelminlen", "a", "I"),
+        ("labelkeepleadingzero", "labelkeepleadingzero", "w"),
+        ("custom", "custom", "w"))))
+
+#: xline()/yline(): _gs_parse_and_log_lines.ado (1.1.6) :18-23, no ``*``.
+_DASH_REFLINE_SUBOPT_TABLE = _dash_so_stage(1, False, (
+    ("style", "st", "a"), ("noextend", "noex", "w"),
+    ("extend", "ex", "w"), ("lstyle", "lst", "a"),
+    ("lcolor", "lc", "a"), ("lwidth", "lw", "a"),
+    ("lpattern", "lp", "a"), ("lalign", "la", "a"),
+    ("axis", "ax", "a")))
+
+#: xscale()/yscale(): _gs_parse_and_log_axoptions.ado (1.0.4) :19-32
+#: (stage 1), the repeated Range :46/:56 (stage 2), FAKE :74.  S10 keys the
+#: Mata merge with it only; S31 re-measures it before refusing with it.
+_DASH_AXSCALE_SUBOPT_TABLE = (
+    _dash_so_stage(1, True, (
+        ("nolog", "nolog", "w"), ("log", "log", "w"),
+        ("noatanh", "noatanh", "w"), ("atanh", "atanh", "w"),
+        ("nologit", "nologit", "w"), ("logit", "logit", "w"),
+        ("nolog1m", "nolog1", "w"), ("log1m", "log1", "w"),
+        ("alternate", "alt", "w"), ("style", "sty", "a"),
+        ("titlegap", "titleg", "a"), ("outergap", "outerg", "a"),
+        ("noline", "noli", "w"), ("line", "li", "w"),
+        ("noextend", "noex", "w"), ("extend", "ex", "w"),
+        ("nofextend", "nofex", "w"), ("fextend", "fex", "w"),
+        ("lstyle", "lst", "a"), ("lcolor", "lc", "a"),
+        ("lwidth", "lw", "a"), ("lpattern", "lp", "a"),
+        ("on", "on", "w"), ("off", "off", "w"),
+        ("nofillspace", "nofill", "w"), ("fillspace", "fill", "w"),
+        ("ring", "ring", "a", "R"), ("noreverse", "norev", "w"),
+        ("reverse", "rev", "w"), ("axis", "ax", "a")))
+    + _dash_so_stage(2, True, (("range", "r", "r"),)))
+
+#: _fr_sztextbox_parse_and_log.ado (1.1.0) :10-11.
+_DASH_SZTEXTBOX_ROWS = (
+    ("width", "width", "a"), ("height", "height", "a"),
+    ("noastextbox", "noast", "w"), ("nobexpand", "nobex", "w"),
+    ("astextbox", "ast", "w"), ("bexpand", "bex", "w"))
+
+#: title(), subtitle(), note(), caption(), t1title()..r2title():
+#: _fr_title_parse_and_log.ado (1.0.6) :17-18, then sztextbox, tbstyle and
+#: FAKE (:166-172).  Read by Stata's refusals only (TR-10.6a).
+_DASH_TITLE_SUBOPT_TABLE = (
+    _dash_so_stage(1, True, (
+        ("nospan", "nospan", "w"), ("span", "span", "w"),
+        ("prefix", "prefix", "w"), ("suffix", "suffix", "w"),
+        ("position", "pos", "a"), ("ring", "ring", "a"),
+        ("style", "sty", "a")))
+    + _dash_so_stage(2, True, _DASH_SZTEXTBOX_ROWS)
+    + _dash_so_stage(3, True, _DASH_TBSTYLE_ROWS))
+
+#: xtitle(), ytitle(), their 2 forms, ztitle():
+#: _gs_parse_and_log_axtitle.ado :15, then sztextbox, tbstyle, FAKE (:31-33).
+_DASH_AXTITLE_SUBOPT_TABLE = (
+    _dash_so_stage(1, True, (
+        ("prefix", "prefix", "w"), ("suffix", "suffix", "w"),
+        ("axis", "ax", "a")))
+    + _dash_so_stage(2, True, _DASH_SZTEXTBOX_ROWS)
+    + _dash_so_stage(3, True, _DASH_TBSTYLE_ROWS))
+
+#: The axis-label sub-options the renderer draws.
+_DASH_AXLABEL_HONOURED = frozenset({
+    "format", "labsize", "angle", "grid", "nogrid", "valuelabels",
+    "novaluelabels", "norescale"})
+
+#: twoway's real and integer literals, fullmatched on the stripped argument
+#: (float() would take 1_0, inf and nan).
+_DASH_SUBOPT_REAL_RE = re.compile(r"[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?")
+_DASH_SUBOPT_INT_RE = re.compile(r"[+-]?\d+")
+
+
+def _dash_subopt_canon(name, table):
+    """The full name *name* abbreviates in *table*, or None.
+
+    *name* is the typed name (the text before ``(``, stripped).  It matches
+    in lower case only, from a row's minimum to its full name, the first
+    row in table order winning -- the order twoway's parser stages try
+    them, so ``c`` is ``cols`` in legend() and ``s`` is ``size``.
+    """
+    nm = str(name or "").strip()
+    if not nm or nm != nm.lower():
+        return None
+    for row in table:
+        if len(nm) >= len(row[1]) and row[0].startswith(nm):
+            return row[0]
+    return None
+
+
+def _dash_subopt_arg(tok):
+    """The argument of a ``name(arg)`` token: between the first ``(`` and
+    a final ``)``, stripped."""
+    arg = tok.split("(", 1)[1]
+    arg = arg[:-1] if arg.endswith(")") else arg
+    return arg.strip()
+
+
+def _dash_subopt_resolve(copies, table):
+    """twoway's reading of one option's sub-option tokens, copy by copy.
+
+    *copies* is a list of token lists, one per copy in command order (a
+    ``str`` or a flat token list is one copy).  Returns ``(names,
+    problem)``: ``names[c][i]`` the full name of token *i* of copy *c* or
+    None, and *problem* None or ``(c, i, 198, message)`` -- the message
+    twoway prints (``option po() not allowed``, ``option labs incorrectly
+    specified``).  Each stage, in order, names the still-unnamed tokens of
+    every copy; a starred stage passes what it cannot take on, an unstarred
+    one refuses it; what no stage named is refused.  Linear in tokens times
+    rows.
+    """
+    if isinstance(copies, str):
+        copies = [_dash_by_tokens(copies.strip())]
+    elif copies and all(isinstance(t, str) for t in copies):
+        copies = [list(copies)]
+    copies = [list(c) for c in (copies or [])]
+    names = [[None] * len(c) for c in copies]
+    parts = [[(t.split("(", 1)[0].strip(), "(" in t) for t in c]
+             for c in copies]
+
+    def shown(c, i):
+        nm, paren = parts[c][i]
+        return nm + ("()" if paren else "")
+
+    stages = {}
+    for row in table:
+        stages.setdefault(row[2], []).append(row)
+    problem = None
+    for stage in sorted(stages):
+        rows = stages[stage]
+        star = rows[0][4]
+        index = {}
+        for row in rows:
+            index.setdefault(row[0], row)
+        for c, toks in enumerate(copies):
+            taken = set()
+            for i, tok in enumerate(toks):
+                if names[c][i] is not None:
+                    continue
+                nm, paren = parts[c][i]
+                row = None
+                if nm and nm == nm.lower():
+                    for r in rows:
+                        if len(nm) >= len(r[1]) and r[0].startswith(nm):
+                            row = r
+                            break
+                bad = None
+                if row is None:
+                    bad = "none"
+                else:
+                    kind, check = row[3], row[5]
+                    if (row[0], kind) in taken and (
+                            kind == "a" or (star and kind == "w")):
+                        bad = "taken"
+                    elif (kind == "w") == paren:
+                        bad = "form"
+                    elif check in ("R", "I"):
+                        rx = (_DASH_SUBOPT_REAL_RE if check == "R"
+                              else _DASH_SUBOPT_INT_RE)
+                        if not rx.fullmatch(_dash_subopt_arg(tok)):
+                            bad = "form"
+                if bad is None:
+                    names[c][i] = row[0]
+                    taken.add((row[0], row[3]))
+                    continue
+                if star:
+                    continue
+                if problem is None:
+                    msg = "option %s %s" % (shown(c, i), (
+                        "incorrectly specified" if bad == "form"
+                        else "not allowed"))
+                    problem = (c, i, 198, msg)
+        if problem is not None:
+            return names, problem
+    for c, toks in enumerate(copies):
+        for i in range(len(toks)):
+            if names[c][i] is None:
+                return names, (c, i, 198,
+                               "option %s not allowed" % shown(c, i))
+    return names, None
+
+
 #: legend() sub-options _dash_apply_legend honours.
 _DASH_LEGEND_SUBOPTS = frozenset({
-    "on", "off", "position", "pos", "ring", "order", "label", "lastlabel",
+    "on", "off", "position", "ring", "order", "label", "lastlabel",
     "cols", "rows", "size"})
 
 #: legend(label(# text)): the key's number, then its text, read by
 #: _textbox_lines.  The number is bounded so no label can make int() read
 #: thousands of digits; the text is everything after the blank that follows
 #: it, so bare words keep the blank twoway keeps (" Foreign cars").
-_DASH_LEGEND_LABEL_RE = re.compile(r"\s*(\d{1,6})(\s.*)", re.S)
+_DASH_LEGEND_LABEL_RE = re.compile(r"\s*\+?(\d{1,6})(\s.*)", re.S)
 
 
 def _dash_legend_unsupported(legend_opt):
-    """The legend() tokens dash has no reading for, as the user wrote them."""
-    return [t for t in _dash_by_tokens(str(legend_opt or "").strip())
-            if _dash_subopt_name(t) not in _DASH_LEGEND_SUBOPTS]
+    """The legend() tokens dash has no reading for, as the user wrote them:
+    those twoway's table gives no name (capitals, refused spellings) and
+    those it names but dash does not draw."""
+    toks = _dash_by_tokens(str(legend_opt or "").strip())
+    names, _ = _dash_subopt_resolve([toks], _DASH_LEGEND_SUBOPT_TABLE)
+    return [t for t, nm in zip(toks, names[0] if names else [])
+            if nm is None or nm not in _DASH_LEGEND_SUBOPTS]
 
 
 #: Textbox sub-options the figure title, the axis titles, the subtitle, the
@@ -26968,7 +27304,7 @@ def _dash_textbox(raw, option, seen=None, key=""):
             # a comma-only value from echoing itself back at its own length).
             if not t.strip(", "):
                 continue
-            nm = _textbox_canon(_dash_subopt_name(t))
+            nm = _textbox_canon(t.split("(", 1)[0].strip())
             if nm == "axis":
                 arg = t[t.find("(") + 1:t.rfind(")")].strip() \
                     if "(" in t else ""
@@ -27261,9 +27597,9 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key):
             # for that reason) but the colour bar's ticker applies none of
             # them, so they are named here instead.
             _bad = list(spec.get("unsupported", []))
-            for _sub, _sv in (("format", spec.get("format")),):
-                if _sv:
-                    _bad.append(f"{_sub}({_sv})")
+            _typed = spec.get("typed", {})
+            if "format" in _typed:
+                _bad.append(_typed["format"])  # named as typed (A64)
             # labsize() is drawn on the colour bar's tick labels, in
             # Stata's text units (WP-30 P1.12a, Evidence E5).
             if spec.get("labsize"):
@@ -27276,14 +27612,15 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key):
                             or _T.size_medium_pt("text"),
                             _T.size_ref_of(fig)))
                 except (ValueError, TypeError):
-                    _dash_style_note("labsize", spec["labsize"], "size",
-                                     "medium")
+                    _dash_style_note(
+                        spec.get("typed", {}).get("labsize", "labsize")
+                        .split("(", 1)[0].strip(), spec["labsize"], "size",
+                        "medium")
                     key_obj.major_label_text_font_size = _T.css_pt(
                         _T.size_medium_pt("text"))
-            if spec.get("angle") is not None:
-                _bad.append(f"angle({spec['angle']:g})")
-            if spec.get("grid") is not None:
-                _bad.append("grid" if spec["grid"] else "nogrid")
+            for _sub in ("angle", "grid", "nogrid"):
+                if _sub in _typed:
+                    _bad.append(_typed[_sub])
             _dash_report_suboptions("zlabel", _bad, seen, key)
             if spec["mode"] == "none":
                 key_obj.ticker = FixedTicker(ticks=[])
@@ -27410,9 +27747,15 @@ def _dash_refline_instances(raw, bad):
         if seg_i > 0:
             in_subs = True
         for tok in _dash_by_tokens(seg.strip()):
-            name = _dash_subopt_name(tok)
-            if "(" in tok and name in _DASH_REFLINE_SUBOPTS:
-                style[name] = tok[len(name) + 1:-1].strip() if tok.endswith(")") else ""
+            # twoway's spellings, lower case only (WP-30 P1.19): lc() is
+            # lcolor(); a typed abbreviation is kept for the note.
+            typed = tok.split("(", 1)[0].strip()
+            name = (_dash_subopt_canon(typed, _DASH_REFLINE_SUBOPT_TABLE)
+                    if "(" in tok else None)
+            if name in _DASH_REFLINE_SUBOPTS:
+                style[name] = _dash_subopt_arg(tok)
+                if typed != name:
+                    style.setdefault("_typed", {})[name] = typed
                 continue
             try:
                 pos = float(tok)
@@ -27476,8 +27819,9 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
             try:
                 kw[attr] = fn(style[sub])
             except (ValueError, TypeError):
-                _dash_style_note(f"{opt}({sub})", style[sub], what,
-                                 "the default")
+                _dash_style_note(
+                    f"{opt}({style.get('_typed', {}).get(sub, sub)})",
+                    style[sub], what, "the default")
     kind = (_dash_axis_date_kind(fig, "x" if opt == "xline" else "y")
             if range_name == "default" else None)
     if kind:
@@ -34145,6 +34489,11 @@ class ServerAppBuilder:
                       "_DASH_ORDER_WORD_RE", "_DASH_ORDER_BLANK_RE",
                       "_DASH_TEXTBOX_HONOURED",
                       "_DASH_TEXTBOX_DEFAULTS", "_DASH_SCALE_SUBOPTS",
+                      "_DASH_TBSTYLE_ROWS", "_DASH_LEGEND_SUBOPT_TABLE",
+                      "_DASH_AXLABEL_SUBOPT_TABLE",
+                      "_DASH_AXSCALE_SUBOPT_TABLE",
+                      "_DASH_REFLINE_SUBOPT_TABLE", "_DASH_AXLABEL_HONOURED",
+                      "_DASH_SUBOPT_REAL_RE", "_DASH_SUBOPT_INT_RE",
                       # The second axes' coordinate names and the
                       # yscale2()/xscale2() sub-options honoured (WP-23).
                       "_DASH_Y_COORDS", "_DASH_X_COORDS",
@@ -34589,6 +34938,8 @@ class ServerAppBuilder:
                          "_dash_colorvar_domain", "_dash_colorvar_field",
                          "_dash_apply_z_options",
                          "_dash_subopt_name",
+                         "_dash_subopt_canon", "_dash_subopt_resolve",
+                         "_dash_subopt_arg",
                          "_dash_legend_unsupported", "_dash_textbox",
                          "_dash_textbox_or_default",
                          "_textbox_canon", "_dash_route_axis_titles",

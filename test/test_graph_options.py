@@ -1313,12 +1313,12 @@ class TestLegendColsRows:
         assert fig.legend[0] in fig.above
 
     def test_legend_rows_and_cols_combined(self):
-        """legend(cols(2) rows(4)) must set both ncols and nrows."""
+        """legend(cols(2) rows(4)): rows() wins, as twoway's does (WP-30
+        P1.19, measured: every order of rows/cols draws the rows)."""
         fig = _get_figure({"legend": "cols(2) rows(4)"})
         assert len(fig.legend) == 1, len(fig.legend)
-        if fig.legend:
-            assert fig.legend[0].ncols == 2
-            assert fig.legend[0].nrows == 4
+        assert fig.legend[0].nrows == 4
+        assert fig.legend[0].ncols == "auto"
 
     def test_legend_cols_zero_ignored(self):
         """legend(cols(0)) — zero column count must not raise."""

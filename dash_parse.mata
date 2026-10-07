@@ -291,17 +291,41 @@
 *!
 *!   _dash_axreq_clear()
 *!       Empties the external _dash_axreq, the axis options recorded for
-*!       the command being parsed (WP-29 P0.5).
+*!       the command being parsed (WP-29 P0.5), and the sub-option record
+*!       (_dash_subreq_clear, WP-30 P1.19).
 *!
 *!   _dash_axreq_add(opts, seg)
 *!       Records each axis option of the raw option text opts of plot
-*!       segment seg (the options after the comma are segment n_segs+1).
+*!       segment seg (the options after the comma are segment n_segs+1);
+*!       column 10 holds twoway's refusal of a label or tick sub-option.
+*!       Records the legend(), zlabel() and title sub-options too
+*!       (_dash_subreq_add).
 *!
 *!   _dash_axreq_check(ys, xs)
 *!       Refuses, r(198) with twoway's message and in twoway's order, the
 *!       first recorded axis option twoway refuses -- a second comma, an
 *!       axis no layer uses (ys, xs: the layers' axes), an axis word in
-*!       capitals or given twice -- and clears the record; 0 otherwise.
+*!       capitals or given twice, then (column 10) a label or tick
+*!       sub-option twoway refuses -- and clears the record; 0 otherwise.
+*!
+*!   _dash_subreq_check(kind)
+*!       Refuses, r(198) with twoway's words, the first legend(), zlabel()
+*!       or title sub-option twoway refuses (kind legend, zlabel or title);
+*!       -1 hands a cols()/rows()/holes() value to dash.ado's
+*!       _dash_subopt_check through its locals _so_name, _so_value and
+*!       _so_kind; prints twoway's legend notes (WP-30 P1.19).  Its helpers
+*!       are _dash_subreq_clear, _dash_subreq_add, _dash_subreq_toks,
+*!       _dash_subreq_label and _dash_subreq_drop, and twoway's tables and
+*!       reader _dash_so_rows, _dash_so_canon, _dash_so_isnum,
+*!       _dash_so_family and _dash_so_resolve, the twins of dash_render.py's
+*!       _DASH_*_SUBOPT_TABLE and _dash_subopt_resolve.
+*!
+*!   _dash_subreq_accept()
+*!       Marks the value _dash_subreq_check last handed back as passed.
+*!
+*!   _dash_so_unsafe(s)
+*!       1 when s holds a backtick, $, a quote, a backslash or a control
+*!       byte: a value never put to -numlist-.
 *!
 *!   _dash_axis_pieces(s)
 *!       An axis-label option's value split into strings, bare runs and
@@ -5617,7 +5641,8 @@ void _dash_axreq_clear()
 {
     external string matrix _dash_axreq
 
-    _dash_axreq = J(0, 9, "")
+    _dash_axreq = J(0, 10, "")
+    _dash_subreq_clear()
 }
 
 void _dash_axreq_add(string scalar opts, real scalar seg)
@@ -5625,25 +5650,35 @@ void _dash_axreq_add(string scalar opts, real scalar seg)
     external string matrix _dash_axreq
     string rowvector toks, words
     string matrix    fam, blk
-    string scalar    d, v, body, dcw, badw
-    real scalar      i, k, r, nax, n, axpos
+    string rowvector snames
+    string scalar    d, v, body, dcw, badw, sm
+    real scalar      i, k, r, nax, n, axpos, sat
 
+    _dash_subreq_add(opts, seg)
     toks = _dash_rep_toks(opts, 0)
     if (cols(toks) == 0) return
     fam = _dash_axfam()
-    blk = J(cols(toks), 9, "")
+    blk = J(cols(toks), 10, "")
     k   = 0
     for (i = 1; i <= cols(toks); i++) {
         if (!_dash_ax_parse(toks[i], fam, d, r, v, body, words, dcw, nax, n,
                             badw, axpos)) continue
         k++
+        // Column 10 (WP-30 P1.19): twoway's refusal of a label, mlabel,
+        // tick or mtick sub-option (_dash_so_resolve's message), or "".
+        sm = ""
+        if (anyof(("label", "mlabel", "tick", "mtick"), fam[r, 1]) &
+            cols(words)) {
+            if (_dash_so_resolve(words, J(1, cols(words), 1), "axlabel",
+                                 snames, sm, sat) == 0) sm = ""
+        }
         blk[k, .] = ((d == "x" ? "1" : "2"), fam[r, 5], strofreal(seg),
                      strofreal(i), strofreal(n, "%21.0f"), d + fam[r, 2], v,
-                     dcw, badw)
+                     dcw, badw, sm)
     }
     if (!k) return
-    blk = blk[|1, 1 \ k, 9|]
-    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 9) _dash_axreq = blk
+    blk = blk[|1, 1 \ k, 10|]
+    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 10) _dash_axreq = blk
     else _dash_axreq = _dash_axreq \ blk
 }
 
@@ -5656,8 +5691,8 @@ real scalar _dash_axreq_check(string scalar ys, string scalar xs)
     real colvector   o
     real scalar      i, n
 
-    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 9) {
-        _dash_axreq_clear()
+    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 10) {
+        _dash_axreq = J(0, 10, "")
         return(0)
     }
     a    = _dash_axreq
@@ -5687,26 +5722,855 @@ real scalar _dash_axreq_check(string scalar ys, string scalar xs)
             _dash_axreq_clear()
             return(198)
         }
+        if (a[o[i], 10] != "") {
+            _dash_say("err", "", a[o[i], 10], "")
+            _dash_axreq_clear()
+            return(198)
+        }
     }
-    _dash_axreq_clear()
+    _dash_axreq = J(0, 10, "")
     return(0)
 }
 
-// _dash_rep_subkey(tok, cat) -- which sub-option a word sets, for keeping
-// the last of each: its name in lower case, a noX taken as X (grid and
-// nogrid, box and nobox are one setting), pos as position, cols and rows
-// as one (twoway: legend(cols(1)) legend(rows(1)) draws rows(1)), on and
-// off as one, and label(# ...) and lastlabel(# ...) keyed by their number.
-string scalar _dash_rep_subkey(string scalar tok, string scalar cat)
+// ==== twoway's sub-option tables and resolver (WP-30 P1.19) ==============
+// The Mata twins of dash_render.py's _DASH_*_SUBOPT_TABLE, _dash_subopt_canon
+// and _dash_subopt_resolve.  A row is (full, minimum, stage, kind, star,
+// check): kind "w" a word, "a" an argument once per stage, "r" a repeatable
+// argument; star "1" when the stage passes what it does not take on; check
+// "", "N1"/"NL" (a numlist, checked by dash.ado's _dash_subopt_check) or
+// "R"/"I" (a real/integer literal).  No regexm: it follows the caller's
+// version.
+
+// _dash_so_rows(fam) -- the rows of family fam: legend, axlabel, axscale,
+// refline, title, axtitle or textbox; J(0, 6, "") for any other.
+string matrix _dash_so_rows(string scalar fam)
+{
+    string matrix t
+
+    t = J(0, 6, "")
+    if (fam == "legend") {
+        t = t \ ("position", "pos", "1", "a", "1", "" \
+                  "ring", "ring", "1", "a", "1", "" \
+                  "style", "sty", "1", "a", "1", "" \
+                  "order", "order", "1", "a", "1", "" \
+                  "showindex", "showindex", "1", "w", "1", "" \
+                  "nospan", "nospan", "1", "w", "1", "")
+        t = t \ ("span", "span", "1", "w", "1", "" \
+                  "region", "reg", "2", "r", "1", "" \
+                  "nodrawview", "nodrawv", "3", "w", "1", "" \
+                  "drawview", "drawv", "3", "w", "1", "" \
+                  "all", "all", "3", "w", "1", "" \
+                  "styleonly", "styleonly", "3", "w", "1", "")
+        t = t \ ("holes", "hol", "3", "a", "1", "NL" \
+                  "textwidth", "textw", "3", "a", "1", "" \
+                  "xoffset", "xoffset", "3", "a", "1", "R" \
+                  "yoffset", "yoffset", "3", "a", "1", "R" \
+                  "style", "sty", "3", "a", "1", "" \
+                  "rows", "r", "3", "a", "1", "N1")
+        t = t \ ("nocolfirst", "nocolf", "3", "w", "1", "" \
+                  "colfirst", "colf", "3", "w", "1", "" \
+                  "cols", "c", "3", "a", "1", "N1" \
+                  "notextfirst", "notextf", "3", "w", "1", "" \
+                  "textfirst", "textf", "3", "w", "1", "" \
+                  "nostacked", "nostac", "3", "w", "1", "")
+        t = t \ ("stacked", "stac", "3", "w", "1", "" \
+                  "rowgap", "rowg", "3", "a", "1", "" \
+                  "colgap", "colg", "3", "a", "1", "" \
+                  "keygap", "keyg", "3", "a", "1", "" \
+                  "symplacement", "symp", "3", "a", "1", "" \
+                  "symxsize", "symx", "3", "a", "1", "")
+        t = t \ ("symysize", "symy", "3", "a", "1", "" \
+                  "noforcesize", "noforces", "3", "w", "1", "" \
+                  "forcesize", "forces", "3", "w", "1", "" \
+                  "bmargin", "bm", "3", "a", "1", "" \
+                  "bplacement", "bplace", "3", "a", "1", "" \
+                  "nobexpand", "nobex", "3", "w", "1", "")
+        t = t \ ("bexpand", "bex", "3", "w", "1", "" \
+                  "width", "width", "3", "a", "1", "" \
+                  "height", "height", "3", "a", "1", "" \
+                  "nodraw", "nodraw", "3", "w", "1", "" \
+                  "draw", "draw", "3", "w", "1", "" \
+                  "on", "on", "3", "w", "1", "")
+        t = t \ ("off", "off", "3", "w", "1", "" \
+                  "tstyle", "tsty", "4", "a", "1", "" \
+                  "angle", "angle", "4", "a", "1", "" \
+                  "size", "s", "4", "a", "1", "" \
+                  "color", "c", "4", "a", "1", "" \
+                  "justification", "j", "4", "a", "1", "")
+        t = t \ ("alignment", "a", "4", "a", "1", "" \
+                  "margin", "m", "4", "a", "1", "" \
+                  "linegap", "linegap", "4", "a", "1", "" \
+                  "nobox", "nob", "4", "w", "1", "" \
+                  "box", "b", "4", "w", "1", "" \
+                  "bmargin", "bm", "4", "a", "1", "")
+        t = t \ ("placement", "place", "4", "a", "1", "" \
+                  "bfcolor", "bfc", "4", "a", "1", "" \
+                  "fcolor", "fc", "4", "a", "1", "" \
+                  "bcolor", "bc", "4", "a", "1", "" \
+                  "blstyle", "blst", "4", "a", "1", "" \
+                  "blwidth", "blw", "4", "a", "1", "")
+        t = t \ ("blcolor", "blc", "4", "a", "1", "" \
+                  "blpattern", "blp", "4", "a", "1", "" \
+                  "blalign", "bla", "4", "a", "1", "" \
+                  "lstyle", "lst", "4", "a", "1", "" \
+                  "lwidth", "lw", "4", "a", "1", "" \
+                  "lcolor", "lc", "4", "a", "1", "")
+        t = t \ ("lpattern", "lp", "4", "a", "1", "" \
+                  "lalign", "la", "4", "a", "1", "" \
+                  "orientation", "orient", "4", "a", "1", "" \
+                  "r1title", "r1", "5", "r", "1", "" \
+                  "r2title", "r2", "5", "r", "1", "" \
+                  "l1title", "l1", "5", "r", "1", "")
+        t = t \ ("l2title", "l2", "5", "r", "1", "" \
+                  "t1title", "t1", "5", "r", "1", "" \
+                  "t2title", "t2", "5", "r", "1", "" \
+                  "b1title", "b1", "5", "r", "1", "" \
+                  "b2title", "b2", "5", "r", "1", "" \
+                  "note", "note", "5", "r", "1", "")
+        t = t \ ("caption", "cap", "5", "r", "1", "" \
+                  "subtitle", "sub", "5", "r", "1", "" \
+                  "title", "t", "5", "r", "1", "" \
+                  "label", "lab", "6", "r", "1", "" \
+                  "lastlabel", "lastlab", "7", "r", "1", "")
+    }
+    else if (fam == "axlabel") {
+        t = t \ ("add", "add", "1", "w", "1", "" \
+                  "custom", "custom", "1", "w", "1", "" \
+                  "norescale", "norescale", "1", "w", "1", "" \
+                  "noticks", "notick", "2", "w", "0", "" \
+                  "ticks", "tick", "2", "w", "0", "" \
+                  "nolabels", "nolab", "2", "w", "0", "")
+        t = t \ ("labels", "labels", "2", "w", "0", "" \
+                  "noshowlabels", "noshowlab", "2", "w", "0", "" \
+                  "showlabels", "showlab", "2", "w", "0", "" \
+                  "novaluelabels", "noval", "2", "w", "0", "" \
+                  "valuelabels", "val", "2", "w", "0", "" \
+                  "angle", "ang", "2", "a", "0", "")
+        t = t \ ("alternate", "alt", "2", "w", "0", "" \
+                  "altgap", "altgap", "2", "a", "0", "" \
+                  "style", "sty", "2", "a", "0", "" \
+                  "tstyle", "tsty", "2", "a", "0", "" \
+                  "tlength", "tl", "2", "a", "0", "" \
+                  "tposition", "tp", "2", "a", "0", "")
+        t = t \ ("labgap", "labgap", "2", "a", "0", "" \
+                  "tlstyle", "tlsty", "2", "a", "0", "" \
+                  "tlwidth", "tlw", "2", "a", "0", "" \
+                  "tlcolor", "tlc", "2", "a", "0", "" \
+                  "tlpattern", "tlp", "2", "a", "0", "" \
+                  "labstyle", "labsty", "2", "a", "0", "")
+        t = t \ ("labsize", "labs", "2", "a", "0", "" \
+                  "labcolor", "labc", "2", "a", "0", "" \
+                  "labjustification", "labj", "2", "a", "0", "" \
+                  "labalignment", "laba", "2", "a", "0", "" \
+                  "nopgmgrid", "nopgmgrid", "2", "w", "0", "" \
+                  "pgmgrid", "pgmgrid", "2", "w", "0", "")
+        t = t \ ("nogrid", "nog", "2", "w", "0", "" \
+                  "grid", "g", "2", "w", "0", "" \
+                  "gstyle", "gs", "2", "a", "0", "" \
+                  "nogextend", "nogex", "2", "w", "0", "" \
+                  "gextend", "gex", "2", "w", "0", "" \
+                  "nogmin", "nogmin", "2", "w", "0", "")
+        t = t \ ("gmin", "gmin", "2", "w", "0", "" \
+                  "nogmax", "nogmax", "2", "w", "0", "" \
+                  "gmax", "gmax", "2", "w", "0", "" \
+                  "glstyle", "gls", "2", "a", "0", "" \
+                  "glwidth", "glw", "2", "a", "0", "" \
+                  "glcolor", "glc", "2", "a", "0", "")
+        t = t \ ("glpattern", "glp", "2", "a", "0", "" \
+                  "format", "for", "2", "a", "0", "" \
+                  "axis", "ax", "2", "a", "0", "" \
+                  "labelminlen", "labelminlen", "2", "a", "0", "I" \
+                  "labelkeepleadingzero", "labelkeepleadingzero", "2", "w", "0", "" \
+                  "custom", "custom", "2", "w", "0", "")
+    }
+    else if (fam == "axscale") {
+        t = t \ ("nolog", "nolog", "1", "w", "1", "" \
+                  "log", "log", "1", "w", "1", "" \
+                  "noatanh", "noatanh", "1", "w", "1", "" \
+                  "atanh", "atanh", "1", "w", "1", "" \
+                  "nologit", "nologit", "1", "w", "1", "" \
+                  "logit", "logit", "1", "w", "1", "")
+        t = t \ ("nolog1m", "nolog1", "1", "w", "1", "" \
+                  "log1m", "log1", "1", "w", "1", "" \
+                  "alternate", "alt", "1", "w", "1", "" \
+                  "style", "sty", "1", "a", "1", "" \
+                  "titlegap", "titleg", "1", "a", "1", "" \
+                  "outergap", "outerg", "1", "a", "1", "")
+        t = t \ ("noline", "noli", "1", "w", "1", "" \
+                  "line", "li", "1", "w", "1", "" \
+                  "noextend", "noex", "1", "w", "1", "" \
+                  "extend", "ex", "1", "w", "1", "" \
+                  "nofextend", "nofex", "1", "w", "1", "" \
+                  "fextend", "fex", "1", "w", "1", "")
+        t = t \ ("lstyle", "lst", "1", "a", "1", "" \
+                  "lcolor", "lc", "1", "a", "1", "" \
+                  "lwidth", "lw", "1", "a", "1", "" \
+                  "lpattern", "lp", "1", "a", "1", "" \
+                  "on", "on", "1", "w", "1", "" \
+                  "off", "off", "1", "w", "1", "")
+        t = t \ ("nofillspace", "nofill", "1", "w", "1", "" \
+                  "fillspace", "fill", "1", "w", "1", "" \
+                  "ring", "ring", "1", "a", "1", "R" \
+                  "noreverse", "norev", "1", "w", "1", "" \
+                  "reverse", "rev", "1", "w", "1", "" \
+                  "axis", "ax", "1", "a", "1", "")
+        t = t \ ("range", "r", "2", "r", "1", "")
+    }
+    else if (fam == "refline") {
+        t = t \ ("style", "st", "1", "a", "0", "" \
+                  "noextend", "noex", "1", "w", "0", "" \
+                  "extend", "ex", "1", "w", "0", "" \
+                  "lstyle", "lst", "1", "a", "0", "" \
+                  "lcolor", "lc", "1", "a", "0", "" \
+                  "lwidth", "lw", "1", "a", "0", "")
+        t = t \ ("lpattern", "lp", "1", "a", "0", "" \
+                  "lalign", "la", "1", "a", "0", "" \
+                  "axis", "ax", "1", "a", "0", "")
+    }
+    else if (fam == "title") {
+        t = t \ ("nospan", "nospan", "1", "w", "1", "" \
+                  "span", "span", "1", "w", "1", "" \
+                  "prefix", "prefix", "1", "w", "1", "" \
+                  "suffix", "suffix", "1", "w", "1", "" \
+                  "position", "pos", "1", "a", "1", "" \
+                  "ring", "ring", "1", "a", "1", "")
+        t = t \ ("style", "sty", "1", "a", "1", "" \
+                  "width", "width", "2", "a", "1", "" \
+                  "height", "height", "2", "a", "1", "" \
+                  "noastextbox", "noast", "2", "w", "1", "" \
+                  "nobexpand", "nobex", "2", "w", "1", "" \
+                  "astextbox", "ast", "2", "w", "1", "")
+        t = t \ ("bexpand", "bex", "2", "w", "1", "" \
+                  "tstyle", "tsty", "3", "a", "1", "" \
+                  "angle", "angle", "3", "a", "1", "" \
+                  "size", "s", "3", "a", "1", "" \
+                  "color", "c", "3", "a", "1", "" \
+                  "justification", "j", "3", "a", "1", "")
+        t = t \ ("alignment", "a", "3", "a", "1", "" \
+                  "margin", "m", "3", "a", "1", "" \
+                  "linegap", "linegap", "3", "a", "1", "" \
+                  "nobox", "nob", "3", "w", "1", "" \
+                  "box", "b", "3", "w", "1", "" \
+                  "bmargin", "bm", "3", "a", "1", "")
+        t = t \ ("placement", "place", "3", "a", "1", "" \
+                  "bfcolor", "bfc", "3", "a", "1", "" \
+                  "fcolor", "fc", "3", "a", "1", "" \
+                  "bcolor", "bc", "3", "a", "1", "" \
+                  "blstyle", "blst", "3", "a", "1", "" \
+                  "blwidth", "blw", "3", "a", "1", "")
+        t = t \ ("blcolor", "blc", "3", "a", "1", "" \
+                  "blpattern", "blp", "3", "a", "1", "" \
+                  "blalign", "bla", "3", "a", "1", "" \
+                  "lstyle", "lst", "3", "a", "1", "" \
+                  "lwidth", "lw", "3", "a", "1", "" \
+                  "lcolor", "lc", "3", "a", "1", "")
+        t = t \ ("lpattern", "lp", "3", "a", "1", "" \
+                  "lalign", "la", "3", "a", "1", "" \
+                  "orientation", "orient", "3", "a", "1", "")
+    }
+    else if (fam == "axtitle") {
+        t = t \ ("prefix", "prefix", "1", "w", "1", "" \
+                  "suffix", "suffix", "1", "w", "1", "" \
+                  "axis", "ax", "1", "a", "1", "" \
+                  "width", "width", "2", "a", "1", "" \
+                  "height", "height", "2", "a", "1", "" \
+                  "noastextbox", "noast", "2", "w", "1", "")
+        t = t \ ("nobexpand", "nobex", "2", "w", "1", "" \
+                  "astextbox", "ast", "2", "w", "1", "" \
+                  "bexpand", "bex", "2", "w", "1", "" \
+                  "tstyle", "tsty", "3", "a", "1", "" \
+                  "angle", "angle", "3", "a", "1", "" \
+                  "size", "s", "3", "a", "1", "")
+        t = t \ ("color", "c", "3", "a", "1", "" \
+                  "justification", "j", "3", "a", "1", "" \
+                  "alignment", "a", "3", "a", "1", "" \
+                  "margin", "m", "3", "a", "1", "" \
+                  "linegap", "linegap", "3", "a", "1", "" \
+                  "nobox", "nob", "3", "w", "1", "")
+        t = t \ ("box", "b", "3", "w", "1", "" \
+                  "bmargin", "bm", "3", "a", "1", "" \
+                  "placement", "place", "3", "a", "1", "" \
+                  "bfcolor", "bfc", "3", "a", "1", "" \
+                  "fcolor", "fc", "3", "a", "1", "" \
+                  "bcolor", "bc", "3", "a", "1", "")
+        t = t \ ("blstyle", "blst", "3", "a", "1", "" \
+                  "blwidth", "blw", "3", "a", "1", "" \
+                  "blcolor", "blc", "3", "a", "1", "" \
+                  "blpattern", "blp", "3", "a", "1", "" \
+                  "blalign", "bla", "3", "a", "1", "" \
+                  "lstyle", "lst", "3", "a", "1", "")
+        t = t \ ("lwidth", "lw", "3", "a", "1", "" \
+                  "lcolor", "lc", "3", "a", "1", "" \
+                  "lpattern", "lp", "3", "a", "1", "" \
+                  "lalign", "la", "3", "a", "1", "" \
+                  "orientation", "orient", "3", "a", "1", "")
+    }
+    else if (fam == "textbox") {
+        t = t \ ("tstyle", "tsty", "1", "a", "1", "" \
+                  "bcolor", "bc", "1", "a", "1", "" \
+                  "orientation", "orient", "1", "a", "1", "" \
+                  "fcolor", "fc", "1", "a", "1", "" \
+                  "size", "s", "1", "a", "1", "" \
+                  "lstyle", "lst", "1", "a", "1", "")
+        t = t \ ("color", "c", "1", "a", "1", "" \
+                  "lpattern", "lp", "1", "a", "1", "" \
+                  "justification", "j", "1", "a", "1", "" \
+                  "lwidth", "lw", "1", "a", "1", "" \
+                  "alignment", "a", "1", "a", "1", "" \
+                  "lcolor", "lc", "1", "a", "1", "")
+        t = t \ ("margin", "m", "1", "a", "1", "" \
+                  "lalign", "la", "1", "a", "1", "" \
+                  "linegap", "linegap", "1", "a", "1", "" \
+                  "width", "width", "1", "a", "1", "" \
+                  "height", "height", "1", "a", "1", "" \
+                  "bmargin", "bm", "1", "a", "1", "")
+        t = t \ ("box", "b", "1", "a", "1", "" \
+                  "nobox", "nob", "1", "a", "1", "" \
+                  "bexpand", "bex", "1", "a", "1", "" \
+                  "placement", "place", "1", "a", "1", "" \
+                  "position", "pos", "1", "a", "1", "" \
+                  "ring", "ring", "1", "a", "1", "")
+        t = t \ ("span", "span", "1", "a", "1", "" \
+                  "prefix", "prefix", "1", "a", "1", "" \
+                  "suffix", "suffix", "1", "a", "1", "" \
+                  "axis", "ax", "1", "a", "1", "" \
+                  "angle", "angle", "1", "a", "1", "" \
+                  "bfcolor", "bfc", "1", "a", "1", "")
+        t = t \ ("blstyle", "blst", "1", "a", "1", "" \
+                  "blwidth", "blw", "1", "a", "1", "" \
+                  "blcolor", "blc", "1", "a", "1", "" \
+                  "blpattern", "blp", "1", "a", "1", "" \
+                  "blalign", "bla", "1", "a", "1", "" \
+                  "nobexpand", "nobex", "1", "a", "1", "")
+        t = t \ ("astextbox", "ast", "1", "a", "1", "" \
+                  "noastextbox", "noast", "1", "a", "1", "" \
+                  "nospan", "nospan", "1", "a", "1", "")
+    }
+    return(t)
+}
+
+// _dash_so_canon(name, fam) -- the full name typed name abbreviates in
+// family fam, or "": lower case only, from a row's minimum to its full
+// name, the first row in table order winning.
+string scalar _dash_so_canon(string scalar name, string scalar fam)
+{
+    string matrix t
+    string scalar nm
+    real scalar   i
+
+    nm = strtrim(name)
+    if (nm == "" | nm != strlower(nm)) return("")
+    t = _dash_so_rows(fam)
+    for (i = 1; i <= rows(t); i++) {
+        if (strlen(nm) >= strlen(t[i, 2]) & strlen(nm) <= strlen(t[i, 1]) &
+            substr(t[i, 1], 1, strlen(nm)) == nm) return(t[i, 1])
+    }
+    return("")
+}
+
+// _dash_so_isnum(s, isint) -- 1 when s, stripped, is twoway's integer
+// literal [+-]?digits (isint) or real literal [+-]?(d+.?d*|.d+)([eE][+-]?d+)?
+// and nothing else.  Byte by byte.
+real scalar _dash_so_isnum(string scalar s, real scalar isint)
+{
+    string scalar t, c
+    real scalar   i, n, nd, nf, dot
+
+    t = strtrim(s)
+    n = strlen(t)
+    i = 1
+    if (n == 0) return(0)
+    c = substr(t, 1, 1)
+    if (c == "+" | c == "-") i = 2
+    nd  = 0
+    nf  = 0
+    dot = 0
+    while (i <= n) {
+        c = substr(t, i, 1)
+        if (c >= "0" & c <= "9") {
+            if (dot) nf++
+            else nd++
+        }
+        else if (c == "." & !dot & !isint) dot = 1
+        else break
+        i++
+    }
+    if (nd + nf == 0) return(0)
+    if (i > n) return(1)
+    if (isint) return(0)
+    c = substr(t, i, 1)
+    if (c != "e" & c != "E") return(0)
+    i++
+    if (i <= n) {
+        c = substr(t, i, 1)
+        if (c == "+" | c == "-") i++
+    }
+    if (i > n) return(0)
+    for (; i <= n; i++) {
+        c = substr(t, i, 1)
+        if (c < "0" | c > "9") return(0)
+    }
+    return(1)
+}
+
+// _dash_so_resolve(toks, cid, fam, names, msg, at) -- twoway's reading of
+// one option's sub-option words: toks every copy's words in command
+// order, cid each word's copy.  names is set to each word's full name or
+// "".  Returns 198 with msg twoway's message ("option po() not allowed",
+// "option labs incorrectly specified") and at the word's index for the
+// first problem, else 0.  Each stage, in order, names the unnamed words of
+// each copy; a starred stage passes what it cannot take on, an unstarred
+// one refuses it; what no stage named is refused.  Linear in words times
+// rows.
+real scalar _dash_so_resolve(string rowvector toks, real rowvector cid,
+                             string scalar fam, string rowvector names,
+                             string scalar msg, real scalar at)
+{
+    string matrix    t
+    string rowvector nm
+    string scalar    taken, bad, arg
+    real rowvector   paren
+    real scalar      i, j, s, smax, star, row, p, c, n
+
+    t     = _dash_so_rows(fam)
+    n     = cols(toks)
+    names = J(1, n, "")
+    nm    = J(1, n, "")
+    paren = J(1, n, 0)
+    msg   = ""
+    at    = 0
+    for (i = 1; i <= n; i++) {
+        p = strpos(toks[i], "(")
+        nm[i]    = strtrim(p ? substr(toks[i], 1, p - 1) : toks[i])
+        paren[i] = (p > 0)
+    }
+    smax = 0
+    for (j = 1; j <= rows(t); j++) smax = max((smax, strtoreal(t[j, 3])))
+    for (s = 1; s <= smax; s++) {
+        star = -1
+        for (j = 1; j <= rows(t); j++) {
+            if (strtoreal(t[j, 3]) == s) {
+                star = (t[j, 5] == "1")
+                break
+            }
+        }
+        if (star < 0) continue
+        taken = " "
+        c     = .
+        for (i = 1; i <= n; i++) {
+            if (cid[i] != c) {
+                c     = cid[i]
+                taken = " "
+            }
+            if (names[i] != "") continue
+            row = 0
+            if (nm[i] != "" & nm[i] == strlower(nm[i])) {
+                for (j = 1; j <= rows(t); j++) {
+                    if (strtoreal(t[j, 3]) != s) continue
+                    if (strlen(nm[i]) >= strlen(t[j, 2]) &
+                        strlen(nm[i]) <= strlen(t[j, 1]) &
+                        substr(t[j, 1], 1, strlen(nm[i])) == nm[i]) {
+                        row = j
+                        break
+                    }
+                }
+            }
+            bad = ""
+            if (!row) bad = "none"
+            else {
+                if (strpos(taken, " " + t[row, 1] + ":" + t[row, 4] + " ") &
+                    (t[row, 4] == "a" | (star & t[row, 4] == "w"))) {
+                    bad = "taken"
+                }
+                else if ((t[row, 4] == "w") == paren[i]) bad = "form"
+                else if (t[row, 6] == "R" | t[row, 6] == "I") {
+                    arg = _dash_rep_value(toks[i])
+                    if (substr(toks[i], strlen(toks[i]), 1) != ")") {
+                        arg = substr(toks[i], strpos(toks[i], "(") + 1, .)
+                    }
+                    if (!_dash_so_isnum(arg, t[row, 6] == "I")) bad = "form"
+                }
+            }
+            if (bad == "") {
+                names[i] = t[row, 1]
+                taken = taken + t[row, 1] + ":" + t[row, 4] + " "
+                continue
+            }
+            if (star) continue
+            if (at == 0) {
+                at  = i
+                msg = "option " + nm[i] + (paren[i] ? "()" : "") +
+                      (bad == "form" ? " incorrectly specified" :
+                       " not allowed")
+            }
+        }
+        if (at) return(198)
+    }
+    for (i = 1; i <= n; i++) {
+        if (names[i] == "") {
+            at  = i
+            msg = "option " + nm[i] + (paren[i] ? "()" : "") + " not allowed"
+            return(198)
+        }
+    }
+    return(0)
+}
+
+// _dash_so_family(key) -- the sub-option table a merge key reads: legend()
+// "legend", an axis label or tick list "axlabel", an axis scale
+// "axscale", a title "textbox"; "" for a region, by(), text() and lines.
+string scalar _dash_so_family(string scalar key)
+{
+    string scalar cat
+
+    if (_dash_rep_bare(key) == "legend") return("legend")
+    cat = _dash_rep_cat(key)
+    if (cat == "L") return("axlabel")
+    if (cat == "S") return("axscale")
+    if (cat == "T") return("textbox")
+    return("")
+}
+
+// _dash_so_unsafe(s) -- 1 when s holds a backtick, $, a quote, a backslash
+// or a byte below 32: a value never put to -numlist-.
+real scalar _dash_so_unsafe(string scalar s)
+{
+    real scalar i, b
+
+    for (i = 1; i <= strlen(s); i++) {
+        b = ascii(substr(s, i, 1))
+        if (b < 32 | b == 96 | b == 36 | b == 39 | b == 34 | b == 92) return(1)
+    }
+    return(0)
+}
+
+// _dash_subreq_clear(), _dash_subreq_add(opts, seg), _dash_subreq_check(kind)
+// and _dash_subreq_accept() -- twoway's refusals of the sub-options of
+// legend(), zlabel() and the titles (WP-30 P1.19).  _dash_subreq_add
+// records, from the RAW option text (called by _dash_axreq_add, with its
+// arguments), one row per option in the external _dash_subreq: kind
+// ("legend", "zlabel", "title:<name>" or "axtitle:<name>"), seg, place and
+// the sub-option words.  _dash_subreq_check resolves them with twoway's
+// tables and refuses the first problem with twoway's words through
+// _dash_say, r(198); a cols()/rows()/holes() value it hands back (-1, the
+// caller's locals _so_name, _so_value and _so_kind) for dash.ado's
+// _dash_subopt_check to put to -numlist-, which then accepts it
+// (_dash_subreq_accept) and checks again.  The record is cleared at the
+// start of every graph command and after every check or refusal, so no
+// typed text is kept.
+void _dash_subreq_clear()
+{
+    external string matrix _dash_subreq
+    external real rowvector _dash_subreq_ok
+    external real scalar    _dash_subreq_last
+
+    _dash_subreq      = J(0, 4, "")
+    _dash_subreq_ok   = J(1, 0, .)
+    _dash_subreq_last = 0
+}
+
+void _dash_subreq_add(string scalar opts, real scalar seg)
+{
+    external string matrix _dash_subreq
+    string rowvector toks, tnames, tmins
+    string scalar    nm, v, body, sub, b2, s2, kind
+    real scalar      i, j, k
+
+    toks = _dash_rep_toks(opts, 0)
+    if (cols(toks) == 0) return
+    tnames = ("title", "subtitle", "note", "caption", "t1title", "t2title",
+              "b1title", "b2title", "l1title", "l2title", "r1title",
+              "r2title", "xtitle", "ytitle", "xtitle2", "ytitle2", "ztitle")
+    tmins  = ("ti", "sub", "note", "cap", "t1", "t2", "b1", "b2", "l1",
+              "l2", "r1", "r2", "xti", "yti", "xtitle2", "ytitle2", "zti")
+    if (rows(_dash_subreq) == 0 | cols(_dash_subreq) != 4) {
+        _dash_subreq = J(0, 4, "")
+    }
+    for (i = 1; i <= cols(toks); i++) {
+        if (!strpos(toks[i], "(")) continue
+        nm = _dash_rep_optname(toks[i])
+        if (nm == "" | nm != strlower(nm)) continue
+        v  = _dash_rep_value(toks[i])
+        kind = ""
+        if (strlen(nm) >= 3 & substr("legend", 1, strlen(nm)) == nm) {
+            kind = "legend"
+            sub  = v
+        }
+        else if (strlen(nm) >= 4 & substr("zlabel", 1, strlen(nm)) == nm) {
+            kind = "zlabel"
+            sub  = ""
+            if (_dash_rep_split(v, body, sub)) {
+                if (_dash_rep_split(sub, b2, s2)) sub = b2
+            }
+        }
+        else {
+            k = 0
+            for (j = 1; j <= cols(tnames); j++) {
+                if (strlen(nm) >= strlen(tmins[j]) &
+                    strlen(nm) <= strlen(tnames[j]) &
+                    substr(tnames[j], 1, strlen(nm)) == nm) {
+                    k = j
+                    break
+                }
+            }
+            if (k) {
+                kind = (anyof(("xtitle", "ytitle", "xtitle2", "ytitle2",
+                               "ztitle"), tnames[k]) ? "axtitle:" : "title:") +
+                       tnames[k]
+                sub = ""
+                (void) _dash_rep_split(v, body, sub)
+            }
+        }
+        if (kind == "" | strtrim(sub) == "") continue
+        _dash_subreq = _dash_subreq \ (kind, strofreal(seg), strofreal(i), sub)
+    }
+}
+
+// _dash_subreq_toks(kind, toks, cid) -- every recorded copy of kind (an
+// exact kind, or every title/axtitle kind when kind is "title:" or
+// "axtitle:" and the next name) in (seg, place) order, as one word list
+// and each word's copy number.
+void _dash_subreq_toks(string scalar kind, string rowvector toks,
+                       real rowvector cid)
+{
+    external string matrix _dash_subreq
+    string rowvector w
+    real colvector   o
+    real scalar      i, c
+
+    toks = J(1, 0, "")
+    cid  = J(1, 0, .)
+    if (rows(_dash_subreq) == 0) return
+    o = order(strtoreal(_dash_subreq[., (2, 3)]), (1, 2))
+    c = 0
+    for (i = 1; i <= rows(o); i++) {
+        if (_dash_subreq[o[i], 1] != kind) continue
+        // A title's empty slots -- ytitle(A,,) -- are no words, as twoway
+        // ignores them (WP-29 P0.4).
+        w = _dash_rep_toks(_dash_subreq[o[i], 4], kind != "legend")
+        if (cols(w) == 0) continue
+        c++
+        toks = toks, w
+        cid  = cid, J(1, cols(w), c)
+    }
+}
+
+// _dash_subreq_label(w, opt) -- twoway's refusal of label()/lastlabel()'s
+// key word w (one pair of quotes stripped), or "".
+string scalar _dash_subreq_label(string scalar w, string scalar opt)
+{
+    string scalar t, d
+    real scalar   i, nz
+
+    t = w
+    if (strlen(t) >= 2 & substr(t, 1, 1) == char(34) &
+        substr(t, strlen(t), 1) == char(34)) t = substr(t, 2, strlen(t) - 2)
+    if (t == "") return("")
+    d = t
+    if (substr(d, 1, 1) == "+" | substr(d, 1, 1) == "-") d = substr(d, 2, .)
+    if (d == "" | !_dash_is_digits(d, .)) {
+        return(t + " not an integer in option " + opt + "()")
+    }
+    nz = 0
+    for (i = 1; i <= strlen(d); i++) if (substr(d, i, 1) != "0") nz = 1
+    if (substr(t, 1, 1) == "-" | !nz) return("legend.labels[" + t + "] invalid name")
+    return("")
+}
+
+real scalar _dash_subreq_check(string scalar kind)
+{
+    external string matrix  _dash_subreq
+    external real rowvector _dash_subreq_ok
+    external real scalar    _dash_subreq_last
+    string rowvector toks, names, w, kinds
+    string scalar    msg, f, arg, lastpos, lastring, lastorder, m, fam
+    real rowvector   cid
+    real scalar      rc, at, i, j, k, c, q, hasp, hass
+
+    if (rows(_dash_subreq) == 0 | cols(_dash_subreq) != 4) {
+        _dash_subreq_clear()
+        return(0)
+    }
+    if (kind == "legend") {
+        _dash_subreq_toks("legend", toks, cid)
+        if (cols(toks) == 0) return(0)
+        rc = _dash_so_resolve(toks, cid, "legend", names, msg, at)
+        if (cols(_dash_subreq_ok) == 0) _dash_subreq_ok = J(1, 0, .)
+        // 1. Values, in twoway's order: per copy, holes() rows() cols()
+        //    as ParseLogOpts declares them; then every label(), then
+        //    every lastlabel().
+        for (c = 1; c <= max(cid); c++) {
+            for (k = 1; k <= 3; k++) {
+                f = (k == 1 ? "holes" : (k == 2 ? "rows" : "cols"))
+                for (i = 1; i <= cols(toks); i++) {
+                    if (cid[i] != c | names[i] != f) continue
+                    if (anyof(_dash_subreq_ok, i)) continue
+                    arg = strtrim(_dash_rep_value(toks[i]))
+                    if (arg == "") continue
+                    _dash_subreq_last = i
+                    st_local("_so_name", f)
+                    st_local("_so_value", arg)
+                    st_local("_so_kind", f == "holes" ? "NL" : "N1")
+                    return(-1)
+                }
+            }
+        }
+        for (k = 1; k <= 2; k++) {
+            f = (k == 1 ? "label" : "lastlabel")
+            for (i = 1; i <= cols(toks); i++) {
+                if (names[i] != f) continue
+                w = _dash_rep_toks(_dash_rep_value(toks[i]), 0)
+                m = (cols(w) ? _dash_subreq_label(w[1], f) : "")
+                if (m != "") {
+                    _dash_say("err", "", m, "")
+                    _dash_subreq_clear()
+                    return(198)
+                }
+            }
+        }
+        // 2. The leftover.  A bare top/bottom/left/right is left to
+        //    _dash_check_legend, which adds the position() hint.
+        if (rc) {
+            if (anyof(("top", "bottom", "left", "right"), toks[at])) {
+                _dash_subreq_drop("legend")
+                return(0)
+            }
+            _dash_say("err", "", msg, "")
+            _dash_subreq_clear()
+            return(198)
+        }
+        // 3. twoway's notes, once each.
+        lastpos   = ""
+        lastring  = ""
+        lastorder = ""
+        hasp      = 0
+        for (i = 1; i <= cols(toks); i++) {
+            if (names[i] == "position") lastpos   = strtrim(_dash_rep_value(toks[i]))
+            if (names[i] == "ring")     lastring  = strtrim(_dash_rep_value(toks[i]))
+            if (names[i] == "order") {
+                lastorder = _dash_rep_value(toks[i])
+                hasp = 1
+            }
+        }
+        if (lastpos != "" & !anyof(("0", "1", "2", "3", "4", "5", "6", "7",
+                                    "8", "9", "10", "11", "12"), lastpos)) {
+            _dash_note("named style ", lastpos,
+                       " not found in class clockdir, default attributes used")
+        }
+        if (lastring != "" & !_dash_so_isnum(lastring, 0)) {
+            _dash_note("named style ", lastring,
+                       " not found in class gridringstyle, default attributes used")
+            _dash_note("", "gridringstyle",
+                       " not found in scheme, default attributes used")
+        }
+        if (hasp) {
+            w = _dash_rep_toks(lastorder, 0)
+            for (j = 1; j <= cols(w); j++) {
+                q = ascii(substr(w[j], 1, 1))
+                if (q == 34 | q == 96 | w[j] == "-") continue
+                if (_dash_so_isnum(w[j], 1)) continue
+                _dash_note("", w[j], " not an integer, option order() ignored")
+                break
+            }
+        }
+        _dash_subreq_drop("legend")
+        return(0)
+    }
+    if (kind == "zlabel") {
+        for (i = 1; i <= rows(_dash_subreq); i++) {
+            if (_dash_subreq[i, 1] != "zlabel") continue
+            toks = _dash_rep_toks(_dash_subreq[i, 4], 1)
+            if (cols(toks) == 0) continue
+            if (_dash_so_resolve(toks, J(1, cols(toks), 1), "axlabel",
+                                 names, msg, at)) {
+                _dash_say("err", "", msg, "")
+                _dash_subreq_clear()
+                return(198)
+            }
+        }
+        _dash_subreq_drop("zlabel")
+        return(0)
+    }
+    if (kind == "title") {
+        kinds = J(1, 0, "")
+        for (i = 1; i <= rows(_dash_subreq); i++) {
+            if (substr(_dash_subreq[i, 1], 1, 6) != "title:" &
+                substr(_dash_subreq[i, 1], 1, 8) != "axtitle:") continue
+            if (!anyof(kinds, _dash_subreq[i, 1])) kinds = kinds, _dash_subreq[i, 1]
+        }
+        for (k = 1; k <= cols(kinds); k++) {
+            _dash_subreq_toks(kinds[k], toks, cid)
+            if (cols(toks) == 0) continue
+            fam = (substr(kinds[k], 1, 8) == "axtitle:" ? "axtitle" : "title")
+            if (fam == "axtitle") {
+                for (c = 1; c <= max(cid); c++) {
+                    hasp = 0
+                    hass = 0
+                    for (i = 1; i <= cols(toks); i++) {
+                        if (cid[i] != c) continue
+                        if (_dash_so_canon(toks[i], "axtitle") == "prefix") hasp = 1
+                        if (_dash_so_canon(toks[i], "axtitle") == "suffix") hass = 1
+                    }
+                    if (hasp & hass) {
+                        _dash_say("err", "options prefix and suffix may not be combined", "", "")
+                        _dash_subreq_clear()
+                        return(198)
+                    }
+                }
+            }
+            if (_dash_so_resolve(toks, cid, fam, names, msg, at)) {
+                _dash_say("err", "", msg, "")
+                _dash_subreq_clear()
+                return(198)
+            }
+        }
+        _dash_subreq_clear()
+        return(0)
+    }
+    return(0)
+}
+
+// _dash_subreq_drop(kind) -- the record less its rows of kind, once that
+// kind is checked; the accepted values with it.
+void _dash_subreq_drop(string scalar kind)
+{
+    external string matrix  _dash_subreq
+    external real rowvector _dash_subreq_ok
+    real colvector keep
+
+    _dash_subreq_ok = J(1, 0, .)
+    if (rows(_dash_subreq) == 0) return
+    keep = (_dash_subreq[., 1] :!= kind)
+    if (any(keep)) _dash_subreq = select(_dash_subreq, keep)
+    else _dash_subreq = J(0, 4, "")
+}
+
+// _dash_subreq_accept() -- the value _dash_subreq_check last handed back
+// passed -numlist-: it is not handed back again.
+void _dash_subreq_accept()
+{
+    external real rowvector _dash_subreq_ok
+    external real scalar    _dash_subreq_last
+
+    if (_dash_subreq_last > 0) _dash_subreq_ok = _dash_subreq_ok, _dash_subreq_last
+    _dash_subreq_last = 0
+}
+
+// _dash_rep_subkey(tok, cat, full) -- which sub-option a word sets, for keeping
+// the last of each: its full name (full, twoway's reading; WP-30 P1.19) or
+// else its typed name in lower case, a noX taken as X (grid and nogrid,
+// box and nobox are one setting), on and off as one, and label(# ...) and
+// lastlabel(# ...) keyed by their number.  cols and rows are keys of their
+// own; _dash_rep_subs lets rows() beat cols().
+string scalar _dash_rep_subkey(string scalar tok, string scalar cat,
+                               string scalar full)
 {
     string scalar nm, v
     real scalar   p
 
     p  = strpos(tok, "(")
-    nm = strlower(strtrim(p ? substr(tok, 1, p - 1) : tok))
-    if (strlen(nm) > 2 & substr(nm, 1, 2) == "no") nm = substr(nm, 3, .)
-    if (nm == "pos") nm = "position"
-    if (nm == "cols" | nm == "rows") nm = "cols|rows"
+    nm = (full != "" ? full : strlower(strtrim(p ? substr(tok, 1, p - 1) : tok)))
+    if (strlen(nm) > 2 & substr(nm, 1, 2) == "no" & nm != "note") nm = substr(nm, 3, .)
     if (nm == "on" | nm == "off") nm = "on|off"
     if ((nm == "label" | nm == "lastlabel") & cat == "I" & p) {
         v = strtrim(_dash_rep_value(tok))
@@ -5715,24 +6579,59 @@ string scalar _dash_rep_subkey(string scalar tok, string scalar cat)
     return(nm)
 }
 
-// _dash_rep_subs(s1, s2, cat, drop) -- two sub-option lists as one: every
+// _dash_rep_subs(s1, s2, cat, drop, key) -- two sub-option lists as one: every
 // word of s1 then s2, keeping only the last word of each setting
 // (_dash_rep_subkey), in the order the kept words stand, less the words
 // listed in drop (suffix, prefix, add: merging instructions, spent here).
 // On an axis scale ("S") every range() is one range(), the union of the
 // ranges written, as twoway draws xscale(range(0 8000)) xscale(range(1000
 // 6000)) over 0 to 8000.
+//
+// For legend(), the axis labels and ticks, the scales and the titles
+// (_dash_so_family(key); WP-30 P1.19) each side is first read as twoway
+// reads it (_dash_so_resolve, s1 copy 1 and s2 copy 2), so a word is keyed
+// by its full name: lab(1 "AA") and label(2 "BB") are two labels, c(2) and
+// cols(1) one setting.  On each side of legend() and an axis label a word
+// beats its no form, and on beats off, as twoway's code order has it;
+// rows() beats every cols() in legend(); and a word whose full name is not
+// the one its spelling alone gives (the second c() of cols(1) c(red) is
+// color()) is written under its full name, so the merged text reads the
+// same.
 string scalar _dash_rep_subs(string scalar s1, string scalar s2,
-                             string scalar cat, string rowvector drop)
+                             string scalar cat, string rowvector drop,
+                             | string scalar key)
 {
-    string rowvector w, keys
-    string scalar    out, k
-    real scalar      i, j, keep, lo, hi, v, nr, rng, ok
-    real rowvector   nums
+    string rowvector w, keys, full
+    string scalar    out, k, fam, msg, nm
+    real scalar      i, j, keep, lo, hi, v, nr, rng, ok, n1, at, p, hasrows
+    real rowvector   nums, cid, alive
 
+    n1 = cols(_dash_rep_toks(s1, 1))
     w = _dash_rep_toks(s1, 1), _dash_rep_toks(s2, 1)
-    keys = J(1, cols(w), "")
-    for (i = 1; i <= cols(w); i++) keys[i] = _dash_rep_subkey(w[i], cat)
+    keys  = J(1, cols(w), "")
+    full  = J(1, cols(w), "")
+    alive = J(1, cols(w), 1)
+    fam   = (args() >= 5 ? _dash_so_family(key) : "")
+    if (fam != "" & cols(w)) {
+        cid = J(1, n1, 1), J(1, cols(w) - n1, 2)
+        (void) _dash_so_resolve(w, cid, fam, full, msg, at)
+        if (fam == "legend" | fam == "axlabel") {
+            for (i = 1; i <= cols(w); i++) {
+                nm = full[i]
+                if (nm == "") continue
+                for (j = 1; j <= cols(w); j++) {
+                    if (cid[j] != cid[i] | j == i) continue
+                    if ((strlen(nm) > 2 & substr(nm, 1, 2) == "no" &
+                         full[j] == substr(nm, 3, .)) |
+                        (nm == "off" & full[j] == "on")) {
+                        alive[i] = 0
+                        break
+                    }
+                }
+            }
+        }
+    }
+    for (i = 1; i <= cols(w); i++) keys[i] = _dash_rep_subkey(w[i], cat, full[i])
     lo  = .
     hi  = .
     nr  = 0
@@ -5751,17 +6650,31 @@ string scalar _dash_rep_subs(string scalar s1, string scalar s2,
             }
         }
     }
+    hasrows = 0
+    if (fam == "legend") {
+        for (i = 1; i <= cols(w); i++) if (alive[i] & full[i] == "rows") hasrows = 1
+    }
     out = ""
     for (i = 1; i <= cols(w); i++) {
+        if (!alive[i]) continue
         if (anyof(drop, strlower(w[i]))) continue
+        if (hasrows & full[i] == "cols") continue
         keep = 1
         for (j = i + 1; j <= cols(w); j++) {
-            if (keys[j] == keys[i]) {
+            if (alive[j] & keys[j] == keys[i]) {
                 keep = 0
                 break
             }
         }
         if (!keep) continue
+        if (full[i] != "") {
+            p = strpos(w[i], "(")
+            if (_dash_so_canon(p ? substr(w[i], 1, p - 1) : w[i], fam) != full[i]) {
+                out = out + (out == "" ? "" : " ") + full[i] +
+                      (p ? substr(w[i], p, .) : "")
+                continue
+            }
+        }
         if (cat == "S" & i == rng & nr > 1 & ok) {
             out = out + (out == "" ? "" : " ") + "range(" +
                   strtrim(strofreal(lo, "%21.0g")) + " " +
@@ -5788,7 +6701,7 @@ string scalar _dash_rep_merge(string scalar key, string scalar v1,
     if (cat == "A") return(v1 + " " + v2)
     if (cat == "X") return(v1 + ", " + v2)
     if (cat == "I" | cat == "S") {
-        return(_dash_rep_subs(v1, v2, cat, J(1, 0, "")))
+        return(_dash_rep_subs(v1, v2, cat, J(1, 0, ""), key))
     }
     c1 = _dash_rep_split(v1, b1, s1)
     c2 = _dash_rep_split(v2, b2, s2)
@@ -5803,7 +6716,7 @@ string scalar _dash_rep_merge(string scalar key, string scalar v1,
     else if (pre & has2)  body = strtrim(b2) + " " + strtrim(b1)
     else if (add & has2)  body = strtrim(b1) + " " + strtrim(b2)
     else                  body = (has2 ? strtrim(b2) : strtrim(b1))
-    sub = _dash_rep_subs(s1, s2, cat, drop)
+    sub = _dash_rep_subs(s1, s2, cat, drop, key)
     return(body + (sub != "" ? ", " + sub : ""))
 }
 

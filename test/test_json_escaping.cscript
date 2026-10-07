@@ -3791,8 +3791,9 @@ macro drop J6_*
 // weight expression, a scatteri label and mcolor()
 // ----------------------------------------------------------------
 // Each value is judged as typed: by()'s title and text() are kept, with no
-// =exp run; legend(\$J6_T) is not the word top that J6_T holds, so it is
-// kept, where twoway expands it and refuses top, r(198); bw() and mlabel()
+// =exp run; legend(label(1 \$J6_T)) keeps the text as typed, not the word
+// top that J6_T holds (a bare legend(\$J6_T) word is refused since WP-30
+// P1.19, as twoway refuses a word it does not know); bw() and mlabel()
 // are refused showing the text, where both were expanded to nothing and
 // dropped with rc 0; colormissing() is named in the note; a weight
 // [aw=\$J6_W] is not the variable J6_W holds -- Stata's syntax refuses the
@@ -3813,7 +3814,7 @@ local jg_l69 "`c(tmpdir)'dash_jse69.log"
 _jg_log_on "`jg_l69'"
 capture noisily dash scatter mpg weight, by(foreign, title("b\$J6_G \`=filewrite(c(tmpdir)+char(106)+char(54)+char(57),char(120))'")) name(jg69a)
 local jg_v1 = _rc
-capture noisily dash scatter mpg weight, text(30 3000 "t\$J6_G") legend(\$J6_T) name(jg69b)
+capture noisily dash scatter mpg weight, text(30 3000 "t\$J6_G") legend(label(1 \$J6_T)) name(jg69b)
 local jg_v2 = _rc
 capture noisily dash lpoly mpg weight, bw("\`jgnone'") name(jg69c)
 local jg_v3 = _rc
@@ -3868,7 +3869,7 @@ local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", "30 3000 " + _jg_pq("t" + char(36) + "J6_G"))
 _jg_stored jg69b "graph_options text"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", char(36) + "J6_T")
+mata: st_global("JG_WANT", "label(1 " + char(36) + "J6_T)")
 _jg_stored jg69b "graph_options legend"
 local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", "s" + char(36) + "J6_G")

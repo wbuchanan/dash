@@ -833,6 +833,12 @@ FUNCTIONS = {
  '_dash_graph_text_models': 'test/test_canvas_tex.py::TestTheDocumentPass::test_the_walk_finds_every_text_model_and_no_source',
  '_dash_graph_text_props': 'test/test_canvas_tex.py::TestTheDocumentPass::test_the_sink_props_name_only_text_sinks',
  # WP-30 S10 (P1.19): Sub-option abbreviations (P1.19)
+ '_dash_apply_legend.<locals>._one_count': 'test/test_subopt_abbrev.py::TestLegendInOneCopy::test_a_one_value_numlist',
+ '_dash_subopt_arg': 'test/test_subopt_abbrev.py::TestAxisAbbreviations::test_second_axis',
+ '_dash_subopt_canon': 'test/test_subopt_abbrev.py::TestTheTables::test_every_prefix_from_minimum_to_full',
+ '_dash_subopt_resolve': 'test/test_subopt_abbrev.py::TestTheResolver::test_the_measured_refusals',
+ '_dash_subopt_resolve.<locals>.shown': 'test/test_subopt_abbrev.py::TestTheResolver::test_the_measured_refusals',
+ '_dash_so_stage': 'test/test_subopt_abbrev.py::TestTheTables::test_every_prefix_from_minimum_to_full',
  # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)
  # WP-30 S12 (P1.27): Drop-in command form and saving() grammar (P1.27, M5/M11)
  # WP-30 S13 (P1.12b): Stata line-width ladder (P1.12 part b, M1)

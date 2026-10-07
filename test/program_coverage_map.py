@@ -314,6 +314,7 @@ COVERAGE = {
         # WP-30 S08 (P1.12a): Stata size units for markers, text and gaps (P1.12 part a, M1)
         # WP-30 S09 (P1.11a): TeX delimiters inert on every canvas sink (P1.11 part a)
         # WP-30 S10 (P1.19): Sub-option abbreviations (P1.19)
+        "_dash_subopt_check": ("test_suboption_reporting.cscript:SA-05",),
         # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)
         # WP-30 S12 (P1.27): Drop-in command form and saving() grammar (P1.27, M5/M11)
         # WP-30 S13 (P1.12b): Stata line-width ladder (P1.12 part b, M1)
@@ -695,6 +696,19 @@ COVERAGE = {
         # WP-30 S08 (P1.12a): Stata size units for markers, text and gaps (P1.12 part a, M1)
         # WP-30 S09 (P1.11a): TeX delimiters inert on every canvas sink (P1.11 part a)
         # WP-30 S10 (P1.19): Sub-option abbreviations (P1.19)
+        "_dash_so_canon": ("test_suboption_reporting.cscript:SA-04",),
+        "_dash_so_family": ("test_suboption_reporting.cscript:SA-04",),
+        "_dash_so_isnum": ("test_suboption_reporting.cscript:SA-08",),
+        "_dash_so_resolve": ("test_suboption_reporting.cscript:SA-05", "test_suboption_reporting.cscript:SA-06"),
+        "_dash_so_rows": ("test_suboption_reporting.cscript:SA-05", "test_suboption_reporting.cscript:SA-06"),
+        "_dash_so_unsafe": ("test_suboption_reporting.cscript:SA-05",),
+        "_dash_subreq_accept": ("test_suboption_reporting.cscript:SA-05",),
+        "_dash_subreq_add": ("test_suboption_reporting.cscript:SA-05", "test_suboption_reporting.cscript:SA-15"),
+        "_dash_subreq_check": ("test_suboption_reporting.cscript:SA-05", "test_suboption_reporting.cscript:SA-15"),
+        "_dash_subreq_clear": ("test_suboption_reporting.cscript:SA-05",),
+        "_dash_subreq_drop": ("test_suboption_reporting.cscript:SA-06",),
+        "_dash_subreq_label": ("test_suboption_reporting.cscript:SA-05",),
+        "_dash_subreq_toks": ("test_suboption_reporting.cscript:SA-05",),
         # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)
         # WP-30 S12 (P1.27): Drop-in command form and saving() grammar (P1.27, M5/M11)
         # WP-30 S13 (P1.12b): Stata line-width ladder (P1.12 part b, M1)

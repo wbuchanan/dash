@@ -1668,10 +1668,226 @@ if inlist("`only'", "", "S09") {
 }
 * ==== end S09 ====
 
+// S10's helpers (WP-30 P1.19): Mata writes its tables and its resolver's
+// answers to files under the work directory; Python compares them with
+// dash_render's tables and _dash_subopt_resolve.  Tokens never pass
+// through a macro.
+mata:
+void _s10_dump(string scalar fam, string scalar path)
+{
+    string matrix t
+    string scalar line
+    real scalar   fh, i, j
+
+    t = _dash_so_rows(fam)
+    if (fileexists(path)) unlink(path)
+    fh = fopen(path, "w")
+    for (i = 1; i <= rows(t); i++) {
+        line = t[i, 1]
+        for (j = 2; j <= 6; j++) line = line + char(9) + t[i, j]
+        fput(fh, line)
+    }
+    fclose(fh)
+}
+
+// Input lines: "C<tab>fam" starts a case, "T<tab>cid<tab>token" adds a
+// token, "E" ends it.  Output, one line per case:
+// rc<tab>at<tab>msg<tab>name<US>name...
+void _s10_resolve(string scalar inp, string scalar outp)
+{
+    string rowvector toks, names
+    string scalar    line, fam, msg, rest, out
+    real rowvector   cid
+    real scalar      fi, fo, rc, at, p, i
+
+    if (fileexists(outp)) unlink(outp)
+    fi = fopen(inp, "r")
+    fo = fopen(outp, "w")
+    while ((line = fget(fi)) != J(0, 0, "")) {
+        if (substr(line, 1, 2) == "C" + char(9)) {
+            fam  = substr(line, 3, .)
+            toks = J(1, 0, "")
+            cid  = J(1, 0, .)
+        }
+        else if (substr(line, 1, 2) == "T" + char(9)) {
+            rest = substr(line, 3, .)
+            p    = strpos(rest, char(9))
+            cid  = cid, strtoreal(substr(rest, 1, p - 1))
+            toks = toks, substr(rest, p + 1, .)
+        }
+        else if (line == "E") {
+            rc  = _dash_so_resolve(toks, cid, fam, names, msg, at)
+            out = strofreal(rc) + char(9) + strofreal(at) + char(9) + msg + char(9)
+            for (i = 1; i <= cols(names); i++) {
+                out = out + (i > 1 ? char(31) : "") + names[i]
+            }
+            fput(fo, out)
+        }
+    }
+    fclose(fi)
+    fclose(fo)
+}
+end
+
+python:
+def _s10_tabs():
+    import os, sys
+    repo = os.path.abspath("..")
+    if repo not in sys.path:
+        sys.path.insert(0, repo)
+    import dash_render as dr
+    return dr, {
+        "legend": dr._DASH_LEGEND_SUBOPT_TABLE,
+        "axlabel": dr._DASH_AXLABEL_SUBOPT_TABLE,
+        "axscale": dr._DASH_AXSCALE_SUBOPT_TABLE,
+        "refline": dr._DASH_REFLINE_SUBOPT_TABLE,
+        "title": dr._DASH_TITLE_SUBOPT_TABLE,
+        "axtitle": dr._DASH_AXTITLE_SUBOPT_TABLE,
+        "textbox": tuple((f, m, 1, "a", True, "")
+                         for f, m in dr._TEXTBOX_SUBOPTS)}
+
+
+def _s10_tables():
+    import os
+    from sfi import Macro
+    dr, tabs = _s10_tabs()
+    work = Macro.getGlobal("S10_WORK")
+    diff, first = 0, ""
+    for fam, t in tabs.items():
+        want = ["\t".join((r[0], r[1], str(r[2]), r[3], "1" if r[4] else "0",
+                           r[5])) for r in t]
+        with open(os.path.join(work, "s10_rows_%s.txt" % fam),
+                  encoding="utf-8") as fh:
+            got = fh.read().splitlines()
+        if got != want:
+            diff += 1
+            first = first or fam
+    Macro.setGlobal("S10_TDIFF", str(diff))
+    Macro.setGlobal("S10_TFIRST", first)
+
+
+def _s10_lists():
+    import random
+    dr, tabs = _s10_tabs()
+    rng = random.Random(30019)
+    out = []
+    fixed = {
+        "legend": ["po(9)", "rin(0) pos(5)", "OFF", "c(2) cols(1)",
+                   "size(large) s(small)", "on on", "on(1)", "cols",
+                   "c(1) c(red)", "c(1) c(2) c(3)", 't("TT")',
+                   "rows(1) r(2)", "xoffset(x)", "xoffset(1.5e3)",
+                   'lab(1 "A") label(2 "B")', "garbage", "on off"],
+        "axlabel": ["lab(large)", "labs", "labs labs(large)",
+                    "labs(large) labs", "nog(1)", "angle(45) ang(0)",
+                    "labs(large) bogus", "nogr nogrid", "labelminlen(x)",
+                    "labelminlen(-3)", "labs(large) LABSIZE(small)",
+                    "grid nogrid", "val novaluelabel", "a(45)"],
+        "refline": ["lc(red) lp(dash) lw(thick)", "LCOLOR(red)", "l(red)",
+                    "st(x) la(y)"],
+        "title": ["SIZE(small)", "ls(x)", "size(small) s(large)", "s(small)",
+                  "nob", "b a(top)"],
+        "axtitle": ["prefix suffix", "ax(2) s(small)", "ls(x)"],
+    }
+    for fam, lists in fixed.items():
+        for text in lists:
+            out.append((fam, [dr._dash_by_tokens(text)]))
+    bogus = ["zz", "garbage", "x", "no", "a", "c", "t", "l"]
+    for k in range(500):
+        fam = rng.choice(list(tabs))
+        t = tabs[fam]
+        copies = []
+        for c in range(rng.randint(1, 3)):
+            toks = []
+            for _ in range(rng.randint(0, 6)):
+                row = rng.choice(t)
+                pick = rng.random()
+                if pick < 0.4:
+                    nm = row[1]
+                elif pick < 0.7:
+                    nm = row[0]
+                elif pick < 0.8:
+                    nm = row[1].upper()
+                else:
+                    nm = rng.choice(bogus)
+                arg = rng.choice(["", "(1)", "(x)", "(1.5)", "()", "(-2)"])
+                toks.append(nm + arg)
+            copies.append(toks)
+        out.append((fam, copies))
+    return dr, tabs, out
+
+
+def _s10_cases():
+    import os
+    from sfi import Macro
+    dr, tabs, cases = _s10_lists()
+    work = Macro.getGlobal("S10_WORK")
+    with open(os.path.join(work, "s10_cases.txt"), "w",
+              encoding="utf-8") as fh:
+        for fam, copies in cases:
+            fh.write("C\t%s\n" % fam)
+            for c, toks in enumerate(copies, 1):
+                for tok in toks:
+                    fh.write("T\t%d\t%s\n" % (c, tok))
+            fh.write("E\n")
+
+
+def _s10_compare():
+    import os
+    from sfi import Macro
+    dr, tabs, cases = _s10_lists()
+    work = Macro.getGlobal("S10_WORK")
+    with open(os.path.join(work, "s10_mata.txt"), encoding="utf-8") as fh:
+        got = fh.read().split("\n")
+    diff, first = 0, ""
+    for k, (fam, copies) in enumerate(cases):
+        names, prob = dr._dash_subopt_resolve(copies, tabs[fam])
+        flat = [n or "" for c in names for n in c]
+        if prob is None:
+            want_rc, want_at, want_msg = 0, 0, ""
+        else:
+            idx = sum(len(c) for c in copies[:prob[0]]) + prob[1] + 1
+            want_rc, want_at, want_msg = 198, idx, prob[3]
+        want = "%d\t%d\t%s\t%s" % (want_rc, want_at, want_msg,
+                                   "\x1f".join(flat))
+        line = got[k] if k < len(got) else "<missing>"
+        # On a problem, Mata stops naming at the problem's stage, as
+        # Python does; the names are compared whole either way.
+        if line != want:
+            diff += 1
+            first = first or ("%s %r: mata %r python %r"
+                              % (fam, copies, line, want))[:200]
+    Macro.setGlobal("S10_RDIFF", str(diff))
+    Macro.setGlobal("S10_RFIRST", first.replace('"', "'").replace(chr(96), "'").replace("$", "S"))
+    Macro.setGlobal("S10_NCASE", str(len(cases)))
+end
+
 * ==== S10 P1.19: Sub-option abbreviations ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S10") {
     display as text "S10 start " c(current_date) " " c(current_time)
+
+    // SA-11: every Mata table equals dash_render's, row for row.
+    foreach fam in legend axlabel axscale refline title axtitle textbox {
+        mata: _s10_dump("`fam'", st_local("w30_work") + "/s10_rows_`fam'.txt")
+    }
+    global S10_WORK "`w30_work'"
+    python: _s10_tables()
+    local s10ok = ("${S10_TDIFF}" == "0")
+    _w30_expect SA-11 `s10ok' "Mata and Python tables differ: ${S10_TFIRST}"
+    _w30_done SA-11 "the seven Mata sub-option tables equal dash_render's"
+
+    // SA-12: both resolvers give the same names and problem on the probe
+    // lists and 500 random ones (seed 30019).
+    python: _s10_cases()
+    mata: _s10_resolve(st_local("w30_work") + "/s10_cases.txt", st_local("w30_work") + "/s10_mata.txt")
+    python: _s10_compare()
+    local s10ok = ("${S10_RDIFF}" == "0" & ${S10_NCASE} >= 500)
+    _w30_expect SA-12 `s10ok' `"${S10_RDIFF} of ${S10_NCASE} resolutions differ: ${S10_RFIRST}"'
+    _w30_done SA-12 "_dash_so_resolve and _dash_subopt_resolve agree on ${S10_NCASE} token lists"
+
+    foreach f in s10_cases.txt s10_mata.txt s10_rows_legend.txt s10_rows_axlabel.txt s10_rows_axscale.txt s10_rows_refline.txt s10_rows_title.txt s10_rows_axtitle.txt s10_rows_textbox.txt {
+        capture erase "`w30_work'/`f'"
+    }
     display as text "S10 end " c(current_date) " " c(current_time)
 }
 * ==== end S10 ====

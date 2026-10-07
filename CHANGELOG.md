@@ -736,7 +736,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.18a -->
 
-<!-- WP-30 P1.19 -->
+- `legend()` and the axis label and tick options (`xlabel()`, `ylabel()`, `xtick()`, `ytick()`, `xmlabel()`, `ymlabel()`, `xmtick()`, `ymtick()`, `zlabel()`) refuse what `twoway` refuses, with its return code and words, where `dash` named and ignored it: a sub-option in capitals (`legend(OFF)`: `option OFF not allowed`, r(198)); a spelling `twoway` does not accept (`legend(po(9))`, `ylabel(, a(45))`, `legend(garbage)`); one given twice in one option (`legend(c(2) cols(1))`: `option cols() not allowed`); the wrong form (`ylabel(, labs)`: `option labs incorrectly specified`); a bad `cols()`/`rows()`/`holes()` (`legend(c(red))`: r(121) `cols() invalid -- invalid number`); and a `label()` key that is no positive integer (r(198)). The titles and axis titles refuse the same three forms (`title("T", SIZE(small))`: `option SIZE() not allowed`, r(198)), and `ytitle("Y", prefix suffix)` is refused with `options prefix and suffix may not be combined`. A capitalised sub-option of `xline()`/`yline()` is no longer applied; it is named. (WP-30, P1.19)
 
 <!-- WP-30 P1.20a -->
 
@@ -836,7 +836,7 @@ requirement changes sit in their own lists.
 
 <!-- WP-30 P1.9b -->
 
-<!-- WP-30 P1.19 -->
+- `twoway`'s sub-option abbreviations are read, in both modes and after any filter move: in `legend()` `c()`, `r()`, `lab()`, `posi()`, `s()`, `lastlab()`; in the axis labels and ticks `labs()`, `ang()`, `for()`, `g`, `nog`, `val`, `valuelabels`; in `xline()`/`yline()` `lc()`, `lp()`, `lw()`; in the textboxes `s()` is `size()`. Repeated copies merge by full name, the last winning, so `legend(lab(1 "A")) legend(lab(2 "B"))` keeps both. `rows()` beats `cols()`. In one copy `on` beats `off` and `grid` beats `nogrid`. Quoted label text is never read as a sub-option (`ylabel(10 "labsize(large)" 20)`). `legend(position(13))`, a non-numeric `ring()` and a non-integer `order()` word draw the default with `twoway`'s note. (WP-30, P1.19)
 
 <!-- WP-30 P1.22 -->
 

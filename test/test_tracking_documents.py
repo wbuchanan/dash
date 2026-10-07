@@ -1578,7 +1578,6 @@ WP30_OPEN = {
     "P1.17b": "bar, area, spike and dropline draw from 0 rather than twoway's default base, and a 0 outside the data extends the axis to it",
     "P1.18a": "The axis look sub-options nolabels, noticks, off, noline, line colour, width and pattern, alt, titlegap, labcolor, tlength and tposition are not honoured, and anglestyle names are dropped silently",
     "P1.18b": "The add sub-option replaces the default ticks instead of adding to them, and an axis(2) add is named and not drawn",
-    "P1.19": "Sub-option abbreviations such as legend(c(2) posi(6)), ylabel(, labs(small)) and xline(5, lc(red)) are not recognised",
     "P1.20a": "plotregion() and graphregion() styling sub-options such as style(none), lcolor(), lwidth(), fc() and lc() are dropped with no note",
     "P1.20b": "plotregion(margin()) and graphregion(margin()) have no effect and no note, and the plot region's inner box is not drawn",
     "P1.21a": "xline() and yline() numlists such as xline(2000(500)3000) draw nothing, and lstyle() and lalign() are only named",
