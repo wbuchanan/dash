@@ -136,6 +136,11 @@
 *!          plot groups, by(), the plurals) dash accepts.
 *!   AX-07  the stored spec keeps each axis's copy through the repeat merge.
 *!   AX-08  10,000 copies end r(1003) quickly and leave nothing behind.
+*!   BG-07  barwidth() on rcap and rcapsym is refused r(198) in twoway's words,
+*!          in comma mode, in a plot group and after || (WP-30 P1.17a).
+*!   BG-08  barw(), barwi(), barwidth() on rcap: the spelling typed is named.
+*!   BG-09  guards: bar, rbar and spike take barwidth(); quoted and nested
+*!          text is not read; rcap bw() keeps its note.
 *!
 *! TP-01 to TP-08 render nothing: every dash probe registers with name(),
 *! and the spec is read back out of the registry, as in
@@ -3130,6 +3135,114 @@ if `bad08' {
 else display as text "AX-08 PASS: 10,000 copies of an axis(2) option end r(1003) as in twoway, quickly, keeping nothing"
 capture erase "`twlog'"
 set linesize `saved_ls'
+
+// ---- BG-07..BG-09: barwidth() on rcap and rcapsym (WP-30 P1.17a) -------
+// twoway refuses barwidth() on rcap and rcapsym, "option barwidth() not
+// allowed", r(198), naming the spelling typed (measured 03oct2026,
+// test/fixtures/bar_geometry_truth.json); dash refuses it alike.
+// twoway is asked live here (nodraw, no export): these questions are not
+// in the replayed fixture of _ztp_run.
+capture program drop _zbg_tw
+program define _zbg_tw, rclass
+    args cmdtext logpath
+    capture log close _zbglog
+    capture erase "`logpath'"
+    log using "`logpath'", name(_zbglog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _zbglog
+    return scalar rc = `rc'
+end
+preserve
+clear
+quietly input x1 lo hi y
+1 1 4 3
+2 2 5 4
+3 1 3 2
+4 3 6 5
+5 0 2 1
+end
+local bad07 = 0
+foreach t in rcap rcapsym {
+    foreach form in comma group bars {
+        if "`form'" == "comma" {
+            local tw "twoway `t' lo hi x1, barwidth(.5) nodraw"
+            local dc "dash `t' lo hi x1, barwidth(.5) name(zbg7)"
+        }
+        else if "`form'" == "group" {
+            local tw "twoway (`t' lo hi x1, barwidth(.5)), nodraw"
+            local dc "dash (`t' lo hi x1, barwidth(.5)), name(zbg7)"
+        }
+        else {
+            local tw "twoway scatter hi x1 || `t' lo hi x1, barwidth(.5) nodraw"
+            local dc "dash scatter hi x1 || `t' lo hi x1, barwidth(.5) name(zbg7)"
+        }
+        capture graph drop _all
+        _zbg_tw `"`tw'"' "`logfile'"
+        local rtw = r(rc)
+        _ztp_logged "`logfile'" "option barwidth() not allowed"
+        local twsaid = r(found)
+        _ztp_run `"`dc'"' "`logfile'"
+        local rc = r(rc)
+        _ztp_logged "`logfile'" "option barwidth() not allowed"
+        if `rtw' != 198 | !`twsaid' | `rc' != 198 | !r(found) {
+            display as error "BG-07 FAIL `t' (`form'): twoway r(`rtw') said `twsaid', dash r(`rc') said `r(found)'"
+            local bad07 = 1
+        }
+        capture dash clear
+    }
+}
+if `bad07' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' BG-07"
+}
+else display as text "BG-07 PASS: barwidth() on rcap and rcapsym is refused r(198) in twoway's words, in comma mode, a plot group and after ||"
+
+local bad08 = 0
+foreach w in barw barwi barwidth {
+    capture graph drop _all
+    _zbg_tw `"twoway rcap lo hi x1, `w'(.5) nodraw"' "`logfile'"
+    local rtw = r(rc)
+    _ztp_logged "`logfile'" "option `w'() not allowed"
+    local twsaid = r(found)
+    _ztp_run `"dash rcap lo hi x1, `w'(.5) name(zbg8)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_logged "`logfile'" "option `w'() not allowed"
+    if `rtw' != 198 | !`twsaid' | `rc' != 198 | !r(found) {
+        display as error "BG-08 FAIL `w'(): twoway r(`rtw') said `twsaid', dash r(`rc') said `r(found)'"
+        local bad08 = 1
+    }
+    capture dash clear
+}
+if `bad08' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' BG-08"
+}
+else display as text "BG-08 PASS: barw(), barwi() and barwidth() on rcap are refused naming the spelling typed, as twoway names it"
+
+local bad09 = 0
+foreach c in "bar y x1, barwidth(.5)" "rbar lo hi x1, barwidth(.5)" "spike y x1, barwidth(.5)" `"rcap lo hi x1, legend(label(1 "barwidth(2)"))"' {
+    capture noisily dash `c' name(zbg9)
+    if _rc {
+        display as error `"BG-09 FAIL dash `c': r(`=_rc')"'
+        local bad09 = 1
+    }
+    capture dash clear
+}
+_ztp_run `"dash rcap lo hi x1, bw(.5) name(zbg9)"' "`logfile'"
+local rc = r(rc)
+_ztp_logged "`logfile'" "bw"
+if `rc' != 0 | !r(found) {
+    display as error "BG-09 FAIL dash rcap bw(.5): r(`rc'), its note found `r(found)'"
+    local bad09 = 1
+}
+capture dash clear
+if `bad09' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' BG-09"
+}
+else display as text "BG-09 PASS: bar, rbar and spike take barwidth(), quoted text is not read, and rcap bw() keeps its note"
+restore
 
 // ----------------------------------------------------------------
 // Summary

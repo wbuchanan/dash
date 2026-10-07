@@ -224,17 +224,20 @@ def _rbar_width(gm, xs):
 class TestTheBarWidthFallback:
 
     def test_one_rule_for_none_one_and_the_tag(self):
+        """One rule with no rows and with one: one x unit, and no tag.
+
+        Flipped (WP-30 P1.17a): 0.8 and 0.64 with a spacing tag were wrong
+        because twoway draws a bar one x unit wide and caps as long as a marker of its msize (P1.17a).
+        """
         gm = _gm()
         for xs in ([], [3.0]):
             src = ColumnDataSource({"x": list(xs), "y": [1.0] * len(xs)})
             r = gm.map_bar(bk_figure(), src, "y", "x", {})
             r = r[0] if isinstance(r, list) else r
             assert float(getattr(r.glyph.width, "value", r.glyph.width)) \
-                == pytest.approx(0.8), xs
-            sp = getattr(r.data_source, "_dash_spacing", None)
-            assert sp is not None and sp["fallback"] == pytest.approx(0.8)
+                == pytest.approx(1.0), xs
+            assert not hasattr(r.data_source, "_dash_spacing")
             rr = _rbar_width(gm, xs)
             assert float(getattr(rr.glyph.width, "value", rr.glyph.width)) \
-                == pytest.approx(0.64), xs
-            sp = getattr(rr.data_source, "_dash_spacing", None)
-            assert sp is not None and sp["fallback"] == pytest.approx(0.64)
+                == pytest.approx(1.0), xs
+            assert not hasattr(rr.data_source, "_dash_spacing")

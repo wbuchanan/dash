@@ -801,11 +801,16 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
         assert not wrong, wrong
 
     def test_a_bar_over_dates_is_as_wide_as_their_spacing(self, tmp_path):
-        """0.8 of the thirty-day gap, in milliseconds; it was 0.8 ms."""
+        """One day, in milliseconds (twoway's bar_size 1 on a %td axis,
+        fixture widths.bar_td_daily); it was 0.8 ms.
+
+        Flipped (WP-30 P1.17a): 0.8 of the thirty-day gap was wrong because
+        twoway draws a bar one x unit wide and caps as long as a marker of its msize (P1.17a).
+        """
         r, _w = _saved(tmp_path, _spec([_plot_for("bar")]), _spread_frame())
         widths = [x.glyph.width for x in r.figures["g1"].renderers
                   if isinstance(x.glyph, VBar)]
-        assert widths == [0.8 * 30 * 86400000.0]
+        assert widths == [86400000.0]
 
     def test_a_dropline_labels_a_date_with_its_date(self, tmp_path):
         """Its own date column was replaced by floats, read as Stata days,

@@ -814,10 +814,14 @@ class TestMapRcapsym:
     """P3-30 through P3-33: rcapsym = rcap + scatter markers."""
 
     def test_rcapsym_returns_five_renderers(self, fig, range_cds, gm):
-        """P3-30: map_rcapsym returns exactly 5 renderers (spine+2 caps+2 dots)."""
+        """P3-30: map_rcapsym returns exactly 3 renderers (spine+2 dots).
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
         result = gm.map_rcapsym(fig, range_cds, "lo", "hi", "xvar", {})
         assert isinstance(result, list)
-        assert len(result) == 5
+        assert len(result) == 3
 
     def test_rcapsym_spine_is_segment(self, fig, range_cds, gm):
         """P3-31: first renderer (spine) is a Segment glyph."""
@@ -826,18 +830,29 @@ class TestMapRcapsym:
         assert isinstance(result[0].glyph, Segment)
 
     def test_rcapsym_caps_are_segments(self, fig, range_cds, gm):
-        """P3-32: renderers 1 and 2 (horizontal caps) are Segment glyphs."""
-        from bokeh.models.glyphs import Segment
+        """P3-32: renderers 1 and 2 are the end markers; no Segment is drawn
+        but the spine.
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
+        from bokeh.models.glyphs import Scatter, Segment
         result = gm.map_rcapsym(fig, range_cds, "lo", "hi", "xvar", {})
-        assert isinstance(result[1].glyph, Segment)
-        assert isinstance(result[2].glyph, Segment)
+        assert isinstance(result[1].glyph, Scatter)
+        assert isinstance(result[2].glyph, Scatter)
+        assert [r for r in fig.renderers
+                if isinstance(r.glyph, Segment)] == [result[0]]
 
     def test_rcapsym_dots_are_scatter(self, fig, range_cds, gm):
-        """P3-33: renderers 3 and 4 (cap markers) are Scatter glyphs."""
+        """P3-33: renderers 1 and 2 (end markers) are Scatter glyphs.
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
         from bokeh.models.glyphs import Scatter
         result = gm.map_rcapsym(fig, range_cds, "lo", "hi", "xvar", {})
-        assert isinstance(result[3].glyph, Scatter)
-        assert isinstance(result[4].glyph, Scatter)
+        assert isinstance(result[1].glyph, Scatter)
+        assert isinstance(result[2].glyph, Scatter)
 
 
 class TestMapScatteri:
@@ -1325,14 +1340,17 @@ class TestMapRcapsymOptions:
     """map_rcapsym must apply lcolor consistently to spine AND cap segments."""
 
     def test_rcapsym_lcolor_applied_to_all_segments(self, fig, range_cds_small, gm):
-        """lcolor must be applied to spine, bot_cap, and top_cap."""
+        """lcolor must be applied to the spine, and no cap Segment is drawn.
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
+        from bokeh.models.glyphs import Segment
         renderers = gm.map_rcapsym(fig, range_cds_small, "lo", "hi", "xvar",
                                    {"lcolor": "maroon"})
-        spine, bot_cap, top_cap = renderers[0], renderers[1], renderers[2]
-        for seg, name in [(spine, "spine"), (bot_cap, "bot_cap"), (top_cap, "top_cap")]:
-            assert seg.glyph.line_color == "#90353b", (
-                f"{name} expected #90353b, got {seg.glyph.line_color!r}"
-            )
+        assert renderers[0].glyph.line_color == "#90353b"
+        assert [r for r in renderers
+                if isinstance(r.glyph, Segment)] == [renderers[0]]
 
     def test_rcapsym_lwidth_applied_to_spine(self, fig, range_cds_small, gm):
         """lwidth must be applied to at least the spine segment."""
@@ -1343,24 +1361,33 @@ class TestMapRcapsymOptions:
         assert renderers[0].glyph.line_width == expected
 
     def test_rcapsym_mcolor_applied_to_scatter_markers(self, fig, range_cds_small, gm):
-        """mcolor must be applied to the scatter marker renderers (indices 3 and 4)."""
+        """mcolor must be applied to the scatter marker renderers (indices 1 and 2).
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
         renderers = gm.map_rcapsym(fig, range_cds_small, "lo", "hi", "xvar",
                                    {"mcolor": "red"})
-        # renderers[3] and renderers[4] are scatter markers at cap positions
         default_color = gm.map_rcapsym(fig, range_cds_small, "lo", "hi", "xvar",
                                        {})
-        default_fill = default_color[3].glyph.fill_color
-        assert renderers[3].glyph.fill_color != default_fill, \
-            "mcolor must change scatter marker fill_color from default"
+        for i in (1, 2):
+            assert renderers[i].glyph.fill_color != \
+                default_color[i].glyph.fill_color, \
+                "mcolor must change scatter marker fill_color from default"
 
     def test_rcapsym_msize_applied_to_scatter_markers(self, fig, range_cds_small, gm):
-        """msize must be applied to the scatter marker renderers."""
+        """msize must be applied to the scatter marker renderers.
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
         renderers = gm.map_rcapsym(fig, range_cds_small, "lo", "hi", "xvar",
                                    {"msize": "large"})
         from dash_render import OptionTranslator
         expected = OptionTranslator().translate_msize("large")
-        assert renderers[3].glyph.size == expected, \
-            f"Expected size={expected}, got {renderers[3].glyph.size}"
+        for i in (1, 2):
+            assert renderers[i].glyph.size == expected, \
+                f"Expected size={expected}, got {renderers[i].glyph.size}"
 
 
 # ================================================================
@@ -1509,11 +1536,17 @@ class TestMapRcap:
         assert len(result) == 3
 
     def test_rcap_all_segments(self, fig, std_cds_small, gm):
-        """All three rcap renderers are Segment glyphs."""
-        from bokeh.models.glyphs import Segment
+        """rcap draws a Segment spine and two Scatter caps of marker dash.
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
+        from bokeh.models.glyphs import Scatter, Segment
         result = gm.map_rcap(fig, std_cds_small, "lo", "hi", "x", {})
-        for r in result:
-            assert isinstance(r.glyph, Segment)
+        assert isinstance(result[0].glyph, Segment)
+        for r in result[1:]:
+            assert isinstance(r.glyph, Scatter)
+            assert r.glyph.marker == "dash"
 
     def test_rcap_lpattern_applied_to_all_segments(self, fig, std_cds_small, gm):
         """lpattern applied to all three rcap segment renderers."""

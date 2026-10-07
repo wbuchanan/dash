@@ -316,7 +316,11 @@ class TestPipelineDropline:
 # ================================================================
 class TestPipelineRcapsym:
     def test_rcapsym_renders(self):
-        """rcapsym spec produces >=5 renderers (spine+2 caps+2 dots)."""
+        """rcapsym spec produces 3 renderers (spine+2 dots).
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
         graph = {
             "plots": [{
                 "type": "rcapsym",
@@ -331,7 +335,7 @@ class TestPipelineRcapsym:
         figs = renderer._build_figures()
         assert "rcs1" in figs
         fig = figs["rcs1"]
-        assert len(fig.renderers) >= 5
+        assert len(fig.renderers) == 3
 
 
 # ================================================================

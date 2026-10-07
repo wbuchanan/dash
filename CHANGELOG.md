@@ -364,7 +364,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.16 -->
 
-<!-- WP-30 P1.17a -->
+- Bars and range caps are drawn at twoway's size. dash bar mpg weight drew each bar 0.8 times the smallest gap between the x values (56 on weights 1800-4080), now one x unit wide (1), as twoway draws it; on a date axis one unit is the variable's own, a day for %td, a millisecond for %tc, a week, month, quarter, half-year or year for %tw-%ty (a weekly %td bar was 5.6 days wide, now 1 day: barwidth(7) draws touching weekly bars), and barwidth() is read in those units (barwidth(3) on a %td axis drew 3 milliseconds, now 3 days). rbar reads barwidth() (barwidth(.3) was ignored). rcap's caps are as long as a marker of its msize(), the scheme's symbol size by default, and no longer change with the x spacing (they were 0.4 times the smallest gap and ignored msize()); rcapsym draws no caps (it drew two) and its markers start at the scheme's symbol size (they were 7 pixels). Widths and caps no longer change when a filter moves, in either mode. (WP-30, P1.17a)
 
 <!-- WP-30 P1.17b -->
 
@@ -732,7 +732,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.15b -->
 
-<!-- WP-30 P1.17a -->
+- barwidth() on rcap and rcapsym is refused, r(198), with twoway's message option barwidth() not allowed, naming the spelling given (barw() to barwidth()); dash accepted it and drew nothing different. (WP-30, P1.17a)
 
 <!-- WP-30 P1.18a -->
 

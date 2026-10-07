@@ -363,6 +363,21 @@ both ends: the line options style the spike, the marker options the
 markers, and {cmd:mlabel()} labels the first point.
 
 {pstd}
+{ul:Bars and range caps.}  {cmd:bar} and {cmd:rbar} draw each bar one unit
+of {it:x} wide whatever the spacing of {it:x}, as {cmd:twoway} does, and
+{cmd:barwidth(}{it:#}{cmd:)} sets another width in the same units.  On a
+date axis the unit is the variable's own: a day for {cmd:%td}, a
+millisecond for {cmd:%tc} and {cmd:%tC}, and a week, month, quarter,
+half-year or year for {cmd:%tw} to {cmd:%ty}; so monthly data held as
+{cmd:%td} dates draws bars a day wide, as in {cmd:twoway}, and
+{cmd:barwidth(30)} widens them.  Widths do not change when a filter moves.
+{cmd:rcap} draws its caps as long as a marker of its {cmd:msize()} is wide,
+the scheme's symbol size by default, in screen units.  {cmd:rcapsym} draws
+no caps, only its spike and a marker at each end, at the scheme's symbol
+size unless {cmd:msize()} says otherwise.  {cmd:barwidth()} on {cmd:rcap}
+or {cmd:rcapsym} is refused, r(198), as {cmd:twoway} refuses it.
+
+{pstd}
 {ul:Immediate values.}  {cmd:scatteri}, {cmd:pci} and {cmd:pcarrowi} read
 their values as {cmd:twoway} does: {it:#y #x} for {cmd:scatteri} and
 {it:#y1 #x1 #y2 #x2} for {cmd:pci} and {cmd:pcarrowi}, each followed by an
@@ -1313,8 +1328,7 @@ never more opaque than they are drawn unselected.  The other layers -- lines (th
 {cmd:rconnected} too), areas, bars, droplines, fits and their bands,
 smoothers, densities, histograms, and the other range and paired-coordinate
 plots -- are drawn from data of their own and do not show a selection.  An
-{cmd:rbar} shows it in neither mode: its bars are drawn from its own rows,
-their width from those rows' spacing.
+{cmd:rbar} shows it in neither mode: its bars are drawn from its own rows.
 
 {pstd}
 {cmd:link(}{it:name1} {it:name2} [{it:name3} ...]{cmd:)} -- link the
@@ -1670,8 +1684,7 @@ it.  The saved page and the served app differ as follows:
 {ul:What a filter move redraws.}  The saved page draws every layer that
 plots observations -- scatter, line, area, bar, spike, dropline, the range
 and paired-coordinate plots, and their marker labels -- from the rows that
-pass the filter, each from its own rows among them, a line still in its join order
-and a bar's or cap's width taken from the spacing of the rows kept.  It
+pass the filter, each from its own rows among them, a line still in its join order.  It
 recounts a histogram's
 bars, and re-estimates a density on its grid, from the rows that pass the
 filter -- for a {cmd:by()} panel, or a graph or plot with its own {cmd:if}
@@ -1692,7 +1705,7 @@ weight, a zero weight, or one outside the plot's own {cmd:if} or {cmd:in})
 marks nothing, and a graph {cmd:exclude()} protects is never marked.  The
 served app draws every layer again from
 the rows that pass the filter -- each layer from its own rows among them --
-bins, grid, fitted line and bar widths included.  A plot's own {cmd:if} or {cmd:in}
+bins, grid and fitted line included.  A plot's own {cmd:if} or {cmd:in}
 inside a linked {cmd:by()} panel, or inside a linked graph with its own
 {cmd:if} or {cmd:in}, keeps to that panel's or graph's observations after
 every move, in both.  In both, a filter move clears a

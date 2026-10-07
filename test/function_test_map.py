@@ -198,7 +198,6 @@ FUNCTIONS = {
  'GlyphMapper._scheme_alpha': 'test/test_computed_layer_rows.py::TestAQualifierReachesTheComputation::test_an_all_true_mask_matches_no_view',
  'GlyphMapper._stata_lowess': 'test/test_statistical_helpers.py::TestStataLowess::test_a_single_observation_and_a_constant_x',
  'GlyphMapper._subset_source': 'test/test_saved_filter_layers.py::TestTheSubsetSource::test_rows_columns_and_order',
- 'GlyphMapper._tag_spacing': 'test/test_saved_filter_layers.py::TestTheSpacingTag::test_the_rule_is_recorded',
  'GlyphMapper._view_mask': 'test/test_computed_layer_rows.py::TestTheMaskHelperDegradesSafely::test_a_boolean_filter_yields_its_mask',
  'GlyphMapper.map_area': 'test/test_glyphs.py::TestAreaBase::test_base_changes_area_lower_boundary',
  'GlyphMapper.map_bar': 'test/test_glyphs.py::TestHardeningGuards::test_bar_empty_source_no_crash',
@@ -634,7 +633,6 @@ FUNCTIONS = {
  '_dash_axis_number': 'test/test_axis2_suboptions.py::TestTheRouteUnit::test_axis_number_unit',
  '_dash_axis_word': 'test/test_axis2_suboptions.py::TestTheRouteUnit::test_axis_word_unit',
  '_dash_axis_words': 'test/test_axis2_suboptions.py::TestTheRouteUnit::test_axis_word_unit',
- '_dash_copy_redraw_geometry': 'test/test_served_filter_move.py::TestTheRedrawGeometry::test_a_bar_takes_the_redraws_width',
  '_dash_scale_spec': 'test/test_varlist_expansion.py::test_tsline_without_x_variable_reports_tsset',
  '_dash_scheme_chrome': 'test/test_scheme_consumption.py::TestNoParsedKeyIsDiscarded::test_legend_styling_comes_from_the_scheme',
  '_dash_secondary_values': 'test/test_help_claims_7.py::TestTheNewHelpers::test_dash_secondary_values',
@@ -844,6 +842,7 @@ FUNCTIONS = {
  # WP-30 S13 (P1.12b): Stata line-width ladder (P1.12 part b, M1)
  'OptionTranslator.line_px': 'test/test_line_width_units.py::TestTheUnitFunctions::test_line_px_floors_and_converts',
  # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
+ 'GlyphMapper._bar_extent': 'test/test_bar_range_geometry.py::TestTheBarExtent::test_each_kind',
  # WP-30 S15 (P1.2a): Scheme chrome: titles, ticks, grid, economist axes (P1.2 part a, M1)
  # WP-30 S16 (P1.2b): Intensity as an opaque blend (P1.2 part b, M1)
  # WP-30 S17 (P1.23b): Date and format text in keys and tooltips (P1.23 part b)

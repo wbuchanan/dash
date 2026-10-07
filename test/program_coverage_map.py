@@ -734,6 +734,7 @@ COVERAGE = {
         "_dash_strip_prefix": ("test_wp30_truth.cscript:CF-01", "test_wp30_truth.cscript:CF-03"),
         # WP-30 S13 (P1.12b): Stata line-width ladder (P1.12 part b, M1)
         # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
+        "_dash_barwidth_typed": ("test_twoway_option_parity.cscript:BG-07",),
         # WP-30 S15 (P1.2a): Scheme chrome: titles, ticks, grid, economist axes (P1.2 part a, M1)
         # WP-30 S16 (P1.2b): Intensity as an opaque blend (P1.2 part b, M1)
         # WP-30 S17 (P1.23b): Date and format text in keys and tooltips (P1.23 part b)

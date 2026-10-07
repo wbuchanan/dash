@@ -322,7 +322,7 @@ program define _dash_require_mata
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_probe ///
-        _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed ///
+        _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
         _dash_axis_pieces ///
@@ -4379,6 +4379,16 @@ program define _dash_process_segment, rclass
             if `: length local _lt_typed' {
                 mata: _dash_say("err", "option ", st_local("_lt_typed"), " not allowed")
                 display as error "      logit is an option of lowess alone; log is twoway's graph option logging."
+                exit 198
+            }
+        }
+        // barwidth() on rcap and rcapsym: refused naming the spelling as typed,
+        // as twoway refuses it -- "option barw() not allowed", r(198) (measured
+        // 03oct2026; WP-30 P1.17a).  bw() is left to _dash_fold_bw.
+        if inlist("`ptype'", "rcap", "rcapsym") {
+            mata: st_local("_bwt_typed", _dash_barwidth_typed(st_local("opts_raw")))
+            if `: length local _bwt_typed' {
+                mata: _dash_say("err", "option ", st_local("_bwt_typed"), "() not allowed")
                 exit 198
             }
         }

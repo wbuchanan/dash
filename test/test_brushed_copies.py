@@ -313,6 +313,37 @@ class TestBrushedCopiesFollowTheGlyph:
             _fire(doc, "weight", (2000.0, 3500.0))
         _assert_copies_same(fig, "after a move")
 
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_a_bars_copies_keep_its_width_after_a_move(self, mode, tmp_path):
+        """After a filter move a bar's nonselection and muted copies are as
+        wide as the bar (WP-30 P1.17a, A61): the width no longer follows
+        the kept rows, so no copy is left at the build's width.  The move
+        to Foreign changes the kept rows' smallest weight gap (70 to 210),
+        which moved the drawn width and left the copies behind."""
+        import test_mode_parity as tp
+        plots = [{"type": "bar", "yvar": "mpg", "xvar": "weight",
+                  "options": {}}]
+        spec = tp._spec(plots, {"filter": "foreign, type(dropdown)"})
+        if mode == "saved":
+            import test_saved_filter_layers as tsfl
+            r = tsfl._render(spec)
+            tsfl._move(r, ("Select", "Foreign"))
+            figs = list(r.figures.values())
+        else:
+            from bokeh.models import Select
+            doc, _ = tp._served(spec)
+            [w] = [m for m in tp._walk_models(doc) if isinstance(m, Select)]
+            [raw] = [v for v, lab in w.options if lab == "Foreign"]
+            tp._fire(w, raw)
+            figs = [m for m in tp._walk_models(doc)
+                    if type(m).__name__ == "figure"]
+        bars = [rr for f in figs for rr in _renderers(f)
+                if type(rr.glyph).__name__ == "VBar"]
+        assert bars
+        for rr in bars:
+            for n, c in _copies(rr):
+                assert c.width == rr.glyph.width, (n, c.width, rr.glyph.width)
+
     # -- guards (pass before and after) -------------------------------------
 
     @pytest.mark.parametrize("mode", _MODES)

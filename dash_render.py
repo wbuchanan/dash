@@ -10905,8 +10905,10 @@ class GlyphMapper:
     ) -> "GlyphRenderer":
         """Add vertical bar glyphs to *fig*.
 
-        Bar width is automatically computed as 80% of the smallest gap between
-        consecutive distinct x values.
+        Each bar is one x unit wide, or barwidth() units, in the variable's
+        own units on a date axis (twoway_bar.sthlp:123-133; WP-30 P1.17a):
+        a constant, or per-row columns on a period axis, so no width
+        depends on the rows a filter keeps.
 
         Args:
             fig:     Bokeh Figure object.
@@ -10955,28 +10957,10 @@ class GlyphMapper:
         if _bar_sel is not None:
             df = df[_bar_sel]
         df = df.dropna(subset=[xvar, yvar])
-        clean_source = ColumnDataSource(df)
 
-        try:
-            # A date x in milliseconds, its axis's unit: float() refused
-            # its Timestamps and the bars were drawn 0.8 ms wide, too thin
-            # to see (24sep2026).
-            _bx = (_dash_float_values(df[xvar])
-                   if df[xvar].dtype.kind == "M" else df[xvar])
-            x_vals = sorted(set(float(v) for v in _bx))
-            _bar_numeric = True
-        except (ValueError, TypeError):
-            # String xvar: use uniform spacing (bar width = 0.8)
-            x_vals = list(range(len(df[xvar].unique())))
-            _bar_numeric = False
-        # One fallback for the drawn width and the spacing tag (WP-29
-        # P0.18), so the two cannot drift.
-        _bar_fallback = 0.8
-        if len(x_vals) >= 2:
-            gaps = [x_vals[i+1] - x_vals[i] for i in range(len(x_vals)-1)]
-            bar_width = 0.8 * min(gaps)
-        else:
-            bar_width = _bar_fallback
+        # One x unit, as twoway draws it whatever the spacing of x
+        # (.plot1.bar_size 1 at spacing .1, 1, 5 and uneven; WP-30 P1.17a).
+        bar_width = 1.0
 
         # barwidth() / width() options override the auto-computed bar width.
         #
@@ -10987,12 +10971,18 @@ class GlyphMapper:
         # itself rejects a negative barwidth with a clear r(198).
         for key in ("barwidth", "width"):
             if key in options:
-                _bw = _stat_option_float(options, key, None, "bar",
+                _bw = _stat_option_float(options, key, 1.0, "bar",
                                          lo=_MIN_BAR_WIDTH)
                 if _bw is not None:
                     bar_width = _bw
-                    _bar_numeric = False
                 break
+        # In the variable's units on a date axis; per-row columns on a
+        # period axis (D-14c), on every path, the empty one included.
+        x_field, width_spec, _bar_ext = self._bar_extent(
+            xvar, df[xvar], bar_width)
+        if _bar_ext:
+            df = df.assign(**_bar_ext)
+        clean_source = ColumnDataSource(df)
 
         # base() option sets the bar bottom; default 0
         base_val = 0.0
@@ -11004,8 +10994,8 @@ class GlyphMapper:
 
         _bar_default_color = self.scheme.default_color(color_idx, "bar")
         _vbar_kwargs: dict = dict(
-            x=xvar, top=yvar, bottom=base_val, source=clean_source,
-            width=bar_width,
+            x=x_field, top=yvar, bottom=base_val, source=clean_source,
+            width=width_spec,
             fill_color=_bar_default_color,
             line_color=_bar_default_color,
             legend_label=yvar,
@@ -11027,11 +11017,6 @@ class GlyphMapper:
             _vbar_kwargs["line_width"] = _bar_lw
         # No view here: clean_source already holds only the selected rows.
         r = fig.vbar(**_vbar_kwargs)
-        if _bar_numeric:
-            # The width is the rows' spacing, so a move that changes the
-            # rows changes it, as the served app redraws it.
-            self._tag_spacing(clean_source, xvar, 0.8, _bar_fallback,
-                              distinct=True, glyphs=[r.glyph])
         if "color" in options:
             try:
                 c = self.tr.translate_mcolor(options["color"])
@@ -11064,24 +11049,55 @@ class GlyphMapper:
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
         return r
 
-    @staticmethod
-    def _tag_spacing(source, xcol, factor, fallback, distinct=True,
-                     cols=(), glyphs=()):
-        """Mark *source* as drawn at a width taken from its x spacing.
+    #: The reserved columns a bar on a period axis is drawn from (D-14c).
+    _BAR_XC = "__dash_bar_xc"
+    _BAR_W = "__dash_bar_w"
 
-        A bar's width and a cap's half-width are *factor* times the
-        smallest gap between the x values of the rows drawn (distinct ones
-        when *distinct*), *fallback* with fewer than two.  The saved page's
-        filter callback recomputes it from the rows a move keeps, writing
-        ``x - w`` and ``x + w`` into each ``(column, sign)`` of *cols* and
-        ``w`` into each glyph's width, as the served app's redraw does.
+    def _bar_extent(self, xvar, xs, width):
+        """The x field, width spec and extra columns of a bar *width* x
+        units wide, in *xvar*'s own units (WP-30 P1.17a).
+
+        Not a date: ``(xvar, width, {})``.  ``%td``: a day is 86,400,000
+        ms; ``%tc``/``%tC``: a millisecond.  A period kind (``%tw`` to
+        ``%ty``): each row spans ``_dash_units_to_axis(u -+ w/2)``, its own
+        period's share, drawn from the reserved columns ``_BAR_XC`` (centre)
+        and ``_BAR_W`` (width), so a month of 28 or 31 days is one unit.
+        Every width is finite; NaN where the date is missing (no bar).
+        Never raises.
         """
-        source._dash_spacing = {
-            "x": str(xcol), "factor": float(factor),
-            "fallback": float(fallback), "distinct": bool(distinct),
-            "cols": [[str(c), int(sg)] for c, sg in cols],
-        }
-        source._dash_spacing_glyphs = list(glyphs)
+        kind = (self.date_vars or {}).get(xvar)
+        span = 2.0 * float(_STATA_MS_MAX - _STATA_MS_MIN)
+        try:
+            w = float(width)
+        except (TypeError, ValueError):
+            w = 1.0
+        if not math.isfinite(w) or w <= 0:
+            w = 1.0
+        if kind == "td":
+            return xvar, min(w * 86_400_000.0, span), {}
+        if kind in ("tc", "tC"):
+            return xvar, min(w, span), {}
+        if kind in ("tw", "tm", "tq", "th", "ty"):
+            try:
+                u = _dash_date_units(xs, kind)
+            except Exception:  # noqa: BLE001 -- never raises
+                u = np.full(len(xs), np.nan)
+            u = np.asarray(u, dtype=float)
+            if u.size == 0:
+                return self._BAR_XC, self._BAR_W, {
+                    self._BAR_XC: np.array([], dtype=float),
+                    self._BAR_W: np.array([], dtype=float)}
+            ulo, uhi = _dash_date_units(
+                np.array([_STATA_MS_MIN, _STATA_MS_MAX], dtype=float)
+                + _STATA_EPOCH_UNIX_MS, kind)
+            with np.errstate(all="ignore"):
+                L = _dash_units_to_axis(np.clip(u - w / 2.0, ulo, uhi), kind)
+                R = _dash_units_to_axis(np.clip(u + w / 2.0, ulo, uhi), kind)
+                xc = np.asarray((L + R) / 2.0, dtype=float)
+                bw = np.asarray(R - L, dtype=float)
+            return self._BAR_XC, self._BAR_W, {self._BAR_XC: xc,
+                                               self._BAR_W: bw}
+        return xvar, w, {}
 
     def map_spike(
         self,
@@ -13805,31 +13821,30 @@ class GlyphMapper:
             # No rows: the styled path below (WP-29 P0.18).
             source = ColumnDataSource({xvar: [], y1var: [], y2var: []})
             view = None
-        # The width is DERIVED from the data, so it must come from the rows
-        # this layer draws.  The source below keeps every row -- so the
-        # caller's mask lines up with it and the view is attached as usual --
-        # but the spacing was taken from the whole column, and a qualifier
-        # then changed how WIDE the bars were as well as which appeared.
-        # Measured: 0.8 where plotting the same subset alone gives 8.0.
-        _rb_x = _dash_float_values(source.data[xvar])
-        _rb_sel = self._view_mask(view, len(_rb_x))
-        if _rb_sel is not None:
-            _rb_x = _rb_x[_rb_sel]
-        x_vals = sorted(set(float(v) for v in _rb_x if not math.isnan(v)))
-        # Drawn from a copy of the layer's own rows, with no view, so the
-        # saved page's filter callback keeps a move's rows of it and
-        # recomputes the width from them (_tag_spacing).
+        # The layer's own rows, drawn from a copy with no view, so the
+        # saved page's filter callback keeps a move's rows of it.
+        _rb_sel = self._view_mask(view, len(source.data[xvar]))
         source = (self._subset_source(source, _rb_sel) if _rb_sel is not None
                   else ColumnDataSource(dict(source.data)))
         view = None
-        # One fallback for the drawn width and the spacing tag, 0.64 with
-        # fewer than two x (WP-29 P0.18): the paths cannot drift.
-        _rb_fallback = 0.8 * 0.8
-        bar_width = (0.8 * min(x_vals[i+1] - x_vals[i]
-                               for i in range(len(x_vals)-1))
-                     if len(x_vals) >= 2 else _rb_fallback)
-        _rbar_kwargs: dict = dict(x=xvar, bottom=y1var, top=y2var, source=source,
-                                   width=bar_width,
+        # One x unit, or barwidth() (twoway reads it on rbar: barwidth(.3)
+        # draws .3, measured 03oct2026; WP-30 P1.17a), in the variable's
+        # units on a date axis.  The first key present wins; a bad value
+        # is noted and one unit drawn, as map_bar reads it.
+        bar_width = 1.0
+        for key in ("barwidth", "width"):
+            if key in options:
+                _bw = _stat_option_float(options, key, 1.0, "rbar",
+                                         lo=_MIN_BAR_WIDTH)
+                if _bw is not None:
+                    bar_width = _bw
+                break
+        x_field, width_spec, _rb_ext = self._bar_extent(
+            xvar, source.data[xvar], bar_width)
+        if _rb_ext:
+            source.data.update(_rb_ext)
+        _rbar_kwargs: dict = dict(x=x_field, bottom=y1var, top=y2var, source=source,
+                                   width=width_spec,
                                    fill_color=self.scheme.default_color(color_idx, "bar"),
                                    line_alpha=0,
                                    legend_label=y1var)
@@ -13839,8 +13854,6 @@ class GlyphMapper:
         if view is not None:
             _rbar_kwargs["view"] = view
         r = fig.vbar(**_rbar_kwargs)
-        self._tag_spacing(source, xvar, 0.8, _rb_fallback, distinct=True,
-                          glyphs=[r.glyph])
         # color() fills the bar and draws its outline, as map_bar reads it:
         # twoway's rbar with color(red) is filled #FF3333 and stroked
         # #FF0000 (SVG, 23sep2026).  Only _apply_line_opts read color()
@@ -13936,7 +13949,7 @@ class GlyphMapper:
         view=None,
         color_idx: int = 0,
     ) -> list:
-        """Add range cap glyphs (segments + horizontal caps) to *fig*.
+        """Add range cap glyphs (a spine segment and two cap markers) to *fig*.
 
         Args:
             fig:    Bokeh Figure object.
@@ -13953,57 +13966,48 @@ class GlyphMapper:
         y1_arr = np.array(_dash_float_values(source.data[y1var]))
         y2_arr = np.array(_dash_float_values(source.data[y2var]))
 
-        # The width is DERIVED from the data, so it must come from the rows
-        # this layer draws.  The source below keeps every row -- so the
-        # caller's mask lines up with it and the view is attached as usual --
-        # but the spacing was taken from the whole column, and a qualifier
-        # then changed how WIDE the bars were as well as which appeared.
-        # Measured: 0.8 where plotting the same subset alone gives 8.0.
-        # Estimate cap half-width from x spacing
         # The layer's own rows are taken first and the copy drawn with no
-        # view, so the saved page's filter callback keeps a move's rows of
-        # it and recomputes the caps from them (_tag_spacing).
+        # view, so the saved page's filter callback keeps a move's rows.
         _cap_sel = self._view_mask(view, len(x_arr))
         if _cap_sel is not None:
             x_arr, y1_arr, y2_arr = (x_arr[_cap_sel], y1_arr[_cap_sel],
                                      y2_arr[_cap_sel])
         view = None
-        _cap_x = x_arr
-        x_sorted = np.sort(_cap_x[~np.isnan(_cap_x)])
-        if len(x_sorted) >= 2:
-            cap_hw = 0.2 * np.min(np.diff(x_sorted))
-        else:
-            cap_hw = 0.2
-
-        _x0_col = f"{xvar}_x0_cap"
-        _x1_col = f"{xvar}_x1_cap"
         # The caller's other columns ride along -- any variable hover()
         # names, and the row identity -- for the rows drawn.
         cap_source = ColumnDataSource(self._carry_cols(source, {
             xvar: x_arr, y1var: y1_arr, y2var: y2_arr,
-            _x0_col: x_arr - cap_hw, _x1_col: x_arr + cap_hw,
         }, _cap_sel))
-        self._tag_spacing(cap_source, xvar, 0.2, 0.2, distinct=False,
-                          cols=((_x0_col, -1), (_x1_col, 1)))
 
         _rcap_color = self.scheme.default_color(color_idx, "rcap")
+        _rcap_lw = self.scheme.plot_line_width(color_idx, "")
         _spine_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var,
                                     source=cap_source,
-                                    line_color=_rcap_color, line_width=self.scheme.plot_line_width(color_idx, ""),
+                                    line_color=_rcap_color, line_width=_rcap_lw,
                                     legend_label=y1var)
-        _bot_kwargs: dict = dict(x0=_x0_col, y0=y1var, x1=_x1_col, y1=y1var,
-                                  source=cap_source,
-                                  line_color=_rcap_color, line_width=self.scheme.plot_line_width(color_idx, ""))
-        _top_kwargs: dict = dict(x0=_x0_col, y0=y2var, x1=_x1_col, y1=y2var,
-                                  source=cap_source,
-                                  line_color=_rcap_color, line_width=self.scheme.plot_line_width(color_idx, ""))
-        if view is not None:
-            _spine_kwargs["view"] = view
-            _bot_kwargs["view"] = view
-            _top_kwargs["view"] = view
         spine = fig.segment(**_spine_kwargs)
-        bot_cap = fig.segment(**_bot_kwargs)
-        top_cap = fig.segment(**_top_kwargs)
+        # A cap is as long as a marker of the layer's msize() is wide, the
+        # scheme's symbolsize p# by default, in screen units: twoway's cap
+        # ratio is its marker.size.val and does not move with the x
+        # spacing (measured 03oct2026; WP-30 P1.17a).  Bokeh's "dash"
+        # marker is a line `size' pixels long.  Tagged dash_cap, which a
+        # horizontal transpose rotates (P1.17.5).
+        _caps = []
+        for _cy in (y1var, y2var):
+            _cap = fig.scatter(x=xvar, y=_cy, source=cap_source,
+                               marker="dash", angle=0.0,
+                               size=self.scheme.default_marker_size(color_idx),
+                               line_cap="round", fill_color=_rcap_color,
+                               line_color=_rcap_color, line_width=_rcap_lw)
+            _cap.tags = ["dash_cap"]
+            _caps.append(_cap)
+        bot_cap, top_cap = _caps
+        if "msize" in options:
+            # The marker applier's own msize() path (S08's units), on the
+            # size only; the second cap takes the first's result, so a bad
+            # value is noted once.
+            self._apply_marker_opts(bot_cap, {"msize": options["msize"]})
+            top_cap.glyph.size = bot_cap.glyph.size
         for seg in (spine, bot_cap, top_cap):
             self._apply_line_opts(seg, options)
         # No marker labels: twoway draws none on rcap (measured).
@@ -14298,9 +14302,9 @@ class GlyphMapper:
     ) -> list:
         """Add range cap-with-symbol glyphs to *fig*.
 
-        Identical to ``rcap`` (vertical spine with horizontal end caps) but
-        with scatter marker symbols placed at both cap positions, matching
-        Stata's ``twoway rcapsym`` appearance.
+        A vertical spine with a marker at each end, at the scheme's symbol
+        size: twoway draws no cap lines (measured: 0 cap lines, 5 spines,
+        10 markers; WP-30 P1.17a).
 
         Args:
             fig:    Bokeh Figure object.
@@ -14311,22 +14315,14 @@ class GlyphMapper:
             options: Translated plot-level options dict.
 
         Returns:
-            List of five renderers:
-            [spine, bot_cap, top_cap, bot_scatter, top_scatter].
+            List of three renderers: [spine, bot_scatter, top_scatter].
         """
         x_arr  = np.array(_dash_float_values(source.data[xvar]))
         y1_arr = np.array(_dash_float_values(source.data[y1var]))
         y2_arr = np.array(_dash_float_values(source.data[y2var]))
 
-        # The width is DERIVED from the data, so it must come from the rows
-        # this layer draws.  The source below keeps every row -- so the
-        # caller's mask lines up with it and the view is attached as usual --
-        # but the spacing was taken from the whole column, and a qualifier
-        # then changed how WIDE the bars were as well as which appeared.
-        # Measured: 0.8 where plotting the same subset alone gives 8.0.
         # The layer's own rows are taken first and the copy drawn with no
-        # view, so the saved page's filter callback keeps a move's rows of
-        # it and recomputes the caps from them (_tag_spacing).
+        # view, so the saved page's filter callback keeps a move's rows.
         _cap_sel = self._view_mask(view, len(x_arr))
         _label_source = source
         if _cap_sel is not None:
@@ -14335,21 +14331,12 @@ class GlyphMapper:
             if _dash_mlabel_names(options)[0]:
                 _label_source = self._subset_source(source, _cap_sel)
         view = None
-        _cap_x = x_arr
-        x_sorted = np.sort(_cap_x[~np.isnan(_cap_x)])
-        if len(x_sorted) >= 2:
-            cap_hw = 0.2 * float(np.min(np.diff(x_sorted)))
-        else:
-            cap_hw = 0.2
 
         # The layer's rows, and with them the caller's other columns -- the
         # row identity and the variables hover() names.
         cap_source = ColumnDataSource(self._carry_cols(source, {
             "x": x_arr, "y1": y1_arr, "y2": y2_arr,
-            "x0_cap": x_arr - cap_hw, "x1_cap": x_arr + cap_hw,
         }, _cap_sel))
-        self._tag_spacing(cap_source, "x", 0.2, 0.2, distinct=False,
-                          cols=(("x0_cap", -1), ("x1_cap", 1)))
 
         # Two defaults: the spine and caps are an rcap and take `color
         # p#'; the symbols are markers and take `color p#mark'.
@@ -14366,27 +14353,22 @@ class GlyphMapper:
         _rcs_spine_kw: dict = dict(x0="x",     y0="y1",  x1="x",     y1="y2",
                                     source=cap_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, ""),
                                     legend_label=y1var)
-        _rcs_bcap_kw: dict  = dict(x0="x0_cap", y0="y1", x1="x1_cap", y1="y1",
-                                    source=cap_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, ""))
-        _rcs_tcap_kw: dict  = dict(x0="x0_cap", y0="y2", x1="x1_cap", y1="y2",
-                                    source=cap_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, ""))
         _rcs_mlw = self.scheme.plot_line_width(color_idx, "mark")
         _rcs_bdot_kw: dict  = dict(x="x", y="y1", source=cap_source,
-                                    fill_color=mark_color, line_color=mark_color, size=7,
+                                    fill_color=mark_color, line_color=mark_color,
+                                    size=self.scheme.default_marker_size(color_idx),
                                     line_width=_rcs_mlw)
         _rcs_tdot_kw: dict  = dict(x="x", y="y2", source=cap_source,
-                                    fill_color=mark_color, line_color=mark_color, size=7,
+                                    fill_color=mark_color, line_color=mark_color,
+                                    size=self.scheme.default_marker_size(color_idx),
                                     line_width=_rcs_mlw)
         if view is not None:
-            for _kw in (_rcs_spine_kw, _rcs_bcap_kw, _rcs_tcap_kw, _rcs_bdot_kw, _rcs_tdot_kw):
+            for _kw in (_rcs_spine_kw, _rcs_bdot_kw, _rcs_tdot_kw):
                 _kw["view"] = view
         spine   = fig.segment(**_rcs_spine_kw)
-        bot_cap = fig.segment(**_rcs_bcap_kw)
-        top_cap = fig.segment(**_rcs_tcap_kw)
         bot_dot = fig.scatter(**_rcs_bdot_kw)
         top_dot = fig.scatter(**_rcs_tdot_kw)
-        for seg in (spine, bot_cap, top_cap):
-            self._apply_line_opts(seg, options)
+        self._apply_line_opts(spine, options)
         for dot in (bot_dot, top_dot):
             self._apply_marker_opts(dot, options)
         # Both ends are labelled, as twoway labels them ("the same marker
@@ -14400,7 +14382,7 @@ class GlyphMapper:
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
         self._apply_mlabel_opts(fig, _label_source, options, xvar, y2var,
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
-        return [spine, bot_cap, top_cap, bot_dot, top_dot]
+        return [spine, bot_dot, top_dot]
 
     def map_scatteri(
         self,
@@ -19647,24 +19629,6 @@ const _dsrcs_orig = (typeof derived_sources_orig !== "undefined" &&
 // Parallel to _dsrcs: which filters apply to each derived copy (GAPS2 E2).
 const _derived_use = (typeof derived_use_json !== "undefined")
     ? JSON.parse(derived_use_json) : _dsrcs.map(() => null);
-// A bar's width, a cap's half-width: `factor' times the smallest gap
-// between the kept rows' x values, `fallback' with fewer than two -- the
-// arithmetic GlyphMapper._tag_spacing records and the served redraw does.
-const _dspacing = (typeof derived_spacing_json !== "undefined")
-    ? JSON.parse(derived_spacing_json) : [];
-const _dspacing_glyphs = (typeof derived_spacing_glyphs !== "undefined" &&
-                          derived_spacing_glyphs) ? derived_spacing_glyphs : [];
-function dash_spacing(xs, sp) {
-    const present = (v) => v !== null && v !== undefined && !Number.isNaN(v);
-    let vals = xs.filter(present).map(Number);
-    if (sp.distinct) vals = Array.from(new Set(vals));
-    vals.sort((a, b) => a - b);
-    if (vals.length < 2) return sp.fallback;
-    let gap = Infinity;
-    for (let i = 0; i + 1 < vals.length; i++)
-        gap = Math.min(gap, vals[i + 1] - vals[i]);
-    return sp.factor * gap;
-}
 if (_primary_ids) {
     for (let _di = 0; _di < _dsrcs.length && _di < _dsrcs_orig.length; _di++) {
         const _od = _dsrcs_orig[_di].data;
@@ -19678,16 +19642,6 @@ if (_primary_ids) {
         for (let i = 0; i < _did.length; i++) {
             if (!_dkeep_ids.has(_did[i])) continue;
             for (const col of _dc) { _nd[col].push(_od[col][i]); }
-        }
-        const _sp = _dspacing[_di];
-        if (_sp && _sp.x in _nd) {
-            const _xs = _nd[_sp.x];
-            const _w = dash_spacing(_xs, _sp);
-            for (const [_col, _sign] of (_sp.cols || [])) {
-                _nd[_col] = _xs.map((v) => (v === null || v === undefined ||
-                    Number.isNaN(v)) ? null : v + _sign * _w);
-            }
-            for (const _g of (_dspacing_glyphs[_di] || [])) { _g.width = _w; }
         }
         _dsrcs[_di].data = _nd;
         _dsrcs[_di].selected.indices = [];
@@ -20432,8 +20386,6 @@ class FilterBuilder:
                 # scatter without its missing rows) and their snapshots.
                 "derived_sources":   [],    # populated by DashRenderer.render()
                 "derived_sources_orig": [], # populated by DashRenderer.render()
-                "derived_spacing_json": "[]",  # populated by DashRenderer.render()
-                "derived_spacing_glyphs": [],  # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -20494,8 +20446,6 @@ class FilterBuilder:
                 # scatter without its missing rows) and their snapshots.
                 "derived_sources":   [],    # populated by DashRenderer.render()
                 "derived_sources_orig": [], # populated by DashRenderer.render()
-                "derived_spacing_json": "[]",  # populated by DashRenderer.render()
-                "derived_spacing_glyphs": [],  # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -20557,8 +20507,6 @@ class FilterBuilder:
                 # scatter without its missing rows) and their snapshots.
                 "derived_sources":   [],    # populated by DashRenderer.render()
                 "derived_sources_orig": [], # populated by DashRenderer.render()
-                "derived_spacing_json": "[]",  # populated by DashRenderer.render()
-                "derived_spacing_glyphs": [],  # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -26122,24 +26070,6 @@ def _dash_keep_jitter(new_data, snapshot):
             orig[pos[lab]] if lab in pos and pos[lab] < len(orig) else v
             for lab, v in zip(labels, fresh)]
     return new_data
-
-
-def _dash_copy_redraw_geometry(live, new):
-    """Give each live glyph whose width is its rows' spacing the width the
-    redraw drew from the kept rows (WP-29 P0.18).  GlyphMapper._tag_spacing
-    lists those glyphs on their source (`_dash_spacing_glyphs`); a served
-    move copied the redraw's data onto the live source and left the
-    build's width, 56 where the kept rows give 168.  A width that is not
-    a finite positive number is left alone, so Bokeh's "Distances must
-    be positive" can never be raised in a session."""
-    for lg, ng in zip(getattr(live, "_dash_spacing_glyphs", None) or (),
-                      getattr(new, "_dash_spacing_glyphs", None) or ()):
-        w = getattr(ng, "width", None)
-        w = getattr(w, "value", w)
-        if isinstance(w, bool) or not isinstance(w, (int, float)):
-            continue
-        if np.isfinite(w) and w > 0:
-            lg.width = float(w)
 
 
 def _dash_facet_cols(gopts, n_panels):
@@ -33767,13 +33697,6 @@ class DashRenderer:
                 })
         _der_srcs_orig_all = [_snapshot_of[id(_dsrc)]
                               for _dsrc in _der_srcs_all]
-        # A bar's width and a cap's half-width are the kept rows'
-        # spacing (GlyphMapper._tag_spacing); null where there is none.
-        _der_spacing_json_all = json.dumps([
-            getattr(_dsrc, "_dash_spacing", None) for _dsrc in _der_srcs_all])
-        _der_spacing_glyphs_all = [
-            list(getattr(_dsrc, "_dash_spacing_glyphs", []) or [])
-            for _dsrc in _der_srcs_all]
 
         # Every filter-mode KPI whose "use" is non-empty -- one every
         # filter excludes is left at whatever the first render gave it, as
@@ -33817,8 +33740,6 @@ class DashRenderer:
             _cb.args["derived_sources"]   = _der_srcs_all
             _cb.args["derived_sources_orig"] = _der_srcs_orig_all
             _cb.args["derived_use_json"]  = _der_use_json_all
-            _cb.args["derived_spacing_json"] = _der_spacing_json_all
-            _cb.args["derived_spacing_glyphs"] = _der_spacing_glyphs_all
             if _stale_args:
                 for _k, _v in _stale_args.items():
                     _cb.args[_k] = _v
@@ -34945,7 +34866,6 @@ class ServerAppBuilder:
                          "_dash_dim_nonselection",
                          # An unlinked layer's own rows after a move.
                          "_dash_refresh_unlinked", "_dash_keep_jitter",
-                         "_dash_copy_redraw_geometry",
                          "_dash_parse_tabs", "_dash_tab_panels",
                          "_dash_header_fragments", "_dash_header_models",
                          # layout(bs): the saved page's reader of the rows
@@ -37659,10 +37579,6 @@ class ServerAppBuilder:
             "                    # Its rows are new too: a selection on them (a",
             "                    # jittered scatter's) is cleared, as in step 2.",
             "                    _live.selected.indices = []",
-            "                    # A bar's or rbar's width is the kept rows' spacing",
-            "                    # (GlyphMapper._tag_spacing); the redraw's glyph",
-            "                    # holds it, the live one the build's (WP-29 P0.18).",
-            "                    _dash_copy_redraw_geometry(_live, _new)",
             "                if len(_fresh) != len(agg['sources']):",
             "                    warnings.warn(",
             "                        'dash: %s layer %d redrew %d source(s) where %d were '",

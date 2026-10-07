@@ -174,6 +174,9 @@
 *!   _dash_logit_typed(opts)
 *!       The first word spelling lowess's logit or its off form, as typed.
 *!
+*!   _dash_barwidth_typed(opts)
+*!       The first word spelling barwidth() as typed (refused on rcap and rcapsym).
+*!
 *!   _dash_foreign_scan(opts, ptype, unk, graph)
 *!       The option words of a list, for dash.ado to find one twoway
 *!       refuses even once: in upper case, or a plot option after the
@@ -5588,6 +5591,27 @@ string scalar _dash_logit_typed(string scalar opts)
     for (i = 1; i <= cols(toks); i++) {
         if (anyof(("lo", "logi", "logit", "nolo", "nologi", "nologit"),
                   toks[i])) return(toks[i])
+    }
+    return("")
+}
+
+// _dash_barwidth_typed(opts) -- the name of the first top-level option word
+// of opts that spells barwidth() -- barw, barwi, barwid, barwidt, barwidth
+// -- as typed, or "".  twoway refuses it on rcap and rcapsym naming that
+// spelling, "option barw() not allowed", r(198) (measured 03oct2026; WP-30
+// P1.17a).  Quoted and nested text is never read: only top-level tokens.
+string scalar _dash_barwidth_typed(string scalar opts)
+{
+    string rowvector toks
+    string scalar    nm
+    real scalar      i
+
+    toks = _dash_rep_toks(opts, 0)
+    for (i = 1; i <= cols(toks); i++) {
+        if (!strpos(toks[i], "(")) continue
+        nm = _dash_rep_optname(toks[i])
+        if (anyof(("barw", "barwi", "barwid", "barwidt", "barwidth"), nm))
+            return(nm)
     }
     return("")
 }

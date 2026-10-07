@@ -206,7 +206,9 @@ _DRAWS = {"scatter": [("Scatter", "scatter")], "line": [("Line", "line")],
           "qfitci": [("Line", "line")], "lpolyci": [("Line", "line")],
           "fpfitci": [("Line", "line")],
           "connected": [("Line", "connected"), ("Scatter", "scatter")],
-          "rcap": [("Segment", "rcap")],
+          # Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a
+          # marker of its msize, so dash draws them as dash Scatters.
+          "rcap": [("Segment", "rcap"), ("Scatter", "rcap")],
           "rcapsym": [("Segment", "rcapsym"), ("Scatter", "scatter")],
           "pcarrow": [("Segment", "pcarrow")], "rarea": [("VArea", "area")]}
 
@@ -243,7 +245,7 @@ class TestBothModes:
                       for t, i in zip(types, want)
                       for g, cyc in _DRAWS[t] if g == glyph]
             got = _drawn(fig, glyph)
-            # rcapsym draws its caps and spike as three Segments.
+            # rcapsym draws its spike as one Segment.
             dedup = [c for k, c in enumerate(got) if k == 0 or got[k - 1] != c]
             assert dedup == [c for k, c in enumerate(expect)
                              if k == 0 or expect[k - 1] != c], (glyph, got)

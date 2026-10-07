@@ -1852,6 +1852,12 @@ CORPUS = [
     _case("vvvthin and none",
           [plot_for("line", {"lwidth": "vvvthin"}),
            plot_for("lfitci", {"alwidth": "none"})]),
+    # WP-30 P1.17a: bar widths and range caps
+    _case("rbar barwidth(.3)", [plot_for("rbar", {"barwidth": ".3"})]),
+    _case("rcap msize(large)", [plot_for("rcap", {"msize": "large"})]),
+    _case("rcapsym", [plot_for("rcapsym")]),
+    _case("bar on a %tm x", [plot_for("bar", xvar="when")],
+          {"formats": {"when": "%tm"}}),
 ]
 
 
@@ -2314,8 +2320,8 @@ _MOVED_LAYERS = ["scatter", "line", "lfit", "lfitci", "histogram", "kdensity",
                  "pcarrow", "pcbarrow",
                  # WP-29 P0.9: lpolyci's analytic band refits after a move.
                  "lpolyci"]
-# WP-29 P0.18: bar and rbar take the kept rows' width after a served move;
-# the other eight agreed already and are guards.
+# bar and rbar widths hold through a move (WP-30 P1.17a); the other eight
+# agreed already and are guards.
 _MOVED_LAYERS += ["bar", "rbar", "lowess", "qfit", "fpfit", "mband",
                   "mspline", "lpolyci", "qfitci", "fpfitci"]
 
@@ -2559,7 +2565,7 @@ MOVE_CORPUS = [
     # from the rows the move keeps.
     _move_case("lpoly biweight degree 2, dropdown", _MOVES[0],
                [plot_for("lpoly", {"kernel": "biweight", "degree": "2"})]),
-    # WP-29 P0.18: a served bar's width is the kept rows' spacing.
+    # WP-29 P0.18: a served bar's width holds through a move (WP-30 P1.17a).
     _move_case("bar under by(rep), dropdown", _MOVES[0], [plot_for("bar")],
                {"by": "rep"}),
     _move_case("rbar under by(foreign), range", _MOVES[1],
@@ -2600,6 +2606,12 @@ MOVE_CORPUS = [
     # WP-30 P1.12b: Stata line widths
     _move_case("line, lwidth(*2), dropdown", _MOVES[0],
                [plot_for("line", {"lwidth": "*2"})]),
+    # WP-30 P1.17a: bar widths and range caps
+    _move_case("rcap msize(large), dropdown", _MOVES[0],
+               [plot_for("rcap", {"msize": "large"})]),
+    _move_case("bar on a %tm x, range", _MOVES[1],
+               [plot_for("bar", xvar="when")],
+               bo={"formats": {"when": "%tm"}}),
 ]
 
 

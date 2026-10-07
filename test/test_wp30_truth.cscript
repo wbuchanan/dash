@@ -2885,10 +2885,330 @@ if inlist("`only'", "", "S13") {
 }
 * ==== end S13 ====
 
+// S14 helpers (WP-30 P1.17a).  _bg_widths: the bar widths a registered
+// dash graph draws, saved and served, in the x variable's own units;
+// _bg_caps: the sizes of its dash_cap markers, or of its Scatters;
+// _bg_move: the served bar width after a Select move to Foreign.  Each
+// answers through globals bg_s, bg_v (saved, served) and bg_n.
+python:
+import os as _bg_os, sys as _bg_sys
+for _bg_p in (_bg_os.path.abspath(".."),
+              _bg_os.path.abspath(_bg_os.path.join("..", "scripts"))):
+    if _bg_p not in _bg_sys.path:
+        _bg_sys.path.insert(0, _bg_p)
+
+
+def _bg_docs(sp, dp, app):
+    import os, warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_bg_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_bg_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+    return list(r.figures.values()), sv, doc
+
+
+def _bg_unitw(rend, kind):
+    import numpy as np
+    import dash_render as dr
+    g = rend.glyph
+    w = g.width
+    if isinstance(w, (int, float)):
+        return [float(w) / (86400000.0 if kind == "td" else 1.0)]
+    d = rend.data_source.data
+    xc = np.asarray(d["__dash_bar_xc"], dtype=float)
+    bw = np.asarray(d["__dash_bar_w"], dtype=float)
+    return [float(v) for v in _bg_frac(xc + bw / 2.0, kind)
+            - _bg_frac(xc - bw / 2.0, kind)]
+
+
+def _bg_frac(ms, kind):
+    # Epoch ms in fractional period units: the period it falls in, plus
+    # its share of that period (the inverse of _dash_units_to_axis).
+    import numpy as np
+    import dash_render as dr
+    p = np.asarray(dr._dash_date_units(ms, kind), dtype=float)
+    a = dr._dash_units_to_axis(p, kind)
+    b = dr._dash_units_to_axis(p + 1.0, kind)
+    return p + (np.asarray(ms, dtype=float) - a) / (b - a)
+
+
+def _bg_svg_caps(path):
+    # Twoway's capped spines: horizontal lines centred on a spine's x at
+    # one of its ends; the median cap length and how many spines have two.
+    from sfi import Macro
+    from svg_truth import svg_document
+    doc = svg_document(path)
+    caps, capped = [], 0
+    for v in doc["vlines"]:
+        found = []
+        for e in (v["y1"], v["y2"]):
+            for h in doc["hlines"]:
+                if abs((h["x1"] + h["x2"]) / 2.0 - v["x1"]) < 0.5 \
+                        and abs(h["y1"] - e) < 0.5 and h["x2"] != h["x1"]:
+                    found.append(abs(h["x2"] - h["x1"]))
+                    break
+        if len(found) == 2:
+            capped += 1
+            caps += found
+    caps.sort()
+    m = min(doc["canvas"]["w"], doc["canvas"]["h"])
+    ratio = 100.0 * caps[int(len(caps) / 2)] / m if caps else -1.0
+    Macro.setGlobal("bg_ratio", "%.6g" % ratio)
+    Macro.setGlobal("bg_ncap", str(capped))
+
+
+def _bg_widths(sp, dp, app, kind=""):
+    from sfi import Macro
+    a, b, _ = _bg_docs(sp, dp, app)
+    def ws(figs):
+        out = []
+        for f in figs:
+            for r in f.renderers:
+                if type(getattr(r, "glyph", None)).__name__ == "VBar":
+                    out += _bg_unitw(r, kind)
+        return out
+    s, v = ws(a), ws(b)
+    Macro.setGlobal("bg_s", " ".join("%.12g" % x for x in s))
+    Macro.setGlobal("bg_v", " ".join("%.12g" % x for x in v))
+    Macro.setGlobal("bg_n", str(min(len(s), len(v))))
+
+
+def _bg_caps(sp, dp, app, tag=""):
+    from sfi import Macro
+    a, b, _ = _bg_docs(sp, dp, app)
+    def sz(figs):
+        out, kinds = [], []
+        for f in figs:
+            for r in f.renderers:
+                g = getattr(r, "glyph", None)
+                if g is None:
+                    continue
+                kinds.append(type(g).__name__)
+                if type(g).__name__ != "Scatter":
+                    continue
+                if tag and tag not in (r.tags or []):
+                    continue
+                out.append(float(g.size))
+        return out, kinds
+    (s, ks), (v, kv) = sz(a), sz(b)
+    Macro.setGlobal("bg_s", " ".join("%.12g" % x for x in s))
+    Macro.setGlobal("bg_v", " ".join("%.12g" % x for x in v))
+    Macro.setGlobal("bg_n", str(min(len(s), len(v))))
+    Macro.setGlobal("bg_ks", " ".join(ks))
+    Macro.setGlobal("bg_kv", " ".join(kv))
+
+
+def _bg_move(sp, dp, app):
+    from sfi import Macro
+    from bokeh.models import Select
+    _, _, doc = _bg_docs(sp, dp, app)
+    def width():
+        return [float(getattr(m.width, "value", m.width)) for m in doc.models
+                if type(m).__name__ == "VBar"]
+    before = width()
+    [w] = [m for m in doc.models if isinstance(m, Select)]
+    raw = [v for v, lab in w.options if lab == "Foreign"]
+    w.value = raw[0]
+    for key in ("value", "value_throttled"):
+        for cb in list(w._callbacks.get(key, [])):
+            cb("value", None, raw[0])
+    Macro.setGlobal("bg_s", " ".join("%.12g" % x for x in before))
+    Macro.setGlobal("bg_v", " ".join("%.12g" % x for x in width()))
+
+end
+
+capture program drop _bg_data
+program define _bg_data
+    // The extractor's five rows (scripts/extract_bar_geometry_truth.do).
+    version 19
+    clear
+    quietly set obs 5
+    quietly generate double x1 = real(word("1 2 3 4 5", _n))
+    quietly generate double xp1 = real(word(".1 .2 .3 .4 .5", _n))
+    quietly generate double x5 = real(word("5 10 15 20 25", _n))
+    quietly generate double xu = real(word("1 1.5 4 10 11", _n))
+    quietly generate double y = real(word("3 4 2 5 1", _n))
+    quietly generate double lo = real(word("1 2 1 3 0", _n))
+    quietly generate double hi = real(word("4 5 3 6 2", _n))
+    quietly generate d = 14975 + 7 * (_n - 1)
+    format d %td
+    quietly generate m = 720 + (_n - 1)
+    format m %tm
+end
+capture program drop _bg_eq
+program define _bg_eq
+    // _bg_eq <id> <want> <what>: every saved and served value in bg_s and
+    // bg_v equals <want> to 1e-6 (relative), and one exists.
+    version 19
+    args id want what
+    local ok = (${bg_n} > 0)
+    foreach v in ${bg_s} ${bg_v} {
+        if abs(`v' - (`want')) > 1e-6 * max(1, abs(`want')) local ok = 0
+    }
+    _w30_expect "`id'" `ok' `"`what': saved ${bg_s} served ${bg_v}, twoway `want'"'
+end
+
 * ==== S14 P1.17a: Bar widths and range caps ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S14") {
     display as text "S14 start " c(current_date) " " c(current_time)
+    local bgd "`w30_work'/s14"
+    capture mkdir "`bgd'"
+    capture graph drop _all
+    set scheme s2color
+    local k = 0
+
+    // BG-01 -- bar at x spacing 1, .1, 5 and uneven is twoway's bar_size.
+    foreach xv in x1 xp1 x5 xu {
+        _bg_data
+        quietly twoway bar y `xv', name(bgt, replace)
+        local bs = `.bgt.plotregion1.plot1.bar_size'
+        local ++k
+        dash clear
+        quietly dash bar y `xv', name(zbg`k')
+        _dash_serve_spec, specpath("`bgd'/s`k'.json") datapath("`bgd'/d`k'.json")
+        python: _bg_widths("`bgd'/s`k'.json", "`bgd'/d`k'.json", "`bgd'/a`k'.py")
+        _bg_eq BG-01 `bs' "bar y `xv'"
+    }
+    _w30_done BG-01 "bar is twoway's bar_size wide at x spacing 1, .1, 5 and uneven, saved and served"
+
+    // BG-02 -- rbar default, barwidth(.3) and bw(.3), with no note.
+    foreach o in "" "barwidth(.3)" "bw(.3)" {
+        _bg_data
+        local to = subinstr(`"`o'"', "bw(", "barwidth(", 1)
+        quietly twoway rbar lo hi x1, `to' name(bgt, replace)
+        local bs = `.bgt.plotregion1.plot1.bar_size'
+        local ++k
+        dash clear
+        local lf "`bgd'/n`k'.log"
+        quietly log using "`lf'", text replace name(bgn)
+        dash rbar lo hi x1, `o' name(zbg`k')
+        quietly log close bgn
+        _dash_serve_spec, specpath("`bgd'/s`k'.json") datapath("`bgd'/d`k'.json")
+        python: _bg_widths("`bgd'/s`k'.json", "`bgd'/d`k'.json", "`bgd'/a`k'.py")
+        _bg_eq BG-02 `bs' "rbar lo hi x1, `o'"
+        cert_file_has "`lf'", needle("(note:")
+        local _nn = (r(found) == 0)
+        _w30_expect BG-02 `_nn' "rbar lo hi x1, `o' printed a note"
+        capture erase "`lf'"
+    }
+    _w30_done BG-02 "rbar takes barwidth() and bw() as twoway does, both modes, with no note"
+
+    // BG-03 -- %td weekly and %tm, default and barwidth(), in the
+    // variable's own units.
+    foreach case in "d|td|" "d|td|barwidth(3)" "m|tm|" "m|tm|barwidth(.5)" {
+        gettoken xv rest : case, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken kind rest : rest, parse("|")
+        gettoken bar o : rest, parse("|")
+        _bg_data
+        quietly twoway bar y `xv', `o' name(bgt, replace)
+        local bs = `.bgt.plotregion1.plot1.bar_size'
+        local ++k
+        dash clear
+        quietly dash bar y `xv', `o' name(zbg`k')
+        _dash_serve_spec, specpath("`bgd'/s`k'.json") datapath("`bgd'/d`k'.json")
+        python: _bg_widths("`bgd'/s`k'.json", "`bgd'/d`k'.json", "`bgd'/a`k'.py", "`kind'")
+        _bg_eq BG-03 `bs' "bar y `xv' (%`kind') `o'"
+    }
+    _w30_done BG-03 "a %td and a %tm bar are bar_size wide in the variable's own units, both modes"
+
+    // BG-04 -- rcap's cap is a marker of its msize(): twoway's cap ratio is
+    // its marker size; dash's dash_cap markers are the size dash gives a
+    // scatter marker of the same msize(), at x spacing 1 and 5.
+    foreach o in "" "msize(small)" "msize(large)" "msize(*2)" "x5" {
+        _bg_data
+        local xv = cond("`o'" == "x5", "x5", "x1")
+        local mo = cond("`o'" == "x5", "", "`o'")
+        quietly twoway rcap lo hi `xv', `mo' name(bgt, replace)
+        local tms = `.bgt.plotregion1.plot1.style.marker.size.val'
+        cert_svg_export, name(bgt) file("`bgd'/c.svg")
+        python: _bg_svg_caps("`bgd'/c.svg")
+        local _ok = (abs(${bg_ratio} - `tms') <= .01 * `tms')
+        _w30_expect BG-04 `_ok' "twoway rcap `o': cap ratio ${bg_ratio}, marker size `tms'"
+        local ++k
+        dash clear
+        quietly dash scatter hi `xv', `mo' name(zbg`k')
+        _dash_serve_spec, specpath("`bgd'/s`k'.json") datapath("`bgd'/d`k'.json")
+        python: _bg_caps("`bgd'/s`k'.json", "`bgd'/d`k'.json", "`bgd'/a`k'.py")
+        local want : word 1 of ${bg_s}
+        local ++k
+        dash clear
+        quietly dash rcap lo hi `xv', `mo' name(zbg`k')
+        _dash_serve_spec, specpath("`bgd'/s`k'.json") datapath("`bgd'/d`k'.json")
+        python: _bg_caps("`bgd'/s`k'.json", "`bgd'/d`k'.json", "`bgd'/a`k'.py", "dash_cap")
+        local _ok = (${bg_n} == 2)
+        _w30_expect BG-04 `_ok' "rcap `o': ${bg_n} dash_cap markers in each mode"
+        _bg_eq BG-04 `want' "rcap `o' cap"
+    }
+    _w30_done BG-04 "rcap's caps are markers of its msize(), as twoway's are, at x spacing 1 and 5, both modes"
+
+    // BG-05 -- rcapsym: twoway draws no cap line; dash draws a spine and
+    // two markers at dash's default scatter size.
+    _bg_data
+    quietly twoway rcapsym lo hi x1, name(bgt, replace)
+    cert_svg_export, name(bgt) file("`bgd'/c.svg")
+    python: _bg_svg_caps("`bgd'/c.svg")
+    _w30_expect BG-05 "(${bg_ncap} == 0)" "twoway rcapsym drew ${bg_ncap} capped spines"
+    local ++k
+    dash clear
+    quietly dash scatter hi x1, name(zbg`k')
+    _dash_serve_spec, specpath("`bgd'/s`k'.json") datapath("`bgd'/d`k'.json")
+    python: _bg_caps("`bgd'/s`k'.json", "`bgd'/d`k'.json", "`bgd'/a`k'.py")
+    local want : word 1 of ${bg_s}
+    local ++k
+    dash clear
+    quietly dash rcapsym lo hi x1, name(zbg`k')
+    _dash_serve_spec, specpath("`bgd'/s`k'.json") datapath("`bgd'/d`k'.json")
+    python: _bg_caps("`bgd'/s`k'.json", "`bgd'/d`k'.json", "`bgd'/a`k'.py")
+    local _ok = ("${bg_ks}" == "Segment Scatter Scatter" & "${bg_kv}" == "Segment Scatter Scatter")
+    _w30_expect BG-05 `_ok' "dash rcapsym drew saved ${bg_ks}, served ${bg_kv}"
+    _bg_eq BG-05 `want' "rcapsym markers"
+    _w30_done BG-05 "rcapsym draws no caps, its markers at dash's default scatter size, both modes"
+
+    // BG-06 -- a served move: the bar stays one x unit wide.
+    clear
+    quietly set obs 10
+    quietly generate mpg = real(word("22 17 25 30 21 19 14 28 16 23", _n))
+    quietly generate weight = real(word("2930 3350 2200 1800 3000 3100 4080 2010 3600 2650", _n))
+    quietly generate foreign = mod(_n + 1, 2)
+    label define bg_origin 0 "Domestic" 1 "Foreign"
+    label values foreign bg_origin
+    quietly twoway bar mpg weight, name(bgt, replace)
+    local bs = `.bgt.plotregion1.plot1.bar_size'
+    local ++k
+    dash clear
+    quietly dash bar mpg weight, name(zbg`k')
+    _dash_serve_spec, specpath("`bgd'/s`k'.json") datapath("`bgd'/d`k'.json") filter(foreign)
+    python: _bg_move("`bgd'/s`k'.json", "`bgd'/d`k'.json", "`bgd'/a`k'.py")
+    global bg_n = 1
+    _bg_eq BG-06 `bs' "served bar before and after the Foreign move"
+    label drop bg_origin
+    _w30_done BG-06 "the served bar is twoway's bar_size wide before and after a filter move"
+
+    capture graph drop _all
+    capture dash clear
+    set scheme s2color
+    local bgfiles : dir "`bgd'" files "*"
+    foreach f of local bgfiles {
+        capture erase "`bgd'/`f'"
+    }
+    capture rmdir "`bgd'"
+    macro drop bg_*
     display as text "S14 end " c(current_date) " " c(current_time)
 }
 * ==== end S14 ====

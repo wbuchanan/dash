@@ -597,9 +597,10 @@ dash clear
 restore
 
 // ================================================================
-// EW-01 (WP-29 P0.18): after a served move a bar's width is the kept
-// rows' spacing -- the saved page's after the same move, and the saved
-// page's drawn from the kept rows alone.
+// EW-01 (WP-29 P0.18; flipped WP-30 P1.17a): a served bar is one x unit
+// wide before and after a move, as twoway draws it -- the saved page's
+// width after the same move, and the saved page's drawn from the kept rows
+// alone.  It was the kept rows' spacing, which twoway never draws.
 // ================================================================
 preserve
 clear
@@ -634,11 +635,11 @@ saved_qual = ftc.vbar_width(rq.figures["g1"])
 print("EW-01 saved after", saved_after, "served after", served_after,
       "saved qualified", saved_qual, "served before", served_before)
 ftc.put("ew_01", int(saved_after == served_after == saved_qual
-                     and served_after != served_before))
+                     == served_before == 1.0))
 ftc.put("ew_01w", saved_after)
 end
 assert "${ew_01}" == "1"
-display "EW-01 PASS: after the move to Foreign the served bar is ${ew_01w} wide, as the saved page draws it after the move and from the Foreign rows alone"
+display "EW-01 PASS: the served bar is ${ew_01w} wide before and after the move to Foreign, as the saved page draws it after the move and from the Foreign rows alone"
 restore
 
 // ----------------------------------------------------------------
