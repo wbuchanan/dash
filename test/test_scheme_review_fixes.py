@@ -504,7 +504,9 @@ class TestAxisLineWidth:
         axes = list(fig.xaxis) + list(fig.yaxis)
         assert len(axes) == 2, axes
         for ax in axes:
-            assert ax.axis_line_width == pytest.approx(3.0, abs=0.02)
+            # Flipped (WP-30 P1.12b): 0.6 Stata units x 3.84 px (was 5 px
+            # per unit on dash's private scale, 3.0).
+            assert ax.axis_line_width == pytest.approx(2.304, abs=0.02)
 
 
 def test_the_parser_exposes_axis_line_width():
@@ -554,8 +556,9 @@ class TestHostileSchemeValues:
 
     @pytest.mark.parametrize("key, attr, default", [
         ("linewidth p", "default_line_width", 1.5),
-        ("linewidth minor_grid", "minor_grid_line_width", 0.8),
-        ("linewidth axisline", "axis_line_width", 0.8),
+        # Flipped (WP-30 P1.12b): the thin rung is .2 x 3.84 = 0.768 px.
+        ("linewidth minor_grid", "minor_grid_line_width", 0.768),
+        ("linewidth axisline", "axis_line_width", 0.768),
     ])
     def test_every_negative_linewidth_is_refused(self, key, attr, default,
                                                  tmp_path, monkeypatch):

@@ -90,7 +90,9 @@ _NO_FIT_LINE = {"colnone", "lcnone"}
 #: Stata's widths as dash draws them: medium (.3) 1.5px, thick (.8) 2.5px,
 #: vthin (.15) 0.5px on dash's keyword ladder; economist's numeric 1.2 at
 #: 5px a unit (SchemeParser._lwidth); none 0.
-_UNIT_PX = {0.3: 1.5, 0.8: 2.5, 0.15: 0.5, 1.2: 6.0, 0.0: 0.0}
+# Flipped (WP-30 P1.12b): dash's private ladder (medium 1.5 px) became
+# Stata units, 1 unit = 3.84 px.
+_UNIT_PX = {0.3: 1.152, 0.8: 3.072, 0.15: 0.576, 1.2: 4.608, 0.0: 0.0}
 
 
 def _opts(text):
@@ -271,7 +273,7 @@ class TestTheSchemeKeys:
         assert _hex(k["VArea"][0].glyph.fill_color) == _blend("#ff0000", 0.5)
         assert _hex(k["Patch"][0].glyph.line_color) == \
             dr.OptionTranslator.translate_mcolor("navy").lower()
-        assert k["Patch"][0].glyph.line_width == pytest.approx(2.5)
+        assert k["Patch"][0].glyph.line_width == pytest.approx(3.072)
         assert list(k["Patch"][0].glyph.line_dash) == _dash("dash")
 
     def test_a_user_schemes_other_keys_are_read(self, tmp_path, monkeypatch):
@@ -283,7 +285,7 @@ class TestTheSchemeKeys:
             "intensity pbar inten30\n", encoding="utf-8")
         k = _parts(_draw("lfitci", "oz.scheme", {"pstyle": "p2"}).renderers)
         assert _hex(k["VArea"][0].glyph.fill_color) == _blend("#ff0000", 0.3)
-        assert k["Patch"][0].glyph.line_width == pytest.approx(3.5)
+        assert k["Patch"][0].glyph.line_width == pytest.approx(5.376)
 
     @pytest.mark.parametrize("scheme", _SCHEMES)
     def test_each_shipped_file_declares_the_ci_keys(self, scheme):

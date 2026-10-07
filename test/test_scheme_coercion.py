@@ -227,13 +227,14 @@ class TestLineWidth:
     def test_a_numeric_value_is_a_stata_linewidth_unit(self, sp):
         """A bare number in a linewidth directive is Stata's unit, the one
         the keywords are defined in (style/linewidth-medium.style sets
-        .30).  dash anchors medium at 1.5 px, so a number is 5 px per unit:
-        economist's ``linewidth p 1.2`` is 6.0 px, four medium widths, not
-        the 1.2 px this test used to pin.  WP-16 (GAPS G5)."""
+        .30).  One unit is 2.88 pt = 3.84 px (WP-30 P1.12b; it was 5 px on
+        dash's private ladder, medium 1.5 px): economist's ``linewidth p
+        1.2`` is 4.608 px, four medium widths, not the 1.2 px this test
+        used to pin.  WP-16 (GAPS G5)."""
         _set(sp, **{"linewidth p1": "3.5"})
-        assert sp._lwidth("linewidth p1") == pytest.approx(17.5)
+        assert sp._lwidth("linewidth p1") == pytest.approx(13.44)
         _set(sp, **{"linewidth p1": "0.30"})
-        assert sp._lwidth("linewidth p1") == pytest.approx(1.5)
+        assert sp._lwidth("linewidth p1") == pytest.approx(1.152)
 
     def test_a_named_width_is_translated(self, sp):
         _set(sp, **{"linewidth p1": "thick"})

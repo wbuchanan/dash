@@ -5465,10 +5465,15 @@ def _extract_region_lcolor(val: str) -> str:
     return _dash_unquoted(m.group(1)) if m else ""
 
 
-def _extract_region_lwidth(val: str) -> float | None:
+def _extract_region_lwidth(val: str, default_px: "float | None" = None,
+                           ref_in: float = 4.0) -> float | None:
     """Extract line-width from region option value (lwidth() sub-option).
 
-    Returns numeric pixels or None if absent/invalid.
+    Returns numeric pixels or None if absent/invalid.  Stata units on
+    Stata's ladder (WP-30 P1.12b); ``*#`` multiplies *default_px*, ``thin``
+    (every shipped scheme's ``linewidth plotregion``) when None, and an
+    absolute unit is read at *ref_in*, until section 38 passes the scheme's
+    width and the figure's reference.
     """
     m = re.search(r'\blwidth\s*\(([^)]+)\)', val, re.IGNORECASE)
     if not m:
@@ -5480,7 +5485,9 @@ def _extract_region_lwidth(val: str) -> float | None:
     # here and aborted the whole standalone render (the served app was
     # silent for the same value).  Named, and the default kept, in both.
     try:
-        return OptionTranslator.translate_lwidth(raw)
+        return OptionTranslator.translate_lwidth(
+            raw, default_px if default_px is not None
+            else OptionTranslator.translate_lwidth("thin"), ref_in)
     except (ValueError, TypeError):
         _dash_style_note("plotregion(lwidth)", raw, "line width",
                          "the default")
@@ -5769,7 +5776,7 @@ class OptionTranslator:
         for _n in (1, 2, 3, 4, 6, 8, 10, 11, 12, 14, 16, 20, 24, 32, 180)
     }
     _SIZE_UNIT_PT: dict[str, float] = {"pt": 1.0, "in": 72.0, "cm": 72.0 / 2.54}
-    _SIZE_KINDS: tuple = ("marker", "text", "gap")
+    _SIZE_KINDS: tuple = ("marker", "text", "gap", "line")
     _SIZE_MAX_RS: float = 1000.0
     _SIZE_TEXT_MAX: int = 64
     # Stata's number spelling, ASCII digits only; d/D is Stata's exponent
@@ -5828,7 +5835,7 @@ class OptionTranslator:
         and gaps); (5) a name of its points ladder.  Names and units are
         case-sensitive (twoway notes ``HUGE`` and ``4PT``).  Anything else,
         a value over 64 characters, a non-finite result or a magnitude
-        above 1,000 units raises ValueError.  It never floors: the label
+        above 1,000 units (10,000 for the line kind) raises ValueError.  It never floors: the label
         radius keeps its sign (E5), so callers floor.
         """
         T = OptionTranslator
@@ -5864,17 +5871,40 @@ class OptionTranslator:
                     else:
                         pt = n * T._SIZE_UNIT_PT[u] * 4.0 / ref
         if pt is None:
-            rel = T._SYMBOLSIZE_RS if kind == "marker" else T._GSIZE_RS
-            ab = T._SYMBOLSIZE_ABS_PT if kind == "marker" else T._GSIZE_ABS_PT
+            if kind == "line":
+                # Lines have Stata's linewidth ladder and no points ladder
+                # (WP-30 P1.12b).
+                rel, ab = T._LWIDTH_RS, {}
+            else:
+                rel = T._SYMBOLSIZE_RS if kind == "marker" else T._GSIZE_RS
+                ab = (T._SYMBOLSIZE_ABS_PT if kind == "marker"
+                      else T._GSIZE_ABS_PT)
             if v in rel:
                 pt = rel[v] * T.PT_PER_RS
             elif v in ab:
                 pt = ab[v] * 4.0 / ref
         if pt is None:
             raise ValueError(f"not a Stata {kind} size")
-        if not math.isfinite(pt) or abs(pt) > T._SIZE_MAX_RS * T.PT_PER_RS:
+        _max = T._LWIDTH_MAX_RS if kind == "line" else T._SIZE_MAX_RS
+        if not math.isfinite(pt) or abs(pt) > _max * T.PT_PER_RS:
             raise ValueError("size out of range")
         return pt
+
+    @staticmethod
+    def line_px(pt: Any) -> float:
+        """The one pixel rule for a line width given in points: 0 draws
+        nothing, a non-zero width is floored at 0.3 pt (twoway's SVG
+        writer, WP-30 P1.12b, measured 03oct2026), then 4/3 px per pt.
+        A negative or non-finite width raises ValueError."""
+        T = OptionTranslator
+        if isinstance(pt, bool):
+            raise ValueError("a line width is a number")
+        p = float(pt)
+        if not math.isfinite(p) or p < 0:
+            raise ValueError("a line width is a finite number >= 0")
+        if p == 0:
+            return 0.0
+        return max(p, T._LWIDTH_FLOOR_PT) * T.PX_PER_PT
 
     @staticmethod
     def size_medium_pt(kind: str) -> float:
@@ -5928,27 +5958,20 @@ class OptionTranslator:
         return 4.0
 
     # ------------------------------------------------------------------
-    # Stata line width keyword → pixel width
+    # Stata linewidth keyword -> Stata units (style/linewidth-<name>.style, set val)
     # ------------------------------------------------------------------
-    _LWIDTH_MAP: dict[str, float] = {
-        "vvthin":   0.2,
-        "vthin":    0.5,
-        "thin":     0.8,
-        "medthin":  1.0,
-        "medium":   1.5,
-        "medthick": 2.0,
-        "thick":    2.5,
-        "vthick":   3.5,
-        "vvthick":  5.0,
-        # Stata's linewidth-vvvthick.style, 4.2 units, drawn 1.615 times
-        # vvthick's 2.6 (twoway's SVG, measured 24sep2026: 120.96 and
-        # 74.88 units).  The rungs above medium compress Stata's units by
-        # a power of 0.588 (thick .8, vthick 1.4, vvthick 2.6 -> 2.5, 3.5,
-        # 5.0px); vvvthick continues it: 5.0 * (4.2/2.6)**0.588 = 6.6px.
-        # It was missing, so lwidth(vvvthick) was reported as an unknown
-        # name and drawn at the scheme's width.
-        "vvvthick": 6.6,
+    # Read from /Applications/StataNow/ado/base/style/linewidth-*.style and
+    # measured in twoway's SVG 03oct2026 (WP-30 P1.12b): the ladder is linear
+    # in Stata units, one unit 2.88 pt at the 4-inch reference.
+    _LWIDTH_RS: dict = {
+        "none": 0.0, "vvvthin": 0.000001, "vvthin": 0.01, "vthin": 0.15,
+        "thin": 0.2, "medthin": 0.25, "medium": 0.3, "medthick": 0.45,
+        "thick": 0.8, "vthick": 1.4, "vvthick": 2.6, "vvvthick": 4.2,
     }
+    # twoway's gm_linewidth bound, in Stata units.
+    _LWIDTH_MAX_RS: float = 10000.0
+    # The SVG writer's floor for a non-zero stroke, in points (E4).
+    _LWIDTH_FLOOR_PT: float = 0.3
 
     # ------------------------------------------------------------------
     # Stata line pattern → Bokeh dash specification
@@ -6173,33 +6196,35 @@ class OptionTranslator:
         return OptionTranslator.translate_mcolor(value)
 
     @staticmethod
-    def translate_lwidth(value: str) -> float:
+    def translate_lwidth(value: str, default_px: Any = None,
+                         ref_in: float = 4.0) -> float:
         """Return a pixel line width for a Stata lwidth() value.
 
-        Args:
-            value: A Stata line-width keyword or numeric string.
-
-        Returns:
-            A float pixel width.
+        Line widths are Stata units on Stata's linewidth ladder (IR-1,
+        P1.12.3; twoway measured 03oct2026, WP-30 P1.12b): a number and
+        ``#rs`` are Stata units (2.88 pt each), ``#pt``/``#in``/``#cm`` are
+        absolute at the graph's reference length *ref_in*, ``*#`` multiplies
+        *default_px* (the width the site would draw; medium when absent),
+        names are case-sensitive, and ``OptionTranslator.line_px`` turns
+        the points into pixels with the 0.3 pt floor.
 
         Raises:
-            ValueError: If the value is not recognised.
+            ValueError: an unknown name, a negative width or one past
+                10,000 Stata units.
         """
-        v = value.strip().lower()
-        if v in OptionTranslator._LWIDTH_MAP:
-            return OptionTranslator._LWIDTH_MAP[v]
-        # A finite number only: lwidth(1e400) used to come back as inf and
-        # be handed to Bokeh as a line width.
-        try:
-            f = float(v)
-        except ValueError:
-            f = float("nan")
-        if math.isfinite(f):
-            return max(0.1, f)
-        raise ValueError(
-            f"Unrecognised Stata line width: '{value}'. "
-            "Use a keyword (vvthin … vvvthick) or a positive number."
-        )
+        T = OptionTranslator
+        d = None
+        if isinstance(default_px, (int, float)) and not isinstance(default_px, bool):
+            d = float(default_px)
+            if not (math.isfinite(d) and d >= 0):
+                d = None
+        default_pt = (d * 0.75 if d is not None
+                      else T._LWIDTH_RS["medium"] * T.PT_PER_RS)
+        pt = T.resolve_size(value, "line", default_pt, ref_in)
+        if pt < 0:
+            raise ValueError(
+                f"Line width '{value}' is negative; a width is 0 or more.")
+        return T.line_px(pt)
 
     @staticmethod
     def translate_lpattern(value: str) -> Any:
@@ -6528,11 +6553,6 @@ class SchemeParser:
     #: draws at most one key per plot and dash has no limit of its own, so
     #: the bound only refuses the absurd (`numstyle legend_rows 1000').
     _LEGEND_GRID_MAX: int = 100
-
-    # A bare number in a `linewidth' directive is a Stata linewidth unit
-    # (style/linewidth-medium.style: .30).  dash anchors the `medium'
-    # keyword at 1.5px through _LWIDTH_MAP, so one unit is 5.0px.
-    _LWIDTH_PX_PER_UNIT: float = 5.0
 
     # Stata symbolsize keyword -> points at Stata's 4-inch reference, from
     # /Applications/StataNow/ado/base/style/symbolsize-<name>.style (a
@@ -7221,17 +7241,20 @@ class SchemeParser:
                 return self._lpattern(key)
         return []
 
-    def _lwidth(self, key: str, default: float = 1.5) -> float:
-        """A scheme line width in Bokeh pixels.
+    def _lwidth(self, key: str, default: "float | None" = None) -> float:
+        """A scheme line width in Bokeh pixels, by the option's rule.
 
-        A keyword goes through ``OptionTranslator.translate_lwidth`` (the
-        _LWIDTH_MAP ladder, medium = 1.5px).  A bare number is a Stata
-        linewidth UNIT -- medium is .30 -- scaled by _LWIDTH_PX_PER_UNIT so
-        it lands on the same ladder.  A number used to go straight to Bokeh
-        as pixels, which drew economist's ``linewidth p 1.2`` (four Stata
-        mediums) at 1.2px, thinner than every keyword scheme's 1.5px.
+        A bare number is Stata linewidth units (medium is .30), drawn
+        through ``OptionTranslator.line_px`` (2.88 pt per unit, the 0.3 pt
+        floor); a keyword goes through ``OptionTranslator.translate_lwidth``
+        on Stata's ladder, case-sensitively.  An unknown or wrong-case
+        keyword is noted and *default* kept, as twoway notes it and draws
+        the default (WP-30 P1.12b, measured 03oct2026).  *default* None is
+        medium.
         """
-        raw = self._props.get(key, "").strip().lower()
+        if default is None:
+            default = OptionTranslator.translate_lwidth("medium")
+        raw = self._props.get(key, "").strip()
         if not raw:
             return default
         try:
@@ -7240,6 +7263,13 @@ class SchemeParser:
             try:
                 return OptionTranslator.translate_lwidth(raw)
             except ValueError:
+                warnings.warn(
+                    f"dash scheme: line width '{_dash_display(raw)}' (from "
+                    f"'{key}') is not a recognised line width; using "
+                    f"{default:g}px.",
+                    UserWarning,
+                    stacklevel=3,
+                )
                 return default
         if not math.isfinite(val):
             return default
@@ -7255,7 +7285,10 @@ class SchemeParser:
                 stacklevel=3,
             )
             return default
-        return val * self._LWIDTH_PX_PER_UNIT
+        try:
+            return OptionTranslator.line_px(val * OptionTranslator.PT_PER_RS)
+        except ValueError:
+            return default
 
     def _float(self, key: str, default: "float | None") -> "float | None":
         """Return a scheme value as a float, or *default* if absent/unparseable."""
@@ -8980,16 +9013,15 @@ class GlyphMapper:
             val = options.get(key)
             if val is None or not str(val).strip():
                 continue
-            if str(val).strip().lower() == "none":
-                st["line_width"] = 0.0
-                continue
+            # Stata units on Stata's ladder (none is 0, *# multiplies the
+            # outline set so far); no pixel cap (WP-30 P1.12b).
             try:
-                w = self.tr.translate_lwidth(str(val))
-            except ValueError:
+                st["line_width"] = self.tr.translate_lwidth(
+                    str(val), st.get("line_width"),
+                    getattr(self.scheme, "size_ref_in", 4.0))
+            except (ValueError, TypeError):
                 _dash_style_note(key, val, "line width")
                 continue
-            if math.isfinite(w) and 0.0 <= w <= 1000.0:
-                st["line_width"] = w
         for key in ("lpattern", "alpattern"):
             val = options.get(key)
             if val is None or not str(val).strip():
@@ -9225,9 +9257,13 @@ class GlyphMapper:
         # An unknown width or pattern used to be dropped without a word
         # (`except ValueError: pass'); it is named, and the scheme's kept.
         if "lwidth" in options:
+            # Stata units; *# multiplies the width already set here, the
+            # scheme's (WP-30 P1.12b).  A field spec is not a default.
             try:
-                glyph.line_width = self.tr.translate_lwidth(options["lwidth"])
-            except ValueError:
+                glyph.line_width = self.tr.translate_lwidth(
+                    options["lwidth"], getattr(glyph, "line_width", None),
+                    getattr(self.scheme, "size_ref_in", 4.0))
+            except (ValueError, TypeError):
                 _dash_style_note(_lw_name, options["lwidth"], "line width")
         if "lpattern" in options:
             try:
@@ -9398,8 +9434,10 @@ class GlyphMapper:
                     pass
         if "mlwidth" in options:
             try:
-                glyph.line_width = self.tr.translate_lwidth(options["mlwidth"])
-            except ValueError:
+                glyph.line_width = self.tr.translate_lwidth(
+                    options["mlwidth"], getattr(glyph, "line_width", None),
+                    getattr(self.scheme, "size_ref_in", 4.0))
+            except (ValueError, TypeError):
                 _dash_style_note("mlwidth", options["mlwidth"], "line width")
             except AttributeError:
                 pass
@@ -27804,7 +27842,7 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
               "line_width": scheme.xyline_width}
     else:
         kw = {"line_color": "#000000", "line_dash": "dashed",
-              "line_width": 1.0}
+              "line_width": OptionTranslator.translate_lwidth("medium")}
     # An unknown style inside xline()/yline() is named through the one
     # helper, as a plot option's is: lpattern() and lwidth() were
     # dropped in silence, and lcolor() had a wording of its own.
@@ -27812,9 +27850,7 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
             ("lcolor", "colour", OptionTranslator.translate_mcolor,
              "line_color"),
             ("lpattern", "line pattern", OptionTranslator.translate_lpattern,
-             "line_dash"),
-            ("lwidth", "line width", OptionTranslator.translate_lwidth,
-             "line_width")):
+             "line_dash")):
         if style.get(sub):
             try:
                 kw[attr] = fn(style[sub])
@@ -27822,6 +27858,16 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
                 _dash_style_note(
                     f"{opt}({style.get('_typed', {}).get(sub, sub)})",
                     style[sub], what, "the default")
+    # lwidth() in Stata units; *# multiplies the xyline width (WP-30 P1.12b).
+    if style.get("lwidth"):
+        try:
+            kw["line_width"] = OptionTranslator.translate_lwidth(
+                style["lwidth"], kw["line_width"],
+                OptionTranslator.size_ref_of(fig))
+        except (ValueError, TypeError):
+            _dash_style_note(
+                f"{opt}({style.get('_typed', {}).get('lwidth', 'lwidth')})",
+                style["lwidth"], "line width", "the default")
     kind = (_dash_axis_date_kind(fig, "x" if opt == "xline" else "y")
             if range_name == "default" else None)
     if kind:

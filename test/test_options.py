@@ -190,8 +190,10 @@ class TestTranslateLwidth:
             )
 
     def test_numeric_string_passthrough(self):
+        """A number is Stata units, 3.84 px each (WP-30 P1.12b; it was
+        passed through as pixels).  The name is kept."""
         result = OptionTranslator.translate_lwidth("2.5")
-        assert result == 2.5
+        assert result == pytest.approx(9.6)
 
 
 # ================================================================

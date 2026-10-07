@@ -763,8 +763,13 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:mlabgap()}, {cmd:mlabposition()} and {cmd:fintensity()} any
     number, and {cmd:msize()}, {cmd:mlabsize()} and {cmd:mlabgap()} also a
     number with a unit ({cmd:4pt}, {cmd:.1in}) or a {cmd:*}{it:#}
-    multiplier; {cmd:lwidth()} and {cmd:mlwidth()} 0 to 10000;
-    {cmd:alwidth()} 0 to 10000 on the plot types where {cmd:twoway}
+    multiplier; {cmd:lwidth()}, {cmd:mlwidth()} and {cmd:clwidth()} 0 to
+    10000 Stata units, as a number, {it:#}{cmd:rs}, a non-negative
+    {it:#}{cmd:pt}, {it:#}{cmd:in} or {it:#}{cmd:cm}, or {cmd:*}{it:#},
+    refused with {cmd:twoway}'s message
+    {cmd:gm_linewidth must be between 0.000 and 1.0e+04}, followed by
+    {cmd:dash}'s line naming the option;
+    {cmd:alwidth()} the same, 0 to 10000 on the plot types where {cmd:twoway}
     refuses it outside that range (every type but {cmd:line},
     {cmd:connected}, the fits and smooths without a band, {cmd:kdensity},
     {cmd:function}, {cmd:tsline}, {cmd:scatter}, {cmd:dot},
@@ -821,7 +826,8 @@ named in a note and drawn around -- because it is what would be drawn.
     width or an angle outside its bounds on a plot type that does not
     draw what it styles.  {cmd:twoway} checks {cmd:lwidth()} only where
     it draws a line or an outline, and {cmd:mlwidth()} and
-    {cmd:msangle()} only where it draws markers; {cmd:dash} checks them
+    {cmd:msangle()} only where it draws markers; {cmd:dash} checks them,
+    their unit and multiplier forms included,
     on every plot type, so {cmd:scatter mpg weight, lwidth(-1)}, which
     {cmd:twoway} draws, is refused.
 
@@ -3468,6 +3474,26 @@ markers, as in {cmd:twoway}: a marker's outline is {cmd:mlcolor()} and
 {cmd:mlwidth()}, and {cmd:color()} colours markers, lines and fills
 alike.  An unknown {cmd:lcolor()} or {cmd:lwidth()} name is still reported
 on a plot with no line, as {cmd:twoway} notes it there.
+
+{pstd}
+{ul:Line widths.}  A line width is drawn in Stata's units, on Stata's own
+ladder: {cmd:none}, {cmd:vvvthin}, {cmd:vvthin}, {cmd:vthin}, {cmd:thin},
+{cmd:medthin}, {cmd:medium}, {cmd:medthick}, {cmd:thick}, {cmd:vthick},
+{cmd:vvthick} and {cmd:vvvthick}, from 0 to 4.2 units, {cmd:medium} being
+0.30.  One unit is 2.88 points at the four-inch reference, as for every
+other size, so {cmd:lwidth(thick)} draws 8/3 as wide as {cmd:medium}.  A
+number and {it:#}{cmd:rs} are Stata units; {it:#}{cmd:pt}, {it:#}{cmd:in}
+and {it:#}{cmd:cm} are absolute, at the graph's reference length;
+{cmd:*}{it:#} multiplies the width the site would draw otherwise.  A
+width under 0.3 point is drawn at 0.3 point, as {cmd:twoway} draws it,
+and {cmd:none}, {cmd:0} and {cmd:*0} draw nothing.  A name is matched in
+its case, so {cmd:lwidth(THICK)} is noted and drawn at the scheme's width,
+as in {cmd:twoway}.  This holds for {cmd:lwidth()}, {cmd:mlwidth()},
+{cmd:clwidth()}, {cmd:alwidth()}, {cmd:plotregion(lwidth())} and the
+{cmd:lwidth()} of {cmd:xline()} and {cmd:yline()}, and for a scheme's
+{cmd:linewidth} keys.  A {cmd:*}{it:#} or an absolute width whose value
+passes 10000 units only once drawn, such as {cmd:lwidth(*40000)}, is
+noted and drawn at the default, where {cmd:twoway} refuses it.
 
 {pstd}
 {it:Example:}

@@ -211,7 +211,8 @@ _REGION = [
     ("plotregion", "lcolor(maroon)", "outline_line_color", "#90353b"),
     ("plotregion", 'lcolor("255 0 0")', "outline_line_color", "#ff0000"),
     ("plotregion", "lcolor(#ff0000)", "outline_line_color", "#ff0000"),
-    ("plotregion", "lwidth(2)", "outline_line_width", 2.0),
+    # Flipped (WP-30 P1.12b): 2 Stata units x 3.84 px (was 2 px).
+    ("plotregion", "lwidth(2)", "outline_line_width", 7.68),
     ("plotregion", "lwidth(thick)", "outline_line_width",
      dr.OptionTranslator.translate_lwidth("thick")),
     ("graphregion", "color(forest_green)", "border_fill_color", "#55752f"),

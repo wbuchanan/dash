@@ -346,7 +346,7 @@ and now matches Stata.
 - An unknown or wrong-case size name draws the class's medium with the note, as twoway does (a marker the scheme's own default size, its bare `symbolsize`: medium, large under economist): `title("T", size(abc))` is 11pt (was the scheme's 14pt) and `msize(HUGE)` 5.87px (was 24px); a negative size draws nothing, silently (`msize(-1)` drew 1px). (WP-30, P1.12a)
 - Points left out of a box or lasso selection keep their own look: with `msize(large) mcolor(red)` the unselected points are drawn large and red, faded (they were drawn at the scheme's default size and colour), a hollow `msymbol(Oh)` stays hollow (it was filled), and `lwidth()`, `lcolor()`, `fcolor()` and `colorvar()` reach them too, in the saved page and the served app. (WP-30, P1.12a)
 
-<!-- WP-30 P1.12b -->
+- Line widths are drawn in Stata's units on Stata's own ladder, one unit 2.88 point (3.84 pixels) as for every other size. Under s2color the default line, marker outline, grid and reference line go from 1.5 to 1.15 pixels, axis lines, the plot-region border and bar outlines from 0.8 to 0.77, and economist's lines from 6.0 to 4.61. lwidth(thin) was 0.8 and is 0.77, lwidth(thick) 2.5 and now 3.07, lwidth(vvthick) 5.0 and now 9.98, lwidth(vvvthick) 6.6 and now 16.13. A number is Stata units, so lwidth(.3) was 0.3 pixels and is 1.15, and lwidth(2) was 2 and is 7.68. lwidth(vvvthin), lwidth(none), lwidth(1pt), lwidth(*2) and the in, cm and rs units are drawn where they were noted and ignored, a width under 0.3 point is drawn at 0.3 point, and a name is matched in its case, so lwidth(THICK) is noted and drawn at the scheme's width, as twoway draws it. This holds for lwidth(), mlwidth(), clwidth(), alwidth(), plotregion(lwidth()), xline() and yline(), and for a scheme's linewidth keys, in the saved dashboard and the served app. (WP-30, P1.12b)
 
 <!-- WP-30 P1.13a -->
 
@@ -726,7 +726,7 @@ and now matches Stata.
 
 - A number in `msize()`, `mlabsize()`, `mlabgap()`, `size()`, `labsize()` or `legend(size())` is in Stata's relative units (1 = 3.84px), not pixels: `msize(10)` draws 38.4px where it drew 10px, and `mlabgap(5)` leaves 19.2px of gap where it left 5. A do-file written for dash's pixel reading needs its sizes divided by 3.84 or written as keywords. (WP-30, P1.12a)
 
-<!-- WP-30 P1.12b -->
+- A line width twoway refuses is refused with twoway's message, gm_linewidth must be between 0.000 and  1.0e+04, r(198), and a second line naming the option. lwidth(*-1), lwidth(-1pt), mlwidth(-0.5in), clwidth(*-1), alwidth(-1pt) and lwidth(1e5rs) were drawn at the scheme's width with a note. lwidth(-1) and lwidth(10001), refused before in dash's own words, now print twoway's message first. As before, dash refuses a negative width on every plot type, where twoway refuses it only where it draws the line or outline. lwidth(*40000) and economist's lwidth(20000pt), which twoway refuses once it knows the default width and the graph's size, are noted and drawn at the default. (WP-30, P1.12b)
 
 <!-- WP-30 P1.13a -->
 

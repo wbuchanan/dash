@@ -2577,10 +2577,310 @@ if inlist("`only'", "", "S12") {
 }
 * ==== end S12 ====
 
+python:
+import json as _s13_json, re as _s13_re, html as _s13_html
+import warnings as _s13_w
+import __main__ as _s13_main
+from sfi import Macro as _s13_M
+
+# S13 (WP-30 P1.12b): each helper reads one line width -- the glyph,
+# annotation or figure attribute named by S13_KIND -- from the saved page,
+# the served document (before and after a filter move), or the magenta
+# stroke of a twoway SVG, and hands it back through an S13_* global.
+_S13_ATTR = {"Line": "line_width", "Scatter": "line_width",
+             "VBar": "line_width", "Patch": "line_width",
+             "Span": "line_width", "Figure": "outline_line_width"}
+
+
+def _s13_val(v):
+    if isinstance(v, dict):
+        return v.get("value")
+    return v
+
+
+def _s13_pick(pairs):
+    kind = _s13_M.getGlobal("S13_KIND")
+    attr = _S13_ATTR[kind]
+    import bokeh.models as _bm
+    import bokeh.plotting as _bp
+    for name, get in pairs:
+        if name == kind:
+            v = get(attr)
+            if v is None:
+                cls = getattr(_bm, kind, None) or getattr(_bp, kind, None)
+                v = _s13_val(getattr(cls(), attr, None)) if cls else None
+            try:
+                return "%.6f" % float(v)
+            except (TypeError, ValueError):
+                return "."
+    return "."
+
+
+def _s13_page():
+    try:
+        with open(_s13_M.getGlobal("S13_PAGE"), encoding="utf-8") as fh:
+            page = fh.read()
+    except OSError:
+        _s13_M.setGlobal("S13_D", ".")
+        return
+    objs, stack = {}, []
+    for blob in _s13_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s13_re.S):
+        try:
+            stack.append(_s13_json.loads(_s13_html.unescape(blob)))
+        except ValueError:
+            pass
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                objs.setdefault(v["id"], v)
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    pairs = []
+    for o in sorted(objs.values(), key=lambda o: str(o["id"])):
+        a = o.get("attributes", {}) or {}
+        pairs.append((o["name"], (lambda a=a: (lambda attr: _s13_val(a.get(attr))))()))
+    _s13_M.setGlobal("S13_D", _s13_pick(pairs))
+
+
+def _s13_doc_pick(doc):
+    seen = dict()
+    for root in doc.roots:
+        for m in root.references():
+            seen[m.id] = m
+    pairs = [(type(m).__name__, (lambda m=m: (lambda attr: _s13_val(getattr(m, attr, None))))())
+             for m in sorted(seen.values(), key=lambda m: str(m.id))]
+    return _s13_pick(pairs)
+
+
+def _s13_app():
+    from bokeh.document import Document
+    from bokeh.models import RangeSlider
+    with open(_s13_M.getGlobal("S13_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s13_app")
+    with _s13_w.catch_warnings():
+        _s13_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s13_app.py", "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    before = _s13_doc_pick(doc)
+    _s13_M.setGlobal("S13_S", before)
+    sl = [s for s in doc.select(dict(type=RangeSlider)) if getattr(s, "_dash_var", None) == "weight"]
+    fired = 0
+    if len(sl) == 1:
+        old = sl[0].value
+        lo, hi = old
+        new = (lo + (hi - lo) / 4.0, hi)
+        sl[0].value = new
+        with _s13_w.catch_warnings():
+            _s13_w.simplefilter("ignore")
+            for attr in ("value", "value_throttled"):
+                for cb in sl[0]._callbacks.get(attr, []):
+                    cb(attr, old, new)
+                    fired += 1
+    _s13_M.setGlobal("S13_SAME_AFTER", str(int(fired > 0 and _s13_doc_pick(doc) == before)))
+
+
+def _s13_svg():
+    import svg_truth as _s13_svgt
+    try:
+        with open(_s13_M.getGlobal("S13_SVG"), encoding="utf-8") as fh:
+            txt = fh.read()
+    except OSError:
+        _s13_M.setGlobal("S13_TW", ".")
+        return
+    ws = []
+    for m in _s13_re.finditer(r'style="([^"]*)"|\{([^{}]*)\}', txt):
+        st = _s13_svgt._style_of({"style": m.group(1) or m.group(2) or ""})
+        if (st.get("stroke") or "").strip().lower() != "#ff00ff":
+            continue
+        w = _s13_svgt._fnum(st.get("stroke-width", ""))
+        if w is not None:
+            ws.append(w)
+    # SVG units: 10 per point; no magenta stroke is no line drawn.
+    _s13_M.setGlobal("S13_TW", "%.6f" % (max(ws) / 10.0 if ws else 0.0))
+
+
+_s13_main._s13_page = _s13_page
+_s13_main._s13_app = _s13_app
+_s13_main._s13_svg = _s13_svg
+end
+
+// _s13_pair: twoway's magenta stroke (pt) for `twcmd', then dash's saved
+// and served width (px) of the S13_KIND element for `dcmd', with a range
+// filter on weight; S13_SAME_AFTER says the served width survived a move.
+capture program drop _s13_pair
+program define _s13_pair
+    version 19
+    args stem work kind twcmd dcmd
+    global S13_KIND "`kind'"
+    global S13_SVG "`work'/`stem'.svg"
+    global S13_PAGE "`work'/`stem'.html"
+    global S13_APP "`work'/`stem'_app.py"
+    graph drop _all
+    capture noisily `twcmd'
+    quietly graph export "${S13_SVG}", replace as(svg)
+    python: __import__("__main__")._s13_svg()
+    capture dash clear
+    capture noisily `dcmd' name(s13g)
+    capture erase "${S13_PAGE}"
+    capture erase "${S13_APP}"
+    capture noisily dash build, saving("${S13_PAGE}") replace nobrowser filter(weight, type(range))
+    capture noisily dash build, saving("${S13_APP}") server replace filter(weight, type(range))
+    python: __import__("__main__")._s13_page()
+    python: __import__("__main__")._s13_app()
+    capture erase "${S13_SVG}"
+    capture erase "${S13_PAGE}"
+    capture erase "${S13_APP}"
+end
+
 * ==== S13 P1.12b: Stata line-width ladder ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S13") {
     display as text "S13 start " c(current_date) " " c(current_time)
+    local s13_scheme "`c(scheme)'"
+    set scheme s2color
+    quietly sysuse auto, clear
+    local M `""255 0 255""'
+    local s13_same 1
+
+    // LN-20: lwidth(thick) / the default line = .8/.3, twoway and dash.
+    _s13_pair ln20a "`w30_work'" Line `"twoway line mpg weight, lcolor(`M') legend(off)"' "dash line mpg weight,"
+    local t0 ${S13_TW}
+    local d0 ${S13_D}
+    local s0 ${S13_S}
+    local s13_same = `s13_same' & ${S13_SAME_AFTER}
+    _s13_pair ln20b "`w30_work'" Line `"twoway line mpg weight, lwidth(thick) lcolor(`M') legend(off)"' "dash line mpg weight, lwidth(thick)"
+    local s13_same = `s13_same' & ${S13_SAME_AFTER}
+    _w30_expect LN-20 "(abs(${S13_TW} / `t0' - 0.8 / 0.3) < 0.01 * 0.8 / 0.3)" "twoway `t0' -> ${S13_TW} pt"
+    _w30_expect LN-20 "(abs(${S13_D} / `d0' - ${S13_TW} / `t0') < 0.01 * ${S13_TW} / `t0' & abs(${S13_S} / `s0' - ${S13_TW} / `t0') < 0.01 * ${S13_TW} / `t0')" "dash saved `d0' -> ${S13_D}, served `s0' -> ${S13_S}"
+    _w30_expect LN-20 "(abs(`d0' - 1.152) < 0.001)" "the default line is 1.152 px (`d0')"
+    _w30_done LN-20 "lwidth(thick) draws 8/3 of the default line, as in twoway"
+
+    // LN-21: economist lwidth(1pt) / its default = 10.00/19.01.
+    _s13_pair ln21a "`w30_work'" Line `"twoway line mpg weight, lcolor(`M') legend(off) scheme(economist)"' "dash line mpg weight, scheme(economist)"
+    local t0 ${S13_TW}
+    local d0 ${S13_D}
+    local s0 ${S13_S}
+    local s13_same = `s13_same' & ${S13_SAME_AFTER}
+    _s13_pair ln21b "`w30_work'" Line `"twoway line mpg weight, lwidth(1pt) lcolor(`M') legend(off) scheme(economist)"' "dash line mpg weight, lwidth(1pt) scheme(economist)"
+    local s13_same = `s13_same' & ${S13_SAME_AFTER}
+    local r = ${S13_TW} / `t0'
+    _w30_expect LN-21 "(abs(`r' - 10.00 / 19.01) < 0.01)" "twoway ratio `r'"
+    _w30_expect LN-21 "(abs(${S13_D} / `d0' - `r') < 0.01 * `r' & abs(${S13_S} / `s0' - `r') < 0.01 * `r')" "dash saved `d0' -> ${S13_D}, served `s0' -> ${S13_S}"
+    _w30_done LN-21 "economist lwidth(1pt) keeps twoway's ratio to the scheme's line"
+
+    // LN-22: *2 is twice the site's own default at four sites.
+    foreach s in line mlwidth xline bar {
+        if "`s'" == "line" {
+            local k Line
+            local tw0 `"twoway line mpg weight, lcolor(`M') legend(off)"'
+            local tw2 `"twoway line mpg weight, lwidth(*2) lcolor(`M') legend(off)"'
+            local d0c "dash line mpg weight,"
+            local d2c "dash line mpg weight, lwidth(*2)"
+        }
+        else if "`s'" == "mlwidth" {
+            local k Scatter
+            local tw0 `"twoway scatter mpg weight, mlcolor(`M') legend(off)"'
+            local tw2 `"twoway scatter mpg weight, mlcolor(`M') mlwidth(*2) legend(off)"'
+            local d0c "dash scatter mpg weight,"
+            local d2c "dash scatter mpg weight, mlwidth(*2)"
+        }
+        else if "`s'" == "xline" {
+            local k Span
+            local tw0 `"twoway line mpg weight, xline(3000, lcolor(`M')) legend(off)"'
+            local tw2 `"twoway line mpg weight, xline(3000, lwidth(*2) lcolor(`M')) legend(off)"'
+            local d0c "dash line mpg weight, xline(3000)"
+            local d2c "dash line mpg weight, xline(3000, lwidth(*2))"
+        }
+        else {
+            local k VBar
+            local tw0 `"twoway bar mpg weight, lcolor(`M') legend(off)"'
+            local tw2 `"twoway bar mpg weight, lcolor(`M') lwidth(*2) legend(off)"'
+            local d0c "dash bar mpg weight,"
+            local d2c "dash bar mpg weight, lwidth(*2)"
+        }
+        _s13_pair ln22`s'0 "`w30_work'" `k' `"`tw0'"' "`d0c'"
+        local t0 ${S13_TW}
+        local d0 ${S13_D}
+        local s0 ${S13_S}
+        local s13_same = `s13_same' & ${S13_SAME_AFTER}
+        _s13_pair ln22`s'2 "`w30_work'" `k' `"`tw2'"' "`d2c'"
+        local s13_same = `s13_same' & ${S13_SAME_AFTER}
+        _w30_expect LN-22 "(abs(${S13_TW} / `t0' - 2) < 0.02 & abs(${S13_D} / `d0' - 2) < 0.02 & abs(${S13_S} / `s0' - 2) < 0.02)" "`s': twoway `t0' -> ${S13_TW}, dash `d0' -> ${S13_D}, served `s0' -> ${S13_S}"
+    }
+    _w30_done LN-22 "lwidth(*2), mlwidth(*2), xline's lwidth(*2) and bar lwidth(*2) double their own default"
+
+    // LN-23: vvvthin is the 0.3 pt hairline; none draws nothing.
+    _s13_pair ln23a "`w30_work'" Line `"twoway line mpg weight, lwidth(vvvthin) lcolor(`M') legend(off)"' "dash line mpg weight, lwidth(vvvthin)"
+    local s13_same = `s13_same' & ${S13_SAME_AFTER}
+    _w30_expect LN-23 "(abs(${S13_TW} - 0.3) < 0.001 & abs(${S13_D} - 0.4) < 0.001 & abs(${S13_S} - 0.4) < 0.001)" "vvvthin: twoway ${S13_TW} pt, dash ${S13_D} / ${S13_S} px"
+    _s13_pair ln23b "`w30_work'" Line `"twoway line mpg weight, lwidth(none) lcolor(`M') legend(off)"' "dash line mpg weight, lwidth(none)"
+    local s13_same = `s13_same' & ${S13_SAME_AFTER}
+    _w30_expect LN-23 "(${S13_TW} == 0 & ${S13_D} == 0 & ${S13_S} == 0)" "none: twoway ${S13_TW}, dash ${S13_D} / ${S13_S}"
+    _w30_done LN-23 "vvvthin is 0.3 pt and none draws nothing, as in twoway"
+
+    // LN-24: THICK is noted by both and both draw the default.
+    capture log close s13k
+    log using "`w30_work'/ln24.log", text replace name(s13k)
+    _s13_pair ln24 "`w30_work'" Line `"twoway line mpg weight, lwidth(THICK) lcolor(`M') legend(off)"' "dash line mpg weight, lwidth(THICK)"
+    log close s13k
+    local s13_same = `s13_same' & ${S13_SAME_AFTER}
+    cert_log_has "`w30_work'/ln24.log", needle("named style THICK not found in class linewidth")
+    local n1 = r(count)
+    cert_log_has "`w30_work'/ln24.log", needle("lwidth(THICK) is not a recognised line width")
+    local n2 = r(count)
+    capture erase "`w30_work'/ln24.log"
+    _w30_expect LN-24 "(`n1' >= 1 & `n2' >= 1)" "notes: twoway `n1', dash `n2'"
+    _w30_expect LN-24 "(abs(${S13_TW} - 0.864) < 0.001 & abs(${S13_D} - 1.152) < 0.001 & abs(${S13_S} - 1.152) < 0.001)" "THICK: twoway ${S13_TW} pt, dash ${S13_D} / ${S13_S} px"
+    _w30_done LN-24 "lwidth(THICK) is noted and drawn at the default, as in twoway"
+
+    // LN-25: economist's bar outline (pbar vvthin) is floored.
+    _s13_pair ln25 "`w30_work'" VBar `"twoway bar mpg weight, lcolor(`M') legend(off) scheme(economist)"' "dash bar mpg weight, scheme(economist)"
+    local s13_same = `s13_same' & ${S13_SAME_AFTER}
+    _w30_expect LN-25 "(abs(${S13_TW} - 0.3) < 0.001 & abs(${S13_D} - 0.4) < 0.001 & abs(${S13_S} - 0.4) < 0.001)" "twoway ${S13_TW} pt, dash ${S13_D} / ${S13_S} px"
+    _w30_done LN-25 "economist's bar outline is drawn at the 0.3 pt floor, as in twoway"
+
+    // LN-26: every served width above survived a filter move.
+    _w30_expect LN-26 "(`s13_same' == 1)" "same after the move: `s13_same'"
+    _w30_done LN-26 "the served widths of LN-20 to LN-25 are unchanged by a filter move"
+
+    // LN-27: the refusal corpus, dash's rc against twoway's.
+    local s13_n 0
+    foreach c in "line lwidth *-1 198 198" "line lwidth -1pt 198 198" ///
+        "line lwidth -0.5in 198 198" "line lwidth 1e5rs 198 198" ///
+        "line lwidth -1 198 198" "line lwidth 10001 198 198" ///
+        "line lwidth *-0.0001 198 198" "line lwidth -0.0001rs 198 198" ///
+        "scatter mlwidth *-1 198 198" "scatter mlwidth -1pt 198 198" ///
+        "line clwidth *-1 198 198" "lfitci alwidth *-1 198 198" ///
+        "lfitci alwidth -1pt 198 198" "bar lwidth *-1 198 198" ///
+        "scatter lwidth *-1 0 198" "line alwidth *-1 0 0" ///
+        "line lwidth *40000 198 0" "line lwidth 20000pt 198 0 economist" {
+        local ty : word 1 of `c'
+        local op : word 2 of `c'
+        local va : word 3 of `c'
+        local tw : word 4 of `c'
+        local dw : word 5 of `c'
+        local sc : word 6 of `c'
+        local so ""
+        if "`sc'" != "" local so "scheme(`sc')"
+        capture twoway `ty' mpg weight, `op'(`va') `so'
+        local trc = _rc
+        capture dash clear
+        capture dash `ty' mpg weight, `op'(`va') `so' name(s13r)
+        local drc = _rc
+        _w30_expect LN-27 "(`trc' == `tw' & `drc' == `dw')" "`ty' `op'(`va') `so': twoway `trc' (want `tw'), dash `drc' (want `dw')"
+        local ++s13_n
+    }
+    _w30_done LN-27 "dash refuses what twoway refuses, `s13_n' probes, except the D-13b controls and scatter lwidth(*-1) (D-13c)"
+
+    capture dash clear
+    graph drop _all
+    set scheme `s13_scheme'
+    macro drop S13_*
     display as text "S13 end " c(current_date) " " c(current_time)
 }
 * ==== end S13 ====

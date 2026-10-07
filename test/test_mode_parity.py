@@ -1844,6 +1844,14 @@ CORPUS = [
           [plot_for("line", {"lcolor": "red", "lpattern": "solid"}, yvar="mpg"),
            plot_for("line", {"lcolor": "blue", "lpattern": "dash"},
                     yvar="price")]),
+    # WP-30 P1.12b: Stata line widths
+    _case("line widths in Stata units",
+          [plot_for("line", {"lwidth": "*2"}),
+           plot_for("scatter", {"mlwidth": "thick"})],
+          go={"xline": "20, lwidth(1pt)", "plotregion": "lwidth(thick)"}),
+    _case("vvvthin and none",
+          [plot_for("line", {"lwidth": "vvvthin"}),
+           plot_for("lfitci", {"alwidth": "none"})]),
 ]
 
 
@@ -2589,6 +2597,9 @@ MOVE_CORPUS = [
                          yvar="mpg"),
                 plot_for("scatter", {"mcolor": "blue", "msymbol": "T"},
                          yvar="price")]),
+    # WP-30 P1.12b: Stata line widths
+    _move_case("line, lwidth(*2), dropdown", _MOVES[0],
+               [plot_for("line", {"lwidth": "*2"})]),
 ]
 
 

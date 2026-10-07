@@ -65,9 +65,10 @@ KINDS = {"num", "int", "pos", "style", "istyle", "enum", "numlist", "var",
 #: The contract's table, token for token (DESIGN.md section 2).  The test
 #: asserts the table in dash.ado carries every one of these; it may carry
 #: more, and the structural checks below apply to all of it.
+# WP-30 P1.12b: the line-width rules read Stata units (,u)
 CONTRACT_PLOT_RULES = """
 msize=style  mlabsize=style  mlabgap=style
-lwidth=style,0,10000  mlwidth=style,0,10000
+lwidth=style,0,10000,u  mlwidth=style,0,10000,u
 msangle=style,-360,360  mlabposition=style  fintensity=style
 jitter=num,0,100  jitterseed=int,0  jseed=int,0
 yaxis=int,1,2  xaxis=int,1,2
@@ -262,6 +263,10 @@ class TestTheTableIsWellFormed:
             for p in ps:
                 assert p == "" or _is_number(p), rule
         elif kind in ("style", "istyle"):
+            # WP-30 P1.12b: the line-width rules read Stata units (,u)
+            if kind == "style" and len(ps) == 3:
+                assert ps[2] == "u", rule
+                ps = ps[:2]
             assert len(ps) in (0, 2), rule
             for p in ps:
                 assert _is_number(p), rule

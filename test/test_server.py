@@ -1484,10 +1484,13 @@ class TestServerLinePlotOpts:
 class TestServerLineWidthAllTypes:
     """All line-bearing server-mode plot types must actually apply lwidth to renderers.
 
-    Each test builds a server app with lwidth(thick)=2.5, executes make_document(),
-    and verifies that at least one renderer has line_width≈2.5.
-    'thick' maps to 2.5 in the lwidth translation table.
+    Each test builds a server app with lwidth(thick), executes make_document(),
+    and verifies that at least one renderer has line_width≈_THICK_PX.
+    Flipped (WP-30 P1.12b): 'thick' was 2.5 px on dash's private ladder;
+    it is Stata's .8 units x 3.84 px.
     """
+
+    _THICK_PX = 3.072  # Stata's thick, .8 units x 3.84 px (WP-30 P1.12b)
 
     def _exec_make_document(self, dr_module, df, spec):
         """Build app, exec make_document, return list of all glyph renderers."""
@@ -1569,7 +1572,7 @@ class TestServerLineWidthAllTypes:
                 except OSError:
                     pass
 
-    def _has_renderer_with_lw(self, renderers, target_lw=2.5, tol=0.05):
+    def _has_renderer_with_lw(self, renderers, target_lw=_THICK_PX, tol=0.05):
         """Return True if any renderer glyph has line_width close to target_lw."""
         for r in renderers:
             glyph = getattr(r, 'glyph', None)
@@ -1579,7 +1582,7 @@ class TestServerLineWidthAllTypes:
                     return True
         return False
 
-    def _has_arrow_with_lw(self, arrow_annots, target_lw=2.5, tol=0.05):
+    def _has_arrow_with_lw(self, arrow_annots, target_lw=_THICK_PX, tol=0.05):
         """Return True if any Arrow annotation has line_width close to target_lw."""
         for arrow in arrow_annots:
             lw = getattr(arrow, 'line_width', None)
@@ -1588,149 +1591,149 @@ class TestServerLineWidthAllTypes:
         return False
 
     def test_lfit_applies_lwidth(self, dr_module, auto_df):
-        """lfit with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """lfit with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "lfit", "yvar": "mpg", "xvar": "weight",
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode lfit must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode lfit must apply lwidth(thick)=3.072 to line renderer"
 
     def test_qfit_applies_lwidth(self, dr_module, auto_df):
-        """qfit with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """qfit with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "qfit", "yvar": "mpg", "xvar": "weight",
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode qfit must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode qfit must apply lwidth(thick)=3.072 to line renderer"
 
     def test_connected_applies_lwidth(self, dr_module, auto_df):
-        """connected with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """connected with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "connected", "yvar": "mpg", "xvar": "weight",
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode connected must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode connected must apply lwidth(thick)=3.072 to line renderer"
 
     def test_lowess_applies_lwidth(self, dr_module, auto_df):
-        """lowess with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """lowess with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "lowess", "yvar": "mpg", "xvar": "weight",
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode lowess must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode lowess must apply lwidth(thick)=3.072 to line renderer"
 
     def test_kdensity_applies_lwidth(self, dr_module, auto_df):
-        """kdensity with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """kdensity with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "kdensity", "yvar": "mpg", "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode kdensity must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode kdensity must apply lwidth(thick)=3.072 to line renderer"
 
     def test_mspline_applies_lwidth(self, dr_module, auto_df):
-        """mspline with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """mspline with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "mspline", "yvar": "mpg", "xvar": "weight",
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode mspline must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode mspline must apply lwidth(thick)=3.072 to line renderer"
 
     def test_tsline_applies_lwidth(self, dr_module, auto_df):
-        """tsline with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """tsline with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "tsline", "yvar": "mpg", "xvar": "weight",
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode tsline must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode tsline must apply lwidth(thick)=3.072 to line renderer"
 
     def test_rspike_applies_lwidth(self, dr_module, auto_df):
-        """rspike with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """rspike with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rspike", "yvar1": "mpg", "yvar2": "price",
                        "xvar": "weight", "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode rspike must apply lwidth(thick)=2.5 to segment renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode rspike must apply lwidth(thick)=3.072 to segment renderer"
 
     def test_rline_applies_lwidth(self, dr_module, auto_df):
-        """rline with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """rline with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rline", "yvar1": "mpg", "yvar2": "price",
                        "xvar": "weight", "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode rline must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode rline must apply lwidth(thick)=3.072 to line renderer"
 
     def test_function_applies_lwidth(self, dr_module, auto_df):
-        """function with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """function with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "function", "expr": "x", "range": [0, 10],
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode function must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode function must apply lwidth(thick)=3.072 to line renderer"
 
     def test_tsrline_applies_lwidth(self, dr_module, auto_df):
-        """tsrline with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """tsrline with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "tsrline", "yvar1": "mpg", "yvar2": "price",
                        "xvar": "weight", "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode tsrline must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode tsrline must apply lwidth(thick)=3.072 to line renderer"
 
     def test_rconnected_applies_lwidth(self, dr_module, auto_df):
-        """rconnected with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """rconnected with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rconnected", "yvar1": "mpg", "yvar2": "price",
                        "xvar": "weight", "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode rconnected must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode rconnected must apply lwidth(thick)=3.072 to line renderer"
 
     def test_rcapsym_applies_lwidth(self, dr_module, auto_df):
-        """rcapsym with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """rcapsym with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rcapsym", "yvar1": "mpg", "yvar2": "price",
                        "xvar": "weight", "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode rcapsym must apply lwidth(thick)=2.5 to segment renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode rcapsym must apply lwidth(thick)=3.072 to segment renderer"
 
     def test_pcspike_applies_lwidth(self, dr_module, auto_df):
-        """pcspike with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """pcspike with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "pcspike", "y1var": "mpg", "x1var": "weight",
                        "y2var": "price", "x2var": "foreign",
@@ -1738,11 +1741,11 @@ class TestServerLineWidthAllTypes:
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode pcspike must apply lwidth(thick)=2.5 to segment renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode pcspike must apply lwidth(thick)=3.072 to segment renderer"
 
     def test_pcarrow_applies_lwidth(self, dr_module, auto_df):
-        """pcarrow with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """pcarrow with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "pcarrow", "y1var": "mpg", "x1var": "weight",
                        "y2var": "price", "x2var": "foreign",
@@ -1750,11 +1753,11 @@ class TestServerLineWidthAllTypes:
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode pcarrow must apply lwidth(thick)=2.5 to segment renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode pcarrow must apply lwidth(thick)=3.072 to segment renderer"
 
     def test_pcbarrow_applies_lwidth(self, dr_module, auto_df):
-        """pcbarrow with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """pcbarrow with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "pcbarrow", "y1var": "mpg", "x1var": "weight",
                        "y2var": "price", "x2var": "foreign",
@@ -1762,11 +1765,11 @@ class TestServerLineWidthAllTypes:
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode pcbarrow must apply lwidth(thick)=2.5 to segment renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode pcbarrow must apply lwidth(thick)=3.072 to segment renderer"
 
     def test_pcarrow_lwidth_applies_to_arrow_annotations(self, dr_module, auto_df):
-        """pcarrow lwidth(thick)=2.5 must be applied to Arrow annotation objects, not just segment."""
+        """pcarrow lwidth(thick)=3.072 must be applied to Arrow annotation objects, not just segment."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "pcarrow", "y1var": "mpg", "x1var": "weight",
                        "y2var": "price", "x2var": "foreign",
@@ -1775,11 +1778,11 @@ class TestServerLineWidthAllTypes:
         }])
         _, arrow_annots = self._exec_make_document_with_arrows(dr_module, auto_df, spec)
         assert arrow_annots, "server-mode pcarrow must produce Arrow annotations"
-        assert self._has_arrow_with_lw(arrow_annots, 2.5), \
-            "server-mode pcarrow Arrow annotations must have line_width=2.5 (thick)"
+        assert self._has_arrow_with_lw(arrow_annots, self._THICK_PX), \
+            "server-mode pcarrow Arrow annotations must have line_width=3.072 (thick)"
 
     def test_pcbarrow_lwidth_applies_to_arrow_annotations(self, dr_module, auto_df):
-        """pcbarrow lwidth(thick)=2.5 must be applied to Arrow annotation objects, not just segment."""
+        """pcbarrow lwidth(thick)=3.072 must be applied to Arrow annotation objects, not just segment."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "pcbarrow", "y1var": "mpg", "x1var": "weight",
                        "y2var": "price", "x2var": "foreign",
@@ -1788,8 +1791,8 @@ class TestServerLineWidthAllTypes:
         }])
         _, arrow_annots = self._exec_make_document_with_arrows(dr_module, auto_df, spec)
         assert arrow_annots, "server-mode pcbarrow must produce Arrow annotations"
-        assert self._has_arrow_with_lw(arrow_annots, 2.5), \
-            "server-mode pcbarrow Arrow annotations must have line_width=2.5 (thick)"
+        assert self._has_arrow_with_lw(arrow_annots, self._THICK_PX), \
+            "server-mode pcbarrow Arrow annotations must have line_width=3.072 (thick)"
 
 
 class TestServerRconnectedRcapsymMarkers:

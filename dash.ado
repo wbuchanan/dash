@@ -2243,13 +2243,14 @@ end
 //
 // test/test_option_validation.py reads this table out of dash.ado and
 // test/test_option_validation.cscript exercises every token against Stata.
+// `,u' reads the value in Stata's line-width units (WP-30 P1.12b).
 // ================================================================
 program define _dash_option_rules
     version 19
     // Plot rules: validated once per segment, after _dash_fold_bw, from s().
     local plot ///
         msize=style  mlabsize=style  mlabgap=style ///
-        lwidth=style,0,10000  mlwidth=style,0,10000 ///
+        lwidth=style,0,10000,u  mlwidth=style,0,10000,u ///
         msangle=style,-360,360  mlabposition=style  fintensity=style ///
         jitter=num,0,100  jitterseed=int,0  jseed=int,0 ///
         yaxis=int,1,2  xaxis=int,1,2 ///
@@ -2262,8 +2263,8 @@ program define _dash_option_rules
         colornlevels=int,2,256  colorlevels=int ///
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
         colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2 ///
-        clwidth=style,0,10000 ///
-        alwidth=style,0,10000@lfitci|qfitci|lpolyci|fpfitci|area|bar|spike|dropline|histogram|rarea|rbar|rspike|rcap|rcapsym|rline|rconnected|tsrline|pcspike|pcarrow|pcbarrow|pcscatter|pccapsym|pci ///
+        clwidth=style,0,10000,u ///
+        alwidth=style,0,10000,u@lfitci|qfitci|lpolyci|fpfitci|area|bar|spike|dropline|histogram|rarea|rbar|rspike|rcap|rcapsym|rline|rconnected|tsrline|pcspike|pcarrow|pcbarrow|pcscatter|pccapsym|pci ///
         mlabangle=style,-360,360@scatter|connected|bar|dot|dropline|rcapsym|rconnected|rscatter|pcscatter|pccapsym|scatteri
     // alwidth(), the outline of a ci fit's band, has them too: measured
     // 24sep2026, `twoway lfitci mpg weight, alwidth(-1)' and alwidth(20000)
@@ -2487,7 +2488,39 @@ program define _dash_validate_value, rclass
         // A token made of digits and exponent letters whose real() is
         // missing (1e400, 1e308) is an overflow, not a name: refused, as
         // twoway's "invalid syntax", so the renderer never sees inf.
-        if "`p1'" != "" & "`p2'" != "" {
+        if "`p3'" == "u" & "`p1'" != "" & "`p2'" != "" {
+            // A line width (WP-30 P1.12b, M5).  twoway (measured
+            // 03oct2026) refuses a negative number, *# or #pt/#in/#cm/#rs
+            // and an rs value above 10000 with r(198) and its gm_linewidth
+            // line; a #pt/#in/#cm or *# that passes 10000 units only once
+            // the scheme and graph size are known is the renderer's to
+            // note (D-13b).  An overflow (*1e400) passes as a name, as
+            // twoway reads it.
+            local lwout 0
+            tempname LW
+            if regexm(scalar(`T'), "^\*([-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eEdD][-+]?[0-9]+)?)$") {
+                scalar `LW' = real(regexs(1))
+                if scalar(`LW') < . & scalar(`LW') < 0 local lwout 1
+            }
+            else if regexm(scalar(`T'), "^([-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eEdD][-+]?[0-9]+)?) *(pt|in|cm|rs)$") {
+                local lwunit = regexs(4)
+                scalar `LW' = real(regexs(1))
+                if scalar(`LW') < . {
+                    if scalar(`LW') < 0 local lwout 1
+                    else if "`lwunit'" == "rs" & scalar(`LW') > `p2' local lwout 1
+                }
+            }
+            else if `isnum' {
+                if `R' < `p1' | `R' > `p2' local lwout 1
+            }
+            else if `numlike' local bad "a name or a number between `p1' and `p2'"
+            if `lwout' {
+                mata: _dash_say("err", "gm_linewidth must be between 0.000 and  1.0e+04", "", "")
+                mata: _dash_say("err", "`prefix': `opt'() must be a line width from 0 to 10000 Stata units (got: ", st_local("value"), ")")
+                exit 198
+            }
+        }
+        else if "`p1'" != "" & "`p2'" != "" {
             if `isnum' {
                 if `R' < `p1' | `R' > `p2' local bad "a name or a number between `p1' and `p2'"
             }

@@ -363,8 +363,9 @@ class TestMapSpike:
     def test_spike_lwidth_applied(self, fig, cds, gm):
         """spike lwidth option must set glyph line_width."""
         renderer = gm.map_spike(fig, cds, "mpg", "weight", {"lwidth": "3"})
-        assert renderer.glyph.line_width == 3.0, \
-            f"Expected line_width=3.0, got {renderer.glyph.line_width!r}"
+        # Flipped (WP-30 P1.12b): 3 Stata units x 3.84 px (was 3 px).
+        assert renderer.glyph.line_width == pytest.approx(11.52), \
+            f"Expected line_width=11.52, got {renderer.glyph.line_width!r}"
 
     def test_spike_lpattern_applied(self, fig, cds, gm):
         """spike lpattern option must set glyph line_dash."""
@@ -1630,12 +1631,12 @@ class TestMapPcarrow:
         assert r is not None
 
     def test_pcarrow_lwidth_applied(self, fig, pc_cds, gm):
-        """lwidth(thick)=2.5 applied to segment renderer via _apply_line_opts."""
+        """lwidth(thick)=3.072 applied to segment renderer via _apply_line_opts."""
         renderers = gm.map_pcarrow(fig, pc_cds, "y1", "x1", "y2", "x2",
                                    {"lwidth": "thick"})
         seg = renderers[0]
-        assert abs(seg.glyph.line_width - 2.5) < 0.01, \
-            "map_pcarrow must apply lwidth(thick)=2.5 to segment"
+        assert abs(seg.glyph.line_width - 3.072) < 0.01, \
+            "map_pcarrow must apply lwidth(thick)=3.072 to segment"
 
     def test_pcarrow_lcolor_applied(self, fig, pc_cds, gm):
         """lcolor option applied to segment renderer."""
@@ -1646,7 +1647,7 @@ class TestMapPcarrow:
             "map_pcarrow must apply lcolor to segment"
 
     def test_pcarrow_lwidth_applies_to_arrow_annotations(self, fig, pc_cds, gm):
-        """lwidth(thick)=2.5 must also be applied to Arrow annotation objects.
+        """lwidth(thick)=3.072 must also be applied to Arrow annotation objects.
 
         Arrow annotations added via fig.add_layout() are stored in fig.center.
         """
@@ -1655,8 +1656,8 @@ class TestMapPcarrow:
         arrow_annots = [a for a in fig.center if isinstance(a, Arrow)]
         assert arrow_annots, "map_pcarrow must add Arrow annotations to fig"
         for arrow in arrow_annots:
-            assert abs(arrow.line_width - 2.5) < 0.01, \
-                f"Arrow annotation line_width must be 2.5 (thick) but got {arrow.line_width}"
+            assert abs(arrow.line_width - 3.072) < 0.01, \
+                f"Arrow annotation line_width must be 3.072 (thick) but got {arrow.line_width}"
 
 
 class TestMapPcbarrow:
@@ -1678,12 +1679,12 @@ class TestMapPcbarrow:
         assert r is not None
 
     def test_pcbarrow_lwidth_applied(self, fig, pc_cds, gm):
-        """lwidth(thick)=2.5 applied to segment renderer via _apply_line_opts."""
+        """lwidth(thick)=3.072 applied to segment renderer via _apply_line_opts."""
         renderers = gm.map_pcbarrow(fig, pc_cds, "y1", "x1", "y2", "x2",
                                     {"lwidth": "thick"})
         seg = renderers[0]
-        assert abs(seg.glyph.line_width - 2.5) < 0.01, \
-            "map_pcbarrow must apply lwidth(thick)=2.5 to segment"
+        assert abs(seg.glyph.line_width - 3.072) < 0.01, \
+            "map_pcbarrow must apply lwidth(thick)=3.072 to segment"
 
     def test_pcbarrow_lcolor_applied(self, fig, pc_cds, gm):
         """lcolor option applied to segment renderer."""
@@ -1694,7 +1695,7 @@ class TestMapPcbarrow:
             "map_pcbarrow must apply lcolor to segment"
 
     def test_pcbarrow_lwidth_applies_to_arrow_annotations(self, fig, pc_cds, gm):
-        """lwidth(thick)=2.5 must also be applied to Arrow annotation objects.
+        """lwidth(thick)=3.072 must also be applied to Arrow annotation objects.
 
         Arrow annotations added via fig.add_layout() are stored in fig.center.
         """
@@ -1703,8 +1704,8 @@ class TestMapPcbarrow:
         arrow_annots = [a for a in fig.center if isinstance(a, Arrow)]
         assert arrow_annots, "map_pcbarrow must add Arrow annotations to fig"
         for arrow in arrow_annots:
-            assert abs(arrow.line_width - 2.5) < 0.01, \
-                f"Arrow annotation line_width must be 2.5 (thick) but got {arrow.line_width}"
+            assert abs(arrow.line_width - 3.072) < 0.01, \
+                f"Arrow annotation line_width must be 3.072 (thick) but got {arrow.line_width}"
 
 
 class TestMapTsline:

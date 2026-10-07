@@ -842,6 +842,7 @@ FUNCTIONS = {
  # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)
  # WP-30 S12 (P1.27): Drop-in command form and saving() grammar (P1.27, M5/M11)
  # WP-30 S13 (P1.12b): Stata line-width ladder (P1.12 part b, M1)
+ 'OptionTranslator.line_px': 'test/test_line_width_units.py::TestTheUnitFunctions::test_line_px_floors_and_converts',
  # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
  # WP-30 S15 (P1.2a): Scheme chrome: titles, ticks, grid, economist axes (P1.2 part a, M1)
  # WP-30 S16 (P1.2b): Intensity as an opaque blend (P1.2 part b, M1)

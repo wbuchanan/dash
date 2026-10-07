@@ -34,10 +34,10 @@
 *!   OV-06  mlabgap(abc)              rc 0
 *!   OV-07  lwidth(thick)             rc 0
 *!   OV-08  lwidth(0)                 rc 0   (the corpus writes lw(0))
-*!   OV-09  lwidth(-1)                rc 198 naming lwidth()
+*!   OV-09  lwidth(-1)                rc 198 naming lwidth() and twoway's gm_linewidth line
 *!   OV-10  lwidth(abc)               rc 0
 *!   OV-11  mlwidth(0.5)              rc 0
-*!   OV-12  mlwidth(-1)               rc 198 naming mlwidth()
+*!   OV-12  mlwidth(-1)               rc 198 naming mlwidth() and twoway's gm_linewidth line
 *!   OV-13  msangle(30)               rc 0
 *!   OV-14  msangle(abc)              rc 0
 *!   OV-15  msangle(400)              rc 198 naming msangle()
@@ -236,7 +236,7 @@
 *!                                    the file)
 *! WP-22 TR-22.3 -- the connecting-line width and the marker-label angle:
 *!   OV-149 line clwidth(thick)       rc 0, registry carries "clwidth":"thick"
-*!   OV-150 line clwidth(-1)          rc 198 naming clwidth()
+*!   OV-150 line clwidth(-1)          rc 198 naming clwidth() and twoway's gm_linewidth line
 *!   OV-151 line clwidth(abc)         rc 0   (a name)
 *!   OV-152 bar clwidth(-1)           rc 0, and no clwidth in the registry
 *!                                    (bar draws no connecting line, so
@@ -257,6 +257,24 @@
 *!   SU-06  msize(HUGE)               rc 0, registry carries "msize":"HUGE"
 *!   SU-07  mlabsize(*1.5)            rc 0, registry carries "mlabsize":"*1.5"
 *!   SU-08  mlabgap(2pt)              rc 0, registry carries "mlabgap":"2pt"
+*! Line widths (WP-30 S13, P1.12b): the forms twoway refuses, r(198) with
+*! "gm_linewidth must be between 0.000 and  1.0e+04" (measured 03oct2026),
+*! then dash's line naming the option; the rest register (rc 0):
+*!   LN-01  lwidth(*-1)               rc 198 naming lwidth(), both lines
+*!   LN-02  lwidth(-1pt)              rc 198 naming lwidth()
+*!   LN-03  lwidth(-0.5in)            rc 198 naming lwidth()
+*!   LN-04  lwidth(1e5rs)             rc 198 naming lwidth()
+*!   LN-05  scatter mlwidth(*-1)      rc 198 naming mlwidth()
+*!   LN-06  line clwidth(-1pt)        rc 198 naming clwidth()
+*!   LN-07  lfitci alwidth(*-1)       rc 198 naming alwidth()
+*!   LN-08  line alwidth(*-1)         rc 0   (not on alwidth()'s type list)
+*!   LN-09  lwidth(10000rs|*0|0pt|-0) rc 0
+*!   LN-10  lwidth(20000pt|*40000)    rc 0   (the renderer notes them, D-13b)
+*!   LN-11  lwidth(vvvthin|none|THICK|1PT|-1PT|*1e400)  rc 0 (names)
+*!   LN-12  lwidth(-1)                rc 198, twoway's line before dash's
+*!   LN-13  scatter lwidth(*-1)       rc 198 (dash refuses on every type)
+*!   LN-14  msize(-1pt|*-1), mlabgap(-2pt)  rc 0 (the ,u reading is the
+*!                                    line options' alone)
 *! The words the absence checks search for, each found where it must be
 *! (24sep2026):
 *!   OV-09m                           OV-09's refusal says "must be", which
@@ -921,6 +939,58 @@ _su_case SU-05 `"dash scatter mpg weight, msize(1d3) name(su05)"' 0 "" `""msize"
 _su_case SU-06 `"dash scatter mpg weight, msize(HUGE) name(su06)"' 0 "" `""msize":"HUGE""'
 _su_case SU-07 `"dash scatter mpg weight, mlabsize(*1.5) name(su07)"' 0 "" `""mlabsize":"*1.5""'
 _su_case SU-08 `"dash scatter mpg weight, mlabgap(2pt) name(su08)"' 0 "" `""mlabgap":"2pt""'
+
+// ----------------------------------------------------------------
+// LN-01 .. LN-14 (WP-30 S13, P1.12b): line widths in Stata's units.
+// twoway refuses a negative number, *# or unit form and an rs value
+// above 10000 with r(198) and "gm_linewidth must be between 0.000 and
+// 1.0e+04" (measured 03oct2026); dash prints that line, then its own
+// naming the option.  Forms twoway accepts, or judges only once drawn,
+// register.
+// ----------------------------------------------------------------
+_ov_case LN-01 `"dash line mpg weight, lwidth(*-1) name(ln01)"' 198 lwidth
+_ov_said LN-01 "gm_linewidth must be between 0.000 and"
+_ov_said LN-01 "lwidth() must be a line width from 0 to 10000 Stata units (got: *-1)"
+_ov_case LN-02 `"dash line mpg weight, lwidth(-1pt) name(ln02)"' 198 lwidth
+_ov_said LN-02 "gm_linewidth must be between 0.000 and"
+_ov_said LN-02 "lwidth() must be a line width"
+_ov_case LN-03 `"dash line mpg weight, lwidth(-0.5in) name(ln03)"' 198 lwidth
+_ov_said LN-03 "gm_linewidth must be between 0.000 and"
+_ov_said LN-03 "lwidth() must be a line width"
+_ov_case LN-04 `"dash line mpg weight, lwidth(1e5rs) name(ln04)"' 198 lwidth
+_ov_said LN-04 "gm_linewidth must be between 0.000 and"
+_ov_said LN-04 "lwidth() must be a line width"
+_ov_case LN-05 `"dash scatter mpg weight, mlwidth(*-1) name(ln05)"' 198 mlwidth
+_ov_said LN-05 "gm_linewidth must be between 0.000 and"
+_ov_said LN-05 "mlwidth() must be a line width"
+_ov_case LN-06 `"dash line mpg weight, clwidth(-1pt) name(ln06)"' 198 clwidth
+_ov_said LN-06 "gm_linewidth must be between 0.000 and"
+_ov_said LN-06 "clwidth() must be a line width"
+_ov_case LN-07 `"dash lfitci mpg weight, alwidth(*-1) name(ln07)"' 198 alwidth
+_ov_said LN-07 "gm_linewidth must be between 0.000 and"
+_ov_said LN-07 "alwidth() must be a line width"
+_ov_case LN-08 `"dash line mpg weight, alwidth(*-1) name(ln08)"' 0 ""
+_ov_case LN-09 `"dash line mpg weight, lwidth(10000rs) name(ln09a)"' 0 ""
+_ov_case LN-09 `"dash line mpg weight, lwidth(*0) name(ln09b)"' 0 ""
+_ov_case LN-09 `"dash line mpg weight, lwidth(0pt) name(ln09c)"' 0 ""
+_ov_case LN-09 `"dash line mpg weight, lwidth(-0) name(ln09d)"' 0 ""
+_ov_case LN-10 `"dash line mpg weight, lwidth(20000pt) name(ln10a)"' 0 ""
+_ov_case LN-10 `"dash line mpg weight, lwidth(*40000) name(ln10b)"' 0 ""
+_ov_case LN-11 `"dash line mpg weight, lwidth(vvvthin) name(ln11a)"' 0 ""
+_ov_case LN-11 `"dash line mpg weight, lwidth(none) name(ln11b)"' 0 ""
+_ov_case LN-11 `"dash line mpg weight, lwidth(THICK) name(ln11c)"' 0 ""
+_ov_case LN-11 `"dash line mpg weight, lwidth(1PT) name(ln11d)"' 0 ""
+_ov_case LN-11 `"dash line mpg weight, lwidth(-1PT) name(ln11e)"' 0 ""
+_ov_case LN-11 `"dash line mpg weight, lwidth(*1e400) name(ln11f)"' 0 ""
+_ov_case LN-12 `"dash line mpg weight, lwidth(-1) name(ln12)"' 198 lwidth
+_ov_said LN-12 "gm_linewidth must be between 0.000 and"
+_ov_said LN-12 "lwidth() must be a line width"
+_ov_case LN-13 `"dash scatter mpg weight, lwidth(*-1) name(ln13)"' 198 lwidth
+_ov_said LN-13 "gm_linewidth must be between 0.000 and"
+_ov_said LN-13 "lwidth() must be a line width"
+_ov_case LN-14 `"dash scatter mpg weight, msize(-1pt) name(ln14a)"' 0 ""
+_ov_case LN-14 `"dash scatter mpg weight, msize(*-1) name(ln14b)"' 0 ""
+_ov_case LN-14 `"dash scatter mpg weight, mlabgap(-2pt) name(ln14c)"' 0 ""
 
 // ----------------------------------------------------------------
 // CV-nn: the corpus arbiter.  Every line of the conformance corpus must

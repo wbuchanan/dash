@@ -2105,12 +2105,14 @@ class TestLineWidthPatternHtml:
             options={"lwidth": "thick"},
         )
         html = _render_to_html(spec, data)
-        # thick is 2.5, where the scheme draws the same line 1.5 wide.
+        # thick is .8 Stata units, 3.072 px, where the scheme draws the same
+        # line at medium, 1.152 px (WP-30 P1.12b; dash's private ladder had
+        # 2.5 and 1.5).
         assert _values(_only_layer(html, "Line"), "line_width") \
-            == [2.5] * 20, "lwidth(thick)=2.5 must be the line's width"
+            == pytest.approx([3.072] * 20), "lwidth(thick) must be the line's width"
         spec["graphs"][0]["plots"][0]["options"] = {}
         assert _values(_only_layer(_render_to_html(spec, data), "Line"),
-                       "line_width") == [1.5] * 20
+                       "line_width") == pytest.approx([1.152] * 20)
 
     def test_lpattern_dash_in_line_html(self):
         """line with lpattern(dash) must have line_dash in Bokeh model JSON."""
@@ -2125,7 +2127,8 @@ class TestLineWidthPatternHtml:
             "lpattern(dash) must dash the line"
 
     def test_lwidth_applied_to_spike(self):
-        """spike with lwidth(vthick) must embed line_width=3.5 in Bokeh JSON."""
+        """spike with lwidth(vthick) must embed line_width=5.376 in Bokeh JSON
+        (1.4 Stata units; 3.5 on dash's private ladder, WP-30 P1.12b)."""
         spec, data = _single_graph_spec(
             "spike",
             extra_keys={"yvar": "y", "xvar": "x"},
@@ -2133,10 +2136,11 @@ class TestLineWidthPatternHtml:
         )
         html = _render_to_html(spec, data)
         assert _values(_only_layer(html, "Segment"), "line_width") \
-            == [3.5] * 20, "lwidth(vthick)=3.5 must be the spikes' width"
+            == pytest.approx([5.376] * 20), "lwidth(vthick) must be the spikes' width"
 
     def test_lwidth_applied_to_bar(self):
-        """bar with lwidth(thick) must embed line_width=2.5 in Bokeh JSON."""
+        """bar with lwidth(thick) must embed line_width=3.072 in Bokeh JSON
+        (WP-30 P1.12b; 2.5 on dash's private ladder)."""
         spec, data = _single_graph_spec(
             "bar",
             extra_keys={"yvar": "y", "xvar": "x"},
@@ -2144,10 +2148,11 @@ class TestLineWidthPatternHtml:
         )
         html = _render_to_html(spec, data)
         assert _values(_only_layer(html, "VBar"), "line_width") \
-            == [2.5] * 20, "lwidth(thick)=2.5 must be the bars' outline width"
+            == pytest.approx([3.072] * 20), "lwidth(thick) must be the bars' outline width"
 
     def test_lwidth_applied_to_histogram(self):
-        """histogram with lwidth(thick) must embed line_width=2.5 in Bokeh JSON."""
+        """histogram with lwidth(thick) must embed line_width=3.072 in Bokeh
+        JSON (WP-30 P1.12b; 2.5 on dash's private ladder)."""
         spec, data = _single_graph_spec(
             "histogram",
             extra_keys={"yvar": "y"},
@@ -2155,7 +2160,7 @@ class TestLineWidthPatternHtml:
         )
         html = _render_to_html(spec, data)
         assert _values(_only_layer(html, "Quad"), "line_width") \
-            == [2.5] * 4, "lwidth(thick)=2.5 must be the bins' outline width"
+            == pytest.approx([3.072] * 4), "lwidth(thick) must be the bins' outline width"
 
     def test_lpattern_applied_to_histogram(self):
         """histogram with lpattern(dash) must have line_dash in Bokeh JSON."""

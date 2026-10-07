@@ -82,7 +82,7 @@ FIXTURE = os.path.join(_HERE, "fixtures", "scheme_truth.json")
 
 #: Stata's unit scale (DESIGN.md section 3).
 PT_PER_RELATIVE_UNIT = 2.88      # at the 4-inch reference dimension
-PX_PER_LINEWIDTH_UNIT = 5.0      # medium (.30) = 1.5 px
+PX_PER_LINEWIDTH_UNIT = 3.84  # 2.88 pt x 4/3 per Stata unit (WP-30 P1.12b)
 # WP-30 P1.12a: Stata's medium marker (1.52778 rs) on dash's one unit,
 # 1 rs = 2.88pt = 3.84px (was dash's own 8 px).
 MARKER_PX_ANCHOR = 1.52778 * 2.88 * 4.0 / 3.0
@@ -155,8 +155,9 @@ def _pt_of(css):
 
 def _line_width_px(entry):
     """Expected pixels for a fixture linewidth entry ``{name, value}``: a
-    number is a Stata linewidth unit (x5); a keyword keeps dash's keyword
-    ladder, which DESIGN.md section 3 leaves out of scope."""
+    number is a Stata linewidth unit (x 3.84 px); a keyword is its rung of
+    Stata's ladder, on the same unit (WP-30 P1.12b; it was dash's private
+    ladder, medium 1.5 px, and 5 px per number unit)."""
     name = str(entry["name"]).strip().lower()
     try:
         return float(name) * PX_PER_LINEWIDTH_UNIT
@@ -622,14 +623,16 @@ class TestTheGlyphSizes:
 @pytest.mark.parametrize("mode", MODES)
 class TestAC162TheEconomistLineIsThickerThanS2colors:
     """AC-16.2b: economist's ``linewidth p 1.2`` is four medium widths --
-    6.0 px against s2color's 1.5 px.  dash drew it as 1.2 px."""
+    4.608 px against s2color's 1.152 px.  dash drew it as 1.2 px.  Flipped
+    (WP-30 P1.12b): 6.0 and 1.5 were dash's private scale; the name is
+    kept."""
 
     def test_6_0_over_1_5(self, mode):
         eco = _v(_glyph(_page("economist", "titles", mode).fig, "Line")
                  .line_width)
         s2 = _v(_glyph(_page("s2color", "titles", mode).fig, "Line")
                 .line_width)
-        assert (eco, s2) == (pytest.approx(6.0), pytest.approx(1.5))
+        assert (eco, s2) == (pytest.approx(4.608), pytest.approx(1.152))
         assert eco > s2
 
 
@@ -848,15 +851,18 @@ class TestTheUnitFunctions:
     def test_the_two_corrected_gsize_keywords(self, name, want):
         assert dr.SchemeParser._GSIZE_PT[name] == want
 
-    @pytest.mark.parametrize("raw,want", [("1.2", 6.0), ("0.30", 1.5),
-                                          ("3.5", 17.5)])
+    # Flipped (WP-30 P1.12b): a number is Stata units, 3.84 px each (was
+    # 5 px on dash's private scale); the name is kept.
+    @pytest.mark.parametrize("raw,want", [("1.2", 4.608), ("0.30", 1.152),
+                                          ("3.5", 13.44)])
     def test_a_numeric_linewidth_is_5px_per_stata_unit(self, sp, raw, want):
         sp._props["linewidth k"] = raw
         assert sp._lwidth("linewidth k") == pytest.approx(want)
 
     def test_medium_keyword_still_anchors_at_1_5(self, sp):
         sp._props["linewidth k"] = "medium"
-        assert sp._lwidth("linewidth k") == pytest.approx(1.5)
+        # Flipped (WP-30 P1.12b): medium is .30 x 3.84 = 1.152 px.
+        assert sp._lwidth("linewidth k") == pytest.approx(1.152)
 
     def test_the_symbolsize_ladder_is_statas(self):
         want = {"zero": 0, "vtiny": 0.29, "tiny": 1.0, "vsmall": 1.5,
