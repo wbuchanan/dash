@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_spec  # noqa: E402
+from conftest import make_spec, exec_app  # noqa: E402
 
 _SCATTER = {"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}
 _BIG = "9" * 401
@@ -78,7 +78,7 @@ def _served_y(tmp_path, literals):
     with open(op, encoding="utf-8") as fh:
         src = fh.read()
     ns: dict = {}
-    exec(compile(src.split("if __name__ !=")[0], op, "exec"), ns)
+    exec_app(src.split("if __name__ !=")[0], op, ns)
     _spec, df, _meta = ns["_load_spec_and_data"]()
     return np.asarray(df["y"], dtype=float)
 

@@ -18,7 +18,6 @@ held to Stata by ``format_truth.json``; the one twoway-drawn truth, the
 tick text of a %tm axis, is section 14's probe ``e3_tm_axis_lab`` in
 ``axis_truth.json``, and its absence FAILS, never skips.
 """
-import importlib.util
 import itertools
 import json
 import math
@@ -42,7 +41,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 from js_runner import JsSession, mask_parity, run_js  # noqa: E402,F401
 from test_mode_parity import _fire  # noqa: E402
 
@@ -138,9 +137,7 @@ def build(mode, spec, df=None, storage=None):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location(f"_fmtsites_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_fmtsites_{tag}")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()

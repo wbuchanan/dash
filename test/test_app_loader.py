@@ -1,0 +1,271 @@
+"""Generated server apps are compiled once per block of text (WP-30 A3).
+
+``conftest.load_app`` and ``conftest.exec_app`` run a generated app's exact
+text, compiled in blocks that each process compiles once: an app differs
+from the next in its embedded spec and data lines, and compiling all
+26,000 lines of every app was a third of a served render in the tests.
+These pin that the blocks are the file -- every function and class code
+object equal to the whole compile's, the module the one ``exec_module``
+makes -- that a second app compiles only what differs, that the texts the
+blocks cannot carry are compiled whole as before, that a traceback names
+the file and line, and that the caches are bounded.
+"""
+import importlib.util
+import os
+import sys
+import traceback
+import types
+import warnings
+
+import pytest
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_HERE, ".."))
+sys.path.insert(0, _HERE)
+
+import conftest as C  # noqa: E402
+import test_mode_parity as tp  # noqa: E402
+from test_server_layer_defects import plot_for  # noqa: E402
+
+
+def _built(tmp_path, plots, name):
+    """(path, text) of the app built for a one-graph spec of *plots*."""
+    spec = tp._spec(plots)
+    _tag, sp, dp = tp._write(spec)
+    path = str(tmp_path / (name + ".py"))
+    import dash_render as dr
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(sp, dp).build(path)
+    with open(path, encoding="utf-8") as fh:
+        return path, fh.read()
+
+
+def _codes(codes):
+    """Every code object nested in *codes*, in a stable order."""
+    out = []
+
+    def walk(code):
+        for c in code.co_consts:
+            if isinstance(c, types.CodeType):
+                out.append(c)
+                walk(c)
+
+    for code in codes:
+        walk(code)
+    return sorted(out, key=lambda c: (c.co_firstlineno, c.co_qualname))
+
+
+def _run(codes, filename):
+    ns = {"__name__": "_loader_probe", "__file__": filename}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for code in codes:
+            exec(code, ns)
+    return ns
+
+
+def _public(ns):
+    return [k for k in ns if k != "__builtins__"]
+
+
+class TestTheBlocksAreTheFile:
+
+    @pytest.mark.parametrize("plots", [[plot_for("scatter")],
+                                       [plot_for("lfitci"),
+                                        plot_for("rarea")]],
+                             ids=["scatter", "lfitci-rarea"])
+    def test_every_code_object_equals_the_whole_compile(self, tmp_path,
+                                                        plots):
+        path, text = _built(tmp_path, plots, "app")
+        blocks = C.compile_app(text, path)
+        whole = compile(text, path, "exec", dont_inherit=True)
+        assert len(blocks) > 100, "the app was compiled whole"
+        got, want = _codes(blocks), _codes([whole])
+        assert len(got) == len(want) > 500
+        for a, b in zip(got, want):
+            assert a == b, (a.co_qualname, a.co_firstlineno)
+            assert (a.co_qualname, a.co_filename) == (b.co_qualname, path)
+
+    def test_the_blocks_cover_the_text_exactly(self, tmp_path):
+        _path, text = _built(tmp_path, [plot_for("line")], "app")
+        spans, imported = C._app_blocks(text)
+        assert spans[0][0] == 0 and spans[-1][1] == len(text)
+        assert all(a[1] == b[0] for a, b in zip(spans, spans[1:]))
+        assert "".join(text[a:b] for a, b in spans) == text
+        assert {"np", "pd", "json", "math"} <= imported
+
+    def test_the_module_is_the_one_exec_module_makes(self, tmp_path):
+        path, _text = _built(tmp_path, [plot_for("bar")], "app")
+        ms = importlib.util.spec_from_file_location("_loader_a", path)
+        want = importlib.util.module_from_spec(ms)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            ms.loader.exec_module(want)
+            got = C.load_app(path, "_loader_a")
+        assert _public(vars(got)) == _public(vars(want))
+        for attr in ("__name__", "__file__", "__doc__", "__annotations__",
+                     "__package__"):
+            assert getattr(got, attr) == getattr(want, attr), attr
+        assert got.__spec__.origin == want.__spec__.origin == path
+        assert type(got.__loader__) is type(want.__loader__)
+        classes = [k for k, v in vars(want).items()
+                   if isinstance(v, type) and v.__module__ == "_loader_a"]
+        assert len(classes) >= 3
+        for k in classes:
+            assert (vars(got)[k].__firstlineno__
+                    == vars(want)[k].__firstlineno__), k
+        assert "_loader_a" not in sys.modules
+
+
+class TestASecondAppReusesTheBlocks:
+
+    def test_a_second_spec_compiles_only_what_differs(self, tmp_path):
+        path_a, text_a = _built(tmp_path, [plot_for("scatter")], "a")
+        path_b, text_b = _built(tmp_path, [plot_for("dropline")], "b")
+        C.compile_app(text_a, path_a)
+        before = dict(C.APP_LOADER_STATS)
+        codes = C.compile_app(text_b, path_b)
+        compiled = C.APP_LOADER_STATS["compiled"] - before["compiled"]
+        reused = C.APP_LOADER_STATS["reused"] - before["reused"]
+        assert C.APP_LOADER_STATS["whole"] == before["whole"]
+        assert compiled + reused == len(codes)
+        assert compiled <= 2, compiled
+        assert {c.co_filename for c in codes} == {path_b}
+
+
+class TestTheTextsCompiledWhole:
+
+    def test_a_bare_carriage_return(self):
+        before = C.APP_LOADER_STATS["whole"]
+        ns = C.exec_app("x = 1\ry = x + 1\n", "cr.py", {})
+        assert (ns["x"], ns["y"]) == (1, 2)
+        assert C.APP_LOADER_STATS["whole"] == before + 1
+
+    @pytest.mark.parametrize("load", [1, 2])
+    def test_a_warning_is_raised_on_every_load(self, load):
+        with pytest.warns(SyntaxWarning, match="invalid escape sequence"):
+            ns = C.exec_app('import os\nx = "\\d"\ny = 2\n', "warns.py", {})
+        assert ns["x"] == "\\d" and ns["y"] == 2
+
+    def test_a_syntax_error_is_the_compilers(self):
+        source = "import os\n\ndef f(:\n    pass\n"
+        with pytest.raises(SyntaxError) as want:
+            compile(source, "bad.py", "exec", dont_inherit=True)
+        with pytest.raises(SyntaxError) as got:
+            C.compile_app(source, "bad.py")
+        assert (got.value.msg, got.value.lineno, got.value.filename) == (
+            want.value.msg, want.value.lineno, want.value.filename)
+
+
+_AWKWARD = '''"""The module's docstring."""
+from __future__ import annotations
+
+import os.path as osp
+
+LIMIT: int = 3
+
+
+def dec(fn):
+    return fn
+
+
+@dec
+def f(x: int) -> str:
+    return osp.join(str(x), "a")
+
+
+try:
+    import json
+except ImportError:
+    json = None
+else:
+    LOADED = True
+finally:
+    DONE = 1
+
+if DONE:
+    BRANCH = "if"
+elif LOADED:
+    BRANCH = "elif"
+else:
+    BRANCH = "else"
+
+TEXT = """
+name = 1
+@not_a_decorator
+def not_a_function():
+"""
+r"a raw string, not the module's docstring"
+
+
+@dec
+class K:
+    """A class."""
+    value: int = 3
+
+    def g(self):
+        return json.dumps([self.value])
+
+
+TOTAL = len(TEXT)
+'''
+
+
+class TestTheBlocksOfAnAwkwardText:
+
+    def test_the_namespace_and_the_code_are_the_whole_compiles(self):
+        blocks = C.compile_app(_AWKWARD, "awkward.py")
+        whole = compile(_AWKWARD, "awkward.py", "exec", dont_inherit=True)
+        assert len(blocks) > 1
+        got, want = _run(blocks, "awkward.py"), _run([whole], "awkward.py")
+        assert _public(got) == _public(want)
+        assert got["__doc__"] == "The module's docstring."
+        assert got["__annotations__"] == want["__annotations__"] \
+            == {"LIMIT": "int"}
+        assert got["f"].__annotations__ == {"x": "int", "return": "str"}
+        assert got["f"](1) == want["f"](1)
+        assert (got["BRANCH"], got["TEXT"]) == (want["BRANCH"], want["TEXT"])
+        assert got["K"]().g() == "[3]"
+        assert got["K"].__firstlineno__ == want["K"].__firstlineno__
+        got_codes, want_codes = _codes(blocks), _codes([whole])
+        assert got_codes == want_codes
+
+    def test_a_late_annotation_puts_everything_before_it_in_one_block(self):
+        """The compiler sets a module's annotations up at its top, so the
+        block that annotates and every block before it are compiled as
+        one."""
+        source = _AWKWARD + "LATE: str = TEXT\n"
+        spans, _imported = C._app_blocks(source)
+        assert len(spans) == 1
+        got = _run(C.compile_app(source, "late.py"), "late.py")
+        want = _run([compile(source, "late.py", "exec", dont_inherit=True)],
+                    "late.py")
+        assert _public(got) == _public(want)
+        assert got["__annotations__"] == {"LIMIT": "int", "LATE": "str"}
+
+
+class TestATracebackNamesTheFileAndLine:
+
+    def test_an_error_in_a_late_block(self, tmp_path):
+        path = str(tmp_path / "boom.py")
+        source = ("import math\n\n\ndef ok():\n    return 1\n\n\n"
+                  "def boom():\n    x = 1\n    return math.sqrt(-x)\n")
+        ns = C.exec_app(source, path, {})
+        with pytest.raises(ValueError) as err:
+            ns["boom"]()
+        last = traceback.extract_tb(err.value.__traceback__)[-1]
+        assert (last.filename, last.lineno, last.name) == (path, 10, "boom")
+
+
+class TestTheCachesAreBounded:
+
+    def test_neither_cache_outgrows_its_maximum(self, monkeypatch):
+        monkeypatch.setattr(C, "_APP_CACHE_MAX", 4)
+        monkeypatch.setattr(C, "_APP_BLOCK_INFO", {})
+        monkeypatch.setattr(C, "_APP_BLOCK_CODE", {})
+        for i in range(10):
+            C.exec_app("A = %d\nB = A + 1\n" % i, "bound.py", {})
+            assert len(C._APP_BLOCK_INFO) <= 4
+            assert len(C._APP_BLOCK_CODE) <= 4
+        assert C.exec_app("A = 7\nB = A + 1\n", "bound.py", {})["B"] == 8

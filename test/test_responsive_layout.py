@@ -30,7 +30,6 @@ Two kinds of test:
 * TestReflowModel and the rest: the Bokeh model properties and CSS the
   fix sets, with no browser.
 """
-import importlib.util
 import itertools
 import json
 import os
@@ -48,7 +47,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import dash_render as dr
 import responsive_probe as rp
-from conftest import make_data_json
+from conftest import make_data_json, load_app
 
 WIDTHS = (375, 768, 1440)
 #: The narrowest a figure may be drawn at any of WIDTHS.  A grid column
@@ -188,9 +187,7 @@ def _served_doc(spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        ms = importlib.util.spec_from_file_location("_resp_app_%d" % tag, ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, "_resp_app_%d" % tag)
         doc = Document()
         mod.make_document(doc)
     return doc

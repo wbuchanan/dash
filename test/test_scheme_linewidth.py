@@ -28,7 +28,6 @@ says `set width scheme p#lineplot'):
 A ci band itself takes `linewidth ci' and a histogram `linewidth
 histogram'; neither follows p#.
 """
-import importlib.util
 import itertools
 import json
 import math
@@ -46,7 +45,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
 from dash_render import SchemeParser  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 
 with open(os.path.join(_HERE, "fixtures", "linewidth_chain_truth.json"),
           encoding="utf-8") as _fh:
@@ -311,9 +310,7 @@ def _figure(mode, wd, plots, scheme):
             return list(r._build_figures().values())[0]
         ap = str(wd / ("app_%d.py" % tag))
         dr.ServerAppBuilder(str(sp), str(dp)).build(ap)
-        ms = importlib.util.spec_from_file_location("_lw_app_%d" % tag, ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, "_lw_app_%d" % tag)
         doc = Document()
         mod.make_document(doc)
     figs = [m for root in doc.roots for m in root.references()

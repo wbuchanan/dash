@@ -77,7 +77,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr
 from serve_token_probe import TEST_TOKEN, token_args  # noqa: E402
-from conftest import make_data_json, make_spec
+from conftest import make_data_json, make_spec, exec_app
 
 
 # ===========================================================================
@@ -1134,8 +1134,8 @@ def _load_app(src, tag):
     ns = {"__name__": "dash_matrix_app_%s" % tag}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src.replace(_CURDOC_ATTACH, "pass"),
-                     "dash_matrix_app_%s.py" % tag, "exec"), ns)
+        exec_app(src.replace(_CURDOC_ATTACH, "pass"),
+                 "dash_matrix_app_%s.py" % tag, ns)
     # WP-29 P0.12a: the key Gate B checks, as _dash_server_app installs it.
     ns["_DASH_SERVE_TOKEN"] = TEST_TOKEN
     return ns

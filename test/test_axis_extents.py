@@ -27,7 +27,6 @@ extent.
 Truth: ``test/fixtures/axis_truth.json``, group ``b2_extent``, written by
 ``scripts/extract_axis_truth.do``.
 """
-import importlib.util
 import itertools
 import json
 import math
@@ -45,7 +44,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "axis_truth.json")
 _SEQ = itertools.count()
@@ -113,10 +112,7 @@ def _figures(mode, tmp_path, df, plots, go, formats=None, notes=None):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr.ServerAppBuilder(str(sp), str(dp)).build(ap)
-            ms = importlib.util.spec_from_file_location("_ext_app_%d" % tag,
-                                                        ap)
-            mod = importlib.util.module_from_spec(ms)
-            ms.loader.exec_module(mod)
+            mod = load_app(ap, "_ext_app_%d" % tag)
         # What the served session says: its own document build.
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")

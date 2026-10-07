@@ -60,7 +60,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, exec_app  # noqa: E402
 
 _ATTACH = "if __name__ != '__main__':\n    make_document(curdoc())"
 
@@ -169,7 +169,7 @@ def _served(tmp_path, spec, data):
             src = fh.read()
         assert _ATTACH in src
         ns = {"__name__": "date_range_app"}
-        exec(compile(src.replace(_ATTACH, "pass"), ap, "exec"), ns)
+        exec_app(src.replace(_ATTACH, "pass"), ap, ns)
         doc = Document()
         ns["make_document"](doc)
         # Everything in it must be writable as the page's JSON.

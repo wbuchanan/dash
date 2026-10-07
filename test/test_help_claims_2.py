@@ -77,6 +77,7 @@ sys.path.insert(0, _ROOT)
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import exec_app  # noqa: E402
 from serve_token_probe import FakeStdin  # noqa: E402  (WP-29 P0.12a)
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
@@ -157,7 +158,7 @@ def _served(tmp_path, spec, df=_DF):
     ns = {"__name__": "help_claims_2_app"}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src.replace(_ATTACH, "pass"), op, "exec"), ns)
+        exec_app(src.replace(_ATTACH, "pass"), op, ns)
     with warnings.catch_warnings(record=True) as made:
         warnings.simplefilter("always")
         doc = Document()

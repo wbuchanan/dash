@@ -50,7 +50,6 @@ saved and one nested grid served.
 comparison -- a test that accepts unknown differences passes the next drift
 too. See ``ALLOWED``.
 """
-import importlib.util
 import itertools
 import json
 import math
@@ -75,7 +74,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr
-from conftest import make_data_json
+from conftest import make_data_json, load_app
 from test_server_layer_defects import plot_for
 
 _SEQ = itertools.count()
@@ -246,9 +245,7 @@ def _served(spec):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location(f"_parity_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_parity_{tag}")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -3016,11 +3013,9 @@ class TestTheCopiedHelpersBringTheirCallees:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr.ServerAppBuilder(sp, dp).build(ap)
-        ms = importlib.util.spec_from_file_location(f"_callee_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            ms.loader.exec_module(mod)
+            mod = load_app(ap, f"_callee_{tag}")
         return mod
 
     def test_every_global_a_copied_helper_calls_is_defined(self):

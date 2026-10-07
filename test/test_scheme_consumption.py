@@ -41,7 +41,7 @@ sys.path.insert(0, _HERE)
 import dash_render
 from dash_render import DashRenderer, SchemeParser
 
-from conftest import make_spec, make_data_json
+from conftest import make_spec, make_data_json, exec_app
 
 
 def _df(n=30):
@@ -575,8 +575,7 @@ class TestNoParsedKeyIsDiscarded:
         ns = {"__name__": "_wp24_scheme_app"}
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            exec(compile(src.replace(attach, "pass"), "_wp24_scheme_app.py",
-                         "exec"), ns)
+            exec_app(src.replace(attach, "pass"), "_wp24_scheme_app.py", ns)
             doc = Document()
             ns["make_document"](doc)
         served = [f for root in doc.roots for f in root.select({"type": Plot})]
@@ -700,8 +699,7 @@ def _both_modes(tmp_path, plots, scheme, gopts=None):
     ns = {"__name__": "_s3_scheme_app"}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src.replace(attach, "pass"), "_s3_scheme_app.py",
-                     "exec"), ns)
+        exec_app(src.replace(attach, "pass"), "_s3_scheme_app.py", ns)
         doc = Document()
         ns["make_document"](doc)
     served = [f for root in doc.roots for f in root.select({"type": Plot})]

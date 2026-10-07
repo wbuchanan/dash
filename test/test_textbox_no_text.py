@@ -12,7 +12,6 @@ The rule (u04 A4): the first comma outside strings and parentheses that is
 followed, after blanks, by a name, another comma, or the end opens the
 sub-options; empty slots are ignored.  Only a typed ``""`` removes a title.
 """
-import importlib.util
 import itertools
 import json
 import os
@@ -32,7 +31,7 @@ sys.path.insert(0, _HERE)
 sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 from test_dual_axis import _lone_figure, _axes  # noqa: E402
 from test_colorvar_forms import _both, _colorbar  # noqa: E402
 from test_served_linked_views import _fire  # noqa: E402
@@ -98,10 +97,7 @@ def _document(mode, tmp_path, spec, data=None):
             obj.render()
         else:
             dr.ServerAppBuilder(sp, dp).build(ap)
-            ms = importlib.util.spec_from_file_location(
-                f"_tnt_app_{next(_SEQ)}", ap)
-            mod = importlib.util.module_from_spec(ms)
-            ms.loader.exec_module(mod)
+            mod = load_app(ap, f"_tnt_app_{next(_SEQ)}")
             obj = Document()
             mod.make_document(obj)
     return obj, [str(w.message) for w in caught]

@@ -31,7 +31,6 @@ Rendering goes through test_mode_parity's spec and file helpers, in both
 modes, in a tmp working directory that holds the custom file.
 """
 import ast
-import importlib.util
 import json
 import os
 import re
@@ -49,6 +48,7 @@ sys.path.insert(0, _ROOT)
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import load_app  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
@@ -127,9 +127,7 @@ def _served(spec):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location(f"_resolution_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_resolution_{tag}")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()

@@ -57,6 +57,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import exec_app  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # The data: (id, g, x, r, s, m), exactly as Stata was given it with `input'
@@ -365,7 +366,7 @@ def _served(tmp_path, spec, df=None):
     ns = {"__name__": "_lg_app"}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src.replace(attach, "pass"), "_lg_app.py", "exec"), ns)
+        exec_app(src.replace(attach, "pass"), "_lg_app.py", ns)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -391,8 +392,7 @@ def served_app(tmp_path_factory):
     ns = {"__name__": "_lg_app_ns"}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src.replace(attach, "pass"), "_lg_app_ns.py", "exec"),
-             ns)
+        exec_app(src.replace(attach, "pass"), "_lg_app_ns.py", ns)
     # The app's own function, not the renderer's.
     assert ns["_dash_qualified_frame"].__module__ == "_lg_app_ns"
     return ns

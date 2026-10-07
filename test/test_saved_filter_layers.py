@@ -46,7 +46,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 from js_runner import JsSession  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 from test_mode_parity import (_DF, _LABEL_NAMES, _VALUE_LABELS,  # noqa: E402
                               _arrows_of, _assert_heads_on_shafts, _diff,
                               _explain, _kpi, _layout_tree, _spec)
@@ -989,17 +989,13 @@ class TestALinkedJitteredScatter:
 
 def _served_doc(spec, df):
     """The generated server app's document for *spec* over *df*."""
-    import importlib.util
     from bokeh.document import Document
     sp, dp = _write(spec, df)
     ap = os.path.join(_TMP, f"app_{next(_SEQ)}.py")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        ms = importlib.util.spec_from_file_location(
-            f"_served_jit_{next(_SEQ)}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_served_jit_{next(_SEQ)}")
         doc = Document()
         mod.make_document(doc)
     return doc

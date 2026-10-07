@@ -17,7 +17,6 @@ otherwise the name.  A label of blanks is not empty and is drawn as given
 The data here are written by ``_dash_write_stata_data`` through
 ``FakeSfi``: byte for byte what Stata writes.
 """
-import importlib.util
 import itertools
 import json
 import os
@@ -36,6 +35,7 @@ sys.path.insert(0, _HERE)
 sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
+from conftest import load_app  # noqa: E402
 from test_string_value_export import FakeSfi  # noqa: E402
 from test_served_linked_views import _fire  # noqa: E402
 
@@ -146,10 +146,7 @@ def _app_module(tmp_path, spec, dp):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        ms = importlib.util.spec_from_file_location(
-            f"_ul_app_{next(_SEQ)}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_ul_app_{next(_SEQ)}")
     return mod, ap
 
 

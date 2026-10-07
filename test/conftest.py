@@ -4,11 +4,18 @@ conftest.py — Shared pytest fixtures for the dash test suite.
 Centralises commonly-used fixtures so individual test files don't each
 define their own copy of auto_df, make_spec, make_dr, etc.
 """
+import __future__
+import importlib.util
+import itertools
 import sys
 import os
 import json
+import re
+import symtable
 import tempfile
 import time
+import types
+import warnings
 
 try:
     import fcntl
@@ -191,6 +198,213 @@ def _clear_bokeh_curdoc():
         curdoc().clear()
     except Exception:
         pass
+
+
+# ============================================================
+# Generated server apps: each block of text compiled once (WP-30 A3)
+# ============================================================
+# A generated server app is about 26,000 lines, and the tests compiled every
+# one they loaded: 0.14 s of the 0.4 s a served render cost them (measured
+# 07oct2026), for a text that differs from the previous app's in a line or
+# two -- the embedded spec and data.  load_app and exec_app run the exact
+# text of the app they are given, compiled in blocks: each top-level
+# statement (with what follows it up to the next one) is compiled once per
+# process, keyed by its exact text, its first line and the compiler flags
+# it needs, and the blocks run in order in the module's namespace.
+#
+# What makes that the same program as the file compiled whole:
+#   * the blocks are consecutive slices that cover the text exactly, each
+#     cut where a line starts in column 0 with a name or a decorator, and
+#     merged with the next until it compiles on its own -- a cut inside a
+#     string, a bracket or a decorated definition does not;
+#   * each block is compiled at its own line numbers, so tracebacks, the
+#     code's lines and a class's __firstlineno__ are the file's;
+#   * the module's __future__ flags apply from the block that imports them,
+#     and every block ends with a dead ``if 0: import ...`` of the names the
+#     module imports at its top level: the compiler emits a different call
+#     for an attribute of an imported name, and a block compiled alone would
+#     not know which names those are;
+#   * the module's own annotations, which the compiler sets up at the top
+#     of the module, are all in the first block;
+#   * a text with a bare carriage return, one that warns as it compiles, and
+#     one with any block that will not compile alone is compiled whole, as
+#     before.
+# test_app_loader.py checks that every function and class code object of a
+# real app is equal to the whole compile's.  Nothing here patches the import
+# system.
+
+#: A line that may start a top-level statement: a name or a decorator in
+#: column 0 -- not a string's prefix, and not a clause continuing a compound
+#: statement.
+_APP_BLOCK_START = re.compile(
+    r"^(?![rRbBuUfFtT]{1,2}['\"])(?!(?:else|elif|except|finally)\b)"
+    r"[A-Za-z_@]", re.M)
+#: Every __future__ feature's compiler flag.
+_APP_FUTURE_FLAGS = 0
+for _feature in __future__.all_feature_names:
+    _APP_FUTURE_FLAGS |= getattr(__future__, _feature).compiler_flag
+#: The most blocks either cache holds; the older half goes when it is full.
+_APP_CACHE_MAX = 8192
+#: Block text -> (names imported at its top level, whether it annotates a
+#: top-level name), None when it does not parse alone, or _APP_WARNS.
+_APP_BLOCK_INFO = {}
+#: (block text, compiler flags, dead-import tail, first line) -> code
+#: object compiled under a placeholder file name, or None.
+_APP_BLOCK_CODE = {}
+#: Counters for test_app_loader.py: blocks compiled, blocks reused, and texts
+#: compiled whole.
+APP_LOADER_STATS = {"compiled": 0, "reused": 0, "whole": 0}
+_APP_MISSING = object()
+_APP_WARNS = object()
+_APP_PLACEHOLDER = "<dash app block>"
+
+
+def _app_cache_put(cache, key, value):
+    """Store *value*, dropping the older half of *cache* when it is full."""
+    if len(cache) >= _APP_CACHE_MAX:
+        for old in list(itertools.islice(cache, len(cache) // 2)):
+            del cache[old]
+    cache[key] = value
+
+
+def _app_block_info(text):
+    """``(imported names, annotates)`` for a block's top level, None when
+    the block does not parse alone, or _APP_WARNS when parsing it warns --
+    a warning the whole compile must then raise where the caller sees it."""
+    hit = _APP_BLOCK_INFO.get(text, _APP_MISSING)
+    if hit is not _APP_MISSING:
+        return hit
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        try:
+            table = symtable.symtable(text, _APP_PLACEHOLDER, "exec")
+        except (SyntaxError, ValueError):
+            table = None
+    if caught:
+        info = _APP_WARNS
+    elif table is None:
+        info = None
+    else:
+        syms = table.get_symbols()
+        info = (frozenset(s.get_name() for s in syms if s.is_imported()),
+                any(s.is_annotated() for s in syms))
+    _app_cache_put(_APP_BLOCK_INFO, text, info)
+    return info
+
+
+def _app_blocks(source):
+    """``([(start, end)], imported names)``: the offsets of the blocks that
+    cover *source* exactly, and the names its top level imports; or None
+    when it is to be compiled whole."""
+    if "\r" in source:
+        return None
+    bounds = [0] + [m.start() for m in _APP_BLOCK_START.finditer(source)
+                    if m.start()] + [len(source)]
+    spans, imported, annotated = [], set(), -1
+    i = 0
+    while i < len(bounds) - 1:
+        j = i + 1
+        info = _app_block_info(source[bounds[i]:bounds[j]])
+        while info is None:
+            j += 1
+            if j == len(bounds):
+                return None
+            info = _app_block_info(source[bounds[i]:bounds[j]])
+        if info is _APP_WARNS:
+            return None
+        imported |= info[0]
+        if info[1]:
+            annotated = len(spans)
+        spans.append((bounds[i], bounds[j]))
+        i = j
+    if annotated > 0:
+        spans = [(0, spans[annotated][1])] + spans[annotated + 1:]
+    return spans, frozenset(imported)
+
+
+def _app_block_code(text, flags, tail, line):
+    """*text* compiled with its first line at *line*, or None when it does
+    not compile alone or warns as it compiles."""
+    key = (text, flags, tail, line)
+    hit = _APP_BLOCK_CODE.get(key, _APP_MISSING)
+    if hit is not _APP_MISSING:
+        if hit is not None:
+            APP_LOADER_STATS["reused"] += 1
+        return hit
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        try:
+            code = compile("\n" * (line - 1) + text + tail, _APP_PLACEHOLDER,
+                           "exec", flags=flags, dont_inherit=True)
+        except (SyntaxError, ValueError):
+            code = None
+    if caught:
+        code = None
+    if code is not None:
+        APP_LOADER_STATS["compiled"] += 1
+    _app_cache_put(_APP_BLOCK_CODE, key, code)
+    return code
+
+
+def _app_code_in(code, filename):
+    """*code* and every code object nested in it, as compiled from
+    *filename*."""
+    consts = code.co_consts
+    if any(isinstance(c, types.CodeType) for c in consts):
+        consts = tuple(_app_code_in(c, filename)
+                       if isinstance(c, types.CodeType) else c
+                       for c in consts)
+    return code.replace(co_filename=filename, co_consts=consts)
+
+
+def compile_app(source, filename):
+    """The code objects that run *source*, the text of a generated server
+    app, as a module compiled from *filename* would run, in order."""
+    whole = None
+    plan = _app_blocks(source)
+    if plan is not None:
+        spans, imported = plan
+        tail = ("if 0: import %s\n" % ", ".join(sorted(imported))
+                if imported else "")
+        codes, flags, line, pos = [], 0, 1, 0
+        for start, end in spans:
+            text = source[start:end]
+            line += source.count("\n", pos, start)
+            pos = start
+            sep = "" if (not tail or not text or text.endswith("\n")) else "\n"
+            code = _app_block_code(text, flags, sep + tail, line)
+            if code is None:
+                break
+            flags |= code.co_flags & _APP_FUTURE_FLAGS
+            codes.append(_app_code_in(code, filename))
+        else:
+            whole = codes
+    if whole is None:
+        APP_LOADER_STATS["whole"] += 1
+        whole = [compile(source, filename, "exec", dont_inherit=True)]
+    return whole
+
+
+def exec_app(source, filename, namespace):
+    """Run *source*, a generated app's text, in *namespace* as the module
+    compiled from *filename* would run; returns *namespace*."""
+    for code in compile_app(source, filename):
+        exec(code, namespace)
+    return namespace
+
+
+def load_app(path, name):
+    """Import the generated app at *path* as module *name*, as
+    ``spec.loader.exec_module`` would -- the same module attributes and the
+    same text, read and decoded as the import system reads it -- with its
+    blocks compiled once per process (see above).  Like ``exec_module`` it
+    does not enter the module in ``sys.modules``."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    with open(spec.origin, "rb") as fh:
+        source = importlib.util.decode_source(fh.read())
+    exec_app(source, spec.origin, module.__dict__)
+    return module
 
 
 # ============================================================

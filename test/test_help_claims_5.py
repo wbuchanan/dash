@@ -46,7 +46,6 @@ The served app copies GlyphMapper and the shared helpers by source, so each
 drawing check below renders the same spec through DashRenderer (the saved
 page) and through ServerAppBuilder and make_document (the served app).
 """
-import importlib.util
 import itertools
 import json
 import math
@@ -68,6 +67,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import load_app  # noqa: E402
 
 _SEQ = itertools.count()
 _TMP = tempfile.mkdtemp(prefix="dash_help_claims_5_")
@@ -183,9 +183,7 @@ def _both(spec, payload):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location(f"_hc5_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_hc5_{tag}")
     with warnings.catch_warnings(record=True) as session:
         warnings.simplefilter("always")
         doc = Document()

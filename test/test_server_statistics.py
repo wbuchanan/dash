@@ -18,7 +18,6 @@ were left on the pre-S07 code:
 So the same command produced two different curves, and the served one was not
 Stata's. These tests compare the two modes' *numbers*, not their appearance.
 """
-import importlib.util
 import itertools
 import json
 import os
@@ -36,7 +35,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr
-from conftest import make_data_json
+from conftest import make_data_json, load_app
 
 _SEQ = itertools.count()
 
@@ -73,11 +72,9 @@ def _server_sources(tmp_path, spec):
     tag, sp, dp = _write(tmp_path, spec)
     ap = tmp_path / f"a_{tag}.py"
     dr.ServerAppBuilder(sp, dp).build(str(ap))
-    ms = importlib.util.spec_from_file_location(f"_stat_app_{tag}", str(ap))
-    mod = importlib.util.module_from_spec(ms)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms.loader.exec_module(mod)
+        mod = load_app(str(ap), f"_stat_app_{tag}")
         doc = Document()
         mod.make_document(doc)
     return [m.data for m in doc.select({"type": ColumnDataSource})]

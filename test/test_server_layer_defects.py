@@ -36,7 +36,6 @@ does" is the specification here.
 """
 from __future__ import annotations
 
-import importlib.util
 import itertools
 import json
 import os
@@ -54,7 +53,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr
-from conftest import make_data_json
+from conftest import make_data_json, load_app
 
 _SEQ = itertools.count()
 
@@ -164,9 +163,7 @@ def served(tmp_path, spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(str(ap))
-        ms = importlib.util.spec_from_file_location(f"_wp10_{tag}", str(ap))
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(str(ap), f"_wp10_{tag}")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -719,9 +716,7 @@ class TestEveryFigureCarriesTheSameHover:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
-            ms = importlib.util.spec_from_file_location(f"_hv_{tag}", str(ap))
-            mod = importlib.util.module_from_spec(ms)
-            ms.loader.exec_module(mod)
+            mod = load_app(str(ap), f"_hv_{tag}")
             doc = Document()
             mod.make_document(doc)
         assert drawn_rows(_figures_of(doc)) == [("Scatter", 3)], (

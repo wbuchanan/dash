@@ -20,7 +20,6 @@ served app (``ServerAppBuilder``'s generated module).
 """
 
 import copy
-import importlib.util
 import inspect
 import itertools
 import json
@@ -42,6 +41,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import load_app  # noqa: E402
 import test_mode_parity as mp  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "function_expr_truth.json")
@@ -142,9 +142,7 @@ def _render(mode, spec, raw=None, spy=None):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location(f"_fnexpr_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_fnexpr_{tag}")
     undo = spy(mod) if spy else None
     try:
         with warnings.catch_warnings(record=True) as caught:

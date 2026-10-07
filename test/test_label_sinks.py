@@ -120,7 +120,6 @@ from __future__ import annotations
 
 import ast
 import html
-import importlib.util
 import io
 import itertools
 import json
@@ -147,7 +146,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 
 #: The bokeh versions the behaviour described above was verified on.  See
 #: TestBokehVersion for what "verified" means and how to extend this set.
@@ -475,10 +474,7 @@ def _build(root, mode, pid, layout="auto", inputs=None):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
-        ms = importlib.util.spec_from_file_location(
-            f"_label_sinks_app_{n}", str(ap))
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(str(ap), f"_label_sinks_app_{n}")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()

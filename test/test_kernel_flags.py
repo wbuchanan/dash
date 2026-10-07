@@ -16,7 +16,6 @@ curve is the standalone curve, for every kernel on every one of the three
 types -- and no two kernels draw the same curve, so a kernel read as the
 default could not pass.
 """
-import importlib.util
 import itertools
 import json
 import math
@@ -35,7 +34,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr
-from conftest import make_data_json
+from conftest import make_data_json, load_app
 
 _SEQ = itertools.count()
 _RNG = np.random.default_rng(20260924)
@@ -98,11 +97,9 @@ def _served(tmp_path, spec):
     tag, sp, dp = _write(tmp_path, spec)
     ap = tmp_path / f"a_{tag}.py"
     dr.ServerAppBuilder(sp, dp).build(str(ap))
-    ms = importlib.util.spec_from_file_location(f"_kflag_app_{tag}", str(ap))
-    mod = importlib.util.module_from_spec(ms)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms.loader.exec_module(mod)
+        mod = load_app(str(ap), f"_kflag_app_{tag}")
         doc = Document()
         mod.make_document(doc)
     return [m.data for m in doc.select({"type": ColumnDataSource})]

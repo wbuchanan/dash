@@ -57,7 +57,6 @@ built exactly as ``test_mode_parity.py`` builds them; the served module is
 kept so its ``_DASH_SCHEME`` can be read back.  One render per (scheme,
 case), cached, whichever assertion asks first.
 """
-import importlib.util
 import os
 import re
 import sys
@@ -73,6 +72,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import load_app  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
@@ -203,9 +203,7 @@ def _served_with_module(spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        ms = importlib.util.spec_from_file_location(f"_rendered_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_rendered_{tag}")
         doc = Document()
         mod.make_document(doc)
     curdoc().clear()

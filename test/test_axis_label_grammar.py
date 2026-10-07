@@ -15,7 +15,6 @@ group b1_label (scripts/extract_axis_truth.do).  Forms twoway refuses
 string before any value, single quotes, bare words, top-level commas) are
 dash's own choice -- drawn gracefully, the bad token named.
 """
-import importlib.util
 import itertools
 import json
 import os
@@ -32,7 +31,7 @@ sys.path.insert(0, _HERE)
 sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 
 _MODES = ("saved", "served")
 _SEQ = itertools.count()
@@ -98,9 +97,7 @@ def _figures(mode, tmp_path, df, plots, go, formats=None, value_labels=None,
         else:
             ap = str(tmp_path / ("app_%d.py" % tag))
             dr.ServerAppBuilder(str(sp), str(dp)).build(ap)
-            ms = importlib.util.spec_from_file_location("_alg_app_%d" % tag, ap)
-            mod = importlib.util.module_from_spec(ms)
-            ms.loader.exec_module(mod)
+            mod = load_app(ap, "_alg_app_%d" % tag)
             doc = Document()
             mod.make_document(doc)
             seen, out = set(), []

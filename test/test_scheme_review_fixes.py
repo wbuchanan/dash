@@ -35,7 +35,6 @@ written into the test's tmp_path, which is made the working directory so
 ``SchemeParser._resolve_path`` finds it as a file reference.
 """
 import html as _html
-import importlib.util
 import json
 import os
 import re
@@ -56,6 +55,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import load_app  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
@@ -88,9 +88,7 @@ def _served(spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        ms = importlib.util.spec_from_file_location(f"_review_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_review_{tag}")
         doc = Document()
         mod.make_document(doc)
     curdoc().clear()

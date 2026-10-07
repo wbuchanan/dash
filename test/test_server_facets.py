@@ -27,7 +27,6 @@ spec, because "what the saved dashboard does" is the specification.
 """
 from __future__ import annotations
 
-import importlib.util
 import itertools
 import json
 import os
@@ -46,7 +45,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr
-from conftest import make_data_json
+from conftest import make_data_json, load_app
 from test_server_layer_defects import ALL_TYPES, plot_for, make_spec, _walk
 
 _SEQ = itertools.count()
@@ -101,9 +100,7 @@ def served(tmp_path, spec, df=_DF):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(str(ap))
-        ms = importlib.util.spec_from_file_location(f"_wp11_{tag}", str(ap))
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(str(ap), f"_wp11_{tag}")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()

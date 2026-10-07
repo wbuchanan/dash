@@ -36,7 +36,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, exec_app  # noqa: E402
 import colour_bins as cb  # noqa: E402
 
 _ATTACH = "if __name__ != '__main__':\n    make_document(curdoc())"
@@ -106,7 +106,7 @@ def _app(tmp_path, spec, df, strings=()):
     ns = {"__name__": "fn_audit_app"}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src.replace(_ATTACH, "pass"), ap, "exec"), ns)
+        exec_app(src.replace(_ATTACH, "pass"), ap, ns)
     return ns, [str(w.message) for w in built]
 
 

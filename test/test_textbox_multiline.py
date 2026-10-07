@@ -53,7 +53,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr
-from conftest import make_data_json, make_spec
+from conftest import make_data_json, make_spec, exec_app
 
 _DF = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0], "x": [1.0, 2.0, 3.0, 4.0]})
 
@@ -565,8 +565,8 @@ def _both_modes(tmp_path, graph_options):
     doc = Document()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src.replace(_CURDOC_ATTACH, "pass"),
-                     "dash_textbox_app.py", "exec"), ns)
+        exec_app(src.replace(_CURDOC_ATTACH, "pass"), "dash_textbox_app.py",
+                 ns)
         ns["make_document"](doc)
     saved = [_drawn(f) for f in renderer.figures.values()]
     served = [_drawn(f) for f in doc.select({"type": Plot})]
@@ -784,8 +784,7 @@ def _legend_both_modes(tmp_path, legend):
     doc = Document()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src.replace(_CURDOC_ATTACH, "pass"),
-                     "dash_legend_app.py", "exec"), ns)
+        exec_app(src.replace(_CURDOC_ATTACH, "pass"), "dash_legend_app.py", ns)
         ns["make_document"](doc)
 
     def keys(legends):

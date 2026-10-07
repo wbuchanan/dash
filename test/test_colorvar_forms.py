@@ -31,7 +31,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
-from conftest import make_spec, make_data_json  # noqa: E402
+from conftest import make_spec, make_data_json, exec_app  # noqa: E402
 import colour_bins as cb  # noqa: E402
 
 _LE, _DASH = chr(0x2264), chr(0x2013)   # ASCII source, whatever the editor
@@ -444,7 +444,7 @@ def _served_ns(spec):
         with open(ap, encoding="utf-8") as fh:
             src = fh.read()
         ns = {"__name__": f"colour_ns_{tag}"}
-        exec(compile(src, ap, "exec"), ns)
+        exec_app(src, ap, ns)
     return ns
 
 

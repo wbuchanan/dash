@@ -28,7 +28,6 @@ import sys
 import tempfile
 import time
 import warnings
-import importlib.util
 
 import numpy as np
 import pandas as pd
@@ -44,7 +43,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 from test_saved_filter_layers import _move  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
@@ -162,9 +161,7 @@ def _served_module(spec, df, labels=False):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location(f"_join_order_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_join_order_{tag}")
     return mod, [str(w.message) for w in built]
 
 
