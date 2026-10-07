@@ -50,6 +50,7 @@ saved and one nested grid served.
 comparison -- a test that accepts unknown differences passes the next drift
 too. See ``ALLOWED``.
 """
+import copy
 import itertools
 import json
 import math
@@ -2539,11 +2540,36 @@ class TestAFilterMoveAgrees:
     the server refits, the saved page rescales in JS -- and this is where
     the refit is checked, since WP-09 left every served computed layer a
     row-index slice of its OLD curve after the first move.
+
+    Each entry's served move and saved oracle are rendered once per process
+    (``_once``) and shared by its four comparisons, which A1's xdist group
+    keeps on one worker; each comparison rendered both, and the arrowhead
+    one twice (WP-30 test performance A4).
     """
 
+    #: (which, spec, move or oracle) -> (figures, cards), plain data.
+    _RENDERED = {}
+
+    @classmethod
+    def _once(cls, render, spec, arg):
+        """``render(spec, arg)`` -- ``_served_after_move`` or
+        ``_saved_with_qualifier``, each ``(figures, cards)`` of plain data
+        -- made once and handed out as copies, so no comparison sees
+        another's changes."""
+        key = (render.__name__, json.dumps(spec, sort_keys=True),
+               json.dumps(arg))
+        if key not in cls._RENDERED:
+            cls._RENDERED[key] = render(spec, arg)
+        return copy.deepcopy(cls._RENDERED[key])
+
+    def _moved(self, spec, action, oracle):
+        """``(served, saved)``: the document after the move, and the saved
+        renderer given the move's rows as an ``if``."""
+        return (self._once(_served_after_move, spec, action),
+                self._once(_saved_with_qualifier, spec, oracle))
+
     def test_same_glyphs_after_the_move(self, name, spec, action, oracle):
-        srv, _ = _served_after_move(spec, action)
-        std, _ = _saved_with_qualifier(spec, oracle)
+        (srv, _), (std, _) = self._moved(spec, action, oracle)
         assert len(std) == len(srv), f"{name}: figure counts differ"
         for i, (a, b) in enumerate(zip(std, srv)):
             diffs = _diff(a["glyphs"], b["glyphs"])
@@ -2551,8 +2577,7 @@ class TestAFilterMoveAgrees:
                                              f"move", diffs)
 
     def test_same_labels_after_the_move(self, name, spec, action, oracle):
-        srv, _ = _served_after_move(spec, action)
-        std, _ = _saved_with_qualifier(spec, oracle)
+        (srv, _), (std, _) = self._moved(spec, action, oracle)
         # zip() stops at the shorter list: a figure one mode lost would
         # have had its labels compared with nothing.
         assert len(std) == len(srv), f"{name}: figure counts differ"
@@ -2576,8 +2601,8 @@ class TestAFilterMoveAgrees:
         kept rows, on the shaft it heads.  Each head was one Arrow
         annotation fixed to its row, so after a move the shaft went and
         the head stayed (BUGS.md, 24sep2026)."""
-        srv, _ = _served_after_move(spec, action)
-        std, _ = _saved_with_qualifier(spec, oracle)
+        (srv, srv_cards), (std, std_cards) = self._moved(spec, action,
+                                                         oracle)
         assert len(std) == len(srv), f"{name}: figure counts differ"
         for i, (a, b) in enumerate(zip(std, srv)):
             ha, hb = _arrows_of(a["annotations"]), _arrows_of(b["annotations"])
@@ -2585,8 +2610,7 @@ class TestAFilterMoveAgrees:
                               f"\n  saved  {ha}\n  served {hb}")
             _assert_heads_on_shafts(name, b)
 
-        _, srv = _served_after_move(spec, action)
-        _, std = _saved_with_qualifier(spec, oracle)
+        srv, std = srv_cards, std_cards
         # One card per KPI, each a card: [] == [] passed for a KPI both
         # modes stopped drawing.
         assert None not in std and sorted(c[0] for c in std) == sorted(
@@ -2598,7 +2622,7 @@ class TestAFilterMoveAgrees:
     def test_the_move_changed_something(self, name, spec, action, oracle):
         """Guards the guard: a move that selects every row proves nothing."""
         before, _ = _render_pair(f"move-before:{name}", spec)["srv"], None
-        after, _ = _served_after_move(spec, action)
+        after, _ = self._once(_served_after_move, spec, action)
         assert _diff(before["figures"], after) or "function" in name, (
             f"{name}: the move left every figure unchanged")
 

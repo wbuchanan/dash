@@ -494,6 +494,10 @@ def _run_dep_script(mode):
     return json.loads(proc.stdout.strip().splitlines()[-1])
 
 
+# One worker for the class, so each of its two subprocess sweeps runs
+# once, not once per worker its tests land on (WP-30 test performance
+# A4; measured 07oct2026: the 33-second blocked sweep ran on three).
+@pytest.mark.xdist_group(name="hc8-no-scipy-or-statsmodels")
 class TestNoLayerNeedsScipyOrStatsmodels:
 
     @pytest.fixture(scope="class")

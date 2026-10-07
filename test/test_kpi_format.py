@@ -183,6 +183,10 @@ def served_moved(served, df):
 # First paint
 # ===========================================================================
 
+# One worker for the class, so the module's renders are made once, not
+# once per worker its tests land on (WP-30 test performance A4;
+# measured 07oct2026: 0.4 s on eight).
+@pytest.mark.xdist_group(name="kpi-format-first-paint")
 class TestFirstPaint:
 
     @pytest.mark.parametrize("rid", _IDS)

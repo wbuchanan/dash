@@ -1038,6 +1038,10 @@ def _tm2_frame():
 
 class TestKpiOfADate:
 
+    # One worker for the 120 first-paint cards, so the module's pair of
+    # renders is made once, not once per worker (WP-30 test performance
+    # A4; measured 07oct2026: 1.9 s on seven workers).
+    @pytest.mark.xdist_group(name="date-units-first-paint")
     @pytest.mark.parametrize("var,stat", _ALL60,
                              ids=["%s-%s" % vs for vs in _ALL60])
     @pytest.mark.parametrize("mode", _MODES)

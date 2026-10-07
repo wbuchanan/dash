@@ -182,6 +182,10 @@ def _y_grids(fig):
             if type(g).__name__ == "Grid" and g.dimension == 1]
 
 
+# One worker for the class, so the module's drawn pair is made once,
+# not once per worker its tests land on (WP-30 test performance A4;
+# measured 07oct2026: 0.55 s on six).
+@pytest.mark.xdist_group(name="ylabel-grid-drawn")
 @pytest.mark.parametrize("mode", _MODES)
 class TestYlabelCountWithAGridIsHonoured:
     """``ylabel(#5, grid)``: the count reaches the axis and the grid is drawn

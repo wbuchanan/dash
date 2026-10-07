@@ -2485,6 +2485,10 @@ def _launcher_said(app):
         return fh.read()
 
 
+# One worker for the class, so the module's live app is started once,
+# not once per worker its tests land on (WP-30 test performance A4;
+# measured 07oct2026: 0.9 s on seven).
+@pytest.mark.xdist_group(name="adversarial-live-app")
 class TestSessionOrigin:
     """The websocket Origin check.  The served app passes Bokeh an
     allowlist; Bokeh lower-cases the Origin's host:port and matches it with
@@ -2689,6 +2693,10 @@ def lenient_live_app(tmp_path_factory):
         yield live
 
 
+# One worker for the class, so the module's live app is started once,
+# not once per worker its tests land on (WP-30 test performance A4;
+# measured 07oct2026: 0.9 s on three).
+@pytest.mark.xdist_group(name="adversarial-lenient-live-app")
 class TestSessionOriginUnderALenientBokeh:
     """Bokeh before 3.9 admitted a websocket origin whose host merely
     begins with an allowed one.  Measured 24sep2026 with pytest under

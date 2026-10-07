@@ -1155,6 +1155,10 @@ def bokeh_served(tmp_path_factory):
         yield srv
 
 
+# One worker for the class, so the module's launched server starts
+# once, not once per worker its tests land on (WP-30 test
+# performance A4; measured 07oct2026: 0.95 s on six).
+@pytest.mark.xdist_group(name="csp-launched")
 @pytest.mark.serve
 class TestThePythonLauncherServes:
 
@@ -1222,6 +1226,10 @@ class TestThePythonLauncherServes:
         _assert_headers(headers, srcs[0])
 
 
+# One worker for the class, so the module's bokeh serve process
+# starts once, not once per worker its tests land on (WP-30 test
+# performance A4; measured 07oct2026: 1.1 s on four).
+@pytest.mark.xdist_group(name="csp-bokeh-served")
 @pytest.mark.serve
 class TestBokehServeServes:
 
