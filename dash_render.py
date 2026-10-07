@@ -2560,16 +2560,97 @@ def _dash_tmp_clear(tmpdir):
     return ""
 
 
+#: The renderer's compiled code, kept for the Stata session (WP-30 test
+#: performance, B1): key (path as given, its realpath, SHA-256 of the bytes
+#: compiled), value the code object.  At most _DASH_RENDER_CODE_MAX entries;
+#: the oldest goes first.  It holds code only, never a run's state.
+_DASH_RENDER_CODE = {}
+_DASH_RENDER_CODE_MAX = 4
+
+
+def _dash_run_renderer(path, init_globals=None):
+    """dash.ado's renderer run: ``runpy.run_path(path, init_globals,
+    run_name="__main__")``, without compiling *path* again while its bytes
+    are unchanged.  Returns what run_path returns, a copy of the run's
+    globals.
+
+    dash.ado ran run_path for every render, which compiled this
+    38,000-line file each time: 0.22 s of each build (measured 07oct2026).
+    Each run still executes in a new ``__main__`` module, as run_path's
+    did, so nothing a run leaves at module level -- notes, mappers, caches,
+    tables -- reaches the next; ``sys.modules["__main__"]`` is that module
+    and ``sys.argv[0]`` is *path* while it runs, both put back afterwards,
+    an exception included.
+
+    The bytes are read on every run and their SHA-256 is part of the key,
+    so the code executed is always the compiled form of the bytes just read
+    from *path* -- the file dash.ado's _dash_find_render resolved -- and a
+    file changed in place, or a link moved to another file, is compiled
+    afresh.  What run_path would not run as plain source -- a folder or zip
+    file (one with a path importer), a compiled file, a missing path -- is
+    handed to run_path unchanged, so it runs or fails as it did."""
+    import importlib.util
+    import io
+    import pkgutil
+    import runpy
+    import sys
+    import types
+
+    path = os.fsdecode(path)
+    if pkgutil.get_importer(path) is not None or not os.path.isfile(path):
+        return runpy.run_path(path, init_globals=init_globals,
+                              run_name="__main__")
+    with io.open_code(os.path.abspath(path)) as fh:
+        src = fh.read()
+    if src[:len(importlib.util.MAGIC_NUMBER)] == importlib.util.MAGIC_NUMBER:
+        return runpy.run_path(path, init_globals=init_globals,
+                              run_name="__main__")
+    key = (path, os.path.realpath(path), hashlib.sha256(src).hexdigest())
+    code = _DASH_RENDER_CODE.get(key)
+    if code is None:
+        # dont_inherit: compiled as run_path compiles it, without this
+        # module's own `from __future__ import annotations'.
+        code = compile(src, path, "exec", dont_inherit=True)
+        while len(_DASH_RENDER_CODE) >= _DASH_RENDER_CODE_MAX:
+            del _DASH_RENDER_CODE[next(iter(_DASH_RENDER_CODE))]
+        _DASH_RENDER_CODE[key] = code
+    mod = types.ModuleType("__main__")
+    run_globals = mod.__dict__
+    if init_globals is not None:
+        run_globals.update(init_globals)
+    run_globals.update(__name__="__main__", __file__=path, __cached__=None,
+                       __doc__=None, __loader__=None, __package__="",
+                       __spec__=None)
+    had_main = "__main__" in sys.modules
+    old_main = sys.modules.get("__main__")
+    sys.modules["__main__"] = mod
+    try:
+        old_argv0 = sys.argv[0]
+        sys.argv[0] = path
+        try:
+            exec(code, run_globals)
+        finally:
+            sys.argv[0] = old_argv0
+    finally:
+        if had_main:
+            sys.modules["__main__"] = old_main
+        else:
+            del sys.modules["__main__"]
+    return run_globals.copy()
+
+
 #: The functions dash.ado calls by name on this module, loaded as
 #: ``_dash_render_export`` (its programs _dash_write_data and _dash_xm_load,
-#: and the _dash_tmp_* programs of WP-29 P0.12b), rather than through
-#: ``main()``.  Named here so the call graph of the dead-code audit
-#: (scripts/fncov/fncov_reach.py), whose roots are this module's own code,
-#: counts them as run; test_string_value_export.py holds this tuple and
-#: dash.ado's calls to the same names.
+#: the _dash_tmp_* programs of WP-29 P0.12b, and _dash_do_render and
+#: _dash_serve, which run the renderer through _dash_run_renderer), rather
+#: than through ``main()``.  Named here so the call graph of the dead-code
+#: audit (scripts/fncov/fncov_reach.py), whose roots are this module's own
+#: code, counts them as run; test_string_value_export.py holds this tuple
+#: and dash.ado's calls to the same names.
 _DASH_ADO_ENTRY_POINTS = (_dash_write_stata_data, _dash_run_open,
                           _dash_run_close, _dash_preview_path,
-                          _dash_tmp_write_text, _dash_tmp_clear)
+                          _dash_tmp_write_text, _dash_tmp_clear,
+                          _dash_run_renderer)
 
 
 #: The blanks a layout() may carry: the six ASCII ones.  str.strip(),

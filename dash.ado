@@ -475,26 +475,34 @@ program define _dash_do_render
     _dash_json_str `"`mode'"'     _py_mode
     _dash_json_str `"`renderpy'"' _py_renderpy
 
+    // The module dash keeps loaded (_dash_xm_load) runs the renderer: its
+    // _dash_run_renderer is runpy.run_path(renderpy, run_name="__main__")
+    // that compiles the file once a session, while its bytes are unchanged,
+    // instead of on every build (0.22 s a build, measured 07oct2026; WP-30
+    // test performance B1).  Each build still runs in a new __main__.
+    _dash_xm_load
+
     // Single-line python: calls are used here instead of a python:...end block.
     // Reason: python:...end blocks inside program defines trigger an
     // IndentationError when the ado file is loaded from the adopath (Stata
     // prepends indentation to the stored block on ado-path loads).
     // Single-line python: statements do not have this issue.
-    python: import sys, runpy
+    python: import sys
     python: sys.argv = ["dash_render.py", "--spec", "`_py_spec'", "--data", "`_py_data'", "--output", "`_py_output'", "--mode", "`_py_mode'"]
     // private: the one-line form's preview page, written 0600 as a new
     // file and never through a link (WP-29 P0.14; main(private_output)).
     if "`private'" != "" {
         python: _dash_priv_argv = sys.argv.append("--private-output")
     }
+    python: _dash_xm = sys.modules["_dash_render_export"]
     // Assign the result.  A single-line `python:' ECHOES the value of the
-    // expression it evaluates, and run_path returns the executed module's
+    // expression it evaluates, and the run returns the executed module's
     // globals dict -- so this line printed the whole of dash_render.py's
     // namespace into the Stata log on EVERY render.  Measured:
     // `dash scatter mpg weight, saving(x.html)' produced a 48 KB, 653-line
     // log, of which the dump began at line 91.  Contrary to project rule 14,
     // and it buries any message dash actually displays.
-    python: _dash_render_ns = runpy.run_path("`_py_renderpy'", run_name="__main__")
+    python: _dash_render_ns = _dash_xm._dash_run_renderer("`_py_renderpy'")
 end
 
 
@@ -8494,6 +8502,9 @@ program define _dash_serve
     _dash_require_python
     _dash_find_render
     local render_py `"`r(fn)'"'
+    // The module that runs the renderer (_dash_run_renderer; see
+    // _dash_do_render), also before the announcement.
+    _dash_xm_load
 
     // The generated Bokeh Server app is app.py in the private run folder
     // opened above (WP-29 P0.12b): written 0600 by the renderer, which
@@ -8516,7 +8527,7 @@ program define _dash_serve
         "  Stata waits while it runs; press Break (Ctrl+C in console Stata) to stop it."
 
     // Single-line python: calls to avoid ado-path IndentationError (see _dash_do_render).
-    python: import sys, runpy
+    python: import sys
     // --launch: `dash serve' is the path whose job IS to run a server.  The
     // renderer no longer starts one as a side effect of writing a file,
     // because `dash build, server' used that same entry point and was left
@@ -8531,16 +8542,18 @@ program define _dash_serve
     // about 1.7 seconds.  _dash_srv_rep is a dict shared by reference with
     // the executed module (a `python:' line inside an ado program takes
     // one statement per line and no compound statement, so a try/except
-    // cannot be written here, and an exception escaping run_path is
+    // cannot be written here, and an exception escaping the run is
     // r(7102) plus a traceback -- the opposite of a clean message).
     // dash_render.py's __main__ writes _dash_launch_app's failure text
-    // into this dict instead of raising, when the dict is present.
+    // into this dict instead of raising, when the dict is present; it
+    // reaches the run as run_path's init_globals did.
     python: _dash_srv_rep = {}
+    python: _dash_xm = sys.modules["_dash_render_export"]
     // Assign the result.  A single-line `python:' echoes the value of the
-    // expression, and run_path returns the module globals dict, so this
+    // expression, and the run returns the module globals dict, so this
     // line used to dump dash_render.py's whole namespace into the Stata log
     // on every render -- roughly 10 KB of noise per command.
-    python: _dash_serve_ns = runpy.run_path("`_py_render'", init_globals={"_dash_launch_report": _dash_srv_rep}, run_name="__main__")
+    python: _dash_serve_ns = _dash_xm._dash_run_renderer("`_py_render'", {"_dash_launch_report": _dash_srv_rep})
     python: from sfi import Macro as _dash_srv_M
     python: _dash_srv_M.setLocal("_srv_err", str(_dash_srv_rep.get("error", ""))[:4096])
     // WP-29 P0.13 F4: Break (or Ctrl+C) stopped the server; the launcher

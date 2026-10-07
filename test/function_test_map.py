@@ -528,6 +528,7 @@ FUNCTIONS = {
  '_dash_root_name': 'test/test_private_files.py::TestThePrivateRoot::test_windows_root_is_named_dash',
  '_dash_run_close': 'test/test_private_files.py::TestTheRunDir::test_close_removes_the_run',
  '_dash_run_open': 'test/test_private_files.py::TestTheRunDir::test_open_makes_a_0700_run_named_for_this_pid',
+ '_dash_run_renderer': 'test/test_render_compile_once.py::TestTheRendererRun::test_it_runs_the_file_as_run_path_runs_it',
  '_dash_run_sweep': 'test/test_private_files.py::TestTheRunDir::test_open_sweeps_this_pids_stale_runs',
  '_dash_tmp_clear': 'test/test_private_files.py::TestThePreviews::test_clear_prunes_and_removes_an_emptied_fallback_root',
  '_dash_tmp_write_text': 'test/test_private_files.py::TestTheSpecWriter::test_text_is_written_exactly_and_0600',

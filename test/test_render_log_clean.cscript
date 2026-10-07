@@ -365,5 +365,182 @@ capture erase "`nc_log'"
 capture erase "`nc_page'"
 assert `nc_fail' == 0
 
+// ---------------------------------------------------------------
+// RC-01..RC-03 (WP-30 test performance, B1): the renderer is compiled
+// once a session.  _dash_do_render and _dash_serve ran
+// runpy.run_path(dash_render.py), which compiled the 38,000-line file on
+// every build (0.22 s of a 0.26 s build, measured 07oct2026).  They now
+// run it through _dash_run_renderer, which keeps the compiled code in the
+// module dash keeps loaded (_dash_render_export) and runs it in a new
+// __main__ every build.
+//   RC-01  two consecutive builds of one command write the same page --
+//          byte for byte once Bokeh's per-run ids, its document UUID and
+//          the CSP's script hashes are set aside -- and the second build
+//          compiled nothing: it ran the code object the first one kept.
+//   RC-02  the page _dash_do_render writes is the page runpy.run_path,
+//          the route every build took before, writes from the same spec
+//          and data, set aside as in RC-01.
+//   RC-03  a renderer edited in place between two builds, to the same
+//          size and modification time, runs its new bytes: the code is
+//          keyed by the bytes read, never by the file's name or time.
+// ---------------------------------------------------------------
+capture mata: mata drop _rlc_norm()
+capture mata: mata drop _rlc_same()
+mata:
+// Bokeh's per-run model ids and document UUID, and the CSP's sha256 of
+// each inline script, which carries them (test_varlist_expansion.cscript
+// V2-05's normaliser): all two renders of one command differ by.
+string scalar _rlc_norm(string scalar s0)
+{
+    string scalar s
+    s = ustrregexra(s0, "'sha256-[A-Za-z0-9+/]{43}='", "HASH")
+    s = ustrregexra(s, "\bp[0-9][0-9][0-9][0-9]?[0-9]?[0-9]?[0-9]?\b", "ID")
+    s = ustrregexra(s, "\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b", "UUID")
+    return(s)
+}
+
+// 1 when both files exist and are the same line by line once normalised;
+// lines that are equal raw are never run through the regex engine.
+real scalar _rlc_same(string scalar fa, string scalar fb)
+{
+    real scalar   ha, hb, same
+    string scalar la, lb
+
+    if ((ha = _fopen(fa, "r")) < 0) return(0)
+    if ((hb = _fopen(fb, "r")) < 0) {
+        fclose(ha)
+        return(0)
+    }
+    same = 1
+    while (1) {
+        la = fget(ha)
+        lb = fget(hb)
+        if (la == J(0, 0, "") & lb == J(0, 0, "")) break
+        if (la == J(0, 0, "") | lb == J(0, 0, "")) {
+            same = 0
+            break
+        }
+        if (la != lb) {
+            if (_rlc_norm(la) != _rlc_norm(lb)) {
+                same = 0
+                break
+            }
+        }
+    }
+    fclose(ha)
+    fclose(hb)
+    return(same)
+}
+end
+
+local rc_fail = 0
+sysuse auto, clear
+dash clear
+_dash_find_render
+local rc_rpy `"`r(fn)'"'
+python: import sys
+python: from sfi import Macro as _rc_M
+python: _rc_codes = lambda: [c for k, c in sys.modules["_dash_render_export"]._DASH_RENDER_CODE.items() if k[0] == _rc_M.getLocal("rc_rpy")]
+
+// RC-01: two consecutive builds, one compile, one page.
+tempfile rc_a rc_b
+local rc_pa "`rc_a'.html"
+local rc_pb "`rc_b'.html"
+capture erase "`rc_pa'"
+capture erase "`rc_pb'"
+capture noisily dash scatter mpg weight, saving("`rc_pa'") replace
+local rc_r1 = _rc
+python: _rc_code1 = _rc_codes()
+capture noisily dash scatter mpg weight, saving("`rc_pb'") replace
+local rc_r2 = _rc
+python: _rc_code2 = _rc_codes()
+python: _rc_M.setLocal("rc_kept", "1" if len(_rc_code1) == 1 and len(_rc_code2) == 1 and _rc_code1[0] is _rc_code2[0] else "0")
+mata: st_local("rc_same1", strofreal(_rlc_same(st_local("rc_pa"), st_local("rc_pb"))))
+cert_file_has "`rc_pa'", needle("bokeh") lower
+local rc_bk = r(found)
+if `rc_r1' == 0 & `rc_r2' == 0 & `rc_bk' == 1 & "`rc_kept'" == "1" & `rc_same1' == 1 {
+    display as text "RC-01 PASS: two builds write the same page (ids and script hashes aside), and the second ran the code the first compiled"
+}
+else {
+    display as error "RC-01 FAIL: rc `rc_r1'/`rc_r2', a Bokeh page `rc_bk', one kept code object `rc_kept', same page `rc_same1'"
+    local rc_fail = `rc_fail' + 1
+}
+
+// RC-02: the page is the page run_path writes from the same spec and data.
+dash clear
+quietly dash scatter mpg weight, name(rc02)
+tempfile rc_mj rc_dj rc_c rc_d
+local rc_pc "`rc_c'.html"
+local rc_pd "`rc_d'.html"
+capture erase "`rc_pc'"
+capture erase "`rc_pd'"
+capture noisily _dash_serve_spec, specpath("`rc_mj'") datapath("`rc_dj'")
+local rc_r3 = _rc
+capture noisily _dash_do_render, spec("`rc_mj'") data("`rc_dj'") output("`rc_pc'") renderpy(`"`rc_rpy'"')
+local rc_r4 = _rc
+python: import runpy
+python: sys.argv = ["dash_render.py", "--spec", _rc_M.getLocal("rc_mj"), "--data", _rc_M.getLocal("rc_dj"), "--output", _rc_M.getLocal("rc_pd"), "--mode", "standalone"]
+python: _rc_old = runpy.run_path(_rc_M.getLocal("rc_rpy"), run_name="__main__")
+mata: st_local("rc_same2", strofreal(_rlc_same(st_local("rc_pc"), st_local("rc_pd"))))
+cert_file_has "`rc_pc'", needle("bokeh") lower
+local rc_bk2 = r(found)
+if `rc_r3' == 0 & `rc_r4' == 0 & `rc_bk2' == 1 & `rc_same2' == 1 {
+    display as text "RC-02 PASS: _dash_do_render writes the page runpy.run_path writes from the same spec and data"
+}
+else {
+    display as error "RC-02 FAIL: rc `rc_r3'/`rc_r4', a Bokeh page `rc_bk2', the page run_path writes `rc_same2'"
+    local rc_fail = `rc_fail' + 1
+}
+
+// RC-03: a stand-in renderer, first on the ado-path, edited in place
+// between two builds to the same size and modification time.
+tempfile rc_base rc_e rc_f
+local rc_sd "`rc_base'_rc03"
+local rc_pe "`rc_e'.html"
+local rc_pf "`rc_f'.html"
+capture mkdir "`rc_sd'"
+capture erase "`rc_pe'"
+capture erase "`rc_pf'"
+tempname rc_fh
+file open `rc_fh' using "`rc_sd'/dash_render.py", write text replace
+file write `rc_fh' "import sys" _n
+file write `rc_fh' `"_a = sys.argv[1:]"' _n
+file write `rc_fh' `"open(_a[_a.index("--output") + 1], "w", encoding="utf-8").write("RC-STAND-IN-1")"' _n
+file close `rc_fh'
+dash clear
+adopath ++ "`rc_sd'"
+capture noisily {
+    _dash_find_render
+    assert `"`r(fn)'"' == "`rc_sd'/dash_render.py"
+    dash scatter mpg weight, saving("`rc_pe'") replace
+    python: import os
+    python: _rc_sp = _rc_M.getLocal("rc_sd") + "/dash_render.py"
+    python: _rc_st = os.stat(_rc_sp)
+    python: _rc_src = open(_rc_sp, encoding="utf-8").read().replace("RC-STAND-IN-1", "RC-STAND-IN-2")
+    python: _rc_nw = open(_rc_sp, "w", encoding="utf-8").write(_rc_src)
+    python: os.utime(_rc_sp, ns=(_rc_st.st_atime_ns, _rc_st.st_mtime_ns))
+    python: _rc_M.setLocal("rc_samestat", "1" if (os.stat(_rc_sp).st_size, os.stat(_rc_sp).st_mtime_ns) == (_rc_st.st_size, _rc_st.st_mtime_ns) else "0")
+    dash scatter mpg weight, saving("`rc_pf'") replace
+}
+local rc_r5 = _rc
+adopath - "`rc_sd'"
+cert_file_has "`rc_pe'", needle("RC-STAND-IN-1")
+local rc_v1 = r(found)
+cert_file_has "`rc_pf'", needle("RC-STAND-IN-2")
+local rc_v2 = r(found)
+capture erase "`rc_sd'/dash_render.py"
+capture rmdir "`rc_sd'"
+if `rc_r5' == 0 & "`rc_samestat'" == "1" & `rc_v1' == 1 & `rc_v2' == 1 {
+    display as text "RC-03 PASS: a renderer edited in place to the same size and time runs its new bytes"
+}
+else {
+    display as error "RC-03 FAIL: rc `rc_r5', same size and time `rc_samestat', first build ran the first bytes `rc_v1', second the second `rc_v2'"
+    local rc_fail = `rc_fail' + 1
+}
+foreach f in rc_pa rc_pb rc_pc rc_pd rc_pe rc_pf {
+    capture erase "``f''"
+}
+assert `rc_fail' == 0
+
 dash clear
 display as result "test_render_log_clean.cscript: ALL PASS"

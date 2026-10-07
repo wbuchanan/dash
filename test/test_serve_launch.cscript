@@ -407,8 +407,11 @@ dash clear
 // the output path into python: lines; a double quote in either ended the
 // literal and the rest ran as Python.  LOC-17 runs the immediate route's
 // _dash_do_render with payload paths; nothing ran dash serve, whose own
-// interpolation (dash.ado ~5481, `runpy.run_path("`_py_render'", ...)') is
-// a SECOND copy of the same idiom.  This drives `dash serve' whole against
+// interpolation (dash.ado ~5481, `runpy.run_path("`_py_render'", ...)';
+// since WP-30's test performance work, B1, the same escaped literal is
+// the first argument of _dash_xm._dash_run_renderer, which runs the file
+// as run_path did) is a SECOND copy of the same idiom.  This drives
+// `dash serve' whole against
 // a renderer whose DIRECTORY name is a Python payload -- whose double quote
 // would end the literal the path is interpolated into -- located through
 // the real _dash_find_render (findfile off S_ADO, as LOC-10/11 do), so the
