@@ -345,9 +345,14 @@ class TestRowsAndColsAreAlternatives:
         lg = _legend(_fig(_three_series("s2color", "cols(1)"), mode))
         assert (lg.ncols, lg.nrows) == (1, "auto")
 
-    def test_both_given_are_both_kept(self, mode):
+    def test_both_given_rows_wins(self, mode):
+        # Was (2, 2): both kept.  WP-30 P1.19 measured twoway drawing the
+        # rows whenever rows() and cols() are both given, in either order,
+        # so rows() wins and the columns are left to Bokeh (as
+        # test_graph_options::test_legend_rows_and_cols_combined pins).
         lg = _legend(_fig(_three_series("s2color", "cols(2) rows(2)"), mode))
-        assert (lg.ncols, lg.nrows) == (2, 2)
+        assert (lg.ncols, lg.nrows) == ("auto", 2), (
+            f"{mode}: (ncols, nrows) = {(lg.ncols, lg.nrows)!r}")
 
     def test_neither_given_keeps_the_schemes_columns(self, mode):
         lg = _legend(_fig(_three_series("s2color", ""), mode))
