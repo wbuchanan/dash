@@ -1835,6 +1835,15 @@ CORPUS = [
     _case("xline abbreviations", [_sc()],
           go={"xline": "3000, lc(red) lp(dash) lw(thick)"}),
     _case("title s() is size", [_sc()], go={"title": '"T", s(small)'}),
+    # WP-30 P1.1a: one options object per expanded series
+    _case("stylelist series, markers",
+          [plot_for("scatter", {"mcolor": "red", "msymbol": "O"}, yvar="mpg"),
+           plot_for("scatter", {"mcolor": "blue", "msymbol": "T"},
+                    yvar="price")]),
+    _case("stylelist series, lines",
+          [plot_for("line", {"lcolor": "red", "lpattern": "solid"}, yvar="mpg"),
+           plot_for("line", {"lcolor": "blue", "lpattern": "dash"},
+                    yvar="price")]),
 ]
 
 
@@ -2574,6 +2583,12 @@ MOVE_CORPUS = [
                [_sc()], {"yline": "20"}, bo={"scheme": "stcolor_meta"}),
     _move_case("scatter with yline under stgcolor_mv, dropdown", _MOVES[0],
                [_sc()], {"yline": "20"}, bo={"scheme": "stgcolor_mv"}),
+    # WP-30 P1.1a: one options object per expanded series
+    _move_case("stylelist series, dropdown", _MOVES[0],
+               [plot_for("scatter", {"mcolor": "red", "msymbol": "O"},
+                         yvar="mpg"),
+                plot_for("scatter", {"mcolor": "blue", "msymbol": "T"},
+                         yvar="price")]),
 ]
 
 

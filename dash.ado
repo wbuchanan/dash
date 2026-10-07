@@ -299,6 +299,7 @@ program define _dash_require_mata
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
+        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_probe ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
@@ -982,17 +983,17 @@ program define _dash_parse_plot_opts, sclass
     // there (BUGS.md, S1).
     mata: _dash_log_split("0", "_dash_logw")
     syntax [, ///
-        MColor(string)            Msymbol(string)           MSIze(string) ///
-        MSAngle(string)           MFColor(string)           MLColor(string) ///
-        MLabel(string)            MLABColor(string)         MLABSize(string) ///
-        MLABPosition(string)      MLABGap(string)           MLABWidth(string) ///
-        MALpha(string)            MARKER(string)            LColor(string) ///
-        LWidth(string)            LPattern(string)          LALpha(string) ///
-        FColor(string)            FIntensity(string)        FAlpha(string) ///
-        AColor(string)            ALColor(string)           ALWidth(string) ///
-        ALPattern(string) ///
-        BARWidth(string)          BASE(string)              BLColor(string) ///
-        BFColor(string)           JITter(string)            JSEed(string) ///
+        MColor(string asis)       Msymbol(string asis)      MSIze(string asis) ///
+        MSAngle(string asis)      MFColor(string asis)      MLColor(string asis) ///
+        MLabel(string)            MLABColor(string asis)    MLABSize(string asis) ///
+        MLABPosition(string asis) MLABGap(string asis)      MLABWidth(string) ///
+        MALpha(string)            MARKER(string)            LColor(string asis) ///
+        LWidth(string asis)       LPattern(string asis)     LALpha(string) ///
+        FColor(string asis)       FIntensity(string asis)   FAlpha(string) ///
+        AColor(string asis)       ALColor(string asis)      ALWidth(string asis) ///
+        ALPattern(string asis) ///
+        BARWidth(string)          BASE(string)              BLColor(string asis) ///
+        BFColor(string asis)      JITter(string)            JSEed(string) ///
         YAXis(string)             XAXis(string)             COLORVar(string) ///
         COLPALette(string)        COLORDIScrete             COLORUSEPLEGend ///
         COLORNlevels(string)      COLORCUTs(string asis)    COLORMissing(string) ///
@@ -1008,12 +1009,12 @@ program define _dash_parse_plot_opts, sclass
         FRACtion                  Kernel(string)            N(string) ///
         LEvel(string)             BAnds(string)             AT(string asis) ///
         CIOPTS(string asis)       LINEOPTS(string asis)     FITOPTS(string asis) ///
-        COLor(string)             MLWidth(string)           MSTyle(string) ///
+        COLor(string asis)        MLWidth(string asis)      MSTyle(string) ///
         LStyle(string)            MLStyle(string)           MLPattern(string) ///
         BLABEL(string)            HORizontal                VERTical ///
         SORT                      RAnge(string asis)        COLORLIst(string asis) ///
-        SORT1(string)             CLColor(string)           CLPattern(string) ///
-        CLWidth(string)           MLABANGle(string)         MLABFormat(string) ///
+        SORT1(string)             CLColor(string asis)      CLPattern(string asis) ///
+        CLWidth(string asis)      MLABANGle(string asis)    MLABFormat(string asis) ///
         MLABTextstyle(string)     MLABVposition(string)     XOVERHANGs ///
         YOVERHANGs ///
         JITTERSEED(string)        TItle(string asis)        SUBtitle(string asis) ///
@@ -1045,6 +1046,16 @@ program define _dash_parse_plot_opts, sclass
         ZLABel(string asis)       ZTItle(string asis)       ZSCale(string asis) ///
         * ///
     ]
+    // The style options of _dash_stylelist_keys() are string asis so a
+    // stylelist keeps its quoted elements whole (WP-30 P1.1a): string took
+    // the quotes off, and mcolor("255 0 0" "0 0 255") became one colour.
+    // A value of only empty quotes, mcolor(""), is no value, as string made
+    // it; every emptiness test below, the folds, _dash_validate_opts and
+    // the JSON writer read the value normalised here.
+    mata: st_local("_dash_slk", _dash_stylelist_keys())
+    foreach _dash_slo of local _dash_slk {
+        mata: st_local(st_local("_dash_slo"), _dash_stylelist_norm(st_local(st_local("_dash_slo"))))
+    }
     /* ---- plot-level ---- */
 
     // t(), b(), l() and r() need no fold: T1title() .. R1title() take them
@@ -1858,6 +1869,67 @@ program define _dash_fold_typed, sclass
         if "`_ftk'" != "`_ftp'" sreturn local _pending `"`_ftk'"'
     }
     if "`named'" != "" sreturn local _pending `"`s(_pending)'`named'"'
+end
+
+// _dash_stylelist_check ptype nser -- a stylelist held to twoway's rules
+// before any options object is written (WP-30 P1.1a).  First a .. or ...
+// that is not the last element is refused in twoway's words,
+// "mcolor(red .. blue):  invalid syntax", r(198), the value echoed as
+// stored.  Then a quoted blank element a y uses, mcolor(" " blue), is
+// refused in dash's own words (Q-11.1, ratified 06oct2026); twoway
+// refuses it too, naming an internal class path.  Then each element a y
+// uses is held to the option's rule as a single value is; an element
+// past the last y is not checked, as twoway does not check it.  nser is
+// the number of y (1 on a single-y type).  Values are read by value.
+program define _dash_stylelist_check
+    version 19
+    args ptype nser
+    mata: st_local("_sl_keys", _dash_stylelist_keys())
+    foreach key of local _sl_keys {
+        mata: st_local("_sl_bad", strofreal(_dash_stylelist_bad(st_global("s(" + st_local("key") + ")"))))
+        if `_sl_bad' {
+            mata: _dash_say("err", st_local("key") + "(", st_global("s(" + st_local("key") + ")"), "):  invalid syntax")
+            exit 198
+        }
+    }
+    foreach key of local _sl_keys {
+        mata: st_local("_sl_j", strofreal(_dash_stylelist_blank(st_global("s(" + st_local("key") + ")"), `nser')))
+        if `_sl_j' {
+            mata: _dash_say("err", "dash: " + st_local("key") + "() element " + st_local("_sl_j") + " is blank; use . for the default (got: ", st_global("s(" + st_local("key") + ")"), ")")
+            exit 198
+        }
+    }
+    _dash_option_rules
+    local typed ""
+    foreach tok of local _dash_rules_plot {
+        local at = strpos("`tok'", "@")
+        if `at' {
+            local types = substr("`tok'", `at' + 1, .)
+            local types : subinstr local types "|" " ", all
+            local o = substr("`tok'", 1, strpos("`tok'", "=") - 1)
+            if `: list ptype in types' local typed "`typed' `o'"
+        }
+    }
+    foreach tok of local _dash_rules_plot {
+        local body "`tok'"
+        local at = strpos("`tok'", "@")
+        if `at' {
+            local body  = substr("`tok'", 1, `at' - 1)
+            local types = substr("`tok'", `at' + 1, .)
+            local types : subinstr local types "|" " ", all
+            if !`: list ptype in types' continue
+        }
+        local eq   = strpos("`body'", "=")
+        local o    = substr("`body'", 1, `eq' - 1)
+        local spec = substr("`body'", `eq' + 1, .)
+        if !`at' & `: list o in typed' continue
+        if !`: list o in _sl_keys' continue
+        forvalues i = 1/`nser' {
+            mata: st_local("e", _dash_stylelist_pick(st_global("s(" + st_local("o") + ")"), `i'))
+            if !`: length local e' continue
+            _dash_validate_value "dash" "`o'" "`spec'" `"`macval(e)'"' "`ptype'"
+        }
+    }
 end
 
 // ================================================================
@@ -3245,7 +3317,12 @@ end
 // ================================================================
 program define _dash_plot_opts_to_json, rclass
     version 19
-    args out_macro
+    args out_macro series
+    // series is the expanded y the object is for (1 when omitted): a key
+    // of _dash_stylelist_keys() writes that y's stylelist element
+    // (_dash_stylelist_pick, WP-30 P1.1a), every other key its value.
+    if "`series'" == "" local series 1
+    mata: st_local("_sl_keys", _dash_stylelist_keys())
 
     local parts ""
     local nparts = 0
@@ -3275,7 +3352,10 @@ program define _dash_plot_opts_to_json, rclass
         // copy through them expanded a macro in the value again --
         // mcolor("\$G") was stored as $G's value (measured 24sep2026;
         // test_json_escaping.cscript JSE-69).
-        mata: st_local("val", st_global("s(" + st_local("key") + ")"))
+        if `: list key in _sl_keys' {
+            mata: st_local("val", _dash_stylelist_pick(st_global("s(" + st_local("key") + ")"), `series'))
+        }
+        else mata: st_local("val", st_global("s(" + st_local("key") + ")"))
         if `: length local val' {
             _dash_json_str `"`macval(val)'"' _jv
             if `nparts' > 0 local parts `"`parts',"'
@@ -4239,6 +4319,9 @@ program define _dash_process_segment, rclass
             _dash_seg_weight_s "`_seg_weight'" "`_seg_wexp'"
         }
         _dash_validate_opts "`ptype'"
+        local _sl_n 1
+        if `"`yvarlist'"' != "" local _sl_n : word count `yvarlist'
+        _dash_stylelist_check "`ptype'" `_sl_n'
         if "`ptype'" == "function" {
             mata: st_local("_fn_rnorm", st_global("s(range)"))
             mata: st_local("_fn_nval", st_global("s(n)"))
@@ -4443,7 +4526,7 @@ program define _dash_process_segment, rclass
     }
 
     // Options JSON
-    _dash_plot_opts_to_json _opts_json
+    _dash_plot_opts_to_json _opts_json 1
     // sort(varlist) on a joining type: the names unab gave
     // (_dash_sort_opt), which dash.ado ranks at export (_dash_sort_gen).
     // A plot without it writes nothing new.
@@ -4472,6 +4555,7 @@ program define _dash_process_segment, rclass
         local seg_json ""
         local _nyv : word count `yvarlist'
         forvalues _yi = 1/`_nyv' {
+            _dash_plot_opts_to_json _opts_json `_yi'
             local _thisy = word(`"`yvarlist'"', `_yi')
             _dash_json_str "`_thisy'" _jyv
             _dash_json_str "`xvar'"   _jxv
@@ -6279,6 +6363,22 @@ program define _dash_opts_repeats
         if _rc continue
         local _rp_sm : s(macros)
         mata: st_local("_rp_key`i'", _dash_rep_keyof(st_local("_rp_sm")))
+        // An empty style copy, mcolor(""), sets no s() and so had no key:
+        // mcolor(red) mcolor("") kept red and named the second unsupported,
+        // where twoway draws the default (measured p2_2, WP-30 P1.1a).
+        if !`: length local _rp_key`i'' & "`parser'" == "_dash_parse_plot_opts" {
+            mata: st_local("_rp_pr", _dash_stylelist_probe(st_local("_rp_tok`i'")))
+            if `: length local _rp_pr' {
+                sreturn clear
+                capture `parser' , `_rp_pr'
+                if !_rc {
+                    local _rp_sm : s(macros)
+                    mata: st_local("_rp_pk", _dash_rep_keyof(st_local("_rp_sm")))
+                    mata: st_local("_rp_slk", _dash_stylelist_keys())
+                    if `: list _rp_pk in _rp_slk' & `: word count `_rp_pk'' == 1 local _rp_key`i' : copy local _rp_pk
+                }
+            }
+        }
     }
     mata: st_local("_rp_out", _dash_rep_reduce(st_local("opts"), st_local("ptype")))
     if `: length local _rp_refuse' _dash_refuse_repeat `_rp_refuse'

@@ -120,6 +120,25 @@
 *!       repeated one (the last copy, or the copies merged); the caller's
 *!       local _rp_refuse names a unique option given twice.
 *!
+*!   _dash_stylelist_keys()
+*!       The style options read as stylelists across an expanded varlist.
+*!
+*!   _dash_stylelist_norm(raw)
+*!       "" when a style value holds only empty quotes; else raw unchanged.
+*!
+*!   _dash_stylelist_pick(raw, i)
+*!       The stylelist element the i-th y takes ("" for the default), with
+*!       twoway's . = .. ... and padding.  Helper _dash_stylelist_elems.
+*!
+*!   _dash_stylelist_bad(raw)
+*!       1 when a .. or ... of a stylelist is not its last element.
+*!
+*!   _dash_stylelist_blank(raw, n)
+*!       The first quoted blank element among the n used ones, or 0.
+*!
+*!   _dash_stylelist_probe(tok)
+*!       name(x) for an option word whose value is only empty quotes.
+*!
 *!   _dash_rep_und_scan(opts, ptype)
 *!       An option dash does not declare, given twice where twoway takes
 *!       it once (_dash_rep_und_tab), into the caller's local _rp_refuse;
@@ -4501,6 +4520,188 @@ string rowvector _dash_rep_toks(string scalar s, real scalar commas)
         out[++k] = substr(s, start, n - start + 1)
     }
     return(k ? out[|1 \ k|] : J(1, 0, ""))
+}
+
+// ---- Stylelists (WP-30 P1.1a) ----
+// twoway reads a style option given to a varlist of several y as a
+// stylelist ([G-4] stylelists): element k styles the k-th y, "." is the
+// default, "=" repeats the element before it ("." when first), ".." and
+// "..." -- alone or glued to the end of an element -- repeat it to the
+// last y, a short list is padded with ".", extras are ignored, and a
+// quoted element is one element.  dash gave every y the whole list, so
+// mcolor(red blue) drew two series in the scheme's colours with a note
+// (measured 03oct2026, DROPIN-REMAINING.md P1.1).  These functions read
+// the list by value; dash.ado's _dash_stylelist_check and
+// _dash_plot_opts_to_json call them.
+
+// _dash_stylelist_keys() -- the style options read as stylelists, the
+// one list of them.  Later sections add their names here: mlabel jitter
+// base barwidth (P1.1b), pstyle mstyle lstyle mlstyle (P1.14a),
+// mlabtextstyle (P1.24) and connect cmissing (P1.8a).
+string scalar _dash_stylelist_keys()
+{
+    return("mcolor msymbol msize msangle mfcolor mlcolor mlwidth " +
+           "mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat " +
+           "lcolor lwidth lpattern clcolor clpattern clwidth color fcolor " +
+           "fintensity bfcolor blcolor acolor alcolor alwidth alpattern")
+}
+
+// _dash_stylelist_elems(raw) -- the elements of a stylelist: a 2 x k
+// matrix whose row 1 is each element's text and row 2 "1" when it came
+// quoted ("..." or `"..."', one level of quotes removed) and "0" when
+// bare.  A bare word ending in "..." or ".." (red..., red..) is cut into
+// its stem and the repeat, as twoway cuts it (red.... is red. then ...);
+// a word of ... alone is the repeat.
+// Nothing else is split: ..blue, red...blue, red=blue and (red) stay one
+// element each, as twoway reads them.  Linear in the length of raw.
+string matrix _dash_stylelist_elems(string scalar raw)
+{
+    string rowvector toks
+    string matrix    out
+    string scalar    t, stem, rep
+    real scalar      i, n, k, len, p, in_dq, in_cq, q
+
+    toks = _dash_rep_toks(raw, 0)
+    n    = cols(toks)
+    out  = J(2, 2 * n, "")
+    k    = 0
+    for (i = 1; i <= n; i++) {
+        t    = toks[i]
+        len  = strlen(t)
+        stem = t
+        rep  = ""
+        if (len > 3 & substr(t, len - 2, 3) == "...") {
+            stem = substr(t, 1, len - 3)
+            rep  = "..."
+        }
+        else if (len > 2 & t != "..." & substr(t, len - 1, 2) == "..") {
+            stem = substr(t, 1, len - 2)
+            rep  = ".."
+        }
+        // One quoted string and nothing else: the quote that opens at 1
+        // closes at the last character.
+        q   = 0
+        len = strlen(stem)
+        in_dq = 0
+        in_cq = 0
+        p = _dash_quote_step(stem, len, 1, in_dq, in_cq)
+        if (p & (in_dq | in_cq)) {
+            while (p <= len & (in_dq | in_cq)) {
+                p = _dash_quote_step(stem, len, p, in_dq, in_cq)
+            }
+            if (!in_dq & !in_cq & p == len + 1) {
+                if (substr(stem, 1, 1) == char(34)) {
+                    stem = substr(stem, 2, len - 2)
+                }
+                else {
+                    stem = substr(stem, 3, len - 4)
+                }
+                q = 1
+            }
+        }
+        k++
+        out[1, k] = stem
+        out[2, k] = (q ? "1" : "0")
+        if (rep != "") {
+            k++
+            out[1, k] = rep
+            out[2, k] = "0"
+        }
+    }
+    return(k ? out[|1, 1 \ 2, k|] : J(2, 0, ""))
+}
+
+// _dash_stylelist_norm(raw) -- "" when raw is blank or holds only empty
+// quoted elements ("", `""', "" ""), which -syntax-'s string made no
+// value; raw unchanged otherwise.  A blank element (" ") is kept, for
+// _dash_stylelist_blank to judge.
+string scalar _dash_stylelist_norm(string scalar raw)
+{
+    string matrix E
+    real scalar   j
+
+    if (strtrim(raw) == "") return("")
+    E = _dash_stylelist_elems(raw)
+    for (j = 1; j <= cols(E); j++) {
+        if (E[2, j] != "1" | E[1, j] != "") return(raw)
+    }
+    return("")
+}
+
+// _dash_stylelist_pick(raw, i) -- the element the i-th y takes, "" for
+// the default: "." and a leading "=" are the default, "=" repeats the
+// element before it, ".." and "..." repeat it to the last y, a list
+// shorter than i gives "", and a quoted element is its text (so "" is
+// the default).  Helper _dash_stylelist_elems.
+string scalar _dash_stylelist_pick(string scalar raw, real scalar i)
+{
+    string matrix E
+    string scalar prev, v, t
+    real scalar   j, bare
+
+    E    = _dash_stylelist_elems(raw)
+    prev = ""
+    for (j = 1; j <= cols(E); j++) {
+        t    = E[1, j]
+        bare = (E[2, j] == "0")
+        if (bare & (t == ".." | t == "...")) return(prev)
+        if (bare & t == "=")      v = prev
+        else if (bare & t == ".") v = ""
+        else                      v = t
+        if (j == i) return(v)
+        prev = v
+    }
+    return("")
+}
+
+// _dash_stylelist_bad(raw) -- 1 when a bare ".." or "..." (glued forms
+// included) is not the last element, which twoway refuses as
+// "<option>(<value>):  invalid syntax", r(198) (measured 03oct2026).
+real scalar _dash_stylelist_bad(string scalar raw)
+{
+    string matrix E
+    real scalar   j
+
+    E = _dash_stylelist_elems(raw)
+    for (j = 1; j < cols(E); j++) {
+        if (E[2, j] == "0" & (E[1, j] == ".." | E[1, j] == "...")) return(1)
+    }
+    return(0)
+}
+
+// _dash_stylelist_blank(raw, n) -- the first of the elements the n y
+// use that is quoted and blank (" ", `" "'): non-empty text of blanks
+// only; 0 when none is.  An empty "" is not blank: twoway reads it as
+// ".".  twoway refuses a used blank element with an internal class path
+// that differs by option and accepts an unused one (measured 03oct2026);
+// Q-11.1 was ratified 06oct2026 as a refusal in dash's own words, used
+// elements only.  A missing n or one below 1 reads as 1.
+real scalar _dash_stylelist_blank(string scalar raw, real scalar n)
+{
+    string matrix E
+    real scalar   j, m
+
+    m = ((n >= . | n < 1) ? 1 : n)
+    E = _dash_stylelist_elems(raw)
+    if (cols(E) < m) m = cols(E)
+    for (j = 1; j <= m; j++) {
+        if (E[2, j] == "1" & E[1, j] != "" & strtrim(E[1, j]) == "") return(j)
+    }
+    return(0)
+}
+
+// _dash_stylelist_probe(tok) -- "<name>(x)" when the option word tok is
+// <name>(<value>) whose value is no value (_dash_stylelist_norm), so the
+// caller can ask the parser which option an empty copy, mcolor(""), is;
+// "" otherwise.
+string scalar _dash_stylelist_probe(string scalar tok)
+{
+    string scalar nm
+
+    nm = _dash_rep_optname(tok)
+    if (nm == "" | !strpos(tok, "(")) return("")
+    if (_dash_stylelist_norm(_dash_rep_value(tok)) != "") return("")
+    return(nm + "(x)")
 }
 
 // _dash_axis_pieces(s) -- an axis-label option's value split for

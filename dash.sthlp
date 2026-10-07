@@ -834,7 +834,44 @@ named in a note and drawn around -- because it is what would be drawn.
     ({cmd:xscale(bogus)}), {cmd:dash} names in its sub-option note and
     draws without.  A colour written with commas,
     {cmd:mcolor(255,0,0)}, which {cmd:twoway} refuses, {cmd:dash} reads as
-    the triplet {cmd:255 0 0}.
+    the triplet {cmd:255 0 0}; a triplet written with blanks is quoted,
+    {cmd:mcolor("255 0 0")}, as in {cmd:twoway} (see
+    {help dash##stylelists:Style lists}).
+
+{phang2}    {marker stylelists}{ul:Style lists.}  A style option given a
+    list styles the y variables of an expanded varlist in turn, as
+    {cmd:twoway}'s {help stylelists:stylelists} do:
+    {cmd:scatter mpg turn weight, mcolor(red blue) msymbol(O T)} draws
+    {cmd:mpg} in red circles and {cmd:turn} in blue triangles.  {cmd:.}
+    leaves that y at its default, {cmd:=} repeats the element before it
+    ({cmd:.} when it comes first), and {cmd:..} or {cmd:...}, written alone
+    or at the end of an element, repeats the element before it to the last
+    y.  A list shorter than the y variables is padded with {cmd:.}, so a
+    lone value styles only the first y
+    ({cmd:line mpg turn weight, lwidth(thick)} thickens {cmd:mpg}'s line
+    alone), and elements past the last y are ignored, values and all.  A
+    plot type that draws one y uses the first element.  A quoted element is
+    one element: an RGB colour is quoted, {cmd:mcolor("255 0 0")}, because
+    {cmd:mcolor(255 0 0)} is a list of three colours, as in {cmd:twoway}. 
+    {cmd:..} or {cmd:...} anywhere but at the end is refused as {cmd:twoway}
+    refuses it, {cmd:mcolor(red .. blue):  invalid syntax}, r(198), and an
+    element that a y uses is held to the option's bounds as a single value
+    is.  An empty quoted element, {cmd:""}, is a {cmd:.}, as in
+    {cmd:twoway}.  A quoted element of blanks, {cmd:" "}, is refused when a
+    y uses it: {cmd:scatter mpg turn weight, mcolor(" " blue)} stops with
+    {cmd:dash: mcolor() element 1 is blank; use . for the default (got: " " blue)},
+    r(198); write {cmd:.} for the default.  {cmd:twoway} also refuses a used
+    blank element, with a different message; an element past the last y is
+    not checked.  The options read this way are {cmd:mcolor()},
+    {cmd:msymbol()}, {cmd:msize()}, {cmd:msangle()}, {cmd:mfcolor()},
+    {cmd:mlcolor()}, {cmd:mlwidth()}, {cmd:mlabcolor()}, {cmd:mlabsize()},
+    {cmd:mlabposition()}, {cmd:mlabgap()}, {cmd:mlabangle()},
+    {cmd:mlabformat()}, {cmd:lcolor()}, {cmd:lwidth()}, {cmd:lpattern()},
+    {cmd:clcolor()}, {cmd:clpattern()}, {cmd:clwidth()}, {cmd:color()},
+    {cmd:fcolor()}, {cmd:fintensity()}, {cmd:bfcolor()}, {cmd:blcolor()},
+    {cmd:acolor()}, {cmd:alcolor()}, {cmd:alwidth()} and {cmd:alpattern()};
+    {cmd:malpha()}, {cmd:lalpha()}, {cmd:falpha()} and {cmd:jseed()}, which
+    {cmd:twoway} does not have, apply one value to every y.
 
 {phang2}6.  {ul:Variable and value labels used automatically.}
     {cmd:dash} reads variable labels (they title the axes, key the legend,

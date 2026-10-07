@@ -612,7 +612,8 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # in the plot parser and 71 in the graph parser (measured 24sep2026,
     # after the S3 batch's notes on the fitarea options and on log and
     # logit; 95 after the note on why the text options are declared
-    # asis).  It
+    # asis; and 114 after P1.1a's note on the style options' quotes,
+    # 03oct2026).  It
     # was ">= 20", for the plot parser alone, and the plot parser split in
     # two -- its second half moved into a program of its own, a pasted
     # duplicate comment block with it -- still showed the scan 38 comment
@@ -621,7 +622,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     comments = {prog: sum(1 for ln in body.split("\n")
                           if ln.strip().startswith("//"))
                 for prog, body in bodies.items()}
-    assert comments == {"_dash_parse_plot_opts": 108,
+    # 108 -> 114: P1.1a explains the asis style options and their
+    # normalisation.
+    assert comments == {"_dash_parse_plot_opts": 114,
                         "_dash_parse_graph_opts": 71}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

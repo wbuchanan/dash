@@ -5,7 +5,7 @@
 *! written before the fix, per project rule 8.  Each documents a defect that
 *! was measured end to end against the pre-fix code base.
 *!
-*! Tests: V2-01 through V2-12
+*! Tests: V2-01 through V2-12, SL-01 through SL-25
 *!
 *!   V2-01  HEADLINE  `dash scatter mpg price weight` must draw TWO series
 *!                    (colour census of the generated HTML).
@@ -751,6 +751,456 @@ if _rc {
     local faillist `"`faillist' V2-12(untsset)"'
 }
 else display as text "V2-12c PASS: un-tsset tsline gives a clear error"
+
+// ----------------------------------------------------------------
+// SL: style lists (WP-30 P1.1a)
+//
+// twoway reads a style option over an expanded varlist as a stylelist
+// ([G-4] stylelists): element k styles the k-th y.  dash gave every y the
+// whole list, so mcolor(red blue) drew both series in the scheme's
+// colours with a note (measured 03oct2026).  SL-01..SL-11 and SL-25 are
+// the Mata units; SL-12..SL-24 read each plot's options object from the
+// spec dash registers, and the refusals' first error line.
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+dash clear
+set linesize 255
+tempfile sl_log
+global sl_nfail 0
+global sl_faillist ""
+
+capture program drop _sl_tally
+program define _sl_tally
+    // _sl_tally id ok what -- PASS or FAIL; failures are counted in
+    // $sl_nfail and named in $sl_faillist, added to the script's tally
+    // at the run's end.
+    args id ok what
+    if `ok' == 1 display as text "`id' PASS: `what'"
+    else {
+        display as error "`id' FAIL: `what'"
+        global sl_nfail = ${sl_nfail} + 1
+        global sl_faillist `"${sl_faillist} `id'"'
+    }
+end
+
+capture program drop _sl_run
+program define _sl_run
+    // _sl_run <command>, log(<path>): runs it in a text log; $sl_rc is its rc and
+    // $sl_line the first error line it printed (dash: ... or the
+    // "invalid syntax" line), read by value.
+    mata: _sl_p = strrpos(st_local("0"), ", log(")
+    mata: st_local("cmd", substr(st_local("0"), 1, _sl_p - 1))
+    mata: st_local("log", substr(st_local("0"), _sl_p + 6, strlen(st_local("0")) - _sl_p - 6))
+    capture log close _sl
+    quietly log using `"`log'"', text replace name(_sl)
+    capture noisily `macval(cmd)'
+    global sl_rc = _rc
+    quietly log close _sl
+    mata: st_global("sl_line", _sl_first_err(st_local("log")))
+end
+
+mata:
+string scalar _sl_first_err(string scalar path)
+{
+    real scalar   fh
+    string scalar ln
+    fh = fopen(path, "r")
+    while ((ln = fget(fh)) != J(0, 0, "")) {
+        if (substr(ln, 1, 6) == "dash: " | strpos(ln, "):  invalid syntax")) {
+            fclose(fh)
+            return(ln)
+        }
+    }
+    fclose(fh)
+    return("")
+}
+// 1 when a line of the log at path holds needle.
+real scalar _sl_log_has(string scalar path, string scalar needle)
+{
+    real scalar   fh, hit
+    string scalar ln
+    hit = 0
+    fh = fopen(path, "r")
+    while ((ln = fget(fh)) != J(0, 0, "")) {
+        if (strpos(ln, needle) & substr(ln, 1, 2) != ". ") hit = 1
+    }
+    fclose(fh)
+    return(hit)
+}
+// The options object of plot k in a registered spec.
+string scalar _sl_opts(string scalar spec, real scalar k)
+{
+    real scalar   i, p, e
+    string scalar rest
+    rest = spec
+    for (i = 1; i <= k; i++) {
+        p = strpos(rest, char(34) + "options" + char(34) + ":")
+        if (!p) return("<none>")
+        rest = substr(rest, p + 10, .)
+    }
+    e = strpos(rest, "," + char(34) + "if_expr" + char(34))
+    return(substr(rest, 1, e - 1))
+}
+// 1 when graph g's spec has exactly the objects of exp, written with '
+// for " and | between plots.
+real scalar _sl_spec(string scalar g, string scalar exp)
+{
+    string scalar   spec
+    string rowvector want
+    real scalar     k, n
+    spec = st_global("dash_json_" + g)
+    want = tokens(subinstr(exp, "'", char(34)), "|")
+    want = select(want, want :!= "|")
+    n = (strlen(spec) - strlen(subinstr(spec, char(34) + "options" + char(34) + ":", ""))) / 10
+    if (n != cols(want)) return(0)
+    for (k = 1; k <= n; k++) {
+        if (_sl_opts(spec, k) != want[k]) return(0)
+    }
+    return(1)
+}
+string scalar _sl_E(string scalar raw)
+{
+    string matrix E
+    string scalar out
+    real scalar   j
+    E = _dash_stylelist_elems(raw)
+    out = ""
+    for (j = 1; j <= cols(E); j++) out = out + (j > 1 ? ";" : "") + E[1, j] + "|" + E[2, j]
+    return(out)
+}
+string scalar _sl_q(string scalar s) return(char(34) + s + char(34))
+string scalar _sl_cq(string scalar s) return(char(96) + char(34) + s + char(34) + char(39))
+end
+
+local _notyet mlabel jitter base barwidth pstyle mstyle lstyle mlstyle mlabtextstyle connect cmissing malpha lalpha falpha jseed mlabwidth mlpattern marker
+
+// SL-01 the key list
+mata: st_local("_slk", _dash_stylelist_keys())
+local _want mcolor msymbol msize msangle mfcolor mlcolor mlwidth mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat lcolor lwidth lpattern clcolor clpattern clwidth color fcolor fintensity bfcolor blcolor acolor alcolor alwidth alpattern
+local _inter : list _slk & _notyet
+local ok = (`: word count `_slk'' == 28 & "`_slk'" == "`_want'" & "`_inter'" == "")
+_sl_tally SL-01 `ok' "_dash_stylelist_keys() is the 28 style options"
+
+// SL-02 elements
+mata: q = char(34)
+mata: st_local("ok", strofreal( ///
+    _sl_E("red  blue") == "red|0;blue|0" & ///
+    _sl_E(_sl_q("255 0 0") + " " + _sl_q("0 0 255")) == "255 0 0|1;0 0 255|1" & ///
+    _sl_E(_sl_cq("red") + " blue") == "red|1;blue|0" & ///
+    _sl_E("red..") == "red|0;..|0" & _sl_E("red...") == "red|0;...|0" & ///
+    _sl_E("red....") == "red.|0;...|0" & ///
+    _sl_E("..blue") == "..blue|0" & _sl_E("red...blue") == "red...blue|0" & ///
+    _sl_E("red=blue") == "red=blue|0" & _sl_E("(red)") == "(red)|0" & ///
+    _sl_E(_sl_q("..")) == "..|1" & ///
+    _sl_E("navy*.5%50 " + _sl_q("hsv 240 1 1")) == "navy*.5%50|0;hsv 240 1 1|1" & ///
+    cols(_dash_stylelist_elems("  ")) == 0 & ///
+    _sl_E(_sl_q(" ") + " blue") == " |1;blue|0"))
+_sl_tally SL-02 `ok' "_dash_stylelist_elems splits as twoway reads a stylelist"
+
+// SL-03 .. SL-07 pick
+mata: st_local("ok", strofreal( ///
+    _dash_stylelist_pick("red blue", 1) == "red" & _dash_stylelist_pick("red blue", 2) == "blue" & ///
+    _dash_stylelist_pick("red blue", 3) == "" & _dash_stylelist_pick("red", 2) == "" & ///
+    _dash_stylelist_pick("red blue green", 2) == "blue" & _dash_stylelist_pick(_sl_q(""), 1) == ""))
+_sl_tally SL-03 `ok' "pick: plain elements, padding and extras"
+mata: st_local("ok", strofreal( ///
+    _dash_stylelist_pick(". blue", 1) == "" & _dash_stylelist_pick(". blue", 2) == "blue" & ///
+    _dash_stylelist_pick("red = blue", 2) == "red" & _dash_stylelist_pick("red = blue", 3) == "blue" & ///
+    _dash_stylelist_pick("= blue", 1) == "" & _dash_stylelist_pick("red . =", 3) == "" & ///
+    _dash_stylelist_pick("red = =", 3) == "red"))
+_sl_tally SL-04 `ok' "pick: . and ="
+mata: st_local("ok", strofreal( ///
+    _dash_stylelist_pick("red ..", 5) == "red" & _dash_stylelist_pick("red ...", 2) == "red" & ///
+    _dash_stylelist_pick("red..", 3) == "red" & _dash_stylelist_pick(". ..", 3) == "" & ///
+    _dash_stylelist_pick("..", 2) == "" & _dash_stylelist_pick("red....", 2) == "red."))
+_sl_tally SL-05 `ok' "pick: .. and ... repeat to the last y"
+mata: st_local("ok", strofreal( ///
+    _dash_stylelist_pick(_sl_q("255 0 0") + " " + _sl_q("0 0 255"), 2) == "0 0 255" & ///
+    _dash_stylelist_pick(_sl_cq("red") + " blue", 1) == "red" & ///
+    _dash_stylelist_pick(_sl_q(".") + " blue", 1) == "." & ///
+    _dash_stylelist_pick(_sl_q("") + " blue", 1) == "" & ///
+    _dash_stylelist_pick(_sl_q(" ") + " blue", 1) == " " & ///
+    _dash_stylelist_pick(_sl_q("..") + " blue", 1) == ".."))
+_sl_tally SL-06 `ok' "pick: quoted elements"
+mata: st_local("ok", strofreal( ///
+    _dash_stylelist_pick("255 0 0", 1) == "255" & _dash_stylelist_pick("255 0 0", 2) == "0" & ///
+    _dash_stylelist_pick("255,0,0", 1) == "255,0,0" & ///
+    _dash_stylelist_pick("navy*.5%50 red", 1) == "navy*.5%50"))
+_sl_tally SL-07 `ok' "pick: whole forms"
+
+// SL-08 misplaced ..
+mata: st_local("ok", strofreal( ///
+    _dash_stylelist_bad("red .. blue") == 1 & _dash_stylelist_bad("red ... blue") == 1 & ///
+    _dash_stylelist_bad("red.. ..") == 1 & _dash_stylelist_bad(".. red") == 1 & ///
+    _dash_stylelist_bad("red .. ..") == 1 & _dash_stylelist_bad("red ..") == 0 & ///
+    _dash_stylelist_bad("red..") == 0 & _dash_stylelist_bad("..") == 0 & ///
+    _dash_stylelist_bad("red " + _sl_q("...") + " blue") == 0 & _dash_stylelist_bad("red") == 0))
+_sl_tally SL-08 `ok' "_dash_stylelist_bad finds a .. that is not last"
+
+// SL-09 norm
+mata: st_local("ok", strofreal( ///
+    _dash_stylelist_norm(_sl_q("")) == "" & _dash_stylelist_norm(_sl_q("") + " " + _sl_q("")) == "" & ///
+    _dash_stylelist_norm(_sl_cq("")) == "" & _dash_stylelist_norm("   ") == "" & ///
+    _dash_stylelist_norm(_sl_q(" ")) == _sl_q(" ") & ///
+    _dash_stylelist_norm(_sl_q(" ") + " blue") == _sl_q(" ") + " blue" & ///
+    _dash_stylelist_norm(_sl_q("") + " blue") == _sl_q("") + " blue" & ///
+    _dash_stylelist_norm("red") == "red" & _dash_stylelist_norm(".") == "."))
+_sl_tally SL-09 `ok' "_dash_stylelist_norm empties only empty quotes"
+
+// SL-10 probe
+mata: st_local("ok", strofreal( ///
+    _dash_stylelist_probe("mcolor(" + _sl_q("") + ")") == "mcolor(x)" & ///
+    _dash_stylelist_probe("mc()") == "mc(x)" & _dash_stylelist_probe("mcolor(red)") == "" & ///
+    _dash_stylelist_probe("mcolor(" + _sl_q(" ") + ")") == "" & ///
+    _dash_stylelist_probe("mcolor") == "" & _dash_stylelist_probe(")(") == ""))
+_sl_tally SL-10 `ok' "_dash_stylelist_probe re-keys an empty copy"
+
+// SL-11 by value, and linear
+mata: st_local("ok", strofreal( ///
+    _dash_stylelist_pick(char(36) + "G " + char(96) + "x", 1) == char(36) + "G" & ///
+    _dash_stylelist_pick(char(36) + "G " + char(96) + "x", 2) == char(96) + "x"))
+timer clear 99
+timer on 99
+mata: _sl_big = (20000 * "red ")
+mata: st_local("ok2", strofreal(_dash_stylelist_pick(_sl_big, 20000) == "red" & _dash_stylelist_pick(_sl_big, 20001) == ""))
+timer off 99
+quietly timer list 99
+local ok = (`ok' & `ok2' & r(t99) < 5)
+_sl_tally SL-11 `ok' "elements read by value; 20,000 elements in under 5 seconds"
+
+// SL-12 T01
+capture noisily dash scatter mpg turn weight, mcolor(red blue) msymbol(O T) name(sl12)
+mata: st_local("ok", strofreal(_sl_spec("sl12", "{'mcolor':'red','msymbol':'O'}|{'mcolor':'blue','msymbol':'T'}")))
+_sl_tally SL-12 `ok' "each y takes its own element"
+
+// SL-13 padding and extras
+capture noisily dash scatter mpg turn weight, mcolor(red) name(sl13a)
+capture noisily dash line mpg turn weight, lwidth(thick) name(sl13b)
+capture noisily dash scatter mpg turn trunk weight, mcolor(red blue) name(sl13c)
+capture noisily dash scatter mpg turn weight, mcolor(red blue green) name(sl13d)
+mata: st_local("ok", strofreal(_sl_spec("sl13a", "{'mcolor':'red'}|{}") & ///
+    _sl_spec("sl13b", "{'lwidth':'thick'}|{}") & ///
+    _sl_spec("sl13c", "{'mcolor':'red'}|{'mcolor':'blue'}|{}") & ///
+    _sl_spec("sl13d", "{'mcolor':'red'}|{'mcolor':'blue'}")))
+_sl_tally SL-13 `ok' "a short list is padded with ., extras are ignored"
+
+// SL-14 shorthands
+capture noisily dash scatter mpg turn weight, mcolor(. blue) name(sl14a)
+capture noisily dash scatter mpg turn trunk weight, mcolor(red = blue) name(sl14b)
+capture noisily dash scatter mpg turn trunk weight, mcolor(red ..) name(sl14c)
+capture noisily dash scatter mpg turn trunk weight, mcolor(red ...) name(sl14d)
+capture noisily dash scatter mpg turn weight, mcolor(= blue) name(sl14e)
+capture noisily dash scatter mpg turn trunk weight, mcolor(red..) name(sl14f)
+capture noisily dash scatter mpg turn trunk weight, mcolor(red . =) name(sl14g)
+mata: st_local("ok", strofreal(_sl_spec("sl14a", "{}|{'mcolor':'blue'}") & ///
+    _sl_spec("sl14b", "{'mcolor':'red'}|{'mcolor':'red'}|{'mcolor':'blue'}") & ///
+    _sl_spec("sl14c", "{'mcolor':'red'}|{'mcolor':'red'}|{'mcolor':'red'}") & ///
+    _sl_spec("sl14d", "{'mcolor':'red'}|{'mcolor':'red'}|{'mcolor':'red'}") & ///
+    _sl_spec("sl14e", "{}|{'mcolor':'blue'}") & ///
+    _sl_spec("sl14f", "{'mcolor':'red'}|{'mcolor':'red'}|{'mcolor':'red'}") & ///
+    _sl_spec("sl14g", "{'mcolor':'red'}|{}|{}")))
+_sl_tally SL-14 `ok' "., =, .. and ... as twoway reads them"
+
+// SL-15 quoted elements
+capture noisily dash scatter mpg turn weight, mcolor("255 0 0" "0 0 255") name(sl15a)
+capture noisily dash scatter mpg turn weight, mcolor(navy*.5%50 "hsv 240 1 1") name(sl15b)
+capture noisily dash scatter mpg turn weight, mcolor("" blue) name(sl15c)
+mata: st_local("ok", strofreal(_sl_spec("sl15a", "{'mcolor':'255 0 0'}|{'mcolor':'0 0 255'}") & ///
+    _sl_spec("sl15b", "{'mcolor':'navy*.5%50'}|{'mcolor':'hsv 240 1 1'}") & ///
+    _sl_spec("sl15c", "{}|{'mcolor':'blue'}")))
+_sl_tally SL-15 `ok' "a quoted element is one element"
+
+// SL-16 single y takes the first element
+capture noisily dash scatter mpg weight, mcolor(red blue) name(sl16a)
+capture noisily dash lfit mpg weight, lcolor(red blue) name(sl16b)
+capture noisily dash area mpg weight, sort color(red blue) name(sl16c)
+capture noisily dash rcap mpg turn weight, lcolor(red blue) name(sl16d)
+capture noisily dash lfitci mpg weight, acolor(red blue) name(sl16e)
+capture noisily dash histogram mpg, color(red blue) name(sl16f)
+capture noisily dash scatteri 20 3000 25 4000, mcolor(red blue) name(sl16g)
+capture noisily dash function y=x, range(0 1) lcolor(red blue) name(sl16h)
+local ok 1
+foreach g in a b c d e f g h {
+    mata: st_local("_s", st_global("dash_json_sl16`g'"))
+    mata: st_local("_o", strofreal(strpos(st_local("_s"), "red") > 0 & !strpos(st_local("_s"), "blue")))
+    if !`_o' {
+        display as error "SL-16`g': " `"`macval(_s)'"'
+        local ok 0
+    }
+}
+mata: st_local("_o", strofreal(strpos(st_global("dash_json_sl16e"), char(34) + "acolor" + char(34) + ":" + char(34) + "red" + char(34)) > 0))
+local ok = `ok' & `_o'
+_sl_tally SL-16 `ok' "a single-y type takes the first element"
+
+// SL-17 unquoted RGB is three elements
+capture noisily dash scatter mpg turn weight, mcolor(255 0 0) name(sl17a)
+capture noisily dash scatter mpg weight, mcolor(255 0 0) name(sl17b)
+mata: st_local("ok", strofreal(_sl_spec("sl17a", "{'mcolor':'255'}|{'mcolor':'0'}") & ///
+    _sl_spec("sl17b", "{'mcolor':'255'}")))
+_sl_tally SL-17 `ok' "an unquoted RGB is three elements"
+
+// SL-18 a misplaced .. in twoway's words
+local ok 1
+local _i 0
+foreach c in `"scatter mpg turn weight, mcolor(red .. blue)"' `"scatter mpg turn weight, mc(red .. blue)"' ///
+    `"scatter mpg weight, mcolor(red .. blue)"' `"scatter mpg turn weight, msymbol(O .. T)"' ///
+    `"scatter mpg turn weight, mcolor(red.. ..)"' `"scatter mpg turn weight, mcolor("red" .. "blue")"' ///
+    `"scatter mpg turn weight, mcolor(red ..) mcolor(blue .. green)"' {
+    local ++_i
+    local e`_i' : copy local c
+}
+local x1 `"mcolor(red .. blue):  invalid syntax"'
+local x2 : copy local x1
+local x3 : copy local x1
+local x4 `"msymbol(O .. T):  invalid syntax"'
+local x5 `"mcolor(red.. ..):  invalid syntax"'
+local x6 `"mcolor("red" .. "blue"):  invalid syntax"'
+local x7 `"mcolor(blue .. green):  invalid syntax"'
+forvalues i = 1/7 {
+    _sl_run dash `macval(e`i')' name(sl18_`i'), log(`sl_log')
+    mata: st_local("_o", strofreal(st_global("sl_line") == st_local("x`i'")))
+    if $sl_rc != 198 | !`_o' {
+        display as error `"SL-18.`i': rc $sl_rc, line: $sl_line"'
+        local ok 0
+    }
+}
+capture noisily dash scatter mpg turn weight, mcolor(red .. blue) mcolor(green) name(sl18g)
+if _rc local ok 0
+_sl_tally SL-18 `ok' "a misplaced .. is refused in twoway's words"
+
+// SL-19 used elements are held to the rule
+local ok 1
+_sl_run dash line mpg turn weight, lwidth(thick 20000) name(sl19a), log(`sl_log')
+mata: st_local("_o", strofreal(st_global("sl_line") == "dash: lwidth() must be a name or a number between 0 and 10000 (got: 20000)"))
+if $sl_rc != 198 | !`_o' local ok 0
+capture noisily dash line mpg weight, lwidth(thick 20000) name(sl19b)
+if _rc local ok 0
+mata: st_local("_o", strofreal(_sl_spec("sl19b", "{'lwidth':'thick'}")))
+if !`_o' local ok 0
+capture noisily dash scatter mpg turn weight, msangle(0 500) name(sl19c)
+if _rc != 198 local ok 0
+capture noisily dash scatter mpg weight, msangle(0 500) name(sl19d)
+if _rc local ok 0
+capture noisily dash scatter mpg turn weight, msize(small 1e400) name(sl19e)
+if _rc != 198 local ok 0
+_sl_tally SL-19 `ok' "an element a y uses is held to the option's rule"
+
+// SL-20 repeats
+_sl_run dash scatter mpg turn weight, mcolor(red) mcolor("") name(sl20a), log(`sl_log')
+local ok = ($sl_rc == 0)
+mata: st_local("_o", strofreal(_sl_log_has(st_local("sl_log"), "ignoring unsupported")))
+local ok = `ok' & !`_o'
+capture noisily dash scatter mpg turn weight, mcolor(red) mcolor(blue green) name(sl20b)
+capture noisily dash scatter mpg turn weight, mcolor(red blue) mcolor(green) name(sl20c)
+mata: st_local("_o", strofreal(_sl_spec("sl20a", "{}|{}") & ///
+    _sl_spec("sl20b", "{'mcolor':'blue'}|{'mcolor':'green'}") & ///
+    _sl_spec("sl20c", "{'mcolor':'green'}|{}")))
+local ok = `ok' & `_o'
+_sl_tally SL-20 `ok' "the rightmost copy is read whole; an empty one is the default"
+
+// SL-21 guards
+local ok 1
+capture noisily dash scatter mpg turn weight, mcolor("") name(sl21a)
+mata: st_local("_o", strofreal(_sl_spec("sl21a", "{}|{}")))
+if !`_o' local ok 0
+_sl_run dash scatter mpg turn weight, acolor("") name(sl21b), log(`sl_log')
+mata: st_local("_o", strofreal(_sl_log_has(st_local("sl_log"), "acolor")))
+if $sl_rc | `_o' local ok 0
+capture noisily dash line mpg weight, lwidth(()) name(sl21c)
+mata: st_local("_o", strofreal(strpos(st_global("dash_json_sl21c"), char(34) + "lwidth" + char(34) + ":" + char(34) + "()" + char(34)) > 0))
+if !`_o' local ok 0
+capture noisily dash scatter mpg weight, mcolor(255,0,0) name(sl21d)
+mata: st_local("_o", strofreal(_sl_spec("sl21d", "{'mcolor':'255,0,0'}")))
+if !`_o' local ok 0
+capture noisily dash scatter mpg weight, mcolor("\$G") name(sl21e)
+// The $ is kept literally and written as JSON's \u0024 (JSE-69).
+mata: st_local("_o", strofreal(_sl_spec("sl21e", "{'mcolor':'" + char(92) + "u0024G'}")))
+if !`_o' local ok 0
+capture noisily dash scatter mpg weight, mcolor(navy) name(sl21f)
+mata: st_local("_o", strofreal(_sl_spec("sl21f", "{'mcolor':'navy'}")))
+if !`_o' local ok 0
+_sl_tally SL-21 `ok' "guards: empty quotes, (), commas, \$ and one value as before"
+
+// SL-22 one value on every y for the options twoway does not list
+capture noisily dash scatter mpg turn weight, malpha(50) recast(line) yaxis(2) sort name(sl22)
+mata: st_local("ok", strofreal(_sl_opts(st_global("dash_json_sl22"), 1) == _sl_opts(st_global("dash_json_sl22"), 2) & ///
+    strpos(_sl_opts(st_global("dash_json_sl22"), 1), "malpha") & strpos(_sl_opts(st_global("dash_json_sl22"), 1), "recast") & ///
+    strpos(_sl_opts(st_global("dash_json_sl22"), 1), "yaxis") & strpos(_sl_opts(st_global("dash_json_sl22"), 1), "sort")))
+_sl_tally SL-22 `ok' "malpha, recast, yaxis and sort stay one value on every y"
+
+// SL-23 by() and numbering
+capture noisily dash scatter mpg turn weight, mcolor(red blue) by(foreign) name(sl23a)
+capture noisily dash (scatter mpg turn weight, mcolor(red blue)) (scatter price weight), name(sl23b)
+mata: st_local("ok", strofreal(_sl_spec("sl23a", "{'mcolor':'red'}|{'mcolor':'blue'}") & ///
+    _sl_spec("sl23b", "{'mcolor':'red'}|{'mcolor':'blue'}|{}")))
+_sl_tally SL-23 `ok' "by() and a second segment keep each series' element"
+
+// SL-24 a used blank quoted element is refused (Q-11.1, ratified 06oct2026)
+local ok 1
+local b1 `"scatter mpg turn weight, mcolor(" " blue)"'
+local y1 `"dash: mcolor() element 1 is blank; use . for the default (got: " " blue)"'
+local b2 `"scatter mpg turn trunk weight, mcolor(red " " blue)"'
+local y2 `"dash: mcolor() element 2 is blank; use . for the default (got: red " " blue)"'
+local b3 `"scatter mpg turn weight, mcolor(`" "' blue)"'
+local y3 `"dash: mcolor() element 1 is blank; use . for the default (got: `" "' blue)"'
+local b4 `"scatter mpg turn trunk weight, mcolor(red "   " blue)"'
+local y4 `"dash: mcolor() element 2 is blank; use . for the default (got: red "   " blue)"'
+local b5 `"scatter mpg turn weight, msymbol("   " T)"'
+local y5 `"dash: msymbol() element 1 is blank; use . for the default (got: "   " T)"'
+local b6 `"scatter mpg turn weight, mc(red " ")"'
+local y6 `"dash: mcolor() element 2 is blank; use . for the default (got: red " ")"'
+local b7 `"scatter mpg weight, mcolor(" ")"'
+local y7 `"dash: mcolor() element 1 is blank; use . for the default (got: " ")"'
+local b8 `"scatter mpg turn weight, mcolor(" " .. blue)"'
+local y8 `"mcolor(" " .. blue):  invalid syntax"'
+forvalues i = 1/8 {
+    _sl_run dash `macval(b`i')' name(sl24_`i'), log(`sl_log')
+    mata: st_local("_o", strofreal(st_global("sl_line") == st_local("y`i'") & st_global("dash_json_sl24_`i'") == ""))
+    if $sl_rc != 198 | !`_o' {
+        display as error `"SL-24.`i': rc $sl_rc, line: $sl_line"'
+        local ok 0
+    }
+}
+capture noisily dash scatter mpg weight, mcolor(red " ") name(sl24i)
+if _rc local ok 0
+capture noisily dash scatter mpg turn weight, mcolor(red blue " ") name(sl24j)
+if _rc local ok 0
+capture noisily dash scatter mpg turn weight, mcolor("") name(sl24k)
+if _rc local ok 0
+capture noisily dash scatter mpg turn weight, mcolor("" blue) name(sl24l)
+if _rc local ok 0
+capture noisily dash scatter mpg turn weight, mcolor(red `""') name(sl24m)
+if _rc local ok 0
+mata: st_local("_o", strofreal(_sl_spec("sl24i", "{'mcolor':'red'}") & ///
+    _sl_spec("sl24j", "{'mcolor':'red'}|{'mcolor':'blue'}") & _sl_spec("sl24k", "{}|{}") & ///
+    _sl_spec("sl24l", "{}|{'mcolor':'blue'}") & _sl_spec("sl24m", "{'mcolor':'red'}|{}")))
+local ok = `ok' & `_o'
+_sl_tally SL-24 `ok' "a used blank quoted element is refused; unused and empty ones are not"
+
+// SL-25 _dash_stylelist_blank
+mata: st_local("ok", strofreal( ///
+    _dash_stylelist_blank(_sl_q(" ") + " blue", 2) == 1 & ///
+    _dash_stylelist_blank("red " + _sl_q(" ") + " blue", 3) == 2 & ///
+    _dash_stylelist_blank(_sl_cq(" ") + " blue", 2) == 1 & ///
+    _dash_stylelist_blank(_sl_q("   ") + " T", 2) == 1 & ///
+    _dash_stylelist_blank("red " + _sl_q(" "), 1) == 0 & ///
+    _dash_stylelist_blank("red " + _sl_q(" "), 2) == 2 & ///
+    _dash_stylelist_blank("red blue " + _sl_q(" "), 2) == 0 & ///
+    _dash_stylelist_blank(_sl_q(" ") + " blue", 0) == 1 & ///
+    _dash_stylelist_blank(_sl_q(" ") + " blue", .) == 1 & ///
+    _dash_stylelist_blank(_sl_q("") + " blue", 2) == 0 & ///
+    _dash_stylelist_blank("red " + _sl_cq(""), 2) == 0 & ///
+    _dash_stylelist_blank("red blue", 2) == 0 & ///
+    _dash_stylelist_blank(_sl_q(".") + " blue", 2) == 0 & ///
+    _dash_stylelist_blank(_sl_q("..") + " blue", 2) == 0 & ///
+    _dash_stylelist_blank(_sl_q("hsv 240 1 1") + " red", 2) == 0 & ///
+    _dash_stylelist_blank("", 2) == 0 & ///
+    _dash_stylelist_blank(char(36) + "G " + _sl_q(" "), 2) == 2 & ///
+    _sl_E(char(36) + "G " + _sl_q(" ")) == char(36) + "G|0; |1"))
+_sl_tally SL-25 `ok' "_dash_stylelist_blank finds a used blank element only"
+dash clear
+local nfail = `nfail' + ${sl_nfail}
+local faillist `"`faillist'${sl_faillist}"'
 
 // ----------------------------------------------------------------
 // Summary

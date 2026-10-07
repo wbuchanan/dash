@@ -316,6 +316,9 @@ COVERAGE = {
         # WP-30 S10 (P1.19): Sub-option abbreviations (P1.19)
         "_dash_subopt_check": ("test_suboption_reporting.cscript:SA-05",),
         # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)
+        "_dash_stylelist_check": ("test_varlist_expansion.cscript:SL-18",
+                                  "test_varlist_expansion.cscript:SL-19",
+                                  "test_varlist_expansion.cscript:SL-24"),
         # WP-30 S12 (P1.27): Drop-in command form and saving() grammar (P1.27, M5/M11)
         # WP-30 S13 (P1.12b): Stata line-width ladder (P1.12 part b, M1)
         # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
@@ -710,6 +713,13 @@ COVERAGE = {
         "_dash_subreq_label": ("test_suboption_reporting.cscript:SA-05",),
         "_dash_subreq_toks": ("test_suboption_reporting.cscript:SA-05",),
         # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)
+        "_dash_stylelist_bad": ("test_varlist_expansion.cscript:SL-08",),
+        "_dash_stylelist_blank": ("test_varlist_expansion.cscript:SL-25",),
+        "_dash_stylelist_elems": ("test_varlist_expansion.cscript:SL-02",),
+        "_dash_stylelist_keys": ("test_varlist_expansion.cscript:SL-01",),
+        "_dash_stylelist_norm": ("test_varlist_expansion.cscript:SL-09",),
+        "_dash_stylelist_pick": ("test_varlist_expansion.cscript:SL-03",),
+        "_dash_stylelist_probe": ("test_varlist_expansion.cscript:SL-10",),
         # WP-30 S12 (P1.27): Drop-in command form and saving() grammar (P1.27, M5/M11)
         # WP-30 S13 (P1.12b): Stata line-width ladder (P1.12 part b, M1)
         # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)

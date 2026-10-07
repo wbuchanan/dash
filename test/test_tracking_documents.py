@@ -1548,7 +1548,6 @@ class TestWp29Tracking:
 #: on a key whose entry is missing, closed or not in the WP-30 open form, so
 #: the allowance cannot outlive its reason.  The closeout (S58.1) leaves it {}.
 WP30_OPEN = {
-    "P1.1a": "A style list over several y variables, such as mcolor(red blue), is given whole to every series and refused, where twoway gives each series its own element",
     "P1.1b": "Per-series value lists such as mlabel(make rep78), jitter(2 3), base(10 20) and barwidth(1 2) are refused r(198), where twoway applies them series by series",
     "P1.2a": "The default chrome differs from every scheme: a bold left-aligned title, italic axis titles, Bokeh's minor ticks and tick geometry, and the schemes' tick angles, grid patterns, tick colours and economist axes missing",
     "P1.2b": "Markers are drawn at alpha 0.8, and fintensity() and the schemes' bar and area intensities are applied as transparency, where Stata blends them opaquely",

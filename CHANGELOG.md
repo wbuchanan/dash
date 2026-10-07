@@ -314,7 +314,7 @@ and now matches Stata.
 
 **WP-30 (drop-in P1, 03oct2026)**
 
-<!-- WP-30 P1.1a -->
+- `dash scatter mpg turn weight, mcolor(red blue) msymbol(O T)` now draws mpg in red circles and turn in blue triangles, as twoway's stylelists do. Each series used to get the whole list, so both fell back to the scheme's colour and symbol with "not a recognised colour" notes. A lone value or a short list over several y now styles only the leading y, silently, as in twoway: `dash line mpg turn weight, lwidth(thick)` thickened both lines and now thickens mpg's alone. `.`, `=`, `..` and `...` mean what they mean in twoway, and a quoted element is one element. A plot type that draws one y uses the first element: `dash scatter mpg weight, mcolor(red blue)` drew the scheme's colour with a note and now draws red. An unquoted `mcolor(255 0 0)` is now three colours, as twoway reads it: it drew red, and now draws the series with the unknown colour 255 and a note; write `mcolor("255 0 0")`. (WP-30, P1.1a)
 
 <!-- WP-30 P1.2a -->
 
@@ -706,7 +706,7 @@ and now matches Stata.
   anywhere, the server is no longer stopped: the link is printed once, after
   a warning line, and the dashboard keeps serving. (WP-29, P0.12a)
 
-<!-- WP-30 P1.1a -->
+- A `..` or `...` anywhere but at the end of a style list is refused as twoway refuses it: `dash scatter mpg turn weight, mcolor(red .. blue)` was drawn with a note and is now `mcolor(red .. blue):  invalid syntax`, r(198). An element of a style list that a y uses is held to the option's bounds as one value is: `dash line mpg turn weight, lwidth(thick 20000)` was drawn and is now refused, r(198), as twoway refuses it. A quoted element of a style list that holds only blanks and that a y uses is refused: `dash scatter mpg turn weight, mcolor(" " blue)` was drawn and is now `dash: mcolor() element 1 is blank; use . for the default (got: " " blue)`, r(198); write `.` for the default. (WP-30, P1.1a)
 
 <!-- WP-30 P1.1b -->
 
