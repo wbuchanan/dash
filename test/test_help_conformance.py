@@ -970,5 +970,5 @@ class TestInternalLinksResolve:
         # 75 -> 77, 29 -> 30: WP-30 P1.29 the saving() and server entries
         # link the new "Characters in saving()" paragraph (saving_chars).
         refs = re.findall(r"dash##[a-z_0-9]+", _help_text())
-        # 77 -> 78: WP-30 batch 4 (P1.19, P1.27) added one more internal link.
-        assert len(refs) == 78 and len(set(refs)) == 30
+        # 77 -> 78 links, 30 -> 31 markers: WP-30 batch 4 (P1.19, P1.27).
+        assert len(refs) == 78 and len(set(refs)) == 31
