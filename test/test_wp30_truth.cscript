@@ -2224,70 +2224,206 @@ if inlist("`only'", "", "S11") {
 }
 * ==== end S11 ====
 
+// S12 helpers (WP-30 P1.27).  _s12_load: twoway's measured answers,
+// read from test/fixtures/twoway_command_form_truth.json (and S04's
+// saving_chars_truth.json) into the caller's locals through sfi; nothing
+// is inlined into Python source.  _s12_said: the error dash's grammar
+// prints for a saving() text, by value.
+capture program drop _s12_said
+program define _s12_said
+    version 19
+    args text
+    mata: st_local("_e", _dash_saving_split(st_local("text"))[5])
+    c_local s12_said `"`macval(_e)'"'
+end
+python:
+def _s12_load():
+    import json, os
+    from sfi import Macro
+    def put(k, v):
+        Macro.setLocal(k, str(v).replace("\\x60", "\x60"))
+    with open(os.path.join("fixtures", "twoway_command_form_truth.json"),
+              encoding="utf-8") as fh:
+        d = json.load(fh)
+    m = d["_meta"]
+    put("s12_meta_ok", int(all(k in m for k in ("stata_version", "born_date",
+                                                  "dash_commit", "extracted"))))
+    put("s12_mode", m.get("mode", ""))
+    put("s12_np", len(d["prefix"]))
+    for i, r in enumerate(d["prefix"], 1):
+        put("s12_ph%d" % i, r["head"])
+        put("s12_prc%d" % i, r["rc"])
+        put("s12_plast%d" % i, r["last"])
+    put("s12_ns", len(d["saving"]))
+    for i, r in enumerate(d["saving"], 1):
+        put("s12_st%d" % i, r["text"])
+        put("s12_src%d" % i, r["rc"])
+        put("s12_slast%d" % i, r["last"])
+        fl = [f[:-4] + ".html" if f.lower().endswith(".gph") else f
+              for f in r["files"]]
+        put("s12_snf%d" % i, len(fl))
+        for k, f in enumerate(fl, 1):
+            put("s12_sf%d_%d" % (i, k), f)
+    with open(os.path.join("fixtures", "saving_chars_truth.json"),
+              encoding="utf-8") as fh:
+        c = json.load(fh)["probes"]
+    keys = [k for k in ("semi", "amp", "pipe", "lt", "gt", "dotdot")
+            if k in c and c[k]["rc"] == 0 and c[k]["written"]]
+    put("s12_nc", len(keys))
+    for i, k in enumerate(keys, 1):
+        f = c[k]["file"]
+        put("s12_cf%d" % i, f[:-4] + ".html" if f.endswith(".gph") else f)
+
+_s12_ready = True
+end
+
 * ==== S12 P1.27: Drop-in command form and saving() grammar ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S12") {
     display as text "S12 start " c(current_date) " " c(current_time)
-    // twoway's answers, measured on StataNow 19.5 in batch (WP-30 P1.27,
-    // section E11): every head below gives rc 0 in twoway.
+    // twoway's answers come from the fixture (scripts/
+    // extract_twoway_command_form_truth.do), measured in batch.
+    python: import __main__; __main__._s12_load()
     qui sysuse auto, clear
     quietly dash clear
+
+    // CF-08 (guard) -- the fixture is stamped and was measured in batch.
+    _w30_expect "CF-08" `s12_meta_ok' "the fixture's _meta lacks a stamp key"
+    local _ok = ("`s12_mode'" == "batch")
+    _w30_expect "CF-08" `_ok' "the fixture was not measured in batch"
+    _w30_done "CF-08" "the fixture's _meta is whole and was measured in batch"
+
+    // CF-01 -- every head twoway takes (rc 0) draws the unprefixed graph.
+    // "Graph twoway" is skipped: rc 0 only because macOS's file system
+    // finds graph.ado under Graph; dash refuses a capitalised prefix r(199),
+    // as Stata does on a case-sensitive file system.
     quietly dash scatter mpg weight, name(cf0)
-    local cfi = 0
-    foreach h in "twoway" "tw" "two" "graph twoway" "gr tw" "graph tw" "gr twoway" "gr two" "gr twow" "gr twowa" {
-        local ++cfi
-        quietly dash `h' scatter mpg weight, name(cf`cfi')
-        mata: st_local("_cfa", subinstr(st_global("dash_json_cf0"), char(34) + "cf0" + char(34), char(34) + "cf`cfi'" + char(34)))
-        mata: assert(st_local("_cfa") == st_global("dash_json_cf`cfi'"))
+    local cfn = 0
+    forvalues i = 1/`s12_np' {
+        local h `"`s12_ph`i''"'
+        if `"`h'"' == "" | `"`h'"' == "Graph twoway" | `s12_prc`i'' != 0 continue
+        local ++cfn
+        capture noisily dash `h' scatter mpg weight, name(cf`cfn')
+        _w30_expect "CF-01" `=_rc == 0' `"dash `h' scatter mpg weight: rc `=_rc'"'
+        mata: st_local("_cfa", subinstr(st_global("dash_json_cf0"), char(34) + "cf0" + char(34), char(34) + "cf`cfn'" + char(34)))
+        mata: st_local("_cfe", strofreal(st_local("_cfa") == st_global("dash_json_cf`cfn'")))
+        _w30_expect "CF-01" `_cfe' `"dash `h' draws another graph than the unprefixed command"'
     }
+    _w30_expect "CF-01" `=`cfn' >= 10' "fewer than ten prefix heads in the fixture"
     local 0 "tw scatter mpg weight"
     mata: _dash_strip_prefix()
-    assert "`_pf_kind'" == "strip"
-    assert `"`0'"' == " scatter mpg weight"
+    local _ok = ("`_pf_kind'" == "strip")
+    _w30_expect "CF-01" `_ok' "_dash_strip_prefix did not strip tw"
     quietly dash twoway (scatter mpg weight) (lfit mpg weight), name(cfpa)
-    quietly dash (scatter mpg weight) (lfit mpg weight), name(cfpb)
     quietly dash twoway(scatter mpg weight), name(cfpc)
     quietly dash gr tw scatter mpg weight || lfit mpg weight, name(cfpd)
     _w30_done "CF-01" "every prefix twoway takes is read off once and draws the unprefixed graph"
 
-    // CF-02 -- the spellings Stata refuses, r(199), in its words.
-    foreach h in twow twowa gra grap TWOWAY Twoway {
-        local _cfh = cond("`h'" == "gra", "gra two", cond("`h'" == "grap", "grap tw", "`h'"))
-        capture dash `_cfh' scatter mpg weight
-        assert _rc == 199
-    }
-    capture noisily dash twow scatter mpg weight
-    assert _rc == 199
-    _w30_done "CF-02" "twow, twowa, gra, grap and capitalised prefixes are refused r(199)"
-
-    // CF-03 -- a second prefix word, r(198), "<word> is not a twoway plot type".
-    foreach h in "two two" "tw twoway" "twoway tw" "twoway twoway" "graph twoway twoway" "twoway graph" "gr tw tw" {
+    // CF-02 -- every head twoway refuses r(199): dash r(199), in Stata's
+    // words (for TWOWAY, Twoway and GR, the words of a case-sensitive file
+    // system: "command TWOWAY is unrecognized").
+    forvalues i = 1/`s12_np' {
+        if `s12_prc`i'' != 199 continue
+        local h `"`s12_ph`i''"'
         capture dash `h' scatter mpg weight
-        assert _rc == 198
+        _w30_expect "CF-02" `=_rc == 199' `"dash `h': rc `=_rc', want 199"'
+        local 0 `"`h' scatter mpg weight"'
+        mata: _dash_strip_prefix()
+        local _w : word 1 of `h'
+        local _want `"`s12_plast`i''"'
+        if strlower("`_w'") != "`_w'" local _want "command `_w' is unrecognized"
+        mata: st_local("_ok", strofreal("command " + st_local("_pf_word") + " is unrecognized" == st_local("_want")))
+        _w30_expect "CF-02" `_ok' `"dash `h' says another message than `_want'"'
     }
-    local 0 "two two scatter mpg weight"
-    mata: _dash_strip_prefix()
-    assert "`_pf_kind'" == "twice" & "`_pf_word'" == "two"
+    _w30_done "CF-02" "every prefix Stata refuses is refused r(199) in its words"
+
+    // CF-03 -- every doubled prefix: r(198), twoway's words.
+    forvalues i = 1/`s12_np' {
+        if `s12_prc`i'' != 198 continue
+        local h `"`s12_ph`i''"'
+        capture dash `h' scatter mpg weight
+        _w30_expect "CF-03" `=_rc == 198' `"dash `h': rc `=_rc', want 198"'
+        local 0 `"`h' scatter mpg weight"'
+        mata: _dash_strip_prefix()
+        mata: st_local("_ok", strofreal(st_local("_pf_word") + " is not a twoway plot type" == st_local("s12_plast`i'")))
+        _w30_expect "CF-03" `_ok' `"dash `h' says another message than twoway"'
+    }
     _w30_done "CF-03" "a second prefix word is refused r(198) in twoway's words"
 
-    // CF-04 (guard) -- a prefix never makes a subcommand; graph <word> keeps dash's refusal.
+    // CF-04 (guard) -- a prefix never makes a subcommand.
     local _cfreg "${dash_graph_registry}"
     capture dash twoway build, saving(x.html)
-    assert _rc == 198
+    _w30_expect "CF-04" `=_rc == 198' "dash twoway build was not refused"
     capture dash tw kpi mean(mpg), name(k)
-    assert _rc == 198
+    _w30_expect "CF-04" `=_rc == 198' "dash tw kpi was not refused"
     capture dash two clear
-    assert _rc == 198
-    assert "${dash_graph_registry}" == "`_cfreg'"
+    _w30_expect "CF-04" `=_rc == 198' "dash two clear was not refused"
+    mata: st_local("_ok", strofreal(st_global("dash_graph_registry") == st_local("_cfreg")))
+    _w30_expect "CF-04" `_ok' "a prefixed subcommand changed the registry"
     capture dash graph scatter mpg weight
-    assert _rc == 198
+    _w30_expect "CF-04" `=_rc == 198' "dash graph scatter was not refused"
     _w30_done "CF-04" "a prefix never routes to a subcommand"
+    quietly dash clear
+
+    // CF-05 -- every saving() text: dash's one-line form, in an empty
+    // folder, as twoway: rc, words, and the files (.gph as .html).
+    local pwd5 "`c(pwd)'"
+    forvalues i = 1/`s12_ns' {
+        local d5 "`w30_work'/cf5_`i'"
+        mkdir "`d5'"
+        quietly cd "`d5'"
+        capture dash scatter mpg weight, saving(`s12_st`i'')
+        local rc5 = _rc
+        quietly cd "`pwd5'"
+        local t `"`s12_st`i''"'
+        local tw5 = `s12_src`i''
+        _w30_expect "CF-05" `=(`rc5' == 0) == (`tw5' == 0)' `"saving(`macval(t)'): dash rc `rc5', twoway rc `tw5'"'
+        if `tw5' != 0 {
+            _s12_said `"`macval(t)'"'
+            local _l5 `"`s12_slast`i''"'
+            mata: st_local("_ok", strofreal(st_local("s12_said") == st_local("_l5")))
+            _w30_expect "CF-05" `_ok' `"saving(`macval(t)'): dash says another message"'
+        }
+        local fl : dir "`d5'" files "*"
+        local nfl : word count `fl'
+        local nf5 = `s12_snf`i''
+        _w30_expect "CF-05" `=`nfl' == `nf5'' `"saving(`macval(t)'): dash wrote `nfl' files, twoway `nf5'"'
+        forvalues k = 1/`nf5' {
+            local f5 `"`s12_sf`i'_`k''"'
+            capture confirm file `"`d5'/`f5'"'
+            _w30_expect "CF-05" `=_rc == 0' `"saving(`macval(t)'): no `f5'"'
+        }
+        foreach f of local fl {
+            capture erase `"`d5'/`f'"'
+        }
+        capture rmdir "`d5'"
+    }
+    _w30_done "CF-05" "every saving() text of the fixture behaves as twoway's"
+
+    // CF-06 -- S04's path characters and .. segment twoway wrote.
+    local d6 "`w30_work'/cf6"
+    mkdir "`d6'"
+    mkdir "`d6'/sub"
+    forvalues i = 1/`s12_nc' {
+        local f6 `"`d6'/`s12_cf`i''"'
+        capture dash scatter mpg weight, saving(`"`f6'"')
+        _w30_expect "CF-06" `=_rc == 0' `"saving(`f6'): rc `=_rc'"'
+        capture confirm file `"`f6'"'
+        _w30_expect "CF-06" `=_rc == 0' `"`f6' not written"'
+        capture erase `"`f6'"'
+    }
+    _w30_expect "CF-06" `=`s12_nc' == 6' "the S04 fixture lacks one of ; & | < > .."
+    capture rmdir "`d6'/sub"
+    capture rmdir "`d6'"
+    _w30_done "CF-06" "dash writes every path character and .. segment twoway wrote"
 
     // CF-07 -- the saved one-line page of a prefixed command.
     local cf7 "`w30_work'/cf7.html"
     capture erase "`cf7'"
-    dash twoway scatter mpg weight, saving("`cf7'")
-    confirm file "`cf7'"
+    capture noisily dash twoway scatter mpg weight, saving("`cf7'")
+    _w30_expect "CF-07" `=_rc == 0' "dash twoway ..., saving() failed"
+    capture confirm file "`cf7'"
+    _w30_expect "CF-07" `=_rc == 0' "the page was not written"
     capture erase "`cf7'"
     _w30_done "CF-07" "dash twoway ..., saving() writes and announces the page"
     quietly dash clear

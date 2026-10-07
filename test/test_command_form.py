@@ -9,6 +9,7 @@ test_path_validation.cscript PV-35..44, test_serve_browser.cscript
 SB-31..38 and test_wp30_truth.cscript CF-01..07.
 """
 import glob
+import json
 import os
 import re
 
@@ -28,6 +29,45 @@ def _program_body(name):
     end = next(i for i in range(start + 1, len(lines))
                if lines[i].strip() == "end")
     return "\n".join(l.split("//", 1)[0] for l in lines[start:end])
+
+
+class TestTheCommandFormFixture:
+    """twoway's measured answers (test/fixtures/
+    twoway_command_form_truth.json, scripts/
+    extract_twoway_command_form_truth.do)."""
+
+    def _fx(self):
+        with open(os.path.join(_ROOT, "test", "fixtures",
+                               "twoway_command_form_truth.json"),
+                  encoding="utf-8") as fh:
+            return json.load(fh)
+
+    def test_the_meta_stamp_is_whole(self):
+        m = self._fx()["_meta"]
+        for k in ("stata_version", "born_date", "dash_commit", "extracted",
+                  "mode", "graphics", "os"):
+            assert m.get(k), k
+        assert m["mode"] == "batch"
+
+    def test_twoway_takes_the_prefixes_and_refuses_the_rest(self):
+        rc = {r["head"]: r["rc"] for r in self._fx()["prefix"] if r["head"]}
+        for h in ("twoway", "tw", "two", "graph twoway", "gr tw", "graph tw",
+                  "gr twoway", "gr two", "gr twow", "gr twowa"):
+            assert rc[h] == 0, h
+        for h in ("twow", "twowa", "gra two", "grap tw"):
+            assert rc[h] == 199, h
+        for h in ("two two", "tw twoway", "twoway tw", "twoway twoway",
+                  "gr tw tw"):
+            assert rc[h] == 198, h
+
+    def test_twoway_reads_saving_sub_options_as_full_words(self):
+        sv = {r["text"]: r for r in self._fx()["saving"]}
+        assert sv["n1, asis"]["rc"] == 0
+        assert sv["n1, replace asis"]["rc"] == 0
+        for t in ("n1, as", "n1, rep", "n1, REPLACE", "n1, bogus"):
+            assert sv[t]["rc"] == 198, t
+            assert sv[t]["last"] == "option %s not allowed" % t[4:], t
+        assert sv[", replace"]["files"] == ["Graph.gph"]
 
 
 class TestOneSavingGrammar:

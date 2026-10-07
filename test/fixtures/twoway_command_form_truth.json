@@ -1,0 +1,534 @@
+{
+ "_meta": {
+  "stata_version": "19.5",
+  "born_date": "12 Aug 2026",
+  "dash_commit": "6b744b8e3f74e547309136800ebf6c3726dccb27",
+  "extracted": " 7 Oct 2026 12:04:29",
+  "mode": "batch",
+  "graphics": "on",
+  "os": "Unix",
+  "source": "scripts/extract_twoway_command_form_truth.do",
+  "scope": "twoway's prefixes, saving() grammar and set graphics off, in batch (WP-30 P1.27)"
+ },
+ "prefix": [
+  {
+   "head": "",
+   "cmd": "scatter mpg weight, name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "twoway",
+   "cmd": "twoway scatter mpg weight, name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "tw",
+   "cmd": "tw scatter mpg weight, name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "two",
+   "cmd": "two scatter mpg weight, name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "graph twoway",
+   "cmd": "graph twoway scatter mpg weight, name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "gr tw",
+   "cmd": "gr tw scatter mpg weight, name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "graph tw",
+   "cmd": "graph tw scatter mpg weight, name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "gr twoway",
+   "cmd": "gr twoway scatter mpg weight, name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "gr two",
+   "cmd": "gr two scatter mpg weight, name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "gr twow",
+   "cmd": "gr twow scatter mpg weight, name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "gr twowa",
+   "cmd": "gr twowa scatter mpg weight, name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "twow",
+   "cmd": "twow scatter mpg weight, name(cfp, replace)",
+   "rc": 199,
+   "msg": "command twow is unrecognized",
+   "last": "command twow is unrecognized"
+  },
+  {
+   "head": "twowa",
+   "cmd": "twowa scatter mpg weight, name(cfp, replace)",
+   "rc": 199,
+   "msg": "command twowa is unrecognized",
+   "last": "command twowa is unrecognized"
+  },
+  {
+   "head": "gra two",
+   "cmd": "gra two scatter mpg weight, name(cfp, replace)",
+   "rc": 199,
+   "msg": "command gra is unrecognized",
+   "last": "command gra is unrecognized"
+  },
+  {
+   "head": "grap tw",
+   "cmd": "grap tw scatter mpg weight, name(cfp, replace)",
+   "rc": 199,
+   "msg": "command grap is unrecognized",
+   "last": "command grap is unrecognized"
+  },
+  {
+   "head": "TWOWAY",
+   "cmd": "TWOWAY scatter mpg weight, name(cfp, replace)",
+   "rc": 199,
+   "msg": "command TWOWAY not defined by TWOWAY.ado",
+   "last": "command TWOWAY not defined by TWOWAY.ado"
+  },
+  {
+   "head": "Twoway",
+   "cmd": "Twoway scatter mpg weight, name(cfp, replace)",
+   "rc": 199,
+   "msg": "command Twoway not defined by Twoway.ado",
+   "last": "command Twoway not defined by Twoway.ado"
+  },
+  {
+   "head": "Graph twoway",
+   "cmd": "Graph twoway scatter mpg weight, name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "GR tw",
+   "cmd": "GR tw scatter mpg weight, name(cfp, replace)",
+   "rc": 199,
+   "msg": "command GR not defined by GR.ado",
+   "last": "command GR not defined by GR.ado"
+  },
+  {
+   "head": "two two",
+   "cmd": "two two scatter mpg weight, name(cfp, replace)",
+   "rc": 198,
+   "msg": "two is not a twoway plot type",
+   "last": "two is not a twoway plot type"
+  },
+  {
+   "head": "tw twoway",
+   "cmd": "tw twoway scatter mpg weight, name(cfp, replace)",
+   "rc": 198,
+   "msg": "twoway is not a twoway plot type",
+   "last": "twoway is not a twoway plot type"
+  },
+  {
+   "head": "twoway tw",
+   "cmd": "twoway tw scatter mpg weight, name(cfp, replace)",
+   "rc": 198,
+   "msg": "tw is not a twoway plot type",
+   "last": "tw is not a twoway plot type"
+  },
+  {
+   "head": "twoway twoway",
+   "cmd": "twoway twoway scatter mpg weight, name(cfp, replace)",
+   "rc": 198,
+   "msg": "twoway is not a twoway plot type",
+   "last": "twoway is not a twoway plot type"
+  },
+  {
+   "head": "graph twoway twoway",
+   "cmd": "graph twoway twoway scatter mpg weight, name(cfp, replace)",
+   "rc": 198,
+   "msg": "twoway is not a twoway plot type",
+   "last": "twoway is not a twoway plot type"
+  },
+  {
+   "head": "twoway graph",
+   "cmd": "twoway graph scatter mpg weight, name(cfp, replace)",
+   "rc": 198,
+   "msg": "graph is not a twoway plot type",
+   "last": "graph is not a twoway plot type"
+  },
+  {
+   "head": "twoway twow",
+   "cmd": "twoway twow scatter mpg weight, name(cfp, replace)",
+   "rc": 198,
+   "msg": "twow is not a twoway plot type",
+   "last": "twow is not a twoway plot type"
+  },
+  {
+   "head": "twoway gra",
+   "cmd": "twoway gra scatter mpg weight, name(cfp, replace)",
+   "rc": 198,
+   "msg": "gra is not a twoway plot type",
+   "last": "gra is not a twoway plot type"
+  },
+  {
+   "head": "gr tw tw",
+   "cmd": "gr tw tw scatter mpg weight, name(cfp, replace)",
+   "rc": 198,
+   "msg": "tw is not a twoway plot type",
+   "last": "tw is not a twoway plot type"
+  },
+  {
+   "head": "gr TW",
+   "cmd": "gr TW scatter mpg weight, name(cfp, replace)",
+   "rc": 4023,
+   "msg": "TWgraph_g.new scatter mpg weight, name(cfp, replace): class member function not found",
+   "last": "TWgraph_g.new scatter mpg weight, name(cfp, replace): class member function not found"
+  },
+  {
+   "head": "graph",
+   "cmd": "graph scatter mpg weight, name(cfp, replace)",
+   "rc": 4023,
+   "msg": "scattergraph_g.new mpg weight, name(cfp, replace): class member function not found",
+   "last": "scattergraph_g.new mpg weight, name(cfp, replace): class member function not found"
+  },
+  {
+   "head": "g tw",
+   "cmd": "g tw scatter mpg weight, name(cfp, replace)",
+   "rc": 110,
+   "msg": "variable mpg already defined",
+   "last": "variable mpg already defined"
+  },
+  {
+   "head": "",
+   "cmd": "twoway(scatter mpg weight), name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "",
+   "cmd": "twoway (scatter mpg weight) (lfit mpg weight), name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "",
+   "cmd": "gr tw scatter mpg weight || lfit mpg weight, name(cfp, replace)",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  },
+  {
+   "head": "",
+   "cmd": "twoway",
+   "rc": 0,
+   "msg": "",
+   "last": ""
+  }
+ ],
+ "saving": [
+  {
+   "text": "n1, asis",
+   "rc": 0,
+   "msg": "file n1.gph saved",
+   "last": "file n1.gph saved",
+   "files": [
+    "n1.gph"
+   ]
+  },
+  {
+   "text": "n1, asis replace",
+   "rc": 0,
+   "msg": "(file n1.gph not found)\nfile n1.gph saved",
+   "last": "file n1.gph saved",
+   "files": [
+    "n1.gph"
+   ]
+  },
+  {
+   "text": "n1, replace asis",
+   "rc": 0,
+   "msg": "(file n1.gph not found)\nfile n1.gph saved",
+   "last": "file n1.gph saved",
+   "files": [
+    "n1.gph"
+   ]
+  },
+  {
+   "text": "n1, bogus",
+   "rc": 198,
+   "msg": "option bogus not allowed",
+   "last": "option bogus not allowed",
+   "files": []
+  },
+  {
+   "text": "n1, as",
+   "rc": 198,
+   "msg": "option as not allowed",
+   "last": "option as not allowed",
+   "files": []
+  },
+  {
+   "text": "n1, rep",
+   "rc": 198,
+   "msg": "option rep not allowed",
+   "last": "option rep not allowed",
+   "files": []
+  },
+  {
+   "text": "n1, REPLACE",
+   "rc": 198,
+   "msg": "option REPLACE not allowed",
+   "last": "option REPLACE not allowed",
+   "files": []
+  },
+  {
+   "text": "n1, Replace",
+   "rc": 198,
+   "msg": "option Replace not allowed",
+   "last": "option Replace not allowed",
+   "files": []
+  },
+  {
+   "text": "n1, replace replace",
+   "rc": 198,
+   "msg": "option replace not allowed",
+   "last": "option replace not allowed",
+   "files": []
+  },
+  {
+   "text": "n1, replace asis asis",
+   "rc": 198,
+   "msg": "option asis not allowed",
+   "last": "option asis not allowed",
+   "files": []
+  },
+  {
+   "text": "n1, asis(x)",
+   "rc": 198,
+   "msg": "option asis() incorrectly specified",
+   "last": "option asis() incorrectly specified",
+   "files": []
+  },
+  {
+   "text": "n1, replace(1)",
+   "rc": 198,
+   "msg": "option replace() incorrectly specified",
+   "last": "option replace() incorrectly specified",
+   "files": []
+  },
+  {
+   "text": "n1, bogus(1)",
+   "rc": 198,
+   "msg": "option bogus() not allowed",
+   "last": "option bogus() not allowed",
+   "files": []
+  },
+  {
+   "text": "n1,",
+   "rc": 0,
+   "msg": "file n1.gph saved",
+   "last": "file n1.gph saved",
+   "files": [
+    "n1.gph"
+   ]
+  },
+  {
+   "text": "n1,,",
+   "rc": 0,
+   "msg": "file n1.gph saved",
+   "last": "file n1.gph saved",
+   "files": [
+    "n1.gph"
+   ]
+  },
+  {
+   "text": "n1, replace,",
+   "rc": 0,
+   "msg": "(file n1.gph not found)\nfile n1.gph saved",
+   "last": "file n1.gph saved",
+   "files": [
+    "n1.gph"
+   ]
+  },
+  {
+   "text": "n1, , replace",
+   "rc": 198,
+   "msg": "invalid 'replace'",
+   "last": "invalid 'replace'",
+   "files": []
+  },
+  {
+   "text": "n1, replace , asis",
+   "rc": 198,
+   "msg": "invalid 'asis'",
+   "last": "invalid 'asis'",
+   "files": []
+  },
+  {
+   "text": "n4,replace",
+   "rc": 0,
+   "msg": "(file n4.gph not found)\nfile n4.gph saved",
+   "last": "file n4.gph saved",
+   "files": [
+    "n4.gph"
+   ]
+  },
+  {
+   "text": "\"n5.html\", replace",
+   "rc": 0,
+   "msg": "(file n5.html not found)\nfile n5.html saved as .gph format",
+   "last": "file n5.html saved as .gph format",
+   "files": [
+    "n5.html"
+   ]
+  },
+  {
+   "text": ", replace",
+   "rc": 0,
+   "msg": "(file Graph.gph not found)\nfile Graph.gph saved",
+   "last": "file Graph.gph saved",
+   "files": [
+    "Graph.gph"
+   ]
+  },
+  {
+   "text": "   ",
+   "rc": 0,
+   "msg": "file Graph.gph saved",
+   "last": "file Graph.gph saved",
+   "files": [
+    "Graph.gph"
+   ]
+  },
+  {
+   "text": "\"\", replace",
+   "rc": 0,
+   "msg": "(file Graph.gph not found)\nfile Graph.gph saved",
+   "last": "file Graph.gph saved",
+   "files": [
+    "Graph.gph"
+   ]
+  },
+  {
+   "text": "my file.html",
+   "rc": 198,
+   "msg": "invalid syntax,  file.html not allowed",
+   "last": "invalid syntax,  file.html not allowed",
+   "files": []
+  },
+  {
+   "text": "a b c",
+   "rc": 198,
+   "msg": "invalid syntax,  b c not allowed",
+   "last": "invalid syntax,  b c not allowed",
+   "files": []
+  },
+  {
+   "text": "\"a b\" c",
+   "rc": 198,
+   "msg": "invalid syntax,  c not allowed",
+   "last": "invalid syntax,  c not allowed",
+   "files": []
+  },
+  {
+   "text": "\"my file\", replace",
+   "rc": 0,
+   "msg": "(file my file.gph not found)\nfile my file.gph saved",
+   "last": "file my file.gph saved",
+   "files": [
+    "my file.gph"
+   ]
+  },
+  {
+   "text": "\"n, replace\"",
+   "rc": 0,
+   "msg": "file n, replace.gph saved",
+   "last": "file n, replace.gph saved",
+   "files": [
+    "n, replace.gph"
+   ]
+  },
+  {
+   "text": "\"a,b\", replace",
+   "rc": 0,
+   "msg": "(file a,b.gph not found)\nfile a,b.gph saved",
+   "last": "file a,b.gph saved",
+   "files": [
+    "a,b.gph"
+   ]
+  },
+  {
+   "text": "\\x60\"a b\"', replace",
+   "rc": 0,
+   "msg": "(file a b.gph not found)\nfile a b.gph saved",
+   "last": "file a b.gph saved",
+   "files": [
+    "a b.gph"
+   ]
+  },
+  {
+   "text": "n1, bogus, replace",
+   "rc": 198,
+   "msg": "invalid 'replace'",
+   "last": "invalid 'replace'",
+   "files": []
+  },
+  {
+   "text": "n1, , bogus",
+   "rc": 198,
+   "msg": "invalid 'bogus'",
+   "last": "invalid 'bogus'",
+   "files": []
+  },
+  {
+   "text": "n1, \"replace\"",
+   "rc": 198,
+   "msg": "option \"replace not allowed",
+   "last": "option \"replace not allowed",
+   "files": []
+  },
+  {
+   "text": "",
+   "rc": 0,
+   "msg": "",
+   "last": "",
+   "files": []
+  }
+ ],
+ "display": {
+  "graphics_off_rc": 0,
+  "graphics_off_describe_rc": 0
+ }
+}

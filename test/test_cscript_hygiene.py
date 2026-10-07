@@ -850,14 +850,28 @@ def _code_only(src):
 def _display_seam_problems(src):
     """WP-30 P1.27: the undocumented test seam ``$dash__display`` may be set
     only after a stub is first on PATH (``os.environ["PATH"] =``) or the
-    ado-path (``adopath ++`` naming a stub folder), and must be dropped
-    after it is set.  Returns the problems found, as text."""
+    ado-path (``adopath ++`` naming a stub folder); must be dropped after
+    it is set; and while it is on with ``$dash_nobrowser`` unset, no
+    ``dash build`` may run outside the body of a program defined earlier
+    (the stub controls' own helpers).  Returns the problems, as text."""
     out = []
     lines = src.splitlines()
     stub_seen = False
     set_at = None
+    seam_on = False
+    nb_unset = False
+    in_prog = False
     for n, line in enumerate(lines, 1):
         code = line.split("//", 1)[0]
+        st = code.strip()
+        if re.match(r"program\s+(define\s+)?\w", st) and not st.startswith(
+                "program drop"):
+            in_prog = True
+            continue
+        if in_prog:
+            if st == "end":
+                in_prog = False
+            continue
         if 'os.environ["PATH"] =' in code or (
                 "adopath ++" in code and "stub" in code):
             stub_seen = True
@@ -866,6 +880,19 @@ def _display_seam_problems(src):
                 out.append(f"line {n}: sets the seam with no stub first")
             if set_at is None:
                 set_at = n
+            seam_on = True
+        if re.search(r"macro\s+drop\s+dash__display", code):
+            seam_on = False
+        if re.search(r"macro\s+drop\s+dash_nobrowser", code) or re.match(
+                r'\s*global\s+dash_nobrowser\s*(""\s*)?$', code):
+            nb_unset = True
+        elif re.match(r"\s*global\s+dash_nobrowser\s+\S", code):
+            nb_unset = False
+        if seam_on and nb_unset and re.match(
+                r"\s*(cap(ture)?\s+(n(oisily)?\s+)?)?(qui(etly)?\s+)?"
+                r"dash\s+build\b", code):
+            out.append(f"line {n}: builds with the seam on and "
+                       "$dash_nobrowser unset, outside a stub helper")
     if set_at is not None and not any(
             re.search(r"macro\s+drop\s+dash__display", l.split("//", 1)[0])
             for l in lines[set_at:]):
@@ -884,6 +911,15 @@ class TestTheDisplaySeamIsFenced:
         assert _display_seam_problems(ok) == []
         undropped = 'adopath ++ "`stubdir\'"\nglobal dash__display on\n'
         assert _display_seam_problems(undropped)
+        loose_build = ('adopath ++ "`stubdir\'"\nmacro drop dash_nobrowser\n'
+                       "global dash__display on\n"
+                       "dash build, saving(x.html)\n"
+                       "macro drop dash__display\n")
+        assert _display_seam_problems(loose_build)
+        helper = ('program define _h\n    dash build, saving(x.html)\nend\n'
+                  'adopath ++ "`stubdir\'"\nmacro drop dash_nobrowser\n'
+                  "global dash__display on\n_h\nmacro drop dash__display\n")
+        assert _display_seam_problems(helper) == []
 
     def test_no_script_sets_the_seam_without_a_stub_and_a_drop(self):
         bad = {}

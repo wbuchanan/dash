@@ -893,13 +893,18 @@ string rowvector _dash_saving_split(string scalar s)
     if (p & err == "") {
         o = _dash_saving_opt_toks(substr(s, p + 1, .))
         n = cols(o)
+        // A second comma followed by a word is refused before any option
+        // word is judged, as twoway refuses saving(n1, bogus, replace)
+        // "invalid 'replace'" (measured; the fixture).
+        for (i = 1; i <= n & err == ""; i++) {
+            if (o[i] != ",") continue
+            for (j = i + 1; j <= n; j++) if (o[j] != ",") break
+            if (j <= n) err = "invalid '" + o[j] + "'"
+            break
+        }
         for (i = 1; i <= n & err == ""; i++) {
             w = o[i]
-            if (w == ",") {
-                for (j = i + 1; j <= n; j++) if (o[j] != ",") break
-                if (j <= n) err = "invalid '" + o[j] + "'"
-                break
-            }
+            if (w == ",") break
             if (w == "replace" | w == "asis") {
                 if ((w == "replace" & rep) | (w == "asis" & asis)) {
                     err = "option " + w + " not allowed"
@@ -915,6 +920,12 @@ string rowvector _dash_saving_split(string scalar s)
                 }
                 else err = "option " + nm + "() not allowed"
                 continue
+            }
+            // A quoted word: twoway's message drops its closing quote,
+            // option "replace not allowed (measured; the fixture).
+            k = strlen(w)
+            if (k >= 2 & substr(w, 1, 1) == char(34) & substr(w, k, 1) == char(34)) {
+                w = substr(w, 1, k - 1)
             }
             err = "option " + w + " not allowed"
         }
