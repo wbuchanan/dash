@@ -201,7 +201,8 @@ def _served_page(spec):
     models the server sends, without its Python callbacks, which do not
     change a layout.  Rendered through the served template (WP-28 E14) so
     it declares the saved page's viewport meta, as a real ``bokeh serve``
-    session does (``doc.template = _dash_served_template()``, :25824)."""
+    session does (``doc.template = _dash_served_template(_dash_new_nonce())``
+    in the generated make_document)."""
     import logging
     from bokeh.embed import file_html
     from bokeh.resources import INLINE
@@ -300,6 +301,31 @@ class TestTheProbe:
         out = rp.with_probe("<html><body>x</body></html>")
         assert out.index("DASHPROBE") < out.index("</body>")
         assert "DASHPROBE" in rp.with_probe("<p>no body</p>")
+        # A page with no policy gains the probe and nothing else.
+        assert out == "<html><body>x" + rp.PROBE_JS + "</body></html>"
+
+    def test_with_probe_admits_itself_under_both_policies(self):
+        """WP-30 P1.29: a saved page runs only the scripts its policy names
+        by hash, a served page only those carrying its nonce; the probe is
+        admitted on the page copy under test, and nothing else changes."""
+        import base64
+        import hashlib
+        body = rp.PROBE_JS.split(">", 1)[1].rsplit("</script>", 1)[0]
+        digest = base64.b64encode(hashlib.sha256(
+            body.encode("utf-8")).digest()).decode("ascii")
+        saved = ("<html><head>" + dr._dash_saved_head([])
+                 + "</head><body>x</body></html>")
+        out = rp.with_probe(saved)
+        assert ("script-src 'sha256-%s' 'unsafe-eval'" % digest) in out
+        assert out.replace("'sha256-%s' " % digest, "", 1) == \
+            saved.replace("</body>", rp.PROBE_JS + "</body>")
+        n = "Nonce_-" * 4
+        served = ("<html><head>" + dr._dash_csp_meta(dr._dash_csp_served(n))
+                  + "</head><body>x</body></html>")
+        out = rp.with_probe(served)
+        assert '<script nonce="%s">' % n in out
+        assert out.count("nonce-%s" % n) == 1
+        assert "sha256" not in out
 
     def test_find_chrome_honours_only_an_executable(self, monkeypatch,
                                                     tmp_path):

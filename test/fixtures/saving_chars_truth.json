@@ -1,0 +1,74 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "1f05b63cb72f44283fdb24aeadb2a53f6a7d9110",
+  "extracted": " 7 Oct 2026",
+  "machine_type": "Mac (Apple Silicon)",
+  "os": "Unix",
+  "scope": "macOS only; Windows is unmeasured (WP-30 M4)",
+  "source": "scripts/extract_saving_chars_truth.do",
+  "stata_version": "19.5"
+ },
+ "probes": {
+  "amp": {
+   "command": "twoway scatter mpg weight, saving(\"<dir>/tw_R&D.gph\", replace) nodraw",
+   "file": "tw_R&D.gph",
+   "rc": 0,
+   "written": true
+  },
+  "bang": {
+   "command": "twoway scatter mpg weight, saving(\"<dir>/tw_bang!x!y.gph\", replace) nodraw",
+   "file": "tw_bang!x!y.gph",
+   "rc": 0,
+   "written": true
+  },
+  "caret": {
+   "command": "twoway scatter mpg weight, saving(\"<dir>/tw_caret^x.gph\", replace) nodraw",
+   "file": "tw_caret^x.gph",
+   "rc": 0,
+   "written": true
+  },
+  "dotdot": {
+   "command": "twoway scatter mpg weight, saving(\"<dir>/sub/../tw_dotdot.gph\", replace) nodraw",
+   "file": "sub/../tw_dotdot.gph",
+   "rc": 0,
+   "written": true
+  },
+  "gt": {
+   "command": "twoway scatter mpg weight, saving(\"<dir>/tw_a>b.gph\", replace) nodraw",
+   "file": "tw_a>b.gph",
+   "rc": 0,
+   "written": true
+  },
+  "lt": {
+   "command": "twoway scatter mpg weight, saving(\"<dir>/tw_a<b.gph\", replace) nodraw",
+   "file": "tw_a<b.gph",
+   "rc": 0,
+   "written": true
+  },
+  "pct_path": {
+   "command": "twoway scatter mpg weight, saving(\"<dir>/tw_pct%PATH%x.gph\", replace) nodraw",
+   "file": "tw_pct%PATH%x.gph",
+   "rc": 0,
+   "written": true
+  },
+  "pct_pct": {
+   "command": "twoway scatter mpg weight, saving(\"<dir>/tw_pct%%x.gph\", replace) nodraw",
+   "file": "tw_pct%%x.gph",
+   "rc": 0,
+   "written": true
+  },
+  "pipe": {
+   "command": "twoway scatter mpg weight, saving(\"<dir>/tw_a|b.gph\", replace) nodraw",
+   "file": "tw_a|b.gph",
+   "rc": 0,
+   "written": true
+  },
+  "semi": {
+   "command": "twoway scatter mpg weight, saving(\"<dir>/tw_a;b.gph\", replace) nodraw",
+   "file": "tw_a;b.gph",
+   "rc": 0,
+   "written": true
+  }
+ }
+}

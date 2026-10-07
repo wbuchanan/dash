@@ -26,12 +26,21 @@ Bokeh's own page (``bokeh.core.templates.FILE``), so it holds under both
 ``python app.py`` and ``bokeh serve app.py``.  Only the launcher can add
 headers: ``bokeh serve`` gives an app script no hook into its responses.
 
-Whether a browser runs a dashboard under these policies is not something a
-unit test can see; that was checked in Chromium when they were chosen.
+WP-30 P1.29 took 'unsafe-inline' out of every script-src a page carries:
+the saved page names each script Bokeh wrote by its SHA-256 hash
+(``_dash_saved_head``) and dash refuses to write a page holding any other
+inline script (``_dash_seal_saved_page``); the served page's <meta> names a
+nonce made for that page, which every script of the page carries
+(``_dash_served_template(nonce)``).  The launcher's header keeps its
+policy, which cannot know the nonce (A99).
+
 These tests pin the policy text, where it sits in each page, that the
 served app carries the same constants, and that each real server sends
-what it should.  The live-server classes start subprocesses and are marked
-``serve`` (deselect with ``-m 'not serve'``); no browser is ever opened.
+what it should.  Whether a browser runs a dashboard under these policies,
+and refuses an injected script, is ``test_csp_browser.py``'s: it drives
+both modes in headless Chrome.  The live-server classes here start
+subprocesses and are marked ``serve`` (deselect with ``-m 'not serve'``);
+no browser is opened here.
 """
 import ast
 import asyncio
@@ -71,8 +80,10 @@ from test_server_serves import (  # noqa: E402
 # What each page must carry -- exactly these directives, exactly these sources
 # ---------------------------------------------------------------------------
 
+# Flipped (WP-30 P1.29): script-src lost 'unsafe-inline'; each page inserts
+# the hashes of its own scripts (_dash_csp_standalone).
 STANDALONE_TEXT = (
-    "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; "
+    "default-src 'none'; script-src 'unsafe-eval'; "
     "style-src 'unsafe-inline'; img-src data: blob:; font-src data:; "
     "connect-src 'none'; object-src 'none'; base-uri 'none'; "
     "form-action 'none'")
@@ -85,7 +96,7 @@ SERVED_TEXT = (
 
 STANDALONE = {
     "default-src": {"'none'"},
-    "script-src": {"'unsafe-inline'", "'unsafe-eval'"},
+    "script-src": {"'unsafe-eval'"},
     "style-src": {"'unsafe-inline'"},
     "img-src": {"data:", "blob:"},
     "font-src": {"data:"},
@@ -106,6 +117,16 @@ SERVED = {
     "base-uri": {"'none'"},
     "form-action": {"'none'"},
 }
+
+#: The served page's own <meta> base (WP-30 P1.29): script-src names only
+#: the page's nonce, inserted per page, and 'unsafe-eval'.
+SERVED_META_TEXT = (
+    "default-src 'none'; script-src 'unsafe-eval'; "
+    "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+    "font-src 'self' data:; connect-src 'self'; object-src 'none'; "
+    "base-uri 'none'; form-action 'none'")
+
+SERVED_META = dict(SERVED, **{"script-src": {"'unsafe-eval'"}})
 
 #: The header policy: the served one, and frame-ancestors, which only a
 #: header can carry.
@@ -163,13 +184,17 @@ def _assert_policy(policy, expected):
 
 
 def _assert_no_other_origin(policy):
-    """No directive admits a wildcard, http:, https: or any host."""
+    """No directive admits a wildcard, http:, https: or any host.
+
+    Flipped (WP-30 P1.29): a script hash or a nonce, in exactly their
+    forms, names no origin and is admitted too."""
     for name, sources in _directives(policy).items():
         for src in sources:
             assert "*" not in src, f"{name} admits a wildcard: {src!r}"
             assert src.lower() not in ("http:", "https:", "ws:", "wss:"), (
                 f"{name} admits every {src} origin")
-            assert src in _KEYWORDS or src in _SCHEMES, (
+            assert (src in _KEYWORDS or src in _SCHEMES
+                    or _HASH_RE.fullmatch(src) or _NONCE_RE.fullmatch(src)), (
                 f"{name} admits {src!r}, which names another origin")
 
 
@@ -205,6 +230,112 @@ def _script_srcs(page):
 
 
 # ---------------------------------------------------------------------------
+# A page's own scripts, read the way a browser's parser reads them (WP-30
+# P1.29) -- html.parser, not the renderer's scan, so the two are checked
+# against each other
+# ---------------------------------------------------------------------------
+
+#: The type values under which a browser runs an inline script: none or an
+#: empty one, a JavaScript MIME type, or ``module`` (HTML, "prepare the
+#: script element").
+_JS_TYPES = {"", "module", "application/ecmascript", "application/javascript",
+             "application/x-ecmascript", "application/x-javascript",
+             "text/ecmascript", "text/javascript", "text/javascript1.0",
+             "text/javascript1.1", "text/javascript1.2", "text/javascript1.3",
+             "text/javascript1.4", "text/javascript1.5", "text/jscript",
+             "text/livescript", "text/x-ecmascript", "text/x-javascript"}
+
+_HASH_RE = re.compile(r"'sha256-[A-Za-z0-9+/]{43}='")
+_NONCE_RE = re.compile(r"'nonce-[A-Za-z0-9_-]{22,64}'")
+
+
+def _script_elements(page):
+    """``[(attrs, body)]`` for every script element of ``page``, in order,
+    as ``html.parser`` reads them (a script's body is raw text up to its
+    ``</script``)."""
+    from html.parser import HTMLParser
+
+    class _P(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=False)
+            self.found, self.cur = [], None
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "script":
+                self.cur = [dict((k, v or "") for k, v in attrs), ""]
+                self.found.append(self.cur)
+
+        def handle_data(self, data):
+            if self.cur is not None:
+                self.cur[1] += data
+
+        def handle_endtag(self, tag):
+            if tag == "script":
+                self.cur = None
+
+    p = _P()
+    p.feed(page)
+    p.close()
+    return [(a, b) for a, b in p.found]
+
+
+def _executable_inline_hashes(page):
+    """The base64 SHA-256 of every inline script ``page`` would run, over
+    its LF text."""
+    import base64
+    import hashlib
+    out = set()
+    for attrs, body in _script_elements(page):
+        if "src" in attrs:
+            continue
+        if attrs.get("type", "").strip().lower() not in _JS_TYPES:
+            continue
+        body = body.replace("\r\n", "\n").replace("\r", "\n")
+        out.add(base64.b64encode(
+            hashlib.sha256(body.encode("utf-8")).digest()).decode("ascii"))
+    return out
+
+
+def _the_page_nonce(page):
+    """The one nonce the page's policy names."""
+    srcs = _directives(_the_meta_policy(page)).get("script-src", [])
+    found = [s for s in srcs if s.startswith("'nonce-")]
+    assert len(found) == 1, (
+        f"the page's script-src names {len(found)} nonces, not one: {srcs}")
+    return found[0][len("'nonce-"):-1]
+
+
+def _assert_scripts_carry(page, nonce):
+    """Every script element of ``page`` carries ``nonce``."""
+    elements = _script_elements(page)
+    assert elements, "the page has no script"
+    for attrs, body in elements:
+        assert attrs.get("nonce") == nonce, (
+            f"a script without the page's nonce: {attrs} {body[:80]!r}")
+
+
+def _assert_saved_policy(page):
+    """The saved page's policy: STANDALONE, with script-src naming exactly
+    the page's own inline scripts by hash and 'unsafe-eval' (WP-30
+    P1.29)."""
+    hashes = {"'sha256-%s'" % h for h in _executable_inline_hashes(page)}
+    assert hashes, "the page has no inline script"
+    _assert_policy(_the_meta_policy(page), dict(
+        STANDALONE, **{"script-src": {"'unsafe-eval'"} | hashes}))
+
+
+def _assert_served_policy(page):
+    """The served page's <meta> policy: SERVED_META, with script-src naming
+    the page's one nonce and 'unsafe-eval', and every script of the page
+    carrying that nonce (WP-30 P1.29)."""
+    nonce = _the_page_nonce(page)
+    _assert_policy(_the_meta_policy(page), dict(
+        SERVED_META, **{"script-src": {"'unsafe-eval'",
+                                       "'nonce-%s'" % nonce}}))
+    _assert_scripts_carry(page, nonce)
+
+
+# ---------------------------------------------------------------------------
 # Pages and apps
 # ---------------------------------------------------------------------------
 
@@ -216,28 +347,88 @@ def _frame():
     })
 
 
-def _standalone_page(layout):
-    """A saved dashboard -- a scatter, a dropdown filter and a KPI card --
-    as ``DashRenderer.render()`` writes it, under ``layout``."""
+def _saved_spec_files(layout, *, plots=None, tabs="", csv=False,
+                      filter_position="", range_filter=False, by="",
+                      colorvar="", xtitle="", title="", subtitle=""):
+    """``(spec path, data path)`` of a saved dashboard -- a scatter, a
+    dropdown filter and a KPI card -- under ``layout``; each keyword adds
+    what one page family needs (WP-30 P1.29): tabs, the CSV button, a
+    range filter, the filter sidebar, a by() graph, colorvar(), a TeX axis
+    title (MathJax inlined), or other layers."""
+    opts = {"colorvar": colorvar} if colorvar else {}
+    filters = [{"varname": "foreign", "type": "dropdown", "exclude": [],
+                "label": ""}]
+    if range_filter:
+        filters.append({"varname": "weight", "type": "range", "exclude": [],
+                        "label": ""})
     spec = make_spec(
-        [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
-          "options": {}}],
-        filters=[{"varname": "foreign", "type": "dropdown", "exclude": [],
-                  "label": ""}],
+        plots or [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                   "options": opts}],
+        filters=filters,
         kpis=[{"name": "k1", "stat": "mean", "var": "mpg",
                "title": "Avg MPG", "fmt": "%9.2f"}])
-    spec["build_options"]["layout"] = layout
-    spec["build_options"]["registry"] = "k1 g1"
+    go = spec["graphs"][0]["graph_options"]
+    if by:
+        go["by"] = by
+    if xtitle:
+        go["xtitle"] = xtitle
+    bo = spec["build_options"]
+    bo["layout"] = layout
+    bo["registry"] = "k1 g1"
+    if tabs:
+        bo["tabs"] = tabs
+    if csv:
+        bo["csv"] = "1"
+    if filter_position:
+        bo["filter_position"] = filter_position
+    bo["title"], bo["subtitle"] = title, subtitle
     d = tempfile.mkdtemp(prefix="dash_csp_")
     sp, dp = os.path.join(d, "spec.json"), os.path.join(d, "data.json")
     with open(sp, "w") as fh:
         json.dump(spec, fh)
     with open(dp, "w") as fh:
         json.dump(make_data_json(_frame()), fh)
+    return sp, dp
+
+
+def _standalone_page(layout, **kw):
+    """A saved dashboard as ``DashRenderer.render()`` writes it, under
+    ``layout``; ``kw`` as :func:`_saved_spec_files` takes them."""
+    sp, dp = _saved_spec_files(layout, **kw)
     try:
         return dr.DashRenderer(sp, dp).render()
     finally:
         curdoc().clear()
+
+
+#: The saved page families whose scripts the policy must name (WP-30
+#: P1.29): the default and layout(bs) pages; tabs with the CSV button and a
+#: range filter; the filter sidebar; a TeX axis title, which inlines
+#: MathJax; a by() graph; and the stale-cue page (an lfit beside the
+#: scatter, with a title and subtitle).
+_FAMILIES = {
+    "auto": dict(layout="auto"),
+    "bs": dict(layout="bs"),
+    "csv_tabs_range": dict(layout="auto", tabs="Main: g1", csv=True,
+                           range_filter=True),
+    "filterposition_left": dict(layout="auto", filter_position="left"),
+    "tex_title": dict(layout="auto", xtitle="$$\\beta$$"),
+    "by": dict(layout="auto", by="foreign", colorvar="foreign"),
+    "stale_cue": dict(layout="auto", title="T", subtitle="S", plots=[
+        {"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}},
+        {"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}]),
+}
+
+
+@pytest.fixture(scope="module")
+def family_pages():
+    """Each family's saved page, rendered once, when first asked for."""
+    class _Pages(dict):
+        def __missing__(self, name):
+            kw = dict(_FAMILIES[name])
+            self[name] = _standalone_page(kw.pop("layout"), **kw)
+            return self[name]
+    return _Pages()
 
 
 @pytest.fixture(scope="module")
@@ -355,15 +546,21 @@ class TestThePolicyConstants:
                 if k != "Content-Security-Policy"} == OTHER_HEADERS
 
     @pytest.mark.parametrize("name", ["_DASH_CSP_STANDALONE",
-                                      "_DASH_CSP_SERVED"])
+                                      "_DASH_CSP_SERVED",
+                                      "_DASH_CSP_SERVED_META",
+                                      "_DASH_CSP_NO_SCRIPTS"])
     def test_no_meta_policy_carries_frame_ancestors(self, name):
         """The CSP specification ignores frame-ancestors in a <meta>; a
         page that carried it would claim a protection it does not have."""
         assert "frame-ancestors" not in _directives(getattr(dr, name))
 
-    @pytest.mark.parametrize("policy", [STANDALONE_TEXT, SERVED_TEXT,
-                                        SERVED_TEXT + "; frame-ancestors "
-                                        "'none'"])
+    # Flipped (WP-30 P1.29): a hashed and a nonce'd policy, each source in
+    # its exact form, admit no other origin either.
+    @pytest.mark.parametrize("policy", [
+        STANDALONE_TEXT, SERVED_TEXT, SERVED_META_TEXT,
+        SERVED_TEXT + "; frame-ancestors 'none'",
+        dr._dash_csp_standalone(["A" * 43 + "=", "b+/" * 14 + "c="]),
+        dr._dash_csp_served("Nonce_-" * 4)])
     def test_no_policy_admits_another_origin(self, policy):
         _assert_no_other_origin(policy)
 
@@ -375,13 +572,20 @@ class TestThePolicyConstants:
                    for p in dr._DASH_SECURITY_HEADERS)
 
     def test_the_standalone_meta_is_built_from_the_constant(self):
-        assert dr._CSP_META.startswith(
+        """Flipped (WP-30 P1.29): the saved page's head is built per page
+        from the page's script hashes, no longer a constant."""
+        h = _b64sha("x")
+        assert dr._dash_saved_head([]).startswith(
             dr._dash_csp_meta(dr._DASH_CSP_STANDALONE))
+        assert dr._dash_saved_head([h]).startswith(
+            dr._dash_csp_meta(dr._dash_csp_standalone([h])))
+        assert "'sha256-%s'" % h in dr._dash_saved_head([h])
 
     def test_the_viewport_tag_is_kept(self):
+        """Flipped (WP-30 P1.29): read from _dash_saved_head."""
         assert ('<meta name="viewport" '
                 'content="width=device-width, initial-scale=1">'
-                in dr._CSP_META)
+                in dr._dash_saved_head([]))
 
 
 class TestTheMetaWriter:
@@ -392,7 +596,11 @@ class TestTheMetaWriter:
             '<meta http-equiv="Content-Security-Policy" '
             "content=\"default-src 'none'\">")
 
-    @pytest.mark.parametrize("policy", [STANDALONE_TEXT, SERVED_TEXT])
+    @pytest.mark.parametrize("policy", [
+        STANDALONE_TEXT, SERVED_TEXT, SERVED_META_TEXT,
+        dr._DASH_CSP_NO_SCRIPTS,
+        dr._dash_csp_standalone(["A" * 43 + "=", "b+/" * 14 + "c="]),
+        dr._dash_csp_served("Nonce_-" * 4)])
     def test_every_policy_dash_writes_is_accepted(self, policy):
         assert _the_meta_policy(dr._dash_csp_meta(policy)) == policy
 
@@ -418,6 +626,77 @@ class TestTheMetaWriter:
 
 
 # ---------------------------------------------------------------------------
+# The saved page's script hashes (WP-30 P1.29)
+# ---------------------------------------------------------------------------
+
+def _b64sha(text):
+    import base64
+    import hashlib
+    return base64.b64encode(
+        hashlib.sha256(text.encode("utf-8")).digest()).decode("ascii")
+
+
+class TestTheScriptHashes:
+    """``_dash_script_hashes`` names each inline script a browser would run
+    by the base64 SHA-256 of its text -- the form a policy's
+    ``'sha256-...'`` source takes."""
+
+    def test_only_executable_inline_scripts_are_hashed(self):
+        page = ('<html><head><script>a();</script>'
+                '<script type="application/json" id="d">{"x": 1}</script>'
+                '<script src="x.js"></script>'
+                '<script type="text/javascript">b();</script>'
+                '</head><body><script>a();</script></body></html>')
+        got = dr._dash_script_hashes(page)
+        assert got == sorted({_b64sha("a();"), _b64sha("b();")})
+        assert set(got) == _executable_inline_hashes(page)
+        assert dr._dash_script_hashes("<p>no script</p>") == []
+
+    def test_forms_and_line_endings(self):
+        lf = dr._dash_script_hashes("<script>a();\nb();\n</script>")
+        assert dr._dash_script_hashes("<script>a();\r\nb();\r\n</script>") \
+            == lf == dr._dash_script_hashes("<script>a();\rb();\r</script>")
+        assert lf == [_b64sha("a();\nb();\n")]
+        # Upper case, a module, a JavaScript MIME type with spaces and case.
+        assert dr._dash_script_hashes("<SCRIPT>c()</SCRIPT>") == \
+            [_b64sha("c()")]
+        assert dr._dash_script_hashes(
+            "<script type='module'>m()</script>") == [_b64sha("m()")]
+        assert dr._dash_script_hashes(
+            '<script type=" Text/JavaScript ">t()</script>') == \
+            [_b64sha("t()")]
+        # Not run inline: a src= script, JSON, any other type.
+        assert dr._dash_script_hashes(
+            '<script src="a.js">ignored()</script>'
+            '<script type="application/json">{}</script>'
+            '<script type="text/template">x</script>') == []
+        # An unclosed script runs to the end of the text.
+        assert dr._dash_script_hashes("<p></p><script>u()") == \
+            [_b64sha("u()")]
+        # A tag name that only begins with "script" is not a script.
+        assert dr._dash_script_hashes("<scripts>x</scripts>") == []
+        with pytest.raises(TypeError):
+            dr._dash_script_hashes(None)
+
+
+class TestTheStandalonePolicy:
+
+    def test_hashes_are_inserted_sorted_and_once(self):
+        h1, h2 = _b64sha("one"), _b64sha("two")
+        lo, hi = sorted((h1, h2))
+        policy = dr._dash_csp_standalone([hi, lo, hi])
+        assert _directives(policy)["script-src"] == [
+            "'sha256-%s'" % lo, "'sha256-%s'" % hi, "'unsafe-eval'"]
+        _assert_policy(policy, dict(STANDALONE, **{"script-src": {
+            "'sha256-%s'" % lo, "'sha256-%s'" % hi, "'unsafe-eval'"}}))
+        assert dr._dash_csp_standalone([]) == dr._DASH_CSP_STANDALONE
+        assert _the_meta_policy(dr._dash_csp_meta(policy)) == policy
+        for bad in (["x"], [h1 + "x"], ["'%s'" % h1], [h1[:-1] + "!"]):
+            with pytest.raises(ValueError):
+                dr._dash_csp_standalone(bad)
+
+
+# ---------------------------------------------------------------------------
 # The standalone pages
 # ---------------------------------------------------------------------------
 
@@ -425,9 +704,12 @@ class TestTheMetaWriter:
 class TestTheStandalonePages:
 
     def test_the_page_carries_exactly_the_policy(self, pages, layout):
-        _assert_policy(_the_meta_policy(pages[layout]), STANDALONE)
+        """Flipped (WP-30 P1.29): script-src is 'unsafe-eval' and the
+        hashes of exactly the page's own scripts."""
+        _assert_saved_policy(pages[layout])
 
     def test_no_directive_admits_another_origin(self, pages, layout):
+        """Flipped (WP-30 P1.29): the page's hash sources are admitted."""
         _assert_no_other_origin(_the_meta_policy(pages[layout]))
 
     def test_the_policy_precedes_every_script_and_style(self, pages, layout):
@@ -442,6 +724,128 @@ class TestTheStandalonePages:
         assert pages[layout].count('name="viewport"') == 1
 
 
+@pytest.mark.parametrize("family", sorted(_FAMILIES))
+class TestTheSavedPageAdmitsOnlyItsOwnScripts:
+    """WP-30 P1.29: script-src named 'unsafe-inline', so any inline script
+    or event handler that reached a saved page ran (BUGS.md:1337 records
+    one).  It now names each script dash wrote by its hash."""
+
+    def test_script_src_has_no_unsafe_inline(self, family_pages, family):
+        src = _directives(_the_meta_policy(family_pages[family]))["script-src"]
+        assert "'unsafe-inline'" not in src, (
+            f"{family}: script-src still admits every inline script: {src}")
+
+    def test_the_hashes_are_exactly_the_pages_scripts(self, family_pages,
+                                                       family):
+        page = family_pages[family]
+        src = _directives(_the_meta_policy(page))["script-src"]
+        named = {s[len("'sha256-"):-1] for s in src
+                 if s.startswith("'sha256-")}
+        assert named, f"{family}: the policy names no script hash: {src}"
+        assert named == _executable_inline_hashes(page), (
+            f"{family}: the hashes the policy names are not the page's "
+            f"scripts")
+
+    def test_eval_and_inline_styles_are_kept(self, family_pages, family):
+        """BokehJS compiles CustomJS and formatters with ``new Function``
+        and writes its styles as it draws (measured: 884 style
+        violations without 'unsafe-inline')."""
+        d = _directives(_the_meta_policy(family_pages[family]))
+        assert "'unsafe-eval'" in d["script-src"]
+        assert set(d["style-src"]) == {"'unsafe-inline'"}
+
+
+_EVIL = "<script>window.__dash_evil = 1;</script>"
+
+
+@pytest.mark.parametrize("where", ["bs_header", "auto_scheme_css"])
+class TestAHostileFragmentIsNotAdmitted:
+    """The hashes are taken over Bokeh's own output before dash splices its
+    HTML in, and the finished page is checked against them: a script an
+    escaping fault let into dash's own HTML is refused, never blessed."""
+
+    def test_render_refuses_and_writes_nothing(self, monkeypatch, tmp_path,
+                                               where):
+        if where == "bs_header":
+            monkeypatch.setattr(dr, "_dash_header_fragments",
+                                lambda t, s: (_EVIL, ""))
+            layout = "bs"
+        else:
+            own = dr.SchemeParser.css_style_element
+            monkeypatch.setattr(dr.SchemeParser, "css_style_element",
+                                lambda self: own(self) + _EVIL)
+            layout = "auto"
+        sp, dp = _saved_spec_files(layout, title="T")
+        out = tmp_path / "page.html"
+        err = None
+        try:
+            dr.main(sp, dp, str(out))
+        except Exception as exc:          # the error is the point
+            err = exc
+        finally:
+            curdoc().clear()
+        assert err is not None, (
+            "the page was written with the script (%s)"
+            % ("on disk" if out.exists() else "not on disk"))
+        assert type(err).__name__ == "DashScriptPolicyError", repr(err)
+        assert isinstance(err, dr.DashScriptPolicyError)
+        assert "nothing was written" in str(err)
+        assert not out.exists()
+
+    def test_the_seal_refuses_an_unhashed_script(self, where):
+        page = ("<html><head><script>a();</script></head><body>"
+                + ("<p>x</p>" if where == "bs_header" else "")
+                + "</body></html>")
+        hashes = dr._dash_script_hashes(page)
+        assert dr._dash_seal_saved_page(page, hashes) == page
+        bad = page.replace("</body>", _EVIL + "</body>")
+        with pytest.raises(dr.DashScriptPolicyError,
+                           match=r"1 inline script\(s\)"):
+            dr._dash_seal_saved_page(bad, hashes)
+        # A JSON block and a src= script run nothing inline.
+        ok = page.replace("</body>", '<script type="application/json">{}'
+                          '</script><script src="x.js"></script></body>')
+        assert dr._dash_seal_saved_page(ok, hashes) == ok
+        assert issubclass(dr.DashScriptPolicyError, RuntimeError)
+
+
+class TestTheEmptyAndRedirectPages:
+    """Neither page holds a script, so ``default-src 'none'`` costs them
+    nothing (WP-30 P1.29.8)."""
+
+    def test_the_empty_page_runs_nothing(self):
+        spec = make_spec([{"type": "scatter", "yvar": "mpg",
+                           "xvar": "weight", "options": {}}])
+        spec["graphs"], spec["build_options"]["registry"] = [], ""
+        spec["build_options"]["layout"] = "bs"
+        d = tempfile.mkdtemp(prefix="dash_csp_empty_")
+        sp, dp = os.path.join(d, "spec.json"), os.path.join(d, "data.json")
+        with open(sp, "w") as fh:
+            json.dump(spec, fh)
+        with open(dp, "w") as fh:
+            json.dump(make_data_json(_frame()), fh)
+        try:
+            page = dr.DashRenderer(sp, dp).render()
+        finally:
+            curdoc().clear()
+        assert "No dashboard content." in page
+        _assert_policy(_the_meta_policy(page), {"default-src": {"'none'"}})
+        head = page[page.index("<head>") + len("<head>"):]
+        assert head.startswith('<meta http-equiv="Content-Security-Policy"')
+        assert "style=" not in page
+
+    def test_the_redirect_page_runs_nothing(self):
+        url = 'http://127.0.0.1:5006/?token=a&b="<x>'
+        page = dr._dash_redirect_page(url)
+        _assert_policy(_the_meta_policy(page), {"default-src": {"'none'"}})
+        assert ('<meta charset="utf-8"><meta http-equiv='
+                '"Content-Security-Policy" content="default-src \'none\'">'
+                in page)
+        assert '<meta name="referrer" content="no-referrer">' in page
+        assert "<x>" not in page and "&lt;x&gt;" in page
+        assert _script_elements(page) == []
+
+
 # ---------------------------------------------------------------------------
 # The served page: its template
 # ---------------------------------------------------------------------------
@@ -453,40 +857,109 @@ def _file_context():
                 docs=[], base=FILE, macros=MACROS, plot_div="")
 
 
+class TestTheNonce:
+    """The served page's one-time nonce (WP-30 P1.29)."""
+
+    def test_a_nonce_is_fresh_and_urlsafe(self):
+        a, b = dr._dash_new_nonce(), dr._dash_new_nonce()
+        assert a != b
+        for n in (a, b):
+            assert re.fullmatch(r"[A-Za-z0-9_-]{24}", n), n
+
+    def test_the_served_policy_names_the_nonce_and_no_unsafe_inline(self):
+        n = "Ab0_-" * 4 + "Zz9_"
+        policy = dr._dash_csp_served(n)
+        src = _directives(policy)["script-src"]
+        assert src == ["'nonce-%s'" % n, "'unsafe-eval'"]
+        assert "'unsafe-inline'" not in src
+        _assert_policy(policy, dict(SERVED_META, **{"script-src": {
+            "'nonce-%s'" % n, "'unsafe-eval'"}}))
+        _assert_no_other_origin(policy)
+        assert _the_meta_policy(dr._dash_csp_meta(policy)) == policy
+        for bad in ("abc", "a" * 65, 'x"y' * 8, "{{x}}" * 5, "a b" * 8,
+                    "é" * 24):
+            with pytest.raises(ValueError):
+                dr._dash_csp_served(bad)
+        with pytest.raises(TypeError):
+            dr._dash_csp_served(None)
+
+
 class TestTheServedTemplate:
     """``_dash_served_template`` extends Bokeh's own page and adds the
     <meta>; it replaces nothing."""
 
-    def test_it_is_bokehs_page_plus_the_two_metas(self):
-        """WP-28 E14: the preamble now carries the viewport meta too, after
-        the CSP meta; stripping both, in order, leaves Bokeh's own page."""
-        from bokeh.core.templates import FILE
+    def test_only_script_elements_get_the_nonce(self):
+        """Each script element's opening tag gains the nonce; a script's
+        body is never edited, even where it holds the text of a tag (an
+        INLINE bundle does: bokeh-tables.min.js twice, measured), and
+        escaped text that only spells a tag gets nothing."""
+        n = "Nonce_" * 4
         ctx = _file_context()
-        ours = dr._dash_served_template().render(ctx)
+        ctx["title"] = "</title><script>alert(1)</script>"
+        ctx["plot_script"] = (
+            '<script>var s = "<script>";</script>\n'
+            '<script type="application/json" id="d">'
+            '{"t": "&lt;script&gt;"}</script>')
+        page = dr._dash_served_template(n).render(ctx)
+        _assert_scripts_carry(page, n)
+        assert len(_script_elements(page)) == 3
+        assert 'var s = "<script>";' in page
+        assert "&lt;/title&gt;&lt;script&gt;alert(1)" in page
+        assert page.count('nonce="%s"' % n) == 3
+        assert _the_page_nonce(page) == n
+
+        from bokeh.embed import file_html
+        from bokeh.plotting import figure
+        from bokeh.resources import INLINE
+        fig = figure()
+        fig.scatter([1, 2], [3, 4])
+        page = file_html(fig, INLINE, "t", template=dr._dash_served_template(n))
+        _assert_scripts_carry(page, n)
+        assert len(_script_elements(page)) >= 3
+        assert _the_page_nonce(page) == n
+
+    def test_a_bad_nonce_is_refused(self):
+        with pytest.raises(ValueError):
+            dr._dash_served_template("bad")
+
+    def test_it_is_bokehs_page_plus_the_two_metas(self):
+        """WP-28 E14: the preamble carries the viewport meta too, after the
+        CSP meta.  Rewritten (WP-30 P1.29): the template also gives every
+        script element the page's nonce; stripping the two metas and every
+        ` nonce="N"` leaves Bokeh's own page, byte for byte."""
+        from bokeh.core.templates import FILE
+        n = "Nonce_-" * 4
+        ctx = _file_context()
+        ours = dr._dash_served_template(n).render(ctx)
         theirs = FILE.render(ctx)
-        meta = dr._dash_csp_meta(dr._DASH_CSP_SERVED)
+        meta = dr._dash_csp_meta(dr._dash_csp_served(n))
         viewport = dr._DASH_VIEWPORT_META
         assert ours.count(meta) == 1
         assert ours.count(viewport) == 1
+        assert ours.count(' nonce="%s"' % n) == len(_script_elements(ours))
         stripped = re.sub(r"[ \t]*" + re.escape(meta) + r"\n?", "", ours,
                           count=1)
         stripped = re.sub(r"[ \t]*" + re.escape(viewport) + r"\n?", "",
                           stripped, count=1)
+        stripped = stripped.replace(' nonce="%s"' % n, "")
         assert stripped == theirs, (
-            "the template changed more of Bokeh's page than its preamble")
+            "the template changed more of Bokeh's page than its preamble "
+            "and its scripts' nonce")
 
     def test_the_policy_is_in_the_head_ahead_of_everything(self):
         page = dr._dash_served_template().render(_file_context())
         assert page.index("Content-Security-Policy") < page.index("</head>")
         _assert_first(page, "served template")
-        _assert_policy(_the_meta_policy(page), SERVED)
+        # Flipped (WP-30 P1.29): the meta's policy names the page's nonce.
+        _assert_served_policy(page)
 
     def test_it_names_its_base_itself(self):
         """Bokeh passes ``base`` today; the template does not depend on it."""
         ctx = _file_context()
         del ctx["base"]
         page = dr._dash_served_template().render(ctx)
-        _assert_policy(_the_meta_policy(page), SERVED)
+        # Flipped (WP-30 P1.29): the meta's policy names the page's nonce.
+        _assert_served_policy(page)
 
 
 # ---------------------------------------------------------------------------
@@ -503,7 +976,8 @@ class TestTheServedApp:
             if (isinstance(node, ast.Assign) and len(node.targets) == 1
                     and isinstance(node.targets[0], ast.Name)):
                 assigned.setdefault(node.targets[0].id, []).append(node.value)
-        for name in ("_DASH_CSP_SERVED", "_DASH_SECURITY_HEADERS"):
+        for name in ("_DASH_CSP_SERVED", "_DASH_SECURITY_HEADERS",
+                     "_DASH_CSP_SERVED_META", "_DASH_CSP_NO_SCRIPTS"):
             values = assigned.get(name, [])
             assert len(values) == 1, f"{name} is assigned {len(values)} times"
             assert ast.literal_eval(values[0]) == getattr(dr, name), name
@@ -511,7 +985,9 @@ class TestTheServedApp:
 
     @pytest.mark.parametrize("name", ["_dash_csp_meta",
                                       "_dash_served_template",
-                                      "_dash_server_transforms"])
+                                      "_dash_server_transforms",
+                                      "_dash_new_nonce", "_dash_csp_served",
+                                      "_dash_nonce_scripts"])
     def test_the_helpers_are_the_renderers_own_text(self, app, name):
         """A structural guard, deliberately: the app carries each helper
         once, as the renderer's own text -- which is what lets the tests
@@ -527,7 +1003,8 @@ class TestTheServedApp:
         app.ns["make_document"](doc)
         assert doc.roots, "make_document built nothing"
         page = _page_for(doc)
-        _assert_policy(_the_meta_policy(page), SERVED)
+        # Flipped (WP-30 P1.29): the meta's policy names the page's nonce.
+        _assert_served_policy(page)
         _assert_first(page, "served page")
         assert "<title>CSP Dashboard</title>" in page
 
@@ -544,7 +1021,23 @@ class TestTheServedApp:
         app.ns["make_document"](doc)
         assert any("429" in (getattr(r, "text", "") or "")
                    for r in doc.roots), doc.roots
-        _assert_policy(_the_meta_policy(_page_for(doc)), SERVED)
+        # Flipped (WP-30 P1.29): the refused page is nonce'd too.
+        _assert_served_policy(_page_for(doc))
+
+    def test_each_document_gets_its_own_nonce(self, app):
+        """One make_document call per session, one page per session: each
+        page's scripts carry the nonce its own policy names."""
+        pages = []
+        for _ in range(2):
+            doc = Document()
+            app.ns["make_document"](doc)
+            pages.append(_page_for(doc))
+        nonces = [_the_page_nonce(p) for p in pages]
+        assert nonces[0] != nonces[1]
+        for page, n in zip(pages, nonces):
+            _assert_scripts_carry(page, n)
+            assert "'unsafe-inline'" not in _directives(
+                _the_meta_policy(page))["script-src"]
 
 
 class TestTheHeaderTransform:
@@ -669,11 +1162,23 @@ class TestThePythonLauncherServes:
         status, _, page = _fetch(launched, "/")
         assert status == 200
         assert "CSP Launcher" in page
-        _assert_policy(_the_meta_policy(page), SERVED)
+        # Flipped (WP-30 P1.29): the meta's policy names the page's nonce.
+        _assert_served_policy(page)
         _assert_first(page, "launcher page")
 
     def test_the_page_carries_the_headers(self, launched):
         _, headers, _ = _fetch(launched, "/")
+        _assert_headers(headers, "/")
+
+    def test_every_script_carries_the_pages_nonce(self, launched):
+        """Two GETs, two sessions, two nonces; the header policy, which
+        cannot know them, is unchanged (A99)."""
+        _, headers, first = _fetch(launched, "/")
+        _, _, second = _fetch(launched, "/")
+        n1, n2 = _the_page_nonce(first), _the_page_nonce(second)
+        assert n1 != n2
+        _assert_scripts_carry(first, n1)
+        _assert_scripts_carry(second, n2)
         _assert_headers(headers, "/")
 
     def test_health_carries_the_headers(self, launched):
@@ -723,7 +1228,8 @@ class TestBokehServeServes:
     def test_the_page_carries_the_meta(self, bokeh_served):
         status, _, page = _fetch(bokeh_served, "/app")
         assert status == 200
-        _assert_policy(_the_meta_policy(page), SERVED)
+        # Flipped (WP-30 P1.29): the meta's policy names the page's nonce.
+        _assert_served_policy(page)
         _assert_first(page, "bokeh serve page")
 
     def test_its_scripts_are_same_origin(self, bokeh_served):
@@ -732,6 +1238,14 @@ class TestBokehServeServes:
         assert srcs
         assert all(s.startswith("/") and not s.startswith("//")
                    for s in srcs), srcs
+
+    def test_every_script_carries_the_pages_nonce(self, bokeh_served):
+        _, _, first = _fetch(bokeh_served, "/app")
+        _, _, second = _fetch(bokeh_served, "/app")
+        n1, n2 = _the_page_nonce(first), _the_page_nonce(second)
+        assert n1 != n2
+        _assert_scripts_carry(first, n1)
+        _assert_scripts_carry(second, n2)
 
     def test_it_sends_no_security_header(self, bokeh_served):
         """What dash.sthlp says: ``bokeh serve`` owns its responses, so only
@@ -759,3 +1273,19 @@ class TestTheHelpSaysWhatIsSent:
         for name, value in OTHER_HEADERS.items():
             assert "{cmd:%s: %s}" % (name, value) in sec, name
         assert "{cmd:bokeh serve app.py} sends none of these headers" in sec
+
+    def test_it_says_what_the_policy_protects(self):
+        """WP-30 P1.29: the help said a saved dashboard "may run only the
+        scripts and styles written into it", which 'unsafe-inline' did not
+        enforce."""
+        with open(os.path.join(_HERE, "..", "dash.sthlp"),
+                  encoding="utf-8") as fh:
+            h = fh.read()
+        i = h.index("{marker server_mode}")
+        sec = re.sub(r"\s+", " ", h[i:h.index("{marker examples}", i)])
+        assert "may run only the scripts and styles written into it" \
+            not in sec
+        for phrase in ("SHA-256", "nonce", "{cmd:'unsafe-eval'}",
+                       "inline styles", "CSP level 1",
+                       "{cmd:default-src 'none'}"):
+            assert phrase in sec, phrase

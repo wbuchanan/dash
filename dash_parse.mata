@@ -44,6 +44,10 @@
 *!       the double quote, backtick, dollar sign, semicolon, &, |, <, >,
 *!       tab, LF or CR -- or 0.
 *!
+*!   _dash_cmd_metachar(path)
+*!       The byte value of the first character Windows' command shell
+*!       reads in a quoted path -- % ! ^ & | < > ; -- or 0.
+*!
 *!   _dash_check_utf8(s)
 *!       Refuses s, r(198), unless it is well-formed UTF-8.
 *!
@@ -621,6 +625,39 @@ real scalar _dash_path_badchar(string scalar path) {
     real rowvector   bad
 
     bad = (34, 96, 36, 59, 38, 124, 60, 62, 9, 10, 13)
+    n   = strlen(path)
+    for (i = 1; i <= n; i++) {
+        c = ascii(substr(path, i, 1))
+        if (anyof(bad, c)) return(c)
+    }
+    return(0)
+}
+
+// ============================================================
+// _dash_cmd_metachar(path)
+//
+// Returns the byte value of the first character in `path' that
+// Windows' command shell would read in a double-quoted argument, or 0
+// if there is none (WP-30 P1.29, M11).
+//
+// _dash_open_page opens a page on Windows with `start "" "<path>"',
+// which runs inside cmd.exe.  Double quotes do not make a path literal
+// there: cmd.exe expands %NAME% inside them, ! under delayed expansion,
+// and reads ^ as its escape and & | < > ; as its separators wherever its
+// quoting fails.  So start could open another file than the one dash
+// wrote.  The opener builds no command for such a path on Windows; the
+// page is written and its path printed.  twoway's saving() accepts %, !
+// and ^ (measured), so the validator does not refuse them.
+//
+// Bytes flagged: % ! ^ & | < > ;.  Scanning bytes, as
+// _dash_path_badchar does: no byte of a multibyte UTF-8 character is
+// below 128, so none of them is flagged.
+// ============================================================
+real scalar _dash_cmd_metachar(string scalar path) {
+    real scalar      i, c, n
+    real rowvector   bad
+
+    bad = (37, 33, 94, 38, 124, 60, 62, 59)
     n   = strlen(path)
     for (i = 1; i <= n; i++) {
         c = ascii(substr(path, i, 1))

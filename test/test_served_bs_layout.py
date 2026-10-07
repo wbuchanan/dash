@@ -874,7 +874,8 @@ class TestTheServedPageDeclaresTheSavedPagesViewport:
         csp_at = page.lower().find('http-equiv="content-security-policy"')
         assert csp_at >= 0
         assert csp_at < page.index(dr._DASH_VIEWPORT_META)
-        assert dr._DASH_VIEWPORT_META in dr._CSP_META
+        # Flipped (WP-30 P1.29): the saved head is built per page.
+        assert dr._DASH_VIEWPORT_META in dr._dash_saved_head([])
 
     def test_the_app_carries_the_constant(self, tmp_path):
         import ast

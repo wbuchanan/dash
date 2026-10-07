@@ -37,13 +37,16 @@ Security notes
 * CustomJS templates use parameterised construction — user values are never
   directly interpolated into JavaScript code paths.
 * Both dashboard pages carry a Content-Security-Policy <meta>, ahead of every
-  script and style in the page.  A saved dashboard may run only the scripts
-  and styles written into it and load nothing from anywhere
-  (_DASH_CSP_STANDALONE); a served one may also load from, and connect to,
-  its own server (_DASH_CSP_SERVED).  The generated app's `python app.py`
-  launcher also sends the policy as a header on every response, with
-  frame-ancestors 'none', nosniff, DENY and no-referrer
-  (_DASH_SECURITY_HEADERS).
+  script and style in the page.  A saved dashboard runs only the scripts
+  dash wrote into it, each named in its policy by its SHA-256 hash, and
+  loads nothing from anywhere (_dash_saved_head; dash refuses to write a
+  page holding any other inline script, _dash_seal_saved_page); a served
+  one runs only the scripts carrying that page's nonce and may also load
+  from, and connect to, its own server (_dash_served_template).
+  'unsafe-eval' and inline styles stay, because BokehJS needs them (WP-30
+  P1.29).  The generated app's `python app.py` launcher also sends a
+  policy as a header on every response, with frame-ancestors 'none',
+  nosniff, DENY and no-referrer (_DASH_SECURITY_HEADERS).
 
 Dependencies
 ------------
@@ -1168,6 +1171,17 @@ class DashSpecError(ValueError):
     This is the renderer's twin, for a spec that reached a renderer another
     way: a hand-written spec, or one dash.ado wrote before this check
     existed.
+    """
+
+
+class DashScriptPolicyError(RuntimeError):
+    """A saved page holding an inline script dash did not write (WP-30
+    P1.29).
+
+    The saved page's policy names each script Bokeh wrote by its hash;
+    ``_dash_seal_saved_page`` raises this, and nothing is written, when the
+    finished page holds any other inline script -- which only an escaping
+    fault in dash's own HTML could put there.
     """
 
 
@@ -3661,27 +3675,36 @@ def _clock_slider_step_ms(vmin: float, vmax: float) -> int:
 # Content-Security-Policy, and the served app's security headers (WP-20)
 # ---------------------------------------------------------------------------
 # ONE constant per policy: adjust it here and every page that carries it
-# follows.  The saved page's <meta> is _CSP_META below, the served page's
-# comes from _dash_served_template, and the `python app.py` launcher's
-# headers from _dash_server_transforms.  The generated app receives
-# _DASH_CSP_SERVED and _DASH_SECURITY_HEADERS through ServerAppBuilder's
-# constant copy list and those three helpers through its helper list; a
-# name left out of either is a NameError in the served app.
+# follows.  The saved page's <meta> is _dash_saved_head(hashes), the
+# served page's comes from _dash_served_template(nonce), and the `python
+# app.py` launcher's headers from _dash_server_transforms.  No page runs
+# an inline script its policy does not name (WP-30 P1.29): the saved page
+# names each of its scripts by hash, the served page gives each of its
+# scripts a nonce made for that page.  The generated app receives the
+# served constants through ServerAppBuilder's constant copy list and the
+# served helpers through its helper list; a name left out of either is a
+# NameError in the served app.
 #
 # The saved page.  Everything in it is inline -- file_html(..., INLINE)
-# writes BokehJS into <script> elements and its CSS into <style> elements --
-# so script-src and style-src need 'unsafe-inline', and nothing may load
-# from anywhere: default-src 'none', connect-src 'none'.  'unsafe-eval'
-# because Bokeh's CustomJS compiles each callback with `new Function(...)`;
-# without it the browser raises an EvalError and no filter or interactive
-# callback fires.  img-src data: blob: for the toolbar's icons and the save
-# tool's image, font-src data: for an inline font.  Checked in Chromium on
-# a dashboard with a dropdown and a range filter, a KPI, hover tooltips, an
-# lfit and a histogram: no violation, the dropdown's CustomJS ran and hover
-# worked.
+# writes BokehJS into <script> elements and its CSS into <style> elements
+# -- and nothing may load from anywhere: default-src 'none', connect-src
+# 'none'.  This is the base: _dash_csp_standalone inserts a 'sha256-...'
+# source for each inline script Bokeh wrote into the page, taken before
+# dash splices any HTML of its own in, so an injected inline script or
+# event handler does not run ('unsafe-inline' used to let both run; an
+# injected <img onerror> and <script> both ran in Chrome, measured
+# 03oct2026).  'unsafe-eval' stays because Bokeh compiles each CustomJS
+# callback, tick formatter and tooltip formatter with `new Function(...)`
+# (measured: without it the filter's CustomJS and the tick formatter are
+# blocked).  style-src keeps 'unsafe-inline' because BokehJS writes its
+# styles into shadow roots as it draws (measured: 884 style-src-elem and 9
+# style-src-attr violations without it).  img-src data: blob: for the
+# toolbar's icons and the save tool's image, font-src data: for an inline
+# font.  A browser that supports only CSP level 1 does not know hash
+# sources and shows a blank page (A101; no fallback is kept).
 _DASH_CSP_STANDALONE = (
     "default-src 'none'; "
-    "script-src 'unsafe-inline' 'unsafe-eval'; "
+    "script-src 'unsafe-eval'; "
     "style-src 'unsafe-inline'; "
     "img-src data: blob:; "
     "font-src data:; "
@@ -3691,14 +3714,37 @@ _DASH_CSP_STANDALONE = (
     "form-action 'none'"
 )
 
-# The served page: the same, plus 'self', because it loads BokehJS from its
-# own server's /static and opens its websocket back to that server.  Checked
-# in Chromium on a Bokeh 3.9 server under this policy: no violation, the
-# websocket opened under connect-src 'self', a server callback round-tripped
-# and a CustomJS callback ran.
+# The `python app.py` launcher's header policy: the saved page's, plus
+# 'self', because the served page loads BokehJS from its own server's
+# /static and opens its websocket back to that server.  It stays exactly
+# as it was (A99): a header cannot know each page's nonce, so it keeps
+# 'unsafe-inline', and the page's own <meta> policy (_DASH_CSP_SERVED_META
+# with the page's nonce) is what refuses an injected script -- a browser
+# enforces both.  Checked in Chromium on a Bokeh 3.9 server under this
+# policy: no violation, the websocket opened under connect-src 'self', a
+# server callback round-tripped and a CustomJS callback ran.
 _DASH_CSP_SERVED = (
     "default-src 'none'; "
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; "
+    "font-src 'self' data:; "
+    "connect-src 'self'; "
+    "object-src 'none'; "
+    "base-uri 'none'; "
+    "form-action 'none'"
+)
+
+# The served page's own <meta> policy, the base _dash_csp_served inserts the
+# page's nonce into (WP-30 P1.29).  script-src is the nonce and
+# 'unsafe-eval' only, not 'self': a script from the server itself runs only
+# with the nonce (A102).  Measured in Chrome on 03oct2026 and by
+# test_csp_browser.py, under python app.py and bokeh serve, bokeh 3.8 and
+# 3.9: no violation of the page's own, a Select move round-trips, and an
+# injected inline script, handler or same-origin script is refused.
+_DASH_CSP_SERVED_META = (
+    "default-src 'none'; "
+    "script-src 'unsafe-eval'; "
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: blob:; "
     "font-src 'self' data:; "
@@ -3717,6 +3763,11 @@ _DASH_SECURITY_HEADERS = (
     ("X-Frame-Options", "DENY"),
     ("Referrer-Policy", "no-referrer"),
 )
+
+# The pages that run no script at all: the one written for a dashboard with
+# nothing to show, and the page that forwards a browser to a served
+# dashboard (WP-30 P1.29.8, A103).
+_DASH_CSP_NO_SCRIPTS = "default-src 'none'"
 
 
 def _dash_csp_meta(policy: str) -> str:
@@ -3753,23 +3804,265 @@ def _dash_csp_meta(policy: str) -> str:
     return '<meta http-equiv="Content-Security-Policy" content="%s">' % policy
 
 
-def _dash_served_template():
+def _dash_script_hashes(html: str) -> list:
+    """The base64 SHA-256 of every inline script a browser would run in
+    ``html``: the ``'sha256-...'`` sources a policy names to admit exactly
+    those scripts (WP-30 P1.29).
+
+    Threat: an injected inline script.  The saved page's policy used to
+    admit every inline script ('unsafe-inline'); it now names each script
+    Bokeh wrote by this hash, so one that reached the page any other way
+    does not run.  The caller hashes Bokeh's own fragments, never the
+    finished page: hashing the page would bless a script an escaping fault
+    let into dash's HTML (``_dash_seal_saved_page`` refuses such a page).
+
+    A script element opens at ``<script`` followed by a space, ``>`` or
+    ``/``, case-insensitively, and its text runs to the next ``</script``,
+    or to the end of ``html`` when there is none -- as a browser reads it.
+    It runs inline when it has no ``src`` and its ``type`` is absent,
+    empty, ``module`` or a JavaScript MIME type (trimmed, any case); a
+    JSON block or any other type is data.  The digest is taken over the
+    text with CR LF and CR made LF, encoded as UTF-8, because a browser
+    normalises line endings before it hashes: a page written with CRLF on
+    Windows still matches (measured).  One pass, no backtracking over a
+    script's text; a saved page of 1.7 MB takes about 7 ms (measured).
+
+    Args:
+        html: An HTML page or fragment.
+
+    Returns:
+        The distinct digests, sorted, without the ``sha256-`` prefix.
+
+    Raises:
+        TypeError: if ``html`` is not a string.
+    """
+    import base64
+    import hashlib
+    if not isinstance(html, str):
+        raise TypeError("dash: a page to hash must be a string, not %s"
+                        % (type(html).__name__,))
+    open_re = re.compile(r"<script(?=[\s>/])([^>]*)>", re.I)
+    close_re = re.compile(r"</script", re.I)
+    attr_re = re.compile(r"""([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'"""
+                         r"""|([^\s"'=<>`]+)))?""")
+    js_types = ("", "module", "application/ecmascript",
+                "application/javascript", "application/x-ecmascript",
+                "application/x-javascript", "text/ecmascript",
+                "text/javascript", "text/javascript1.0", "text/javascript1.1",
+                "text/javascript1.2", "text/javascript1.3",
+                "text/javascript1.4", "text/javascript1.5", "text/jscript",
+                "text/livescript", "text/x-ecmascript", "text/x-javascript")
+    found = set()
+    pos = 0
+    while True:
+        m = open_re.search(html, pos)
+        if m is None:
+            break
+        close = close_re.search(html, m.end())
+        stop = len(html) if close is None else close.start()
+        pos = len(html) if close is None else close.end()
+        attrs = {}
+        for a in attr_re.finditer(m.group(1)):
+            name = a.group(1).lower()
+            if name not in attrs:         # the first wins, as in HTML
+                attrs[name] = next((v for v in a.group(2, 3, 4)
+                                    if v is not None), "")
+        if "src" in attrs or \
+                attrs.get("type", "").strip().lower() not in js_types:
+            continue
+        body = html[m.end():stop].replace("\r\n", "\n").replace("\r", "\n")
+        found.add(base64.b64encode(
+            hashlib.sha256(body.encode("utf-8")).digest()).decode("ascii"))
+    return sorted(found)
+
+
+def _dash_csp_standalone(hashes) -> str:
+    """The saved page's policy: ``_DASH_CSP_STANDALONE`` with a
+    ``'sha256-<h>'`` source for each of ``hashes`` (WP-30 P1.29).
+
+    Threat: an injected inline script.  Only the scripts named here run;
+    there is no 'unsafe-inline' to fall back on (a browser that knows only
+    CSP level 1 shows a blank page, A101).  The sources go directly after
+    ``script-src``, sorted and each once, so the same page always carries
+    the same text.  Each digest is held to base64 SHA-256's form -- 43
+    characters of ``[A-Za-z0-9+/]`` and ``=`` -- before it reaches the
+    policy, which ``_dash_csp_meta`` then splices into an attribute.
+
+    Args:
+        hashes: Digests from :func:`_dash_script_hashes`.
+
+    Returns:
+        The policy text.
+
+    Raises:
+        ValueError: if a digest is not of that form, or the base does not
+            hold exactly one ``script-src``.
+    """
+    distinct = sorted(set(hashes))
+    for h in distinct:
+        if not isinstance(h, str) or \
+                not re.fullmatch(r"[A-Za-z0-9+/]{43}=", h):
+            raise ValueError("dash: refusing a script hash that is not "
+                             "base64 SHA-256")
+    if _DASH_CSP_STANDALONE.count("script-src ") != 1:
+        raise ValueError("dash: the saved page's policy must hold one "
+                         "script-src")
+    return _DASH_CSP_STANDALONE.replace(
+        "script-src ",
+        "script-src " + "".join("'sha256-%s' " % h for h in distinct), 1)
+
+
+def _dash_saved_head(hashes) -> str:
+    """The saved page's first <meta>s: its policy, naming ``hashes``, then
+    the viewport tag (WP-30 P1.29; it replaces the constant both saved
+    pages used to splice in).
+
+    Threat: an injected inline script (see :func:`_dash_csp_standalone`).
+    Both saved pages put these first in <head>, because a <meta> policy
+    governs only what the page parses after it.
+    """
+    return (_dash_csp_meta(_dash_csp_standalone(hashes))
+            + "\n" + _DASH_VIEWPORT_META)
+
+
+def _dash_seal_saved_page(page: str, hashes) -> str:
+    """``page``, once every inline script in it is one of ``hashes``
+    (WP-30 P1.29).
+
+    Threat: an inline script an escaping fault let into dash's own HTML --
+    the header, the filter bar, the tabs, the grid, the scheme's CSS --
+    which are spliced in after Bokeh's fragments were hashed.  The browser
+    would refuse such a script anyway; the page is refused here so that
+    the fault is reported rather than shipped (fail closed).  The message
+    names the count and the digests (at most 200 characters), never the
+    page's text.
+
+    Raises:
+        DashScriptPolicyError: if the page holds an inline script whose
+            digest is not in ``hashes``; nothing is written.
+    """
+    extra = sorted(set(_dash_script_hashes(page)) - set(hashes))
+    if extra:
+        shown = " ".join(extra)
+        if len(shown) > 200:
+            shown = shown[:197] + "..."
+        raise DashScriptPolicyError(
+            "dash: refusing to write a page holding %d inline script(s) "
+            "dash did not write (sha256 %s); nothing was written."
+            % (len(extra), shown))
+    return page
+
+
+def _dash_new_nonce() -> str:
+    """A served page's nonce: 18 random bytes, URL-safe base64, so 24
+    characters and 144 bits (WP-30 P1.29).
+
+    Threat: an injected inline script on the served page.  A script runs
+    there only if it carries the nonce its page's policy names, so the
+    nonce must be one an attacker cannot guess and is never reused:
+    ``make_document`` asks for a fresh one for every document, which is one
+    per session and so one per page.
+    """
+    import secrets
+    return secrets.token_urlsafe(18)
+
+
+def _dash_csp_served(nonce: str) -> str:
+    """The served page's <meta> policy: ``_DASH_CSP_SERVED_META`` with
+    ``'nonce-<nonce>'`` first in script-src (WP-30 P1.29).
+
+    Threat: an injected inline script or handler, or an injected script
+    from the server itself: script-src names the nonce and 'unsafe-eval'
+    only (A102).  The nonce is held to ``[A-Za-z0-9_-]{22,64}`` -- what
+    :func:`_dash_new_nonce` makes -- because it is spliced into the
+    policy, an attribute and a template's source.
+
+    Raises:
+        TypeError: if ``nonce`` is not a string.
+        ValueError: if it is of any other form.
+    """
+    if not isinstance(nonce, str):
+        raise TypeError("dash: a nonce must be a string, not %s"
+                        % (type(nonce).__name__,))
+    if not re.fullmatch(r"[A-Za-z0-9_-]{22,64}", nonce):
+        raise ValueError("dash: refusing a nonce that is not 22 to 64 "
+                         "URL-safe characters")
+    if _DASH_CSP_SERVED_META.count("script-src ") != 1:
+        raise ValueError("dash: the served page's policy must hold one "
+                         "script-src")
+    return _DASH_CSP_SERVED_META.replace(
+        "script-src ", "script-src 'nonce-%s' " % nonce, 1)
+
+
+def _dash_nonce_scripts(markup, nonce):
+    """``markup`` with ``nonce="<nonce>"`` added to each script element's
+    opening tag (WP-30 P1.29).
+
+    Threat: an injected inline script on the served page, which runs only
+    if it carries the page's nonce.  Each element opens at ``<script``
+    followed by a space, ``>`` or ``/`` (any case); the attribute goes
+    directly after that name, and the element's text is then copied
+    unchanged through its ``</script``, or to the end.  So a script's body
+    is never edited, even where it holds the text of a tag -- an INLINE
+    bundle does (``bokeh-tables.min.js`` twice, measured) -- and text
+    outside the elements is unchanged.  The only user text in the blocks
+    this is applied to is escaped by Bokeh (the document JSON), so it
+    cannot spell an element.  The nonce is checked as
+    :func:`_dash_csp_served` checks it.
+
+    Returns:
+        A ``markupsafe.Markup``, so the template does not escape it.
+    """
+    from markupsafe import Markup
+    _dash_csp_served(nonce)
+    text = str(markup)
+    open_re = re.compile(r"<script(?=[\s>/])", re.I)
+    close_re = re.compile(r"</script", re.I)
+    attr = ' nonce="%s"' % nonce
+    out, pos = [], 0
+    while True:
+        m = open_re.search(text, pos)
+        if m is None:
+            out.append(text[pos:])
+            break
+        close = close_re.search(text, m.end())
+        stop = len(text) if close is None else close.end()
+        out.append(text[pos:m.end()] + attr + text[m.end():stop])
+        pos = stop
+    return Markup("".join(out))
+
+
+def _dash_served_template(nonce=None):
     """The served page's template: Bokeh's own page, plus the CSP <meta>
-    and the saved page's viewport <meta> (WP-28 E14).
+    and the saved page's viewport <meta> (WP-28 E14), with every script
+    element carrying the page's nonce (WP-30 P1.29).
 
     ``{% extends base %}`` over ``bokeh.core.templates.FILE`` -- the page
-    Bokeh writes anyway -- with the policy and the viewport tag added to its
-    ``preamble`` block, which sits in the page's head after its title and
-    ahead of every style element and script Bokeh writes, so the policy
-    governs all of them and the viewport is declared before anything else
-    parses.  The CSP <meta> comes first so ``test_csp.py``'s ``_assert_first``
-    still finds the policy ahead of everything it governs.  (No literal tag
-    names here: this text is copied into the generated app, whose source is
-    checked for a raw script tag -- a ``<meta`` is not one, and
-    ``_dash_csp_meta`` already returns one.)  Nothing else of the page is
-    replaced, and ``{{ super() }}`` keeps whatever a later Bokeh puts in
-    that block.  ``base`` is bound in the template's own globals, so the
-    template does not depend on Bokeh passing it (Bokeh 3.9 passes it).
+    Bokeh writes anyway.  Three of its blocks are overridden, each through
+    ``{{ super() }}``, so whatever a later Bokeh puts in them is kept (S41
+    guards that FILE still has them):
+
+    * ``preamble`` gains the policy and the viewport tag.  It sits in the
+      page's head after its title and ahead of every style element and
+      script Bokeh writes, so the policy governs all of them and the
+      viewport is declared before anything else parses.  The CSP <meta>
+      comes first, so ``test_csp.py``'s ``_assert_first`` still finds the
+      policy ahead of everything it governs.
+    * ``js_resources`` (BokehJS) and ``inner_body`` (the page's own
+      scripts) pass through :func:`_dash_nonce_scripts`, which gives each
+      script element the nonce and edits nothing else.
+
+    The policy is :func:`_dash_csp_served` of the page's nonce: only a
+    script carrying it runs.  The nonce is written into the template's
+    text through ``_dash_csp_meta``, whose character rule refuses a brace,
+    never passed as a template variable.  ``nonce`` None means a fresh
+    one; make_document passes a fresh one for every document, so every
+    page has its own (one page per session).  ``base`` is bound in the
+    template's own globals, so the template does not depend on Bokeh
+    passing it (Bokeh 3.9 passes it).  ``functools.partial``, not a
+    lambda, binds the nonce to the helper.  No complete script tag (``<``
+    + ``script>``) appears here: this text is copied into the generated
+    app, whose source is checked for one (test_server.py:599-607).
 
     A <meta> rather than a header because it is the one form that also
     holds under ``bokeh serve app.py``: make_document sets this template
@@ -3778,17 +4071,33 @@ def _dash_served_template():
     below 980px was unreachable on a phone (dash.sthlp used to list this as
     a limitation).
 
+    Args:
+        nonce: The page's nonce, as :func:`_dash_new_nonce` makes it.
+
     Returns:
         A ``jinja2.Template``.
+
+    Raises:
+        TypeError, ValueError: as :func:`_dash_csp_served` does.
     """
+    import functools
     from bokeh.core.templates import FILE
+    if nonce is None:
+        nonce = _dash_new_nonce()
+    policy = _dash_csp_served(nonce)
     return FILE.environment.from_string(
         "{% extends base %}\n"
         "{% block preamble %}{{ super() }}    "
-        + _dash_csp_meta(_DASH_CSP_SERVED)
+        + _dash_csp_meta(policy)
         + "\n    " + _DASH_VIEWPORT_META
-        + "\n{% endblock %}",
-        globals={"base": FILE})
+        + "\n{% endblock %}\n"
+        "{% block js_resources %}{{ dash_nonce_scripts(super()) }}"
+        "{% endblock %}\n"
+        "{% block inner_body %}{{ dash_nonce_scripts(super()) }}"
+        "{% endblock %}",
+        globals={"base": FILE,
+                 "dash_nonce_scripts": functools.partial(
+                     _dash_nonce_scripts, nonce=nonce)})
 
 
 def _dash_server_transforms(settings: "dict | None" = None) -> list:
@@ -4219,7 +4528,10 @@ def _dash_redirect_page(url):
     link."""
     import html as _html
     e = _html.escape(url, quote=True)
+    # It runs no script, so default-src 'none' costs it nothing (WP-30
+    # P1.29.8).  A refresh <meta> is not governed by a policy.
     return ('<!doctype html><html><head><meta charset="utf-8">'
+            + _dash_csp_meta(_DASH_CSP_NO_SCRIPTS) +
             '<meta name="referrer" content="no-referrer">'
             '<meta http-equiv="refresh" content="0;url=' + e + '">'
             '<title>dash</title></head><body><p><a href="' + e + '">' + e +
@@ -4448,18 +4760,10 @@ def _dash_bokeh_serve_key(doc, out=None):
 # out to fit, so every breakpoint below 980px is unreachable on a phone and
 # the text is unreadable.  Found by opening a dashboard at 375px:
 # window.innerWidth reported 980.  A module constant, not inlined into
-# _CSP_META, because the served template needs it too and cannot copy a
-# method or a string built inside one.
+# the saved page's head (_dash_saved_head), because the served template
+# needs it too and cannot copy a method or a string built inside one.
 _DASH_VIEWPORT_META = ('<meta name="viewport" '
                        'content="width=device-width, initial-scale=1">')
-
-# The saved page's <meta>s, written into both standalone pages: the
-# layout(bs) page and the default one each put them first in <head>, because
-# a <meta> policy governs only what the page parses after it.
-_CSP_META = (
-    _dash_csp_meta(_DASH_CSP_STANDALONE)
-    + "\n" + _DASH_VIEWPORT_META
-)
 
 # Bootstrap-compatible 12-column responsive grid CSS (db- prefix avoids
 # conflicts if users have Bootstrap already loaded in their browser).
@@ -30971,10 +31275,12 @@ class DashRenderer:
             model_keys.append(f"__fw_{fw_idx}__")
 
         if not all_models:
+            # It runs nothing, so it carries default-src 'none' (WP-30
+            # P1.29.8), under which a style= attribute would be refused.
             return (
-                "<!DOCTYPE html><html><body>"
-                "<p style='font-family:sans-serif'>No dashboard content.</p>"
-                "</body></html>"
+                "<!DOCTYPE html><html><head>"
+                + _dash_csp_meta(_DASH_CSP_NO_SCRIPTS)
+                + "</head><body><p>No dashboard content.</p></body></html>"
             )
 
         # ---- Extract minimal Bokeh JS/CSS via file_html() ----
@@ -30988,6 +31294,10 @@ class DashRenderer:
         # ---- Get individual Bokeh component divs ----
         script_tag, div_list = components(all_models)
         name_to_div: dict[str, str] = dict(zip(model_keys, div_list))
+        # The page's policy names Bokeh's scripts by hash, taken here,
+        # before any HTML of dash's own is spliced in (WP-30 P1.29).
+        hashes = (_dash_script_hashes(_extracted_head)
+                  + _dash_script_hashes(script_tag))
 
         # No graph may vanish from a dashboard without an error.
         self._assert_every_graph_was_placed(_placed_figs)
@@ -31103,8 +31413,10 @@ class DashRenderer:
             # First in <head>, as on the default page.  A <meta> policy
             # governs only what the page parses after it, and it used to
             # follow _extracted_head -- where BokehJS is inlined -- so
-            # BokehJS itself ran outside the policy.
-            f"  {_CSP_META}\n"
+            # BokehJS itself ran outside the policy.  It names each of
+            # Bokeh's scripts by hash, taken before dash's own HTML was
+            # spliced in (WP-30 P1.29).
+            f"  {_dash_saved_head(hashes)}\n"
             f"{_extracted_head}\n"
             "  <style>\n"
             f"{_DASH_GRID_CSS}\n"
@@ -31119,7 +31431,7 @@ class DashRenderer:
             "</body>\n"
             "</html>"
         )
-        return html_str
+        return _dash_seal_saved_page(html_str, hashes)
 
     @staticmethod
     def _parse_tabs_option(
@@ -32583,6 +32895,9 @@ class DashRenderer:
         # would otherwise read as a double escape.
         self._last_layout_root = layout_root
         html_str = file_html(layout_root, INLINE, title=title_text or "dash")
+        # Every script on this page is Bokeh's, hashed here, before the
+        # head below is spliced in (WP-30 P1.29).
+        hashes = _dash_script_hashes(html_str)
 
         # A complete element here: this path splices into an existing <head>
         # that has no <style> of its own.  The Bootstrap path below is
@@ -32591,10 +32906,10 @@ class DashRenderer:
         _scheme_css = self.scheme.css_style_element()
         html_str = html_str.replace(
             "<head>",
-            f"<head>\n    {_CSP_META}\n{_scheme_css}",
+            f"<head>\n    {_dash_saved_head(hashes)}\n{_scheme_css}",
             1,
         )
-        return html_str
+        return _dash_seal_saved_page(html_str, hashes)
 
     # ------------------------------------------------------------------
     # Main render method
@@ -32951,8 +33266,11 @@ class ServerAppBuilder:
                       # The served page's policy and the launcher's headers
                       # (WP-20), read by _dash_served_template and
                       # _dash_server_transforms; the viewport tag both pages
-                      # declare (WP-28 E14), read by the same template.
+                      # declare (WP-28 E14), read by the same template; and
+                      # the meta's own base and the no-script pages' policy
+                      # (WP-30 P1.29).
                       "_DASH_CSP_SERVED", "_DASH_SECURITY_HEADERS",
+                      "_DASH_CSP_SERVED_META", "_DASH_CSP_NO_SCRIPTS",
                       "_DASH_VIEWPORT_META",
                       # The served dashboard's key (WP-29 P0.12a): its
                       # form, its refusals, the JWT and line bounds, the
@@ -33285,8 +33603,10 @@ class ServerAppBuilder:
                          "_dash_event_throttle",
                          # The page's CSP <meta>, the template make_document
                          # sets it in, and the launcher's header transform
-                         # (WP-20).
+                         # (WP-20); and the page's nonce helpers (WP-30
+                         # P1.29).
                          "_dash_csp_meta", "_dash_served_template",
+                         "_dash_csp_served", "_dash_new_nonce", "_dash_nonce_scripts",
                          "_dash_server_transforms",
                          # The served dashboard's key (WP-29 P0.12a): made,
                          # checked, compared in constant time, and named in
@@ -34720,8 +35040,9 @@ class ServerAppBuilder:
             "    # that also holds under `bokeh serve app.py', which gives an app",
             "    # no hook into its responses; `python app.py' sends the policy",
             "    # as a header too.  Set first, so that a session refused below",
-            "    # is served under the policy as well.",
-            "    doc.template = _dash_served_template()",
+            "    # is served under the policy as well.  One nonce per document,",
+            "    # so one per page: Bokeh renders one page per session (WP-30 P1.29).",
+            "    doc.template = _dash_served_template(_dash_new_nonce())",
             "    # The previous document's style notes, forgotten: one note per",
             "    # (option, value) per render, as DashRenderer.render() does.",
             "    _dash_reset_notes()",

@@ -1784,7 +1784,9 @@ class TestTheLauncherServes:
         assert "<title>Served Dashboard</title>" in page, page[:600]
         # The control: the same pattern finds the viewport the saved page
         # declares, in the form dash writes it.
-        assert re.search(r'<meta[^>]+name="viewport"', dr._CSP_META)
+        # Flipped (WP-30 P1.29): the saved head is built per page.
+        assert re.search(r'<meta[^>]+name="viewport"',
+                         dr._dash_saved_head([]))
         assert page.count(dr._DASH_VIEWPORT_META) == 1
         assert page.index("Content-Security-Policy") < page.index(
             dr._DASH_VIEWPORT_META)

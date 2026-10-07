@@ -1914,9 +1914,10 @@ class TestBokehJsBundleInHtml:
     "bokeh" and "<script" were looked for in the page text, where the
     page's own embed script spells both: a page that fetched BokehJS from
     Bokeh's CDN passed (measured 24sep2026) -- a script the page's own
-    Content-Security-Policy, script-src 'unsafe-inline' 'unsafe-eval' and
-    no source, does not allow.  And 'application/json' is a string
-    BokehJS itself carries.
+    Content-Security-Policy does not allow: it names the page's own
+    scripts by hash and no source (WP-30 P1.29), so a CDN script is not
+    allowed.  And 'application/json' is a string BokehJS itself
+    carries.
     """
 
     def test_html_contains_bokeh_script_reference(self):

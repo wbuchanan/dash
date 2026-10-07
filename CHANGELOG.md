@@ -482,7 +482,20 @@ and now matches Stata.
 
 <!-- WP-30 P1.25b -->
 
-<!-- WP-30 P1.29 -->
+- A dashboard page no longer lets an injected script run. A saved page's
+  Content Security Policy used to allow `'unsafe-inline'` scripts, so an
+  inline script or event handler that reached the page ran; it now names
+  each script dash writes by its SHA-256 hash, and dash refuses to write a
+  page holding any other. A served page names a nonce made for each page it
+  sends, under `python app.py` and `bokeh serve` alike. `'unsafe-eval'` and
+  inline styles stay, because BokehJS needs them; a browser that supports
+  only CSP level 1 shows a blank page. The page that forwards a browser to a
+  served dashboard, and the page written for a dashboard with nothing to
+  show, carry `default-src 'none'`. (WP-30, P1.29)
+- On Windows, a dashboard whose path holds `%`, `!`, `^`, `&`, `|`, `<`, `>`
+  or `;` is written but no longer opened: the command shell that opened it
+  reads `%NAME%` even inside quotes, so it could open another file than the
+  one written. dash prints the path instead. (WP-30, P1.29)
 
 <!-- WP-30 P1.30 -->
 

@@ -228,7 +228,8 @@ COVERAGE = {
         # stub openers receive the path whole; dash build reaches it.
         "_dash_open_page": ("test_serve_browser.cscript:SB-14",
                             "test_serve_browser.cscript:SB-19",
-                            "test_help_claims_2.cscript:HC2-30"),
+                            "test_help_claims_2.cscript:HC2-30",
+                            "test_serve_browser.cscript:SB-22"),
         # e2e: the superseded item's globals are gone, a neighbour's kept.
         "_dash_drop_item": ("test_registry_collision.cscript:REG-05",
                             "test_registry_collision.cscript:REG-13",
@@ -686,6 +687,7 @@ COVERAGE = {
         # WP-30 S02 (P1.34): Portable runners (P1.34 under M4)
         # WP-30 S03 (P1.35): Stata 19 floor declared and enforced (P1.35 under M2)
         # WP-30 S04 (P1.29): CSP without 'unsafe-inline'; safe Windows opener (P1.29, M11)
+        "_dash_cmd_metachar": ("test_serve_browser.cscript:SB-21",),
         # WP-30 S05 (P1.33): Measured Python floor (P1.33, M3/M10)
         # WP-30 S06 (P1.26a): One note channel (P1.26 part a)
         # WP-30 S07 (P1.25a): Ship the six StataCorp schemes (P1.25 part a)

@@ -461,6 +461,50 @@ if c(os) != "Windows" {
 else {
     display "PV-27 PASS: quote, dollar and backtick are refused first (no symbolic link on Windows)"
 }
+
+// PV-28..34 (WP-30 P1.29): %, !, %% and ^ are written as typed, as
+// twoway's saving() writes them (test/fixtures/saving_chars_truth.json).
+// dash runs no shell for saving(); only its Windows opener declines such a
+// path (test_serve_browser.cscript SB-22).
+local pvn 28
+foreach stem in "pct%PATH%x" "bang!x!y" "pct%%x" "caret^x" {
+    local pvf "`pvd'/`stem'.html"
+    capture erase "`pvf'"
+    capture noisily dash scatter mpg weight, saving("`pvf'")
+    assert _rc == 0
+    confirm file "`pvf'"
+    capture erase "`pvf'"
+    display "PV-`pvn' PASS: saving(`stem'.html) is written under its name as typed"
+    local ++pvn
+}
+
+// PV-32: dash build, a page.
+local pvf "`pvd'/b%HOME%!x.html"
+capture erase "`pvf'"
+dash clear
+dash scatter mpg weight, name(pv32)
+capture noisily dash build, saving("`pvf'") replace
+assert _rc == 0
+confirm file "`pvf'"
+capture erase "`pvf'"
+dash clear
+display "PV-32 PASS: dash build writes b%HOME%!x.html under its name as typed"
+
+// PV-33: dash build, server, an app.
+local pvf "`pvd'/b%HOME%!x.py"
+capture erase "`pvf'"
+dash scatter mpg weight, name(pv33)
+capture noisily dash build, saving("`pvf'") server replace
+assert _rc == 0
+confirm file "`pvf'"
+capture erase "`pvf'"
+dash clear
+display "PV-33 PASS: dash build, server writes b%HOME%!x.py under its name as typed"
+
+// PV-34: the validator itself.
+capture noisily _dash_validate_path "`pvd'/v%PATH%!^%%x.html"
+assert _rc == 0
+display "PV-34 PASS: the validator accepts a path holding % ! ^ and %%"
 capture erase "`pvd'/ln.html"
 capture erase "`pvu'"
 capture erase "`pvl'"

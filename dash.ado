@@ -290,7 +290,7 @@ program define _dash_require_mata
         _dash_extract_hover_vars ///
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
         _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
-        _dash_kpi_pctile _json_escape _dash_path_badchar ///
+        _dash_kpi_pctile _json_escape _dash_path_badchar _dash_cmd_metachar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal ///
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
         _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
@@ -5810,6 +5810,8 @@ end
 // os() or, when that is omitted, this machine's.  r(opened) is 1 when the
 // command went to the shell.  dryrun builds and returns the command and
 // runs nothing, and so does a set $dash_nobrowser, whichever caller asks.
+// r(why) is "metachar" when a Windows path holds a character cmd.exe would
+// read, so no command was built and the path was printed instead.
 //
 // The two callers each carried their own three shell lines, and the
 // Windows line ran only where Stata reports Windows, so no test ran it;
@@ -5863,6 +5865,24 @@ program define _dash_open_page, rclass
         if `_op_dq' {
             display as error "dash: a Windows path cannot hold a double quote; the page was not opened."
             exit 198
+        }
+        // WP-30 P1.29 (M11): start runs inside cmd.exe, which expands
+        // %NAME% even inside double quotes, ! under delayed expansion, and
+        // reads ^ & | < > ; as its escape and separators, so start could
+        // open another file than the one written.  For such a path no
+        // command is built and nothing runs -- with or without dryrun,
+        // under $dash_nobrowser too -- and the path is printed, through
+        // _dash_say, which never parses it; the page is already written,
+        // so the rc is 0.  twoway's saving() accepts % ! ^, so the
+        // validator does not refuse them.
+        mata: st_local("_op_meta", strofreal(_dash_cmd_metachar(st_local("path"))))
+        if `_op_meta' {
+            mata: _dash_say("txt", "dash: not opened, because Windows' command shell would read the " + char(`_op_meta') + " in ", st_local("path"), "; open the page yourself.")
+            return local os "`os'"
+            return local cmd ""
+            return local why "metachar"
+            return scalar opened = 0
+            exit
         }
         mata: st_local("cmd", "start " + char(34) + char(34) + " " + char(34) + st_local("path") + char(34))
     }

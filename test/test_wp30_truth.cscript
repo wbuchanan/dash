@@ -390,10 +390,49 @@ if inlist("`only'", "", "S03") {
 }
 * ==== end S03 ====
 
+// S04's helper: twoway's recorded saving() result for one character, from
+// test/fixtures/saving_chars_truth.json (scripts/extract_saving_chars_truth.do),
+// into the globals CSP_RC, CSP_W and CSP_STEM.  Read relative to the
+// working directory, test/.  S12 reads the same fixture.
+python:
+import json as _csp_json
+def _csp_truth(key):
+    from sfi import Macro
+    with open("fixtures/saving_chars_truth.json", encoding="utf-8") as fh:
+        rec = _csp_json.load(fh)["probes"][key]
+    f = rec["file"]
+    Macro.setGlobal("CSP_RC", str(int(rec["rc"])))
+    Macro.setGlobal("CSP_W", "1" if rec["written"] else "0")
+    Macro.setGlobal("CSP_STEM", f[len("tw_"):-len(".gph")])
+end
 * ==== S04 P1.29: CSP without 'unsafe-inline'; safe Windows opener ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S04") {
     display as text "S04 start " c(current_date) " " c(current_time)
+    // CSP-01..04: dash's saving() writes a name holding %, !, %% or ^ as
+    // typed, as twoway's does (P1.29; only dash's Windows opener declines
+    // such a path).
+    quietly sysuse auto, clear
+    local s04_chars `" "%" "!" "%%" "^" "'
+    local s04_i 0
+    foreach key in pct_path bang pct_pct caret {
+        local ++s04_i
+        local id "CSP-0`s04_i'"
+        local s04_c : word `s04_i' of `s04_chars'
+        python: __import__("__main__")._csp_truth("`key'")
+        local s04_page "`w30_work'/d_${CSP_STEM}.html"
+        capture erase "`s04_page'"
+        capture noisily dash scatter mpg weight, saving("`s04_page'", replace)
+        local s04_rc = _rc
+        capture confirm file "`s04_page'"
+        local s04_w = (_rc == 0)
+        _w30_expect `id' "(`s04_rc' == ${CSP_RC})" "dash gave rc `s04_rc', twoway ${CSP_RC}"
+        _w30_expect `id' "(`s04_w' == ${CSP_W})" "dash wrote the page: `s04_w'; twoway wrote its file: ${CSP_W}"
+        _w30_done `id' "saving() with `s04_c' is written as typed, as twoway writes it"
+        capture erase "`s04_page'"
+    }
+    macro drop CSP_RC CSP_W CSP_STEM
+    capture dash clear
     display as text "S04 end " c(current_date) " " c(current_time)
 }
 * ==== end S04 ====

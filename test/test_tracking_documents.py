@@ -1596,7 +1596,6 @@ WP30_OPEN = {
     "P1.27": "The drop-in command form fails: a twoway prefix is refused, saving(name, asis) writes a file named after the whole argument, dash build, saving(f, replace) is refused, and batch mode opens a browser",
     "P1.28a": "dash returns no r(filename), and graph export after dash fails r(601) or silently exports an earlier Stata graph",
     "P1.28b": "Neither mode offers a vector export: the toolbar saves only a PNG at the screen's resolution",
-    "P1.29": "Both content security policies allow inline scripts, and percent and exclamation signs in a saving path reach the Windows shell",
     "P1.30": "The bokeh dependency has no ceiling or run-time version check, and the Bokeh internals dash's security relies on are not checked",
     "P1.31a": "The served app has no session cap or idle lifetime and decodes the whole dataset again for every session",
     "P1.31b": "One reader's filter-move recompute blocks the served event loop for every other reader",

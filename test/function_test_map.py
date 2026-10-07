@@ -801,6 +801,13 @@ FUNCTIONS = {
  # WP-30 S02 (P1.34): Portable runners (P1.34 under M4)
  # WP-30 S03 (P1.35): Stata 19 floor declared and enforced (P1.35 under M2)
  # WP-30 S04 (P1.29): CSP without 'unsafe-inline'; safe Windows opener (P1.29, M11)
+ '_dash_csp_served': 'test/test_csp.py::TestTheNonce::test_the_served_policy_names_the_nonce_and_no_unsafe_inline',
+ '_dash_csp_standalone': 'test/test_csp.py::TestTheStandalonePolicy::test_hashes_are_inserted_sorted_and_once',
+ '_dash_new_nonce': 'test/test_csp.py::TestTheNonce::test_a_nonce_is_fresh_and_urlsafe',
+ '_dash_nonce_scripts': 'test/test_csp.py::TestTheServedTemplate::test_only_script_elements_get_the_nonce',
+ '_dash_saved_head': 'test/test_csp.py::TestThePolicyConstants::test_the_standalone_meta_is_built_from_the_constant',
+ '_dash_script_hashes': 'test/test_csp.py::TestTheScriptHashes::test_only_executable_inline_scripts_are_hashed',
+ '_dash_seal_saved_page': 'test/test_csp.py::TestAHostileFragmentIsNotAdmitted::test_the_seal_refuses_an_unhashed_script',
  # WP-30 S05 (P1.33): Measured Python floor (P1.33, M3/M10)
  # WP-30 S06 (P1.26a): One note channel (P1.26 part a)
  # WP-30 S07 (P1.25a): Ship the six StataCorp schemes (P1.25 part a)

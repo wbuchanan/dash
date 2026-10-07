@@ -119,8 +119,9 @@ def _page(layout, pos):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         page = dr.DashRenderer(sp, dp).render()
-    i = page.rfind("</body>")
-    return page[:i] + _PROBE + page[i:]
+    # Admitted under the page's own policy, which runs only the scripts it
+    # names (WP-30 P1.29).
+    return responsive_probe.admit_script(page, _PROBE)
 
 
 def _run_chrome(page, timeout=90):

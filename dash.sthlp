@@ -922,8 +922,8 @@ The following options are available on {cmd:dash build}.
 {synopthdr}
 {synoptline}
 {synopt:{cmdab:sav:ing}{cmd:(}{it:filepath}{cmd:)}}required; path to
-    the output HTML file (must end in {cmd:.html}; no {cmd:..}
-    traversal allowed){p_end}
+    the output HTML file, which must end in {cmd:.html}; see
+    {help dash##saving_chars:Characters in saving()}{p_end}
 {synopt:{cmdab:ti:tle}{cmd:(}{it:string}{cmd:)}}dashboard page title{p_end}
 {synopt:{cmdab:sub:title}{cmd:(}{it:string}{cmd:)}}dashboard subtitle{p_end}
 {synopt:{cmdab:lay:out}{cmd:(}{it:spec}{cmd:)}}grid layout; see
@@ -946,7 +946,8 @@ The following options are available on {cmd:dash build}.
     {cmd:sj}); {cmd:scheme()} wins if both are given{p_end}
 {synopt:{cmd:server}}write a self-contained Bokeh Server {cmd:.py} app
     instead of a standalone HTML file; saving() path must end in
-    {cmd:.py}; does not block or open a browser{p_end}
+    {cmd:.py}; does not block or open a browser; see
+    {help dash##saving_chars:Characters in saving()}{p_end}
 {synopt:{cmdab:nobr:owser}}write the dashboard but do not open it in a
     browser.  Stata's own {cmd:nodraw} on the graph has the same effect, and
     setting the global {cmd:$dash_nobrowser} to any non-empty value suppresses
@@ -956,6 +957,21 @@ The following options are available on {cmd:dash build}.
     {help dash##nobrowser_global:The global dash_nobrowser}{p_end}
 {synopt:{cmd:replace}}overwrite output file if it already exists{p_end}
 {synoptline}
+
+{marker saving_chars}
+{pstd}
+{ul:Characters in saving().}  A {cmd:saving()} path may not hold a double
+quote, a backquote, {cmd:$}, {cmd:;}, {cmd:&}, {cmd:|}, {cmd:<}, {cmd:>} or
+a control character such as a tab or a line break, may not have a {cmd:..}
+segment, and its file name may not begin with {cmd:-}: such a path is
+refused, r(198), and nothing is written.  Other characters, {cmd:%}, {cmd:!}
+and {cmd:^} among them, are written as typed, as {cmd:twoway}'s
+{cmd:saving()} writes them.  On Windows, dash does not open a page whose
+path holds {cmd:%}, {cmd:!}, {cmd:^}, {cmd:&}, {cmd:|}, {cmd:<}, {cmd:>} or
+{cmd:;}, because Windows' command shell, through which the page would be
+opened, reads them as instructions: the page is written, dash prints its
+path, and you open it yourself.  This includes the one-line form's preview
+page when the name of your user folder holds such a character.
 
 {marker nobrowser_global}
 {pstd}
@@ -1725,14 +1741,30 @@ the page as a Bokeh model property or as escaped text inside the markup dash
 writes, never as markup of its own.
 
 {pstd}
-The page carries a Content-Security-Policy in both modes.  A saved dashboard
-may run only the scripts and styles written into it and may load nothing
-from anywhere; a served one may also load from, and connect to, the server
-it came from, and nothing else.  {cmd:python app.py} also sends the policy as
-a header on every response, {cmd:/health} included, adding
-{cmd:frame-ancestors 'none'} so that no other site can frame the dashboard,
-and sends {cmd:X-Content-Type-Options: nosniff},
-{cmd:X-Frame-Options: DENY} and {cmd:Referrer-Policy: no-referrer} with it.
+The page carries a Content-Security-Policy in both modes, and the policy
+decides which scripts the browser runs.  A saved dashboard runs only the
+scripts dash wrote into it, each named in its policy by its SHA-256 hash,
+and loads nothing from anywhere; dash refuses to write a saved page holding
+an inline script it did not name.  A served page runs only the scripts that
+carry that page's nonce, a random value the server makes for each page it
+sends, and may also load from, and connect to, the server it came from, and
+nothing else.  So a script or an event handler that reached a page some
+other way -- through a fault in escaping, say -- does not run.  Two
+allowances remain, because BokehJS needs them: {cmd:'unsafe-eval'}, since
+Bokeh compiles each filter callback, tick formatter and tooltip formatter
+with {cmd:new Function}, and inline styles, since BokehJS writes its styles
+as it draws.  The policy is no substitute for escaping, which dash does for
+every string you give it, and a browser that supports only the first version
+of the standard (CSP level 1) shows a blank page.  The page that forwards
+your browser to a served dashboard, and the page written when a dashboard
+has nothing to show, carry {cmd:default-src 'none'}: they run no script at
+all.  {cmd:python app.py} also sends a policy as a header on every response,
+{cmd:/health} included, adding {cmd:frame-ancestors 'none'} so that no other
+site can frame the dashboard, and sends
+{cmd:X-Content-Type-Options: nosniff}, {cmd:X-Frame-Options: DENY} and
+{cmd:Referrer-Policy: no-referrer} with it.  That header cannot know each
+page's nonce, so it keeps {cmd:'unsafe-inline'}; a browser applies both
+policies, and the page's own refuses an injected script.
 {cmd:bokeh serve app.py} sends none of these headers, so its page carries
 the policy but can be framed.
 

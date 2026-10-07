@@ -9876,10 +9876,12 @@ class TestQualifierMissingColumnGraceful:
 # dryrun, returns the command it would run without running it.  Their
 # claims are held by what runs, in test_serve_browser.cscript:
 #   BUG-40-1a/1c  start "" "<path>" on Windows: SB-14 (the whole command for
-#                 an ordinary path), SB-15 (for a path holding an apostrophe,
-#                 spaces, a semicolon and an ampersand) and SB-16 (a path
-#                 with a double quote, which would end start's argument, is
-#                 refused).  That both callers open through the one opener:
+#                 an ordinary path), SB-15 (whose Windows path, holding a
+#                 semicolon and an ampersand, is now declined for them,
+#                 WP-30 P1.29: SB-22), SB-24 (start's quoting of a hostile
+#                 path without them: an apostrophe, spaces, parentheses and
+#                 a comma) and SB-16 (a path with a double quote, which
+#                 would end start's argument, is refused).  That both callers open through the one opener:
 #                 test_help_claims_2.cscript HC2-30 (dash build) and HC2-34a
 #                 (the one-line form), each of which fails with that
 #                 caller's call removed (measured 24sep2026).

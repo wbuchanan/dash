@@ -1185,10 +1185,12 @@ class TestBokehVersion:
         So did the legend entry and the hover tooltip, where the label is a
         text node inside a DIV reading ``<img src=x onerror=...>Y label: ``.
         There was no IMG element anywhere in the document, shadow roots
-        included, and ``document.title`` was unchanged.  The page's CSP
-        includes ``script-src 'unsafe-inline'``, which would allow an inline
-        ``onerror``, so what protected it was BokehJS rendering the label as
-        text, not the CSP.
+        included, and ``document.title`` was unchanged.  Before WP-30 the
+        page's CSP included ``script-src 'unsafe-inline'``, which would have
+        allowed an inline ``onerror``; it now names each of its scripts by
+        hash (P1.29), so an inline handler would also be blocked by the
+        policy, but what protects the label is still BokehJS rendering it
+        as text.
 
         In the bundled BokehJS source (bokeh/server/static/js):
         ``HoverToolView._create_template`` (label cell as a text child) and

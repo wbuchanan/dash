@@ -965,5 +965,7 @@ class TestInternalLinksResolve:
         # this was, and the dead link passed the check above.
         # 75 after WP-29 P0.11's two links to Description (the Exporting
         # sentence and the data limit's paragraph; flipped from 73).
+        # 75 -> 77, 29 -> 30: WP-30 P1.29 the saving() and server entries
+        # link the new "Characters in saving()" paragraph (saving_chars).
         refs = re.findall(r"dash##[a-z_0-9]+", _help_text())
-        assert len(refs) == 75 and len(set(refs)) == 29
+        assert len(refs) == 77 and len(set(refs)) == 30
