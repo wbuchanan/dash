@@ -254,8 +254,10 @@ class TestTheSyntaxDiagram:
         for head, tail in re.findall(r"\{cmdab:([a-z]+):([a-z]*)", block):
             shown.add(head + tail)
         shown |= set(re.findall(r"\{cmd:([a-z]+)[(}]", block))
+        # asis is saving()'s sub-option (saving(f, asis), WP-30 P1.27), not
+        # an option of dash build.
         shown -= {"dash", "build", "top", "left", "type", "exclude",
-                  "label", "_all"}
+                  "label", "_all", "asis"}
         assert declared - shown == set(), declared - shown
         assert shown - declared == set(), shown - declared
 

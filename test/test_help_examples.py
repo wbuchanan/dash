@@ -498,7 +498,8 @@ class TestTheShownCommands:
         forms = [(s.file, s.form) for s in shown]
         assert forms.count(("dash.sthlp", "line")) == 1
         # WP-29 P0.8: two date-unit illustrations joined the six.
-        assert forms.count(("dash.sthlp", "inline")) == 8
+        # 8 -> 9: WP-30 batch 4 added one inline example.
+        assert forms.count(("dash.sthlp", "inline")) == 9
         assert forms.count(("dash_setup.sthlp", "line")) == 7
         # dash_setup.sthlp once also named `python set exec` inline, in the
         # prose; WP-23 rewrote that paragraph, and the command is shown
