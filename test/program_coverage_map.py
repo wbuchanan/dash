@@ -332,6 +332,8 @@ COVERAGE = {
         # WP-30 S18 (P1.5): Axis format fallbacks (P1.5)
         # WP-30 S19 (P1.16): Legend keys and default axis titles (P1.16)
         # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)
+        "_dash_mlabel_list": ("test_varlist_expansion.cscript:PS-05", "test_varlist_expansion.cscript:PS-06"),
+        "_dash_value_list": ("test_varlist_expansion.cscript:PS-08", "test_varlist_expansion.cscript:PS-12"),
         # WP-30 S21 (P1.3a): natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)
         # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
         # WP-30 S23 (P1.26b): Served notes reach Stata (P1.26 part b, M6)
@@ -742,6 +744,7 @@ COVERAGE = {
         "_dash_axis_fmts": ("test_option_validation.cscript:AF-01", "test_option_validation.cscript:AF-06"),
         # WP-30 S19 (P1.16): Legend keys and default axis titles (P1.16)
         # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)
+        "_dash_stylelist_locals": ("test_varlist_expansion.cscript:PS-01",),
         # WP-30 S21 (P1.3a): natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)
         # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
         # WP-30 S23 (P1.26b): Served notes reach Stata (P1.26 part b, M6)

@@ -45,7 +45,8 @@ _STYLE_KEYS = (
     "mlabsize mlabposition mlabgap mlabangle mlabformat lcolor lwidth "
     "lpattern clcolor clpattern clwidth color fcolor fintensity bfcolor "
     "blcolor acolor alcolor alwidth alpattern").split()
-_NOT_YET = ("mlabel", "jitter", "base", "barwidth", "pstyle", "mstyle",
+# P1.1b: mlabel jitter base barwidth are value lists now (test_value_lists)
+_NOT_YET = ("pstyle", "mstyle",
             "lstyle", "mlstyle", "mlabtextstyle", "connect", "cmissing",
             "malpha", "lalpha", "falpha", "jseed", "mlabwidth", "mlpattern",
             "marker")
@@ -257,7 +258,9 @@ class TestOneList:
         m = re.search(r"string scalar _dash_stylelist_keys\(\)\s*\{(.*?)\n\}",
                       src, re.S)
         lit = "".join(re.findall(r'"([^"]*)"', m.group(1)))
-        assert lit.split() == _STYLE_KEYS
+        # P1.1b: the value lists follow the style keys
+        assert lit.split() == _STYLE_KEYS + ["mlabel", "jitter", "base",
+                                             "barwidth"]
 
     def test_every_listed_key_reaches_the_json_writer(self):
         body = _program_body(_read(_ADO), "_dash_plot_opts_to_json")

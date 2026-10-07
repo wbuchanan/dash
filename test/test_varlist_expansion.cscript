@@ -5,7 +5,7 @@
 *! written before the fix, per project rule 8.  Each documents a defect that
 *! was measured end to end against the pre-fix code base.
 *!
-*! Tests: V2-01 through V2-12, SL-01 through SL-25
+*! Tests: V2-01 through V2-12, SL-01 through SL-25, PS-01 through PS-16
 *!
 *!   V2-01  HEADLINE  `dash scatter mpg price weight` must draw TWO series
 *!                    (colour census of the generated HTML).
@@ -872,14 +872,15 @@ string scalar _sl_q(string scalar s) return(char(34) + s + char(34))
 string scalar _sl_cq(string scalar s) return(char(96) + char(34) + s + char(34) + char(39))
 end
 
-local _notyet mlabel jitter base barwidth pstyle mstyle lstyle mlstyle mlabtextstyle connect cmissing malpha lalpha falpha jseed mlabwidth mlpattern marker
+local _notyet pstyle mstyle lstyle mlstyle mlabtextstyle connect cmissing malpha lalpha falpha jseed mlabwidth mlpattern marker
 
 // SL-01 the key list
 mata: st_local("_slk", _dash_stylelist_keys())
-local _want mcolor msymbol msize msangle mfcolor mlcolor mlwidth mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat lcolor lwidth lpattern clcolor clpattern clwidth color fcolor fintensity bfcolor blcolor acolor alcolor alwidth alpattern
+// P1.1b: the four value lists follow the 28 style options
+local _want mcolor msymbol msize msangle mfcolor mlcolor mlwidth mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat lcolor lwidth lpattern clcolor clpattern clwidth color fcolor fintensity bfcolor blcolor acolor alcolor alwidth alpattern mlabel jitter base barwidth
 local _inter : list _slk & _notyet
-local ok = (`: word count `_slk'' == 28 & "`_slk'" == "`_want'" & "`_inter'" == "")
-_sl_tally SL-01 `ok' "_dash_stylelist_keys() is the 28 style options"
+local ok = (`: word count `_slk'' == 32 & "`_slk'" == "`_want'" & "`_inter'" == "")
+_sl_tally SL-01 `ok' "_dash_stylelist_keys() is the 28 style options and the 4 value lists"
 
 // SL-02 elements
 mata: q = char(34)
@@ -1202,6 +1203,296 @@ _sl_tally SL-25 `ok' "_dash_stylelist_blank finds a used blank element only"
 dash clear
 local nfail = `nfail' + ${sl_nfail}
 local faillist `"`faillist'${sl_faillist}"'
+
+// ----------------------------------------------------------------
+// PS: per-series value lists (WP-30 P1.1b)
+//
+// twoway reads mlabel(), jitter(), base() and barwidth() over an expanded
+// varlist one element per y, as a stylelist; dash refused every list,
+// r(198), and gave a lone value to every y (measured 03oct2026, probe
+// d1.do; twoway's readings: test/fixtures/value_list_truth.json).  PS-01
+// is the Mata unit; the rest read each plot's options object and the
+// refusals' first error line.
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+dash clear
+global ps_nfail 0
+global ps_faillist ""
+tempfile ps_log
+global ps_log "`ps_log'"
+
+capture program drop _ps_tally
+program define _ps_tally
+    args id ok what
+    if `ok' == 1 display as text "`id' PASS: `what'"
+    else {
+        display as error "`id' FAIL: `what'"
+        global ps_nfail = ${ps_nfail} + 1
+        global ps_faillist `"${ps_faillist} `id'"'
+    }
+end
+
+capture program drop _ps_run
+program define _ps_run
+    // _ps_run <command>, log(<path>): $ps_rc is its rc and $ps_line the
+    // first line it printed, read by value.
+    mata: _sl_p = strrpos(st_local("0"), ", log(")
+    mata: st_local("cmd", substr(st_local("0"), 1, _sl_p - 1))
+    mata: st_local("log", substr(st_local("0"), _sl_p + 6, strlen(st_local("0")) - _sl_p - 6))
+    capture log close _ps
+    quietly log using `"`log'"', text replace name(_ps)
+    capture noisily `macval(cmd)'
+    global ps_rc = _rc
+    quietly log close _ps
+    mata: st_global("ps_line", _ps_first(st_local("log")))
+end
+
+capture program drop _ps_refuse
+program define _ps_refuse
+    // _ps_refuse id rc line <command>: the command is refused with rc and
+    // first line exactly line (or a line ending in it when line starts
+    // with "*"), and registers nothing.
+    args id rc line
+    mata: st_local("cmd", substr(st_local("0"), strpos(st_local("0"), "|") + 1, .))
+    capture dash clear
+    _ps_run dash `macval(cmd)' name(psr), log($ps_log)
+    if substr(`"`line'"', 1, 1) == "*" {
+        mata: st_local("_o", strofreal(substr(st_global("ps_line"), -strlen(st_local("line")) + 1, .) == substr(st_local("line"), 2, .)))
+    }
+    else mata: st_local("_o", strofreal(st_global("ps_line") == st_local("line") | st_local("line") == ""))
+    if $ps_rc != `rc' | !`_o' | `"${dash_json_psr}"' != "" {
+        display as error `"`id': rc $ps_rc, line: $ps_line :: `macval(cmd)'"'
+        c_local ok 0
+    }
+end
+
+mata:
+string scalar _ps_first(string scalar path)
+{
+    real scalar   fh
+    string scalar ln, s
+    fh = fopen(path, "r")
+    while ((ln = fget(fh)) != J(0, 0, "")) {
+        s = strtrim(ln)
+        if (s == "" | substr(s, 1, 1) == "(" | substr(s, 1, 5) == "name:" | substr(s, 1, 4) == "log:" | substr(s, 1, 9) == "log type:" | substr(s, 1, 10) == "opened on:" | substr(s, 1, 10) == "closed on:") continue
+        fclose(fh)
+        return(s)
+    }
+    fclose(fh)
+    return("")
+}
+end
+local two "scatter mpg turn weight,"
+
+// PS-01 _dash_stylelist_locals
+mata: _dash_stylelist_locals("make " + _sl_q("") + " rep78 ..", "_p")
+local ok = ("`_pn'" == "4" & "`_pt1'" == "make" & "`_pq1'" == "0" & "`_pt2'" == "" & "`_pq2'" == "1" & "`_pt3'" == "rep78" & "`_pt4'" == "..")
+mata: _dash_stylelist_locals(_sl_q("make") + " " + _sl_cq("rep78"), "_p")
+local ok = `ok' & "`_pq1'`_pq2'" == "11" & "`_pt1'`_pt2'" == "makerep78"
+mata: _dash_stylelist_locals("", "_p")
+local ok = `ok' & "`_pn'" == "0"
+mata: _dash_stylelist_locals(char(36) + "G a" + char(96) + "b", "_p")
+mata: st_local("_o", strofreal(st_local("_pt1") == char(36) + "G" & st_local("_pt2") == "a" + char(96) + "b"))
+local ok = `ok' & `_o'
+timer clear 98
+timer on 98
+mata: _dash_stylelist_locals(5000 * "make ", "_p")
+timer off 98
+quietly timer list 98
+local ok = `ok' & "`_pn'" == "5000" & r(t98) < 5
+_ps_tally PS-01 `ok' "_dash_stylelist_locals: elements, quoted flags, by value, linear"
+
+// PS-02 one label variable per series, each exported
+capture noisily dash `two' mlabel(make rep78) name(ps02)
+mata: _dash_extract_vars(st_global("dash_json_ps02"), "_pv")
+local ok = (!_rc & `: list posof "make" in _pv' & `: list posof "rep78" in _pv')
+mata: st_local("_o", strofreal(_sl_spec("ps02", "{'mlabel':'make'}|{'mlabel':'rep78'}")))
+_ps_tally PS-02 `=`ok' & `_o'' "mlabel(make rep78) labels each y with its own variable"
+
+// PS-03 padding, shorthands, abbreviations, quotes, extras, repeats
+local ok 1
+local i 0
+foreach c in `"mlabel(make)|{'mlabel':'make'}|{}"' `"mlabel(. rep78)|{}|{'mlabel':'rep78'}"' ///
+    `"mlabel(make .)|{'mlabel':'make'}|{}"' `"mlabel(make "")|{'mlabel':'make'}|{}"' ///
+    `"mlabel(make rep78 foreign)|{'mlabel':'make'}|{'mlabel':'rep78'}"' ///
+    `"mlabel(mak rep7)|{'mlabel':'make'}|{'mlabel':'rep78'}"' `"mlabel(rep*)|{'mlabel':'rep78'}|{}"' ///
+    `"mlabel("make" "rep78")|{'mlabel':'make'}|{'mlabel':'rep78'}"' ///
+    `"mlabel(make) mlabel(rep78 foreign)|{'mlabel':'rep78'}|{'mlabel':'foreign'}"' {
+    local ++i
+    mata: _ps_p = strpos(st_local("c"), "|")
+    mata: st_local("o", substr(st_local("c"), 1, _ps_p - 1)); st_local("w", substr(st_local("c"), _ps_p + 1, .))
+    capture noisily dash `two' `macval(o)' name(ps03_`i')
+    mata: st_local("_o", strofreal(_sl_spec("ps03_`i'", st_local("w"))))
+    if _rc | !`_o' {
+        display as error `"PS-03.`i': rc `=_rc' `macval(o)' :: ${dash_json_ps03_`i'}"'
+        local ok 0
+    }
+}
+mata: _dash_extract_vars(st_global("dash_json_ps03_5"), "_pv")
+if `: list posof "foreign" in _pv' local ok 0
+_ps_tally PS-03 `ok' "a short list is padded with ., extras ignored, shorthands and quotes read"
+
+// PS-04 a single-y type takes the first element
+capture noisily dash scatter mpg weight, mlabel(make foreign) name(ps04a)
+capture noisily dash rscatter mpg turn weight, mlabel(make rep78) name(ps04b)
+mata: st_local("ok", strofreal(_sl_spec("ps04a", "{'mlabel':'make'}") & _sl_spec("ps04b", "{'mlabel':'make'}")))
+_ps_tally PS-04 `ok' "a single-y type labels with the first element"
+
+// PS-05 mlabel shorthands refused in twoway's words
+local ok 1
+_ps_refuse PS-05 198 ".. not allowed in option mlabel()" |`two' mlabel(make ..)
+_ps_refuse PS-05 198 "... not allowed in option mlabel()" |`two' mlabel(make ...)
+_ps_refuse PS-05 198 ".. not allowed in option mlabel()" |`two' mlabel(make .. rep78)
+_ps_refuse PS-05 101 "=exp not allowed" |`two' mlabel(make =)
+_ps_refuse PS-05 101 "=exp not allowed" |`two' mlabel(= make)
+_ps_refuse PS-05 101 "=exp not allowed" |`two' mlabel(make = rep78)
+_ps_refuse PS-05 102 "too few variables specified" |`two' mlabel(.)
+_ps_refuse PS-05 102 "too few variables specified" |`two' mlabel(. ..)
+_ps_tally PS-05 `ok' "mlabel's .., ..., = and no-variable lists refused as twoway refuses them"
+
+// PS-06 every mlabel variable is checked, in twoway's order
+local ok 1
+_ps_refuse PS-06 111 "*variable nosuch not found" |`two' mlabel(make rep78 nosuch)
+_ps_refuse PS-06 111 "*variable nosuch not found" |scatter mpg weight, mlabel(rep78 nosuch)
+_ps_refuse PS-06 111 "*variable nosuch not found" |`two' mlabel(nosuch ..)
+_ps_refuse PS-06 111 "*variable nosuch not found" |`two' mlabel(make .. nosuch)
+_ps_refuse PS-06 111 "*variable nosuch not found" |`two' mlabel(nosuch =)
+_ps_refuse PS-06 101 "=exp not allowed" |`two' mlabel(= nosuch)
+_ps_refuse PS-06 198 "dash: mlabel() must name one variable (got: t*)" |`two' mlabel(t*)
+_ps_refuse PS-06 198 ".. not allowed in option mlabel()" |`two' mlabel(make..)
+_ps_tally PS-06 `ok' "every mlabel variable is checked, past the last y too, before .."
+
+// PS-07 by plot type
+local ok 1
+_ps_refuse PS-07 198 ".. not allowed in option mlabel()" |histogram mpg, mlabel(nosuch ..)
+_ps_refuse PS-07 198 "invalid syntax" |histogram mpg, mlabel(= make)
+_ps_refuse PS-07 198 ".. not allowed in option mlabel()" |function y=x, mlabel(make ..)
+_ps_refuse PS-07 103 "" |mspline mpg weight, mlabel(make rep78)
+_ps_refuse PS-07 103 "" |mspline mpg weight, mlabel(. make)
+_ps_refuse PS-07 198 ".. not allowed in option mlabel()" |mspline mpg weight, mlabel(make ..)
+_ps_refuse PS-07 111 "*variable nosuch not found" |mband mpg weight, mlabel(nosuch rep78)
+capture noisily dash histogram mpg, mlabel(nosuch) name(ps07a)
+if _rc | strpos(`"${dash_json_ps07a}"', "mlabel") local ok 0
+capture noisily dash function y=x, mlabel(nosuch =) name(ps07b)
+if _rc local ok 0
+_ps_tally PS-07 `ok' "histogram, function, mspline and mband check mlabel as twoway does"
+
+// PS-08 jitter per series
+local ok 1
+local i 0
+foreach c in "jitter(2 3)|{'jitter':'2'}|{'jitter':'3'}" "jitter(2 ..)|{'jitter':'2'}|{'jitter':'2'}" ///
+    "jitter(2 =)|{'jitter':'2'}|{'jitter':'2'}" "jitter(. 3)|{}|{'jitter':'3'}" "jitter(5)|{'jitter':'5'}|{}" ///
+    "jitter(1d1 2)|{'jitter':'10'}|{'jitter':'2'}" "jitter(.)|{}|{}" {
+    local ++i
+    mata: _ps_p = strpos(st_local("c"), "|")
+    mata: st_local("o", substr(st_local("c"), 1, _ps_p - 1)); st_local("w", substr(st_local("c"), _ps_p + 1, .))
+    capture noisily dash `two' `o' name(ps08_`i')
+    mata: st_local("_o", strofreal(_sl_spec("ps08_`i'", st_local("w"))))
+    if _rc | !`_o' {
+        display as error `"PS-08.`i': `o' :: ${dash_json_ps08_`i'}"'
+        local ok 0
+    }
+}
+capture noisily dash scatter mpg weight, jitter(2 200) name(ps08s)
+capture noisily dash scatter mpg weight, jitter(2 abc) name(ps08t)
+mata: st_local("_o", strofreal(_sl_spec("ps08s", "{'jitter':'2'}") & _sl_spec("ps08t", "{'jitter':'2'}")))
+local ok = `ok' & `_o'
+_ps_run dash rscatter mpg turn weight, jitter(.) name(ps08r), log($ps_log)
+mata: st_local("_o", strofreal(_sl_log_has(st_global("ps_log"), "jitter")))
+if $ps_rc | `_o' local ok 0
+_ps_tally PS-08 `ok' "jitter() one element per y; unused elements unchecked; jitter(.) is no jitter"
+
+// PS-09 jitter refusals
+local ok 1
+_ps_refuse PS-09 198 "dash: jitter() must be a number between 0 and 100 (got: 200)" |`two' jitter(2 200)
+_ps_refuse PS-09 198 "dash: jitter() must be a number between 0 and 100 (got: abc)" |`two' jitter(2 abc)
+_ps_refuse PS-09 198 "jitter(2 .. 5):  invalid syntax" |`two' jitter(2 .. 5)
+capture noisily dash scatter mpg weight, jitter(5; import os) name(ps09)
+if _rc != 198 | `"${dash_json_ps09}"' != "" local ok 0
+_ps_tally PS-09 `ok' "a used jitter() element is held to 0-100; a misplaced .. in twoway's words"
+
+// PS-10 base and barwidth per series
+local ok 1
+local i 0
+local b "bar mpg turn weight,"
+foreach c in "`b' base(10 20) barwidth(1 2)|{'barwidth':'1','base':'10'}|{'barwidth':'2','base':'20'}" ///
+    "`b' base(10 ..)|{'base':'10'}|{'base':'10'}" "`b' base(10 =)|{'base':'10'}|{'base':'10'}" ///
+    "`b' barwidth(. 200)|{}|{'barwidth':'200'}" "`b' barwidth(1 ..)|{'barwidth':'1'}|{'barwidth':'1'}" ///
+    "`b' barwidth(.)|{}|{}" "`b' base(10)|{'base':'10'}|{}" "`b' bw(1 2)|{'barwidth':'1'}|{'barwidth':'2'}" ///
+    "dropline mpg turn weight, base(10 20)|{'base':'10'}|{'base':'20'}" ///
+    "spike mpg turn weight, base(10 20)|{'base':'10'}|{'base':'20'}" ///
+    "area mpg turn weight, sort base(10 20)|{'base':'10','sort':'sort'}|{'base':'20','sort':'sort'}" ///
+    "bar mpg weight, barwidth(1 2) base(10 20)|{'barwidth':'1','base':'10'}" {
+    local ++i
+    mata: _ps_p = strpos(st_local("c"), "|")
+    mata: st_local("o", substr(st_local("c"), 1, _ps_p - 1)); st_local("w", substr(st_local("c"), _ps_p + 1, .))
+    capture noisily dash `o' name(ps10_`i')
+    mata: st_local("_o", strofreal(_sl_spec("ps10_`i'", st_local("w"))))
+    if _rc | !`_o' {
+        display as error `"PS-10.`i': `o' :: ${dash_json_ps10_`i'}"'
+        local ok 0
+    }
+}
+_ps_tally PS-10 `ok' "base() and barwidth() one element per y, bw() too"
+
+// PS-11 base and barwidth refusals
+local ok 1
+_ps_refuse PS-11 198 "base(10 .. 20):  invalid syntax" |bar mpg turn weight, base(10 .. 20)
+_ps_refuse PS-11 198 "dash: barwidth() must be a positive number (got: -2)" |bar mpg turn weight, barwidth(1 -2)
+_ps_refuse PS-11 198 "" |bar mpg turn weight, barwidth(1 0)
+_ps_refuse PS-11 198 "dash: base() must be a number (got: abc)" |bar mpg turn weight, base(10 abc)
+_ps_tally PS-11 `ok' "a used base() or barwidth() element is held to the rule"
+
+// PS-12 a list where twoway takes one value
+local ok 1
+_ps_refuse PS-12 198 "option barwidth() not allowed" |rbar mpg turn weight, barwidth(50 100)
+_ps_refuse PS-12 198 "option barwidth() not allowed" |rbar mpg turn weight, barwidth(50 ..)
+_ps_refuse PS-12 198 "option barwidth() not allowed" |rbar mpg turn weight, barwidth(50) barwidth(10 20)
+_ps_refuse PS-12 198 "option barwidth() not allowed" |rbar mpg turn weight, barwidth(" 50")
+_ps_refuse PS-12 198 "option barwidth() not allowed" |histogram mpg, barwidth(1 2)
+_ps_refuse PS-12 198 "option barwidth() not allowed" |rspike mpg turn weight, barwidth(1 2)
+_ps_refuse PS-12 198 "" |rcap mpg turn weight, barwidth(1 2)
+_ps_refuse PS-12 198 "option base() not allowed" |rbar mpg turn weight, base(10 20)
+_ps_refuse PS-12 198 "option base() not allowed" |histogram mpg, base(10 20)
+_ps_refuse PS-12 198 "" |lowess mpg weight, bwidth(.5 .8)
+capture noisily dash rbar mpg turn weight, barwidth(50) name(ps12a)
+capture noisily dash histogram mpg, barwidth(1) name(ps12b)
+mata: st_local("_o", strofreal(_sl_spec("ps12a", "{'barwidth':'50'}") & strpos(st_global("dash_json_ps12b"), "barwidth")))
+local ok = `ok' & `_o'
+_ps_tally PS-12 `ok' "barwidth() and base() lists refused in twoway's words where it takes one value"
+
+// PS-13 guard (S11): mlabposition() per series beside mlabel()
+capture noisily dash `two' mlabel(make rep78) mlabposition(3 9) name(ps13a)
+capture noisily dash `two' mlabel(make) mlabposition(3 ..) name(ps13b)
+mata: st_local("ok", strofreal(_sl_spec("ps13a", "{'mlabel':'make','mlabposition':'3'}|{'mlabel':'rep78','mlabposition':'9'}") & ///
+    _sl_spec("ps13b", "{'mlabel':'make','mlabposition':'3'}|{'mlabposition':'3'}")))
+_ps_tally PS-13 `ok' "mlabposition() keeps S11's reading beside an mlabel() list"
+
+// PS-14 by()
+capture noisily dash `two' mlabel(make rep78) by(foreign) name(ps14a)
+capture noisily dash bar mpg turn weight, base(10 20) by(foreign) name(ps14b)
+mata: st_local("ok", strofreal(_sl_spec("ps14a", "{'mlabel':'make'}|{'mlabel':'rep78'}") & _sl_spec("ps14b", "{'base':'10'}|{'base':'20'}")))
+_ps_tally PS-14 `ok' "by() keeps each series' value"
+
+// PS-15 guard: elements by value
+local ok 1
+_ps_refuse PS-15 111 "*not found" |`two' mlabel("\`jgnone'" rep78)
+mata: st_local("_o", strofreal(strpos(st_global("ps_line"), char(96) + "jgnone' not found") > 0))
+local ok = `ok' & `_o'
+_ps_refuse PS-15 198 "" |`two' jitter("\$G")
+mata: st_local("_o", strofreal(strpos(st_global("ps_line"), char(36) + "G") > 0))
+local ok = `ok' & `_o'
+_ps_tally PS-15 `ok' "a backtick or dollar in an element stays literal"
+
+// PS-16 guard: one plain value on one y writes what it wrote
+capture noisily dash scatter mpg weight, mlabel(make) jitter(5) name(ps16a)
+capture noisily dash area mpg weight, base(5) name(ps16b)
+capture noisily dash bar mpg weight, barwidth(20) name(ps16c)
+mata: st_local("ok", strofreal(_sl_spec("ps16a", "{'mlabel':'make','jitter':'5'}") & _sl_spec("ps16b", "{'base':'5'}") & _sl_spec("ps16c", "{'barwidth':'20'}")))
+_ps_tally PS-16 `ok' "a single plain value is written as before"
+dash clear
+local nfail = `nfail' + ${ps_nfail}
+local faillist `"`faillist'${ps_faillist}"'
 
 // ----------------------------------------------------------------
 // Summary

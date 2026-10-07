@@ -46,8 +46,8 @@
 *!           written with commas
 *!   HC2-17  an unknown scheme(): twoway draws s2color with a note, dash
 *!           refuses; twoway has no theme() at all
-*!   HC2-18  forms twoway reads and dash refuses: mlabel() with two
-*!           variables, range(varname), a . in range(), and a width or angle
+*!   HC2-18  forms twoway reads and dash refuses: an mlabel() element that
+*!           names several variables, range(varname), a . in range(), and a width or angle
 *!           bound on a plot type that does not draw what it styles
 *!   HC2-19  the statistical switches: refused on every other plot type, as
 *!           twoway refuses them, with twoway's messages
@@ -574,7 +574,7 @@ _hc2_expect "HC2-17c" 198 `"twoway scatter mpg weight, theme(dark)"' "option the
 
 // HC2-18 -- forms twoway reads and dash refuses.
 _hc2_expect "HC2-18a" 0   `"twoway scatter mpg weight, mlabel(make foreign)"'
-_hc2_dash   "HC2-18b" 198 `"dash scatter mpg weight, mlabel(make foreign) name(hc)"' "mlabel() must name one variable"
+_hc2_dash   "HC2-18b" 0   `"dash scatter mpg weight, mlabel(make foreign) name(hc)"'  // P1.1b: twoway labels with the first variable (HC2-18a)
 _hc2_expect "HC2-18c" 0   `"twoway function y=x, range(mpg)"'
 _hc2_dash   "HC2-18d" 198 `"dash function y=x, range(mpg) name(hc)"' "range()"
 _hc2_expect "HC2-18e" 0   `"twoway kdensity mpg, range(weight)"'

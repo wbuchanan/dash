@@ -1548,7 +1548,6 @@ class TestWp29Tracking:
 #: on a key whose entry is missing, closed or not in the WP-30 open form, so
 #: the allowance cannot outlive its reason.  The closeout (S58.1) leaves it {}.
 WP30_OPEN = {
-    "P1.1b": "Per-series value lists such as mlabel(make rep78), jitter(2 3), base(10 20) and barwidth(1 2) are refused r(198), where twoway applies them series by series",
     "P1.3a": "Default numeric axes use Bokeh's ticker and 10 percent padding, not twoway's natscale ticks and plot-region margin, and fit lines are left out of the axis range",
     "P1.3b": "Default %td to %ty date axes keep Bokeh's DatetimeTicker, not twoway's tsnatscale ticks",
     "P1.4a": "The scheme's opacity, histogram colour, intensity and width, and its hollow and sm symbols do not reach fits, spikes, ranges, immediates, histograms or rarea",
@@ -1596,7 +1595,7 @@ WP30_OPEN = {
 #: commit (index.md R4).
 WP30_LISTS = {
     "P1.1a": ("Results that change", "Changed behaviour"),
-    "P1.1b": ("Changed behaviour", "Fixed in WP-30"),
+    "P1.1b": ("Results that change", "Changed behaviour", "Fixed in WP-30"),
     "P1.2a": ("Results that change",),
     "P1.2b": ("Results that change",),
     "P1.3a": ("Results that change",),

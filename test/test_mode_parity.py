@@ -1949,6 +1949,15 @@ CORPUS = [
     _case("First-equals-last titles and axis 2 (WP-30 P1.16)",
           [_sc(), plot_for("scatter", yvar="price"),
            plot_for("rcap", {"yaxis": "2"})]),
+    # WP-30 P1.1b: per-series value lists
+    _case("value lists, labels",
+          [plot_for("scatter", {"mlabel": "rep"}, yvar="mpg"),
+           plot_for("scatter", {"mlabel": "foreign"}, yvar="price")]),
+    _case("value lists, bars",
+          [plot_for("bar", {"base": "10", "barwidth": "0.4"}, yvar="mpg",
+                    xvar="rep"),
+           plot_for("bar", {"base": "20", "barwidth": "0.8"}, yvar="price",
+                    xvar="rep")]),
 ]
 
 
@@ -2711,6 +2720,15 @@ MOVE_CORPUS = [
     # design (the served key keeps the build's levels, as before).
     _move_case("colorvar() colorcuts(), dropdown", _MOVES[0],
                [_sc(colorvar="price", colorcuts="5000 9000")]),
+    # WP-30 P1.1b: per-series value lists
+    _move_case("value lists, labels, dropdown", _MOVES[0],
+               [plot_for("scatter", {"mlabel": "rep"}, yvar="mpg"),
+                plot_for("scatter", {"mlabel": "foreign"}, yvar="price")]),
+    _move_case("value lists, bars, range", _MOVES[1],
+               [plot_for("bar", {"base": "10", "barwidth": "0.4"}, yvar="mpg",
+                         xvar="rep"),
+                plot_for("bar", {"base": "20", "barwidth": "0.8"}, yvar="price",
+                         xvar="rep")]),
 ]
 
 

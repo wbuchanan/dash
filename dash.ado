@@ -321,7 +321,7 @@ program define _dash_require_mata
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
-        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_probe ///
+        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_probe _dash_stylelist_locals ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
@@ -997,15 +997,15 @@ program define _dash_parse_plot_opts, sclass
     syntax [, ///
         MColor(string asis)       Msymbol(string asis)      MSIze(string asis) ///
         MSAngle(string asis)      MFColor(string asis)      MLColor(string asis) ///
-        MLabel(string)            MLABColor(string asis)    MLABSize(string asis) ///
+        MLabel(string asis)       MLABColor(string asis)    MLABSize(string asis) ///
         MLABPosition(string asis) MLABGap(string asis)      MLABWidth(string) ///
         MALpha(string)            MARKER(string)            LColor(string asis) ///
         LWidth(string asis)       LPattern(string asis)     LALpha(string) ///
         FColor(string asis)       FIntensity(string asis)   FAlpha(string) ///
         AColor(string asis)       ALColor(string asis)      ALWidth(string asis) ///
         ALPattern(string asis) ///
-        BARWidth(string)          BASE(string)              BLColor(string asis) ///
-        BFColor(string asis)      JITter(string)            JSEed(string) ///
+        BARWidth(string asis)     BASE(string asis)         BLColor(string asis) ///
+        BFColor(string asis)      JITter(string asis)       JSEed(string) ///
         YAXis(string)             XAXis(string)             COLORVar(string) ///
         COLPALette(string)        COLORDIScrete             COLORUSEPLEGend ///
         COLORNlevels(string)      COLORCUTs(string asis)    COLORMissing(string) ///
@@ -1768,6 +1768,9 @@ end
 // among others (dash.sthlp, Marker Label Options).  The note does not
 // name mlabel() on those, because twoway draws nothing for it there
 // either.
+// WP-30 P1.1b: twoway checks the list first (measured 03oct2026): .. on
+// histogram and function and = on histogram are r(198) (S08, T01, T04);
+// on mspline and mband _dash_mlabel_list's checks precede r(103) (S06-T10).
 //
 // Called by _dash_fold_bw, after _dash_fold_cl and before
 // _dash_validate_opts.  The value is read from s() by value and only ever
@@ -1786,15 +1789,26 @@ program define _dash_fold_mlab, sclass
     local mlab_unread  "histogram function"
     local mlab_refused "mspline mband"
     if `: list ptype in mlab_unread' {
+        mata: _dash_stylelist_locals(st_local("v"), "_fm")
+        forvalues j = 1/`_fmn' {
+            if "`_fmq`j''" == "1" continue
+            mata: st_local("_c", (st_local("_fmt`j'") == ".." | st_local("_fmt`j'") == "..." | st_local("_fmt`j'") == "=") ? st_local("_fmt`j'") : "")
+            if "`_c'" == ".." | "`_c'" == "..." {
+                display as error "`_c' not allowed in option mlabel()"
+                exit 198
+            }
+            if "`_c'" == "=" & "`ptype'" == "histogram" {
+                display as error "invalid syntax"
+                exit 198
+            }
+        }
         sreturn local mlabel ""
         exit
     }
     if `: list ptype in mlab_refused' {
-        capture confirm variable `macval(v)'
-        if !_rc {
-            display as error "dash: mlabel() is not allowed on `ptype' (twoway: too many variables specified)"
-            exit 103
-        }
+        _dash_mlabel_list "dash" `"`macval(v)'"' "`ptype'" 1
+        display as error "dash: mlabel() is not allowed on `ptype' (twoway: too many variables specified)"
+        exit 103
     }
 end
 
@@ -2331,9 +2345,18 @@ program define _dash_option_rules
     local flags ///
         discrete@histogram  stdp|stdf|stdr@lfitci|qfitci|fpfitci ///
         mean|noweight|adjust|logit@lowess
+    // Value lists (WP-30 P1.1b): plot rules twoway reads one element per
+    // y of an expanded varlist, checked by _dash_value_list element by
+    // element, after the shorthands resolve.
+    local values "mlabel jitter base barwidth"
+    // Where twoway takes one value and refuses a list, "option barwidth()
+    // not allowed", r(198) (measured 03oct2026): option@type|type.
+    local onevalue "barwidth@rbar|histogram|rcap|rspike  base@rbar|histogram"
     c_local _dash_rules_plot  `"`plot'"'
     c_local _dash_rules_graph `"`graph'"'
     c_local _dash_rules_flags `"`flags'"'
+    c_local _dash_rules_values "`values'"
+    c_local _dash_rules_onevalue "`onevalue'"
 end
 
 // ----------------------------------------------------------------
@@ -2821,6 +2844,153 @@ program define _dash_validate_value, rclass
 end
 
 // ----------------------------------------------------------------
+// _dash_value_list  prefix opt spec value ptype nser
+//
+// A value list -- mlabel(), jitter(), base() or barwidth() -- read as
+// twoway reads it over an expanded varlist (WP-30 P1.1b): element k is
+// the k-th y's, with . = .. ... and padding (_dash_stylelist_pick).  Each
+// element a y uses is held to the single value's rule after the
+// shorthands resolve; one past the last y is not checked (register
+// P1.1.5; twoway draws jitter(2 200) on one y).  A list where twoway takes
+// one value is refused in its words (_dash_rules_onevalue; B14-B21).  A
+// misplaced .. or a value string cannot bind is left as typed for
+// _dash_stylelist_check.  Hands back the caller's _dash_vnorm: nser
+// elements, . for the default, "" when none.
+// ----------------------------------------------------------------
+program define _dash_value_list, rclass
+    version 19
+    mata: _dash_text_args(3, 2, 0)
+    local prefix `"`_dash_a1'"'
+    local opt    `"`_dash_a2'"'
+    local spec   `"`_dash_a3'"'
+    local ptype  `"`_dash_a4'"'
+    local nser   `"`_dash_a5'"'
+    local value : copy local _dash_txt
+    // A value twoway's string cannot bind, or a misplaced .., is left as
+    // typed: _dash_stylelist_check refuses it next in twoway's terms
+    // (P20-18b's r(109); "<opt>(<value>):  invalid syntax").
+    mata: st_local("_vlq", strofreal(strpos(st_local("value"), char(34)) > 0))
+    if `_vlq' {
+        capture _dash_stylelist_bind , v(`macval(value)')
+        if _rc == 1 exit 1
+        if _rc {
+            c_local _dash_vnorm : copy local value
+            exit
+        }
+    }
+    if "`opt'" == "mlabel" {
+        _dash_mlabel_list "`prefix'" `"`macval(value)'"' "`ptype'" `nser'
+        c_local _dash_vnorm `"`_dash_vnorm'"'
+        exit
+    }
+    _dash_option_rules
+    mata: _dash_stylelist_locals(st_local("value"), "_vl")
+    foreach tok of local _dash_rules_onevalue {
+        local at    = strpos("`tok'", "@")
+        local o     = substr("`tok'", 1, `at' - 1)
+        local types = substr("`tok'", `at' + 1, .)
+        local types : subinstr local types "|" " ", all
+        if "`o'" != "`opt'" | !`: list ptype in types' continue
+        if `_vln' > 1 | "`_vlq1'" == "1" {
+            display as error "option `opt'() not allowed"
+            exit 198
+        }
+        _dash_validate_value "`prefix'" "`opt'" "`spec'" `"`macval(value)'"' "`ptype'"
+        c_local _dash_vnorm `"`macval(_dash_vnorm)'"'
+        exit
+    }
+    mata: st_local("_vlbad", strofreal(_dash_stylelist_bad(st_local("value"))))
+    if `_vlbad' {
+        c_local _dash_vnorm : copy local value
+        exit
+    }
+    local out ""
+    local any 0
+    forvalues i = 1/`nser' {
+        mata: st_local("e", _dash_stylelist_pick(st_local("value"), `i'))
+        if !`: length local e' {
+            local out "`out' ."
+            continue
+        }
+        _dash_validate_value "`prefix'" "`opt'" "`spec'" `"`macval(e)'"' "`ptype'"
+        local out `"`out' `macval(_dash_vnorm)'"'
+        local any 1
+    }
+    if !`any' local out ""
+    c_local _dash_vnorm `"`macval(out)'"'
+end
+
+// ----------------------------------------------------------------
+// _dash_mlabel_list  prefix value ptype nser
+//
+// mlabel() read as twoway reads it (WP-30 P1.1b; register P1.1.6, P1.1.7),
+// in its order and words, measured 03oct2026: left to right, = is
+// "=exp not allowed" r(101) (M15, M16, M24) and a missing variable, past
+// the last y too, "variable nosuch not found" r(111) (M19-M23); then a
+// list naming no variable is "too few variables specified" r(102) (M17,
+// M18); then .. or ... anywhere is ".. not allowed in option mlabel()"
+// r(198) (M12-M14).  . and an empty quoted element leave that y
+// unlabelled.  Each name is checked once.  Hands back the caller's
+// _dash_vnorm: nser full names, . for none, "" when no y is labelled.
+// ----------------------------------------------------------------
+program define _dash_mlabel_list, rclass
+    version 19
+    mata: _dash_text_args(1, 2, 0)
+    local prefix `"`_dash_a1'"'
+    local ptype  `"`_dash_a2'"'
+    local nser   `"`_dash_a3'"'
+    local value : copy local _dash_txt
+    mata: _dash_stylelist_locals(st_local("value"), "_ml")
+    local seen ""
+    local seenres ""
+    local dots ""
+    local named 0
+    forvalues j = 1/`_mln' {
+        local _mlr`j' "."
+        mata: st_local("_c", st_local("_mlq`j'") == "1" ? (strtrim(st_local("_mlt`j'")) == "" ? "skip" : "name") : (st_local("_mlt`j'") == "=" ? "eq" : (st_local("_mlt`j'") == "." ? "skip" : ((st_local("_mlt`j'") == ".." | st_local("_mlt`j'") == "...") ? "dots" : "name"))))
+        if "`_c'" == "eq" {
+            display as error "=exp not allowed"
+            exit 101
+        }
+        if "`_c'" == "skip" continue
+        if "`_c'" == "dots" {
+            if "`dots'" == "" local dots "`_mlt`j''"
+            continue
+        }
+        local named 1
+        mata: st_local("_k", strofreal(max((0, selectindex(tokens(st_local("seen")) :== st_local("_mlt`j'"))))))
+        if `_k' {
+            local _mlr`j' : word `_k' of `seenres'
+            continue
+        }
+        local t : copy local _mlt`j'
+        _dash_validate_value "`prefix'" "mlabel" "var" `"`macval(t)'"' "`ptype'"
+        local _mlr`j' `"`_dash_vnorm'"'
+        local seen `"`seen' `macval(t)'"'
+        local seenres `"`seenres' `_dash_vnorm'"'
+    }
+    if !`named' {
+        display as error "too few variables specified"
+        exit 102
+    }
+    if "`dots'" != "" {
+        display as error "`dots' not allowed in option mlabel()"
+        exit 198
+    }
+    local out ""
+    local any 0
+    forvalues i = 1/`nser' {
+        if `i' > `_mln' local out "`out' ."
+        else {
+            local out "`out' `_mlr`i''"
+            if "`_mlr`i''" != "." local any 1
+        }
+    }
+    if !`any' local out ""
+    c_local _dash_vnorm "`out'"
+end
+
+// ----------------------------------------------------------------
 // _dash_axis_expand value
 //
 // WP-28 S14 (GAPS2 B1).  An axis-label option's value (xlabel(), ylabel(),
@@ -2881,7 +3051,8 @@ end
 // ----------------------------------------------------------------
 program define _dash_validate_opts, sclass
     version 19
-    args ptype
+    args ptype nser
+    if "`nser'" == "" local nser 1
     _dash_option_rules
 
     // The snapshot, the values and the restore are read and written by
@@ -2994,7 +3165,12 @@ program define _dash_validate_opts, sclass
         // (test_json_escaping.cscript JSE-42).  The restore is a copy: a
         // one-line if expands its command again, macval() or not.
         if !`: length local v' continue
-        _dash_validate_value "dash" "`o'" "`spec'" `"`macval(v)'"' "`ptype'"
+        if `: list o in _dash_rules_values' {
+            _dash_value_list "dash" "`o'" "`spec'" `"`macval(v)'"' "`ptype'" `nser'
+        }
+        else {
+            _dash_validate_value "dash" "`o'" "`spec'" `"`macval(v)'"' "`ptype'"
+        }
         foreach _k of local _keys {
             if !`: length local _snap_`_k'' continue
             mata: st_local("_lost", strofreal(st_global("s(" + st_local("_k") + ")") == ""))
@@ -3003,6 +3179,7 @@ program define _dash_validate_opts, sclass
         mata: st_local("_chg", strofreal(st_local("_dash_vnorm") != st_local("v")))
         if `_chg' {
             sreturn local `o' `"`macval(_dash_vnorm)'"'
+            local _snap_`o' : copy local _dash_vnorm
         }
     }
 
@@ -4453,9 +4630,9 @@ program define _dash_process_segment, rclass
         if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' {
             _dash_seg_weight_s "`_seg_weight'" "`_seg_wexp'"
         }
-        _dash_validate_opts "`ptype'"
         local _sl_n 1
         if `"`yvarlist'"' != "" local _sl_n : word count `yvarlist'
+        _dash_validate_opts "`ptype'" `_sl_n'
         _dash_stylelist_check "`ptype'" `_sl_n'
         if "`ptype'" == "function" {
             mata: st_local("_fn_rnorm", st_global("s(range)"))

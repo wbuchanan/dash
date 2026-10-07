@@ -804,7 +804,8 @@ named in a note and drawn around -- because it is what would be drawn.
     written as any Stata
     {it:numlist}: {cmd:colorcuts()} one or more, {cmd:range()} exactly
     two; {cmd:colorcuts(1(1)5)} reaches the renderer as 1 2 3 4 5.
-    Variables: {cmd:mlabel()} and {cmd:colorvar()} name one, {cmd:hover()}
+    Variables: {cmd:colorvar()} names one, {cmd:mlabel()} one per y (see
+    {help dash##stylelists:Style lists}), {cmd:hover()}
     one or more, and {cmd:by()} one or more before its comma; each is
     expanded as {cmd:twoway} expands it, so {cmd:by(for)} means
     {cmd:by(foreign)}; a variable that does not exist is r(111) ({cmd:dash build}
@@ -834,8 +835,8 @@ named in a note and drawn around -- because it is what would be drawn.
     ({cmd:bands must be between 1 and 200}).
 
 {phang2}    {cmd:dash} also refuses some forms {cmd:twoway} reads:
-    {cmd:mlabel()} with more than one variable ({cmd:twoway} labels the
-    markers with the first); {cmd:range(}{it:varname}{cmd:)} on
+    an element of {cmd:mlabel()} that names several variables, such as
+    {cmd:t*} ({cmd:twoway} draws no labels for that y); {cmd:range(}{it:varname}{cmd:)} on
     {cmd:function} and {cmd:kdensity}, and a {cmd:.} for the data's own
     end in {cmd:range()} on {cmd:lfit}, {cmd:qfit}, {cmd:lfitci} and
     {cmd:qfitci} ({cmd:dash} takes two numbers); a number too large for
@@ -923,6 +924,25 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:acolor()}, {cmd:alcolor()}, {cmd:alwidth()} and {cmd:alpattern()};
     {cmd:malpha()}, {cmd:lalpha()}, {cmd:falpha()} and {cmd:jseed()}, which
     {cmd:twoway} does not have, apply one value to every y.
+    {cmd:mlabel()}, {cmd:jitter()}, {cmd:base()} and {cmd:barwidth()} are
+    read the same way, one element per y:
+    {cmd:scatter mpg turn weight, mlabel(make rep78)} labels {cmd:mpg}'s
+    markers with {cmd:make} and {cmd:turn}'s with {cmd:rep78}, and
+    {cmd:bar y1 y2 x, base(10 20) barwidth(0.4 0.8)} draws each series from
+    its own base at its own width.  A lone value applies to the first y, so
+    {cmd:mlabel(make)} labels the first y alone.  In {cmd:mlabel()},
+    {cmd:.} leaves that y unlabelled, and {cmd:twoway}'s refusals are kept,
+    in its words: {cmd:..} or {cmd:...} anywhere
+    ({cmd:.. not allowed in option mlabel()}, r(198)), {cmd:=}
+    ({cmd:=exp not allowed}, r(101)), a list of {cmd:.} alone
+    ({cmd:too few variables specified}, r(102)), and a variable that does
+    not exist, even past the last y, r(111).  A list in {cmd:barwidth()} on
+    {cmd:rbar}, {cmd:histogram}, {cmd:rcap} or {cmd:rspike}, or in
+    {cmd:base()} on {cmd:rbar} or {cmd:histogram}, is refused as
+    {cmd:twoway} refuses it ({cmd:option barwidth() not allowed}, r(198)).
+    Each {cmd:jitter()} or {cmd:barwidth()} element a y uses is held to 0
+    to 100 or to positive, which {cmd:twoway} does not check; elements past
+    the last y are not checked.
 
 {phang2}6.  {ul:Variable and value labels used automatically.}
     {cmd:dash} reads variable labels (they title the axes, key the legend,
@@ -3522,7 +3542,8 @@ name them there.
 {synoptset 28}{...}
 {synopt:{cmdab:jit:ter(}{it:#}{cmd:)}}move each marker by uniform noise
     spanning {it:#}% of the data's range on each axis; {it:#} must be a
-    number from 0 to 100.  Drawn on the markers of {cmd:scatter},
+    number from 0 to 100, or a list of them, one per y (see
+    {help dash##stylelists:Style lists}).  Drawn on the markers of {cmd:scatter},
     {cmd:connected}, {cmd:rconnected}, {cmd:dot}, {cmd:dropline} and
     {cmd:scatteri}, never on a connecting line, as in {cmd:twoway}.
     {cmd:dash} accepts {it:jit} for it, where {cmd:twoway} wants the full

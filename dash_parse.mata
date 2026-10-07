@@ -158,6 +158,9 @@
 *!   _dash_stylelist_probe(tok)
 *!       name(x) for an option word whose value is only empty quotes.
 *!
+*!   _dash_stylelist_locals(raw, stub)
+*!       A stylelist's elements as the caller's locals <stub>n, t<j>, q<j>.
+*!
 *!   _dash_rep_und_scan(opts, ptype)
 *!       An option dash does not declare, given twice where twoway takes
 *!       it once (_dash_rep_und_tab), into the caller's local _rp_refuse;
@@ -4849,16 +4852,18 @@ string rowvector _dash_rep_toks(string scalar s, real scalar commas)
 // the list by value; dash.ado's _dash_stylelist_check and
 // _dash_plot_opts_to_json call them.
 
-// _dash_stylelist_keys() -- the style options read as stylelists, the
-// one list of them.  Later sections add their names here: mlabel jitter
-// base barwidth (P1.1b), pstyle mstyle lstyle mlstyle (P1.14a),
-// mlabtextstyle (P1.24) and connect cmissing (P1.8a).
+// _dash_stylelist_keys() -- the options read as stylelists, the one list
+// of them: the style options (P1.1a), then the value lists mlabel jitter
+// base barwidth (P1.1b).  Later sections add their names here: pstyle
+// mstyle lstyle mlstyle (P1.14a), mlabtextstyle (P1.24) and connect
+// cmissing (P1.8a).
 string scalar _dash_stylelist_keys()
 {
     return("mcolor msymbol msize msangle mfcolor mlcolor mlwidth " +
            "mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat " +
            "lcolor lwidth lpattern clcolor clpattern clwidth color fcolor " +
-           "fintensity bfcolor blcolor acolor alcolor alwidth alpattern")
+           "fintensity bfcolor blcolor acolor alcolor alwidth alpattern " +
+           "mlabel jitter base barwidth")
 }
 
 // _dash_stylelist_elems(raw) -- the elements of a stylelist: a 2 x k
@@ -5017,6 +5022,22 @@ string scalar _dash_stylelist_probe(string scalar tok)
     if (nm == "" | !strpos(tok, "(")) return("")
     if (_dash_stylelist_norm(_dash_rep_value(tok)) != "") return("")
     return(nm + "(x)")
+}
+
+// _dash_stylelist_locals(raw, stub) -- the elements of a stylelist as the
+// caller's locals: <stub>n their count, <stub>t<j> element j's text and
+// <stub>q<j> "1" when it came quoted.  Read and written by value.
+void _dash_stylelist_locals(string scalar raw, string scalar stub)
+{
+    string matrix E
+    real scalar   j
+
+    E = _dash_stylelist_elems(raw)
+    st_local(stub + "n", strofreal(cols(E)))
+    for (j = 1; j <= cols(E); j++) {
+        st_local(stub + "t" + strofreal(j), E[1, j])
+        st_local(stub + "q" + strofreal(j), E[2, j])
+    }
 }
 
 // _dash_axis_pieces(s) -- an axis-label option's value split for

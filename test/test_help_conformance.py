@@ -975,4 +975,5 @@ class TestInternalLinksResolve:
         # link the new "Characters in saving()" paragraph (saving_chars).
         refs = re.findall(r"dash##[a-z_0-9]+", _help_text())
         # 77 -> 78 links, 30 -> 31 markers: WP-30 batch 4 (P1.19, P1.27).
-        assert len(refs) == 78 and len(set(refs)) == 31
+        # 78 -> 80 links: WP-30 P1.1b, mlabel() and jitter() link Style lists.
+        assert len(refs) == 80 and len(set(refs)) == 31

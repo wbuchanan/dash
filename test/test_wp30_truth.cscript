@@ -22,6 +22,7 @@
 *!   S07  P1.25a the six StataCorp schemes against twoway (SX-01..SX-08)
 *!   S15  P1.2a scheme chrome against twoway (LK-01..LK-07)
 *!   S17  P1.23b colour-key text and computed tooltips against twoway (DK-01..DK-09)
+*!   S20  P1.1b per-series value lists against twoway (PS-30..PS-34)
 
 cscript "WP-30 truth: twoway comparisons" adodir ".."
 
@@ -4928,10 +4929,342 @@ if inlist("`only'", "", "S19") {
 }
 * ==== end S19 ====
 
+// S20 (WP-30 P1.1b) helpers.  Each sets a global to a JSON reading of
+// one drawing, series in order: labels [count, first text] per label
+// group, bars [bottom, width] per bar series, x the field or the jittered
+// state of each marker series.
+//   _s20_svg()   S20_TW  from the live twoway SVG S20_SVG
+//   _s20_page()  S20_PG  from the saved page S20_PAGE's Bokeh document
+//   _s20_app()   S20_AP  from the served app S20_APP, executed unserved
+python:
+import json as _s20_json, re as _s20_re, html as _s20_html, os as _s20_os, sys as _s20_sys
+import warnings as _s20_w
+from sfi import Macro as _s20_M
+
+
+def _s20_svg():
+    _s20_sys.path.insert(0, _s20_os.path.join(_s20_M.getGlobal("S11_REPO"), "scripts"))
+    import svg_truth
+    path = _s20_M.getGlobal("S20_SVG")
+    doc = svg_truth.svg_document(path)
+    labels = []
+    for t in doc["texts"]:
+        f = t.get("fill") or ""
+        if not f or f == "#000000":
+            continue
+        if labels and labels[-1][0] == f:
+            labels[-1][1] += 1
+        else:
+            labels.append([f, 1, t["text"]])
+    pr = doc["plotregion"]
+    bars, jit = {}, {}
+    if _s20_M.getGlobal("S20_KIND") == "G":
+        fy = svg_truth.svg_axis_reading(path, "y", doc=doc)["fit"]
+        fx = svg_truth.svg_axis_reading(path, "x", doc=doc)["fit"]
+        for r in doc["rects"]:
+            if None in (r["x"], r["y"], r["w"], r["h"]) or r["fill"] in (None, "none", "#ffffff", "#eaf2f3", pr.get("fill")):
+                continue
+            if (r["x"] < pr["left"] - 0.5 or r["x"] + r["w"] > pr["right"] + 0.5
+                    or r["y"] < pr["top"] - 0.5 or r["y"] + r["h"] > pr["bottom"] + 0.5):
+                continue
+            lo = fy["low"] + (pr["bottom"] - (r["y"] + r["h"])) * abs(fy["units_per_px"])
+            bars.setdefault(r["fill"], set()).add((round(lo, 2), round(r["w"] * abs(fx["units_per_px"]), 2)))
+    for c in doc["circles"]:
+        if c["fill"] and c["fill"] not in ("none", "#ffffff"):
+            jit.setdefault(c["fill"], set()).add((round(c["cx"], 1), round(c["cy"], 1)))
+    out = {"labels": [[n, t] for _f, n, t in labels],
+           "bars": [sorted(v) for v in bars.values()],
+           "jit": [len(v) for v in jit.values()]}
+    _s20_M.setGlobal("S20_TW", _s20_json.dumps(out))
+
+
+def _s20_read(doc):
+    from bokeh.models import GlyphRenderer, LabelSet, Plot
+    def field(v):
+        return v if isinstance(v, str) else (v.get("field") if isinstance(v, dict) else getattr(v, "field", None))
+    def resolved(r, prop):
+        v = getattr(r.glyph, prop)
+        f = field(v)
+        if f:
+            vals = sorted({round(float(x), 2) for x in r.data_source.data[f]})
+            return vals[0] if len(vals) == 1 else vals
+        v = v.get("value") if isinstance(v, dict) else getattr(v, "value", v)
+        return round(float(v), 2)
+    plots = [m for m in doc.models if isinstance(m, Plot) and any(isinstance(r, GlyphRenderer) for r in m.renderers)]
+    p = plots[0]
+    labels = []
+    for ls in [x for x in list(p.center) + list(p.above) + list(p.below) + list(p.left) + list(p.right) if isinstance(x, LabelSet)]:
+        texts = [str(t) for t in ls.source.data[field(ls.text)]]
+        labels.append([len(texts), texts[0] if texts else ""])
+    gl = [r for r in p.renderers if isinstance(r, GlyphRenderer)]
+    bars = [[resolved(r, "bottom"), resolved(r, "width")] for r in gl if type(r.glyph).__name__ == "VBar"]
+    xs = [field(r.glyph.x) for r in gl if type(r.glyph).__name__ == "Scatter"]
+    return _s20_json.dumps({"labels": labels, "bars": bars, "x": xs})
+
+
+def _s20_page():
+    from bokeh.document import Document
+    with open(_s20_M.getGlobal("S20_PAGE"), encoding="utf-8") as fh:
+        page = fh.read()
+    blocks = _s20_re.findall(r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>', page, _s20_re.S)
+    docs = [d for b in blocks for d in _s20_json.loads(_s20_html.unescape(b)).values()]
+    _s20_M.setGlobal("S20_PG", _s20_read(Document.from_json(docs[0])))
+
+
+def _s20_app():
+    from bokeh.document import Document
+    with open(_s20_M.getGlobal("S20_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s20_app")
+    with _s20_w.catch_warnings():
+        _s20_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s20_app.py", "exec"), ns)
+    doc = Document()
+    ns["make_document"](doc)
+    _s20_M.setGlobal("S20_AP", _s20_read(doc))
+end
+
+// _s20_case id kind work cmd: twoway <cmd> against dash's saved page and
+// served app; sets $S20_TRC, $S20_DRC, $S20_TW, $S20_PG and $S20_AP.
+capture program drop _s20_case
+program define _s20_case
+    version 19
+    args id kind work cmd
+    if "`kind'" == "G" {
+        quietly {
+            clear
+            set obs 5
+            gen x = _n
+            gen y1 = 30 + _n
+            gen y2 = 40 + _n
+        }
+    }
+    else if "`kind'" == "J" {
+        quietly {
+            clear
+            set obs 30
+            gen x = mod(_n, 3)
+            gen y1 = mod(_n, 2)
+            gen y2 = 2 + mod(_n, 2)
+        }
+    }
+    else quietly sysuse auto, clear
+    global S20_KIND "`kind'"
+    local svg "`work'/s20_`id'.svg"
+    local page "`work'/s20.html"
+    local app "`work'/s20.py"
+    capture graph drop g
+    capture noisily twoway `macval(cmd)' name(g, replace)
+    global S20_TRC = _rc
+    if !${S20_TRC} quietly graph export "`svg'", replace name(g)
+    capture dash clear
+    capture noisily dash `macval(cmd)' saving("`page'", replace)
+    local drc = _rc
+    capture dash clear
+    capture noisily dash `macval(cmd)' name(g1)
+    local drc = `drc' + _rc
+    capture noisily dash build, server saving("`app'") replace nobrowser
+    global S20_DRC = `drc' + _rc
+    foreach g in TW PG AP {
+        global S20_`g' ""
+    }
+    global S20_SVG "`svg'"
+    global S20_PAGE "`page'"
+    global S20_APP "`app'"
+    if !${S20_TRC} capture noisily python: __import__("__main__")._s20_svg()
+    if !${S20_DRC} capture noisily python: __import__("__main__")._s20_page()
+    if !${S20_DRC} capture noisily python: __import__("__main__")._s20_app()
+    capture dash clear
+    capture erase "`svg'"
+    capture erase "`page'"
+    capture erase "`app'"
+    capture graph drop g
+end
+
+// _s20_refuse cmd: twoway's and dash's rc and first error line, in
+// $S20_RC_<who> and $S20_ERR_<who>, each from its own fresh log.
+capture program drop _s20_refuse
+program define _s20_refuse
+    version 19
+    local ls = c(linesize)
+    set linesize 255
+    quietly sysuse auto, clear
+    foreach who in twoway dash {
+        tempfile lg
+        capture log close s20r
+        quietly log using "`lg'", text replace name(s20r)
+        capture noisily `who' `macval(0)'
+        global S20_RC_`who' = _rc
+        quietly log close s20r
+        mata: st_global("S20_ERR_`who'", _s11_err(st_local("lg")))
+        mata: st_global("S20_ALL_`who'", invtokens(cat(st_local("lg"))'))
+        capture dash clear
+    }
+    set linesize `ls'
+end
+
 * ==== S20 P1.1b: Per-series value lists ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S20") {
     display as text "S20 start " c(current_date) " " c(current_time)
+    local s20_scheme "`c(scheme)'"
+    set scheme s2color
+    local s20_repo : environment DASH_REPO
+    if `"`s20_repo'"' == "" local s20_repo ".."
+    global S11_REPO `"`s20_repo'"'
+    local two "scatter mpg turn weight,"
+
+    // PS-30: refusals -- dash's rc equals twoway's, and its first error
+    // line twoway's (for r(111), both name the variable; r(103), B18 and
+    // B22 compare the rc alone).
+    local r1 `"M12|`two' mlabel(make ..)"'
+    local r2 `"M13|`two' mlabel(make ...)"'
+    local r3 `"M14|`two' mlabel(make .. rep78)"'
+    local r4 `"M15|`two' mlabel(make =)"'
+    local r5 `"M16|`two' mlabel(= make)"'
+    local r6 `"M17|`two' mlabel(.)"'
+    local r7 `"M18|`two' mlabel(. ..)"'
+    local r8 `"M19|`two' mlabel(make rep78 nosuch)"'
+    local r9 `"M20|scatter mpg weight, mlabel(rep78 nosuch)"'
+    local r10 `"M21|`two' mlabel(nosuch ..)"'
+    local r11 `"M22|`two' mlabel(make .. nosuch)"'
+    local r12 `"M23|`two' mlabel(nosuch =)"'
+    local r13 `"M24|`two' mlabel(= nosuch)"'
+    local r14 `"M25|histogram mpg, mlabel(nosuch ..)"'
+    local r15 `"M26|histogram mpg, mlabel(= make)"'
+    local r16 `"M28|function y=x, mlabel(make ..)"'
+    local r17 `"M30|mspline mpg weight, mlabel(make rep78)"'
+    local r18 `"M31|mspline mpg weight, mlabel(make ..)"'
+    local r19 `"M32|mband mpg weight, mlabel(nosuch rep78)"'
+    local r20 `"B14|rbar mpg turn weight, barwidth(50 100)"'
+    local r21 `"B15|rbar mpg turn weight, barwidth(50 ..)"'
+    local r22 `"B16|rbar mpg turn weight, barwidth(50) barwidth(10 20)"'
+    local r23 `"B17|histogram mpg, barwidth(1 2)"'
+    local r24 `"B18|rcap mpg turn weight, barwidth(1 2)"'
+    local r25 `"B19|rspike mpg turn weight, barwidth(1 2)"'
+    local r26 `"B20|rbar mpg turn weight, base(10 20)"'
+    local r27 `"B21|histogram mpg, base(10 20)"'
+    local r28 `"B22|lowess mpg weight, bwidth(.5 .8)"'
+    forvalues i = 1/28 {
+        mata: st_local("id", substr(st_local("r`i'"), 1, 3)); st_local("cmd", substr(st_local("r`i'"), 5, .))
+        _s20_refuse `macval(cmd)' name(g, replace)
+        local rconly = (${S20_RC_twoway} == 103 | "`id'" == "B18" | "`id'" == "B22")
+        if ${S20_RC_twoway} == 111 {
+            // twoway's log can hold earlier parse text before its line
+            // (mband after mspline); both name the variable.
+            mata: st_local("same", strofreal(strpos(st_global("S20_ALL_twoway"), "variable nosuch not found") > 0 & substr(st_global("S20_ERR_dash"), -25, .) == "variable nosuch not found"))
+        }
+        else mata: st_local("same", strofreal(`rconly' | st_global("S20_ERR_dash") == st_global("S20_ERR_twoway")))
+        local ok = (${S20_RC_twoway} == ${S20_RC_dash} & ${S20_RC_twoway} != 0 & `same')
+        if !`ok' {
+            display as error "PS-30 `id': twoway ${S20_RC_twoway}, dash ${S20_RC_dash}"
+            mata: printf("{err}  twoway: %s\n  dash:   %s\n", st_global("S20_ERR_twoway"), st_global("S20_ERR_dash"))
+        }
+        _w30_expect PS-30 "(`ok' == 1)" "`id': rc or first line differs"
+    }
+    _w30_done PS-30 "28 refusals: dash's rc and first line are twoway's"
+
+    // PS-31: acceptances -- rc 0 in both, except V06 and M10 (recorded
+    // differences: dash refuses r(198)).
+    local a1 `"`two' mlabel(make rep78)"'
+    local a2 `"scatter mpg weight, mlabel(make foreign)"'
+    local a3 `"`two' mlabel(. rep78)"'
+    local a4 `"`two' mlabel(make .)"'
+    local a5 `"`two' mlabel(make)"'
+    local a6 `"`two' mlabel(make rep78 foreign)"'
+    local a7 `"`two' mlabel(mak rep7)"'
+    local a8 `"`two' mlabel(make "")"'
+    local a9 `"`two' mlabel(rep*)"'
+    local a10 `"`two' mlabel(make) mlabel(rep78 foreign)"'
+    local a11 `"histogram mpg, mlabel(nosuch)"'
+    local a12 `"function y=x, mlabel(nosuch =)"'
+    local a13 `"connected mpg turn weight, mlabel(make rep78) mlabposition(3 9)"'
+    local a14 `"`two' jitter(2 3)"'
+    local a15 `"`two' jitter(2 ..)"'
+    local a16 `"`two' jitter(. 3)"'
+    local a17 `"`two' jitter(2 =)"'
+    local a18 `"scatter mpg weight, jitter(2 200)"'
+    local a19 `"`two' jitter(.)"'
+    local a20 `"scatter mpg weight, jitter(2 abc)"'
+    local a21 `"bar mpg turn weight, base(10 20)"'
+    local a22 `"bar mpg turn weight, base(10 ..)"'
+    local a23 `"bar mpg turn weight, base(10 =)"'
+    local a24 `"bar mpg turn weight, barwidth(1 2)"'
+    local a25 `"bar mpg turn weight, barwidth(. 200)"'
+    local a26 `"bar mpg turn weight, barwidth(1 ..)"'
+    local a27 `"bar mpg turn weight, barwidth(.)"'
+    local a28 `"dropline mpg turn weight, base(10 20)"'
+    local a29 `"spike mpg turn weight, base(10 20)"'
+    local a30 `"area mpg turn weight, sort base(10 20)"'
+    local a31 `"bar mpg weight, barwidth(1 2)"'
+    local a32 `"bar mpg weight, base(10 20)"'
+    local a33 `"`two' jitter(2 200)"'
+    local a34 `"`two' mlabel(t*)"'
+    quietly sysuse auto, clear
+    forvalues i = 1/34 {
+        capture noisily twoway `macval(a`i')' name(g, replace)
+        local trc = _rc
+        capture dash clear
+        capture noisily dash `macval(a`i')' name(g1)
+        local drc = _rc
+        local dwant = cond(`i' >= 33, 198, 0)
+        _w30_expect PS-31 "(`trc' == 0 & `drc' == `dwant')" `"twoway `trc', dash `drc' (want `dwant'): `macval(a`i')'"'
+    }
+    capture dash clear
+    _w30_done PS-31 "32 lists twoway draws, dash draws; V06 and M10 refused as recorded"
+
+    // PS-32: labels per series, both modes: twoway's label groups in
+    // series order, first text and count, are dash's LabelSets.
+    foreach c in `"M01|`two' mlabel(make rep78)"' `"M02|scatter mpg weight, mlabel(make foreign)"' ///
+        `"M03|`two' mlabel(. rep78)"' `"M05|`two' mlabel(make)"' `"M06|`two' mlabel(make rep78 foreign)"' ///
+        `"M11|`two' mlabel(make) mlabel(rep78 foreign)"' {
+        mata: st_local("id", substr(st_local("c"), 1, 3)); st_local("cmd", substr(st_local("c"), 5, .))
+        _s20_case `id' A "`w30_work'" `"`macval(cmd)'"'
+        python: _s20_t = _s20_json.loads(_s20_M.getGlobal("S20_TW") or "{}").get("labels")
+        foreach m in PG AP {
+            python: _s20_M.setLocal("ok", str(int(_s20_t is not None and _s20_json.loads(_s20_M.getGlobal("S20_`m'") or "{}").get("labels") == _s20_t)))
+            _w30_expect PS-32 "(`ok' == 1)" `"`id' `m': twoway ${S20_TW} dash ${S20_`m'}"'
+        }
+    }
+    _w30_done PS-32 "each series' labels equal twoway's in the saved page and the served app"
+
+    // PS-33: bars per series, both modes.
+    foreach c in "G01|bar y1 y2 x, barwidth(0.4 0.8) base(10 20)" "G02|bar y1 y2 x, barwidth(0.4 ..) base(10 =)" ///
+        "G03|bar y1 y2 x, base(50)" "G04|bar y1 y2 x, base(. 50)" {
+        mata: st_local("id", substr(st_local("c"), 1, 3)); st_local("cmd", substr(st_local("c"), 5, .))
+        _s20_case `id' G "`w30_work'" `"`cmd'"'
+        foreach m in PG AP {
+            if inlist("`id'", "G01", "G02") {
+                python: _s20_tb = [[min(lo for lo, w in s), s[0][1]] for s in _s20_json.loads(_s20_M.getGlobal("S20_TW") or '{"bars": []}')["bars"]]
+                python: _s20_M.setLocal("ok", str(int(_s20_json.loads(_s20_M.getGlobal("S20_`m'") or "{}").get("bars") == _s20_tb and len(_s20_tb) == 2)))
+            }
+            else {
+                local k = cond("`id'" == "G03", 0, 1)
+                python: _s20_db = _s20_json.loads(_s20_M.getGlobal("S20_`m'") or '{"bars": [[0,0],[0,0]]}')["bars"]
+                python: _s20_M.setLocal("ok", str(int(len(_s20_db) == 2 and _s20_db[`k'][0] == 50 and _s20_db[1 - `k'][0] != 50)))
+            }
+            _w30_expect PS-33 "(`ok' == 1)" `"`id' `m': twoway ${S20_TW} dash ${S20_`m'}"'
+        }
+    }
+    _w30_done PS-33 "each series' base and width are twoway's in both modes"
+
+    // PS-34: a series is jittered in dash exactly when twoway jitters it
+    // (more than the 7 distinct positions of the data).
+    foreach c in "J01|scatter y1 y2 x, jitter(5) jitterseed(1)" "J02|scatter y1 y2 x, jitter(. 5) jitterseed(1)" ///
+        "J03|scatter y1 y2 x, jitter(5 ..) jitterseed(1)" {
+        mata: st_local("id", substr(st_local("c"), 1, 3)); st_local("cmd", substr(st_local("c"), 5, .))
+        _s20_case `id' J "`w30_work'" `"`cmd'"'
+        python: _s20_tj = [n > 7 for n in _s20_json.loads(_s20_M.getGlobal("S20_TW") or '{"jit": []}')["jit"]]
+        foreach m in PG AP {
+            python: _s20_M.setLocal("ok", str(int(len(_s20_tj) == 2 and [x != "x" for x in _s20_json.loads(_s20_M.getGlobal("S20_`m'") or '{"x": []}')["x"]] == _s20_tj)))
+            _w30_expect PS-34 "(`ok' == 1)" `"`id' `m': twoway ${S20_TW} dash ${S20_`m'}"'
+        }
+    }
+    _w30_done PS-34 "dash jitters exactly the series twoway jitters, in both modes"
+    capture erase "`w30_work'/s20.html"
+    capture erase "`w30_work'/s20.py"
+    set scheme `s20_scheme'
     display as text "S20 end " c(current_date) " " c(current_time)
 }
 * ==== end S20 ====
