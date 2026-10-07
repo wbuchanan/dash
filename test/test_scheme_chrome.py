@@ -43,6 +43,7 @@ from bokeh.models import Axis, Label, Legend, Node, Title  # noqa: E402
 
 import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
+from test_scheme_resolution import each  # noqa: E402
 
 MODES = ("saved", "served")
 _FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures",
@@ -613,7 +614,7 @@ class TestEveryShippedSchemeDrawsItsChrome:
                 "extracted"} <= set(d["_meta"])
 
     @pytest.mark.parametrize("mode", MODES)
-    @pytest.mark.parametrize("name", sorted(dr.SchemeParser._BUILTIN_NAMES))
+    @each("name", sorted(dr.SchemeParser._BUILTIN_NAMES))
     def test_matches_twoway(self, name, mode):
         spec, given = _probe_spec(name)
         want = _twoway_view(_truth()[name])
@@ -621,7 +622,7 @@ class TestEveryShippedSchemeDrawsItsChrome:
         assert got == want
 
     @pytest.mark.parametrize("mode", MODES)
-    @pytest.mark.parametrize("name", _PROBES)
+    @each("name", _PROBES)
     def test_the_extra_probes(self, name, mode):
         spec, given = _probe_spec(name)
         want = _twoway_view(_truth()[name])

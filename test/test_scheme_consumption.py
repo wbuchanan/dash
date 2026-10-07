@@ -42,6 +42,7 @@ import dash_render
 from dash_render import DashRenderer, SchemeParser
 
 from conftest import make_spec, make_data_json, exec_app
+from test_scheme_resolution import each  # noqa: E402
 
 
 def _df(n=30):
@@ -764,7 +765,7 @@ class TestTheReferenceLineIsTheSchemes:
         assert st.xyline_color == "#000000" and st.xyline_dash, (
             st.xyline_color, st.xyline_dash)
 
-    @pytest.mark.parametrize("name", _ALL_SCHEMES)
+    @each("name", _ALL_SCHEMES)
     def test_every_scheme_reads_what_stata_resolves(self, name):
         e = _SCHEME_TRUTH()[name]
         sp = SchemeParser(name)
@@ -820,7 +821,7 @@ class TestThePlotRegionBorderIsTheSchemes:
     (s2color `plotregion': `color plotregion_line' white; s1color
     `foreground': black; economist `areastyle twoway_plotregion none')."""
 
-    @pytest.mark.parametrize("name", _ALL_SCHEMES)
+    @each("name", _ALL_SCHEMES)
     def test_every_scheme_reads_what_stata_resolves(self, name):
         e = _SCHEME_TRUTH()[name]
         sp = SchemeParser(name)
@@ -859,7 +860,7 @@ class TestNoteIsDrawnInItsTextbox:
     fonts.note): 4.1660% of the height, medlarge, #FFFFFF; the box's fill
     is `color reverse_big', emidblue, read from scheme-economist.scheme."""
 
-    @pytest.mark.parametrize("name", _ALL_SCHEMES)
+    @each("name", _ALL_SCHEMES)
     def test_every_scheme_reads_what_stata_resolves(self, name):
         e = _SCHEME_TRUTH()[name]
         sp = SchemeParser(name)
@@ -1534,7 +1535,7 @@ class TestAChildPHashReachesWhatStatasChainReaches:
                 | set(self._LINEPLOT_KEPT))
         assert kept <= set(self._SCHEMES)
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_what_a_child_p1_reaches(self, wd, scheme):
         red = self._parse(wd, "w26red_" + scheme, "#include %s\ncolor p1 red\n"
                           "linepattern p1 dash\n" % scheme)
@@ -1561,7 +1562,7 @@ class TestAChildPHashReachesWhatStatasChainReaches:
             assert red.default_color(1, kind) == inc.default_color(1, kind)
         assert red.default_connect_pattern(1) == inc.default_connect_pattern(1)
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_the_shipped_file_draws_what_it_drew(self, scheme):
         """Carrying only the keys Stata declares changes nothing a shipped
         scheme draws: every cycle equals the fixture, which records Stata's
@@ -1766,7 +1767,7 @@ class TestAChildSymbolReachesWhatStatasChainReaches:
         assert len(self._SCHEMES) == 26  # 20 -> 26: P1.25a ships the six StataCorp schemes
         assert self._DECLARE_P_HASH <= set(self._SCHEMES)
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_a_bare_symbol_p(self, wd, scheme):
         sp = self._parse(wd, "b2sp_" + scheme,
                          "#include %s\nsymbol p diamond\n" % scheme)
@@ -1778,7 +1779,7 @@ class TestAChildSymbolReachesWhatStatasChainReaches:
             assert inc.p_symbols == [self._CIRCLE] * 15
             assert sp.p_symbols == [self._DIAMOND] * 15
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_a_symbol_p_hash(self, wd, scheme):
         inc = self._parse(wd, "b2inc_" + scheme, "#include %s\n" % scheme)
         p1 = self._parse(wd, "b2sp1_" + scheme,
@@ -1791,7 +1792,7 @@ class TestAChildSymbolReachesWhatStatasChainReaches:
         assert p2.p_symbols[0] == inc.p_symbols[0]
         assert p2.p_symbols[2:] == inc.p_symbols[2:]
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_the_shipped_file_draws_the_symbols_it_drew(self, scheme):
         """Carrying only the declared symbol keys changes nothing a shipped
         scheme draws: every symbol equals the fixture's resolution."""
@@ -1802,7 +1803,7 @@ class TestAChildSymbolReachesWhatStatasChainReaches:
             dash_render.OptionTranslator.translate_msymbol(s)
             for s in truth["p_symbols"]]
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_the_shipped_file_declares_only_what_stata_declares(self, scheme):
         """No `symbol p#' line a Stata file in the chain does not write:
         each one the file carries is `transcribed' in its provenance."""
@@ -1860,7 +1861,7 @@ class TestAChildSymbolsizeReachesWhatStatasChainReaches:
         (wd / (name + ".scheme")).write_text(text, encoding="utf-8")
         return SchemeParser(name)
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_a_bare_symbolsize_p(self, wd, scheme):
         inc = self._parse(wd, "b2inc_" + scheme, "#include %s\n" % scheme)
         zp = self._parse(wd, "b2zp_" + scheme,
@@ -1874,7 +1875,7 @@ class TestAChildSymbolsizeReachesWhatStatasChainReaches:
         else:
             assert got == [huge, huge]
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_a_symbolsize_p1(self, wd, scheme):
         inc = self._parse(wd, "b2inc_" + scheme, "#include %s\n" % scheme)
         zp1 = self._parse(wd, "b2zp1_" + scheme,
@@ -1883,7 +1884,7 @@ class TestAChildSymbolsizeReachesWhatStatasChainReaches:
         assert [zp1.default_marker_size(i) for i in range(1, 15)] == [
             inc.default_marker_size(i) for i in range(1, 15)]
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_the_shipped_file_draws_the_sizes_it_drew(self, scheme):
         """Every shipped scheme's fifteen marker sizes are the one size it
         drew before, and equal the fixture's per-plot resolution."""

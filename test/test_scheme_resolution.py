@@ -31,6 +31,7 @@ Rendering goes through test_mode_parity's spec and file helpers, in both
 modes, in a tmp working directory that holds the custom file.
 """
 import ast
+import inspect
 import json
 import os
 import re
@@ -80,6 +81,40 @@ INHERITED = (
 )
 
 _SENTINEL_BEGIN = "// BEGIN shipped schemes (WP-17)"
+
+
+def each(argnames, values):
+    """Run a check once per value inside ONE test, each value a subtest.
+
+    The decorated function takes *argnames* (comma-separated, like
+    ``pytest.mark.parametrize``) plus any fixtures; the test pytest sees
+    takes the fixtures and ``subtests`` instead.  Every value is still
+    checked and every mismatch reported, without a test item per value --
+    for checks that run the same code path for every value."""
+    names = [n.strip() for n in argnames.split(",")]
+
+    def deco(check):
+        sig = inspect.signature(check)
+        params = [q for q in sig.parameters.values() if q.name not in names]
+        if "subtests" not in sig.parameters:
+            params.append(inspect.Parameter(
+                "subtests", inspect.Parameter.POSITIONAL_OR_KEYWORD))
+
+        def run(*args, **kwargs):
+            sub = kwargs["subtests"]
+            if "subtests" not in sig.parameters:
+                del kwargs["subtests"]
+            for v in values:
+                vals = dict(zip(names, v if len(names) > 1 else (v,)))
+                with sub.test(msg=", ".join(f"{k}={x!r}"
+                                            for k, x in vals.items())):
+                    check(*args, **vals, **kwargs)
+        run.__name__ = check.__name__
+        run.__qualname__ = check.__qualname__
+        run.__doc__ = check.__doc__
+        run.__signature__ = sig.replace(parameters=params)
+        return run
+    return deco
 _SENTINEL_END = "// END shipped schemes (WP-17)"
 
 
@@ -286,7 +321,7 @@ class TestCanResolve:
         assert self._quiet("") is False
         assert self._quiet(None) is False
 
-    @pytest.mark.parametrize("name", SHIPPED)
+    @each("name", SHIPPED)
     def test_every_shipped_scheme_is_true(self, name):
         assert self._quiet(name) is True, f"{name} does not resolve"
 
@@ -482,7 +517,7 @@ class TestTheShippedListIsOneList:
         assert len(schemes) == len(set(schemes)), "a name is listed twice"
         assert set(themes) == set(THEMES), sorted(set(themes) ^ set(THEMES))
 
-    @pytest.mark.parametrize("name", SHIPPED)
+    @each("name", SHIPPED)
     def test_every_shipped_name_has_a_file(self, name):
         assert os.path.isfile(
             os.path.join(_ROOT, f"dash-{name}.scheme")), name
@@ -493,14 +528,15 @@ class TestTheShippedListIsOneList:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("mode", MODES)
-@pytest.mark.parametrize("name", SHIPPED)
 class TestEveryShippedSchemeResolves:
+    @each("name", SHIPPED)
     def test_by_name(self, name, mode):
         d = _draw(_spec({"scheme": name}, kpi=False), mode)
         assert d.scheme.name == name, (name, d.scheme.name)
         assert d.scheme.is_fallback is False
         assert d.warnings == [], f"{name} [{mode}] warned: {d.warnings}"
 
+    @each("name", SHIPPED)
     def test_as_the_session_scheme(self, name, mode):
         """`set scheme <name>' then any dash: what cscript does with
         s2color8 in every certification session."""
@@ -631,13 +667,13 @@ class TestTheParserCarriesTheColourOpacity:
         # The colour itself is still the plain hex the fixture records.
         assert sp.p_colors[0] == "#1a476f"
 
-    @pytest.mark.parametrize("name", OTHER_SCHEMES)
+    @each("name", OTHER_SCHEMES)
     def test_every_other_shipped_scheme_declares_none(self, name):
         sp = dr.SchemeParser(name)
         for attr in ALPHA_LISTS:
             assert getattr(sp, attr) == [None] * 15, (name, attr)
 
-    @pytest.mark.parametrize("name", SHIPPED)
+    @each("name", SHIPPED)
     def test_the_fixture_agrees(self, name):
         """The extractor's p_colors_opacity (Stata's percent) is what the
         parser carries, divided by 100."""
@@ -766,8 +802,8 @@ class TestBothModesAgreeOnTheOpacity:
 
 
 @pytest.mark.parametrize("mode", MODES)
-@pytest.mark.parametrize("name", OTHER_SCHEMES)
 class TestEveryOtherSchemeIsUnchanged:
+    @each("name", OTHER_SCHEMES)
     def test_the_alphas_are_what_they_were(self, name, mode):
         got = _alphas_by_glyph(name, mode)
         want = {cls: PINNED_EXCEPTIONS.get((name, cls), v)

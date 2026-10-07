@@ -81,8 +81,10 @@ from collections import namedtuple
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from dash_render import OptionTranslator, SchemeParser
+from dash_render import OptionTranslator, SchemeParser  # noqa: E402
+from test_scheme_resolution import each  # noqa: E402
 
 
 # ===========================================================================
@@ -671,7 +673,7 @@ def test_scheme_parser_exposes_props():
 # 1. All 26 schemes resolve, with no silent fallback
 # ===========================================================================
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_scheme_resolves(name):
     """Every one of Stata's 26 schemes is a real, parseable dash scheme.
 
@@ -710,7 +712,7 @@ def test_scheme_resolves(name):
 # 2. Every captured property matches the fixture
 # ===========================================================================
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_scheme_property_fidelity(name):
     """Each fixture property matches what dash resolves for that scheme."""
     try:
@@ -740,7 +742,7 @@ def test_scheme_property_fidelity(name):
 # 3. Full 15-entry cycles for colour, symbol and line pattern
 # ===========================================================================
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_scheme_defines_all_15_p_entries(name):
     """p1-p15 must be supplied for colour, symbol and line pattern.
 
@@ -861,7 +863,7 @@ def test_stcolor_p1_is_not_black():
 # 5. Graph size (consumed by section 10)
 # ===========================================================================
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_scheme_defines_graphsize(name):
     """Every translated scheme declares graphsize x/y and dash exposes them."""
     try:
@@ -896,7 +898,7 @@ def test_scheme_defines_graphsize(name):
 # 6. Coverage harness
 # ===========================================================================
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_scheme_coverage(name):
     """Faithful coverage of each scheme's fixture properties clears the gate.
 
@@ -939,7 +941,7 @@ def test_scheme_coverage(name):
 # 6b. dash must be able to express what the fixture declares
 # ===========================================================================
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_translator_can_express_scheme_symbols_and_patterns(name):
     """Every symbol / line-pattern name Stata's scheme uses is translatable.
 
@@ -1276,7 +1278,7 @@ def test_s2gmanual_lineplot_comes_from_its_declared_directive():
     assert m["provenance"]["p_lineplot_patterns"][0]["kind"] == "transcribed"
 
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_shipped_file_carries_one_provenance_line_per_directive(name):
     """Every shipped file ends with a provenance block: one ``* provenance:``
     line for each directive it carries, saying ``transcribed from
@@ -1321,7 +1323,7 @@ def test_shipped_provenance_agrees_with_the_fixture():
     assert "draw_major_nlt_vgrid" in prov[("yesno", "draw_major_vgrid")]
 
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_regenerating_a_shipped_file_is_a_no_op(name, tmp_path):
     """update_scheme_file on a copy of the shipped file, fed the fixture it
     was generated from, changes nothing: no CHANGED value, no added
@@ -1384,7 +1386,7 @@ _S3_KEYS = ("xyline_drawn", "xyline_color", "xyline_pattern",
             "note_text_color", "note_box_drawn", "note_box_fill_color")
 
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_the_s3_keys_are_resolved(name):
     t = truth_for(name)
     missing = [k for k in _S3_KEYS if k not in t]
@@ -1420,7 +1422,7 @@ def test_the_s3_anchors():
     assert s2["note_textbox"]["name"] == "small_body"
 
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_a_shipped_file_carries_each_directive_once(name):
     """note()'s small_body box is `gsize small_body', which an earlier
     group already carries; the extractor writes it once."""
@@ -1447,7 +1449,7 @@ _CHROME_KEYS = ("tick_angle_x", "tick_angle_y", "major_grid_pattern",
                 "naturally_white", "p_bar_intensity", "p_area_intensity")
 
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_the_chrome_keys_are_resolved(name):
     t = truth_for(name)
     for k in _CHROME_KEYS:

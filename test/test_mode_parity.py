@@ -1835,11 +1835,13 @@ CORPUS = [
                                          "in_expr": ""})]),
     _case("a dropdown under a graph if (embed rows)", [_sc()],
           bo={"filter": "rep, type(dropdown)"}, if_expr="foreign == 1"),
-    # WP-30 P1.25a: StataCorp's six internal schemes
+    # WP-30 P1.25a: StataCorp's six internal schemes.  Every shipped scheme
+    # reaches both modes through one lookup, so two stand for the six:
+    # meta (s2color's chain, legend at 4 o'clock, a minor grid) and
+    # stgcolor_mv (the deepest chain).
     *[_case(f"scatter with yline, {s}", [_sc()], {"scheme": s},
             {"yline": "20"})
-      for s in ("meta", "stcolor_meta", "stcolor_mv", "stcoloralias",
-                "stgcolor_meta", "stgcolor_mv")],
+      for s in ("meta", "stgcolor_mv")],
     _case("scatter, session scheme stcolor_meta", [_sc()],
           {"session_scheme": "stcolor_meta"}),
     # WP-30 S08 (P1.12a): sizes in Stata's units draw alike in both modes.
@@ -1893,7 +1895,7 @@ CORPUS = [
     # WP-30 P1.17a: bar widths and range caps
     _case("rbar barwidth(.3)", [plot_for("rbar", {"barwidth": ".3"})]),
     _case("rcap msize(large)", [plot_for("rcap", {"msize": "large"})]),
-    _case("rcapsym", [plot_for("rcapsym")]),
+    # (bare rcapsym is the plot-type entry at the top of the corpus)
     _case("bar on a %tm x", [plot_for("bar", xvar="when")],
           {"formats": {"when": "%tm"}}),
     # WP-30 P1.2a: scheme chrome -- economist's in-band note (placed at
@@ -1930,9 +1932,8 @@ CORPUS = [
     _case("histogram, frequency tooltip",
           [plot_for("histogram", {"frequency": "frequency"})]),
     # WP-30 P1.5: axis ticks in twoway's display formats
-    _case("S18 default axis formats", [_sc()],
-          {"formats": {"weight": "%8.0gc", "mpg": "%9.2f"}}),
-    _case("S18 histogram height", [plot_for("histogram")]),
+    # The primary axes' formats are drawn by the second-axis entry, and a
+    # bare histogram's height axis by the plot-type entry.
     _case("S18 second axis fallback", [_sc(), _sc(yaxis="2")],
           {"formats": {"weight": "%8.0gc", "mpg": "%9.2f"}}),
     _case("S18 xvarformat and labels", [_sc(xvarformat="%9.2f")], None,
@@ -2676,9 +2677,7 @@ MOVE_CORPUS = [
                                               "in_expr": ""}),
                        ("g2", [_sc()], None, {"if_expr": "price > 10000",
                                               "in_expr": ""})]),
-    # WP-30 P1.25a: StataCorp's six internal schemes
-    _move_case("scatter with yline under stcolor_meta, dropdown", _MOVES[0],
-               [_sc()], {"yline": "20"}, bo={"scheme": "stcolor_meta"}),
+    # WP-30 P1.25a: StataCorp's six internal schemes, one for the six
     _move_case("scatter with yline under stgcolor_mv, dropdown", _MOVES[0],
                [_sc()], {"yline": "20"}, bo={"scheme": "stgcolor_mv"}),
     # WP-30 P1.1a: one options object per expanded series

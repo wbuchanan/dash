@@ -47,7 +47,7 @@ sys.path.insert(0, os.path.join(_ROOT, "scripts"))
 import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_scheme_resolution import (  # noqa: E402
-    MODES, _ado_block, _ado_list, _draw, _extractor_schemes, _served)
+    MODES, _ado_block, _ado_list, _draw, _extractor_schemes, _served, each)
 from test_server_layer_defects import plot_for  # noqa: E402
 from test_served_linked_views import _fire  # noqa: E402
 import test_ci_band_style as cb  # noqa: E402
@@ -137,16 +137,15 @@ def _unknown(msgs):
 # ---------------------------------------------------------------------------
 
 class TestTheSixAreShipped:
-    @pytest.mark.parametrize("name", SIX)
-    def test_each_has_its_dash_file(self, name):
-        p = os.path.join(_ROOT, f"dash-{name}.scheme")
-        assert os.path.isfile(p), p
+    # Each of the six has its dash-<name>.scheme: test_scheme_resolution's
+    # TestTheShippedListIsOneList::test_every_shipped_name_has_a_file checks
+    # it for all twenty-six.
 
     def test_the_parser_ships_twenty_six(self):
         assert len(dr.SchemeParser._BUILTIN_NAMES) == 26
         assert set(SIX) <= dr.SchemeParser._BUILTIN_NAMES
 
-    @pytest.mark.parametrize("name", SIX)
+    @each("name", SIX)
     def test_each_parses_from_its_file_without_a_word(self, name):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
@@ -155,7 +154,7 @@ class TestTheSixAreShipped:
         assert s.name == name
         assert [str(w.message) for w in caught] == []
 
-    @pytest.mark.parametrize("name", SIX)
+    @each("name", SIX)
     def test_the_manifest_ships_each(self, name):
         with open(os.path.join(_ROOT, "dash.pkg"), encoding="utf-8") as fh:
             lines = fh.read().splitlines()
@@ -170,17 +169,17 @@ class TestTheSixAreShipped:
 
 
 class TestTheFixtureCoversTheSix:
-    @pytest.mark.parametrize("name", SIX)
+    @each("name", SIX)
     def test_each_is_extracted_with_nothing_unresolvable(self, name):
         doc = _fixture()
         assert name in doc, name
         assert doc[name]["unresolvable"] == []
 
-    @pytest.mark.parametrize("name", SIX)
+    @each("name", SIX)
     def test_each_chain_is_statas(self, name):
         assert _fixture()[name]["include_chain"] == _CHAINS[name]
 
-    @pytest.mark.parametrize("name", SIX)
+    @each("name", SIX)
     def test_the_shipped_file_draws_the_fixture(self, name):
         rec = _fixture()[name]
         s = dr.SchemeParser(name)
@@ -193,7 +192,7 @@ class TestTheFixtureCoversTheSix:
 
 class TestTheSixResolveInBothModes:
     @pytest.mark.parametrize("mode", MODES)
-    @pytest.mark.parametrize("name", SIX)
+    @each("name", SIX)
     def test_by_build_scheme(self, name, mode):
         d = _draw(_scheme_spec({"scheme": name}), mode)
         assert d.scheme.name == name
@@ -201,14 +200,14 @@ class TestTheSixResolveInBothModes:
         assert d.fig.border_fill_color == _TWOWAY[name]["bg"]
 
     @pytest.mark.parametrize("mode", MODES)
-    @pytest.mark.parametrize("name", SIX)
+    @each("name", SIX)
     def test_by_graph_scheme(self, name, mode):
         d = _draw(_scheme_spec(go={"scheme": name}), mode)
         assert d.scheme.name == name
         assert _unknown(d.warnings) == [], d.warnings
         assert d.fig.border_fill_color == _TWOWAY[name]["bg"]
 
-    @pytest.mark.parametrize("name", SIX)
+    @each("name", SIX)
     def test_unchanged_after_a_filter_move(self, name):
         spec = _scheme_spec({"scheme": name}, filt="foreign, type(dropdown)")
         saved = _draw(spec, "standalone")
@@ -223,7 +222,7 @@ class TestTheSixResolveInBothModes:
 
 
 class TestTheInheritedSchemeIsOneOfTheSix:
-    @pytest.mark.parametrize("name", SIX)
+    @each("name", SIX)
     def test_the_session_scheme_resolves(self, name):
         spec = {"graphs": [], "kpis": [],
                 "build_options": {"scheme": "", "theme": "",
@@ -234,18 +233,15 @@ class TestTheInheritedSchemeIsOneOfTheSix:
         assert got == name
         assert [str(w.message) for w in caught] == []
 
-    @pytest.mark.parametrize("mode", MODES)
-    @pytest.mark.parametrize("name", SIX)
-    def test_the_session_scheme_is_drawn(self, name, mode):
-        d = _draw(_scheme_spec({"session_scheme": name}), mode)
-        assert d.scheme.name == name
-        assert _unknown(d.warnings) == [], d.warnings
-        assert d.fig.border_fill_color == _TWOWAY[name]["bg"]
+    # Drawn as the session scheme, in both modes, without a word:
+    # test_scheme_resolution's TestEveryShippedSchemeResolves::
+    # test_as_the_session_scheme, for all twenty-six; the six's twoway
+    # background is test_by_build_scheme's.
 
 
 class TestTheSixDrawWhatTwowayDraws:
     @pytest.mark.parametrize("mode", MODES)
-    @pytest.mark.parametrize("name", SIX)
+    @each("name", SIX)
     def test_the_background_and_first_series(self, name, mode):
         d = _draw(_scheme_spec({"scheme": name}), mode)
         assert d.fig.border_fill_color == _TWOWAY[name]["bg"]
@@ -255,7 +251,7 @@ class TestTheSixDrawWhatTwowayDraws:
         assert str(glyphs[0].fill_color).lower() == _TWOWAY[name]["marker"]
 
     @pytest.mark.parametrize("mode", MODES)
-    @pytest.mark.parametrize("name", SIX + ("stcolor", "s2color"))
+    @each("name", SIX + ("stcolor", "s2color"))
     def test_the_yline_is_the_schemes(self, name, mode):
         d = _draw(_scheme_spec({"scheme": name}), mode)
         s = _span(d.fig)
@@ -264,7 +260,7 @@ class TestTheSixDrawWhatTwowayDraws:
         assert (list(s.line_dash) == []) is solid, s.line_dash
 
     @pytest.mark.parametrize("mode", MODES)
-    @pytest.mark.parametrize("name", SIX)
+    @each("name", SIX)
     def test_the_proportions_are_the_graphsize(self, name, mode):
         d = _draw(_scheme_spec({"scheme": name}), mode)
         x, y = _TWOWAY[name]["graphsize"]
@@ -283,7 +279,7 @@ class TestTheSixDrawWhatTwowayDraws:
         d = _draw(_scheme_spec({"scheme": "meta"}), mode)
         assert d.scheme.legend_position == 4
 
-    @pytest.mark.parametrize("name", SIX)
+    @each("name", SIX)
     def test_the_ci_band_is_statas(self, name):
         k = cb._parts(cb._draw("lfitci", name, {}).renderers)
         band = k["VArea"][0].glyph
@@ -344,7 +340,7 @@ def _shipped_files():
 
 
 class TestTheSixAreData:
-    @pytest.mark.parametrize("fname", _shipped_files())
+    @each("fname", _shipped_files())
     def test_every_shipped_file_is_flat_and_hex(self, fname):
         with open(os.path.join(_ROOT, fname), encoding="utf-8") as fh:
             lines = fh.read().splitlines()
@@ -370,8 +366,7 @@ class TestTheSixAreData:
                  + _extractor_schemes())
         assert [n for n in names if not _TOKEN.match(n)] == []
 
-    @pytest.mark.parametrize("bad", ["../x", "a/b", "x y", "", "a" * 33,
-                                     "S2COLOR"])
+    @each("bad", ["../x", "a/b", "x y", "", "a" * 33, "S2COLOR"])
     def test_the_extractor_refuses_a_name_that_is_not_a_token(
             self, tmp_path, bad, capsys):
         import extract_scheme_truth as mod
