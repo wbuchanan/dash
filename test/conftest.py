@@ -46,6 +46,9 @@ def pytest_configure(config):
         # corpus must still be known, or every run warns.
         config.addinivalue_line(
             "markers", "xdist_group(name): run these tests on one worker")
+    # DASH_SUITE_TIMING=<path>: write a per-test/file/worker timing report.
+    from test import suite_timing
+    suite_timing.register(config)
 
 
 # ============================================================
