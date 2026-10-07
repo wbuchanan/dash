@@ -31,7 +31,7 @@ import warnings
 
 import pytest
 from bokeh.document import Document
-from bokeh.models import Legend, Plot
+from bokeh.models import Axis, Legend, Plot
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -386,3 +386,120 @@ class TestTheServedCopy:
         mod = load_app(ap, "_sl_copy_app")
         assert callable(mod._dash_layer_series)
         assert mod._DASH_FIT_KEYS == dr._DASH_FIT_KEYS
+        assert callable(mod._dash_axis_default_titles)
+
+
+# ---------------------------------------------------------------------------
+# The default axis titles
+# ---------------------------------------------------------------------------
+def _sc(y="mpg", x="weight", **opts):
+    return {"type": "scatter", "yvar": y, "xvar": x, "options": dict(opts)}
+
+
+def _fit(t, y="mpg", x="weight", **opts):
+    return {"type": t, "yvar": y, "xvar": x, "options": dict(opts)}
+
+
+_RCAP = {"type": "rcap", "yvar1": "mpg", "yvar2": "turn", "xvar": "weight"}
+
+#: (probe, layers, twoway's (x, y) on the first axes) -- the K rule probes
+#: of series_label_truth.json and the cases around them.
+_TITLE_CASES = [
+    ("K01", [_sc(), _sc(x="length"), _sc()], (_WT, _MPG)),
+    ("K02", [_sc(), _sc(x="length"), _sc(x="length")], ("", _MPG)),
+    ("K03", [_sc(), _sc("price"), _sc("trunk"), _sc()], (_WT, _MPG)),
+    ("K04", [_sc(), _sc("price"), _sc("price"), _sc()], (_WT, _MPG)),
+    ("K04b", [_sc(), _sc("price"), _sc(), _sc("price")], (_WT, "")),
+    ("K05", [_fit("lfit"), _fit("lfitci")], (_WT, "Fitted values")),
+    ("K06", [_fit("lfitci"), _fit("lfit")], (_WT, "")),
+    ("K07", [_RCAP, _sc(), _RCAP], (_WT, _MPG + "/" + _TURN)),
+    ("K09", [_sc(), _fit("lpoly"), _fit("lfit")], (_WT, "")),
+    ("M01", [_sc(), _sc("price")], (_WT, "")),
+    ("M04", [_sc(), _sc(x="length")], ("", _MPG)),
+    ("U03", [{"type": "histogram", "var": "mpg"},
+             {"type": "kdensity", "var": "mpg"}], ("", "")),
+    ("empty", [], ("", "")),
+    ("not dicts", [None, 3, "x"], ("", "")),
+]
+
+
+class TestTheAxisTitleRule:
+    def test_first_equals_last(self):
+        bad = [(pid, got, want) for pid, plots, want in _TITLE_CASES
+               for got in [dr._dash_axis_default_titles(plots,
+                                                        _AUTO_LABELS)]
+               if got != want]
+        assert not bad, bad
+
+    def test_each_axis_has_its_own_series(self):
+        f = dr._dash_axis_default_titles
+        vl = _AUTO_LABELS
+        k11 = [_sc(), _sc("price", yaxis="2"), _sc("trunk", yaxis="2"),
+               _sc("price", yaxis="2")]
+        assert f(k11, vl) == (_WT, _MPG)
+        assert f(k11, vl, yaxis=2)[1] == "Price"
+        m07 = [_sc(), _fit("lfit", "price", yaxis="2")]
+        assert f(m07, vl, yaxis=2)[1] == "Fitted values"
+        m12 = [_sc(), _sc(yaxis="2"), _sc("price", yaxis="2")]
+        assert f(m12, vl, yaxis=2)[1] == ""
+        h05 = [_sc(), _fit("lfitci", yaxis="2")]
+        assert f(h05, vl) == (_WT, _MPG)
+        assert f(h05, vl, yaxis=2)[1] == ""
+        m16 = [_sc(), _sc(x="length", xaxis="2")]
+        assert f(m16, vl, xaxis=2)[0] == _LEN
+        # A layer on both axes counts on each.
+        both = [_sc(yaxis="1 2")]
+        assert f(both, vl)[1] == f(both, vl, yaxis=2)[1] == _MPG
+
+    def test_it_is_total(self):
+        for plots in (None, [], [None], [{"type": 3, "options": [1]}],
+                      [{"type": "scatter", "yvar": 7, "options": None}]):
+            x, y = dr._dash_axis_default_titles(plots, ["not", "a", "dict"])
+            assert isinstance(x, str) and isinstance(y, str)
+
+
+@pytest.mark.parametrize("mode", ["saved", "served"])
+class TestTitlesMatchTwoway:
+    def test_titles(self, mode):
+        got = _probe_summaries(mode)
+        bad = []
+        for pid in sorted(_FIX["probes"]):
+            want = _FIX["probes"][pid]["twoway"]["titles"]
+            have = {k: got[pid][k] for k in ("y1", "y2", "x1", "x2")}
+            if have != want:
+                bad.append("%s: dash %r, twoway %r" % (pid, have, want))
+        assert not bad, "\n".join(bad)
+
+
+class TestTitlesAfterAFilterMove:
+    def test_served_titles_survive_a_move(self, tmp_path):
+        spec = _spec([("g1", [plot_for("scatter", yvar="y", xvar="x"),
+                              plot_for("scatter", yvar="y2", xvar="x")], {}),
+                      ("g2", [plot_for("rcap", yvar1="y1", yvar2="y2",
+                                       xvar="x")], {})],
+                     filters=[_filter("x", "range")])
+        doc = _served_doc(tmp_path, spec, _write_data(tmp_path), "tmv")
+        figs = [m for r in doc.roots for m in r.select({"type": Plot})]
+
+        def titles():
+            return sorted((tuple(str(a.axis_label or "") for a in f.left
+                                 if isinstance(a, Axis)),
+                           tuple(str(a.axis_label or "") for a in f.below
+                                 if isinstance(a, Axis)))
+                          for f in figs)
+        before = titles()
+        assert before == [(("",), ("x",)), (("y1/y2",), ("x",))]
+        _fire(doc, "x", (4.0, 24.0))
+        assert titles() == before
+
+
+class TestTheHelp:
+    def test_the_help_states_the_key_and_title_rules(self):
+        with open(os.path.join(os.path.dirname(HERE), "dash.sthlp"),
+                  encoding="utf-8") as fh:
+            text = " ".join(fh.read().split())
+        for needle in ("Legend keys and default axis titles",
+                       "when the last series drawn on it has the same label",
+                       "{cmd:lowess} {it:yvar xvar}",
+                       "by the rule of the first axis"):
+            assert needle in text, needle

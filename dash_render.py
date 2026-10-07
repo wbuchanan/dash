@@ -23386,36 +23386,52 @@ def _dash_histogram_ymode(options):
     return "density"
 
 
-def _dash_axis_labels(plots, graph_opts, var_labels, seen=None, key=""):
-    """``(x_label, y_label)``: xtitle()/ytitle() first, else Stata's default.
+def _dash_axis_default_titles(plots, var_labels=None, yaxis=1, xaxis=1,
+                              default_level=None):
+    """``(x_title, y_title)``: the titles twoway draws by default on y axis
+    *yaxis* and x axis *xaxis* (WP-30 P1.16).
 
-    The default is the FIRST layer's variable label.  For the univariate
-    types Stata's own titles, measured by SVG export, are: histogram y
-    "Density"/"Percent"/"Frequency"/"Fraction" and x the variable's label;
-    kdensity y "kdensity <var>" and x "x".  Both renderers used to title a
-    histogram's y axis differently (nothing saved, the variable served),
-    and neither as Stata does.
+    twoway titles an axis with the label of the first series drawn on it
+    when the last series drawn on it has the same label, whatever lies
+    between, and draws no title otherwise (measured: K01-K11 of
+    test/fixtures/series_label_truth.json).  Each layer's series come from
+    :func:`_dash_layer_series` (a ci fit is two, band then line); a layer
+    counts on an axis when that axis's number is among its ``yaxis()`` /
+    ``xaxis()`` numbers (1 when it names none).  Raw text, compared raw.
+    Total: anything in *plots* that is not a dict is skipped.
+    """
+    ys, xs = [], []
+    for plot in plots or ():
+        if not isinstance(plot, dict):
+            continue
+        opts = (plot.get("options") if isinstance(plot.get("options"), dict)
+                else {})
+        series = _dash_layer_series(plot, var_labels, default_level)
+        if str(yaxis) in (str(opts.get("yaxis", "1") or "1").split()
+                          or ["1"]):
+            ys.extend(s[0] for s in series)
+        if str(xaxis) in (str(opts.get("xaxis", "1") or "1").split()
+                          or ["1"]):
+            xs.extend(s[1] for s in series)
+    x = xs[0] if xs and xs[0] == xs[-1] else ""
+    y = ys[0] if ys and ys[0] == ys[-1] else ""
+    return x, y
+
+
+def _dash_axis_labels(plots, graph_opts, var_labels, seen=None, key=""):
+    """``(x_label, y_label)``: xtitle()/ytitle() first, else twoway's default.
+
+    The default is twoway's first-equals-last rule over the series drawn on
+    the first axes (:func:`_dash_axis_default_titles`, WP-30 P1.16), not
+    the first layer's label: the label of the first series when the last
+    series has the same label, else no title.  A histogram's y series is
+    its scale word and a kdensity's ``kdensity <var>`` over ``x``.
 
     Canvas text, never html.escape'd: Bokeh draws an axis title as a glyph,
     so escaping made xtitle("R&D spend") read "R&amp;D spend" when served.
     """
     go, vl = graph_opts or {}, var_labels or {}
-    p0 = plots[0] if plots else {}
-    ptype = str(p0.get("type", "") or "").lower()
-    if ptype in _DASH_UNIVARIATE_TYPES:
-        var = p0.get("var", "") or p0.get("yvar", "")
-        if ptype == "kdensity":
-            x_default = "x"
-            y_default = ("kdensity %s" % var) if var else ""
-        else:
-            x_default = _dash_var_label(vl, var)
-            y_default = _DASH_HIST_YTITLES[
-                _dash_histogram_ymode(p0.get("options"))]
-    else:
-        xvar, yvar = p0.get("xvar", ""), p0.get("yvar", "")
-        # The label when it is not "", else the name (WP-29 P0.3).
-        x_default = _dash_var_label(vl, xvar)
-        y_default = _dash_var_label(vl, yvar)
+    x_default, y_default = _dash_axis_default_titles(plots, vl)
     # The text, split from its sub-options: xtitle("Weight", size(large))
     # used to title the axis "Weight, size(large)".  size() and color()
     # are applied by _dash_style_axis_titles; the rest is named.
@@ -24868,10 +24884,9 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
     BEFORE it (WP-28 Notes "Renderer order"); styling the axis where it is
     built is what makes that order not matter.
 
-    The axis is titled by default as twoway titles it (WP-29 P0.4): through
-    ``_dash_axis_labels`` over the layers on that axis, so its first
-    layer's label (or name), ``Density`` for a histogram, ``kdensity
-    <name>`` for a kdensity (b0, r8).  Sub-options alone style that
+    The axis is titled by default as twoway titles it (WP-29 P0.4): by
+    ``_dash_axis_default_titles`` over that axis's own series (twoway's
+    first-equals-last rule, WP-30 P1.16).  Sub-options alone style that
     default (``ytitle(, axis(2) size(large))``, b1), ``suffix`` adds to it
     (r13) and a typed ``""`` removes it (r12).  Under ``by()`` twoway draws
     no axis-2 title (r7), so there is no default there.  *scheme* styles
@@ -24899,11 +24914,9 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
         if str(graph_opts.get("by", "") or "").strip():
             dflt = ""
         else:
-            own = [p for p in plots
-                   if str(p.get("options", {}).get(axis_key, "1")).strip()
-                   == "2"]
-            dflt = _dash_axis_labels(own, {}, var_labels)[
-                0 if n == "x" else 1]
+            dflt = _dash_axis_default_titles(
+                plots, var_labels, yaxis=2 if n == "y" else 1,
+                xaxis=2 if n == "x" else 1)[0 if n == "x" else 1]
         text, opts = _dash_textbox_or_default(
             graph_opts.get(f"{n}title2", ""), f"{n}title2", dflt, seen, key)
         ax = (LogAxis if is_log else LinearAxis)(
@@ -35949,6 +35962,7 @@ class ServerAppBuilder:
                          "_source_frame",
                          "_compute_secondary_range",
                          "_dash_axis_labels",
+                         "_dash_axis_default_titles",
                          "_dash_parse_axis_label_opt",
                          "_dash_parse_axis_spec", "_dash_apply_axis_spec",
                          # WP-28 S14 (B1): the quote-aware tokenizer and

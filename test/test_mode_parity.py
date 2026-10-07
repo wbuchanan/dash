@@ -1946,6 +1946,9 @@ CORPUS = [
     _case("Fit, range, pc and scatteri keys (WP-30 P1.16)",
           [_sc(), plot_for("lowess"), plot_for("lpolyci"), plot_for("rcap"),
            plot_for("pcspike"), plot_for("scatteri")]),
+    _case("First-equals-last titles and axis 2 (WP-30 P1.16)",
+          [_sc(), plot_for("scatter", yvar="price"),
+           plot_for("rcap", {"yaxis": "2"})]),
 ]
 
 

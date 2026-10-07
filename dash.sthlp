@@ -720,8 +720,9 @@ named in a note and drawn around -- because it is what would be drawn.
     An axis title given with empty text -- {cmd:xtitle("")},
     {cmd:ytitle("")}, {cmd:ytitle("", axis(2))} or {cmd:ytitle2("")} --
     removes that title, as in {cmd:twoway}; an option not given at all
-    keeps the default (the variable's label, {cmd:Density},
-    {cmd:kdensity} {it:var}).
+    keeps the default title (see
+    {it:Legend keys and default axis titles} under Statistical Layer
+    Options).
     An axis title given only sub-options -- {cmd:xtitle(, size(large))},
     {cmd:ytitle(, color(red))}, {cmd:ytitle(, axis(2) size(large))},
     {cmd:ztitle(, size(large))} -- keeps the default title and applies
@@ -943,7 +944,8 @@ named in a note and drawn around -- because it is what would be drawn.
     name.
     A {cmd:histogram} layer is keyed {cmd:Density}, {cmd:Percent},
     {cmd:Frequency} or {cmd:Fraction}, and a {cmd:kdensity} layer
-    {cmd:kdensity} {it:varname}, as in {cmd:twoway}.
+    {cmd:kdensity} {it:varname}, as in {cmd:twoway}.  Every other layer
+    is keyed as {cmd:twoway} keys it (see Statistical Layer Options).
 
 
 {marker subcommands}
@@ -2443,6 +2445,27 @@ honoured on {cmd:lpolyci}; on {cmd:lpoly}, {cmd:scatter}, {cmd:lfitci},
 r(198), {cmd:dash} names them in the note and draws the layer.  {cmd:fpfit} and {cmd:fpfitci} take none of the smoothing
 options -- see below.
 
+{pstd}
+{it:Legend keys and default axis titles.}  Each layer is keyed as
+{cmd:twoway} keys it: a data layer by its y variable's label, or its
+name when it has none; a range or {cmd:pc} layer by both variables,
+{it:label1}{cmd:/}{it:label2}, one label when the two are the same;
+{cmd:scatteri} {cmd:y}; {cmd:pci} and {cmd:pcarrowi} {cmd:y/yb};
+{cmd:lfit} and {cmd:qfit} {cmd:Fitted values}; {cmd:fpfit}
+{cmd:Predicted} {it:yvar}; {cmd:lowess} {cmd:lowess} {it:yvar xvar};
+{cmd:lpoly} {cmd:lpoly smooth:} {it:ylabel}; {cmd:mband}
+{cmd:Median bands}; {cmd:mspline} {cmd:Median spline}; {cmd:function}
+by the name before its {cmd:=}, or {cmd:y}; {cmd:histogram}
+{cmd:Density} (or its scale); {cmd:kdensity} {cmd:kdensity} {it:varname}.
+A {cmd:ci} fit has two keys, its band {it:#}{cmd:% CI} and then its line.
+Each axis is titled by default with the label of the first series
+drawn on it when the last series drawn on it has the same label, and
+is untitled otherwise, as {cmd:twoway} titles it; a {cmd:ci} fit is
+two series, band then line.  The rule holds for each axis on its own,
+{cmd:yaxis(2)} and {cmd:xaxis(2)} included, and on every {cmd:by()}
+panel.  Keys {cmd:twoway} merges into one and the legend it leaves off
+a graph of histograms alone are still drawn by {cmd:dash}.
+
 {synoptset 20}{...}
 {synopt:{opt bwidth(#)}}the bandwidth of {cmd:lpoly}, {cmd:lpolyci},
     {cmd:kdensity} and {cmd:lowess}.  On the first three it is the
@@ -3241,9 +3264,8 @@ one x axis is drawn at the bottom, styled the same way by the x forms.
 text option is: each quoted string is its own line, {cmd:size()} and
 {cmd:color()} are applied, and any other sub-option is named once.  An
 empty string ({cmd:ytitle2("")}) removes the title; without one, the
-second axis is titled as {cmd:twoway} titles it -- by the label (or
-name) of its first layer's variable, {cmd:Density} or {cmd:kdensity}
-{it:varname} for those layers -- in the scheme's axis style, and
+second axis is titled as {cmd:twoway} titles it -- by the rule of the
+first axis, over its own layers' series -- in the scheme's axis style, and
 sub-options alone style that title; under {cmd:by()} it has no default
 title, as in {cmd:twoway}.
 

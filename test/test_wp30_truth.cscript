@@ -4681,7 +4681,8 @@ def _s19_summary(models, by_id):
     sides = dict((k, set()) for _a, k in _S19_SIDES)
     keys = set()
     for m in models:
-        if m.kind in ("Figure", "Plot"):
+        # A served figure's class is bokeh.plotting's lower-case "figure".
+        if m.kind in ("Figure", "figure", "Plot"):
             for attr, k in _S19_SIDES:
                 for ref in (m.get(attr) or []):
                     a = by_id(ref)
@@ -4899,6 +4900,27 @@ if inlist("`only'", "", "S19") {
     // KT-05: the served keys survive a filter move.
     _s19_case KT-05 keys-move "(scatter mpg weight) (lowess mpg weight)" "" "Mileage (mpg)|lowess mpg weight"
     _w30_done KT-05 "the served app keeps twoway's keys after a filter move"
+
+    // KT-06..KT-11: default titles by the first-equals-last rule.
+    _s19_case KT-06 titles "(scatter mpg weight) (scatter mpg length) (scatter mpg weight)" "" "y1=Mileage (mpg)|y2=|x1=Weight (lbs.)|x2="
+    _s19_case KT-06 titles "(scatter mpg weight) (scatter mpg length) (scatter mpg length)" "" "y1=Mileage (mpg)|y2=|x1=|x2="
+    _w30_done KT-06 "an axis is titled when its first and last series agree (K01, K02)"
+    _s19_case KT-07 titles "(scatter mpg weight) (scatter price weight)" "" "y1=|y2=|x1=Weight (lbs.)|x2="
+    _s19_case KT-07 titles "(lpoly mpg weight)" "legend(on)" "y1=lpoly smooth: Mileage (mpg)|y2=|x1=lpoly smoothing grid|x2="
+    _w30_done KT-07 "differing layers leave the axis untitled; a fit titles it in its own text (M01, F04)"
+    _s19_case KT-08 titles "(rcap mpg turn weight)" "" "y1=Mileage (mpg)/Turn circle (ft.)|y2=|x1=Weight (lbs.)|x2="
+    _s19_case KT-08 titles "(pcspike mpg weight turn length)" "" "y1=Mileage (mpg)/Turn circle (ft.)|y2=|x1=Weight (lbs.)/Length (in.)|x2="
+    _s19_case KT-08 titles "(function y=x^2, range(0 2))" "" "y1=y|y2=|x1=x|x2="
+    _w30_done KT-08 "range, pc and function layers are titled as twoway titles them (R04, P01, F10)"
+    _s19_case KT-09 titles "(scatter mpg weight) (lfit price weight, yaxis(2))" "" "y1=Mileage (mpg)|y2=Fitted values|x1=Weight (lbs.)|x2="
+    _s19_case KT-09 titles "(scatter mpg weight) (scatter mpg weight, yaxis(2)) (scatter price weight, yaxis(2))" "" "y1=Mileage (mpg)|y2=|x1=Weight (lbs.)|x2="
+    _s19_case KT-09 titles "(scatter mpg weight) (rcap mpg turn weight, yaxis(2))" "" "y1=Mileage (mpg)|y2=Mileage (mpg)/Turn circle (ft.)|x1=Weight (lbs.)|x2="
+    _w30_done KT-09 "axis 2 is titled by its own series (M07, M12, G23)"
+    _s19_case KT-10 titles "(scatter mpg weight) (scatter price weight)" "by(foreign)" "y1=|y2=|x1=Weight (lbs.)|x2="
+    _s19_case KT-10 titles "(rcap mpg turn weight)" "by(foreign)" "y1=Mileage (mpg)/Turn circle (ft.)|y2=|x1=Weight (lbs.)|x2="
+    _w30_done KT-10 "every by() panel follows the rule (G05, G20)"
+    _s19_case KT-11 titles-move "(scatter mpg weight) (scatter price weight)" "" "y1=|y2=|x1=Weight (lbs.)|x2="
+    _w30_done KT-11 "the served app keeps the default titles after a filter move"
 
     capture dash clear
     macro drop S19_*

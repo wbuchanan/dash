@@ -443,11 +443,14 @@ _JS_TITLE_WRITE = re.compile(r"\.(axis_label|tooltips|title|label)\s*=(?!=)")
 
 class TestAfterAFilterMove:
     def test_served_names_survive_a_move(self, tmp_path):
+        """Flipped (WP-30 P1.16): a y title 'y' was wrong because twoway
+        draws none when the layers' labels differ (series_label_truth.json
+        M08)."""
         spec = _spec([("g1", [_sc(), _sc("y2")], {"hover": "z"})],
                      filters=[_filter("x", "range")])
         doc = _build("served", tmp_path, spec)
         before = _profile("served", doc)
-        assert before[0]["x"] == ["x"] and before[0]["y"] == ["y"]
+        assert before[0]["x"] == ["x"] and before[0]["y"] == [None]
         assert before[0]["legend"] == ["y", "y2"]
         _fire(doc, "x", (4.0, 24.0))
         assert _profile("served", doc) == before

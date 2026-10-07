@@ -1568,7 +1568,6 @@ WP30_OPEN = {
     "P1.15a": "by() panel labels are appended to the graph title, there is no Graphs by note, composite and missing panels are titled differently, and by(, title()) is ignored",
     "P1.15b": "by() rows, holes, colfirst, compact, iscale and imargin are named and ignored, bad by() arguments are accepted, and faceted graphs miss the automatic layout",
     "P1.15c": "Under by() every panel draws a legend and repeats both axes, and by(, legend()) and the i* axis options are named and ignored",
-    "P1.16": "Legend keys and default axis titles do not follow twoway: fits are keyed Fitted values, pc and immediate types by their type name, the y title follows the first layer, and range types get none",
     "P1.17b": "bar, area, spike and dropline draw from 0 rather than twoway's default base, and a 0 outside the data extends the axis to it",
     "P1.18a": "The axis look sub-options nolabels, noticks, off, noline, line colour, width and pattern, alt, titlegap, labcolor, tlength and tposition are not honoured, and anglestyle names are dropped silently",
     "P1.18b": "The add sub-option replaces the default ticks instead of adding to them, and an axis(2) add is named and not drawn",

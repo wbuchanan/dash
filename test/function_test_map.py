@@ -875,6 +875,7 @@ FUNCTIONS = {
  '_dash_layer_series.<locals>.L': 'test/test_series_labels.py::TestTheSeriesRule::test_each_type_gives_twoways_series',
  '_dash_layer_series.<locals>.name': 'test/test_series_labels.py::TestTheSeriesRule::test_names_and_labels_as_twoway_uses_them',
  '_dash_layer_series.<locals>.pair': 'test/test_series_labels.py::TestTheSeriesRule::test_equal_or_missing_boundaries_give_one_label',
+ '_dash_axis_default_titles': 'test/test_series_labels.py::TestTheAxisTitleRule::test_first_equals_last',
  # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)
  # WP-30 S21 (P1.3a): natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)
  # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
