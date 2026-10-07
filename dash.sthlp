@@ -705,7 +705,9 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:yaxis(+2)} or {cmd:n(1E3)} reaches the renderer as 2, 2, 2 and
     1000.  A name or a number: {cmd:msize()}, {cmd:mlabsize()},
     {cmd:mlabgap()}, {cmd:mlabposition()} and {cmd:fintensity()} any
-    number; {cmd:lwidth()} and {cmd:mlwidth()} 0 to 10000;
+    number, and {cmd:msize()}, {cmd:mlabsize()} and {cmd:mlabgap()} also a
+    number with a unit ({cmd:4pt}, {cmd:.1in}) or a {cmd:*}{it:#}
+    multiplier; {cmd:lwidth()} and {cmd:mlwidth()} 0 to 10000;
     {cmd:alwidth()} 0 to 10000 on the plot types where {cmd:twoway}
     refuses it outside that range (every type but {cmd:line},
     {cmd:connected}, the fits and smooths without a band, {cmd:kdensity},
@@ -1187,7 +1189,9 @@ box-select or lasso-select) selects them in that source, and every linked
 graph highlights them where it draws them as markers: in its
 {cmd:scatter}, {cmd:connected} and {cmd:dot} layers, and on {cmd:rspike}
 and the markers of {cmd:rconnected}, which draw the group's rows in both
-modes.  The other layers -- lines (the line of {cmd:connected} and of
+modes.  Observations that are not selected keep their markers' size,
+symbol, colours and outline and are drawn faint,
+never more opaque than they are drawn unselected.  The other layers -- lines (the line of {cmd:connected} and of
 {cmd:rconnected} too), areas, bars, droplines, fits and their bands,
 smoothers, densities, histograms, and the other range and paired-coordinate
 plots -- are drawn from data of their own and do not show a selection.  An
@@ -2195,21 +2199,23 @@ the per-plot specification (not to {cmd:dash build} options).
 {synopt:{cmdab:ml:abel(}{it:varname}{cmd:)}}label each observation with
     the value of {it:varname}, on the plot types listed below{p_end}
 {synopt:{cmdab:mlabc:olor(}{it:color}{cmd:)}}color of the label text{p_end}
-{synopt:{cmdab:mlabs:ize(}{it:size}{cmd:)}}size keyword or number; e.g.
-    {cmd:small}, {cmd:medium}, {cmd:large}{p_end}
+{synopt:{cmdab:mlabs:ize(}{it:size}{cmd:)}}a text size in Stata's units:
+    a {cmd:gsize} keyword ({cmd:small}, {cmd:medium}, {cmd:large}), a
+    number, a number with a unit or a {cmd:*}{it:#} multiplier{p_end}
 {synopt:{cmdab:mlabp:osition(}{it:#}{cmd:)}}clock position of the label
     around the point, a whole number from 0 to 12, placed as {cmd:twoway}
     places it: 3 = right (the default), 12 = above, 6 = below, 9 = left,
     the hours between at the corners, and 0 centred on the point.  Anything
     else -- {cmd:13}, {cmd:2.5}, {cmd:03} or a name -- is reported and the
     label drawn at 12, where {cmd:twoway}, noting it, draws it{p_end}
-{synopt:{cmdab:mlabg:ap(}{it:#}{cmd:)}}space between the point and the
-    label, in pixels, added to {cmd:dash}'s own offset of about 4 pixels in
-    the direction of the clock position.  A negative gap moves the label
-    toward the point, a size keyword ({cmd:small}, {cmd:large}, ...) is
-    the pixels {cmd:mlabsize()} reads it as, and at
-    {cmd:mlabposition(0)} the gap does nothing, as in {cmd:twoway}, whose
-    gap is a percentage of the graph's size.  {cmd:dash} also takes
+{synopt:{cmdab:mlabg:ap(}{it:size}{cmd:)}}space between the marker's
+    edge and the label, in the direction of the clock position: a
+    {cmd:gsize} in Stata's units, {cmd:half_tiny} (2 point) by default, as
+    in {cmd:twoway}.  It is measured from half the layer's marker size
+    ({cmd:msize()} when given), on {cmd:bar}, {cmd:pcarrow} and
+    {cmd:pcbarrow} too, where no marker is drawn.  A negative gap moves the
+    label toward the point, and at {cmd:mlabposition(0)} the label is
+    centred on its point.  {cmd:dash} also takes
     a synonym, {cmd:mlg()}, which {cmd:twoway} does not accept{p_end}
 {synopt:{cmdab:mlabang:le(}{it:anglestyle}{cmd:)}}angle of the label text,
     counter-clockwise: one of Stata's anglestyles ({cmd:horizontal},
@@ -3205,6 +3211,7 @@ The colour key's own axis options, {cmd:ztitle()}, {cmd:zlabel()} and
 {cmd:zscale()}, are taken as graph options and drawn on the key: the title on
 either key; ticks, {cmd:#}{it:N}, {cmd:none} and {cmd:minmax}, and
 {cmd:range()} (widening only), {cmd:log} and {cmd:reverse}, on the colour bar.
+{cmd:zlabel(, labsize())} is drawn on the colour bar's labels.
 On a discrete key {cmd:zlabel()} and {cmd:zscale()} are named in the note.
 {cmd:ztitle()} given only sub-options styles the key's default title, the
 colour variable's label; {cmd:suffix} and {cmd:prefix} add lines to it.
@@ -3490,7 +3497,19 @@ of the graph, and is drawn as it would be on Stata's four-inch reference
 graph: {cmd:medium} text is 3.8194, which is 11 point, so one unit is 2.88
 point, and {cmd:economist}'s {cmd:gsize heading 6.0} is 17.28 point.
 Marker sizes follow Stata's {cmd:symbolsize} ladder, which is not the text
-ladder: a {cmd:large} marker is 7 point against {cmd:medium}'s 4.4.  A
+ladder: a {cmd:large} marker is 7 point against {cmd:medium}'s 4.4.
+Every marker, text and gap size dash reads, from an option or from the
+scheme, is on one unit for every class: 2.88 point, 3.84 pixels, so the
+default marker is 5.87 pixels under {cmd:s2color}.  An option reads a
+number, the {cmd:symbolsize} and {cmd:gsize} keywords (case-sensitive,
+{cmd:vhuge} and {cmd:ehuge} included for markers), {it:#}{cmd:rs},
+{cmd:*}{it:#} (times the size drawn there otherwise) and
+{it:#}{cmd:pt}, {it:#}{cmd:in} and {it:#}{cmd:cm}, which are converted at
+the scheme's smaller {cmd:graphsize} side ({cmd:xsize()} and {cmd:ysize()}
+do not change it).  An unknown or wrong-case name draws the class's
+{cmd:medium} with a note, as in {cmd:twoway}; a marker draws the scheme's
+own default size ({cmd:large} under {cmd:economist}).  A negative size
+draws nothing.  A
 {cmd:linewidth} number is Stata's own unit, {cmd:medium} being 0.30, so
 {cmd:economist}'s {cmd:linewidth p 1.2} draws four times as wide as
 {cmd:s2color}'s lines.

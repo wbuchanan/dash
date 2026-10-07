@@ -38,7 +38,9 @@ from test_served_linked_views import _fire  # noqa: E402
 
 MODES = ("saved", "served")
 _ONE = [{"type": "scatter", "yvar": "y1", "xvar": "x", "options": {}}]
-LARGE = f"{dr._textbox_size({'size': 'large'}, None):g}px"
+# WP-30 P1.12a: _textbox_size returns the CSS point string; twoway's
+# size(large) is 14 pt ('14pt'), no longer a px figure.
+LARGE = dr._textbox_size({'size': 'large'}, None)
 _SEQ = itertools.count()
 _FIXTURE = os.path.join(_HERE, "fixtures", "text_truth.json")
 

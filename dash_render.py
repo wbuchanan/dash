@@ -5204,24 +5204,28 @@ def _textbox_lines(text: str) -> "list[str]":
         lines.append(line)
 
 
-def _textbox_size(opts: dict, default: "float | None") -> "float | None":
-    """Resolve a textbox size() sub-option to pixels.
+def _textbox_size(opts: dict, default: "Any" = None, ref_in: float = 4.0,
+                  option: str = "size") -> "str | None":
+    """Resolve a textbox size() sub-option to a CSS point string.
 
-    Every caller passes ``default=None`` and leaves the scheme's size in
-    place when it gets None back: the sub-option was not given, or it was
-    refused and named.  A literal default here once replaced the scheme's.
+    None when ``size()`` is not given: the caller keeps the size already on
+    the model.  Otherwise the size in Stata's units (WP-30 P1.12a): a number
+    is a relative unit (2.88pt), a keyword is Stata's gsize ladder, ``*#``
+    multiplies *default* (the model's current size, a CSS string), and
+    ``#pt``/``#in``/``#cm`` convert at *ref_in*.  An unknown or wrong-case
+    name is named (``option``) and drawn at medium, 11pt, as twoway draws it.
     """
     raw = opts.get("size", "")
     if not raw:
-        return default
+        return None
+    T = OptionTranslator
     try:
-        return float(OptionTranslator.translate_msize(raw))
+        return T.css_pt(T.resolve_size(
+            str(raw), "text",
+            T.css_to_pt(default) or T.size_medium_pt("text"), ref_in))
     except (ValueError, TypeError):
-        warnings.warn(
-            f"dash: size({raw}) is not a recognised text size; ignoring it.",
-            UserWarning, stacklevel=3,
-        )
-        return default
+        _dash_style_note(option, raw, "size", "medium")
+        return T.css_pt(T.size_medium_pt("text"))
 
 
 def _textbox_color(opts: dict, default: "str | None") -> "str | None":
@@ -5706,6 +5710,212 @@ class OptionTranslator:
         "huge":     24,
     }
 
+    # No size path reads _SIZE_MAP any more (WP-30 P1.12a): every marker,
+    # text and gap size goes through resolve_size below.  It stays defined
+    # because the served app's header still emits it as a global no app
+    # code reads (research N3); removing it needs _generate_app_source.
+
+    # ------------------------------------------------------------------
+    # Stata's size units (WP-30 P1.12a).  One unit for every class: a
+    # Stata relative size (rs) is min(width, height)/100 of the graph, so
+    # on the 4-inch reference graph 1 rs = 4 x 72 / 100 = 2.88 pt, which
+    # dash draws as 3.84 CSS px.
+    # ------------------------------------------------------------------
+    PT_PER_RS: float = 2.88
+    PX_PER_PT: float = 4.0 / 3.0
+
+    # symbolsize-*.style (c(sysdir_base)style), the relative ("set val"
+    # with "set sztype relative") names, exactly as the style files write
+    # them (Evidence E6).
+    _SYMBOLSIZE_RS: dict[str, float] = {
+        "zero": 0.0, "vtiny": 0.1, "tiny": 0.34722222, "vsmall": 0.520833,
+        "small": 1.04166, "medsmall": 1.25, "medium": 1.52778,
+        "medlarge": 1.94444, "large": 2.4306, "vlarge": 3.125,
+        "huge": 4.8611, "vhuge": 5.555, "ehuge": 11.111,
+    }
+    # symbolsize-#-pt.style: the absolute names, in points.
+    _SYMBOLSIZE_ABS_PT: dict[str, float] = {
+        f"{_n}-pt": float(_n) for _n in (2, 3, 4, 6, 11, 12, 14, 16, 20, 24)
+    }
+    # gsize-*.style, the relative names (text and gaps).  Stata's gsize
+    # class has no ehuge and no vtiny: twoway notes both on text (E4).
+    _GSIZE_RS: dict[str, float] = {
+        "zero": 0.0, "minuscule": 0.3472, "quarter_tiny": 0.34722,
+        "third_tiny": 0.46296, "half_tiny": 0.6944, "tiny": 1.3888,
+        "vsmall": 2.0833, "small": 2.777, "medsmall": 3.4722,
+        "medium": 3.8194, "medlarge": 4.1667, "large": 4.8611,
+        "vlarge": 5.5556, "huge": 6.9444, "vhuge": 9.7222,
+        "default": 4.166, "tenth": 10.0, "quarter": 25.0,
+        "third": 33.333333333333, "half": 50.0, "full": 100.0,
+        "relative0p3": 0.3, "relative0p6": 0.6, "relative1p2": 1.2,
+        "relative1p5": 1.5, "relative2p2": 2.2, "relative3": 3.0,
+        "relative3p5": 3.5, "relative4": 4.0, "relative5": 5.0,
+        "relative8": 8.0, "relative12": 12.0,
+    }
+    # gsize-#-pt.style: the absolute names, in points.
+    _GSIZE_ABS_PT: dict[str, float] = {
+        f"{_n}-pt": float(_n)
+        for _n in (1, 2, 3, 4, 6, 8, 10, 11, 12, 14, 16, 20, 24, 32, 180)
+    }
+    _SIZE_UNIT_PT: dict[str, float] = {"pt": 1.0, "in": 72.0, "cm": 72.0 / 2.54}
+    _SIZE_KINDS: tuple = ("marker", "text", "gap")
+    _SIZE_MAX_RS: float = 1000.0
+    _SIZE_TEXT_MAX: int = 64
+    # Stata's number spelling, ASCII digits only; d/D is Stata's exponent
+    # (1d3 is 1000, E5).  Anchored by fullmatch, no nested quantifier.
+    _STATA_NUMBER_RE = re.compile(
+        r"[-+]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eEdD][-+]?[0-9]+)?"
+    )
+    _SIZE_UNIT_RE = re.compile(
+        r"([-+]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eEdD][-+]?[0-9]+)?)"
+        r"[ \t]*(pt|in|cm|rs)"
+    )
+    _CSS_SIZE_RE = re.compile(r"[ \t]*([-+]?(?:[0-9]+\.?[0-9]*|\.[0-9]+))(pt|px)[ \t]*")
+
+    @staticmethod
+    def stata_number(text: Any) -> "float | None":
+        """Read Stata's spelling of a number, or None (never raises).
+
+        ``.5``, ``-2``, ``1e2`` and ``1d3`` (Stata's ``d`` exponent, read
+        as 1000 by twoway, Evidence E5) are numbers; anything longer than
+        64 characters, non-ASCII digits or a non-finite value is not.
+        """
+        if not isinstance(text, str):
+            return None
+        t = text.strip()
+        if not t or len(t) > OptionTranslator._SIZE_TEXT_MAX:
+            return None
+        if not OptionTranslator._STATA_NUMBER_RE.fullmatch(t):
+            return None
+        try:
+            f = float(t.replace("d", "e").replace("D", "e"))
+        except ValueError:
+            return None
+        return f if math.isfinite(f) else None
+
+    @staticmethod
+    def size_multiplier(text: Any) -> "float | None":
+        """Read Stata's ``*#`` multiplier (``*2``, ``* .5``), or None."""
+        if not isinstance(text, str):
+            return None
+        t = text.strip()
+        if not t.startswith("*") or len(t) > OptionTranslator._SIZE_TEXT_MAX:
+            return None
+        return OptionTranslator.stata_number(t[1:])
+
+    @staticmethod
+    def resolve_size(value: Any, kind: str, default_pt: float,
+                     ref_in: float = 4.0) -> float:
+        """Return a Stata size in signed points at dash's 4-inch reference.
+
+        The grammar is read in this order (Evidence E4-E6): (1) ``*#``
+        multiplies *default_pt*, the size that would be drawn at the site;
+        (2) a number is Stata's relative unit, 2.88 pt; (3) a number, optional
+        blanks, then ``pt``, ``in`` or ``cm`` is absolute, converted at the
+        graph's reference length *ref_in* (``rs`` is relative); (4) a name of
+        the kind's relative ladder (symbolsize for markers, gsize for text
+        and gaps); (5) a name of its points ladder.  Names and units are
+        case-sensitive (twoway notes ``HUGE`` and ``4PT``).  Anything else,
+        a value over 64 characters, a non-finite result or a magnitude
+        above 1,000 units raises ValueError.  It never floors: the label
+        radius keeps its sign (E5), so callers floor.
+        """
+        T = OptionTranslator
+        if kind not in T._SIZE_KINDS:
+            raise ValueError(f"unknown size kind {kind!r}")
+        if not isinstance(value, str):
+            raise ValueError("a size is text")
+        v = value.strip()
+        if not v or len(v) > T._SIZE_TEXT_MAX:
+            raise ValueError("not a size")
+        try:
+            ref = float(ref_in)
+        except (TypeError, ValueError):
+            ref = 4.0
+        if not (math.isfinite(ref) and ref > 0):
+            ref = 4.0
+        pt = None
+        m = T.size_multiplier(v)
+        if m is not None:
+            pt = m * float(default_pt)
+        if pt is None:
+            n = T.stata_number(v)
+            if n is not None:
+                pt = n * T.PT_PER_RS
+        if pt is None:
+            mu = T._SIZE_UNIT_RE.fullmatch(v)
+            if mu is not None:
+                n = T.stata_number(mu.group(1))
+                if n is not None:
+                    u = mu.group(2)
+                    if u == "rs":
+                        pt = n * T.PT_PER_RS
+                    else:
+                        pt = n * T._SIZE_UNIT_PT[u] * 4.0 / ref
+        if pt is None:
+            rel = T._SYMBOLSIZE_RS if kind == "marker" else T._GSIZE_RS
+            ab = T._SYMBOLSIZE_ABS_PT if kind == "marker" else T._GSIZE_ABS_PT
+            if v in rel:
+                pt = rel[v] * T.PT_PER_RS
+            elif v in ab:
+                pt = ab[v] * 4.0 / ref
+        if pt is None:
+            raise ValueError(f"not a Stata {kind} size")
+        if not math.isfinite(pt) or abs(pt) > T._SIZE_MAX_RS * T.PT_PER_RS:
+            raise ValueError("size out of range")
+        return pt
+
+    @staticmethod
+    def size_medium_pt(kind: str) -> float:
+        """The class's medium in points: marker 1.52778 rs, text and gap
+        3.8194 rs (twoway's fallback for an unknown name, P1.12.2)."""
+        if kind == "marker":
+            return 1.52778 * OptionTranslator.PT_PER_RS
+        if kind in ("text", "gap"):
+            return 3.8194 * OptionTranslator.PT_PER_RS
+        raise ValueError(f"unknown size kind {kind!r}")
+
+    @staticmethod
+    def css_pt(pt: float) -> str:
+        """A CSS point size with at most two fixed decimals, floored at 0
+        (``"14pt"``, ``"14.4pt"``, ``"8pt"`` for 7.99776); never an
+        exponent, which Bokeh's FontSize validator rejects."""
+        try:
+            p = float(pt)
+        except (TypeError, ValueError):
+            p = 0.0
+        if not math.isfinite(p) or p < 0:
+            p = 0.0
+        s = f"{p:.2f}".rstrip("0").rstrip(".")
+        return (s if s not in ("", "-0") else "0") + "pt"
+
+    @staticmethod
+    def css_to_pt(css: Any) -> "float | None":
+        """Read a ``"<number>pt"`` or ``"<number>px"`` CSS size in points
+        (px x 0.75), else None."""
+        if not isinstance(css, str) or len(css) > 64:
+            return None
+        m = OptionTranslator._CSS_SIZE_RE.fullmatch(css)
+        if m is None:
+            return None
+        f = float(m.group(1))
+        if not math.isfinite(f):
+            return None
+        return f if m.group(2) == "pt" else f * 0.75
+
+    @staticmethod
+    def size_ref_of(fig: Any) -> float:
+        """The figure's reference length in inches, stamped by
+        SchemeParser.apply_to_figure (a Python-only attribute); 4.0 when
+        absent or not a finite number in (0, 100]."""
+        v = getattr(fig, "_dash_size_ref_in", 4.0)
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            return 4.0
+        v = float(v)
+        if math.isfinite(v) and 0 < v <= 100:
+            return v
+        return 4.0
+
     # ------------------------------------------------------------------
     # Stata line width keyword → pixel width
     # ------------------------------------------------------------------
@@ -5927,35 +6137,24 @@ class OptionTranslator:
         return result
 
     @staticmethod
-    def translate_msize(value: str) -> int:
-        """Return a pixel size for a Stata msize() keyword or number.
+    def translate_msize(value: str, default_px: "float | None" = None,
+                        ref_in: float = 4.0) -> float:
+        """Return the signed pixel size of a Stata msize() value.
 
-        Args:
-            value: A Stata size keyword (e.g. "medium") or a numeric string.
-
-        Returns:
-            An integer pixel size.
+        The value is read in Stata's units through resolve_size (marker
+        kind): a number is a relative unit (3.84 px), a keyword is Stata's
+        symbolsize ladder, ``*#`` multiplies *default_px* (the medium
+        marker when None) and ``#pt``/``#in``/``#cm`` convert at *ref_in*.
+        The result is signed; the callers floor it.
 
         Raises:
-            ValueError: If the value is not recognised.
+            ValueError: If the value is not a size.
         """
-        v = value.strip().lower()
-        if v in OptionTranslator._SIZE_MAP:
-            return OptionTranslator._SIZE_MAP[v]
-        # Numeric passthrough (Stata also accepts raw numbers).  A finite
-        # one: float('1e400') is inf, and int(inf) is an OverflowError no
-        # caller's `except ValueError' caught, so msize(1e400) aborted the
-        # render in both modes.
-        try:
-            f = float(v)
-        except ValueError:
-            f = float("nan")
-        if math.isfinite(f):
-            return max(1, int(f))
-        raise ValueError(
-            f"Unrecognised Stata size value: '{value}'. "
-            "Use a keyword (tiny … huge) or a positive number."
-        )
+        T = OptionTranslator
+        if default_px is None:
+            default_px = T.size_medium_pt("marker") * T.PX_PER_PT
+        return T.resolve_size(value, "marker", float(default_px) * 0.75,
+                              ref_in) * T.PX_PER_PT
 
     @staticmethod
     def translate_lcolor(value: str) -> str:
@@ -6347,14 +6546,12 @@ class SchemeParser:
         "ehuge":    32.0,
     }
 
-    # Marker diameter in Bokeh screen pixels.  The RATIOS are Stata's, from
-    # _SYMBOLSIZE_PT above; the anchor is dash's own -- medium (4.4pt),
-    # which is what s2color asks for, keeps the 8px dash has always drawn,
-    # so the default dashboard is unchanged and a scheme that asks for
-    # something else gets something else.  Stata sizes a marker relative
-    # to a 4-inch-high graph, which no browser has, so a claim of absolute
-    # pixel fidelity here would be a fabrication.
-    _MARKER_PX_ANCHOR: float = 8.0
+    # Marker diameter in Bokeh screen pixels of Stata's medium marker
+    # (1.52778 rs) on dash's one unit for every class (WP-30 P1.12a, IR-1):
+    # 1 rs = 2.88pt = 3.84px at the 4-inch reference, so 5.8667px.  Every
+    # scheme symbolsize is read through OptionTranslator.resolve_size on
+    # the same unit, so an explicit msize(medium) is this very float.
+    _MARKER_PX_ANCHOR: float = 1.52778 * 2.88 * 4.0 / 3.0
     _MARKER_PX_ANCHOR_PT: float = 4.4
 
     # Stata intensity keyword → float 0–1
@@ -7405,6 +7602,30 @@ class SchemeParser:
         # 24sep2026).  A missing x or y stays None, "no declared size".
         self.graphsize_x: "float | None" = self._float("graphsize x", None)
         self.graphsize_y: "float | None" = self._float("graphsize y", None)
+        # The reference length absolute sizes (#pt, #in, #cm) convert at
+        # (WP-30 P1.12a, Evidence E2/E4): the smaller graphsize side, as a
+        # Stata relative size is min(width, height)/100 of the graph.
+        _gx, _gy = self.graphsize_x, self.graphsize_y
+        if (_gx is not None and _gy is not None and math.isfinite(_gx)
+                and math.isfinite(_gy) and _gx > 0 and _gy > 0):
+            self.size_ref_in: float = float(min(_gx, _gy))
+        else:
+            self.size_ref_in = 4.0
+        # The scheme's bare `symbolsize' (no class), twoway's size for an
+        # msize() name it does not know: medium in s2color (and every scheme
+        # that includes it), large in Stata's economist (fixture
+        # size_units_truth.json, economist_marker_20..23).  Medium when the
+        # scheme file does not carry the line.
+        self.marker_fallback_kw: str = (
+            self._props.get("symbolsize", "").strip().lower() or "medium")
+        if self.marker_fallback_kw not in OptionTranslator._SYMBOLSIZE_RS:
+            self.marker_fallback_kw = "medium"
+        # `gsize label_gap', the marker label's gap from the marker's edge
+        # (half_tiny, 2pt, in every Stata scheme; Evidence E5).
+        self.label_gap_pt: float = (
+            OptionTranslator.css_to_pt(self._gsize("gsize label_gap", "2pt"))
+            or 2.0
+        )
 
         # Grid visibility.
         #
@@ -7645,27 +7866,23 @@ class SchemeParser:
                      unit at the 4-inch reference, like ``gsize``).
 
         Returns:
-            A diameter in pixels; the anchor is dash's own 8px at Stata's
-            ``medium`` (4.4pt), and everything else keeps Stata's ratio to
-            it: stcolor's ``small`` is 5.45px, economist's ``large`` 12.73px.
+            A diameter in pixels on dash's one unit (WP-30 P1.12a): 1 rs is
+            3.84px, so s2color's ``medium`` is 5.87px, stcolor's ``small``
+            4.0px and economist's ``large`` 9.33px.  An empty or unknown
+            value gives the medium anchor, silently.
         """
         kw = (keyword or "").strip().lower()
         if not kw:
             return self._MARKER_PX_ANCHOR
-        if kw in self._SYMBOLSIZE_PT:
-            pt = self._SYMBOLSIZE_PT[kw]
-        else:
-            try:
-                val = float(kw.lstrip("*"))
-            except ValueError:
-                return self._MARKER_PX_ANCHOR
-            if not math.isfinite(val):
-                return self._MARKER_PX_ANCHOR
-            pt = val * self._GSIZE_NUMERIC_PT_PER_UNIT
-        px = self._MARKER_PX_ANCHOR * pt / self._MARKER_PX_ANCHOR_PT
+        T = OptionTranslator
+        try:
+            pt = T.resolve_size(kw, "marker", T.size_medium_pt("marker"),
+                                getattr(self, "size_ref_in", 4.0))
+        except ValueError:
+            return self._MARKER_PX_ANCHOR
         # A zero-size marker is invisible, which is a legitimate request; a
-        # negative one is not expressible.
-        return max(0.0, px)
+        # negative one draws nothing.
+        return max(0.0, pt * T.PX_PER_PT)
 
     def default_symbol(self, index: int) -> str:
         """Return the Bokeh marker string for the plot at *index*."""
@@ -7769,6 +7986,12 @@ class SchemeParser:
 
         Called before explicit graph_opts so that explicit options override.
         """
+        # The figure's reference length for absolute sizes, read by
+        # OptionTranslator.size_ref_of at every size site (WP-30 P1.12a).
+        # The leading underscore keeps it out of Bokeh's property machinery
+        # (HasProps.__setattr__ short-circuits _private names), so it is
+        # Python-only and never reaches the page.
+        fig._dash_size_ref_in = getattr(self, "size_ref_in", 4.0)
         fig.background_fill_color = self.plotregion_color
         fig.border_fill_color = self.background_color
         # The plot region's border is the scheme's own line, not the axis
@@ -9088,10 +9311,31 @@ class GlyphMapper:
             except AttributeError:
                 pass
         if "msize" in options:
-            try:
-                glyph.size = self.tr.translate_msize(options["msize"])
-            except ValueError:
-                _dash_style_note("msize", options["msize"], "size")
+            # Stata's units on dash's one unit (WP-30 P1.12a, TR-08.8): *#
+            # multiplies the size the glyph was built with, a negative or
+            # zero size draws nothing (silently, as twoway), and an unknown
+            # or wrong-case name draws medium with the note.  A size that is
+            # a field spec is not multiplied (today's path).
+            _cur = glyph.size
+            _ref = getattr(self.scheme, "size_ref_in", 4.0)
+            if isinstance(_cur, (int, float)) and not isinstance(_cur, bool):
+                try:
+                    glyph.size = max(0.0, self.tr.translate_msize(
+                        options["msize"], float(_cur), _ref))
+                except ValueError:
+                    _fb = getattr(self.scheme, "marker_fallback_kw", "medium")
+                    # twoway draws the scheme's default size ("default
+                    # attributes used"): its bare symbolsize.
+                    _dash_style_note("msize", options["msize"], "size")
+                    glyph.size = (OptionTranslator._SYMBOLSIZE_RS[_fb]
+                                  * OptionTranslator.PT_PER_RS
+                                  * OptionTranslator.PX_PER_PT)
+            else:
+                try:
+                    glyph.size = max(0.0, self.tr.translate_msize(
+                        options["msize"], None, _ref))
+                except ValueError:
+                    _dash_style_note("msize", options["msize"], "size")
         # mfcolor sets the fill color independently of the line/outline color.
         # Supports color%alpha notation; applied after mcolor so it wins.
         if "mfcolor" in options:
@@ -9274,6 +9518,69 @@ class GlyphMapper:
         "set3":       "Set3_12",
         "paired":     "Paired_12",
     }
+
+    @staticmethod
+    def _sync_brushed_copies(fig: Any, before: Any = ()) -> None:
+        """Give each new renderer's brushed copies its glyph's drawn values.
+
+        Bokeh builds a renderer's ``nonselection_glyph`` (alpha 0.1) and
+        ``muted_glyph`` (alpha 0.2) once, from the creation keywords
+        (bokeh/plotting/_renderer.py ``create_renderer``); dash's appliers
+        then write ``renderer.glyph`` only, so a brushed-away
+        ``msize(large) mcolor(red)`` point was drawn at the scheme's default
+        size and colour and a hollow marker was drawn filled (Evidence E10,
+        ratification row 27).  For every ``GlyphRenderer`` of *fig* whose
+        ``id()`` is not in *before*, each copy of exactly the glyph's class
+        takes every glyph property but the alphas (shared, never deep
+        copied, so a colour mapper a move updates updates all three); an
+        alpha becomes the smaller of the copy's and the glyph's when both
+        are plain numbers, so a copy stays faint and is never more opaque
+        than its glyph.  Copies that are None, ``"auto"`` or another class
+        are left alone.  It reads no option and never raises.
+        """
+        try:
+            from bokeh.model import Model
+            from bokeh.models import GlyphRenderer as _GR
+            renderers = list(getattr(fig, "renderers", None) or [])
+        except Exception:  # pragma: no cover - a figure always has these
+            return
+        skip = set(Model.properties()) | {"decorations", "defs"}
+        before = before or ()
+        for r in renderers:
+            if id(r) in before or not isinstance(r, _GR):
+                continue
+            glyph = getattr(r, "glyph", None)
+            if glyph is None:
+                continue
+            names = [n for n in sorted(type(glyph).properties())
+                     if n not in skip]
+            for attr in ("nonselection_glyph", "muted_glyph"):
+                copy = getattr(r, attr, None)
+                if copy is None or type(copy) is not type(glyph):
+                    continue
+                for n in names:
+                    try:
+                        gv = getattr(glyph, n)
+                        cv = getattr(copy, n)
+                        if n.endswith("_alpha"):
+                            if (isinstance(gv, (int, float))
+                                    and isinstance(cv, (int, float))
+                                    and not isinstance(gv, bool)
+                                    and not isinstance(cv, bool)
+                                    and math.isfinite(gv)
+                                    and math.isfinite(cv) and gv < cv):
+                                setattr(copy, n, gv)
+                            continue
+                        if gv is cv:
+                            continue
+                        try:
+                            same = bool(gv == cv)
+                        except Exception:
+                            same = False
+                        if not same:
+                            setattr(copy, n, gv)
+                    except Exception:
+                        continue
 
     def _apply_colorvar(
         self,
@@ -9698,6 +10005,7 @@ class GlyphMapper:
         xvar: str,
         yvar: str,
         label_col: "str | None" = None,
+        radius_px: "float | None" = None,
     ) -> None:
         """Add a LabelSet annotation when the mlabel() option is set.
 
@@ -9843,12 +10151,21 @@ class GlyphMapper:
             except ValueError:
                 _dash_style_note("mlabcolor", options["mlabcolor"], "colour")
 
+        T = OptionTranslator
+        _ref = getattr(self.scheme, "size_ref_in", 4.0)
         if "mlabsize" in options:
+            # A text size in Stata's units (WP-30 P1.12a, TR-08.9): *#
+            # multiplies the label's current size; an unknown name draws
+            # medium (11pt) with the note.
             try:
-                size_px = self.tr.translate_msize(options["mlabsize"])
-                kwargs["text_font_size"] = f"{size_px}px"
+                kwargs["text_font_size"] = T.css_pt(T.resolve_size(
+                    options["mlabsize"], "text",
+                    T.css_to_pt(kwargs.get("text_font_size"))
+                    or T.size_medium_pt("text"), _ref))
             except ValueError:
-                _dash_style_note("mlabsize", options["mlabsize"], "size")
+                _dash_style_note("mlabsize", options["mlabsize"], "size",
+                                 "medium")
+                kwargs["text_font_size"] = T.css_pt(T.size_medium_pt("text"))
 
         # mlabposition() and mlabgap(): where the label sits around its
         # point, as twoway puts it (_MLABEL_CLOCK).  A position twoway does
@@ -9861,23 +10178,31 @@ class GlyphMapper:
             _dash_style_note("mlabposition", pos, "clock position",
                              "12 (above)")
             p = 12
-        (bx, by), (ux, uy), (align, baseline) = GlyphMapper._MLABEL_CLOCK[p]
-        gap = 0.0
+        # The anchor sits (marker radius + gap) from its point along the
+        # clock's unit vector, as twoway places it (WP-30 P1.12a, Evidence
+        # E5): the radius is half the layer's marker size, signed, even
+        # where no marker is drawn (bar, pcarrow, pcbarrow); the gap is
+        # `gsize label_gap' (2pt) unless mlabgap() gives one, in Stata's
+        # units.  _MLABEL_CLOCK's base pair is no longer read for the
+        # offset; its unit vectors and anchors are.
+        _b, (ux, uy), (align, baseline) = GlyphMapper._MLABEL_CLOCK[p]
+        if radius_px is None:
+            radius_px = self.scheme.default_marker_size(0) / 2.0
+        _gap_pt = getattr(self.scheme, "label_gap_pt", 2.0)
+        gap = _gap_pt * T.PX_PER_PT
         if "mlabgap" in options:
             try:
-                gap = self._mlabel_gap_px(options["mlabgap"])
+                gap = self._mlabel_gap_px(options["mlabgap"], _gap_pt, _ref)
             except ValueError:
-                _dash_style_note("mlabgap", options["mlabgap"], "size")
-        # The gap widens the offset along the clock direction, as twoway's
-        # does (measured: mlabgap(10) moves a 9 o'clock label further left
-        # and changes nothing at 0).  It was added to both offsets whatever
-        # the position, so at 9 o'clock it moved the label right, over its
-        # point, and up.
-        if gap:
-            kwargs["x_offset"] = bx + gap * ux
-            kwargs["y_offset"] = by + gap * uy
+                _dash_style_note("mlabgap", options["mlabgap"], "size",
+                                 "medium")
+                gap = T.size_medium_pt("gap") * T.PX_PER_PT
+        if p == 0:
+            kwargs["x_offset"], kwargs["y_offset"] = 0, 0
         else:
-            kwargs["x_offset"], kwargs["y_offset"] = bx, by
+            _d = float(radius_px) + gap
+            kwargs["x_offset"] = _d * ux
+            kwargs["y_offset"] = _d * uy
         kwargs["text_align"] = align
         kwargs["text_baseline"] = baseline
 
@@ -9891,31 +10216,39 @@ class GlyphMapper:
         fig.add_layout(ls)
 
     @staticmethod
-    def _mlabel_gap_px(raw: Any) -> float:
-        """``mlabgap()`` in pixels, or ValueError for the caller to name.
+    def _mlabel_gap_px(raw: Any, default_pt: float = 2.0,
+                       ref_in: float = 4.0) -> float:
+        """``mlabgap()`` in signed pixels, or ValueError for the caller to
+        name (WP-30 P1.12a).
 
-        A size keyword is the pixels ``mlabsize()`` reads it as; a number is
-        taken as written -- zero, a fraction, or a negative number, which
-        moves the label toward its point (twoway accepts ``mlabgap(-5)``:
-        measured, the label crosses the marker).  It was read through
-        ``translate_msize``, which floors every number at one whole pixel,
-        so ``mlabgap(0)`` still moved the label.  A number is read only in
-        the plain decimal or exponent spelling Stata writes, in ASCII
-        digits, at most 32 characters, and must be finite: Python's float()
-        also reads ``inf``, ``nan`` and other scripts' digits, which are not
-        gaps.
+        A gsize in Stata's units (Evidence E5): a number is a relative unit
+        (3.84px), ``*#`` multiplies *default_pt* (the scheme's label gap),
+        ``#pt``/``#in``/``#cm`` convert at *ref_in*, and a negative gap moves
+        the label toward its point (twoway: ``msize(-1) mlabgap(0)`` puts it
+        at -0.5 units).  The length, ASCII-digit and finiteness guards are
+        resolve_size's.
         """
-        text = str(raw if raw is not None else "").strip()
-        key = text.lower()
-        if key in OptionTranslator._SIZE_MAP:
-            return float(OptionTranslator._SIZE_MAP[key])
-        if len(text) > 32 or not re.fullmatch(
-                r"[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?", text):
-            raise ValueError(f"not a gap: {text[:40]!r}")
-        gap = float(text)
-        if not math.isfinite(gap):
-            raise ValueError(f"not a finite gap: {text[:40]!r}")
-        return gap
+        T = OptionTranslator
+        return T.resolve_size(raw if isinstance(raw, str) else str(raw),
+                              "gap", default_pt, ref_in) * T.PX_PER_PT
+
+    def _mlabel_radius_px(self, options: dict, base_px: float) -> float:
+        """Half the layer's marker size in signed px: the origin of a
+        marker label's gap (WP-30 P1.12a, Evidence E5).  ``msize()`` when
+        given (medium, silently, when unreadable: _apply_marker_opts names
+        it), else half *base_px*, the scheme's size for the layer, also on
+        types that draw no marker (bar, pcarrow, pcbarrow)."""
+        if str(options.get("msize", "") or "").strip():
+            try:
+                return self.tr.translate_msize(
+                    options["msize"], base_px,
+                    getattr(self.scheme, "size_ref_in", 4.0)) / 2.0
+            except ValueError:
+                _fb = getattr(self.scheme, "marker_fallback_kw", "medium")
+                return (OptionTranslator._SYMBOLSIZE_RS[_fb]
+                        * OptionTranslator.PT_PER_RS
+                        * OptionTranslator.PX_PER_PT / 2.0)
+        return float(base_px) / 2.0
 
     def _mlabformat_column(self, source: "ColumnDataSource", var: str,
                            fmt: str, default_col: str,
@@ -10249,7 +10582,8 @@ class GlyphMapper:
             _sel = self._view_mask(view, len(plot_source.data[xvar]))
             if _sel is not None:
                 _label_source = self._subset_source(plot_source, _sel)
-        self._apply_mlabel_opts(fig, _label_source, options, xvar, yvar)
+        self._apply_mlabel_opts(fig, _label_source, options, xvar, yvar,
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
         fig.add_tools(self._hover_tool(yvar, xvar, renderers=[r]))
         return r
 
@@ -10677,7 +11011,8 @@ class GlyphMapper:
         self._apply_line_opts(r, options)
         # The labels of the bars drawn -- the layer's own rows -- from the
         # source the bars are drawn from.
-        self._apply_mlabel_opts(fig, clean_source, options, xvar, yvar)
+        self._apply_mlabel_opts(fig, clean_source, options, xvar, yvar,
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
         return r
 
     @staticmethod
@@ -13897,7 +14232,8 @@ class GlyphMapper:
         # nowhere else, and the dot was never passed through -- so a dropline
         # drew a default circle whatever was asked for.
         self._apply_marker_opts(dot, options)
-        self._apply_mlabel_opts(fig, dl_source, options, xvar, yvar)
+        self._apply_mlabel_opts(fig, dl_source, options, xvar, yvar,
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
         return [seg, dot]
 
     def map_rcapsym(
@@ -14011,8 +14347,10 @@ class GlyphMapper:
         # dash labelled the top end only.  One LabelSet per end, both over
         # the caller's source, as the top one always was -- restricted to
         # the layer's own rows, which it labelled every row of.
-        self._apply_mlabel_opts(fig, _label_source, options, xvar, y1var)
-        self._apply_mlabel_opts(fig, _label_source, options, xvar, y2var)
+        self._apply_mlabel_opts(fig, _label_source, options, xvar, y1var,
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
+        self._apply_mlabel_opts(fig, _label_source, options, xvar, y2var,
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
         return [spine, bot_cap, top_cap, bot_dot, top_dot]
 
     def map_scatteri(
@@ -14092,7 +14430,9 @@ class GlyphMapper:
         size = self.scheme.default_marker_size(color_idx)
         if str(options.get("msize", "")).strip():
             try:
-                size = self.tr.translate_msize(options["msize"])
+                size = max(0.0, self.tr.translate_msize(
+                    options["msize"], size,
+                    getattr(self.scheme, "size_ref_in", 4.0)))
             except ValueError:
                 pass
         marker = "circle"
@@ -14114,7 +14454,8 @@ class GlyphMapper:
         # The labels, each at its own (jittered) point.
         if any(_labels):
             self._immediate_labels(fig, x_vals.tolist(), y_vals.tolist(),
-                                   _labels, _clocks, options, "scatteri")
+                                   _labels, _clocks, options, "scatteri",
+                                   radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
 
         return [r]
 
@@ -14342,7 +14683,8 @@ class GlyphMapper:
         r = fig.scatter("x", "y", **_pcsc_kwargs)
         self._apply_marker_opts(r, options)
         self._apply_mlabel_opts(fig, pc_source, options, _DASH_MLABEL_X,
-                                _DASH_MLABEL_Y, label_col=_DASH_MLABEL_VALUES)
+                                _DASH_MLABEL_Y, label_col=_DASH_MLABEL_VALUES,
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
         return [r]
 
     def _pc_clean_with_label(self, source: ColumnDataSource, y1var: str,
@@ -14491,7 +14833,8 @@ class GlyphMapper:
         # Labels at the tail, (x1, y1), where twoway puts them without
         # headlabel (twoway_pcarrow.sthlp; measured, ten labels, all at the
         # first point).  dash drew no pcarrow label at all.
-        self._apply_mlabel_opts(fig, pc_source, options, x1var, y1var)
+        self._apply_mlabel_opts(fig, pc_source, options, x1var, y1var,
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
         return [seg]
 
     def map_pcbarrow(
@@ -14563,7 +14906,8 @@ class GlyphMapper:
         # Labels at the first point, (x1, y1), as twoway labels pcbarrow
         # without headlabel (measured, ten labels, all at the first point).
         # dash drew no pcbarrow label at all.
-        self._apply_mlabel_opts(fig, pc_source, options, x1var, y1var)
+        self._apply_mlabel_opts(fig, pc_source, options, x1var, y1var,
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
         return [seg]
 
     def map_pccapsym(
@@ -14670,7 +15014,8 @@ class GlyphMapper:
         # the only one that did).
         self._apply_marker_opts(dots, options)
 
-        self._apply_mlabel_opts(fig, seg_src, options, x1var, y1var)
+        self._apply_mlabel_opts(fig, seg_src, options, x1var, y1var,
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
         return [seg, dots]
 
     @staticmethod
@@ -14744,7 +15089,8 @@ class GlyphMapper:
         return y1, x1, y2, x2, labels, clocks
 
     def _immediate_labels(self, fig, xs, ys, labels, clocks, options,
-                          ptype: str, xcol: str = "x", ycol: str = "y"):
+                          ptype: str, xcol: str = "x", ycol: str = "y",
+                          radius_px: "float | None" = None):
         """Draw an immediate list's labels where twoway draws them.
 
         twoway assumes ``mlabel()`` when a label is given and
@@ -14806,7 +15152,8 @@ class GlyphMapper:
             })
             opts = dict(options, mlabel=col, mlabposition=pos)
             opts.pop("mlabvposition", None)
-            self._apply_mlabel_opts(fig, lab_src, opts, xcol, ycol)
+            self._apply_mlabel_opts(fig, lab_src, opts, xcol, ycol,
+                                    radius_px=radius_px)
 
     def map_pcarrowi(
         self,
@@ -14853,7 +15200,8 @@ class GlyphMapper:
             self._immediate_labels(
                 fig, [x1[i] if drawn[i] else nan for i in range(len(labels))],
                 [y1[i] if drawn[i] else nan for i in range(len(labels))],
-                labels, clocks, options, "pcarrowi", "x1", "y1")
+                labels, clocks, options, "pcarrowi", "x1", "y1",
+                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
         return out
 
     def map_tsline(
@@ -15021,7 +15369,8 @@ class GlyphMapper:
         r = fig.scatter("x", "y", **_rs_kwargs)
         self._apply_marker_opts(r, options)
         self._apply_mlabel_opts(fig, rs_source, options, "x", "y",
-                                label_col=_DASH_MLABEL_VALUES)
+                                label_col=_DASH_MLABEL_VALUES,
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
         return [r]
 
     def map_mspline(
@@ -22135,13 +22484,30 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     #    for a legend text size, not a plot-legend text size.
     m_size = _dash_legend_arg(_calls, ("size",), r"([^)]+?)")
     if m_size:
-        try:
-            px = f"{OptionTranslator.translate_msize(m_size.group(1)):g}px"
-            for lg in fig.legend:
-                lg.label_text_font_size = px
-        except (ValueError, TypeError):
-            # Was dropped in silence; the scheme's legend size stays.
-            _dash_style_note("legend(size)", m_size.group(1), "size")
+        # Stata's text units per legend (WP-30 P1.12a): *# multiplies each
+        # legend's own size; an unknown name draws medium on every legend,
+        # with the note, as twoway does.
+        T = OptionTranslator
+        _lref = T.size_ref_of(fig)
+        _bad = False
+        for lg in fig.legend:
+            try:
+                lg.label_text_font_size = T.css_pt(T.resolve_size(
+                    m_size.group(1), "text",
+                    T.css_to_pt(lg.label_text_font_size)
+                    or T.size_medium_pt("text"), _lref))
+            except (ValueError, TypeError):
+                _bad = True
+                lg.label_text_font_size = T.css_pt(T.size_medium_pt("text"))
+        if not _bad and not list(fig.legend):
+            try:
+                T.resolve_size(m_size.group(1), "text",
+                               T.size_medium_pt("text"), _lref)
+            except (ValueError, TypeError):
+                _bad = True
+        if _bad:
+            _dash_style_note("legend(size)", m_size.group(1), "size",
+                             "medium")
 
     # 8. Stata's rule governs the SERIES key; `off' is a bare word, so
     #    legend(pos(6) off) hides it and label(1 "Turned off") does not.
@@ -23228,7 +23594,7 @@ def _dash_parse_axis_spec(raw):
 
 def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                           fmt_fallback="", grid_color=None,
-                          value_labels=None, fmt_cache=None):
+                          value_labels=None, fmt_cache=None, ref_in=4.0):
     """Apply a parsed ``axis_label`` spec to one axis.
 
     Args:
@@ -23350,14 +23716,21 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
             )
 
     if spec["labsize"]:
-        try:
-            axis_obj.major_label_text_font_size = (
-                f"{OptionTranslator.translate_msize(spec['labsize']):g}px")
-        except (ValueError, TypeError):
-            warnings.warn(
-                f"dash: labsize({spec['labsize']}) is not a recognised "
-                f"text size; ignoring it.", UserWarning,
-            )
+        # Stata's text units, per axis (WP-30 P1.12a): *# multiplies the
+        # axis's current tick-label size; an unknown name draws medium with
+        # the note, as twoway does.
+        T = OptionTranslator
+        for _ax in (axis_obj if isinstance(axis_obj, list) else [axis_obj]):
+            try:
+                _ax.major_label_text_font_size = T.css_pt(T.resolve_size(
+                    str(spec["labsize"]), "text",
+                    T.css_to_pt(_ax.major_label_text_font_size)
+                    or T.size_medium_pt("text"), ref_in))
+            except (ValueError, TypeError):
+                _dash_style_note("labsize", spec["labsize"], "size",
+                                 "medium")
+                _ax.major_label_text_font_size = T.css_pt(
+                    T.size_medium_pt("text"))
     if spec["angle"] is not None:
         axis_obj.major_label_orientation = spec["angle"]
     if spec["grid"] is not None:
@@ -23539,7 +23912,8 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
                 spec = _dash_date_axis_spec(spec, kind, ax_key)
             _dash_apply_axis_spec(axis_obj, grid_obj, spec,
                                   col, (numeric_formats or {}).get(var, ""),
-                                  grid_color, vlabels, fmt_cache=fmt_cache)
+                                  grid_color, vlabels, fmt_cache=fmt_cache,
+                                  ref_in=OptionTranslator.size_ref_of(fig))
         traw = graph_opts.get(tick_key, "")
         if traw:
             _dash_apply_tick_option(axis_obj, grid_obj, traw, tick_key, col,
@@ -23612,9 +23986,12 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
             **{kw: name}, axis_label=text)
         if scheme is not None:
             scheme.apply_to_axis(ax)
-        px = _textbox_size(opts, None)
+        px = _textbox_size(
+            opts, ax.axis_label_text_font_size,
+            (getattr(scheme, "size_ref_in", 4.0) if scheme is not None
+             else OptionTranslator.size_ref_of(fig)), f"{n}title2(size)")
         if px is not None:
-            ax.axis_label_text_font_size = f"{px:g}px"
+            ax.axis_label_text_font_size = px
         colour = _textbox_color(opts, None)
         if colour is not None:
             ax.axis_label_text_color = colour
@@ -23813,7 +24190,8 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
             vlabels2 = _dash_value_labels_for(var2, value_labels,
                                               value_label_names)
             _dash_apply_axis_spec(ax, grids, spec, col_vals or None, "",
-                                  grid_color, vlabels2, fmt_cache=fmt_cache)
+                                  grid_color, vlabels2, fmt_cache=fmt_cache,
+                                  ref_in=OptionTranslator.size_ref_of(fig))
         if tspec is not None:
             # After the labels, so its CustomJSTicker keeps their ticks as
             # its labelled ones; whether or not ylabel2() is given.
@@ -26433,9 +26811,10 @@ def _dash_figure_title(fig, graph_opts, seen=None, key=""):
     # 16px and #000000, so title(T, size(bogus)) drew 16px where title(T)
     # draws the scheme's 14pt, and title(T, color(bogus)) drew black text
     # on s1rcolor's black -- while the note said the value was ignored.
-    _t_px = _textbox_size(_t_opts, None)
+    _t_px = _textbox_size(_t_opts, fig.title.text_font_size,
+                          OptionTranslator.size_ref_of(fig), "title(size)")
     if _t_px is not None:
-        fig.title.text_font_size = f"{_t_px:g}px"
+        fig.title.text_font_size = _t_px
     _t_col = _textbox_color(_t_opts, None)
     if _t_col is not None:
         fig.title.text_color = _t_col
@@ -26459,11 +26838,14 @@ def _dash_style_axis_titles(fig, graph_opts, seen=None, key=""):
         # scheme's axis title, as _dash_figure_title keeps its heading (it
         # fell back on 13px and #000000).  The figure's own axis only: a
         # second axis's title is ytitle2()'s (see _dash_primary_axes).
-        px = _textbox_size(opts, None)
+        _prim = list(_dash_primary_axes(axes, rattr))
+        px = _textbox_size(
+            opts, _prim[0].axis_label_text_font_size if _prim else None,
+            OptionTranslator.size_ref_of(fig), f"{opt}(size)")
         colour = _textbox_color(opts, None)
-        for ax in _dash_primary_axes(axes, rattr):
+        for ax in _prim:
             if px is not None:
-                ax.axis_label_text_font_size = f"{px:g}px"
+                ax.axis_label_text_font_size = px
             if colour is not None:
                 ax.axis_label_text_color = colour
 
@@ -26523,11 +26905,13 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None):
                 if scheme is not None and ann_key == "note" else None)
         # None from either helper means "not given, or refused (and
         # named)": the default applies either way.
-        px = _textbox_size(opts, None)
+        px = _textbox_size(opts, size_default,
+                           OptionTranslator.size_ref_of(fig),
+                           f"{ann_key}(size)")
         colour = _textbox_color(opts, None)
         fig.add_layout(Label(
             x=0, y=d["y"], x_units="screen", y_units="screen", text=text,
-            text_font_size=(f"{px:g}px" if px is not None else size_default),
+            text_font_size=(px if px is not None else size_default),
             text_color=colour if colour is not None else color_default,
             background_fill_color=fill,
         ), d["side"])
@@ -26649,10 +27033,11 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key):
         text, topts = _dash_textbox_or_default(
             ztitle_raw, "ztitle", key_obj.title or "", seen, key)
         key_obj.title = text
-        px = _textbox_size(topts, None)
+        px = _textbox_size(topts, key_obj.title_text_font_size,
+                           OptionTranslator.size_ref_of(fig), "ztitle(size)")
         colour = _textbox_color(topts, None)
         if px is not None:
-            key_obj.title_text_font_size = f"{px:g}px"
+            key_obj.title_text_font_size = px
         if colour is not None:
             key_obj.title_text_color = colour
 
@@ -26667,10 +27052,25 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key):
             # for that reason) but the colour bar's ticker applies none of
             # them, so they are named here instead.
             _bad = list(spec.get("unsupported", []))
-            for _sub, _sv in (("format", spec.get("format")),
-                              ("labsize", spec.get("labsize"))):
+            for _sub, _sv in (("format", spec.get("format")),):
                 if _sv:
                     _bad.append(f"{_sub}({_sv})")
+            # labsize() is drawn on the colour bar's tick labels, in
+            # Stata's text units (WP-30 P1.12a, Evidence E5).
+            if spec.get("labsize"):
+                _T = OptionTranslator
+                try:
+                    key_obj.major_label_text_font_size = _T.css_pt(
+                        _T.resolve_size(
+                            str(spec["labsize"]), "text",
+                            _T.css_to_pt(key_obj.major_label_text_font_size)
+                            or _T.size_medium_pt("text"),
+                            _T.size_ref_of(fig)))
+                except (ValueError, TypeError):
+                    _dash_style_note("labsize", spec["labsize"], "size",
+                                     "medium")
+                    key_obj.major_label_text_font_size = _T.css_pt(
+                        _T.size_medium_pt("text"))
             if spec.get("angle") is not None:
                 _bad.append(f"angle({spec['angle']:g})")
             if spec.get("grid") is not None:
@@ -29476,65 +29876,81 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
     (``_DASH_JOIN_TYPES``).  tsline and tsrline join in time order and take
     none.
     """
-    dispatch, range_dispatch = _dash_glyph_dispatch(mapper)
-    pt = (plot_type or "").lower()
+    _before = frozenset(id(r) for r in (getattr(fig, "renderers", None) or ()))
+    try:
+        dispatch, range_dispatch = _dash_glyph_dispatch(mapper)
+        pt = (plot_type or "").lower()
 
-    # Guard: skip the glyph if a required variable is missing from the CDS.
-    if pt not in _DASH_PC_TYPES and pt != "pci":
-        _vars_needed = [v for v in [yvar, xvar, y2var] if v]
-        if _vars_needed and not mapper._check_vars(source, *_vars_needed):
+        # Guard: skip the glyph if a required variable is missing from the CDS.
+        if pt not in _DASH_PC_TYPES and pt != "pci":
+            _vars_needed = [v for v in [yvar, xvar, y2var] if v]
+            if _vars_needed and not mapper._check_vars(source, *_vars_needed):
+                return None
+
+        # Range plots take (fig, source, y1var, y2var, xvar, options).
+        _jkw = ({"order": order}
+                if pt in _DASH_JOIN_TYPES and order is not None else {})
+        rfn = range_dispatch.get(pt)
+        if rfn is not None and not y2var:
+            # A range type with no second y variable fell through to "no glyph
+            # mapper for plot type", which is false: the mapper exists and the
+            # variable is what is missing (BUGS.md, S3).
+            _dash_note_no_second_y(plot_type)
+            return None
+        if rfn is not None:
+            return rfn(fig, source, yvar, y2var, xvar, options,
+                       view=view, color_idx=color_idx, **_jkw)
+
+        fn = dispatch.get(pt)
+        if fn is None:
+            # Loud, because silence here is how 38 plot types came to be missing
+            # from one render mode without anything noticing.
+            warnings.warn(
+                "dash: no glyph mapper for plot type %r; nothing was drawn for "
+                "that layer." % (plot_type,),
+                UserWarning,
+                stacklevel=2,
+            )
             return None
 
-    # Range plots take (fig, source, y1var, y2var, xvar, options).
-    _jkw = ({"order": order}
-            if pt in _DASH_JOIN_TYPES and order is not None else {})
-    rfn = range_dispatch.get(pt)
-    if rfn is not None and not y2var:
-        # A range type with no second y variable fell through to "no glyph
-        # mapper for plot type", which is false: the mapper exists and the
-        # variable is what is missing (BUGS.md, S3).
-        _dash_note_no_second_y(plot_type)
-        return None
-    if rfn is not None:
-        return rfn(fig, source, yvar, y2var, xvar, options,
-                   view=view, color_idx=color_idx, **_jkw)
-
-    fn = dispatch.get(pt)
-    if fn is None:
-        # Loud, because silence here is how 38 plot types came to be missing
-        # from one render mode without anything noticing.
-        warnings.warn(
-            "dash: no glyph mapper for plot type %r; nothing was drawn for "
-            "that layer." % (plot_type,),
-            UserWarning,
-            stacklevel=2,
-        )
-        return None
-
-    # histogram and kdensity are univariate -- no xvar positional argument.
-    if pt in _DASH_UNIVARIATE_TYPES:
-        return fn(fig, source, yvar, options, view=view, color_idx=color_idx)
-    return fn(fig, source, yvar, xvar, options, view=view, color_idx=color_idx,
-              **_jkw)
+        # histogram and kdensity are univariate -- no xvar positional argument.
+        if pt in _DASH_UNIVARIATE_TYPES:
+            return fn(fig, source, yvar, options, view=view, color_idx=color_idx)
+        return fn(fig, source, yvar, xvar, options, view=view, color_idx=color_idx,
+                  **_jkw)
+    finally:
+        # Bokeh made the layer's nonselection and muted copies when
+        # each renderer was created, before the appliers ran; give
+        # them the glyph's drawn values (WP-30 P1.12a, ratification
+        # row 27, Evidence E10).
+        GlyphMapper._sync_brushed_copies(fig, _before)
 
 
 def _dash_add_pc_glyph(mapper, fig, source, plot_type, y1var, x1var, y2var,
                        x2var, options, view=None, color_idx=0):
     """Dispatch one paired-coordinate layer to its GlyphMapper method."""
-    fn = _dash_pc_dispatch(mapper).get((plot_type or "").lower())
-    if fn is None:
-        warnings.warn(
-            "dash: no glyph mapper for paired-coordinate plot type %r; "
-            "nothing was drawn for that layer." % (plot_type,),
-            UserWarning,
-            stacklevel=2,
-        )
-        return None
-    _pc_needed = [v for v in [y1var, x1var, y2var, x2var] if v]
-    if _pc_needed and not mapper._check_vars(source, *_pc_needed):
-        return None
-    return fn(fig, source, y1var, x1var, y2var, x2var, options,
-              view=view, color_idx=color_idx)
+    _before = frozenset(id(r) for r in (getattr(fig, "renderers", None) or ()))
+    try:
+        fn = _dash_pc_dispatch(mapper).get((plot_type or "").lower())
+        if fn is None:
+            warnings.warn(
+                "dash: no glyph mapper for paired-coordinate plot type %r; "
+                "nothing was drawn for that layer." % (plot_type,),
+                UserWarning,
+                stacklevel=2,
+            )
+            return None
+        _pc_needed = [v for v in [y1var, x1var, y2var, x2var] if v]
+        if _pc_needed and not mapper._check_vars(source, *_pc_needed):
+            return None
+        return fn(fig, source, y1var, x1var, y2var, x2var, options,
+                  view=view, color_idx=color_idx)
+    finally:
+        # Bokeh made the layer's nonselection and muted copies when
+        # each renderer was created, before the appliers ran; give
+        # them the glyph's drawn values (WP-30 P1.12a, ratification
+        # row 27, Evidence E10).
+        GlyphMapper._sync_brushed_copies(fig, _before)
 
 
 def _dash_dim_nonselection(fig, alpha=_NONSELECTION_ALPHA) -> None:
@@ -29548,6 +29964,12 @@ def _dash_dim_nonselection(fig, alpha=_NONSELECTION_ALPHA) -> None:
     the saved page dimmed at 0.15 (WP-28 E14).  A module function both
     renderers call fixes that with one body.
 
+    A copy is never made more opaque than its glyph (WP-30 P1.12a,
+    ratification row 27): where the renderer's glyph has the alpha as a
+    plain number, the copy gets the smaller of *alpha* and the glyph's, so
+    a hollow marker (fill alpha 0) stays hollow and ``malpha(5)`` stays at
+    0.05.  Without a glyph, or with a field there, *alpha* is set as before.
+
     Args:
         fig:   A figure belonging to a link group.
         alpha: The alpha to dim to; ``_NONSELECTION_ALPHA`` unless a
@@ -29557,10 +29979,16 @@ def _dash_dim_nonselection(fig, alpha=_NONSELECTION_ALPHA) -> None:
         ns = getattr(renderer, "nonselection_glyph", None)
         if ns is None:
             continue
-        if hasattr(ns, "fill_alpha"):
-            ns.fill_alpha = alpha
-        if hasattr(ns, "line_alpha"):
-            ns.line_alpha = alpha
+        glyph = getattr(renderer, "glyph", None)
+        for _name in ("fill_alpha", "line_alpha"):
+            if not hasattr(ns, _name):
+                continue
+            g = getattr(glyph, _name, None) if glyph is not None else None
+            if (isinstance(g, (int, float)) and not isinstance(g, bool)
+                    and math.isfinite(g)):
+                setattr(ns, _name, min(alpha, g))
+            else:
+                setattr(ns, _name, alpha)
 
 
 class DashRenderer:

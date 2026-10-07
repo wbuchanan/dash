@@ -177,7 +177,9 @@ class TestTheSchemeChromeIsStillApplied:
         fig, _ = _render(_DISCRETE, scheme="economist",
                          gopts={"legend": "on size(4)"})
         sizes = {str(l.label_text_font_size) for l in _legends(fig)}
-        assert "4px" in sizes, sizes
+        # WP-30 P1.12a (Evidence E4): legend(size(4)) is 4 % of the 4-inch
+        # reference, twoway's 11.52 pt (was '4px').
+        assert "11.52pt" in sizes, sizes
 
 
 class TestTheMixedCase:

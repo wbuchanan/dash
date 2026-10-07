@@ -42,6 +42,11 @@ from test_server_layer_defects import (make_spec, served,  # noqa: E402
                                        standalone)
 
 NAN = float("nan")
+# WP-30 P1.12a (Evidence E5, twoway measured): a pcarrowi label sits
+# (radius + gap) from the tail, the radius half the scheme's marker size
+# (symbolsize medium 1.52778 rs, 1 rs = 2.88 pt = 3.84 px) and the gap
+# gsize label_gap 2 pt: 2.93334 + 2.66667 = 5.6 px.
+_D = 1.52778 * 2.88 * (4 / 3) / 2 + 2 * (4 / 3)
 
 
 def _pc_source(**extra):
@@ -250,25 +255,33 @@ class TestMapPcarrowi:
 
     def test_a_label_is_drawn_at_the_tail_at_its_clock_position(self):
         _, fig, _, _ = self._draw(_LABELLED)
-        got = sorted(((ls.x_offset, ls.y_offset),
+        got = sorted(((round(ls.x_offset, 4), round(ls.y_offset, 4)),
                       list(ls.source.data[ls.text if isinstance(ls.text, str)
                                           else ls.text.field]),
                       [float(v) for v in ls.source.data["x1"]],
                       [float(v) for v in ls.source.data["y1"]])
                      for ls in _labelsets(fig))
-        assert got == [((0, 4), ["12 o'clock"], [0.0], [0.0]),
-                       ((4, 0), ["3 o'clock"], [0.0], [0.0])]
+        # WP-30 P1.12a (Evidence E5, twoway measured): pcarrow's origin is
+        # half the scheme marker size (2.93334 px) + gap 2pt (2.66667 px).
+        assert got == [((0, round(_D, 4)), ["12 o'clock"], [0.0], [0.0]),
+                       ((round(_D, 4), 0), ["3 o'clock"], [0.0], [0.0])]
 
     def test_a_label_without_a_clock_takes_mlabposition(self):
         _, fig, _, _ = self._draw([[0, 0, 0, 1, "A", None]],
                                   {"mlabposition": "9"})
         (ls,) = _labelsets(fig)
-        assert (ls.x_offset, ls.y_offset) == (-4, 0)
+        # WP-30 P1.12a (Evidence E5, twoway measured): pcarrow's origin is
+        # half the scheme marker size (2.93334 px) + gap 2pt (2.66667 px).
+        assert ls.x_offset == pytest.approx(-_D)
+        assert ls.y_offset == 0
 
     def test_a_label_without_a_clock_or_mlabposition_is_at_three(self):
         _, fig, _, _ = self._draw([[0, 0, 0, 1, "A"]])
         (ls,) = _labelsets(fig)
-        assert (ls.x_offset, ls.y_offset) == (4, 0)
+        # WP-30 P1.12a (Evidence E5, twoway measured): pcarrow's origin is
+        # half the scheme marker size (2.93334 px) + gap 2pt (2.66667 px).
+        assert ls.x_offset == pytest.approx(_D)
+        assert ls.y_offset == 0
 
     def test_a_record_without_a_label_draws_no_label(self):
         _, fig, _, _ = self._draw([[0, 0, 0, 1], [1, 1, 2, 2, "", 6]])
@@ -279,7 +292,9 @@ class TestMapPcarrowi:
                                    {"mlabcolor": "red", "mlabsize": "large"})
         (ls,) = _labelsets(fig)
         assert ls.text_color == gm.tr.translate_mcolor("red")
-        assert ls.text_font_size == f"{gm.tr.translate_msize('large')}px"
+        # WP-30 P1.12a (Evidence E5, twoway measured): label sizes are CSS
+        # points; gsize large is 4.8611 units x 2.88 = 14pt.
+        assert ls.text_font_size == "14pt"
 
     def test_a_missing_coordinate_draws_neither_arrow_nor_label(self):
         _, fig, (seg,), _ = self._draw([[0, 0, None, 1, "A", 3],
@@ -297,7 +312,10 @@ class TestMapPcarrowi:
         _, fig, _, warns = self._draw([[0, 0, 0, 1, "A", 3.5],
                                        [1, 1, 2, 2, "B", 3.25]])
         (ls,) = _labelsets(fig)
-        assert (ls.x_offset, ls.y_offset) == (0, 4)
+        # WP-30 P1.12a (Evidence E5, twoway measured): pcarrow's origin is
+        # half the scheme marker size (2.93334 px) + gap 2pt (2.66667 px).
+        assert ls.x_offset == 0
+        assert ls.y_offset == pytest.approx(_D)
         assert sorted(ls.source.data[ls.text if isinstance(ls.text, str)
                                      else ls.text.field]) == ["A", "B"]
         notes = [w for w in warns if "pcarrowi" in w and "clock" in w]

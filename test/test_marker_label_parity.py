@@ -464,7 +464,13 @@ def test_the_label_options_reach_every_label(ptype):
         for ls in sets:
             assert float(ls.angle) == pytest.approx(math.radians(45))
             assert str(ls.text_color).lower() == _hex("red")
-            assert (ls.x_offset, ls.y_offset) == (-4, 0)
+            # WP-30 P1.12a (Evidence E5, twoway measured): 9 o'clock is
+            # -(radius + default gap): radius 2.93334 px (half symbolsize
+            # medium 1.52778 rs at 3.84 px per rs; pcarrow/pcbarrow use half
+            # the scheme marker size) + gsize label_gap 2pt (2.66667 px).
+            assert ls.x_offset == pytest.approx(
+                -(1.52778 * 2.88 * (4 / 3) / 2 + 2 * (4 / 3)))
+            assert ls.y_offset == 0
 
 
 def test_an_out_of_range_angle_on_an_arrow_is_reported_and_drawn_flat():

@@ -1115,7 +1115,8 @@ if inlist("`only'", "", "S03") {
     _s03_dash ET-01 et01 "scatter mpg weight, ytitle(, size(large))" "`d'"
     display as text `"  ET-01 twoway [`tw'] dash [$S03_AXS]"'
     _w29_expect ET-01 `"(real(substr("`tw'", 1, strpos("`tw'", "|") - 1)) > `base' & strpos("`tw'", "|-90") > 0)"' "twoway `tw'"
-    _w29_expect ET-01 `"(strpos("$S03_AXS", "default=Mileage (mpg)@15px@") > 0)"' "dash $S03_AXS"
+    // WP-30 P1.12a: size(large) is twoway's 14pt (was 15px) in ET-01, -04 to -08 and -10.
+    _w29_expect ET-01 `"(strpos("$S03_AXS", "default=Mileage (mpg)@14pt@") > 0)"' "dash $S03_AXS"
     _w29_done ET-01 "ytitle(, size(large)) keeps Mileage (mpg), at large"
 
     // ---- ET-02: xtitle(, color(red)) ----
@@ -1158,8 +1159,8 @@ if inlist("`only'", "", "S03") {
     local a2 "$S03_AXS"
     display as text `"  ET-04 twoway [`tw1'][`tw2'] dash [`a1'][`a2']"'
     _w29_expect ET-04 `"(real(substr("`tw1'", 1, strpos("`tw1'", "|") - 1)) > `base' & real(substr("`tw2'", 1, strpos("`tw2'", "|") - 1)) > `base')"' "twoway `tw1' `tw2'"
-    _w29_expect ET-04 `"(strpos("`a1'", "default=Density@15px@") > 0)"' "histogram `a1'"
-    _w29_expect ET-04 `"(strpos("`a2'", "default=kdensity mpg@15px@") > 0)"' "kdensity `a2'"
+    _w29_expect ET-04 `"(strpos("`a1'", "default=Density@14pt@") > 0)"' "histogram `a1'"
+    _w29_expect ET-04 `"(strpos("`a2'", "default=kdensity mpg@14pt@") > 0)"' "kdensity `a2'"
     _w29_done ET-04 "histogram and kdensity keep Density and kdensity mpg at large"
 
     // ---- ET-05: the second axis ----
@@ -1174,8 +1175,8 @@ if inlist("`only'", "", "S03") {
     local a2 "$S03_AXS"
     display as text `"  ET-05 twoway [`tw1'][`tw2'] dash [`a1'][`a2']"'
     _w29_expect ET-05 `"(real(substr("`tw1'", 1, strpos("`tw1'", "|") - 1)) > `base' & strpos("`tw1'", "|-90") > 0 & real(substr("`tw2'", 1, strpos("`tw2'", "|") - 1)) == `base' & strpos("`tw2'", "|-90") > 0)"' "twoway `tw1' / `tw2'"
-    _w29_expect ET-05 `"(strpos("`a1'", "y2=Price@15px@") > 0)"' "sized `a1'"
-    _w29_expect ET-05 `"(strpos("`a2'", "y2=Price@") > 0 & strpos("`a2'", "y2=Price@15px@") == 0)"' "default `a2'"
+    _w29_expect ET-05 `"(strpos("`a1'", "y2=Price@14pt@") > 0)"' "sized `a1'"
+    _w29_expect ET-05 `"(strpos("`a2'", "y2=Price@") > 0 & strpos("`a2'", "y2=Price@14pt@") == 0)"' "default `a2'"
     _w29_done ET-05 "the second axis is titled Price, styled by ytitle(, axis(2) size(large))"
 
     // ---- ET-06: the colour key ----
@@ -1184,7 +1185,7 @@ if inlist("`only'", "", "S03") {
     _s03_dash ET-06 et06 "scatter mpg weight, colorvar(price) ztitle(, size(large))" "`d'"
     display as text `"  ET-06 twoway [`tw'] dash [$S03_CBAR]"'
     _w29_expect ET-06 `"(real(substr("`tw'", 1, strpos("`tw'", "|") - 1)) > `base')"' "twoway `tw'"
-    _w29_expect ET-06 `"(strpos("$S03_CBAR", "Price@15px@") == 1)"' "dash $S03_CBAR"
+    _w29_expect ET-06 `"(strpos("$S03_CBAR", "Price@14pt@") == 1)"' "dash $S03_CBAR"
     _w29_done ET-06 "ztitle(, size(large)) keeps the key title Price"
 
     // ---- ET-07: merges ----
@@ -1199,7 +1200,7 @@ if inlist("`only'", "", "S03") {
     display as text `"  ET-07 twoway [`tw1'][`tw2'] dash [`a1'][`a2']"'
     _w29_expect ET-07 `"("`tw1'" == "" & real(substr("`tw2'", 1, strpos("`tw2'", "|") - 1)) > `base')"' "twoway `tw1' / `tw2'"
     _w29_expect ET-07 `"("`a1'" == "default=|default=Weight (lbs.)")"' "removed `a1'"
-    _w29_expect ET-07 `"(strpos("`a2'", "default=A@15px@") > 0)"' "merged `a2'"
+    _w29_expect ET-07 `"(strpos("`a2'", "default=A@14pt@") > 0)"' "merged `a2'"
     _w29_done ET-07 `"ytitle("") still removes; ytitle("A") merged with size(large) is A at large"'
 
     // ---- ET-08: doubled and trailing commas ----
@@ -1214,7 +1215,7 @@ if inlist("`only'", "", "S03") {
     display as text `"  ET-08 twoway [`tw1'][`tw2'] dash [`a1'][`a2']"'
     _w29_expect ET-08 `"(strpos("`tw1'", "|-90") > 0 & real(substr("`tw2'", 1, strpos("`tw2'", "|") - 1)) > `base')"' "twoway `tw1' / `tw2'"
     _w29_expect ET-08 `"("`a1'" == "default=A|default=Weight (lbs.)")"' "ytitle(A,,) `a1'"
-    _w29_expect ET-08 `"(strpos("`a2'", "default=A@15px@") > 0)"' "ytitle(A, size(large),) `a2'"
+    _w29_expect ET-08 `"(strpos("`a2'", "default=A@14pt@") > 0)"' "ytitle(A, size(large),) `a2'"
     _w29_done ET-08 "ytitle(A,,) and ytitle(A, size(large),) title A"
 
     // ---- ET-09: no axis-2 default under by() ----
@@ -1248,8 +1249,8 @@ if inlist("`only'", "", "S03") {
     display as text `"  ET-10 saved [$S03_AXS][$S03_CBAR]"'
     display as text `"  ET-10 served [$S03_SAXS][$S03_SCBAR] fired $S03_FIRED same $S03_SAME_AFTER"'
     _w29_expect ET-10 `"("$S03_AXS" == "$S03_SAXS" & "$S03_CBAR" == "$S03_SCBAR")"' "saved and served differ"
-    _w29_expect ET-10 `"(strpos("$S03_SAXS", "default=Mileage (mpg)@15px@") > 0 & strpos("$S03_SAXS", "y2=Price@15px@") > 0)"' "served axes $S03_SAXS"
-    _w29_expect ET-10 `"(strpos("$S03_SCBAR", "Price@15px@") == 1)"' "served key $S03_SCBAR"
+    _w29_expect ET-10 `"(strpos("$S03_SAXS", "default=Mileage (mpg)@14pt@") > 0 & strpos("$S03_SAXS", "y2=Price@14pt@") > 0)"' "served axes $S03_SAXS"
+    _w29_expect ET-10 `"(strpos("$S03_SCBAR", "Price@14pt@") == 1)"' "served key $S03_SCBAR"
     _w29_expect ET-10 "($S03_FIRED == 1 & $S03_SAME_AFTER == 1)" "after the move: fired $S03_FIRED same $S03_SAME_AFTER"
     _w29_done ET-10 "the served app draws the same titles, sizes and key title, before and after a move"
 

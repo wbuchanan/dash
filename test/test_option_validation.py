@@ -603,7 +603,10 @@ STYLE_CASES = [
     ("scatter", {"msymbol": "nonsense"}, "msymbol"),
     ("scatter", {"marker": "nonsense"}, "marker"),
     ("scatter", {"msize": "abc"}, "msize"),
-    ("scatter", {"msize": "*2"}, "msize"),
+    # WP-30 P1.12a (E5): twoway reads msize(*2) as a relative size, so it
+    # draws without a note; msize(Large) is still unknown (names are
+    # case-sensitive in twoway).  The row was {"msize": "*2"}.
+    ("scatter", {"msize": "Large"}, "msize"),
     ("scatter", {"mlabel": "make", "mlabsize": "abc"}, "mlabsize"),
     ("scatter", {"mlabel": "make", "mlabgap": "abc"}, "mlabgap"),
     ("scatter", {"lwidth": "abc"}, "lwidth"),
@@ -673,7 +676,10 @@ class TestTheDefaultIsWhatTheSchemeGives:
         fig = list(r.figures.values())[0]
         ls = [x for x in fig.center if isinstance(x, LabelSet)]
         assert len(ls) == 1
-        assert (ls[0].x_offset, ls[0].y_offset) == (0, 4)
+        # WP-30 P1.12a: twoway's mlabgap default is 1.4 % of the 4-inch
+        # reference, 5.6 px (it was 4); approx absorbs the 4e-6 px the
+        # point-to-pixel constant carries.
+        assert (ls[0].x_offset, ls[0].y_offset) == (0, pytest.approx(5.6, abs=1e-4))
         assert (ls[0].text_align, ls[0].text_baseline) == ("center",
                                                            "bottom")
 
@@ -1113,8 +1119,10 @@ class TestTheRemainingSilentSites:
         _, _, std_w, srv_w = _both([plot_for("scatter"), plot_for("lfit")],
                                    {"legend": "size(abc)"})
         line = _the_one_reading(std_w, srv_w, "legend(size(abc))")
+        # WP-30 P1.12a: twoway draws an unknown size as medium (11 pt), so
+        # the note says "using medium." (it said "the scheme's default").
         assert line == ("dash: legend(size(abc)) is not a recognised size; "
-                        "using the scheme's default."), line
+                        "using medium."), line
 
     @staticmethod
     def _kpi_texts(r, doc):

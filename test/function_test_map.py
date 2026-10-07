@@ -273,7 +273,7 @@ FUNCTIONS = {
  'SchemeParser._lpattern': 'test/test_scheme_coercion.py::TestLinePattern::test_a_known_pattern_translates',
  'SchemeParser._lpattern_chain': 'test/test_scheme.py::TestDefaultColorAPI::test_default_line_pattern_returns_list',
  'SchemeParser._lwidth': 'test/test_scheme_coercion.py::TestLineWidth::test_a_named_width_is_translated',
- 'SchemeParser._markersize_px': 'test/test_scheme_rendered_output.py::TestTheUnitFunctions::test_markersize_px_anchors_medium_at_8px',
+ 'SchemeParser._markersize_px': 'test/test_scheme_rendered_output.py::TestTheUnitFunctions::test_markersize_px_anchors_medium_at_4_4pt',
  'SchemeParser._parse_file': 'test/test_scheme_coercion.py::TestParseFile::test_a_missing_file_raises_an_error_that_names_the_path',
  'SchemeParser._parse_lines': 'test/test_scheme_consumption.py::TestAnIncludeIsSplicedWhereItStands::test_a_repeated_include_overwrites_again',
  'SchemeParser._resolve_cached': 'test/test_scheme_consumption.py::TestAnIncludeIsSplicedWhereItStands::test_ten_thousand_unresolvable_includes_are_cheap_and_quiet',
@@ -818,6 +818,15 @@ FUNCTIONS = {
  '_dash_smcl_escape': 'test/test_note_channel.py::TestTheSmclEscape::test_braces_become_smcl_codes',
  # WP-30 S07 (P1.25a): Ship the six StataCorp schemes (P1.25 part a)
  # WP-30 S08 (P1.12a): Stata size units for markers, text and gaps (P1.12 part a, M1)
+ 'GlyphMapper._mlabel_radius_px': 'test/test_size_units.py::TestMarkerLabelsFromTheMarkerEdge::test_the_radius_helper',
+ 'GlyphMapper._sync_brushed_copies': 'test/test_brushed_copies.py::TestBrushedCopiesFollowTheGlyph::test_the_sync_helper',
+ 'OptionTranslator.css_pt': 'test/test_size_units.py::TestCssHelpers::test_css_pt_writes_two_fixed_decimals',
+ 'OptionTranslator.css_to_pt': 'test/test_size_units.py::TestCssHelpers::test_css_to_pt_reads_pt_and_px',
+ 'OptionTranslator.resolve_size': 'test/test_size_units.py::TestResolveSize::test_a_number_is_statas_relative_unit',
+ 'OptionTranslator.size_medium_pt': 'test/test_size_units.py::TestUnknownNamesDrawMedium::test_the_medium_of_each_class',
+ 'OptionTranslator.size_multiplier': 'test/test_size_units.py::TestStataNumberAndMultiplier::test_size_multiplier_reads_star_number_only',
+ 'OptionTranslator.size_ref_of': 'test/test_size_units.py::TestTheReferenceStamp::test_size_ref_of_reads_the_stamp',
+ 'OptionTranslator.stata_number': 'test/test_size_units.py::TestStataNumberAndMultiplier::test_stata_number_reads_statas_spellings',
  # WP-30 S09 (P1.11a): TeX delimiters inert on every canvas sink (P1.11 part a)
  # WP-30 S10 (P1.19): Sub-option abbreviations (P1.19)
  # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)

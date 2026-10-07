@@ -83,7 +83,9 @@ FIXTURE = os.path.join(_HERE, "fixtures", "scheme_truth.json")
 #: Stata's unit scale (DESIGN.md section 3).
 PT_PER_RELATIVE_UNIT = 2.88      # at the 4-inch reference dimension
 PX_PER_LINEWIDTH_UNIT = 5.0      # medium (.30) = 1.5 px
-MARKER_PX_ANCHOR = 8.0           # dash draws Stata's medium marker at 8 px
+# WP-30 P1.12a: Stata's medium marker (1.52778 rs) on dash's one unit,
+# 1 rs = 2.88pt = 3.84px (was dash's own 8 px).
+MARKER_PX_ANCHOR = 1.52778 * 2.88 * 4.0 / 3.0
 MARKER_PX_ANCHOR_PT = 4.4        # symbolsize medium is 4.4 pt at 4 inches
 SIZE_TOL_PT = 0.01
 SIZE_TOL_PX = 0.02
@@ -637,7 +639,9 @@ class TestNamedMarkerSizes:
     section 3): small is 3.0 pt, medium 4.4, large 7.0 at 4 inches."""
 
     @pytest.mark.parametrize("scheme,px", [
-        ("stcolor", 5.45), ("economist", 12.73), ("s2color", 8.0)])
+        # WP-30 P1.12a: on one unit, 3.84px per Stata unit (twoway's small
+        # 1.04166, large 2.4306, medium 1.52778 rs); were 5.45, 12.73, 8.0.
+        ("stcolor", 4.0), ("economist", 9.33), ("s2color", 5.87)])
     def test_the_size(self, mode, scheme, px):
         sc = _glyph(_page(scheme, "titles", mode).fig, "Scatter")
         assert round(float(_v(sc.size)), 2) == px
@@ -866,9 +870,10 @@ class TestTheUnitFunctions:
         assert dr.SchemeParser._MARKER_PX_ANCHOR_PT == pytest.approx(4.4)
 
     @pytest.mark.parametrize("kw,px", [
-        ("medium", 8.0), ("small", 8.0 * 3.0 / 4.4),
-        ("large", 8.0 * 7.0 / 4.4), ("3.0", 8.0 * 3.0 * 2.88 / 4.4)])
-    def test_markersize_px_anchors_medium_at_8px(self, sp, kw, px):
+        # WP-30 P1.12a: Stata's symbolsize values x 2.88pt x 4/3 px per pt.
+        ("medium", 1.52778 * 2.88 * 4 / 3), ("small", 1.04166 * 2.88 * 4 / 3),
+        ("large", 2.4306 * 2.88 * 4 / 3), ("3.0", 3.0 * 2.88 * 4 / 3)])
+    def test_markersize_px_anchors_medium_at_4_4pt(self, sp, kw, px):
         assert sp._markersize_px(kw) == pytest.approx(px, abs=1e-6)
 
 

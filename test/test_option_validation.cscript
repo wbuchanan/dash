@@ -246,6 +246,17 @@
 *!   OV-155 mlabangle(abc)            rc 0   (a name: twoway notes it)
 *!   OV-156 line mlabangle(400)       rc 0   (twoway draws no marker
 *!                                    labels on line, so never evaluates it)
+*! Size forms (WP-30 S08, P1.12a): every Stata size spelling registers
+*! untouched -- rc 0, no "must be" line, the spec carrying the value as
+*! written (dash.ado is unchanged; the renderer reads the units):
+*!   SU-01  msize(4pt)                rc 0, registry carries "msize":"4pt"
+*!   SU-02  msize(*2)                 rc 0, registry carries "msize":"*2"
+*!   SU-03  msize(vhuge)              rc 0, registry carries "msize":"vhuge"
+*!   SU-04  msize(.1in)               rc 0, registry carries "msize":".1in"
+*!   SU-05  msize(1d3)                rc 0, registry carries "msize":"1d3"
+*!   SU-06  msize(HUGE)               rc 0, registry carries "msize":"HUGE"
+*!   SU-07  mlabsize(*1.5)            rc 0, registry carries "mlabsize":"*1.5"
+*!   SU-08  mlabgap(2pt)              rc 0, registry carries "mlabgap":"2pt"
 *! The words the absence checks search for, each found where it must be
 *! (24sep2026):
 *!   OV-09m                           OV-09's refusal says "must be", which
@@ -869,6 +880,47 @@ _ov_case OV-165 `"dash kpi mean(mpg), name(k) title(T) fmt(%16L)"' 198 fmt
 _ov_case OV-166 `"dash kpi mean(mpg), name(k) title(T) fmt(%9,2fc)"' 0 ""
 _ov_case OV-167 `"dash kpi mean(mpg), name(k) title(T) fmt(%tm)"' 0 ""
 _ov_case OV-168 `"dash kpi mean(mpg), name(k) title(T) fmt(%10.0g)"' 0 ""
+
+// ----------------------------------------------------------------
+// SU-01 .. SU-08 (WP-30 S08, P1.12a): the size forms twoway reads --
+// a unit (pt, in), a *# multiplier, a symbolsize name in either case
+// and Stata's d exponent -- register untouched; the renderer converts
+// them.  _su_case is _ov_case under version 19, registering as suNN.
+// ----------------------------------------------------------------
+capture program drop _su_case
+program define _su_case
+    version 19
+    args id cmdtext expected opt needle needle2
+    _ov_probe "`id'" `"`macval(cmdtext)'"' `expected' "`opt'"
+    local bad = r(bad)
+    local rc  = r(rc)
+    local nm = "su" + subinstr("`id'", "SU-", "", 1)
+    foreach nd in needle needle2 {
+        if `"`macval(`nd')'"' != "" & `bad' == 0 {
+            _ov_has "`nm'" `"`macval(`nd')'"'
+            if r(found) != 1 {
+                display as error `"`id' FAIL: the registered spec does not carry `macval(`nd')':"'
+                mata: st_global("dash_json_" + st_local("nm"))
+                local bad = 1
+            }
+        }
+    }
+    if `bad' {
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} `id'"
+    }
+    else {
+        display as text `"`id' PASS: rc `rc' -- `macval(cmdtext)'"'
+    }
+end
+_su_case SU-01 `"dash scatter mpg weight, msize(4pt) name(su01)"' 0 "" `""msize":"4pt""'
+_su_case SU-02 `"dash scatter mpg weight, msize(*2) name(su02)"' 0 "" `""msize":"*2""'
+_su_case SU-03 `"dash scatter mpg weight, msize(vhuge) name(su03)"' 0 "" `""msize":"vhuge""'
+_su_case SU-04 `"dash scatter mpg weight, msize(.1in) name(su04)"' 0 "" `""msize":".1in""'
+_su_case SU-05 `"dash scatter mpg weight, msize(1d3) name(su05)"' 0 "" `""msize":"1d3""'
+_su_case SU-06 `"dash scatter mpg weight, msize(HUGE) name(su06)"' 0 "" `""msize":"HUGE""'
+_su_case SU-07 `"dash scatter mpg weight, mlabsize(*1.5) name(su07)"' 0 "" `""mlabsize":"*1.5""'
+_su_case SU-08 `"dash scatter mpg weight, mlabgap(2pt) name(su08)"' 0 "" `""mlabgap":"2pt""'
 
 // ----------------------------------------------------------------
 // CV-nn: the corpus arbiter.  Every line of the conformance corpus must

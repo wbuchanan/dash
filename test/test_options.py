@@ -156,9 +156,11 @@ class TestTranslateMsize:
             )
 
     def test_numeric_string_passthrough(self):
-        """Numeric strings are converted to float pixels."""
+        """Numeric strings are Stata relative units, converted to pixels."""
         result = OptionTranslator.translate_msize("12")
-        assert result == 12.0
+        # WP-30 P1.12a: twoway reads msize(12) as 12 Stata units, 3.84px
+        # each on dash's one unit (was 12 px).
+        assert result == pytest.approx(12 * 3.84)
 
 
 # ================================================================

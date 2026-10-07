@@ -878,8 +878,11 @@ class TestColorHexInJson:
                  and (d.get("attributes", {}).get("fill_color") or {})
                  .get("value") == "#ff00ff"]
         assert marks, "no marker is drawn in #ff00ff"
-        assert [a["fill_alpha"]["value"] for a in marks] == \
-            [pytest.approx(0.5)] * len(marks), marks
+        # WP-30 P1.12a (ratification row 27): the brushed-away (0.1) and
+        # muted (0.2) copies now carry the glyph's magenta too, dimmed and
+        # never above the glyph's 0.5; they were drawn in the scheme's navy.
+        assert sorted(a["fill_alpha"]["value"] for a in marks) == \
+            [pytest.approx(0.1), pytest.approx(0.2), pytest.approx(0.5)], marks
         # The drawn layer itself: one, magenta fill and outline, at 0.5.
         layers = _layers(_page_figure(html))
         assert len(layers) == 1, f"{len(layers)} layers, not 1"

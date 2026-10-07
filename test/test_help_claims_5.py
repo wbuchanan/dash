@@ -311,6 +311,17 @@ _ANCHOR = {
 }
 
 
+# WP-30 P1.12a: twoway's label offset, as measured in Evidence E5, is
+# (marker radius + gap) along the clock's unit vector.  Under s2color the
+# default marker is symbolsize medium, 1.52778 rs (1 rs = 2.88 pt, 1 pt =
+# 4/3 px), so its radius is half that; the default gap is gsize label_gap,
+# 2 pt; one Stata size unit (rs) is 2.88 pt = 3.84 px.
+_R = 1.52778 * 2.88 * (4 / 3) / 2      # 2.93334 px
+_GAP = 2 * (4 / 3)                     # 2.66667 px
+_U = 2.88 * (4 / 3)                    # 3.84 px per Stata unit
+_DEF = _R + _GAP                       # 5.6 px
+
+
 def _direction(p):
     """The clock direction of position *p* as signs (x, y), y up."""
     if p == 0:
@@ -351,33 +362,46 @@ class TestTheClockPositionPlacesTheLabelAsTwowayDoes:
     def test_the_default_is_three_oclock(self):
         for ls in _labelled()[:2]:
             assert (ls.text_align, ls.text_baseline) == _ANCHOR[3]
-            assert (ls.x_offset, ls.y_offset) == (4, 0)
+            # WP-30 P1.12a (Evidence E5, twoway measured): radius 2.93334
+            # + default gap 2pt (2.66667 px) at 3 o'clock, not 4 px.
+            assert ls.x_offset == pytest.approx(_DEF)
+            assert ls.y_offset == 0
 
+    # WP-30 P1.12a (Evidence E5, twoway measured): the offset is
+    # (radius + gap) along the clock's unit vector, the gap in Stata units:
+    # mlabgap(10) is 10 x 3.84 px, so 2.93334 + 38.4 px from the centre.
     @pytest.mark.parametrize("p,want", [
-        (3, (14, 0)), (9, (-14, 0)), (12, (0, 14)), (6, (0, -14)),
-        (0, (0, 0)), (1, (8, 3 + 10 * math.sqrt(3) / 2)),
-        (2, (3 + 10 * math.sqrt(3) / 2, 7)),
-        (7, (-8, -3 - 10 * math.sqrt(3) / 2)),
+        (3, (_R + 38.4, 0)), (9, (-(_R + 38.4), 0)),
+        (12, (0, _R + 38.4)), (6, (0, -(_R + 38.4))),
+        (0, (0, 0)),
+        (1, ((_R + 38.4) / 2, (_R + 38.4) * math.sqrt(3) / 2)),
+        (2, ((_R + 38.4) * math.sqrt(3) / 2, (_R + 38.4) / 2)),
+        (7, (-(_R + 38.4) / 2, -(_R + 38.4) * math.sqrt(3) / 2)),
     ])
     def test_mlabgap_widens_the_gap_along_the_clock_direction(self, p, want):
         """HC5-05: twoway's mlabgap(10) moves a 9 o'clock label further
-        left and does nothing at 0.  dash's gap is in pixels."""
+        left and does nothing at 0.  The gap is in Stata's size units."""
         for ls in _labelled(mlabposition=str(p), mlabgap="10")[:2]:
             assert ls.x_offset == pytest.approx(want[0]), (p, ls.x_offset)
             assert ls.y_offset == pytest.approx(want[1]), (p, ls.y_offset)
 
+    # WP-30 P1.12a (Evidence E5, twoway measured): the gap is Stata units
+    # (3.84 px each) added to the marker radius 2.93334 px; small and tiny
+    # are gsize 2.777 and 1.3888 units.
     @pytest.mark.parametrize("gap,want", [
-        ("0", 4), ("-2", 2), ("2.5", 6.5), ("small", 4 + 7), ("tiny", 4 + 3),
+        ("0", _R), ("-2", _R - 2 * _U), ("2.5", _R + 2.5 * _U),
+        ("small", _R + 2.777 * _U), ("tiny", _R + 1.3888 * _U),
     ])
-    def test_mlabgap_is_the_pixels_given(self, gap, want):
-        """A zero gap adds nothing, a negative one moves the label toward
-        the point (twoway accepts mlabgap(-5): measured, the label crosses
-        the marker), a fraction is kept, and a size keyword is the pixels
-        mlabsize() reads it as."""
+    def test_mlabgap_is_in_statas_units(self, gap, want):
+        """A zero gap leaves the label at the marker's edge, a negative one
+        moves it toward the point (twoway accepts mlabgap(-5): measured, the
+        label crosses the marker), a fraction is kept, and a size keyword is
+        read from Stata's gsize ladder."""
         a, b, saved, served = _labelled(mlabgap=gap)
         assert not [m for m in saved + served if "mlabgap" in m], saved
         for ls in (a, b):
-            assert (ls.x_offset, ls.y_offset) == (pytest.approx(want), 0)
+            assert (ls.x_offset, ls.y_offset) == (
+                pytest.approx(want, rel=1e-4), 0)
 
     @pytest.mark.parametrize("raw", ["13", "2.5", "03", "3.0", "-1", "abc"])
     def test_a_position_twoway_does_not_recognise_is_drawn_at_twelve(
@@ -390,7 +414,10 @@ class TestTheClockPositionPlacesTheLabelAsTwowayDoes:
         assert [m for m in served if "mlabposition" in m] == want, served
         for ls in (a, b):
             assert (ls.text_align, ls.text_baseline) == _ANCHOR[12]
-            assert (ls.x_offset, ls.y_offset) == (0, 4)
+            # WP-30 P1.12a (Evidence E5, twoway measured): 12 o'clock is
+            # radius + default gap, 2.93334 + 2.66667 px, straight up.
+            assert ls.x_offset == 0
+            assert ls.y_offset == pytest.approx(_DEF)
 
     def test_every_label_of_a_two_ended_type_is_placed_alike(self):
         """rcapsym labels both ends, each with the same anchor."""
@@ -403,7 +430,10 @@ class TestTheClockPositionPlacesTheLabelAsTwowayDoes:
             assert len(sets) == 2
             for ls in sets:
                 assert (ls.text_align, ls.text_baseline) == _ANCHOR[9]
-                assert (ls.x_offset, ls.y_offset) == (-4, 0)
+                # WP-30 P1.12a (Evidence E5, twoway measured): 9 o'clock is
+                # -(radius + default gap), -(2.93334 + 2.66667) px.
+                assert ls.x_offset == pytest.approx(-_DEF)
+                assert ls.y_offset == 0
 
     def test_an_immediate_label_takes_its_own_clock_position(self):
         """scatteri's per-point clock positions go through the same
@@ -429,15 +459,21 @@ class TestTheClockHelpers:
             assert (_sign(base[0]), _sign(base[1])) == _direction(p), p
             assert math.hypot(*unit) == pytest.approx(0 if p == 0 else 1)
 
+    # WP-30 P1.12a (Evidence E5, twoway measured): the reader returns
+    # signed px at 3.84 px per Stata unit; small is gsize 2.777 units and
+    # *2 is twice the 2pt default gap.  HUGE is not a gsize name (case).
     @pytest.mark.parametrize("raw,want", [
-        ("10", 10.0), (" 3 ", 3.0), ("-4", -4.0), ("0", 0.0), (".5", 0.5),
-        ("1e2", 100.0), ("small", 7.0), ("HUGE", 24.0),
+        ("10", 10 * 3.84), (" 3 ", 3 * 3.84), ("-4", -4 * 3.84),
+        ("0", 0.0), (".5", 0.5 * 3.84), ("1e2", 100 * 3.84),
+        ("small", 2.777 * 3.84), ("*2", 2 * 2 * (4 / 3)),
     ])
     def test_the_gap_reader(self, raw, want):
         assert dr.GlyphMapper._mlabel_gap_px(raw) == pytest.approx(want)
 
     @pytest.mark.parametrize("raw", [
-        "abc", "", "inf", "-inf", "nan", "1e400", "*2", "\u0665", "5px",
+        # WP-30 P1.12a (Evidence E5): *2 is now read (above); HUGE is
+        # refused, as Stata's size names are lower case.
+        "abc", "", "inf", "-inf", "nan", "1e400", "HUGE", "\u0665", "5px",
         "1" * 400,
     ])
     def test_the_gap_reader_refuses_what_is_not_a_gap(self, raw):
@@ -1157,11 +1193,15 @@ class TestADateVariablesLabels:
 
 class TestTheOtherLabelOptions:
     def test_mlabsize_takes_a_keyword_or_a_number(self):
-        for raw, px in (("small", 7), ("large", 15), ("12", 12)):
+        # WP-30 P1.12a (Evidence E5, twoway measured): label sizes are
+        # CSS points from Stata's gsize ladder: small 2.777 units = 7.998pt
+        # (8pt), large 4.8611 units = 14pt, 12 units = 12 x 2.88 = 34.56pt.
+        for raw, pt in (("small", "8pt"), ("large", "14pt"),
+                        ("12", "34.56pt")):
             a, b, saved, served = _labelled(mlabsize=raw)
             assert not [m for m in saved + served if "mlabsize" in m]
             for ls in (a, b):
-                assert ls.text_font_size == f"{px}px", (raw, ls)
+                assert ls.text_font_size == pt, (raw, ls)
 
     def test_mlabcolor_colours_the_text(self):
         a, b, _, _ = _labelled(mlabcolor="navy")
@@ -1434,13 +1474,17 @@ class TestAdversarialLabelPlacement:
                                      "5e", "--5", "5,0"])
     def test_a_gap_in_another_spelling_is_not_a_gap(self, raw):
         """float() reads other scripts' digits, underscores and "infinity";
-        Stata reads none of them.  Each is named and no gap added."""
+        Stata reads none of them.  Each is named and drawn at medium."""
         a, b, saved, served = _labelled(mlabgap=raw)
         for notes in (saved, served):
-            assert [m for m in notes if m.startswith("dash: mlabgap(")], \
-                notes
+            assert [m for m in notes if m == f"dash: mlabgap({raw}) is not "
+                    "a recognised size; using medium."], notes
         for ls in (a, b):
-            assert (ls.x_offset, ls.y_offset) == (4, 0)
+            # WP-30 P1.12a (Evidence E5, twoway measured; P1.12.2): an
+            # unknown gap draws medium, gsize 3.8194 units = 14.667 px,
+            # beyond the radius 2.93334 px.
+            assert ls.x_offset == pytest.approx(_R + 3.8194 * _U, rel=1e-4)
+            assert ls.y_offset == 0
 
     # ---- injection: markup in a value is named as text, never drawn --------
     def test_markup_in_either_option_is_named_as_text(self):

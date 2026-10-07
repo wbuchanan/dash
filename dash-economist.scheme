@@ -110,6 +110,9 @@ graphsize y  2.2
 * ---------------------------------------------------------------------------
 * Default marker size for the p cycle, and legend placement.
 * ---------------------------------------------------------------------------
+* The bare symbolsize is twoway's size for an msize() name it does not
+* know (Stata's scheme-economist.scheme: large; s2color: medium).
+symbolsize                large
 symbolsize p              large
 clockdir legend_position  12
 numstyle legend_cols      3

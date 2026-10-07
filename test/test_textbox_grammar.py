@@ -216,10 +216,14 @@ class TestAbbreviationsAreSubOptions:
         for i, spelling in enumerate(("si", "siz", "size")):
             saved, served, _ = _both_modes(
                 _in(tmp_path, f"sz{i}"),
-                {"title": f'"T", {spelling}(large)'})
+                {"title": f'"T", {spelling}(huge)'})
+            # WP-30 P1.12a (Evidence E4, BR-08.4): twoway's size(large) is
+            # 14 pt, the s2color title itself, so the spelling test uses
+            # huge (twoway's 20 pt) to tell a styled title from a plain one.
             for got in (saved, served):
                 assert got["title"] == "T"
                 assert got["title_size"] != plain["title_size"]
+                assert got["title_size"] == "20pt"
 
     def test_a_full_name_and_an_abbreviation_together(self, tmp_path):
         saved1, served1, _ = _both_modes(

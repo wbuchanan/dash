@@ -340,7 +340,11 @@ and now matches Stata.
 
 <!-- WP-30 P1.11b -->
 
-<!-- WP-30 P1.12a -->
+- `dash scatter mpg weight` draws its markers at Stata's size, on one unit for every class (1 Stata unit = 2.88pt = 3.84px): the default marker is 5.87px under s2color (was 8), 4.0 under stcolor (was 5.45) and 9.33 under economist (was 12.73); `msize(medium)` is 5.87px (was 11) and `msize(large)` 9.33 (was 15); `msize(4pt)`, `msize(*2)` and `msize(vhuge)` draw 5.33, 11.73 and 21.33px where they were noted and drawn at the default. (WP-30, P1.12a)
+- Text sizes are Stata's: `title("T", size(large))` is 14pt (was 15px), `size(5)` 14.4pt (was 5px), `ylabel(, labsize(medium))` and `mlabsize(medium)` 11pt (were 11px), `legend(size(large))` 14pt (was 15px). `#pt`, `#in`, `#cm`, `#rs`, `*#` and every gsize keyword (`vhuge`, `tenth`, `relative3`, `10-pt`, ...) are drawn where they were noted, `zlabel(, labsize())` is drawn on the colour bar where it was named, and under stcolor and economist `size(14pt)` keeps twoway's proportion to the scheme's sizes (12.44pt and 25.45pt). (WP-30, P1.12a)
+- Marker labels sit where twoway puts them, the marker's radius plus the gap from their point: 5.6px from the point by default under s2color (was 4px), 22.1px with `mlabgap(5)` (was 9px); bar, pcarrow and pcbarrow labels sit half the layer's marker size from their point. (WP-30, P1.12a)
+- An unknown or wrong-case size name draws the class's medium with the note, as twoway does (a marker the scheme's own default size, its bare `symbolsize`: medium, large under economist): `title("T", size(abc))` is 11pt (was the scheme's 14pt) and `msize(HUGE)` 5.87px (was 24px); a negative size draws nothing, silently (`msize(-1)` drew 1px). (WP-30, P1.12a)
+- Points left out of a box or lasso selection keep their own look: with `msize(large) mcolor(red)` the unselected points are drawn large and red, faded (they were drawn at the scheme's default size and colour), a hollow `msymbol(Oh)` stays hollow (it was filled), and `lwidth()`, `lcolor()`, `fcolor()` and `colorvar()` reach them too, in the saved page and the served app. (WP-30, P1.12a)
 
 <!-- WP-30 P1.12b -->
 
@@ -626,8 +630,8 @@ and now matches Stata.
   entry point, not a warning. An unknown session `c(scheme)` still warns and
   uses s2color. (WP-17)
 - Option values are validated as twoway validates them. A bad value such as
-  `msize(abc)` or `yaxis(3)` is r(198) or r(111), naming the option. A style
-  name dash cannot draw is noted and the default is used (WP-15).
+  `lwidth(-1)` or `yaxis(3)` is r(198) or r(111), naming the option. A style
+  name dash cannot draw, such as `msize(abc)`, is noted and drawn, as in twoway (WP-15).
   `mlabel()` on `mspline` or `mband` is r(103), as in twoway (4ede074).
 - `iweight` is refused with r(101) wherever twoway refuses it. So are
   weights on `lowess`, `aweight`/`pweight` on `histogram`, and `pweight` on
@@ -720,7 +724,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.10 -->
 
-<!-- WP-30 P1.12a -->
+- A number in `msize()`, `mlabsize()`, `mlabgap()`, `size()`, `labsize()` or `legend(size())` is in Stata's relative units (1 = 3.84px), not pixels: `msize(10)` draws 38.4px where it drew 10px, and `mlabgap(5)` leaves 19.2px of gap where it left 5. A do-file written for dash's pixel reading needs its sizes divided by 3.84 or written as keywords. (WP-30, P1.12a)
 
 <!-- WP-30 P1.12b -->
 

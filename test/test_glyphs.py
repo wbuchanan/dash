@@ -1048,8 +1048,9 @@ class TestMlabelOption:
         label_sets = _get_labelsets(fig)
         assert label_sets, "mlabsize test: no LabelSet found in fig.center"
         ls = label_sets[0]
-        # Size must be a px string, e.g. "14px"
-        assert ls.text_font_size.endswith("px"), f"Expected px size, got {ls.text_font_size}"
+        # WP-30 P1.12a: twoway's mlabsize(large) is 14 pt, so the size is
+        # a point string ("14pt"), no longer a px string.
+        assert ls.text_font_size == "14pt", f"Expected 14pt, got {ls.text_font_size}"
 
     def test_mlabgap_increases_offset(self, fig, std_cds):
         """mlabgap increases x_offset beyond the default."""

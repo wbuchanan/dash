@@ -1804,6 +1804,19 @@ CORPUS = [
                 "stgcolor_meta", "stgcolor_mv")],
     _case("scatter, session scheme stcolor_meta", [_sc()],
           {"session_scheme": "stcolor_meta"}),
+    # WP-30 S08 (P1.12a): sizes in Stata's units draw alike in both modes.
+    _case("S08 msize(*2) mlabgap(1) mlabsize(*2)",
+          [_sc(msize="*2", mlabel="foreign", mlabgap="1", mlabsize="*2")]),
+    _case("S08 msize(4pt) under stcolor", [_sc(msize="4pt")],
+          bo={"scheme": "stcolor"}),
+    _case("S08 title size(*1.5) and labsize(10pt)", [_sc()],
+          go={"title": "T, size(*1.5)", "ylabel": ", labsize(10pt)"}),
+    _case("S08 legend size(5)", [_sc(), plot_for("lfit")],
+          go={"legend": "size(5)"}),
+    _case("S08 mlabposition(2) and bar labels",
+          [_sc(mlabel="foreign", mlabposition="2"),
+           plot_for("bar", {"mlabel": "foreign"})]),
+    _case("S08 msize(HUGE) noted", [_sc(msize="HUGE")]),
 ]
 
 

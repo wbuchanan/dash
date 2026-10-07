@@ -293,7 +293,9 @@ class TestPerSeriesStyleCycle:
         if key == "marker":
             assert str(g.marker) == "diamond"
         else:
-            assert float(g.size) == pytest.approx(12.0)
+            # WP-30 P1.12a: msize(12) is 12 Stata units, 3.84px each
+            # (twoway's relative unit; was read as 12 px).
+            assert float(g.size) == pytest.approx(46.08)
 
 
 # ======================================================================

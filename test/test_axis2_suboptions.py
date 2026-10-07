@@ -384,7 +384,9 @@ class TestTheTitleRouteKeepsTheDefault:
         figs, _ = _draw(mode, _spec(ONE, {"ytitle": raw}), labels={})
         ax = _left(figs[0])
         assert ax.axis_label == "mpg"
-        want = "%gpx" % float(dr.OptionTranslator.translate_msize("large"))
+        # WP-30 P1.12a: twoway's size(large) is 14 pt, drawn as '14pt'
+        # (it was the marker size, 15 px).
+        want = "14pt"
         assert ax.axis_label_text_font_size == want
 
 

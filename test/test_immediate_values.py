@@ -50,6 +50,10 @@ from test_adversarial_matrix import (_app_source, _load_app,  # noqa: E402
                                      _session, _write_inputs)
 
 NAN = float("nan")
+# WP-30 P1.12a (Evidence E5, twoway measured): under s2color a label sits
+# (marker radius + gap) from its point: symbolsize medium 1.52778 rs
+# (1 rs = 2.88 pt = 3.84 px) halved, plus gsize label_gap 2 pt.
+_D = round(1.52778 * 2.88 * (4 / 3) / 2 + 2 * (4 / 3), 4)   # 5.6 px
 _SEQ = itertools.count()
 
 
@@ -68,7 +72,9 @@ def _labels_of(fig):
         data = ls.source.data
         xf = ls.x if isinstance(ls.x, str) else ls.x.field
         yf = ls.y if isinstance(ls.y, str) else ls.y.field
-        out.append((ls.x_offset, ls.y_offset,
+        # Offsets rounded to 4 places: WP-30 P1.12a's offsets are products
+        # of Stata's scheme numbers (5.6000043 px), compared as literals.
+        out.append((round(ls.x_offset, 4), round(ls.y_offset, 4),
                     tuple(str(v) for v in data[_text_field(ls)]),
                     tuple(float(v) for v in data[xf]),
                     tuple(float(v) for v in data[yf])))
@@ -107,7 +113,9 @@ class TestScatteriDrawsItsRecords:
         assert isinstance(r.glyph, Scatter)
         assert _col(r, "x") == [4000.0]
         assert _col(r, "y") == [30.0]
-        assert _labels_of(fig) == [(4, 0, ("B",), (4000.0,), (30.0,))]
+        # WP-30 P1.12a (Evidence E5, twoway measured): a label sits radius
+        # + default gap, 2.93334 + 2.66667 = 5.6 px, along its clock.
+        assert _labels_of(fig) == [(_D, 0, ("B",), (4000.0,), (30.0,))]
 
     def test_a_non_finite_coordinate_is_missing(self):
         _, _, (r,), _ = _draw("map_scatteri",
@@ -118,11 +126,13 @@ class TestScatteriDrawsItsRecords:
         _, fig, _, _ = _draw("map_scatteri",
                              [[1, 2, "nine", 9], [3, 4, "six", 6],
                               [5, 6, "zero", 0], [7, 8, "twelve", 12]])
+        # WP-30 P1.12a (Evidence E5, twoway measured): a label sits radius
+        # + default gap, 2.93334 + 2.66667 = 5.6 px, along its clock.
         assert _labels_of(fig) == [
-            (-4, 0, ("nine",), (2.0,), (1.0,)),
-            (0, -4, ("six",), (4.0,), (3.0,)),
+            (-_D, 0, ("nine",), (2.0,), (1.0,)),
+            (0, -_D, ("six",), (4.0,), (3.0,)),
             (0, 0, ("zero",), (6.0,), (5.0,)),
-            (0, 4, ("twelve",), (8.0,), (7.0,)),
+            (0, _D, ("twelve",), (8.0,), (7.0,)),
         ]
 
     def test_a_label_without_a_clock_takes_mlabposition(self):
@@ -132,12 +142,16 @@ class TestScatteriDrawsItsRecords:
         _, fig, _, _ = _draw("map_scatteri",
                              [[1, 2, "A", None], [3, 4, "B", 6]],
                              {"mlabposition": "9"})
-        assert _labels_of(fig) == [(-4, 0, ("A",), (2.0,), (1.0,)),
-                                   (0, -4, ("B",), (4.0,), (3.0,))]
+        # WP-30 P1.12a (Evidence E5, twoway measured): a label sits radius
+        # + default gap, 2.93334 + 2.66667 = 5.6 px, along its clock.
+        assert _labels_of(fig) == [(-_D, 0, ("A",), (2.0,), (1.0,)),
+                                   (0, -_D, ("B",), (4.0,), (3.0,))]
 
     def test_a_label_without_a_clock_or_mlabposition_is_at_three(self):
         _, fig, _, _ = _draw("map_scatteri", [[1, 2, "A", None], [3, 4, "B"]])
-        assert _labels_of(fig) == [(4, 0, ("A", "B"), (2.0, 4.0),
+        # WP-30 P1.12a (Evidence E5, twoway measured): a label sits radius
+        # + default gap, 2.93334 + 2.66667 = 5.6 px, along its clock.
+        assert _labels_of(fig) == [(_D, 0, ("A", "B"), (2.0, 4.0),
                                     (1.0, 3.0))]
 
     def test_a_clock_that_is_not_a_whole_number_is_drawn_at_twelve(self):
@@ -147,8 +161,11 @@ class TestScatteriDrawsItsRecords:
         _, fig, _, warns = _draw("map_scatteri",
                                  [[1, 2, "A", 3.5], [3, 4, "B", 7.25],
                                   [5, 6, "C", 3]])
-        assert _labels_of(fig) == [(0, 4, ("A", "B"), (2.0, 4.0), (1.0, 3.0)),
-                                   (4, 0, ("C",), (6.0,), (5.0,))]
+        # WP-30 P1.12a (Evidence E5, twoway measured): a label sits radius
+        # + default gap, 2.93334 + 2.66667 = 5.6 px, along its clock.
+        assert _labels_of(fig) == [(0, _D, ("A", "B"), (2.0, 4.0),
+                                    (1.0, 3.0)),
+                                   (_D, 0, ("C",), (6.0,), (5.0,))]
         notes = [w for w in warns if "scatteri" in w and "clock" in w]
         assert len(notes) == 1, warns
         assert "3.5" in notes[0] and "7.25" in notes[0]
@@ -161,7 +178,9 @@ class TestScatteriDrawsItsRecords:
         _, fig, (r,), _ = _draw("map_scatteri",
                                 [[1, 2, "", 9], [3, 4, "", None],
                                  [5, 6, "E", 6]])
-        assert _labels_of(fig) == [(0, -4, ("E",), (6.0,), (5.0,))]
+        # WP-30 P1.12a (Evidence E5, twoway measured): a label sits radius
+        # + default gap, 2.93334 + 2.66667 = 5.6 px, along its clock.
+        assert _labels_of(fig) == [(0, -_D, ("E",), (6.0,), (5.0,))]
         assert _col(r, "x") == [2.0, 4.0, 6.0]
 
     def test_the_label_style_options_apply(self):
@@ -169,21 +188,27 @@ class TestScatteriDrawsItsRecords:
                               {"mlabcolor": "red", "mlabsize": "large"})
         (ls,) = _labelsets(fig)
         assert ls.text_color == gm.tr.translate_mcolor("red")
-        assert ls.text_font_size == f"{gm.tr.translate_msize('large')}px"
+        # WP-30 P1.12a (Evidence E5, twoway measured): label sizes are CSS
+        # points; gsize large is 4.8611 units x 2.88 = 14pt.
+        assert ls.text_font_size == "14pt"
 
     def test_an_immediate_label_replaces_mlabel(self):
         """twoway: ``scatteri 1 2 "A", mlabel(make)`` draws "A" (measured);
         ``scatteri 1 2, mlabel(make)`` draws no label at all."""
         _, fig, _, _ = _draw("map_scatteri", [[1, 2, "A", None]],
                              {"mlabel": "make"})
-        assert _labels_of(fig) == [(4, 0, ("A",), (2.0,), (1.0,))]
+        # WP-30 P1.12a (Evidence E5, twoway measured): a label sits radius
+        # + default gap, 2.93334 + 2.66667 = 5.6 px, along its clock.
+        assert _labels_of(fig) == [(_D, 0, ("A",), (2.0,), (1.0,))]
         _, fig, _, _ = _draw("map_scatteri", [[1, 2]], {"mlabel": "make"})
         assert not _labelsets(fig)
 
     def test_a_record_without_a_clock_field_still_labels(self):
         """``[y, x, "label"]``, the shape dash.ado wrote before the clock."""
         _, fig, _, _ = _draw("map_scatteri", [[20, 3000, "A"], [30, 4000, "B"]])
-        assert _labels_of(fig) == [(4, 0, ("A", "B"), (3000.0, 4000.0),
+        # WP-30 P1.12a (Evidence E5, twoway measured): a label sits radius
+        # + default gap, 2.93334 + 2.66667 = 5.6 px, along its clock.
+        assert _labels_of(fig) == [(_D, 0, ("A", "B"), (3000.0, 4000.0),
                                     (20.0, 30.0))]
 
     def test_the_label_is_text_not_markup(self):
@@ -191,7 +216,10 @@ class TestScatteriDrawsItsRecords:
         _, fig, _, _ = _draw("map_scatteri", [[0, 1, payload, 12]])
         (ls,) = _labelsets(fig)
         assert list(ls.source.data[_text_field(ls)]) == [payload]
-        assert (ls.x_offset, ls.y_offset) == (0, 4)
+        # WP-30 P1.12a (Evidence E5, twoway measured): 12 o'clock is
+        # radius + default gap, 2.93334 + 2.66667 px, straight up.
+        assert ls.x_offset == 0
+        assert ls.y_offset == pytest.approx(_D, abs=1e-4)
 
     @pytest.mark.parametrize("bad", [
         [[1, 2, "a", 3, 9]], [[True, 1]], [[1, False]], [{"y": 1, "x": 2}],
@@ -312,8 +340,10 @@ class TestPcarrowiDrawsAnOddClockWhereTwowayDoes:
         _, fig, _, warns = _draw("map_pcarrowi",
                                  [[0, 0, 0, 1, "A", 3.5],
                                   [1, 1, 2, 2, "B", 12]])
+        # WP-30 P1.12a (Evidence E5, twoway measured): pcarrow's origin is
+        # half the scheme marker size, 2.93334 + gap 2.66667 = 5.6 px.
         assert [(dx, dy, t) for (dx, dy, t, _, _) in _labels_of(fig)] == \
-            [(0, 4, ("A", "B"))]
+            [(0, _D, ("A", "B"))]
         notes = [w for w in warns if "pcarrowi" in w and "clock" in w]
         assert len(notes) == 1 and "3.5" in notes[0], warns
 
@@ -404,8 +434,10 @@ class TestBothModesDrawTheSame:
                            [25.0, 2000.0, 22.0, 3500.0, "B", 6]]}
         s, v, sw, vw = self._pair(tmp_path, plot)
         assert _all_labels(s) == _all_labels(v)
+        # WP-30 P1.12a (Evidence E5, twoway measured): pcarrow's origin is
+        # half the scheme marker size, 2.93334 + gap 2.66667 = 5.6 px.
         assert [(dx, dy) for (dx, dy, _, _, _) in _all_labels(s)] == \
-            [(0, -4), (0, 4)]
+            [(0, -_D), (0, _D)]
         assert _notes(sw, "pcarrowi") == _notes(vw, "pcarrowi")
         assert len(_notes(sw, "clock")) == 1
 
@@ -417,7 +449,9 @@ class TestBothModesDrawTheSame:
                            "values": [[1.0, 2.0, payload, 9]]}])
         doc = _session(_load_app(_app_source(tmp_path, spec),
                                  "imm_%d" % next(_SEQ)))
-        got = [(ls.x_offset, ls.y_offset,
+        got = [(round(ls.x_offset, 4), round(ls.y_offset, 4),
                 list(ls.source.data[_text_field(ls)]))
                for ls in doc.select({"type": LabelSet})]
-        assert got == [(-4, 0, [payload])]
+        # WP-30 P1.12a (Evidence E5, twoway measured): 9 o'clock is
+        # -(radius + default gap), -(2.93334 + 2.66667) px.
+        assert got == [(-_D, 0, [payload])]

@@ -341,7 +341,7 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               glyphs, an inserted "line_width":1.5 (s2color's linewidth
 #               p); nothing else.  Intended.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "fd0db4f6fd3d2ad1fd502a8fbefe4409a202f192ab57c04619a9b3b8cb7a1361"
+    "634f532abde60592758fd262ab5d87fc6a4d58bd387d15f7cc83afcdf5b4368e"  # fd0db4f6 -> 634f532a: P1.12a the default marker is 5.87 px
 )
 
 

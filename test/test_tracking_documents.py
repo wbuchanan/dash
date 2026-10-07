@@ -1566,7 +1566,6 @@ WP30_OPEN = {
     "P1.10": "text() and ttext() annotations are not drawn",
     "P1.11a": "TeX delimiters in titles, labels and keys are typeset as mathematics through MathJax where twoway draws them as typed, and the saved page carries the TeX engine",
     "P1.11b": "SMCL in graph text, such as {bf:}, {it:}, {sup:}, {&beta} and {c #}, is drawn literally",
-    "P1.12a": "Marker, text and gap sizes are read as pixels on a private ladder, and #pt, *# and vhuge are refused, where twoway reads Stata's relative size units",
     "P1.12b": "Line widths use a private ladder without vvvthin or none and read numbers as pixels, and negative widths twoway refuses are accepted",
     "P1.13a": "Stata colour forms such as navy*.5, CMYK, HSV, bg and fg are refused, and an unknown colour is drawn in the scheme's default where twoway draws it black with a note",
     "P1.13b": "A bare *# or %# colour, such as mcolor(*.5), is refused or loses the site's default colour, where twoway adjusts that default",

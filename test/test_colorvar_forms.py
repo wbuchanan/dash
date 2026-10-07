@@ -328,7 +328,9 @@ class TestZOptions:
         """WP-29 P0.4: ztitle() with only sub-options keeps the colour
         variable's title and styles it, as twoway draws it (f1, f2); a typed
         "" still removes it (f3).  It emptied the key's title."""
-        large = f"{dr._textbox_size({'size': 'large'}, None):g}px"
+        # WP-30 P1.12a: _textbox_size returns the CSS string; twoway's
+        # size(large) is 14 pt ('14pt').
+        large = dr._textbox_size({'size': 'large'}, None)
         bar_plots = [tp.plot_for("scatter", {"colorvar": "price"})]
         r, doc, _sw, _rw = _both(go={"ztitle": ", size(large)"},
                                  plots=bar_plots)

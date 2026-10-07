@@ -477,7 +477,10 @@ class TestTitleTextFidelity:
         styled, _ = _fig_with_gopts(
             _SCATTER, {"title": "T, size(large) color(red)"})
         assert styled.title.text == "T"
-        assert styled.title.text_font_size != plain.title.text_font_size
+        # WP-30 P1.12a (Evidence E4): twoway draws size(large) at 14 pt, which
+        # is also the s2color title's own size, so the drawn size is '14pt'
+        # (the same as the plain title), not a figure different from it.
+        assert styled.title.text_font_size == plain.title.text_font_size == "14pt"
         assert str(styled.title.text_color).lower() in ("red", "#ff0000")
 
     def test_abbreviated_size_and_colour_are_applied(self):
@@ -492,7 +495,10 @@ class TestTitleTextFidelity:
             text_truth = json.load(fh)
         assert styled.title.text.split("\n") == \
             text_truth["probes"]["t_size_color_abbr"]["added_texts"]
-        assert styled.title.text_font_size != plain.title.text_font_size
+        # WP-30 P1.12a (Evidence E4): twoway draws size(large) at 14 pt, which
+        # is also the s2color title's own size, so the drawn size is '14pt'
+        # (the same as the plain title), not a figure different from it.
+        assert styled.title.text_font_size == plain.title.text_font_size == "14pt"
         assert str(styled.title.text_color).lower() in ("red", "#ff0000")
 
     def test_canvas_text_is_not_html_escaped(self):

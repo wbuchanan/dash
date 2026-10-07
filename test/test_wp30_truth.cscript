@@ -1217,10 +1217,366 @@ if inlist("`only'", "", "S07") {
 }
 * ==== end S07 ====
 
+// S08's helpers, outside every gate, where a python block may hold braces
+// (copies of WP-29 S03's readers, renamed _s08_*).  Reached through
+// __main__:
+//   _s08_page()  S08_MSZ (the first Scatter's size), S08_TTL (the title's
+//                font size), S08_LBL (the first LabelSet's
+//                x_offset|y_offset|text_font_size), S08_LEG (each legend's
+//                label font size) and S08_CBL (the ColorBar's label font
+//                size) of the saved page S08_PAGE
+//   _s08_app()   the same, prefixed S08_S, of the served app S08_APP; then
+//                a RangeSlider move on weight sets S08_SAME_AFTER
+//   _s08_tw()    S08_TWSIZE: the size of the last <text> equal to S08_TXT in
+//                S08_SVG; S08_TWDX: its x minus the inner circle's centre;
+//                S08_TWUPR: units per Stata unit
+python:
+import json as _s08_json, re as _s08_re, html as _s08_html
+import warnings as _s08_w
+import __main__ as _s08_main
+from sfi import Macro as _s08_M
+
+
+def _s08_val(v):
+    if isinstance(v, dict):
+        return v.get("value")
+    return v
+
+
+def _s08_saved_models(path):
+    try:
+        with open(path, encoding="utf-8") as fh:
+            page = fh.read()
+    except OSError:
+        return []
+    objs, stack = {}, []
+    for blob in _s08_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s08_re.S):
+        try:
+            stack.append(_s08_json.loads(_s08_html.unescape(blob)))
+        except ValueError:
+            pass
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                objs.setdefault(v["id"], v)
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    out = []
+    for o in objs.values():
+        out.append((o["name"], o.get("attributes", {}) or {}))
+    return out
+
+
+def _s08_get(kind, attrs, attr):
+    if attr in attrs:
+        return _s08_val(attrs[attr])
+    import bokeh.models as _bm
+    try:
+        return _s08_val(getattr(getattr(_bm, kind)(), attr, None))
+    except Exception:
+        return None
+
+
+def _s08_summary(models):
+    msz, ttl, lbl, leg, cbl = [], [], [], [], []
+    for kind, get in models:
+        if kind == "Scatter":
+            msz.append("%g" % float(get("size")))
+        elif kind == "Title" and get("text"):
+            ttl.append(str(get("text_font_size")))
+        elif kind == "LabelSet":
+            lbl.append("%.3f|%.3f|%s" % (float(get("x_offset")), float(get("y_offset")),
+                                         get("text_font_size")))
+        elif kind == "Legend":
+            leg.append(str(get("label_text_font_size")))
+        elif kind == "ColorBar":
+            cbl.append(str(get("major_label_text_font_size")))
+    return dict(MSZ=(msz[0] if msz else ""), TTL="|".join(sorted(ttl)),
+                LBL=(sorted(lbl)[0] if lbl else ""), LEG="|".join(sorted(leg)),
+                CBL="|".join(sorted(cbl)))
+
+
+def _s08_set(prefix, summ):
+    for k, v in summ.items():
+        _s08_M.setGlobal(prefix + k, v)
+
+
+def _s08_page():
+    models = [(k, (lambda a, k=k: (lambda attr: _s08_get(k, a, attr)))(a))
+              for k, a in _s08_saved_models(_s08_M.getGlobal("S08_PAGE"))]
+    _s08_set("S08_", _s08_summary(models))
+
+
+def _s08_doc_summary(doc):
+    seen = dict()
+    for root in doc.roots:
+        for m in root.references():
+            seen[m.id] = m
+    models = [(type(m).__name__, (lambda m=m: (lambda attr: _s08_val(getattr(m, attr, None))))())
+              for m in seen.values()]
+    return _s08_summary(models)
+
+
+def _s08_app():
+    from bokeh.document import Document
+    from bokeh.models import RangeSlider
+    with open(_s08_M.getGlobal("S08_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s08_app")
+    with _s08_w.catch_warnings():
+        _s08_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s08_app.py", "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    before = _s08_doc_summary(doc)
+    _s08_set("S08_S", before)
+    sl = [s for s in doc.select(dict(type=RangeSlider)) if getattr(s, "_dash_var", None) == "weight"]
+    fired = 0
+    if len(sl) == 1:
+        old = sl[0].value
+        lo, hi = old
+        new = (lo + (hi - lo) / 4.0, hi)
+        sl[0].value = new
+        with _s08_w.catch_warnings():
+            _s08_w.simplefilter("ignore")
+            for attr in ("value", "value_throttled"):
+                for cb in sl[0]._callbacks.get(attr, []):
+                    cb(attr, old, new)
+                    fired += 1
+    _s08_M.setGlobal("S08_SAME_AFTER", str(int(fired > 0 and _s08_doc_summary(doc) == before)))
+
+
+def _s08_tw():
+    import svg_truth as _s08_svg
+    doc = _s08_svg.svg_document(_s08_M.getGlobal("S08_SVG"))
+    want = _s08_M.getGlobal("S08_TXT")
+    cv = doc["canvas"]
+    _s08_M.setGlobal("S08_TWUPR", repr(min(cv["w"], cv["h"]) / 100.0))
+    t = [e for e in doc["texts"] if e["text"] == want]
+    # The last match: a legend key or colour-key label is written after
+    # the axes, whose title or tick may hold the same text.
+    _s08_M.setGlobal("S08_TWSIZE", repr(float(t[-1]["size"])) if t else ".")
+    cs = [c for c in doc["circles"] if c.get("r") is not None and c.get("cx") is not None]
+    if t and cs:
+        c = min(cs, key=lambda c: c["r"])
+        _s08_M.setGlobal("S08_TWDX", repr(float(t[0]["x"]) - float(c["cx"])))
+    else:
+        _s08_M.setGlobal("S08_TWDX", ".")
+
+
+_s08_main._s08_page = _s08_page
+_s08_main._s08_app = _s08_app
+_s08_main._s08_tw = _s08_tw
+end
+
+// _s08_build: run one dash command, build the saved page (with a range
+// filter on weight, as the served app) and the served app, and read both.
+capture program drop _s08_build
+program define _s08_build
+    version 19
+    args stem work
+    global S08_PAGE "`work'/`stem'.html"
+    global S08_APP "`work'/`stem'_app.py"
+    capture erase "${S08_PAGE}"
+    capture erase "${S08_APP}"
+    capture noisily dash build, saving("${S08_PAGE}") replace nobrowser filter(weight, type(range))
+    capture noisily dash build, saving("${S08_APP}") server replace filter(weight, type(range))
+    python: __import__("__main__")._s08_page()
+    python: __import__("__main__")._s08_app()
+    capture erase "${S08_PAGE}"
+    capture erase "${S08_APP}"
+end
+
+// _s08_twsvg: export the current twoway graph and read S08_TXT from it.
+capture program drop _s08_twsvg
+program define _s08_twsvg
+    version 19
+    args stem work txt
+    global S08_SVG "`work'/`stem'.svg"
+    global S08_TXT `"`txt'"'
+    quietly graph export "${S08_SVG}", replace as(svg)
+    python: __import__("__main__")._s08_tw()
+    capture erase "${S08_SVG}"
+end
+
 * ==== S08 P1.12a: Stata size units for markers, text and gaps ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S08") {
     display as text "S08 start " c(current_date) " " c(current_time)
+    local s08_scheme "`c(scheme)'"
+    set scheme s2color
+    quietly sysuse auto, clear
+    capture dash clear
+
+    // SU-10: msize(medium) and msize(1.52778) are the default marker.
+    twoway scatter mpg weight
+    local s08_twd "`.Graph.plotregion1.plot1.style.marker.size.setting'"
+    twoway scatter mpg weight, msize(medium)
+    local s08_twm "`.Graph.plotregion1.plot1.style.marker.size.setting'"
+    twoway scatter mpg weight, msize(1.52778)
+    local s08_twn "`.Graph.plotregion1.plot1.style.marker.size.setting'"
+    capture dash clear
+    dash scatter mpg weight, name(s08g)
+    _s08_build su10d "`w30_work'"
+    local s08_d "${S08_MSZ}"
+    local s08_ds "${S08_SMSZ}"
+    capture dash clear
+    dash scatter mpg weight, msize(medium) name(s08g)
+    _s08_build su10m "`w30_work'"
+    local s08_m "${S08_MSZ}|${S08_SMSZ}"
+    local s08_a10 "${S08_SAME_AFTER}"
+    capture dash clear
+    dash scatter mpg weight, msize(1.52778) name(s08g)
+    _s08_build su10n "`w30_work'"
+    local s08_n "${S08_MSZ}|${S08_SMSZ}"
+    _w30_expect SU-10 "(`s08_twm' == `s08_twd' & `s08_twn' == `s08_twd')" "twoway settings `s08_twd' `s08_twm' `s08_twn'"
+    _w30_expect SU-10 "(abs(`s08_d' - 5.8667) < 0.001 & `s08_ds' == `s08_d')" "dash default `s08_d' / `s08_ds'"
+    _w30_expect SU-10 `"("`s08_m'" == "`s08_d'|`s08_d'" & "`s08_n'" == "`s08_d'|`s08_d'")"' "dash medium `s08_m', number `s08_n'"
+    _w30_done SU-10 "msize(medium) and msize(1.52778) draw the default marker, as in twoway"
+
+    // SU-11: title size(large) is the s2color heading.
+    twoway scatter mpg weight, title("T")
+    _s08_twsvg su11a "`w30_work'" "T"
+    local s08_t0 "${S08_TWSIZE}"
+    twoway scatter mpg weight, title("T", size(large))
+    _s08_twsvg su11b "`w30_work'" "T"
+    local s08_t1 "${S08_TWSIZE}"
+    capture dash clear
+    dash scatter mpg weight, title("T") name(s08g)
+    _s08_build su11a "`w30_work'"
+    local s08_d0 "${S08_TTL}|${S08_STTL}"
+    capture dash clear
+    dash scatter mpg weight, title("T", size(large)) name(s08g)
+    _s08_build su11b "`w30_work'"
+    local s08_d1 "${S08_TTL}|${S08_STTL}"
+    local s08_a11 "${S08_SAME_AFTER}"
+    _w30_expect SU-11 "(abs(`s08_t1' - `s08_t0') < 0.5)" "twoway title `s08_t0' / `s08_t1'"
+    _w30_expect SU-11 `"("`s08_d1'" == "14pt|14pt" & "`s08_d0'" == "`s08_d1'")"' "dash title `s08_d0' / `s08_d1'"
+    _w30_done SU-11 "title size(large) is 14pt, the scheme's heading, in both modes"
+
+    // SU-12: stcolor, title size(14pt) against the default heading.
+    set scheme stcolor
+    twoway scatter mpg weight, title("T")
+    _s08_twsvg su12a "`w30_work'" "T"
+    local s08_t0 "${S08_TWSIZE}"
+    twoway scatter mpg weight, title("T", size(14pt))
+    _s08_twsvg su12b "`w30_work'" "T"
+    local s08_t1 "${S08_TWSIZE}"
+    capture dash clear
+    dash scatter mpg weight, title("T") name(s08g)
+    _s08_build su12a "`w30_work'"
+    local s08_d0 = real(subinstr("${S08_TTL}", "pt", "", .))
+    local s08_s0 = real(subinstr("${S08_STTL}", "pt", "", .))
+    capture dash clear
+    dash scatter mpg weight, title("T", size(14pt)) name(s08g)
+    _s08_build su12b "`w30_work'"
+    local s08_d1 = real(subinstr("${S08_TTL}", "pt", "", .))
+    local s08_s1 = real(subinstr("${S08_STTL}", "pt", "", .))
+    set scheme s2color
+    local s08_rt = `s08_t1' / `s08_t0'
+    _w30_expect SU-12 "(abs(`s08_d1' / `s08_d0' - `s08_rt') < 0.005 * `s08_rt')" "saved ratio `s08_d1'/`s08_d0', twoway `s08_rt'"
+    _w30_expect SU-12 "(abs(`s08_s1' / `s08_s0' - `s08_rt') < 0.005 * `s08_rt')" "served ratio `s08_s1'/`s08_s0', twoway `s08_rt'"
+    _w30_done SU-12 "under stcolor size(14pt) keeps twoway's proportion to the heading"
+
+    // SU-13: the 3 o'clock label offset, by default and at mlabgap(0).
+    foreach g in dflt 0 {
+        local s08_go = cond("`g'" == "dflt", "", "mlabgap(`g')")
+        twoway scatter mpg weight in 1, mlabel(make) `s08_go'
+        _s08_twsvg su13`g' "`w30_work'" "AMC Concord"
+        local s08_tw = ${S08_TWDX} / ${S08_TWUPR} * 3.84
+        capture dash clear
+        dash scatter mpg weight in 1, mlabel(make) `s08_go' name(s08g)
+        _s08_build su13`g' "`w30_work'"
+        local s08_dx : word 1 of `=subinstr("${S08_LBL}", "|", " ", .)'
+        local s08_sx : word 1 of `=subinstr("${S08_SLBL}", "|", " ", .)'
+        local s08_a13 "${S08_SAME_AFTER}"
+        _w30_expect SU-13 "(abs(`s08_dx' - `s08_tw') < 0.05 & abs(`s08_sx' - `s08_tw') < 0.05)" "mlabgap `g': twoway `s08_tw', dash `s08_dx' / `s08_sx'"
+    }
+    _w30_done SU-13 "the label sits the marker radius plus the gap from its point, as twoway places it"
+
+    // SU-14: legend(size(*2)) doubles the key text.
+    twoway (scatter mpg weight) (scatter price weight, yaxis(2))
+    _s08_twsvg su14a "`w30_work'" "Price"
+    local s08_t0 "${S08_TWSIZE}"
+    twoway (scatter mpg weight) (scatter price weight, yaxis(2)), legend(size(*2))
+    _s08_twsvg su14b "`w30_work'" "Price"
+    local s08_t1 "${S08_TWSIZE}"
+    capture dash clear
+    dash (scatter mpg weight) (scatter price weight, yaxis(2)), name(s08g)
+    _s08_build su14a "`w30_work'"
+    local s08_d0 = real(subinstr("${S08_LEG}", "pt", "", .))
+    local s08_s0 = real(subinstr("${S08_SLEG}", "pt", "", .))
+    capture dash clear
+    dash (scatter mpg weight) (scatter price weight, yaxis(2)), legend(size(*2)) name(s08g)
+    _s08_build su14b "`w30_work'"
+    local s08_d1 = real(subinstr("${S08_LEG}", "pt", "", .))
+    local s08_s1 = real(subinstr("${S08_SLEG}", "pt", "", .))
+    _w30_expect SU-14 "(abs(`s08_t1' / `s08_t0' - 2) < 0.02)" "twoway key `s08_t0' / `s08_t1'"
+    _w30_expect SU-14 "(abs(`s08_d1' / `s08_d0' - 2) < 0.02 & abs(`s08_s1' / `s08_s0' - 2) < 0.02)" "dash key `s08_d0' / `s08_d1', served `s08_s0' / `s08_s1'"
+    _w30_done SU-14 "legend(size(*2)) doubles the key text, as in twoway"
+
+    // SU-15: zlabel(, labsize(large)) on the colour bar.
+    twoway scatter mpg weight, colorvar(price) zlabel(, labsize(large))
+    _s08_twsvg su15 "`w30_work'" "5,000"
+    local s08_t1 "${S08_TWSIZE}"
+    capture dash clear
+    dash scatter mpg weight, colorvar(price) zlabel(, labsize(large)) name(s08g)
+    _s08_build su15 "`w30_work'"
+    local s08_c "${S08_CBL}|${S08_SCBL}"
+    local s08_a15 "${S08_SAME_AFTER}"
+    _w30_expect SU-15 "(abs(`s08_t1' - 140) < 0.5)" "twoway key label `s08_t1'"
+    _w30_expect SU-15 `"("`s08_c'" == "14pt|14pt")"' "dash colour-bar labels `s08_c'"
+    _w30_done SU-15 "zlabel(, labsize(large)) draws 14pt on the colour bar, as in twoway"
+
+    // SU-16: msize(HUGE) is noted and drawn at the scheme's default (s2color:
+    // medium, as twoway); msize(-1) is silent.
+    capture log close su1k
+    log using "`w30_work'/su16a.log", text replace name(su1k)
+    twoway scatter mpg weight, msize(HUGE)
+    log close su1k
+    cert_log_has "`w30_work'/su16a.log", needle("named style HUGE not found")
+    local s08_n1 = r(count)
+    capture dash clear
+    log using "`w30_work'/su16b.log", text replace name(su1k)
+    dash scatter mpg weight, msize(HUGE) name(s08g)
+    _s08_build su16a "`w30_work'"
+    log close su1k
+    cert_log_has "`w30_work'/su16b.log", needle("msize(HUGE) is not a recognised size; using the scheme")
+    local s08_n2 = r(count)
+    local s08_h "${S08_MSZ}|${S08_SMSZ}"
+    log using "`w30_work'/su16c.log", text replace name(su1k)
+    twoway scatter mpg weight, msize(-1)
+    log close su1k
+    cert_log_has "`w30_work'/su16c.log", needle("(note:")
+    local s08_n3 = r(count)
+    capture dash clear
+    log using "`w30_work'/su16d.log", text replace name(su1k)
+    dash scatter mpg weight, msize(-1) name(s08g)
+    _s08_build su16b "`w30_work'"
+    log close su1k
+    cert_log_has "`w30_work'/su16d.log", needle("(note:")
+    local s08_n4 = r(count)
+    local s08_z "${S08_MSZ}|${S08_SMSZ}"
+    _w30_expect SU-16 "(`s08_n1' >= 1 & `s08_n2' == 1)" "notes: twoway `s08_n1', dash `s08_n2'"
+    _w30_expect SU-16 `"(abs(real(word(subinstr("`s08_h'", "|", " ", .), 1)) - 5.8667) < 0.001 & word(subinstr("`s08_h'", "|", " ", .), 1) == word(subinstr("`s08_h'", "|", " ", .), 2))"' "dash HUGE `s08_h'"
+    _w30_expect SU-16 `"(`s08_n3' == 0 & `s08_n4' == 0 & "`s08_z'" == "0|0")"' "msize(-1): notes `s08_n3' / `s08_n4', size `s08_z'"
+    _w30_done SU-16 "an unknown name draws medium with one note; a negative size draws nothing in silence"
+    forvalues k = 1/4 {
+        local s08_l : word `k' of a b c d
+        capture erase "`w30_work'/su16`s08_l'.log"
+    }
+
+    // SU-17: the served app is unchanged by a filter move.
+    _w30_expect SU-17 "(`s08_a10' == 1 & `s08_a11' == 1 & `s08_a13' == 1 & `s08_a15' == 1)" "same after the move: `s08_a10' `s08_a11' `s08_a13' `s08_a15'"
+    _w30_done SU-17 "every size of the served app is unchanged by a filter move"
+
+    capture dash clear
+    graph drop _all
+    set scheme `s08_scheme'
+    macro drop S08_*
     display as text "S08 end " c(current_date) " " c(current_time)
 }
 * ==== end S08 ====

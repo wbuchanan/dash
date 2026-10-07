@@ -476,6 +476,11 @@ class TestAnUnknownStyleInsideAStructuredOption:
 
     def test_one_note_and_the_schemes_default_in_both_modes(
             self, tmp_path, scheme, option, text, sub, prop):
+        """A bad colour keeps the scheme's default.  A bad size draws
+        twoway's medium, 11 pt, in both modes and both schemes (WP-30
+        P1.12a, P1.12.2): twoway falls back to medium for an unknown size,
+        not to the scheme's title size, so the size rows no longer compare
+        against the plain figure."""
         plain = _spec([plot_for("scatter")], {option: text},
                       {"scheme": scheme})
         bogus = _spec([plot_for("scatter")], {option: f"{text}, {sub}"},
@@ -484,6 +489,12 @@ class TestAnUnknownStyleInsideAStructuredOption:
         r1, _, sw, d1, _, vw = _both(_sub(tmp_path, "bogus"), bogus)
         assert sw == vw
         assert len([w for w in sw if sub in w]) == 1, sw
+        if sub.startswith("size"):
+            # WP-30 P1.12a: twoway draws an unknown size as medium, 11 pt
+            # (it was the plain figure's size).
+            assert prop(_saved_figure(r1)) == "11pt"
+            assert prop(_served_figure(d1)) == "11pt"
+            return
         assert prop(_saved_figure(r1)) == prop(_saved_figure(r0)), \
             "saved: the unknown style replaced the scheme's default"
         assert prop(_served_figure(d1)) == prop(_served_figure(d0)), \
