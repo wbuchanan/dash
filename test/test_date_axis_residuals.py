@@ -573,15 +573,18 @@ def _digest(model):
 
 
 # Taken at the batch-6 base (4f8e528); never re-baselined.
+# Re-derived on the merged batch-6 tree: P1.2b (opaque markers) and P1.5
+# (tick formatters) change every figure; a key-free figure is still the
+# same in both of its cases, which is what this pins.
 _PLAIN_DIGESTS = {
     ("saved", "plain"):
-        "5f2c6319cc3b36e78b16cb0d9798b37e46e47829db99086f726707ff341b2727",
+        "17bf383e1c3543b1a677a9f55521e5e815755601fc41e2483c1ef2eec694bae6",
     ("saved", "yaxis2"):
-        "5f2c6319cc3b36e78b16cb0d9798b37e46e47829db99086f726707ff341b2727",
+        "17bf383e1c3543b1a677a9f55521e5e815755601fc41e2483c1ef2eec694bae6",
     ("served", "plain"):
-        "348db4c3ffe7fa2b3e31a6f888697fa9581e77d93e20333a0067c647b923a190",
+        "0a1fa55d399232fff208041d4eb3f84d20f12ee9ea3c920b9de99cbe5deffa37",
     ("served", "yaxis2"):
-        "348db4c3ffe7fa2b3e31a6f888697fa9581e77d93e20333a0067c647b923a190",
+        "0a1fa55d399232fff208041d4eb3f84d20f12ee9ea3c920b9de99cbe5deffa37",
 }
 
 
