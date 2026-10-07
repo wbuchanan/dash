@@ -79,8 +79,10 @@ class TestTheBrowserDrawsOneScale:
             assert p.move_range_slider(0.3) >= 1
             time.sleep(0.3)
             after = p.wait_settled(3)
-            assert len(_ys(after)) == 1, after
-            assert _ys(after) != _ys(before)
+            assert len(_ys(after)) == 1 and len(_xs(after)) == 1, after
+            # WP-30 P1.3a: y spans twoway's ticks 10(10)40 before and after
+            # the move; the weights it kept narrow x.
+            assert _xs(after) != _xs(before)
             assert p.js_errors() == []
 
     def test_served_document_initial_and_after_a_move(self):

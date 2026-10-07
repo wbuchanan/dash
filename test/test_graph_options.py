@@ -21,6 +21,7 @@ from dash_render import DashRenderer
 # of unimplemented sub-options), only tests called them, and WP-26
 # deleted them (24sep2026).
 from dash_render import _dash_parse_axis_label_opt, _dash_parse_by
+from dash_render import _dash_range_reversed
 
 
 # ================================================================
@@ -376,10 +377,10 @@ class TestXlabelYlabel:
         assert fig is not None
 
     def test_no_xlabel_default_ticker(self):
-        """P6-13: without xlabel, axis uses default (non-Fixed) ticker."""
-        from bokeh.models.tickers import FixedTicker
+        """P6-13: without xlabel, axis uses the default ticker (WP-30
+        P1.3a: twoway's ticks, tagged as a default)."""
         fig = _get_figure({})
-        assert not isinstance(fig.xaxis.ticker, FixedTicker)
+        assert "dash_default" in fig.xaxis.ticker.tags
 
     def test_xlabel_with_labels(self):
         """P6-13: xlabel with 'value label' pairs sets tick labels via CustomJSTickFormatter."""
@@ -1159,9 +1160,9 @@ class TestXscaleYscaleReverse:
     """xscale(reverse) and yscale(reverse) must flip the axis direction."""
 
     def test_xscale_reverse_flips_x_range(self):
-        """P6-25a: xscale(reverse) must set fig.x_range.flipped = True."""
+        """P6-25a: xscale(reverse) must run the x range high to low."""
         fig = _get_figure({"xscale": "reverse"})
-        assert getattr(fig.x_range, "flipped", False) is True
+        assert _dash_range_reversed(fig.x_range) is True
 
     def test_reverse_with_a_range_is_start_above_end(self):
         """WP-28 B2: reverse beside range() was dropped (a Range1d has no
@@ -1174,37 +1175,37 @@ class TestXscaleYscaleReverse:
         assert _dr._dash_range_reversed(fig.y_range) is True
 
     def test_yscale_reverse_flips_y_range(self):
-        """P6-25b: yscale(reverse) must set fig.y_range.flipped = True."""
+        """P6-25b: yscale(reverse) must run the y range high to low."""
         fig = _get_figure({"yscale": "reverse"})
-        assert getattr(fig.y_range, "flipped", False) is True
+        assert _dash_range_reversed(fig.y_range) is True
 
     def test_xscale_log_reverse_both_applied(self):
-        """P6-25c: xscale(log reverse) must produce log axis AND flipped = True."""
+        """P6-25c: xscale(log reverse) must produce a log axis run high to low."""
         fig = _get_figure({"xscale": "log reverse"})
         # Log axis is set via x_axis_type; verify the axis type name
         assert fig.xaxis[0].__class__.__name__ == "LogAxis"
-        assert getattr(fig.x_range, "flipped", False) is True
+        assert _dash_range_reversed(fig.x_range) is True
 
     def test_xscale_reverse_order_independent(self):
         """P6-25d: xscale(reverse log) (reversed word order) must still flip the axis."""
         fig = _get_figure({"xscale": "reverse log"})
-        assert getattr(fig.x_range, "flipped", False) is True
+        assert _dash_range_reversed(fig.x_range) is True
 
     def test_xscale_log_only_does_not_flip(self):
         """P6-25e: xscale(log) alone must NOT set flipped (regression guard)."""
         fig = _get_figure({"xscale": "log"})
-        assert getattr(fig.x_range, "flipped", False) is False
+        assert _dash_range_reversed(fig.x_range) is False
 
     def test_yscale_log_only_does_not_flip(self):
         """P6-25e2: yscale(log) alone must NOT set flipped."""
         fig = _get_figure({"yscale": "log"})
-        assert getattr(fig.y_range, "flipped", False) is False
+        assert _dash_range_reversed(fig.y_range) is False
 
     def test_no_scale_opts_no_flip(self):
         """P6-25f: No xscale/yscale options must leave flipped at default (False)."""
         fig = _get_figure({})
-        assert getattr(fig.x_range, "flipped", False) is False
-        assert getattr(fig.y_range, "flipped", False) is False
+        assert _dash_range_reversed(fig.x_range) is False
+        assert _dash_range_reversed(fig.y_range) is False
 
 
 # ================================================================

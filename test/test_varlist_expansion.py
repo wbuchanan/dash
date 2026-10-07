@@ -341,7 +341,9 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               glyphs, an inserted "line_width":1.5 (s2color's linewidth
 #               p); nothing else.  Intended.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "b11518da0aed9f24612dd72e38fc4a775e336f9bb7664e82cc8784c3a645949e"  # 634f532a -> 12cea7d0 (P1.12b line widths) -> 150011f2 (P1.2a scheme chrome, merged batch 5) -> 4b4e77b5 -> 68b474a5 (P1.5 axis formats on P1.2b, merged batch 6) -> b11518da (P1.3a)
+    "369c5e1a31db2a16c24340b9011035e2e38b97bd6ce4dbe940b7c2622ae86e42"  # 634f532a -> 12cea7d0 (P1.12b line widths) -> 150011f2 (P1.2a scheme chrome, merged batch 5) -> 4b4e77b5 -> 68b474a5 (P1.5 axis formats on P1.2b, merged batch 6) -> b11518da (P1.3a) -> 369c5e1a (merged batch 7)
+    # b11518da -> 369c5e1a: re-derived on the merged batch-7 tree (P1.16
+    # keys and titles, P1.1b lists, P1.3a's min/max without spreads).
     # 68b474a5 -> b11518da: P1.3a default axes take natscale ticks and
     # twoway's margin (FixedTicker placeholders, Range1d over the hull, the
     # axis plan and zoom callback in the page).

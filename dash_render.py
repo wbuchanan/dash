@@ -24810,10 +24810,14 @@ _DASH_TICK_EVERY_JS = ("return every.get_ticks(cb_data.start, cb_data.end, "
 #: BokehJS view internals, no user text.  The __DASH_*__ tokens are the
 #: Python constants, written in at import.
 _DASH_AXIS_FINISH_JS = r"""
+// The least and greatest of *vs* without spreading them into arguments,
+// which throws a RangeError on a long array (as Math.min() of none: +/-Infinity).
+function dash_axis_min(vs) { let m = Infinity; for (const v of vs) if (v < m) m = v; return m; }
+function dash_axis_max(vs) { let m = -Infinity; for (const v of vs) if (v > m) m = v; return m; }
 function dash_natscale(lo, hi, n) {
     lo = Number(lo); hi = Number(hi); n = Math.trunc(Number(n));
     if (!isFinite(lo) || !isFinite(hi) || !isFinite(n)) return null;
-    n = Math.max(1, Math.min(n, __DASH_MAX_TICKS__));
+    n = Math.max(1, Math.min(n, @@DASH_MAX_TICKS@@));
     if (hi < lo) { const t = lo; lo = hi; hi = t; }
     if (hi === lo) return [lo - 1.0, lo + 1.0];
     if (n === 1) return [lo, hi];
@@ -24839,11 +24843,11 @@ function dash_natscale(lo, hi, n) {
                     if (k < 2 || k > n + 1) continue;
                     const t0 = j0 * d, t1 = j1 * d;
                     const ulo = Math.max(0.0, t0 - lo), uhi = Math.max(0.0, hi - t1);
-                    if (Math.max(ulo, uhi) >= __DASH_SIDE__ * d) continue;
+                    if (Math.max(ulo, uhi) >= @@DASH_SIDE@@ * d) continue;
                     if (k === 2 && ulo + uhi > tol * rng) continue;
                     const wide = Math.max(0.0, lo - t0) + Math.max(0.0, t1 - hi);
-                    const cost = ((__DASH_UNCOVERED__ * (ulo + uhi) + wide) / rng
-                                  + __DASH_DENSITY__ * Math.abs(k - n) / n);
+                    const cost = ((@@DASH_UNCOVERED@@ * (ulo + uhi) + wide) / rng
+                                  + @@DASH_DENSITY@@ * Math.abs(k - n) / n);
                     if (best === null || cost < best[0] - 1e-12) {
                         best = [cost, j0, j1, m, z];
                     }
@@ -24854,7 +24858,7 @@ function dash_natscale(lo, hi, n) {
     if (best === null) return [lo, hi];
     const j0 = best[1], j1 = best[2], m = best[3], z = best[4];
     const p = Math.pow(10.0, z);
-    if (p > 0 && Math.max(Math.abs(lo), Math.abs(hi)) >= __DASH_INT_LIMIT__ * p) {
+    if (p > 0 && Math.max(Math.abs(lo), Math.abs(hi)) >= @@DASH_INT_LIMIT@@ * p) {
         return [lo - 1.0, hi + 1.0];
     }
     const out = [];
@@ -24870,9 +24874,9 @@ function dash_axis_ticks(lo, hi, n, kind) {
         return t.length ? t : null;
     }
     if (kind === "tc" || kind === "tC") {
-        const t = dash_natscale(Number(lo) - (__DASH_EPOCH__),
-                                Number(hi) - (__DASH_EPOCH__), n);
-        return t ? t.map((v) => v + (__DASH_EPOCH__)) : null;
+        const t = dash_natscale(Number(lo) - (@@DASH_EPOCH@@),
+                                Number(hi) - (@@DASH_EPOCH@@), n);
+        return t ? t.map((v) => v + (@@DASH_EPOCH@@)) : null;
     }
     if (kind) return null;
     return dash_natscale(lo, hi, n);
@@ -24965,7 +24969,7 @@ function dash_axis_hull(a, ticks, lo, hi, models, bases) {
         if (blo !== null) { vals.push(blo); vals.push(bhi); }
     }
     if (!vals.length) return null;
-    return [Math.min(...vals), Math.max(...vals)];
+    return [dash_axis_min(vals), dash_axis_max(vals)];
 }
 function dash_axis_shift(ms, months, days) {
     const d = new Date(ms);
@@ -25035,8 +25039,8 @@ function dash_axis_compute(plan, models) {
                 let lo = s.lo, hi = s.hi;
                 const sc = a.scale.filter((v) => a.kind !== "log" || v > 0);
                 if (sc.length) {
-                    lo = Math.min(...sc.concat(lo !== null ? [lo] : []));
-                    hi = Math.max(...sc.concat(hi !== null ? [hi] : []));
+                    lo = dash_axis_min(sc.concat(lo !== null ? [lo] : []));
+                    hi = dash_axis_max(sc.concat(hi !== null ? [hi] : []));
                 }
                 s.tlo = lo; s.thi = hi;
                 const tk = a.ticker >= 0 ? models[a.ticker] : null;
@@ -25059,7 +25063,7 @@ function dash_axis_compute(plan, models) {
                 const los = es.map((s) => s.tlo).filter((v) => v !== null);
                 const his = es.map((s) => s.thi).filter((v) => v !== null);
                 if (!los.length || !his.length || es.length < 2) continue;
-                const lo = Math.min(...los), hi = Math.max(...his);
+                const lo = dash_axis_min(los), hi = dash_axis_max(his);
                 for (const s of es) s.ticks = dash_axis_place(s.a, lo, hi, s.ticks);
             }
         }
@@ -25077,8 +25081,8 @@ function dash_axis_compute(plan, models) {
                 if (!hs.length) continue;
                 const a0 = es[0].a;
                 if (a0.range < 0) continue;
-                ranges[a0.range] = dash_axis_pad(Math.min(...hs.map((h) => h[0])),
-                                                 Math.max(...hs.map((h) => h[1])),
+                ranges[a0.range] = dash_axis_pad(dash_axis_min(hs.map((h) => h[0])),
+                                                 dash_axis_max(hs.map((h) => h[1])),
                                                  a0.kind, a0.reverse, a0.margin);
             }
         }
@@ -25100,8 +25104,8 @@ function dash_axis_compute(plan, models) {
                     for (const v of [s.lo, s.hi]) if (v !== null) data.push(v);
                 }
                 if (!hulls.length || !data.length) continue;
-                const lo = Math.min(...hulls.map((h) => h[0]).concat(data));
-                const hi = Math.max(...hulls.map((h) => h[1]).concat(data));
+                const lo = dash_axis_min(hulls.map((h) => h[0]).concat(data));
+                const hi = dash_axis_max(hulls.map((h) => h[1]).concat(data));
                 const a0 = per.at[per.order[0]][0].a;
                 if (a0.range < 0) continue;
                 ranges[a0.range] = dash_axis_pad(lo, hi, a0.kind, a0.reverse, a0.margin);
@@ -25200,12 +25204,12 @@ _DASH_AXIS_ZOOM_JS = r"""
     }
 })();
 """
-for _tok, _val in (("__DASH_MAX_TICKS__", _MAX_AXIS_TICKS),
-                   ("__DASH_SIDE__", _DASH_NATSCALE_SIDE),
-                   ("__DASH_UNCOVERED__", _DASH_NATSCALE_UNCOVERED),
-                   ("__DASH_DENSITY__", _DASH_NATSCALE_DENSITY),
-                   ("__DASH_INT_LIMIT__", _DASH_NATSCALE_INT_LIMIT),
-                   ("__DASH_EPOCH__", _STATA_EPOCH_UNIX_MS)):
+for _tok, _val in (("@@DASH_MAX_TICKS@@", _MAX_AXIS_TICKS),
+                   ("@@DASH_SIDE@@", _DASH_NATSCALE_SIDE),
+                   ("@@DASH_UNCOVERED@@", _DASH_NATSCALE_UNCOVERED),
+                   ("@@DASH_DENSITY@@", _DASH_NATSCALE_DENSITY),
+                   ("@@DASH_INT_LIMIT@@", _DASH_NATSCALE_INT_LIMIT),
+                   ("@@DASH_EPOCH@@", _STATA_EPOCH_UNIX_MS)):
     _DASH_AXIS_FINISH_JS = _DASH_AXIS_FINISH_JS.replace(_tok, repr(_val))
 del _tok, _val
 # WP-30 P1.3a (TR-21.11): the saved page's filter callback ends by

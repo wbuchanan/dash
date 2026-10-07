@@ -561,7 +561,8 @@ def _digest(model):
     def strip(o):
         if isinstance(o, dict):
             return {k: strip(v) for k, v in o.items() if k != "id"}
-        if isinstance(o, list):
+        # A map's entries are tuples (P1.3a's range callbacks hold ids).
+        if isinstance(o, (list, tuple)):
             return [strip(v) for v in o]
         return o
     item = json_item(model)
@@ -573,16 +574,18 @@ def _digest(model):
 # Taken at the batch-6 base (4f8e528); never re-baselined.
 # Re-derived on the merged batch-6 tree: P1.2b (opaque markers) and P1.5
 # (tick formatters) change every figure; a key-free figure is still the
-# same in both of its cases, which is what this pins.
+# same in both of its cases, which is what this pins.  Re-derived again on
+# the merged batch-7 tree: P1.3a (default axes take twoway's ticks, range
+# and margin) changes every figure.
 _PLAIN_DIGESTS = {
     ("saved", "plain"):
-        "17bf383e1c3543b1a677a9f55521e5e815755601fc41e2483c1ef2eec694bae6",
+        "b75a12cebf23ab85d3048306c887a097544acd129268f4c48fd026d205188c83",
     ("saved", "yaxis2"):
-        "17bf383e1c3543b1a677a9f55521e5e815755601fc41e2483c1ef2eec694bae6",
+        "b75a12cebf23ab85d3048306c887a097544acd129268f4c48fd026d205188c83",
     ("served", "plain"):
-        "0a1fa55d399232fff208041d4eb3f84d20f12ee9ea3c920b9de99cbe5deffa37",
+        "66847bbd208a6e901e8216c58361a368e9abc2766b31d38364abd3d64b0b165b",
     ("served", "yaxis2"):
-        "0a1fa55d399232fff208041d4eb3f84d20f12ee9ea3c920b9de99cbe5deffa37",
+        "66847bbd208a6e901e8216c58361a368e9abc2766b31d38364abd3d64b0b165b",
 }
 
 

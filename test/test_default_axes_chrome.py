@@ -132,12 +132,6 @@ class TestTheBrowserDrawsTwowaysAxes:
 
 
 class TestTheHundredPanelBudget:
-    @pytest.mark.xfail(strict=True, reason=(
-        "WP-30 P1.3a, A9 not met: 100 saved by() panels settle in about "
-        "5.1 s after a move (07oct2026, Apple M2 Max), not within 1 s of "
-        "the base's 0.484 s; BokehJS repaints every panel on each Range1d "
-        "change (a per-panel yrescale control went from 0.9 s to 9.4 s); "
-        "the bound is kept and the miss is put to the maintainer"))
     def test_settles_within_the_budget(self):
         t = [float((i * 7) % 113) for i in range(500)]
         df = pd.DataFrame({"g": [float(i % 100) for i in range(500)],

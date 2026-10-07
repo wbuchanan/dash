@@ -243,10 +243,14 @@ class TestStoredPoints:
         if mode == "saved":
             # Guard: the saved page never recomputes a function: its source
             # is referenced by no CustomJS, so a filter move cannot change it.
+            # The axis re-finish and zoom code only read it (WP-30 P1.3a).
             (src,) = _fn_sources(models)
             for m in models:
                 if isinstance(m, CustomJS):
-                    for v in m.args.values():
+                    for k, v in m.args.items():
+                        if k == "axis_models" or (
+                                k == "models" and "plan_json" in m.args):
+                            continue
                         vals = v if isinstance(v, (list, tuple)) else [v]
                         assert all(getattr(u, "id", None) != src.id
                                    for u in vals)

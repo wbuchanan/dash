@@ -432,7 +432,9 @@ class TestALoneSecondAxisIsDrawnAsTwowayDrawsIt:
         fig = _lone_figure(mode, _LONE, {"name": "fig1", "ytitle2": hostile})
         (ax,) = _axes(fig.left)
         assert ax.axis_label == hostile
-        assert type(ax.ticker).__name__ != "FixedTicker"
+        # The default axis's ticks (WP-30 P1.3a), not #9999999.
+        assert "dash_default" in ax.ticker.tags
+        assert "dash_count:9999999" not in ax.ticker.tags
 
 
 class TestTheLoneAxisRewrite:

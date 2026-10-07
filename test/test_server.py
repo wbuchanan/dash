@@ -55,6 +55,8 @@ _DASH_DIR = os.path.dirname(_HERE)
 sys.path.insert(0, os.path.abspath(_HERE))
 from serve_token_probe import TEST_TOKEN, token_args  # noqa: E402  (P0.12a)
 from conftest import load_app  # noqa: E402  (WP-30 A3)
+import dash_render as _dr_mod  # noqa: E402  (WP-30 P1.3a)
+
 
 def _load_dash_render():
     """Import dash_render module from the parent directory."""
@@ -1274,7 +1276,10 @@ class TestServerPcarrowPcbarrow:
         ("range(10 40)", lambda df: (min(10.0, float(df["mpg"].min())),
                                      max(40.0, float(df["mpg"].max())))),
         # range(0) extends the axis to 0 and keeps the data's own top.
-        ("range(0)", lambda df: (0.0, float(df["mpg"].max()))),
+        # WP-30 P1.3a: and twoway's ticks over 0 to that top.
+        ("range(0)", lambda df: (0.0, max(
+            float(df["mpg"].max()),
+            _dr_mod._dash_natscale_ticks(0.0, float(df["mpg"].max()), 5)[-1]))),
     ], ids=["both_ends", "one_end"])
     def test_yscale_range_bounds_the_y_axis_in_both_modes(
             self, dr_module, auto_df, tmp_path, given, bounds):
@@ -3870,28 +3875,28 @@ class TestServerXscaleYscaleReverse:
     def test_xscale_reverse_in_server_source(self, dr_module, auto_df):
         """P4-74: xscale(reverse) flips the served x range, and only it."""
         fig = self._figure(dr_module, auto_df, "_xsr_x", xscale="reverse")
-        assert fig.x_range.flipped is True
-        assert not fig.y_range.flipped
+        assert dr_module._dash_range_reversed(fig.x_range) is True
+        assert not dr_module._dash_range_reversed(fig.y_range)
 
     def test_yscale_reverse_in_server_source(self, dr_module, auto_df):
         """P4-75: yscale(reverse) flips the served y range, and only it."""
         fig = self._figure(dr_module, auto_df, "_xsr_y", yscale="reverse")
-        assert fig.y_range.flipped is True
-        assert not fig.x_range.flipped
+        assert dr_module._dash_range_reversed(fig.y_range) is True
+        assert not dr_module._dash_range_reversed(fig.x_range)
 
     def test_xscale_log_reverse_server_source(self, dr_module, auto_df):
         """P4-76: xscale(log reverse) gives a log x scale AND a flipped range."""
         from bokeh.models import LogScale
         fig = self._figure(dr_module, auto_df, "_xsr_lr", xscale="log reverse")
         assert isinstance(fig.x_scale, LogScale), type(fig.x_scale)
-        assert fig.x_range.flipped is True
+        assert dr_module._dash_range_reversed(fig.x_range) is True
 
     def test_xscale_log_only_uses_runtime_conditional_for_flip(self, dr_module, auto_df):
         """P4-74b: xscale(log) alone is a log scale and NOT a flip."""
         from bokeh.models import LogScale
         fig = self._figure(dr_module, auto_df, "_xsr_l", xscale="log")
         assert isinstance(fig.x_scale, LogScale), type(fig.x_scale)
-        assert not fig.x_range.flipped
+        assert not dr_module._dash_range_reversed(fig.x_range)
 
 
 # ================================================================

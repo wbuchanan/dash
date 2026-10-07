@@ -921,10 +921,15 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
                       {"type": "line", "yvar": "date", "xvar": "hi",
                        "options": {"yaxis": "2"}}])
         r, _w = _saved(tmp_path, spec, _spread_frame(hole=True))
-        (y2,) = r.figures["g1"].extra_y_ranges.values()
-        # The data's span with its padding either side.
-        assert _LO_MS - 0.1 * (_HI_MS - _LO_MS) <= y2.start <= _LO_MS
-        assert _HI_MS <= y2.end <= _HI_MS + 0.1 * (_HI_MS - _LO_MS)
+        fig = r.figures["g1"]
+        (y2,) = fig.extra_y_ranges.values()
+        (ax,) = [a for a in fig.right if a.y_range_name != "default"]
+        # The hull of the data and its ticks (WP-30 P1.3a), in milliseconds,
+        # with twoway's margin either side.
+        lo = min(_LO_MS, ax.ticker.ticks[0])
+        hi = max(_HI_MS, ax.ticker.ticks[-1])
+        assert lo - 0.1 * (hi - lo) <= y2.start <= _LO_MS
+        assert _HI_MS <= y2.end <= hi + 0.1 * (hi - lo)
 
 
 # ===========================================================================
