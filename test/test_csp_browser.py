@@ -51,6 +51,9 @@ if responsive_probe.find_chrome() is None:
     pytest.skip("headless Chrome is not installed (set DASH_CHROME); "
                 "a skip is red under DASH_STRICT=1", allow_module_level=True)
 
+#: Headless Chrome: the release tier, not the default run (WP-30 D).
+pytestmark = pytest.mark.release
+
 import asyncio  # noqa: E402
 
 from bokeh.io import curdoc  # noqa: E402

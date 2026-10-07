@@ -46,11 +46,18 @@ class _Item:
 
 
 class _WorkerConfig:
-    """A worker's config as xdist's hook reads it: ``--dist loadgroup``."""
+    """A worker's config as the two hooks read it: ``--dist loadgroup``, in
+    a run of one file (so the conftest keeps the release tier)."""
+
+    args = ["test/test_mode_parity.py"]
+    rootpath = os.path.dirname(_HERE)
 
     def getvalue(self, name):
         assert name == "loadgroup", name
         return True
+
+    def getoption(self, name, default=None):
+        return default
 
 
 class _Worker:

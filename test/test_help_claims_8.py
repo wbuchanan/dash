@@ -504,12 +504,15 @@ class TestNoLayerNeedsScipyOrStatsmodels:
     def watched(self):
         return _run_dep_script("watch")
 
+    @pytest.mark.release  # a 33-second subprocess sweep (WP-30 D)
     def test_every_layer_draws_with_both_packages_unimportable(self, blocked):
         assert not blocked["failures"], "\n".join(blocked["failures"])
 
+    @pytest.mark.release  # a 33-second subprocess sweep (WP-30 D)
     def test_nothing_asks_for_them_when_they_are_unimportable(self, blocked):
         assert blocked["attempts"] == [], blocked["attempts"]
 
+    @pytest.mark.release  # a 33-second subprocess sweep (WP-30 D)
     def test_every_plot_type_was_run(self, blocked):
         ran = {k.split()[0] for k in blocked["counts"]}
         assert ran == set(dr._dash_plot_type_names())
@@ -520,6 +523,7 @@ class TestNoLayerNeedsScipyOrStatsmodels:
         assert len(blocked["counts"]) == len(dr._dash_plot_type_names()) + 33, (
             sorted(blocked["counts"]))
 
+    @pytest.mark.release  # a 33-second subprocess sweep (WP-30 D)
     def test_an_installed_copy_is_not_read(self, watched):
         """With scipy and statsmodels importable, nothing imports them --
         not dash, not a library dash calls on the way."""

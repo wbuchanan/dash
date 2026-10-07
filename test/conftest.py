@@ -48,6 +48,13 @@ def pytest_configure(config):
         "serve: starts a real `bokeh serve` subprocess; slow. "
         "Deselect with -m 'not serve'.",
     )
+    config.addinivalue_line(
+        "markers",
+        "release: the release tier (Chrome, nested pytest runs, subprocess "
+        "sweeps, large files).  A run of the whole suite leaves it out "
+        "unless DASH_TEST_TIER=release or -m names release (make "
+        "test-release); a file, a node id, -k or --lf runs it.",
+    )
     if not config.pluginmanager.hasplugin("xdist"):
         # xdist registers this itself; without xdist the marks on the parity
         # corpus must still be known, or every run warns.
@@ -157,8 +164,46 @@ def pytest_sessionfinish(session, exitstatus):
 
 
 
+#: DASH_TEST_TIER=release: a run of the whole suite keeps the release tier.
+TIER_ENV = "DASH_TEST_TIER"
+
+
+def _runs_release_tier(args, rootpath, *, keyword="", lastfailed=False,
+                       collectonly=False, markexpr="", tier=""):
+    """Whether a run keeps the tests marked ``release`` (WP-30 test
+    performance D).  A run of the whole suite (``_covers_whole_suite``) is
+    the fast default and leaves them out, unless *tier* is ``"release"``
+    (DASH_TEST_TIER) or the mark expression *markexpr* names ``release``;
+    any narrower run -- a file, a node id, -k, --lf, --collect-only --
+    keeps them."""
+    if tier == "release" or re.search(r"\brelease\b", markexpr or ""):
+        return True
+    return not _covers_whole_suite(args, rootpath, keyword=keyword,
+                                   lastfailed=lastfailed,
+                                   collectonly=collectonly)
+
+
+def _deselect_release_tier(config, items):
+    """Drop the release tier from *items* when this run leaves it out, and
+    report the dropped items as deselected; returns them."""
+    if _runs_release_tier(
+            config.args, config.rootpath,
+            keyword=config.getoption("keyword", ""),
+            lastfailed=config.getoption("lf", False),
+            collectonly=config.getoption("collectonly", False),
+            markexpr=config.getoption("markexpr", ""),
+            tier=os.environ.get(TIER_ENV, "")):
+        return []
+    dropped = [i for i in items if i.get_closest_marker("release")]
+    if dropped:
+        keep = [i for i in items if not i.get_closest_marker("release")]
+        items[:] = keep
+        config.hook.pytest_deselected(items=dropped)
+    return dropped
+
+
 @pytest.hookimpl(tryfirst=True)
-def pytest_collection_modifyitems(items):
+def pytest_collection_modifyitems(config, items):
     """Keep every comparison of one parity corpus entry on one xdist worker.
 
     test_mode_parity.py renders each corpus entry once per process and
@@ -172,7 +217,11 @@ def pytest_collection_modifyitems(items):
     implementation of this hook, which pluggy called first because xdist
     registers it after this conftest is loaded -- so until 07oct2026 no
     mark was there to read and nothing was grouped (test_xdist_groups.py).
+
+    First, a run of the whole suite drops the release tier
+    (``_deselect_release_tier``).
     """
+    _deselect_release_tier(config, items)
     for item in items:
         if not item.nodeid.startswith("test/test_mode_parity.py"):
             continue

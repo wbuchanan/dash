@@ -247,6 +247,7 @@ def _check(name, results):
         results, indent=1))
 
 
+@pytest.mark.release  # headless Chrome (WP-30 D)
 class TestPagesFitInChrome:
     """The saved page of every layout family, at 375, 768 and 1440 px."""
 
@@ -257,6 +258,7 @@ class TestPagesFitInChrome:
         _check(name, rp.measure_many(page, WIDTHS, chrome))
 
 
+@pytest.mark.release  # headless Chrome (WP-30 D)
 class TestServedDocumentsFitInChrome:
     """The served document's layout at the same widths (TR-27.2): its
     grids stack as the saved ones do.  The served page declares the saved
@@ -380,6 +382,7 @@ class TestTheServedPageCarriesTheSavedPagesHead:
         assert csp_at < page.index(dr._DASH_VIEWPORT_META)
 
 
+@pytest.mark.release  # headless Chrome (WP-30 D)
 class TestTheServedBsGridReflowsAsTheSavedOne:
     """WP-28 E14: between 768 and 991 px a served layout(bs) grid takes the
     saved page's half rows and KPI cell minimum heights.  The saved page's

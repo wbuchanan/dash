@@ -1027,6 +1027,7 @@ class TestTheMatrixIsComplete:
                if not (_PYTEST_ID.match(nid) or _CSCRIPT_ID.match(nid))]
         assert not bad, f"malformed registry entries: {bad}"
 
+    @pytest.mark.release  # a nested pytest --collect-only (WP-30 D)
     def test_every_pytest_entry_is_collected(self, collected_ids):
         assert collected_ids.proc.returncode == 0, (
             "pytest --collect-only failed on the registry's files:\n"

@@ -31,6 +31,9 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 import responsive_probe  # noqa: E402
+
+#: Headless Chrome: the release tier, not the default run (WP-30 D).
+pytestmark = pytest.mark.release
 from test_mode_parity import _spec  # noqa: E402
 from test_saved_filter_layers import _write  # noqa: E402
 from test_mode_parity import _DF  # noqa: E402

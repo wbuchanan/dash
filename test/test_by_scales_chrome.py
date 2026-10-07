@@ -30,6 +30,9 @@ if responsive_probe.find_chrome() is None:
                 "the browser's shared range is not measured",
                 allow_module_level=True)
 
+#: Headless Chrome: the release tier, not the default run (WP-30 D).
+pytestmark = pytest.mark.release
+
 _TMP = tempfile.mkdtemp(prefix="dash_by_chrome_")
 
 

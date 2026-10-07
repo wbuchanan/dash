@@ -19,16 +19,17 @@ ifeq ($(origin STATA),command line)
 $(error STATA was renamed STATA_BIN (WP-30); run make $(MAKECMDGOALS) STATA_BIN=$(STATA))
 endif
 
-.PHONY: help check test test-dev test-floor cert gate release hooks
+.PHONY: help check test test-dev test-release test-floor cert gate release hooks
 
 help:
 	@echo "make check     make test, make test-dev and make cert, in that order"
 	@echo "make test      pytest under Stata's Python, strict"
 	@echo "make test-dev  pytest under the development interpreter ($(PYTHON)), strict"
+	@echo "make test-release  the release tier, the tests marked release, which make test and make test-dev leave out"
 	@echo "make test-floor  one floor-matrix leg, run by hand (not part of make gate): FLOOR_VENV=<dir> FLOOR_BASELINE=<name>"
 	@echo "make cert      the certification suite, through the console binary, as DASH_CERT_SESSIONS (default 3, 1 to 4) sessions side by side; DASH_CERT_REMEASURE=1 asks twoway again (release)"
 	@echo "make gate      net install, then every example and scheme from the install"
-	@echo "make release   make check, then make gate"
+	@echo "make release   make check, then make test-release, then make gate"
 	@echo "make hooks     have 'git push' run 'make check' first"
 	@echo "STATA_BIN=<path> names the console Stata (default /usr/local/bin/stata-mp); STATA_ARCH=auto|none|arm64|x86_64"
 
@@ -47,6 +48,14 @@ test-dev:
 	@echo "pytest under the development interpreter: $(PYTHON)"
 	@DASH_STRICT=1 DASH_BASELINE=dev $(PYTHON) -m pytest test/ $(PYTEST_ARGS)
 
+# The release tier (WP-30 test performance D): the tests marked release --
+# headless Chrome, nested pytest runs, the scipy/statsmodels-free subprocess
+# sweeps, datasets over the size threshold -- which a run of the whole suite
+# leaves out (test/conftest.py).  make release runs it after make check.
+test-release:
+	@echo "pytest's release tier under the development interpreter: $(PYTHON)"
+	@DASH_STRICT=1 DASH_BASELINE=dev DASH_TEST_TIER=release $(PYTHON) -m pytest test/ -m release $(PYTEST_ARGS)
+
 # WP-30 P1.33: one leg of the Python floor matrix, run by hand; make gate
 # never runs it.  FLOOR_VENV is a venv directory scripts/floor_matrix.sh make
 # prepared, FLOOR_BASELINE the test/conftest.py baseline it is held to.
@@ -63,7 +72,7 @@ cert:
 gate:
 	@STATA_BIN='$(STATA_BIN)' PYTHON='$(PYTHON)' sh scripts/run_release_gate.sh
 
-release: check gate
+release: check test-release gate
 
 hooks:
 	git config core.hooksPath scripts/git-hooks
