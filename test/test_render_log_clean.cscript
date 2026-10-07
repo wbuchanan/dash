@@ -4,7 +4,7 @@
 *! Usage:  do test/test_render_log_clean.cscript
 *!
 *! Requires: dash_setup completed (Python).
-*! Version: 1.1.0  22sep2026
+*! Version: 1.2.0  07oct2026
 *!
 *! WHY THIS EXISTS
 *!
@@ -25,24 +25,27 @@
 *! `dash serve' had the same line and was fixed when it was rewritten; this
 *! script covers the path every other command takes.
 *!
-*! NO PYTHON WARNING EITHER (WP-17, 22sep2026)
+*! NO NOTE AND NO PYTHON WARNING EITHER (WP-17, 22sep2026; WP-30 P1.26a)
 *!
 *! cscript sets the session scheme to c(scheme_cscript) -- s2color8 -- so
 *! every certification render inherits s2color8 as its c(scheme).  Until
 *! WP-17 dash shipped no translation of s2color8, and the renderer put one
-*! Python UserWarning ("'s2color8' is not a known theme or scheme; using
+*! raw Python warning ("'s2color8' is not a known theme or scheme; using
 *! s2color") into the log of every render, this script's own captured log
 *! included (test/run_all_cscripts.log, the WP-16 run: the render below
-*! printed it, wrapped by Stata as "UserWar" / "> ning").  s2color8 is one
-*! of the twenty shipped translations since WP-17, so the log of a plain
-*! render must carry no Python warning at all.  Check 4 re-joins Stata's
-*! "> " continuation lines -- a raw line-by-line search would miss the
-*! wrapped word -- and asserts that no logical line carries "UserWarning".
-*! A session scheme dash cannot translate is still one warning
-*! (test_custom_scheme.cscript CS-10); this script asserts that the scheme
-*! cscript sets is not such a scheme.  Check 5 is check 4's control: a
-*! render under such a scheme, counted by the same scanner, must show its
-*! one warning (24sep2026).
+*! printed it, wrapped by Stata in the middle of the class name).
+*! s2color8 is one of the twenty shipped translations since WP-17, so the
+*! log of a plain render must carry no note at all.  Since WP-30 P1.26a a
+*! note prints as twoway prints its notes, "(note:  dash: ...)", never as
+*! a Python warning, so check 4 counts both: no logical line carries
+*! "(note:" and none carries "Warning:" (any Python warning that got
+*! through).  It re-joins Stata's "> " continuation lines -- a raw
+*! line-by-line search would miss a wrapped word.  A session scheme dash
+*! cannot translate is still one note (test_custom_scheme.cscript CS-10);
+*! this script asserts that the scheme cscript sets is not such a scheme.
+*! Check 5 is check 4's control: a render under such a scheme, counted by
+*! the same scanner, must show exactly one note and no Python warning
+*! (24sep2026; the note form since WP-30 P1.26a).
 
 cscript "render log clean" adodir ".."
 
@@ -143,15 +146,19 @@ assert `nlines' < 60
 display as result "  [3/5] the log is short: PASS"
 
 // ---------------------------------------------------------------
-// 4. No Python warning.  The session scheme cscript sets (s2color8)
-//    ships since WP-17, so a plain render inherits it silently; the
-//    one line every certification log used to carry is gone.
+// 4. No note and no Python warning.  The session scheme cscript sets
+//    (s2color8) ships since WP-17, so a plain render inherits it
+//    silently; the one line every certification log used to carry is
+//    gone.  A note is "(note:  dash: ...)" since WP-30 P1.26a, and
+//    "Warning:" is any Python warning that got through.
 // ---------------------------------------------------------------
-mata: st_local("nwarn", strofreal(_rlc_count(st_local("logfile"), "UserWarning")))
-display as text "     UserWarning lines in the log (wrapped lines re-joined): `nwarn'"
+mata: st_local("nnote", strofreal(_rlc_count(st_local("logfile"), "(note:")))
+mata: st_local("nwarn", strofreal(_rlc_count(st_local("logfile"), "Warning:")))
+display as text "     note / Python warning lines in the log (wrapped lines re-joined): `nnote' / `nwarn'"
+assert `nnote' == 0
 assert `nwarn' == 0
 
-display as result "  [4/5] no Python warning in the log: PASS"
+display as result "  [4/5] no note and no Python warning in the log: PASS"
 
 // ---------------------------------------------------------------
 // 5. The control for check 4: a render that must warn does, and the
@@ -191,13 +198,163 @@ capture erase "`rlc_dir'/scheme-zzdashrlc.scheme"
 capture rmdir "`rlc_dir'"
 capture erase "`outhtml'_ctl.html"
 
-mata: st_local("nctl", strofreal(_rlc_count(st_local("ctlfile"), "UserWarning")))
-display as text "     UserWarning lines in the control's log: `nctl'"
+mata: st_local("nctl", strofreal(_rlc_count(st_local("ctlfile"), "(note:")))
+mata: st_local("nctlw", strofreal(_rlc_count(st_local("ctlfile"), "Warning:")))
+display as text "     note / Python warning lines in the control's log: `nctl' / `nctlw'"
 assert `src' == 0
 assert `crc' == 0
 assert `nctl' == 1
+assert `nctlw' == 0
 
 display as result "  [5/5] a render that must warn is counted: PASS"
+
+// ---------------------------------------------------------------
+// NC-03..NC-06 (WP-30 P1.26a): every note dash prints takes twoway's
+// channel -- one "(note:  dash: ...)" line in text colour, shown under
+// quietly, hidden by capture -- whatever the session's Python warnings
+// filters say, with no path, no Python warning and no live SMCL.  Each
+// command runs under its own named text log, counted by _rlc_count.
+// The session's filters are changed only inside a catch_warnings()
+// entered and exited around one `capture noisily' command, so a filter
+// never outlives its case (check 5's hazard).
+// ---------------------------------------------------------------
+local nc_fail = 0
+local nc_log  "`logdir'dash_rlc_nc.log"
+local nc_page "`outhtml'_nc.html"
+capture log close _dashnc
+
+// NC-03: an "ignore" filter hides no note.
+capture erase "`nc_log'"
+log using "`nc_log'", name(_dashnc) text replace
+capture noisily dash scatter mpg weight, mcolor(notacolor) saving("`nc_page'") replace
+local nc_rc0 = _rc
+log close _dashnc
+mata: st_local("nc_d", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+python: import warnings as _nc_w
+python: _nc_cm = _nc_w.catch_warnings()
+python: _nc_cm.__enter__()
+python: _nc_w.filterwarnings("ignore")
+log using "`nc_log'", name(_dashnc) text replace
+capture noisily dash scatter mpg weight, mcolor(notacolor) saving("`nc_page'") replace
+local nc_rc1 = _rc
+log close _dashnc
+python: _nc_cm.__exit__(None, None, None)
+mata: st_local("nc_i", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+if `nc_rc0' == 0 & `nc_rc1' == 0 & `nc_d' >= 1 & `nc_i' == `nc_d' {
+    display as text "NC-03 PASS: `nc_d' note line(s) by default and `nc_i' under an ignore filter"
+}
+else {
+    display as error "NC-03 FAIL: rc `nc_rc0'/`nc_rc1'; `nc_d' note line(s) by default, `nc_i' under an ignore filter"
+    local nc_fail = `nc_fail' + 1
+}
+
+// NC-04: an "error" filter makes no note an error.
+python: _nc_cm = _nc_w.catch_warnings()
+python: _nc_cm.__enter__()
+python: _nc_w.simplefilter("error")
+log using "`nc_log'", name(_dashnc) text replace
+capture noisily dash scatter mpg weight, mcolor(notacolor) saving("`nc_page'") replace
+local nc_rc2 = _rc
+log close _dashnc
+python: _nc_cm.__exit__(None, None, None)
+mata: st_local("nc_e", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+if `nc_rc2' == 0 & `nc_d' >= 1 & `nc_e' == `nc_d' {
+    display as text "NC-04 PASS: rc 0 and `nc_e' note line(s) under an error filter"
+}
+else {
+    display as error "NC-04 FAIL: rc `nc_rc2'; `nc_e' note line(s) under an error filter, `nc_d' by default"
+    local nc_fail = `nc_fail' + 1
+}
+
+// NC-05: the note form, with no Python warning and no path of dash's.
+log using "`nc_log'", name(_dashnc) text replace
+capture noisily dash scatter mpg weight, mcolor(notacolor) play(x) saving("`nc_page'") replace
+local nc_rc3 = _rc
+log close _dashnc
+mata: st_local("nc_uw", strofreal(_rlc_count(st_local("nc_log"), "User" + "Warning")))
+mata: st_local("nc_pa", strofreal(_rlc_count(st_local("nc_log"), "dash_render.py:")))
+mata: st_local("nc_n5", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+if `nc_rc3' == 0 & `nc_uw' == 0 & `nc_pa' == 0 & `nc_n5' >= 2 {
+    display as text "NC-05 PASS: `nc_n5' note lines, no Python warning and no path"
+}
+else {
+    display as error "NC-05 FAIL: rc `nc_rc3'; `nc_uw' Python warning, `nc_pa' path and `nc_n5' note line(s)"
+    local nc_fail = `nc_fail' + 1
+}
+
+// NC-06: (a) quietly shows the renderer's and the ado's notes;
+// (b) capture hides them; (c) a value typed with SMCL braces is never
+// live SMCL in an SMCL log, and reads as typed in a text log; (d) the
+// renderer's escape is Mata _dash_smcl_text's twin.
+local nc6_bad ""
+log using "`nc_log'", name(_dashnc) text replace
+quietly dash scatter mpg weight, mcolor(notacolor) play(x) saving("`nc_page'") replace
+log close _dashnc
+mata: st_local("nc_qa", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+mata: st_local("nc_qi", strofreal(_rlc_count(st_local("nc_log"), "ignoring unsupported option(s): play()")))
+if !(`nc_qa' >= 2 & `nc_qi' >= 1) {
+    local nc6_bad "`nc6_bad' (a) quietly: `nc_qa' note line(s), `nc_qi' naming play();"
+}
+log using "`nc_log'", name(_dashnc) text replace
+capture dash scatter mpg weight, mcolor(notacolor) play(x) saving("`nc_page'") replace
+local nc_rc4 = _rc
+log close _dashnc
+mata: st_local("nc_cn", strofreal(_rlc_count(st_local("nc_log"), "(note:")))
+mata: st_local("nc_cw", strofreal(_rlc_count(st_local("nc_log"), "Warning:")))
+mata: st_local("nc_ci", strofreal(_rlc_count(st_local("nc_log"), "ignoring")))
+if !(`nc_rc4' == 0 & `nc_cn' == 0 & `nc_cw' == 0 & `nc_ci' == 0) {
+    local nc6_bad "`nc6_bad' (b) capture: rc `nc_rc4', `nc_cn' (note:, `nc_cw' Warning:, `nc_ci' ignoring;"
+}
+local nc_smcl "`logdir'dash_rlc_nc.smcl"
+capture erase "`nc_smcl'"
+capture log close _dashncs
+log using "`nc_smcl'", name(_dashncs) smcl replace
+log using "`nc_log'", name(_dashnc) text replace
+capture noisily dash scatter mpg weight, msymbol({stata display 999:x}) saving("`nc_page'") replace
+log close _dashnc
+log close _dashncs
+cert_file_has "`nc_smcl'", needle("{stata display 999")
+local nc_live = r(found)
+mata: st_local("nc_lit", strofreal(_rlc_count(st_local("nc_log"), "{stata display 999:x}")))
+if !(`nc_live' == 0 & `nc_lit' >= 2) {
+    local nc6_bad "`nc6_bad' (c) SMCL: live link `nc_live', `nc_lit' literal line(s) in the text log;"
+}
+capture erase "`nc_smcl'"
+capture noisily _dash_xm_load
+local nc_xrc = _rc
+mata: st_local("nc_s1", "{bf:x} a}b{c")
+mata: st_local("nc_s2", "x" + char(1) + char(127) + "y")
+mata: st_local("nc_s3", "a" + char(194) + char(133) + "b")
+mata: st_local("nc_s4", "caf" + uchar(233))
+forvalues k = 1/4 {
+    mata: st_local("nc_m`k'", _dash_smcl_text(st_local("nc_s`k'")))
+}
+python:
+def _nc_twin():
+    import sys
+    from sfi import Macro
+    f = getattr(sys.modules.get("_dash_render_export"), "_dash_smcl_escape", None)
+    if f is None:
+        return "MISSING"
+    bad = [k for k in range(1, 5)
+           if f(Macro.getLocal("nc_s%d" % k)) != Macro.getLocal("nc_m%d" % k)]
+    return " ".join("s%d" % k for k in bad) or "same"
+from sfi import Macro as _nc_M
+_nc_M.setLocal("nc_twin", _nc_twin())
+end
+if !(`nc_xrc' == 0 & "`nc_twin'" == "same") {
+    local nc6_bad "`nc6_bad' (d) twin: rc `nc_xrc', `nc_twin';"
+}
+if "`nc6_bad'" == "" {
+    display as text "NC-06 PASS: quietly shows, capture hides, SMCL stays text, and the escape is _dash_smcl_text's twin"
+}
+else {
+    display as error "NC-06 FAIL:`nc6_bad'"
+    local nc_fail = `nc_fail' + 1
+}
+capture erase "`nc_log'"
+capture erase "`nc_page'"
+assert `nc_fail' == 0
 
 dash clear
 display as result "test_render_log_clean.cscript: ALL PASS"

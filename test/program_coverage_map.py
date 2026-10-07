@@ -690,6 +690,7 @@ COVERAGE = {
         "_dash_cmd_metachar": ("test_serve_browser.cscript:SB-21",),
         # WP-30 S05 (P1.33): Measured Python floor (P1.33, M3/M10)
         # WP-30 S06 (P1.26a): One note channel (P1.26 part a)
+        "_dash_note": ("test_render_log_clean.cscript:NC-06", "test_render_log_clean.cscript:NC-05"),
         # WP-30 S07 (P1.25a): Ship the six StataCorp schemes (P1.25 part a)
         # WP-30 S08 (P1.12a): Stata size units for markers, text and gaps (P1.12 part a, M1)
         # WP-30 S09 (P1.11a): TeX delimiters inert on every canvas sink (P1.11 part a)

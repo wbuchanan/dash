@@ -3560,7 +3560,7 @@ restore
 // Another account that can write c(tmpdir) could plant c(tmpdir)dash-<uid>
 // as a link to a folder of its own.  dash never uses or follows it (the
 // anti-hijack guard): it keeps its copies in a dash-<uid>-<8 chars> folder
-// it makes itself (0700), names both in one `dash: note:' line, and the
+// it makes itself (0700), names both in one `(note:  dash: ...)' line, and the
 // command ends rc 0 -- no privacy condition is refused (section 08 R-8).
 // The real dash-<uid> is moved aside to a name that is not a fallback's
 // (the -pf09-<pid> suffix is not 8 characters of [a-z0-9_]) and put back,
@@ -3594,7 +3594,7 @@ local pf09log "`r(log)'"
 python:
 _pf9_bad = []
 _pf9_txt = open(_pf9_M.getLocal("pf09log"), encoding="utf-8", errors="replace").read().replace(chr(10) + "> ", "")
-_pf9_notes = [x for x in _pf9_txt.split(chr(10)) if x.startswith("dash: note:")]
+_pf9_notes = [x for x in _pf9_txt.split(chr(10)) if x.startswith("(note:  dash: ")]
 if len(_pf9_notes) != 1:
     _pf9_bad.append("%d note lines" % len(_pf9_notes))
 elif _pf9_root not in _pf9_notes[0] or "is not yours to use (it is a link)" not in _pf9_notes[0]:

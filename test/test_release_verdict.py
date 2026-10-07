@@ -149,6 +149,19 @@ class TestEachFailureFails:
         assert not ok
         assert any("printed: " + printed.strip() in l for l in lines), lines
 
+    #: WP-30 P1.26a: a note in twoway's form holds none of the older
+    #: needles; the gate still fails the example that prints one.
+    @pytest.mark.parametrize("printed", [
+        "dash: graph 'g' plot 2 (lfit): (note:  regress could not fit model)",
+        "(note:  dash: aspectratio(2) is drawn as the plot's shape.)",
+    ])
+    def test_an_example_that_prints_a_note(self, printed):
+        f = EXAMPLES[0]
+        ok, lines = _judge(_gate_log(), logs={
+            "/w/logs/example_%s.log" % f: CLEAN_LOG + printed + "\n"})
+        assert not ok
+        assert any("printed: " + printed.strip() in l for l in lines), lines
+
     def test_a_scheme_page_that_falls_back(self):
         s = SCHEMES[0]
         ok, lines = _judge(_gate_log(), logs={

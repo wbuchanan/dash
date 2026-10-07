@@ -1321,16 +1321,22 @@ class TestTheNote:
         user = tmp_path / "user"
         user.mkdir()
         out = str(user / "app.py")
+        # Outside Stata (no sfi) the note is one plain line on stderr, in
+        # twoway's form (WP-30 P1.26a).
+        monkeypatch.setitem(sys.modules, "sfi", None)
         capsys.readouterr()
         _main(sp, dp, out, mode="server")
-        printed = capsys.readouterr().out
-        lines = [ln for ln in printed.splitlines() if "dash: note: " in ln]
+        printed = capsys.readouterr().err
+        lines = [ln for ln in printed.splitlines()
+                 if ln.startswith("(note:  dash: ")
+                 and out in ln and "every observation" in ln]
         assert len(lines) == 1, printed
-        assert out in lines[0] and "every observation" in lines[0]
         assert os.path.exists(out)
         run = dr._dash_run_open(str(tmp_path))
         _main(sp, dp, run["app"], mode="server", launch=True)
-        assert "dash: note: " not in capsys.readouterr().out
+        got = capsys.readouterr()
+        assert "(note:  dash: " not in got.out + got.err
+        assert "dash: note: " not in got.out + got.err
 
     def test_a_file_in_a_folder_dash_chose_is_never_noted_by_the_renderer(
             self, tmp_path):
@@ -2060,7 +2066,8 @@ class TestTheAdoUsesThePrivateDir:
         progs = _programs()
         _need(progs, *_NEW_PROGRAMS)
         to = "\n".join(progs["_dash_tmp_open"])
-        assert '_dash_say("txt"' in to and "_to_note" in to
+        # The note takes twoway's channel since WP-30 P1.26a.
+        assert '_dash_note(' in to and "_to_note" in to
         assert re.search(r"return local noted\b", to)
         plot = [ln.strip() for ln in progs["_dash_render_immediate"]]
         i = [k for k, ln in enumerate(plot) if "r(data)" in ln][0]
@@ -2119,7 +2126,8 @@ class TestTheHelpDocumentsTheTempfiles:
 
     def test_it_states_the_note_and_the_anti_hijack_guard(self):
         sec = _flat(_tempfiles_section())
-        for s in ("dash: note:", "chmod go-w", "STATATMP",
+        # The note is printed as twoway prints its notes (WP-30 P1.26a).
+        for s in ("(note: dash:", "chmod go-w", "STATATMP",
                   "never stops a command for privacy", "r(7102)",
                   "never writes through a symbolic link", "r(603)"):
             assert s in sec, s

@@ -295,7 +295,7 @@ program define _dash_require_mata
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
         _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
-        _dash_immediate _dash_say _dash_spec_types_in _dash_split_segs ///
+        _dash_immediate _dash_say _dash_note _dash_spec_types_in _dash_split_segs ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
@@ -3816,17 +3816,17 @@ program define _dash_process_segment, rclass
                 exit 198
             }
             if "`_pci_stop'" == "empty" {
-                mata: _dash_say("txt", "dash: `ptype' ignored '", st_local("_pci_left"), "' at the end: " + st_local("_imm_empty"))
+                mata: _dash_note("dash: `ptype' ignored '", st_local("_pci_left"), "' at the end: " + st_local("_imm_empty"))
             }
             else if `_pci_hasleft' {
-                mata: _dash_say("txt", "dash: `ptype' ignored '", st_local("_pci_left"), "' at the end, too little for another `_imm_unit' (`_imm_xy'), as twoway does.")
+                mata: _dash_note("dash: `ptype' ignored '", st_local("_pci_left"), "' at the end, too little for another `_imm_unit' (`_imm_xy'), as twoway does.")
             }
             // twoway pci is an immediate pcspike: its serset carries the
             // labels and it draws none of them (measured from its SVG
             // export, with mlabcolor() and mlabposition() or without).
             // Neither does dash -- and it says so, where twoway is silent.
             if "`ptype'" == "pci" & `_pci_nlab' > 0 {
-                display as text "dash: pci draws no labels, as twoway pci draws none; a scatteri layer can label a point."
+                mata: _dash_note("dash: pci draws no labels, as twoway pci draws none; a scatteri layer can label a point.", "", "")
             }
         }
     }
@@ -4703,7 +4703,7 @@ program define _dash_tmp_open, rclass
     local _to_noted ""
     // The privacy class (R-8): printed, never an error.
     if `: length local _to_note' {
-        mata: _dash_say("txt", "", st_local("_to_note"), "")
+        mata: _dash_note("", st_local("_to_note"), "")
         local _to_noted "1"
     }
     // The operating-system class, never a privacy refusal: the folder could
@@ -4739,7 +4739,7 @@ program define _dash_tmp_preview, rclass
     python: _dash_M.setLocal("_tp_path", _dash_tp["path"])
     if "`noted'" != "1" {
         if `: length local _tp_note' {
-            mata: _dash_say("txt", "", st_local("_tp_note"), "")
+            mata: _dash_note("", st_local("_tp_note"), "")
         }
     }
     // The operating-system class, as in _dash_tmp_open.
@@ -4765,7 +4765,7 @@ program define _dash_tmp_close
     python: _dash_tc = _dash_xm._dash_run_close(_dash_M.getLocal("dir"), _dash_M.getLocal("_tc_tmp"))
     python: _dash_M.setLocal("_tc_err", _dash_tc)
     if `: length local _tc_err' {
-        mata: _dash_say("txt", "", st_local("_tc_err"), "")
+        mata: _dash_note("", st_local("_tc_err"), "")
     }
 end
 
@@ -5044,7 +5044,7 @@ program define _dash_report_ignored
     if !`: length local out' exit
 
     // The names are the user's text: shown as written, never as SMCL.
-    mata: _dash_say("txt", "dash: ignoring unsupported option(s):", st_local("out"), "")
+    mata: _dash_note("dash: ignoring unsupported option(s):", st_local("out"), "")
 end
 
 // ================================================================
@@ -6557,7 +6557,7 @@ program define _dash_render_immediate
         _dash_validate_path `"`macval(saving_path)'"'
         local saving_path `"`_dash_vpath'"'   // `~/' expanded, if it was there
         if `_gph' {
-            mata: _dash_say("txt", "dash: saving() writes HTML, not a Stata .gph; using ", st_local("saving_path"), "")
+            mata: _dash_note("dash: saving() writes HTML, not a Stata .gph; using ", st_local("saving_path"), "")
         }
         // A file that is there already is kept unless replace was given --
         // saving(name, replace), twoway's form, or replace after the comma,
@@ -7422,9 +7422,7 @@ program define _dash_prepare_spec, rclass
         if "`replace'" != ""  local _srv_na `"`_srv_na' replace"'
         if "`server'"  != ""  local _srv_na `"`_srv_na' server"'
         if `"`_srv_na'"' != "" {
-            display as text "dash serve: ignoring option(s) that only apply to dash build:" ///
-                as result `"`_srv_na'"'
-            display as text "  dash serve streams the dashboard; it writes no file."
+            mata: _dash_note("dash serve: ignoring option(s) that only apply to dash build:", st_local("_srv_na"), ". dash serve streams the dashboard and writes no file.")
         }
     }
 

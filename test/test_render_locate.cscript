@@ -369,7 +369,7 @@ end
 local loc13warned 0
 local loc13s2 0
 if `loc13brc' == 0 {
-    foreach w13 in "was not found" "could be resolved" "UserWarning" {
+    foreach w13 in "was not found" "could be resolved" "(note:" "Warning:" {
         cert_log_has "`llg13'", needle("`w13'") lower
         if r(found) local loc13warned 1
     }

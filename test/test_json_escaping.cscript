@@ -452,12 +452,13 @@ display "JSE-16 PASS: the saved page and the served app draw the 22 rows, no qua
 macro drop JSE_*
 
 // JSE-17 -- and dash build itself, on the same registry: rc 0, and nothing
-// in what it prints says the qualifier was skipped.  It printed Python's
-// "UserWarning: dash: if_expr filter skipped -- invalid syntax".
+// in what it prints says the qualifier was skipped.  Before WP-30 it
+// printed Python's "UserWarning: dash: if_expr filter skipped -- invalid
+// syntax"; since WP-30 P1.26a that note is a "(note:  dash: ...)" line.
 //
 // The log is searched with cert_log_has, which rejoins the lines Stata
-// wraps: the warning begins with the path to dash_render.py, so where it
-// wraps depends on where the checkout lives, and a search of the file's
+// wraps: the Python warning began with the path to dash_render.py, and a
+// note is as long as its text, so where it wraps varies, and a search of the file's
 // bytes does not see "filter skipped" broken across two lines.  And the
 // same search must find those words where the renderer does skip a
 // qualifier -- the control below -- or their absence proves nothing.  Since

@@ -1591,7 +1591,6 @@ WP30_OPEN = {
     "P1.24": "mlabvposition(varname) and mlabtextstyle() are declared and pending but never serialised or drawn",
     "P1.25a": "Six StataCorp schemes, among them meta and stcolor_mv, are refused r(198) where twoway draws them",
     "P1.25b": "scheme(NAME) is looked for in two places only, never along Stata's ado-path or under Stata's scheme-NAME.scheme file name, and its refusal does not list the valid names",
-    "P1.26a": "Notes print as raw Python warnings with internal paths, a warnings filter of ignore hides them, and one of error turns a note into r(7102)",
     "P1.26b": "dash build, server and dash serve report no option or empty-layer notes, and the served child's stderr never reaches Stata",
     "P1.27": "The drop-in command form fails: a twoway prefix is refused, saving(name, asis) writes a file named after the whole argument, dash build, saving(f, replace) is refused, and batch mode opens a browser",
     "P1.28a": "dash returns no r(filename), and graph export after dash fails r(601) or silently exports an earlier Stata graph",

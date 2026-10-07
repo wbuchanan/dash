@@ -380,7 +380,7 @@ _hc_run "" `"dash scatter mpg weight, pstyle(p3) t1title("hi")"'
 local rc = r(rc)
 local lf "`r(logfile)'"
 _hc_expect "HC8-01" "(`rc' == 0)" "rc `rc'"
-_hc_log "HC8-01" "`lf'" "dash: ignoring unsupported option(s): pstyle() t1title()" 1 1
+_hc_log "HC8-01" "`lf'" "(note:  dash: ignoring unsupported option(s): pstyle() t1title())" 1 1
 _hc_done "HC8-01" "the note is the help's, word for word"
 
 // ================================================================
@@ -397,6 +397,9 @@ local lf "`r(logfile)'"
 _hc_expect "HC8-02" "(`rc' == 0)" "plot level: rc `rc'"
 _hc_count "`lf'" "dash: ignoring unsupported option(s):"
 local note `"`r(line)'"'
+// The note is "(note:  dash: ...)" since WP-30 P1.26a: its closing
+// parenthesis is not part of the last name.
+mata: st_local("note", substr(st_local("note"), 1, 8) == "(note:  " ? substr(st_local("note"), 1, strlen(st_local("note")) - 1) : st_local("note"))
 _hc_expect "HC8-02" "(`r(n)' == 1)" "plot level: `r(n)' notes"
 local nmiss 0
 foreach nm of local p_names {
@@ -415,6 +418,9 @@ local lf "`r(logfile)'"
 _hc_expect "HC8-02" "(`rc' == 0)" "graph level: rc `rc'"
 _hc_count "`lf'" "dash: ignoring unsupported option(s):"
 local note `"`r(line)'"'
+// The note is "(note:  dash: ...)" since WP-30 P1.26a: its closing
+// parenthesis is not part of the last name.
+mata: st_local("note", substr(st_local("note"), 1, 8) == "(note:  " ? substr(st_local("note"), 1, strlen(st_local("note")) - 1) : st_local("note"))
 local nmiss 0
 foreach nm of local g_names {
     if !strpos(`" `macval(note)' "', " `nm'() ") {
@@ -503,7 +509,7 @@ mata: st_local("ok", strofreal(strpos(st_global("dash_json_hc06"), char(34) + "t
 _hc_expect "HC8-06" "(`ok' == 1)" "titl(HCTITLE) did not reach the spec as title"
 _hc_run "" "dash scatter mpg weight, titel(HCTITLE) name(hc06b, replace)"
 _hc_expect "HC8-06" "(`r(rc)' == 0)" "titel(): rc `r(rc)'"
-_hc_log "HC8-06" "`r(logfile)'" "dash: ignoring unsupported option(s): titel()" 1 1
+_hc_log "HC8-06" "`r(logfile)'" "(note:  dash: ignoring unsupported option(s): titel())" 1 1
 _hc_done "HC8-06" "an abbreviation works; a misspelling is named, not refused"
 
 // ================================================================
@@ -512,7 +518,7 @@ _hc_done "HC8-06" "an abbreviation works; a misspelling is named, not refused"
 _hc_run "" "dash scatter mpg weight, pstyle(HC8SECRETVALUE) nosuchopt(HC8OTHERVALUE) name(hc07, replace)"
 local lf "`r(logfile)'"
 _hc_expect "HC8-07" "(`r(rc)' == 0)" "rc `r(rc)'"
-_hc_log "HC8-07" "`lf'" "dash: ignoring unsupported option(s): pstyle() nosuchopt()" 1 1
+_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): pstyle() nosuchopt())" 1 1
 _hc_log "HC8-07" "`lf'" "HC8SECRETVALUE" 0
 _hc_log "HC8-07" "`lf'" "HC8OTHERVALUE" 0
 _hc_done "HC8-07" "the note carries the names and neither value"

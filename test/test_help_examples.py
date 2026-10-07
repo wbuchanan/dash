@@ -900,6 +900,24 @@ class TestTheJudge:
     def test_a_warning_a_sub_option_note_or_a_traceback_is_flagged(self, line):
         assert len(hx.judge(line + "\n", 0, 0, [])) == 1
 
+    #: WP-30 P1.26a: dash's notes print as twoway prints its notes, one
+    #: "(note:  dash: ...)" line, with no "Warning:" in it; dash's copy of
+    #: twoway's estimator note keeps its own words.
+    @pytest.mark.parametrize("line", [
+        "(note:  dash: graph 'g' plot 2 (lpoly) drew nothing from 74 "
+        "observations.)",
+        "(note:  dash: mcolor(x) is not a recognised colour; using the "
+        "scheme's default.)",
+        "dash: graph 'g' plot 2 (lfit): (note:  regress could not fit model)",
+    ])
+    def test_a_note_line_is_flagged(self, line):
+        assert len(hx.judge(line + "\n", 0, 0, [])) == 1
+
+    def test_an_ignored_option_note_keeps_its_reason(self):
+        (p,) = hx.judge("(note:  dash: ignoring unsupported option(s): "
+                        "[aweight])\n", 0, 0, [])
+        assert "names an option as ignored" in p
+
     #: What Bokeh 3.9 logs to stderr when it finds the document it is saving
     #: broken, measured 24sep2026 (a glyph naming a column its source lacks,
     #: a figure with no renderers, a layout with no children): Python

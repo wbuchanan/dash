@@ -55,6 +55,10 @@
 *!       Print before + value + after as one line in SMCL style "err",
 *!       "txt" or "res", every character shown as written.
 *!
+*!   _dash_note(before, value, after)
+*!       Print before + value + after as one note, (note:  ...), in text
+*!       colour on Stata's error channel, as twoway prints its notes.
+*!
 *!   _dash_is_digits(s, maxlen)
 *!       1 when s is 1..maxlen ASCII digits and nothing else.
 *!
@@ -714,6 +718,28 @@ void _dash_say(string scalar style, string scalar before,
                string scalar value, string scalar after) {
     if (!anyof(("err", "txt", "res"), style)) style = "txt"
     printf("{%s}%s\n", style, _dash_smcl_text(before + value + after))
+}
+
+// ============================================================
+// _dash_note(before, value, after)
+//
+// A note, printed as twoway prints its notes (WP-30 P1.26a).  Measured on
+// StataNow 19.5: twoway's named-style note is {txt}(note:  ...) on the
+// error stream, which quietly and set output error show and capture
+// hides; printf, which _dash_say uses, is hidden by quietly.  So a note is
+// one line "(note:  " + text + ")" through errprintf in text colour.  A
+// leading "dash: note: " says "note" once; the text is cut to 4,000
+// characters and passes _dash_smcl_text, and the format is a constant, so
+// the user's text is only ever an argument.  The renderer's twin is
+// dash_render.py's _dash_emit_note.
+// ============================================================
+void _dash_note(string scalar before, string scalar value,
+                string scalar after) {
+    string scalar t
+    t = before + value + after
+    if (substr(t, 1, 12) == "dash: note: ") t = "dash: " + substr(t, 13, .)
+    if (ustrlen(t) > 4000) t = usubstr(t, 1, 3997) + "..."
+    errprintf("{txt}(note:  %s)\n", _dash_smcl_text(t))
 }
 
 // ============================================================
@@ -4289,8 +4315,8 @@ void _dash_fn_spec_tail(string scalar path, string scalar names,
         // write and nothing to say (it noted every one-line saving()).
         if (txt == "") {}
         else if (_dash_fn_points_ok(txt)) out = q + q + ":" + txt
-        else _dash_say("txt", "dash: the function points stored for graph '",
-                       "", "' are not dash's; that layer is drawn from its expression.")
+        else _dash_note("dash: the function points stored for graph '",
+                        "", "' are not dash's; that layer is drawn from its expression.")
     }
     else {
         nm = tokens(names)
@@ -4298,8 +4324,8 @@ void _dash_fn_spec_tail(string scalar path, string scalar names,
             txt = st_global("dash_fpts_" + nm[i])
             if (txt == "") continue
             if (!_dash_fn_points_ok(txt)) {
-                _dash_say("txt", "dash: the function points stored for graph '",
-                          nm[i], "' are not dash's; that layer is drawn from its expression.")
+                _dash_note("dash: the function points stored for graph '",
+                           nm[i], "' are not dash's; that layer is drawn from its expression.")
                 continue
             }
             out = out + (out == "" ? "" : ",") + q + nm[i] + q + ":" + txt

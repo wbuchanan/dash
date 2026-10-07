@@ -810,6 +810,10 @@ FUNCTIONS = {
  '_dash_seal_saved_page': 'test/test_csp.py::TestAHostileFragmentIsNotAdmitted::test_the_seal_refuses_an_unhashed_script',
  # WP-30 S05 (P1.33): Measured Python floor (P1.33, M3/M10)
  # WP-30 S06 (P1.26a): One note channel (P1.26 part a)
+ '_dash_emit_note': 'test/test_note_channel.py::TestTheNoteLine::test_a_note_is_one_errprintln_in_text_colour',
+ '_dash_note_scope': 'test/test_note_channel.py::TestTheNoteScope::test_an_ignore_filter_hides_no_note',
+ '_dash_note_scope.<locals>._show': 'test/test_note_channel.py::TestTheNoteScope::test_other_warnings_keep_the_sessions_filters',
+ '_dash_smcl_escape': 'test/test_note_channel.py::TestTheSmclEscape::test_braces_become_smcl_codes',
  # WP-30 S07 (P1.25a): Ship the six StataCorp schemes (P1.25 part a)
  # WP-30 S08 (P1.12a): Stata size units for markers, text and gaps (P1.12 part a, M1)
  # WP-30 S09 (P1.11a): TeX delimiters inert on every canvas sink (P1.11 part a)

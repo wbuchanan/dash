@@ -596,7 +596,23 @@ named in a note and drawn around -- because it is what would be drawn.
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
 {p 12 12 2}{cmd:. dash scatter mpg weight, play(x) text(20 3000 "hi")}{p_end}
-{p 12 12 2}{cmd:dash: ignoring unsupported option(s): play() text()}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): play() text())}{p_end}
+
+{phang2}
+    {ul:How a note is printed.}  Every note {cmd:dash} prints -- this one,
+    and those about a value it draws differently or a layer that drew
+    nothing -- is printed as {cmd:twoway} prints its notes: one line,
+    {cmd:(note: dash:} ...{cmd:)}, in text colour, shown under
+    {cmd:quietly} and {cmd:set output error} and hidden by {cmd:capture}.
+    A note is printed once per command however often it arises, never
+    names a file or a line of {cmd:dash}'s own code, and is neither hidden
+    nor made an error by a Python {cmd:warnings} filter or by
+    {cmd:PYTHONWARNINGS}; other packages' Python warnings still follow
+    those filters.  The two notes {cmd:dash} gives in {cmd:twoway}'s own
+    words, {cmd:(note: regress could not fit model)} (or {cmd:fracpoly}'s)
+    and {cmd:(note: scheme} {it:name} {cmd:not found, using s2color)},
+    are printed as {cmd:twoway} prints them, as plain text that
+    {cmd:quietly} hides.
 
 {phang2}
     The note names option {it:names}, never the values supplied.  Because
@@ -617,8 +633,8 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:xtitle()}/{cmd:ytitle()}, {cmd:title()}, {cmd:subtitle()},
     {cmd:note()}, {cmd:caption()}, {cmd:xline()}/{cmd:yline()} or
     {cmd:filter()} that {cmd:dash} does not implement is named in a
-    warning, as {cmd:by()}'s are:
-    {cmd:dash: legend() sub-option(s) not implemented and ignored: span stack}.
+    note, as {cmd:by()}'s are:
+    {cmd:(note: dash: legend() sub-option(s) not implemented and ignored: span stack)}.
     A textbox sub-option -- of {cmd:title()}, {cmd:subtitle()},
     {cmd:note()}, {cmd:caption()}, {cmd:xtitle()}/{cmd:ytitle()} and
     {cmd:xtitle2()}/{cmd:ytitle2()} -- is read under any of Stata's
@@ -1868,13 +1884,13 @@ write to it and it has no sticky bit, as a {cmd:STATATMP} folder made under
 umask 002 has, or it belongs to another account), if a {cmd:dash-}{it:uid}
 there is a link, not a folder or another account's, or if your disk will not
 keep a folder private, dash goes on: it writes each file readable only by
-you wherever the disk allows and prints one note per command, beginning
-{cmd:dash: note:}, that names the location and the remedy -- {cmd:chmod go-w}
+you wherever the disk allows and prints one note per command,
+{cmd:(note: dash:} ...{cmd:)}, that names the location and the remedy -- {cmd:chmod go-w}
 on the folder, or starting Stata with {cmd:STATATMP} set to a folder only you
 can write.  A {cmd:dash-}{it:uid} dash cannot use is left alone: dash keeps
 its copies in a folder {cmd:dash-}{it:uid}{cmd:-}{it:xxxxxxxx} beside it that
-only you can open, and the note names both.  Under {cmd:quietly} the note is
-not shown, like dash's other notes.  Only {cmd:c(tmpdir)} itself is checked,
+only you can open, and the note names both.  Like {cmd:dash}'s other notes,
+it is shown under {cmd:quietly} and hidden by {cmd:capture}.  Only {cmd:c(tmpdir)} itself is checked,
 not the folders above it.  In a {cmd:c(tmpdir)} others can write without a
 sticky bit, another account could move dash's folders, though not read the
 files in them.  It cannot change what {cmd:dash serve} runs: dash does not
@@ -3641,7 +3657,7 @@ supplied is named in that command's note, so nothing is dropped in silence:
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
 {p 12 12 2}{cmd:. dash scatter mpg weight, pstyle(p3) t1title("hi")}{p_end}
-{p 12 12 2}{cmd:dash: ignoring unsupported option(s): pstyle() t1title()}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): pstyle() t1title())}{p_end}
 
 {pstd}
 The note is built from the declarations in {cmd:dash.ado}, and this list is

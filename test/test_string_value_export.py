@@ -177,6 +177,11 @@ class FakeSfi:
                 fake.shown.append(text)
 
             @staticmethod
+            def errprintln(text):
+                # A note's channel since WP-30 P1.26a, as twoway's notes.
+                fake.shown.append(text)
+
+            @staticmethod
             def stata(cmd):
                 fake.commands.append(cmd)
                 m = re.fullmatch(r"quietly generate strL (\w+) = ustrfix\((\w+)\)", cmd)
@@ -365,7 +370,8 @@ class TestTheWriter:
             made[0])
         assert len(fake.shown) == 1
         assert fake.shown[0].startswith(
-            "{txt}dash: string variable s holds text that is not valid UTF-8")
+            "{txt}(note:  dash: string variable s holds text that is not "
+            "valid UTF-8")
         assert "unicode translate" in fake.shown[0]
 
     def test_a_binary_strl_is_refused_naming_it(self, tmp_path):
@@ -385,7 +391,8 @@ class TestTheWriter:
         assert _load(path)["variableLabels"]["s"] == "Mile\ufffdage"
         assert fake.globals == {}                   # the global is dropped
         assert fake.shown[0].startswith(
-            "{txt}dash: the variable label of s holds text that is not valid")
+            "{txt}(note:  dash: the variable label of s holds text that is "
+            "not valid")
         fake = _fake_auto()
         fake.label_sets["gl"][1] = "For\ufffd"
         fake.bad_labelset = {"gl"}
@@ -394,7 +401,8 @@ class TestTheWriter:
         assert _load(path)["valueLabels"]["g"]["1"] == "For\ufffd"
         assert set(fake.label_sets) == {"gl"}       # the copy is dropped
         assert fake.shown[0].startswith(
-            "{txt}dash: value label gl, on g, holds text that is not valid")
+            "{txt}(note:  dash: value label gl, on g, holds text that is not "
+            "valid")
 
     def test_a_name_that_is_not_a_stata_name_is_refused(self, tmp_path):
         """Names reach Stata commands (the ustrfix() reads): one holding

@@ -65,6 +65,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import contextlib
 import datetime as _dt
 import errno
 import hashlib
@@ -1673,11 +1674,13 @@ def _dash_write_stata_data(path, varnames, sfi=None):
             return f"dash: {v!r} is not a variable name the export can read."
 
     def _note(what):
-        # What is named is a Stata name, never the text itself.
-        tk.displayln(f"{{txt}}dash: {what} holds text that is not valid "
-                     f"UTF-8; each invalid byte is shown as the replacement "
-                     f"character, as ustrfix() shows it.  Translate the data "
-                     f"first to show it as written: help unicode translate.")
+        # What is named is a Stata name, never the text itself.  Printed as
+        # twoway prints its notes (WP-30 P1.26a).
+        _dash_emit_note(f"dash: {what} holds text that is not valid "
+                        f"UTF-8; each invalid byte is shown as the replacement "
+                        f"character, as ustrfix() shows it.  Translate the data "
+                        f"first to show it as written: help unicode translate.",
+                        sfi=sfi)
 
     def _column(v, **kw):
         # One variable comes back as a flat list, one value per observation.
@@ -15641,6 +15644,130 @@ def _resolve_seed(options: dict, default: int = 42) -> int:
     """
     seed = _jitter_seed(options)
     return default if seed is None else seed
+
+
+def _dash_smcl_escape(text, braces=True):
+    """*text* as Stata must show it: never read as SMCL, never a control.
+
+    The Python twin of Mata ``_dash_smcl_text`` (dash_parse.mata): NUL is
+    dropped; C0 controls, DEL and the C1 range (U+0080-U+009F, which Mata
+    sees as the bytes 194 128-159) become ``?``; and, with *braces*, ``{``
+    and ``}`` become ``{c -(}`` and ``{c )-}``.  For UTF-8 text the two give
+    equal strings (test_render_log_clean.cscript NC-06).
+
+    Why (WP-30 P1.26a, rule 1): a note echoes the user's text -- an option
+    value, a label, a graph name -- and ``SFIToolkit.errprintln`` and
+    ``displayln`` read SMCL, so an unescaped ``{stata ...}``, ``{browse
+    ...}`` or ``{view ...}`` would draw a link that runs a command when
+    clicked, and ESC/CSI bytes could drive console Stata's terminal.
+    *braces* false is for stderr, which Stata logs literally.
+
+    It reads no module-level name, so the served app can carry a copy.
+    """
+    s = str(text).replace("\x00", "")
+    s = "".join("?" if (1 <= ord(c) <= 31 or 127 <= ord(c) <= 159) else c
+                for c in s)
+    if braces:
+        s = s.replace("{", "\x00").replace("}", "{c )-}")
+        s = s.replace("\x00", "{c -(}")
+    return s
+
+
+def _dash_emit_note(text, sfi=None):
+    """Print one note as twoway prints its notes; return the line, no SMCL.
+
+    Measured (StataNow 19.5, section 06 "Stata truth"): twoway prints a
+    named-style note as ``{txt}(note:  ...)`` on Stata's error stream, which
+    ``quietly`` and ``set output error`` show and ``capture`` hides; its
+    estimator note ``(note:  regress could not fit model)`` and its scheme
+    note ``(note: scheme X not found, using s2color)`` are plain text, which
+    ``quietly`` hides.  So a note is one line ``(note:  dash: ...)`` through
+    ``SFIToolkit.errprintln("{txt}...")``, and dash's copies of those two
+    twoway notes print as they are through ``displayln("{txt}...")``.
+
+    A leading ``dash: note: `` becomes ``dash: `` (the R-8 notes already say
+    "note"); the text is cut to 4,000 characters and SMCL-escaped
+    (:func:`_dash_smcl_escape`).  Outside Stata, off the main thread, or if
+    Stata's call fails, the line goes to stderr as plain text.  It never
+    raises, and it never names a file or line of dash's own code.
+
+    Self-contained -- it imports what it needs and reads no module-level
+    name but ``_dash_smcl_escape`` -- because the served app carries a copy
+    of it (WP-30 S23).  *sfi* is a stand-in for Stata's module (tests).
+    """
+    import re
+    import sys
+    import threading
+    t = str(text)
+    if t.startswith("dash: note: "):
+        t = "dash: " + t[len("dash: note: "):]
+    if len(t) > 4000:
+        t = t[:3997] + "..."
+    plain = re.match(
+        r"dash: .*: \(note:  (?:regress|fracpoly) could not fit model\)$"
+        r"|dash scheme: \(note: scheme \S+ not found, using s2color\)",
+        t) is not None
+    line = t if plain else "(note:  " + t + ")"
+    mod = sfi
+    if mod is None:
+        try:
+            import sfi as mod  # Stata's own module, present in Stata only
+        except ImportError:
+            mod = None
+    fn = getattr(getattr(mod, "SFIToolkit", None),
+                 "displayln" if plain else "errprintln", None)
+    if fn is not None and threading.current_thread() is threading.main_thread():
+        try:
+            fn("{txt}" + _dash_smcl_escape(line))
+            return line
+        except Exception:
+            pass
+    try:
+        print(_dash_smcl_escape(line, braces=False), file=sys.stderr,
+              flush=True)
+    except (OSError, ValueError):
+        pass
+    return line
+
+
+@contextlib.contextmanager
+def _dash_note_scope(sfi=None):
+    """Hold the session's warnings filters off dash's notes; yield the set
+    of note texts printed.
+
+    dash.ado runs the renderer in the user's own Python, so a session filter
+    of "ignore" silenced every note and one of "error" (or
+    ``PYTHONWARNINGS=error``) made a note r(7102) with a traceback
+    (measured at c96facd, WP-30 P1.26a).  Inside the scope a ``UserWarning``
+    whose text starts ``dash: `` (or ``dash_render``, ``dash scheme``,
+    ``dash kpi``, ``dash build``, ``dash serve``) is printed once through
+    :func:`_dash_emit_note`, whatever the filters say; every other warning
+    goes to the session's own ``showwarning`` under the session's filters.
+    ``catch_warnings`` restores ``warnings.filters`` and
+    ``warnings.showwarning`` on any exit, KeyboardInterrupt included.
+
+    The ``"always"`` filter bypasses Python's once-per-location registry,
+    so the text set de-duplicates instead.  Nothing newer than Python 3.10.
+    """
+    import re
+    pattern = r"dash(?:_render| scheme| kpi| build| serve)?: "
+    said = set()
+    with warnings.catch_warnings():
+        orig = warnings.showwarning
+
+        def _show(message, category, filename, lineno, file=None, line=None):
+            text = str(message)
+            if issubclass(category, UserWarning) and re.match(pattern, text):
+                if text not in said:
+                    said.add(text)
+                    _dash_emit_note(text, sfi=sfi)
+                return
+            orig(message, category, filename, lineno, file, line)
+
+        warnings.showwarning = _show
+        warnings.filterwarnings("always", message=pattern,
+                                category=UserWarning)
+        yield said
 
 
 #: The notes already raised this render, keyed ``(option, value, what)``.
@@ -37223,9 +37350,8 @@ def main(
             _dash_erase_quietly(data_json_path)
         if not _dash_mode_private(written.st) and \
                 not _dash_chosen_path(output_path):
-            print(_DASH_NOTE_FILE % (output_path,
-                                     stat.S_IMODE(written.st.st_mode)),
-                  flush=True)
+            _dash_emit_note(_DASH_NOTE_FILE % (
+                output_path, stat.S_IMODE(written.st.st_mode)))
         return written
     renderer = DashRenderer(master_spec_path, data_json_path)
     html_content = renderer.render()
@@ -37945,10 +38071,17 @@ if __name__ == "__main__":
     import sys as _sys
     _report = globals().get("_dash_launch_report")
     _launching = args.mode == "server" and args.launch
+    #
+    # WP-30 P1.26a: the call runs inside _dash_note_scope, so each dash
+    # note prints once as twoway prints its notes, whatever the session's
+    # warnings filters or PYTHONWARNINGS say; _dash_said is the set of note
+    # texts printed.  main() itself is not wrapped: a caller of main() or
+    # render() still sees dash's notes as warnings.
     try:
-        _written = main(args.spec, args.data, args.output, args.mode,
-                        args.port, launch=_launching,
-                        private_output=args.private_output)
+        with _dash_note_scope() as _dash_said:
+            _written = main(args.spec, args.data, args.output, args.mode,
+                            args.port, launch=_launching,
+                            private_output=args.private_output)
     except KeyboardInterrupt:
         if not _launching:
             raise

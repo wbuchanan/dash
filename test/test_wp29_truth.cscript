@@ -3072,7 +3072,8 @@ def _pf_log_lines(p):
 
 
 def _pf_notes(p):
-    return [x for x in _pf_log_lines(p) if x.startswith("dash: note:")]
+    # The R-8 note prints as twoway prints its notes (WP-30 P1.26a).
+    return [x for x in _pf_log_lines(p) if x.startswith("(note:  dash: ")]
 
 
 def _pf_roots():

@@ -740,7 +740,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.24 -->
 
-<!-- WP-30 P1.26a -->
+- dash prints its notes as twoway prints its notes. Each is one line, (note:  dash: ...), in text colour; it shows under quietly and set output error, and capture hides it. It never names dash's files or Python source lines. Before, the renderer's notes were red Python warnings (".../dash_render.py:8679: UserWarning: dash: mcolor(notacolor) is not a recognised colour; ..." and a source line) that quietly did not hide, and dash.ado's own notes ("dash: ignoring unsupported option(s): play()", "dash: note: ...") were hidden by quietly. dash's copies of twoway's own "(note:  regress could not fit model)" and "(note: scheme X not found, using s2color)" print as plain text that quietly hides, as twoway's do. A do-file that searches a log for "UserWarning", or for a line beginning "dash: ignoring unsupported option(s)" or "dash: note:", now finds "(note:  dash: ...)". (WP-30, P1.26a)
 
 <!-- WP-30 P1.26b -->
 
@@ -830,7 +830,7 @@ requirement changes sit in their own lists.
 
 <!-- WP-30 P1.24 -->
 
-<!-- WP-30 P1.26a -->
+- A Python warnings filter set in the session no longer hides or escalates dash's notes. After python: warnings.filterwarnings("ignore") the note still prints. After python: warnings.simplefilter("error"), or with PYTHONWARNINGS=error, the dashboard is drawn (rc 0), where it failed with r(7102) and a 60-line traceback. Other packages' warnings still follow the session's filters, and a note raised twice in one command prints once. (WP-30, P1.26a)
 
 <!-- WP-30 P1.26b -->
 

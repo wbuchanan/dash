@@ -449,6 +449,87 @@ if inlist("`only'", "", "S05") {
 local only : env WP30_ONLY
 if inlist("`only'", "", "S06") {
     display as text "S06 start " c(current_date) " " c(current_time)
+
+    // twoway's measured channels (section 06, Stata truth p1-p4): a
+    // named-style note shows under quietly and capture hides it; the
+    // estimator note "(note:  regress could not fit model)" is plain
+    // text, which quietly hides.  dash's notes take the same channels.
+    // Each command runs under a named text log of its own, counted with
+    // cert_log_has (wrapped lines re-joined), r(count) copied at once.
+    sysuse auto, clear
+    capture dash clear
+    local s06_page "`w30_work'/wp30_s06.html"
+    capture log close s06nc
+
+    // ------------------------------------------------------------
+    // NC-01: the named-style class.  twoway's note and dash's note both
+    // show under quietly, and capture hides both.
+    // ------------------------------------------------------------
+    log using "`w30_work'/wp30_s06_1.log", text replace name(s06nc)
+    quietly twoway scatter mpg weight, mcolor(notacolor) nodraw
+    log close s06nc
+    cert_log_has "`w30_work'/wp30_s06_1.log", needle("(note:")
+    local s06_n1 = r(count)
+    log using "`w30_work'/wp30_s06_2.log", text replace name(s06nc)
+    capture twoway scatter mpg weight, mcolor(notacolor) nodraw
+    log close s06nc
+    cert_log_has "`w30_work'/wp30_s06_2.log", needle("(note:")
+    local s06_n2 = r(count)
+    log using "`w30_work'/wp30_s06_3.log", text replace name(s06nc)
+    quietly dash scatter mpg weight, mcolor(notacolor) saving("`s06_page'", replace)
+    log close s06nc
+    cert_log_has "`w30_work'/wp30_s06_3.log", needle("(note:  dash: ")
+    local s06_n3 = r(count)
+    log using "`w30_work'/wp30_s06_4.log", text replace name(s06nc)
+    capture dash scatter mpg weight, mcolor(notacolor) saving("`s06_page'", replace)
+    local s06_rc4 = _rc
+    log close s06nc
+    cert_log_has "`w30_work'/wp30_s06_4.log", needle("(note:")
+    local s06_n4 = r(count)
+    cert_log_has "`w30_work'/wp30_s06_4.log", needle("Warning:")
+    local s06_w4 = r(count)
+    _w30_expect NC-01 "(`s06_n1' >= 1)" "quietly twoway logged `s06_n1' (note: lines"
+    _w30_expect NC-01 "(`s06_n2' == 0)" "capture twoway logged `s06_n2' (note: lines"
+    _w30_expect NC-01 "(`s06_n3' >= 1)" "quietly dash logged `s06_n3' (note:  dash: lines"
+    _w30_expect NC-01 "(`s06_rc4' == 0 & `s06_n4' == 0 & `s06_w4' == 0)" "capture dash (rc `s06_rc4') logged `s06_n4' (note: and `s06_w4' Warning: lines"
+    _w30_done NC-01 "a named-style note shows under quietly and capture hides it, for twoway and for dash"
+
+    // ------------------------------------------------------------
+    // NC-02: the estimator class.  twoway prints its could-not-fit note
+    // once, as plain text that quietly hides; dash's copy does the same.
+    // ------------------------------------------------------------
+    log using "`w30_work'/wp30_s06_5.log", text replace name(s06nc)
+    twoway (scatter mpg weight) (lfit mpg weight if price > 20000), nodraw
+    log close s06nc
+    cert_log_has "`w30_work'/wp30_s06_5.log", needle("could not fit model")
+    local s06_n5 = r(count)
+    log using "`w30_work'/wp30_s06_6.log", text replace name(s06nc)
+    quietly twoway (scatter mpg weight) (lfit mpg weight if price > 20000), nodraw
+    log close s06nc
+    cert_log_has "`w30_work'/wp30_s06_6.log", needle("could not fit model")
+    local s06_n6 = r(count)
+    log using "`w30_work'/wp30_s06_7.log", text replace name(s06nc)
+    capture noisily dash (scatter mpg weight) (lfit mpg weight if price > 20000), saving("`s06_page'", replace)
+    local s06_rc7 = _rc
+    log close s06nc
+    cert_log_has "`w30_work'/wp30_s06_7.log", needle("could not fit model")
+    local s06_n7 = r(count)
+    log using "`w30_work'/wp30_s06_8.log", text replace name(s06nc)
+    quietly dash (scatter mpg weight) (lfit mpg weight if price > 20000), saving("`s06_page'", replace)
+    log close s06nc
+    cert_log_has "`w30_work'/wp30_s06_8.log", needle("could not fit model")
+    local s06_n8 = r(count)
+    _w30_expect NC-02 "(`s06_n5' == 1)" "twoway logged `s06_n5' could-not-fit lines"
+    _w30_expect NC-02 "(`s06_n6' == 0)" "quietly twoway logged `s06_n6' could-not-fit lines"
+    _w30_expect NC-02 "(`s06_rc7' == 0 & `s06_n7' == 1)" "dash (rc `s06_rc7') logged `s06_n7' could-not-fit lines"
+    _w30_expect NC-02 "(`s06_n8' == 0)" "quietly dash logged `s06_n8' could-not-fit lines"
+    _w30_done NC-02 "the could-not-fit note prints once as plain text that quietly hides, for twoway and for dash"
+
+    forvalues k = 1/8 {
+        capture erase "`w30_work'/wp30_s06_`k'.log"
+    }
+    capture erase "`s06_page'"
+    capture dash clear
     display as text "S06 end " c(current_date) " " c(current_time)
 }
 * ==== end S06 ====
