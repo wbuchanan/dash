@@ -4385,7 +4385,8 @@ program define _dash_process_segment, rclass
         // barwidth() on rcap and rcapsym: refused naming the spelling as typed,
         // as twoway refuses it -- "option barw() not allowed", r(198) (measured
         // 03oct2026; WP-30 P1.17a).  bw() is left to _dash_fold_bw.
-        if inlist("`ptype'", "rcap", "rcapsym") {
+        local _cap_types rcap rcapsym
+        if `: list ptype in _cap_types' {
             mata: st_local("_bwt_typed", _dash_barwidth_typed(st_local("opts_raw")))
             if `: length local _bwt_typed' {
                 mata: _dash_say("err", "option ", st_local("_bwt_typed"), "() not allowed")
