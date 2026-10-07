@@ -26,7 +26,7 @@ help:
 	@echo "make test      pytest under Stata's Python, strict"
 	@echo "make test-dev  pytest under the development interpreter ($(PYTHON)), strict"
 	@echo "make test-release  the release tier, the tests marked release, which make test and make test-dev leave out"
-	@echo "make test-all  the whole default suite, pytest and the certification scripts side by side on at most 8 workers (PYTEST_WORKERS, default 6, plus DASH_CERT_SESSIONS, default 2)"
+	@echo "make test-all  the whole default suite, pytest then the certification scripts, never more than 8 workers at once (PYTEST_WORKERS, default 8; DASH_CERT_SESSIONS, default 3)"
 	@echo "make test-floor  one floor-matrix leg, run by hand (not part of make gate): FLOOR_VENV=<dir> FLOOR_BASELINE=<name>"
 	@echo "make cert      the certification suite, through the console binary, as DASH_CERT_SESSIONS (default 3, 1 to 4) sessions side by side; DASH_CERT_REMEASURE=1 asks twoway again (release)"
 	@echo "make gate      net install, then every example and scheme from the install"
@@ -58,8 +58,8 @@ test-release:
 	@DASH_STRICT=1 DASH_BASELINE=dev DASH_TEST_TIER=release $(PYTHON) -m pytest test/ -m release $(PYTEST_ARGS)
 
 # The whole default suite in one command: pytest under the development
-# interpreter and the certification scripts at the same time, on at most
-# eight workers in all (scripts/run_all_tests.sh refuses more).
+# interpreter, then the certification scripts, never on more than
+# eight workers at once (scripts/run_all_tests.sh refuses more).
 test-all:
 	@PYTHON='$(PYTHON)' STATA_BIN='$(STATA_BIN)' sh scripts/run_all_tests.sh
 

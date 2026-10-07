@@ -17,21 +17,21 @@ def _dry(**env):
 
 
 class TestTheWorkerBudget:
-    def test_the_default_split_is_six_pytest_workers_and_two_sessions(self):
+    def test_the_default_is_eight_pytest_workers_then_three_sessions(self):
         r = _dry()
         assert r.returncode == 0, r.stdout + r.stderr
-        assert "-n 6" in r.stdout
-        assert "DASH_CERT_SESSIONS=2" in r.stdout
+        assert "-n 8" in r.stdout
+        assert "DASH_CERT_SESSIONS=3" in r.stdout
 
-    def test_a_split_over_eight_workers_is_refused_and_runs_nothing(self):
-        r = _dry(PYTEST_WORKERS="7", DASH_CERT_SESSIONS="2")
+    def test_more_than_eight_pytest_workers_is_refused_and_runs_nothing(self):
+        r = _dry(PYTEST_WORKERS="9")
         assert r.returncode == 2
         assert "exceed 8 workers" in r.stdout
         assert "pytest:" not in r.stdout
 
     def test_eight_exactly_is_allowed(self):
-        r = _dry(PYTEST_WORKERS="5", DASH_CERT_SESSIONS="3")
-        assert r.returncode == 0 and "-n 5" in r.stdout
+        r = _dry(PYTEST_WORKERS="8", DASH_CERT_SESSIONS="4")
+        assert r.returncode == 0 and "-n 8" in r.stdout
 
     def test_more_than_four_sessions_is_refused(self):
         r = _dry(PYTEST_WORKERS="1", DASH_CERT_SESSIONS="5")
@@ -50,8 +50,10 @@ class TestTheWiring:
         assert "test-all:\n\t@PYTHON='$(PYTHON)' STATA_BIN='$(STATA_BIN)' " \
                "sh scripts/run_all_tests.sh" in mk
 
-    def test_both_halves_start_before_either_is_awaited(self):
+    def test_the_halves_run_one_after_the_other(self):
+        # Side by side, pytest's serve tests and the fixed-port
+        # certification scripts fought over ports (07oct2026).
         with open(SCRIPT, encoding="utf-8") as fh:
             sh = fh.read()
-        assert sh.index(") &\npp=$!") < sh.index(") &\ncp=$!") \
-            < sh.index('wait "$pp"')
+        assert " &\n" not in sh and "wait " not in sh
+        assert sh.index("-m pytest test/") < sh.index("run_cert_suite.sh >")
