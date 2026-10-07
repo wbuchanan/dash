@@ -139,11 +139,13 @@ void _dvx_extra(string scalar control_fn, string scalar test_fn,
 
 // Normalise Bokeh's per-run identifiers so two runs of the same command can
 // be compared.  Bokeh mints fresh "pNNNN" model ids and a fresh document
-// UUID on every render; nothing else about the page is random.
+// UUID on every render, and the page's CSP lists a sha256 of each inline
+// script, which carries those ids (WP-30 P1.29); nothing else is random.
 string scalar _dvx_norm(string scalar s0)
 {
     string scalar s
-    s = ustrregexra(s0, "\bp[0-9][0-9][0-9][0-9]?[0-9]?[0-9]?[0-9]?\b", "ID")
+    s = ustrregexra(s0, "'sha256-[A-Za-z0-9+/]{43}='", "HASH")
+    s = ustrregexra(s, "\bp[0-9][0-9][0-9][0-9]?[0-9]?[0-9]?[0-9]?\b", "ID")
     s = ustrregexra(s,  "\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b", "UUID")
     return(s)
 }
