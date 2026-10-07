@@ -1,0 +1,57 @@
+"""scripts/run_all_tests.sh: the whole default suite on at most 8 workers."""
+
+import os
+import subprocess
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SCRIPT = os.path.join(ROOT, "scripts", "run_all_tests.sh")
+
+
+def _dry(**env):
+    e = dict(os.environ, DRY_RUN="1")
+    for k in ("PYTEST_WORKERS", "DASH_CERT_SESSIONS", "DASH_MAX_WORKERS"):
+        e.pop(k, None)
+    e.update(env)
+    return subprocess.run(["sh", SCRIPT], env=e, capture_output=True,
+                          text=True, timeout=30)
+
+
+class TestTheWorkerBudget:
+    def test_the_default_split_is_six_pytest_workers_and_two_sessions(self):
+        r = _dry()
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert "-n 6" in r.stdout
+        assert "DASH_CERT_SESSIONS=2" in r.stdout
+
+    def test_a_split_over_eight_workers_is_refused_and_runs_nothing(self):
+        r = _dry(PYTEST_WORKERS="7", DASH_CERT_SESSIONS="2")
+        assert r.returncode == 2
+        assert "exceed 8 workers" in r.stdout
+        assert "pytest:" not in r.stdout
+
+    def test_eight_exactly_is_allowed(self):
+        r = _dry(PYTEST_WORKERS="5", DASH_CERT_SESSIONS="3")
+        assert r.returncode == 0 and "-n 5" in r.stdout
+
+    def test_more_than_four_sessions_is_refused(self):
+        r = _dry(PYTEST_WORKERS="1", DASH_CERT_SESSIONS="5")
+        assert r.returncode == 2
+
+    def test_a_count_that_is_not_a_number_is_refused(self):
+        r = _dry(PYTEST_WORKERS="6; rm -rf /")
+        assert r.returncode == 2
+        assert "whole numbers" in r.stdout
+
+
+class TestTheWiring:
+    def test_make_test_all_runs_the_script(self):
+        with open(os.path.join(ROOT, "Makefile"), encoding="utf-8") as fh:
+            mk = fh.read()
+        assert "test-all:\n\t@PYTHON='$(PYTHON)' STATA_BIN='$(STATA_BIN)' " \
+               "sh scripts/run_all_tests.sh" in mk
+
+    def test_both_halves_start_before_either_is_awaited(self):
+        with open(SCRIPT, encoding="utf-8") as fh:
+            sh = fh.read()
+        assert sh.index(") &\npp=$!") < sh.index(") &\ncp=$!") \
+            < sh.index('wait "$pp"')
