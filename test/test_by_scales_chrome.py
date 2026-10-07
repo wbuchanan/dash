@@ -3,9 +3,11 @@ test_by_scales_chrome.py -- a by() graph's shared scale, as a browser draws
 it, in real time (WP-29 P0.2, TR-10.21).
 
 Whether the panels of a by() graph keep one scale after a filter move is
-decided by BokehJS (a DataRange1d shared by several plots spans the union
-of their bounds), so it is read from headless Chrome over the DevTools
-protocol (``range_probe.RangeProbe``), never by forcing an update.  Without
+decided in the browser -- since WP-30 P1.3a by the page's own re-finish
+(``_DASH_AXIS_FINISH_JS``), which writes the one Range1d the panels share
+over every panel's hull (it was a DataRange1d BokehJS spanned) -- so it is
+read from headless Chrome over the DevTools protocol
+(``range_probe.RangeProbe``), never by forcing an update.  Without
 Chrome these tests skip, as test_responsive_layout.py's do.
 """
 import os

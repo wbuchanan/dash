@@ -410,33 +410,42 @@ class TestTheSecondAxisFitsTheLayer:
     """dash.sthlp, Secondary axes: "yaxis(2) on any plot layer ... a
     right-hand y axis scaled to that layer's own data"."""
 
+    # WP-30 P1.3a: "no more than 1.25 x the drawn extent" was wrong
+    # because the second axis is now ticked as twoway ticks it (natscale)
+    # and spans the hull of its layer's data and those ticks, padded by
+    # twoway's margin; a default bar/area/spike/dropline base is no part
+    # of twoway's scale (P1.3.7).
+    @staticmethod
+    def _check(fig, name, ptype, mode):
+        letter = name[0]
+        rng = getattr(fig, "extra_%s_ranges" % letter)[name]
+        ext = dr._dash_layer_extent(fig.renderers, letter + "_range_name",
+                                    name)
+        assert ext is not None, f"{ptype} drew nothing on {name} ({mode})"
+        ax = [a for a in getattr(fig, "right" if letter == "y" else "above")
+              + getattr(fig, "left" if letter == "y" else "below")
+              if getattr(a, letter + "_range_name", "") == name][0]
+        ticks = list(getattr(ax.ticker, "ticks", None) or [])
+        lo, hi = min([ext[0]] + ticks), max([ext[1]] + ticks)
+        got = dr._dash_range_hull(rng)
+        # A bar is one x unit wide: its outer half-width is in the hull.
+        half = 0.5 if letter == "x" and ptype in ("bar", "rbar") else 0.0
+        lo, hi = lo - half, hi + half
+        assert got == pytest.approx((lo, hi), rel=1e-9, abs=1e-9), (
+            f"{ptype} on {name}: hull {got} of data {ext} and ticks {ticks} "
+            f"({mode})")
+
     @pytest.mark.parametrize("mode", _MODES)
     @pytest.mark.parametrize("ptype", _TYPES)
     def test_the_right_hand_axis_spans_the_layer(self, mode, ptype):
         fig, _ = _render(mode, [plot_for("line"), _y2_layer(ptype, "yaxis")])
-        rng = fig.extra_y_ranges["y2"]
-        lo, hi = _drawn_extent(fig, "y2")
-        assert lo is not None, f"{ptype} drew nothing on y2 ({mode})"
-        assert rng.start <= lo and rng.end >= hi, (
-            f"{ptype} on yaxis(2) draws {lo:g}..{hi:g} on a right-hand axis "
-            f"of {rng.start:g}..{rng.end:g} ({mode})")
-        assert (rng.end - rng.start) <= 1.25 * max(hi - lo, 1e-9) + 1e-9, (
-            f"the right-hand axis {rng.start:g}..{rng.end:g} is far wider "
-            f"than the layer's {lo:g}..{hi:g} ({mode})")
+        self._check(fig, "y2", ptype, mode)
 
     @pytest.mark.parametrize("mode", _MODES)
     @pytest.mark.parametrize("ptype", _TYPES)
     def test_the_top_axis_spans_the_layer(self, mode, ptype):
         fig, _ = _render(mode, [plot_for("line"), _y2_layer(ptype, "xaxis")])
-        rng = fig.extra_x_ranges["x2"]
-        lo, hi = _drawn_extent(fig, "x2")
-        assert lo is not None, f"{ptype} drew nothing on x2 ({mode})"
-        assert rng.start <= lo and rng.end >= hi, (
-            f"{ptype} on xaxis(2) draws {lo:g}..{hi:g} on a top axis of "
-            f"{rng.start:g}..{rng.end:g} ({mode})")
-        assert (rng.end - rng.start) <= 1.25 * max(hi - lo, 1e-9) + 1e-9, (
-            f"the top axis {rng.start:g}..{rng.end:g} is far wider than the "
-            f"layer's {lo:g}..{hi:g} ({mode})")
+        self._check(fig, "x2", ptype, mode)
 
 
 # ===========================================================================
@@ -970,14 +979,18 @@ class TestTheSecondAxisIsItsOwn:
         right = _axis2(fig, "y2")
         assert [float(v) for v in left.ticker.ticks] == [15.0, 20.0, 25.0,
                                                          30.0]
-        assert not isinstance(right.ticker, FixedTicker), (
+        # WP-30 P1.3a: "not a FixedTicker" was wrong because the right-hand
+        # axis now carries its own default (natscale) FixedTicker; ylabel()
+        # must still not reach it.
+        assert dr._DASH_DEFAULT_TAG in (right.ticker.tags or []), (
             f"ylabel() set the right-hand axis's ticks too ({mode})")
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_xlabel_labels_the_bottom_axis_only(self, mode):
         fig, _ = _render(mode, _X2, {"xlabel": "2000 3000"})
         top = _axis2(fig, "x2")
-        assert not isinstance(top.ticker, FixedTicker), (
+        # WP-30 P1.3a: the top axis carries its own default ticker.
+        assert dr._DASH_DEFAULT_TAG in (top.ticker.tags or []), (
             f"xlabel() set the top axis's ticks too ({mode})")
 
     @pytest.mark.parametrize("mode", _MODES)
@@ -1024,19 +1037,28 @@ class TestTheSecondAxisIsItsOwn:
         fig, _ = _render(mode, plots)
         rng = fig.y_range if which == "y" else fig.x_range
         attr = "y_range_name" if which == "y" else "x_range_name"
-        rends = rng.renderers
-        assert rends != "auto" and rends, (
-            f"the {which} range reads every renderer ({mode})")
-        assert all(getattr(r, attr) == "default" for r in rends), (
-            [getattr(r, attr) for r in rends])
+        # WP-30 P1.3a: a renderer list was wrong because the axis is now a
+        # Range1d over the hull of the layers on its own range (and ticks).
+        own = dr._dash_layer_extent(fig.renderers, attr, "default")
+        lo, hi = dr._dash_range_hull(rng)
+        ax = _primary(fig, which)
+        t = list(getattr(ax.ticker, "ticks", None) or [])
+        assert (lo, hi) == pytest.approx((min([own[0]] + t),
+                                          max([own[1]] + t))), (
+            f"the {which} range reads the second axis's layer ({mode})")
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_a_figure_without_a_second_axis_keeps_its_range(self, mode):
         """No second axis, no change: a line and its fit still range over
         every renderer (an empty list is Bokeh's "all of them")."""
         plain, _ = _render(mode, [plot_for("line"), plot_for("lfit")])
-        assert list(plain.y_range.renderers) == []
-        assert list(plain.x_range.renderers) == []
+        # WP-30 P1.3a: an empty renderer list was wrong because the axes
+        # are now Range1d over every layer, the fit included.
+        for rng, attr in ((plain.y_range, "y_range_name"),
+                          (plain.x_range, "x_range_name")):
+            ext = dr._dash_layer_extent(plain.renderers, attr, "default")
+            lo, hi = dr._dash_range_hull(rng)
+            assert lo <= ext[0] + 1e-9 and hi >= ext[1] - 1e-9
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_the_legend_stays_on_the_figure(self, mode):
@@ -1286,7 +1308,9 @@ class TestAdversarialLegendAxesRegions:
             t0 = time.perf_counter()
             fig, caught = _render(mode, _Y2, {"ylabel2": rule, "xtick": rule})
             assert time.perf_counter() - t0 < 30, mode
-            assert not isinstance(_axis2(fig, "y2").ticker, FixedTicker)
+            # WP-30 P1.3a: the default ticks are now a tagged FixedTicker.
+            assert dr._DASH_DEFAULT_TAG in (_axis2(fig, "y2").ticker.tags
+                                            or [])
             assert type(_primary(fig, "x").ticker).__name__ != "CustomJSTicker"
             assert sum("more than 2,000 ticks" in w for w in caught) >= 1
             # One note each: ylabel2() and xtick() are read apart and each

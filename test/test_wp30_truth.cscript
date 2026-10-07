@@ -5269,10 +5269,404 @@ if inlist("`only'", "", "S20") {
 }
 * ==== end S20 ====
 
+// WP-30 S21 (P1.3a) helpers.  _s21_tw (Stata) records twoway's ticks and
+// scale for the graph in memory; the python readers compare dash's saved
+// page (S21_PAGE, its document read from the JSON script block, moved
+// under node through test/js_runner.py) and served app (S21_APP) with
+// them.  S21_OK is 1 when every axis agrees; S21_MSG names the first
+// difference.  A backtick here is spelled \x60.
+capture program drop _s21_tw
+program define _s21_tw
+    // _s21_tw: S21_TW_<axis> "majmin majdelta majmax curmin curmax"
+    local p ".Graph"
+    local n "`.Graph.graphs.arrnels'"
+    if "`n'" != "" & "`n'" != "." & "`n'" != "0" local p ".Graph.graphs[1]"
+    foreach d in y x {
+        global S21_TW_`d' "``p'.`d'axis1.major.min' ``p'.`d'axis1.major.delta' ``p'.`d'axis1.major.max' ``p'.plotregion1.`d'scale.curmin' ``p'.plotregion1.`d'scale.curmax'"
+        global S21_TW_`d'2 "``p'.`d'axis2.major.min' ``p'.`d'axis2.major.delta' ``p'.`d'axis2.major.max'"
+    }
+    global S21_GM "`.Graph.plotregion1.gmetric_mult'"
+end
+python:
+import json as _s21_json, re as _s21_re, html as _s21_html, os as _s21_os
+import sys as _s21_sys, warnings as _s21_w
+from sfi import Macro as _s21_M
+_s21_sys.path.insert(0, _s21_os.getcwd())
+_s21_sys.path.insert(0, _s21_os.path.dirname(_s21_os.getcwd()))
+
+
+def _s21_doc_of_page(path):
+    from bokeh.document import Document
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    for blob in _s21_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s21_re.S):
+        try:
+            d = _s21_json.loads(_s21_html.unescape(blob))
+        except ValueError:
+            continue
+        if isinstance(d, dict) and d:
+            with _s21_w.catch_warnings():
+                _s21_w.simplefilter("ignore")
+                return Document.from_json(list(d.values())[0])
+    return None
+
+
+def _s21_doc_of_app(path):
+    from bokeh.document import Document
+    with open(path, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s21_app")
+    exec(compile(src.replace(attach, "pass"), "dash_s21_app.py", "exec"), ns)
+    with _s21_w.catch_warnings():
+        _s21_w.simplefilter("ignore")
+        doc = Document()
+        ns["make_document"](doc)
+    return doc
+
+
+def _s21_figs(doc):
+    from bokeh.models import Plot
+    return sorted([m for m in doc.select(dict(type=Plot))],
+                  key=lambda f: str(getattr(f.title, "text", "") or ""))
+
+
+def _s21_axes(fig):
+    """{axis: (ticks, inner hull)} with the page's margin."""
+    import dash_render as dr
+    from bokeh.models import CustomJSTicker, FixedTicker, LogAxis, Range1d
+    from bokeh.models.axes import ContinuousAxis
+    sch = dr.SchemeParser(_s21_M.getGlobal("S21_SCHEME") or "stcolor")
+    go = {}
+    for k in ("xsize", "ysize"):
+        if _s21_M.getGlobal("S21_" + k.upper()):
+            go[k] = _s21_M.getGlobal("S21_" + k.upper())
+    g = int(_s21_M.getGlobal("S21_G") or "1")
+    m = dr._dash_plot_margin(sch, go, panels=g)
+    out = {}
+    for side, letter in (("left", "y"), ("right", "y"), ("below", "x"), ("above", "x")):
+        for ax in getattr(fig, side):
+            if not isinstance(ax, ContinuousAxis):
+                continue
+            name = getattr(ax, letter + "_range_name", "default")
+            key = letter if name == "default" else name
+            t = ax.ticker
+            if isinstance(t, CustomJSTicker):
+                t = (t.args or {}).get("base")
+            ticks = [float(v) for v in t.ticks] if isinstance(t, FixedTicker) else None
+            rng = (getattr(fig, letter + "_range") if name == "default"
+                   else getattr(fig, "extra_%s_ranges" % letter).get(name))
+            hull = None
+            if isinstance(rng, Range1d):
+                hull = dr._dash_range_hull(rng, "log" if isinstance(ax, LogAxis) else None,
+                                           margin=m[letter])
+            out[key] = (ticks, hull, rng)
+    return out
+
+
+def _s21_steps(lo, d, hi):
+    if d is None or d == 0:
+        return [lo, hi]
+    n = int(round((hi - lo) / d))
+    return [float("%.12g" % (lo + i * d)) for i in range(n + 1)]
+
+
+def _s21_num(s):
+    try:
+        v = float(s)
+    except (TypeError, ValueError):
+        return None
+    return None if v != v or abs(v) > 8.9e307 else v
+
+
+def _s21_compare(figs, shift):
+    """The first difference between dash's figures and twoway's globals."""
+    for k, f in enumerate(figs):
+        axes = _s21_axes(f)
+        for axis in ("y", "x", "y2", "x2"):
+            tw = [_s21_num(v) for v in (_s21_M.getGlobal("S21_TW_" + axis) or "").split()]
+            if not tw or tw[0] is None:
+                continue
+            if axis not in axes:
+                return "panel %d has no %s axis" % (k, axis)
+            ticks, hull, _rng = axes[axis]
+            sh = shift if axis == "x" else 0.0
+            want = _s21_steps(tw[0], tw[1], tw[2])
+            got = [float("%.12g" % (v - sh)) for v in (ticks or [])]
+            if got != want:
+                return "panel %d %s ticks %s, twoway %s" % (k, axis, got, want)
+            if len(tw) == 5 and tw[3] is not None and hull is not None:
+                span = tw[4] - tw[3]
+                if abs(hull[0] - sh - tw[3]) > 1e-6 * span or abs(hull[1] - sh - tw[4]) > 1e-6 * span:
+                    return "panel %d %s inner [%r, %r], twoway [%r, %r]" % (
+                        k, axis, hull[0] - sh, hull[1] - sh, tw[3], tw[4])
+    return ""
+
+
+def _s21_move(doc, mode):
+    """Fire the filter S21_MOVE (\x60range lo hi' or \x60drop label') on *doc*."""
+    from bokeh.models import RangeSlider, Select
+    spec = (_s21_M.getGlobal("S21_MOVE") or "").split()
+    if not spec:
+        return 0
+    kind = RangeSlider if spec[0] == "range" else Select
+    ws = [w for w in doc.select(dict(type=kind))]
+    if len(ws) != 1:
+        return 0
+    w = ws[0]
+    if kind is RangeSlider:
+        new = (float(spec[1]), float(spec[2]))
+    else:
+        new = [v for v, lab in w.options if lab == " ".join(spec[1:])][0]
+    old = w.value
+    w.value = new
+    if mode == "served":
+        n = 0
+        with _s21_w.catch_warnings():
+            _s21_w.simplefilter("ignore")
+            for attr in ("value", "value_throttled"):
+                for cb in list(w._callbacks.get(attr, [])):
+                    cb(attr, old, new)
+                    n += 1
+        return n
+    import js_runner
+    cbs = list((w.js_property_callbacks or {}).get("change:value", []))
+    for cb in cbs:
+        js_runner.JsSession([cb]).run(cb)
+    return len(cbs)
+
+
+def _s21_check():
+    shift = 0.0
+    if _s21_M.getGlobal("S21_TC") == "1":
+        import dash_render as dr
+        shift = float(dr._STATA_EPOCH_UNIX_MS)
+    msgs = []
+    for mode, reader, path in (("saved", _s21_doc_of_page, _s21_M.getGlobal("S21_PAGE")),
+                               ("served", _s21_doc_of_app, _s21_M.getGlobal("S21_APP"))):
+        if mode not in (_s21_M.getGlobal("S21_MODES") or "saved served").split():
+            continue
+        doc = reader(path)
+        if doc is None:
+            msgs.append(mode + ": no document")
+            continue
+        fired = _s21_move(doc, mode)
+        if _s21_M.getGlobal("S21_MOVE") and not fired:
+            msgs.append(mode + ": the move did not fire")
+            continue
+        figs = _s21_figs(doc)
+        if _s21_M.getGlobal("S21_SHARED") == "1" and len(figs) > 1:
+            if len({id(f.y_range) for f in figs}) != 1:
+                msgs.append(mode + ": the panels do not share one y range")
+        d = _s21_compare(figs, shift)
+        if d:
+            msgs.append(mode + ": " + d)
+    _s21_M.setGlobal("S21_OK", "0" if msgs else "1")
+    _s21_M.setGlobal("S21_MSG", "; ".join(msgs)[:240].replace('"', "'"))
+
+
+def _s21_margin():
+    """S21_MR S21_MF: twoway's margin_rel and frame fraction on y, from
+    the SVG S21_SVG and twoway's curmin S21_TW_y."""
+    _s21_sys.path.insert(0, _s21_M.getGlobal("cert_svg_scripts"))
+    import svg_truth
+    path = _s21_M.getGlobal("S21_SVG")
+    doc = svg_truth.svg_document(path)
+    short = min(doc["canvas"]["w"], doc["canvas"]["h"])
+    ext = svg_truth.svg_axis_extent(path, "y")
+    tw = [_s21_num(v) for v in _s21_M.getGlobal("S21_TW_y").split()]
+    if ext is None or tw[3] is None:
+        _s21_M.setGlobal("S21_MR", "."); _s21_M.setGlobal("S21_MF", ".")
+        return
+    pr = ext["plotregion"]
+    span_px = pr["bottom"] - pr["top"]
+    dist = (tw[3] - ext["low"]) / (ext["high"] - ext["low"]) * span_px
+    _s21_M.setGlobal("S21_MR", repr(dist / short))
+    _s21_M.setGlobal("S21_MF", repr(dist / span_px))
+
+
+def _s21_dash_margin():
+    import dash_render as dr
+    sch = dr.SchemeParser(_s21_M.getGlobal("S21_SCHEME") or "stcolor")
+    go = {}
+    for k in ("xsize", "ysize"):
+        if _s21_M.getGlobal("S21_" + k.upper()):
+            go[k] = _s21_M.getGlobal("S21_" + k.upper())
+    g = int(_s21_M.getGlobal("S21_G") or "1")
+    _s21_M.setGlobal("S21_DM", repr(dr._dash_plot_margin(sch, go, panels=g)["y"]))
+    _s21_M.setGlobal("S21_R", repr(sch.plot_margin_rs / 100.0))
+    k1, b1, b2 = dr._DASH_BY_GMETRIC
+    import math
+    n = math.ceil(math.sqrt(g))
+    f = 1.0 - (n - 1.0) / n * b1 - ((b2 - b1) * (n - k1) / n if n > k1 else 0.0)
+    _s21_M.setGlobal("S21_FG", repr(f))
+end
+
+capture program drop _s21_case
+program define _s21_case
+    // _s21_case <id> <data> <scheme> `"<twoway cmd>"' [move] [modes]
+    args id data scheme cmd move modes
+    global S21_SCHEME "`scheme'"
+    if "`scheme'" == "" global S21_SCHEME "`c(scheme)'"
+    global S21_MOVE "`move'"
+    global S21_MODES "`modes'"
+    global S21_XSIZE ""
+    global S21_YSIZE ""
+    global S21_G "1"
+    global S21_TC "0"
+    local d "${S21_WORK}"
+    if "`data'" == "tc" {
+        sysuse auto, clear
+        quietly generate double t = clock("2001-01-01 00:00:00", "YMDhms") + _n * 7 * 3600000
+        format t %tc
+        global S21_TC "1"
+    }
+    else if substr("`data'", 1, 1) == "g" {
+        sysuse auto, clear
+        quietly generate g = mod(_n, `=substr("`data'", 2, .)')
+    }
+    else sysuse auto, clear
+    capture dash clear
+    capture graph drop _all
+    local sc ""
+    if "`scheme'" != "" local sc "scheme(`scheme')"
+    local tcmd `"`cmd'"'
+    if "`move'" != "" {
+        // twoway draws the rows the move keeps
+        local tcmd `"${S21_TWIF}"'
+    }
+    // a top-level comma: after a closing parenthesis, or anywhere in a
+    // command with no parenthesised layers
+    local comma ","
+    if (substr(`"`tcmd'"', 1, 1) != "(" & strpos(`"`tcmd'"', ",")) | ustrregexm(`"`tcmd'"', "\)\s*,") local comma ""
+    capture noisily twoway `tcmd' `comma' `sc'
+    _w30_expect `id' "(_rc == 0)" "twoway rc `=_rc'"
+    _s21_tw
+    if strpos(`"`cmd'"', "by(") {
+        global S21_G "`.Graph.graphs.arrnels'"
+        global S21_SHARED "1"
+    }
+    else global S21_SHARED "0"
+    if strpos(`"`cmd'"', "xsize(") global S21_XSIZE "4"
+    if strpos(`"`cmd'"', "ysize(") global S21_YSIZE "4"
+    local filt ""
+    if "`move'" != "" {
+        if word("`move'", 1) == "range" local filt "filter(price, type(range))"
+        else local filt "filter(foreign, type(dropdown))"
+    }
+    global S21_SEQ = ${S21_SEQ} + 1
+    local comma ","
+    if (substr(`"`cmd'"', 1, 1) != "(" & strpos(`"`cmd'"', ",")) | ustrregexm(`"`cmd'"', "\)\s*,") local comma ""
+    capture noisily dash `cmd' `comma' `sc' name(ns${S21_SEQ})
+    _w30_expect `id' "(_rc == 0)" "dash rc `=_rc'"
+    local f "`d'/ns${S21_SEQ}"
+    capture erase "`f'.html"
+    capture erase "`f'_app.py"
+    capture noisily dash build, saving("`f'.html") replace nobrowser `filt'
+    _w30_expect `id' "(_rc == 0)" "saved build rc `=_rc'"
+    capture noisily dash build, saving("`f'_app.py") server replace `filt'
+    _w30_expect `id' "(_rc == 0)" "served build rc `=_rc'"
+    global S21_PAGE "`f'.html"
+    global S21_APP "`f'_app.py"
+    python: import __main__; __main__._s21_check()
+    _w30_expect `id' "($S21_OK == 1)" `"`cmd' `move': $S21_MSG"'
+    capture dash clear
+    capture graph drop _all
+end
+
 * ==== S21 P1.3a: natscale ticker and twoway margin on non-date axes ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S21") {
     display as text "S21 start " c(current_date) " " c(current_time)
+    global S21_WORK "`w30_work'/s21"
+    capture mkdir "${S21_WORK}"
+    global S21_SEQ 0
+    global S21_TWIF ""
+    // NS-01..NS-07, NS-10..NS-12: live twoway against dash's saved page and
+    // served app (ticks exactly, inner hull within 1e-6 of the span).
+    _s21_case NS-01 auto "" "scatter mpg weight"
+    _w30_done NS-01 "scatter mpg weight: y 10(10)40 over 10-41, x 2000(1000)5000 over 1760-5000"
+    _s21_case NS-02 auto "" "scatter price weight, yscale(log)"
+    _s21_case NS-02 auto "" "scatter mpg weight, yscale(log) xscale(log)"
+    _w30_done NS-02 "log axes: natscale less the ticks a log axis cannot draw"
+    _s21_case NS-03 auto "" "(scatter price mpg) (lfit price mpg)"
+    _s21_case NS-03 auto "" "(scatter mpg weight) (lfit mpg weight)"
+    _w30_done NS-03 "a fit is inside the scale"
+    _s21_case NS-04 auto "" "(scatter price mpg) (lfit price mpg), by(foreign)"
+    _w30_done NS-04 "by(): one Range1d per shared axis over every panel's fit"
+    _s21_case NS-05 auto "" "(scatter mpg weight) (scatter price weight, yaxis(2))"
+    _s21_case NS-05 auto "" "(scatter mpg weight) (scatter mpg price, xaxis(2))"
+    _w30_done NS-05 "a second axis with no label rule: 0(5000)15000"
+    foreach c in "bar mpg weight" "spike mpg weight" "dropline mpg weight" "area mpg weight" "bar mpg weight, base(5)" {
+        _s21_case NS-06 auto "" "`c'"
+    }
+    _w30_done NS-06 "default bases stay out of the scale, an explicit base() widens it"
+    foreach c in `"scatter mpg weight, yline(50)"' `"scatter mpg weight, xline(6000)"' `"scatter mpg weight, text(50 6000 "hi")"' `"scatter mpg weight, mlabel(make)"' `"(scatter mpg weight) (scatteri 50 6000, msymbol(none))"' `"(scatter mpg weight) (pcarrowi 50 6000 45 5500)"' {
+        _s21_case NS-07 auto "" `"`c'"'
+    }
+    _w30_done NS-07 "reference lines, text and labels leave the scale; scatteri and pcarrowi widen it"
+    // NS-08, NS-09: the margin, read from twoway's SVG.
+    foreach s in stcolor s2color economist {
+        foreach z in "" "xsize(4) ysize(4)" {
+            sysuse auto, clear
+            capture graph drop _all
+            quietly twoway scatter mpg weight, scheme(`s') `z'
+            _s21_tw
+            cert_svg_export, file("${S21_WORK}/m`s'.svg")
+            global S21_SVG "${S21_WORK}/m`s'.svg"
+            global S21_SCHEME "`s'"
+            global S21_XSIZE ""
+            global S21_YSIZE ""
+            if "`z'" != "" {
+                global S21_XSIZE "4"
+                global S21_YSIZE "4"
+            }
+            global S21_G "1"
+            python: _s21_margin()
+            python: _s21_dash_margin()
+            if "$S21_MR" != "." {
+                _w30_expect NS-08 "(abs($S21_MR - $S21_R) <= 0.0005)" "`s' `z': margin_rel $S21_MR, r $S21_R"
+                _w30_expect NS-08 "(abs($S21_MF - $S21_DM) <= 0.008)" "`s' `z': frame $S21_MF, dash $S21_DM"
+            }
+        }
+    }
+    _w30_done NS-08 "twoway's margin is r x min(W,H); dash's frame fraction is within 0.008"
+    foreach G in 2 3 6 10 {
+        sysuse auto, clear
+        quietly generate g = mod(_n, `G')
+        capture graph drop _all
+        quietly twoway scatter mpg weight, by(g)
+        global S21_GM "`.Graph.plotregion1.gmetric_mult'"
+        global S21_SCHEME "stcolor"
+        global S21_G "`G'"
+        python: _s21_dash_margin()
+        _w30_expect NS-09 "(abs($S21_GM - $S21_FG) <= 1e-9)" "G `G': gmetric $S21_GM, f(G) $S21_FG"
+    }
+    _w30_done NS-09 "by()'s size multiplier is f(G)"
+    // NS-10: after a filter move, twoway's same `if'.
+    global S21_TWIF "scatter mpg weight if price <= 7075.5"
+    _s21_case NS-10 auto "" "scatter mpg weight" "range 3291 7075.5"
+    global S21_TWIF "(scatter mpg weight) (lfit mpg weight) if price <= 7075.5"
+    _s21_case NS-10 auto "" "(scatter mpg weight) (lfit mpg weight)" "range 3291 7075.5" "served"
+    global S21_TWIF "(scatter mpg weight) (scatter price weight, yaxis(2)) if foreign"
+    _s21_case NS-10 auto "" "(scatter mpg weight) (scatter price weight, yaxis(2))" "drop Foreign"
+    global S21_TWIF ""
+    _w30_done NS-10 "after a move the axes are twoway's under the same if, saved and served (the saved lfit stays unfiltered)"
+    foreach s in s2color stgcolor_mv stcolor s1rcolor economist s2manual stmono1 stgcolor stcolor_alt s2gmanual stgcolor_alt stcolor_meta s1manual stsj stcolor_mv sj meta s2color8 s1mono stmono2 stcoloralias s2mono sttrans stgcolor_meta s1color s2gcolor {
+        _s21_case NS-11 auto "`s'" "scatter mpg weight"
+    }
+    _w30_done NS-11 "every shipped scheme's default ticks are twoway's"
+    _s21_case NS-12 tc "" "scatter mpg t"
+    _w30_done NS-12 "%tc default ticks are twoway's milliseconds"
+    capture dash clear
+    forvalues i = 1/$S21_SEQ {
+        capture erase "${S21_WORK}/ns`i'.html"
+        capture erase "${S21_WORK}/ns`i'_app.py"
+    }
+    foreach s in stcolor s2color economist {
+        capture erase "${S21_WORK}/m`s'.svg"
+    }
+    capture rmdir "${S21_WORK}"
     display as text "S21 end " c(current_date) " " c(current_time)
 }
 * ==== end S21 ====

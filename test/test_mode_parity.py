@@ -1958,6 +1958,16 @@ CORPUS = [
                     xvar="rep"),
            plot_for("bar", {"base": "20", "barwidth": "0.8"}, yvar="price",
                     xvar="rep")]),
+    # WP-30 P1.3a: natscale ticks and twoway's margin
+    _case("default axes take natscale and the margin",
+          [plot_for("scatter"), plot_for("lfit")]),
+    _case("second axis default ticks",
+          [plot_for("scatter"), plot_for("scatter", {"yaxis": "2"},
+                                         yvar="price")]),
+    _case("bar default base stays out", [plot_for("bar")]),
+    _case("by() fits in the shared scale",
+          [plot_for("scatter", yvar="price"), plot_for("lfit", yvar="price")],
+          None, {"by": "foreign"}),
 ]
 
 
@@ -2729,6 +2739,12 @@ MOVE_CORPUS = [
                          xvar="rep"),
                 plot_for("bar", {"base": "20", "barwidth": "0.8"}, yvar="price",
                          xvar="rep")]),
+    # WP-30 P1.3a: natscale ticks and twoway's margin, after a move
+    _move_case("default axes after a range move", _MOVES[1],
+               [plot_for("scatter"), plot_for("lfit")]),
+    _move_case("y2 after a dropdown move", _MOVES[0],
+               [plot_for("scatter"), plot_for("scatter", {"yaxis": "2"},
+                                              yvar="price")]),
 ]
 
 

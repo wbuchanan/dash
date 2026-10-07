@@ -174,8 +174,10 @@ class TestXtickDrawsMarksWithoutLabels:
     def test_alone_it_keeps_the_default_labels(self, tmp_path, mode):
         fig = _figure(mode, tmp_path, _scatter({"xtick": "2250(500)3750"}),
                       tag="alone")
+        # WP-30 P1.3a: Bokeh's BasicTicker was wrong because a default axis
+        # is now ticked as twoway ticks it (natscale #5, a FixedTicker).
         assert _tick_plan(fig.xaxis[0]) == (
-            ("auto", "BasicTicker"), [2250.0, 2750.0, 3250.0, 3750.0])
+            ("fixed", [2000.0, 3000.0, 4000.0, 5000.0]), [2250.0, 2750.0, 3250.0, 3750.0])
 
     def test_beside_xlabel_both_are_drawn(self, tmp_path, mode):
         fig = _figure(mode, tmp_path, _scatter(
@@ -202,16 +204,20 @@ class TestXtickDrawsMarksWithoutLabels:
     def test_ytick_alone_keeps_the_default_labels(self, tmp_path, mode):
         fig = _figure(mode, tmp_path, _scatter({"ytick": "15 25 35"}),
                       tag="ytick")
+        # WP-30 P1.3a: Bokeh's BasicTicker was wrong because a default axis
+        # is now ticked as twoway ticks it (natscale #5, a FixedTicker).
         assert _tick_plan(fig.yaxis[0]) == (
-            ("auto", "BasicTicker"), [15.0, 25.0, 35.0])
+            ("fixed", [15.0, 20.0, 25.0, 30.0]), [15.0, 25.0, 35.0])
         # and the x axis is left as it was
-        assert _tick_plan(fig.xaxis[0]) == (("auto", "BasicTicker"), [])
+        assert _tick_plan(fig.xaxis[0]) == (("fixed", [2000.0, 3000.0, 4000.0, 5000.0]), [])
 
     def test_minmax_marks_the_extremes(self, tmp_path, mode):
         fig = _figure(mode, tmp_path, _scatter({"xtick": "minmax"}),
                       tag="minmax")
+        # WP-30 P1.3a: Bokeh's BasicTicker was wrong because a default axis
+        # is now ticked as twoway ticks it (natscale #5, a FixedTicker).
         assert _tick_plan(fig.xaxis[0]) == (
-            ("auto", "BasicTicker"), [1760.0, 4840.0])
+            ("fixed", [2000.0, 3000.0, 4000.0, 5000.0]), [1760.0, 4840.0])
 
     def test_a_count_marks_about_that_many(self, tmp_path, mode):
         """xtick(#10) over weight's 1760 to 4840 marks 1500(500)5000, the
@@ -219,8 +225,10 @@ class TestXtickDrawsMarksWithoutLabels:
         #10)."""
         fig = _figure(mode, tmp_path, _scatter({"xtick": "#10"}),
                       tag="tcount")
+        # WP-30 P1.3a: Bokeh's BasicTicker was wrong because a default axis
+        # is now ticked as twoway ticks it (natscale #5, a FixedTicker).
         assert _tick_plan(fig.xaxis[0]) == (
-            ("auto", "BasicTicker"), [1500.0 + 500 * i for i in range(8)])
+            ("fixed", [2000.0, 3000.0, 4000.0, 5000.0]), [1500.0 + 500 * i for i in range(8)])
 
     def test_a_label_written_in_xtick_is_not_drawn(self, tmp_path, mode):
         """twoway draws `xtick(2500 "a" 3500)' as two bare marks."""
@@ -254,7 +262,9 @@ class TestXtickDrawsMarksWithoutLabels:
     def test_xtick_none_changes_nothing(self, tmp_path, mode):
         fig = _figure(mode, tmp_path, _scatter({"xtick": "none"}),
                       tag="tnone")
-        assert _tick_plan(fig.xaxis[0]) == (("auto", "BasicTicker"), [])
+        # WP-30 P1.3a: Bokeh's BasicTicker was wrong because a default axis
+        # is now ticked as twoway ticks it (natscale #5, a FixedTicker).
+        assert _tick_plan(fig.xaxis[0]) == (("fixed", [2000.0, 3000.0, 4000.0, 5000.0]), [])
 
 
 class TestTheTickMarkCodeCarriesNoUserText:
@@ -314,7 +324,8 @@ class TestTheTickMarkCodeCarriesNoUserText:
             warnings.simplefilter("always")
             fig = _figure(mode, tmp_path / "range", _scatter(
                 {"xtick": "0(0.000001)1000000"}), tag="hugerange")
-        assert _tick_plan(fig.xaxis[0]) == (("auto", "BasicTicker"), [])
+        # WP-30 P1.3a: the default labels are now natscale's FixedTicker.
+        assert _tick_plan(fig.xaxis[0]) == (("fixed", [2000.0, 3000.0, 4000.0, 5000.0]), [])
         assert time.time() - t0 < 30
 
 
@@ -1124,7 +1135,10 @@ class TestTheShippedFiles:
             keys |= {k for k, _v in _directives(
                 os.path.join(_SCHEMES, "dash-" + name + ".scheme"))}
         bad = sorted(k for k in keys if re.search(
-            r"(?<!text)box|pie|\bdot|matrix|margin|barlabel|barstyle|bar_",
+            # WP-30 P1.3a: `margin twoway' is drawn now (the plot-region
+            # margin), so it is no longer in this list.
+            r"(?<!text)box|pie|\bdot|matrix|margin(?! twoway)|barlabel|"
+            r"barstyle|bar_",
             k))
         assert not bad, bad  # P1.2a: the scheme's tick keys are carried and drawn
 
@@ -1233,17 +1247,17 @@ class TestTheUnitsAreStatas:
 
 
 class TestDashDrawsBokehsMinorTicks:
-    """The disclosure the scheme section now makes: tick geometry is not
-    carried, so an axis with its default labels keeps Bokeh's minor ticks,
-    which twoway draws only for xmtick() or ymtick()."""
+    """WP-30 P1.3a: an axis with its default labels no longer keeps Bokeh's
+    minor ticks -- twoway draws them only for xmtick() or ymtick() -- so the
+    old disclosure (BasicTicker with minor ticks) was wrong: the default
+    axis is ticked by natscale on a FixedTicker with no minor ticks."""
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_the_default_axis_has_minor_ticks(self, tmp_path, mode):
         fig = _figure(mode, tmp_path, _scatter(), tag="minor")
         for ax in (fig.xaxis[0], fig.yaxis[0]):
-            assert isinstance(ax.ticker, BasicTicker)
-            assert ax.ticker.num_minor_ticks > 0
-            assert ax.minor_tick_line_color is not None
+            assert isinstance(ax.ticker, FixedTicker)
+            assert list(ax.ticker.minor_ticks) == []
 
     def test_the_help_says_so(self):
         sec = _flat(_help_between("{marker scheme}", "{marker unsupported}"))
@@ -1427,7 +1441,8 @@ class TestTheUnsupportedProseIsTrue:
                    in m for m in msgs), msgs
         fig = _figure(mode, tmp_path / "rev", _scatter({"xscale": "reverse"}),
                       tag="rev")
-        assert fig.x_range.flipped is True
+        # WP-30 P1.3a: a flipped DataRange1d is now a Range1d high to low.
+        assert fig.x_range.start > fig.x_range.end
 
 
 class TestTheUnsupportedSectionSaysWhatTwowayDoes:

@@ -363,6 +363,20 @@ clockdir caption_position    7
 system naturally_white     1
 
 * ---------------------------------------------------------------------------
+* Added 07oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* twoway's default tick count and plot-region margin (WP-30 P1.3a).
+numticks_g horizontal_major  5
+numticks_g vertical_major    5
+margin twoway            medsmall
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -426,6 +440,9 @@ system naturally_white     1
 * provenance: gsize note -- transcribed from scheme-s2color.scheme:147 `gsize note small'
 * provenance: graphsize x -- transcribed from scheme-s2color.scheme:32 `graphsize x 5.5'
 * provenance: graphsize y -- transcribed from scheme-s2color.scheme:33 `graphsize y 4'
+* provenance: numticks_g horizontal_major -- transcribed from scheme-s2color.scheme:291 `numticks_g horizontal_major 5'
+* provenance: numticks_g vertical_major -- transcribed from scheme-s2color.scheme:292 `numticks_g vertical_major 5'
+* provenance: margin twoway -- transcribed from scheme-s2color.scheme:719 `margin twoway medsmall'
 * provenance: symbolsize p -- transcribed from scheme-s2color.scheme:274 `symbolsize p medium'
 * provenance: clockdir legend_position -- transcribed from scheme-s2color.scheme:1924 `clockdir legend_position 6'
 * provenance: numstyle legend_cols -- transcribed from scheme-s2color.scheme:39 `numstyle legend_cols 2'

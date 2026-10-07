@@ -610,7 +610,9 @@ class TestLabelsUsedAutomatically:
         for fig in (_saved_figure(r), _served_figure(doc)):
             ax = fig.xaxis[0]
             assert not dict(ax.major_label_overrides), ax.major_label_overrides
-            assert type(ax.ticker).__name__ == "BasicTicker", ax.ticker
+            # WP-30 P1.3a: BasicTicker was wrong because a default axis is
+            # ticked by natscale (twoway's #5) on a FixedTicker.
+            assert type(ax.ticker).__name__ == "FixedTicker", ax.ticker
             assert type(ax.formatter).__name__ == "CustomJSTickFormatter"
             fmt = ax.formatter.args["fmt"]
             assert "labels" not in ax.formatter.args

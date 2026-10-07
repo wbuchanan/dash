@@ -396,8 +396,12 @@ class TestFilterSecurity:
         df = auto_df.rename(columns={"foreign": malicious_varname})
         _r, page = _saved_page(spec, make_data_json(df))
         models = _document_models(page)
-        assert [m["attributes"]["code"]
-                for m in _named(models, "CustomJS")] == [_FILTER_JS]
+        # WP-30 P1.3a: the page also carries the axes' one zoom callback,
+        # fixed code too ("only _FILTER_JS" was wrong once it did).
+        import dash_render as _dr
+        assert sorted({m["attributes"]["code"]
+                       for m in _named(models, "CustomJS")}) == sorted(
+            {_FILTER_JS, _dr._DASH_AXIS_FINISH_JS + _dr._DASH_AXIS_ZOOM_JS})
         assert [m["attributes"]["title"]
                 for m in _named(models, "Select")] == [malicious_varname]
 
@@ -447,8 +451,12 @@ class TestFilterSecurity:
             data["StataJSON"][key]["cat"] = True
         _r, page = _saved_page(spec, data)
         models = _document_models(page)
-        assert [m["attributes"]["code"]
-                for m in _named(models, "CustomJS")] == [_FILTER_JS]
+        # WP-30 P1.3a: the page also carries the axes' one zoom callback,
+        # fixed code too ("only _FILTER_JS" was wrong once it did).
+        import dash_render as _dr
+        assert sorted({m["attributes"]["code"]
+                       for m in _named(models, "CustomJS")}) == sorted(
+            {_FILTER_JS, _dr._DASH_AXIS_FINISH_JS + _dr._DASH_AXIS_ZOOM_JS})
         assert [m["attributes"]["options"]
                 for m in _named(models, "Select")] == [[
                     ["__all__", "All"],

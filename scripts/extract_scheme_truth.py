@@ -482,6 +482,37 @@ def resolve_sized(r: SchemeResolver, cls: str, token: str | None):
     }
 
 
+def resolve_margin_rs(r: SchemeResolver, token: str | None):
+    """WP-30 P1.3a (D-21a): a marginstyle name -> its one relative size.
+
+    ``style/margin-<name>.style`` sets gleft/gright/gtop/gbottom to
+    ``scheme <gsize key>`` (or a literal); each resolves through the
+    scheme's ``gsize`` keys to ``relativeNpM`` (N.M).  All four sides must
+    be equal -- twoway's plot-region margin is the same on every side in
+    every shipped scheme -- else this raises."""
+    if token is None:
+        return None
+    st = r.style("margin", token.strip().strip('"').lower())
+    if not st:
+        return None
+    vals = []
+    for side in ("gleft", "gright", "gtop", "gbottom"):
+        raw = (st.get(side) or "").strip()
+        if raw.startswith("scheme "):
+            raw = (r.get("gsize", raw[len("scheme "):].strip(),
+                         class_default=False) or "").strip()
+        m = re.fullmatch(r"relative(\d+)(?:p(\d+))?", raw)
+        if m:
+            v = float(m.group(1) + ("." + m.group(2) if m.group(2) else ""))
+        else:
+            v = _as_number(raw)
+        vals.append(None if v is None else float(v))
+    if any(v is None for v in vals) or len(set(vals)) != 1:
+        raise ValueError(f"margin {token}: sides differ or do not resolve: "
+                         f"{vals}")
+    return vals[0]
+
+
 def resolve_linewidth(r: SchemeResolver, token: str | None):
     """Resolve a linewidth token to {name, value, pt_at_4in} (same unit)."""
     if token is None:
@@ -1423,6 +1454,16 @@ def extract(stata_base: str, scheme: str) -> dict:
 
         "graphsize_x": graphsize("x"),
         "graphsize_y": graphsize("y"),
+        # WP-30 P1.3a: twoway's default tick count and plot-region margin.
+        "numticks_horizontal_major": scalar(
+            "numticks_horizontal_major", "numticks_g", ["horizontal_major"],
+            lambda t: _as_number(t.strip()), class_default=False),
+        "numticks_vertical_major": scalar(
+            "numticks_vertical_major", "numticks_g", ["vertical_major"],
+            lambda t: _as_number(t.strip()), class_default=False),
+        "margin_twoway": scalar("margin_twoway", "margin", ["twoway"],
+                                lambda t: t.strip().strip('"'),
+                                class_default=False),
         "symbolsize": scalar("symbolsize", "symbolsize", ["p"],
                              lambda t: resolve_sized(r, "symbolsize", t)),
 
@@ -1437,6 +1478,7 @@ def extract(stata_base: str, scheme: str) -> dict:
                               lambda t: _as_number(t.strip()),
                               class_default=False),
     }
+    out["margin_twoway_rs"] = resolve_margin_rs(r, out.get("margin_twoway"))
     out.update(xyline_truth())
     out.update(plotregion_line_truth())
     out.update(note_truth())
@@ -1700,6 +1742,11 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
     group(["Graph dimensions, in inches."], [
         scalar("graphsize", "x", "graphsize_x"),
         scalar("graphsize", "y", "graphsize_y"),
+    ])
+    group(["twoway's default tick count and plot-region margin (WP-30 P1.3a)."], [
+        scalar("numticks_g", "horizontal_major", "numticks_horizontal_major"),
+        scalar("numticks_g", "vertical_major", "numticks_vertical_major"),
+        scalar("margin", "twoway", "margin_twoway"),
     ])
     group(["Marker size and legend placement."], [
         scalar("symbolsize", "p", "symbolsize", use_name=True),

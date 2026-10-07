@@ -6523,6 +6523,9 @@ class SchemeParser:
         "color grid":             "#eaf2f3",
         "graphsize x":            "5.5",
         "graphsize y":            "4",
+        "numticks_g horizontal_major": "5",
+        "numticks_g vertical_major":   "5",
+        "margin twoway":          "medsmall",
         "gsize axis_title":       "medsmall",
         "gsize heading":          "large",
         "gsize note":             "small",
@@ -7910,6 +7913,18 @@ class SchemeParser:
         # 24sep2026).  A missing x or y stays None, "no declared size".
         self.graphsize_x: "float | None" = self._float("graphsize x", None)
         self.graphsize_y: "float | None" = self._float("graphsize y", None)
+        # WP-30 P1.3a: twoway's default tick count on each axis
+        # (`numticks_g horizontal_major' / `vertical_major', 5 in every
+        # shipped scheme) and its plot-region margin (`margin twoway', D-21a;
+        # an unknown style keeps medsmall's 2.2, silently).
+        self.numticks_x: int = self._bounded_int(
+            "numticks_g horizontal_major", 5, 1, 25,
+            "numticks_g horizontal_major") or 5
+        self.numticks_y: int = self._bounded_int(
+            "numticks_g vertical_major", 5, 1, 25,
+            "numticks_g vertical_major") or 5
+        self.plot_margin_rs: float = _DASH_MARGIN_RS.get(
+            self._props.get("margin twoway", "").strip().lower(), 2.2)
         # The reference length absolute sizes (#pt, #in, #cm) convert at
         # (WP-30 P1.12a, Evidence E2/E4): the smaller graphsize side, as a
         # Stata relative size is min(width, height)/100 of the graph.
@@ -21084,6 +21099,10 @@ class FilterBuilder:
                 # scatter without its missing rows) and their snapshots.
                 "derived_sources":   [],    # populated by DashRenderer.render()
                 "derived_sources_orig": [], # populated by DashRenderer.render()
+                # WP-30 P1.3a: the axis plan and its models, for the
+                # re-finish at the end of _FILTER_JS (render() step 5b).
+                "axis_plans_json":   "[]",
+                "axis_models":       [],
             },
             code=_FILTER_JS,
         )
@@ -21144,6 +21163,10 @@ class FilterBuilder:
                 # scatter without its missing rows) and their snapshots.
                 "derived_sources":   [],    # populated by DashRenderer.render()
                 "derived_sources_orig": [], # populated by DashRenderer.render()
+                # WP-30 P1.3a: the axis plan and its models, for the
+                # re-finish at the end of _FILTER_JS (render() step 5b).
+                "axis_plans_json":   "[]",
+                "axis_models":       [],
             },
             code=_FILTER_JS,
         )
@@ -21205,6 +21228,10 @@ class FilterBuilder:
                 # scatter without its missing rows) and their snapshots.
                 "derived_sources":   [],    # populated by DashRenderer.render()
                 "derived_sources_orig": [], # populated by DashRenderer.render()
+                # WP-30 P1.3a: the axis plan and its models, for the
+                # re-finish at the end of _FILTER_JS (render() step 5b).
+                "axis_plans_json":   "[]",
+                "axis_models":       [],
             },
             code=_FILTER_JS,
         )
@@ -23823,6 +23850,20 @@ _DASH_NATSCALE_INT_LIMIT = 2.0 ** 31
 #: The tag an axis's placeholder ticker carries while its #N ticks wait for
 #: the drawn layers (_dash_finish_count_ticks); the count follows it.
 _DASH_COUNT_TAG = "dash_count:"
+#: WP-30 P1.3a: the second tag of the placeholder a DEFAULT axis carries
+#: (_dash_default_ticker) -- an axis with no xlabel()/ylabel() rule, ticked
+#: as twoway ticks it, ``#N`` for the scheme's numticks.
+_DASH_DEFAULT_TAG = "dash_default"
+#: WP-30 P1.3a: twoway's plot-region margin, ``margin twoway <style>``, in
+#: relative units (% of min(W, H)): s2color's ``gsize *margin`` ladder,
+#: which every shipped scheme inherits (scheme-s2color.scheme:195-204).
+_DASH_MARGIN_RS = {"zero": 0.0, "tiny": 0.3, "vsmall": 0.6, "small": 1.2,
+                   "medsmall": 2.2, "medium": 3.5, "medlarge": 5.0,
+                   "large": 8.0, "vlarge": 12.0}
+#: WP-30 P1.3a: by()'s size multiplier, grid.class ``scale_gmetric`` with
+#: s2color's ``special by_knot1 3``, ``by_slope1 .3`` and ``by_slope2 1``
+#: (knot, slope1, slope2): f(2) = f(3) = .85, f(6) = .8, f(10) = .6.
+_DASH_BY_GMETRIC = (3.0, 0.3, 1.0)
 
 
 def _dash_natscale_ticks(lo, hi, n):
@@ -23920,6 +23961,96 @@ def _dash_count_ticker(count):
     from bokeh.models.tickers import BasicTicker
     return BasicTicker(desired_num_ticks=int(count),
                        tags=[_DASH_COUNT_TAG + str(int(count))])
+
+
+def _dash_default_ticker(count):
+    """The placeholder a DEFAULT axis carries (WP-30 P1.3a): a FixedTicker
+    with no ticks and no minor ticks, tagged as a ``#count`` placeholder
+    (:func:`_dash_count_of` reads it) and as a default.  Its ticks are
+    written in place by :func:`_dash_place_count_ticks` -- twoway's
+    natscale ticks over every drawn layer -- at build and after every
+    filter move.  *count* is clamped to 1.._MAX_AXIS_TICKS."""
+    from bokeh.models.tickers import FixedTicker
+    try:
+        n = int(count)
+    except (TypeError, ValueError, OverflowError):
+        n = 5
+    n = max(1, min(n, _MAX_AXIS_TICKS))
+    return FixedTicker(ticks=[], minor_ticks=[],
+                       tags=[_DASH_COUNT_TAG + str(n), _DASH_DEFAULT_TAG])
+
+
+def _dash_plot_margin(scheme, graph_opts, panels=1):
+    """twoway's plot-region margin as a fraction of the frame on each axis,
+    ``{"x": fx, "y": fy}`` (WP-30 P1.3a, D1 b).
+
+    twoway leaves r x min(W, H) between the plot region's edge and its
+    scale on every side, r the scheme's ``margin twoway`` (2.2%; 0.6% in
+    economist) times by()'s size multiplier f(*panels*) (grid.class
+    ``scale_gmetric``).  W and H are xsize()/ysize(), else the scheme's
+    graphsize, else 5.5 x 4.  As fractions of the frame, fx = r min(W,H)/W
+    and fy = r min(W,H)/H, each in [0, 0.45]: fixed at build, so a page
+    drawn at another size is off twoway's by up to about 0.8% of its width
+    (A6).  Silent: a bad size was named by :func:`_dash_figure_aspect`.
+    Pure: it reads no figure."""
+    go = graph_opts or {}
+    sizes = []
+    for raw in (go.get("xsize"), go.get("ysize"),
+                getattr(scheme, "graphsize_x", None),
+                getattr(scheme, "graphsize_y", None)):
+        try:
+            v = float(str(raw).strip()[:64]) if raw not in (None, "") \
+                else None
+        except (TypeError, ValueError, OverflowError):
+            v = None
+        sizes.append(v if v is not None and math.isfinite(v) and v > 0
+                     else None)
+    w = sizes[0] or sizes[2] or 5.5
+    h = sizes[1] or sizes[3] or 4.0
+    rs = getattr(scheme, "plot_margin_rs", 2.2)
+    try:
+        rs = float(rs)
+    except (TypeError, ValueError):
+        rs = 2.2
+    if not math.isfinite(rs) or rs < 0:
+        rs = 2.2
+    try:
+        g = max(1, int(panels))
+    except (TypeError, ValueError, OverflowError):
+        g = 1
+    k1, b1, b2 = _DASH_BY_GMETRIC
+    n = math.ceil(math.sqrt(g))
+    f = 1.0 - (n - 1.0) / n * b1
+    if n > k1:
+        f -= (b2 - b1) * (n - k1) / n
+    f = max(0.0, f)
+    r = rs / 100.0 * f
+    short = min(w, h)
+    out = {}
+    for letter, side in (("x", w), ("y", h)):
+        v = r * short / side
+        if not math.isfinite(v):
+            v = 0.022
+        out[letter] = max(0.0, min(0.45, v))
+    return out
+
+
+def _dash_by_numticks(scheme, graph_opts):
+    """The default tick count of a graph's axes, ``{"x": n, "y": n}``
+    (WP-30 P1.3a): the scheme's ``numticks_g`` (5 in every shipped
+    scheme), one fewer on the y axes of a by() graph's panels -- fitted to
+    twoway's own drawings (by_scales_truth.json c02, c04, f01: by(foreign,
+    yrescale) draws 10(10)40 on panels whose data run 12-34 and 14-41,
+    where #5 is 10(5)35 and 15(5)40 and #4 is 10(10)40 on both; f02's x2
+    is #5's 140(20)240, c17's y2 #5's 4000(2000)14000: the second axes
+    keep the scheme's count, ``"x2"``/``"y2"``).  An explicit ``#N`` is N
+    either way (c28)."""
+    nx = getattr(scheme, "numticks_x", 5) or 5
+    ny = getattr(scheme, "numticks_y", 5) or 5
+    out = {"x": nx, "y": ny, "x2": nx, "y2": ny}
+    if str((graph_opts or {}).get("by", "") or "").strip():
+        out["y"] = max(1, ny - 1)
+    return out
 
 
 def _dash_count_of(ticker):
@@ -24666,6 +24797,428 @@ _DASH_TICK_EVERY_JS = ("return every.get_ticks(cb_data.start, cb_data.end, "
                        "cb_data.range, cb_data.cross_loc).major;")
 
 
+#: WP-30 P1.3a (TR-21.11): the saved page's twin of the finisher chain --
+#: _dash_natscale_ticks (dash_natscale, line for line: the same candidate
+#: order, the same 1e-12 tie rule, %.15g as toPrecision(15)),
+#: _dash_axis_count_ticks (dash_axis_ticks: the log and %tc rules; a
+#: %td-%ty axis's ticks are held), the reader (dash_axis_extent), the hull
+#: (dash_axis_hull), _dash_padded_range (dash_axis_pad), and the per-figure
+#: and by() steps (dash_axis_compute).  dash_axis_finish(plan, models)
+#: writes the ticks, then each range with ONE setv under a
+#: ``_dash_finishing`` guard the zoom code honours.  Pure arithmetic over
+#: the plan (_dash_axis_plan) and the models it names: no DOM, no eval, no
+#: BokehJS view internals, no user text.  The __DASH_*__ tokens are the
+#: Python constants, written in at import.
+_DASH_AXIS_FINISH_JS = r"""
+function dash_natscale(lo, hi, n) {
+    lo = Number(lo); hi = Number(hi); n = Math.trunc(Number(n));
+    if (!isFinite(lo) || !isFinite(hi) || !isFinite(n)) return null;
+    n = Math.max(1, Math.min(n, __DASH_MAX_TICKS__));
+    if (hi < lo) { const t = lo; lo = hi; hi = t; }
+    if (hi === lo) return [lo - 1.0, lo + 1.0];
+    if (n === 1) return [lo, hi];
+    const rng = hi - lo;
+    if (!isFinite(rng) || rng <= 0) return [lo, hi];
+    const tol = 1e-9;
+    let best = null;
+    const z_lo = Math.floor(Math.log10(rng / (n + 2))) - 1;
+    const z_hi = Math.ceil(Math.log10(rng)) + 1;
+    for (let z = z_lo; z <= z_hi; z++) {
+        for (const m of [1, 2, 5]) {
+            const d = m * Math.pow(10.0, z);
+            if (!isFinite(d) || d <= 0) continue;
+            const fl = lo / d, fh = hi / d;
+            if (!isFinite(fl) || !isFinite(fh)) continue;
+            const a0 = Math.floor(fl + tol), a1 = Math.ceil(fl - tol);
+            const b0 = Math.floor(fh + tol), b1 = Math.ceil(fh - tol);
+            const j0s = a0 === a1 ? [a0] : [Math.min(a0, a1), Math.max(a0, a1)];
+            const j1s = b0 === b1 ? [b0] : [Math.min(b0, b1), Math.max(b0, b1)];
+            for (const j0 of j0s) {
+                for (const j1 of j1s) {
+                    const k = j1 - j0 + 1;
+                    if (k < 2 || k > n + 1) continue;
+                    const t0 = j0 * d, t1 = j1 * d;
+                    const ulo = Math.max(0.0, t0 - lo), uhi = Math.max(0.0, hi - t1);
+                    if (Math.max(ulo, uhi) >= __DASH_SIDE__ * d) continue;
+                    if (k === 2 && ulo + uhi > tol * rng) continue;
+                    const wide = Math.max(0.0, lo - t0) + Math.max(0.0, t1 - hi);
+                    const cost = ((__DASH_UNCOVERED__ * (ulo + uhi) + wide) / rng
+                                  + __DASH_DENSITY__ * Math.abs(k - n) / n);
+                    if (best === null || cost < best[0] - 1e-12) {
+                        best = [cost, j0, j1, m, z];
+                    }
+                }
+            }
+        }
+    }
+    if (best === null) return [lo, hi];
+    const j0 = best[1], j1 = best[2], m = best[3], z = best[4];
+    const p = Math.pow(10.0, z);
+    if (p > 0 && Math.max(Math.abs(lo), Math.abs(hi)) >= __DASH_INT_LIMIT__ * p) {
+        return [lo - 1.0, hi + 1.0];
+    }
+    const out = [];
+    for (let j = j0; j <= j1; j++) {
+        const v = z >= 0 ? j * m * p : j * m / Math.pow(10.0, -z);
+        out.push(Number(v.toPrecision(15)));
+    }
+    return out;
+}
+function dash_axis_ticks(lo, hi, n, kind) {
+    if (kind === "log") {
+        const t = (dash_natscale(lo, hi, n) || []).filter((v) => v > 0);
+        return t.length ? t : null;
+    }
+    if (kind === "tc" || kind === "tC") {
+        const t = dash_natscale(Number(lo) - (__DASH_EPOCH__),
+                                Number(hi) - (__DASH_EPOCH__), n);
+        return t ? t.map((v) => v + (__DASH_EPOCH__)) : null;
+    }
+    if (kind) return null;
+    return dash_natscale(lo, hi, n);
+}
+function dash_axis_rows(layer, models, n) {
+    if (layer.filt < 0 || !layer.fk) return null;
+    const f = models[layer.filt];
+    if (!f) return null;
+    const rows = [];
+    if (layer.fk === "idx") {
+        const idx = f.indices;
+        if (idx === null || idx === undefined) return null;
+        for (let i = 0; i < idx.length; i++) {
+            const r = Number(idx[i]);
+            if (r >= 0 && r < n) rows.push(r);
+        }
+        return rows;
+    }
+    const b = f.booleans;
+    if (b === null || b === undefined) return null;
+    const m = Math.min(n, b.length);
+    for (let i = 0; i < m; i++) if (b[i]) rows.push(i);
+    return rows;
+}
+function dash_axis_col(data, field) {
+    return Object.prototype.hasOwnProperty.call(data, field) ? data[field] : null;
+}
+function dash_axis_num(v) {
+    return (typeof v === "number" && isFinite(v)) ? v : null;
+}
+function dash_axis_extent(a, models, base) {
+    let lo = null, hi = null;
+    const log = a.kind === "log";
+    const take = (v) => {
+        if (v === null || (log && !(v > 0))) return;
+        if (lo === null || v < lo) lo = v;
+        if (hi === null || v > hi) hi = v;
+    };
+    for (const L of a.layers) {
+        const src = models[L.src];
+        if (!src) continue;
+        const data = src.data;
+        const keys = Object.keys(data);
+        const n = keys.length ? data[keys[0]].length : 0;
+        const rows = dash_axis_rows(L, models, n);
+        for (const fld of (base ? L.bfields : L.fields)) {
+            const col = dash_axis_col(data, fld);
+            if (col === null) continue;
+            if (rows === null) {
+                for (let i = 0; i < col.length; i++) take(dash_axis_num(col[i]));
+            } else {
+                for (const i of rows) if (i < col.length) take(dash_axis_num(col[i]));
+            }
+        }
+        if (n) for (const c of (base ? L.bconsts : L.consts)) take(dash_axis_num(c));
+    }
+    return lo === null ? null : [lo, hi];
+}
+function dash_axis_hull(a, ticks, lo, hi, models, bases) {
+    const log = a.kind === "log";
+    const ok = (v) => typeof v === "number" && isFinite(v) && (!log || v > 0);
+    const vals = [];
+    for (const v of a.explicit) if (ok(v)) vals.push(v);
+    for (const v of [lo, hi]) if (v !== null && ok(v)) vals.push(v);
+    for (const v of (bases || [])) if (ok(v)) vals.push(v);
+    if (a.mode === "count") for (const v of ticks) if (ok(v)) vals.push(v);
+    for (const v of a.held) if (ok(v)) vals.push(v);
+    for (const B of a.bars) {
+        const src = models[B.src];
+        if (!src) continue;
+        const data = src.data;
+        const keys = Object.keys(data);
+        const n = keys.length ? data[keys[0]].length : 0;
+        let rows = dash_axis_rows(B, models, n);
+        if (rows === null) { rows = []; for (let i = 0; i < n; i++) rows.push(i); }
+        const cc = B.cf !== undefined ? dash_axis_col(data, B.cf) : null;
+        const wc = B.wf !== undefined ? dash_axis_col(data, B.wf) : null;
+        if ((B.cf !== undefined && cc === null) || (B.wf !== undefined && wc === null)) continue;
+        let blo = null, bhi = null;
+        for (const i of rows) {
+            const c = cc !== null ? (i < cc.length ? dash_axis_num(cc[i]) : null) : B.cv;
+            const w = wc !== null ? (i < wc.length ? dash_axis_num(wc[i]) : null) : B.wv;
+            if (c === null || w === null || c === undefined || w === undefined) continue;
+            for (const v of [c - w / 2.0, c + w / 2.0]) {
+                if (!ok(v)) continue;
+                if (blo === null || v < blo) blo = v;
+                if (bhi === null || v > bhi) bhi = v;
+            }
+        }
+        if (blo !== null) { vals.push(blo); vals.push(bhi); }
+    }
+    if (!vals.length) return null;
+    return [Math.min(...vals), Math.max(...vals)];
+}
+function dash_axis_shift(ms, months, days) {
+    const d = new Date(ms);
+    if (days) return [ms - days * 86400000.0, ms + days * 86400000.0];
+    const out = [];
+    for (const sgn of [-1, 1]) {
+        const y = d.getUTCFullYear(), mo = d.getUTCMonth() + sgn * months;
+        const ty = y + Math.floor(mo / 12), tm = ((mo % 12) + 12) % 12;
+        const last = new Date(Date.UTC(ty, tm + 1, 0)).getUTCDate();
+        const t = Date.UTC(ty, tm, Math.min(d.getUTCDate(), last),
+                           d.getUTCHours(), d.getUTCMinutes(),
+                           d.getUTCSeconds(), d.getUTCMilliseconds());
+        out.push(t);
+    }
+    return out;
+}
+function dash_axis_pad(lo, hi, kind, reverse, margin) {
+    lo = Number(lo); hi = Number(hi);
+    if (lo > hi) { const t = lo; lo = hi; hi = t; }
+    let f = (margin === null || margin === undefined) ? null : Number(margin);
+    if (f !== null && !isFinite(f)) f = null;
+    if (f !== null) f = Math.max(0.0, Math.min(f, 0.449));
+    const frac = f === null ? 0.05 : f / (1.0 - 2.0 * f);
+    let s, e;
+    if (kind === "log") {
+        let a = Math.log10(lo), b = Math.log10(hi);
+        if (a === b) { a -= 1.0; b += 1.0; }
+        const pad = frac * (b - a);
+        s = Math.pow(10, a - pad); e = Math.pow(10, b + pad);
+    } else {
+        if (lo === hi) {
+            const step = {tw: [0, 7], tm: [1, 0], tq: [3, 0], th: [6, 0], ty: [12, 0]}[kind];
+            let w = null;
+            if (step) w = dash_axis_shift(lo, step[0], step[1]);
+            if (w === null || !isFinite(w[0]) || !isFinite(w[1])) {
+                const one = kind ? 86400000.0 : 1.0;
+                w = [lo - one, hi + one];
+            }
+            lo = w[0]; hi = w[1];
+        }
+        const pad = frac * (hi - lo);
+        s = lo - pad; e = hi + pad;
+    }
+    return reverse ? [e, s] : [s, e];
+}
+function dash_axis_place(a, lo, hi, cur) {
+    if (a.mode !== "count" || a.hold) return cur;
+    let t = dash_axis_ticks(lo, hi, a.n, a.kind);
+    if (a.extra.length) {
+        t = Array.from(new Set((t || []).concat(a.extra))).sort((x, y) => x - y);
+    }
+    return (t && t.length) ? t : cur;
+}
+function dash_axis_compute(plan, models) {
+    const tickers = {}, ranges = {}, tick_range = {};
+    for (const grp of plan) {
+        const panels = grp.panels;
+        const share = (panels.length > 1) ? (grp.share || []) : [];
+        const st = [];
+        for (const p of panels) {
+            const row = [];
+            for (const a of p.axes) {
+                const ext = dash_axis_extent(a, models);
+                const bx = dash_axis_extent(a, models, true);
+                const s = {a: a, lo: ext ? ext[0] : null, hi: ext ? ext[1] : null,
+                           bases: bx ? bx : []};
+                let lo = s.lo, hi = s.hi;
+                const sc = a.scale.filter((v) => a.kind !== "log" || v > 0);
+                if (sc.length) {
+                    lo = Math.min(...sc.concat(lo !== null ? [lo] : []));
+                    hi = Math.max(...sc.concat(hi !== null ? [hi] : []));
+                }
+                s.tlo = lo; s.thi = hi;
+                const tk = a.ticker >= 0 ? models[a.ticker] : null;
+                s.ticks = (tk && tk.ticks) ? Array.from(tk.ticks) : [];
+                s.shared = share.includes(a.letter);
+                if (lo !== null && !s.shared) {
+                    s.ticks = dash_axis_place(a, lo, hi, s.ticks);
+                }
+                row.push(s);
+            }
+            st.push(row);
+        }
+        if (panels.length > 1) {
+            const byKey = {};
+            for (const row of st) for (const s of row) {
+                if (s.a.mode !== "count" || !share.includes(s.a.letter)) continue;
+                (byKey[s.a.key] = byKey[s.a.key] || []).push(s);
+            }
+            for (const es of Object.values(byKey)) {
+                const los = es.map((s) => s.tlo).filter((v) => v !== null);
+                const his = es.map((s) => s.thi).filter((v) => v !== null);
+                if (!los.length || !his.length || es.length < 2) continue;
+                const lo = Math.min(...los), hi = Math.max(...his);
+                for (const s of es) s.ticks = dash_axis_place(s.a, lo, hi, s.ticks);
+            }
+        }
+        for (const row of st) {
+            const groups = {};
+            for (const s of row) {
+                const k = s.a.name + "\u0000" + s.a.letter;
+                (groups[k] = groups[k] || []).push(s);
+            }
+            for (const es of Object.values(groups)) {
+                if (es.some((s) => s.shared)) continue;
+                if (es.every((s) => s.lo === null)) continue;
+                const hs = es.map((s) => dash_axis_hull(s.a, s.ticks, s.lo, s.hi, models, s.bases))
+                    .filter((h) => h !== null);
+                if (!hs.length) continue;
+                const a0 = es[0].a;
+                if (a0.range < 0) continue;
+                ranges[a0.range] = dash_axis_pad(Math.min(...hs.map((h) => h[0])),
+                                                 Math.max(...hs.map((h) => h[1])),
+                                                 a0.kind, a0.reverse, a0.margin);
+            }
+        }
+        if (share.length) {
+            const byHull = {};
+            for (let pi = 0; pi < st.length; pi++) for (const s of st[pi]) {
+                if (!share.includes(s.a.letter)) continue;
+                const k = s.a.name + "\u0000" + s.a.letter;
+                const per = (byHull[k] = byHull[k] || {order: [], at: {}});
+                if (!(pi in per.at)) { per.at[pi] = []; per.order.push(pi); }
+                per.at[pi].push(s);
+            }
+            for (const per of Object.values(byHull)) {
+                if (per.order.length < 2) continue;
+                const hulls = [], data = [];
+                for (const pi of per.order) for (const s of per.at[pi]) {
+                    const h = dash_axis_hull(s.a, s.ticks, s.lo, s.hi, models, s.bases);
+                    if (h !== null) hulls.push(h);
+                    for (const v of [s.lo, s.hi]) if (v !== null) data.push(v);
+                }
+                if (!hulls.length || !data.length) continue;
+                const lo = Math.min(...hulls.map((h) => h[0]).concat(data));
+                const hi = Math.max(...hulls.map((h) => h[1]).concat(data));
+                const a0 = per.at[per.order[0]][0].a;
+                if (a0.range < 0) continue;
+                ranges[a0.range] = dash_axis_pad(lo, hi, a0.kind, a0.reverse, a0.margin);
+            }
+        }
+        for (const row of st) for (const s of row) {
+            if (s.a.mode === "count" && s.a.ticker >= 0) {
+                tickers[s.a.ticker] = s.ticks;
+                tick_range[s.a.ticker] = s.a.range;
+            }
+        }
+    }
+    return {tickers: tickers, ranges: ranges, tick_range: tick_range};
+}
+function dash_axis_same(a, b) {
+    if (!a || !b || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+}
+function dash_axis_finish(plan, models) {
+    const tg = dash_axis_compute(plan, models);
+    const touched = new Set();
+    for (const ti of Object.keys(tg.tickers)) {
+        const tk = models[ti], t = tg.tickers[ti];
+        if (!tk || dash_axis_same(Array.from(tk.ticks || []), t)) continue;
+        tk.ticks = t;
+        if (tg.tick_range[ti] >= 0) touched.add(String(tg.tick_range[ti]));
+    }
+    for (const ri of Object.keys(tg.ranges)) {
+        const r = models[ri], se = tg.ranges[ri];
+        if (!r) continue;
+        if (r.start === se[0] && r.end === se[1] && r.reset_start === se[0]
+                && r.reset_end === se[1]) {
+            if (touched.has(ri) && r.change) r.change.emit();
+            touched.delete(ri);
+            continue;
+        }
+        r._dash_finishing = true;
+        // BokehJS may run a CustomJS after this returns: the zoom code also
+        // skips the extent this write leaves (``_dash_done``).
+        r._dash_done = [se[0], se[1]];
+        try {
+            const attrs = {reset_start: se[0], reset_end: se[1], start: se[0], end: se[1]};
+            if (typeof r.setv === "function") r.setv(attrs);
+            else for (const k of Object.keys(attrs)) r[k] = attrs[k];
+        } finally {
+            r._dash_finishing = false;
+        }
+        touched.delete(ri);
+    }
+    for (const ri of touched) {
+        const r = models[ri];
+        if (r && r.change) r.change.emit();
+    }
+}
+"""
+#: WP-30 P1.3a (D-21d): the zoom code, after _DASH_AXIS_FINISH_JS in ONE
+#: CustomJS per document on ``start`` and ``end`` of every counted axis's
+#: Range1d.  At the range's reset extent it writes the ticks the finisher
+#: computes from the data drawn now; elsewhere natscale over the visible
+#: range (the log and %tc rules apply).  It writes only ticks that differ,
+#: and returns at once while a re-finish writes the range (``_dash_finishing``)
+#: or when the range still holds the extent it wrote (``_dash_done``: BokehJS
+#: may run the callback after the write returns).
+_DASH_AXIS_ZOOM_JS = r"""
+(function () {
+    if (!cb_obj || cb_obj._dash_finishing) return;
+    const plan = JSON.parse(plan_json);
+    const ri = models.indexOf(cb_obj);
+    if (ri < 0) return;
+    const s = Number(cb_obj.start), e = Number(cb_obj.end);
+    if (!isFinite(s) || !isFinite(e)) return;
+    // The extent a re-finish just wrote, with its ticks: nothing to do.
+    const done = cb_obj._dash_done;
+    if (done && done[0] === s && done[1] === e) return;
+    cb_obj._dash_done = null;
+    const rs = cb_obj.reset_start, re = cb_obj.reset_end;
+    const span = Math.abs(e - s) || 1.0;
+    const home = (typeof rs === "number" && typeof re === "number"
+                  && Math.abs(s - rs) <= 1e-9 * span && Math.abs(e - re) <= 1e-9 * span);
+    const tg = home ? dash_axis_compute(plan, models) : null;
+    for (const grp of plan) for (const p of grp.panels) for (const a of p.axes) {
+        if (a.range !== ri || a.mode !== "count" || a.ticker < 0) continue;
+        const tk = models[a.ticker];
+        if (!tk) continue;
+        let t = null;
+        if (home) {
+            t = tg.tickers[a.ticker] || null;
+        } else if (!a.hold) {
+            t = dash_axis_ticks(Math.min(s, e), Math.max(s, e), a.n, a.kind);
+            if (t && a.extra.length) {
+                t = Array.from(new Set(t.concat(a.extra))).sort((x, y) => x - y);
+            }
+        }
+        if (t && t.length && !dash_axis_same(Array.from(tk.ticks || []), t)) tk.ticks = t;
+    }
+})();
+"""
+for _tok, _val in (("__DASH_MAX_TICKS__", _MAX_AXIS_TICKS),
+                   ("__DASH_SIDE__", _DASH_NATSCALE_SIDE),
+                   ("__DASH_UNCOVERED__", _DASH_NATSCALE_UNCOVERED),
+                   ("__DASH_DENSITY__", _DASH_NATSCALE_DENSITY),
+                   ("__DASH_INT_LIMIT__", _DASH_NATSCALE_INT_LIMIT),
+                   ("__DASH_EPOCH__", _STATA_EPOCH_UNIX_MS)):
+    _DASH_AXIS_FINISH_JS = _DASH_AXIS_FINISH_JS.replace(_tok, repr(_val))
+del _tok, _val
+# WP-30 P1.3a (TR-21.11): the saved page's filter callback ends by
+# re-finishing every planned axis over the rows the move kept.  Appended
+# here, not in _FILTER_JS's literal: that is defined before the constants
+# the finish code names.  `typeof' because a hand-built caller passes no
+# plan.
+_FILTER_JS = (_FILTER_JS + _DASH_AXIS_FINISH_JS
+              + 'if (typeof axis_plans_json !== "undefined" && axis_models) '
+              '{ dash_axis_finish(JSON.parse(axis_plans_json), '
+              'axis_models); }\n')
+
+
 def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
                             key="", grid_color=None, date_kind=None):
     """xtick()/ytick(): ticks WITHOUT labels, beside whatever labels the axis
@@ -24837,8 +25390,20 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
             if kind and not by_opt:
                 fb = ""
             fb = _dash_varformat_writable(fb, by_opt, ax_key[0])
+        spec = _dash_parse_axis_spec(raw) if raw else None
+        if (spec is None or spec.get("mode") == "default") \
+                and kind in (None, "tc", "tC"):
+            # WP-30 P1.3a: no label rule -- twoway's #N for the scheme's
+            # tick count (numticks_g), placed by natscale over every drawn
+            # layer once they are drawn (_dash_finish_count_ticks); no
+            # minor ticks.  A %td-%ty axis keeps its DatetimeTicker (S44).
+            from bokeh.models.axes import ContinuousAxis as _CA
+            _n = (getattr(fig, "_dash_numticks", None) or {}).get(
+                ax_key[0], 5)
+            for _a in axis_obj:
+                if isinstance(_a, _CA):
+                    _a.ticker = _dash_default_ticker(_n)
         if raw:
-            spec = _dash_parse_axis_spec(raw)
             _dash_report_suboptions(ax_key, spec.get("unsupported", []),
                                     seen, key)
             if kind:
@@ -24976,8 +25541,10 @@ def _dash_secondary_values(fig, range_attr, name):
                 idx = [i for i, b in enumerate(list(bools)[:n]) if b]
         rows = (range(n) if idx is None
                 else [i for i in idx if 0 <= int(i) < n])
+        # A default base is no part of the scale (WP-30 P1.3a).
+        skip = getattr(r, "_dash_auto_base", None) or ()
         for attr in fields:
-            if attr not in g.properties():
+            if attr not in g.properties() or attr in skip:
                 continue
             v = getattr(g, attr)
             field = (v if isinstance(v, str)
@@ -25001,6 +25568,387 @@ def _dash_secondary_values(fig, range_attr, name):
                     and math.isfinite(float(const)) and n:
                 consts.append(float(const))
     return cols, cols + consts
+
+
+#: WP-30 P1.3a (D-21g): the plot types whose coordinates are typed numbers,
+#: not a variable's values -- left out of a date axis's hull until S35.
+_DASH_RAW_SIF_TYPES = frozenset({"scatteri", "pci", "pcarrowi", "function"})
+
+
+def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
+    """``(low, high)`` of every value the layers on range *name* draw, or
+    None when they draw none (WP-30 P1.3a).
+
+    The reader of :func:`_dash_count_axes`, with numpy: every coordinate
+    field of ``_DASH_Y_COORDS`` (on ``y_range_name``) or
+    ``_DASH_X_COORDS`` over each renderer's view rows (an IndexFilter's
+    ``indices``, a BooleanFilter's ``booleans``) and every coordinate
+    given as a number on a source that has rows -- the values
+    :func:`_dash_secondary_values` lists, without building the list, so a
+    500,000-row layer is read within the re-finish budget (A9).  A colour
+    key's swatches, a renderer on another range and a default base
+    (``_dash_auto_base``, :func:`_dash_tag_hull_roles`) are skipped, and so
+    is a typed-number layer (``_dash_raw_sif``) when *kind* is a date
+    kind.  Only finite values count, positive ones on ``"log"``.  An
+    explicit ``base()`` (``_dash_base``) is no tick input either -- twoway
+    ticks ``bar mpg weight, base(5)`` 10(10)40 over a scale from 5 -- so
+    it is skipped too, and read alone with *role* ``"base"`` for the hull.
+    """
+    fields = _DASH_Y_COORDS if range_attr == "y_range_name" else _DASH_X_COORDS
+    date = isinstance(kind, str) and (kind in _DASH_TS_UNITS
+                                      or kind in ("tc", "tC"))
+    lo = hi = None
+    for r in renderers or ():
+        g = getattr(r, "glyph", None)
+        src = getattr(r, "data_source", None)
+        if g is None or src is None or _dash_is_swatch(r):
+            continue
+        if getattr(r, range_attr, "default") != name:
+            continue
+        if date and getattr(r, "_dash_raw_sif", False):
+            continue
+        based = tuple(getattr(r, "_dash_base", None) or ())
+        if role == "base":
+            if not based:
+                continue
+            skip = ()
+        else:
+            skip = tuple(getattr(r, "_dash_auto_base", None) or ()) + based
+        data = src.data
+        first = next(iter(data), None)
+        n = len(data[first]) if first else 0
+        filt = getattr(getattr(r, "view", None), "filter", None)
+        rows = None
+        if filt is not None:
+            idx = getattr(filt, "indices", None)
+            if idx is None:
+                bools = getattr(filt, "booleans", None)
+                if bools is not None:
+                    rows = np.flatnonzero(
+                        np.asarray(list(bools)[:n], dtype=bool))
+            else:
+                rows = np.asarray(list(idx), dtype=np.int64)
+                rows = rows[(rows >= 0) & (rows < n)]
+        props = g.properties()
+        for attr in fields:
+            if attr not in props or attr in skip:
+                continue
+            if role == "base" and attr not in based:
+                continue
+            v = getattr(g, attr)
+            field = (v if isinstance(v, str)
+                     else v.get("field") if isinstance(v, dict)
+                     else getattr(v, "field", None))
+            if field:
+                if field not in data:
+                    continue
+                col = _dash_float_values(data[field], coerce=True)
+                if rows is not None:
+                    col = col[rows[rows < len(col)]]
+            else:
+                const = (v if isinstance(v, (int, float))
+                         and not isinstance(v, bool)
+                         else v.get("value") if isinstance(v, dict)
+                         else getattr(v, "value", None))
+                if not isinstance(const, (int, float)) \
+                        or isinstance(const, bool) or not n:
+                    continue
+                col = np.asarray([float(const)])
+            col = col[np.isfinite(col)]
+            if kind == "log":
+                col = col[col > 0]
+            if not col.size:
+                continue
+            a, b = float(col.min()), float(col.max())
+            lo = a if lo is None else min(lo, a)
+            hi = b if hi is None else max(hi, b)
+    return None if lo is None else (lo, hi)
+
+
+def _dash_tag_hull_roles(renderers, ptype, options):
+    """Stamp each renderer of one layer with its role in the axis hull
+    (WP-30 P1.3a, D-21g), in both build loops.
+
+    A default base is no tick input and no part of twoway's scale
+    (measured: ``bar mpg weight`` runs y 10 to 41, not 0): a bar, area,
+    spike or dropline layer with no ``base()`` gets ``_dash_auto_base``,
+    the glyph property holding that base (a VBar's ``bottom``, an HBar's
+    ``left``, a VArea's ``y1``, a Segment's ``y0``), which every hull
+    reader skips until S27 clamps the base into the scale; an explicit
+    ``base()`` stays in the hull but is no tick input (``_dash_base``).
+    scatteri, pci, pcarrowi and function layers get
+    ``_dash_raw_sif``, which the reader skips on a date axis until S35.
+    Python attributes only: never serialised.
+    """
+    t = str(ptype or "").strip().lower()
+    has_base = "base" in (options or {})
+    for r in renderers or ():
+        g = getattr(r, "glyph", None)
+        if g is None or _dash_is_swatch(r):
+            continue
+        if t in _DASH_RAW_SIF_TYPES:
+            r._dash_raw_sif = True
+        gname = type(g).__name__
+        props = None
+        if t == "bar":
+            props = {"VBar": ("bottom",), "HBar": ("left",)}.get(gname)
+        elif t == "area":
+            props = {"VArea": ("y1",), "HArea": ("x1",)}.get(gname)
+        elif t in ("spike", "dropline") and gname == "Segment":
+            props = ("y0",)
+        if props:
+            if has_base:
+                r._dash_base = props
+            else:
+                r._dash_auto_base = props
+
+
+def _dash_refinish_axes(figures, facet_map):
+    """Tick and range every figure's axes again over the rows a filter move
+    kept -- the served app's re-finish (WP-30 P1.3a, TR-21.9).
+
+    For each by() graph (its panels in *facet_map* order) every panel is
+    re-finished (:func:`_dash_finish_count_ticks` with ``refinish``),
+    leaving the letters the panels share to
+    :func:`_dash_common_count_ticks`; every other figure is re-finished on
+    its own.  Ranges and tickers are updated in place.  Idempotent; a
+    figure that was never finished is skipped.  The saved page runs the
+    same chain in JavaScript (``_DASH_AXIS_FINISH_JS``)."""
+    figs = dict(figures or {})
+    grouped = set()
+    for _gname, items in (facet_map or {}).items():
+        panels = []
+        for item in items or ():
+            fk = item[0] if isinstance(item, (list, tuple)) else item
+            f = figs.get(fk)
+            if f is not None and hasattr(f, "_dash_hull_axes"):
+                panels.append(f)
+        if len(panels) < 2:
+            continue
+        rescaled = getattr(panels[0], "_dash_rescaled", None) or ()
+        letters = tuple(d for d in ("x", "y") if d not in rescaled)
+        for f in panels:
+            grouped.add(id(f))
+            _dash_finish_count_ticks(f, refinish=True, skip=letters)
+        _dash_common_count_ticks(panels, letters=letters)
+    for f in figs.values():
+        if id(f) not in grouped and hasattr(f, "_dash_hull_axes"):
+            _dash_finish_count_ticks(f, refinish=True)
+
+
+def _dash_axis_plan(figures, facet_map, zoom=True):
+    """``(plan_json, models)``: the data the saved page's re-finish and both
+    modes' zoom code read (WP-30 P1.3a, TR-21.10).
+
+    *models* lists, once each, the Range1d, FixedTicker,
+    ColumnDataSource and filter models the plan's indexes name.  The plan
+    holds, per graph (a by() graph's panels, with the letters they share,
+    else one figure), per axis: ``letter``, ``name``, ``kind``, ``mode``
+    (``"count"`` for a placed ``#N`` or default ticker, else ``"none"``),
+    ``n``, ``hold`` (a ``%td``-``%ty`` axis's ``#N`` ticks), ``key``,
+    ``held`` and ``explicit`` (positions that join the hull as they are),
+    ``extra`` (the ``#N`` list's union ticks), ``scale`` (the range()
+    values the ticks are placed over), ``reverse``, ``margin``, ``range``
+    and ``ticker`` (model indexes, -1 for none), ``layers`` (source,
+    filter, coordinate fields and numbers) and ``bars``.  Only numbers,
+    letters, kinds and column names: no user text, never code.  With
+    *zoom*, ONE CustomJS (``_DASH_AXIS_FINISH_JS + _DASH_AXIS_ZOOM_JS``)
+    is attached to ``start`` and ``end`` of every planned Range1d of a
+    counted axis, so a zoom or pan re-ticks it by natscale."""
+    from bokeh.models import (BooleanFilter, CustomJS, CustomJSTicker,
+                              FixedTicker, IndexFilter, Range1d)
+    from bokeh.models.axes import ContinuousAxis
+    figs = dict(figures or {})
+    models, index = [], {}
+    groups, grouped = [], set()
+    for _gname, items in (facet_map or {}).items():
+        panels = []
+        for item in items or ():
+            fk = item[0] if isinstance(item, (list, tuple)) else item
+            f = figs.get(fk)
+            if f is not None and hasattr(f, "_dash_hull_axes"):
+                panels.append(f)
+        if len(panels) < 2:
+            continue
+        rescaled = getattr(panels[0], "_dash_rescaled", None) or ()
+        groups.append(([d for d in ("x", "y") if d not in rescaled], panels))
+        grouped.update(id(f) for f in panels)
+    for f in figs.values():
+        if id(f) not in grouped and hasattr(f, "_dash_hull_axes"):
+            groups.append(([], [f]))
+    plan, zoom_ranges = [], []
+    for share, panels in groups:
+        pg = {"share": share, "panels": []}
+        for f in panels:
+            margins = getattr(f, "_dash_margin", None) or {}
+            scale_vals = getattr(f, "_dash_scale_values", None) or {}
+            scale_vals2 = getattr(f, "_dash_scale_values2", None) or {}
+            axes = []
+            for e in getattr(f, "_dash_hull_axes", None) or ():
+                ax, letter, name, kind = (e["ax"], e["letter"],
+                                          e.get("name", "default"),
+                                          e.get("kind"))
+                range_attr = letter + "_range_name"
+                rng = (getattr(f, letter + "_range") if name == "default"
+                       else getattr(f, "extra_%s_ranges" % letter).get(name))
+                t = ax.ticker
+                base = t if _dash_count_of(t) is not None else (
+                    dict(t.args or {}).get("base")
+                    if isinstance(t, CustomJSTicker) else None)
+                mode = ("count" if isinstance(base, FixedTicker)
+                        and _dash_count_of(base) is not None else "none")
+                explicit = []
+                if not getattr(ax, "_dash_norescale", False):
+                    explicit += list(getattr(ax, "_dash_hull_ticks", None)
+                                     or [])
+                if not getattr(ax, "_dash_tick_norescale", False):
+                    explicit += list(getattr(ax, "_dash_hull_tick_extra",
+                                             None) or [])
+                scale = list((scale_vals.get(letter, []) if name == "default"
+                              else scale_vals2.get(name, [])) or [])
+                explicit += scale
+                if name == "default":
+                    rev = bool((getattr(f, "_dash_scale_reverse", None)
+                                or {}).get(letter))
+                else:
+                    rev = bool((getattr(f, "_dash_scale_reverse2", None)
+                                or {}).get(name))
+                rev = rev or _dash_range_reversed(rng)
+                ri = ti = -1
+                if isinstance(rng, Range1d):
+                    ri = index.get(id(rng))
+                    if ri is None:
+                        ri = index[id(rng)] = len(models)
+                        models.append(rng)
+                if mode == "count":
+                    ti = index.get(id(base))
+                    if ti is None:
+                        ti = index[id(base)] = len(models)
+                        models.append(base)
+                date = isinstance(kind, str) and (
+                    kind in _DASH_TS_UNITS or kind in ("tc", "tC"))
+                fields = (_DASH_Y_COORDS if letter == "y"
+                          else _DASH_X_COORDS)
+                layers, bars = [], []
+                for r in f.renderers:
+                    g = getattr(r, "glyph", None)
+                    src = getattr(r, "data_source", None)
+                    if g is None or src is None or _dash_is_swatch(r):
+                        continue
+                    if getattr(r, range_attr, "default") != name:
+                        continue
+                    filt = getattr(getattr(r, "view", None), "filter", None)
+                    fk_ = ("idx" if isinstance(filt, IndexFilter) else
+                           "bool" if isinstance(filt, BooleanFilter) else "")
+                    si = index.get(id(src))
+                    if si is None:
+                        si = index[id(src)] = len(models)
+                        models.append(src)
+                    fi = -1
+                    if fk_:
+                        fi = index.get(id(filt))
+                        if fi is None:
+                            fi = index[id(filt)] = len(models)
+                            models.append(filt)
+                    gname = type(g).__name__
+                    if gname == ("VBar" if letter == "x" else "HBar"):
+                        bar = {"src": si, "filt": fi, "fk": fk_}
+                        for key, prop in (("c", "x" if letter == "x"
+                                           else "y"),
+                                          ("w", "width" if letter == "x"
+                                           else "height")):
+                            v = getattr(g, prop)
+                            fld = (v if isinstance(v, str)
+                                   else v.get("field") if isinstance(v, dict)
+                                   else getattr(v, "field", None))
+                            if fld:
+                                bar[key + "f"] = str(fld)
+                            else:
+                                c = (v if isinstance(v, (int, float))
+                                     and not isinstance(v, bool)
+                                     else v.get("value") if isinstance(v,
+                                                                       dict)
+                                     else getattr(v, "value", None))
+                                if isinstance(c, (int, float)) \
+                                        and not isinstance(c, bool) \
+                                        and math.isfinite(float(c)):
+                                    bar[key + "v"] = float(c)
+                        if ("cf" in bar or "cv" in bar) \
+                                and ("wf" in bar or "wv" in bar):
+                            bars.append(bar)
+                    if date and getattr(r, "_dash_raw_sif", False):
+                        continue
+                    based = tuple(getattr(r, "_dash_base", None) or ())
+                    skip = tuple(getattr(r, "_dash_auto_base", None) or ())
+                    props = g.properties()
+                    lf, lc, bf, bc = [], [], [], []
+                    for attr in fields:
+                        if attr not in props or attr in skip:
+                            continue
+                        v = getattr(g, attr)
+                        fld = (v if isinstance(v, str)
+                               else v.get("field") if isinstance(v, dict)
+                               else getattr(v, "field", None))
+                        if fld:
+                            if fld in src.data:
+                                (bf if attr in based else lf).append(str(fld))
+                            continue
+                        c = (v if isinstance(v, (int, float))
+                             and not isinstance(v, bool)
+                             else v.get("value") if isinstance(v, dict)
+                             else getattr(v, "value", None))
+                        if isinstance(c, (int, float)) \
+                                and not isinstance(c, bool) \
+                                and math.isfinite(float(c)):
+                            (bc if attr in based else lc).append(float(c))
+                    if lf or lc or bf or bc:
+                        layers.append({"src": si, "filt": fi, "fk": fk_,
+                                       "fields": lf, "consts": lc,
+                                       "bfields": bf, "bconsts": bc})
+                ok = (lambda v: isinstance(v, (int, float))
+                      and not isinstance(v, bool)
+                      and math.isfinite(float(v)))
+                axes.append({
+                    "letter": letter, "name": str(name),
+                    "kind": kind if isinstance(kind, str) else None,
+                    "key": "%s:%d" % e["key"], "mode": mode,
+                    "dflt": bool(mode == "count" and _DASH_DEFAULT_TAG in (
+                        getattr(base, "tags", None) or ())),
+                    "n": int(_dash_count_of(base) or 0) if mode == "count"
+                    else 0,
+                    "hold": bool(kind in _DASH_TS_UNITS),
+                    "held": [float(v) for v in (getattr(
+                        ax, "_dash_every_extra", None) or ()) if ok(v)],
+                    "explicit": [float(v) for v in explicit if ok(v)],
+                    "extra": [float(v) for v in (getattr(
+                        ax, "_dash_extra_ticks", None) or ()) if ok(v)],
+                    "scale": [float(v) for v in scale if ok(v)],
+                    "reverse": bool(rev),
+                    "margin": (float(margins[letter])
+                               if letter in margins else None),
+                    "range": ri, "ticker": ti,
+                    "layers": layers, "bars": bars})
+                if zoom and mode == "count" and ri >= 0 \
+                        and rng not in zoom_ranges:
+                    zoom_ranges.append(rng)
+            pg["panels"].append({"axes": axes})
+        plan.append(pg)
+    plan_json = json.dumps(plan, allow_nan=False, separators=(",", ":"))
+    if zoom and zoom_ranges:
+        cb = CustomJS(args={"plan_json": plan_json, "models": models},
+                      code=_DASH_AXIS_FINISH_JS + _DASH_AXIS_ZOOM_JS)
+        for rng in zoom_ranges:
+            old = getattr(rng, "_dash_zoom_cb", None)
+            for attr in ("start", "end"):
+                cbs = list((rng.js_property_callbacks or {}).get(
+                    "change:" + attr, []))
+                if old is not None and old in cbs:
+                    cbs.remove(old)
+                rng.js_property_callbacks = {
+                    **(rng.js_property_callbacks or {}),
+                    "change:" + attr: cbs + [cb]}
+            rng._dash_zoom_cb = cb
+    return plan_json, models
 
 
 def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
@@ -25105,10 +26053,24 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
         vals = [v for v in vals if math.isfinite(v)]
         if is_log:
             vals = [v for v in vals if v > 0]
+        # WP-30 P1.3a: the range() values and reverse, for the extent
+        # _dash_hull_ranges gives this range once every axis is ticked.
+        _sv2 = getattr(fig, "_dash_scale_values2", None) or {}
+        _sv2[name] = [float(v) for v in want if math.isfinite(float(v))]
+        fig._dash_scale_values2 = _sv2
+        _sr2 = getattr(fig, "_dash_scale_reverse2", None) or {}
+        _sr2[name] = "reverse" in names
+        fig._dash_scale_reverse2 = _sr2
+        if ax is not None and (spec is None
+                               or spec.get("mode") == "default"):
+            # No ylabel2()/xlabel2() rule: ticked as the first axes are.
+            _nt = getattr(fig, "_dash_numticks", None) or {}
+            ax.ticker = _dash_default_ticker(_nt.get(name, _nt.get(n, 5)))
         if vals:
-            new = _dash_padded_range(min(vals), max(vals),
-                                     "log" if is_log else None,
-                                     "reverse" in names)
+            new = _dash_padded_range(
+                min(vals), max(vals), "log" if is_log else None,
+                "reverse" in names,
+                margin=(getattr(fig, "_dash_margin", None) or {}).get(n))
             rng.start, rng.end = float(new.start), float(new.end)
             # The hull before padding, for a by() graph's one shared second
             # axis (_dash_share_by_scales, WP-29 P0.2).
@@ -25204,7 +26166,7 @@ def _dash_keep_primary_ranges(fig):
             rng.renderers = own
 
 
-def _dash_count_axes(fig, every_axis=False):
+def _dash_count_axes(fig, every_axis=False, refinish=False):
     """Each axis of *fig* that asked for ``#N`` ticks, as a dict: the axis,
     its ticker and placeholders, its range, its kind (None, "log" or a
     Stata date kind) and the minimum and maximum its layers draw (None
@@ -25215,13 +26177,23 @@ def _dash_count_axes(fig, every_axis=False):
     returned, ``base``/``every`` None where it asked for no ``#N``: the
     extent step (:func:`_dash_hull_ranges`) reads them all.  Each entry
     also records ``letter`` (``"x"``/``"y"``), ``name`` (``"default"`` or
-    the second range's) and ``pool`` (the renderers its values are read
-    from -- the hull's data rule)."""
-    import types
-    from bokeh.models import (CustomJSTicker, DataRange1d, DatetimeAxis,
+    the second range's) and ``pool`` (the renderers a bar's width is read
+    from).
+
+    WP-30 P1.3a: the minimum and maximum are read by
+    :func:`_dash_layer_extent` over EVERY layer on the axis's range -- a
+    fit, a band, scatteri and function included, as twoway's scale spans
+    them; the x pool a primary-limited autorange used to narrow is gone
+    (_fit_grid draws over the observed range, not 10% past it).  An entry
+    also records ``default`` (its placeholder is a default axis's,
+    :func:`_dash_default_ticker`) and, on a *refinish* (after a filter
+    move), ``hold``: a ``%td``-``%ty`` axis's ``#N`` ticks keep their
+    build-time places (S44 lifts this)."""
+    from bokeh.models import (CustomJSTicker, DatetimeAxis, FixedTicker,
                               LogAxis)
     from bokeh.models.axes import ContinuousAxis
     out = []
+    pool = list(fig.renderers)
     for sides, range_attr, extra_attr, main_attr, letter in (
             (("left", "right"), "y_range_name", "extra_y_ranges", "y_range",
              "y"),
@@ -25256,120 +26228,118 @@ def _dash_count_axes(fig, every_axis=False):
                             if name == "default" else None)
                     if kind is None:
                         continue        # a date axis of no known unit
-                # twoway's scale spans every layer on the axis.  On x, a
-                # range limited to some layers is read as it is limited: a
-                # fit's line is drawn 10% past the data there, which
-                # twoway's is not.
-                pool = list(fig.renderers)
-                if range_attr == "x_range_name" and \
-                        isinstance(rng, DataRange1d) and \
-                        rng.renderers not in ("auto", []):
-                    pool = list(rng.renderers)
-                _, vals = _dash_secondary_values(
-                    types.SimpleNamespace(renderers=pool), range_attr, name)
-                if kind == "log":
-                    vals = [v for v in vals if v > 0]
+                ext = _dash_layer_extent(pool, range_attr, name, kind)
+                bext = _dash_layer_extent(pool, range_attr, name, kind,
+                                          role="base")
+                default = (base is not None and _DASH_DEFAULT_TAG in
+                           (getattr(base, "tags", None) or ()))
                 out.append({"key": (side, pos), "ax": ax, "t": t,
                             "base": base, "every": every, "rng": rng,
                             "kind": kind, "letter": letter, "name": name,
-                            "pool": pool,
-                            "lo": min(vals) if vals else None,
-                            "hi": max(vals) if vals else None})
+                            "pool": pool, "default": default,
+                            "refinish": bool(refinish),
+                            "hold": bool(refinish and (
+                                kind in _DASH_TS_UNITS
+                                or not isinstance(base, FixedTicker))),
+                            "lo": ext[0] if ext else None,
+                            "hi": ext[1] if ext else None,
+                            "bases": list(bext) if bext else []})
     return out
 
 
 def _dash_place_count_ticks(e, lo, hi, common=False):
     """Give the axis of entry *e* (from :func:`_dash_count_axes`) twoway's
-    ticks over *lo* to *hi*, and widen its range to reach them.  With
-    *common* -- a by() graph's panels, ticked over all their data -- the
-    range spans that common scale too, as each twoway panel's does."""
-    from bokeh.models import DataRange1d, FixedTicker, Range1d
-    ax, t, base, every, rng, kind = (e["ax"], e["t"], e["base"], e["every"],
-                                     e["rng"], e["kind"])
+    ticks over *lo* to *hi*.
+
+    WP-30 P1.3a: ticks only.  A FixedTicker placeholder (a default axis's,
+    or one placed before) is written IN PLACE, so a re-finish after a
+    filter move updates the object the page, the zoom callback and a by()
+    graph's panels hold; a ``#N`` BasicTicker placeholder becomes a
+    FixedTicker that keeps its tags, so a re-finish still sees it as
+    counted.  The range is no longer pinned at the outermost tick: the
+    ticks join the hull (:func:`_dash_axis_hull`), padded by twoway's
+    margin.  *common* (a by() graph's union) no longer changes anything
+    here; it is kept for its callers.  An entry marked ``hold`` keeps its
+    ticks."""
+    from bokeh.models import FixedTicker
+    ax, t, base, every, kind = (e["ax"], e["t"], e["base"], e["every"],
+                                e["kind"])
+    held = bool(e.get("hold"))
     t_base = (_dash_axis_count_ticks(lo, hi, _dash_count_of(base), kind)
-              if base is not None else None)
+              if base is not None and not held else None)
     t_every = (_dash_axis_count_ticks(lo, hi, _dash_count_of(every), kind)
-               if every is not None else None)
+               if every is not None and not held else None)
     # US-14.4 (B1, WP-28 S14): a rule may precede a labelled list --
     # "#5 50 'fifty'" -- and twoway draws both; _dash_apply_axis_spec left
     # the explicit values on the axis object, unioned in here once the
     # count ticks are known.
     _extra = getattr(ax, "_dash_extra_ticks", None)
-    if _extra:
+    if _extra and base is not None and not held:
         if t_base:
             t_base = sorted(set(t_base) | set(_extra))
         else:
             t_base = sorted(set(_extra))
     if base is not None and t_base:
-        fixed = FixedTicker(ticks=[float(v) for v in t_base])
-        if base is t:
-            ax.ticker = fixed
+        vals = [float(v) for v in t_base]
+        if isinstance(base, FixedTicker):
+            if [float(v) for v in base.ticks] != vals:
+                base.ticks = vals
         else:
-            t.args = dict(t.args, base=fixed)
+            fixed = FixedTicker(ticks=vals, minor_ticks=[],
+                                tags=list(getattr(base, "tags", None) or []))
+            if base is t:
+                ax.ticker = fixed
+                e["t"] = fixed
+            else:
+                t.args = dict(t.args, base=fixed)
+            e["base"] = fixed
     if every is not None and t_every:
         a = {k: v for k, v in dict(t.args).items() if k != "every"}
         a["extra"] = [float(v) for v in t_every]
         t.args = a
         t.minor_code = _DASH_TICK_EXTRA_JS
-    if not t_base:
-        return
-    # The axis reaches its outermost labelled ticks, as twoway's does: a
-    # DataRange1d pads the data by 5% a side (in log space on a log axis),
-    # so only a tick past that is reached for; a reversed range is left.
-    t_lo, t_hi = min(t_base), max(t_base)
-    if kind == "log":
-        if lo <= 0 or hi <= 0:
-            return
-        llo, lhi = math.log10(lo), math.log10(hi)
-        pad = 0.05 * (lhi - llo)
-        d_lo, d_hi = 10 ** (llo - pad), 10 ** (lhi + pad)
-    else:
-        pad = 0.05 * (hi - lo)
-        d_lo, d_hi = lo - pad, hi + pad
-    if isinstance(rng, DataRange1d):
-        if getattr(rng, "flipped", False):
-            return
-        if common:
-            rng.start, rng.end = float(min(t_lo, d_lo)), float(max(t_hi, d_hi))
-            return
-        if t_lo < d_lo:
-            rng.start = t_lo
-        if t_hi > d_hi:
-            rng.end = t_hi
-    elif isinstance(rng, Range1d):
-        a0, a1 = rng.start, rng.end
-        if not all(isinstance(v, (int, float)) for v in (a0, a1)):
-            return
-        # The data's padded span too, not the ticks alone (WP-28 B2).
-        w_lo, w_hi = min(t_lo, d_lo), max(t_hi, d_hi)
-        if a0 <= a1:
-            rng.start, rng.end = min(a0, w_lo), max(a1, w_hi)
-        else:
-            rng.start, rng.end = max(a0, w_hi), min(a1, w_lo)
+        # xtick(#N)'s marks are placed once and held (D-21e); they still
+        # widen the scale.
+        ax._dash_every_extra = list(a["extra"])
 
 
-def _dash_padded_range(lo, hi, kind=None, reverse=False):
-    """A Range1d over *lo* to *hi* with dash's margin (WP-28 B2).
+def _dash_padded_range(lo, hi, kind=None, reverse=False, margin=None):
+    """A Range1d over *lo* to *hi* with twoway's plot-region margin.
 
-    5% of the span a side -- Bokeh's own DataRange1d padding, so an axis
-    that gains an explicit value keeps the margin it had -- in log10 space
-    when *kind* is ``"log"``.  A degenerate hull (``lo == hi``) is first
-    widened by one unit: a decade on a log axis, one day on a ``%td``/
-    ``%tc``/``%tC`` axis, one period on a ``%tw``/``%tm``/``%tq``/``%th``/
-    ``%ty`` axis (the axis is epoch milliseconds), else 1.  With *reverse*
-    the high end comes first (``start > end``): a Range1d has no
-    ``flipped``.  Stata's margin is 2.2% of the canvas instead (B25, left
-    as it is).
+    WP-30 P1.3a: *margin* is a fraction f of the frame (from
+    :func:`_dash_plot_margin`, 0 <= f < 0.45); the hull is padded by
+    f / (1 - 2f) of its span a side, so it fills 1 - 2f of the frame, as
+    twoway's scale fills its plot region (in log10 space when *kind* is
+    ``"log"``).  With *margin* None the pad is 5% of the span a side, the
+    old rule, kept for a hand-built range.  A degenerate hull (``lo ==
+    hi``) is first widened by one unit: a decade on a log axis, one day on
+    a ``%td``/``%tc``/``%tC`` axis, one period on a ``%tw``/``%tm``/
+    ``%tq``/``%th``/``%ty`` axis (the axis is epoch milliseconds), else 1.
+    With *reverse* the high end comes first (``start > end``): a Range1d
+    has no ``flipped``.  The result's ``reset_start``/``reset_end`` are its
+    ends, so Reset returns to them, and it carries ``_dash_margin_f`` (f,
+    or None for the old rule), which :func:`_dash_range_hull` inverts.
     """
     from bokeh.models import Range1d
     lo, hi = float(lo), float(hi)
     if lo > hi:
         lo, hi = hi, lo
+    f = None
+    if margin is not None:
+        try:
+            f = float(margin)
+        except (TypeError, ValueError):
+            f = None
+        if f is not None and not math.isfinite(f):
+            f = None
+        if f is not None:
+            f = max(0.0, min(f, 0.449))
+    frac = 0.05 if f is None else f / (1.0 - 2.0 * f)
     if kind == "log":
         a, b = math.log10(lo), math.log10(hi)
         if a == b:
             a, b = a - 1.0, b + 1.0
-        pad = 0.05 * (b - a)
+        pad = frac * (b - a)
         s, e = 10 ** (a - pad), 10 ** (b + pad)
     else:
         if lo == hi:
@@ -25389,23 +26359,36 @@ def _dash_padded_range(lo, hi, kind=None, reverse=False):
                 one = 86_400_000.0 if kind else 1.0
                 widened = (lo - one, hi + one)
             lo, hi = widened
-        pad = 0.05 * (hi - lo)
+        pad = frac * (hi - lo)
         s, e = lo - pad, hi + pad
-    return Range1d(start=e, end=s) if reverse else Range1d(start=s, end=e)
+    if reverse:
+        s, e = e, s
+    rng = Range1d(start=s, end=e, reset_start=s, reset_end=e)
+    rng._dash_margin_f = f
+    return rng
 
 
-def _dash_range_hull(rng, kind=None):
+def _dash_range_hull(rng, kind=None, margin=None):
     """``(low, high)``: the hull a Range1d from :func:`_dash_padded_range`
-    was padded from -- its ends less 5% of the hull's span a side, in
-    log10 space when *kind* is ``"log"``, whichever end comes first (WP-28
-    B2).  The inverse the tests and the certification block compare with
-    twoway's inner hull."""
+    was padded from, whichever end comes first (WP-28 B2).  With *margin*
+    (or the range's own ``_dash_margin_f``) the ends less f of the whole
+    span a side (WP-30 P1.3a); else less 5% of the hull's span, the old
+    rule; in log10 space when *kind* is ``"log"``.  The inverse the tests
+    and the certification block compare with twoway's inner hull; never
+    called at run time (a page read back from JSON has no
+    ``_dash_margin_f``, so a test passes *margin*)."""
+    f = margin if margin is not None else getattr(rng, "_dash_margin_f",
+                                                  None)
     s, e = float(rng.start), float(rng.end)
     a, b = min(s, e), max(s, e)
     if kind == "log":
         a, b = math.log10(a), math.log10(b)
-    w = (b - a) / 1.1
-    lo, hi = a + 0.05 * w, b - 0.05 * w
+    if f is None:
+        w = (b - a) / 1.1
+        lo, hi = a + 0.05 * w, b - 0.05 * w
+    else:
+        span = b - a
+        lo, hi = a + float(f) * span, b - float(f) * span
     if kind == "log":
         return 10 ** lo, 10 ** hi
     return lo, hi
@@ -25426,7 +26409,7 @@ def _dash_range_reversed(rng):
 
 def _dash_axis_hull(fig, e):
     """``(low, high)`` twoway's scale spans on the axis of entry *e* (from
-    :func:`_dash_count_axes`), or None when nothing explicit asks for one.
+    :func:`_dash_count_axes`), or None when nothing on it is finite.
 
     twoway's axis is the hull of what its layers draw, every label and
     tick position it places -- unless the option says ``norescale``
@@ -25434,15 +26417,14 @@ def _dash_axis_hull(fig, e):
     (axis_scale_options.sthlp:144-148, 336-341: range() "never narrows").
     The explicit values are the axis's label positions
     (``_dash_hull_ticks``, from :func:`_dash_apply_axis_spec`), its
-    xtick()/ytick() positions (``_dash_hull_tick_extra``) and, on the
-    figure's own range, ``fig._dash_scale_values``.  With none of them the
-    axis is left to Bokeh's autorange exactly as before (None).  Otherwise
-    the hull joins them with the data the entry's layers draw (``lo``/
-    ``hi``, through the same pool of renderers), a bar's full width (a
-    VBar's ``x`` plus or minus half its width on x, an HBar's ``y`` plus
-    or minus half its height on y -- the columns alone would cut the end
-    bars in half) and the ``#N`` ticks placed on the axis.  On a log axis
-    no value at or below 0 counts.
+    xtick()/ytick() positions (``_dash_hull_tick_extra``) and the range()
+    values (``fig._dash_scale_values`` on the figure's own range,
+    ``fig._dash_scale_values2`` on a second one).  WP-30 P1.3a: every
+    axis has a hull -- those, the data the entry's layers draw (``lo``/
+    ``hi``), a bar's full width (a VBar's ``x`` plus or minus half its
+    width on x, an HBar's ``y`` plus or minus half its height on y) and
+    the ``#N`` or default ticks placed on the axis.  On a log axis no
+    value at or below 0 counts.
     """
     from bokeh.models import CustomJSTicker, FixedTicker
     ax, kind = e["ax"], e.get("kind")
@@ -25452,20 +26434,22 @@ def _dash_axis_hull(fig, e):
           and math.isfinite(float(v))
           and (float(v) > 0 if kind == "log" else True))
 
+    name = e.get("name", "default")
     explicit = []
     if not getattr(ax, "_dash_norescale", False):
         explicit += list(getattr(ax, "_dash_hull_ticks", None) or [])
     if not getattr(ax, "_dash_tick_norescale", False):
         explicit += list(getattr(ax, "_dash_hull_tick_extra", None) or [])
-    if e.get("name", "default") == "default":
+    if name == "default":
         explicit += list((getattr(fig, "_dash_scale_values", None)
                           or {}).get(e.get("letter"), []))
-    explicit = [float(v) for v in explicit if ok(v)]
-    if not explicit:
-        return None
-    vals = list(explicit)
+    else:
+        explicit += list((getattr(fig, "_dash_scale_values2", None)
+                          or {}).get(name, []))
+    vals = [float(v) for v in explicit if ok(v)]
     vals += [float(v) for v in (e.get("lo"), e.get("hi"))
              if v is not None and ok(v)]
+    vals += [float(v) for v in e.get("bases") or () if ok(v)]
     # The #N ticks twoway places over the widened scale reach the axis.
     t = ax.ticker
     if e.get("base") is not None:
@@ -25474,10 +26458,9 @@ def _dash_axis_hull(fig, e):
             if isinstance(t, CustomJSTicker) else None)
         if isinstance(fixed, FixedTicker):
             vals += [float(v) for v in fixed.ticks if ok(v)]
-    if e.get("every") is not None and isinstance(t, CustomJSTicker):
-        vals += [float(v) for v in dict(t.args or {}).get("extra") or []
-                 if ok(v)]
-    # A bar's outer half-width.
+    vals += [float(v) for v in (getattr(ax, "_dash_every_extra", None)
+                                or ()) if ok(v)]
+    # A bar's outer half-width, read with numpy over the view's rows.
     letter = e.get("letter")
     glyph_name, centre, size = (("VBar", "x", "width") if letter == "x"
                                 else ("HBar", "y", "height"))
@@ -25485,23 +26468,27 @@ def _dash_axis_hull(fig, e):
     for r in e.get("pool") or ():
         g = getattr(r, "glyph", None)
         src = getattr(r, "data_source", None)
-        if type(g).__name__ != glyph_name or src is None:
+        if type(g).__name__ != glyph_name or src is None \
+                or _dash_is_swatch(r):
             continue
-        if getattr(r, range_attr, "default") != e.get("name", "default"):
+        if getattr(r, range_attr, "default") != name:
             continue
         data = src.data
         first = next(iter(data), None)
         n = len(data[first]) if first else 0
         filt = getattr(getattr(r, "view", None), "filter", None)
-        idx = getattr(filt, "indices", None) if filt is not None else None
-        if idx is None and filt is not None:
-            bools = getattr(filt, "booleans", None)
-            if bools is not None:
-                idx = [i for i, b in enumerate(list(bools)[:n]) if b]
-        rows = (list(range(n)) if idx is None
-                else [int(i) for i in idx if 0 <= int(i) < n])
-        # The centre and the width: each a column over the view's rows
-        # or one number for every row.
+        rows = None
+        if filt is not None:
+            idx = getattr(filt, "indices", None)
+            if idx is None:
+                bools = getattr(filt, "booleans", None)
+                if bools is not None:
+                    rows = np.flatnonzero(
+                        np.asarray(list(bools)[:n], dtype=bool))
+            else:
+                rows = np.asarray(list(idx), dtype=np.int64)
+                rows = rows[(rows >= 0) & (rows < n)]
+        nrows = n if rows is None else len(rows)
         got = []
         for prop in (centre, size):
             v = getattr(g, prop)
@@ -25512,7 +26499,9 @@ def _dash_axis_hull(fig, e):
                 if field not in data:
                     break
                 col = _dash_float_values(data[field], coerce=True)
-                got.append([float(col[i]) for i in rows] if len(col) else [])
+                if rows is not None:
+                    col = col[rows[rows < len(col)]]
+                got.append(col)
                 continue
             const = (v if isinstance(v, (int, float))
                      and not isinstance(v, bool)
@@ -25521,66 +26510,103 @@ def _dash_axis_hull(fig, e):
             if not isinstance(const, (int, float)) or isinstance(const,
                                                                  bool):
                 break
-            got.append([float(const)] * len(rows))
+            got.append(np.full(nrows, float(const)))
         if len(got) != 2:
             continue
-        cs, ws = got
-        for c, w in zip(cs, ws):
-            if math.isfinite(c) and math.isfinite(w):
-                for v in (c - w / 2.0, c + w / 2.0):
-                    if ok(v):
-                        vals.append(v)
+        m = min(len(got[0]), len(got[1]))
+        cs, ws = got[0][:m], got[1][:m]
+        keep = np.isfinite(cs) & np.isfinite(ws)
+        ends = np.concatenate([cs[keep] - ws[keep] / 2.0,
+                               cs[keep] + ws[keep] / 2.0])
+        ends = ends[np.isfinite(ends)]
+        if kind == "log":
+            ends = ends[ends > 0]
+        if ends.size:
+            vals += [float(ends.min()), float(ends.max())]
+    if not vals:
+        return None
     return min(vals), max(vals)
 
 
 def _dash_hull_ranges(fig, entries, common=None, made=None):
-    """Give each of *fig*'s own axes with a hull a padded Range1d over it.
+    """Give each of *fig*'s axes with a hull a padded Range1d over it.
 
-    *entries* are :func:`_dash_count_axes` entries (``every_axis=True``).
-    For the figure's x and y range, the hull is :func:`_dash_axis_hull`'s
-    over the entries on it -- or, with *common* (``{("default", letter):
-    (lo, hi)}``, a by() graph's one hull), that value -- and the range
-    becomes :func:`_dash_padded_range` of it, reversed when ``reverse`` was
-    asked for (``fig._dash_scale_reverse``) or the range already ran high
-    to low.  An axis with no hull keeps its DataRange1d.  A second axis's
-    range is fitted by :func:`_dash_finish_secondary_axes` and left alone.
-    Each entry's ``rng`` follows the new range; the hulls drawn are
-    recorded as ``fig._dash_hull_entries`` (``key``, ``letter``, ``name``,
-    ``kind``, ``lo``, ``hi``).  Returns that list.
+    *entries* are :func:`_dash_count_axes` entries (``every_axis=True``),
+    grouped by range: the figure's x and y and every second range
+    (``y2``/``x2``; WP-30 P1.3a).  The hull is :func:`_dash_axis_hull`'s
+    over the entries on that range -- or, with *common* (``{(name,
+    letter): (lo, hi)}``, a by() graph's one hull), that value -- padded by
+    :func:`_dash_padded_range` with the figure's margin
+    (``fig._dash_margin[letter]``, :func:`_dash_plot_margin`), reversed
+    when ``reverse`` was asked for (``fig._dash_scale_reverse``, or
+    ``fig._dash_scale_reverse2`` on a second range) or the range already
+    ran high to low.  A range that is already a Range1d is written IN
+    PLACE (start, end and the Reset extent), so a re-finish after a filter
+    move updates the object the page and its callbacks hold; *made* maps a
+    by() hull key to the one object the panels share.  An axis with no
+    hull keeps its range, and on a re-finish so does one whose kept rows
+    draw nothing, or whose letter the by() graph shares (``skip``; the
+    common step ranges it).  Each entry's ``rng`` follows the range; the
+    hulls drawn are recorded as ``fig._dash_hull_entries`` (``key``,
+    ``letter``, ``name``, ``kind``, ``lo``, ``hi``).  Returns that list.
     """
+    from bokeh.models import Range1d
     groups = {}
     for e in entries or ():
-        if e.get("name", "default") != "default":
-            continue
-        groups.setdefault(e["letter"], []).append(e)
+        groups.setdefault((e.get("name", "default"), e["letter"]),
+                          []).append(e)
+    margins = getattr(fig, "_dash_margin", None) or {}
     done = []
-    for letter, es in sorted(groups.items()):
-        hkey = ("default", letter)
+    for hkey, es in sorted(groups.items()):
+        name, letter = hkey
         if common is not None:
             if hkey not in common:
                 continue
             lo, hi = common[hkey]
         else:
+            if any(e.get("skip") for e in es):
+                continue
+            if any(e.get("refinish") for e in es) \
+                    and all(e.get("lo") is None for e in es):
+                continue
             hs = [h for h in (_dash_axis_hull(fig, e) for e in es)
                   if h is not None]
             if not hs:
                 continue
             lo, hi = min(h[0] for h in hs), max(h[1] for h in hs)
-        attr = letter + "_range"
-        rev = (bool((getattr(fig, "_dash_scale_reverse", None)
-                     or {}).get(letter))
-               or _dash_range_reversed(getattr(fig, attr)))
-        kind = es[0].get("kind")
-        if made is not None and common is not None and hkey in made:
-            new = made[hkey]
+        if name == "default":
+            cur = getattr(fig, letter + "_range")
+            rev = bool((getattr(fig, "_dash_scale_reverse", None)
+                        or {}).get(letter))
         else:
-            new = _dash_padded_range(lo, hi, kind, rev)
-            if made is not None and common is not None:
-                made[hkey] = new
-        setattr(fig, attr, new)
+            cur = getattr(fig, "extra_%s_ranges" % letter).get(name)
+            rev = bool((getattr(fig, "_dash_scale_reverse2", None)
+                        or {}).get(name))
+        rev = rev or _dash_range_reversed(cur)
+        kind = es[0].get("kind")
+        new = _dash_padded_range(lo, hi, kind, rev, margin=margins.get(letter))
+        if made is not None and common is not None and hkey in made:
+            obj = made[hkey]
+        elif isinstance(cur, Range1d):
+            obj = cur
+            for k, v in (("reset_start", new.start), ("reset_end", new.end),
+                         ("start", new.start), ("end", new.end)):
+                if getattr(obj, k) != v:
+                    setattr(obj, k, v)
+            obj._dash_margin_f = new._dash_margin_f
+        else:
+            obj = new
+        if made is not None and common is not None:
+            made[hkey] = obj
+        if name == "default":
+            if getattr(fig, letter + "_range") is not obj:
+                setattr(fig, letter + "_range", obj)
+        elif cur is not obj:
+            extra = "extra_%s_ranges" % letter
+            setattr(fig, extra, {**getattr(fig, extra), name: obj})
         for e in es:
-            e["rng"] = new
-        done.append({"key": hkey, "letter": letter, "name": "default",
+            e["rng"] = obj
+        done.append({"key": hkey, "letter": letter, "name": name,
                      "kind": kind, "lo": float(lo), "hi": float(hi)})
     if common is None:
         fig._dash_hull_entries = done
@@ -25591,45 +26617,56 @@ def _dash_hull_ranges(fig, entries, common=None, made=None):
     return done
 
 
-def _dash_finish_count_ticks(fig):
+def _dash_finish_count_ticks(fig, refinish=False, skip=()):
     """Put twoway's ``#N`` ticks on every axis that asked for them, then
-    give every axis with an explicit value its extent.
+    give every axis its extent.
 
     Called once every layer is drawn and the ranges are restricted, in
     both modes.  An axis whose ticker (or whose xtick()/ytick() positions)
-    is a placeholder from :func:`_dash_count_ticker` gets the ticks
+    is a placeholder from :func:`_dash_count_ticker` or
+    :func:`_dash_default_ticker` gets the ticks
     :func:`_dash_axis_count_ticks` gives over the values the layers on its
     range draw joined with its range() values -- twoway places ``#N`` over
     the widened scale -- natscale on a linear or log axis, _tsnatscale on a
-    date axis; the axis then runs to its outermost ticks.  An axis with no
-    finite value keeps Bokeh's choice.
+    date axis.  An axis with no finite value keeps its placeholder.
 
-    Then the extent (WP-28 B2, :func:`_dash_hull_ranges`): an axis with a
-    label or tick position (unless ``norescale``) or a range() value spans
-    the hull of those and of its data, padded; one with none keeps Bokeh's
-    autorange as it was.  The order is the design: ticks over data and
-    range() values first, the hull last.  The entries are kept on the
+    Then the extent (WP-28 B2, WP-30 P1.3a; :func:`_dash_hull_ranges`):
+    every axis spans the hull of its layers, its ticks, its label and tick
+    positions (unless ``norescale``) and its range() values, padded by
+    twoway's plot-region margin.  The order is the design: ticks over data
+    and range() values first, the hull last.  The entries are kept on the
     figure (``_dash_count_entries``, the counted axes; ``_dash_hull_axes``,
     every axis), so a by() graph's panels can be ticked and ranged again
     over all their data (:func:`_dash_common_count_ticks`).
+
+    With *refinish* (after a filter move, :func:`_dash_refinish_axes`)
+    the same chain runs over the rows the move kept, updating the ticks
+    and ranges in place; the D-21e forms hold (``hold``).  *skip* names the
+    letters a by() graph shares: their ticks and range are left to
+    :func:`_dash_common_count_ticks`.
     """
-    entries = _dash_count_axes(fig, every_axis=True)
+    entries = _dash_count_axes(fig, every_axis=True, refinish=refinish)
+    for e in entries:
+        if e["letter"] in (skip or ()):
+            e["skip"] = True
     counted = [e for e in entries
                if e["base"] is not None or e["every"] is not None]
     fig._dash_count_entries = counted
     fig._dash_hull_axes = entries
     scale_vals = getattr(fig, "_dash_scale_values", None) or {}
+    scale_vals2 = getattr(fig, "_dash_scale_values2", None) or {}
     for e in counted:
         lo, hi = e["lo"], e["hi"]
         extra = (list(scale_vals.get(e["letter"], []))
-                 if e["name"] == "default" else [])
+                 if e["name"] == "default"
+                 else list(scale_vals2.get(e["name"], [])))
         if e["kind"] == "log":
             extra = [v for v in extra if v > 0]
         if extra:
             lo = min(extra + ([lo] if lo is not None else []))
             hi = max(extra + ([hi] if hi is not None else []))
         e["tick_lo"], e["tick_hi"] = lo, hi
-        if lo is not None:
+        if lo is not None and not e.get("skip"):
             _dash_place_count_ticks(e, lo, hi)
     _dash_hull_ranges(fig, entries)
 
@@ -25641,17 +26678,19 @@ def _dash_common_count_ticks(figs, letters=("x", "y")):
     twoway's by() ticks every panel over ALL the panels' data (measured
     24sep2026: `twoway scatter mpg weight, by(foreign) ylabel(#5)' draws
     10(10)40 on both panels, whose own data run 12-34 and 14-41, and both
-    panels' scales run 12 to 41).  Each axis that asked for #N is ticked
-    again over the minimum and maximum of that axis (with its range()
-    values) in every panel, and its range spans that scale; a panel that
-    draws nothing takes the same ticks.  Then (WP-28 B2) every axis with
-    a hull in any panel spans one hull, the union of every panel's hull
-    and data (`by(foreign) yscale(range(0))': both panels 0 to 41).
+    panels' scales run 12 to 41).  Each counted axis (``#N`` or a default
+    axis) is ticked again over the minimum and maximum of that axis (with
+    its range() values) in every panel; a panel that draws nothing takes
+    the same ticks.  Then every range of a shared letter -- the second
+    ranges too (WP-30 P1.3a) -- spans one hull, the union of every panel's
+    hull and data, fits included (`by(foreign) yscale(range(0))': both
+    panels 0 to 41), as ONE Range1d object (``made``) updated in place.
     Called in both modes once every panel of the graph is drawn, through
-    :func:`_dash_share_by_scales`.  *letters* are the axes the panels share
-    (a rescaled one is ticked and hulled per panel, WP-29 P0.2); every
-    shared hull is one range object (``made``).
+    :func:`_dash_share_by_scales`, and after every filter move through
+    :func:`_dash_refinish_axes`.  *letters* are the axes the panels share
+    (a rescaled one is ticked and hulled per panel, WP-29 P0.2).
     """
+    from bokeh.models import CustomJSTicker, FixedTicker
     groups: dict = {}
     for f in figs or ():
         for e in getattr(f, "_dash_count_entries", None) or ():
@@ -25667,31 +26706,59 @@ def _dash_common_count_ticks(figs, letters=("x", "y")):
         lo, hi = min(los), max(his)
         for e in es:
             _dash_place_count_ticks(e, lo, hi, common=True)
+        # The panels carry ONE ticker per shared axis, as they share one
+        # range: a re-finish writes it once, not once per panel (100
+        # panels re-laid out a hundred times in a browser otherwise).
+        first = es[0]["base"]
+        if isinstance(first, FixedTicker):
+            for e in es[1:]:
+                b, t = e["base"], e["t"]
+                if b is first or not isinstance(b, FixedTicker) \
+                        or list(b.tags or []) != list(first.tags or []):
+                    continue
+                if b is t:
+                    e["ax"].ticker = first
+                    e["t"] = first
+                elif isinstance(t, CustomJSTicker):
+                    t.args = dict(t.args, base=first)
+                e["base"] = first
+    # A rescaled letter spans each panel's own hull, over those ticks.
+    for f in figs or ():
+        own = [e for e in getattr(f, "_dash_hull_axes", None) or ()
+               if e.get("letter") not in letters]
+        for e in own:
+            e.pop("skip", None)
+        if own:
+            _dash_hull_ranges(f, own)
     panels: dict = {}
     for f in figs or ():
         for e in getattr(f, "_dash_hull_axes", None) or ():
-            if e.get("name", "default") != "default" \
-                    or e.get("letter") not in letters:
+            if e.get("letter") not in letters:
                 continue
-            per = panels.setdefault(("default", e["letter"]), {})
+            per = panels.setdefault((e.get("name", "default"), e["letter"]),
+                                    {})
             per.setdefault(id(f), (f, []))[1].append(e)
-    for hkey, per in panels.items():
+    for hkey, per in sorted(panels.items()):
         if len(per) < 2:
             continue
-        hulls, data = [], []
+        hulls, data, refin = [], [], False
         for f, es in per.values():
             for e in es:
+                refin = refin or bool(e.get("refinish"))
                 h = _dash_axis_hull(f, e)
                 if h is not None:
                     hulls.append(h)
                 data += [v for v in (e["lo"], e["hi"]) if v is not None]
-        if not hulls:
+        if not hulls or (refin and not data):
             continue
         lo = min([h[0] for h in hulls] + data)
         hi = max([h[1] for h in hulls] + data)
         made: dict = {}
         for f, es in per.values():
             _dash_hull_ranges(f, es, common={hkey: (lo, hi)}, made=made)
+        if hkey in made:
+            _dash_share_repoint([f for f, _ in per.values()], hkey[1],
+                                hkey[0], made[hkey])
 
 
 def _dash_share_repoint(figs, letter, name, rng):
@@ -25708,101 +26775,55 @@ def _dash_share_by_scales(figs, rescale=frozenset()):
     """Draw a by() graph's panels on one scale per axis, as twoway does
     (bygraph_g.class axis_allrange; WP-29 P0.2).
 
-    For each axis the graph does not rescale (*rescale*, from
-    ``_dash_by_rescale``): when every panel's range is a DataRange1d, ONE
-    DataRange1d replaces them, its renderers the union of the panels' (a
-    panel that left its range to every renderer contributes its own
-    first-axis layers; all of them doing so keeps BokehJS's "auto"), so
-    BokehJS spans the union of what every panel draws, before and after
-    any filter move; on the second axis (``y2``/``x2``), one Range1d over
-    the union of the panels' hulls (``fig._dash_secondary_hulls``).  Then
-    the shared axes are ticked and hulled over every panel
-    (:func:`_dash_common_count_ticks`).  The order is the design: the
-    ranges are shared first, so the ``#N`` start and end land on the
-    shared object.  Sharing never crosses graphs: it is called once per
-    by() graph with that graph's panels.  Called in both modes.
+    WP-30 P1.3a: each panel's margin becomes its graph's times by()'s size
+    multiplier f(G) (:func:`_dash_plot_margin` with ``panels=len(figs)``),
+    and every panel's axes are padded again with it -- a rescaled letter
+    keeps its own hull.  Then each letter the graph does not rescale
+    (*rescale*, from ``_dash_by_rescale``) is ticked over every panel and
+    spans ONE Range1d over the union of every panel's hull, the second
+    axes and every layer included (:func:`_dash_common_count_ticks`).  The
+    DataRange1d the panels used to share spanned their scatter only, and
+    a fit was clipped (WP-29 S10's c15 note).  Sharing never crosses
+    graphs: it is called once per by() graph with that graph's panels.
+    Called in both modes.
     """
-    from bokeh.models import DataRange1d
     figs = [f for f in (figs or ()) if f is not None]
     if len(figs) < 2:
         return
     rescale = frozenset(rescale or ())
     letters = tuple(d for d in ("x", "y") if d not in rescale)
-    for letter in letters:
-        attr = letter + "_range"
-        rngs = [getattr(f, attr) for f in figs]
-        if all(isinstance(r, DataRange1d) for r in rngs) \
-                and len({id(r) for r in rngs}) > 1:
-            kw = {k: v for k, v in rngs[0].properties_with_values(
-                include_defaults=False).items()
-                if k not in ("renderers", "start", "end", "id", "name")}
-            shared = DataRange1d(**kw)
-            shared.flipped = any(bool(r.flipped) for r in rngs)
-            lists = [list(r.renderers) if isinstance(r.renderers, list)
-                     else [] for r in rngs]
-            if any(lists):
-                rname = letter + "_range_name"
-                seen, union = set(), []
-                for f, lst in zip(figs, lists):
-                    if not lst:
-                        lst = [r for r in f.renderers
-                               if getattr(r, rname, "default") == "default"
-                               and not _dash_is_swatch(r)]
-                    for r in lst:
-                        if id(r) not in seen:
-                            seen.add(id(r))
-                            union.append(r)
-                shared.renderers = union
-            for f in figs:
-                setattr(f, attr, shared)
-            _dash_share_repoint(figs, letter, "default", shared)
-        name = letter + "2"
-        extra = "extra_%s_ranges" % letter
-        if all(name in getattr(f, extra) for f in figs):
-            hulls = [(getattr(f, "_dash_secondary_hulls", None) or {}).get(name)
-                     for f in figs]
-            hulls = [h for h in hulls if h is not None]
-            if hulls:
-                new = _dash_padded_range(min(h[0] for h in hulls),
-                                         max(h[1] for h in hulls),
-                                         hulls[0][2], hulls[0][3])
-                for f in figs:
-                    setattr(f, extra, {**getattr(f, extra), name: new})
-                _dash_share_repoint(figs, letter, name, new)
+    for f in figs:
+        args = getattr(f, "_dash_margin_args", None)
+        if args is not None:
+            f._dash_margin = _dash_plot_margin(args[0], args[1],
+                                               panels=len(figs))
     _dash_common_count_ticks(figs, letters=letters)
 
 
 def _dash_limit_ranges_to_primary(fig, source):
-    """Range the figure's autoranged axes over the renderers drawn from the
-    graph's own data source *source* only -- the helper both modes run
-    (WP-28 B2; the saved renderer alone did this until then, so a served
-    figure autoranged over a fit's grid and the saved one did not).
+    """Range the figure's remaining autoranged axes over every layer it
+    draws -- the helper both modes run (WP-28 B2).
 
-    Computed-glyph renderers (lfit, histogram, qfit, etc.) use separate
-    ColumnDataSources with different row counts and ranges; without this
-    restriction those sources expand the axis range, making the plot
-    wider or taller than the scatter data warrants.  With it the axes
-    autorange over the actual data points, while the fit lines (whose
-    x_fit was extended by 10% to match Bokeh's padding) span exactly to
-    the visible edge of the plot area.  An axis already given a Range1d
-    is left as it is; nothing is done when no renderer draws from
-    *source*.
-
-    *source* is one ColumnDataSource or a list of them: the served app
-    draws a layer from a source of the layer's own rows, and passes the
-    graph's source and each of those.
+    WP-30 P1.3a: twoway's scale spans every drawn layer, so a fit, a CI
+    band, scatteri and function stay in: each DataRange1d left (an axis
+    with no finite value, which keeps Bokeh's autorange) is given every
+    renderer but a colour key's swatches.  It used to be limited to the
+    renderers drawn from the graph's own source *source*, which clipped a
+    fit (``(scatter price mpg) (lfit price mpg)`` ran y from 2,660 where
+    the fit reaches 1,458).  Nothing is done when no renderer draws from
+    *source* (one ColumnDataSource or a list of them), as before.
     """
     from bokeh.models import DataRange1d
     srcs = list(source) if isinstance(source, (list, tuple)) else [source]
-    prim = [r for r in fig.renderers
-            if hasattr(r, "data_source")
-            and any(r.data_source is s for s in srcs)]
-    if not prim:
+    if not any(hasattr(r, "data_source")
+               and any(r.data_source is s for s in srcs)
+               for r in fig.renderers):
         return
+    every = [r for r in fig.renderers if not _dash_is_swatch(r)]
     for attr in ("x_range", "y_range"):
         rng = getattr(fig, attr)
         if isinstance(rng, DataRange1d):
-            rng.renderers = prim
+            rng.renderers = every
 
 
 def _dash_assign_axis_ranges(fig, renderers, options, annotations=()):
@@ -32968,6 +33989,11 @@ class DashRenderer:
             fig_kwargs["y_axis_type"] = "log"
 
         fig = bokeh_figure(**fig_kwargs)
+        # WP-30 P1.3a: twoway's plot-region margin and the scheme's tick
+        # counts, for the finisher (Python attributes, never serialised).
+        fig._dash_margin = _dash_plot_margin(self.scheme, graph_opts)
+        fig._dash_margin_args = (self.scheme, graph_opts)
+        fig._dash_numticks = _dash_by_numticks(self.scheme, graph_opts)
         # The axes' date kinds, for the axis options below: a number given
         # for a date axis is a Stata date in the variable's unit.
         _dash_mark_date_axes(fig, _x_date, _y_date)
@@ -33273,6 +34299,8 @@ class DashRenderer:
 
             _layer_renderers = list(fig.renderers[_r_before:])
             _plot_renderers.append((plot, _layer_renderers))
+            # Each layer's role in the axis hull (WP-30 P1.3a, D-21g).
+            _dash_tag_hull_roles(_layer_renderers, ptype, popts)
             # A layer the saved page computes at build and does not refit
             # carries ONE tag on every renderer: its kind, variables,
             # weight rule and member rows (WP-29 P0.17).  Private to the
@@ -35380,6 +36408,15 @@ class DashRenderer:
 
         # ---- 5. Build filter widgets and wire callbacks ----
         filter_row_widgets = self._build_filter_widgets(filters_cfg, link_names, kpis)
+        # 5b. WP-30 P1.3a: every filter callback re-finishes the planned
+        # axes over the rows its move kept (_DASH_AXIS_FINISH_JS, the twin
+        # of _dash_finish_count_ticks); a zoom re-ticks by natscale.
+        _plan, _models = _dash_axis_plan(self.figures,
+                                         getattr(self, "_facet_map", {}),
+                                         zoom=True)
+        for _cb in self.filter_callbacks:
+            _cb.args["axis_plans_json"] = _plan
+            _cb.args["axis_models"] = _models
 
         # A brush KPI recomputes on a SELECTION change, which is independent
         # of the filter widgets -- a dashboard with no filters at all can
@@ -35666,6 +36703,11 @@ class ServerAppBuilder:
                       # xtick()/ytick()'s constant CustomJSTicker code.
                       "_DASH_TICK_MAJOR_JS", "_DASH_TICK_EXTRA_JS",
                       "_DASH_TICK_EVERY_JS",
+                      # WP-30 P1.3a: default axes, twoway's margin and
+                      # the zoom code's finisher twin.
+                      "_DASH_DEFAULT_TAG", "_DASH_MARGIN_RS",
+                      "_DASH_BY_GMETRIC", "_DASH_AXIS_FINISH_JS",
+                      "_DASH_AXIS_ZOOM_JS", "_DASH_RAW_SIF_TYPES",
                       "_DASH_REFLINE_SUBOPTS", "_DASH_FILTER_TYPES",
                       "_DASH_FILTER_SUBOPTS",
                       # The resource limits (WP-19): the app groups by(),
@@ -35986,6 +37028,11 @@ class ServerAppBuilder:
                          # twoway's #N ticks (BUGS.md, S3).
                          "_dash_natscale_ticks", "_dash_count_ticker",
                          "_dash_count_of", "_dash_finish_count_ticks",
+                         # WP-30 P1.3a: default axes and the re-finish.
+                         "_dash_default_ticker", "_dash_plot_margin",
+                         "_dash_by_numticks",
+                         "_dash_axis_plan", "_dash_layer_extent",
+                         "_dash_tag_hull_roles", "_dash_refinish_axes",
                          # WP-28 B2: the extent after the layers, the
                          # scale sub-option names and the shared
                          # primary-renderers limit.
@@ -37938,6 +38985,10 @@ class ServerAppBuilder:
             "        if _y_date: _fig_kw['y_axis_type'] = 'datetime'",
             "        elif _ys_log: _fig_kw['y_axis_type'] = 'log'",
             "        fig = bokeh_figure(**_fig_kw)",
+            "        # WP-30 P1.3a: twoway's margin and the scheme's tick counts.",
+            "        fig._dash_margin = _dash_plot_margin(_DASH_SCHEME, go)",
+            "        fig._dash_margin_args = (_DASH_SCHEME, go)",
+            "        fig._dash_numticks = _dash_by_numticks(_DASH_SCHEME, go)",
             "        _dash_mark_date_axes(fig, _x_date, _y_date)",
             "        for _axis, _kind, _avar in ((fig.xaxis, _x_date, _xa),",
             "                                    (fig.yaxis, _y_date, _ya)):",
@@ -38151,6 +39202,8 @@ class ServerAppBuilder:
             # `pci' produced a titled, axed, empty plot region and rc 0.
             # The saved dashboard has warned since WP-02; this is the same
             # helper, so the two modes decide and word it identically.
+            "            # Each layer's role in the axis hull (WP-30 P1.3a).",
+            "            _dash_tag_hull_roles(list(fig.renderers[_r_before:]), ptype, opts)",
             "            _dash_note_empty_layer(gname, pi + 1, ptype, len(g_df),",
             "                                   list(fig.renderers[_r_before:]))",
             "",
@@ -38407,6 +39460,9 @@ class ServerAppBuilder:
             "    # every figure, by() panel title and shared scale is built,",
             "    # as the saved renderer's _build_sources_and_figures ends.",
             "    _dash_finish_graph_text(figures)",
+            "    # WP-30 P1.3a: a zoom or pan re-ticks a counted axis by natscale",
+            "    # (one CustomJS for the document); a move re-finishes in Python.",
+            "    _dash_axis_plan(figures, _facet_map, zoom=True)",
             "",
             "    # ---- Persist per-graph qualifier metadata for filter callbacks ----",
             "    # Graph-level if_expr/in_expr are applied during initial rendering",
@@ -38580,7 +39636,7 @@ class ServerAppBuilder:
             "    # is that layer's own rows, so the view then selects them all.",
             "    _redrawn_views = _dash_own_redrawn_views(figures.values(), _redrawn_ids)",
             "",
-            "    def _make_filter_cb(_trig_widget, _all_widgets, _all_sources, _agg_srcs, _kpi_divs, _kpi_defs, _df_ref, _fmap, _fgvals, _orig_src_data, _gquals, _gfac_to_orig, _redrawn=frozenset(), _shared=None, _linked_views=(), _shared_pos=None, _redrawn_views=None):",
+            "    def _make_filter_cb(_trig_widget, _all_widgets, _all_sources, _agg_srcs, _kpi_divs, _kpi_defs, _df_ref, _fmap, _fgvals, _orig_src_data, _gquals, _gfac_to_orig, _redrawn=frozenset(), _shared=None, _linked_views=(), _shared_pos=None, _redrawn_views=None, _axis_figs=None, _axis_fmap=None):",
             "        _redrawn_views = _redrawn_views or {}",
             "        # GAPS2 E2: the graph names sharing _shared's identity, so the",
             "        # link group's own mask is the AND of the filters that apply",
@@ -38797,6 +39853,10 @@ class ServerAppBuilder:
             "                        'expected; the layer may be stale.' % (",
             "                            agg.get('type'), key[1] + 1, len(_fresh), len(agg['sources'])),",
             "                        UserWarning)",
+            "            # 3b. Tick and range the axes again over the rows kept,",
+            "            # as twoway does under the same `if' (WP-30 P1.3a).",
+            "            if _axis_figs is not None:",
+            "                _dash_refinish_axes(_axis_figs, _axis_fmap)",
             "            # 4. Recompute filter-mode KPIs",
             "            for kpi in _kpi_defs:",
             "                kupdate = kpi.get('update', 'filter')",
@@ -38831,6 +39891,7 @@ class ServerAppBuilder:
             "            _graph_qualifiers, _facet_to_orig, _redrawn_ids,",
             "            _shared=shared_source, _linked_views=_linked_views,",
             "            _shared_pos=_shared_pos, _redrawn_views=_redrawn_views,",
+            "            _axis_figs=figures, _axis_fmap=_facet_map,",
             "        )",
             "        # Every widget the builder made, whatever its class: a date",
             "        # slider is not a Slider subclass.",

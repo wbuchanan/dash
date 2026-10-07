@@ -1392,7 +1392,7 @@ Every figure carries the same tools, in both render modes:
 {synopt:Undo}step back through your pans, zooms and box and lasso
     selections.{p_end}
 {synopt:Redo}step forward again.{p_end}
-{synopt:Reset}return to the view the page opened with, and clear the
+{synopt:Reset}return to the extent the last filter move gave the axes, and clear the
     selection and what Undo would step back through.{p_end}
 {synopt:Save}write the figures to a PNG image; see below.{p_end}
 {synoptline}
@@ -2292,8 +2292,7 @@ Observations with a missing {cmd:by()} value are left out unless
 As in {cmd:twoway}, a {cmd:by()} graph's panels share one scale per axis --
 y, x and a second axis -- spanning every panel's data, the Total panel's
 too, and they keep sharing it after a filter move.  Panning or zooming one
-panel moves the others, and, as in any Bokeh plot, stops that axis
-following later filter moves.  With {cmd:yrescale}, {cmd:xrescale} or
+panel moves the others; a filter move spans the axes again over the rows kept.  With {cmd:yrescale}, {cmd:xrescale} or
 {cmd:rescale} each panel is drawn and ticked ({cmd:#}{it:N}) over its own
 data on that axis; there {cmd:yscale(range())} and {cmd:xscale(range())},
 those of the second axis included, are not applied, as in {cmd:twoway},
@@ -3091,15 +3090,28 @@ value listed, in any order; they never narrow it or hide data.  One value
 is one value to include ({cmd:yscale(range(0))} reaches 0 and keeps the
 data's top), a missing value is ignored, {cmd:r()} is the abbreviation
 and {cmd:rev} that of {cmd:reverse}; a value that is not a number is named
-and ignored.  The axis then runs over the hull of its data, positions and
-{cmd:range()} values with a margin of 5% of that span at each end (in log
-units on a log axis; {cmd:twoway}'s margin is a fixed part of the graph
-instead), and holds across filter moves.
+and ignored.  The axis then runs, as {cmd:twoway}'s scale does, over the
+hull of every layer it draws (fits, confidence bands, {cmd:scatteri} and
+{cmd:function} included; reference lines, text, marker labels and the default
+base of a {cmd:bar}, {cmd:area}, {cmd:spike} or {cmd:dropline} not), its
+ticks, label and tick positions and {cmd:range()} values, plus
+{cmd:twoway}'s plot-region margin: 2.2% of the graph's smaller side at each
+end (0.6% under {cmd:economist}; a {cmd:by()} panel's scaled as {cmd:twoway}
+scales it), in log units on a log axis.  The margin is fixed when the page
+is built, so it is placed within about 0.8% of the figure's width of
+{cmd:twoway}'s.  After a filter move a default or {cmd:#}{it:N} axis, a second
+axis included, is ticked and spanned again over the rows kept, in the saved
+page and the served app alike, and an axis with explicit positions keeps them
+and spans its data again; {cmd:%td}-{cmd:%ty} {cmd:#}{it:N} ticks,
+{cmd:xtick(#}{it:N}{cmd:)}/{cmd:ytick(#}{it:N}{cmd:)} marks and {cmd:minmax}
+positions keep their places.  On the saved page a fit, histogram or grid that
+the page does not recompute after a move, marked "(unfiltered)", stays inside
+the axis as drawn.
 
 {pstd}
 {cmd:#}{it:N} puts the ticks where {cmd:twoway} does: at 1, 2 or 5 times a
 power of ten, chosen over the smallest and largest values the axis's layers
-draw, and the axis reaches its outermost tick; so {cmd:ylabel(#5)} on
+draw, and the axis spans its outermost ticks; so {cmd:ylabel(#5)} on
 {cmd:auto}'s {cmd:mpg} labels 10 20 30 40.  {cmd:#1} labels the smallest and
 largest values.  {cmd:twoway}'s rule is compiled into Stata, so {cmd:dash}
 reproduces it from Stata's own answers: it agrees with 261 of 264 axes
@@ -3116,9 +3128,19 @@ rule over Stata's milliseconds.  A {cmd:%td}, {cmd:%tw}, {cmd:%tm},
 of it fitted to 12,000 of Stata's answers, which agrees exactly with 98% of
 {cmd:%ty} ranges and with 52% to 66% of the others, and where it differs
 it picks another calendar step or end tick.  A {cmd:by()} graph's panels
-are ticked on one scale, over all the panels' data, as {cmd:twoway} ticks
-them; with {cmd:by(, yrescale)} each panel is ticked over its own data,
-as {cmd:twoway} ticks it.
+are ticked on one scale, over all the panels' data and every layer, fits
+included, as {cmd:twoway} ticks them; with {cmd:by(, yrescale)} each panel is
+ticked over its own data, as {cmd:twoway} ticks it.
+
+{pstd}
+With no {cmd:xlabel()} or {cmd:ylabel()} rule, a numeric, log or {cmd:%tc}
+axis, and a second axis with no {cmd:ylabel2()} or {cmd:xlabel2()}, is ticked
+as {cmd:#5} (the scheme's tick count; a {cmd:by()} graph's panels take one
+fewer on y, as {cmd:twoway} draws them), with no minor ticks, so
+{cmd:scatter mpg weight} labels 10 20 30 40 and 2,000 3,000 4,000 5,000.  A
+zoom or pan ticks the visible range by the same rule, and Reset returns to
+the current extent.  A {cmd:%td}-{cmd:%ty} axis with no rule keeps Bokeh's
+calendar ticks.
 
 {pstd}
 A numeric axis's ticks are written in the display format {cmd:twoway}
@@ -3757,10 +3779,11 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     no ticks draws none, and {cmd:yesno alt_yaxes} puts the y axis on the
     right: under {cmd:economist} the y axis is on the right with neither
     line nor ticks, its x ticks point inward, and a {cmd:yaxis(2)} axis
-    is on the left with its line and ticks.  An axis whose labels Bokeh
-    places, as it does by default, also carries Bokeh's minor ticks, in
-    {cmd:color minortick}, which Stata draws only when {cmd:xmtick()},
-    {cmd:xmlabel()} or their {it:y} twins ask for them.{p_end}
+    is on the left with its line and ticks.  An axis with its default
+    labels draws no minor ticks, as Stata draws them only when
+    {cmd:xmtick()}, {cmd:xmlabel()} or their {it:y} twins ask for them; a
+    {cmd:%td}-{cmd:%ty} axis, whose labels Bokeh still places, carries
+    Bokeh's minor ticks in {cmd:color minortick}.{p_end}
 
 {phang2}{ul:Text.}  Each piece of text takes the size and colour of the
     Stata textbox style that draws it: {cmd:title()} is {cmd:heading},

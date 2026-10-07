@@ -832,8 +832,14 @@ class TestAColourKeyDoesNotWidenTheFirstAxis:
                     if str(getattr(r, "name", "") or "").startswith(
                         dr._DASH_SWATCH_PREFIX)]
         assert swatches, "no colour key was drawn"
-        ranged = list(fig.y_range.renderers)
-        assert ranged and not any(r in swatches for r in ranged)
-        # The scatter the key belongs to is still ranged over.
-        assert any(getattr(r, "y_range_name", "default") == "default"
-                   for r in ranged)
+        # WP-30 P1.3a: the y axis is now a Range1d over its layers' hull and
+        # ticks (it listed renderers); the swatches are no part of it and
+        # the scatter the key belongs to is.
+        ext = dr._dash_layer_extent(
+            [r for r in fig.renderers if r not in swatches],
+            "y_range_name", "default")
+        assert dr._dash_layer_extent(fig.renderers, "y_range_name",
+                                     "default") == ext
+        ticks = list(fig.yaxis[0].ticker.ticks)
+        assert dr._dash_range_hull(fig.y_range) == pytest.approx(
+            (min([ext[0]] + ticks), max([ext[1]] + ticks)))

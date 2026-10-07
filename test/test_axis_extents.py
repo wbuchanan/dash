@@ -170,7 +170,10 @@ class TestLabelValuesWidenTheAxis:
                    {"ylabel": "0 20 40 60 80 100, norescale"}, notes=notes)
         (ax,) = fig.yaxis
         assert list(ax.ticker.ticks) == [0.0, 20.0, 40.0, 60.0, 80.0, 100.0]
-        assert _is(fig.y_range, "DataRange1d")
+        # WP-30 P1.3a: a DataRange1d was wrong because every axis now
+        # spans its data's hull (twoway's 12-41 here), plus the margin.
+        assert _is(fig.y_range, "Range1d")
+        assert _approx(hull(fig.y_range), (12.0, 41.0))
         assert not [n for n in notes if "norescale" in n], notes
 
     def test_a_lone_rule_drops_norescale_as_twoway_does(self, mode,
@@ -187,10 +190,12 @@ class TestLabelValuesWidenTheAxis:
     def test_ytick_50_widens_and_norescale_does_not(self, mode, tmp_path):
         fig = _one(mode, tmp_path, {"ytick": "50"})
         assert _is(fig.y_range, "Range1d")
-        assert _approx(hull(fig.y_range), (12.0, 50.0))
+        # WP-30 P1.3a: 12 was wrong because the default axis's natscale
+        # ticks (10(10)40) join the hull, as twoway's scale spans them.
+        assert _approx(hull(fig.y_range), (10.0, 50.0))
         notes = []
         fig = _one(mode, tmp_path, {"ytick": "50, norescale"}, notes=notes)
-        assert _is(fig.y_range, "DataRange1d")
+        assert _approx(hull(fig.y_range), (10.0, 41.0))
         assert not [n for n in notes if "norescale" in n], notes
 
     def test_a_labelled_pair_widens(self, mode, tmp_path):
@@ -217,7 +222,8 @@ class TestRangeOnlyWidens:
 
     def test_range_20_30_never_narrows(self, mode, tmp_path):
         fig = _one(mode, tmp_path, {"yscale": "range(20 30)"})
-        assert _approx(hull(fig.y_range), (12.0, 41.0))
+        # WP-30 P1.3a: 12 was wrong because the natscale ticks join the hull.
+        assert _approx(hull(fig.y_range), (10.0, 41.0))
 
     def test_range_0_reaches_0_and_keeps_the_top(self, mode, tmp_path):
         fig = _one(mode, tmp_path, {"yscale": "range(0)"})
@@ -241,7 +247,8 @@ class TestRangeOnlyWidens:
     def test_missing_values_are_ignored(self, mode, tmp_path, given):
         notes = []
         fig = _one(mode, tmp_path, {"yscale": given}, notes=notes)
-        assert _approx(hull(fig.y_range), (12.0, 60.0))
+        # WP-30 P1.3a: 12 was wrong because the natscale ticks join the hull.
+        assert _approx(hull(fig.y_range), (10.0, 60.0))
         assert not [n for n in notes if "yscale" in n], notes
 
     @pytest.mark.parametrize("given", ["range(100 0)", "range(0 50 100)"])
@@ -254,7 +261,9 @@ class TestRangeOnlyWidens:
             self, mode, tmp_path):
         notes = []
         fig = _one(mode, tmp_path, {"yscale": "range(abc)"}, notes=notes)
-        assert _is(fig.y_range, "DataRange1d")
+        # WP-30 P1.3a: a DataRange1d was wrong because every axis now spans
+        # its data and ticks; the bad value leaves that hull alone.
+        assert _approx(hull(fig.y_range), (10.0, 41.0))
         want = "dash: yscale(range()) ignores abc, which is not a number"
         assert [n for n in notes if "range()" in n] == [want], notes
 
@@ -303,9 +312,13 @@ class TestLogAndDateAxes:
                    plots=[_sc("price")])
         assert any(isinstance(a, LogAxis) for a in fig.yaxis)
         assert _approx(hull(fig.y_range, "log"), (1000.0, 20000.0))
-        # Padded in log space: 5% of the decades a side.
+        # Padded in log space by twoway's margin f / (1 - 2f) of the decades
+        # a side (WP-30 P1.3a: the old 5% was wrong because twoway's
+        # plot-region margin is r x min(W, H), a frame fraction f).
+        f = fig._dash_margin["y"]
         lo, hi = math.log10(1000.0), math.log10(20000.0)
-        assert fig.y_range.start == pytest.approx(10 ** (lo - 0.05 * (hi - lo)))
+        assert fig.y_range.start == pytest.approx(
+            10 ** (lo - f / (1 - 2 * f) * (hi - lo)))
 
     def test_a_td_range_is_in_milliseconds(self, mode, tmp_path):
         fig = _one(mode, tmp_path, {"xscale": "range(14900 15400)"},
@@ -322,8 +335,11 @@ class TestLogAndDateAxes:
         fig = _one(mode, tmp_path, {"yscale": "range(20 20)"}, df=df)
         assert _is(fig.y_range, "Range1d")
         assert fig.y_range.start < 20.0 < fig.y_range.end
-        assert fig.y_range.start == pytest.approx(19.0 - 0.1)
-        assert fig.y_range.end == pytest.approx(21.0 + 0.1)
+        # WP-30 P1.3a: natscale on one value gives [19, 21] (reached), and
+        # the hull is padded by twoway's margin, not 5%.
+        p = fig._dash_margin["y"] / (1 - 2 * fig._dash_margin["y"]) * 2.0
+        assert fig.y_range.start == pytest.approx(19.0 - p)
+        assert fig.y_range.end == pytest.approx(21.0 + p)
 
 
 # ---------------------------------------------------------------------------
@@ -341,8 +357,11 @@ class TestReverse:
 
     def test_reverse_alone_keeps_the_flipped_datarange(self, mode, tmp_path):
         fig = _one(mode, tmp_path, {"yscale": "reverse"})
-        assert _is(fig.y_range, "DataRange1d")
-        assert fig.y_range.flipped is True
+        # WP-30 P1.3a: a flipped DataRange1d was wrong because every axis is
+        # now a Range1d over its hull; reversed, it runs high to low.
+        assert _is(fig.y_range, "Range1d")
+        assert fig.y_range.start > fig.y_range.end
+        assert _approx(hull(fig.y_range), (10.0, 41.0))
 
 
 # ---------------------------------------------------------------------------
@@ -378,7 +397,9 @@ class TestSecondAxes:
         fig = _one(mode, tmp_path, {"yscale2": "range(0 20000)"}, plots=_Y2)
         assert _approx(hull(fig.extra_y_ranges["y2"]), (0.0, 20000.0))
         fig = _one(mode, tmp_path, {"yscale2": "range(5000 6000)"}, plots=_Y2)
-        assert _approx(hull(fig.extra_y_ranges["y2"]), (3291.0, 15906.0))
+        # WP-30 P1.3a: 3291 was wrong because the second axis's default
+        # natscale ticks (0(5000)15000, twoway's P17) join its hull.
+        assert _approx(hull(fig.extra_y_ranges["y2"]), (0.0, 15906.0))
 
     def test_ylabel2_positions_widen_y2(self, mode, tmp_path):
         fig = _one(mode, tmp_path, {"ylabel2": "0(10000)30000"}, plots=_Y2)
@@ -443,9 +464,9 @@ class TestComputedLayers:
                     and type(r.glyph).__name__ == "Line":
                 fit_y.extend(float(v) for v in r.data_source.data["y"])
         assert fit_y and hi >= max(fit_y) - 1e-9
-        rs = fig.x_range.renderers
-        assert isinstance(rs, list) and rs, rs
-        assert {type(r.glyph).__name__ for r in rs} == {"Scatter"}
+        # WP-30 P1.3a: an x autorange limited to the scatter was wrong
+        # because every axis is now a Range1d over every drawn layer.
+        assert _is(fig.x_range, "Range1d")
 
 
 @pytest.mark.parametrize("mode", _MODES)
@@ -466,8 +487,10 @@ class TestBars:
                                               dtype=float))) / 2.0
         lo, hi = hull(fig.x_range)
         assert lo == pytest.approx(0.0)
-        assert hi == pytest.approx(4840.0 + half)
-        assert hi > 4840.0
+        # WP-30 P1.3a: the bar's outer half-width is in the hull; the
+        # natscale ticks (to 5000) now reach past it, as twoway's do.
+        assert hi == pytest.approx(max(4840.0 + half, 5000.0))
+        assert hi > 4840.0 + half - 1e-9
 
 
 # ---------------------------------------------------------------------------
@@ -483,10 +506,12 @@ class TestPrimaryRenderersInBothModes:
         got = {}
         for mode in _MODES:
             fig = _one(mode, tmp_path, {}, plots=plots)
-            rs = fig.x_range.renderers
-            got[mode] = len(rs) if isinstance(rs, list) else "auto"
+            # WP-30 P1.3a: a renderer list was wrong because the axis is
+            # now a Range1d over every drawn layer, the same in both modes.
+            got[mode] = (type(fig.x_range).__name__,
+                         tuple(round(v, 9) for v in hull(fig.x_range)))
         assert got["saved"] == got["served"], got
-        assert got["saved"] != "auto"
+        assert got["saved"][0] == "Range1d"
 
     def test_the_parity_profile_records_renderers_and_direction(self,
                                                                 tmp_path):
@@ -520,9 +545,16 @@ class TestTheHelpers:
 
     def test_axis_hull_returns_none_without_an_explicit_value(self,
                                                               tmp_path):
+        # WP-30 P1.3a: None was wrong because every axis has a hull (its
+        # data and ticks); None is left for an axis where nothing is finite.
         fig = _one("saved", tmp_path, {"ylabel": "#5"})
         entries = dr._dash_count_axes(fig, every_axis=True)
         assert entries
+        assert all(dr._dash_axis_hull(fig, e) is not None for e in entries)
+        for e in entries:
+            e.update(lo=None, hi=None, base=None)
+            e["ax"] = type("A", (), {"ticker": None})()
+            e["pool"] = []
         assert [dr._dash_axis_hull(fig, e) for e in entries] == \
             [None] * len(entries)
 
@@ -534,14 +566,26 @@ class TestTheHelpers:
             ColumnDataSource({"x": [2], "y": [2]})
         ra = fig.scatter("x", "y", source=a)
         fig.line("x", "y", source=b)
+        rb = fig.renderers[1]
         dr._dash_limit_ranges_to_primary(fig, a)
         assert isinstance(fig.x_range, DataRange1d)
-        assert list(fig.x_range.renderers) == [ra]
-        assert list(fig.y_range.renderers) == [ra]
+        # WP-30 P1.3a: [ra] was wrong because twoway's scale spans every
+        # drawn layer, the second source's line included.
+        assert list(fig.x_range.renderers) == [ra, rb]
+        assert list(fig.y_range.renderers) == [ra, rb]
 
     def test_hull_ranges_leaves_an_axis_without_a_hull(self, tmp_path):
+        # WP-30 P1.3a: an axis with data now has a hull; one whose entries
+        # draw nothing finite keeps its range.
+        from bokeh.models import DataRange1d
         fig = _one("saved", tmp_path, {})
-        dr._dash_hull_ranges(fig, dr._dash_count_axes(fig, every_axis=True))
+        es = dr._dash_count_axes(fig, every_axis=True)
+        for e in es:
+            e.update(lo=None, hi=None, base=None, pool=[])
+            e["ax"] = type("A", (), {"ticker": None})()
+        fig.y_range = DataRange1d()
+        fig.x_range = DataRange1d()
+        dr._dash_hull_ranges(fig, es)
         assert _is(fig.y_range, "DataRange1d")
         assert fig._dash_hull_entries == []
 
@@ -606,7 +650,15 @@ class TestAgainstTwoway:
         req = truth["probes"][pid]["requested"][axis]
         fig = _one(mode, tmp_path, go, plots=plots)
         rng = fig.y_range if axis == "y" else fig.x_range
-        assert _approx(hull(rng, kind), tuple(req), rel=1e-6), (pid, req)
+        # WP-30 P1.3a: the requested hull alone was wrong because the axis's
+        # placed ticks join the hull, as twoway's scale spans them.
+        ax = (fig.yaxis if axis == "y" else fig.xaxis)[0]
+        t = ax.ticker
+        t = (t.args or {}).get("base", t) if hasattr(t, "args") else t
+        ticks = [float(v) for v in getattr(t, "ticks", None) or []
+                 if kind != "log" or v > 0]
+        want = (min([req[0]] + ticks), max([req[1]] + ticks))
+        assert _approx(hull(rng, kind), want, rel=1e-6), (pid, req)
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_dashs_hull_is_statas_inner_hull_where_ticks_stay_inside(

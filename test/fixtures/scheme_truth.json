@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/extract_scheme_truth.py",
     "do_not_hand_edit": "This file is GENERATED ground truth extracted from Stata's own scheme and style files. Regenerate it by re-running scripts/extract_scheme_truth.py; do not hand-edit.",
-    "generated_utc": "2026-10-07T17:02:15Z",
+    "generated_utc": "2026-10-07T20:01:29Z",
     "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
     "scheme_dir": "/Applications/StataNow/ado/base/s",
     "style_dir": "/Applications/StataNow/ado/base/style",
@@ -764,6 +764,9 @@
     },
     "graphsize_x": 7.5,
     "graphsize_y": 4.5,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -773,6 +776,7 @@
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#000000",
     "xyline_line_width": {
@@ -1346,6 +1350,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -2878,6 +2885,27 @@
         "file": "scheme-stcolor.scheme",
         "line": 11
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -3835,6 +3863,9 @@
     },
     "graphsize_x": 6,
     "graphsize_y": 4,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -3844,6 +3875,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#000000",
     "xyline_line_width": {
@@ -4417,6 +4449,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -5949,6 +5984,27 @@
         "file": "scheme-stcolor_alt.scheme",
         "line": 11
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -6906,6 +6962,9 @@
     },
     "graphsize_x": 3.987,
     "graphsize_y": 2.392,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -6915,6 +6974,7 @@
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#000000",
     "xyline_line_width": {
@@ -7488,6 +7548,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -9020,6 +9083,27 @@
         "file": "scheme-stgcolor.scheme",
         "line": 14
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -10055,6 +10139,9 @@
     },
     "graphsize_x": 7.5,
     "graphsize_y": 4.5,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -10064,6 +10151,7 @@
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#303030",
     "xyline_line_width": {
@@ -10637,6 +10725,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -12139,6 +12230,27 @@
         "file": "scheme-stmono1.scheme",
         "line": 11
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -13176,6 +13288,9 @@
     },
     "graphsize_x": 7.5,
     "graphsize_y": 4.5,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -13185,6 +13300,7 @@
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#303030",
     "xyline_line_width": {
@@ -13758,6 +13874,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -15260,6 +15379,27 @@
         "file": "scheme-stmono2.scheme",
         "line": 11
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -16294,6 +16434,9 @@
     },
     "graphsize_x": 3.575,
     "graphsize_y": 2.6,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -16303,6 +16446,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#303030",
     "xyline_line_width": {
@@ -16873,6 +17017,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -18375,6 +18522,27 @@
         "file": "scheme-stsj.scheme",
         "line": 14
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -19330,6 +19498,9 @@
     },
     "graphsize_x": 5.5,
     "graphsize_y": 4,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -19339,6 +19510,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#c10534",
     "xyline_line_width": {
@@ -19909,6 +20081,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -21441,6 +21616,27 @@
         "file": "scheme-s2color.scheme",
         "line": 33
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -22474,6 +22670,9 @@
     },
     "graphsize_x": 5.5,
     "graphsize_y": 4,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -22483,6 +22682,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#303030",
     "xyline_line_width": {
@@ -23053,6 +23253,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -24555,6 +24758,27 @@
         "file": "scheme-s2color.scheme",
         "line": 33
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -25511,6 +25735,9 @@
     },
     "graphsize_x": 3.12,
     "graphsize_y": 2.392,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -25520,6 +25747,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#c10534",
     "xyline_line_width": {
@@ -26090,6 +26318,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -27622,6 +27853,27 @@
         "file": "scheme-s2gcolor.scheme",
         "line": 14
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -28578,6 +28830,9 @@
     },
     "graphsize_x": 5.5,
     "graphsize_y": 4,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -28587,6 +28842,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#c10534",
     "xyline_line_width": {
@@ -29157,6 +29413,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -30689,6 +30948,27 @@
         "file": "scheme-s2color.scheme",
         "line": 33
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -31726,6 +32006,9 @@
     },
     "graphsize_x": 5.5,
     "graphsize_y": 4,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -31735,6 +32018,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#303030",
     "xyline_line_width": {
@@ -32305,6 +32589,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -33807,6 +34094,27 @@
         "file": "scheme-s2color.scheme",
         "line": 33
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -34767,6 +35075,9 @@
     },
     "graphsize_x": 5.5,
     "graphsize_y": 4,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -34776,6 +35087,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#ff0000",
     "xyline_line_width": {
@@ -35346,6 +35658,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -36878,6 +37193,27 @@
         "file": "scheme-s2color.scheme",
         "line": 33
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -37845,6 +38181,9 @@
     },
     "graphsize_x": 2.2,
     "graphsize_y": 2.2,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "vsmall",
     "symbolsize": {
       "name": "large",
       "value": 2.4306,
@@ -37854,6 +38193,7 @@
     "legend_position": 12,
     "legend_cols": 3,
     "legend_rows": 0,
+    "margin_twoway_rs": 0.6,
     "xyline_drawn": true,
     "xyline_color": "#c10534",
     "xyline_line_width": {
@@ -38420,6 +38760,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -39966,6 +40309,27 @@
         "file": "scheme-economist.scheme",
         "line": 16
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-economist.scheme",
+        "line": 103
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-economist.scheme",
+        "line": 104
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "vsmall",
+        "file": "scheme-economist.scheme",
+        "line": 235
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -41009,6 +41373,9 @@
     },
     "graphsize_x": 3.575,
     "graphsize_y": 2.6,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -41018,6 +41385,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#303030",
     "xyline_line_width": {
@@ -41588,6 +41956,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -43090,6 +43461,27 @@
         "file": "scheme-sj.scheme",
         "line": 14
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -44124,6 +44516,9 @@
     },
     "graphsize_x": 3.12,
     "graphsize_y": 2.392,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -44133,6 +44528,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#303030",
     "xyline_line_width": {
@@ -44703,6 +45099,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -46205,6 +46604,27 @@
         "file": "scheme-s2manual.scheme",
         "line": 16
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -47240,6 +47660,9 @@
     },
     "graphsize_x": 3.12,
     "graphsize_y": 2.392,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "2.2",
       "value": 2.2,
@@ -47249,6 +47672,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#303030",
     "xyline_line_width": {
@@ -47819,6 +48243,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -49312,6 +49739,27 @@
         "file": "scheme-s1manual.scheme",
         "line": 15
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -50272,6 +50720,9 @@
     },
     "graphsize_x": 3.12,
     "graphsize_y": 2.392,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -50281,6 +50732,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#303030",
     "xyline_line_width": {
@@ -50851,6 +51303,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -52323,6 +52778,27 @@
         "file": "scheme-s2gmanual.scheme",
         "line": 17
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -53279,6 +53755,9 @@
     },
     "graphsize_x": 5.5,
     "graphsize_y": 4,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -53288,6 +53767,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#c10534",
     "xyline_line_width": {
@@ -53858,6 +54338,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -55390,6 +55873,27 @@
         "file": "scheme-s2color.scheme",
         "line": 33
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -56346,6 +56850,9 @@
     },
     "graphsize_x": 7.5,
     "graphsize_y": 4.5,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -56355,6 +56862,7 @@
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#c10534",
     "xyline_line_width": {
@@ -56928,6 +57436,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -58460,6 +58971,27 @@
         "file": "scheme-sttrans.scheme",
         "line": 28
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -59418,6 +59950,9 @@
     },
     "graphsize_x": 3.588,
     "graphsize_y": 2.392,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -59427,6 +59962,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#000000",
     "xyline_line_width": {
@@ -60000,6 +60536,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -61532,6 +62071,27 @@
         "file": "scheme-stgcolor_alt.scheme",
         "line": 10
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -62488,6 +63048,9 @@
     },
     "graphsize_x": 5.5,
     "graphsize_y": 4,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -62497,6 +63060,7 @@
     "legend_position": 4,
     "legend_cols": 1,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#c10534",
     "xyline_line_width": {
@@ -63067,6 +63631,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -64599,6 +65166,27 @@
         "file": "scheme-s2color.scheme",
         "line": 33
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -65556,6 +66144,9 @@
     },
     "graphsize_x": 7.5,
     "graphsize_y": 4.5,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -65565,6 +66156,7 @@
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#c10534",
     "xyline_line_width": {
@@ -66138,6 +66730,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -67669,6 +68264,27 @@
         "value": "4.5",
         "file": "scheme-stcolor.scheme",
         "line": 11
+      },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -68628,6 +69244,9 @@
     },
     "graphsize_x": 6,
     "graphsize_y": 4,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -68637,6 +69256,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#000000",
     "xyline_line_width": {
@@ -69210,6 +69830,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -70742,6 +71365,27 @@
         "file": "scheme-stcolor_alt.scheme",
         "line": 11
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -71699,6 +72343,9 @@
     },
     "graphsize_x": 7.5,
     "graphsize_y": 4.5,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -71708,6 +72355,7 @@
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#000000",
     "xyline_line_width": {
@@ -72281,6 +72929,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -73813,6 +74464,27 @@
         "file": "scheme-stcolor.scheme",
         "line": 11
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -74771,6 +75443,9 @@
     },
     "graphsize_x": 3.987,
     "graphsize_y": 2.392,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -74780,6 +75455,7 @@
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#c10534",
     "xyline_line_width": {
@@ -75353,6 +76029,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -76885,6 +77564,27 @@
         "file": "scheme-stgcolor_meta.scheme",
         "line": 9
       },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
+      },
       "symbolsize": {
         "kind": "transcribed",
         "directive": "symbolsize p",
@@ -77844,6 +78544,9 @@
     },
     "graphsize_x": 3.588,
     "graphsize_y": 2.392,
+    "numticks_horizontal_major": 5,
+    "numticks_vertical_major": 5,
+    "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -77853,6 +78556,7 @@
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
+    "margin_twoway_rs": 2.2,
     "xyline_drawn": true,
     "xyline_color": "#000000",
     "xyline_line_width": {
@@ -78426,6 +79130,9 @@
       "key_label_size": "gsize key_label",
       "graphsize_x": "graphsize x",
       "graphsize_y": "graphsize y",
+      "numticks_horizontal_major": "numticks_g horizontal_major",
+      "numticks_vertical_major": "numticks_g vertical_major",
+      "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
@@ -79957,6 +80664,27 @@
         "value": "2.392",
         "file": "scheme-stgcolor_alt.scheme",
         "line": 10
+      },
+      "numticks_horizontal_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 291
+      },
+      "numticks_vertical_major": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_major",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 292
+      },
+      "margin_twoway": {
+        "kind": "transcribed",
+        "directive": "margin twoway",
+        "value": "medsmall",
+        "file": "scheme-s2color.scheme",
+        "line": 719
       },
       "symbolsize": {
         "kind": "transcribed",

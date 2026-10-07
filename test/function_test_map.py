@@ -878,6 +878,13 @@ FUNCTIONS = {
  '_dash_axis_default_titles': 'test/test_series_labels.py::TestTheAxisTitleRule::test_first_equals_last',
  # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)
  # WP-30 S21 (P1.3a): natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)
+ '_dash_axis_plan': 'test/test_default_axes.py::TestTheHelpers::test_axis_plan_shape',
+ '_dash_by_numticks': 'test/test_default_axes.py::TestTheHelpers::test_the_by_tick_count',
+ '_dash_default_ticker': 'test/test_default_axes.py::TestTheHelpers::test_the_default_ticker_is_a_tagged_fixed_ticker',
+ '_dash_layer_extent': 'test/test_default_axes.py::TestTheHelpers::test_layer_extent_equals_the_python_reader',
+ '_dash_plot_margin': 'test/test_default_axes.py::TestTheHelpers::test_the_plot_margin',
+ '_dash_refinish_axes': 'test/test_default_axes.py::TestTheHelpers::test_refinish_axes_is_idempotent',
+ '_dash_tag_hull_roles': 'test/test_default_axes.py::TestTheHelpers::test_hull_roles',
  # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
  # WP-30 S23 (P1.26b): Served notes reach Stata (P1.26 part b, M6)
  # WP-30 S24 (P1.4a): Scheme opacity, histogram style and symbols reach every layer (P1.4 part a)

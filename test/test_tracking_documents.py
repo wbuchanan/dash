@@ -1548,7 +1548,6 @@ class TestWp29Tracking:
 #: on a key whose entry is missing, closed or not in the WP-30 open form, so
 #: the allowance cannot outlive its reason.  The closeout (S58.1) leaves it {}.
 WP30_OPEN = {
-    "P1.3a": "Default numeric axes use Bokeh's ticker and 10 percent padding, not twoway's natscale ticks and plot-region margin, and fit lines are left out of the axis range",
     "P1.3b": "Default %td to %ty date axes keep Bokeh's DatetimeTicker, not twoway's tsnatscale ticks",
     "P1.4a": "The scheme's opacity, histogram colour, intensity and width, and its hollow and sm symbols do not reach fits, spikes, ranges, immediates, histograms or rarea",
     "P1.4b": "Marker-label size and colour are fixed, the colour key has no scheme chrome, and unread user-scheme directives are ignored silently",

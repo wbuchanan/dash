@@ -293,6 +293,30 @@ def _figure_models(html: str, attr: str) -> list:
     return out
 
 
+def _page_inner(html, spec, data, attr):
+    """WP-30 P1.3a: the inner hull of the page's *attr* Range1d -- its ends
+    less twoway's plot-region margin, the frame fraction
+    ``_dash_plot_margin`` gives the page's scheme (a page read back has no
+    ``_dash_margin_f``) -- and that axis's FixedTicker ticks."""
+    sp = tempfile.mkstemp(suffix=".json")
+    dp = tempfile.mkstemp(suffix=".json")
+    try:
+        with os.fdopen(sp[0], "w") as f:
+            json.dump(spec, f)
+        with os.fdopen(dp[0], "w") as f:
+            json.dump(data, f)
+        scheme = DashRenderer(sp[1], dp[1]).scheme
+    finally:
+        os.unlink(sp[1])
+        os.unlink(dp[1])
+    go = spec["graphs"][0]["graph_options"]
+    f = dash_render._dash_plot_margin(scheme, go)[attr[0]]
+    (name, attrs), = _figure_models(html, attr)
+    rng = bkm.Range1d(start=float(attrs.get("start", 0.0)),
+                      end=float(attrs.get("end")))
+    return name, dash_render._dash_range_hull(rng, margin=f)
+
+
 def _figure_titles(html: str) -> list:
     """Each figure's title text, in order; None where it has none."""
     return [attrs.get("text") for _name, attrs
@@ -1003,8 +1027,10 @@ class TestGraphOptionsInHtml:
         # FixedTicker tick values should be embedded in the model JSON --
         # read from the document: "FixedTicker" and "ticks" are words the
         # page's BokehJS carries whatever the axes do.
-        assert [t.get("ticks") for t in _page_models(html).get("FixedTicker", [])] \
-            == [[2.0, 6.0, 10.0, 14.0, 18.0]], \
+        # WP-30 P1.3a: "the page's only FixedTicker" was wrong because the
+        # default y axis now carries natscale's FixedTicker too.
+        assert [2.0, 6.0, 10.0, 14.0, 18.0] in \
+            [t.get("ticks") for t in _page_models(html).get("FixedTicker", [])], \
             "xlabel() must embed FixedTicker (with ticks) in model JSON"
 
     def test_ylabel_tick_values_in_html(self):
@@ -1012,8 +1038,9 @@ class TestGraphOptionsInHtml:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["ylabel"] = "5 10 15 20"
         html = _render_to_html(spec, data)
-        assert [t.get("ticks") for t in _page_models(html).get("FixedTicker", [])] \
-            == [[5.0, 10.0, 15.0, 20.0]], \
+        # WP-30 P1.3a: the default x axis carries a FixedTicker too.
+        assert [5.0, 10.0, 15.0, 20.0] in \
+            [t.get("ticks") for t in _page_models(html).get("FixedTicker", [])], \
             "ylabel() must embed FixedTicker (with ticks) in model JSON"
 
     def test_xlabel_labeled_ticks_in_html(self):
@@ -1032,8 +1059,9 @@ class TestGraphOptionsInHtml:
             "xlabel labeled ticks must produce CustomJSTickFormatter in model JSON"
         labels = json.loads(dict(fmts[0]["args"]["entries"])["labels"])
         assert labels == {"1.0": "Low", "10.0": "Mid", "20.0": "High"}, labels
-        assert [t.get("ticks") for t in models.get("FixedTicker", [])] == \
-            [[1.0, 10.0, 20.0]]
+        # WP-30 P1.3a: the default y axis carries a FixedTicker too.
+        assert [1.0, 10.0, 20.0] in \
+            [t.get("ticks") for t in models.get("FixedTicker", [])]
 
     def test_title_xss_not_in_html_unescaped(self):
         """XSS payload in title does not appear as a raw <script> tag in output."""
@@ -1633,16 +1661,13 @@ class TestXrangeYrange:
         # WP-28 B2: range() widens to include -37 and 99 and never narrows;
         # the Range1d is that hull padded 5% a side (this pinned exactly
         # (-37, 99)).
-        got = [(name, attrs.get("start", bkm.Range1d().start),
-                attrs.get("end"))
-               for name, attrs in _figure_models(html, "x_range")]
-        assert [g[0] for g in got] == ["Range1d"]
-        start, end = float(got[0][1]), float(got[0][2])
-        assert start < -37.0 and end > 99.0
-        assert dash_render._dash_range_hull(bkm.Range1d(start=start, end=end)) \
-            == pytest.approx((-37.0, 99.0))
-        assert [name for name, _a in _figure_models(html, "y_range")] \
-            == ["DataRange1d"]
+        # WP-30 P1.3a: the hull padded 5% (and a DataRange1d on y) was
+        # wrong because every axis spans its hull and natscale ticks plus
+        # twoway's plot-region margin: -37 and 99 reach -50(50)100's ends.
+        name, (lo, hi) = _page_inner(html, spec, data, "x_range")
+        assert name == "Range1d"
+        assert (lo, hi) == pytest.approx((-50.0, 100.0))
+        assert _page_inner(html, spec, data, "y_range")[0] == "Range1d"
 
     def test_yrange_embeds_unique_end_value(self):
         """yrange(0 9999) must embed 9999 in model JSON (unique sentinel not in data)."""
@@ -1656,16 +1681,12 @@ class TestXrangeYrange:
         # WP-28 B2: the hull of 0, 9999 and the data, padded 5% a side
         # (this pinned exactly (0, 9999)); the padded start is never 0,
         # so the document writes it.
-        got = [(name, attrs.get("start", bkm.Range1d().start),
-                attrs.get("end"))
-               for name, attrs in _figure_models(html, "y_range")]
-        assert [g[0] for g in got] == ["Range1d"]
-        start, end = float(got[0][1]), float(got[0][2])
-        assert start < 0.0 and end > 9999.0
-        assert dash_render._dash_range_hull(bkm.Range1d(start=start, end=end)) \
-            == pytest.approx((0.0, 9999.0))
-        assert [name for name, _a in _figure_models(html, "x_range")] \
-            == ["DataRange1d"]
+        # WP-30 P1.3a: natscale ticks 0(2000)10000 reach past 9999 and the
+        # margin is twoway's (was 5%; the x axis was a DataRange1d).
+        name, (lo, hi) = _page_inner(html, spec, data, "y_range")
+        assert name == "Range1d"
+        assert (lo, hi) == pytest.approx((0.0, 10000.0), abs=1e-6)
+        assert _page_inner(html, spec, data, "x_range")[0] == "Range1d"
 
     def test_xrange_invalid_ignores_gracefully(self):
         """xrange with non-numeric values must not crash -- renders normally.
@@ -1680,8 +1701,10 @@ class TestXrangeYrange:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             html = _render_to_html(spec, data)
+        # WP-30 P1.3a: a Range1d over the data and its ticks (was a
+        # DataRange1d); the bad value changes nothing.
         assert [name for name, _a in _figure_models(html, "x_range")] \
-            == ["DataRange1d"]
+            == ["Range1d"]
         # Named once (WP-28 B2): an unhonoured value is named, Q22.
         assert [str(w.message) for w in caught
                 if "range()" in str(w.message)] == [
@@ -1699,8 +1722,9 @@ class TestXrangeYrange:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             html = _render_to_html(spec, data)
+        # WP-30 P1.3a: a Range1d over the data and its ticks.
         assert [name for name, _a in _figure_models(html, "y_range")] \
-            == ["DataRange1d"]
+            == ["Range1d"]
         assert [str(w.message) for w in caught
                 if "range()" in str(w.message)] == [
             "dash: yscale(range()) ignores bad, which is not a number"]

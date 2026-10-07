@@ -226,7 +226,11 @@ class TestAxisLabelGrammar:
         t = _ticker_of(fig)
         assert isinstance(t, CustomJSTicker)
         assert t.args["extra"] == [2000.0, 3000.0, 4000.0]
-        assert isinstance(t.args["base"], BasicTicker)
+        # WP-30 P1.3a: a BasicTicker base was wrong because the axis's own
+        # labels are now natscale's default FixedTicker.
+        from bokeh.models import FixedTicker
+        assert isinstance(t.args["base"], FixedTicker)
+        assert BasicTicker is not None
 
     def test_a_date_axis_ignores_a_numeric_format_gracefully(self):
         """Regression guard for the S08 work: no exception, no silent mangle."""
@@ -272,7 +276,8 @@ class TestAxisScale:
 
     def test_reverse_still_works(self):
         fig, _ = _fig_with_gopts(_SCATTER, {"yscale": "reverse"})
-        assert getattr(fig.y_range, "flipped", False) is True
+        # WP-30 P1.3a: a flipped DataRange1d is now a Range1d high to low.
+        assert fig.y_range.start > fig.y_range.end
 
     def test_the_dead_xrange_keys_are_gone(self):
         """A dead option read is how the axis work got misled in the first place."""

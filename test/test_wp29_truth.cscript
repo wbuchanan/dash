@@ -3878,7 +3878,8 @@ if inlist("`only'", "", "S10") {
 // what BokehJS spans over a shared DataRange1d).
 
 // _s10_panels: every panel of the current by() graph, into $s10_tw as
-// "title|ymin|ymax|xmin|xmax|y2min|y2max|majmin|majmax|majdelta|curmin;".
+// "title|ymin|ymax|xmin|xmax|y2min|y2max|majmin|majmax|majdelta|curmin;",
+// each min/max its scale's curmin/curmax (WP-30 P1.3a).
 capture program drop _s10_panels
 program define _s10_panels
     version 16.0
@@ -3886,7 +3887,9 @@ program define _s10_panels
     local out ""
     forvalues k = 1/`n' {
         local p ".Graph.graphs[`k']"
-        local out "`out'``p'.subtitle.text[1]'|``p'.plotregion1.yscale.min'|``p'.plotregion1.yscale.max'|``p'.plotregion1.xscale.min'|``p'.plotregion1.xscale.max'|``p'.yaxis2.plotregion.yscale.min'|``p'.yaxis2.plotregion.yscale.max'|``p'.yaxis1.major.min'|``p'.yaxis1.major.max'|``p'.yaxis1.major.delta'|``p'.plotregion1.yscale.curmin';"
+        // WP-30 P1.3a: the scales' curmin/curmax (twoway's scale, its
+        // ticks included), which dash's hull now spans; it was min/max.
+        local out "`out'``p'.subtitle.text[1]'|``p'.plotregion1.yscale.curmin'|``p'.plotregion1.yscale.curmax'|``p'.plotregion1.xscale.curmin'|``p'.plotregion1.xscale.curmax'|``p'.yaxis2.plotregion.yscale.curmin'|``p'.yaxis2.plotregion.yscale.curmax'|``p'.yaxis1.major.min'|``p'.yaxis1.major.max'|``p'.yaxis1.major.delta'|``p'.plotregion1.yscale.curmin';"
     }
     global s10_tw "`out'"
 end
@@ -3920,6 +3923,12 @@ def _s10_by(shared, rescaled=(), y2=False, ticks=False, no_zero=False):
         if sorted(live) != sorted(got):
             return ["panels %s, twoway %s" % (sorted(got), sorted(live))]
         figs = [got[t] for t in sorted(live)]
+        # WP-30 P1.3a: a page read back has no _dash_margin_f; the margin
+        # is the session scheme's, times by()'s f(G).
+        from sfi import SFIToolkit as _s10_tk
+        mg = _s10_tb.dr._dash_plot_margin(
+            _s10_tb.dr.SchemeParser(_s10_tk.macroExpand("\x60c(scheme)'")),
+            {}, panels=len(figs))
         for d in ("x", "y"):
             ids = {id(getattr(f, d + "_range")) for f in figs}
             if d in shared and len(ids) != 1:
@@ -3928,15 +3937,16 @@ def _s10_by(shared, rescaled=(), y2=False, ticks=False, no_zero=False):
                 bad.append("%s is not per panel" % d)
             for t in sorted(live):
                 f = got[t]
-                h = (_s10_tb._emulated_hull(figs, d) if d in shared
-                     else _s10_tb._hull_of(f, d))
+                h = (_s10_tb._emulated_hull(figs, d, margin=mg[d])
+                     if d in shared else _s10_tb._hull_of(f, d, margin=mg[d]))
                 want = (live[t][d + "min"], live[t][d + "max"])
                 if not _s10_tb._close(h, want):
                     bad.append("%s %s hull %s, twoway %s" % (t, d, h, want))
         if y2:
             for t in sorted(live):
                 r2 = got[t].extra_y_ranges.get("y2")
-                h = _s10_tb.dr._dash_range_hull(r2) if r2 is not None else None
+                h = (_s10_tb.dr._dash_range_hull(r2, margin=mg["y"])
+                     if r2 is not None else None)
                 want = (live[t]["y2min"], live[t]["y2max"])
                 if not _s10_tb._close(h, want):
                     bad.append("%s y2 hull %s, twoway %s" % (t, h, want))
@@ -3949,7 +3959,7 @@ def _s10_by(shared, rescaled=(), y2=False, ticks=False, no_zero=False):
                     bad.append("%s ticks %s, twoway %s" % (t, tk, want))
         if no_zero:
             for t in sorted(live):
-                h = _s10_tb._hull_of(got[t], "y")
+                h = _s10_tb._hull_of(got[t], "y", margin=mg["y"])
                 if h is None or h[0] <= 0 or live[t]["curmin"] != 10:
                     bad.append("%s hull %s, twoway curmin %s" % (t, h, live[t]["curmin"]))
         return bad

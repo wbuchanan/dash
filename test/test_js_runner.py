@@ -481,3 +481,23 @@ class TestTheNewWriteBacks:
         js_runner.JsSession([]).run_code(
             "d.text = 'b'; s.width = 250;", {"d": d, "s": sl})
         assert d.text == "b" and sl.width == 250
+
+
+@js_runner.requires_node
+class TestRangesAndTickersCommit:
+    """WP-30 P1.3a: the axis re-finish writes a Range1d (through setv, as
+    BokehJS's HasProps.setv) and a FixedTicker's ticks; a run commits both
+    back, and a slider's start/end are still never written."""
+
+    def test_start_end_reset_and_ticks_round_trip(self):
+        from bokeh.models import FixedTicker, Range1d
+        r = Range1d(start=0.0, end=1.0)
+        t = FixedTicker(ticks=[0.0, 1.0])
+        sl = RangeSlider(start=0.0, end=10.0, value=(1.0, 2.0), step=1.0)
+        js_runner.JsSession([]).run_code(
+            "r.setv({reset_start: 2, reset_end: 8, start: 2, end: 8});"
+            "t.ticks = [2, 4, 6, 8]; s.start = 5;",
+            {"r": r, "t": t, "s": sl})
+        assert (r.start, r.end, r.reset_start, r.reset_end) == (2, 8, 2, 8)
+        assert list(t.ticks) == [2.0, 4.0, 6.0, 8.0]
+        assert sl.start == 0.0
