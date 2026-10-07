@@ -12,6 +12,8 @@
 PYTHON      ?= python3
 STATA_BIN   ?= /usr/local/bin/stata-mp
 PYTEST_ARGS ?= -q -p no:cacheprovider
+# The certification suite's Stata sessions, side by side (1 to 4; WP-30).
+DASH_CERT_SESSIONS ?= 3
 
 ifeq ($(origin STATA),command line)
 $(error STATA was renamed STATA_BIN (WP-30); run make $(MAKECMDGOALS) STATA_BIN=$(STATA))
@@ -24,7 +26,7 @@ help:
 	@echo "make test      pytest under Stata's Python, strict"
 	@echo "make test-dev  pytest under the development interpreter ($(PYTHON)), strict"
 	@echo "make test-floor  one floor-matrix leg, run by hand (not part of make gate): FLOOR_VENV=<dir> FLOOR_BASELINE=<name>"
-	@echo "make cert      the certification suite, through the console binary"
+	@echo "make cert      the certification suite, through the console binary, as DASH_CERT_SESSIONS (default 3, 1 to 4) sessions side by side; DASH_CERT_REMEASURE=1 asks twoway again (release)"
 	@echo "make gate      net install, then every example and scheme from the install"
 	@echo "make release   make check, then make gate"
 	@echo "make hooks     have 'git push' run 'make check' first"
@@ -56,7 +58,7 @@ test-floor:
 	PYTEST_ARGS='$(PYTEST_ARGS)' sh scripts/floor_matrix.sh run "$(FLOOR_VENV)" "$(FLOOR_BASELINE)"
 
 cert:
-	@STATA_BIN='$(STATA_BIN)' PYTHON='$(PYTHON)' sh scripts/run_cert_suite.sh
+	@STATA_BIN='$(STATA_BIN)' PYTHON='$(PYTHON)' DASH_CERT_SESSIONS='$(DASH_CERT_SESSIONS)' sh scripts/run_cert_suite.sh
 
 gate:
 	@STATA_BIN='$(STATA_BIN)' PYTHON='$(PYTHON)' sh scripts/run_release_gate.sh

@@ -184,6 +184,7 @@ class TestEveryRunnerUsesTheWrapper:
         return script
 
     def test_run_cert_suite_hands_stata_its_own_tree(self, tmp_path):
+        # One session (DASH_CERT_SESSIONS=1): the run as it always was.
         self._routes("run_cert_suite.sh")
         tree = tmp_path / "tree"
         _copy_runner(tree, "run_cert_suite.sh", "stata_batch.sh",
@@ -192,7 +193,8 @@ class TestEveryRunnerUsesTheWrapper:
         out = tmp_path / "fake.out"
         env = {"PATH": "/usr/bin:/bin", "STATA_BIN": str(fake),
                "STATA_ARCH": "none", "FAKE_OUT": str(out),
-               "PYTHON": sys.executable, "TMPDIR": str(tmp_path)}
+               "PYTHON": sys.executable, "TMPDIR": str(tmp_path),
+               "DASH_CERT_SESSIONS": "1"}
         r = _run(["/bin/sh", str(tree / "scripts" / "run_cert_suite.sh")], env)
         assert r.returncode != 0, r.stdout + r.stderr
         lines = out.read_text().splitlines()
@@ -204,6 +206,112 @@ class TestEveryRunnerUsesTheWrapper:
         assert os.path.realpath(args[2]) == os.path.join(
             real, "test", "run_all_cscripts.do")
         assert "testing" in r.stdout
+        assert r.stdout.count("certification log: ") == 1
+
+    #: A fake Stata that records, per shard, where and how it was started.
+    _SHARD_RECORD = (
+        'f="$FAKE_OUT.$(printf "%s" "${DASH_CERT_SHARD-none}" | tr / _)"\n'
+        '{ printf "DASH_REPO=%s\\n" "${DASH_REPO-}"; '
+        'printf "STATATMP=%s\\n" "${STATATMP-}"; '
+        'printf "SHARD=%s\\n" "${DASH_CERT_SHARD-}"; '
+        'printf "PYX=%s\\n" "${DASH_PYTHON_EXEC-unset}"; '
+        'printf "PWD=%s\\n" "$(pwd)"; '
+        'for a in "$@"; do printf "ARG=%s\\n" "$a"; done; } > "$f"\n')
+
+    @pytest.mark.parametrize("sessions", ["2", "3", "4", None])
+    def test_run_cert_suite_runs_its_shards_side_by_side(self, tmp_path,
+                                                         sessions):
+        # WP-30 test performance, C: N sessions (default 3), session k
+        # running shard k/N in its own folder with its own STATATMP (ending
+        # in /, not the folder its log is written to), and the verdict
+        # handed every shard's log.
+        self._routes("run_cert_suite.sh")
+        tree = tmp_path / "tree"
+        _copy_runner(tree, "run_cert_suite.sh", "stata_batch.sh",
+                     "cert_verdict.py")
+        fake = _fake_stata(tmp_path / "bin", self._SHARD_RECORD)
+        out = tmp_path / "fake.out"
+        env = {"PATH": "/usr/bin:/bin", "STATA_BIN": str(fake),
+               "STATA_ARCH": "none", "FAKE_OUT": str(out),
+               "PYTHON": sys.executable, "TMPDIR": str(tmp_path),
+               "DASH_PYTHON_EXEC": "/x/python3"}
+        if sessions:
+            env["DASH_CERT_SESSIONS"] = sessions
+        n = int(sessions or 3)
+        r = _run(["/bin/sh", str(tree / "scripts" / "run_cert_suite.sh")], env)
+        assert r.returncode == 1, r.stdout + r.stderr
+        assert "%d sessions side by side" % n in r.stdout
+        real = os.path.realpath(str(tree))
+        tmps, pwds = set(), set()
+        for k in range(1, n + 1):
+            rec = dict(l.split("=", 1) for l in tmp_path.joinpath(
+                "fake.out.%d_%d" % (k, n)).read_text().splitlines()
+                if not l.startswith("ARG="))
+            args = [l.split("=", 1)[1] for l in tmp_path.joinpath(
+                "fake.out.%d_%d" % (k, n)).read_text().splitlines()
+                if l.startswith("ARG=")]
+            assert os.path.realpath(rec["DASH_REPO"]) == real
+            assert rec["SHARD"] == "%d/%d" % (k, n)
+            assert rec["PYX"] == "/x/python3"
+            assert rec["STATATMP"].endswith("/s%d/tmp/" % k)
+            assert os.path.realpath(rec["PWD"]) == os.path.realpath(
+                rec["STATATMP"][:-len("tmp/")])
+            assert args[:2] == ["-b", "do"] and len(args) == 3
+            assert os.path.realpath(args[2]) == os.path.join(
+                real, "test", "run_all_cscripts.do")
+            tmps.add(rec["STATATMP"])
+            pwds.add(rec["PWD"])
+        assert len(tmps) == len(pwds) == n
+        assert not tmp_path.joinpath("fake.out.none").exists()
+        logs = [l for l in r.stdout.splitlines()
+                if l.startswith("certification log: ")]
+        assert len(logs) == n
+        assert all(l.endswith("/s%d/run_all_cscripts.log" % k)
+                   for k, l in enumerate(logs, 1))
+        assert "no log to judge" in r.stdout
+
+    @pytest.mark.parametrize("var,value", [
+        ("DASH_CERT_SESSIONS", "0"), ("DASH_CERT_SESSIONS", "5"),
+        ("DASH_CERT_SESSIONS", "x"), ("DASH_CERT_SESSIONS", "3 "),
+        ("DASH_CERT_ONLY", "test_a;rm"), ("DASH_CERT_ONLY", "a\tb"),
+        ("DASH_CERT_ONLY", "$HOME")])
+    def test_run_cert_suite_refuses_a_bad_setting_before_stata(
+            self, tmp_path, var, value):
+        tree = tmp_path / "tree"
+        _copy_runner(tree, "run_cert_suite.sh", "stata_batch.sh",
+                     "cert_verdict.py")
+        fake = _fake_stata(tmp_path / "bin", self._SHARD_RECORD)
+        env = {"PATH": "/usr/bin:/bin", "STATA_BIN": str(fake),
+               "STATA_ARCH": "none", "FAKE_OUT": str(tmp_path / "fake.out"),
+               "PYTHON": sys.executable, "TMPDIR": str(tmp_path), var: value}
+        r = _run(["/bin/sh", str(tree / "scripts" / "run_cert_suite.sh")], env)
+        assert r.returncode == 2, r.stdout + r.stderr
+        assert var in r.stderr
+        assert not [p for p in os.listdir(tmp_path)
+                    if p.startswith("fake.out")]
+
+    def test_run_cert_suite_hands_dash_cert_only_to_the_verdict(self,
+                                                                 tmp_path):
+        tree = tmp_path / "tree"
+        _copy_runner(tree, "run_cert_suite.sh", "stata_batch.sh",
+                     "cert_verdict.py")
+        (tree / "test").mkdir()
+        (tree / "test" / "run_all_cscripts.do").write_text(
+            'capture noisily {\n    do "test_a.cscript"\n}\n'
+            'capture noisily {\n    do "test_b.cscript"\n}\n')
+        body = ('printf "[SHARD] 1/1: 1 of 2 scripts\\n[ PASS] '
+                'test_a.cscript\\nALL TESTS PASSED (1 passed, 0 skipped)\\n" '
+                '> run_all_cscripts.log\n'
+                'printf "ONLY=%s\\n" "${DASH_CERT_ONLY-}" > "$FAKE_OUT"\n')
+        fake = _fake_stata(tmp_path / "bin", body)
+        env = {"PATH": "/usr/bin:/bin", "STATA_BIN": str(fake),
+               "STATA_ARCH": "none", "FAKE_OUT": str(tmp_path / "fake.out"),
+               "PYTHON": sys.executable, "TMPDIR": str(tmp_path),
+               "DASH_CERT_SESSIONS": "1", "DASH_CERT_ONLY": "test_a"}
+        r = _run(["/bin/sh", str(tree / "scripts" / "run_cert_suite.sh")], env)
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert "1 of 1 registered scripts passed" in r.stdout
+        assert (tmp_path / "fake.out").read_text() == "ONLY=test_a\n"
 
     def test_run_cert_suite_refuses_a_tree_stata_cannot_be_handed(self,
                                                                   tmp_path):

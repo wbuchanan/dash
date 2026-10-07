@@ -62,11 +62,153 @@ if `"`macval(_dash_pyx)'"' != "" {
     display as text "  Python linked for this run only: `_dash_pyx'"
 }
 
+// ---- selection: begin (WP-30 test performance, C) ----
+// Which scripts this session runs.  DASH_CERT_SHARD=k/N runs shard k of N
+// (N 2 to 4, the table below), so that scripts/run_cert_suite.sh can run N
+// sessions side by side; DASH_CERT_ONLY="test_a test_b" runs only the
+// scripts it names (a subset, by hand).  Unset, the session runs every
+// script, as it always did.  Each block below runs when its script is in
+// _cert_run, and the log says which shard this is ([SHARD] k/N), so that
+// scripts/cert_verdict.py can judge the shards' logs together.
+// ---- shards: begin (scripts/cert_shards.py writes this block) ----
+// Each certification script: the seconds it takes, 1 when it runs
+// dash serve on a fixed port (5006, 5097, 5098, 5099), and its shard
+// when DASH_CERT_SHARD splits the run in 2, 3 or 4: longest first
+// onto the least loaded shard, the fixed-port scripts as one unit so
+// that they never serve at once.  Unset, the run is every script, in
+// this session.
+// Seconds: the timed run of 07oct2026, less 0.2 s a build for the renderer
+// compiled once (B1); test_help_claims_4 13 s (B3), and test_help_claims_6
+// 2.9 s, test_parser 13.6 s and test_twoway_option_parity 23.6 s with
+// twoway's answers replayed (B2), as measured
+local _cert_shards ///
+    test_abbreviations.cscript            7.4 0  1 3 3 ///
+    test_ado_loads.cscript                0.1 0  2 1 4 ///
+    test_adversarial.cscript             12.0 0  1 2 4 ///
+    test_alias_semantics.cscript          7.6 0  1 1 2 ///
+    test_bug_regressions.cscript          6.7 1  1 1 1 ///
+    test_by_suboptions.cscript            1.3 0  1 1 1 ///
+    test_caller_version.cscript           0.4 0  2 1 4 ///
+    test_ci_band_options.cscript          5.8 0  1 1 2 ///
+    test_clear_registry.cscript           0.1 0  2 2 4 ///
+    test_conformance.cscript              5.2 0  2 2 3 ///
+    test_custom_scheme.cscript            2.9 0  2 1 3 ///
+    test_e2e_filters.cscript             12.2 0  2 3 3 ///
+    test_e2e_kpi.cscript                  0.5 0  1 1 1 ///
+    test_e2e_multi.cscript                0.7 0  1 3 2 ///
+    test_e2e_serve.cscript                1.8 1  1 1 1 ///
+    test_e2e_single.cscript               1.0 0  2 1 4 ///
+    test_echo_text.cscript                0.2 0  1 3 1 ///
+    test_env_guards.cscript              13.1 1  1 1 1 ///
+    test_examples_run.cscript             8.0 0  2 2 4 ///
+    test_export.cscript                   0.4 0  2 2 1 ///
+    test_filter_label.cscript             0.4 0  1 3 2 ///
+    test_gaps2_truth.cscript             14.0 0  1 3 4 ///
+    test_graph_option_scope.cscript       0.2 0  2 1 2 ///
+    test_help_claims_1.cscript           11.2 0  1 1 4 ///
+    test_help_claims_2.cscript            8.7 0  1 3 4 ///
+    test_help_claims_3.cscript            3.2 0  2 2 2 ///
+    test_help_claims_4.cscript           13.0 1  1 1 1 ///
+    test_help_claims_5.cscript           11.4 0  2 3 3 ///
+    test_help_claims_6.cscript            2.9 0  1 2 1 ///
+    test_help_claims_7.cscript            8.8 0  2 2 3 ///
+    test_help_claims_8.cscript            6.4 0  2 3 4 ///
+    test_help_examples.cscript           36.4 0  2 3 3 ///
+    test_json_escaping.cscript           16.9 0  2 3 3 ///
+    test_mata_autoload.cscript            0.5 0  1 3 3 ///
+    test_mata_library_guard.cscript       4.3 0  1 1 1 ///
+    test_nodraw_honoured.cscript          0.3 0  1 2 1 ///
+    test_option_report_paren.cscript      0.1 0  1 1 1 ///
+    test_option_surface.cscript           3.0 0  1 3 4 ///
+    test_option_validation.cscript        1.9 0  2 3 2 ///
+    test_parser.cscript                  13.6 0  2 2 3 ///
+    test_parser_integrity.cscript         0.9 0  1 2 3 ///
+    test_path_validation.cscript          1.2 0  1 3 1 ///
+    test_program_coverage.cscript         6.5 0  2 2 1 ///
+    test_qualifier_in_stata.cscript     103.7 0  2 2 2 ///
+    test_qualifier_literals.cscript      19.1 0  1 3 4 ///
+    test_registry_collision.cscript       1.9 0  2 1 2 ///
+    test_render_locate.cscript            1.1 1  1 1 1 ///
+    test_render_log_clean.cscript         0.6 0  2 1 3 ///
+    test_resource_limits.cscript          1.5 0  1 2 3 ///
+    test_serve_browser.cscript            1.3 1  1 1 1 ///
+    test_serve_launch.cscript             5.3 1  1 1 1 ///
+    test_serve_options.cscript            0.3 0  1 3 2 ///
+    test_server_build.cscript             0.4 0  2 1 4 ///
+    test_setup_honesty.cscript            8.2 0  2 1 3 ///
+    test_setup_injection.cscript          0.0 0  2 3 2 ///
+    test_setup_python_gate.cscript        0.2 0  1 3 3 ///
+    test_setup_version_gate.cscript       0.1 0  2 2 2 ///
+    test_statistical_options.cscript      3.5 0  1 3 4 ///
+    test_string_values.cscript           13.5 0  1 1 4 ///
+    test_suboption_reporting.cscript      0.6 0  2 2 4 ///
+    test_textbox_multiline.cscript        0.1 0  1 3 3 ///
+    test_theme_escaping.cscript           0.3 0  2 2 3 ///
+    test_tokenizer.cscript                0.1 0  2 1 4 ///
+    test_twoway_option_parity.cscript    23.6 0  1 3 4 ///
+    test_utf8_validation.cscript          0.1 0  1 2 1 ///
+    test_varlist_expansion.cscript        1.3 0  2 2 2 ///
+    test_wp29_truth.cscript              67.1 1  1 1 1 ///
+    test_wp30_truth.cscript               1.4 0  2 3 4
+// ---- shards: end ----
+local _cert_sh : environment DASH_CERT_SHARD
+mata: st_local("_cert_ok", strofreal(st_local("_cert_sh") == "" | ustrregexm(st_local("_cert_sh"), "^[1-4]/[1-4]$")))
+local _cert_k 1
+local _cert_N 1
+if `_cert_ok' & "`_cert_sh'" != "" {
+    local _cert_k = real(substr("`_cert_sh'", 1, 1))
+    local _cert_N = real(substr("`_cert_sh'", 3, 1))
+}
+if !`_cert_ok' | `_cert_k' > `_cert_N' {
+    display as error "run_all_cscripts.do: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 4"
+    exit 198
+}
+local _cert_only : environment DASH_CERT_ONLY
+mata: st_local("_cert_ok", strofreal(ustrregexm(st_local("_cert_only"), "^[ A-Za-z0-9_.]*$")))
+if !`_cert_ok' {
+    display as error "run_all_cscripts.do: DASH_CERT_ONLY holds script names only (letters, digits, _ and .)"
+    exit 198
+}
+local _cert_all ""
+local _cert_run ""
+local _cert_rest : copy local _cert_shards
+while `"`_cert_rest'"' != "" {
+    gettoken _cert_s _cert_rest : _cert_rest
+    gettoken _cert_t _cert_rest : _cert_rest
+    gettoken _cert_p _cert_rest : _cert_rest
+    gettoken _cert_2 _cert_rest : _cert_rest
+    gettoken _cert_3 _cert_rest : _cert_rest
+    gettoken _cert_4 _cert_rest : _cert_rest
+    local _cert_all `_cert_all' `_cert_s'
+    local _cert_at 1
+    if `_cert_N' > 1 local _cert_at `_cert_`_cert_N''
+    if `_cert_at' == `_cert_k' local _cert_run `_cert_run' `_cert_s'
+}
+if "`_cert_only'" != "" {
+    local _cert_want ""
+    foreach _cert_o of local _cert_only {
+        if substr("`_cert_o'", -8, .) != ".cscript" local _cert_o "`_cert_o'.cscript"
+        local _cert_in : list _cert_o in _cert_all
+        if !`_cert_in' {
+            display as error "run_all_cscripts.do: DASH_CERT_ONLY names `_cert_o', which this runner does not run"
+            exit 198
+        }
+        local _cert_want `_cert_want' `_cert_o'
+    }
+    local _cert_run : list _cert_run & _cert_want
+}
+local _cert_nrun : word count `_cert_run'
+local _cert_nall : word count `_cert_all'
+// ---- selection: end ----
+
 display as text ""
 display as text "============================================================"
 display as text "  dash certification script runner"
 display as text "  `c(current_date)' `c(current_time)'"
 display as text "============================================================"
+display as text ""
+display as text "[SHARD] `_cert_k'/`_cert_N': `_cert_nrun' of `_cert_nall' scripts"
+display as text "[ PLAN] `_cert_run'"
 display as text ""
 
 // ----------------------------------------------------------------
@@ -97,6 +239,8 @@ if "`c(python_exec)'" == "" {
 // ----------------------------------------------------------------
 // 1. test_tokenizer.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_tokenizer.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_tokenizer.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -134,10 +278,13 @@ else {
     display as error "[ FAIL] test_tokenizer.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 2. test_parser.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_parser.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_parser.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -175,10 +322,13 @@ else {
     display as error "[ FAIL] test_parser.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 4. test_e2e_single.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_e2e_single.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_e2e_single.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -216,10 +366,13 @@ else {
     display as error "[ FAIL] test_e2e_single.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 5. test_e2e_multi.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_e2e_multi.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_e2e_multi.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -257,10 +410,13 @@ else {
     display as error "[ FAIL] test_e2e_multi.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 6. test_e2e_filters.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_e2e_filters.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_e2e_filters.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -298,10 +454,13 @@ else {
     display as error "[ FAIL] test_e2e_filters.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 7. test_e2e_kpi.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_e2e_kpi.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_e2e_kpi.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -339,11 +498,14 @@ else {
     display as error "[ FAIL] test_e2e_kpi.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 8. test_ado_loads.cscript (Bug 15 + 16 regression)
 // Run from testdir — uses explicit do "../dash_parse.mata" + do "../dash.ado"
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_ado_loads.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_ado_loads.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -381,11 +543,14 @@ else {
     display as error "[ FAIL] test_ado_loads.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 9. test_mata_autoload.cscript (Bug 16 regression — auto-load)
 // MUST run from dashdir so findfile finds dash_parse.mata via "." in adopath.
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_mata_autoload.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_mata_autoload.cscript"
 cd "`dashdir'"
 capture noisily {
@@ -404,12 +569,15 @@ else {
     display as error "[ FAIL] test_mata_autoload.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 10. test_adversarial.cscript (security suite)
 // Previously never invoked by this runner despite existing on disk, so the
 // adversarial security checks were dead weight.  See CLAUDE.md rule 18.
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_adversarial.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_adversarial.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -447,6 +615,7 @@ else {
     display as error "[ FAIL] test_adversarial.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 11. test_e2e_serve.cscript (server mode end-to-end)
@@ -454,6 +623,8 @@ else {
 // section 14 of the plan fixes; a failure here is expected until then and
 // is informative rather than spurious.
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_e2e_serve.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_e2e_serve.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -491,11 +662,14 @@ else {
     display as error "[ FAIL] test_e2e_serve.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 12. test_abbreviations.cscript
 // Stata-derived abbreviation conformance (section 04)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_abbreviations.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_abbreviations.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -533,11 +707,14 @@ else {
     display as error "[ FAIL] test_abbreviations.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 13. test_option_surface.cscript
 // every twoway command in the corpus must run (section 05)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_option_surface.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_option_surface.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -575,11 +752,14 @@ else {
     display as error "[ FAIL] test_option_surface.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 14. test_varlist_expansion.cscript
 // varlist and plot-spec correctness (section 06)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_varlist_expansion.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_varlist_expansion.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -617,10 +797,13 @@ else {
     display as error "[ FAIL] test_varlist_expansion.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 15. test_path_validation.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_path_validation.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_path_validation.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -655,10 +838,13 @@ else {
     display as error "[ FAIL] test_path_validation.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 16. test_setup_version_gate.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_setup_version_gate.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_setup_version_gate.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -693,10 +879,13 @@ else {
     display as error "[ FAIL] test_setup_version_gate.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 17. test_clear_registry.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_clear_registry.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_clear_registry.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -731,10 +920,13 @@ else {
     display as error "[ FAIL] test_clear_registry.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 19. test_filter_label.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_filter_label.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_filter_label.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -769,10 +961,13 @@ else {
     display as error "[ FAIL] test_filter_label.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 20. test_server_build.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_server_build.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_server_build.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -807,11 +1002,14 @@ else {
     display as error "[ FAIL] test_server_build.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 18. test_examples_run.cscript
 // ----------------------------------------------------------------
 // Runs last: it is the slowest script, and it is the end-to-end gate.
+local _cert_go : list posof "test_examples_run.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_examples_run.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -846,10 +1044,13 @@ else {
     display as error "[ FAIL] test_examples_run.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 21. test_serve_options.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_serve_options.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_serve_options.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -884,10 +1085,13 @@ else {
     display as error "[ FAIL] test_serve_options.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 22. test_render_log_clean.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_render_log_clean.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_render_log_clean.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -923,10 +1127,13 @@ else {
     display as error "[ FAIL] test_render_log_clean.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 23. test_option_report_paren.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_option_report_paren.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_option_report_paren.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -963,10 +1170,13 @@ else {
     display as error "[ FAIL] test_option_report_paren.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 24. test_setup_python_gate.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_setup_python_gate.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_setup_python_gate.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1002,10 +1212,13 @@ else {
     display as error "[ FAIL] test_setup_python_gate.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 25. test_conformance.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_conformance.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_conformance.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1041,10 +1254,13 @@ else {
     display as error "[ FAIL] test_conformance.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 26. test_parser_integrity.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_parser_integrity.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_parser_integrity.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1079,10 +1295,13 @@ else {
     display as error "[ FAIL] test_parser_integrity.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 27. test_textbox_multiline.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_textbox_multiline.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_textbox_multiline.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1117,10 +1336,13 @@ else {
     display as error "[ FAIL] test_textbox_multiline.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 28. test_serve_launch.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_serve_launch.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_serve_launch.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1156,10 +1378,13 @@ else {
     display as error "[ FAIL] test_serve_launch.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 29. test_registry_collision.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_registry_collision.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_registry_collision.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1195,10 +1420,13 @@ else {
     display as error "[ FAIL] test_registry_collision.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 30. test_graph_option_scope.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_graph_option_scope.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_graph_option_scope.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1234,10 +1462,13 @@ else {
     display as error "[ FAIL] test_graph_option_scope.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 31. test_render_locate.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_render_locate.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_render_locate.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1273,10 +1504,13 @@ else {
     display as error "[ FAIL] test_render_locate.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 32. test_theme_escaping.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_theme_escaping.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_theme_escaping.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1312,10 +1546,13 @@ else {
     display as error "[ FAIL] test_theme_escaping.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 33. test_setup_honesty.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_setup_honesty.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_setup_honesty.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1351,10 +1588,13 @@ else {
     display as error "[ FAIL] test_setup_honesty.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 34. test_env_guards.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_env_guards.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_env_guards.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1390,10 +1630,13 @@ else {
     display as error "[ FAIL] test_env_guards.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 35. test_utf8_validation.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_utf8_validation.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_utf8_validation.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1429,10 +1672,13 @@ else {
     display as error "[ FAIL] test_utf8_validation.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 36. test_json_escaping.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_json_escaping.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_json_escaping.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1468,10 +1714,13 @@ else {
     display as error "[ FAIL] test_json_escaping.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 37. test_by_suboptions.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_by_suboptions.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_by_suboptions.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1507,10 +1756,13 @@ else {
     display as error "[ FAIL] test_by_suboptions.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 38. test_nodraw_honoured.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_nodraw_honoured.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_nodraw_honoured.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1546,10 +1798,13 @@ else {
     display as error "[ FAIL] test_nodraw_honoured.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 39. test_alias_semantics.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_alias_semantics.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_alias_semantics.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1585,10 +1840,13 @@ else {
     display as error "[ FAIL] test_alias_semantics.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 40. test_suboption_reporting.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_suboption_reporting.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_suboption_reporting.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1624,10 +1882,13 @@ else {
     display as error "[ FAIL] test_suboption_reporting.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 41. test_option_validation.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_option_validation.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_option_validation.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1663,10 +1924,13 @@ else {
     display as error "[ FAIL] test_option_validation.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 42. test_custom_scheme.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_custom_scheme.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_custom_scheme.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1702,10 +1966,13 @@ else {
     display as error "[ FAIL] test_custom_scheme.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 43. test_statistical_options.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_statistical_options.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_statistical_options.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1741,10 +2008,13 @@ else {
     display as error "[ FAIL] test_statistical_options.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 44. test_caller_version.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_caller_version.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_caller_version.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1780,10 +2050,13 @@ else {
     display as error "[ FAIL] test_caller_version.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 45. test_resource_limits.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_resource_limits.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_resource_limits.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1819,10 +2092,13 @@ else {
     display as error "[ FAIL] test_resource_limits.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 46. test_serve_browser.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_serve_browser.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_serve_browser.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1858,10 +2134,13 @@ else {
     display as error "[ FAIL] test_serve_browser.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 47. test_setup_injection.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_setup_injection.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_setup_injection.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1897,10 +2176,13 @@ else {
     display as error "[ FAIL] test_setup_injection.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 48. test_echo_text.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_echo_text.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_echo_text.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1936,10 +2218,13 @@ else {
     display as error "[ FAIL] test_echo_text.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 49. test_export.cscript
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_export.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_export.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -1975,10 +2260,13 @@ else {
     display as error "[ FAIL] test_export.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 50. test_twoway_option_parity.cscript (WP-22 TR-22.3)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_twoway_option_parity.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_twoway_option_parity.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2014,10 +2302,13 @@ else {
     display as error "[ FAIL] test_twoway_option_parity.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 51. test_help_claims_1.cscript (WP-23: help lines 1-316, syntax, plot types, differences)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_help_claims_1.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_help_claims_1.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2053,10 +2344,13 @@ else {
     display as error "[ FAIL] test_help_claims_1.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 52. test_help_claims_2.cscript (WP-23: option values, subcommands, dashboard options, export)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_help_claims_2.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_help_claims_2.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2092,10 +2386,13 @@ else {
     display as error "[ FAIL] test_help_claims_2.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 53. test_help_claims_3.cscript (WP-23: layout, tabs, linking, toolbar, filters)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_help_claims_3.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_help_claims_3.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2131,10 +2428,13 @@ else {
     display as error "[ FAIL] test_help_claims_3.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 54. test_help_claims_4.cscript (WP-23: KPI cards and server mode, a real dash serve)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_help_claims_4.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_help_claims_4.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2170,10 +2470,13 @@ else {
     display as error "[ FAIL] test_help_claims_4.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 55. test_help_claims_5.cscript (WP-23: resource limits, faceting, marker labels)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_help_claims_5.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_help_claims_5.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2209,10 +2512,13 @@ else {
     display as error "[ FAIL] test_help_claims_5.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 56. test_help_claims_6.cscript (WP-23: statistical layers and weights)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_help_claims_6.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_help_claims_6.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2248,10 +2554,13 @@ else {
     display as error "[ FAIL] test_help_claims_6.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 57. test_help_claims_7.cscript (WP-23: regions, axes, colour, geometry, markers)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_help_claims_7.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_help_claims_7.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2287,10 +2596,13 @@ else {
     display as error "[ FAIL] test_help_claims_7.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 58. test_help_claims_8.cscript (WP-23: schemes, the Unsupported list, dependencies)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_help_claims_8.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_help_claims_8.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2326,10 +2638,13 @@ else {
     display as error "[ FAIL] test_help_claims_8.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 59. test_help_examples.cscript (WP-23: every example command in the help, run)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_help_examples.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_help_examples.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2365,10 +2680,13 @@ else {
     display as error "[ FAIL] test_help_examples.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 60. test_bug_regressions.cscript (WP-24: the regression tests three closed BUGS.md entries lacked)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_bug_regressions.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_bug_regressions.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2404,10 +2722,13 @@ else {
     display as error "[ FAIL] test_bug_regressions.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 61. test_program_coverage.cscript (WP-24 AC-24.3, GAPS L7: dash_setup end to end, display formats)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_program_coverage.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_program_coverage.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2447,10 +2768,13 @@ else {
     display as error "[ FAIL] test_program_coverage.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 62. test_qualifier_literals.cscript (WP-24: a qualifier's string literals select the rows Stata selects)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_qualifier_literals.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_qualifier_literals.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2486,10 +2810,13 @@ else {
     display as error "[ FAIL] test_qualifier_literals.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 63. test_mata_library_guard.cscript (WP-24: the Mata library guard refuses a library missing any function dash calls, and mends one it can)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_mata_library_guard.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_mata_library_guard.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2525,10 +2852,13 @@ else {
     display as error "[ FAIL] test_mata_library_guard.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 64. test_qualifier_in_stata.cscript (WP-27: every qualifier dash writes is evaluated in Stata, and both modes draw Stata's rows)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_qualifier_in_stata.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_qualifier_in_stata.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2564,10 +2894,13 @@ else {
     display as error "[ FAIL] test_qualifier_in_stata.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 65. test_string_values.cscript (WP-27: every string value, label and number reaches both renderers byte for byte; the export no longer uses jsonio)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_string_values.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_string_values.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2603,10 +2936,13 @@ else {
     display as error "[ FAIL] test_string_values.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 66. test_ci_band_options.cscript (S3 batch: a ci fit's band is drawn in the scheme's ci style and takes twoway's fitarea options)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_ci_band_options.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_ci_band_options.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2642,6 +2978,7 @@ else {
     display as error "[ FAIL] test_ci_band_options.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 67. test_gaps2_truth.cscript (WP-28: the one certification script for
@@ -2649,6 +2986,8 @@ else {
 // block per section, appended above its own "append new blocks above
 // this line" marker -- review D11)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_gaps2_truth.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_gaps2_truth.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2684,6 +3023,7 @@ else {
     display as error "[ FAIL] test_gaps2_truth.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 68. test_wp29_truth.cscript (WP-29: the one certification script for
@@ -2691,6 +3031,8 @@ else {
 // block per section, appended above its own "append new blocks above
 // this line" marker -- .ultraplan/wp29/index.md A3)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_wp29_truth.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_wp29_truth.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2726,6 +3068,7 @@ else {
     display as error "[ FAIL] test_wp29_truth.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // 69. test_wp30_truth.cscript (WP-30: the one certification script for
@@ -2734,6 +3077,8 @@ else {
 // above its "append new blocks above this line" marker --
 // .ultraplan/wp30/index.md A142)
 // ----------------------------------------------------------------
+local _cert_go : list posof "test_wp30_truth.cscript" in _cert_run
+if `_cert_go' {
 display as text "[ RUN ] test_wp30_truth.cscript"
 cd "`testdir'"
 local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
@@ -2769,6 +3114,7 @@ else {
     display as error "[ FAIL] test_wp30_truth.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
+}
 
 // ----------------------------------------------------------------
 // Summary
@@ -2776,6 +3122,7 @@ else {
 local n_total = `n_pass' + `n_fail' + `n_skip'
 display as text ""
 display as text "============================================================"
+display as text "  Shard `_cert_k' of `_cert_N': `_cert_nrun' script(s) planned"
 display as text "  Results: `n_pass' passed, `n_fail' failed, `n_skip' skipped  (of `n_total' total)"
 display as text "============================================================"
 
@@ -2783,7 +3130,7 @@ if `n_fail' > 0 {
     display as error "SOME TESTS FAILED"
     exit 1
 }
-else if `n_pass' == 0 {
+else if `n_pass' == 0 & `_cert_nrun' > 0 {
     // Every script skipped: nothing was asserted.  Reporting success here
     // would be a false pass -- a machine without Python would
     // previously print ALL TESTS PASSED having verified nothing.

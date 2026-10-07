@@ -1,5 +1,6 @@
-"""Judge a certification-suite run from its log: pass only when every script
-the runner registers passed and none skipped.
+"""Judge a certification-suite run from its log, or from the logs of its
+shards: pass only when every script the runner registers passed, exactly
+once, and none skipped.
 
 Stata's batch mode does not hand the runner's `exit 1' back as the process's
 exit status, so `make cert' reads the log instead.  The runner,
@@ -9,9 +10,16 @@ summary line.  A skip is not a pass (the certification-suite rule): a
 script skips when Stata has lost its Python or bokeh, and a run of skips
 has verified nothing.
 
-Usage:  python3 scripts/cert_verdict.py <run_all_cscripts.log> <run_all_cscripts.do>
+A run split into N sessions (WP-30 test performance, C; DASH_CERT_SHARD=k/N
+in each, scripts/run_cert_suite.sh) leaves N logs, each saying which shard
+it is (`[SHARD] k/N: ...').  They are judged together: shards 1 to N each
+exactly once, every registered script reported in exactly one of them and
+passed, and each log's own summary agreeing with its results.
+
+Usage:  python3 scripts/cert_verdict.py [--only "<names>"] <log> [<log> ...] <run_all_cscripts.do>
+        --only judges just the scripts it names (a DASH_CERT_ONLY run).
 Exit:   0 when every registered script passed; 1 otherwise, naming each
-        script that failed, skipped or never reported.
+        script that failed, skipped, never reported or reported twice.
 """
 import re
 import sys
@@ -22,6 +30,7 @@ _REGISTERED = re.compile(r'^\s*do "(?:[^"]*/)?([^"/]+\.cscript)"\s*$', re.M)
 _RESULT = re.compile(r"^\[ (PASS|FAIL|SKIP)\] (\S+\.cscript)\b", re.M)
 _SUMMARY = re.compile(r"^ALL TESTS PASSED \((\d+) passed, (\d+) skipped\)\s*$",
                       re.M)
+_SHARD = re.compile(r"^\[SHARD\] ([1-9])/([1-9]):", re.M)
 
 
 def registered_scripts(runner_text):
@@ -29,41 +38,88 @@ def registered_scripts(runner_text):
     return _REGISTERED.findall(runner_text)
 
 
-def verdict(log_text, runner_text):
+def verdict(log_text, runner_text, only=None):
+    """(ok, lines) for a run in one session: see verdict_logs."""
+    return verdict_logs([log_text], runner_text, only)
+
+
+def verdict_logs(log_texts, runner_text, only=None):
     """(ok, lines): whether the run passed, and a report to print.
 
-    ok is True only when every registered script reported PASS, none
-    reported FAIL or SKIP, no script reported twice, and the runner's own
-    summary says all passed with none skipped.
+    ok is True only when every registered script (or every one *only*
+    names) reported PASS, none reported FAIL or SKIP, no script reported
+    twice, and each log's own summary says all of its scripts passed with
+    none skipped.  More than one log is a sharded run: each must name its
+    shard, and together they must be shards 1 to N of one N, each once.
     """
     scripts = registered_scripts(runner_text)
+    unknown = []
+    if only is not None:
+        want = [n if n.endswith(".cscript") else n + ".cscript"
+                for n in only]
+        unknown = sorted(set(want) - set(scripts))
+        scripts = [s for s in scripts if s in want]
     results = {}
     twice = []
-    for status, name in _RESULT.findall(log_text):
-        if name in results:
-            twice.append(name)
-        results[name] = status
+    log_probs = []
+    shards = []
+    for i, text in enumerate(log_texts, 1):
+        found = _SHARD.findall(text)
+        if len(log_texts) > 1:
+            if len(found) != 1:
+                log_probs.append("log %d names %d shards, not one"
+                                 % (i, len(found)))
+            else:
+                shards.append((int(found[0][0]), int(found[0][1])))
+        passed_here = 0
+        for status, name in _RESULT.findall(text):
+            if name in results:
+                twice.append(name)
+            results[name] = status
+            passed_here += status == "PASS"
+        m = _SUMMARY.search(text)
+        if len(log_texts) > 1 and (not m or int(m.group(2)) != 0
+                                   or int(m.group(1)) != passed_here):
+            log_probs.append("log %d: the runner's summary does not say its "
+                             "%d script(s) passed with none skipped"
+                             % (i, passed_here))
+    if len(log_texts) > 1 and len(shards) == len(log_texts):
+        n = len(log_texts)
+        if sorted(shards) != [(k, n) for k in range(1, n + 1)]:
+            log_probs.append("the logs are shards %s, not 1 to %d of %d"
+                             % (" ".join("%d/%d" % s for s in sorted(shards)),
+                                n, n))
     failed = [s for s in scripts if results.get(s) == "FAIL"]
     skipped = [s for s in scripts if results.get(s) == "SKIP"]
     missing = [s for s in scripts if s not in results]
     stray = sorted(set(results) - set(scripts))
     passed = [s for s in scripts if results.get(s) == "PASS"]
-    m = _SUMMARY.search(log_text)
-    summary_ok = bool(m) and int(m.group(1)) == len(scripts) \
-        and int(m.group(2)) == 0
+    if len(log_texts) == 1:
+        # One session ran everything: its count is the whole run's.
+        m = _SUMMARY.search(log_texts[0])
+        summary_ok = bool(m) and int(m.group(1)) == len(scripts) \
+            and int(m.group(2)) == 0
+    else:
+        summary_ok = not log_probs
     ok = bool(scripts) and not (failed or skipped or missing or stray
-                                or twice) and summary_ok
-    lines = ["certification suite: %d of %d registered scripts passed"
-             % (len(passed), len(scripts))]
+                                or twice or unknown) and summary_ok
+    head = "certification suite: %d of %d registered scripts passed" % (
+        len(passed), len(scripts))
+    if len(log_texts) > 1:
+        head += " (%d sessions)" % len(log_texts)
+    lines = [head]
     for label, names in (("failed", failed), ("skipped", skipped),
                          ("never reported", missing),
                          ("reported but not registered", stray),
-                         ("reported twice", twice)):
+                         ("reported twice", twice),
+                         ("named by --only but not registered", unknown)):
         if names:
             lines.append("  %s: %s" % (label, " ".join(names)))
     if not scripts:
         lines.append("  the runner registers no script")
-    if not summary_ok:
+    for p in log_probs:
+        lines.append("  " + p)
+    if len(log_texts) == 1 and not summary_ok:
         lines.append("  the runner's summary does not say all %d passed "
                      "with none skipped" % len(scripts))
     lines.append("verdict: " + ("PASS" if ok else "FAIL"))
@@ -71,19 +127,30 @@ def verdict(log_text, runner_text):
 
 
 def main(argv):
-    if len(argv) != 3:
+    args = list(argv[1:])
+    only = None
+    if args[:1] == ["--only"]:
+        if len(args) < 2:
+            sys.stderr.write(__doc__)
+            return 2
+        only = args[1].split()
+        args = args[2:]
+    if len(args) < 2:
         sys.stderr.write(__doc__)
         return 2
-    try:
-        with open(argv[1], encoding="utf-8", errors="replace") as fh:
-            log_text = fh.read()
-    except OSError as exc:
-        print("certification suite: no log to judge (%s)" % exc)
-        print("verdict: FAIL")
-        return 1
-    with open(argv[2], encoding="utf-8") as fh:
+    logs, runner = args[:-1], args[-1]
+    texts = []
+    for path in logs:
+        try:
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                texts.append(fh.read())
+        except OSError as exc:
+            print("certification suite: no log to judge (%s)" % exc)
+            print("verdict: FAIL")
+            return 1
+    with open(runner, encoding="utf-8") as fh:
         runner_text = fh.read()
-    ok, lines = verdict(log_text, runner_text)
+    ok, lines = verdict_logs(texts, runner_text, only)
     print("\n".join(lines))
     return 0 if ok else 1
 

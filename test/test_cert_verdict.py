@@ -127,6 +127,121 @@ class TestTheVerdict:
         assert "  never reported: test_b.cscript" in lines
 
 
+#: A runner of three scripts, for the sharded verdict.
+_RUNNER3 = _RUNNER + 'capture noisily {\n    do "test_c.cscript"\n}\n'
+
+
+def _shard(k, n, results, summary=True):
+    """A shard's log: its [SHARD] line, its results and its summary."""
+    return ("[SHARD] %d/%d: %d of 3 scripts\n" % (k, n, len(results))
+            + _log(results, summary))
+
+
+class TestTheShardedVerdict:
+    """WP-30 test performance, C: the logs of N sessions, judged together."""
+
+    def test_every_script_passed_once_across_the_shards(self):
+        ok, lines = V.verdict_logs(
+            [_shard(1, 2, [("PASS", "test_a.cscript"),
+                           ("PASS", "test_c.cscript")]),
+             _shard(2, 2, [("PASS", "test_b.cscript")])], _RUNNER3)
+        assert ok, lines
+        assert lines[0] == ("certification suite: 3 of 3 registered scripts "
+                            "passed (2 sessions)")
+        assert lines[-1] == "verdict: PASS"
+
+    def test_a_shard_that_ran_nothing_still_judges(self):
+        ok, lines = V.verdict_logs(
+            [_shard(1, 2, [("PASS", "test_a.cscript"),
+                           ("PASS", "test_b.cscript"),
+                           ("PASS", "test_c.cscript")]),
+             _shard(2, 2, [])], _RUNNER3)
+        assert ok, lines
+
+    def test_a_script_in_two_shards_fails_it(self):
+        ok, lines = V.verdict_logs(
+            [_shard(1, 2, [("PASS", "test_a.cscript"),
+                           ("PASS", "test_b.cscript")]),
+             _shard(2, 2, [("PASS", "test_b.cscript"),
+                           ("PASS", "test_c.cscript")])], _RUNNER3)
+        assert not ok
+        assert "  reported twice: test_b.cscript" in lines
+
+    def test_a_script_no_shard_ran_fails_it(self):
+        ok, lines = V.verdict_logs(
+            [_shard(1, 2, [("PASS", "test_a.cscript")]),
+             _shard(2, 2, [("PASS", "test_b.cscript")])], _RUNNER3)
+        assert not ok
+        assert "  never reported: test_c.cscript" in lines
+
+    @pytest.mark.parametrize("status,word", [("FAIL", "failed"),
+                                             ("SKIP", "skipped")])
+    def test_a_failure_or_a_skip_in_any_shard_fails_it(self, status, word):
+        ok, lines = V.verdict_logs(
+            [_shard(1, 2, [("PASS", "test_a.cscript"),
+                           ("PASS", "test_c.cscript")]),
+             _shard(2, 2, [(status, "test_b.cscript")],
+                    summary="SOME TESTS FAILED")], _RUNNER3)
+        assert not ok
+        assert "  %s: test_b.cscript" % word in lines
+
+    def test_a_skip_fails_it_though_the_shard_says_all_passed(self):
+        ok, lines = V.verdict_logs(
+            [_shard(1, 2, [("PASS", "test_a.cscript"),
+                           ("PASS", "test_c.cscript")]),
+             _shard(2, 2, [("SKIP", "test_b.cscript")])], _RUNNER3)
+        assert not ok
+        assert "  skipped: test_b.cscript" in lines
+
+    def test_a_shard_whose_summary_disagrees_fails_it(self):
+        ok, lines = V.verdict_logs(
+            [_shard(1, 2, [("PASS", "test_a.cscript"),
+                           ("PASS", "test_c.cscript")],
+                    summary="ALL TESTS PASSED (1 passed, 0 skipped)"),
+             _shard(2, 2, [("PASS", "test_b.cscript")])], _RUNNER3)
+        assert not ok
+        assert any("log 1: the runner's summary does not say its 2" in l
+                   for l in lines)
+
+    def test_a_shard_that_stopped_before_its_summary_fails_it(self):
+        ok, lines = V.verdict_logs(
+            [_shard(1, 2, [("PASS", "test_a.cscript"),
+                           ("PASS", "test_c.cscript")]),
+             _shard(2, 2, [("PASS", "test_b.cscript")], summary=False)],
+            _RUNNER3)
+        assert not ok
+        assert any(l.startswith("  log 2: the runner's summary") for l in lines)
+
+    @pytest.mark.parametrize("ids", [((1, 2), (1, 2)), ((1, 3), (2, 3)),
+                                     ((2, 2), (3, 3))])
+    def test_the_shards_must_be_1_to_n_each_once(self, ids):
+        (k1, n1), (k2, n2) = ids
+        ok, lines = V.verdict_logs(
+            [_shard(k1, n1, [("PASS", "test_a.cscript"),
+                             ("PASS", "test_c.cscript")]),
+             _shard(k2, n2, [("PASS", "test_b.cscript")])], _RUNNER3)
+        assert not ok
+        assert any("not 1 to 2 of 2" in l for l in lines), lines
+
+    def test_a_log_that_names_no_shard_fails_it(self):
+        ok, lines = V.verdict_logs(
+            [_log([("PASS", "test_a.cscript"), ("PASS", "test_c.cscript")]),
+             _shard(2, 2, [("PASS", "test_b.cscript")])], _RUNNER3)
+        assert not ok
+        assert "  log 1 names 0 shards, not one" in lines
+
+    def test_only_judges_the_scripts_it_names(self):
+        ok, lines = V.verdict(_log([("PASS", "test_b.cscript")]), _RUNNER3,
+                              only=["test_b"])
+        assert ok, lines
+        assert "1 of 1 registered scripts passed" in lines[0]
+        ok, lines = V.verdict(_log([("PASS", "test_b.cscript")]), _RUNNER3,
+                              only=["test_b", "test_nosuch.cscript"])
+        assert not ok
+        assert ("  named by --only but not registered: test_nosuch.cscript"
+                in lines)
+
+
 class TestTheCommandLine:
 
     def _run(self, *args):
@@ -158,6 +273,36 @@ class TestTheCommandLine:
 
     def test_the_wrong_number_of_arguments_is_a_usage_error(self):
         assert self._run().returncode == 2
+        assert self._run("only_one.log").returncode == 2
+        assert self._run("--only").returncode == 2
+        assert self._run("--only", "test_a", "x.log").returncode == 2
+
+    def test_the_shards_logs_are_judged_together(self, tmp_path):
+        runner = tmp_path / "run.do"
+        runner.write_text(_RUNNER3)
+        s1 = tmp_path / "s1.log"
+        s1.write_text(_shard(1, 2, [("PASS", "test_a.cscript"),
+                                    ("PASS", "test_c.cscript")]))
+        s2 = tmp_path / "s2.log"
+        s2.write_text(_shard(2, 2, [("PASS", "test_b.cscript")]))
+        r = self._run(str(s1), str(s2), str(runner))
+        assert r.returncode == 0, r.stdout
+        assert "(2 sessions)" in r.stdout and "verdict: PASS" in r.stdout
+        r = self._run(str(s1), str(runner))
+        assert r.returncode == 1 and "never reported: test_b.cscript" in \
+            r.stdout
+        r = self._run(str(s1), str(tmp_path / "absent.log"), str(runner))
+        assert r.returncode == 1 and "no log to judge" in r.stdout
+
+    def test_only_on_the_command_line(self, tmp_path):
+        runner = tmp_path / "run.do"
+        runner.write_text(_RUNNER3)
+        log = tmp_path / "one.log"
+        log.write_text(_log([("PASS", "test_c.cscript")]))
+        r = self._run("--only", "test_c.cscript", str(log), str(runner))
+        assert r.returncode == 0, r.stdout
+        r = self._run(str(log), str(runner))
+        assert r.returncode == 1
 
 
 def _read(*parts):
