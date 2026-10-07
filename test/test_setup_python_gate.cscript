@@ -134,14 +134,12 @@ _chk "v19: non-numeric is unknown" "`r(ok)'" "-1"
 
 capture program drop _gate19
 
-// ---- the floor is 3.13, not 3.8 (WP-28 K2) ----
-// dash_setup.ado's _dash_pymin now returns "3.13": bokeh 3.8 needs Python
-// 3.10, and 3.13 is the interpreter Stata is linked to on the machine
-// both test suites run under (test/conftest.py's `stata' baseline).
-// These cases pin the new floor's SHAPE, the way the block above pins
-// the old one -- comparator inputs, not the declared minimum, which
-// "dash_setup names a minimum" and "dash_setup.sthlp states the same
-// minimum" already read from _dash_pymin/dash_setup.sthlp directly.
+// ---- comparator inputs with a 3.13 want (WP-28 K2) ----
+// These cases pin the comparator's SHAPE around a 3.13 want, the way the
+// block above pins it around 3.8 -- comparator inputs, not the declared
+// minimum, which is read below, and which "dash_setup names a minimum"
+// and "dash_setup.sthlp states the same minimum" read from
+// _dash_pymin/dash_setup.sthlp directly.
 _dash_pyver_ok "3.13.9" "3.13"
 _chk "3.13.9 >= 3.13" "`r(ok)'" "1"
 _dash_pyver_ok "3.13"   "3.13"
@@ -180,6 +178,17 @@ if `"`c(python_exec)'"' != "" {
     mata: st_local("_haspx", strofreal(strpos(st_local("_pipcmd"), " -m pip install 'bokeh>=3.8'") > 1))
     _chk "the upgrade command names c(python_exec)" "`_haspx'" "1"
 }
+
+// ---- the floor dash_setup declares admits 3.11 and 3.12 (WP-30 P1.33) ----
+// The declared floor is measured: both test suites pass under it.
+_dash_pymin
+local _fl "`r(pymin)'"
+_dash_pyver_ok "3.12.12" "`_fl'"
+_chk "3.12.12 >= the floor `_fl'" "`r(ok)'" "1"
+_dash_pyver_ok "3.11.0" "`_fl'"
+_chk "3.11.0 against the floor `_fl'" "`r(ok)'" "1"
+_dash_pyver_ok "3.10.10" "`_fl'"
+_chk "3.10.10 < the floor `_fl'" "`r(ok)'" "0"
 
 if `fail' {
     display as error "SOME TESTS FAILED"

@@ -41,9 +41,10 @@ program define dash_setup, rclass
     // Minimum version requirements stored as locals, here so that venv()
     // can install them too.
     //
-    // The stata baseline of test/conftest.py, measured 25sep2026: Python
-    // 3.13.9, bokeh 3.8.0, numpy 2.3.5, pandas 2.3.3 -- the versions both
-    // test suites run under; nothing older is tested (GAPS2 K2).  Every
+    // The package minimums are the stata pins of test/conftest.py
+    // (bokeh 3.8.0, numpy 2.3.5, pandas 2.3.3, test/requirements-stata.txt);
+    // both test suites, with both pin sets, pass under Python 3.11 and
+    // above (WP-30 P1.33, the floor matrix of scripts/floor_matrix.sh).  Every
     // render imports CustomJSTicker, present only from bokeh 3.6.0, so an
     // installed bokeh 3.0-3.5 used to pass this check and then fail every
     // dash command with r(7102); pandas is declared here because bokeh
@@ -101,7 +102,7 @@ program define dash_setup, rclass
     }
     else if `pyok' == 0 {
         display as error "  Python ............. version `pyver' is below the minimum `c_pymin'."
-        display as error "    bokeh and pandas will not install or import reliably."
+        display as error "    dash and the packages it needs are not tested below Python `c_pymin'."
         display as error "    Link Stata to Python `c_pymin' or later: {help python}"
         // Counted, not just printed.  This branch has never had an `exit',
         // so before this the run continued, installed against the too-old
@@ -229,7 +230,7 @@ program define dash_setup, rclass
         if "`det_managed'" == "1" {
             display as text "  packaging .......... {err}not installed{txt} — this Python is externally managed"
             if `guide_shown' == 0 {
-                _dash_setup_guide managed "`det_ensurepip'" "`det_managed'"
+                _dash_setup_guide managed "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
                 local hint_cmd `"`r(cmd)'"'
                 return local hint_cmd `"`hint_cmd'"'
                 local guide_shown 1
@@ -240,7 +241,7 @@ program define dash_setup, rclass
         }
         else if "`det_pip'" == "0" {
             display as text "  packaging .......... {err}not installed{txt} — this Python has no pip"
-            _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'"
+            _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
             local hint_cmd `"`r(cmd)'"'
             return local hint_cmd `"`hint_cmd'"'
             local guide_shown 1
@@ -302,10 +303,10 @@ program define dash_setup, rclass
                 display as text "  `pkg' ............. {err}missing{txt}"
                 if `guide_shown' == 0 {
                     if "`det_managed'" == "1" {
-                        _dash_setup_guide managed "`det_ensurepip'" "`det_managed'"
+                        _dash_setup_guide managed "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
                     }
                     else {
-                        _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'"
+                        _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
                     }
                     local hint_cmd `"`r(cmd)'"'
                     return local hint_cmd `"`hint_cmd'"'
@@ -331,13 +332,13 @@ program define dash_setup, rclass
             _dash_setup_pip "`_spec'" `_user' "`det_version'"
             local _outcome "`r(outcome)'"
             if "`_outcome'" == "externally-managed" & `guide_shown' == 0 {
-                _dash_setup_guide managed "`det_ensurepip'" "`det_managed'"
+                _dash_setup_guide managed "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
                 local hint_cmd `"`r(cmd)'"'
                 return local hint_cmd `"`hint_cmd'"'
                 local guide_shown 1
             }
             if "`_outcome'" == "no-pip" {
-                _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'"
+                _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
                 local hint_cmd `"`r(cmd)'"'
                 return local hint_cmd `"`hint_cmd'"'
             }
@@ -415,7 +416,7 @@ program define dash_setup, rclass
             // Python (N4): the private-environment guidance is, once.
             if "`det_managed'" == "1" {
                 if `guide_shown' == 0 {
-                    _dash_setup_guide managed "`det_ensurepip'" "`det_managed'"
+                    _dash_setup_guide managed "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
                     local hint_cmd `"`r(cmd)'"'
                     return local hint_cmd `"`hint_cmd'"'
                     local guide_shown 1
@@ -499,8 +500,14 @@ program define _dash_pymin, rclass
         dash_setup displays it, _dash_pyver_ok compares against it, and
         test/test_setup_python_gate.cscript asserts dash_setup.sthlp states
         the same number -- so the help cannot drift from the check.
+
+        The value is measured, never assumed (WP-30 P1.33): the lowest
+        Python the floor matrix passes (scripts/floor_matrix.sh: both test
+        suites with both pin sets, and a Stata session linked to it).
+        test/test_version_floor.py pins it to the lowest Python of
+        test/conftest.py's baselines.
     */
-    return local pymin "3.13"
+    return local pymin "3.11"
 end
 
 program define _dash_statamin, rclass
@@ -1023,15 +1030,19 @@ end
 // ================================================================
 // _dash_setup_guide  — the way forward on a managed or pip-less Python
 // ================================================================
-// Syntax: _dash_setup_guide kind ensurepip managed
+// Syntax: _dash_setup_guide kind ensurepip managed pyok pymin
 //   kind  managed (PEP 668: suggest venv()) or nopip (ensurepip, or the
 //         distribution's packages)
+//   pyok  dash_setup's verdict on the linked Python: 0 below pymin, the
+//         floor.  A private environment made from a Python below the floor
+//         is below it too, so then neither kind suggests venv(): the
+//         guidance names the floor instead (WP-30 P1.33).
 // Printed by the helper as plain text.  Returns r(cmd), the command it
 // suggests ("" when it suggests none).  WP-29 P0.19.
 // ================================================================
 program define _dash_setup_guide, rclass
     version 19
-    args kind ensurepip managed
+    args kind ensurepip managed pyok pymin
     local guide_cmd ""
     python: import sys; sys.modules["_dash_setup_lib"].stata_guide()
     return local cmd `"`guide_cmd'"'

@@ -1388,6 +1388,67 @@ foreach q in `"dis > 100"' `"make != "d""' `"tda > 0"' {
 dash clear
 display "PC-31 PASS: an abbreviated variable, in a qualifier or its string literal, is read as the variable it names, on both routes, and a date's format comes back"
 
+// ================================================================
+// PYF-01..02 -- the measured Python floor (WP-30 P1.33)
+// ================================================================
+// ---- PYF-01: venv() from a linked Python 3.12: created, installed,
+//      verified, as on 3.13 (PEP-08 on 3.12.12) ----
+capture noisily {
+    local pf1 "`pep_tmp'pyf01 dir"
+    python: import shutil, sfi; shutil.rmtree(sfi.Macro.getLocal("pf1"), True)
+    mata: mkdir(st_local("pf1"))
+    mata: st_global("PC_SB_CMD", "dash_setup, venv(" + char(34) + st_local("pf1") + "/venv" + char(34) + ")")
+    global PC_SB_SPEC `"{"pip": {"rc": 0}, "pyversion": "3.12.12 (dash test sandbox)"}"'
+    python: import os, sfi; _pep_a = os.path.join(os.path.realpath(sfi.Macro.getLocal("pf1")), "venv"); _pep_py = os.path.join(_pep_a, "bin", "python"); _pep_r = os.path.normpath(os.path.join(sfi.SFIToolkit.macroExpand(chr(96) + "c(pwd)'"), "..", "dash_render.py")); sfi.Macro.setLocal("apf1", _pep_a); sfi.Macro.setLocal("pypf1", _pep_py)
+    python: _pep_vec([["PYTHON_EXEC", "-P", "-m", "venv", _pep_a], [_pep_py, "-c", "<ANY>"], [_pep_py, "-P", "-m", "pip", "install", "F", "packaging", "bokeh>=3.8", "numpy>=2.3", "pandas>=2.3"], [_pep_py, "-P", "-c", "<ANY>", "<ANY>", _pep_r]])
+    _pc_setup
+    local rc = r(rc)
+    local m = r(match)
+    mata: st_local("vpy", st_global("r(venv_python)"))
+    mata: st_local("hint", st_global("r(hint_cmd)"))
+    python: import shutil, sfi; shutil.rmtree(sfi.Macro.getLocal("pf1"), True)
+    _pep_match `m'
+    assert `rc' == 0
+    mata: st_local("vpyok", strofreal(st_local("vpy") == st_local("pypf1")))
+    mata: st_local("hintok", strofreal(st_local("hint") == "python set exec " + char(34) + st_local("pypf1") + char(34) + ", permanently"))
+    assert `vpyok' == 1
+    assert `hintok' == 1
+    _pc_said "dash_setup complete for the environment named above."
+    assert r(found) == 1
+    _pc_said "is below"
+    assert r(found) == 0
+    display "PYF-01 PASS: venv() from a linked Python 3.12.12 creates, installs into and verifies the environment, rc 0"
+}
+if _rc _pep_fail PYF-01 `=_rc'
+
+// ---- PYF-02: below the floor on a managed Python: no venv() advice ----
+// A private environment made from it would be below the floor too, so the
+// guidance says to link a newer Python and hands back no command.
+capture noisily {
+    _dash_pymin
+    local pymin "`r(pymin)'"
+    global PC_SB_SPEC `"{"block": ["bokeh"], "env": {"managed": true}, "pyversion": "3.10.10 (dash test sandbox)"}"'
+    global PC_SB_CMD ""
+    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"]])
+    _pc_setup
+    local rc = r(rc)
+    mata: st_local("hintnone", strofreal(st_global("r(hint_cmd)") == ""))
+    _pep_match `r(match)'
+    assert `rc' == 198
+    assert `hintnone' == 1
+    foreach p in "A private environment made from it would be below" ///
+        "Link Stata to Python `pymin' or later" {
+        _pc_said "`p'"
+        assert r(found) == 1
+    }
+    foreach p in "venv(" "break-system-packages" {
+        _pc_said "`p'"
+        assert r(found) == 0
+    }
+    display "PYF-02 PASS: a managed Python below the floor is told to link a newer Python, no venv() suggested, r(hint_cmd) empty, r(198)"
+}
+if _rc _pep_fail PYF-02 `=_rc'
+
 set linesize `ls0'
 local pep_failed `"$PEP_FAILED"'
 macro drop PC_SB_SPEC PC_SB_ADO PC_SSC_RC PC_SB_EXPECT PC_SSC_CALLS PC_SB_WHY PC_SETUP_LOG PC_WHY PC_SB_CMD PEP_FAILED

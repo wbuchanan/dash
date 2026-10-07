@@ -463,6 +463,22 @@ def nopip_message(exe, ensurepip, managed, windows):
     return text, cmd
 
 
+def below_floor_message(exe, pymin, kind):
+    """(text, "") for a managed (kind "managed") or pip-less Python below
+    dash's floor *pymin*.  WP-30 P1.33: both other messages suggested
+    dash_setup, venv(), which refuses a Python below the floor too -- an
+    advice loop.  This one names the floor and suggests no command."""
+    what = ("is externally managed (PEP 668)" if kind == "managed"
+            else "has no pip")
+    text = ("  This Python %s and is below dash's minimum, Python %s:\n"
+            "    %s\n"
+            "  A private environment made from it would be below the minimum too,\n"
+            "  so dash_setup suggests none. Install Python %s or later, link Stata\n"
+            "  to it (help python), restart Stata and run dash_setup again.\n"
+            ) % (what, pymin, exe, pymin)
+    return text, ""
+
+
 # ---------------------------------------------------------------------------
 # Stata entry points: inputs from the calling program's locals, results back
 # as its locals, environment text printed as plain text.  None raises.
@@ -591,7 +607,8 @@ def stata_shell_line():
 
 def stata_guide():
     """Print the guidance for a managed (kind "managed") or pip-less
-    ("nopip") Python; sets guide_cmd."""
+    ("nopip") Python; sets guide_cmd.  Below the floor (local pyok "0",
+    pymin a version) it is below_floor_message's, with no command."""
     import sfi
     cmd = ""
     try:
@@ -599,7 +616,10 @@ def stata_guide():
         exe, raw = _linked()
         exe = exe or raw
         windows = os.name == "nt"
-        if kind == "managed":
+        pymin = sfi.Macro.getLocal("pymin")
+        if sfi.Macro.getLocal("pyok") == "0" and version_tuple(pymin):
+            text, cmd = below_floor_message(exe, pymin, kind)
+        elif kind == "managed":
             text, cmd = managed_message(exe, windows, os.environ)
         else:
             text, cmd = nopip_message(exe, sfi.Macro.getLocal("ensurepip") == "1",

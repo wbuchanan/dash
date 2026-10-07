@@ -41,8 +41,8 @@ present but older than {cmd:dash} needs is reported, not upgraded.
 {phang2}1.  Python.  Whether Python is linked to Stata is read from the
     setting {cmd:c(python_exec)}; with none, {cmd:dash_setup} stops at once,
     r(198).  The linked interpreter's version is then compared with the
-    3.13 minimum, numerically per component, so 3.10 is correctly newer
-    than 3.9; a version below 3.13 is reported as such and counted as
+    3.11 minimum, numerically per component, so 3.10 is correctly newer
+    than 3.9; a version below 3.11 is reported as such and counted as
     unmet.
 
 {phang2}2.  {cmd:packaging}, which the version comparisons below use, is
@@ -113,7 +113,7 @@ A {it:path} that exists must be an empty directory or a virtual environment,
 owned by you and writable by no one else.  A {it:path} that is a symbolic
 link, or that holds a double quote, a backtick, a dollar sign or a control
 character, is refused before anything runs, r(198); so is a linked Python
-below 3.13, or a reused environment whose Python is.  Missing directories
+below 3.11, or a reused environment whose Python is.  Missing directories
 above {it:path} inside your home directory are created, readable by you
 alone.  If a step fails, {cmd:dash_setup} names it and leaves the
 environment in place; you may delete it.
@@ -133,7 +133,7 @@ it stops at once with "dash requires Stata 19 or later; this is Stata
 
 {pstd}{ul:Python}
 
-{phang2}Python 3.13 or later must be installed and linked to Stata.
+{phang2}Python 3.11 or later must be installed and linked to Stata.
 {cmd:dash_setup} does not install Python.  See {helpb python} for
 instructions on linking Python.
 
@@ -156,9 +156,10 @@ neither installs nor checks them, and an installed copy is not used.
 {pstd}{cmd:dash_setup} also installs {cmd:packaging}, before the packages
 above, because the version comparisons use it.
 
-{pstd}These minimums are the versions {cmd:dash}'s own test suites run
-under (Python 3.13.9, bokeh 3.8.0, numpy 2.3.5, pandas 2.3.3 when this was
-written); nothing older is tested.  bokeh before 3.6 lacks
+{pstd}These minimums are what {cmd:dash}'s own test suites run under:
+bokeh 3.8.0, numpy 2.3.5 and pandas 2.3.3 under Python 3.11, 3.12 and 3.13,
+and bokeh 3.9, numpy 2.4 and pandas 3.0 under 3.11 and 3.14 (measured
+07oct2026); nothing older is tested.  bokeh before 3.6 lacks
 {cmd:CustomJSTicker}, which every {cmd:dash} render imports, and
 {cmd:pandas} is required by {cmd:dash} itself: bokeh 3.9 no longer
 installs it.  A package below its minimum is not upgraded for you;
@@ -217,6 +218,11 @@ private environment instead, which leaves the managed Python as it is:
 then restart Stata, type the {cmd:python set exec} line that command
 prints, and run {cmd:dash_setup} again.  On Windows, {cmd:dash_setup}
 suggests {cmd:%LOCALAPPDATA%\dash\venv}.
+
+{pstd}
+On a Python below the minimum, a private environment made from it would be
+below the minimum too, so {cmd:dash_setup} does not suggest one: link Stata
+to Python 3.11 or later instead.
 
 
 {marker troubleshooting}

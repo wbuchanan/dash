@@ -14,6 +14,14 @@ baseline of ``test/conftest.py`` -- Python 3.13, bokeh 3.8, pandas 2.3,
 numpy 2.3 -- declared in every file that names a minimum, with pandas
 declared by dash itself because bokeh 3.9 dropped it as a required
 dependency.
+
+WP-30 P1.33: the Python floor is measured, not the stata baseline's Python.
+The floor matrix (scripts/floor_matrix.sh, make test-floor) runs both
+suites under older Pythons with the stata and the dev pins, and
+test/conftest.py keeps a baseline only for a stack they pass under; the
+declared floor, _dash_pymin, is the lowest of those Pythons.  The served
+app's child is started with ``-P``, which needs Python 3.11, so the floor
+can never go below it.
 """
 import ast
 import json
@@ -61,12 +69,18 @@ def _setup_ado_floor():
 
 class TestTheFloorIsTheTestedBaseline:
     def test_dash_setup_declares_the_stata_baseline(self):
-        py, bo, nu, pa = _setup_ado_floor()
-        want_py, want_bo, want_nu, want_pa = _stata_baseline()
-        assert py == want_py, (py, want_py)
+        _py, bo, nu, pa = _setup_ado_floor()
+        _want_py, want_bo, want_nu, want_pa = _stata_baseline()
         assert bo == want_bo, (bo, want_bo)
         assert nu == want_nu, (nu, want_nu)
         assert pa == want_pa, (pa, want_pa)
+
+    def test_the_python_floor_is_the_lowest_baseline_python(self):
+        """WP-30 P1.33: the floor is the lowest Python both suites pass
+        under, which test/conftest.py's baselines record."""
+        lowest = min((b["python"] for b in _BASELINES.values()),
+                     key=lambda v: tuple(map(int, v.split("."))))
+        assert _setup_ado_floor()[0] == lowest
 
     def test_every_declaration_agrees_with_dash_setup(self):
         py, bo, nu, pa = _setup_ado_floor()
@@ -116,6 +130,14 @@ class TestTheFloorIsTheTestedBaseline:
             for needle in ("Python 3.8", "bokeh>=3.0", "3.0 or later",
                           "1.23 or later", "2.0 or later"):
                 assert needle not in text, (rel, needle)
+        # WP-30 P1.33: the measured floor replaced 3.13.
+        assert 'return local pymin "3.13"' not in ado_setup
+        assert "will not install or import reliably" not in ado_setup
+        for rel in ("dash.ado", "dash.pkg", "dash.sthlp", "dash_setup.sthlp"):
+            text = _read(rel)
+            for needle in ("Python 3.13+", "{ul:Python 3.13+}",
+                           "Python 3.13 or later"):
+                assert needle not in text, (rel, needle)
 
     def test_the_upgrade_line_names_the_linked_interpreter(self, monkeypatch, capsys):
         """Q27: dash_setup's below-minimum branch prints the pip command
@@ -155,6 +177,59 @@ class TestTheFloorIsTheTestedBaseline:
         want = "'/opt/My Python/bin/python3' -m pip install 'bokeh>=3.8'"
         assert loc["pip_cmd"] == want
         assert "To upgrade: " + want in capsys.readouterr().out
+
+
+class TestTheFloorAdmitsTheServedLauncher:
+    """WP-30 P1.33: dash serve starts the app as ``sys.executable -P``
+    (_dash_launch_app), a flag Python 3.10 refuses ("Unknown option: -P",
+    rc 2), so the declared floor may never go below 3.11."""
+
+    def test_the_launch_flags_need_no_newer_python_than_the_floor(self):
+        import importlib.util
+        import inspect
+        spec = importlib.util.spec_from_file_location(
+            "dash_setup_lib_launch", os.path.join(_ROOT, "dash_setup_lib.py"))
+        lib = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(lib)
+        assert '"-P"' in inspect.getsource(dr._dash_launch_app)
+        floor = lib.version_tuple(_setup_ado_floor()[0])
+        assert floor >= (3, 11), floor
+        assert lib.safe_flags(floor) == ["-P"]
+
+
+class TestTheFloorInterpretersBehaveAlike:
+    """WP-30 P1.33, found by the floor matrix (the py311 and py312 legs):
+    dash serve's child registers the app's handed-over source in linecache
+    so a traceback shows the app's lines although the child never opens
+    app.py.  Before 3.13 the default sys.excepthook is the C printer, which
+    reads the line from disk and ignores linecache, so on 3.11 and 3.12 the
+    traceback named the file and line but not the text.  Below 3.13 the
+    bootstrap now prints uncaught exceptions with the traceback module (on
+    3.13 a replaced hook would turn an uncaught KeyboardInterrupt's -SIGINT
+    exit into 1, so 3.13 keeps its own).  The child is told it runs 3.12
+    by replacing sys.version_info before the bootstrap starts."""
+
+    def test_the_child_prints_tracebacks_from_the_handed_over_source(
+            self, tmp_path):
+        import subprocess
+        src = ("import sys, traceback\n"
+               "print(sys.excepthook is traceback.print_exception,"
+               " flush=True)\n"
+               "def f():\n"
+               "    raise ValueError('boom in the floor app')\n"
+               "f()\n")
+        app = os.path.join(str(tmp_path), "never", "app.py")
+        frame = dr._dash_app_frame(src.encode("utf-8"))
+        older = "import sys; sys.version_info = (3, 12, 12, 'final', 0)\n"
+        r = subprocess.run([sys.executable, "-P", "-c",
+                            older + dr._DASH_BOOT, app],
+                           input=frame, capture_output=True, timeout=60,
+                           cwd=str(tmp_path))
+        assert r.stdout.decode().split() == ["True"], r.stderr
+        err = r.stderr.decode()
+        assert r.returncode == 1
+        assert 'File "%s", line 4, in f' % app in err, err
+        assert "raise ValueError('boom in the floor app')" in err, err
 
 
 # ----------------------------------------------------------------------

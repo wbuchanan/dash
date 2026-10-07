@@ -3840,7 +3840,10 @@ and link yourself:
     you run, not the version a do-file sets: a do-file that begins
     {cmd:version 16} still runs {cmd:dash} on Stata 19.
 
-{phang2}{ul:Python 3.13+} -- linked to Stata; see {helpb python}.
+{phang2}{ul:Python 3.11+} -- linked to Stata; see {helpb python}.  Both
+    test suites pass under Python 3.11, and a Stata session linked to 3.11
+    or 3.12 builds and serves dashboards (measured 07oct2026); numpy 2.3 needs
+    Python 3.11, so nothing older is supported.
 
 {phang2}{ul:Python packages, required} -- bokeh>=3.8, numpy>=2.3,
     pandas>=2.3.

@@ -1599,7 +1599,6 @@ WP30_OPEN = {
     "P1.31a": "The served app has no session cap or idle lifetime and decodes the whole dataset again for every session",
     "P1.31b": "One reader's filter-move recompute blocks the served event loop for every other reader",
     "P1.32": "A missing numpy, pandas or bokeh or an old Python fails with a bare ModuleNotFoundError or SyntaxError, and dash_setup's first Python call is uncaptured",
-    "P1.33": "The Python floor of 3.13 turns away 3.11 and 3.12 users, and dash_setup reports failure although dash may render",
 }
 
 #: Every WP-30 entry, permanently, and the CHANGELOG.md lists of the current

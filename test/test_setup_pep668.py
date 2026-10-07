@@ -591,6 +591,20 @@ class TestVerifyIn:
 
 class TestMessages:
 
+    def test_below_the_floor_the_guidance_names_the_floor_and_never_venv(self, lib):
+        """WP-30 P1.33: a private environment made from a Python below the
+        floor is below it too, so the guidance points at a newer Python."""
+        exe = "/opt/homebrew/bin/python3.10"
+        for kind, what in (("managed", "externally managed (PEP 668)"),
+                           ("nopip", "has no pip")):
+            text, cmd = lib.below_floor_message(exe, "3.11", kind)
+            assert cmd == ""
+            for needle in (exe, "3.11 or later", "help python",
+                           "restart Stata", what):
+                assert needle in text, (kind, needle)
+            assert "venv(" not in text
+            assert "break-system-packages" not in text
+
     def test_the_managed_message_names_the_python_and_never_the_override_flag(self, lib):
         text, cmd = lib.managed_message("/opt/homebrew/bin/python3.13", False, {})
         assert cmd == 'dash_setup, venv("~/.dash/venv")'
@@ -739,6 +753,31 @@ class TestStataEntryPoints:
         fake_sfi["local"].update(kind="nopip", ensurepip="1", managed="0")
         lib.stata_guide()
         assert fake_sfi["local"]["guide_cmd"] == "'/opt/{bf:X}/python3' -m ensurepip --upgrade"
+
+    def test_stata_guide_below_the_floor_suggests_no_venv(self, lib, fake_sfi, capsys):
+        """WP-30 P1.33: below the floor neither guidance kind suggests
+        venv(), and the command handed back is empty."""
+        fake_sfi["local"].update(kind="managed", ensurepip="1", managed="1",
+                                 pyok="0", pymin="3.11")
+        lib.stata_guide()
+        out = capsys.readouterr().out
+        assert fake_sfi["local"]["guide_cmd"] == ""
+        assert "venv(" not in out
+        assert "3.11 or later" in out
+        fake_sfi["local"].update(kind="nopip", ensurepip="1", managed="0")
+        lib.stata_guide()
+        out = capsys.readouterr().out
+        assert fake_sfi["local"]["guide_cmd"] == ""
+        assert "venv(" not in out and "has no pip" in out
+        fake_sfi["local"].update(kind="managed", pyok="1")
+        lib.stata_guide()
+        assert fake_sfi["local"]["guide_cmd"] == 'dash_setup, venv("~/.dash/venv")'
+        capsys.readouterr()
+        fake_sfi["local"].update(pyok="0", pymin="abc")
+        lib.stata_guide()
+        out = capsys.readouterr().out
+        assert fake_sfi["local"]["guide_cmd"] == 'dash_setup, venv("~/.dash/venv")'
+        assert "externally managed (PEP 668)" in out
 
     def test_stata_venv_check_and_stata_venv_with_a_recorded_run(self, lib, fake_sfi, tmp_path,
                                                                  monkeypatch, capsys):

@@ -961,6 +961,7 @@ SETUP_FUNCTIONS = {
     "verify_in": _P + "TestVerifyIn::test_a_venv_seeing_the_packages_passes_versions_and_schemes",
     "version_tuple": _P + "TestVersionAndFlags::test_version_tuple",
     # WP-30 S05 (P1.33): Measured Python floor (P1.33, M3/M10)
+    "below_floor_message": _P + "TestMessages::test_below_the_floor_the_guidance_names_the_floor_and_never_venv",
     # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
     # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
 }

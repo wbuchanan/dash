@@ -213,7 +213,7 @@ program define _dash_require_python
     if r(ok) != 1 {
         display as error "dash: Python is required but is not available to Stata."
         display as error "      Run {cmd:dash_setup} first, or link Stata to " ///
-            "Python 3.13+: {help python}"
+            "Python 3.11+: {help python}"
         exit 198
     }
 end

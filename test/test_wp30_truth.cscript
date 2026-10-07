@@ -441,6 +441,22 @@ if inlist("`only'", "", "S04") {
 local only : env WP30_ONLY
 if inlist("`only'", "", "S05") {
     display as text "S05 start " c(current_date) " " c(current_time)
+    // PYF-03: the linked interpreter is at or above the declared floor.
+    capture program list _dash_pyver_ok
+    if _rc quietly do "../dash_setup.ado"
+    _dash_pymin
+    local s05_min "`r(pymin)'"
+    python: import sys, sfi; sfi.Macro.setLocal("s05_ver", "%d.%d.%d" % tuple(sys.version_info[:3]))
+    _dash_pyver_ok "`s05_ver'" "`s05_min'"
+    local s05_ok = r(ok)
+    _w30_expect PYF-03 "(`s05_ok' == 1)" "Python `s05_ver' is below the declared floor `s05_min'"
+    _w30_done PYF-03 "Python `s05_ver' is at or above the declared floor `s05_min'"
+    // PYF-04: the served app's child starts as dash serve starts it,
+    // sys.executable -P, in safe-path mode.
+    python: import subprocess, sys, sfi; _s05_r = subprocess.run([sys.executable, "-P", "-c", "import sys; print(int(sys.flags.safe_path))"], capture_output=True, text=True, timeout=60); sfi.Macro.setLocal("s05_child", "%d %s" % (_s05_r.returncode, _s05_r.stdout.strip()))
+    local s05_c = ("`s05_child'" == "0 1")
+    _w30_expect PYF-04 "(`s05_c' == 1)" "sys.executable -P gave `s05_child', wanted 0 1"
+    _w30_done PYF-04 "sys.executable -P starts a child in safe-path mode (rc 0, safe_path 1)"
     display as text "S05 end " c(current_date) " " c(current_time)
 }
 * ==== end S05 ====

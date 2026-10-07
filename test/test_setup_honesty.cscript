@@ -980,6 +980,49 @@ if `"`pep_failed'"' != "" {
     exit 9
 }
 
+// ================================================================
+// HON-31..32 -- the measured floor admits Python 3.11 and 3.12
+// (WP-30 P1.33)
+// ================================================================
+// With every package present, a Python at or above the floor is OK: the
+// run ends "All dependencies are satisfied", rc 0, installing nothing.
+
+// ---- HON-31: Python 3.12.12 is above the floor ----
+global HON_SB_SPEC `"{"pyversion": "3.12.12 (dash test sandbox)"}"'
+global HON_SB_EXPECT "[]"
+_hon_sb_setup
+local h31rc = r(rc)
+local h31m = r(match)
+local h31log "`r(log)'"
+if `h31m' != 1 {
+    mata: printf("{err}HON-31: %s\n", st_global("HON_SB_WHY"))
+}
+assert `h31m' == 1
+assert `h31rc' == 0
+_hon_has "`h31log'" "All dependencies are satisfied" h31ok
+_hon_has "`h31log'" "below the minimum" h31below
+assert `h31ok' == 1
+assert `h31below' == 0
+display "HON-31 PASS: Python 3.12.12 is accepted, every package OK, rc 0"
+
+// ---- HON-32: Python 3.11.2 is at the floor ----
+global HON_SB_SPEC `"{"pyversion": "3.11.2 (dash test sandbox)"}"'
+global HON_SB_EXPECT "[]"
+_hon_sb_setup
+local h32rc = r(rc)
+local h32m = r(match)
+local h32log "`r(log)'"
+if `h32m' != 1 {
+    mata: printf("{err}HON-32: %s\n", st_global("HON_SB_WHY"))
+}
+assert `h32m' == 1
+assert `h32rc' == 0
+_hon_has "`h32log'" "All dependencies are satisfied" h32ok
+_hon_has "`h32log'" "below the minimum" h32below
+assert `h32ok' == 1
+assert `h32below' == 0
+display "HON-32 PASS: Python 3.11.2 is accepted, every package OK, rc 0"
+
 
 macro drop HON_SB_SPEC HON_SB_EXPECT HON_SB_WHY
 

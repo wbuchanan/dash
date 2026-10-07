@@ -37386,15 +37386,20 @@ def main(
 #: SHA-256 (a short or damaged frame exits 1 and runs nothing, §3b 5, 5b),
 #: and runs the text as ``__main__`` compiled under the app's own name, so
 #: tracebacks, ``__file__``, argv and exit statuses are those of ``python
-#: app.py`` (§3b 1-3).  It holds no double quote and no backslash, so
-#: Windows' list2cmdline only wraps it in quotes, and no secret (argv is
-#: visible through ``ps``).
+#: app.py`` (§3b 1-3).  An uncaught exception is printed by the traceback
+#: module below 3.13, which reads the handed-over text through linecache:
+#: there the default hook read the line from disk, so the floor matrix's
+#: 3.11 and 3.12 legs showed no text (WP-30 P1.33).  3.13's own hook already
+#: reads linecache, and replacing it would turn an uncaught
+#: KeyboardInterrupt's -SIGINT exit into 1.  It holds no double quote and
+#: no backslash, so Windows' list2cmdline only wraps it in quotes, and no
+#: secret (argv is visible through ``ps``).
 _DASH_BOOT = "\n".join([
     "import sys",
     "if not getattr(sys.flags, 'safe_path', False) and sys.path[:1] == ['']:",
     "    del sys.path[0]",
     "def _dash_boot():",
-    "    import os, hashlib, linecache, types, builtins",
+    "    import os, hashlib, linecache, types, builtins, traceback",
     "    bad = 'dash: the app was not handed over on standard input'",
     "    nl = bytes([10])",
     "    head = b''",
@@ -37429,6 +37434,8 @@ _DASH_BOOT = "\n".join([
     "    src = data.decode('utf-8')",
     "    code = compile(src, app, 'exec', dont_inherit=True)",
     "    linecache.cache[app] = (len(src), None, src.splitlines(True), app)",
+    "    if sys.version_info < (3, 13):",
+    "        sys.excepthook = traceback.print_exception",
     "    mod = types.ModuleType('__main__')",
     "    mod.__file__ = app",
     "    mod.__builtins__ = builtins",
