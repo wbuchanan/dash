@@ -319,7 +319,10 @@ capture erase "`nc_smcl'"
 capture log close _dashncs
 log using "`nc_smcl'", name(_dashncs) smcl replace
 log using "`nc_log'", name(_dashnc) text replace
-capture noisily dash scatter mpg weight, msymbol({stata display 999:x}) saving("`nc_page'") replace
+// Quoted: msymbol() is a stylelist since WP-30 P1.1a, so unquoted the value
+// is three elements and the note echoes only the first one, "{stata"; one
+// quoted element keeps the whole SMCL text in the note.
+capture noisily dash scatter mpg weight, msymbol("{stata display 999:x}") saving("`nc_page'") replace
 log close _dashnc
 log close _dashncs
 cert_file_has "`nc_smcl'", needle("{stata display 999")
