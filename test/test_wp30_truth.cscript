@@ -1729,6 +1729,33 @@ void _s10_resolve(string scalar inp, string scalar outp)
 }
 end
 
+// SA-13's loop, a program so each line is expanded as it runs.
+capture program drop _s10_sa13
+program define _s10_sa13
+    version 19
+    args work
+    preserve
+    sysuse auto, clear
+    python: __import__("__main__")._s10_sa13_list()
+    local n = ${S10_N}
+    forvalues k = 1/`n' {
+        quietly log using "`work'/s10_tw.log", text replace name(_s10l)
+        capture noisily ${S10_CMD_`k'} name(s10g, replace) nodraw
+        global S10_TRC = _rc
+        quietly log close _s10l
+        capture graph drop s10g
+        quietly dash clear
+        quietly log using "`work'/s10_da.log", text replace name(_s10l)
+        capture noisily ${S10_DCMD_`k'} name(s10d)
+        global S10_DRC = _rc
+        quietly log close _s10l
+        quietly dash clear
+        global S10_WORKDIR "`work'"
+        python: __import__("__main__")._s10_sa13_one(`k')
+    }
+    restore
+end
+
 python:
 def _s10_tabs():
     import os, sys
@@ -1859,6 +1886,81 @@ def _s10_compare():
     Macro.setGlobal("S10_RDIFF", str(diff))
     Macro.setGlobal("S10_RFIRST", first.replace('"', "'").replace(chr(96), "'").replace("$", "S"))
     Macro.setGlobal("S10_NCASE", str(len(cases)))
+
+
+_S10_KEEP = None
+
+
+def _s10_keep():
+    import re
+    return re.compile(r"^(option |options |\(note:)|\(\) invalid --| not an integer"
+                      r"| invalid name|does not exist")
+
+
+def _s10_first(path):
+    keep = _s10_keep()
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        for line in fh.read().splitlines():
+            t = line.strip()
+            if t and not t.startswith((".", ">")) and keep.search(t):
+                return t
+    return ""
+
+
+def _s10_sa13_list():
+    import json
+    from sfi import Macro
+    with open("fixtures/subopt_abbrev_truth.json", encoding="utf-8") as fh:
+        probes = json.load(fh)["probes"]
+    ids = sorted(k for k, v in probes.items()
+                 if v["rc"] != 0 and not k.startswith("x_")
+                 and k != "o_z_line")
+    global _S10_PROBES
+    _S10_PROBES = [(k, probes[k]) for k in ids]
+    for i, (k, v) in enumerate(_S10_PROBES, 1):
+        Macro.setGlobal("S10_CMD_%d" % i, v["cmd"])
+        Macro.setGlobal("S10_DCMD_%d" % i, "dash " + v["cmd"][len("twoway "):])
+    Macro.setGlobal("S10_N", str(len(_S10_PROBES)))
+    Macro.setGlobal("S10_BAD", "")
+    Macro.setGlobal("S10_NBAD", "0")
+
+
+def _s10_sa13_one(k):
+    import os
+    from sfi import Macro
+    pid, v = _S10_PROBES[k - 1]
+    work = Macro.getGlobal("S10_WORKDIR")
+    want = (v["rc"], v["messages"][0] if v["messages"] else "")
+    tw = (int(Macro.getGlobal("S10_TRC")),
+          _s10_first(os.path.join(work, "s10_tw.log")))
+    da = (int(Macro.getGlobal("S10_DRC")),
+          _s10_first(os.path.join(work, "s10_da.log")))
+    if tw != want or da != want:
+        Macro.setGlobal("S10_BAD", (Macro.getGlobal("S10_BAD") + " " + pid).strip())
+        Macro.setGlobal("S10_NBAD", str(int(Macro.getGlobal("S10_NBAD")) + 1))
+        print("SA-13 differs: %s want %r twoway %r dash %r" % (pid, want, tw, da))
+
+
+def _s10_sa14():
+    import re
+    from sfi import Macro
+
+    def page(g):
+        try:
+            with open(Macro.getGlobal(g), encoding="utf-8", errors="replace") as fh:
+                return fh.read()
+        except OSError:
+            return ""
+    p1, p2, p3, p4 = (page(g) for g in ("S10_P1", "S10_P2", "S10_P3", "S10_P4"))
+    cols = re.findall(r'"ncols"\s*:\s*("?[A-Za-z0-9]+"?)', p1)
+    Macro.setGlobal("S10_NCOLS", "1" if cols and set(cols) == {"1"} else "0")
+    Macro.setGlobal("S10_NCOLS_SEEN", " ".join(cols)[:80])
+    f2 = sorted(set(re.findall(r'"major_label_text_font_size"\s*:\s*"([^"]+)"', p2)))
+    f3 = sorted(set(re.findall(r'"major_label_text_font_size"\s*:\s*"([^"]+)"', p3)))
+    Macro.setGlobal("S10_LABS", "1" if f2 and f2 == f3 else "0")
+    Macro.setGlobal("S10_LABS_SEEN", (" ".join(f2) + " / " + " ".join(f3))[:80])
+    spans = re.findall(r'"type"\s*:\s*"object"\s*,\s*"name"\s*:\s*"Span".{0,400}?"line_color"\s*:\s*"([^"]+)"', p4, re.S)
+    Macro.setGlobal("S10_SPAN", "1" if any(c.lower() in ("red", "#ff0000") for c in spans) else "0")
 end
 
 * ==== S10 P1.19: Sub-option abbreviations ====
@@ -1885,6 +1987,50 @@ if inlist("`only'", "", "S10") {
     _w30_expect SA-12 `s10ok' `"${S10_RDIFF} of ${S10_NCASE} resolutions differ: ${S10_RFIRST}"'
     _w30_done SA-12 "_dash_so_resolve and _dash_subopt_resolve agree on ${S10_NCASE} token lists"
 
+    // SA-13: every refusal probe of subopt_abbrev_truth.json: twoway still
+    // gives the fixture's rc and first line, and dash gives the same.  The
+    // xline() refusals are S39's and are left out.
+    _s10_sa13 "`w30_work'"
+    local s10ok = ("${S10_BAD}" == "")
+    _w30_expect SA-13 `s10ok' `"${S10_NBAD} of ${S10_N} probes differ: ${S10_BAD}"'
+    _w30_done SA-13 "twoway and dash give the fixture's rc and first line on ${S10_N} refusal probes"
+
+    // SA-14: three saved pages built by dash.
+    preserve
+    sysuse auto, clear
+    local s10p1 "`w30_work'/s10_c1.html"
+    local s10p2 "`w30_work'/s10_labs.html"
+    local s10p3 "`w30_work'/s10_labsize.html"
+    local s10p4 "`w30_work'/s10_xline.html"
+    quietly dash clear
+    capture noisily dash (scatter mpg weight) (lfit mpg weight), legend(c(1)) saving("`s10p1'")
+    local s10r1 = _rc
+    quietly dash clear
+    capture noisily dash scatter mpg weight, ylabel(, labs(large)) saving("`s10p2'")
+    local s10r2 = _rc
+    quietly dash clear
+    capture noisily dash scatter mpg weight, ylabel(, labsize(large)) saving("`s10p3'")
+    local s10r3 = _rc
+    quietly dash clear
+    capture noisily dash scatter mpg weight, xline(3000, lc(red)) saving("`s10p4'")
+    local s10r4 = _rc
+    quietly dash clear
+    restore
+    global S10_P1 "`s10p1'"
+    global S10_P2 "`s10p2'"
+    global S10_P3 "`s10p3'"
+    global S10_P4 "`s10p4'"
+    python: _s10_sa14()
+    local s10ok = (`s10r1' == 0 & `s10r2' == 0 & `s10r3' == 0 & `s10r4' == 0)
+    _w30_expect SA-14 `s10ok' "a dash build failed: `s10r1' `s10r2' `s10r3' `s10r4'"
+    _w30_expect SA-14 ${S10_NCOLS} "legend(c(1)) is not one column in the page: ${S10_NCOLS_SEEN}"
+    _w30_expect SA-14 ${S10_LABS} "ylabel(, labs(large)) does not size as labsize(large): ${S10_LABS_SEEN}"
+    _w30_expect SA-14 ${S10_SPAN} "xline(3000, lc(red)) is not a red Span in the page"
+    _w30_done SA-14 "legend(c(1)), ylabel(, labs(large)) and xline(, lc(red)) draw as their full names on a saved page"
+
+    foreach f in s10_tw.log s10_da.log s10_c1.html s10_labs.html s10_labsize.html s10_xline.html {
+        capture erase "`w30_work'/`f'"
+    }
     foreach f in s10_cases.txt s10_mata.txt s10_rows_legend.txt s10_rows_axlabel.txt s10_rows_axscale.txt s10_rows_refline.txt s10_rows_title.txt s10_rows_axtitle.txt s10_rows_textbox.txt {
         capture erase "`w30_work'/`f'"
     }

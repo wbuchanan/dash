@@ -1604,7 +1604,21 @@ local r32 `"scatter mpg weight, title(A) || scatter price weight, title(B)"'
 local e32 `"scatter mpg weight || scatter price weight, title(B)"'
 local r33 `"(scatter mpg weight, title(INSIDE)) (line mpg weight), title(AFTER)"'
 local e33 `"(scatter mpg weight) (line mpg weight), title(AFTER)"'
-local n14 33
+// Rows 34-39 (WP-30 P1.19): copies merge sub-option by sub-option under
+// twoway's full names.
+local r34 `"(scatter mpg weight) (scatter price weight), legend(lab(1 "A")) legend(lab(2 "B"))"'
+local e34 `"(scatter mpg weight) (scatter price weight), legend(lab(1 "A") lab(2 "B"))"'
+local r35 `"(scatter mpg weight) (scatter price weight), legend(c(1)) legend(r(1))"'
+local e35 `"(scatter mpg weight) (scatter price weight), legend(r(1))"'
+local r36 `"(scatter mpg weight) (scatter price weight), legend(posi(9)) legend(pos(3))"'
+local e36 `"(scatter mpg weight) (scatter price weight), legend(pos(3))"'
+local r37 `"scatter mpg weight, ylabel(, labs(large)) ylabel(, labsize(small))"'
+local e37 `"scatter mpg weight, ylabel(, labsize(small))"'
+local r38 `"scatter mpg weight, title(A, s(large)) title(, size(small))"'
+local e38 `"scatter mpg weight, title(A, size(small))"'
+local r39 `"scatter mpg weight, xscale(r(1000 3000)) xscale(range(2000 6000))"'
+local e39 `"scatter mpg weight, xscale(range(1000 6000))"'
+local n14 39
 local bad = 0
 cert_truth_ctx "TP-14a"
 forvalues k = 1/`n14' {

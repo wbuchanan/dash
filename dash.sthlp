@@ -574,7 +574,13 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:xline()}/{cmd:yline()} merge their copies:
     {cmd:title(A) title(, color(red))} is A in red,
     {cmd:xlabel(1 2) xlabel(3, add)} labels 1, 2 and 3, and each copy of
-    {cmd:yline()} keeps its own style.  An option {cmd:twoway} takes once --
+    {cmd:yline()} keeps its own style.  Copies merge sub-option by
+    sub-option under {cmd:twoway}'s full name, the last copy winning, so
+    {cmd:legend(c(1)) legend(cols(2))} is two columns and
+    {cmd:legend(lab(1 "A")) legend(lab(2 "B"))} keeps both labels;
+    {cmd:rows()} beats {cmd:cols()} in and across copies, and within one
+    copy a word beats its {cmd:no} form ({cmd:legend(on off)} draws the
+    legend).  An option {cmd:twoway} takes once --
     {cmd:name()}, {cmd:saving()}, {cmd:scheme()}, {cmd:xsize()},
     {cmd:ysize()}, {cmd:aspectratio()}, a bare {cmd:sort},
     {cmd:horizontal}, {cmd:yaxis()}, {cmd:bwidth()} on {cmd:kdensity} --
@@ -3000,7 +3006,12 @@ Any of those may be followed by a comma and the sub-options
 {cmd:format(}{it:fmt}{cmd:)}, {cmd:labsize(}{it:size}{cmd:)},
 {cmd:angle(}{it:#}{cmd:)}, {cmd:grid} or {cmd:nogrid}, and
 {cmd:valuelabel} (the axis variable's value labels at the ticks), and
-{cmd:norescale}.  As in {cmd:twoway}, label and tick positions widen the
+{cmd:norescale}, under {cmd:twoway}'s spellings in lower case
+({cmd:ylabel(, for(%9.1f) labs(large) ang(0) nog)}, {cmd:ylabel(, g)},
+{cmd:xlabel(0 1, val)}; {cmd:ylabel(, grid nogrid)} draws the grid, as {cmd:twoway} does); a spelling
+{cmd:twoway} refuses is refused, and quoted label text is text, never a
+sub-option ({cmd:ylabel(10 "labsize(large)" 20)} labels 10 with that
+text).  As in {cmd:twoway}, label and tick positions widen the
 axis to include them, unless {cmd:norescale} is given, which draws them
 without widening it; {cmd:twoway} drops {cmd:norescale} from a lone
 {it:a}{cmd:(}{it:b}{cmd:)}{it:c} rule and widens that axis anyway, and so
@@ -3182,8 +3193,9 @@ title, as in {cmd:twoway}.
 {cmd:ylabel2()} and {cmd:xlabel2()} read their rule and sub-options with
 the parser {cmd:ylabel()} uses: a numlist, {cmd:#}{it:N},
 {it:a}{cmd:(}{it:b}{cmd:)}{it:c}, {cmd:minmax}, {cmd:none}, value-label
-pairs, {cmd:format()}, {cmd:labsize()}, {cmd:angle()} and {cmd:grid}, which
-draws gridlines at the second axis's ticks; any other sub-option is named
+pairs, {cmd:format()}, {cmd:labsize()}, {cmd:angle()} and {cmd:grid},
+under the same spellings, which draws gridlines at the second axis's
+ticks; any other sub-option is named
 in a warning.  {cmd:yscale2()} and {cmd:xscale2()} take {cmd:log},
 {cmd:reverse} ({cmd:rev}) and {cmd:range(}{it:numlist}{cmd:)} ({cmd:r()}),
 which widens the second axis only, as {cmd:yscale(range())} does, and
@@ -3336,8 +3348,20 @@ colour variable's label; {cmd:suffix} and {cmd:prefix} add lines to it.
 {ul:When a legend appears.}  As in {helpb twoway}, a legend is drawn only
 when the graph has two or more keys: a lone {cmd:scatter} gets none, a
 {cmd:scatter} with an {cmd:lfit} over it gets one.  {cmd:legend(on)} forces
-one onto a single-key graph and {cmd:legend(off)} removes it from any graph.
+one onto a single-key graph and {cmd:legend(off)} removes it from any graph;
+in one {cmd:legend()}, {cmd:on} wins over {cmd:off}.
 A {cmd:colorvar()} key is not the legend: it stays.
+{cmd:legend()}'s sub-options are read under {cmd:twoway}'s spellings in
+lower case: {cmd:legend(c(2) r(1) lab(1 "A") posi(6) s(small) lastlab(2 "Z"))}
+draws as its full names, and in {cmd:legend(cols(1) c(red))} the second
+spelling is {cmd:color(red)}.  What {cmd:twoway}
+refuses is refused with its return code and words -- {cmd:legend(OFF)},
+{cmd:legend(po(9))}, {cmd:legend(c(2) cols(1))}, {cmd:legend(c(red))}
+(r(121)), {cmd:legend(label(0 "A"))} -- and where {cmd:twoway} draws the
+default with a note, so does {cmd:dash}, once: a {cmd:position()} outside
+0-12, a non-numeric {cmd:ring()}, an {cmd:order()} holding a word that is
+no integer (the whole {cmd:order()} is ignored).  {cmd:rows()} wins over
+{cmd:cols()}.
 
 
 {marker geometry}
@@ -3529,7 +3553,8 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     in the scheme's {cmd:color xyline}, {cmd:linepattern xyline} and
     {cmd:linewidth xyline}, as {cmd:twoway} draws them: cranberry and solid
     under {cmd:s2color}, black and dashed under {cmd:stcolor}.  Their
-    {cmd:lcolor()}, {cmd:lpattern()} and {cmd:lwidth()} still win.
+    {cmd:lcolor()}, {cmd:lpattern()} and {cmd:lwidth()} still win, under
+    {cmd:twoway}'s spellings too: {cmd:xline(5, lc(red) lp(dash) lw(thick))}.
     A line given the sub-option axis(2) is drawn at that value of the
     second axis; no line widens an axis.{p_end}
 
@@ -3591,7 +3616,8 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     {cmd:numstyle legend_cols}: below the plot in two columns under
     {cmd:s2color}, to the right in one under {cmd:stcolor}, above in three
     under {cmd:economist}.  {cmd:legend(cols())} and {cmd:legend(rows())}
-    still win.{p_end}
+    still win, and {cmd:legend(rows())} wins over
+    {cmd:legend(cols())}.{p_end}
 
 {phang2}{ul:KPI cards.}  A card is drawn as the scheme's legend box: its
     background is {cmd:color legend}, its border {cmd:color legend_line}

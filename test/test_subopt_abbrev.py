@@ -538,6 +538,69 @@ class TestTheMoveKeepsIt:
                      "major_label_orientation", "grid_line_color"):
             assert re.search(r"\.%s\s*=" % attr, js) is None, attr
 
+    _GO = {"legend": 'c(1) lab(1 "XX") posi(9) s(large)',
+           "ylabel": ", labs(large) ang(45) nog",
+           "xline": "3000, lc(red) lp(dash) lw(thick)"}
+
+    @staticmethod
+    def _look(models):
+        """What the three families draw on every figure among *models*."""
+        from bokeh.models import Span
+        from bokeh.plotting import figure as _fig_cls
+        out = []
+        for f in models:
+            if not isinstance(f, _fig_cls):
+                continue
+            lgs = [lg for lg in f.legend if lg.items]
+            ys = [a for a in f.yaxis
+                  if getattr(a, "y_range_name", "default") == "default"]
+            out.append((
+                # The first key's text (label(1) here); the saved page cues
+                # a fit drawn on all rows with its own suffix after a move.
+                [(lg.ncols, lg.nrows, lg.label_text_font_size,
+                  [str(i.label) for i in lg.items[:1]],
+                  lg in f.left) for lg in lgs],
+                [(a.major_label_text_font_size, a.major_label_orientation)
+                 for a in ys],
+                [(g.grid_line_color is None) for g in f.ygrid],
+                sorted((x.line_color, str(x.line_dash), x.line_width)
+                       for x in f.center if isinstance(x, Span))))
+        return sorted(out, key=str)
+
+    def _spec(self):
+        from test_mode_parity import _spec as mp_spec
+        from test_server_layer_defects import plot_for
+        return mp_spec([plot_for("scatter"), plot_for("lfit")],
+                       {"filter": "foreign, type(dropdown)"}, dict(self._GO))
+
+    def _check(self, before, after):
+        assert before, "no figure drawn"
+        lg = before[0][0][0]
+        assert lg[0] == 1 and "XX" in lg[3][0] and lg[4], before
+        assert before[0][3] and before[0][3][0][0] == "#ff0000", before
+        assert after == before
+
+    def test_saved_after_a_move(self):
+        import test_saved_filter_layers as sfl
+        r = sfl._render(self._spec())
+        before = self._look(r._last_layout_root.references())
+        sfl._move(r, ("Select", "Foreign"))
+        self._check(before, self._look(r._last_layout_root.references()))
+
+    def test_served_after_a_move(self):
+        # _served imports the generated app outside its warning capture.
+        from test_mode_parity import _fire, _served, _widgets_of
+        from bokeh.models import Select
+        doc, _ = _served(self._spec())
+
+        def models():
+            return [m for root in doc.roots for m in root.references()]
+        before = self._look(models())
+        w = [x for x in _widgets_of(doc) if isinstance(x, Select)][0]
+        raw = [v for v, lab in w.options if lab == "Foreign"][0]
+        _fire(w, raw)
+        self._check(before, self._look(models()))
+
     def test_resolution_is_pure(self):
         # Every reading is build-time and a pure function of the option
         # text, so a filter move (which re-runs nothing here) cannot alter
@@ -549,3 +612,86 @@ class TestTheMoveKeepsIt:
         for text in _ACCEPTED["axis"]:
             assert dr._dash_parse_axis_spec(", " + text) == \
                 dr._dash_parse_axis_spec(", " + text)
+
+
+_FIXTURE = os.path.join(_HERE, "fixtures", "subopt_abbrev_truth.json")
+
+#: Probe id -> (rc, first message or None): twoway's answers as Evidence
+#: quotes them (plan section 10), held against the extracted fixture.
+_FIXTURE_EXPECT = {
+    "l_c_red": (121, "cols() invalid -- invalid number"),
+    "l_po9": (198, "option po() not allowed"),
+    "l_OFF": (198, "option OFF not allowed"),
+    "l_c_dup": (198, "option cols() not allowed"),
+    "l_rows_dup": (198, "option r() not allowed"),
+    "l_cols0": (125, "cols() invalid -- invalid number, outside of allowed range"),
+    "l_cols15": (126, "cols() invalid -- invalid number, noninteger value"),
+    "l_cols12": (123, "cols() invalid -- single number required"),
+    "l_colsdot": (127, "cols() invalid -- invalid number, missing not allowed"),
+    "l_holes301": (123, "holes() invalid -- invalid numlist has too many elements"),
+    "l_label_x": (198, "x not an integer in option label()"),
+    "l_label_0": (198, "legend.labels[0] invalid name"),
+    "l_garbage": (198, "option garbage not allowed"),
+    "l_pos13": (0, "(note:  named style 13 not found in class clockdir, default attributes used)"),
+    "l_order1x": (0, "x not an integer, option order() ignored"),
+    "l_fall_c": (0, None), "l_cols22": (0, None), "l_label_plus": (0, None),
+    "l_t_title": (0, None),
+    "a_labs_word": (198, "option labs incorrectly specified"),
+    "a_labs_labsword": (198, "option labs not allowed"),
+    "a_a": (198, "option a() not allowed"),
+    "a_grid_nogrid": (0, None), "a_dup_word": (0, None), "a_labs": (0, None),
+    "o_x_y3": (198, "option a() not allowed"),
+    "o_axis3_a": (198, "ylabels(, axis(3) a(45)) not allowed, yaxis3 does not exist"),
+    "o_rows_cols": (121, "rows() invalid -- invalid number"),
+    "x_l": (198, "option l() not allowed"),
+    "x_abbr": (0, None),
+    "t_s": (0, None),
+    "t_SIZE": (198, "option SIZE() not allowed"),
+    "t_ytitle_pfx_sfx": (198, "options prefix and suffix may not be combined"),
+}
+
+
+class TestTheFixture:
+
+    @pytest.fixture(scope="class")
+    def truth(self):
+        with open(_FIXTURE, encoding="utf-8") as fh:
+            return json.load(fh)
+
+    def test_meta(self, truth):
+        meta = truth["_meta"]
+        for k in ("stata_version", "born_date", "dash_commit", "extracted",
+                  "scheme_in_force"):
+            assert meta.get(k), k
+        assert len(truth["probes"]) >= 150
+
+    def test_every_probe_matches_the_measured_truth(self, truth):
+        probes = truth["probes"]
+        for pid, (rc, msg) in _FIXTURE_EXPECT.items():
+            p = probes[pid]
+            assert p["rc"] == rc, (pid, p)
+            if msg is None:
+                assert not [m for m in p["messages"]
+                            if m.startswith("option")], (pid, p)
+            else:
+                assert p["messages"] and p["messages"][0] == msg, (pid, p)
+        # Every one-legend() and one-ylabel() probe twoway refused with
+        # "option ..." is refused by the resolver with the same words.
+        import re
+        for pid, p in probes.items():
+            if pid[:2] in ("o_", "m_", "k_"):  # several options: order
+                continue
+            if p["rc"] != 198 or not p["messages"] \
+                    or not p["messages"][0].startswith("option "):
+                continue
+            m = re.fullmatch(r".*?,\s*(legend|ylabel)\((.*)\)", p["cmd"])
+            if not m or p["cmd"].count(m.group(1) + "(") != 1:
+                continue
+            if m.group(1) == "legend":
+                body, table = m.group(2), dr._DASH_LEGEND_SUBOPT_TABLE
+            else:
+                body = dr._dash_axis_head_split(m.group(2))[1].lstrip(",")
+                table = dr._DASH_AXLABEL_SUBOPT_TABLE
+            prob = dr._dash_subopt_resolve(body.strip(), table)[1]
+            assert prob is not None and prob[3] == p["messages"][0], \
+                (pid, p["cmd"], prob)
