@@ -422,6 +422,11 @@ class TestTheHelpers:
                                          "default", kind) == want
 
     def test_a_typed_layer_stays_off_a_date_axis(self):
+        """Flipped (WP-30 P1.23a): a literal layer on a date axis is placed
+        in date units, so it counts in the axis's hull like any other; the
+        old ``_dash_raw_sif`` exclusion was wrong because twoway's scale
+        spans a literal on a date axis (X 14976..15431 for scatteri 1300
+        15400), and the stamp is gone."""
         from bokeh.models import ColumnDataSource
         from bokeh.plotting import figure
         fig = figure()
@@ -429,10 +434,11 @@ class TestTheHelpers:
             {"x": [1.0e12, 1.1e12], "y": [1.0, 2.0]}))
         b = fig.scatter(x="x", y="y", source=ColumnDataSource(
             {"x": [5.0], "y": [9.0]}))
+        # The old stamp, were anything to set it, is no longer read.
         b._dash_raw_sif = True
         assert a is not None
         assert dr._dash_layer_extent(fig.renderers, "x_range_name",
-                                     "default", "td") == (1.0e12, 1.1e12)
+                                     "default", "td") == (5.0, 1.1e12)
         assert dr._dash_layer_extent(fig.renderers, "x_range_name",
                                      "default", None) == (5.0, 1.1e12)
 
@@ -440,7 +446,9 @@ class TestTheHelpers:
         """Flipped: the bar, bar_base, area, spike and dropline rows read
         S21's ``_dash_auto_base`` stamp -- the default base's role is now
         the renderer's dash_base: tag, read by _dash_base_spec, one marker
-        for both modes and the page (P1.17b)."""
+        for both modes and the page (P1.17b).  Flipped (WP-30 P1.23a): the
+        literal rows asserted a ``_dash_raw_sif`` stamp, which was wrong
+        once literals are placed in date units; no renderer carries it."""
         bad = []
         for t, opts, want in (("bar", {}, ("bottom",)),
                               ("bar", {"base": "5"}, None),
@@ -462,9 +470,8 @@ class TestTheHelpers:
                      "options": {"range": "0 1"}}):
             lit.setdefault("options", {})
             f = _figs("saved", _spec(_SC + [lit]))[0]
-            flags = [bool(getattr(r, "_dash_raw_sif", False))
-                     for r in f.renderers]
-            if flags[0] or not any(flags[1:]):
+            flags = [hasattr(r, "_dash_raw_sif") for r in f.renderers]
+            if any(flags):
                 bad.append((lit["type"], flags))
         assert not bad, bad
 

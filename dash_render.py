@@ -702,6 +702,183 @@ def _dash_units_to_axis(values, kind):
         out[bad] = np.nan
     return out
 
+#: The largest |epoch ms| a JavaScript Date holds (``new Date(8.64e15 + 1)``
+#: is an Invalid Date): years -271821 to 275760.  Below 2**53, so every
+#: whole millisecond within it is exact in a double (WP-30 P1.23a).
+_DASH_JS_MS_LIMIT = 8_640_000_000_000_000
+
+
+def _dash_days_from_civil(y, m, d):
+    """Days since 1970-01-01 of the proleptic-Gregorian date *y*-*m*-*d*
+    (astronomical years: year 0 is 1 BC), by integer era arithmetic that
+    holds every integer year -- no ``datetime``, pandas or ``datetime64``
+    year range in the way (WP-30 P1.23a).  Vectorised over numpy int64;
+    the caller bounds ``|y| <= 300000``."""
+    y = np.asarray(y, dtype=np.int64)
+    m = np.asarray(m, dtype=np.int64)
+    d = np.asarray(d, dtype=np.int64)
+    y = y - (m <= 2)
+    era = y // 400
+    yoe = y - era * 400
+    doy = (153 * np.where(m > 2, m - 3, m + 9) + 2) // 5 + d - 1
+    doe = yoe * 365 + yoe // 4 - yoe // 100 + doy
+    return era * 146097 + doe - 719468
+
+
+def _dash_civil_from_days(z):
+    """``(y, m, d)``: the proleptic-Gregorian date of *z* days since
+    1970-01-01, the inverse of :func:`_dash_days_from_civil` (numpy int64,
+    vectorised; WP-30 P1.23a)."""
+    z = np.asarray(z, dtype=np.int64) + 719468
+    era = z // 146097
+    doe = z - era * 146097
+    yoe = (doe - doe // 1460 + doe // 36524 - doe // 146096) // 365
+    doy = doe - (365 * yoe + yoe // 4 - yoe // 100)
+    mp = (5 * doy + 2) // 153
+    d = doy - (153 * mp + 2) // 5 + 1
+    m = np.where(mp < 10, mp + 3, mp - 9)
+    y = yoe + era * 400 + (m <= 2)
+    return y, m, d
+
+
+def _dash_period_start_days(f, kind):
+    """Days since 1970-01-01 of the start of whole period *f* (int64) of a
+    period *kind*; the year of each is bounded by the caller."""
+    if kind == "ty":
+        return _dash_days_from_civil(f, 1, 1)
+    per = {"tm": 12, "tq": 4, "th": 2, "tw": 52}[kind]
+    y = 1960 + f // per
+    k = f % per
+    if kind == "tw":
+        return _dash_days_from_civil(y, 1, 1) + 7 * k
+    return _dash_days_from_civil(y, k * (12 // per) + 1, 1)
+
+
+def _dash_literal_to_ms(values, kind):
+    """A literal coordinate's Stata *values* of a date *kind* as epoch ms,
+    for every year a browser can draw (WP-30 P1.23a, A77).
+
+    ``%td`` days times 86,400,000 after 01jan1960; ``%tc``/``%tC``
+    milliseconds after it; a period kind placed at its period's start by
+    civil-calendar arithmetic, a fraction linearly between that start and
+    the next.  Inside Stata's dates it equals :func:`_dash_units_to_axis`
+    exactly; outside them (01jan0100 to 31dec9999) it keeps going, as
+    twoway draws ``scatteri 1300 99999999``.  NaN for a missing or text
+    value, an unknown kind, or a result that is not finite or past
+    ``_DASH_JS_MS_LIMIT``.  Never raises and never warns.
+
+    Returns:
+        A float64 array.
+    """
+    try:
+        v = np.asarray(values, dtype=float)
+    except (TypeError, ValueError):
+        v = np.asarray(pd.to_numeric(pd.Series(list(values), dtype=object),
+                                     errors="coerce"), dtype=float)
+    v = np.atleast_1d(v).astype(float)
+    E = float(_STATA_EPOCH_UNIX_MS)
+    out = np.full(v.shape, np.nan)
+    with warnings.catch_warnings(), np.errstate(all="ignore"):
+        warnings.simplefilter("ignore")
+        fin = np.isfinite(v)
+        if kind == "td":
+            out = v * 86_400_000.0 + E
+        elif kind in ("tc", "tC"):
+            out = v + E
+        elif kind in ("tw", "tm", "tq", "th", "ty"):
+            per = {"tm": 12.0, "tq": 4.0, "th": 2.0, "tw": 52.0,
+                   "ty": 1.0}[kind]
+            year = (1960.0 + np.floor(v / per)) if kind != "ty" else v
+            sane = fin & (np.abs(year) <= 300_000)
+            f = np.where(sane, np.floor(v), 0.0).astype(np.int64)
+            a = _dash_period_start_days(f, kind).astype(float) * 86_400_000.0
+            b = (_dash_period_start_days(f + 1, kind).astype(float)
+                 * 86_400_000.0)
+            fv = f.astype(float)
+            out = np.where(v == fv, a, a + (v - fv) * (b - a))
+            out = np.where(sane, out, np.nan)
+        else:
+            return out
+        out = np.asarray(out, dtype=float).copy()
+        out[~(np.isfinite(out) & (np.abs(out) <= _DASH_JS_MS_LIMIT))] = np.nan
+    return out
+
+
+def _dash_stata_number_of(ms, kind):
+    """The Stata number of *kind* at epoch-ms position *ms*: the scalar
+    inverse of :func:`_dash_literal_to_ms` (a period floored, a ``%td``
+    fraction kept), for every position a browser can draw.  Inside
+    Stata's dates it equals ``_dash_stata_value_of``.  None for a value
+    that is not finite, past ``_DASH_JS_MS_LIMIT``, or a kind outside the
+    fixed set (WP-30 P1.23a).  Never raises."""
+    try:
+        x = float(ms)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if (not math.isfinite(x) or abs(x) > _DASH_JS_MS_LIMIT
+            or kind not in _STATA_DATE_KINDS):
+        return None
+    E = float(_STATA_EPOCH_UNIX_MS)
+    if kind == "td":
+        return (x - E) / 86_400_000.0
+    if kind in ("tc", "tC"):
+        return x - E
+    day = int(math.floor(x / 86_400_000.0))
+    y, m, _d = (int(t) for t in _dash_civil_from_days(day))
+    if kind == "ty":
+        return float(y)
+    if kind == "tm":
+        return float((y - 1960) * 12 + m - 1)
+    if kind == "tq":
+        return float((y - 1960) * 4 + (m - 1) // 3)
+    if kind == "th":
+        return float((y - 1960) * 2 + (m - 1) // 6)
+    jan1 = int(_dash_days_from_civil(y, 1, 1))
+    return float((y - 1960) * 52 + min(51, (day - jan1) // 7))
+
+
+#: The tag of dash's one date-units transform per kind (WP-30 P1.23a).
+_DASH_DATE_UNITS_TAG = "dash_date_units:"
+
+#: The page-side twin of ``_dash_date_units``: epoch ms to a date kind's
+#: Stata units (a period floored), NaN outside Stata's dates.  Fixed code;
+#: the kind is data in args.  No Date object (WP-30 P1.23a, TR-35.8).
+_DASH_DATE_UNITS_JS = """
+function dash_date_units(v, kind) {
+    var E = @EPOCH@;
+    var ms = Number(v);
+    if (!isFinite(ms) || ms < @MS_MIN@ + E
+        || ms > @MS_MAX@ + E) { return NaN; }
+    if (kind === "td") { return (ms - E) / 86400000; }
+    if (kind === "tc" || kind === "tC") { return ms - E; }
+    var day = Math.floor(ms / 86400000);
+    var z = day + 719468;
+    var era = Math.floor(z / 146097);
+    var doe = z - era * 146097;
+    var yoe = Math.floor((doe - Math.floor(doe / 1460)
+        + Math.floor(doe / 36524) - Math.floor(doe / 146096)) / 365);
+    var doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+    var mp = Math.floor((5 * doy + 2) / 153);
+    var m = mp < 10 ? mp + 3 : mp - 9;
+    var y = yoe + era * 400 + (m <= 2 ? 1 : 0);
+    if (kind === "ty") { return y; }
+    if (kind === "tm") { return (y - 1960) * 12 + m - 1; }
+    if (kind === "tq") { return (y - 1960) * 4 + Math.floor((m - 1) / 3); }
+    if (kind === "th") { return (y - 1960) * 2 + Math.floor((m - 1) / 6); }
+    if (kind === "tw") {
+        var y0 = y - 1;
+        var e0 = Math.floor(y0 / 400);
+        var o0 = y0 - e0 * 400;
+        var jan1 = e0 * 146097 + o0 * 365 + Math.floor(o0 / 4)
+            - Math.floor(o0 / 100) + 306 - 719468;
+        return (y - 1960) * 52 + Math.min(51, Math.floor((day - jan1) / 7));
+    }
+    return ms;
+}
+""".replace("@EPOCH@", repr(float(_STATA_EPOCH_UNIX_MS))).replace(
+    "@MS_MIN@", repr(float(_STATA_MS_MIN))).replace(
+    "@MS_MAX@", repr(float(_STATA_MS_MAX)))
+
 
 def _dash_read_data_json(text):
     """Parse the data file, each number as Stata holds it.
@@ -872,12 +1049,20 @@ def _dash_column_values(col):
     return col.tolist() if hasattr(col, "tolist") else list(col)
 
 
-def _dash_figure_date_kind(plots, key, fallback, date_vars):
-    """The date kind of a figure's x (``key="xvar"``) or y axis, or None.
+def _dash_figure_date_kind(plots, key, fallback, date_vars, axis_no=1):
+    """The date kind of a figure's x (``key="xvar"``) or y axis number
+    *axis_no*, or None.
 
-    Every layer must agree: a date series and a numeric one cannot share a
-    date axis, and picking the first plot's answer would misplace the
-    other.  The saved renderer's rule, in both modes.
+    Every layer drawn on that axis must agree: a date series and a numeric
+    one cannot share a date axis, and picking the first plot's answer would
+    misplace the other.  The saved renderer's rule, in both modes.  A layer
+    counts only on its own axis (``xaxis(2)``/``yaxis(2)`` is axis 2), so a
+    second axis of numbers leaves the first axis's dates (WP-30 P1.23a,
+    D-35a); with no layer on axis 1, every layer counts there (D-35g).
+    Range bounds (``yvar1``, ``yvar2``) and paired coordinates (``y1var``
+    ... ``x2var``) count; ``scatteri``, ``pci``, ``pcarrowi`` and
+    ``function`` name no variable and never count.  A layer that names
+    nothing on *key* counts *fallback*.
 
     A univariate layer (histogram, kdensity) draws its variable on x, as
     twoway does, so its ``var`` counts on the ``"xvar"`` key and nothing on
@@ -889,33 +1074,95 @@ def _dash_figure_date_kind(plots, key, fallback, date_vars):
     """
     if not date_vars:
         return None
+    layers = [_dash_layer_axis_names(p, key)
+              for p in (plots or []) if isinstance(p, dict)]
+    layers = [(a, names) for a, names in layers if a is not None]
+    on = [names for a, names in layers if a == axis_no]
+    if not on and axis_no == 1:
+        on = [names for _a, names in layers]
     kinds = set()
-    for plot in plots or []:
-        if str(plot.get("type", "")).lower() in _DASH_UNIVARIATE_TYPES:
-            if key != "xvar":
-                continue
-            name = plot.get("var", "") or fallback
-        else:
-            name = plot.get(key, "") or fallback
-        if not name:
-            continue
-        kinds.add(date_vars.get(name))
+    for names in on:
+        for name in (names or [fallback]):
+            if name:
+                kinds.add(date_vars.get(name))
     if not kinds or len(kinds) > 1 or None in kinds:
         return None
     return kinds.pop()
 
 
-def _dash_axis_vars(plots):
-    """``(xv, yv)``: the variables a figure's axes are named and formatted
-    by, read from its first layer.  A univariate first layer (histogram,
-    kdensity) draws its variable on x and its density on y, so its ``var``
-    is the x variable and y has none (WP-29 P0.8): the tick formatter, the
-    log notes and the axis options read ``''`` for a histogram's x before.
+def _dash_layer_axis_names(plot, key):
+    """``(axis_no, [names])``: the axis number one layer draws on for
+    *key* (``"xvar"`` or ``"yvar"``) and the variables it draws there, or
+    ``(None, [])`` for a literal layer (WP-30 P1.23a, D-35a).  On x: a
+    univariate layer's ``var``, a pc layer's ``x1var``/``x2var``, else
+    ``xvar``; on y: a range layer's ``yvar1``/``yvar2``, a pc layer's
+    ``y1var``/``y2var``, else ``yvar`` (a univariate layer draws nothing on
+    y: ``[]`` with the axis kept out by ``None``)."""
+    if not isinstance(plot, dict):
+        return (None, [])
+    ptype = str(plot.get("type", "")).lower()
+    if ptype in _DASH_LITERAL_TYPES:
+        return (None, [])
+    letter = "x" if key == "xvar" else "y"
+    opts = plot.get("options") or {}
+    if not isinstance(opts, dict):
+        opts = {}
+    axis_no = 2 if str(opts.get(letter + "axis", "1")).strip() == "2" else 1
+    if ptype in _DASH_UNIVARIATE_TYPES:
+        if letter == "y":
+            return (None, [])
+        keys = ("var",)
+    elif ptype in _DASH_PC_TYPES:
+        keys = (letter + "1var", letter + "2var")
+    elif ptype in _DASH_RANGE_TYPES and letter == "y":
+        keys = ("yvar1", "yvar2")
+    else:
+        keys = (key,)
+    names = [str(plot.get(k, "") or "") for k in keys]
+    return (axis_no, [n for n in names if n])
+
+
+def _dash_axis_vars(plots, axis_no=1):
+    """``(xv, yv)``: the variables a figure's axes number *axis_no* are
+    named and formatted by, read per letter from the first non-literal
+    layer on that axis (WP-30 P1.23a, TR-35.2).  A univariate layer
+    (histogram, kdensity) draws its variable on x and its density on y,
+    so its ``var`` is the x variable and y has none (WP-29 P0.8); a range
+    layer's y is ``yvar1``, a pc layer's ``x1var``/``y1var``.  With no such
+    layer: the first layer's answer for axis 1, ``""`` for axis 2.
     """
+    def _first(letter):
+        for p in plots or []:
+            if not isinstance(p, dict):
+                continue
+            ptype = str(p.get("type", "")).lower()
+            if ptype in _DASH_LITERAL_TYPES:
+                continue
+            opts = p.get("options") or {}
+            if not isinstance(opts, dict):
+                opts = {}
+            on = (2 if str(opts.get(letter + "axis", "1")).strip() == "2"
+                  else 1)
+            if on != axis_no:
+                continue
+            if ptype in _DASH_UNIVARIATE_TYPES:
+                return ((p.get("var", "") or p.get("xvar", "") or "")
+                        if letter == "x" else "")
+            if letter == "x":
+                return p.get("xvar", "") or p.get("x1var", "") or ""
+            return (p.get("yvar", "") or p.get("yvar1", "")
+                    or p.get("y1var", "") or "")
+        return None
+
+    xv, yv = _first("x"), _first("y")
+    if axis_no != 1:
+        return (xv or "", yv or "")
     p0 = (plots or [{}])[0] or {}
     if str(p0.get("type", "")).lower() in _DASH_UNIVARIATE_TYPES:
-        return (p0.get("var", "") or p0.get("xvar", "") or "", "")
-    return (p0.get("xvar", "") or "", p0.get("yvar", "") or "")
+        d0 = (p0.get("var", "") or p0.get("xvar", "") or "", "")
+    else:
+        d0 = (p0.get("xvar", "") or "", p0.get("yvar", "") or "")
+    return (d0[0] if xv is None else xv, d0[1] if yv is None else yv)
 
 
 def _dash_axis_format_text(raw, first=False):
@@ -1037,17 +1284,25 @@ def _dash_axis_tick_formats(plots, numeric_formats, date_vars=None):
     return out
 
 
-def _dash_mark_date_axes(fig, x_kind, y_kind):
-    """Remember on *fig* the Stata date kind of each of its axes, so the
-    axis options -- xline(), xscale(range()), xlabel(), xtick() -- read a
-    number given for a date axis in the variable's unit."""
+def _dash_mark_date_axes(fig, x_kind, y_kind, x2_kind=None, y2_kind=None):
+    """Remember on *fig* the Stata date kind of each of its axes, the
+    second ones included (WP-30 P1.23a), so the axis options -- xline(),
+    xscale(range()), xlabel(), xtick() -- read a number given for a date
+    axis in the variable's unit.  Python attributes, never serialised."""
     fig._dash_date_kinds = (x_kind or None, y_kind or None)
+    fig._dash_date_kinds2 = (x2_kind or None, y2_kind or None)
 
 
 def _dash_axis_date_kind(fig, axis):
-    """The date kind *fig*'s ``"x"`` or ``"y"`` axis was drawn with."""
-    kinds = getattr(fig, "_dash_date_kinds", None) or (None, None)
-    return kinds[0] if axis == "x" else kinds[1]
+    """The date kind *fig*'s ``"x"``, ``"y"``, ``"x2"`` or ``"y2"`` axis
+    was drawn with; None for any other name."""
+    if axis in ("x", "y"):
+        kinds = getattr(fig, "_dash_date_kinds", None) or (None, None)
+        return kinds[0] if axis == "x" else kinds[1]
+    if axis in ("x2", "y2"):
+        kinds = getattr(fig, "_dash_date_kinds2", None) or (None, None)
+        return kinds[0] if axis == "x2" else kinds[1]
+    return None
 
 
 def _dash_axis_positions(values, kind):
@@ -1094,6 +1349,174 @@ def _dash_note_not_dates(option, texts, kind):
         f"dash: {option}(): {shown}{more} is not a date a %{kind} axis can "
         f"show (Stata's range is 01jan0100 to 31dec9999); not drawn.",
         UserWarning, stacklevel=3)
+
+
+def _dash_date_transform(kind, cache=None):
+    """The one ``CustomJSTransform`` per date *kind* (and per document,
+    through *cache*) that draws an epoch-ms date field in its Stata units
+    on an axis that is no date axis (WP-30 P1.23a, D-35d).  Its code is the
+    fixed ``_DASH_DATE_UNITS_JS``; the kind, checked against the fixed set
+    first (a hostile kind raises ValueError), is data in ``args``."""
+    from bokeh.models import CustomJSTransform
+    if not isinstance(kind, str) or kind not in _STATA_DATE_KINDS:
+        raise ValueError("dash: not a Stata date kind")
+    key = ("date-units", kind)
+    if cache is not None and key in cache:
+        return cache[key]
+    model = CustomJSTransform(
+        args={"kind": kind},
+        func=_DASH_DATE_UNITS_JS + "return dash_date_units(x, kind);",
+        v_func=(_DASH_DATE_UNITS_JS
+                + "var out = new Float64Array(xs.length); "
+                "for (var i = 0; i < xs.length; i++) { "
+                "out[i] = dash_date_units(xs[i], kind); } return out;"),
+        tags=[_DASH_DATE_UNITS_TAG + kind])
+    if cache is not None:
+        cache[key] = model
+    return model
+
+
+def _dash_spec_units(spec):
+    """The date kind of a coordinate *spec* (a str, a dict or a Bokeh
+    ``Field``) drawn through dash's own date-units transform, else None
+    (WP-30 P1.23a, TR-35.8).  Never raises."""
+    try:
+        from bokeh.models import CustomJSTransform
+        if isinstance(spec, dict):
+            t = spec.get("transform")
+        else:
+            t = getattr(spec, "transform", None)
+        if not isinstance(t, CustomJSTransform):
+            return None
+        for tag in (t.tags or []):
+            if isinstance(tag, str) and tag.startswith(_DASH_DATE_UNITS_TAG):
+                k = tag[len(_DASH_DATE_UNITS_TAG):]
+                if k in _STATA_DATE_KINDS:
+                    return k
+    except Exception:  # noqa: BLE001 -- never raises
+        return None
+    return None
+
+
+def _dash_spec_field(spec):
+    """The field name of a coordinate spec, or None for a value spec."""
+    if isinstance(spec, str):
+        return spec
+    if isinstance(spec, dict):
+        f = spec.get("field")
+        return f if isinstance(f, str) else None
+    f = getattr(spec, "field", None)
+    return f if isinstance(f, str) else None
+
+
+def _dash_layer_in_axis_units(fig, renderers, annotations, plot, date_vars,
+                              cache=None):
+    """Draw a raw layer's date fields in their Stata units on each axis of
+    *fig* that is no date axis, through ``_dash_date_transform`` (WP-30
+    P1.23a, D-35d).  The source keeps epoch ms.  Only a raw layer (not a
+    literal, not a computed type), only a property whose axis has no date
+    kind, only a field holding one of the layer's own date variables (or
+    a dash jitter/label column made from them when the layer's variables
+    on that letter share one kind); every Glyph variant and the layer's
+    LabelSet and Arrow annotations; never a spec with a transform or a
+    value.  Returns how many properties it transformed."""
+    computed = frozenset({
+        "lfit", "qfit", "lfitci", "qfitci", "lowess", "lpoly", "lpolyci",
+        "fpfit", "fpfitci", "histogram", "kdensity", "mspline", "mband"})
+    if getattr(fig, "_dash_date_kinds", None) is None or not date_vars:
+        return 0
+    if not isinstance(plot, dict):
+        return 0
+    ptype = str(plot.get("type", "")).lower()
+    if ptype in _DASH_LITERAL_TYPES or ptype in computed:
+        return 0
+    own = {}
+    for letter in ("x", "y"):
+        _a, names = _dash_layer_axis_names(plot, letter + "var")
+        kinds = {n: date_vars.get(n) for n in names}
+        kinds = {n: k for n, k in kinds.items() if k in _STATA_DATE_KINDS}
+        ks = set(kinds.values())
+        one = (ks.pop() if len(ks) == 1 and len(kinds) == len(names)
+               else None)
+        own[letter] = (kinds, one)
+    derived = {"x": (_DASH_JITTER_X, _DASH_MLABEL_X),
+               "y": (_DASH_JITTER_Y, _DASH_MLABEL_Y)}
+
+    def _kind_of(field, letter):
+        kinds, one = own[letter]
+        if field in kinds:
+            return kinds[field]
+        if one and any(field.startswith(p) for p in derived[letter]):
+            return one
+        return None
+
+    count = 0
+
+    def _convert(model, props, letter, range_name):
+        nonlocal count
+        axis = letter if range_name == "default" else letter + "2"
+        if _dash_axis_date_kind(fig, axis):
+            return
+        for prop in props:
+            if prop not in model.properties():
+                continue
+            spec = getattr(model, prop)
+            if isinstance(spec, dict) and ("transform" in spec
+                                           or "value" in spec):
+                continue
+            if getattr(spec, "transform", None) is not None:
+                continue
+            field = _dash_spec_field(spec)
+            if not field:
+                continue
+            kind = _kind_of(field, letter)
+            if not kind:
+                continue
+            setattr(model, prop, {"field": field,
+                                  "transform": _dash_date_transform(kind,
+                                                                    cache)})
+            count += 1
+
+    from bokeh.models import Arrow, Glyph, LabelSet
+    for r in renderers or []:
+        if getattr(r, "glyph", None) is None or _dash_is_swatch(r):
+            continue
+        for attr in ("glyph", "selection_glyph", "nonselection_glyph",
+                     "hover_glyph", "muted_glyph"):
+            g = getattr(r, attr, None)
+            if not isinstance(g, Glyph):
+                continue
+            _convert(g, _DASH_X_COORDS, "x",
+                     getattr(r, "x_range_name", "default"))
+            _convert(g, _DASH_Y_COORDS, "y",
+                     getattr(r, "y_range_name", "default"))
+    for a in annotations or []:
+        if isinstance(a, LabelSet):
+            xs, ys = ("x",), ("y",)
+        elif isinstance(a, Arrow):
+            xs, ys = ("x_start", "x_end"), ("y_start", "y_end")
+        else:
+            continue
+        _convert(a, xs, "x", getattr(a, "x_range_name", "default"))
+        _convert(a, ys, "y", getattr(a, "y_range_name", "default"))
+    return count
+
+
+def _dash_axis_unit_format(plots, axis, date_vars, formats):
+    """The date format a mixed *axis* (``"x"``, ``"y"``, ``"x2"``,
+    ``"y2"``) is labelled in, or ``""`` (WP-30 P1.23a, D-35e): S18's
+    first-layer rule with each date variable's own format passed as a
+    number format, so a raw date first gives its ``%t`` format and an
+    lfit, kdensity or literal first stays numbers.  Pure."""
+    fake = {v: _dash_date_fmt((formats or {}).get(v), k)
+            for v, k in (date_vars or {}).items() if k in _STATA_DATE_KINDS}
+    try:
+        fmt, by_opt = _dash_axis_tick_formats(plots, fake, {})[axis]
+    except (KeyError, TypeError, ValueError):
+        return ""
+    if not by_opt and fmt and _dash_fmt_kind(fmt) == "t":
+        return fmt
+    return ""
 
 
 def _dash_widget_number(v):
@@ -12623,8 +13046,9 @@ class GlyphMapper:
         # base() sets the lower boundary; with none, twoway's default base
         # (0 clamped into the axis's scale), filled by
         # _dash_finish_auto_bases once the scale is known (WP-30 P1.17b).
-        _base = self._base_value(options, "area")
-        _zero = self._base_zero(yvar)
+        _base = self._base_in_axis_units(
+            self._base_value(options, "area"), yvar, fig, options, "area")
+        _zero = self._base_zero(yvar, fig, options)
         y1_base = np.full_like(y_arr, _zero if _base is None else _base)
         _y1_col = f"{yvar}_base"
 
@@ -12761,14 +13185,15 @@ class GlyphMapper:
         # In the variable's units on a date axis; per-row columns on a
         # period axis (D-14c), on every path, the empty one included.
         x_field, width_spec, _bar_ext = self._bar_extent(
-            xvar, df[xvar], bar_width)
+            xvar, df[xvar], bar_width, fig=fig, options=options)
         if _bar_ext:
             df = df.assign(**_bar_ext)
         # base() sets the bar bottom; with none, a tagged column that
         # _dash_finish_auto_bases fills with twoway's base, 0 clamped into
         # the axis's scale (WP-30 P1.17b).
-        _base = self._base_value(options, "bar")
-        _zero = self._base_zero(yvar)
+        _base = self._base_in_axis_units(
+            self._base_value(options, "bar"), yvar, fig, options, "bar")
+        _zero = self._base_zero(yvar, fig, options)
         if _base is None:
             df = df.assign(**{self._BASE_COL: _zero})
         clean_source = ColumnDataSource(df)
@@ -12867,10 +13292,11 @@ class GlyphMapper:
             return None
         return _stat_option_float(options, "base", None, layer)
 
-    def _base_zero(self, yvar):
+    def _base_zero(self, yvar, fig=None, options=None):
         """Stata's 0 in the units of *yvar*'s axis: 01jan1960 on a date
-        axis, 0 otherwise (WP-30 P1.17b)."""
-        kind = (getattr(self, "date_vars", None) or {}).get(yvar)
+        axis, 0 otherwise (WP-30 P1.17b) -- the axis the layer is drawn on
+        (``_unit_kind``; WP-30 P1.23a), so 0 on a mixed axis."""
+        kind = self._unit_kind(fig, yvar, "y", options)
         if kind in ("td", "tc", "tC", "tw", "tm", "tq", "th", "ty"):
             try:
                 z = float(_dash_units_to_axis(np.array([0.0]), kind)[0])
@@ -12894,7 +13320,7 @@ class GlyphMapper:
         r.tags = [t for t in (r.tags or [])
                   if not str(t).startswith("dash_base:")] + [tag]
 
-    def _bar_extent(self, xvar, xs, width):
+    def _bar_extent(self, xvar, xs, width, fig=None, options=None):
         """The x field, width spec and extra columns of a bar *width* x
         units wide, in *xvar*'s own units (WP-30 P1.17a).
 
@@ -12904,9 +13330,11 @@ class GlyphMapper:
         period's share, drawn from the reserved columns ``_BAR_XC`` (centre)
         and ``_BAR_W`` (width), so a month of 28 or 31 days is one unit.
         Every width is finite; NaN where the date is missing (no bar).
+        The kind is that of the axis the layer is drawn on (``_unit_kind``;
+        WP-30 P1.23a), so a bar on a mixed axis is one Stata unit wide.
         Never raises.
         """
-        kind = (self.date_vars or {}).get(xvar)
+        kind = self._unit_kind(fig, xvar, "x", options)
         span = 2.0 * float(_STATA_MS_MAX - _STATA_MS_MIN)
         try:
             w = float(width)
@@ -12970,8 +13398,9 @@ class GlyphMapper:
         x_arr, y_arr = self._masked(source, view, xvar, yvar)
         # base() sets the spike origin; with none, twoway's default base,
         # filled by _dash_finish_auto_bases (WP-30 P1.17b).
-        _base = self._base_value(options, "spike")
-        _zero = self._base_zero(yvar)
+        _base = self._base_in_axis_units(
+            self._base_value(options, "spike"), yvar, fig, options, "spike")
+        _zero = self._base_zero(yvar, fig, options)
         y0_base = np.full_like(x_arr, _zero if _base is None else _base)
 
         # The same rows _masked() kept, as positions, so the caller's other
@@ -13274,49 +13703,143 @@ class GlyphMapper:
         return self._layer_weights(source, view, options, layer, *varnames,
                                    units=dict(self.date_vars or {}) or None)
 
-    def _on_axis(self, fig, values, var, axis):
+    @staticmethod
+    def _axis_kind(fig, axis, options=None):
+        """The date kind of the axis a layer with *options* is drawn on for
+        letter *axis*: ``axis + "2"`` under ``xaxis(2)``/``yaxis(2)``, else
+        *axis* (WP-30 P1.23a, TR-35.4)."""
+        opts = options if isinstance(options, dict) else {}
+        two = str(opts.get(axis + "axis", "1")).strip() == "2"
+        return _dash_axis_date_kind(fig, axis + "2" if two else axis)
+
+    def _unit_kind(self, fig, var, axis, options=None):
+        """The date kind *var*'s values are drawn in on letter *axis*, or
+        None (WP-30 P1.23a, D-35c).  None for a variable that is no date.
+        On a marked figure it is the kind of the axis the layer is on, so
+        None on a numeric or mixed axis; on an unmarked figure (a mapper
+        used alone) the variable's own kind."""
+        kind = (getattr(self, "date_vars", None) or {}).get(var)
+        if kind not in _STATA_DATE_KINDS:
+            return None
+        if getattr(fig, "_dash_date_kinds", None) is not None:
+            return self._axis_kind(fig, axis, options)
+        return kind
+
+    def _on_axis(self, fig, values, var, axis, options=None):
         """``(drawn, off)``: a computed layer's output *values* (Stata units
         of *var*) as the positions *fig*'s *axis* draws them.
 
         A variable that is no date is drawn as it is.  On a figure whose
-        axes were marked (``_dash_mark_date_axes``) the axis decides: a
-        date axis takes its kind's epoch milliseconds; a numeric axis --
-        a date sharing it with a non-date or another date kind -- the Stata
-        values themselves, as twoway draws ``(scatter close obs)(lfit close
-        date)``.  An unmarked figure (a mapper used on its own) converts by
-        the variable's kind.  *off* marks a finite value that has no date
-        on the axis (outside 01jan0100 to 31dec9999); it is NaN in *drawn*.
+        axes were marked (``_dash_mark_date_axes``) the axis the layer is
+        drawn on decides (*options*' ``xaxis(2)``/``yaxis(2)``; WP-30
+        P1.23a): a date axis takes its kind's epoch milliseconds; a numeric
+        axis -- a date sharing it with a non-date or another date kind --
+        the Stata values themselves, as twoway draws ``(scatter close obs)
+        (lfit close date)``.  An unmarked figure (a mapper used on its own)
+        converts by the variable's kind.  *off* marks a finite value that
+        has no date on the axis (outside 01jan0100 to 31dec9999); it is NaN
+        in *drawn*.
         """
         vals = np.asarray(values, dtype=float)
-        kind = (self.date_vars or {}).get(var)
         none = np.zeros(vals.shape, dtype=bool)
-        if kind not in _STATA_DATE_KINDS:
+        kind = self._unit_kind(fig, var, axis, options)
+        if not kind:
             return vals, none
-        if getattr(fig, "_dash_date_kinds", None) is not None:
-            kind = _dash_axis_date_kind(fig, axis)
-            if not kind:
-                return vals, none
         drawn = _dash_units_to_axis(vals, kind)
         with np.errstate(invalid="ignore"):
             off = np.isfinite(vals) & ~np.isfinite(drawn)
         return drawn, off
 
-    def _drop_off_dates(self, layer, what, off, *arrays):
+    def _literal_on_axis(self, fig, values, axis, options=None):
+        """``(drawn, off)``: a literal layer's numbers (scatteri, pci,
+        pcarrowi, function) as positions on the axis they are drawn on
+        (WP-30 P1.23a, A77).  On an unmarked figure or an axis with no
+        date kind they are unchanged; on a date axis they go through
+        ``_dash_literal_to_ms``, so a number outside 01jan0100 to 31dec9999
+        is drawn where it falls, as twoway draws it.  *off* marks a finite
+        value past the dates a browser can draw; it is NaN in *drawn*."""
+        vals = np.asarray(values, dtype=float)
+        none = np.zeros(vals.shape, dtype=bool)
+        if getattr(fig, "_dash_date_kinds", None) is None:
+            return vals, none
+        kind = self._axis_kind(fig, axis, options)
+        if not kind:
+            return vals, none
+        drawn = _dash_literal_to_ms(vals, kind)
+        with np.errstate(invalid="ignore"):
+            off = np.isfinite(vals) & ~np.isfinite(drawn)
+        return drawn, off
+
+    def _base_in_axis_units(self, base, var, fig, options, layer):
+        """An explicit ``base(#)`` (*base*, a float, or None for the
+        default) in the units of *var*'s y axis (WP-30 P1.23a, D-35f): on
+        a date axis the date *base* denotes, outside 01jan0100 to 31dec9999
+        included; on a numeric or mixed axis the number itself.  None (the
+        default base, with one note) only for a base past the dates a
+        browser can draw."""
+        if base is None:
+            return None
+        if getattr(fig, "_dash_date_kinds", None) is None:
+            kind = (getattr(self, "date_vars", None) or {}).get(var)
+            kind = kind if kind in _STATA_DATE_KINDS else None
+        else:
+            kind = self._axis_kind(fig, "y", options)
+        if not kind:
+            return float(base)
+        ms = float(_dash_literal_to_ms([base], kind)[0])
+        if math.isfinite(ms):
+            return ms
+        shown = _dash_display(_fmt_num(base), 40)
+        _dash_warn_once(
+            ("off-browser-base", layer, shown),
+            f"dash: {layer}: base({shown}) is past the dates a browser can "
+            f"draw (years -271821 to 275760); drawn from the default base.")
+        return None
+
+    def _literal_pairs_on_axis(self, fig, layer, what, options, y1, x1, y2,
+                               x2):
+        """``((y1, x1, y2, x2), keep)``: a pc literal's four coordinate
+        lists in date units on a date axis (``_literal_on_axis``), less the
+        records past the dates a browser can draw, named once
+        (WP-30 P1.23a).  *keep* is the kept record indices."""
+        n = len(y1)
+        cols = []
+        off = np.zeros(n, dtype=bool)
+        for vals, letter in ((y1, "y"), (x1, "x"), (y2, "y"), (x2, "x")):
+            d, o = self._literal_on_axis(fig, np.asarray(vals, dtype=float),
+                                         letter, options)
+            cols.append(d)
+            off |= o
+        out = self._drop_off_dates(layer, what, off, *cols, np.arange(n),
+                                   reach="browser")
+        lists = tuple([float(v) for v in a] for a in out[:4])
+        return lists, [int(i) for i in out[4]]
+
+    def _drop_off_dates(self, layer, what, off, *arrays, reach="stata"):
         """*arrays* without the rows *off* marks, naming how many once.
 
         A computed bar or point that lands outside Stata's dates is not
         drawn, and one note per layer says how many (WP-29 P0.8, A1): it
         would otherwise reach the page as NaN, which the page's JSON cannot
-        parse.  *what* is ``"bar(s)"`` or ``"point(s)"``.
+        parse.  *what* is ``"bar(s)"`` or ``"point(s)"``.  *reach*
+        ``"browser"`` names a literal past the dates a browser can draw
+        (WP-30 P1.23a, D-35f): ``"point(s)"``, ``"segment(s)"`` or
+        ``"arrow(s)"``.
         """
         off = np.asarray(off, dtype=bool)
         n = int(off.sum())
         if not n:
             return arrays
-        _dash_warn_once(
-            ("off-dates", layer, what),
-            f"dash: {layer}: {n:,} {what} outside Stata's dates "
-            f"(01jan0100 to 31dec9999) not drawn.")
+        if reach == "browser":
+            _dash_warn_once(
+                ("off-browser", layer, what),
+                f"dash: {layer}: {n:,} {what} past the dates a browser can "
+                f"draw (years -271821 to 275760) not drawn.")
+        else:
+            _dash_warn_once(
+                ("off-dates", layer, what),
+                f"dash: {layer}: {n:,} {what} outside Stata's dates "
+                f"(01jan0100 to 31dec9999) not drawn.")
         keep = ~off
         return tuple(np.asarray(a)[keep] for a in arrays)
 
@@ -13594,8 +14117,8 @@ class GlyphMapper:
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
-        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x")
-        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y")
+        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x", options)
+        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y", options)
         x_fit, y_fit = self._drop_off_dates("lfit", "point(s)", _ox | _oy,
                                             x_fit, y_fit)
 
@@ -13671,8 +14194,8 @@ class GlyphMapper:
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
-        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x")
-        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y")
+        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x", options)
+        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y", options)
         x_fit, y_fit = self._drop_off_dates("qfit", "point(s)", _ox | _oy,
                                             x_fit, y_fit)
 
@@ -13770,10 +14293,10 @@ class GlyphMapper:
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
-        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x")
-        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y")
-        y_lower, _ol = self._on_axis(fig, y_lower, yvar, "y")
-        y_upper, _ou = self._on_axis(fig, y_upper, yvar, "y")
+        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x", options)
+        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y", options)
+        y_lower, _ol = self._on_axis(fig, y_lower, yvar, "y", options)
+        y_upper, _ou = self._on_axis(fig, y_upper, yvar, "y", options)
         x_fit, y_fit, y_lower, y_upper = self._drop_off_dates(
             "lfitci", "point(s)", _ox | _oy | _ol | _ou,
             x_fit, y_fit, y_lower, y_upper)
@@ -13899,10 +14422,10 @@ class GlyphMapper:
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
-        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x")
-        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y")
-        y_lower, _ol = self._on_axis(fig, y_lower, yvar, "y")
-        y_upper, _ou = self._on_axis(fig, y_upper, yvar, "y")
+        x_fit, _ox = self._on_axis(fig, x_fit, xvar, "x", options)
+        y_fit, _oy = self._on_axis(fig, y_fit, yvar, "y", options)
+        y_lower, _ol = self._on_axis(fig, y_lower, yvar, "y", options)
+        y_upper, _ou = self._on_axis(fig, y_upper, yvar, "y", options)
         x_fit, y_fit, y_lower, y_upper = self._drop_off_dates(
             "qfitci", "point(s)", _ox | _oy | _ol | _ou,
             x_fit, y_fit, y_lower, y_upper)
@@ -14038,8 +14561,8 @@ class GlyphMapper:
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
-        x_lw, _ox = self._on_axis(fig, x_lw, xvar, "x")
-        y_lw, _oy = self._on_axis(fig, y_lw, yvar, "y")
+        x_lw, _ox = self._on_axis(fig, x_lw, xvar, "x", options)
+        y_lw, _oy = self._on_axis(fig, y_lw, yvar, "y", options)
         x_lw, y_lw = self._drop_off_dates("lowess", "point(s)", _ox | _oy,
                                           x_lw, y_lw)
 
@@ -14453,8 +14976,8 @@ class GlyphMapper:
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
-        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x")
-        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y")
+        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x", options)
+        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y", options)
         _xd, _yd = self._drop_off_dates("lpoly", "point(s)", _ox | _oy,
                                         _xd, _yd)
         lp_src = ColumnDataSource({
@@ -14585,7 +15108,8 @@ class GlyphMapper:
         hp = pwidth if pwidth is not None else 1.5 * rot
 
         def _on(vals, var, axis):
-            return self._on_axis(fig, np.asarray(vals, dtype=float), var, axis)
+            return self._on_axis(fig, np.asarray(vals, dtype=float), var, axis,
+                                 options)
 
         if not np.isfinite(h):
             # Stata's r(bwidth) is missing: twoway draws the smooth as y = 0
@@ -15000,8 +15524,8 @@ class GlyphMapper:
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
-        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x")
-        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y")
+        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x", options)
+        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y", options)
         _xd, _yd = self._drop_off_dates("fpfit", "point(s)", _ox | _oy,
                                         _xd, _yd)
         fp_src = ColumnDataSource({
@@ -15094,10 +15618,10 @@ class GlyphMapper:
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
-        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x")
-        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y")
-        _yl, _ol = self._on_axis(fig, y_lower[valid], yvar, "y")
-        _yu, _ou = self._on_axis(fig, y_upper[valid], yvar, "y")
+        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x", options)
+        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y", options)
+        _yl, _ol = self._on_axis(fig, y_lower[valid], yvar, "y", options)
+        _yu, _ou = self._on_axis(fig, y_upper[valid], yvar, "y", options)
         _xd, _yd, _yl, _yu = self._drop_off_dates(
             "fpfitci", "point(s)", _ox | _oy | _ol | _ou, _xd, _yd, _yl, _yu)
         ci_src = ColumnDataSource({
@@ -15229,7 +15753,7 @@ class GlyphMapper:
         # A bar with an edge outside Stata's dates is not drawn (one note):
         # the edges are monotone, so only the ends can leave the range and
         # the bars kept are one contiguous run [i0, i1).
-        axis_edges, off_e = self._on_axis(fig, edges, yvar, "x")
+        axis_edges, off_e = self._on_axis(fig, edges, yvar, "x", options)
         bar_off = off_e[:-1] | off_e[1:]
         self._drop_off_dates("histogram", "bar(s)", bar_off)
         _kept = np.flatnonzero(~bar_off)
@@ -15596,7 +16120,7 @@ class GlyphMapper:
         # variable's Stata units; the curve is drawn where the figure's x
         # axis draws the variable, a point with no date there dropped with
         # one note.
-        x_draw, _off = self._on_axis(fig, x_range, yvar, "x")
+        x_draw, _off = self._on_axis(fig, x_range, yvar, "x", options)
         x_draw, x_range, density = self._drop_off_dates(
             "kdensity", "point(s)", _off, x_draw, x_range, density)
 
@@ -15783,7 +16307,8 @@ class GlyphMapper:
                     bar_width = _bw
                 break
         x_field, width_spec, _rb_ext = self._bar_extent(
-            xvar, source.data[xvar], bar_width)
+            xvar, source.data[xvar], bar_width, fig=fig,
+            options=options)
         if _rb_ext:
             source.data.update(_rb_ext)
         # The fill is the resolved colour at the p#bar intensity, opaque,
@@ -16191,8 +16716,9 @@ class GlyphMapper:
         # from the default base rather than raised out of the render.
         # With no base(), twoway's default base, filled by
         # _dash_finish_auto_bases (WP-30 P1.17b).
-        _base = self._base_value(options, "dropline")
-        _zero = self._base_zero(yvar)
+        _base = self._base_in_axis_units(
+            self._base_value(options, "dropline"), yvar, fig, options, "dropline")
+        _zero = self._base_zero(yvar, fig, options)
         zeros = np.full_like(x_arr, _zero if _base is None else float(_base))
 
         # Apply jitter if requested (jitters x and y).  Read through
@@ -16457,6 +16983,17 @@ class GlyphMapper:
                     x_vals, y_vals, min(100.0, jitter_pct),
                     _jitter_seed(options))
 
+        # In date units on a date axis, past Stata's dates included; only
+        # a value past the browser's dates is left out (WP-30 P1.23a).
+        x_vals, _offx = self._literal_on_axis(fig, x_vals, "x", options)
+        y_vals, _offy = self._literal_on_axis(fig, y_vals, "y", options)
+        _n0 = len(x_vals)
+        x_vals, y_vals, _lab_keep = self._drop_off_dates(
+            "scatteri", "point(s)", _offx | _offy, x_vals, y_vals,
+            np.arange(_n0), reach="browser")
+        if len(_lab_keep) != _n0:
+            _labels = [_labels[int(i)] for i in _lab_keep]
+            _clocks = [_clocks[int(i)] for i in _lab_keep]
         si_source = ColumnDataSource({"x": x_vals.tolist(), "y": y_vals.tolist()})
 
         color = self.scheme.default_color(color_idx, "scatter")
@@ -16623,6 +17160,9 @@ class GlyphMapper:
         """
         (y1, x1, y2, x2), _labels, _clocks = self._immediate_records(
             values, "pci", 4)
+        (y1, x1, y2, x2), _keep = self._literal_pairs_on_axis(
+            fig, "pci", "segment(s)", options, y1, x1, y2, x2)
+        _labels = [_labels[i] for i in _keep] if len(_labels) else _labels
         # The columns are named as the Segment's own fields, x0..y1, so a
         # source read by name reads what it read when this method drew the
         # segments itself.
@@ -17276,6 +17816,10 @@ class GlyphMapper:
         """
         y1, x1, y2, x2, labels, clocks = self._pc_immediate_records(
             values, "pcarrowi")
+        (y1, x1, y2, x2), keep = self._literal_pairs_on_axis(
+            fig, "pcarrowi", "arrow(s)", options, y1, x1, y2, x2)
+        labels = [labels[i] for i in keep] if len(labels) else labels
+        clocks = [clocks[i] for i in keep] if len(clocks) else clocks
         src = ColumnDataSource({"y1": y1, "x1": x1, "y2": y2, "x2": x2})
         out = self.map_pcarrow(fig, src, "y1", "x1", "y2", "x2", options,
                                color_idx=color_idx)
@@ -17549,8 +18093,8 @@ class GlyphMapper:
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
-        x_grid, _ox = self._on_axis(fig, x_grid, xvar, "x")
-        y_grid, _oy = self._on_axis(fig, y_grid, yvar, "y")
+        x_grid, _ox = self._on_axis(fig, x_grid, xvar, "x", options)
+        y_grid, _oy = self._on_axis(fig, y_grid, yvar, "y", options)
         x_grid, y_grid = self._drop_off_dates("mspline", "point(s)",
                                               _ox | _oy, x_grid, y_grid)
         ms_source = ColumnDataSource({"x_sp": x_grid, "y_sp": y_grid})
@@ -17671,8 +18215,8 @@ class GlyphMapper:
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
-        x_mids, _ox = self._on_axis(fig, x_mids, xvar, "x")
-        y_meds, _oy = self._on_axis(fig, y_meds, yvar, "y")
+        x_mids, _ox = self._on_axis(fig, x_mids, xvar, "x", options)
+        y_meds, _oy = self._on_axis(fig, y_meds, yvar, "y", options)
         x_mids, y_meds = self._drop_off_dates("mband", "point(s)",
                                               _ox | _oy, x_mids, y_meds)
         mb_source = ColumnDataSource({"x_mb": x_mids, "y_mb": y_meds})
@@ -17780,6 +18324,13 @@ class GlyphMapper:
             if y_arr.ndim == 0:
                 y_arr = np.full(len(x_arr), float(y_arr))
 
+        # In date units on a date axis, past Stata's dates included; only
+        # a point past the browser's dates is left out (WP-30 P1.23a).
+        x_arr, _offx = self._literal_on_axis(fig, x_arr, "x", options)
+        y_arr, _offy = self._literal_on_axis(fig, y_arr, "y", options)
+        x_arr, y_arr = self._drop_off_dates("function", "point(s)",
+                                            _offx | _offy, x_arr, y_arr,
+                                            reach="browser")
         fn_source = ColumnDataSource({"x_fn": x_arr, "y_fn": y_arr})
         r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_fn", y="y_fn", source=fn_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
@@ -21397,6 +21948,47 @@ function dash_html_escape(s) {
         .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
         .replace(/'/g, "&#x27;");
 }
+
+function dash_civil_from_days(z) {
+    // _dash_civil_from_days: [y, m, d] of z days after 1970-01-01, by
+    // integer era arithmetic (no Date object; every integer year).
+    z = z + 719468;
+    var era = Math.floor(z / 146097);
+    var doe = z - era * 146097;
+    var yoe = Math.floor((doe - Math.floor(doe / 1460)
+        + Math.floor(doe / 36524) - Math.floor(doe / 146096)) / 365);
+    var doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+    var mp = Math.floor((5 * doy + 2) / 153);
+    var d = doy - Math.floor((153 * mp + 2) / 5) + 1;
+    var m = mp < 10 ? mp + 3 : mp - 9;
+    return [yoe + era * 400 + (m <= 2 ? 1 : 0), m, d];
+}
+
+function dash_stata_number_of(ms, kind) {
+    // _dash_stata_number_of: the Stata number of kind at a position, for
+    // every position a browser can draw; null past it.
+    var x = Number(ms);
+    if (!isFinite(x) || Math.abs(x) > 8640000000000000) { return null; }
+    var E = -315619200000;
+    if (kind === "td") { return (x - E) / 86400000.0; }
+    if (kind === "tc" || kind === "tC") { return x - E; }
+    var day = Math.floor(x / 86400000.0);
+    var c = dash_civil_from_days(day);
+    var y = c[0], m = c[1];
+    if (kind === "ty") { return y; }
+    if (kind === "tm") { return (y - 1960) * 12 + m - 1; }
+    if (kind === "tq") { return (y - 1960) * 4 + Math.floor((m - 1) / 3); }
+    if (kind === "th") { return (y - 1960) * 2 + Math.floor((m - 1) / 6); }
+    if (kind === "tw") {
+        var y0 = y - 1;
+        var e0 = Math.floor(y0 / 400);
+        var o0 = y0 - e0 * 400;
+        var jan1 = e0 * 146097 + o0 * 365 + Math.floor(o0 / 4)
+            - Math.floor(o0 / 100) + 306 - 719468;
+        return (y - 1960) * 52 + Math.min(51, Math.floor((day - jan1) / 7));
+    }
+    return null;
+}
 """
 
 
@@ -24384,6 +24976,7 @@ def _dash_fmt_text(value, fmt, storage=None):
 #: back into Stata's value first.  The format is DATA in args, never code.
 _DASH_FMT_MODEL_JS = """
 var _dash_v = kind ? dash_stata_value_of(%s, kind) : %s;
+if ((_dash_v === null || _dash_v === undefined) && kind) { _dash_v = dash_stata_number_of(%s, kind); }
 if (_dash_v === null || _dash_v === undefined) { return "."; }
 return dash_fmt_text(_dash_v, fmt, storage);
 """
@@ -24410,7 +25003,7 @@ def _dash_fmt_tick_formatter(fmt, kind, storage, cache):
     if cache is not None and key in cache:
         return cache[key]
     model = CustomJSTickFormatter(
-        args=args, code=_DASH_FMT_JS + _DASH_FMT_MODEL_JS % ("tick", "tick"))
+        args=args, code=_DASH_FMT_JS + _DASH_FMT_MODEL_JS % (("tick",) * 3))
     if cache is not None:
         cache[key] = model
     return model
@@ -24440,7 +25033,7 @@ def _dash_fmt_label_tick_formatter(labels, fmt, kind, storage, cache):
               "{ _dash_k = _dash_k + '.0'; } "
               "if (_dash_h.call(_dash_m, _dash_k)) "
               "{ return _dash_m[_dash_k]; }\n"
-            + _DASH_FMT_MODEL_JS % ("tick", "tick"))
+            + _DASH_FMT_MODEL_JS % (("tick",) * 3))
     model = CustomJSTickFormatter(args=args, code=code)
     if cache is not None:
         cache[key] = model
@@ -24457,7 +25050,7 @@ def _dash_fmt_hover(fmt, kind, storage, cache):
         return cache[key]
     model = CustomJSHover(
         args=args,
-        code=_DASH_FMT_JS + _DASH_FMT_MODEL_JS % ("value", "value"))
+        code=_DASH_FMT_JS + _DASH_FMT_MODEL_JS % (("value",) * 3))
     if cache is not None:
         cache[key] = model
     return model
@@ -26035,7 +26628,8 @@ def _dash_axis_count_ticks(lo, hi, n, kind=None):
     a = _dash_unix_ms_to_unit(lo, unit)
     b = _dash_unix_ms_to_unit(hi, unit)
     if a is None or b is None:
-        return None
+        # An axis reaching past Stata's dates (WP-30 P1.23a, D-35k).
+        return _dash_off_date_ticks(lo, hi, n, kind)
     t = _dash_tsnatscale_ticks(a, b, n, unit)
     if not t:
         return None
@@ -26046,6 +26640,61 @@ def _dash_axis_count_ticks(lo, hi, n, kind=None):
                                           kind)
     out = [float(v) for v in stamps.dropna().astype("int64").tolist()]
     return out or None
+
+
+def _dash_off_date_ticks(lo, hi, n, kind):
+    """natscale ticks over the Stata numbers of a date axis that reaches
+    past Stata's dates, each placed by ``_dash_literal_to_ms`` (WP-30
+    P1.23a, D-35k): Bokeh's year ticker builds ``Date.UTC(year, 0, 1)``,
+    which reads a year 0-99 as 1900-1999.  A period kind takes whole
+    periods only.  None when an end has no number or no tick is left."""
+    a = _dash_stata_number_of(lo, kind)
+    b = _dash_stata_number_of(hi, kind)
+    if a is None or b is None:
+        return None
+    t = _dash_natscale_ticks(min(a, b), max(a, b), n) or []
+    if kind not in ("td", "tc", "tC"):
+        t = [v for v in t if float(v) == math.floor(float(v))]
+    if not t:
+        return None
+    ms = _dash_literal_to_ms(np.asarray(t, dtype=float), kind)
+    out = [float(v) for v in ms if np.isfinite(v)]
+    return out or None
+
+
+def _dash_finish_off_date_axes(fig):
+    """Tick each date axis of *fig* whose layers reach past Stata's dates
+    by ``_dash_off_date_ticks`` in place of Bokeh's ``DatetimeTicker``
+    (WP-30 P1.23a, D-35k).  An option's ticker is left alone.  Returns how
+    many axes it changed."""
+    from bokeh.models import DatetimeAxis, DatetimeTicker, FixedTicker
+    E = float(_STATA_EPOCH_UNIX_MS)
+    lo_ok, hi_ok = _STATA_MS_MIN + E, _STATA_MS_MAX + E
+    changed = 0
+    for side in ("below", "above", "left", "right"):
+        for ax in list(getattr(fig, side, None) or []):
+            if not isinstance(ax, DatetimeAxis):
+                continue
+            if type(ax.ticker) is not DatetimeTicker:
+                continue
+            letter = "x" if side in ("below", "above") else "y"
+            name = (ax.x_range_name if letter == "x" else ax.y_range_name)
+            kind = _dash_axis_date_kind(
+                fig, letter if name == "default" else letter + "2")
+            if kind is None:
+                continue
+            _cols, vals = _dash_secondary_values(
+                fig, letter + "_range_name", name)
+            if not vals:
+                continue
+            lo, hi = min(vals), max(vals)
+            if lo_ok <= lo and hi <= hi_ok:
+                continue
+            nt = (getattr(fig, "_dash_numticks", None) or {}).get(letter, 5)
+            ax.ticker = FixedTicker(
+                ticks=_dash_off_date_ticks(lo, hi, nt, kind) or [])
+            changed += 1
+    return changed
 
 
 #: #N / ##N, with an optional numlist ("label"...) after it (US-14.4,
@@ -26634,7 +27283,14 @@ _DASH_TICK_EVERY_JS = ("return every.get_ticks(cb_data.start, cb_data.end, "
 #: the plan (_dash_axis_plan) and the models it names: no DOM, no eval, no
 #: BokehJS view internals, no user text.  The __DASH_*__ tokens are the
 #: Python constants, written in at import.
-_DASH_AXIS_FINISH_JS = r"""
+_DASH_AXIS_FINISH_JS = _DASH_DATE_UNITS_JS + r"""
+// The date kind a plan layer draws field *f* in (its [field, kind] pairs;
+// WP-30 P1.23a), or null: a field not listed is read as stored.
+function dash_axis_unit_of(units, f) {
+    if (!units) return null;
+    for (let i = 0; i < units.length; i++) if (units[i][0] === f) return units[i][1];
+    return null;
+}
 // The least and greatest of *vs* without spreading them into arguments,
 // which throws a RangeError on a long array (as Math.min() of none: +/-Infinity).
 function dash_axis_min(vs) { let m = Infinity; for (const v of vs) if (v < m) m = v; return m; }
@@ -26750,10 +27406,12 @@ function dash_axis_extent(a, models, base) {
         for (const fld of (base ? L.bfields : L.fields)) {
             const col = dash_axis_col(data, fld);
             if (col === null) continue;
+            const u = dash_axis_unit_of(L.units, fld);
+            const at = (i) => dash_axis_num(u ? dash_date_units(col[i], u) : col[i]);
             if (rows === null) {
-                for (let i = 0; i < col.length; i++) take(dash_axis_num(col[i]));
+                for (let i = 0; i < col.length; i++) take(at(i));
             } else {
-                for (const i of rows) if (i < col.length) take(dash_axis_num(col[i]));
+                for (const i of rows) if (i < col.length) take(at(i));
             }
         }
         if (n) for (const c of (base ? L.bconsts : L.consts)) take(dash_axis_num(c));
@@ -26782,7 +27440,7 @@ function dash_axis_hull(a, ticks, lo, hi, models, bases) {
         if ((B.cf !== undefined && cc === null) || (B.wf !== undefined && wc === null)) continue;
         let blo = null, bhi = null;
         for (const i of rows) {
-            const c = cc !== null ? (i < cc.length ? dash_axis_num(cc[i]) : null) : B.cv;
+            const c = cc !== null ? (i < cc.length ? dash_axis_num(B.cunits ? dash_date_units(cc[i], B.cunits) : cc[i]) : null) : B.cv;
             const w = wc !== null ? (i < wc.length ? dash_axis_num(wc[i]) : null) : B.wv;
             if (c === null || w === null || c === undefined || w === undefined) continue;
             for (const v of [c - w / 2.0, c + w / 2.0]) {
@@ -27215,7 +27873,7 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
                              numeric_formats, seen=None, key="",
                              grid_color=None, value_labels=None,
                              value_label_names=None, fmt_cache=None,
-                             plots=None, date_vars=None):
+                             plots=None, date_vars=None, formats=None):
     """xlabel()/ylabel(), then xtick()/ytick() beside them, on the figure's
     own axes -- not a yaxis(2)/xaxis(2) axis, which ylabel2()/xlabel2()
     label; the sub-options the grammar does not honour are named.
@@ -27230,7 +27888,12 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
     (:func:`_dash_axis_tick_formats`), with or without ``xlabel()``; a
     date axis keeps its date writer unless a layer's ``xvarformat()``/
     ``yvarformat()`` or a ``format()`` names one.  Without them (a direct
-    caller) the variable's own format is the fallback, as before."""
+    caller) the variable's own format is the fallback, as before.
+
+    On an axis with no date kind (WP-30 P1.23a, D-35e/D-35i) a date
+    variable's column is read in its Stata units, so ``minmax`` ticks Stata
+    values, and with *formats* an axis no format names is labelled in its
+    first layer's date format (:func:`_dash_axis_unit_format`)."""
     cols = getattr(frame, "columns", [])
     fmts = (None if plots is None else
             _dash_axis_tick_formats(plots, numeric_formats or {},
@@ -27247,6 +27910,10 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
         grid_obj = _dash_primary_axes(grids, rattr)
         col = frame[var] if var and var in cols else None
         kind = _dash_axis_date_kind(fig, ax_key[0])
+        _vk = (date_vars or {}).get(var)
+        if not kind and col is not None and _vk in _STATA_DATE_KINDS:
+            # A date on a mixed axis is drawn in its Stata units.
+            col = pd.Series(_dash_date_units(col, _vk))
         vlabels = _dash_value_labels_for(var, value_labels, value_label_names)
         raw = graph_opts.get(ax_key, "")
         if fmts is None:
@@ -27255,6 +27922,9 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
             fb, by_opt = fmts[ax_key[0]]
             if kind and not by_opt:
                 fb = ""
+            elif not kind and not fb and not by_opt and formats is not None:
+                fb = _dash_axis_unit_format(plots, ax_key[0], date_vars,
+                                            formats)
             fb = _dash_varformat_writable(fb, by_opt, ax_key[0])
         spec = _dash_parse_axis_spec(raw) if raw else None
         if (spec is None or spec.get("mode") == "default") \
@@ -27306,7 +27976,8 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
 
 
 def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
-                             key="", var_labels=None, scheme=None):
+                             key="", var_labels=None, scheme=None,
+                             date_axes=None, fmt_cache=None):
     """Build ``extra_y_ranges['y2']`` / ``extra_x_ranges['x2']`` and their axes.
 
     A layer with yaxis(2) or xaxis(2) asks for a second axis whose range is
@@ -27339,9 +28010,13 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
     own size()/color(); it is never copied from the primary axis, which
     the saved renderer has styled by now and the served app has not.
 
+    *date_axes* maps ``"y2"``/``"x2"`` to ``(var, fmt)`` for a second axis
+    marked with a date kind: it is a DatetimeAxis labelled in *fmt*, and a
+    ``log`` asked of it is named once and not drawn (WP-30 P1.23a).
+
     Returns ``(has_y2, has_x2)``.
     """
-    from bokeh.models import LinearAxis, LogAxis, Range1d
+    from bokeh.models import DatetimeAxis, LinearAxis, LogAxis, Range1d
     has = {}
     for axis_key, var_key, rng_attr, name, side, kw in (
             ("yaxis", "yvar", "extra_y_ranges", "y2", "right", "y_range_name"),
@@ -27364,8 +28039,19 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
                 xaxis=2 if n == "x" else 1)[0 if n == "x" else 1]
         text, opts = _dash_textbox_or_default(
             graph_opts.get(f"{n}title2", ""), f"{n}title2", dflt, seen, key)
-        ax = (LogAxis if is_log else LinearAxis)(
-            **{kw: name}, axis_label=text)
+        dated = (date_axes or {}).get(name)
+        if dated and is_log:
+            _dash_warn_once(
+                ("date-log2", name),
+                f"dash: {n}scale2(log) is meaningless for the date variable "
+                f"'{_dash_display(dated[0], 32)}'; drawing a date axis "
+                f"instead.")
+            is_log = False
+        if dated:
+            ax = DatetimeAxis(**{kw: name}, axis_label=text)
+        else:
+            ax = (LogAxis if is_log else LinearAxis)(
+                **{kw: name}, axis_label=text)
         if scheme is not None:
             # The second axis's own style (axisstyle *_nogrid) and side:
             # under economist axis 1 of y is on the right, so axis 2 is on
@@ -27373,6 +28059,10 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
             # twoway: y2 labels left of the plot, ticks 1.388 units).
             scheme.apply_to_axis(ax, n, 2)
             side = scheme.axis_side(n, 2)
+        if dated:
+            ax.formatter = _dash_date_axis_formatter(
+                dated[1] or _dash_date_fmt("", _dash_axis_date_kind(fig, name)),
+                "", fmt_cache)
         px = _textbox_size(
             opts, ax.axis_label_text_font_size,
             (getattr(scheme, "size_ref_in", 4.0) if scheme is not None
@@ -27442,6 +28132,10 @@ def _dash_secondary_values(fig, range_attr, name):
                 # datetimes back as nanoseconds, or as objects once one is
                 # past 2262 (measured 24sep2026).
                 col = _dash_float_values(data[field], coerce=True)
+                _u = _dash_spec_units(v)
+                if _u:
+                    # Drawn through dash's date transform (WP-30 P1.23a).
+                    col = _dash_date_units(col, _u)
                 sel = col[list(rows)] if len(col) else col
                 cols.extend(float(x) for x in sel if np.isfinite(x))
                 continue
@@ -27563,11 +28257,6 @@ def _dash_finish_auto_bases(fig):
     return n
 
 
-#: WP-30 P1.3a (D-21g): the plot types whose coordinates are typed numbers,
-#: not a variable's values -- left out of a date axis's hull until S35.
-_DASH_RAW_SIF_TYPES = frozenset({"scatteri", "pci", "pcarrowi", "function"})
-
-
 def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
     """``(low, high)`` of every value the layers on range *name* draw, or
     None when they draw none (WP-30 P1.3a).
@@ -27580,16 +28269,14 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
     :func:`_dash_secondary_values` lists, without building the list, so a
     500,000-row layer is read within the re-finish budget (A9).  A colour
     key's swatches, a renderer on another range and a default base
-    (its ``dash_base:`` tag, :func:`_dash_auto_base_props`) are skipped, and so
-    is a typed-number layer (``_dash_raw_sif``) when *kind* is a date
-    kind.  Only finite values count, positive ones on ``"log"``.  An
+    (its ``dash_base:`` tag, :func:`_dash_auto_base_props`) are skipped; a
+    field drawn through dash's date transform is read in its Stata units
+    (WP-30 P1.23a).  Only finite values count, positive ones on ``"log"``.  An
     explicit ``base()`` (``_dash_base``) is no tick input either -- twoway
     ticks ``bar mpg weight, base(5)`` 10(10)40 over a scale from 5 -- so
     it is skipped too, and read alone with *role* ``"base"`` for the hull.
     """
     fields = _DASH_Y_COORDS if range_attr == "y_range_name" else _DASH_X_COORDS
-    date = isinstance(kind, str) and (kind in _DASH_TS_UNITS
-                                      or kind in ("tc", "tC"))
     lo = hi = None
     for r in renderers or ():
         g = getattr(r, "glyph", None)
@@ -27597,8 +28284,6 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
         if g is None or src is None or _dash_is_swatch(r):
             continue
         if getattr(r, range_attr, "default") != name:
-            continue
-        if date and getattr(r, "_dash_raw_sif", False):
             continue
         based = tuple(getattr(r, "_dash_base", None) or ())
         if role == "base":
@@ -27638,6 +28323,10 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
                 col = _dash_float_values(data[field], coerce=True)
                 if rows is not None:
                     col = col[rows[rows < len(col)]]
+                _u = _dash_spec_units(v)
+                if _u:
+                    # Drawn through dash's date transform (WP-30 P1.23a).
+                    col = _dash_date_units(col, _u)
             else:
                 const = (v if isinstance(v, (int, float))
                          and not isinstance(v, bool)
@@ -27668,18 +28357,15 @@ def _dash_tag_hull_roles(renderers, ptype, options):
     :func:`_dash_auto_base_props`) marks it, every value reader skips it,
     and :func:`_dash_finish_auto_bases` clamps it into the scale (WP-30
     P1.17b).  An explicit ``base()`` stays in the hull but is no tick
-    input: its tag's property is stamped ``_dash_base``.
-    scatteri, pci, pcarrowi and function layers get
-    ``_dash_raw_sif``, which the reader skips on a date axis until S35.
+    input: its tag's property is stamped ``_dash_base``.  Literal layers
+    (scatteri, pci, pcarrowi, function) are placed in date units on a date
+    axis, so they count in its hull like any other (WP-30 P1.23a).
     Python attributes only: never serialised.
     """
-    t = str(ptype or "").strip().lower()
     for r in renderers or ():
         g = getattr(r, "glyph", None)
         if g is None or _dash_is_swatch(r):
             continue
-        if t in _DASH_RAW_SIF_TYPES:
-            r._dash_raw_sif = True
         bs = _dash_base_spec(r)
         if bs and not bs["auto"]:
             r._dash_base = (bs["prop"],)
@@ -27807,8 +28493,6 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                     if ti is None:
                         ti = index[id(base)] = len(models)
                         models.append(base)
-                date = isinstance(kind, str) and (
-                    kind in _DASH_TS_UNITS or kind in ("tc", "tC"))
                 fields = (_DASH_Y_COORDS if letter == "y"
                           else _DASH_X_COORDS)
                 layers, bars, autobase = [], [], []
@@ -27845,6 +28529,10 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                                    else getattr(v, "field", None))
                             if fld:
                                 bar[key + "f"] = str(fld)
+                                if key == "c":
+                                    # WP-30 P1.23a: a centre drawn through
+                                    # dash's date transform.
+                                    bar["cunits"] = _dash_spec_units(v)
                             else:
                                 c = (v if isinstance(v, (int, float))
                                      and not isinstance(v, bool)
@@ -27858,8 +28546,6 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                         if ("cf" in bar or "cv" in bar) \
                                 and ("wf" in bar or "wv" in bar):
                             bars.append(bar)
-                    if date and getattr(r, "_dash_raw_sif", False):
-                        continue
                     based = tuple(getattr(r, "_dash_base", None) or ())
                     skip = _dash_auto_base_props(r, letter)
                     if skip:
@@ -27874,7 +28560,7 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                                 "src": si, "field": str(fld),
                                 "zero": _dash_base_spec(r)["zero"]})
                     props = g.properties()
-                    lf, lc, bf, bc = [], [], [], []
+                    lf, lc, bf, bc, units = [], [], [], [], []
                     for attr in fields:
                         if attr not in props or attr in skip:
                             continue
@@ -27885,6 +28571,11 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                         if fld:
                             if fld in src.data:
                                 (bf if attr in based else lf).append(str(fld))
+                                _u = _dash_spec_units(v)
+                                if _u:
+                                    # [field, kind] pairs, never an object
+                                    # keyed by a name (WP-30 P1.23a).
+                                    units.append([str(fld), _u])
                             continue
                         c = (v if isinstance(v, (int, float))
                              and not isinstance(v, bool)
@@ -27897,7 +28588,8 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                     if lf or lc or bf or bc:
                         layers.append({"src": si, "filt": fi, "fk": fk_,
                                        "fields": lf, "consts": lc,
-                                       "bfields": bf, "bconsts": bc})
+                                       "bfields": bf, "bconsts": bc,
+                                       "units": units})
                 ok = (lambda v: isinstance(v, (int, float))
                       and not isinstance(v, bool)
                       and math.isfinite(float(v)))
@@ -27948,7 +28640,7 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                                 grid_color=None, plots=None,
                                 value_labels=None, value_label_names=None,
                                 fmt_cache=None, numeric_formats=None,
-                                date_vars=None):
+                                date_vars=None, formats=None):
     """Fit the second axes to what their layers drew, then label them.
 
     Called once every layer is drawn, in both modes.  Two claims of
@@ -27982,7 +28674,13 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
     With *numeric_formats* (both renderers pass them; WP-30 P1.5) a
     second axis is written in the format of the layer twoway takes it
     from (:func:`_dash_axis_tick_formats`), with or without
-    ``ylabel2()``/``xlabel2()``; a date variable there gives none (S35's).
+    ``ylabel2()``/``xlabel2()``; a date variable there gives none.
+
+    A second axis marked with a date kind (``_dash_axis_date_kind(fig,
+    "y2")``; WP-30 P1.23a) reads its range(), label, tick and line numbers
+    as dates, as the first axis does; a mixed one (*formats* given) is
+    labelled in its first layer's date format and reads minmax in Stata
+    values (``_dash_axis_unit_format``).
     """
     from bokeh.models import Grid, LinearAxis, LogAxis
     plots = plots or []
@@ -28020,12 +28718,21 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
             # twoway (WP-29 P0.2).
             want = []
         is_log = isinstance(ax, LogAxis)
+        kind = _dash_axis_date_kind(fig, name)
+        if kind and want:
+            # range() of a date axis in the variable's units (WP-30 P1.23a).
+            _pos = _dash_axis_positions(want, kind)
+            _dash_note_not_dates(f"{n}scale2", [
+                _fmt_num(v) for v, p in zip(want, _pos) if p is None], kind)
+            want = [p for p in _pos if p is not None]
 
         # The label positions are read before the range is set: unless
         # norescale, they widen the axis (WP-28 B2).
         raw = str(graph_opts.get(f"{n}label2", "") or "")
         spec = (_dash_parse_axis_spec(raw)
                 if raw.strip() and ax is not None else None)
+        if spec is not None and kind:
+            spec = _dash_date_axis_spec(spec, kind, f"{n}label2")
         # ytick(..., axis(2)) -- dash's ytick2() (WP-29 P0.5): its positions
         # widen the axis as a label's do, unless norescale (twoway measured:
         # ytick(20000, axis(2)) runs yaxis2 to 20000); the first axis is
@@ -28033,6 +28740,11 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
         tick_raw = str(graph_opts.get(f"{n}tick2", "") or "")
         tspec = (_dash_parse_axis_spec(tick_raw)
                  if tick_raw.strip() and ax is not None else None)
+        if tspec is not None and kind:
+            with warnings.catch_warnings():
+                # _dash_apply_tick_option names the non-dates itself.
+                warnings.simplefilter("ignore")
+                tspec = _dash_date_axis_spec(tspec, kind, f"{n}tick2")
 
         # WP-28 B2: the hull of what the layers drew, every range() value
         # and the label positions -- range() widens only, as yscale()'s
@@ -28058,20 +28770,21 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
         _sr2[name] = "reverse" in names
         fig._dash_scale_reverse2 = _sr2
         if ax is not None and (spec is None
-                               or spec.get("mode") == "default"):
+                               or spec.get("mode") == "default") \
+                and kind in (None, "tc", "tC"):
             # No ylabel2()/xlabel2() rule: ticked as the first axes are.
             _nt = getattr(fig, "_dash_numticks", None) or {}
             ax.ticker = _dash_default_ticker(_nt.get(name, _nt.get(n, 5)))
         if vals:
             new = _dash_padded_range(
-                min(vals), max(vals), "log" if is_log else None,
+                min(vals), max(vals), "log" if is_log else kind,
                 "reverse" in names,
                 margin=(getattr(fig, "_dash_margin", None) or {}).get(n))
             rng.start, rng.end = float(new.start), float(new.end)
             # The hull before padding, for a by() graph's one shared second
             # axis (_dash_share_by_scales, WP-29 P0.2).
             hulls = getattr(fig, "_dash_secondary_hulls", None) or {}
-            hulls[name] = (min(vals), max(vals), "log" if is_log else None,
+            hulls[name] = (min(vals), max(vals), "log" if is_log else kind,
                            "reverse" in names)
             fig._dash_secondary_hulls = hulls
         elif "reverse" in names:
@@ -28105,14 +28818,24 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
             fb2 = ""
             if fmts2 is not None:
                 fb2, _by2 = fmts2[name]
+                if kind and not _by2:
+                    fb2 = ""
+                elif not kind and not fb2 and not _by2 \
+                        and formats is not None:
+                    fb2 = _dash_axis_unit_format(plots, name, date_vars,
+                                                 formats)
                 fb2 = _dash_varformat_writable(fb2, _by2, n)
             _dash_apply_axis_spec(ax, grids, spec, col_vals or None, fb2,
                                   grid_color, vlabels2, fmt_cache=fmt_cache,
-                                  ref_in=ref_in,
+                                  ref_in=ref_in, date_kind=kind,
                                   option=f"{n}label2", by_graph=by_graph,
                                   colours=colours)
         elif fmts2 is not None and ax is not None:
             fb2, _by2 = fmts2[name]
+            if kind and not _by2:
+                fb2 = ""
+            elif not kind and not fb2 and not _by2 and formats is not None:
+                fb2 = _dash_axis_unit_format(plots, name, date_vars, formats)
             fb2 = _dash_varformat_writable(fb2, _by2, n)
             if fb2:
                 _dash_apply_axis_spec(ax, [], _dash_parse_axis_spec(""),
@@ -28131,7 +28854,7 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                 tgrids.append(g)
             _dash_apply_tick_option([ax], tgrids, tick_raw, f"{n}tick2",
                                     col_vals or None, seen, key, grid_color,
-                                    date_kind=None, by_graph=by_graph,
+                                    date_kind=kind, by_graph=by_graph,
                                     ref_in=ref_in)
         if ax is not None and scale_raw:
             # WP-30 P1.18a: the second axis's own look.
@@ -28227,8 +28950,8 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
                 if isinstance(ax, LogAxis):
                     kind = "log"
                 elif isinstance(ax, DatetimeAxis):
-                    kind = (_dash_axis_date_kind(fig, letter)
-                            if name == "default" else None)
+                    kind = _dash_axis_date_kind(
+                        fig, letter if name == "default" else letter + "2")
                     if kind is None:
                         continue        # a date axis of no known unit
                 ext = _dash_layer_extent(pool, range_attr, name, kind)
@@ -28504,6 +29227,10 @@ def _dash_axis_hull(fig, e):
                 col = _dash_float_values(data[field], coerce=True)
                 if rows is not None:
                     col = col[rows[rows < len(col)]]
+                _u = _dash_spec_units(v)
+                if _u:
+                    # Drawn through dash's date transform (WP-30 P1.23a).
+                    col = _dash_date_units(col, _u)
                 got.append(col)
                 continue
             const = (v if isinstance(v, (int, float))
@@ -32699,8 +33426,8 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
     """One copy of xline()/yline(): a Span at each position, in the
     scheme's `xyline' style unless its sub-options say otherwise, on the
     range *range_name* -- ``"y2"``/``"x2"`` for a yline(#, axis(2)) copy
-    (WP-29 P0.5), whose numbers are read as they stand (a second axis is
-    never a date axis)."""
+    (WP-29 P0.5); a second axis of dates reads dates, as the first does
+    (WP-30 P1.23a)."""
     if scheme is not None:
         kw = {"line_color": scheme.xyline_color,
               "line_dash": list(scheme.xyline_dash),
@@ -32741,8 +33468,9 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
             _dash_style_note(
                 f"{opt}({style.get('_typed', {}).get('lwidth', 'lwidth')})",
                 style["lwidth"], "line width", "the default")
-    kind = (_dash_axis_date_kind(fig, "x" if opt == "xline" else "y")
-            if range_name == "default" else None)
+    kind = _dash_axis_date_kind(
+        fig, (("x" if opt == "xline" else "y") if range_name == "default"
+              else range_name))
     if kind:
         # A number given for a date axis is a date in the variable's
         # unit, as twoway reads it: xline(14979) on a %td axis is
@@ -36753,7 +37481,7 @@ class DashRenderer:
         return None
 
     def _figure_date_kind(
-        self, plots: list, key: str, fallback: str,
+        self, plots: list, key: str, fallback: str, axis_no: int = 1,
     ) -> "str | None":
         """Return the date kind of the variable on one axis, or None.
 
@@ -36770,7 +37498,8 @@ class DashRenderer:
             The date kind, or ``None``.
         """
         return _dash_figure_date_kind(plots, key, fallback,
-                                      getattr(self, "date_vars", None))
+                                      getattr(self, "date_vars", None),
+                                      axis_no)
 
     def _scheme_for(self, name: str, context: str) -> "SchemeParser":
         """The build's SchemeParser for *name*, parsed once per build.
@@ -36858,6 +37587,8 @@ class DashRenderer:
         # The variables the axes are drawn, named and formatted by: a
         # univariate first layer's variable is on x (WP-29 P0.8).
         _xa, _ya = _dash_axis_vars(plots)
+        # WP-30 P1.23a: each second axis is decided by its own layers.
+        _xa2, _ya2 = _dash_axis_vars(plots, axis_no=2)
 
         # xtitle()/ytitle() first, else Stata's own default, through the
         # helper the generated app runs as well.  Canvas text, NOT html:
@@ -36920,6 +37651,8 @@ class DashRenderer:
         # its axis type; do not reintroduce it.
         _x_date = self._figure_date_kind(plots, "xvar", _xa)
         _y_date = self._figure_date_kind(plots, "yvar", _ya)
+        _x2_date = self._figure_date_kind(plots, "xvar", _xa2, axis_no=2)
+        _y2_date = self._figure_date_kind(plots, "yvar", _ya2, axis_no=2)
 
         if _x_date and _xs_log:
             warnings.warn(
@@ -36953,7 +37686,7 @@ class DashRenderer:
         fig._dash_numticks = _dash_by_numticks(self.scheme, graph_opts)
         # The axes' date kinds, for the axis options below: a number given
         # for a date axis is a Stata date in the variable's unit.
-        _dash_mark_date_axes(fig, _x_date, _y_date)
+        _dash_mark_date_axes(fig, _x_date, _y_date, _x2_date, _y2_date)
 
         # Each tick in the axis variable's own date format, as twoway
         # labels it (%tm's 2001m1, GAPS2 E3).  An explicit xlabel()/
@@ -37028,7 +37761,12 @@ class DashRenderer:
         # the full frame spanned data the graph does not show.
         _has_y2, _has_x2 = _dash_add_secondary_axes(
             fig, plots, graph_opts, _source_frame(source, self.df),
-            _seen, _gkey, self.variable_labels, self.scheme)
+            _seen, _gkey, self.variable_labels, self.scheme,
+            date_axes={nm: (v, _dash_date_fmt(
+                getattr(self, "formats", {}).get(v), k))
+                for nm, v, k in (("y2", _ya2, _y2_date),
+                                 ("x2", _xa2, _x2_date)) if k},
+            fmt_cache=getattr(self, "_fmt_models", None))
 
         # xscale(range())/yscale(range()) and reverse, through the helper
         # the generated app runs as well: it read xrange/yrange keys
@@ -37055,7 +37793,8 @@ class DashRenderer:
                                  value_label_names=self.value_label_names,
                                  fmt_cache=getattr(self, "_fmt_models", None),
                                  plots=plots,
-                                 date_vars=getattr(self, "date_vars", {}) or {})
+                                 date_vars=getattr(self, "date_vars", {}) or {},
+                                 formats=getattr(self, "formats", {}) or {})
 
         # Plot categories that use non-standard JSON variable keys.  Defined
         # at module level so the generated server app shares them rather than
@@ -37299,6 +38038,12 @@ class DashRenderer:
             # marker labels and arrowheads with it.
             _dash_assign_axis_ranges(fig, _layer_renderers, popts,
                                      list(fig.center[_c_before:]))
+            # A raw date on an axis that is no date axis, in its Stata
+            # units through the date transform (WP-30 P1.23a).
+            _dash_layer_in_axis_units(
+                fig, _layer_renderers, list(fig.center[_c_before:]), plot,
+                getattr(self, "date_vars", {}) or {},
+                getattr(self, "_fmt_models", None))
 
         # z options apply to this graph's colour key only (GAPS2 X2); reset
         # before the next figure builds so a titled key does not leak its
@@ -37318,7 +38063,12 @@ class DashRenderer:
                                     numeric_formats=getattr(
                                         self, "numeric_formats", {}) or {},
                                     date_vars=getattr(self, "date_vars",
-                                                      {}) or {})
+                                                      {}) or {},
+                                    formats=getattr(self, "formats", {})
+                                    or {})
+        # A date axis reaching past Stata's dates: natscale ticks over its
+        # Stata numbers (WP-30 P1.23a, D-35k).
+        _dash_finish_off_date_axes(fig)
 
         # ---- Legend: Stata's keys, and Stata's rule for showing one ----
         self._rebuild_legend(fig, locals().get("_plot_renderers", []),
@@ -39793,7 +40543,7 @@ class ServerAppBuilder:
                       # the zoom code's finisher twin.
                       "_DASH_DEFAULT_TAG", "_DASH_MARGIN_RS",
                       "_DASH_BY_GMETRIC", "_DASH_AXIS_FINISH_JS",
-                      "_DASH_AXIS_ZOOM_JS", "_DASH_RAW_SIF_TYPES",
+                      "_DASH_AXIS_ZOOM_JS",
                       "_DASH_REFLINE_SUBOPTS", "_DASH_FILTER_TYPES",
                       "_DASH_FILTER_SUBOPTS",
                       # The resource limits (WP-19): the app groups by(),
@@ -39882,6 +40632,10 @@ class ServerAppBuilder:
                       # Timestamp _STATA_EPOCH (24sep2026).
                       "_STATA_YEAR_MIN", "_STATA_YEAR_MAX", "_STATA_MS_MIN",
                       "_STATA_MS_MAX", "_STATA_EPOCH_UNIX_MS",
+                      # WP-30 P1.23a: the date transform's tag and code,
+                      # and the browser's date bound.
+                      "_DASH_DATE_UNITS_TAG", "_DASH_DATE_UNITS_JS",
+                      "_DASH_JS_MS_LIMIT",
                       # The toolbar every figure carries and the names its
                       # save button writes (WP-21), read by the figure
                       # block and by _dash_save_filename.
@@ -39963,6 +40717,13 @@ class ServerAppBuilder:
                          "_dash_finite_numeric",
                          "_dash_figure_date_kind", "_dash_mark_date_axes",
                          "_dash_axis_date_kind", "_dash_axis_positions",
+                         "_dash_layer_axis_names", "_dash_date_transform",
+                         "_dash_spec_units", "_dash_spec_field",
+                         "_dash_layer_in_axis_units", "_dash_axis_unit_format",
+                         "_dash_days_from_civil", "_dash_civil_from_days",
+                         "_dash_period_start_days", "_dash_literal_to_ms",
+                         "_dash_stata_number_of", "_dash_off_date_ticks",
+                         "_dash_finish_off_date_axes",
                          "_dash_note_not_dates", "_dash_date_axis_spec",
                          "_fmt_num",
                          "_dash_kpi_column", "_dash_widget_number",
@@ -42021,6 +42782,11 @@ class ServerAppBuilder:
             "        # marker labels and arrowheads with it.",
             "        _dash_assign_axis_ranges(fig, fig.renderers[_before:], opts,",
             "                                 list(fig.center[_before_c:]))",
+            "        # A raw date on an axis that is no date axis, in its Stata",
+            "        # units through the date transform (WP-30 P1.23a).",
+            "        _dash_layer_in_axis_units(fig, fig.renderers[_before:],",
+            "                                  list(fig.center[_before_c:]), plot,",
+            "                                  _date_vars, _fmt_cache)",
             "        _srcs = []",
             "        for _rr in fig.renderers[_before:]:",
             "            # A colour key's invisible swatches are not a layer",
@@ -42080,10 +42846,15 @@ class ServerAppBuilder:
             "        # (WP-29 P0.8): a date layer on a mixed numeric axis redraws",
             "        # in Stata units, one on a date axis at its dates.",
             "        _rax = _dash_axis_vars(g.get('plots', []))",
+            "        _rax2 = _dash_axis_vars(g.get('plots', []), axis_no=2)",
             "        _rkinds = (_dash_figure_date_kind(g.get('plots', []), 'xvar',",
             "                                          _rax[0], _date_vars),",
             "                   _dash_figure_date_kind(g.get('plots', []), 'yvar',",
-            "                                          _rax[1], _date_vars))",
+            "                                          _rax[1], _date_vars),",
+            "                   _dash_figure_date_kind(g.get('plots', []), 'xvar',",
+            "                                          _rax2[0], _date_vars, 2),",
+            "                   _dash_figure_date_kind(g.get('plots', []), 'yvar',",
+            "                                          _rax2[1], _date_vars, 2))",
             "        def _redraw(frame):",
             "            # The graph's qualifier, then the layer's own where it",
             "            # differs -- the same two steps the live figure took.",
@@ -42145,6 +42916,7 @@ class ServerAppBuilder:
             "        # The axes' variables: a univariate first layer's is on x",
             "        # (WP-29 P0.8), as the saved renderer reads them.",
             "        _xa, _ya = _dash_axis_vars(plots)",
+            "        _xa2, _ya2 = _dash_axis_vars(plots, axis_no=2)",
             "        # Canvas text, through the helper the saved renderer runs:",
             "        # this used to html.escape the user's title and to title a",
             "        # histogram's y axis with the variable, where the saved",
@@ -42183,6 +42955,8 @@ class ServerAppBuilder:
             "        # served figure used to draw every date on a numeric axis.",
             "        _x_date = _dash_figure_date_kind(plots, 'xvar', _xa, _date_vars)",
             "        _y_date = _dash_figure_date_kind(plots, 'yvar', _ya, _date_vars)",
+            "        _x2_date = _dash_figure_date_kind(plots, 'xvar', _xa2, _date_vars, 2)",
+            "        _y2_date = _dash_figure_date_kind(plots, 'yvar', _ya2, _date_vars, 2)",
             "        _xs_log, _ys_log = _xsc['log'], _ysc['log']",
             "        if _x_date and _xs_log:",
             "            warnings.warn(",
@@ -42207,7 +42981,7 @@ class ServerAppBuilder:
             "        fig._dash_margin = _dash_plot_margin(_DASH_SCHEME, go)",
             "        fig._dash_margin_args = (_DASH_SCHEME, go)",
             "        fig._dash_numticks = _dash_by_numticks(_DASH_SCHEME, go)",
-            "        _dash_mark_date_axes(fig, _x_date, _y_date)",
+            "        _dash_mark_date_axes(fig, _x_date, _y_date, _x2_date, _y2_date)",
             "        for _axis, _kind, _avar in ((fig.xaxis, _x_date, _xa),",
             "                                    (fig.yaxis, _y_date, _ya)):",
             "            if _kind:",
@@ -42222,7 +42996,13 @@ class ServerAppBuilder:
             "        # figure draws.  There used to be none when served.",
             "        _dash_add_secondary_axes(fig, plots, go, g_df,",
             "                                 _reported_subopts, gname,",
-            "                                 var_labels, _DASH_SCHEME)",
+            "                                 var_labels, _DASH_SCHEME,",
+            "                                 date_axes={_nm: (_v, _dash_date_fmt(",
+            "                                     _FORMATS.get(_v), _k))",
+            "                                     for _nm, _v, _k in (",
+            "                                         ('y2', _ya2, _y2_date),",
+            "                                         ('x2', _xa2, _x2_date)) if _k},",
+            "                                 fmt_cache=_fmt_cache)",
             "        # title(), xtitle()/ytitle() sub-options, after the scheme so",
             "        # the user's size() and color() win; the rest named.",
             "        _dash_figure_title(fig, go, _reported_subopts, gname)",
@@ -42288,7 +43068,7 @@ class ServerAppBuilder:
             "                                 value_labels=val_labels,",
             "                                 value_label_names=val_label_names,",
             "                                 plots=plots, date_vars=_date_vars,",
-            "                                 fmt_cache=_fmt_cache)",
+            "                                 fmt_cache=_fmt_cache, formats=_FORMATS)",
             "",
             '        # Legend boundaries.  NOT ONE of the 44 glyph calls in this loop',
             '        # passed legend_label, so a served figure had no legend at all --',
@@ -42445,7 +43225,10 @@ class ServerAppBuilder:
             "                                    value_labels=val_labels,",
             "                                    value_label_names=val_label_names,",
             "                                    numeric_formats=_num_formats, date_vars=_date_vars,",
-            "                                    fmt_cache=_fmt_cache)",
+            "                                    fmt_cache=_fmt_cache, formats=_FORMATS)",
+            "        # A date axis reaching past Stata's dates: natscale ticks over",
+            "        # its Stata numbers (WP-30 P1.23a).",
+            "        _dash_finish_off_date_axes(fig)",
             "        # The autoranges over the graph's own source only, as the",
             "        # saved figure's are (WP-28 B2).",
             "        _dash_limit_ranges_to_primary(fig, _prim_srcs)",

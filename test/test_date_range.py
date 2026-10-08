@@ -52,7 +52,8 @@ import pandas as pd
 import pytest
 from bokeh.document import Document
 from bokeh.embed import json_item
-from bokeh.models import (Arrow, DateRangeSlider, DateSlider, GlyphRenderer,
+from bokeh.models import (Arrow, DateRangeSlider, DateSlider, DatetimeAxis,
+                          GlyphRenderer,
                           HoverTool, LabelSet, LinearColorMapper, VBar)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -932,9 +933,14 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
         (y2,) = fig.extra_y_ranges.values()
         (ax,) = [a for a in fig.right if a.y_range_name != "default"]
         # The hull of the data and its ticks (WP-30 P1.3a), in milliseconds,
-        # with twoway's margin either side.
-        lo = min(_LO_MS, ax.ticker.ticks[0])
-        hi = max(_HI_MS, ax.ticker.ticks[-1])
+        # with twoway's margin either side.  Flipped (WP-30 P1.23a): a
+        # second axis of dates is a DatetimeAxis that keeps Bokeh's date
+        # ticker, as the first axis does (S44 gives it twoway's), so the
+        # hull is the data's alone; it read a numeric axis's fixed ticks.
+        assert isinstance(ax, DatetimeAxis), type(ax).__name__
+        ticks = list(getattr(ax.ticker, "ticks", None) or [])
+        lo = min([_LO_MS] + ticks[:1])
+        hi = max([_HI_MS] + ticks[-1:])
         assert lo - 0.1 * (hi - lo) <= y2.start <= _LO_MS
         assert _HI_MS <= y2.end <= hi + 0.1 * (hi - lo)
 

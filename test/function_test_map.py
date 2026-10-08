@@ -977,6 +977,27 @@ FUNCTIONS = {
  'app:_dash_graph_scheme': 'test/test_scheme_lookup.py::TestPerGraphSchemes::test_each_graph_is_drawn_in_its_own_scheme',
  'app:_dash_under_graph_scheme': 'test/test_scheme_lookup.py::TestPerGraphSchemes::test_the_served_move_keeps_each_graphs_scheme',
  # WP-30 S35 (P1.23a): Date positions on every axis (P1.23 part a)
+ 'GlyphMapper._axis_kind': 'test/test_date_axis_residuals.py::TestTheUnitRule::test_axis_kind_reads_the_layers_axis',
+ 'GlyphMapper._base_in_axis_units': 'test/test_date_axis_residuals.py::TestABaseOnADateAxis::test_the_base_reader',
+ 'GlyphMapper._literal_on_axis': 'test/test_date_axis_residuals.py::TestLiteralLayersOnADateAxis::test_the_literal_reader',
+ 'GlyphMapper._literal_pairs_on_axis': 'test/test_date_axis_residuals.py::TestLiteralLayersOnADateAxis::test_literals_are_placed_at_their_dates',
+ 'GlyphMapper._unit_kind': 'test/test_date_axis_residuals.py::TestTheUnitRule::test_unit_kind_follows_the_axis',
+ '_dash_axis_unit_format': 'test/test_date_axis_residuals.py::TestADateBesideANumber::test_the_unit_format_rule',
+ '_dash_axis_vars.<locals>._first': 'test/test_date_axis_residuals.py::TestASecondAxisLeavesThePrimaryDate::test_the_decision_partitions_by_axis',
+ '_dash_civil_from_days': 'test/test_date_axis_residuals.py::TestOffDateLiterals::test_the_civil_calendar_round_trips',
+ '_dash_date_transform': 'test/test_date_axis_residuals.py::TestTheDateTransform::test_one_shared_model_per_kind',
+ '_dash_days_from_civil': 'test/test_date_axis_residuals.py::TestOffDateLiterals::test_the_civil_calendar_round_trips',
+ '_dash_finish_off_date_axes': 'test/test_date_axis_residuals.py::TestOffDateLiterals::test_the_off_date_axis_is_ticked_in_stata_numbers',
+ '_dash_layer_axis_names': 'test/test_date_axis_residuals.py::TestRangeAndPcLayersGetADateAxis::test_the_axis_names_rule',
+ '_dash_layer_in_axis_units': 'test/test_date_axis_residuals.py::TestTheDateTransform::test_the_layer_pass_rule',
+ '_dash_layer_in_axis_units.<locals>._convert': 'test/test_date_axis_residuals.py::TestTheDateTransform::test_the_layer_pass_rule',
+ '_dash_layer_in_axis_units.<locals>._kind_of': 'test/test_date_axis_residuals.py::TestADateBesideANumber::test_labels_and_jitter_follow',
+ '_dash_literal_to_ms': 'test/test_date_axis_residuals.py::TestOffDateLiterals::test_the_literal_converter',
+ '_dash_off_date_ticks': 'test/test_date_axis_residuals.py::TestOffDateLiterals::test_the_off_date_ticks_rule',
+ '_dash_period_start_days': 'test/test_date_axis_residuals.py::TestOffDateLiterals::test_the_literal_converter',
+ '_dash_spec_field': 'test/test_date_axis_residuals.py::TestTheDateTransform::test_the_layer_pass_rule',
+ '_dash_spec_units': 'test/test_date_axis_residuals.py::TestTheDateTransform::test_spec_units_reads_only_dash_transforms',
+ '_dash_stata_number_of': 'test/test_date_axis_residuals.py::TestOffDateLiterals::test_the_number_reader',
  # WP-30 S36 (P1.14b): Other style names (P1.14 part b)
  # WP-30 S37 (P1.24): mlabvposition() and mlabtextstyle() (P1.24)
  # WP-30 S38 (P1.20a): plotregion()/graphregion() styling (P1.20 part a)

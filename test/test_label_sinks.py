@@ -1015,7 +1015,7 @@ class TestTooltips:
                     # The code is the one fixed writer for every format:
                     # the format is data in args, never spliced into code.
                     assert f.code == (dr._DASH_FMT_JS + dr._DASH_FMT_MODEL_JS
-                                      % ("value", "value")), f.args
+                                      % (("value",) * 3)), f.args
         assert customs >= 2, f"{mode}: no {{custom}} tooltip field"
 
     @pytest.mark.parametrize("pid", list(PAYLOADS))

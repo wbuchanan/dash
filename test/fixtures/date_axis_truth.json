@@ -1,0 +1,772 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "f7e034db0f60371839cffae9fd7c61cc34e21e5a",
+  "extracted": " 8 Oct 2026",
+  "generated_by": "scripts/extract_date_axis_truth.do",
+  "method": "sysuse sp500; obs = _n, d2 = date + 30 (%td), m = mofd(date) (%tm), yr = year(date) (%ty); scheme s2color. Per case twoway <cmd>, name(g): .g.plotregion1.xscale/.yscale curmin/curmax (plotregion2 for a second axis) and the exported SVG's text elements in document order.",
+  "stata_version": "19.5"
+ },
+ "axis2": {
+  "datex_x2num": {
+   "cmd": "twoway (scatter close date) (scatter close obs, xaxis(2)), ",
+   "dates_shown": true,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Closing price",
+    "0",
+    "50",
+    "100",
+    "150",
+    "200",
+    "250",
+    "obs",
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "Date",
+    "Closing price",
+    "Closing price"
+   ],
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "x2": [
+    0.0,
+    250.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "datey_y2num": {
+   "cmd": "twoway (scatter date close) (scatter volume close, yaxis(2)), ",
+   "dates_shown": true,
+   "labels": [
+    "5,000",
+    "10,000",
+    "15,000",
+    "20,000",
+    "25,000",
+    "Volume (thousands)",
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "Date",
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Closing price",
+    "Date",
+    "Volume (thousands)"
+   ],
+   "x": [
+    965.7999877929688,
+    1400.0
+   ],
+   "y": [
+    14976.0,
+    15341.0
+   ],
+   "y2": [
+    4103.0,
+    25000.0
+   ]
+  },
+  "y2_lfit": {
+   "cmd": "twoway (line close date) (line d2 date, yaxis(2)) (lfit d2 date, yaxis(2)), ",
+   "dates_shown": true,
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Closing price",
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "Date",
+    "Closing price",
+    "d2",
+    "Fitted values"
+   ],
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ],
+   "y2": [
+    14976.0,
+    15370.0
+   ]
+  },
+  "y2date": {
+   "cmd": "twoway (line close date) (line d2 date, yaxis(2)), ",
+   "dates_shown": true,
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "d2",
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Closing price",
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "Date",
+    "Closing price",
+    "d2"
+   ],
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ],
+   "y2": [
+    14976.0,
+    15370.0
+   ]
+  },
+  "y2date_n5": {
+   "cmd": "twoway (line close date) (line d2 date, yaxis(2)), ylabel(#5, axis(2))",
+   "dates_shown": true,
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "d2",
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Closing price",
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "Date",
+    "Closing price",
+    "d2"
+   ],
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ],
+   "y2": [
+    14976.0,
+    15370.0
+   ]
+  },
+  "y2date_range": {
+   "cmd": "twoway (line close date) (line d2 date, yaxis(2)), yline(15200, axis(2)) yscale(range(14900 15500) axis(2))",
+   "dates_shown": true,
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "d2",
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Closing price",
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "Date",
+    "Closing price",
+    "d2"
+   ],
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ],
+   "y2": [
+    14900.0,
+    15500.0
+   ]
+  }
+ },
+ "base": {
+  "bar_date_base": {
+   "cmd": "twoway (bar date obs in 1/20, base(14970)), ",
+   "dates_shown": true,
+   "labels": [
+    "01jan2001",
+    "08jan2001",
+    "15jan2001",
+    "22jan2001",
+    "29jan2001",
+    "Date",
+    "0",
+    "5",
+    "10",
+    "15",
+    "20",
+    "obs"
+   ],
+   "x": [
+    0.0,
+    20.5
+   ],
+   "y": [
+    14970.0,
+    15005.0
+   ]
+  }
+ },
+ "literals": {
+  "function_norange_td": {
+   "cmd": "twoway (line close date) (function y=1300), ",
+   "dates_shown": true,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "01jan1960",
+    "01jan1970",
+    "01jan1980",
+    "01jan1990",
+    "01jan2000",
+    "Closing price",
+    "y"
+   ],
+   "x": [
+    0.0,
+    15340.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "function_range_td": {
+   "cmd": "twoway (line close date) (function y=1300, range(15400 15450)), ",
+   "dates_shown": true,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "01apr2002",
+    "Closing price",
+    "y"
+   ],
+   "x": [
+    14976.0,
+    15450.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "pcarrowi_td": {
+   "cmd": "twoway (line close date) (pcarrowi 1200 15400 1400 15450), ",
+   "dates_shown": true,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "01apr2002",
+    "Closing price",
+    "y/yb"
+   ],
+   "x": [
+    14976.0,
+    15450.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "pci_td": {
+   "cmd": "twoway (line close date) (pci 1200 15400 1400 15450), ",
+   "dates_shown": true,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "01apr2002",
+    "Closing price",
+    "y/yb"
+   ],
+   "x": [
+    14976.0,
+    15450.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "scatteri_offrange": {
+   "cmd": "twoway (line close date) (scatteri 1300 99999999), ",
+   "dates_shown": true,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "02jan2001",
+    "2.50e+07",
+    "5.00e+07",
+    "7.50e+07",
+    "1.00e+08",
+    "Closing price",
+    "y"
+   ],
+   "x": [
+    14977.0,
+    100000001.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "scatteri_td": {
+   "cmd": "twoway (line close date) (scatteri 1300 15400), ",
+   "dates_shown": true,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "01apr2002",
+    "Closing price",
+    "y"
+   ],
+   "x": [
+    14976.0,
+    15431.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "scatteri_tm": {
+   "cmd": "twoway (line close m) (scatteri 1300 504), ",
+   "dates_shown": true,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "2001m1",
+    "2001m4",
+    "2001m7",
+    "2001m10",
+    "2002m1",
+    "Closing price",
+    "y"
+   ],
+   "x": [
+    492.0,
+    504.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "scatteri_ty_negative": {
+   "cmd": "twoway (line close yr) (scatteri 1300 -500), ",
+   "dates_shown": false,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "-5.0e+02",
+    "0",
+    "0500",
+    "1000",
+    "1500",
+    "2000",
+    "Closing price",
+    "y"
+   ],
+   "x": [
+    -500.0,
+    2001.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  }
+ },
+ "mixed": {
+  "bar_date_y": {
+   "cmd": "twoway (bar date obs in 1/20) (scatter close obs in 1/20), ",
+   "dates_shown": true,
+   "labels": [
+    "01jan1960",
+    "01jan1970",
+    "01jan1980",
+    "01jan1990",
+    "01jan2000",
+    "0",
+    "5",
+    "10",
+    "15",
+    "20",
+    "obs",
+    "Date",
+    "Closing price"
+   ],
+   "x": [
+    0.0,
+    20.5
+   ],
+   "y": [
+    0.0,
+    15005.0
+   ]
+  },
+  "date_first": {
+   "cmd": "twoway (scatter close date) (scatter close obs), ",
+   "dates_shown": true,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Closing price",
+    "01jan1960",
+    "01jan1970",
+    "01jan1980",
+    "01jan1990",
+    "01jan2000",
+    "Closing price",
+    "Closing price"
+   ],
+   "x": [
+    0.0,
+    15340.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "minmax_date_first": {
+   "cmd": "twoway (scatter close date) (scatter close obs), xlabel(minmax)",
+   "dates_shown": true,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Closing price",
+    "02jan1960",
+    "31dec2001",
+    "Closing price",
+    "Closing price"
+   ],
+   "x": [
+    1.0,
+    15340.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "minmax_lfit_first": {
+   "cmd": "twoway (lfit close date) (scatter close obs), xlabel(minmax)",
+   "dates_shown": false,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "1",
+    "15340",
+    "Fitted values",
+    "Closing price"
+   ],
+   "x": [
+    1.0,
+    15340.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "minmax_obs_first": {
+   "cmd": "twoway (scatter close obs) (scatter close date), xlabel(minmax)",
+   "dates_shown": false,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Closing price",
+    "1",
+    "15340",
+    "Closing price",
+    "Closing price"
+   ],
+   "x": [
+    1.0,
+    15340.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "obs_first": {
+   "cmd": "twoway (scatter close obs) (scatter close date), ",
+   "dates_shown": false,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Closing price",
+    "0",
+    "5000",
+    "10000",
+    "15000",
+    "Closing price",
+    "Closing price"
+   ],
+   "x": [
+    0.0,
+    15340.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "td_tm": {
+   "cmd": "twoway (scatter close date) (scatter close m), ",
+   "dates_shown": true,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Closing price",
+    "01jan1960",
+    "01jan1970",
+    "01jan1980",
+    "01jan1990",
+    "01jan2000",
+    "Closing price",
+    "Closing price"
+   ],
+   "x": [
+    0.0,
+    15340.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  }
+ },
+ "pc": {
+  "datex": {
+   "cmd": "twoway pcspike open date close d2, ",
+   "dates_shown": true,
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Opening price/Closing price",
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "Date/d2"
+   ],
+   "x": [
+    14976.0,
+    15370.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "datey": {
+   "cmd": "twoway pcspike date open d2 close, ",
+   "dates_shown": true,
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "Date/d2",
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Opening price/Closing price"
+   ],
+   "x": [
+    965.7999877929688,
+    1400.0
+   ],
+   "y": [
+    14976.0,
+    15370.0
+   ]
+  }
+ },
+ "range": {
+  "rarea_datey": {
+   "cmd": "twoway rarea date d2 close, ",
+   "dates_shown": true,
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "Date/d2",
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Closing price"
+   ],
+   "x": [
+    965.7999877929688,
+    1400.0
+   ],
+   "y": [
+    14976.0,
+    15370.0
+   ]
+  },
+  "rcap_datey": {
+   "cmd": "twoway rcap date d2 close, ",
+   "dates_shown": true,
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "Date/d2",
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "Closing price"
+   ],
+   "x": [
+    965.7999877929688,
+    1400.0
+   ],
+   "y": [
+    14976.0,
+    15370.0
+   ]
+  }
+ }
+}

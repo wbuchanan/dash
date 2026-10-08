@@ -1289,6 +1289,41 @@ def _sc(**o):
     return plot_for("scatter", o)
 
 
+# WP-30 P1.23a (section 35): every name starts "P1.23a: ", so -k P1.23a
+# selects them.  `when' is the %td date.
+_P123A_W = {"formats": {"when": "%td"}}
+_P123A_SPECS = [
+    ("P1.23a: scatteri and function on a date axis",
+     [plot_for("line", yvar="mpg", xvar="when"),
+      {"type": "scatteri", "values": [[20.0, 15345.0]], "options": {}},
+      {"type": "function", "expr": "20",
+       "options": {"range": "15342 15344", "n": "3"}}], None),
+    ("P1.23a: rarea of a date y",
+     [{"type": "rarea", "yvar1": "when", "yvar2": "when", "xvar": "weight",
+       "options": {}}], None),
+    ("P1.23a: a date second axis with yline2 and yscale2 range",
+     [plot_for("line", yvar="mpg", xvar="weight"),
+      plot_for("line", {"yaxis": "2"}, yvar="when", xvar="weight")],
+     {"yline2": "15345", "yscale2": "range(15330 15360)"}),
+    ("P1.23a: a date beside a number",
+     [plot_for("scatter", yvar="mpg", xvar="when"),
+      plot_for("scatter", yvar="mpg", xvar="weight")], None),
+    ("P1.23a: a date beside a number under by()",
+     [plot_for("scatter", yvar="mpg", xvar="when"),
+      plot_for("scatter", yvar="mpg", xvar="weight")], {"by": "foreign"}),
+    ("P1.23a: an explicit base on a date axis",
+     [plot_for("bar", {"base": "15330"}, yvar="when", xvar="weight")], None),
+    ("P1.23a: an off-range scatteri on a date axis",
+     [plot_for("line", yvar="mpg", xvar="when"),
+      {"type": "scatteri", "values": [[20.0, 99999999.0]], "options": {}}],
+     None),
+    ("P1.23a: a literal past the browser's dates",
+     [plot_for("line", yvar="mpg", xvar="when"),
+      {"type": "scatteri", "values": [[20.0, 1e9]], "options": {}}], None),
+]
+_P123A_CASES = [_case(n, p, _P123A_W, go) for n, p, go in _P123A_SPECS]
+
+
 CORPUS = [
     # ---- every plot type, bare -------------------------------------------
     *[_case(t, [plot_for(t)]) for t in (
@@ -2194,6 +2229,8 @@ DATE_CORPUS = [
     _case("mlabel on bar and pcarrow, sttrans",
           [plot_for("scatter"), plot_for("bar", {"mlabel": "mpg"}),
            plot_for("pcarrow", {"mlabel": "mpg"})], {"scheme": "sttrans"}),
+    # WP-30 P1.23a (section 35): date positions on every axis.
+    *_P123A_CASES,
 ]
 
 #: The entries a report is the point of, with the report each must make.
@@ -2595,6 +2632,18 @@ _MOVES = [
      "price >= 4500"),
 ]
 
+# WP-30 P1.23a (section 35): a date beside a number, and a fit on a date
+# second axis, after a range move.
+_P123A_MOVE_SPECS = [
+    ("P1.23a: a date beside a number after a range move",
+     [plot_for("scatter", yvar="mpg", xvar="when"),
+      plot_for("scatter", yvar="mpg", xvar="weight")], None),
+    ("P1.23a: a date second axis with a fit after a range move",
+     [plot_for("scatter", yvar="mpg", xvar="weight"),
+      plot_for("line", {"yaxis": "2"}, yvar="when", xvar="weight"),
+      plot_for("lfit", {"yaxis": "2"}, yvar="when", xvar="weight")], None),
+]
+
 _MOVED_LAYERS = ["scatter", "line", "lfit", "lfitci", "histogram", "kdensity",
                  "lpoly", "rarea", "pcspike", "function", "connected",
                  "pcarrow", "pcbarrow",
@@ -2637,6 +2686,10 @@ def _move_case(name, move, plots=None, go=None, graphs=None, kpis=None,
     bo = dict(bo or {}, filter=filt)
     spec = _spec(plots, bo, go, graphs, kpis, if_expr)
     return pytest.param(name, spec, action, oracle, id=name)
+
+
+_P123A_MOVES = [_move_case(n, _MOVES[1], p, go, bo=_P123A_W)
+                for n, p, go in _P123A_MOVE_SPECS]
 
 
 def _own(name, move, plots, truth, go=None, graphs=None, if_expr="",
@@ -2929,6 +2982,8 @@ MOVE_CORPUS = [
     _move_case("two graphs, two schemes, dropdown", _MOVES[0],
                graphs=[("g1", [_sc()], {"scheme": "s1mono"}),
                        ("g2", [_sc()], {"scheme": "s1rcolor"})]),
+    # WP-30 P1.23a (section 35): date positions on every axis.
+    *_P123A_MOVES,
 ]
 
 
@@ -4198,3 +4253,77 @@ class TestTheStaleStatusSkip:
                    for m in r._last_layout_root.references())
         pair = _render_pair("lfit with a dropdown", spec)
         assert pair["std"]["tree"] == pair["srv"]["tree"]
+
+
+# ---------------------------------------------------------------------------
+# WP-30 P1.23a (section 35): the transform per coordinate property
+# ---------------------------------------------------------------------------
+
+def _p123a_units(figs):
+    """``(model type, property, date-units kind)`` of every coordinate
+    property of every glyph variant, LabelSet and Arrow of *figs*, in
+    renderer order: ``_spec_of`` drops a spec's transform, and both modes
+    keep epoch ms in the source, so no profile sees a missing one."""
+    from bokeh.models import Arrow, Glyph, LabelSet
+    out = []
+    for f in figs:
+        for r in f.renderers:
+            for attr in ("glyph", "selection_glyph", "nonselection_glyph",
+                         "hover_glyph", "muted_glyph"):
+                g = getattr(r, attr, None)
+                if not isinstance(g, Glyph):
+                    continue
+                for p in dr._DASH_X_COORDS + dr._DASH_Y_COORDS:
+                    if p in g.properties():
+                        out.append((type(g).__name__, attr + "." + p,
+                                    dr._dash_spec_units(getattr(g, p))))
+        for a in f.center:
+            props = (("x", "y") if isinstance(a, LabelSet) else
+                     ("x_start", "x_end", "y_start", "y_end")
+                     if isinstance(a, Arrow) else ())
+            for p in props:
+                out.append((type(a).__name__, p,
+                            dr._dash_spec_units(getattr(a, p))))
+    return out
+
+
+def _p123a_figs(models):
+    from bokeh.plotting import figure as _Fig
+    seen, out = set(), []
+    for root in models:
+        for m in root.references():
+            if isinstance(m, _Fig) and id(m) not in seen:
+                seen.add(id(m))
+                out.append(m)
+    return sorted(out, key=lambda f: str(getattr(f.title, "text", "")))
+
+
+@pytest.mark.parametrize("name", [n for n, _p, _g in _P123A_SPECS]
+                         + [n for n, _p, _g in _P123A_MOVE_SPECS])
+class TestTheTwoModesAgreeOnDateUnits:
+
+    def test_the_same_properties_carry_the_same_units(self, name):
+        specs = {n: (p, g, False) for n, p, g in _P123A_SPECS}
+        specs.update({n: (p, g, True) for n, p, g in _P123A_MOVE_SPECS})
+        plots, go, move = specs[name]
+        _, filt, action, oracle = _MOVES[1]
+        bo = dict(_P123A_W, filter=filt) if move else dict(_P123A_W)
+        spec = _spec(plots, bo, go)
+        doc, _w = _served(spec)
+        if move:
+            w = [x for x in _widgets_of(doc)
+                 if type(x).__name__ == action[0]][0]
+            _fire(w, action[1])
+            q = json.loads(json.dumps(spec))
+            q["build_options"]["filter"] = ""
+            for g in q["graphs"]:
+                g["if_expr"] = oracle
+            r, _ = _standalone(q)
+        else:
+            r, _ = _standalone(spec)
+        srv = _p123a_units(_p123a_figs(doc.roots))
+        std = _p123a_units(_p123a_figs([r._last_layout_root]))
+        assert std == srv, (name, [x for x in std if x not in srv],
+                            [x for x in srv if x not in std])
+        if "a date beside a number" in name:
+            assert any(k == "td" for _t, _p, k in std), std

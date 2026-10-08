@@ -52,6 +52,7 @@ WP-29 S12 adds a renderer's ``muted``, a Title's or Div's ``visible`` and
 a LegendItem's ``label`` to what a run reads and commits, each key on its
 own, so the saved page's stale cue (P0.17) can be measured under node.
 """
+import datetime as _dt
 import json
 import math
 import os
@@ -125,6 +126,10 @@ def plain(v):
         return bool(v)
     if isinstance(v, (pd.Timestamp, np.datetime64)):
         return dr._dash_json_value(v)
+    if isinstance(v, _dt.datetime):
+        # A second date column reaches a source as datetime objects (a
+        # millisecond datetime64 array's tolist(); WP-30 P1.23a).
+        return dr._dash_json_value(pd.Timestamp(v))
     return v
 
 

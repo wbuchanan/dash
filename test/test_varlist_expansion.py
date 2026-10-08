@@ -344,8 +344,11 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               glyphs, an inserted "line_width":1.5 (s2color's linewidth
 #               p); nothing else.  Intended.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "e8872e930ef61dc6794133e02c6f772714a7ccaf977b67a0fca1eefbd51ab080"  # 634f532a -> 12cea7d0 (P1.12b line widths) -> 150011f2 (P1.2a scheme chrome, merged batch 5) -> 4b4e77b5 -> 68b474a5 (P1.5 axis formats on P1.2b, merged batch 6) -> b11518da (P1.3a) -> 369c5e1a (merged batch 7) -> e8872e93 (merged batch 9)
+    "b7398dd3e726a13d2e1ccd7b3463f6a2aa44446563ae74ae769b506339038460"  # 634f532a -> 12cea7d0 (P1.12b line widths) -> 150011f2 (P1.2a scheme chrome, merged batch 5) -> 4b4e77b5 -> 68b474a5 (P1.5 axis formats on P1.2b, merged batch 6) -> b11518da (P1.3a) -> 369c5e1a (merged batch 7) -> e8872e93 (merged batch 9) -> b7398dd3 (P1.23a)
     # 369c5e1a -> e8872e93: P1.17b's axis plan key (autobase) and finish code.
+    # e8872e93 -> b7398dd3: P1.23a's code text only (the plan's "units"
+    # key, the date-units JS in the finish code, dash_stata_number_of in
+    # the formatter); diffed against the base, nothing else differs.
     # b11518da -> 369c5e1a: re-derived on the merged batch-7 tree (P1.16
     # keys and titles, P1.1b lists, P1.3a's min/max without spreads).
     # 68b474a5 -> b11518da: P1.3a default axes take natscale ticks and

@@ -577,16 +577,18 @@ def _digest(model):
 # same in both of its cases, which is what this pins.  Re-derived again on
 # the merged batch-7 tree: P1.3a (default axes take twoway's ticks, range
 # and margin) changes every figure; and on the batch-9 tree P1.17b's
-# axis plan key (autobase) and finish code.
+# axis plan key (autobase) and finish code.  Re-derived on the batch-12
+# tree: P1.23a's formatter code (dash_stata_number_of), the plan's "units"
+# key and the date-units JS in the finish code; nothing else differs.
 _PLAIN_DIGESTS = {
     ("saved", "plain"):
-        "07bfeb2e02160b6fbe73ff8ac8f433e3c8601277e25fc826f3d7699ac95fcee8",
+        "ba9d9c327d883d345b2e1d73f68966c0862e4b6a1c4df409329dea1132af0c48",
     ("saved", "yaxis2"):
-        "07bfeb2e02160b6fbe73ff8ac8f433e3c8601277e25fc826f3d7699ac95fcee8",
+        "ba9d9c327d883d345b2e1d73f68966c0862e4b6a1c4df409329dea1132af0c48",
     ("served", "plain"):
-        "e5cd4fd54ddaee9dd7baba455bfb1e4e6548dd356ccbc77f9917e40713cac88d",
+        "1ca6ecd81437011c1cec7a47ee281b256d38f16ba1a53e5f2abb7e87bd25bdc9",
     ("served", "yaxis2"):
-        "e5cd4fd54ddaee9dd7baba455bfb1e4e6548dd356ccbc77f9917e40713cac88d",
+        "1ca6ecd81437011c1cec7a47ee281b256d38f16ba1a53e5f2abb7e87bd25bdc9",
 }
 
 
@@ -735,3 +737,1158 @@ class TestTheKeyTextTruth:
             assert probes[pid]["err"] == "invalid format, " + f
         for pid in ("f_12s", "f_21x"):
             assert probes[pid]["rc"] == 0
+
+
+# ==== WP-30 P1.23a (section 35): date positions on every axis ====
+#
+# Measured at the batch-12 base (f7e034d), both modes alike: a scatteri,
+# pci, pcarrowi or function on a %td axis was drawn at its raw number
+# (scatteri 1300 15400 at 15400 ms, 1970); a range or pc layer of a date
+# y had a LinearAxis in epoch ms; a yaxis(2) layer of a number turned the
+# first date axis numeric, and a second axis of dates was a LinearAxis in
+# ms; (scatter close date) (scatter close obs) drew the dates near 9.8e11
+# beside 1..12; an explicit base(14970) on a date y was 14970 ms.  twoway
+# (StataNow 19.5): test/fixtures/date_axis_truth.json
+# (scripts/extract_date_axis_truth.do).
+
+import test_default_axes as tda  # noqa: E402
+from js_runner import run_js  # noqa: E402
+from test_served_dates import _served_fig  # noqa: E402
+from bokeh.models import (Arrow, CustomJSTransform, DatetimeAxis,  # noqa: E402,E501
+                          DatetimeTicker, DatetimeTickFormatter, LabelSet,
+                          Span)
+
+_E = -315619200000.0
+_DA_I = np.arange(12)
+_DA = pd.DataFrame({"date": 14977.0 + 30 * _DA_I,
+                    "d2": 14977.0 + 30 * _DA_I + 30,
+                    "m": 492.0 + _DA_I, "yr": 1990.0 + _DA_I,
+                    "close": 1200.0 + 10 * _DA_I,
+                    "volume": 5000.0 + 100 * _DA_I,
+                    "obs": 1.0 + _DA_I, "g": (_DA_I % 2).astype(float)})
+_DA_FMT = {"date": "%td", "d2": "%td", "m": "%tm", "yr": "%ty"}
+_DA_MOVE = (1200.0, 1266.0)          # the close slider's lower 60%
+_DA_SEQ = iter(range(10 ** 6))
+_DA_TRUTH = os.path.join(_HERE, "fixtures", "date_axis_truth.json")
+
+
+def _fld(spec):
+    """A coordinate spec's field name, or None for a value."""
+    if isinstance(spec, str):
+        return spec
+    if isinstance(spec, dict):
+        return spec.get("field")
+    return getattr(spec, "field", None)
+
+
+def _units_of(spec):
+    """dash's date-units kind of a spec (None before section 35)."""
+    return getattr(dr, "_dash_spec_units", lambda _s: None)(spec)
+
+
+def _np_ms(y, m, d):
+    """numpy's epoch ms of a proleptic-Gregorian civil date (the oracle)."""
+    return int(((np.datetime64(y - 1970, "Y").astype("datetime64[M]")
+                 + (m - 1)).astype("datetime64[D]") + (d - 1))
+               .astype("datetime64[ms]").astype(np.int64))
+
+
+def _L(t, y=None, x=None, **o):
+    p = {"type": t, "options": dict(o)}
+    if y is not None:
+        p["yvar"] = y
+    if x is not None:
+        p["xvar"] = x
+    return p
+
+
+def _si(*rows, **o):
+    return {"type": "scatteri", "values": [list(map(float, r)) for r in rows],
+            "options": dict(o)}
+
+
+def _da_fig(tmp_path, mode, plots, go=None, move=False, by=False):
+    """``(fig or [panels], warnings, renderer-or-document)`` of one build;
+    *move* sets the close range slider to its lower 60% first."""
+    sub = tmp_path / ("da%d" % next(_DA_SEQ))
+    sub.mkdir()
+    spec = _spec(plots, formats=_DA_FMT, graph_options=go,
+                 filters=[_filter("range", "close")] if move else None)
+    if mode == "saved":
+        r, w = _saved(sub, spec, _DA)
+        if move:
+            figs = tda._move_saved(r, "RangeSlider", _DA_MOVE)
+        else:
+            figs = list(r.figures.values())
+        return (figs if by else figs[0]), w, r
+    doc, w = _served(sub, spec, _DA)
+    if move:
+        figs = tda._move_served(doc, "RangeSlider", _DA_MOVE)
+    else:
+        figs = tb_panels(doc)
+    return (figs if by else figs[0]), w, doc
+
+
+def tb_panels(doc):
+    import test_by_scales as tb
+    return tb._panels(tb._figs_of(doc.roots))
+
+
+def _da_layer(fig, glyph_type, k=0):
+    return [r for r in fig.renderers
+            if type(r.glyph).__name__ == glyph_type
+            and not dr._dash_is_swatch(r)][k]
+
+
+def _da_units(r, prop):
+    """The values renderer *r* draws for *prop*, in axis units."""
+    spec = getattr(r.glyph, prop)
+    field = _fld(spec)
+    col = dr._dash_float_values(r.data_source.data[field], coerce=True)
+    k = _units_of(spec)
+    return dr._dash_date_units(col, k) if k else col
+
+
+def _da_inner(fig, letter, name="default"):
+    rng = (getattr(fig, letter + "_range") if name == "default"
+           else getattr(fig, "extra_%s_ranges" % letter)[name])
+    return dr._dash_range_hull(rng)
+
+
+def _da_axis(fig, side, name="default"):
+    attr = ("x" if side in ("below", "above") else "y") + "_range_name"
+    return [a for a in getattr(fig, side) if hasattr(a, "formatter")
+            and getattr(a, attr, "default") == name][0]
+
+
+def _no_note(ws, *words):
+    return [w for w in ws if any(t in w for t in words)]
+
+
+# ---------------------------------------------------------------------------
+# Literal layers
+# ---------------------------------------------------------------------------
+
+class TestLiteralLayersOnADateAxis:
+
+    def test_the_literal_reader(self):
+        m = dr.GlyphMapper.__new__(dr.GlyphMapper)
+        f = figure()
+        dr._dash_mark_date_axes(f, "td", None)
+        got, off = m._literal_on_axis(f, [15400.0, 99999999.0, 1e9,
+                                          float("nan")], "x")
+        assert got[:2].tolist() == [_ms(15400), 8639684294400000.0]
+        assert np.isnan(got[2]) and np.isnan(got[3])
+        assert off.tolist() == [False, False, True, False]
+        for marks in (None, (None, None)):
+            g = figure()
+            if marks:
+                dr._dash_mark_date_axes(g, *marks)
+            v, o = m._literal_on_axis(g, [15400.0], "x")
+            assert v.tolist() == [15400.0] and not o.any()
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_literals_are_placed_at_their_dates(self, tmp_path, mode):
+        line = _L("line", "close", "date")
+        pts = {"x0": 15400.0, "dx": 25.0, "y": [1300.0, 1300.0, 1300.0]}
+        fn = {"type": "function", "expr": "1300",
+              "options": {"range": "15400 15450", "n": "3"}}
+        cases = [
+            ("scatteri", [line, _si((1300, 15400))], "Scatter", "x",
+             [_ms(15400)]),
+            ("pci", [line, {"type": "pci", "options": {},
+                            "values": [[1200.0, 15400.0, 1400.0, 15450.0]]}],
+             "Segment", "x1", [_ms(15450)]),
+            ("pcarrowi", [line, {"type": "pcarrowi", "options": {},
+                                 "values": [[1200.0, 15400.0, 1400.0,
+                                             15450.0]]}],
+             "Segment", "x0", [_ms(15400)]),
+            ("function", [line, fn], "Line", "x",
+             [_ms(15400), _ms(15425), _ms(15450)]),
+            ("function_points", [line, dict(fn, points=pts)], "Line", "x",
+             [_ms(15400), _ms(15425), _ms(15450)]),
+            ("monthly", [_L("line", "close", "m"), _si((1300, 504))],
+             "Scatter", "x", [float(dr._dash_units_to_axis([504], "tm")[0])]),
+            ("date_y", [_L("line", "date", "obs"), _si((15000, 6))],
+             "Scatter", "y", [_ms(15000)]),
+        ]
+        bad = []
+        for name, plots, gt, prop, want in cases:
+            fig, _w, _o = _da_fig(tmp_path, mode, plots)
+            r = _da_layer(fig, gt, 0 if gt != "Line" else 1)
+            got = _da_units(r, prop).tolist()
+            if got != want:
+                bad.append((name, got, want))
+        # function with no range() runs 0..1 in days, and the hull reaches it.
+        fig, _w, _o = _da_fig(tmp_path, mode, [line, {
+            "type": "function", "expr": "1300", "options": {"n": "3"}}])
+        got = _da_units(_da_layer(fig, "Line", 1), "x").tolist()
+        if got != [_ms(0), _ms(0.5), _ms(1)] \
+                or _da_inner(fig, "x")[0] > _ms(0):
+            bad.append(("norange", got, _da_inner(fig, "x")))
+        # A literal on a second date axis.
+        fig, _w, _o = _da_fig(tmp_path, mode, [
+            line, _L("line", "d2", "date", yaxis="2"),
+            _si((15300, 15300), yaxis="2")])
+        r = _da_layer(fig, "Scatter")
+        if _da_units(r, "y").tolist() != [_ms(15300)] \
+                or r.y_range_name != "y2":
+            bad.append(("y2", _da_units(r, "y").tolist(), r.y_range_name))
+        assert not bad, bad
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_the_literal_is_in_the_hull(self, tmp_path, mode):
+        fig, _w, _o = _da_fig(tmp_path, mode, [
+            _L("line", "close", "date"), _si((1300, 15400))])
+        assert _da_inner(fig, "x")[1] >= _ms(15400)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_the_positions_hold_after_a_filter_move(self, tmp_path, mode):
+        fig, _w, _o = _da_fig(tmp_path, mode, [
+            _L("line", "close", "date"), _si((1300, 15400))], move=True)
+        assert _da_units(_da_layer(fig, "Scatter"), "x").tolist() == [
+            _ms(15400)]
+        assert _da_inner(fig, "x")[1] >= _ms(15400)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_literal_on_a_numeric_axis_is_unchanged(self, tmp_path, mode):
+        for x in (6.0, 99999999.0):
+            fig, w, _o = _da_fig(tmp_path, mode, [
+                _L("scatter", "close", "obs"), _si((1300, x))])
+            assert _da_units(_da_layer(fig, "Scatter", 1), "x").tolist() \
+                == [x]
+            assert not _no_note(w, "scatteri"), w
+
+
+# ---------------------------------------------------------------------------
+# Literals past Stata's dates (A77, ratified 06oct2026)
+# ---------------------------------------------------------------------------
+
+_KINDS = ("td", "tc", "tC", "tw", "tm", "tq", "th", "ty")
+
+
+def _period_first_day(kind, y):
+    """The Stata number of the first period of year *y*."""
+    per = {"tw": 52, "tm": 12, "tq": 4, "th": 2}[kind]
+    return (y - 1960) * per
+
+
+class TestOffDateLiterals:
+
+    def _cases(self):
+        nan = float("nan")
+        c = [
+            ("td", -679351, -59011545600000.0), ("td", -679350,
+                                                  -59011459200000.0),
+            ("td", 2936549, 253402214400000.0),
+            ("td", 2936550, 253402300800000.0),
+            ("td", -1500000, -129915619200000.0),
+            ("td", 99999999, 8639684294400000.0),
+            ("td", 100003653, 8.64e15), ("td", 100003654, nan),
+            ("td", -99996347, -8.64e15), ("td", -99996348, nan),
+            ("td", 14977.5, _ms(14977) + 43200000),
+            ("tc", 8640315619200000, 8.64e15),
+            ("tc", 8640315619200001, nan),
+            ("tc", -8639684380800000, -8.64e15),
+            ("tc", -8639684380800001, nan),
+            ("tm", 96479, _np_ms(9999, 12, 1)),
+            ("tm", 96480, _np_ms(10000, 1, 1)),
+            ("tm", -22321, _np_ms(99, 12, 1)),
+            ("tm", -23520, _np_ms(0, 1, 1)),
+            ("tm", -22920, _np_ms(50, 1, 1)),
+            ("tm", 96480.5, (_np_ms(10000, 1, 1) + _np_ms(10000, 2, 1)) / 2),
+            ("ty", 50, _np_ms(50, 1, 1)), ("ty", 0, _np_ms(0, 1, 1)),
+            ("ty", -500, -77945673600000.0),
+            ("ty", 275760, _np_ms(275760, 1, 1)), ("ty", 275761, nan),
+            ("ty", 300001, nan),
+        ]
+        for y in (99, 100, 9999, 10000):
+            c.append(("ty", y, _np_ms(y, 1, 1)))
+        for k in ("tw", "tq", "th"):
+            for y in (99, 10000):
+                c.append((k, _period_first_day(k, y), _np_ms(y, 1, 1)))
+        for k in _KINDS:
+            for v in (nan, float("inf"), float("-inf"), 1e300, -1e300, "A"):
+                c.append((k, v, nan))
+        return c
+
+    def test_the_literal_converter(self):
+        bad = []
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            for kind, v, want in self._cases():
+                got = float(dr._dash_literal_to_ms([v], kind)[0])
+                same = (np.isnan(got) and np.isnan(want)) or got == want
+                if not same:
+                    bad.append((kind, v, got, want))
+        assert not bad, bad
+
+    def test_it_equals_the_stata_rule_inside_stata_dates(self):
+        rnd = np.random.default_rng(35)
+        bad = []
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            for kind in _KINDS:
+                lo, hi = dr._dash_date_units(np.array(
+                    [dr._STATA_MS_MIN, dr._STATA_MS_MAX], dtype=float)
+                    + dr._STATA_EPOCH_UNIX_MS, kind)
+                v = rnd.uniform(lo, hi, 10000)
+                if kind not in ("td", "tc", "tC"):
+                    v[:5000] = np.floor(v[:5000])
+                v = np.concatenate([v, [lo, hi]])
+                a = dr._dash_literal_to_ms(v, kind)
+                b = dr._dash_units_to_axis(v, kind)
+                if np.isnan(a).any() or not np.array_equal(a, b):
+                    bad.append(kind)
+        assert not bad, bad
+
+    def test_the_civil_calendar_round_trips(self):
+        years = (list(range(-1000, -989)) + list(range(-1, 102))
+                 + [1959, 1960, 1961, 9998, 9999, 10000, 10001, 275759])
+        bad = []
+        for y in years:
+            for m in range(1, 13):
+                for d in (1, None):
+                    if d is None:
+                        nxt = (_np_ms(y + (m == 12), m % 12 + 1, 1)
+                               // 86400000)
+                        z_want = nxt - 1
+                        dd = int(z_want - _np_ms(y, m, 1) // 86400000 + 1)
+                    else:
+                        z_want = _np_ms(y, m, 1) // 86400000
+                        dd = 1
+                    z = int(dr._dash_days_from_civil(y, m, dd))
+                    back = tuple(int(t) for t in dr._dash_civil_from_days(z))
+                    if z != z_want or back != (y, m, dd):
+                        bad.append((y, m, dd, z, z_want, back))
+        assert not bad, bad[:10]
+
+    def test_the_number_reader(self):
+        bad = []
+        for kind, v, want in self._cases():
+            if isinstance(v, str) or not np.isfinite(want):
+                continue
+            got = dr._dash_stata_number_of(want, kind)
+            exp = float(v) if kind in ("td", "tc", "tC") \
+                else float(np.floor(float(v)))
+            if got != exp:
+                bad.append((kind, v, got, exp))
+        rnd = np.random.default_rng(7)
+        for kind in _KINDS:
+            ms = rnd.uniform(dr._STATA_MS_MIN, dr._STATA_MS_MAX, 10000) \
+                + dr._STATA_EPOCH_UNIX_MS
+            for x in ms[:: 10]:
+                if dr._dash_stata_number_of(x, kind) != \
+                        dr._dash_stata_value_of(x, kind):
+                    bad.append((kind, x))
+                    break
+            for x in (float("nan"), float("inf"), float("-inf"),
+                      8.64e15 + 1):
+                if dr._dash_stata_number_of(x, kind) is not None:
+                    bad.append((kind, x))
+        if dr._dash_stata_number_of(0.0, "xx") is not None:
+            bad.append("kind")
+        assert not bad, bad
+
+    def test_the_js_number_reader_equals_the_python_one(self):
+        rnd = np.random.default_rng(11)
+        probes = [float(w) for _k, _v, w in self._cases() if np.isfinite(w)]
+        probes += rnd.uniform(-8.64e15, 8.64e15, 10000).tolist()
+        probes += [_np_ms(50, 1, 1), _np_ms(0, 1, 1), 8.64e15, -8.64e15]
+        src = ("'use strict';\n" + dr._DASH_FMT_JS
+               + "\nconst probes = %s;\nconst kinds = %s;\n"
+               "const out = {};\nfor (const k of kinds) out[k] = "
+               "probes.map((p) => dash_stata_number_of(p, k));\n"
+               "out.nan = [dash_stata_number_of(NaN, 'td'), "
+               "dash_stata_number_of(8.64e15 + 1, 'td')];\n"
+               "console.log(JSON.stringify(out));\n"
+               % (json.dumps(probes), json.dumps(list(_KINDS))))
+        got = run_js(src)
+        bad = []
+        for k in _KINDS:
+            for p, g in zip(probes, got[k]):
+                if g != dr._dash_stata_number_of(p, k):
+                    bad.append((k, p, g))
+        assert got["nan"] == [None, None]
+        js = dict(zip(probes, got["ty"]))
+        assert js[_np_ms(50, 1, 1)] == 50 and js[_np_ms(0, 1, 1)] == 0
+        assert dict(zip(probes, got["tm"]))[_np_ms(50, 1, 1)] == -22920
+        assert dict(zip(probes, got["td"]))[_np_ms(50, 1, 1)] == -697612
+        assert "Date.UTC(" not in dr._DASH_FMT_JS
+        assert "Date" not in dr._DASH_DATE_UNITS_JS
+        assert not bad, bad[:10]
+
+    def test_the_tick_text_past_stata_dates(self):
+        f = dr._dash_fmt_tick_formatter("%td", "td", "", {})
+        ticks = [8639684294400000.0, -59011545600000.0, _ms(14977)]
+        got = js_texts(f, ticks, "tick")
+        assert got == ["1.00e+08", "-679351", "02jan2001"], got
+        assert got == [dr._dash_fmt_text(dr._dash_stata_number_of(t, "td"),
+                                         "%td") for t in ticks]
+        fy = dr._dash_fmt_tick_formatter("%ty", "ty", "", {})
+        got = js_texts(fy, [float(_np_ms(-500, 1, 1)),
+                            float(_np_ms(50, 1, 1))], "tick")
+        assert got == ["-5.0e+02", "50"], got
+
+    def test_the_off_date_ticks_rule(self):
+        lo, hi = _ms(14977), 8639684294400000.0
+        want = [float(dr._dash_literal_to_ms([t], "td")[0])
+                for t in dr._dash_natscale_ticks(14977, 99999999, 5)]
+        assert dr._dash_off_date_ticks(lo, hi, 5, "td") == want
+        assert dr._dash_axis_count_ticks(lo, hi, 5, "td") == want
+        ty = dr._dash_off_date_ticks(float(_np_ms(-500, 1, 1)),
+                                     float(_np_ms(2002, 1, 1)), 5, "ty")
+        assert _np_ms(0, 1, 1) in ty and -2208988800000.0 not in ty
+        assert dr._dash_off_date_ticks(float("nan"), hi, 5, "td") is None
+
+    _DRAWN = [
+        ("scatteri_10000", [_si((1300, 2936550))], "Scatter", "x",
+         [253402300800000.0]),
+        ("scatteri_year99", [_si((1300, -679351))], "Scatter", "x",
+         [-59011545600000.0]),
+        ("pci_negative", [{"type": "pci", "options": {}, "values": [
+            [1200.0, -1500000.0, 1400.0, 15400.0]]}], "Segment", "x0",
+         [-129915619200000.0]),
+        ("pcarrowi_10000", [{"type": "pcarrowi", "options": {}, "values": [
+            [1200.0, 15400.0, 1400.0, 2936550.0]]}], "Segment", "x1",
+         [253402300800000.0]),
+        ("function_offrange", [{"type": "function", "expr": "1300",
+                                "options": {"range": "-700000 -679000",
+                                            "n": "2"}}], "Line", "x",
+         "literal"),
+    ]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_drawn_in_both_modes(self, tmp_path, mode):
+        rows = [(n, [_L("line", "close", "date")] + p, g, prop, w)
+                for n, p, g, prop, w in self._DRAWN]
+        rows += [
+            ("ty_negative", [_L("line", "close", "yr"), _si((1300, -500))],
+             "Scatter", "x", [-77945673600000.0]),
+            ("tm_10000", [_L("line", "close", "m"), _si((1300, 96480))],
+             "Scatter", "x", [float(_np_ms(10000, 1, 1))]),
+            ("y_axis", [_L("line", "date", "obs"), _si((99999999, 6))],
+             "Scatter", "y", [8639684294400000.0]),
+        ]
+        bad = []
+        for name, plots, gt, prop, want in rows:
+            if want == "literal":
+                want = dr._dash_literal_to_ms([-700000, -679000],
+                                              "td").tolist()
+            fig, w, _o = _da_fig(tmp_path, mode, plots)
+            k = 1 if gt == "Line" else 0
+            got = _da_units(_da_layer(fig, gt, k), prop).tolist()
+            letter = prop[0]
+            side = "below" if letter == "x" else "left"
+            lo, hi = _da_inner(fig, letter)
+            if got != want or not isinstance(_da_axis(fig, side),
+                                             DatetimeAxis) \
+                    or not (lo <= min(want) and max(want) <= hi) \
+                    or _no_note(w, "scatteri", "pci", "pcarrowi",
+                                "function:"):
+                bad.append((name, got, want, (lo, hi), w))
+        assert not bad, bad
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_drawn_after_a_filter_move(self, tmp_path, mode):
+        for plots, want in (
+                ([_L("line", "close", "date"), _si((1300, 2936550))],
+                 253402300800000.0),
+                ([_L("line", "close", "yr"), _si((1300, -500))],
+                 -77945673600000.0)):
+            fig, _w, _o = _da_fig(tmp_path, mode, plots, move=True)
+            assert _da_units(_da_layer(fig, "Scatter"), "x").tolist() == [
+                want]
+            lo, hi = _da_inner(fig, "x")
+            assert lo <= want <= hi
+            assert isinstance(_da_axis(fig, "below").ticker, FixedTicker)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_the_off_date_axis_is_ticked_in_stata_numbers(self, tmp_path,
+                                                          mode):
+        for plots, kind in (
+                ([_L("line", "close", "date"), _si((1300, 99999999))], "td"),
+                ([_L("line", "close", "yr"), _si((1300, -500))], "ty")):
+            fig, _w, _o = _da_fig(tmp_path, mode, plots)
+            ax = _da_axis(fig, "below")
+            _c, vals = dr._dash_secondary_values(fig, "x_range_name",
+                                                 "default")
+            assert isinstance(ax.ticker, FixedTicker)
+            assert list(ax.ticker.ticks) == dr._dash_off_date_ticks(
+                min(vals), max(vals), 5, kind)
+            if kind == "ty":
+                assert _np_ms(0, 1, 1) in ax.ticker.ticks
+                assert -2208988800000.0 not in ax.ticker.ticks
+            for side in ("below", "left", "above", "right"):
+                for a in getattr(fig, side):
+                    assert not isinstance(getattr(a, "ticker", None),
+                                          DatetimeTicker)
+                    assert not isinstance(getattr(a, "formatter", None),
+                                          DatetimeTickFormatter)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_literal_past_the_browser_is_left_out_with_one_note(
+            self, tmp_path, mode):
+        fig, w, _o = _da_fig(tmp_path, mode, [
+            _L("line", "close", "date"), _si((1300, 1e9)),
+            _si((1300, 1e300)), _si((1300, 15400))])
+        sc = [r for r in fig.renderers if type(r.glyph).__name__ == "Scatter"]
+        assert [len(r.data_source.data["x"]) for r in sc] == [0, 0, 1]
+        note = ("dash: scatteri: 1 point(s) past the dates a browser can "
+                "draw (years -271821 to 275760) not drawn.")
+        assert [x for x in w if "past the dates" in x] == [note], w
+        for r in fig.renderers:
+            json.dumps({k: list(map(float, v)) if k in ("x", "y") else None
+                        for k, v in r.data_source.data.items()},
+                       allow_nan=False)
+
+    def test_the_served_build_names_the_literal_past_the_browser(
+            self, tmp_path):
+        spec = _spec([_L("line", "close", "date"), _si((1300, 1e9))],
+                     formats=_DA_FMT)
+        sp, dp = _write(tmp_path, spec, _DA)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            dr.ServerAppBuilder(sp, dp).build(
+                os.path.join(str(tmp_path), "app.py"), trial=True)
+        got = [str(c.message) for c in caught
+               if "past the dates a browser" in str(c.message)]
+        assert len(got) == 1, got
+
+
+# ---------------------------------------------------------------------------
+# Range and pc layers
+# ---------------------------------------------------------------------------
+
+class TestRangeAndPcLayersGetADateAxis:
+
+    def test_the_axis_names_rule(self):
+        f = dr._dash_layer_axis_names
+        assert f({"type": "rarea", "yvar1": "a", "yvar2": "b",
+                  "xvar": "c", "options": {}}, "yvar") == (1, ["a", "b"])
+        assert f({"type": "rarea", "yvar1": "a", "yvar2": "b",
+                  "xvar": "c", "options": {}}, "xvar") == (1, ["c"])
+        assert f({"type": "pcspike", "y1var": "a", "x1var": "b",
+                  "y2var": "c", "x2var": "d",
+                  "options": {"xaxis": "2"}}, "xvar") == (2, ["b", "d"])
+        assert f({"type": "histogram", "var": "a", "options": {}},
+                 "xvar") == (1, ["a"])
+        assert f({"type": "histogram", "var": "a", "options": {}},
+                 "yvar") == (None, [])
+        assert f({"type": "scatteri", "options": {}}, "xvar") == (None, [])
+        assert f({"type": "scatter", "yvar": "", "xvar": "x",
+                  "options": {"yaxis": " 2"}}, "yvar") == (2, [])
+
+    _RANGE = ("rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
+              "rcapsym", "rscatter", "tsrline")
+    _PC = ("pcspike", "pccapsym", "pcarrow", "pcbarrow", "pcscatter")
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_range_and_pc_types_get_a_date_axis(self, tmp_path, mode):
+        rows = [(t, {"type": t, "yvar1": "date", "yvar2": "d2",
+                     "xvar": "close", "options": {}}, "left", "below")
+                for t in self._RANGE]
+        rows += [(t, {"type": t, "y1var": "date", "x1var": "close",
+                      "y2var": "d2", "x2var": "volume", "options": {}},
+                  "left", "below") for t in self._PC]
+        rows += [(t + "_x", {"type": t, "y1var": "close", "x1var": "date",
+                             "y2var": "volume", "x2var": "d2",
+                             "options": {}}, "below", "left")
+                 for t in self._PC]
+        bad = []
+        for name, plot, dside, nside in rows:
+            fig, _w, _o = _da_fig(tmp_path, mode, [plot])
+            d, n = _da_axis(fig, dside), _da_axis(fig, nside)
+            if not isinstance(d, DatetimeAxis) \
+                    or dict(d.formatter.args).get("fmt") != "%td" \
+                    or isinstance(n, DatetimeAxis):
+                bad.append((name, type(d).__name__, type(n).__name__))
+        assert not bad, bad
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_pc_with_one_date_end_is_mixed(self, tmp_path, mode):
+        fig, _w, _o = _da_fig(tmp_path, mode, [{
+            "type": "pcspike", "y1var": "date", "x1var": "obs",
+            "y2var": "close", "x2var": "obs", "options": {}}])
+        assert not isinstance(_da_axis(fig, "left"), DatetimeAxis)
+        r = _da_layer(fig, "Segment")
+        assert _units_of(r.glyph.y0) == "td"
+        assert _units_of(r.glyph.y1) is None
+        assert _da_units(r, "y0").tolist() == _DA["date"].tolist()
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_the_axis_reads_the_first_bounds_format(self, tmp_path, mode):
+        sub = tmp_path / "fmt"
+        sub.mkdir()
+        spec = _spec([{"type": "rarea", "yvar1": "date", "yvar2": "d2",
+                       "xvar": "close", "options": {}}],
+                     formats=dict(_DA_FMT, date="%tdCCYY-NN-DD"))
+        if mode == "saved":
+            fig = _saved(sub, spec, _DA)[0].figures["g1"]
+        else:
+            fig = _served_fig(_served(sub, spec, _DA)[0])
+        assert dict(_da_axis(fig, "left").formatter.args)["fmt"] == \
+            "%tdCCYY-NN-DD"
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_after_a_filter_move(self, tmp_path, mode):
+        # Two range layers and nothing else: at the base no layer named a
+        # date on y (a range layer counted only the fallback), so the axis
+        # was a LinearAxis in ms before and after the move.  (An lfit of
+        # the date beside them already made a date axis at the base.)
+        fig, _w, _o = _da_fig(tmp_path, mode, [
+            {"type": "rarea", "yvar1": "date", "yvar2": "d2",
+             "xvar": "close", "options": {}},
+            {"type": "rcap", "yvar1": "date", "yvar2": "d2",
+             "xvar": "close", "options": {}}], move=True)
+        assert isinstance(_da_axis(fig, "left"), DatetimeAxis)
+        r = _da_layer(fig, "VArea")
+        assert _units_of(r.glyph.y1) is None and _units_of(r.glyph.y2) is None
+        lo, hi = _da_inner(fig, "y")
+        assert lo <= _ms(14977) and _ms(15037) <= hi, (lo, hi)
+
+
+# ---------------------------------------------------------------------------
+# Second axes
+# ---------------------------------------------------------------------------
+
+class TestASecondAxisLeavesThePrimaryDate:
+
+    def test_the_decision_partitions_by_axis(self):
+        plots = [_L("scatter", "date", "close"),
+                 _L("scatter", "volume", "close", yaxis="2")]
+        dv = {"date": "td", "d2": "td"}
+        assert dr._dash_figure_date_kind(plots, "yvar", "", dv, 1) == "td"
+        assert dr._dash_figure_date_kind(plots, "yvar", "", dv,
+                                         axis_no=2) is None
+        assert dr._dash_axis_vars(plots, axis_no=2) == ("", "volume")
+        # With no layer on axis 1 every layer counts there (D-35g).
+        lone = [_L("scatter", "date", "close", yaxis="2")]
+        assert dr._dash_figure_date_kind(lone, "yvar", "", dv) == "td"
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_numeric_second_axis_keeps_the_date_axis(self, tmp_path, mode):
+        for plots, dside, nside, name in (
+                ([_L("scatter", "date", "close"),
+                  _L("scatter", "volume", "close", yaxis="2")],
+                 "left", "right", "y2"),
+                ([_L("scatter", "close", "date"),
+                  _L("scatter", "close", "obs", xaxis="2")],
+                 "below", "above", "x2")):
+            fig, _w, _o = _da_fig(tmp_path, mode, plots)
+            assert isinstance(_da_axis(fig, dside), DatetimeAxis)
+            assert not isinstance(_da_axis(fig, nside, name), DatetimeAxis)
+
+
+class TestASecondDateAxis:
+
+    _Y2 = [_L("line", "close", "date"), _L("line", "d2", "date", yaxis="2")]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_date_second_axis_is_a_date_axis(self, tmp_path, mode):
+        fig, _w, _o = _da_fig(tmp_path, mode, self._Y2)
+        ax = _da_axis(fig, "right", "y2")
+        assert isinstance(ax, DatetimeAxis)
+        assert dict(ax.formatter.args)["fmt"] == "%td"
+        assert dr._dash_axis_date_kind(fig, "y2") == "td"
+        lo, hi = _da_inner(fig, "y", "y2")
+        assert _ms(15007) - 1 <= lo and hi <= _ms(15337) + 1, (lo, hi)
+        fig, _w, _o = _da_fig(tmp_path, mode, [
+            _L("scatter", "close", "obs"),
+            _L("scatter", "close", "date", xaxis="2")])
+        assert isinstance(_da_axis(fig, "above", "x2"), DatetimeAxis)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_count_ticks_on_a_date_y2(self, tmp_path, mode):
+        fig, _w, _o = _da_fig(tmp_path, mode, self._Y2, go={"ylabel2": "#5"})
+        ticks = tb_major(_da_axis(fig, "right", "y2"))
+        lo, hi = dr._dash_layer_extent(fig.renderers, "y_range_name", "y2",
+                                       "td")
+        assert ticks == dr._dash_axis_count_ticks(lo, hi, 5, "td"), ticks
+        assert all((t - _E) % 86400000 == 0 for t in ticks)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_line_range_and_labels_on_a_date_y2_are_dates(self, tmp_path,
+                                                         mode):
+        fig, _w, _o = _da_fig(tmp_path, mode, self._Y2, go={
+            "yline2": "15200", "yscale2": "range(14900 15500)",
+            "ylabel2": "15000 15300"})
+        spans = [s for s in fig.center if isinstance(s, Span)
+                 and s.y_range_name == "y2"]
+        assert [s.location for s in spans] == [_ms(15200)]
+        lo, hi = _da_inner(fig, "y", "y2")
+        assert abs(lo - _ms(14900)) < 1 and abs(hi - _ms(15500)) < 1
+        assert tb_major(_da_axis(fig, "right", "y2")) == [_ms(15000),
+                                                          _ms(15300)]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_fit_on_a_date_y2_is_in_ms(self, tmp_path, mode):
+        for move in (False, True):
+            fig, _w, _o = _da_fig(tmp_path, mode, self._Y2 + [
+                _L("lfit", "d2", "date", yaxis="2")], move=move)
+            fit = [r for r in fig.renderers
+                   if type(r.glyph).__name__ == "Line"
+                   and r.y_range_name == "y2"][-1]
+            y = _da_units(fit, "y")
+            y = y[np.isfinite(y)]
+            assert y.size and _ms(15007) - 1 <= y.min() \
+                and y.max() <= _ms(15337) + 1, (move, y)
+            lo, hi = _da_inner(fig, "y", "y2")
+            assert lo > 1e11, (move, lo)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_yscale2_log_on_a_date_axis_draws_dates(self, tmp_path, mode):
+        fig, w, _o = _da_fig(tmp_path, mode, self._Y2,
+                             go={"yscale2": "log"})
+        assert isinstance(_da_axis(fig, "right", "y2"), DatetimeAxis)
+        assert [x for x in w if "yscale2(log)" in x] == [
+            "dash: yscale2(log) is meaningless for the date variable 'd2'; "
+            "drawing a date axis instead."], w
+
+
+def tb_major(ax):
+    import test_by_scales as tb
+    return tb._major_ticks(ax)
+
+
+# ---------------------------------------------------------------------------
+# A date beside a number
+# ---------------------------------------------------------------------------
+
+class TestTheUnitRule:
+
+    def _figs(self):
+        marked = figure()
+        dr._dash_mark_date_axes(marked, "td", None, None, "tm")
+        unmarked = figure()
+        return marked, unmarked
+
+    def test_axis_kind_reads_the_layers_axis(self):
+        m = dr.GlyphMapper.__new__(dr.GlyphMapper)
+        marked, unmarked = self._figs()
+        assert m._axis_kind(marked, "x") == "td"
+        assert m._axis_kind(marked, "y") is None
+        assert m._axis_kind(marked, "y", {"yaxis": "2"}) == "tm"
+        assert m._axis_kind(marked, "x", {"xaxis": "2"}) is None
+        assert m._axis_kind(unmarked, "x") is None
+
+    def test_unit_kind_follows_the_axis(self):
+        m = dr.GlyphMapper.__new__(dr.GlyphMapper)
+        m.date_vars = {"date": "td", "m": "tm"}
+        marked, unmarked = self._figs()
+        assert m._unit_kind(marked, "date", "x") == "td"
+        assert m._unit_kind(marked, "date", "y") is None
+        assert m._unit_kind(marked, "m", "y", {"yaxis": "2"}) == "tm"
+        assert m._unit_kind(marked, "close", "x") is None
+        assert m._unit_kind(unmarked, "date", "y") == "td"
+
+
+class TestADateBesideANumber:
+
+    _MIX = [_L("scatter", "close", "date"), _L("scatter", "close", "obs")]
+
+    def test_the_unit_format_rule(self):
+        dv = {"date": "td", "m": "tm"}
+        f = dr._dash_axis_unit_format
+        assert f(self._MIX, "x", dv, _DA_FMT) == "%td"
+        assert f(self._MIX[::-1], "x", dv, _DA_FMT) == ""
+        assert f([_L("lfit", "close", "date"), self._MIX[1]], "x", dv,
+                 _DA_FMT) == ""
+        assert f([_si((1, 2)), self._MIX[1]], "x", dv, _DA_FMT) == ""
+        assert f([_L("scatter", "close", "m"), self._MIX[1]], "x", dv,
+                 _DA_FMT) == "%tm"
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_the_raw_date_is_drawn_in_stata_units(self, tmp_path, mode):
+        fig, w, _o = _da_fig(tmp_path, mode, self._MIX)
+        assert not isinstance(_da_axis(fig, "below"), DatetimeAxis)
+        d, o = _da_layer(fig, "Scatter", 0), _da_layer(fig, "Scatter", 1)
+        assert _units_of(d.glyph.x) == "td"
+        assert _da_units(d, "x").tolist() == _DA["date"].tolist()
+        assert _units_of(o.glyph.x) is None
+        assert _units_of(d.glyph.y) is None
+        for attr in ("selection_glyph", "nonselection_glyph", "hover_glyph",
+                     "muted_glyph"):
+            g = getattr(d, attr)
+            if g is not None and hasattr(g, "x"):
+                assert _units_of(g.x) == "td", attr
+        lo, hi = _da_inner(fig, "x")
+        assert 0 <= hi <= 20000 and -1000 <= lo, (lo, hi)
+        assert not _no_note(w, "date"), w
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_labels_and_jitter_follow(self, tmp_path, mode):
+        fig, _w, _o = _da_fig(tmp_path, mode, [
+            _L("scatter", "close", "date", mlabel="close", jitter="5"),
+            self._MIX[1]])
+        d = _da_layer(fig, "Scatter", 0)
+        assert _units_of(d.glyph.x) == "td"
+        assert _fld(d.glyph.x) != "date"
+        labs = [a for a in fig.center if isinstance(a, LabelSet)]
+        assert labs and all(_units_of(a.x) == "td" for a in labs)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_explicit_labels_count_and_range(self, tmp_path, mode):
+        bad = []
+        for go in ({"xlabel": "0 5000 10000 15000"}, {"xlabel": "#5"},
+                   {"xscale": "range(0 16000)"}):
+            fig, _w, _o = _da_fig(tmp_path, mode, self._MIX, go=go)
+            lo, hi = _da_inner(fig, "x")
+            if not (-1 <= lo and hi <= 16001):
+                bad.append((go, lo, hi))
+            if go.get("xlabel") == "#5":
+                t = tb_major(_da_axis(fig, "below"))
+                if t != dr._dash_natscale_ticks(1, 15307, 5):
+                    bad.append((go, t))
+        assert not bad, bad
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_by_panels_share_one_scale_in_stata_units(self, tmp_path, mode):
+        figs, _w, _o = _da_fig(tmp_path, mode, self._MIX, go={"by": "g"},
+                               by=True)
+        figs = [f for f in figs if f.renderers]
+        assert len(figs) >= 2
+        assert len({id(f.x_range) for f in figs}) == 1
+        lo, hi = _da_inner(figs[0], "x")
+        assert -1000 <= lo and hi <= 20000, (lo, hi)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_the_labels_are_the_first_layers_format(self, tmp_path, mode):
+        fig, _w, _o = _da_fig(tmp_path, mode, self._MIX)
+        assert js_texts(_da_axis(fig, "below").formatter, [0.0, 15000.0],
+                        "tick") == ["01jan1960", "25jan2001"]
+        for plots in (self._MIX[::-1],
+                      [_L("lfit", "close", "date"), self._MIX[1]]):
+            fig, _w, _o = _da_fig(tmp_path, mode, plots)
+            fmt = dict(getattr(_da_axis(fig, "below").formatter, "args",
+                               None) or {}).get("fmt", "")
+            assert not fmt.startswith("%t"), fmt
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_minmax_reads_stata_units(self, tmp_path, mode):
+        bad = []
+        for opt in ("xlabel", "xtick"):
+            for plots, want in ((self._MIX, [14977.0, 15307.0]),
+                                ([_L("lfit", "close", "date"),
+                                  self._MIX[1]], [14977.0, 15307.0]),
+                                (self._MIX[::-1], [1.0, 12.0])):
+                fig, _w, _o = _da_fig(tmp_path, mode, plots,
+                                      go={opt: "minmax"})
+                ax = _da_axis(fig, "below")
+                t = ax.ticker
+                got = (sorted(float(v) for v in dict(t.args)["extra"])
+                       if opt == "xtick" and hasattr(t, "args")
+                       else tb_major(ax))
+                if got != want:
+                    bad.append((opt, plots[0]["type"], got, want))
+        assert not bad, bad
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_after_a_filter_move(self, tmp_path, mode):
+        fig, _w, _o = _da_fig(tmp_path, mode, self._MIX, move=True)
+        d = _da_layer(fig, "Scatter", 0)
+        assert _units_of(d.glyph.x) == "td"
+        lo, hi = _da_inner(fig, "x")
+        assert -1000 <= lo and hi <= 20000, (lo, hi)
+
+    def test_the_refinish_budget_holds(self):
+        import time
+        from bokeh.models import ColumnDataSource
+        rnd = np.random.default_rng(1)
+        n = 500_000
+        fig = figure()
+        dr._dash_mark_date_axes(fig, None, None)
+        days = rnd.integers(14977, 15340, size=n).astype(float)
+        fig.scatter(x={"field": "date", "transform":
+                       dr._dash_date_transform("td")}, y="y",
+                    source=ColumnDataSource({"date": _ms(days),
+                                             "y": rnd.normal(size=n)}))
+        fig.scatter("obs", "y", source=ColumnDataSource(
+            {"obs": rnd.uniform(1, 12, n), "y": rnd.normal(size=n)}))
+        fig._dash_margin = {"x": 0.0132, "y": 0.022}
+        for ax in (fig.xaxis[0], fig.yaxis[0]):
+            ax.ticker = dr._dash_default_ticker(5)
+        dr._dash_finish_count_ticks(fig)
+        best = 1e9
+        for _ in range(3):
+            t0 = time.perf_counter()
+            dr._dash_refinish_axes({"g": fig}, {})
+            best = min(best, time.perf_counter() - t0)
+        assert dr._dash_range_hull(fig.x_range)[1] < 20000
+        assert best <= 0.2, best
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_date_bar_beside_a_number(self, tmp_path, mode):
+        fig, _w, _o = _da_fig(tmp_path, mode, [
+            _L("bar", "date", "obs"), _L("scatter", "close", "obs")])
+        r = _da_layer(fig, "VBar")
+        assert _units_of(r.glyph.top) == "td"
+        base = dr._dash_float_values(r.data_source.data[
+            _fld(r.glyph.bottom)], coerce=True)
+        assert set(base.tolist()) == {0.0}, base
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_period_bar_on_a_mixed_axis_is_one_unit_wide(self, tmp_path,
+                                                           mode):
+        fig, _w, _o = _da_fig(tmp_path, mode, [
+            _L("bar", "close", "m"), _L("scatter", "close", "obs")])
+        r = _da_layer(fig, "VBar")
+        assert r.glyph.width == 1.0
+        assert _fld(r.glyph.x) == "m"
+        assert _units_of(r.glyph.x) == "tm"
+        assert dr.GlyphMapper._BAR_XC not in r.data_source.data
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_xline_on_a_mixed_axis_is_a_stata_value(self, tmp_path, mode):
+        fig, _w, _o = _da_fig(tmp_path, mode, self._MIX,
+                              go={"xline": "15200"})
+        assert [s.location for s in fig.center if isinstance(s, Span)] == [
+            15200.0]
+
+
+# ---------------------------------------------------------------------------
+# The transform
+# ---------------------------------------------------------------------------
+
+class TestTheDateTransform:
+
+    def test_one_shared_model_per_kind(self):
+        cache = {}
+        a = dr._dash_date_transform("td", cache)
+        assert a is dr._dash_date_transform("td", cache)
+        assert a is not dr._dash_date_transform("tm", cache)
+        assert a.tags == ["dash_date_units:td"] and dict(a.args) == {
+            "kind": "td"}
+        for code in (a.func, a.v_func):
+            for bad in ("eval(", "Function(", "document."):
+                assert bad not in code
+        assert len(dr._DASH_DATE_UNITS_JS) <= 3000
+
+    def test_a_hostile_kind_is_refused(self):
+        for k in ("td'); alert(1); //", "", None, "t" * 10000):
+            with pytest.raises(ValueError):
+                dr._dash_date_transform(k)
+
+    def test_spec_units_reads_only_dash_transforms(self):
+        good = dr._dash_date_transform("tq")
+        foreign = CustomJSTransform(func="return x;", v_func="return xs;")
+        badtag = CustomJSTransform(func="return x;", v_func="return xs;",
+                                   tags=["dash_date_units:xx"])
+        assert dr._dash_spec_units("date") is None
+        assert dr._dash_spec_units({"field": "date"}) is None
+        assert dr._dash_spec_units({"field": "d", "transform": foreign}) \
+            is None
+        assert dr._dash_spec_units({"field": "d", "transform": badtag}) \
+            is None
+        assert dr._dash_spec_units(object()) is None
+        assert dr._dash_spec_units({"field": "d", "transform": good}) == "tq"
+        f = figure()
+        r = f.scatter(x={"field": "d", "transform": good}, y="y")
+        assert dr._dash_spec_units(r.glyph.x) == "tq"
+
+    def test_the_js_twin_equals_the_python_twin(self):
+        rnd = np.random.default_rng(3)
+        E = dr._STATA_EPOCH_UNIX_MS
+        lo, hi = dr._STATA_MS_MIN + E, dr._STATA_MS_MAX + E
+        vals = rnd.uniform(lo, hi, 10000).tolist() + [
+            lo, hi, lo - 1, hi + 1, 0.0, -1.0]
+        code = dr._dash_date_transform("td").v_func
+        src = ("const f = new Function('kind', 'xs', \"'use strict';\\n\" "
+               "+ %s);\nconst xs = %s.concat([NaN, Infinity, -Infinity, "
+               "1e300]);\nconst out = {};\nfor (const k of %s) out[k] = "
+               "Array.from(f(k, xs)).map((v) => Number.isNaN(v) ? null : v);"
+               "\nconsole.log(JSON.stringify(out));\n"
+               % (json.dumps(code), json.dumps(vals), json.dumps(list(_KINDS))))
+        got = run_js(src)
+        allv = np.array(vals + [np.nan, np.inf, -np.inf, 1e300])
+        bad = []
+        for k in _KINDS:
+            want = dr._dash_date_units(allv, k)
+            g = np.array([np.nan if v is None else v for v in got[k]],
+                         dtype=float)
+            same = (np.isnan(g) == np.isnan(want)) & (
+                np.isnan(want) | (g == want))
+            if not same.all():
+                i = int(np.flatnonzero(~same)[0])
+                bad.append((k, allv[i], g[i], want[i]))
+        assert not bad, bad
+
+    def test_the_layer_pass_rule(self):
+        from bokeh.models import ColumnDataSource
+        dv = {"date": "td"}
+        src = ColumnDataSource({"date": [_ms(14977)], "y": [1.0]})
+
+        def fig_with(marks):
+            f = figure()
+            if marks is not None:
+                dr._dash_mark_date_axes(f, *marks)
+            r = f.scatter("date", "y", source=src)
+            return f, r
+        raw = _L("scatter", "y", "date")
+        f, r = fig_with((None, None))
+        # The glyph and each Glyph variant the renderer has.
+        assert dr._dash_layer_in_axis_units(f, [r], [], raw, dv) == 3
+        assert _units_of(r.glyph.x) == "td"
+        assert _units_of(r.nonselection_glyph.x) == "td"
+        assert _units_of(r.glyph.y) is None
+        # Never stacked on a transform already there.
+        assert dr._dash_layer_in_axis_units(f, [r], [], raw, dv) == 0
+        for marks, plot in (((None, None), _L("lfit", "y", "date")),
+                            ((None, None), _si((1, 2))),
+                            (("td", None), raw), (None, raw)):
+            f, r = fig_with(marks)
+            assert dr._dash_layer_in_axis_units(f, [r], [], plot, dv) == 0
+            assert _units_of(r.glyph.x) is None
+
+
+# ---------------------------------------------------------------------------
+# Bases
+# ---------------------------------------------------------------------------
+
+class TestABaseOnADateAxis:
+
+    def test_the_base_reader(self):
+        m = dr.GlyphMapper.__new__(dr.GlyphMapper)
+        m.date_vars = {"date": "td"}
+        dated, mixed = figure(), figure()
+        dr._dash_mark_date_axes(dated, None, "td")
+        dr._dash_mark_date_axes(mixed, None, None)
+        assert m._base_in_axis_units(14970.0, "date", dated, {}, "bar") \
+            == _ms(14970)
+        assert m._base_in_axis_units(14970.0, "date", mixed, {}, "bar") \
+            == 14970.0
+        assert m._base_in_axis_units(None, "date", dated, {}, "bar") is None
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            dr._DASH_NOTED.clear()
+            assert m._base_in_axis_units(99999999.0, "date", dated, {},
+                                         "bar") == 8639684294400000.0
+            assert m._base_in_axis_units(1e300, "date", dated, {},
+                                         "bar") is None
+        notes = [str(c.message) for c in caught]
+        assert notes == [
+            "dash: bar: base(1e+300) is past the dates a browser can draw "
+            "(years -271821 to 275760); drawn from the default base."], notes
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_an_explicit_base_is_a_date(self, tmp_path, mode):
+        bad = []
+        for t, glyph, prop in (("bar", "VBar", "bottom"),
+                               ("spike", "Segment", "y0"),
+                               ("dropline", "Segment", "y0"),
+                               ("area", "VArea", "y1")):
+            for base, want in ((14970, _ms(14970)),
+                               (2936550, 253402300800000.0)):
+                fig, w, _o = _da_fig(tmp_path, mode, [
+                    _L(t, "date", "obs", base=str(base))])
+                r = _da_layer(fig, glyph)
+                spec = getattr(r.glyph, prop)
+                fld = _fld(spec)
+                got = (set(dr._dash_float_values(
+                    r.data_source.data[fld], coerce=True).tolist())
+                       if fld else {float(spec.get("value") if isinstance(
+                           spec, dict) else spec)})
+                if got != {want} or _no_note(w, "base("):
+                    bad.append((t, base, got, w))
+        assert not bad, bad
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_base_past_the_browser_is_the_default_with_a_note(
+            self, tmp_path, mode):
+        fig, w, _o = _da_fig(tmp_path, mode, [
+            _L("bar", "date", "obs", base="1e300")])
+        notes = [x for x in w if "base(1e+300) is past the dates" in x]
+        assert len(notes) == 1, w
+        r = _da_layer(fig, "VBar")
+        base = dr._dash_float_values(r.data_source.data[
+            _fld(r.glyph.bottom)], coerce=True)
+        assert np.isfinite(base).all() and (np.abs(base) < 8.64e15).all()
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_after_a_filter_move(self, tmp_path, mode):
+        fig, _w, _o = _da_fig(tmp_path, mode, [
+            _L("bar", "date", "obs", base="14970")], move=True)
+        r = _da_layer(fig, "VBar")
+        assert _units_of(r.glyph.top) is None
+        spec = r.glyph.bottom
+        fld = _fld(spec)
+        vals = (set(dr._dash_float_values(r.data_source.data[fld],
+                                          coerce=True).tolist())
+                if fld else {float(spec)})
+        assert vals == {_ms(14970)}, vals
+
+
+# ---------------------------------------------------------------------------
+# Guards
+# ---------------------------------------------------------------------------
+
+def _tagged(model):
+    return [m for m in model.references()
+            if isinstance(m, CustomJSTransform)
+            and any(str(t).startswith("dash_date_units:")
+                    for t in (m.tags or []))]
+
+
+class TestNonDateFiguresAreUnchanged:
+
+    #: Axis classes per case (below, left, right, above), recorded at the
+    #: batch-12 base (f7e034d) in both modes.
+    _CASES = {
+        "scatter": ([_L("scatter", "close", "obs")], None),
+        "lfit": ([_L("scatter", "close", "obs"), _L("lfit", "close", "obs")],
+                 None),
+        "bar": ([_L("bar", "close", "obs")], None),
+        "yaxis2": ([_L("scatter", "close", "obs"),
+                    _L("scatter", "volume", "obs", yaxis="2")], None),
+        "xaxis2": ([_L("scatter", "close", "obs"),
+                    _L("scatter", "close", "volume", xaxis="2")], None),
+        "by": ([_L("scatter", "close", "obs")], {"by": "g"}),
+        "colorvar": ([_L("scatter", "close", "obs", colorvar="volume")],
+                     None),
+    }
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_no_transform_and_the_same_axes(self, tmp_path, mode):
+        bad = []
+        for name, (plots, go) in self._CASES.items():
+            figs, _w, owner = _da_fig(tmp_path, mode, plots, go=go, by=True)
+            for f in figs:
+                kinds = [type(a).__name__ for side in
+                         ("below", "left", "right", "above")
+                         for a in getattr(f, side) if hasattr(a, "ticker")]
+                if _tagged(f) or "DatetimeAxis" in kinds \
+                        or getattr(f, "_dash_date_kinds2", None) not in (
+                            None, (None, None)):
+                    bad.append((name, kinds))
+        assert not bad, bad
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_date_axis_layer_carries_no_transform(self, tmp_path, mode):
+        fig, _w, _o = _da_fig(tmp_path, mode, [_L("line", "close", "date")])
+        assert not _tagged(fig)
+
+
+class TestTheDateAxisTruth:
+
+    def test_the_fixture_is_stamped_and_complete(self):
+        with open(_DA_TRUTH, encoding="utf-8") as fh:
+            d = json.load(fh)
+        assert all(k in d["_meta"] for k in ("stata_version", "born_date",
+                                             "dash_commit", "extracted"))
+        want = {"literals": ("scatteri_td", "pci_td", "pcarrowi_td",
+                             "function_range_td", "function_norange_td",
+                             "scatteri_tm", "scatteri_offrange",
+                             "scatteri_ty_negative"),
+                "range": ("rarea_datey", "rcap_datey"),
+                "pc": ("datey", "datex"),
+                "axis2": ("datey_y2num", "datex_x2num", "y2date",
+                          "y2date_n5", "y2date_range", "y2_lfit"),
+                "mixed": ("date_first", "obs_first", "td_tm",
+                          "minmax_date_first", "minmax_lfit_first",
+                          "minmax_obs_first", "bar_date_y"),
+                "base": ("bar_date_base",)}
+        missing = [(g, k) for g, ks in want.items() for k in ks
+                   if k not in d.get(g, {})]
+        assert not missing, missing
+        assert d["axis2"]["y2date_range"]["y2"] == [14900.0, 15500.0]
+        assert d["literals"]["scatteri_td"]["x"] == [14976.0, 15431.0]

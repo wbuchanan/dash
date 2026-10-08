@@ -113,7 +113,8 @@ if _rc {
 local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
-    S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7
+    S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
+    S35 14
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -8563,10 +8564,410 @@ if inlist("`only'", "", "S34") & `: list posof "S34" in w30_run' {
 }
 * ==== end S34 ====
 
+* _da_check: S35's reader of dash's saved page and served app (WP-30
+* P1.23a).  _da_docs builds both from one spec; _da_axes, _da_units,
+* _da_hull and _da_move read dash's values; _da_check sets DA_OK (1 or 0)
+* and DA_MSG for one case, twoway's scales coming in DA_TW (x0 x1 y0 y1)
+* and DA_TW2 (the plotregion2 y scale).
+python:
+import os as _da_os, sys as _da_sys
+for _da_p in (_da_os.path.abspath(".."), _da_os.path.abspath(".")):
+    if _da_p not in _da_sys.path:
+        _da_sys.path.insert(0, _da_p)
+
+
+def _da_read(sp, dp):
+    import warnings
+    import dash_render as dr
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    return r, [str(x.message) for x in w]
+
+
+def _da_app(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        dr.ServerAppBuilder(sp, dp).build(app)
+        with open(app, encoding="utf-8") as fh:
+            src = fh.read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        ns = dict(__name__="dash_da_app")
+        exec(compile(src.replace(attach, "pass"), "dash_da_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+    return doc, [str(x.message) for x in w]
+
+
+def _da_figs(models):
+    from bokeh.plotting import figure as _Fig
+    out, seen = [], set()
+    for root in models:
+        for m in root.references():
+            if isinstance(m, _Fig) and id(m) not in seen:
+                seen.add(id(m))
+                out.append(m)
+    return out
+
+
+def _da_axes(fig, side, name="default"):
+    attr = ("x" if side in ("below", "above") else "y") + "_range_name"
+    return [a for a in getattr(fig, side) if hasattr(a, "formatter")
+            and getattr(a, attr, "default") == name]
+
+
+def _da_units(r, prop):
+    import dash_render as dr
+    spec = getattr(r.glyph, prop)
+    fld = dr._dash_spec_field(spec)
+    col = dr._dash_float_values(r.data_source.data[fld], coerce=True)
+    k = dr._dash_spec_units(spec)
+    return dr._dash_date_units(col, k) if k else col
+
+
+def _da_hull(fig, letter, name="default"):
+    import dash_render as dr
+    rng = (getattr(fig, letter + "_range") if name == "default"
+           else getattr(fig, "extra_%s_ranges" % letter)[name])
+    return dr._dash_range_hull(rng)
+
+
+def _da_move(doc, value):
+    from bokeh.models import RangeSlider
+    [w] = [m for m in doc.models if isinstance(m, RangeSlider)]
+    old, w.value = w.value, value
+    for key in ("value", "value_throttled"):
+        for cb in list(w._callbacks.get(key, [])):
+            cb("value", old, value)
+
+
+def _da_rend(fig, gt, k=0):
+    import dash_render as dr
+    return [r for r in fig.renderers if type(r.glyph).__name__ == gt
+            and not dr._dash_is_swatch(r)][k]
+
+
+def _da_check(case, key, sp, dp, app):
+    import math
+    import dash_render as dr
+    from sfi import Macro
+    from bokeh.models import DatetimeAxis, DatetimeTicker, FixedTicker, Span
+    tw = [float(v) if v not in ("", ".") else float("nan")
+          for v in (Macro.getGlobal("DA_TW") or "").split()]
+    tw2 = [float(v) for v in (Macro.getGlobal("DA_TW2") or "").split()]
+    r, ws = _da_read(sp, dp)
+    doc, wv = _da_app(sp, dp, app)
+    modes = (("saved", list(r.figures.values())[0], ws),
+             ("served", _da_figs(doc.roots)[0], wv))
+    bad = []
+    E = dr._STATA_EPOCH_UNIX_MS
+
+    def day(ms):
+        return dr._dash_stata_value_of(ms, "td")
+    for mode, f, w in modes:
+        try:
+            if case == "DA-01":
+                gt = {"scatteri_td": "Scatter", "pci_td": "Segment",
+                      "pcarrowi_td": "Segment",
+                      "function_range_td": "Line"}[key]
+                rr = _da_rend(f, gt, 1 if gt == "Line" else 0)
+                props = ("x",) if gt != "Segment" else ("x0", "x1")
+                xs = [v for p in props for v in _da_units(rr, p).tolist()]
+                got = sorted({day(v) for v in xs})
+                want = [15400.0] if key == "scatteri_td" else [15400.0,
+                                                                15450.0]
+                if key == "function_range_td":
+                    got = [got[0], got[-1]]
+                if got != want or not _da_axes(f, "below") or not \
+                        isinstance(_da_axes(f, "below")[0], DatetimeAxis):
+                    bad.append("%s x %r" % (mode, got))
+            elif case == "DA-02":
+                x = _da_units(_da_rend(f, "Scatter"), "x").tolist()
+                if [dr._dash_stata_value_of(v, "tm") for v in x] != [504.0] \
+                        or not isinstance(_da_axes(f, "below")[0],
+                                          DatetimeAxis):
+                    bad.append("%s x %r" % (mode, x))
+            elif case == "DA-03":
+                side = "below" if key == "datex" else "left"
+                ax = _da_axes(f, side)[0]
+                lo, hi = dr._dash_layer_extent(
+                    f.renderers, ("x" if side == "below" else "y")
+                    + "_range_name", "default", "td")
+                u = (day(lo), day(hi))
+                ext = tw[0:2] if side == "below" else tw[2:4]
+                if not isinstance(ax, DatetimeAxis) \
+                        or dict(ax.formatter.args).get("fmt") != "%td" \
+                        or u != (14977.0, 15370.0) \
+                        or not (ext[0] <= u[0] and u[1] <= ext[1]):
+                    bad.append("%s %s hull %r twoway %r" % (
+                        mode, type(ax).__name__, u, ext))
+            elif case == "DA-04":
+                if key == "datey_y2num":
+                    first, second, ext = (_da_axes(f, "left")[0],
+                                          _da_axes(f, "right", "y2")[0],
+                                          tw[2:4])
+                    lo, hi = dr._dash_layer_extent(
+                        f.renderers, "y_range_name", "default", "td")
+                else:
+                    first, second, ext = (_da_axes(f, "below")[0],
+                                          _da_axes(f, "above", "x2")[0],
+                                          tw[0:2])
+                    lo, hi = dr._dash_layer_extent(
+                        f.renderers, "x_range_name", "default", "td")
+                if not isinstance(first, DatetimeAxis) \
+                        or isinstance(second, DatetimeAxis) \
+                        or not (ext[0] <= day(lo) and day(hi) <= ext[1]):
+                    bad.append("%s %s/%s %r" % (mode, type(first).__name__,
+                                                type(second).__name__,
+                                                (day(lo), day(hi))))
+            elif case == "DA-05":
+                ax = _da_axes(f, "right", "y2")[0]
+                if not isinstance(ax, DatetimeAxis):
+                    bad.append("%s y2 %s" % (mode, type(ax).__name__))
+                if key == "y2date_range":
+                    lo, hi = _da_hull(f, "y", "y2")
+                    span = [s.location for s in f.center
+                            if isinstance(s, Span) and s.y_range_name == "y2"]
+                    if abs(day(lo) - tw2[0]) > 1e-6 \
+                            or abs(day(hi) - tw2[1]) > 1e-6 \
+                            or span != [float(dr._dash_units_to_axis(
+                                [15200], "td")[0])]:
+                        bad.append("%s y2 [%r, %r] span %r twoway %r" % (
+                            mode, day(lo), day(hi), span, tw2))
+                if key == "y2date_n5":
+                    ticks = list(getattr(ax.ticker, "ticks", []) or [])
+                    lo, hi = dr._dash_layer_extent(
+                        f.renderers, "y_range_name", "y2", "td")
+                    if not ticks or any((t - E) % 86400000 for t in ticks) \
+                            or ticks != dr._dash_axis_count_ticks(
+                                lo, hi, 5, "td"):
+                        bad.append("%s ticks %r" % (mode, [day(t) for t in
+                                                           ticks]))
+            elif case == "DA-06":
+                fit = [x for x in f.renderers
+                       if type(x.glyph).__name__ == "Line"
+                       and x.y_range_name == "y2"][-1]
+                y = [day(v) for v in _da_units(fit, "y").tolist()
+                     if math.isfinite(v)]
+                if not y or min(y) < 15007 - 1e-6 or max(y) > 15370 + 1e-6:
+                    bad.append("%s lfit y %r..%r" % (mode, min(y or [0]),
+                                                     max(y or [0])))
+            elif case in ("DA-07", "DA-11"):
+                ax = _da_axes(f, "below")[0]
+                dl = _da_rend(f, "Scatter", 0 if key == "date_first" else 1)
+                lo, hi = _da_hull(f, "x")
+                if isinstance(ax, DatetimeAxis) \
+                        or dr._dash_spec_units(dl.glyph.x) != "td":
+                    bad.append("%s %s transform %r" % (
+                        mode, type(ax).__name__,
+                        dr._dash_spec_units(dl.glyph.x)))
+                if case == "DA-07":
+                    vals = _da_units(dl, "x").tolist()
+                    raw = dr._dash_date_units(dr._dash_float_values(
+                        dl.data_source.data[dr._dash_spec_field(
+                            dl.glyph.x)], coerce=True), "td").tolist()
+                    from test_display_format_sites import js_texts
+                    first = js_texts(ax.formatter, [0.0], "tick")[0] \
+                        if hasattr(ax.formatter, "args") else "0"
+                    want = "01jan1960" if key == "date_first" else "0"
+                    if abs(lo - tw[0]) > 1e-6 or abs(hi - tw[1]) > 1e-6 \
+                            or vals != raw or first != want:
+                        bad.append("%s hull [%r, %r] twoway %r first %r" % (
+                            mode, lo, hi, tw[0:2], first))
+                elif not hi < 1e6:
+                    bad.append("%s hull after the move [%r, %r]" % (
+                        mode, lo, hi))
+            elif case == "DA-08":
+                ticks = sorted(float(v) for v in
+                               _da_axes(f, "below")[0].ticker.ticks)
+                want = [float(v) for v in
+                        (Macro.getGlobal("DA_MINMAX") or "").split()]
+                if ticks != want:
+                    bad.append("%s ticks %r want %r" % (mode, ticks, want))
+            elif case == "DA-09":
+                rr = _da_rend(f, "VBar")
+                lo, hi = _da_hull(f, "y")
+                spec = rr.glyph.bottom
+                fld = dr._dash_spec_field(spec)
+                base = (sorted(set(dr._dash_float_values(
+                    rr.data_source.data[fld], coerce=True).tolist()))
+                    if fld else [float(getattr(spec, "value", spec)
+                                       if not isinstance(spec, dict)
+                                       else spec["value"])])
+                if key == "bar_date_y":
+                    ok = (base == [0.0] and abs(lo - tw[2]) < 1e-6
+                          and abs(hi - tw[3]) < 1e-6)
+                else:
+                    ok = ([day(b) for b in base] == [14970.0]
+                          and abs(day(lo) - tw[2]) < 1e-6
+                          and abs(day(hi) - tw[3]) < 1e-6)
+                if not ok:
+                    bad.append("%s base %r hull [%r, %r] twoway %r" % (
+                        mode, base, lo, hi, tw[2:4]))
+            elif case in ("DA-10", "DA-12"):
+                kind, lit, num = (("td", 8639684294400000.0, 99999999.0)
+                                  if case == "DA-10" else
+                                  ("ty", -77945673600000.0, -500.0))
+                x = _da_units(_da_rend(f, "Scatter"), "x").tolist()
+                ax = _da_axes(f, "below")[0]
+                lo, hi = _da_hull(f, "x")
+                ticks = list(getattr(ax.ticker, "ticks", []) or [])
+                _c, vals = dr._dash_secondary_values(f, "x_range_name",
+                                                     "default")
+                want_t = dr._dash_off_date_ticks(min(vals), max(vals), 5,
+                                                 kind)
+                fmt = "%td" if kind == "td" else "%ty"
+                from test_display_format_sites import js_texts
+                texts = js_texts(ax.formatter, ticks, "tick")
+                want_x = [dr._dash_fmt_text(dr._dash_stata_number_of(
+                    t, kind), fmt) for t in ticks]
+                notes = [n for n in w if "scatteri" in n]
+                if x != [lit] or dr._dash_stata_number_of(x[0], kind) != num \
+                        or not (lo <= lit <= hi) \
+                        or not isinstance(ax, DatetimeAxis) \
+                        or isinstance(ax.ticker, DatetimeTicker) \
+                        or ticks != want_t or texts != want_x or notes:
+                    bad.append("%s x %r ticks %r texts %r notes %r" % (
+                        mode, x, ticks, texts, notes))
+                if case == "DA-12" and (-2208988800000.0 in ticks
+                                        or -62167219200000.0 not in ticks):
+                    bad.append("%s ty ticks %r" % (mode, ticks))
+        except Exception as exc:  # reported as the case's failure
+            bad.append("%s %s: %s" % (mode, type(exc).__name__, exc))
+    if case == "DA-11":
+        # The served app after a move of close to its lower 60%.
+        try:
+            _da_move(doc, (1100.0, 1290.0))
+            f = _da_figs(doc.roots)[0]
+            dl = _da_rend(f, "Scatter", 0)
+            lo, hi = _da_hull(f, "x")
+            if dr._dash_spec_units(dl.glyph.x) != "td" or not hi < 1e6:
+                bad.append("served after the move [%r, %r]" % (lo, hi))
+        except Exception as exc:  # reported as the case's failure
+            bad.append("served move %s: %s" % (type(exc).__name__, exc))
+    Macro.setGlobal("DA_OK", "0" if bad else "1")
+    Macro.setGlobal("DA_MSG", ("; ".join(bad) or "ok")[:900].replace(
+        "`", "'").replace("$", "S"))
+
+
+_da_main = __import__("__main__")
+_da_main._da_check = _da_check
+end
+
+capture program drop _da_data
+program define _da_data
+    // The extractor's data (scripts/extract_date_axis_truth.do).
+    version 19
+    quietly sysuse sp500, clear
+    quietly generate obs = _n
+    quietly generate d2 = date + 30
+    format d2 %td
+    quietly generate int m = mofd(date)
+    format m %tm
+    quietly generate int yr = year(date)
+    format yr %ty
+end
+
+capture program drop _da_case
+program define _da_case
+    // id; fixture key; the twoway command; its options; a filter.
+    version 19
+    args id key cmd opts filt
+    _da_data
+    capture graph drop _all
+    quietly twoway `cmd', `opts' name(g, replace)
+    global DA_TW "`.g.plotregion1.xscale.curmin' `.g.plotregion1.xscale.curmax' `.g.plotregion1.yscale.curmin' `.g.plotregion1.yscale.curmax'"
+    global DA_TW2 ""
+    if strpos(`"`cmd'"', "yaxis(2)") {
+        global DA_TW2 "`.g.plotregion2.yscale.curmin' `.g.plotregion2.yscale.curmax'"
+    }
+    capture graph drop _all
+    capture dash clear
+    global DA_K = $DA_K + 1
+    local k = $DA_K
+    quietly dash `cmd', `opts' name(zda`k')
+    if `"`filt'"' != "" {
+        quietly _dash_serve_spec, specpath("${DA_WORK}/s`k'.json") datapath("${DA_WORK}/d`k'.json") filter(`filt')
+    }
+    else {
+        quietly _dash_serve_spec, specpath("${DA_WORK}/s`k'.json") datapath("${DA_WORK}/d`k'.json")
+    }
+    python: __import__("__main__")._da_check("`id'", "`key'", r"${DA_WORK}/s`k'.json", r"${DA_WORK}/d`k'.json", r"${DA_WORK}/a`k'.py")
+    display as text `"  `id' `key': twoway [${DA_TW}] [${DA_TW2}]: ${DA_MSG}"'
+    _w30_expect `id' "${DA_OK} == 1" `"`key': ${DA_MSG}"'
+    foreach x in s`k'.json d`k'.json a`k'.py {
+        capture erase "${DA_WORK}/`x'"
+    }
+    capture dash clear
+end
+
 * ==== S35 P1.23a: Date positions on every axis ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S35") & `: list posof "S35" in w30_run' {
     display as text "S35 start " c(current_date) " " c(current_time)
+    global DA_WORK "`w30_work'"
+    global DA_K 0
+    _da_case DA-01 scatteri_td "(line close date) (scatteri 1300 15400)"
+    _da_case DA-01 pci_td "(line close date) (pci 1200 15400 1400 15450)"
+    _da_case DA-01 pcarrowi_td "(line close date) (pcarrowi 1200 15400 1400 15450)"
+    _da_case DA-01 function_range_td "(line close date) (function y=1300, range(15400 15450))"
+    _w30_done DA-01 "scatteri, pci, pcarrowi and function on a %td axis are at the dates they denote, saved and served"
+    _da_case DA-02 scatteri_tm "(line close m) (scatteri 1300 504)"
+    _w30_done DA-02 "scatteri 1300 504 on a %tm axis is at 2002m1, saved and served"
+    _da_case DA-03 rarea_datey "rarea date d2 close"
+    _da_case DA-03 rcap_datey "rcap date d2 close"
+    _da_case DA-03 datey "pcspike date open d2 close"
+    _da_case DA-03 datex "pcspike open date close d2"
+    _w30_done DA-03 "range and pc layers of a date get a %td date axis whose hull lies in twoway's"
+    _da_case DA-04 datey_y2num "(scatter date close) (scatter volume close, yaxis(2))"
+    _da_case DA-04 datex_x2num "(scatter close date) (scatter close obs, xaxis(2))"
+    _w30_done DA-04 "a numeric second axis leaves the first axis's dates"
+    _da_case DA-05 y2date "(line close date) (line d2 date, yaxis(2))"
+    _da_case DA-05 y2date_range "(line close date) (line d2 date, yaxis(2))" "yline(15200, axis(2)) yscale(range(14900 15500) axis(2))"
+    _da_case DA-05 y2date_n5 "(line close date) (line d2 date, yaxis(2))" "ylabel(#5, axis(2))"
+    _w30_done DA-05 "a second axis of dates is a date axis whose range(), yline() and #5 read days"
+    _da_case DA-06 y2_lfit "(line close date) (line d2 date, yaxis(2)) (lfit d2 date, yaxis(2))"
+    _w30_done DA-06 "an lfit on a date y2 is drawn in its dates"
+    _da_case DA-07 date_first "(scatter close date) (scatter close obs)"
+    _da_case DA-07 obs_first "(scatter close obs) (scatter close date)"
+    _w30_done DA-07 "a date beside a number is drawn in Stata units over twoway's [0, 15340], labelled as twoway labels it"
+    _da_data
+    quietly summarize date
+    global DA_MINMAX "`r(min)' `r(max)'"
+    _da_case DA-08 minmax_date_first "(scatter close date) (scatter close obs)" "xlabel(minmax)"
+    display as text "  DA-08: twoway's minmax reads every layer (1 15340, P2.20); dash reads the first: ${DA_MINMAX}"
+    _w30_done DA-08 "xlabel(minmax) on a mixed axis ticks the date's Stata values"
+    _da_case DA-09 bar_date_y "(bar date obs in 1/20) (scatter close obs in 1/20)"
+    _da_case DA-09 bar_date_base "(bar date obs in 1/20, base(14970))"
+    _w30_done DA-09 "a date bar beside a number stands on 0; base(14970) on a date axis stands on 26dec2000"
+    _da_case DA-10 scatteri_offrange "(line close date) (scatteri 1300 99999999)"
+    // No note in either build (S23's trial relays the served one).
+    _da_data
+    capture graph drop _all
+    capture dash clear
+    quietly dash (line close date) (scatteri 1300 99999999), name(zda10)
+    capture log close _da10
+    quietly log using "${DA_WORK}/da10.log", text replace name(_da10)
+    noisily dash build, saving("${DA_WORK}/da10.html")
+    noisily dash build, saving("${DA_WORK}/da10.py") server
+    quietly log close _da10
+    _s28_count using "${DA_WORK}/da10.log", needle("(note:  dash: scatteri")
+    _w30_expect DA-10 "r(n) == 0" "a dash build named the drawn scatteri (`r(n)' notes)"
+    foreach x in da10.log da10.html da10.py {
+        capture erase "${DA_WORK}/`x'"
+    }
+    capture dash clear
+    _w30_done DA-10 "scatteri 1300 99999999 is drawn at its number, ticked and labelled in Stata numbers, with no note"
+    _da_case DA-11 date_first "(scatter close date) (scatter close obs)" "" "close, type(range)"
+    _w30_done DA-11 "after a filter move the date layer keeps its transform and the axis its Stata units"
+    _da_case DA-12 scatteri_ty_negative "(line close yr) (scatteri 1300 -500)"
+    _w30_done DA-12 "scatteri 1300 -500 on a %ty axis is at year -500, ticked at year 0 where Date.UTC would put 1900"
+    macro drop DA_*
     display as text "S35 end " c(current_date) " " c(current_time)
 }
 * ==== end S35 ====

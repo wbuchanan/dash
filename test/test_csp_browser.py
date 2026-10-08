@@ -614,3 +614,168 @@ class TestTheRedirectPageInChrome:
             assert p._eval("location.href") == target
             assert p.console == [], p.console
             assert p.violations() == [], p.violations()
+
+
+# ---------------------------------------------------------------------------
+# WP-30 P1.23a (section 35): the date transform and the off-date axes
+# ---------------------------------------------------------------------------
+
+def _date_frame(n=12):
+    i = np.arange(n, dtype=float)
+    return pd.DataFrame({"date": 14977.0 + 30.0 * (i % 12),
+                         "yr": 1990.0 + (i % 12),
+                         "close": 1200.0 + 10.0 * (i % 12),
+                         "obs": 1.0 + (i % 12)})
+
+
+_CLOSE = {"varname": "close", "type": "range", "exclude": [], "label": ""}
+_DATE_FORMATS = {"date": "%td", "yr": "%ty"}
+
+
+def _date_specs():
+    """The mixed axis (12 rows, and 12,000 for WebGL) and the two axes
+    that reach past Stata's dates."""
+    mixed = [{"type": "scatter", "yvar": "close", "xvar": "date",
+              "options": {}},
+             {"type": "scatter", "yvar": "close", "xvar": "obs",
+              "options": {}}]
+
+    def lit(x):
+        return {"type": "scatteri", "values": [[1300.0, float(x)]],
+                "options": {}}
+    sp = (lambda plots: _spec([_graph("g1", plots)], filters=[_CLOSE],
+                              formats=_DATE_FORMATS))
+    return {
+        "mixed": (sp(mixed), _date_frame()),
+        "mixed_big": (sp(mixed), _date_frame(dr._WEBGL_THRESHOLD + 2000)),
+        "scatteri_offrange": (sp([{"type": "line", "yvar": "close",
+                                   "xvar": "date", "options": {}},
+                                  lit(99999999)]), _date_frame()),
+        "ty_negative": (sp([{"type": "line", "yvar": "close", "xvar": "yr",
+                             "options": {}}, lit(-500)]), _date_frame()),
+    }
+
+
+_DATE_SAVED = {}
+
+
+def _date_page(name):
+    if name not in _DATE_SAVED:
+        d, sp, dp = _files(name, *_date_specs()[name])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            try:
+                page = dr.DashRenderer(sp, dp).render()
+            finally:
+                curdoc().clear()
+        path = os.path.join(d, "page.html")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(page)
+        _DATE_SAVED[name] = path
+    return _DATE_SAVED[name]
+
+
+def _date_app(name):
+    d, sp, dp = _files("app_" + name, *_date_specs()[name])
+    op = os.path.join(d, "app.py")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(sp, dp).build(op)
+    return op
+
+
+#: The first figure's x range and what its date transform makes of two
+#: dates (02jan2001 and 02nov2001 in epoch ms).
+_X_RANGE_JS = ("JSON.stringify((() => { const f = __dash_models('Figure')[0];"
+               " const t = __dash_models('CustomJSTransform');"
+               " return [f.x_range.start, f.x_range.end, t.length ? "
+               "Array.from(t[0].v_compute([978393600000, 1004659200000])) "
+               ": null]; })())")
+#: Set the close slider to its lower 60%, in a page task.
+_MOVE_CLOSE_JS = ("const s = __dash_models('RangeSlider')[0]; "
+                  "s.value = [s.start, s.start + 0.6 * (s.end - s.start)];")
+#: The first figure's bottom axis: its ticks and the text it writes there.
+_TICKS_JS = ("JSON.stringify((() => { const a = __dash_models('Figure')[0]"
+             ".below.filter(x => x.ticker)[0]; const t = a.ticker.ticks "
+             "|| null; return [a.ticker.type, t, t ? a.formatter.doFormat("
+             "t, {loc: 0}) : null, __dash_models('Figure')[0].x_range.start,"
+             " __dash_models('Figure')[0].x_range.end]; })())")
+
+
+def _check_mixed(p):
+    lo, hi, units = p.read(_X_RANGE_JS)
+    assert lo < 14977 < 15307 < hi < 1e6, (lo, hi)
+    assert units == [14977, 15281], units
+
+
+def _check_off_date(p, name):
+    kind, fmt, lit = (("td", "%td", 8639684294400000.0)
+                      if name == "scatteri_offrange"
+                      else ("ty", "%ty", -77945673600000.0))
+    typ, ticks, texts, lo, hi = p.read(_TICKS_JS)
+    assert typ == "FixedTicker" and ticks, (typ, ticks)
+    assert lo <= lit <= hi or hi <= lit <= lo, (lo, hi)
+    if name == "ty_negative":
+        assert -62167219200000.0 in ticks and -2208988800000.0 not in ticks
+    want = [dr._dash_fmt_text(dr._dash_stata_number_of(t, kind), fmt)
+            for t in ticks]
+    assert texts == want, (texts, want)
+    assert not any(t == "." or re.match(r"^[+-]\d{6}", t) for t in texts)
+
+
+class TestTheDateTransformUnderTheCsp:
+
+    @pytest.mark.parametrize("name", ["mixed", "mixed_big"])
+    def test_saved_page(self, name):
+        with _CspProbe(_url(_date_page(name))) as p:
+            assert p.violations() == [], p.violations()
+            if name == "mixed_big":
+                assert p.read("JSON.stringify(__dash_models('Figure')"
+                              ".map(f => f.output_backend))")[0] == "webgl"
+            _check_mixed(p)
+            before = p.read(_X_RANGE_JS)
+            p.in_task(_MOVE_CLOSE_JS)
+            p.wait_change(_X_RANGE_JS, before, timeout=10)
+            _check_mixed(p)
+            assert p.violations() == [], p.violations()
+            assert p.js_errors() == [], p.js_errors()
+
+    @pytest.mark.serve
+    def test_served_page(self):
+        with _Launched(_date_app("mixed")) as srv:
+            with _CspProbe(srv.url("/")) as p:
+                assert p.violations() == [], p.violations()
+                _check_mixed(p)
+                before = p.read(_X_RANGE_JS)
+                p.in_task(_MOVE_CLOSE_JS)
+                p.wait_change(_X_RANGE_JS, before, timeout=20)
+                _check_mixed(p)
+                assert p.violations() == [], p.violations()
+                assert p.js_errors() == [], p.js_errors()
+
+
+@pytest.mark.parametrize("name", ["scatteri_offrange", "ty_negative"])
+class TestOffDateAxesInTheBrowser:
+
+    def test_saved_page(self, name):
+        with _CspProbe(_url(_date_page(name))) as p:
+            assert p.violations() == [] and p.js_errors() == []
+            _check_off_date(p, name)
+            before = p.read(_TICKS_JS)
+            p.in_task(_MOVE_CLOSE_JS)
+            p.wait_change(_TICKS_JS, before, timeout=10)
+            _check_off_date(p, name)
+            assert p.violations() == [] and p.js_errors() == [], (
+                p.violations(), p.js_errors())
+
+    @pytest.mark.serve
+    def test_served_page(self, name):
+        with _Launched(_date_app(name)) as srv:
+            with _CspProbe(srv.url("/")) as p:
+                assert p.violations() == [] and p.js_errors() == []
+                _check_off_date(p, name)
+                before = p.read(_TICKS_JS)
+                p.in_task(_MOVE_CLOSE_JS)
+                p.wait_change(_TICKS_JS, before, timeout=20)
+                _check_off_date(p, name)
+                assert p.violations() == [] and p.js_errors() == []
