@@ -6423,10 +6423,213 @@ end
 }
 * ==== end S26 ====
 
+// S27 helpers (WP-30 P1.17b).  _db_bases(sp, dp, app): every tagged
+// base of a registered dash graph, saved and served, as "base@lo,hi" per
+// renderer (panels by title; lo,hi the unpadded scale of its axis) into
+// globals DB_S and DB_V; _db_move: the served base after a RangeSlider move
+// of x1 to (1, 3) and back, into DB_M; _db_tw: twoway's drawn_base and
+// curmin,curmax of graph g's probes, into DB_T.
+python:
+import os as _db_os, sys as _db_sys
+for _db_p in (_db_os.path.abspath(".."), _db_os.path.abspath(".")):
+    if _db_p not in _db_sys.path:
+        _db_sys.path.insert(0, _db_p)
+
+
+def _db_fmt(b, sc):
+    if sc is None:
+        return "%.6g@none" % b
+    return "%.6g@%.6g,%.6g" % (b, sc[0], sc[1])
+
+
+def _db_read(figs):
+    import dash_render as dr
+    out = []
+    figs = sorted(figs, key=lambda f: str(getattr(f.title, "text", "")))
+    for f in figs:
+        for r in f.renderers:
+            bs = dr._dash_base_spec(r)
+            if not bs:
+                continue
+            v = getattr(r.glyph, bs["prop"])
+            fld = v if isinstance(v, str) else getattr(v, "field", None)
+            vals = ({float(x) for x in r.data_source.data[fld]} if fld
+                    else {float(getattr(v, "value", v))})
+            name = getattr(r, "y_range_name", "default") or "default"
+            out.append(_db_fmt(min(vals), dr._dash_axis_scale(f, "y", name)))
+    return " ".join(out)
+
+
+def _db_bases(sp, dp, app):
+    from sfi import Macro
+    from bokeh.plotting import figure as _Fig
+    figs, sv, doc = _bg_docs(sp, dp, app)
+    sv = [m for m in doc.models if isinstance(m, _Fig)]
+    Macro.setGlobal("DB_S", _db_read(figs))
+    Macro.setGlobal("DB_V", _db_read(sv))
+
+
+def _db_move(sp, dp, app):
+    from sfi import Macro
+    from bokeh.models import RangeSlider
+    from bokeh.plotting import figure as _Fig
+    _, _, doc = _bg_docs(sp, dp, app)
+    [w] = [m for m in doc.models if isinstance(m, RangeSlider)]
+    got = []
+    for v in ((1.0, 3.0), (1.0, 5.0)):
+        old, w.value = w.value, v
+        for key in ("value", "value_throttled"):
+            for cb in list(w._callbacks.get(key, [])):
+                cb("value", old, v)
+        got.append(_db_read([m for m in doc.models if isinstance(m, _Fig)]))
+    Macro.setGlobal("DB_M", " | ".join(got))
+
+
+_db_main = __import__("__main__")
+_db_main._db_bases = _db_bases
+_db_main._db_move = _db_move
+end
+
+capture program drop _db_frame
+program define _db_frame
+    // The extractor's frame (scripts/extract_default_base_truth.do).
+    version 19
+    clear
+    quietly set obs 5
+    foreach v in x1 ypos y12 yneg ys g d ymix ydown {
+        local w : copy global DB_COL_`v'
+        quietly generate double `v' = real(word("`w'", _n))
+    }
+    format d %td
+end
+
+capture program drop _db_case
+program define _db_case
+    // id; the twoway command; its probes, each "prefix|region|plot" with
+    // prefix "-" for the graph itself or ".graphs[i]" under by().  twoway's
+    // drawn base and curmin,curmax are compared with dash's saved and
+    // served bases and unpadded scales (_dash_axis_scale).
+    version 19
+    args id cmd probes
+    _db_frame
+    local sep = cond(strpos(`"`cmd'"', ",") & (substr(`"`cmd'"', 1, 1) != "(" | strpos(`"`cmd'"', "),")), " ", ", ")
+    capture graph drop _all
+    quietly twoway `cmd' `sep' name(g, replace)
+    local tw ""
+    foreach p of local probes {
+        gettoken pre rest : p, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken reg rest : rest, parse("|")
+        gettoken bar k : rest, parse("|")
+        if "`pre'" == "-" local pre ""
+        local b "`.g`pre'.`reg'.plot`k'.drawn_base'"
+        local lo "`.g`pre'.`reg'.yscale.curmin'"
+        local hi "`.g`pre'.`reg'.yscale.curmax'"
+        local b = strtrim(strofreal(`b', "%12.6g"))
+        local lo = strtrim(strofreal(`lo', "%12.6g"))
+        local hi = strtrim(strofreal(`hi', "%12.6g"))
+        local tw "`tw' `b'@`lo',`hi'"
+    }
+    local tw = strtrim("`tw'")
+    capture graph drop _all
+    capture dash clear
+    global DB_K = $DB_K + 1
+    local k = $DB_K
+    quietly dash `cmd' `sep' name(zdb`k')
+    quietly _dash_serve_spec, specpath("${DB_WORK}/s`k'.json") datapath("${DB_WORK}/d`k'.json")
+    python: __import__("__main__")._db_bases(r"${DB_WORK}/s`k'.json", r"${DB_WORK}/d`k'.json", r"${DB_WORK}/a`k'.py")
+    display as text `"  `id' `cmd': twoway [`tw'] saved [${DB_S}] served [${DB_V}]"'
+    _w30_expect `id' `"("${DB_S}" == "`tw'" & "${DB_V}" == "`tw'")"' `"`cmd': twoway `tw', saved ${DB_S}, served ${DB_V}"'
+    foreach x in s`k'.json d`k'.json a`k'.py {
+        capture erase "${DB_WORK}/`x'"
+    }
+    capture dash clear
+end
+
 * ==== S27 P1.17b: twoway's default base and axis extent ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S27") {
     display as text "S27 start " c(current_date) " " c(current_time)
+    global DB_WORK "`w30_work'"
+    global DB_K 0
+    global DB_COL_x1 "1 2 3 4 5"
+    global DB_COL_ypos "10 11 12 13 14"
+    global DB_COL_y12 "12 25 33 41 18"
+    global DB_COL_yneg "-10 -11 -12 -13 -14"
+    global DB_COL_ys "1 2 3 4 5"
+    global DB_COL_g "1 1 2 2 2"
+    global DB_COL_d "15000 15007 15014 15021 15028"
+    global DB_COL_ymix "-3 5 8 2 -1"
+    global DB_COL_ydown "14 13 12 11 10"
+    local one "-|plotregion1|1"
+    foreach t in bar spike dropline area {
+        _db_case DB-01 "`t' y12 x1" "`one'"
+    }
+    _w30_done DB-01 "bar, spike, dropline and area stand on twoway's drawn_base (10) on its scale [10, 41], saved and served"
+    foreach c in "bar ypos x1" "bar yneg x1" "bar ymix x1" {
+        _db_case DB-02 "`c'" "`one'"
+    }
+    _db_case DB-02 "(bar y12 x1) (scatter ys x1)" "`one'"
+    _w30_done DB-02 "bases 10, -10 and 0 by the sign of the data; 0 when a scatter takes the scale to 0"
+    foreach c in "bar ypos x1, base(5)" "bar ypos x1, base(20)" "spike ypos x1, base(5)" {
+        _db_case DB-03 "`c'" "`one'"
+    }
+    _db_case DB-03 "(bar ypos x1) (bar y12 x1, base(0))" "-|plotregion1|1 -|plotregion1|2"
+    _w30_done DB-03 "an explicit base() is drawn where given and widens the scale as twoway's does"
+    foreach t in bar area {
+        _db_case DB-04 "`t' ypos x1, yscale(log)" "`one'"
+    }
+    _w30_done DB-04 "on a log axis the default base is the scale's lower end (10), never 0"
+    _db_case DB-05 "(scatter y12 x1) (bar ypos x1, yaxis(2))" "-|plotregion2|2"
+    _w30_done DB-05 "a yaxis(2) bar stands on its own axis's base (10)"
+    _db_case DB-06 "bar y12 x1, by(g)" ".graphs[1]|plotregion1|1 .graphs[2]|plotregion1|1"
+    _db_case DB-06 "bar y12 x1, by(g, yrescale)" ".graphs[1]|plotregion1|1 .graphs[2]|plotregion1|1"
+    _db_case DB-06 "(scatter y12 x1) (bar ypos x1, yaxis(2)), by(g)" ".graphs[1]|plotregion2|2 .graphs[2]|plotregion2|2"
+    _w30_done DB-06 "by() panels share the common scale's base (10, 10); yrescale gives each its own (10, 18); a shared y2 too"
+    // DB-07: a served move of x1 to 1-3 and back; twoway's `if x1<=3'.
+    _db_frame
+    capture graph drop _all
+    quietly twoway bar ydown x1 if x1<=3, name(g, replace)
+    local w1 "`.g.plotregion1.plot1.drawn_base'"
+    quietly twoway bar ydown x1, name(g, replace)
+    local w0 "`.g.plotregion1.plot1.drawn_base'"
+    capture graph drop _all
+    capture dash clear
+    quietly dash bar ydown x1, name(zdbm)
+    quietly _dash_serve_spec, specpath("${DB_WORK}/sm.json") datapath("${DB_WORK}/dm.json") filter(x1, type(range))
+    python: __import__("__main__")._db_move(r"${DB_WORK}/sm.json", r"${DB_WORK}/dm.json", r"${DB_WORK}/am.py")
+    display as text `"  DB-07: twoway `w1' then `w0'; served ${DB_M}"'
+    _w30_expect DB-07 `"(word("${DB_M}", 1) == "`w1'@`w1',14" & word("${DB_M}", 3) == "`w0'@`w0',14")"' `"served after the move ${DB_M}, twoway `w1' then `w0'"'
+    foreach x in sm.json dm.json am.py {
+        capture erase "${DB_WORK}/`x'"
+    }
+    capture dash clear
+    _w30_done DB-07 "after a served move to x1<=3 the base is twoway's if (12); moved back, 10"
+    // DB-08: %td -- the base is dash's own scale's low end (S44 gives the
+    // scale twoway's 14997), never 0 ms; twoway's value is shown.
+    _db_frame
+    capture graph drop _all
+    quietly twoway bar d x1, name(g, replace)
+    local tb "`.g.plotregion1.plot1.drawn_base'"
+    capture graph drop _all
+    capture dash clear
+    quietly dash bar d x1, name(zdbd)
+    quietly _dash_serve_spec, specpath("${DB_WORK}/sd.json") datapath("${DB_WORK}/dd.json")
+    python: __import__("__main__")._db_bases(r"${DB_WORK}/sd.json", r"${DB_WORK}/dd.json", r"${DB_WORK}/ad.py")
+    display as text `"  DB-08: twoway `tb' (days); saved ${DB_S}, served ${DB_V} (ms)"'
+    foreach m in S V {
+        local v "${DB_`m'}"
+        gettoken b rest : v, parse("@")
+        gettoken at rest : rest, parse("@")
+        gettoken lo hi : rest, parse(",")
+        _w30_expect DB-08 "(`b' == `lo' & `b' != 0 & `b' > -315619200000)" "`m': base `b', scale from `lo'"
+    }
+    foreach x in sd.json dd.json ad.py {
+        capture erase "${DB_WORK}/`x'"
+    }
+    capture dash clear
+    _w30_done DB-08 "on a %td axis the base is the scale's low end, not 01jan1970 (twoway's 14997 waits for S44)"
+    macro drop DB_*
     display as text "S27 end " c(current_date) " " c(current_time)
 }
 * ==== end S27 ====

@@ -66,6 +66,12 @@ _FIXTURE = os.path.join(_HERE, "fixtures", "stat_truth.json")
 _DATA = os.path.join(_HERE, "fixtures", "data")
 
 # sysuse auto, as the columns the claims below are measured on.
+#: twoway's default base of `<t> mpg weight' on auto (WP-30 P1.17b;
+#: scripts/extract_default_base_truth.do).
+with open(os.path.join(_HERE, "fixtures", "default_base_truth.json"),
+          encoding="utf-8") as _fh:
+    _DEFAULT_BASE = json.load(_fh)["auto"]
+
 _AUTO = pd.DataFrame({
     "mpg": np.asarray(_AUTO_MPG, float),
     "weight": np.asarray(_AUTO_WEIGHT, float),
@@ -396,11 +402,14 @@ class TestDroplineBase:
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_the_default_is_zero(self, tmp_path, mode):
+        """Flipped: was ``y0 == 0.0`` -- twoway draws a default base as 0
+        clamped into the axis's scale (P1.17b): 10 for `dropline mpg
+        weight' (fixture default_base_truth.json auto.dropline)."""
         got = _both(tmp_path, [{"type": "dropline", "yvar": "mpg",
                                 "xvar": "weight", "options": {}}],
                     "dl0")[mode][0]
         d = _one(got, "x", "y", "y0")
-        assert np.all(d["y0"] == 0.0)
+        assert np.all(d["y0"] == _DEFAULT_BASE["dropline"]["drawn_base"])
 
     @pytest.mark.parametrize("raw", ["abc", "inf", "nan", "1e999", ""])
     def test_an_unusable_base_draws_from_zero(self, gm, raw):
@@ -861,6 +870,10 @@ class TestBaseOnTheBarPlots:
             g = r.glyph
             if layer == "bar" and hasattr(g, "bottom"):
                 b = g.bottom
+                fld = b if isinstance(b, str) else getattr(b, "field", None)
+                if fld:
+                    vals += [float(v) for v in r.data_source.data[fld]]
+                    continue
                 vals.append(float(b) if isinstance(b, (int, float))
                             else float(getattr(b, "value", np.nan)))
             elif key in r.data_source.data:
@@ -879,7 +892,10 @@ class TestBaseOnTheBarPlots:
                                 "xvar": "weight", "options": opts}],
                     layer + "base" + base)[mode][0]
         vals = self._bases(got, layer, key)
-        want = float(base) if base else 0.0
+        # Flipped: the default was 0.0 -- twoway draws a default base as 0
+        # clamped into the axis's scale (P1.17b): 10 on `<layer> mpg
+        # weight' (fixture default_base_truth.json auto.<layer>).
+        want = float(base) if base else _DEFAULT_BASE[layer]["drawn_base"]
         assert vals and all(v == want for v in vals), (layer, vals)
 
 
@@ -1128,7 +1144,11 @@ class TestTheEntriesSayWhatTakesThem:
         ("n", "50 by default"), ("n", "300 by default"),
         ("n", "100 by default"), ("n", "default 10"),
         ("bands", "round(min(10 log10"), ("range", "{cmd:range(0 1)}"),
-        ("base", "default 0"), ("stdp", "(the default)")])
+        # Flipped: was "default 0" -- twoway draws a default base as 0
+        # clamped into the axis's scale (P1.17b), and the entry says so.
+        pytest.param("base", "they are drawn from 0 when the y",
+                     id="base-default 0"),
+        ("stdp", "(the default)")])
     def test_the_entry_gives_the_default(self, opt, default):
         assert default in _entries()[opt]
 

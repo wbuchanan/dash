@@ -11701,14 +11701,12 @@ class GlyphMapper:
         if _ROW_ID_COLUMN in source.data:
             _area_ids = np.asarray(source.data[_ROW_ID_COLUMN])[_area_idx]
 
-        # base() option sets the lower boundary; default 0
-        base_val = 0.0
-        if "base" in options:
-            try:
-                base_val = float(options["base"])
-            except (ValueError, TypeError):
-                pass
-        y1_base = np.full_like(y_arr, base_val)
+        # base() sets the lower boundary; with none, twoway's default base
+        # (0 clamped into the axis's scale), filled by
+        # _dash_finish_auto_bases once the scale is known (WP-30 P1.17b).
+        _base = self._base_value(options, "area")
+        _zero = self._base_zero(yvar)
+        y1_base = np.full_like(y_arr, _zero if _base is None else _base)
         _y1_col = f"{yvar}_base"
 
         # _y1_col = baseline, yvar = upper boundary
@@ -11730,6 +11728,7 @@ class GlyphMapper:
                           _fill_base, _f, self.scheme.naturally_white),
                       fill_alpha=self._scheme_alpha(color_idx, "area"),
                       legend_label=yvar)
+        self._tag_base(r, "y1", _base is None, _zero)
 
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
 
@@ -11839,15 +11838,14 @@ class GlyphMapper:
             xvar, df[xvar], bar_width)
         if _bar_ext:
             df = df.assign(**_bar_ext)
+        # base() sets the bar bottom; with none, a tagged column that
+        # _dash_finish_auto_bases fills with twoway's base, 0 clamped into
+        # the axis's scale (WP-30 P1.17b).
+        _base = self._base_value(options, "bar")
+        _zero = self._base_zero(yvar)
+        if _base is None:
+            df = df.assign(**{self._BASE_COL: _zero})
         clean_source = ColumnDataSource(df)
-
-        # base() option sets the bar bottom; default 0
-        base_val = 0.0
-        if "base" in options:
-            try:
-                base_val = float(options["base"])
-            except (ValueError, TypeError):
-                pass
 
         _bar_default_color = self.scheme.default_color(color_idx, "bar")
         # The fill is the resolved colour at the p#bar intensity, opaque,
@@ -11855,7 +11853,9 @@ class GlyphMapper:
         _fill_base = _bar_default_color
         _f = self.scheme.p_bar_intensity[color_idx % 15]
         _vbar_kwargs: dict = dict(
-            x=x_field, top=yvar, bottom=base_val, source=clean_source,
+            x=x_field, top=yvar,
+            bottom=self._BASE_COL if _base is None else _base,
+            source=clean_source,
             width=width_spec,
             fill_color=self._blend_intensity(
                 _fill_base, _f, self.scheme.naturally_white),
@@ -11877,6 +11877,7 @@ class GlyphMapper:
             _vbar_kwargs["line_width"] = _bar_lw
         # No view here: clean_source already holds only the selected rows.
         r = fig.vbar(**_vbar_kwargs)
+        self._tag_base(r, "bottom", _base is None, _zero)
         if "color" in options:
             try:
                 c = self.tr.translate_mcolor(options["color"])
@@ -11912,6 +11913,48 @@ class GlyphMapper:
     #: The reserved columns a bar on a period axis is drawn from (D-14c).
     _BAR_XC = "__dash_bar_xc"
     _BAR_W = "__dash_bar_w"
+    #: The reserved column a default bar base is drawn from, and the glyph
+    #: properties a base may sit in (WP-30 P1.17b; the x ones are a
+    #: horizontal layer's).
+    _BASE_COL = "__dash_base"
+    _BASE_PROPS = ("bottom", "y0", "y1", "left", "x0", "x1")
+
+    def _base_value(self, options, layer):
+        """base()'s value, or None for twoway's default base: no base, an
+        empty one or ``.`` (a per-series list's missing element).  A text
+        or non-finite value in a hand-written spec is named by its note
+        and takes the default (WP-30 P1.17b).  Never raises."""
+        raw = (options or {}).get("base")
+        if raw is None or str(raw).strip() in ("", "."):
+            return None
+        return _stat_option_float(options, "base", None, layer)
+
+    def _base_zero(self, yvar):
+        """Stata's 0 in the units of *yvar*'s axis: 01jan1960 on a date
+        axis, 0 otherwise (WP-30 P1.17b)."""
+        kind = (getattr(self, "date_vars", None) or {}).get(yvar)
+        if kind in ("td", "tc", "tC", "tw", "tm", "tq", "th", "ty"):
+            try:
+                z = float(_dash_units_to_axis(np.array([0.0]), kind)[0])
+            except Exception:  # noqa: BLE001 -- never raises
+                return 0.0
+            return z if math.isfinite(z) else 0.0
+        return 0.0
+
+    @staticmethod
+    def _tag_base(r, prop, auto, zero, letter="y"):
+        """Tag renderer *r* with the property its base sits in, the axis
+        letter, Stata's 0 in that axis's units and whether the base is the
+        default (``dash_base:`` and compact JSON; WP-30 P1.17b).  A
+        default base's column is filled by _dash_finish_auto_bases.  The
+        tag holds no user text."""
+        assert prop in GlyphMapper._BASE_PROPS and letter in ("x", "y")
+        tag = "dash_base:" + json.dumps(
+            {"auto": bool(auto), "letter": letter, "prop": prop,
+             "zero": float(zero)},
+            sort_keys=True, separators=(",", ":"), allow_nan=False)
+        r.tags = [t for t in (r.tags or [])
+                  if not str(t).startswith("dash_base:")] + [tag]
 
     def _bar_extent(self, xvar, xs, width):
         """The x field, width spec and extra columns of a bar *width* x
@@ -11987,14 +12030,11 @@ class GlyphMapper:
         # dropped, and Bokeh applies a mask by position -- so attaching the
         # view to the rebuilt source selected the wrong observations.
         x_arr, y_arr = self._masked(source, view, xvar, yvar)
-        # base() option sets the spike origin; default 0
-        base_val = 0.0
-        if "base" in options:
-            try:
-                base_val = float(options["base"])
-            except (ValueError, TypeError):
-                pass
-        y0_base = np.full_like(x_arr, base_val)
+        # base() sets the spike origin; with none, twoway's default base,
+        # filled by _dash_finish_auto_bases (WP-30 P1.17b).
+        _base = self._base_value(options, "spike")
+        _zero = self._base_zero(yvar)
+        y0_base = np.full_like(x_arr, _zero if _base is None else _base)
 
         # The same rows _masked() kept, as positions, so the caller's other
         # columns -- a variable hover() names -- can ride along.
@@ -12011,6 +12051,7 @@ class GlyphMapper:
                                   **self._scheme_alpha_kw(color_idx, "spike"))
         # No view here: seg_source already holds only the selected rows.
         r = fig.segment(**_seg_kwargs)
+        self._tag_base(r, "y0", _base is None, _zero)
         self._apply_line_opts(r, options)
         # No marker labels: twoway draws none on a spike (measured).
         return r
@@ -15180,15 +15221,18 @@ class GlyphMapper:
             mask &= _dl_sel
         view = None
         x_arr, y_arr = x_arr[mask], y_arr[mask]
-        # base(#): the value the drops run to, 0 by default
+        # base(#): the value the drops run to, twoway's default base else
         # (twoway_dropline.sthlp; measured 23sep2026 from the SVG of `twoway
         # dropline mpg weight in 1/3, base(10)': every drop starts at 10).
         # map_bar and map_spike read it; this drew every drop to 0 whatever
         # base() said, and said nothing.  Read through _stat_option_float,
         # so a hand-written spec's base(abc) or base(inf) is named and drawn
-        # from 0 rather than raised out of the render.
-        _base = _stat_option_float(options, "base", 0.0, "dropline")
-        zeros = np.full_like(x_arr, 0.0 if _base is None else float(_base))
+        # from the default base rather than raised out of the render.
+        # With no base(), twoway's default base, filled by
+        # _dash_finish_auto_bases (WP-30 P1.17b).
+        _base = self._base_value(options, "dropline")
+        _zero = self._base_zero(yvar)
+        zeros = np.full_like(x_arr, _zero if _base is None else float(_base))
 
         # Apply jitter if requested (jitters x and y).  Read through
         # _stat_option_float: a bare float() here raised out of the mapper
@@ -15250,6 +15294,7 @@ class GlyphMapper:
             _dl_seg_kwargs["view"] = view
             _dl_dot_kwargs["view"] = view
         seg = fig.segment(**_dl_seg_kwargs)
+        self._tag_base(seg, "y0", _base is None, _zero)
         dot = fig.scatter(**_dl_dot_kwargs)
         self._apply_line_opts(seg, options)
         # msymbol(), msize(), msangle() and malpha() are read here and
@@ -25397,6 +25442,30 @@ function dash_axis_pad(lo, hi, kind, reverse, margin) {
     }
     return reverse ? [e, s] : [s, e];
 }
+function dash_fill_auto_bases(a, models, lo, hi) {
+    // WP-30 P1.17b: each default base column the plan names (built in
+    // Python from the renderers' dash_base: tags) takes 0 clamped into
+    // the axis's finished, unpadded scale.  No tag is parsed here.
+    if (typeof lo !== "number" || typeof hi !== "number" || !isFinite(lo)
+            || !isFinite(hi) || lo > hi || !Array.isArray(a.autobase)) return;
+    for (const b of a.autobase) {
+        if (!b || !Number.isInteger(b.src) || typeof b.field !== "string"
+                || !Number.isFinite(b.zero)) continue;
+        const src = models[b.src];
+        if (!src || !src.data
+                || !Object.prototype.hasOwnProperty.call(src.data, b.field)) continue;
+        const col = src.data[b.field];
+        const n = col ? col.length : 0;
+        const v = Math.min(Math.max(b.zero, lo), hi);
+        let same = true;
+        for (let i = 0; i < n; i++) if (col[i] !== v) { same = false; break; }
+        if (same) continue;
+        const nd = Object.assign({}, src.data);
+        nd[b.field] = new Array(n).fill(v);
+        src.data = nd;
+        if (src.change) src.change.emit();
+    }
+}
 function dash_axis_place(a, lo, hi, cur) {
     if (a.mode !== "count" || a.hold) return cur;
     let t = dash_axis_ticks(lo, hi, a.n, a.kind);
@@ -25406,7 +25475,7 @@ function dash_axis_place(a, lo, hi, cur) {
     return (t && t.length) ? t : cur;
 }
 function dash_axis_compute(plan, models) {
-    const tickers = {}, ranges = {}, tick_range = {};
+    const tickers = {}, ranges = {}, tick_range = {}, fills = [];
     for (const grp of plan) {
         const panels = grp.panels;
         const share = (panels.length > 1) ? (grp.share || []) : [];
@@ -25462,10 +25531,11 @@ function dash_axis_compute(plan, models) {
                     .filter((h) => h !== null);
                 if (!hs.length) continue;
                 const a0 = es[0].a;
+                const hlo = dash_axis_min(hs.map((h) => h[0]));
+                const hhi = dash_axis_max(hs.map((h) => h[1]));
+                for (const s of es) fills.push([s.a, hlo, hhi]);
                 if (a0.range < 0) continue;
-                ranges[a0.range] = dash_axis_pad(dash_axis_min(hs.map((h) => h[0])),
-                                                 dash_axis_max(hs.map((h) => h[1])),
-                                                 a0.kind, a0.reverse, a0.margin);
+                ranges[a0.range] = dash_axis_pad(hlo, hhi, a0.kind, a0.reverse, a0.margin);
             }
         }
         if (share.length) {
@@ -25489,6 +25559,7 @@ function dash_axis_compute(plan, models) {
                 const lo = dash_axis_min(hulls.map((h) => h[0]).concat(data));
                 const hi = dash_axis_max(hulls.map((h) => h[1]).concat(data));
                 const a0 = per.at[per.order[0]][0].a;
+                for (const pi of per.order) for (const s of per.at[pi]) fills.push([s.a, lo, hi]);
                 if (a0.range < 0) continue;
                 ranges[a0.range] = dash_axis_pad(lo, hi, a0.kind, a0.reverse, a0.margin);
             }
@@ -25500,7 +25571,7 @@ function dash_axis_compute(plan, models) {
             }
         }
     }
-    return {tickers: tickers, ranges: ranges, tick_range: tick_range};
+    return {tickers: tickers, ranges: ranges, tick_range: tick_range, fills: fills};
 }
 function dash_axis_same(a, b) {
     if (!a || !b || a.length !== b.length) return false;
@@ -25542,6 +25613,7 @@ function dash_axis_finish(plan, models) {
         const r = models[ri];
         if (r && r.change) r.change.emit();
     }
+    for (const f of tg.fills) dash_fill_auto_bases(f[0], models, f[1], f[2]);
 }
 """
 #: WP-30 P1.3a (D-21d): the zoom code, after _DASH_AXIS_FINISH_JS in ONE
@@ -25927,8 +25999,8 @@ def _dash_secondary_values(fig, range_attr, name):
                 idx = [i for i, b in enumerate(list(bools)[:n]) if b]
         rows = (range(n) if idx is None
                 else [i for i in idx if 0 <= int(i) < n])
-        # A default base is no part of the scale (WP-30 P1.3a).
-        skip = getattr(r, "_dash_auto_base", None) or ()
+        # A default base is no part of the scale (WP-30 P1.3a, P1.17b).
+        skip = _dash_auto_base_props(r, range_attr[0])
         for attr in fields:
             if attr not in g.properties() or attr in skip:
                 continue
@@ -25956,6 +26028,114 @@ def _dash_secondary_values(fig, range_attr, name):
     return cols, cols + consts
 
 
+def _dash_base_spec(r):
+    """The ``dash_base:`` tag of renderer *r* as ``{"auto", "letter",
+    "prop", "zero"}``, or None (WP-30 P1.17b; GlyphMapper._tag_base).
+
+    Only a string of at most 200 characters is parsed, as JSON, and only a
+    dict whose ``prop`` is one of ``GlyphMapper._BASE_PROPS``, ``letter``
+    ``x`` or ``y``, ``auto`` a bool and ``zero`` a finite number is read.
+    Never raises."""
+    try:
+        for t in getattr(r, "tags", None) or ():
+            if not isinstance(t, str) or not t.startswith("dash_base:") \
+                    or len(t) > 200:
+                continue
+            d = json.loads(t[len("dash_base:"):])
+            if not isinstance(d, dict):
+                return None
+            z, a = d.get("zero"), d.get("auto")
+            if d.get("prop") not in GlyphMapper._BASE_PROPS \
+                    or d.get("letter") not in ("x", "y") \
+                    or not isinstance(a, bool) \
+                    or not isinstance(z, (int, float)) or isinstance(z, bool) \
+                    or not math.isfinite(float(z)):
+                return None
+            return {"auto": a, "letter": d["letter"], "prop": d["prop"],
+                    "zero": float(z)}
+    except Exception:  # noqa: BLE001 -- never raises
+        return None
+    return None
+
+
+def _dash_auto_base_props(r, letter):
+    """``(prop,)`` when renderer *r* draws a default base on an axis of
+    *letter* (its ``dash_base:`` tag, :func:`_dash_base_spec`), else ``()``:
+    the property every value reader skips, as twoway's scale has no
+    default base (WP-30 P1.3a D7 a, P1.17b)."""
+    bs = _dash_base_spec(r)
+    return (bs["prop"],) if bs and bs["auto"] and bs["letter"] == letter \
+        else ()
+
+
+def _dash_axis_scale(fig, letter, name="default"):
+    """The unpadded ``(lo, hi)`` of *fig*'s finished scale on axis *letter*
+    of range *name* -- the hull :func:`_dash_hull_ranges` recorded
+    (``fig._dash_hull_entries``), else a second range's
+    ``fig._dash_secondary_hulls`` -- or None (WP-30 P1.17b).  Never the
+    padded Range1d: twoway's base sits at curmin, inside the margin."""
+    sc = None
+    for h in getattr(fig, "_dash_hull_entries", None) or ():
+        if tuple(h.get("key") or ()) == (name, letter):
+            sc = (h.get("lo"), h.get("hi"))
+            break
+    if sc is None and name != "default":
+        rec = (getattr(fig, "_dash_secondary_hulls", None) or {}).get(name)
+        if rec is not None:
+            sc = tuple(rec[:2])
+    if sc is None or len(sc) != 2:
+        return None
+    try:
+        lo, hi = float(sc[0]), float(sc[1])
+    except (TypeError, ValueError):
+        return None
+    if not (math.isfinite(lo) and math.isfinite(hi)) or lo > hi:
+        return None
+    return lo, hi
+
+
+def _dash_finish_auto_bases(fig):
+    """Fill every default base column on *fig* with twoway's base: 0 (in
+    the axis's units, the tag's ``zero``) clamped into the axis's finished
+    scale (:func:`_dash_axis_scale`) -- 0 when the scale holds it, else
+    the scale's end nearest 0; the lower end on a log axis (WP-30
+    P1.17b).  A column that already holds the value is not rewritten, so
+    the served app sends no change.  An axis with no scale keeps the
+    mapper's provisional value.  Returns the number of columns written.
+    Run at the ends of :func:`_dash_finish_count_ticks` and
+    :func:`_dash_common_count_ticks`, in both modes and after a served
+    move; the saved page's twin is ``dash_fill_auto_bases``.  Never
+    raises."""
+    n = 0
+    for r in getattr(fig, "renderers", None) or ():
+        try:
+            bs = _dash_base_spec(r)
+            if not bs or not bs["auto"]:
+                continue
+            name = getattr(r, bs["letter"] + "_range_name",
+                           "default") or "default"
+            sc = _dash_axis_scale(fig, bs["letter"], name)
+            if sc is None:
+                continue
+            v = getattr(r.glyph, bs["prop"])
+            field = (v if isinstance(v, str)
+                     else v.get("field") if isinstance(v, dict)
+                     else getattr(v, "field", None))
+            data = r.data_source.data
+            if not field or field not in data:
+                continue
+            col = data[field]
+            val = min(max(bs["zero"], sc[0]), sc[1])
+            new = np.full(len(col), val, dtype=float)
+            if np.array_equal(np.asarray(col, dtype=float), new):
+                continue
+            data[field] = new
+            n += 1
+        except Exception:  # noqa: BLE001 -- never raises
+            continue
+    return n
+
+
 #: WP-30 P1.3a (D-21g): the plot types whose coordinates are typed numbers,
 #: not a variable's values -- left out of a date axis's hull until S35.
 _DASH_RAW_SIF_TYPES = frozenset({"scatteri", "pci", "pcarrowi", "function"})
@@ -25973,7 +26153,7 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
     :func:`_dash_secondary_values` lists, without building the list, so a
     500,000-row layer is read within the re-finish budget (A9).  A colour
     key's swatches, a renderer on another range and a default base
-    (``_dash_auto_base``, :func:`_dash_tag_hull_roles`) are skipped, and so
+    (its ``dash_base:`` tag, :func:`_dash_auto_base_props`) are skipped, and so
     is a typed-number layer (``_dash_raw_sif``) when *kind* is a date
     kind.  Only finite values count, positive ones on ``"log"``.  An
     explicit ``base()`` (``_dash_base``) is no tick input either -- twoway
@@ -25999,7 +26179,7 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
                 continue
             skip = ()
         else:
-            skip = tuple(getattr(r, "_dash_auto_base", None) or ()) + based
+            skip = _dash_auto_base_props(r, range_attr[0]) + based
         data = src.data
         first = next(iter(data), None)
         n = len(data[first]) if first else 0
@@ -26056,37 +26236,26 @@ def _dash_tag_hull_roles(renderers, ptype, options):
     (WP-30 P1.3a, D-21g), in both build loops.
 
     A default base is no tick input and no part of twoway's scale
-    (measured: ``bar mpg weight`` runs y 10 to 41, not 0): a bar, area,
-    spike or dropline layer with no ``base()`` gets ``_dash_auto_base``,
-    the glyph property holding that base (a VBar's ``bottom``, an HBar's
-    ``left``, a VArea's ``y1``, a Segment's ``y0``), which every hull
-    reader skips until S27 clamps the base into the scale; an explicit
-    ``base()`` stays in the hull but is no tick input (``_dash_base``).
+    (measured: ``bar mpg weight`` runs y 10 to 41, not 0): its renderer's
+    ``dash_base:`` tag (GlyphMapper._tag_base, read by
+    :func:`_dash_auto_base_props`) marks it, every value reader skips it,
+    and :func:`_dash_finish_auto_bases` clamps it into the scale (WP-30
+    P1.17b).  An explicit ``base()`` stays in the hull but is no tick
+    input: its tag's property is stamped ``_dash_base``.
     scatteri, pci, pcarrowi and function layers get
     ``_dash_raw_sif``, which the reader skips on a date axis until S35.
     Python attributes only: never serialised.
     """
     t = str(ptype or "").strip().lower()
-    has_base = "base" in (options or {})
     for r in renderers or ():
         g = getattr(r, "glyph", None)
         if g is None or _dash_is_swatch(r):
             continue
         if t in _DASH_RAW_SIF_TYPES:
             r._dash_raw_sif = True
-        gname = type(g).__name__
-        props = None
-        if t == "bar":
-            props = {"VBar": ("bottom",), "HBar": ("left",)}.get(gname)
-        elif t == "area":
-            props = {"VArea": ("y1",), "HArea": ("x1",)}.get(gname)
-        elif t in ("spike", "dropline") and gname == "Segment":
-            props = ("y0",)
-        if props:
-            if has_base:
-                r._dash_base = props
-            else:
-                r._dash_auto_base = props
+        bs = _dash_base_spec(r)
+        if bs and not bs["auto"]:
+            r._dash_base = (bs["prop"],)
 
 
 def _dash_refinish_axes(figures, facet_map):
@@ -26215,7 +26384,7 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                     kind in _DASH_TS_UNITS or kind in ("tc", "tC"))
                 fields = (_DASH_Y_COORDS if letter == "y"
                           else _DASH_X_COORDS)
-                layers, bars = [], []
+                layers, bars, autobase = [], [], []
                 for r in f.renderers:
                     g = getattr(r, "glyph", None)
                     src = getattr(r, "data_source", None)
@@ -26265,7 +26434,18 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                     if date and getattr(r, "_dash_raw_sif", False):
                         continue
                     based = tuple(getattr(r, "_dash_base", None) or ())
-                    skip = tuple(getattr(r, "_dash_auto_base", None) or ())
+                    skip = _dash_auto_base_props(r, letter)
+                    if skip:
+                        # The default base's column, filled after the
+                        # finish (dash_fill_auto_bases; WP-30 P1.17b).
+                        v = getattr(g, skip[0])
+                        fld = (v if isinstance(v, str)
+                               else v.get("field") if isinstance(v, dict)
+                               else getattr(v, "field", None))
+                        if fld and fld in src.data:
+                            autobase.append({
+                                "src": si, "field": str(fld),
+                                "zero": _dash_base_spec(r)["zero"]})
                     props = g.properties()
                     lf, lc, bf, bc = [], [], [], []
                     for attr in fields:
@@ -26313,7 +26493,7 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                     "margin": (float(margins[letter])
                                if letter in margins else None),
                     "range": ri, "ticker": ti,
-                    "layers": layers, "bars": bars})
+                    "layers": layers, "bars": bars, "autobase": autobase})
                 if zoom and mode == "count" and ri >= 0 \
                         and rng not in zoom_ranges:
                     zoom_ranges.append(rng)
@@ -27055,6 +27235,9 @@ def _dash_finish_count_ticks(fig, refinish=False, skip=()):
         if lo is not None and not e.get("skip"):
             _dash_place_count_ticks(e, lo, hi)
     _dash_hull_ranges(fig, entries)
+    # Each default base at twoway's clamp, from the scale just made
+    # (WP-30 P1.17b); a by() graph's shared letters again after the share.
+    _dash_finish_auto_bases(fig)
 
 
 def _dash_common_count_ticks(figs, letters=("x", "y")):
@@ -27145,6 +27328,9 @@ def _dash_common_count_ticks(figs, letters=("x", "y")):
         if hkey in made:
             _dash_share_repoint([f for f, _ in per.values()], hkey[1],
                                 hkey[0], made[hkey])
+    # The panels' default bases from the common scale (WP-30 P1.17b).
+    for f in figs or ():
+        _dash_finish_auto_bases(f)
 
 
 def _dash_share_repoint(figs, letter, name, rng):
@@ -37562,6 +37748,9 @@ class ServerAppBuilder:
                          "_dash_by_numticks",
                          "_dash_axis_plan", "_dash_layer_extent",
                          "_dash_tag_hull_roles", "_dash_refinish_axes",
+                         # WP-30 P1.17b: twoway's default base.
+                         "_dash_base_spec", "_dash_auto_base_props",
+                         "_dash_axis_scale", "_dash_finish_auto_bases",
                          # WP-28 B2: the extent after the layers, the
                          # scale sub-option names and the shared
                          # primary-renderers limit.

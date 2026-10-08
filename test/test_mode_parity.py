@@ -1990,6 +1990,11 @@ CORPUS = [
     _case("function without points needing Stata (WP-30 P1.22)",
           [_sc(), plot_for("function", {"range": "0 2", "n": "3"},
                            expr="normalden(x)")]),
+    # WP-30 P1.17b: twoway's default base
+    _case("spike base(5)", [plot_for("spike", {"base": "5"})]),
+    _case("area on a log y", [plot_for("area")], None, {"yscale": "log"}),
+    _case("dropline on yaxis(2)",
+          [_sc(), plot_for("dropline", {"yaxis": "2"}, yvar="price")]),
 ]
 
 
@@ -2790,6 +2795,11 @@ MOVE_CORPUS = [
     _move_case("y2 after a dropdown move", _MOVES[0],
                [plot_for("scatter"), plot_for("scatter", {"yaxis": "2"},
                                               yvar="price")]),
+    # WP-30 P1.17b: twoway's default base, after a move
+    _move_case("bar with 0 below the data, dropdown", _MOVES[0],
+               [plot_for("bar")]),
+    _move_case("area under by(), range", _MOVES[1], [plot_for("area")],
+               {"by": "foreign"}),
 ]
 
 

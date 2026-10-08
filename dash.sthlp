@@ -386,6 +386,12 @@ size unless {cmd:msize()} says otherwise.  {cmd:barwidth()} on {cmd:rcap}
 or {cmd:rcapsym} is refused, r(198), as {cmd:twoway} refuses it.
 
 {pstd}
+{ul:Where bars stand.}  {cmd:bar}, {cmd:spike}, {cmd:dropline} and
+{cmd:area} stand where {cmd:twoway} stands them: on 0 when the axis holds
+it, otherwise on the end of the axis nearest 0; see {opt base(#)} under
+Statistical Layer Options.
+
+{pstd}
 {ul:Immediate values.}  {cmd:scatteri}, {cmd:pci} and {cmd:pcarrowi} read
 their values as {cmd:twoway} does: {it:#y #x} for {cmd:scatteri} and
 {it:#y1 #x1 #y2 #x2} for {cmd:pci} and {cmd:pcarrowi}, each followed by an
@@ -2688,9 +2694,15 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     {cmd:histogram}, {cmd:scatter} and {cmd:line}{p_end}
 {synopt:{opt base(#)}}{cmd:bar}, {cmd:spike}, {cmd:dropline} and
     {cmd:area}: the value the bars, spikes, drops and area are drawn from;
-    any number, default 0.  With no {cmd:base()}, when 0 lies outside the
-    range of y, {cmd:twoway} draws them from the edge of the plot region
-    and its axis does not reach 0; {cmd:dash} draws them from 0.
+    any number.  The axis reaches it, but no tick is placed for it, as in
+    {cmd:twoway}.  With no {cmd:base()} they are drawn from 0 when the y
+    axis's scale holds 0, and otherwise from the end of the scale nearest
+    0, so the axis does not reach 0: {cmd:dash bar mpg weight}, like
+    {cmd:twoway bar mpg weight}, draws its bars up from 10.  On a log axis
+    that is the scale's lower end, and on a date axis 0 is 01jan1960.
+    Under {cmd:by()} the panels share one base unless {cmd:yrescale} gives
+    each its own scale, and a {cmd:yaxis(2)} layer takes its base from
+    that axis.  The base follows the axis when a filter moves.
     {cmd:twoway} also takes {cmd:base()} on {cmd:dot}, where it matters
     only with {cmd:dotextend(no)}, and on {cmd:function}, as the base of
     {cmd:droplines()} -- neither of which {cmd:dash} draws -- and refuses

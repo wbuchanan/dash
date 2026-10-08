@@ -2153,9 +2153,18 @@ class TestBarOptions:
             "base option must set vbar bottom attribute"
 
     def test_base_default_is_zero(self, fig, cds, gm):
-        """Absent base option must default bar bottom to 0."""
+        """Absent base option: the mapper draws the bar bottom from the
+        reserved __dash_base column, holding the provisional 0 until the
+        axis is finished (twoway draws a default base as 0 clamped into
+        the axis's scale, P1.17b).
+
+        Flipped: was ``bottom == 0`` (a number) -- twoway draws a default
+        base as 0 clamped into the axis's scale, so it is a column the
+        finisher fills (P1.17b)."""
         r = gm.map_bar(fig, cds, "mpg", "weight", {})
-        assert r.glyph.bottom == 0, "default bar bottom must be 0"
+        assert r.glyph.bottom == GlyphMapper._BASE_COL
+        col = r.data_source.data[GlyphMapper._BASE_COL]
+        assert len(col) and all(float(v) == 0.0 for v in col)
 
     def test_bfcolor_sets_fill(self, fig, cds, gm):
         """bfcolor(red) fills the bar red at its intensity, #ff3333

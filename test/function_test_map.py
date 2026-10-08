@@ -906,6 +906,13 @@ FUNCTIONS = {
  'GlyphMapper._mark_needs_points': 'test/test_function_expr.py::TestTheNeedsPointsMark::test_mark_needs_points_marks_each_renderer',
  'GlyphMapper._needs_points_why': 'test/test_function_expr.py::TestTheNeedsPointsMark::test_the_why_of_each_refusal',
  # WP-30 S27 (P1.17b): twoway's default base and axis extent (P1.17 part b)
+ 'GlyphMapper._base_value': 'test/test_bar_range_geometry.py::TestTheMappersMarkTheirBase::test_base_value',
+ 'GlyphMapper._base_zero': 'test/test_bar_range_geometry.py::TestTheMappersMarkTheirBase::test_base_zero',
+ 'GlyphMapper._tag_base': 'test/test_bar_range_geometry.py::TestTheMappersMarkTheirBase::test_each_mapper_tags_its_base',
+ '_dash_auto_base_props': 'test/test_bar_range_geometry.py::TestTheMappersMarkTheirBase::test_each_mapper_tags_its_base',
+ '_dash_axis_scale': 'test/test_bar_range_geometry.py::TestTheFill::test_the_axis_scale',
+ '_dash_base_spec': 'test/test_bar_range_geometry.py::TestTheBaseSpec::test_reads_only_well_formed_tags',
+ '_dash_finish_auto_bases': 'test/test_bar_range_geometry.py::TestTheFill::test_clamps_zero_into_the_scale',
  # WP-30 S28 (P1.15a): by() panel labels and overall text (P1.15 part a)
  # WP-30 S29 (P1.11b): SMCL in graph text (P1.11 part b)
  # WP-30 S30 (P1.13a): Stata colour grammar (P1.13 part a)

@@ -578,3 +578,356 @@ class TestTheTooltipsAreUnchanged:
         assert want <= {n.strip() for n in names} or want <= {
             str(v).strip("@{}") for h in hovers
             for _, v in (h.tooltips or [])}, names
+
+
+# ---------------------------------------------------------------------------
+# P1.17b (WP-30 S27): twoway's default base and axis extent
+# ---------------------------------------------------------------------------
+#
+# The defect (measured at c8807c2): with no base(), bar, spike, dropline and
+# area were drawn from 0 in both modes -- a y of 10 to 14 stood on 0, below
+# the axis twoway draws -- and on a %td axis 0 was 01jan1970.  twoway's rule
+# (scripts/extract_default_base_truth.do, fixture
+# test/fixtures/default_base_truth.json, from .plot#.drawn_base and
+# .plotregion#.yscale.curmin/curmax): the default base is 0 clamped into
+# the axis's finished scale, computed without it; under by() the common
+# scale's, under yrescale each panel's, on yaxis(2) the second axis's.  An
+# explicit base() widens the scale but places no tick.
+
+with open(os.path.join(_HERE, "fixtures", "default_base_truth.json"),
+          encoding="utf-8") as _fh:
+    _DB = json.load(_fh)
+
+#: The extractor's frame (x1 ypos y12 yneg ys g d ymix ydown).
+_DB_FRAME = pd.DataFrame({
+    "x1": [1.0, 2, 3, 4, 5], "ypos": [10.0, 11, 12, 13, 14],
+    "y12": [12.0, 25, 33, 41, 18], "yneg": [-10.0, -11, -12, -13, -14],
+    "ys": [1.0, 2, 3, 4, 5], "g": [1.0, 1, 2, 2, 2],
+    "d": [15000.0, 15007, 15014, 15021, 15028],
+    "ymix": [-3.0, 5, 8, 2, -1], "ydown": [14.0, 13, 12, 11, 10]})
+_DB_BO = {"formats": {"d": "%td"}}
+
+
+def _db_p(t, y, x="x1", **o):
+    return {"type": t, "yvar": y, "xvar": x, "options": o}
+
+
+#: Fixture key -> (plots, graph options, if); the extractor's commands.
+_DB_CASES = {
+    "bar_ypos": ([_db_p("bar", "ypos")], {}, ""),
+    "bar_y12": ([_db_p("bar", "y12")], {}, ""),
+    "spike_y12": ([_db_p("spike", "y12")], {}, ""),
+    "dropline_y12": ([_db_p("dropline", "y12")], {}, ""),
+    "area_y12": ([_db_p("area", "y12")], {}, ""),
+    "bar_yneg": ([_db_p("bar", "yneg")], {}, ""),
+    "bar_ymix": ([_db_p("bar", "ymix")], {}, ""),
+    "bar_scatter": ([_db_p("bar", "y12"), _db_p("scatter", "ys")], {}, ""),
+    "bar_base5": ([_db_p("bar", "ypos", base="5")], {}, ""),
+    "spike_base5": ([_db_p("spike", "ypos", base="5")], {}, ""),
+    "area_base5": ([_db_p("area", "y12", base="5")], {}, ""),
+    "bar_base20": ([_db_p("bar", "ypos", base="20")], {}, ""),
+    "two_bars": ([_db_p("bar", "y12"), _db_p("bar", "ypos", base="30")],
+                 {}, ""),
+    "auto_explicit0": ([_db_p("bar", "ypos"), _db_p("bar", "y12", base="0")],
+                       {}, ""),
+    "bar_log": ([_db_p("bar", "ypos")], {"yscale": "log"}, ""),
+    "area_log": ([_db_p("area", "ypos")], {"yscale": "log"}, ""),
+    "bar_range0": ([_db_p("bar", "ypos")], {"yscale": "range(0)"}, ""),
+    "bar_ylabel5": ([_db_p("bar", "ypos")], {"ylabel": "5(5)15"}, ""),
+    "bar_reverse": ([_db_p("bar", "ypos")], {"yscale": "reverse"}, ""),
+    "bar_if": ([_db_p("bar", "ypos")], {}, "x1>=3"),
+    "bar_ydown": ([_db_p("bar", "ydown")], {}, ""),
+    "bar_ydown_if": ([_db_p("bar", "ydown")], {}, "x1<=3"),
+    "bar_y2": ([_db_p("scatter", "y12"), _db_p("bar", "ypos", yaxis="2")],
+               {}, ""),
+    "bar_by": ([_db_p("bar", "y12")], {"by": "g"}, ""),
+    "bar_by_yrescale": ([_db_p("bar", "y12")], {"by": "g, yrescale"}, ""),
+    "bar_by_y2": ([_db_p("scatter", "y12"),
+                   _db_p("bar", "ypos", yaxis="2")], {"by": "g"}, ""),
+}
+_DB_PROPS = {"VBar": "bottom", "VArea": "y1", "Segment": "y0"}
+#: yscale(range(0)): twoway ticks 10(1)14 over [0, 14], dash 0(5)15 over
+#: [0, 15] -- S21's #N-over-range() rule, not the base; the base (0) is
+#: checked, the scale and ticks are not.
+_DB_TICKS_ELSEWHERE = {"bar_range0"}
+
+
+def _db_figs(mode, tmp_path, plots, go=None, if_expr="", df=None, bo=None):
+    spec = tp._spec(plots, dict(_DB_BO, **(bo or {})), go, if_expr=if_expr)
+    figs, _ = _figs(mode, tmp_path, spec, _DB_FRAME if df is None else df)
+    return sorted(figs, key=lambda f: str(getattr(f.title, "text", "")))
+
+
+def _db_base(r):
+    """The base a bar, area or spike renderer draws from: its column's one
+    value, or the number; a list when the column holds several."""
+    v = getattr(r.glyph, _DB_PROPS[type(r.glyph).__name__])
+    fld = v if isinstance(v, str) else getattr(v, "field", None)
+    if fld:
+        vals = sorted({float(x) for x in r.data_source.data[fld]})
+        return vals[0] if len(vals) == 1 else vals
+    return float(getattr(v, "value", v))
+
+
+def _db_based(f):
+    return [r for r in f.renderers
+            if type(getattr(r, "glyph", None)).__name__ in _DB_PROPS]
+
+
+def _db_scale(f, name="default"):
+    for h in getattr(f, "_dash_hull_entries", None) or ():
+        if tuple(h["key"]) == (name, "y"):
+            return h["lo"], h["hi"]
+    return None
+
+
+def _db_check(key, row, f, r, bad, ticks=True):
+    """Compare the base of *r* and the scale and ticks of its axis on
+    figure *f* with the fixture *row*."""
+    name = getattr(r, "y_range_name", "default") or "default"
+    got = _db_base(r)
+    if got != pytest.approx(row["drawn_base"]):
+        bad.append("%s: base %s, twoway %s" % (key, got, row["drawn_base"]))
+    if key in _DB_TICKS_ELSEWHERE:
+        return
+    sc, want = _db_scale(f, name), (row["curmin"], row["curmax"])
+    span = abs(want[1] - want[0]) or 1.0
+    if sc is None or any(abs(a - b) > 1e-9 * span for a, b in zip(sc, want)):
+        bad.append("%s: scale %s, twoway %s" % (key, sc, want))
+    if ticks:
+        import test_default_axes as tda
+        got_t = tda._ticks(f, "y", name)
+        want_t = tda._steps(row["ticks"])
+        if got_t is None or [round(v, 9) for v in got_t] != want_t:
+            bad.append("%s: ticks %s, twoway %s" % (key, got_t, want_t))
+
+
+class TestTheBaseFixture:
+
+    def test_meta_is_stamped(self):
+        assert {"stata_version", "born_date", "dash_commit",
+                "extracted"} <= set(_DB["_meta"])
+        assert set(_DB_CASES) | {"bar_td", "dropline_td"} == set(_DB["bases"])
+
+
+class TestTheDefaultBaseIsTwoways:
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_every_case(self, mode, tmp_path):
+        """Every bases.* row but the %td ones: the base each layer is drawn
+        from, the scale of its axis and that axis's ticks are twoway's;
+        under by() per panel (twoway draws a default base as 0 clamped
+        into the axis's scale, P1.17b)."""
+        bad = []
+        for key, (plots, go, if_expr) in _DB_CASES.items():
+            row = _DB["bases"][key]
+            figs = _db_figs(mode, tmp_path, plots, go, if_expr)
+            if "panels" in row:
+                for f, prow in zip(figs, row["panels"]):
+                    [r] = _db_based(f)
+                    _db_check("%s/%s" % (key, f.title.text), prow, f, r, bad)
+                continue
+            [f] = figs
+            rs = _db_based(f)
+            _db_check(key, row, f, rs[0], bad)
+            if "drawn_base2" in row:
+                _db_check(key + "/2", dict(row, drawn_base=row["drawn_base2"]),
+                          f, rs[1], bad)
+            if "y" in row:
+                sc, want = _db_scale(f), (row["y"]["curmin"],
+                                          row["y"]["curmax"])
+                if sc != pytest.approx(want):
+                    bad.append("%s: y scale %s, twoway %s" % (key, sc, want))
+        assert not bad, "\n".join(bad)
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_auto(self, mode, tmp_path):
+        """auto.* and auto3.*: `<t> mpg weight' (in 1/3) on the auto data
+        stands where twoway stands it (10; 17)."""
+        import test_by_scales as tb
+        bad = []
+        auto = tb._frame("auto")
+        for which, df in (("auto", auto), ("auto3", auto.iloc[:3])):
+            for t, row in _DB[which].items():
+                spec = tp._spec([{"type": t, "yvar": "mpg", "xvar": "weight",
+                                  "options": {}}])
+                figs, _ = _figs(mode, tmp_path, spec, df.reset_index(drop=True))
+                [f] = figs
+                _db_check("%s.%s" % (which, t), row, f, _db_based(f)[0], bad)
+        assert not bad, "\n".join(bad)
+
+
+class TestTheBaseOnADateAxis:
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_the_default_base_is_1960_clamped(self, mode, tmp_path):
+        """%td: the base is Stata's 0 (01jan1960) clamped into the scale --
+        the scale's low end, never 0 ms (01jan1970).  twoway's 14997 waits
+        for S44's tsnatscale scale."""
+        zero = float(dr._dash_units_to_axis(np.array([0.0]), "td")[0])
+        bad = []
+        for t in ("bar", "spike", "dropline", "area"):
+            [f] = _db_figs(mode, tmp_path, [_db_p(t, "d")])
+            [r] = _db_based(f)
+            got, sc = _db_base(r), _db_scale(f)
+            if sc is None or got != pytest.approx(sc[0]) or got <= zero \
+                    or got == 0.0:
+                bad.append((t, got, sc))
+        assert not bad, bad
+
+
+class TestTheBaseAfterAMove:
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_move_and_back(self, mode, tmp_path):
+        """`bar ydown x1' with a range filter on x1: moved to x1 <= 3 the
+        base is twoway's `if x1<=3' (12), moved back it is 10, saved (the
+        page's own script under node) and served."""
+        import test_default_axes as tda
+        want = (_DB["bases"]["bar_ydown_if"]["drawn_base"],
+                _DB["bases"]["bar_ydown"]["drawn_base"])
+        bad = []
+        for t in ("bar", "spike", "dropline", "area"):
+            spec = tp._spec([_db_p(t, "ydown")],
+                            dict(_DB_BO, filter="x1, type(range)"))
+            sp, dp = _write(tmp_path, spec, _DB_FRAME)
+            got = []
+            if mode == "saved":
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    r = dr.DashRenderer(sp, dp)
+                    r.render()
+                for v in ((1.0, 3.0), (1.0, 5.0)):
+                    [f] = tda._move_saved(r, "RangeSlider", v)
+                    got.append(_db_base(_db_based(f)[0]))
+            else:
+                import test_mode_parity as mp
+                _N[0] += 1
+                ap = os.path.join(str(tmp_path), "app_%d.py" % _N[0])
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    dr.ServerAppBuilder(sp, dp).build(ap)
+                    mod = load_app(ap, "_db_app_%d" % _N[0])
+                    doc = Document()
+                    mod.make_document(doc)
+                for v in ((1.0, 3.0), (1.0, 5.0)):
+                    [f] = tda._move_served(doc, "RangeSlider", v)
+                    got.append(_db_base(_db_based(f)[0]))
+            if got != [pytest.approx(w) for w in want]:
+                bad.append((t, got, want))
+        assert not bad, bad
+
+
+class TestTheMappersMarkTheirBase:
+
+    def test_each_mapper_tags_its_base(self):
+        bad = []
+        for t, prop in (("bar", "bottom"), ("area", "y1"), ("spike", "y0"),
+                        ("dropline", "y0")):
+            for opts, auto in (({}, True), ({"base": "5"}, False)):
+                fig = bk_figure()
+                src = ColumnDataSource({"x": [1.0, 2.0], "y": [3.0, 4.0]})
+                out = getattr(_gm(), "map_" + t)(fig, src, "y", "x",
+                                                 dict(opts))
+                rs = [r for r in fig.renderers
+                      if dr._dash_base_spec(r) is not None]
+                specs = [dr._dash_base_spec(r) for r in rs]
+                if specs != [{"auto": auto, "letter": "y", "prop": prop,
+                              "zero": 0.0}]:
+                    bad.append((t, opts, specs))
+                    continue
+                v = getattr(rs[0].glyph, prop)
+                fld = v if isinstance(v, str) else getattr(v, "field", None)
+                if t == "bar" and (fld == dr.GlyphMapper._BASE_COL) != auto:
+                    bad.append((t, opts, fld))
+                del out
+        assert not bad, bad
+
+    def test_base_value(self):
+        gm = _gm()
+        for raw in (None, "", ".", " . "):
+            o = {} if raw is None else {"base": raw}
+            assert gm._base_value(o, "bar") is None, raw
+        assert gm._base_value({"base": "5"}, "bar") == 5.0
+        for raw in ("abc", "inf", "nan"):
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                dr._dash_reset_notes()
+                assert gm._base_value({"base": raw}, "bar") is None, raw
+            assert len(caught) == 1, (raw, [str(w.message) for w in caught])
+
+    def test_base_zero(self):
+        assert _gm()._base_zero("y") == 0.0
+        for k in ("td", "tc", "tC", "tw", "tm", "tq", "th", "ty"):
+            want = float(dr._dash_units_to_axis(np.array([0.0]), k)[0])
+            want = want if math.isfinite(want) else 0.0  # %ty: no year 0
+            assert _gm({"y": k})._base_zero("y") == want, k
+        assert _gm({"y": "td"})._base_zero("y") == -315619200000.0
+
+
+class TestTheBaseSpec:
+
+    def test_reads_only_well_formed_tags(self):
+        class R:
+            def __init__(self, *tags):
+                self.tags = list(tags)
+        good = 'dash_base:{"auto":true,"letter":"y","prop":"y0","zero":0.0}'
+        assert dr._dash_base_spec(R("x", good)) == {
+            "auto": True, "letter": "y", "prop": "y0", "zero": 0.0}
+        for bad in ("", "dash_base:{", "dash_base:[1]",
+                    'dash_base:{"auto":true,"letter":"y","prop":"__proto__","zero":0}',
+                    'dash_base:{"auto":true,"letter":"z","prop":"y0","zero":0}',
+                    'dash_base:{"auto":true,"letter":"y","prop":"y0","zero":"0"}',
+                    'dash_base:{"auto":true,"letter":"y","prop":"y0","zero":NaN}',
+                    'dash_base:{"auto":1,"letter":"y","prop":"y0","zero":0}',
+                    good[:-1] + " " * 200 + "}"):
+            assert dr._dash_base_spec(R(bad)) is None, bad
+        assert dr._dash_base_spec(R()) is None
+        assert dr._dash_base_spec(object()) is None
+
+
+class TestTheFill:
+
+    @staticmethod
+    def _fig(scale, auto=True, name="default"):
+        fig = bk_figure()
+        src = ColumnDataSource({"x": [1.0, 2.0], "y": [3.0, 4.0],
+                                "b": [0.0, 0.0]})
+        r = fig.vbar(x="x", top="y", bottom="b" if auto else 2.0,
+                     width=1.0, source=src)
+        dr.GlyphMapper._tag_base(r, "bottom", auto, 0.0)
+        if scale is not None:
+            fig._dash_hull_entries = [{"key": (name, "y"), "letter": "y",
+                                       "name": name, "kind": None,
+                                       "lo": scale[0], "hi": scale[1]}]
+        return fig, r
+
+    def test_the_axis_scale(self):
+        fig, _ = self._fig((10.0, 14.0))
+        assert dr._dash_axis_scale(fig, "y", "default") == (10.0, 14.0)
+        assert dr._dash_axis_scale(fig, "y", "y2") is None
+        fig._dash_secondary_hulls = {"y2": (3.0, 4.0, None, False)}
+        assert dr._dash_axis_scale(fig, "y", "y2") == (3.0, 4.0)
+        assert dr._dash_axis_scale(self._fig(None)[0], "y", "default") is None
+        assert dr._dash_axis_scale(self._fig((math.nan, 1.0))[0], "y",
+                                   "default") is None
+
+    def test_clamps_zero_into_the_scale(self):
+        for sc, want in (((10.0, 14.0), 10.0), ((-14.0, -10.0), -10.0),
+                         ((-5.0, 5.0), 0.0)):
+            fig, r = self._fig(sc)
+            n = dr._dash_finish_auto_bases(fig)
+            assert (n, list(r.data_source.data["b"])) == (
+                int(want != 0.0), [want, want]), sc
+        # No scale: nothing written.  An unchanged column: not rewritten.
+        fig, r = self._fig(None)
+        assert dr._dash_finish_auto_bases(fig) == 0
+        fig, r = self._fig((10.0, 14.0))
+        dr._dash_finish_auto_bases(fig)
+        col = r.data_source.data["b"]
+        assert dr._dash_finish_auto_bases(fig) == 0
+        assert r.data_source.data["b"] is col
+        # An explicit base is left alone.
+        fig, r = self._fig((10.0, 14.0), auto=False)
+        assert dr._dash_finish_auto_bases(fig) == 0
+        assert r.glyph.bottom == 2.0

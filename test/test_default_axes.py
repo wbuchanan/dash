@@ -434,6 +434,10 @@ class TestTheHelpers:
                                      "default", None) == (5.0, 1.1e12)
 
     def test_hull_roles(self):
+        """Flipped: the bar, bar_base, area, spike and dropline rows read
+        S21's ``_dash_auto_base`` stamp -- the default base's role is now
+        the renderer's dash_base: tag, read by _dash_base_spec, one marker
+        for both modes and the page (P1.17b)."""
         bad = []
         for t, opts, want in (("bar", {}, ("bottom",)),
                               ("bar", {"base": "5"}, None),
@@ -443,7 +447,8 @@ class TestTheHelpers:
                               ("scatter", {}, None)):
             plots = [P(t, "mpg", "weight", **opts)]
             f = _figs("saved", _spec(plots))[0]
-            got = {getattr(r, "_dash_auto_base", None) for r in f.renderers
+            got = {dr._dash_auto_base_props(r, "y") or None
+                   for r in f.renderers
                    if type(r.glyph).__name__ != "Scatter"} or {None}
             if got != {want}:
                 bad.append((t, opts, got))
