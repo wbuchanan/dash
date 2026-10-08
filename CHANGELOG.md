@@ -567,7 +567,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.6 -->
 
-<!-- WP-30 P1.7 -->
+- Time-series operators in plot varlists are drawn, as twoway draws them: `dash line D.close date`, `dash tsline D.close`, `dash lfit close L.close` and `dash scatter L(1/2).close t` were refused r(101) and now draw in both modes on scatter, line, connected, area, bar, spike, dropline, dot, the lfit/qfit/mspline/mband fits, the range and paired types, tsline and tsrline; each series is computed by Stata at build under tsset, titles and keys read "Closing price, D", and the CSV column is headed D.close. (WP-30, P1.7)
 
 <!-- WP-30 P1.10 -->
 
@@ -741,7 +741,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.6 -->
 
-<!-- WP-30 P1.7 -->
+- Operated plot variables are refused where twoway refuses them, in its words (all r(101) "factor-variable and time-series operators not allowed" before): no tsset ("time variable not set", r(111)); a string variable ("make:  may not use time-series operators on string variables", r(109)); a factor variable ("factor-variable operators not allowed", r(101)); by() with an operated variable ("not sorted", r(5)); a bare sort with an operated x on scatter, line and the other types that sort on x ("option sort() incorrectly specified", r(198)). (WP-30, P1.7)
 
 - `connect()` and `cmissing()` are checked as twoway checks them (each was rc 0 with a note before): a misplaced `..` is refused (`connect(l .. J):  invalid syntax`, `cmissings(n .. y):  invalid syntax`, r(198)); an unknown `cmissing()` value is refused on the types twoway refuses it on, after twoway's two notes (` not allowed`, r(101)), and noted elsewhere; an unknown `connect()` name prints twoway's note and draws direct; `clwidth()` out of range on a scatter given `connect()` is refused (`gm_linewidth must be between 0.000 and  1.0e+04`, r(198)). (WP-30, P1.8a)
 

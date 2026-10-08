@@ -463,9 +463,20 @@ class TestThePlotTypesSection:
         for t in taken - set(_RANGE_AND_PC):
             assert re.search(r"\b%s\b" % t, para[:lead]), t
         assert "eight range types, the five paired-coordinate types" in para
-        for k in ("E01", "E02", "E03", "E06", "R01"):
+        for k in ("E01", "E02", "E03", "E06", "R01", "B01"):
             words = probes[k]["twoway"]["err"][0].replace("make:  ", "")
             assert words in para, (k, words)
+        # The bare sort: both of twoway's lines, and the types it refuses
+        # it on (the O probes twoway answers r(198)).
+        for line in probes["O01"]["twoway"]["err"]:
+            assert line in para, line
+        tail = para[para.index("A bare sort"):]
+        for k, p in probes.items():
+            if k[0] == "O" and p["twoway"]["rc"] == 198:
+                t = p["body"].split()[0]
+                assert re.search(r"\b%s\b" % t, tail) or (
+                    t in _RANGE_AND_PC and "eight range types" in tail), t
+        assert "headed by the expression" in para
 
 
 #: The range and paired-coordinate types the operator paragraph counts.

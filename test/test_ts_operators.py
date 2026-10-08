@@ -466,3 +466,60 @@ class TestTheServedCopy:
         for name in ("_DASH_TSOP_PREFIX", "_DASH_TSOP_NAME_RE",
                      "_DASH_TSOP_EXPR_RE", "_DASH_TSOP_LABEL_MAX"):
             assert getattr(mod, name) == getattr(dr, name), name
+
+
+# ---------------------------------------------------------------------------
+# The CSV header and the notes name the expression (commit 2)
+# ---------------------------------------------------------------------------
+class TestTheCsv:
+    def test_the_meta_carries_headers(self):
+        args = (["t", "__dasht1"], {}, {}, {}, {})
+        plain = dr._dash_csv_meta(*args)
+        assert "headers" not in plain
+        got = dr._dash_csv_meta(*args, display_names={
+            "__dasht1": "D.close", "__dasht9": "L.x", "t": 3})
+        assert got.pop("headers") == {"__dasht1": "D.close"}
+        assert got == plain
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    def test_the_header_is_the_expression(self, mode):
+        from test_export import _saved_file, _served_file
+        spec, data = _inputs("T03")
+        spec["build_options"]["csv"] = "1"
+        if mode == "saved":
+            text = _saved_file(_saved(spec, data), {})
+        else:
+            text = _served_file(_served(spec, data), {})
+        head = text.split("\r\n", 1)[0]
+        assert sorted(head.split(",")) == ["L.close", "L2.close", "t"], head
+        assert "__dasht" not in text
+
+
+class TestTheNotes:
+    def test_the_display_rule(self):
+        names = {"__dasht1": "D.close"}
+        assert dr._dash_col_display("__dasht1", names) == "D.close"
+        assert dr._dash_col_display("t", names) == "t"
+        assert dr._dash_col_display("t") == "t"
+
+
+@pytest.mark.parametrize("mode", ["saved", "served"])
+class TestTheTsColumnNamesNeverReachTheUser:
+    def test_case(self, mode):
+        """A base whose format the page cannot write (%21x) is named by its
+        expression in the note, never as __dasht1."""
+        spec, data = _inputs("T05")
+        spec["build_options"]["formats"]["__dasht1"] = "%21x"
+        _, sp, dp = _write(spec, data)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            if mode == "saved":
+                render_models(dr.DashRenderer(sp, dp))
+            else:
+                ap = os.path.join(_TMP, "notes_%d.py" % next(_SEQ))
+                dr.ServerAppBuilder(sp, dp).build(ap)
+                mod = load_app(ap, "_tso_notes_%d" % next(_SEQ))
+                mod.make_document(Document())
+        msgs = [str(w.message) for w in caught]
+        assert any("variable 'D.y2' has display format" in m for m in msgs), msgs
+        assert not [m for m in msgs if "__dasht" in m], msgs

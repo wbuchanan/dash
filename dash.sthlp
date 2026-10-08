@@ -316,7 +316,15 @@ Without {cmd:tsset} an operator is refused "time variable not set",
 r(111); on a string variable "may not use time-series operators on string
 variables", r(109); a factor variable is "factor-variable operators not
 allowed", r(101); and data not sorted by the time variable are "not
-sorted", r(5).
+sorted", r(5).  {cmd:by()} with an operated plot variable in any layer is
+"not sorted", r(5), as in {cmd:twoway}, and {cmd:dash} adds how to
+generate the variable first.  A bare {cmd:sort} with an operated {it:x} is
+"factor-variable and time-series operators not allowed" and "option
+sort() incorrectly specified", r(198), on the types that sort on {it:x}:
+{cmd:scatter}, {cmd:line}, {cmd:connected}, {cmd:area}, {cmd:bar},
+{cmd:spike}, {cmd:dropline}, {cmd:dot}, {cmd:mspline}, {cmd:mband} and the
+eight range types.  The column of the CSV download is headed by the
+expression, {cmd:D.close}.
 
 {phang2}{cmd:. sysuse sp500, clear}{p_end}
 {phang2}{cmd:. tsset date}{p_end}

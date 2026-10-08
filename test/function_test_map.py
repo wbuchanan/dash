@@ -1035,6 +1035,7 @@ FUNCTIONS = {
  '_dash_bokeh_check': 'test/test_bokeh_window.py::TestTheRuntimeCheck::test_below_the_floor_is_refused_naming_dash_setup',
  '_dash_bokeh_window': 'test/test_bokeh_window.py::TestTheWindowVerdict::test_each_version_gets_its_verdict',
  # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
+ '_dash_col_display': 'test/test_ts_operators.py::TestTheNotes::test_the_display_rule',
  '_dash_take_tsop_columns': 'test/test_ts_operators.py::TestTakingTheColumnsIn::test_the_take_rule',
  '_dash_tsop_cols_named': 'test/test_ts_operators.py::TestTheColumnsAreNamedInTheSpec::test_the_map_rule',
  '_dash_tsop_labels': 'test/test_ts_operators.py::TestTheLabels::test_the_label_rule',

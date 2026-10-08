@@ -1092,7 +1092,7 @@ def _dash_finite_numeric(col):
     return num
 
 
-def _dash_load_columns(df, formats, string_vars):
+def _dash_load_columns(df, formats, string_vars, display_names=None):
     """Read every column of a freshly loaded frame, in place, as both render
     modes hold it: a string variable as its text, a variable with a Stata
     date format as datetime64[ms] (``_stata_dates_to_datetime``), every
@@ -1109,6 +1109,8 @@ def _dash_load_columns(df, formats, string_vars):
         formats:     ``{varname: Stata display format}`` from the spec's
                      ``build_options``; anything else is read as none.
         string_vars: The names of the string variables.
+        display_names: ``{column: name}`` a note names a column by -- a
+                     time-series column by its expression (WP-30 P1.7).
 
     Returns:
         ``(date_vars, numeric_formats)``: ``{varname: date kind}`` and
@@ -1131,7 +1133,9 @@ def _dash_load_columns(df, formats, string_vars):
                 # A hexadecimal or IEEE dump the page cannot write (WP-28
                 # S04, BR-04.5): drawn in %9.0g, named once per build.
                 _dash_warn_once(("format", col),
-                                f"dash: variable '{col}' has display format "
+                                f"dash: variable "
+                                f"'{_dash_col_display(col, display_names)}' "
+                                f"has display format "
                                 f"{fmt!r}, which the dashboard cannot write; "
                                 f"it is shown in %9.0g.")
                 numeric_formats[col] = "%9.0g"
@@ -1154,8 +1158,9 @@ def _dash_load_columns(df, formats, string_vars):
             converted = pd.Series(converted).astype("datetime64[ms]")
             if converted.isna().all() and raw.notna().any():
                 warnings.warn(
-                    f"dash: variable '{col}' has display format "
-                    f"{fmt!r} but arrived as text this renderer could not "
+                    f"dash: variable "
+                    f"'{_dash_col_display(col, display_names)}' has display "
+                    f"format {fmt!r} but arrived as text this renderer could not "
                     f"read as a date; it is shown as missing. Re-run with "
                     f"a current dash.ado.",
                     UserWarning,
@@ -22699,7 +22704,7 @@ def _dash_csv_text_value(v):
 
 def _dash_csv_meta(columns, formats, string_flags, value_labels,
                    value_label_names, filename=_DASH_CSV_FILENAME,
-                   storage_types=None):
+                   storage_types=None, display_names=None):
     """What the CSV formatter needs to know about each column.
 
     The same for both render modes: the saved renderer passes its frame's
@@ -22712,7 +22717,10 @@ def _dash_csv_meta(columns, formats, string_flags, value_labels,
         "filename": str}``.  The row identity column is never a column of
         the file.  *storage_types* (WP-28 S12, GAPS2 G6): a float-stored
         column is written with its float32 digits (``0.1``, not
-        ``0.10000000149011612``).
+        ``0.10000000149011612``).  *display_names* (WP-30 P1.7):
+        ``{column: header}`` for the columns the file heads by another
+        name -- a time-series column ``__dasht1`` by its expression
+        ``D.close`` -- carried as ``"headers"``; absent, no key is added.
     """
     formats = formats if isinstance(formats, dict) else {}
     string_flags = string_flags if isinstance(string_flags, dict) else {}
@@ -22737,8 +22745,12 @@ def _dash_csv_meta(columns, formats, string_flags, value_labels,
                      else {})
     storage = {c: str(storage_types[c]) for c in cols
                if c not in strings and c not in dates and c in storage_types}
-    return {"columns": cols, "strings": strings, "dates": dates,
-            "labels": labels, "storage": storage, "filename": str(filename)}
+    out = {"columns": cols, "strings": strings, "dates": dates,
+           "labels": labels, "storage": storage, "filename": str(filename)}
+    if isinstance(display_names, dict):
+        out["headers"] = {c: display_names[c] for c in cols
+                          if isinstance(display_names.get(c), str)}
+    return out
 
 
 def _dash_csv_payload(frame, meta):
@@ -23916,7 +23928,9 @@ function dash_csv_text(data, text, rows, meta) {
     const kinds = cols.map((c) => (meta.dates || {})[c] || "");
     const labels = cols.map((c) => (meta.labels || {})[c] || null);
     const storage = cols.map((c) => (meta.storage || {})[c] || "");
-    const out = [cols.map((c) => dash_csv_quote(dash_csv_guard(c))).join(",")];
+    const out = [cols.map((c) => dash_csv_quote(dash_csv_guard(
+        (meta.headers && Object.prototype.hasOwnProperty.call(meta.headers, c))
+            ? meta.headers[c] : c))).join(",")];
     for (const i of rows) {
         const cells = new Array(cols.length);
         for (let j = 0; j < cols.length; j++)
@@ -37072,6 +37086,15 @@ def _dash_tsop_labels(variable_labels, tsmap):
     return out
 
 
+def _dash_col_display(name, names=None):
+    """The name a note gives column *name*: its entry in *names* (a
+    time-series column's expression, ``D.close``; WP-30 P1.7), else the
+    name itself."""
+    if isinstance(names, dict) and name in names:
+        return names[name]
+    return name
+
+
 def _dash_take_qual_columns(df, spec, keep=()):
     """Take dash.ado's qualifier columns out of *df*, as masks.
 
@@ -39026,8 +39049,12 @@ class DashRenderer:
                                         for k, v in formats.items()}
         # One column reader for both render modes (_dash_load_columns): the
         # generated server app calls it too.
+        # Notes name a time-series column by its expression (P1.7); the
+        # map is read from the spec, as the take-out below reads it.
         self.date_vars, self.numeric_formats = _dash_load_columns(
-            self.df, self.formats, self.string_vars)
+            self.df, self.formats, self.string_vars,
+            display_names={k: v["expr"] for k, v in
+                           _dash_tsop_cols_named(self.master_spec).items()})
         _st = stata_json.get("storageTypes", {})
         self.storage_types: dict[str, str] = (
             {str(k): str(v) for k, v in _st.items()}
@@ -42144,7 +42171,10 @@ class DashRenderer:
             {c: True for c in getattr(self, "string_vars", set())},
             getattr(self, "value_labels", {}),
             getattr(self, "value_label_names", {}),
-            storage_types=getattr(self, "storage_types", {}))
+            storage_types=getattr(self, "storage_types", {}),
+            # A time-series column is headed by its expression (P1.7).
+            display_names={k: v["expr"] for k, v in
+                           getattr(self, "tsop_cols", {}).items()})
         # The page's planned cells (WP-29 P0.11); under csv every cell is
         # planned, so this is every row, as the download needs.
         _plan = getattr(self, "_embed", None)
@@ -43115,7 +43145,7 @@ class ServerAppBuilder:
                          "_dash_qual_cols_named", "_dash_take_qual_columns",
                          # The time-series columns (WP-30 P1.7).
                          "_dash_tsop_cols_named", "_dash_take_tsop_columns",
-                         "_dash_tsop_labels",
+                         "_dash_tsop_labels", "_dash_col_display",
                          "_dash_qual_mask",
                          # A by(, total) Total panel's own qualifier
                          # columns, as the saved page reads them.
@@ -44740,7 +44770,9 @@ class ServerAppBuilder:
             "    _formats = _bo.get('formats', {}) if isinstance(_bo, dict) else {}",
             "    date_vars, _ = _dash_load_columns(",
             "        df, _formats if isinstance(_formats, dict) else {},",
-            "        {k for k, v in (type_is_str or {}).items() if v})",
+            "        {k for k, v in (type_is_str or {}).items() if v},",
+            "        display_names={k: v['expr'] for k, v in",
+            "                       _dash_tsop_cols_named(spec).items()})",
             "    # The qualifier columns dash.ado exported: validated and taken",
             "    # out of the frame as masks, as the saved renderer takes them,",
             "    # so no source, tooltip, filter or download holds one.",
@@ -44772,6 +44804,7 @@ class ServerAppBuilder:
             "        'qual_masks': qual_masks,",
             "        'sort_keys': sort_keys,",
             "        'storage_types': storage_types,",
+            "        'tsop_cols': _tsop_cols,",
             "    }",
             "    return spec, df, meta",
             "",
@@ -46338,7 +46371,9 @@ class ServerAppBuilder:
             "        _csv_meta = _dash_csv_meta(",
             "            list(df.columns), bo.get('formats', {}) or {},",
             "            meta.get('type_is_str', {}) or {}, val_labels,",
-            "            val_label_names, storage_types=_storage_types)",
+            "            val_label_names, storage_types=_storage_types,",
+            "            display_names={k: v['expr'] for k, v in",
+            "                           (meta.get('tsop_cols') or {}).items()})",
             "        _csv_src = ColumnDataSource(data={})",
             "        _csv_btn = _DashButton(label='Download CSV',",
             "                               name='dash_csv_download',",

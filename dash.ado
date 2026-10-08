@@ -5250,6 +5250,28 @@ program define _dash_process_segment, rclass
     local _pt_lpfam "lpoly lpolyci"
     local _ss_types "histogram lpoly lpolyci lfit lfitci kdensity fpfit fpfitci mspline mband"
     mata: st_local("_ss_by", st_global("s(g_by)") + st_global("dash__g_by"))
+    // Time-series operators (WP-30 P1.7), as twoway refuses them: by()
+    // sorts the data on its variables, so an operated plot variable in any
+    // layer is "not sorted", r(5) (measured on StataNow 19.5); and a bare
+    // sort with an operated x is refused on the 18 types that sort on x,
+    // in twoway's two lines, r(198).  Before anything is registered.
+    local _ts_first ""
+    foreach _tv in `yvarlist' `yvar' `yvar1' `yvar2' `xvar' `y1var' `x1var' `y2var' `x2var' {
+        if strpos("`_tv'", ".") & "`_ts_first'" == "" local _ts_first `_tv'
+    }
+    if "`_ts_first'" != "" & `: length local _ss_by' {
+        display as error "not sorted"
+        mata: _dash_say("txt", "dash: twoway refuses by() with a time-series operator in a plot variable; generate the variable first, for example: generate double ", ///
+            usubstr(strlower(subinstr(st_local("_ts_first"), ".", "", .)), 1, 32) + " = " + st_local("_ts_first"), "")
+        exit 5
+    }
+    local _ts_sortx "scatter line connected area bar spike dropline dot mspline mband rarea rbar rspike rcap rline rconnected rcapsym rscatter"
+    mata: st_local("_ts_sort", strofreal(st_global("s(sort)") != ""))
+    if `_ts_sort' & strpos("`xvar'", ".") & `: list ptype in _ts_sortx' {
+        display as error "factor-variable and time-series operators not allowed"
+        display as error "option sort() incorrectly specified"
+        exit 198
+    }
     if `: list ptype in _ss_types' & !`: length local _ss_by' {
         local _ss_ifin ""
         if `: length local _ps_in' {

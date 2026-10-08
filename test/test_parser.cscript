@@ -3141,6 +3141,7 @@ program define _tso_data
             gen t = _n
             format volume %12.0fc
             gen float xf = close / 7
+            gen g = t > 124
             gen c80 = close
             label variable c80 "Closing price of the Standard and Poors 500 index on each trading day of 2001 US"
         }
@@ -3375,6 +3376,52 @@ if `"`c(python_exec)'"' != "" {
     }
     dash clear
     display "TSO-15 PASS: a qualifier holding =filewrite() is not run, on scatter and lpoly"
+
+    // TSO-07: by() with an operated plot variable in any layer is "not
+    // sorted", r(5), then dash's hint; a bare sort with an operated x is
+    // refused on the 18 types twoway refuses it on, in its two lines,
+    // r(198), and drawn on the others and with an operated y.  Each
+    // compared with twoway's answer (B and O probes, Y01).
+    python: _ts.Macro.setLocal("tso_bo", " ".join(sorted(k for k in _tj.load(open("fixtures/ts_operator_truth.json", encoding="utf-8"))["probes"] if k[0] in "BOY")))
+    foreach pid of local tso_bo {
+        python: _tq = _tj.load(open("fixtures/ts_operator_truth.json", encoding="utf-8"))["probes"][_ts.Macro.getLocal("pid")]; _ts.Macro.setLocal("tso_b", _tq["body"]); _ts.Macro.setLocal("tso_o", _tq["opts"]); _ts.Macro.setLocal("tso_ds", _tq["ds"])
+        if "`tso_ds'" == "xt" {
+            clear
+            quietly set obs 20
+            quietly gen id = ceil(_n / 10)
+            quietly gen tt = mod(_n - 1, 10) + 1
+            quietly gen y = _n * _n
+            quietly xtset id tt
+            _tso_tw `pid'
+            local twrc = r(rc)
+            dash clear
+            _p1a_logrun `"dash `tso_b', `tso_o' name(tso07)"'
+            assert r(rc) == `twrc'
+            continue
+        }
+        _tso_vs TSO-07 `pid' sp `"dash `tso_b', `tso_o' name(tso07)"'
+        if substr("`pid'", 1, 1) == "B" & "`pid'" != "B04" {
+            cert_file_has "`c(tmpdir)'dash_p1a_run.log", needle("generate the variable first, for example: generate double dclose = D.close")
+            assert r(found)
+        }
+        if inlist("`pid'", "O01", "O15") {
+            cert_file_has "`c(tmpdir)'dash_p1a_run.log", needle("option sort() incorrectly specified")
+            assert r(found)
+        }
+    }
+    dash clear
+    display "TSO-07 PASS: by() with an operator r(5) with dash's hint; a bare sort with an operated x r(198) on the 18 types, as twoway"
+
+    // TSO-10: a user variable __dasht1 is refused r(110), naming __dasht#.
+    _tso_data sp
+    quietly gen __dasht1 = 1
+    dash clear
+    _p1a_logrun `"dash scatter D.close t, saving("`tsopg'") replace"'
+    assert r(rc) == 110
+    cert_file_has "`r(log)'", needle("its time-series columns __dasht#")
+    assert r(found)
+    drop __dasht1
+    display "TSO-10 PASS: a variable named __dasht1 is refused r(110), naming the time-series columns"
     foreach f in tso01 tso08b tso08s tso09 tso14 {
         capture erase "`c(tmpdir)'`f'_s.json"
         capture erase "`c(tmpdir)'`f'_d.json"
