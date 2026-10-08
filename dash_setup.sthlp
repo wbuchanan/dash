@@ -43,7 +43,11 @@ present but older than {cmd:dash} needs is reported, not upgraded.
     r(198).  The linked interpreter's version is then compared with the
     3.11 minimum, numerically per component, so 3.10 is correctly newer
     than 3.9; a version below 3.11 is reported as such and counted as
-    unmet.
+    unmet.  Python is started to read its version; a first start that
+    fails is tried once more, and a Python that still cannot be started is
+    reported in the summary with its path and, on a Mac, a reminder that
+    Stata and Python must be built for the same processor (both arm64 or
+    both x86_64), r(198).
 
 {phang2}2.  {cmd:packaging}, which the version comparisons below use, is
     installed with {cmd:pip} if it is missing.  If it cannot be installed,
@@ -235,6 +239,14 @@ to Python 3.11 or later instead.
 {phang2}{cmd:python set exec "/path/to/python3", permanently}
 
 {pstd}See {helpb python} for full instructions.
+
+{pstd}{ul:Python could not be started}
+
+{phang2}A Python linked to Stata that cannot be started is reported as
+"Python ............. could not be started", with its path.  On a Mac with
+Apple Silicon an arm64 Stata cannot start an x86_64 Python, nor the
+reverse: link a Python built for the same processor ({helpb python}), then
+run {cmd:dash_setup} again.
 
 {pstd}{ul:No pip}
 

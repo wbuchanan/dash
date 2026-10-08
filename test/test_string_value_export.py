@@ -562,13 +562,18 @@ class TestDashAdoUsesTheWriter:
         so the six names of TR-08.9, not the data writer alone.  And
         (WP-30 test performance, B1) the renderer run itself, which
         compiles dash_render.py once a session
-        (test_render_compile_once.py)."""
-        called = set(re.findall(r"_dash_xm\.(_dash_\w+)\(", _ado()))
+        (test_render_compile_once.py).  Flipped (WP-30 P1.32): dash clear
+        now reaches _dash_tmp_clear through dash_setup_lib.stdlib_entry,
+        so it runs without the packages, and _dash_xm_load calls
+        _dash_dep_versions."""
+        ado = _ado()
+        called = (set(re.findall(r"_dash_xm\.(_dash_\w+)\(", ado))
+                  | set(re.findall(r'stdlib_entry\(.*?"(_dash_\w+)"\)', ado)))
         declared = {f.__name__ for f in dr._DASH_ADO_ENTRY_POINTS}
         assert called == declared == {
             "_dash_write_stata_data", "_dash_run_open", "_dash_run_close",
             "_dash_preview_path", "_dash_tmp_write_text", "_dash_tmp_clear",
-            "_dash_run_renderer"}
+            "_dash_run_renderer", "_dash_dep_versions"}
 
     def test_names_and_path_reach_python_by_value(self):
         """The path and the variable names are read by Macro.getLocal(),

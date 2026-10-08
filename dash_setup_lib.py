@@ -1,4 +1,5 @@
-"""dash_setup_lib -- the mechanics of dash_setup's pip and venv steps (WP-29 P0.19).
+"""dash_setup_lib -- the mechanics of dash_setup's pip and venv steps (WP-29 P0.19),
+and dash clear's pruning without the packages (WP-30 P1.32).
 dash_setup.ado decides and counts; this module runs children and formats commands.
 Stdlib only; parses as Python 3.8; nothing runs at import.
 
@@ -11,6 +12,7 @@ in-process view under Stata cannot see what a venv's own interpreter has.
 Environment-derived text is printed with print(), which Stata shows as plain
 text, never through SMCL.
 """
+import ast
 import importlib
 import json
 import ntpath
@@ -44,6 +46,10 @@ _ENV_SET = {"PYTHONIOENCODING": "utf-8", "PYTHONDONTWRITEBYTECODE": "1",
 #: The venv() path stata_venv_check validated, held for the stata_venv call
 #: that follows it, so the path never passes through Stata's parser again.
 _PENDING = {}
+
+#: stdlib_entry's compiled slices, keyed by the file's realpath, size, time
+#: and the entry's name, so a file is compiled once per version.
+_SLICES = {}
 
 _PIP_FIXED = ["--disable-pip-version-check", "--no-input", "--only-binary=:all:"]
 
@@ -429,6 +435,76 @@ def verify_in(exe, render_py, minimums, version):
         return {"ok": False, "why": "malformed"}
     return d
 
+
+
+def stdlib_entry(path, entry):
+    """dash_render.py's top-level function ``entry`` compiled with the
+    standard library alone, or None (WP-30 P1.32, register P1.32.3).
+
+    dash clear prunes dash's temporary files through the renderer's own
+    _dash_tmp_clear; this compiles that function and every top-level
+    definition it reaches, with the file's top-level imports outside a
+    `try', so the same code and checks run with numpy, pandas or bokeh
+    missing.  A name bound by an import inside a top-level `try' (the
+    guarded package imports) is foreign: a closure reaching one is refused
+    (None), never imported.  Line numbers stay the file's.  Only dash's own
+    shipped file is compiled; ``entry`` is a constant in dash.ado.  Never
+    raises.
+    """
+    try:
+        st = os.stat(path)
+        key = (os.path.realpath(path), st.st_size, st.st_mtime_ns, entry)
+        if key in _SLICES:
+            return _SLICES[key]
+        with open(path, "rb") as fh:
+            text = fh.read().decode("utf-8")
+        tree = ast.parse(text, filename=path)
+        imports = []
+        defs = {}
+        foreign = set()
+        for node in tree.body:
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                imports.append(node)
+            elif isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+                defs.setdefault(node.name, []).append(node)
+            elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                for tgt in targets:
+                    for sub in ast.walk(tgt):
+                        if isinstance(sub, ast.Name):
+                            defs.setdefault(sub.id, []).append(node)
+            elif isinstance(node, ast.Try):
+                for sub in ast.walk(node):
+                    if isinstance(sub, (ast.Import, ast.ImportFrom)):
+                        for alias in sub.names:
+                            foreign.add((alias.asname or alias.name).split(".")[0])
+        if not any(isinstance(n, ast.FunctionDef) for n in defs.get(entry, [])):
+            return None
+        keep = {}
+        todo = [entry]
+        seen = set()
+        while todo:
+            name = todo.pop()
+            if name in seen:
+                continue
+            seen.add(name)
+            for node in defs[name]:
+                keep[id(node)] = node
+                for sub in ast.walk(node):
+                    if isinstance(sub, ast.Name):
+                        if sub.id in foreign:
+                            return None
+                        if sub.id in defs and sub.id not in seen:
+                            todo.append(sub.id)
+        body = imports + [n for n in tree.body if id(n) in keep]
+        module = ast.Module(body=body, type_ignores=[])
+        code = compile(module, path, "exec", dont_inherit=True)
+        ns = {"__name__": "_dash_stdlib_slice", "__file__": path}
+        exec(code, ns)
+        _SLICES[key] = ns[entry]
+        return ns[entry]
+    except Exception:
+        return None
 
 def managed_message(exe, windows, environ):
     """(text, cmd) for an externally managed Python.  It never names the

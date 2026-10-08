@@ -89,8 +89,11 @@ class TestTheFloorIsTheTestedBaseline:
         assert ("Requires: Python %s+, bokeh>=%s, numpy>=%s, pandas>=%s."
                 % (py, bo, nu, pa)) in pkg, pkg
 
+        # Flipped (WP-30 P1.32): the literal "Python <FLOOR>+" in dash.ado
+        # was the one place dash.ado stated the floor; it is now the
+        # constant _dash_pyfloor, which the message reads.
         ado = _read("dash.ado")
-        assert ("Python %s+" % py) in ado, ado
+        assert ('return local pyfloor "%s"' % py) in ado, ado
 
         help_ = _flat(_read("dash.sthlp"))
         assert ("{ul:Python %s+}" % py) in help_, help_
@@ -420,6 +423,43 @@ class TestTheStataFloor:
             assert name in restated, "no restated %s" % name
             assert restated[name] == shipped[name], (
                 name, restated[name], shipped[name])
+
+
+class TestThePythonFloorIsOneNumber:
+    """WP-30 P1.32 (register P1.32.4, A123): _dash_pymin (dash_setup.ado),
+    _dash_pyfloor (dash.ado), _DASH_MIN_PYTHON (dash_render.py), both
+    future lines and the generated app's constant are one number."""
+
+    def test_dash_ado_names_the_floor_once(self):
+        got = re.findall(r'return local pyfloor "([^"]+)"', _read("dash.ado"))
+        assert got == [_setup_ado_floor()[0]], got
+
+    def test_the_renderer_and_the_app_hold_the_same_floor(self, tmp_path):
+        pymin = _setup_ado_floor()[0]
+        assert dr._DASH_MIN_PYTHON == tuple(int(p) for p in pymin.split("."))
+        want = ("from __future__ import annotations  # dash needs Python %s "
+                "or later: link a newer Python, then run dash_setup" % pymin)
+        assert want in _read("dash_render.py").split("\n")
+        app = TestTheGeneratedAppEvaluatesNoAnnotationAtImport()._built(tmp_path)
+        assert want in app.split("\n")
+        assert ("_DASH_MIN_PYTHON = (%s, %s)" % tuple(pymin.split("."))) in app
+
+    def test_the_package_minimums_agree_with_dash_setup(self):
+        _py, _bo, nu, pa = _setup_ado_floor()
+
+        def v(t):
+            return tuple(int(p) for p in t.split("."))
+        assert dict(dr._DASH_MIN_PACKAGES) == {"numpy": v(nu), "pandas": v(pa)}
+
+    def test_the_refusals_read_the_constant(self):
+        text = _read("dash.ado")
+        progs = _ado_programs(text)
+        for name in ("_dash_require_python", "_dash_require_deps"):
+            first, last = progs[name]
+            body = "\n".join(ln for n, ln in _logical_lines(text)
+                             if first < n < last)
+            assert "_dash_pyfloor" in body, name
+            assert not re.search(r"\b3\.\d+\b", body), (name, body)
 
 
 class TestTheGeneratedAppEvaluatesNoAnnotationAtImport:

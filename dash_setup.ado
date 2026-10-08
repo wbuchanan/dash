@@ -94,7 +94,23 @@ program define dash_setup, rclass
     // declared minimum, so it now does: a user on a too-old Python was
     // told "OK (version ...)" and sent on to fail later inside bokeh, with
     // a message about neither Python nor dash.
-    python: import sys; from sfi import Macro; Macro.setLocal("pyver", sys.version.split()[0])
+    _dash_setup_pystart
+    local pyver `"`r(pyver)'"'
+    if `"`pyver'"' == "" {
+        display as error "  Python ............. could not be started:"
+        mata: display("    " + c("python_exec"), 1)
+        if strpos(c(machine_type), "Mac") {
+            mata: display("    Stata reports this computer as " + c("machine_type") + ".", 1)
+            display as error "    On a Mac, Stata and Python must be built for the same processor:"
+            display as error "    both arm64 (Apple Silicon) or both x86_64 (Intel)."
+        }
+        display as error "    Link Stata to a Python that starts here: {help python}"
+        local n_fail = `n_fail' + 1
+        local fail_items `"`fail_items' Python (could not be started)"'
+        _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+            items(`"`fail_items'`warn_items'"')
+        exit 198
+    }
     _dash_pyver_ok "`pyver'" "`c_pymin'"
     local pyok = r(ok)
     if `pyok' == 1 {
@@ -623,6 +639,28 @@ program define _dash_pyver_ok, rclass
         }
     }
     return scalar ok = `answer'
+end
+
+/*
+   _dash_setup_pystart  — start the linked Python and read its version
+   (WP-30 P1.32)
+
+   Returns r(pyver), sys.version's first word, or "" when Python could not
+   be started, and r(tries), 1 or 2.  The first python call of a session
+   can fail where Python works, so a line that set nothing is run once
+   more; the value decides, never the return code.
+*/
+program define _dash_setup_pystart, rclass
+    version 19
+    local pyver ""
+    capture python: import sys; from sfi import Macro; Macro.setLocal("pyver", sys.version.split()[0])
+    local tries 1
+    if `"`pyver'"' == "" {
+        capture python: import sys; from sfi import Macro; Macro.setLocal("pyver", sys.version.split()[0])
+        local tries 2
+    }
+    return local pyver `"`pyver'"'
+    return scalar tries = `tries'
 end
 
 // ================================================================

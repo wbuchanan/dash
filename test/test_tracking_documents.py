@@ -1580,7 +1580,6 @@ WP30_OPEN = {
     "P1.30": "The bokeh dependency has no ceiling or run-time version check, and the Bokeh internals dash's security relies on are not checked",
     "P1.31a": "The served app has no session cap or idle lifetime and decodes the whole dataset again for every session",
     "P1.31b": "One reader's filter-move recompute blocks the served event loop for every other reader",
-    "P1.32": "A missing numpy, pandas or bokeh or an old Python fails with a bare ModuleNotFoundError or SyntaxError, and dash_setup's first Python call is uncaptured",
 }
 
 #: Every WP-30 entry, permanently, and the CHANGELOG.md lists of the current

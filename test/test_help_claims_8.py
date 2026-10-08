@@ -1580,7 +1580,12 @@ class TestTheDependenciesAreOneList:
         import ast
         tree = ast.parse(_read(os.path.join(_ROOT, "dash_render.py")))
         top = set()
+        # WP-30 P1.32: the three are imported inside the top-level `try'
+        # blocks that stop in one line naming dash_setup (_dash_dep_fail).
+        body = []
         for node in tree.body:
+            body += node.body if isinstance(node, ast.Try) else [node]
+        for node in body:
             if isinstance(node, ast.Import):
                 top |= {a.name.split(".")[0] for a in node.names}
             elif isinstance(node, ast.ImportFrom) and node.module:

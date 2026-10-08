@@ -1338,7 +1338,12 @@ class TestTheServedAppCarriesEveryName:
             with open(op, encoding="utf-8") as fh:
                 app = ast.parse(fh.read())
         defined = set()
+        # WP-30 P1.32: the header's package imports sit inside top-level
+        # `try' blocks that stop in one line naming dash_setup.
+        body = []
         for node in app.body:
+            body += node.body if isinstance(node, ast.Try) else [node]
+        for node in body:
             if isinstance(node, ast.Assign):
                 defined |= {t.id for t in node.targets if isinstance(t, ast.Name)}
             elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):

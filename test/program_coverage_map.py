@@ -340,6 +340,8 @@ COVERAGE = {
         # WP-30 S23 (P1.26b): Served notes reach Stata (P1.26 part b, M6)
         # WP-30 S24 (P1.4a): Scheme opacity, histogram style and symbols reach every layer (P1.4 part a)
         # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
+        "_dash_pyfloor": ("test_env_guards.cscript:ENV-33",),
+        "_dash_require_deps": ("test_env_guards.cscript:ENV-31", "test_env_guards.cscript:ENV-34", "test_env_guards.cscript:ENV-35"),
         # WP-30 S26 (P1.22): function: closed by disposition (P1.22 under M12)
         # WP-30 S27 (P1.17b): twoway's default base and axis extent (P1.17 part b)
         # WP-30 S28 (P1.15a): by() panel labels and overall text (P1.15 part a)
@@ -424,6 +426,7 @@ COVERAGE = {
                            "test_program_coverage.cscript:PC-15"),
         # WP-30 S05 (P1.33): Measured Python floor (P1.33, M3/M10)
         # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
+        "_dash_setup_pystart": ("test_setup_honesty.cscript:HON-42", "test_setup_honesty.cscript:HON-40", "test_setup_honesty.cscript:HON-41"),
         # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
     },
     "dash_parse.mata": {

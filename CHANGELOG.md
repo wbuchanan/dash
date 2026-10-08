@@ -843,7 +843,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.30 -->
 
-<!-- WP-30 P1.32 -->
+- Python and its packages are checked before a dash command starts. Every command but `dash clear` stops with r(198) and one message naming what is missing, the Python it looked in and `dash_setup` when the linked Python cannot be started, is older than 3.11, or lacks numpy, pandas or bokeh or has one that fails to import; it used to stop with r(7102) and a Python traceback (`ModuleNotFoundError: No module named 'numpy'`) that named no remedy. A registration such as `dash scatter mpg weight, name(g1)` is now refused the same way. numpy or pandas below `dash_setup`'s minimum is named in a note and the command goes on. `dash serve` and a dashboard app run by hand (`python app.py`, `bokeh serve`) stop with the same one line instead of a traceback. `dash_setup` tries a first Python call that fails once more and reports a Python that cannot be started, with its path and, on a Mac, the processor it must be built for, instead of stopping before its summary. `dash clear` prunes dash's temporary files with the packages missing. (WP-30, P1.32)
 
 - Python 3.11 or later (was 3.13). Both test suites, with the pins they run
   under and with a fresh install as `dash_setup` resolves it, pass under

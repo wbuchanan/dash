@@ -6227,10 +6227,64 @@ if inlist("`only'", "", "S24") {
 }
 * ==== end S24 ====
 
+// S25's probes.  The truth script holds no captured python: line
+// (test_cscript_hygiene.py), so each python: line runs uncaptured inside a
+// program of its own and the program's return code is read.
+capture program drop _s25_scope
+program define _s25_scope
+    version 19
+    args path
+    local _dd_err ""
+    python: import importlib.util as _s25u
+    python: from sfi import Macro as _s25M
+    python: _s25s = _s25u.spec_from_file_location("_s25_probe", _s25M.getLocal("path"))
+    python: _s25m = _s25u.module_from_spec(_s25s)
+    python: _s25r = _s25s.loader.exec_module(_s25m)
+    c_local s25err `"`_dd_err'"'
+end
+capture program drop _s25_exit
+program define _s25_exit
+    version 19
+    python: raise SystemExit("dash: s25 probe")
+end
+capture program drop _s25_imperr
+program define _s25_imperr
+    version 19
+    python: raise ImportError("dash: s25 probe")
+end
+
 * ==== S25 P1.32: Render-time dependency guards ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S25") {
     display as text "S25 start " c(current_date) " " c(current_time)
+    capture _s25_exit
+    local rg01 = _rc
+    _w30_expect RG-01 "(`rg01' == 0)" "rc `rg01'"
+    _w30_done RG-01 "a SystemExit ends a python: line with rc 0, so the guard raises ImportError under Stata"
+
+    capture _s25_imperr
+    local rg02 = _rc
+    _w30_expect RG-02 "(`rg02' == 7102)" "rc `rg02'"
+    _w30_done RG-02 "an ImportError ends a python: line with r(7102)"
+
+    tempname s25fh
+    file open `s25fh' using "`w30_work'/s25_probe.py", write text replace
+    file write `s25fh' "import sfi" _n `"sfi.Macro.setLocal("_dd_err", "dash: s25 probe")"' _n
+    file close `s25fh'
+    _s25_scope "`w30_work'/s25_probe.py"
+    local rg03 = (`"`s25err'"' == "dash: s25 probe")
+    _w30_expect RG-03 "(`rg03' == 1)" "_dd_err `s25err'"
+    _w30_done RG-03 "a module run by exec_module sets the local of the program running the python: line, so the load decides by value"
+    capture erase "`w30_work'/s25_probe.py"
+
+    quietly log using "`w30_work'/s25.log", text replace name(s25l)
+    mata: display(char(123) + "bf:s25" + char(125), 1)
+    quietly log close s25l
+    cert_file_has "`w30_work'/s25.log", needle("{bf:s25}")
+    local rg04 = r(found)
+    _w30_expect RG-04 "(`rg04' == 1)" "found `rg04'"
+    _w30_done RG-04 "Mata display(s, 1) prints SMCL as typed: dash_setup shows the path so"
+    capture erase "`w30_work'/s25.log"
     display as text "S25 end " c(current_date) " " c(current_time)
 }
 * ==== end S25 ====

@@ -2097,6 +2097,119 @@ def _tempfiles_section():
     return sec.split("{marker ", 1)[0]
 
 
+_RENDER_PY = os.path.join(_ROOT, "dash_render.py")
+
+
+def _load_setup_lib():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "dash_setup_lib_s25", os.path.join(_ROOT, "dash_setup_lib.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _plant_tree(base, dead):
+    root = os.path.join(base, "dash-%d" % _UID)
+    os.makedirs(root, mode=0o700)
+    os.chmod(base, 0o700)
+    for pid in (_PID, dead):
+        os.mkdir(os.path.join(root, "run-%d-s25" % pid), 0o700)
+    os.mkdir(os.path.join(base, "dash-%d-s25abcde" % _UID), 0o700)
+    prev = os.path.join(root, "previews")
+    os.mkdir(prev, 0o700)
+    for i in range(dr._DASH_PREVIEW_KEEP + 2):
+        _page(prev, _PID, "q", age=1000 - i * 10, tag="%08x" % i)
+    return root
+
+
+def _walk(base):
+    out = []
+    for d, dirs, files in os.walk(base):
+        for n in dirs + files:
+            out.append(os.path.relpath(os.path.join(d, n), base))
+    return sorted(out)
+
+
+class TestDashClearPrunesWithoutThePackages:
+    """WP-30 P1.32 (register P1.32.3, A122): dash clear prunes through
+    dash_setup_lib.stdlib_entry, which compiles dash_render.py's own
+    _dash_tmp_clear and what it reaches with the standard library alone, so
+    it prunes with numpy, pandas or bokeh missing."""
+
+    def test_the_slice_prunes_as_the_renderer_does(self, tmp_path):
+        p = subprocess.Popen([sys.executable, "-c", "0"])
+        p.wait()
+        a, b = str(tmp_path / "a"), str(tmp_path / "b")
+        os.mkdir(a)
+        os.mkdir(b)
+        _plant_tree(a, p.pid)
+        _plant_tree(b, p.pid)
+        assert _walk(a) == _walk(b)
+        before = _walk(a)
+        f = _load_setup_lib().stdlib_entry(_RENDER_PY, "_dash_tmp_clear")
+        assert f is not None
+        assert dr._dash_tmp_clear(a) == "" and f(b) == ""
+        assert _walk(a) == _walk(b)
+        assert _walk(a) != before
+
+    def test_the_slice_imports_no_package(self, tmp_path):
+        code = """
+import sys, os, importlib.util
+for m in ("numpy", "pandas", "bokeh", "tornado", "jinja2"):
+    sys.modules[m] = None
+s = importlib.util.spec_from_file_location("L", %r)
+L = importlib.util.module_from_spec(s); s.loader.exec_module(L)
+f = L.stdlib_entry(%r, "_dash_tmp_clear")
+tmp = %r
+root = os.path.join(tmp, "dash-%%d" %% os.getuid()); os.mkdir(root, 0o700)
+run = os.path.join(root, "run-%%d-s25" %% os.getpid()); os.mkdir(run, 0o700)
+assert f is not None and f(tmp) == "" and not os.path.exists(run)
+assert all(sys.modules.get(m) is None for m in ("numpy", "pandas", "bokeh", "tornado", "jinja2"))
+print("ok")
+""" % (os.path.join(_ROOT, "dash_setup_lib.py"), _RENDER_PY, str(tmp_path))
+        os.chmod(str(tmp_path), 0o700)
+        r = subprocess.run([sys.executable, "-B", "-c", code],
+                           capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0 and r.stdout.strip() == "ok", r.stderr
+
+    def test_a_slice_that_would_import_a_package_is_refused(self, tmp_path):
+        L = _load_setup_lib()
+        bad = tmp_path / "bad.py"
+        bad.write_text("try:\n    import json as np\nexcept Exception:\n"
+                       "    pass\ndef f():\n    return np\nclass C:\n    pass\n")
+        assert L.stdlib_entry(str(bad), "f") is None
+        assert L.stdlib_entry(str(bad), "absent") is None
+        assert L.stdlib_entry(str(bad), "C") is None
+        enc = tmp_path / "enc.py"
+        enc.write_bytes(b"def f():\n    return '\xff\xfe'\n")
+        assert L.stdlib_entry(str(enc), "f") is None
+
+    def test_the_slice_is_built_once_per_file_version(self, tmp_path):
+        L = _load_setup_lib()
+        src = tmp_path / "m.py"
+        src.write_text("import os\ndef g():\n    return os.sep\n")
+        one = L.stdlib_entry(str(src), "g")
+        assert one is not None and L.stdlib_entry(str(src), "g") is one
+        st = os.stat(str(src))
+        os.utime(str(src), ns=(st.st_atime_ns, st.st_mtime_ns + 10 ** 9))
+        two = L.stdlib_entry(str(src), "g")
+        assert two is not None and two is not one
+
+    def test_dash_clear_prunes_through_the_slice(self):
+        from test_program_coverage_map import _ado_programs, _logical_lines
+        with open(_ADO, encoding="utf-8") as fh:
+            text = fh.read()
+        first, last = _ado_programs(text)["_dash_tmp_clear"]
+        body = [ln for n, ln in _logical_lines(text) if first < n < last]
+        assert body[:2] == ["version 19", "_dash_require_python"], body[:2]
+        mata = next(i for i, ln in enumerate(body) if 'dir(c("tmpdir"), "dirs", "dash*")' in ln)
+        first_py = next(i for i, ln in enumerate(body) if "python:" in ln)
+        assert mata < first_py
+        assert any('stdlib_entry(' in ln and '"_dash_tmp_clear"' in ln for ln in body)
+        assert not any("_dash_xm_load" in ln for ln in body)
+
+
 def _flat(text):
     return re.sub(r"\s+", " ", text)
 

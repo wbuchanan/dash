@@ -4352,6 +4352,20 @@ and link yourself:
     checks nor installs it.
 
 {pstd}
+Before it starts, every {cmd:dash} command but {cmd:dash clear} checks that
+the linked Python starts (a first call that fails is tried once more), that
+it is Python 3.11 or later, and that numpy, pandas and bokeh are installed
+and import.  If not, it stops with r(198) and one message naming what is
+missing, the Python it looked in ({cmd:c(python_exec)}) and
+{helpb dash_setup}, and writes nothing; a registration such as
+{cmd:dash scatter mpg weight, name(g1)} is refused the same way.  numpy or
+pandas older than {helpb dash_setup}'s minimum is named in a note and the
+command goes on.  {cmd:dash clear} clears the registry with no Python and
+prunes {cmd:dash}'s temporary files with the packages missing.  A dashboard
+app run by hand ({cmd:python app.py}, {cmd:bokeh serve}) checks the same and
+stops with the same one line.
+
+{pstd}
 On a Python that the operating system manages (PEP 668: Homebrew's, and
 recent Debian, Ubuntu and Arch Linux system Pythons), {cmd:dash_setup}
 installs nothing and says so; {cmd:dash_setup, venv(}{it:path}{cmd:)} sets

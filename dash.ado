@@ -95,6 +95,15 @@ program define dash, rclass
     // partial compile, as rc 0 and "graph registered".
     _dash_require_mata
 
+    // WP-30 P1.32: the dependency guard after the Mata guard (A154), for
+    // every subcommand but clear: dash clear clears the registry with no
+    // Python and prunes through a standard-library path (register P1.32.3).
+    // The subcommand is read with the routing's own expression.
+    mata: st_local("_dd_sub", ustrregexm(st_local("0"), "^[a-zA-Z][a-zA-Z0-9_]*") ? ustrregexs(0) : "")
+    if "`_dd_sub'" != "clear" {
+        _dash_require_deps
+    }
+
     // WP-30 P1.27: twoway, tw, two or graph twoway (gr, and tw to twoway
     // after it) may precede the plots, as in twoway, and is read off once;
     // twow, twowa, gra, grap and a capitalised prefix word are refused
@@ -284,9 +293,87 @@ program define _dash_require_python
     version 19
     _dash_python_ok `"`c(python_exec)'"'
     if r(ok) != 1 {
+        _dash_pyfloor
+        local _dd_floor "`r(pyfloor)'"
         display as error "dash: Python is required but is not available to Stata."
         display as error "      Run {cmd:dash_setup} first, or link Stata to " ///
-            "Python 3.11+: {help python}"
+            "Python `_dd_floor'+: {help python}"
+        exit 198
+    }
+end
+
+
+// ================================================================
+// _dash_pyfloor  — the oldest Python dash runs under
+// ================================================================
+// dash_setup.ado's _dash_pymin and dash_render.py's _DASH_MIN_PYTHON hold
+// the same number (a program of one ado-file cannot be called from
+// another), pinned by test_version_floor.py::TestThePythonFloorIsOneNumber
+// (WP-30 P1.32, register P1.32.4, A123).
+//
+// Syntax:
+//   _dash_pyfloor   -> r(pyfloor) "<major>.<minor>"
+// ================================================================
+program define _dash_pyfloor, rclass
+    version 19
+    return local pyfloor "3.11"
+end
+
+
+// ================================================================
+// _dash_require_deps  — refuse a Python or a package dash cannot run with
+// ================================================================
+// WP-30 P1.32 (GAPS2 H6, ROADMAP BR-07.1).  _dash_require_python checks only
+// that a Python is configured; a missing numpy, pandas or bokeh then ended
+// in a bare ModuleNotFoundError, r(7102), and an old Python in a
+// SyntaxError, neither naming the remedy.  This starts the linked Python
+// (a first call that sets nothing is tried once more: the first python call
+// of a session can fail where Python works), reads its version and whether
+// each package is installed, and refuses r(198) in words naming
+// c(python_exec) and dash_setup.  It decides from the values the lines set,
+// never from _rc; text from the environment is shown only through
+// _dash_say.  A package that is installed but will not import is caught
+// where the renderer loads (_dash_xm_load), by value.
+// ================================================================
+program define _dash_require_deps
+    version 19
+    _dash_require_python
+    local _dd_v ""
+    capture python: import sys; from sfi import Macro as _dash_M; _dash_M.setLocal("_dd_v", "%d.%d.%d" % tuple(sys.version_info[:3]))
+    if "`_dd_v'" == "" {
+        // The first python call of a session can fail where Python works
+        // (test_cscript_hygiene.py's docstring): once more.
+        capture python: import sys; from sfi import Macro as _dash_M; _dash_M.setLocal("_dd_v", "%d.%d.%d" % tuple(sys.version_info[:3]))
+    }
+    if "`_dd_v'" == "" {
+        mata: _dash_say("err", "dash: the Python linked to Stata could not be started (", c("python_exec"), ").")
+        if strpos(c(machine_type), "Mac") {
+            mata: _dash_say("err", "      Stata reports this computer as ", c("machine_type"), "; on a Mac, Stata and Python must be built for the same processor, both arm64 (Apple Silicon) or both x86_64 (Intel).")
+        }
+        display as error "      Link Stata to a Python that starts here ({help python}), then run {cmd:dash_setup}."
+        exit 198
+    }
+    _dash_pyfloor
+    local _dd_floor "`r(pyfloor)'"
+    // The version is digits and dots only, built by %d.
+    local _dd_vw = subinstr("`_dd_v'", ".", " ", .)
+    local _dd_fw = subinstr("`_dd_floor'", ".", " ", .)
+    local _dd_vmaj : word 1 of `_dd_vw'
+    local _dd_vmin : word 2 of `_dd_vw'
+    local _dd_fmaj : word 1 of `_dd_fw'
+    local _dd_fmin : word 2 of `_dd_fw'
+    if (`_dd_vmaj' < `_dd_fmaj') | (`_dd_vmaj' == `_dd_fmaj' & `_dd_vmin' < `_dd_fmin') {
+        mata: _dash_say("err", "dash: Python " + st_local("_dd_v") + " is linked to Stata (", c("python_exec"), "); dash needs Python " + st_local("_dd_floor") + " or later.")
+        display as error "      Link a newer Python ({help python}), then run {cmd:dash_setup}."
+        exit 198
+    }
+    local _dd_miss ""
+    local _dd_chk ""
+    capture python: import sys, importlib.util; from sfi import Macro as _dash_M; _dash_M.setLocal("_dd_miss", " ".join(m for m in ("numpy", "pandas", "bokeh") if sys.modules.get(m) is None and importlib.util.find_spec(m) is None)); _dash_M.setLocal("_dd_chk", "1")
+    if "`_dd_chk'" == "1" & "`_dd_miss'" != "" {
+        local _dd_list = subinstr("`_dd_miss'", " ", ", ", .)
+        mata: _dash_say("err", "dash: " + st_local("_dd_list") + " not installed for the Python Stata uses (", c("python_exec"), ").")
+        display as error "      Run {cmd:dash_setup} to install what is missing."
         exit 198
     }
 end
@@ -539,6 +626,7 @@ program define _dash_do_render
     // Before `python:', not after: a user with no linked Python used to get
     // a raw Stata Python error naming neither dash nor the remedy.
     _dash_require_python
+    _dash_require_deps
 
     if `"`mode'"' == "" local mode "standalone"
 
@@ -5141,6 +5229,7 @@ end
 program define _dash_xm_load
     version 19
     _dash_require_python
+    _dash_require_deps
     local _dw_py ""
     capture findfile dash.ado
     if _rc == 0 {
@@ -5168,9 +5257,37 @@ program define _dash_xm_load
     python: _dash_ok = _dash_xm is not None and getattr(_dash_xm, "_dash_export_key", None) == _dash_key
     python: _dash_xs = None if _dash_ok else importlib.util.spec_from_file_location("_dash_render_export", _dash_rp)
     python: _dash_xm = _dash_xm if _dash_ok else importlib.util.module_from_spec(_dash_xs)
-    python: _dash_xr = _dash_ok or _dash_xs.loader.exec_module(_dash_xm)
+    // WP-30 P1.32: the renderer's import guard puts its one line in
+    // _dd_err (_dash_dep_fail), so the load decides by that value.  A
+    // failure that is not a dependency runs again uncaptured, so its
+    // traceback shows as it did.  _dd_err, _dd_refuse and _dd_note hold
+    // text from the environment: tested by length, shown through Mata only.
+    local _dd_err ""
+    capture python: _dash_xr = _dash_ok or _dash_xs.loader.exec_module(_dash_xm)
+    if _rc {
+        local _dd_n : length local _dd_err
+        if `_dd_n' > 0 {
+            mata: _dash_say("err", "", st_local("_dd_err"), "")
+            exit 198
+        }
+        python: _dash_xr = _dash_xs.loader.exec_module(_dash_xm)
+    }
     python: _dash_xm._dash_export_key = _dash_key
     python: sys.modules["_dash_render_export"] = _dash_xm
+    // numpy or pandas below dash_setup's minimum: a note once per fresh
+    // load (A121); the refusal slot is bokeh's window (S41).
+    python: _dash_dv = _dash_xm._dash_dep_versions()
+    python: _dash_M.setLocal("_dd_refuse", _dash_dv[0])
+    python: _dash_M.setLocal("_dd_note", "" if _dash_ok else _dash_dv[1])
+    local _dd_n : length local _dd_refuse
+    if `_dd_n' > 0 {
+        mata: _dash_say("err", "", st_local("_dd_refuse"), "")
+        exit 198
+    }
+    local _dd_n : length local _dd_note
+    if `_dd_n' > 0 {
+        mata: _dash_note("", st_local("_dd_note"), "")
+    }
 end
 
 
@@ -5291,12 +5408,42 @@ program define _dash_tmp_clear
     _dash_require_python
     mata: st_local("_tcl_has", strofreal(rows(dir(c("tmpdir"), "dirs", "dash*")) > 0))
     if "`_tcl_has'" != "1" exit
-    _dash_xm_load
+    // WP-30 P1.32: the pruning code is compiled from dash_render.py's own
+    // text with the standard-library imports alone
+    // (dash_setup_lib.stdlib_entry), so the same code and the same checks
+    // run with numpy, pandas or bokeh missing.
+    local _tcl_dir ""
+    capture findfile dash.ado
+    if _rc == 0 {
+        mata: st_local("_tcl_dir", substr(st_global("r(fn)"), 1, strlen(st_global("r(fn)")) - strlen("dash.ado")))
+    }
+    local lib `"`_tcl_dir'dash_setup_lib.py"'
+    local _tcl_py `"`_tcl_dir'dash_render.py"'
+    capture confirm file `"`lib'"'
+    if _rc {
+        local lib ""
+        capture findfile dash_setup_lib.py
+        if _rc == 0 local lib `"`r(fn)'"'
+    }
+    capture confirm file `"`_tcl_py'"'
+    if _rc {
+        local _tcl_py ""
+        capture _dash_find_render
+        if _rc == 0 local _tcl_py `"`r(fn)'"'
+    }
+    if `"`lib'"' == "" | `"`_tcl_py'"' == "" exit
+    mata: st_local("lib", pathresolve(pwd(), st_local("lib")))
+    python: import sys, sfi; sfi.Macro.setLocal("_dwb", "1" if sys.dont_write_bytecode else "0"); sys.dont_write_bytecode = True
+    capture python: import importlib.util as _dsl_iu, sys, sfi; _dsl_p = sfi.Macro.getLocal("lib"); _dsl_m = sys.modules.get("_dash_setup_lib"); _dsl_new = _dsl_m is None or getattr(_dsl_m, "__file__", None) != _dsl_p; _dsl_s = _dsl_iu.spec_from_file_location("_dash_setup_lib", _dsl_p) if _dsl_new else None; _dsl_m = _dsl_iu.module_from_spec(_dsl_s) if _dsl_new else _dsl_m; (_dsl_s.loader.exec_module(_dsl_m) if _dsl_new else None); sys.modules["_dash_setup_lib"] = _dsl_m
+    local _lrc = _rc
+    python: import sys, sfi; sys.dont_write_bytecode = sfi.Macro.getLocal("_dwb") == "1"
+    if `_lrc' != 0 exit
     local _tcl_tmp `"`c(tmpdir)'"'
     python: import sys
     python: from sfi import Macro as _dash_M
-    python: _dash_xm = sys.modules["_dash_render_export"]
-    python: _dash_tcl = _dash_xm._dash_tmp_clear(_dash_M.getLocal("_tcl_tmp"))
+    python: _dash_sl = sys.modules.get("_dash_setup_lib")
+    python: _dash_xp = _dash_sl.stdlib_entry(_dash_M.getLocal("_tcl_py"), "_dash_tmp_clear") if _dash_sl is not None else None
+    python: _dash_tcl = _dash_xp(_dash_M.getLocal("_tcl_tmp")) if _dash_xp is not None else ""
 end
 
 

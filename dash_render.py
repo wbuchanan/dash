@@ -50,9 +50,8 @@ Security notes
 
 Dependencies
 ------------
-  bokeh >= 3.0
-  numpy >= 1.23
-  pandas >= 1.5
+  Python 3.11 or later; bokeh >= 3.8, numpy >= 2.3, pandas >= 2.3
+  (dash_setup's minimums), each import checked by _dash_dep_fail.
 
   No statistical layer needs scipy or statsmodels: every estimator is
   computed with numpy alone (WP-18), so neither is imported.
@@ -61,7 +60,7 @@ Author:  (see dash.sthlp)
 Version: 1.0.0  25mar2026
 """
 
-from __future__ import annotations
+from __future__ import annotations  # dash needs Python 3.11 or later: link a newer Python, then run dash_setup
 
 import argparse
 import collections
@@ -83,43 +82,127 @@ import warnings
 from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Context, Decimal
 from typing import Any
 
-import numpy as np
-import pandas as pd
+#: The oldest Python dash runs under (WP-30 P1.32).  dash_setup.ado's
+#: _dash_pymin and dash.ado's _dash_pyfloor hold the same number, pinned by
+#: test_version_floor.py::TestThePythonFloorIsOneNumber (A123).
+_DASH_MIN_PYTHON = (3, 11)
+
+
+def _dash_dep_fail(what, err=None):
+    """Stop in one line naming dash_setup: an old Python or a package
+    (``what``) that is missing or will not import (``err``).
+
+    Four contexts.  Under Stata (``sfi`` loaded) the line goes to the
+    calling program's local ``_dd_err`` and an ImportError is raised: a
+    SystemExit would end a ``python:`` line with rc 0.  Imported as a
+    module (``bokeh serve``, a test) it is an ImportError.  Run as a
+    program (``python dash_render.py``, ``python app.py``, dash serve's
+    child) it is a SystemExit, so the line alone reaches stderr with exit
+    status 1.  Written for Python 3.7; nothing here may need a newer one.
+    """
+    import sys
+    exe = str(sys.executable or "python")[:300]
+    if what == "python":
+        msg = ("dash: Python %s at %s is older than dash needs (Python %d.%d "
+               "or later); link a newer Python to Stata, then run dash_setup"
+               % ((".".join(str(p) for p in tuple(sys.version_info)[:3]), exe)
+                  + tuple(_DASH_MIN_PYTHON)))
+    else:
+        why = (("%s: %s" % (type(err).__name__, err))[:300]
+               if err is not None else "not found")
+        msg = ("dash: could not import %s for the Python at %s (%s); "
+               "run dash_setup" % (what, exe, why))
+    msg = " ".join(msg.split())
+    sfi = sys.modules.get("sfi")
+    if sfi is not None:
+        try:
+            sfi.Macro.setLocal("_dd_err", msg)
+        except Exception:
+            pass
+    exc = (SystemExit(msg) if (__name__ == "__main__" and sfi is None)
+           else ImportError(msg))
+    exc.__suppress_context__ = True
+    raise exc
+
+
+# Only the standard library is imported outside a `try' (WP-30 P1.32):
+# dash_setup_lib.stdlib_entry compiles dash clear's pruning from this file
+# with those imports alone, and every package import below stops, when it
+# fails, in one line naming dash_setup (_dash_dep_fail).
+if tuple(__import__("sys").version_info[:2]) < _DASH_MIN_PYTHON:
+    _dash_dep_fail("python")
+
+try:
+    import numpy as np
+except Exception as _dash_e:
+    _dash_dep_fail("numpy", _dash_e)
+try:
+    import pandas as pd
+except Exception as _dash_e:
+    _dash_dep_fail("pandas", _dash_e)
 
 # ---------------------------------------------------------------------------
 # Bokeh imports — grouped by sub-module for clarity
 # ---------------------------------------------------------------------------
-from bokeh.embed import components, file_html
-from bokeh.layouts import column, gridplot, row
-from bokeh.models import (
-    Arrow,
-    BooleanFilter,
-    BoxSelectTool,
-    CDSView,
-    ColumnDataSource,
-    CustomJS,
-    DataRange1d,
-    Div,
-    HoverTool,
-    IndexFilter,
-    InlineStyleSheet,
-    Legend as _BkLegend,
-    LassoSelectTool,
-    NormalHead,
-    OpenHead,
-    PanTool,
-    RangeSlider,
-    ResetTool,
-    Select,
-    Slider,
-    Span,
-    TabPanel,
-    Tabs,
-    Title as _BkTitle,
-    WheelZoomTool,
-)
-from bokeh.plotting import figure as bokeh_figure
-from bokeh.resources import CDN, INLINE  # noqa: F401 — CDN kept for server mode
+try:
+    from bokeh.embed import components, file_html
+    from bokeh.layouts import column, gridplot, row
+    from bokeh.models import (
+        Arrow,
+        BooleanFilter,
+        BoxSelectTool,
+        CDSView,
+        ColumnDataSource,
+        CustomJS,
+        DataRange1d,
+        Div,
+        HoverTool,
+        IndexFilter,
+        InlineStyleSheet,
+        Legend as _BkLegend,
+        LassoSelectTool,
+        NormalHead,
+        OpenHead,
+        PanTool,
+        RangeSlider,
+        ResetTool,
+        Select,
+        Slider,
+        Span,
+        TabPanel,
+        Tabs,
+        Title as _BkTitle,
+        WheelZoomTool,
+    )
+    from bokeh.plotting import figure as bokeh_figure
+    from bokeh.resources import CDN, INLINE  # noqa: F401 — CDN kept for server mode
+except Exception as _dash_e:
+    _dash_dep_fail("bokeh", _dash_e)
+
+#: dash_setup.ado's min_numpy and min_pandas hold the same
+#: (test_version_floor.py); below them is noted, not refused (register
+#: P1.32.1, A121).  bokeh's window is P1.30's (S41).
+_DASH_MIN_PACKAGES = (("numpy", (2, 3)), ("pandas", (2, 3)))
+
+
+def _dash_dep_versions():
+    """(refusal, note) for the loaded numpy and pandas (WP-30 P1.32).
+
+    The refusal is "" (bokeh's window fills it, S41).  The note names each
+    of numpy and pandas older than dash_setup's minimum; dash goes on.  A
+    version not starting with two numbers is not judged.
+    """
+    parts = []
+    for name, floor in _DASH_MIN_PACKAGES:
+        got = str(getattr({"numpy": np, "pandas": pd}[name],
+                          "__version__", "") or "")[:40]
+        m = re.match(r"(\d+)\.(\d+)", got)
+        if m and (int(m.group(1)), int(m.group(2))) < floor:
+            parts.append("%s %s is older than %d.%d, the oldest dash is "
+                         "tested with" % (name, got, floor[0], floor[1]))
+    note = ("dash: " + "; ".join(parts) + "; dash goes on, and dash_setup "
+            "prints the command that upgrades it") if parts else ""
+    return "", note
 
 
 # ---------------------------------------------------------------------------
@@ -2769,7 +2852,7 @@ def _dash_run_renderer(path, init_globals=None):
 _DASH_ADO_ENTRY_POINTS = (_dash_write_stata_data, _dash_run_open,
                           _dash_run_close, _dash_preview_path,
                           _dash_tmp_write_text, _dash_tmp_clear,
-                          _dash_run_renderer)
+                          _dash_run_renderer, _dash_dep_versions)
 
 
 #: The blanks a layout() may carry: the six ASCII ones.  str.strip(),
@@ -38211,7 +38294,8 @@ class ServerAppBuilder:
             # annotation below -- PEP 585 (list[int]) and PEP 604 (int |
             # None) among them -- is a string, never evaluated at import.
             # Without it the app raised TypeError on Python 3.8 and 3.9.
-            "from __future__ import annotations",
+            "from __future__ import annotations  # dash needs Python %d.%d "
+            "or later: link a newer Python, then run dash_setup" % _DASH_MIN_PYTHON,
             "",
             "import argparse as _argparse",
             "import base64",
@@ -38233,9 +38317,32 @@ class ServerAppBuilder:
             # name checks read them -- not because Python evaluates the
             # annotations: the future import above defers that.
             "from typing import Any, Callable, Iterable, List",
-            "import numpy as np",
             "import warnings",
-            "import pandas as pd",
+            "import collections as _collections",
+            "import time as _time",
+            "",
+            "# WP-30 P1.32: a Python older than dash needs, or a missing or broken",
+            "# package, stops here in one line naming dash_setup.",
+            "_DASH_MIN_PYTHON = %r" % (_DASH_MIN_PYTHON,),
+            "",
+        ]
+        # _dash_dep_fail's exact source, as the copy loop writes a function
+        # (_glyph_layer_lines), so the app's guard is the renderer's.
+        import inspect as _inspect, textwrap as _textwrap
+        lines += _textwrap.dedent(_inspect.getsource(_dash_dep_fail)).rstrip("\n").split("\n")
+        lines += [
+            "",
+            "if tuple(__import__('sys').version_info[:2]) < _DASH_MIN_PYTHON:",
+            "    _dash_dep_fail('python')",
+            "",
+            "try:",
+            "    import numpy as np",
+            "except Exception as _dash_e:",
+            "    _dash_dep_fail('numpy', _dash_e)",
+            "try:",
+            "    import pandas as pd",
+            "except Exception as _dash_e:",
+            "    _dash_dep_fail('pandas', _dash_e)",
             "# No scipy and no statsmodels: every statistical layer is",
             "# computed with numpy in the GlyphMapper text copied below",
             "# (WP-18).  A guarded `from scipy import stats' stood here, read",
@@ -38243,46 +38350,47 @@ class ServerAppBuilder:
             "# mapper; before it was guarded, a missing scipy aborted the",
             "# whole app, a plain scatter included.",
             "",
-            "from bokeh.application import Application",
-            "from bokeh.application.handlers.function import FunctionHandler",
-            "from bokeh.layouts import column, gridplot, row",
-            "from bokeh.models import (",
-            "    Arrow,",
-            "    BooleanFilter,",
-            "    BoxSelectTool,",
-            "    CDSView,",
-            "    ColumnDataSource,",
-            "    Div,",
-            "    CustomJSHover,",
-            "    CustomJSTickFormatter,",
-            "    HoverTool,",
-            "    IndexFilter,",
-            "    InlineStyleSheet,",
-            "    LabelSet,",
-            "    LassoSelectTool,",
-            "    NormalHead,",
-            "    OpenHead,",
-            "    PanTool,",
-            "    Range1d,",
-            "    RangeSlider,",
-            "    ResetTool,",
-            "    Select,",
-            "    Slider,",
-            "    Legend,",
-            "    LegendItem,",
-            "    Span,",
-            "    TabPanel,",
-            "    Tabs,",
-            "    WheelZoomTool,",
-            ")",
-            "from bokeh.io import curdoc",
-            "from bokeh.plotting import figure as bokeh_figure",
-            "from bokeh.server.server import Server",
-            "import collections as _collections",
-            "import time as _time",
-            "from tornado.web import RequestHandler as _RequestHandler",
-            "# The CSV download's button and its page-side writer (WP-21).",
-            "from bokeh.models import Button as _DashButton, CustomJS as _DashCustomJS",
+            "try:",
+            "    from bokeh.application import Application",
+            "    from bokeh.application.handlers.function import FunctionHandler",
+            "    from bokeh.layouts import column, gridplot, row",
+            "    from bokeh.models import (",
+            "        Arrow,",
+            "        BooleanFilter,",
+            "        BoxSelectTool,",
+            "        CDSView,",
+            "        ColumnDataSource,",
+            "        Div,",
+            "        CustomJSHover,",
+            "        CustomJSTickFormatter,",
+            "        HoverTool,",
+            "        IndexFilter,",
+            "        InlineStyleSheet,",
+            "        LabelSet,",
+            "        LassoSelectTool,",
+            "        NormalHead,",
+            "        OpenHead,",
+            "        PanTool,",
+            "        Range1d,",
+            "        RangeSlider,",
+            "        ResetTool,",
+            "        Select,",
+            "        Slider,",
+            "        Legend,",
+            "        LegendItem,",
+            "        Span,",
+            "        TabPanel,",
+            "        Tabs,",
+            "        WheelZoomTool,",
+            "    )",
+            "    from bokeh.io import curdoc",
+            "    from bokeh.plotting import figure as bokeh_figure",
+            "    from bokeh.server.server import Server",
+            "    from tornado.web import RequestHandler as _RequestHandler",
+            "    # The CSV download's button and its page-side writer (WP-21).",
+            "    from bokeh.models import Button as _DashButton, CustomJS as _DashCustomJS",
+            "except Exception as _dash_e:",
+            "    _dash_dep_fail('bokeh', _dash_e)",
             "",
             "# True only when ServerAppBuilder.build(trial=True) runs this module in",
             "# the building process to hear its notes (WP-30 P1.26b); the app then",

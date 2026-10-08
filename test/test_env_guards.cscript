@@ -76,7 +76,8 @@
 *! and the guard is driven by redefining it, which is what
 *! test_render_locate.cscript does for the renderer locator.
 *!
-*! Tests: ENV-01 through ENV-29.  ENV-17..19 run the three routes with no
+*! Tests: ENV-01 through ENV-39 (no ENV-30).  ENV-31..39 are the dependency guard of
+*! WP-30 P1.32 (test/dep_block.py).  ENV-17..19 run the three routes with no
 *! Python; ENV-20..21 cut the ado-path through $S_ADO so the Mata guard cannot
 *! repair, and restore it before asserting; ENV-22 runs the guard over a
 *! library file that is found but does not load completely; ENV-23a/b leave
@@ -553,7 +554,8 @@ assert `_env_py' >= 3
 // private folder's programs run Python.
 mata: st_local("_env_pyprogs", _env_progs_with("../dash.ado", "python"))
 display "ENV-12: programs running python: `_env_pyprogs'"
-assert "`_env_pyprogs'" == "_dash_do_render _dash_empty_data _dash_write_data _dash_xm_load _dash_tmp_open _dash_tmp_preview _dash_tmp_close _dash_tmp_clear _dash_render_immediate _dash_prepare_spec _dash_serve"
+// Flipped (WP-30 P1.32): _dash_require_deps runs python: (its two captured lines) and joins the list.
+assert "`_env_pyprogs'" == "_dash_require_deps _dash_do_render _dash_empty_data _dash_write_data _dash_xm_load _dash_tmp_open _dash_tmp_preview _dash_tmp_close _dash_tmp_clear _dash_render_immediate _dash_prepare_spec _dash_serve"
 foreach _env_p of local _env_pyprogs {
     mata: st_local("_env_g", strofreal(_env_first_in("../dash.ado", "`_env_p'", "_dash_require_python")))
     mata: st_local("_env_y", strofreal(_env_first_in("../dash.ado", "`_env_p'", "python")))
@@ -1087,6 +1089,276 @@ assert `e29c' == 9
 assert `e29csaid' == 1
 assert `e29cran' == 0
 display "ENV-29 PASS: dash_setup names the floor once, passes silently at or above it, and below it stops first with r(9), checking nothing"
+
+// ================================================================
+// ENV-31..ENV-39 (WP-30 P1.32): the dependency guard (its wiring in dash.ado's
+// text is pinned by test_dependency_guards.py::TestTheGuardOrder).  numpy, pandas or
+// bokeh missing or broken, a Python below the floor, a Python that cannot
+// start, each simulated in Stata's own Python through test/dep_block.py,
+// which puts everything back (dep_block.stata_restored sets rg_clean)
+// before any assert.  Every case measures and displays; the asserts follow
+// the last case, in id order.
+// ================================================================
+python: import os as _rg_os, sys as _rg_sys
+python: _rg_sys.path.insert(0, _rg_os.getcwd())
+python: import dep_block
+capture graph drop _all
+_dash_pyfloor
+local rg_floor "`r(pyfloor)'"
+
+// ENV-31: every route, each package missing.
+sysuse auto, clear
+capture dash clear
+quietly dash scatter mpg weight, name(e31g)
+tempfile e31
+foreach pkg in numpy pandas bokeh {
+    foreach sfx in "_i.html" ".html" ".py" {
+        capture erase "`e31'_`pkg'`sfx'"
+    }
+    local rg_pkg "`pkg'"
+    python: dep_block.stata_block("rg_pkg", "missing")
+    local lg "`c(tmpdir)'dash_env31_`pkg'.log"
+    capture erase "`lg'"
+    quietly log using "`lg'", replace text name(e31l)
+    capture noisily dash scatter mpg weight, saving("`e31'_`pkg'_i.html") replace
+    local e31i_`pkg' = _rc
+    capture noisily dash scatter mpg weight, name(e31r)
+    local e31r_`pkg' = _rc
+    capture noisily dash build, saving("`e31'_`pkg'.html") replace nobrowser
+    local e31b_`pkg' = _rc
+    capture noisily dash build, saving("`e31'_`pkg'.py") server replace
+    local e31s_`pkg' = _rc
+    capture noisily dash serve, port(5932) timeout(1) nobrowser
+    local e31v_`pkg' = _rc
+    quietly log close e31l
+    python: dep_block.stata_restored()
+    local e31c_`pkg' "`rg_clean'"
+    local e31w_`pkg' 0
+    foreach sfx in "_i.html" ".html" ".py" {
+        capture confirm file "`e31'_`pkg'`sfx'"
+        if _rc == 0 local e31w_`pkg' = `e31w_`pkg'' + 1
+    }
+    local e31s1_`pkg' ""
+    foreach nd in "`pkg'" "dash_setup" "`c(python_exec)'" "not installed" "Traceback" "starting Bokeh Server" {
+        cert_log_has "`lg'", needle(`"`nd'"') lower
+        local _e31h = r(found)
+        local e31s1_`pkg' "`e31s1_`pkg'' `_e31h'"
+    }
+    capture erase "`lg'"
+    display "ENV-31 measured: `pkg' rc `e31i_`pkg'' `e31r_`pkg'' `e31b_`pkg'' `e31s_`pkg'' `e31v_`pkg'' written `e31w_`pkg'' said`e31s1_`pkg'' clean `e31c_`pkg''"
+}
+
+// ENV-32: numpy installed but broken.
+tempfile e32
+capture erase "`e32'.html"
+python: dep_block.block("numpy", "broken")
+local lg32 "`c(tmpdir)'dash_env32.log"
+capture erase "`lg32'"
+quietly log using "`lg32'", replace text name(e32l)
+capture noisily dash scatter mpg weight, saving("`e32'.html") replace
+local e32rc = _rc
+quietly log close e32l
+python: dep_block.stata_restored()
+local e32c "`rg_clean'"
+capture confirm file "`e32'.html"
+local e32w = (_rc == 0)
+local e32s ""
+foreach nd in "could not import numpy" "cannot be imported" "dash_setup" "Traceback" {
+    cert_log_has "`lg32'", needle(`"`nd'"') lower
+    local _e32h = r(found)
+    local e32s "`e32s' `_e32h'"
+}
+capture erase "`lg32'"
+display "ENV-32 measured: rc `e32rc' written `e32w' said`e32s' clean `e32c'"
+
+// ENV-33: a Python below the floor.
+tempfile e33
+capture erase "`e33'.html"
+python: dep_block.fake_version((3, 6, 15, "final", 0))
+local lg33 "`c(tmpdir)'dash_env33.log"
+capture erase "`lg33'"
+quietly log using "`lg33'", replace text name(e33l)
+capture noisily dash scatter mpg weight, saving("`e33'.html") replace
+local e33rc = _rc
+quietly log close e33l
+python: dep_block.stata_restored()
+local e33c "`rg_clean'"
+capture confirm file "`e33'.html"
+local e33w = (_rc == 0)
+local e33s ""
+foreach nd in "Python 3.6.15" "Python `rg_floor' or later" "dash_setup" {
+    cert_log_has "`lg33'", needle(`"`nd'"') lower
+    local _e33h = r(found)
+    local e33s "`e33s' `_e33h'"
+}
+capture erase "`lg33'"
+display "ENV-33 measured: rc `e33rc' written `e33w' said`e33s' clean `e33c'"
+
+// ENV-34: a Python that cannot start (sfi cannot be imported).
+tempfile e34
+capture erase "`e34'.html"
+python: dep_block.block("sfi", "missing")
+local lg34 "`c(tmpdir)'dash_env34.log"
+capture erase "`lg34'"
+quietly log using "`lg34'", replace text name(e34l)
+capture noisily dash scatter mpg weight, saving("`e34'.html") replace
+local e34rc = _rc
+quietly log close e34l
+python: dep_block.stata_restored()
+local e34c "`rg_clean'"
+capture confirm file "`e34'.html"
+local e34w = (_rc == 0)
+local e34s ""
+foreach nd in "could not be started" "`c(python_exec)'" "Apple Silicon" "dash_setup" "Traceback" {
+    cert_log_has "`lg34'", needle(`"`nd'"') lower
+    local _e34h = r(found)
+    local e34s "`e34s' `_e34h'"
+}
+capture erase "`lg34'"
+display "ENV-34 measured: rc `e34rc' written `e34w' said`e34s' clean `e34c' machine `c(machine_type)'"
+
+// ENV-35: a first start that fails is tried once more.
+python: dep_block.sfi_flaky()
+capture noisily dash scatter mpg weight, name(e35)
+local e35rc = _rc
+python: dep_block.stata_hits()
+local e35h "`rg_hits'"
+python: dep_block.stata_restored()
+local e35c "`rg_clean'"
+local e35j = (`"${dash_json_e35}"' != "")
+display "ENV-35 measured: rc `e35rc' registered `e35j' hits `e35h' clean `e35c'"
+
+// ENV-36: numpy below dash_setup's minimum is a note, once per load.
+tempfile e36
+capture erase "`e36'a.html"
+capture erase "`e36'b.html"
+python: dep_block.fake_package_version("numpy", "2.1.3")
+python: dep_block.forget_renderer()
+local lg36 "`c(tmpdir)'dash_env36.log"
+local lg36b "`c(tmpdir)'dash_env36b.log"
+capture erase "`lg36'"
+capture erase "`lg36b'"
+quietly log using "`lg36'", replace text name(e36l)
+capture noisily dash scatter mpg weight, saving("`e36'a.html") replace
+local e36rc = _rc
+quietly log close e36l
+quietly log using "`lg36b'", replace text name(e36l)
+capture noisily dash scatter mpg weight, saving("`e36'b.html") replace
+local e36rc2 = _rc
+quietly log close e36l
+python: dep_block.stata_restored()
+local e36c "`rg_clean'"
+capture confirm file "`e36'a.html"
+local e36w = (_rc == 0)
+cert_log_has "`lg36'", needle("numpy 2.1.3")
+local e36n = r(count)
+cert_log_has "`lg36'", needle("(note:")
+local e36note = r(found)
+cert_log_has "`lg36b'", needle("numpy 2.1.3")
+local e36n2 = r(count)
+capture erase "`lg36'"
+capture erase "`lg36b'"
+capture erase "`e36'a.html"
+capture erase "`e36'b.html"
+display "ENV-36 measured: rc `e36rc' `e36rc2' written `e36w' note `e36note' first `e36n' second `e36n2' clean `e36c'"
+
+// ENV-37: dash clear prunes with numpy missing.
+tempfile e37
+quietly dash scatter mpg weight, saving("`e37'.html") replace
+capture erase "`e37'.html"
+local tmp "`c(tmpdir)'"
+python: dep_block.stata_plant_run()
+local e37run "`rg_run'"
+mata: st_local("e37had", strofreal(direxists(st_local("e37run"))))
+python: dep_block.block("numpy", "missing")
+local lg37 "`c(tmpdir)'dash_env37.log"
+capture erase "`lg37'"
+quietly log using "`lg37'", replace text name(e37l)
+capture noisily dash clear
+local e37rc = _rc
+quietly log close e37l
+python: dep_block.stata_restored()
+local e37c "`rg_clean'"
+mata: st_local("e37left", strofreal(direxists(st_local("e37run"))))
+cert_log_has "`lg37'", needle("registry cleared") lower
+local e37said = r(found)
+capture erase "`lg37'"
+display "ENV-37 measured: planted `e37had' rc `e37rc' said `e37said' left `e37left' clean `e37c'"
+
+// ENV-38: the served child lacks pandas.
+quietly dash scatter mpg weight, name(e38)
+python: dep_block.child_stub()
+local lg38 "`c(tmpdir)'dash_env38.log"
+capture erase "`lg38'"
+quietly log using "`lg38'", replace text name(e38l)
+capture noisily dash serve, port(5931) timeout(5) nobrowser
+local e38rc = _rc
+quietly log close e38l
+python: dep_block.stata_restored()
+local e38c "`rg_clean'"
+local e38s ""
+foreach nd in "run dash_setup" "pandas" "Traceback" {
+    cert_log_has "`lg38'", needle(`"`nd'"') lower
+    local _e38h = r(found)
+    local e38s "`e38s' `_e38h'"
+}
+capture erase "`lg38'"
+display "ENV-38 measured: rc `e38rc' said`e38s' clean `e38c'"
+
+// ENV-39: dash clear is spared by the guard (no Python can start).
+python: dep_block.block("sfi", "missing")
+local lg39 "`c(tmpdir)'dash_env39.log"
+capture erase "`lg39'"
+quietly log using "`lg39'", replace text name(e39l)
+capture noisily dash clear
+local e39rc = _rc
+quietly log close e39l
+python: dep_block.stata_restored()
+local e39c "`rg_clean'"
+cert_log_has "`lg39'", needle("registry cleared") lower
+local e39said = r(found)
+capture erase "`lg39'"
+display "ENV-39 measured: rc `e39rc' said `e39said' clean `e39c'"
+
+// The asserts, in id order.
+foreach pkg in numpy pandas bokeh {
+    assert `e31i_`pkg'' == 198 & `e31r_`pkg'' == 198 & `e31b_`pkg'' == 198 & `e31s_`pkg'' == 198 & `e31v_`pkg'' == 198
+    assert `e31w_`pkg'' == 0
+    assert "`e31s1_`pkg''" == " 1 1 1 1 0 0"
+    assert "`e31c_`pkg''" == "1"
+}
+display "ENV-31 PASS: with numpy, pandas or bokeh missing every route stops r(198) naming the package, the Python and dash_setup, writing and announcing nothing"
+assert `e32rc' == 198 & `e32w' == 0
+assert "`e32s'" == " 1 1 1 0"
+assert "`e32c'" == "1"
+display "ENV-32 PASS: a package that will not import is refused r(198) with its reason and dash_setup"
+assert `e33rc' == 198 & `e33w' == 0
+assert "`e33s'" == " 1 1 1"
+assert "`e33c'" == "1"
+display "ENV-33 PASS: a Python below the floor is refused r(198) naming its version, the floor and dash_setup"
+assert `e34rc' == 198 & `e34w' == 0
+assert "`e34s'" == " 1 1 1 1 0"
+assert "`e34c'" == "1"
+display "ENV-34 PASS: a Python that cannot start is refused r(198) naming the Python, the processor rule and dash_setup"
+assert `e35rc' == 0 & `e35j' == 1
+assert "`e35h'" == "1"
+assert "`e35c'" == "1"
+display "ENV-35 PASS: a first start that fails is tried once more and the command runs"
+assert `e36rc' == 0 & `e36rc2' == 0 & `e36w' == 1
+assert `e36note' == 1 & `e36n' == 1 & `e36n2' == 0
+assert "`e36c'" == "1"
+display "ENV-36 PASS: numpy below dash_setup's minimum is one note per load and the page is written"
+assert `e37had' == 1 & `e37rc' == 0 & `e37said' == 1 & `e37left' == 0
+assert "`e37c'" == "1"
+display "ENV-37 PASS: dash clear prunes dash's temporary files with numpy missing"
+assert `e38rc' == 198
+assert "`e38s'" == " 1 1 0"
+assert "`e38c'" == "1"
+display "ENV-38 PASS: dash serve's child lacking pandas ends r(198) with its one line naming dash_setup"
+assert `e39rc' == 0 & `e39said' == 1
+assert "`e39c'" == "1"
+display "ENV-39 PASS: dash clear clears the registry when no Python can start"
+capture dash clear
 
 display ""
 display "All environment guard tests PASSED."

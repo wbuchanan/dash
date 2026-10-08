@@ -900,6 +900,8 @@ FUNCTIONS = {
  'SchemeParser.default_markline': 'test/test_scheme_symbol_traits.py::TestTheSchemeCycle::test_the_marker_outline_chain',
  'SchemeParser.default_symbol_traits': 'test/test_scheme_symbol_traits.py::TestTheSchemeCycle::test_s1mono_traits',
  # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
+ '_dash_dep_fail': 'test/test_dependency_guards.py::TestTheRendererRefusesWithTheRemedy::test_a_missing_package_is_one_line_naming_dash_setup',
+ '_dash_dep_versions': 'test/test_dependency_guards.py::TestTheVersionNote::test_numpy_or_pandas_below_the_minimum_is_noted',
  # WP-30 S26 (P1.22): function: closed by disposition (P1.22 under M12)
  # WP-30 S27 (P1.17b): twoway's default base and axis extent (P1.17 part b)
  # WP-30 S28 (P1.15a): by() panel labels and overall text (P1.15 part a)
@@ -1030,5 +1032,6 @@ SETUP_FUNCTIONS = {
     # WP-30 S05 (P1.33): Measured Python floor (P1.33, M3/M10)
     "below_floor_message": _P + "TestMessages::test_below_the_floor_the_guidance_names_the_floor_and_never_venv",
     # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
+    "stdlib_entry": "test/test_private_files.py::TestDashClearPrunesWithoutThePackages::test_the_slice_prunes_as_the_renderer_does",
     # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
 }
