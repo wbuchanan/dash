@@ -1780,6 +1780,16 @@ def extract(stata_base: str, scheme: str) -> dict:
                                   lambda t: resolve_sized(r, "gsize", t)),
         "key_label_size": scalar("key_label_size", "gsize", ["key_label"],
                                  lambda t: resolve_sized(r, "gsize", t)),
+        # WP-30 P1.24: the size and colour keys of the remaining text box
+        # styles (style/textboxstyle-*.style), read by mlabtextstyle().  A
+        # key the scheme's #include chain does not set is left unset.
+        **{f"textbox_{k}_size": scalar(
+            f"textbox_{k}_size", "gsize", [k],
+            lambda t: resolve_sized(r, "gsize", t), class_default=False,
+            required=False) for k in TEXTBOX_KEYS},
+        **{f"textbox_{k}_color": color_of(f"textbox_{k}_color", [k],
+                                          required=False)
+           for k in TEXTBOX_KEYS},
 
         "graphsize_x": graphsize("x"),
         "graphsize_y": graphsize("y"),
@@ -2209,6 +2219,20 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         "note()'s text box (Stata: textboxstyle note) and the keys that box",
         "reads for its size, text colour and, where it draws a box, fill.",
     ], note_items)
+    # WP-30 P1.24: the keys the remaining text box styles read, where the
+    # scheme's chain sets them and no group above writes them already.
+    have = {(c, k) for _cm, its, _op in groups for c, k, _v, _r in its}
+    tb_items = []
+    for k in TEXTBOX_KEYS:
+        for cls, sfx, use_name in (("gsize", "size", True),
+                                   ("color", "color", False)):
+            if (cls, k) not in have:
+                tb_items.append(scalar(cls, k, f"textbox_{k}_{sfx}",
+                                       use_name=use_name))
+    group([
+        "Text sizes and colours of the remaining text box styles, read by",
+        "mlabtextstyle() (WP-30 P1.24).",
+    ], tb_items)
 
     # --- the chrome (WP-30 P1.2a) ------------------------------------------ #
     # Effective values of the keys Stata's chrome styles read:
@@ -2631,6 +2655,17 @@ def _drop_undeclared_stubs(lines: list[str], groups) -> list[str]:
 # dash.ado's _dash_shipped_schemes must list exactly these;
 # test_scheme_resolution.py checks all four agree.  The order is
 # append-only: scheme_truth.json's key order follows it.
+#: The scheme keys the shipped textboxstyle files read that no other
+#: directive group carries (WP-30 P1.24; test/fixtures/
+#: mlabtextstyle_truth.json's _meta.table).
+TEXTBOX_KEYS = (
+    "label", "small_label", "filled_text", "text_option", "reverse_big",
+    "reverse_big_text", "matrix_label", "matrix_marklbl", "minortick_label",
+    "tick_biglabel", "sts_risk_label", "sts_risk_title", "fpbody",
+    "fpcoltitle", "fpnulllefttext", "fpnullrighttext", "fpspacer",
+    "pbarlabel", "pboxlabel",
+)
+
 SCHEMES = [
     "stcolor", "stcolor_alt", "stgcolor", "stmono1", "stmono2", "stsj",
     "s2color", "s2mono", "s2gcolor", "s1color", "s1mono", "s1rcolor",

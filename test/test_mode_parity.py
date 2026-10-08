@@ -2167,6 +2167,10 @@ CORPUS = [
     _case("Per-row clocks on pc types (WP-30 P1.24)",
           [plot_for("pcscatter", {"mlabel": "rep", "mlabvposition": "rep"}),
            plot_for("pcarrow", {"mlabel": "rep", "mlabvposition": "rep"})]),
+    _case("Label text styles, per y (WP-30 P1.24)",
+          [_sc(mlabel="rep", mlabtextstyle="heading"),
+           plot_for("dropline", {"mlabel": "rep", "mlabtextstyle": "p3"})],
+          bo={"scheme": "stcolor"}),
 ]
 
 

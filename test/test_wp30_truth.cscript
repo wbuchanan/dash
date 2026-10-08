@@ -114,7 +114,7 @@ local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
-    S35 14 S36 6 S37 4
+    S35 14 S36 6 S37 6
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -9168,6 +9168,111 @@ program define _s37_case
     capture erase "`work'/s37_`id'.html"
 end
 
+// S37 part 2 (WP-30 P1.24): mlabtextstyle().  _s37_style compares each
+// series' label size, as a ratio to the default label's, and its colour,
+// twoway's SVGs (S37_TWD default, S37_TW probe) against dash's saved pages
+// (S37_PGD, S37_PG); sets S37_OK and S37_MSG.
+python:
+def _s37_sizes_tw(path):
+    _s37_sys.path.insert(0, _s37_os.path.join(_s37_M.getGlobal("S37_REPO"), "scripts"))
+    import svg_truth as st
+    out = {}
+    for t in st.svg_texts(path):
+        m = _s37_re.match(r"^([QS])[0-9]$", t["text"].strip())
+        if m and m.group(1) not in out:
+            out[m.group(1)] = (t["size"], (t["fill"] or "").lower())
+    return out
+
+
+def _s37_sizes_pg(path):
+    _s37_sys.path.insert(0, _s37_M.getGlobal("S37_REPO"))
+    import dash_render as dr
+    from bokeh.document import Document
+    from bokeh.models import LabelSet
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    out = {}
+    for blob in _s37_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s37_re.S):
+        try:
+            docs = _s37_json.loads(_s37_html.unescape(blob))
+        except ValueError:
+            continue
+        for dj in (docs.values() if isinstance(docs, dict) else []):
+            if not (isinstance(dj, dict) and "roots" in dj):
+                continue
+            with _s37_w.catch_warnings():
+                _s37_w.simplefilter("ignore")
+                doc = Document.from_json(dj)
+            for ls in doc.select({"type": LabelSet}):
+                f = getattr(ls.text, "field", ls.text)
+                first = str(list(ls.source.data[f])[0])
+                sz = getattr(ls.text_font_size, "value", ls.text_font_size)
+                col = getattr(ls.text_color, "value", ls.text_color)
+                out[first[0]] = (dr.OptionTranslator.css_to_pt(sz), str(col).lower())
+    return out
+
+
+def _s37_style():
+    twd = _s37_sizes_tw(_s37_M.getGlobal("S37_TWD"))
+    tw = _s37_sizes_tw(_s37_M.getGlobal("S37_TW"))
+    pgd = _s37_sizes_pg(_s37_M.getGlobal("S37_PGD"))
+    pg = _s37_sizes_pg(_s37_M.getGlobal("S37_PG"))
+    bad = []
+    for ser in sorted(tw):
+        want = tw[ser][0] / twd["Q"][0]
+        got = (pg.get(ser, (0, ""))[0] or 0) / pgd["Q"][0]
+        if abs(got - want) > 0.01 * want or pg.get(ser, (0, ""))[1] != tw[ser][1]:
+            bad.append((ser, round(got, 3), round(want, 3), pg.get(ser), tw[ser][1]))
+    _s37_M.setGlobal("S37_OK", "1" if (tw and not bad) else "0")
+    _s37_M.setGlobal("S37_MSG", "series %s, differing %s" % (sorted(tw), bad))
+end
+
+capture program drop _s37_tstyle
+program define _s37_tstyle
+    version 19
+    args id cmd work what note
+    foreach k in d p {
+        local c "scatter y x, mlabel(lab) scheme(stcolor)"
+        if "`k'" == "p" local c "`cmd'"
+        quietly graph drop _all
+        capture log close _s37
+        quietly log using "`work'/s37_`id'`k'.log", text replace name(_s37)
+        capture noisily twoway `c' name(_s37g, replace)
+        local trc`k' = _rc
+        quietly log close _s37
+        capture graph export "`work'/s37_`id'`k'.svg", name(_s37g) replace
+        quietly graph drop _all
+        capture dash clear
+        quietly log using "`work'/s37_`id'`k'_d.log", text replace name(_s37)
+        capture noisily dash `c' saving("`work'/s37_`id'`k'.html", replace)
+        local drc`k' = _rc
+        quietly log close _s37
+    }
+    global S37_TWD "`work'/s37_`id'd.svg"
+    global S37_TW "`work'/s37_`id'p.svg"
+    global S37_PGD "`work'/s37_`id'd.html"
+    global S37_PG "`work'/s37_`id'p.html"
+    global S37_OK 0
+    global S37_MSG "not compared"
+    if !`trcp' & !`drcp' capture noisily python: __import__("__main__")._s37_style()
+    local nt 1
+    local nd 1
+    if `"`note'"' != "" {
+        _s36_count "`work'/s37_`id'p.log" "named style"
+        local nt = r(n)
+        _s36_count "`work'/s37_`id'p_d.log" `"`note'"'
+        local nd = r(n)
+    }
+    _w30_expect `id' "(`trcp' == 0 & `drcp' == 0 & ${S37_OK} == 1 & `nt' >= 1 & `nd' == 1)" `"twoway rc `trcp', dash rc `drcp', notes `nt' `nd': ${S37_MSG}"'
+    _w30_done `id' `"`what'"'
+    foreach k in d p {
+        capture erase "`work'/s37_`id'`k'.svg"
+        capture erase "`work'/s37_`id'`k'.html"
+        capture erase "`work'/s37_`id'`k'.log"
+        capture erase "`work'/s37_`id'`k'_d.log"
+    }
+end
+
 * ==== S37 P1.24: mlabvposition() and mlabtextstyle() ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S37") & `: list posof "S37" in w30_run' {
@@ -9204,6 +9309,29 @@ if inlist("`only'", "", "S37") & `: list posof "S37" in w30_run' {
     _s37_case MV-22 "scatter y x, mlabel(lab) mlabvposition(pos) mlabposition(9) scheme(stcolor)" "`w30_work'" "a missing position takes mlabposition()"
     _s37_case MV-23 "scatter y y2 x, mlabel(lab lab) mlabvposition(p9) scheme(stcolor)" "`w30_work'" "one variable places every y's labels"
     _s37_case MV-24 "scatter y x, mlabel(lab) mlabvposition(pos) by(g) scheme(stcolor)" "`w30_work'" "each by() panel's rows at their own clocks"
+    macro drop S37_*
+    capture dash clear
+    display as text "S37 end " c(current_date) " " c(current_time)
+}
+* ==== end S37 ====
+
+* ==== S37 P1.24: mlabtextstyle() ====
+local only : env WP30_ONLY
+if inlist("`only'", "", "S37") & `: list posof "S37" in w30_run' {
+    display as text "S37 start " c(current_date) " " c(current_time)
+    global S37_REPO "`c(pwd)'/.."
+    quietly {
+        clear
+        set obs 3
+        gen double x = _n
+        gen double y = 2 * x
+        gen double y2 = y + 1
+        gen str2 lab = "Q" + string(_n)
+        gen str2 lab2 = "S" + string(_n)
+    }
+    _s37_tstyle MV-25 "scatter y x, mlabel(lab) mlabtextstyle(heading) scheme(stcolor)" "`w30_work'" "mlabtextstyle(heading) is the scheme's heading, size and colour, as twoway draws it"
+    _s37_tstyle MV-26 "scatter y y2 x, mlabel(lab lab2) mlabtextstyle(heading body) scheme(stcolor)" "`w30_work'" "a style list: heading for the first y, body for the second"
+    _s37_tstyle MV-27 "scatter y x, mlabel(lab) mlabtextstyle(nosuch) scheme(stcolor)" "`w30_work'" "an unknown name is noted, as twoway notes it, and drawn in body" "mlabtextstyle(nosuch) is not a recognised text style"
     macro drop S37_*
     capture dash clear
     display as text "S37 end " c(current_date) " " c(current_time)

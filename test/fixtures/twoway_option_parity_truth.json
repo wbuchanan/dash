@@ -1,8 +1,8 @@
 {
  "_meta": {
-  "answers": 1352,
+  "answers": 1360,
   "born_date": "12 Aug 2026",
-  "dash_commit": "e3680f61ee5b69299576da4ea30abd29b6cd78b2",
+  "dash_commit": "b79db35e54c4a093209e847fd97a94e36de167a1",
   "extracted": " 8 Oct 2026",
   "method": "each answer asked of twoway in a run of the script with DASH_CERT_REMEASURE=record, by scripts/extract_twoway_oracle_truth.do (test/cert_truth.py)",
   "script": "test_twoway_option_parity.cscript",
@@ -2629,6 +2629,38 @@
    "log": "",
    "rc": 0
   },
+  "log|MV-12|twoway lfit mpg weight, mlabtextstyle(heading)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-12|twoway line mpg weight, mlabtextstyle(heading)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-12|twoway rscatter lo hi weight, mlabtextstyle(heading)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-12|twoway scatter mpg weight, mlabel(make) mlabt(heading)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-12|twoway scatter mpg weight, mlabel(make) mlabtextstyle()": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-12|twoway scatter mpg weight, mlabel(make) mlabtextstyle(heading) mlabtextstyle(body)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-13|twoway scatter mpg turn weight, mlabel(make make) mlabtextstyle(.. heading)": {
+   "log": "mlabtextstyle(.. heading):  invalid syntax\n",
+   "rc": 198
+  },
+  "log|MV-13|twoway scatter mpg turn weight, mlabel(make make) mlabtextstyle(heading body)": {
+   "log": "",
+   "rc": 0
+  },
   "log|TP-14f|twoway (lfit mpg weight, atobs) (lfit price weight, atobs), title(T) nodraw": {
    "log": "",
    "rc": 0
@@ -3579,10 +3611,10 @@
   "rc|TP-06b|twoway scatter mpg weight, sort nodraw": 0,
   "rc|TP-06b|twoway tsline mpg, sort nodraw": 0,
   "rc|TP-06b|twoway tsrline lo hi, sort nodraw": 0,
+  "rc|TP-06h|twoway scatter mpg weight, mlabel(make) mlabt(heading) nodraw": 0,
   "rc|TP-06h|twoway scatter mpg weight, mlabel(make) mlabv(pos) nodraw": 0,
   "rc|TP-06|twoway (scatter mpg weight) (line mpg weight), xoverhang nodraw": 0,
   "rc|TP-06|twoway (scatter mpg weight) (line mpg weight), yoverhangs nodraw": 0,
-  "rc|TP-06|twoway scatter mpg weight, mlabel(make) mlabt(heading) nodraw": 0,
   "rc|TP-06|twoway scatter mpg weight, sort(mpg) nodraw": 0,
   "rc|TP-06|twoway scatter mpg weight, xoverhang nodraw": 0,
   "rc|TP-06|twoway scatter mpg weight, yoverhang nodraw": 0,

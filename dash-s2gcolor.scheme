@@ -489,6 +489,50 @@ symbolsize ci2                 medium
 symbolsize histogram           medlarge
 symbolsize parrow              medium
 
+* ---------------------------------------------------------------------------
+* Added 08oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> s2gcolor); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Text sizes and colours of the remaining text box styles, read by
+* mlabtextstyle() (WP-30 P1.24).
+gsize label             medsmall
+color label             #000000
+gsize small_label       small
+gsize filled_text       medsmall
+color filled_text       #000000
+gsize text_option       medsmall
+color text_option       #000000
+gsize reverse_big       large
+color reverse_big       #1a476f
+color reverse_big_text  #ffffff
+gsize matrix_label      medlarge
+color matrix_label      #000000
+gsize matrix_marklbl    small
+color matrix_marklbl    #000000
+gsize minortick_label   vsmall
+gsize tick_biglabel     medium
+color tick_biglabel     #000000
+gsize sts_risk_label    medsmall
+color sts_risk_label    #000000
+gsize sts_risk_title    medsmall
+color sts_risk_title    #000000
+gsize fpbody            11-pt
+color fpbody            #000000
+gsize fpcoltitle        11-pt
+color fpcoltitle        #000000
+gsize fpnulllefttext    11-pt
+color fpnulllefttext    #000000
+gsize fpnullrighttext   11-pt
+color fpnullrighttext   #000000
+gsize fpspacer          zero
+gsize pbarlabel         small
+gsize pboxlabel         small
+
 * -------------------------------------------------------------------------
 * HONEST GAP (project rule 2) -- the p#lineplot keys
 * -------------------------------------------------------------------------
@@ -627,6 +671,38 @@ symbolsize parrow              medium
 * provenance: linewidth plotregion -- transcribed from scheme-s2color.scheme:1225 `linewidth plotregion thin'
 * provenance: linepattern plotregion -- transcribed from scheme-s2color.scheme:584 `linepattern plotregion solid'
 * provenance: textboxstyle note -- transcribed from scheme-s2color.scheme:1320 `textboxstyle note small_body'
+* provenance: gsize label -- transcribed from scheme-s2color.scheme:143 `gsize label medsmall'
+* provenance: color label -- transcribed from scheme-s2color.scheme:320 `color label black'
+* provenance: gsize small_label -- transcribed from scheme-s2color.scheme:144 `gsize small_label small'
+* provenance: gsize filled_text -- transcribed from scheme-s2color.scheme:161 `gsize filled_text medsmall'
+* provenance: color filled_text -- transcribed from scheme-s2color.scheme:336 `color filled_text black'
+* provenance: gsize text_option -- transcribed from scheme-s2color.scheme:149 `gsize text_option medsmall'
+* provenance: color text_option -- transcribed from scheme-s2color.scheme:332 `color text_option black'
+* provenance: gsize reverse_big -- transcribed from scheme-s2color.scheme:162 `gsize reverse_big large'
+* provenance: color reverse_big -- transcribed from scheme-s2color.scheme:340 `color reverse_big navy'
+* provenance: color reverse_big_text -- transcribed from scheme-s2color.scheme:342 `color reverse_big_text white'
+* provenance: gsize matrix_label -- transcribed from scheme-s2color.scheme:142 `gsize matrix_label medlarge'
+* provenance: color matrix_label -- transcribed from scheme-s2color.scheme:319 `color matrix_label black'
+* provenance: gsize matrix_marklbl -- transcribed from scheme-s2color.scheme:145 `gsize matrix_marklbl small'
+* provenance: color matrix_marklbl -- transcribed from scheme-s2color.scheme:324 `color matrix_marklbl black'
+* provenance: gsize minortick_label -- transcribed from scheme-s2color.scheme:160 `gsize minortick_label vsmall'
+* provenance: gsize tick_biglabel -- transcribed from scheme-s2color.scheme:159 `gsize tick_biglabel medium'
+* provenance: color tick_biglabel -- transcribed from scheme-s2color.scheme:323 `color tick_biglabel black'
+* provenance: gsize sts_risk_label -- transcribed from scheme-s2color.scheme:226 `gsize sts_risk_label medsmall'
+* provenance: color sts_risk_label -- transcribed from scheme-s2color.scheme:325 `color sts_risk_label black'
+* provenance: gsize sts_risk_title -- transcribed from scheme-s2color.scheme:227 `gsize sts_risk_title medsmall'
+* provenance: color sts_risk_title -- transcribed from scheme-s2color.scheme:326 `color sts_risk_title black'
+* provenance: gsize fpbody -- transcribed from scheme-s2color.scheme:217 `gsize fpbody 11-pt'
+* provenance: color fpbody -- transcribed from scheme-s2color.scheme:361 `color fpbody black'
+* provenance: gsize fpcoltitle -- transcribed from scheme-s2color.scheme:218 `gsize fpcoltitle 11-pt'
+* provenance: color fpcoltitle -- transcribed from scheme-s2color.scheme:362 `color fpcoltitle black'
+* provenance: gsize fpnulllefttext -- transcribed from scheme-s2color.scheme:220 `gsize fpnulllefttext 11-pt'
+* provenance: color fpnulllefttext -- transcribed from scheme-s2color.scheme:382 `color fpnulllefttext black'
+* provenance: gsize fpnullrighttext -- transcribed from scheme-s2color.scheme:221 `gsize fpnullrighttext 11-pt'
+* provenance: color fpnullrighttext -- transcribed from scheme-s2color.scheme:383 `color fpnullrighttext black'
+* provenance: gsize fpspacer -- transcribed from scheme-s2color.scheme:219 `gsize fpspacer zero'
+* provenance: gsize pbarlabel -- transcribed from scheme-s2color.scheme:192 `gsize pbarlabel small'
+* provenance: gsize pboxlabel -- transcribed from scheme-s2color.scheme:193 `gsize pboxlabel small'
 * provenance: anglestyle horizontal_tick -- transcribed from scheme-s2color.scheme:1964 `anglestyle horizontal_tick horizontal'
 * provenance: anglestyle vertical_tick -- transcribed from scheme-s2color.scheme:1965 `anglestyle vertical_tick vertical'
 * provenance: linepattern major_grid -- transcribed from scheme-s2color.scheme:565 `linepattern major_grid solid'

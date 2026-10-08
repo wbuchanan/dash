@@ -773,7 +773,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.21a -->
 
-<!-- WP-30 P1.24 -->
+- `mlabvposition()` is refused where twoway refuses it, in twoway's words (all rc 0 with a note before): on rarea, rbar, rcap, rcapsym, rconnected, rline, rscatter, rspike and tsrline (`rscatter requires 3 variables: y y2 x p9`, r(103)), on lfit, qfit, fpfit, lfitci, qfitci, fpfitci, mspline and mband (`too many variables specified: y x p9`, r(103)) and on lowess, lpoly, lpolyci and kdensity (`too many variables specified`, r(103)); a second copy (`option mlabvposition() not allowed`, r(198)); two names (`option mlabvposition():  too many names specified`, r(103)); an expression (`* invalid name`, r(198)); a variable that does not exist (`variable nosuch not found`, r(111)). (WP-30, P1.24)
 
 - scheme() takes a scheme's name as Stata finds its file: a name holding a blank, a control character, a colon, a backtick or a dollar sign, or longer than 87 characters, such as scheme(my theme), was looked for as a file in the working directory and is now refused r(198) with the list of schemes; twoway does not find such a name either. Rename the file, for example to scheme-mytheme.scheme. (WP-30, P1.25b)
 
@@ -882,7 +882,7 @@ requirement changes sit in their own lists.
 
 - A `function` layer drawn without Stata's points -- from a dashboard spec written by hand, or a graph whose stored points were removed, cannot be read or are not dash's -- that uses a function or name dash does not evaluate itself (`normalden(x)`, `c(pi)*x`, `cond()`, `min()`, `round()`, `scalar()`, `_b[]`, `pi`) still draws nothing, but now says why, saved and served, and in the log of `dash build, server`: `(note:  dash: graph 'g' plot 1 (function) drew nothing: it needs the points Stata computes for it when dash registers the graph, and this spec carries none; without them dash evaluates only x, _pi, numbers, + - * / ^ and sin(), cos(), tan(), exp(), log(), log10(), sqrt(), abs(), floor() and ceil(), and normalden() is not one of them.)`, where it printed only `(note:  dash: graph 'fn02' plot 1 (function) drew nothing.)`; and the note for stored points that are not dash's no longer says the layer "is drawn from its expression". Every function layer of a graph registered in Stata is drawn from twoway's own points, as since WP-29. (WP-30, P1.22)
 
-<!-- WP-30 P1.24 -->
+- `mlabvposition(varname)` and `mlabtextstyle()` are drawn, in both modes and after filter moves: `dash scatter y x, mlabel(lab) mlabvposition(pos)` drew every label at 3 o'clock and named the option in the note, and now draws each row at the clock its value gives (a whole number 0-12; missing values and string variables at `mlabposition()`, else 3; any other number at 12 with a note), with `mlabgap()` along each row's direction; `mlabtextstyle(heading)` was named in the note and drawn in the marker-label default, and now draws the scheme's heading (under stcolor 1.75 times the default label size, black where the default is p1's blue), any of Stata's 37 text box styles, one per y as a style list. (WP-30, P1.24)
 
 - A Python warnings filter set in the session no longer hides or escalates dash's notes. After python: warnings.filterwarnings("ignore") the note still prints. After python: warnings.simplefilter("error"), or with PYTHONWARNINGS=error, the dashboard is drawn (rc 0), where it failed with r(7102) and a 60-line traceback. Other packages' warnings still follow the session's filters, and a note raised twice in one command prints once. (WP-30, P1.26a)
 

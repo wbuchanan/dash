@@ -609,7 +609,8 @@ class TestTheParsersFoundSomething:
         # Flipped (WP-30 P1.24): 47 was wrong because twoway draws
         # mlabvposition() per row (mlabvpos_truth.json A).
         # 47 -> 46: P1.24 mlabvposition() honoured
-        assert len(_ignored_options()) == 46
+        # 46 -> 45: P1.24 mlabtextstyle() honoured (part 2)
+        assert len(_ignored_options()) == 45
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -620,7 +621,8 @@ class TestTheParsersFoundSomething:
         # Flipped (WP-30 P1.24): 47 was wrong because twoway draws
         # mlabvposition() per row (mlabvpos_truth.json A).
         # 47 -> 46: P1.24 mlabvposition() honoured
-        assert len(_unsupported_section()) == 46
+        # 46 -> 45: P1.24 mlabtextstyle() honoured, its entry gone
+        assert len(_unsupported_section()) == 45
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -1010,4 +1012,5 @@ class TestInternalLinksResolve:
         # Unsupported entry's link to ciband went with the entry.
         # 91 -> 92 links: P1.14b's named-styles paragraph links the
         # scheme section.
-        assert len(refs) == 92 and len(set(refs)) == 34
+        # 92 -> 93 links: P1.24's mlabt:extstyle() row links Style lists.
+        assert len(refs) == 93 and len(set(refs)) == 34

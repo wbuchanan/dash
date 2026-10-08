@@ -7295,6 +7295,39 @@ class SchemeParser:
         "gsize small_body":       "small",
         "gsize plabel":           "small",
         "gsize key_label":        "medsmall",
+        # WP-30 P1.24: the remaining text box styles' keys, s2color's.
+        "gsize label":            "medsmall",
+        "color label":            "black",
+        "gsize small_label":      "small",
+        "gsize filled_text":      "medsmall",
+        "color filled_text":      "black",
+        "gsize text_option":      "medsmall",
+        "color text_option":      "black",
+        "gsize reverse_big":      "large",
+        "color reverse_big":      "dknavy",
+        "color reverse_big_text": "white",
+        "gsize matrix_label":     "medlarge",
+        "color matrix_label":     "black",
+        "gsize matrix_marklbl":   "small",
+        "color matrix_marklbl":   "black",
+        "gsize minortick_label":  "vsmall",
+        "gsize tick_biglabel":    "medium",
+        "color tick_biglabel":    "black",
+        "gsize sts_risk_label":   "medsmall",
+        "color sts_risk_label":   "black",
+        "gsize sts_risk_title":   "medsmall",
+        "color sts_risk_title":   "black",
+        "gsize fpbody":           "11-pt",
+        "color fpbody":           "black",
+        "gsize fpcoltitle":       "11-pt",
+        "color fpcoltitle":       "black",
+        "gsize fpnulllefttext":   "11-pt",
+        "color fpnulllefttext":   "black",
+        "gsize fpnullrighttext":  "11-pt",
+        "color fpnullrighttext":  "black",
+        "gsize fpspacer":         "zero",
+        "gsize pbarlabel":        "small",
+        "gsize pboxlabel":        "small",
         "linewidth minor_grid":   "thin",
         "linewidth axisline":     "thin",
         "numstyle legend_rows":   "0",
@@ -9037,6 +9070,14 @@ class SchemeParser:
         raw = self._props.get(key, "").strip().lower()
         if raw in self._GSIZE_PT:
             return self._GSIZE_PT[raw]
+        # Stata's `#-pt' gsize names (style/gsize-11-pt.style, read by the
+        # fp* text box styles): that many points on the graph as drawn, so
+        # in dash's 4-inch units scaled by 4 / size_ref_in (WP-30 P1.24,
+        # measured under stcolor, s2color, s1rcolor and economist).
+        _m = re.fullmatch(r"([0-9]{1,3}(?:\.[0-9]{1,3})?)-pt", raw)
+        if _m:
+            _ref = getattr(self, "size_ref_in", 4.0) or 4.0
+            return f"{round(float(_m.group(1)) * 4.0 / _ref, 3):g}pt"
         # A bare number is a Stata relative size, 2.88pt per unit at the
         # 4-inch reference the keyword table is stated at.  This used to be
         # int(val * 1.2) floored at 6, dash's own invention: economist's
@@ -9341,6 +9382,80 @@ class SchemeParser:
     # the style reads (`set drawbox scheme textbox'); every shipped scheme
     # sets `yesno textbox no'.  A name outside the table is small_body,
     # said aloud: the name is a key into this table, never a path.
+    # WP-30 P1.24: Stata's shipped text box styles (ado/base/style/
+    # textboxstyle-<name>.style), each to the scheme keys its `set size
+    # scheme' and `set color scheme' read -- transcribed from
+    # test/fixtures/mlabtextstyle_truth.json's _meta.table, which a test
+    # holds this to.  The p#, p#barlabel and p#boxlabel families are read
+    # by textbox_style itself.  A name is a key into this table, never a
+    # path.
+    _TEXTBOX_STYLES: "dict[str, tuple[str, str]]" = {
+        "axis_title": ("axis_title", "axis_title"),
+        "body": ("body", "body"),
+        "bordered": ("filled_text", "filled_text"),
+        "clegend": ("subheading", "subheading"),
+        "editor": ("text_option", "text_option"),
+        "filled": ("filled_text", "filled_text"),
+        "fpbody": ("fpbody", "fpbody"),
+        "fpcollabel": ("fpcoltitle", "fpcoltitle"),
+        "fpcoltitle": ("fpcoltitle", "fpcoltitle"),
+        "fpcustom": ("fpbody", "fpbody"),
+        "fplabel": ("fpbody", "fpbody"),
+        "fpnulllefttext": ("fpnulllefttext", "fpnulllefttext"),
+        "fpnullrighttext": ("fpnullrighttext", "fpnullrighttext"),
+        "fpspacer": ("fpspacer", "fpspacer"),
+        "fptick_label": ("fpbody", "tick_label"),
+        "heading": ("heading", "heading"),
+        "key_label": ("key_label", "key_label"),
+        "label": ("label", "label"),
+        "legend_key": ("key_label", "key_label"),
+        "legend_title": ("heading", "heading"),
+        "matrix_label": ("matrix_label", "matrix_label"),
+        "matrix_marklbl": ("matrix_marklbl", "matrix_marklbl"),
+        "minortick_label": ("minortick_label", "tick_label"),
+        "reverse_big": ("reverse_big", "reverse_big_text"),
+        "small_body": ("small_body", "small_body"),
+        "small_label": ("small_label", "label"),
+        "smbody": ("small_body", "body"),
+        "sts_risktable": ("sts_risk_label", "sts_risk_label"),
+        "sts_risktitle": ("sts_risk_title", "sts_risk_title"),
+        "subheading": ("subheading", "subheading"),
+        "subheading_gs": ("subheading", "subheading"),
+        "text_option": ("text_option", "text_option"),
+        "tick_biglabel": ("tick_biglabel", "tick_biglabel"),
+        "tick_label": ("tick_label", "tick_label"),
+    }
+
+    def textbox_style(self, name) -> "tuple[str, str] | None":
+        """``(size, colour)`` of the text box style *name* in this scheme,
+        or None when Stata ships no such style (WP-30 P1.24).
+
+        Case matters, as in twoway (``Heading`` is not ``heading``).  A
+        fixed name reads its keys through the table; ``p<n>`` (n 1-15) is
+        the marker-label style of plot n, and ``p<n>barlabel`` /
+        ``p<n>boxlabel`` read ``p<n>barlabel`` -> ``pbarlabel`` -> plot n's
+        marker-label style.  An absent key is body's size or colour.
+        """
+        if not isinstance(name, str) or not 0 < len(name) <= 32:
+            return None
+        if name in self._TEXTBOX_STYLES:
+            sk, ck = self._TEXTBOX_STYLES[name]
+            return (self._gsize(f"gsize {sk}", self.body_font_size),
+                    self._color(f"color {ck}", self.body_color))
+        m = re.fullmatch(r"p([1-9]|1[0-5])(barlabel|boxlabel)?", name)
+        if m is None:
+            return None
+        i = int(m.group(1)) - 1
+        size, color = self.p_label_sizes[i], self.p_label_colors[i]
+        stub = m.group(2)
+        if stub:
+            for key in (f"p{stub}", f"p{i + 1}{stub}"):
+                if self._props.get(f"gsize {key}", "").strip():
+                    size = self._gsize(f"gsize {key}", size)
+                if self._props.get(f"color {key}", "").strip():
+                    color = self._color(f"color {key}", color)
+        return size, color
+
     _NOTE_TEXTBOXES: "dict[str, tuple]" = {
         "small_body":   ("small_body", "small_body", "textbox", "textbox"),
         "body":         ("body", "body", "textbox", "textbox"),
@@ -13383,6 +13498,21 @@ class GlyphMapper:
             else:
                 kwargs["angle"] = math.radians(_deg)
                 kwargs["angle_units"] = "rad"
+
+        # mlabtextstyle() (WP-30 P1.24): one of Stata's text box styles,
+        # read from the scheme; mlabsize() and mlabcolor() below win over
+        # it whatever their order, as twoway folds them.  An unknown name
+        # is noted and drawn in body, as twoway draws it.
+        _mts = options.get("mlabtextstyle", "")
+        _mts = _mts.strip() if isinstance(_mts, str) else ""
+        if _mts and _mts != ".":
+            _tb = self.scheme.textbox_style(_mts)
+            if _tb is None:
+                _dash_style_note("mlabtextstyle", _mts, "text style",
+                                 "the body text style")
+                _tb = self.scheme.textbox_style("body")
+            kwargs["text_font_size"], kwargs["text_color"] = _tb
+            kwargs.pop("text_alpha", None)
 
         # An unknown colour, size, position or gap is NAMED and the default
         # kept; each of these was an `except ValueError: pass'.

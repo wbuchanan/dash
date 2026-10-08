@@ -237,8 +237,9 @@ _DECL = re.compile(r"\b([A-Z][A-Za-z0-9]*)\s*\(")
 _FLAG = re.compile(r"\b(?:no)?([A-Z][A-Za-z0-9]*)\b")
 
 #: Declared, and on purpose not written to the spec.
-_ALLOW = {"xoverhangs": "P2.13 (Sizing)", "yoverhangs": "P2.13 (Sizing)",
-          "mlabtextstyle": "P1.24 part 2"}
+#: Flipped (WP-30 P1.24 part 2): mlabtextstyle left it, serialised as a
+#: style list.
+_ALLOW = {"xoverhangs": "P2.13 (Sizing)", "yoverhangs": "P2.13 (Sizing)"}
 _GRAPH_ALIASES = {"pbgc", "xla2", "xsc2", "xti2", "yla2", "ysc2", "yti2"}
 
 

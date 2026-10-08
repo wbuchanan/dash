@@ -2504,6 +2504,15 @@ the per-plot specification (not to {cmd:dash build} options).
     number is drawn at 12 and the values are reported once, as {cmd:twoway}
     notes them.  One variable serves every {it:y} of the layer, and
     {cmd:mlabgap()} moves each label along its own row's direction{p_end}
+{synopt:{cmdab:mlabt:extstyle(}{it:textstyle}{cmd:)}}one of Stata's text
+    box styles -- {cmd:heading}, {cmd:subheading}, {cmd:body},
+    {cmd:small_body}, {cmd:label}, {cmd:tick_label}, {cmd:p1} to
+    {cmd:p15}, ... -- in the graph's scheme, as {cmd:twoway} draws it.  A
+    style list, one element per {it:y}; see
+    {help dash##stylelists:Style lists}.  {cmd:mlabsize()} and
+    {cmd:mlabcolor()} override it whatever their order.  An unknown name,
+    or a textboxstyle file of your own, is reported and the labels drawn
+    in {cmd:body}, as {cmd:twoway} draws them{p_end}
 {synopt:{cmdab:mlabg:ap(}{it:size}{cmd:)}}space between the marker's
     edge and the label, in the direction of the clock position: a
     {cmd:gsize} in Stata's units, {cmd:half_tiny} (2 point) by default, as
@@ -4375,7 +4384,7 @@ Colours may be Stata colour names or {cmd:#rrggbb}.
 {pstd}
 {ul:What the shipped files are.}  Each is a translation in {cmd:dash}'s
 own format, not a copy of StataCorp's file and not a drop-in Stata
-scheme: 210 to 280 directives (more for the monochrome schemes, whose
+scheme: 250 to 320 directives (more for the monochrome schemes, whose
 chains declare connecting-line and line-plot keys, a symbol cycle and
 {cmd:color plabel}; every file carries {cmd:gsize plabel}) where Stata's
 {cmd:scheme-s2color.scheme}
@@ -4548,11 +4557,6 @@ disagree in either direction.
     {cmd:twoway} does, so none of the eight names them (see
     {ul:Join order} under the plot types).  A malformed {cmd:sort()} is
     refused on every type, as {cmd:twoway} refuses it.
-
-{phang2}{ul:Marker-label text style.}
-    {opt mlabtextstyle(textstyle)} -- a named text style in a
-    {cmd:.scheme} file; set the size and colour with {cmd:mlabsize()} and
-    {cmd:mlabcolor()}.
 
 {phang2}{ul:Room for long end labels.}
     {opt xoverhangs}, {opt yoverhangs} -- {cmd:twoway} widens the graph

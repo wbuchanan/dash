@@ -48,11 +48,12 @@ _STYLE_KEYS = (
 # Flipped (WP-30 P1.14a): the nine named styles are stylelists, after the
 # value lists in _dash_stylelist_keys().
 # WP-30 P1.14b: dstyle dlstyle bmlinestyle are kept per y (not drawn).
+# Flipped (WP-30 P1.24): mlabtextstyle left _NOT_YET; a style list now.
 _NAMED_KEYS = ("pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle "
-               "blstyle dstyle dlstyle bmlinestyle").split()
+               "blstyle dstyle dlstyle bmlinestyle mlabtextstyle").split()
 # P1.1b: mlabel jitter base barwidth are value lists now (test_value_lists)
 # Flipped (WP-30 P1.14a): pstyle mstyle lstyle mlstyle left _NOT_YET.
-_NOT_YET = ("mlabtextstyle", "connect", "cmissing",
+_NOT_YET = ("connect", "cmissing",
             "malpha", "lalpha", "falpha", "jseed", "mlabwidth", "mlpattern",
             "marker")
 

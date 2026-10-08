@@ -1170,7 +1170,7 @@ program define _dash_parse_plot_opts, sclass
         SORT                      RAnge(string asis)        COLORLIst(string asis) ///
         SORT1(string)             CLColor(string asis)      CLPattern(string asis) ///
         CLWidth(string asis)      MLABANGle(string asis)    MLABFormat(string asis) ///
-        MLABTextstyle(string)     MLABVposition(string)     XOVERHANGs ///
+        MLABTextstyle(string asis) MLABVposition(string)    XOVERHANGs ///
         YOVERHANGs ///
         XVARFormat(string)        YVARFormat(string) ///
         JITTERSEED(string)        TItle(string asis)        SUBtitle(string asis) ///
@@ -1298,9 +1298,6 @@ program define _dash_parse_plot_opts, sclass
     if `: length local l2title' local _dash_pending `"`_dash_pending' l2title"'
     if `: length local link' local _dash_pending `"`_dash_pending' link"'
     if `: length local lineopts' local _dash_pending `"`_dash_pending' lineopts"'
-    // WP-22: mlabtextstyle() names a text style in a .scheme file; dash
-    // draws a layer's labels in the scheme's marker-label style.
-    if `: length local mlabtextstyle' local _dash_pending `"`_dash_pending' mlabtextstyle"'
     if `: length local mlabwidth' local _dash_pending `"`_dash_pending' mlabwidth"'
     if `: length local mlpattern' local _dash_pending `"`_dash_pending' mlpattern"'
     // WP-30 P1.14b: dstyle() and dlstyle() style the dots of a dot plot
@@ -1461,6 +1458,8 @@ program define _dash_parse_plot_opts, sclass
     // WP-30 P1.24: one variable of clock positions, read row by row
     // (_dash_fold_mlabv checks it as twoway does).
     sreturn local mlabvposition    : copy local mlabvposition
+    // WP-30 P1.24: a text box style per y, a style list (S11).
+    sreturn local mlabtextstyle    : copy local mlabtextstyle
     sreturn local xvarformat       : copy local xvarformat
     sreturn local yvarformat       : copy local yvarformat
     // The seven statistical sub-options (WP-18): declared with twoway's own
@@ -4003,7 +4002,7 @@ program define _dash_plot_opts_to_json, rclass
                    blabel horizontal vertical sort range colorlist jitterseed ///
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///
-                   mlabvposition ///
+                   mlabvposition mlabtextstyle ///
                    xvarformat yvarformat ///
                    acolor alcolor alwidth alpattern ///
                    pwidth lpvar ///

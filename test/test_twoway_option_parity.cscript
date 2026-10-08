@@ -56,10 +56,11 @@
 *!   TP-06  the declared-but-not-honoured ones are named in the note by
 *!          their full names, however they were abbreviated, in comma mode
 *!          and after the paren-mode comma: sort(varlist) where dash does
-*!          not join (scatter), mlabtextstyle(), xoverhangs, yoverhangs;
+*!          not join (scatter), xoverhangs, yoverhangs;
 *!          sort sort(varlist) on line is honoured, silent and written as
-*!          "sortvars" (WP-29 P0.1).  TP-06h: mlabvposition() is honoured
-*!          (WP-30 P1.24): not named, written to the spec.
+*!          "sortvars" (WP-29 P0.1).  TP-06h: mlabvposition() and
+*!          mlabtextstyle() are honoured (WP-30 P1.24): not named, written
+*!          to the spec.
 *!   TP-07  what twoway itself refuses stays UNKNOWN and is named as typed:
 *!          xreverse yreverse xalternate yalternate xcommon ycommon
 *!          lockaspect zoom() altaxis ddensity addplot() margin() region()
@@ -146,6 +147,9 @@
 *!          histogram, function, scatteri, pci, pcarrowi; MV-10 taken in
 *!          silence on line, spike, area, pcspike, tsline; MV-11 (and 11b)
 *!          twoway's count quirks.
+*!   MV-12  mlabtextstyle() (part 2) is taken in silence on line, lfit and
+*!          rscatter, the rightmost copy kept, mlabt() read; MV-13 it is a
+*!          style list, one element per y.
 *!   BG-07  barwidth() on rcap and rcapsym is refused r(198) in twoway's words,
 *!          in comma mode, in a plot group and after || (WP-30 P1.17a).
 *!   BG-08  barw(), barwi(), barwidth() on rcap: the spelling typed is named.
@@ -555,10 +559,9 @@ local t6_`n6' `"twoway scatter mpg weight, sort(mpg) nodraw"'
 local w6_`n6' "sort()"
 // Flipped (WP-30 P1.24): mlabv(pos) named in the note was wrong, because
 // dash draws mlabvposition() per row as twoway does; it is TP-06h's row.
-local ++n6
-local c6_`n6' `"dash scatter mpg weight, mlabel(make) mlabt(heading) name(zqtp)"'
-local t6_`n6' `"twoway scatter mpg weight, mlabel(make) mlabt(heading) nodraw"'
-local w6_`n6' "mlabtextstyle()"
+// Flipped (WP-30 P1.24, part 2): mlabt(heading) named in the note was
+// wrong, because dash draws the scheme's heading style as twoway does; it
+// is TP-06h's second row.
 local ++n6
 local c6_`n6' `"dash scatter mpg weight, xoverhang name(zqtp)"'
 local t6_`n6' `"twoway scatter mpg weight, xoverhang nodraw"'
@@ -601,6 +604,11 @@ local c6h_`n6h' `"dash scatter mpg weight, mlabel(make) mlabv(pos) name(zqtp)"'
 local t6h_`n6h' `"twoway scatter mpg weight, mlabel(make) mlabv(pos) nodraw"'
 local o6h_`n6h' "mlabvposition"
 local v6h_`n6h' "pos"
+local ++n6h
+local c6h_`n6h' `"dash scatter mpg weight, mlabel(make) mlabt(heading) name(zqtp)"'
+local t6h_`n6h' `"twoway scatter mpg weight, mlabel(make) mlabt(heading) nodraw"'
+local o6h_`n6h' "mlabtextstyle"
+local v6h_`n6h' "heading"
 cert_truth_ctx "TP-06h"
 forvalues i = 1/`n6h' {
     capture cert_tw `t6h_`i''
@@ -1447,8 +1455,8 @@ assert `n13' == 4
 // mlab(heading) is r(111), no variable heading (measured 24sep2026).  So
 // dash must read it as mlabel() and never as mlabformat(),
 // mlabtextstyle() or mlabvposition().  The controls: mlabf(%9.2f)
-// records mlabformat, mlabt(heading) is named in the note by its full
-// name, and mlabv(pos) is recorded as mlabvposition and not named.
+// records mlabformat, and mlabt(heading) and mlabv(pos) are recorded as
+// mlabtextstyle and mlabvposition and not named.
 // Flipped (WP-30 P1.24): c2v expected 1 (named), which was wrong because
 // dash draws mlabvposition() per row as twoway does.
 _ztp_run `"dash scatter mpg weight, mlabf(%9.2f) name(zqtp)"' "`logfile'"
@@ -1462,8 +1470,11 @@ local c2t = r(found)
 _ztp_logged "`logfile'" "mlabvposition()"
 local c2v = r(found)
 mata: st_local("c2vk", strofreal(_ztp_hasval("zqtp", "mlabvposition", "pos")))
-if `c1' != 0 | `c1k' != 1 | `c2' != 0 | `c2t' != 1 | `c2v' != 0 | `c2vk' != 1 {
-    display as error "TP-13a FAIL: the mlab controls -- mlabf(%9.2f) rc `c1' key `c1k'; mlabt() mlabv() rc `c2', named `c2t' `c2v', mlabvposition pos `c2vk'"
+// Flipped (WP-30 P1.24, part 2): c2t expected 1 (named), which was wrong
+// because dash draws mlabtextstyle() as twoway does.
+mata: st_local("c2tk", strofreal(_ztp_hasval("zqtp", "mlabtextstyle", "heading")))
+if `c1' != 0 | `c1k' != 1 | `c2' != 0 | `c2t' != 0 | `c2tk' != 1 | `c2v' != 0 | `c2vk' != 1 {
+    display as error "TP-13a FAIL: the mlab controls -- mlabf(%9.2f) rc `c1' key `c1k'; mlabt() mlabv() rc `c2', named `c2t' `c2v', mlabtextstyle heading `c2tk', mlabvposition pos `c2vk'"
     local bad = 1
 }
 capture cert_tw twoway scatter mpg weight, mlab(pos) nodraw
@@ -3560,6 +3571,50 @@ if `bad' {
     local faillist "`faillist' MV-11"
 }
 else display as text "MV-11 PASS: twoway's count quirks are accepted as twoway accepts them"
+// MV-12 (part 2): mlabtextstyle() is taken everywhere twoway takes it,
+// silently, the rightmost copy kept and the abbreviation read.
+cert_truth_ctx "MV-12"
+local bad 0
+foreach c in `"line mpg weight, mlabtextstyle(heading)"' `"lfit mpg weight, mlabtextstyle(heading)"' `"rscatter lo hi weight, mlabtextstyle(heading)"' `"scatter mpg weight, mlabel(make) mlabtextstyle(heading) mlabtextstyle(body)"' `"scatter mpg weight, mlabel(make) mlabt(heading)"' `"scatter mpg weight, mlabel(make) mlabtextstyle()"' {
+    _zmv_pair `"`c'"' "`mvlog'" "`logfile'"
+    local tw = r(tw)
+    local rc = r(rc)
+    local note = r(note)
+    local want "heading"
+    if strpos(`"`c'"', "(body)") local want "body"
+    mata: st_local("v", strofreal(_ztp_hasval("zmv", "mlabtextstyle", st_local("want"))))
+    if strpos(`"`c'"', "mlabtextstyle()") local v = 1
+    if `tw' | `rc' | `note' | !`v' {
+        display as error `"MV-12 FAIL `c': twoway r(`tw') dash r(`rc'), note `note', mlabtextstyle `want' `v'"'
+        local bad 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' MV-12"
+}
+else display as text "MV-12 PASS: mlabtextstyle() taken in silence, the rightmost copy kept"
+// MV-13 (part 2): a style list, one element per y; a bad list as twoway.
+cert_truth_ctx "MV-13"
+local bad 0
+_zmv_pair `"scatter mpg turn weight, mlabel(make make) mlabtextstyle(heading body)"' "`mvlog'" "`logfile'"
+local tw = r(tw)
+local rc = r(rc)
+mata: st_local("v", strofreal(_ztp_hasval("zmv", "mlabtextstyle", "heading") & _ztp_hasval("zmv", "mlabtextstyle", "body")))
+if `tw' | `rc' | !`v' {
+    display as error "MV-13 FAIL heading body: twoway r(`tw') dash r(`rc'), both styles kept `v'"
+    local bad 1
+}
+_zmv_pair `"scatter mpg turn weight, mlabel(make make) mlabtextstyle(.. heading)"' "`mvlog'" "`logfile'"
+if r(tw) != r(rc) {
+    display as error "MV-13 FAIL .. heading: twoway r(`r(tw)') dash r(`r(rc)')"
+    local bad 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' MV-13"
+}
+else display as text "MV-13 PASS: mlabtextstyle() is a style list, one element per y"
 capture dash clear
 capture erase "`mvlog'"
 set linesize `mv_ls'

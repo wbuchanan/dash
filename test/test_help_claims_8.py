@@ -1072,9 +1072,13 @@ class TestTheShippedFiles:
         # now carry the keys Stata's style files read for the named styles.
         # 100..170 -> 210..280: P1.14b named-style keys (219 to 279,
         # rounded outward to ten).
-        assert 210 <= n <= 280, (name, n)
+        # Flipped (WP-30 P1.24): 210 to 280 was wrong because the files
+        # now carry the keys the text box styles read for mlabtextstyle().
+        # 210..280 -> 250..320: P1.24 textbox keys (251 to 311, rounded
+        # outward to ten).
+        assert 250 <= n <= 320, (name, n)
         help_text = _read(_HELP)
-        assert re.search(r"210\s+to\s+280\s+directives", help_text)
+        assert re.search(r"250\s+to\s+320\s+directives", help_text)
 
     def test_the_s2mono_family_is_what_includes_s2mono(self):
         for name in _S2MONO_FAMILY:
@@ -1171,8 +1175,14 @@ class TestTheShippedFiles:
             truth = json.load(fh)
         keys = set()
         named = set()
+        # Flipped (WP-30 P1.24): the text box styles' keys (matrix_label,
+        # pbarlabel, pboxlabel ...) are drawn now, by mlabtextstyle().
+        textbox = {f"{c} {k}" for k in
+                   {k for pair in dr.SchemeParser._TEXTBOX_STYLES.values()
+                    for k in pair} | {"pbarlabel", "pboxlabel"}
+                   for c in ("gsize", "color")}
         for name in dr.SchemeParser._BUILTIN_NAMES:
-            group = set(truth[name]["named_style_directives"])
+            group = set(truth[name]["named_style_directives"]) | textbox
             named |= group
             keys |= {k for k, _v in _directives(
                 os.path.join(_SCHEMES, "dash-" + name + ".scheme"))

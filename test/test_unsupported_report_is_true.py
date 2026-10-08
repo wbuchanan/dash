@@ -117,7 +117,6 @@ PLOT_VALUES = {
     "lineopts": ("lcolor(red)", "lcolor(blue)", "kdensity"),
     # WP-22 TR-22.3: twoway options that used to land in the note as
     # unknown, now declared -- named by their full names -- and not drawn.
-    "mlabtextstyle": ("heading", "body", "scatter"),
     "mlabwidth": ("thick", "vthin", "scatter"),
     "mlcolor": ("navy", "maroon", "scatter"),
     "mlpattern": ("dash", "dot", "scatter"),
@@ -249,7 +248,8 @@ class TestTheListIsCoveredAndHonest:
         # Flipped (WP-30 P1.24): 47 was wrong because twoway draws
         # mlabvposition() per row (mlabvpos_truth.json A).
         # 47 -> 46: P1.24 mlabvposition() honoured
-        assert len(_plot_pending()) == 46, sorted(_plot_pending())
+        # 46 -> 45: P1.24 mlabtextstyle() honoured (part 2)
+        assert len(_plot_pending()) == 45, sorted(_plot_pending())
         assert len(_graph_pending()) == 23, sorted(_graph_pending())
 
 
@@ -512,6 +512,11 @@ LIVE_VALUES = {
     # Flipped (WP-30 P1.24): mlabvposition() was reported unsupported,
     # which was wrong because twoway draws it per row
     # (mlabvpos_truth.json A).
+    # Flipped (WP-30 P1.24, part 2): mlabtextstyle() was reported
+    # unsupported, which was wrong because twoway draws the scheme's text
+    # box style (mlabtextstyle_truth.json).
+    "mlabtextstyle": ({**_ML, "mlabtextstyle": "heading"},
+                      {**_ML, "mlabtextstyle": "body"}, "scatter", {}),
     "mlabvposition": ({**_ML, "mlabvposition": "rep78"},
                       {**_ML, "mlabvposition": "foreign"}, "scatter", {}),
     "mlcolor": ({"mlcolor": "navy"}, {"mlcolor": "maroon"}, "scatter", {}),

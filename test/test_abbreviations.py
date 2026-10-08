@@ -501,7 +501,8 @@ def test_help_documents_only_accepted_abbreviations(declarations, plot_decls,
     # mst, mls, ls, cls, ast, al, bst and bl (twoway's, A01-A10 of
     # test/fixtures/named_style_truth.json).
     # 68 -> 69: WP-30 P1.24 documented mlabv:position(), twoway's minimum.
-    assert len(seen) == 69, (
+    # 69 -> 70: and mlabt:extstyle() (part 2).
+    assert len(seen) == 70, (
         "%d documented abbreviations were checked" % len(seen))
     assert not bad, (
         "dash.sthlp documents %d spelling(s) dash rejects.\n  "
@@ -639,8 +640,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # 120 -> 124: P1.14b's notes on dstyle/dlstyle/bmlinestyle (pending
     # three lines, sreturn one).
     # 124 -> 125: P1.24's pending comment is one line shorter (two), and
-    # the mlabvposition sreturn gains two.
-    assert comments == {"_dash_parse_plot_opts": 125,
+    # the mlabvposition sreturn gains two.  125 -> 124: part 2 drops the
+    # pending comment (two) and gives the mlabtextstyle sreturn one.
+    assert comments == {"_dash_parse_plot_opts": 124,
                         "_dash_parse_graph_opts": 71}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --
