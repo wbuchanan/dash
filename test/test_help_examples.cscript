@@ -577,6 +577,10 @@ _hx_pin shown fragment `"dash kpi p97.5(price)"'
 //   on sp500's date, which no example loads
 _hx_pin shown fragment `"dash histogram date, width(7)"'
 _hx_pin shown fragment `"dash kdensity date"'
+//   (WP-30 P1.17b, P1.32) illustrations in a sentence, as above: the
+//   default bar base and the refusal of a registration without Python
+_hx_pin shown fragment `"dash bar mpg weight"'
+_hx_pin shown fragment `"dash scatter mpg weight, name(g1)"'
 
 mata: _hx_pins_check()
 if `hx_badpins' > 0 exit 9

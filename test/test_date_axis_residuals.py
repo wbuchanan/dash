@@ -576,16 +576,17 @@ def _digest(model):
 # (tick formatters) change every figure; a key-free figure is still the
 # same in both of its cases, which is what this pins.  Re-derived again on
 # the merged batch-7 tree: P1.3a (default axes take twoway's ticks, range
-# and margin) changes every figure.
+# and margin) changes every figure; and on the batch-9 tree P1.17b's
+# axis plan key (autobase) and finish code.
 _PLAIN_DIGESTS = {
     ("saved", "plain"):
-        "b75a12cebf23ab85d3048306c887a097544acd129268f4c48fd026d205188c83",
+        "07bfeb2e02160b6fbe73ff8ac8f433e3c8601277e25fc826f3d7699ac95fcee8",
     ("saved", "yaxis2"):
-        "b75a12cebf23ab85d3048306c887a097544acd129268f4c48fd026d205188c83",
+        "07bfeb2e02160b6fbe73ff8ac8f433e3c8601277e25fc826f3d7699ac95fcee8",
     ("served", "plain"):
-        "66847bbd208a6e901e8216c58361a368e9abc2766b31d38364abd3d64b0b165b",
+        "e5cd4fd54ddaee9dd7baba455bfb1e4e6548dd356ccbc77f9917e40713cac88d",
     ("served", "yaxis2"):
-        "66847bbd208a6e901e8216c58361a368e9abc2766b31d38364abd3d64b0b165b",
+        "e5cd4fd54ddaee9dd7baba455bfb1e4e6548dd356ccbc77f9917e40713cac88d",
 }
 
 

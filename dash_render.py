@@ -38601,8 +38601,8 @@ class ServerAppBuilder:
         ]
         # _dash_dep_fail's exact source, as the copy loop writes a function
         # (_glyph_layer_lines), so the app's guard is the renderer's.
-        import inspect as _inspect, textwrap as _textwrap
-        lines += _textwrap.dedent(_inspect.getsource(_dash_dep_fail)).rstrip("\n").split("\n")
+        import textwrap as _textwrap
+        lines += _textwrap.dedent(_dash_source_of(_dash_dep_fail)).rstrip("\n").split("\n")
         lines += [
             "",
             "if tuple(__import__('sys').version_info[:2]) < _DASH_MIN_PYTHON:",
