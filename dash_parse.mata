@@ -143,8 +143,9 @@
 *!
 *!   _dash_rep_reduce(opts, ptype)
 *!       The option list with one copy of each option, as twoway reads a
-*!       repeated one (the last copy, or the copies merged); the caller's
-*!       local _rp_refuse names a unique option given twice.
+*!       repeated one (the last copy, the first for p(), or the copies
+*!       merged); the caller's local _rp_refuse names a unique option
+*!       given twice.
 *!
 *!   _dash_stylelist_keys()
 *!       The style options read as stylelists across an expanded varlist.
@@ -4944,16 +4945,18 @@ string rowvector _dash_rep_toks(string scalar s, real scalar commas)
 
 // _dash_stylelist_keys() -- the options read as stylelists, the one list
 // of them: the style options (P1.1a), then the value lists mlabel jitter
-// base barwidth (P1.1b).  Later sections add their names here: pstyle
-// mstyle lstyle mlstyle (P1.14a), mlabtextstyle (P1.24) and connect
-// cmissing (P1.8a).
+// base barwidth (P1.1b), then the named styles pstyle lstyle clstyle mstyle
+// mlstyle astyle alstyle bstyle blstyle (P1.14a; p() is one name and is
+// not split).  Later sections add their names here: mlabtextstyle (P1.24)
+// and connect cmissing (P1.8a).
 string scalar _dash_stylelist_keys()
 {
     return("mcolor msymbol msize msangle mfcolor mlcolor mlwidth " +
            "mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat " +
            "lcolor lwidth lpattern clcolor clpattern clwidth color fcolor " +
            "fintensity bfcolor blcolor acolor alcolor alwidth alpattern " +
-           "mlabel jitter base barwidth")
+           "mlabel jitter base barwidth " +
+           "pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle blstyle")
 }
 
 // _dash_stylelist_elems(raw) -- the elements of a stylelist: a 2 x k
@@ -5484,7 +5487,9 @@ string scalar _dash_rep_bare(string scalar key)
 // legend() or a region (merged-implicit), "S" an axis scale (merged-
 // implicit, range() the union), "B" by() (the last varlist, every copy's
 // sub-options), "X" xline()/yline() (each copy a line of its own), "A"
-// text() (each copy added), "R" everything else (the last copy).
+// text() (each copy added), "F" p() (the first copy: twoway draws
+// mcolor(red) p(p3) p(bogus) in p3, WP-30 P1.14a), "R" everything else
+// (the last copy).
 string scalar _dash_rep_cat(string scalar key)
 {
     string scalar k
@@ -5502,6 +5507,7 @@ string scalar _dash_rep_cat(string scalar key)
     if (k == "by") return("B")
     if (anyof(("xline", "yline", "xline2", "yline2"), k)) return("X")
     if (k == "text") return("A")
+    if (k == "p") return("F")
     return("R")
 }
 
@@ -6012,7 +6018,7 @@ void _dash_kernel_flag(string scalar unk, string scalar ptype)
 //      positive number".
 // var() <= 0 is refused later, after the kernel, bwidth and degree rules
 // (_dash_validate_opts), as twoway orders it.  On ptype "lpolyci" only, a
-// word pw..pwidth(...) (minimum pw: p() is pstyle()) or v..var(...)
+// word pw..pwidth(...) (minimum pw: p() is twoway's own p() option) or v..var(...)
 // (minimum v) is taken out of unk; every other word stays.  Sets the
 // caller's locals _lpo_pwidth and _lpo_var (the value, %21.0g), _lpo_rest
 // (unk less those words), _lpo_rc (0 or the return code) and _lpo_msg.
@@ -7460,6 +7466,7 @@ string scalar _dash_rep_merge(string scalar key, string scalar v1,
     real scalar      c1, c2, has2, suf, pre, add
 
     cat = _dash_rep_cat(key)
+    if (cat == "F") return(strtrim(v1) != "" ? v1 : v2)
     if (cat == "R" | strtrim(v1) == "") return(v2)
     if (strtrim(v2) == "") return(v1)
     if (cat == "A") return(v1 + " " + v2)

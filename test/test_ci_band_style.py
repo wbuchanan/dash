@@ -69,9 +69,10 @@ _SCHEMES = sorted(_T["cases"])
 
 #: Measured, and not held to the graph object here, with the reason:
 _NOT_COMPARED = {
-    # astyle(), alstyle() and ciplot() are not honoured: dash names them in
-    # its note (they are not declared options).
-    "astyle", "ciplot",
+    # ciplot() is not honoured: dash names it in its note (it is not a
+    # declared option).  Flipped (WP-30 P1.14a): astyle() is drawn, so its
+    # case is compared.
+    "ciplot",
     # Refused by dash.ado, as by twoway when it draws (r(198)); the graph
     # object holds them only under nodraw.  test_ci_band_options.cscript.
     "alw_neg", "alw_big",

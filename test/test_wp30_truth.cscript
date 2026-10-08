@@ -7508,10 +7508,232 @@ if inlist("`only'", "", "S31") {
 }
 * ==== end S31 ====
 
+// S32 (WP-30 P1.14a): the named styles p1-p15 in twoway and both modes.
+// _s32_svg reads twoway's SVG colours, _s32_page the saved page's glyphs,
+// _s32_app the served document's before and after a price range move, and
+// _s32_cmp holds each against the case's expected tokens: a #hex colour
+// drawn, sym:<name> a marker symbol and pat:<name> a line pattern (twoway's
+// graph object for those two).  Sets S32_OK, S32_MSG and S32_SAME_AFTER.
+python:
+import json as _s32_json
+import html as _s32_html
+import os as _s32_os
+import re as _s32_re
+import sys as _s32_sys
+import warnings as _s32_w
+from sfi import Macro as _s32_M
+
+
+def _s32_svg():
+    path = _s32_M.getGlobal("S32_SVG")
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        txt = fh.read()
+    cols = set(c.lower() for c in _s32_re.findall(
+        r"(?:fill|stroke)[:=]\"?(#[0-9A-Fa-f]{6})", txt))
+    _s32_M.setGlobal("S32_TW", " ".join(sorted(cols)))
+
+
+def _s32_v(x):
+    return str(getattr(x, "value", x)).lower()
+
+
+def _s32_read(doc):
+    from bokeh.models import GlyphRenderer
+    cols, syms, pats = set(), set(), set()
+    for r in doc.select({"type": GlyphRenderer}):
+        g = r.glyph
+        for c, a in (("line_color", "line_alpha"), ("fill_color", "fill_alpha")):
+            v = getattr(g, c, None)
+            v = getattr(v, "value", v)
+            al = getattr(g, a, 1)
+            al = getattr(al, "value", al)
+            if isinstance(v, dict):
+                v = v.get("value")
+            if isinstance(v, str) and al not in (0, 0.0):
+                cols.add(v.lower())
+        if type(g).__name__ == "Scatter":
+            syms.add(_s32_v(g.marker))
+        if type(g).__name__ in ("Line", "Segment"):
+            pats.add(",".join(str(int(d)) for d in (g.line_dash or [])))
+    return "%s|%s|%s" % (" ".join(sorted(cols)), " ".join(sorted(syms)),
+                         " ".join(sorted(pats)))
+
+
+def _s32_page():
+    from bokeh.document import Document
+    with open(_s32_M.getGlobal("S32_PAGE"), encoding="utf-8") as fh:
+        page = fh.read()
+    out = ""
+    for blob in _s32_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s32_re.S):
+        try:
+            docs = _s32_json.loads(_s32_html.unescape(blob))
+        except ValueError:
+            continue
+        for dj in (docs.values() if isinstance(docs, dict) else []):
+            if isinstance(dj, dict) and "roots" in dj:
+                with _s32_w.catch_warnings():
+                    _s32_w.simplefilter("ignore")
+                    out = _s32_read(Document.from_json(dj))
+                break
+        if out:
+            break
+    _s32_M.setGlobal("S32_D", out)
+
+
+def _s32_app():
+    from bokeh.document import Document
+    from bokeh.models import RangeSlider
+    with open(_s32_M.getGlobal("S32_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s32_app")
+    with _s32_w.catch_warnings():
+        _s32_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s32_app.py", "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    _s32_M.setGlobal("S32_S", _s32_read(doc))
+    after = ""
+    sl = [s for s in doc.select(dict(type=RangeSlider))
+          if getattr(s, "_dash_var", None) == "price"]
+    if sl:
+        w = sl[0]
+        new = (w.start, (w.start + w.end) / 2.0)
+        old = w.value
+        w.value = new
+        with _s32_w.catch_warnings():
+            _s32_w.simplefilter("ignore")
+            for attr in ("value", "value_throttled"):
+                for cb in list(w._callbacks.get(attr, [])):
+                    cb(attr, old, new)
+        after = _s32_read(doc)
+    _s32_M.setGlobal("S32_A", after)
+
+
+def _s32_cmp():
+    _s32_sys.path.insert(0, _s32_M.getGlobal("S32_REPO"))
+    from dash_render import OptionTranslator as T
+    exp = _s32_M.getGlobal("S32_EXP").split()
+    tw = set(_s32_M.getGlobal("S32_TW").split())
+    ok, msg = True, []
+    for e in exp:
+        if e.startswith("#") and e not in tw:
+            ok = False
+            msg.append("twoway lacks " + e)
+        if e.startswith("sym:") and _s32_M.getGlobal("S32_TSYM") != e[4:]:
+            ok = False
+            msg.append("twoway symbol " + _s32_M.getGlobal("S32_TSYM"))
+        if e.startswith("pat:") and _s32_M.getGlobal("S32_TPAT") != e[4:]:
+            ok = False
+            msg.append("twoway pattern " + _s32_M.getGlobal("S32_TPAT"))
+    for mode in ("D", "S", "A"):
+        got = _s32_M.getGlobal("S32_" + mode).split("|")
+        if len(got) != 3:
+            ok = False
+            msg.append(mode + " unread")
+            continue
+        cols, syms, pats = (set(x.split()) for x in got)
+        for e in exp:
+            if e.startswith("#") and e not in cols:
+                ok = False
+                msg.append(mode + " lacks " + e)
+            if e.startswith("sym:") and T.translate_msymbol(e[4:]) not in syms:
+                ok = False
+                msg.append(mode + " symbol " + " ".join(syms))
+            if e.startswith("pat:"):
+                want = ",".join(str(int(d)) for d in T.translate_lpattern(e[4:]))
+                if want not in pats:
+                    ok = False
+                    msg.append(mode + " pattern " + " ".join(pats))
+    same = _s32_M.getGlobal("S32_S").split("|")[:2] == _s32_M.getGlobal("S32_A").split("|")[:2]
+    _s32_M.setGlobal("S32_SAME_AFTER", "1" if same else "0")
+    _s32_M.setGlobal("S32_OK", "1" if ok else "0")
+    _s32_M.setGlobal("S32_MSG", "; ".join(msg)[:240])
+end
+
+// _s32_case scheme "twoway command" "expected tokens" work: twoway, then
+// dash saved, then dash served with filter(price, type(range)), on one
+// command (WP-30 P1.14a); sets S32_RC, S32_OK, S32_MSG, S32_SAME_AFTER.
+capture program drop _s32_case
+program define _s32_case
+    version 19
+    args scheme cmd exp work
+    quietly sysuse auto, clear
+    local svg "`work'/np_s32.svg"
+    local page "`work'/np_s32.html"
+    local app "`work'/np_s32.py"
+    local c = cond(strpos(`"`cmd'"', ","), " ", ", ")
+    if substr(`"`cmd'"', 1, 1) == "(" local c ", "
+    quietly graph drop _all
+    capture noisily twoway `cmd' `c' scheme(`scheme') name(g, replace)
+    local trc = _rc
+    global S32_TSYM ""
+    global S32_TPAT ""
+    if !`trc' {
+        quietly graph export "`svg'", replace name(g)
+        global S32_TSYM "`.g.plotregion1.plot1.style.marker.symbol.stylename'"
+        global S32_TPAT "`.g.plotregion1.plot1.style.line.pattern.stylename'"
+    }
+    quietly graph drop _all
+    capture dash clear
+    capture noisily dash `cmd' `c' scheme(`scheme') saving("`page'", replace)
+    local drc = _rc
+    capture dash clear
+    capture noisily dash `cmd' `c' scheme(`scheme') name(g1)
+    local drc = `drc' + _rc
+    capture noisily dash build, server saving("`app'") replace nobrowser filter(price, type(range))
+    local drc = `drc' + _rc
+    foreach g in S32_TW S32_D S32_S S32_A S32_MSG {
+        global `g' ""
+    }
+    global S32_OK "0"
+    global S32_SAME_AFTER "0"
+    global S32_SVG "`svg'"
+    global S32_PAGE "`page'"
+    global S32_APP "`app'"
+    global S32_EXP `"`exp'"'
+    if !`trc' capture noisily python: __import__("__main__")._s32_svg()
+    if !`drc' capture noisily python: __import__("__main__")._s32_page()
+    if !`drc' capture noisily python: __import__("__main__")._s32_app()
+    if !`trc' & !`drc' capture noisily python: __import__("__main__")._s32_cmp()
+    global S32_RC = `trc' + `drc'
+    capture dash clear
+    foreach f in svg page app {
+        capture erase "``f''"
+    }
+    capture graph drop g
+end
+
 * ==== S32 P1.14a: Named styles p1-p15 ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S32") {
     display as text "S32 start " c(current_date) " " c(current_time)
+    global S32_REPO "`c(pwd)'/.."
+    local s32_n = 0
+    foreach row in ///
+        `"NP-01|s2color|scatter mpg weight, pstyle(p3)|#55752f|pstyle(p3) is p3's #55752F under s2color"' ///
+        `"NP-02|s1mono|line mpg weight, sort lstyle(p3)|pat:vshortdash|s1mono's lstyle(p3) is linestyle p3: vshortdash"' ///
+        `"NP-03|s1mono|scatter mpg weight, mstyle(p3)|#808080 sym:square|s1mono's mstyle(p3) is a grey square"' ///
+        `"NP-04|stcolor|area mpg weight, sort astyle(p3)|#33cc99|astyle(p3) fills in p3 at intensity 80"' ///
+        `"NP-05|stcolor|bar mpg weight, bstyle(p3) blcolor(red)|#33cc99 #ff0000|bstyle(p3) fills in p3, blcolor(red) after it outlines red"' ///
+        `"NP-06|stcolor|scatter mpg weight, mcolor(red) p(p3)|#00bf7f|p(p3) wins over mcolor(red)"' ///
+        `"NP-07|stcolor|spike mpg weight, alstyle(p3)|#00bf7f|alstyle(p3) draws the spikes in p3"' ///
+        `"NP-08|stcolor|scatter mpg turn weight, pstyle(p3 p4)|#00bf7f #ffd400|pstyle(p3 p4) styles each y"' ///
+        `"NP-09|stcolor|(scatteri 20 3000, pstyle(p3)) (function y=20, range(2000 4000) pstyle(p4))|#00bf7f #ffd400|scatteri and function take pstyle()'s plot index"' {
+        gettoken id rest : row, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken sch rest : rest, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken cmd rest : rest, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken exp rest : rest, parse("|")
+        gettoken bar rest : rest, parse("|")
+        local what `"`rest'"'
+        _s32_case `sch' `"`cmd'"' `"`exp'"' "`w30_work'"
+        _w30_expect `id' "(${S32_RC} == 0 & ${S32_OK} == 1 & ${S32_SAME_AFTER} == 1)" `"${S32_MSG} after-move ${S32_SAME_AFTER}"'
+        _w30_done `id' `"`what', in twoway, the saved page and the served app before and after a move"'
+    }
+    macro drop S32_*
     display as text "S32 end " c(current_date) " " c(current_time)
 }
 * ==== end S32 ====

@@ -68,6 +68,10 @@
 *! failure: every check is wrapped in -capture-, the failures are tallied, and
 *! the script exits 9 if any failed.
 *!
+*!   NP-30..NP-33 (WP-30 P1.14a) the named styles' minimums land on their
+*!       keys and are not named; pst() ps() as() are named as typed, rc 0;
+*!       ml(p3) is r(111) as in twoway.
+*!
 *! Usage:  do test/test_abbreviations.cscript   (run from test/)
 *! Version: 1.0
 
@@ -457,6 +461,11 @@ def doc_cmd(spelling, full):
         return "scatter mpg weight, colorvar(price) " + spelling + " name(zqab)"
     if is_flag(full):
         return "scatter mpg weight, " + spelling + " name(zqab)"
+    # clstyle() styles a connecting line, which scatter does not draw:
+    # dash.ado clears it off scatter as twoway ignores it there (WP-30
+    # P1.14a), so it is sent on line.
+    if full == "clstyle":
+        return "line mpg weight, " + spelling + "(p3) name(zqab)"
     v = value_of(full)
     if v is None:
         v = "1"
@@ -851,8 +860,10 @@ if `n_R2' + `n_R3' != ${ZQA_EXPN_R23} {
     local nfail = `nfail' + 1
     local faillist `"`faillist' size(R2+R3)"'
 }
-if ${ZQA_NDOC} != 112 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
-    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (112 measured); A4 ran `n_A4' and A4b `n_A4b'"
+// 130 since WP-30 P1.14a documented the named styles' nine minimums and
+// their full names (18).
+if ${ZQA_NDOC} != 130 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
+    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (130 measured); A4 ran `n_A4' and A4b `n_A4b'"
     local nfail = `nfail' + 1
     local faillist `"`faillist' size(A4)"'
 }
@@ -861,6 +872,95 @@ if ${ZQA_A7_NBAD} != 0 {
     local nfail = `nfail' + 1
     local faillist `"`faillist' size(A7)"'
 }
+
+// ----------------------------------------------------------------
+// NP-30..NP-33 (WP-30 P1.14a): the named styles' minimum abbreviations,
+// twoway's (test/fixtures/named_style_truth.json A01-A13).  NP-30 each
+// lands on its key; NP-31 none is named; NP-32 pst(), ps() and as(), which
+// twoway refuses, are named as typed, rc 0 (P2.21); NP-33 ml(p3) is
+// mlabel(p3), r(111) as in twoway.
+// ----------------------------------------------------------------
+capture mata: mata drop _znp_logn()
+mata:
+real scalar _znp_logn(string scalar path, string scalar needle)
+{
+    real scalar fh, n
+    string scalar ln
+    n = 0
+    fh = fopen(path, "r")
+    while ((ln = fget(fh)) != J(0, 0, "")) n = n + (strpos(ln, needle) > 0)
+    fclose(fh)
+    return(n)
+}
+end
+tempfile znp_log
+local np30 0
+local np31 0
+local i 0
+foreach c in "scatter mpg weight, psty(p3)|pstyle" "scatter mpg weight, p(p3)|p" ///
+    "line mpg weight, ls(p3)|lstyle" "line mpg weight, cls(p3)|clstyle" ///
+    "scatter mpg weight, mst(p3)|mstyle" "scatter mpg weight, mls(p3)|mlstyle" ///
+    "area mpg weight, ast(p3)|astyle" "spike mpg weight, al(p3)|alstyle" ///
+    "bar mpg weight, bst(p3)|bstyle" "bar mpg weight, bl(p3)|blstyle" {
+    local ++i
+    gettoken cmd key : c, parse("|")
+    local key = substr("`key'", 2, .)
+    capture dash clear
+    capture log close _znp
+    quietly log using "`znp_log'", text replace name(_znp)
+    capture noisily dash `cmd' name(znp`i')
+    local rc = _rc
+    quietly log close _znp
+    mata: st_local("hit", strofreal(strpos(st_global("dash_json_znp`i'"), char(34) + "`key'" + char(34) + ":" + char(34) + "p3" + char(34)) > 0))
+    if `rc' | !`hit' {
+        display as error "NP-30 FAIL: `cmd' did not land on `key': ${dash_json_znp`i'}"
+        local np30 1
+    }
+    mata: st_local("nn", strofreal(_znp_logn(st_local("znp_log"), "ignoring unsupported")))
+    if `nn' {
+        display as error "NP-31 FAIL: `cmd' was named"
+        local np31 1
+    }
+}
+foreach g in 30 31 {
+    if `np`g'' {
+        local nfail = `nfail' + 1
+        local faillist `"`faillist' NP-`g'"'
+    }
+    else display as text "NP-`g' PASS: " cond(`g' == 30, "the ten minimums land on their keys", "none of them is named")
+}
+local np32 0
+foreach c in "scatter mpg weight, pst(p3)|pst()" "scatter mpg weight, ps(p3)|ps()" "area mpg weight, as(p3)|as()" {
+    gettoken cmd nm : c, parse("|")
+    local nm = substr("`nm'", 2, .)
+    capture dash clear
+    capture log close _znp
+    quietly log using "`znp_log'", text replace name(_znp)
+    capture noisily dash `cmd' name(znp32)
+    local rc = _rc
+    quietly log close _znp
+    mata: st_local("nn", strofreal(_znp_logn(st_local("znp_log"), "`nm'")))
+    if `rc' | !`nn' {
+        display as error "NP-32 FAIL: `cmd': rc `rc', `nm' named `nn'"
+        local np32 1
+    }
+}
+if `np32' {
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' NP-32"'
+}
+else display as text "NP-32 PASS: pst(), ps() and as() are named as typed, rc 0"
+capture dash clear
+capture noisily dash scatter mpg weight, ml(p3) name(znp33)
+local rc = _rc
+capture noisily twoway scatter mpg weight, ml(p3) nodraw
+if `rc' != 111 | _rc != 111 {
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' NP-33"'
+    display as error "NP-33 FAIL: dash r(`rc'), twoway r(`=_rc')"
+}
+else display as text "NP-33 PASS: ml(p3) is r(111) in dash and in twoway"
+capture dash clear
 
 // ----------------------------------------------------------------
 // Report

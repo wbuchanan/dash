@@ -8774,6 +8774,58 @@ class SchemeParser:
                 return val
         return None if k == "bar" else self.default_line_width
 
+    def style_bundle(self, cls: str, name: Any) -> "dict | None":
+        """The look the named style *name* gives a glyph of class *cls*
+        (``"marker"``, ``"line"`` or ``"area"``), or None when dash does not
+        draw that name (WP-30 P1.14a; register P1.14.1).
+
+        Only ``p1``-``p15`` are drawn: *name*, blanks stripped, must be
+        exactly ``p`` and 1-15 with no leading zero (``P3``, ``p03`` and
+        ``p16`` are not, as twoway reads them).  The integer is the only
+        thing taken from the name, so no scheme key, path or format is ever
+        built from user text (TR-32.18).  The bundles are twoway's
+        seriesstyle p# (research p1-14 §3; test/fixtures/
+        named_style_truth.json, grid B):
+
+        - ``"line"`` is linestyle p#, the connecting line's chain: ``color
+          p#line``, ``linewidth p#``, ``linepattern p#line``;
+        - ``"area"`` is areastyle p#: shadestyle and linestyle p#other
+          (``p_other_band_styles``);
+        - ``"marker"`` is markerstyle p#, read through exactly the calls
+          ``GlyphMapper.map_scatter`` makes for its defaults, with the
+          symbol's hollow flag and small-symbol factor
+          (``default_symbol_traits``); a hollow symbol's fill opacity is 0.
+
+        Each call returns a new dict; nothing is shared with the parser.
+        """
+        m = re.fullmatch(r"p([1-9]|1[0-5])", str(name).strip())
+        if m is None:
+            return None
+        i = int(m.group(1)) - 1
+        if cls == "line":
+            return {"line": self.default_color(i, "connected"),
+                    "line_alpha": self.default_alpha(i, "connected"),
+                    "line_width": self.plot_line_width(i, ""),
+                    "line_dash": list(self.default_connect_pattern(i))}
+        if cls == "area":
+            b = dict(self.p_other_band_styles[i])
+            b["line_dash"] = list(b.get("line_dash") or [])
+            return b
+        if cls == "marker":
+            sym, hollow, factor = self.default_symbol_traits(i)
+            fa = self.default_alpha(i, "scatter")
+            fa = 1.0 if fa is None else fa
+            ml, mla = self.default_markline(i)
+            return {"fill": self.default_color(i, "scatter"),
+                    "fill_alpha": 0.0 if hollow else fa,
+                    "line": ml,
+                    "line_alpha": fa if mla is None else mla,
+                    "line_width": self.plot_line_width(i, "mark"),
+                    "symbol": sym,
+                    "size": self.default_marker_size(i),
+                    "hollow": bool(hollow), "factor": factor}
+        return None
+
     def apply_to_figure(self, fig: Any) -> None:
         """Apply scheme defaults to *fig*.
 
@@ -9857,7 +9909,12 @@ class GlyphMapper:
             **(alpha_kw or {}),
         )
         self._ci_line_restyle(line_r, options)
-        self._apply_line_opts(line_r, options)
+        # pstyle() and p() are read by _ci_pstyle alone: never a shadow
+        # (pstyle() is first, and p()'s options were dropped at the spec)
+        # and never noted twice (WP-30 P1.14a, TR-32.11).
+        _nopstyle = {k: v for k, v in (options or {}).items()
+                     if k not in ("pstyle", "p")}
+        self._apply_line_opts(line_r, _nopstyle)
         return line_r, band_r
 
     #: The pstyle() names a ci layer is drawn in besides p1..p15, spelled
@@ -9877,13 +9934,20 @@ class GlyphMapper:
         the line as p1 (measured 24sep2026: pstyle(p16), pstyle(P3) and
         pstyle(bogus) all draw p1's); dash says so once, echoing the name
         through ``_dash_display``, and draws p1.
+
+        ``p()``, twoway's whole-plot style, is read first and named in the
+        note when it is the one read (WP-30 P1.14a, TR-32.11).
         """
-        raw = (options or {}).get("pstyle")
+        _opt = "pstyle"
+        raw = None
+        for _opt in ("p", "pstyle"):
+            raw = (options or {}).get(_opt)
+            if raw is not None and str(raw).strip(" \t"):
+                break
+            raw = None
         if raw is None:
             return "", None
         s = str(raw).strip(" \t")
-        if not s:
-            return "", None
         if s in self._CI_PSTYLE_NAMED:
             return s, None
         if s in self._CI_PSTYLE_P:
@@ -9891,7 +9955,7 @@ class GlyphMapper:
         _shown = _dash_display(s)
         _dash_warn_once(
             ("ci-pstyle", _shown),
-            f"dash: pstyle({_shown}): named style not found; default "
+            f"dash: {_opt}({_shown}): named style not found; default "
             f"attributes used -- p1's, as twoway draws them.",
             stacklevel=4)
         return "p", 0
@@ -9985,11 +10049,33 @@ class GlyphMapper:
             st = dict(sch.p_other_band_styles[int(pi) % 15])
         else:
             st = dict(sch.ci_band_styles["ci2" if ps == "ci2" else "ci"])
+        # The other named styles over that base, in twoway's factor order
+        # (WP-30 P1.14a): astyle()/bstyle() the fill and outline,
+        # lstyle()/alstyle()/blstyle() the outline; an option a later style
+        # shadows is not read.  pstyle() and p() are _ci_pstyle's alone.
+        _o = {k: v for k, v in options.items() if k not in ("pstyle", "p")}
+        _plan = self._style_plan(_o)
+        if _plan is not None:
+            _w = _plan["win"].get("area")
+            if _w is not None:
+                for k in ("fill", "fill_alpha", "intensity"):
+                    st[k] = _w[2].get(k)
+            _w = _plan["win"].get("aline")
+            if _w is not None:
+                for k in ("line", "line_alpha", "line_width", "line_dash"):
+                    st[k] = _w[2].get(k)
+            for key, value, kroles in _plan["unresolved"]:
+                if {"area", "aline"} & set(kroles):
+                    self._style_unresolved(key, value)
+        oa = self._style_options(_o, ("area",))
+        ol = self._style_options(_o, ("aline",))
+        if st.get("intensity") is None:
+            st["intensity"] = 1.0
         st["line_dash"] = list(st.get("line_dash") or [])
         none = {"fill": st.get("fill") is None, "line": st.get("line") is None}
 
-        def _col(key, keys):
-            val = options.get(key)
+        def _col(key, keys, src):
+            val = src.get(key)
             if val is None or not str(val).strip():
                 return
             if OptionTranslator._means_no_color(val):
@@ -10004,14 +10090,16 @@ class GlyphMapper:
                 if a is not None:
                     st[k + "_alpha"] = a
 
-        _col("color", ("fill", "line"))
-        _col("lcolor", ("line",))
-        _col("acolor", ("fill", "line"))
-        _col("fcolor", ("fill",))
-        _col("alcolor", ("line",))
+        _col("color", ("fill",), oa)
+        _col("color", ("line",), ol)
+        _col("lcolor", ("line",), ol)
+        _col("acolor", ("fill",), oa)
+        _col("acolor", ("line",), ol)
+        _col("fcolor", ("fill",), oa)
+        _col("alcolor", ("line",), ol)
 
         for key in ("lwidth", "alwidth"):
-            val = options.get(key)
+            val = ol.get(key)
             if val is None or not str(val).strip():
                 continue
             # Stata units on Stata's ladder (none is 0, *# multiplies the
@@ -10024,16 +10112,16 @@ class GlyphMapper:
                 _dash_style_note(key, val, "line width")
                 continue
         for key in ("lpattern", "alpattern"):
-            val = options.get(key)
+            val = ol.get(key)
             if val is None or not str(val).strip():
                 continue
             try:
                 st["line_dash"] = list(self.tr.translate_lpattern(str(val)))
             except ValueError:
                 _dash_style_note(key, val, "line pattern")
-        if "fintensity" in options:
+        if "fintensity" in oa:
             # twoway's reading and rule, unbounded above (WP-30 P1.2b).
-            f = self._fintensity_value(options["fintensity"])
+            f = self._fintensity_value(oa["fintensity"])
             if f is not None:
                 st["intensity"] = f
         for key in ("falpha", "fa"):
@@ -10131,6 +10219,217 @@ class GlyphMapper:
                 g.line_alpha = _want
             g.line_width = self.scheme.plot_line_width(pi, "")
             g.line_dash = list(self.scheme.default_connect_pattern(pi))
+        # lstyle()/clstyle() over pstyle(): the line role's winner, read
+        # from options without pstyle() and p() (WP-30 P1.14a, TR-32.11).
+        self._style_restyle(line_r, {k: v for k, v in (options or {}).items()
+                                     if k not in ("pstyle", "p")},
+                            ("line",))
+
+    # ------------------------------------------------------------------
+    # Named styles p1-p15 (WP-30 P1.14a; register P1.14.1-P1.14.8)
+    # ------------------------------------------------------------------
+
+    _PSTYLE_ROLES: "dict[str, str]" = {"marker": "marker", "mline": "marker",
+                                       "line": "line", "area": "area",
+                                       "aline": "area"}
+    #: twoway's factor order (twoway_yxview_parse.class; research p1-14
+    #: §2.5).  A style entry maps each role it reaches to the bundle class
+    #: it reads; an explicit entry is the tuple of roles it styles.  An
+    #: explicit option wins over a style before it and loses to one after
+    #: it (P1.14.2): `mcolor(red) pstyle(p3)' is red, `color(red)
+    #: mstyle(p4)' p4's (measured 03oct2026).  The roles: "marker" a
+    #: marker's fill, symbol and size; "mline" its outline; "line" the
+    #: connecting line; "aline" an area's outline, the spike, range, pc and
+    #: bar lines (D-32c); "area" a fill.  dash's own malpha(), lalpha() and
+    #: falpha() are not twoway's and are never shadowed.
+    _STYLE_FACTORS: tuple = (
+        ("pstyle", _PSTYLE_ROLES),
+        ("color", ("marker", "mline", "line", "aline", "area")),
+        ("lstyle", {"line": "line", "aline": "line"}),
+        ("lcolor", ("line", "aline")),
+        ("lwidth", ("line", "aline")),
+        ("lpattern", ("line", "aline")),
+        ("clstyle", {"line": "line"}),
+        ("clcolor", ("line",)),
+        ("clwidth", ("line",)),
+        ("clpattern", ("line",)),
+        ("mstyle", {"marker": "marker", "mline": "marker"}),
+        ("msymbol", ("marker",)),
+        ("marker", ("marker",)),
+        ("mfcolor", ("marker",)),
+        ("msize", ("marker",)),
+        ("msangle", ("marker",)),
+        ("mcolor", ("marker", "mline")),
+        ("mlstyle", {"mline": "line"}),
+        ("mlcolor", ("mline",)),
+        ("mlwidth", ("mline",)),
+        ("astyle", {"area": "area", "aline": "area"}),
+        ("acolor", ("area", "aline")),
+        ("alstyle", {"aline": "line"}),
+        ("alcolor", ("aline",)),
+        ("alwidth", ("aline",)),
+        ("alpattern", ("aline",)),
+        ("bstyle", {"area": "area", "aline": "area"}),
+        ("bfcolor", ("area",)),
+        ("blstyle", {"aline": "line"}),
+        ("blcolor", ("aline",)),
+        ("fcolor", ("area",)),
+        ("fintensity", ("area",)),
+        ("p", _PSTYLE_ROLES),
+    )
+    _STYLE_UNREAD_NOTE: str = ("dash: {opt}({name}): only the named styles "
+                               "p1-p15 are drawn; this layer keeps its own "
+                               "style.")
+
+    def _style_plan(self, options: "dict[str, str]") -> "dict | None":
+        """Each role's winning named style in twoway's factor order, or
+        None when no style option of ``_STYLE_FACTORS`` holds a value.
+
+        Returns ``{"win": {role: (key, position, bundle)}, "unresolved":
+        [(key, value, roles)]}``: a role's winner is the last style option
+        covering it whose name ``SchemeParser.style_bundle`` resolves; a
+        name it does not resolve is unresolved and ignored (D-32b, until
+        section 36).  A pure function of *options* and the scheme.
+        """
+        if not options:
+            return None
+        present = []
+        for pos, (key, spec) in enumerate(self._STYLE_FACTORS):
+            if isinstance(spec, dict):
+                v = str(options.get(key, "") or "").strip()
+                if v:
+                    present.append((pos, key, spec, v))
+        if not present:
+            return None
+        win: dict = {}
+        unresolved: list = []
+        for pos, key, spec, v in present:
+            got = {c: self.scheme.style_bundle(c, v)
+                   for c in set(spec.values())}
+            if any(b is None for b in got.values()):
+                unresolved.append((key, v, tuple(spec)))
+                continue
+            for role, c in spec.items():
+                win[role] = (key, pos, got[c])
+        return {"win": win, "unresolved": unresolved}
+
+    def _style_options(self, options: "dict[str, str]",
+                       roles: tuple) -> "dict[str, str]":
+        """*options* without each explicit option a later named style
+        shadows in *roles* (P1.14.2), or *options* itself when no named
+        style is present.
+
+        An option is dropped when every role it styles among *roles* has a
+        winner after it; one that styles none of *roles* (dropline's
+        ``mcolor()`` on its drop) only when it is shadowed in every role it
+        styles.  ``mcolor()``/``color()`` shadowed on the outline alone
+        become ``mfcolor()``, and on the fill alone ``mlcolor()``, unless
+        that option is given.
+        """
+        plan = self._style_plan(options)
+        if plan is None:
+            return options
+        win = plan["win"]
+        out = dict(options)
+        for pos, (key, spec) in enumerate(self._STYLE_FACTORS):
+            if isinstance(spec, dict) or key not in options:
+                continue
+            shadow = {r for r in spec if r in win and win[r][1] > pos}
+            covered = [r for r in spec if r in roles]
+            if covered:
+                if all(r in shadow for r in covered):
+                    out.pop(key, None)
+                    continue
+            elif len(shadow) == len(spec):
+                out.pop(key, None)
+                continue
+            if key in ("mcolor", "color") and "marker" in roles:
+                if "mline" in shadow and "marker" not in shadow:
+                    out.pop(key, None)
+                    if "mfcolor" not in options:
+                        out["mfcolor"] = options[key]
+                elif "marker" in shadow and "mline" not in shadow:
+                    out.pop(key, None)
+                    if "mlcolor" not in options:
+                        out["mlcolor"] = options[key]
+        return out
+
+    def _style_value(self, options: "dict[str, str]", role: str, attr: str,
+                     default: Any) -> Any:
+        """The *attr* of *role*'s winning named style, else *default*."""
+        plan = self._style_plan(options)
+        if plan is None or role not in plan["win"]:
+            return default
+        return plan["win"][role][2].get(attr, default)
+
+    def _style_restyle(self, renderer: Any, options: "dict[str, str]",
+                       roles: tuple) -> None:
+        """Give *renderer*'s glyph each of *roles*' winning named style,
+        once per glyph and role (D-32e), before any explicit option is
+        read for it; then note each unresolved name a role of *roles*
+        draws (D-32b).
+
+        A role already restyled (``renderer._dash_named_roles``) is left
+        alone, so a mapper that restyles right after building the glyph
+        and the applier it then calls set the bundle once.  A ``None``
+        colour draws nothing there (alpha 0); a ``None`` alpha is 1.
+        The brushed and muted copies take the glyph's values from
+        ``_sync_brushed_copies`` (WP-30 P1.12a), which runs after.
+        """
+        plan = self._style_plan(options)
+        if plan is None:
+            return
+        done = getattr(renderer, "_dash_named_roles", None)
+        if done is None:
+            done = set()
+            renderer._dash_named_roles = done
+        g = getattr(renderer, "glyph", None)
+        for role in roles:
+            if role in done:
+                continue
+            done.add(role)
+            w = plan["win"].get(role)
+            if w is None:
+                continue
+            b = w[2]
+            sets: list = []
+            if role in ("marker", "area"):
+                _fa = b.get("fill_alpha")
+                if b.get("fill") is None:
+                    sets.append(("fill_alpha", 0.0))
+                else:
+                    sets.append(("fill_color", b["fill"] if role == "marker"
+                                 else self._blend_intensity(
+                                     b["fill"], b.get("intensity", 1.0),
+                                     self.scheme.naturally_white)))
+                    sets.append(("fill_alpha", 1.0 if _fa is None else _fa))
+                if role == "marker":
+                    sets += [("marker", b.get("symbol")),
+                             ("size", b.get("size"))]
+            else:
+                _la = b.get("line_alpha")
+                if b.get("line") is None:
+                    sets.append(("line_alpha", 0.0))
+                else:
+                    sets += [("line_color", b["line"]),
+                             ("line_alpha", 1.0 if _la is None else _la)]
+                sets.append(("line_width", b.get("line_width")))
+                if role != "mline" and b.get("line_dash") is not None:
+                    sets.append(("line_dash", list(b["line_dash"])))
+            for attr, val in sets:
+                if g is not None and hasattr(g, attr) and val is not None:
+                    setattr(g, attr, val)
+        for key, value, kroles in plan["unresolved"]:
+            if set(kroles) & set(roles):
+                self._style_unresolved(key, value)
+
+    def _style_unresolved(self, key: str, value: Any) -> None:
+        """Note once per render a named style dash does not draw yet
+        (D-32b): the layer keeps its own style.  The name is echoed through
+        ``_dash_display`` (printable, at most 80 characters)."""
+        _dash_warn_once(("named-style", key, str(value)),
+                        self._STYLE_UNREAD_NOTE.format(
+                            opt=key, name=_dash_display(value)))
 
     @staticmethod
     def _bootstrap_ci(
@@ -10199,6 +10498,7 @@ class GlyphMapper:
         self,
         renderer: Any,
         options: dict[str, str],
+        role: "str | None" = "line",
     ) -> None:
         """Apply lcolor/lwidth/lpattern/lalpha options to a line-type glyph renderer.
 
@@ -10215,7 +10515,17 @@ class GlyphMapper:
         cl options never reach.  An unknown value is named as the user
         wrote it and the scheme's default drawn, which is twoway's "default
         attributes used": lcolor() does not stand in for a bad clcolor().
+
+        *role* is the line twoway styles (WP-30 P1.14a, D-32c): ``"line"``
+        the connecting line, ``"aline"`` an outline, spike or pc shaft.
+        The role's named style (``_style_restyle``) goes on first, once,
+        and an option a later style shadows in twoway's factor order is not
+        applied (``_style_options``).  ``None`` reads no named style (an
+        area's border, P2.12).
         """
+        if role is not None:
+            self._style_restyle(renderer, options, (role,))
+            options = self._style_options(options, (role,))
         glyph = renderer.glyph
         # The name the user wrote, for the note: color() is folded onto
         # lcolor() below, and a note reading lcolor(x) for a color(x) the
@@ -10318,7 +10628,22 @@ class GlyphMapper:
         abbreviation expansion) is treated as an alias for ``msymbol``.
         If both ``marker`` and ``msymbol`` are present, ``msymbol`` wins
         because it is applied last.
+
+        The marker's named style (WP-30 P1.14a) goes on first, once
+        (``_style_restyle``): ``mstyle()``/``pstyle()``/``p()`` the fill,
+        symbol and size, ``mlstyle()`` the outline; an option a later
+        style shadows in twoway's factor order is not applied
+        (``_style_options``), and the style's symbol brings its own hollow
+        flag and small-symbol factor.
         """
+        self._style_restyle(renderer, options, ("marker", "mline"))
+        _sym_win = self._style_value(options, "marker", "symbol", None)
+        if _sym_win is not None:
+            traits = (bool(self._style_value(options, "marker", "hollow",
+                                             False)),
+                      float(self._style_value(options, "marker", "factor",
+                                              1.0)))
+        options = self._style_options(options, ("marker", "mline"))
         glyph = renderer.glyph
         # The name the user wrote, for the note: color() is folded onto
         # mcolor() below, and a note reading mcolor(x) for a color(x) the
@@ -10534,7 +10859,14 @@ class GlyphMapper:
                        scheme's, color() or bfcolor()); never read back
                        from the glyph, which is drawn blended.
             intensity: The layer's intensity (1 is full).
+
+        The area's named style (WP-30 P1.14a) goes on first, once
+        (``_style_restyle``); the caller reads *base* and *intensity*
+        through ``_style_value``, and an option a later style shadows is
+        not applied (``_style_options``).
         """
+        self._style_restyle(renderer, options, ("area",))
+        options = self._style_options(options, ("area",))
         glyph = renderer.glyph
         _user_fill = False
         if "fcolor" in options:
@@ -11877,8 +12209,13 @@ class GlyphMapper:
         line_kind: "str | None" = None,
         order=None,
         by_x: bool = False,
+        role: "str | None" = "line",
     ) -> "GlyphRenderer":
         """Add a line glyph to *fig*.
+
+        *role* is the line a named style reaches (WP-30 P1.14a, D-32c):
+        ``"line"`` for line, connected and tsline, ``"aline"`` for
+        rconnected's two lines.
 
         The points are joined as twoway joins them (``_join_order``): in
         the data's order, in the order of x under ``sort``, in the order of
@@ -11967,7 +12304,7 @@ class GlyphMapper:
         if view is not None:
             _line_kwargs["view"] = view
         r = fig.line(**_line_kwargs)
-        self._apply_line_opts(r, options)
+        self._apply_line_opts(r, options, role=role)
         # No marker labels: twoway accepts mlabel() on line (and on tsline,
         # which is drawn here) and draws none, without a note -- measured
         # 23sep2026 from its SVG.  dash labelled every point.  connected
@@ -12071,20 +12408,26 @@ class GlyphMapper:
             source, {xvar: x_arr, _y1_col: y1_base, yvar: y_arr}, _area_idx))
         # The fill is the resolved colour at the p#area intensity, opaque,
         # as twoway draws it (WP-30 P1.2b).
-        _fill_base = self.scheme.default_color(color_idx, "area")
-        _f = self.scheme.p_area_intensity[color_idx % 15]
+        # A named style's areastyle is the base (WP-30 P1.14a, D-32e).
+        _fill_base = self._style_value(
+            options, "area", "fill",
+            self.scheme.default_color(color_idx, "area"))
+        _f = self._style_value(options, "area", "intensity",
+                               self.scheme.p_area_intensity[color_idx % 15])
+        _oa = self._style_options(options, ("area",))
         # Honour fill color option.  An unknown name was dropped in silence
         # here, and nothing downstream reads color() for an area.
-        if "color" in options:
+        if "color" in _oa:
             try:
-                _fill_base = self.tr.translate_mcolor(options["color"])
+                _fill_base = self.tr.translate_mcolor(_oa["color"])
             except ValueError:
-                _dash_style_note("color", options["color"], "colour")
+                _dash_style_note("color", _oa["color"], "colour")
         r = fig.varea(x=xvar, y1=_y1_col, y2=yvar, source=area_source,
                       fill_color=self._blend_intensity(
                           _fill_base, _f, self.scheme.naturally_white),
                       fill_alpha=self._scheme_alpha(color_idx, "area"),
                       legend_label=yvar)
+        self._style_restyle(r, options, ("area",))
         self._tag_base(r, "y1", _base is None, _zero)
 
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
@@ -12101,7 +12444,8 @@ class GlyphMapper:
             border_source = ColumnDataSource(_border_data)
             line_r = fig.line(x=xvar, y=yvar, source=border_source,
                                line_color=border_color, line_width=self.scheme.plot_line_width(color_idx, "area"))
-            self._apply_line_opts(line_r, options)
+            # A named style's outline is not drawn here (P2.12).
+            self._apply_line_opts(line_r, options, role=None)
 
         # No marker labels: twoway draws none on an area (measured).
         return r
@@ -12209,6 +12553,11 @@ class GlyphMapper:
         # as twoway draws it; the outline keeps the colour (WP-30 P1.2b).
         _fill_base = _bar_default_color
         _f = self.scheme.p_bar_intensity[color_idx % 15]
+        # A named style's areastyle is the base (WP-30 P1.14a, D-32e).
+        _fill_base = self._style_value(options, "area", "fill", _fill_base)
+        _f = self._style_value(options, "area", "intensity", _f)
+        _oa = self._style_options(options, ("area",))
+        _ol = self._style_options(options, ("aline",))
         _vbar_kwargs: dict = dict(
             x=x_field, top=yvar,
             bottom=self._BASE_COL if _base is None else _base,
@@ -12234,33 +12583,40 @@ class GlyphMapper:
             _vbar_kwargs["line_width"] = _bar_lw
         # No view here: clean_source already holds only the selected rows.
         r = fig.vbar(**_vbar_kwargs)
+        # The named style first, then the user's colours (D-32e), each read
+        # per role: the fill from the area's options, the outline from its.
+        self._style_restyle(r, options, ("area", "aline"))
         self._tag_base(r, "bottom", _base is None, _zero)
-        if "color" in options:
-            try:
-                c = self.tr.translate_mcolor(options["color"])
-                _fill_base = c
-                r.glyph.line_color = c
-            except ValueError:
-                # _apply_line_opts names color() too, when it folds it onto
-                # lcolor() -- which it does not when blcolor() is given, so
-                # the note is raised here; once per render either way.
-                _dash_style_note("color", options["color"], "colour")
+        for _o, _fill in ((_oa, True), (_ol, False)):
+            if "color" in _o:
+                try:
+                    c = self.tr.translate_mcolor(_o["color"])
+                    if _fill:
+                        _fill_base = c
+                    else:
+                        r.glyph.line_color = c
+                except ValueError:
+                    # _apply_line_opts names color() too, when it folds it
+                    # onto lcolor() -- which it does not when blcolor() is
+                    # given, so the note is raised here; once per render
+                    # either way.
+                    _dash_style_note("color", _o["color"], "colour")
         # bfcolor / blcolor — bar-specific fill / line color overrides.
         # An unknown name is noted, as every other colour option's is.
-        if "bfcolor" in options:
+        if "bfcolor" in _oa:
             try:
-                _fill_base = self.tr.translate_mcolor(options["bfcolor"])
+                _fill_base = self.tr.translate_mcolor(_oa["bfcolor"])
             except ValueError:
-                _dash_style_note("bfcolor", options["bfcolor"], "colour")
-        if "blcolor" in options:
+                _dash_style_note("bfcolor", _oa["bfcolor"], "colour")
+        if "blcolor" in _ol:
             try:
-                r.glyph.line_color = self.tr.translate_mcolor(options["blcolor"])
+                r.glyph.line_color = self.tr.translate_mcolor(_ol["blcolor"])
             except ValueError:
-                _dash_style_note("blcolor", options["blcolor"], "colour")
+                _dash_style_note("blcolor", _ol["blcolor"], "colour")
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # VBar supports line_width/line_dash/line_color natively; lcolor/lwidth/lpattern
         # are applied after bfcolor/blcolor so blcolor retains priority for line color.
-        self._apply_line_opts(r, options)
+        self._apply_line_opts(r, options, role="aline")
         # The labels of the bars drawn -- the layer's own rows -- from the
         # source the bars are drawn from.
         self._apply_mlabel_opts(fig, clean_source, options, xvar, yvar,
@@ -12409,7 +12765,7 @@ class GlyphMapper:
         # No view here: seg_source already holds only the selected rows.
         r = fig.segment(**_seg_kwargs)
         self._tag_base(r, "y0", _base is None, _zero)
-        self._apply_line_opts(r, options)
+        self._apply_line_opts(r, options, role="aline")
         # No marker labels: twoway draws none on a spike (measured).
         return r
 
@@ -14544,15 +14900,19 @@ class GlyphMapper:
         map_histogram draw through it, so an emptied histogram keeps its
         colour and key, as twoway keys it."""
         scheme = self.scheme
-        _fill_base = scheme.histogram_color
-        _f = scheme.histogram_intensity
-        if "color" in options:
+        # A named style's areastyle is the base (WP-30 P1.14a, D-32e).
+        _fill_base = self._style_value(options, "area", "fill",
+                                       scheme.histogram_color)
+        _f = self._style_value(options, "area", "intensity",
+                               scheme.histogram_intensity)
+        _oa = self._style_options(options, ("area",))
+        if "color" in _oa:
             try:
-                _fill_base = self.tr.translate_mcolor(options["color"])
+                _fill_base = self.tr.translate_mcolor(_oa["color"])
             except ValueError:
                 # As map_bar: named here because the lcolor() fold that
                 # would name it is skipped when blcolor() is given.
-                _dash_style_note("color", options["color"], "colour")
+                _dash_style_note("color", _oa["color"], "colour")
         r = fig.quad(top="top", bottom=0, left="left", right="right",
                      source=source,
                      fill_color=self._blend_intensity(
@@ -14567,9 +14927,10 @@ class GlyphMapper:
                         if scheme.histogram_line_color is None
                         else {"line_alpha": scheme.histogram_line_alpha}
                         if scheme.histogram_line_alpha is not None else {}))
+        self._style_restyle(r, options, ("area", "aline"))
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # Quad supports line_width/line_dash/line_color for bin border styling
-        self._apply_line_opts(r, options)
+        self._apply_line_opts(r, options, role="aline")
         return r
 
     def map_histogram(
@@ -15114,17 +15475,22 @@ class GlyphMapper:
 
         # The fill is the resolved colour at the p#area intensity (WP-30
         # P1.2b); its 0.5 opacity is section 24's.
-        _fill_base = self.scheme.default_color(color_idx, "area")
-        _f = self.scheme.p_area_intensity[color_idx % 15]
+        # A named style's areastyle is the base (WP-30 P1.14a, D-32e).
+        _fill_base = self._style_value(
+            options, "area", "fill",
+            self.scheme.default_color(color_idx, "area"))
+        _f = self._style_value(options, "area", "intensity",
+                               self.scheme.p_area_intensity[color_idx % 15])
+        _oa = self._style_options(options, ("area",))
         # color() is the band's colour, as on area: twoway's rarea with
         # color(red) is filled #FF3333 and stroked #FF0000 (SVG, 23sep2026),
         # and dash drew the scheme's colour -- nothing read color() here.
         # fcolor(), the specific option, still wins in _apply_fill_opts.
-        if "color" in options and "fcolor" not in options:
+        if "color" in _oa and "fcolor" not in _oa:
             try:
-                _fill_base = self.tr.translate_mcolor(options["color"])
+                _fill_base = self.tr.translate_mcolor(_oa["color"])
             except ValueError:
-                _dash_style_note("color", options["color"], "colour")
+                _dash_style_note("color", _oa["color"], "colour")
             except AttributeError:
                 pass
         _varea_kwargs: dict = dict(x=xvar, y1=y1var, y2=y2var, source=source,
@@ -15140,6 +15506,7 @@ class GlyphMapper:
         if view is not None:
             _varea_kwargs["view"] = view
         r = fig.varea(**_varea_kwargs)
+        self._style_restyle(r, options, ("area",))
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # No marker labels: twoway draws none on rarea (measured).
         return [r]
@@ -15198,6 +15565,11 @@ class GlyphMapper:
         # as twoway draws it; the outline keeps the colour (WP-30 P1.2b).
         _fill_base = self.scheme.default_color(color_idx, "bar")
         _f = self.scheme.p_bar_intensity[color_idx % 15]
+        # A named style's areastyle is the base (WP-30 P1.14a, D-32e).
+        _fill_base = self._style_value(options, "area", "fill", _fill_base)
+        _f = self._style_value(options, "area", "intensity", _f)
+        _oa = self._style_options(options, ("area",))
+        _ol = self._style_options(options, ("aline",))
         _rbar_kwargs: dict = dict(x=x_field, bottom=y1var, top=y2var, source=source,
                                    width=width_spec,
                                    fill_color=self._blend_intensity(
@@ -15214,19 +15586,24 @@ class GlyphMapper:
         if view is not None:
             _rbar_kwargs["view"] = view
         r = fig.vbar(**_rbar_kwargs)
+        self._style_restyle(r, options, ("area", "aline"))
         # color() fills the bar and draws its outline, as map_bar reads it:
         # twoway's rbar with color(red) is filled #FF3333 and stroked
         # #FF0000 (SVG, 23sep2026).  Only _apply_line_opts read color()
         # here, so the outline turned red and the fill kept the scheme's.
-        if "color" in options:
-            try:
-                c = self.tr.translate_mcolor(options["color"])
-                _fill_base = c
-                r.glyph.line_color = c
-            except ValueError:
-                _dash_style_note("color", options["color"], "colour")
-            except AttributeError:
-                pass
+        # Read per role, after the named style (D-32e).
+        for _o, _fill in ((_oa, True), (_ol, False)):
+            if "color" in _o:
+                try:
+                    c = self.tr.translate_mcolor(_o["color"])
+                    if _fill:
+                        _fill_base = c
+                    else:
+                        r.glyph.line_color = c
+                except ValueError:
+                    _dash_style_note("color", _o["color"], "colour")
+                except AttributeError:
+                    pass
 
         # bfcolor / blcolor -- the bar-specific fill and line overrides, and
         # then the generic appliers, exactly as map_bar does.  map_rbar had
@@ -15236,23 +15613,23 @@ class GlyphMapper:
         # defaults.  The generated server app read all four in its own
         # branch, which is how test_server.py's rbar cases caught it the
         # moment rbar started going through the mapper.
-        if "bfcolor" in options:
+        if "bfcolor" in _oa:
             try:
-                _fill_base = self.tr.translate_mcolor(options["bfcolor"])
+                _fill_base = self.tr.translate_mcolor(_oa["bfcolor"])
             except ValueError:
-                _dash_style_note("bfcolor", options["bfcolor"], "colour")
+                _dash_style_note("bfcolor", _oa["bfcolor"], "colour")
             except AttributeError:
                 pass
-        if "blcolor" in options:
+        if "blcolor" in _ol:
             try:
-                r.glyph.line_color = self.tr.translate_mcolor(options["blcolor"])
+                r.glyph.line_color = self.tr.translate_mcolor(_ol["blcolor"])
             except ValueError:
-                _dash_style_note("blcolor", options["blcolor"], "colour")
+                _dash_style_note("blcolor", _ol["blcolor"], "colour")
             except AttributeError:
                 pass
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # After bfcolor/blcolor, so blcolor keeps priority for the line.
-        self._apply_line_opts(r, options)
+        self._apply_line_opts(r, options, role="aline")
         # No marker labels: twoway draws none on rbar (measured).
         return [r]
 
@@ -15295,7 +15672,7 @@ class GlyphMapper:
         if view is not None:
             _rseg_kwargs["view"] = view
         r = fig.segment(**_rseg_kwargs)
-        self._apply_line_opts(r, options)
+        self._apply_line_opts(r, options, role="aline")
         # No marker labels: twoway draws none on rspike (measured).
         return [r]
 
@@ -15373,7 +15750,7 @@ class GlyphMapper:
             self._apply_marker_opts(bot_cap, {"msize": options["msize"]})
             top_cap.glyph.size = bot_cap.glyph.size
         for seg in (spine, bot_cap, top_cap):
-            self._apply_line_opts(seg, options)
+            self._apply_line_opts(seg, options, role="aline")
         # No marker labels: twoway draws none on rcap (measured).
         return [spine, bot_cap, top_cap]
 
@@ -15449,8 +15826,8 @@ class GlyphMapper:
         _rl2_kwargs.update(self._scheme_alpha_kw(color_idx, "line"))
         r1 = fig.line(**_rl1_kwargs)
         r2 = fig.line(**_rl2_kwargs)
-        self._apply_line_opts(r1, options)
-        self._apply_line_opts(r2, options)
+        self._apply_line_opts(r1, options, role="aline")
+        self._apply_line_opts(r2, options, role="aline")
         # No marker labels: twoway draws none on rline or tsrline, which is
         # drawn here (measured).
         return [r1, r2]
@@ -15497,10 +15874,12 @@ class GlyphMapper:
             # Its lines take linestyle p#'s width, not p#lineplot's
             # (measured: `linewidth plineplot' leaves them at p1's).
             self.map_line(fig, source, y1var, xvar, options, view=view,
-                          color_idx=color_idx, line_kind="", order=order),
+                          color_idx=color_idx, line_kind="", order=order,
+                          role="aline"),
             self.map_scatter(fig, source, y1var, xvar, options, view=view, color_idx=color_idx),
             self.map_line(fig, source, y2var, xvar, options, view=view,
-                          color_idx=color_idx, line_kind="", order=order),
+                          color_idx=color_idx, line_kind="", order=order,
+                          role="aline"),
             # twoway draws ONE colorvar() key for rconnected (measured:
             # "Price" once, E-16.2); the second end is coloured from it.
             self.map_scatter(fig, source, y2var, xvar, options, view=view,
@@ -15626,15 +16005,24 @@ class GlyphMapper:
         seg_color = self.scheme.default_color(color_idx, "spike")
         dot_color = self.scheme.default_color(color_idx, "dropline")
         dot_line = self.scheme.default_markline(color_idx)[0]
-        try:
-            if "mcolor" in options:
-                seg_color = dot_color = dot_line = self.tr.translate_mcolor(
-                    options["mcolor"])
-            elif "color" in options:
-                seg_color = dot_color = dot_line = self.tr.translate_mcolor(
-                    options["color"])
-        except ValueError:
-            pass
+        # The drop and the dot read the user's colour from the options a
+        # named style leaves them (WP-30 P1.14a, D-32e), and take it after
+        # the style, below.
+        _dl_explicit = {}
+        for _who, _o in (("seg", self._style_options(options, ("aline",))),
+                         ("dot", self._style_options(options,
+                                                     ("marker", "mline")))):
+            try:
+                if "mcolor" in _o:
+                    _dl_explicit[_who] = self.tr.translate_mcolor(_o["mcolor"])
+                elif "color" in _o:
+                    _dl_explicit[_who] = self.tr.translate_mcolor(_o["color"])
+            except ValueError:
+                pass
+        if "seg" in _dl_explicit:
+            seg_color = _dl_explicit["seg"]
+        if "dot" in _dl_explicit:
+            dot_color = dot_line = _dl_explicit["dot"]
         _dl_marker, _dl_h, _dl_f = self._marker_traits(color_idx, options)
 
         _dl_seg_kwargs: dict = dict(
@@ -15653,7 +16041,15 @@ class GlyphMapper:
         seg = fig.segment(**_dl_seg_kwargs)
         self._tag_base(seg, "y0", _base is None, _zero)
         dot = fig.scatter(**_dl_dot_kwargs)
-        self._apply_line_opts(seg, options)
+        # The named style first, then the user's colour (D-32e).
+        self._style_restyle(seg, options, ("aline",))
+        self._style_restyle(dot, options, ("marker", "mline"))
+        if "seg" in _dl_explicit:
+            seg.glyph.line_color = seg_color
+        if "dot" in _dl_explicit:
+            dot.glyph.fill_color = dot_color
+            dot.glyph.line_color = dot_line
+        self._apply_line_opts(seg, options, role="aline")
         # msymbol(), msize(), msangle() and malpha() are read here and
         # nowhere else, and the dot was never passed through -- so a dropline
         # drew a default circle whatever was asked for.
@@ -15716,15 +16112,23 @@ class GlyphMapper:
         color = self.scheme.default_color(color_idx, "rcap")
         mark_color = self.scheme.default_color(color_idx, "rscatter")
         mark_line = self.scheme.default_markline(color_idx)[0]
-        try:
-            if "mcolor" in options:
-                color = mark_color = mark_line = self.tr.translate_mcolor(
-                    options["mcolor"])
-            elif "color" in options:
-                color = mark_color = mark_line = self.tr.translate_mcolor(
-                    options["color"])
-        except ValueError:
-            pass
+        # The user's colour from the options a named style leaves each
+        # glyph, set after the style below (WP-30 P1.14a, D-32e).
+        _rcs_explicit = {}
+        for _who, _o in (("spine", self._style_options(options, ("aline",))),
+                         ("dot", self._style_options(options,
+                                                     ("marker", "mline")))):
+            try:
+                if "mcolor" in _o:
+                    _rcs_explicit[_who] = self.tr.translate_mcolor(_o["mcolor"])
+                elif "color" in _o:
+                    _rcs_explicit[_who] = self.tr.translate_mcolor(_o["color"])
+            except ValueError:
+                pass
+        if "spine" in _rcs_explicit:
+            color = _rcs_explicit["spine"]
+        if "dot" in _rcs_explicit:
+            mark_color = mark_line = _rcs_explicit["dot"]
         _rcs_marker, _rcs_h, _rcs_f = self._marker_traits(color_idx, options)
 
         _rcs_spine_kw: dict = dict(x0="x",     y0="y1",  x1="x",     y1="y2",
@@ -15750,7 +16154,15 @@ class GlyphMapper:
         spine   = fig.segment(**_rcs_spine_kw)
         bot_dot = fig.scatter(**_rcs_bdot_kw)
         top_dot = fig.scatter(**_rcs_tdot_kw)
-        self._apply_line_opts(spine, options)
+        self._style_restyle(spine, options, ("aline",))
+        if "spine" in _rcs_explicit:
+            spine.glyph.line_color = color
+        for dot in (bot_dot, top_dot):
+            self._style_restyle(dot, options, ("marker", "mline"))
+            if "dot" in _rcs_explicit:
+                dot.glyph.fill_color = mark_color
+                dot.glyph.line_color = mark_line
+        self._apply_line_opts(spine, options, role="aline")
         for dot in (bot_dot, top_dot):
             self._apply_marker_opts(dot, options, traits=(_rcs_h, _rcs_f))
         # Both ends are labelled, as twoway labels them ("the same marker
@@ -15862,6 +16274,9 @@ class GlyphMapper:
                                                                "mark"),
                         legend_label="y",
                         **self._marker_alpha_kw(color_idx))
+        # A named style first; the applier then re-applies the mcolor(),
+        # msize() and msymbol() it does not shadow (WP-30 P1.14a, D-32e).
+        self._style_restyle(r, options, ("marker", "mline"))
         # mcolor(), msize() and msymbol() are resolved above; msangle() and
         # malpha() are read only here, and dash.sthlp lists scatteri as
         # taking msangle().
@@ -15932,7 +16347,7 @@ class GlyphMapper:
                                     **self._scheme_alpha_kw(color_idx, "pcspike"))
         # No view here: source_clean already holds only the selected rows.
         r = fig.segment(**_pcseg_kwargs)
-        self._apply_line_opts(r, options)
+        self._apply_line_opts(r, options, role="aline")
         return [r]
 
     # map_pci stood here: pci read from four VARIABLES, a delegate of
@@ -16237,7 +16652,10 @@ class GlyphMapper:
                                       **self._scheme_alpha_kw(color_idx, "pcarrow"))
         # No view here: pc_source already holds only the selected rows.
         seg = fig.segment(**_pca_seg_kwargs)
-        self._apply_line_opts(seg, options)
+        # The shaft takes a named style first (WP-30 P1.14a, D-32e); the
+        # head keeps its colour (P2.8).
+        self._style_restyle(seg, options, ("aline",))
+        self._apply_line_opts(seg, options, role="aline")
 
         # Resolve line_width for Arrow annotations (same value as segment after opts applied)
         arrow_lw = seg.glyph.line_width
@@ -16323,7 +16741,10 @@ class GlyphMapper:
                                       **self._scheme_alpha_kw(color_idx, "pcbarrow"))
         # No view here: pc_source already holds only the selected rows.
         seg = fig.segment(**_pcb_seg_kwargs)
-        self._apply_line_opts(seg, options)
+        # The shaft takes a named style first (WP-30 P1.14a, D-32e); the
+        # head keeps its colour (P2.8).
+        self._style_restyle(seg, options, ("aline",))
+        self._apply_line_opts(seg, options, role="aline")
 
         # Resolve line_width for Arrow annotations (same value as segment after opts applied)
         arrow_lw = seg.glyph.line_width
@@ -16427,7 +16848,7 @@ class GlyphMapper:
                                                                "pccapsym"),
                           line_width=self.scheme.plot_line_width(color_idx, ""), legend_label=y1var,
                           **self._scheme_alpha_kw(color_idx, "pccapsym"))
-        self._apply_line_opts(seg, options)
+        self._apply_line_opts(seg, options, role="aline")
 
         # One marker at each end, from the same rows: the starts, then the
         # ends.  A marker takes `color p#mark', as pcscatter's does.
@@ -32430,6 +32851,11 @@ def _dash_plot_style_indices(plots):
     lfitci draw its line in p1; test/fixtures/ci_plot_index_truth.json).
     dash gave each layer its layer index.  Anything that is not a dict
     with a ci type counts as one plot, and the pass is linear.
+
+    A layer whose ``p()``, else ``pstyle()``, is exactly ``p1``-``p15``
+    draws in that p# instead, and only it: the plots after it keep their
+    numbers (WP-30 P1.14a; measured 03oct2026: ``(scatter, pstyle(p3))
+    (scatter)`` draws p3 then p2).
     """
     out = []
     n = 0                                   # plots drawn before this layer
@@ -32444,6 +32870,15 @@ def _dash_plot_style_indices(plots):
         else:
             out.append(n % 15)
             n += 1
+        _o = plot.get("options") if isinstance(plot, dict) else None
+        if isinstance(_o, dict):
+            for _k in ("p", "pstyle"):
+                _v = str(_o.get(_k, "") or "").strip()
+                if _v:
+                    _m = re.fullmatch(r"p([1-9]|1[0-5])", _v)
+                    if _m is not None:
+                        out[-1] = int(_m.group(1)) - 1
+                    break
     return out
 
 

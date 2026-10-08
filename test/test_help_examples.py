@@ -122,7 +122,9 @@ class TestTheShapeOfTheExamples:
             'dash (scatter mpg weight, discrete)': 1,
             'dash lfit mpg weight [aw=price+1]': 1,
             'dash build, saving(d.html) scheme(nosuchthing) replace': 1,
-            'dash scatter mpg weight, pstyle(p3) t1title("hi")': 1,
+            # Flipped (WP-30 P1.14a): pstyle() is drawn, so the
+            # Unsupported example names mlpattern() instead.
+            'dash scatter mpg weight, mlpattern(dash) t1title("hi")': 1,
         }
 
 

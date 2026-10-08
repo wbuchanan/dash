@@ -141,6 +141,13 @@
 *!   BG-08  barw(), barwi(), barwidth() on rcap: the spelling typed is named.
 *!   BG-09  guards: bar, rbar and spike take barwidth(); quoted and nested
 *!          text is not read; rcap bw() keeps its note.
+*!   NP-20  p(p3) p(p4) writes "p":"p3" (the first copy); under p() no
+*!          mcolor/lcolor/mlabcolor is written and mlabel() is kept.
+*!   NP-21  pstyle(p4) p(p3) writes p only.
+*!   NP-22  area/rarea: lstyle() alstyle() blstyle() named, astyle() not.
+*!   NP-23  pcarrow: mstyle() and mlstyle() named.
+*!   NP-24  spike, clstyle(p3) writes no clstyle.
+*!   NP-25  scatter, astyle(p3) is silent, rc 0 (WP-30 P1.14a, NP-20..25).
 *!
 *! TP-01 to TP-08 render nothing: every dash probe registers with name(),
 *! and the spec is read back out of the registry, as in
@@ -3243,6 +3250,108 @@ if `bad09' {
 }
 else display as text "BG-09 PASS: bar, rbar and spike take barwidth(), quoted text is not read, and rcap bw() keeps its note"
 restore
+
+// ----------------------------------------------------------------
+// NP-20..NP-25 (WP-30 P1.14a): the named styles at the spec and the folds.
+// p() is one name whose first copy wins and, given, drops every style
+// option twoway discards under it (the label style included), keeping
+// mlabel(); the outline styles are named on area and rarea, the marker
+// styles on the pc arrows; clstyle() leaves the types with no connecting
+// line; a style a type does not draw is silent (M6).
+// ----------------------------------------------------------------
+capture program drop _znp_spec
+program define _znp_spec, rclass
+    // r(found) 1 when graph g's spec holds the text "key":"val" (val ""
+    // matches any value of key), read by value.
+    args g key val
+    mata: _znp_s = st_global("dash_json_" + st_local("g"))
+    mata: _znp_k = char(34) + st_local("key") + char(34) + ":" + (st_local("val") == "" ? "" : char(34) + st_local("val") + char(34))
+    mata: st_local("_zf", strofreal(strpos(_znp_s, _znp_k) > 0))
+    return scalar found = `_zf'
+end
+local bad = 0
+_ztp_run `"dash scatter mpg weight, p(p3) p(p4) name(np20a)"' "`logfile'"
+local rc = r(rc)
+_znp_spec np20a p p3
+local f1 = r(found)
+_znp_spec np20a p p4
+if `rc' != 0 | !`f1' | r(found) local bad = 1
+_ztp_run `"dash scatter mpg weight, mlabel(make) p(p3) mcolor(red) lcolor(red) mlabcolor(red) name(np20b)"' "`logfile'"
+foreach k in mcolor lcolor mlabcolor {
+    _znp_spec np20b `k' ""
+    if r(found) local bad = 1
+}
+_znp_spec np20b mlabel make
+if !r(found) local bad = 1
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' NP-20"
+    display as error "NP-20 FAIL: ${dash_json_np20a} :: ${dash_json_np20b}"
+}
+else display as text "NP-20 PASS: p(p3) p(p4) writes p3; under p() the style options go and mlabel() stays"
+
+_ztp_run `"dash scatter mpg weight, pstyle(p4) p(p3) name(np21)"' "`logfile'"
+_znp_spec np21 pstyle ""
+local f1 = r(found)
+_znp_spec np21 p p3
+if `f1' | !r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' NP-21"
+    display as error "NP-21 FAIL: ${dash_json_np21}"
+}
+else display as text "NP-21 PASS: pstyle(p4) p(p3) writes p only"
+
+local bad = 0
+foreach t in area rarea {
+    local v = cond("`t'" == "area", "mpg weight", "mpg turn weight")
+    _ztp_run `"dash `t' `v', sort lstyle(p3) alstyle(p3) blstyle(p3) astyle(p3) name(np22)"' "`logfile'"
+    if r(rc) != 0 | !r(note) local bad = 1
+    foreach nm in lstyle() alstyle() blstyle() {
+        _ztp_logged "`logfile'" "`nm'"
+        if !r(found) local bad = 1
+    }
+    _ztp_logged "`logfile'" " astyle()"
+    if r(found) local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' NP-22"
+    display as error "NP-22 FAIL: area/rarea outline styles"
+}
+else display as text "NP-22 PASS: on area and rarea lstyle() alstyle() blstyle() are named, astyle() is not"
+
+local bad = 0
+_ztp_run `"dash pcarrow mpg weight turn length, mstyle(p3) mlstyle(p3) name(np23)"' "`logfile'"
+if r(rc) != 0 | !r(note) local bad = 1
+foreach nm in mstyle() mlstyle() {
+    _ztp_logged "`logfile'" "`nm'"
+    if !r(found) local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' NP-23"
+    display as error "NP-23 FAIL: pcarrow marker styles"
+}
+else display as text "NP-23 PASS: on pcarrow mstyle() and mlstyle() are named"
+
+_ztp_run `"dash spike mpg weight, clstyle(p3) name(np24)"' "`logfile'"
+local rc = r(rc)
+_znp_spec np24 clstyle ""
+if `rc' != 0 | r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' NP-24"
+    display as error "NP-24 FAIL: ${dash_json_np24}"
+}
+else display as text "NP-24 PASS: spike, clstyle(p3) writes no clstyle"
+
+_ztp_run `"dash scatter mpg weight, astyle(p3) name(np25)"' "`logfile'"
+if r(rc) != 0 | r(note) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' NP-25"
+    display as error "NP-25 FAIL: rc `r(rc)', note `r(note)'"
+}
+else display as text "NP-25 PASS: scatter, astyle(p3) is silent, rc 0"
+capture dash clear
 
 // ----------------------------------------------------------------
 // Summary

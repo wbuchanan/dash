@@ -5,7 +5,8 @@
 *! written before the fix, per project rule 8.  Each documents a defect that
 *! was measured end to end against the pre-fix code base.
 *!
-*! Tests: V2-01 through V2-12, SL-01 through SL-25, PS-01 through PS-16
+*! Tests: V2-01 through V2-12, SL-01 through SL-25, PS-01 through PS-16,
+*!        NP-46 through NP-48 (WP-30 P1.14a: named styles per y)
 *!
 *!   V2-01  HEADLINE  `dash scatter mpg price weight` must draw TWO series
 *!                    (colour census of the generated HTML).
@@ -872,15 +873,18 @@ string scalar _sl_q(string scalar s) return(char(34) + s + char(34))
 string scalar _sl_cq(string scalar s) return(char(96) + char(34) + s + char(34) + char(39))
 end
 
-local _notyet pstyle mstyle lstyle mlstyle mlabtextstyle connect cmissing malpha lalpha falpha jseed mlabwidth mlpattern marker
+// Flipped (WP-30 P1.14a): pstyle mstyle lstyle mlstyle left the list.
+local _notyet mlabtextstyle connect cmissing malpha lalpha falpha jseed mlabwidth mlpattern marker
 
 // SL-01 the key list
 mata: st_local("_slk", _dash_stylelist_keys())
-// P1.1b: the four value lists follow the 28 style options
-local _want mcolor msymbol msize msangle mfcolor mlcolor mlwidth mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat lcolor lwidth lpattern clcolor clpattern clwidth color fcolor fintensity bfcolor blcolor acolor alcolor alwidth alpattern mlabel jitter base barwidth
+// P1.1b: the four value lists follow the 28 style options.  Flipped
+// (WP-30 P1.14a): 32 -> 41, the nine named styles pstyle lstyle clstyle
+// mstyle mlstyle astyle alstyle bstyle blstyle follow them.
+local _want mcolor msymbol msize msangle mfcolor mlcolor mlwidth mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat lcolor lwidth lpattern clcolor clpattern clwidth color fcolor fintensity bfcolor blcolor acolor alcolor alwidth alpattern mlabel jitter base barwidth pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle blstyle
 local _inter : list _slk & _notyet
-local ok = (`: word count `_slk'' == 32 & "`_slk'" == "`_want'" & "`_inter'" == "")
-_sl_tally SL-01 `ok' "_dash_stylelist_keys() is the 28 style options and the 4 value lists"
+local ok = (`: word count `_slk'' == 41 & "`_slk'" == "`_want'" & "`_inter'" == "")
+_sl_tally SL-01 `ok' "_dash_stylelist_keys() is the 28 style options, the 4 value lists and the 9 named styles"
 
 // SL-02 elements
 mata: q = char(34)
@@ -1492,6 +1496,20 @@ capture noisily dash area mpg weight, base(5) name(ps16b)
 capture noisily dash bar mpg weight, barwidth(20) name(ps16c)
 mata: st_local("ok", strofreal(_sl_spec("ps16a", "{'mlabel':'make','jitter':'5'}") & _sl_spec("ps16b", "{'base':'5'}") & _sl_spec("ps16c", "{'barwidth':'20'}")))
 _ps_tally PS-16 `ok' "a single plain value is written as before"
+dash clear
+
+// NP-46..NP-48 (WP-30 P1.14a): the named styles per y.  pstyle(p3 p4)
+// gives each y its element; p() is one name and is not split; p3 .. on
+// three y is p3 on each.
+capture noisily dash scatter mpg turn weight, pstyle(p3 p4) name(np46)
+mata: st_local("ok", strofreal(_sl_spec("np46", "{'pstyle':'p3'}|{'pstyle':'p4'}")))
+_ps_tally NP-46 `ok' "pstyle(p3 p4) writes pstyle per series"
+capture noisily dash scatter mpg turn weight, p(p3 p4) name(np47)
+mata: st_local("ok", strofreal(_sl_spec("np47", "{'p':'p3 p4'}|{'p':'p3 p4'}")))
+_ps_tally NP-47 `ok' "p(p3 p4) is written whole on both series"
+capture noisily dash scatter mpg turn trunk weight, pstyle(p3 ..) name(np48)
+mata: st_local("ok", strofreal(_sl_spec("np48", "{'pstyle':'p3'}|{'pstyle':'p3'}|{'pstyle':'p3'}")))
+_ps_tally NP-48 `ok' "pstyle(p3 ..) on three y is p3 on each"
 dash clear
 local nfail = `nfail' + ${ps_nfail}
 local faillist `"`faillist'${ps_faillist}"'

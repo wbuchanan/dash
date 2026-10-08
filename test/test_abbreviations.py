@@ -497,7 +497,10 @@ def test_help_documents_only_accepted_abbreviations(declarations, plot_decls,
     # colorvarmin and zs refused, rc 198).  Markup that
     # stopped matching the pattern -- {opt}, say -- would leave the loop
     # nothing to check.
-    assert len(seen) == 59, (
+    # 68 since WP-30 P1.14a documented the named styles' minimums: psty,
+    # mst, mls, ls, cls, ast, al, bst and bl (twoway's, A01-A10 of
+    # test/fixtures/named_style_truth.json).
+    assert len(seen) == 68, (
         "%d documented abbreviations were checked" % len(seen))
     assert not bad, (
         "dash.sthlp documents %d spelling(s) dash rejects.\n  "
@@ -628,7 +631,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # 108 -> 114: P1.1a explains the asis style options and their
     # normalisation.  114 -> 117: P1.5 names xvarformat()'s measured
     # minimum.
-    assert comments == {"_dash_parse_plot_opts": 117,
+    # 117 -> 120: P1.14a's note on the named styles in the sreturn
+    # block and the fitarea comment's rewording.
+    assert comments == {"_dash_parse_plot_opts": 120,
                         "_dash_parse_graph_opts": 71}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

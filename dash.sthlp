@@ -2635,7 +2635,8 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     rule of thumb under {it:Default bandwidth}, even when {cmd:bwidth()}
     is given, as Stata's {cmd:r(pwidth)}.  A positive number; anything
     else is refused in {cmd:twoway}'s words, r(198).  {cmd:pw()} is its
-    shortest spelling ({cmd:p()} is {cmd:pstyle()}, as in {cmd:twoway}).
+    shortest spelling ({cmd:p()} is {cmd:twoway}'s own {cmd:p()} option,
+    the whole plot's style; see {help dash##namedstyles:Named styles}).
     {cmd:pwidth(+800)} is read as 800, where {cmd:twoway} says
     {cmd:expression invalid}, r(3000){p_end}
 {synopt:{opt var(#)}}{cmd:lpolyci}: a constant residual variance for the
@@ -2957,10 +2958,12 @@ band takes {cmd:twoway}'s fitarea options:{p_end}
 A colour's {cmd:%}{it:#} is its opacity, and a colour without one keeps
 the style's; {cmd:none} draws no fill or no outline.  {cmd:clcolor()},
 {cmd:clwidth()} and {cmd:clpattern()} style the line alone.  On the other
-plot types {cmd:acolor()}, {cmd:alcolor()}, {cmd:alwidth()},
-{cmd:alpattern()} and {cmd:pstyle()} are named in the note (see
-{help dash##unsupported:Unsupported Stata twoway options}).
-{cmd:astyle()} and {cmd:alstyle()} are not honoured, and are named.
+plot types {cmd:acolor()}, {cmd:alcolor()}, {cmd:alwidth()} and
+{cmd:alpattern()} are named in the note (see
+{help dash##unsupported:Unsupported Stata twoway options});
+{cmd:pstyle()} is not.  {cmd:astyle()}, {cmd:alstyle()}, {cmd:bstyle()},
+{cmd:blstyle()} and {cmd:lstyle()} style the band in {cmd:twoway}'s order
+(see {help dash##namedstyles:Named styles}).
 
 {pstd}
 {it:Example:}
@@ -3893,6 +3896,60 @@ noted and drawn at the default, where {cmd:twoway} refuses it.
 {phang2}{cmd:. sysuse auto, clear}{p_end}
 {phang2}{cmd:. dash scatter mpg weight, jitter(5) jitterseed(12345) malpha(60)}{p_end}
 
+{marker namedstyles}{...}
+{pstd}
+{bf:Named styles.}  These options draw the plot styles {cmd:p1} to
+{cmd:p15} of the scheme as {cmd:twoway} draws them:{p_end}
+
+{synoptset 24}{...}
+{synopt:{cmdab:psty:le(}{it:p#}{cmd:)}}the whole plot{p_end}
+{synopt:{cmd:p(}{it:p#}{cmd:)}}the whole plot, applied last (see below){p_end}
+{synopt:{cmdab:mst:yle(}{it:p#}{cmd:)}}the markers{p_end}
+{synopt:{cmdab:mls:tyle(}{it:p#}{cmd:)}}the markers' outlines{p_end}
+{synopt:{cmdab:ls:tyle(}{it:p#}{cmd:)}}the lines{p_end}
+{synopt:{cmdab:cls:tyle(}{it:p#}{cmd:)}}the connecting line of {cmd:line},
+    {cmd:connected}, {cmd:tsline}, the fits and the smoothers{p_end}
+{synopt:{cmdab:ast:yle(}{it:p#}{cmd:)}}a fill and its outline{p_end}
+{synopt:{cmdab:al:style(}{it:p#}{cmd:)}}an outline{p_end}
+{synopt:{cmdab:bst:yle(}{it:p#}{cmd:)}}a bar's fill and outline{p_end}
+{synopt:{cmdab:bl:style(}{it:p#}{cmd:)}}a bar's outline{p_end}
+
+{pstd}
+The connecting line of the line types takes {cmd:pstyle()},
+{cmd:lstyle()} and {cmd:clstyle()}; the lines of {cmd:spike}, the range
+types, the paired-coordinate types and the outlines of {cmd:bar},
+{cmd:rbar} and {cmd:histogram} take {cmd:pstyle()}, {cmd:lstyle()},
+{cmd:astyle()}, {cmd:alstyle()}, {cmd:bstyle()} and {cmd:blstyle()}.  A
+style option that a plot type does not draw is silent, as in
+{cmd:twoway}.
+
+{pstd}
+A named style and your own options combine in {cmd:twoway}'s order: an
+option wins over a style that comes before it in that order and loses to
+one that comes after it, whatever order you type them in.  So
+{cmd:mcolor(red) pstyle(p3)} draws red markers, {cmd:color(red) mstyle(p4)}
+draws {cmd:p4}'s markers, and {cmd:lwidth(thick) lstyle(p3)} draws
+{cmd:p3}'s line at {cmd:thick}.  {cmd:p()} is applied last: it restyles
+the whole plot, the marker labels included, and discards every other
+style option; the label text, {cmd:connect()} and {cmd:cmissing()} are
+kept.  Its value is one name, and given twice the first copy wins.
+
+{pstd}
+Across a varlist of several y, {cmd:scatter y1 y2 x, pstyle(p3 p4)}
+styles each y with its own element, as other style lists do;
+{cmd:p()} is not split.  {cmd:pstyle(p}{it:#}{cmd:)} and
+{cmd:p(p}{it:#}{cmd:)} also draw the layer as plot {it:#} for everything
+the plot number colours (its marker labels and the immediate types
+included); the layers after it keep their numbers.
+
+{pstd}
+Not drawn yet: a name other than {cmd:p1} to {cmd:p15} is named in a
+note and the layer keeps its own style; the outline half of a named style
+on {cmd:area} and {cmd:rarea} ({cmd:lstyle()}, {cmd:alstyle()} and
+{cmd:blstyle()} are named there); and the arrowheads of {cmd:pcarrow},
+{cmd:pcbarrow} and {cmd:pcarrowi} ({cmd:mstyle()} and {cmd:mlstyle()} are
+named there).
+
 
 {marker scheme}
 {title:Stata scheme support}
@@ -4293,8 +4350,8 @@ command copy-pasted from a do-file always runs -- and every one that is
 supplied is named in that command's note, so nothing is dropped in silence:
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
-{p 12 12 2}{cmd:. dash scatter mpg weight, pstyle(p3) t1title("hi")}{p_end}
-{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): pstyle() t1title())}{p_end}
+{p 12 12 2}{cmd:. dash scatter mpg weight, mlpattern(dash) t1title("hi")}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): mlpattern() t1title())}{p_end}
 
 {pstd}
 The note is built from the declarations in {cmd:dash.ado}, and this list is
@@ -4328,16 +4385,6 @@ disagree in either direction.
     a {cmd:dash} figure stretches to the width it is given.  Use
     {cmd:xsize()}, {cmd:ysize()} or {cmd:aspectratio()} to set its
     proportions, and {cmd:layout()} to place it.
-
-{phang2}{ul:Named styles.}
-    {opt pstyle(name)}, {opt lstyle(name)}, {opt mstyle(name)},
-    {opt mlstyle(name)} -- each names a bundle of settings in a
-    {cmd:.scheme} file.  {cmd:dash} reads the scheme's own {cmd:p}{it:#}
-    cycles directly; set the properties you want with {cmd:mcolor()},
-    {cmd:msymbol()}, {cmd:lcolor()}, {cmd:lpattern()} and {cmd:lwidth()}.
-    {cmd:pstyle()} is honoured on {cmd:lfitci}, {cmd:qfitci},
-    {cmd:lpolyci} and {cmd:fpfitci}, and not named there (see
-    {help dash##ciband:The band's look}).
 
 {phang2}{ul:A confidence band's outline, on other plots.}
     {opt acolor(color)}, {opt alcolor(color)}, {opt alwidth(linewidth)},

@@ -21,6 +21,9 @@
 *! with twoway asked, and DASH_CERT_REMEASURE=1 asks twoway in the run again
 *! and fails on any answer that is no longer the fixture's (the release run).
 *!
+*! NP-40..NP-42 (WP-30 P1.14a): the named styles and p() reach the spec by
+*! value; p()'s drop list holds per series.
+*!
 *! Usage:  do test/test_parser.cscript
 *! Version: 2.0  27mar2026
 
@@ -3092,6 +3095,32 @@ assert r(count) == 0
 capture erase "`h05'"
 dash clear
 display "FN-05 PASS: a function the fallback knows draws without a note"
+
+// NP-40..NP-42 (WP-30 P1.14a): the named styles reach the spec.  NP-40
+// every new key, by value; NP-41 a hostile name is stored as text; NP-42
+// p()'s drop list holds on each series of a 3-y varlist.
+dash clear
+quietly sysuse auto, clear
+dash line mpg weight, sort pstyle(p3) lstyle(p4) clstyle(p5) mstyle(p6) mlstyle(p7) astyle(p8) alstyle(p9) bstyle(p10) blstyle(p11) name(np40)
+mata: _np_j = st_global("dash_json_np40")
+foreach kv in pstyle:p3 lstyle:p4 clstyle:p5 mstyle:p6 mlstyle:p7 astyle:p8 alstyle:p9 bstyle:p10 blstyle:p11 {
+    gettoken k v : kv, parse(":")
+    local v = substr("`v'", 2, .)
+    mata: assert(strpos(_np_j, char(34) + "`k'" + char(34) + ":" + char(34) + "`v'" + char(34)) > 0)
+}
+dash scatter mpg weight, p(p12) name(np40b)
+mata: assert(strpos(st_global("dash_json_np40b"), char(34) + "p" + char(34) + ":" + char(34) + "p12" + char(34)) > 0)
+display "NP-40 PASS: the nine named styles and p() reach the spec under their keys"
+// The dollar sign is written \u0024 by _dash_json_str, never expanded.
+dash scatter mpg weight, mstyle("\$HOME") name(np41)
+mata: assert(strpos(st_global("dash_json_np41"), char(34) + "mstyle" + char(34) + ":" + char(34) + char(92) + "u0024HOME" + char(34)) > 0)
+display "NP-41 PASS: a dollar sign in a style name is stored as text"
+dash scatter mpg turn trunk weight, mcolor(red) msymbol(T) p(p3) name(np42)
+mata: _np_j = st_global("dash_json_np42")
+mata: assert(strpos(_np_j, "mcolor") == 0 & strpos(_np_j, "msymbol") == 0)
+mata: assert((strlen(_np_j) - strlen(subinstr(_np_j, char(34) + "p" + char(34) + ":" + char(34) + "p3" + char(34), ""))) / 8 == 3)
+dash clear
+display "NP-42 PASS: under p() the style options are dropped on each of three series"
 
 // twoway's answers: a question the fixture could not answer, or (with
 // DASH_CERT_REMEASURE=1) an answer twoway no longer gives, fails the run.

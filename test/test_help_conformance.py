@@ -523,10 +523,12 @@ class TestTheParsersFoundSomething:
         # P0.5 documented ytick2(), xtick2(), yline2() and xline2().  149
         # since WP-29 P0.9 documented lpolyci's pwidth() and var().  150
         # since WP-30 batch 5's help names yaxis() as an option.  152 since
-        # WP-30 P1.5 documented xvarformat() and yvarformat().
-        assert len(found) == 152, (
-            f"{len(found)} options parsed out of dash.sthlp, 152 measured "
-            f"01oct2026: a reader of the parser lost a form, or the help "
+        # WP-30 P1.5 documented xvarformat() and yvarformat().  158 since
+        # WP-30 P1.14a: the ten named styles' rows, less the Unsupported
+        # entry's four.
+        assert len(found) == 158, (
+            f"{len(found)} options parsed out of dash.sthlp, 158 measured "
+            f"08oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
 
@@ -589,8 +591,9 @@ class TestTheParsersFoundSomething:
         # WP-28 batch 2 (S16) declared colorlevels, colorvarminmax, zlabel,
         # ztitle and zscale (measured 30sep2026).  180 since WP-29 P0.5
         # declared ytick2, xtick2, yline2 and xline2.  182 since WP-30 P1.5
-        # declared xvarformat and yvarformat.
-        assert len(_ado_declarations()) == 182
+        # declared xvarformat and yvarformat.  188 since WP-30 P1.14a
+        # declared astyle, alstyle, bstyle, blstyle, clstyle and p.
+        assert len(_ado_declarations()) == 188
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -598,13 +601,15 @@ class TestTheParsersFoundSomething:
         # `_dash_unknown' at its top, before that list, ended the scan of
         # the parser there: 23, above "20".  48 since the S3 batch named
         # the four fitarea options off the ci types.
-        assert len(_ignored_options()) == 48
+        # Flipped (WP-30 P1.14a): 48 -> 44, the four named styles drawn.
+        assert len(_ignored_options()) == 44
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
         # Unsupported section ended that entry after its first line: 37,
         # above "3".  48 with the fitarea options' entry (S3 batch).
-        assert len(_unsupported_section()) == 48
+        # Flipped (WP-30 P1.14a): 48 -> 44, the Named styles entry gone.
+        assert len(_unsupported_section()) == 44
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -637,8 +642,10 @@ class TestTheParsersFoundSomething:
         # P1.5's xvarformat()/yvarformat() entry; 350 with WP-30 P1.15a's
         # two by() text rows (title() subtitle() note() caption(), note(""));
         # 352 with WP-30 P1.11b's two {ul:Text in graphs.} paragraphs.
-        assert len(defs) == 352, (  # 350 -> 352: P1.11b Text in graphs
-            f"{len(defs)} definition entries cut out of dash.sthlp, 352 "
+        # 361 with WP-30 P1.14a's ten named-style rows, less the
+        # Unsupported Named styles entry.
+        assert len(defs) == 361, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 361 "
             f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -984,4 +991,7 @@ class TestInternalLinksResolve:
         # 86 -> 90 links to 32 -> 33 markers: WP-30 P1.13a adds the
         # Colours paragraph (colours) and links it from Option values, the
         # region options and the scheme-file paragraph.
-        assert len(refs) == 90 and len(set(refs)) == 33
+        # 90 -> 91 links, 33 -> 34 markers: WP-30 P1.14a adds Named styles
+        # (namedstyles), linked from pwidth() and the band's look; the
+        # Unsupported entry's link to ciband went with the entry.
+        assert len(refs) == 91 and len(set(refs)) == 34

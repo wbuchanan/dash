@@ -115,7 +115,6 @@ PLOT_VALUES = {
     "l2title": ("l2", "lB", "scatter"),
     "level": ("80", "99", "lfitci"),
     "lineopts": ("lcolor(red)", "lcolor(blue)", "kdensity"),
-    "lstyle": ("p3", "p7", "line"),
     # WP-22 TR-22.3: twoway options that used to land in the note as
     # unknown, now declared -- named by their full names -- and not drawn.
     "mlabtextstyle": ("heading", "body", "scatter"),
@@ -123,14 +122,11 @@ PLOT_VALUES = {
     "mlabwidth": ("thick", "vthin", "scatter"),
     "mlcolor": ("navy", "maroon", "scatter"),
     "mlpattern": ("dash", "dot", "scatter"),
-    "mlstyle": ("p1", "p5", "scatter"),
     "mlwidth": ("thick", "vthin", "scatter"),
-    "mstyle": ("p1", "p5", "scatter"),
     "n": ("30", "70", "kdensity"),
     "nodraw": ("nodraw", "", "scatter"),
     "percent": ("percent", "frequency", "histogram"),
     "play": ("x", "y", "scatter"),
-    "pstyle": ("p2", "p6", "scatter"),
     "r1title": ("r1", "rA", "scatter"),
     "r2title": ("r2", "rB", "scatter"),
     "range": ("10 30", "12 28", "kdensity"),
@@ -243,7 +239,9 @@ class TestTheListIsCoveredAndHonest:
         # a refactor dropped most of a block from the regex's reach, which
         # would turn every "reported unsupported really is" case below into
         # a silent no-op.
-        assert len(_plot_pending()) == 48, sorted(_plot_pending())
+        # Flipped (WP-30 P1.14a): 48 -> 44: pstyle(), lstyle(), mstyle()
+        # and mlstyle() are drawn (p1-p15), so they leave the list.
+        assert len(_plot_pending()) == 44, sorted(_plot_pending())
         assert len(_graph_pending()) == 23, sorted(_graph_pending())
 
 
@@ -410,11 +408,18 @@ _CV = {"colorvar": "price"}
 _ML = {"mlabel": "foreign"}
 LIVE_VALUES = {
     # ---- plot-level -------------------------------------------------------
+    # WP-30 P1.14a: drawn, p1-p15 (each pair of styles differs on its type).
+    "alstyle": ({"alstyle": "p3"}, {"alstyle": "p7"}, "bar", {}),
+    "astyle": ({"astyle": "p3"}, {"astyle": "p7"}, "area", {}),
     "bands": ({"bands": "3"}, {"bands": "6"}, "mband", {}),
     "barwidth": ({"barwidth": "50"}, {"barwidth": "150"}, "bar", {}),
     "base": ({"base": "10"}, {"base": "15"}, "bar", {}),
     "bfcolor": ({"bfcolor": "red"}, {"bfcolor": "blue"}, "bar", {}),
     "bin": ({"bin": "4"}, {"bin": "8"}, "histogram", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "blstyle": ({"blstyle": "p3"}, {"blstyle": "p7"}, "bar", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "bstyle": ({"bstyle": "p3"}, {"bstyle": "p7"}, "bar", {}),
     "blcolor": ({"blcolor": "red"}, {"blcolor": "blue"}, "bar", {}),
     "bwidth": ({"bwidth": "300"}, {"bwidth": "700"}, "lpoly", {}),
     "color": ({"color": "red"}, {"color": "blue"}, "scatter", {}),
@@ -460,6 +465,18 @@ LIVE_VALUES = {
     "clcolor": ({"clcolor": "red"}, {"clcolor": "blue"}, "line", {}),
     "clpattern": ({"clpattern": "dash"}, {"clpattern": "dot"}, "line", {}),
     "clwidth": ({"clwidth": "vthin"}, {"clwidth": "vthick"}, "line", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "clstyle": ({"clstyle": "p3"}, {"clstyle": "p7"}, "line", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "lstyle": ({"lstyle": "p3"}, {"lstyle": "p7"}, "line", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "mlstyle": ({"mlstyle": "p1"}, {"mlstyle": "p5"}, "scatter", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "mstyle": ({"mstyle": "p1"}, {"mstyle": "p5"}, "scatter", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "p": ({"p": "p2"}, {"p": "p6"}, "scatter", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "pstyle": ({"pstyle": "p2"}, {"pstyle": "p6"}, "scatter", {}),
     "mlabangle": ({**_ML, "mlabangle": "45"}, {**_ML, "mlabangle": "90"},
                   "scatter", {}),
     "mlabformat": ({"mlabel": "price", "mlabformat": "%9.1f"},
@@ -615,7 +632,9 @@ class TestEveryDeclaredOptionIsClassified:
         # Flipped (WP-29 P0.5): 169 and 72, with ytick2(), xtick2(),
         # yline2() and xline2() declared in both blocks.
         # 169 -> 171: P1.5 xvarformat() and yvarformat() declared
-        assert len(_declared_plot()) == 171, len(_declared_plot())
+        # Flipped (WP-30 P1.14a): 171 -> 177: astyle(), alstyle(),
+        # bstyle(), blstyle(), clstyle() and p() declared.
+        assert len(_declared_plot()) == 177, len(_declared_plot())
         assert len(_declared_graph()) == 72, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):

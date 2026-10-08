@@ -11,8 +11,9 @@
 *! DRAWS is read from `graph export' SVG.
 *!
 *!   HC8-01  the note the help prints for `dash scatter mpg weight,
-*!           pstyle(p3) t1title("hi")' is, word for word, "dash: ignoring
-*!           unsupported option(s): pstyle() t1title()".
+*!           mlpattern(dash) t1title("hi")' is, word for word, "dash:
+*!           ignoring unsupported option(s): mlpattern() t1title()".
+*!           (Flipped, WP-30 P1.14a: pstyle() is drawn now.)
 *!   HC8-02  every option on the Unsupported list is accepted (rc 0) and
 *!           named in the note, the plot-level list in comma mode and the
 *!           graph-level list after the paren-mode comma.  Most of them had
@@ -385,21 +386,24 @@ generate pos = mod(_n, 12) + 1
 // ================================================================
 // HC8-01 -- the note, word for word
 // ================================================================
-_hc_run "" `"dash scatter mpg weight, pstyle(p3) t1title("hi")"'
+// Flipped (WP-30 P1.14a): pstyle() -> mlpattern(), which is still named.
+_hc_run "" `"dash scatter mpg weight, mlpattern(dash) t1title("hi")"'
 local rc = r(rc)
 local lf "`r(logfile)'"
 _hc_expect "HC8-01" "(`rc' == 0)" "rc `rc'"
-_hc_log "HC8-01" "`lf'" "(note:  dash: ignoring unsupported option(s): pstyle() t1title())" 1 1
+_hc_log "HC8-01" "`lf'" "(note:  dash: ignoring unsupported option(s): mlpattern() t1title())" 1 1
 _hc_done "HC8-01" "the note is the help's, word for word"
 
 // ================================================================
 // HC8-02 -- every option on the list: accepted, and named
 // ================================================================
-// Plot level, comma mode: the 48 names of _dash_parse_plot_opts' list (the
+// Plot level, comma mode: the 44 names of _dash_parse_plot_opts' list
+// (flipped, WP-30 P1.14a: 48 -> 44, pstyle() lstyle() mstyle() mlstyle()
+// are drawn and left the list; the
 // four fitarea options among them, named on scatter: _dash_fold_typed takes
 // them off only on the ci types).
-local p_opts `"acolor(red) alcolor(red) alpattern(dash) alwidth(thick) at(mpg) b1title(b) b2title(b) blabel(total) ciopts(lcolor(red)) cmissing(n) colorlist(red blue) coloruseplegend connect(l) filter(foreign) fitopts(lcolor(red)) fxsize(50) fysize(50) horizontal l1title(l) l2title(l) link(g9) lineopts(lcolor(red)) lstyle(p3) mlabtextstyle(heading) mlabvposition(pos) mlabwidth(thick) mlpattern(dash) mlstyle(p3) mstyle(p3) play(x) pstyle(p3) r1title(r) r2title(r) recast(line) scale(1.5) sort subtitle2(s) t1title(t) t2title(t) text(20 3000 "hi") title2(t) vertical xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
-local p_names "acolor alcolor alpattern alwidth at b1title b2title blabel ciopts cmissing colorlist coloruseplegend connect filter fitopts fxsize fysize horizontal l1title l2title link lineopts lstyle mlabtextstyle mlabvposition mlabwidth mlpattern mlstyle mstyle play pstyle r1title r2title recast scale sort subtitle2 t1title t2title text title2 vertical xmlabel xmtick xoverhangs ymlabel ymtick yoverhangs"
+local p_opts `"acolor(red) alcolor(red) alpattern(dash) alwidth(thick) at(mpg) b1title(b) b2title(b) blabel(total) ciopts(lcolor(red)) cmissing(n) colorlist(red blue) coloruseplegend connect(l) filter(foreign) fitopts(lcolor(red)) fxsize(50) fysize(50) horizontal l1title(l) l2title(l) link(g9) lineopts(lcolor(red)) mlabtextstyle(heading) mlabvposition(pos) mlabwidth(thick) mlpattern(dash) play(x) r1title(r) r2title(r) recast(line) scale(1.5) sort subtitle2(s) t1title(t) t2title(t) text(20 3000 "hi") title2(t) vertical xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
+local p_names "acolor alcolor alpattern alwidth at b1title b2title blabel ciopts cmissing colorlist coloruseplegend connect filter fitopts fxsize fysize horizontal l1title l2title link lineopts mlabtextstyle mlabvposition mlabwidth mlpattern play r1title r2title recast scale sort subtitle2 t1title t2title text title2 vertical xmlabel xmtick xoverhangs ymlabel ymtick yoverhangs"
 _hc_run "" `"dash scatter mpg weight, mlabel(make) `p_opts' name(hc02p, replace)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
@@ -438,7 +442,7 @@ foreach nm of local g_names {
     }
 }
 _hc_expect "HC8-02" "(`nmiss' == 0)" "`nmiss' graph-level option(s) not named"
-_hc_done "HC8-02" "all 48 plot-level and 23 graph-level options accepted and named"
+_hc_done "HC8-02" "all 44 plot-level and 23 graph-level options accepted and named"
 
 // ================================================================
 // HC8-03 -- twoway's own verdict on each option the prose names
@@ -524,10 +528,12 @@ _hc_done "HC8-06" "an abbreviation works; a misspelling is named, not refused"
 // ================================================================
 // HC8-07 -- names, never values
 // ================================================================
-_hc_run "" "dash scatter mpg weight, pstyle(HC8SECRETVALUE) nosuchopt(HC8OTHERVALUE) name(hc07, replace)"
+// Flipped (WP-30 P1.14a): pstyle() is drawn now, so mlpattern() carries
+// the value.
+_hc_run "" "dash scatter mpg weight, mlpattern(HC8SECRETVALUE) nosuchopt(HC8OTHERVALUE) name(hc07, replace)"
 local lf "`r(logfile)'"
 _hc_expect "HC8-07" "(`r(rc)' == 0)" "rc `r(rc)'"
-_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): pstyle() nosuchopt())" 1 1
+_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): mlpattern() nosuchopt())" 1 1
 _hc_log "HC8-07" "`lf'" "HC8SECRETVALUE" 0
 _hc_log "HC8-07" "`lf'" "HC8OTHERVALUE" 0
 _hc_done "HC8-07" "the note carries the names and neither value"

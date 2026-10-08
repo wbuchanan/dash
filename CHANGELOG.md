@@ -366,7 +366,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.13b -->
 
-<!-- WP-30 P1.14a -->
+- The named styles `p1`-`p15` are drawn on every plot type, as twoway draws them: `pstyle()`, `lstyle()`, `clstyle()`, `mstyle()`, `mlstyle()`, `astyle()`, `alstyle()`, `bstyle()` and `blstyle()` were ignored with a note (`pstyle()` was drawn only on the four ci fits); `dash scatter mpg weight, pstyle(p3)` drew `#1a476f` and now draws p3's `#55752f` under s2color. A named style and your own options combine in twoway's order: `mcolor(red) pstyle(p3)` is red and `color(red) mstyle(p4)` is p4. `p()`, named in the note before, is twoway's whole-plot style: `mcolor(red) p(p3)` draws p3, discarding the other style options. `al()` and `bl()` are now `alstyle()` and `blstyle()`, as in twoway (they were named as typed). A name other than `p1`-`p15` is noted and the layer keeps its own style. (WP-30, P1.14a)
 
 <!-- WP-30 P1.14b -->
 

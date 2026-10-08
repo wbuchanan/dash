@@ -1151,7 +1151,7 @@ program define _dash_parse_plot_opts, sclass
         COLPALette(string)        COLORDIScrete             COLORUSEPLEGend ///
         COLORNlevels(string)      COLORCUTs(string asis)    COLORMissing(string) ///
         COLORLEVels(string)       COLORVARMINMax ///
-        BWIDth(string)            DEGree(string)            PSTYle(string) ///
+        BWIDth(string)            DEGree(string)            PSTYle(string asis) ///
         CMISSing(string)          RECAST(string)            Connect(string) ///
         BIN(string)               BINS(string)              Width(string) ///
         START(string) ///
@@ -1162,8 +1162,9 @@ program define _dash_parse_plot_opts, sclass
         FRACtion                  Kernel(string)            N(string) ///
         LEvel(string)             BAnds(string)             AT(string asis) ///
         CIOPTS(string asis)       LINEOPTS(string asis)     FITOPTS(string asis) ///
-        COLor(string asis)        MLWidth(string asis)      MSTyle(string) ///
-        LStyle(string)            MLStyle(string)           MLPattern(string) ///
+        COLor(string asis)        MLWidth(string asis)      MSTyle(string asis) ///
+        LStyle(string asis)       MLStyle(string asis)      MLPattern(string) ///
+        ASTyle(string asis) ALstyle(string asis) BSTyle(string asis) BLstyle(string asis) CLStyle(string asis) P(string) ///
         BLABEL(string)            HORizontal                VERTical ///
         SORT                      RAnge(string asis)        COLORLIst(string asis) ///
         SORT1(string)             CLColor(string asis)      CLPattern(string asis) ///
@@ -1296,7 +1297,6 @@ program define _dash_parse_plot_opts, sclass
     if `: length local l2title' local _dash_pending `"`_dash_pending' l2title"'
     if `: length local link' local _dash_pending `"`_dash_pending' link"'
     if `: length local lineopts' local _dash_pending `"`_dash_pending' lineopts"'
-    if `: length local lstyle' local _dash_pending `"`_dash_pending' lstyle"'
     // WP-22: mlabtextstyle() names a text style in a .scheme file, and
     // mlabvposition() a variable of clock positions, one per observation;
     // dash draws a layer's labels at one position in the scheme's style.
@@ -1304,14 +1304,12 @@ program define _dash_parse_plot_opts, sclass
     if `: length local mlabvposition' local _dash_pending `"`_dash_pending' mlabvposition"'
     if `: length local mlabwidth' local _dash_pending `"`_dash_pending' mlabwidth"'
     if `: length local mlpattern' local _dash_pending `"`_dash_pending' mlpattern"'
-    if `: length local mlstyle' local _dash_pending `"`_dash_pending' mlstyle"'
-    if `: length local mstyle' local _dash_pending `"`_dash_pending' mstyle"'
     if `: length local play' local _dash_pending `"`_dash_pending' play"'
-    if `: length local pstyle' local _dash_pending `"`_dash_pending' pstyle"'
     // fitarea_options, the look of a ci fit's band: twoway takes ac(),
     // alc(), alw() and alp() (measured 24sep2026; al() is alstyle()).
-    // Drawn on lfitci, qfitci, lpolyci and fpfitci -- and pstyle() with
-    // them -- where _dash_fold_typed takes them off this list once the
+    // Drawn on lfitci, qfitci, lpolyci and fpfitci (pstyle() and the other
+    // named styles are drawn on every type, WP-30 P1.14a) -- where
+    // _dash_fold_typed takes them off this list once the
     // type is known; twoway accepts them on every type (rc 0), so
     // elsewhere they are named here.
     if `: length local acolor' local _dash_pending `"`_dash_pending' acolor"'
@@ -1427,6 +1425,14 @@ program define _dash_parse_plot_opts, sclass
     sreturn local mstyle           : copy local mstyle
     sreturn local lstyle           : copy local lstyle
     sreturn local mlstyle          : copy local mlstyle
+    // WP-30 P1.14a: the named styles twoway reads (p1-p15 drawn), and p(),
+    // twoway's whole-plot style.
+    sreturn local astyle           : copy local astyle
+    sreturn local alstyle          : copy local alstyle
+    sreturn local bstyle           : copy local bstyle
+    sreturn local blstyle          : copy local blstyle
+    sreturn local clstyle          : copy local clstyle
+    sreturn local p                : copy local p
     sreturn local mlpattern        : copy local mlpattern
     sreturn local blabel           : copy local blabel
     sreturn local horizontal       : copy local horizontal
@@ -1886,6 +1892,8 @@ program define _dash_fold_cl, sclass
     sreturn local clcolor   ""
     sreturn local clpattern ""
     sreturn local clwidth   ""
+    // clstyle() styles the connecting line only (WP-30 P1.14a, D-32c).
+    sreturn local clstyle   ""
 end
 
 // ================================================================
@@ -2005,6 +2013,8 @@ program define _dash_fold_typed, sclass
         }
     }
     local jit_undrawn "rscatter rcapsym pcscatter pccapsym"
+    local area_types "area rarea"
+    local arrow_types "pcarrow pcbarrow pcarrowi"
     mata: st_local("_ft", strofreal(st_global("s(jitter)") != ""))
     if `: list ptype in jit_undrawn' & `_ft' {
         foreach o in jitter jitterseed jseed {
@@ -2024,8 +2034,8 @@ program define _dash_fold_typed, sclass
         mata: st_local("_ft", strofreal(strpos(" " + st_global("s(_pending)") + " ", " sort ") > 0))
         if !`_ft' local named "`named' sort"
     }
-    // pstyle() and the fitarea options acolor(), alcolor(), alwidth() and
-    // alpattern() are drawn on a ci fit -- its band in the style pstyle()
+    // The fitarea options acolor(), alcolor(), alwidth() and alpattern()
+    // are drawn on a ci fit -- its band in the style pstyle()
     // names, and in the scheme's ci style otherwise, as twoway draws it
     // (BUGS.md, S3, "A ci band is filled in its line's colour, where Stata
     // fills it in pstyle ci"; measured 24sep2026) -- so on lfitci, qfitci,
@@ -2033,10 +2043,27 @@ program define _dash_fold_typed, sclass
     // named them on.  The list holds option names only, never values.
     local ci_types "lfitci qfitci lpolyci fpfitci"
     if `: list ptype in ci_types' {
-        local ci_drawn "pstyle acolor alcolor alwidth alpattern"
+        local ci_drawn "acolor alcolor alwidth alpattern"
         mata: st_local("_ftp", st_global("s(_pending)"))
         local _ftk : list _ftp - ci_drawn
         if "`_ftk'" != "`_ftp'" sreturn local _pending `"`_ftk'"'
+    }
+    // WP-30 P1.14a (P2.12): a named style's outline is not drawn on area
+    // and rarea (measured 03oct2026), so lstyle(), alstyle() and blstyle()
+    // are named there.
+    if `: list ptype in area_types' {
+        foreach o in lstyle alstyle blstyle {
+            mata: st_local("_ft", strofreal(st_global("s(`o')") != ""))
+            if `_ft' local named "`named' `o'"
+        }
+    }
+    // WP-30 P1.14a (P2.8): the pc arrowheads are not styled by a named
+    // style, so mstyle() and mlstyle() are named on the arrow types.
+    if `: list ptype in arrow_types' {
+        foreach o in mstyle mlstyle {
+            mata: st_local("_ft", strofreal(st_global("s(`o')") != ""))
+            if `_ft' local named "`named' `o'"
+        }
     }
     if "`named'" != "" sreturn local _pending `"`s(_pending)'`named'"'
 end
@@ -3795,6 +3822,26 @@ program define _dash_plot_opts_to_json, rclass
 
     local parts ""
     local nparts = 0
+    // p() is twoway's whole-plot style, applied after every other style
+    // option: under it twoway discards each explicit style option, for any
+    // name, even an unknown one (WP-30 P1.14a, D-32a; measured 03oct2026).
+    // The keys it drops, by the measurement that shows each:
+    local _dash_p_drops "pstyle color mcolor msymbol marker msize msangle mfcolor"
+    // mcolor(red) msize(huge) p(p3): p3's fill and size; mfcolor() lost.
+    local _dash_p_drops "`_dash_p_drops' mlcolor mlwidth mlpattern mstyle mlstyle malpha"
+    // mlwidth(thick) p(p3): lost; mstyle/mlstyle come before p().
+    local _dash_p_drops "`_dash_p_drops' lcolor lwidth lpattern lalpha lstyle"
+    // line, lstyle(p4) p(p3): p3.
+    local _dash_p_drops "`_dash_p_drops' clcolor clwidth clpattern clstyle"
+    // the connecting line's options are lstyle's kin.
+    local _dash_p_drops "`_dash_p_drops' acolor alcolor alwidth alpattern astyle alstyle"
+    // area, fcolor(red) p(p3): p3's fill.
+    local _dash_p_drops "`_dash_p_drops' bstyle blstyle bfcolor blcolor fcolor fintensity falpha"
+    // p(p3) mcolor(red%50): p3, opacity 100.
+    local _dash_p_drops "`_dash_p_drops' mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat mlabwidth"
+    // mlabcolor(red), mlabposition(9), mlabformat(), mlabgap(5) p(p3): each
+    // lost.  mlabel, connect, cmissing and sort are kept.
+    mata: st_local("_p_on", strofreal(strtrim(st_global("s(p)")) != ""))
 
     // Helper: append a k:v JSON pair if value non-empty.
     // weight and wexp (WP-18) are not options: _dash_process_segment puts
@@ -3810,7 +3857,8 @@ program define _dash_plot_opts_to_json, rclass
                    colorlevels colorvarminmax ///
                    bwidth degree pstyle cmissing recast connect bin width start ///
                    percent frequency density fraction kernel n level bands at ciopts ///
-                   lineopts fitopts color mlwidth mstyle lstyle mlstyle mlpattern ///
+                   lineopts fitopts color mlwidth mstyle lstyle mlstyle ///
+                   clstyle astyle alstyle bstyle blstyle p mlpattern ///
                    blabel horizontal vertical sort range colorlist jitterseed ///
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///
@@ -3822,6 +3870,7 @@ program define _dash_plot_opts_to_json, rclass
         // copy through them expanded a macro in the value again --
         // mcolor("\$G") was stored as $G's value (measured 24sep2026;
         // test_json_escaping.cscript JSE-69).
+        if `_p_on' & `: list key in _dash_p_drops' continue
         if `: list key in _sl_keys' {
             mata: st_local("val", _dash_stylelist_pick(st_global("s(" + st_local("key") + ")"), `series'))
         }

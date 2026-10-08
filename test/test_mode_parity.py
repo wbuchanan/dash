@@ -2060,6 +2060,19 @@ CORPUS = [
     _case("axis look: under by()", [_sc()], None,
           {"by": "foreign", "yscale": "off noline alt titlegap(10)",
            "ylabel": ", nolabels noticks labcolor(red) tlength(5)"}),
+    # WP-30 P1.14a: the named styles p1-p15, p() and the plot index
+    _case("named styles p1-p15",
+          [_sc(pstyle="p3"), plot_for("line", {"lstyle": "p4"}),
+           plot_for("bar", {"bstyle": "p5", "blcolor": "red"}),
+           plot_for("spike", {"alstyle": "p6"}),
+           plot_for("area", {"astyle": "p7"})], {"scheme": "stcolor"}),
+    _case("p() and the plot index",
+          [_sc(p="p3"), plot_for("scatteri", {"pstyle": "p4"}),
+           plot_for("function", {"pstyle": "p5"}),
+           plot_for("pci", {"pstyle": "p6"})], {"scheme": "stcolor"}),
+    _case("named styles on a ci fit",
+          [plot_for("lfitci", {"pstyle": "p3", "astyle": "p4",
+                               "alstyle": "p5"})], {"scheme": "stcolor"}),
 ]
 
 
