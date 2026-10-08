@@ -230,13 +230,13 @@ class TestQuotes:
 
 
 class TestAGraphsOwnScheme:
-    def test_a_graphs_own_scheme_reaches_the_style(self):
-        """Saved page: a graph's scheme(stcolor) in an s2color dashboard
-        draws stcolor's refline (E9.1).  The served app's per-graph scheme
-        is section 34's (_dash_under_graph_scheme), checked once S34 has
-        landed."""
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_graphs_own_scheme_reaches_the_style(self, mode):
+        """A graph's scheme(stcolor) in an s2color dashboard draws stcolor's
+        refline (E9.1), saved and served (the served app's per-graph scheme
+        is section 34's _dash_under_graph_scheme)."""
         rs, _ = _draw(plot_for("line", {"lstyle": "refline"}), "s2color",
-                      "standalone", graph={"scheme": "stcolor"})
+                      mode, graph={"scheme": "stcolor"})
         assert _hex(_one(rs, "Line").line_color) == "#000000"
 
 
