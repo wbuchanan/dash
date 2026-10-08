@@ -44,6 +44,7 @@ pins:
   stopped with SIGINT.
 """
 import html.parser
+import json
 import os
 import re
 import signal
@@ -441,6 +442,36 @@ class TestThePlotTypesSection:
         sec = _prose(_plot_types())
         assert "when none is given" not in sec
         assert "the time variable tsset set" in sec
+
+    def test_the_operator_paragraph_is_twoways_rule(self):
+        """WP-30 P1.7: the types the paragraph names as taking and refusing
+        operators are twoway's (fixtures/ts_operator_truth.json, A and R
+        probes), and so are the refusals' words."""
+        with open(os.path.join(_HERE, "fixtures", "ts_operator_truth.json"),
+                  encoding="utf-8") as fh:
+            probes = json.load(fh)["probes"]
+        sec = _prose(_plot_types())
+        para = sec[sec.index("Time-series operators."):]
+        para = para[:para.index("sysuse sp500")]
+        cut, lead = para.index("refuse them"), para.index("fpfit")
+        refused = {p["body"].split()[0] for k, p in probes.items()
+                   if k[0] == "R" and p["twoway"]["rc"] == 101}
+        taken = {p["body"].split()[0] for k, p in probes.items()
+                 if k[0] == "A" and p["twoway"]["rc"] == 0}
+        for t in refused:
+            assert re.search(r"\b%s\b" % t, para[lead:cut]), t
+        for t in taken - set(_RANGE_AND_PC):
+            assert re.search(r"\b%s\b" % t, para[:lead]), t
+        assert "eight range types, the five paired-coordinate types" in para
+        for k in ("E01", "E02", "E03", "E06", "R01"):
+            words = probes[k]["twoway"]["err"][0].replace("make:  ", "")
+            assert words in para, (k, words)
+
+
+#: The range and paired-coordinate types the operator paragraph counts.
+_RANGE_AND_PC = ("rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
+                 "rcapsym", "rscatter", "pcspike", "pcarrow", "pcbarrow",
+                 "pcscatter", "pccapsym")
 
 
 # ===========================================================================

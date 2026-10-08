@@ -666,8 +666,10 @@ class TestTheParsersFoundSomething:
         # each drawn sub-option, the graph region and the canvas).
         # 367 -> 368: WP-30 P1.21a's $dash_max_reflines row.
         # 368 -> 369: P1.8a's cmissings() entry.
-        assert len(defs) == 369, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 369 "
+        # 369 -> 372: P1.7's {ul:Time-series operators.} paragraph and
+        # its example's lines.
+        assert len(defs) == 372, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 372 "
             f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

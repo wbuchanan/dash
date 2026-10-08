@@ -114,7 +114,7 @@ local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
-    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4
+    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -9832,10 +9832,227 @@ if inlist("`only'", "", "S41") & `: list posof "S41" in w30_run' {
 }
 * ==== end S41 ====
 
+// S42 (P1.7) helpers: a saved page's titles, legend items, tooltip labels
+// and the time-series columns its sources draw, read from its document
+// JSON; twoway's titles, keys and serset beside them.
+python:
+def _s42_page():
+    import base64, gzip, json, re
+    import numpy as np
+    from sfi import Macro
+    with open(Macro.getGlobal("S42_HTML"), encoding="utf-8") as fh:
+        txt = fh.read()
+    objs = {}
+    for m in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', txt, re.S):
+        stack = [json.loads(m.group(1))]
+        while stack:
+            o = stack.pop()
+            if isinstance(o, dict):
+                if "id" in o and "name" in o:
+                    objs.setdefault(o["id"], o)
+                stack.extend(o.values())
+            elif isinstance(o, list):
+                stack.extend(o)
+    def arr(v):
+        if isinstance(v, dict) and v.get("type") == "ndarray":
+            a = v["array"]
+            raw = base64.b64decode(a["data"]) if isinstance(a, dict) else None
+            if raw is not None and raw[:2] == b"\x1f\x8b":
+                raw = gzip.decompress(raw)
+            if raw is None:
+                return [None if x is None else float(x) for x in a]
+            return [float(x) for x in np.frombuffer(raw, dtype=v["dtype"])]
+        return [None if x is None else float(x) if not isinstance(x, dict)
+                else float(x.get("value", "nan")) for x in (v or [])]
+    out = {"axes": [], "legend": [], "tips": [], "cols": {}}
+    for o in objs.values():
+        at = o.get("attributes", {}) or {}
+        if o["name"].endswith("Axis") and at.get("axis_label"):
+            out["axes"].append([o["name"], at["axis_label"]])
+        elif o["name"] == "LegendItem":
+            lab = at.get("label")
+            out["legend"].append(lab.get("value") if isinstance(lab, dict) else lab)
+        elif o["name"] == "HoverTool":
+            for t in at.get("tooltips") or []:
+                out["tips"].append(list(t))
+        elif o["name"] == "ColumnDataSource":
+            d = at.get("data", {})
+            cols = dict(d.get("entries", [])) if isinstance(d, dict) else {}
+            for k, v in cols.items():
+                if k.startswith("__dasht") or k in ("t", "tt", "date"):
+                    out["cols"].setdefault(k, []).append(arr(v))
+    return out
+
+
+def _s42_serset():
+    import csv
+    from sfi import Macro
+    with open(Macro.getGlobal("S42_SER"), encoding="utf-8") as fh:
+        rows = list(csv.reader(fh))
+    head = rows[0]
+    return {h: [None if r[i] in ("", ".") else float(r[i]) for r in rows[1:]]
+            for i, h in enumerate(head)}
+
+
+def _s42_check():
+    """Sets S42_OK (1/0) and S42_WHY for the case in S42_CASE."""
+    import math
+    from sfi import Macro
+    case = Macro.getGlobal("S42_CASE")
+    page = _s42_page()
+    ser = _s42_serset()
+    ok, why = True, ""
+    def vals(col):
+        return [v for run in page["cols"].get(col, []) for v in run
+                if v is not None and math.isfinite(v)]
+    if case == "TSO-20":
+        ty = Macro.getGlobal("S42_TY")
+        labels = [a[1] for a in page["axes"]]
+        want = sorted(v for v in ser["D_close"] if v is not None)
+        got = sorted(set(vals("__dasht1")))
+        ok = ty in labels and got == sorted(set(want))
+        why = "twoway %r, dash %r; %d values, %d of twoway's" % (
+            ty, labels, len(got), len(set(want)))
+    elif case == "TSO-21":
+        texts = set(Macro.getGlobal("S42_TEXTS").split("|"))
+        leg = sorted(page["legend"])
+        ok = (leg == ["Closing price, L", "Closing price, L2"]
+              and set(leg) <= texts)
+        why = "dash %r" % leg
+    elif case == "TSO-22":
+        pairs = {}
+        for xs, ys in zip(page["cols"].get("t", []), page["cols"].get("__dasht1", [])):
+            pairs.update(zip(xs, ys))
+        tw = dict(zip(ser["t"], ser["D_close"]))
+        ok = (abs(pairs.get(6.0, 0) - 4.940063) < 5e-6
+              and pairs.get(6.0) == tw.get(6.0))
+        why = "dash %r, twoway %r" % (pairs.get(6.0), tw.get(6.0))
+    elif case == "TSO-23":
+        miss = [t for t, v in zip(ser["tt"], ser["L_y"]) if v is None]
+        got = len(vals("__dasht1"))
+        ok = miss == [1.0, 1.0] and got == sum(v is not None for v in ser["L_y"])
+        why = "twoway missing at %r, dash draws %d" % (miss, got)
+    elif case == "TSO-24":
+        names = [a[0] for a in page["axes"] if a[1] == "Date, D"]
+        ok = names == ["DatetimeAxis"] and Macro.getGlobal("S42_FMT") == "%td"
+        why = "dash axes %r, twoway's serset format %s" % (
+            names, Macro.getGlobal("S42_FMT"))
+    tips = [t for t in page["tips"] if "__dasht" in str(t[0])]
+    if tips:
+        ok, why = False, why + "; a tooltip shows %r" % tips
+    Macro.setGlobal("S42_OK", "1" if ok else "0")
+    Macro.setGlobal("S42_WHY", why)
+import sys as _s42_sys
+_s42_sys.modules["_dash_s42"] = type(_s42_sys)("_dash_s42")
+_s42_sys.modules["_dash_s42"].check = _s42_check
+end
+
+// The data in memory (a serset) to a CSV, every value at full precision.
+mata:
+void _s42_csv(string scalar file)
+{
+    real scalar   fh, i, j
+    string scalar line
+    if (fileexists(file)) unlink(file)
+    fh = fopen(file, "w")
+    line = st_varname(1)
+    for (j = 2; j <= st_nvar(); j++) line = line + "," + st_varname(j)
+    fput(fh, line)
+    for (i = 1; i <= st_nobs(); i++) {
+        line = ""
+        for (j = 1; j <= st_nvar(); j++) {
+            line = line + (j > 1 ? "," : "") +
+                (_st_data(i, j) >= . ? "." : strtrim(strofreal(_st_data(i, j), "%21.17g")))
+        }
+        fput(fh, line)
+    }
+    fclose(fh)
+}
+end
+
+capture program drop _s42_data
+program define _s42_data
+    version 19
+    args ds
+    if "`ds'" == "xt" {
+        clear
+        quietly {
+            set obs 20
+            gen id = ceil(_n / 10)
+            gen tt = mod(_n - 1, 10) + 1
+            gen y = _n * _n
+            label variable y "Y value"
+            xtset id tt
+        }
+        exit
+    }
+    quietly sysuse sp500, clear
+    quietly gen t = _n
+    if "`ds'" == "spd" quietly tsset date
+    else quietly tsset t
+end
+
+// _s42_case <id> <twoway body> <work stem>: twoway's y title, serset (its
+// first) and SVG texts; then dash's saved page of the same body; then
+// the comparison of _s42_check.
+capture program drop _s42_case
+program define _s42_case
+    version 19
+    args id body stem
+    capture graph drop s42g
+    serset clear
+    quietly twoway `body', name(s42g, replace)
+    global S42_TY `"`.s42g.yaxis1.title.text[1]'"'
+    quietly graph export "`stem'.svg", name(s42g) replace
+    global S42_STEM "`stem'"
+    python: import sys, sfi; sys.path.insert(0, sfi.Macro.getGlobal("S42_REPO") + "/scripts"); import svg_truth; sfi.Macro.setGlobal("S42_TEXTS", "|".join(e["text"] for e in svg_truth.svg_document(sfi.Macro.getGlobal("S42_STEM") + ".svg")["texts"]))
+    quietly serset set 0
+    preserve
+    quietly serset use, clear
+    global S42_FMT ""
+    capture confirm variable D_date
+    if !_rc global S42_FMT : format D_date
+    mata: _s42_csv(st_local("stem") + ".csv")
+    restore
+    capture graph drop s42g
+    global S42_HTML "`stem'.html"
+    global S42_SER "`stem'.csv"
+    global S42_CASE "`id'"
+    capture dash clear
+    quietly graph drop _all
+    capture noisily dash `body', saving("`stem'.html", replace)
+    if _rc {
+        global S42_OK 0
+        global S42_WHY "dash r(`=_rc')"
+        exit
+    }
+    python: __import__("sys").modules["_dash_s42"].check()
+end
+
 * ==== S42 P1.7: Time-series operators in plot varlists ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S42") & `: list posof "S42" in w30_run' {
     display as text "S42 start " c(current_date) " " c(current_time)
+    global S42_REPO "`c(pwd)'/.."
+    local k 0
+    foreach row in ///
+        "TSO-20|spd|line D.close date|line D.close date: the y title and the drawn values are twoway's" ///
+        "TSO-21|sp|scatter L(1/2).close t|scatter L(1/2).close t: both keys are twoway's" ///
+        "TSO-22|sp|scatter D.close t if t>5 & t<9|D.close at t = 6 is 4.940063, computed over every row" ///
+        "TSO-23|xt|scatter L.y tt|under xtset each panel's first L.y is missing, as twoway draws it" ///
+        "TSO-24|sp|scatter close D.date|D.date is drawn on a date axis, as twoway draws it in %td" {
+        local ++k
+        tokenize `"`row'"', parse("|")
+        _s42_data `3'
+        _s42_case `1' `"`5'"' "`w30_work'/s42_`k'"
+        _w30_expect `1' "${S42_OK} == 1" `"${S42_WHY}"'
+        _w30_done `1' `"`7'"'
+        foreach ext in svg csv html {
+            capture erase "`w30_work'/s42_`k'.`ext'"
+        }
+    }
+    capture dash clear
+    macro drop S42_*
     display as text "S42 end " c(current_date) " " c(current_time)
 }
 * ==== end S42 ====

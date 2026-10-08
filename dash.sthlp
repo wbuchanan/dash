@@ -295,6 +295,34 @@ one-variable plot of a type that takes a {it:y} and an {it:x} is "too few
 variables specified", r(102).
 
 {pstd}
+{ul:Time-series operators.}  A plot variable may carry {cmd:L.}, {cmd:F.},
+{cmd:D.} and {cmd:S.}, their combinations and {cmd:L(1/2).}, wherever
+{cmd:twoway} takes them: {cmd:scatter}, {cmd:line}, {cmd:connected},
+{cmd:area}, {cmd:bar}, {cmd:spike}, {cmd:dropline}, {cmd:dot}, {cmd:lfit},
+{cmd:qfit}, {cmd:lfitci}, {cmd:qfitci}, {cmd:mspline}, {cmd:mband}, the
+eight range types, the five paired-coordinate types, {cmd:tsline} and
+{cmd:tsrline}.  {cmd:fpfit}, {cmd:fpfitci}, {cmd:lowess}, {cmd:lpoly},
+{cmd:lpolyci}, {cmd:histogram} and {cmd:kdensity} refuse them as
+{cmd:twoway} does, "factor-variable and time-series operators not
+allowed", r(101).  Each series is computed by Stata when the graph is
+drawn or the dashboard built, under the {help tsset} then in force and
+over every observation, so an {it:if}, an {it:in} and a filter select rows
+of it and never recompute it.  It is stored as {cmd:tsrevar} stores it,
+with the variable's display format and value labels: a {cmd:D.} of a date
+is drawn as a date, as {cmd:twoway} draws it.  Titles, keys and tooltips
+read {cmd:twoway}'s text: the variable's label, a comma and the operators
+("Closing price, D"), or the expression when the variable has no label.
+Without {cmd:tsset} an operator is refused "time variable not set",
+r(111); on a string variable "may not use time-series operators on string
+variables", r(109); a factor variable is "factor-variable operators not
+allowed", r(101); and data not sorted by the time variable are "not
+sorted", r(5).
+
+{phang2}{cmd:. sysuse sp500, clear}{p_end}
+{phang2}{cmd:. tsset date}{p_end}
+{phang2}{cmd:. dash line D.close date}{p_end}
+
+{pstd}
 {ul:Join order.}  {cmd:line}, {cmd:connected}, {cmd:area}, {cmd:rline},
 {cmd:rarea} and {cmd:rconnected} join their points in the order of the
 data, as {cmd:twoway} does.  {cmd:sort} joins them in the order of {it:x},

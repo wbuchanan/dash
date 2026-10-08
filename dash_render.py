@@ -36933,6 +36933,18 @@ _DASH_RESERVED_PREFIX = "__dash"
 _DASH_QUAL_PREFIX = "__dashq"
 #: A qualifier column's whole name, as dash.ado writes it.
 _DASH_QUAL_NAME_RE = re.compile(r"__dashq[1-9][0-9]{0,4}\Z")
+#: The prefix of the time-series columns dash.ado writes for an operated
+#: plot variable (L.close): one per distinct expression, filled by Stata's
+#: tsrevar at build (WP-30 P1.7, _dash_tsop_gen).
+_DASH_TSOP_PREFIX = "__dasht"
+#: A time-series column's whole name, as dash.ado writes it.
+_DASH_TSOP_NAME_RE = re.compile(r"__dasht[1-9][0-9]{0,3}\Z")
+#: An expression as dash.ado's _dash_tsop_canon admits it: operators L, F,
+#: D and S, each alone or with 1 to 4 digits not led by 0, a dot, a base.
+_DASH_TSOP_EXPR_RE = re.compile(
+    r"(?:[LFDS][1-9][0-9]{0,3}|[LFDS])+\.(?P<base>\S{1,32})\Z")
+#: The longest label a time-series column's spec entry may carry.
+_DASH_TSOP_LABEL_MAX = 244
 #: The prefix of the join-order columns dash.ado writes for sort(varlist):
 #: one rank per distinct varlist, made by Stata's own sort (WP-29 P0.1).
 _DASH_SORT_PREFIX = "__dashs"
@@ -36981,7 +36993,86 @@ def _dash_qual_cols_named(spec):
     return out
 
 
-def _dash_take_qual_columns(df, spec):
+def _dash_tsop_cols_named(spec):
+    """The time-series columns *spec* names: ``{name: {"expr", "label"}}``.
+
+    dash.ado computes each operated plot variable (``L.close``) into a
+    column ``__dasht<k>`` with tsrevar and writes, in
+    ``build_options.ts_cols``, the expression and twoway's text for it
+    ("Closing price, L", or the expression for an unlabelled base; WP-30
+    P1.7).  The renderer cannot take ``L.close`` as a column (it is no Stata
+    name), so it reads the column by its name and the text by this map.
+    The map is user-reachable (the registry is globals), so each entry is
+    validated before anything uses it: the name is one dash writes, the
+    expression is canonical with a Stata-name base, the label is text of
+    at most ``_DASH_TSOP_LABEL_MAX`` characters.
+
+    Raises:
+        ValueError: An entry dash.ado would not write.
+    """
+    bo = (spec or {}).get("build_options") if isinstance(spec, dict) else None
+    raw = bo.get("ts_cols") if isinstance(bo, dict) else None
+    if raw in (None, {}):
+        return {}
+    bad = ValueError("dash: the spec's ts_cols entry is not one dash writes.")
+    if not isinstance(raw, dict):
+        raise bad
+    out = {}
+    for name, ent in raw.items():
+        if not isinstance(name, str) or not _DASH_TSOP_NAME_RE.match(name):
+            raise bad
+        if not isinstance(ent, dict):
+            raise bad
+        expr, label = ent.get("expr"), ent.get("label")
+        if not isinstance(expr, str) or not isinstance(label, str):
+            raise bad
+        m = _DASH_TSOP_EXPR_RE.match(expr)
+        if m is None or not _dash_is_stata_name(m.group("base")):
+            raise bad
+        if len(label) > _DASH_TSOP_LABEL_MAX:
+            raise bad
+        out[name] = {"expr": expr, "label": label}
+    return out
+
+
+def _dash_take_tsop_columns(df, spec):
+    """The time-series columns *spec* names, checked against *df*.
+
+    Returns ``(df, map)``: *df* unchanged -- each column is data, drawn,
+    filtered and downloaded like a variable -- and the validated map of
+    ``_dash_tsop_cols_named``.  Each named column must be in *df* and
+    numeric (or dates, for a base with a date format).
+
+    Raises:
+        ValueError: A map entry dash.ado would not write, or a column that
+            is missing or not numeric.
+    """
+    tsmap = _dash_tsop_cols_named(spec)
+    for name in tsmap:
+        if name not in df.columns:
+            raise ValueError(
+                "dash: the spec names the time-series column %s, which is "
+                "not in the data." % name)
+        # A date-formatted base (D.date, %td) has been read as dates by
+        # _dash_load_columns, as twoway draws it.
+        if not (pd.api.types.is_numeric_dtype(df[name])
+                or pd.api.types.is_datetime64_any_dtype(df[name])):
+            raise ValueError(
+                "dash: the time-series column %s is not numeric." % name)
+    return df, tsmap
+
+
+def _dash_tsop_labels(variable_labels, tsmap):
+    """A copy of *variable_labels* with each time-series column labelled by
+    twoway's text from *tsmap* (``_dash_tsop_cols_named``): titles, keys
+    and tooltips then read "Closing price, D" (WP-30 P1.7)."""
+    out = dict(variable_labels or {})
+    for name, ent in (tsmap or {}).items():
+        out[name] = ent["label"]
+    return out
+
+
+def _dash_take_qual_columns(df, spec, keep=()):
     """Take dash.ado's qualifier columns out of *df*, as masks.
 
     Returns ``(frame, masks)``: *df* without any column named with the
@@ -36995,7 +37086,9 @@ def _dash_take_qual_columns(df, spec):
     up, nor a qualifier shown as a variable.  The join-order columns
     ``__dashs<k>`` are taken out before this runs
     (``_dash_take_sort_columns``); one the spec does not name is refused
-    here like any other reserved column.
+    here like any other reserved column.  The time-series columns
+    ``__dasht<k>`` the spec maps (``_dash_take_tsop_columns``) are passed
+    in *keep*: they are data, neither refused nor dropped.
 
     Raises:
         ValueError: A name, a missing column or a value dash would not
@@ -37003,7 +37096,8 @@ def _dash_take_qual_columns(df, spec):
     """
     names = _dash_qual_cols_named(spec)
     cols = [str(c) for c in df.columns]
-    reserved = [c for c in cols if c.startswith(_DASH_RESERVED_PREFIX)]
+    reserved = [c for c in cols if c.startswith(_DASH_RESERVED_PREFIX)
+                and c not in keep]
     for c in reserved:
         if c not in names:
             raise ValueError(
@@ -38948,8 +39042,14 @@ class DashRenderer:
         # changes self.df's rows must rebuild it.
         self.df, self.sort_keys = _dash_take_sort_columns(
             self.df, self.master_spec)
-        self.df, self.qual_masks = _dash_take_qual_columns(
+        # The time-series columns (WP-30 P1.7) stay: they are data, read
+        # with twoway's text as their labels.
+        self.df, self.tsop_cols = _dash_take_tsop_columns(
             self.df, self.master_spec)
+        self.variable_labels = _dash_tsop_labels(self.variable_labels,
+                                                 self.tsop_cols)
+        self.df, self.qual_masks = _dash_take_qual_columns(
+            self.df, self.master_spec, keep=tuple(self.tsop_cols))
         for _qc in list(self.qual_masks) + list(self.sort_keys):
             self.variable_labels.pop(_qc, None)
             self.value_label_names.pop(_qc, None)
@@ -42815,6 +42915,9 @@ class ServerAppBuilder:
                       # prefix reserved for every column dash makes (G1).
                       "_DASH_RESERVED_PREFIX",
                       "_DASH_QUAL_PREFIX", "_DASH_QUAL_NAME_RE",
+                      # The time-series columns (WP-30 P1.7).
+                      "_DASH_TSOP_PREFIX", "_DASH_TSOP_NAME_RE",
+                      "_DASH_TSOP_EXPR_RE", "_DASH_TSOP_LABEL_MAX",
                       # The join-order columns and the joining types
                       # (WP-29 P0.1).
                       "_DASH_SORT_PREFIX", "_DASH_SORT_NAME_RE",
@@ -43010,6 +43113,9 @@ class ServerAppBuilder:
                          # The qualifier columns Stata filled: validated,
                          # taken out of the frame, and read as masks.
                          "_dash_qual_cols_named", "_dash_take_qual_columns",
+                         # The time-series columns (WP-30 P1.7).
+                         "_dash_tsop_cols_named", "_dash_take_tsop_columns",
+                         "_dash_tsop_labels",
                          "_dash_qual_mask",
                          # A by(, total) Total panel's own qualifier
                          # columns, as the saved page reads them.
@@ -44641,7 +44747,11 @@ class ServerAppBuilder:
             "    # The join-order columns too, first (_dash_take_sort_columns):",
             "    # the qualifier take-out refuses a reserved column it does not name.",
             "    df, sort_keys = _dash_take_sort_columns(df, spec)",
-            "    df, qual_masks = _dash_take_qual_columns(df, spec)",
+            "    # The time-series columns (WP-30 P1.7): data, labelled with",
+            "    # twoway's text, as the saved page takes them.",
+            "    df, _tsop_cols = _dash_take_tsop_columns(df, spec)",
+            "    df, qual_masks = _dash_take_qual_columns(df, spec, keep=tuple(_tsop_cols))",
+            "    var_labels = _dash_tsop_labels(var_labels, _tsop_cols)",
             "    for _qc in list(qual_masks) + list(sort_keys):",
             "        for _qm in (var_labels, val_label_names, type_is_str):",
             "            if isinstance(_qm, dict):",

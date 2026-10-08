@@ -287,6 +287,23 @@
 *!   _dash_sort_export()
 *!       The table into the caller's locals _ds_n and _ds_v<k>.
 *!
+*!   _dash_tsop_reset()
+*!       Empty the time-series table (plot-variable operator columns).
+*!
+*!   _dash_tsop_canon(expr)
+*!       1 when expr is <operators>.<exact variable name>, else 0.
+*!
+*!   _dash_tsop_rewrite(json, errmacro)
+*!       json with each operated plot variable replaced by its column
+*!       __dasht<k>; the reason in errmacro for one that is not canonical.
+*!
+*!   _dash_tsop_export()
+*!       The table into the caller's locals _dts_n and _dts_e<k>.
+*!
+*!   _dash_tsop_meta(fmtmacro)
+*!       The spec's "ts_cols" object; the columns' formats merged into
+*!       the caller's local fmtmacro.
+*!
 *!   _dash_extract_filters(filter_out, cmd_out)
 *!       Every filter() in the caller's `0': the groups, joined with
 *!       " || ", into the local filter_out, and `0' without them into
@@ -3941,6 +3958,228 @@ void _dash_sort_export()
     for (k = 1; k <= rows(_dash_sort_list); k++) {
         st_local("_ds_v" + strofreal(k), _dash_sort_list[k])
     }
+}
+
+
+// ------------------------------------------------------------
+// The time-series table (WP-30 P1.7).  twoway draws L.close, D.close and
+// L(1/2).close in a plot varlist; -syntax- (varlist(numeric ts)) has
+// normalised each to tsunab's form (L.close, LD.close, L2.close) when the
+// graph was registered.  Each distinct expression a dashboard's plots
+// carry becomes one column __dasht<k>, made in Stata by _dash_tsop_gen
+// with tsrevar, as twoway computes it: over every observation, under the
+// tsset then in force.  The registry is a set of globals a do-file can
+// edit, so every expression is held to the canonical form here, and
+// again by _dash_tsop_gen, before tsrevar sees it.
+// ------------------------------------------------------------
+
+// _dash_tsop_reset() -- empty the table.
+void _dash_tsop_reset()
+{
+    external string colvector _dash_tsop_list
+
+    _dash_tsop_list = J(0, 1, "")
+}
+
+// _dash_tsop_canon(expr) -- 1 when expr is <ops>.<var>: one or more of the
+// operators L, F, D and S, each alone or followed by 1 to 4 digits not led
+// by 0 (tsunab writes L1 as L and drops L0), then a dot, then the exact
+// name of a variable in memory (no abbreviation).  Read byte by byte:
+// regexm's engine follows the caller's version.  A Unicode name passes, as
+// twoway takes it; a name holds no blank, quote, semicolon, dollar or
+// backtick, so nothing but a variable reaches tsrevar.
+real scalar _dash_tsop_canon(string scalar e)
+{
+    real rowvector b
+    real scalar    n, i, d, dot, ix
+    string scalar  base
+
+    b   = ascii(e)
+    n   = cols(b)
+    dot = 0
+    for (i = 1; i <= n; i++) {
+        if (b[i] == 46) {
+            dot = i
+            break
+        }
+    }
+    if (dot < 2 | dot == n) return(0)
+    i = 1
+    while (i < dot) {
+        // L F D S
+        if (b[i] != 76 & b[i] != 70 & b[i] != 68 & b[i] != 83) return(0)
+        i++
+        d = 0
+        while (i < dot & b[i] >= 48 & b[i] <= 57) {
+            if (d == 0 & b[i] == 48) return(0)
+            d++
+            i++
+        }
+        if (d > 4) return(0)
+    }
+    base = substr(e, dot + 1, .)
+    if (strlen(base) > 128) return(0)
+    ix = _st_varindex(base, 0)
+    if (ix >= .) return(0)
+    return(st_varname(ix) == base)
+}
+
+// _dash_tsop_rewrite(json, errmacro) -- json with each plot-variable value
+// holding a dot ("yvar", "xvar", "yvar1", "yvar2", "y1var", "x1var",
+// "y2var", "x2var"; never an option's variable) replaced by its column
+// __dasht<k>, the expression added to the table once.  Keys are found by
+// walking the JSON's strings, as _dash_qual_rewrite finds its own.  A
+// value that is not the canonical form (_dash_tsop_canon) puts the reason
+// in the caller's local errmacro and returns json unchanged.
+string scalar _dash_tsop_rewrite(string scalar json, string scalar errmacro)
+{
+    external string colvector _dash_tsop_list
+    real rowvector   b
+    real scalar      n, i, e, k, v, ve, from, m, cap, ix
+    string scalar    tok, val, shown
+    string rowvector part, keys
+
+    if (rows(_dash_tsop_list) == 0 & cols(_dash_tsop_list) == 0) {
+        _dash_tsop_list = J(0, 1, "")
+    }
+    st_local(errmacro, "")
+    keys = ("yvar", "xvar", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var")
+    b    = ascii(json)
+    n    = cols(b)
+    cap  = 16
+    part = J(1, cap, "")
+    m    = 0
+    from = 1
+    i    = 1
+    while (i <= n) {
+        if (b[i] != 34) {
+            i++
+            continue
+        }
+        e = i + 1
+        while (e <= n) {
+            if (b[e] == 34) break
+            e = e + (b[e] == 92 ? 2 : 1)
+        }
+        if (e > n) break
+        tok = (e - i > 1 ? substr(json, i + 1, e - i - 1) : "")
+        k   = _dash_qual_skipws(b, e + 1)
+        if (k > n) break
+        if (b[k] != 58 | !anyof(keys, tok)) {
+            i = e + 1
+            continue
+        }
+        v = _dash_qual_skipws(b, k + 1)
+        if (v > n) break
+        if (b[v] != 34) {
+            i = v
+            continue
+        }
+        ve = v + 1
+        while (ve <= n) {
+            if (b[ve] == 34) break
+            ve = ve + (b[ve] == 92 ? 2 : 1)
+        }
+        if (ve > n) break
+        val = (ve - v > 1 ? substr(json, v + 1, ve - v - 1) : "")
+        if (!strpos(val, ".")) {
+            i = ve + 1
+            continue
+        }
+        if (!_dash_tsop_canon(val)) {
+            shown = (ustrlen(val) > 80 ? usubstr(val, 1, 77) + "..." : val)
+            st_local(errmacro, "registry entry " + shown +
+                " holds a variable dash cannot read")
+            return(json)
+        }
+        ix = 0
+        for (k = 1; k <= rows(_dash_tsop_list); k++) {
+            if (_dash_tsop_list[k] == val) {
+                ix = k
+                break
+            }
+        }
+        if (!ix) {
+            if (rows(_dash_tsop_list) >= 9999) {
+                st_local(errmacro, "it holds more than 9,999 distinct " +
+                    "time-series expressions")
+                return(json)
+            }
+            _dash_tsop_list = _dash_tsop_list \ val
+            ix = rows(_dash_tsop_list)
+        }
+        if (m + 2 > cap) {
+            part = part, J(1, cap, "")
+            cap  = 2 * cap
+        }
+        part[++m] = substr(json, from, v - from)
+        part[++m] = char(34) + "__dasht" + strofreal(ix) + char(34)
+        from = ve + 1
+        i    = ve + 1
+    }
+    if (m + 1 > cap) part = part, J(1, 1, "")
+    part[++m] = substr(json, from, .)
+    return(invtokens(part[|1 \ m|], ""))
+}
+
+// _dash_tsop_export() -- the table into the caller's locals: _dts_n, and
+// _dts_e<k>, the expression of column __dasht<k>.
+void _dash_tsop_export()
+{
+    external string colvector _dash_tsop_list
+    real scalar k
+
+    if (rows(_dash_tsop_list) == 0 & cols(_dash_tsop_list) == 0) {
+        _dash_tsop_list = J(0, 1, "")
+    }
+    st_local("_dts_n", strofreal(rows(_dash_tsop_list)))
+    for (k = 1; k <= rows(_dash_tsop_list); k++) {
+        st_local("_dts_e" + strofreal(k), _dash_tsop_list[k])
+    }
+}
+
+// _dash_tsop_meta(fmtmacro) -- the spec's "ts_cols" object,
+// {"__dasht<k>":{"expr":"L.close","label":"<text>"},...}, and each
+// column's display format, its base's, merged into the formats JSON the
+// caller's local fmtmacro holds.  <text> is twoway's: the base's label, a
+// comma and a space and the operators (Closing price, D), or the
+// expression when the base has no label (a label of blanks is a label:
+// twoway draws "   , L"); read by value, never cut (an 80-character label
+// keeps all 80).  Every value is escaped by
+// _json_escape.
+string scalar _dash_tsop_meta(string scalar fmtmacro)
+{
+    external string colvector _dash_tsop_list
+    real scalar   k, dot
+    string scalar e, base, lab, out, fmt, nm, q
+
+    if (rows(_dash_tsop_list) == 0 & cols(_dash_tsop_list) == 0) {
+        _dash_tsop_list = J(0, 1, "")
+    }
+    q   = char(34)
+    out = ""
+    fmt = ""
+    for (k = 1; k <= rows(_dash_tsop_list); k++) {
+        e    = _dash_tsop_list[k]
+        dot  = strpos(e, ".")
+        base = substr(e, dot + 1, .)
+        nm   = "__dasht" + strofreal(k)
+        lab  = (_st_varindex(base, 0) < . ? st_varlabel(base) : "")
+        lab  = (lab != "" ? lab + ", " + substr(e, 1, dot - 1) : e)
+        out  = out + (k > 1 ? "," : "") + q + nm + q + ":{" + q + "expr" + q +
+               ":" + q + _json_escape(e) + q + "," + q + "label" + q + ":" +
+               q + _json_escape(lab) + q + "}"
+        if (_st_varindex(base, 0) < .) {
+            fmt = fmt + (fmt != "" ? "," : "") + q + nm + q + ":" + q +
+                  _json_escape(st_varformat(base)) + q
+        }
+    }
+    if (fmt != "") {
+        e = strtrim(st_local(fmtmacro))
+        if (e == "" | e == "{}") st_local(fmtmacro, "{" + fmt + "}")
+        else st_local(fmtmacro, substr(e, 1, strlen(e) - 1) + "," + fmt + "}")
+    }
+    return("{" + out + "}")
 }
 
 

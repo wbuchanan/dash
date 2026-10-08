@@ -368,6 +368,8 @@ COVERAGE = {
         "_dash_connect_opt": ("test_twoway_option_parity.cscript:CM-01", "test_twoway_option_parity.cscript:CM-12"),
         # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
         # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
+        "_dash_parse_varpart_ts": ("test_parser.cscript:TSO-01", "test_parser.cscript:TSO-04"),
+        "_dash_tsop_gen": ("test_parser.cscript:TSO-06", "test_parser.cscript:TSO-11"),
         # WP-30 S43 (P1.13b): Default colour and opacity at every colour site (P1.13 part b)
         # WP-30 S44 (P1.3b): tsnatscale on %td-%ty default axes (P1.3 part b, M1)
         # WP-30 S45 (P1.8b): recast() (P1.8 part b)
@@ -791,6 +793,11 @@ COVERAGE = {
         "_dash_connect_canon": ("test_twoway_option_parity.cscript:CM-08", "test_twoway_option_parity.cscript:CM-05"),
         # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
         # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
+        "_dash_tsop_canon": ("test_parser.cscript:TSO-11",),
+        "_dash_tsop_export": ("test_parser.cscript:TSO-01",),
+        "_dash_tsop_meta": ("test_parser.cscript:TSO-01", "test_parser.cscript:TSO-09"),
+        "_dash_tsop_reset": ("test_parser.cscript:TSO-01",),
+        "_dash_tsop_rewrite": ("test_parser.cscript:TSO-01", "test_parser.cscript:TSO-11"),
         # WP-30 S43 (P1.13b): Default colour and opacity at every colour site (P1.13 part b)
         # WP-30 S44 (P1.3b): tsnatscale on %td-%ty default axes (P1.3 part b, M1)
         # WP-30 S45 (P1.8b): recast() (P1.8 part b)

@@ -3122,6 +3122,266 @@ mata: assert((strlen(_np_j) - strlen(subinstr(_np_j, char(34) + "p" + char(34) +
 dash clear
 display "NP-42 PASS: under p() the style options are dropped on each of three series"
 
+// ================================================================
+// TSO: time-series operators in plot varlists (WP-30 P1.7)
+//
+// twoway draws L.close, D.close and L(1/2).close on 29 types and refuses
+// them in its own words elsewhere; dash refused every one r(101).  Each
+// case holds dash to twoway's answer for the same command, read from
+// fixtures/ts_operator_truth.json (scripts/extract_ts_operator_truth.do):
+// its rc and its first error line.  The data are the extractor's.
+// ================================================================
+capture program drop _tso_data
+program define _tso_data
+    version 19
+    args ds
+    if inlist("`ds'", "sp", "spd", "nt") {
+        quietly sysuse sp500, clear
+        quietly {
+            gen t = _n
+            format volume %12.0fc
+            gen float xf = close / 7
+            gen c80 = close
+            label variable c80 "Closing price of the Standard and Poors 500 index on each trading day of 2001 US"
+        }
+        if "`ds'" == "sp"  quietly tsset t
+        if "`ds'" == "spd" quietly tsset date
+    }
+    else if "`ds'" == "au" {
+        quietly sysuse auto, clear
+        quietly gen t = _n
+        quietly tsset t
+    }
+end
+
+// _tso_tw <probe>: twoway's rc and first error line for the probe.
+capture program drop _tso_tw
+program define _tso_tw, rclass
+    version 19
+    args pid
+    python: import json as _tj, sfi as _ts
+    python: _tp = _tj.load(open("fixtures/ts_operator_truth.json", encoding="utf-8"))["probes"][_ts.Macro.getLocal("pid")]["twoway"]
+    python: _ts.Macro.setLocal("rc", str(_tp["rc"])); _ts.Macro.setLocal("err", (_tp["err"] or [""])[0])
+    return scalar rc = `rc'
+    return local err : copy local err
+end
+
+// _tso_vs <id> <probe> <ds> <dash command>: dash's rc and first error
+// line equal twoway's.
+capture program drop _tso_vs
+program define _tso_vs
+    version 19
+    args id pid ds dcmd
+    _tso_tw `pid'
+    local twrc = r(rc)
+    local twerr `"`r(err)'"'
+    _tso_data `ds'
+    quietly dash clear
+    _p1a_logrun `"`dcmd'"'
+    local drc = r(rc)
+    if `drc' != `twrc' {
+        display as error `"`id' FAIL: `pid' twoway r(`twrc'), dash r(`drc'): `dcmd'"'
+        exit 9
+    }
+    if `twrc' {
+        cert_file_has "`r(log)'", needle(`"`twerr'"')
+        if !r(found) {
+            display as error `"`id' FAIL: `pid' dash's log lacks twoway's "`twerr'": `dcmd'"'
+            exit 9
+        }
+    }
+end
+
+capture program drop _tso_spec
+program define _tso_spec
+    version 19
+    args stem
+    capture erase "`c(tmpdir)'`stem'_s.json"
+    capture erase "`c(tmpdir)'`stem'_d.json"
+    _dash_prepare_spec, specpath("`c(tmpdir)'`stem'_s.json") datapath("`c(tmpdir)'`stem'_d.json")
+end
+
+if `"`c(python_exec)'"' != "" {
+    quietly graph drop _all
+    local tsotmp "`c(tmpdir)'"
+    python: import json as _tj, sfi as _ts
+    python: _tdir = _ts.Macro.getLocal("tsotmp")
+    // TSO-01..03: drawn on the one-line route, and the spec maps the column
+    // to the expression and twoway's text.
+    local tsopg "`c(tmpdir)'dash_tso.html"
+    local k 0
+    foreach row in "T01|spd|line D.close date" "T04|sp|tsline D.close" "V02|sp|lfit close L.close" {
+        local ++k
+        gettoken pid rest : row, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken ds rest : rest, parse("|")
+        local body = substr(`"`rest'"', 2, .)
+        _tso_vs TSO-0`k' `pid' `ds' `"dash `body', saving("`tsopg'") replace"'
+        display "TSO-0`k' PASS: dash `body' draws, as twoway does"
+    }
+    _tso_data spd
+    dash clear
+    dash line D.close date, name(tso01)
+    _tso_spec tso01
+    cert_file_has "`c(tmpdir)'tso01_s.json", needle(`""ts_cols":{"__dasht1":{"expr":"D.close","label":"Closing price, D"}}"')
+    assert r(found)
+    display "TSO-01 PASS: the spec maps __dasht1 to D.close and Closing price, D"
+
+    // TSO-04: every type twoway takes operators on registers them; the seven
+    // it refuses them on refuse them in its words.
+    python: _ts.Macro.setLocal("tso_ar", " ".join(sorted(k for k in _tj.load(open("fixtures/ts_operator_truth.json", encoding="utf-8"))["probes"] if k[0] in "AR")))
+    foreach pid of local tso_ar {
+        python: _ts.Macro.setLocal("tso_b", _tj.load(open("fixtures/ts_operator_truth.json", encoding="utf-8"))["probes"][_ts.Macro.getLocal("pid")]["body"])
+        _tso_vs TSO-04 `pid' sp `"dash `tso_b', name(tso04)"'
+    }
+    dash clear
+    display "TSO-04 PASS: the 29 types take operators and the 7 others refuse them, as twoway does"
+
+    // TSO-05: no tsset, a string base, a factor variable, an unknown
+    // operator, a missing variable -- twoway's codes and words.
+    _tso_vs TSO-05 E01 nt "dash line L.close t, name(tso05)"
+    foreach pid in E02 E03 E04 E05 {
+        python: _ts.Macro.setLocal("tso_b", _tj.load(open("fixtures/ts_operator_truth.json", encoding="utf-8"))["probes"][_ts.Macro.getLocal("pid")]["body"])
+        _tso_vs TSO-05 `pid' au `"dash `tso_b', name(tso05)"'
+    }
+    dash clear
+    display "TSO-05 PASS: no tsset r(111), string r(109), factor r(101), X. r(198), a missing variable r(111), in twoway's words"
+
+    // TSO-06: data sorted otherwise at build: tsrevar's "not sorted", r(5),
+    // nothing left behind, the data unchanged; tsset cleared since
+    // registration: "time variable not set", r(111).
+    _tso_data sp
+    dash clear
+    dash scatter L.close t, name(tso06)
+    sort close
+    local so0 : sortedby
+    local ch0 = c(changed)
+    _p1a_logrun `"dash build, saving("`tsopg'") replace"'
+    assert r(rc) == 5
+    cert_file_has "`r(log)'", needle("not sorted")
+    assert r(found)
+    capture unab x : __dash*
+    assert _rc == 111
+    assert "`: sortedby'" == "`so0'" & c(changed) == `ch0'
+    sort t
+    tsset, clear
+    _p1a_logrun `"dash build, saving("`tsopg'") replace"'
+    assert r(rc) == 111
+    cert_file_has "`r(log)'", needle("time variable not set")
+    assert r(found)
+    dash clear
+    display "TSO-06 PASS: unsorted data r(5) not sorted and no tsset r(111) at build, nothing left behind"
+
+    // TSO-08: dash build and dash serve write the same map and column.
+    _tso_data sp
+    dash clear
+    dash scatter D.close t, name(tso08)
+    _tso_spec tso08b
+    _dash_prepare_spec, cmdname("dash serve") specpath("`c(tmpdir)'tso08s_s.json") datapath("`c(tmpdir)'tso08s_d.json")
+    python: _sb, _ss = [_tj.load(open(_tdir + _n, encoding="utf-8")) for _n in ("tso08b_s.json", "tso08s_s.json")]
+    python: _db, _dv = [_tj.load(open(_tdir + _n, encoding="utf-8")) for _n in ("tso08b_d.json", "tso08s_d.json")]
+    python: _ok = _sb["build_options"]["ts_cols"] == _ss["build_options"]["ts_cols"] == {"__dasht1": {"expr": "D.close", "label": "Closing price, D"}} and [r.get("__dasht1") for r in _db["values"]] == [r.get("__dasht1") for r in _dv["values"]]
+    python: _ts.Macro.setLocal("tso_ok", "1" if _ok else "0")
+    assert `tso_ok' == 1
+    dash clear
+    display "TSO-08 PASS: dash build and dash serve write the same ts_cols and __dasht1"
+
+    // TSO-09: tsrevar's storage type, the base's format and value label,
+    // and an 80-character label carried whole.
+    local tso_ok 1
+    foreach row in "sp|D.xf|float|%9.0g|" "au|L.mpg|int|%8.0g|" "sp|L.volume|double|%12.0fc|" "au|L.foreign|byte|%8.0g|origin" {
+        tokenize `"`row'"', parse("|")
+        _tso_data `1'
+        dash clear
+        dash scatter `3' t, name(tso09)
+        _tso_spec tso09
+        global TSO_W `"`5'|`7'|`9'"'
+        python: _w = _ts.Macro.getGlobal("TSO_W").split("|"); _s = _tj.load(open(_tdir + "tso09_s.json", encoding="utf-8")); _dd = _tj.load(open(_tdir + "tso09_d.json", encoding="utf-8"))
+        python: _ts.Macro.setLocal("tso_one", "1" if (_dd["storageTypes"]["__dasht1"] == _w[0] and _s["build_options"]["formats"]["__dasht1"] == _w[1] and _dd["valueLabelNames"].get("__dasht1", "") == _w[2]) else "0")
+        if !`tso_one' {
+            display as error `"TSO-09 FAIL: `3'"'
+            local tso_ok 0
+        }
+    }
+    macro drop TSO_W
+    _tso_data sp
+    dash clear
+    dash line L.c80 t, name(tso09)
+    _tso_spec tso09
+    cert_file_has "`c(tmpdir)'tso09_s.json", needle(`""label":"Closing price of the Standard and Poors 500 index on each trading day of 2001 US, L""')
+    assert r(found) & `tso_ok'
+    dash clear
+    display "TSO-09 PASS: storage float/int/double/byte as tsrevar, the base's format and value label, an 80-character label whole"
+
+    // TSO-11: a registry edited by hand to smuggle text past the rewrite is
+    // refused r(198) and the data are untouched.
+    _tso_data sp
+    foreach bad in "L.close;drop _all" "X.close" {
+        dash clear
+        dash scatter L.close t, name(tso11)
+        mata: st_global("dash_json_tso11", subinstr(st_global("dash_json_tso11"), char(34) + "L.close" + char(34), char(34) + st_local("bad") + char(34)))
+        local n0 = c(N)
+        local k0 = c(k)
+        _p1a_logrun `"dash build, saving("`tsopg'") replace"'
+        assert r(rc) == 198
+        cert_file_has "`r(log)'", needle("holds a variable dash cannot read")
+        assert r(found) & c(N) == `n0' & c(k) == `k0'
+    }
+    dash clear
+    display "TSO-11 PASS: a hand-edited operator expression is refused r(198), the data untouched"
+
+    // TSO-12: [aw=L.weight] stays refused r(198) (WP-30 P2.14's).
+    _tso_data au
+    dash clear
+    _p1a_logrun "dash lfit mpg t [aw=L.weight], name(tso12)"
+    assert r(rc) == 198
+    display "TSO-12 PASS: a weight with an operator is still refused r(198)"
+
+    // TSO-13: a graph of operators alone draws, one-line and built.
+    foreach body in "scatter D.close LD.close" "lfit D.close L.close" {
+        _tso_data sp
+        dash clear
+        _p1a_logrun `"dash `body', saving("`tsopg'") replace"'
+        assert r(rc) == 0
+        dash `body', name(tso13)
+        _p1a_logrun `"dash build, saving("`tsopg'") replace"'
+        assert r(rc) == 0
+    }
+    dash clear
+    display "TSO-13 PASS: dash scatter D.close LD.close and dash lfit D.close L.close draw on both routes"
+
+    // TSO-14: an operator in the qualifier keeps twoway's rows (a guard).
+    _tso_data sp
+    dash clear
+    dash scatter close t if L.close > 1300, name(tso14)
+    _tso_spec tso14
+    quietly count if L.close > 1300 & !missing(close, t)
+    local want = r(N)
+    python: _dd = _tj.load(open(_tdir + "tso14_d.json", encoding="utf-8")); _ts.Macro.setLocal("tso_n", str(int(sum(r.get("__dashq1") or 0 for r in _dd["values"]))))
+    assert `tso_n' == `want' & `want' == 33
+    dash clear
+    display "TSO-14 PASS: if L.close > 1300 keeps twoway's 33 rows"
+
+    // TSO-15: a qualifier is never expanded a second time on the parser
+    // dispatch (P1A-80's attack on a type the ts parser reads, and on lpoly).
+    _tso_data au
+    local f15 "`c(tmpdir)'dash_tso15_inj.txt"
+    foreach pt in scatter lpoly {
+        capture erase "`f15'"
+        dash clear
+        capture noisily dash `pt' mpg weight if make == `"\`=filewrite("`f15'","x")'"', name(tso15)
+        capture confirm file "`f15'"
+        assert _rc != 0
+    }
+    dash clear
+    display "TSO-15 PASS: a qualifier holding =filewrite() is not run, on scatter and lpoly"
+    foreach f in tso01 tso08b tso08s tso09 tso14 {
+        capture erase "`c(tmpdir)'`f'_s.json"
+        capture erase "`c(tmpdir)'`f'_d.json"
+    }
+    capture erase "`tsopg'"
+}
+
 // twoway's answers: a question the fixture could not answer, or (with
 // DASH_CERT_REMEASURE=1) an answer twoway no longer gives, fails the run.
 cert_truth_close

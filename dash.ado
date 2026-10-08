@@ -455,6 +455,7 @@ program define _dash_require_mata
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
         _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
+        _dash_tsop_reset _dash_tsop_canon _dash_tsop_rewrite _dash_tsop_export _dash_tsop_meta ///
         _dash_immediate _dash_say _dash_note _dash_spec_types_in _dash_split_segs ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
@@ -1594,6 +1595,45 @@ program define _dash_parse_varpart_std, sclass
 end
 
 // ================================================================
+// _dash_parse_varpart_ts  — varlist [if] [in], time-series operators
+// allowed (WP-30 P1.7)
+//
+// _dash_parse_varpart_std with `ts': twoway's y/x parser declares
+// varlist(numeric ts), so scatter, line, connected, area, bar, spike,
+// dropline, dot, lfit, qfit, lfitci, qfitci, mspline, mband and tsline
+// draw L.close, D.close, L(1/2).close (measured on StataNow 19.5).  -syntax-
+// hands back twoway's normalised list (l.close -> L.close, L(1/2).x ->
+// L.x L2.x) and gives twoway's own refusals: "time variable not set"
+// r(111), "<var>:  may not use time-series operators on string variables"
+// r(109), "factor-variable operators not allowed" r(101), "<op>:  operator
+// invalid" r(198).  fpfit, fpfitci, lowess, lpoly and lpolyci keep
+// _dash_parse_varpart_std, refusing operators as twoway does, r(101).
+// A separate program, so _std's macro-safe handling stays as certified.
+// ================================================================
+program define _dash_parse_varpart_ts, sclass
+    version 19
+    // The refusals and the weight, if and in handling are _std's.
+    syntax varlist(numeric ts) [if] [in] [aweight fweight pweight iweight]
+    // The weight type and its expression are handed to _dash_process_segment,
+    // which honours, names or refuses them by plot type (WP-18).  syntax
+    // leaves the expression in `exp' WITH its leading `= ' (measured:
+    // `[aw=price]' gives exp `= price'); that is stripped here.
+    if `"`weight'"' != "" sreturn local _weight `"`weight'"'
+    // The expression is stripped in Mata, by value: in compound quotes inside
+    // regexr() a weight holding "' -- [aw=cond(make=="'x",1,2)] -- ended
+    // them (test_json_escaping.cscript JSE-47).  It and the qualifier go
+    // back by `: copy local': through compound quotes a macro in them was
+    // expanded again (JSE-66, JSE-69).
+    if `: length local exp' {
+        mata: st_local("_wx0", strtrim(regexr(st_local("exp"), "^[ ]*=[ ]*", "")))
+        sreturn local _wexp : copy local _wx0
+    }
+    sreturn local varlist    "`varlist'"
+    sreturn local if_clause  : copy local if
+    sreturn local in_clause  : copy local in
+end
+
+// ================================================================
 // _dash_parse_varpart_1v   — exactly 1 variable
 // ================================================================
 program define _dash_parse_varpart_1v, sclass
@@ -1638,8 +1678,10 @@ program define _dash_parse_varpart_3v, sclass
     // numeric (GAPS2 G2): see _dash_parse_varpart_std; the range family
     // (rarea, rbar, rspike, rcap, rline, rconnected, rcapsym, rscatter,
     // tsrline) refuses a string variable the same way, with the same
-    // measured words (test_adversarial.cscript SV-01..SV-87).
-    syntax varlist(numeric) [if] [in] [aweight fweight pweight iweight]
+    // measured words (test_adversarial.cscript SV-01..SV-87).  ts: twoway
+    // takes time-series operators here (L.low L.high t draws, WP-30 P1.7);
+    // -syntax- refuses them in twoway's words where no tsset is in force.
+    syntax varlist(numeric ts) [if] [in] [aweight fweight pweight iweight]
     // The weight type and its expression are handed to _dash_process_segment,
     // which honours, names or refuses them by plot type (WP-18).  syntax
     // leaves the expression in `exp' WITH its leading `= ' (measured:
@@ -1670,8 +1712,9 @@ program define _dash_parse_varpart_4v, sclass
     version 19
     // numeric (GAPS2 G2): see _dash_parse_varpart_std; the pc family
     // (pcspike, pcarrow, pcbarrow, pcscatter, pccapsym) refuses a string
-    // variable the same way (test_adversarial.cscript SV-01..SV-87).
-    syntax varlist(numeric) [if] [in] [aweight fweight pweight iweight]
+    // variable the same way (test_adversarial.cscript SV-01..SV-87).  ts:
+    // twoway takes time-series operators here too (WP-30 P1.7).
+    syntax varlist(numeric ts) [if] [in] [aweight fweight pweight iweight]
     // The weight type and its expression are handed to _dash_process_segment,
     // which honours, names or refuses them by plot type (WP-18).  syntax
     // leaves the expression in `exp' WITH its leading `= ' (measured:
@@ -4775,7 +4818,19 @@ program define _dash_process_segment, rclass
         // smoothers and tsline likewise -- and the bare `dash scatter' was
         // refused as "no variables identified in plot specification",
         // r(198) (measured 24sep2026; test_parser.cscript P1A-69).
-        _dash_parse_varpart_std `macval(varpart)'
+        // Time-series operators where twoway takes them (WP-30 P1.7): the
+        // fractional-polynomial fits and the smoothers refuse them, as
+        // twoway does, r(101).
+        // Block form: the one-line `if exp command' form expanded the
+        // command a second time, so a qualifier holding `=filewrite()'
+        // ran (test_parser.cscript P1A-80, TSO-15).
+        local _pt_nots "fpfit fpfitci lowess lpoly lpolyci"
+        if `: list ptype in _pt_nots' {
+            _dash_parse_varpart_std `macval(varpart)'
+        }
+        else {
+            _dash_parse_varpart_ts `macval(varpart)'
+        }
         local vl = "`s(varlist)'"
         local nv : word count `vl'
         local yvar = word("`vl'", 1)
@@ -5851,7 +5906,7 @@ program define _dash_qual_gen
     capture unab _dq_clash : __dash*
     if _rc == 0 {
         local _dq_first : word 1 of `_dq_clash'
-        display as error "`cmdname': variable `_dq_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "`cmdname': variable `_dq_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its row identity __dash_row__ and its marker-label and jitter columns)."
         display as error "      Rename it first, for example: rename `_dq_first' newname"
         exit 110
     }
@@ -5993,7 +6048,7 @@ program define _dash_sort_gen, sortpreserve
     capture unab _ds_clash : __dashs*
     if _rc == 0 {
         local _ds_first : word 1 of `_ds_clash'
-        display as error "`cmdname': variable `_ds_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "`cmdname': variable `_ds_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its row identity __dash_row__ and its marker-label and jitter columns)."
         display as error "      Rename it first, for example: rename `_ds_first' newname"
         exit 110
     }
@@ -6016,6 +6071,73 @@ program define _dash_sort_gen, sortpreserve
         local made `made' __dashs`k'
     }
     c_local _dash_sort_vars "`made'"
+end
+
+// ================================================================
+// _dash_tsop_gen <cmdname>  -- the time-series columns, made in Stata
+// (WP-30 P1.7)
+//
+// For each expression of the table (_dash_tsop_rewrite, _dash_tsop_export)
+// one column __dasht<k> is made with tsrevar, as twoway computes the
+// series it draws: over every observation, under the tsset in force now,
+// gaps and panels included -- twoway scatter D.close t if t>5 & t<9 holds
+// close[6]-close[5] at t = 6 (measured on StataNow 19.5).  The column
+// takes tsrevar's storage type (D. of a float is float, L. of an int is
+// int: a double would shift a float series off twoway's serset), and the
+// base's display format and value label, as twoway draws L.foreign with
+// foreign's labels and D.date in %td.  Each expression is held to the
+// canonical form again (_dash_tsop_canon): the registry is a set of
+// globals a do-file can edit since the rewrite read it.  Data not sorted
+// by the time variable are refused by tsrevar in twoway's words, "not
+// sorted", r(5).  Not sortpreserve: tsrevar reads the user's sort, which
+// _dash_qual_gen_by and _dash_sort_gen give back.  Any error drops what was
+// made; the names come back in the caller's local _dash_tsop_vars.  Run
+// after _dash_qual_gen, which has refused a variable named __dash*.
+// ================================================================
+program define _dash_tsop_gen
+    version 19
+    args cmdname
+    local _dts_n = 0
+    mata: _dash_tsop_export()
+    if `_dts_n' == 0 {
+        c_local _dash_tsop_vars ""
+        exit
+    }
+    if `"`: char _dta[_TStvar]'"' == "" {
+        display as error "time variable not set"
+        exit 111
+    }
+    capture unab _dt_clash : __dasht*
+    if _rc == 0 {
+        local _dt_first : word 1 of `_dt_clash'
+        display as error "`cmdname': variable `_dt_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "      Rename it first, for example: rename `_dt_first' newname"
+        exit 110
+    }
+    local made ""
+    forvalues k = 1/`_dts_n' {
+        mata: st_local("_dt_ok", strofreal(_dash_tsop_canon(st_local("_dts_e`k'"))))
+        if !`_dt_ok' {
+            if "`made'" != "" drop `made'
+            mata: _dash_say("err", "`cmdname': registry entry ", st_local("_dts_e`k'"), " holds a variable dash cannot read")
+            exit 198
+        }
+        capture noisily tsrevar `_dts_e`k''
+        if _rc {
+            local rc = _rc
+            if "`made'" != "" drop `made'
+            exit `rc'
+        }
+        local _dt_src `r(varlist)'
+        local _dt_ty : type `_dt_src'
+        quietly generate `_dt_ty' __dasht`k' = `_dt_src'
+        local made `made' __dasht`k'
+        local _dt_base = substr("`_dts_e`k''", strpos("`_dts_e`k''", ".") + 1, .)
+        mata: st_varformat("__dasht`k'", st_varformat(st_local("_dt_base")))
+        local _dt_vl : value label `_dt_base'
+        if "`_dt_vl'" != "" label values __dasht`k' `_dt_vl'
+    }
+    c_local _dash_tsop_vars "`made'"
 end
 
 // ================================================================
@@ -7871,9 +7993,30 @@ program define _dash_render_immediate
         exit 198
     }
 
+    // ---- Time-series operators in plot variables (WP-30 P1.7) ----
+    // Each expression (L.close) becomes the column __dasht<k> Stata fills
+    // with tsrevar at export (_dash_tsop_gen); the spec names the column
+    // and carries the expression and twoway's text in "ts_cols".
+    local _dts_err ""
+    mata: _dash_tsop_reset()
+    mata: st_local("json_spec", _dash_tsop_rewrite(st_local("json_spec"), "_dts_err"))
+    if `: length local _dts_err' {
+        mata: _dash_say("err", "dash: ", st_local("_dts_err"), ".")
+        exit 198
+    }
+    local _dts_n = 0
+    mata: _dash_tsop_export()
+    local _dts_names ""
+    forvalues _dtk = 1/`_dts_n' {
+        local _dts_names `_dts_names' __dasht`_dtk'
+    }
+
     // ---- Determine variables needed ----
     local needed_vars ""
     mata: _dash_extract_vars(`"`json_spec'"', "needed_vars")
+    // The time-series columns do not exist until _dash_tsop_gen makes
+    // them; they reach the writer through _dash_tsop_vars.
+    local needed_vars : list needed_vars - _dts_names
 
     // ...including the ones named only in by().  A qualifier's variables
     // are not exported: its answer is (_dash_qual_gen), and the rewritten
@@ -7947,7 +8090,7 @@ program define _dash_render_immediate
     // draws it (measured 24sep2026; P1A-72).
     _dash_plottype_families
     local _varfree = 0
-    if "`needed_vars'" == "" {
+    if "`needed_vars'" == "" & `_dts_n' == 0 {
         mata: st_local("_varfree", strofreal(_dash_spec_types_in( ///
             st_local("json_spec"), st_local("_pt_literal"))))
         if !`_varfree' {
@@ -8031,7 +8174,7 @@ program define _dash_render_immediate
         _dash_cell_cap 0 "" `_ri_gc'
     }
     else {
-        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n''
+        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n' + `_dts_n''
     }
 
     // Reference lines: positions times by() panels (WP-30 P1.21a).
@@ -8042,6 +8185,13 @@ program define _dash_render_immediate
     // Collect display formats.  Each travels in the spec's formats map;
     // the data file carries every number as stored, whatever its format.
     _dash_formats_json "`needed_vars'" _dash_fmt_json _dash_date_vars
+    // The time-series columns: their bases' formats, and the spec's map
+    // from each column to its expression and twoway's text.
+    local _dts_json ""
+    if `_dts_n' > 0 {
+        mata: st_local("_dts_obj", _dash_tsop_meta("_dash_fmt_json"))
+        local _dts_json `","ts_cols":`macval(_dts_obj)'"'
+    }
 
     // ---- The private run folder (WP-29 P0.12b) ----
     // After every refusal above, so a refused command makes no folder.  r()
@@ -8066,7 +8216,8 @@ program define _dash_render_immediate
         // spec (measured 24sep2026; test_qualifier_in_stata.cscript QS-15).
         local _dash_qual_vars ""
         local _dash_sort_vars ""
-        if `_dq_n' + `_ds_n' > 0 {
+        local _dash_tsop_vars ""
+        if `_dq_n' + `_ds_n' + `_dts_n' > 0 {
             tempname _dash_eh
             _estimates hold `_dash_eh', restore nullok
         }
@@ -8079,6 +8230,15 @@ program define _dash_render_immediate
             if "`_dash_qual_vars'" != "" capture drop `_dash_qual_vars'
             exit `_ds_rc'
         }
+        // The time-series columns last, under the user's sort (WP-30
+        // P1.7); tsrevar's refusal drops what was made.
+        capture noisily _dash_tsop_gen "dash"
+        if _rc {
+            local _dt_rc = _rc
+            capture drop `_dash_qual_vars' `_dash_sort_vars'
+            _dash_tmp_close, dir(`"`_dash_run'"')
+            exit `_dt_rc'
+        }
         // Captured, so the qualifier columns are dropped when the export
         // fails too.  The writer reads each stored value whatever its
         // display format, so no format is touched (until 24sep2026 jsonio
@@ -8086,10 +8246,10 @@ program define _dash_render_immediate
         // export left it so: test_program_coverage.cscript PC-11).  Its
         // message is still shown and its code returned; no value is
         // expanded on the way (test_string_values.cscript).
-        capture noisily _dash_write_data "`data_json_path'" `needed_vars' `_dash_qual_vars' `_dash_sort_vars'
+        capture noisily _dash_write_data "`data_json_path'" `needed_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars'
         local _dash_jrc = _rc
-        if "`_dash_qual_vars'`_dash_sort_vars'" != "" {
-            capture drop `_dash_qual_vars' `_dash_sort_vars'
+        if "`_dash_qual_vars'`_dash_sort_vars'`_dash_tsop_vars'" != "" {
+            capture drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars'
         }
     }
     if `_dash_jrc' {
@@ -8115,7 +8275,7 @@ program define _dash_render_immediate
     _dash_scheme_dirs
     // The final } is written by _dash_fn_spec_tail, after the function
     // points (WP-29 P0.6).
-    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "scheme_dirs": `macval(_dash_sdirs)', "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'}"'
+    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "scheme_dirs": `macval(_dash_sdirs)', "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b):
     // Stata's `file write' wrote it with the umask (D4) and expanded a macro
@@ -8884,6 +9044,8 @@ program define _dash_prepare_spec, rclass
     _dash_limit, name(by_groups)
     local _by_groups_lim = r(value)
     mata: _dash_qual_reset()
+    // The time-series table, one for the dashboard (WP-30 P1.7).
+    mata: _dash_tsop_reset()
     local _rl_sum 0
     local ntok_reg : word count `registry'
     forvalues k = 1/`ntok_reg' {
@@ -8971,6 +9133,14 @@ program define _dash_prepare_spec, rclass
                     st_local("_dq_err") + ". Run dash clear and register it again.")
                 exit 198
             }
+            // Time-series operators (WP-30 P1.7): each expression becomes
+            // the column __dasht<k> _dash_tsop_gen fills at export.
+            local _dts_err ""
+            mata: st_local("_qg_`k'", _dash_tsop_rewrite(st_local("_qg_`k'"), "_dts_err"))
+            if `: length local _dts_err' {
+                mata: _dash_say("err", "`cmdname': ", st_local("_dts_err"), ". Run dash clear and register it again.")
+                exit 198
+            }
             // Reference lines (WP-30 P1.21a): this graph's positions times
             // its by() panels, summed for _dash_reflines_cap below.
             mata: st_local("_rl_json", st_global("dash_json_" + st_local("gname")))
@@ -8979,7 +9149,13 @@ program define _dash_prepare_spec, rclass
             local _rl_json ""
 
             local gvars ""
-            mata: _dash_extract_vars(`"${dash_json_`gname'}"', "gvars")
+            mata: _dash_extract_vars(st_local("_qg_`k'"), "gvars")
+            // Less the time-series columns, which _dash_tsop_gen makes.
+            local _gv_keep ""
+            foreach v of local gvars {
+                if substr("`v'", 1, 7) != "__dasht" local _gv_keep `_gv_keep' `v'
+            }
+            local gvars `_gv_keep'
             foreach v of local gvars {
                 if !`: list v in all_vars' local all_vars "`all_vars' `v'"
             }
@@ -9134,7 +9310,9 @@ program define _dash_prepare_spec, rclass
     // any other type that names no variable -- one dash no longer
     // registers (P1A-69), but the registry is ordinary globals -- is still
     // refused (P1A-74).  A KPI always names its variable.
-    local _novars = ("`all_vars'" == "")
+    local _dts_n = 0
+    mata: _dash_tsop_export()
+    local _novars = ("`all_vars'" == "" & `_dts_n' == 0)
     if `_novars' {
         _dash_plottype_families
         forvalues k = 1/`ntok_reg' {
@@ -9213,7 +9391,7 @@ program define _dash_prepare_spec, rclass
     // observation of every variable and says so; the saved route counts
     // only what the page will hold.
     if "`server'" != "" | "`cmdname'" == "dash serve" {
-        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n'' "" 0 1
+        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n' + `_dts_n'' "" 0 1
         _dash_byte_cap `all_vars'
     }
     else {
@@ -9223,6 +9401,12 @@ program define _dash_prepare_spec, rclass
 
     // Collect display formats, as on the immediate route.
     _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars
+    // The time-series columns' formats and the spec's map (WP-30 P1.7).
+    local _dts_json ""
+    if `_dts_n' > 0 {
+        mata: st_local("_dts_obj", _dash_tsop_meta("_dash_fmt_json"))
+        local _dts_json `","ts_cols":`macval(_dts_obj)'"'
+    }
     local _dash_jrc = 0
     if `_novars' {
         _dash_empty_data "`datapath'"
@@ -9233,7 +9417,8 @@ program define _dash_prepare_spec, rclass
         // estimates in memory held meanwhile (QS-15).
         local _dash_qual_vars ""
         local _dash_sort_vars ""
-        if `_dq_n' + `_ds_n' > 0 {
+        local _dash_tsop_vars ""
+        if `_dq_n' + `_ds_n' + `_dts_n' > 0 {
             tempname _dash_eh
             _estimates hold `_dash_eh', restore nullok
         }
@@ -9245,11 +9430,18 @@ program define _dash_prepare_spec, rclass
             if "`_dash_qual_vars'" != "" capture drop `_dash_qual_vars'
             exit `_ds_rc'
         }
-        // Captured for the same reason as on the immediate route.
-        capture noisily _dash_write_data "`datapath'" `all_vars' `_dash_qual_vars' `_dash_sort_vars'
-        local _dash_jrc = _rc
-        if "`_dash_qual_vars'`_dash_sort_vars'" != "" {
+        // The time-series columns, as on the immediate route.
+        capture noisily _dash_tsop_gen "`cmdname'"
+        if _rc {
+            local _dt_rc = _rc
             capture drop `_dash_qual_vars' `_dash_sort_vars'
+            exit `_dt_rc'
+        }
+        // Captured for the same reason as on the immediate route.
+        capture noisily _dash_write_data "`datapath'" `all_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars'
+        local _dash_jrc = _rc
+        if "`_dash_qual_vars'`_dash_sort_vars'`_dash_tsop_vars'" != "" {
+            capture drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars'
         }
     }
     if `_dash_jrc' exit `_dash_jrc'
@@ -9414,7 +9606,7 @@ program define _dash_prepare_spec, rclass
     }
     // The final } is written by _dash_fn_spec_tail, after the function
     // points (WP-29 P0.6).
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'}"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b;
     // see _dash_render_immediate's spec writer).  Callers hand the path:
