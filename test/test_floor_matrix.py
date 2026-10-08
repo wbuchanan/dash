@@ -71,7 +71,8 @@ class TestTheRequirementsFiles:
             want = C._BASELINES[base]
             for pkg in ("bokeh", "numpy", "pandas", "scipy"):
                 assert C._mm(pins[pkg]) == want[pkg], (name, pkg, pins[pkg])
-            assert pins["bokeh"] in test_label_sinks.VERIFIED_BOKEH, name
+            # Flipped (WP-30 P1.30): verified means major.minor (A104).
+            assert C._mm(pins["bokeh"]) in test_label_sinks.VERIFIED_BOKEH, name
             for tool in ("pytest", "pytest-xdist", "packaging"):
                 assert tool in pins, (name, tool)
             header = _read(os.path.join(ROOT, "test", name)).splitlines()[0]

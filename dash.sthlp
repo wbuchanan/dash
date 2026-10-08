@@ -4744,8 +4744,11 @@ and link yourself:
     or 3.12 builds and serves dashboards (measured 07oct2026); numpy 2.3 needs
     Python 3.11, so nothing older is supported.
 
-{phang2}{ul:Python packages, required} -- bokeh>=3.8, numpy>=2.3,
-    pandas>=2.3.
+{phang2}{ul:Python packages, required} -- bokeh>=3.8,<3.10, numpy>=2.3,
+    pandas>=2.3.  {cmd:dash} was verified on bokeh 3.8 and 3.9 (any patch
+    release of either); under a newer bokeh it draws and prints a note, and
+    under one older than 3.8 it stops and names {helpb dash_setup}.  Only
+    bokeh has a ceiling.
 
 {phang2}{ul:Python packages, optional} -- none.  Every statistical
     layer is computed with numpy: {cmd:lfitci} and {cmd:mspline} no

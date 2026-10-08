@@ -188,7 +188,9 @@ _DASH_MIN_PACKAGES = (("numpy", (2, 3)), ("pandas", (2, 3)))
 def _dash_dep_versions():
     """(refusal, note) for the loaded numpy and pandas (WP-30 P1.32).
 
-    The refusal is "" (bokeh's window fills it, S41).  The note names each
+    The refusal is bokeh's, below its floor (``_dash_bokeh_check``, WP-30
+    P1.30), read on every load so Stata refuses before any render.  The
+    note names each
     of numpy and pandas older than dash_setup's minimum; dash goes on.  A
     version not starting with two numbers is not judged.
     """
@@ -202,7 +204,83 @@ def _dash_dep_versions():
                          "tested with" % (name, got, floor[0], floor[1]))
     note = ("dash: " + "; ".join(parts) + "; dash goes on, and dash_setup "
             "prints the command that upgrades it") if parts else ""
-    return "", note
+    return _dash_bokeh_check()[0], note
+
+
+#: The verified bokeh window (WP-30 P1.30, M9).  dash runs with bokeh from
+#: the floor up; it was verified -- the test suite, and the label, legend
+#: and tooltip text sinks in a browser (test_label_sinks.py VERIFIED_ON) --
+#: on each minor of _DASH_BOKEH_VERIFIED, and a patch release inherits its
+#: minor's verification (A104).  The ceiling is exclusive: the first minor
+#: not verified.  dash_setup.ado's min_bokeh and max_bokeh hold the same
+#: (test_bokeh_window.py TestTheWindowIsDeclaredOnce).
+_DASH_BOKEH_FLOOR = (3, 8)
+_DASH_BOKEH_CEIL = (3, 10)
+_DASH_BOKEH_VERIFIED = ((3, 8), (3, 9))
+
+
+def _dash_bokeh_window(version):
+    """Where a bokeh version falls in the verified window (WP-30 P1.30):
+    ``"below"`` the floor, ``"verified"`` (its major.minor is one of
+    ``_DASH_BOKEH_VERIFIED``; A104), ``"above"`` (any other at or past the
+    floor: a release candidate or dev build of an unverified minor
+    included) or ``"unknown"`` (no major.minor can be read).  Only the
+    first 40 characters are read, so a hostile metadata string costs
+    nothing (M9)."""
+    import re
+    m = re.match(r"(\d+)\.(\d+)", str(version or "")[:40])
+    if not m:
+        return "unknown"
+    mm = (int(m.group(1)), int(m.group(2)))
+    if mm < _DASH_BOKEH_FLOOR:
+        return "below"
+    if mm in _DASH_BOKEH_VERIFIED:
+        return "verified"
+    return "above"
+
+
+def _dash_bokeh_check(version=None):
+    """``(refusal, note)`` for the running bokeh (WP-30 P1.30, M9).
+
+    Threat: a bokeh whose text sinks were never checked for injection run
+    with no word, and one older than the floor run with unknown behaviour.
+    Below the floor the refusal names the version, the floor and
+    dash_setup; above the window the note does, and the dashboard is
+    drawn; inside it both are "".  ``version`` None reads
+    ``bokeh.__version__``.  The shown version is at most 40 printable
+    characters.  The note names no interpreter, so ``main()`` and the
+    served app (which carries this function) say the same text, and
+    ``dash serve``'s relay does not repeat it.
+    """
+    import sys
+    if version is None:
+        bk = sys.modules.get("bokeh")
+        if bk is None:
+            try:
+                import bokeh as bk
+            except Exception:
+                bk = None
+        version = getattr(bk, "__version__", None)
+    shown = "".join(c for c in str(version)[:40] if c.isprintable())
+    rng = "bokeh>=%d.%d,<%d.%d" % (_DASH_BOKEH_FLOOR + _DASH_BOKEH_CEIL)
+    ver = ", ".join("%d.%d" % p for p in _DASH_BOKEH_VERIFIED)
+    where = _dash_bokeh_window(version)
+    if where == "below":
+        exe = "".join(c for c in str(sys.executable or "python")[:300]
+                      if c.isprintable())
+        return ("dash: bokeh %s at %s is older than %d.%d, the oldest bokeh "
+                "dash runs with; run dash_setup, which installs %s"
+                % ((shown, exe) + _DASH_BOKEH_FLOOR + (rng,))), ""
+    if where == "above":
+        return "", ("dash: bokeh %s is newer than the bokeh releases dash was "
+                    "verified on (%s); the dashboard is drawn, but its look "
+                    "and whether text from your data stays inert are "
+                    "unverified; dash_setup installs %s" % (shown, ver, rng))
+    if where == "unknown":
+        return "", ("dash: the installed bokeh's version (%s) could not be "
+                    "read, so dash cannot tell whether it was verified on it "
+                    "(%s); run dash_setup" % (shown, ver))
+    return "", ""
 
 
 # ---------------------------------------------------------------------------
@@ -42491,6 +42569,8 @@ class ServerAppBuilder:
                       "_DASH_REDIRECT_TTL_S", "_DASH_KEY_HOLDER",
                       "_DASH_LINK_SAID", "_DASH_BS_ORIGIN_HINT",
                       "_DASH_LINK_UNWRITTEN",
+                      # WP-30 P1.30: the verified bokeh window.
+                      "_DASH_BOKEH_FLOOR", "_DASH_BOKEH_CEIL", "_DASH_BOKEH_VERIFIED",
                       # SchemeParser._parse_file's include bound; the app
                       # is handed properties and never parses a file, but
                       # the method's source travels with the class.
@@ -42880,6 +42960,7 @@ class ServerAppBuilder:
                          # Bokeh whose matcher is not (bokeh 3.8).
                          "_dash_strict_match_host",
                          "_dash_harden_origin_check",
+                         "_dash_bokeh_window", "_dash_bokeh_check",
                          # The resource limits, read from the spec and
                          # applied where the app groups and lists (WP-19).
                          "_dash_limits", "_dash_limit_hint",
@@ -46122,6 +46203,16 @@ class ServerAppBuilder:
             "if not _DASH_TRIAL:",
             "    _dash_install_access_log_redaction()",
             "",
+            "# WP-30 P1.30 (M9): the bokeh this app runs under, checked at start.",
+            "# Below dash's floor it stops (python app.py: exit status 1, one line;",
+            "# bokeh serve: every session refused); above the verified window it",
+            "# notes once per process (the note hook's holder) and serves on.",
+            "_dash_bk_refuse, _dash_bk_note = _dash_bokeh_check()",
+            "if _dash_bk_refuse:",
+            "    raise (SystemExit if __name__ == '__main__' else RuntimeError)(_dash_bk_refuse)",
+            "if _dash_bk_note and not _DASH_TRIAL:",
+            "    warnings.warn(_dash_bk_note, UserWarning)",
+            "",
             "if __name__ != '__main__':",
             "    make_document(curdoc())",
             "",
@@ -46601,6 +46692,15 @@ def main(
         )
 
     _validate_output_path(output_path, mode, launch=launch)
+    # WP-30 P1.30 (M9): the bokeh this runs under.  Under Stata the refusal
+    # fires earlier (_dash_dep_versions, on every load); this covers a
+    # direct call.  The note prints once per command through S06's scope,
+    # and dash serve's scope records it, so the child's copy is not relayed.
+    _bk_refuse, _bk_note = _dash_bokeh_check()
+    if _bk_refuse:
+        raise RuntimeError(_bk_refuse)
+    if _bk_note:
+        warnings.warn(_bk_note, UserWarning, stacklevel=2)
     run = _dash_private_run_of(output_path) if launch else None
 
     if mode == "server":

@@ -99,8 +99,9 @@ the packages {cmd:dash} needs, for a Python that refuses {cmd:pip}
 installs.  {it:path} may be relative to the working directory and may start
 with {cmd:~}.  {cmd:dash_setup} creates the environment with the linked
 Python's {cmd:venv} module, or reuses one already at {it:path}; installs
-packaging, bokeh, numpy and pandas at their minimums into it; checks their
-versions, and that {cmd:dash}'s schemes can be read, inside it; and prints
+packaging, bokeh, numpy and pandas at their minimums, bokeh within the
+verified range, into it; checks their versions, and that {cmd:dash}'s
+schemes can be read, inside it; and prints
 the command that links Stata to it, such as
 
 {phang2}{cmd:python set exec "/path/to/venv/bin/python", permanently}
@@ -147,7 +148,7 @@ instructions on linking Python.
 starts, so without any of them {cmd:dash} cannot draw anything at all:
 
 {synoptset 20 tabbed}{...}
-{synopt:{opt bokeh}}3.8 or later{p_end}
+{synopt:{opt bokeh}}3.8 or later, before 3.10{p_end}
 {synopt:{opt numpy}}2.3 or later{p_end}
 {synopt:{opt pandas}}2.3 or later{p_end}
 {synoptline}
@@ -171,13 +172,23 @@ installs it.  A package below its minimum is not upgraded for you;
 linked to, or on an externally managed Python the way to set up a private
 environment, and stops.
 
+{pstd}{ul:The verified range of bokeh.}  {cmd:dash} was verified on bokeh
+3.8 and 3.9: its test suites, and a browser check that text from your data
+-- a variable label in an axis title, a legend or a tooltip -- is drawn as
+text.  A patch release of either is covered.  {cmd:dash_setup} installs
+{cmd:bokeh>=3.8,<3.10}.  A bokeh at or above 3.10 that you already have is
+reported as outside the verified range, a warning, and is never changed:
+something else in that Python may need it.  On an externally managed
+Python the way to set up a private environment is printed instead of a
+{cmd:pip} line.  Only bokeh has a ceiling.
+
 {pstd}Missing packages are installed automatically.  If automatic
 installation fails (e.g., in a restricted network environment), install
 manually.  The command {cmd:dash_setup} prints names the Python Stata is
 linked to, {cmd:c(python_exec)}, quoted for your system; in a terminal it
 reads like this, with that path in place of {it:/path/to/python3}:
 
-{phang2}{cmd:"/path/to/python3" -m pip install "bokeh>=3.8" "numpy>=2.3" "pandas>=2.3"}
+{phang2}{cmd:"/path/to/python3" -m pip install "bokeh>=3.8,<3.10" "numpy>=2.3" "pandas>=2.3"}
 
 {pstd}The double quotes matter: without them a shell reads {cmd:>} as a
 redirection, installs bokeh unpinned and writes a file named {cmd:=3.8}.
@@ -198,7 +209,8 @@ framework.  Tornado is installed with Bokeh, which depends on it, so no
 separate installation is needed and {cmd:dash_setup} does not check it.
 {cmd:dash_setup} reports the installed bokeh version; one below 3.8 is
 reported as an unmet requirement -- it is not upgraded for you -- and the
-run ends with r(198).
+run ends with r(198); one at or above 3.10 is reported as outside the
+verified range, a warning, and left as it is.
 
 
 {marker pep668}
@@ -265,13 +277,13 @@ package manager, or use {opt venv()}.
 {phang2}In restricted environments (no internet, corporate proxy), install
 packages using your organization's package mirror or a pre-downloaded wheel:
 
-{phang2}{cmd:"/path/to/python3" -m pip install --index-url https://your.mirror/simple "bokeh>=3.8"}
+{phang2}{cmd:"/path/to/python3" -m pip install --index-url https://your.mirror/simple "bokeh>=3.8,<3.10"}
 
 {pstd}{ul:Package version below minimum}
 
 {phang2}Upgrade a specific package, unless the Python is externally managed (see above):
 
-{phang2}{cmd:"/path/to/python3" -m pip install --upgrade "bokeh>=3.8"}
+{phang2}{cmd:"/path/to/python3" -m pip install --upgrade "bokeh>=3.8,<3.10"}
 
 
 {title:Also see}

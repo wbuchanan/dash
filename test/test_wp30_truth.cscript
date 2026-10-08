@@ -114,7 +114,7 @@ local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
-    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16
+    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -9757,6 +9757,77 @@ if inlist("`only'", "", "S40") & `: list posof "S40" in w30_run' {
 local only : env WP30_ONLY
 if inlist("`only'", "", "S41") & `: list posof "S41" in w30_run' {
     display as text "S41 start " c(current_date) " " c(current_time)
+    // The bokeh version dash reads at run time (WP-30 P1.30, M9).  bokeh's
+    // modules are imported before its version is set, as Bokeh reads it on
+    // first import; the real one is put back at the end.
+    local s41log "`w30_work'/s41.log"
+    local s41pg "`w30_work'/s41a.html"
+    local s41app "`w30_work'/s41a.py"
+    local s41ls = c(linesize)
+    set linesize 255
+    quietly sysuse auto, clear
+    python: import bokeh, bokeh.embed, bokeh.resources, bokeh.plotting, bokeh.models, bokeh.server.server
+    python: import sfi; sfi.Macro.setGlobal("S41_V", bokeh.__version__)
+    python: bokeh.__version__ = "3.10.0"
+
+    // BK-20: a saved page under a bokeh above the window: drawn, one note.
+    _s36_run `"dash scatter mpg weight, saving("`s41pg'", replace)"' "`s41log'"
+    local drc = r(rc)
+    _s36_count "`s41log'" "(note:  dash: bokeh 3.10.0 is newer"
+    local nn = r(n)
+    _s36_count "`s41log'" "dash_setup installs bokeh>=3.8,<3.10"
+    local ns = r(n)
+    capture confirm file "`s41pg'"
+    local frc = _rc
+    _w30_expect BK-20 "(`drc' == 0 & `frc' == 0 & `nn' == 1 & `ns' == 1)" "rc `drc', file `frc', notes `nn', dash_setup `ns'"
+    _w30_done BK-20 "a saved page under bokeh 3.10.0 is written with one note naming dash_setup"
+
+    // BK-21: dash build, server under the same bokeh: one note.
+    capture dash clear
+    quietly graph drop _all
+    quietly dash scatter mpg weight, name(g1)
+    capture log close _s41
+    quietly log using "`s41log'", text replace name(_s41)
+    capture noisily dash build, server saving("`s41app'") replace nobrowser
+    local drc = _rc
+    quietly log close _s41
+    _s36_count "`s41log'" "(note:  dash: bokeh 3.10.0 is newer"
+    local nn = r(n)
+    capture confirm file "`s41app'"
+    local frc = _rc
+    _w30_expect BK-21 "(`drc' == 0 & `frc' == 0 & `nn' == 1)" "rc `drc', file `frc', notes `nn'"
+    _w30_done BK-21 "dash build, server under bokeh 3.10.0 writes the app with one note"
+
+    // BK-22: below the floor: refused r(198) naming dash_setup, no page.
+    python: bokeh.__version__ = "3.7.3"
+    capture erase "`w30_work'/s41b.html"
+    _s36_run `"dash scatter mpg weight, saving("`w30_work'/s41b.html", replace)"' "`s41log'"
+    local drc = r(rc)
+    _s36_count "`s41log'" "bokeh 3.7.3"
+    local n1 = r(n)
+    _s36_count "`s41log'" "older than 3.8"
+    local n2 = r(n)
+    _s36_count "`s41log'" "dash_setup"
+    local n3 = r(n)
+    capture confirm file "`w30_work'/s41b.html"
+    local frc = _rc
+    _w30_expect BK-22 "(`drc' == 198 & `n1' >= 1 & `n2' >= 1 & `n3' >= 1 & `frc' != 0)" "rc `drc', said `n1' `n2' `n3', file `frc'"
+    _w30_done BK-22 "bokeh 3.7.3 is refused r(198) naming 3.8 and dash_setup, and nothing is written"
+
+    // BK-23: the real bokeh: no note.
+    python: bokeh.__version__ = sfi.Macro.getGlobal("S41_V")
+    _s36_run `"dash scatter mpg weight, saving("`s41pg'", replace)"' "`s41log'"
+    local drc = r(rc)
+    _s36_count "`s41log'" "(note:  dash: bokeh"
+    local nn = r(n)
+    _w30_expect BK-23 "(`drc' == 0 & `nn' == 0)" "rc `drc', notes `nn'"
+    _w30_done BK-23 "under the installed bokeh dash prints no bokeh note"
+    capture dash clear
+    capture erase "`s41log'"
+    capture erase "`s41pg'"
+    capture erase "`s41app'"
+    macro drop S41_*
+    set linesize `s41ls'
     display as text "S41 end " c(current_date) " " c(current_time)
 }
 * ==== end S41 ====

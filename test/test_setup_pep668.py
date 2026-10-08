@@ -800,7 +800,8 @@ class TestStataEntryPoints:
         lib.stata_venv_check()
         absp = os.path.join(os.path.realpath(str(tmp_path)), "env")
         assert loc["venv_ok"] == "1"
-        loc.update(pymin="3.13", minb="3.8", minn="2.3", minp="2.3")
+        # WP-30 P1.30: _dash_setup_venv passes bokeh's ceiling as maxb.
+        loc.update(pymin="3.13", minb="3.8", minn="2.3", minp="2.3", maxb="3.10")
         lib.stata_venv()
         vpy = os.path.join(absp, "bin", "python")
         assert loc["venv_step"] == ""
@@ -873,3 +874,73 @@ class TestTheFixture:
             if k != "_meta":
                 assert isinstance(rec["argv"], list) and isinstance(rec["rc"], int)
                 assert rec["stderr"]
+
+
+class TestTheBokehWindow:
+    """WP-30 P1.30 (M9, A107): dash_setup installs bokeh inside the
+    verified window, and never downgrades a bokeh at or above its ceiling
+    (critic C5: a reused venv's newer bokeh)."""
+
+    def test_the_requirement_never_downgrades(self, lib):
+        rows = {"": "bokeh>=3.8,<3.10", None: "bokeh>=3.8,<3.10",
+                "3.7.3": "bokeh>=3.8,<3.10", "3.9.2": "bokeh>=3.8,<3.10",
+                "garbage": "bokeh>=3.8,<3.10", "3.10.0": "bokeh>=3.8",
+                "3.10.0rc1": "bokeh>=3.8", "4.1": "bokeh>=3.8"}
+        bad = {v: lib.bokeh_requirement(v, "3.8", "3.10") for v in rows
+               if lib.bokeh_requirement(v, "3.8", "3.10") != rows[v]}
+        assert not bad, bad
+        assert all(lib._SPEC_RE.fullmatch(s) for s in rows.values())
+        with pytest.raises(ValueError):
+            lib.bokeh_requirement("", "3.8; rm", "3.10")
+
+    def test_the_venv_route_downgrades_nothing(self, lib, fake_sfi, tmp_path,
+                                               monkeypatch, capsys):
+        def run_with(have, state):
+            seen = []
+
+            def run(argv, **k):
+                seen.append(list(argv))
+                if "venv" in argv:
+                    return _fake_venv_run(argv)
+                code = argv[argv.index("-c") + 1] if "-c" in argv else ""
+                if "DASH_DETECT_V1" in code:
+                    return 0, _detect_line(prefix="/v", base_prefix="/b"), ""
+                if "DASH_VERIFY_V1" in code:
+                    above = ["bokeh"] if have.startswith("3.10") else []
+                    return 0, json.dumps({
+                        "tag": "DASH_VERIFY_V1", "ok": True,
+                        "version": [3, 13, 9], "packages": {"bokeh": have},
+                        "schemes": True, "why": "", "above": above}), ""
+                return 0, "Successfully installed", ""
+            monkeypatch.setattr(lib, "run_child", run)
+            absp = str(tmp_path / ("env_%s_%s" % (state, have)))
+            if state == "venv":
+                _fake_venv_run(["venv", absp])
+            lib._PENDING["venv"] = (absp, state, [])
+            fake_sfi["local"].update(pymin="3.11", minb="3.8", minn="2.3",
+                                     minp="2.3", maxb="3.10")
+            lib.stata_venv()
+            assert fake_sfi["local"]["venv_step"] == "", capsys.readouterr()
+            pip = [a for a in seen if "pip" in a]
+            assert len(pip) == 1, seen
+            return [a for a in pip[0] if a.startswith("bokeh")], \
+                capsys.readouterr().out
+
+        rows = [("", "new", "bokeh>=3.8,<3.10", False),
+                ("3.10.0", "venv", "bokeh>=3.8", True),
+                ("3.9.0", "venv", "bokeh>=3.8,<3.10", False)]
+        for have, state, want, left in rows:
+            spec, out = run_with(have, state)
+            assert spec == [want], (have, state, spec)
+            assert ("it was left as it is" in out) is left, (have, out)
+
+    def test_verify_reports_above_without_failing(self, lib):
+        import bokeh
+        mm = tuple(int(x) for x in bokeh.__version__.split(".")[:2])
+        mins = dict(MINS, python="%d.%d" % sys.version_info[:2])
+        rows = {"%d.%d" % mm: ["bokeh"], "%d.%d" % (mm[0], mm[1] + 1): []}
+        for ceil, want in rows.items():
+            got = lib.verify_in(sys.executable, RENDER,
+                                dict(mins, bokeh_ceil=ceil), sys.version_info)
+            assert got["above"] == want, (ceil, got)
+            assert got["ok"] is True, got

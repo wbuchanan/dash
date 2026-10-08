@@ -84,10 +84,13 @@ class TestTheFloorIsTheTestedBaseline:
 
     def test_every_declaration_agrees_with_dash_setup(self):
         py, bo, nu, pa = _setup_ado_floor()
+        # Flipped (WP-30 P1.30): bokeh has a ceiling, max_bokeh.
+        cb = re.search(r'local\s+max_bokeh\s+"([^"]+)"',
+                       _read("dash_setup.ado")).group(1)
 
         pkg = _read("dash.pkg")
-        assert ("Requires: Python %s+, bokeh>=%s, numpy>=%s, pandas>=%s."
-                % (py, bo, nu, pa)) in pkg, pkg
+        assert ("Requires: Python %s+, bokeh>=%s,<%s, numpy>=%s, pandas>=%s."
+                % (py, bo, cb, nu, pa)) in pkg, pkg
 
         # Flipped (WP-30 P1.32): the literal "Python <FLOOR>+" in dash.ado
         # was the one place dash.ado stated the floor; it is now the
@@ -97,8 +100,8 @@ class TestTheFloorIsTheTestedBaseline:
 
         help_ = _flat(_read("dash.sthlp"))
         assert ("{ul:Python %s+}" % py) in help_, help_
-        assert ("bokeh>=%s, numpy>=%s, pandas>=%s"
-                % (bo, nu, pa)) in help_, help_
+        assert ("bokeh>=%s,<%s, numpy>=%s, pandas>=%s"
+                % (bo, cb, nu, pa)) in help_, help_
 
         shelp = _flat(_read("dash_setup.sthlp"))
         assert ("Python %s or later" % py) in shelp, shelp

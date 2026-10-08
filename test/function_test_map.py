@@ -1027,6 +1027,8 @@ FUNCTIONS = {
  '_dash_join_spec': 'test/test_connect_options.py::TestHandWrittenSpecs::test_defaults',
  '_dash_join_vertices': 'test/test_connect_options.py::TestTheVertices::test_every_rule',
  # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
+ '_dash_bokeh_check': 'test/test_bokeh_window.py::TestTheRuntimeCheck::test_below_the_floor_is_refused_naming_dash_setup',
+ '_dash_bokeh_window': 'test/test_bokeh_window.py::TestTheWindowVerdict::test_each_version_gets_its_verdict',
  # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
  # WP-30 S43 (P1.13b): Default colour and opacity at every colour site (P1.13 part b)
  # WP-30 S44 (P1.3b): tsnatscale on %td-%ty default axes (P1.3 part b, M1)
@@ -1147,4 +1149,5 @@ SETUP_FUNCTIONS = {
     # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
     "stdlib_entry": "test/test_private_files.py::TestDashClearPrunesWithoutThePackages::test_the_slice_prunes_as_the_renderer_does",
     # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
+    "bokeh_requirement": _P + "TestTheBokehWindow::test_the_requirement_never_downgrades",
 }

@@ -165,9 +165,18 @@ sys.path.insert(0, _HERE)
 import dash_render as dr  # noqa: E402
 from conftest import make_data_json, load_app  # noqa: E402
 
-#: The bokeh versions the behaviour described above was verified on.  See
+#: The bokeh minors the behaviour described above was verified on: the
+#: verified window's (dash_render._DASH_BOKEH_VERIFIED, WP-30 P1.30).  A
+#: patch release inherits its minor's verification (A104).  See
 #: TestBokehVersion for what "verified" means and how to extend this set.
-VERIFIED_BOKEH = {"3.8.0", "3.9.0"}
+VERIFIED_BOKEH = {"%d.%d" % p for p in dr._DASH_BOKEH_VERIFIED}
+
+#: When and how each minor's text sinks were checked in a browser;
+#: test_label_sinks_browser.py repeats it under every baseline.
+VERIFIED_ON = {
+    "3.8": "24sep2026, WP-25 (Chromium, saved page and dash serve)",
+    "3.9": "23sep2026 (Chromium, saved page)",
+}
 
 # ---------------------------------------------------------------------------
 # Payloads
@@ -1330,12 +1339,20 @@ class TestBokehVersion:
            (search shadow roots too), and that ``document.title`` is
            unchanged.
         3. Repeat step 2 under ``dash serve``, which always loads MathJax.
-        4. Run this file, then add the new version to ``VERIFIED_BOKEH``.
+        4. Run this file and test_label_sinks_browser.py, then add the
+           minor to ``_DASH_BOKEH_VERIFIED`` and ``VERIFIED_ON``.
+
+        Flipped (WP-30 P1.30): exact patch versions were wrong, because a
+        patch release inherits its minor's verification (A104).
         """
-        assert bokeh.__version__ in VERIFIED_BOKEH, (
+        mm = ".".join(bokeh.__version__.split(".")[:2])
+        assert mm in VERIFIED_BOKEH, (
             f"bokeh {bokeh.__version__} is installed, but the text sinks "
             f"test_label_sinks.py pins were verified only on "
             f"{sorted(VERIFIED_BOKEH)}.  Their safety comes from BokehJS "
             f"rendering labels as text, which can change between releases.  "
             f"Re-verify in a browser as this test's docstring describes, "
             f"then add the version to VERIFIED_BOKEH.")
+
+    def test_every_minor_in_the_window_was_verified(self):
+        assert set(VERIFIED_ON) == VERIFIED_BOKEH

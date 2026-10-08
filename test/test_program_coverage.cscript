@@ -776,8 +776,10 @@ display "PC-18 PASS: without packaging, pip is asked for it once, versions are u
 // the manual line is the shlex oracle (the bare `python -m pip install
 // bokeh>=3.8' a shell runs as an unpinned install writing a file =3.8).
 global PC_SB_SPEC `"{"block": ["bokeh"]}"'
-python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "--user", "bokeh>=3.8"]])
-python: _pep_oracle("pc19want", "-m", "pip", "install", "bokeh>=3.8")
+// Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8,<3.10"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "--user", "bokeh>=3.8,<3.10"]])
+// Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+python: _pep_oracle("pc19want", "-m", "pip", "install", "bokeh>=3.8,<3.10")
 _pc_setup
 local rc = r(rc)
 local match = r(match)
@@ -807,7 +809,8 @@ display "PC-19 PASS: a bokeh pip cannot install is asked for as bokeh>=3.8, retr
 // ================================================================
 // WP-29 P0.19: DETECT first, then pip with c(python_exec) and its flags.
 global PC_SB_SPEC `"{"block": ["bokeh"], "unblock_on_install": ["bokeh"]}"'
-python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8"]])
+// Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8,<3.10"]])
 _pc_setup
 local rc = r(rc)
 local match = r(match)
@@ -840,7 +843,8 @@ if `match' != 1 {
 }
 assert `rc' == 198
 // Q27: the upgrade line names the interpreter Stata is linked to.
-python: _pep_oracle("pc21wantcmd", "-m", "pip", "install", "bokeh>=3.8")
+// Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+python: _pep_oracle("pc21wantcmd", "-m", "pip", "install", "bokeh>=3.8,<3.10")
 foreach p in "2.4.3 (below minimum 3.8)" ///
     "Unmet:  bokeh 2.4.3 (needs 3.8)" {
     _pc_said "`p'"
@@ -995,7 +999,8 @@ if _rc _pep_fail PEP-02 `=_rc'
 capture noisily {
     global PC_SB_SPEC `"{"block": ["bokeh"], "pip": {"rc": 1, "stderr": "externally_managed"}}"'
     global PC_SB_CMD ""
-    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8"]])
+    // Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8,<3.10"]])
     _pc_setup
     local rc = r(rc)
     _pep_match `r(match)'
@@ -1036,7 +1041,8 @@ if _rc _pep_fail PEP-04 `=_rc'
 capture noisily {
     global PC_SB_SPEC `"{"block": ["bokeh"], "env": {"in_venv": true}}"'
     global PC_SB_CMD ""
-    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8"]])
+    // Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8,<3.10"]])
     _pc_setup
     local rc = r(rc)
     _pep_match `r(match)'
@@ -1051,7 +1057,8 @@ if _rc _pep_fail PEP-05 `=_rc'
 capture noisily {
     global PC_SB_SPEC `"{"block": ["bokeh"], "user_site_gate": "bokeh"}"'
     global PC_SB_CMD ""
-    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "--user", "bokeh>=3.8"]])
+    // Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8,<3.10"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "--user", "bokeh>=3.8,<3.10"]])
     _pc_setup
     local rc = r(rc)
     _pep_match `r(match)'
@@ -1068,7 +1075,8 @@ if _rc _pep_fail PEP-06 `=_rc'
 capture noisily {
     global PC_SB_SPEC `"{"block": ["bokeh"], "unblock_on_install": ["bokeh"], "pythonpath": "/dash/hostile/pythonpath"}"'
     global PC_SB_CMD ""
-    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8"]])
+    // Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+    python: _pep_vec([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "F", "bokeh>=3.8,<3.10"]])
     _pc_setup
     local rc = r(rc)
     local m = r(match)
@@ -1099,7 +1107,8 @@ capture noisily {
     mata: st_global("PC_SB_CMD", "dash_setup, venv(" + char(34) + st_local("p08") + "/venv" + char(34) + ")")
     global PC_SB_SPEC `"{"pip": {"rc": 0}}"'
     python: import os, sfi; _pep_a = os.path.join(os.path.realpath(sfi.Macro.getLocal("p08")), "venv"); _pep_py = os.path.join(_pep_a, "bin", "python"); _pep_r = os.path.normpath(os.path.join(sfi.SFIToolkit.macroExpand(chr(96) + "c(pwd)'"), "..", "dash_render.py")); sfi.Macro.setLocal("a08", _pep_a); sfi.Macro.setLocal("py08", _pep_py)
-    python: _pep_vec([["PYTHON_EXEC", "-P", "-m", "venv", _pep_a], [_pep_py, "-c", "<ANY>"], [_pep_py, "-P", "-m", "pip", "install", "F", "packaging", "bokeh>=3.8", "numpy>=2.3", "pandas>=2.3"], [_pep_py, "-P", "-c", "<ANY>", "<ANY>", _pep_r]])
+    // Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+    python: _pep_vec([["PYTHON_EXEC", "-P", "-m", "venv", _pep_a], [_pep_py, "-c", "<ANY>"], [_pep_py, "-P", "-m", "pip", "install", "F", "packaging", "bokeh>=3.8,<3.10", "numpy>=2.3", "pandas>=2.3"], [_pep_py, "-P", "-c", "<ANY>", "<ANY>", _pep_r]])
     _pc_setup
     local rc = r(rc)
     local m = r(match)
@@ -1409,7 +1418,8 @@ capture noisily {
     mata: st_global("PC_SB_CMD", "dash_setup, venv(" + char(34) + st_local("pf1") + "/venv" + char(34) + ")")
     global PC_SB_SPEC `"{"pip": {"rc": 0}, "pyversion": "3.12.12 (dash test sandbox)"}"'
     python: import os, sfi; _pep_a = os.path.join(os.path.realpath(sfi.Macro.getLocal("pf1")), "venv"); _pep_py = os.path.join(_pep_a, "bin", "python"); _pep_r = os.path.normpath(os.path.join(sfi.SFIToolkit.macroExpand(chr(96) + "c(pwd)'"), "..", "dash_render.py")); sfi.Macro.setLocal("apf1", _pep_a); sfi.Macro.setLocal("pypf1", _pep_py)
-    python: _pep_vec([["PYTHON_EXEC", "-P", "-m", "venv", _pep_a], [_pep_py, "-c", "<ANY>"], [_pep_py, "-P", "-m", "pip", "install", "F", "packaging", "bokeh>=3.8", "numpy>=2.3", "pandas>=2.3"], [_pep_py, "-P", "-c", "<ANY>", "<ANY>", _pep_r]])
+    // Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+    python: _pep_vec([["PYTHON_EXEC", "-P", "-m", "venv", _pep_a], [_pep_py, "-c", "<ANY>"], [_pep_py, "-P", "-m", "pip", "install", "F", "packaging", "bokeh>=3.8,<3.10", "numpy>=2.3", "pandas>=2.3"], [_pep_py, "-P", "-c", "<ANY>", "<ANY>", _pep_r]])
     _pc_setup
     local rc = r(rc)
     local m = r(match)

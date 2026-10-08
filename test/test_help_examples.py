@@ -522,8 +522,10 @@ class TestTheShownCommands:
         # the linked Python and quote each requirement.
         pip = [s for s in shown if "pip" in s.text]
         assert [len(s.lines) for s in pip] == [1, 1, 1, 1]
-        assert pip[0].text == ('"/path/to/python3" -m pip install "bokeh>=3.8" '
-                               '"numpy>=2.3" "pandas>=2.3"')
+        # Flipped (WP-30 P1.30): the help installs bokeh inside the
+        # verified window.
+        assert pip[0].text == ('"/path/to/python3" -m pip install '
+                               '"bokeh>=3.8,<3.10" "numpy>=2.3" "pandas>=2.3"')
 
     def test_each_passes_the_check_its_pin_names(self, shown, pins, groups):
         kind = {text: value for k, value, text in pins if k == "shown"}

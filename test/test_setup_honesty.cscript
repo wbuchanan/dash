@@ -526,7 +526,8 @@ _hon_reload
 _hon_has "`h20log'" "(below minimum 3.8)" h20below
 // Q27: the upgrade line names the interpreter Stata is linked to, never
 // a bare `python'.  WP-29 P0.19: quoted for the shell (the shlex oracle).
-python: import shlex, sfi; sfi.Macro.setLocal("h20wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8"]))
+// Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+python: import shlex, sfi; sfi.Macro.setLocal("h20wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8,<3.10"]))
 _hon_has "`h20log'" `"`h20wantcmd'"' h20cmd
 _hon_has "`h20log'" "bokeh 2.4 (needs 3.8)" h20unmet
 _hon_has "`h20log'" "All dependencies are satisfied" h20ok
@@ -575,7 +576,8 @@ assert `h22rc' == 198
 // WP-29 P0.19: the probe first (this recorder answers it HONPIPOUT, so
 // detection fails and the run goes on as for an ordinary Python), then pip
 // with -P and its fixed flags, and the --user retry.
-assert `"`h22calls'"' == "-c <code> | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: bokeh>=3.8 | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: --user bokeh>=3.8"
+// Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+assert `"`h22calls'"' == "-c <code> | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: bokeh>=3.8,<3.10 | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: --user bokeh>=3.8,<3.10"
 assert `h22unmet' == 1
 assert `h22ok' == 0
 display "HON-22 PASS: pip is asked for bokeh>=3.0, then again with --user, and the failure is fatal"
@@ -754,7 +756,8 @@ display "HON-26 PASS: without packaging, pip is asked for it once, no version is
 // by HON-26, where the same line is there.
 // WP-29 P0.19: the probe first; pip runs PYTHON_EXEC with its flags.
 global HON_SB_SPEC `"{"block": ["packaging", "bokeh"], "unblock_on_install": ["packaging", "bokeh"]}"'
-python: import json, sfi; _hon_f = ["--disable-pip-version-check", "--no-input", "--only-binary=:all:"]; sfi.Macro.setGlobal("HON_SB_EXPECT", json.dumps([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install"] + _hon_f + ["packaging"], ["PYTHON_EXEC", "-P", "-m", "pip", "install"] + _hon_f + ["bokeh>=3.8"]]))
+// Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+python: import json, sfi; _hon_f = ["--disable-pip-version-check", "--no-input", "--only-binary=:all:"]; sfi.Macro.setGlobal("HON_SB_EXPECT", json.dumps([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install"] + _hon_f + ["packaging"], ["PYTHON_EXEC", "-P", "-m", "pip", "install"] + _hon_f + ["bokeh>=3.8,<3.10"]]))
 _hon_sb_setup
 local h27rc = r(rc)
 local h27m = r(match)
@@ -829,7 +832,8 @@ if `h29m' != 1 {
 assert `h29m' == 1
 assert `h29rc' == 198
 _hon_has "`h29log'" "3.7.3 (below minimum 3.8)" h29below
-python: import shlex, sfi; sfi.Macro.setLocal("h29wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8"]))
+// Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+python: import shlex, sfi; sfi.Macro.setLocal("h29wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8,<3.10"]))
 _hon_has "`h29log'" `"`h29wantcmd'"' h29cmd
 _hon_has "`h29log'" "Unmet:  bokeh 3.7.3 (needs 3.8)" h29unmet
 _hon_has "`h29log'" "All dependencies are satisfied" h29ok
@@ -861,6 +865,64 @@ assert `h30below' == 1
 assert `h30unmet' == 1
 assert `h30ok' == 0
 display "HON-30 PASS: a Python below the floor is refused by name, nothing installed"
+
+// ================================================================
+// HON-50..52 -- the verified bokeh window (WP-30 P1.30, M9, A105, A107)
+// ================================================================
+// A bokeh at or above the ceiling is reported "outside the verified
+// range", a warning with rc 0, and never changed: no pip install runs.
+// With pip, the line that installs a verified bokeh is printed; on a
+// managed Python the venv guidance instead (critic C6).
+
+// ---- HON-50: bokeh 3.10.0, pip available ----
+global HON_SB_SPEC `"{"fake": [["bokeh", "3.10.0"]]}"'
+global HON_SB_EXPECT `"[["PYTHON_EXEC", "-c", "<ANY>"]]"'
+_hon_sb_setup
+local h50rc = r(rc)
+local h50m = r(match)
+local h50log "`r(log)'"
+if `h50m' != 1 {
+    mata: printf("{err}HON-50: %s\n", st_global("HON_SB_WHY"))
+}
+python: import shlex, sfi; sfi.Macro.setLocal("h50wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8,<3.10"]))
+local h50s ""
+foreach nd in "3.10.0 (outside the verified range: 3.8 or later, before 3.10)" "with 1 warning(s)" "Warned:  bokeh 3.10.0 (outside the verified range)" `"`h50wantcmd'"' {
+    _hon_has "`h50log'" `"`nd'"' _h50
+    local h50s "`h50s' `_h50'"
+}
+display "HON-50 measured: rc `h50rc' match `h50m' said`h50s'"
+assert `h50rc' == 0 & `h50m' == 1
+assert "`h50s'" == " 1 1 1 1"
+display "HON-50 PASS: bokeh 3.10.0 is outside the verified range, a warning, rc 0, the ceilinged pip line printed and nothing installed"
+
+// ---- HON-51: the same on an externally managed Python ----
+global HON_SB_SPEC `"{"fake": [["bokeh", "3.10.0"]], "env": {"managed": true}}"'
+_hon_sb_setup
+local h51rc = r(rc)
+local h51m = r(match)
+local h51log "`r(log)'"
+if `h51m' != 1 {
+    mata: printf("{err}HON-51: %s\n", st_global("HON_SB_WHY"))
+}
+local h51s ""
+foreach nd in "outside the verified range" "This Python is externally managed (PEP 668):" "-m pip install" {
+    _hon_has "`h51log'" `"`nd'"' _h51
+    local h51s "`h51s' `_h51'"
+}
+display "HON-51 measured: rc `h51rc' match `h51m' said`h51s'"
+assert `h51rc' == 0 & `h51m' == 1
+assert "`h51s'" == " 1 1 0"
+display "HON-51 PASS: on a managed Python bokeh 3.10.0 gets the venv guidance and no pip line, rc 0"
+
+// ---- HON-52: _dash_pip_command with and without the ceiling ----
+_dash_pip_command bokeh 3.8 "" 3.10
+local h52a `"`r(cmd)'"'
+_dash_pip_command bokeh 3.8
+local h52b `"`r(cmd)'"'
+mata: st_local("h52ok", strofreal(strpos(st_local("h52a"), "bokeh>=3.8,<3.10") > 0 & strpos(st_local("h52b"), "bokeh>=3.8'") > 0))
+display `"HON-52 measured: `h52a' | `h52b'"'
+assert `h52ok' == 1
+display "HON-52 PASS: the pip line carries the ceiling when given one, and is unchanged without"
 
 // ================================================================
 // PEP-17..19 -- dash_setup, venv() with real processes, offline, and

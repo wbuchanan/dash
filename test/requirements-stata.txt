@@ -1,6 +1,7 @@
 # The stata pins (WP-30 P1.33): the stack of the stata, py311 and py312
 # baselines in test/conftest.py, installed by scripts/floor_matrix.sh.
 # One exact name==version per line; S41 extends it with the bokeh window.
+# bokeh window (WP-30 P1.30): bokeh>=3.8,<3.10; dash_setup installs it and the pin below lies inside it.
 bokeh==3.8.0
 numpy==2.3.5
 pandas==2.3.3

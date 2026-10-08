@@ -556,9 +556,10 @@ _hx_pin check pyapp `"dash build, saving(app.py) server replace"'
 //                environment or changes a setting permanently (WP-29 P0.19:
 //                the python: pip recipes became these shell lines)
 _hx_pin shown placeholder `"python set exec "/path/to/python3", permanently"'
-_hx_pin shown placeholder `""/path/to/python3" -m pip install "bokeh>=3.8" "numpy>=2.3" "pandas>=2.3""'
-_hx_pin shown placeholder `""/path/to/python3" -m pip install --index-url https://your.mirror/simple "bokeh>=3.8""'
-_hx_pin shown placeholder `""/path/to/python3" -m pip install --upgrade "bokeh>=3.8""'
+// Flipped (WP-30 P1.30): the three pip lines carry bokeh's ceiling.
+_hx_pin shown placeholder `""/path/to/python3" -m pip install "bokeh>=3.8,<3.10" "numpy>=2.3" "pandas>=2.3""'
+_hx_pin shown placeholder `""/path/to/python3" -m pip install --index-url https://your.mirror/simple "bokeh>=3.8,<3.10""'
+_hx_pin shown placeholder `""/path/to/python3" -m pip install --upgrade "bokeh>=3.8,<3.10""'
 _hx_pin shown placeholder `""/path/to/python3" -m ensurepip --upgrade"'
 _hx_pin shown placeholder `"dash_setup, venv("~/.dash/venv")"'
 _hx_pin shown placeholder `"python set exec "/path/to/venv/bin/python", permanently"'

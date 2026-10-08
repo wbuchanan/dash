@@ -126,6 +126,11 @@ VERIFY_CODE = (
     "                's2color', 'dash_setup').is_fallback\n"
     "    except Exception:\n"
     "        _out['schemes'] = False\n"
+    "    _out['above'] = []\n"
+    "    _c = _mins.get('bokeh_ceil', '')\n"
+    "    if _c and _out['packages'].get('bokeh') and \\\n"
+    "            _t(_out['packages']['bokeh'])[:2] >= _t(_c)[:2]:\n"
+    "        _out['above'].append('bokeh')\n"
     "    if _bad:\n"
     "        _out['why'] = 'packages: ' + ', '.join(_bad)\n"
     "    elif not _out['schemes']:\n"
@@ -256,6 +261,27 @@ def pip_install_argv(exe, specs, version, user=False):
             raise ValueError("dash_setup: refusing the requirement %r" % (spec,))
     return ([exe] + safe_flags(version) + ["-m", "pip", "install"] + _PIP_FIXED +
             (["--user"] if user else []) + list(specs))
+
+
+def bokeh_requirement(installed, floor, ceil):
+    """The bokeh requirement dash_setup installs (WP-30 P1.30, M9, A107).
+
+    ``bokeh>=<floor>,<<ceil>`` -- the verified window -- unless the bokeh
+    already installed is at or above the ceiling, when it is
+    ``bokeh>=<floor>``: a bokeh someone installed is never downgraded
+    (critic C5: a reused venv with bokeh 3.10).  ``floor`` and ``ceil``
+    are dash's own literals and must be dotted numbers.
+
+    Raises:
+        ValueError: if floor or ceil is not a dotted number.
+    """
+    for v in (floor, ceil):
+        if not isinstance(v, str) or not re.fullmatch(r"[0-9]+(\.[0-9]+)*", v):
+            raise ValueError("dash_setup: refusing the bokeh bound %r" % (v,))
+    m = re.match(r"(\d+)\.(\d+)", str(installed or "")[:40])
+    if m and (int(m.group(1)), int(m.group(2))) >= version_tuple(ceil)[:2]:
+        return "bokeh>=" + floor
+    return "bokeh>=%s,<%s" % (floor, ceil)
 
 
 def classify_failure(rc, err):
@@ -742,7 +768,8 @@ def stata_venv():
         pymin = version_tuple(pymin_text)
         mins = {"python": pymin_text, "packaging": "",
                 "bokeh": sfi.Macro.getLocal("minb"), "numpy": sfi.Macro.getLocal("minn"),
-                "pandas": sfi.Macro.getLocal("minp")}
+                "pandas": sfi.Macro.getLocal("minp"),
+                "bokeh_ceil": sfi.Macro.getLocal("maxb")}
         pend = _PENDING.pop("venv", None)
         exe, raw = _linked()
         res["venv_base"] = exe or raw
@@ -778,9 +805,19 @@ def stata_venv():
                           + shell_line([vpy, "-m", "ensurepip", "--upgrade"], windows))
                     res["venv_step"] = "pip"
                 else:
+                    render_py = os.path.normpath(os.path.join(
+                        os.path.dirname(os.path.abspath(__file__)), "dash_render.py"))
+                    # WP-30 P1.30 (A107): a reused environment is probed
+                    # first, so a bokeh at or above the ceiling in it is
+                    # never downgraded.
+                    have = ""
+                    if state == "venv":
+                        pre = verify_in(vpy, render_py, mins, d["version"])
+                        have = (pre.get("packages") or {}).get("bokeh", "")
                     print("  installing packaging, bokeh, numpy and pandas into it...")
                     rc, out, err = run_child(pip_install_argv(
-                        vpy, ["packaging", "bokeh>=" + mins["bokeh"],
+                        vpy, ["packaging",
+                              bokeh_requirement(have, mins["bokeh"], mins["bokeh_ceil"]),
                               "numpy>=" + mins["numpy"], "pandas>=" + mins["pandas"]],
                         d["version"]))
                     print(out[-500:])
@@ -788,8 +825,6 @@ def stata_venv():
                     if rc != 0:
                         res["venv_step"] = "pip"
                     else:
-                        render_py = os.path.normpath(os.path.join(
-                            os.path.dirname(os.path.abspath(__file__)), "dash_render.py"))
                         v = verify_in(vpy, render_py, mins, d["version"])
                         if not v.get("ok"):
                             print("  The environment did not verify: %s" % v.get("why"))
@@ -799,6 +834,12 @@ def stata_venv():
                                 print("    dash's schemes could not be read in it")
                             res["venv_step"] = "verify"
                         else:
+                            if "bokeh" in (v.get("above") or []):
+                                print("  bokeh %s in it is outside the verified range (%s or "
+                                      "later, before %s); it was left as it is, and dash "
+                                      "notes it when it draws."
+                                      % ((v.get("packages") or {}).get("bokeh", ""),
+                                         mins["bokeh"], mins["bokeh_ceil"]))
                             linked = (os.path.realpath(os.path.dirname(os.path.dirname(exe)))
                                       == os.path.realpath(absp))
                             cmd = 'python set exec "%s", permanently' % vpy
