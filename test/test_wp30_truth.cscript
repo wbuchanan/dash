@@ -1555,6 +1555,9 @@ if inlist("`only'", "", "S08") {
     log close su1k
     cert_log_has "`w30_work'/su16c.log", needle("(note:")
     local s08_n3 = r(count)
+    // WP-30 P1.28a: no Stata graph in memory, so dash's graph export note
+    // is not among the notes counted (setup only; the counts are unchanged).
+    quietly graph drop _all
     capture dash clear
     log using "`w30_work'/su16d.log", text replace name(su1k)
     dash scatter mpg weight, msize(-1) name(s08g)
@@ -5671,10 +5674,105 @@ if inlist("`only'", "", "S21") {
 }
 * ==== end S21 ====
 
+// S22 helper: _s22_fx(key, local) puts the value at a dotted key of
+// fixtures/graph_export_truth.json (the driver runs in test/) in a local.
+python:
+import json as _s22_json
+from sfi import Macro as _s22_M
+
+
+def _s22_fx(key, local):
+    with open("fixtures/graph_export_truth.json", encoding="utf-8") as fh:
+        v = _s22_json.load(fh)
+    for k in key.split("."):
+        v = v[k]
+    _s22_M.setLocal(local, " ".join(sorted(v)) if isinstance(v, dict) else str(v))
+end
+
 * ==== S22 P1.28a: r(filename) and the stale-graph note ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S22") {
     display as text "S22 start " c(current_date) " " c(current_time)
+    quietly sysuse auto, clear
+    set linesize 255
+    local s22n "graph export writes the graph in Stata's Graph window, not this dashboard; graphs in memory: "
+    dash clear
+
+    // GE-21 (guard) -- dash makes no Stata graph: the one-line form, with
+    // and without saving(), leaves graph memory empty and graph export
+    // answering as it did before dash ran.  In batch a graph drawn by an
+    // earlier block can still be the one graph export writes after graph
+    // drop (the fixture's dropped case), so the fixture's no_graph answer
+    // is required only when graph export gave it before dash ran.
+    graph drop _all
+    capture graph export "`w30_work'/ge21a.png", replace
+    local rc21a = _rc
+    dash scatter mpg weight
+    dash scatter mpg weight, saving("`w30_work'/ge21.html", replace)
+    quietly graph dir, memory
+    local mem21 = strtrim("`r(list)'")
+    capture log close s22
+    quietly log using "`w30_work'/ge21.log", text replace name(s22)
+    capture noisily graph export "`w30_work'/ge21.png", replace
+    local rc21 = _rc
+    quietly log close s22
+    python: _s22_fx("cases.no_graph.rc", "fx_rc")
+    python: _s22_fx("cases.no_graph.first", "fx_first")
+    _w30_expect GE-21 `"("`mem21'" == "")"' "dash left graphs in memory: `mem21'"
+    _w30_expect GE-21 "`rc21' == `rc21a'" "graph export rc `rc21' after dash, `rc21a' before"
+    if `rc21a' == `fx_rc' {
+        cert_log_has "`w30_work'/ge21.log", needle("`fx_first'")
+        _w30_expect GE-21 "r(count) == 1" "graph export did not say: `fx_first'"
+    }
+    _w30_done GE-21 "dash makes no Stata graph: graph export answers as before dash (rc `rc21')"
+
+    // GE-22 -- the suffixes replaced are exactly those graph export writes.
+    python: _s22_fx("suffixes", "fx_sfx")
+    local bad ""
+    foreach s of local fx_sfx {
+        if "`s'" != lower("`s'") continue
+        python: _s22_fx("suffixes.`s'.first", "fx_first")
+        local want = cond(strpos("`fx_first'", "not recognized"), "", "`s'")
+        mata: _dash_saving_parse("a.`s'", "html")
+        if "`_sv_img'" != "`want'" local bad "`bad' `s'"
+    }
+    _w30_expect GE-22 `"("`bad'" == "")"' "suffixes misread:`bad'"
+    _w30_done GE-22 "saving() replaces exactly the suffixes graph export writes"
+
+    // GE-23 -- as after twoway, which leaves r() empty, dash leaves only
+    // r(filename).
+    python: _s22_fx("return_after_twoway.macros", "fx_m")
+    python: _s22_fx("return_after_twoway.scalars", "fx_s")
+    quietly summarize price
+    dash scatter mpg weight, saving("`w30_work'/ge23.html", replace)
+    mata: st_local("m23", invtokens(st_dir("r()", "macro", "*")'))
+    mata: st_local("s23", strofreal(rows(st_dir("r()", "numscalar", "*"))))
+    _w30_expect GE-23 "`fx_m' == 0 & `fx_s' == 0" "twoway left `fx_m' macros, `fx_s' scalars"
+    _w30_expect GE-23 `"("`m23'" == "filename" & `s23' == 0)"' "dash left macros [`m23'], `s23' scalars"
+    _w30_done GE-23 "twoway leaves r() empty; dash leaves only r(filename)"
+
+    // GE-24 -- with a twoway graph in memory, the one-line form notes once
+    // that graph export writes it, and graph export does write it.
+    quietly twoway scatter price weight
+    capture log close s22
+    quietly log using "`w30_work'/ge24.log", text replace name(s22)
+    dash scatter mpg weight, saving("`w30_work'/ge24.html", replace)
+    quietly log close s22
+    cert_log_has "`w30_work'/ge24.log", needle("(note:  dash: `s22n'Graph)")
+    _w30_expect GE-24 "r(count) == 1" "the note was printed `r(count)' times"
+    capture graph export "`w30_work'/ge24.svg", replace
+    _w30_expect GE-24 "_rc == 0" "graph export rc `=_rc'"
+    cert_file_has "`w30_work'/ge24.svg", needle(">Price<")
+    _w30_expect GE-24 "r(found) == 1" "the SVG is not the twoway graph"
+    cert_file_has "`w30_work'/ge24.svg", needle(">Mileage (mpg)<")
+    _w30_expect GE-24 "r(found) == 0" "the SVG holds the dashboard's title"
+    _w30_done GE-24 "the stale export is announced: graph export writes the twoway graph"
+
+    foreach f in ge21a.png ge21.html ge21.log ge21.png ge23.html ge24.log ge24.html ge24.svg {
+        capture erase "`w30_work'/`f'"
+    }
+    graph drop _all
+    dash clear
     display as text "S22 end " c(current_date) " " c(current_time)
 }
 * ==== end S22 ====

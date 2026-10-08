@@ -783,5 +783,96 @@ assert `rc44' == 0
 display "PV-44 PASS: dash serve's saving() is still named and ignored"
 capture program drop _pv_split _pv_refuse
 
+// ---------------------------------------------------------------
+// GE-16..GE-19 (WP-30 P1.28a) -- a suffix graph export writes is
+// replaced by .html (.py with server), with a note, on both routes;
+// other names are written as before.  In a fresh scratch folder.
+// ---------------------------------------------------------------
+tempfile ge16b
+local ge16d "`ge16b'_ge16"
+mkdir "`ge16d'"
+local pwd16 "`c(pwd)'"
+set linesize 255
+capture dash clear
+capture log close ge16
+capture noisily {
+    cd "`ge16d'"
+    local ge16pwd "`c(pwd)'"
+    quietly log using "ge16.log", text replace name(ge16)
+    foreach k in png svg pdf eps ps jpg jpeg tif gif emf wmf {
+        dash scatter mpg weight, title(GE16) saving(ge16_`k'.`k', replace)
+        mata: st_local("rf", st_global("r(filename)"))
+        assert "`rf'" == "`ge16pwd'/ge16_`k'.html"
+    }
+    dash scatter mpg weight, title(GE16) saving(ge16u.SVG, replace)
+    // GE-17 -- dash build, HTML and server.
+    dash scatter mpg weight, name(ge17)
+    dash build, saving(ge17.pdf) replace
+    dash build, saving(ge17s.png) replace server
+    // GE-18 -- names graph export does not write are kept.
+    dash scatter mpg weight, saving(ge18.tiff, replace)
+    dash scatter mpg weight, saving(ge18.png.html, replace)
+    dash scatter mpg weight, saving(ge18.png.gph, replace)
+    dash scatter mpg weight, saving(.png, replace)
+    quietly log close ge16
+}
+local rc16 = _rc
+capture log close ge16
+quietly cd "`pwd16'"
+assert `rc16' == 0
+local bad ""
+foreach k in png svg pdf eps ps jpg jpeg tif gif emf wmf {
+    cert_file_has "`ge16d'/ge16_`k'.html", needle("GE16")
+    if r(found) != 1 local bad "`bad' `k':page"
+    capture confirm file "`ge16d'/ge16_`k'.`k'.html"
+    if _rc == 0 local bad "`bad' `k':appended"
+    cert_log_has "`ge16d'/ge16.log", needle("(note:  dash: saving() writes HTML, not a .`k' image; using ge16_`k'.html)")
+    if r(count) != 1 local bad "`bad' `k':note"
+}
+cert_log_has "`ge16d'/ge16.log", needle("(note:  dash: saving() writes HTML, not a .svg image; using ge16u.html)")
+if r(count) != 1 local bad "`bad' SVG:note"
+if "`bad'" != "" display as error "GE-16 FAIL:`bad'"
+assert "`bad'" == ""
+confirm file "`ge16d'/ge16u.html"
+display "GE-16 PASS: the one-line form writes .html for each suffix graph export writes, with one note"
+confirm file "`ge16d'/ge17.html"
+confirm file "`ge16d'/ge17s.py"
+cert_log_has "`ge16d'/ge16.log", needle("(note:  dash build: saving() writes HTML, not a .pdf image; using ge17.html)")
+assert r(count) == 1
+cert_log_has "`ge16d'/ge16.log", needle("(note:  dash build: saving() writes a server app, not a .png image; using ge17s.py)")
+assert r(count) == 1
+cert_file_has "`ge16d'/ge17s.py", needle("def make_document")
+assert r(found) == 1
+display "GE-17 PASS: dash build writes .html, or .py with server, for an image suffix, with one note"
+foreach f in ge18.tiff.html ge18.png.html .png.html {
+    confirm file "`ge16d'/`f'"
+}
+cert_log_has "`ge16d'/ge16.log", needle("image; using ge18")
+assert r(count) == 0
+cert_log_has "`ge16d'/ge16.log", needle("image; using .png")
+assert r(count) == 0
+display "GE-18 PASS: .tiff, .html, .gph and a bare .png name are written as before"
+local fl : dir "`ge16d'" files "*", respectcase
+foreach f of local fl {
+    capture erase "`ge16d'/`f'"
+}
+capture erase "`ge16d'/.png.html"
+capture rmdir "`ge16d'"
+capture dash clear
+
+// GE-19 -- _dash_saving_parse's _sv_img: the row's word, not the user's
+// bytes; none after a .gph, for a bare folder name, or a name kept.
+local bad ""
+foreach c in "a.JPEG|html|a.html|jpeg" "a.gph|html|a.html|" "a.html|html|a.html|" ///
+    "dir/.png|html|dir/.png.html|" "a.eps|html|a.html|eps" "a.ps|html|a.html|ps" ///
+    "a.svg|py|a.py|svg" {
+    tokenize "`c'", parse("|")
+    mata: _dash_saving_parse(st_local("1"), st_local("3"))
+    if "`_sv_file'" != "`5'" | "`_sv_img'" != "`7'" local bad "`bad' `1'->`_sv_file'/`_sv_img'"
+}
+if "`bad'" != "" display as error "GE-19 FAIL:`bad'"
+assert "`bad'" == ""
+display "GE-19 PASS: _sv_img names the suffix replaced, from the fixed row"
+
 display ""
 display "test_path_validation.cscript: ALL CHECKS PASSED"

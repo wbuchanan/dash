@@ -3475,6 +3475,9 @@ end
     python: _pf_m12 = _pf_stat.S_IMODE(_pf_os.stat(_PF_TMP).st_mode)
     python: _pf_M.setLocal("pf12_before", oct(_pf_m12))
     capture erase "`pf_sd'/rec.txt"
+    // WP-30 P1.28a: no Stata graph in memory, so dash's graph export note
+    // is not among the notes counted (setup only; the counts are unchanged).
+    quietly graph drop _all
     capture dash clear
     python: _pf_os.chmod(_PF_TMP, _pf_m12 | 0o020)
     capture noisily {

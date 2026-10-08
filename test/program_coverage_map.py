@@ -336,6 +336,7 @@ COVERAGE = {
         "_dash_value_list": ("test_varlist_expansion.cscript:PS-08", "test_varlist_expansion.cscript:PS-12"),
         # WP-30 S21 (P1.3a): natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)
         # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
+        "_dash_result": ("test_export.cscript:GE-09", "test_export.cscript:GE-01"),
         # WP-30 S23 (P1.26b): Served notes reach Stata (P1.26 part b, M6)
         # WP-30 S24 (P1.4a): Scheme opacity, histogram style and symbols reach every layer (P1.4 part a)
         # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
@@ -747,6 +748,8 @@ COVERAGE = {
         "_dash_stylelist_locals": ("test_varlist_expansion.cscript:PS-01",),
         # WP-30 S21 (P1.3a): natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)
         # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
+        "_dash_abs_path": ("test_export.cscript:GE-11",),
+        "_dash_graph_names": ("test_export.cscript:GE-14",),
         # WP-30 S23 (P1.26b): Served notes reach Stata (P1.26 part b, M6)
         # WP-30 S24 (P1.4a): Scheme opacity, histogram style and symbols reach every layer (P1.4 part a)
         # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)

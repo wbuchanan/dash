@@ -53,6 +53,8 @@
 *! (TOK-01); a real dash serve refuses without the key and serves 74 rows
 *! with it, the link in a 0600 file of a 0700 folder (TOK-02); no log
 *! holds the key (TOK-03); the help names it (TOK-04).
+*! GE-20 (WP-30 P1.28a), after TOK-04 and before SRV-19: dash serve stores
+*! nothing in r().
 *!
 *! Usage:  do test/test_serve_launch.cscript
 *! Version: 1.2  24sep2026
@@ -994,6 +996,47 @@ assert `tok04d' == 0
 assert `tok04e' == 0
 display "TOK-04 PASS: the help names DASH_SERVE_TOKEN, ?token= and --token-stdin, and no longer claims only this machine can reach it"
 dash clear
+
+// ================================================================
+// GE-20 (WP-30 P1.28a) -- dash serve stores nothing in r(), so neither a
+// path nor the served key can be: a stub renderer (SRV-17's) stands in.
+// Paths are built by hand, never from tempfile or tempname (the session
+// counter SRV-19 reads; see SPU-01).
+// ================================================================
+local ge20d "`c(tmpdir)'dash_ge20_`c(current_time)'"
+local ge20d = subinstr("`ge20d'", ":", "", .)
+capture mkdir "`ge20d'"
+capture file close ge20fh
+file open ge20fh using "`ge20d'/dash_render.py", write text replace
+file write ge20fh `"import os, shutil, sys"' _n
+file write ge20fh `"_a = sys.argv[1:]"' _n
+file write ge20fh `"_d = os.path.dirname(os.path.abspath(__file__))"' _n
+file write ge20fh `"shutil.copyfile(_a[_a.index("--spec") + 1], os.path.join(_d, "spec.json"))"' _n
+file write ge20fh `"shutil.copyfile(_a[_a.index("--data") + 1], os.path.join(_d, "data.json"))"' _n
+file write ge20fh `"open(_a[_a.index("--output") + 1], "w", encoding="utf-8").write("# app")"' _n
+file close ge20fh
+dash clear
+qui sysuse auto, clear
+dash scatter mpg weight, name(ge20)
+dash build, saving("`ge20d'/ge20.html") replace nobrowser
+adopath ++ "`ge20d'"
+capture noisily {
+    quietly summarize price
+    dash serve
+    mata: st_local("ge20m", invtokens(st_dir("r()", "macro", "*")'))
+    mata: st_local("ge20s", strofreal(rows(st_dir("r()", "numscalar", "*"))))
+}
+local rc20 = _rc
+adopath - "`ge20d'"
+local fl : dir "`ge20d'" files "*"
+foreach f of local fl {
+    capture erase "`ge20d'/`f'"
+}
+capture rmdir "`ge20d'"
+dash clear
+assert `rc20' == 0
+assert "`ge20m'" == "" & "`ge20s'" == "0"
+display "GE-20 PASS: dash serve stores nothing in r()"
 
 // ================================================================
 // SRV-19 -- dash serve writes its app into a private run folder of this

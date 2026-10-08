@@ -976,4 +976,7 @@ class TestInternalLinksResolve:
         refs = re.findall(r"dash##[a-z_0-9]+", _help_text())
         # 77 -> 78 links, 30 -> 31 markers: WP-30 batch 4 (P1.19, P1.27).
         # 78 -> 80 links: WP-30 P1.1b, mlabel() and jitter() link Style lists.
-        assert len(refs) == 80 and len(set(refs)) == 31
+        # 80 -> 86 links to 31 -> 32 markers: WP-30 P1.28a links Exporting
+        # and Stored results (jump list, Description, Stored results) and
+        # adds the results marker.
+        assert len(refs) == 86 and len(set(refs)) == 32

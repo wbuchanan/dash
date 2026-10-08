@@ -6,6 +6,8 @@
 {viewerjumpto "Differences from twoway" "dash##differences"}{...}
 {viewerjumpto "Subcommands"       "dash##subcommands"}{...}
 {viewerjumpto "Dashboard Options" "dash##dashboard_options"}{...}
+{viewerjumpto "Exporting"         "dash##export"}{...}
+{viewerjumpto "Stored results"    "dash##results"}{...}
 {viewerjumpto "Layout"            "dash##layout"}{...}
 {viewerjumpto "Linking and Brushing" "dash##linking"}{...}
 {viewerjumpto "The toolbar"       "dash##toolbar"}{...}
@@ -151,6 +153,12 @@ empty graph.
 interactive HTML file instead of a static Stata graph window.
 The HTML file works offline in any modern browser -- no server, internet
 connection, or special software is required.
+
+{pstd}
+A dashboard is not a Stata graph: {cmd:graph export}, {cmd:graph save},
+{cmd:putdocx} and {cmd:dyndoc} do not see it.  {cmd:dash} stores the path of
+the file it wrote in {cmd:r(filename)}; see {help dash##export:Exporting} and
+{help dash##results:Stored results}.
 
 {pstd}
 For plot types, marker/line/axis options, and {it:if}/{it:in} qualifiers,
@@ -1080,7 +1088,10 @@ The following options are available on {cmd:dash build}.
 {synoptline}
 {synopt:{cmdab:sav:ing}{cmd:(}{it:filepath}{cmd:)}}required; the file to
     write: {cmd:.html} is appended to a name that does not end in it and a
-    {cmd:.gph} suffix is replaced, as on the one-line form;
+    {cmd:.gph} suffix is replaced, as on the one-line form, and so is a
+    suffix {cmd:graph export} writes ({cmd:.png}, {cmd:.svg}, {cmd:.pdf},
+    {cmd:.eps}, {cmd:.ps}, {cmd:.jpg}, {cmd:.jpeg}, {cmd:.tif}, {cmd:.gif},
+    {cmd:.emf}, {cmd:.wmf}), with a note;
     {cmd:saving(}{it:filepath}{cmd:, replace)} overwrites and {cmd:asis} is
     accepted; see {help dash##saving_chars:Characters in saving()}{p_end}
 {synopt:{cmdab:ti:tle}{cmd:(}{it:string}{cmd:)}}dashboard page title{p_end}
@@ -1176,6 +1187,42 @@ on the toolbar (see {help dash##toolbar:The toolbar}).  With {cmd:csv} it
 can also give you its data.
 
 {pstd}
+{ul:graph export.}  A dashboard is drawn in the browser, not in a Stata
+Graph window, so {cmd:graph export} cannot write it: {cmd:graph export}
+writes the graph displayed in a Graph window, and with none it stops with
+"no Graph window open", {cmd:r(601)}.  If Stata holds an earlier graph,
+{cmd:graph export} after {cmd:dash} writes that graph.  So that this is never
+silent, a {cmd:dash} command that writes a file -- the one-line form and
+{cmd:dash build} -- prints one note when Stata holds a graph in memory (the
+graphs {cmd:graph dir, memory} lists), naming up to five of them:
+{cmd:(note: dash: graph export writes the graph in Stata's Graph window,}
+{cmd:not this dashboard; graphs in memory: Graph)}.
+{cmd:dash} never draws, drops or changes a Stata graph.  In batch, a graph
+removed with {cmd:graph drop} can still be the one {cmd:graph export} writes;
+it is no longer in memory, and no note is printed.
+
+{pstd}
+{ul:Images.}  The toolbar's save button writes the figures as a PNG image at
+the screen's resolution.  A do-file cannot write an image of a dashboard:
+that needs a web browser driven from Stata, which {cmd:dash} does not ship.
+A do-file finds the page in {cmd:r(filename)} (see
+{help dash##results:Stored results}).  {cmd:saving()} always writes HTML
+({cmd:.py} with {cmd:server}): a name ending in a suffix {cmd:graph export}
+writes -- {cmd:.png}, {cmd:.svg}, {cmd:.pdf}, {cmd:.eps}, {cmd:.ps},
+{cmd:.jpg}, {cmd:.jpeg}, {cmd:.tif}, {cmd:.gif}, {cmd:.emf} or {cmd:.wmf}, in
+any case -- has that suffix replaced, with a note, on the one-line form and
+{cmd:dash build}: {cmd:saving(fig.png)} writes {cmd:fig.html}.
+({cmd:twoway}'s {cmd:saving(fig.png)} writes a {cmd:.gph} file named
+{cmd:fig.png}.)  The figures are drawn on an HTML canvas; {cmd:dash} has no
+SVG drawing mode, because a figure drawn as SVG cannot be saved by the
+toolbar's button.
+
+{pstd}
+{ul:Printing.}  Printing the page from the browser prints what the screen
+shows: with {cmd:tabs()}, the tab that is showing and none of the others.
+Print each tab in turn.
+
+{pstd}
 With {cmd:csv}, the dashboard carries a {bf:Download CSV} button beside its
 filters (or on its own, when there are none).  It downloads
 {it:dashboard.csv}: every observation the filters currently leave, in the
@@ -1219,6 +1266,34 @@ browser only what it draws.  When served, each click is computed on the server f
 same filters, and a session may download twice at once and then once every
 five seconds.  {cmd:dash serve} inherits {cmd:csv} from the preceding
 {cmd:dash build}, as it inherits every dashboard option.
+
+
+{marker results}{...}
+{title:Stored results}
+
+{pstd}
+{cmd:dash} stores the following in {cmd:r()}:
+
+{p2colset 5 20 24 2}{...}
+{p2col 5 20 24 2: Macros}{p_end}
+{p2col:{cmd:r(filename)}}the file the command wrote, as an absolute path{p_end}
+{p2colreset}{...}
+
+{pstd}
+{cmd:r(filename)} is stored by the commands that write a file: the one-line
+form with {cmd:saving()} (the page), the one-line form without it (the
+preview page in {cmd:c(tmpdir)}{cmd:dash-}{it:uid}{cmd:/previews/}),
+{cmd:dash build} (the page), and {cmd:dash build} with {cmd:server} (the
+{cmd:.py} app).
+It is the path the "saved to" line shows, joined to the working directory
+when it is relative, so it still names the file after a {cmd:cd}.  A preview
+is temporary: the newest five of a session are kept, and {cmd:dash clear}
+removes the session's previews (see {help dash##tempfiles:Temporary files and privacy});
+use {cmd:saving()} to keep a page.  Registering a graph or a KPI card,
+{cmd:dash clear} and {cmd:dash serve} store nothing; {cmd:dash serve} writes
+no file of yours, and the key in its address is never stored.  A command
+that stops with an error stores nothing.  As after {cmd:twoway}, every
+{cmd:dash} command replaces the {cmd:r()} results of the command before it.
 
 
 {marker layout}

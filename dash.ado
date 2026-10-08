@@ -81,7 +81,7 @@ if `"`_dash_matalib'"' != "" {
     capture run "`_dash_matalib'"
 }
 
-program define dash
+program define dash, rclass
     // WP-30 P1.35: the Stata floor first, before `version', so an older
     // Stata is refused in dash's words; then the Mata guard, the dependency
     // guard, the prefix strip, the rclass dispatch (A154).
@@ -114,8 +114,20 @@ program define dash
     if "`_pf_kind'" == "strip" {
         global dash__uv = string(_caller())
         _dash_plot `macval(0)'
+        _dash_result
+        return add
         exit
     }
+
+    // WP-30 P1.28a, M8: dash is rclass so that, as after twoway, a command
+    // leaves nothing in r() but what it means to return: r(filename), the
+    // absolute path of the file a command wrote, posted by _dash_result
+    // and return add at the end of each route that can write (the prefixed
+    // route above, build, and the plot route).  kpi, clear and serve post
+    // nothing, and a refused command posts nothing, because an rclass
+    // program that stops with an error leaves r() empty.  _dash_result
+    // runs last: an rclass program that errors after its own return keeps
+    // it (measured).
 
     // ----------------------------------------------------------------
     // Subcommand routing
@@ -149,6 +161,8 @@ program define dash
     }
     if "`_subcmd'" == "build" {
         _dash_build `macval(_args)'
+        _dash_result
+        return add
         exit
     }
     if "`_subcmd'" == "clear" {
@@ -169,6 +183,43 @@ program define dash
     // P0.6).  Read here, where _caller() is the user's.
     global dash__uv = string(_caller())
     _dash_plot `macval(0)'
+    _dash_result
+    return add
+end
+
+
+// ================================================================
+// _dash_result  -- dash's r() (WP-30 P1.28a)
+// ================================================================
+// r(filename) is the absolute path of the file the command wrote, which
+// _dash_render_immediate and _dash_build leave in the global dash__rfile
+// as their last statement (through _dash_abs_path); _dash_plot and
+// _dash_build drop it first.  The global is read with st_global() and
+// returned through macval(): `return local filename "$dash__rfile"'
+// expands a $ or a backquote in the path a second time (measured: a$b.html
+// came back aZZ.html).  When Stata holds a graph in memory, one note says
+// that graph export writes that graph, not the dashboard; it names the
+// graphs graph dir, memory lists, not graph describe's current graph,
+// which is not the one graph export writes after graph drop, graph close
+// or a nodraw draw (measured).  It never draws, drops, displays or
+// exports a graph.  It runs once per route, so the note prints at most
+// once per command; a graph dropped but still shown in the console's
+// Graph window is not in memory and gets no note.  The capture keeps a
+// written page from being reported as a failure because of the note.
+program define _dash_result, rclass
+    version 19
+    mata: st_local("_rf", st_global("dash__rfile"))
+    capture macro drop dash__rfile
+    if `: length local _rf' == 0 exit
+    local _gn ""
+    capture {
+        quietly graph dir, memory
+        mata: st_local("_gn", _dash_graph_names(st_global("r(list)"), 5))
+    }
+    if `: length local _gn' {
+        mata: _dash_note("dash: graph export writes the graph in Stata's Graph window, not this dashboard; graphs in memory: ", st_local("_gn"), "")
+    }
+    return local filename `"`macval(_rf)'"'
 end
 
 
@@ -328,7 +379,8 @@ program define _dash_require_mata
         _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
-        _dash_strip_prefix _dash_seg_saving _dash_saving_parse _dash_launch_quote _dash_launch_warn
+        _dash_strip_prefix _dash_seg_saving _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
+        _dash_abs_path _dash_graph_names
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
     // alone and took the library for whole when it was there, so a library
@@ -5513,6 +5565,9 @@ end
 // ================================================================
 program define _dash_plot
     version 19
+    // WP-30 P1.28a: a path left by a command interrupted between its write
+    // and its result must never reach a later command's r().
+    capture macro drop dash__rfile
 
     // ---- UTF-8 safety check ----
     // The command is read by value, here and at every command's gate: put
@@ -7097,6 +7152,10 @@ program define _dash_render_immediate
         if `_gph' {
             mata: _dash_note("dash: saving() writes HTML, not a Stata .gph; using ", st_local("saving_path"), "")
         }
+        // WP-30 P1.28a: a suffix graph export writes is replaced too.
+        if "`_sv_img'" != "" {
+            mata: _dash_note("dash: saving() writes HTML, not a ." + st_local("_sv_img") + " image; using ", st_local("saving_path"), "")
+        }
         // A file that is there already is kept unless replace was given --
         // saving(name, replace), twoway's form, or replace after the comma,
         // dash build's, which _dash_plot folds into saving() -- and a
@@ -7444,6 +7503,9 @@ program define _dash_render_immediate
             display as text "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
         }
     }
+    // WP-30 P1.28a: the last statement -- the path written, absolute, for
+    // r(filename) (_dash_result).
+    mata: st_global("dash__rfile", _dash_abs_path(st_local("saving_path"), c("pwd"), c("os")))
 end
 
 
@@ -8684,6 +8746,9 @@ end
 
 program define _dash_build
     version 19
+    // WP-30 P1.28a: a path left by a command interrupted between its write
+    // and its result must never reach a later command's r().
+    capture macro drop dash__rfile
 
     // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
     // leaves Stata.  The gate was applied at exactly one entry point --
@@ -8764,6 +8829,10 @@ program define _dash_build
     if "`_sv_gph'" == "1" {
         local _sv_what = cond("`server'" != "", "a server app", "HTML")
         mata: _dash_say("txt", "dash build: saving() writes " + st_local("_sv_what") + ", not a Stata .gph; using ", st_local("saving"), "")
+    }
+    // WP-30 P1.28a: a suffix graph export writes is replaced too.
+    if "`_sv_img'" != "" {
+        mata: _dash_note("dash build: saving() writes " + (st_local("server") != "" ? "a server app" : "HTML") + ", not a ." + st_local("_sv_img") + " image; using ", st_local("saving"), "")
     }
     // Before the file is looked for: a directory that does not exist is
     // not a file that "already exists" (JSE-52).
@@ -8879,6 +8948,9 @@ program define _dash_build
             _dash_open_page, path(`"`saving'"')
         }
     }
+    // WP-30 P1.28a: the last statement -- the path written, absolute, for
+    // r(filename) (_dash_result).
+    mata: st_global("dash__rfile", _dash_abs_path(st_local("saving"), c("pwd"), c("os")))
 end
 
 

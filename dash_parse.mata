@@ -50,7 +50,7 @@
 *!
 *!   _dash_saving_parse(s, ext)
 *!       saving()'s one grammar, as twoway reads it; refuses r(198) or sets
-*!       _sv_file, _sv_replace, _sv_asis, _sv_gph and _sv_comma.  Its
+*!       _sv_file, _sv_replace, _sv_asis, _sv_gph, _sv_comma and _sv_img.  Its
 *!       internal helper is _dash_saving_split().
 *!
 *!   _dash_seg_saving(seg)
@@ -62,6 +62,13 @@
 *!
 *!   _dash_launch_warn(path, os)
 *!       On Windows, the line naming % and ! in path; else "".
+*!
+*!   _dash_abs_path(path, pwd, os)
+*!       path when it is absolute on os, else pwd, one separator and path,
+*!       with nothing normalised.
+*!
+*!   _dash_graph_names(list, max)
+*!       The first max graph names of list, then "and N more".
 *!
 *!   _dash_cmd_metachar(path)
 *!       The byte value of the first character Windows' command shell
@@ -954,12 +961,14 @@ string rowvector _dash_saving_split(string scalar s)
 // locals _sv_file (the name: a .gph suffix replaced, "." + ext appended
 // unless it ends so), _sv_replace ("replace"/""), _sv_asis ("asis"/"";
 // accepted, no effect), _sv_gph ("1" when .gph was replaced) and
-// _sv_comma ("1" when the text has a comma).  Helper:
+// _sv_comma ("1" when the text has a comma), _sv_img (the graph export
+// suffix replaced, or "").  Helper:
 // _dash_saving_split().  Linear in the length of s.
 void _dash_saving_parse(string scalar s, string scalar ext)
 {
-    string rowvector r
-    string scalar    f, gph
+    string rowvector r, sfx
+    string scalar    f, gph, img, stem
+    real scalar      k, n
 
     r = _dash_saving_split(s)
     if (r[5] != "") {
@@ -972,6 +981,28 @@ void _dash_saving_parse(string scalar s, string scalar ext)
         f   = substr(f, 1, strlen(f) - 4)
         gph = "1"
     }
+    // WP-30 P1.28a: a suffix graph export writes -- its own eleven
+    // (gr_export.ado's VerifySuffix, measured) -- is replaced, not kept:
+    // twoway's saving(t.png) writes a .gph named t.png, and dash writes
+    // HTML and says so (_sv_img, the word from this row, never the
+    // user's bytes).  .tiff and other names graph export does not
+    // recognise are left alone, and a name that would become empty or a
+    // bare folder keeps its suffix.
+    img = ""
+    if (gph == "") {
+        sfx = ("png", "svg", "pdf", "eps", "ps", "jpg", "jpeg", "tif",
+               "gif", "emf", "wmf")
+        for (k = 1; k <= cols(sfx); k++) {
+            n = strlen(sfx[k]) + 1
+            if (strlen(f) <= n) continue
+            if (strlower(substr(f, strlen(f) - n + 1, n)) != "." + sfx[k]) continue
+            stem = substr(f, 1, strlen(f) - n)
+            if (substr(stem, -1, 1) == "/" | substr(stem, -1, 1) == char(92)) continue
+            f   = stem
+            img = sfx[k]
+            break
+        }
+    }
     if (strlen(f) < strlen(ext) + 1 |
         strlower(substr(f, strlen(f) - strlen(ext), .)) != "." + strlower(ext)) {
         f = f + "." + ext
@@ -981,6 +1012,7 @@ void _dash_saving_parse(string scalar s, string scalar ext)
     st_local("_sv_asis", r[3] == "1" ? "asis" : "")
     st_local("_sv_gph", gph)
     st_local("_sv_comma", r[4] == "1" ? "1" : "")
+    st_local("_sv_img", img)
 }
 
 // _dash_seg_saving(seg) -- the value of the last saving() a segment or an
@@ -1029,6 +1061,51 @@ string scalar _dash_launch_warn(string scalar path, string scalar os)
     if (os != "Windows") return("")
     if (!strpos(path, "%") & !strpos(path, "!")) return("")
     return("  Windows:   cmd.exe expands % and ! in this path when the line is pasted; run the app from a folder whose path has neither")
+}
+
+// _dash_abs_path(path, pwd, os) -- the absolute path of the file a dash
+// command wrote, for r(filename) (WP-30 P1.28a): path unchanged when it
+// is absolute on os (c(os); "~" counts on a Mac and Unix, as pathisabs()
+// says), else pwd, one separator and path.  Nothing is normalised:
+// pathjoin() resolves ".." lexically and rewrites a backslash to a slash
+// on Unix (measured), and would name a file dash did not write.  Pure,
+// no file-system access; linear in the lengths.
+string scalar _dash_abs_path(string scalar path, string scalar pwd,
+                             string scalar os)
+{
+    string scalar c1, last, sep
+
+    if (path == "") return("")
+    c1 = substr(path, 1, 1)
+    if (os == "Windows") {
+        if (c1 == "/" | c1 == char(92)) return(path)
+        if (strlen(path) >= 2 & substr(path, 2, 1) == ":" &
+            ((c1 >= "A" & c1 <= "Z") | (c1 >= "a" & c1 <= "z"))) return(path)
+        sep = char(92)
+    }
+    else {
+        if (c1 == "/" | c1 == "~") return(path)
+        sep = "/"
+    }
+    if (pwd == "") return(path)
+    last = substr(pwd, -1, 1)
+    if (last == "/" | last == char(92)) return(pwd + path)
+    return(pwd + sep + path)
+}
+
+// _dash_graph_names(list, max) -- the first max names of graph dir,
+// memory's list, then "and N more" (WP-30 P1.28a).  The list, not graph
+// describe's current graph: after graph drop, graph close or a nodraw
+// draw that is not the graph graph export writes (measured).  Linear in
+// the length of list.
+string scalar _dash_graph_names(string scalar list, real scalar max)
+{
+    string rowvector t
+
+    t = tokens(list)
+    if (cols(t) == 0) return("")
+    if (cols(t) <= max) return(invtokens(t))
+    return(invtokens(t[1..max]) + " and " + strofreal(cols(t) - max) + " more")
 }
 
 void _dash_check_utf8(string scalar s) {

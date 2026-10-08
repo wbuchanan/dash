@@ -565,7 +565,13 @@ and now matches Stata.
 
 - Six more StataCorp schemes, twenty-six in all: meta, stcolor_meta, stcolor_mv, stcoloralias, stgcolor_meta and stgcolor_mv. scheme(meta) and the others were refused r(198), and a session set to one of them (set scheme stcolor_meta) was drawn as s2color with a warning; each is now drawn as twoway draws it in both modes (stcolor_meta's solid #c10534 yline(), stgcolor_meta's 3.987 x 2.392 proportions, meta's 8-point tick labels and legend at 4 o'clock), and an #include of one of them in a scheme file of yours resolves. stcoloralias is drawn as stcolor: its zyx2rule colorvar is not read, and twoway draws a colorvar() scatter the same under both. (WP-30, P1.25a)
 
-<!-- WP-30 P1.28a -->
+- `dash` stores the file it wrote in `r(filename)`, as an absolute path:
+  the one-line form's page (or its temporary preview), `dash build`'s
+  page and `dash build, server`'s app. A command that writes a file notes
+  once, when Stata holds a graph in memory, that `graph export` writes
+  that graph and not the dashboard. The help gains Stored results and says
+  what `graph export`, printing and the toolbar can and cannot do.
+  (WP-30, P1.28a)
 
 <!-- WP-30 P1.28b -->
 
@@ -765,7 +771,14 @@ and now matches Stata.
 - saving() is read as twoway reads it, on the one-line form and on `dash build`: a sub-option other than replace and asis, written in full, in lower case and once each, is refused with twoway's "option bogus not allowed", r(198), and an unquoted name holding a blank with "invalid syntax,  file.html not allowed", r(198). `saving(n, bogus)` used to write a file named "n, bogus.html" and `saving(my file.html)` wrote "my file.html"; put such a name in quotes. (WP-30, P1.27)
 - `twow`, `twowa`, `gra` and `grap` (and a capitalised TWOWAY or Graph) in front of the plots are refused with r(199), "command twow is unrecognized", as Stata refuses them; they gave r(198), "unrecognised plot type". A second prefix, `dash twoway twoway scatter mpg weight`, says "twoway is not a twoway plot type", r(198). (WP-30, P1.27)
 
-<!-- WP-30 P1.28a -->
+- `r()` after `dash` holds only `r(filename)`, and nothing after a
+  registration, `dash kpi`, `dash clear`, `dash serve` or a refusal, as
+  `twoway` clears `r()`. It used to hold dash's internal results, such as
+  `r(fn)` naming dash.ado after the one-line form, `r(open)` and `r(flag)`
+  after `dash build`, and `summarize`'s `r(mean)` after `dash kpi`.
+  `saving(fig.png)`, or any suffix `graph export` writes, now writes
+  fig.html with a note; the one-line form and `dash build` wrote
+  fig.png.html silently. (WP-30, P1.28a)
 
 - On a Stata older than 19, dash and dash_setup stop before doing anything else with "dash requires Stata 19 or later; this is Stata 18.5" (the running release) and r(9). Stata 16-18.5 used to run dash untested, and Stata 14-15 stopped with Stata's own "cannot run version 16.0 programs". A do-file that sets version 16 or 17 on Stata 19 is unaffected. (WP-30, P1.35)
 
