@@ -6772,6 +6772,142 @@ if inlist("`only'", "", "S28") {
 local only : env WP30_ONLY
 if inlist("`only'", "", "S29") {
     display as text "S29 start " c(current_date) " " c(current_time)
+    local W "`w30_work'"
+
+    // GT-01 (guard, the truth): a symbol, a character, a whole-bold text,
+    // value labels as panel titles, string and immediate marker labels.
+    sysuse auto, clear
+    quietly twoway scatter mpg weight, title("{&alpha} R{c 233}") ///
+        subtitle("{bf:Whole bold}") name(s29a, replace)
+    cert_svg_export, name(s29a) file("`W'/s29a.svg")
+    local s29_svg "`r(file)'"
+    foreach t in "α Ré" "Whole bold" {
+        cert_svg_has_text, file("`s29_svg'") text(`"`t'"')
+        local s29_f = r(found)
+        _w30_expect GT-01 "(`s29_f' == 1)" `"twoway did not draw `t'"'
+    }
+    label define s29o 0 "{it:Dom}" 1 "{&alpha}For", replace
+    label values foreign s29o
+    generate str12 s29ml = cond(foreign, "{&beta}b", "{bf:Bx}")
+    quietly twoway scatter mpg weight, by(foreign) mlabel(s29ml) name(s29b, replace)
+    cert_svg_export, name(s29b) file("`W'/s29b.svg")
+    local s29_svg "`r(file)'"
+    foreach t in "Dom" "αFor" "βb" "Bx" {
+        cert_svg_has_text, file("`s29_svg'") text(`"`t'"')
+        local s29_f = r(found)
+        _w30_expect GT-01 "(`s29_f' >= 1)" `"twoway did not draw `t'"'
+    }
+    quietly twoway scatteri 2 2 "{&beta}imm" 4 3 "{bf:Bimm}", name(s29c, replace)
+    cert_svg_export, name(s29c) file("`W'/s29c.svg")
+    cert_svg_has_text, file("`r(file)'") text("βimm")
+    local s29_f = r(found)
+    _w30_expect GT-01 "(`s29_f' == 1)" "twoway did not draw the scatteri label"
+    // twoway cuts a label off at {c 0}, keeping the text before it
+    // (measured 08oct2026; register A34 "Mirror twoway"): the label is
+    // exactly s29qzq, and the anchor proves the graph was drawn and read.
+    quietly twoway scatteri 2 2 "s29qzq{c 0}x" 4 3 "s29anchor", name(s29z, replace)
+    cert_svg_export, name(s29z) file("`W'/s29z.svg")
+    local s29_svg "`r(file)'"
+    cert_svg_has_text, file("`s29_svg'") text("s29qzq")
+    local s29_f = r(found)
+    cert_svg_has_text, file("`s29_svg'") text("s29anchor")
+    local s29_a = r(found)
+    _w30_expect GT-01 "(`s29_f' == 1 & `s29_a' == 1)" ///
+        "twoway c-0 label cut `s29_f', anchor `s29_a'"
+    _w30_done GT-01 "twoway draws graph-text markup"
+    quietly graph drop _all
+
+    // GT-02: the same titles in dash.  The page JSON writes every non-ASCII
+    // character as a lower-case \uXXXX escape (bokeh 3.9 measured: "α Ré" is
+    // written \u03b1 R\u00e9), so every needle holding one is written so.
+    // Stata 19 decodes a \uXXXX in a string literal itself (measured
+    // 08oct2026), so each needle spells its backslash `s29b' = char(92).
+    local s29b = char(92)
+    quietly dash scatter mpg weight, title("{&alpha} R{c 233}") ///
+        subtitle("{bf:Whole bold}") saving("`W'/s29a.html", replace)
+    cert_file_has "`W'/s29a.html", needle("`s29b'u03b1 R`s29b'u00e9")
+    local s29_t = r(found)
+    cert_file_has "`W'/s29a.html", needle("{&amp;alpha}")
+    local s29_r1 = r(found)
+    cert_file_has "`W'/s29a.html", needle("{bf:Whole bold}")
+    local s29_r2 = r(found)
+    _w30_expect GT-02 "(`s29_t' == 1 & `s29_r1' == 0 & `s29_r2' == 0)" ///
+        "titles: translated `s29_t', raw symbol `s29_r1', raw bold `s29_r2'"
+    _w30_done GT-02 "titles carry the translated text"
+
+    // GT-03: labels -- a variable label as the y title, value labels as panels.
+    label variable mpg "{&mu} mpg{sup:2}"
+    quietly dash scatter mpg weight, by(foreign) saving("`W'/s29b.html", replace)
+    cert_file_has "`W'/s29b.html", needle("`s29b'u03bc mpg`s29b'u00b2")
+    local s29_y = r(found)
+    cert_file_has "`W'/s29b.html", needle("`s29b'u03b1For")
+    local s29_p = r(found)
+    _w30_expect GT-03 "(`s29_y' == 1 & `s29_p' == 1)" ///
+        "labels: y title `s29_y', panel title `s29_p'"
+    _w30_done GT-03 "variable and value labels are translated"
+
+    // GT-04: string marker labels: a translated column and a style column.
+    quietly dash scatter mpg weight, mlabel(s29ml) saving("`W'/s29m.html", replace)
+    cert_file_has "`W'/s29m.html", needle("`s29b'u03b2b")
+    local s29_m = r(found)
+    cert_file_has "`W'/s29m.html", needle("__dash_mlabstyle_s29ml")
+    local s29_s = r(found)
+    _w30_expect GT-04 "(`s29_m' == 1 & `s29_s' == 1)" ///
+        "mlabel: translated `s29_m', style column `s29_s'"
+    _w30_done GT-04 "string marker labels are translated, whole bold kept"
+
+    // GT-05: immediate labels.
+    quietly dash scatteri 2 2 "{&beta}imm" 4 3 "{bf:Bimm}", saving("`W'/s29i.html", replace)
+    cert_file_has "`W'/s29i.html", needle("`s29b'u03b2imm")
+    local s29_i = r(found)
+    quietly dash pcarrowi 1 1 2 2 "{&gamma}arr", saving("`W'/s29j.html", replace)
+    cert_file_has "`W'/s29j.html", needle("`s29b'u03b3arr")
+    local s29_j = r(found)
+    _w30_expect GT-05 "(`s29_i' == 1 & `s29_j' == 1)" ///
+        "immediates: scatteri `s29_i', pcarrowi `s29_j'"
+    _w30_done GT-05 "immediate labels are translated"
+
+    // GT-06: one note per graph and kind, never echoing the text.  The
+    // text is built with char() so the command echo cannot hold it.
+    local s29t = char(123) + "bf:a" + char(125) + "b"
+    capture log close s29l
+    quietly log using "`W'/s29n.log", text replace name(s29l)
+    quietly dash scatter mpg weight, title("`s29t'") by(foreign) ///
+        saving("`W'/s29n.html", replace)
+    quietly log close s29l
+    cert_log_has "`W'/s29n.log", needle("own style")
+    local s29_n = r(count)
+    cert_log_has "`W'/s29n.log", needle("{bf:a}b")
+    local s29_e = r(count)
+    _w30_expect GT-06 "(`s29_n' == 1 & `s29_e' == 0)" ///
+        "note lines `s29_n', user text echoed `s29_e'"
+    _w30_done GT-06 "one note, no user text"
+
+    // GT-07: as twoway draws them (A34, "Mirror twoway"): control codes
+    // are kept, and the page JSON carries them as lower-case \u escapes,
+    // never raw; {c 0} cuts the text off, as twoway does (measured
+    // 08oct2026), so the subtitle is exactly s29qzq.
+    sysuse auto, clear
+    quietly dash scatter mpg weight, title("a{c 1}b{c 27}c{c 129}d") ///
+        subtitle("s29qzq{c 0}x") saving("`W'/s29k.html", replace)
+    cert_file_has "`W'/s29k.html", needle(`""text":"a\u0001b\u001bc\u0081d""')
+    local s29_k = r(found)
+    cert_file_has "`W'/s29k.html", needle(`""text":"s29qzq""')
+    local s29_z = r(found)
+    cert_file_has "`W'/s29k.html", needle("s29qzq{c 0}x")
+    local s29_r = r(found)
+    _w30_expect GT-07 "(`s29_k' == 1 & `s29_z' == 1 & `s29_r' == 0)" ///
+        "escaped control title `s29_k', cut subtitle `s29_z', raw `s29_r'"
+    _w30_done GT-07 "control codes kept and escaped, c-0 cuts the text"
+
+    // GT-08 (guard): a title of 5,000 open braces builds.
+    local s29h = 5000*"{"
+    capture quietly dash scatter mpg weight, title("`s29h'x") ///
+        saving("`W'/s29h.html", replace)
+    local s29_rc = _rc
+    _w30_expect GT-08 "(`s29_rc' == 0)" "hostile title rc `s29_rc'"
+    _w30_done GT-08 "hostile markup builds"
+
     display as text "S29 end " c(current_date) " " c(current_time)
 }
 * ==== end S29 ====

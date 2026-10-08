@@ -215,7 +215,12 @@ class TestScatteriDrawsItsRecords:
         payload = '<img src=x onerror=alert(1)>{bf:X}"],"expr":"1'
         _, fig, _, _ = _draw("map_scatteri", [[0, 1, payload, 12]])
         (ls,) = _labelsets(fig)
-        assert list(ls.source.data[_text_field(ls)]) == [payload]
+        # Flipped (WP-30 P1.11b): {bf:X} is graph-text markup, which twoway
+        # draws as the bold text; the label stays text, never HTML or
+        # script, and the raw column still holds the payload.
+        assert list(ls.source.data[_text_field(ls)]) == [
+            payload.replace("{bf:X}", "X")]
+        assert payload in [v for c in ls.source.data.values() for v in c]
         # WP-30 P1.12a (Evidence E5, twoway measured): 12 o'clock is
         # radius + default gap, 2.93334 + 2.66667 px, straight up.
         assert ls.x_offset == 0
@@ -454,4 +459,7 @@ class TestBothModesDrawTheSame:
                for ls in doc.select({"type": LabelSet})]
         # WP-30 P1.12a (Evidence E5, twoway measured): 9 o'clock is
         # -(radius + default gap), -(2.93334 + 2.66667) px.
-        assert got == [(-_D, 0, [payload])]
+        # Flipped (WP-30 P1.11b): {bf:X} is graph-text markup, which twoway
+        # draws as the bold text; the label stays text, never HTML or
+        # script.
+        assert got == [(-_D, 0, [payload.replace("{bf:X}", "X")])]

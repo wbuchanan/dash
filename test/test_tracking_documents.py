@@ -1557,7 +1557,6 @@ WP30_OPEN = {
     "P1.9a": "horizontal is not drawn on any plot type, and vertical is named as unsupported",
     "P1.9b": "The filter-move redraws of both modes write vertical geometry only, so a horizontal layer cannot keep its orientation after a move",
     "P1.10": "text() and ttext() annotations are not drawn",
-    "P1.11b": "SMCL in graph text, such as {bf:}, {it:}, {sup:}, {&beta} and {c #}, is drawn literally",
     "P1.13a": "Stata colour forms such as navy*.5, CMYK, HSV, bg and fg are refused, and an unknown colour is drawn in the scheme's default where twoway draws it black with a note",
     "P1.13b": "A bare *# or %# colour, such as mcolor(*.5), is refused or loses the site's default colour, where twoway adjusts that default",
     "P1.14a": "pstyle() works only on the four CI fits, and lstyle, mstyle, mlstyle, astyle, alstyle, bstyle and their siblings are not read",

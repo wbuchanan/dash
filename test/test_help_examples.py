@@ -75,15 +75,16 @@ def _help_lines(name):
 
 class TestTheShapeOfTheExamples:
     """WP-23, after every example was made one a fresh session can run: 32
-    groups, 98 commands, 102 lines (29, 63 and 65 at 4ede074)."""
+    groups, 98 commands, 102 lines (29, 63 and 65 at 4ede074); WP-30
+    P1.11b's Text in graphs example makes 33, 100 and 104."""
 
     GROUP_SIZES = [3, 2, 2, 2, 4, 6, 4, 2, 1, 2, 2, 5, 4, 5, 2, 6, 4, 2, 2,
-                   5, 2, 2, 2, 3, 2, 2, 3, 7, 2, 3, 3, 2]
+                   5, 2, 2, 2, 3, 2, 2, 2, 3, 7, 2, 3, 3, 2]
 
     def test_how_many(self, groups):
-        assert len(groups) == 32
-        assert len(_commands(groups)) == 98
-        assert sum(len(c.lines) for c in _commands(groups)) == 102
+        assert len(groups) == 33
+        assert len(_commands(groups)) == 100
+        assert sum(len(c.lines) for c in _commands(groups)) == 104
 
     def test_how_they_group(self, groups):
         assert [len(g.commands) for g in groups] == self.GROUP_SIZES

@@ -3459,6 +3459,61 @@ as {cmd:twoway} writes them.
 {phang2}{cmd:. sysuse sp500, clear}{p_end}
 {phang2}{cmd:. dash (line close date) (line volume date, yaxis(2)), ytitle2(Volume (thousands))}{p_end}
 
+{marker graph_text}{...}
+{pstd}
+{ul:Text in graphs.}  Text {cmd:dash} draws on a graph -- a title,
+subtitle, note or caption, an axis title, a tick label, a legend key or
+title, a {cmd:by()} panel title, the colour key and a marker label,
+typed in an option or taken from a variable label, a value label or a
+string variable -- reads Stata's graph-text markup as {cmd:twoway} does
+(see {help graph_text}): {cmd:{c -(}bf:}{it:text}{cmd:{c )-}},
+{cmd:{c -(}it:}{it:text}{cmd:{c )-}}, {cmd:{c -(}sup:}{it:text}{cmd:{c )-}},
+{cmd:{c -(}sub:}{it:text}{cmd:{c )-}}, the font tags
+{cmd:{c -(}stSans:}, {cmd:{c -(}stSerif:}, {cmd:{c -(}stMono:},
+{cmd:{c -(}stSymbol:} and {cmd:{c -(}fontface "}{it:name}{cmd:":}, each
+also as {cmd:{c -(}bf{c )-}}, which holds to the end of the line, the
+symbols {cmd:{c -(}&}{it:name}{cmd:{c )-}} ({cmd:{c -(}&alpha{c )-}} is
+the Greek letter alpha) and the characters {cmd:{c -(}c }{it:#}{cmd:{c )-}},
+{cmd:{c -(}c 0x}{it:#}{cmd:{c )-}} and {cmd:{c -(}c }{it:name}{cmd:{c )-}}.
+The characters are drawn in Unicode.  A text drawn on a graph has one
+style, one font and one baseline, so markup that covers the whole text
+makes it bold, italic or in that font, and a raised or lowered run uses
+Unicode's superscript or subscript characters when each of its
+characters has one (digits, {cmd:+ - = ( )} and, raised, {cmd:n} and
+{cmd:i}).  Markup on part of a text, or a raised run without such
+characters, is drawn in the text's own style and on the line, and
+{cmd:dash} says so in one note for each graph and kind of text.  Tick
+labels and legend keys take a style only when every one of them has it.
+{cmd:{c -(}stSans:}, {cmd:{c -(}stSerif:} and {cmd:{c -(}stMono:} draw
+in the reader's sans-serif, serif and monospace fonts (Helvetica, Times
+and Courier where installed; a {cmd:graph set} font is not read), and
+{cmd:{c -(}fontface{c )-}} needs that font on the reader's computer.
+As in {cmd:twoway}, a text is cut off at {cmd:{c -(}c 0{c )-}}: the rest
+of the run it sits in is not drawn, and text after that run's closing
+brace, and the text's other lines, are drawn.  The control codes
+({cmd:{c -(}c 1{c )-}} to {cmd:{c -(}c 31{c )-}},
+{cmd:{c -(}c 127{c )-}}, 129, 141, 143, 144 and 157) are kept as those
+characters; the page carries them as escaped text, never as markup or
+script.  One small difference is kept: a symbol inside
+{cmd:{c -(}stSymbol:} is drawn as itself.  Other SMCL
+({cmd:{c -(}hline{c )-}}, {cmd:{c -(}space{c )-}},
+{cmd:{c -(}dup{c )-}}, {cmd:{c -(}cmd:{c )-}}, {cmd:{c -(}hi:{c )-}},
+{cmd:{c -(}ccl{c )-}}, {cmd:{c -(}center:{c )-}} and links) and an
+unknown tag are drawn as typed, as are {cmd:$$} and {cmd:\(} pairs.
+
+{pstd}
+Around the graphs, a filter's title, a dropdown's options taken from
+value labels and a tooltip's row names show the characters, without the
+style and font tags.  KPI titles, the dashboard's title and subtitle,
+{cmd:tabs()} titles, string values in tooltips and dropdowns, and the
+{cmd:csv} download keep the text as it is stored.
+
+{pstd}
+{it:Example:}
+
+{phang2}{cmd:. sysuse auto, clear}{p_end}
+{phang2}{cmd:. dash scatter mpg weight, title("{c -(}&alpha{c )-} = R{c -(}sup:2{c )-}") subtitle("{c -(}bf:Fuel economy{c )-}")}{p_end}
+
 {pstd}
 {ul:Tooltips.}  Each layer's tooltip names the variables that layer
 plots -- its x and y, a range's two ends, a paired-coordinate layer's

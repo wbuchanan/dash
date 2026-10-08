@@ -698,13 +698,17 @@ class TestTextboxAdversarial:
         assert '"' + _AP not in payload and _BT + '"' not in payload
         saved, served, page = _both_modes(tmp_path, {"title": _cq(payload),
                                                      "note": _cq(payload)})
+        # Flipped (WP-30 P1.11b): {bf:...} is graph-text markup, which
+        # twoway draws as the bold text; the title stays text, never HTML
+        # or script, and nothing else in it is read.
+        drawn = payload.replace('{bf:"z"}', '"z"')
         for got in (saved, served):
-            assert got["title"] == payload
-            assert got["labels"] == [payload]
+            assert got["title"] == drawn
+            assert got["labels"] == [drawn]
         # Flipped (WP-30 P1.2a): [payload] was wrong because the note is
         # now a side-panel Title too, so the page holds the title and the
         # note, each the payload as typed.
-        assert _page_titles(page) == [payload, payload]
+        assert _page_titles(page) == [drawn, drawn]
         assert not sentinel.exists()
 
     def test_long_runs_of_quotes_and_apostrophes_are_read_in_bounded_time(

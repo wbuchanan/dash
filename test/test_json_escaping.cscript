@@ -3478,14 +3478,17 @@ display "JSE-63 PASS: text inside a string or parentheses is drawn as text, neve
 
 // JSE-64 -- SMCL, markup, JSON punctuation and Python code between double
 // quotes, in a compound-quoted title and note (CLAUDE.md rule 18,
-// injection), are drawn exactly as typed, and nothing runs.  Measured
-// before: the text was cut at each double quote.
+// injection), are drawn as twoway draws them, and nothing runs.  Measured
+// before: the text was cut at each double quote.  Flipped (WP-30 P1.11b):
+// {bf:...} is graph-text markup, which twoway draws as the bold text; the
+// label stays text, never HTML or script.
 local jr_sent "`c(tmpdir)'jse64_executed"
 capture erase "`jr_sent'"
 mata: st_local("jr_t64", "{bf:" + char(34) + "z" + char(34) + "} {stata dash clear} <script>alert(" + char(34) + "x" + char(34) + ")</script> <b>'q'</b> & &amp; }, ] {" + char(34) + "k" + char(34) + ": 1} __import__('os').system('touch " + st_local("jr_sent") + "')")
-mata: st_global("JR_WANT", st_local("jr_t64"))
+mata: st_local("jr_d64", subinstr(st_local("jr_t64"), "{bf:" + char(34) + "z" + char(34) + "}", char(34) + "z" + char(34), 1))
+mata: st_global("JR_WANT", st_local("jr_d64"))
 global JR_NL 1
-mata: st_global("JR_L1", st_local("jr_t64"))
+mata: st_global("JR_L1", st_local("jr_d64"))
 global JR_QUIET 1
 tempfile jr_p64
 global JR_PAGE "`jr_p64'.html"
@@ -3497,10 +3500,10 @@ capture erase "$JR_PAGE"
 capture confirm file "`jr_sent'"
 local jr_ran64 = (_rc == 0)
 capture erase "`jr_sent'"
-display as text "  drawn as typed: `jr_ok64'  code ran: `jr_ran64'"
+display as text "  drawn as twoway draws them: `jr_ok64'  code ran: `jr_ran64'"
 assert "`jr_ok64'" == "1"
 assert `jr_ran64' == 0
-display "JSE-64 PASS: SMCL, markup, JSON and Python code in a title and note are drawn as typed and run nowhere"
+display "JSE-64 PASS: SMCL, markup, JSON and Python code in a title and note are drawn as twoway draws them and run nowhere"
 
 python: _jr_gone = _jr_sys.modules.pop("_jr_dash_render", None)
 macro drop JR_*

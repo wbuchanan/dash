@@ -373,8 +373,13 @@ class TestMapPcarrowi:
         payload = '<img src=x onerror=alert(1)>{bf:X}"],"expr":"1'
         _, fig, _, _ = self._draw([[0, 0, 0, 1, payload, 3]])
         (ls,) = _labelsets(fig)
+        # Flipped (WP-30 P1.11b): {bf:X} is graph-text markup, which twoway
+        # draws as the bold text; the label stays text, never HTML or
+        # script, and the raw column still holds the payload.
         assert list(ls.source.data[ls.text if isinstance(ls.text, str)
-                                   else ls.text.field]) == [payload]
+                                   else ls.text.field]) == [
+            payload.replace("{bf:X}", "X")]
+        assert payload in [v for c in ls.source.data.values() for v in c]
 
     @pytest.mark.parametrize("bad", [
         [[0, 0, "x", 1]], [[0, 0, 1]], [[0, 0, 1, 1, "a", 3, 9]], ["0 0 1 1"],

@@ -925,6 +925,17 @@ FUNCTIONS = {
  '_dash_by_text_options': 'test/test_by_text.py::TestTheTextOptions::test_merge',
  '_dash_by_value_missing': 'test/test_by_text.py::TestTheMissingRule::test_values',
  # WP-30 S29 (P1.11b): SMCL in graph text (P1.11 part b)
+ 'GlyphMapper._mlabel_markup': 'test/test_graph_text.py::TestMarkerLabels::test_the_decision_reads_the_whole_dataset',
+ 'GlyphMapper._mlabel_markup_rows': 'test/test_graph_text.py::TestMarkerLabels::test_each_distinct_label_is_translated_once',
+ '_dash_finish_text_runs': 'test/test_graph_text.py::TestThePass::test_finish_text_runs_returns_each_result',
+ '_dash_graph_text': 'test/test_graph_text.py::TestTheScanner::test_the_result_passes_inert_tex_last',
+ '_dash_graph_text_note': 'test/test_graph_text.py::TestTheNote::test_one_note_per_graph_and_kind_naming_no_user_text',
+ '_dash_graph_text_parts': 'test/test_graph_text.py::TestTheScanner::test_whole_style_and_font_only_when_markup_asks',
+ '_dash_graph_text_plain': 'test/test_graph_text.py::TestDomSinks::test_plain_text_strips_style_and_keeps_tex',
+ '_dash_graph_text_runs': 'test/test_graph_text.py::TestGraphTextTruth::test_measured_cases',
+ '_dash_graph_text_style': 'test/test_graph_text.py::TestThePass::test_style_is_set_only_where_markup_asks',
+ '_dash_gt_char': 'test/test_graph_text.py::TestGraphTextTruth::test_char_codes',
+ '_dash_gt_head': 'test/test_graph_text.py::TestTheScanner::test_heads_name_known_directives_only',
  # WP-30 S30 (P1.13a): Stata colour grammar (P1.13 part a)
  # WP-30 S31 (P1.18a): Axis look sub-options (P1.18 part a, M5/M6)
  # WP-30 S32 (P1.14a): Named styles p1-p15 (P1.14 part a)
@@ -980,6 +991,10 @@ DEAD = {}
 #: runs) -- and pointed their tests at the production functions.  Each kept
 #: one has its test in FUNCTIONS too.
 TEST_ONLY = {
+    "_dash_finish_text_value": (
+        "WP-30 P1.11b keeps it under WP-26's seam rule: S09's (new, changed) form of "
+        "_dash_finish_text_runs, which _dash_finish_graph_text now calls; "
+        "test_canvas_tex.py's sink-kind tests read it."),
     "_dash_legend_entries": (
         "WP-28 S15 (B5) keeps it under WP-26's seam rule: the number-free projection of "
         "_dash_legend_keys, which _dash_apply_legend now calls: "

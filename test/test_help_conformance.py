@@ -635,9 +635,10 @@ class TestTheParsersFoundSomething:
         # P1.25a's six scheme rows (meta ... stgcolor_mv); 347 with WP-30
         # P1.27's {ul:Batch and set graphics off.} paragraph; 348 with WP-30
         # P1.5's xvarformat()/yvarformat() entry; 350 with WP-30 P1.15a's
-        # two by() text rows (title() subtitle() note() caption(), note("")).
-        assert len(defs) == 350, (  # 348 -> 350: P1.15a's by() text rows
-            f"{len(defs)} definition entries cut out of dash.sthlp, 350 "
+        # two by() text rows (title() subtitle() note() caption(), note(""));
+        # 352 with WP-30 P1.11b's two {ul:Text in graphs.} paragraphs.
+        assert len(defs) == 352, (  # 350 -> 352: P1.11b Text in graphs
+            f"{len(defs)} definition entries cut out of dash.sthlp, 352 "
             f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

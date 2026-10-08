@@ -1,0 +1,2089 @@
+{
+  "_meta": {
+    "born_date": "12 Aug 2026",
+    "c0_rule": "{c 0} cuts off the rest of its own styled run on its own line; text after the run's closing brace and other lines are drawn (measured 08oct2026, scratch note 29-c0-truth.txt)",
+    "dash_commit": "e728a1fabbdcc83ccfb56e8e9788f160faada901",
+    "extracted": " 8 Oct 2026",
+    "stata_version": "19.5"
+  },
+  "cases": [
+    {
+      "category": "graph_text",
+      "id": "it_bf",
+      "input": "{it:{bf:x}}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "x",
+            "weight": "bold"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "bf_bf",
+      "input": "{bf:a}{bf:b}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "ab",
+            "weight": "bold"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "bf_unclosed",
+      "input": "{bf:abc",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{bf:abc",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "bf_set",
+      "input": "a {bf}b",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a ",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "b",
+            "weight": "bold"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "it_bf_set",
+      "input": "{it}a{bf}b",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "italic",
+            "text": "a",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "b",
+            "weight": "bold"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "bf_it",
+      "input": "{bf:{it:both}}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "italic",
+            "text": "both",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "bf_it_mid",
+      "input": "{bf:a{it:b}c}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "italic",
+            "text": "b",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "c",
+            "weight": "bold"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "sub_sup",
+      "input": "{sub:{sup:x}}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "sup",
+            "style": "normal",
+            "text": "x",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "sup_alpha",
+      "input": "{sup:{&alpha}}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "sup",
+            "style": "normal",
+            "text": "\u03b1",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "long_levels",
+      "input": "{superscript:2}{subscript:x}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "sup",
+            "style": "normal",
+            "text": "2",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "sub",
+            "style": "normal",
+            "text": "x",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "bf_empty",
+      "input": "{bf:}",
+      "lines": [
+        []
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "bf_bare",
+      "input": "{bf}",
+      "lines": [
+        []
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "bf_upper",
+      "input": "{BF:x}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{BF:x}",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "bf_blank1",
+      "input": "{ bf:x}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "x",
+            "weight": "bold"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "bf_blank2",
+      "input": "{bf :x}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "x",
+            "weight": "bold"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "cp1252",
+      "input": "{c 128}{c 150}{c 169}{c 0x41}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "\u20ac\u2013\u00a9A",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c999",
+      "input": "{c 999}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{c 999}",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c256",
+      "input": "{c 256}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{c 256}",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0XE9",
+      "input": "{c 0XE9}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{c 0XE9}",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c_2blank",
+      "input": "{c  233}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "\u00e9",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "escaped",
+      "input": "{c -(}bf:x{c )-}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{bf:x}",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "amp_semi",
+      "input": "{&alpha;}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{&alpha;}",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "amp_blank",
+      "input": "{& alpha}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{& alpha}",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "amp_colon",
+      "input": "{&alpha:x}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{&alpha:x}",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c1",
+      "input": "{c 1}|",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "\u0001|",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c31",
+      "input": "{c 31}|",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "\u001f|",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c129",
+      "input": "{c 129}|",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "\u0081|",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "fontface",
+      "input": "{fontface \"Courier New\":fx}",
+      "lines": [
+        [
+          {
+            "family": "Courier New",
+            "level": "",
+            "style": "normal",
+            "text": "fx",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "fontface_set",
+      "input": "{fontface \"Courier\"}all",
+      "lines": [
+        [
+          {
+            "family": "Courier",
+            "level": "",
+            "style": "normal",
+            "text": "all",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "foo_frame",
+      "input": "{foo:{bf:x}}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{foo:",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "x",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "}",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "bf_foo",
+      "input": "{bf:a{foo}b}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a{foo}b",
+            "weight": "bold"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "bf_zz",
+      "input": "{bf:a{zz:q}b}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a{zz:q}b",
+            "weight": "bold"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "it_bf_c",
+      "input": "{it:a{bf}b}c",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "italic",
+            "text": "a",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "b",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "c",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "it_bf_cd",
+      "input": "{it:a{bf:b}c}d",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "italic",
+            "text": "a",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "b",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "italic",
+            "text": "c",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "d",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "bf_sup",
+      "input": "{bf:a{sup:2}}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "sup",
+            "style": "normal",
+            "text": "2",
+            "weight": "bold"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "amp_lblank",
+      "input": "{ &alpha}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "\u03b1",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "amp_rblank",
+      "input": "{&alpha }",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "\u03b1",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c233_rblank",
+      "input": "{c 233 }",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "\u00e9",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c233_lblank",
+      "input": "{ c 233}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "\u00e9",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "char_hex",
+      "input": "{char 0xe9}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "\u00e9",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "punct",
+      "input": "{c 34}{c 36}{c 96}{c 123}{c 125}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "\"$`{}",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "del",
+      "input": "a{c 127}b",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a\u007fb",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "serif2",
+      "input": "{stSerif:a}{stSerif:b}",
+      "lines": [
+        [
+          {
+            "family": "Times",
+            "level": "",
+            "style": "normal",
+            "text": "ab",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "serif_part",
+      "input": "{stSerif:a}b",
+      "lines": [
+        [
+          {
+            "family": "Times",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "b",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "sans",
+      "input": "{stSans:s}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "s",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "mono",
+      "input": "{stMono:m}",
+      "lines": [
+        [
+          {
+            "family": "Courier",
+            "level": "",
+            "style": "normal",
+            "text": "m",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "it_unclosed_bf",
+      "input": "{it:{bf:a}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{it:",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "bold"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "bf_extra_close",
+      "input": "{bf:a}}b",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "}b",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "r_sup2",
+      "input": "R{sup:2}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "R",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "sup",
+            "style": "normal",
+            "text": "2",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "x_sub1",
+      "input": "x{sub:1}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "x",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "sub",
+            "style": "normal",
+            "text": "1",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_first",
+      "input": "{c 0}|",
+      "lines": [
+        []
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_mid",
+      "input": "a{c 0}b",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_after_bf",
+      "input": "{bf:a}{c 0}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "bold"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_after_c1",
+      "input": "{c 1}a{c 0}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "\u0001a",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_in_bf",
+      "input": "{bf:a{c 0}b}c",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "c",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_qzq",
+      "input": "s29qzq{c 0}x",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "s29qzq",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c00",
+      "input": "{c 00}x",
+      "lines": [
+        []
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "char0",
+      "input": "{char 0}x",
+      "lines": [
+        []
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0x0",
+      "input": "{c 0x0}x",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{c 0x0}x",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_then_bf",
+      "input": "a{c 0}b{bf:c}d",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "c",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "d",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_nested",
+      "input": "{bf:a{c 0}b{it:c}d}e",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "italic",
+            "text": "c",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "d",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "e",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_symbol",
+      "input": "a{c 0}{&alpha}b",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_set",
+      "input": "{bf}a{c 0}b{it}c",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "italic",
+            "text": "c",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_plain_run",
+      "input": "{bf:a}b{c 0}c{it:d}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "b",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "italic",
+            "text": "d",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_foo",
+      "input": "{foo:a{c 0}b}c",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{foo:a",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_sup",
+      "input": "a{c 0}b{sup:2}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "sup",
+            "style": "normal",
+            "text": "2",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_between",
+      "input": "{it:x}{c 0}{bf:y}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "italic",
+            "text": "x",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "y",
+            "weight": "bold"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_lead_bf",
+      "input": "{c 0}{bf:y}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "y",
+            "weight": "bold"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "c0_in_bf_lead",
+      "input": "{bf:{c 0}y}z",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "z",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "other_smcl",
+      "id": "cmd",
+      "input": "{cmd:x}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "x",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "other_smcl",
+      "id": "hi",
+      "input": "{hi:x}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "x",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "other_smcl",
+      "id": "hline",
+      "input": "{hline 3}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "---",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "other_smcl",
+      "id": "ccl",
+      "input": "{ccl pi}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "3.141592653589793",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "other_smcl",
+      "id": "dup",
+      "input": "{dup 3:ab}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "ababab",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "other_smcl",
+      "id": "center",
+      "input": "{center:c}",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "                                                                                                                             c",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "difference",
+      "id": "stsym_alpha",
+      "input": "{stSymbol:{&alpha}b}",
+      "lines": [
+        [
+          {
+            "family": "Symbol",
+            "level": "",
+            "style": "normal",
+            "text": "\u2208\u00b1\u03b2",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "ml_bf_line1",
+      "input": "title(\"{bf:a}\" \"b\")",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "bold"
+          }
+        ],
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "b",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "ml_set_line1",
+      "input": "title(\"{bf}a\" \"b\")",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "bold"
+          }
+        ],
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "b",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "ml_it_both",
+      "input": "subtitle(\"{it:x}\" \"{it:y}\")",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "italic",
+            "text": "x",
+            "weight": "normal"
+          }
+        ],
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "italic",
+            "text": "y",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "ml_c0_line2",
+      "input": "title(\"a\" \"b{c 0}c\")",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "normal"
+          }
+        ],
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "b",
+            "weight": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "category": "graph_text",
+      "id": "ml_c0_line1",
+      "input": "title(\"a{c 0}b\" \"c\")",
+      "lines": [
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a",
+            "weight": "normal"
+          }
+        ],
+        [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "c",
+            "weight": "normal"
+          }
+        ]
+      ]
+    }
+  ],
+  "chars": {
+    "1": "\u0001",
+    "10": "",
+    "100": "d",
+    "101": "e",
+    "102": "f",
+    "103": "g",
+    "104": "h",
+    "105": "i",
+    "106": "j",
+    "107": "k",
+    "108": "l",
+    "109": "m",
+    "11": "\u000b",
+    "110": "n",
+    "111": "o",
+    "112": "p",
+    "113": "q",
+    "114": "r",
+    "115": "s",
+    "116": "t",
+    "117": "u",
+    "118": "v",
+    "119": "w",
+    "12": "\f",
+    "120": "x",
+    "121": "y",
+    "122": "z",
+    "123": "{",
+    "124": "|",
+    "125": "}",
+    "126": "~",
+    "127": "\u007f",
+    "128": "\u20ac",
+    "129": "\u0081",
+    "13": "\n",
+    "130": "\u201a",
+    "131": "\u0192",
+    "132": "\u201e",
+    "133": "\u2026",
+    "134": "\u2020",
+    "135": "\u2021",
+    "136": "\u02c6",
+    "137": "\u2030",
+    "138": "\u0160",
+    "139": "\u2039",
+    "14": "\u000e",
+    "140": "\u0152",
+    "141": "\u008d",
+    "142": "\u017d",
+    "143": "\u008f",
+    "144": "\u0090",
+    "145": "\u2018",
+    "146": "\u2019",
+    "147": "\u201c",
+    "148": "\u201d",
+    "149": "\u2022",
+    "15": "\u000f",
+    "150": "\u2013",
+    "151": "\u2014",
+    "152": "\u02dc",
+    "153": "\u2122",
+    "154": "\u0161",
+    "155": "\u203a",
+    "156": "\u0153",
+    "157": "\u009d",
+    "158": "\u017e",
+    "159": "\u0178",
+    "16": "\u0010",
+    "160": " ",
+    "161": "\u00a1",
+    "162": "\u00a2",
+    "163": "\u00a3",
+    "164": "\u00a4",
+    "165": "\u00a5",
+    "166": "\u00a6",
+    "167": "\u00a7",
+    "168": "\u00a8",
+    "169": "\u00a9",
+    "17": "\u0011",
+    "170": "\u00aa",
+    "171": "\u00ab",
+    "172": "\u00ac",
+    "173": "\u00ad",
+    "174": "\u00ae",
+    "175": "\u00af",
+    "176": "\u00b0",
+    "177": "\u00b1",
+    "178": "\u00b2",
+    "179": "\u00b3",
+    "18": "\u0012",
+    "180": "\u00b4",
+    "181": "\u00b5",
+    "182": "\u00b6",
+    "183": "\u00b7",
+    "184": "\u00b8",
+    "185": "\u00b9",
+    "186": "\u00ba",
+    "187": "\u00bb",
+    "188": "\u00bc",
+    "189": "\u00bd",
+    "19": "\u0013",
+    "190": "\u00be",
+    "191": "\u00bf",
+    "192": "\u00c0",
+    "193": "\u00c1",
+    "194": "\u00c2",
+    "195": "\u00c3",
+    "196": "\u00c4",
+    "197": "\u00c5",
+    "198": "\u00c6",
+    "199": "\u00c7",
+    "2": "\u0002",
+    "20": "\u0014",
+    "200": "\u00c8",
+    "201": "\u00c9",
+    "202": "\u00ca",
+    "203": "\u00cb",
+    "204": "\u00cc",
+    "205": "\u00cd",
+    "206": "\u00ce",
+    "207": "\u00cf",
+    "208": "\u00d0",
+    "209": "\u00d1",
+    "21": "\u0015",
+    "210": "\u00d2",
+    "211": "\u00d3",
+    "212": "\u00d4",
+    "213": "\u00d5",
+    "214": "\u00d6",
+    "215": "\u00d7",
+    "216": "\u00d8",
+    "217": "\u00d9",
+    "218": "\u00da",
+    "219": "\u00db",
+    "22": "\u0016",
+    "220": "\u00dc",
+    "221": "\u00dd",
+    "222": "\u00de",
+    "223": "\u00df",
+    "224": "\u00e0",
+    "225": "\u00e1",
+    "226": "\u00e2",
+    "227": "\u00e3",
+    "228": "\u00e4",
+    "229": "\u00e5",
+    "23": "\u0017",
+    "230": "\u00e6",
+    "231": "\u00e7",
+    "232": "\u00e8",
+    "233": "\u00e9",
+    "234": "\u00ea",
+    "235": "\u00eb",
+    "236": "\u00ec",
+    "237": "\u00ed",
+    "238": "\u00ee",
+    "239": "\u00ef",
+    "24": "\u0018",
+    "240": "\u00f0",
+    "241": "\u00f1",
+    "242": "\u00f2",
+    "243": "\u00f3",
+    "244": "\u00f4",
+    "245": "\u00f5",
+    "246": "\u00f6",
+    "247": "\u00f7",
+    "248": "\u00f8",
+    "249": "\u00f9",
+    "25": "\u0019",
+    "250": "\u00fa",
+    "251": "\u00fb",
+    "252": "\u00fc",
+    "253": "\u00fd",
+    "254": "\u00fe",
+    "255": "\u00ff",
+    "26": "\u001a",
+    "27": "\u001b",
+    "28": "\u001c",
+    "29": "\u001d",
+    "3": "\u0003",
+    "30": "\u001e",
+    "31": "\u001f",
+    "32": " ",
+    "33": "!",
+    "34": "\"",
+    "35": "#",
+    "36": "$",
+    "37": "%",
+    "38": "&",
+    "39": "'",
+    "4": "\u0004",
+    "40": "(",
+    "41": ")",
+    "42": "*",
+    "43": "+",
+    "44": ",",
+    "45": "-",
+    "46": ".",
+    "47": "/",
+    "48": "0",
+    "49": "1",
+    "5": "\u0005",
+    "50": "2",
+    "51": "3",
+    "52": "4",
+    "53": "5",
+    "54": "6",
+    "55": "7",
+    "56": "8",
+    "57": "9",
+    "58": ":",
+    "59": ";",
+    "6": "\u0006",
+    "60": "<",
+    "61": "=",
+    "62": ">",
+    "63": "?",
+    "64": "@",
+    "65": "A",
+    "66": "B",
+    "67": "C",
+    "68": "D",
+    "69": "E",
+    "7": "\u0007",
+    "70": "F",
+    "71": "G",
+    "72": "H",
+    "73": "I",
+    "74": "J",
+    "75": "K",
+    "76": "L",
+    "77": "M",
+    "78": "N",
+    "79": "O",
+    "8": "\b",
+    "80": "P",
+    "81": "Q",
+    "82": "R",
+    "83": "S",
+    "84": "T",
+    "85": "U",
+    "86": "V",
+    "87": "W",
+    "88": "X",
+    "89": "Y",
+    "9": "      ",
+    "90": "Z",
+    "91": "[",
+    "92": "\\",
+    "93": "]",
+    "94": "^",
+    "95": "_",
+    "96": "`",
+    "97": "a",
+    "98": "b",
+    "99": "c"
+  },
+  "cnames": {
+    "'g": "`",
+    ")-": "}",
+    "+": "+",
+    "-": "-",
+    "-(": "{",
+    "A'": "\u00c1",
+    "A'g": "\u00c0",
+    "A:": "\u00c4",
+    "AE": "\u00c6",
+    "A^": "\u00c2",
+    "A~": "\u00c3",
+    "BLC": "+",
+    "BRC": "+",
+    "BT": "-",
+    "C,": "\u00c7",
+    "E'": "\u00c9",
+    "E'g": "\u00c8",
+    "E:": "\u00cb",
+    "E^": "\u00ca",
+    "I'": "\u00cd",
+    "I'g": "\u00cc",
+    "I:": "\u00cf",
+    "I^": "\u00ce",
+    "L-": "\u00a3",
+    "LT": "|",
+    "N~": "\u00d1",
+    "O'": "\u00d3",
+    "O'g": "\u00d2",
+    "O/": "\u00d8",
+    "O:": "\u00d6",
+    "O^": "\u00d4",
+    "O~": "\u00d5",
+    "RT": "|",
+    "S|": "$",
+    "TLC": "+",
+    "TRC": "+",
+    "TT": "-",
+    "U'": "\u00da",
+    "U'g": "\u00d9",
+    "U:": "\u00dc",
+    "U^": "\u00db",
+    "Y'": "\u00dd",
+    "Y=": "\u00a5",
+    "a'": "\u00e1",
+    "a'g": "\u00e0",
+    "a:": "\u00e4",
+    "a^": "\u00e2",
+    "ae": "\u00e6",
+    "a~": "\u00e3",
+    "c,": "\u00e7",
+    "e'": "\u00e9",
+    "e'g": "\u00e8",
+    "e:": "\u00eb",
+    "e^": "\u00ea",
+    "i'": "\u00ed",
+    "i'g": "\u00ec",
+    "i:": "\u00ef",
+    "i^": "\u00ee",
+    "n~": "\u00f1",
+    "o'": "\u00f3",
+    "o'g": "\u00f2",
+    "o/": "\u00f8",
+    "o:": "\u00f6",
+    "o^": "\u00f4",
+    "o~": "\u00f5",
+    "r!": "\u00a1",
+    "r?": "\u00bf",
+    "ss": "\u00df",
+    "u'": "\u00fa",
+    "u'g": "\u00f9",
+    "u:": "\u00fc",
+    "u^": "\u00fb",
+    "y'": "\u00fd",
+    "y:": "\u00ff",
+    "|": "|"
+  },
+  "stsymbol": {
+    "!": "!",
+    "#": "#",
+    "%": "%",
+    "&": "&",
+    "'": "\u220d",
+    "(": "(",
+    ")": ")",
+    "*": "\u2217",
+    "+": "+",
+    ",": ",",
+    "-": "\u2212",
+    ".": ".",
+    "/": "/",
+    "0": "0",
+    "1": "1",
+    "2": "2",
+    "3": "3",
+    "4": "4",
+    "5": "5",
+    "6": "6",
+    "7": "7",
+    "8": "8",
+    "9": "9",
+    ":": ":",
+    ";": ";",
+    "<": "<",
+    "=": "=",
+    ">": ">",
+    "?": "?",
+    "@": "\u2245",
+    "A": "\u0391",
+    "B": "\u0392",
+    "C": "\u03a7",
+    "D": "\u0394",
+    "E": "\u0395",
+    "F": "\u03a6",
+    "G": "\u0393",
+    "H": "\u0397",
+    "I": "\u0399",
+    "J": "\u03d1",
+    "K": "\u039a",
+    "L": "\u039b",
+    "M": "\u039c",
+    "N": "\u039d",
+    "O": "\u039f",
+    "P": "\u03a0",
+    "Q": "\u0398",
+    "R": "\u03a1",
+    "S": "\u03a3",
+    "T": "\u03a4",
+    "U": "\u03a5",
+    "V": "\u03c2",
+    "W": "\u03a9",
+    "X": "\u039e",
+    "Y": "\u03a8",
+    "Z": "\u0396",
+    "[": "[",
+    "]": "]",
+    "^": "\u22a5",
+    "_": "_",
+    "a": "\u03b1",
+    "b": "\u03b2",
+    "c": "\u03c7",
+    "d": "\u03b4",
+    "e": "\u03b5",
+    "f": "\u03c6",
+    "g": "\u03b3",
+    "h": "\u03b7",
+    "i": "\u03b9",
+    "j": "\u03d5",
+    "k": "\u03ba",
+    "l": "\u03bb",
+    "m": "\u03bc",
+    "n": "\u03bd",
+    "o": "\u03bf",
+    "p": "\u03c0",
+    "q": "\u03b8",
+    "r": "\u03c1",
+    "s": "\u03c3",
+    "t": "\u03c4",
+    "u": "\u03c5",
+    "v": "\u03d6",
+    "w": "\u03c9",
+    "x": "\u03be",
+    "y": "\u03c8",
+    "z": "\u03b6",
+    "|": "|",
+    "~": "\u223c"
+  },
+  "symbols": {
+    "Alpha": "\u0391",
+    "Beta": "\u0392",
+    "Chi": "\u03a7",
+    "Delta": "\u0394",
+    "Epsilon": "\u0395",
+    "Eta": "\u0397",
+    "Gamma": "\u0393",
+    "Iota": "\u0399",
+    "Kappa": "\u039a",
+    "Lambda": "\u039b",
+    "Mu": "\u039c",
+    "Nu": "\u039d",
+    "Omega": "\u03a9",
+    "Omicron": "\u039f",
+    "Phi": "\u03a6",
+    "Pi": "\u03a0",
+    "Prime": "\u2033",
+    "Psi": "\u03a8",
+    "Rho": "\u03a1",
+    "Sigma": "\u03a3",
+    "Tau": "\u03a4",
+    "Theta": "\u0398",
+    "Upsilon": "\u03a5",
+    "Xi": "\u039e",
+    "Zeta": "\u0396",
+    "alefsym": "\u2135",
+    "alpha": "\u03b1",
+    "amp": "&",
+    "and": "\u2227",
+    "ang": "\u2220",
+    "angle": "\u2220",
+    "asymp": "\u2248",
+    "beta": "\u03b2",
+    "bull": "\u2022",
+    "bullet": "\u2022",
+    "cap": "\u2229",
+    "chi": "\u03c7",
+    "clubs": "\u2663",
+    "cong": "\u2245",
+    "copy": "\u00a9",
+    "copyright": "\u00a9",
+    "crarr": "\u21b5",
+    "cup": "\u222a",
+    "dArr": "\u21d3",
+    "darr": "\u2193",
+    "degree": "\u00b0",
+    "delta": "\u03b4",
+    "diamond": "\u25ca",
+    "diamonds": "\u2666",
+    "diams": "\u2666",
+    "dot": "\u22c5",
+    "element": "\u2208",
+    "ellipsis": "\u2026",
+    "empty": "\u2205",
+    "epsilon": "\u03b5",
+    "equiv": "\u2261",
+    "eta": "\u03b7",
+    "exist": "\u2203",
+    "fnof": "\u0192",
+    "forall": "\u2200",
+    "frasl": "\u2044",
+    "function": "\u0192",
+    "gamma": "\u03b3",
+    "ge": "\u2265",
+    "gt": ">",
+    "hArr": "\u21d4",
+    "harr": "\u2194",
+    "hearts": "\u2665",
+    "hellip": "\u2026",
+    "image": "\u2111",
+    "imaginary": "\u2111",
+    "infin": "\u221e",
+    "infinity": "\u221e",
+    "int": "\u222b",
+    "integral": "\u222b",
+    "intersect": "\u2229",
+    "iota": "\u03b9",
+    "isin": "\u2208",
+    "kappa": "\u03ba",
+    "lArr": "\u21d0",
+    "lambda": "\u03bb",
+    "larr": "\u2190",
+    "le": "\u2264",
+    "lowast": "\u2217",
+    "loz": "\u25ca",
+    "lozenge": "\u25ca",
+    "lt": "<",
+    "minus": "\u2212",
+    "mu": "\u03bc",
+    "nabla": "\u2207",
+    "ne": "\u2260",
+    "notin": "\u2209",
+    "nsub": "\u2284",
+    "nsubset": "\u2284",
+    "nu": "\u03bd",
+    "omega": "\u03c9",
+    "omicron": "\u03bf",
+    "oplus": "\u2295",
+    "or": "\u2228",
+    "orthog": "\u22a5",
+    "otimes": "\u2297",
+    "part": "\u2202",
+    "perp": "\u22a5",
+    "phi": "\u03c6",
+    "pi": "\u03c0",
+    "piv": "\u03d6",
+    "plusminus": "\u00b1",
+    "plusmn": "\u00b1",
+    "prime": "\u2032",
+    "prod": "\u220f",
+    "prop": "\u221d",
+    "psi": "\u03c8",
+    "rArr": "\u21d2",
+    "radic": "\u221a",
+    "rarr": "\u2192",
+    "real": "\u211c",
+    "reg": "\u00ae",
+    "rho": "\u03c1",
+    "sdot": "\u22c5",
+    "sigma": "\u03c3",
+    "sigmaf": "\u03c2",
+    "sim": "\u223c",
+    "spades": "\u2660",
+    "sqrt": "\u221a",
+    "sub": "\u2282",
+    "sube": "\u2286",
+    "subset": "\u2282",
+    "subsete": "\u2286",
+    "sum": "\u2211",
+    "sup": "\u2283",
+    "supe": "\u2287",
+    "superset": "\u2283",
+    "supersete": "\u2287",
+    "tau": "\u03c4",
+    "there4": "\u2234",
+    "therefore": "\u2234",
+    "theta": "\u03b8",
+    "thetasym": "\u03d1",
+    "trade": "\u2122",
+    "trademark": "\u2122",
+    "uArr": "\u21d1",
+    "uarr": "\u2191",
+    "union": "\u222a",
+    "upsih": "\u03d2",
+    "upsilon": "\u03c5",
+    "weierp": "\u2118",
+    "xi": "\u03be",
+    "zeta": "\u03b6"
+  }
+}

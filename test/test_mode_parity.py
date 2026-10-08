@@ -2019,6 +2019,13 @@ CORPUS = [
           [_sc()], None,
           {"by": 'foreign, total title("X") subtitle("S") note("N", suffix) '
                  'caption("C")'}),
+    # WP-30 P1.11b: graph-text markup, drawn and noted alike.
+    _case("SMCL graph text (WP-30 P1.11b)", [_sc(), plot_for("lfit")],
+          go={"title": '"{bf:a}b {&alpha}"',
+              "subtitle": '"{it:Whole italic}"',
+              "xtitle": '"{&mu} R{sup:2}"',
+              "xlabel": '3000 "{bf:a}" 4000 "{bf:b}"',
+              "legend": 'label(1 "{&beta} key")'}),
 ]
 
 
@@ -2156,6 +2163,9 @@ _MUST_WARN = {
     "function without points needing Stata (WP-30 P1.22)":
         "dash: graph 'g1' plot 2 (function) drew nothing: it needs the "
         "points Stata computes for it when dash registers the graph",
+    # WP-30 P1.11b: markup on part of a title is noted, in both modes.
+    "SMCL graph text (WP-30 P1.11b)":
+        "dash: graph 'g1': {bf:}, {it:} or a font tag on part of a title",
 }
 
 #: The filter types that build a widget (dash.sthlp); a filter() group of

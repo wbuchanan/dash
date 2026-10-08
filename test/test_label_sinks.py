@@ -124,6 +124,14 @@ BokehJS typeset it with MathJax and a saved page shipped MathJax for it.
 ``_dash_finish_graph_text`` now finishes every canvas sink
 (``_DASH_GRAPH_TEXT_SINKS``) with ``_dash_inert_tex`` in both modes, last
 in each, so a saved page no longer ships MathJax for them.
+
+Graph-text markup (WP-30 P1.11b): canvas and DOM text sinks carry Stata's
+graph-text markup (``{bf:}``, ``{&alpha}``, ``{c 233}`` ...) translated,
+as twoway draws it (``_dash_graph_text``; filter titles, value-label
+dropdown options and tooltip row names without the style), while HTML and
+data sinks keep it raw.  The payloads here hold no recognised directive,
+so every sink still carries them exactly; test_graph_text.py pins the
+translation.
 """
 from __future__ import annotations
 

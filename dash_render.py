@@ -3924,6 +3924,10 @@ _ROW_ID_COLUMN = "__dash_row__"
 # named __dash_hover_{var}.  test_internal_column_names.py guards it.
 _DASH_PC_ROW_COLUMN = "__dash_pc_row__"
 _DASH_MLABEL_PREFIX = "__dash_mlabel_"
+#: The per-label style column of a marker label whose markup sets a whole
+#: label bold or italic (WP-30 P1.11b); never equal to a __dash_mlabel_ name
+#: (the two differ at their 12th character).
+_DASH_MLABSTYLE_PREFIX = "__dash_mlabstyle_"
 _DASH_MLABEL_VALUES = "__dash_mlabel_values"
 _DASH_MLABEL_X = "__dash_mlabel_x"
 _DASH_MLABEL_Y = "__dash_mlabel_y"
@@ -10981,6 +10985,32 @@ class GlyphMapper:
         # column its redrawn source no longer has.
         text_col = values_col
         _is_text, _miss = self._mlabel_column_kind(source.data[values_col])
+        # Graph-text markup (WP-30 P1.11b): decided over the variable's
+        # whole universe (the dataset's column, or its value labels), so a
+        # by() panel or a filter move never changes which columns exist;
+        # the derived columns are written only where they are new (a saved
+        # source shared by two layers is translated once).
+        _gt = None
+        style_col = None
+        if _is_text:
+            _ds = getattr(self, "dataset", None)
+            if (_ds is not None and hasattr(_ds, "columns")
+                    and mlabel_var in _ds.columns):
+                _gt = self._mlabel_markup(mlabel_var, _ds[mlabel_var],
+                                          (mlabel_var, id(_ds)))
+            else:
+                _gt = self._mlabel_markup(mlabel_var,
+                                          list(source.data[values_col]))
+            if _gt is not None:
+                text_col = f"{_DASH_MLABEL_PREFIX}{mlabel_var}"
+                if _gt[0]:
+                    style_col = f"{_DASH_MLABSTYLE_PREFIX}{mlabel_var}"
+                if text_col not in source.data:
+                    _out, _sty = self._mlabel_markup_rows(
+                        list(source.data[values_col]))
+                    source.data[text_col] = _out
+                    if style_col:
+                        source.data[style_col] = _sty
         if not _is_text:
             _kind = getattr(self, "date_vars", {}).get(mlabel_var)
             _numfmt = getattr(self, "numeric_formats", {}).get(mlabel_var,
@@ -10989,6 +11019,11 @@ class GlyphMapper:
             # renderer; its value labels are keyed by Stata's numbers, so
             # they are read only for a column of numbers.
             _vlabels = ({} if _kind else self._mlabel_value_labels(mlabel_var))
+            if _vlabels:
+                _gt = self._mlabel_markup(mlabel_var, list(_vlabels.values()),
+                                          (mlabel_var, "vl"))
+                if _gt is not None and _gt[0]:
+                    style_col = f"{_DASH_MLABSTYLE_PREFIX}{mlabel_var}"
             text_col = f"{_DASH_MLABEL_PREFIX}{mlabel_var}"
             if text_col not in source.data:
                 raw = list(source.data[values_col])
@@ -11010,6 +11045,10 @@ class GlyphMapper:
                     rendered = ["." if m else
                                 _dash_fmt_text(v, _numfmt or "%9.0g", _st)
                                 for v, m in zip(raw, _miss)]
+                if _gt is not None:
+                    rendered, _sty = self._mlabel_markup_rows(rendered)
+                    if style_col:
+                        source.data[style_col] = _sty
                 source.data[text_col] = rendered
 
         # mlabformat() (WP-22): the labels in the format the user gave.
@@ -11027,6 +11066,12 @@ class GlyphMapper:
             x_offset=4,
             y_offset=4,
         )
+        # A whole label's style and the labels' one font (WP-30 P1.11b).
+        if style_col and style_col in source.data:
+            from bokeh.core.properties import field as _bk_field
+            kwargs["text_font_style"] = _bk_field(style_col)
+        if _gt is not None and _gt[1]:
+            kwargs["text_font"] = _gt[1]
 
         # mlabangle() (WP-22): an anglestyle, drawn counter-clockwise as
         # Stata draws it.  dash.ado refuses a number outside -360..360 where
@@ -11224,6 +11269,76 @@ class GlyphMapper:
         (:func:`_dash_value_labels_for`, TR-14.6, WP-28 S14)."""
         return _dash_value_labels_for(var, getattr(self, "value_labels", {}),
                                       getattr(self, "value_label_names", {}))
+
+    def _mlabel_markup(self, var, texts, cache_key=None):
+        """Whether marker labels hold graph-text markup (WP-30 P1.11b):
+        ``None`` when no distinct string of *texts* changes under
+        ``_dash_graph_text_plain``, else ``(need_style, font)``.
+
+        *texts* is the whole universe of the variable's labels (the whole
+        dataset's column, or its value labels), never the rows in view, so
+        every by() panel and every filter move keeps the same columns.  A
+        style on part of a label or a raised run with no Unicode form is
+        noted once; *cache_key* memoises the answer on the mapper.
+        """
+        memo = getattr(self, "_dash_gt_markup", None)
+        if memo is None:
+            memo = self._dash_gt_markup = {}
+        if cache_key is not None and cache_key in memo:
+            return memo[cache_key]
+        distinct = {t for t in texts if isinstance(t, str)}
+        results = []
+        plain = False
+        for t in distinct:
+            if "{" in t and _dash_graph_text_plain(t) != t:
+                results.append(_dash_graph_text(t))
+            elif t.strip():
+                plain = True
+        answer = None
+        if results:
+            flags = set()
+            for r in results:
+                flags.update(r[3])
+            fonts = {r[2] for r in results}
+            if plain:
+                fonts.add(None)
+            font = next(iter(fonts)) if len(fonts) == 1 else None
+            if len(fonts) > 1:
+                flags.add("inline")
+            answer = (any(r[1] is not None for r in results), font)
+            pfx = f"{_DASH_RESERVED_PREFIX}_"
+            where = (f"{_dash_display(var[len(pfx):-len(_DASH_LABEL_SUFFIX)])}"
+                     f" labels"
+                     if str(var).startswith(pfx)
+                     and str(var).endswith(_DASH_LABEL_SUFFIX)
+                     else f"mlabel({_dash_display(var)})")
+            if flags:
+                _dash_graph_text_note(where, "marker label", flags)
+        if cache_key is not None:
+            memo[cache_key] = answer
+        return answer
+
+    def _mlabel_markup_rows(self, texts):
+        """``(out, styles)``: each label translated by ``_dash_graph_text``
+        (a non-string kept) and its whole style (``"normal"``, ``"bold"`` or
+        ``"italic"``).  Each distinct label is translated once per mapper
+        (the memo is cleared past 65,536 entries)."""
+        memo = getattr(self, "_dash_gt_rows", None)
+        if memo is None or len(memo) > 65536:
+            memo = self._dash_gt_rows = {}
+        out = []
+        styles = []
+        for t in texts:
+            if not isinstance(t, str):
+                out.append(t)
+                styles.append("normal")
+                continue
+            r = memo.get(t)
+            if r is None:
+                r = memo[t] = _dash_graph_text(t)
+            out.append(r[0])
+            styles.append(r[1] or "normal")
+        return out, styles
 
     @staticmethod
     def _mlabel_column_kind(col: Any) -> "tuple[bool, np.ndarray]":
@@ -27661,6 +27776,9 @@ _DASH_GRAPH_TEXT_SINKS = (
     ("Legend", "title", "text"),
     ("LegendItem", "label", "value"),
     ("CustomJSTickFormatter", "args", "labels"),
+    # WP-30 P1.11b: a tooltip's row names are DOM text; they show the
+    # characters of graph-text markup without its style.
+    ("HoverTool", "tooltips", "tooltips"),
 )
 
 #: The attribute the pass sets on each sink model it has finished: a plain
@@ -27675,14 +27793,16 @@ def _dash_graph_text_models(fig):
     The figure's title, then, for each side list (``above``, ``below``,
     ``left``, ``right``, ``center``), every model in it, followed by its
     ``formatter`` when that is a model (an axis's; a ColorBar's default
-    ``"auto"`` is a string) and, for a Legend, each of its items.
+    ``"auto"`` is a string) and, for a Legend, each of its items; then
+    every ``HoverTool`` of the figure's tools (WP-30 P1.11b: tooltip row
+    names).
 
     It reads only those lists and never calls ``references()``, which
     visits every value of every column: on a 100-panel by() graph of 20,000
     rows a ``references()`` walk took 7.08 s per pass, this one 0.067 s.
     """
     from bokeh.model import Model
-    from bokeh.models import Legend
+    from bokeh.models import HoverTool, Legend
 
     out = []
     title = getattr(fig, "title", None)
@@ -27700,6 +27820,9 @@ def _dash_graph_text_models(fig):
                 for it in m.items:
                     if isinstance(it, Model):
                         out.append(it)
+    for tool in getattr(fig, "tools", None) or []:
+        if isinstance(tool, HoverTool):
+            out.append(tool)
     return out
 
 
@@ -27734,8 +27857,10 @@ def _dash_graph_text_props(model):
 
 
 def _dash_finish_text_value(value, how):
-    """``(new, changed)``: *value* with every TeX delimiter pair broken by
-    ``_dash_inert_tex``, read as *how* says the property holds its text.
+    """``(new, changed)``: *value* translated as graph text by
+    ``_dash_graph_text`` (WP-30 P1.11b), which breaks every TeX delimiter
+    pair with ``_dash_inert_tex`` last, read as *how* says the property
+    holds its text.
 
     * ``"text"``: a string; anything else is returned unchanged.
     * ``"map"``: a tick-override mapping; keys and non-string values kept.
@@ -27749,92 +27874,49 @@ def _dash_finish_text_value(value, how):
     held no delimiter, so the caller writes nothing and a page without a
     TeX pair is byte-identical.
     """
-    if how == "text":
-        if isinstance(value, str):
-            new = _dash_inert_tex(value)
-            return new, new != value
-        return value, False
-    if how == "map":
-        if not value:
-            return value, False
-        old = dict(value)
-        new = {}
-        for k, v in old.items():
-            new[k] = _dash_inert_tex(v) if isinstance(v, str) else v
-        return new, new != old
-    if how == "value":
-        text = None
-        if isinstance(value, str):
-            text = value
-        elif isinstance(value, dict):
-            if "field" not in value and isinstance(value.get("value"), str):
-                text = value["value"]
-        elif isinstance(getattr(value, "value", None), str):
-            text = value.value
-        if text is None:
-            return value, False
-        new = _dash_inert_tex(text)
-        if new == text:
-            return value, False
-        return {"value": new}, True
-    if how == "labels":
-        if not value:
-            return value, False
-        args = dict(value)
-        raw = args.get("labels")
-        if not isinstance(raw, str):
-            return value, False
-        try:
-            labels = json.loads(raw)
-        except (TypeError, ValueError):
-            return value, False
-        if not isinstance(labels, dict):
-            return value, False
-        for v in labels.values():
-            if not isinstance(v, str):
-                return value, False
-        new_map = {}
-        changed = False
-        for k, v in labels.items():
-            new_map[k] = _dash_inert_tex(v)
-            if new_map[k] != v:
-                changed = True
-        if not changed:
-            return value, False
-        args["labels"] = json.dumps(new_map)
-        return args, True
-    return value, False
+    return _dash_finish_text_runs(value, how)[:2]
 
 
 def _dash_finish_graph_text(figures):
-    """Draw every TeX delimiter pair in canvas text as typed (WP-30 P1.11a).
+    """Draw every canvas text as twoway draws it (WP-30 P1.11a, P1.11b).
 
     *figures* maps each graph's or by() panel's key to its figure (the
     saved renderer's ``self.figures``; the served ``figures``).  Every model
     of ``_dash_graph_text_models`` that is a ``_DASH_GRAPH_TEXT_SINKS`` sink
-    has each of its text properties passed through ``_dash_inert_tex`` and
-    is marked with ``_DASH_GRAPH_TEXT_DONE``, so a second call, or a model
-    shared by two figures, is not visited again.  Returns the number of
-    models with at least one property rewritten.
+    has each of its text properties translated by ``_dash_graph_text`` --
+    Stata's graph-text markup ({bf:}, {it:}, {sup:}, {&alpha}, {c 233} ...)
+    drawn in Unicode, then every TeX delimiter pair broken by
+    ``_dash_inert_tex`` -- and its whole style and font set where the markup
+    covers all of a text (``_dash_graph_text_style``).  Each model is marked
+    with ``_DASH_GRAPH_TEXT_DONE``, so a second call, or a model shared by
+    two figures, is not visited again: the translation is not idempotent,
+    and every sink takes raw text exactly once.  Returns the number of
+    models whose text changed or whose style was set.
 
-    twoway draws ``$$..$$``, ``\\(..\\)`` and ``\\[..\\]`` in a title, note,
-    axis title, tick label, legend key or value label exactly as typed;
-    BokehJS would typeset them with MathJax, and a saved page would ship
-    MathJax for them.  The pass runs last in each mode: after every figure,
-    by() panel title (a pair can exist only after the panel join) and
-    shared by() scale is built, and, on a saved page, before
-    ``_stale_cue_args`` copies the legend text its filter script writes
-    back.  A sink created after the pass must be finished and marked by its
-    creator, or carry constant text (the stale-cue caption).
+    twoway draws ``$$..$$``, ``\\(..\\)`` and ``\\[..\\]`` in a title,
+    note, axis title, tick label, legend key or value label as typed;
+    BokehJS would typeset them with MathJax.  The pass runs last in each
+    mode: after every figure, by() panel title and shared by() scale is
+    built, and, on a saved page, before ``_stale_cue_args`` copies the
+    legend text its filter script writes back.  A sink created after the
+    pass must be finished and marked by its creator, or carry constant
+    text (the stale-cue caption).
 
-    The key is unused here; it is how a later extension finds a panel's
-    graph (``<name>__by__<i>``).  It never touches glyph renderer names,
-    colour-mapper factors, sources, LabelSet, HoverTool, widgets or Divs,
-    and prints nothing (twoway prints nothing for this text).
+    The key names the graph (``<name>`` or ``<name>__by__<i>``) a note
+    names.  What one Bokeh text cannot draw (a style on part of a text, a
+    raised run with no Unicode form) is noted once per graph and kind of
+    text, naming no user text.  Tooltip row names are translated to plain
+    characters; glyph renderer names, colour-mapper factors, sources,
+    LabelSet, widgets and Divs are never touched.
     """
+    from bokeh.models import CustomJSTickFormatter, Legend
+
     seen = set()
+    styled_fmt = set()
+    pending = {}
     n = 0
-    for _key, fig in list(figures.items()):
+    for key, fig in list(figures.items()):
+        graph = str(key).split("__by__", 1)[0]
         for model in _dash_graph_text_models(fig):
             if id(model) in seen:
                 continue
@@ -27845,15 +27927,657 @@ def _dash_finish_graph_text(figures):
             if not props:
                 continue
             setattr(model, _DASH_GRAPH_TEXT_DONE, True)
-            rewrote = False
+            touched = False
+            if isinstance(model, Legend):
+                res = []
+                for it in model.items:
+                    if not getattr(it, _DASH_GRAPH_TEXT_DONE, False):
+                        res.extend(_dash_finish_text_runs(it.label,
+                                                          "value")[2])
+                kind, flags, applied = _dash_graph_text_style(
+                    model, "items", res, fig)
+                touched = touched or applied
+                if kind and flags:
+                    pending.setdefault((graph, kind), set()).update(flags)
             for prop, how in props:
-                new, diff = _dash_finish_text_value(getattr(model, prop), how)
+                new, diff, res = _dash_finish_text_runs(getattr(model, prop),
+                                                        how)
                 if diff:
                     setattr(model, prop, new)
-                    rewrote = True
-            if rewrote:
+                    touched = True
+                kind, flags, applied = _dash_graph_text_style(
+                    model, prop, res, fig)
+                if applied:
+                    touched = True
+                    if prop == "major_label_overrides":
+                        fmt = getattr(model, "formatter", None)
+                        if fmt is not None:
+                            styled_fmt.add(id(fmt))
+                if (isinstance(model, CustomJSTickFormatter)
+                        and id(model) in styled_fmt):
+                    flags.discard("inline")
+                if kind and flags:
+                    pending.setdefault((graph, kind), set()).update(flags)
+            if touched:
                 n += 1
+    for (graph, kind), flags in pending.items():
+        _dash_graph_text_note(f"graph '{_dash_display(graph)}'", kind, flags)
     return n
+
+# ---------------------------------------------------------------------------
+# Stata's graph-text markup (WP-30 P1.11b).  twoway reads {bf:}, {it:},
+# {sup:}/{sub:}, the font tags, {&name} symbols and {c ...} characters in
+# every text it draws (graph_text.sthlp); dash draws them as twoway does.
+# The three tables below are transcribed from twoway 19.5's own SVG
+# (test/fixtures/graph_text_truth.json, scripts/extract_graph_text_truth.do);
+# every non-ASCII character is written as an escape so look-alikes (Greek
+# Alpha against Latin A) can be reviewed.
+# ---------------------------------------------------------------------------
+#: The 148 ``{&name}`` symbols of graph_text.sthlp.
+_DASH_GT_SYMBOLS = {
+    "Alpha": "\u0391", "Beta": "\u0392", "Chi": "\u03a7", "Delta": "\u0394",
+    "Epsilon": "\u0395", "Eta": "\u0397", "Gamma": "\u0393",
+    "Iota": "\u0399", "Kappa": "\u039a", "Lambda": "\u039b", "Mu": "\u039c",
+    "Nu": "\u039d", "Omega": "\u03a9", "Omicron": "\u039f", "Phi": "\u03a6",
+    "Pi": "\u03a0", "Prime": "\u2033", "Psi": "\u03a8", "Rho": "\u03a1",
+    "Sigma": "\u03a3", "Tau": "\u03a4", "Theta": "\u0398",
+    "Upsilon": "\u03a5", "Xi": "\u039e", "Zeta": "\u0396",
+    "alefsym": "\u2135", "alpha": "\u03b1", "amp": "&", "and": "\u2227",
+    "ang": "\u2220", "angle": "\u2220", "asymp": "\u2248", "beta": "\u03b2",
+    "bull": "\u2022", "bullet": "\u2022", "cap": "\u2229", "chi": "\u03c7",
+    "clubs": "\u2663", "cong": "\u2245", "copy": "\u00a9",
+    "copyright": "\u00a9", "crarr": "\u21b5", "cup": "\u222a",
+    "dArr": "\u21d3", "darr": "\u2193", "degree": "\u00b0",
+    "delta": "\u03b4", "diamond": "\u25ca", "diamonds": "\u2666",
+    "diams": "\u2666", "dot": "\u22c5", "element": "\u2208",
+    "ellipsis": "\u2026", "empty": "\u2205", "epsilon": "\u03b5",
+    "equiv": "\u2261", "eta": "\u03b7", "exist": "\u2203", "fnof": "\u0192",
+    "forall": "\u2200", "frasl": "\u2044", "function": "\u0192",
+    "gamma": "\u03b3", "ge": "\u2265", "gt": ">", "hArr": "\u21d4",
+    "harr": "\u2194", "hearts": "\u2665", "hellip": "\u2026",
+    "image": "\u2111", "imaginary": "\u2111", "infin": "\u221e",
+    "infinity": "\u221e", "int": "\u222b", "integral": "\u222b",
+    "intersect": "\u2229", "iota": "\u03b9", "isin": "\u2208",
+    "kappa": "\u03ba", "lArr": "\u21d0", "lambda": "\u03bb",
+    "larr": "\u2190", "le": "\u2264", "lowast": "\u2217", "loz": "\u25ca",
+    "lozenge": "\u25ca", "lt": "<", "minus": "\u2212", "mu": "\u03bc",
+    "nabla": "\u2207", "ne": "\u2260", "notin": "\u2209", "nsub": "\u2284",
+    "nsubset": "\u2284", "nu": "\u03bd", "omega": "\u03c9",
+    "omicron": "\u03bf", "oplus": "\u2295", "or": "\u2228",
+    "orthog": "\u22a5", "otimes": "\u2297", "part": "\u2202",
+    "perp": "\u22a5", "phi": "\u03c6", "pi": "\u03c0", "piv": "\u03d6",
+    "plusminus": "\u00b1", "plusmn": "\u00b1", "prime": "\u2032",
+    "prod": "\u220f", "prop": "\u221d", "psi": "\u03c8", "rArr": "\u21d2",
+    "radic": "\u221a", "rarr": "\u2192", "real": "\u211c", "reg": "\u00ae",
+    "rho": "\u03c1", "sdot": "\u22c5", "sigma": "\u03c3",
+    "sigmaf": "\u03c2", "sim": "\u223c", "spades": "\u2660",
+    "sqrt": "\u221a", "sub": "\u2282", "sube": "\u2286", "subset": "\u2282",
+    "subsete": "\u2286", "sum": "\u2211", "sup": "\u2283", "supe": "\u2287",
+    "superset": "\u2283", "supersete": "\u2287", "tau": "\u03c4",
+    "there4": "\u2234", "therefore": "\u2234", "theta": "\u03b8",
+    "thetasym": "\u03d1", "trade": "\u2122", "trademark": "\u2122",
+    "uArr": "\u21d1", "uarr": "\u2191", "union": "\u222a",
+    "upsih": "\u03d2", "upsilon": "\u03c5", "weierp": "\u2118",
+    "xi": "\u03be", "zeta": "\u03b6",
+}
+#: The ``{c name}`` characters of smcl.sthlp, as twoway draws them.
+_DASH_GT_CNAMES = {
+    "'g": "`", ")-": "}", "+": "+", "-": "-", "-(": "{", "A'": "\u00c1",
+    "A'g": "\u00c0", "A:": "\u00c4", "AE": "\u00c6", "A^": "\u00c2",
+    "A~": "\u00c3", "BLC": "+", "BRC": "+", "BT": "-", "C,": "\u00c7",
+    "E'": "\u00c9", "E'g": "\u00c8", "E:": "\u00cb", "E^": "\u00ca",
+    "I'": "\u00cd", "I'g": "\u00cc", "I:": "\u00cf", "I^": "\u00ce",
+    "L-": "\u00a3", "LT": "|", "N~": "\u00d1", "O'": "\u00d3",
+    "O'g": "\u00d2", "O/": "\u00d8", "O:": "\u00d6", "O^": "\u00d4",
+    "O~": "\u00d5", "RT": "|", "S|": "$", "TLC": "+", "TRC": "+", "TT": "-",
+    "U'": "\u00da", "U'g": "\u00d9", "U:": "\u00dc", "U^": "\u00db",
+    "Y'": "\u00dd", "Y=": "\u00a5", "a'": "\u00e1", "a'g": "\u00e0",
+    "a:": "\u00e4", "a^": "\u00e2", "ae": "\u00e6", "a~": "\u00e3",
+    "c,": "\u00e7", "e'": "\u00e9", "e'g": "\u00e8", "e:": "\u00eb",
+    "e^": "\u00ea", "i'": "\u00ed", "i'g": "\u00ec", "i:": "\u00ef",
+    "i^": "\u00ee", "n~": "\u00f1", "o'": "\u00f3", "o'g": "\u00f2",
+    "o/": "\u00f8", "o:": "\u00f6", "o^": "\u00f4", "o~": "\u00f5",
+    "r!": "\u00a1", "r?": "\u00bf", "ss": "\u00df", "u'": "\u00fa",
+    "u'g": "\u00f9", "u:": "\u00fc", "u^": "\u00fb", "y'": "\u00fd",
+    "y:": "\u00ff", "|": "|",
+}
+#: What ``{stSymbol:}`` draws for each printable ASCII character it
+#: changes.
+_DASH_GT_STSYMBOL = {
+    "'": "\u220d", "*": "\u2217", "-": "\u2212", "@": "\u2245",
+    "A": "\u0391", "B": "\u0392", "C": "\u03a7", "D": "\u0394",
+    "E": "\u0395", "F": "\u03a6", "G": "\u0393", "H": "\u0397",
+    "I": "\u0399", "J": "\u03d1", "K": "\u039a", "L": "\u039b",
+    "M": "\u039c", "N": "\u039d", "O": "\u039f", "P": "\u03a0",
+    "Q": "\u0398", "R": "\u03a1", "S": "\u03a3", "T": "\u03a4",
+    "U": "\u03a5", "V": "\u03c2", "W": "\u03a9", "X": "\u039e",
+    "Y": "\u03a8", "Z": "\u0396", "^": "\u22a5", "a": "\u03b1",
+    "b": "\u03b2", "c": "\u03c7", "d": "\u03b4", "e": "\u03b5",
+    "f": "\u03c6", "g": "\u03b3", "h": "\u03b7", "i": "\u03b9",
+    "j": "\u03d5", "k": "\u03ba", "l": "\u03bb", "m": "\u03bc",
+    "n": "\u03bd", "o": "\u03bf", "p": "\u03c0", "q": "\u03b8",
+    "r": "\u03c1", "s": "\u03c3", "t": "\u03c4", "u": "\u03c5",
+    "v": "\u03d6", "w": "\u03c9", "x": "\u03be", "y": "\u03c8",
+    "z": "\u03b6", "~": "\u223c",
+}
+
+#: Unicode superscript and subscript forms: a raised or lowered run is drawn
+#: with them when every one of its characters has one.
+_DASH_GT_SUP = {
+    "0": "⁰", "1": "¹", "2": "²", "3": "³",
+    "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷",
+    "8": "⁸", "9": "⁹", "+": "⁺", "-": "⁻",
+    "−": "⁻", "=": "⁼", "(": "⁽", ")": "⁾",
+    "n": "ⁿ", "i": "ⁱ",
+}
+_DASH_GT_SUB = {
+    "0": "₀", "1": "₁", "2": "₂", "3": "₃",
+    "4": "₄", "5": "₅", "6": "₆", "7": "₇",
+    "8": "₈", "9": "₉", "+": "₊", "-": "₋",
+    "−": "₋", "=": "₌", "(": "₍", ")": "₎",
+}
+
+#: The CSS families the three Stata font tags draw in (a ``graph set``
+#: font is not read; P2.22).
+_DASH_GT_FONTS = {
+    "stSans": "Helvetica, Arial, sans-serif",
+    "stSerif": "Times, Times New Roman, serif",
+    "stMono": "Courier, Courier New, monospace",
+}
+
+#: Each style tag: (dimension, value).  Bold and italic share one dimension
+#: (twoway: the innermost wins), as do raised and lowered.
+_DASH_GT_TAGS = {
+    "bf": ("style", "bold"), "it": ("style", "italic"),
+    "sup": ("level", 1), "superscript": ("level", 1),
+    "sub": ("level", -1), "subscript": ("level", -1),
+    "stSans": ("font", "Helvetica, Arial, sans-serif"),
+    "stSerif": ("font", "Times, Times New Roman, serif"),
+    "stMono": ("font", "Courier, Courier New, monospace"),
+    "stSymbol": ("font", "symbol"),
+}
+
+#: Where the pass writes a whole text's style and font: (Bokeh class, text
+#: property, style property, font property, the kind of text a note names).
+_DASH_GT_STYLE_PROPS = (
+    ("Title", "text", "text_font_style", "text_font",
+     "title, subtitle, note or caption"),
+    ("Label", "text", "text_font_style", "text_font",
+     "title, subtitle, note or caption"),
+    ("Axis", "axis_label", "axis_label_text_font_style",
+     "axis_label_text_font", "axis title"),
+    ("Axis", "major_label_overrides", "major_label_text_font_style",
+     "major_label_text_font", "tick label"),
+    ("ColorBar", "title", "title_text_font_style", "title_text_font",
+     "colour key title"),
+    ("ColorBar", "major_label_overrides", "major_label_text_font_style",
+     "major_label_text_font", "tick label"),
+    ("Legend", "title", "title_text_font_style", "title_text_font",
+     "legend key or title"),
+    ("Legend", "items", "label_text_font_style", "label_text_font",
+     "legend key or title"),
+    ("LegendItem", "label", None, None, "legend key or title"),
+    ("CustomJSTickFormatter", "args", None, None, "tick label"),
+)
+
+
+def _dash_gt_char(code):
+    """The character ``{c code}`` draws (1-255), as twoway 19.5 writes it.
+
+    1-127 and 160-255 are that code point (the C0 controls and DEL are kept,
+    as twoway writes them raw: register A34, ratified 06oct2026 "Mirror
+    twoway"); 128-159 follow cp1252, and the five codes cp1252 leaves
+    undefined (129, 141, 143, 144, 157) stay the C1 code point.  0 gives
+    None: ``{c 0}`` cuts the text off (``_dash_graph_text_runs``).
+    """
+    if code <= 0:
+        return None
+    if 128 <= code <= 159:
+        try:
+            return bytes([code]).decode("cp1252")
+        except UnicodeDecodeError:
+            return chr(code)
+    return chr(code)
+
+
+def _dash_gt_head(head, term):
+    """The meaning of one ``{head<term>`` directive (*term* ``":"`` or
+    ``"}"``), as twoway reads it:
+
+    * ``("open", dim, value)`` / ``("set", dim, value)``: a style, level or
+      font tag (``{bf:`` wraps text to its brace; ``{bf}`` holds to the end
+      of the line).  ``{fontface "name"}`` keeps only ``[A-Za-z0-9 _-]``,
+      at most 64 characters, so nothing but a name reaches the CSS.
+    * ``("emit", text)``: a ``{&name}`` symbol or a ``{c #}``, ``{c 0x#}``,
+      ``{char #}`` or ``{c name}`` character.
+    * ``("cut",)``: ``{c 0}`` (also ``{c 00}``, ``{char 0}``; ``{c 0x0}``
+      is drawn as typed, measured).
+    * ``("unit",)``: an unknown ``{...}``, drawn as typed.
+    * ``("frame",)``: an unknown ``{...:``, drawn as typed with its text
+      still read.
+
+    Names are case-sensitive; blanks around the head are ignored.  The
+    digit caps keep int parsing linear (a 5,000-digit code is literal).
+    """
+    h = head.strip(" \t")
+    tag = _DASH_GT_TAGS.get(h)
+    if tag is not None:
+        return ("open" if term == ":" else "set", tag[0], tag[1])
+    m = re.fullmatch(r'fontface[ \t]+(?:"([^"]*)"|([^\s"]+))', h)
+    if m:
+        name = m.group(1) if m.group(1) is not None else m.group(2)
+        name = re.sub(r"[^A-Za-z0-9 _-]", "", name)[:64].strip()
+        return ("open" if term == ":" else "set", "font", name or None)
+    if term != "}":
+        return ("frame",)
+    m = re.fullmatch(r"&([A-Za-z0-9]+)", h)
+    if m:
+        sym = _DASH_GT_SYMBOLS.get(m.group(1))
+        return ("emit", sym) if sym is not None else ("unit",)
+    m = re.fullmatch(r"(?:c|char)[ \t]+(\S+)", h)
+    if m:
+        arg = m.group(1)
+        code = None
+        if re.fullmatch(r"[0-9]{1,6}", arg):
+            code = int(arg)
+            if code == 0:
+                return ("cut",)
+        elif re.fullmatch(r"0x[0-9a-fA-F]{1,6}", arg):
+            code = int(arg[2:], 16)
+            if code == 0:
+                return ("unit",)
+        if code is not None:
+            return ("emit", _dash_gt_char(code)) if code <= 255 else ("unit",)
+        ch = _DASH_GT_CNAMES.get(arg)
+        if ch is not None:
+            return ("emit", ch)
+    return ("unit",)
+
+
+def _dash_graph_text_runs(line):
+    """The styled runs twoway draws for one line of graph text: a list of
+    ``(text, style, level, font)``, *style* ``"normal"``, ``"bold"`` or
+    ``"italic"``, *level* -1, 0 or 1, *font* None, a CSS family or
+    ``"symbol"``.
+
+    The grammar, measured on twoway 19.5 (test/fixtures/graph_text_truth.
+    json): a directive is ``{``, optional blanks, a case-sensitive name,
+    optional blanks, then ``:`` (it wraps text up to its matching ``}``) or
+    ``}`` (a tag then holds to the end of the line, inside the tag that
+    encloses it).  An unknown ``{name}`` is literal text; an unknown
+    ``{name:`` is a literal frame whose text is still read and whose ``}``
+    is printed; an unclosed tag is literal; bold and italic exclude each
+    other and the innermost tag wins in each of style, level and font.
+    ``{c -(}`` and ``{c )-}`` draw braces that are never read again.  The
+    C0/C1 control codes ``{c #}`` names are kept as those characters
+    (register A34, ratified 06oct2026 "Mirror twoway").  ``{c 0}`` cuts off
+    the rest of its own styled run: what follows it is dropped until the
+    next tag opens, closes or is set (measured 08oct2026: ``a{c 0}b{bf:c}d``
+    draws ``a``, bold ``c``, ``d``).  Other SMCL (``{hline}``, ``{cmd:}``)
+    is drawn as typed (A32).  One documented difference: a symbol inside
+    ``{stSymbol:}`` is drawn as itself.
+
+    Two passes over the positions of ``{``, ``}`` and ``:`` only, no
+    recursion, pieces joined once: linear in the text's length (100,000
+    ``{`` in about 0.03 s).  Not idempotent: never call it on its output.
+    """
+    s = str(line)
+    sp = [m.start() for m in re.finditer(r"[{}:]", s)]
+    n = len(sp)
+    # Pass 1: pair each directive with its terminator and each ':' frame
+    # with the '}' that closes it.
+    acts = {}
+    closed = set()
+    stack = []
+    k = 0
+    while k < n:
+        p = sp[k]
+        c = s[p]
+        if c == "{" and k + 1 < n and s[sp[k + 1]] in ":}":
+            q = sp[k + 1]
+            if (s[q] == ":" and k + 2 < n and sp[k + 2] == q + 1
+                    and s[q + 1] == "}"):
+                # A character name ending in ':' ({c a:}, {c u:}).
+                a2 = _dash_gt_head(s[p + 1:q + 1], "}")
+                if a2[0] == "emit":
+                    acts[p] = (a2, q + 1, 3)
+                    k += 3
+                    continue
+            acts[p] = (_dash_gt_head(s[p + 1:q], s[q]), q, 2)
+            if s[q] == ":":
+                stack.append(p)
+            k += 2
+            continue
+        if c == "}" and stack:
+            closed.add(stack.pop())
+        k += 1
+    # Pass 2: emit text in the current state.
+    sym = None
+    state = ("normal", 0, None)
+    frames = []
+    out = []
+    cut = False
+    pos = 0
+    k = 0
+    while k <= n:
+        p = sp[k] if k < n else len(s)
+        if p > pos and not cut:
+            t = s[pos:p]
+            if state[2] == "symbol":
+                if sym is None:
+                    sym = str.maketrans(_DASH_GT_STSYMBOL)
+                t = t.translate(sym)
+            out.append((state, t))
+        if k == n:
+            break
+        c = s[p]
+        lit = None
+        step = 1
+        nxt = p + 1
+        if c == "{" and p in acts:
+            act, q, step = acts[p]
+            nxt = q + 1
+            kind = act[0]
+            if s[q] == ":" and step == 2:
+                if p in closed and kind == "open":
+                    frames.append((state, False))
+                    cut = False
+                elif p in closed:
+                    lit = s[p:q + 1]
+                    frames.append((state, True))
+                else:
+                    lit = s[p:q + 1]
+            elif kind == "set":
+                cut = False
+            elif kind == "emit":
+                lit = act[1]
+            elif kind == "cut":
+                cut = True
+            else:
+                lit = s[p:q + 1]
+            if kind in ("open", "set") and (kind == "set" or p in closed):
+                if act[1] == "style":
+                    state = (act[2], state[1], state[2])
+                elif act[1] == "level":
+                    state = (state[0], act[2], state[2])
+                else:
+                    state = (state[0], state[1], act[2])
+        elif c == "}" and frames:
+            saved, literal = frames.pop()
+            if literal:
+                lit = "}"
+            else:
+                cut = False
+            state = saved
+        else:
+            lit = c
+        if lit and not cut:
+            out.append((state, lit))
+        pos = nxt
+        k += step
+    runs = []
+    for st, t in out:
+        if not t:
+            continue
+        if runs and runs[-1][0] == st:
+            runs[-1][1].append(t)
+        else:
+            runs.append((st, [t]))
+    return [("".join(pieces), st[0], st[1], st[2]) for st, pieces in runs]
+
+
+def _dash_graph_text_parts(text):
+    """``(plain, style, font, flags)``: graph text as one Bokeh text draws
+    it.
+
+    Each line is read by ``_dash_graph_text_runs``.  A raised or lowered run
+    is written in Unicode superscript or subscript characters when every
+    character has one, else kept on the line and flagged ``"level"``.  Over
+    the runs that hold a non-blank character, one style gives *style*
+    (None for normal) and one font gives *font*; several give None and the
+    flag ``"inline"`` (one text model has one style and font: register
+    A31).  *flags* is a sorted tuple.
+    """
+    s = str(text)
+    if "{" not in s:
+        return s, None, None, ()
+    styles = set()
+    fonts = set()
+    flags = set()
+    lines = []
+    for line in s.split("\n"):
+        pieces = []
+        for t, st, lv, ft in _dash_graph_text_runs(line):
+            if lv:
+                table = _DASH_GT_SUP if lv > 0 else _DASH_GT_SUB
+                if all(ch in table or ch.isspace() for ch in t):
+                    t = "".join(table.get(ch, ch) for ch in t)
+                else:
+                    flags.add("level")
+            pieces.append(t)
+            if t.strip():
+                styles.add(st)
+                fonts.add(None if ft == "symbol" else ft)
+        lines.append("".join(pieces))
+    style = None
+    font = None
+    if len(styles) == 1:
+        style = next(iter(styles))
+        style = None if style == "normal" else style
+    elif len(styles) > 1:
+        flags.add("inline")
+    if len(fonts) == 1:
+        font = next(iter(fonts))
+    elif len(fonts) > 1:
+        flags.add("inline")
+    return "\n".join(lines), style, font, tuple(sorted(flags))
+
+
+def _dash_graph_text(text):
+    """``(text, style, font, flags)`` for a canvas sink: the translation of
+    ``_dash_graph_text_parts`` with ``_dash_inert_tex`` applied last, so
+    translated characters (``{c S|}{c S|}``) cannot assemble a TeX pair."""
+    plain, style, font, flags = _dash_graph_text_parts(text)
+    return _dash_inert_tex(plain), style, font, flags
+
+
+def _dash_graph_text_plain(text):
+    """The characters of graph text without its style and font (a filter
+    title, a dropdown option, a tooltip row name).  Text holding no ``{`` is
+    returned unchanged."""
+    s = str(text)
+    if "{" not in s:
+        return s
+    return _dash_graph_text_parts(s)[0]
+
+
+def _dash_finish_text_runs(value, how):
+    """``(new, changed, results)``: *value* translated as graph text, read
+    as *how* says the property holds its text (``_dash_finish_text_value``'s
+    four kinds, plus ``"tooltips"``), and the ``_dash_graph_text`` tuple of
+    every text it translated.
+
+    * ``"text"``: a string.  ``"map"``: a tick-override mapping (keys and
+      non-string values kept).  ``"value"``: a LegendItem's fixed label,
+      returned as ``{"value": new}``; a field label is left alone.
+      ``"labels"``: a ``CustomJSTickFormatter``'s ``args`` holding the JSON
+      tick-label map.  ``"tooltips"``: a HoverTool's ``(label, field)``
+      list, each label as plain characters (DOM text), fields untouched; a
+      template string is left alone.
+
+    *value* is never mutated; ``changed`` is False when nothing changed.
+    """
+    if how == "text":
+        if isinstance(value, str):
+            r = _dash_graph_text(value)
+            return r[0], r[0] != value, [r]
+        return value, False, []
+    if how == "map":
+        if not value:
+            return value, False, []
+        old = dict(value)
+        new = {}
+        res = []
+        for k, v in old.items():
+            if isinstance(v, str):
+                r = _dash_graph_text(v)
+                res.append(r)
+                new[k] = r[0]
+            else:
+                new[k] = v
+        return new, new != old, res
+    if how == "value":
+        text = None
+        if isinstance(value, str):
+            text = value
+        elif isinstance(value, dict):
+            if "field" not in value and isinstance(value.get("value"), str):
+                text = value["value"]
+        elif isinstance(getattr(value, "value", None), str):
+            text = value.value
+        if text is None:
+            return value, False, []
+        r = _dash_graph_text(text)
+        if r[0] == text:
+            return value, False, [r]
+        return {"value": r[0]}, True, [r]
+    if how == "labels":
+        if not value:
+            return value, False, []
+        args = dict(value)
+        raw = args.get("labels")
+        if not isinstance(raw, str):
+            return value, False, []
+        try:
+            labels = json.loads(raw)
+        except (TypeError, ValueError):
+            return value, False, []
+        if not isinstance(labels, dict):
+            return value, False, []
+        for v in labels.values():
+            if not isinstance(v, str):
+                return value, False, []
+        new_map = {}
+        res = []
+        changed = False
+        for k, v in labels.items():
+            r = _dash_graph_text(v)
+            res.append(r)
+            new_map[k] = r[0]
+            if r[0] != v:
+                changed = True
+        if not changed:
+            return value, False, res
+        args["labels"] = json.dumps(new_map)
+        return args, True, res
+    if how == "tooltips":
+        if not isinstance(value, (list, tuple)):
+            return value, False, []
+        new = []
+        changed = False
+        for row in value:
+            if (isinstance(row, (list, tuple)) and len(row) == 2
+                    and isinstance(row[0], str)):
+                lab = _dash_graph_text_plain(row[0])
+                if lab != row[0]:
+                    changed = True
+                new.append((lab, row[1]))
+            else:
+                new.append(row)
+        return (new if changed else value), changed, []
+    return value, False, []
+
+
+def _dash_graph_text_style(model, prop, results, fig):
+    """``(kind, flags, applied)``: write the whole text's style and font
+    the markup asks for onto *model*'s style properties for *prop*.
+
+    *results* are ``_dash_graph_text`` tuples of the property's texts.
+
+    | Row | Applied when | Otherwise |
+    | Title, Label, axis title, ColorBar and Legend title | the text has a
+      style or font: each that is not None | nothing |
+    | Axis / ColorBar tick overrides | every label shares one (style, font)
+      with one set, a FixedTicker's every tick is overridden and the axis
+      is not counted | "inline" when any label is styled |
+    | Legend items | every fixed label shares one (style, font) with one
+      set | "inline" when any is styled |
+    | LegendItem | never (its Legend decides) | -- |
+    | CustomJSTickFormatter | never (its axis decides) | "inline" when
+      styled |
+
+    ``normal`` is never written: each model keeps its own default (Bokeh's
+    Title is bold, its axis titles italic; S15 resets some).
+    """
+    import bokeh.models as _bm
+
+    row = None
+    for cls_name, p, sprop, fprop, kind in _DASH_GT_STYLE_PROPS:
+        cls = getattr(_bm, cls_name, None)
+        if p == prop and cls is not None and isinstance(model, cls):
+            row = (cls_name, sprop, fprop, kind)
+            break
+    if row is None:
+        return None, set(), False
+    cls_name, sprop, fprop, kind = row
+    flags = set()
+    for r in results:
+        flags.update(r[3])
+    styled = [r for r in results if r[1] is not None or r[2] is not None]
+    if cls_name == "LegendItem":
+        return kind, flags, False
+    if cls_name == "CustomJSTickFormatter":
+        if styled:
+            flags.add("inline")
+        return kind, flags, False
+    ok = False
+    if prop in ("major_label_overrides", "items"):
+        pairs = {(r[1], r[2]) for r in results}
+        ok = bool(styled) and len(pairs) == 1
+        if ok and prop == "major_label_overrides":
+            ticker = getattr(model, "ticker", None)
+            ticks = list(getattr(ticker, "ticks", None) or ())
+            keys = set()
+            for key in (getattr(model, prop, None) or {}):
+                try:
+                    keys.add(float(key))
+                except (TypeError, ValueError):
+                    pass
+            counted = {id(e.get("ax")) for e in
+                       (getattr(fig, "_dash_count_entries", None) or ())
+                       if isinstance(e, dict)}
+            ok = (isinstance(ticker, _bm.FixedTicker) and bool(ticks)
+                  and all(float(t) in keys for t in ticks)
+                  and id(model) not in counted)
+        if not ok and styled:
+            flags.add("inline")
+    else:
+        ok = bool(results) and bool(styled) and results[0] is styled[0]
+    if not ok:
+        return kind, flags, False
+    if styled[0][1] is not None:
+        setattr(model, sprop, styled[0][1])
+    if styled[0][2] is not None:
+        setattr(model, fprop, styled[0][2])
+    return kind, flags, True
+
+
+def _dash_graph_text_note(where, kind, flags):
+    """Say once per render, *where* and *kind*, what one Bokeh text could
+    not draw as twoway does; the user's text is never echoed."""
+    parts = []
+    if "inline" in flags:
+        parts.append(f"{{bf:}}, {{it:}} or a font tag on part of a {kind} "
+                     f"is drawn in that text's own style and font")
+    if "level" in flags:
+        parts.append(f"{{sup:}} or {{sub:}} around a character with no "
+                     f"raised or lowered form in a {kind} is drawn on the "
+                     f"line")
+    if not parts:
+        return
+    _dash_warn_once(("graph_text", where, kind),
+                    f"dash: {where}: " + "; ".join(parts)
+                    + " (help dash, Text in graphs).", stacklevel=3)
 
 
 def _dash_filter_title(label, fallback, ftype):
@@ -27866,8 +28590,15 @@ def _dash_filter_title(label, fallback, ftype):
     label can come from a variable label the dataset carries.  A dropdown is
     a ``Select`` whose title is always a text node, so its title is left
     exactly as written.
+
+    Graph-text markup in the label (a variable label such as
+    ``{&mu} mpg``) shows its characters, without style or font tags
+    (``_dash_graph_text_plain``, WP-30 P1.11b): twoway draws the label so on
+    the graph, and a widget title is DOM text with one style.  The TeX
+    breaker runs after the translation, so translated characters cannot
+    form a pair.
     """
-    raw = str(label or "").strip() or str(fallback)
+    raw = _dash_graph_text_plain(str(label or "").strip() or str(fallback))
     if ftype != "dropdown":
         raw = _dash_inert_tex(raw)
     if ftype == "slider" and not raw.endswith(("≥", ">=")):
@@ -27986,7 +28717,7 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
 
         def _label(rv):
             if rv in vlabels:
-                return vlabels[rv]
+                return _dash_graph_text_plain(vlabels[rv])
             if isinstance(rv, float):
                 if is_date:
                     return _dash_fmt_text(
@@ -27994,7 +28725,7 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
                 if rv.is_integer():
                     k = str(int(rv))
                     if k in vlabels:
-                        return vlabels[k]
+                        return _dash_graph_text_plain(vlabels[k])
                 # The variable's display text (GAPS2 E3, G6): %8.0gc's
                 # 4,099, a float-stored 0.1's .1.
                 return _dash_fmt_text(rv, _nfmt, storage or None)
@@ -37833,6 +38564,10 @@ class ServerAppBuilder:
                       # The blanks _dash_grid_dims and _dash_placement_map
                       # strip (WP-20).
                       "_DASH_ASCII_BLANKS",
+                      # Graph-text markup (WP-30 P1.11b).
+                      "_DASH_GT_SYMBOLS", "_DASH_GT_CNAMES", "_DASH_GT_STSYMBOL",
+                      "_DASH_GT_SUP", "_DASH_GT_SUB", "_DASH_GT_FONTS", "_DASH_GT_TAGS",
+                      "_DASH_GT_STYLE_PROPS", "_DASH_MLABSTYLE_PREFIX",
                       # The CSV download (WP-21): the page-side writer, the
                       # file's name, the button and the session's pace; and
                       # what _stata_dates_to_datetime reads to convert the
@@ -38141,6 +38876,10 @@ class ServerAppBuilder:
                          # The canvas-text pass (WP-30 P1.11a) and its helpers.
                          "_dash_finish_graph_text", "_dash_graph_text_models",
                          "_dash_graph_text_props", "_dash_finish_text_value",
+                         # The graph-text scanner and its pass helpers (WP-30 P1.11b).
+                         "_dash_gt_char", "_dash_gt_head", "_dash_graph_text_runs",
+                         "_dash_graph_text_parts", "_dash_graph_text", "_dash_graph_text_plain",
+                         "_dash_finish_text_runs", "_dash_graph_text_style", "_dash_graph_text_note",
                          "_dash_filter_title",
                          "_dash_filter_base_title",
                          "_dash_finite_column",
