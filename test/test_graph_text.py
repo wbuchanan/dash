@@ -153,6 +153,10 @@ def _models(mode, spec, data):
                 seen[id(m)] = m
         for wd in r.filter_widgets:
             seen[id(wd)] = wd
+        root = getattr(r, "_last_layout_root", None)
+        if root is not None:
+            for m in root.references():
+                seen[id(m)] = m
         return list(seen.values()), w
     doc, w, _ = _served(spec, data)
     return list(doc.models), w
@@ -644,6 +648,20 @@ class TestEverySinkBothModes:
             "stSerif"]
         bars = [c for c in _of(models, ColorBar) if c.title == "Z"]
         assert bars and bars[0].title_text_font_style == "bold"
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_by_panel_labels_and_overall_text_are_translated(self, mode):
+        """WP-30 P1.15a's by() sinks: panel labels from value labels and
+        by()'s own title, subtitle, note and caption."""
+        spec = _spec([_sc()], graph_options={
+            "by": 'foreign, title("{bf:X}") subtitle("{&alpha}s") '
+                  'note("{it:N}") caption("c{sup:2}")'})
+        models, _ = _models(mode, spec, _data(_df()))
+        got = {(m.text, m.text_font_style) for m in _of(models, Title)
+               if m.text}
+        assert {("Dom", "italic"), ("\u03b1For", "normal"), ("X", "bold"),
+                ("\u03b1s", "normal"), ("N", "italic"),
+                ("c\u00b2", "normal")} <= got, got
 
     @pytest.mark.parametrize("mode", MODES)
     def test_no_model_needs_mathjax(self, sink_builds, mode):
